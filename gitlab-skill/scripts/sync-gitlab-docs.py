@@ -102,25 +102,17 @@ def extract_frontmatter(file_path: Path) -> dict[str, str]:
 class UpdateError(Exception):
     """Base exception for documentation update errors."""
 
-    pass
-
 
 class DownloadError(UpdateError):
     """Exception raised when documentation download fails."""
-
-    pass
 
 
 class ExtractionError(UpdateError):
     """Exception raised when archive extraction fails."""
 
-    pass
-
 
 class ValidationError(UpdateError):
     """Exception raised when extracted content validation fails."""
-
-    pass
 
 
 def check_cooldown(working_dir: Path, force: bool) -> bool:
@@ -331,8 +323,6 @@ def validate_extraction(extract_dir: Path) -> Path:
 class GroomingError(UpdateError):
     """Exception raised when markdown grooming fails."""
 
-    pass
-
 
 def transform_links(content: str, current_file: Path, docs_root: Path) -> str:
     """Transform markdown links to use relative paths or GitLab raw URLs.
@@ -414,9 +404,7 @@ def remove_hugo_shortcodes(content: str) -> str:
     """
     # Use module-level compiled patterns for performance
     content = ANGLE_BRACKET_SHORTCODE_PATTERN.sub("", content)
-    content = PERCENT_SHORTCODE_PATTERN.sub("", content)
-
-    return content
+    return PERCENT_SHORTCODE_PATTERN.sub("", content)
 
 
 def groom_markdown_files(docs_dir: Path) -> int:

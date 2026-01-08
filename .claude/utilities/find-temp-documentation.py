@@ -1162,8 +1162,7 @@ def state(
     post["status"] = new_status
 
     # Write back to file
-    with Path(doc.path).open("w", encoding="utf-8") as f:
-        f.write(frontmatter.dumps(post))
+    Path(doc.path).write_text(frontmatter.dumps(post), encoding="utf-8")
 
     console.print(f"[green]✓ Status updated to:[/] {new_status}")
 

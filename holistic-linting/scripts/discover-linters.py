@@ -65,7 +65,7 @@ def check_git_hooks() -> bool:
         subprocess.run(["git", "rev-parse", "--git-dir"], capture_output=True, check=True, timeout=5)
 
         # Check for pre-commit hook
-        result = subprocess.run(["git", "config", "--get", "core.hooksPath"], capture_output=True, text=True, timeout=5)
+        result = subprocess.run(["git", "config", "--get", "core.hooksPath"], check=False, capture_output=True, text=True, timeout=5)
         hooks_path = Path(result.stdout.strip()) if result.returncode == 0 else Path(".git/hooks")
 
         pre_commit_hook = hooks_path / "pre-commit"
@@ -155,7 +155,7 @@ def scan_pre_commit_config(config_file: Path) -> list[LinterConfig]:
     linters: list[LinterConfig] = []
 
     try:
-        with config_file.open() as f:
+        with config_file.open(encoding="utf-8") as f:
             config = yaml.safe_load(f)
 
         for repo in config.get("repos", []):
@@ -187,8 +187,7 @@ def scan_pyproject_toml(config_file: Path) -> list[LinterConfig]:
 
         # Check for ruff
         if "tool" in config and "ruff" in config["tool"]:
-            linters.append(LinterConfig(name="ruff format", patterns=["*.py"], is_formatter=True))
-            linters.append(LinterConfig(name="ruff check", patterns=["*.py"], is_linter=True))
+            linters.extend((LinterConfig(name="ruff format", patterns=["*.py"], is_formatter=True), LinterConfig(name="ruff check", patterns=["*.py"], is_linter=True)))
 
         # Check for mypy
         if "tool" in config and "mypy" in config["tool"]:
@@ -220,7 +219,7 @@ def scan_package_json(config_file: Path) -> list[LinterConfig]:
     linters: list[LinterConfig] = []
 
     try:
-        with config_file.open() as f:
+        with config_file.open(encoding="utf-8") as f:
             config = json.load(f)
 
         dev_deps = config.get("devDependencies", {})
@@ -337,13 +336,11 @@ def generate_linters_section(linters: ProjectLinters) -> str:
     lines.append(f"git pre-commit hooks: {hooks_status}")
 
     tool_name = linters.pre_commit_tool or "none"
-    lines.append(f"pre-commit tool: {tool_name}")
-    lines.append("")
+    lines.extend((f"pre-commit tool: {tool_name}", ""))
 
     # Formatters
     if linters.formatters:
-        lines.append("### Formatters")
-        lines.append("")
+        lines.extend(("### Formatters", ""))
         for formatter in sorted(linters.formatters, key=lambda x: x.name):
             patterns_str = ", ".join(formatter.patterns)
             lines.append(f"- {formatter.name} [{patterns_str}]")
@@ -351,8 +348,7 @@ def generate_linters_section(linters: ProjectLinters) -> str:
 
     # Linters
     if linters.linters:
-        lines.append("### Static Checking and Linting")
-        lines.append("")
+        lines.extend(("### Static Checking and Linting", ""))
         for linter in sorted(linters.linters, key=lambda x: x.name):
             patterns_str = ", ".join(linter.patterns)
             lines.append(f"- {linter.name} [{patterns_str}]")

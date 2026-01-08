@@ -600,4 +600,3 @@ ci/
     ├── [Optimize GitLab CI/CD configuration files](./references/ci/yaml/yaml_optimization.md)
         Use YAML anchors, !reference tags, and the `extends` keyword to reduce CI/CD configuration file complexity.
 ```
-

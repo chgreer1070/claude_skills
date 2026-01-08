@@ -6,7 +6,7 @@
 #     "types-requests>=2.31.0",
 # ]
 # ///
-"""GitLab Flavored Markdown Validation Script
+"""GitLab Flavored Markdown Validation Script.
 
 Validates GLFM rendering by calling the GitLab markdown API.
 Usage:
@@ -24,7 +24,7 @@ import requests
 
 
 def get_gitlab_token() -> str | None:
-    """Get GitLab token from environment or .bashrc"""
+    """Get GitLab token from environment or .bashrc."""
     # Check environment first
     token = os.environ.get("GITLAB_TOKEN")
     if token:
@@ -34,11 +34,10 @@ def get_gitlab_token() -> str | None:
     bashrc_path = Path.home() / ".bashrc"
     if bashrc_path.exists():
         try:
-            with open(bashrc_path) as f:
+            with Path(bashrc_path).open(encoding="utf-8") as f:
                 for line in f:
                     if line.startswith("export GITLAB_TOKEN="):
-                        token = line.split("=", 1)[1].strip().strip('"').strip("'")
-                        return token
+                        return line.split("=", 1)[1].strip().strip('"').strip("'")
         except Exception as e:
             print(f"Warning: Could not read .bashrc: {e}", file=sys.stderr)
 
@@ -48,7 +47,7 @@ def get_gitlab_token() -> str | None:
 def validate_markdown(
     markdown_text: str, gitlab_url: str, token: str, project: str | None = None, verbose: bool = False
 ) -> str | None:
-    """Call GitLab markdown API and return rendered HTML"""
+    """Call GitLab markdown API and return rendered HTML."""
     api_url = f"{gitlab_url}/api/v4/markdown"
 
     headers = {"PRIVATE-TOKEN": token, "Content-Type": "application/json"}
@@ -75,12 +74,11 @@ def validate_markdown(
 
         if "html" in result:
             return str(result["html"])
-        elif "error" in result:
+        if "error" in result:
             print(f"API Error: {result['error']}", file=sys.stderr)
             return None
-        else:
-            print(f"Unexpected response: {result}", file=sys.stderr)
-            return None
+        print(f"Unexpected response: {result}", file=sys.stderr)
+        return None
 
     except requests.exceptions.HTTPError as e:
         print(f"HTTP Error {e.response.status_code}: {e.response.text}", file=sys.stderr)

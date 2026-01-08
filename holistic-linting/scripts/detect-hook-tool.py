@@ -38,7 +38,7 @@ def detect_tool(repo_path: Path) -> str:
         tokens = second_line.split()
         if len(tokens) >= 5 and tokens[3] == "by":
             tool_name = tokens[4].rstrip(":")
-            if tool_name in ("prek", "pre-commit"):
+            if tool_name in {"prek", "pre-commit"}:
                 return tool_name
     except (OSError, IndexError):
         pass
@@ -74,7 +74,7 @@ def main() -> int:
     # Execute the tool with remaining args
     cmd = [tool, *args]
     try:
-        result = subprocess.run(cmd, cwd=repo_path)
+        result = subprocess.run(cmd, check=False, cwd=repo_path)
     except FileNotFoundError:
         print(f"Error: {tool} not found in PATH", file=sys.stderr)
         return 127

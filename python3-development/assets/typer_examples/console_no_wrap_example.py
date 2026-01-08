@@ -48,5 +48,3 @@ print("=" * 80)
 console.print(f"URL: {long_url}", crop=False, overflow="ignore")
 console.print(f"Command: {long_command}", crop=False, overflow="ignore")
 console.print(f"Error: {long_traceback}", crop=False, overflow="ignore")
-
-

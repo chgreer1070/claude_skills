@@ -63,10 +63,11 @@ err_console = Console(stderr=True)
 app = typer.Typer()
 DEFAULT_CONFIG_FILE = Path("broken.json")
 
+
 class AppExitRich(typer.Exit):
-    """Exception class for application exits using rich console"""
-    def __init__(self, code: int | None = None, message: str | None = None, console: Console = normal_console):
-        """Custom exception using console based formatting to keep errors consistent with the CLI UX"""
+    """Exception class for application exits using rich console."""
+    def __init__(self, code: int | None = None, message: str | None = None, console: Console = normal_console) -> None:
+        """Custom exception using console based formatting to keep errors consistent with the CLI UX."""
         self.code = code
         self.message = message
         if message is not None:
@@ -74,8 +75,9 @@ class AppExitRich(typer.Exit):
 
         super().__init__(code=code)
 
+
 class ConfigError(Exception):
-    """Custom exception for errors that will be handled internally"""
+    """Custom exception for errors that will be handled internally."""
 
 
 # LAYER 1: Low-level file reading
@@ -115,7 +117,6 @@ def load_json_file(file_path: Path) -> dict:
         raise AppExitRich(code=1, message=f"Invalid JSON in {file_path!s} at line {e.lineno}, column {e.colno}: {e.msg}") from e
 
 
-
 # LAYER 4: Validate config structure
 def validate_config_structure(data: Any, source: str) -> dict:
     """Validate config structure - ANTI-PATTERN: More wrapping.
@@ -129,6 +130,7 @@ def validate_config_structure(data: Any, source: str) -> dict:
     if not isinstance(data, dict):
         raise AppExitRich(code=1, message=f"Config must be a JSON object, got {type(data)}", console=err_console)
     return data
+
 
 # LAYER 5: Load and validate config (consolidate exception handling)
 def load_config(file_path: Path) -> dict:

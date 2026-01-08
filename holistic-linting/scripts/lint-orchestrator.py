@@ -219,7 +219,7 @@ def run_tool(tool: Tool, file_path: Path) -> ToolResult:
     cmd = build_tool_command(tool.name, file_path)
 
     start_time = time.time()
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=60)
     duration = time.time() - start_time
 
     return ToolResult(

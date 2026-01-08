@@ -88,8 +88,7 @@ def load_json_file(file_path: Path) -> dict:
     """
     try:
         contents = read_file_contents(file_path)
-        data = parse_json_string(contents, str(file_path))
-        return data
+        return parse_json_string(contents, str(file_path))
     except ConfigError as e:
         # ANTI-PATTERN: Wrap the already-wrapped exception AGAIN
         raise ConfigError(f"Failed to load JSON from {file_path}: {e}") from e
@@ -131,8 +130,7 @@ def load_config(file_path: Path) -> dict:
     """
     try:
         data = load_json_file(file_path)
-        validated = validate_config_structure(data, str(file_path))
-        return validated
+        return validate_config_structure(data, str(file_path))
     except ConfigError as e:
         # ANTI-PATTERN: Wrap the already-quadruple-wrapped exception
         raise ConfigError(f"Configuration loading failed: {e}") from e
@@ -189,7 +187,7 @@ def main(
 def create_test_file() -> None:
     """Create a broken JSON file for testing the exception explosion."""
     broken_file = Path("broken.json")
-    broken_file.write_text("i'm broken")
+    broken_file.write_text("i'm broken", encoding="utf-8")
     typer.echo(f"Created {broken_file} with invalid JSON content")
 
 
@@ -201,7 +199,7 @@ if __name__ == "__main__":
             broken_file = Path("broken.json")
             if not broken_file.exists():
                 typer.echo("Creating broken.json for demonstration...")
-                broken_file.write_text("i'm broken")
+                broken_file.write_text("i'm broken", encoding="utf-8")
                 typer.echo()
 
     app()

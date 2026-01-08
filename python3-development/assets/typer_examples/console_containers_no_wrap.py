@@ -29,16 +29,11 @@ long_url = (
     "#L1000-L1100?ref=docs-example&utm_source=rich-demo&utm_medium=terminal"
     "&utm_campaign=long-url-wrapping-behavior-test"
 )
-long_command = "\n".join([
-    "[bold cyan]:sparkles: v3.13.0 Release Highlights :sparkles:[/bold cyan] New JIT optimizations, faster startup, improved error messages, richer tracebacks, better asyncio diagnostics, enhanced typing features, smoother virtualenv workflows, and a refined standard library experience for developers everywhere.",
-    "[green]:rocket: Performance & Reliability :rocket:[/green] Lower latency event loops, smarter garbage collection heuristics, adaptive I/O backpressure, fine-tuned file system operations, reduced memory fragmentation, and sturdier cross-platform behavior in cloud-native deployments.",
-    "[magenta]:hammer_and_wrench: Developer Experience :hammer_and_wrench:[/magenta] More precise type hints, clearer deprecation warnings, friendlier REPL niceties, first-class debugging hooks, expanded `typing` utilities, and streamlined packaging stories for modern Python projects of all sizes.",
-    "[yellow]:shield: Security & Ecosystem :shield:[/yellow] Hardened TLS defaults, safer subprocess handling, improved sandboxing hooks, more robust hashing algorithms, curated secure defaults across modules, and deeper ecosystem integration for auditing, scanning, and compliance workflows.",
-])
+long_command = "[bold cyan]:sparkles: v3.13.0 Release Highlights :sparkles:[/bold cyan] New JIT optimizations, faster startup, improved error messages, richer tracebacks, better asyncio diagnostics, enhanced typing features, smoother virtualenv workflows, and a refined standard library experience for developers everywhere.\n[green]:rocket: Performance & Reliability :rocket:[/green] Lower latency event loops, smarter garbage collection heuristics, adaptive I/O backpressure, fine-tuned file system operations, reduced memory fragmentation, and sturdier cross-platform behavior in cloud-native deployments.\n[magenta]:hammer_and_wrench: Developer Experience :hammer_and_wrench:[/magenta] More precise type hints, clearer deprecation warnings, friendlier REPL niceties, first-class debugging hooks, expanded `typing` utilities, and streamlined packaging stories for modern Python projects of all sizes.\n[yellow]:shield: Security & Ecosystem :shield:[/yellow] Hardened TLS defaults, safer subprocess handling, improved sandboxing hooks, more robust hashing algorithms, curated secure defaults across modules, and deeper ecosystem integration for auditing, scanning, and compliance workflows."
 
 console = Console()
 
-## BROKEN EXAMPLES AND ANTI-PATTERNS
+# BROKEN EXAMPLES AND ANTI-PATTERNS
 
 print("=" * 80)
 print("Panel with default settings")
@@ -84,7 +79,7 @@ table_nowrap.add_row("URL", long_url)
 table_nowrap.add_row("Command", long_command)
 console.print(table_nowrap, crop=False, overflow="ignore")
 
-## WORKING EXAMPLES THAT DO WHAT IS EXPECTED
+# WORKING EXAMPLES THAT DO WHAT IS EXPECTED
 
 print("\n" + "=" * 80)
 print("Panel that works: Use get_rendered_width() helper")

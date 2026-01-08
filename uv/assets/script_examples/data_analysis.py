@@ -10,7 +10,7 @@
 # exclude-newer = "2025-10-24T00:00:00Z"  # Time-based reproducibility
 # ///
 
-"""Data Analysis Script Example
+"""Data Analysis Script Example.
 
 This script demonstrates PEP 723 inline script metadata with uv.
 It analyzes CSV data and creates visualizations.
