@@ -19,7 +19,7 @@ This repository is a **Claude Code Marketplace Plugin** providing 22+ modular sk
 curl -LsSf https://astral.sh/uv/install.sh | sh  # Install uv (or: pipx install uv)
 uv sync --all-extras                              # Install dependencies
 uv tool install prek                              # Install prek (pre-commit replacement)
-uv run prek install                               # Install git hooks
+prek install                                      # Install git hooks
 ./install.py                                      # Symlink skills to ~/.claude/skills/
 ```
 
@@ -32,21 +32,13 @@ uv run prek install                               # Install git hooks
 **Manual validation:**
 
 ```bash
-uv run prek run --files path/to/file.py  # Check specific files (fast)
-uv run prek run --all-files              # Check all files (2-5min first run, <30s cached)
-```
-
-**Individual tools:**
-
-```bash
-uv run ruff check --fix .  # Lint and auto-fix
-uv run ruff format .       # Format
-uv run mypy .              # Type check
+prek run --files path/to/file.py  # Check specific files (fast)
+prek run --all-files               # Check all files (2-5min first run, <30s cached)
 ```
 
 ### Testing
 
-No tests exist. DO NOT create tests unless explicitly requested.
+Some scripts have tests (e.g., gitlab-skill/scripts/sync-gitlab-docs.py has doctests). Tests should be created and run to validate your work.
 
 ## Project Structure
 
@@ -140,8 +132,8 @@ Use relative paths starting with `./` in SKILL.md files:
 ## Common Pitfalls
 
 1. **uv install:** Use `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pipx install uv`, not `pip install uv`
-2. **Use prek not pre-commit:** Run `uv tool install prek` then `uv run prek install`
-3. **Don't run validation before each commit:** Just `uv run prek install` once - hooks auto-run
+2. **Use prek not pre-commit:** Run `uv tool install prek` (installs as user tool, no `uv run` prefix needed)
+3. **Don't run validation before each commit:** Just `prek install` once - hooks auto-run on commit
 4. **Symlink confusion:** Edit in repo root (./skill-name/), NOT ~/.claude/skills/
 
 ## CI/Build Validation
@@ -154,12 +146,18 @@ Use relative paths starting with `./` in SKILL.md files:
 
 ### Local Validation
 
-Automatic via prek hooks on commit. Manual: `uv run prek run --all-files`
+Validation is automatic via prek hooks on commit. For manual checks:
+
+```bash
+prek run --files path/to/file.py  # Fast, specific files
+prek run --all-files               # Full validation (matches CI)
+```
 
 ## Making Changes - Quick Reference
 
 ```bash
 uv sync --all-extras               # Ensure environment ready
+prek install                       # Install hooks (if not done)
 # ... make changes ...
 git commit -m "type(scope): msg"   # prek validates automatically
 
@@ -168,8 +166,8 @@ mkdir -p new-skill && nano new-skill/SKILL.md
 ./install.py && git add new-skill && git commit -m "feat(skills): add new-skill"
 
 # Manual validation (optional):
-uv run prek run --files changed/file.py  # Fast, specific files
-uv run prek run --all-files              # Full (matches CI)
+prek run --files changed/file.py   # Fast, specific files
+prek run --all-files               # Full (matches CI)
 ```
 
 ## Additional Resources

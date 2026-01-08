@@ -74,8 +74,9 @@ Install this skill collection:
 ### Initial Setup
 
 ```bash
-# Install uv if not already installed
-pip install uv
+# Install uv (recommended method)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Alternative: pipx install uv
 
 # Install project dependencies
 uv sync
