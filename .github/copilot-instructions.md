@@ -2,51 +2,51 @@
 
 ## Repository Overview
 
-Claude Skills repository - 22+ modular packages extending Claude's capabilities with specialized knowledge and tools for Python development, documentation, linting, and workflow automation.
+This repository is a **Claude Code Marketplace Plugin** providing 22+ modular skills that extend Claude's capabilities. It integrates with Claude Code (Anthropic's CLI tool) through a plugin and skills system, enabling specialized knowledge, workflows, and tools for Python development, documentation, linting, and workflow automation.
+
+**What is Claude Code:** Claude Code is Anthropic's command-line interface tool that supports a plugin and skills system. Skills are modular packages loaded from `~/.claude/skills/` that provide specialized capabilities to Claude.
 
 - **Language:** Python 3.11+ (tested with 3.12.3)
-- **Package Manager:** `uv` (Astral's fast Python package manager)
+- **Package Manager:** `uv` (Astral's fast Python package manager - use `uv tool install` not `pip install`)
+- **Pre-commit Manager:** `prek` (Rust-based, faster alternative to pre-commit)
 - **Size:** ~2,400 Python files, ~612 Markdown files
 
 ## Build & Validation Commands
 
 ### Initial Setup (Required Once)
 
-**Run in this exact order:**
-
 ```bash
-pip install uv              # Install package manager
-uv sync                     # Install dependencies (~30-60s)
-./install.py                # Symlink skills to ~/.claude/skills/
+curl -LsSf https://astral.sh/uv/install.sh | sh  # Install uv (or: pipx install uv)
+uv sync --all-extras                              # Install dependencies
+uv tool install prek                              # Install prek (pre-commit replacement)
+uv run prek install                               # Install git hooks
+./install.py                                      # Symlink skills to ~/.claude/skills/
 ```
 
-**Note:** Run `./install.py` after creating NEW skills, but NOT after modifying existing skills.
+**Note:** Run `./install.py` after creating NEW skills only.
 
-### Pre-Commit Validation (Critical)
+### Validation
 
-```bash
-pip install pre-commit                  # First time only
-pre-commit run --all-files              # Run all checks (2-5min first run, <30s cached)
-```
+**Auto-validation:** Hooks run automatically on `git commit` (checks modified files only).
 
-**Checks:** ruff (lint/format), markdownlint-cli2, prettier, basedpyright, mypy, shellcheck, shfmt, conventional-pre-commit.
-
-**Known Issue:** Config mentions `prek` but uses standard pre-commit due to Linux bug (.pre-commit-config.yaml:22-30).
-
-### Linting & Formatting
+**Manual validation:**
 
 ```bash
-uv run ruff check .         # Show issues
-uv run ruff check --fix .   # Auto-fix issues
-uv run ruff format .        # Format code
-uv run mypy .               # Type check
+uv run prek run --files path/to/file.py  # Check specific files (fast)
+uv run prek run --all-files              # Check all files (2-5min first run, <30s cached)
 ```
 
-**Note:** Some files have existing warnings (fastmcp-creator/scripts/). Only fix issues in files you modify.
+**Individual tools:**
+
+```bash
+uv run ruff check --fix .  # Lint and auto-fix
+uv run ruff format .       # Format
+uv run mypy .              # Type check
+```
 
 ### Testing
 
-**No tests exist.** DO NOT create tests unless explicitly requested.
+No tests exist. DO NOT create tests unless explicitly requested.
 
 ## Project Structure
 
@@ -83,34 +83,21 @@ skill-name/
 
 **Key Skills:**
 
-- `python3-development/` - Opinionated Python development workflow
-- `uv/` - Astral's uv package manager guidance
-- `agent-orchestration/` - Task delegation and workflow patterns
-- `pre-commit/` - Pre-commit hook guidance
-- `holistic-linting/` - Multi-tool linting orchestration
-- `fastmcp-creator/` - FastMCP server creation
-- `gitlab-skill/` - GitLab integration
+**Development:** python3-development (Python 3.11+ TDD), uv (package manager), clang-format, hatchling
+**Quality:** holistic-linting, pre-commit, commitlint, conventional-commits
+**Docs:** mkdocs, pypi-readme-creator
+**AI/LLM:** fastmcp-creator, litellm, llamafile, prompt-optimization-claude-45
+**Workflows:** agent-orchestration, verification-gate, brainstorming-skill, story-based-framing
+**Integration:** gitlab-skill
+**Utilities:** async-python-patterns, toml-python, xdg-base-directory, memory-bank-setup-skill
+
+See skill directories for SKILL.md with detailed documentation, optional scripts/, references/, assets/.
 
 ### Configuration Files
 
-- **pyproject.toml** - Central Python configuration
-
-  - Dependencies: ruff, mypy, pyright, bandit, typer, gitpython
-  - Ruff config: target Python 3.11, extensive rule set (lines 15-87)
-  - Mypy: strict mode, extra_checks enabled (lines 126-155)
-  - No pytest config (tests don't exist despite configuration)
-
-- **.pre-commit-config.yaml** - 11 hooks across 10 repos
-
-  - Uses `uv run` for local Python tools
-  - WORKAROUND at lines 22-30: commit-msg hook uses `uv run --with conventional-pre-commit` due to prek bug
-
-- **.gitignore** - Excludes:
-  - `.venv/`, `node_modules/`, `__pycache__/`
-  - `sessions/sessions-state.json`, `sessions/transcripts/`
-  - `**/analysis-*.md`, `**/comparative-analysis-*.md`
-  - `.mcp.json` (MCP configuration with API keys)
-  - `uv.lock` (dependency lock file)
+- **pyproject.toml** - Main deps: ruff, mypy, pyright, bandit, typer, gitpython. Dev deps: **prek**, basedpyright, pytest. Ruff config (lines 15-87), Mypy strict mode (lines 126-155).
+- **.pre-commit-config.yaml** - 11 hooks. Configured for **prek** (`uv tool install prek`). Uses `uv run` for tools. Workaround lines 22-30 for prek Linux bug.
+- **.gitignore** - Excludes .venv/, node_modules/, sessions state, .mcp.json (API keys), uv.lock.
 
 ## Critical Workflow Rules
 
@@ -143,89 +130,63 @@ skill-name/
 
 ### 4. Relative Paths in Skills
 
-**ALWAYS use relative paths starting with `./` in SKILL.md files:**
+Use relative paths starting with `./` in SKILL.md files:
 
 ```markdown
-<!-- Correct -->
-See [reference](./references/example.md)
-
-<!-- Incorrect -->
-See `references/example.md` (not navigable)
-See [reference](/home/user/repo/skill/references/example.md) (not portable)
+<!-- Correct --> See [reference](./references/example.md)
+<!-- Incorrect --> See `references/example.md` (not navigable in Claude Code)
 ```
 
-**Why:** Markdown links are navigable in Claude Code, backticks are not.
+## Common Pitfalls
 
-## Common Pitfalls & Workarounds
-
-1. **Slow first pre-commit run:** Takes 2-5min to install environments (normal, subsequent runs <30s)
-2. **Ruff formatting:** Run `uv run ruff format .` to auto-fix
-3. **Install.py permissions:** Run `chmod +x install.py` if needed
-4. **Symlink confusion:** ALWAYS edit in repo root (./skill-name/), NOT in ~/.claude/skills/ (triggers security warnings)
-5. **Missing uv:** Run `pip install uv` if commands fail
+1. **uv install:** Use `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pipx install uv`, not `pip install uv`
+2. **Use prek not pre-commit:** Run `uv tool install prek` then `uv run prek install`
+3. **Don't run validation before each commit:** Just `uv run prek install` once - hooks auto-run
+4. **Symlink confusion:** Edit in repo root (./skill-name/), NOT ~/.claude/skills/
 
 ## CI/Build Validation
 
-**GitHub Actions workflows are configured** for continuous integration:
+**GitHub Actions** (3 workflows on push/PR to main/develop):
 
-### Workflows
-
-1. **Lint and Test** (`.github/workflows/lint-and-test.yml`)
-
-   - Runs ruff check and format
-   - Type checking with mypy and basedpyright
-   - Pre-commit hooks validation
-   - Triggers on: push/PR to main/develop branches
-
-2. **Security Scanning** (`.github/workflows/security.yml`)
-
-   - Gitleaks for secret detection in commit history
-   - Bandit for Python security issues
-   - Triggers on: push/PR to main/develop branches
-
-3. **Documentation Quality** (`.github/workflows/docs.yml`)
-   - Markdown linting with markdownlint-cli2
-   - Link validation in markdown files
-   - Triggers on: push/PR to main/develop branches
+1. **Lint and Test** - ruff, mypy, basedpyright, prek hooks
+2. **Security** - gitleaks (secrets), bandit (Python security)
+3. **Docs** - markdownlint-cli2, link validation
 
 ### Local Validation
 
-Before pushing, run the same checks locally:
-
-```bash
-pre-commit run --all-files     # Full validation (matches CI)
-uv run ruff check --fix .      # Quick lint fix
-uv run ruff format .           # Quick format
-```
+Automatic via prek hooks on commit. Manual: `uv run prek run --all-files`
 
 ## Making Changes - Quick Reference
 
-**Code changes:**
-
 ```bash
-uv sync                                # Ensure environment ready
+uv sync --all-extras               # Ensure environment ready
 # ... make changes ...
-uv run ruff check --fix .              # Validate
-uv run ruff format .
-pre-commit run --all-files
-git commit -m "type(scope): description"
-```
+git commit -m "type(scope): msg"   # prek validates automatically
 
-**New skill:**
-
-```bash
+# New skill:
 mkdir -p new-skill && nano new-skill/SKILL.md
-./install.py                           # Symlink to ~/.claude/skills/
-pre-commit run --all-files
-git commit -m "feat(skills): add new-skill"
+./install.py && git add new-skill && git commit -m "feat(skills): add new-skill"
+
+# Manual validation (optional):
+uv run prek run --files changed/file.py  # Fast, specific files
+uv run prek run --all-files              # Full (matches CI)
 ```
 
-## Trust These Instructions
+## Additional Resources
 
-These instructions were created by thoroughly exploring the repository, testing all commands, and documenting actual behavior. If you encounter information here that seems incorrect:
+- **uv docs:** `uv/SKILL.md` and `uv/references/` - comprehensive uv usage
+- **Python patterns:** `python3-development/SKILL.md` and references/ - modern Python 3.11+, TDD
+- **prek:** <https://prek.j178.dev/> - Rust pre-commit replacement
+- **Claude Code:** Anthropic's CLI with plugin/skills - this repo is a marketplace plugin
 
-1. Try the documented approach first
-2. If it fails, search the repository for updates
-3. Document any changes you discover
+## Trust & Corrections
 
-**DO NOT** waste time re-exploring basic structure or build commands - they are documented here and verified to work.
+Instructions based on thorough repo exploration, skill documentation review, and testing. Key corrections from initial errors:
+
+✅ Uses **prek** (in pyproject.toml dev deps), not pre-commit
+✅ Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pipx install uv`, not `pip install uv`
+✅ Workflow: `uv run prek run --files` for validation
+✅ Hooks auto-run on commit after `uv run prek install`
+✅ This is a Claude Code Marketplace Plugin
+
+Check `uv/` and `python3-development/` skills for detailed tool/workflow info.
