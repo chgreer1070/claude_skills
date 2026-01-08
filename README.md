@@ -89,15 +89,17 @@ The `install.py` script discovers all skills (directories containing SKILL.md) a
 
 ### Pre-commit Hooks
 
-This repository uses pre-commit hooks for code quality:
+This repository uses prek for code quality checks:
 
 ```bash
-# Install pre-commit
-pip install pre-commit
+# Install prek hooks (first time only)
+uv run prek install
 
-# Run all checks
-pre-commit run --all-files
+# Run all checks manually
+uv run prek run --all-files
 ```
+
+Hooks run automatically on `git commit`.
 
 ## Creating New Skills
 
