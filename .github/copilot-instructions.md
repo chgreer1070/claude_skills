@@ -94,12 +94,14 @@ skill-name/
 ### Configuration Files
 
 - **pyproject.toml** - Central Python configuration
+
   - Dependencies: ruff, mypy, pyright, bandit, typer, gitpython
   - Ruff config: target Python 3.11, extensive rule set (lines 15-87)
   - Mypy: strict mode, extra_checks enabled (lines 126-155)
   - No pytest config (tests don't exist despite configuration)
 
 - **.pre-commit-config.yaml** - 11 hooks across 10 repos
+
   - Uses `uv run` for local Python tools
   - WORKAROUND at lines 22-30: commit-msg hook uses `uv run --with conventional-pre-commit` due to prek bug
 
@@ -164,10 +166,36 @@ See [reference](/home/user/repo/skill/references/example.md) (not portable)
 
 ## CI/Build Validation
 
-**No GitHub Actions.** Validation is LOCAL ONLY via pre-commit hooks.
+**GitHub Actions workflows are configured** for continuous integration:
+
+### Workflows
+
+1. **Lint and Test** (`.github/workflows/lint-and-test.yml`)
+
+   - Runs ruff check and format
+   - Type checking with mypy and basedpyright
+   - Pre-commit hooks validation
+   - Triggers on: push/PR to main/develop branches
+
+2. **Security Scanning** (`.github/workflows/security.yml`)
+
+   - Gitleaks for secret detection in commit history
+   - Bandit for Python security issues
+   - Triggers on: push/PR to main/develop branches
+
+3. **Documentation Quality** (`.github/workflows/docs.yml`)
+   - Markdown linting with markdownlint-cli2
+   - Link validation in markdown files
+   - Triggers on: push/PR to main/develop branches
+
+### Local Validation
+
+Before pushing, run the same checks locally:
 
 ```bash
-pre-commit run --all-files     # Full validation
+pre-commit run --all-files     # Full validation (matches CI)
+uv run ruff check --fix .      # Quick lint fix
+uv run ruff format .           # Quick format
 ```
 
 ## Making Changes - Quick Reference
