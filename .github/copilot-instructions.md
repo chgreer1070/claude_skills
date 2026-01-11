@@ -7,8 +7,8 @@ This repository is a **Claude Code Marketplace Plugin** providing 22+ modular sk
 **What is Claude Code:** Claude Code is Anthropic's command-line interface tool that supports a plugin and skills system. Skills are modular packages loaded from `~/.claude/skills/` that provide specialized capabilities to Claude.
 
 - **Language:** Python 3.11+ (tested with 3.12.3)
-- **Package Manager:** `uv` (Astral's fast Python package manager - use `uv tool install` not `pip install`)
-- **Pre-commit Manager:** `prek` (Rust-based, faster alternative to pre-commit)
+- **Package Manager:** `uv` (Astral's fast Python package manager)
+- **Pre-commit:** `prek` (Rust-based, dev dependency)
 - **Size:** ~2,400 Python files, ~612 Markdown files
 
 ## Build & Validation Commands
@@ -17,12 +17,12 @@ This repository is a **Claude Code Marketplace Plugin** providing 22+ modular sk
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh  # Install uv (or: pipx install uv)
-uv sync --all-extras                              # Install dependencies
+uv sync --all-extras                              # Install dependencies (includes prek)
 uv run prek install                               # Install git hooks
 ./install.py                                      # Symlink skills to ~/.claude/skills/ (dev only)
 ```
 
-**Note:** Run `./install.py` after creating NEW skills only (for local development).
+**Note:** Run `./install.py` after creating NEW skills only.
 
 ### Validation
 
@@ -86,8 +86,8 @@ See skill directories for SKILL.md with detailed documentation, optional scripts
 
 ### Configuration Files
 
-- **pyproject.toml** - Main deps: ruff, mypy, pyright, bandit, typer, gitpython. Dev deps: **prek**, basedpyright, pytest. Ruff config (lines 15-87), Mypy strict mode (lines 126-155).
-- **.pre-commit-config.yaml** - 11 hooks. Configured for **prek** (`uv tool install prek`). Uses `uv run` for tools. Workaround lines 22-30 for prek Linux bug.
+- **pyproject.toml** - Main deps: ruff, mypy, pyright, bandit, typer, gitpython. Dev deps: prek, basedpyright, pytest.
+- **.pre-commit-config.yaml** - 11 hooks. Configured for prek (use `uv run prek`). Workaround lines 22-30 for prek Linux bug.
 - **.gitignore** - Excludes .venv/, node_modules/, sessions state, .mcp.json (API keys), uv.lock.
 
 ## Critical Workflow Rules
@@ -97,8 +97,7 @@ See skill directories for SKILL.md with detailed documentation, optional scripts
 **When creating NEW skills:**
 
 ```bash
-# After creating skill directory with SKILL.md
-./install.py
+./install.py  # After creating skill directory with SKILL.md
 ```
 
 **When modifying EXISTING skills:** NO action needed - symlinks point to directories, changes are immediate.
@@ -108,8 +107,7 @@ See skill directories for SKILL.md with detailed documentation, optional scripts
 **Ruff-enforced conventions:**
 
 - Double quotes, Google docstrings, type hints required
-- 120 char lines (not strict), isort imports
-- Security checks enabled, subprocess allowed
+- 120 char lines, isort imports, security checks enabled
 
 **Per-file ignores:** scripts/ (print allowed), typings/ (relaxed naming)
 
@@ -130,9 +128,9 @@ Use relative paths starting with `./` in SKILL.md files:
 
 ## Common Pitfalls
 
-1. **uv install:** Use `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pipx install uv`, not `pip install uv`
-2. **Use prek not pre-commit:** Run `uv tool install prek` (installs as user tool, no `uv run` prefix needed)
-3. **Don't run validation before each commit:** Just `prek install` once - hooks auto-run on commit
+1. **uv install:** Use official installer: `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pipx install uv`
+2. **prek usage:** Run `uv run prek install` to set up hooks. Prek is a dev dependency, not a global tool.
+3. **Validation:** Just `uv run prek install` once - hooks auto-run on commit
 4. **Symlink confusion:** Edit in repo root (./skill-name/), NOT ~/.claude/skills/
 
 ## CI/Build Validation
@@ -165,8 +163,8 @@ mkdir -p new-skill && nano new-skill/SKILL.md
 ./install.py && git add new-skill && git commit -m "feat(skills): add new-skill"
 
 # Manual validation (optional):
-prek run --files path/to/file.py --files path/to/file2.md  # Fast, specific files
-prek run --all-files                                         # Full (matches CI)
+uv run prek run --files path/to/file.py --files path/to/file2.md  # Fast, specific files
+uv run prek run --all-files                                         # Full (matches CI)
 ```
 
 ## Additional Resources
@@ -183,7 +181,7 @@ Instructions based on thorough repo exploration, skill documentation review, and
 ✅ Uses **prek** (in pyproject.toml dev deps), not pre-commit
 ✅ Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pipx install uv`, not `pip install uv`
 ✅ Workflow: `uv run prek install` to set up hooks, then hooks auto-run on commit
-✅ Manual validation: `prek run --files file1 --files file2` (requires --files flag for each file)
+✅ Manual validation: `uv run prek run --files file1 --files file2` (requires --files flag for each file)
 ✅ This is a Claude Code Marketplace Plugin
 ✅ install.py is a dev utility (like pip editable install), not for end users
 
