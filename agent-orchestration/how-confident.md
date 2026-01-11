@@ -217,20 +217,24 @@ Based on the evidence above, answer these questions:
 **Answer HONESTLY:**
 
 1. **Can a user run this code RIGHT NOW without modifications?**
+
    - [ ] Yes, I verified via execution
    - [ ] No, it needs: **\*\***\_\_\_**\*\***
    - [ ] I don't know, I didn't test execution
 
 2. **If this fails in production, do I have evidence of WHY it should work?**
+
    - [ ] Yes, I have test results, docs, validation
    - [ ] No, I'm relying on "it should work"
    - [ ] Partially, I have some evidence
 
 3. **Did I actually USE the tools (Bash/Read/Ref) to gather evidence, or am I assuming?**
+
    - [ ] I used tools and cited results above
    - [ ] I made assumptions without tool verification
 
 4. **What would break if I'm wrong?**
+
    - [Describe realistic failure modes]
 
 5. **What is the WEAKEST dimension in my assessment?**

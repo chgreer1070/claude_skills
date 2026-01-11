@@ -39,14 +39,14 @@ For detailed explanations, code patterns, and best practices, see:
 
 This comprehensive guide includes:
 
-- Complete explanation of the exception chain explosion problem
-- Correct patterns using `typer.Exit` subclasses
-- When to catch exceptions and when to let them bubble
-- Full code examples with detailed annotations
-- DO/DON'T guidelines
+-   Complete explanation of the exception chain explosion problem
+-   Correct patterns using `typer.Exit` subclasses
+-   When to catch exceptions and when to let them bubble
+-   Full code examples with detailed annotations
+-   DO/DON'T guidelines
 
 ## External References
 
-- [Typer Terminating Documentation](https://github.com/fastapi/typer/blob/master/docs/tutorial/terminating.md)
-- [Typer Exceptions Documentation](https://github.com/fastapi/typer/blob/master/docs/tutorial/exceptions.md)
-- [Typer Printing Documentation](https://github.com/fastapi/typer/blob/master/docs/tutorial/printing.md)
+-   [Typer Terminating Documentation](https://github.com/fastapi/typer/blob/master/docs/tutorial/terminating.md)
+-   [Typer Exceptions Documentation](https://github.com/fastapi/typer/blob/master/docs/tutorial/exceptions.md)
+-   [Typer Printing Documentation](https://github.com/fastapi/typer/blob/master/docs/tutorial/printing.md)

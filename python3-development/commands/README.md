@@ -96,16 +96,19 @@ Structured approach to feature development:
 When you need to create a new slash command for Claude Code:
 
 1. **Consult the patterns**: Review [command-patterns.yml](./development/config/command-patterns.yml) to understand:
+
    - Which category your command belongs to
    - Whether it fits into existing workflow chains
    - What risk level it represents
 
 2. **Use the template**: Start with [command-template.md](./development/templates/command-template.md)
+
    - Replace placeholders with command-specific content
    - Customize execution steps for your use case
    - Define clear integration points
 
 3. **Follow naming conventions**: Use verb-noun format
+
    - Analysis: `analyze-*`, `scan-*`, `validate-*`
    - Development: `create-*`, `implement-*`, `fix-*`
    - Operations: `deploy`, `migrate`, `cleanup-*`

@@ -300,11 +300,13 @@ The discussion covered:
 ### Documentation Changes
 
 1. **Story-based-framing removal**: Eliminated all unvalidated methodology references (63 lines) from 7 files in agent-orchestration directory
+
    - Rationale: n=1 sample size, no comparative baseline, definitive claims without verification
    - Files affected: synthesis-improvements-from-research.md, analysis-\*.md files
    - Verification: Grep confirms zero remaining references
 
 2. **Timeline language removal**: Replaced "Week 1/2/3", "Next Sprint" with dependency-based priority ordering
+
    - Rationale: Timelines meaningless for AI agent work; execution rate depends on parallelization strategy
    - File affected: comparative-analysis-synthesis.md
    - Replacement structure: Priority levels with explicit dependencies and parallelization markers
@@ -324,6 +326,7 @@ The discussion covered:
 ### Patterns Identified
 
 1. **Hallucination triggers documented**:
+
    - **Story-based anti-pattern framing**: Unvalidated claims propagate through agent analysis chains
    - **Timeline language**: "Week 1/2/3", "Sprint" references in AI agent work plans
    - **Incomplete verification**: Agent claims "all files searched" but actual verification reveals gaps
@@ -401,6 +404,7 @@ Action item: Clarify protocol's role and ensure documentation reflects pre-deleg
 ### Hallucination Prevention Patterns
 
 1. **Timeline language is red flag**: Any reference to "Week N", "Sprint N", "X minutes/hours/days" in AI agent work plans indicates pattern-matching from human project management conventions without reasoning about actual work
+
    - Detection question: "Does this serve semantic function (describing task properties) or aesthetic function (looking professional)?"
 
 2. **Unvalidated claims in AI-facing docs compound**: When AI models consume false information from skills/documentation, they treat it as fact, propagate it through reasoning chains, and create false feedback loops
@@ -411,14 +415,17 @@ Action item: Clarify protocol's role and ensure documentation reflects pre-deleg
 ### Delegation Patterns
 
 1. **Success criteria enable autonomy**: Providing clear, testable success criteria gives agents MORE autonomy by defining destination without prescribing route
+
    - Micromanagement: prescribing HOW/tools/steps
    - Empowerment: defining WHAT constitutes completion
 
 2. **Reference vs duplicate**: Orchestrator should point to authoritative sources (slash commands, skills, docs) rather than duplicating their content in Task prompts
+
    - Same pattern as `@~/.claude/CLAUDE.md` references
    - Prevents bloat and ensures consistency
 
 3. **Discovery vs prescription for tools**: Orchestrator can't know what MCP functions agent has, so must point agent to discover rather than prescribe specific tools
+
    - Correct: "Proactively identify and leverage available MCP tools"
    - Incorrect: "Use WebFetch for gathering sources"
 
@@ -429,11 +436,13 @@ Action item: Clarify protocol's role and ensure documentation reflects pre-deleg
 ### Verification Protocols
 
 1. **Slash commands contain universal truth**: Core definitions, common gotchas, task-type verification checklists live in canonical slash command files
+
    - `/am-i-complete` provides step-by-step verification workflows with actual commands
    - `/is-it-done` provides task-type-specific verification questions and quality gates
    - Agents reference these for self-validation
 
 2. **Pre-delegation vs post-completion**: Success criteria should be provided upfront in Task prompt, not sprung on agent after claiming completion
+
    - Agent uses criteria to self-validate throughout work
    - Agent knows when actually done
    - Reports completion with evidence against stated criteria

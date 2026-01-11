@@ -92,7 +92,9 @@ panel_measured = Panel(content_lines)
 panel_width = get_rendered_width(panel_measured)
 
 console.width = panel_width
-console.print(panel_measured, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
+console.print(
+    panel_measured, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True
+)
 
 print("\n" + "=" * 80)
 print("Table that works: Use get_rendered_width() helper")
@@ -107,7 +109,9 @@ table_measured.add_row("URL", long_url)
 table_measured.add_row("Command", long_command)
 # set table width to the measured width
 table_measured.width = get_rendered_width(table_measured)
-console.print(table_measured, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
+console.print(
+    table_measured, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True
+)
 
 print("\n" + "=" * 80)
 print("Plain text with crop=False, overflow='ignore'")
@@ -139,4 +143,6 @@ console.width = table_width
 
 # Print both - they'll have matching widths
 console.print(result_table, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
-console.print(summary_panel, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
+console.print(
+    summary_panel, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True
+)

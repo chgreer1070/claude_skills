@@ -38,9 +38,7 @@
         "./verification-gate",
         "./xdg-base-directory"
       ],
-      "commands": [
-        "./commands"
-      ]
+      "commands": ["./commands"]
     }
   ]
 }

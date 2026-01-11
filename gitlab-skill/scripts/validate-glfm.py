@@ -45,7 +45,11 @@ def get_gitlab_token() -> str | None:
 
 
 def validate_markdown(
-    markdown_text: str, gitlab_url: str, token: str, project: str | None = None, verbose: bool = False
+    markdown_text: str,
+    gitlab_url: str,
+    token: str,
+    project: str | None = None,
+    verbose: bool = False,
 ) -> str | None:
     """Call GitLab markdown API and return rendered HTML."""
     api_url = f"{gitlab_url}/api/v4/markdown"
@@ -81,7 +85,9 @@ def validate_markdown(
         return None
 
     except requests.exceptions.HTTPError as e:
-        print(f"HTTP Error {e.response.status_code}: {e.response.text}", file=sys.stderr)
+        print(
+            f"HTTP Error {e.response.status_code}: {e.response.text}", file=sys.stderr
+        )
         return None
     except requests.exceptions.RequestException as e:
         print(f"Request Error: {e}", file=sys.stderr)
@@ -111,13 +117,25 @@ Examples:
     )
 
     input_group = parser.add_mutually_exclusive_group(required=True)
-    input_group.add_argument("--file", "-f", type=Path, help="Path to markdown file to validate")
-    input_group.add_argument("--markdown", "-m", type=str, help="Markdown text to validate (inline)")
-
-    parser.add_argument("--output", "-o", type=Path, help="Save rendered HTML to file (default: print to stdout)")
+    input_group.add_argument(
+        "--file", "-f", type=Path, help="Path to markdown file to validate"
+    )
+    input_group.add_argument(
+        "--markdown", "-m", type=str, help="Markdown text to validate (inline)"
+    )
 
     parser.add_argument(
-        "--project", "-p", type=str, help="GitLab project path for reference resolution (e.g., 'group/project')"
+        "--output",
+        "-o",
+        type=Path,
+        help="Save rendered HTML to file (default: print to stdout)",
+    )
+
+    parser.add_argument(
+        "--project",
+        "-p",
+        type=str,
+        help="GitLab project path for reference resolution (e.g., 'group/project')",
     )
 
     parser.add_argument(
@@ -128,7 +146,10 @@ Examples:
     )
 
     parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Show verbose output with request/response details"
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Show verbose output with request/response details",
     )
 
     args = parser.parse_args()
@@ -136,7 +157,9 @@ Examples:
     # Get GitLab token
     token = get_gitlab_token()
     if not token:
-        print("Error: GITLAB_TOKEN not found in environment or ~/.bashrc", file=sys.stderr)
+        print(
+            "Error: GITLAB_TOKEN not found in environment or ~/.bashrc", file=sys.stderr
+        )
         print("Set it with: export GITLAB_TOKEN='your-token'", file=sys.stderr)
         sys.exit(1)
 
@@ -149,7 +172,10 @@ Examples:
         try:
             markdown_text = args.file.read_text()
             if args.verbose:
-                print(f"Read {len(markdown_text)} characters from {args.file}", file=sys.stderr)
+                print(
+                    f"Read {len(markdown_text)} characters from {args.file}",
+                    file=sys.stderr,
+                )
         except Exception as e:
             print(f"Error reading file: {e}", file=sys.stderr)
             sys.exit(1)
@@ -157,7 +183,13 @@ Examples:
         markdown_text = args.markdown
 
     # Validate markdown
-    html = validate_markdown(markdown_text, args.gitlab_url, token, project=args.project, verbose=args.verbose)
+    html = validate_markdown(
+        markdown_text,
+        args.gitlab_url,
+        token,
+        project=args.project,
+        verbose=args.verbose,
+    )
 
     if html is None:
         sys.exit(1)

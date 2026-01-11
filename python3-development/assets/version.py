@@ -2,6 +2,7 @@
 
 Based on <https://github.com/maresb/hatch-vcs-footgun-example>.
 """
+
 import pathlib
 
 

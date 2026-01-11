@@ -62,7 +62,9 @@ def parse_json_string(content: str, source: str) -> dict:
     try:
         return json.loads(content)
     except json.JSONDecodeError as e:
-        raise ConfigError(f"Invalid JSON in {source} at line {e.lineno}, column {e.colno}: {e.msg}") from e
+        raise ConfigError(
+            f"Invalid JSON in {source} at line {e.lineno}, column {e.colno}: {e.msg}"
+        ) from e
     except Exception as e:
         # ANTI-PATTERN: Safety net catches ConfigError we just raised
         raise ConfigError(f"JSON parse error in {source}: {e}") from e
@@ -145,7 +147,9 @@ def process_config(file_path: Path) -> None:
 # LAYER 7: CLI entry point
 @app.command()
 def main(
-    config_file: Annotated[Path, typer.Argument(help="Path to JSON configuration file")] = Path("broken.json"),
+    config_file: Annotated[
+        Path, typer.Argument(help="Path to JSON configuration file")
+    ] = Path("broken.json"),
 ) -> None:
     """Load and process a JSON configuration file.
 
@@ -176,7 +180,9 @@ if __name__ == "__main__":
     # Auto-create broken.json if it doesn't exist and is being used
     if len(sys.argv) > 1:
         arg = sys.argv[-1]
-        if arg == "broken.json" or (not arg.startswith("-") and Path(arg).name == "broken.json"):
+        if arg == "broken.json" or (
+            not arg.startswith("-") and Path(arg).name == "broken.json"
+        ):
             broken_file = Path("broken.json")
             if not broken_file.exists():
                 typer.echo("Creating broken.json for demonstration...")

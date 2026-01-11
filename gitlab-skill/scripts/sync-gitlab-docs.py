@@ -51,9 +51,15 @@ CHUNK_SIZE = 8192  # 8KB chunks for streaming download
 
 # Compiled regex patterns (module level for performance)
 LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
-ANGLE_BRACKET_SHORTCODE_PATTERN = re.compile(r"{{\s*<\s*(\w+)\s*>}}.*?{{\s*<\s*/\s*\1\s*>}}", re.DOTALL | re.MULTILINE)
-PERCENT_SHORTCODE_PATTERN = re.compile(r"{{\s*%\s*(\w+)\s*%}}.*?{{\s*%\s*/\s*\1\s*%}}", re.DOTALL | re.MULTILINE)
-SECTION_PATTERN = re.compile(r"(^## Documentation Index\s*\n)(.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL)
+ANGLE_BRACKET_SHORTCODE_PATTERN = re.compile(
+    r"{{\s*<\s*(\w+)\s*>}}.*?{{\s*<\s*/\s*\1\s*>}}", re.DOTALL | re.MULTILINE
+)
+PERCENT_SHORTCODE_PATTERN = re.compile(
+    r"{{\s*%\s*(\w+)\s*%}}.*?{{\s*%\s*/\s*\1\s*%}}", re.DOTALL | re.MULTILINE
+)
+SECTION_PATTERN = re.compile(
+    r"(^## Documentation Index\s*\n)(.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL
+)
 FRONTMATTER_PATTERN = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL | re.MULTILINE)
 
 
@@ -193,7 +199,11 @@ def update_lock_file(working_dir: Path, status: str, files_processed: int = 0) -
     lock_file = working_dir / ".sync-gitlab-docs.lock"
     temp_lock_file = working_dir / ".sync-gitlab-docs.lock.tmp"
 
-    lock_data = {"last_run": datetime.now(UTC).isoformat(), "last_status": status, "files_processed": files_processed}
+    lock_data = {
+        "last_run": datetime.now(UTC).isoformat(),
+        "last_status": status,
+        "files_processed": files_processed,
+    }
 
     try:
         # Write to temp file
@@ -234,7 +244,9 @@ async def download_archive(url: str, output_path: Path) -> None:
                     TimeRemainingColumn(),
                     console=console,
                 ) as progress:
-                    task = progress.add_task("Downloading GitLab CI docs...", total=total_size)
+                    task = progress.add_task(
+                        "Downloading GitLab CI docs...", total=total_size
+                    )
 
                     with output_path.open("wb") as f:
                         async for chunk in response.aiter_bytes(chunk_size=CHUNK_SIZE):
@@ -264,7 +276,9 @@ def extract_archive(archive_path: Path, extract_to: Path) -> None:
     """
     try:
         with Progress(
-            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
         ) as progress:
             progress.add_task("Extracting archive...", total=None)
 
@@ -343,7 +357,9 @@ def transform_links(content: str, current_file: Path, docs_root: Path) -> str:
         >>> transform_links("[text](../pipelines/index.md)", current_file, docs_root)
         '[text](./pipelines/index.md)'
         >>> # From doc/ci/yaml/index.md linking to ../../api/api_resources.md
-        >>> transform_links("[text](../../api/api_resources.md)", current_file, docs_root)
+        >>> transform_links(
+        ...     "[text](../../api/api_resources.md)", current_file, docs_root
+        ... )
         '[text](https://gitlab.com/gitlab-org/gitlab/-/raw/master/doc/api/api_resources.md?ref_type=heads)'
     """
 
@@ -399,7 +415,9 @@ def remove_hugo_shortcodes(content: str) -> str:
     Examples:
         >>> remove_hugo_shortcodes("{{< details >}}\\nContent\\n{{< /details >}}")
         ''
-        >>> remove_hugo_shortcodes("Text\\n{{< history >}}\\nVersion info\\n{{< /history >}}\\nMore text")
+        >>> remove_hugo_shortcodes(
+        ...     "Text\\n{{< history >}}\\nVersion info\\n{{< /history >}}\\nMore text"
+        ... )
         'Text\\n\\nMore text'
     """
     # Use module-level compiled patterns for performance
@@ -442,7 +460,9 @@ def groom_markdown_files(docs_dir: Path) -> int:
                 content = md_file.read_text(encoding="utf-8")
 
                 # Apply transformations with file context for path-aware link resolution
-                content = transform_links(content, current_file=md_file, docs_root=docs_dir)
+                content = transform_links(
+                    content, current_file=md_file, docs_root=docs_dir
+                )
                 content = remove_hugo_shortcodes(content)
 
                 # Write back
@@ -523,7 +543,9 @@ def generate_file_tree(docs_dir: Path) -> str:
                 description = frontmatter.get("description")
 
                 # Add file link with title
-                tree_lines.append(f"{file_indent}├── [{title}](./references/ci/{rel_path})")
+                tree_lines.append(
+                    f"{file_indent}├── [{title}](./references/ci/{rel_path})"
+                )
 
                 # Add description on next line if present
                 if description:
@@ -559,15 +581,21 @@ def update_skill_index(skill_file: Path, file_tree: str) -> None:
         content = skill_file.read_text(encoding="utf-8")
 
         # Pattern to match ## Documentation Index section
-        section_pattern = re.compile(r"(^## Documentation Index\s*\n)(.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL)
+        section_pattern = re.compile(
+            r"(^## Documentation Index\s*\n)(.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL
+        )
 
         # Check if section exists
         if section_pattern.search(content):
             # Replace existing section content
-            new_content = section_pattern.sub(f"## Documentation Index\n\n{file_tree}\n", content)
+            new_content = section_pattern.sub(
+                f"## Documentation Index\n\n{file_tree}\n", content
+            )
         else:
             # Append new section at the end
-            new_content = content.rstrip() + f"\n\n## Documentation Index\n\n{file_tree}\n"
+            new_content = (
+                content.rstrip() + f"\n\n## Documentation Index\n\n{file_tree}\n"
+            )
 
         skill_file.write_text(new_content, encoding="utf-8")
 
@@ -620,17 +648,33 @@ async def update_docs(working_dir: Path, cleanup: bool = True) -> int:
     try:
         # Download archive
         console.print(
-            Panel(f"Downloading from: {GITLAB_CI_DOCS_URL}", title=":inbox_tray: Download", border_style="blue")
+            Panel(
+                f"Downloading from: {GITLAB_CI_DOCS_URL}",
+                title=":inbox_tray: Download",
+                border_style="blue",
+            )
         )
         await download_archive(GITLAB_CI_DOCS_URL, archive_path)
 
         # Extract archive
-        console.print(Panel(f"Extracting to: {ci_new_dir}", title=":package: Extract", border_style="blue"))
+        console.print(
+            Panel(
+                f"Extracting to: {ci_new_dir}",
+                title=":package: Extract",
+                border_style="blue",
+            )
+        )
         ci_new_dir.mkdir(parents=True, exist_ok=True)
         extract_archive(archive_path, ci_new_dir)
 
         # Validate extraction
-        console.print(Panel("Validating extracted content...", title=":mag: Validate", border_style="blue"))
+        console.print(
+            Panel(
+                "Validating extracted content...",
+                title=":mag: Validate",
+                border_style="blue",
+            )
+        )
         docs_path = validate_extraction(ci_new_dir)
 
         # Count markdown files for feedback
@@ -639,13 +683,23 @@ async def update_docs(working_dir: Path, cleanup: bool = True) -> int:
 
         # Groom markdown files
         console.print(
-            Panel("Transforming links and removing Hugo shortcodes...", title=":broom: Groom", border_style="blue")
+            Panel(
+                "Transforming links and removing Hugo shortcodes...",
+                title=":broom: Groom",
+                border_style="blue",
+            )
         )
         processed_count = groom_markdown_files(docs_path)
         console.print(f"Processed {processed_count} markdown files")
 
         # Generate file tree and update SKILL.md
-        console.print(Panel("Generating documentation index...", title=":file_folder: Index", border_style="blue"))
+        console.print(
+            Panel(
+                "Generating documentation index...",
+                title=":file_folder: Index",
+                border_style="blue",
+            )
+        )
         file_tree = generate_file_tree(docs_path)
         update_skill_index(skill_file, file_tree)
         console.print(f"Updated {skill_file.name} with file tree index")
@@ -705,9 +759,14 @@ def main(
         ),
     ] = None,
     no_cleanup: Annotated[
-        bool, typer.Option("--no-cleanup", help="Keep temporary files after successful update")
+        bool,
+        typer.Option(
+            "--no-cleanup", help="Keep temporary files after successful update"
+        ),
     ] = False,
-    force: Annotated[bool, typer.Option("--force", help="Bypass 3-day cooldown period")] = False,
+    force: Annotated[
+        bool, typer.Option("--force", help="Bypass 3-day cooldown period")
+    ] = False,
 ) -> None:
     """Download and update GitLab CI documentation from official repository.
 
@@ -729,11 +788,15 @@ def main(
     try:
         files_processed = asyncio.run(update_docs(resolved_dir, cleanup=not no_cleanup))
         # Update lock file with success status
-        update_lock_file(resolved_dir, status="success", files_processed=files_processed)
+        update_lock_file(
+            resolved_dir, status="success", files_processed=files_processed
+        )
     except UpdateError as e:
         # Update lock file with failure status
         update_lock_file(resolved_dir, status="failure", files_processed=0)
-        error_console.print(Panel(f":cross_mark: {e}", title="Update Failed", border_style="red"))
+        error_console.print(
+            Panel(f":cross_mark: {e}", title="Update Failed", border_style="red")
+        )
         raise typer.Exit(code=1) from e
     except KeyboardInterrupt:
         # Update lock file with failure status

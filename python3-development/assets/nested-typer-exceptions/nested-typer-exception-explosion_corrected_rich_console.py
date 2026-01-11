@@ -13,6 +13,7 @@ Run this to see the problem:
 
 The 'broken.json' file will be created with invalid JSON content.
 """
+
 # mypy: ignore-errors
 from __future__ import annotations
 
@@ -66,7 +67,13 @@ DEFAULT_CONFIG_FILE = Path("broken.json")
 
 class AppExitRich(typer.Exit):
     """Exception class for application exits using rich console."""
-    def __init__(self, code: int | None = None, message: str | None = None, console: Console = normal_console) -> None:
+
+    def __init__(
+        self,
+        code: int | None = None,
+        message: str | None = None,
+        console: Console = normal_console,
+    ) -> None:
         """Custom exception using console based formatting to keep errors consistent with the CLI UX."""
         self.code = code
         self.message = message
@@ -114,7 +121,10 @@ def load_json_file(file_path: Path) -> dict:
     try:
         return parse_json_string(contents, str(file_path))
     except json.JSONDecodeError as e:
-        raise AppExitRich(code=1, message=f"Invalid JSON in {file_path!s} at line {e.lineno}, column {e.colno}: {e.msg}") from e
+        raise AppExitRich(
+            code=1,
+            message=f"Invalid JSON in {file_path!s} at line {e.lineno}, column {e.colno}: {e.msg}",
+        ) from e
 
 
 # LAYER 4: Validate config structure
@@ -128,7 +138,11 @@ def validate_config_structure(data: Any, source: str) -> dict:
     if not data:
         raise AppExitRich(code=1, message="Config cannot be empty", console=err_console)
     if not isinstance(data, dict):
-        raise AppExitRich(code=1, message=f"Config must be a JSON object, got {type(data)}", console=err_console)
+        raise AppExitRich(
+            code=1,
+            message=f"Config must be a JSON object, got {type(data)}",
+            console=err_console,
+        )
     return data
 
 
@@ -142,7 +156,11 @@ def load_config(file_path: Path) -> dict:
     try:
         data = load_json_file(file_path)
     except (FileNotFoundError, PermissionError) as e:
-        raise AppExitRich(code=1, message=f"Failed to load config from {file_path}", console=err_console) from e
+        raise AppExitRich(
+            code=1,
+            message=f"Failed to load config from {file_path}",
+            console=err_console,
+        ) from e
     else:
         return validate_config_structure(data, str(file_path))
 
@@ -162,7 +180,9 @@ def process_config(file_path: Path) -> dict:
 # LAYER 7: CLI entry point
 @app.command()
 def main(
-    config_file: Annotated[Path | None, typer.Argument(help="Path to JSON configuration file")] = None,
+    config_file: Annotated[
+        Path | None, typer.Argument(help="Path to JSON configuration file")
+    ] = None,
 ) -> None:
     """Load and process a JSON configuration file.
 
@@ -178,7 +198,9 @@ def main(
     """
     normal_console.print("Starting script")
     if config_file is None:
-        normal_console.print(f"No config file provided, using default: {DEFAULT_CONFIG_FILE!s}")
+        normal_console.print(
+            f"No config file provided, using default: {DEFAULT_CONFIG_FILE!s}"
+        )
         config_file = DEFAULT_CONFIG_FILE
     process_config(config_file)
 
