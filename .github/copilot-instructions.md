@@ -31,8 +31,8 @@ uv run prek install                               # Install git hooks
 **Manual validation:**
 
 ```bash
-uv run prek run --files path/to/file.py  # Check specific files (requires --files flag)
-uv run prek run --all-files               # Check all files (2-5min first run, <30s cached)
+uv run prek run --files path/to/file.py path/to/file2.md  # Check specific files
+uv run prek run --all-files                                # Check all files (2-5min first run, <30s cached)
 ```
 
 ### Testing
@@ -146,8 +146,8 @@ Use relative paths starting with `./` in SKILL.md files:
 Validation is automatic via prek hooks on commit. For manual checks:
 
 ```bash
-uv run prek run --files path/to/file.py  # Fast, specific files
-uv run prek run --all-files               # Full validation (matches CI)
+uv run prek run --files path/to/file.py path/to/file2.md  # Fast, specific files
+uv run prek run --all-files                                # Full validation (matches CI)
 ```
 
 ## Making Changes - Quick Reference
@@ -163,8 +163,8 @@ mkdir -p new-skill && nano new-skill/SKILL.md
 ./install.py && git add new-skill && git commit -m "feat(skills): add new-skill"
 
 # Manual validation (optional):
-uv run prek run --files path/to/file.py --files path/to/file2.md  # Fast, specific files
-uv run prek run --all-files                                         # Full (matches CI)
+uv run prek run --files path/to/file.py path/to/file2.md  # Fast, specific files
+uv run prek run --all-files                                # Full (matches CI)
 ```
 
 ## Additional Resources
@@ -181,7 +181,7 @@ Instructions based on thorough repo exploration, skill documentation review, and
 ✅ Uses **prek** (in pyproject.toml dev deps), not pre-commit
 ✅ Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pipx install uv`, not `pip install uv`
 ✅ Workflow: `uv run prek install` to set up hooks, then hooks auto-run on commit
-✅ Manual validation: `uv run prek run --files file1 --files file2` (requires --files flag for each file)
+✅ Manual validation: `uv run prek run --files file1 file2` (pass multiple files after --files flag)
 ✅ This is a Claude Code Marketplace Plugin
 ✅ install.py is a dev utility (like pip editable install), not for end users
 
