@@ -93,9 +93,12 @@ def analyze_data(csv_path: str) -> None:
     console.print(f"\n[bold green]✓[/bold green] Saved visualization to {output_path}")
 
 
+MIN_ARGS = 2
+
+
 def main() -> None:
     """Main entry point."""
-    if len(sys.argv) < 2:
+    if len(sys.argv) < MIN_ARGS:
         console.print("[bold red]Error:[/bold red] Please provide CSV file path")
         console.print("\nUsage: uv run data_analysis.py <csv_file>")
         sys.exit(1)
@@ -107,7 +110,8 @@ def main() -> None:
 
     try:
         analyze_data(csv_path)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
+        # Broad exception needed to capture all analysis errors for user-friendly output
         console.print(f"[bold red]Error:[/bold red] {e}")
         sys.exit(1)
 

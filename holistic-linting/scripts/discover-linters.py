@@ -63,7 +63,7 @@ def check_git_hooks() -> bool:
     try:
         # Check if we're in a git repository
         subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
+            ["git", "rev-parse", "--git-dir"],  # noqa: S607
             capture_output=True,
             check=True,
             timeout=5,
@@ -71,7 +71,7 @@ def check_git_hooks() -> bool:
 
         # Check for pre-commit hook
         result = subprocess.run(
-            ["git", "config", "--get", "core.hooksPath"],
+            ["git", "config", "--get", "core.hooksPath"],  # noqa: S607
             check=False,
             capture_output=True,
             text=True,
@@ -118,7 +118,7 @@ def detect_pre_commit_tool(project_root: Path) -> str | None:
     return None
 
 
-def _map_hook_to_linter(hook_id: str) -> LinterConfig | None:
+def _map_hook_to_linter(hook_id: str) -> LinterConfig | None:  # noqa: PLR0911
     """Map a pre-commit hook ID to a LinterConfig.
 
     Args:
@@ -174,7 +174,7 @@ def scan_pre_commit_config(config_file: Path) -> list[LinterConfig]:
         List of discovered linter configurations
     """
     try:
-        import yaml  # type: ignore[import-untyped]
+        import yaml  # noqa: PLC0415
     except ImportError:
         console.print(
             "[yellow]Warning: pyyaml not installed, skipping .pre-commit-config.yaml[/yellow]"
@@ -194,7 +194,7 @@ def scan_pre_commit_config(config_file: Path) -> list[LinterConfig]:
                 if linter_config:
                     linters.append(linter_config)
 
-    except Exception as e:
+    except (OSError, yaml.YAMLError) as e:
         console.print(
             f"[yellow]Warning: Failed to parse .pre-commit-config.yaml: {e}[/yellow]"
         )
@@ -239,7 +239,7 @@ def scan_pyproject_toml(config_file: Path) -> list[LinterConfig]:
                 LinterConfig(name="bandit", patterns=["*.py"], is_linter=True)
             )
 
-    except Exception as e:
+    except (OSError, toml.TomlDecodeError) as e:
         console.print(f"[yellow]Warning: Failed to parse pyproject.toml: {e}[/yellow]")
 
     return linters
@@ -288,7 +288,7 @@ def scan_package_json(config_file: Path) -> list[LinterConfig]:
                 )
             )
 
-    except Exception as e:
+    except (OSError, json.JSONDecodeError) as e:
         console.print(f"[yellow]Warning: Failed to parse package.json: {e}[/yellow]")
 
     return linters

@@ -9,6 +9,7 @@ TOKEN_NAME="ci-publish-token"
 VAR_NAME="CI_PUBLISH_TOKEN"
 
 # Load existing .env if present and non-empty
+# shellcheck source=/dev/null
 [ -s .env ] && . ./.env
 
 # Set the token for the environment
@@ -62,6 +63,7 @@ if [ -z "${GITLAB_CI:-}" ]; then
     [ ! -e .env ] && touch .env
     [ ! -e .gitignore ] && touch .gitignore
     grep -qE '^\s*/?\.env\s*$' .gitignore || printf "# Ignore localized environment variables\n.env\n" >>.gitignore
+    # shellcheck source=/dev/null
     [ -s .env ] && . ./.env
     in_dotenv GITLAB_HOST || echo "GITLAB_HOST=${GITLAB_HOST}" >>.env
     in_dotenv CI_PROJECT_PATH || echo "CI_PROJECT_PATH=${CI_PROJECT_PATH}" >>.env

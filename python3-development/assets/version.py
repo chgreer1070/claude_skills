@@ -12,9 +12,12 @@ def _get_hatch_version() -> str | None:
     Returns `None` if Hatchling is not installed, e.g. in a production environment.
 
     For more details, see <https://github.com/maresb/hatch-vcs-footgun-example/>.
-    """
-    import os
 
+    Returns:
+        Version string from hatchling metadata, or None if not available.
+    """
+    # Imports are intentionally local to avoid dependencies in production
+    # ruff: noqa: PLC0415
     try:
         from hatchling.metadata.core import ProjectMetadata
         from hatchling.plugin.manager import PluginManager
@@ -28,7 +31,7 @@ def _get_hatch_version() -> str | None:
     if pyproject_toml is None:
         raise RuntimeError("pyproject.toml not found although hatchling is installed")
     root = pathlib.Path(pyproject_toml).parent
-    metadata = ProjectMetadata(root=root, plugin_manager=PluginManager())
+    metadata = ProjectMetadata(root=str(root), plugin_manager=PluginManager())
     # Version can be either statically set in pyproject.toml or computed dynamically:
     return metadata.core.version or metadata.hatch.version.cached
 
@@ -40,7 +43,11 @@ def _get_importlib_metadata_version() -> str:
     package. However, it is only updated when a package is installed. Thus, if a
     package is installed in editable mode, and a different version is checked out,
     then the version number will not be updated.
+
+    Returns:
+        Version string from package metadata.
     """
+    # Import is intentionally local to match the lazy loading pattern
     from importlib.metadata import version
 
     return version(__package__ or __name__)

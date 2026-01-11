@@ -14,7 +14,7 @@ import json
 from collections import Counter
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, NoReturn, assert_never
+from typing import Annotated, Any, NoReturn, assert_never
 
 import typer
 from rich.console import Console
@@ -89,7 +89,7 @@ class MarketplaceUpdater:
             return ["./agents"]
         return None
 
-    def load_marketplace(self) -> dict | None:
+    def load_marketplace(self) -> dict[str, Any] | None:
         """Load existing marketplace.json.
 
         Returns:
@@ -98,7 +98,8 @@ class MarketplaceUpdater:
         if not self.marketplace_path.exists():
             return None
         with self.marketplace_path.open("r", encoding="utf-8") as f:
-            return json.load(f)
+            data: dict[str, Any] = json.load(f)
+            return data
 
     def update(self) -> tuple[bool, str, dict[str, list[str] | None]]:
         """Update marketplace.json with discovered components.
