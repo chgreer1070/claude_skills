@@ -73,8 +73,6 @@ VERIFY documentation quality:
 ```markdown
 # {Plugin Name}
 
-{Badge row: version | license | compatibility}
-
 {One-paragraph description from plugin.json}
 
 ## Features
@@ -87,13 +85,19 @@ VERIFY documentation quality:
 {List requirements: Claude Code version, system dependencies, environment variables}
 
 ### Install Plugin
-\```bash
-# Method 1: Using cc plugin install (if applicable)
-cc plugin install {plugin-name}
 
-# Method 2: Manual installation
-git clone {repository-url} ~/.claude/plugins/{plugin-name}
-cc plugin reload
+**From Marketplace** (recommended):
+\```bash
+# First, add the marketplace containing this plugin (if not already added)
+/plugin marketplace add {marketplace-repo}
+
+# Then install the plugin
+/plugin install {plugin-name}@{marketplace-name}
+\```
+
+**For Development** (testing local changes):
+\```bash
+claude --plugin-dir /path/to/{plugin-name}
 \```
 
 ## Quick Start
@@ -387,11 +391,12 @@ Task(
 - USE descriptive link text: "[Skills Reference](./docs/skills.md)" not "[click here]"
 - ENSURE all referenced files exist before linking
 
-### Badge Standards
-For README.md badge row:
+### Badge Standards (Optional)
+For README.md badge row, use shields.io badges if the plugin is published to a public repository:
 - Version: `![Version](https://img.shields.io/badge/version-{version}-blue)`
 - License: `![License](https://img.shields.io/badge/license-{license}-green)`
-- Claude Code: `![Claude Code](https://img.shields.io/badge/claude--code-compatible-purple)`
+
+Note: There are no official Claude Code badges. Omit badges for internal/local plugins where they add no value.
 
 </generation_rules>
 
