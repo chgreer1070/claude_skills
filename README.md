@@ -1,135 +1,64 @@
 # Claude Skills Repository
 
-A Claude Code Marketplace Plugin providing 22 specialized skills that extend Claude's capabilities with domain expertise, workflows, and best practices.
+Claude Code Marketplace plugin with 22 plugins extending Claude's capabilities.
 
 ## Installation
 
 ```bash
-# Install from marketplace
-cc plugin install Jamie-BitFlight/claude_skills
-```
-
-Or clone and install locally:
-
-```bash
-git clone https://github.com/Jamie-BitFlight/claude_skills.git
-cd claude_skills
-./install.py
+/plugin marketplace add Jamie-BitFlight/claude_skills
+/plugin install {plugin-name}@jamie-bitflight-skills
 ```
 
 ## Plugins
 
 ### Python Development
-
 | Plugin | Description |
 |--------|-------------|
-| [python3-development](./plugins/python3-development/) | Python CLI applications with Typer, Rich, and modern patterns |
-| [uv](./plugins/uv/) | Astral's uv - extremely fast Python package and project manager |
-| [hatchling](./plugins/hatchling/) | Modern Python build backend (PEP 517/518/621/660) |
-| [async-python-patterns](./plugins/async-python-patterns/) | asyncio, concurrent programming, async/await patterns |
-| [toml-python](./plugins/toml-python/) | Reading/writing pyproject.toml with comment preservation |
-| [pypi-readme-creator](./plugins/pypi-readme-creator/) | Creating PyPI-ready README files |
+| [python3-development](./plugins/python3-development/) | Python project workflows, testing, async |
+| [async-python-patterns](./plugins/async-python-patterns/) | asyncio, concurrent programming |
+| [uv](./plugins/uv/) | Astral's uv package manager |
+| [hatchling](./plugins/hatchling/) | Hatchling build system |
+| [toml-python](./plugins/toml-python/) | pyproject.toml handling |
+| [pypi-readme-creator](./plugins/pypi-readme-creator/) | PyPI README generation |
 
 ### Code Quality and Git
-
 | Plugin | Description |
 |--------|-------------|
-| [holistic-linting](./plugins/holistic-linting/) | Comprehensive linting and formatting workflows |
-| [pre-commit](./plugins/pre-commit/) | Automated code quality checks on git commit |
-| [conventional-commits](./plugins/conventional-commits/) | Conventional commit message formatting |
-| [commitlint](./plugins/commitlint/) | Commit message validation setup |
-| [clang-format](./plugins/clang-format/) | C/C++ code formatting configuration |
+| [holistic-linting](./plugins/holistic-linting/) | Coordinated linting |
+| [pre-commit](./plugins/pre-commit/) | Git commit hooks |
+| [commitlint](./plugins/commitlint/) | Commit message validation |
+| [conventional-commits](./plugins/conventional-commits/) | Conventional commit format |
+| [clang-format](./plugins/clang-format/) | C/C++ formatting |
 
 ### Documentation and CI/CD
-
 | Plugin | Description |
 |--------|-------------|
-| [mkdocs](./plugins/mkdocs/) | MkDocs documentation with Material theme |
-| [gitlab-skill](./plugins/gitlab-skill/) | GitLab CI/CD and GitLab Flavored Markdown |
+| [mkdocs](./plugins/mkdocs/) | MkDocs with Material theme |
+| [gitlab-skill](./plugins/gitlab-skill/) | GitLab CI/CD |
 
 ### AI and LLM Tools
-
 | Plugin | Description |
 |--------|-------------|
-| [fastmcp-creator](./plugins/fastmcp-creator/) | Build Model Context Protocol (MCP) servers |
-| [litellm](./plugins/litellm/) | LiteLLM for unified LLM API access |
-| [llamafile](./plugins/llamafile/) | Local LLM inference with llamafile |
-| [prompt-optimization-claude-45](./plugins/prompt-optimization-claude-45/) | Optimize CLAUDE.md and skills for Claude Code |
+| [fastmcp-creator](./plugins/fastmcp-creator/) | MCP server building |
+| [litellm](./plugins/litellm/) | LLM API integration |
+| [llamafile](./plugins/llamafile/) | Local LLM inference |
+| [prompt-optimization-claude-45](./plugins/prompt-optimization-claude-45/) | CLAUDE.md optimization |
 
-### Agent Orchestration and Workflows
-
+### Agent Orchestration
 | Plugin | Description |
 |--------|-------------|
-| [agent-orchestration](./plugins/agent-orchestration/) | Scientific delegation framework for sub-agents |
-| [verification-gate](./plugins/verification-gate/) | Pre-action verification checkpoints |
-| [brainstorming-skill](./plugins/brainstorming-skill/) | Structured idea generation and exploration |
-| [story-based-framing](./plugins/story-based-framing/) | Pattern/anti-pattern description for LLM detection |
+| [agent-orchestration](./plugins/agent-orchestration/) | Sub-agent delegation |
+| [verification-gate](./plugins/verification-gate/) | Pre-action verification |
+| [brainstorming-skill](./plugins/brainstorming-skill/) | Idea generation |
+| [story-based-framing](./plugins/story-based-framing/) | Pattern storytelling |
 
-### System Configuration
-
+### System
 | Plugin | Description |
 |--------|-------------|
-| [xdg-base-directory](./plugins/xdg-base-directory/) | XDG Base Directory specification compliance |
+| [xdg-base-directory](./plugins/xdg-base-directory/) | XDG paths |
 
-## Usage
-
-Skills activate automatically based on context, or explicitly:
-
-```text
-@uv
-Help me set up a new Python project with dependencies
-```
-
-```text
-@conventional-commits
-Create a commit message for these changes
-```
-
-## Repository Structure
-
-```text
-claude_skills/
-├── plugins/                    # 22 marketplace plugins
-│   └── {plugin-name}/
-│       ├── .claude-plugin/
-│       │   └── plugin.json     # Plugin manifest
-│       ├── skills/             # Skill definitions
-│       ├── commands/           # Slash commands (optional)
-│       ├── agents/             # Sub-agents (optional)
-│       └── README.md           # Plugin documentation
-├── .claude/                    # Local Claude Code configuration
-│   ├── agents/                 # Repository agents
-│   ├── commands/               # Repository commands
-│   └── skills/                 # Repository skills
-├── sessions/                   # cc-sessions framework
-└── install.py                  # Local installation script
-```
-
-## Creating New Skills
-
-Use the skill-creator skill to create new skills:
-
-```text
-@skill-creator
-Create a new skill for Kubernetes deployment patterns
-```
-
-After creating skills, run the installation script:
+## Development
 
 ```bash
-./install.py
+claude --plugin-dir ./plugins/{plugin-name}
 ```
-
-## Local Development
-
-```bash
-# Run pre-commit checks
-uv run pre-commit run --all-files
-
-# Install pre-commit hooks
-uv run pre-commit install
-```
-
-## License
-
-See individual plugin directories for license information.

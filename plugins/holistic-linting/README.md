@@ -1,221 +1,73 @@
-# Holistic Linting Plugin
+# Holistic Linting
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![Claude Code](https://img.shields.io/badge/claude--code-compatible-purple)
-
-Comprehensive code quality enforcement through systematic linting workflows for Python projects. Prevents claiming "production ready" code without verification by embedding format-lint-resolve cycles into Claude's development workflow.
-
-## Features
-
-- **Automatic Quality Gates** - Ensures formatting and linting before task completion
-- **Root Cause Resolution** - Investigates linting errors systematically instead of suppressing symptoms
-- **Orchestrator-Agent Workflow** - Separates task delegation from execution for clean context management
-- **Linting Rules Knowledge Base** - 933+ documented rules for Ruff, MyPy, and Bandit
-- **Project Configuration Discovery** - Scans and documents project linters in CLAUDE.md
-- **Concurrent Resolution** - Parallel agents for multi-file linting tasks
-- **Architectural Review** - Post-resolution validation of design implications
-- **Python 3.11+ Integration** - Coordinates with python3-development skill for modern patterns
+Comprehensive linting and formatting verification for code quality. Provides automatic linting workflows for orchestrators (delegate to concurrent agents) and sub-agents (lint touched files before task completion). Includes systematic resolution through root-cause analysis rather than error suppression.
 
 ## Installation
 
-### Prerequisites
-
-- Claude Code 2.1+
-- Python 3.11+ projects with linting tools (ruff, mypy, pyright, bandit)
-- UV or similar Python package manager
-
-### Install Plugin
+**From Marketplace:**
 
 ```bash
-# Method 1: Using cc plugin install (when published to marketplace)
-cc plugin install holistic-linting
-
-# Method 2: Manual installation
-git clone <repository-url> ~/.claude/plugins/holistic-linting
-cc plugin reload
+/plugin marketplace add Jamie-BitFlight/claude_skills
+/plugin install holistic-linting@jamie-bitflight-skills
 ```
 
-## Quick Start
-
-### Step 1: Discover Project Linters
+**For Development:**
 
 ```bash
-/lint init
-```
-
-This scans your project for linting configuration and generates the `## LINTERS` section in `CLAUDE.md`.
-
-### Step 2: Let Claude Enforce Quality Automatically
-
-When Claude Code completes implementation work, the holistic-linting skill automatically:
-
-1. **Orchestrators** - Delegate to linting-root-cause-resolver agent for formatting, linting, and resolution
-2. **Sub-Agents** - Format and lint touched files before completing tasks
-
-No manual intervention required - quality enforcement is embedded in the workflow.
-
-### Step 3: Manual Linting (Optional)
-
-```bash
-/lint path/to/file.py              # Lint specific file
-/lint src/                         # Lint directory
-/lint file1.py file2.py file3.py   # Lint multiple files
+claude --plugin-dir /path/to/holistic-linting
 ```
 
 ## Capabilities
 
-| Type | Name | Description | Invocation |
-|------|------|-------------|------------|
-| Skill | holistic-linting | Automatic linting workflow guidance for orchestrators and sub-agents | Auto-activated |
-| Command | /lint | Manual linting invocation and project linter discovery | `/lint [path\|init]` |
-| Agent | linting-root-cause-resolver | Systematic investigation and resolution of linting errors | Auto-delegated |
-| Agent | post-linting-architecture-reviewer | Architectural validation after linting resolution | Auto-delegated |
+| Type | Name | Description |
+|------|------|-------------|
+| Skill | [holistic-linting](./skills/holistic-linting/SKILL.md) | Ensures code quality through comprehensive linting and formatting. Provides automatic workflows for orchestrators and sub-agents. Prevents claiming "production ready" without verification. |
+| Command | [lint](./commands/lint.md) | Run linting and formatting on files or discover project linters. Usage: /lint [path\|init] [--force] |
+| Agent | [linting-root-cause-resolver](./agents/linting-root-cause-resolver.md) | Resolves linting errors by investigating root causes using linter-specific research methods (ruff rule, mypy docs, basedpyright docs). |
+| Agent | [post-linting-architecture-reviewer](./agents/post-linting-architecture-reviewer.md) | Performs architectural review after linting resolution by examining artifacts and validating against codebase patterns. |
 
-## Usage
+## Quick Start
 
-### Skills
-
-The holistic-linting skill provides different behaviors based on Claude's role:
-
-- **Orchestrators** - Delegate immediately to linting agents without running linters themselves
-- **Sub-Agents** - Format and lint touched files before task completion
-
-See [Skills Reference](./docs/skills.md) for detailed activation patterns and workflows.
-
-### Commands
-
-The `/lint` command provides manual control:
-
-- `/lint init` - Discover and document project linters in CLAUDE.md
-- `/lint <path>` - Format, lint, and resolve issues in specified files
-
-See [Commands Reference](./docs/commands.md) for complete usage.
-
-### Agents
-
-Two specialized agents handle systematic resolution:
-
-- **linting-root-cause-resolver** - Researches rules, traces code flow, implements elegant fixes
-- **post-linting-architecture-reviewer** - Validates resolution quality and architectural implications
-
-See [Agents Reference](./docs/agents.md) for delegation patterns and output artifacts.
-
-## Configuration
-
-### Project Setup
-
-Create `## LINTERS` section in your project's `CLAUDE.md`:
-
-```bash
-/lint init
-```
-
-This generates configuration like:
-
-```markdown
-## LINTERS
-
-git pre-commit hooks: enabled
-pre-commit tool: pre-commit
-
-### Formatters
-
-- ruff format [*.py]
-- prettier [*.{ts,tsx,json,md}]
-
-### Static Checking and Linting
-
-- ruff check [*.py]
-- mypy [*.py]
-- pyright [*.py]
-```
-
-See [Configuration Reference](./docs/configuration.md) for advanced setup.
-
-## Examples
-
-### Example 1: Automatic Linting During Development
+**Orchestrator workflow** (delegate to agents):
 
 ```text
-User: "Add JWT authentication to the API"
+# After making code changes, delegate immediately without running linters
+Task(agent="linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
 
-Claude (Orchestrator):
-1. [Implements JWT middleware in auth.py]
-2. [Holistic-linting skill activates automatically]
-3. Delegates: Task(agent="linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in auth.py")
-4. [Agent formats, lints, resolves 5 issues at root cause]
-5. [Agent produces resolution report]
-6. [Orchestrator reads report confirming clean resolution]
-7. "JWT authentication implemented and verified ✓"
+# After agent completes, delegate architectural review
+Task(agent="post-linting-architecture-reviewer", prompt="Review linting resolution for src/auth.py")
+
+# Read review report to determine if additional work needed
+Read(".claude/reports/architectural-review-[timestamp].md")
 ```
 
-### Example 2: Manual Linting Multiple Files
+**Sub-agent workflow** (lint before task completion):
 
-```bash
-/lint src/auth.py src/models.py tests/test_auth.py
+```text
+# Before marking task complete
+1. Format: uv run ruff format modified_file.py
+2. Lint: uv run ruff check modified_file.py && uv run mypy modified_file.py
+3. Resolve issues following holistic-linting skill workflows
+4. Verify: Re-run linters to confirm clean
 ```
 
-Output:
-- Formats all 3 files
-- Runs ruff, mypy, pyright on each
-- Launches concurrent resolution agents for files with errors
-- Verifies all issues resolved
-
-### Example 3: Discovering Project Linters
+**Discover project linters:**
 
 ```bash
 /lint init
 ```
 
-Output:
-- Scans `.pre-commit-config.yaml`, `pyproject.toml`, `package.json`
-- Identifies 6 formatters and 5 linters
-- Appends structured configuration to `CLAUDE.md`
+This scans configuration files (pyproject.toml, .pre-commit-config.yaml, package.json) and generates a LINTERS section in CLAUDE.md documenting all formatters and linters.
 
-See [Usage Examples](./docs/examples.md) for more workflows.
+## Features
 
-## Troubleshooting
+- **Automatic linting workflows** - Different behavior for orchestrators vs sub-agents
+- **Systematic resolution** - Root-cause analysis using linter-specific documentation
+- **Concurrent resolution** - Launch parallel agents for multiple files
+- **Rules knowledge base** - Comprehensive documentation for ruff (933 rules), mypy, and bandit
+- **Linter discovery** - Automatically detect and document project linters
+- **Architectural review** - Post-resolution validation of fix quality
 
-### "I don't know which linters this project uses"
+## License
 
-**Solution**: Run `/lint init` to scan and document project linters in `CLAUDE.md`.
-
-### "Linting errors but I don't understand the rule"
-
-**Solution**: The linting-root-cause-resolver agent automatically researches rules using:
-- `ruff rule {CODE}` for Ruff issues
-- Local mypy documentation cache for MyPy errors
-- Basedpyright online docs for Pyright issues
-
-### "Multiple files with linting errors"
-
-**Solution**: The skill launches concurrent linting-root-cause-resolver agents (one per file) automatically.
-
-### "Linter not found (command not available)"
-
-**Solution**: Check linter installation. Use `uv run <tool>` for Python tools to ensure virtual environment activation.
-
-### "False positive linting error"
-
-**Solution**: Configure the rule in `pyproject.toml` rather than using `# noqa` or `# type: ignore` comments.
-
-## Contributing
-
-Contributions welcome! Please:
-
-1. Follow the existing skill/command/agent structure
-2. Add reference documentation for new linter rules
-3. Update SKILL.md with workflow changes
-4. Test with real projects before submitting
-
-## Credits
-
-Created for systematic code quality enforcement in Claude Code workflows.
-
-## Related Documentation
-
-- [Skills Reference](./docs/skills.md) - Detailed skill behavior and activation
-- [Commands Reference](./docs/commands.md) - Complete /lint command documentation
-- [Agents Reference](./docs/agents.md) - Agent delegation patterns and artifacts
-- [Configuration](./docs/configuration.md) - Setup and customization
-- [Examples](./docs/examples.md) - Real-world usage workflows
+MIT
