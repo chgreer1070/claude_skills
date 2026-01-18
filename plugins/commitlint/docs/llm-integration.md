@@ -13,7 +13,7 @@ The commitlint plugin provides knowledge and patterns for:
 
 ## Architecture Pattern
 
-```
+```text
 ┌─────────────────┐
 │   Git Diff      │
 └────────┬────────┘
@@ -425,7 +425,7 @@ async def regenerate_with_feedback(
     prompt = f"""
 The following commit message failed validation (attempt {attempt}):
 
-```
+```text
 {failed_message}
 ```
 
