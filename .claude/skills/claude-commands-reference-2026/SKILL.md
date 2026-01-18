@@ -97,9 +97,9 @@ Result: `$1` → `456`, `$2` → `high`, `$3` → `alice`
 
 ## Special Prefixes
 
-### Bash Execution: `!`
+### Bash Execution Prefix
 
-Execute bash commands, output included in context.
+The exclamation mark (!) prefix executes bash commands before the command runs. Output is included in context.
 
 ```markdown
 ---
