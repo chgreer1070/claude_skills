@@ -51,7 +51,7 @@ Your instructions here...
 | Field                      | Required | Type         | Max Length | Description                                                                 |
 | -------------------------- | -------- | ------------ | ---------- | --------------------------------------------------------------------------- |
 | `name`                     | **Yes**  | string       | 64 chars   | Unique identifier: lowercase letters, numbers, hyphens only                 |
-| `description`              | **Yes**  | string       | 1024 chars | Claude uses this to decide when to apply the Skill                          |
+| `description`              | **Yes**  | string       | 1024 chars | Claude uses this to decide when to apply the Skill. **Must be single-line** |
 | `allowed-tools`            | No       | string/array | —          | Tools Claude can use: `Read, Grep, Glob, Bash(npm run:*)`                   |
 | `model`                    | No       | string       | —          | Override model: `claude-opus-4-5-20251101`, `claude-sonnet-4-20250514`      |
 | `context`                  | No       | string       | —          | Set to `fork` for isolated sub-agent context                                |
@@ -136,6 +136,25 @@ agent: Explore
 ---
 
 ## Description Best Practices
+
+**CRITICAL: Single-Line Format Required**
+
+Claude Code skill discovery can fail if `description` is formatted as a multi-line YAML value (including wrapped `>` or literal `|` forms). Always use a single-line string:
+
+```yaml
+# CORRECT - single line
+description: Extract text and tables from PDFs, fill forms, merge documents. Use when working with PDF files or when user mentions PDFs, forms, extraction.
+
+# WRONG - folded block scalar (breaks discovery)
+description: >
+  Extract text and tables from PDFs, fill forms,
+  merge documents. Use when working with PDF files.
+
+# WRONG - literal block scalar (breaks discovery)
+description: |
+  Extract text and tables from PDFs, fill forms,
+  merge documents.
+```
 
 **Good**:
 

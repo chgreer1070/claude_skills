@@ -1,10 +1,6 @@
 ---
 name: agent-creator
-description: >
-  Create high-quality Claude Code agents from scratch or by adapting existing agents as templates.
-  Use when the user wants to create a new agent, modify agent configurations, build specialized
-  subagents, or design agent architectures. Guides through requirements gathering, template
-  selection, and agent file generation following January 2026 Anthropic best practices.
+description: Create high-quality Claude Code agents from scratch or by adapting existing agents as templates. Use when the user wants to create a new agent, modify agent configurations, build specialized subagents, or design agent architectures. Guides through requirements gathering, template selection, and agent file generation following January 2026 Anthropic best practices.
 user-invocable: true
 ---
 
