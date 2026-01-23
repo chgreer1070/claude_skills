@@ -31,7 +31,7 @@ claude_skills/
 │       └── README.md
 ├── sessions/                 # cc-sessions framework (task management)
 ├── scripts/                  # Utility scripts
-├── install.py                # Plugin symlink installer
+├── marketplace.json          # Local marketplace config (in .claude-plugin/)
 ├── pyproject.toml            # Python project config (linting, type checking)
 ├── .pre-commit-config.yaml   # Pre-commit/prek hooks config
 └── CLAUDE.md                 # AI-facing project instructions
@@ -51,25 +51,26 @@ uv sync
 # Must complete successfully before running any uv run commands
 ```
 
-### Installing Plugins Locally
+### Testing Plugins Locally
 
-After creating or modifying plugins, run the install script to create symlinks:
+To test plugins during development:
 
 ```bash
-# Dry run to see what would be installed
-./install.py --dry-run
+# Option 1: Load specific plugins for this session
+claude --plugin-dir ./plugins/python3-development --plugin-dir ./plugins/holistic-linting
 
-# Actually install (creates symlinks to ~/.claude/)
-./install.py
+# Option 2: Add local marketplace for persistent enable/disable
+/plugin marketplace add ./.claude-plugin/marketplace.json
+
+# Install plugins you need (--scope local keeps it gitignored)
+/plugin install python3-development@jamie-bitflight-skills --scope local
+
+# Disable when not needed
+/plugin disable python3-development@jamie-bitflight-skills
+
+# Re-enable when needed
+/plugin enable python3-development@jamie-bitflight-skills
 ```
-
-The install script:
-
-- Discovers all plugins in `plugins/` with valid `plugin.json`
-- Creates symlinks for skills to `~/.claude/skills/`
-- Creates symlinks for commands to `~/.claude/commands/`
-- Creates symlinks for agents to `~/.claude/agents/`
-- Is idempotent (safe to run multiple times)
 
 ### Linting and Formatting
 
@@ -215,7 +216,7 @@ Before submitting changes:
 1. Run `uv sync` if dependencies changed
 2. Run `uv run ruff check --fix` and `uv run ruff format` on Python files
 3. Run `uv run mypy` on Python files
-4. Verify plugin structure: `./install.py --dry-run`
+4. Verify plugin structure: `/plugin validate ./plugins/plugin-name`
 5. Check markdown links are relative with `./` prefix
 6. Ensure SKILL.md has valid YAML frontmatter
 7. Use Conventional Commits format for commit messages
@@ -236,6 +237,6 @@ Before submitting changes:
 
 - Skills are AI-facing documentation written for Claude, not humans
 - Always use `uv run` prefix for Python commands
-- Run `./install.py` after creating new plugins
+- Test new plugins with `claude --plugin-dir ./plugins/plugin-name`
 - Paths in skills use `./` relative prefix
 - No GitHub Actions workflows exist; validation is local via pre-commit

@@ -25,8 +25,8 @@ Comprehensive guide for orchestrating Python development tasks using specialized
 - **python-portable-script**: Create stdlib-only portable scripts
 - **python-pytest-architect**: Design comprehensive test suites
 - **python-code-reviewer**: Review Python code for quality and standards
-- **spec-architect**: Design system architecture
-- **spec-planner**: Break down tasks into implementation plans
+- **python-cli-design-spec**: Design system architecture
+- **swarm-task-planner**: Break down tasks into implementation plans
 
 ### Commands (in this skill: references/commands/)
 
@@ -46,7 +46,7 @@ Comprehensive guide for orchestrating Python development tasks using specialized
 **Pattern**:
 
 ```text
-1. Design → @agent-spec-architect
+1. Design → @agent-python-cli-design-spec
    Input: Feature requirements
    Output: Architecture design, component interfaces
 
@@ -74,7 +74,7 @@ Comprehensive guide for orchestrating Python development tasks using specialized
 ```text
 User: "Build a CLI tool to process CSV files with progress bars"
 
-Step 1: @agent-spec-architect
+Step 1: @agent-python-cli-design-spec
   "Design architecture for CSV processing CLI with progress tracking"
   → Architecture design with components
 
@@ -104,11 +104,11 @@ Step 5: Validate
 1. Requirements → User or @agent-spec-analyst
    Output: Clear requirements, acceptance criteria
 
-2. Architecture → @agent-spec-architect
+2. Architecture → @agent-python-cli-design-spec
    Input: Requirements, existing codebase structure
    Output: Design that integrates with existing code
 
-3. Implementation Plan → @agent-spec-planner
+3. Implementation Plan → @agent-swarm-task-planner
    Input: Architecture design
    Output: Step-by-step implementation tasks
 
@@ -505,7 +505,7 @@ Use this as the reference implementation when creating CLI tools.
 User: "Build a CLI tool to validate YAML configurations"
 
 Orchestrator:
-1. @agent-spec-architect
+1. @agent-python-cli-design-spec
    "Design architecture for YAML validation CLI"
    → Component design, validation rules
 

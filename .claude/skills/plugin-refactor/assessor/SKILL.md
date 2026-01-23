@@ -120,7 +120,7 @@ Categorized by:
 Each recommendation must include:
 - Target file path
 - Issue type and severity (Critical/High/Medium/Low)
-- Recommended agent: skill-refactorer | subagent-refactorer | claude-context-optimizer | plugin-docs-writer
+- Recommended agent: plugin-refactor:refactor-skill | subagent-refactorer | claude-context-optimizer | plugin-docs-writer
 - Expected outcome
 </output_specification>
 
@@ -172,11 +172,11 @@ Assessment Report: [inline or note that it's in agent output]
 
 **Objective**: Create a detailed refactoring design specification showing how each identified issue should be addressed.
 
-**Action**: LAUNCH the spec-architect agent using the Task tool with this exact prompt (substitute the complete Assessment Report from Phase 1 where indicated):
+**Action**: LAUNCH the python-cli-design-spec agent using the Task tool with this exact prompt (substitute the complete Assessment Report from Phase 1 where indicated):
 
 ```
 Task(
-    subagent_type="spec-architect",
+    subagent_type="python-cli-design-spec",
     prompt="""
 Your ROLE_TYPE is sub-agent.
 
@@ -337,7 +337,7 @@ Tasks that can run simultaneously:
 
 **Phase 2 Completion Requirements**:
 
-After the spec-architect agent completes, YOU MUST:
+After the python-cli-design-spec agent completes, YOU MUST:
 
 1. **UPDATE TODO**: Mark "Phase 2: Create refactoring design map" as `in_progress` before verification
 2. VERIFY the agent created the design file at .claude/plan/refactor-design-{plugin-slug}.md
@@ -374,11 +374,11 @@ Parallelization Groups: [count]
 
 **Objective**: Generate detailed implementation tasks with dependencies, verification steps, and parallel execution opportunities.
 
-**Action**: LAUNCH a spec-planner agent using the Task tool with this exact prompt:
+**Action**: LAUNCH a swarm-task-planner agent using the Task tool with this exact prompt:
 
 ````
 Task(
-    subagent_type="spec-planner",
+    subagent_type="swarm-task-planner",
     prompt="""
 Your ROLE_TYPE is sub-agent.
 
@@ -431,7 +431,7 @@ PERFORM these planning steps:
    **Dependencies**: [Comma-separated Task IDs or "None"]
    **Priority**: [Integer 1-5, where 1 is highest]
    **Complexity**: [Low/Medium/High]
-   **Agent**: [skill-refactorer | subagent-refactorer | claude-context-optimizer | plugin-docs-writer]
+   **Agent**: [plugin-refactor:refactor-skill | subagent-refactorer | claude-context-optimizer | plugin-docs-writer]
 
    **Target**: [File path being refactored]
    **Issue Type**: [SKILL_SPLIT | AGENT_OPTIMIZE | DOC_IMPROVE | ORPHAN_RESOLVE | STRUCTURE_FIX]
@@ -458,7 +458,7 @@ PERFORM these planning steps:
    ```
 
    **Agent Selection Rules**:
-   - SKILL_SPLIT tasks → `skill-refactorer`
+   - SKILL_SPLIT tasks → `plugin-refactor:refactor-skill`
    - AGENT_OPTIMIZE tasks → `subagent-refactorer`
    - DOC_IMPROVE tasks (skills/agents) → `claude-context-optimizer`
    - ORPHAN_RESOLVE tasks → `claude-context-optimizer` (integrate) or orchestrator (remove)
@@ -554,7 +554,7 @@ ALWAYS specify:
 
 **Phase 3 Completion Requirements**:
 
-After the spec-planner agent completes, YOU MUST:
+After the swarm-task-planner agent completes, YOU MUST:
 
 1. **UPDATE TODOS**: Mark these as `in_progress` before verification:
    - "Phase 3: Create task file at .claude/plan/tasks-refactor-{slug}.md"

@@ -116,7 +116,7 @@ color: orange
 
 ## Example 5: Skill Refactorer (Modification Agent)
 
-**Source**: `.claude/agents/skill-refactorer.md`
+**Source**: `.claude/agents/plugin-refactor:refactor-skill.md`
 
 This agent demonstrates:
 
@@ -127,7 +127,7 @@ This agent demonstrates:
 
 ```yaml
 ---
-name: skill-refactorer
+name: plugin-refactor:refactor-skill
 description: 'Refactor large or multi-domain skills into smaller, focused skills without losing fidelity. Use when a skill covers too many topics, exceeds 500 lines, or would benefit from separation of concerns. Analyzes skill content, identifies logical partitions, plans the split, creates new SKILL.md files, and validates complete coverage.'
 model: sonnet
 permissionMode: acceptEdits
@@ -175,13 +175,13 @@ description: Use when creating a new task OR when starting/switching to a task t
 
 ### Frontmatter Patterns
 
-| Pattern              | Example           | When to Use                            |
-| -------------------- | ----------------- | -------------------------------------- |
-| Minimal frontmatter  | context-gathering | Agent needs flexibility, inherits well |
-| Skill loading        | plugin-assessor   | Needs domain knowledge                 |
-| Permission mode      | skill-refactorer  | Creates/modifies files                 |
-| Color coding         | doc-drift-auditor | Visual distinction helpful             |
-| Detailed description | doc-drift-auditor | Complex trigger conditions             |
+| Pattern              | Example                        | When to Use                            |
+| -------------------- | ------------------------------ | -------------------------------------- |
+| Minimal frontmatter  | context-gathering              | Agent needs flexibility, inherits well |
+| Skill loading        | plugin-assessor                | Needs domain knowledge                 |
+| Permission mode      | plugin-refactor:refactor-skill | Creates/modifies files                 |
+| Color coding         | doc-drift-auditor              | Visual distinction helpful             |
+| Detailed description | doc-drift-auditor              | Complex trigger conditions             |
 
 ### Body Structure Patterns
 

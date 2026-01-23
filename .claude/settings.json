@@ -7,11 +7,14 @@
   },
   "permissions": {
     "allow": [
-      "WebFetch(domain:docs.anthropic.com)",
       "Bash(gh issue list:*)",
-      "Bash(git worktree:*)"
+      "Bash(git worktree:*)",
+      "mcp__ref__*",
+      "mcp__exa__*",
+      "mcp__context7__*",
+      "mcp__sequential-thinking__*"
     ],
-    "deny": []
+    "deny": ["WebFetch", "WebSearch"]
   },
   "statusLine": {
     "type": "command",

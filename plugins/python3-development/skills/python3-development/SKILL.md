@@ -69,8 +69,8 @@ Orchestration guide for Python development using specialized agents and modern P
 - `@agent-python-pytest-architect` - Test suite creation and planning
 - `@agent-python-code-reviewer` - Post-implementation code review
 - `@agent-python-portable-script` - Standalone stdlib-only script creation
-- `@agent-spec-architect` - Architecture design
-- `@agent-spec-planner` - Task breakdown and planning
+- `@agent-python-cli-design-spec` - Architecture design
+- `@agent-swarm-task-planner` - Task breakdown and planning
 - `@agent-spec-analyst` - Requirements gathering
 
 **Slash Commands** (install to `~/.claude/commands/`):
@@ -797,8 +797,8 @@ The orchestrator delegates Python development tasks to specialized agents rather
 | Test creation      | `@agent-python-pytest-architect` |
 | Code review        | `@agent-python-code-reviewer`    |
 | Stdlib-only script | `@agent-python-portable-script`  |
-| Architecture       | `@agent-spec-architect`          |
-| Task breakdown     | `@agent-spec-planner`            |
+| Architecture       | `@agent-python-cli-design-spec`  |
+| Task breakdown     | `@agent-swarm-task-planner`      |
 | Requirements       | `@agent-spec-analyst`            |
 
 **Reason for delegation table**: Clear mapping prevents orchestrator from implementing when it should coordinate.

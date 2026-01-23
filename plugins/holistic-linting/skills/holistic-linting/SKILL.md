@@ -19,7 +19,7 @@ Prevent Claude from:
 Ensure Claude:
 
 - Automatically formats and lints all modified files before task completion
-- Reads project-specific linting configuration from `CLAUDE.md`
+- Discovers project linters by scanning configuration files (pyproject.toml, .pre-commit-config.yaml, package.json)
 - Resolves linting issues systematically using root-cause analysis
 - Orchestrates concurrent linting agents when multiple files have issues
 
@@ -93,7 +93,7 @@ Task(
 
 **Reason**: The agent follows systematic root-cause analysis workflows. It autonomously:
 
-- Reads project linting configuration from `CLAUDE.md`
+- Discovers project linters by scanning configuration files
 - Runs formatters on modified files (ruff format, prettier, etc.)
 - Executes linters to identify issues (ruff, mypy, pyright, etc.)
 - Researches rule documentation
@@ -269,41 +269,29 @@ This skill modifies Claude's standard workflow to include automatic quality chec
 [Task assigned] → [Code changes] → [Format] → [Lint] → [Resolve issues] → [Task complete ✓]
 ```
 
-### Reading Project Linting Configuration
+### Linter Detection
 
-Before running any linters, check for the `## LINTERS` section in the project's `CLAUDE.md` file:
+Linter detection is handled automatically by scanning project configuration files. The linting hook's `ConfigurationDetector` identifies available tools at runtime by checking:
 
-```claude
-Grep(pattern="^## LINTERS", path="CLAUDE.md", output_mode="content", -A=50)
-```
+| Config File                    | Tools Detected                                       |
+| ------------------------------ | ---------------------------------------------------- |
+| `.pre-commit-config.yaml`      | pre-commit/prek hooks (takes priority, skips others) |
+| `.husky/` directory            | Husky git hooks                                      |
+| `pyproject.toml`               | Ruff, MyPy, basedpyright, bandit                     |
+| `package.json`, `.eslintrc*`   | ESLint                                               |
+| `package.json`, `.prettierrc*` | Prettier                                             |
+| `.clang-format`                | clang-format (C/C++)                                 |
+| `.rubocop.yml`                 | RuboCop (Ruby)                                       |
+| `.shellcheckrc`                | ShellCheck (shell scripts)                           |
+| `.markdownlint.json/.yaml`     | markdownlint                                         |
 
-If the section exists, use those specifications as the authoritative source for what linters to run.
+**Detection Priority** (highest to lowest):
 
-If the section does not exist, use the `/lint init` command (see below) to discover and document the project's linters.
+1. Pre-commit/prek (if found, uses hooks exclusively)
+2. Husky
+3. Language-specific tools (Python → JS/TS → Shell → etc.)
 
-### Expected CLAUDE.md LINTERS Section Format
-
-```markdown
-## LINTERS
-
-git pre-commit hooks: enabled|disabled pre-commit tool: husky|pre-commit|manual
-
-### Formatters
-
-- markdownlint [*.{md,markdown}]
-- ruff format [*.py]
-- biome [*.{ts,js,tsx,jsx,json}]
-- shfmt [*.{sh,bash,fish,zsh}]
-- prettier [*.{md,markdown,mjs,cjs}]
-
-### Static Checking and Linting
-
-- ruff check [*.py]
-- mypy [*.py]
-- bandit [*.py]
-- pyright [*.py]
-- markdownlint [*.{md,markdown}]
-```
+The detection uses caching with a 5-minute TTL to avoid repeated disk reads.
 
 ### Running Formatters and Linters
 
@@ -1066,13 +1054,11 @@ Each check documents:
 - Secure code examples with mitigations
 - Severity level (LOW, MEDIUM, HIGH)
 
-### Scripts (Coming Soon)
+### Scripts
 
-The following scripts will be available in [`./scripts/`](./scripts/):
+Available in [`./scripts/`](./scripts/):
 
-1. **install-agents.py** - Install the linting-root-cause-resolver agent
-2. **discover-linters.py** - Scan project and generate LINTERS section for CLAUDE.md
-3. **lint-orchestrator.py** - Run project linters based on CLAUDE.md configuration
+1. **install-agents.py** - Install the linting-root-cause-resolver agent to user or project scope
 
 ## Slash Commands
 
@@ -1086,8 +1072,6 @@ The `/lint` slash command provides manual invocation of linting workflows.
 /lint                    # Lint all files in current directory
 /lint path/to/file.py    # Lint specific file
 /lint path/to/directory  # Lint all files in directory
-/lint init               # Discover linters and update CLAUDE.md
-/lint init --force       # Re-discover linters (overwrite existing config)
 ```
 
 See [`/.claude/commands/lint.md`](/.claude/commands/lint.md) for the full command implementation.
@@ -1154,42 +1138,10 @@ Sub-agent:
 9. Returns to orchestrator with completed, lint-free module ✓
 ```
 
-### Example 3: Using /lint init to discover project linters
-
-```text
-/lint init
-
-[Scanning project configuration...]
-✓ Found .pre-commit-config.yaml with 6 hooks
-✓ Found pyproject.toml with ruff, mypy, pyright config
-✓ Found package.json with eslint, prettier
-✓ Git pre-commit hooks: enabled (husky)
-
-[Generated LINTERS section]
-
-## LINTERS
-
-git pre-commit hooks: enabled
-pre-commit tool: husky
-
-### Formatters
-- ruff format [*.py]
-- prettier [*.{ts,tsx,json,md}]
-
-### Static Checking and Linting
-- ruff check [*.py]
-- mypy [*.py]
-- pyright [*.py]
-- eslint [*.{ts,tsx}]
-- markdownlint [*.md]
-
-[Appended to CLAUDE.md ✓]
-```
-
 ## Best Practices
 
 1. **Orchestrators delegate immediately** - Do NOT run formatters or linters before delegating. Agent gathers its own context.
-2. **Always read CLAUDE.md LINTERS section first** - Don't assume which linters are available
+2. **Let detection find your linters** - The ConfigurationDetector scans project config files automatically. Don't assume which linters are available.
 3. **Format before linting (Sub-Agents only)** - Formatters auto-fix trivial issues (end-of-file, whitespace)
 4. **Run linters concurrently (Sub-Agents only)** - Use parallel execution for multiple files or multiple linters
 5. **Use the rules knowledge base** - Reference official rule documentation when investigating
@@ -1200,7 +1152,7 @@ pre-commit tool: husky
 
 ## Troubleshooting
 
-**Problem**: "I don't know which linters this project uses" **Solution**: Run `/lint init` to scan and document project linters
+**Problem**: "I don't know which linters this project uses" **Solution**: Linters are detected automatically by scanning config files (pyproject.toml, package.json, .pre-commit-config.yaml, etc.). Check the Linter Detection section for supported tools.
 
 **Problem**: "Linting errors but I don't understand the rule" **Solution**: Reference the rules knowledge base at `./references/rules/{ruff,mypy,bandit}/index.md`
 

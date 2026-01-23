@@ -82,13 +82,29 @@ CONTEXT:
 
 ---
 
-## Plugin Post-Creation Requirements
+## Plugin Testing During Development
 
-The model MUST run `install.py` after creating a new plugin in the plugins/ directory:
+To test plugins during local development, use one of these methods:
 
-- This script executes `ln -sf` for each skill directory nested in the plugins/ directory to symlink them to `~/.claude/skills/` this is to support instant testing of the skills by the local developer.
-- Safe to run multiple times (idempotent operation)
-- Modifications to existing plugins do NOT require re-running install.py (symlinks point to directory)
+**Option 1: Session-based loading**
+
+```bash
+claude --plugin-dir ./plugins/plugin-name
+```
+
+**Option 2: Local marketplace with enable/disable**
+
+```bash
+# Add local marketplace (one-time)
+/plugin marketplace add ./.claude-plugin/marketplace.json
+
+# Install plugin (--scope local keeps it gitignored)
+/plugin install plugin-name@jamie-bitflight-skills --scope local
+
+# Disable/enable as needed
+/plugin disable plugin-name@jamie-bitflight-skills
+/plugin enable plugin-name@jamie-bitflight-skills
+```
 
 ---
 
@@ -786,7 +802,7 @@ Task(
 
 ---
 
-### skill-refactorer
+### plugin-refactor:refactor-skill
 
 **Purpose**: Refactor large or multi-domain skills into smaller, focused skills without losing fidelity.
 
@@ -801,7 +817,7 @@ Task(
 
 ```claude
 Task(
-  agent="skill-refactorer",
+  agent="plugin-refactor:refactor-skill",
   prompt="Refactor ./plugins/python3-development/skills/python3/SKILL.md into focused skills for testing, async, and packaging"
 )
 ```
@@ -835,11 +851,11 @@ Task(
 
 All plugin maintenance agents load reference skills automatically:
 
-| Agent              | Loaded Skills                                                                           |
-| ------------------ | --------------------------------------------------------------------------------------- |
-| plugin-assessor    | claude-skills-overview-2026, claude-plugins-reference-2026, claude-hooks-reference-2026 |
-| plugin-docs-writer | claude-skills-overview-2026, claude-plugins-reference-2026, claude-hooks-reference-2026 |
-| skill-refactorer   | claude-skills-overview-2026                                                             |
+| Agent                          | Loaded Skills                                                                           |
+| ------------------------------ | --------------------------------------------------------------------------------------- |
+| plugin-assessor                | claude-skills-overview-2026, claude-plugins-reference-2026, claude-hooks-reference-2026 |
+| plugin-docs-writer             | claude-skills-overview-2026, claude-plugins-reference-2026, claude-hooks-reference-2026 |
+| plugin-refactor:refactor-skill | claude-skills-overview-2026                                                             |
 
 This ensures agents have complete knowledge of Claude Code plugin architecture, frontmatter schemas, and best practices.
 
