@@ -276,7 +276,7 @@ ELSE:
 
 ```
 Task(
-    subagent_type="spec-planner",
+    subagent_type="swarm-task-planner",
     prompt="""
 Your ROLE_TYPE is sub-agent.
 

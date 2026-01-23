@@ -5,7 +5,7 @@ argument-hint: <plugin-slug or task-file-path>
 
 # Implement Refactor
 
-This command continues from `/review-plugin-for-refactor`. After planning completes, use this to execute the refactoring tasks.
+This command continues from `/plugin-refactor:assessorin-for-refactor`. After planning completes, use this to execute the refactoring tasks.
 
 <refactor_input>
 $ARGUMENTS
@@ -64,15 +64,15 @@ TodoWrite(todos=[
 
 Route each task to the appropriate specialized agent based on the **Agent** field in the task:
 
-| Issue Type     | Agent                      | When to Use                                            |
-| -------------- | -------------------------- | ------------------------------------------------------ |
-| SKILL_SPLIT    | `skill-refactorer`         | Tasks splitting large skills into smaller focused ones |
-| AGENT_OPTIMIZE | `subagent-refactorer`      | Tasks improving agent prompts and descriptions         |
-| DOC_IMPROVE    | `claude-context-optimizer` | Tasks improving skill/agent documentation quality      |
-| ORPHAN_RESOLVE | `claude-context-optimizer` | Tasks integrating orphaned reference files             |
-| STRUCTURE_FIX  | `claude-context-optimizer` | Tasks fixing broken links or structural issues         |
-| Validation     | `plugin-assessor`          | Post-refactoring validation tasks                      |
-| Documentation  | `plugin-docs-writer`       | README and documentation generation tasks              |
+| Issue Type     | Agent                            | When to Use                                            |
+| -------------- | -------------------------------- | ------------------------------------------------------ |
+| SKILL_SPLIT    | `plugin-refactor:refactor-skill` | Tasks splitting large skills into smaller focused ones |
+| AGENT_OPTIMIZE | `subagent-refactorer`            | Tasks improving agent prompts and descriptions         |
+| DOC_IMPROVE    | `claude-context-optimizer`       | Tasks improving skill/agent documentation quality      |
+| ORPHAN_RESOLVE | `claude-context-optimizer`       | Tasks integrating orphaned reference files             |
+| STRUCTURE_FIX  | `claude-context-optimizer`       | Tasks fixing broken links or structural issues         |
+| Validation     | `plugin-assessor`                | Post-refactoring validation tasks                      |
+| Documentation  | `plugin-docs-writer`             | README and documentation generation tasks              |
 
 ### Launch Strategy
 
@@ -93,7 +93,7 @@ Task(
 ```
 # Launch skill split tasks in parallel (no shared files)
 Task(
-    subagent_type="skill-refactorer",
+    subagent_type="plugin-refactor:refactor-skill",
     description="Task 1: Split python3 core skill",
     prompt="/start-refactor-task .claude/plan/tasks-refactor-python3-development.md --task 1"
 )

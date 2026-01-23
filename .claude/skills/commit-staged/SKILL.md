@@ -1,32 +1,31 @@
 ---
-name: git-commit-helper
-description: Generate descriptive commit messages by analyzing git diffs. Use when the user asks for help writing commit messages or reviewing staged changes.
+name: commit-staged
+description: Generate descriptive commit messages by analyzing git diffs, very fast and context pollution safe. Use on any request to commit staged changes.
+model: haiku
+user-invocable: true
+context: fork
+allowed-tools: Bash(git:*), Read, Glob, Grep, Bash(grep:*), Bash(find:*), Bash(fdfind:*), Bash(prek:*), Bash(uv run prek:*), Bash(uv run pre-commit:*), Bash(pre-commit:*)
+argument-hint: "[notes or comments to account for in the commit message]"
 ---
 
-# Git Commit Helper
+Analyze these staged changes and generate commit message, then commit the changes:
+!`uv run prek run >/dev/null 2>&1 || git add -u`
+!`git --no-pager status`
+!`git --no-pager diff --cached`
+!`git --no-pager diff --cached --stat`
 
-## Quick start
-
-Analyze staged changes and generate commit message:
-
-```bash
-# View staged changes
-git diff --staged
-
-# Generate commit message based on changes
-# (Claude will analyze the diff and suggest a message)
-```
+<user_notes>
+$ARGUMENTS
+</user_notes>
 
 ## Commit message format
 
-Follow conventional commits format:
+Follow conventional commits format (no footer, except for breaking change footer):
 
 ```text
 <type>(<scope>): <description>
 
 [optional body]
-
-[optional footer]
 ```
 
 ### Types
@@ -68,24 +67,6 @@ refactor(database): simplify query builder
 
 Extract common query patterns into reusable functions.
 Reduce code duplication in database layer.
-```
-
-## Analyzing changes
-
-Review what's being committed:
-
-```bash
-# Show files changed
-git status
-
-# Show detailed changes
-git diff --staged
-
-# Show statistics
-git diff --staged --stat
-
-# Show changes for specific file
-git diff --staged path/to/file
 ```
 
 ## Commit message guidelines
@@ -209,3 +190,11 @@ git commit --amend --no-edit
 - [ ] Body explains WHY not just WHAT
 - [ ] Breaking changes are clearly marked
 - [ ] Related issue numbers are included
+
+Finally, you will commit the changes with the generated commit message, without using `--no-verify`:
+
+```sh
+git commit -m "<commit-message>"
+```
+
+If you are blocked by a pre-commit or prek hook, you should stop, and announce your intended commit message, and that it was blocked, and requires a linting-agent to be run against the issues found.

@@ -53,18 +53,28 @@ Your instructions here...
 
 All fields are optional. Only `description` is recommended so Claude knows when to use the skill.
 
-| Field                      | Required    | Type    | Max Length | Description                                                                                                                                           |
-| -------------------------- | ----------- | ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`                     | No          | string  | 64 chars   | Display name for the skill. If omitted, uses the directory name. Lowercase letters, numbers, and hyphens only.                                        |
-| `description`              | Recommended | string  | 1024 chars | What the skill does and when to use it. Claude uses this to decide when to apply the skill. If omitted, uses the first paragraph of markdown content. |
-| `argument-hint`            | No          | string  | —          | Hint shown during autocomplete to indicate expected arguments. Example: `[issue-number]` or `[filename] [format]`.                                    |
-| `allowed-tools`            | No          | string  | —          | Tools Claude can use without asking permission when this skill is active (comma-separated). Example: `Read, Grep, Glob, Bash(npm run:*)`              |
-| `model`                    | No          | string  | —          | Model to use when this skill is active. Example: `claude-opus-4-5-20251101`, `claude-sonnet-4-20250514`                                               |
-| `context`                  | No          | string  | —          | Set to `fork` to run in a forked subagent context. See [Context Fork Behavior](#context-fork-behavior) for tool restrictions.                         |
-| `agent`                    | No          | string  | —          | Which subagent type to use when `context: fork` is set. Options: `Explore`, `Plan`, `general-purpose`, or custom agent. Default: `general-purpose`    |
-| `user-invocable`           | No          | boolean | —          | Set to `false` to hide from the `/` menu. Use for background knowledge users shouldn't invoke directly. Default: `true`.                              |
-| `disable-model-invocation` | No          | boolean | —          | Set to `true` to prevent Claude from automatically loading this skill. Use for workflows you want to trigger manually with `/name`. Default: `false`. |
-| `hooks`                    | No          | object  | —          | Hooks scoped to this skill's lifecycle. See [Hooks](/en/hooks) for configuration format. Events: `PreToolUse`, `PostToolUse`, `Stop`                  |
+| Field                      | Required    | Type         | Max Length | Description                                                                                                                                           |
+| -------------------------- | ----------- | ------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                     | No          | string       | 64 chars   | Display name for the skill. If omitted, uses the directory name. Lowercase letters, numbers, and hyphens only.                                        |
+| `description`              | Recommended | string       | 1024 chars | What the skill does and when to use it. Claude uses this to decide when to apply the skill. If omitted, uses the first paragraph of markdown content. |
+| `argument-hint`            | No          | string       | —          | Hint shown during autocomplete to indicate expected arguments. Example: `[issue-number]` or `[filename] [format]`.                                    |
+| `allowed-tools`            | No          | string/array | —          | Tools Claude can use without asking permission when this skill is active. Example: `Read, Grep, Glob, Bash(npm run:*)`                                |
+| `model`                    | No          | string       | —          | Model to use when this skill is active. Example: `claude-opus-4-5-20251101`, `claude-sonnet-4-20250514`, `opus`, `sonnet`, `haiku`                    |
+| `context`                  | No          | string       | —          | Set to `fork` to run in a forked subagent context. See [Context Fork Behavior](#context-fork-behavior) for tool restrictions.                         |
+| `agent`                    | No          | string       | —          | Which subagent type to use when `context: fork` is set. Options: `Explore`, `Plan`, `general-purpose`, or custom agent. Default: `general-purpose`    |
+| `user-invocable`           | No          | boolean      | —          | Set to `false` to hide from the `/` menu. Use for background knowledge users shouldn't invoke directly. Default: `true`.                              |
+| `disable-model-invocation` | No          | boolean      | —          | Set to `true` to prevent Claude from automatically loading this skill. Use for workflows you want to trigger manually with `/name`. Default: `false`. |
+| `hooks`                    | No          | object       | —          | Hooks scoped to this skill's lifecycle. See [Hooks](/en/hooks) for configuration format. Events: `PreToolUse`, `PostToolUse`, `Stop`                  |
+
+> [!IMPORTANT]
+>
+> When an `allowed-tools` field is not specified, the skill inherits the tool capabilities of the parent agent. This is a common pattern for skills that need to use tools from the parent agent. Such as when a skill is used by the orchestrator agent for knowledge or task information, no `allowed-tools` field is needed.
+>
+> The `allowed-tools` field is a capability scoping mechanism.
+> The `allowed-tools` field is not an automatic approval mechanism.
+> Making a tool available does not imply permission to use it; approval and availability are distinct concerns handled by the runtime.
+>
+> The `allowed-tools` field exists primarily to scope the tool surface exposed to the skill, reducing prompt and context size by including only the tool definitions the skill may need.
 
 ---
 
@@ -130,31 +140,13 @@ Skills support string substitution for dynamic values in the skill content:
 
 ## Dynamic Context Injection
 
-The `!`command\`\` syntax runs shell commands before the skill content is sent to Claude. The command output replaces the placeholder, so Claude receives actual data, not the command itself.
+The exclamation then backtick syntax runs shell commands before the skill content is sent to Claude. The command output replaces the placeholder, so Claude receives actual data, not the command itself.
 
-**Example**: This skill summarizes a pull request by fetching live PR data with the GitHub CLI:
-
-```yaml
----
-name: pr-summary
-description: Summarize changes in a pull request
-context: fork
-agent: Explore
-allowed-tools: Bash(gh:*)
----
-
-## Pull request context
-- PR diff: !`gh pr diff`
-- PR comments: !`gh pr view --comments`
-- Changed files: !`gh pr diff --name-only`
-
-## Your task
-Summarize this pull request...
-```
+**Example**: This skill summarizes a pull request by fetching live PR data with the GitHub CLI: @resources/pr-summary-example.md
 
 **How it works**:
 
-1. Each `!`command\`\` executes immediately (before Claude sees anything)
+1. Each \`\!\`command\`\` executes immediately (before Claude sees anything)
 2. The output replaces the placeholder in the skill content
 3. Claude receives the fully-rendered prompt with actual PR data
 
@@ -413,7 +405,7 @@ Only runs when user types `/deploy-production`.
 ## Recent Updates (2.1+)
 
 - **Unified skills and commands** - `.claude/commands/` files now work as skills, skills recommended
-- **Dynamic context injection** - `!`command\`\` syntax for preprocessing shell command output
+- **Dynamic context injection** - \!\`command\` syntax for preprocessing shell command output
 - **`argument-hint` field** - Show autocomplete hints for expected arguments
 - **Optional name/description** - If omitted, uses directory name and first paragraph
 - **`once: true` for hooks** - Run only once per session

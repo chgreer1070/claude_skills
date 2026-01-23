@@ -83,16 +83,33 @@ plugins/plugin-name/
 └── README.md             # Documentation
 ```
 
+## Local Development
+
+For testing plugins during development:
+
+```bash
+# Option 1: Load specific plugins for this session
+claude --plugin-dir ./plugins/python3-development --plugin-dir ./plugins/holistic-linting
+
+# Option 2: Add local marketplace for persistent enable/disable
+/plugin marketplace add ./.claude-plugin/marketplace.json
+
+# Install plugins you need (--scope local keeps it gitignored)
+/plugin install python3-development@jamie-bitflight-skills --scope local
+
+# Disable when not needed
+/plugin disable python3-development@jamie-bitflight-skills
+
+# Re-enable when needed
+/plugin enable python3-development@jamie-bitflight-skills
+```
+
 ## Contributing
 
 1. Fork the repository
 2. Create your feature branch
 3. Add or modify plugins
-4. Test locally:
-   ```bash
-   ./install.py
-   ```
-   This creates symlinks from plugin components (skills, commands, agents) to `~/.claude/` for local testing.
+4. Test locally using one of the methods above
 5. Submit a pull request
 
 ## License

@@ -2010,7 +2010,7 @@ def find_dependent_documents(target_doc: Path, skill_root: Path) -> list[Path]:
 - [ ] Document 6-step PEP 723 workflow from @pattern-extraction.md#L162-L170
 - [ ] Document TDD RED-GREEN-REFACTOR cycle
 - [ ] Document 9-step linting resolution from linting-root-cause-resolver
-- [ ] Document spec-analyst → spec-architect → spec-planner chain
+- [ ] Document spec-analyst → python-cli-design-spec → swarm-task-planner chain
 - [ ] Document python-cli-architect → python-code-reviewer workflow
 - [ ] Document universal Research-Analyze-Implement-Verify workflow
 

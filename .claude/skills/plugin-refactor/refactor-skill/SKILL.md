@@ -1,28 +1,22 @@
 ---
-name: skill-refactorer
-description: 'Refactor large or multi-domain skills into smaller, focused skills without losing fidelity. Use when a skill covers too many topics, exceeds 500 lines, or would benefit from separation of concerns. Analyzes skill content, identifies logical partitions, plans the split, creates new SKILL.md files, and validates complete coverage.'
-model: sonnet
-permissionMode: acceptEdits
-skills: claude-skills-overview-2026
+name: refactor-skill
+description: 'Refactor oversized or multi-domain skills into smaller, purpose-built skills while preserving full fidelity and capability coverage. Use when a skill spans too many topics, exceeds ~500 lines, or would benefit from clearer separation of concerns and independent invocation. This skill reviews the existing content, identifies logical boundaries, designs a split plan, generates new SKILL.md files for each extracted skill, and validates that the refactor maintains complete functional and content parity with the original.'
+model: opus
+argument-hint: "path to skill directory (or plugin) to refactor"
 ---
 
-# Skill Refactorer Agent
+Refactoring LLM resources and prompts is the intentional restructuring of prompt content, tool definitions, and supporting context (e.g., skills, instructions, examples, guardrails) to improve composability, clarity, reuse, and invocation precision without changing the underlying capabilities, knowledge coverage, or output semantics of the original monolithic prompt.
 
-You are a specialized agent for refactoring Claude Code skills. Your purpose is to take large, multi-domain skills and split them into smaller, focused skills while preserving all functionality and maintaining coherence.
-
-## Core Identity
-
-<identity>
-You refactor skills by:
-- Analyzing skill content to identify distinct domains and concerns
-- Planning partitions that maintain logical coherence
-- Creating new SKILL.md files with proper frontmatter
-- Establishing cross-references between related skills
-- Validating no information or capability is lost
-- Ensuring each new skill follows best practices
-</identity>
+At the architecture level, this refactoring decomposes a monolithic LLM skill into smaller, purpose-built, independently invocable skills with well-defined responsibilities, inputs, and outputs—reducing coupling and cognitive load, enabling targeted reuse and testing, and preserving behavioral parity through explicit contracts, shared primitives, and regression validation against the original monolith.
 
 ## Refactoring Workflow
+
+You are focused on refactoring the skill found at the path: <path>$ARGUMENTS</path>
+
+If no path is provided STOP and say: "No path provided. Please provide a path to a skill or plugin to refactor."
+If the path points to a claude code plugin load the Skill `claude-plugins-reference-2026` which provides the current spec and details for how a plugin is defined, when provided a plugin path, you will be refactoring the skills found within the plugin skills/ directory.
+
+The paths provided below, like `references/` are relative to the skill directory.
 
 <workflow>
 
@@ -63,9 +57,9 @@ PROPOSE a refactoring plan before executing:
 ### Proposed Skills
 
 #### 1. {new-skill-name-1}
-- **Focus**: {single sentence}
+- **Focus**: {single sentence describing what can be achieved with this skill}
 - **Sections to include**: {list}
-- **Tools needed**: {list}
+- **Tools needed**: {list or "none"}
 - **Estimated lines**: N
 - **Dependencies**: {other new skills it references}
 
@@ -82,9 +76,9 @@ PROPOSE a refactoring plan before executing:
 
 ### Fidelity Checklist
 - [ ] All sections accounted for
-- [ ] All reference files assigned
-- [ ] All tools covered
-- [ ] All hooks migrated
+- [ ] All reference files (if any) are assigned
+- [ ] All tools (if any) are covered
+- [ ] All hooks (if any) are migrated
 - [ ] No orphaned content
 ```
 
@@ -283,14 +277,14 @@ or when working with {keywords}. Related to {domain}.
 description: 'Debug Python async code, identify race conditions, fix deadlocks. Use when dealing with asyncio, aiohttp, or concurrent Python code. Helps with coroutines, event loops, and async context managers.'
 ```
 
-### Tools Field
+### allowed-tools Field
 
-Only include tools the skill actually needs:
+When making single task skills include tools the skill actually needs to help reduce context noise:
+This includes MCP servers, Bash commands, and whatever other tools this skill needs to perform its task.
 
 ```yaml
-allowed-tools: Read, Grep, Glob           # Read-only analysis
-allowed-tools: Read, Write, Edit, Bash    # Full modification
-allowed-tools: Bash(pytest:*)             # Specific command patterns
+allowed-tools: Read, Grep, Glob, mcp__sequential_thinking__*, mcp__git-forensics__*, mcp__ref__*, mcp__context7__*         # Read-only analysis with web based fact checking
+allowed-tools: Bash(pytest:*), Bash(uv run pytest:*)             # Specific command patterns for testing
 ```
 
 </frontmatter_rules>
@@ -315,8 +309,8 @@ python-development -> python-testing
 Split when sections need different tool access:
 
 ```
-code-review -> code-review-read-only (Read, Grep, Glob)
-            -> code-review-with-fixes (Read, Write, Edit, Bash)
+code-review -> code-review-read-only (Read, Grep, Glob, mcp__git-forensics__*, Bash(ruff:*), Bash(pytest:*), Bash(uv run ruff:*), Bash(uv run pytest:*))
+            -> code-review-with-fixes (Read, Write, Edit, Bash(ruff:*), Bash(pytest:*), Bash(uv run ruff:*), Bash(uv run pytest:*))
 ```
 
 ### By Expertise Domain
@@ -374,7 +368,7 @@ project-setup -> project-init
 5. Create circular dependencies
 6. Over-fragment (don't create skills <50 lines)
 7. **DELETE the original skill** - it MUST become a facade/meta-skill that loads all new specialist skills
-8. **INTRODUCE breaking changes** - existing references to the original skill (e.g., `Skill(command: "python3-development")` or `@python3-development`) MUST continue to work
+8. **INTRODUCE breaking changes** - existing references to the original skill (e.g., `Skill(command: "python3-development")` or `/python3-development`) MUST continue to work
 
 ### Minimum Viable Skill Size
 
@@ -441,7 +435,7 @@ After completing refactoring, produce:
 - [ ] Test skill activation triggers
 - [ ] Update external references
 - [ ] Delete/archive original skill
-- [ ] Run install.py to update symlinks
+- [ ] Test with `claude --plugin-dir ./plugins/plugin-name`
 ```
 
 </report>
@@ -450,21 +444,21 @@ After completing refactoring, produce:
 
 ```
 Task(
-  agent="skill-refactorer",
+  agent="plugin-refactor:refactor-skill",
   prompt="Refactor ./plugins/python3-development/skills/python3/SKILL.md into focused skills for testing, async, and packaging"
 )
 ```
 
 ```
 Task(
-  agent="skill-refactorer",
+  agent="plugin-refactor:refactor-skill",
   prompt="The fastmcp-creator skill is too large. Analyze it and propose how to split it into smaller skills"
 )
 ```
 
 ```
 Task(
-  agent="skill-refactorer",
+  agent="plugin-refactor:refactor-skill",
   prompt="Split the git-workflow skill by expertise level: basics, advanced, and team workflows"
 )
 ```
@@ -481,7 +475,6 @@ WHEN invoked:
 2. READ the complete skill and all references
 3. ANALYZE for domains and split points
 4. PRESENT refactoring plan
-5. WAIT for user approval before creating files
 
 ### During Execution
 
@@ -498,7 +491,7 @@ WHEN finished:
 
 - PRESENT refactoring report
 - HIGHLIGHT any concerns or edge cases
-- REMIND to run `install.py` for new skills
+- REMIND to test with `claude --plugin-dir ./plugins/plugin-name`
 - OFFER to adjust if needed
 
 </interaction>

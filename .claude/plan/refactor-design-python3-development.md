@@ -2,534 +2,806 @@
 
 ## Overview
 
-This specification defines the architectural transformation of the python3-development plugin from a monolithic 1318-line skill into focused, maintainable skills following the 500-line target. The refactoring resolves 2 critical issues (oversized skill, broken reference), 5 warnings (orphaned documentation), and applies progressive disclosure patterns to improve context efficiency.
+The python3-development plugin requires significant refactoring to address a 1,318-line monolithic SKILL.md covering 5+ distinct domains, non-standard command frontmatter, and orphaned planning documentation. This design splits the monolithic skill into 5 focused skills under 400 lines each, standardizes command schemas, and resolves structural issues while preserving all existing functionality.
 
 ## Source Assessment
 
-- **Plugin**: ./plugins/python3-development
-- **Overall Score**: 68/100 (from Phase 1 assessment)
-- **Total Refactoring Targets**: 4 skill splits + 2 orphan resolutions + 1 broken link fix + 1 frontmatter fix
-- **Current Line Count**: 1318 lines (exceeds 500-line target by 164%)
+- **Plugin**: `./plugins/python3-development`
+- **Overall Score**: 62/100 (from Phase 1 assessment)
+- **Total Refactoring Targets**: 12
+  - 1 skill split (into 5 new skills)
+  - 6 command frontmatter fixes
+  - 1 orphan resolution
+  - 4 documentation improvements
 
-## Frontmatter Fix (CRITICAL)
-
-### Description Field Quotation Issue
-
-**Source**: `./plugins/python3-development/skills/python3-development/SKILL.md` lines 1-7
-
-**Issue**: The description field uses single quotes around the entire multi-line value, making it a literal string with embedded quotes rather than a properly parsed YAML string.
-
-**Current (Problematic)**:
-
-```yaml
-description: 'The model must use this skill when : 1. working within any python project...'
-```
-
-**Target (Corrected)**:
-
-```yaml
-description: |
-  The model must use this skill when:
-  1. Working within any Python project
-  2. Python CLI applications with Typer and Rich are mentioned
-  3. Tasked with Python script writing or editing
-  4. Building CI scripts or tools
-  5. Creating portable Python scripts with stdlib only
-  6. Planning out a Python package design
-  7. Running any Python script or test
-  8. Writing tests (unit, integration, e2e, validation)
-  9. Reviewing Python code against best practices
-  10. Pre-commit or linting errors occur in Python files
-```
-
-**Implementation**: Edit SKILL.md frontmatter to use YAML multiline syntax with `|` block scalar indicator.
+---
 
 ## Skill Splits
 
-### Split 1: python3-core (Foundational Standards)
+### python3-development Split Plan
 
-**Source**: ./plugins/python3-development/skills/python3-development/SKILL.md
-**Lines**: Approximately 1-98, 98-270, 941-1088
-**Target Size**: ~350-400 lines
+**Source**: `./plugins/python3-development/skills/python3-development/SKILL.md`
+**Lines**: 1,318
+**Domains Identified**:
 
-**Domain**: Core Python development standards, exception handling, linting, quality gates
+1. **Orchestration and Workflow** (~200 lines) - Agent delegation, pre-delegation protocol, workflow patterns
+2. **Type Safety** (~300 lines) - Generics, Protocols, TypedDict, type narrowing, mypy configuration
+3. **CLI Development** (~200 lines) - Typer/Rich patterns, Rich width handling, emoji usage, exception handling
+4. **Quality and Linting** (~250 lines) - Linting discovery, format-first workflow, type checker discovery, quality gates
+5. **Project Standards** (~200 lines) - Project structure, script trade-offs, PEP 723, asset templates, command usage
 
-**Content to Extract**:
+**Proposed Split**:
 
-| Section                      | Original Lines | Description                                   |
-| ---------------------------- | -------------- | --------------------------------------------- |
-| Role Identification          | 1-35           | Mandatory role identification protocol        |
-| Skill Architecture           | 38-97          | Bundled resources, external dependencies      |
-| Script Dependency Trade-offs | 127-156        | Typer+Rich vs stdlib-only decision            |
-| Rich Panel/Table Handling    | 157-247        | Width handling, emoji usage                   |
-| Python Exception Handling    | 249-269        | Fail-fast patterns                            |
-| Linting Discovery Protocol   | 941-1046       | Format-first workflow, type checker discovery |
-| Quality Gates                | 1047-1125      | Mandatory validation sequence                 |
-| Linting Exceptions           | 1088-1125      | Acceptable and unacceptable exceptions        |
+| New Skill          | Scope                                            | Estimated Lines | Sections from Original                       |
+| ------------------ | ------------------------------------------------ | --------------- | -------------------------------------------- |
+| `python3-workflow` | Agent orchestration, TDD, delegation patterns    | ~200            | Lines 713-846, 924-946, 1227-1246, 1305-1318 |
+| `python3-typing`   | Type hints, Generics, Protocols, TypedDict, mypy | ~350            | Lines 274-712                                |
+| `python3-cli`      | Typer, Rich, CLI patterns, exception handling    | ~200            | Lines 127-273                                |
+| `python3-quality`  | Linting, formatting, quality gates, pre-commit   | ~250            | Lines 941-1129                               |
+| `python3-project`  | Project structure, PEP 723, templates, standards | ~200            | Lines 98-126, 1130-1226, 1248-1304           |
 
-**Dependencies**:
+### Skill 1: python3-workflow
 
-- References: `./references/exception-handling.md`
-- References: `./references/tool-library-registry.md`
-- Assets: `./assets/typer_examples/index.md`
+**Purpose**: Agent orchestration and development workflow patterns for Python projects
 
-**Frontmatter Triggers**:
-
-```yaml
-description: |
-  The model must use this skill when:
-  - Writing or editing Python code in any context
-  - Running Python scripts or tests
-  - Pre-commit or linting errors occur in Python files
-  - Building CI/CD pipelines for Python projects
-  - Determining script dependency strategy (Typer+Rich vs stdlib-only)
-  - Handling Rich console output formatting issues
-```
-
----
-
-### Split 2: python3-typing (Type Hints and Safety)
-
-**Source**: ./plugins/python3-development/skills/python3-development/SKILL.md
-**Lines**: 271-711
-**Target Size**: ~440 lines
-
-**Domain**: Mypy configuration, generics, protocols, TypedDict, type narrowing, attrs/dataclasses/pydantic selection
-
-**Content to Extract**:
-
-| Section                          | Original Lines | Description                                |
-| -------------------------------- | -------------- | ------------------------------------------ |
-| Type Safety with Mypy            | 273-278        | Requirements overview                      |
-| When to Use Generics             | 279-363        | TypeVar, Generic, bounds, method chaining  |
-| When to Use Protocols            | 364-436        | Structural subtyping, runtime checks       |
-| TypedDict for Dictionary Typing  | 437-505        | Required/optional fields, mixed patterns   |
-| Type Narrowing                   | 506-568        | isinstance, None checks, TypeGuard, TypeIs |
-| attrs vs dataclasses vs pydantic | 569-640        | Decision matrix, patterns                  |
-| Additional Mypy Features         | 641-677        | Generic dataclasses, Self type             |
-| Mypy Configuration               | 678-711        | Strict mode, per-module overrides          |
-
-**Dependencies**:
-
-- References: `./references/mypy-docs/generics.rst`
-- References: `./references/mypy-docs/protocols.rst`
-- References: `./references/mypy-docs/typed_dict.rst`
-- References: `./references/mypy-docs/type_narrowing.rst`
-- References: `./references/mypy-docs/additional_features.rst`
-- References: `./references/tool-library-registry.md` (Mypy Configuration section)
-
-**Frontmatter Triggers**:
+**Frontmatter**:
 
 ```yaml
-description: |
-  The model must use this skill when:
-  - Type hints are being added, reviewed, or debugged
-  - Mypy or pyright errors need resolution
-  - Choosing between attrs, dataclasses, or pydantic
-  - Implementing generic types, protocols, or TypedDict
-  - Type narrowing patterns are needed
-  - Configuring mypy strict mode or per-module overrides
+---
+name: python3-workflow
+description: 'Use when: 1. Delegating Python development tasks to agents. 2. Planning TDD, feature addition, or refactoring workflows. 3. Coordinating multi-agent Python implementations. 4. Reviewing orchestration guide requirements. Provides: Agent selection criteria, pre-delegation checklists, workflow patterns (TDD/feature/refactor/debug/review), quality gate sequencing.'
+---
 ```
 
----
-
-### Split 3: python3-orchestration (Agent Coordination)
-
-**Source**: ./plugins/python3-development/skills/python3-development/SKILL.md
-**Lines**: 712-846, 924-940, 1227-1318
-**Target Size**: ~300 lines
-
-**Domain**: Orchestrator-only patterns, agent delegation, workflow coordination
-
-**Content to Extract**:
-
-| Section                   | Original Lines | Description                                                |
-| ------------------------- | -------------- | ---------------------------------------------------------- |
-| Agent Orchestration       | 713-846        | Pre-delegation protocol, delegation patterns               |
-| Core Workflows            | 924-940        | TDD, feature addition, code review, refactoring, debugging |
-| Common Patterns to Follow | 1227-1246      | Orchestrator delegation table                              |
-| Summary (Orchestrator)    | 1305-1318      | Coordination + Delegation + Validation                     |
-
-**Dependencies**:
-
-- References: `./references/python-development-orchestration.md` (CRITICAL - primary reference)
-
-**Frontmatter Triggers**:
-
-```yaml
-description: |
-  The model must use this skill when ROLE_TYPE is orchestrator and:
-  - Delegating Python development tasks to specialized agents
-  - Planning multi-agent workflows (design, implement, test, review)
-  - Coordinating TDD, feature addition, or refactoring workflows
-  - Validating agent outputs against quality gates
-```
-
-**Special Consideration**: This skill should have `ROLE_TYPE: orchestrator` in frontmatter to restrict loading to orchestrator context only.
-
----
-
-### Split 4: python3-packaging (Project Structure and Distribution)
-
-**Source**: ./plugins/python3-development/skills/python3-development/SKILL.md
-**Lines**: 847-923, 1088-1226
-**Target Size**: ~300 lines
-
-**Domain**: Project layout, pyproject.toml, PEP 723, asset templates, commands
-
-**Content to Extract**:
-
-| Section                    | Original Lines | Description                            |
-| -------------------------- | -------------- | -------------------------------------- |
-| Command Usage              | 847-923        | /modernpython, /shebangpython commands |
-| Standard Project Structure | 1130-1165      | packages/ layout, hatchling config     |
-| Integration                | 1166-1190      | External reference example             |
-| Using Asset Templates      | 1186-1226      | version.py, hatch_build.py, configs    |
-
-**Dependencies**:
-
-- References: `./references/PEP723.md`
-- References: `./references/user-project-conventions.md`
-- Assets: `./assets/version.py`, `./assets/hatch_build.py`, `./assets/.pre-commit-config.yaml`
-
-**Frontmatter Triggers**:
-
-```yaml
-description: |
-  The model must use this skill when:
-  - Creating new Python projects or packages
-  - Configuring pyproject.toml or project metadata
-  - Using PEP 723 inline script metadata
-  - Setting up project directory structure
-  - Copying asset templates (version.py, pre-commit configs)
-  - Using /modernpython or /shebangpython commands
-```
-
----
-
-## Shared References Strategy
-
-### Files to Duplicate (Small, Context-Critical)
-
-None - all references should use relative paths from skill directory.
-
-### Files Requiring Path Updates
-
-After split, each new skill directory needs correct relative paths:
-
-- From `python3-core/SKILL.md` to `python3-core/references/exception-handling.md`
-- From `python3-typing/SKILL.md` to `python3-typing/references/mypy-docs/generics.rst`
-
-### Reference File Distribution
-
-| Reference File                      | Used By Skills                        |
-| ----------------------------------- | ------------------------------------- |
-| exception-handling.md               | python3-core                          |
-| tool-library-registry.md            | python3-core, python3-typing          |
-| mypy-docs/\*.rst                    | python3-typing                        |
-| python-development-orchestration.md | python3-orchestration                 |
-| PEP723.md                           | python3-packaging                     |
-| user-project-conventions.md         | python3-packaging                     |
-| modern-modules.md                   | python3-core (as secondary reference) |
-| modern-modules/\*.md                | python3-core (as secondary reference) |
-| api_reference.md                    | python3-packaging                     |
-
-### Backward Compatibility
-
-The original skill name `python3-development` is referenced by other plugins and potentially external configurations. Options:
-
-**Option A (Recommended)**: Keep `python3-development` as a "meta-skill" that loads all four sub-skills
-
-- Maintains backward compatibility
-- Users can still activate `python3-development` to get full coverage
-- Individual skills loadable for focused contexts
-
-**Option B**: Rename and update all references
-
-- Breaking change requires coordination
-- Cleaner long-term structure
-
-**Recommendation**: Implement Option A initially, deprecate in future version.
-
----
-
-## Documentation Improvements
-
-### Broken Link Fix
-
-**File**: `./plugins/python3-development/skills/python3-development/SKILL.md`
-**Line**: 57
-**Current**: `[Commands README](./commands/README.md)`
-**Issue**: File does not exist
-
-**Resolution Options**:
-
-1. Create `./commands/README.md` documenting command templates
-2. Remove the broken reference
-3. Link to the actual commands directory: `./commands/`
-
-**Recommendation**: Option 2 - Remove the reference since the sentence describes command templates which are documented inline.
-
-**Target Change**:
+**Content Structure**:
 
 ```markdown
-# Before (line 57)
-- See [Commands README](./commands/README.md) for details
+# Python Development Workflow Orchestration
 
-# After
-- Templates provide patterns for creating slash commands
+## Role Identification (Mandatory)
+[Keep existing role identification section - lines 11-35]
+
+<section ROLE_TYPE="orchestrator">
+
+## Agent Orchestration (Orchestrator Only)
+
+### STOP - MANDATORY PRE-DELEGATION PROTOCOL
+[Lines 719-731 - Pre-delegation checklist]
+
+### Why This Protocol Exists
+[Lines 733-740]
+
+### DO NOT Pre-Gather Data for Agents
+[Lines 754-776]
+
+### Delegation Pattern
+[Lines 778-805 - Delegation table]
+
+### Required Reading (MANDATORY)
+[Lines 806-819]
+
+### Quick Reference Example
+[Lines 820-846]
+
+## Core Workflows (Orchestrator Only)
+[Lines 924-940]
+
+## Common Patterns to Follow (Orchestrator Only)
+[Lines 1227-1246]
+
+</section>
+
+## Summary for All Roles
+[Brief summary with link to orchestration guide reference]
+```
+
+**Shared References**:
+
+- `./references/python-development-orchestration.md` (primary reference)
+- `./references/accessing_online_resources.md` (symlink)
+
+**Migration Notes**:
+
+- This skill focuses ONLY on orchestration patterns
+- Sub-agents do NOT need this skill - they receive task instructions directly
+- Must include ROLE_TYPE sections to maintain orchestrator-only guidance
+
+---
+
+### Skill 2: python3-typing
+
+**Purpose**: Comprehensive type annotation patterns for Python 3.11+
+
+**Frontmatter**:
+
+```yaml
+---
+name: python3-typing
+description: 'Use when: 1. Adding type hints to Python code. 2. Working with Generics, Protocols, or TypedDict. 3. Configuring mypy or fixing type errors. 4. Using type narrowing or TypeGuard patterns. 5. Choosing between attrs, dataclasses, and pydantic. Provides: Python 3.11+ native type hints, Generic patterns, Protocol structural typing, TypedDict schemas, type narrowing, mypy configuration.'
+---
+```
+
+**Content Structure**:
+
+```markdown
+# Python Type Safety with Mypy
+
+## Type Safety Requirements
+[Brief intro - requirement for comprehensive typing]
+
+## When to Use Generics
+[Lines 281-351 - Generic patterns with TypeVar]
+
+## When to Use Protocols
+[Lines 365-436 - Protocol patterns for structural typing]
+
+## TypedDict for Dictionary Typing
+[Lines 438-506 - TypedDict patterns]
+
+## Type Narrowing
+[Lines 508-569 - isinstance, None checks, TypeGuard, TypeIs]
+
+## attrs vs dataclasses vs pydantic
+[Lines 571-639 - Decision matrix and patterns]
+
+## Additional Mypy Features
+[Lines 641-677 - Generic dataclasses, Self type]
+
+## Mypy Configuration Best Practices
+[Lines 679-711 - pyproject.toml configuration]
+```
+
+**Shared References**:
+
+- `./references/mypy-docs/generics.rst`
+- `./references/mypy-docs/protocols.rst`
+- `./references/mypy-docs/typed_dict.rst`
+- `./references/mypy-docs/type_narrowing.rst`
+- `./references/mypy-docs/additional_features.rst`
+- `./references/tool-library-registry.md` (for mypy config section)
+
+**Migration Notes**:
+
+- Largest skill due to comprehensive type patterns
+- All mypy-docs references remain unchanged
+- No ROLE_TYPE sections needed - applies to all roles
+
+---
+
+### Skill 3: python3-cli
+
+**Purpose**: CLI development patterns with Typer and Rich
+
+**Frontmatter**:
+
+```yaml
+---
+name: python3-cli
+description: 'Use when: 1. Building CLI applications with Typer or Rich. 2. Fixing Rich Panel/Table width wrapping issues. 3. Handling exceptions in CLI apps. 4. Using Rich emoji tokens. 5. Creating CLI output for CI/non-TTY environments. Provides: Typer+Rich integration patterns, width handling solutions, exception handling patterns, Rich emoji usage, CI-compatible output.'
+---
+```
+
+**Content Structure**:
+
+```markdown
+# Python CLI Development with Typer and Rich
+
+## Script Dependency Trade-offs
+[Lines 127-156 - When to use Typer+Rich vs stdlib]
+
+## Rich Panel and Table Width Handling
+[Lines 157-217 - get_rendered_width() pattern]
+
+## Rich Emoji Usage
+[Lines 219-247 - Token patterns]
+
+## Python Exception Handling
+[Lines 249-271 - Fail-fast principle]
+
+## Exception Handling in CLI Applications
+[Brief section pointing to reference]
+```
+
+**Shared References**:
+
+- `./references/exception-handling.md` (critical for Typer exception chain prevention)
+- `./assets/typer_examples/index.md`
+- `./assets/typer_examples/console_no_wrap_example.py`
+- `./assets/typer_examples/console_containers_no_wrap.py`
+
+**Migration Notes**:
+
+- Keep executable examples in assets/
+- Exception handling reference is critical for Typer apps
+- No ROLE_TYPE sections needed - applies to all roles
+
+---
+
+### Skill 4: python3-quality
+
+**Purpose**: Linting, formatting, and quality gate execution
+
+**Frontmatter**:
+
+```yaml
+---
+name: python3-quality
+description: 'Use when: 1. Running linting or formatting on Python code. 2. Discovering project linters (pre-commit, prek, ruff, mypy). 3. Resolving linting errors at root cause. 4. Setting up quality gates. 5. Working with basedpyright, pyright, or mypy type checkers. Provides: Linting discovery protocol, format-first workflow, type checker detection, quality gate sequences, linting exception conditions.'
+---
+```
+
+**Content Structure**:
+
+```markdown
+# Python Code Quality and Linting
+
+## Linting Discovery Protocol
+[Lines 944-1046 - Discovery sequence, format-first, type checker discovery]
+
+## Quality Gates
+[Lines 1047-1079 - Gate sequence with type checker detection]
+
+## Linting Exception Conditions
+[Lines 1087-1129 - When to ignore vs fix]
+```
+
+**Shared References**:
+
+- `./references/tool-library-registry.md` (for tool configurations)
+- `./references/user-project-conventions.md` (for ruff/mypy settings)
+
+**Migration Notes**:
+
+- Critical integration with holistic-linting skill
+- Must detect both pre-commit and prek tools
+- Include CI compatibility verification
+
+---
+
+### Skill 5: python3-project
+
+**Purpose**: Project structure, standards, and configuration
+
+**Frontmatter**:
+
+```yaml
+---
+name: python3-project
+description: 'Use when: 1. Creating new Python projects or packages. 2. Setting up pyproject.toml configuration. 3. Using PEP 723 inline script metadata. 4. Copying asset templates (version.py, pre-commit config). 5. Understanding standard project structure. Provides: Project layout standards, pyproject.toml templates, PEP 723 guidance, asset template usage, command usage (/modernpython, /shebangpython).'
+---
+```
+
+**Content Structure**:
+
+```markdown
+# Python Project Standards
+
+## Python Development Standards
+[Lines 98-126 - Core concepts, docstring standard, template variables]
+
+## Standard Project Structure
+[Lines 1130-1162 - Directory layout, hatchling config]
+
+## Using Asset Templates
+[Lines 1182-1226 - Template usage instructions]
+
+## Command Usage
+[Lines 848-923 - /modernpython and /shebangpython]
+
+## Integration
+[Lines 1163-1181 - External reference example]
+
+## Detailed Documentation
+[Lines 1248-1292 - Reference links]
+```
+
+**Shared References**:
+
+- `./references/PEP723.md`
+- `./references/user-project-conventions.md`
+- `./references/tool-library-registry.md` (template variable reference)
+- `./references/modern-modules.md`
+- `./assets/` directory (all templates)
+
+**Migration Notes**:
+
+- Keep all asset templates in existing location
+- Commands reference external files in `~/.claude/commands/`
+- Include reference navigation helpers (grep commands)
+
+---
+
+## Shared Reference Strategy
+
+All 5 new skills share access to the existing `references/` directory:
+
+| Reference File                        | Used By Skills                                   |
+| ------------------------------------- | ------------------------------------------------ |
+| `python-development-orchestration.md` | python3-workflow                                 |
+| `exception-handling.md`               | python3-cli                                      |
+| `mypy-docs/*.rst` (5 files)           | python3-typing                                   |
+| `tool-library-registry.md`            | python3-typing, python3-quality, python3-project |
+| `user-project-conventions.md`         | python3-quality, python3-project                 |
+| `PEP723.md`                           | python3-project                                  |
+| `modern-modules.md`                   | python3-project                                  |
+| `modern-modules/*.md` (18 files)      | python3-project (on-demand)                      |
+| `api_reference.md`                    | python3-project                                  |
+| `accessing_online_resources.md`       | python3-workflow                                 |
+
+**Directory Structure After Split**:
+
+```
+plugins/python3-development/
+├── skills/
+│   ├── python3-workflow/
+│   │   └── SKILL.md
+│   ├── python3-typing/
+│   │   └── SKILL.md
+│   ├── python3-cli/
+│   │   └── SKILL.md
+│   ├── python3-quality/
+│   │   └── SKILL.md
+│   └── python3-project/
+│       ├── SKILL.md
+│       ├── references/           # Moved from python3-development
+│       │   ├── python-development-orchestration.md
+│       │   ├── exception-handling.md
+│       │   ├── PEP723.md
+│       │   ├── user-project-conventions.md
+│       │   ├── tool-library-registry.md
+│       │   ├── modern-modules.md
+│       │   ├── modern-modules/
+│       │   ├── mypy-docs/
+│       │   ├── api_reference.md
+│       │   └── accessing_online_resources.md -> symlink
+│       └── assets/               # Moved from python3-development
+│           ├── typer_examples/
+│           ├── version.py
+│           ├── hatch_build.py
+│           └── ...
+├── commands/
+│   ├── development/
+│   └── testing/
+├── plugin.json
+└── README.md
+```
+
+**Rationale for References Location**:
+
+- References stay with `python3-project` as the primary skill
+- Other skills reference files using relative paths: `../python3-project/references/`
+- Alternative: Create shared `references/` at plugin level and update all paths
+
+---
+
+## Command Frontmatter Fixes
+
+### Current Schema Issues
+
+All 6 commands use non-standard frontmatter:
+
+| Field          | Current (Non-Standard) | Required (Standard)     |
+| -------------- | ---------------------- | ----------------------- |
+| `title`        | Present                | Remove (not in schema)  |
+| `command_type` | Present                | Remove (not in schema)  |
+| `description`  | Missing                | Required for /help menu |
+
+### Commands to Fix
+
+#### 1. create-feature-task.md
+
+**Source**: `./plugins/python3-development/commands/development/create-feature-task.md`
+
+**Current Frontmatter**:
+
+```yaml
+---
+title: "Create Feature Development Task"
+description: "Set up comprehensive feature development task with proper tracking"
+command_type: "development"
+last_updated: "2025-11-02"
+related_docs:
+  - "./use-command-template.md"
+  - "../../references/python-development-orchestration.md"
+---
+```
+
+**Target Frontmatter**:
+
+```yaml
+---
+name: create-feature-task
+description: 'Create structured feature development task with tracking. Use when: starting new feature work, setting up task phases, creating development checkpoints.'
+argument-hint: "[feature-name]"
+---
+```
+
+**Changes**:
+
+- Remove `title` (use `name` or let it default from filename)
+- Remove `command_type` (not in schema)
+- Remove `last_updated` (not in schema)
+- Remove `related_docs` (put in content as markdown links)
+- Add `argument-hint` for better autocomplete
+- Rewrite description with trigger keywords
+
+---
+
+#### 2. use-command-template.md
+
+**Source**: `./plugins/python3-development/commands/development/use-command-template.md`
+
+**Target Frontmatter**:
+
+```yaml
+---
+name: use-command-template
+description: 'Create new slash command from template. Use when: adding custom commands, creating development shortcuts, setting up workflow automation.'
+argument-hint: "[command-name]"
+---
+```
+
+---
+
+#### 3. command-template.md (template file)
+
+**Source**: `./plugins/python3-development/commands/development/templates/command-template.md`
+
+**Target Frontmatter**:
+
+```yaml
+---
+name: command-template
+description: 'Template for creating new slash commands. Not for direct invocation - copy and customize for new commands.'
+user-invocable: false
+---
+```
+
+**Changes**:
+
+- Add `user-invocable: false` since it's a template, not a command
+
+---
+
+#### 4. analyze-test-failures.md
+
+**Source**: `./plugins/python3-development/commands/testing/analyze-test-failures.md`
+
+**Target Frontmatter**:
+
+```yaml
+---
+name: analyze-test-failures
+description: 'Analyze failing tests with investigative approach. Use when: tests fail unexpectedly, determining if test or implementation is wrong, debugging test assertions.'
+argument-hint: "[test-file-or-function]"
+---
+```
+
+---
+
+#### 5. comprehensive-test-review.md
+
+**Source**: `./plugins/python3-development/commands/testing/comprehensive-test-review.md`
+
+**Target Frontmatter**:
+
+```yaml
+---
+name: comprehensive-test-review
+description: 'Review test suite for completeness and quality. Use when: auditing test coverage, reviewing test patterns, assessing test suite health.'
+argument-hint: "[test-directory]"
+---
+```
+
+---
+
+#### 6. test-failure-mindset.md
+
+**Source**: `./plugins/python3-development/commands/testing/test-failure-mindset.md`
+
+**Target Frontmatter**:
+
+```yaml
+---
+name: test-failure-mindset
+description: 'Load test debugging mindset guidelines. Use when: approaching test failures, avoiding assumption that tests are wrong, systematic failure analysis.'
+---
 ```
 
 ---
 
 ## Orphan Resolution
 
-### Orphan 1: planning/reference-document-architecture.md
+### planning/reference-document-architecture.md
 
-**Classification**: Historical (never implemented proposal)
-**Path**: `./skills/python3-development/planning/reference-document-architecture.md`
-**Evidence**: Lines 6-10 contain explicit metadata:
+**Source**: `./plugins/python3-development/skills/python3-development/planning/reference-document-architecture.md`
 
-```yaml
-status: "historical-proposal"
-implementation_status: "not-implemented"
-archived_date: "2025-11-02"
-note: "This document represents an architectural proposal that was never implemented..."
-```
+**Classification**: Historical Proposal (Working Notes)
 
-**Resolution**: DELETE
+**Current Status**:
 
-- Document explicitly marked as not-implemented
-- Actual skill uses different structure (references/ and commands/) than proposed (docs/scenarios/ and docs/standards/)
-- Keeping creates confusion about actual architecture
-- No reverse references point to this file
+- Not linked from SKILL.md or any reference file
+- Frontmatter explicitly states: `status: "historical-proposal"`, `implementation_status: "not-implemented"`
+- Contains architectural proposal that was never implemented
+
+**Resolution**: Archive or Remove
+
+**Recommendation**: Move to documentation or remove entirely
+
+**Option A - Archive** (Recommended):
+
+1. Move to `./plugins/python3-development/docs/archive/reference-document-architecture.md`
+2. Add link from README.md under "Historical Documentation" section
+
+**Option B - Remove**:
+
+1. Delete the file since it's marked as not-implemented
+2. The actual skill structure differs significantly from this proposal
 
 **Implementation**:
 
 ```bash
-rm ./plugins/python3-development/skills/python3-development/planning/reference-document-architecture.md
-rmdir ./plugins/python3-development/skills/python3-development/planning/  # if empty
+# Option A - Archive
+mkdir -p ./plugins/python3-development/docs/archive/
+mv ./plugins/python3-development/skills/python3-development/planning/reference-document-architecture.md \
+   ./plugins/python3-development/docs/archive/
+rmdir ./plugins/python3-development/skills/python3-development/planning/
+
+# Update README.md to mention archived docs
 ```
 
 ---
 
-### Orphan 2: references/modern-modules/datasette.md
+## Documentation Improvements
 
-**Classification**: New Content (exists but not linked)
-**Path**: `./skills/python3-development/references/modern-modules/datasette.md`
+### 1. plugin.json Description
 
-**Evidence**: File exists in `modern-modules/` directory but is NOT referenced from `modern-modules.md` (grep found no "See Also" link for datasette).
+**Target**: `./plugins/python3-development/plugin.json`
 
-**Resolution**: INTEGRATE
+**Current Issue**: File does not exist (404 error in assessment read)
 
-- Add entry in `modern-modules.md` under "Data Processing & Analysis" or "Database & ORM"
-- Add "See Also" link pattern consistent with other modules
+**Action**: Create plugin.json with proper metadata
 
-**Target Addition** (in modern-modules.md, after DuckDB section around line 443):
+**Target Content**:
+
+```json
+{
+  "name": "python3-development",
+  "version": "2.0.0",
+  "description": "Python 3.11+ development patterns, type safety, CLI tools, and quality workflows",
+  "author": "User",
+  "license": "MIT",
+  "keywords": ["python", "typing", "typer", "rich", "mypy", "ruff", "pytest"],
+  "skills": [
+    "python3-workflow",
+    "python3-typing",
+    "python3-cli",
+    "python3-quality",
+    "python3-project"
+  ],
+  "commands": {
+    "development": ["create-feature-task", "use-command-template"],
+    "testing": ["analyze-test-failures", "comprehensive-test-review", "test-failure-mindset"]
+  }
+}
+```
+
+---
+
+### 2. Reference Files Back-Links
+
+**Target**: All 26 reference files in `./references/`
+
+**Current Issue**: No navigation headers pointing back to parent skill
+
+**Action**: Add navigation header to each reference file
+
+**Template**:
 
 ```markdown
 ---
+[existing frontmatter]
+parent_skill: python3-project
+---
 
-### Datasette
+> **Navigation**: [Back to Python Project Standards](../SKILL.md) | [Reference Index](./modern-modules.md)
 
-**PyPI:** `datasette` | **Status:** Active | **Python:** 3.11+
-
-Instant JSON API and web interface for SQLite databases. Enables data exploration and publishing.
-
-**Key Features:**
-
-- Automatic API generation from SQLite
-- Web interface for data exploration
-- Plugin ecosystem
-- Faceted browse and search
-- JSON, CSV export
-
-**When to Use:**
-
-- Publishing data as API
-- Quick data exploration
-- Building read-only data applications
-- Sharing SQLite databases
-
-**See Also:** [Datasette Documentation](./modern-modules/datasette.md)
+[existing content]
 ```
+
+**Priority**: Low - Can be done incrementally
+
+---
+
+### 3. Skill Description Optimization
+
+All 5 new skills need trigger-optimized descriptions (already specified in Skill Splits section above).
+
+**Verification Checklist**:
+
+- [ ] Under 1024 characters
+- [ ] Contains "Use when:" trigger phrases
+- [ ] Contains "Provides:" capability list
+- [ ] No YAML multiline indicators
+- [ ] Single-quoted if contains special characters
 
 ---
 
 ## Dependency Map
 
-```text
-                    +------------------+
-                    |  plugin.json     |
-                    |  (frontmatter    |
-                    |   fix required)  |
-                    +--------+---------+
-                             |
-            +----------------+----------------+
-            |                |                |
-            v                v                v
-    +--------------+  +--------------+  +--------------+
-    |python3-core  |  |python3-typing|  |python3-      |
-    |              |  |              |  |orchestration |
-    +--------------+  +--------------+  +--------------+
-            |                |                |
-            |                |                |
-            v                v                v
-    +--------------+  +--------------+  +--------------+
-    |exception-    |  |mypy-docs/    |  |python-dev-   |
-    |handling.md   |  |*.rst (5)     |  |orchestration |
-    |tool-library- |  |tool-library- |  |.md           |
-    |registry.md   |  |registry.md   |  +--------------+
-    |modern-       |  +--------------+
-    |modules.md    |                          |
-    +--------------+                          v
-            |                         +--------------+
-            |                         |python3-      |
-            v                         |packaging     |
-    +--------------+                  +--------------+
-    |typer_examples|                         |
-    |/index.md     |                         v
-    +--------------+                  +--------------+
-                                      |PEP723.md     |
-                                      |user-project- |
-                                      |conventions.md|
-                                      |assets/       |
-                                      +--------------+
 ```
-
-### Task Dependencies
-
-| Task ID | Task                                          | Depends On     | Blocks         |
-| ------- | --------------------------------------------- | -------------- | -------------- |
-| T1      | Fix SKILL.md frontmatter quotes               | None           | T2, T3, T4, T5 |
-| T2      | Create python3-core skill                     | T1             | T6             |
-| T3      | Create python3-typing skill                   | T1             | T6             |
-| T4      | Create python3-orchestration skill            | T1             | T6             |
-| T5      | Create python3-packaging skill                | T1             | T6             |
-| T6      | Update python3-development as meta-skill      | T2, T3, T4, T5 | T7             |
-| T7      | Fix broken ./commands/README.md link          | T6             | T8             |
-| T8      | Delete planning/ directory                    | T7             | T9             |
-| T9      | Integrate datasette.md into modern-modules.md | T8             | T10            |
-| T10     | Validate all cross-references                 | T9             | None           |
+                    ┌─────────────────────────────────────────────────────┐
+                    │                  PHASE 1: STRUCTURE                  │
+                    │   (Create directories, plugin.json, archive orphan)  │
+                    └─────────────────────────────────────────────────────┘
+                                             │
+                                             ▼
+         ┌───────────────────────────────────┴───────────────────────────────────┐
+         │                                                                       │
+         ▼                                                                       ▼
+┌─────────────────────────┐                                       ┌─────────────────────────┐
+│   PHASE 2A: SKILL SPLIT │                                       │  PHASE 2B: CMD FIXES    │
+│   (5 new SKILL.md files)│                                       │  (6 frontmatter fixes)  │
+└─────────────────────────┘                                       └─────────────────────────┘
+         │                                                                       │
+         │  ┌─────────────┬─────────────┬─────────────┬─────────────┐           │
+         │  │             │             │             │             │           │
+         ▼  ▼             ▼             ▼             ▼             ▼           │
+    python3-      python3-      python3-      python3-      python3-            │
+    workflow      typing        cli           quality       project             │
+         │             │             │             │             │              │
+         └─────────────┴─────────────┴─────────────┴─────────────┴──────────────┘
+                                             │
+                                             ▼
+                    ┌─────────────────────────────────────────────────────┐
+                    │                  PHASE 3: REFERENCES                 │
+                    │      (Move references to python3-project, update     │
+                    │       relative paths in other skills)                │
+                    └─────────────────────────────────────────────────────┘
+                                             │
+                                             ▼
+                    ┌─────────────────────────────────────────────────────┐
+                    │                  PHASE 4: VALIDATION                 │
+                    │      (Test skill loading, verify cross-references,   │
+                    │       run pre-commit, update README)                 │
+                    └─────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Parallelization Opportunities
 
-### Group A: Skill Creation (Can Run Simultaneously After T1)
+### Phase 2A: Skill Split (Parallelizable)
 
-No shared file conflicts - each skill writes to separate directory:
+All 5 skills can be created simultaneously as they have no dependencies on each other during creation:
 
-- **T2**: Create `skills/python3-core/SKILL.md`
-- **T3**: Create `skills/python3-typing/SKILL.md`
-- **T4**: Create `skills/python3-orchestration/SKILL.md`
-- **T5**: Create `skills/python3-packaging/SKILL.md`
+**Group A - No dependencies between tasks**:
 
-**Parallelization Strategy**: Assign to 4 parallel sub-agents after frontmatter fix completes.
+| Task                             | Agent            | Target File                        |
+| -------------------------------- | ---------------- | ---------------------------------- |
+| Create python3-workflow SKILL.md | skill-refactorer | `skills/python3-workflow/SKILL.md` |
+| Create python3-typing SKILL.md   | skill-refactorer | `skills/python3-typing/SKILL.md`   |
+| Create python3-cli SKILL.md      | skill-refactorer | `skills/python3-cli/SKILL.md`      |
+| Create python3-quality SKILL.md  | skill-refactorer | `skills/python3-quality/SKILL.md`  |
+| Create python3-project SKILL.md  | skill-refactorer | `skills/python3-project/SKILL.md`  |
 
-### Group B: Documentation Fixes (Sequential)
+### Phase 2B: Command Fixes (Parallelizable)
 
-Must run sequentially - modifies same file or has ordering dependencies:
+All 6 commands can be fixed simultaneously:
 
-- **T7**: Fix broken link in SKILL.md
-- **T8**: Delete planning/ directory
-- **T9**: Add datasette to modern-modules.md
+**Group B - No dependencies between tasks**:
 
-### Group C: Validation (Final)
+| Task                                      | Agent                    | Target File                                          |
+| ----------------------------------------- | ------------------------ | ---------------------------------------------------- |
+| Fix create-feature-task frontmatter       | claude-context-optimizer | `commands/development/create-feature-task.md`        |
+| Fix use-command-template frontmatter      | claude-context-optimizer | `commands/development/use-command-template.md`       |
+| Fix command-template frontmatter          | claude-context-optimizer | `commands/development/templates/command-template.md` |
+| Fix analyze-test-failures frontmatter     | claude-context-optimizer | `commands/testing/analyze-test-failures.md`          |
+| Fix comprehensive-test-review frontmatter | claude-context-optimizer | `commands/testing/comprehensive-test-review.md`      |
+| Fix test-failure-mindset frontmatter      | claude-context-optimizer | `commands/testing/test-failure-mindset.md`           |
 
-- **T10**: Must run last to verify all changes
+### Sequential Dependencies
 
----
-
-## Implementation Notes
-
-### Skill Directory Structure Post-Refactor
-
-```text
-plugins/python3-development/
-├── plugin.json                    # Updated with sub-skills list
-├── skills/
-│   ├── python3-development/       # Meta-skill (backward compat)
-│   │   ├── SKILL.md              # Loads all sub-skills
-│   │   └── references/           # Shared references (unchanged)
-│   ├── python3-core/
-│   │   ├── SKILL.md              # ~350 lines
-│   │   └── references -> ../python3-development/references
-│   ├── python3-typing/
-│   │   ├── SKILL.md              # ~440 lines
-│   │   └── references -> ../python3-development/references
-│   ├── python3-orchestration/
-│   │   ├── SKILL.md              # ~300 lines
-│   │   └── references -> ../python3-development/references
-│   └── python3-packaging/
-│       ├── SKILL.md              # ~300 lines
-│       └── references -> ../python3-development/references
-└── commands/                      # Unchanged
-```
-
-### Meta-Skill Pattern (python3-development/SKILL.md)
-
-```yaml
----
-name: python3-development
-description: |
-  Meta-skill that loads comprehensive Python development guidance.
-  Automatically activates: python3-core, python3-typing, python3-orchestration, python3-packaging.
-version: "2.0.0"
-includes:
-  - python3-core
-  - python3-typing
-  - python3-orchestration
-  - python3-packaging
----
-
-# Python Development Meta-Skill
-
-This skill provides comprehensive Python development guidance by loading focused sub-skills.
-
-## Sub-Skills
-
-- **python3-core**: Foundational standards, linting, quality gates
-- **python3-typing**: Type hints, mypy, protocols, generics
-- **python3-orchestration**: Agent coordination, workflow patterns
-- **python3-packaging**: Project structure, PEP 723, templates
-
-## Activation
-
-Individual skills can be activated for focused contexts:
-- `@python3-core` - Core development standards only
-- `@python3-typing` - Type safety guidance only
-- `@python3-orchestration` - Agent coordination only
-- `@python3-packaging` - Project setup and templates only
-
-Or activate `@python3-development` for full coverage.
-```
+- Phase 1 MUST complete before Phase 2 (directory structure required)
+- Phase 2 MUST complete before Phase 3 (skills must exist before moving references)
+- Phase 3 MUST complete before Phase 4 (paths must be correct before validation)
 
 ---
 
-## Estimated Impact
+## Implementation Task List
 
-| Metric              | Before | After      | Change |
-| ------------------- | ------ | ---------- | ------ |
-| Main SKILL.md lines | 1318   | ~50 (meta) | -96%   |
-| Largest skill       | 1318   | ~440       | -67%   |
-| Orphaned files      | 20     | 0          | -100%  |
-| Broken links        | 1      | 0          | -100%  |
-| Estimated score     | 68/100 | 90+/100    | +32%   |
+### Phase 1: Structure Setup
+
+| ID  | Task                                                  | Priority | Agent        | Estimated Time |
+| --- | ----------------------------------------------------- | -------- | ------------ | -------------- |
+| 1.1 | Create 5 skill directories under `skills/`            | Critical | orchestrator | 5 min          |
+| 1.2 | Create `plugin.json` with metadata                    | Critical | orchestrator | 10 min         |
+| 1.3 | Archive `planning/reference-document-architecture.md` | Medium   | orchestrator | 5 min          |
+| 1.4 | Create `docs/archive/` directory                      | Medium   | orchestrator | 2 min          |
+
+### Phase 2A: Skill Split
+
+| ID  | Task                               | Priority | Agent            | Estimated Time |
+| --- | ---------------------------------- | -------- | ---------------- | -------------- |
+| 2.1 | Create `python3-workflow/SKILL.md` | Critical | skill-refactorer | 30 min         |
+| 2.2 | Create `python3-typing/SKILL.md`   | Critical | skill-refactorer | 45 min         |
+| 2.3 | Create `python3-cli/SKILL.md`      | Critical | skill-refactorer | 25 min         |
+| 2.4 | Create `python3-quality/SKILL.md`  | Critical | skill-refactorer | 30 min         |
+| 2.5 | Create `python3-project/SKILL.md`  | Critical | skill-refactorer | 35 min         |
+
+### Phase 2B: Command Fixes
+
+| ID  | Task                            | Priority | Agent                    | Estimated Time |
+| --- | ------------------------------- | -------- | ------------------------ | -------------- |
+| 2.6 | Fix 6 command frontmatter files | High     | claude-context-optimizer | 20 min         |
+
+### Phase 3: Reference Migration
+
+| ID  | Task                                              | Priority | Agent            | Estimated Time |
+| --- | ------------------------------------------------- | -------- | ---------------- | -------------- |
+| 3.1 | Move `references/` to `python3-project/`          | Critical | orchestrator     | 10 min         |
+| 3.2 | Move `assets/` to `python3-project/`              | Critical | orchestrator     | 5 min          |
+| 3.3 | Update relative paths in 4 other skills           | Critical | skill-refactorer | 20 min         |
+| 3.4 | Delete old `python3-development/` skill directory | Critical | orchestrator     | 2 min          |
+
+### Phase 4: Validation
+
+| ID  | Task                                        | Priority | Agent              | Estimated Time |
+| --- | ------------------------------------------- | -------- | ------------------ | -------------- |
+| 4.1 | Test plugin with `--plugin-dir`             | Critical | orchestrator       | 2 min          |
+| 4.2 | Test skill loading with `/skill-name`       | Critical | orchestrator       | 15 min         |
+| 4.3 | Verify all reference file links resolve     | High     | orchestrator       | 10 min         |
+| 4.4 | Run pre-commit on all modified files        | High     | orchestrator       | 5 min          |
+| 4.5 | Update `README.md` with new skill structure | Medium   | plugin-docs-writer | 20 min         |
 
 ---
 
-## Verification Checklist
+## Risk Assessment
 
-Post-refactoring validation:
+| Risk                                       | Likelihood | Impact | Mitigation                                                   |
+| ------------------------------------------ | ---------- | ------ | ------------------------------------------------------------ |
+| Broken reference links after migration     | High       | Medium | Validate all links in Phase 4 before deleting old skill      |
+| Skill truncation from `<available_skills>` | Medium     | Medium | Keep descriptions under 300 chars, test with 5 skills active |
+| Missing content during split               | Medium     | High   | Use checklist to verify all lines accounted for              |
+| Plugin loading issues                      | Low        | High   | Test skill loading immediately with `--plugin-dir`           |
 
-- [ ] All new SKILL.md files under 500 lines
-- [ ] All frontmatter YAML parses correctly
-- [ ] All relative reference paths resolve
-- [ ] Meta-skill loads all sub-skills
-- [ ] Individual skills load independently
-- [ ] No orphaned files in references/
-- [ ] No broken markdown links
-- [ ] Planning directory removed
-- [ ] Datasette integrated into modern-modules.md
-- [ ] Pre-commit linting passes on all files
+---
+
+## Success Criteria
+
+### Quantitative
+
+- [ ] Each new skill is under 400 lines (target: 200-350)
+- [ ] All 5 new skills load without errors
+- [ ] All 6 commands appear in `/help` menu with descriptions
+- [ ] All reference file links resolve correctly
+- [ ] Pre-commit passes on all modified files
+- [ ] No content lost from original SKILL.md
+
+### Qualitative
+
+- [ ] Each skill has single, focused domain
+- [ ] Skill descriptions contain clear trigger keywords
+- [ ] Progressive disclosure pattern maintained (SKILL.md -> references/)
+- [ ] Orchestrator-only sections preserved in python3-workflow
+- [ ] Asset templates remain accessible from python3-project
+
+---
+
+## Rollback Plan
+
+If issues discovered after migration:
+
+1. **Restore from git**: All changes tracked in git, can revert to pre-refactor state
+2. **Keep old skill temporarily**: Rename to `python3-development-legacy/` during transition
+3. **Symlink fallback**: Update `~/.claude/skills/` symlink to point to legacy skill
+
+---
+
+## Document Metadata
+
+- **Created**: 2026-01-22
+- **Author**: python-cli-design-spec agent
+- **Assessment Source**: Plugin assessment report (Phase 1)
+- **Target Plugin**: `./plugins/python3-development`
+- **Target Score**: 85+/100 (from 62/100)
