@@ -1,4 +1,10 @@
 {
+  "enabledPlugins": {
+    "python3-development@jamie-bitflight-skills": true,
+    "holistic-linting@jamie-bitflight-skills": true,
+    "agent-orchestration@jamie-bitflight-skills": true,
+    "plugin-creator@jamie-bitflight-skills": true
+  },
   "permissions": {
     "allow": [
       "WebFetch(domain:docs.anthropic.com)",

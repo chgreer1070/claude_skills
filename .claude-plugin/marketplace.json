@@ -96,6 +96,10 @@
     {
       "name": "xdg-base-directory",
       "source": "./plugins/xdg-base-directory"
+    },
+    {
+      "name": "plugin-creator",
+      "source": "./plugins/plugin-creator"
     }
   ]
 }
