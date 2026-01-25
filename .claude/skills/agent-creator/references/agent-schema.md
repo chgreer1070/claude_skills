@@ -150,19 +150,13 @@ description: Write production code (moderate complexity)
 
 ### tools
 
-- **Type**: string or array
+- **Type**: string (comma-separated)
 - **Default**: Inherited from parent conversation
 - **Purpose**: ALLOWLIST - only these tools available
 
 ```yaml
-# String format (comma-separated)
+# Comma-separated string format
 tools: Read, Grep, Glob, Bash
-
-# Array format
-tools:
-  - Read
-  - Grep
-  - Glob
 
 # Pattern matching for specific commands
 tools: Bash(git:*), Bash(npm:install)
@@ -172,7 +166,7 @@ tools: Bash(git:*), Bash(npm:install)
 
 ### disallowedTools
 
-- **Type**: string or array
+- **Type**: string (comma-separated)
 - **Default**: none
 - **Purpose**: DENYLIST - remove from inherited tools
 
@@ -200,18 +194,13 @@ permissionMode: acceptEdits
 
 ### skills
 
-- **Type**: string or array
+- **Type**: string (comma-separated)
 - **Default**: none (skills NOT inherited)
 - **Purpose**: Load skill content into agent context
 
 ```yaml
 # Comma-separated string
 skills: python-development, testing-patterns, security-best-practices
-
-# Array format
-skills:
-  - python-development
-  - testing-patterns
 ```
 
 **Important**: Agents do NOT inherit skills from parent conversation. Must explicitly list needed skills.

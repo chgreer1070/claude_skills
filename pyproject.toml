@@ -105,6 +105,8 @@ unfixable = ["F401"]
 "**/scripts/**" = [
 	"T201", # print() statements are intentional for CI output visibility
 ]
+# Typer evaluates annotations at runtime, conflicting with TC003 + required PEP 563 import
+"plugins/plugin-creator/scripts/*.py" = ["TC003"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 120
