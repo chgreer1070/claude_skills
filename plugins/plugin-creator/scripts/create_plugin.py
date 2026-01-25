@@ -26,7 +26,9 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import typer
+from rich import box
 from rich.console import Console
+from rich.measure import Measurement
 from rich.panel import Panel
 from rich.table import Table
 
@@ -34,6 +36,20 @@ MAX_NAME_LENGTH = 64
 
 console = Console()
 error_console = Console(stderr=True)
+
+
+def _get_table_width(table: Table) -> int:
+    """Get natural width of table using temporary wide console.
+
+    Source: python3-development skill - tool-library-registry.md
+
+    Returns:
+        The natural width of the table in characters.
+    """
+    temp_console = Console(width=99999)
+    measurement = Measurement.get(temp_console, temp_console.options, table)
+    return int(measurement.maximum)
+
 
 app = typer.Typer(
     name="create-plugin",
@@ -400,10 +416,10 @@ def display_results(plugin_dir: Path, results: list[ValidationResult]) -> bool:
     Returns:
         True if all validations passed, False otherwise.
     """
-    table = Table(title="Validation Results (CoVe)")
-    table.add_column("File", style="cyan")
-    table.add_column("Status")
-    table.add_column("Message", style="white")
+    table = Table(title="Validation Results (CoVe)", box=box.MINIMAL_DOUBLE_HEAD)
+    table.add_column("File", style="cyan", no_wrap=True)
+    table.add_column("Status", no_wrap=True)
+    table.add_column("Message", style="white", no_wrap=True)
 
     all_valid = True
     for result in results:
@@ -417,7 +433,9 @@ def display_results(plugin_dir: Path, results: list[ValidationResult]) -> bool:
         if not result.valid:
             all_valid = False
 
-    console.print(table)
+    # Set table width to prevent wrapping (per python3-development guidelines)
+    table.width = _get_table_width(table)
+    console.print(table, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
     return all_valid
 
 
@@ -512,7 +530,9 @@ def create(
                 f"3. Test: [cyan]claude --plugin-dir {plugin_dir}[/cyan]",
                 title="Success",
                 border_style="green",
-            )
+            ),
+            crop=False,
+            overflow="ignore",
         )
     else:
         error_console.print()
@@ -522,7 +542,9 @@ def create(
                 "Please fix the issues above before using the plugin.",
                 title="Validation Failed",
                 border_style="red",
-            )
+            ),
+            crop=False,
+            overflow="ignore",
         )
         raise typer.Exit(1)
 
@@ -597,12 +619,18 @@ def validate(
     if all_valid:
         console.print()
         console.print(
-            Panel("[green]All validations passed![/green]", border_style="green")
+            Panel("[green]All validations passed![/green]", border_style="green"),
+            crop=False,
+            overflow="ignore",
         )
     else:
         console.print()
         console.print(
-            Panel("[red]Validation failed - see issues above[/red]", border_style="red")
+            Panel(
+                "[red]Validation failed - see issues above[/red]", border_style="red"
+            ),
+            crop=False,
+            overflow="ignore",
         )
         raise typer.Exit(1)
 
