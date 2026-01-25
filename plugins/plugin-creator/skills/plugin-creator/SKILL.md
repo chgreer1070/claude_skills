@@ -1,15 +1,131 @@
 ---
 name: plugin-creator
-description: 'Step-by-step workflow for creating Claude Code plugins. Use when creating new plugins, writing plugin.json manifests, creating SKILL.md files, or structuring plugin directories. All information verified against official documentation.'
+description: 'Complete workflow for creating Claude Code plugins including planning, research, design, implementation, and verification phases. Use when creating new plugins, writing plugin.json manifests, creating SKILL.md files, or structuring plugin directories. Integrates with rt-ica for prerequisite verification and verify skill for completion checks.'
 ---
 
 # Claude Code Plugin Creator
 
-This skill guides you through creating a complete Claude Code plugin with verified, official documentation.
+This skill guides you through creating a complete Claude Code plugin with proper planning, research, design, and verification phases.
 
 ---
 
-## Plugin Creation Workflow
+## Phase 0: RT-ICA Prerequisite Check
+
+<prerequisite_checkpoint>
+
+**STOP. Before creating any plugin, perform RT-ICA assessment.**
+
+Invoke the `rt-ica` skill to verify prerequisites:
+
+```text
+RT-ICA SUMMARY
+==============
+
+Goal:
+- Create a Claude Code plugin for [purpose]
+
+Success Output:
+- Functional plugin that [specific outcome]
+
+Conditions (reverse prerequisites):
+1. Purpose clarity | Requires: Clear problem statement | Why: Determines plugin scope
+2. Target users | Requires: Who will use this | Why: Shapes UX decisions
+3. Component selection | Requires: Skills vs Commands vs Agents vs Hooks | Why: Architecture
+4. Existing solutions | Requires: Check for similar plugins | Why: Avoid duplication
+5. Source material | Requires: Documentation/APIs to encode | Why: Content accuracy
+6. Verification method | Requires: How to test the plugin works | Why: Quality gate
+
+Verification:
+- [Check each condition: AVAILABLE / DERIVABLE / MISSING]
+
+Decision:
+- [APPROVED / BLOCKED]
+```
+
+**IF BLOCKED**: Request missing information before proceeding.
+
+**IF APPROVED**: Continue to Phase 1.
+
+</prerequisite_checkpoint>
+
+---
+
+## Phase 1: Research
+
+Before writing any files, gather information:
+
+### 1a. Check Existing Plugins
+
+```bash
+# Search for similar plugins in this repository
+ls plugins/ | grep -i [keyword]
+
+# Check if capability already exists
+grep -r "[capability]" plugins/*/skills/*/SKILL.md
+```
+
+### 1b. Identify Source Material
+
+For skills that encode domain knowledge:
+
+- Official documentation URLs
+- API references
+- Best practices guides
+- Existing code patterns
+
+**Verification requirement**: Every factual claim in the skill must cite its source.
+
+### 1c. Determine Component Types
+
+| Need                     | Component  | When to Use                             |
+| ------------------------ | ---------- | --------------------------------------- |
+| Modify Claude's behavior | Skill      | Domain knowledge, workflows, patterns   |
+| User-invoked action      | Command    | `/command` style interactions           |
+| Delegatable specialist   | Agent      | Sub-agent for Task tool                 |
+| Automatic triggers       | Hook       | Pre/post tool execution, session events |
+| External tools           | MCP Server | API integrations, databases             |
+
+---
+
+## Phase 2: Design
+
+### 2a. Plugin Architecture
+
+Document before implementing:
+
+```text
+PLUGIN DESIGN
+=============
+
+Name: [kebab-case-name]
+Purpose: [one sentence]
+Target Users: [who benefits]
+
+Components:
+- Skills: [list with brief purpose]
+- Commands: [list with brief purpose]
+- Agents: [list with brief purpose]
+- Hooks: [list with trigger and action]
+- MCP Servers: [list with capabilities]
+
+Dependencies:
+- External tools: [list]
+- Other plugins: [list]
+- Environment: [requirements]
+```
+
+### 2b. Skill Content Planning
+
+For each skill, outline:
+
+1. **Activation triggers** - When should Claude load this?
+2. **Core instructions** - What behavior changes?
+3. **Reference material** - What detailed docs are needed?
+4. **Examples** - What patterns should be shown?
+
+---
+
+## Phase 3: Implementation
 
 ### Step 1: Create Directory Structure
 
@@ -21,7 +137,8 @@ my-plugin/
 ├── agents/                   # Optional: agent definitions (.md)
 ├── skills/                   # Optional: skill directories
 │   └── my-skill/
-│       └── SKILL.md
+│       ├── SKILL.md
+│       └── references/      # Optional: detailed reference docs
 ├── hooks/                    # Optional: hook configurations
 │   └── hooks.json
 ├── .mcp.json                # Optional: MCP server definitions
@@ -30,25 +147,11 @@ my-plugin/
 └── README.md
 ```
 
-**Critical Rule**: `.claude-plugin/` contains ONLY `plugin.json`. All components (commands, agents, skills, hooks) go at the plugin root.
+**Critical Rule**: `.claude-plugin/` contains ONLY `plugin.json`. All components go at plugin root.
 
 **Source**: <https://code.claude.com/docs/en/plugins-reference.md#plugin-directory-structure>
 
----
-
-## Step 2: Create plugin.json
-
-### Minimum Valid Manifest
-
-```json
-{
-  "name": "my-plugin"
-}
-```
-
-Only the `name` field is required.
-
-### Recommended Manifest
+### Step 2: Create plugin.json
 
 ```json
 {
@@ -60,7 +163,6 @@ Only the `name` field is required.
     "email": "you@example.com",
     "url": "https://github.com/you"
   },
-  "homepage": "https://docs.example.com/my-plugin",
   "repository": "https://github.com/you/my-plugin",
   "license": "MIT",
   "keywords": ["keyword1", "keyword2"],
@@ -88,53 +190,38 @@ Only the `name` field is required.
 | `lspServers`   | string/object | No       | LSP config path or inline                |
 | `outputStyles` | string/array  | No       | Path(s) to output style files            |
 
-**Path Rules**:
-
-- All paths must be relative to plugin root
-- All paths must start with `./`
-- Custom paths supplement defaults, don't replace them
-
 **Source**: <https://code.claude.com/docs/en/plugins-reference.md#plugin-manifest-schema>
 
----
+### Step 3: Create Skills
 
-## Step 3: Create Skills (Optional)
-
-Skills are the primary way to add capabilities. Create a `SKILL.md` file in a named directory.
-
-### Minimal SKILL.md
-
-```yaml
----
-description: What this skill does and when to use it
----
-
-Your instructions here...
-```
-
-### Full SKILL.md Template
+#### SKILL.md Template
 
 ```yaml
 ---
 name: my-skill
-description: 'Detailed description of what this skill does. Include trigger keywords for when Claude should auto-invoke. Use when [situation1], [situation2], or when user mentions [keywords].'
-argument-hint: '[expected-arguments]'
+description: 'Detailed description including trigger keywords. Use when [situation1], [situation2], or when user mentions [keywords].'
 allowed-tools: Read, Grep, Glob
-model: claude-sonnet-4-20250514
-context: fork
-agent: Explore
-user-invocable: true
-disable-model-invocation: false
 ---
 
 # Skill Title
 
-Your instructions here. Keep under 500 lines.
+[Core instructions - keep under 500 lines]
 
-For detailed reference, see [reference.md](./reference.md)
+## Section with Detailed Guidance
+
+[Instructions for specific scenarios]
+
+For complete reference, see [reference.md](./references/reference.md)
+
+---
+
+## Sources
+
+- [Source 1](https://example.com/docs) - What this covers
+- [Source 2](https://example.com/api) - What this covers
 ```
 
-### All Frontmatter Fields
+#### Frontmatter Fields
 
 | Field                      | Type         | Default         | Purpose                                      |
 | -------------------------- | ------------ | --------------- | -------------------------------------------- |
@@ -149,17 +236,11 @@ For detailed reference, see [reference.md](./reference.md)
 | `disable-model-invocation` | boolean      | false           | `true` prevents Claude auto-loading          |
 | `hooks`                    | object       | none            | Hooks scoped to skill lifecycle              |
 
-**YAML Warning**: Do NOT use multiline indicators (`>-`, `|`) for descriptions. They break parsing.
+**YAML Warning**: Do NOT use multiline indicators (`>-`, `|`) for descriptions.
 
 **Source**: <https://code.claude.com/docs/en/skills.md>
 
----
-
-## Step 4: Add Hooks (Optional)
-
-Hooks execute commands or prompts in response to events.
-
-### hooks/hooks.json Example
+### Step 4: Add Hooks (Optional)
 
 ```json
 {
@@ -180,8 +261,6 @@ Hooks execute commands or prompts in response to events.
 }
 ```
 
-### Hook Events
-
 | Event              | When                   | Has Matcher |
 | ------------------ | ---------------------- | ----------- |
 | `PreToolUse`       | Before tool executes   | Yes         |
@@ -191,35 +270,44 @@ Hooks execute commands or prompts in response to events.
 | `SessionStart`     | Session begins/resumes | Yes         |
 | `SessionEnd`       | Session ends           | No          |
 
-### Exit Codes
-
-| Code  | Behavior                               |
-| ----- | -------------------------------------- |
-| 0     | Success, stdout processed              |
-| 2     | Blocking error, stderr shown to Claude |
-| Other | Non-blocking error, logged only        |
-
-**Environment Variables**:
-
-- `${CLAUDE_PLUGIN_ROOT}` - Absolute path to plugin directory
-- `${CLAUDE_PROJECT_DIR}` - Project root directory
-
 **Source**: <https://code.claude.com/docs/en/hooks>
 
 ---
 
-## Step 5: Test Locally
+## Phase 4: Verification
 
-### Load Plugin During Development
+<verification_checkpoint>
+
+**STOP. Before claiming the plugin is complete, invoke the `verify` skill.**
+
+### Verification Checklist
+
+```text
+VERIFICATION SUMMARY:
+Task Type: FEATURE
+Works Check: [PASS/FAIL]
+Quality Gates: [PASS/FAIL]
+Honesty Check: [PASS/FAIL]
+
+EVIDENCE:
+```
+
+### Plugin-Specific Checks
+
+- [ ] `plugin.json` has valid JSON syntax
+- [ ] `name` field matches directory name
+- [ ] `plugin.json` is in `.claude-plugin/` directory (not plugin root)
+- [ ] Components (commands, skills, hooks) are at plugin root
+- [ ] All paths are relative and start with `./`
+- [ ] Skills have valid YAML frontmatter (no multiline indicators)
+- [ ] Hook scripts are executable (`chmod +x`)
+- [ ] All factual claims cite sources
+- [ ] No orphaned reference files (all linked from SKILL.md)
+
+### Test Locally
 
 ```bash
 claude --plugin-dir ./my-plugin
-```
-
-### Load Multiple Plugins
-
-```bash
-claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
 ```
 
 ### Debug Mode
@@ -228,40 +316,39 @@ claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
 claude --debug --plugin-dir ./my-plugin
 ```
 
-Shows plugin loading details, errors, and hook execution.
+**Only mark complete when all checks pass with evidence.**
 
-**Source**: <https://code.claude.com/docs/en/plugins.md#test-your-plugins-locally>
+</verification_checkpoint>
 
 ---
 
-## Step 6: Validate
+## Phase 5: Documentation & Distribution
 
-### Validation Checklist
+### Generate README
 
-- [ ] `plugin.json` has valid JSON syntax
-- [ ] `name` field is present (only required field)
-- [ ] `plugin.json` is in `.claude-plugin/` directory
-- [ ] Components (commands, skills, hooks) are at plugin root, not in `.claude-plugin/`
-- [ ] All paths are relative and start with `./`
-- [ ] Hook scripts are executable (`chmod +x`)
-- [ ] Skills have valid YAML frontmatter
-- [ ] No YAML multiline indicators in descriptions
+Use the `plugin-docs-writer` agent:
 
-### Debug Command
-
-```bash
-claude --debug
+```text
+Task(
+  agent="plugin-docs-writer",
+  prompt="Generate README.md for the plugin at ./plugins/my-plugin"
+)
 ```
 
-**Source**: <https://code.claude.com/docs/en/plugins-reference.md#debugging-and-development-tools>
+### Assess Quality
 
----
+Use the `plugin-assessor` agent before distribution:
 
-## Step 7: Distribute
+```text
+Task(
+  agent="plugin-assessor",
+  prompt="Assess the plugin at ./plugins/my-plugin for marketplace readiness"
+)
+```
 
-### Option 1: Plugin Marketplace (Recommended)
+### Distribution Options
 
-Create a `marketplace.json`:
+**Option 1: Plugin Marketplace (Recommended)**
 
 ```json
 {
@@ -277,73 +364,30 @@ Create a `marketplace.json`:
 }
 ```
 
-Users install with:
-
-```bash
-/plugin marketplace add owner/repo
-/plugin install my-plugin@my-marketplace
-```
-
-### Option 2: GitHub Direct
-
-Push to GitHub, users install with:
+**Option 2: GitHub Direct**
 
 ```bash
 /plugin install my-plugin@github-username/repo-name
-```
-
-### Option 3: Local Path
-
-```bash
-claude plugin marketplace add ./marketplace.json
 ```
 
 **Source**: <https://code.claude.com/docs/en/plugin-marketplaces.md>
 
 ---
 
-## Quick Reference
-
-### Create a New Plugin
-
-```bash
-# 1. Create structure
-mkdir -p my-plugin/.claude-plugin my-plugin/skills/my-skill
-
-# 2. Create manifest
-cat > my-plugin/.claude-plugin/plugin.json << 'EOF'
-{
-  "name": "my-plugin",
-  "version": "1.0.0",
-  "description": "What this plugin does",
-  "skills": ["./skills/my-skill"]
-}
-EOF
-
-# 3. Create skill
-cat > my-plugin/skills/my-skill/SKILL.md << 'EOF'
----
-description: What this skill does and when to use it
----
-
-# My Skill
-
-Instructions here...
-EOF
-
-# 4. Test
-claude --plugin-dir ./my-plugin
-```
-
----
-
 ## Related Skills
 
-For detailed reference documentation:
+| Skill                           | Purpose                                |
+| ------------------------------- | -------------------------------------- |
+| `rt-ica`                        | Pre-planning prerequisite verification |
+| `verify`                        | Post-implementation completion checks  |
+| `claude-plugins-reference-2026` | Complete plugin.json schema            |
+| `claude-skills-overview-2026`   | Complete SKILL.md format               |
+| `claude-hooks-reference-2026`   | Hook configuration details             |
 
-- **Plugin schema details**: Activate `claude-plugins-reference-2026` skill
-- **Skill format details**: Activate `claude-skills-overview-2026` skill
-- **Hooks configuration**: Activate `claude-hooks-reference-2026` skill
+| Agent                | Purpose                                   |
+| -------------------- | ----------------------------------------- |
+| `plugin-assessor`    | Structural validation and quality scoring |
+| `plugin-docs-writer` | README.md generation                      |
 
 ---
 
@@ -352,7 +396,7 @@ For detailed reference documentation:
 All information verified against official Claude Code documentation (January 2026):
 
 - [Create Plugins](https://code.claude.com/docs/en/plugins) - Overview and quickstart
-- [Plugins Reference](https://code.claude.com/docs/en/plugins-reference) - Complete schema and validation
+- [Plugins Reference](https://code.claude.com/docs/en/plugins-reference) - Complete schema
 - [Skills Documentation](https://code.claude.com/docs/en/skills) - SKILL.md format
 - [Hooks Reference](https://code.claude.com/docs/en/hooks) - Hook configuration
 - [Plugin Marketplaces](https://code.claude.com/docs/en/plugin-marketplaces) - Distribution
