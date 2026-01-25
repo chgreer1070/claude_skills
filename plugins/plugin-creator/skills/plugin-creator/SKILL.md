@@ -9,6 +9,8 @@ This skill orchestrates specialized agents through a comprehensive plugin creati
 
 **Workflow Diagram**: See [workflow-diagram.md](./references/workflow-diagram.md) for visual ASCII diagrams of the complete plugin creation flow.
 
+**Methodology Comparison**: See [gastown-comparison.md](./references/gastown-comparison.md) for comparison with [Gastown MEOW](https://github.com/steveyegge/gastown) multi-agent orchestration.
+
 ---
 
 ## Orchestration Principles
