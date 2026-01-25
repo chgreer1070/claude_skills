@@ -7,6 +7,8 @@ description: 'Orchestrates specialized agents to create high-quality Claude Code
 
 This skill orchestrates specialized agents through a comprehensive plugin creation workflow. The orchestrator (you) delegates to sub-agents for research, discovery, validation, and implementation - never performing these tasks directly.
 
+**Workflow Diagram**: See [workflow-diagram.md](./references/workflow-diagram.md) for visual ASCII diagrams of the complete plugin creation flow.
+
 ---
 
 ## Orchestration Principles
