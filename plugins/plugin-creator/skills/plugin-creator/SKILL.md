@@ -37,41 +37,49 @@ This skill orchestrates specialized agents through a comprehensive plugin creati
 
 ---
 
-## Checkpoint Persistence
+## Artifact System
 
-<checkpoint_system>
+<artifact_system>
 
-**Save phase outputs to enable crash recovery and audit trails.**
+**Maintain structured artifacts for crash recovery, audit trails, and context management.**
 
-After completing each phase, save results to the plugin work directory:
+Create a work directory for each plugin project:
 
 ```text
 .claude/plugin-work/{plugin-name}/
-├── phase-0-rtica.md          # Prerequisites assessment
-├── phase-1-research.md       # Research findings with sources
-├── phase-2-design.md         # Architecture and component plan
-├── phase-4-validation.md     # Validation results
-└── phase-6-verification.md   # Final verification summary
+├── PROJECT.md                # Vision and goals (always loaded)
+├── REQUIREMENTS.md           # Scoped deliverables
+├── STATE.md                  # Decisions, blockers, current position
+├── discuss-CONTEXT.md        # User preferences captured in discussion
+├── research-FINDINGS.md      # 4-way parallel research results
+├── design-PLAN.md            # Architecture with XML task specs
+├── validation-REPORT.md      # Multi-layer verification results
+└── SUMMARY.md                # Completion record
 ```
 
-**Checkpoint format:**
+**STATE.md format** (persists across sessions):
 
 ```markdown
-# Phase {N}: {Phase Name}
-Date: {ISO timestamp}
-Plugin: {plugin-name}
-Status: COMPLETE | IN_PROGRESS | BLOCKED
+# Plugin State: {plugin-name}
+Last Updated: {ISO timestamp}
 
-## Outputs
-{Phase-specific results}
+## Decisions Made
+- {decision}: {rationale}
 
-## Next Phase Prerequisites
-{What the next phase needs}
+## Current Position
+- Phase: {current phase}
+- Status: IN_PROGRESS | BLOCKED | COMPLETE
+
+## Blockers
+- {blocker}: {what's needed}
+
+## Deviations from Plan
+- {change}: {why}
 ```
 
-**Recovery:** If session crashes, read the most recent checkpoint and resume from that phase.
+**Recovery:** Read STATE.md to restore context after session crash.
 
-</checkpoint_system>
+</artifact_system>
 
 ---
 
@@ -81,31 +89,33 @@ Status: COMPLETE | IN_PROGRESS | BLOCKED
 
 **Spawn independent agents simultaneously to maximize throughput.**
 
-When tasks have no dependencies, launch them in a single message with multiple Task tool calls:
+**4-Way Parallel Research Pattern:**
 
 ```text
-# Phase 1 Research - spawn all three in parallel:
+# Spawn all four researchers in a single message:
 
-Task(subagent_type="Explore", prompt="Check existing plugins...")
-Task(subagent_type="Explore", prompt="Gather domain knowledge...")
-Task(subagent_type="general-purpose", prompt="Fetch official docs...")
-
-# All three run concurrently, results merged when complete
+Task(subagent_type="Explore", prompt="EXISTING PLUGINS: Search plugins/ and ~/.claude/skills/ for similar functionality...")
+Task(subagent_type="Explore", prompt="CLAUDE CODE FEATURES: What plugin capabilities exist? Dynamic context, hooks, MCP, LSP...")
+Task(subagent_type="Explore", prompt="ARCHITECTURE PATTERNS: How do well-structured plugins organize skills, agents, references...")
+Task(subagent_type="general-purpose", prompt="PITFALLS: Fetch official docs, identify common mistakes, schema gotchas...")
 ```
+
+**All four run concurrently. Merge results into research-FINDINGS.md before planning.**
 
 **Parallelization opportunities:**
 
-| Phase           | Parallel Tasks                    |
-| --------------- | --------------------------------- |
-| 1 Research      | 1a + 1b + 1c (all independent)    |
-| 4 Validation    | 4a scripts + 4b docs verification |
-| 5 Documentation | Multiple doc files if needed      |
+| Phase         | Parallel Tasks                                             |
+| ------------- | ---------------------------------------------------------- |
+| Research      | 4 researchers (existing, features, architecture, pitfalls) |
+| Validation    | Scripts + docs verification + quality assessment           |
+| Documentation | README + skills.md + config guide                          |
 
 **Sequential requirements:**
 
-- Phase 2 depends on Phase 1 outputs
-- Phase 3 depends on Phase 2 architecture
-- Phase 4c (assessor) depends on 4a + 4b results
+- Discussion phase captures preferences BEFORE research
+- Design phase depends on merged research findings
+- Implementation depends on approved design
+- Plan checker must pass BEFORE execution
 
 </parallel_execution>
 
@@ -146,157 +156,316 @@ Decision:
 
 **IF BLOCKED**: Request missing information before proceeding.
 
-**IF APPROVED**: Continue to Phase 1.
+**IF APPROVED**: Continue to Discussion phase.
 
 </prerequisite_checkpoint>
 
 ---
 
-## Phase 1: Research (Delegate to Explore Agents)
+## Phase 0.5: Discussion (Capture Preferences)
+
+<discussion_phase>
+
+**BEFORE research, identify gray areas and capture user preferences.**
+
+Ask targeted questions to eliminate ambiguity:
+
+**For skill-focused plugins:**
+
+- Activation triggers: When should Claude auto-load vs user-invoke?
+- Tool restrictions: Full access or limited tools?
+- Output format: Verbose explanations or terse instructions?
+- Reference structure: Inline content or progressive disclosure?
+
+**For agent-focused plugins:**
+
+- Delegation scope: What tasks should agents handle?
+- Return format: Summaries or detailed reports?
+- Error handling: Retry, escalate, or fail fast?
+
+**For hook-focused plugins:**
+
+- Trigger events: Which tool/session events matter?
+- Hook type: Command, prompt, or agent verification?
+- Timeout handling: Fail silently or block?
+
+**Save preferences to `discuss-CONTEXT.md`:**
+
+```markdown
+# Plugin Discussion: {plugin-name}
+Date: {ISO timestamp}
+
+## Scope Decisions
+- {question}: {user preference}
+
+## UX Preferences
+- Invocation: {user-invoked | model-invoked | both}
+- Verbosity: {terse | balanced | verbose}
+
+## Technical Choices
+- {choice}: {preference with rationale}
+```
+
+**These preferences guide all subsequent research and planning.**
+
+</discussion_phase>
+
+---
+
+## Phase 1: Research (4-Way Parallel)
 
 <research_phase>
 
-### 1a. Check for Existing Solutions
+**Spawn 4 parallel researchers in a single message.** Each investigates a different domain:
 
-**Delegate to Explore agent:**
+```text
+# Launch all four simultaneously:
 
-```
-Task(
-  subagent_type="Explore",
-  prompt="Search for existing plugins, skills, or implementations related to [domain].
+Task(subagent_type="Explore", prompt="
+RESEARCHER 1: EXISTING SOLUTIONS
+Search for plugins/skills similar to {plugin-name}:
+- plugins/ directory
+- ~/.claude/skills/
+- GitHub repos with Claude Code plugins
+REPORT: What exists, gaps to fill, patterns to follow/avoid")
 
-  CHECK:
-  1. plugins/ directory for similar plugins
-  2. ~/.claude/skills/ for related skills
-  3. GitHub/npm for published Claude Code plugins with similar purpose
+Task(subagent_type="Explore", prompt="
+RESEARCHER 2: CLAUDE CODE FEATURES
+What capabilities should this plugin use?
+- Dynamic context injection (!`command`)
+- Subagent execution (context: fork)
+- Hooks (which events?)
+- MCP/LSP integration opportunities
+REPORT: Recommended features with rationale")
 
-  REPORT:
-  - Existing solutions found (with paths/URLs)
-  - Gaps that the new plugin could fill
-  - Patterns to follow or avoid"
-)
-```
+Task(subagent_type="Explore", prompt="
+RESEARCHER 3: ARCHITECTURE PATTERNS
+How do well-structured plugins organize?
+- Skill directory structure
+- Reference file patterns
+- Agent definitions
+- Hook configurations
+REPORT: Recommended structure based on similar plugins")
 
-### 1b. Gather Domain Knowledge
-
-**Delegate to Explore agent for codebase research:**
-
-```
-Task(
-  subagent_type="Explore",
-  prompt="Research [domain] to understand what knowledge the plugin should encode.
-
-  INVESTIGATE:
-  1. Official documentation URLs
-  2. API references and schemas
-  3. Best practices guides
-  4. Common patterns and anti-patterns
-
-  COLLECT:
-  - Authoritative sources with URLs and access dates
-  - Key concepts that Claude needs to know
-  - Decision rules for when to apply patterns
-  - Examples of correct and incorrect usage"
-)
+Task(subagent_type="general-purpose", prompt="
+RESEARCHER 4: PITFALLS & OFFICIAL DOCS
+Fetch https://code.claude.com/docs/en/plugins-reference.md
+Fetch https://code.claude.com/docs/en/skills.md
+IDENTIFY:
+- Schema requirements (comma-separated strings NOT arrays)
+- Common mistakes
+- Deprecations or new features
+REPORT: Gotchas to avoid, schema requirements")
 ```
 
-### 1c. Fetch Official Claude Code Documentation
+**Merge all 4 reports into `research-FINDINGS.md` before proceeding to Design.**
 
-**MANDATORY: Always verify against current official docs.**
+### Research Findings Format
 
+```markdown
+# Research Findings: {plugin-name}
+Date: {ISO timestamp}
+
+## 1. Existing Solutions
+{Researcher 1 findings}
+
+## 2. Recommended Features
+{Researcher 2 findings}
+
+## 3. Architecture Patterns
+{Researcher 3 findings}
+
+## 4. Pitfalls & Requirements
+{Researcher 4 findings}
+
+## Synthesis
+- Key insights: {combined learnings}
+- Recommended approach: {synthesis}
 ```
-Task(
-  subagent_type="general-purpose",
-  prompt="Fetch the current official Claude Code documentation to verify plugin requirements.
-
-  FETCH THESE URLs:
-  1. https://code.claude.com/docs/en/plugins-reference.md - Plugin manifest schema
-  2. https://code.claude.com/docs/en/skills.md - SKILL.md frontmatter format
-  3. https://code.claude.com/docs/en/hooks.md - Hook configuration
-  4. https://code.claude.com/docs/llms.txt - Check for NEW features added this week
-
-  EXTRACT:
-  - Required and optional fields for plugin.json
-  - SKILL.md frontmatter field types (MUST be comma-separated strings, NOT arrays)
-  - Any new features or deprecations since January 2026
-
-  FLAG any discrepancies with existing knowledge."
-)
-```
-
-**This step catches:**
-
-- Hallucinated schema fields
-- Outdated information from training data
-- New features added to Claude Code
 
 </research_phase>
 
 ---
 
-## Phase 2: Design (Delegate to Planning Agent)
+## Phase 2: Design (Plan + Verify Loop)
 
 <design_phase>
 
-### 2a. Architecture Planning
+**Design phase uses a PLAN → CHECK → ITERATE loop until verification passes.**
+
+### 2a. Generate Plan with XML Task Specs
 
 **Delegate to Plan agent:**
 
 ```
 Task(
   subagent_type="Plan",
-  prompt="Design the architecture for a Claude Code plugin: [name]
+  prompt="Design plugin: {plugin-name}
 
-  INPUTS (from Phase 1 research):
-  - Domain knowledge: [summary]
-  - Existing solutions: [summary]
-  - Official schema: [summary]
+  INPUTS:
+  - User preferences: {from discuss-CONTEXT.md}
+  - Research findings: {from research-FINDINGS.md}
 
-  DESIGN DECISIONS:
-  1. Component selection - which types needed and why
-  2. Skill structure - main SKILL.md vs reference files
-  3. Agent definitions - if delegatable specialists needed
-  4. Hook triggers - if automation needed
-  5. File organization - directory structure
+  OUTPUT: XML task specifications for atomic implementation:
 
-  OUTPUT:
-  - Plugin architecture diagram (ASCII)
-  - Component list with purposes
-  - File tree showing all planned files
-  - Dependencies and requirements"
+  <task id='1' type='auto'>
+    <name>Create plugin.json manifest</name>
+    <files>.claude-plugin/plugin.json</files>
+    <action>Create manifest with name, version, description, skills array</action>
+    <verify>jq '.name' .claude-plugin/plugin.json returns plugin name</verify>
+    <done>Valid plugin.json exists with all required fields</done>
+  </task>
+
+  <task id='2' type='auto'>
+    <name>Create main SKILL.md</name>
+    <files>skills/{skill-name}/SKILL.md</files>
+    <action>Create skill with frontmatter and core instructions</action>
+    <verify>grep -q '^---' skills/{skill-name}/SKILL.md</verify>
+    <done>SKILL.md has valid frontmatter and content under 500 lines</done>
+  </task>
+
+  Generate 2-5 atomic tasks. Each task must have:
+  - Single responsibility
+  - Testable <verify> command
+  - Clear <done> criteria"
 )
 ```
 
-### 2b. Skill Content Planning
+### 2b. Plan Checker Verification
 
-**For each skill, delegate content planning:**
+**BEFORE execution, verify the plan achieves goals:**
 
 ```
 Task(
-  subagent_type="Plan",
-  prompt="Plan the content structure for skill: [skill-name]
+  subagent_type="general-purpose",
+  prompt="PLAN CHECKER: Verify this plan achieves the plugin goals.
 
-  PLAN:
-  1. Activation triggers - when should Claude load this?
-  2. Core instructions - what behavior changes? (keep under 500 lines)
-  3. Reference material - what goes in separate files?
-  4. Examples - positive and negative patterns
-  5. Sources section - what citations needed?
+  PLAN: {generated XML tasks}
+  REQUIREMENTS: {from discuss-CONTEXT.md}
+  RESEARCH: {key findings}
+
+  VERIFY:
+  1. Do tasks cover all required components?
+  2. Are tasks truly atomic (single responsibility)?
+  3. Are <verify> commands actually testable?
+  4. Are there gaps between tasks?
+  5. Does sequence respect dependencies?
 
   OUTPUT:
-  - SKILL.md outline with section headings
-  - List of reference files needed
-  - Frontmatter field values"
+  - PASS: Plan is ready for execution
+  - FAIL: {specific issues to fix}
+
+  If FAIL, return to planner with feedback."
 )
+```
+
+**Loop until plan checker returns PASS.**
+
+### 2c. Save Approved Plan
+
+Save to `design-PLAN.md`:
+
+```markdown
+# Design Plan: {plugin-name}
+Date: {ISO timestamp}
+Status: APPROVED
+
+## Tasks
+
+<task id='1'>...</task>
+<task id='2'>...</task>
+
+## Verification
+Plan checker: PASS
+Reviewer: {agent ID}
 ```
 
 </design_phase>
 
 ---
 
-## Phase 3: Implementation
+## Phase 3: Implementation (Atomic Execution)
 
-### Option A: Scaffolding Script (Recommended)
+<implementation_phase>
+
+**Execute each XML task atomically with per-task commits.**
+
+### 3a. Task Execution Pattern
+
+For each `<task>` in the approved plan:
+
+```
+Task(
+  subagent_type="general-purpose",
+  prompt="EXECUTOR: Implement this single task.
+
+  <task id='{N}'>
+    <name>{task name}</name>
+    <files>{target files}</files>
+    <action>{implementation instructions}</action>
+    <verify>{test command}</verify>
+    <done>{success criteria}</done>
+  </task>
+
+  CONTEXT:
+  - User preferences: {from discuss-CONTEXT.md}
+  - Research findings: {relevant sections}
+
+  EXECUTE:
+  1. Implement the <action>
+  2. Run the <verify> command
+  3. Confirm <done> criteria met
+
+  OUTPUT:
+  - Files created/modified
+  - Verification result: PASS/FAIL
+  - If FAIL: what went wrong"
+)
+```
+
+### 3b. Atomic Git Commits
+
+**Each task gets its own commit immediately after completion:**
+
+```bash
+git add {files from task}
+git commit -m "task-{N}: {task name}"
+```
+
+**Benefits:**
+
+- `git bisect` locates exact failing task
+- Individual tasks revertable
+- Clear history for debugging
+
+### 3c. Parallel vs Sequential Execution
+
+**Independent tasks** (no shared files): Execute in parallel
+
+```text
+# Tasks 1, 2, 3 have no dependencies - spawn all:
+Task(prompt="EXECUTOR: task 1...")
+Task(prompt="EXECUTOR: task 2...")
+Task(prompt="EXECUTOR: task 3...")
+```
+
+**Dependent tasks** (task 2 needs task 1's output): Execute sequentially
+
+### 3d. Scaffolding Script Option
+
+For simple plugins, use the scaffolding script:
+
+```bash
+uv run scripts/create_plugin.py create my-plugin -d "Description" -s my-skill -o ./plugins
+```
+
+The script self-validates created files.
+
+</implementation_phase>
+
+---
+
+## Phase 3b: Advanced Features Reference
 
 The `create_plugin.py` script creates validated plugin structure:
 
@@ -714,62 +883,111 @@ Include "ultrathink" anywhere in skill content to enable extended thinking mode.
 
 ---
 
-## Phase 4: Validation (Delegate to Validation Agents)
+## Phase 4: Validation (Multi-Layer Verification)
 
 <validation_phase>
 
-### 4a. Run Automated Validation Scripts
+**Four verification layers prevent bugs from reaching completion.**
+
+### Layer 1: Automated Script Validation
 
 ```bash
-# Validate plugin structure
+# Run in parallel:
 uv run scripts/create_plugin.py validate ./plugins/my-plugin
-
-# Validate all frontmatter
 uv run scripts/validate_frontmatter.py batch ./plugins/my-plugin
 ```
 
-### 4b. Verify Against Official Documentation
-
-**MANDATORY: Delegate verification to catch hallucinations.**
+### Layer 2: Official Docs Verification
 
 ```
 Task(
   subagent_type="general-purpose",
-  prompt="Verify the plugin at ./plugins/my-plugin against official Claude Code documentation.
+  prompt="VERIFIER: Check plugin against official docs.
 
-  FETCH AND COMPARE:
-  1. https://code.claude.com/docs/en/plugins-reference.md - Verify plugin.json schema
-  2. https://code.claude.com/docs/en/skills.md - Verify SKILL.md frontmatter
+  FETCH:
+  - https://code.claude.com/docs/en/plugins-reference.md
+  - https://code.claude.com/docs/en/skills.md
 
-  CHECK FOR:
-  - Fields that don't exist in official schema
-  - Incorrect field types (arrays vs comma-separated strings)
-  - Missing required fields
-  - Outdated patterns
+  COMPARE ./plugins/my-plugin against schema requirements.
 
   REPORT:
-  - Compliance status for each file
-  - Specific violations with line numbers
-  - Recommendations for fixes"
+  - PASS: All files compliant
+  - FAIL: {specific violations with file:line}"
 )
 ```
 
-### 4c. Quality Assessment
-
-**Delegate to plugin-assessor agent:**
+### Layer 3: Quality Assessment
 
 ```
 Task(
   subagent_type="plugin-assessor",
-  prompt="Assess the plugin at ./plugins/my-plugin for quality and marketplace readiness.
+  prompt="Assess ./plugins/my-plugin for marketplace readiness.
 
-  ASSESS:
+  CHECK:
   - Structural correctness
   - Frontmatter optimization
-  - Schema compliance
   - Documentation completeness
-  - Cross-reference integrity"
+  - Cross-reference integrity
+
+  SCORE: 1-10 with specific issues"
 )
+```
+
+### Layer 4: Automatic Debugging (if failures)
+
+**If any layer returns FAIL, spawn debugger:**
+
+```
+Task(
+  subagent_type="general-purpose",
+  prompt="DEBUGGER: Diagnose validation failure.
+
+  FAILURE: {failure details from verifier}
+  PLUGIN: ./plugins/my-plugin
+
+  INVESTIGATE:
+  1. Read the failing file(s)
+  2. Identify root cause
+  3. Generate fix plan
+
+  OUTPUT:
+  <fix>
+    <file>{path}</file>
+    <issue>{what's wrong}</issue>
+    <action>{how to fix}</action>
+  </fix>
+
+  Return fix plan for re-execution."
+)
+```
+
+**Loop: Fix → Re-validate → until all layers PASS.**
+
+### Save Validation Report
+
+Save to `validation-REPORT.md`:
+
+```markdown
+# Validation Report: {plugin-name}
+Date: {ISO timestamp}
+
+## Layer 1: Scripts
+Status: PASS/FAIL
+Output: {script output}
+
+## Layer 2: Official Docs
+Status: PASS/FAIL
+Findings: {compliance details}
+
+## Layer 3: Quality
+Score: {N}/10
+Issues: {list}
+
+## Layer 4: Debug Cycles
+Iterations: {N}
+Fixes applied: {list}
+
+## Final Status: PASS
 ```
 
 </validation_phase>
