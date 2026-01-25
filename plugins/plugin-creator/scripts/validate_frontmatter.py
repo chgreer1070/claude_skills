@@ -30,7 +30,9 @@ from typing import Annotated
 
 import typer
 import yaml
+from rich import box
 from rich.console import Console
+from rich.measure import Measurement
 from rich.panel import Panel
 from rich.table import Table
 
@@ -39,6 +41,20 @@ error_console = Console(stderr=True)
 
 # Preview length for dry-run output
 PREVIEW_MAX_CHARS = 2000
+
+
+def _get_table_width(table: Table) -> int:
+    """Get natural width of table using temporary wide console.
+
+    Source: python3-development skill - tool-library-registry.md
+
+    Returns:
+        The natural width of the table in characters.
+    """
+    temp_console = Console(width=99999)
+    measurement = Measurement.get(temp_console, temp_console.options, table)
+    return int(measurement.maximum)
+
 
 app = typer.Typer(
     name="validate-frontmatter",
@@ -411,6 +427,48 @@ def fix_multiline_description(content: str) -> tuple[str, list[str]]:
     return content, fixes
 
 
+def fix_unquoted_description(content: str) -> tuple[str, list[str]]:
+    """Quote descriptions that contain colons (which break YAML parsing).
+
+    Returns:
+        Tuple of (fixed_content, list_of_fixes_applied).
+    """
+    fixes: list[str] = []
+
+    # Pattern to find unquoted description with embedded colons
+    # Matches: description: some text with: colon that isn't quoted
+    # Does NOT match: description: "already quoted" or description: 'already quoted'
+    pattern = r"^(description:\s*)([^\"'][^\n]*:[^\n]+)$"
+
+    match = re.search(pattern, content, re.MULTILINE)
+    if match:
+        prefix = match.group(1)
+        desc_value = match.group(2).strip()
+
+        # Check if this description has an unquoted colon (not part of URL)
+        # Skip if it looks like the colon is only in a URL (http://, https://)
+        temp_value = re.sub(r"https?://[^\s]+", "", desc_value)
+        if ":" in temp_value:
+            # Quote the description properly
+            if "'" in desc_value and '"' not in desc_value:
+                quoted = f'"{desc_value}"'
+            elif '"' in desc_value and "'" not in desc_value:
+                quoted = f"'{desc_value}'"
+            elif "'" in desc_value and '"' in desc_value:
+                # Escape double quotes and use double quotes
+                escaped = desc_value.replace('"', '\\"')
+                quoted = f'"{escaped}"'
+            else:
+                quoted = f'"{desc_value}"'
+
+            content = (
+                content[: match.start()] + prefix + quoted + content[match.end() :]
+            )
+            fixes.append("Quoted description containing colons for valid YAML")
+
+    return content, fixes
+
+
 def apply_fixes(content: str) -> tuple[str, list[str]]:
     """Apply all automatic fixes to frontmatter.
 
@@ -424,6 +482,9 @@ def apply_fixes(content: str) -> tuple[str, list[str]]:
     all_fixes.extend(fixes)
 
     content, fixes = fix_multiline_description(content)
+    all_fixes.extend(fixes)
+
+    content, fixes = fix_unquoted_description(content)
     all_fixes.extend(fixes)
 
     return content, all_fixes
@@ -496,15 +557,17 @@ def display_results(
 
     if not issues:
         console.print(
-            Panel("[green]All validations passed![/green]", border_style="green")
+            Panel("[green]All validations passed![/green]", border_style="green"),
+            crop=False,
+            overflow="ignore",
         )
         return True
 
-    table = Table(title="Validation Issues")
-    table.add_column("Field", style="cyan")
-    table.add_column("Severity")
-    table.add_column("Message", style="white")
-    table.add_column("Suggestion", style="dim")
+    table = Table(title="Validation Issues", box=box.MINIMAL_DOUBLE_HEAD)
+    table.add_column("Field", style="cyan", no_wrap=True)
+    table.add_column("Severity", no_wrap=True)
+    table.add_column("Message", style="white", no_wrap=True)
+    table.add_column("Suggestion", style="dim", no_wrap=True)
 
     has_errors = False
     for issue in issues:
@@ -517,12 +580,18 @@ def display_results(
         if issue.severity == "error":
             has_errors = True
 
-    console.print(table)
+    # Set table width to prevent wrapping (per python3-development guidelines)
+    table.width = _get_table_width(table)
+    console.print(table, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
 
     if has_errors:
         console.print()
         console.print(
-            Panel("[red]Validation failed - fix errors above[/red]", border_style="red")
+            Panel(
+                "[red]Validation failed - fix errors above[/red]", border_style="red"
+            ),
+            crop=False,
+            overflow="ignore",
         )
     else:
         console.print()
@@ -530,7 +599,9 @@ def display_results(
             Panel(
                 "[yellow]Validation passed with warnings[/yellow]",
                 border_style="yellow",
-            )
+            ),
+            crop=False,
+            overflow="ignore",
         )
 
     return not has_errors
@@ -713,13 +784,17 @@ def fix(
             Panel(
                 fixed_content[:PREVIEW_MAX_CHARS]
                 + ("..." if len(fixed_content) > PREVIEW_MAX_CHARS else "")
-            )
+            ),
+            crop=False,
+            overflow="ignore",
         )
     else:
         path.write_text(fixed_content)
         console.print()
         console.print(
-            Panel("[green]File updated successfully![/green]", border_style="green")
+            Panel("[green]File updated successfully![/green]", border_style="green"),
+            crop=False,
+            overflow="ignore",
         )
 
 
