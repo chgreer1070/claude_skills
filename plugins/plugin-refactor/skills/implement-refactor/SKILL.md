@@ -1,4 +1,5 @@
 ---
+name: implement-refactor
 description: 'Execute refactoring tasks from a task file with parallel agent orchestration'
 argument-hint: <plugin-slug or task-file-path>
 ---

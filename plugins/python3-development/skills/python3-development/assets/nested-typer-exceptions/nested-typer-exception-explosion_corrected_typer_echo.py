@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 try:
-    import typer  # pyright: ignore[reportMissingImports]
+    import typer
 except ImportError as e:
     error_message = f"""
 
@@ -75,7 +75,7 @@ class AppExit(typer.Exit):
                 typer.echo(self.message)
             else:
                 typer.echo(self.message, err=True)
-        super().__init__(code=code)
+        super().__init__(code=code if code is not None else 0)
 
 
 class ConfigError(Exception):

@@ -1,6 +1,6 @@
 ---
 name: holistic-linting
-description: This skill should be used when the model needs to ensure code quality through comprehensive linting and formatting. It provides automatic linting workflows for orchestrators (format → lint → resolve via concurrent agents) and sub-agents (lint touched files before task completion). Prevents claiming "production ready" code without verification. Includes linting rules knowledge base for ruff, mypy, and bandit, plus the linting-root-cause-resolver agent for systematic issue resolution.
+description: Comprehensive linting and formatting verification workflows. Provides automatic format-lint-resolve pipelines for orchestrators and sub-agents. Use when running linters, fixing ruff/mypy/bandit errors, ensuring code quality before completion, or resolving linting issues systematically.
 ---
 
 # Holistic Linting Skill

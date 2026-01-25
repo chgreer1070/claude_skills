@@ -18,6 +18,10 @@
       "source": "./plugins/async-python-patterns"
     },
     {
+      "name": "bash-development",
+      "source": "./plugins/bash-development"
+    },
+    {
       "name": "brainstorming-skill",
       "source": "./plugins/brainstorming-skill"
     },
@@ -60,6 +64,14 @@
     {
       "name": "mkdocs",
       "source": "./plugins/mkdocs"
+    },
+    {
+      "name": "perl-development",
+      "source": "./plugins/perl-development"
+    },
+    {
+      "name": "plugin-refactor",
+      "source": "./plugins/plugin-refactor"
     },
     {
       "name": "pre-commit",

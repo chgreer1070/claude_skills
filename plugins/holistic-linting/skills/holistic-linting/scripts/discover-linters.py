@@ -3,8 +3,8 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "typer>=0.19.2",
-#     "rich>=13.0.0",
 #     "toml>=0.10.2",
+#     "types-pyyaml>=6.0.0",
 # ]
 # ///
 """Discover project linters and generate LINTERS section for CLAUDE.md.
@@ -64,16 +64,18 @@ def check_git_hooks() -> bool:
     """
     try:
         # Check if we're in a git repository
+        # S607: git must use PATH lookup for cross-platform portability (Linux/macOS/Windows install paths differ)
         subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
+            ["git", "rev-parse", "--git-dir"],  # noqa: S607
             capture_output=True,
             check=True,
             timeout=5,
         )
 
         # Check for pre-commit hook
+        # S607: git must use PATH lookup for cross-platform portability (Linux/macOS/Windows install paths differ)
         result = subprocess.run(
-            ["git", "config", "--get", "core.hooksPath"],
+            ["git", "config", "--get", "core.hooksPath"],  # noqa: S607
             check=False,
             capture_output=True,
             text=True,
@@ -120,6 +122,31 @@ def detect_pre_commit_tool(project_root: Path) -> str | None:
     return None
 
 
+# Hook ID to LinterConfig mapping
+_HOOK_CONFIGS: dict[str, LinterConfig] = {
+    "ruff": LinterConfig(name="ruff check", patterns=["*.py"], is_linter=True),
+    "ruff-format": LinterConfig(
+        name="ruff format", patterns=["*.py"], is_formatter=True
+    ),
+    "mypy": LinterConfig(name="mypy", patterns=["*.py"], is_linter=True),
+    "prettier": LinterConfig(
+        name="prettier", patterns=["*.{ts,tsx,js,jsx,json,md}"], is_formatter=True
+    ),
+    "eslint": LinterConfig(
+        name="eslint", patterns=["*.{ts,tsx,js,jsx}"], is_linter=True
+    ),
+    "markdownlint": LinterConfig(
+        name="markdownlint", patterns=["*.{md,markdown}"], is_linter=True
+    ),
+    "shellcheck": LinterConfig(
+        name="shellcheck", patterns=["*.{sh,bash,zsh,fish}"], is_linter=True
+    ),
+    "shfmt": LinterConfig(
+        name="shfmt", patterns=["*.{sh,bash,zsh,fish}"], is_formatter=True
+    ),
+}
+
+
 def _map_hook_to_linter(hook_id: str) -> LinterConfig | None:
     """Map a pre-commit hook ID to a LinterConfig.
 
@@ -129,41 +156,7 @@ def _map_hook_to_linter(hook_id: str) -> LinterConfig | None:
     Returns:
         LinterConfig if hook is recognized, None otherwise
     """
-    match hook_id:
-        case "ruff" | "ruff-format":
-            is_formatter = "format" in hook_id
-            return LinterConfig(
-                name="ruff format" if is_formatter else "ruff check",
-                patterns=["*.py"],
-                is_formatter=is_formatter,
-                is_linter=not is_formatter,
-            )
-        case "mypy":
-            return LinterConfig(name="mypy", patterns=["*.py"], is_linter=True)
-        case "prettier":
-            return LinterConfig(
-                name="prettier",
-                patterns=["*.{ts,tsx,js,jsx,json,md}"],
-                is_formatter=True,
-            )
-        case "eslint":
-            return LinterConfig(
-                name="eslint", patterns=["*.{ts,tsx,js,jsx}"], is_linter=True
-            )
-        case "markdownlint":
-            return LinterConfig(
-                name="markdownlint", patterns=["*.{md,markdown}"], is_linter=True
-            )
-        case "shellcheck":
-            return LinterConfig(
-                name="shellcheck", patterns=["*.{sh,bash,zsh,fish}"], is_linter=True
-            )
-        case "shfmt":
-            return LinterConfig(
-                name="shfmt", patterns=["*.{sh,bash,zsh,fish}"], is_formatter=True
-            )
-        case _:
-            return None
+    return _HOOK_CONFIGS.get(hook_id)
 
 
 def scan_pre_commit_config(config_file: Path) -> list[LinterConfig]:
@@ -176,7 +169,7 @@ def scan_pre_commit_config(config_file: Path) -> list[LinterConfig]:
         List of discovered linter configurations
     """
     try:
-        import yaml  # type: ignore[import-untyped]
+        import yaml  # noqa: PLC0415
     except ImportError:
         console.print(
             "[yellow]Warning: pyyaml not installed, skipping .pre-commit-config.yaml[/yellow]"
@@ -196,7 +189,7 @@ def scan_pre_commit_config(config_file: Path) -> list[LinterConfig]:
                 if linter_config:
                     linters.append(linter_config)
 
-    except Exception as e:
+    except (OSError, yaml.YAMLError, KeyError, TypeError) as e:
         console.print(
             f"[yellow]Warning: Failed to parse .pre-commit-config.yaml: {e}[/yellow]"
         )
@@ -241,7 +234,7 @@ def scan_pyproject_toml(config_file: Path) -> list[LinterConfig]:
                 LinterConfig(name="bandit", patterns=["*.py"], is_linter=True)
             )
 
-    except Exception as e:
+    except (OSError, toml.TomlDecodeError, KeyError, TypeError) as e:
         console.print(f"[yellow]Warning: Failed to parse pyproject.toml: {e}[/yellow]")
 
     return linters
@@ -290,7 +283,7 @@ def scan_package_json(config_file: Path) -> list[LinterConfig]:
                 )
             )
 
-    except Exception as e:
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as e:
         console.print(f"[yellow]Warning: Failed to parse package.json: {e}[/yellow]")
 
     return linters

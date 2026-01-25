@@ -1,4 +1,5 @@
 ---
+name: assessor
 description: 'Assess a plugin and create refactoring task files for parallel agent execution'
 argument-hint: <plugin-name>
 ---

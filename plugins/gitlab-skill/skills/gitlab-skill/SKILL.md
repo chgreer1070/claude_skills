@@ -1,6 +1,6 @@
 ---
 name: gitlab-skill
-description: The model must apply when tasks involve .gitlab-ci.yml configuration, GitLab Flavored Markdown (GLFM) syntax, gitlab-ci-local testing, CI/CD pipeline optimization, GitLab CI Steps composition, Docker-in-Docker workflows, or GitLab documentation creation. Triggers include modifying pipelines, writing GitLab README/Wiki content, debugging CI jobs locally, implementing caching strategies, or configuring release workflows.
+description: GitLab CI/CD pipeline configuration and GLFM documentation expertise. Use when modifying .gitlab-ci.yml, optimizing pipelines, testing with gitlab-ci-local, writing GitLab README/Wiki content, configuring Docker-in-Docker workflows, or implementing CI Steps composition.
 ---
 
 # GitLab Skill

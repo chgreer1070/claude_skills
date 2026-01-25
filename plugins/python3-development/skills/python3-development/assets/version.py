@@ -15,8 +15,6 @@ def _get_hatch_version() -> str | None:
 
     For more details, see <https://github.com/maresb/hatch-vcs-footgun-example/>.
     """
-    import os
-
     try:
         from hatchling.metadata.core import ProjectMetadata
         from hatchling.plugin.manager import PluginManager
@@ -30,7 +28,7 @@ def _get_hatch_version() -> str | None:
     if pyproject_toml is None:
         raise RuntimeError("pyproject.toml not found although hatchling is installed")
     root = pathlib.Path(pyproject_toml).parent
-    metadata = ProjectMetadata(root=root, plugin_manager=PluginManager())
+    metadata = ProjectMetadata(root=str(root), plugin_manager=PluginManager())
     # Version can be either statically set in pyproject.toml or computed dynamically:
     return metadata.core.version or metadata.hatch.version.cached
 

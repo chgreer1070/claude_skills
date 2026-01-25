@@ -22,8 +22,8 @@ from pathlib import Path
 from typing import Annotated, Any
 
 try:
-    import typer  # pyright: ignore[reportMissingImports]
-    from rich.console import Console  # pyright: ignore[reportMissingImports]
+    import typer
+    from rich.console import Console
 except ImportError as e:
     error_message = f"""
 
@@ -80,7 +80,7 @@ class AppExitRich(typer.Exit):
         if message is not None:
             console.print(self.message, crop=False, overflow="ignore")
 
-        super().__init__(code=code)
+        super().__init__(code=code if code is not None else 0)
 
 
 class ConfigError(Exception):

@@ -25,8 +25,11 @@ Plugins bundle multiple Claude Code capabilities (skills, commands, agents, hook
   "repository": "https://github.com/author/plugin",
   "license": "MIT",
   "keywords": ["keyword1", "keyword2"],
-  "commands": "./commands/",
-  "agents": "./agents/",
+  "commands": ["./commands"],
+  "agents": [
+    "./agents/agent-one.md",
+    "./agents/agent-two.md"
+  ],
   "skills": ["./skills/skill-one", "./skills/skill-two"],
   "hooks": "./hooks.json",
   "mcpServers": "./.mcp.json",
@@ -55,15 +58,39 @@ Plugins bundle multiple Claude Code capabilities (skills, commands, agents, hook
 
 ### Component Paths
 
-| Field          | Type          | Default Location         |
-| -------------- | ------------- | ------------------------ |
-| `commands`     | string/array  | `./commands/`            |
-| `agents`       | string/array  | `./agents/`              |
-| `skills`       | string/array  | `./skills/`              |
-| `hooks`        | string/object | `./hooks.json` or inline |
-| `mcpServers`   | string/object | `./.mcp.json` or inline  |
-| `lspServers`   | string/object | `./.lsp.json` or inline  |
-| `outputStyles` | string        | `./styles/`              |
+| Field          | Type          | Format Requirements                                       |
+| -------------- | ------------- | --------------------------------------------------------- |
+| `commands`     | string/array  | Directory path or array of paths                          |
+| `agents`       | array         | **MUST be array of individual .md file paths** (see note) |
+| `skills`       | string/array  | Directory paths containing SKILL.md                       |
+| `hooks`        | string/object | Path to hooks.json or inline object                       |
+| `mcpServers`   | string/object | Path to .mcp.json or inline object                        |
+| `lspServers`   | string/object | Path to .lsp.json or inline object                        |
+| `outputStyles` | string        | Directory path                                            |
+
+<agents_critical_note>
+
+**CRITICAL: agents field validation**
+
+Despite documentation suggesting `agents` accepts "string|array", the validator **rejects directory strings**.
+
+The model MUST use an array of individual file paths:
+
+```json
+// WRONG - validation fails with "agents: Invalid input"
+"agents": "./agents/"
+"agents": "./agents"
+
+// CORRECT - validation passes
+"agents": [
+  "./agents/code-reviewer.md",
+  "./agents/test-runner.md"
+]
+```
+
+**Verified**: 2026-01-23 via `claude plugin validate` command.
+
+</agents_critical_note>
 
 ---
 
@@ -215,20 +242,86 @@ plugin-name/
 
 ## Validation
 
+### Validation Workflow
+
+The model MUST validate plugins before installation or distribution:
+
 ```bash
-# CLI
-claude plugin validate .
+# Step 1: Validate plugin manifest
 claude plugin validate ./my-plugin
 
-# In Claude Code
-/plugin validate .
+# Step 2: If validation passes, test loading
+claude --plugin-dir ./my-plugin
+
+# Step 3: Install to marketplace
+/plugin install my-plugin@marketplace-name
 ```
 
-### Testing
+### Validation Commands
 
 ```bash
-# Load during development
+# CLI (from terminal)
+claude plugin validate .
+claude plugin validate ./path/to/plugin
+
+# In Claude Code session
+/plugin validate .
+/plugin validate ./path/to/plugin
+```
+
+### Validation Output
+
+**Success with warnings**:
+
+```text
+Validating plugin manifest: ./my-plugin/.claude-plugin/plugin.json
+
+⚠ Found 1 warning:
+
+  ❯ author: No author information provided. Consider adding author details
+
+✔ Validation passed with warnings
+```
+
+**Failure**:
+
+```text
+Validating plugin manifest: ./my-plugin/.claude-plugin/plugin.json
+
+✘ Found 1 error:
+
+  ❯ agents: Invalid input
+
+✘ Validation failed
+```
+
+### Common Validation Errors
+
+| Error Message             | Cause                                        | Fix                                                                |
+| ------------------------- | -------------------------------------------- | ------------------------------------------------------------------ |
+| `agents: Invalid input`   | Used directory string instead of file array  | Change `"agents": "./agents/"` to `"agents": ["./agents/file.md"]` |
+| `name: Required`          | Missing name field                           | Add `"name": "plugin-name"`                                        |
+| `Invalid JSON syntax`     | Malformed JSON (missing comma, extra quotes) | Validate JSON with `python3 -m json.tool plugin.json`              |
+| `commands: Invalid input` | Incorrect path format                        | Ensure paths start with `./`                                       |
+
+### Pre-Validation Checklist
+
+Before running `claude plugin validate`, verify:
+
+- [ ] `.claude-plugin/plugin.json` exists and contains valid JSON
+- [ ] `name` field is present and kebab-case
+- [ ] All paths start with `./`
+- [ ] `agents` field is an array of individual `.md` file paths
+- [ ] Referenced directories and files exist
+- [ ] No path traversal (`../`) in any path
+
+### Testing Without Installation
+
+```bash
+# Load plugin for current session only
 claude --plugin-dir ./my-plugin
+
+# Load multiple plugins
 claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
 ```
 

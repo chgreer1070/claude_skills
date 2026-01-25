@@ -3,7 +3,6 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "typer>=0.19.2",
-#     "rich>=13.0.0",
 # ]
 # ///
 """Run project linters based on CLAUDE.md LINTERS configuration.
@@ -17,6 +16,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import time
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -222,8 +222,6 @@ def run_tool(tool: Tool, file_path: Path) -> ToolResult:
     Raises:
         ValueError: If tool command cannot be built
     """
-    import time
-
     cmd = build_tool_command(tool.name, file_path)
 
     start_time = time.time()

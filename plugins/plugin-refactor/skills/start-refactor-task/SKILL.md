@@ -1,4 +1,5 @@
 ---
+name: start-refactor-task
 description: 'Start or complete a specific refactoring task from a task file (for sub-agents)'
 argument-hint: <task-file-path> [--task <task-id>] [--complete <task-id>]
 ---

@@ -4,7 +4,6 @@
 # dependencies = [
 #     "python-frontmatter>=1.0.0",
 #     "typer>=0.12.0",
-#     "rich>=13.0.0",
 # ]
 # ///
 """Find and manage temporary documentation files.

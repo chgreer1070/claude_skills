@@ -6,8 +6,6 @@
 #   "matplotlib>=3.7.0",
 #   "rich>=13.0.0",
 # ]
-# [tool.uv]
-# exclude-newer = "2025-10-24T00:00:00Z"  # Time-based reproducibility
 # ///
 
 """Data Analysis Script Example.
@@ -38,6 +36,9 @@ from rich.console import Console
 from rich.table import Table
 
 console = Console()
+
+# Minimum command-line arguments required: script name + CSV file path
+MIN_REQUIRED_ARGS = 2
 
 
 def analyze_data(csv_path: str) -> None:
@@ -97,7 +98,7 @@ def analyze_data(csv_path: str) -> None:
 
 def main() -> None:
     """Main entry point."""
-    if len(sys.argv) < 2:
+    if len(sys.argv) < MIN_REQUIRED_ARGS:
         console.print("[bold red]Error:[/bold red] Please provide CSV file path")
         console.print("\nUsage: uv run data_analysis.py <csv_file>")
         sys.exit(1)
@@ -109,8 +110,14 @@ def main() -> None:
 
     try:
         analyze_data(csv_path)
-    except Exception as e:
-        console.print(f"[bold red]Error:[/bold red] {e}")
+    except pd.errors.ParserError as e:
+        console.print(f"[bold red]CSV Parse Error:[/bold red] {e}")
+        sys.exit(1)
+    except pd.errors.EmptyDataError:
+        console.print("[bold red]Error:[/bold red] CSV file is empty")
+        sys.exit(1)
+    except ValueError as e:
+        console.print(f"[bold red]Data Error:[/bold red] {e}")
         sys.exit(1)
 
 

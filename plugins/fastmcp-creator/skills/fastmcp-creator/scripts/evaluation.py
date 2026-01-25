@@ -12,12 +12,27 @@ import re
 import sys
 import time
 import traceback
-import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
+import defusedxml.ElementTree as DefusedElementTree
 from anthropic import Anthropic
-from connections import create_connection
+from connections import MCPConnection, create_connection
+
+if TYPE_CHECKING:
+    from typing import TypeAlias
+
+
+class ToolMetric(TypedDict):
+    """Metrics for a single tool's usage."""
+
+    count: int
+    durations: list[float]
+
+
+# Type alias for tool metrics dictionary
+ToolMetricsDict: TypeAlias = dict[str, ToolMetric]
+
 
 EVALUATION_PROMPT = """You are an AI assistant with access to tools.
 
@@ -55,44 +70,83 @@ Response Requirements:
 
 
 def parse_evaluation_file(file_path: Path) -> list[dict[str, Any]]:
-    """Parse XML evaluation file with qa_pair elements."""
+    """Parse XML evaluation file with qa_pair elements.
+
+    Args:
+        file_path: Path to the evaluation XML file.
+
+    Returns:
+        List of dictionaries with 'question' and 'answer' keys.
+    """
     try:
-        tree = ET.parse(file_path)
-        root = tree.getroot()
-        evaluations = []
-
-        for qa_pair in root.findall(".//qa_pair"):
-            question_elem = qa_pair.find("question")
-            answer_elem = qa_pair.find("answer")
-
-            if question_elem is not None and answer_elem is not None:
-                evaluations.append({
-                    "question": (question_elem.text or "").strip(),
-                    "answer": (answer_elem.text or "").strip(),
-                })
-
-        return evaluations
-    except Exception as e:
+        tree = DefusedElementTree.parse(file_path)
+    except DefusedElementTree.ParseError as e:
         print(f"Error parsing evaluation file {file_path}: {e}")
         return []
+    except FileNotFoundError as e:
+        print(f"Evaluation file not found {file_path}: {e}")
+        return []
+    except OSError as e:
+        print(f"Error reading evaluation file {file_path}: {e}")
+        return []
+
+    root = tree.getroot()
+    if root is None:
+        print(f"Error: Empty or invalid XML file: {file_path}")
+        return []
+
+    evaluations: list[dict[str, Any]] = []
+
+    for qa_pair in root.findall(".//qa_pair"):
+        question_elem = qa_pair.find("question")
+        answer_elem = qa_pair.find("answer")
+
+        if question_elem is not None and answer_elem is not None:
+            evaluations.append({
+                "question": (question_elem.text or "").strip(),
+                "answer": (answer_elem.text or "").strip(),
+            })
+
+    return evaluations
 
 
 def extract_xml_content(text: str, tag: str) -> str | None:
-    """Extract content from XML tags."""
+    """Extract content from XML tags.
+
+    Args:
+        text: The text to search for XML content.
+        tag: The XML tag name to extract content from.
+
+    Returns:
+        The extracted content string, or None if not found.
+    """
     pattern = rf"<{tag}>(.*?)</{tag}>"
     matches = re.findall(pattern, text, re.DOTALL)
     return matches[-1].strip() if matches else None
 
 
 async def agent_loop(
+    *,
     client: Anthropic,
     model: str,
     question: str,
     tools: list[dict[str, Any]],
-    connection: Any,
-) -> tuple[str, dict[str, Any]]:
-    """Run the agent loop with MCP tools."""
-    messages = [{"role": "user", "content": question}]
+    connection: MCPConnection,
+) -> tuple[str | None, dict[str, ToolMetric]]:
+    """Run the agent loop with MCP tools.
+
+    Args:
+        client: Anthropic client instance.
+        model: Claude model identifier.
+        question: The question to answer.
+        tools: List of tool definitions.
+        connection: MCP connection instance.
+
+    Returns:
+        Tuple of (response_text, tool_metrics) where response_text may be None
+        if no text response was generated, and tool_metrics contains usage data.
+    """
+    messages: list[dict[str, Any]] = [{"role": "user", "content": question}]
 
     response = await asyncio.to_thread(
         client.messages.create,
@@ -105,7 +159,7 @@ async def agent_loop(
 
     messages.append({"role": "assistant", "content": response.content})
 
-    tool_metrics = {}
+    tool_metrics: dict[str, ToolMetric] = {}
 
     while response.stop_reason == "tool_use":
         tool_use = next(block for block in response.content if block.type == "tool_use")
@@ -115,14 +169,21 @@ async def agent_loop(
         tool_start_ts = time.time()
         try:
             tool_result = await connection.call_tool(tool_name, tool_input)
+        except RuntimeError as e:
+            tool_response = f"Error executing tool {tool_name}: {e!s}\n"
+            tool_response += traceback.format_exc()
+        except TimeoutError as e:
+            tool_response = f"Timeout executing tool {tool_name}: {e!s}\n"
+            tool_response += traceback.format_exc()
+        except ConnectionError as e:
+            tool_response = f"Connection error executing tool {tool_name}: {e!s}\n"
+            tool_response += traceback.format_exc()
+        else:
             tool_response = (
                 json.dumps(tool_result)
                 if isinstance(tool_result, (dict, list))
                 else str(tool_result)
             )
-        except Exception as e:
-            tool_response = f"Error executing tool {tool_name}: {e!s}\n"
-            tool_response += traceback.format_exc()
         tool_duration = time.time() - tool_start_ts
 
         if tool_name not in tool_metrics:
@@ -158,24 +219,42 @@ async def agent_loop(
 
 
 async def evaluate_single_task(
+    *,
     client: Anthropic,
     model: str,
     qa_pair: dict[str, Any],
     tools: list[dict[str, Any]],
-    connection: Any,
+    connection: MCPConnection,
     task_index: int,
 ) -> dict[str, Any]:
-    """Evaluate a single QA pair with the given tools."""
+    """Evaluate a single QA pair with the given tools.
+
+    Args:
+        client: Anthropic client instance.
+        model: Claude model identifier.
+        qa_pair: Dictionary with 'question' and 'answer' keys.
+        tools: List of tool definitions.
+        connection: MCP connection instance.
+        task_index: Zero-based index of the task.
+
+    Returns:
+        Dictionary containing evaluation results with question, expected,
+        actual, score, duration, tool_calls, and feedback.
+    """
     start_time = time.time()
 
     print(f"Task {task_index + 1}: Running task with question: {qa_pair['question']}")
     response, tool_metrics = await agent_loop(
-        client, model, qa_pair["question"], tools, connection
+        client=client,
+        model=model,
+        question=qa_pair["question"],
+        tools=tools,
+        connection=connection,
     )
 
-    response_value = extract_xml_content(response, "response")
-    summary = extract_xml_content(response, "summary")
-    feedback = extract_xml_content(response, "feedback")
+    response_value = extract_xml_content(response, "response") if response else None
+    summary = extract_xml_content(response, "summary") if response else None
+    feedback = extract_xml_content(response, "feedback") if response else None
 
     duration_seconds = time.time() - start_time
 
@@ -228,24 +307,41 @@ TASK_TEMPLATE = """
 
 
 async def run_evaluation(
-    eval_path: Path, connection: Any, model: str = "claude-3-7-sonnet-20250219"
+    *,
+    eval_path: Path,
+    connection: MCPConnection,
+    model: str = "claude-3-7-sonnet-20250219",
 ) -> str:
-    """Run evaluation with MCP server tools."""
-    print("🚀 Starting Evaluation")
+    """Run evaluation with MCP server tools.
+
+    Args:
+        eval_path: Path to the evaluation XML file.
+        connection: MCP connection instance.
+        model: Claude model identifier.
+
+    Returns:
+        Markdown-formatted evaluation report string.
+    """
+    print(":rocket: Starting Evaluation")
 
     client = Anthropic()
 
     tools = await connection.list_tools()
-    print(f"📋 Loaded {len(tools)} tools from MCP server")
+    print(f":clipboard: Loaded {len(tools)} tools from MCP server")
 
     qa_pairs = parse_evaluation_file(eval_path)
-    print(f"📋 Loaded {len(qa_pairs)} evaluation tasks")
+    print(f":clipboard: Loaded {len(qa_pairs)} evaluation tasks")
 
-    results = []
+    results: list[dict[str, Any]] = []
     for i, qa_pair in enumerate(qa_pairs):
         print(f"Processing task {i + 1}/{len(qa_pairs)}")
         result = await evaluate_single_task(
-            client, model, qa_pair, tools, connection, i
+            client=client,
+            model=model,
+            qa_pair=qa_pair,
+            tools=tools,
+            connection=connection,
+            task_index=i,
         )
         results.append(result)
 
@@ -274,7 +370,9 @@ async def run_evaluation(
             question=qa_pair["question"],
             expected_answer=qa_pair["answer"],
             actual_answer=result["actual"] or "N/A",
-            correct_indicator="✅" if result["score"] else "❌",
+            correct_indicator=":white_check_mark:"
+            if result["score"]
+            else ":cross_mark:",
             total_duration=result["total_duration"],
             tool_calls=json.dumps(result["tool_calls"], indent=2),
             summary=result["summary"] or "N/A",
@@ -287,8 +385,15 @@ async def run_evaluation(
 
 
 def parse_headers(header_list: list[str]) -> dict[str, str]:
-    """Parse header strings in format 'Key: Value' into a dictionary."""
-    headers = {}
+    """Parse header strings in format 'Key: Value' into a dictionary.
+
+    Args:
+        header_list: List of header strings in 'Key: Value' format.
+
+    Returns:
+        Dictionary mapping header names to values.
+    """
+    headers: dict[str, str] = {}
     if not header_list:
         return headers
 
@@ -302,8 +407,15 @@ def parse_headers(header_list: list[str]) -> dict[str, str]:
 
 
 def parse_env_vars(env_list: list[str]) -> dict[str, str]:
-    """Parse environment variable strings in format 'KEY=VALUE' into a dictionary."""
-    env = {}
+    """Parse environment variable strings in format 'KEY=VALUE' into a dictionary.
+
+    Args:
+        env_list: List of environment variable strings in 'KEY=VALUE' format.
+
+    Returns:
+        Dictionary mapping variable names to values.
+    """
+    env: dict[str, str] = {}
     if not env_list:
         return env
 
@@ -317,6 +429,12 @@ def parse_env_vars(env_list: list[str]) -> dict[str, str]:
 
 
 async def main() -> None:
+    """Run the MCP server evaluation harness.
+
+    Parses command-line arguments to configure the MCP connection type
+    (stdio, sse, or http), connects to the server, runs evaluation tasks,
+    and outputs a formatted report.
+    """
     parser = argparse.ArgumentParser(
         description="Evaluate MCP servers using test questions",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -401,15 +519,17 @@ Examples:
         print(f"Error: {e}")
         sys.exit(1)
 
-    print(f"🔗 Connecting to MCP server via {args.transport}...")
+    print(f":link: Connecting to MCP server via {args.transport}...")
 
     async with connection:
-        print("✅ Connected successfully")
-        report = await run_evaluation(args.eval_file, connection, args.model)
+        print(":white_check_mark: Connected successfully")
+        report = await run_evaluation(
+            eval_path=args.eval_file, connection=connection, model=args.model
+        )
 
         if args.output:
             args.output.write_text(report)
-            print(f"\n✅ Report saved to {args.output}")
+            print(f"\n:white_check_mark: Report saved to {args.output}")
         else:
             print("\n" + report)
 
