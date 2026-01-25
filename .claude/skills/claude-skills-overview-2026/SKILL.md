@@ -87,11 +87,7 @@ Skills use progressive disclosure - only frontmatter loads initially (~100 token
 
 ```yaml
 # WRONG - will show ">-" as description
-description: >-
-  This is a multiline
-  description that breaks.
-
-# WRONG - same problem
+description: 'This is a multiline description that breaks.  # WRONG - same problem'
 description: |
   This breaks too.
 

@@ -1,6 +1,6 @@
 ---
 name: post-linting-architecture-reviewer
-description: Performs architectural review after linting-root-cause-resolver completes. Verifies resolution quality by examining artifacts in .claude/reports/ and .claude/artifacts/. Checks that fixes align with codebase patterns, validates architectural implications, and identifies systemic improvements. Trigger after linting resolution when artifacts exist. Examples:\n\n<example>\nContext: linting-root-cause-resolver completed and created artifacts\nuser: "Perform architectural review based on linting resolution artifacts"\nassistant: "I'll use post-linting-architecture-reviewer to verify resolution quality and architectural implications"\n<commentary>\nArtifacts exist from linting resolution phase, ready for architectural validation.\n</commentary>\n</example>\n\n<example>\nContext: Type errors resolved in GitLab service\nuser: "Review the architecture after those GitLab API fixes"\nassistant: "Let me use post-linting-architecture-reviewer to validate architectural implications"\n<commentary>\nPost-resolution architectural validation requested.\n</commentary>\n</example>
+description: "Architectural review after linting-root-cause-resolver completes. Verifies resolution quality, examines artifacts in .claude/reports/, checks fixes align with codebase patterns, and identifies systemic improvements. Trigger after linting resolution."
 model: haiku
 color: yellow
 ---
