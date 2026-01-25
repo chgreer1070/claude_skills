@@ -7,9 +7,7 @@ description: 'Orchestrates specialized agents to create high-quality Claude Code
 
 This skill orchestrates specialized agents through a comprehensive plugin creation workflow. The orchestrator (you) delegates to sub-agents for research, discovery, validation, and implementation - never performing these tasks directly.
 
-**Workflow Diagram**: See [workflow-diagram.md](./references/workflow-diagram.md) for visual ASCII diagrams of the complete plugin creation flow.
-
-**Methodology Comparison**: See [gastown-comparison.md](./references/gastown-comparison.md) for comparison with [Gastown MEOW](https://github.com/steveyegge/gastown) multi-agent orchestration.
+**Workflow Diagram**: See [workflow-diagram.md](./references/workflow-diagram.md) for mermaid flowcharts of the complete plugin creation flow.
 
 ---
 
@@ -36,6 +34,80 @@ This skill orchestrates specialized agents through a comprehensive plugin creati
 4. Enables parallel work and thoroughness
 
 </orchestration_rules>
+
+---
+
+## Checkpoint Persistence
+
+<checkpoint_system>
+
+**Save phase outputs to enable crash recovery and audit trails.**
+
+After completing each phase, save results to the plugin work directory:
+
+```text
+.claude/plugin-work/{plugin-name}/
+├── phase-0-rtica.md          # Prerequisites assessment
+├── phase-1-research.md       # Research findings with sources
+├── phase-2-design.md         # Architecture and component plan
+├── phase-4-validation.md     # Validation results
+└── phase-6-verification.md   # Final verification summary
+```
+
+**Checkpoint format:**
+
+```markdown
+# Phase {N}: {Phase Name}
+Date: {ISO timestamp}
+Plugin: {plugin-name}
+Status: COMPLETE | IN_PROGRESS | BLOCKED
+
+## Outputs
+{Phase-specific results}
+
+## Next Phase Prerequisites
+{What the next phase needs}
+```
+
+**Recovery:** If session crashes, read the most recent checkpoint and resume from that phase.
+
+</checkpoint_system>
+
+---
+
+## Parallel Agent Spawning
+
+<parallel_execution>
+
+**Spawn independent agents simultaneously to maximize throughput.**
+
+When tasks have no dependencies, launch them in a single message with multiple Task tool calls:
+
+```text
+# Phase 1 Research - spawn all three in parallel:
+
+Task(subagent_type="Explore", prompt="Check existing plugins...")
+Task(subagent_type="Explore", prompt="Gather domain knowledge...")
+Task(subagent_type="general-purpose", prompt="Fetch official docs...")
+
+# All three run concurrently, results merged when complete
+```
+
+**Parallelization opportunities:**
+
+| Phase           | Parallel Tasks                    |
+| --------------- | --------------------------------- |
+| 1 Research      | 1a + 1b + 1c (all independent)    |
+| 4 Validation    | 4a scripts + 4b docs verification |
+| 5 Documentation | Multiple doc files if needed      |
+
+**Sequential requirements:**
+
+- Phase 2 depends on Phase 1 outputs
+- Phase 3 depends on Phase 2 architecture
+- Phase 4c (assessor) depends on 4a + 4b results
+
+</parallel_execution>
 
 ---
 
