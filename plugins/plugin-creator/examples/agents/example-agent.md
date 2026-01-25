@@ -1,21 +1,11 @@
 ---
 name: example-agent
 description: "Demonstrates all available agent frontmatter fields. Use when you need a reference for agent configuration or when learning about agent capabilities. Handles example tasks, demonstration requests, and tutorial scenarios."
-tools:
-  - Read
-  - Grep
-  - Glob
-  - WebFetch
-  - WebSearch
-disallowedTools:
-  - Bash
-  - Write
-  - Edit
+tools: Read, Grep, Glob, WebFetch, WebSearch
+disallowedTools: Bash, Write, Edit
 model: sonnet
 permissionMode: default
-skills:
-  - python3-development
-  - claude-skills-overview-2026
+skills: python3-development, claude-skills-overview-2026
 hooks:
   PreToolUse:
     - matcher: "Read"

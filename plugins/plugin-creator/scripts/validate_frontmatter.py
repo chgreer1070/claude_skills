@@ -8,7 +8,7 @@
 #     "types-PyYAML>=6.0",
 # ]
 # ///
-"""Validate YAML frontmatter in Claude Code capability files.
+"""Validate and fix YAML frontmatter in Claude Code capability files.
 
 Validates frontmatter in:
 - SKILL.md files (skills)
@@ -17,6 +17,7 @@ Validates frontmatter in:
 
 Checks against official schema with field type validation.
 Reports issues with specific line numbers and suggestions.
+Auto-fixes common issues like YAML arrays that should be comma-separated strings.
 """
 
 from __future__ import annotations
@@ -35,6 +36,9 @@ from rich.table import Table
 
 console = Console()
 error_console = Console(stderr=True)
+
+# Preview length for dry-run output
+PREVIEW_MAX_CHARS = 2000
 
 app = typer.Typer(
     name="validate-frontmatter",
@@ -95,7 +99,12 @@ SKILL_SCHEMA: list[FieldSpec] = [
         max_length=1024,
     ),
     FieldSpec("argument-hint", str, False, "Autocomplete hint"),
-    FieldSpec("allowed-tools", (str, list), False, "Tools without permission prompts"),
+    FieldSpec(
+        "allowed-tools",
+        str,
+        False,
+        "Tools without permission prompts (comma-separated)",
+    ),
     FieldSpec(
         "model",
         str,
@@ -113,7 +122,7 @@ SKILL_SCHEMA: list[FieldSpec] = [
 COMMAND_SCHEMA: list[FieldSpec] = [
     FieldSpec("description", str, True, "Shown in /help menu", max_length=1024),
     FieldSpec("argument-hint", str, False, "Shows in autocomplete"),
-    FieldSpec("allowed-tools", (str, list), False, "Tool allowlist with patterns"),
+    FieldSpec("allowed-tools", str, False, "Tool allowlist (comma-separated)"),
     FieldSpec("model", str, False, "Override model"),
     FieldSpec("context", str, False, "Context behavior", valid_values=["fork"]),
     FieldSpec("agent", str, False, "Agent type when context: fork"),
@@ -138,8 +147,8 @@ AGENT_SCHEMA: list[FieldSpec] = [
         "Delegation trigger keywords",
         max_length=1024,
     ),
-    FieldSpec("tools", (str, list), False, "Tool allowlist"),
-    FieldSpec("disallowedTools", (str, list), False, "Tool denylist"),
+    FieldSpec("tools", str, False, "Tool allowlist (comma-separated)"),
+    FieldSpec("disallowedTools", str, False, "Tool denylist (comma-separated)"),
     FieldSpec(
         "model",
         str,
@@ -154,10 +163,14 @@ AGENT_SCHEMA: list[FieldSpec] = [
         "Permission behavior",
         valid_values=["default", "acceptEdits", "dontAsk", "bypassPermissions", "plan"],
     ),
-    FieldSpec("skills", (str, list), False, "Skills to load"),
+    FieldSpec("skills", str, False, "Skills to load (comma-separated)"),
     FieldSpec("hooks", dict, False, "Scoped hooks"),
     FieldSpec("color", str, False, "Terminal output color"),  # per lines 252-264
 ]
+
+# Fields that must be comma-separated strings (not YAML arrays)
+# Per official docs: https://code.claude.com/docs/en/skills.md
+COMMA_SEPARATED_FIELDS = {"allowed-tools", "tools", "disallowedTools", "skills"}
 
 
 def detect_file_type(path: Path) -> FileType:
@@ -300,6 +313,120 @@ def validate_field(field_spec: FieldSpec, value: object) -> list[ValidationIssue
             )
 
     return issues
+
+
+def fix_array_to_comma_string(content: str) -> tuple[str, list[str]]:
+    """Convert YAML arrays to comma-separated strings for specified fields.
+
+    Returns:
+        Tuple of (fixed_content, list_of_fixes_applied).
+    """
+    fixes: list[str] = []
+
+    # Parse to find array fields
+    frontmatter, _start_line, _end_line = extract_frontmatter(content)
+    if frontmatter is None:
+        return content, fixes
+
+    try:
+        data = yaml.safe_load(frontmatter)
+    except yaml.YAMLError:
+        return content, fixes
+
+    if not isinstance(data, dict):
+        return content, fixes
+
+    # Check each comma-separated field
+    fields_to_fix: dict[str, str] = {}
+    for field_name in COMMA_SEPARATED_FIELDS:
+        if field_name in data and isinstance(data[field_name], list):
+            # Convert list to comma-separated string
+            items = [str(item).strip() for item in data[field_name]]
+            fields_to_fix[field_name] = ", ".join(items)
+            fixes.append(
+                f"Converted {field_name} from YAML array to comma-separated string"
+            )
+
+    if not fields_to_fix:
+        return content, fixes
+
+    # Apply fixes by regenerating frontmatter
+    for field_name, new_value in fields_to_fix.items():
+        data[field_name] = new_value
+
+    # Rebuild file with fixed frontmatter
+    # Find the end of frontmatter in original content
+    end_match = re.search(r"\n---\s*\n", content[3:])
+    if not end_match:
+        return content, fixes
+
+    body = content[end_match.end() + 3 :]
+
+    # Generate new YAML frontmatter
+    new_frontmatter = yaml.dump(
+        data, default_flow_style=False, allow_unicode=True, sort_keys=False, width=1000
+    )
+
+    return f"---\n{new_frontmatter}---\n{body}", fixes
+
+
+def fix_multiline_description(content: str) -> tuple[str, list[str]]:
+    """Convert YAML multiline indicators to single-line quoted strings.
+
+    Returns:
+        Tuple of (fixed_content, list_of_fixes_applied).
+    """
+    fixes: list[str] = []
+
+    # Pattern to detect description with multiline indicators
+    multiline_patterns = [
+        (r"(description:\s*)>\-\n((?:\s+.+\n)+)", "folded-strip"),
+        (r"(description:\s*)\|\-\n((?:\s+.+\n)+)", "literal-strip"),
+        (r"(description:\s*)>\n((?:\s+.+\n)+)", "folded"),
+        (r"(description:\s*)\|\n((?:\s+.+\n)+)", "literal"),
+    ]
+
+    for pattern, indicator_type in multiline_patterns:
+        match = re.search(pattern, content)
+        if match:
+            prefix = match.group(1)
+            multiline_content = match.group(2)
+            # Join the lines and clean up
+            lines = [line.strip() for line in multiline_content.strip().split("\n")]
+            single_line = " ".join(lines)
+            # Quote it properly
+            quoted = f'"{single_line}"' if "'" in single_line else f"'{single_line}'"
+            content = (
+                content[: match.start()]
+                + prefix
+                + quoted
+                + "\n"
+                + content[match.end() :]
+            )
+            fixes.append(
+                f"Converted description from {indicator_type} multiline to single-line string"
+            )
+            break
+
+    return content, fixes
+
+
+def apply_fixes(content: str) -> tuple[str, list[str]]:
+    """Apply all automatic fixes to frontmatter.
+
+    Returns:
+        Tuple of (fixed_content, list_of_all_fixes_applied).
+    """
+    all_fixes: list[str] = []
+
+    # Apply fixes in order
+    content, fixes = fix_array_to_comma_string(content)
+    all_fixes.extend(fixes)
+
+    content, fixes = fix_multiline_description(content)
+    all_fixes.extend(fixes)
+
+    return content, all_fixes
 
 
 def validate_frontmatter(
@@ -548,6 +675,135 @@ def batch(
 
     if total_errors > 0:
         raise typer.Exit(1)
+
+
+@app.command()
+def fix(
+    path: Annotated[Path, typer.Argument(help="Path to .md file with frontmatter")],
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run", "-n", help="Show what would be fixed without writing"
+        ),
+    ] = False,
+) -> None:
+    """Auto-fix common frontmatter issues.
+
+    Fixes:
+    - YAML arrays converted to comma-separated strings (allowed-tools, tools, etc.)
+    - Multiline description indicators converted to single-line quoted strings
+
+    Examples:
+        uv run validate_frontmatter.py fix skills/my-skill/SKILL.md
+        uv run validate_frontmatter.py fix agents/my-agent.md --dry-run
+    """
+    if not path.exists():
+        error_console.print(f"[red]File not found:[/red] {path}")
+        raise typer.Exit(1)
+
+    content = path.read_text()
+
+    # Apply all fixes
+    fixed_content, fixes = apply_fixes(content)
+
+    if not fixes:
+        console.print(f"[green]No fixes needed for:[/green] {path}")
+        raise typer.Exit(0)
+
+    console.print(f"[cyan]File:[/cyan] {path}")
+    console.print("[cyan]Fixes applied:[/cyan]")
+    for fix_desc in fixes:
+        console.print(f"  [green]✓[/green] {fix_desc}")
+
+    if dry_run:
+        console.print()
+        console.print("[yellow]Dry run - no changes written[/yellow]")
+        console.print()
+        console.print("[dim]Fixed content would be:[/dim]")
+        console.print(
+            Panel(
+                fixed_content[:PREVIEW_MAX_CHARS]
+                + ("..." if len(fixed_content) > PREVIEW_MAX_CHARS else "")
+            )
+        )
+    else:
+        path.write_text(fixed_content)
+        console.print()
+        console.print(
+            Panel("[green]File updated successfully![/green]", border_style="green")
+        )
+
+
+@app.command()
+def fix_batch(
+    directory: Annotated[
+        Path, typer.Argument(help="Directory to search for capability files")
+    ],
+    recursive: Annotated[
+        bool, typer.Option("--recursive", "-r", help="Search recursively")
+    ] = True,
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run", "-n", help="Show what would be fixed without writing"
+        ),
+    ] = False,
+) -> None:
+    """Auto-fix all capability files in a directory.
+
+    Finds and fixes:
+    - SKILL.md files
+    - Files in commands/ directories
+    - Files in agents/ directories
+    """
+    if not directory.exists():
+        error_console.print(f"[red]Directory not found:[/red] {directory}")
+        raise typer.Exit(1)
+
+    # Find all capability files
+    patterns = ["**/SKILL.md", "**/commands/*.md", "**/agents/*.md"]
+    files: list[Path] = []
+
+    for pattern in patterns:
+        if recursive:
+            files.extend(directory.glob(pattern))
+        else:
+            files.extend(directory.glob(pattern.replace("**/", "")))
+
+    if not files:
+        console.print("[yellow]No capability files found[/yellow]")
+        raise typer.Exit(0)
+
+    console.print(f"[cyan]Found {len(files)} capability files[/cyan]")
+    console.print()
+
+    total_fixed = 0
+    total_fixes = 0
+
+    for file_path in sorted(files):
+        content = file_path.read_text()
+        fixed_content, fixes = apply_fixes(content)
+
+        if fixes:
+            total_fixed += 1
+            total_fixes += len(fixes)
+            console.print(f"[green]FIX[/green] {file_path} - {len(fixes)} fixes")
+            for fix_desc in fixes:
+                console.print(f"      [dim]{fix_desc}[/dim]")
+            if not dry_run:
+                file_path.write_text(fixed_content)
+        else:
+            console.print(f"[dim]OK[/dim] {file_path}")
+
+    console.print()
+    if dry_run:
+        console.print(
+            f"[yellow]Dry run:[/yellow] {total_fixed} files would be fixed with {total_fixes} total fixes"
+        )
+    else:
+        console.print(
+            f"[green]Summary:[/green] {total_fixed} files fixed with {total_fixes} total fixes"
+        )
 
 
 if __name__ == "__main__":
