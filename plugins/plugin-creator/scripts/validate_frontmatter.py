@@ -477,18 +477,7 @@ def validate_frontmatter(
                 )
             )
 
-    # Check for unknown fields
-    known_fields = {spec.name for spec in schema}
-    issues.extend(
-        ValidationIssue(
-            field=field_name,
-            severity="warning",
-            message="Unknown field (not in official schema)",
-            suggestion="Check spelling or remove if not needed",
-        )
-        for field_name in data
-        if field_name not in known_fields
-    )
+    # Note: Unknown fields are allowed - Claude Code supports custom frontmatter fields
 
     return issues
 
