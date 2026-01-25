@@ -101,22 +101,64 @@ refactor(core): restructure authentication module
 Breaking change: Auth service now requires config object
 ```
 
-## Scope examples
+## Scope Rules
 
-**Frontend:**
+**Scope MUST identify WHERE in the codebase, NOT what type of change.**
 
-- `feat(ui): add loading spinner to dashboard`
-- `fix(form): validate email format`
+The scope is a module, component, or directory name - never a description of the change itself.
 
-**Backend:**
+### Determining Scope
+
+1. **Single module/directory**: Use that module name
+
+   - Changes to `src/auth/*.py` → `auth`
+   - Changes to `plugins/gitlab-skill/` → `gitlab-skill`
+
+2. **Multiple files in same area**: Use the common parent
+
+   - Changes to `skills/python3-dev/assets/*.py` → `assets` or `python3-dev`
+
+3. **Cross-cutting changes**: Use the primary affected area OR omit scope
+
+   - Config + code changes → use primary area: `feat(auth): add OAuth support`
+   - Truly scattered changes → omit: `chore: update dependencies across modules`
+
+4. **Root config files**: Use the config type
+   - `pyproject.toml` linting rules → `lint` or `ruff`
+   - `pyproject.toml` dependencies → `deps`
+   - `.github/workflows/` → `ci`
+
+### Scope Anti-Patterns
+
+**NEVER use these as scopes** - they describe WHAT, not WHERE:
+
+| ❌ Wrong   | ✅ Correct                     | Why                                     |
+| ---------- | ------------------------------ | --------------------------------------- |
+| `docs`     | `readme`, `api-docs`, `skills` | "docs" is a change type, not a location |
+| `tests`    | `auth-tests`, `api`            | Be specific about what's being tested   |
+| `types`    | `models`, `api`                | Types belong to a module                |
+| `refactor` | (use as type, not scope)       | "refactor" is a type, not a location    |
+| `bugfix`   | (use `fix` as type)            | "bugfix" is a type, not a location      |
+
+### Scope Examples
+
+**By domain:**
+
+- `feat(auth): add JWT authentication`
+- `fix(payments): handle currency conversion`
+- `refactor(users): extract validation logic`
+
+**By layer:**
 
 - `feat(api): add user profile endpoint`
 - `fix(db): resolve connection pool leak`
-
-**Infrastructure:**
-
 - `chore(ci): update Node version to 20`
-- `feat(docker): add multi-stage build`
+
+**By plugin/skill:**
+
+- `feat(gitlab-skill): add MR approval support`
+- `fix(python3-dev): correct shebang detection`
+- `docs(commit-staged): clarify scope selection`
 
 ## Breaking changes
 
@@ -184,7 +226,8 @@ git commit --amend --no-edit
 ## Commit message checklist
 
 - [ ] Type is appropriate (feat/fix/docs/etc.)
-- [ ] Scope is specific and clear
+- [ ] Scope identifies WHERE (module/directory), NOT what type of change
+- [ ] Scope is NOT a banned word: `docs`, `tests`, `types`, `refactor`, `bugfix`
 - [ ] Summary is under 50 characters
 - [ ] Summary uses imperative mood
 - [ ] Body explains WHY not just WHAT
