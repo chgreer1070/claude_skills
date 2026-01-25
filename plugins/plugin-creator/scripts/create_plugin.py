@@ -10,8 +10,10 @@
 
 This script scaffolds a complete plugin directory structure with:
 - .claude-plugin/plugin.json (validated against schema)
-- Optional skills, commands, agents directories
+- Optional skills, agents directories
 - Template files for each component type
+
+Note: Commands in plugins are deprecated. Use skills instead.
 
 Self-validates all created files before reporting success (CoVe pattern).
 """
@@ -62,7 +64,6 @@ class ComponentType(StrEnum):
     """Plugin component types."""
 
     SKILL = "skill"
-    COMMAND = "command"
     AGENT = "agent"
     HOOK = "hook"
 
@@ -87,7 +88,6 @@ class PluginSpec:
     author_email: str = ""
     license: str = "MIT"
     skills: list[str] = field(default_factory=list)
-    commands: list[str] = field(default_factory=list)
     agents: list[str] = field(default_factory=list)
     include_hooks: bool = False
 
@@ -140,9 +140,6 @@ def create_plugin_json(spec: PluginSpec) -> dict[str, Any]:
     if spec.skills:
         manifest["skills"] = [f"./skills/{s}" for s in spec.skills]
 
-    if spec.commands:
-        manifest["commands"] = "./commands"
-
     if spec.agents:
         manifest["agents"] = "./agents"
 
@@ -185,33 +182,6 @@ Use this skill when:
 ## Sources
 
 - [Source 1](https://example.com) - What this source covers
-"""
-
-
-def create_command_template(name: str) -> str:
-    """Create command file template content.
-
-    Returns:
-        Markdown content for a command .md file with frontmatter.
-    """
-    return f"""---
-description: '{name.replace("-", " ").title()} - describe what this command does'
-argument-hint: '[optional-args]'
----
-
-# /{name}
-
-[Instructions for what this command does when invoked]
-
-## Arguments
-
-- `$ARGUMENTS` - All arguments passed to the command
-
-## Example
-
-```
-/{name} example-arg
-```
 """
 
 
@@ -334,11 +304,6 @@ def validate_directory_structure(
         skill_path = plugin_dir / "skills" / skill_name / "SKILL.md"
         results.append(validate_yaml_frontmatter(skill_path))
 
-    # Check commands
-    for cmd_name in spec.commands:
-        cmd_path = plugin_dir / "commands" / f"{cmd_name}.md"
-        results.append(validate_yaml_frontmatter(cmd_path))
-
     # Check agents
     for agent_name in spec.agents:
         agent_path = plugin_dir / "agents" / f"{agent_name}.md"
@@ -378,14 +343,6 @@ def create_plugin(
         skill_dir.mkdir(parents=True, exist_ok=True)
         skill_path = skill_dir / "SKILL.md"
         skill_path.write_text(create_skill_template(skill_name, spec.name))
-
-    # Create commands
-    if spec.commands:
-        cmd_dir = plugin_dir / "commands"
-        cmd_dir.mkdir(parents=True, exist_ok=True)
-        for cmd_name in spec.commands:
-            cmd_path = cmd_dir / f"{cmd_name}.md"
-            cmd_path.write_text(create_command_template(cmd_name))
 
     # Create agents
     if spec.agents:
@@ -449,10 +406,6 @@ def create(
     skills: Annotated[
         list[str] | None, typer.Option("--skill", "-s", help="Skill names to create")
     ] = None,
-    commands: Annotated[
-        list[str] | None,
-        typer.Option("--command", "-c", help="Command names to create"),
-    ] = None,
     agents: Annotated[
         list[str] | None, typer.Option("--agent", "-a", help="Agent names to create")
     ] = None,
@@ -473,13 +426,11 @@ def create(
         uv run create_plugin.py my-plugin -d "My plugin description" -s my-skill
 
         # Create plugin with multiple components
-        uv run create_plugin.py my-plugin -s skill1 -s skill2 -c cmd1 -a agent1 --hooks
+        uv run create_plugin.py my-plugin -s skill1 -s skill2 -a agent1 --hooks
     """
     # Validate name
     if agents is None:
         agents = []
-    if commands is None:
-        commands = []
     if skills is None:
         skills = []
     valid, msg = validate_plugin_name(name)
@@ -492,7 +443,7 @@ def create(
         description = f"{name.replace('-', ' ').title()} plugin"
 
     # Default to one skill with same name if no components specified
-    if not skills and not commands and not agents:
+    if not skills and not agents:
         skills = [name]
 
     spec = PluginSpec(
@@ -501,7 +452,6 @@ def create(
         author_name=author,
         author_email=email,
         skills=list(skills),
-        commands=list(commands),
         agents=list(agents),
         include_hooks=hooks,
     )
@@ -558,7 +508,7 @@ def validate(
     Checks:
     - plugin.json exists and is valid JSON
     - All referenced skills have valid SKILL.md
-    - All commands/agents have valid frontmatter
+    - All agents have valid frontmatter
     - No YAML multiline indicators in descriptions
     """
     if not plugin_dir.exists():
@@ -588,12 +538,6 @@ def validate(
             skill_name = Path(skill_path).name
             skills.append(skill_name)
 
-    commands = []
-    if "commands" in manifest:
-        cmd_dir = plugin_dir / "commands"
-        if cmd_dir.exists():
-            commands = [p.stem for p in cmd_dir.glob("*.md")]
-
     agents = []
     if "agents" in manifest:
         agent_dir = plugin_dir / "agents"
@@ -604,7 +548,6 @@ def validate(
         name=manifest.get("name", plugin_dir.name),
         description=manifest.get("description", ""),
         skills=skills,
-        commands=commands,
         agents=agents,
         include_hooks="hooks" in manifest,
     )

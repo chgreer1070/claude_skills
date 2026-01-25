@@ -12,8 +12,10 @@
 
 Validates frontmatter in:
 - SKILL.md files (skills)
-- Command .md files
 - Agent .md files
+
+Note: Commands in plugins are deprecated. For user-level commands
+(~/.claude/commands/), use the validate/fix commands directly on the file.
 
 Checks against official schema with field type validation.
 Reports issues with specific line numbers and suggestions.
@@ -627,8 +629,8 @@ def validate(
     - Field values within constraints (length, pattern, valid values)
 
     Examples:
-        uv run validate_frontmatter.py skills/my-skill/SKILL.md
-        uv run validate_frontmatter.py commands/my-command.md --type command
+        uv run validate_frontmatter.py validate skills/my-skill/SKILL.md
+        uv run validate_frontmatter.py validate agents/my-agent.md --type agent
     """
     if not path.exists():
         error_console.print(f"[red]File not found:[/red] {path}")
@@ -675,15 +677,18 @@ def batch(
 
     Finds and validates:
     - SKILL.md files
-    - Files in commands/ directories
     - Files in agents/ directories
+
+    Note: Commands in plugins are deprecated. Use skills instead.
+    For user-level commands (~/.claude/commands/), use the validate command directly.
     """
     if not directory.exists():
         error_console.print(f"[red]Directory not found:[/red] {directory}")
         raise typer.Exit(1)
 
     # Find all capability files
-    patterns = ["**/SKILL.md", "**/commands/*.md", "**/agents/*.md"]
+    # Note: commands/ excluded - deprecated in plugins, use validate for ~/.claude/commands/
+    patterns = ["**/SKILL.md", "**/agents/*.md"]
     files: list[Path] = []
 
     for pattern in patterns:
@@ -817,15 +822,18 @@ def fix_batch(
 
     Finds and fixes:
     - SKILL.md files
-    - Files in commands/ directories
     - Files in agents/ directories
+
+    Note: Commands in plugins are deprecated. Use skills instead.
+    For user-level commands (~/.claude/commands/), use the fix command directly.
     """
     if not directory.exists():
         error_console.print(f"[red]Directory not found:[/red] {directory}")
         raise typer.Exit(1)
 
     # Find all capability files
-    patterns = ["**/SKILL.md", "**/commands/*.md", "**/agents/*.md"]
+    # Note: commands/ excluded - deprecated in plugins, use fix for ~/.claude/commands/
+    patterns = ["**/SKILL.md", "**/agents/*.md"]
     files: list[Path] = []
 
     for pattern in patterns:
