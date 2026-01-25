@@ -20,6 +20,9 @@ def get_rendered_width(renderable: RenderableType) -> int:
 
     Handles color codes, Unicode, styling, padding, and borders.
     Works with Panel, Table, or any Rich container.
+
+    Returns:
+        The maximum rendered width in characters.
     """
     temp_console = Console(width=999999)
     measurement = Measurement.get(temp_console, temp_console.options, renderable)
