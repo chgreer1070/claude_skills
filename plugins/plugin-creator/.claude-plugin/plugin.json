@@ -1,0 +1,6 @@
+{
+  "name": "plugin-creator",
+  "description": "Step-by-step guidance for creating Claude Code plugins. Use when creating new plugins, structuring plugin directories, writing plugin.json manifests, creating SKILL.md files, or validating plugin structure. References verified official documentation.",
+  "version": "1.0.0",
+  "skills": ["./skills/plugin-creator"]
+}
