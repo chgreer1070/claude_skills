@@ -24,7 +24,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import StrEnum
-from pathlib import Path  # noqa: TC003 - typer evaluates annotations at runtime
+from pathlib import Path
 from typing import Annotated
 
 import typer
