@@ -11,9 +11,11 @@ import pathlib
 def _get_hatch_version() -> str | None:
     """Compute the most up-to-date version number in a development environment.
 
-    Returns `None` if Hatchling is not installed, e.g. in a production environment.
-
     For more details, see <https://github.com/maresb/hatch-vcs-footgun-example/>.
+
+    Returns:
+        The computed version string, or None if Hatchling is not installed
+        (e.g. in a production environment).
     """
     try:
         from hatchling.metadata.core import ProjectMetadata
@@ -40,6 +42,9 @@ def _get_importlib_metadata_version() -> str:
     package. However, it is only updated when a package is installed. Thus, if a
     package is installed in editable mode, and a different version is checked out,
     then the version number will not be updated.
+
+    Returns:
+        The version string from the installed package metadata.
     """
     from importlib.metadata import version
 

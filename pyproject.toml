@@ -107,11 +107,10 @@ unfixable = ["F401"]
 ]
 # Typer evaluates annotations at runtime, conflicting with TC003 + required PEP 563 import
 "plugins/plugin-creator/scripts/*.py" = ["TC003"]
-"**/assets/**" = [
-	"DOC",  # Example/demonstration files don't need full docstrings
-	"ANN",  # Type annotations relaxed for examples
-	"PLC",  # Local imports acceptable in examples
-]
+# Anti-pattern examples: intentionally incorrect code demonstrating what NOT to do
+"**/assets/nested-typer-exceptions/*.py" = ["DOC", "ANN"]
+# Lazy imports for optional dependency detection (hatchling may not be installed)
+"**/assets/version.py" = ["PLC0415"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 120
