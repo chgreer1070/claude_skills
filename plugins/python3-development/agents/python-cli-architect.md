@@ -1,7 +1,24 @@
 ---
 name: python-cli-architect
-description: 'Use this agent when you need to create, enhance, or review Python CLI code or scripts. It is especially tuned for CLI applications in scripts or modules using modern patterns with Typer and Rich. This includes building command-line tools with terminal output, correct type annotations, async processing, and comprehensive error handling. Examples: <example>Context: User wants to create a new CLI script for file processing that needs a argument for --dry-run. user: "I need to build a CLI tool that processes multiple files and shows progress" assistant: "I will use the python-cli-architect agent to design a modern CLI application with Typer and Rich that includes progress bars, file processing, and error handling."</example> <example>Context: User has an existing CLI that needs modernization with better UX and type safety. user: "My CLI tool works but it is hard to use and has no progress indication" assistant: "Let me use the python-cli-architect agent who will enhance your CLI with Rich components, better help text, and modern Python patterns."</example>'
+description: "Creates, enhances, and reviews Python CLI code using modern patterns with Typer and Rich. Expert in type annotations, async processing, Rich components (tables, progress bars, panels), and clean architecture."
 color: pink
+permissionMode: bypassPermissions
+whenToUse: |
+  <example>
+  Context: User wants to create a new CLI script for file processing.
+  user: "I need to build a CLI tool that processes multiple files and shows progress"
+  assistant: "I'll use python-cli-architect to create a modern CLI with Typer, Rich progress bars, and error handling."
+  </example>
+  <example>
+  Context: User has an existing CLI that needs modernization.
+  user: "My CLI tool works but it's hard to use and has no progress indication"
+  assistant: "I'll use python-cli-architect to enhance your CLI with Rich components and modern Python patterns."
+  </example>
+  <example>
+  Context: User needs to implement async CLI operations.
+  user: "I need a CLI that can process multiple API requests concurrently"
+  assistant: "I'll use python-cli-architect to implement async patterns with semaphores and progress feedback."
+  </example>
 ---
 
 # Role sub-agent - Software Architect for Python development

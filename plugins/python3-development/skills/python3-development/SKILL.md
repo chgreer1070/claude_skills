@@ -1,6 +1,6 @@
 ---
 name: python3-development
-description: "Python development with modern 3.11+ patterns. Use when: writing/editing Python code, CLI apps (Typer/Rich), scripts, tests (unit/integration/e2e), package design, CI tools, or fixing python/linting errors. Provides: TDD workflows, PEP 723 inline metadata, type-safe async, pyproject.toml configs, linting/formatting setup, preferred module references, and project layouts."
+description: 'Python 3.11+ development with CLI apps (Typer/Rich), testing (pytest), linting (ruff/mypy), and TDD workflows. Use when building Python CLIs, writing tests, fixing linting errors, configuring pyproject.toml, creating portable scripts, or reviewing Python code for best practices.'
 version: "1.2.0"
 last_updated: "2026-01-14"
 python_compatibility: "3.11+"
@@ -926,6 +926,39 @@ Research tool preference for PEP documentation:
 ## Core Workflows (Orchestrator Only)
 
 The orchestrator follows established workflow patterns for Python development tasks. See [Python Development Orchestration Guide](./references/python-development-orchestration.md) for complete details.
+
+### Task Planning Protocol (MANDATORY)
+
+**Every task MUST begin with discovery and planning before implementation.**
+
+**Why**: Skipping discovery leads to rework, missed patterns, and integration failures. The planning phase identifies context, patterns, and dependencies that inform implementation.
+
+**Phase 1: Discovery (before any implementation)**
+
+1. **Context Gathering**: Identify existing code patterns, project structure, and conventions
+2. **Dependency Analysis**: Determine what files/modules are affected
+3. **Tool Detection**: Run Linting Discovery Protocol to identify project tools
+4. **MCP Resource Check**: Identify available MCP tools for documentation and research
+
+**Phase 2: Planning (before writing code)**
+
+1. **Task Breakdown**: Use `swarm-task-planner` agent for complex tasks
+2. **Agent Selection**: Match task requirements to specialized agents
+3. **Quality Gates**: Define acceptance criteria and verification steps
+4. **Validation Strategy**: Identify tests and checks needed
+
+**Phase 3: Implementation**
+
+1. **Execute plan** using selected agents
+2. **Validate incrementally** against acceptance criteria
+3. **Run quality gates** (linting, type checking, tests)
+
+**Phase 4: Verification**
+
+1. **Run all tests**: `uv run pytest`
+2. **Check coverage**: Minimum 80% for standard code, 95%+ for critical paths
+3. **Lint validation**: Run detected git hook tool
+4. **Final review**: Use `python-code-reviewer` agent
 
 ### Workflow Overview
 

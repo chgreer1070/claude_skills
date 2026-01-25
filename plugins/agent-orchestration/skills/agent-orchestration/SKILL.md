@@ -1,6 +1,6 @@
 ---
 name: agent-orchestration
-description: This skill should be used when the model's ROLE_TYPE is orchestrator and needs to delegate tasks to specialist sub-agents. Provides scientific delegation framework ensuring world-building context (WHERE, WHAT, WHY) while preserving agent autonomy in implementation decisions (HOW). Use when planning task delegation, structuring sub-agent prompts, or coordinating multi-agent workflows.
+description: Scientific delegation framework for orchestrators coordinating sub-agents. Provides WHERE-WHAT-WHY context patterns while preserving agent autonomy. Use when delegating tasks, structuring sub-agent prompts, planning multi-agent workflows, or coordinating specialist agents.
 ---
 
 # Agent Orchestration

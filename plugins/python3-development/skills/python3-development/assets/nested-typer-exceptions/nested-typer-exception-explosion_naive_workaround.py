@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 from typing import Annotated
 
-import typer  # pyright: ignore[reportMissingImports]
+import typer
 
 app = typer.Typer()
 

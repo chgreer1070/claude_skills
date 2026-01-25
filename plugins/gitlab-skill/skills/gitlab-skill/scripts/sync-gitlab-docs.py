@@ -4,7 +4,6 @@
 # dependencies = [
 #     "typer>=0.19.2",
 #     "httpx>=0.28.1",
-#     "rich>=13.0.0",
 #     "pyyaml>=6.0.0",
 #     "types-pyyaml>=6.0.0",
 # ]
@@ -24,6 +23,7 @@ import json
 import re
 import shutil
 import tarfile
+from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
@@ -217,6 +217,42 @@ def update_lock_file(working_dir: Path, status: str, files_processed: int = 0) -
         raise UpdateError(msg) from e
 
 
+async def _download_with_progress(
+    client: httpx.AsyncClient, url: str, output_path: Path
+) -> None:
+    """Stream download with progress bar display.
+
+    Args:
+        client: Active httpx client
+        url: URL to download
+        output_path: Destination file path
+
+    Raises:
+        httpx.HTTPStatusError: If HTTP error occurs
+        OSError: If file write fails
+    """
+    async with client.stream("GET", url) as response:
+        response.raise_for_status()
+
+        total_size = int(response.headers.get("content-length", 0))
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            DownloadColumn(),
+            TransferSpeedColumn(),
+            TimeRemainingColumn(),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Downloading GitLab CI docs...", total=total_size)
+
+            with output_path.open("wb") as f:
+                async for chunk in response.aiter_bytes(chunk_size=CHUNK_SIZE):
+                    f.write(chunk)
+                    progress.update(task, advance=len(chunk))
+
+
 async def download_archive(url: str, output_path: Path) -> None:
     """Download GitLab CI docs archive with progress indication.
 
@@ -228,33 +264,8 @@ async def download_archive(url: str, output_path: Path) -> None:
         DownloadError: If download fails or HTTP error occurs
     """
     try:
-        # Fix: Nested async context managers - client must be entered before stream
-        # Cannot combine into single async with because stream() requires client instance
-        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:  # noqa: SIM117
-            async with client.stream("GET", url) as response:
-                response.raise_for_status()
-
-                # Get content length for progress bar
-                total_size = int(response.headers.get("content-length", 0))
-
-                with Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    BarColumn(),
-                    DownloadColumn(),
-                    TransferSpeedColumn(),
-                    TimeRemainingColumn(),
-                    console=console,
-                ) as progress:
-                    task = progress.add_task(
-                        "Downloading GitLab CI docs...", total=total_size
-                    )
-
-                    with output_path.open("wb") as f:
-                        async for chunk in response.aiter_bytes(chunk_size=CHUNK_SIZE):
-                            f.write(chunk)
-                            progress.update(task, advance=len(chunk))
-
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            await _download_with_progress(client, url, output_path)
     except httpx.HTTPStatusError as e:
         msg = f"HTTP {e.response.status_code} error downloading archive"
         raise DownloadError(msg) from e
@@ -509,8 +520,6 @@ def generate_file_tree(docs_dir: Path) -> str:
         tree_lines.append(f"{docs_dir.name}/")
 
         # Group files by directory
-        from collections import defaultdict
-
         dirs: dict[Path, list[Path]] = defaultdict(list)
         for file in md_files:
             parent = file.parent

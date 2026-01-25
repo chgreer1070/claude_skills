@@ -3,7 +3,6 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "typer>=0.19.2",
-#     "rich>=13.0.0",
 # ]
 # ///
 """Install linting-root-cause-resolver agent to user or project scope.
@@ -48,8 +47,9 @@ def get_git_root() -> Path | None:
         subprocess.CalledProcessError: If git command fails unexpectedly
     """
     try:
+        # S607: git must use PATH lookup for cross-platform portability (Linux/macOS/Windows install paths differ)
         result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
+            ["git", "rev-parse", "--show-toplevel"],  # noqa: S607
             capture_output=True,
             text=True,
             check=True,

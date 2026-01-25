@@ -26,7 +26,11 @@ import requests
 
 
 def get_gitlab_token() -> str | None:
-    """Get GitLab token from environment or .bashrc."""
+    """Get GitLab token from environment or .bashrc.
+
+    Returns:
+        Token string if found in environment or ~/.bashrc, None otherwise.
+    """
     # Check environment first
     token = os.environ.get("GITLAB_TOKEN")
     if token:
@@ -40,7 +44,7 @@ def get_gitlab_token() -> str | None:
                 for line in f:
                     if line.startswith("export GITLAB_TOKEN="):
                         return line.split("=", 1)[1].strip().strip('"').strip("'")
-        except Exception as e:
+        except OSError as e:
             print(f"Warning: Could not read .bashrc: {e}", file=sys.stderr)
 
     return None
@@ -53,12 +57,16 @@ def validate_markdown(
     project: str | None = None,
     verbose: bool = False,
 ) -> str | None:
-    """Call GitLab markdown API and return rendered HTML."""
+    """Call GitLab markdown API and return rendered HTML.
+
+    Returns:
+        Rendered HTML string on success, None on failure.
+    """
     api_url = f"{gitlab_url}/api/v4/markdown"
 
     headers = {"PRIVATE-TOKEN": token, "Content-Type": "application/json"}
 
-    payload = {"text": markdown_text, "gfm": True}
+    payload: dict[str, str | bool] = {"text": markdown_text, "gfm": True}
 
     if project:
         payload["project"] = project
@@ -78,14 +86,6 @@ def validate_markdown(
 
         result = response.json()
 
-        if "html" in result:
-            return str(result["html"])
-        if "error" in result:
-            print(f"API Error: {result['error']}", file=sys.stderr)
-            return None
-        print(f"Unexpected response: {result}", file=sys.stderr)
-        return None
-
     except requests.exceptions.HTTPError as e:
         print(
             f"HTTP Error {e.response.status_code}: {e.response.text}", file=sys.stderr
@@ -98,6 +98,14 @@ def validate_markdown(
         print(f"JSON Error: {e}", file=sys.stderr)
         if response is not None:
             print(f"Response text: {response.text}", file=sys.stderr)
+        return None
+    else:
+        if "html" in result:
+            return str(result["html"])
+        if "error" in result:
+            print(f"API Error: {result['error']}", file=sys.stderr)
+            return None
+        print(f"Unexpected response: {result}", file=sys.stderr)
         return None
 
 
@@ -173,14 +181,15 @@ Examples:
 
         try:
             markdown_text = args.file.read_text()
+        except OSError as e:
+            print(f"Error reading file: {e}", file=sys.stderr)
+            sys.exit(1)
+        else:
             if args.verbose:
                 print(
                     f"Read {len(markdown_text)} characters from {args.file}",
                     file=sys.stderr,
                 )
-        except Exception as e:
-            print(f"Error reading file: {e}", file=sys.stderr)
-            sys.exit(1)
     else:
         markdown_text = args.markdown
 
@@ -200,10 +209,11 @@ Examples:
     if args.output:
         try:
             args.output.write_text(html)
-            print(f"Rendered HTML saved to: {args.output}", file=sys.stderr)
-        except Exception as e:
+        except OSError as e:
             print(f"Error writing output file: {e}", file=sys.stderr)
             sys.exit(1)
+        else:
+            print(f"Rendered HTML saved to: {args.output}", file=sys.stderr)
     else:
         print(html)
 

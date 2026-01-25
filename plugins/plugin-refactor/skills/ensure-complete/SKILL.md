@@ -1,4 +1,5 @@
 ---
+name: ensure-complete
 description: 'Perform holistic review of completed refactoring, validate improvements, and create follow-up tasks if needed'
 argument-hint: <task-file-path>
 ---
