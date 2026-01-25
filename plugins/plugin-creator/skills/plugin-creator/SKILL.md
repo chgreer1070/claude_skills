@@ -127,7 +127,35 @@ For each skill, outline:
 
 ## Phase 3: Implementation
 
-### Step 1: Create Directory Structure
+### Option A: Use Scaffolding Script (Recommended)
+
+The `create_plugin.py` script creates validated plugin structure with self-verification:
+
+```bash
+# Create plugin with one skill
+uv run scripts/create_plugin.py create my-plugin -d "Description" -s my-skill -o ./plugins
+
+# Create plugin with multiple components
+uv run scripts/create_plugin.py create my-plugin \
+    -d "Multi-component plugin" \
+    -s skill1 -s skill2 \
+    -c command1 \
+    -a agent1 \
+    --hooks \
+    -o ./plugins
+```
+
+The script:
+
+1. Creates directory structure
+2. Generates plugin.json with valid schema
+3. Creates template files for each component
+4. **Self-validates all created files (CoVe pattern)**
+5. Reports validation results before claiming success
+
+### Option B: Manual Creation
+
+If creating manually, follow this structure:
 
 ```text
 my-plugin/
@@ -278,45 +306,50 @@ For complete reference, see [reference.md](./references/reference.md)
 
 <verification_checkpoint>
 
-**STOP. Before claiming the plugin is complete, invoke the `verify` skill.**
+**STOP. Before claiming the plugin is complete, run validation scripts.**
 
-### Verification Checklist
+### Step 1: Run Automated Validation
+
+```bash
+# Validate plugin structure and plugin.json
+uv run scripts/create_plugin.py validate ./plugins/my-plugin
+
+# Validate all frontmatter in plugin
+uv run scripts/validate_frontmatter.py batch ./plugins/my-plugin
+```
+
+Expected output for both: all checks PASS.
+
+### Step 2: Manual Verification Checklist
+
+- [ ] All factual claims cite sources
+- [ ] No orphaned reference files (all linked from SKILL.md)
+- [ ] Hook scripts are executable (`chmod +x`)
+- [ ] Skill content is under 500 lines
+
+### Step 3: Test Locally
+
+```bash
+# Load plugin and test interactively
+claude --plugin-dir ./my-plugin
+
+# Debug mode shows loading details
+claude --debug --plugin-dir ./my-plugin
+```
+
+### Step 4: Invoke verify Skill
 
 ```text
 VERIFICATION SUMMARY:
 Task Type: FEATURE
-Works Check: [PASS/FAIL]
-Quality Gates: [PASS/FAIL]
+Works Check: [PASS/FAIL] - Evidence: validation script output
+Quality Gates: [PASS/FAIL] - Evidence: frontmatter validation output
 Honesty Check: [PASS/FAIL]
 
-EVIDENCE:
+VERDICT: [COMPLETE / NOT COMPLETE - reason]
 ```
 
-### Plugin-Specific Checks
-
-- [ ] `plugin.json` has valid JSON syntax
-- [ ] `name` field matches directory name
-- [ ] `plugin.json` is in `.claude-plugin/` directory (not plugin root)
-- [ ] Components (commands, skills, hooks) are at plugin root
-- [ ] All paths are relative and start with `./`
-- [ ] Skills have valid YAML frontmatter (no multiline indicators)
-- [ ] Hook scripts are executable (`chmod +x`)
-- [ ] All factual claims cite sources
-- [ ] No orphaned reference files (all linked from SKILL.md)
-
-### Test Locally
-
-```bash
-claude --plugin-dir ./my-plugin
-```
-
-### Debug Mode
-
-```bash
-claude --debug --plugin-dir ./my-plugin
-```
-
-**Only mark complete when all checks pass with evidence.**
+**Only mark complete when all automated checks pass with evidence.**
 
 </verification_checkpoint>
 
@@ -388,6 +421,37 @@ Task(
 | -------------------- | ----------------------------------------- |
 | `plugin-assessor`    | Structural validation and quality scoring |
 | `plugin-docs-writer` | README.md generation                      |
+
+---
+
+## Tooling
+
+This plugin includes Python scripts for reliable, consistent plugin creation:
+
+| Script                                     | Purpose                                      | CoVe Integration                 |
+| ------------------------------------------ | -------------------------------------------- | -------------------------------- |
+| `scripts/create_plugin.py create`          | Scaffold new plugin with validated structure | Self-validates all created files |
+| `scripts/create_plugin.py validate`        | Check existing plugin structure              | Reports schema violations        |
+| `scripts/validate_frontmatter.py validate` | Validate single .md file frontmatter         | Checks against official schema   |
+| `scripts/validate_frontmatter.py batch`    | Validate all capability files in directory   | Batch validation with summary    |
+
+### Script Usage
+
+```bash
+# Scaffold new plugin
+uv run scripts/create_plugin.py create my-plugin -d "Description" -s my-skill
+
+# Validate existing plugin
+uv run scripts/create_plugin.py validate ./plugins/my-plugin
+
+# Validate single file
+uv run scripts/validate_frontmatter.py validate ./skills/my-skill/SKILL.md
+
+# Batch validate directory
+uv run scripts/validate_frontmatter.py batch ./plugins/my-plugin
+```
+
+Scripts use PEP 723 inline metadata - dependencies install automatically via `uv run`.
 
 ---
 
