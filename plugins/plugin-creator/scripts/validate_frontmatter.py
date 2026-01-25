@@ -24,16 +24,14 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING, Annotated
+from pathlib import Path  # noqa: TC003 - typer evaluates annotations at runtime
+from typing import Annotated
 
 import typer
 import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 console = Console()
 error_console = Console(stderr=True)
