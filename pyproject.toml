@@ -107,6 +107,12 @@ unfixable = ["F401"]
 ]
 # Typer evaluates annotations at runtime, conflicting with TC003 + required PEP 563 import
 "plugins/plugin-creator/scripts/*.py" = ["TC003"]
+"**/assets/**/*.py" = [
+	"D",    # Docstring requirements relaxed for examples
+	"DOC",  # Docstring content requirements relaxed for examples
+	"ANN",  # Type annotations optional for examples
+	"PGH",  # Pygrep hooks relaxed for examples (pyright ignore comments)
+]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 120
@@ -167,7 +173,7 @@ reportPrivateImportUsage = false
 reportImplicitRelativeImport = false
 include = ["**/packages", "**/scripts"]
 extraPaths = ["**/packages", "**/scripts", "**/tests"]
-ignore = ["**/typings", "**/tests"]
+ignore = ["**/typings", "**/tests", "**/assets"]
 
 
 [tool.pytest.ini_options]
