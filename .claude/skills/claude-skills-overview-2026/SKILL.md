@@ -53,18 +53,18 @@ Your instructions here...
 
 All fields are optional. Only `description` is recommended so Claude knows when to use the skill.
 
-| Field                      | Required    | Type         | Max Length | Description                                                                                                                                           |
-| -------------------------- | ----------- | ------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`                     | No          | string       | 64 chars   | Display name for the skill. If omitted, uses the directory name. Lowercase letters, numbers, and hyphens only.                                        |
-| `description`              | Recommended | string       | 1024 chars | What the skill does and when to use it. Claude uses this to decide when to apply the skill. If omitted, uses the first paragraph of markdown content. |
-| `argument-hint`            | No          | string       | —          | Hint shown during autocomplete to indicate expected arguments. Example: `[issue-number]` or `[filename] [format]`.                                    |
-| `allowed-tools`            | No          | string/array | —          | Tools Claude can use without asking permission when this skill is active. Example: `Read, Grep, Glob, Bash(npm run:*)`                                |
-| `model`                    | No          | string       | —          | Model to use when this skill is active. Example: `claude-opus-4-5-20251101`, `claude-sonnet-4-20250514`                                               |
-| `context`                  | No          | string       | —          | Set to `fork` to run in a forked subagent context. See [Context Fork Behavior](#context-fork-behavior) for tool restrictions.                         |
-| `agent`                    | No          | string       | —          | Which subagent type to use when `context: fork` is set. Options: `Explore`, `Plan`, `general-purpose`, or custom agent. Default: `general-purpose`    |
-| `user-invocable`           | No          | boolean      | —          | Set to `false` to hide from the `/` menu. Use for background knowledge users shouldn't invoke directly. Default: `true`.                              |
-| `disable-model-invocation` | No          | boolean      | —          | Set to `true` to prevent Claude from automatically loading this skill. Use for workflows you want to trigger manually with `/name`. Default: `false`. |
-| `hooks`                    | No          | object       | —          | Hooks scoped to this skill's lifecycle. See [Hooks](/en/hooks) for configuration format. Events: `PreToolUse`, `PostToolUse`, `Stop`                  |
+| Field                      | Required    | Type    | Max Length | Description                                                                                                                                           |
+| -------------------------- | ----------- | ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                     | No          | string  | 64 chars   | Display name for the skill. If omitted, uses the directory name. Lowercase letters, numbers, and hyphens only.                                        |
+| `description`              | Recommended | string  | 1024 chars | What the skill does and when to use it. Claude uses this to decide when to apply the skill. If omitted, uses the first paragraph of markdown content. |
+| `argument-hint`            | No          | string  | —          | Hint shown during autocomplete to indicate expected arguments. Example: `[issue-number]` or `[filename] [format]`.                                    |
+| `allowed-tools`            | No          | string  | —          | Tools Claude can use without asking permission when this skill is active (comma-separated). Example: `Read, Grep, Glob, Bash(npm run:*)`              |
+| `model`                    | No          | string  | —          | Model to use when this skill is active. Example: `claude-opus-4-5-20251101`, `claude-sonnet-4-20250514`                                               |
+| `context`                  | No          | string  | —          | Set to `fork` to run in a forked subagent context. See [Context Fork Behavior](#context-fork-behavior) for tool restrictions.                         |
+| `agent`                    | No          | string  | —          | Which subagent type to use when `context: fork` is set. Options: `Explore`, `Plan`, `general-purpose`, or custom agent. Default: `general-purpose`    |
+| `user-invocable`           | No          | boolean | —          | Set to `false` to hide from the `/` menu. Use for background knowledge users shouldn't invoke directly. Default: `true`.                              |
+| `disable-model-invocation` | No          | boolean | —          | Set to `true` to prevent Claude from automatically loading this skill. Use for workflows you want to trigger manually with `/name`. Default: `false`. |
+| `hooks`                    | No          | object  | —          | Hooks scoped to this skill's lifecycle. See [Hooks](/en/hooks) for configuration format. Events: `PreToolUse`, `PostToolUse`, `Stop`                  |
 
 ---
 
@@ -87,11 +87,7 @@ Skills use progressive disclosure - only frontmatter loads initially (~100 token
 
 ```yaml
 # WRONG - will show ">-" as description
-description: >-
-  This is a multiline
-  description that breaks.
-
-# WRONG - same problem
+description: 'This is a multiline description that breaks.  # WRONG - same problem'
 description: |
   This breaks too.
 
@@ -311,10 +307,7 @@ description: Generate conventional commit messages from git diffs. Use when writ
 ---
 name: safe-reader
 description: Read files without changes. Use for code review.
-allowed-tools:
-  - Read
-  - Grep
-  - Glob
+allowed-tools: Read, Grep, Glob
 ---
 
 # Safe Reader

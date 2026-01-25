@@ -643,8 +643,10 @@ This is another paragraph.
 The model MUST use these tools for formatting and linting in this repository:
 
 ```bash
-uv run pre-commit --files <file>
-````
+uv run prek run --files <file>
+```
+
+**Note**: This repository uses `prek` (Rust-based pre-commit replacement), not `pre-commit`. Both use the same `.pre-commit-config.yaml` with identical syntax.
 
 **When to use**:
 
@@ -949,3 +951,4 @@ This refactored version implements:
 </improvements_summary>
 
 - Read @sessions/CLAUDE.sessions.md for your AI workflow instructions.
+````
