@@ -23,12 +23,28 @@ Treat Claude like a pure function:
 
 | Limitation                            | Manifestation                                          | Impact                                  |
 | ------------------------------------- | ------------------------------------------------------ | --------------------------------------- |
-| **Context window degradation**        | Quality drops significantly at ~80% usage              | Long tasks produce poor results         |
-| **Training data staleness**           | Knowledge is 6-18 months old                           | Hallucinated solutions that don't work  |
+| **Context window degradation (“context rot”)** | Performance degrades as context length increases (not just retrieval failure): more errors, weaker instruction adherence, and “lost in the middle” effects | Long tasks produce poor results         |
+| **Training data staleness (knowledge cutoff)** | Each model has a fixed training cutoff; details can be outdated for fast-moving libraries/APIs unless verified against current sources | Incorrect or obsolete solutions         |
 | **Training data overconfidence**      | Believes priors over explicit instructions             | Skips verification, ignores methodology |
 | **Completion optimization**           | Optimized for "appearing helpful" over "being correct" | Takes shortcuts to show progress        |
 | **No self-reflective knowledge gaps** | Cannot JIT identify what it doesn't know               | Proceeds with wrong assumptions         |
 | **Goal displacement**                 | Optimizes for task metrics, not actual success         | Disables tests, ignores lint rules      |
+
+#### 1.1.1 Context rot: key aspects and mitigations (operational)
+
+**Key aspects of quality reduction in long contexts:**
+
+- **Performance degradation**: capability can drop materially as input length grows, even when the relevant evidence is present and retrievable. Source: [Context Length Alone Hurts LLM Performance Despite Perfect Retrieval (Findings EMNLP 2025)](https://aclanthology.org/2025.findings-emnlp.1264/) (accessed 2026-01-26).
+- **“Lost in the Middle”**: performance is often highest when relevant info is at the beginning/end, and degrades when the relevant info is in the middle of long contexts. Source: [Lost in the Middle (arXiv:2307.03172)](https://arxiv.org/abs/2307.03172) (accessed 2026-01-26).
+- **Noise / distractors**: adding irrelevant material can further reduce accuracy, but note the stronger finding above: length alone can hurt performance even without “meaningful” distractors. Source: [Findings EMNLP 2025](https://aclanthology.org/2025.findings-emnlp.1264/) (accessed 2026-01-26).
+- **Context compaction issues (tooling)**: agentic harnesses may compact/summarize long conversations; if the compaction drops nuance/constraints, downstream work can drift. Claude Code explicitly warns that as the context window fills, Claude may “start forgetting earlier instructions or making more mistakes,” and discusses automatic compaction. Source: [Best Practices for Claude Code](https://code.claude.com/docs/en/best-practices.md) (accessed 2026-01-26). Evidence status: **PARTIAL** (tool behavior described; still validate in your own logs).
+
+**Mitigation strategies (how SAM responds):**
+
+- **Be concise**: prefer targeted prompts over dumping large, weakly relevant context.
+- **Modularize content**: decompose work into small tasks with minimal context (“stateless function”).
+- **Manage conversation state**: do not rely on long conversations; externalize state to artifacts.
+- **Use tools wisely**: prefer durable artifacts, explicit gates, and deterministic backpressure over adding more “guidance text” to the context.
 
 ### 1.2 The Optimization Problem
 
@@ -65,8 +81,14 @@ Work typically involves:
 
 - **Recent public knowledge** (last few weeks) - not in training data
 - **Internal company code and processes** - not in training data
+- **Closed-source codebases** - *never* in training data
+- **Rapidly evolving technologies** (month-by-month releases) - often too new to be reliably represented in training data, even before a model’s formal cutoff
 
 Training data is adversarial to correct execution because Claude will confidently use stale/wrong priors to skip the actual work of researching current reality.
+
+**Knowledge cutoff reference**: Anthropic publishes per-model training cutoffs; if you’re relying on post-cutoff facts, you must ground them via current sources/tools. Source: [How up-to-date is Claude's training data? (Anthropic Help Center)](https://support.anthropic.com/en/articles/8114494-how-up-to-date-is-claude-s-training-data) (accessed 2026-01-26).
+
+**Operational implication**: In this environment, you must assume the model will “cargo-cult” training patterns (plausible defaults and familiar idioms) unless you force grounding and verification. Therefore SAM treats **linters, tests, checklists, and authoritative reference documentation** as first-class control surfaces: they are the backpressure that corrects hallucinated or cargo-cult content.
 
 ---
 
@@ -81,8 +103,9 @@ Training data is adversarial to correct execution because Claude will confidentl
 | **Single responsibility**      | Each agent does exactly one thing                     | Reduces complexity, enables specialization         |
 | **Message passing**            | Agents communicate via artifacts, not shared context  | Decouples stages, creates audit trail              |
 | **Verification at boundaries** | Every stage validates previous stage's output         | Catches errors before they propagate               |
+| **Deterministic backpressure** | Always run deterministic checks (tests, linters, static analysis, checklists) and treat failures as ground truth; iterate until passing or explicitly BLOCKED | Counters cargo-cult priors and hallucinated content with objective feedback |
 | **Embedded methodology**       | The process IS the prompt, not instructions to follow | Cannot skip what structures the task               |
-| **No recall required**         | Task files contain all answers                        | Eliminates hallucination opportunity               |
+| **No recall required**         | Task files contain all answers needed for the task (plus verification steps) | Reduces reliance on unverified recall; does not eliminate synthesis/logic errors without verification |
 
 ### 2.2 Structural Enforcement vs Behavioral Instruction
 
@@ -569,7 +592,7 @@ Task File ─────────▶│    Stateless Agent      │───
 | **Behavioral instructions**   | Claude rationalizes out           | Structural enforcement        |
 | **Self-verification only**    | Confirmation bias                 | Independent forensic review   |
 | **Skip prerequisites**        | Garbage in, garbage out           | RT-ICA gate blocks            |
-| **Large context tasks**       | Quality degradation at 80%        | Small, focused tasks          |
+| **Large context tasks**       | Long-context degradation / “lost in the middle” effects | Small, focused tasks          |
 | **Implicit methodology**      | Gets skipped                      | Methodology IS the prompt     |
 | **Assume training data**      | Stale, wrong, hallucinated        | Provide all context in task   |
 

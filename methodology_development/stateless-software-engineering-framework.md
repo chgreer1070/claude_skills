@@ -98,6 +98,7 @@ Implication for this framework: “abstention policy” is not just UX; it is a 
 | **Single responsibility**      | Each agent does exactly one thing                        | Reduces complexity, enables specialization         |
 | **Message passing**            | Agents communicate via artifacts, not shared context     | Decouples stages, creates audit trail              |
 | **Verification at boundaries** | Every stage validates previous stage's output            | Catches errors before they propagate               |
+| **Durable coordination plane** | Represent work as a task queue with explicit ownership + dependencies; coordinate via structured messages (inboxes) | Enables swarms/pipelines without shared context; makes “who is doing what” inspectable |
 | **Deterministic backpressure** | Gate progress on deterministic checks (build/tests/lint/security scans) executed by tools/scripts, not “advice” in prompts | Converts non-deterministic generation into a measurable loop that can converge |
 | **Embedded methodology**       | The process IS the prompt, not instructions to follow    | Cannot skip what structures the task               |
 | **No recall required**         | Task files contain all answers needed for the task       | Reduces reliance on unverified recall; still requires verification for synthesis/logic |
@@ -882,6 +883,10 @@ Legend:
 | A20 | “Persistent agent identities + ephemeral sessions (‘cattle’) improve orchestration: sessions can be recycled without losing state” | EMPIRICAL CLAIM | PARTIAL | Define identity/state model (artifact pointers + inbox/queue); measure whether restarts preserve continuity and reduce drift vs long single sessions | [Welcome to Gas Town (Yegge, 2026-01-01)](https://steve-yegge.medium.com/welcome-to-gas-town-4f25ee16dd04) (accessed 2026-01-26) |
 | A21 | “Non-deterministic idempotence: repeated attempts on durable steps can converge to completion even when individual steps are non-deterministic” | EMPIRICAL CLAIM | PARTIAL | Track attempts-per-step until completion; characterize tail risks (p95/p99) and failure classes that never converge without human intervention | [Welcome to Gas Town (Yegge, 2026-01-01)](https://steve-yegge.medium.com/welcome-to-gas-town-4f25ee16dd04) (accessed 2026-01-26) |
 | A22 | “Agents may require a ‘nudge’ to begin work (politeness / waits for user input), so orchestration needs a deterministic wake-up mechanism” | EMPIRICAL CLAIM | PARTIAL | Measure ‘startup-to-first-action’ distribution with/without nudges; track stuck-start frequency across models/clients | [Welcome to Gas Town (Yegge, 2026-01-01)](https://steve-yegge.medium.com/welcome-to-gas-town-4f25ee16dd04) (accessed 2026-01-26) |
+| A23 | “A durable task queue with explicit dependencies reduces coordination errors vs ‘chat-based’ multi-agent parallelism” | EMPIRICAL CLAIM | PARTIAL | Compare swarm outcomes with vs without explicit task objects (blockedBy/owner/status); measure duplicate-work rate and blocked-task aging | [orchestrating-swarms skill](../.claude/skills/orchestrating-swarms/SKILL.md) (accessed 2026-01-26); validate with internal telemetry |
+| A24 | “Work-stealing swarms (claim pending tasks, complete, repeat) load-balance better than centrally assigned work for large independent task sets” | EMPIRICAL CLAIM | PARTIAL | Measure throughput and tail latency as worker count increases; track contention (double-claim collisions) and rework | [orchestrating-swarms skill](../.claude/skills/orchestrating-swarms/SKILL.md) (accessed 2026-01-26); validate with internal telemetry |
+| A25 | “Orchestration features may be gated behind product feature flags; the workflow must degrade gracefully when tooling is unavailable” | EMPIRICAL CLAIM | PARTIAL | Document which orchestration backends are available in your environment; test fallbacks (single-agent / manual queue / external issue tracker) and measure impact on throughput and error rate | User observation (2026-01-26); validate against runtime capability detection in your harness |
+| A26 | “TeammateTool is present but feature-gated in Claude Code; treat its operation set and file schemas as non-official until verified in your local build” | EMPIRICAL CLAIM | PARTIAL | Verify presence/behavior in your environment (binary inspection + runtime feature availability). If absent, use fallback orchestration backends; if present, validate schemas/ops against observed runtime artifacts. | [orchestrating-swarms status/access guide](../.claude/skills/orchestrating-swarms/README.md) (accessed 2026-01-26); user observation (2026-01-26) |
 
 ---
 
@@ -996,6 +1001,86 @@ This appendix ingests community/field observations (e.g., Reddit threads) and co
 - **Evidence to cite / consult**:
   - “Lost in the middle” and long-context degradation baselines: [Amazon Science](https://www.amazon.science/publications/context-length-alone-hurts-llm-performance-despite-perfect-retrieval) (accessed 2026-01-26); [arXiv:2307.03172](https://arxiv.org/abs/2307.03172) (accessed 2026-01-26)
   - Execution-based verification as a repair signal (coding): [CodeHalu (arXiv:2405.00253)](https://arxiv.org/html/2405.00253v4) (accessed 2026-01-26)
+
+### F5: “Swarms need a durable task/messaging plane”: work-stealing + dependency pipelines (tooling pattern)
+
+- **Source**: Internal skill capturing a concrete orchestration harness design:
+  - [orchestrating-swarms skill](../.claude/skills/orchestrating-swarms/SKILL.md) (accessed 2026-01-26)
+  - [orchestrating-swarms status/access guide](../.claude/skills/orchestrating-swarms/README.md) (accessed 2026-01-26)
+- **Extracted insights (field / implementation pattern)**:
+  - **Parallel specialists**: spawn multiple focused workers, each produces a bounded artifact (e.g., security/perf/simplicity reviews), then a leader synthesizes.
+  - **Dependency pipeline**: represent stages as tasks with explicit `blockedBy` edges so the system (not the model) controls sequencing and unblocking.
+  - **Work-stealing swarm**: maintain a pool of independent tasks; workers repeatedly:
+    - list tasks, claim a pending unowned task, do work, mark complete, repeat
+  - **Separate coordination from cognition**:
+    - cognition = work within a task
+    - coordination = claiming, status updates, dependency graph, message passing
+  - **Graceful shutdown as part of the protocol**: workers should terminate only via explicit shutdown workflow so the system can prove quiescence and cleanup.
+  - **Verification status note**:
+    - The abstract patterns (task queue + deps + inbox messaging) are robust and tool-agnostic.
+    - The skill’s *tool-specific* mechanism (“TeammateTool” / “Teammate(...)” operations, file paths, env vars) is **environment-dependent** because TeammateTool is **feature-flag gated** in Claude Code and **not publicly documented**. Source: [orchestrating-swarms status/access guide](../.claude/skills/orchestrating-swarms/README.md) (accessed 2026-01-26).
+    - Treat TeammateTool as an **optional orchestration backend**; SSE must degrade gracefully when it is unavailable.
+    - Verification path (community-reported): confirm the tool exists in your local Claude Code binary (e.g., via `strings`/grep) and confirm feature flags are enabled in your environment. Source: [orchestrating-swarms status/access guide](../.claude/skills/orchestrating-swarms/README.md) (accessed 2026-01-26).
+- **Where it lands in this framework**:
+  - Reinforces `2.1 Durable coordination plane` and `2.1 Message passing`
+  - In the pipeline, it is an alternative orchestration substrate for Stage 4 (Task Decomposition) → Stage 5 (Execution), enabling safe parallelism with explicit gates.
+- **Operationalization (what to measure)**:
+  - **Queue health**: task throughput, WIP count, blocked-task age, orphaned-task count
+  - **Coordination overhead**: leader time spent resolving collisions/duplication vs baseline
+  - **Swarm efficiency**: duplicate-work rate; mean time-to-claim; time-to-complete distribution
+  - **Failure recovery**: % tasks reclaimed after worker crash/timeout; time-to-recovery
+
+---
+
+## Appendix G: Experiment Records (in-repo observations)
+
+This appendix records small, concrete experiments run while developing this framework. Each record is meant to be:
+
+- **Human-relatable** (what happened, why it matters)
+- **LLM-usable** (explicit failure mode → explicit mitigation)
+- **Auditable** (commands/files and cited sources)
+
+### G1: PEP 723 + uv script: “stale priors” picked an outdated Typer baseline
+
+- **Date**: 2026-01-26
+- **Goal**: Create a small Typer-based CLI script using a uv shebang + PEP 723 dependency list that prints a datestamp and current username.
+- **Experiment artifact**: `methodology_development/datestamp_user.py`
+- **Hypothesis**: Without an explicit “use latest” constraint, the model will often choose a plausible but outdated dependency baseline from priors.
+
+#### Procedure
+
+1. Write `methodology_development/datestamp_user.py` as a single-file uv script (`uv run --script`) with a PEP 723 dependency block including Typer.
+2. Run it to verify it prints:
+   - `timestamp=...`
+   - `username=...`
+3. Check the chosen dependency constraint vs current upstream releases.
+
+#### Observations
+
+- The initial dependency constraint selected was `typer>=0.12.0` (plausible “modern” baseline).
+- Typer `0.12.0` was published on **2024-03-30**. Source: GitHub release metadata `published_at`: `https://api.github.com/repos/fastapi/typer/releases/tags/0.12.0` (accessed 2026-01-26).
+- Typer `0.21.1` was published on **2026-01-06**. Source: GitHub release metadata `published_at`: `https://api.github.com/repos/fastapi/typer/releases/tags/0.21.1` (accessed 2026-01-26).
+- This illustrates “training data staleness” in practice: models have fixed knowledge cutoffs and may not be aware of recent releases unless explicitly instructed to verify. Source: [How up-to-date is Claude's training data? (Anthropic Help Center)](https://support.anthropic.com/en/articles/8114494-how-up-to-date-is-claude-s-training-data) (accessed 2026-01-26).
+
+#### Interpretation (failure mode)
+
+- **Failure mode**: “Outdated-but-plausible defaults.” When asked to pick versions, the model may choose an older known-good baseline even when a much newer version exists.
+- **Mechanism**: Knowledge cutoff + priors → version selection becomes pattern-matching instead of reality-checking.
+
+#### Mitigation (framework rule)
+
+Treat dependency selection as a **verification step**, not a memory step:
+
+- **In task files**, include one of:
+  - “Use the latest stable Typer available at runtime (verify via registry or release API),” or
+  - “Avoid pinning unless required; prefer unbounded lower constraint (`typer`) or explicitly `>=` the current major/minor you want.”
+- **In deterministic backpressure**, add a quick check:
+  - “Show resolved dependency versions” / “confirm chosen versions are intentional.”
+
+#### What this experiment updates in the framework
+
+- Strengthens Appendix D items about knowledge cutoff / staleness (A2).
+- Reinforces `2.1 Deterministic backpressure` as the antidote to “plausible continuation” in dependency/version selection.
 
 **Document Status**: Initial framework design
 **Next Steps**: Create repository, implement Phase 1 infrastructure
