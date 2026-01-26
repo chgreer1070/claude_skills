@@ -1318,10 +1318,10 @@ grep -i "^## " references/python-development-orchestration.md
 
 ### External Commands
 
-These slash commands are external dependencies installed in `~/.claude/commands/`:
+These skills are bundled with this plugin and available as slash commands:
 
-- [/modernpython](~/.claude/commands/modernpython.md) - Python 3.11+ patterns and PEP references
-- [/shebangpython](~/.claude/commands/shebangpython.md) - PEP 723 validation and shebang standards
+- [/modernpython](../modernpython/SKILL.md) - Python 3.11+ patterns and PEP references
+- [/shebangpython](../shebangpython/SKILL.md) - PEP 723 validation and shebang standards
 
 ## Summary
 

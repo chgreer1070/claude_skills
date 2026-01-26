@@ -100,14 +100,14 @@ packages = ["packages/mcp_config_tools"]
 
 ## Python Shebang and PEP 723 Standards
 
-@~/.claude/commands/shebangpython.md
+Activate the shebangpython skill for PEP 723 compliance: `Skill(command: "python3-development:shebangpython")`
 
 The model must understand and apply these rules when creating or modifying Python files.
 
 For validation after writing code, use:
 
-```
-SlashCommand(command="/shebangpython <file_path>")
+```text
+/shebangpython <file_path>
 ```
 
 ## Rich Table Best Practices (CRITICAL)
