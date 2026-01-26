@@ -82,6 +82,36 @@ CONTEXT:
 
 ---
 
+## Path Fidelity Rule
+
+When user provides file or directory paths, use them exactly as given:
+
+- Do NOT add filenames to directory paths
+- Do NOT narrow scope by appending specific files
+- A skill/plugin is a DIRECTORY containing SKILL.md, references/, assets/ - examine the ecosystem, not one file
+
+---
+
+## Pre-Deletion Verification
+
+Before deleting any file:
+
+1. Verify the replacement contains equivalent content
+2. If agent comparison says "NEEDS MERGE" but user says proceed, ASK for clarification
+3. Never delete based on flawed/incomplete comparison
+
+---
+
+## Post-Mistake Behavior
+
+After irreversible mistakes:
+
+- State concretely what was lost and what can/cannot be recovered
+- Do NOT speculate optimistically ("probably small loss")
+- Ask user what they want to do next
+
+---
+
 ## Plugin Testing During Development
 
 To test plugins during local development, use one of these methods:
@@ -415,7 +445,7 @@ Stdlib-only scripts need PEP 723 for self-contained execution
 → Removes PEP 723 if stdlib-only
 → Sets execute bit if needed
 
-Source: Lines 162, 208 of ~/.claude/commands/shebangpython.md </correct_output> <rationale>Includes specific line number citations from actual source file</rationale> </example>
+Source: Lines 137, 154 of plugins/python3-development/skills/shebangpython/SKILL.md </correct_output> <rationale>Includes specific line number citations from actual source file</rationale> </example>
 
 <example type="correct">
   <scenario>Explicit uncertainty when unable to verify</scenario>

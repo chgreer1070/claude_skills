@@ -210,7 +210,6 @@ from rich.panel import Panel
 # requires-python = ">=3.11"
 # dependencies = [
 #     "typer>=0.19.2",
-#     "rich>=13.0.0",
 # ]
 # ///
 

@@ -27,7 +27,7 @@ When tasked with reviewing a file, identifying if a file follows best practice, 
 
 ## Python Shebang and PEP 723 Standards
 
-@.claude/commands/shebangpython.md
+Activate the shebangpython skill for PEP 723 compliance: `Skill(command: "python3-development:shebangpython")`
 
 The model must understand and apply these rules during code review to ensure all Python files follow the correct shebang and PEP 723 patterns.
 
