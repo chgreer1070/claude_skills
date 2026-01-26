@@ -70,171 +70,49 @@ This framework treats Claude as a **stateless computation engine** rather than a
 
 ### 2.2 The Pipeline Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    STATELESS SOFTWARE ENGINEERING PIPELINE                   │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  STAGE 1: DISCOVERY                                                          │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ Input: User request, problem statement                                  │ │
-│  │ Agent: Discovery Agent                                                  │ │
-│  │ Process: Structured discussion, questions, data gathering               │ │
-│  │ Output: Feature requirements, non-functional requirements,              │ │
-│  │         notes, goals, problems to solve, references, examples           │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                    │                                         │
-│                                    ▼                                         │
-│  STAGE 2: PLANNING                                                           │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ Input: Discovery artifacts                                              │ │
-│  │ Agent: Planning Agent (with RT-ICA)                                     │ │
-│  │ Process: Review goals, assess prerequisites, design solution            │ │
-│  │ Output: Feature design guide with success criteria                      │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                    │                                         │
-│                                    ▼                                         │
-│  STAGE 3: CONTEXT INTEGRATION                                                │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ Input: Design guide + codebase access                                   │ │
-│  │ Agent: Context Integration Agent                                        │ │
-│  │ Process:                                                                │ │
-│  │   - Review plan against existing codebase                               │ │
-│  │   - Identify already-complete scope                                     │ │
-│  │   - Find conflicts, contradictions, constraints                         │ │
-│  │   - Map existing systems, methodologies, utilities                      │ │
-│  │   - Add file/URL references to plan                                     │ │
-│  │ Output: Contextualized plan with concrete references                    │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                    │                                         │
-│                                    ▼                                         │
-│  STAGE 4: TASK DECOMPOSITION                                                 │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ Input: Contextualized plan                                              │ │
-│  │ Agent: Task Decomposition Agent                                         │ │
-│  │ Process: Create atomic tasks following TDD pattern:                     │ │
-│  │   1. Create interfaces                                                  │ │
-│  │   2. Write failing tests                                                │ │
-│  │   3. Implement functionality                                            │ │
-│  │   4. Validate via linting                                               │ │
-│  │   5. Validate via testing                                               │ │
-│  │   6. Repeat until passing                                               │ │
-│  │ Output: Task file with:                                                 │ │
-│  │   - Exact constraints                                                   │ │
-│  │   - Files to modify                                                     │ │
-│  │   - Style to follow                                                     │ │
-│  │   - Methodology to use                                                  │ │
-│  │   - Language specifications                                             │ │
-│  │   - Self-verification steps                                             │ │
-│  │   - Definition of done                                                  │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                    │                                         │
-│                                    ▼                                         │
-│  STAGE 5: EXECUTION                                                          │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ Input: Task file (contains ALL context needed)                          │ │
-│  │ Agent: Execution Agent (FRESH SESSION)                                  │ │
-│  │ Process:                                                                │ │
-│  │   - Receive task file as complete prompt                                │ │
-│  │   - Execute exactly as specified                                        │ │
-│  │   - Follow embedded self-verification steps                             │ │
-│  │   - No need to recall or infer - all answers provided                   │ │
-│  │ Output: Implemented code + verification results                         │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                    │                                         │
-│                                    ▼                                         │
-│  STAGE 6: FORENSIC REVIEW                                                    │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ Input: Execution results + original plan                                │ │
-│  │ Agent: Forensic Review Agent                                            │ │
-│  │ Process:                                                                │ │
-│  │   - Validate task completion against plan                               │ │
-│  │   - Review + critique + fact-check                                      │ │
-│  │   - Quality assessment                                                  │ │
-│  │   - Determine: COMPLETE or NEEDS_ADDITIONAL_WORK                        │ │
-│  │ Output: Completion report with findings                                 │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                    │                                         │
-│                          ┌────────┴────────┐                                 │
-│                          ▼                 ▼                                 │
-│                    ┌──────────┐      ┌──────────┐                           │
-│                    │ COMPLETE │      │  ISSUES  │                           │
-│                    └────┬─────┘      └────┬─────┘                           │
-│                         │                 │                                  │
-│                         │                 ▼                                  │
-│                         │    ┌────────────────────────┐                     │
-│                         │    │ Planner Agent          │                     │
-│                         │    │ (creates new tasks)    │                     │
-│                         │    └───────────┬────────────┘                     │
-│                         │                │                                   │
-│                         │                ▼                                   │
-│                         │    ┌────────────────────────┐                     │
-│                         │    │ Orchestrator           │                     │
-│                         │    │ (dispatches workers)   │◀──────┐            │
-│                         │    └───────────┬────────────┘       │            │
-│                         │                │                     │            │
-│                         │                ▼                     │            │
-│                         │         Back to STAGE 5 ─────────────┘            │
-│                         │                                                    │
-│                         ▼                                                    │
-│  STAGE 7: FINAL VERIFICATION                                                 │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ Input: All completed tasks + original goals                             │ │
-│  │ Agent: Final Verification Agent                                         │ │
-│  │ Process:                                                                │ │
-│  │   - Verify feature achieves original goal                               │ │
-│  │   - Validate acceptance criteria                                        │ │
-│  │   - Confirm definition of done                                          │ │
-│  │ Output: Feature completion certification                                │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph PIPE["STATELESS SOFTWARE ENGINEERING PIPELINE"]
+        S1["STAGE 1: DISCOVERY<br/><br/>Input: User request, problem statement<br/>Agent: Discovery Agent<br/>Process: Structured discussion, questions, data gathering<br/>Output: Feature requirements, non-functional requirements,<br/>notes, goals, problems to solve, references, examples"]
+
+        S2["STAGE 2: PLANNING<br/><br/>Input: Discovery artifacts<br/>Agent: Planning Agent (with RT-ICA)<br/>Process: Review goals, assess prerequisites, design solution<br/>Output: Feature design guide with success criteria"]
+
+        S3["STAGE 3: CONTEXT INTEGRATION<br/><br/>Input: Design guide + codebase access<br/>Agent: Context Integration Agent<br/>Process:<br/>- Review plan against existing codebase<br/>- Identify already-complete scope<br/>- Find conflicts, contradictions, constraints<br/>- Map existing systems, methodologies, utilities<br/>- Add file/URL references to plan<br/>Output: Contextualized plan with concrete references"]
+
+        S4["STAGE 4: TASK DECOMPOSITION<br/><br/>Input: Contextualized plan<br/>Agent: Task Decomposition Agent<br/>Process: Create atomic tasks following TDD pattern:<br/>1. Create interfaces<br/>2. Write failing tests<br/>3. Implement functionality<br/>4. Validate via linting<br/>5. Validate via testing<br/>6. Repeat until passing<br/>Output: Task file with:<br/>- Exact constraints<br/>- Files to modify<br/>- Style to follow<br/>- Methodology to use<br/>- Language specifications<br/>- Self-verification steps<br/>- Definition of done"]
+
+        S5["STAGE 5: EXECUTION<br/><br/>Input: Task file (contains ALL context needed)<br/>Agent: Execution Agent (FRESH SESSION)<br/>Process:<br/>- Receive task file as complete prompt<br/>- Execute exactly as specified<br/>- Follow embedded self-verification steps<br/>- No need to recall or infer - all answers provided<br/>Output: Implemented code + verification results"]
+
+        S6["STAGE 6: FORENSIC REVIEW<br/><br/>Input: Execution results + original plan<br/>Agent: Forensic Review Agent<br/>Process:<br/>- Validate task completion against plan<br/>- Review + critique + fact-check<br/>- Quality assessment<br/>- Determine: COMPLETE or NEEDS_ADDITIONAL_WORK<br/>Output: Completion report with findings"]
+
+        DECISION{COMPLETE or ISSUES?}
+        COMPLETE["COMPLETE"]
+        ISSUES["ISSUES"]
+        PLANNER["Planner Agent<br/>(creates new tasks)"]
+        ORCH["Orchestrator<br/>(dispatches workers)"]
+
+        S7["STAGE 7: FINAL VERIFICATION<br/><br/>Input: All completed tasks + original goals<br/>Agent: Final Verification Agent<br/>Process:<br/>- Verify feature achieves original goal<br/>- Validate acceptance criteria<br/>- Confirm definition of done<br/>Output: Feature completion certification"]
+
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> DECISION
+        DECISION -->|COMPLETE| COMPLETE --> S7
+        DECISION -->|ISSUES| ISSUES --> PLANNER --> ORCH --> S5
+    end
 ```
 
 ### 2.3 Artifact Flow
 
-```
-User Request
-     │
-     ▼
-┌─────────────────────┐
-│ discovery-output.md │  Feature requirements, NFRs, goals, references
-└─────────────────────┘
-     │
-     ▼
-┌─────────────────────┐
-│ design-guide.md     │  Solution design, success criteria, approach
-└─────────────────────┘
-     │
-     ▼
-┌─────────────────────┐
-│ contextualized-     │  Plan + existing code references, conflicts resolved,
-│ plan.md             │  utilities identified, file paths mapped
-└─────────────────────┘
-     │
-     ▼
-┌─────────────────────┐
-│ task-{N}.md         │  Atomic task with ALL context embedded:
-│                     │  - Constraints, files, style, methodology
-│                     │  - Self-verification steps, DoD
-└─────────────────────┘
-     │
-     ▼
-┌─────────────────────┐
-│ execution-          │  Implementation results, verification output
-│ results.md          │
-└─────────────────────┘
-     │
-     ▼
-┌─────────────────────┐
-│ review-report.md    │  Findings, issues, completion status
-└─────────────────────┘
-     │
-     ▼
-┌─────────────────────┐
-│ feature-            │  Final certification against original goals
-│ certification.md    │
-└─────────────────────┘
+```mermaid
+flowchart TD
+    REQ["User Request"]
+    DISC["discovery-output.md<br/>Feature requirements, NFRs, goals, references"]
+    DESIGN["design-guide.md<br/>Solution design, success criteria, approach"]
+    CTX["contextualized-plan.md<br/>Plan + existing code references, conflicts resolved,<br/>utilities identified, file paths mapped"]
+    TASK["task-{N}.md<br/>Atomic task with ALL context embedded:<br/>- Constraints, files, style, methodology<br/>- Self-verification steps, DoD"]
+    EXEC["execution-results.md<br/>Implementation results, verification output"]
+    REVIEW["review-report.md<br/>Findings, issues, completion status"]
+    CERT["feature-certification.md<br/>Final certification against original goals"]
+
+    REQ --> DISC --> DESIGN --> CTX --> TASK --> EXEC --> REVIEW --> CERT
 ```
 
 ---
