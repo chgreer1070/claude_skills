@@ -56,8 +56,8 @@ Focuses on **why multi-agent systems fail**:
 ### Stateless Agent Methodology: Linear Stages
 
 ```
-Discovery → Planning (RT-ICA) → Context Integration → Task Decomposition → Execution → Forensic Review → Final Verification
-(with Orchestration loop between Execution and Forensic Review)
+Discovery → Planning (RT-ICA) → Context Integration → Task Decomposition → Execution → Forensic Review
+→ Orchestration Loop ↺ (dispatches follow-up tasks back to Execution as needed) → Final Verification
 ```
 
 Each stage:
@@ -199,10 +199,13 @@ Phase 1 completes → Artifact → Phase 2 starts → Artifact → Phase 3 start
 Implicit coordination through artifacts:
 
 1. Discovery agent produces requirements
-2. Assessment agent reads requirements, produces design
-3. Integration agent reads design, produces plan
-4. Execution agent reads plan, produces code
-5. Forensic agent reads code, produces report
+2. Planning agent (RT-ICA) reads requirements, produces plan and prerequisite checks
+3. Context integration agent grounds the plan in the actual codebase/external sources
+4. Task decomposition agent produces executable tasks (inputs + constraints + verification steps)
+5. Execution agent implements tasks under deterministic backpressure
+6. Forensic review agent evaluates outputs against acceptance criteria and tool output
+7. Orchestrator loops: dispatches follow-up tasks back to Execution until convergence
+8. Final verification agent performs a final, end-to-end correctness check
 
 **Coordination mechanism**: Artifacts passed between phases.
 
@@ -383,7 +386,7 @@ Execution → Forensics → Complete/Incomplete → (loop if incomplete)
 
 | Dimension         | Stateless Methodology   | Gas Town                 |
 | ----------------- | ----------------------- | ------------------------ |
-| Agents            | 7 stages + loop         | 20-30+ concurrent        |
+| Agents            | 8 stages (incl. orchestration loop + final verification) | 20-30+ concurrent        |
 | Projects          | Single feature          | Multiple rigs (projects) |
 | Organization      | Single team             | Federation across orgs   |
 | State persistence | No session memory; persistence lives in artifacts | Git-backed durable data plane |
@@ -428,7 +431,7 @@ Features not addressed by Stateless Methodology:
 
 1. **Why agents fail**: Core dysfunction analysis
 2. **Theoretical foundation**: Principles behind the patterns
-3. **Minimal viable process**: 7 stages + orchestration loop without tooling overhead
+3. **Minimal viable process**: 8-stage pipeline (incl. orchestration loop + final verification) without tooling overhead
 4. **Agent-agnostic**: Not tied to specific runtime
 
 ---
@@ -537,3 +540,4 @@ Together they span from "why does this work?" to "how do I run 30 agents across 
 - [Stateless Agent Methodology](./stateless-agent-methodology.md)
 - [Stateless Software Engineering Framework](./stateless-software-engineering-framework.md)
 - [Welcome to Gas Town (Yegge, 2026-01-01)](https://steve-yegge.medium.com/welcome-to-gas-town-4f25ee16dd04) (accessed 2026-01-26)
+- Repo evidence (accessed 2026-01-26): [README.md](https://github.com/steveyegge/gastown/blob/main/README.md), [go.mod](https://github.com/steveyegge/gastown/blob/main/go.mod)

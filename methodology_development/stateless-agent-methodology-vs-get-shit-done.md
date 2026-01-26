@@ -12,7 +12,7 @@ Both methodologies address the same core problem: **LLM agents optimize for appa
 | ------------ | ------------------------------------------------- | ------------------------------------------- |
 | **Origin**   | Theoretical framework from observed failure modes | Production system (npm: `get-shit-done-cc`) |
 | **Target**   | Any LLM agent workflow                            | Claude Code specifically                    |
-| **Maturity** | Conceptual methodology                            | v1.9.4 with 24 commands, 11 agents          |
+| **Maturity** | Conceptual methodology                            | v1.9.13 (local checkout) with 27 commands + 11 agents |
 | **Focus**    | Why agents fail and how to structure work         | Executable workflow with automation         |
 
 ---
@@ -214,7 +214,7 @@ Both recognize that agents cannot self-assess, so the solution must externalize 
 
 | Feature                 | GSD Implementation                     | Stateless Gap                               |
 | ----------------------- | -------------------------------------- | ------------------------------------------- |
-| **Executable commands** | 24 slash commands                      | No implementation                           |
+| **Executable commands** | 27 slash commands (local checkout)     | No implementation                           |
 | **Specialized agents**  | 11 agents with specific roles          | Agent separation described, not implemented |
 | **Wave parallelism**    | Pre-computed dependency execution      | Sequential only                             |
 | **Git integration**     | Atomic commits per task                | Not addressed                               |
@@ -350,3 +350,14 @@ Neither is complete without the other:
 - Implementation without theory is fragile
 
 Together they form a comprehensive approach to reliable LLM agent workflows.
+
+---
+
+## References
+
+- [get-shit-done-cc (npm)](https://www.npmjs.com/package/get-shit-done-cc) (accessed 2026-01-26)
+- [get-shit-done-cc versions (npm)](https://www.npmjs.com/package/get-shit-done-cc?activeTab=versions) (accessed 2026-01-26)
+- [glittercowboy/get-shit-done (GitHub)](https://github.com/glittercowboy/get-shit-done) (accessed 2026-01-26)
+- Commands list (GitHub): [commands/gsd/](https://github.com/glittercowboy/get-shit-done/tree/main/commands/gsd) (accessed 2026-01-26)
+- Agents list (GitHub): [agents/](https://github.com/glittercowboy/get-shit-done/tree/main/agents) (accessed 2026-01-26)
+- Repo evidence (accessed 2026-01-26): [`package.json`](https://github.com/glittercowboy/get-shit-done/blob/main/package.json) (version `1.9.13`), plus counts observed in `commands/gsd/` (27) and `agents/` (11) from a local checkout of the same repository.
