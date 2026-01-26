@@ -27,7 +27,7 @@ Both methodologies identify that LLM agents fail predictably:
 | Problem                | Stateless Framing                                    | OctoCode Framing                                                     |
 | ---------------------- | ---------------------------------------------------- | -------------------------------------------------------------------- |
 | Training data reliance | "One-shot approaches rely on outdated training data" | "Pattern matching (The Guess)" vs "Logical Reasoning (The Research)" |
-| Context degradation    | "Performance drops at ~80% context window"           | "Lost in the Middle" phenomenon                                      |
+| Context degradation    | Long-context degradation (“context rot”): performance can drop as context length increases | "Lost in the Middle" phenomenon                                      |
 | Knowledge gaps         | Work involves knowledge not in training              | "Dynamic Context (The Unknowns)"                                     |
 | Verification failure   | "Apparent completion over correct completion"        | "Verifier (Discriminator) tries to find flaws"                       |
 
@@ -49,11 +49,11 @@ Both methodologies identify that LLM agents fail predictably:
 
 ## Architectural Comparison
 
-### Stateless: 7-Stage Pipeline
+### Stateless: 8-Stage Pipeline
 
 ```
-Discovery → Planning (RT-ICA) → Context Integration → Task Decomposition → Execution → Forensic Review → Final Verification
-(with Orchestration loop between Execution and Forensic Review)
+Discovery → Planning (RT-ICA) → Context Integration → Task Decomposition → Execution → Forensic Review
+→ Orchestration Loop → Final Verification
 ```
 
 Each stage:
@@ -106,8 +106,8 @@ Each step:
 | Stage 4: Task Decomposition  | Plan Implementation        | Both produce actionable steps         |
 | Stage 5: Execution           | Implement                  | Both execute with provided context    |
 | Stage 6: Forensic Review     | Verifier (Discriminator)   | Both verify independently             |
-| Fresh context per stage      | Clean Fresh Context Window | Same principle, different framing     |
-| Task file with all answers   | `plan.md` + `research.md`  | Both provide complete context         |
+| Bounded context per stage    | Clean Fresh Context Window | Same principle, different framing     |
+| Task file + referenced artifacts (no recall required) | `plan.md` + `research.md`  | Both provide grounded context         |
 
 ---
 
@@ -162,7 +162,7 @@ Generator → Verifier → (approved OR feedback loop)
 - Each phase receives complete context as input
 - No phase depends on agent "remembering"
 - Task files contain all constraints, files, methodology
-- Fresh session = fresh context = no degradation
+- Fresh sessions + bounded context reduce long-context degradation pressure, but do not eliminate the need for deterministic verification
 
 ### OctoCode: Minimal Context, Maximum Quality
 
@@ -245,7 +245,7 @@ Research is **continuous and central**:
 
 ### Stateless: Single Workflow
 
-All tasks follow the same 7-stage process:
+All tasks follow the same 8-stage process:
 
 - Discovery → Planning (RT-ICA) → Context Integration → Task Decomposition → Execution → Forensic Review → Final Verification (with Orchestration loop)
 
@@ -344,7 +344,7 @@ Explicitly cites scientific literature:
 
 | Anti-Pattern         | Stateless Framing               | OctoCode Framing                |
 | -------------------- | ------------------------------- | ------------------------------- |
-| Massive context dump | "Context degradation at ~80%"   | "Dump entire codebase" = noise  |
+| Massive context dump | Long-context degradation (“context rot”) | "Dump entire codebase" = noise  |
 | Relying on training  | "Training data bias"            | "Pattern matching (The Guess)"  |
 | No verification      | "Apparent vs actual completion" | Missing Discriminator step      |
 | Shared state         | "Agent cannot self-assess"      | "Shared mega-context" pollution |
@@ -354,7 +354,7 @@ Explicitly cites scientific literature:
 | Pattern                  | Stateless Framing              | OctoCode Framing                   |
 | ------------------------ | ------------------------------ | ---------------------------------- |
 | Fresh context            | "Statelessness is a feature"   | "Clean Fresh Context Window"       |
-| Evidence-based           | "Task files contain all facts" | "Smart Research" with line numbers |
+| Evidence-based           | "No recall required + grounding" | "Smart Research" with line numbers |
 | Independent verification | "Forensic phase"               | "Discriminator"                    |
 | Modular phases           | "8-phase decomposition"        | "Chained actions"                  |
 
@@ -502,3 +502,12 @@ Together they form a complete picture:
 - **OctoCode RDD** = Context engineering
 
 Both are necessary for reliable LLM agent systems.
+
+---
+
+## References
+
+- [Stateless Agent Methodology](./stateless-agent-methodology.md)
+- [Stateless Software Engineering Framework](./stateless-software-engineering-framework.md)
+- [Lost in the Middle (arXiv:2307.03172)](https://arxiv.org/abs/2307.03172) (accessed 2026-01-26)
+- [Attention Is All You Need (arXiv:1706.03762)](https://arxiv.org/abs/1706.03762) (accessed 2026-01-26)
