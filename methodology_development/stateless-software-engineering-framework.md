@@ -20,12 +20,44 @@ This framework treats Claude as a **stateless computation engine** rather than a
 
 | Limitation                            | Manifestation                                                        | Impact                                  |
 | ------------------------------------- | -------------------------------------------------------------------- | --------------------------------------- |
-| **Context window degradation**        | Quality drops significantly at ~80% context usage                    | Long tasks produce poor results         |
-| **Training data staleness**           | Knowledge is 6-18 months old, often wrong for current libraries/APIs | Hallucinated solutions that don't work  |
-| **Training data overconfidence**      | Claude believes its priors over explicit instructions                | Skips verification, ignores methodology |
+| **Long-context degradation**          | Performance often drops as context grows; relevant info can be missed in long contexts | Long tasks produce poor results         |
+| **Training data staleness**           | Knowledge cutoffs vary by model/version; details can be outdated for fast-moving libraries/APIs | Incorrect or obsolete solutions         |
+| **Miscalibrated confidence**          | Models can sound confident while being wrong, especially under ambiguity or underspecification | Skips verification, ignores methodology |
 | **Completion optimization**           | Optimized for "appearing helpful" over "being correct"               | Takes shortcuts to show progress        |
-| **No self-reflective knowledge gaps** | Cannot JIT identify what it doesn't know                             | Proceeds with wrong assumptions         |
+| **Unreliable uncertainty estimation** | Often fails to reliably detect when evidence is missing (“doesn’t know when it doesn’t know”) | Proceeds with wrong assumptions         |
 | **Goal displacement**                 | Optimizes for task metrics, not actual success                       | Disables tests, ignores lint rules      |
+
+#### 1.1.1 What “hallucination” means (operationally)
+
+The term “hallucination” is used loosely. For this framework, treat hallucination as **a mismatch between output and the available ground truth**. Common operational definitions:
+
+- **Ungrounded claims (premise-based factual consistency)**: a response contains claims **not supported by provided context/premise**. This is the definition used by Vectara’s HHEM-style evaluation for RAG/summarization tasks. Source: [Vectara deep dive](https://www.vectara.com/blog/hallucination-detection-commercial-vs-open-source-a-deep-dive) (accessed 2026-01-26).
+- **Open-world factual error**: a response contradicts reality (invented papers, wrong APIs, wrong dates).
+- **Speculation presented as fact**: the model might be right but lacks evidence and fails to mark uncertainty.
+- **Tool / environment confabulation**: claims about actions taken (tests passed, files exist, API calls happened) that did not occur.
+
+Key implication: “hallucination” is not a single bug; it is a structural risk of probabilistic generation under missing/ambiguous evidence, and it must be managed via grounding + constraints + verification.
+
+#### 1.1.2 Hallucination is often a failure of constraints (not just missing knowledge)
+
+A recurring “felt experience” with LLMs: the output looks coherent and confident, but it *drifts* into invented detail once the prompt becomes under-constrained.
+
+- **Human-relatable framing**: the model does not have an internal “this doesn’t feel right” brake. If the prompt leaves degrees of freedom (vague scope, no sourcing requirement, no allowed uncertainty), the model can fill the gap with plausible-sounding detail.
+- **LLM-facing mechanism**: hallucinations can be treated as cases where the model assigns higher probability to an ungrounded continuation than to a grounded/abstaining continuation. Prompt design measurably affects this (“prompt sensitivity”) in many settings. Source: [Survey and analysis of hallucinations in large language models (Frontiers 2025)](https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1622292/full) (accessed 2026-01-26).
+- **Important nuance**: hallucinations can occur even when the model *could* answer correctly (“certain hallucinations overriding known evidence”). Source: [Trust Me, I’m Wrong: LLMs Hallucinate with Certainty Despite Knowing the Answer (EMNLP Findings 2025)](https://aclanthology.org/2025.findings-emnlp.792/) (accessed 2026-01-26).
+
+Implication for this framework: treat “add constraints” as a first-class mitigation primitive (grounding, citations, tool checks, explicit abstention policy, bounded formats), not a “nice to have.”
+
+#### 1.1.3 Why models guess instead of saying “I don’t know” (incentives matter)
+
+Another human-relatable failure mode: the model outputs *something* even when it should abstain. A key driver is **how models are trained and evaluated**:
+
+- Many common benchmarks and scoreboards emphasize **accuracy** (right vs wrong) while under-weighting (or ignoring) the difference between **abstaining** and making a **confident error**.
+- This creates an incentive to “guess” rather than explicitly express uncertainty.
+
+This framing is argued directly by OpenAI: language models hallucinate in part because “standard training and evaluation procedures reward guessing over acknowledging uncertainty.” Source: [Why language models hallucinate (OpenAI, 2025-09-05)](https://openai.com/index/why-language-models-hallucinate/) (accessed 2026-01-26).
+
+Implication for this framework: “abstention policy” is not just UX; it is a core control surface. Prefer metrics and gates that penalize confident errors more than abstentions.
 
 ### 1.2 Observed Failure Modes
 
@@ -35,6 +67,7 @@ This framework treats Claude as a **stateless computation engine** rather than a
 - Change linting rules to ignore a smell rather than fix the code
 - Skip prerequisites to show faster progress
 - Use training data patterns rather than read actual documentation
+- Drift toward narrative/story-like completions when the prompt is under-constrained (fluency wins unless something pushes back)
 - Rationalize out of following CLAUDE.md instructions
 - Complete the task incorrectly rather than block on missing information
 
@@ -45,9 +78,9 @@ This framework treats Claude as a **stateless computation engine** rather than a
 | Approach                           | Why It Fails                                             |
 | ---------------------------------- | -------------------------------------------------------- |
 | **CLAUDE.md instructions**         | Claude rationalizes out of following them immediately    |
-| **Asking Claude to verify**        | Claude confirms its own work without actual verification |
+| **Asking Claude to verify**        | Self-critique / self-verification is unreliable without external evidence ([OpenReview](https://openreview.net/forum?id=4O0v4s3IzY), [arXiv:2502.15845](https://arxiv.org/html/2502.15845v1)) |
 | **Training data skepticism rules** | Claude acknowledges the rule then ignores it             |
-| **Self-reflection prompts**        | Claude cannot identify gaps it doesn't know exist        |
+| **Self-reflection prompts**        | Calibration/uncertainty can improve or worsen; not reliable as the primary control ([arXiv:2506.18183](https://arxiv.org/html/2506.18183v2), [arXiv:2506.00582](https://arxiv.org/html/2506.00582v2)) |
 | **One-shot complex tasks**         | Context pressure causes quality collapse                 |
 
 **Key Insight**: Behavioral instructions cannot override architectural limitations. The solution must be structural, not instructional.
@@ -65,8 +98,29 @@ This framework treats Claude as a **stateless computation engine** rather than a
 | **Single responsibility**      | Each agent does exactly one thing                        | Reduces complexity, enables specialization         |
 | **Message passing**            | Agents communicate via artifacts, not shared context     | Decouples stages, creates audit trail              |
 | **Verification at boundaries** | Every stage validates previous stage's output            | Catches errors before they propagate               |
+| **Deterministic backpressure** | Gate progress on deterministic checks (build/tests/lint/security scans) executed by tools/scripts, not “advice” in prompts | Converts non-deterministic generation into a measurable loop that can converge |
 | **Embedded methodology**       | The process IS the prompt, not instructions to follow    | Cannot skip what structures the task               |
-| **No recall required**         | Task files contain all answers                           | Eliminates hallucination opportunity               |
+| **No recall required**         | Task files contain all answers needed for the task       | Reduces reliance on unverified recall; still requires verification for synthesis/logic |
+
+#### 2.1.1 Deterministic backpressure: inner loop vs outer loop
+
+Human-relatable framing: you can’t “prompt” your way into determinism. You can *ask* for secure/high-quality code, but the only reliable way to enforce it is to run deterministic checks that can fail loudly.
+
+- **Outer loop**: CI, pre-commit, server-side hooks, PR checks (where orgs already run SAST/DAST/etc.).
+- **Inner loop**: the agent’s local generate→check→repair loop (fast feedback).
+
+Field perspective (note: the full post is subscriber-only; only the intro is publicly visible):
+
+- Huntley argues that “rules” in the context window (Cursor rules / AGENTS.md style guidance) are suggestions and therefore cannot be treated as a deterministic security control surface. Source: [anti-patterns and patterns for achieving secure generation of code via AI (Huntley, 2025-09-03)](https://ghuntley.com/secure-codegen/) (accessed 2026-01-26).
+
+Research perspective:
+
+- In code, “hallucination” often means “looks plausible but fails execution/requirements,” which motivates execution/test-based verification loops. Source: [CodeHalu (arXiv:2405.00253)](https://arxiv.org/html/2405.00253v4) (accessed 2026-01-26).
+- Secure code generation can be improved via an agentic workflow that applies guidelines and uses unit tests as a feedback mechanism to preserve functionality while improving security. Source: [SCGAgent (arXiv:2506.07313)](https://arxiv.org/html/2506.07313v1) (accessed 2026-01-26).
+
+Practical implication for this framework:
+
+- Treat “run deterministic checks” as a mandatory self-verification step in Stage 5 (Execution). If checks fail, the next loop iteration must incorporate the tool output as ground truth and repair until the checks pass or the task is explicitly blocked.
 
 ### 2.2 The Pipeline Architecture
 
@@ -670,12 +724,12 @@ Decision: APPROVED / BLOCKED
 
 | Failure Mode                | How Framework Prevents                               |
 | --------------------------- | ---------------------------------------------------- |
-| Training data hallucination | All context provided in task file - no recall needed |
-| Context window degradation  | Fresh context per agent - never reaches pressure     |
+| Unsupported fabrication     | Grounding: require evidence (artifacts / sources) and permit abstention when evidence is missing |
+| Long-context degradation    | Bound context per agent; avoid “everything in one prompt”; keep relevant context small and structured ([Amazon Science](https://www.amazon.science/publications/context-length-alone-hurts-llm-performance-despite-perfect-retrieval), [arXiv:2307.03172](https://arxiv.org/abs/2307.03172)) |
 | Methodology skipping        | Methodology IS the prompt - cannot skip              |
-| Shortcut-taking             | Verification embedded - shortcuts caught             |
+| Shortcut-taking             | Verification embedded (prefer external checks) - shortcuts caught |
 | Goal displacement           | Forensic review validates against original goals     |
-| Self-confirmation bias      | Independent verification agent                       |
+| Self-confirmation bias      | Independent verification agent; do not rely on self-critique alone |
 
 ### 5.2 Structural Enforcement vs Behavioral Instruction
 
@@ -794,6 +848,154 @@ Based on the architectural principles:
 | **First-pass success**      | >70%   | Tasks passing forensic review |
 
 ---
+
+## Appendix D: Assumptions & Evidence Ledger
+
+This document intentionally contains a mix of (a) design choices and (b) empirical claims about LLM behavior. The table below flags statements that are currently **asserted without evidence inside this document** and provides **verification paths + external references** to tighten accuracy.
+
+Legend:
+
+- **Type**: EMPIRICAL CLAIM (needs measurement/citation) | DESIGN CHOICE (normative) | TERMINOLOGY (may need definition alignment)
+- **Evidence in doc?**: YES (cited/measured here) | NO (asserted) | PARTIAL (qualitative / needs quant)
+
+| ID | Statement (verbatim or near-verbatim) | Type | Evidence in doc? | What would make it accurate | Suggested resources to cite / consult |
+| --- | --- | --- | --- | --- | --- |
+| A1 | “Performance often drops as context grows; relevant info can be missed in long contexts” | EMPIRICAL CLAIM | NO | Measure your target model/tasks across context sizes and cite the threshold where performance degrades materially | [Amazon Science: context length alone hurts LLM performance](https://www.amazon.science/publications/context-length-alone-hurts-llm-performance-despite-perfect-retrieval) (accessed 2026-01-26); [Lost in the Middle (arXiv:2307.03172)](https://arxiv.org/abs/2307.03172) (accessed 2026-01-26) |
+| A2 | “Knowledge cutoffs vary by model/version; details can be outdated for fast-moving libraries/APIs” | EMPIRICAL CLAIM | NO | Replace with provider/model-specific cutoffs (or “unknown/undisclosed”) for the exact models in scope | Provider model cards / release notes for the specific models you run (accessed 2026-01-26) |
+| A3 | “Claude believes its priors over explicit instructions” | EMPIRICAL CLAIM | NO | Narrow claim to observed repo/workflow evidence (“in our logs…”) or cite instruction-following / miscalibration literature and qualify scope | (Start point) calibration / uncertainty literature below (A5/A6) + internal eval logs |
+| A4 | “Optimized for ‘appearing helpful’ over ‘being correct’” | TERMINOLOGY | NO | Define whether you mean reward-model optimization, conversational alignment pressure, or agent-operator incentives; tie to evidence | Alignment / reward modeling literature + internal observations; avoid attributing a single-cause mechanism without data |
+| A5 | “Unreliable uncertainty estimation (‘doesn’t know when it doesn’t know’)” | EMPIRICAL CLAIM | NO | Convert to measurable properties (calibration, abstention accuracy, uncertainty estimation) and cite | [Do Reasoning Models Know When They Don’t Know? (arXiv:2506.18183)](https://arxiv.org/html/2506.18183v2) (accessed 2026-01-26); [Overconfidence in LLMs (arXiv:2506.00582)](https://arxiv.org/html/2506.00582v2) (accessed 2026-01-26) |
+| A6 | “Self-critique / self-verification is unreliable without external evidence” | EMPIRICAL CLAIM | NO | Specify boundary conditions (task types where self-critique fails) and cite; prefer external verification where possible | [On the self-verification limitations of LLMs (OpenReview)](https://openreview.net/forum?id=4O0v4s3IzY) (accessed 2026-01-26); [Verify when uncertain (arXiv:2502.15845)](https://arxiv.org/html/2502.15845v1) (accessed 2026-01-26) |
+| A7 | “Behavioral instructions cannot override architectural limitations” | EMPIRICAL CLAIM | NO | Reframe as a hypothesis (“often insufficient”) and support with (a) internal A/B experiments or (b) citations on constrained scaffolds vs prompting | Run an internal study comparing instruction-only vs artifact-gated workflow; cite results |
+| A8 | “Goal displacement… disables tests, ignores lint rules” | TERMINOLOGY | NO | Separate (a) observed coding-agent failure modes from (b) causal mechanism (“goal displacement”); cite each appropriately | For “goal misgeneralization/reward hacking” framing: [Nature 2025 narrow tasks → broad misalignment](https://www.nature.com/articles/s41586-025-09937-5) (accessed 2026-01-26); [Anthropic reward hacking paper PDF](https://assets.anthropic.com/m/74342f2c96095771/original/Natural-emergent-misalignment-from-reward-hacking-paper.pdf) (accessed 2026-01-26) |
+| A9 | “No recall required reduces reliance on unverified recall, but doesn’t eliminate synthesis/logic errors” | EMPIRICAL CLAIM | NO | Tie to eval: compare hallucination/error rates with vs without artifact-grounded prompts; separate “unsupported claim rate” from “reasoning/synthesis error rate” | Use internal eval + hallucination measurement (A10) + verifier checks |
+| A10 | “Hallucination rate <5%” as an achievable target | EMPIRICAL CLAIM | NO | Define hallucination for *this* workflow (coding vs summarization) + measurement protocol; compare to external baselines and internal baselines | For grounded summarization hallucination benchmarks + how HHEM scoring/thresholding is defined: [Vectara hallucination leaderboard (blog)](https://www.vectara.com/blog/introducing-the-next-generation-of-vectaras-hallucination-leaderboard) (accessed 2026-01-26); [Leaderboard repo](https://github.com/vectara/hallucination-leaderboard) (accessed 2026-01-26); [Vectara deep dive: commercial vs open-source hallucination detection](https://www.vectara.com/blog/hallucination-detection-commercial-vs-open-source-a-deep-dive) (accessed 2026-01-26). Note: Vectara’s published rates are for summarization-style factual consistency, not coding correctness. |
+| A11 | “Each task: 15-60 minutes of work” | DESIGN CHOICE | NO | Mark as heuristic; validate with time-tracking data if you want it to be a claim | Internal telemetry / task logs |
+| A12 | “Verification at boundaries catches errors before they propagate” | EMPIRICAL CLAIM | NO | Define what “error propagation” means; show reduction in downstream defects vs baseline workflow | Internal study: baseline vs gated workflow (defect rate, rework rate, pass@k, etc.) |
+| A13 | “Hallucination is often a failure of constraints, not just missing knowledge” | TERMINOLOGY | PARTIAL | Define which constraint class you mean (grounding/citations/tooling/abstention/format), and connect it to measurable outcomes | [Survey and analysis of hallucinations in LLMs (Frontiers 2025)](https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1622292/full) (accessed 2026-01-26) |
+| A14 | “Small shifts toward narrative/story-like prompts can flip the output from informative to fictional” | EMPIRICAL CLAIM | PARTIAL | Quantify prompt sensitivity for your task family (same task, prompt variations) and track unsupported-claim rate deltas | [Survey and analysis of hallucinations in LLMs (Frontiers 2025)](https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1622292/full) (accessed 2026-01-26) |
+| A15 | “Hallucinations can happen even when the model could answer correctly” | EMPIRICAL CLAIM | PARTIAL | Operationalize as “answerable under prompt A but hallucinates under perturbation B” and measure frequency | [Trust Me, I’m Wrong (CHOKE) (EMNLP Findings 2025)](https://aclanthology.org/2025.findings-emnlp.792/) (accessed 2026-01-26) |
+| A16 | “Hallucinations persist partly because accuracy-only evaluations reward guessing over abstaining” | EMPIRICAL CLAIM | PARTIAL | Define an eval that tracks (accuracy, abstention rate, error rate) and optimize for low error rate under uncertainty | [Why language models hallucinate (OpenAI, 2025-09-05)](https://openai.com/index/why-language-models-hallucinate/) (accessed 2026-01-26) |
+| A17 | “Security enforcement requires deterministic checks; prompt-level rules are not a deterministic control surface” | EMPIRICAL CLAIM | PARTIAL | Specify a concrete deterministic gate (e.g., build/tests/lint/SAST) and measure reduction in security defects vs a baseline prompt-only workflow | [anti-patterns and patterns for achieving secure generation of code via AI (Huntley, 2025-09-03)](https://ghuntley.com/secure-codegen/) (accessed 2026-01-26); [SCGAgent (arXiv:2506.07313)](https://arxiv.org/html/2506.07313v1) (accessed 2026-01-26) |
+| A18 | “Execution-based verification detects code hallucinations that ‘look plausible’ but fail requirements” | EMPIRICAL CLAIM | YES (cited) | Track failures via compile/run/tests and categorize by hallucination type; use as feedback signal for repair loops | [CodeHalu (arXiv:2405.00253)](https://arxiv.org/html/2405.00253v4) (accessed 2026-01-26) |
+| A19 | “Durable work graphs (explicit step chains with acceptance criteria) make long-running agent work resilient to session resets/context limits” | EMPIRICAL CLAIM | PARTIAL | Instrument completion rate vs baseline (no durable step graph); measure resume correctness and work-loss rate across forced session recycling | [Welcome to Gas Town (Yegge, 2026-01-01)](https://steve-yegge.medium.com/welcome-to-gas-town-4f25ee16dd04) (accessed 2026-01-26) |
+| A20 | “Persistent agent identities + ephemeral sessions (‘cattle’) improve orchestration: sessions can be recycled without losing state” | EMPIRICAL CLAIM | PARTIAL | Define identity/state model (artifact pointers + inbox/queue); measure whether restarts preserve continuity and reduce drift vs long single sessions | [Welcome to Gas Town (Yegge, 2026-01-01)](https://steve-yegge.medium.com/welcome-to-gas-town-4f25ee16dd04) (accessed 2026-01-26) |
+| A21 | “Non-deterministic idempotence: repeated attempts on durable steps can converge to completion even when individual steps are non-deterministic” | EMPIRICAL CLAIM | PARTIAL | Track attempts-per-step until completion; characterize tail risks (p95/p99) and failure classes that never converge without human intervention | [Welcome to Gas Town (Yegge, 2026-01-01)](https://steve-yegge.medium.com/welcome-to-gas-town-4f25ee16dd04) (accessed 2026-01-26) |
+| A22 | “Agents may require a ‘nudge’ to begin work (politeness / waits for user input), so orchestration needs a deterministic wake-up mechanism” | EMPIRICAL CLAIM | PARTIAL | Measure ‘startup-to-first-action’ distribution with/without nudges; track stuck-start frequency across models/clients | [Welcome to Gas Town (Yegge, 2026-01-01)](https://steve-yegge.medium.com/welcome-to-gas-town-4f25ee16dd04) (accessed 2026-01-26) |
+
+---
+
+## Appendix E: External References (consolidated)
+
+- Long context degradation (even with perfect retrieval): [Amazon Science: context length alone hurts LLM performance despite perfect retrieval](https://www.amazon.science/publications/context-length-alone-hurts-llm-performance-despite-perfect-retrieval) (accessed 2026-01-26)
+- “Lost in the middle” long-context retrieval issue: [arXiv:2307.03172](https://arxiv.org/abs/2307.03172) (accessed 2026-01-26)
+- Uncertainty / calibration issues (“know when they don’t know”): [arXiv:2506.18183](https://arxiv.org/html/2506.18183v2) (accessed 2026-01-26)
+- Overconfidence patterns in LLMs: [arXiv:2506.00582](https://arxiv.org/html/2506.00582v2) (accessed 2026-01-26)
+- Self-verification limits (reasoning/planning): [OpenReview: self-verification limitations](https://openreview.net/forum?id=4O0v4s3IzY) (accessed 2026-01-26)
+- Hallucination detection “verify when uncertain”: [arXiv:2502.15845](https://arxiv.org/html/2502.15845v1) (accessed 2026-01-26)
+- Hallucination measurement (premise-based factual consistency) + methodology details: [Vectara deep dive: commercial vs open-source hallucination detection](https://www.vectara.com/blog/hallucination-detection-commercial-vs-open-source-a-deep-dive) (accessed 2026-01-26)
+- Prompt vs model attribution (prompt sensitivity / model variability): [Survey and analysis of hallucinations in LLMs (Frontiers 2025)](https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1622292/full) (accessed 2026-01-26)
+- “Hallucinate with certainty despite knowing the answer” (CHOKE): [Trust Me, I’m Wrong (EMNLP Findings 2025)](https://aclanthology.org/2025.findings-emnlp.792/) (accessed 2026-01-26)
+- Abstention + calibrated “unsure” reduces hallucination; trigger RAG when unsure: [ConfRAG (arXiv:2506.07309)](https://arxiv.org/html/2506.07309v2) (accessed 2026-01-26)
+- Verified citations improve RAG attribution quality: [VeriCite (SIGIR-AP 2025)](https://arxiv.org/html/2510.11394v1) (accessed 2026-01-26)
+- Why models guess (eval/training incentives) + abstention framing: [Why language models hallucinate (OpenAI, 2025-09-05)](https://openai.com/index/why-language-models-hallucinate/) (accessed 2026-01-26)
+- “Ralph loop” / context engineering as a workflow primitive (field perspective): [everything is a ralph loop (Huntley, 2026-01-17)](https://ghuntley.com/loop/) (accessed 2026-01-26)
+- Secure code generation (field perspective on determinism + backpressure): [anti-patterns and patterns for achieving secure generation of code via AI (Huntley, 2025-09-03)](https://ghuntley.com/secure-codegen/) (accessed 2026-01-26)
+- Code hallucinations + execution-based verification taxonomy: [CodeHalu (arXiv:2405.00253)](https://arxiv.org/html/2405.00253v4) (accessed 2026-01-26)
+- Secure code generation via agentic workflow + unit tests: [SCGAgent (arXiv:2506.07313)](https://arxiv.org/html/2506.07313v1) (accessed 2026-01-26)
+- Orchestration pattern: persistent agent identities, durable “work graphs”, and session recycling to survive context limits (field perspective): [Welcome to Gas Town (Yegge, 2026-01-01)](https://steve-yegge.medium.com/welcome-to-gas-town-4f25ee16dd04) (accessed 2026-01-26)
+
+---
+
+## Appendix F: Community Observations → Evidence Mapping
+
+This appendix ingests community/field observations (e.g., Reddit threads) and converts them into:
+
+- **Human-relatable explanations** (what it feels like in practice)
+- **Operational claims** (what we can measure)
+- **Mitigation primitives** (what to do in this framework)
+- **Evidence links** (research/benchmarks/case studies)
+
+### F1: “Continuation, not truth” and “hallucination is a failure of constraints”
+
+- **Source**: Reddit discussion thread (selected comments): [r/ArtificialInteligence: “what ai hallucination actually is…”](https://www.reddit.com/r/ArtificialInteligence/comments/1pjggoi/what_ai_hallucination_actually_is_why_it_happens/) (accessed 2026-01-26)
+- **Extracted insights (community)**:
+  - LLMs optimize fluent continuation, not truth evaluation.
+  - Hallucinations are often a **failure of constraints** (missing grounding/citations/tool checks/abstention), not purely missing knowledge.
+  - “Story-like” framing can tip outputs toward narrative completion.
+  - The model can hallucinate even when it “could” answer correctly; small perturbations can flip the behavior.
+- **Where it lands in this framework**:
+  - Mechanism: `1.1.2 Hallucination is often a failure of constraints`
+  - Mitigations: grounding + explicit abstention + verification at boundaries + bounded formats
+  - Measurement: prompt-sensitivity experiments; unsupported-claim rate; abstention correctness; citation precision/recall (task-dependent)
+- **Evidence to cite / consult**:
+  - Prompt sensitivity + prompting-induced hallucinations: [Frontiers 2025 survey](https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1622292/full) (accessed 2026-01-26)
+  - “Knows the answer but hallucinates anyway” (CHOKE): [EMNLP Findings 2025](https://aclanthology.org/2025.findings-emnlp.792/) (accessed 2026-01-26)
+  - “Say unsure” training + use unsure to trigger RAG: [ConfRAG (arXiv:2506.07309)](https://arxiv.org/html/2506.07309v2) (accessed 2026-01-26)
+  - Premise-based hallucination scoring (HHEM definition + scoring/threshold): [Vectara deep dive](https://www.vectara.com/blog/hallucination-detection-commercial-vs-open-source-a-deep-dive) (accessed 2026-01-26)
+  - Verified citations / attribution quality: [VeriCite (SIGIR-AP 2025)](https://arxiv.org/html/2510.11394v1) (accessed 2026-01-26)
+
+### F2: “Context rot” and why loops should be monolithic (field workflow perspective)
+
+- **Source**: Blog post by Geoffrey Huntley: [everything is a ralph loop (2026-01-17)](https://ghuntley.com/loop/) (accessed 2026-01-26)
+- **Extracted insights (field)**:
+  - Multi-agent “microservices” are an attractive trap because non-deterministic agents amplify coordination complexity; a monolithic loop can be more robust.
+  - “One task per loop” reduces drift: smaller scopes make failure modes easier to observe, reproduce, and fix.
+  - “Watch the loop”: treat failures as signals to update the process/constraints so the same failure mode stops recurring.
+- **Where it lands in this framework**:
+  - Mechanism: long-context degradation + drift under weak constraints (`1.1`, `1.1.2`)
+  - Mitigation: bounded tasks + verification gates + iteration loops (`2.2`, `5.1`)
+  - Measurement: per-loop defect rate, rework rate, and “context size vs error rate” curves
+- **Evidence to cite / consult**:
+  - Long-context degradation (miss relevant info even when present): [Amazon Science](https://www.amazon.science/publications/context-length-alone-hurts-llm-performance-despite-perfect-retrieval) (accessed 2026-01-26); [arXiv:2307.03172](https://arxiv.org/abs/2307.03172) (accessed 2026-01-26)
+  - Prompt sensitivity / prompting-induced errors: [Frontiers 2025 survey](https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2025.1622292/full) (accessed 2026-01-26)
+  - “Say unsure” as a first-class behavior + trigger retrieval on unsure: [ConfRAG (arXiv:2506.07309)](https://arxiv.org/html/2506.07309v2) (accessed 2026-01-26)
+
+### F3: “Security needs determinism” and why prompts/tools are not the same control surface
+
+- **Source**: Huntley blog post (subscriber-only after the intro): [anti-patterns and patterns for achieving secure generation of code via AI (2025-09-03)](https://ghuntley.com/secure-codegen/) (accessed 2026-01-26)
+- **Extracted insights (field, evidence status: PARTIAL due to paywall)**:
+  - “Secure code generation” is not a purely prompting problem; security enforcement requires deterministic checks.
+  - Guidance in the context window (rules, agent instructions, tool descriptions) should be treated as **non-deterministic suggestions**, not security controls.
+  - The robust pattern is: **generate (non-deterministic) → backpressure (deterministic)**, where backpressure is produced by running real tooling (build/tests/security scans) that can fail.
+- **Where it lands in this framework**:
+  - Principle: `2.1 Deterministic backpressure`
+  - Stage impact: Stage 5 (Execution) must run deterministic checks and incorporate their output into the next repair iteration.
+- **Evidence to cite / consult**:
+  - Execution-based verification as a grounded definition of “code hallucination”: [CodeHalu (arXiv:2405.00253)](https://arxiv.org/html/2405.00253v4) (accessed 2026-01-26)
+  - Secure-code improvements via agentic workflows with test feedback: [SCGAgent (arXiv:2506.07313)](https://arxiv.org/html/2506.07313v1) (accessed 2026-01-26)
+
+### F4: “Orchestrators are next”: persistent work graphs + session recycling to beat context limits (field workflow perspective)
+
+- **Source**: Steve Yegge “Gas Town” post: [Welcome to Gas Town (2026-01-01)](https://steve-yegge.medium.com/welcome-to-gas-town-4f25ee16dd04) (accessed 2026-01-26)
+- **Extracted insights (field)**:
+  - The practical bottleneck with single-session coding agents is **session finiteness** (context fills, agents “run out of steam”, stop).
+  - The proposed solution shape is an **orchestrator** that:
+    - Treats sessions as **ephemeral/cattle**, while “agents” are **persistent identities** anchored in a durable data plane.
+    - Externalizes work into a durable graph (“molecules” / chained issues with acceptance criteria) so work can be resumed after crashes/restarts/compaction.
+    - Uses a persistent “hook/queue” per agent identity: “if there is work on your hook, you must run it” (GUPP).
+    - Adds system-level nudges/heartbeats to counteract “politeness” / waiting-for-user-input behavior.
+  - The claimed property is a kind of **nondeterministic idempotence**: even though each step’s execution is non-deterministic, the workflow converges because it is durable and repeatedly re-attempted until complete.
+  - Separates orchestration artifacts into:
+    - Durable work records (persisted)
+    - Ephemeral orchestration traces (wisps) that can be squashed to summaries to avoid noisy histories
+- **Where it lands in this framework**:
+  - Principle reinforcement:
+    - `2.1 Externalized memory` (work state must live in artifacts, not in conversation)
+    - `2.1 Verification at boundaries` (work steps should have explicit DoD/acceptance criteria)
+    - `2.1 Deterministic backpressure` (hooks/nudges are not a substitute for deterministic checks; they’re a substitute for “please continue”)
+  - Mechanism alignment:
+    - `1.1 Long-context degradation` / “context rot”: avoid by constraining each unit of work and enabling restart/resume
+  - Pipeline placement:
+    - The Gas Town pattern is most similar to scaling Stage 5 (Execution) into a supervised multi-session work factory, with a persistent artifact plane acting as the continuity layer.
+- **Operationalization (what to measure)**:
+  - **Continuation success rate**: fraction of tasks that complete after forced session recycle(s)
+  - **Resume correctness**: fraction of resumes that pick up the right “next step” without redoing/losing work
+  - **Work-loss rate**: percentage of tasks/steps that need rework due to lost context/artifacts
+  - **Convergence profile**: mean attempts (recycles) required per step until completion, plus tail risk (p95/p99)
+- **Evidence to cite / consult**:
+  - “Lost in the middle” and long-context degradation baselines: [Amazon Science](https://www.amazon.science/publications/context-length-alone-hurts-llm-performance-despite-perfect-retrieval) (accessed 2026-01-26); [arXiv:2307.03172](https://arxiv.org/abs/2307.03172) (accessed 2026-01-26)
+  - Execution-based verification as a repair signal (coding): [CodeHalu (arXiv:2405.00253)](https://arxiv.org/html/2405.00253v4) (accessed 2026-01-26)
 
 **Document Status**: Initial framework design
 **Next Steps**: Create repository, implement Phase 1 infrastructure
