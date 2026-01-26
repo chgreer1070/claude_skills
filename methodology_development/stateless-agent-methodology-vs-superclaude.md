@@ -12,7 +12,7 @@ A comparison of two approaches to improving AI-assisted software development.
 | **Focus**          | Addressing LLM cognitive limitations through phase separation | Enhancing Claude Code with behavioral injection and workflow automation    |
 | **Implementation** | Conceptual framework requiring custom implementation          | Ready-to-use Python package with CLI, slash commands, and MCP integrations |
 | **Target**         | Any LLM agent system                                          | Claude Code specifically                                                   |
-| **Scale**          | 8 phases, multi-agent                                         | 30 commands, 16 agents, 7 modes, 8 MCP servers                             |
+| **Scale**          | Multi-stage pipeline (with orchestration + verification)      | Many commands/agents/modes/tool integrations (see project docs)            |
 
 ---
 
@@ -22,9 +22,13 @@ A comparison of two approaches to improving AI-assisted software development.
 
 **Central insight**: Claude is not a knowledge worker—Claude is a stateless computation engine. LLM agents cannot reliably self-assess knowledge gaps. They optimize for _apparent completion_ over _correct completion_.
 
-**Solution**: Treat Claude like a pure function: input complete context (task file with all answers), output verified result. Externalize assessment to separate stages with different agents. Each stage receives complete context—no stage depends on the agent "remembering" anything.
+**Solution**: Treat Claude like a pure function: input complete context (task file + referenced artifacts), output verified result. Externalize assessment and enforcement into artifacts + gates:
 
-**Key principle**: Statelessness is a feature, not a limitation. Each session starts fresh with all necessary information embedded in the task.
+- Each stage receives bounded, complete context (no reliance on conversation memory)
+- Deterministic backpressure (tests/lint/static analysis/checklists) treated as ground truth
+- Independent forensic review (not self-review) validates completion vs spec/DoD
+
+**Key principle**: Stateless sessions + persistent artifacts. Fresh sessions reduce long-context degradation pressure, but correctness still requires deterministic verification.
 
 ### SuperClaude Framework
 
@@ -42,11 +46,11 @@ Both frameworks identify the same fundamental issues:
 
 | Problem                           | Stateless Agent Methodology                          | SuperClaude Framework                                          |
 | --------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
-| **Hallucination**                 | Task files contain all facts; no recall needed       | SelfCheckProtocol with "Four Questions" (94% detection rate)   |
-| **Wrong-direction work**          | Assessment phase blocks until prerequisites verified | Confidence check (≥90% proceed, <70% stop and investigate)     |
+| **Hallucination**                 | No recall required (reduces reliance on priors); still requires grounding + deterministic backpressure | SelfCheckProtocol with "Four Questions" (project-claimed; verify in docs) |
+| **Wrong-direction work**          | Planning (RT-ICA) blocks until prerequisites verified | Confidence check with thresholds (verify in docs)              |
 | **Apparent vs actual completion** | Forensic phase provides independent verification     | Post-implementation validation with evidence requirements      |
 | **Training data bias**            | Task files provide current, verified information     | Evidence-based development (Context7, WebFetch, official docs) |
-| **Context degradation**           | Each phase is independent; fresh context             | Token efficiency patterns (30-50% reduction)                   |
+| **Context degradation**           | Bounded context per task/stage to reduce “context rot” pressure | Token-efficiency patterns (project-claimed; verify in docs)    |
 
 ---
 
@@ -57,23 +61,25 @@ Both frameworks identify the same fundamental issues:
 | Stateless Agent Methodology      | SuperClaude Equivalent                            |
 | -------------------------------- | ------------------------------------------------- |
 | **Stage 1: Discovery**           | `/sc:brainstorm` + `/sc:research` (Deep Research) |
-| **Stage 2: Planning (RT-ICA)**   | Confidence check (100-200 tokens, 25-250x ROI)    |
+| **Stage 2: Planning (RT-ICA)**   | Confidence check (verify thresholds/criteria in docs) |
 | **Stage 3: Context Integration** | Glob/Grep existing code + architecture compliance |
 | **Stage 4: Task Decomposition**  | `/sc:pm` + `/sc:task` + task management mode      |
 | **Stage 5: Execution**           | `/sc:implement` with PM Agent patterns            |
 | **Stage 6: Forensic Review**     | SelfCheckProtocol ("Four Questions")              |
-| **Stage 7: Final Verification**  | Post-implementation validation + test evidence    |
-| **(Orchestration Loop)**         | `/sc:spawn` (parallel tasks) + `/sc:workflow`     |
+| **Stage 7: Orchestration Loop**  | `/sc:spawn` (parallel tasks) + `/sc:workflow`     |
+| **Stage 8: Final Verification**  | Post-implementation validation + test evidence    |
 
 ### Agent Separation
 
 **Stateless Agent Methodology** explicitly separates concerns into different agents:
 
 - Discovery agent (questioning, gathering)
-- Assessment agent (gap analysis)
-- Planning agent (decomposition)
+- Planning agent (RT-ICA + design)
+- Context Integration agent (codebase mapping)
+- Task Decomposition agent (atomic task creation)
 - Execution agent (implementation)
-- Forensic agent (verification)
+- Forensic Review agent (independent verification)
+- Final Verification agent (goal validation)
 
 **SuperClaude Framework** provides 16 specialized agents:
 
@@ -93,9 +99,9 @@ Both frameworks identify the same fundamental issues:
 
 | Aspect                     | Stateless Agent Methodology                      | SuperClaude Framework                            |
 | -------------------------- | ------------------------------------------------ | ------------------------------------------------ |
-| **Philosophy**             | Intentionally stateless—fresh context each phase | Persistent learning via Reflexion pattern        |
-| **Cross-session learning** | None by design                                   | ReflexionMemory for error patterns               |
-| **Session continuity**     | Task file IS the context                         | `/sc:save` and `/sc:load` for session management |
+| **Philosophy**             | Stateless sessions + persistent artifacts        | Persistent learning via Reflexion pattern        |
+| **Cross-session learning** | No implicit memory; durability comes from artifacts | ReflexionMemory for error patterns               |
+| **Session continuity**     | Task file is the prompt; artifacts are source of truth | `/sc:save` and `/sc:load` for session management |
 
 **Stateless Methodology** treats each session as independent. The task file contains everything needed.
 
@@ -127,7 +133,7 @@ Both frameworks identify the same fundamental issues:
 
 **Stateless Agent Methodology**:
 
-- Phase 2 (Assessment) blocks planning
+- Phase 2 (Planning / RT-ICA) blocks execution
 - No implementation without verified prerequisites
 - RT-ICA pattern
 
@@ -153,7 +159,7 @@ Both frameworks identify the same fundamental issues:
 **SuperClaude Framework**:
 
 - Wave → Checkpoint → Wave pattern
-- 3.5x speedup via parallel execution
+- Parallel execution patterns (project-claimed; verify in docs)
 - Token budgeting by task complexity
 
 ```text
@@ -176,7 +182,7 @@ These frameworks address overlapping but distinct concerns:
 | **Cognitive**    | Phase separation prevents self-assessment failure | Confidence checking prevents wrong-direction work |
 | **Verification** | External forensic agent                           | Embedded SelfCheckProtocol                        |
 | **Learning**     | None (by design)                                  | Reflexion pattern for error learning              |
-| **Tooling**      | Conceptual (requires implementation)              | 30 commands, 16 agents, 8 MCP servers             |
+| **Tooling**      | Conceptual (requires implementation)              | Commands/agents/tool integrations (see docs)       |
 | **Execution**    | Sequential phases                                 | Parallel wave execution                           |
 
 ### Where SuperClaude Implements Stateless Patterns
@@ -185,7 +191,7 @@ SuperClaude already implements several Stateless Agent Methodology concepts:
 
 1. **Prerequisite gates**: Confidence check blocks implementation
 2. **Evidence requirements**: Four Questions require proof
-3. **Hallucination detection**: 94% accuracy with red flag detection
+3. **Hallucination detection**: Red flag detection + evidence requirements (project-claimed; verify in docs)
 4. **Verification phase**: Post-implementation validation
 
 ### Where Stateless Methodology Differs
@@ -201,12 +207,12 @@ SuperClaude already implements several Stateless Agent Methodology concepts:
 
 | Feature                   | Stateless Agent          | SuperClaude                                   |
 | ------------------------- | ------------------------ | --------------------------------------------- |
-| Prerequisite verification | Phase 2 (Assessment)     | Confidence check (0.0-1.0)                    |
-| Hallucination prevention  | Complete context in task | SelfCheckProtocol (94% detection)             |
+| Prerequisite verification | Phase 2 (Planning / RT-ICA) | Confidence check (0.0-1.0)                 |
+| Hallucination prevention  | No recall required + grounding + deterministic backpressure | SelfCheckProtocol + evidence requirements (project-claimed) |
 | Independent verification  | Forensic phase           | Four Questions + evidence                     |
 | Cross-session learning    | None (by design)         | Reflexion pattern                             |
-| Parallel execution        | Not specified            | Wave → Checkpoint → Wave (3.5x)               |
-| Token efficiency          | Not specified            | 30-50% reduction with budgeting               |
+| Parallel execution        | Not specified            | Wave → Checkpoint → Wave (verify in docs)     |
+| Token efficiency          | Not specified            | Token budgeting/efficiency patterns (verify)  |
 | Research capability       | Phase 1 + 3              | Deep Research agent (multi-hop, 5 iterations) |
 | Task management           | Phase 4                  | `/sc:pm` + `/sc:task` + mode                  |
 | MCP integration           | Not specified            | 8 servers (Tavily, Context7, etc.)            |

@@ -21,9 +21,13 @@ A comparison of two approaches to managing AI-driven software development.
 
 **Central insight**: Claude is not a knowledge worker—Claude is a stateless computation engine. LLM agents cannot reliably self-assess knowledge gaps. They optimize for _apparent completion_ over _correct completion_.
 
-**Solution**: Treat Claude like a pure function: input complete context (task file with all answers), output verified result. Externalize assessment to separate stages with different agents. Each stage receives complete context—no stage depends on the agent "remembering" anything.
+**Solution**: Treat Claude like a pure function: input complete context (task file + referenced artifacts), output verified result. Externalize assessment and enforcement into artifacts + gates:
 
-**Key principle**: Statelessness is a feature, not a limitation. Each session starts fresh with all necessary information embedded in the task.
+- Each stage receives bounded, complete context (no reliance on conversation memory)
+- Deterministic backpressure (tests/lint/static analysis/checklists) treated as ground truth
+- Independent forensic review (not self-review) validates completion vs spec/DoD
+
+**Key principle**: Stateless sessions + persistent artifacts. Fresh sessions reduce long-context degradation pressure, but correctness still requires deterministic verification.
 
 ### Task Master
 
@@ -47,8 +51,8 @@ A comparison of two approaches to managing AI-driven software development.
 | **Stage 4: Task Decomposition** - Create discrete task files           | `expand` - Break tasks into subtasks                  |
 | **Stage 5: Execution** - Implement single task with complete context   | `next` + implementation - Work on next available task |
 | **Stage 6: Forensic Review** - Independent verification of completion  | Manual: User validates completion                     |
-| **Stage 7: Final Verification** - Validate feature against acceptance  | Manual: User confirms feature complete                |
-| **(Orchestration Loop)** - Coordinate workflow, dispatch workers       | `set-task-status` + dependency tracking               |
+| **Stage 7: Orchestration Loop** - Coordinate workflow, dispatch workers | `set-task-status` + dependency tracking              |
+| **Stage 8: Final Verification** - Validate feature against acceptance  | Manual: User confirms feature complete                |
 
 ### Data Storage
 
@@ -57,7 +61,7 @@ A comparison of two approaches to managing AI-driven software development.
 - Task files as prompts (contain all context)
 - Feature requirements guides
 - Design documents with file/URL references
-- No persistent state between sessions
+- No session memory; persistence lives in artifacts (task files + outputs)
 
 **Task Master**:
 
@@ -74,8 +78,8 @@ A comparison of two approaches to managing AI-driven software development.
 
 | Limitation                        | Stateless Agent Methodology                      | Task Master                             |
 | --------------------------------- | ------------------------------------------------ | --------------------------------------- |
-| **Training data hallucination**   | Task files contain all facts; no recall needed   | Relies on LLM training + research model |
-| **Context window degradation**    | Each phase is independent; fresh context         | Single session may accumulate context   |
+| **Training data hallucination / stale priors** | No recall required (reduces reliance on priors); still requires grounding + deterministic backpressure | Relies on LLM + research model |
+| **Long-context degradation (“context rot”)** | Bounded context per task/stage to reduce drift | Single session may accumulate context   |
 | **Apparent vs actual completion** | Forensic phase provides independent verification | User manually validates completion      |
 | **Rationalizing out of process**  | Process IS the task; no meta-instructions        | Relies on LLM following commands        |
 
@@ -84,10 +88,12 @@ A comparison of two approaches to managing AI-driven software development.
 **Stateless Agent Methodology** explicitly separates concerns into different agents:
 
 - Discovery agent (questioning, gathering)
-- Assessment agent (gap analysis)
-- Planning agent (decomposition)
+- Planning agent (RT-ICA + design)
+- Context Integration agent (codebase mapping)
+- Task Decomposition agent (atomic task creation)
 - Execution agent (implementation)
-- Forensic agent (verification)
+- Forensic Review agent (independent verification)
+- Final Verification agent (goal validation)
 
 **Task Master** uses a single AI context with different commands:
 
@@ -99,7 +105,7 @@ A comparison of two approaches to managing AI-driven software development.
 
 **Stateless Agent Methodology**:
 
-- Phase 2 (Assessment) blocks planning until prerequisites verified
+- Phase 2 (Planning / RT-ICA) blocks execution until prerequisites verified
 - Explicit "gate" before work begins
 - RT-ICA (Reverse Thinking - Information Completeness Assessment) pattern
 
@@ -134,7 +140,7 @@ These approaches are not mutually exclusive. They address different layers of th
 | **Cognitive**   | Addresses LLM reasoning limitations  | Assumes LLM reasoning works        |
 | **Structural**  | Defines phases and their purposes    | Provides data structures for tasks |
 | **Tooling**     | Conceptual (requires implementation) | Ready-to-use CLI/MCP tools         |
-| **Persistence** | Intentionally stateless              | Maintains project state            |
+| **Persistence** | Stateless sessions; persistence via artifacts | Maintains project state      |
 
 ### Potential Integration
 

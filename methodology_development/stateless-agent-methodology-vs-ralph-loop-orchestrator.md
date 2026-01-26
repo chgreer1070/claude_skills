@@ -12,7 +12,7 @@ Both methodologies recognize the same core problem: **LLM agents cannot reliably
 | ----------------------- | ------------------------------ | --------------------------------------------- |
 | **Philosophy**          | Explicit phase decomposition   | Thin coordination with backpressure           |
 | **Control model**       | Prescriptive phases            | Emergent through gates                        |
-| **Verification**        | Separate forensic agent        | Automated backpressure (tests, lints, builds) |
+| **Verification**        | Independent forensic review + deterministic backpressure | Automated backpressure (tests, lints, builds) |
 | **State management**    | Task files contain all context | Disk is state, Git is memory                  |
 | **Orchestration style** | Active dispatch                | "Sit on the loop, not in it"                  |
 
@@ -33,6 +33,8 @@ Both methodologies agree on these fundamental principles:
 > "Fresh Context Is Reliability — Each iteration clears context. Re-read specs, plan, code every cycle."
 
 **Implication**: Neither methodology attempts to preserve agent state across iterations. Both treat context window management as the primary reliability mechanism.
+
+**Update (per SAM/SSE docs)**: Fresh sessions and bounded context reduce long-context degradation (“context rot”) pressure, but reliability still depends on deterministic backpressure and independent verification. Context management is necessary, not sufficient.
 
 ### 2. Agents Optimize for Apparent Completion
 
@@ -190,8 +192,8 @@ Quality is reduced to a binary gate that can block the loop.
 | Stage 4: Decomposition | `.agent/tasks.jsonl`            | Ralph tracks tasks at runtime               |
 | Stage 5: Execution     | Loop iteration                  | Core similarity                             |
 | Stage 6: Forensic      | Backpressure gates              | Different mechanism, same purpose           |
-| Stage 7: Verification  | `LOOP_COMPLETE` + no open tasks | Simpler termination condition               |
-| (Orchestration Loop)   | Loop runner                     | Ralph's is thinner                          |
+| Stage 7: Orchestration | Loop runner                     | Both coordinate iteration; Ralph's is thinner |
+| Stage 8: Final Verification | `LOOP_COMPLETE` + no open tasks | Termination condition; SAM adds explicit goal-level verification |
 
 ### File Artifacts
 
@@ -219,10 +221,10 @@ Quality is reduced to a binary gate that can block the loop.
 
 **SAM identifies these failure modes**:
 
-- Training data hallucination
+- Training data staleness (knowledge cutoff) / stale priors
 - Skipping prerequisites
 - Apparent vs actual completion
-- Context window degradation
+- Long-context degradation (“context rot”)
 - Rationalizing out of process
 
 **Ralph identifies these anti-patterns**:

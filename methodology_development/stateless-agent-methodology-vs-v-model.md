@@ -14,7 +14,7 @@ The V-Model is a traditional human-centric software development process that pai
 | **Actors**          | Human developers and testers                | LLM agents                               |
 | **Primary Problem** | Ensuring quality through structured testing | Agent self-assessment failure            |
 | **Core Structure**  | Definition phases ↔ Validation phases      | Generation phases ↔ Verification phases |
-| **State Model**     | Stateful (knowledge accumulates in humans)  | Stateless (complete context per phase)   |
+| **State Model**     | Stateful (knowledge accumulates in humans)  | Stateless sessions + persistent artifacts (externalized memory) |
 
 ---
 
@@ -51,8 +51,8 @@ Architecture Design ────────────────────
 The Stateless Agent Methodology structures work as linear stages with embedded verification:
 
 ```
-Discovery → Planning (RT-ICA) → Context Integration → Task Decomposition → Execution → Forensic Review → Final Verification
-(with Orchestration loop between Execution and Forensic Review)
+Discovery → Planning (RT-ICA) → Context Integration → Task Decomposition → Execution → Forensic Review
+→ Orchestration Loop → Final Verification
 ```
 
 Each stage:
@@ -69,9 +69,9 @@ Each stage:
 
 | V-Model (Definition)  | Stateless Equivalent | V-Model (Validation)    | Stateless Equivalent        |
 | --------------------- | -------------------- | ----------------------- | --------------------------- |
-| Requirements Analysis | Stage 1: Discovery   | User Acceptance Testing | Stage 7: Final Verification |
+| Requirements Analysis | Stage 1: Discovery   | User Acceptance Testing | Stage 8: Final Verification |
 | System Design         | Stage 2: Planning    | System Testing          | Stage 6: Forensic Review    |
-| Architecture Design   | Stage 3: Integration | Integration Testing     | Orchestration (loop)        |
+| Architecture Design   | Stage 3: Integration | Integration Testing     | Stage 7: Orchestration Loop |
 | Module Design         | Stage 4: Decompose   | Unit Testing            | Stage 5: Execution (self)   |
 | Coding                | Stage 5: Execution   | —                       | —                           |
 
@@ -139,7 +139,7 @@ Architecture ──────────────────────�
 - Treat Claude like a pure function: task file (complete context) → agent → verified result
 - Verification must be independent from generation
 - Artifacts are the only reliable bridge between stages
-- Fresh context prevents degradation
+- Bounded context reduces long-context degradation pressure; deterministic backpressure (tests/lints/etc.) is still required to converge on correctness
 
 **Assumptions**:
 
@@ -162,12 +162,12 @@ Architecture ──────────────────────�
 | **Test artifact** | UAT test plans                  | Acceptance criteria                   |
 | **State**         | Analysts remember context       | Agent receives fresh context          |
 
-### System Design vs Assessment
+### System Design vs Planning (RT-ICA)
 
 | Aspect            | V-Model                         | Stateless                               |
 | ----------------- | ------------------------------- | --------------------------------------- |
 | **Input**         | User requirements document      | Gathered data + verification framework  |
-| **Actor**         | System engineers                | Assessment agent                        |
+| **Actor**         | System engineers                | Planning agent (RT-ICA)                 |
 | **Output**        | Software specification document | Feature design guide with prerequisites |
 | **Test artifact** | System test plans               | Prerequisite checklist                  |
 | **Purpose**       | Determine how to implement      | Verify readiness to implement           |
@@ -187,7 +187,7 @@ Architecture ──────────────────────�
 | Aspect            | V-Model                      | Stateless                      |
 | ----------------- | ---------------------------- | ------------------------------ |
 | **Input**         | Architecture design          | Integrated plan                |
-| **Actor**         | Designers                    | Planning agent                 |
+| **Actor**         | Designers                    | Task Decomposition agent       |
 | **Output**        | Low-level design, pseudocode | Task files with constraints    |
 | **Test artifact** | Unit test design             | Per-task verification criteria |
 | **Purpose**       | Enable programmer to code    | Enable agent to execute        |
@@ -474,4 +474,5 @@ The Stateless Agent Methodology can be viewed as a **V-Model adapted for AI cons
 
 - V-Model (Software Development). Wikipedia. <https://en.wikipedia.org/wiki/V-model_(software_development)>
 - German Federal Government V-Model XT. <https://www.cio.bund.de/Web/EN/Architectures-and-Standards/V-Modell-XT/vmodell_xt_node.html>
-- Stateless Agent Methodology. (2024). Internal documentation.
+- [Stateless Agent Methodology](./stateless-agent-methodology.md)
+- [Stateless Software Engineering Framework](./stateless-software-engineering-framework.md)

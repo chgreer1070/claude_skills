@@ -13,8 +13,8 @@ Both methodologies address LLM agent limitations but target fundamentally differ
 | **Origin**          | Theoretical framework from observed failure modes | Production multi-agent orchestration system       |
 | **Scale**           | Single agent, sequential stages                   | 20-30+ concurrent agents across multiple projects |
 | **Primary Problem** | Agent self-assessment failure                     | Agent coordination at enterprise scale            |
-| **State Model**     | Stateless (complete context per stage)            | Persistent (git-backed work tracking)             |
-| **Implementation**  | Conceptual methodology                            | Go CLI (`gt`) with full tooling                   |
+| **State Model**     | Stateless sessions + persistent artifacts (externalized memory) | Persistent identities + durable work graphs in a git-backed data plane |
+| **Implementation**  | Conceptual methodology                            | Orchestrator system described in “Gas Town”       |
 
 ---
 
@@ -24,10 +24,11 @@ Both methodologies address LLM agent limitations but target fundamentally differ
 
 Focuses on **why individual agents fail**:
 
-- Context degradation at ~80% window
-- Training data bias in one-shot approaches
+- Long-context degradation (“context rot”): performance can drop as context length increases (including “lost in the middle” effects); avoid long sessions by bounding context per task/stage
+- Knowledge cutoff / stale priors: the model can choose plausible but outdated patterns unless forced to ground against current sources/tools
 - Cannot perform JIT knowledge gap identification
 - Optimizes for apparent completion over correct completion
+- Non-deterministic generation must be constrained by deterministic backpressure (tests/lint/static analysis/checklists) treated as ground truth
 
 ### Gas Town
 
@@ -43,10 +44,10 @@ Focuses on **why multi-agent systems fail**:
 
 | Concern       | Stateless Approach              | Gas Town Approach                   |
 | ------------- | ------------------------------- | ----------------------------------- |
-| Context loss  | Fresh context per phase         | Persistent hooks + handoff protocol |
-| Work tracking | Task files with all constraints | Beads ledger (git-backed JSONL)     |
-| Verification  | Independent forensic phase      | Witness agent + quality gates       |
-| Coordination  | Orchestrator dispatches workers | Mail protocol + nudging system      |
+| Context limits | Bound context per task/stage (avoid “everything in one prompt”) | Session recycling + durable work graphs + hook/queue semantics |
+| Work tracking | Task files with constraints + verification steps | Beads ledger (git-backed) + activity/event trail |
+| Verification  | Independent forensic phase + deterministic checks | Multi-role oversight + merge/quality gates + deterministic checks |
+| Coordination  | Orchestrator dispatches workers | Durable coordination plane (mail/inboxes, queues/hooks, patrols/nudges) |
 
 ---
 
@@ -117,7 +118,7 @@ Core entities:
 - Each phase receives complete context
 - No phase depends on agent "remembering"
 - Task files contain all answers
-- Fresh session = fresh context = no degradation
+- Fresh sessions + bounded context reduce long-context degradation pressure, but do not eliminate the need for deterministic verification
 
 **Implementation**: Phase artifacts are the only state.
 
@@ -310,10 +311,10 @@ gastown/polecats/toast          # Polecat worker
 
 | Failure Mode                  | Mitigation                       |
 | ----------------------------- | -------------------------------- |
-| Training data hallucination   | Task files contain all facts     |
+| Training data hallucination / stale priors | Grounding + explicit constraints + deterministic backpressure (treat tool output as ground truth) |
 | Skipping prerequisites        | Assessment phase blocks planning |
 | Apparent vs actual completion | Forensic phase verification      |
-| Context degradation           | Fresh context per phase          |
+| Long-context degradation      | Bounded context per task/stage + artifacts as source of truth |
 
 **Recovery**: Manual intervention via orchestrator.
 
@@ -385,7 +386,7 @@ Execution → Forensics → Complete/Incomplete → (loop if incomplete)
 | Agents            | 7 stages + loop         | 20-30+ concurrent        |
 | Projects          | Single feature          | Multiple rigs (projects) |
 | Organization      | Single team             | Federation across orgs   |
-| State persistence | None (intentional)      | Git-backed everything    |
+| State persistence | No session memory; persistence lives in artifacts | Git-backed durable data plane |
 | Tooling           | None (methodology only) | Full CLI (`gt`, `bd`)    |
 | Runtime           | Any LLM agent           | Claude Code / Codex      |
 
@@ -516,7 +517,7 @@ The Stateless Agent Methodology and Gas Town represent **different points on the
 | ---------- | ----------------- | ---------------------- |
 | Complexity | Low (conceptual)  | High (production)      |
 | Scale      | 1-5 agents        | 20-30+ agents          |
-| State      | None (deliberate) | Persistent (essential) |
+| State      | Stateless sessions + persisted artifacts | Persistent identities + durable work graphs |
 | Focus      | Why agents fail   | How to coordinate many |
 | Value      | Principles        | Implementation         |
 
@@ -528,3 +529,11 @@ They are not alternatives—they are **different abstraction levels** of the sam
 - **Gas Town** = Implementation for multi-agent coordination
 
 Together they span from "why does this work?" to "how do I run 30 agents across 5 projects?"
+
+---
+
+## References
+
+- [Stateless Agent Methodology](./stateless-agent-methodology.md)
+- [Stateless Software Engineering Framework](./stateless-software-engineering-framework.md)
+- [Welcome to Gas Town (Yegge, 2026-01-01)](https://steve-yegge.medium.com/welcome-to-gas-town-4f25ee16dd04) (accessed 2026-01-26)

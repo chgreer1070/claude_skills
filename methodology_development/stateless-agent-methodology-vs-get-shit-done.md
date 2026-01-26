@@ -25,8 +25,8 @@ Both methodologies identify the same fundamental issues:
 
 | Problem                       | Stateless Agent Methodology                                | GSD                                                      |
 | ----------------------------- | ---------------------------------------------------------- | -------------------------------------------------------- |
-| Context degradation           | "Performance drops at ~80% context window"                 | "Context rot" — quality degrades as context fills        |
-| Training data bias            | "One-shot approaches rely on outdated training data"       | Fresh executor context per plan (no accumulated garbage) |
+| Long-context degradation (“context rot”) | Performance can degrade as context length increases (including “lost in the middle” effects); mitigate by bounding context per task/stage | “Context rot” — quality degrades as context fills; mitigate via small plans and fresh executor contexts |
+| Training data staleness (knowledge cutoff) | One-shot approaches drift into stale priors unless grounded/verified | Research phase investigates domain before planning; fresh executor context reduces accumulated drift |
 | Knowledge gaps                | Work involves recent or internal knowledge not in training | Research phase investigates domain before planning       |
 | Apparent vs actual completion | "Disables tests to achieve 'all tests passing'"            | Verification phase independently confirms goals          |
 
@@ -56,8 +56,8 @@ Both recognize that agents cannot self-assess, so the solution must externalize 
 | Stage 4. Task Decomposition  | Planner agent creates XML plan structure                |
 | Stage 5. Execution           | `/gsd:execute-phase` with wave-based parallel execution |
 | Stage 6. Forensic Review     | `/gsd:verify-work` + verifier agent                     |
-| Stage 7. Final Verification  | `/gsd:complete-milestone` with goal verification        |
-| (Orchestration Loop)         | Built into workflow orchestration                       |
+| Stage 7. Orchestration Loop  | Built into workflow orchestration                       |
+| Stage 8. Final Verification  | `/gsd:complete-milestone` with goal verification        |
 
 ### Key Structural Differences
 
@@ -159,7 +159,7 @@ Both recognize that agents cannot self-assess, so the solution must externalize 
 
 **GSD**:
 
-- Fresh 200k token context per executor
+- Fresh, bounded context per executor
 - Wave-based parallel execution (pre-computed dependencies)
 - One atomic commit per task
 - Output: `{phase}-{N}-SUMMARY.md` + commits
@@ -239,10 +239,10 @@ Both recognize that agents cannot self-assess, so the solution must externalize 
 
 | Failure Mode                  | Stateless Mitigation             | GSD Mitigation                        |
 | ----------------------------- | -------------------------------- | ------------------------------------- |
-| Training data hallucination   | Task files contain all facts     | Research phase + fresh context        |
+| Training data hallucination / stale priors | Grounding + explicit constraints + deterministic backpressure | Research phase + deterministic checks + fresh executor context |
 | Skipping prerequisites        | Assessment phase blocks planning | Discuss phase captures preferences    |
 | Apparent vs actual completion | Forensic phase verification      | Verifier agent + UAT                  |
-| Context window degradation    | Fresh context per phase          | Fresh context per plan (smaller unit) |
+| Long-context degradation (“context rot”) | Bounded context per task/stage + artifacts as source of truth | Fresh context per plan (smaller unit) + small plan sizes |
 | Rationalizing out of process  | Process is the task              | Process is automated (commands)       |
 
 ---
