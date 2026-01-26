@@ -257,7 +257,7 @@ SuperClaude already implements several Stateless Agent Methodology concepts:
 - Working in Claude Code environment
 - Want pre-built slash commands and agents
 - Benefit from cross-session error learning
-- Need parallel execution performance (3.5x speedup)
+- Need parallel execution performance (project-claimed; verify in docs)
 - Want MCP server integrations (research, documentation)
 
 ### Use Both When

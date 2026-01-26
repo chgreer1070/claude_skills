@@ -25,7 +25,7 @@ Instead of trying to make Claude "smarter," SAM treats Claude like a pure functi
 
 - The problem: Claude's fundamental limitations (context degradation, training data staleness, completion optimization)
 - The architectural solution: Stateless agents, externalized memory, verification at boundaries
-- The 7-stage pipeline with detailed specifications
+- The pipeline architecture (stages + orchestration loop) with detailed specifications
 - Why this works: Failure mode elimination, structural enforcement
 - Theoretical foundations and success metrics
 
@@ -47,7 +47,7 @@ These documents compare SAM to established frameworks and methodologies, identif
 | [vs Get Shit Done](./stateless-agent-methodology-vs-get-shit-done.md)                     | GSD (Claude Code workflow)                 | Theory vs practice; shared architecture; combining strengths    |
 | [vs Ralph Loop Orchestrator](./stateless-agent-methodology-vs-ralph-loop-orchestrator.md) | Ralph (orchestration framework)            | Phase decomposition vs emergent gates; different control models |
 | [vs Gas Town](./stateless-agent-methodology-vs-gastown.md)                                | Gas Town (pipeline framework)              | Message passing patterns; artifact vs shared context            |
-| [vs OctoCode](./stateless-agent-methodology-vs-octocode.md)                               | OctoCode RDD (test-driven development)     | Pure function approach vs behavioral architecture               |
+| [vs OctoCode](./stateless-agent-methodology-vs-octocode.md)                               | Octocode RDD + octocode-mcp (research platform) | Workflow reliability vs research-driven development + toolchain |
 | [vs V-Model](./stateless-agent-methodology-vs-v-model.md)                                 | SDLC V-Model (systems engineering)         | Mapping to traditional verification patterns                    |
 | [vs SuperClaude](./stateless-agent-methodology-vs-superclaude.md)                         | SuperClaude (cognitive framework)          | Constraint-driven vs capability-driven approaches               |
 | [vs cc-sessions](./stateless-agent-methodology-vs-cc-sessions.md)                         | cc-sessions (session management framework) | Stateless execution vs session-aware architecture               |
@@ -62,8 +62,8 @@ Claude exhibits fundamental limitations that prevent reliable autonomous work:
 
 | Limitation                       | Manifestation                              | Impact                                  |
 | -------------------------------- | ------------------------------------------ | --------------------------------------- |
-| **Context window degradation**   | Quality drops at ~80% usage                | Long tasks produce poor results         |
-| **Training data staleness**      | Knowledge is 6-18 months old               | Hallucinated solutions that don't work  |
+| **Context window degradation (“context rot”)** | Performance can degrade as context length increases (including “lost in the middle” effects) | Long tasks produce poor results         |
+| **Training data staleness (knowledge cutoff)** | Facts/APIs can be outdated; priors can be stale even before formal cutoffs | Incorrect or obsolete solutions         |
 | **Training data overconfidence** | Believes priors over explicit instructions | Skips verification, ignores methodology |
 | **Completion optimization**      | Optimized for "appearing helpful"          | Takes shortcuts to show progress        |
 | **No self-assessment**           | Cannot JIT identify knowledge gaps         | Proceeds with wrong assumptions         |
@@ -71,7 +71,7 @@ Claude exhibits fundamental limitations that prevent reliable autonomous work:
 
 **Key insight**: Behavioral instructions cannot override architectural limitations. The solution must be structural, not instructional.
 
-### The Solution: 7-Stage Pipeline
+### The Solution: Pipeline Stages + Orchestration Loop
 
 SAM reorganizes work into discrete stages, each with a specific agent, complete context, and independent verification:
 
@@ -150,8 +150,9 @@ SAM reorganizes work into discrete stages, each with a specific agent, complete 
 | **Single responsibility**      | Each agent does exactly one thing                     | Reduces complexity, enables specialization         |
 | **Message passing**            | Agents communicate via artifacts, not shared context  | Decouples stages, creates audit trail              |
 | **Verification at boundaries** | Every stage validates previous stage's output         | Catches errors before they propagate               |
+| **Deterministic backpressure** | Always run deterministic checks (tests/linters/static analysis/checklists) and treat failures as ground truth | Counters stale priors and hallucinated content with objective feedback |
 | **Embedded methodology**       | The process IS the prompt, not instructions to follow | Cannot skip what structures the task               |
-| **No recall required**         | Task files contain all answers                        | Eliminates hallucination opportunity               |
+| **No recall required**         | Task files contain all answers needed for the task (plus verification steps) | Reduces reliance on unverified recall; does not eliminate synthesis/logic errors without verification |
 
 ### Pure Function Framing
 
@@ -179,7 +180,7 @@ Quick reference for what distinguishes SAM from other approaches:
 | **Get Shit Done** | Context rot & completion bias | Production workflow       | Theory vs practice; parallelism              |
 | **Ralph Loop**    | Apparent completion           | Backpressure gates        | Phase decomposition vs emergent gates        |
 | **Gas Town**      | Pipeline failures             | Message passing           | Complete artifact context vs shared memory   |
-| **OctoCode**      | Test-driven development       | Behavior verification     | Pure function vs architectural behavior      |
+| **OctoCode**      | Guess-driven coding           | Research-first workflows  | RDD methodology + tools vs staged reliability constraints |
 | **V-Model**       | Systems engineering           | Requirements verification | Stateless execution vs sequential phases     |
 | **SuperClaude**   | Cognitive limitations         | Capability expansion      | Constraints vs capabilities                  |
 | **cc-sessions**   | Session management            | Context persistence       | Stateless design vs session awareness        |
@@ -246,7 +247,7 @@ This is work-in-progress methodology documentation being refined and expanded. T
 
 4. **Verify at boundaries** — Each stage validates the previous stage's output
 
-5. **Fresh context per phase** — Eliminates context degradation and accumulated errors
+5. **Fresh context per phase** — Reduces long-context degradation pressure and accumulated drift
 
 6. **Task files contain all answers** — No recall from training data required
 
@@ -270,7 +271,7 @@ For implementation patterns and practical application of these principles:
 **To understand SAM concepts:**
 
 1. Start with [stateless-agent-methodology.md](./stateless-agent-methodology.md) — read Part 1-2 for problem and solution
-2. Review the 7-stage pipeline (Part 3) and stage specifications (Part 4)
+2. Review the pipeline overview (Part 3) and stage specifications (Part 4)
 
 **To compare SAM to your current workflow:**
 
