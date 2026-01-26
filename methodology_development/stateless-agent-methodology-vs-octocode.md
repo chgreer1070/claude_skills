@@ -18,6 +18,19 @@ Both methodologies address the same core insight: **Claude is not a knowledge wo
 
 ---
 
+## Repo evidence (OctoCode / octocode-mcp) (added)
+
+OctoCode RDD is described and implemented in the `bgauryy/octocode-mcp` ecosystem:
+
+- Methodology (RDD): [MANIFEST.md](https://github.com/bgauryy/octocode-mcp/blob/main/MANIFEST.md) (accessed 2026-01-26)
+- MCP server: [`packages/octocode-mcp/README.md`](https://github.com/bgauryy/octocode-mcp/blob/main/packages/octocode-mcp/README.md) (accessed 2026-01-26)
+- Top-level docs: [README.md](https://github.com/bgauryy/octocode-mcp/blob/main/README.md) (accessed 2026-01-26)
+- Package versions (repo evidence):
+  - `octocode-mcp` version `12.0.0`: [`packages/octocode-mcp/package.json`](https://github.com/bgauryy/octocode-mcp/blob/main/packages/octocode-mcp/package.json) (accessed 2026-01-26)
+  - Research skill server (`octocode-skill`) version `2.2.0`: [`skills/octocode-research/package.json`](https://github.com/bgauryy/octocode-mcp/blob/main/skills/octocode-research/package.json) (accessed 2026-01-26)
+
+---
+
 ## Problem Statement Alignment
 
 ### Shared Core Problem
@@ -108,6 +121,16 @@ Each step:
 | Stage 6: Forensic Review     | Verifier (Discriminator)   | Both verify independently             |
 | Bounded context per stage    | Clean Fresh Context Window | Same principle, different framing     |
 | Task file + referenced artifacts (no recall required) | `plan.md` + `research.md`  | Both provide grounded context         |
+
+---
+
+## Where OctoCode fits into SAM (added)
+
+OctoCode is best understood as a **context acquisition + research orchestration subsystem** that strengthens SAM’s Stage 3/5 inputs:
+
+- **Stage 3 (Context Integration)**: use OctoCode MCP + skill to gather evidence, references, patterns, and semantic info (GitHub + local + LSP).
+- **Stage 4 (Task Decomposition)**: transform evidence into bounded, executable tasks with clear references.
+- **Stage 5+ (Execution / Verification)**: SAM still requires deterministic backpressure and independent verification boundaries to converge.
 
 ---
 
@@ -509,5 +532,7 @@ Both are necessary for reliable LLM agent systems.
 
 - [Stateless Agent Methodology](./stateless-agent-methodology.md)
 - [Stateless Software Engineering Framework](./stateless-software-engineering-framework.md)
+- OctoCode / octocode-mcp (upstream): [bgauryy/octocode-mcp](https://github.com/bgauryy/octocode-mcp) (accessed 2026-01-26)
+- Repo evidence (accessed 2026-01-26): [README.md](https://github.com/bgauryy/octocode-mcp/blob/main/README.md), [MANIFEST.md](https://github.com/bgauryy/octocode-mcp/blob/main/MANIFEST.md), [`packages/octocode-mcp/README.md`](https://github.com/bgauryy/octocode-mcp/blob/main/packages/octocode-mcp/README.md), [`packages/octocode-mcp/package.json`](https://github.com/bgauryy/octocode-mcp/blob/main/packages/octocode-mcp/package.json), [`skills/octocode-research/package.json`](https://github.com/bgauryy/octocode-mcp/blob/main/skills/octocode-research/package.json)
 - [Lost in the Middle (arXiv:2307.03172)](https://arxiv.org/abs/2307.03172) (accessed 2026-01-26)
 - [Attention Is All You Need (arXiv:1706.03762)](https://arxiv.org/abs/1706.03762) (accessed 2026-01-26)
