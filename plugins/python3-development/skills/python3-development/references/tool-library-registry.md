@@ -3139,7 +3139,7 @@ pip-compile --upgrade requirements.in
 tool_name: validate_pep723.py
 category: quality
 python_versions: [3.11, 3.12, 3.13, 3.14]
-installation: "~/.claude/tools/validate_pep723.py"
+installation: "${CLAUDE_PLUGIN_ROOT}/scripts/validate_pep723.py"
 purpose: "Validate PEP 723 script metadata compliance"
 mandatory: true
 scenarios:
@@ -3162,7 +3162,7 @@ alternatives:
 
 ```bash
 # Validate script
-~/.claude/tools/validate_pep723.py check script.py
+${CLAUDE_PLUGIN_ROOT}/scripts/validate_pep723.py check script.py
 
 # Expected output
 ✅ Shebang correct: #!/usr/bin/env -S uv --quiet run --active --script
@@ -3827,7 +3827,7 @@ repos:
 
       - id: validate-pep723
         name: validate PEP 723
-        entry: ~/.claude/tools/validate_pep723.py check
+        entry: ${CLAUDE_PLUGIN_ROOT}/scripts/validate_pep723.py check
         language: system
         files: '^.*\.py$'
 ```
@@ -4000,7 +4000,7 @@ if __name__ == "__main__":
 **Validation**:
 
 ```bash
-~/.claude/tools/validate_pep723.py check script.py
+${CLAUDE_PLUGIN_ROOT}/scripts/validate_pep723.py check script.py
 ```
 
 ---

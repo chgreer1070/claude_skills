@@ -15,8 +15,13 @@
     "./skills/testing/comprehensive-test-review",
     "./skills/testing/test-failure-mindset",
     "./skills/testing/analyze-test-failures",
+    "./skills/development/add-new-feature",
+    "./skills/development/implement-feature",
+    "./skills/development/start-task",
+    "./skills/development/complete-implementation",
     "./skills/development/create-feature-task",
     "./skills/development/use-command-template",
+    "./skills/implementation-manager",
     "./skills/shebangpython",
     "./skills/modernpython",
     "./skills/python3-add-feature",
@@ -32,6 +37,16 @@
     "./agents/python-cli-design-spec.md",
     "./agents/python-code-reviewer.md",
     "./agents/python-pytest-architect.md",
-    "./agents/swarm-task-planner.md"
+    "./agents/swarm-task-planner.md",
+    "./agents/feature-researcher.md",
+    "./agents/codebase-analyzer.md",
+    "./agents/plan-validator.md",
+    "./agents/context-gathering.md",
+    "./agents/feature-verifier.md",
+    "./agents/integration-checker.md",
+    "./agents/doc-drift-auditor.md",
+    "./agents/service-documentation.md",
+    "./agents/context-refinement.md",
+    "./agents/code-reviewer.md"
   ]
 }

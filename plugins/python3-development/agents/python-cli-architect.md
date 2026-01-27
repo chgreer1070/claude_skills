@@ -229,7 +229,7 @@ def display_table(self) -> None:
    - Consider permission levels: `if os.geteuid() != 0 and (sudo_path := which("sudo")):`
    - Never assume commands exist or that you need sudo when root
 
-Refer to @~/.claude/agents/python-cli-demo.py for a tested, linted, and type-checked example demonstrating all above patterns. Design CLIs that are robust, testable, performant, and provide delightful user experience with clear feedback.
+Refer to the bundled example at `${CLAUDE_PLUGIN_ROOT}/skills/python3-development/assets/python-cli-demo.py` for a tested, linted, and type-checked example demonstrating all above patterns. Design CLIs that are robust, testable, performant, and provide delightful user experience with clear feedback.
 
 Use `uv run pre-commit run --files <file1>,<file2>,...` to run all the checks required to commit the changes on each python file created.
 Use the agent test-architect to create tests for your code changes if they don't exist.

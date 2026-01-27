@@ -33,7 +33,7 @@ Set up a comprehensive feature development task with proper tracking, phases, an
 
 3. **Create Task Documentation**
 
-   - Copy template from ~/.claude/templates/feature-task-template.md
+   - Copy template from `templates/feature-task-template.md` (vendored with this plugin)
    - Fill in all sections with feature-specific details
    - Save to appropriate location (suggest: .claude/tasks/[feature-name].md)
    - Create initial git branch if requested
@@ -60,4 +60,4 @@ When creating the task, preserve:
 
 ## Integration
 
-**Prerequisites**: Clear feature requirements **Follow-up**: `/development:implement-feature [task-file]` **Related**: `create-test-plan`, `estimate-context-window`
+**Prerequisites**: Clear feature requirements **Follow-up**: use the `implement-feature` skill **Related**: `create-test-plan`, `estimate-context-window`

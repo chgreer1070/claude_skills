@@ -19,7 +19,7 @@ Comprehensive guide for orchestrating Python development tasks using specialized
 
 ## Available Agents and Commands
 
-### Agents (in ~/.claude/agents/)
+### Agents (bundled in this plugin)
 
 - **python-cli-architect**: Build modern CLI applications with Typer and Rich
 - **python-portable-script**: Create stdlib-only portable scripts
@@ -483,7 +483,7 @@ If answers indicate restrictions → python-portable-script
 
 ## Reference Example
 
-**Complete working example**: `~/.claude/agents/python-cli-demo.py`
+**Complete working example (bundled)**: `${CLAUDE_PLUGIN_ROOT}/skills/python3-development/assets/python-cli-demo.py`
 
 This file demonstrates all modern Python CLI patterns:
 
@@ -515,7 +515,7 @@ Orchestrator:
 
 3. @agent-python-cli-architect
    "Implement YAML validator CLI with Typer based on tests"
-   Reference: ~/.claude/agents/python-cli-demo.py for patterns
+   Reference: `${CLAUDE_PLUGIN_ROOT}/skills/python3-development/assets/python-cli-demo.py` for patterns
    → packages/validator.py with Typer+Rich UI
 
 4. Validation:

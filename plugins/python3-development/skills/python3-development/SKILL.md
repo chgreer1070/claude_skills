@@ -61,22 +61,12 @@ Orchestration guide for Python development using specialized agents and modern P
 - Example scripts demonstrating patterns
 - Configuration templates and boilerplate
 
-### External Dependencies (Required - Not Bundled)
+### Bundled Components (This Plugin)
 
-**Agents** (install to `~/.claude/agents/`):
+This plugin bundles the core agents and workflows needed for Python 3.11+ development and SAM-style execution:
 
-- `@agent-python-cli-architect` - Python CLI development with Typer and Rich
-- `@agent-python-pytest-architect` - Test suite creation and planning
-- `@agent-python-code-reviewer` - Post-implementation code review
-- `@agent-python-portable-script` - Standalone stdlib-only script creation
-- `@agent-python-cli-design-spec` - Architecture design
-- `@agent-swarm-task-planner` - Task breakdown and planning
-- `@agent-spec-analyst` - Requirements gathering
-
-**Slash Commands** (install to `~/.claude/commands/`):
-
-- `/modernpython` - Python 3.11+ pattern enforcement and legacy code detection
-- `/shebangpython` - PEP 723 inline script metadata validation
+- Agents (bundled under `./plugins/python3-development/agents/`): `python-cli-architect`, `python-pytest-architect`, `python-cli-design-spec`, `swarm-task-planner`, plus SAM workflow agents (feature research/analysis/verification).
+- Skills (bundled): `modernpython`, `shebangpython`, and the SAM workflow skills (`add-new-feature`, `implement-feature`, `start-task`, `complete-implementation`).
 
 **System Tools** (install via package manager or uv):
 
@@ -101,11 +91,9 @@ Orchestration guide for Python development using specialized agents and modern P
 
 This skill provides orchestration patterns, modern Python 3.11+ standards, quality gates, and reference documentation for Python development.
 
-**Commands** (external - in `~/.claude/commands/`):
+**Note on command templates**:
 
-- `/modernpython` - Validates Python 3.11+ patterns, identifies legacy code
-- `/shebangpython` - Validates correct shebang for all Python scripts
-- Note: This skill contains command templates in `commands/` directory, not the actual slash commands
+This plugin includes **command templates** under `./commands/` as reference material. For actual invocation, prefer **skills** (e.g., `modernpython`, `shebangpython`).
 
 **Reference Documentation**:
 
@@ -720,13 +708,13 @@ disallow_untyped_defs = false
 
 #### Pre-Delegation Checklist (Complete ALL before Task tool)
 
-| Step | Action                        | Verification                                                                                  |
-| ---- | ----------------------------- | --------------------------------------------------------------------------------------------- |
-| 1    | **Read orchestration guide**  | `Read("~/.claude/skills/python3-development/references/python-development-orchestration.md")` |
-| 2    | **Identify workflow pattern** | Which pattern applies? (TDD / Feature Addition / Refactoring / Debugging / Code Review)       |
-| 3    | **Plan agent chain**          | List ALL agents needed in sequence (never single-agent for complex tasks)                     |
-| 4    | **Define scope boundaries**   | What is IN scope? What is OUT of scope for each agent?                                        |
-| 5    | **Set success criteria**      | What specific, measurable outcomes define completion?                                         |
+| Step | Action                        | Verification                                                                                              |
+| ---- | ----------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 1    | **Read orchestration guide**  | `Read("${CLAUDE_PLUGIN_ROOT}/skills/python3-development/references/python-development-orchestration.md")` |
+| 2    | **Identify workflow pattern** | Which pattern applies? (TDD / Feature Addition / Refactoring / Debugging / Code Review)                   |
+| 3    | **Plan agent chain**          | List ALL agents needed in sequence (never single-agent for complex tasks)                                 |
+| 4    | **Define scope boundaries**   | What is IN scope? What is OUT of scope for each agent?                                                    |
+| 5    | **Set success criteria**      | What specific, measurable outcomes define completion?                                                     |
 
 **BLOCKING RULE**: If you cannot answer steps 2-5 from memory, you have NOT read the orchestration guide. Go back to step 1.
 
@@ -823,7 +811,7 @@ This guide contains:
 User: "Build a CLI tool to process CSV files"
 
 Orchestrator workflow:
-0. Read("~/.claude/skills/python3-development/references/python-development-orchestration.md")
+0. Read("${CLAUDE_PLUGIN_ROOT}/skills/python3-development/references/python-development-orchestration.md")
    "I have read the orchestration guide. Using FEATURE ADDITION workflow with agents:
     @agent-python-cli-architect → @agent-python-pytest-architect → @agent-python-code-reviewer"
 
@@ -1196,9 +1184,9 @@ This structure is consistent across all projects and enables clear separation of
 
 ## Integration
 
-### External Reference Example
+### Reference Example (Bundled)
 
-**Complete working example** (external): `~/.claude/agents/python-cli-demo.py`
+**Complete working example** (bundled): [python-cli-demo.py](./assets/python-cli-demo.py)
 
 This reference implementation demonstrates all recommended patterns:
 
@@ -1209,7 +1197,7 @@ This reference implementation demonstrates all recommended patterns:
 - Async processing
 - Comprehensive docstrings
 
-This file is not bundled with this skill and must be available in `~/.claude/agents/` separately. Use as reference when creating CLI tools.
+This file is bundled with this plugin to keep the workflow self-contained. Use it as reference when creating CLI tools.
 
 ### Using Asset Templates
 
@@ -1217,33 +1205,33 @@ When creating new Python projects, copy standard configuration files from the sk
 
 **Reason**: Templates implement proven patterns and save setup time.
 
-**Asset Directory Location**: `~/.claude/skills/python3-development/assets/`
+**Asset Directory Location (in plugin)**: `./assets/`
 
 **Available Templates**:
 
 1. **version.py** - Dual-mode version management (hatch-vcs + importlib.metadata fallback)
 
    ```bash
-   cp ~/.claude/skills/python3-development/assets/version.py packages/{package_name}/version.py
+   cp "${CLAUDE_PLUGIN_ROOT}/skills/python3-development/assets/version.py" "packages/{package_name}/version.py"
    ```
 
 2. **hatch_build.py** - Build hook for binary/asset handling (only if needed)
 
    ```bash
    mkdir -p scripts/
-   cp ~/.claude/skills/python3-development/assets/hatch_build.py scripts/hatch_build.py
+   cp "${CLAUDE_PLUGIN_ROOT}/skills/python3-development/assets/hatch_build.py" "scripts/hatch_build.py"
    ```
 
 3. **.markdownlint.json** - Markdown linting configuration
 
    ```bash
-   cp ~/.claude/skills/python3-development/assets/.markdownlint.json .
+   cp "${CLAUDE_PLUGIN_ROOT}/skills/python3-development/assets/.markdownlint.json" "."
    ```
 
 4. **.pre-commit-config.yaml** - Standard git hooks configuration
 
    ```bash
-   cp ~/.claude/skills/python3-development/assets/.pre-commit-config.yaml .
+   cp "${CLAUDE_PLUGIN_ROOT}/skills/python3-development/assets/example.pre-commit-config.yaml" ".pre-commit-config.yaml"
 
    # Install hooks using pre-commit or prek (whichever is available)
    # Both tools use the same configuration file and have identical interfaces
@@ -1252,7 +1240,7 @@ When creating new Python projects, copy standard configuration files from the sk
 
 5. **.editorconfig** - Editor formatting settings
    ```bash
-   cp ~/.claude/skills/python3-development/assets/.editorconfig .
+   cp "${CLAUDE_PLUGIN_ROOT}/skills/python3-development/assets/.editorconfig" "."
    ```
 
 These templates implement the patterns documented in [User Project Conventions](./references/user-project-conventions.md) and ensure all projects follow the same standards for version management, linting, formatting, and build configuration.
