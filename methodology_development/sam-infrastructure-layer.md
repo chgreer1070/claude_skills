@@ -103,19 +103,58 @@ status: {{ pending | delivered | acknowledged | archived }}
 {{ optional_context }}
 ```
 
-#### Message Types
+#### Message Types (Example Set)
 
-| Type                 | Purpose              | Sender → Receiver    | Example                                                     |
-| -------------------- | -------------------- | -------------------- | ----------------------------------------------------------- |
-| `progress`           | Progress update      | Agent → Orchestrator | "Context gathering 60% complete, 15 files analyzed"         |
-| `checkpoint`         | Quality gate reached | Agent → Orchestrator | "Design validation gate: awaiting human approval"           |
-| `blocking`           | Work blocked         | Agent → Orchestrator | "Cannot proceed: Auth method not specified in requirements" |
-| `completion`         | Stage/task complete  | Agent → Orchestrator | "Discovery stage complete: 12 requirements documented"      |
-| `delegation`         | Task assignment      | Orchestrator → Agent | "Begin context gathering for auth module"                   |
-| `query`              | Information request  | Agent → Agent        | "Design agent: What auth patterns exist in codebase?"       |
-| `response`           | Query answer         | Agent → Agent        | "Context agent: OAuth2 + JWT patterns found in 3 services"  |
-| `validation_request` | Artifact validation  | Agent → Validator    | "Please review design-auth-service.md"                      |
-| `validation_result`  | Validation outcome   | Validator → Agent    | "Design approved with 2 minor suggestions"                  |
+**Note**: These message types are **examples** to illustrate the meta-messaging capabilities. Implementations should define message types that fit their specific workflow needs. The infrastructure supports arbitrary message types as long as agents subscribe/publish consistently.
+
+**Example message types** (customize for your workflow):
+
+| Type                  | Purpose                            | Sender → Receiver       | Example                                                                   |
+| --------------------- | ---------------------------------- | ----------------------- | ------------------------------------------------------------------------- |
+| `progress`            | Progress update                    | Agent → Orchestrator    | "Context gathering 60% complete, 15 files analyzed"                       |
+| `checkpoint`          | Quality gate reached               | Agent → Orchestrator    | "Design validation gate: awaiting human approval"                         |
+| `blocking`            | Work blocked                       | Agent → Orchestrator    | "Cannot proceed: Auth method not specified in requirements"               |
+| `completion`          | Stage/task complete                | Agent → Orchestrator    | "Discovery stage complete: 12 requirements documented"                    |
+| `delegation`          | Task assignment                    | Orchestrator → Agent    | "Begin context gathering for auth module"                                 |
+| `query`               | Information request                | Agent → Agent           | "Design agent: What auth patterns exist in codebase?"                     |
+| `response`            | Query answer                       | Agent → Agent           | "Context agent: OAuth2 + JWT patterns found in 3 services"                |
+| `validation_request`  | Artifact validation                | Agent → Validator       | "Please review design-auth-service.md"                                    |
+| `validation_result`   | Validation outcome                 | Validator → Agent       | "Design approved with 2 minor suggestions"                                |
+| `verification_issue`  | Issue found in verification        | Verifier → Design       | "Missing error handling in auth flow, conflicts with security ADR-003"    |
+| `regression_detected` | Regression found in implementation | Verifier → Design       | "New auth code breaks existing user sessions, violates requirement FR-12" |
+| `gap_identified`      | Missing functionality/docs         | Verifier → Design       | "No documentation for JWT token refresh, needed for operator runbook"     |
+| `design_revision`     | Design update required             | Design → Planning       | "Updated ADR-003 with error handling patterns, requires 3 new tasks"      |
+| `plan_update`         | Plan revised with new tasks        | Planning → Orchestrator | "Added tasks 46-48 for error handling, ready for assignment"              |
+
+**Extending message types**:
+
+Projects should define additional message types based on their specific needs:
+
+```yaml
+# Example: Custom message types for a data pipeline project
+custom_message_types:
+  - type: data_quality_issue
+    sender: data_validator
+    receiver: data_architect
+    purpose: "Data validation failures that need schema revision"
+
+  - type: schema_revision
+    sender: data_architect
+    receiver: pipeline_planner
+    purpose: "Schema changes that require pipeline updates"
+
+  - type: performance_degradation
+    sender: performance_monitor
+    receiver: optimization_specialist
+    purpose: "Performance issues requiring architectural review"
+
+  - type: cost_threshold_exceeded
+    sender: cost_monitor
+    receiver: resource_planner
+    purpose: "Cloud costs exceed budget, need resource optimization"
+```
+
+**Design principle**: Message types are **not hardcoded** in the infrastructure. The message schema supports arbitrary `type` fields. Agents declare their subscriptions in `.sam/config/subscriptions.yaml`, creating a flexible pub/sub system.
 
 #### TodoWrite Integration
 
@@ -146,6 +185,429 @@ status: {{ pending | delivered | acknowledged | archived }}
 
 - None
 ```
+
+#### Feedback Loop Architecture
+
+**Critical Pattern**: Verification and validation are independent of task execution and create feedback loops to design/planning stages.
+
+**Problem**: Traditional linear pipelines (Design → Plan → Implement → Verify) don't handle discovered issues well:
+
+- Verification finds missing error handling → needs new design decisions
+- Validation discovers regressions → needs architectural reassessment
+- Testing reveals gaps in requirements → needs holistic design update
+
+**Solution**: Meta-messaging enables asynchronous feedback loops where verification/validation agents communicate directly with design/planning agents, bypassing the orchestrator's linear flow.
+
+**Feedback Loop Types**:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                    Feedback Loop 1:                          │
+│              Verification Issues → Design                     │
+│                                                              │
+│  Stage 7 (Verifier)                                          │
+│      ↓ verification_issue                                    │
+│  Stage 4 (Design)                                            │
+│      ↓ design_revision                                       │
+│  Stage 5 (Planning)                                          │
+│      ↓ plan_update                                           │
+│  Stage 6 (Implementation) - new tasks                        │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                    Feedback Loop 2:                          │
+│             Regression Detection → Design                    │
+│                                                              │
+│  Stage 7 (Verifier)                                          │
+│      ↓ regression_detected                                   │
+│  Stage 4 (Design) - holistic assessment                      │
+│      ↓ design_revision (may update multiple ADRs)           │
+│  Stage 5 (Planning)                                          │
+│      ↓ plan_update (creates remediation tasks)               │
+│  Stage 6 (Implementation)                                    │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                    Feedback Loop 3:                          │
+│           Documentation Gaps → Design                        │
+│                                                              │
+│  Stage 7 (Verifier)                                          │
+│      ↓ gap_identified                                        │
+│  Stage 4 (Design)                                            │
+│      ↓ query (to Context agent: "What patterns exist?")      │
+│  Stage 2 (Context)                                           │
+│      ↓ response (pattern analysis)                           │
+│  Stage 4 (Design)                                            │
+│      ↓ design_revision (new ADR for docs pattern)            │
+│  Stage 5 (Planning)                                          │
+│      ↓ plan_update (documentation tasks)                     │
+│  Stage 6 (Implementation)                                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Message Schema for Feedback**:
+
+```yaml
+---
+id: msg-verification-issue-001
+from: verifier
+to: design
+type: verification_issue
+priority: high
+timestamp: 2025-01-27T15:30:00Z
+related_artifacts:
+  - verification-001.md    # Verification report
+  - task-045.md           # Task that was implemented
+  - adr-003.md            # Related design decision
+stage: 7
+status: pending
+---
+
+# Verification Issue: Missing Error Handling in Auth Flow
+
+## Issue Summary
+
+During Stage 7 verification, discovered missing error handling in JWT authentication
+flow implemented in task-045.
+
+## Specific Problems
+
+1. **Conflict with ADR-003**: ADR-003 mandates graceful degradation for auth failures,
+   but implementation throws unhandled exceptions
+
+2. **Requirement Violation**: FR-12 requires user-friendly error messages, but
+   implementation exposes stack traces to users
+
+3. **Missing Edge Cases**:
+   - Expired JWT tokens → no refresh logic
+   - Malformed tokens → crashes service
+   - Network timeouts → no retry mechanism
+
+## Impact
+
+- **Severity**: High (security + UX)
+- **Affected Components**: Auth service, API gateway
+- **User Impact**: Service crashes on invalid tokens
+- **Security Risk**: Stack traces leak implementation details
+
+## Artifacts
+
+- **Verification report**: `.sam/artifacts/delivery/verification-001.md`
+- **Test failures**: `.sam/artifacts/delivery/test-results/test-auth-errors.md`
+- **Original task**: `.sam/artifacts/planning/tasks/task-045.md`
+- **Related ADR**: `.sam/artifacts/design/decisions/adr-003-auth-error-handling.md`
+
+## Requested Action
+
+Design agent: Please assess holistically based on current architecture and plan:
+
+1. Does ADR-003 need revision to be more explicit about error handling patterns?
+2. Should we create a new ADR for standardized error response format?
+3. What error handling patterns exist in the codebase (query Context agent)?
+4. Are there other auth-related tasks that need similar updates?
+
+## Context for Design Assessment
+
+This is not just a bug fix - it reveals a gap in our architecture decisions.
+The original ADR-003 mentioned "graceful degradation" but didn't specify:
+
+- What constitutes an auth error vs. system error
+- How to distinguish retryable vs. permanent failures
+- What information to log vs. expose to users
+- How to handle cascading auth failures across services
+```
+
+**Design Agent Response Pattern**:
+
+```yaml
+---
+id: msg-design-revision-001
+from: design
+to: planning
+type: design_revision
+priority: high
+timestamp: 2025-01-27T16:45:00Z
+related_artifacts:
+  - adr-003-rev-2.md      # Revised ADR
+  - adr-007-new.md        # New ADR for error responses
+  - verification-001.md   # Original issue
+stage: 4
+status: pending
+---
+
+# Design Revision: Authentication Error Handling
+
+## Holistic Assessment
+
+After reviewing verification issue from task-045 and consulting Context agent
+about existing patterns, identified systemic gap in error handling architecture.
+
+## Design Updates
+
+### 1. Revised ADR-003 (Authentication Strategy)
+
+**Change**: Added explicit error handling section with:
+
+- Error taxonomy (auth error vs. system error vs. user error)
+- Retry policies (exponential backoff for network, no retry for invalid credentials)
+- Logging requirements (structured logs with correlation IDs)
+- User-facing error messages (generic messages, detailed logs for ops)
+
+**Artifact**: `.sam/artifacts/design/decisions/adr-003-auth-strategy-rev-2.md`
+
+### 2. New ADR-007 (Error Response Format)
+
+**Rationale**: Error handling pattern should be consistent across all services,
+not just auth. Created new cross-cutting ADR.
+
+**Decisions**:
+
+- RFC 7807 Problem Details for HTTP APIs
+- Structured error codes (e.g., `AUTH_TOKEN_EXPIRED`, `AUTH_TOKEN_MALFORMED`)
+- Correlation ID in all error responses
+- Sanitized error messages (never expose stack traces)
+
+**Artifact**: `.sam/artifacts/design/decisions/adr-007-error-response-format.md`
+
+### 3. Existing Patterns Analysis
+
+Consulted Context agent (msg-query-001) about existing error handling:
+
+- **Finding**: 3 services already use RFC 7807, 2 use custom format
+- **Decision**: Standardize on RFC 7807, migrate custom implementations
+- **Impact**: Requires tasks for user-service and payment-service
+
+## Required Planning Updates
+
+These design changes require new tasks:
+
+1. **Task: Implement error handling in auth service** (fixes task-045)
+   - Priority: P0 (blocks verification)
+   - Estimated: 2-3 hours
+   - Dependencies: None
+
+2. **Task: Create RFC 7807 error handler library** (new shared component)
+   - Priority: P0 (needed by auth task)
+   - Estimated: 4-5 hours
+   - Dependencies: None
+
+3. **Task: Refactor user-service error responses** (standardization)
+   - Priority: P1 (can be done after auth)
+   - Estimated: 2 hours
+   - Dependencies: Task 2 complete
+
+4. **Task: Refactor payment-service error responses** (standardization)
+   - Priority: P1
+   - Estimated: 2 hours
+   - Dependencies: Task 2 complete
+
+5. **Task: Add error handling documentation** (operator runbook)
+   - Priority: P0 (gaps identified by verifier)
+   - Estimated: 3 hours
+   - Dependencies: Tasks 1-2 complete
+
+## Architecture Impact
+
+- **New shared library**: RFC 7807 error handler (reusable across services)
+- **Breaking change**: NO (error format is additive, existing clients unaffected)
+- **Migration path**: Gradual rollout, service by service
+- **Rollback plan**: New library is opt-in, can disable per service
+
+## Request to Planning Agent
+
+Please update plan with 5 new tasks above. Task 1 is P0 and blocks verification
+completion. Tasks 3-4 are P1 and can be scheduled for next iteration.
+```
+
+**Planning Agent Response Pattern**:
+
+````yaml
+---
+id: msg-plan-update-001
+from: planning
+to: orchestrator
+type: plan_update
+priority: high
+timestamp: 2025-01-27T17:15:00Z
+related_artifacts:
+  - plan-rev-3.md           # Updated plan
+  - task-046.md             # New task
+  - task-047.md             # New task
+  - task-048.md             # New task
+  - task-049.md             # New task
+  - task-050.md             # New task
+  - design-revision-001.md  # Design update that triggered this
+stage: 5
+status: pending
+---
+
+# Plan Update: Authentication Error Handling
+
+## Plan Revision
+
+Updated plan to incorporate design changes from ADR-003 revision and new ADR-007.
+
+**Artifact**: `.sam/artifacts/planning/plan-rev-3.md`
+
+## New Tasks Created
+
+### Task-046: Implement error handling in auth service [P0]
+
+**Artifact**: `.sam/artifacts/planning/tasks/task-046.md`
+
+**Description**: Fix authentication error handling to comply with ADR-003 rev-2
+and ADR-007. Replace unhandled exceptions with proper error responses.
+
+**Acceptance Criteria**:
+
+- [ ] Expired JWT → 401 with `AUTH_TOKEN_EXPIRED` error code
+- [ ] Malformed JWT → 401 with `AUTH_TOKEN_MALFORMED` error code
+- [ ] Network timeout → 503 with retry-after header
+- [ ] All errors use RFC 7807 format
+- [ ] No stack traces in error responses
+- [ ] Correlation IDs in all error responses
+- [ ] Structured logs with error context
+
+**Dependencies**: Task-047 (RFC 7807 library)
+
+**Estimated effort**: 2-3 hours
+
+**Blocks**: Verification completion (verification-issue-001)
+
+---
+
+### Task-047: Create RFC 7807 error handler library [P0]
+
+**Artifact**: `.sam/artifacts/planning/tasks/task-047.md`
+
+**Description**: Create shared library implementing RFC 7807 Problem Details
+format for consistent error responses across all services.
+
+**Acceptance Criteria**:
+
+- [ ] Implements RFC 7807 Problem Details JSON format
+- [ ] Supports structured error codes (e.g., AUTH_TOKEN_EXPIRED)
+- [ ] Automatic correlation ID generation
+- [ ] Stack trace sanitization (never expose to client)
+- [ ] Integration with existing logging framework
+- [ ] Unit tests with 90%+ coverage
+- [ ] Documentation with usage examples
+
+**Dependencies**: None
+
+**Estimated effort**: 4-5 hours
+
+**Blocks**: Task-046, Task-048, Task-049
+
+---
+
+### Task-048: Refactor user-service error responses [P1]
+
+**Artifact**: `.sam/artifacts/planning/tasks/task-048.md`
+
+**Description**: Migrate user-service from custom error format to RFC 7807
+using new error handler library.
+
+**Acceptance Criteria**:
+
+- [ ] All endpoints use RFC 7807 error handler
+- [ ] Backward compatibility verified (no breaking changes)
+- [ ] Error codes mapped to structured format
+- [ ] Integration tests updated
+- [ ] Error response documentation updated
+
+**Dependencies**: Task-047 complete
+
+**Estimated effort**: 2 hours
+
+**Priority**: P1 (can defer to next iteration)
+
+---
+
+### Task-049: Refactor payment-service error responses [P1]
+
+**Artifact**: `.sam/artifacts/planning/tasks/task-049.md`
+
+**Description**: Migrate payment-service from custom error format to RFC 7807.
+
+**Acceptance Criteria**: [Similar to Task-048]
+
+**Dependencies**: Task-047 complete
+
+**Estimated effort**: 2 hours
+
+**Priority**: P1 (can defer to next iteration)
+
+---
+
+### Task-050: Add error handling documentation [P0]
+
+**Artifact**: `.sam/artifacts/planning/tasks/task-050.md`
+
+**Description**: Document error handling patterns in operator runbook (addresses
+gap identified in verification-001).
+
+**Acceptance Criteria**:
+
+- [ ] Error code reference table
+- [ ] Troubleshooting guide for common auth errors
+- [ ] Log correlation ID lookup instructions
+- [ ] Retry policy documentation
+- [ ] Examples of error responses
+
+**Dependencies**: Task-046, Task-047 complete
+
+**Estimated effort**: 3 hours
+
+**Blocks**: Verification completion (gap-identified issue)
+
+---
+
+## Task Dependencies
+
+```text
+Task-047 (RFC 7807 library)
+    ↓
+    ├─→ Task-046 (Auth error handling) [P0]
+    ├─→ Task-048 (User service) [P1]
+    └─→ Task-049 (Payment service) [P1]
+
+Task-046 + Task-047
+    ↓
+Task-050 (Documentation) [P0]
+````
+
+## Updated Plan Status
+
+- **Total tasks**: 50 (was 45)
+- **P0 tasks remaining**: 3 (Task-046, Task-047, Task-050)
+- **P1 tasks remaining**: 2 (Task-048, Task-049)
+- **Estimated time to P0 completion**: 9-11 hours
+- **Blocking verification**: Yes (verification cannot complete until P0 tasks done)
+
+## Ready for Assignment
+
+Tasks 046-050 are now ready for implementation agent assignment. Task-047 should
+be assigned first (no dependencies), then Task-046 and Task-050 in parallel.
+
+````
+
+**Key Architectural Principles**:
+
+1. **Independent verification**: Stage 7 verifiers don't report to orchestrator for permission,
+   they send issues directly to Stage 4 design agents
+
+2. **Holistic design assessment**: Design agents assess issues in context of full architecture,
+   not just as isolated bugs
+
+3. **Cascading updates**: Design revisions trigger planning updates, which create new tasks,
+   which feed back into implementation
+
+4. **Asynchronous loops**: Feedback loops run concurrently with forward progress,
+   don't block the main pipeline
+
+5. **Priority propagation**: Issues marked high-priority cascade that priority through
+   design revision → plan update → task creation
 
 #### Agent Subscription Model
 
@@ -179,18 +641,68 @@ subscriptions:
       - type: response
         to: [design, planning]
 
-  # Design agents subscribe to context completion + research results
+  # Design agents subscribe to context completion + research results + FEEDBACK LOOPS
   design:
     subscribe_to:
       - type: completion
         from: [context, research]
       - type: response
         from: context
+      # FEEDBACK LOOP SUBSCRIPTIONS:
+      - type: verification_issue
+        from: verifier
+        priority: high
+      - type: regression_detected
+        from: verifier
+        priority: critical
+      - type: gap_identified
+        from: verifier
+        priority: medium
     publish:
       - type: query
         to: context
       - type: validation_request
         to: validators
+      # FEEDBACK LOOP PUBLICATIONS:
+      - type: design_revision
+        to: planning
+        trigger: verification_issue | regression_detected | gap_identified
+
+  # Planning agents subscribe to design completion + FEEDBACK LOOPS
+  planning:
+    subscribe_to:
+      - type: completion
+        from: design
+      # FEEDBACK LOOP SUBSCRIPTIONS:
+      - type: design_revision
+        from: design
+        priority: high
+    publish:
+      - type: completion
+        to: orchestrator
+      # FEEDBACK LOOP PUBLICATIONS:
+      - type: plan_update
+        to: orchestrator
+        trigger: design_revision
+
+  # Verification agents subscribe to implementation completion + PUBLISH FEEDBACK
+  verifier:
+    subscribe_to:
+      - type: completion
+        from: implementation
+    publish:
+      - type: completion
+        to: orchestrator
+      # FEEDBACK LOOP PUBLICATIONS (direct to design, bypassing orchestrator):
+      - type: verification_issue
+        to: design
+        condition: "Issue conflicts with architecture or violates requirement"
+      - type: regression_detected
+        to: design
+        condition: "Implementation breaks existing functionality"
+      - type: gap_identified
+        to: design
+        condition: "Missing documentation or functionality needed for production"
 ```
 
 #### Message Delivery Protocol
@@ -2694,3 +3206,4 @@ With this infrastructure layer specification complete, the next steps are:
    - Close the meta-circular loop
 
 This infrastructure layer will transform SAM from a conceptual methodology into a production-ready system with persistent state, multi-agent coordination, and comprehensive traceability.
+````
