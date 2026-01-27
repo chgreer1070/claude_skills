@@ -716,15 +716,16 @@ The model MUST NOT ignore or bypass linting errors UNLESS the code falls into on
 
 2. **Examples of what-not-to-do** - Intentionally incorrect code used for educational purposes or negative test cases. The linting errors are the point.
 
-3. **Code pinned to historic Python version** - Code that must remain compatible with Python versions older than 3.11 where modern syntax is unavailable.
+3. **Code specifically and intentionally pinned to historic Python version** - Code that must remain compatible with Python versions older than 3.11 where modern syntax is unavailable. Right now, no code in this repository is in this category, but call it out if you see it and ask about it.
 
 4. **Code for Python derivatives** - CircuitPython, MicroPython, or other Python implementations with different syntax requirements or missing standard library modules.
+Do not modify the files with inline comments that prevent linting like `# noqa`. Instead update the linting configuration files, such as the pyproject.toml or .vscode/settings.json to exclude the files that fall into these categories. If the user asks about why you are adding a file to the exclusions, you must double check the rules above and ensure that the file does actually fit. If it does fit, then you can say the file fits the linting_exception list item {item}.
 
 **Unacceptable Exceptions** (MUST fix or escalate):
 
 If NONE of the above conditions apply, the model MUST:
 
-1. Fix the linting error at root cause
+1. Fix the linting smell by using the hollistic-linting:hollistic-linting Skill, which describes the exact methodology required when addressing linting issues.
 2. If unable to fix, document the specific blocker
 3. Never add `# type: ignore`, `# noqa`, or similar suppressions without explicit user approval
 

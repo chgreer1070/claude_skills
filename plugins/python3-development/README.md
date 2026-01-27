@@ -100,6 +100,12 @@ Just install it - Claude uses it automatically when working with Python code. Yo
 - **Better Testing**: pytest-mock, hypothesis, mutation testing for critical code
 - **Quality Gates**: Linting, formatting, and type checking integrated
 
+## Development continuity (power-outage safe plan)
+
+If you were interrupted mid-development and want a checkpointed, resume-friendly plan to complete the ongoing workflow work (including command→skill migration and vendoring external artifacts), follow:
+
+- [Workflow Port Plan](./skills/python3-development/planning/python3-development-workflow-port-plan.md)
+
 ## Example
 
 **Without this plugin**: You say "build a CLI tool to process CSV files". Claude creates it with argparse, prints plain text, uses `List[str]` syntax, puts code in `src/`, and when a test fails, immediately changes the test to match the implementation.
