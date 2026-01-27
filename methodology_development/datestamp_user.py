@@ -5,13 +5,15 @@
 #   "typer>=0.12.0",
 # ]
 # ///
+"""Print ISO timestamp and current username for methodology tracking."""
 
 from __future__ import annotations
 
 import getpass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import typer
+
 
 def main(
     utc: bool = typer.Option(
@@ -21,11 +23,10 @@ def main(
     ),
 ) -> None:
     """Print an ISO timestamp and the current username."""
-    now = datetime.now(timezone.utc) if utc else datetime.now().astimezone()
+    now = datetime.now(UTC) if utc else datetime.now().astimezone()
     typer.echo(f"timestamp={now.isoformat(timespec='seconds')}")
     typer.echo(f"username={getpass.getuser()}")
 
 
 if __name__ == "__main__":
     typer.run(main)
-
