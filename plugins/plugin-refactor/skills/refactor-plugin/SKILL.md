@@ -1,13 +1,6 @@
 ---
 description: Start a complete plugin refactoring workflow. Analyzes plugin structure, creates refactoring plan with tasks, and guides through execution.
 argument-hint: <plugin-path>
-allowed-tools:
-  - Read
-  - Write
-  - Grep
-  - Glob
-  - Task
-  - Skill
 ---
 
 # Plugin Refactoring Workflow

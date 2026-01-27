@@ -222,4 +222,5 @@ dev = [
 	"python-dotenv>=1.1.1",
 	"python-semantic-release>=10.4.1",
 	"tiktoken>=0.12.0",
+	"typer>=0.20.0",
 ]
