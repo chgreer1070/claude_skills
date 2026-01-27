@@ -2,8 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "typer>=0.21.0",
-#     "rich>=13.0.0",
+#     "typer>=0.21.0"
 # ]
 # ///
 """Create a new Claude Code plugin with validated structure.

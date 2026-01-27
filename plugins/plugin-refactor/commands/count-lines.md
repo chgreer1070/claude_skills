@@ -1,10 +1,7 @@
 ---
 description: Quick check of skill line counts to identify oversized skills that may need refactoring.
 argument-hint: <plugin-or-skill-path>
-allowed-tools:
-  - Read
-  - Glob
-  - Bash
+allowed-tools: Read, Glob, Bash
 ---
 
 # Count Skill Lines
