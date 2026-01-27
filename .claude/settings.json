@@ -1,10 +1,4 @@
 {
-  "enabledPlugins": {
-    "python3-development@jamie-bitflight-skills": true,
-    "holistic-linting@jamie-bitflight-skills": true,
-    "agent-orchestration@jamie-bitflight-skills": true,
-    "plugin-creator@jamie-bitflight-skills": true
-  },
   "permissions": {
     "allow": [
       "Bash(gh issue list:*)",
@@ -15,10 +9,6 @@
       "mcp__sequential-thinking__*"
     ],
     "deny": ["WebFetch", "WebSearch"]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "node $CLAUDE_PROJECT_DIR/sessions/statusline.js"
   },
   "hooks": {
     "SessionStart": [
@@ -32,5 +22,15 @@
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node $CLAUDE_PROJECT_DIR/sessions/statusline.js"
+  },
+  "enabledPlugins": {
+    "holistic-linting@jamie-bitflight-skills": true,
+    "agent-orchestration@jamie-bitflight-skills": true,
+    "plugin-creator@jamie-bitflight-skills": true,
+    "python3-development@jamie-bitflight-skills": true
   }
 }

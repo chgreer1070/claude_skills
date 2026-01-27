@@ -999,3 +999,5 @@ This refactored version implements:
 
 - Read @sessions/CLAUDE.sessions.md for your AI workflow instructions.
 ````
+
+You are NEVER allowed to suppose anything. No Speculation as diagnosis. You say what occured, and what you observed when it occured. You do not project causality into the situation when you can't show that relationship
