@@ -8,13 +8,13 @@ A comparative analysis of two approaches to working effectively with LLM agents 
 
 Both methodologies address LLM agent limitations but target fundamentally different scales and concerns. Both recognize that Claude is not a knowledge worker—Claude is a stateless computation engine.
 
-| Aspect              | Stateless Agent Methodology                       | Gas Town                                          |
-| ------------------- | ------------------------------------------------- | ------------------------------------------------- |
-| **Origin**          | Theoretical framework from observed failure modes | Production multi-agent orchestration system       |
-| **Scale**           | Single agent, sequential stages                   | 20-30+ concurrent agents across multiple projects |
-| **Primary Problem** | Agent self-assessment failure                     | Agent coordination at enterprise scale            |
+| Aspect              | Stateless Agent Methodology                                     | Gas Town                                                               |
+| ------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Origin**          | Theoretical framework from observed failure modes               | Production multi-agent orchestration system                            |
+| **Scale**           | Single agent, sequential stages                                 | 20-30+ concurrent agents across multiple projects                      |
+| **Primary Problem** | Agent self-assessment failure                                   | Agent coordination at enterprise scale                                 |
 | **State Model**     | Stateless sessions + persistent artifacts (externalized memory) | Persistent identities + durable work graphs in a git-backed data plane |
-| **Implementation**  | Conceptual methodology                            | Orchestrator system described in “Gas Town”       |
+| **Implementation**  | Conceptual methodology                                          | Orchestrator system described in “Gas Town”                            |
 
 ---
 
@@ -42,12 +42,12 @@ Focuses on **why multi-agent systems fail**:
 
 ### Overlapping Concerns
 
-| Concern       | Stateless Approach              | Gas Town Approach                   |
-| ------------- | ------------------------------- | ----------------------------------- |
-| Context limits | Bound context per task/stage (avoid “everything in one prompt”) | Session recycling + durable work graphs + hook/queue semantics |
-| Work tracking | Task files with constraints + verification steps | Beads ledger (git-backed) + activity/event trail |
-| Verification  | Independent forensic phase + deterministic checks | Multi-role oversight + merge/quality gates + deterministic checks |
-| Coordination  | Orchestrator dispatches workers | Durable coordination plane (mail/inboxes, queues/hooks, patrols/nudges) |
+| Concern        | Stateless Approach                                              | Gas Town Approach                                                       |
+| -------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Context limits | Bound context per task/stage (avoid “everything in one prompt”) | Session recycling + durable work graphs + hook/queue semantics          |
+| Work tracking  | Task files with constraints + verification steps                | Beads ledger (git-backed) + activity/event trail                        |
+| Verification   | Independent forensic phase + deterministic checks               | Multi-role oversight + merge/quality gates + deterministic checks       |
+| Coordination   | Orchestrator dispatches workers                                 | Durable coordination plane (mail/inboxes, queues/hooks, patrols/nudges) |
 
 ---
 
@@ -312,12 +312,12 @@ gastown/polecats/toast          # Polecat worker
 
 ### Stateless Methodology
 
-| Failure Mode                  | Mitigation                       |
-| ----------------------------- | -------------------------------- |
+| Failure Mode                               | Mitigation                                                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | Training data hallucination / stale priors | Grounding + explicit constraints + deterministic backpressure (treat tool output as ground truth) |
-| Skipping prerequisites        | Assessment phase blocks planning |
-| Apparent vs actual completion | Forensic phase verification      |
-| Long-context degradation      | Bounded context per task/stage + artifacts as source of truth |
+| Skipping prerequisites                     | Assessment phase blocks planning                                                                  |
+| Apparent vs actual completion              | Forensic phase verification                                                                       |
+| Long-context degradation                   | Bounded context per task/stage + artifacts as source of truth                                     |
 
 **Recovery**: Manual intervention via orchestrator.
 
@@ -384,14 +384,14 @@ Execution → Forensics → Complete/Incomplete → (loop if incomplete)
 
 ## Scale Comparison
 
-| Dimension         | Stateless Methodology   | Gas Town                 |
-| ----------------- | ----------------------- | ------------------------ |
-| Agents            | 8 stages (incl. orchestration loop + final verification) | 20-30+ concurrent        |
-| Projects          | Single feature          | Multiple rigs (projects) |
-| Organization      | Single team             | Federation across orgs   |
-| State persistence | No session memory; persistence lives in artifacts | Git-backed durable data plane |
-| Tooling           | None (methodology only) | Full CLI (`gt`, `bd`)    |
-| Runtime           | Any LLM agent           | Claude Code / Codex      |
+| Dimension         | Stateless Methodology                                    | Gas Town                      |
+| ----------------- | -------------------------------------------------------- | ----------------------------- |
+| Agents            | 8 stages (incl. orchestration loop + final verification) | 20-30+ concurrent             |
+| Projects          | Single feature                                           | Multiple rigs (projects)      |
+| Organization      | Single team                                              | Federation across orgs        |
+| State persistence | No session memory; persistence lives in artifacts        | Git-backed durable data plane |
+| Tooling           | None (methodology only)                                  | Full CLI (`gt`, `bd`)         |
+| Runtime           | Any LLM agent                                            | Claude Code / Codex           |
 
 ---
 
@@ -516,13 +516,13 @@ Features not addressed by Stateless Methodology:
 
 The Stateless Agent Methodology and Gas Town represent **different points on the complexity spectrum**.
 
-| Dimension  | Stateless         | Gas Town               |
-| ---------- | ----------------- | ---------------------- |
-| Complexity | Low (conceptual)  | High (production)      |
-| Scale      | 1-5 agents        | 20-30+ agents          |
+| Dimension  | Stateless                                | Gas Town                                    |
+| ---------- | ---------------------------------------- | ------------------------------------------- |
+| Complexity | Low (conceptual)                         | High (production)                           |
+| Scale      | 1-5 agents                               | 20-30+ agents                               |
 | State      | Stateless sessions + persisted artifacts | Persistent identities + durable work graphs |
-| Focus      | Why agents fail   | How to coordinate many |
-| Value      | Principles        | Implementation         |
+| Focus      | Why agents fail                          | How to coordinate many                      |
+| Value      | Principles                               | Implementation                              |
 
 **Key insight**: Stateless methodology explains _why_ certain patterns work. Gas Town implements those patterns _at scale_ with the additional machinery needed for enterprise coordination.
 

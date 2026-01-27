@@ -8,12 +8,12 @@ A comparative analysis of a modern LLM agent workflow methodology against the cl
 
 The V-Model is a traditional human-centric software development process that pairs design phases with corresponding validation phases. The Stateless Agent Methodology adapts similar structural principles for LLM agent workflows, addressing the unique constraints of AI systems.
 
-| Aspect              | V-Model (SDLC)                              | Stateless Agent Methodology              |
-| ------------------- | ------------------------------------------- | ---------------------------------------- |
-| **Era**             | 1980s-present                               | 2024-present                             |
-| **Actors**          | Human developers and testers                | LLM agents                               |
-| **Primary Problem** | Ensuring quality through structured testing | Agent self-assessment failure            |
-| **Core Structure**  | Definition phases ↔ Validation phases      | Generation phases ↔ Verification phases |
+| Aspect              | V-Model (SDLC)                              | Stateless Agent Methodology                                     |
+| ------------------- | ------------------------------------------- | --------------------------------------------------------------- |
+| **Era**             | 1980s-present                               | 2024-present                                                    |
+| **Actors**          | Human developers and testers                | LLM agents                                                      |
+| **Primary Problem** | Ensuring quality through structured testing | Agent self-assessment failure                                   |
+| **Core Structure**  | Definition phases ↔ Validation phases      | Generation phases ↔ Verification phases                        |
 | **State Model**     | Stateful (knowledge accumulates in humans)  | Stateless sessions + persistent artifacts (externalized memory) |
 
 ---

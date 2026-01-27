@@ -6,13 +6,13 @@ A comparison of two approaches to improving AI pair programming with Claude Code
 
 ## Overview
 
-| Aspect             | Stateless Agent Methodology (SAM)                         | cc-sessions                                                  |
-| ------------------ | --------------------------------------------------------- | ------------------------------------------------------------ |
-| **Type**           | Methodology/process framework                             | Workflow enforcement framework                               |
-| **Focus**          | Addressing LLM cognitive limitations through architecture | Enforcing structured approval workflow before code changes   |
-| **Implementation** | Conceptual framework requiring custom implementation      | Ready-to-use npm/pip package with hooks and protocols        |
-| **Target**         | Any LLM agent system                                      | Claude Code specifically                                     |
-| **Core mechanism** | Phase separation with artifact passing                    | DAIC (Discussion-Alignment-Implementation-Check) enforcement |
+| Aspect             | Stateless Agent Methodology (SAM)                                                                        | cc-sessions                                                                                    |
+| ------------------ | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| **Type**           | Methodology/process framework                                                                            | Workflow enforcement framework                                                                 |
+| **Focus**          | Addressing LLM cognitive limitations through architecture                                                | Enforcing structured approval workflow before code changes                                     |
+| **Implementation** | Conceptual framework requiring custom implementation                                                     | Ready-to-use npm/pip package with hooks and protocols                                          |
+| **Target**         | Any LLM agent system                                                                                     | Claude Code specifically                                                                       |
+| **Core mechanism** | Phase separation with artifact passing                                                                   | DAIC (Discussion-Alignment-Implementation-Check) enforcement                                   |
 | **Backpressure**   | Deterministic checks as ground truth (tests/lint/static analysis/checklists); iterate until pass/BLOCKED | Tool gating + protocol enforcement; can incorporate checks but not the primary control surface |
 
 ---
@@ -26,7 +26,7 @@ A comparison of two approaches to improving AI pair programming with Claude Code
 **Solution**: Externalize state and enforcement into artifacts + gates:
 
 - Separate stages with different agents
-- Task files as the *complete prompt* for execution
+- Task files as the _complete prompt_ for execution
 - Deterministic backpressure (tests/lint/static analysis/checklists) treated as ground truth
 - Independent forensic review (not self-review)
 
@@ -46,15 +46,15 @@ A comparison of two approaches to improving AI pair programming with Claude Code
 
 Both frameworks identify similar issues but address them differently:
 
-| Problem                          | SAM Approach                                                       | cc-sessions Approach                                                 |
-| -------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
-| **Premature implementation**     | Assessment phase blocks until prerequisites verified               | DAIC blocks tools until explicit approval                            |
-| **Scope creep**                  | Task files contain exact scope; forensic review catches deviations | Todo validation locks approved plan; changes trigger "SHAME RITUAL"  |
-| **Long-context degradation (“context rot”)** | Avoid long sessions; keep contexts bounded via task files and stage separation | Manages long sessions via protocols (discussion/approval) and context management/compaction |
-| **Training data staleness (knowledge cutoff)** | Assume priors are stale; force grounding + verification via artifacts/tools | Encourages investigation-first workflow; can enforce process but not replace grounding |
-| **Context loss across sessions** | Execution does not require conversation history; artifacts are source of truth | Persistent task/runtime state enables resuming the same workflow |
-| **Self-verification bias**       | Separate forensic review agent (independent)                       | Same session validates, but via prescribed formats and todo tracking |
-| **Methodology skipping**         | Methodology IS the prompt structure                                | Hook-based enforcement blocks tools at system level                  |
+| Problem                                        | SAM Approach                                                                   | cc-sessions Approach                                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| **Premature implementation**                   | Assessment phase blocks until prerequisites verified                           | DAIC blocks tools until explicit approval                                                   |
+| **Scope creep**                                | Task files contain exact scope; forensic review catches deviations             | Todo validation locks approved plan; changes trigger "SHAME RITUAL"                         |
+| **Long-context degradation (“context rot”)**   | Avoid long sessions; keep contexts bounded via task files and stage separation | Manages long sessions via protocols (discussion/approval) and context management/compaction |
+| **Training data staleness (knowledge cutoff)** | Assume priors are stale; force grounding + verification via artifacts/tools    | Encourages investigation-first workflow; can enforce process but not replace grounding      |
+| **Context loss across sessions**               | Execution does not require conversation history; artifacts are source of truth | Persistent task/runtime state enables resuming the same workflow                            |
+| **Self-verification bias**                     | Separate forensic review agent (independent)                                   | Same session validates, but via prescribed formats and todo tracking                        |
+| **Methodology skipping**                       | Methodology IS the prompt structure                                            | Hook-based enforcement blocks tools at system level                                         |
 
 ---
 
@@ -127,7 +127,7 @@ Return to Discussion Mode
 
 **SAM**: Each agent is a pure function. Task file contains everything needed. No conversation history.
 
-**SAM**: Stateless *sessions*, persistent *artifacts*. Each execution agent is a pure function over a task file + repo state; durability comes from writing/reading artifacts, not from conversation history.
+**SAM**: Stateless _sessions_, persistent _artifacts_. Each execution agent is a pure function over a task file + repo state; durability comes from writing/reading artifacts, not from conversation history.
 
 **cc-sessions**: State persists in `sessions-state.json`. Resume where you left off. Mode, todos, active protocol all survive restarts.
 
@@ -194,18 +194,18 @@ Return to Discussion Mode
 
 ## Feature Comparison Matrix
 
-| Feature                   | SAM                                  | cc-sessions                         |
-| ------------------------- | ------------------------------------ | ----------------------------------- |
-| Tool blocking             | N/A (structural separation)          | Hook-based DAIC enforcement         |
-| Prerequisite gates        | RT-ICA (AVAILABLE/DERIVABLE/MISSING) | Discussion mode approval            |
-| Scope control             | Task file defines exact scope        | Todo list locked after approval     |
-| Change detection          | Forensic review agent                | Todo validation with diff display   |
-| Cross-session persistence | None (stateless by design)           | Full state in sessions-state.json   |
+| Feature                   | SAM                                  | cc-sessions                                                                       |
+| ------------------------- | ------------------------------------ | --------------------------------------------------------------------------------- |
+| Tool blocking             | N/A (structural separation)          | Hook-based DAIC enforcement                                                       |
+| Prerequisite gates        | RT-ICA (AVAILABLE/DERIVABLE/MISSING) | Discussion mode approval                                                          |
+| Scope control             | Task file defines exact scope        | Todo list locked after approval                                                   |
+| Change detection          | Forensic review agent                | Todo validation with diff display                                                 |
+| Cross-session persistence | None (stateless by design)           | Full state in sessions-state.json                                                 |
 | Git integration           | Not specified                        | Git-aware workflow enforcement/protocols (verify exact features per installation) |
-| Trigger phrases           | N/A                                  | Customizable ("yert", "mek:", etc.) |
-| Specialized agents        | 7 pipeline stages                    | 5 utility agents                    |
-| Protocol automation       | Artifact flow between stages         | Protocol templates with variables   |
-| Installation              | Conceptual (implement yourself)      | npm/pip package with installer      |
+| Trigger phrases           | N/A                                  | Customizable ("yert", "mek:", etc.)                                               |
+| Specialized agents        | 7 pipeline stages                    | 5 utility agents                                                                  |
+| Protocol automation       | Artifact flow between stages         | Protocol templates with variables                                                 |
+| Installation              | Conceptual (implement yourself)      | npm/pip package with installer                                                    |
 
 ---
 

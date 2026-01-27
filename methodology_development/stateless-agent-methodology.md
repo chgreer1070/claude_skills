@@ -4,6 +4,13 @@ A constraint-driven development framework that compensates for LLM limitations t
 
 ---
 
+This methodology has companion documentation at:
+
+- <stateless_software_engineering_framework> @stateless-software-engineering-framework.md </stateless_software_engineering_framework>
+- <sam_framework_generator> @methodology_development/sam-framework-generator.md </sam_framework_generator>
+
+---
+
 ## The Core Insight
 
 **Claude is not a knowledge worker - Claude is a stateless computation engine** that happens to have noisy, stale priors baked in.
@@ -21,14 +28,14 @@ Treat Claude like a pure function:
 
 ### 1.1 Claude's Fundamental Limitations
 
-| Limitation                            | Manifestation                                          | Impact                                  |
-| ------------------------------------- | ------------------------------------------------------ | --------------------------------------- |
+| Limitation                                     | Manifestation                                                                                                                                              | Impact                                  |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
 | **Context window degradation (“context rot”)** | Performance degrades as context length increases (not just retrieval failure): more errors, weaker instruction adherence, and “lost in the middle” effects | Long tasks produce poor results         |
-| **Training data staleness (knowledge cutoff)** | Each model has a fixed training cutoff; details can be outdated for fast-moving libraries/APIs unless verified against current sources | Incorrect or obsolete solutions         |
-| **Training data overconfidence**      | Believes priors over explicit instructions             | Skips verification, ignores methodology |
-| **Completion optimization**           | Optimized for "appearing helpful" over "being correct" | Takes shortcuts to show progress        |
-| **No self-reflective knowledge gaps** | Cannot JIT identify what it doesn't know               | Proceeds with wrong assumptions         |
-| **Goal displacement**                 | Optimizes for task metrics, not actual success         | Disables tests, ignores lint rules      |
+| **Training data staleness (knowledge cutoff)** | Each model has a fixed training cutoff; details can be outdated for fast-moving libraries/APIs unless verified against current sources                     | Incorrect or obsolete solutions         |
+| **Training data overconfidence**               | Believes priors over explicit instructions                                                                                                                 | Skips verification, ignores methodology |
+| **Completion optimization**                    | Optimized for "appearing helpful" over "being correct"                                                                                                     | Takes shortcuts to show progress        |
+| **No self-reflective knowledge gaps**          | Cannot JIT identify what it doesn't know                                                                                                                   | Proceeds with wrong assumptions         |
+| **Goal displacement**                          | Optimizes for task metrics, not actual success                                                                                                             | Disables tests, ignores lint rules      |
 
 #### 1.1.1 Context rot: key aspects and mitigations (operational)
 
@@ -81,7 +88,7 @@ Work typically involves:
 
 - **Recent public knowledge** (last few weeks) - not in training data
 - **Internal company code and processes** - not in training data
-- **Closed-source codebases** - *never* in training data
+- **Closed-source codebases** - _never_ in training data
 - **Rapidly evolving technologies** (month-by-month releases) - often too new to be reliably represented in training data, even before a model’s formal cutoff
 
 Training data is adversarial to correct execution because Claude will confidently use stale/wrong priors to skip the actual work of researching current reality.
@@ -96,16 +103,16 @@ Training data is adversarial to correct execution because Claude will confidentl
 
 ### 2.1 Design Principles
 
-| Principle                      | Implementation                                        | Rationale                                          |
-| ------------------------------ | ----------------------------------------------------- | -------------------------------------------------- |
-| **Stateless agents**           | Fresh context per agent with exactly what it needs    | Eliminates context pressure and accumulated errors |
-| **Externalized memory**        | All state lives in artifact files, not conversation   | Survives session resets, enables verification      |
-| **Single responsibility**      | Each agent does exactly one thing                     | Reduces complexity, enables specialization         |
-| **Message passing**            | Agents communicate via artifacts, not shared context  | Decouples stages, creates audit trail              |
-| **Verification at boundaries** | Every stage validates previous stage's output         | Catches errors before they propagate               |
-| **Deterministic backpressure** | Always run deterministic checks (tests, linters, static analysis, checklists) and treat failures as ground truth; iterate until passing or explicitly BLOCKED | Counters cargo-cult priors and hallucinated content with objective feedback |
-| **Embedded methodology**       | The process IS the prompt, not instructions to follow | Cannot skip what structures the task               |
-| **No recall required**         | Task files contain all answers needed for the task (plus verification steps) | Reduces reliance on unverified recall; does not eliminate synthesis/logic errors without verification |
+| Principle                      | Implementation                                                                                                                                                | Rationale                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **Stateless agents**           | Fresh context per agent with exactly what it needs                                                                                                            | Eliminates context pressure and accumulated errors                                                    |
+| **Externalized memory**        | All state lives in artifact files, not conversation                                                                                                           | Survives session resets, enables verification                                                         |
+| **Single responsibility**      | Each agent does exactly one thing                                                                                                                             | Reduces complexity, enables specialization                                                            |
+| **Message passing**            | Agents communicate via artifacts, not shared context                                                                                                          | Decouples stages, creates audit trail                                                                 |
+| **Verification at boundaries** | Every stage validates previous stage's output                                                                                                                 | Catches errors before they propagate                                                                  |
+| **Deterministic backpressure** | Always run deterministic checks (tests, linters, static analysis, checklists) and treat failures as ground truth; iterate until passing or explicitly BLOCKED | Counters cargo-cult priors and hallucinated content with objective feedback                           |
+| **Embedded methodology**       | The process IS the prompt, not instructions to follow                                                                                                         | Cannot skip what structures the task                                                                  |
+| **No recall required**         | Task files contain all answers needed for the task (plus verification steps)                                                                                  | Reduces reliance on unverified recall; does not eliminate synthesis/logic errors without verification |
 
 ### 2.2 Structural Enforcement vs Behavioral Instruction
 
@@ -250,33 +257,149 @@ User Request
 
 ---
 
-## Part 4: Stage Specifications
+## Part 4: Input Constraints
+
+### 4.1 Input Identification and Uniqueness
+
+**Constraint**: All SAM workflows MUST handle input identification with deduplication and context reuse detection.
+
+#### Name Generation Rules
+
+1. **If name provided explicitly**: Use as-is (must be globally unique within project)
+2. **If name not provided**: Auto-generate slug from description
+   - Convert to lowercase
+   - Replace spaces with hyphens
+   - Remove special characters (keep alphanumeric and hyphens)
+   - Maximum 40 characters
+   - Example: "Add Health Check Dashboard" → "add-health-check-dashboard"
+
+#### Similarity Detection Protocol (Discovery Stage)
+
+Before proceeding with full workflow, the Discovery Agent MUST:
+
+**Step 1: Generate Candidate Name**
+
+- Generate slug from description (if not provided)
+- This becomes the working identifier
+
+**Step 2: Search Existing Artifacts**
+Search for similar features/goals:
+
+- Glob: `plan/architect-*.md`, `plan/tasks-*.md`
+- Read: `PLAN.md` feature registry (if exists)
+- Read: `architecture.md` Feature Specs section (if exists)
+
+**Step 3: Assess Similarity**
+For each existing artifact found:
+
+- Compare descriptions semantically
+- Check for name/slug overlap
+- Identify domain concept matches (e.g., "health check" vs "health monitoring")
+- Calculate similarity score (0-100%)
+
+**Step 4: If Similarity > 70% Detected**
+MUST ask clarifying questions using AskUserQuestion:
+
+```
+I found existing feature '{existing-name}' that seems similar to your request.
+
+Existing feature includes:
+- {bullet point summary of existing scope}
+
+Questions:
+1. Is your request related to the existing '{existing-name}' feature?
+   Options:
+   - Yes, extend it (add new capabilities to existing feature)
+   - No, separate feature (independent implementation)
+   - Use as reference only (learn from structure, but independent)
+
+2. If extending:
+   - Should I modify the existing architecture spec?
+   - Should I create a new feature that depends on it?
+```
+
+**Step 5: Handle User Response**
+
+| Response             | Action                                                                                                                                                                                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Extend existing**  | Load existing artifacts as input context:<br/>- Read existing architecture spec<br/>- Read existing task files<br/>- Plan incremental changes<br/>- Update artifacts (don't create new ones)<br/>- Add note in discovery: "Extends: {existing-name}" |
+| **Use as reference** | Proceed with new feature:<br/>- Note reference in Feature Requirements<br/>- Copy applicable patterns<br/>- Ensure name uniqueness<br/>- Add note: "References: {existing-name}"                                                                     |
+| **Separate feature** | Proceed independently:<br/>- Ensure name uniqueness (append suffix if needed)<br/>- No explicit linkage<br/>- Add note: "Similarity noted but confirmed separate"                                                                                    |
+
+#### Uniqueness Enforcement
+
+- Names MUST be unique within project scope
+- If conflict detected after similarity check:
+  - Append numeric suffix: `{base-name}-2`, `{base-name}-3`
+  - Warn user: "Name conflict detected. Using '{resolved-name}' instead."
+- Track all names in a central registry (recommended: `PLAN.md` or `.claude/feature-registry.json`)
+
+#### Discovery Output Extension
+
+The `discovery-output.md` MUST include:
+
+```markdown
+## Feature Identification
+
+- **Name**: {unique-slug}
+- **Description**: {full description}
+- **Similarity Assessment**:
+  - Similar features checked: {count}
+  - Matches found: {list of similar features with scores}
+  - User decision: {extend | reference | separate}
+
+## Related Features
+
+- **Extends**: {feature-name} (if extending existing)
+  - Existing artifacts loaded: {list}
+  - Incremental changes planned: {summary}
+
+- **References**: {feature-name} (if using as reference)
+  - Patterns to follow: {list}
+  - Structure to emulate: {summary}
+
+- **None** (if confirmed separate)
+  - Uniqueness verified: Yes
+  - Name conflicts resolved: {if any}
+```
+
+---
+
+## Part 5: Stage Specifications
 
 ### Stage 1: Discovery
 
-**Purpose**: Gather complete information through structured discussion with user.
+**Purpose**: Gather complete information through structured discussion with user, with similarity detection and deduplication.
 
 **Agent**: Discovery Agent
 
-**Input**: User's initial request or problem statement
+**Input**: User's initial request or problem statement (with optional explicit name)
 
 **Process**:
 
-1. Identify the problem domain
-2. Ask clarifying questions (who, what, why, constraints)
-3. Gather references and examples
-4. Document non-functional requirements
-5. Capture explicit goals and anti-goals (out of scope)
+1. **Generate/validate name** (see Input Constraints 4.1)
+2. **Search for similar existing features** (similarity detection protocol)
+3. **Ask clarifying questions** (including similarity resolution if needed)
+4. Identify the problem domain
+5. Gather references and examples
+6. Document non-functional requirements
+7. Capture explicit goals and anti-goals (out of scope)
 
 **Output**: `discovery-output.md`
 
+- Feature identification (name, description, similarity assessment)
+- Related features (extends/references/none)
 - Feature requirements
 - Non-functional requirements
 - Goals and anti-goals
 - References and examples
 - Resolved questions
 
-**Success Criteria**: User confirms document accurately captures their intent.
+**Success Criteria**:
+
+- User confirms document accurately captures their intent
+- Name uniqueness verified
+- Similarity assessment complete (if applicable)
 
 ---
 
@@ -585,16 +708,16 @@ Task File ─────────▶│    Stateless Agent      │───
 
 ## Part 7: Anti-Patterns
 
-| Anti-Pattern                  | Why It Fails                      | SAM Approach                  |
-| ----------------------------- | --------------------------------- | ----------------------------- |
-| **One agent does everything** | Context pressure, no verification | Pipeline with specialists     |
-| **Trust Claude's memory**     | Memory is unreliable              | Externalize to artifact files |
-| **Behavioral instructions**   | Claude rationalizes out           | Structural enforcement        |
-| **Self-verification only**    | Confirmation bias                 | Independent forensic review   |
-| **Skip prerequisites**        | Garbage in, garbage out           | RT-ICA gate blocks            |
+| Anti-Pattern                  | Why It Fails                                            | SAM Approach                  |
+| ----------------------------- | ------------------------------------------------------- | ----------------------------- |
+| **One agent does everything** | Context pressure, no verification                       | Pipeline with specialists     |
+| **Trust Claude's memory**     | Memory is unreliable                                    | Externalize to artifact files |
+| **Behavioral instructions**   | Claude rationalizes out                                 | Structural enforcement        |
+| **Self-verification only**    | Confirmation bias                                       | Independent forensic review   |
+| **Skip prerequisites**        | Garbage in, garbage out                                 | RT-ICA gate blocks            |
 | **Large context tasks**       | Long-context degradation / “lost in the middle” effects | Small, focused tasks          |
-| **Implicit methodology**      | Gets skipped                      | Methodology IS the prompt     |
-| **Assume training data**      | Stale, wrong, hallucinated        | Provide all context in task   |
+| **Implicit methodology**      | Gets skipped                                            | Methodology IS the prompt     |
+| **Assume training data**      | Stale, wrong, hallucinated                              | Provide all context in task   |
 
 ---
 

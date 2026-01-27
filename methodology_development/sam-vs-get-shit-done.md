@@ -8,12 +8,12 @@ A comparative analysis of two approaches to working effectively with LLM agents.
 
 Both methodologies address the same core problem: **LLM agents optimize for apparent completion over correct completion**, leading to quality degradation during extended work sessions.
 
-| Aspect       | Stateless Agent Methodology                       | Get Shit Done (GSD)                         |
-| ------------ | ------------------------------------------------- | ------------------------------------------- |
-| **Origin**   | Theoretical framework from observed failure modes | Production system (npm: `get-shit-done-cc`) |
-| **Target**   | Any LLM agent workflow                            | Claude Code specifically                    |
+| Aspect       | Stateless Agent Methodology                       | Get Shit Done (GSD)                                   |
+| ------------ | ------------------------------------------------- | ----------------------------------------------------- |
+| **Origin**   | Theoretical framework from observed failure modes | Production system (npm: `get-shit-done-cc`)           |
+| **Target**   | Any LLM agent workflow                            | Claude Code specifically                              |
 | **Maturity** | Conceptual methodology                            | v1.9.13 (local checkout) with 27 commands + 11 agents |
-| **Focus**    | Why agents fail and how to structure work         | Executable workflow with automation         |
+| **Focus**    | Why agents fail and how to structure work         | Executable workflow with automation                   |
 
 ---
 
@@ -23,12 +23,12 @@ Both methodologies identify the same fundamental issues:
 
 ### Shared Problem Analysis
 
-| Problem                       | Stateless Agent Methodology                                | GSD                                                      |
-| ----------------------------- | ---------------------------------------------------------- | -------------------------------------------------------- |
-| Long-context degradation (“context rot”) | Performance can degrade as context length increases (including “lost in the middle” effects); mitigate by bounding context per task/stage | “Context rot” — quality degrades as context fills; mitigate via small plans and fresh executor contexts |
-| Training data staleness (knowledge cutoff) | One-shot approaches drift into stale priors unless grounded/verified | Research phase investigates domain before planning; fresh executor context reduces accumulated drift |
-| Knowledge gaps                | Work involves recent or internal knowledge not in training | Research phase investigates domain before planning       |
-| Apparent vs actual completion | "Disables tests to achieve 'all tests passing'"            | Verification phase independently confirms goals          |
+| Problem                                    | Stateless Agent Methodology                                                                                                               | GSD                                                                                                     |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Long-context degradation (“context rot”)   | Performance can degrade as context length increases (including “lost in the middle” effects); mitigate by bounding context per task/stage | “Context rot” — quality degrades as context fills; mitigate via small plans and fresh executor contexts |
+| Training data staleness (knowledge cutoff) | One-shot approaches drift into stale priors unless grounded/verified                                                                      | Research phase investigates domain before planning; fresh executor context reduces accumulated drift    |
+| Knowledge gaps                             | Work involves recent or internal knowledge not in training                                                                                | Research phase investigates domain before planning                                                      |
+| Apparent vs actual completion              | "Disables tests to achieve 'all tests passing'"                                                                                           | Verification phase independently confirms goals                                                         |
 
 ### The Core Dysfunction
 
@@ -237,13 +237,13 @@ Both recognize that agents cannot self-assess, so the solution must externalize 
 
 ## Failure Mode Coverage
 
-| Failure Mode                  | Stateless Mitigation             | GSD Mitigation                        |
-| ----------------------------- | -------------------------------- | ------------------------------------- |
+| Failure Mode                               | Stateless Mitigation                                          | GSD Mitigation                                                 |
+| ------------------------------------------ | ------------------------------------------------------------- | -------------------------------------------------------------- |
 | Training data hallucination / stale priors | Grounding + explicit constraints + deterministic backpressure | Research phase + deterministic checks + fresh executor context |
-| Skipping prerequisites        | Assessment phase blocks planning | Discuss phase captures preferences    |
-| Apparent vs actual completion | Forensic phase verification      | Verifier agent + UAT                  |
-| Long-context degradation (“context rot”) | Bounded context per task/stage + artifacts as source of truth | Fresh context per plan (smaller unit) + small plan sizes |
-| Rationalizing out of process  | Process is the task              | Process is automated (commands)       |
+| Skipping prerequisites                     | Assessment phase blocks planning                              | Discuss phase captures preferences                             |
+| Apparent vs actual completion              | Forensic phase verification                                   | Verifier agent + UAT                                           |
+| Long-context degradation (“context rot”)   | Bounded context per task/stage + artifacts as source of truth | Fresh context per plan (smaller unit) + small plan sizes       |
+| Rationalizing out of process               | Process is the task                                           | Process is automated (commands)                                |
 
 ---
 

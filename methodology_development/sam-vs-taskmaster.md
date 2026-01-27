@@ -43,16 +43,16 @@ A comparison of two approaches to managing AI-driven software development.
 
 ### Stage Structure
 
-| Stateless Agent Methodology                                            | Task Master Equivalent                                |
-| ---------------------------------------------------------------------- | ----------------------------------------------------- |
-| **Stage 1: Discovery** - Gather requirements via structured discussion | `parse-prd` - Parse PRD into initial tasks            |
-| **Stage 2: Planning (RT-ICA)** - Verify prerequisites, identify gaps   | `analyze-complexity` - Assess task complexity         |
-| **Stage 3: Context Integration** - Map plan to existing codebase       | Manual: User provides context about existing code     |
-| **Stage 4: Task Decomposition** - Create discrete task files           | `expand` - Break tasks into subtasks                  |
-| **Stage 5: Execution** - Implement single task with complete context   | `next` + implementation - Work on next available task |
-| **Stage 6: Forensic Review** - Independent verification of completion  | Manual: User validates completion                     |
-| **Stage 7: Orchestration Loop** - Coordinate workflow, dispatch workers | `set-task-status` + dependency tracking              |
-| **Stage 8: Final Verification** - Validate feature against acceptance  | Manual: User confirms feature complete                |
+| Stateless Agent Methodology                                             | Task Master Equivalent                                |
+| ----------------------------------------------------------------------- | ----------------------------------------------------- |
+| **Stage 1: Discovery** - Gather requirements via structured discussion  | `parse-prd` - Parse PRD into initial tasks            |
+| **Stage 2: Planning (RT-ICA)** - Verify prerequisites, identify gaps    | `analyze-complexity` - Assess task complexity         |
+| **Stage 3: Context Integration** - Map plan to existing codebase        | Manual: User provides context about existing code     |
+| **Stage 4: Task Decomposition** - Create discrete task files            | `expand` - Break tasks into subtasks                  |
+| **Stage 5: Execution** - Implement single task with complete context    | `next` + implementation - Work on next available task |
+| **Stage 6: Forensic Review** - Independent verification of completion   | Manual: User validates completion                     |
+| **Stage 7: Orchestration Loop** - Coordinate workflow, dispatch workers | `set-task-status` + dependency tracking               |
+| **Stage 8: Final Verification** - Validate feature against acceptance   | Manual: User confirms feature complete                |
 
 ### Data Storage
 
@@ -76,12 +76,12 @@ A comparison of two approaches to managing AI-driven software development.
 
 ### 1. Handling LLM Limitations
 
-| Limitation                        | Stateless Agent Methodology                      | Task Master                             |
-| --------------------------------- | ------------------------------------------------ | --------------------------------------- |
-| **Training data hallucination / stale priors** | No recall required (reduces reliance on priors); still requires grounding + deterministic backpressure | Relies on LLM + research model |
-| **Long-context degradation (“context rot”)** | Bounded context per task/stage to reduce drift | Single session may accumulate context   |
-| **Apparent vs actual completion** | Forensic phase provides independent verification | User manually validates completion      |
-| **Rationalizing out of process**  | Process IS the task; no meta-instructions        | Relies on LLM following commands        |
+| Limitation                                     | Stateless Agent Methodology                                                                            | Task Master                           |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------- |
+| **Training data hallucination / stale priors** | No recall required (reduces reliance on priors); still requires grounding + deterministic backpressure | Relies on LLM + research model        |
+| **Long-context degradation (“context rot”)**   | Bounded context per task/stage to reduce drift                                                         | Single session may accumulate context |
+| **Apparent vs actual completion**              | Forensic phase provides independent verification                                                       | User manually validates completion    |
+| **Rationalizing out of process**               | Process IS the task; no meta-instructions                                                              | Relies on LLM following commands      |
 
 ### 2. Agent Separation
 
@@ -135,12 +135,12 @@ A comparison of two approaches to managing AI-driven software development.
 
 These approaches are not mutually exclusive. They address different layers of the problem:
 
-| Layer           | Stateless Agent Methodology          | Task Master                        |
-| --------------- | ------------------------------------ | ---------------------------------- |
-| **Cognitive**   | Addresses LLM reasoning limitations  | Assumes LLM reasoning works        |
-| **Structural**  | Defines phases and their purposes    | Provides data structures for tasks |
-| **Tooling**     | Conceptual (requires implementation) | Ready-to-use CLI/MCP tools         |
-| **Persistence** | Stateless sessions; persistence via artifacts | Maintains project state      |
+| Layer           | Stateless Agent Methodology                   | Task Master                        |
+| --------------- | --------------------------------------------- | ---------------------------------- |
+| **Cognitive**   | Addresses LLM reasoning limitations           | Assumes LLM reasoning works        |
+| **Structural**  | Defines phases and their purposes             | Provides data structures for tasks |
+| **Tooling**     | Conceptual (requires implementation)          | Ready-to-use CLI/MCP tools         |
+| **Persistence** | Stateless sessions; persistence via artifacts | Maintains project state            |
 
 ### Potential Integration
 

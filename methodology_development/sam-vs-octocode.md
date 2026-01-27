@@ -37,12 +37,12 @@ OctoCode RDD is described and implemented in the `bgauryy/octocode-mcp` ecosyste
 
 Both methodologies identify that LLM agents fail predictably:
 
-| Problem                | Stateless Framing                                    | OctoCode Framing                                                     |
-| ---------------------- | ---------------------------------------------------- | -------------------------------------------------------------------- |
-| Training data reliance | "One-shot approaches rely on outdated training data" | "Pattern matching (The Guess)" vs "Logical Reasoning (The Research)" |
+| Problem                | Stateless Framing                                                                          | OctoCode Framing                                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| Training data reliance | "One-shot approaches rely on outdated training data"                                       | "Pattern matching (The Guess)" vs "Logical Reasoning (The Research)" |
 | Context degradation    | Long-context degradation (“context rot”): performance can drop as context length increases | "Lost in the Middle" phenomenon                                      |
-| Knowledge gaps         | Work involves knowledge not in training              | "Dynamic Context (The Unknowns)"                                     |
-| Verification failure   | "Apparent completion over correct completion"        | "Verifier (Discriminator) tries to find flaws"                       |
+| Knowledge gaps         | Work involves knowledge not in training                                                    | "Dynamic Context (The Unknowns)"                                     |
+| Verification failure   | "Apparent completion over correct completion"                                              | "Verifier (Discriminator) tries to find flaws"                       |
 
 ### Different Emphasis
 
@@ -111,15 +111,15 @@ Each step:
 
 ## Core Concepts Mapping
 
-| SAM Concept                  | OctoCode Equivalent        | Relationship                          |
-| ---------------------------- | -------------------------- | ------------------------------------- |
-| Stage 1: Discovery           | Init Research              | Both gather context before planning   |
-| Stage 2: Planning (RT-ICA)   | Plan + Verify Plan         | OctoCode adds adversarial validation  |
-| Stage 3: Context Integration | Research phase             | Both ground plans in codebase reality |
-| Stage 4: Task Decomposition  | Plan Implementation        | Both produce actionable steps         |
-| Stage 5: Execution           | Implement                  | Both execute with provided context    |
-| Stage 6: Forensic Review     | Verifier (Discriminator)   | Both verify independently             |
-| Bounded context per stage    | Clean Fresh Context Window | Same principle, different framing     |
+| SAM Concept                                           | OctoCode Equivalent        | Relationship                          |
+| ----------------------------------------------------- | -------------------------- | ------------------------------------- |
+| Stage 1: Discovery                                    | Init Research              | Both gather context before planning   |
+| Stage 2: Planning (RT-ICA)                            | Plan + Verify Plan         | OctoCode adds adversarial validation  |
+| Stage 3: Context Integration                          | Research phase             | Both ground plans in codebase reality |
+| Stage 4: Task Decomposition                           | Plan Implementation        | Both produce actionable steps         |
+| Stage 5: Execution                                    | Implement                  | Both execute with provided context    |
+| Stage 6: Forensic Review                              | Verifier (Discriminator)   | Both verify independently             |
+| Bounded context per stage                             | Clean Fresh Context Window | Same principle, different framing     |
 | Task file + referenced artifacts (no recall required) | `plan.md` + `research.md`  | Both provide grounded context         |
 
 ---
@@ -365,21 +365,21 @@ Explicitly cites scientific literature:
 
 ### Anti-Patterns (Both Agree)
 
-| Anti-Pattern         | Stateless Framing               | OctoCode Framing                |
-| -------------------- | ------------------------------- | ------------------------------- |
+| Anti-Pattern         | Stateless Framing                        | OctoCode Framing                |
+| -------------------- | ---------------------------------------- | ------------------------------- |
 | Massive context dump | Long-context degradation (“context rot”) | "Dump entire codebase" = noise  |
-| Relying on training  | "Training data bias"            | "Pattern matching (The Guess)"  |
-| No verification      | "Apparent vs actual completion" | Missing Discriminator step      |
-| Shared state         | "Agent cannot self-assess"      | "Shared mega-context" pollution |
+| Relying on training  | "Training data bias"                     | "Pattern matching (The Guess)"  |
+| No verification      | "Apparent vs actual completion"          | Missing Discriminator step      |
+| Shared state         | "Agent cannot self-assess"               | "Shared mega-context" pollution |
 
 ### Patterns (Both Advocate)
 
-| Pattern                  | Stateless Framing              | OctoCode Framing                   |
-| ------------------------ | ------------------------------ | ---------------------------------- |
-| Fresh context            | "Statelessness is a feature"   | "Clean Fresh Context Window"       |
+| Pattern                  | Stateless Framing                | OctoCode Framing                   |
+| ------------------------ | -------------------------------- | ---------------------------------- |
+| Fresh context            | "Statelessness is a feature"     | "Clean Fresh Context Window"       |
 | Evidence-based           | "No recall required + grounding" | "Smart Research" with line numbers |
-| Independent verification | "Forensic phase"               | "Discriminator"                    |
-| Modular phases           | "8-phase decomposition"        | "Chained actions"                  |
+| Independent verification | "Forensic phase"                 | "Discriminator"                    |
+| Modular phases           | "8-phase decomposition"          | "Chained actions"                  |
 
 ---
 

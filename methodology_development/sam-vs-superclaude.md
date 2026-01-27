@@ -44,13 +44,13 @@ A comparison of two approaches to improving AI-assisted software development.
 
 Both frameworks identify the same fundamental issues:
 
-| Problem                           | Stateless Agent Methodology                          | SuperClaude Framework                                          |
-| --------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
+| Problem                           | Stateless Agent Methodology                                                                            | SuperClaude Framework                                                     |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
 | **Hallucination**                 | No recall required (reduces reliance on priors); still requires grounding + deterministic backpressure | SelfCheckProtocol with "Four Questions" (project-claimed; verify in docs) |
-| **Wrong-direction work**          | Planning (RT-ICA) blocks until prerequisites verified | Confidence check with thresholds (verify in docs)              |
-| **Apparent vs actual completion** | Forensic phase provides independent verification     | Post-implementation validation with evidence requirements      |
-| **Training data bias**            | Task files provide current, verified information     | Evidence-based development (Context7, WebFetch, official docs) |
-| **Context degradation**           | Bounded context per task/stage to reduce “context rot” pressure | Token-efficiency patterns (project-claimed; verify in docs)    |
+| **Wrong-direction work**          | Planning (RT-ICA) blocks until prerequisites verified                                                  | Confidence check with thresholds (verify in docs)                         |
+| **Apparent vs actual completion** | Forensic phase provides independent verification                                                       | Post-implementation validation with evidence requirements                 |
+| **Training data bias**            | Task files provide current, verified information                                                       | Evidence-based development (Context7, WebFetch, official docs)            |
+| **Context degradation**           | Bounded context per task/stage to reduce “context rot” pressure                                        | Token-efficiency patterns (project-claimed; verify in docs)               |
 
 ---
 
@@ -58,16 +58,16 @@ Both frameworks identify the same fundamental issues:
 
 ### Phase/Pattern Mapping
 
-| Stateless Agent Methodology      | SuperClaude Equivalent                            |
-| -------------------------------- | ------------------------------------------------- |
-| **Stage 1: Discovery**           | `/sc:brainstorm` + `/sc:research` (Deep Research) |
+| Stateless Agent Methodology      | SuperClaude Equivalent                                |
+| -------------------------------- | ----------------------------------------------------- |
+| **Stage 1: Discovery**           | `/sc:brainstorm` + `/sc:research` (Deep Research)     |
 | **Stage 2: Planning (RT-ICA)**   | Confidence check (verify thresholds/criteria in docs) |
-| **Stage 3: Context Integration** | Glob/Grep existing code + architecture compliance |
-| **Stage 4: Task Decomposition**  | `/sc:pm` + `/sc:task` + task management mode      |
-| **Stage 5: Execution**           | `/sc:implement` with PM Agent patterns            |
-| **Stage 6: Forensic Review**     | SelfCheckProtocol ("Four Questions")              |
-| **Stage 7: Orchestration Loop**  | `/sc:spawn` (parallel tasks) + `/sc:workflow`     |
-| **Stage 8: Final Verification**  | Post-implementation validation + test evidence    |
+| **Stage 3: Context Integration** | Glob/Grep existing code + architecture compliance     |
+| **Stage 4: Task Decomposition**  | `/sc:pm` + `/sc:task` + task management mode          |
+| **Stage 5: Execution**           | `/sc:implement` with PM Agent patterns                |
+| **Stage 6: Forensic Review**     | SelfCheckProtocol ("Four Questions")                  |
+| **Stage 7: Orchestration Loop**  | `/sc:spawn` (parallel tasks) + `/sc:workflow`         |
+| **Stage 8: Final Verification**  | Post-implementation validation + test evidence        |
 
 ### Agent Separation
 
@@ -97,10 +97,10 @@ Both frameworks identify the same fundamental issues:
 
 ### 1. State Management
 
-| Aspect                     | Stateless Agent Methodology                      | SuperClaude Framework                            |
-| -------------------------- | ------------------------------------------------ | ------------------------------------------------ |
-| **Philosophy**             | Stateless sessions + persistent artifacts        | Persistent learning via Reflexion pattern        |
-| **Cross-session learning** | No implicit memory; durability comes from artifacts | ReflexionMemory for error patterns               |
+| Aspect                     | Stateless Agent Methodology                            | SuperClaude Framework                            |
+| -------------------------- | ------------------------------------------------------ | ------------------------------------------------ |
+| **Philosophy**             | Stateless sessions + persistent artifacts              | Persistent learning via Reflexion pattern        |
+| **Cross-session learning** | No implicit memory; durability comes from artifacts    | ReflexionMemory for error patterns               |
 | **Session continuity**     | Task file is the prompt; artifacts are source of truth | `/sc:save` and `/sc:load` for session management |
 
 **Stateless Methodology** treats each session as independent. The task file contains everything needed.
@@ -182,7 +182,7 @@ These frameworks address overlapping but distinct concerns:
 | **Cognitive**    | Phase separation prevents self-assessment failure | Confidence checking prevents wrong-direction work |
 | **Verification** | External forensic agent                           | Embedded SelfCheckProtocol                        |
 | **Learning**     | None (by design)                                  | Reflexion pattern for error learning              |
-| **Tooling**      | Conceptual (requires implementation)              | Commands/agents/tool integrations (see docs)       |
+| **Tooling**      | Conceptual (requires implementation)              | Commands/agents/tool integrations (see docs)      |
 | **Execution**    | Sequential phases                                 | Parallel wave execution                           |
 
 ### Where SuperClaude Implements Stateless Patterns
@@ -205,20 +205,20 @@ SuperClaude already implements several Stateless Agent Methodology concepts:
 
 ## Feature Comparison Matrix
 
-| Feature                   | Stateless Agent          | SuperClaude                                   |
-| ------------------------- | ------------------------ | --------------------------------------------- |
-| Prerequisite verification | Phase 2 (Planning / RT-ICA) | Confidence check (0.0-1.0)                 |
+| Feature                   | Stateless Agent                                             | SuperClaude                                                 |
+| ------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------- |
+| Prerequisite verification | Phase 2 (Planning / RT-ICA)                                 | Confidence check (0.0-1.0)                                  |
 | Hallucination prevention  | No recall required + grounding + deterministic backpressure | SelfCheckProtocol + evidence requirements (project-claimed) |
-| Independent verification  | Forensic phase           | Four Questions + evidence                     |
-| Cross-session learning    | None (by design)         | Reflexion pattern                             |
-| Parallel execution        | Not specified            | Wave → Checkpoint → Wave (verify in docs)     |
-| Token efficiency          | Not specified            | Token budgeting/efficiency patterns (verify)  |
-| Research capability       | Phase 1 + 3              | Deep Research agent (multi-hop, 5 iterations) |
-| Task management           | Phase 4                  | `/sc:pm` + `/sc:task` + mode                  |
-| MCP integration           | Not specified            | 8 servers (Tavily, Context7, etc.)            |
-| CLI tooling               | Not specified            | `superclaude` command + 30 slash commands     |
-| Session persistence       | None (stateless)         | `/sc:save` + `/sc:load`                       |
-| Agent specialization      | By function (5 types)    | By domain (16 types)                          |
+| Independent verification  | Forensic phase                                              | Four Questions + evidence                                   |
+| Cross-session learning    | None (by design)                                            | Reflexion pattern                                           |
+| Parallel execution        | Not specified                                               | Wave → Checkpoint → Wave (verify in docs)                   |
+| Token efficiency          | Not specified                                               | Token budgeting/efficiency patterns (verify)                |
+| Research capability       | Phase 1 + 3                                                 | Deep Research agent (multi-hop, 5 iterations)               |
+| Task management           | Phase 4                                                     | `/sc:pm` + `/sc:task` + mode                                |
+| MCP integration           | Not specified                                               | 8 servers (Tavily, Context7, etc.)                          |
+| CLI tooling               | Not specified                                               | `superclaude` command + 30 slash commands                   |
+| Session persistence       | None (stateless)                                            | `/sc:save` + `/sc:load`                                     |
+| Agent specialization      | By function (5 types)                                       | By domain (16 types)                                        |
 
 ---
 

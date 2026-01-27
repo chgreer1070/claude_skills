@@ -8,13 +8,13 @@ A detailed comparison of two approaches to working with LLM agents that share fu
 
 Both methodologies recognize the same core problem: **LLM agents cannot reliably self-assess their knowledge gaps**. Both solve this through externalized verification and fresh context per iteration. The key difference lies in _how_ they structure the solution:
 
-| Aspect                  | Stateless Agent Methodology    | Ralph Loop Orchestrator                       |
-| ----------------------- | ------------------------------ | --------------------------------------------- |
-| **Philosophy**          | Explicit phase decomposition   | Thin coordination with backpressure           |
-| **Control model**       | Prescriptive phases            | Emergent through gates                        |
+| Aspect                  | Stateless Agent Methodology                              | Ralph Loop Orchestrator                       |
+| ----------------------- | -------------------------------------------------------- | --------------------------------------------- |
+| **Philosophy**          | Explicit phase decomposition                             | Thin coordination with backpressure           |
+| **Control model**       | Prescriptive phases                                      | Emergent through gates                        |
 | **Verification**        | Independent forensic review + deterministic backpressure | Automated backpressure (tests, lints, builds) |
-| **State management**    | Task files contain all context | Disk is state, Git is memory                  |
-| **Orchestration style** | Active dispatch                | "Sit on the loop, not in it"                  |
+| **State management**    | Task files contain all context                           | Disk is state, Git is memory                  |
+| **Orchestration style** | Active dispatch                                          | "Sit on the loop, not in it"                  |
 
 ---
 
@@ -184,15 +184,15 @@ Quality is reduced to a binary gate that can block the loop.
 
 ### Stage Mapping
 
-| SAM Stage              | Ralph Equivalent                | Notes                                       |
-| ---------------------- | ------------------------------- | ------------------------------------------- |
-| Stage 1: Discovery     | (User interaction)              | Ralph assumes specs exist                   |
-| Stage 2: Planning      | Spec creation                   | Ralph uses specs as the prerequisite gate   |
-| Stage 3: Integration   | (Implicit in agent work)        | Ralph's agent reads codebase each iteration |
-| Stage 4: Decomposition | `.agent/tasks.jsonl`            | Ralph tracks tasks at runtime               |
-| Stage 5: Execution     | Loop iteration                  | Core similarity                             |
-| Stage 6: Forensic      | Backpressure gates              | Different mechanism, same purpose           |
-| Stage 7: Orchestration | Loop runner                     | Both coordinate iteration; Ralph's is thinner |
+| SAM Stage                   | Ralph Equivalent                | Notes                                                            |
+| --------------------------- | ------------------------------- | ---------------------------------------------------------------- |
+| Stage 1: Discovery          | (User interaction)              | Ralph assumes specs exist                                        |
+| Stage 2: Planning           | Spec creation                   | Ralph uses specs as the prerequisite gate                        |
+| Stage 3: Integration        | (Implicit in agent work)        | Ralph's agent reads codebase each iteration                      |
+| Stage 4: Decomposition      | `.agent/tasks.jsonl`            | Ralph tracks tasks at runtime                                    |
+| Stage 5: Execution          | Loop iteration                  | Core similarity                                                  |
+| Stage 6: Forensic           | Backpressure gates              | Different mechanism, same purpose                                |
+| Stage 7: Orchestration      | Loop runner                     | Both coordinate iteration; Ralph's is thinner                    |
 | Stage 8: Final Verification | `LOOP_COMPLETE` + no open tasks | Termination condition; SAM adds explicit goal-level verification |
 
 ### File Artifacts

@@ -41,16 +41,16 @@ Instead of trying to make Claude "smarter," SAM treats Claude like a pure functi
 
 These documents compare SAM to established frameworks and methodologies, identifying complementary strengths and integration opportunities.
 
-| Document                                                                                  | Compares To                                | Focus                                                           |
-| ----------------------------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------- |
-| [vs Task Master](./stateless-agent-methodology-vs-taskmaster.md)                          | Task Master (npm task management tool)     | Cognitive framework vs task tooling; integration potential      |
-| [vs Get Shit Done](./stateless-agent-methodology-vs-get-shit-done.md)                     | GSD (Claude Code workflow)                 | Theory vs practice; shared architecture; combining strengths    |
-| [vs Ralph Loop Orchestrator](./stateless-agent-methodology-vs-ralph-loop-orchestrator.md) | Ralph (orchestration framework)            | Phase decomposition vs emergent gates; different control models |
-| [vs Gas Town](./stateless-agent-methodology-vs-gastown.md)                                | Gas Town (pipeline framework)              | Message passing patterns; artifact vs shared context            |
-| [vs OctoCode](./stateless-agent-methodology-vs-octocode.md)                               | Octocode RDD + octocode-mcp (research platform) | Workflow reliability vs research-driven development + toolchain |
-| [vs V-Model](./stateless-agent-methodology-vs-v-model.md)                                 | SDLC V-Model (systems engineering)         | Mapping to traditional verification patterns                    |
-| [vs SuperClaude](./stateless-agent-methodology-vs-superclaude.md)                         | SuperClaude (cognitive framework)          | Constraint-driven vs capability-driven approaches               |
-| [vs cc-sessions](./stateless-agent-methodology-vs-cc-sessions.md)                         | cc-sessions (session management framework) | Stateless execution vs session-aware architecture               |
+| Document                                                          | Compares To                                     | Focus                                                           |
+| ----------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------- |
+| [vs Task Master](./sam-vs-taskmaster.md)                          | Task Master (npm task management tool)          | Cognitive framework vs task tooling; integration potential      |
+| [vs Get Shit Done](./sam-vs-get-shit-done.md)                     | GSD (Claude Code workflow)                      | Theory vs practice; shared architecture; combining strengths    |
+| [vs Ralph Loop Orchestrator](./sam-vs-ralph-loop-orchestrator.md) | Ralph (orchestration framework)                 | Phase decomposition vs emergent gates; different control models |
+| [vs Gas Town](./sam-vs-gastown.md)                                | Gas Town (pipeline framework)                   | Message passing patterns; artifact vs shared context            |
+| [vs OctoCode](./sam-vs-octocode.md)                               | Octocode RDD + octocode-mcp (research platform) | Workflow reliability vs research-driven development + toolchain |
+| [vs V-Model](./sam-vs-v-model.md)                                 | SDLC V-Model (systems engineering)              | Mapping to traditional verification patterns                    |
+| [vs SuperClaude](./sam-vs-superclaude.md)                         | SuperClaude (cognitive framework)               | Constraint-driven vs capability-driven approaches               |
+| [vs cc-sessions](./sam-vs-cc-sessions.md)                         | cc-sessions (session management framework)      | Stateless execution vs session-aware architecture               |
 
 ---
 
@@ -60,14 +60,14 @@ These documents compare SAM to established frameworks and methodologies, identif
 
 Claude exhibits fundamental limitations that prevent reliable autonomous work:
 
-| Limitation                       | Manifestation                              | Impact                                  |
-| -------------------------------- | ------------------------------------------ | --------------------------------------- |
+| Limitation                                     | Manifestation                                                                                | Impact                                  |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------- |
 | **Context window degradation (“context rot”)** | Performance can degrade as context length increases (including “lost in the middle” effects) | Long tasks produce poor results         |
-| **Training data staleness (knowledge cutoff)** | Facts/APIs can be outdated; priors can be stale even before formal cutoffs | Incorrect or obsolete solutions         |
-| **Training data overconfidence** | Believes priors over explicit instructions | Skips verification, ignores methodology |
-| **Completion optimization**      | Optimized for "appearing helpful"          | Takes shortcuts to show progress        |
-| **No self-assessment**           | Cannot JIT identify knowledge gaps         | Proceeds with wrong assumptions         |
-| **Goal displacement**            | Optimizes for task metrics, not success    | Disables tests, ignores lint rules      |
+| **Training data staleness (knowledge cutoff)** | Facts/APIs can be outdated; priors can be stale even before formal cutoffs                   | Incorrect or obsolete solutions         |
+| **Training data overconfidence**               | Believes priors over explicit instructions                                                   | Skips verification, ignores methodology |
+| **Completion optimization**                    | Optimized for "appearing helpful"                                                            | Takes shortcuts to show progress        |
+| **No self-assessment**                         | Cannot JIT identify knowledge gaps                                                           | Proceeds with wrong assumptions         |
+| **Goal displacement**                          | Optimizes for task metrics, not success                                                      | Disables tests, ignores lint rules      |
 
 **Key insight**: Behavioral instructions cannot override architectural limitations. The solution must be structural, not instructional.
 
@@ -143,16 +143,16 @@ SAM reorganizes work into discrete stages, each with a specific agent, complete 
 
 ### Key Design Principles
 
-| Principle                      | Implementation                                        | Rationale                                          |
-| ------------------------------ | ----------------------------------------------------- | -------------------------------------------------- |
-| **Stateless agents**           | Fresh context per agent with exactly what it needs    | Eliminates context pressure and accumulated errors |
-| **Externalized memory**        | All state lives in artifact files, not conversation   | Survives session resets, enables verification      |
-| **Single responsibility**      | Each agent does exactly one thing                     | Reduces complexity, enables specialization         |
-| **Message passing**            | Agents communicate via artifacts, not shared context  | Decouples stages, creates audit trail              |
-| **Verification at boundaries** | Every stage validates previous stage's output         | Catches errors before they propagate               |
-| **Deterministic backpressure** | Always run deterministic checks (tests/linters/static analysis/checklists) and treat failures as ground truth | Counters stale priors and hallucinated content with objective feedback |
-| **Embedded methodology**       | The process IS the prompt, not instructions to follow | Cannot skip what structures the task               |
-| **No recall required**         | Task files contain all answers needed for the task (plus verification steps) | Reduces reliance on unverified recall; does not eliminate synthesis/logic errors without verification |
+| Principle                      | Implementation                                                                                                | Rationale                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **Stateless agents**           | Fresh context per agent with exactly what it needs                                                            | Eliminates context pressure and accumulated errors                                                    |
+| **Externalized memory**        | All state lives in artifact files, not conversation                                                           | Survives session resets, enables verification                                                         |
+| **Single responsibility**      | Each agent does exactly one thing                                                                             | Reduces complexity, enables specialization                                                            |
+| **Message passing**            | Agents communicate via artifacts, not shared context                                                          | Decouples stages, creates audit trail                                                                 |
+| **Verification at boundaries** | Every stage validates previous stage's output                                                                 | Catches errors before they propagate                                                                  |
+| **Deterministic backpressure** | Always run deterministic checks (tests/linters/static analysis/checklists) and treat failures as ground truth | Counters stale priors and hallucinated content with objective feedback                                |
+| **Embedded methodology**       | The process IS the prompt, not instructions to follow                                                         | Cannot skip what structures the task                                                                  |
+| **No recall required**         | Task files contain all answers needed for the task (plus verification steps)                                  | Reduces reliance on unverified recall; does not eliminate synthesis/logic errors without verification |
 
 ### Pure Function Framing
 
@@ -174,16 +174,16 @@ Task File ───▶ [Stateless Agent] ───▶ Verified Result
 
 Quick reference for what distinguishes SAM from other approaches:
 
-| Framework         | Problem Addressed             | Primary Focus             | Key Differentiator                           |
-| ----------------- | ----------------------------- | ------------------------- | -------------------------------------------- |
-| **Task Master**   | Task management               | Tooling & persistence     | Ready-to-use CLI/MCP vs conceptual framework |
-| **Get Shit Done** | Context rot & completion bias | Production workflow       | Theory vs practice; parallelism              |
-| **Ralph Loop**    | Apparent completion           | Backpressure gates        | Phase decomposition vs emergent gates        |
-| **Gas Town**      | Pipeline failures             | Message passing           | Complete artifact context vs shared memory   |
+| Framework         | Problem Addressed             | Primary Focus             | Key Differentiator                                        |
+| ----------------- | ----------------------------- | ------------------------- | --------------------------------------------------------- |
+| **Task Master**   | Task management               | Tooling & persistence     | Ready-to-use CLI/MCP vs conceptual framework              |
+| **Get Shit Done** | Context rot & completion bias | Production workflow       | Theory vs practice; parallelism                           |
+| **Ralph Loop**    | Apparent completion           | Backpressure gates        | Phase decomposition vs emergent gates                     |
+| **Gas Town**      | Pipeline failures             | Message passing           | Complete artifact context vs shared memory                |
 | **OctoCode**      | Guess-driven coding           | Research-first workflows  | RDD methodology + tools vs staged reliability constraints |
-| **V-Model**       | Systems engineering           | Requirements verification | Stateless execution vs sequential phases     |
-| **SuperClaude**   | Cognitive limitations         | Capability expansion      | Constraints vs capabilities                  |
-| **cc-sessions**   | Session management            | Context persistence       | Stateless design vs session awareness        |
+| **V-Model**       | Systems engineering           | Requirements verification | Stateless execution vs sequential phases                  |
+| **SuperClaude**   | Cognitive limitations         | Capability expansion      | Constraints vs capabilities                               |
+| **cc-sessions**   | Session management            | Context persistence       | Stateless design vs session awareness                     |
 
 ---
 
