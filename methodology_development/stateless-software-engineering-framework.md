@@ -12,6 +12,28 @@ This framework treats Claude as a **stateless computation engine** rather than a
 
 **Core Principle**: Claude is not a knowledge worker - Claude is a stateless function that should receive complete context and return verified artifacts.
 
+## What We Mean by "Stateless"
+
+Statelessness in this framework refers to **execution-time task context completeness** and **artifact-grounded verification loops**.
+
+Each agent receives a task with complete context - nothing to guess, nothing to recall from training data, nothing to infer from earlier conversation. The agent executes the task, produces verified artifacts, marks the task complete, and that session ends.
+
+**Key principle**: The execution context from one agent session is NOT passed to another session or agent. Each agent does exactly one task, then terminates. All state transitions happen through artifacts, not through conversation history or shared context.
+
+**What this eliminates:**
+
+- Guessing from incomplete information
+- Relying on training data priors
+- Carrying forward errors from earlier context
+- Context window degradation across tasks
+
+**What this enforces:**
+
+- Complete task specifications with all answers embedded
+- Artifact-based state transitions between stages
+- Independent verification at boundaries
+- Fresh context = fresh start = consistent quality
+
 ---
 
 ## Part 1: The Problem
@@ -1185,3 +1207,118 @@ Treat dependency selection as a **verification step**, not a memory step:
 
 **Document Status**: Initial framework design
 **Next Steps**: Create repository, implement Phase 1 infrastructure
+
+---
+
+## Appendix H: SAM Input Constraints (canonicalized)
+
+This appendix is the canonical location for SAM's input identification + deduplication constraints.
+
+Source: moved from `stateless-agent-methodology.md` (previously “Part 4: Input Constraints”).
+
+### Part 4: Input Constraints
+
+#### 4.1 Input Identification and Uniqueness
+
+**Constraint**: All SAM workflows MUST handle input identification with deduplication and context reuse detection.
+
+#### Name Generation Rules
+
+1. **If name provided explicitly**: Use as-is (must be globally unique within project)
+2. **If name not provided**: Auto-generate slug from description
+   - Convert to lowercase
+   - Replace spaces with hyphens
+   - Remove special characters (keep alphanumeric and hyphens)
+   - Maximum 40 characters
+   - Example: "Add Health Check Dashboard" → "add-health-check-dashboard"
+
+#### Similarity Detection Protocol (Discovery Stage)
+
+Before proceeding with full workflow, the Discovery Agent MUST:
+
+**Step 1: Generate Candidate Name**
+
+- Generate slug from description (if not provided)
+- This becomes the working identifier
+
+**Step 2: Search Existing Artifacts**
+Search for similar features/goals:
+
+- Query existing artifacts (implementation-dependent):
+  - `ARTIFACT:FEATURE_REGISTRY(SCOPE:project)` (e.g. `PLAN.md`, `.claude/feature-registry.json`)
+  - `ARTIFACT:ARCH(SCOPE:...)` (e.g. `architecture.md`, `plan/architect-*.md`)
+  - `ARTIFACT:TASK(TASK:...)` (e.g. `plan/tasks-*.md`)
+
+**Step 3: Assess Similarity**
+For each existing artifact found:
+
+- Compare descriptions semantically
+- Check for name/slug overlap
+- Identify domain concept matches (e.g., "health check" vs "health monitoring")
+- Calculate similarity score (0-100%)
+
+**Step 4: If Similarity > 70% Detected**
+MUST ask clarifying questions using AskUserQuestion:
+
+```text
+I found existing feature '{existing-name}' that seems similar to your request.
+
+Existing feature includes:
+- {bullet point summary of existing scope}
+
+Questions:
+1. Is your request related to the existing '{existing-name}' feature?
+   Options:
+   - Yes, extend it (add new capabilities to existing feature)
+   - No, separate feature (independent implementation)
+   - Use as reference only (learn from structure, but independent)
+
+2. If extending:
+   - Should I modify the existing architecture spec?
+   - Should I create a new feature that depends on it?
+```
+
+**Step 5: Handle User Response**
+
+| Response             | Action                                                                                                                                                                                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Extend existing**  | Load existing artifacts as input context:<br/>- Read existing architecture spec<br/>- Read existing task files<br/>- Plan incremental changes<br/>- Update artifacts (don't create new ones)<br/>- Add note in discovery: "Extends: {existing-name}" |
+| **Use as reference** | Proceed with new feature:<br/>- Note reference in Feature Requirements<br/>- Copy applicable patterns<br/>- Ensure name uniqueness<br/>- Add note: "References: {existing-name}"                                                                     |
+| **Separate feature** | Proceed independently:<br/>- Ensure name uniqueness (append suffix if needed)<br/>- No explicit linkage<br/>- Add note: "Similarity noted but confirmed separate"                                                                                    |
+
+#### Uniqueness Enforcement
+
+- Names MUST be unique within project scope
+- If conflict detected after similarity check:
+  - Append numeric suffix: `{base-name}-2`, `{base-name}-3`
+  - Warn user: "Name conflict detected. Using '{resolved-name}' instead."
+- Track all names in a central registry (recommended: `ARTIFACT:FEATURE_REGISTRY(SCOPE:project)` (e.g. `PLAN.md`, `.claude/feature-registry.json`))
+
+#### Discovery Output Extension
+
+The `ARTIFACT:DISCOVERY(SCOPE:...)` MUST include (e.g. `discovery-output.md`):
+
+```markdown
+## Feature Identification
+
+- **Name**: {unique-slug}
+- **Description**: {full description}
+- **Similarity Assessment**:
+  - Similar features checked: {count}
+  - Matches found: {list of similar features with scores}
+  - User decision: {extend | reference | separate}
+
+## Related Features
+
+- **Extends**: {feature-name} (if extending existing)
+  - Existing artifacts loaded: {list}
+  - Incremental changes planned: {summary}
+
+- **References**: {feature-name} (if using as reference)
+  - Patterns to follow: {list}
+  - Structure to emulate: {summary}
+
+- **None** (if confirmed separate)
+  - Uniqueness verified: Yes
+  - Name conflicts resolved: {if any}
+```
