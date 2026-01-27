@@ -88,8 +88,8 @@
   - No inferences about unstated capabilities
 
 - **Version / time window**:
-  - SAM: Document accessed 2026-01-27 from /home/ubuntulinuxqa2/repos/claude_skills/methodology_development/stateless-agent-methodology.md
-  - BMAD: Version 6 (beta), accessed 2026-01-27 from /home/ubuntulinuxqa2/repos/BMAD-METHOD/
+  - SAM: Document accessed 2026-01-27 from ./stateless-agent-methodology.md
+  - BMAD: Version 6 (beta), accessed 2026-01-27 from ~/repos/BMAD-METHOD/
 
 ### 1.4 Scoring stance
 

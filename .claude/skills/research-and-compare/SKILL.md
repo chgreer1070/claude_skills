@@ -1,6 +1,6 @@
 ---
 name: research-and-compare
-description: Research and compare the Stateless Agent Methodology (SAM) against other methodologies using only verifiable reference material. Creates structured comparison documents following SAM comparison template. Use when user provides URL, path, or name of methodology/framework to compare with SAM.
+description: Research and compare the Stateless Agent Methodology (SAM) against other methodologies using only verifiable reference material. Produce overlap/divergence analysis that is useful for comparing strategy, methodologies, and potential implementations, and for identifying weaknesses in the current SAM methodology while changes are still cheap. Creates structured comparison documents following the SAM comparison template, including terminology normalization + attribution notes.
 argument-hint: <url-or-path-or-name>
 context: fork
 agent: general-purpose
@@ -15,6 +15,13 @@ user-invocable: true
 ## Your Mission
 
 Compare the Stateless Agent Methodology (SAM) with another methodology/framework specified by the user, producing a structured comparison document following the universal comparison template.
+
+**Primary intent (when this skill triggers)**:
+
+1. Identify **overlap** (shared mechanisms / invariants) and **divergence** (different tradeoffs).
+2. Use divergence to surface **weaknesses / gaps / risks** in the current SAM design (planning phase where change is cheap).
+3. Identify **implementation pairing opportunities** (e.g., “SAM + {runtime/infrastructure}”) without changing SAM’s core semantics.
+4. Normalize terminology so comparisons don’t get stuck on names (taxonomy is intentionally unset in SAM docs).
 
 ## Input Specification
 
@@ -64,6 +71,24 @@ Extract and note:
 - Success metrics
 - Key architectural patterns
 
+**Terminology / taxonomy alignment rule (MANDATORY)**:
+
+- Treat filenames in SAM docs as **example implementations**, not canonical identifiers.
+- When SAM docs use tokens, preserve them. When they use filenames, map them to semantic tokens:
+  - Canonical artifact pattern: `ARTIFACT:{TYPE}({SCOPE_OR_ID})`
+  - Disambiguators: `CTX:*`, `PREREQ:*`, `EXEC:*`, `VERIFY:*`
+  - Preserve original filenames as `(e.g. ...)` examples.
+
+**Canonical taxonomy sources (local)**:
+
+- `methodology_development/stateless-software-engineering-framework.md` (semantic tokens + disambiguators + example file/SQL backends)
+- `methodology_development/stateless-agent-methodology.md` (SAM process doc aligned to tokens)
+
+**File reference rule (MANDATORY)**:
+
+- When referencing repository files in the comparison document, use **relative paths** (repo-relative) rather than absolute filesystem paths.
+- Prefer markdown-linkable relative paths where appropriate (e.g., `./methodology_development/stateless-agent-methodology.md`), and avoid `/home/...` style paths.
+
 ### Phase 3: Acquire Target Methodology Documentation (Item B)
 
 Based on input type, gather complete authoritative material:
@@ -72,7 +97,7 @@ Based on input type, gather complete authoritative material:
 
 1. Use `WebFetch` to retrieve the content
 2. If URL requires navigation, use `WebSearch` to find related documentation
-3. Read minimum 2-3 pages to ensure completeness
+3. Read enough primary docs until you cover the full workflow end-to-end (do not stop at 2-3 pages if the methodology spans more)
 
 **If file path provided**:
 
@@ -88,6 +113,25 @@ Based on input type, gather complete authoritative material:
 4. Verify sources are current (check dates)
 
 **This is Item B** in your comparison.
+
+**Terminology normalization for Item B (MANDATORY)**:
+
+- Do NOT treat target methodology filenames (e.g., `plan.md`, `research.md`) as canonical.
+- Normalize to SAM/SSE semantic tokens and keep original terms as examples.
+- Add an attribution footnote in the output doc noting that terminology/taxonomy was normalized for comparison.
+
+**Breadth rule for target evidence (MANDATORY; no “holding back”)**:
+
+This is a short, high-context task in a forked context: do not reserve or “save” context for later. Load whatever is needed now to make the comparison decision-grade.
+
+When the target has an implementation (not just a paper), read broadly until you can describe both semantics and expected usage:
+
+- Read **user guides** and **README(s)** (how users actually run it)
+- Read **setup / installation** instructions
+- Read **code** if it exists (at least the entrypoints and any “orchestrator” logic)
+- Read **agents/skills/prompts** if the target defines them (to understand structure + expectations)
+- Read **transcripts / examples / demos** if present (how it behaves in practice)
+- Read any **schemas / manifests** (e.g., MCP manifests, config formats)
 
 ### Phase 4: Evidence Verification Checkpoint
 
@@ -361,6 +405,45 @@ methodology_development/sam-vs-{slug}.md
 ---
 
 ## Comparison Validity Rules
+
+---
+
+## SAM-Specific Weakness Discovery (MANDATORY)
+
+This skill is not just for “which is better?”; it is also for **stress-testing SAM while change is cheap**.
+
+Add to **Section 5 (Outputs)** (append subsections as 5.6+; do not renumber existing 5.1–5.5):
+
+- **5.6 Overlap inventory (Convergence)**:
+
+  - List shared mechanisms across A and B (e.g., fresh sessions, artifact handoffs, deterministic checks).
+  - For each: what SAM already has vs what is missing (clarity, enforcement, infrastructure).
+
+- **5.7 Divergence-driven weaknesses in SAM**:
+
+  - Convert each divergence into a testable gap statement.
+  - For each gap: propose remediation options with labels:
+    - **CORE CHANGE** (changes SAM semantics)
+    - **PROFILE/PAIRING** (e.g., “SAM + {runtime}” without changing core)
+    - **DOC/TAXONOMY** (clarify semantics; no behavior change)
+
+- **5.8 Terms worth borrowing (taxonomy unset, semantics fixed)**:
+
+  - Identify target terms that are more succinct labels for an existing SAM concept.
+  - Mark as **LABEL ONLY** vs **SEMANTIC CHANGE**.
+
+- **5.9 Implementation pairing notes**:
+
+  - If target provides runtime/infrastructure: document how it can host SAM and what contracts are required (tokens, gates, recovery, attribution).
+
+- **5.10 If you were to add any particular aspects of Item B to SAM, what would they be and why?**
+  - Provide 3–10 candidate adoptions.
+  - For each: **what** (aspect), **why** (expected benefit), **cost/tradeoff**, and whether it is:
+    - **LABEL ONLY** (terminology)
+    - **DOC/TAXONOMY** (clarification only)
+    - **PROFILE/PAIRING** (SAM + runtime/infrastructure)
+    - **CORE CHANGE** (changes SAM semantics)
+  - Cite evidence for each suggestion (Item B source + relevant SAM reference).
 
 **VALID comparisons** (you MAY make these):
 

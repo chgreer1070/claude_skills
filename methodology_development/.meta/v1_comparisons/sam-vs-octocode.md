@@ -29,6 +29,15 @@ OctoCode RDD is described and implemented in the `bgauryy/octocode-mcp` ecosyste
   - `octocode-mcp` version `12.0.0`: [`packages/octocode-mcp/package.json`](https://github.com/bgauryy/octocode-mcp/blob/main/packages/octocode-mcp/package.json) (accessed 2026-01-26)
   - Research skill server (`octocode-skill`) version `2.2.0`: [`skills/octocode-research/package.json`](https://github.com/bgauryy/octocode-mcp/blob/main/skills/octocode-research/package.json) (accessed 2026-01-26)
 
+## Terminology normalization for comparison (added)
+
+OctoCode RDD documentation uses concrete file labels like `plan.md`, `research.md`, and `[init-ctx]`. In this comparison, those are treated as **storage-agnostic semantic artifacts** using the same token convention as your SAM/SSE docs:
+
+- `plan.md` → `ARTIFACT:PLAN(SCOPE:...)` (e.g. `plan.md`)
+- `research.md` / `[init-ctx]` → `ARTIFACT:CONTEXT(SCOPE:...)` (e.g. `research.md`, `init-ctx`)
+
+This is an editorial normalization so we can compare concepts without assuming a filesystem backend.[^taxonomy-alignment]
+
 ---
 
 ## Problem Statement Alignment
@@ -111,16 +120,16 @@ Each step:
 
 ## Core Concepts Mapping
 
-| SAM Concept                                           | OctoCode Equivalent        | Relationship                          |
-| ----------------------------------------------------- | -------------------------- | ------------------------------------- |
-| Stage 1: Discovery                                    | Init Research              | Both gather context before planning   |
-| Stage 2: Planning (RT-ICA)                            | Plan + Verify Plan         | OctoCode adds adversarial validation  |
-| Stage 3: Context Integration                          | Research phase             | Both ground plans in codebase reality |
-| Stage 4: Task Decomposition                           | Plan Implementation        | Both produce actionable steps         |
-| Stage 5: Execution                                    | Implement                  | Both execute with provided context    |
-| Stage 6: Forensic Review                              | Verifier (Discriminator)   | Both verify independently             |
-| Bounded context per stage                             | Clean Fresh Context Window | Same principle, different framing     |
-| Task file + referenced artifacts (no recall required) | `plan.md` + `research.md`  | Both provide grounded context         |
+| SAM Concept                                           | OctoCode Equivalent                                                                         | Relationship                          |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Stage 1: Discovery                                    | Init Research                                                                               | Both gather context before planning   |
+| Stage 2: Planning (RT-ICA)                            | Plan + Verify Plan                                                                          | OctoCode adds adversarial validation  |
+| Stage 3: Context Integration                          | Research phase                                                                              | Both ground plans in codebase reality |
+| Stage 4: Task Decomposition                           | Plan Implementation                                                                         | Both produce actionable steps         |
+| Stage 5: Execution                                    | Implement                                                                                   | Both execute with provided context    |
+| Stage 6: Forensic Review                              | Verifier (Discriminator)                                                                    | Both verify independently             |
+| Bounded context per stage                             | Clean Fresh Context Window                                                                  | Same principle, different framing     |
+| Task file + referenced artifacts (no recall required) | `ARTIFACT:PLAN(SCOPE:...)` + `ARTIFACT:CONTEXT(SCOPE:...)` (e.g. `plan.md` + `research.md`) | Both provide grounded context         |
 
 ---
 
@@ -245,7 +254,7 @@ Research is **continuous and central**:
 
 1. **Static Context (Knowns)**: Local codebase via `octocode-local` tools
 2. **Dynamic Context (Unknowns)**: External repos, packages via `octocode-external` tools
-3. **RDD Data (Session State)**: `plan.md`, `research.md` artifacts
+3. **RDD Data (Session State)**: `ARTIFACT:PLAN(SCOPE:...)` + `ARTIFACT:CONTEXT(SCOPE:...)` (e.g. `plan.md`, `research.md`)
 
 **"Vibe-Research"**:
 
@@ -255,12 +264,12 @@ Research is **continuous and central**:
 
 ### Comparison
 
-| Aspect                | Stateless             | OctoCode                         |
-| --------------------- | --------------------- | -------------------------------- |
-| When research happens | Phase 3 (Integration) | Continuous (phases 0, 3, 5)      |
-| Research tools        | Not specified         | LSP, call graphs, external repos |
-| Research validation   | Not specified         | Discriminator verifies evidence  |
-| Research artifacts    | Contextualized plan   | `research.md` with line numbers  |
+| Aspect                | Stateless             | OctoCode                                                             |
+| --------------------- | --------------------- | -------------------------------------------------------------------- |
+| When research happens | Phase 3 (Integration) | Continuous (phases 0, 3, 5)                                          |
+| Research tools        | Not specified         | LSP, call graphs, external repos                                     |
+| Research validation   | Not specified         | Discriminator verifies evidence                                      |
+| Research artifacts    | Contextualized plan   | `ARTIFACT:CONTEXT(SCOPE:...)` with line numbers (e.g. `research.md`) |
 
 ---
 
@@ -329,7 +338,7 @@ Explicitly cites scientific literature:
 - **Status**: Production MCP server
 - **Tooling**: `octocode-local`, `octocode-external` research tools
 - **Runtime**: Any MCP-compatible agent
-- **Artifacts**: `plan.md`, `research.md`, `code + tests`
+- **Artifacts**: `ARTIFACT:PLAN(SCOPE:...)`, `ARTIFACT:CONTEXT(SCOPE:...)`, `code + tests` (e.g. `plan.md`, `research.md`)
 
 ---
 
@@ -338,7 +347,7 @@ Explicitly cites scientific literature:
 ### What OctoCode Validates from Stateless
 
 1. **Fresh context per action**: "Each action operates with a fresh context window"
-2. **Artifacts bridge phases**: `plan.md → research.md → code`
+2. **Artifacts bridge phases**: `ARTIFACT:PLAN(SCOPE:...) → ARTIFACT:CONTEXT(SCOPE:...) → code` (e.g. `plan.md → research.md → code`)
 3. **Separate sessions**: "Each flow executed by a separate agent or session"
 4. **Verification independence**: Discriminator separate from Generator
 
@@ -357,7 +366,7 @@ Explicitly cites scientific literature:
 2. **Self-assessment thesis**: Why agents cannot evaluate their own work
 3. **Orchestration pattern**: How to coordinate phase outputs
 4. **Agent-agnostic**: Not tied to MCP or specific runtime
-5. **Human checkpoint model**: When human verification is needed
+5. **Frontloaded approval contract**: desired outcome + objectives + acceptance criteria agreed up front (no approval gates in later phases)
 
 ---
 
@@ -496,6 +505,12 @@ Both methodologies describe the same fundamental architecture when abstracted:
 ---
 
 ## Conclusion
+
+---
+
+## Attribution
+
+[^taxonomy-alignment]: **Terminology + taxonomy alignment note**: For this comparison we normalized OctoCode’s file-based artifact labels (e.g. `plan.md`, `research.md`, `[init-ctx]`) into the storage-agnostic `ARTIFACT:*` token scheme used by your SAM/SSE docs, to avoid implying a filesystem backend or “canonical filenames”. Source vocabulary originates from OctoCode’s `MANIFEST.md` ([MANIFEST.md](https://github.com/bgauryy/octocode-mcp/blob/main/MANIFEST.md), accessed 2026-01-26).
 
 The Stateless Agent Methodology and OctoCode RDD are **convergent methodologies** that arrived at similar solutions from different directions.
 

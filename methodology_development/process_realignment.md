@@ -1,12 +1,4 @@
-## Transcript note (not a finalized spec)
-
-This file is a **transcript-like clarification** of a concept I was teasing out in a chat session after a misunderstanding about my intent.
-
-- This is **not** meant to be a finalized methodology document.
-- Terminology may shift; later lines may correct earlier ones.
-- The goal is to make my intent harder to misread.
-
-## Local glossary (terms as used in this transcript)
+## Local glossary
 
 - **Desired outcome**: the end state/value (what "done" means at the user/business level).
 - **Objectives**: component outcomes that collectively achieve the desired outcome (often phrased as "the system/user can...").
@@ -14,16 +6,7 @@ This file is a **transcript-like clarification** of a concept I was teasing out 
 - **Skill**: a structured, in-band process wrapper (system-prompt-like structure) that drives the conversation and dispatches work.
 - **Skill(fork)**: a forked subprocess skill (isolated context) that performs work and returns a structured summary + artifacts back to the main conversation.
 
-## Markers I use when adding clarifying detail
-
-- **MISUNDERSTANDING:** what I think the other party thought I meant (the misread).
-- **CLARIFICATION:** what I actually mean (the intended interpretation).
-- **REPHRASE:** a better wording that avoids the misread.
-- **NOTE:** non-normative aside / context / caveat.
-
----
-
-Your workflow:
+Draft Intended workflow:
 
 1. Skill: Discovery of desired outcome and objectives (user provided a feature, issue, task, enablement, structure change, documentation, pipeline and release flow, versioning, stakeholders, ... or anything else that comes in that is part of the project could be provided as the input and this should be treated in a flexible manner)
 
@@ -49,11 +32,11 @@ Your workflow:
        b. review and restate the goal and intent to the user until user approves
 
 2. Skill: Architecture/Design - Identifies what is required to achieve the desired outcome + objectives
-   a. Skill(fork): Creates or updates the Project Requirements Documentation (PRD) artifact and reports what was changed in the document. `project-requirements-documentation`, `prd-feature-scope-{scope-slug}`
-   b. Skill(fork): Creates or updates the non-functional Requirements (NFR) artifact and reports what was changed in the document. `non-functional-requirements`, `nfr-scope-{scope-slug}`
-   c. Skill(fork): Creates or updates the System Architecture Diagram, and descides if the project is at the threshold of also requiring Component Architecture (C4) design and System Context Diagram (C4) which shows the interfaces and flow of data and processes through the application. The skill is Provided as input the previous steps structured summary output and the artifacts from a and b. `system-architecture-diagram`, `component-architecture-diagram`, `system-context-diagram`
-   d. Skill(fork): Creates or updates the meta project infrastructure documentation with changes to project configuration files like linting rules, packaging, publishing, CI/CD workflows, tooling, tool setup processes. Meta Project Infrastructure (MPI) `mpi-{linting,ci-cd,packaging,tooling,contributing,debugging,...etc}`
-   e. SKill: Updates the Architecture Descision Records (ADR) `adr-{index}-{decision-slug}`
+   a. Skill(fork): Creates or updates the Project Requirements Documentation (PRD) artifact and reports what was changed in the document. `ARTIFACT:PRD(SCOPE:...)` (e.g. `project-requirements-documentation`, `prd-feature-scope-{scope-slug}`)
+   b. Skill(fork): Creates or updates the non-functional Requirements (NFR) artifact and reports what was changed in the document. `ARTIFACT:NFR(SCOPE:...)` (e.g. `non-functional-requirements`, `nfr-scope-{scope-slug}`)
+   c. Skill(fork): Creates or updates the System Architecture Diagram, and descides if the project is at the threshold of also requiring Component Architecture (C4) design and System Context Diagram (C4) which shows the interfaces and flow of data and processes through the application. The skill is Provided as input the previous steps structured summary output and the artifacts from a and b. `ARTIFACT:ARCH(SCOPE:...)` (e.g. `system-architecture-diagram`, `component-architecture-diagram`, `system-context-diagram`)
+   d. Skill(fork): Creates or updates the meta project infrastructure documentation with changes to project configuration files like linting rules, packaging, publishing, CI/CD workflows, tooling, tool setup processes. `ARTIFACT:MPI(SCOPE:...)` (e.g. `mpi-{linting,ci-cd,packaging,tooling,contributing,debugging,...etc}`)
+   e. SKill: Updates the Architecture Descision Records (ADR) `ARTIFACT:ADR(DECISION:...)` (e.g. `adr-{index}-{decision-slug}`)
 
 3. Skill(fork): Planning Coordination - The plan references what has or hasn't yet been created towards the architecture documents and each phase or step in the plan has a link to what part of which document it implements. This takes the change to the architecture artifacts and organises when it can be done in the sequence of existing items within the plan, and ensures that tthe tasks that are not overlapping are done concurrently, and the tasks that are overlapping in their scope or files they touch are done sequentially, and tasks are done in a way that future tasks can benefit from the creation of items from the previous task. Such as, if one task is creating shared utility functions, it would be done before a task that may need to use those utility functions.
 4. Implementation (with git worktrees)
@@ -67,4 +50,4 @@ Your workflow:
    3. Design Compliance (follows ADRs, patterns)
    4. Quality Standards (linting, tests, CI/CD)
    5. Documentation (runbooks, API docs complete)
-      Output: verification-report.md with issue list
+      Output: ARTIFACT:VERIFICATION(SCOPE:...) (e.g. verification-report.md) with issue list

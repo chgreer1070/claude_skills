@@ -6,6 +6,49 @@ The SAM Infrastructure Layer provides persistent state management, agent coordin
 
 **Core principle**: SAM treats Claude as a stateless function. The infrastructure layer compensates by externalizing all state to git, filesystem, and optional databases.
 
+### Storage-agnostic semantic tokens (canonical identifiers)
+
+This document may show concrete filenames/paths (e.g. `.sam/artifacts/.../*.md`) as _one possible filesystem-backed implementation_. Those paths are **not** canonical. The canonical representation is a semantic token that can be backed by files, a database, a queue, git notes, etc.
+
+**Core token pattern**:
+
+```text
+ARTIFACT:{TYPE}({SCOPE_OR_ID})
+```
+
+**Common artifact types used in this infrastructure doc (extend as needed)**:
+
+```text
+ARTIFACT:REQUIREMENTS(SCOPE:...)
+ARTIFACT:INTERVIEW(INTERVIEW:...)
+ARTIFACT:CODEBASE_ANALYSIS(SCOPE:...)
+ARTIFACT:RESEARCH(SCOPE:...)
+ARTIFACT:ARCH(SCOPE:...)
+ARTIFACT:ADR(DECISION:...)
+ARTIFACT:PLAN(SCOPE:...)
+ARTIFACT:TASK(TASK:...)
+ARTIFACT:EXECUTION(TASK:...)
+ARTIFACT:TEST_RESULTS(TASK:...)
+ARTIFACT:REVIEW(TASK:...)
+ARTIFACT:VERIFICATION(SCOPE:...)
+ARTIFACT:RELEASE_NOTES(SCOPE:...)
+ARTIFACT:HANDOFF(SCOPE:...)
+ARTIFACT:MESSAGE(MSG:...)
+```
+
+**Disambiguators (consistent with `stateless-software-engineering-framework.md`)**:
+
+```text
+CTX:WINDOW | CTX:CODEBASE | CTX:CONVERSATION | CTX:INTEGRATION
+PREREQ:AVAILABLE | PREREQ:DERIVABLE | PREREQ:MISSING | PREREQ:CONFIDENCE(0.0-1.0)
+EXEC:SEQUENTIAL | EXEC:PARALLEL | EXEC:WAVE
+VERIFY:SELF | VERIFY:BOUNDARY | VERIFY:FORENSIC | VERIFY:FINAL
+```
+
+**Policy alignment**:
+
+- The workflow explicitly avoids tool blocking and approval gates. Approval is frontloaded via explicit agreement on desired outcome + objectives + acceptance criteria. After that, progress is gated only by prerequisite completeness (`PREREQ:*`) and check outcomes (`VERIFY:*`), not by “permission to use tools”.
+
 ### Integration with 7-Stage SAM Pipeline
 
 ```text
@@ -21,26 +64,26 @@ The SAM Infrastructure Layer provides persistent state management, agent coordin
     │         7-Stage SAM Pipeline                      │
     ├──────────────────────────────────────────────────┤
     │ 1. Discovery & Interview                          │
-    │    ↓ (requirements.md, interviews/)               │
+    │    ↓ ARTIFACT:REQUIREMENTS(SCOPE:...) (e.g. requirements.md, interviews/) │
     │ 2. Context Gathering                              │
-    │    ↓ (codebase-analysis/, patterns/)              │
+    │    ↓ ARTIFACT:CODEBASE_ANALYSIS(SCOPE:...) (e.g. codebase-analysis/, patterns/) │
     │ 3. Research & Learning                            │
-    │    ↓ (research-{topic}.md)                        │
+    │    ↓ ARTIFACT:RESEARCH(SCOPE:...) (e.g. research-{topic}.md)              │
     │ 4. Design & Architecture                          │
-    │    ↓ (architecture.md, adr-{id}.md)               │
+    │    ↓ ARTIFACT:ARCH(SCOPE:...) + ARTIFACT:ADR(DECISION:...) (e.g. architecture.md, adr-{id}.md) │
     │ 5. Planning                                       │
-    │    ↓ (plan.md, task-{id}.md)                      │
+    │    ↓ ARTIFACT:PLAN(SCOPE:...) + ARTIFACT:TASK(TASK:...) (e.g. plan.md, task-{id}.md) │
     │ 6. Implementation & Validation                    │
-    │    ↓ (execution-log.md, test-results.md)          │
+    │    ↓ ARTIFACT:EXECUTION(TASK:...) + ARTIFACT:TEST_RESULTS(TASK:...) (e.g. execution-log.md, test-results.md) │
     │ 7. Delivery                                       │
-    │    → (verification.md, release-notes.md)          │
+    │    → ARTIFACT:VERIFICATION(SCOPE:...) + ARTIFACT:RELEASE_NOTES(SCOPE:...) (e.g. verification.md, release-notes.md) │
     └──────────────────────────────────────────────────┘
 ```
 
 **Data flow**:
 
-1. Each stage produces artifacts stored in `.sam/artifacts/{stage}/`
-2. Agents communicate via messages in `.sam/messages/`
+1. Each stage produces canonical `ARTIFACT:*` tokens (optionally materialized as `.sam/artifacts/{stage}/...` in a filesystem backend)
+2. Agents communicate via messages (optionally materialized as `.sam/messages/...` in a filesystem backend)
 3. Git worktrees isolate concurrent work per stage
 4. MCP server exposes tools/resources for artifact access
 5. SQLite index (optional) provides fast artifact search
@@ -112,14 +155,14 @@ status: {{ pending | delivered | acknowledged | archived }}
 | Type                  | Purpose                            | Sender → Receiver       | Example                                                                   |
 | --------------------- | ---------------------------------- | ----------------------- | ------------------------------------------------------------------------- |
 | `progress`            | Progress update                    | Agent → Orchestrator    | "Context gathering 60% complete, 15 files analyzed"                       |
-| `checkpoint`          | Quality gate reached               | Agent → Orchestrator    | "Design validation gate: awaiting human approval"                         |
+| `checkpoint`          | Quality gate reached               | Agent → Orchestrator    | "Quality gate reached: awaiting deterministic check outputs (tests/lint)" |
 | `blocking`            | Work blocked                       | Agent → Orchestrator    | "Cannot proceed: Auth method not specified in requirements"               |
 | `completion`          | Stage/task complete                | Agent → Orchestrator    | "Discovery stage complete: 12 requirements documented"                    |
 | `delegation`          | Task assignment                    | Orchestrator → Agent    | "Begin context gathering for auth module"                                 |
 | `query`               | Information request                | Agent → Agent           | "Design agent: What auth patterns exist in codebase?"                     |
 | `response`            | Query answer                       | Agent → Agent           | "Context agent: OAuth2 + JWT patterns found in 3 services"                |
-| `validation_request`  | Artifact validation                | Agent → Validator       | "Please review design-auth-service.md"                                    |
-| `validation_result`   | Validation outcome                 | Validator → Agent       | "Design approved with 2 minor suggestions"                                |
+| `validation_request`  | Artifact validation                | Agent → Validator       | "Review ARTIFACT:PLAN(SCOPE:auth_service) (e.g. design-auth-service.md)"  |
+| `validation_result`   | Validation outcome                 | Validator → Agent       | "Plan review complete: 2 minor suggestions; needs follow-up tasks"        |
 | `verification_issue`  | Issue found in verification        | Verifier → Design       | "Missing error handling in auth flow, conflicts with security ADR-003"    |
 | `regression_detected` | Regression found in implementation | Verifier → Design       | "New auth code breaks existing user sessions, violates requirement FR-12" |
 | `gap_identified`      | Missing functionality/docs         | Verifier → Design       | "No documentation for JWT token refresh, needed for operator runbook"     |
@@ -167,19 +210,18 @@ custom_message_types:
 
 - [x] Task 1: Interview stakeholders
   - Completed: 2025-01-27 14:30
-  - Artifact: interview-001.md
+  - Artifact: ARTIFACT:INTERVIEW(INTERVIEW:001) (e.g. interview-001.md)
 - [ ] Task 2: Document requirements
   - Status: In progress (70%)
   - Blocker: None
-  - Artifact: requirements.md (draft)
+  - Artifact: ARTIFACT:REQUIREMENTS(SCOPE:...) (e.g. requirements.md) (draft)
 
 ## Checkpoints
 
-- [x] CHECKPOINT(human-verify): Stakeholder interviews complete
-  - Verified: 2025-01-27 15:00
-  - Approver: User
+- [x] CHECKPOINT(goal-contract): Desired outcome + objectives + acceptance criteria agreed
+  - Confirmed: 2025-01-27 15:00
 - [ ] CHECKPOINT(decision): Requirements prioritization
-  - Pending: Awaiting user input on P0 vs P1 features
+  - Pending: Awaiting user input on P0 vs P1 features (part of frontloaded goal agreement)
 
 ## Blockers
 
@@ -827,7 +869,7 @@ agent:
           action: "Read requirements template and prepare interview questions"
         - name: conduct_interview
           action: "Engage with user for stakeholder interview"
-          checkpoint: human-verify
+          checkpoint: goal-contract
         - name: document_findings
           action: "Create interview-{id}.md artifact"
         - name: extract_requirements
@@ -855,7 +897,7 @@ agent:
   # Quality gates
   quality_gates:
     - name: requirements_completeness
-      type: human-verify
+      type: automated
       condition: "All P0 requirements have acceptance criteria"
     - name: requirements_consistency
       type: automated
@@ -889,13 +931,13 @@ sam:
 
       # Quality gates
       checkpoints:
-        - type: human-verify
-          name: requirements_review
-          condition: "All requirements documented with acceptance criteria"
+        - type: goal-contract
+          name: goal_agreement
+          condition: "Desired outcome + objectives + acceptance criteria agreed and recorded"
           blocking: true      # Stage cannot proceed until checkpoint passes
         - type: decision
           name: scope_finalization
-          condition: "User approves requirement prioritization (P0/P1/P2)"
+          condition: "Missing prerequisite info resolved (e.g., requirement prioritization P0/P1/P2)"
           blocking: true
 
       # Stage outputs
@@ -909,7 +951,7 @@ sam:
       # Next stage trigger
       completion_criteria:
         - "All P0 requirements documented"
-        - "Requirements review checkpoint passed"
+        - "Goal agreement checkpoint passed"
         - "Scope finalization decision made"
 
     - id: 2
@@ -959,35 +1001,32 @@ sam:
       default_secondary: haiku-4-5
       allow_override: true   # Agents can override per task
 
-    # Tool restriction policy
-    tool_policy:
+    # Tool usage guidance (non-enforced)
+    #
+    # SAM policy alignment: no tool blocking / no approval gates. This section is
+    # guidance for keeping stages focused, not a permission system.
+    tool_guidance:
       stages_1_to_3:         # Discovery, Context, Research
-        mode: read-only
-        allow: [Read, Grep, Glob, Bash(read-only), WebSearch, WebFetch]
-        block: [Write, Edit, NotebookEdit]
-        rationale: "Early stages are analysis-only, no code changes"
+        mode: analysis
+        prefer: [Read, Grep, Glob, WebSearch, WebFetch]
+        avoid: ["source-code edits (prefer writing artifacts/tokens)"]
       stages_4_to_5:         # Design, Planning
         mode: design
-        allow: [Read, Grep, Glob, Write(artifacts-only)]
-        block: [Edit(source-code), NotebookEdit]
-        rationale: "Design/planning can create artifacts, not modify source"
+        prefer: [Read, Grep, Glob, Write]
+        avoid: ["broad refactors (prefer producing ARTIFACT:PLAN / ARTIFACT:ADR first)"]
       stage_6:               # Implementation
         mode: implementation
-        allow: [*]
-        rate_limit:
-          Write: 20/hour
-          Edit: 50/hour
-        rationale: "Implementation has full access with rate limits"
+        prefer: ["deterministic checks in tight loops (tests/lint/build)"]
       stage_7:               # Delivery
-        mode: verification
-        allow: [Read, Grep, Glob, Bash(test-commands), Write(reports-only)]
-        rationale: "Verification validates implementation, creates reports"
+        mode: delivery
+        prefer: [Read, Grep, Glob, Write]
+        avoid: ["new feature work (prefer ARTIFACT:VERIFICATION + ARTIFACT:RELEASE_NOTES)"]
 
     # Checkpoint defaults
     checkpoint_defaults:
-      human-verify:
-        timeout: 24h        # Max time to wait for human approval
-        escalation: notify  # Notify user after 24h
+      goal-contract:
+        timeout: 24h        # Max time to wait for goal agreement / missing prerequisite info
+        escalation: notify
       decision:
         timeout: 48h
         escalation: notify
@@ -1087,6 +1126,8 @@ def activate_stage(stage_id: int):
 **Purpose**: Persistent, structured, version-controlled storage for all SAM process artifacts
 
 #### Directory Structure
+
+This is an **example filesystem-backed implementation**. Treat these paths as *one* possible storage backend for the canonical `ARTIFACT:*` tokens.
 
 ```text
 .sam/
@@ -1197,7 +1238,7 @@ validation_status: {{ pass | fail | pending | null }}
 
 #### Artifact Type Schemas
 
-**1. Requirements Artifact** (`.sam/artifacts/discovery/requirements.md`):
+**1. Requirements Artifact** (`ARTIFACT:REQUIREMENTS(SCOPE:...)`) (e.g. `.sam/artifacts/discovery/requirements.md`):
 
 ```yaml
 ---
@@ -1225,7 +1266,7 @@ total_requirements: {{ count }}
 - [ ] Criterion 1
 - [ ] Criterion 2
 
-**Source**: {{ interview-001.md | user_request }}
+**Source**: {{ ARTIFACT:INTERVIEW(INTERVIEW:001) (e.g. interview-001.md) | user_request }}
 
 **Dependencies**: {{ FR-002, FR-003 }}
 
@@ -1238,7 +1279,7 @@ total_requirements: {{ count }}
 ...
 ```
 
-**2. Codebase Analysis Artifact** (`.sam/artifacts/context/codebase-analysis/analysis-{component}.md`):
+**2. Codebase Analysis Artifact** (`ARTIFACT:CODEBASE_ANALYSIS(SCOPE:...)`) (e.g. `.sam/artifacts/context/codebase-analysis/analysis-{component}.md`):
 
 ```yaml
 ---
@@ -1291,7 +1332,7 @@ patterns_identified: {{ count }}
 {{ recommendations_for_implementation }}
 ```
 
-**3. Architecture Decision Record** (`.sam/artifacts/design/decisions/adr-{id}-{title}.md`):
+**3. Architecture Decision Record** (`ARTIFACT:ADR(DECISION:...)`) (e.g. `.sam/artifacts/design/decisions/adr-{id}-{title}.md`):
 
 ```yaml
 ---
@@ -1349,7 +1390,7 @@ supersedes: {{ adr-id | null }}
 - {{ reference_2 }}
 ```
 
-**4. Task Artifact** (`.sam/artifacts/planning/tasks/task-{id}.md`):
+**4. Task Artifact** (`ARTIFACT:TASK(TASK:...)`) (e.g. `.sam/artifacts/planning/tasks/task-{id}.md`):
 
 ```yaml
 ---
@@ -1394,7 +1435,7 @@ blocks: [{{ task-id3 }}, {{ task-id4 }}]
 {{ current_blockers | "None" }}
 ```
 
-**5. Verification Artifact** (`.sam/artifacts/delivery/verification.md`):
+**5. Verification Artifact** (`ARTIFACT:VERIFICATION(SCOPE:...)`) (e.g. `.sam/artifacts/delivery/verification.md`):
 
 ```yaml
 ---
@@ -1412,8 +1453,8 @@ overall_status: {{ pass | fail | partial }}
 
 | Requirement | Status | Evidence |
 |-------------|--------|----------|
-| FR-001 | ✅ Pass | test-results/test-auth.md |
-| FR-002 | ✅ Pass | test-results/test-user.md |
+| FR-001 | ✅ Pass | ARTIFACT:TEST_RESULTS(SCOPE:...) (e.g. test-results/test-auth.md) |
+| FR-002 | ✅ Pass | ARTIFACT:TEST_RESULTS(SCOPE:...) (e.g. test-results/test-user.md) |
 
 ## Quality Gates
 
@@ -1427,8 +1468,8 @@ overall_status: {{ pass | fail | partial }}
 
 | Artifact | Status | Location |
 |----------|--------|----------|
-| Requirements | ✅ Complete | discovery/requirements.md |
-| Architecture | ✅ Complete | design/architecture.md |
+| Requirements | ✅ Complete | ARTIFACT:REQUIREMENTS(SCOPE:...) (e.g. discovery/requirements.md) |
+| Architecture | ✅ Complete | ARTIFACT:ARCH(SCOPE:...) (e.g. design/architecture.md) |
 | Implementation | ✅ Complete | src/ |
 | Tests | ✅ Complete | tests/ |
 
@@ -2592,7 +2633,7 @@ def sync_stage_worktree(stage: int, project_path: str):
 
 - For stages 1-5: Artifact ID (e.g., `req-001`, `adr-003`)
 - For stage 6: Task ID (e.g., `task-123`)
-- For checkpoints: Checkpoint type (e.g., `human-verify`, `decision`)
+- For checkpoints: Checkpoint type (e.g., `goal-contract`, `decision`)
 
 **Examples**:
 
@@ -2604,7 +2645,8 @@ design(adr-003): Choose JWT for stateless authentication
 plan(task-045): Break down JWT implementation into 5 tasks
 task(task-045): Add JWT middleware to auth service
 verify(test-auth): All authentication tests passing
-checkpoint(human-verify): Design review complete
+checkpoint(quality-gate): Deterministic checks passing (tests/lint/build)
+checkpoint(goal-contract): Goal agreement recorded
 ```
 
 #### State Recovery from Commits
@@ -2992,13 +3034,13 @@ stage_integration:
   # Verify Stage 1 outputs before Stage 2 starts
   verification:
     required_artifacts:
-      - .sam/artifacts/discovery/requirements.md
+      - ARTIFACT:REQUIREMENTS(SCOPE:...) (e.g. .sam/artifacts/discovery/requirements.md)
     quality_checks:
       - name: requirements_completeness
         command: .sam/scripts/validate-requirements.py
         expected: exit_code=0
       - name: checkpoint_passed
-        condition: "checkpoint(human-verify) in messages"
+        condition: "checkpoint(goal-contract) in messages"
 
   # Hand off artifacts to Stage 2
   handoff:
@@ -3011,8 +3053,8 @@ stage_integration:
       from: orchestrator
       to: context
       content: |
-        Discovery complete. Requirements documented in requirements.md.
-        Begin context gathering for components mentioned in requirements.
+        Discovery complete. Requirements documented in ARTIFACT:REQUIREMENTS(SCOPE:...) (e.g. requirements.md).
+        Begin context gathering for components mentioned in the requirements artifact.
 ```
 
 ### Orchestrator Integration
@@ -3158,17 +3200,13 @@ class SAMOrchestrator:
         """Wait for checkpoint to pass"""
         checkpoint_type = checkpoint['type']
 
-        if checkpoint_type == 'human-verify':
-            print(f"Checkpoint: {checkpoint['name']}")
-            print(f"Condition: {checkpoint['condition']}")
-            user_input = input("Approve? (y/n): ")
-            if user_input.lower() == 'y':
-                # Record checkpoint pass
-                create_artifact(
-                    type='checkpoint',
-                    stage=self.current_stage,
-                    content=f"Checkpoint {checkpoint['name']} approved by user"
-                )
+        if checkpoint_type in ('goal-contract', 'quality-gate'):
+            # No approval gates in SAM: checkpoints are satisfied by artifacts/messages
+            # (e.g., goal agreement recorded; deterministic checks passing), not by an
+            # "Approve?" prompt during orchestration.
+            print(f"Waiting for checkpoint: {checkpoint['name']}")
+            # Implementation-dependent: poll messages/artifacts until condition holds.
+            # (omitted here; see message schema + artifact storage sections)
         elif checkpoint_type == 'decision':
             print(f"Decision required: {checkpoint['name']}")
             # Present options to user

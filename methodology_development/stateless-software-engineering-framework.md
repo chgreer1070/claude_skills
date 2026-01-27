@@ -148,6 +148,10 @@ ARTIFACT:TASK(TASK:...)
 ARTIFACT:EXECUTION(TASK:...)
 ARTIFACT:REVIEW(TASK:...)
 ARTIFACT:VERIFICATION(SCOPE:...)
+
+# Optional (often useful in practice)
+ARTIFACT:STATE(SCOPE:...)
+ARTIFACT:CONTEXT(SCOPE:...)
 ```
 
 **Disambiguators (recommended)**:
@@ -171,6 +175,54 @@ VERIFY:SELF | VERIFY:BOUNDARY | VERIFY:FORENSIC | VERIFY:FINAL
 - An **agent** is any AI instance doing work and capable of using tools.
 - The **assistant** is the interactive agent in the main conversation.
 - A **sub-agent** is an agent invoked via the built-in `Task()` tool (isolated context, returns findings).
+
+#### 2.1.3 Example implementations (files vs SQL)
+
+The tokens are canonical; the storage backend is an implementation detail. Two equivalent example backends:
+
+**Example scope/task IDs**:
+
+```text
+SCOPE:scope_001
+TASK:task_042
+```
+
+**A) Filesystem-backed artifacts (example convention)**:
+
+```text
+ARTIFACT:DISCOVERY(SCOPE:scope_001)        -> .sam/artifacts/scope_001/discovery.md
+ARTIFACT:PLAN(SCOPE:scope_001)             -> .sam/artifacts/scope_001/plan.md
+ARTIFACT:PLAN(SCOPE:scope_001)             -> .sam/artifacts/scope_001/plan.contextualized.md
+ARTIFACT:TASK(TASK:task_042)               -> .sam/artifacts/tasks/task_042.md
+ARTIFACT:EXECUTION(TASK:task_042)          -> .sam/artifacts/tasks/task_042.execution.md
+ARTIFACT:REVIEW(TASK:task_042)             -> .sam/artifacts/tasks/task_042.review.md
+ARTIFACT:VERIFICATION(SCOPE:scope_001)     -> .sam/artifacts/scope_001/verification.md
+```
+
+**B) SQL-backed artifacts (example schema)**:
+
+```sql
+CREATE TABLE artifacts (
+  token TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  scope_id TEXT,
+  task_id TEXT,
+  content TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX artifacts_scope_idx ON artifacts(scope_id);
+CREATE INDEX artifacts_task_idx ON artifacts(task_id);
+```
+
+Example retrieval:
+
+```sql
+SELECT content
+FROM artifacts
+WHERE token = 'ARTIFACT:PLAN(SCOPE:scope_001)';
+```
 
 ### 2.2 The Pipeline Architecture
 
@@ -208,13 +260,13 @@ flowchart TD
 ```mermaid
 flowchart TD
     REQ["User Request"]
-    DISC["discovery-output.md<br/>Feature requirements, NFRs, goals, references"]
-    DESIGN["design-guide.md<br/>Solution design, success criteria, approach"]
-    CTX["contextualized-plan.md<br/>Plan + existing code references, conflicts resolved,<br/>utilities identified, file paths mapped"]
-    TASK["task-{N}.md<br/>Atomic task with ALL context embedded:<br/>- Constraints, files, style, methodology<br/>- Self-verification steps, DoD"]
-    EXEC["execution-results.md<br/>Implementation results, verification output"]
-    REVIEW["review-report.md<br/>Findings, issues, completion status"]
-    CERT["feature-certification.md<br/>Final certification against original goals"]
+    DISC["ARTIFACT:DISCOVERY(SCOPE:...)<br/>Feature requirements, NFRs, goals, references<br/>(e.g. discovery-output.md)"]
+    DESIGN["ARTIFACT:PLAN(SCOPE:...)<br/>Solution design, success criteria, approach<br/>(e.g. design-guide.md)"]
+    CTX["ARTIFACT:PLAN(SCOPE:...)<br/>Plan + existing code references, conflicts resolved,<br/>utilities identified, file paths mapped<br/>(e.g. contextualized-plan.md)"]
+    TASK["ARTIFACT:TASK(TASK:...)<br/>Atomic task with ALL context embedded:<br/>- Constraints, files, style, methodology<br/>- Self-verification steps, DoD<br/>(e.g. task-{N}-{name}.md)"]
+    EXEC["ARTIFACT:EXECUTION(TASK:...)<br/>Implementation results, verification output<br/>(e.g. execution-results-{N}.md)"]
+    REVIEW["ARTIFACT:REVIEW(TASK:...)<br/>Findings, issues, completion status<br/>(e.g. review-report-{N}.md)"]
+    CERT["ARTIFACT:VERIFICATION(SCOPE:...)<br/>Final certification against original goals<br/>(e.g. feature-certification.md)"]
 
     REQ --> DISC --> DESIGN --> CTX --> TASK --> EXEC --> REVIEW --> CERT
 ```
@@ -244,7 +296,7 @@ flowchart TD
 4. Document non-functional requirements
 5. Capture explicit goals and anti-goals
 
-**Output**: `discovery-output.md`
+**Output**: `ARTIFACT:DISCOVERY(SCOPE:...)` (e.g. `discovery-output.md`)
 
 ```markdown
 ## Feature: {name}
@@ -292,7 +344,7 @@ flowchart TD
 
 **Input**:
 
-- `discovery-output.md`
+- `ARTIFACT:DISCOVERY(SCOPE:...)` (e.g. `discovery-output.md`)
 
 **Process**:
 
@@ -315,7 +367,7 @@ flowchart TD
    - Dependency risks
    - Knowledge gaps
 
-**Output**: `design-guide.md`
+**Output**: `ARTIFACT:PLAN(SCOPE:...)` (e.g. `design-guide.md`)
 
 ```markdown
 ## Feature Design: {name}
@@ -361,7 +413,7 @@ Decision: APPROVED / BLOCKED
 
 **Input**:
 
-- `design-guide.md`
+- `ARTIFACT:PLAN(SCOPE:...)` (e.g. `design-guide.md`)
 - Access to codebase
 
 **Process**:
@@ -388,7 +440,7 @@ Decision: APPROVED / BLOCKED
    - Note existing implementations
    - Document integration points
 
-**Output**: `contextualized-plan.md`
+**Output**: `ARTIFACT:PLAN(SCOPE:...)` (e.g. `contextualized-plan.md`)
 
 ```markdown
 ## Contextualized Plan: {name}
@@ -438,7 +490,7 @@ Decision: APPROVED / BLOCKED
 
 **Input**:
 
-- `contextualized-plan.md`
+- `ARTIFACT:PLAN(SCOPE:...)` (e.g. `contextualized-plan.md`)
 
 **Process**:
 
@@ -460,7 +512,7 @@ Decision: APPROVED / BLOCKED
    - All answers in the task file
    - Complete methodology specified
 
-**Output**: `task-{N}-{name}.md` for each task
+**Output**: `ARTIFACT:TASK(TASK:...)` for each task (e.g. `task-{N}-{name}.md`)
 
 ```markdown
 ## Task {N}: {name}
@@ -476,7 +528,7 @@ Decision: APPROVED / BLOCKED
 ### Files to Modify
 | File | Action | Reference |
 |------|--------|-----------|
-| {path} | CREATE/MODIFY | {contextualized-plan.md section} |
+| {path} | CREATE/MODIFY | {ARTIFACT:PLAN(SCOPE:...) section} |
 
 ### Methodology
 1. {step with specific action}
@@ -497,7 +549,7 @@ Decision: APPROVED / BLOCKED
 - Blocks: {task-N+1}
 
 ### References
-- Design: contextualized-plan.md#{section}
+- Design: ARTIFACT:PLAN(SCOPE:...)#{section}
 - Pattern: {file:line}
 - Example: {file:line}
 ```
@@ -512,7 +564,7 @@ Decision: APPROVED / BLOCKED
 
 **Input**:
 
-- Single `task-{N}-{name}.md` file (AS THE COMPLETE PROMPT)
+- Single `ARTIFACT:TASK(TASK:...)` (AS THE COMPLETE PROMPT) (e.g. `task-{N}-{name}.md`)
 
 **Process**:
 
@@ -528,7 +580,7 @@ Decision: APPROVED / BLOCKED
 - **Embedded verification**: Cannot skip methodology
 - **Single responsibility**: One task only
 
-**Output**: Implementation + `execution-results-{N}.md`
+**Output**: Implementation + `ARTIFACT:EXECUTION(TASK:...)` (e.g. `execution-results-{N}.md`)
 
 ```markdown
 ## Execution Results: Task {N}
@@ -569,9 +621,9 @@ Decision: APPROVED / BLOCKED
 
 **Input**:
 
-- `execution-results-{N}.md`
-- `task-{N}-{name}.md`
-- `contextualized-plan.md`
+- `ARTIFACT:EXECUTION(TASK:...)` (e.g. `execution-results-{N}.md`)
+- `ARTIFACT:TASK(TASK:...)` (e.g. `task-{N}-{name}.md`)
+- `ARTIFACT:PLAN(SCOPE:...)` (e.g. `contextualized-plan.md`)
 
 **Process**:
 
@@ -596,7 +648,7 @@ Decision: APPROVED / BLOCKED
    - COMPLETE: All criteria met
    - NEEDS_WORK: Specific issues identified
 
-**Output**: `review-report-{N}.md`
+**Output**: `ARTIFACT:REVIEW(TASK:...)` (e.g. `review-report-{N}.md`)
 
 ```markdown
 ## Review Report: Task {N}
@@ -642,7 +694,7 @@ Decision: APPROVED / BLOCKED
 
 **Input**:
 
-- `review-report-{N}.md` with NEEDS_WORK verdict
+- `ARTIFACT:REVIEW(TASK:...)` with NEEDS_WORK verdict (e.g. `review-report-{N}.md`)
 
 **Process**:
 
@@ -650,7 +702,7 @@ Decision: APPROVED / BLOCKED
 2. Create new task files to address each issue
 3. Update task dependency graph
 
-**Output**: Additional `task-{N+1}-{name}.md` files
+**Output**: Additional `ARTIFACT:TASK(TASK:...)` entries (e.g. `task-{N+1}-{name}.md`)
 
 ---
 
@@ -676,9 +728,9 @@ Decision: APPROVED / BLOCKED
 
 **Input**:
 
-- `discovery-output.md` (original goals)
-- All `review-report-{N}.md` files
-- `contextualized-plan.md`
+- `ARTIFACT:DISCOVERY(SCOPE:...)` (original goals) (e.g. `discovery-output.md`)
+- All `ARTIFACT:REVIEW(TASK:...)` artifacts (e.g. `review-report-{N}.md`)
+- `ARTIFACT:PLAN(SCOPE:...)` (e.g. `contextualized-plan.md`)
 
 **Process**:
 
@@ -693,7 +745,7 @@ Decision: APPROVED / BLOCKED
 3. **Definition of Done**:
    - Feature-level DoD → verification
 
-**Output**: `feature-certification.md`
+**Output**: `ARTIFACT:VERIFICATION(SCOPE:...)` (e.g. `feature-certification.md`)
 
 ```markdown
 ## Feature Certification: {name}
@@ -811,7 +863,7 @@ Treat it like a pure function:
 1. **Artifact schemas**: Define markdown templates for each artifact type
 2. **Agent definitions**: Create agent files for each role
 3. **Orchestrator command**: `/sse:start` to begin workflow
-4. **Status tracking**: STATE.md for pipeline position
+4. **Status tracking**: `ARTIFACT:STATE(SCOPE:...)` for pipeline position (e.g. `STATE.md`)
 
 ### Phase 2: Stage Implementation
 
@@ -858,15 +910,15 @@ Based on the architectural principles:
 
 ## Appendix A: Comparison with GSD
 
-| Aspect               | GSD                                  | This Framework                     |
-| -------------------- | ------------------------------------ | ---------------------------------- |
-| **Core philosophy**  | Structured workflow for productivity | Compensate for LLM limitations     |
-| **Memory model**     | STATE.md + CONTEXT.md                | Full artifact pipeline             |
-| **Verification**     | Goal-backward must_haves             | Independent forensic review        |
-| **Execution**        | Wave-based parallel                  | Sequential with verification gates |
-| **Agent model**      | Thin orchestrator + specialists      | Stateless function per stage       |
-| **Context strategy** | Fresh per plan                       | Fresh per task                     |
-| **Failure handling** | Deviation rules                      | Forensic review + replanning       |
+| Aspect               | GSD                                                                                      | This Framework                     |
+| -------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------- |
+| **Core philosophy**  | Structured workflow for productivity                                                     | Compensate for LLM limitations     |
+| **Memory model**     | `ARTIFACT:STATE(SCOPE:...)` + `ARTIFACT:CONTEXT(SCOPE:...)` (e.g. STATE.md + CONTEXT.md) | Full artifact pipeline             |
+| **Verification**     | Goal-backward must_haves                                                                 | Independent forensic review        |
+| **Execution**        | Wave-based parallel                                                                      | Sequential with verification gates |
+| **Agent model**      | Thin orchestrator + specialists                                                          | Stateless function per stage       |
+| **Context strategy** | Fresh per plan                                                                           | Fresh per task                     |
+| **Failure handling** | Deviation rules                                                                          | Forensic review + replanning       |
 
 **Integration opportunity**: Adopt GSD's wave execution and checkpoint taxonomy within this framework's verification structure.
 

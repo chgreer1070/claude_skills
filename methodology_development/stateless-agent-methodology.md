@@ -114,6 +114,58 @@ Training data is adversarial to correct execution because Claude will confidentl
 | **Embedded methodology**       | The process IS the prompt, not instructions to follow                                                                                                         | Cannot skip what structures the task                                                                  |
 | **No recall required**         | Task files contain all answers needed for the task (plus verification steps)                                                                                  | Reduces reliance on unverified recall; does not eliminate synthesis/logic errors without verification |
 
+#### 2.1.1 Storage-agnostic semantic tokens (artifact IDs, not file paths)
+
+SAM is intentionally storage-agnostic. Any concrete filename/path (e.g. `design-guide.md`, `task-{N}.md`, `PLAN.md`) is an example implementation, not the canonical representation. The canonical representation is a semantic identifier that can be backed by files, a database, a queue, etc.
+
+**Core token pattern**:
+
+```text
+ARTIFACT:{TYPE}({SCOPE_OR_ID})
+```
+
+**Minimal starting set (recommended)**:
+
+```text
+SCOPE:{scope_id}
+
+ARTIFACT:DISCOVERY(SCOPE:...)
+ARTIFACT:PRD(SCOPE:...)
+ARTIFACT:NFR(SCOPE:...)
+ARTIFACT:ARCH(SCOPE:...)
+ARTIFACT:ADR(DECISION:...)
+ARTIFACT:PLAN(SCOPE:...)
+ARTIFACT:TASK(TASK:...)
+ARTIFACT:EXECUTION(TASK:...)
+ARTIFACT:REVIEW(TASK:...)
+ARTIFACT:VERIFICATION(SCOPE:...)
+
+# Optional (often useful in practice)
+ARTIFACT:FEATURE_REGISTRY(SCOPE:project)
+ARTIFACT:STATE(SCOPE:...)
+ARTIFACT:CONTEXT(SCOPE:...)
+```
+
+**Disambiguators (recommended)**:
+
+```text
+CTX:WINDOW | CTX:CODEBASE | CTX:CONVERSATION | CTX:INTEGRATION
+PREREQ:AVAILABLE | PREREQ:DERIVABLE | PREREQ:MISSING | PREREQ:CONFIDENCE(0.0-1.0)
+EXEC:SEQUENTIAL | EXEC:PARALLEL | EXEC:WAVE
+VERIFY:SELF | VERIFY:BOUNDARY | VERIFY:FORENSIC | VERIFY:FINAL
+```
+
+**Workflow stance (approval + tool use)**:
+
+- SAM avoids tool blocking and approval gates. All approval is frontloaded via explicit agreement on desired outcome + objectives + acceptance criteria. After that, progress is gated only by prerequisite completeness (`PREREQ:*`) and check outcomes (`VERIFY:*`), not by “permission to use tools”.
+- For example token→filesystem/SQL mappings, see the companion framework doc: @stateless-software-engineering-framework.md
+
+**Agent taxonomy**:
+
+- An **agent** is any AI instance doing work and capable of using tools.
+- The **assistant** is the interactive agent in the main conversation.
+- A **sub-agent** is an agent invoked via the built-in `Task()` tool (isolated context, returns findings).
+
 ### 2.2 Structural Enforcement vs Behavioral Instruction
 
 | Behavioral (Fails)              | Structural (Works)                            |
@@ -216,42 +268,54 @@ User Request
      │
      ▼
 ┌─────────────────────┐
-│ discovery-output.md │  Feature requirements, NFRs, goals, references
+│ ARTIFACT:DISCOVERY  │  Feature requirements, NFRs, goals, references
+│ (e.g. discovery-    │
+│ output.md)          │
 └─────────────────────┘
      │
      ▼
 ┌─────────────────────┐
-│ design-guide.md     │  RT-ICA assessment, solution design, success criteria
+│ ARTIFACT:PLAN       │  RT-ICA assessment, solution design, success criteria
+│ (e.g. design-       │
+│ guide.md)           │
 └─────────────────────┘
      │
      ▼
 ┌─────────────────────┐
-│ contextualized-     │  Plan + existing code references, conflicts resolved,
-│ plan.md             │  utilities identified, file paths mapped
+│ ARTIFACT:PLAN       │  Plan + existing code references, conflicts resolved,
+│ (contextualized)    │  utilities identified, file paths mapped
+│ (e.g. contextualized│
+│ -plan.md)           │
 └─────────────────────┘
      │
      ▼
 ┌─────────────────────┐
-│ task-{N}.md         │  Atomic task with ALL context embedded:
+│ ARTIFACT:TASK       │  Atomic task with ALL context embedded:
 │                     │  - Constraints, files, style, methodology
 │                     │  - Self-verification steps, Definition of Done
+│ (e.g. task-{N}-     │
+│ {name}.md)          │
 └─────────────────────┘
      │
      ▼
 ┌─────────────────────┐
-│ execution-          │  Implementation results, verification output
-│ results-{N}.md      │
+│ ARTIFACT:EXECUTION  │  Implementation results, verification output
+│ (e.g. execution-    │
+│ results-{N}.md)     │
 └─────────────────────┘
      │
      ▼
 ┌─────────────────────┐
-│ review-report-{N}.md│  Forensic findings, verdict, issues
+│ ARTIFACT:REVIEW     │  Forensic findings, verdict, issues
+│ (e.g. review-report-│
+│ {N}.md)             │
 └─────────────────────┘
      │
      ▼
 ┌─────────────────────┐
-│ feature-            │  Final certification against original goals
-│ certification.md    │
+│ ARTIFACT:VERIFICATION│ Final certification against original goals
+│ (e.g. feature-      │
+│ certification.md)   │
 └─────────────────────┘
 ```
 
@@ -285,9 +349,10 @@ Before proceeding with full workflow, the Discovery Agent MUST:
 **Step 2: Search Existing Artifacts**
 Search for similar features/goals:
 
-- Glob: `plan/architect-*.md`, `plan/tasks-*.md`
-- Read: `PLAN.md` feature registry (if exists)
-- Read: `architecture.md` Feature Specs section (if exists)
+- Query existing artifacts (implementation-dependent):
+  - `ARTIFACT:FEATURE_REGISTRY(SCOPE:project)` (e.g. `PLAN.md`, `.claude/feature-registry.json`)
+  - `ARTIFACT:ARCH(SCOPE:...)` (e.g. `architecture.md`, `plan/architect-*.md`)
+  - `ARTIFACT:TASK(TASK:...)` (e.g. `plan/tasks-*.md`)
 
 **Step 3: Assess Similarity**
 For each existing artifact found:
@@ -332,11 +397,11 @@ Questions:
 - If conflict detected after similarity check:
   - Append numeric suffix: `{base-name}-2`, `{base-name}-3`
   - Warn user: "Name conflict detected. Using '{resolved-name}' instead."
-- Track all names in a central registry (recommended: `PLAN.md` or `.claude/feature-registry.json`)
+- Track all names in a central registry (recommended: `ARTIFACT:FEATURE_REGISTRY(SCOPE:project)` (e.g. `PLAN.md`, `.claude/feature-registry.json`))
 
 #### Discovery Output Extension
 
-The `discovery-output.md` MUST include:
+The `ARTIFACT:DISCOVERY(SCOPE:...)` MUST include (e.g. `discovery-output.md`):
 
 ```markdown
 ## Feature Identification
@@ -385,7 +450,7 @@ The `discovery-output.md` MUST include:
 6. Document non-functional requirements
 7. Capture explicit goals and anti-goals (out of scope)
 
-**Output**: `discovery-output.md`
+**Output**: `ARTIFACT:DISCOVERY(SCOPE:...)` (e.g. `discovery-output.md`)
 
 - Feature identification (name, description, similarity assessment)
 - Related features (extends/references/none)
@@ -409,7 +474,7 @@ The `discovery-output.md` MUST include:
 
 **Agent**: Planning Agent
 
-**Input**: `discovery-output.md`
+**Input**: `ARTIFACT:DISCOVERY(SCOPE:...)` (e.g. `discovery-output.md`)
 
 **Process**:
 
@@ -421,7 +486,7 @@ The `discovery-output.md` MUST include:
 2. Solution design with success criteria
 3. Risk assessment
 
-**Output**: `design-guide.md`
+**Output**: `ARTIFACT:PLAN(SCOPE:...)` (e.g. `design-guide.md`)
 
 - RT-ICA assessment with decision
 - Solution approach
@@ -439,7 +504,7 @@ The `discovery-output.md` MUST include:
 
 **Agent**: Context Integration Agent
 
-**Input**: `design-guide.md` + codebase access
+**Input**: `ARTIFACT:PLAN(SCOPE:...)` + codebase access (e.g. `design-guide.md`)
 
 **Process**:
 
@@ -449,7 +514,7 @@ The `discovery-output.md` MUST include:
 4. Map existing systems, methodologies, utilities to reuse
 5. Add concrete file/URL references to plan
 
-**Output**: `contextualized-plan.md`
+**Output**: `ARTIFACT:PLAN(SCOPE:...)` (e.g. `contextualized-plan.md`)
 
 - Scope status (what's new vs existing)
 - Resolved conflicts
@@ -467,7 +532,7 @@ The `discovery-output.md` MUST include:
 
 **Agent**: Task Decomposition Agent
 
-**Input**: `contextualized-plan.md`
+**Input**: `ARTIFACT:PLAN(SCOPE:...)` (e.g. `contextualized-plan.md`)
 
 **Process**:
 
@@ -479,7 +544,7 @@ The `discovery-output.md` MUST include:
    - Integration tasks last
 3. Embed ALL context into each task file
 
-**Output**: `task-{N}-{name}.md` for each task
+**Output**: `ARTIFACT:TASK(TASK:...)` for each task (e.g. `task-{N}-{name}.md`)
 
 Each task file contains:
 
@@ -502,7 +567,7 @@ Each task file contains:
 
 **Agent**: Execution Agent (FRESH SESSION)
 
-**Input**: Single `task-{N}-{name}.md` file (AS THE COMPLETE PROMPT)
+**Input**: Single `ARTIFACT:TASK(TASK:...)` (AS THE COMPLETE PROMPT) (e.g. `task-{N}-{name}.md`)
 
 **Process**:
 
@@ -518,7 +583,7 @@ Each task file contains:
 - **Embedded verification**: Cannot skip methodology
 - **Single responsibility**: One task only
 
-**Output**: Implementation + `execution-results-{N}.md`
+**Output**: Implementation + `ARTIFACT:EXECUTION(TASK:...)` (e.g. `execution-results-{N}.md`)
 
 - Status: COMPLETE or BLOCKED
 - Implementation summary
@@ -537,9 +602,9 @@ Each task file contains:
 
 **Input**:
 
-- `execution-results-{N}.md`
-- `task-{N}-{name}.md`
-- `contextualized-plan.md`
+- `ARTIFACT:EXECUTION(TASK:...)` (e.g. `execution-results-{N}.md`)
+- `ARTIFACT:TASK(TASK:...)` (e.g. `task-{N}-{name}.md`)
+- `ARTIFACT:PLAN(SCOPE:...)` (e.g. `contextualized-plan.md`)
 
 **Process**:
 
@@ -548,7 +613,7 @@ Each task file contains:
 3. Fact-check (verify claims, confirm file changes)
 4. Determination: COMPLETE or NEEDS_WORK
 
-**Output**: `review-report-{N}.md`
+**Output**: `ARTIFACT:REVIEW(TASK:...)` (e.g. `review-report-{N}.md`)
 
 - Verdict with evidence
 - Quality scores
@@ -587,9 +652,9 @@ Each task file contains:
 
 **Input**:
 
-- `discovery-output.md` (original goals)
-- All `review-report-{N}.md` files
-- `contextualized-plan.md`
+- `ARTIFACT:DISCOVERY(SCOPE:...)` (original goals) (e.g. `discovery-output.md`)
+- All `ARTIFACT:REVIEW(TASK:...)` artifacts (e.g. `review-report-{N}.md`)
+- `ARTIFACT:PLAN(SCOPE:...)` (e.g. `contextualized-plan.md`)
 
 **Process**:
 
@@ -597,7 +662,7 @@ Each task file contains:
 2. Each acceptance criterion → test result
 3. Feature-level Definition of Done → verification
 
-**Output**: `feature-certification.md`
+**Output**: `ARTIFACT:VERIFICATION(SCOPE:...)` (e.g. `feature-certification.md`)
 
 - CERTIFIED or NOT_CERTIFIED
 - Goal achievement with evidence
