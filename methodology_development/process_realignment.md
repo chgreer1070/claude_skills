@@ -32,11 +32,133 @@ Draft Intended workflow:
        b. review and restate the goal and intent to the user until user approves
 
 2. Skill: Architecture/Design - Identifies what is required to achieve the desired outcome + objectives
-   a. Skill(fork): Creates or updates the Project Requirements Documentation (PRD) artifact and reports what was changed in the document. `ARTIFACT:PRD(SCOPE:...)` (e.g. `project-requirements-documentation`, `prd-feature-scope-{scope-slug}`)
-   b. Skill(fork): Creates or updates the non-functional Requirements (NFR) artifact and reports what was changed in the document. `ARTIFACT:NFR(SCOPE:...)` (e.g. `non-functional-requirements`, `nfr-scope-{scope-slug}`)
-   c. Skill(fork): Creates or updates the System Architecture Diagram, and descides if the project is at the threshold of also requiring Component Architecture (C4) design and System Context Diagram (C4) which shows the interfaces and flow of data and processes through the application. The skill is Provided as input the previous steps structured summary output and the artifacts from a and b. `ARTIFACT:ARCH(SCOPE:...)` (e.g. `system-architecture-diagram`, `component-architecture-diagram`, `system-context-diagram`)
-   d. Skill(fork): Creates or updates the meta project infrastructure documentation with changes to project configuration files like linting rules, packaging, publishing, CI/CD workflows, tooling, tool setup processes. `ARTIFACT:MPI(SCOPE:...)` (e.g. `mpi-{linting,ci-cd,packaging,tooling,contributing,debugging,...etc}`)
-   e. SKill: Updates the Architecture Descision Records (ADR) `ARTIFACT:ADR(DECISION:...)` (e.g. `adr-{index}-{decision-slug}`)
+
+   NOTE: Artifacts selected based on:
+
+   - Project complexity (scope, cross-system impact, infrastructure changes)
+   - Architectural role ownership (Systems/Solutions/Software perspectives)
+   - Explicit user request
+
+   COMPLEXITY ASSESSMENT:
+
+   - **Simple**: Single-module, no external interfaces → ARCH-COMPONENT, API only
+   - **Moderate**: Multi-module, internal APIs, config → add ARCH-CONTAINER, ARCH-SOFTWARE, SAD-SOLUTION
+   - **Complex**: Cross-system, infrastructure, hardware → add ARCH-CONTEXT, ICD, DEPLOYMENT
+   - **Firmware/Embedded**: Hardware interaction → add HAL
+
+   --- Requirements & Scope (ALWAYS) ---
+   a. Skill(fork): Project Requirements Documentation
+
+   - Desired outcome, objectives, acceptance criteria
+   - Feature scope, boundaries, stakeholders
+     `ARTIFACT:PRD(SCOPE:...)`
+
+   b. Skill(fork): Non-Functional Requirements
+
+   - Performance, scalability, reliability, security constraints
+   - Technology constraints, platform requirements
+     `ARTIFACT:NFR(SCOPE:...)`
+
+   --- Architecture Views (complexity-dependent) ---
+   c. Skill(fork): Architecture Artifacts (C4 Model + arc42)
+   Decides threshold for each level based on project complexity.
+   Input: Discovery summary + PRD + NFR
+
+   i. System Context Diagram (C4 L1 - Systems Architect)
+   WHEN: External interfaces, integrations, system boundaries - System boundary, external actors, data flows in/out
+   ROLE: Systems Architect perspective
+   SOURCE: C4 Model <https://c4model.com/diagrams/system-context>
+   `ARTIFACT:ARCH-CONTEXT(SCOPE:...)`
+
+   ii. Container Diagram (C4 L2 - Solutions Architect)
+   WHEN: Multi-service, technology selections, application boundaries - Applications, databases, queues, communication protocols - Technology choices per container
+   ROLE: Solutions Architect perspective
+   SOURCE: C4 Model <https://c4model.com/diagrams/container>
+   `ARTIFACT:ARCH-CONTAINER(SCOPE:...)`
+
+   iii. Component Diagram (C4 L3 - Software Architect)
+   WHEN: Code changes (DEFAULT for most development work) - Internal components, interfaces, dependencies - Module organization and boundaries
+   ROLE: Software/Firmware Architect perspective
+   SOURCE: C4 Model <https://c4model.com/diagrams/component>
+   `ARTIFACT:ARCH-COMPONENT(SCOPE:...)`
+
+   --- Meta Project Infrastructure (when infra changes) ---
+   d. Skill(fork): Meta Project Infrastructure Documentation
+   WHEN: Infrastructure/tooling/process changes
+
+   - Linting, packaging, CI/CD, tooling, contributing, debugging
+     `ARTIFACT:MPI(CATEGORY:...)`
+
+   --- Detailed Specifications (complexity-dependent) ---
+   e. Skill(fork): Detailed Architecture Artifacts
+
+   i. Interface Control Document (Systems Architect)
+   WHEN: External system integration, hardware-software boundaries - Protocols, message formats, external API contracts - Hardware interface specifications
+   ROLE: Systems Architect perspective
+   `ARTIFACT:ICD(INTERFACE:...)`
+
+   ii. API Specification (Software Architect)
+   WHEN: New public interfaces, REST/RPC/GraphQL endpoints - Endpoints, request/response, data types, errors - Authentication, rate limits, versioning
+   ROLE: Software Architect perspective
+   FORMAT: OpenAPI, protobuf, GraphQL schema, etc.
+   `ARTIFACT:API-SPEC(MODULE:...)`
+
+   iii. Software Architecture Document (Software Architect)
+   WHEN: New features, refactoring, architectural changes - Layers, design patterns, module organization - Internal component relationships
+   ROLE: Software Architect perspective
+   SOURCE: arc42 Section 5 - Building Block View
+   `ARTIFACT:ARCH-SOFTWARE(SCOPE:...)`
+
+   iv. Module Design Document (Software Architect)
+   WHEN: Complex modules requiring detailed internal design - Data structures, algorithms, state machines - Error handling, concurrency, resource management
+   ROLE: Software Architect perspective
+   `ARTIFACT:MODULE-DESIGN(MODULE:...)`
+
+   v. Hardware Abstraction Layer Specification (Firmware Architect)
+   WHEN: Firmware/hardware interaction, embedded systems - Register definitions, driver APIs, hardware initialization - Platform-specific abstractions
+   ROLE: Firmware Architect perspective
+   `ARTIFACT:HAL-SPEC(HARDWARE:...)`
+
+   vi. Deployment View (Systems Architect)
+   WHEN: Infrastructure changes, new deployments, scaling - Infrastructure topology, scaling, failover - Software-to-hardware mapping
+   ROLE: Systems Architect perspective
+   SOURCE: arc42 Section 7, C4 Deployment Diagram
+   `ARTIFACT:DEPLOYMENT(SCOPE:...)`
+
+   vii. Solution Architecture Document (Solutions Architect)
+   WHEN: Moderate-complex projects, integration patterns - Business capabilities mapped to technical components - Integration patterns, technology stack rationale
+   ROLE: Solutions Architect perspective
+   SOURCE: arc42 Section 4 - Solution Strategy
+   `ARTIFACT:SAD-SOLUTION(SCOPE:...)`
+
+   --- Architecture Decisions (ALWAYS) ---
+   f. Skill: Architecture Decision Records
+
+   - Technology choices, pattern selections, trade-offs
+   - One ADR per significant architectural decision
+     SOURCE: <https://github.com/joelparkerhenderson/architecture-decision-record>
+     `ARTIFACT:ADR(DECISION:...)`
+
+   ARTIFACT SELECTION MATRIX:
+
+   | Complexity | Always      | Add Systems Arch  | Add Solutions Arch  | Add Software Arch             | Firmware  |
+   | ---------- | ----------- | ----------------- | ------------------- | ----------------------------- | --------- |
+   | Simple     | a,b,c.iii,f | -                 | -                   | c.iii, e.ii                   | -         |
+   | Moderate   | a,b,c.iii,f | c.i (if external) | c.ii, e.vii         | c.iii, e.ii, e.iii            | -         |
+   | Complex    | a,b,c.iii,f | c.i, e.i, e.vi    | c.ii, e.vii         | c.iii, e.ii, e.iii, e.iv      | -         |
+   | Firmware   | a,b,c.iii,f | c.i, e.vi         | c.ii (if multi-sys) | c.iii, e.ii, e.iii, e.iv, e.v | e.v (HAL) |
+
+   NOTE: "d" (MPI) created/updated when project infrastructure changes, regardless of complexity.
+
+   ARTIFACT INTERDEPENDENCIES:
+
+   - ARTIFACT:PRD → informs all architecture artifacts
+   - ARTIFACT:NFR → constrains Solutions and Systems architecture
+   - ARTIFACT:ARCH-CONTEXT → defines scope for ARCH-CONTAINER
+   - ARTIFACT:ARCH-CONTAINER → defines boundaries for ARCH-COMPONENT
+   - ARTIFACT:ARCH-COMPONENT → drives API-SPEC and MODULE-DESIGN
+   - All architecture artifacts → referenced by ADRs for decision rationale
+   - All architecture artifacts → consumed by Planning Coordination (step 3)
 
 3. Skill(fork): Planning Coordination - The plan references what has or hasn't yet been created towards the architecture documents and each phase or step in the plan has a link to what part of which document it implements. This takes the change to the architecture artifacts and organises when it can be done in the sequence of existing items within the plan, and ensures that tthe tasks that are not overlapping are done concurrently, and the tasks that are overlapping in their scope or files they touch are done sequentially, and tasks are done in a way that future tasks can benefit from the creation of items from the previous task. Such as, if one task is creating shared utility functions, it would be done before a task that may need to use those utility functions.
 4. Implementation (with git worktrees)
