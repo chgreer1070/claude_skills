@@ -1,6 +1,6 @@
 ---
 name: use-command-template
-description: 'This skill should be used when the user asks to "create a new skill", "add a skill to plugin", "write skill from template", or needs to create new Claude Code skills following established patterns. Note: Commands are deprecated - this creates skills instead.'
+description:'This skill should be used when the user asks to \"create a new skill\", \"add a skill to plugin\", \"write skill from template\", or needs to create new Claude Code skills following established patterns. Note: Commands are deprecated - this creates skills instead.'
 version: "1.0.0"
 last_updated: "2026-01-25"
 user-invocable: true

@@ -112,6 +112,10 @@
     {
       "name": "plugin-creator",
       "source": "./plugins/plugin-creator"
+    },
+    {
+      "name": "hallucination-detector",
+      "source": "./plugins/hallucination-detector"
     }
   ]
 }

@@ -213,7 +213,7 @@ CONVERT the original skill to a facade/meta-skill that loads all new specialist 
 ```yaml
 ---
 name: {original-name}
-description: '{Original description}. Loads focused specialist skills: {skill-1}, {skill-2}, {skill-3}.'
+description:"{Original description}. Loads focused specialist skills: {skill-1}, {skill-2}, {skill-3}."
 user-invocable: true
 ---
 

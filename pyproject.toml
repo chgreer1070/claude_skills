@@ -223,4 +223,5 @@ dev = [
 	"python-semantic-release>=10.4.1",
 	"tiktoken>=0.12.0",
 	"typer>=0.20.0",
+	"types-pyyaml>=6.0.12.20250915",
 ]

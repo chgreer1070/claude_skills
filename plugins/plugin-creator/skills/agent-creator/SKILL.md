@@ -228,9 +228,78 @@ BEFORE saving the agent file, verify:
 - [ ] Model choice matches complexity requirements
 - [ ] Frontmatter YAML is valid
 
-### Phase 7: File Placement
+### Phase 7: Scope and File Placement
 
-SAVE the agent to `.claude/agents/{agent-name}.md`
+DETERMINE the agent scope before saving. Use AskUserQuestion to clarify:
+
+<scope_decision>
+
+**Question to Ask:**
+
+"Where should this agent be available?"
+
+**Options:**
+
+A) **Project-level** - Available only in this project (saved to `.claude/agents/`)
+
+- Use when: Agent is specific to this codebase
+- Checked into git: Yes
+- Team access: Yes
+
+B) **User-level** - Available in all your projects (saved to `~/.claude/agents/`)
+
+- Use when: Agent is general-purpose, reusable across projects
+- Checked into git: No
+- Team access: No (personal only)
+
+C) **Plugin** - Part of a plugin (saved to plugin directory + update plugin.json)
+
+- Use when: Agent is part of a distributable plugin
+- Checked into git: Yes (if plugin is versioned)
+- Team access: Via plugin installation
+
+</scope_decision>
+
+**After user selects scope:**
+
+#### For Project-Level Agents
+
+1. SAVE agent to `.claude/agents/{agent-name}.md`
+2. VERIFY file created successfully
+3. RUN validation: `uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate .claude/agents/{agent-name}.md`
+
+#### For User-Level Agents
+
+1. SAVE agent to `~/.claude/agents/{agent-name}.md`
+2. VERIFY file created successfully
+3. RUN validation: `uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate ~/.claude/agents/{agent-name}.md`
+
+#### For Plugin Agents
+
+1. ASK: "Which plugin should contain this agent?"
+2. VERIFY plugin exists at specified path
+3. SAVE agent to `{plugin-path}/agents/{agent-name}.md`
+4. READ `{plugin-path}/.claude-plugin/plugin.json`
+5. UPDATE plugin.json to add agent to `agents` array:
+   ```json
+   {
+     "agents": [
+       "./agents/{agent-name}.md"
+     ]
+   }
+   ```
+6. VALIDATE plugin.json syntax
+7. RUN plugin validation: `claude plugin validate {plugin-path}`
+8. RUN agent frontmatter validation: `uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate {plugin-path}/agents/{agent-name}.md`
+
+### Phase 8: Post-Creation Validation
+
+AFTER saving the agent file:
+
+1. **Validate frontmatter** using validate_frontmatter.py script
+2. **Validate plugin** if agent is part of a plugin (using `claude plugin validate`)
+3. **Check for validation errors** and fix if needed
+4. **Confirm success** to user with file location
 
 </workflow>
 
@@ -772,8 +841,14 @@ After creating an agent, test it before production use.
 
 ### Testing Checklist
 
-- [ ] Agent file saved to `.claude/agents/{name}.md`
+- [ ] Agent file saved to correct location:
+  - Project: `.claude/agents/{name}.md`
+  - User: `~/.claude/agents/{name}.md`
+  - Plugin: `{plugin-path}/agents/{name}.md`
+- [ ] If plugin agent: plugin.json updated with agent path
+- [ ] If plugin agent: `claude plugin validate` passed
 - [ ] YAML frontmatter parses correctly (no syntax errors)
+- [ ] Frontmatter validation passed (via validate_frontmatter.py)
 - [ ] Name follows constraints (lowercase, hyphens, max 64 chars)
 - [ ] Description includes trigger keywords
 - [ ] All referenced skills exist
@@ -944,9 +1019,13 @@ AS you build the agent:
 WHEN finished:
 
 1. DISPLAY the complete agent file
-2. VERIFY it passes validation checklist
-3. SAVE to `.claude/agents/{name}.md`
-4. REMIND user to test the agent with example prompts
+2. VERIFY it passes validation checklist (Phase 6)
+3. ASK user where to save (project/user/plugin) using AskUserQuestion
+4. SAVE to appropriate location based on scope (Phase 7)
+5. UPDATE plugin.json if agent is part of a plugin
+6. RUN validation on agent file and plugin (if applicable) (Phase 8)
+7. REPORT file location and validation results
+8. REMIND user to test the agent with example prompts
 
 </interaction>
 

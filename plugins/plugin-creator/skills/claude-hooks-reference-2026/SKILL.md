@@ -11,18 +11,21 @@ Hooks execute custom commands or prompts in response to Claude Code events. Use 
 
 ## All Hook Events
 
-| Event               | When Fired                        | Matcher Applies | Common Uses            |
-| ------------------- | --------------------------------- | --------------- | ---------------------- |
-| `PreToolUse`        | Before tool execution             | Yes             | Validation, blocking   |
-| `PermissionRequest` | When user shown permission dialog | Yes             | Auto-approval policies |
-| `PostToolUse`       | After successful tool execution   | Yes             | Formatting, linting    |
-| `Notification`      | When Claude wants attention       | Yes             | Custom notifications   |
-| `UserPromptSubmit`  | User submits prompt               | No              | Input validation       |
-| `Stop`              | Claude finishes response          | No              | Cleanup, final checks  |
-| `SubagentStop`      | Subagent (Task tool) completes    | No              | Result validation      |
-| `PreCompact`        | Before context compaction         | Yes             | State backup           |
-| `SessionStart`      | Session begins or resumes         | Yes             | Environment setup      |
-| `SessionEnd`        | Session ends                      | No              | Cleanup, persistence   |
+| Event                | When Fired                        | Matcher Applies | Common Uses             |
+| -------------------- | --------------------------------- | --------------- | ----------------------- |
+| `PreToolUse`         | Before tool execution             | Yes             | Validation, blocking    |
+| `PermissionRequest`  | When user shown permission dialog | Yes             | Auto-approval policies  |
+| `PostToolUse`        | After successful tool execution   | Yes             | Formatting, linting     |
+| `PostToolUseFailure` | After tool fails                  | Yes             | Error handling          |
+| `Notification`       | When Claude wants attention       | Yes             | Custom notifications    |
+| `UserPromptSubmit`   | User submits prompt               | No              | Input validation        |
+| `Stop`               | Claude finishes response          | No              | Cleanup, final checks   |
+| `SubagentStart`      | When spawning a subagent          | No              | Subagent initialization |
+| `SubagentStop`       | Subagent (Task tool) completes    | No              | Result validation       |
+| `PreCompact`         | Before context compaction         | Yes             | State backup            |
+| `Setup`              | Repository setup/maintenance      | Yes             | One-time operations     |
+| `SessionStart`       | Session begins or resumes         | Yes             | Environment setup       |
+| `SessionEnd`         | Session ends                      | No              | Cleanup, persistence    |
 
 ---
 
@@ -238,6 +241,13 @@ Set `once: true` to run hook only once per session. After first successful execu
 | `manual` | `/compact` command          |
 | `auto`   | Auto-compact (full context) |
 
+### Setup Matchers
+
+| Matcher       | Trigger                         |
+| ------------- | ------------------------------- |
+| `init`        | `--init` or `--init-only` flags |
+| `maintenance` | `--maintenance` flag            |
+
 ### Notification Matchers
 
 | Matcher              | Trigger                              |
@@ -342,12 +352,13 @@ Set `once: true` to run hook only once per session. After first successful execu
 }
 ```
 
-### Stop / SubagentStop Input
+### Stop Input
 
 ```json
 {
   "session_id": "abc123",
   "transcript_path": "/path/to/session.jsonl",
+  "cwd": "/path/to/project",
   "permission_mode": "default",
   "hook_event_name": "Stop",
   "stop_hook_active": true
@@ -356,12 +367,53 @@ Set `once: true` to run hook only once per session. After first successful execu
 
 **`stop_hook_active`**: True when Claude is already continuing due to a stop hook. Check this to prevent infinite loops.
 
+### SubagentStart Input
+
+```json
+{
+  "session_id": "abc123",
+  "transcript_path": "/path/to/session.jsonl",
+  "cwd": "/path/to/project",
+  "permission_mode": "default",
+  "hook_event_name": "SubagentStart",
+  "agent_id": "agent-abc123",
+  "agent_type": "Explore"
+}
+```
+
+**Fields**:
+
+- `agent_id`: Unique identifier for the subagent
+- `agent_type`: Agent name (built-in like "Bash", "Explore", "Plan", or custom agent names)
+
+### SubagentStop Input
+
+```json
+{
+  "session_id": "abc123",
+  "transcript_path": "/path/to/session.jsonl",
+  "cwd": "/path/to/project",
+  "permission_mode": "default",
+  "hook_event_name": "SubagentStop",
+  "stop_hook_active": false,
+  "agent_id": "def456",
+  "agent_transcript_path": "/path/to/subagents/agent-def456.jsonl"
+}
+```
+
+**Fields**:
+
+- `agent_id`: Unique identifier for the subagent
+- `agent_transcript_path`: Path to the subagent's own transcript in nested `subagents/` folder
+- `stop_hook_active`: True when already continuing due to a stop hook
+
 ### PreCompact Input
 
 ```json
 {
   "session_id": "abc123",
   "transcript_path": "/path/to/session.jsonl",
+  "cwd": "/path/to/project",
   "permission_mode": "default",
   "hook_event_name": "PreCompact",
   "trigger": "manual",
@@ -369,17 +421,43 @@ Set `once: true` to run hook only once per session. After first successful execu
 }
 ```
 
+### Setup Input
+
+```json
+{
+  "session_id": "abc123",
+  "transcript_path": "/path/to/session.jsonl",
+  "cwd": "/path/to/project",
+  "permission_mode": "default",
+  "hook_event_name": "Setup",
+  "trigger": "init"
+}
+```
+
+**Fields**:
+
+- `trigger`: Either `"init"` (from `--init` or `--init-only`) or `"maintenance"` (from `--maintenance`)
+- Setup hooks have access to `CLAUDE_ENV_FILE` for persisting environment variables
+
 ### SessionStart Input
 
 ```json
 {
   "session_id": "abc123",
   "transcript_path": "/path/to/session.jsonl",
+  "cwd": "/path/to/project",
   "permission_mode": "default",
   "hook_event_name": "SessionStart",
-  "source": "startup"
+  "source": "startup",
+  "model": "claude-sonnet-4-20250514"
 }
 ```
+
+**Fields**:
+
+- `source`: Indicates how session started: `"startup"` (new), `"resume"` (resumed), `"clear"` (after `/clear`), or `"compact"` (after compaction)
+- `model`: Model identifier when available
+- `agent_type`: (Optional) Present when Claude Code started with `claude --agent <name>`
 
 ### SessionEnd Input
 
@@ -412,18 +490,21 @@ Set `once: true` to run hook only once per session. After first successful execu
 
 ### Exit Code 2 Behavior Per Event
 
-| Event               | Exit Code 2 Behavior                             |
-| ------------------- | ------------------------------------------------ |
-| `PreToolUse`        | Blocks tool call, shows stderr to Claude         |
-| `PermissionRequest` | Denies permission, shows stderr to Claude        |
-| `PostToolUse`       | Shows stderr to Claude (tool already ran)        |
-| `Notification`      | Shows stderr to user only                        |
-| `UserPromptSubmit`  | Blocks prompt, erases it, shows stderr to user   |
-| `Stop`              | Blocks stoppage, shows stderr to Claude          |
-| `SubagentStop`      | Blocks stoppage, shows stderr to Claude subagent |
-| `PreCompact`        | Shows stderr to user only                        |
-| `SessionStart`      | Shows stderr to user only                        |
-| `SessionEnd`        | Shows stderr to user only                        |
+| Event                | Exit Code 2 Behavior                             |
+| -------------------- | ------------------------------------------------ |
+| `PreToolUse`         | Blocks tool call, shows stderr to Claude         |
+| `PermissionRequest`  | Denies permission, shows stderr to Claude        |
+| `PostToolUse`        | Shows stderr to Claude (tool already ran)        |
+| `PostToolUseFailure` | Shows stderr to Claude (tool already failed)     |
+| `Notification`       | Shows stderr to user only                        |
+| `UserPromptSubmit`   | Blocks prompt, erases it, shows stderr to user   |
+| `Stop`               | Blocks stoppage, shows stderr to Claude          |
+| `SubagentStart`      | Shows stderr to user only                        |
+| `SubagentStop`       | Blocks stoppage, shows stderr to Claude subagent |
+| `PreCompact`         | Shows stderr to user only                        |
+| `Setup`              | Shows stderr to user only                        |
+| `SessionStart`       | Shows stderr to user only                        |
+| `SessionEnd`         | Shows stderr to user only                        |
 
 ---
 
@@ -560,6 +641,19 @@ Deny with message:
 - `"block"` prevents Claude from stopping. Must populate `reason`
 - `undefined` allows Claude to stop. `reason` is ignored
 
+### Setup JSON Output
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "Setup",
+    "additionalContext": "Repository initialized with custom configuration"
+  }
+}
+```
+
+**Note**: Multiple hooks' `additionalContext` values are concatenated. Setup hooks have access to `CLAUDE_ENV_FILE` for persisting environment variables.
+
 ### SessionStart JSON Output
 
 ```json
@@ -691,14 +785,83 @@ Use `$ARGUMENTS` in prompt to include hook input JSON. If omitted, input is appe
 
 ---
 
+## Important Hook Events
+
+### Setup Hook
+
+Runs when Claude Code is invoked with repository setup and maintenance flags (`--init`, `--init-only`, or `--maintenance`).
+
+**Use Setup hooks for**:
+
+- One-time or occasional operations (dependency installation, migrations, cleanup)
+- Operations you don't want on every session start
+
+**Matchers**:
+
+- `init` - Invoked from `--init` or `--init-only` flags
+- `maintenance` - Invoked from `--maintenance` flag
+
+**Key characteristics**:
+
+- Requires explicit flags because running automatically would slow down every session start
+- Has access to `CLAUDE_ENV_FILE` for persisting environment variables
+- Output added to Claude's context
+
+### SessionStart Hook
+
+Runs when Claude Code starts a new session or resumes an existing session.
+
+**Use SessionStart hooks for**:
+
+- Loading development context (existing issues, recent changes)
+- Setting up environment variables
+
+**Important**: For one-time operations like installing dependencies or running migrations, use Setup hooks instead. SessionStart runs on every session, so keep these hooks fast.
+
+**Matchers**:
+
+- `startup` - New sessions
+- `resume` - Resumed sessions (from `--resume`, `--continue`, or `/resume`)
+- `clear` - After `/clear` command
+- `compact` - After auto or manual compact
+
+### PostToolUseFailure Hook
+
+Runs immediately after a tool fails (returns an error). This complements PostToolUse, which only runs on successful tool execution.
+
+**Use PostToolUseFailure hooks for**:
+
+- Error recovery actions
+- Logging tool failures
+- Custom error handling and reporting
+
+**Recognizes the same matcher values as PreToolUse and PostToolUse.**
+
+### SubagentStart Hook
+
+Runs when a Claude Code subagent (Task tool call) is spawned.
+
+**Use SubagentStart hooks for**:
+
+- Subagent initialization
+- Logging subagent creation
+- Context injection for specific agent types
+
+**Input includes**:
+
+- `agent_id`: Unique identifier for the subagent
+- `agent_type`: Agent name (built-in like "Bash", "Explore", "Plan", or custom agent names)
+
+---
+
 ## Environment Variables
 
-| Variable             | Description                        | Available In      |
-| -------------------- | ---------------------------------- | ----------------- |
-| `CLAUDE_PROJECT_DIR` | Project root (absolute path)       | All hooks         |
-| `CLAUDE_CODE_REMOTE` | `"true"` if remote, empty if local | All hooks         |
-| `CLAUDE_ENV_FILE`    | Path for persisting env vars       | SessionStart only |
-| `CLAUDE_PLUGIN_ROOT` | Plugin directory (absolute)        | Plugin hooks      |
+| Variable             | Description                        | Available In        |
+| -------------------- | ---------------------------------- | ------------------- |
+| `CLAUDE_PROJECT_DIR` | Project root (absolute path)       | All hooks           |
+| `CLAUDE_CODE_REMOTE` | `"true"` if remote, empty if local | All hooks           |
+| `CLAUDE_ENV_FILE`    | Path for persisting env vars       | SessionStart, Setup |
+| `CLAUDE_PLUGIN_ROOT` | Plugin directory (absolute)        | Plugin hooks        |
 
 ### SessionStart Environment Persistence
 
@@ -790,11 +953,11 @@ MCP tools follow the pattern `mcp__<server>__<tool>`:
 
 ### Output Handling by Event
 
-| Event                          | stdout Handling                  |
-| ------------------------------ | -------------------------------- |
-| UserPromptSubmit, SessionStart | Added to Claude's context        |
-| PreToolUse, PostToolUse, Stop  | Shown in verbose mode (Ctrl+O)   |
-| Notification, SessionEnd       | Logged to debug only (`--debug`) |
+| Event                                   | stdout Handling                  |
+| --------------------------------------- | -------------------------------- |
+| UserPromptSubmit, SessionStart, Setup   | Added to Claude's context        |
+| PreToolUse, PostToolUse, Stop           | Shown in verbose mode (Ctrl+O)   |
+| Notification, SessionEnd, SubagentStart | Logged to debug only (`--debug`) |
 
 ---
 
@@ -1126,7 +1289,7 @@ console.log(JSON.stringify(output));
 
 ## Sources
 
-- [Hooks Reference](https://code.claude.com/docs/en/hooks) (January 2026)
-- [Hooks Guide](https://code.claude.com/docs/en/hooks-guide)
-- [Settings Reference](https://code.claude.com/docs/en/settings)
-- [Plugin Components Reference](https://code.claude.com/docs/en/plugins-reference#hooks)
+- [Hooks Reference](https://code.claude.com/docs/en/hooks.md) (accessed 2026-01-28)
+- [Hooks Guide](https://code.claude.com/docs/en/hooks-guide.md)
+- [Settings Reference](https://code.claude.com/docs/en/settings.md)
+- [Plugin Components Reference](https://code.claude.com/docs/en/plugins-reference.md#hooks)

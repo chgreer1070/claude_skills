@@ -1,6 +1,29 @@
 {
   "name": "plugin-creator",
-  "description": "Step-by-step guidance for creating Claude Code plugins. Use when creating new plugins, structuring plugin directories, writing plugin.json manifests, creating SKILL.md files, or validating plugin structure. References verified official documentation.",
-  "version": "1.0.0",
-  "skills": ["./skills/plugin-creator"]
+  "description": "Complete plugin development toolkit for creating, refactoring, and validating Claude Code plugins and agents. Use when creating new plugins/skills/agents, refactoring existing plugins/skills, validating frontmatter, or restructuring plugin components. Includes specialized agents for assessment, planning, execution, and validation workflows.",
+  "version": "2.3.0",
+  "author": {
+    "name": "Jamie Hoover",
+    "url": "https://github.com/bitflight-devops"
+  },
+  "skills": [
+    "./skills/plugin-creator",
+    "./skills/agent-creator",
+    "./skills/claude-skills-overview-2026",
+    "./skills/claude-plugins-reference-2026",
+    "./skills/claude-hooks-reference-2026",
+    "./skills/assessor",
+    "./skills/ensure-complete",
+    "./skills/feature-discovery",
+    "./skills/implement-refactor",
+    "./skills/refactor-plugin",
+    "./skills/refactor-skill",
+    "./skills/start-refactor-task"
+  ],
+  "agents": [
+    "./agents/refactor-planner.md",
+    "./agents/refactor-executor.md",
+    "./agents/refactor-validator.md"
+  ],
+  "commands": ["./commands/count-lines.md"]
 }

@@ -4,6 +4,7 @@
 # dependencies = [
 #     "typer>=0.19.2",
 #     "pyyaml>=6.0",
+#     "types-pyyaml>=6.0.0",
 # ]
 # ///
 """Restructure claude_skills repository from flat skills to plugin marketplace format.

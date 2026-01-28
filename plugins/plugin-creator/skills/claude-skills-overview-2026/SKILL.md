@@ -98,10 +98,7 @@ Skills use progressive disclosure - only frontmatter loads initially (~100 token
 ```yaml
 # WRONG - will show ">-" as description
 description: 'This is a multiline description that breaks.  # WRONG - same problem'
-description: |
-  This breaks too.
-
-# CORRECT - single quoted string
+description: 'This breaks too.  # CORRECT - single quoted string'
 description: 'This works correctly. Use single quotes for descriptions with special characters or keep on one line.'
 ```
 
