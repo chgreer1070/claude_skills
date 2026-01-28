@@ -73,10 +73,12 @@ uv run ./scripts/validate_frontmatter.py fix ./skills/my-skill/SKILL.md
 
 ### Creation Skills
 
-| Skill            | Purpose                                                                            |
-| ---------------- | ---------------------------------------------------------------------------------- |
-| `plugin-creator` | Step-by-step guidance for creating Claude Code plugins                             |
-| `agent-creator`  | Create high-quality Claude Code agents from scratch or by adapting existing agents |
+| Skill                           | Purpose                                                                                        |
+| ------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `plugin-creator`                | Step-by-step guidance for creating Claude Code plugins                                         |
+| `skill-creator`                 | Official Anthropic guide for creating effective skills (modified from upstream)                |
+| `agent-creator`                 | Create high-quality Claude Code agents from scratch or by adapting existing agents             |
+| `write-frontmatter-description` | Write or rewrite frontmatter description fields for skills and agents following best practices |
 
 ### Reference Skills
 
@@ -192,7 +194,7 @@ uv run ./scripts/validate_frontmatter.py fix-batch ./plugins/my-plugin
 │                    REFACTORING WORKFLOW                          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  Invoke refactor-planner agent                                   │
+│  Invoke @"plugin-creator:refactor-planner (agent)"              │
 │           │                                                      │
 │           ▼                                                      │
 │  ┌─────────────────┐                                            │
@@ -213,7 +215,7 @@ uv run ./scripts/validate_frontmatter.py fix-batch ./plugins/my-plugin
 │  └────────┬────────┘                                            │
 │           │                                                      │
 │           ▼                                                      │
-│  Invoke refactor-executor agent                                  │
+│  Invoke @"plugin-creator:refactor-executor (agent)"             │
 │           │                                                      │
 │           ▼                                                      │
 │  ┌─────────────────┐                                            │
@@ -222,7 +224,7 @@ uv run ./scripts/validate_frontmatter.py fix-batch ./plugins/my-plugin
 │  └────────┬────────┘                                            │
 │           │                                                      │
 │           ▼                                                      │
-│  Invoke refactor-validator agent                                 │
+│  Invoke @"plugin-creator:refactor-validator (agent)"            │
 │           │                                                      │
 │           ▼                                                      │
 │  ┌─────────────────┐                                            │
@@ -276,13 +278,132 @@ When splitting skills:
 - `model`: One of sonnet/opus/haiku/inherit
 - `tools`: Comma-separated string (not array)
 
+## Plugin System Fundamentals
+
+### Plugin Caching and File Resolution
+
+Claude Code copies plugins to a cache directory rather than using them in-place for security and verification.
+
+**How it works:**
+
+- Marketplace plugins: The `source` path is copied recursively
+- Plugins with `.claude-plugin/plugin.json`: The directory containing `.claude-plugin/` is copied recursively
+
+**Path traversal limitations:**
+
+- Plugins cannot reference files outside their directory (`../shared-utils` will fail)
+- External files are not copied to the cache
+
+**Solutions for external dependencies:**
+
+1. **Use symlinks:** Create symlinks within your plugin directory (symlinks are followed during copy)
+
+   ```bash
+   ln -s /path/to/shared-utils ./shared-utils
+   ```
+
+2. **Restructure marketplace:** Set source to parent directory that contains all required files
+
+### Installation Scopes
+
+When installing a plugin, choose a scope that determines availability:
+
+| Scope     | Settings file                 | Use case                                                 |
+| --------- | ----------------------------- | -------------------------------------------------------- |
+| `user`    | `~/.claude/settings.json`     | Personal plugins available across all projects (default) |
+| `project` | `.claude/settings.json`       | Team plugins shared via version control                  |
+| `local`   | `.claude/settings.local.json` | Project-specific plugins, gitignored                     |
+| `managed` | `managed-settings.json`       | Managed plugins (read-only, update only)                 |
+
+**Examples:**
+
+```bash
+# Install to user scope (default)
+claude plugin install plugin-creator@jamie-bitflight-skills
+
+# Install to project scope (shared with team)
+claude plugin install plugin-creator@jamie-bitflight-skills --scope project
+
+# Install to local scope (gitignored)
+claude plugin install plugin-creator@jamie-bitflight-skills --scope local
+```
+
+### Environment Variables
+
+**`${CLAUDE_PLUGIN_ROOT}`:** Absolute path to your plugin directory. Use in hooks, MCP servers, and scripts.
+
+**`${CLAUDE_PROJECT_DIR}`:** Project root directory (where Claude Code was started).
+
+**Example:**
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [{
+      "hooks": [{
+        "type": "command",
+        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/process.sh"
+      }]
+    }]
+  }
+}
+```
+
+### CLI Commands Reference
+
+**Install plugin:**
+
+```bash
+claude plugin install <plugin> [--scope user|project|local]
+```
+
+**Uninstall plugin:**
+
+```bash
+claude plugin uninstall <plugin> [--scope user|project|local]
+# Aliases: remove, rm
+```
+
+**Enable/disable plugin:**
+
+```bash
+claude plugin enable <plugin> [--scope user|project|local]
+claude plugin disable <plugin> [--scope user|project|local]
+```
+
+**Update plugin:**
+
+```bash
+claude plugin update <plugin> [--scope user|project|local|managed]
+```
+
+**Validate plugin:**
+
+```bash
+claude plugin validate <plugin-directory>
+/plugin validate <plugin-directory>  # In session
+```
+
+### Testing Without Installation
+
+```bash
+# Load plugin for current session only
+claude --plugin-dir ./plugins/plugin-creator
+
+# Load multiple plugins
+claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
+```
+
 ## Installation
 
 ```bash
-# From marketplace
+# From marketplace (user scope - default)
 /plugin install plugin-creator@jamie-bitflight-skills
 
-# For development
+# Install to project scope (shared with team)
+claude plugin install plugin-creator@jamie-bitflight-skills --scope project
+
+# For development (session only)
 claude --plugin-dir ./plugins/plugin-creator
 ```
 
@@ -312,20 +433,20 @@ claude plugin validate ./my-new-plugin
 # 2. Validate skill structures
 ./scripts/validate-skill-structure.sh ./plugins/python3-development/skills/python3
 
-# 3. Invoke refactor-planner agent
-Use the refactor-planner agent to analyze ./plugins/python3-development
+# 3. Invoke @"plugin-creator:refactor-planner (agent)"
+Use @"plugin-creator:refactor-planner (agent)" to analyze ./plugins/python3-development
 
 # Assessment runs, creates plan files
 
 # 4. Review plan at .claude/plan/refactor-design-python3-development.md
 
-# 5. Invoke refactor-executor when ready
-Use the refactor-executor agent to execute the python3-development refactoring plan
+# 5. Invoke @"plugin-creator:refactor-executor (agent)" when ready
+Use @"plugin-creator:refactor-executor (agent)" to execute the python3-development refactoring plan
 
 # Tasks execute in parallel where possible
 
-# 6. Invoke refactor-validator
-Use the refactor-validator agent to validate the python3-development refactoring
+# 6. Invoke @"plugin-creator:refactor-validator (agent)"
+Use @"plugin-creator:refactor-validator (agent)" to validate the python3-development refactoring
 
 # If issues found, follow-up tasks created and cycle repeats
 ```
@@ -349,6 +470,60 @@ uv run ./scripts/validate_frontmatter.py fix ./skills/my-skill/SKILL.md
 uv run ./scripts/validate_frontmatter.py fix-batch ./plugins/my-plugin
 ```
 
+## Plugin Component Reference
+
+### plugin.json Component Fields
+
+| Field          | Type           | Description                                         | Example                                  |
+| -------------- | -------------- | --------------------------------------------------- | ---------------------------------------- |
+| `commands`     | string\|array  | Additional command files/directories                | `"./custom/cmd.md"` or `["./cmd1.md"]`   |
+| `agents`       | string\|array  | Additional agent files or directories               | `"./custom/agents/"` or `["./agent.md"]` |
+| `skills`       | string\|array  | Additional skill directories                        | `"./custom/skills/"`                     |
+| `hooks`        | string\|object | Hook config path or inline config                   | `"./hooks.json"`                         |
+| `mcpServers`   | string\|object | MCP config path or inline config                    | `"./mcp-config.json"`                    |
+| `outputStyles` | string\|array  | Additional output style files/directories           | `"./styles/"`                            |
+| `lspServers`   | string\|object | Language Server Protocol config (code intelligence) | `"./.lsp.json"`                          |
+
+**Path behavior:**
+
+- Custom paths supplement default directories (don't replace them)
+- All paths must be relative and start with `./`
+- Multiple paths can be specified as arrays
+
+### LSP Servers
+
+Plugins can provide Language Server Protocol (LSP) servers for real-time code intelligence:
+
+- **Instant diagnostics:** Claude sees errors and warnings immediately after edits
+- **Code navigation:** go to definition, find references, hover information
+- **Language awareness:** type information and documentation for code symbols
+
+**Configuration format:**
+
+```json
+{
+  "lspServers": {
+    "python": {
+      "command": "pyright-langserver",
+      "args": ["--stdio"],
+      "extensionToLanguage": {
+        ".py": "python"
+      }
+    }
+  }
+}
+```
+
+**Note:** LSP servers require separate binary installation. LSP plugins configure Claude Code's connection to a language server but don't include the server itself.
+
+**Available LSP plugins:**
+
+| Plugin           | Language server  | Install command                                                                            |
+| ---------------- | ---------------- | ------------------------------------------------------------------------------------------ |
+| `pyright-lsp`    | Pyright (Python) | `pip install pyright` or `npm install -g pyright`                                          |
+| `typescript-lsp` | TypeScript LS    | `npm install -g typescript-language-server typescript`                                     |
+| `rust-lsp`       | rust-analyzer    | See [rust-analyzer installation](https://rust-analyzer.github.io/manual.html#installation) |
+
 ## Related Plugins
 
 - **holistic-linting** - Code quality and linting workflows
@@ -357,12 +532,16 @@ uv run ./scripts/validate_frontmatter.py fix-batch ./plugins/my-plugin
 
 ## Version
 
-2.3.0 - Added claude-plugins-reference-2026 and claude-hooks-reference-2026 reference skills
+2.5.0 - Added official Anthropic skill-creator skill (modified from upstream)
 
 ## Author
 
 Jamie Hoover (<https://github.com/bitflight-devops>)
 
+## Attributions
+
+- **skill-creator skill**: Modified version of the official Anthropic skill-creator from [anthropics/skills](https://github.com/anthropics/skills/tree/69c0b1a0674149f27b61b2635f935524b6add202/skills/skill-creator). Licensed under Apache License 2.0 (see `skills/skill-creator/LICENSE.txt`).
+
 ## License
 
-MIT License
+MIT License (excluding skill-creator which retains Apache License 2.0)

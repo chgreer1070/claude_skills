@@ -1,6 +1,7 @@
 ---
 name: claude-skills-overview-2026
 description: Reference guide for Claude Code skills system (January 2026). Use when creating, modifying, or understanding skills, SKILL.md format, frontmatter fields, hooks, context fork, or skill best practices.
+user-invocable: true
 ---
 
 # Claude Code Skills System - Complete Reference (January 2026)
@@ -46,6 +47,8 @@ hooks:
 
 Your instructions here...
 ```
+
+**Validation**: Use `claude plugin validate` to validate plugin structure. For skills bundled in plugins, see [./claude-plugins-reference-2026/SKILL.md](../claude-plugins-reference-2026/SKILL.md) for plugin.json schema requirements.
 
 ---
 
@@ -109,6 +112,11 @@ When total skill metadata exceeds ~15,000 characters:
 1. Skills are truncated from the `<available_skills>` block
 2. Truncated skills cannot be auto-invoked by Claude
 3. User can still invoke truncated skills explicitly with `/skill-name`
+4. Run `/context` to check for a warning about excluded skills
+
+To increase the limit, set the `SLASH_COMMAND_TOOL_CHAR_BUDGET` environment variable.
+
+**Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Troubleshooting")
 
 ### Fallback Strategy
 
@@ -131,7 +139,23 @@ Skills support string substitution for dynamic values in the skill content:
 | Variable               | Description                                                                                                                                  |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `$ARGUMENTS`           | All arguments passed when invoking the skill. If `$ARGUMENTS` is not present in the content, arguments are appended as `ARGUMENTS: <value>`. |
+| `$ARGUMENTS[N]`        | Access a specific argument by 0-based index, such as `$ARGUMENTS[0]` for the first argument.                                                 |
+| `$N`                   | Shorthand for `$ARGUMENTS[N]`, such as `$0` for the first argument or `$1` for the second.                                                   |
 | `${CLAUDE_SESSION_ID}` | The current session ID. Useful for logging, creating session-specific files, or correlating skill output with sessions.                      |
+
+**Example with positional arguments:**
+
+```yaml
+---
+name: migrate-component
+description: Migrate a component from one framework to another
+---
+
+Migrate the $0 component from $1 to $2.
+Preserve all existing behavior and tests.
+```
+
+Running `/migrate-component SearchBar React Vue` replaces `$0` with `SearchBar`, `$1` with `React`, and `$2` with `Vue`.
 
 ---
 
@@ -149,7 +173,9 @@ The exclamation then backtick syntax runs shell commands before the skill conten
 
 **This is preprocessing**, not something Claude executes. Claude only sees the final result.
 
-**Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Inject dynamic context")
+**Extended Thinking**: To enable [extended thinking mode](/en/common-workflows#use-extended-thinking-thinking-mode) in a skill, include the word "ultrathink" anywhere in your skill content.
+
+**Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (sections: "Inject dynamic context", "Advanced patterns")
 
 ---
 
@@ -165,14 +191,24 @@ skill-name/
 
 ### Location Priority (Highest to Lowest)
 
-1. **Managed/Enterprise** - System-level
+1. **Managed/Enterprise** - System-level (see [managed settings](/en/iam#managed-settings))
 2. **Personal** - `~/.claude/skills/`
 3. **Project** - `.claude/skills/`
-4. **Plugin** - Bundled with plugins
+4. **Plugin** - Bundled with plugins (see [./claude-plugins-reference-2026/SKILL.md](../claude-plugins-reference-2026/SKILL.md))
+
+When skills share the same name across levels, higher-priority locations win: enterprise > personal > project. Plugin skills use a `plugin-name:skill-name` namespace, so they cannot conflict with other levels.
+
+#### Automatic Discovery from Nested Directories
+
+When you work with files in subdirectories, Claude Code automatically discovers skills from nested `.claude/skills/` directories. For example, if you're editing a file in `packages/frontend/`, Claude Code also looks for skills in `packages/frontend/.claude/skills/`. This supports monorepo setups where packages have their own skills.
+
+**Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Where skills live")
 
 ---
 
 ## Hooks in Skills
+
+Skills can define hooks in frontmatter to respond to events during the skill's lifecycle. See [./claude-hooks-reference-2026/SKILL.md](../claude-hooks-reference-2026/SKILL.md) for complete hook documentation.
 
 ### Hook Events
 
@@ -198,6 +234,8 @@ hooks:
 - Exit 0: Success
 - Exit 2: Blocking error (prevents tool, shows stderr)
 - Other: Non-blocking error
+
+For complete hook configuration including all events, matchers, JSON output control, and examples, see [./claude-hooks-reference-2026/SKILL.md](../claude-hooks-reference-2026/SKILL.md).
 
 ---
 
@@ -246,6 +284,62 @@ Skills and subagents work together in two directions:
 | Subagent with `skills` field | Subagent's markdown body                  | Claude's delegation message | Preloaded skills + CLAUDE.md |
 
 With `context: fork`, you write the task in your skill and pick an agent type to execute it. For the inverse (defining a custom subagent that uses skills as reference material), see the Sub-Agents documentation.
+
+---
+
+## Invocation Control
+
+### Control who invokes a skill
+
+By default, both you and Claude can invoke any skill. You can type `/skill-name` to invoke it directly, and Claude can load it automatically when relevant to your conversation. Two frontmatter fields let you restrict this:
+
+- **`disable-model-invocation: true`**: Only you can invoke the skill. Use this for workflows with side effects or that you want to control timing, like `/commit`, `/deploy`, or `/send-slack-message`. You don't want Claude deciding to deploy because your code looks ready. This field also removes the skill description from Claude's context entirely.
+
+- **`user-invocable: false`**: Only Claude can invoke the skill. Use this for background knowledge that isn't actionable as a command. A `legacy-system-context` skill explains how an old system works. Claude should know this when relevant, but `/legacy-system-context` isn't a meaningful action for users to take.
+
+**How invocation control affects context loading:**
+
+| Frontmatter                      | You can invoke | Claude can invoke | When loaded into context                                     |
+| :------------------------------- | :------------- | :---------------- | :----------------------------------------------------------- |
+| (default)                        | Yes            | Yes               | Description always in context, full skill loads when invoked |
+| `disable-model-invocation: true` | Yes            | No                | Description not in context, full skill loads when you invoke |
+| `user-invocable: false`          | No             | Yes               | Description always in context, full skill loads when invoked |
+
+In a regular session, skill descriptions are loaded into context so Claude knows what's available, but full skill content only loads when invoked. [Subagents with preloaded skills](/en/sub-agents#preload-skills-into-subagents) work differently: the full skill content is injected at startup.
+
+**Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Control who invokes a skill")
+
+### Restrict Claude's skill access
+
+By default, Claude can invoke any skill that doesn't have `disable-model-invocation: true` set. Skills that define `allowed-tools` grant Claude access to those tools without per-use approval when the skill is active. Your [permission settings](/en/iam) still govern baseline approval behavior for all other tools. Built-in commands like `/compact` and `/init` are not available through the Skill tool.
+
+Three ways to control which skills Claude can invoke:
+
+**Disable all skills** by denying the Skill tool in `/permissions`:
+
+```
+# Add to deny rules:
+Skill
+```
+
+**Allow or deny specific skills** using [permission rules](/en/iam):
+
+```
+# Allow only specific skills
+Skill(commit)
+Skill(review-pr *)
+
+# Deny specific skills
+Skill(deploy *)
+```
+
+Permission syntax: `Skill(name)` for exact match, `Skill(name *)` for prefix match with any arguments.
+
+**Hide individual skills** by adding `disable-model-invocation: true` to their frontmatter. This removes the skill from Claude's context entirely.
+
+**Note**: The `user-invocable` field only controls menu visibility, not Skill tool access. Use `disable-model-invocation: true` to block programmatic invocation.
+
+**Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Restrict Claude's skill access")
 
 ---
 
@@ -386,6 +480,8 @@ Only runs when user types `/deploy-production`.
 
 ## Installation
 
+**Via Plugins**: Skills can be bundled in plugins. See [./claude-plugins-reference-2026/SKILL.md](../claude-plugins-reference-2026/SKILL.md) for plugin creation and distribution.
+
 **Marketplace**:
 
 ```bash
@@ -415,7 +511,7 @@ Only runs when user types `/deploy-production`.
 
 ## Sources
 
-- **Primary**: [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills.md) (accessed 2026-01-22)
+- **Primary**: [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills.md) (accessed 2026-01-28)
 - **Standards**: [Agent Skills Open Standard](https://agentskills.io)
 - **Examples**: [anthropics/skills](https://github.com/anthropics/skills)
 - **Blog**: [Anthropic Engineering Blog - Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)

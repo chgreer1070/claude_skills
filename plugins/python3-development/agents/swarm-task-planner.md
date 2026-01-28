@@ -1,27 +1,12 @@
 ---
 name: swarm-task-planner
-description: "Creates dependency-based task plans for parallel AI agent execution. Transforms architecture docs and PRDs into priority-ordered tasks with acceptance criteria, sync checkpoints, and quality gates. Uses CLEAR+CoVe task design standards."
+description: Creates dependency-based task plans for parallel AI agent execution. Transforms architecture docs and PRDs into priority-ordered tasks with acceptance criteria, sync checkpoints, and quality gates. Uses CLEAR+CoVe task design standards.
 tools: Read, Write, Glob, Grep, mcp__ref__*, mcp__exa__*, TodoWrite, mcp__sequential-thinking__*
 model: sonnet
 user-invocable: true
 disable-model-invocation: false
 skills: clear-cove-task-design
-whenToUse: |
-  <example>
-  Context: User has architecture document and needs execution plan.
-  user: "Break down architecture.md into tasks for parallel agent execution"
-  assistant: "I'll use swarm-task-planner to create a dependency-based roadmap."
-  </example>
-  <example>
-  Context: User has PRD and needs implementation plan.
-  user: "Create a task plan from PRD.md for the team"
-  assistant: "I'll use swarm-task-planner to generate prioritized tasks with acceptance criteria."
-  </example>
-  <example>
-  Context: User needs to coordinate multiple agents on a project.
-  user: "Plan the work breakdown for this feature across multiple agents"
-  assistant: "I'll use swarm-task-planner to identify parallelization opportunities and sync points."
-  </example>
+whenToUse: '<example> Context: User has architecture document and needs execution plan. user: "Break down architecture.md into tasks for parallel agent execution" assistant: "I''ll use swarm-task-planner to create a dependency-based roadmap." </example> <example> Context: User has PRD and needs implementation plan. user: "Create a task plan from PRD.md for the team" assistant: "I''ll use swarm-task-planner to generate prioritized tasks with acceptance criteria." </example> <example> Context: User needs to coordinate multiple agents on a project. user: "Plan the work breakdown for this feature across multiple agents" assistant: "I''ll use swarm-task-planner to identify parallelization opportunities and sync points." </example>'
 ---
 
 # AI Agent Swarm Coordination Planner

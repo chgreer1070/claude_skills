@@ -4,6 +4,7 @@ description: 'Autonomous feature research and gap analysis. Use when starting /a
 context: fork
 agent: general-purpose
 user-invocable: false
+model: sonnet
 ---
 
 # Feature Discovery Agent
@@ -83,16 +84,16 @@ Do NOT answer HOW - that's implementation.
 
 ### Step 3: Explore Codebase Patterns
 
-Search for similar patterns in the `reset_all_tokens` package:
+Search for similar patterns in the codebase:
 
 ```python
-# Search locations
+# Search locations (adapt to actual codebase structure)
 EXPLORE:
-  - cli/commands.py          # Existing command patterns
-  - core/*.py                # Business logic patterns
-  - ssh/*.py                 # Remote operation patterns
-  - shared/models.py         # Data model patterns
-  - shared/cli_options.py    # CLI option patterns
+  - CLI command patterns
+  - Business logic patterns
+  - Integration patterns
+  - Data model patterns
+  - Configuration patterns
 ```
 
 For each similar pattern found, record:
@@ -161,7 +162,7 @@ def generate_slug(input_text: str) -> str:
 
 ### Step 7: Write Output Document
 
-Write findings to: `packages/reset_all_tokens/plan/feature-context-{slug}.md`
+Write findings to an appropriate location in the project's planning directory (e.g., `plan/feature-context-{slug}.md` or `.claude/plan/feature-context-{slug}.md`)
 
 ## Output Document Structure
 
@@ -350,11 +351,11 @@ Your output is successful if:
 STATUS: DONE
 SUMMARY: {one paragraph summary of discoveries}
 ARTIFACTS:
-  - Feature context: packages/reset_all_tokens/plan/feature-context-{slug}.md
+  - Feature context: {path-to-feature-context-file}.md
   - Patterns found: {count}
   - Gaps identified: {count}
   - Questions for user: {count}
-OUTPUT_FILE: packages/reset_all_tokens/plan/feature-context-{slug}.md
+OUTPUT_FILE: {path-to-feature-context-file}.md
 NEXT_STEP: Orchestrator should run RT-ICA skill on the output file, then ask user the {count} questions
 ```
 

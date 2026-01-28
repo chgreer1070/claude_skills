@@ -5,8 +5,8 @@
     "email": "jamie@bitflight.io"
   },
   "metadata": {
-    "description": "Custom skills for development workflows",
-    "version": "1.0.0"
+    "description": "Professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Covers modern Python toolchains, GitLab CI/CD automation, code quality enforcement, MCP server creation, and plugin/agent development patterns.",
+    "version": "2.0.0"
   },
   "plugins": [
     {
@@ -68,10 +68,6 @@
     {
       "name": "perl-development",
       "source": "./plugins/perl-development"
-    },
-    {
-      "name": "plugin-refactor",
-      "source": "./plugins/plugin-refactor"
     },
     {
       "name": "pre-commit",

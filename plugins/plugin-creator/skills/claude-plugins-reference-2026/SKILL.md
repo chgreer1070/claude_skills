@@ -1,6 +1,7 @@
 ---
 name: claude-plugins-reference-2026
 description: Complete reference for Claude Code plugins system (January 2026). Use when creating plugins, understanding plugin.json schema, marketplace configuration, bundling skills/commands/agents/hooks/MCP/LSP servers, plugin caching, validation, or distribution. Covers plugin components, directory structure, installation scopes, environment variables, CLI commands, debugging, and enterprise features.
+user-invocable: true
 ---
 
 # Claude Code Plugins System - Complete Reference (January 2026)
@@ -75,7 +76,7 @@ The `plugin.json` file in `.claude-plugin/` defines your plugin's metadata and c
 | Field          | Type           | Description                                                                    | Example                                |
 | -------------- | -------------- | ------------------------------------------------------------------------------ | -------------------------------------- |
 | `commands`     | string\|array  | Additional command files/directories                                           | `"./custom/cmd.md"` or `["./cmd1.md"]` |
-| `agents`       | string\|array  | Additional agent files                                                         | `"./custom/agents/"`                   |
+| `agents`       | array          | Agent file paths (must be array of individual files, NOT directory string)     | `["./agents/reviewer.md"]`             |
 | `skills`       | string\|array  | Additional skill directories                                                   | `"./custom/skills/"`                   |
 | `hooks`        | string\|object | Hook config path or inline config                                              | `"./hooks.json"`                       |
 | `mcpServers`   | string\|object | MCP config path or inline config                                               | `"./mcp-config.json"`                  |
@@ -88,6 +89,18 @@ The `plugin.json` file in `.claude-plugin/` defines your plugin's metadata and c
 - If `commands/` exists, it's loaded in addition to custom command paths
 - All paths must be relative to plugin root and start with `./`
 - Multiple paths can be specified as arrays
+- **CRITICAL**: `agents` field must ALWAYS be an array of individual file paths, never a directory string
+
+**Common validation errors**:
+
+```json
+// CORRECT agents field
+"agents": ["./agents/security-reviewer.md", "./agents/code-formatter.md"]
+
+// INCORRECT - will fail validation
+"agents": "./agents/"
+"agents": "./custom/agents/"
+```
 
 ---
 
@@ -225,6 +238,8 @@ Plugins can provide event handlers that respond to Claude Code events automatica
 - `SessionStart`: At the beginning of sessions
 - `SessionEnd`: At the end of sessions
 - `PreCompact`: Before conversation history is compacted
+
+For complete hook reference and examples, see [Claude Hooks Reference](https://code.claude.com/docs/en/hooks.md)
 
 **Hook types:**
 
@@ -697,14 +712,15 @@ This shows:
 
 ### Common Issues
 
-| Issue                               | Cause                           | Solution                                                                 |
-| ----------------------------------- | ------------------------------- | ------------------------------------------------------------------------ |
-| Plugin not loading                  | Invalid `plugin.json`           | Validate JSON syntax with `claude plugin validate` or `/plugin validate` |
-| Commands not appearing              | Wrong directory structure       | Ensure `commands/` at root, not in `.claude-plugin/`                     |
-| Hooks not firing                    | Script not executable           | Run `chmod +x script.sh`                                                 |
-| MCP server fails                    | Missing `${CLAUDE_PLUGIN_ROOT}` | Use variable for all plugin paths                                        |
-| Path errors                         | Absolute paths used             | All paths must be relative and start with `./`                           |
-| LSP `Executable not found in $PATH` | Language server not installed   | Install the binary (e.g., `npm install -g typescript-language-server`)   |
+| Issue                               | Cause                                  | Solution                                                                 |
+| ----------------------------------- | -------------------------------------- | ------------------------------------------------------------------------ |
+| Plugin not loading                  | Invalid `plugin.json`                  | Validate JSON syntax with `claude plugin validate` or `/plugin validate` |
+| `agents: Invalid input`             | Used directory string instead of array | Change `"agents": "./agents/"` to `"agents": ["./agents/file.md"]`       |
+| Commands not appearing              | Wrong directory structure              | Ensure `commands/` at root, not in `.claude-plugin/`                     |
+| Hooks not firing                    | Script not executable                  | Run `chmod +x script.sh`                                                 |
+| MCP server fails                    | Missing `${CLAUDE_PLUGIN_ROOT}`        | Use variable for all plugin paths                                        |
+| Path errors                         | Absolute paths used                    | All paths must be relative and start with `./`                           |
+| LSP `Executable not found in $PATH` | Language server not installed          | Install the binary (e.g., `npm install -g typescript-language-server`)   |
 
 ### Validation Commands
 

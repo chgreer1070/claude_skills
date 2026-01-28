@@ -3,6 +3,9 @@
     "allow": [
       "Bash(gh issue list:*)",
       "Bash(git worktree:*)",
+      "Glob",
+      "Grep",
+      "Read",
       "mcp__ref__*",
       "mcp__exa__*",
       "mcp__context7__*",

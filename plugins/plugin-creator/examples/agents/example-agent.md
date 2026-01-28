@@ -26,18 +26,90 @@ Use this as a reference when creating new agents. All fields shown above are val
 
 ## Field Descriptions
 
-| Field             | Purpose                                           |
-| ----------------- | ------------------------------------------------- |
-| `name`            | Unique identifier (kebab-case, required)          |
-| `description`     | When to delegate to this agent (required)         |
-| `tools`           | Allowlist of tools the agent can use              |
-| `disallowedTools` | Denylist of tools the agent cannot use            |
-| `model`           | Which model to use (sonnet, opus, haiku, inherit) |
-| `permissionMode`  | Permission behavior for tool usage                |
-| `skills`          | Skills to load when agent is active               |
-| `hooks`           | Scoped hooks for agent lifecycle                  |
-| `color`           | Terminal output color for agent messages          |
+| Field             | Type   | Purpose                                  | Constraints                              | Required |
+| ----------------- | ------ | ---------------------------------------- | ---------------------------------------- | -------- |
+| `name`            | string | Unique identifier                        | kebab-case, lowercase, max 64 characters | Yes      |
+| `description`     | string | When to delegate to this agent           | Trigger keywords, max 1024 characters    | Yes      |
+| `tools`           | string | Allowlist of tools the agent can use     | Comma-separated tool names               | No       |
+| `disallowedTools` | string | Denylist of tools the agent cannot use   | Comma-separated tool names               | No       |
+| `model`           | string | Which model to use                       | sonnet, opus, haiku, or inherit          | No       |
+| `permissionMode`  | string | Permission behavior for tool usage       | default, relaxed, strict                 | No       |
+| `skills`          | string | Skills to load when agent is active      | Comma-separated skill names              | No       |
+| `hooks`           | object | Scoped hooks for agent lifecycle         | Valid hook configuration object          | No       |
+| `color`           | string | Terminal output color for agent messages | Valid color name (cyan, green, yellow)   | No       |
+
+**Critical:** `tools`, `disallowedTools`, and `skills` fields MUST be comma-separated strings, NOT YAML arrays.
+
+## Validation
+
+Validate your agent using:
+
+```bash
+# Frontmatter validation
+uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate ./path/to/agent.md
+
+# Auto-fix common issues
+uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix ./path/to/agent.md --dry-run
+uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix ./path/to/agent.md
+
+# Plugin validation (if agent is part of a plugin)
+claude plugin validate ./path/to/plugin/
+```
+
+## Common Validation Errors
+
+| Error                           | Cause                     | Fix                                     |
+| ------------------------------- | ------------------------- | --------------------------------------- |
+| `name: Required`                | Missing name field        | Add `name` field to frontmatter         |
+| `description: Required`         | Missing description field | Add `description` with trigger keywords |
+| `tools must be string`          | Used YAML array format    | Change to comma-separated string        |
+| `YAML array detected`           | Used `- Tool1` format     | Change to `Tool1, Tool2` format         |
+| `model must be sonnet/opus/...` | Invalid model name        | Use valid model identifier              |
+| `name exceeds 64 characters`    | Name too long             | Shorten to max 64 characters            |
+| `description exceeds 1024 ...`  | Description too long      | Shorten to max 1024 characters          |
+
+## Agent Location
+
+Agents can be located in:
+
+- **User-level:** `~/.claude/agents/agent-name.md` - Personal agents available across all projects
+- **Project-level:** `.claude/agents/agent-name.md` - Version controlled, shared with team
+- **Plugin:** `plugins/plugin-name/agents/agent-name.md` - Bundled in a plugin
+
+When creating an agent in a plugin, update the plugin's `.claude-plugin/plugin.json`:
+
+```json
+{
+  "name": "my-plugin",
+  "agents": ["./agents/example-agent.md"]
+}
+```
+
+**Important:** The `agents` field in plugin.json must be an array of individual file paths, not a directory string.
+
+## Creating Agents
+
+Use the `/plugin-creator:agent-creator` skill to create new agents interactively:
+
+```bash
+/plugin-creator:agent-creator
+```
+
+The skill will:
+
+1. Gather requirements through questions
+2. Suggest templates from existing agents
+3. Generate validated frontmatter
+4. Save to appropriate location (user/project/plugin)
+5. Update plugin.json if creating a plugin agent
+6. Validate the created file
 
 ## Usage
 
 This agent is for demonstration purposes only. When creating real agents, include only the fields you need.
+
+## Sources
+
+- [Claude Code Documentation](https://code.claude.com/docs/en/sub-agents.md) (accessed 2026-01-28)
+- [Agent Creator Skill](./plugins/plugin-creator/skills/agent-creator/SKILL.md)
+- [Plugin Creator Validation Scripts](./plugins/plugin-creator/scripts/README.md)

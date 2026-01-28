@@ -4,6 +4,18 @@ Complete specification for Claude Code agent frontmatter fields (January 2026).
 
 ---
 
+## Sources
+
+- [Create Custom Subagents](https://code.claude.com/docs/en/sub-agents.md) (accessed 2026-01-28)
+- [Agent Frontmatter Schema](https://code.claude.com/docs/en/agents.md) (accessed 2026-01-28)
+- [Tools Reference](https://code.claude.com/docs/en/tools.md) (accessed 2026-01-28)
+- [Skills Reference](https://code.claude.com/docs/en/skills.md) (accessed 2026-01-28)
+- Validation implementation: [./../../scripts/validate_frontmatter.py](./../../scripts/validate_frontmatter.py)
+
+For plugin agent integration, see [Claude Plugins Reference](./../../skills/claude-plugins-reference-2026/SKILL.md)
+
+---
+
 ## Required Fields
 
 ### name
@@ -162,7 +174,25 @@ tools: Read, Grep, Glob, Bash
 tools: Bash(git:*), Bash(npm:install)
 ```
 
-**Available Tools**: Read, Write, Edit, Bash, Grep, Glob, AskUserQuestion, WebSearch, WebFetch, Task, TodoWrite, Skill
+**Available Tools**: Read, Write, Edit, Bash, Grep, Glob, NotebookEdit, AskUserQuestion, WebSearch, Task, ToolSearch, Skill
+
+**Note**: MCP tools from installed servers are also available and follow pattern `mcp__server-name__tool-name`
+
+**Pattern Matching Examples**:
+
+```yaml
+# Allow only specific git commands
+tools: Bash(git:status), Bash(git:log), Bash(git:diff)
+
+# Allow git read operations only
+tools: Bash(git:status|log|diff|show)
+
+# Allow all git commands
+tools: Bash(git:*)
+
+# Combine with other tools
+tools: Read, Grep, Bash(git:*), Bash(npm:install)
+```
 
 ### disallowedTools
 
@@ -234,9 +264,19 @@ hooks:
 
 - `PreToolUse` - Before tool executes (can block with exit 2)
 - `PostToolUse` - After tool succeeds
+- `PostToolUseFailure` - After tool fails
 - `PermissionRequest` - When permission needed
+- `UserPromptSubmit` - When user submits prompt
+- `Notification` - When notifications are sent
 - `Stop` - When agent completes
+- `SubagentStart` - When child agent starts
 - `SubagentStop` - When child agent completes
+- `Setup` - During initialization
+- `SessionStart` - At session beginning
+- `SessionEnd` - At session end
+- `PreCompact` - Before conversation compaction
+
+For complete hook reference, see [Claude Hooks Reference](./../../skills/claude-hooks-reference-2026/SKILL.md)
 
 ### color
 
@@ -246,7 +286,7 @@ hooks:
 
 Notes:
 
-- The official “Create custom subagents” docs describe choosing a color to help identify which subagent is running in the UI: `https://code.claude.com/docs/en/sub-agents.md`
+- The official "Create custom subagents" docs describe choosing a color to help identify which subagent is running in the UI: `https://code.claude.com/docs/en/sub-agents.md`
 - No behavioral effect is described (does not change delegation logic, tools, permissions, model, hooks, or the system prompt).
 
 ```yaml
@@ -255,6 +295,28 @@ color: yellow    # Warning/optimization
 color: green     # Success/validation
 color: orange    # Audit/review
 color: red       # Error handling
+```
+
+### argumentHint
+
+- **Type**: string
+- **Default**: none
+- **Purpose**: Hint text shown to users when invoking the agent manually
+- **Note**: Less commonly used; primarily for user-facing CLI hints
+
+```yaml
+argumentHint: '<file-path> [options]'
+```
+
+### alwaysLoadSkills
+
+- **Type**: boolean
+- **Default**: false
+- **Purpose**: When true, load agent's skills into context even when agent is not directly invoked
+- **Use Case**: Rare; for agents that provide skills to parent conversation
+
+```yaml
+alwaysLoadSkills: true
 ```
 
 ---
@@ -278,6 +340,45 @@ hooks:
 color: red
 ---
 ```
+
+---
+
+## Plugin Integration
+
+When creating agents for plugins, additional considerations apply:
+
+**Location**: `{plugin-root}/agents/` directory
+
+**Registration**: Agents must be listed in `plugin.json`:
+
+```json
+{
+  "name": "my-plugin",
+  "agents": ["./agents/security-reviewer.md", "./agents/code-formatter.md"]
+}
+```
+
+**Important**: The `agents` field in `plugin.json` must be an array of individual file paths, NOT a directory string:
+
+```json
+// CORRECT
+"agents": ["./agents/reviewer.md", "./agents/tester.md"]
+
+// INCORRECT - will fail validation
+"agents": "./agents/"
+```
+
+**Validation**: After creating plugin agents:
+
+```bash
+# Validate frontmatter
+uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate ./agents/my-agent.md
+
+# Validate complete plugin
+claude plugin validate ./path/to/plugin
+```
+
+For complete plugin reference, see [Claude Plugins Reference](./../../skills/claude-plugins-reference-2026/SKILL.md)
 
 ---
 
@@ -320,3 +421,47 @@ Before saving an agent, verify:
    - [ ] Valid YAML
    - [ ] Proper quoting for multiline strings
    - [ ] No trailing commas or syntax errors
+   - [ ] No YAML multiline indicators (`>-`, `|-`) in description field
+
+## Automated Validation
+
+Use the validation script for comprehensive checks:
+
+```bash
+# Validate single agent
+uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate ./agents/my-agent.md
+
+# Auto-fix common issues (dry-run first)
+uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix ./agents/my-agent.md --dry-run
+
+# Batch validation
+uv run plugins/plugin-creator/scripts/validate_frontmatter.py batch ./agents/
+
+# Batch fix
+uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix-batch ./agents/
+```
+
+**What the validator checks**:
+
+- YAML syntax validity
+- Required fields presence (name, description)
+- Field type correctness (string, boolean, object)
+- Field value constraints (length, format, enumeration)
+- Tool/skill format (comma-separated strings, not YAML arrays)
+- Forbidden multiline indicators
+
+**What the validator auto-fixes**:
+
+- YAML arrays → comma-separated strings
+- Multiline descriptions → single-line quoted strings
+- Unquoted descriptions with special characters
+
+SOURCE: [validate_frontmatter.py](./../../scripts/validate_frontmatter.py) lines 103-187
+
+---
+
+## Related Documentation
+
+- [Claude Skills Reference](./../../skills/claude-skills-overview-2026/SKILL.md) - Skills system overview
+- [Claude Plugins Reference](./../../skills/claude-plugins-reference-2026/SKILL.md) - Plugin integration
+- [Claude Hooks Reference](./../../skills/claude-hooks-reference-2026/SKILL.md) - Hook configuration

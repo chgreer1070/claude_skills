@@ -338,7 +338,7 @@ claude plugin validate {plugin-directory}
 
 **Process Flow:**
 
-1. **Assessment** (delegates to `refactor-planner` agent):
+1. **Assessment** (delegates to `@"plugin-creator:refactor-planner (agent)"`):
 
    - Analyzes plugin structure
    - Identifies oversized skills (>500 lines)
@@ -356,26 +356,26 @@ claude plugin validate {plugin-directory}
    - Maps dependencies
    - Identifies parallelization opportunities
 
-4. **Execution** (delegates to `refactor-executor` agent):
+4. **Execution** (delegates to `@"plugin-creator:refactor-executor (agent)"`):
 
    - Executes tasks in dependency order
    - Runs parallel where possible
    - Tracks completion status
 
-5. **Validation** (delegates to `refactor-validator` agent):
+5. **Validation** (delegates to `@"plugin-creator:refactor-validator (agent)"`):
    - Verifies refactoring achieved goals
    - Checks for regressions
    - Creates follow-up tasks if issues found
 
 **Task Types Handled:**
 
-| Type             | Handler                          | Verified         |
-| ---------------- | -------------------------------- | ---------------- |
-| `SKILL_SPLIT`    | `/refactor-skill` skill          | ✅ Yes           |
-| `AGENT_OPTIMIZE` | `subagent-refactorer` agent      | ⚠️ Not in plugin |
-| `DOC_IMPROVE`    | `claude-context-optimizer` agent | ⚠️ Not in plugin |
-| `ORPHAN_RESOLVE` | Manual or context optimizer      | ⚠️ Partial       |
-| `STRUCTURE_FIX`  | Direct implementation            | ✅ Yes           |
+| Type             | Handler                                | Verified         |
+| ---------------- | -------------------------------------- | ---------------- |
+| `SKILL_SPLIT`    | `/plugin-creator:refactor-skill` skill | ✅ Yes           |
+| `AGENT_OPTIMIZE` | `subagent-refactorer` agent            | ⚠️ Not in plugin |
+| `DOC_IMPROVE`    | `claude-context-optimizer` agent       | ⚠️ Not in plugin |
+| `ORPHAN_RESOLVE` | Manual or context optimizer            | ⚠️ Partial       |
+| `STRUCTURE_FIX`  | Direct implementation                  | ✅ Yes           |
 
 **OUTPUT:** Task files in `.claude/plan/` directory
 
@@ -638,20 +638,77 @@ cd plugins/plugin-creator/scripts
 
 ---
 
-## Environment Variables
+## Plugin System Fundamentals
+
+### Plugin Caching and File Resolution
+
+**CRITICAL:** Claude Code copies plugins to a cache directory rather than using them in-place.
+
+**How it works:**
+
+- Marketplace plugins with relative paths: The `source` path is copied recursively
+- Plugins with `.claude-plugin/plugin.json`: The directory containing `.claude-plugin/` is copied recursively
+
+**Path traversal limitations:**
+
+- Plugins CANNOT reference files outside their directory (`../shared-utils` will FAIL after installation)
+- External files are NOT copied to the cache
+
+**Solutions for external dependencies:**
+
+1. **Use symlinks:** Create symlinks within plugin directory (symlinks are followed during copy)
+
+   ```bash
+   ln -s /path/to/shared-utils ./shared-utils
+   ```
+
+2. **Restructure marketplace:** Set source to parent directory that contains all required files
+
+**SOURCE:** Lines 350-398 of claude-plugins-reference-2026/SKILL.md
+
+### Installation Scopes
+
+When installing plugins, the scope determines where the plugin is available:
+
+| Scope     | Settings file                 | Use case                                                 |
+| --------- | ----------------------------- | -------------------------------------------------------- |
+| `user`    | `~/.claude/settings.json`     | Personal plugins available across all projects (default) |
+| `project` | `.claude/settings.json`       | Team plugins shared via version control                  |
+| `local`   | `.claude/settings.local.json` | Project-specific plugins, gitignored                     |
+| `managed` | `managed-settings.json`       | Managed plugins (read-only, update only)                 |
+
+**Usage examples:**
+
+```bash
+# Install to user scope (default)
+claude plugin install formatter@my-marketplace
+
+# Install to project scope (shared with team)
+claude plugin install formatter@my-marketplace --scope project
+
+# Install to local scope (gitignored)
+claude plugin install formatter@my-marketplace --scope local
+```
+
+**SOURCE:** Lines 401-410 of claude-plugins-reference-2026/SKILL.md
+
+### Environment Variables
 
 When commands execute, they have access to:
 
-| Variable                | Value                             | Usage                                 |
-| ----------------------- | --------------------------------- | ------------------------------------- |
-| `${CLAUDE_PLUGIN_ROOT}` | Absolute path to plugin directory | Used in commands to reference scripts |
-| `$ARGUMENTS`            | Command arguments from user       | Passed to command's bash execution    |
+| Variable                | Value                                                  | Usage                                 |
+| ----------------------- | ------------------------------------------------------ | ------------------------------------- |
+| `${CLAUDE_PLUGIN_ROOT}` | Absolute path to plugin directory                      | Used in commands to reference scripts |
+| `${CLAUDE_PROJECT_DIR}` | Project root directory (where Claude Code was started) | Project-relative paths                |
+| `$ARGUMENTS`            | Command arguments from user                            | Passed to command's bash execution    |
 
 **Example from count-lines.md:**
 
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/scripts/count-skill-lines.sh "$ARGUMENTS"
 ```
+
+**SOURCE:** Lines 415-434 of claude-plugins-reference-2026/SKILL.md
 
 ---
 
@@ -684,9 +741,30 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/count-skill-lines.sh "$ARGUMENTS"
 
 ### Plugin.json Requirements
 
+**Required fields:**
+
 - `name`: Required, kebab-case
-- `agents`: Must be array of individual file paths (not directory string)
-- All paths must start with `./`
+
+**Component path fields:**
+
+| Field          | Type           | Description                                         | Example                                  |
+| -------------- | -------------- | --------------------------------------------------- | ---------------------------------------- |
+| `commands`     | string\|array  | Additional command files/directories                | `"./custom/cmd.md"` or `["./cmd1.md"]`   |
+| `agents`       | string\|array  | Additional agent files or directories               | `"./custom/agents/"` or `["./agent.md"]` |
+| `skills`       | string\|array  | Additional skill directories                        | `"./custom/skills/"`                     |
+| `hooks`        | string\|object | Hook config path or inline config                   | `"./hooks.json"`                         |
+| `mcpServers`   | string\|object | MCP config path or inline config                    | `"./mcp-config.json"`                    |
+| `outputStyles` | string\|array  | Additional output style files/directories           | `"./styles/"`                            |
+| `lspServers`   | string\|object | Language Server Protocol config (code intelligence) | `"./.lsp.json"`                          |
+
+**Path behavior rules:**
+
+- Custom paths supplement default directories - they don't replace them
+- If `commands/` exists, it's loaded in addition to custom command paths
+- All paths must be relative and start with `./`
+- Multiple paths can be specified as arrays
+
+**SOURCE:** Lines 75-91 of claude-plugins-reference-2026/SKILL.md
 
 ---
 
@@ -745,6 +823,119 @@ This documentation was created 2026-01-28 by:
 - Reduced maintenance burden
 
 **Implementation Priority:** Medium - Current scripts work but consolidation would improve usability
+
+---
+
+## LSP Server Integration
+
+Plugins can provide Language Server Protocol (LSP) servers for real-time code intelligence:
+
+**Capabilities:**
+
+- **Instant diagnostics:** Claude sees errors and warnings immediately after each edit
+- **Code navigation:** go to definition, find references, hover information
+- **Language awareness:** type information and documentation for code symbols
+
+**Configuration format (`.lsp.json` or inline in `plugin.json`):**
+
+```json
+{
+  "lspServers": {
+    "python": {
+      "command": "pyright-langserver",
+      "args": ["--stdio"],
+      "extensionToLanguage": {
+        ".py": "python"
+      }
+    }
+  }
+}
+```
+
+**Required fields:**
+
+| Field                 | Description                                  |
+| --------------------- | -------------------------------------------- |
+| `command`             | The LSP binary to execute (must be in PATH)  |
+| `extensionToLanguage` | Maps file extensions to language identifiers |
+
+**Optional fields:**
+
+| Field                   | Description                                               |
+| ----------------------- | --------------------------------------------------------- |
+| `args`                  | Command-line arguments for the LSP server                 |
+| `transport`             | Communication transport: `stdio` (default) or `socket`    |
+| `env`                   | Environment variables to set when starting the server     |
+| `initializationOptions` | Options passed to the server during initialization        |
+| `settings`              | Settings passed via `workspace/didChangeConfiguration`    |
+| `workspaceFolder`       | Workspace folder path for the server                      |
+| `startupTimeout`        | Max time to wait for server startup (milliseconds)        |
+| `shutdownTimeout`       | Max time to wait for graceful shutdown (milliseconds)     |
+| `restartOnCrash`        | Whether to automatically restart the server if it crashes |
+| `maxRestarts`           | Maximum number of restart attempts before giving up       |
+
+**CRITICAL:** LSP servers require separate binary installation. LSP plugins configure Claude Code's connection to a language server but don't include the server itself.
+
+**Available LSP plugins:**
+
+| Plugin           | Language server  | Install command                                                                            |
+| ---------------- | ---------------- | ------------------------------------------------------------------------------------------ |
+| `pyright-lsp`    | Pyright (Python) | `pip install pyright` or `npm install -g pyright`                                          |
+| `typescript-lsp` | TypeScript LS    | `npm install -g typescript-language-server typescript`                                     |
+| `rust-lsp`       | rust-analyzer    | See [rust-analyzer installation](https://rust-analyzer.github.io/manual.html#installation) |
+
+**SOURCE:** Lines 271-347 of claude-plugins-reference-2026/SKILL.md
+
+---
+
+## CLI Commands Reference
+
+The model MUST use these CLI commands for plugin management:
+
+**Install plugin:**
+
+```bash
+claude plugin install <plugin> [--scope user|project|local]
+```
+
+**Uninstall plugin:**
+
+```bash
+claude plugin uninstall <plugin> [--scope user|project|local]
+# Aliases: remove, rm
+```
+
+**Enable/disable plugin:**
+
+```bash
+claude plugin enable <plugin> [--scope user|project|local]
+claude plugin disable <plugin> [--scope user|project|local]
+```
+
+**Update plugin:**
+
+```bash
+claude plugin update <plugin> [--scope user|project|local|managed]
+```
+
+**Validate plugin:**
+
+```bash
+claude plugin validate <plugin-directory>
+/plugin validate <plugin-directory>  # In Claude Code session
+```
+
+**Testing without installation (session only):**
+
+```bash
+# Load plugin for current session only
+claude --plugin-dir ./my-plugin
+
+# Load multiple plugins
+claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
+```
+
+**SOURCE:** Lines 565-729 of claude-plugins-reference-2026/SKILL.md
 
 ---
 

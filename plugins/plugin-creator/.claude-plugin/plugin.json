@@ -1,14 +1,27 @@
 {
   "name": "plugin-creator",
   "description": "Complete plugin development toolkit for creating, refactoring, and validating Claude Code plugins and agents. Use when creating new plugins/skills/agents, refactoring existing plugins/skills, validating frontmatter, or restructuring plugin components. Includes specialized agents for assessment, planning, execution, and validation workflows.",
-  "version": "2.3.0",
+  "version": "2.5.0",
   "author": {
     "name": "Jamie Hoover",
     "url": "https://github.com/bitflight-devops"
   },
+  "homepage": "https://github.com/bitflight-devops/claude_skills/tree/main/plugins/plugin-creator",
+  "repository": "https://github.com/bitflight-devops/claude_skills",
+  "license": "MIT",
+  "keywords": [
+    "plugin-development",
+    "agent-creation",
+    "skill-creation",
+    "validation",
+    "refactoring",
+    "frontmatter"
+  ],
   "skills": [
     "./skills/plugin-creator",
+    "./skills/skill-creator",
     "./skills/agent-creator",
+    "./skills/write-frontmatter-description",
     "./skills/claude-skills-overview-2026",
     "./skills/claude-plugins-reference-2026",
     "./skills/claude-hooks-reference-2026",

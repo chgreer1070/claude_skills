@@ -2,11 +2,13 @@
 name: implement-refactor
 description: 'Execute refactoring tasks from a task file with parallel agent orchestration'
 argument-hint: <plugin-slug or task-file-path>
+model: sonnet
+user-invocable: true
 ---
 
 # Implement Refactor
 
-This command continues from `/plugin-refactor:assessorin-for-refactor`. After planning completes, use this to execute the refactoring tasks.
+This command continues from `/plugin-creator:assessor`. After planning completes, use this to execute the refactoring tasks.
 
 <refactor_input>
 $ARGUMENTS
@@ -65,15 +67,15 @@ TodoWrite(todos=[
 
 Route each task to the appropriate specialized agent based on the **Agent** field in the task:
 
-| Issue Type     | Agent                            | When to Use                                            |
-| -------------- | -------------------------------- | ------------------------------------------------------ |
-| SKILL_SPLIT    | `plugin-refactor:refactor-skill` | Tasks splitting large skills into smaller focused ones |
-| AGENT_OPTIMIZE | `subagent-refactorer`            | Tasks improving agent prompts and descriptions         |
-| DOC_IMPROVE    | `claude-context-optimizer`       | Tasks improving skill/agent documentation quality      |
-| ORPHAN_RESOLVE | `claude-context-optimizer`       | Tasks integrating orphaned reference files             |
-| STRUCTURE_FIX  | `claude-context-optimizer`       | Tasks fixing broken links or structural issues         |
-| Validation     | `plugin-assessor`                | Post-refactoring validation tasks                      |
-| Documentation  | `plugin-docs-writer`             | README and documentation generation tasks              |
+| Issue Type     | Agent                           | When to Use                                            |
+| -------------- | ------------------------------- | ------------------------------------------------------ |
+| SKILL_SPLIT    | `plugin-creator:refactor-skill` | Tasks splitting large skills into smaller focused ones |
+| AGENT_OPTIMIZE | `subagent-refactorer`           | Tasks improving agent prompts and descriptions         |
+| DOC_IMPROVE    | `claude-context-optimizer`      | Tasks improving skill/agent documentation quality      |
+| ORPHAN_RESOLVE | `claude-context-optimizer`      | Tasks integrating orphaned reference files             |
+| STRUCTURE_FIX  | `claude-context-optimizer`      | Tasks fixing broken links or structural issues         |
+| Validation     | `plugin-assessor`               | Post-refactoring validation tasks                      |
+| Documentation  | `plugin-docs-writer`            | README and documentation generation tasks              |
 
 ### Launch Strategy
 
@@ -94,7 +96,7 @@ Task(
 ```
 # Launch skill split tasks in parallel (no shared files)
 Task(
-    subagent_type="plugin-refactor:refactor-skill",
+    subagent_type="plugin-creator:refactor-skill",
     description="Task 1: Split python3 core skill",
     prompt="/start-refactor-task .claude/plan/tasks-refactor-python3-development.md --task 1"
 )
@@ -130,6 +132,127 @@ WHILE tasks remain incomplete:
 ```
 
 ---
+
+## Plugin Validation Requirements
+
+After completing refactoring tasks, you MUST validate:
+
+### 1. Plugin.json Schema Validation
+
+Validate against authoritative plugin.json schema from claude-plugins-reference-2026:
+
+**Required validation steps:**
+
+```bash
+# Validate plugin structure
+claude plugin validate {plugin-directory}
+```
+
+**Common plugin.json issues after refactoring:**
+
+| Issue                         | Cause                                                | Fix                                                                         |
+| ----------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------- |
+| `agents: Invalid input`       | Used `"./agents/"` directory string instead of array | Change to array of file paths: `["./agents/file1.md", "./agents/file2.md"]` |
+| `name: Required`              | Missing required name field                          | Add `"name": "plugin-name"` in kebab-case                                   |
+| Invalid path format           | Absolute paths or missing `./` prefix                | All paths must be relative and start with `./`                              |
+| Referenced file doesn't exist | Path in plugin.json points to moved/deleted file     | Update paths to match new file locations after refactoring                  |
+
+**SOURCE:** Lines 25-92 of claude-plugins-reference-2026/SKILL.md
+
+### 2. Hook Configuration Validation
+
+If plugin includes hooks, validate hook configuration:
+
+**Hook validation checklist:**
+
+- [ ] Hook config file exists at path specified in plugin.json
+- [ ] Hook matchers reference valid tool names (Read, Write, Edit, etc.)
+- [ ] Hook script paths use `${CLAUDE_PLUGIN_ROOT}` variable
+- [ ] Hook scripts are executable (`chmod +x script.sh`)
+- [ ] Hook event types are valid (PreToolUse, PostToolUse, SessionStart, etc.)
+
+**Valid hook events:**
+
+- PreToolUse, PostToolUse, PostToolUseFailure
+- PermissionRequest, UserPromptSubmit, Notification
+- Stop, SubagentStart, SubagentStop
+- Setup, SessionStart, SessionEnd, PreCompact
+
+**SOURCE:** Lines 186-227 of claude-plugins-reference-2026/SKILL.md
+
+### 3. MCP Server Validation
+
+If plugin bundles MCP servers, validate MCP configuration:
+
+**MCP validation checklist:**
+
+- [ ] MCP config file exists (`.mcp.json` or inline in plugin.json)
+- [ ] Server commands use `${CLAUDE_PLUGIN_ROOT}` for plugin-relative paths
+- [ ] Server binaries are executable or installed as dependencies
+- [ ] Server `args` arrays are properly formatted
+- [ ] Environment variables are properly defined
+
+**SOURCE:** Lines 235-270 of claude-plugins-reference-2026/SKILL.md
+
+### 4. LSP Server Validation
+
+If plugin provides LSP servers, validate LSP configuration:
+
+**LSP validation checklist:**
+
+- [ ] LSP config file exists (`.lsp.json` or inline in plugin.json)
+- [ ] LSP server binary is documented as separate installation requirement
+- [ ] `extensionToLanguage` mapping is defined for all supported file types
+- [ ] `command` references binary in PATH or uses absolute path with `${CLAUDE_PLUGIN_ROOT}`
+
+**IMPORTANT:** LSP servers require separate binary installation. Plugin only configures connection, doesn't bundle the server.
+
+**Example LSP validation error:**
+
+```
+LSP server 'gopls' not found in $PATH
+→ User must install separately: go install golang.org/x/tools/gopls@latest
+```
+
+**SOURCE:** Lines 271-338 of claude-plugins-reference-2026/SKILL.md
+
+### 5. Plugin Caching Path Resolution
+
+**CRITICAL:** Plugins are copied to cache directory during installation. Validate path resolution:
+
+**Path resolution warnings to check:**
+
+- [ ] No `../` parent directory references (will break after caching)
+- [ ] All paths relative to plugin root with `./` prefix
+- [ ] External dependencies documented (symlinks or restructure required)
+- [ ] `${CLAUDE_PLUGIN_ROOT}` used in all hook/MCP/LSP commands
+
+**Common caching issues:**
+
+| Issue                                       | Problem                              | Solution                                                     |
+| ------------------------------------------- | ------------------------------------ | ------------------------------------------------------------ |
+| `../shared-utils` reference                 | Parent directory not copied to cache | Use symlink or restructure marketplace to include shared dir |
+| Hook script uses relative path without `./` | Ambiguous path resolution            | Change to `./scripts/hook.sh` or use `${CLAUDE_PLUGIN_ROOT}` |
+| MCP server references user home directory   | Won't work for other users           | Use plugin-relative paths or environment variables           |
+
+**SOURCE:** Lines 349-398 of claude-plugins-reference-2026/SKILL.md
+
+### 6. External Agent Dependencies
+
+Document any agents referenced in task routing that are NOT included in this plugin:
+
+**Known external agent dependencies:**
+
+- `subagent-refactorer` - Used for AGENT_OPTIMIZE tasks (not in plugin-creator)
+- `claude-context-optimizer` - Used for DOC_IMPROVE and ORPHAN_RESOLVE tasks (not in plugin-creator)
+- `plugin-assessor` - Used for validation tasks (not in plugin-creator)
+- `plugin-docs-writer` - Used for documentation generation (not in plugin-creator)
+
+**Action if agent missing:**
+
+1. Check if agent exists in user's `~/.claude/agents/` or project `.claude/agents/`
+2. If missing, create follow-up task to install required agent plugin
+3. OR modify task routing to use included agents only
 
 ## Completion and Verification Loop
 

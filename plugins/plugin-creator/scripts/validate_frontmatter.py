@@ -6,6 +6,7 @@
 #     "rich>=13.0.0",
 #     "pyyaml>=6.0",
 #     "types-PyYAML>=6.0",
+#     "pydantic>=2.0.0",
 # ]
 # ///
 """Validate and fix YAML frontmatter in Claude Code capability files.
@@ -28,10 +29,11 @@ import re
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 import typer
 import yaml
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from rich.console import Console
 from rich.measure import Measurement
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -44,6 +46,7 @@ error_console = Console(stderr=True)
 
 # Constants
 MIN_QUOTED_STRING_LENGTH = 2
+RECOMMENDED_DESCRIPTION_LENGTH = 1024
 
 
 def _get_table_width(table: Table) -> int:
@@ -76,19 +79,6 @@ class FileType(StrEnum):
 
 
 @dataclass
-class FieldSpec:
-    """Specification for a frontmatter field."""
-
-    name: str
-    field_type: type | tuple[type, ...]
-    required: bool
-    description: str
-    valid_values: list[str] | None = None
-    max_length: int | None = None
-    pattern: str | None = None
-
-
-@dataclass
 class ValidationIssue:
     """A validation issue found in frontmatter."""
 
@@ -98,98 +88,209 @@ class ValidationIssue:
     suggestion: str | None = None
 
 
-# Schema definitions verified against local reference skills
-# Source: .claude/skills/claude-skills-overview-2026/SKILL.md lines 52-67
+class SkillFrontmatter(BaseModel):
+    """Pydantic model for skill frontmatter validation.
 
-SKILL_SCHEMA: list[FieldSpec] = [
-    FieldSpec(
-        "name",
-        str,
-        False,  # Optional - uses directory name if omitted
-        "Display name (lowercase, hyphens, max 64)",
-        max_length=64,
-        pattern=r"^[a-z][a-z0-9-]*$",
-    ),
-    FieldSpec(
-        "description",
-        str,
-        False,  # "Recommended" per docs, not required - uses first paragraph if omitted
-        "When to use; Claude uses for auto-invocation",
-        max_length=1024,
-    ),
-    FieldSpec("argument-hint", str, False, "Autocomplete hint"),
-    FieldSpec(
-        "allowed-tools",
-        str,
-        False,
-        "Tools without permission prompts (comma-separated)",
-    ),
-    FieldSpec(
-        "model",
-        str,
-        False,
-        "Model when skill is active",
-        # No valid_values restriction - accepts any model ID per docs
-    ),
-    FieldSpec("context", str, False, "Context behavior", valid_values=["fork"]),
-    FieldSpec("agent", str, False, "Subagent type when context: fork"),
-    FieldSpec("user-invocable", bool, False, "Show in / menu"),
-    FieldSpec("disable-model-invocation", bool, False, "Prevent Claude auto-loading"),
-    FieldSpec("hooks", dict, False, "Hooks scoped to skill lifecycle"),
-]
+    Source: .claude/skills/claude-skills-overview-2026/SKILL.md lines 52-67
+    """
 
-COMMAND_SCHEMA: list[FieldSpec] = [
-    FieldSpec("description", str, True, "Shown in /help menu", max_length=1024),
-    FieldSpec("argument-hint", str, False, "Shows in autocomplete"),
-    FieldSpec("allowed-tools", str, False, "Tool allowlist (comma-separated)"),
-    FieldSpec("model", str, False, "Override model"),
-    FieldSpec("context", str, False, "Context behavior", valid_values=["fork"]),
-    FieldSpec("agent", str, False, "Agent type when context: fork"),
-    FieldSpec("hooks", dict, False, "Scoped hooks"),
-]
+    model_config = ConfigDict(extra="allow")
 
-# Source: .claude/skills/agent-creator/references/agent-schema.md
+    name: str | None = Field(None, max_length=64, pattern=r"^[a-z][a-z0-9-]*$")
+    description: str | None = None
+    argument_hint: str | None = Field(None, alias="argument-hint")
+    allowed_tools: str | None = Field(None, alias="allowed-tools")
+    model: str | None = None
+    skills: str | None = None
+    context: Literal["fork"] | None = None
+    agent: str | None = None
+    user_invocable: bool | None = Field(None, alias="user-invocable")
+    disable_model_invocation: bool | None = Field(
+        None, alias="disable-model-invocation"
+    )
+    hooks: dict[str, Any] | None = None
 
-AGENT_SCHEMA: list[FieldSpec] = [
-    FieldSpec(
-        "name",
-        str,
-        True,  # Required per agent-schema.md lines 9-20
-        "Unique identifier",
-        max_length=64,
-        pattern=r"^[a-z][a-z0-9-]*$",
-    ),
-    FieldSpec(
-        "description",
-        str,
-        True,  # Required per agent-schema.md lines 22-40
-        "Delegation trigger keywords",
-        max_length=1024,
-    ),
-    FieldSpec("tools", str, False, "Tool allowlist (comma-separated)"),
-    FieldSpec("disallowedTools", str, False, "Tool denylist (comma-separated)"),
-    FieldSpec(
-        "model",
-        str,
-        False,
-        "Model to use",
-        valid_values=["sonnet", "opus", "haiku", "inherit"],
-    ),
-    FieldSpec(
-        "permissionMode",
-        str,
-        False,
-        "Permission behavior",
-        valid_values=["default", "acceptEdits", "dontAsk", "bypassPermissions", "plan"],
-    ),
-    FieldSpec("skills", str, False, "Skills to load (comma-separated)"),
-    FieldSpec("hooks", dict, False, "Scoped hooks"),
-    FieldSpec("color", str, False, "UI color metadata"),
-]
+    @field_validator("skills", "allowed_tools", mode="before")
+    @classmethod
+    def normalize_comma_separated(cls, v: object) -> str | None:
+        """Convert YAML arrays to comma-separated strings.
 
-# Fields that must be comma-separated strings (not YAML arrays)
-# Per official docs: https://code.claude.com/docs/en/skills.md
-COMMA_SEPARATED_FIELDS = {"allowed-tools", "tools", "disallowedTools", "skills"}
+        Returns:
+            Normalized comma-separated string or None.
+        """
+        if isinstance(v, list):
+            return ", ".join(str(x) for x in v)
+        return v if isinstance(v, str) else None
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def normalize_single_line(cls, v: object) -> str | None:
+        """Collapse multiline descriptions to single line.
+
+        Returns:
+            Normalized single-line string or None.
+        """
+        if isinstance(v, str) and "\n" in v:
+            return " ".join(v.split())
+        return v if isinstance(v, str) else None
+
+    @field_validator("description", mode="after")
+    @classmethod
+    def validate_no_colons(cls, v: str | None) -> str | None:
+        """Reject descriptions containing colons except in URLs.
+
+        Returns:
+            Validated description or None.
+
+        Raises:
+            ValueError: If description contains colons outside URLs.
+        """
+        if not v:
+            return v
+
+        # Allow colons in URLs
+        temp = v.replace("http://", "").replace("https://", "")
+
+        if ":" in temp:
+            msg = (
+                "Description cannot contain colons (:) except in URLs. "
+                "They trigger YAML quoting. Use alternatives: "
+                "semicolons (;), em dashes (—), or rephrase."
+            )
+            raise ValueError(msg)
+        return v
+
+
+class CommandFrontmatter(BaseModel):
+    """Pydantic model for command frontmatter validation."""
+
+    model_config = ConfigDict(extra="allow")
+
+    description: str
+    argument_hint: str | None = Field(None, alias="argument-hint")
+    allowed_tools: str | None = Field(None, alias="allowed-tools")
+    model: str | None = None
+    context: Literal["fork"] | None = None
+    agent: str | None = None
+    hooks: dict[str, Any] | None = None
+
+    @field_validator("allowed_tools", mode="before")
+    @classmethod
+    def normalize_comma_separated(cls, v: object) -> str | None:
+        """Convert YAML arrays to comma-separated strings.
+
+        Returns:
+            Normalized comma-separated string or None.
+        """
+        if isinstance(v, list):
+            return ", ".join(str(x) for x in v)
+        return v if isinstance(v, str) else None
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def normalize_single_line(cls, v: object) -> str | None:
+        """Collapse multiline descriptions to single line.
+
+        Returns:
+            Normalized single-line string or None.
+        """
+        if isinstance(v, str) and "\n" in v:
+            return " ".join(v.split())
+        return v if isinstance(v, str) else None
+
+    @field_validator("description", mode="after")
+    @classmethod
+    def validate_no_colons(cls, v: str) -> str:
+        """Reject descriptions containing colons except in URLs.
+
+        Returns:
+            Validated description.
+
+        Raises:
+            ValueError: If description contains colons outside URLs.
+        """
+        # Allow colons in URLs
+        temp = v.replace("http://", "").replace("https://", "")
+
+        if ":" in temp:
+            msg = (
+                "Description cannot contain colons (:) except in URLs. "
+                "They trigger YAML quoting. Use alternatives: "
+                "semicolons (;), em dashes (—), or rephrase."
+            )
+            raise ValueError(msg)
+        return v
+
+
+class AgentFrontmatter(BaseModel):
+    """Pydantic model for agent frontmatter validation.
+
+    Source: .claude/skills/agent-creator/references/agent-schema.md
+
+    Note: Field names use camelCase to match the official agent schema.
+    Ruff N815 warnings suppressed for these fields as they match external spec.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    name: str = Field(max_length=64, pattern=r"^[a-z][a-z0-9-]*$")
+    description: str
+    tools: str | None = None
+    disallowedTools: str | None = None  # noqa: N815
+    model: Literal["sonnet", "opus", "haiku", "inherit"] | None = None
+    permissionMode: (  # noqa: N815
+        Literal["default", "acceptEdits", "dontAsk", "bypassPermissions", "plan"] | None
+    ) = None
+    skills: str | None = None
+    hooks: dict[str, Any] | None = None
+    color: str | None = None
+
+    @field_validator("skills", "tools", "disallowedTools", mode="before")
+    @classmethod
+    def normalize_comma_separated(cls, v: object) -> str | None:
+        """Convert YAML arrays to comma-separated strings.
+
+        Returns:
+            Normalized comma-separated string or None.
+        """
+        if isinstance(v, list):
+            return ", ".join(str(x) for x in v)
+        return v if isinstance(v, str) else None
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def normalize_single_line(cls, v: object) -> str | None:
+        """Collapse multiline descriptions to single line.
+
+        Returns:
+            Normalized single-line string or None.
+        """
+        if isinstance(v, str) and "\n" in v:
+            return " ".join(v.split())
+        return v if isinstance(v, str) else None
+
+    @field_validator("description", mode="after")
+    @classmethod
+    def validate_no_colons(cls, v: str) -> str:
+        """Reject descriptions containing colons except in URLs.
+
+        Returns:
+            Validated description.
+
+        Raises:
+            ValueError: If description contains colons outside URLs.
+        """
+        # Allow colons in URLs
+        temp = v.replace("http://", "").replace("https://", "")
+
+        if ":" in temp:
+            msg = (
+                "Description cannot contain colons (:) except in URLs. "
+                "They trigger YAML quoting. Use alternatives: "
+                "semicolons (;), em dashes (—), or rephrase."
+            )
+            raise ValueError(msg)
+        return v
 
 
 def detect_file_type(path: Path) -> FileType:
@@ -207,21 +308,23 @@ def detect_file_type(path: Path) -> FileType:
     return FileType.UNKNOWN
 
 
-def get_schema(file_type: FileType) -> list[FieldSpec]:
-    """Get the schema for a file type.
+def get_model_class(
+    file_type: FileType,
+) -> type[SkillFrontmatter | CommandFrontmatter | AgentFrontmatter] | None:
+    """Get the Pydantic model class for a file type.
 
     Returns:
-        List of FieldSpec defining the expected frontmatter fields.
+        Pydantic model class for validation or None if unknown type.
     """
     match file_type:
         case FileType.SKILL:
-            return SKILL_SCHEMA
+            return SkillFrontmatter
         case FileType.COMMAND:
-            return COMMAND_SCHEMA
+            return CommandFrontmatter
         case FileType.AGENT:
-            return AGENT_SCHEMA
+            return AgentFrontmatter
         case _:
-            return []
+            return None
 
 
 def extract_frontmatter(content: str) -> tuple[str | None, int, int]:
@@ -245,144 +348,113 @@ def extract_frontmatter(content: str) -> tuple[str | None, int, int]:
     return frontmatter, start_line, end_line
 
 
-def check_multiline_indicators(frontmatter: str) -> list[ValidationIssue]:
-    """Check for forbidden YAML multiline indicators.
+def validate_and_normalize(
+    frontmatter_text: str, file_type: FileType
+) -> tuple[dict[str, Any], list[ValidationIssue]]:
+    """Parse, validate, and normalize frontmatter using Pydantic.
 
     Returns:
-        List of ValidationIssue for any forbidden indicators found.
+        Tuple of (normalized_dict, validation_issues)
     """
     issues = []
 
-    # These break Claude Code's YAML parser
-    forbidden_patterns = [
-        (r":\s*>\-", ">-"),
-        (r":\s*\|\-", "|-"),
-        (r":\s*>\|", ">|"),
-        (r":\s*\|>", "|>"),
-    ]
-
-    for pattern, indicator in forbidden_patterns:
-        if re.search(pattern, frontmatter):
-            issues.append(
-                ValidationIssue(
-                    field="(yaml)",
-                    severity="error",
-                    message=f"Contains YAML multiline indicator '{indicator}' which breaks parsing",
-                    suggestion="Use single-line strings in quotes instead",
-                )
-            )
-
-    return issues
-
-
-def validate_field(field_spec: FieldSpec, value: object) -> list[ValidationIssue]:
-    """Validate a single field against its spec.
-
-    Returns:
-        List of ValidationIssue for any issues found with the field value.
-    """
-    issues = []
-
-    # Type check
-    if not isinstance(value, field_spec.field_type):
-        expected = (
-            field_spec.field_type.__name__
-            if isinstance(field_spec.field_type, type)
-            else " or ".join(t.__name__ for t in field_spec.field_type)
-        )
+    # Check raw text for forbidden multiline indicators
+    if re.search(r"description:\s*[|>][-+]?\s*\n", frontmatter_text):
         issues.append(
             ValidationIssue(
-                field=field_spec.name,
+                field="description",
                 severity="error",
-                message=f"Expected type {expected}, got {type(value).__name__}",
+                message="Uses forbidden multiline YAML syntax (|, >, |-, >-)",
+                suggestion="Use single-line string",
             )
         )
-        return issues  # Skip further checks if type is wrong
 
-    # String-specific checks
-    if isinstance(value, str):
-        if field_spec.max_length and len(value) > field_spec.max_length:
-            issues.append(
-                ValidationIssue(
-                    field=field_spec.name,
-                    severity="error",
-                    message=f"Exceeds max length {field_spec.max_length} (got {len(value)})",
-                    suggestion=f"Shorten to {field_spec.max_length} characters or less",
-                )
+    # Parse YAML
+    try:
+        data = yaml.safe_load(frontmatter_text)
+    except yaml.YAMLError as e:
+        issues.append(
+            ValidationIssue(
+                field="(yaml)", severity="error", message=f"Invalid YAML syntax: {e}"
             )
+        )
+        return {}, issues
 
-        if field_spec.pattern and not re.match(field_spec.pattern, value):
-            issues.append(
-                ValidationIssue(
-                    field=field_spec.name,
-                    severity="error",
-                    message=f"Does not match required pattern: {field_spec.pattern}",
-                    suggestion="Use lowercase letters, numbers, and hyphens only",
-                )
+    if not isinstance(data, dict):
+        issues.append(
+            ValidationIssue(
+                field="(yaml)",
+                severity="error",
+                message="Frontmatter must be a YAML mapping",
             )
+        )
+        return {}, issues
 
-        if field_spec.valid_values and value not in field_spec.valid_values:
+    # Select Pydantic model based on file type
+    model_class = get_model_class(file_type)
+
+    if not model_class:
+        return data, issues
+
+    # Validate and normalize with Pydantic
+    try:
+        validated = model_class.model_validate(data)
+        normalized_dict = validated.model_dump(
+            by_alias=True, exclude_none=True, mode="python"
+        )
+
+        # Add warning for long descriptions (not an error)
+        if (
+            validated.description
+            and len(validated.description) > RECOMMENDED_DESCRIPTION_LENGTH
+        ):
             issues.append(
                 ValidationIssue(
-                    field=field_spec.name,
+                    field="description",
                     severity="warning",
-                    message=f"Value '{value}' not in known values: {field_spec.valid_values}",
-                    suggestion="Check if this is intentional",
+                    message=f"Exceeds recommended length of {RECOMMENDED_DESCRIPTION_LENGTH} characters (got {len(validated.description)})",
+                    suggestion=f"Front-load critical information in first {RECOMMENDED_DESCRIPTION_LENGTH} characters - Claude Code may truncate in some contexts",
                 )
             )
 
-    return issues
+        return normalized_dict, issues
+    except ValidationError as e:
+        # Convert Pydantic errors to ValidationIssue
+        for error in e.errors():
+            field = ".".join(str(x) for x in error["loc"])
+            msg = error["msg"]
 
+            # Make error messages more user-friendly
+            if "String should match pattern" in msg:
+                msg = "Must use lowercase letters, numbers, and hyphens only"
+                suggestion = "Use format: lowercase-with-hyphens"
+            elif "String should have at most" in msg:
+                max_len = error.get("ctx", {}).get("max_length", "unknown")
+                msg = f"Exceeds maximum length of {max_len} characters"
+                suggestion = f"Shorten to {max_len} characters or less"
+            elif "Input should be" in msg and "literal" in msg.lower():
+                valid_values = error.get("ctx", {}).get("expected", "")
+                msg = f"Invalid value. Must be one of: {valid_values}"
+                suggestion = None
+            else:
+                suggestion = None
 
-def normalize_dict(data: dict[str, object]) -> tuple[dict[str, object], list[str]]:
-    """Normalize parsed frontmatter dict to match schema requirements.
-
-    Applies dict-level transformations without text manipulation:
-    - Converts YAML arrays to comma-separated strings
-    - Collapses multi-line descriptions to single line
-
-    Args:
-        data: Parsed frontmatter dictionary
-
-    Returns:
-        Tuple of (normalized_dict, list_of_normalizations_applied)
-    """
-    fixes: list[str] = []
-    normalized = data.copy()
-
-    # Fix 1: YAML arrays → comma-separated strings
-    for field_name in COMMA_SEPARATED_FIELDS:
-        field_value = normalized.get(field_name)
-        if isinstance(field_value, list):
-            items = [str(item).strip() for item in field_value]
-            normalized[field_name] = ", ".join(items)
-            fixes.append(
-                f"Converted {field_name} from YAML array to comma-separated string"
+            issues.append(
+                ValidationIssue(
+                    field=field, severity="error", message=msg, suggestion=suggestion
+                )
             )
-
-    # Fix 2: Multi-line descriptions → single line
-    desc = normalized.get("description")
-    if isinstance(desc, str) and "\n" in desc:
-        normalized["description"] = " ".join(desc.split())
-        fixes.append("Collapsed multi-line description to single line")
-
-    return normalized, fixes
+        return data, issues
+    else:
+        return normalized_dict, issues
 
 
-def apply_fixes(content: str) -> tuple[str, list[str]]:
-    """Apply all automatic fixes to frontmatter.
-
-    Architecture:
-    1. Extract frontmatter text and body
-    2. Parse frontmatter to dict
-    3. Normalize dict (arrays → strings, multiline → single line)
-    4. Dump dict back to YAML (PyYAML handles all quoting)
-    5. Reconstruct file
+def apply_fixes(content: str, file_type: FileType) -> tuple[str, list[str]]:
+    """Parse, normalize via Pydantic, and regenerate frontmatter.
 
     Returns:
-        Tuple of (fixed_content, list_of_all_fixes_applied).
+        Tuple of (fixed_content, list_of_fixes_applied)
     """
-    # Phase 1: Extract
     frontmatter_text, _, _ = extract_frontmatter(content)
     if frontmatter_text is None:
         return content, []
@@ -393,85 +465,54 @@ def apply_fixes(content: str) -> tuple[str, list[str]]:
         return content, []
     body = content[end_match.end() + 3 :]
 
-    # Phase 2: Parse
+    # Parse YAML
     try:
-        data = yaml.safe_load(frontmatter_text)
+        original_data = yaml.safe_load(frontmatter_text)
     except yaml.YAMLError:
         return content, []
 
-    if not isinstance(data, dict):
+    if not isinstance(original_data, dict):
         return content, []
 
-    # Phase 3: Normalize
-    normalized, fixes = normalize_dict(data)
+    # Validate and normalize
+    normalized_dict, _ = validate_and_normalize(frontmatter_text, file_type)
 
+    # Track what was fixed
+    fixes = []
+
+    # Compare to detect what changed
+    for key, value in normalized_dict.items():
+        if key in original_data and original_data[key] != value:
+            if isinstance(original_data[key], list) and isinstance(value, str):
+                fixes.append(
+                    f"Converted {key} from YAML array to comma-separated string"
+                )
+            elif (
+                isinstance(original_data[key], str)
+                and "\n" in original_data[key]
+                and "\n" not in str(value)
+            ):
+                fixes.append(f"Normalized {key} to single line")
+
+    # Check for multiline indicators
+    has_multiline_indicators = bool(re.search(r":\s*[|>][-+]?", frontmatter_text))
+    if has_multiline_indicators:
+        fixes.append("Removed YAML multiline indicators")
+
+    # Only proceed if there were changes
     if not fixes:
         return content, []
 
-    # Phase 4: Dump (PyYAML handles all quoting)
+    # Regenerate frontmatter with PyYAML
     new_frontmatter = yaml.dump(
-        normalized,
+        normalized_dict,
         default_flow_style=False,
         allow_unicode=True,
         sort_keys=False,
-        width=10000,  # Prevent line wrapping
+        width=10000,
     )
 
-    # Phase 5: Reconstruct
     return f"---\n{new_frontmatter}---\n{body}", fixes
-
-
-def validate_frontmatter(
-    frontmatter: str, schema: list[FieldSpec], file_type: FileType
-) -> list[ValidationIssue]:
-    """Validate frontmatter against schema.
-
-    Returns:
-        List of ValidationIssue for all validation problems found.
-    """
-    issues = []
-
-    # Check for multiline indicators first
-    issues.extend(check_multiline_indicators(frontmatter))
-
-    # Parse YAML
-    try:
-        data = yaml.safe_load(frontmatter)
-    except yaml.YAMLError as e:
-        issues.append(
-            ValidationIssue(
-                field="(yaml)", severity="error", message=f"Invalid YAML syntax: {e}"
-            )
-        )
-        return issues
-
-    if not isinstance(data, dict):
-        issues.append(
-            ValidationIssue(
-                field="(yaml)",
-                severity="error",
-                message="Frontmatter must be a YAML mapping",
-            )
-        )
-        return issues
-
-    # Check each field in schema
-    for field_spec in schema:
-        if field_spec.name in data:
-            issues.extend(validate_field(field_spec, data[field_spec.name]))
-        elif field_spec.required:
-            issues.append(
-                ValidationIssue(
-                    field=field_spec.name,
-                    severity="error",
-                    message="Required field is missing",
-                    suggestion=f"Add '{field_spec.name}:' to frontmatter",
-                )
-            )
-
-    # Note: Unknown fields are allowed - Claude Code supports custom frontmatter fields
-
-    return issues
 
 
 def find_capability_files(path: Path) -> list[Path]:
@@ -482,10 +523,17 @@ def find_capability_files(path: Path) -> list[Path]:
     - Files directly in agents/ directories (not subdirectories)
     - Files directly in commands/ directories (not subdirectories)
 
+    Excludes:
+    - CLAUDE.md (documentation)
+    - README.md (documentation)
+
     Returns:
         List of paths to capability files.
     """
     if path.is_file():
+        # Skip documentation files even when passed directly
+        if path.name in {"CLAUDE.md", "README.md"}:
+            return []
         return [path]
 
     files: list[Path] = []
@@ -493,15 +541,28 @@ def find_capability_files(path: Path) -> list[Path]:
     # Find SKILL.md files
     files.extend(path.glob("**/SKILL.md"))
 
-    # Find files directly in agents/ and commands/ directories
-    # (not in subdirectories like references/, assets/, etc.)
-    for pattern in [
-        "**/agents/*.md",
-        "**/agents/*.mdc",
-        "**/commands/*.md",
-        "**/commands/*.mdc",
-    ]:
-        files.extend(path.glob(pattern))
+    # If path is directly an agents/ or commands/ directory, scan it
+    if path.name in {"agents", "commands"}:
+        for pattern in ["*.md", "*.mdc"]:
+            for file in path.glob(pattern):
+                # Skip documentation files
+                if file.name in {"CLAUDE.md", "README.md"}:
+                    continue
+                files.append(file)
+    else:
+        # Find files directly in agents/ and commands/ directories
+        # (not in subdirectories like references/, assets/, etc.)
+        for pattern in [
+            "**/agents/*.md",
+            "**/agents/*.mdc",
+            "**/commands/*.md",
+            "**/commands/*.mdc",
+        ]:
+            for file in path.glob(pattern):
+                # Skip documentation files
+                if file.name in {"CLAUDE.md", "README.md"}:
+                    continue
+                files.append(file)
 
     return sorted(files)
 
@@ -545,10 +606,15 @@ def process_file(
             ],
         )
 
+    # Detect file type first
+    detected_type = detect_file_type(file_path)
+    if detected_type == FileType.UNKNOWN:
+        detected_type = FileType.SKILL
+
     # Auto-fix if not check-only
     fixes: list[str] = []
     if not check_only:
-        fixed_content, fixes = apply_fixes(content)
+        fixed_content, fixes = apply_fixes(content, detected_type)
         if fixes:
             try:
                 file_path.write_text(fixed_content, encoding="utf-8")
@@ -568,13 +634,8 @@ def process_file(
                     ],
                 )
 
-    # Validate
-    detected_type = detect_file_type(file_path)
-    if detected_type == FileType.UNKNOWN:
-        detected_type = FileType.SKILL
-
-    schema = get_schema(detected_type)
-    issues = validate_frontmatter(frontmatter or "", schema, detected_type)
+    # Validate using Pydantic
+    _, issues = validate_and_normalize(frontmatter or "", detected_type)
 
     success = not any(issue.severity == "error" for issue in issues)
     return success, fixes, issues
@@ -582,51 +643,119 @@ def process_file(
 
 def display_check_results(
     files_with_errors: list[tuple[Path, list[ValidationIssue]]], total_files: int
-) -> None:
-    """Display results for check mode."""
-    if files_with_errors:
-        console.print(f"[red]Found issues in {len(files_with_errors)} files:[/red]\n")
-        for file_path, issues in files_with_errors:
+) -> int:
+    """Display results for check mode.
+
+    Returns:
+        Exit code: 1 if errors found, 0 if only warnings or success.
+    """
+    # Separate errors from warnings
+    files_with_actual_errors = [
+        (path, [i for i in issues if i.severity == "error"])
+        for path, issues in files_with_errors
+    ]
+    files_with_actual_errors = [(p, i) for p, i in files_with_actual_errors if i]
+
+    files_with_warnings = [
+        (path, [i for i in issues if i.severity == "warning"])
+        for path, issues in files_with_errors
+    ]
+    files_with_warnings = [(p, i) for p, i in files_with_warnings if i]
+
+    # Display errors
+    if files_with_actual_errors:
+        console.print(
+            f"[red]✗ Found errors in {len(files_with_actual_errors)} files:[/red]\n"
+        )
+        for file_path, issues in files_with_actual_errors:
             console.print(f"[cyan]{file_path}[/cyan]")
             for issue in issues:
-                severity_mark = (
-                    "[red]ERROR[/red]"
-                    if issue.severity == "error"
-                    else "[yellow]WARN[/yellow]"
-                )
-                console.print(f"  {severity_mark} {issue.field}: {issue.message}")
+                console.print(f"  [red]ERROR[/red] {issue.field}: {issue.message}")
                 if issue.suggestion:
                     console.print(f"    [dim]{issue.suggestion}[/dim]")
             console.print()
-    else:
+
+    # Display warnings
+    if files_with_warnings:
+        console.print(
+            f"[yellow]⚠ Found warnings in {len(files_with_warnings)} files:[/yellow]\n"
+        )
+        for file_path, issues in files_with_warnings:
+            console.print(f"[cyan]{file_path}[/cyan]")
+            for issue in issues:
+                console.print(f"  [yellow]WARN[/yellow] {issue.field}: {issue.message}")
+                if issue.suggestion:
+                    console.print(f"    [dim]{issue.suggestion}[/dim]")
+            console.print()
+
+    # Success message
+    if not files_with_actual_errors and not files_with_warnings:
         console.print(f"[green]✓[/green] All {total_files} files valid")
+
+    # Exit 1 only for errors, not warnings
+    return 1 if files_with_actual_errors else 0
 
 
 def display_fix_results(
     files_with_errors: list[tuple[Path, list[ValidationIssue]]],
     total_fixed: int,
     total_fixes: int,
-) -> None:
-    """Display results for fix mode."""
+) -> int:
+    """Display results for fix mode.
+
+    Returns:
+        Exit code: 1 if errors found, 0 if only warnings or success.
+    """
     if total_fixes > 0:
         console.print(
             f"[green]✓[/green] Fixed {total_fixed} files ({total_fixes} issues)"
         )
 
-    if files_with_errors:
+    # Separate errors from warnings
+    files_with_actual_errors = [
+        (path, [i for i in issues if i.severity == "error"])
+        for path, issues in files_with_errors
+    ]
+    files_with_actual_errors = [(p, i) for p, i in files_with_actual_errors if i]
+
+    files_with_warnings = [
+        (path, [i for i in issues if i.severity == "warning"])
+        for path, issues in files_with_errors
+    ]
+    files_with_warnings = [(p, i) for p, i in files_with_warnings if i]
+
+    # Display errors
+    if files_with_actual_errors:
         console.print(
-            f"\n[red]✗[/red] {len(files_with_errors)} files have unfixable errors:\n"
+            f"\n[red]✗[/red] {len(files_with_actual_errors)} files have unfixable errors:\n"
         )
-        for file_path, issues in files_with_errors:
-            errors = [i for i in issues if i.severity == "error"]
+        for file_path, issues in files_with_actual_errors:
             console.print(f"[cyan]{file_path}[/cyan]")
-            for issue in errors:
+            for issue in issues:
                 console.print(f"  [red]ERROR[/red] {issue.field}: {issue.message}")
                 if issue.suggestion:
                     console.print(f"    [dim]{issue.suggestion}[/dim]")
             console.print()
-    elif total_fixes == 0:
+
+    # Display warnings
+    if files_with_warnings:
+        console.print(
+            f"\n[yellow]⚠[/yellow] {len(files_with_warnings)} files have warnings:\n"
+        )
+        for file_path, issues in files_with_warnings:
+            console.print(f"[cyan]{file_path}[/cyan]")
+            for issue in issues:
+                console.print(f"  [yellow]WARN[/yellow] {issue.field}: {issue.message}")
+                if issue.suggestion:
+                    console.print(f"    [dim]{issue.suggestion}[/dim]")
+            console.print()
+
+    # Success message
+    if not files_with_actual_errors and not files_with_warnings and total_fixes == 0:
         console.print("[green]✓[/green] All files valid")
+
+    # Exit 1 only for errors, not warnings
+    return 1 if files_with_actual_errors else 0
 
 
 @app.command()
@@ -678,7 +807,7 @@ def main(
     # Process files
     total_fixed = 0
     total_fixes = 0
-    files_with_errors: list[tuple[Path, list[ValidationIssue]]] = []
+    files_with_issues: list[tuple[Path, list[ValidationIssue]]] = []
 
     with Progress(
         SpinnerColumn(),
@@ -695,20 +824,21 @@ def main(
                 total_fixed += 1
                 total_fixes += len(fixes)
 
-            if not success:
-                files_with_errors.append((file_path, issues))
+            # Collect files with errors OR warnings
+            if not success or issues:
+                files_with_issues.append((file_path, issues))
 
             progress.advance(task)
 
     # Show results based on mode
     if check:
-        display_check_results(files_with_errors, len(files))
-        if files_with_errors:
-            raise typer.Exit(1)
+        exit_code = display_check_results(files_with_issues, len(files))
+        if exit_code != 0:
+            raise typer.Exit(exit_code)
     else:
-        display_fix_results(files_with_errors, total_fixed, total_fixes)
-        if files_with_errors:
-            raise typer.Exit(1)
+        exit_code = display_fix_results(files_with_issues, total_fixed, total_fixes)
+        if exit_code != 0:
+            raise typer.Exit(exit_code)
 
 
 if __name__ == "__main__":

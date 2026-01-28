@@ -116,7 +116,7 @@ color: orange
 
 ## Example 5: Skill Refactorer (Modification Agent)
 
-**Source**: `.claude/agents/plugin-refactor:refactor-skill.md`
+**Source**: `.claude/agents/plugin-creator:refactor-skill.md`
 
 This agent demonstrates:
 
@@ -127,7 +127,7 @@ This agent demonstrates:
 
 ```yaml
 ---
-name: plugin-refactor:refactor-skill
+name: plugin-creator:refactor-skill
 description: 'Refactor large or multi-domain skills into smaller, focused skills without losing fidelity. Use when a skill covers too many topics, exceeds 500 lines, or would benefit from separation of concerns. Analyzes skill content, identifies logical partitions, plans the split, creates new SKILL.md files, and validates complete coverage.'
 model: sonnet
 permissionMode: acceptEdits
@@ -175,13 +175,13 @@ description: Use when creating a new task OR when starting/switching to a task t
 
 ### Frontmatter Patterns
 
-| Pattern              | Example                        | When to Use                            |
-| -------------------- | ------------------------------ | -------------------------------------- |
-| Minimal frontmatter  | context-gathering              | Agent needs flexibility, inherits well |
-| Skill loading        | plugin-assessor                | Needs domain knowledge                 |
-| Permission mode      | plugin-refactor:refactor-skill | Creates/modifies files                 |
-| Color coding         | doc-drift-auditor              | Visual distinction helpful             |
-| Detailed description | doc-drift-auditor              | Complex trigger conditions             |
+| Pattern              | Example                       | When to Use                            |
+| -------------------- | ----------------------------- | -------------------------------------- |
+| Minimal frontmatter  | context-gathering             | Agent needs flexibility, inherits well |
+| Skill loading        | plugin-assessor               | Needs domain knowledge                 |
+| Permission mode      | plugin-creator:refactor-skill | Creates/modifies files                 |
+| Color coding         | doc-drift-auditor             | Visual distinction helpful             |
+| Detailed description | doc-drift-auditor             | Complex trigger conditions             |
 
 ### Body Structure Patterns
 
@@ -419,73 +419,104 @@ Paths:
 
 ---
 
-## Example 9: Formatter Agent (With Hooks)
+## Example 9: Formatter Plugin (With Hooks)
 
-**Use for**: Automated code formatting and linting with pre/post-tool hooks
+**IMPORTANT**: Hooks are NOT configured in agent frontmatter. Hooks are configured at the plugin or project level in `hooks/hooks.json` or `.claude-plugin/plugin.json`.
 
-This agent demonstrates:
+This example shows how a **plugin** (not an agent) can use hooks for automated formatting and validation.
 
-- PreToolUse hooks for validation
-- PostToolUse hooks for automatic formatting
-- Stop hooks for final cleanup
-- Scoped hook configuration
+**Plugin Structure**:
 
-```yaml
----
-name: auto-formatter
-description: 'Automatically formats and lints code after modifications. Use when writing or editing code files to ensure consistent style. Runs formatters and linters as hooks to maintain code quality without explicit user commands.'
-model: sonnet
-permissionMode: acceptEdits
-hooks:
-  PreToolUse:
-    - matcher: "Write|Edit"
-      hooks:
-        - type: command
-          command: "./scripts/check-file-size.sh"
-          timeout: 5000
-  PostToolUse:
-    - matcher: "Write|Edit"
-      hooks:
-        - type: command
-          command: "npx prettier --write"
-          timeout: 10000
-        - type: command
-          command: "npx eslint --fix"
-          timeout: 10000
-  Stop:
-    - hooks:
-        - type: command
-          command: "./scripts/final-lint-check.sh"
----
+```
+formatter-plugin/
+├── .claude-plugin/
+│   └── plugin.json
+├── hooks/
+│   └── hooks.json
+└── scripts/
+    ├── check-file-size.sh
+    └── final-lint-check.sh
+```
 
-# Auto Formatter
+**hooks/hooks.json**:
 
-You are a code quality agent that automatically formats and validates code changes.
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-file-size.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx prettier --write",
+            "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "npx eslint --fix",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/final-lint-check.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
-## Workflow
+**plugin.json**:
 
-1. When files are modified, PreToolUse hooks validate file size constraints
-2. After modifications, PostToolUse hooks run Prettier and ESLint
-3. Before finishing, Stop hook runs final validation check
+```json
+{
+  "name": "auto-formatter",
+  "version": "1.0.0",
+  "description": "Automatically formats and lints code after modifications",
+  "hooks": "./hooks/hooks.json"
+}
+```
 
-## Hook Behavior
+**Hook Behavior**:
 
 **PreToolUse (Validation)**:
+
 - Runs before Write/Edit operations
 - Exit 2 blocks the operation if validation fails
 - Checks file size limits to prevent large file mistakes
 
 **PostToolUse (Formatting)**:
+
 - Runs after successful Write/Edit operations
 - Applies Prettier formatting automatically
 - Fixes ESLint auto-fixable issues
 - Both run in parallel
 
 **Stop (Final Check)**:
-- Runs when agent completes all work
+
+- Runs when Claude completes all work
 - Verifies no linting issues remain
 - Exit 2 prevents task completion if issues found
-```
 
 **Key Hook Patterns:**
 
@@ -517,11 +548,13 @@ fi
 exit 0  # Allow operation
 ```
 
-**When to Use Hooks in Agents:**
+**When to Use Hooks:**
 
 - **PreToolUse**: Validation, security checks, blocking unwanted operations
 - **PostToolUse**: Formatting, linting, logging, notifications
 - **Stop**: Final validation, cleanup, report generation
+
+**SOURCE**: [Claude Code Hooks Reference](https://code.claude.com/docs/en/hooks.md) (accessed 2026-01-28)
 
 ---
 

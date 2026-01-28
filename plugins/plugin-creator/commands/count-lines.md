@@ -2,6 +2,8 @@
 description: Quick check of skill line counts to identify oversized skills that may need refactoring.
 argument-hint: <plugin-or-skill-path>
 allowed-tools: Read, Glob, Bash
+model: inherit
+context: This command identifies skills exceeding recommended size limits (500 lines warning, 800 lines critical). Use when auditing plugin structure, planning refactoring, or validating skill complexity. Complements /plugin-creator:refactor-plugin for comprehensive plugin analysis.
 ---
 
 # Count Skill Lines
@@ -35,7 +37,7 @@ Show table with all skills and their line counts.
 
 For skills over threshold:
 
-- Suggest running `/plugin-refactor:refactor` for comprehensive analysis
+- Suggest running `/plugin-creator:refactor-plugin` for comprehensive analysis
 - Note which skills are candidates for splitting
 
 ## Output Format
@@ -57,8 +59,8 @@ Summary:
 
 ```bash
 # Check a plugin
-/plugin-refactor:count-lines ./plugins/python3-development
+/plugin-creator:count-lines ./plugins/python3-development
 
 # Check a single skill
-/plugin-refactor:count-lines ./plugins/python3-development/skills/python3-development
+/plugin-creator:count-lines ./plugins/python3-development/skills/python3-development
 ```

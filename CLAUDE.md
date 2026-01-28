@@ -2,6 +2,8 @@
 
 This repository contains a Claude Code Marketplace Plugin providing Skills for Claude - modular packages that extend Claude's capabilities with specialized knowledge, workflows, and tools.
 
+**Contributing**: When adding, removing, or updating plugins in this repository, follow the procedures documented in [CONTRIBUTING.md](./CONTRIBUTING.md). The model MUST update `.claude-plugin/marketplace.json` when plugins are added or removed.
+
 ---
 
 ## Skill Creator Activation Protocol
@@ -135,6 +137,35 @@ claude --plugin-dir ./plugins/plugin-name
 /plugin disable plugin-name@jamie-bitflight-skills
 /plugin enable plugin-name@jamie-bitflight-skills
 ```
+
+---
+
+## Marketplace Maintenance
+
+**The model MUST follow these rules when modifying the plugin structure:**
+
+### Adding a New Plugin
+
+1. Create plugin directory structure under `plugins/`
+2. Validate plugin: `claude plugin validate plugins/plugin-name/`
+3. **MANDATORY**: Add entry to `.claude-plugin/marketplace.json` in the `plugins` array
+4. **MANDATORY**: Bump `metadata.version` (minor version for new plugins)
+5. Validate marketplace JSON: `python3 -m json.tool .claude-plugin/marketplace.json`
+
+### Removing a Plugin
+
+1. Remove plugin directory: `plugins/plugin-name/`
+2. **MANDATORY**: Remove entry from `.claude-plugin/marketplace.json`
+3. **MANDATORY**: Bump `metadata.version` (major if breaking, minor if experimental)
+4. Validate marketplace JSON
+
+### Version Bumping Rules
+
+- **Major** (X.0.0): Breaking changes, removed widely-used plugins
+- **Minor** (1.X.0): New plugins added, significant additions
+- **Patch** (1.0.X): Bug fixes, documentation only
+
+**Complete procedures**: See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed step-by-step instructions.
 
 ---
 

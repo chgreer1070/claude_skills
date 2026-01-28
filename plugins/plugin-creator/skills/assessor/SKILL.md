@@ -2,6 +2,8 @@
 name: assessor
 description: 'Assess a plugin and create refactoring task files for parallel agent execution'
 argument-hint: <plugin-name>
+user-invocable: true
+model: inherit
 ---
 
 # Review Plugin for Refactor Workflow
@@ -22,26 +24,24 @@ RETURN to the orchestrator after Phase 4 completes so parallel agent execution c
 
 ## Completion Tracking (MANDATORY)
 
-**IMMEDIATELY** after reading this command, you MUST create todos using TodoWrite with this exact checklist:
+**IMMEDIATELY** after reading this command, you MUST create tasks using TaskCreate with this exact checklist:
 
 ```
-TodoWrite(todos=[
-    {"content": "Phase 1: Generate Plugin Assessment Report", "status": "pending", "activeForm": "Generating Plugin Assessment Report"},
-    {"content": "Phase 2: Create refactoring design map at .claude/plan/refactor-design-{slug}.md", "status": "pending", "activeForm": "Creating refactoring design map"},
-    {"content": "Phase 3: Create task file at .claude/plan/tasks-refactor-{slug}.md", "status": "pending", "activeForm": "Creating refactoring task file"},
-    {"content": "Phase 3: Update REFACTOR-PLAN.md with new checklist items", "status": "pending", "activeForm": "Updating REFACTOR-PLAN.md index"},
-    {"content": "Phase 4: Gather refactoring context for task file", "status": "pending", "activeForm": "Gathering refactoring context"},
-    {"content": "Final: Return to orchestrator with execution plan", "status": "pending", "activeForm": "Returning execution plan to orchestrator"}
-])
+TaskCreate(subject="Phase 1: Generate Plugin Assessment Report", description="Generate comprehensive Plugin Assessment Report by analyzing plugin structure, quality, and refactoring opportunities", activeForm="Generating Plugin Assessment Report")
+TaskCreate(subject="Phase 2: Create refactoring design map", description="Create detailed refactoring design specification at .claude/plan/refactor-design-{slug}.md showing how each identified issue should be addressed", activeForm="Creating refactoring design map")
+TaskCreate(subject="Phase 3: Create task file", description="Create implementation task file at .claude/plan/tasks-refactor-{slug}.md with dependencies, verification steps, and parallel execution opportunities", activeForm="Creating refactoring task file")
+TaskCreate(subject="Phase 3: Update REFACTOR-PLAN.md", description="Update REFACTOR-PLAN.md index with new checklist items for this refactoring project", activeForm="Updating REFACTOR-PLAN.md index")
+TaskCreate(subject="Phase 4: Gather refactoring context", description="Gather comprehensive refactoring context for task file including skill content summaries and cross-references", activeForm="Gathering refactoring context")
+TaskCreate(subject="Final: Return to orchestrator", description="Return to orchestrator with execution plan and parallelization groups", activeForm="Returning execution plan to orchestrator")
 ```
 
 **RULES**:
 
-1. Create ALL todos BEFORE starting Phase 1
-2. Mark each todo `in_progress` BEFORE starting that work
-3. Mark each todo `completed` AFTER verification passes
-4. DO NOT display final summary until ALL todos are `completed`
-5. If any verification fails, keep todo as `in_progress` and fix before proceeding
+1. Create ALL tasks BEFORE starting Phase 1
+2. Mark each task `in_progress` using TaskUpdate BEFORE starting that work
+3. Mark each task `completed` using TaskUpdate AFTER verification passes
+4. DO NOT display final summary until ALL tasks are `completed`
+5. If any verification fails, keep task as `in_progress` and fix before proceeding
 
 ---
 
@@ -53,7 +53,7 @@ TodoWrite(todos=[
 
 ```
 Task(
-    subagent_type="plugin-assessor",
+    agent="plugin-assessor",
     prompt="""
 Your ROLE_TYPE is sub-agent.
 
@@ -121,7 +121,7 @@ Categorized by:
 Each recommendation must include:
 - Target file path
 - Issue type and severity (Critical/High/Medium/Low)
-- Recommended agent: plugin-refactor:refactor-skill | subagent-refactorer | claude-context-optimizer | plugin-docs-writer
+- Recommended agent: plugin-creator:refactor-skill | subagent-refactorer | claude-context-optimizer | plugin-docs-writer
 - Expected outcome
 </output_specification>
 
@@ -138,7 +138,7 @@ Each recommendation must include:
 
 After the plugin-assessor agent completes, YOU MUST:
 
-1. **UPDATE TODO**: Mark "Phase 1: Generate Plugin Assessment Report" as `in_progress` before verification
+1. **UPDATE TASK**: Mark "Phase 1: Generate Plugin Assessment Report" as `in_progress` before verification
 2. VERIFY the agent produced a complete Plugin Assessment Report
 3. DISPLAY this structured summary:
 
@@ -165,7 +165,7 @@ Assessment Report: [inline or note that it's in agent output]
 
 4. CONFIRM all sections are populated before proceeding to Phase 2
 5. If any section is incomplete, STOP and request the agent to complete it
-6. **UPDATE TODO**: Mark "Phase 1: Generate Plugin Assessment Report" as `completed`
+6. **UPDATE TASK**: Mark "Phase 1: Generate Plugin Assessment Report" as `completed`
 
 ---
 
@@ -177,7 +177,7 @@ Assessment Report: [inline or note that it's in agent output]
 
 ```
 Task(
-    subagent_type="python-cli-design-spec",
+    agent="python-cli-design-spec",
     prompt="""
 Your ROLE_TYPE is sub-agent.
 
@@ -340,7 +340,7 @@ Tasks that can run simultaneously:
 
 After the python-cli-design-spec agent completes, YOU MUST:
 
-1. **UPDATE TODO**: Mark "Phase 2: Create refactoring design map" as `in_progress` before verification
+1. **UPDATE TASK**: Mark "Phase 2: Create refactoring design map" as `in_progress` before verification
 2. VERIFY the agent created the design file at .claude/plan/refactor-design-{plugin-slug}.md
 3. READ the design file to confirm all sections are populated
 4. DISPLAY this structured summary:
@@ -367,7 +367,7 @@ Parallelization Groups: [count]
 
 5. CONFIRM the design file exists and is complete before proceeding to Phase 3
 6. If the file is missing or incomplete, STOP and request the agent to complete it
-7. **UPDATE TODO**: Mark "Phase 2: Create refactoring design map" as `completed`
+7. **UPDATE TASK**: Mark "Phase 2: Create refactoring design map" as `completed`
 
 ---
 
@@ -379,7 +379,7 @@ Parallelization Groups: [count]
 
 ````
 Task(
-    subagent_type="swarm-task-planner",
+    agent="swarm-task-planner",
     prompt="""
 Your ROLE_TYPE is sub-agent.
 
@@ -432,7 +432,7 @@ PERFORM these planning steps:
    **Dependencies**: [Comma-separated Task IDs or "None"]
    **Priority**: [Integer 1-5, where 1 is highest]
    **Complexity**: [Low/Medium/High]
-   **Agent**: [plugin-refactor:refactor-skill | subagent-refactorer | claude-context-optimizer | plugin-docs-writer]
+   **Agent**: [plugin-creator:refactor-skill | subagent-refactorer | claude-context-optimizer | plugin-docs-writer]
 
    **Target**: [File path being refactored]
    **Issue Type**: [SKILL_SPLIT | AGENT_OPTIMIZE | DOC_IMPROVE | ORPHAN_RESOLVE | STRUCTURE_FIX]
@@ -459,7 +459,7 @@ PERFORM these planning steps:
    ```
 
    **Agent Selection Rules**:
-   - SKILL_SPLIT tasks → `plugin-refactor:refactor-skill`
+   - SKILL_SPLIT tasks → `plugin-creator:refactor-skill`
    - AGENT_OPTIMIZE tasks → `subagent-refactorer`
    - DOC_IMPROVE tasks (skills/agents) → `claude-context-optimizer`
    - ORPHAN_RESOLVE tasks → `claude-context-optimizer` (integrate) or orchestrator (remove)
@@ -557,7 +557,7 @@ ALWAYS specify:
 
 After the swarm-task-planner agent completes, YOU MUST:
 
-1. **UPDATE TODOS**: Mark these as `in_progress` before verification:
+1. **UPDATE TASKS**: Mark these as `in_progress` before verification:
    - "Phase 3: Create task file at .claude/plan/tasks-refactor-{slug}.md"
    - "Phase 3: Update REFACTOR-PLAN.md with new checklist items"
 2. VERIFY the task file was created at .claude/plan/tasks-refactor-{plugin-slug}.md
@@ -590,7 +590,7 @@ Task Summary:
 
 6. CONFIRM all files exist and are complete
 7. If any file is missing or incomplete, STOP and request completion
-8. **UPDATE TODOS**: Mark both Phase 3 items as `completed`
+8. **UPDATE TASKS**: Mark both Phase 3 items as `completed`
 
 ---
 
@@ -602,7 +602,7 @@ Task Summary:
 
 ```
 Task(
-    subagent_type="context-gathering",
+    agent="context-gathering",
     prompt="""
 Your ROLE_TYPE is sub-agent.
 
@@ -652,7 +652,7 @@ MUST deliver:
 
 After the context-gathering agent completes:
 
-1. **UPDATE TODO**: Mark "Phase 4: Gather refactoring context" as `in_progress` before verification
+1. **UPDATE TASK**: Mark "Phase 4: Gather refactoring context" as `in_progress` before verification
 2. VERIFY the task file now contains a "Context Manifest" section
 3. DISPLAY:
 
@@ -666,7 +666,7 @@ Cross-References Mapped: [count]
 External Dependencies: [count or "none found"]
 ```
 
-4. **UPDATE TODO**: Mark "Phase 4: Gather refactoring context" as `completed`
+4. **UPDATE TASK**: Mark "Phase 4: Gather refactoring context" as `completed`
 
 ---
 
@@ -674,9 +674,9 @@ External Dependencies: [count or "none found"]
 
 **BEFORE displaying the final summary, YOU MUST:**
 
-1. **VERIFY ALL TODOS COMPLETE**: Check that ALL todos are marked `completed`
-2. If ANY todo is still `pending` or `in_progress`, go back and complete the missing work
-3. **UPDATE TODO**: Mark "Final: Return to orchestrator with execution plan" as `in_progress`
+1. **VERIFY ALL TODOS COMPLETE**: Check that ALL tasks are marked `completed`
+2. If ANY task is still `pending` or `in_progress`, go back and complete the missing work
+3. **UPDATE TASK**: Mark "Final: Return to orchestrator with execution plan" as `in_progress`
 
 <final_summary_structure>
 
@@ -722,7 +722,7 @@ PHASE 4 SUMMARY - Context:
 
 ORCHESTRATOR: You can now launch parallel agents using:
 
-/implement-refactor {plugin-slug}
+/plugin-creator:implement-refactor {plugin-slug}
 
 This will:
 1. Load the task file
@@ -745,7 +745,7 @@ FILES TO REVIEW BEFORE EXECUTION:
 
 </final_summary_structure>
 
-4. **UPDATE TODO**: Mark "Final: Return to orchestrator with execution plan" as `completed`
+4. **UPDATE TASK**: Mark "Final: Return to orchestrator with execution plan" as `completed`
 
 **WORKFLOW COMPLETE** - Control returns to orchestrator for parallel execution.
 

@@ -1,6 +1,7 @@
 ---
 description: Start a complete plugin refactoring workflow. Analyzes plugin structure, creates refactoring plan with tasks, and guides through execution.
 argument-hint: <plugin-path>
+user-invocable: true
 ---
 
 # Plugin Refactoring Workflow
@@ -29,8 +30,8 @@ If no plugin path provided:
 
 ```text
 ERROR: No plugin path provided.
-Usage: /plugin-refactor:refactor <plugin-path>
-Example: /plugin-refactor:refactor ./plugins/python3-development
+Usage: /plugin-creator:refactor <plugin-path>
+Example: /plugin-creator:refactor ./plugins/python3-development
 ```
 
 ### Step 2: Verify Plugin Exists
@@ -45,7 +46,7 @@ Check that the path contains a valid plugin:
 Invoke the assessor skill to analyze the plugin:
 
 ```text
-Skill(skill="plugin-refactor:assessor", args="$ARGUMENTS")
+Skill(skill="plugin-creator:assessor", args="$ARGUMENTS")
 ```
 
 This generates:
@@ -78,7 +79,7 @@ Tasks Summary:
 
 Next Steps:
 1. Review the plan files
-2. Run `/plugin-refactor:implement-refactor {slug}` to execute
+2. Run `/plugin-creator:implement-refactor {slug}` to execute
 ================================================================================
 ```
 
@@ -92,16 +93,16 @@ Ask user:
 
 ## Related Commands
 
-- `/plugin-refactor:implement-refactor` - Execute tasks from plan
-- `/plugin-refactor:ensure-complete` - Validate completed refactoring
-- `/plugin-refactor:count-lines` - Quick line count check
+- `/plugin-creator:implement-refactor` - Execute tasks from plan
+- `/plugin-creator:ensure-complete` - Validate completed refactoring
+- `/plugin-creator:count-lines` - Quick line count check
 
 ## Example Usage
 
 ```bash
 # Start refactoring a plugin
-/plugin-refactor:refactor ./plugins/python3-development
+/plugin-creator:refactor ./plugins/python3-development
 
 # Start refactoring current directory plugin
-/plugin-refactor:refactor .
+/plugin-creator:refactor .
 ```

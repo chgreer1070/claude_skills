@@ -12,7 +12,6 @@ This directory contains skills that extend Claude's capabilities with specialize
 | [scientific-thinking](#scientific-thinking)                     | Workflow Tools     | Hypothesis-driven reasoning for complex problems                 | Yes                   |
 | [verify](#verify)                                               | Workflow Tools     | Self-assessment checklist before task completion                 | Yes                   |
 | [delegate](#delegate)                                           | Workflow Tools     | Quick delegation template for sub-agent prompts                  | Yes                   |
-| [audit](#audit)                                                 | Workflow Tools     | Hallucination detection for agent output review                  | Yes                   |
 | [claude-skills-overview-2026](#claude-skills-overview-2026)     | Reference          | Skills and Slash Command system documentation                    | Yes                   |
 | [claude-hooks-reference-2026](#claude-hooks-reference-2026)     | Reference          | Hooks system documentation                                       | Yes                   |
 | [claude-plugins-reference-2026](#claude-plugins-reference-2026) | Reference          | Plugins system documentation                                     | Yes                   |
@@ -228,41 +227,6 @@ When an agent loads this skill, it will:
 **Delegation formula**: `Delegation = Observations + Success Criteria + Resources - Assumptions - Micromanagement`
 
 **Related skills**: For comprehensive 10-step delegation guidance, use `/how-to-delegate` command.
-
----
-
-### audit
-
-**What it does**: Detects hallucinations, timeline fabrications, and unverified assumptions in agent output. Reviews content for specific trigger patterns that indicate unreliable information.
-
-**AI behavior when loaded**:
-
-- Scans for assumption language ("I think", "likely", "probably")
-- Detects project management timelines ("Week 1", "Sprint 2", "Q1")
-- Identifies pseudo-quantification without methodology ("8.5/10", "70% improvement")
-- Verifies completeness claims ("All files checked") against actual counts
-- Flags micromanagement in delegation prompts
-
-**How to trigger**:
-
-- Explicitly: `@audit` or `Skill(command: "audit")`
-- Automatically: When reviewing sub-agent results, receiving research findings, validating claims that seem suspicious, or when output contains assumption language
-
-**What to expect**:
-
-- Pass/Fail assessment with specific triggers found
-- Required corrections for each flagged item
-- Verification commands to validate claims
-
-**Hallucination triggers**:
-
-| Trigger         | Pattern              | Action                      |
-| --------------- | -------------------- | --------------------------- |
-| Guessing        | "probably", "likely" | Verify with tools           |
-| Timelines       | "Week 1", "Q2"       | Replace with priorities     |
-| Fake Metrics    | "8/10", "70%"        | Demand methodology          |
-| False Coverage  | "all", "every"       | Count and verify            |
-| Micromanagement | "change line X"      | Convert to success criteria |
 
 ---
 

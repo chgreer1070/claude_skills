@@ -3,6 +3,7 @@ name: refactor-skill
 description: 'Refactor oversized or multi-domain skills into smaller, purpose-built skills while preserving full fidelity and capability coverage. Use when a skill spans too many topics, exceeds ~500 lines, or would benefit from clearer separation of concerns and independent invocation. This skill reviews the existing content, identifies logical boundaries, designs a split plan, generates new SKILL.md files for each extracted skill, and validates that the refactor maintains complete functional and content parity with the original.'
 model: opus
 argument-hint: "path to skill directory (or plugin) to refactor"
+user-invocable: true
 ---
 
 Refactoring LLM resources and prompts is the intentional restructuring of prompt content, tool definitions, and supporting context (e.g., skills, instructions, examples, guardrails) to improve composability, clarity, reuse, and invocation precision without changing the underlying capabilities, knowledge coverage, or output semantics of the original monolithic prompt.
@@ -35,7 +36,7 @@ ANALYZE the source skill thoroughly:
 
 | Signal                        | Indicates Separate Skill      |
 | ----------------------------- | ----------------------------- |
-| Different tool requirements   | `allowed-tools` would differ  |
+| Different tool requirements   | `tools` would differ          |
 | Different invocation triggers | Description keywords diverge  |
 | Independent use cases         | Can be used without the other |
 | Different expertise domains   | Distinct knowledge areas      |
@@ -71,8 +72,8 @@ PROPOSE a refactoring plan before executing:
 - Shared concepts will be in {skill-name}
 
 ### Migration Notes
-- Original skill will be: archived / deleted / kept as index
-- Existing references will: point to {strategy}
+- Original monolithic skill will be: converted to facade/meta-skill that loads all new specialists
+- Existing references will: continue to work via the facade (backwards compatible)
 
 ### Fidelity Checklist
 - [ ] All sections accounted for
@@ -433,8 +434,8 @@ After completing refactoring, produce:
 
 - [ ] Review new skills for accuracy
 - [ ] Test skill activation triggers
-- [ ] Update external references
-- [ ] Delete/archive original skill
+- [ ] Verify facade/meta-skill loads all new specialists
+- [ ] Test backwards compatibility with existing references
 - [ ] Test with `claude --plugin-dir ./plugins/plugin-name`
 ```
 
@@ -444,21 +445,21 @@ After completing refactoring, produce:
 
 ```
 Task(
-  agent="plugin-refactor:refactor-skill",
+  agent="plugin-creator:refactor-skill",
   prompt="Refactor ./plugins/python3-development/skills/python3/SKILL.md into focused skills for testing, async, and packaging"
 )
 ```
 
 ```
 Task(
-  agent="plugin-refactor:refactor-skill",
+  agent="plugin-creator:refactor-skill",
   prompt="The fastmcp-creator skill is too large. Analyze it and propose how to split it into smaller skills"
 )
 ```
 
 ```
 Task(
-  agent="plugin-refactor:refactor-skill",
+  agent="plugin-creator:refactor-skill",
   prompt="Split the git-workflow skill by expertise level: basics, advanced, and team workflows"
 )
 ```

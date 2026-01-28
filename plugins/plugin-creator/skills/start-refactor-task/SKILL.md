@@ -2,6 +2,8 @@
 name: start-refactor-task
 description: 'Start or complete a specific refactoring task from a task file (for sub-agents)'
 argument-hint: <task-file-path> [--task <task-id>] [--complete <task-id>]
+user-invocable: true
+model: sonnet
 ---
 
 # Start Refactor Task
@@ -62,16 +64,21 @@ If no ready task: Output "No ready tasks" and EXIT.
 
 EDIT the task file: Change `❌ NOT STARTED` to `🔄 IN PROGRESS`
 
-### 4. Create Todos
+### 4. Track Progress
 
-Use TodoWrite to track acceptance criteria:
+Use the Task API to track acceptance criteria:
 
 ```
-TodoWrite(todos=[
-    {"content": "AC1: {criterion}", "status": "pending", "activeForm": "Implementing {criterion}"},
-    ...
-    {"content": "Verification: Run all verification steps", "status": "pending", "activeForm": "Running verification"}
-])
+TaskCreate(
+    subject="AC1: {criterion}",
+    description="{detailed criterion description}",
+    activeForm="Implementing {criterion}"
+)
+TaskCreate(
+    subject="Verification: Run all verification steps",
+    description="{verification steps}",
+    activeForm="Running verification"
+)
 ```
 
 ### 5. Implement
@@ -141,7 +148,7 @@ Common verification steps:
 When all verification passes:
 
 ```
-/start-refactor-task {task_file_path} --complete {task_id}
+/plugin-creator:start-refactor-task {task_file_path} --complete {task_id}
 ```
 
 ---

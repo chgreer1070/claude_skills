@@ -94,6 +94,18 @@ cat .claude/agents/*.md
 
 ---
 
+## Agent Location Conventions
+
+**Project Agents**: `.claude/agents/` in repository root
+**User Agents**: `~/.claude/agents/` in home directory
+**Plugin Agents**: `{plugin-root}/agents/` in plugin directory
+
+When creating agents, choose the appropriate location based on scope:
+
+- **Project agents**: Specific to one codebase, shared with team via git
+- **User agents**: Personal agents used across all projects
+- **Plugin agents**: Part of a plugin, installed with the plugin
+
 ## Finding Standard Agent Patterns
 
 For **user-facing agents**, look for similar agents in the project's `.claude/agents/` directory:
@@ -119,6 +131,31 @@ If no similar agent exists, build from scratch using [Agent Schema Reference](./
 # Role-Based Contract Archetypes
 
 These templates follow a structured contract pattern with standardized inputs/outputs. All agents using these templates should load the `subagent-contract` skill for consistent behavior.
+
+## Complete Agent Frontmatter Reference
+
+### Required Fields
+
+| Field         | Type   | Required | Description                                    | Example                                   |
+| ------------- | ------ | -------- | ---------------------------------------------- | ----------------------------------------- |
+| `name`        | string | Yes      | Unique identifier (lowercase, hyphens, max 64) | `python-reviewer`                         |
+| `description` | string | Yes      | Trigger keywords + purpose (max 1024 chars)    | `"Review Python code for quality issues"` |
+
+### Optional Fields
+
+| Field             | Type   | Default     | Valid Values                                               | Description                             |
+| ----------------- | ------ | ----------- | ---------------------------------------------------------- | --------------------------------------- |
+| `model`           | string | `inherit`   | `sonnet`, `opus`, `haiku`, `inherit`                       | Claude model to use                     |
+| `tools`           | string | (all tools) | Comma-separated: `Read, Grep, Glob, Bash, Edit, Write`     | Tools available to agent                |
+| `disallowedTools` | string | (none)      | Comma-separated tool names                                 | Tools explicitly forbidden              |
+| `permissionMode`  | string | (inherit)   | `dontAsk`, `plan`, `acceptEdits`, `acceptAll`              | Permission behavior                     |
+| `skills`          | string | (none)      | Comma-separated skill names                                | Skills to load                          |
+| `color`           | string | (none)      | `cyan`, `yellow`, `orange`, `green`, `red`                 | Visual distinction in UI                |
+| `hooks`           | N/A    | N/A         | **NOT VALID IN AGENT FRONTMATTER** (use plugin hooks.json) | Hooks are plugin-level, not agent-level |
+
+**CRITICAL**: The `hooks` field is NOT valid in agent frontmatter. Hooks are configured at the plugin or project level in `hooks/hooks.json` or `.claude-plugin/plugin.json`.
+
+**SOURCE**: Lines 171-184 of [./claude-plugins-reference-2026/SKILL.md](../../claude-plugins-reference-2026/SKILL.md)
 
 ## Base Agent Skeleton
 

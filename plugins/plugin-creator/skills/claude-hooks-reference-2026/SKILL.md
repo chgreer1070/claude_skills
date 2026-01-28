@@ -1,6 +1,7 @@
 ---
 name: claude-hooks-reference-2026
 description: Complete reference for Claude Code hooks system (January 2026). Use when creating hooks, understanding hook events, matchers, exit codes, JSON output control, environment variables, plugin hooks, or implementing hook scripts.
+user-invocable: true
 ---
 
 # Claude Code Hooks System - Complete Reference (January 2026)
@@ -123,16 +124,18 @@ For `UserPromptSubmit`, `Stop`, `SubagentStop`, and `SessionEnd`, omit the match
 
 ## Plugin Hooks
 
-Plugins can provide hooks that integrate with user and project hooks.
+Plugins can provide hooks that integrate with user and project hooks. For complete plugin documentation including plugin.json schema, directory structure, and component integration, see [./claude-plugins-reference-2026/SKILL.md](../claude-plugins-reference-2026/SKILL.md).
 
 ### How Plugin Hooks Work
 
-- Plugin hooks defined in `hooks/hooks.json` or custom path via `hooks` field
+- Plugin hooks defined in `hooks/hooks.json` or custom path via `hooks` field in plugin.json
 - When plugin enabled, its hooks merge with user and project hooks
 - Multiple hooks from different sources can respond to same event
 - Plugin hooks run alongside custom hooks in parallel
 
 ### Plugin Hook Configuration
+
+Hooks can be configured in `hooks/hooks.json` or inline in `plugin.json`:
 
 ```json
 {
@@ -154,6 +157,36 @@ Plugins can provide hooks that integrate with user and project hooks.
 }
 ```
 
+Reference in plugin.json:
+
+```json
+{
+  "name": "my-plugin",
+  "hooks": "./hooks/hooks.json"
+}
+```
+
+Or define inline:
+
+```json
+{
+  "name": "my-plugin",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
 ### Plugin Environment Variables
 
 - `${CLAUDE_PLUGIN_ROOT}`: Absolute path to the plugin directory
@@ -164,7 +197,7 @@ Plugins can provide hooks that integrate with user and project hooks.
 
 ## Hooks in Skills, Agents, and Slash Commands
 
-Hooks can be defined in frontmatter. These are scoped to the component's lifecycle.
+Hooks can be defined in frontmatter. These are scoped to the component's lifecycle. For complete skill documentation, see [./claude-skills-reference-2026/SKILL.md](../claude-skills-reference-2026/SKILL.md).
 
 **Supported events**: `PreToolUse`, `PostToolUse`, `Stop`
 
@@ -201,6 +234,16 @@ hooks:
 ### `once` Option
 
 Set `once: true` to run hook only once per session. After first successful execution, hook is removed.
+
+```yaml
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "./scripts/one-time-setup.sh"
+          once: true
+```
 
 **Note**: Only supported for skills and slash commands, not agents.
 
@@ -671,7 +714,7 @@ Deny with message:
 
 ## Prompt-Based Hooks
 
-LLM-evaluated decisions using a fast model (Haiku).
+LLM-evaluated decisions using a fast model (Haiku). Also known as "agent hooks" for complex verification tasks.
 
 ### How Prompt-Based Hooks Work
 
@@ -689,11 +732,13 @@ LLM-evaluated decisions using a fast model (Haiku).
 }
 ```
 
-| Field     | Required | Description             |
-| --------- | -------- | ----------------------- |
-| `type`    | Yes      | Must be `"prompt"`      |
-| `prompt`  | Yes      | Prompt text sent to LLM |
-| `timeout` | No       | Seconds (default: 30)   |
+Alternatively, use `"type": "agent"` for complex verification tasks that require tool access.
+
+| Field     | Required | Description                                        |
+| --------- | -------- | -------------------------------------------------- |
+| `type`    | Yes      | `"prompt"` for LLM evaluation, `"agent"` for tools |
+| `prompt`  | Yes      | Prompt text sent to LLM                            |
+| `timeout` | No       | Seconds (default: 30 for prompt, 60 for agent)     |
 
 ### Response Schema
 
@@ -1022,16 +1067,39 @@ claude --debug "hooks"  # Filter to hooks only
 3. **Test commands** - Run hook commands manually first
 4. **Check permissions** - Make sure scripts are executable
 5. **Review logs** - Use `claude --debug` to see hook execution details
+6. **Validate plugin hooks** - Use `claude plugin validate` or `/plugin validate` for plugin-level hooks
 
 ### Common Issues
 
-| Problem            | Cause                 | Fix                           |
-| ------------------ | --------------------- | ----------------------------- |
-| Hook not running   | Wrong matcher pattern | Check case-sensitivity, regex |
-| Command not found  | Relative path         | Use `$CLAUDE_PROJECT_DIR`     |
-| JSON not processed | Non-zero exit code    | Exit 0 for JSON processing    |
-| Hook times out     | Slow script           | Optimize or increase timeout  |
-| Quotes breaking    | Unescaped in JSON     | Use `\"` inside JSON strings  |
+| Problem              | Cause                            | Fix                                      |
+| -------------------- | -------------------------------- | ---------------------------------------- |
+| Hook not running     | Wrong matcher pattern            | Check case-sensitivity, regex            |
+| Command not found    | Relative path                    | Use `$CLAUDE_PROJECT_DIR`                |
+| JSON not processed   | Non-zero exit code               | Exit 0 for JSON processing               |
+| Hook times out       | Slow script                      | Optimize or increase timeout             |
+| Quotes breaking      | Unescaped in JSON                | Use `\"` inside JSON strings             |
+| Plugin hook not load | Invalid plugin.json hooks config | Validate with `claude plugin validate .` |
+| Path not found       | Missing `${CLAUDE_PLUGIN_ROOT}`  | Use variable for plugin scripts          |
+
+### Validation Commands
+
+**For plugin hooks**:
+
+```bash
+# CLI (from terminal)
+claude plugin validate .
+claude plugin validate ./path/to/plugin
+
+# In Claude Code session
+/plugin validate .
+/plugin validate ./path/to/plugin
+```
+
+**For settings hooks**: JSON validation with:
+
+```bash
+python3 -m json.tool .claude/settings.json
+```
 
 ### Test Commands Manually
 

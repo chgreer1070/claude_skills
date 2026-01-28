@@ -56,7 +56,7 @@ flowchart TD
 
     T1A --> E1[Explore Agent]
     T1B --> E2[Explore Agent]
-    T1C --> GP[general-purpose Agent + WebFetch]
+    T1C --> GP[general-purpose Agent + mcp__Ref__ref_read_url]
 
     E1 --> REPORT[Research Report]
     E2 --> REPORT
@@ -131,7 +131,7 @@ flowchart TD
     PLUGIN --> T4B[Task 4b: Verify vs Official Docs]
 
     T4A --> SCRIPTS["create_plugin.py validate + validate_frontmatter.py"]
-    T4B --> GP[general-purpose Agent + WebFetch]
+    T4B --> GP[general-purpose Agent + mcp__Ref__ref_read_url]
 
     SCRIPTS --> RESULTS[Validation Results]
     GP --> RESULTS
@@ -191,24 +191,24 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph Research
-        R1[Explore] --> R1T[Code discovery]
-        R2[Explore] --> R2T[Domain knowledge]
-        R3[general-purpose] --> R3T[Official docs fetch]
+        R1[Explore Agent] --> R1T[Code discovery]
+        R2[Explore Agent] --> R2T[Domain knowledge]
+        R3[general-purpose Agent] --> R3T[Official docs fetch via mcp__Ref__ref_read_url]
     end
 
     subgraph Design
-        D1[Plan] --> D1T[Architecture]
-        D2[Plan] --> D2T[Content structure]
+        D1[Plan Agent] --> D1T[Architecture]
+        D2[Plan Agent] --> D2T[Content structure]
     end
 
     subgraph Validate
         V1[Scripts] --> V1T[Schema validation]
-        V2[general-purpose] --> V2T[Docs verification]
-        V3[plugin-assessor] --> V3T[Quality assessment]
+        V2[general-purpose Agent] --> V2T[Docs verification via mcp__Ref__ref_read_url]
+        V3[plugin-assessor Agent] --> V3T[Quality assessment]
     end
 
     subgraph Document
-        DOC[plugin-docs-writer] --> DOCT[README generation]
+        DOC[plugin-docs-writer Agent] --> DOCT[README generation]
     end
 ```
 
@@ -221,10 +221,10 @@ flowchart TD
     subgraph "DELEGATE TO"
         A1[Explore agent] --> A1T[Domain research]
         A2[Explore agent] --> A2T[Code discovery]
-        A3[WebFetch/Explore] --> A3T[Official docs]
+        A3[mcp__Ref__ref_read_url tool] --> A3T[Official docs]
         A4[Validation scripts] --> A4T[Schema checks]
-        A5[plugin-assessor] --> A5T[Quality review]
-        A6[plugin-docs-writer] --> A6T[Documentation]
+        A5[plugin-assessor agent] --> A5T[Quality review]
+        A6[plugin-docs-writer agent] --> A6T[Documentation]
     end
 
     subgraph "NEVER DO DIRECTLY"
@@ -260,6 +260,69 @@ flowchart TD
     F6A --> F6B[Return to relevant phase]
     F6B --> F6C[Fix and re-verify]
 ```
+
+---
+
+## Tool Inventory Reference
+
+### Built-in Claude Code Agents
+
+| Agent Name        | Model   | Purpose                                |
+| ----------------- | ------- | -------------------------------------- |
+| `general-purpose` | inherit | Complex operations requiring reasoning |
+| `Explore`         | haiku   | Fast read-only codebase navigation     |
+| `Plan`            | inherit | Research with reasoning capability     |
+
+**SOURCE**: [CLAUDE.md global instructions](https://docs.claude.com) (accessed 2026-01-28)
+
+### MCP Tools for Documentation
+
+| Tool                                 | Purpose                 | Required For           |
+| ------------------------------------ | ----------------------- | ---------------------- |
+| `mcp__Ref__ref_read_url`             | Read documentation URLs | Official docs fetching |
+| `mcp__Ref__ref_search_documentation` | Search documentation    | Finding relevant docs  |
+
+**SOURCE**: Lines 9-12 of [claude-plugins-reference-2026/SKILL.md](../../claude-plugins-reference-2026/SKILL.md)
+
+### Validation Scripts
+
+| Script                        | Purpose                         | Location                         |
+| ----------------------------- | ------------------------------- | -------------------------------- |
+| `create_plugin.py`            | Plugin scaffolding + validation | `${CLAUDE_PLUGIN_ROOT}/scripts/` |
+| `validate_frontmatter.py`     | Frontmatter schema validation   | `${CLAUDE_PLUGIN_ROOT}/scripts/` |
+| `validate-skill-structure.sh` | Skill quality checks            | `${CLAUDE_PLUGIN_ROOT}/scripts/` |
+
+**SOURCE**: Verified from plugin-creator plugin scripts directory
+
+### Plugin-Specific Agents
+
+| Agent                | Model  | Purpose                               |
+| -------------------- | ------ | ------------------------------------- |
+| `plugin-assessor`    | sonnet | Plugin quality analysis               |
+| `plugin-docs-writer` | sonnet | README generation (if exists in repo) |
+| `refactor-planner`   | sonnet | Refactoring plan creation             |
+| `refactor-executor`  | sonnet | Refactoring task execution            |
+| `refactor-validator` | sonnet | Refactoring validation                |
+
+**SOURCE**: Lines 130-138 of [plugin-creator/CLAUDE.md](../../CLAUDE.md)
+
+---
+
+## Agent Discovery Mechanism
+
+Claude Code discovers agents in this order:
+
+1. **Project agents**: `.claude/agents/*.md` in current repository
+2. **User agents**: `~/.claude/agents/*.md` in home directory
+3. **Plugin agents**: `{plugin-root}/agents/*.md` for all enabled plugins
+
+**Agent Selection**:
+
+- Agents are matched based on `description` field trigger keywords
+- Multiple matching agents may be presented to user
+- User can manually invoke with `@agent-name`
+
+**SOURCE**: [Agent system documentation](https://code.claude.com/docs/en/agents.md) (accessed 2026-01-28)
 
 ---
 

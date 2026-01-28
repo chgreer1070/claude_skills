@@ -1,6 +1,8 @@
 ---
 name: plugin-creator
 description: 'Orchestrates specialized agents to create high-quality Claude Code plugins. Delegates to researcher agents for domain knowledge, Explore agents for code discovery, validation agents for official docs verification, and review agents for quality checks. Use when creating new plugins or improving existing ones.'
+user-invocable: true
+model: sonnet
 ---
 
 # Claude Code Plugin Creator - Agentic Orchestration Workflow
@@ -46,7 +48,7 @@ This skill orchestrates specialized agents through a comprehensive plugin creati
 Create a work directory for each plugin project:
 
 ```text
-.claude/plugin-work/{plugin-name}/
+.claude/plan/{plugin-name}/
 ├── PROJECT.md                # Vision and goals (always loaded)
 ├── REQUIREMENTS.md           # Scoped deliverables
 ├── STATE.md                  # Decisions, blockers, current position
@@ -94,10 +96,10 @@ Last Updated: {ISO timestamp}
 ```text
 # Spawn all four researchers in a single message:
 
-Task(subagent_type="Explore", prompt="EXISTING PLUGINS: Search plugins/ and ~/.claude/skills/ for similar functionality...")
-Task(subagent_type="Explore", prompt="CLAUDE CODE FEATURES: What plugin capabilities exist? Dynamic context, hooks, MCP, LSP...")
-Task(subagent_type="Explore", prompt="ARCHITECTURE PATTERNS: How do well-structured plugins organize skills, agents, references...")
-Task(subagent_type="general-purpose", prompt="PITFALLS: Fetch official docs, identify common mistakes, schema gotchas...")
+Task(agent="Explore", prompt="EXISTING PLUGINS: Search plugins/ and ~/.claude/skills/ for similar functionality...")
+Task(agent="Explore", prompt="CLAUDE CODE FEATURES: What plugin capabilities exist? Dynamic context, hooks, MCP, LSP...")
+Task(agent="Explore", prompt="ARCHITECTURE PATTERNS: How do well-structured plugins organize skills, agents, references...")
+Task(agent="general-purpose", prompt="PITFALLS: Fetch official docs, identify common mistakes, schema gotchas...")
 ```
 
 **All four run concurrently. Merge results into research-FINDINGS.md before planning.**
@@ -221,7 +223,7 @@ Date: {ISO timestamp}
 ```text
 # Launch all four simultaneously:
 
-Task(subagent_type="Explore", prompt="
+Task(agent="Explore", prompt="
 RESEARCHER 1: EXISTING SOLUTIONS
 Search for plugins/skills similar to {plugin-name}:
 - plugins/ directory
@@ -229,7 +231,7 @@ Search for plugins/skills similar to {plugin-name}:
 - GitHub repos with Claude Code plugins
 REPORT: What exists, gaps to fill, patterns to follow/avoid")
 
-Task(subagent_type="Explore", prompt="
+Task(agent="Explore", prompt="
 RESEARCHER 2: CLAUDE CODE FEATURES
 What capabilities should this plugin use?
 - Dynamic context injection (!`command`)
@@ -238,7 +240,7 @@ What capabilities should this plugin use?
 - MCP/LSP integration opportunities
 REPORT: Recommended features with rationale")
 
-Task(subagent_type="Explore", prompt="
+Task(agent="Explore", prompt="
 RESEARCHER 3: ARCHITECTURE PATTERNS
 How do well-structured plugins organize?
 - Skill directory structure
@@ -247,7 +249,7 @@ How do well-structured plugins organize?
 - Hook configurations
 REPORT: Recommended structure based on similar plugins")
 
-Task(subagent_type="general-purpose", prompt="
+Task(agent="general-purpose", prompt="
 RESEARCHER 4: PITFALLS & OFFICIAL DOCS
 Fetch https://code.claude.com/docs/en/plugins-reference.md
 Fetch https://code.claude.com/docs/en/skills.md
@@ -299,7 +301,7 @@ Date: {ISO timestamp}
 
 ```
 Task(
-  subagent_type="Plan",
+  agent="Plan",
   prompt="Design plugin: {plugin-name}
 
   INPUTS:
@@ -337,7 +339,7 @@ Task(
 
 ```
 Task(
-  subagent_type="general-purpose",
+  agent="general-purpose",
   prompt="PLAN CHECKER: Verify this plan achieves the plugin goals.
 
   PLAN: {generated XML tasks}
@@ -396,7 +398,7 @@ For each `<task>` in the approved plan:
 
 ```
 Task(
-  subagent_type="general-purpose",
+  agent="general-purpose",
   prompt="EXECUTOR: Implement this single task.
 
   <task id='{N}'>
@@ -901,7 +903,7 @@ uv run scripts/validate_frontmatter.py batch ./plugins/my-plugin
 
 ```
 Task(
-  subagent_type="general-purpose",
+  agent="general-purpose",
   prompt="VERIFIER: Check plugin against official docs.
 
   FETCH:
@@ -920,7 +922,7 @@ Task(
 
 ```
 Task(
-  subagent_type="plugin-assessor",
+  agent="plugin-assessor",
   prompt="Assess ./plugins/my-plugin for marketplace readiness.
 
   CHECK:
@@ -939,7 +941,7 @@ Task(
 
 ```
 Task(
-  subagent_type="general-purpose",
+  agent="general-purpose",
   prompt="DEBUGGER: Diagnose validation failure.
 
   FAILURE: {failure details from verifier}
@@ -1002,7 +1004,7 @@ Fixes applied: {list}
 
 ```
 Task(
-  subagent_type="plugin-docs-writer",
+  agent="plugin-docs-writer",
   prompt="Generate comprehensive documentation for the plugin at ./plugins/my-plugin.
 
   CREATE:
