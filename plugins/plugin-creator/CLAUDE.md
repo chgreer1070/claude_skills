@@ -707,6 +707,47 @@ This documentation was created 2026-01-28 by:
 
 ---
 
+## Script Consolidation Recommendation
+
+**Current State:** Validation and linting functionality is spread across multiple scripts:
+
+- `validate_frontmatter.py` - Frontmatter schema validation
+- `validate-skill-structure.sh` - Skill structure validation (bash)
+- `count-skill-lines.sh` - Line counting (bash)
+- `validate-task-file.sh` - Task file validation (bash)
+- `fix-tool-formats.py` - Tool format fixing
+
+**Recommendation:** Consolidate into a single cross-platform Python script: `lint-claude-plugin.py`
+
+**Requirements:**
+
+1. **Single Script:** Combine all validation functionality into one Python 3.11+ script
+2. **Cross-Platform:** Pure Python, no bash dependencies, works on Windows/Linux/macOS
+3. **Pre-commit Integration:** Compatible with `.pre-commit-config.yaml` hooks
+4. **Token-Based Metrics:** Use `tiktoken` library to measure skill complexity in tokens, not lines
+   - Line count is a poor proxy for complexity
+   - Token count directly measures what Claude processes
+   - Thresholds should be token-based (e.g., warn at X tokens, error at Y tokens)
+5. **Unified Validation:** Single entry point that validates:
+   - Frontmatter schema (skills, agents, commands)
+   - Plugin.json structure
+   - Skill complexity via token count
+   - Internal link validity
+   - Progressive disclosure structure
+   - Tool format correctness
+
+**Benefits:**
+
+- Single tool to install and maintain
+- Consistent behavior across platforms
+- Better complexity measurement (tokens vs lines)
+- Pre-commit hook compatibility
+- Reduced maintenance burden
+
+**Implementation Priority:** Medium - Current scripts work but consolidation would improve usability
+
+---
+
 ## Related Plugins
 
 **External Dependencies:**
