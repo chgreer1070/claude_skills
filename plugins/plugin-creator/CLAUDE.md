@@ -975,7 +975,391 @@ claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
 
 ---
 
-## Development Roadmap
+## Next Desired Outcomes (Pre-Context Gathering Phase)
+
+This section lists discrete desired outcomes ready for Stage 2 (Planning with RT-ICA) following the Stateless Software Engineering Framework. Each outcome can be worked through independently by specialist agents.
+
+**Methodology Reference**: `/home/ubuntulinuxqa2/repos/claude_skills/methodology_development/stateless-software-engineering-framework.md`
+
+**SSE Stage Progression for Each Outcome**:
+
+1. **Stage 1: Discovery** (COMPLETE - documented below)
+2. **Stage 2: Planning** with RT-ICA (NEXT - requires specialist agent)
+3. **Stage 3: Context Integration** (validates plan against codebase)
+4. **Stage 4: Task Decomposition** (creates executable tasks)
+5. **Stage 5: Execution** (stateless implementation)
+6. **Stage 6: Forensic Review** (validates completion)
+7. **Stage 7: Final Verification** (certifies outcome achievement)
+
+---
+
+### Outcome 1: User-Invocable `/create-plugin` Workflow
+
+**Objective**: Provide systematic plugin creation workflow following SSE methodology
+
+**Current State** (Stage 1 Discovery Output):
+
+- Script exists: `scripts/create_plugin.py` (interactive CLI)
+- Skill exists: `plugin-creator` (delegates to agents)
+- Gap: No RT-ICA phase, no quality gates, script not integrated with agent orchestration
+
+**Prerequisites to Verify (RT-ICA Inputs)**:
+
+- Existing agent orchestration patterns in plugin-creator
+- Location of RT-ICA skill/methodology
+- Template structure for user-invocable skills
+- Validation scripts that must run at each gate
+- Integration points with existing create_plugin.py script
+
+**Dependencies on Existing Components**:
+
+- `claude-plugins-reference-2026` skill (reference documentation)
+- `claude-skills-overview-2026` skill (skill structure guidance)
+- `plugin-creator` orchestrator (existing delegation pattern)
+- `validate_frontmatter.py` script (quality gate)
+- `claude plugin validate` command (structure validation)
+
+**Success Criteria**:
+
+- Skill file created at `skills/create-plugin/SKILL.md`
+- Workflow follows 6-phase structure from existing `plugin-dev:create-plugin` skill
+- RT-ICA phase explicitly included before planning
+- Quality gates run after each phase
+- Backwards compatible with existing create_plugin.py script
+- Validates using existing validation tools
+
+**Acceptance Criteria**:
+
+- `/create-plugin` command appears in skill list
+- Triggering skill starts Discovery phase with RT-ICA
+- Each phase blocks on validation gate before proceeding
+- Final output is validated plugin directory structure
+- Documentation updated in CLAUDE.md
+
+**Known Unknowns** (requires RT-ICA assessment):
+
+- How to integrate script-based scaffolding with skill-based orchestration?
+- Should RT-ICA be embedded in skill or delegated to separate skill?
+- What validation gates block progression between phases?
+- How to handle user approval checkpoints?
+
+---
+
+### Outcome 2: User-Invocable `/extend-plugin` Workflow
+
+**Objective**: Add new components to existing plugins with validation and integration checks
+
+**Current State** (Stage 1 Discovery Output):
+
+- No dedicated workflow exists
+- Users manually create components without guidance
+- No validation of compatibility with existing structure
+- No automatic plugin.json updates
+
+**Prerequisites to Verify (RT-ICA Inputs)**:
+
+- Existing plugin.json update patterns
+- Component type detection logic
+- Validation requirements for each component type
+- Integration test patterns for new components
+- Scope determination patterns (project/user/plugin)
+
+**Dependencies on Existing Components**:
+
+- `skill-creator` skill (when created - see Outcome 4)
+- `agent-creator` skill (existing)
+- `write-frontmatter-description` skill (description generation)
+- `validate_frontmatter.py` script (validation gate)
+- `claude plugin validate` command (structure validation)
+
+**Success Criteria**:
+
+- Skill file created at `skills/extend-plugin/SKILL.md`
+- Workflow analyzes existing plugin before adding components
+- Follows existing naming and structure conventions
+- Updates plugin.json automatically
+- Validates new component against plugin schema
+
+**Acceptance Criteria**:
+
+- `/extend-plugin <plugin-path> --add <type>` command works
+- Detects and follows existing plugin patterns
+- Updates plugin.json with new component reference
+- Runs validation suite on modified plugin
+- Reports integration status (COMPATIBLE / CONFLICTS)
+
+**Known Unknowns** (requires RT-ICA assessment):
+
+- How to detect existing naming conventions automatically?
+- What constitutes a "conflict" with existing structure?
+- Should this skill create missing skill-creator if needed?
+- How to handle plugins with custom directory structures?
+
+---
+
+### Outcome 3: User-Invocable `/validate-plugin` Workflow
+
+**Objective**: Comprehensive validation suite with quality scoring and reporting
+
+**Current State** (Stage 1 Discovery Output):
+
+- Partial validation: `validate_frontmatter.py` (frontmatter only)
+- Partial validation: `validate-skill-structure.sh` (skills only)
+- Partial validation: `claude plugin validate` (structure only)
+- No unified entry point, no quality scoring, no marketplace readiness check
+
+**Prerequisites to Verify (RT-ICA Inputs)**:
+
+- All validation scripts and their exit codes
+- Marketplace submission requirements
+- Quality scoring rubric (if exists)
+- Report generation format
+- Integration with existing plugin-assessor agent
+
+**Dependencies on Existing Components**:
+
+- `validate_frontmatter.py` script (schema validation)
+- `validate-skill-structure.sh` script (quality checks)
+- `claude plugin validate` CLI (structure validation)
+- `plugin-assessor` agent (comprehensive analysis)
+- Reference skills for validation rules
+
+**Success Criteria**:
+
+- Skill file created at `skills/validate-plugin/SKILL.md`
+- Runs all existing validators in sequence
+- Generates unified report with pass/fail per category
+- Includes marketplace readiness score
+- Validates version consistency across files
+
+**Acceptance Criteria**:
+
+- `/validate-plugin <plugin-path>` command works
+- Creates `validation-report.md` artifact
+- Reports scores: structure, frontmatter, quality, marketplace
+- Exit code 0 = pass, non-zero = fail
+- Can run in CI/pre-commit context
+
+**Known Unknowns** (requires RT-ICA assessment):
+
+- What is the complete marketplace submission checklist?
+- How to score quality (weighted vs binary)?
+- Should validation auto-fix issues or only report?
+- Integration with existing plugin-assessor agent workflow?
+
+---
+
+### Outcome 4: Create `/skill-creator` Skill (Prerequisite for Outcome 2)
+
+**Objective**: Enable systematic skill creation following agent-creator pattern
+
+**Current State** (Stage 1 Discovery Output):
+
+- Gap identified: No skill-creator skill exists
+- Agent-creator skill exists as reference pattern
+- Skills and commands are unified system per official docs
+
+**Prerequisites to Verify (RT-ICA Inputs)**:
+
+- Skill frontmatter schema requirements
+- Skill directory structure conventions
+- Reference file organization patterns
+- Progressive disclosure requirements
+- Template selection patterns from agent-creator
+
+**Dependencies on Existing Components**:
+
+- `agent-creator` skill (template pattern)
+- `write-frontmatter-description` skill (description generation)
+- `claude-skills-overview-2026` skill (skill structure reference)
+- `validate_frontmatter.py` script (validation)
+- `validate-skill-structure.sh` script (quality checks)
+
+**Success Criteria**:
+
+- Skill file created at `skills/skill-creator/SKILL.md`
+- Follows agent-creator workflow pattern
+- Handles scope determination (project/user/plugin)
+- Creates SKILL.md with validated frontmatter
+- Creates references/ and examples/ subdirectories
+- Updates plugin.json if plugin skill
+
+**Acceptance Criteria**:
+
+- `/skill-creator` command appears in skill list
+- Guides user through template selection
+- Generates frontmatter with trigger keywords
+- Runs validation on created skill
+- Creates directory structure with progressive disclosure
+
+**Known Unknowns** (requires RT-ICA assessment):
+
+- What skill templates should be offered?
+- How to determine if skill should be user-invocable?
+- What constitutes "good" progressive disclosure?
+- How to validate trigger keyword effectiveness?
+
+---
+
+### Outcome 5: Pre-Commit Validation Hook
+
+**Objective**: Automatically validate plugins on git commit to prevent invalid state
+
+**Current State** (Stage 1 Discovery Output):
+
+- No pre-commit hook exists for plugin validation
+- Repository uses `prek` (Rust pre-commit replacement)
+- Validation scripts exist but aren't hooked into git workflow
+
+**Prerequisites to Verify (RT-ICA Inputs)**:
+
+- Existing `.pre-commit-config.yaml` structure
+- `prek` hook configuration format
+- Changed file detection logic
+- Performance constraints (hook must be fast)
+- Error reporting format for git hooks
+
+**Dependencies on Existing Components**:
+
+- `.pre-commit-config.yaml` (configuration file)
+- `prek` tool (pre-commit runner)
+- `validate_frontmatter.py` script (validation logic)
+- `validate-skill-structure.sh` script (quality checks)
+- `claude plugin validate` command (structure validation)
+
+**Success Criteria**:
+
+- Hook configuration added to `.pre-commit-config.yaml`
+- Hook detects changed plugins from git diff
+- Runs only validators relevant to changed files
+- Fast execution (<5s for typical changes)
+- Clear error messages with file:line references
+
+**Acceptance Criteria**:
+
+- Pre-commit hook blocks commits with validation errors
+- Hook passes when no plugin files changed
+- Hook validates only changed plugins (not entire repo)
+- Error output shows which validator failed and why
+- Hook can be bypassed with `--no-verify` if needed
+
+**Known Unknowns** (requires RT-ICA assessment):
+
+- Does `prek` use identical syntax to `pre-commit`?
+- What is acceptable performance threshold?
+- Should hook auto-fix or only validate?
+- How to handle plugin.json changes vs component changes?
+- Integration with existing markdown linting hooks?
+
+---
+
+### Outcome 6: Automated Version Bumping
+
+**Objective**: Automatically increment plugin and marketplace versions when plugins change
+
+**Current State** (Stage 1 Discovery Output):
+
+- No automatic version bumping exists
+- Plugin versions manually updated in plugin.json
+- Marketplace version manually updated in marketplace.json
+- Users receive stale versions when pulling updates
+
+**Prerequisites to Verify (RT-ICA Inputs)**:
+
+- Semantic versioning policy (major/minor/patch rules)
+- Git commit message conventions for version type detection
+- File patterns that trigger version bumps
+- Version field locations (plugin.json, marketplace.json)
+- Existing version bumping tools/libraries
+
+**Dependencies on Existing Components**:
+
+- `.pre-commit-config.yaml` (hook integration)
+- `prek` tool (pre-commit runner)
+- `plugin.json` files (version storage)
+- `.claude-plugin/marketplace.json` (marketplace version)
+- Git commit messages (version type signals)
+
+**Success Criteria**:
+
+- Hook configuration added to `.pre-commit-config.yaml`
+- Detects changed plugins and bumps their versions
+- Bumps marketplace version when any plugin changes
+- Follows semantic versioning rules
+- Stages updated version files automatically
+
+**Acceptance Criteria**:
+
+- Plugin version incremented when plugin files change
+- Marketplace version incremented when plugins change
+- Version bump type determined from commit message or change type
+- Updated JSON files staged for commit automatically
+- Version history maintained in CLAUDE.md
+
+**Known Unknowns** (requires RT-ICA assessment):
+
+- What constitutes major vs minor vs patch change?
+- Should version type be in commit message or auto-detected?
+- What if multiple plugins changed in one commit?
+- How to handle version conflicts (concurrent changes)?
+- Integration with existing marketplace.json schema?
+
+---
+
+### Outcome 7: Consolidated Cross-Platform Linter (`lint-claude-plugin.py`)
+
+**Objective**: Replace bash validation scripts with unified Python linter using token-based complexity metrics
+
+**Current State** (Stage 1 Discovery Output):
+
+- Validation spread across multiple scripts (Python + Bash)
+- Line count metrics don't reflect actual complexity
+- Bash scripts not cross-platform compatible
+- No token-based complexity measurement
+
+**Prerequisites to Verify (RT-ICA Inputs)**:
+
+- Token counting library (`tiktoken`) API and usage
+- Token thresholds for skill complexity warnings
+- All validation rules from existing scripts
+- Pre-commit integration requirements
+- Output format for CI/IDE integration
+
+**Dependencies on Existing Components**:
+
+- `validate_frontmatter.py` (frontmatter validation logic)
+- `validate-skill-structure.sh` (quality check logic)
+- `count-skill-lines.sh` (complexity measurement logic)
+- `validate-task-file.sh` (task file validation logic)
+- `fix-tool-formats.py` (auto-fix logic)
+
+**Success Criteria**:
+
+- Single Python script at `scripts/lint-claude-plugin.py`
+- Validates frontmatter, structure, complexity, links, tool formats
+- Uses token count instead of line count for complexity
+- Works on Windows/Linux/macOS without bash
+- Can auto-fix issues with `--fix` flag
+
+**Acceptance Criteria**:
+
+- All validation logic from bash scripts ported to Python
+- Token-based complexity measurement implemented
+- Exit code 0 = pass, non-zero = fail with details
+- Compatible with pre-commit hooks
+- Performance comparable to existing scripts (<5s typical)
+
+**Known Unknowns** (requires RT-ICA assessment):
+
+- What are appropriate token thresholds (warn/error)?
+- Which tiktoken encoding to use (cl100k_base)?
+- How to measure token count including frontmatter?
+- Should auto-fix be opt-in or opt-out?
+- Backwards compatibility with existing script invocations?
+
+---
+
+## Development Roadmap (Stage 1 Discovery - Historical)
 
 ### Missing User-Invocable Workflows
 
