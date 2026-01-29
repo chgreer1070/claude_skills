@@ -1,11 +1,10 @@
 ---
-name: complete-implementation
-description:"\"Holistic completion workflow after a feature's tasks are marked COMPLETE: code review, feature verification, integration check, documentation drift audit/update, and context refinement. Creates follow-up task files when issues are found.\""
-version: "1.0.0"
-last_updated: "2026-01-27"
-python_compatibility: "3.11+"
+argument-hint: <task-file-path>
 user-invocable: true
-argument-hint: "<task-file-path>"
+description:"\"Holistic completion workflow after a feature's tasks are marked COMPLETE: code review, feature verification, integration check, documentation drift audit/update, and context refinement. Creates follow-up task files when issues are found.\""
+version: 1.0.0
+last_updated: '2026-01-27'
+python_compatibility: 3.11+
 ---
 
 # Complete Implementation (Quality Gates + Recursion)

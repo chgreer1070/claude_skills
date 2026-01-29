@@ -1,9 +1,8 @@
 ---
-name: python3-development
-description: 'Python 3.11+ development with CLI apps (Typer/Rich), testing (pytest), linting (ruff/mypy), and TDD workflows. Use when building Python CLIs, writing tests, fixing linting errors, configuring pyproject.toml, creating portable scripts, or reviewing Python code for best practices.'
-version: "1.2.0"
-last_updated: "2026-01-14"
-python_compatibility: "3.11+"
+description: Python 3.11+ development with CLI apps (Typer/Rich), testing (pytest), linting (ruff/mypy), and TDD workflows. Use when building Python CLIs, writing tests, fixing linting errors, configuring pyproject.toml, creating portable scripts, or reviewing Python code for best practices.
+version: 1.2.0
+last_updated: '2026-01-14'
+python_compatibility: 3.11+
 ---
 
 # Opinionated Python Development Skill

@@ -1,7 +1,6 @@
 ---
-name: clear-cove-task-design
 description: Combine CLEAR (Concise, Logical, Explicit, Adaptive, Reflective) and CoVe (Chain of Verification) to write and lint agent task files that will be executed by worker agents. Use when orchestration or planning agents are producing task plans, task prompts, or TASK.md style instructions that must be unambiguous, verifiable, and resistant to hallucination.
-argument-hint: "[draft task prompt or task file content]"
+argument-hint: '[draft task prompt or task file content]'
 user-invocable: true
 disable-model-invocation: false
 ---

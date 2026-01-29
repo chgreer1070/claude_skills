@@ -1,6 +1,6 @@
 ---
 name: lint
-description: "Run linting and formatting on files or discover project linters. Usage: /lint [path|init] [--force]"
+description: Run linting and formatting on files or discover project linters. Usage with /lint path or /lint init with optional --force flag
 color: orange
 ---
 

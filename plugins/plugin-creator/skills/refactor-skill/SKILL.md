@@ -1,5 +1,4 @@
 ---
-name: refactor-skill
 description: 'Refactor oversized or multi-domain skills into smaller, purpose-built skills while preserving full fidelity and capability coverage. Use when a skill spans too many topics, exceeds ~500 lines, or would benefit from clearer separation of concerns and independent invocation. This skill reviews the existing content, identifies logical boundaries, designs a split plan, generates new SKILL.md files for each extracted skill, and validates that the refactor maintains complete functional and content parity with the original.'
 model: opus
 argument-hint: "path to skill directory (or plugin) to refactor"
@@ -108,7 +107,6 @@ Each new SKILL.md MUST have:
 
 ```yaml
 ---
-name: {new-skill-name}
 description: {focused description with trigger keywords}
 allowed-tools: {only tools this skill needs}
 model: {inherit or specific if needed}
@@ -213,7 +211,6 @@ CONVERT the original skill to a facade/meta-skill that loads all new specialist 
 
 ```yaml
 ---
-name: {original-name}
 description:"{Original description}. Loads focused specialist skills: {skill-1}, {skill-2}, {skill-3}."
 user-invocable: true
 ---

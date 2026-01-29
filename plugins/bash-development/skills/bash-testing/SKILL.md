@@ -1,6 +1,5 @@
 ---
-name: bash-testing
-description: 'This skill should be used when the user asks to "test bash script", "write shell tests", "use shunit2", "use shellspec", "create test suite for bash", or mentions unit testing, test frameworks, mocking, or test-driven development for shell scripts.'
+description: This skill should be used when the user asks to "test bash script", "write shell tests", "use shunit2", "use shellspec", "create test suite for bash", or mentions unit testing, test frameworks, mocking, or test-driven development for shell scripts.
 ---
 
 # Bash Testing

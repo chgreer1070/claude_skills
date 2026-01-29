@@ -1,5 +1,5 @@
 ---
-description: Alias for /hallucination-detector:hallucination-audit.
+description: Alias for hallucination-detector hallucination-audit command
 ---
 
 # Audit (Alias)

@@ -483,6 +483,20 @@ def apply_fixes(content: str, file_type: FileType) -> tuple[str, list[str]]:
     # Track what was fixed
     fixes = []
 
+    # CRITICAL BUG WORKAROUND: Remove 'name' field from skills
+    # Bug discovered 2026-01-29: PLUGIN skills with explicit 'name' field in frontmatter
+    # DO NOT appear as slash commands in Claude Code, even when user-invocable: true.
+    # Only skills WITHOUT 'name' field appear as /plugin-name:skill-name commands.
+    # The 'name' field is supposed to be optional per official docs, but having it
+    # prevents slash command registration in plugins. Claude Code uses directory name regardless.
+    # NOTE: Bug only affects plugin skills, not .claude/skills/, but removing 'name' is harmless
+    # since directory name is used anyway.
+    if file_type == FileType.SKILL and "name" in normalized_dict:
+        del normalized_dict["name"]
+        fixes.append(
+            "Removed 'name' field (Claude Code bug: plugin skills with 'name' don't appear as slash commands)"
+        )
+
     # Compare to detect what changed
     for key, value in normalized_dict.items():
         if key in original_data and original_data[key] != value:

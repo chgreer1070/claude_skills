@@ -1,17 +1,16 @@
 ---
-name: start-task
-description: "Start or complete a specific task inside a SAM task file. Updates task status to IN PROGRESS with Started timestamp, writes active-task context for hooks, and supports --complete to mark tasks complete."
-version: "1.0.0"
-last_updated: "2026-01-27"
-python_compatibility: "3.11+"
+description: Start or complete a specific task inside a SAM task file. Updates task status to IN PROGRESS with Started timestamp, writes active-task context for hooks, and supports --complete to mark tasks complete.
+argument-hint: <task-file-path> [--task <task-id>] [--complete <task-id>]
 user-invocable: true
-argument-hint: "<task-file-path> [--task <task-id>] [--complete <task-id>]"
 hooks:
   PostToolUse:
-    - matcher: "Write|Edit|Bash"
-      hooks:
-        - type: command
-          command: "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/task_status_hook.py\""
+  - matcher: Write|Edit|Bash
+    hooks:
+    - type: command
+      command: python3 "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/task_status_hook.py"
+version: 1.0.0
+last_updated: '2026-01-27'
+python_compatibility: 3.11+
 ---
 
 # Start Task (SAM Task Execution Helper)

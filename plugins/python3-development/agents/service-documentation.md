@@ -1,6 +1,6 @@
 ---
 name: service-documentation
-description: 'Updates CLAUDE.md files and module documentation to reflect current implementation. Use ONLY during context compaction, task completion protocols, or when documentation has significantly drifted from code. Adapts to mono-repo structure. Supply with task file path. <examples><example>user: "Update documentation after completing the create-runner feature" assistant: "I will use the service-documentation agent to update docs for the new feature"</example><example>user: "Context compaction - update docs before summarizing" assistant: "Let me launch the service-documentation agent to sync documentation"</example></examples>'
+description: Updates CLAUDE.md files and module documentation to reflect current implementation. Use ONLY during context compaction, task completion protocols, or when documentation has significantly drifted from code. Adapts to mono-repo structure. Supply with task file path.
 model: sonnet
 permissionMode: acceptEdits
 color: blue

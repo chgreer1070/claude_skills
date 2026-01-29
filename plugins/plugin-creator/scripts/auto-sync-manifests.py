@@ -273,6 +273,12 @@ def update_plugin_json(plugin_name: str, changes: ComponentChanges) -> tuple[boo
     if not plugin_json_path.exists():
         return False, "0.0.0"
 
+    # Check if plugin.json is already staged - if so, skip modifying it
+    staged_status = run_git_command(["diff", "--cached", "--name-only"])
+    if str(plugin_json_path) in staged_status:
+        # File is already staged, don't modify it
+        return False, "0.0.0"
+
     with plugin_json_path.open(encoding="utf-8") as f:
         data: dict[str, list[str] | str] = json.load(f)
 
@@ -321,6 +327,12 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
 
     if not marketplace_json_path.exists():
         print("Warning: marketplace.json not found")
+        return False
+
+    # Check if marketplace.json is already staged - if so, skip modifying it
+    staged_status = run_git_command(["diff", "--cached", "--name-only"])
+    if str(marketplace_json_path) in staged_status:
+        # File is already staged, don't modify it
         return False
 
     with marketplace_json_path.open(encoding="utf-8") as f:

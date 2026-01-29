@@ -1,6 +1,5 @@
 ---
-name: verify
-description: 'Rigorous self-assessment checklist before marking any task as complete. Use when about to claim task completion, before final commit, when user asks "is it done?", or when transitioning from implementation to reporting. Prevents premature completion claims by requiring evidence for every assertion.'
+description: Rigorous self-assessment checklist before marking any task as complete. Use when about to claim task completion, before final commit, when user asks "is it done?", or when transitioning from implementation to reporting. Prevents premature completion claims by requiring evidence for every assertion.
 user-invocable: true
 ---
 

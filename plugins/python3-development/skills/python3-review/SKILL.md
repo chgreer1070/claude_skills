@@ -1,8 +1,7 @@
 ---
-name: python3-review
 description: Comprehensive Python code review checking patterns, types, security, and performance. Use when reviewing Python code for quality issues, when auditing code before merge, or when assessing technical debt in a Python codebase.
+argument-hint: <file-paths-or-module>
 user-invocable: true
-argument-hint: "<file-paths-or-module>"
 ---
 
 # Python Code Review

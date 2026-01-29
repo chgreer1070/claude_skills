@@ -1,5 +1,4 @@
 ---
-name: feature-discovery
 description: 'Autonomous feature research and gap analysis. Use when starting /add-new-feature or analyzing existing architecture documents. Explores codebase patterns, identifies ambiguities, and produces feature-context-{slug}.md for orchestrator RT-ICA phase. Does NOT make technical decisions.'
 context: fork
 agent: general-purpose

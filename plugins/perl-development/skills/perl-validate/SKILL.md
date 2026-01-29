@@ -1,6 +1,5 @@
 ---
-name: perl-validate
-description: 'This skill should be used when the user asks to "validate Perl script", "check Perl syntax", "verify Perl code", "/perl-validate", or mentions script validation, compile check, security review, or best practice compliance for Perl code.'
+description: This skill should be used when the user asks to "validate Perl script", "check Perl syntax", "verify Perl code", "/perl-validate", or mentions script validation, compile check, security review, or best practice compliance for Perl code.
 allowed-tools: Bash(perl -c:*), Bash(perl -wc:*), Bash(perlcritic:*), Read, Grep, Glob
 ---
 

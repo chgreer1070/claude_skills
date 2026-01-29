@@ -1,6 +1,5 @@
 ---
-name: research-curator
-description: 'Add new resources to the research directory with comprehensive documentation. Use when user provides a URL, repository, or tool to research and document for future reference. Triggers on phrases like "add to research", "document this tool", "research this", or when given URLs to novel agentic development resources.'
+description: Add new resources to the research directory with comprehensive documentation. Use when user provides a URL, repository, or tool to research and document for future reference. Triggers on phrases like "add to research", "document this tool", "research this", or when given URLs to novel agentic development resources.
 argument-hint: '[url-or-resource]'
 context: fork
 ---

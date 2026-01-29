@@ -26,6 +26,64 @@ This plugin provides end-to-end capabilities for plugin development:
 - Internal link validation
 - Line count enforcement
 
+## ⚠️ Critical Bug Discovery: Skill Name Field (Plugin Skills Only)
+
+**Discovered:** 2026-01-29
+**Claude Code Version:** v2.1.23
+**Scope:** **Only affects plugin skills** - does NOT affect `.claude/skills/` directories
+
+### The Bug
+
+**Plugin skills** with an explicit `name:` field in their frontmatter **DO NOT appear as slash commands**, even when `user-invocable: true` is set.
+
+**Important:** This bug only affects skills distributed via plugins. Skills in `.claude/skills/` (personal/project) work fine with or without the `name:` field.
+
+**Symptoms (Plugin Skills Only):**
+
+- Skill in plugin's `skills` array
+- Skill has `user-invocable: true`
+- Skill has `name: skill-name` in frontmatter
+- **Result:** `/plugin-name:skill-name` does NOT appear in autocomplete
+
+**Not Affected:**
+
+- Skills in `~/.claude/skills/` (user-level) ✓
+- Skills in `.claude/skills/` (project-level) ✓
+- These work fine with `name:` field
+
+**Workaround (For Plugin Skills):**
+
+```yaml
+# ❌ BROKEN - skill won't appear as slash command
+---
+name: my-skill
+description: Does something useful
+user-invocable: true
+---
+
+# ✅ WORKS - skill appears as slash command
+---
+description: Does something useful
+user-invocable: true
+---
+```
+
+Claude Code automatically uses the directory name, so omitting `name:` allows proper slash command registration.
+
+### Automatic Fix
+
+The `validate_frontmatter.py` script now automatically removes `name:` fields from SKILL.md files:
+
+```bash
+uv run ./scripts/validate_frontmatter.py fix ./skills/my-skill/SKILL.md
+```
+
+Output:
+
+```
+✓ Removed 'name' field (Claude Code bug: skills with 'name' field don't appear as slash commands)
+```
+
 ## When to Use
 
 Use this plugin when:

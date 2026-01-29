@@ -1,5 +1,4 @@
 ---
-name: prompt-optimization-claude-45
 description: Optimize CLAUDE.md files and Skills for Claude Code CLI. Use when reviewing, creating, or improving system prompts, CLAUDE.md configurations, or Skill files. Transforms negative instructions into positive patterns following Anthropic's official best practices.
 ---
 

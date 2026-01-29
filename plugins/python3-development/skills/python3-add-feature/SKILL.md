@@ -1,8 +1,7 @@
 ---
-name: python3-add-feature
 description: Guided workflow for adding new features to Python projects. Use when planning a new feature implementation, when adding functionality with proper test coverage, or when following TDD to build features incrementally.
+argument-hint: <feature-description>
 user-invocable: true
-argument-hint: "<feature-description>"
 ---
 
 # Python Feature Addition Workflow

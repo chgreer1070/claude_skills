@@ -1,18 +1,17 @@
 ---
-name: example-skill
-description: "Demonstrates all available skill frontmatter fields. Use when you need a reference for skill configuration, when learning about skill capabilities, or when creating new skills from scratch."
-argument-hint: "[topic]"
+description: Demonstrates all available skill frontmatter fields. Use when you need a reference for skill configuration, when learning about skill capabilities, or when creating new skills from scratch.
+argument-hint: '[topic]'
 allowed-tools: Read, Grep, Glob, WebFetch
 model: sonnet
 user-invocable: true
 disable-model-invocation: false
 hooks:
   PostToolUse:
-    - matcher: "Read"
-      hooks:
-        - type: command
-          command: "echo 'File was read'"
-          timeout: 5
+  - matcher: Read
+    hooks:
+    - type: command
+      command: echo 'File was read'
+      timeout: 5
 ---
 
 # Example Skill

@@ -1,6 +1,5 @@
 ---
-name: implementation-manager
-description: 'Query and manage feature implementation task status. Provides CLI tools to list features, check task status, find ready tasks, and validate task files. Used by /implement-feature orchestrator to track progress. Automatically updates task timestamps via hooks on /start-task.'
+description: Query and manage feature implementation task status. Provides CLI tools to list features, check task status, find ready tasks, and validate task files. Used by /implement-feature orchestrator to track progress. Automatically updates task timestamps via hooks on /start-task.
 user-invocable: false
 disable-model-invocation: false
 ---

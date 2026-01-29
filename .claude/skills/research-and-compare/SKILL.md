@@ -1,10 +1,9 @@
 ---
-name: research-and-compare
 description: Research and compare the Stateless Agent Methodology (SAM) against other methodologies using only verifiable reference material. Produce overlap/divergence analysis that is useful for comparing strategy, methodologies, and potential implementations, and for identifying weaknesses in the current SAM methodology while changes are still cheap. Creates structured comparison documents following the SAM comparison template, including terminology normalization + attribution notes.
 argument-hint: <url-or-path-or-name>
+model: sonnet
 context: fork
 agent: general-purpose
-model: sonnet
 user-invocable: true
 ---
 

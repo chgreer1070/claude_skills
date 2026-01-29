@@ -1,5 +1,4 @@
 ---
-name: skill-creator
 description: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Claude's capabilities with specialized knowledge, workflows, or tool integrations.
 license: Complete terms in LICENSE.txt
 user-invocable: true
@@ -126,8 +125,8 @@ Every skill consists of a required SKILL.md file and optional bundled resources:
 skill-name/
 ├── SKILL.md (required)
 │   ├── YAML frontmatter metadata (required)
-│   │   ├── name: (required)
-│   │   └── description: (required)
+│   │   └── description: (recommended)
+│   │   └── ⚠️  DO NOT include 'name:' field (Claude Code bug - prevents slash command registration)
 │   └── Markdown instructions (required)
 └── Bundled Resources (optional)
     ├── scripts/          - Executable code (Python/Bash/etc.)
@@ -572,8 +571,9 @@ Write instructions for using the skill and its bundled resources.
 
    ```markdown
    ---
-   name: migrate-component
    description: Migrate a component from one framework to another
+   # NOTE: Do NOT add 'name:' field for plugin skills (Claude Code bug)
+   # Skill name comes from directory name automatically
    ---
 
    Migrate the $0 component from $1 to $2.
@@ -593,8 +593,9 @@ Write instructions for using the skill and its bundled resources.
 
    ```markdown
    ---
-   name: pr-summary
    description: Summarize GitHub pull request changes
+   # NOTE: Do NOT add 'name:' field for plugin skills (Claude Code bug)
+   # Skill name comes from directory name automatically
    ---
 
    Pull Request Data:

@@ -1,5 +1,4 @@
 ---
-name: litellm
 description: When calling LLM APIs from Python code. When connecting to llamafile or local LLM servers. When switching between OpenAI/Anthropic/local providers. When implementing retry/fallback logic for LLM calls. When code imports litellm or uses completion() patterns.
 ---
 

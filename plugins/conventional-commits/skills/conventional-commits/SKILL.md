@@ -1,5 +1,4 @@
 ---
-name: conventional-commits
 description: When writing a git commit message. When task completes and changes need committing. When project uses semantic-release, commitizen, git-cliff. When choosing between feat/fix/chore/docs types. When indicating breaking changes. When generating changelogs from commit history.
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: claude-context-optimizer
-description: "Optimize prompts, SKILL.md, CLAUDE.md files for better Claude comprehension. Use when: improving prompts, rewriting instructions, analyzing ineffective prompts, or refining system prompts/agent configurations for LLM guidance."
+description: Optimize prompts, SKILL.md, and CLAUDE.md files for better Claude comprehension. Use when improving prompts, rewriting instructions for clarity, analyzing ineffective prompts that need restructuring, or refining system prompts and agent configurations to enhance LLM guidance quality.
 model: sonnet
 color: yellow
 ---

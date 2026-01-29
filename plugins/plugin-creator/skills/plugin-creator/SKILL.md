@@ -1,5 +1,4 @@
 ---
-name: plugin-creator
 description: 'Orchestrates specialized agents to create high-quality Claude Code plugins. Delegates to researcher agents for domain knowledge, Explore agents for code discovery, validation agents for official docs verification, and review agents for quality checks. Use when creating new plugins or improving existing ones.'
 user-invocable: true
 model: sonnet
@@ -555,7 +554,6 @@ my-plugin/
 
 ```yaml
 ---
-name: my-skill
 description: 'Detailed description including trigger keywords. Use when [situation].'
 allowed-tools: Read, Grep, Glob
 ---
@@ -591,7 +589,6 @@ The `!`command`` syntax runs shell commands BEFORE skill content is sent to Clau
 
 ```yaml
 ---
-name: pr-summary
 description: Summarize changes in a pull request
 context: fork
 agent: Explore
@@ -636,7 +633,6 @@ Skills support these variables:
 
 ```yaml
 ---
-name: session-logger
 description: Log activity for this session
 ---
 
@@ -651,7 +647,6 @@ Add `context: fork` to run a skill in an isolated subagent. The skill content be
 
 ```yaml
 ---
-name: deep-research
 description: Research a topic thoroughly
 context: fork
 agent: Explore
@@ -696,7 +691,6 @@ my-skill/
 
 ```yaml
 ---
-name: codebase-visualizer
 description: Generate interactive tree visualization of codebase
 allowed-tools: Bash(python:*)
 ---
@@ -871,7 +865,6 @@ Control who can invoke skills:
 
 ```yaml
 ---
-name: deploy
 description: Deploy application to production
 disable-model-invocation: true
 ---

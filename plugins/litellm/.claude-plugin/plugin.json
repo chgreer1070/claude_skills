@@ -1,7 +1,7 @@
 {
   "name": "litellm",
   "description": "When calling LLM APIs from Python code. When connecting to llamafile or local LLM servers. When switching between OpenAI/Anthropic/local providers. When implementing retry/fallback logic for LLM calls. When code imports litellm or uses completion() patterns.",
-  "version": "1.0.0",
+  "version": "1.0.7",
   "author": {
     "name": "Jamie Hoover",
     "url": "https://github.com/bitflight-devops"

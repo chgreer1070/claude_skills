@@ -1,5 +1,4 @@
 ---
-name: llamafile
 description: When setting up local LLM inference without cloud APIs. When running GGUF models locally. When needing OpenAI-compatible API from a local model. When building offline/air-gapped AI tools. When troubleshooting local LLM server connections.
 ---
 

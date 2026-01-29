@@ -106,6 +106,14 @@ repos:
         pass_filenames: false
         files: ^plugins/
 
+      - id: validate-frontmatter
+        name: Validate and fix frontmatter in skills, agents, commands
+        entry: uv run -q --no-sync plugins/plugin-creator/scripts/validate_frontmatter.py
+        language: system
+        stages: [pre-commit]
+        pass_filenames: false
+        files: ^plugins/.*(SKILL\.md|agents/.*\.md|commands/.*\.md)$
+
       - id: mypy
         name: mypy
         entry: uv run -q --no-sync --with pep723-loader --with mypy pep723-loader mypy

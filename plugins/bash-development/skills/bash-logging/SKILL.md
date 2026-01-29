@@ -1,6 +1,5 @@
 ---
-name: bash-logging
-description: 'This skill should be used when the user asks to "add logging to bash script", "colorize output", "implement log levels", "CI/CD sections", "terminal colors in bash", or mentions logging functions, emoji output, collapsible CI sections, or shlocksmith.'
+description: This skill should be used when the user asks to "add logging to bash script", "colorize output", "implement log levels", "CI/CD sections", "terminal colors in bash", or mentions logging functions, emoji output, collapsible CI sections, or shlocksmith.
 ---
 
 # Bash Logging

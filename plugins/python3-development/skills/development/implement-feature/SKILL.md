@@ -1,16 +1,15 @@
 ---
-name: implement-feature
-description: "Execute a SAM task plan (plan/tasks-*.md) by looping ready tasks, delegating each task to its specified agent, and relying on hooks to update task timestamps/status."
-version: "1.0.0"
-last_updated: "2026-01-27"
-python_compatibility: "3.11+"
+description: Execute a SAM task plan (plan/tasks-*.md) by looping ready tasks, delegating each task to its specified agent, and relying on hooks to update task timestamps/status.
+argument-hint: <task-file-path or feature-slug>
 user-invocable: true
-argument-hint: "<task-file-path or feature-slug>"
 hooks:
   SubagentStop:
-    - hooks:
-        - type: command
-          command: "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/task_status_hook.py\""
+  - hooks:
+    - type: command
+      command: python3 "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/task_status_hook.py"
+version: 1.0.0
+last_updated: '2026-01-27'
+python_compatibility: 3.11+
 ---
 
 # Implement Feature (SAM Workflow Execution)

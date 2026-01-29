@@ -1,5 +1,4 @@
 ---
-name: claude-skills-overview-2026
 description: Reference guide for Claude Code skills system (January 2026). Use when creating, modifying, or understanding skills, SKILL.md format, frontmatter fields, hooks, context fork, or skill best practices.
 user-invocable: true
 ---
@@ -16,7 +15,6 @@ Skills extend what Claude can do. Create a `SKILL.md` file with instructions, an
 
 ```yaml
 ---
-name: skill-identifier
 description: What this Skill does and when to use it
 argument-hint: "[optional-arg]"
 allowed-tools: Read, Grep, Glob
@@ -147,7 +145,6 @@ Skills support string substitution for dynamic values in the skill content:
 
 ```yaml
 ---
-name: migrate-component
 description: Migrate a component from one framework to another
 ---
 
@@ -372,7 +369,6 @@ or when the user mentions [keywords].
 
 ```yaml
 ---
-name: commit-messages
 description: Generate conventional commit messages from git diffs. Use when writing commits.
 ---
 
@@ -388,7 +384,6 @@ description: Generate conventional commit messages from git diffs. Use when writ
 
 ```yaml
 ---
-name: safe-reader
 description: Read files without changes. Use for code review.
 allowed-tools: Read, Grep, Glob
 ---
@@ -402,7 +397,6 @@ ONLY read files. Never modify.
 
 ```yaml
 ---
-name: deep-research
 description: Thorough codebase research. Use for complex investigations.
 context: fork
 agent: Explore
@@ -417,7 +411,6 @@ Runs in isolated context to avoid polluting main conversation.
 
 ```yaml
 ---
-name: secure-ops
 description: Audit-logged file operations.
 hooks:
   PreToolUse:
@@ -442,7 +435,6 @@ All modifications logged and validated.
 
 ```yaml
 ---
-name: internal-standards
 description: Auto-apply code review standards.
 user-invocable: false
 ---
@@ -454,7 +446,6 @@ Claude invokes this, users don't see it in menu.
 
 ```yaml
 ---
-name: deploy-production
 description: Deploy to production.
 disable-model-invocation: true
 ---

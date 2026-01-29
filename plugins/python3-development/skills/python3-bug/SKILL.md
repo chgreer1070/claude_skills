@@ -1,8 +1,7 @@
 ---
-name: python3-bug
 description: Debug functional issues in Python code using specs, logs, and observed behavior. Use when a feature isn't working as specified, when investigating runtime errors, or when scoping a problem before implementing a fix.
+argument-hint: <problem-description>
 user-invocable: true
-argument-hint: "<problem-description>"
 ---
 
 # Python Functional Bug Investigation

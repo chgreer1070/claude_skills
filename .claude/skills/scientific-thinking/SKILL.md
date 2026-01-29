@@ -1,6 +1,5 @@
 ---
-name: scientific-thinking
-description: 'Forces hypothesis-driven scientific reasoning for complex problems. Use when debugging strange behavior, investigating root causes, designing architecture, performing complex refactoring, or when initial attempts have failed. Activates when facing problems that require systematic investigation rather than quick fixes.'
+description: Forces hypothesis-driven scientific reasoning for complex problems. Use when debugging strange behavior, investigating root causes, designing architecture, performing complex refactoring, or when initial attempts have failed. Activates when facing problems that require systematic investigation rather than quick fixes.
 user-invocable: true
 ---
 

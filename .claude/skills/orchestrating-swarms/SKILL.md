@@ -1,5 +1,4 @@
 ---
-name: orchestrating-swarms
 description: Master multi-agent orchestration using Claude Code's TeammateTool and Task system. Use when coordinating multiple agents, running parallel code reviews, creating pipeline workflows with dependencies, building self-organizing task queues, or any task benefiting from divide-and-conquer patterns.
 ---
 
@@ -11,16 +10,16 @@ Master multi-agent orchestration using Claude Code's TeammateTool and Task syste
 
 ## Primitives
 
-| Primitive | What It Is | File Location |
-|-----------|-----------|---------------|
-| **Agent** | A Claude instance that can use tools. You are an agent. Subagents are agents you spawn. | N/A (process) |
-| **Team** | A named group of agents working together. One leader, multiple teammates. | `~/.claude/teams/{name}/config.json` |
-| **Teammate** | An agent that joined a team. Has a name, color, inbox. Spawned via Task with `team_name` + `name`. | Listed in team config |
-| **Leader** | The agent that created the team. Receives teammate messages, approves plans/shutdowns. | First member in config |
-| **Task** | A work item with subject, description, status, owner, and dependencies. | `~/.claude/tasks/{team}/N.json` |
-| **Inbox** | JSON file where an agent receives messages from teammates. | `~/.claude/teams/{name}/inboxes/{agent}.json` |
-| **Message** | A JSON object sent between agents. Can be text or structured (shutdown_request, idle_notification, etc). | Stored in inbox files |
-| **Backend** | How teammates run. Auto-detected: `in-process` (same Node.js, invisible), `tmux` (separate panes, visible), `iterm2` (split panes in iTerm2). See [Spawn Backends](#spawn-backends). | Auto-detected based on environment |
+| Primitive    | What It Is                                                                                                                                                                           | File Location                                 |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| **Agent**    | A Claude instance that can use tools. You are an agent. Subagents are agents you spawn.                                                                                              | N/A (process)                                 |
+| **Team**     | A named group of agents working together. One leader, multiple teammates.                                                                                                            | `~/.claude/teams/{name}/config.json`          |
+| **Teammate** | An agent that joined a team. Has a name, color, inbox. Spawned via Task with `team_name` + `name`.                                                                                   | Listed in team config                         |
+| **Leader**   | The agent that created the team. Receives teammate messages, approves plans/shutdowns.                                                                                               | First member in config                        |
+| **Task**     | A work item with subject, description, status, owner, and dependencies.                                                                                                              | `~/.claude/tasks/{team}/N.json`               |
+| **Inbox**    | JSON file where an agent receives messages from teammates.                                                                                                                           | `~/.claude/teams/{name}/inboxes/{agent}.json` |
+| **Message**  | A JSON object sent between agents. Can be text or structured (shutdown_request, idle_notification, etc).                                                                             | Stored in inbox files                         |
+| **Backend**  | How teammates run. Auto-detected: `in-process` (same Node.js, invisible), `tmux` (separate panes, visible), `iterm2` (split panes in iTerm2). See [Spawn Backends](#spawn-backends). | Auto-detected based on environment            |
 
 ### How They Connect
 
@@ -115,6 +114,7 @@ sequenceDiagram
 ### How Swarms Work
 
 A swarm consists of:
+
 - **Leader** (you) - Creates team, spawns workers, coordinates work
 - **Teammates** (spawned agents) - Execute tasks, report back
 - **Task List** - Shared work queue with dependencies
@@ -188,6 +188,7 @@ Task({
 ```
 
 **Characteristics:**
+
 - Runs synchronously (blocks until complete) or async with `run_in_background: true`
 - Returns result directly to you
 - No team membership required
@@ -212,6 +213,7 @@ Task({
 ```
 
 **Characteristics:**
+
 - Joins team, appears in `config.json`
 - Communicates via inbox messages
 - Can claim tasks from shared task list
@@ -220,13 +222,13 @@ Task({
 
 ### Key Difference
 
-| Aspect | Task (subagent) | Task + team_name + name (teammate) |
-|--------|-----------------|-----------------------------------|
-| Lifespan | Until task complete | Until shutdown requested |
-| Communication | Return value | Inbox messages |
-| Task access | None | Shared task list |
-| Team membership | No | Yes |
-| Coordination | One-off | Ongoing |
+| Aspect          | Task (subagent)     | Task + team_name + name (teammate) |
+| --------------- | ------------------- | ---------------------------------- |
+| Lifespan        | Until task complete | Until shutdown requested           |
+| Communication   | Return value        | Inbox messages                     |
+| Task access     | None                | Shared task list                   |
+| Team membership | No                  | Yes                                |
+| Coordination    | One-off             | Ongoing                            |
 
 ---
 
@@ -235,6 +237,7 @@ Task({
 These are always available without plugins:
 
 ### Bash
+
 ```javascript
 Task({
   subagent_type: "Bash",
@@ -242,11 +245,13 @@ Task({
   prompt: "Check git status and show recent commits"
 })
 ```
+
 - **Tools:** Bash only
 - **Model:** Inherits from parent
 - **Best for:** Git operations, command execution, system tasks
 
 ### Explore
+
 ```javascript
 Task({
   subagent_type: "Explore",
@@ -255,12 +260,14 @@ Task({
   model: "haiku"  // Fast and cheap
 })
 ```
+
 - **Tools:** All read-only tools (no Edit, Write, NotebookEdit, Task)
 - **Model:** Haiku (optimized for speed)
 - **Best for:** Codebase exploration, file searches, code understanding
 - **Thoroughness levels:** "quick", "medium", "very thorough"
 
 ### Plan
+
 ```javascript
 Task({
   subagent_type: "Plan",
@@ -268,11 +275,13 @@ Task({
   prompt: "Create an implementation plan for adding OAuth2 authentication"
 })
 ```
+
 - **Tools:** All read-only tools
 - **Model:** Inherits from parent
 - **Best for:** Architecture planning, implementation strategies
 
 ### general-purpose
+
 ```javascript
 Task({
   subagent_type: "general-purpose",
@@ -280,11 +289,13 @@ Task({
   prompt: "Research React Query best practices and implement caching for the user API"
 })
 ```
-- **Tools:** All tools (*)
+
+- **Tools:** All tools (\*)
 - **Model:** Inherits from parent
 - **Best for:** Multi-step tasks, research + action combinations
 
 ### claude-code-guide
+
 ```javascript
 Task({
   subagent_type: "claude-code-guide",
@@ -292,10 +303,12 @@ Task({
   prompt: "How do I configure MCP servers?"
 })
 ```
+
 - **Tools:** Read-only + WebFetch + WebSearch
 - **Best for:** Questions about Claude Code, Agent SDK, Anthropic API
 
 ### statusline-setup
+
 ```javascript
 Task({
   subagent_type: "statusline-setup",
@@ -303,6 +316,7 @@ Task({
   prompt: "Set up a status line showing git branch and node version"
 })
 ```
+
 - **Tools:** Read, Edit only
 - **Model:** Sonnet
 - **Best for:** Configuring Claude Code status line
@@ -314,6 +328,7 @@ Task({
 From the `compound-engineering` plugin (examples):
 
 ### Review Agents
+
 ```javascript
 // Security review
 Task({
@@ -352,6 +367,7 @@ Task({
 ```
 
 **All review agents from compound-engineering:**
+
 - `agent-native-reviewer` - Ensures features work for agents too
 - `architecture-strategist` - Architectural compliance
 - `code-simplicity-reviewer` - YAGNI and minimalism
@@ -368,6 +384,7 @@ Task({
 - `security-sentinel` - Security vulnerabilities
 
 ### Research Agents
+
 ```javascript
 // Best practices research
 Task({
@@ -392,6 +409,7 @@ Task({
 ```
 
 **All research agents:**
+
 - `best-practices-researcher` - External best practices
 - `framework-docs-researcher` - Framework documentation
 - `git-history-analyzer` - Code archaeology
@@ -399,6 +417,7 @@ Task({
 - `repo-research-analyst` - Repository patterns
 
 ### Design Agents
+
 ```javascript
 Task({
   subagent_type: "compound-engineering:design:figma-design-sync",
@@ -408,6 +427,7 @@ Task({
 ```
 
 ### Workflow Agents
+
 ```javascript
 Task({
   subagent_type: "compound-engineering:workflow:bug-reproduction-validator",
@@ -431,6 +451,7 @@ Teammate({
 ```
 
 **Creates:**
+
 - `~/.claude/teams/feature-auth/config.json`
 - `~/.claude/tasks/feature-auth/` directory
 - You become the team leader
@@ -457,11 +478,13 @@ Teammate({
 ### 4. approveJoin - Accept Join Request (Leader Only)
 
 When you receive a `join_request` message:
+
 ```json
 {"type": "join_request", "proposedName": "helper", "requestId": "join-123", ...}
 ```
 
 Approve it:
+
 ```javascript
 Teammate({
   operation: "approveJoin",
@@ -506,10 +529,12 @@ Teammate({
 **WARNING:** Broadcasting is expensive - sends N separate messages for N teammates. Prefer `write` to specific teammates.
 
 **When to broadcast:**
+
 - Critical issues requiring immediate attention
 - Major announcements affecting everyone
 
 **When NOT to broadcast:**
+
 - Responding to one teammate
 - Normal back-and-forth
 - Information relevant to only some teammates
@@ -527,11 +552,13 @@ Teammate({
 ### 9. approveShutdown - Accept Shutdown (Teammate Only)
 
 When you receive a `shutdown_request` message:
+
 ```json
 {"type": "shutdown_request", "requestId": "shutdown-123", "from": "team-lead", "reason": "Done"}
 ```
 
 **MUST** call:
+
 ```javascript
 Teammate({
   operation: "approveShutdown",
@@ -554,11 +581,13 @@ Teammate({
 ### 11. approvePlan - Approve Teammate's Plan (Leader Only)
 
 When teammate with `plan_mode_required` sends a plan:
+
 ```json
 {"type": "plan_approval_request", "from": "architect", "requestId": "plan-456", ...}
 ```
 
 Approve:
+
 ```javascript
 Teammate({
   operation: "approvePlan",
@@ -585,6 +614,7 @@ Teammate({ operation: "cleanup" })
 ```
 
 **Removes:**
+
 - `~/.claude/teams/{team-name}/` directory
 - `~/.claude/tasks/{team-name}/` directory
 
@@ -611,6 +641,7 @@ TaskList()
 ```
 
 Returns:
+
 ```
 #1 [completed] Analyze codebase structure
 #2 [in_progress] Review authentication module (owner: security-reviewer)
@@ -665,6 +696,7 @@ TaskUpdate({ taskId: "4", addBlockedBy: ["3"] })   // #4 waits for #3
 ### Task File Structure
 
 `~/.claude/tasks/{team-name}/1.json`:
+
 ```json
 {
   "id": "1",
@@ -698,6 +730,7 @@ TaskUpdate({ taskId: "4", addBlockedBy: ["3"] })   // #4 waits for #3
 ### Structured Messages (JSON in text field)
 
 #### Shutdown Request
+
 ```json
 {
   "type": "shutdown_request",
@@ -709,6 +742,7 @@ TaskUpdate({ taskId: "4", addBlockedBy: ["3"] })   // #4 waits for #3
 ```
 
 #### Shutdown Approved
+
 ```json
 {
   "type": "shutdown_approved",
@@ -721,6 +755,7 @@ TaskUpdate({ taskId: "4", addBlockedBy: ["3"] })   // #4 waits for #3
 ```
 
 #### Idle Notification (auto-sent when teammate stops)
+
 ```json
 {
   "type": "idle_notification",
@@ -732,6 +767,7 @@ TaskUpdate({ taskId: "4", addBlockedBy: ["3"] })   // #4 waits for #3
 ```
 
 #### Task Completed
+
 ```json
 {
   "type": "task_completed",
@@ -743,6 +779,7 @@ TaskUpdate({ taskId: "4", addBlockedBy: ["3"] })   // #4 waits for #3
 ```
 
 #### Plan Approval Request
+
 ```json
 {
   "type": "plan_approval_request",
@@ -754,6 +791,7 @@ TaskUpdate({ taskId: "4", addBlockedBy: ["3"] })   // #4 waits for #3
 ```
 
 #### Join Request
+
 ```json
 {
   "type": "join_request",
@@ -765,6 +803,7 @@ TaskUpdate({ taskId: "4", addBlockedBy: ["3"] })   // #4 waits for #3
 ```
 
 #### Permission Request (for sandbox/tool permissions)
+
 ```json
 {
   "type": "permission_request",
@@ -1056,6 +1095,7 @@ CLAUDE_CODE_PARENT_SESSION_ID="session-xyz"
 ```
 
 **Using in prompts:**
+
 ```javascript
 Task({
   team_name: "my-project",
@@ -1073,11 +1113,11 @@ A **backend** determines how teammate Claude instances actually run. Claude Code
 
 ### Backend Comparison
 
-| Backend | How It Works | Visibility | Persistence | Speed |
-|---------|-------------|------------|-------------|-------|
-| **in-process** | Same Node.js process as leader | Hidden (background) | Dies with leader | Fastest |
-| **tmux** | Separate terminal in tmux session | Visible in tmux | Survives leader exit | Medium |
-| **iterm2** | Split panes in iTerm2 window | Visible side-by-side | Dies with window | Medium |
+| Backend        | How It Works                      | Visibility           | Persistence          | Speed   |
+| -------------- | --------------------------------- | -------------------- | -------------------- | ------- |
+| **in-process** | Same Node.js process as leader    | Hidden (background)  | Dies with leader     | Fastest |
+| **tmux**       | Separate terminal in tmux session | Visible in tmux      | Survives leader exit | Medium  |
+| **iterm2**     | Split panes in iTerm2 window      | Visible side-by-side | Dies with window     | Medium  |
 
 ### Auto-Detection Logic
 
@@ -1099,6 +1139,7 @@ flowchart TD
 ```
 
 **Detection checks:**
+
 1. `$TMUX` environment variable → inside tmux
 2. `$TERM_PROGRAM === "iTerm.app"` or `$ITERM_SESSION_ID` → in iTerm2
 3. `which tmux` → tmux available
@@ -1109,17 +1150,20 @@ flowchart TD
 Teammates run as async tasks within the same Node.js process.
 
 **How it works:**
+
 - No new process spawned
 - Teammates share the same Node.js event loop
 - Communication via in-memory queues (fast)
 - You don't see teammate output directly
 
 **When it's used:**
+
 - Not running inside tmux session
 - Non-interactive mode (CI, scripts)
 - Explicitly set via `CLAUDE_CODE_SPAWN_BACKEND=in-process`
 
 **Characteristics:**
+
 ```
 ┌─────────────────────────────────────────┐
 │           Node.js Process               │
@@ -1131,11 +1175,13 @@ Teammates run as async tasks within the same Node.js process.
 ```
 
 **Pros:**
+
 - Fastest startup (no process spawn)
 - Lowest overhead
 - Works everywhere
 
 **Cons:**
+
 - Can't see teammate output in real-time
 - All die if leader dies
 - Harder to debug
@@ -1159,12 +1205,14 @@ Task({
 Teammates run as separate Claude instances in tmux panes/windows.
 
 **How it works:**
+
 - Each teammate gets its own tmux pane
 - Separate process per teammate
 - You can switch panes to see teammate output
 - Communication via inbox files
 
 **When it's used:**
+
 - Running inside a tmux session (`$TMUX` is set)
 - tmux available and not in iTerm2
 - Explicitly set via `CLAUDE_CODE_SPAWN_BACKEND=tmux`
@@ -1172,6 +1220,7 @@ Teammates run as separate Claude instances in tmux panes/windows.
 **Layout modes:**
 
 1. **Inside tmux (native):** Splits your current window
+
 ```
 ┌─────────────────┬─────────────────┐
 │                 │    Worker 1     │
@@ -1183,6 +1232,7 @@ Teammates run as separate Claude instances in tmux panes/windows.
 ```
 
 2. **Outside tmux (external session):** Creates a new tmux session called `claude-swarm`
+
 ```bash
 # Your terminal stays as-is
 # Workers run in separate tmux session
@@ -1192,12 +1242,14 @@ tmux attach -t claude-swarm
 ```
 
 **Pros:**
+
 - See teammate output in real-time
 - Teammates survive leader exit
 - Can attach/detach sessions
 - Works in CI/headless environments
 
 **Cons:**
+
 - Slower startup (process spawn)
 - Requires tmux installed
 - More resource usage
@@ -1211,6 +1263,7 @@ export CLAUDE_CODE_SPAWN_BACKEND=tmux
 ```
 
 **Useful tmux commands:**
+
 ```bash
 # List all panes in current window
 tmux list-panes
@@ -1233,17 +1286,20 @@ tmux select-layout tiled
 Teammates run as split panes within your iTerm2 window.
 
 **How it works:**
+
 - Uses iTerm2's Python API via `it2` CLI
 - Splits your current window into panes
 - Each teammate visible side-by-side
 - Communication via inbox files
 
 **When it's used:**
+
 - Running in iTerm2 (`$TERM_PROGRAM === "iTerm.app"`)
 - `it2` CLI is installed and working
 - Python API enabled in iTerm2 preferences
 
 **Layout:**
+
 ```
 ┌─────────────────┬─────────────────┐
 │                 │    Worker 1     │
@@ -1255,17 +1311,20 @@ Teammates run as split panes within your iTerm2 window.
 ```
 
 **Pros:**
+
 - Visual debugging - see all teammates
 - Native macOS experience
 - No tmux needed
 - Automatic pane management
 
 **Cons:**
+
 - macOS + iTerm2 only
 - Requires setup (it2 CLI + Python API)
 - Panes die with window
 
 **Setup:**
+
 ```bash
 # 1. Install it2 CLI
 uv tool install it2
@@ -1286,6 +1345,7 @@ it2 session list
 
 **If setup fails:**
 Claude Code will prompt you to set up it2 when you first spawn a teammate. You can choose to:
+
 1. Install it2 now (guided setup)
 2. Use tmux instead
 3. Cancel
@@ -1326,13 +1386,13 @@ The backend type is recorded per-teammate in `config.json`:
 
 ### Troubleshooting Backends
 
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| "No pane backend available" | Neither tmux nor iTerm2 available | Install tmux: `brew install tmux` |
-| "it2 CLI not installed" | In iTerm2 but missing it2 | Run `uv tool install it2` |
-| "Python API not enabled" | it2 can't communicate with iTerm2 | Enable in iTerm2 Settings → General → Magic |
-| Workers not visible | Using in-process backend | Start inside tmux or iTerm2 |
-| Workers dying unexpectedly | Outside tmux, leader exited | Use tmux for persistence |
+| Issue                       | Cause                             | Solution                                    |
+| --------------------------- | --------------------------------- | ------------------------------------------- |
+| "No pane backend available" | Neither tmux nor iTerm2 available | Install tmux: `brew install tmux`           |
+| "it2 CLI not installed"     | In iTerm2 but missing it2         | Run `uv tool install it2`                   |
+| "Python API not enabled"    | it2 can't communicate with iTerm2 | Enable in iTerm2 Settings → General → Magic |
+| Workers not visible         | Using in-process backend          | Start inside tmux or iTerm2                 |
+| Workers dying unexpectedly  | Outside tmux, leader exited       | Use tmux for persistence                    |
 
 ### Checking Current Backend
 
@@ -1359,14 +1419,14 @@ which it2
 
 ### Common Errors
 
-| Error | Cause | Solution |
-|-------|-------|----------|
+| Error                                | Cause                   | Solution                                                 |
+| ------------------------------------ | ----------------------- | -------------------------------------------------------- |
 | "Cannot cleanup with active members" | Teammates still running | `requestShutdown` all teammates first, wait for approval |
-| "Already leading a team" | Team already exists | `cleanup` first, or use different team name |
-| "Agent not found" | Wrong teammate name | Check `config.json` for actual names |
-| "Team does not exist" | No team created | Call `spawnTeam` first |
-| "team_name is required" | Missing team context | Provide `team_name` parameter |
-| "Agent type not found" | Invalid subagent_type | Check available agents with proper prefix |
+| "Already leading a team"             | Team already exists     | `cleanup` first, or use different team name              |
+| "Agent not found"                    | Wrong teammate name     | Check `config.json` for actual names                     |
+| "Team does not exist"                | No team created         | Call `spawnTeam` first                                   |
+| "team_name is required"              | Missing team context    | Provide `team_name` parameter                            |
+| "Agent type not found"               | Invalid subagent_type   | Check available agents with proper prefix                |
 
 ### Graceful Shutdown Sequence
 
@@ -1619,9 +1679,11 @@ Task({ team_name: "codebase-review", name: "worker-3", subagent_type: "general-p
 ## Best Practices
 
 ### 1. Always Cleanup
+
 Don't leave orphaned teams. Always call `cleanup` when done.
 
 ### 2. Use Meaningful Names
+
 ```javascript
 // Good
 name: "security-reviewer"
@@ -1634,7 +1696,9 @@ name: "agent-2"
 ```
 
 ### 3. Write Clear Prompts
+
 Tell workers exactly what to do:
+
 ```javascript
 // Good
 prompt: `
@@ -1649,7 +1713,9 @@ prompt: "Review the code"
 ```
 
 ### 4. Use Task Dependencies
+
 Let the system manage unblocking:
+
 ```javascript
 // Good: Auto-unblocking
 TaskUpdate({ taskId: "2", addBlockedBy: ["1"] })
@@ -1659,20 +1725,25 @@ TaskUpdate({ taskId: "2", addBlockedBy: ["1"] })
 ```
 
 ### 5. Check Inboxes for Results
+
 Workers send results to your inbox. Check it:
+
 ```bash
 cat ~/.claude/teams/{team}/inboxes/team-lead.json | jq '.'
 ```
 
 ### 6. Handle Worker Failures
+
 - Workers have 5-minute heartbeat timeout
 - Tasks of crashed workers can be reclaimed
 - Build retry logic into worker prompts
 
 ### 7. Prefer write Over broadcast
+
 `broadcast` sends N messages for N teammates. Use `write` for targeted communication.
 
 ### 8. Match Agent Type to Task
+
 - **Explore** for searching/reading
 - **Plan** for architecture design
 - **general-purpose** for implementation
@@ -1683,22 +1754,26 @@ cat ~/.claude/teams/{team}/inboxes/team-lead.json | jq '.'
 ## Quick Reference
 
 ### Spawn Subagent (No Team)
+
 ```javascript
 Task({ subagent_type: "Explore", description: "Find files", prompt: "..." })
 ```
 
 ### Spawn Teammate (With Team)
+
 ```javascript
 Teammate({ operation: "spawnTeam", team_name: "my-team" })
 Task({ team_name: "my-team", name: "worker", subagent_type: "general-purpose", prompt: "...", run_in_background: true })
 ```
 
 ### Message Teammate
+
 ```javascript
 Teammate({ operation: "write", target_agent_id: "worker-1", value: "..." })
 ```
 
 ### Create Task Pipeline
+
 ```javascript
 TaskCreate({ subject: "Step 1", description: "..." })
 TaskCreate({ subject: "Step 2", description: "..." })
@@ -1706,6 +1781,7 @@ TaskUpdate({ taskId: "2", addBlockedBy: ["1"] })
 ```
 
 ### Shutdown Team
+
 ```javascript
 Teammate({ operation: "requestShutdown", target_agent_id: "worker-1" })
 // Wait for approval...
@@ -1714,4 +1790,4 @@ Teammate({ operation: "cleanup" })
 
 ---
 
-*Based on Claude Code v2.1.19 - Tested and verified 2026-01-25*
+_Based on Claude Code v2.1.19 - Tested and verified 2026-01-25_

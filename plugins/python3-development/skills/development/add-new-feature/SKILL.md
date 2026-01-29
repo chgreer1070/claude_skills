@@ -1,11 +1,10 @@
 ---
-name: add-new-feature
-description:"SAM-style feature initiation workflow: discovery -> codebase analysis -> architecture spec -> task decomposition -> validation -> context manifest. Use when a user asks to add a feature, plan a feature, or convert an idea into executable task files."
-version: "1.0.0"
-last_updated: "2026-01-27"
-python_compatibility: "3.11+"
+argument-hint: <feature description or existing doc path>
 user-invocable: true
-argument-hint: "<feature description or existing doc path>"
+description:"SAM-style feature initiation workflow: discovery -> codebase analysis -> architecture spec -> task decomposition -> validation -> context manifest. Use when a user asks to add a feature, plan a feature, or convert an idea into executable task files."
+version: 1.0.0
+last_updated: '2026-01-27'
+python_compatibility: 3.11+
 ---
 
 # Add New Feature (SAM Workflow)

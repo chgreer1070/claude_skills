@@ -1,5 +1,4 @@
 ---
-name: agent-creator
 description: 'Create high-quality Claude Code agents from scratch or by adapting existing agents as templates. Use when the user wants to create a new agent, modify agent configurations, build specialized subagents, or design agent architectures. Guides through requirements gathering, template selection, and agent file generation following January 2026 Anthropic best practices.'
 user-invocable: true
 model: sonnet
@@ -174,7 +173,6 @@ CREATE the agent file following this structure:
 
 ```markdown
 ---
-name: {agent-name}
 description: '{What it does - action verbs and capabilities}. {When to use it - trigger scenarios, file types, tasks}. {Additional context - specializations, keywords}.'
 model: {sonnet|opus|haiku|inherit}
 tools: {tool-list if restricting}
@@ -532,7 +530,6 @@ cannot see your execution unless you return it.
 ### Read-Only Analyzer
 
 ```yaml
-name: code-analyzer
 description: Analyze code without modifications. Use for security audits.
 tools: Read, Grep, Glob
 permissionMode: dontAsk
@@ -542,7 +539,6 @@ model: sonnet
 ### Documentation Writer
 
 ```yaml
-name: docs-writer
 description: Generate documentation from code. Use when creating READMEs.
 tools: Read, Write, Edit, Grep, Glob
 permissionMode: acceptEdits
@@ -552,7 +548,6 @@ model: sonnet
 ### Debugger
 
 ```yaml
-name: debugger
 description: Debug runtime errors. Use when encountering exceptions.
 tools: Read, Edit, Bash, Grep, Glob
 model: opus  # Complex reasoning needed
@@ -561,7 +556,6 @@ model: opus  # Complex reasoning needed
 ### Research Agent
 
 ```yaml
-name: researcher
 description: Research codebase patterns. Use before major changes.
 model: haiku  # Fast for exploration
 tools: Read, Grep, Glob
@@ -571,7 +565,6 @@ permissionMode: plan  # Read-only mode
 ### Skill-Enhanced Agent
 
 ```yaml
-name: python-expert
 description: Python development specialist with deep async knowledge.
 skills: python-development, async-patterns
 model: sonnet
@@ -600,13 +593,9 @@ description: Review Python code for PEP 8 compliance, type hint coverage,
 
 ```yaml
 # DON'T
-name: everything-helper
 description: Handles all code tasks
 
 # DO - Create focused agents
-name: code-reviewer
-name: test-writer
-name: documentation-generator
 ```
 
 ### Missing Tool Restrictions
@@ -685,11 +674,9 @@ Beyond configuration anti-patterns, users often make these mistakes when creatin
 
 ```yaml
 # Wrong - assumes parent skills available
-name: python-expert
 description: Expert Python developer
 
 # Right - explicitly loads skills
-name: python-expert
 description: Expert Python developer
 skills: python-development, testing-patterns
 ```
@@ -749,17 +736,13 @@ permissionMode: dontAsk
 
 ```yaml
 # Wrong - one agent for everything
-name: python-helper
 description: Helps with Python code, testing, documentation, and debugging
 
 # Right - separate focused agents
-name: python-code-reviewer
 description: Reviews Python code for quality issues
 
-name: python-test-writer
 description: Writes pytest tests for Python functions
 
-name: python-doc-generator
 description: Generates docstrings and README files
 ```
 

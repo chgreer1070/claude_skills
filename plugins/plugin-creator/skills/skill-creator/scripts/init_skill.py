@@ -26,8 +26,9 @@ MAX_SKILL_NAME_LENGTH = 40
 REQUIRED_ARGC = 4  # script name + skill-name + --path + path
 
 SKILL_TEMPLATE = """---
-name: {skill_name}
 description: [TODO: Complete and informative explanation of what the skill does and when to use it. Include WHEN to use this skill - specific scenarios, file types, or tasks that trigger it.]
+# NOTE: DO NOT add 'name:' field - Claude Code bug prevents slash command registration if name is specified
+# The skill name will be derived from the directory name automatically
 ---
 
 # {skill_title}

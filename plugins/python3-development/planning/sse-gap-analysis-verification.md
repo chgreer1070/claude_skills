@@ -8,12 +8,12 @@
 
 ## Verification Summary
 
-| Status | Count |
-|--------|-------|
-| VERIFIED | 22 |
-| PARTIALLY VERIFIED | 3 |
-| ASSUMPTION | 0 |
-| INCORRECT | 2 |
+| Status             | Count |
+| ------------------ | ----- |
+| VERIFIED           | 22    |
+| PARTIALLY VERIFIED | 3     |
+| ASSUMPTION         | 0     |
+| INCORRECT          | 2     |
 
 **Note**: Two claims originally marked ASSUMPTION were experimentally verified to be INCORRECT on 2026-01-29. See "Claims Verified as Incorrect" section.
 
@@ -26,6 +26,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/agents/context-gathering.md`
 - Lines 1-7:
   ```yaml
@@ -44,6 +45,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/agents/context-gathering.md`
 - Line 3 (description): "ALWAYS provide the task file path so the agent can read it and update it directly with the context manifest"
 - Lines 19-23 (Step 1: Understand the Task): "READ the task file at the provided path completely"
@@ -57,6 +59,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/implementation-manager/SKILL.md`
 - Lines 123-130 (Task File Format):
   ```markdown
@@ -72,6 +75,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/implementation-manager/SKILL.md`
 - Line 123: `**Status**: NOT STARTED | IN PROGRESS | COMPLETE`
 - Lines 138-140 document emoji alternatives for each status
@@ -88,6 +92,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/implementation-manager/SKILL.md`
 - Lines 157-158 (Hook Configuration table):
   ```
@@ -111,6 +116,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/agents/python-cli-architect.md`
 - Line 3: "Creates, enhances, and reviews Python CLI code using modern patterns"
 - File: `./plugins/python3-development/agents/python-pytest-architect.md` (exists in glob results)
@@ -122,8 +128,10 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/python3-development/references/python-development-orchestration.md`
 - Lines 564-599 (Anti-Patterns to Avoid section):
+
   ```markdown
   ### Don't: Write Python code as orchestrator
   ❌ Orchestrator writes implementation directly
@@ -132,6 +140,7 @@
   ✅ @agent-python-cli-architect writes implementation
   ✅ @agent-python-code-reviewer validates it
   ```
+
 - Lines 589-595 explicitly prohibit mixing agent contexts
 
 ### Claim 3.3: "Decision tree for agent selection"
@@ -139,6 +148,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/python3-development/references/python-development-orchestration.md`
 - Lines 331-348 (Decision Tree):
   ```text
@@ -160,6 +170,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/agents/swarm-task-planner.md`
 - Line 3 (description): "Creates dependency-based task plans for parallel AI agent execution"
 - Lines 12-14: "Your role is to transform architectural specifications into dependency-based task plans that enable concurrent agent execution"
@@ -170,6 +181,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/agents/context-gathering.md`
 - Lines 103-104: "Update the task file by adding a 'Context Manifest' section AFTER the task overview"
 - Lines 105-180: Complete Context Manifest template with sections for:
@@ -182,8 +194,10 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/agents/feature-researcher.md`
 - Lines 50-66 (`<downstream_consumer>` section):
+
   ```markdown
   Your `feature-context-{slug}.md` is consumed by:
 
@@ -202,6 +216,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/agents/plan-validator.md`
 - Line 3 (description): "Validates implementation plans BEFORE execution begins"
 - Lines 10-11 (role): "You verify plans WILL achieve the goal BEFORE execution begins"
@@ -211,6 +226,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/agents/feature-verifier.md`
 - Line 3 (description): "Goal-backward verification AFTER feature implementation"
 - Lines 10-11 (role): "You verify that a feature achieved its GOAL, not just completed its TASKS"
@@ -220,6 +236,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/agents/plan-validator.md`
 - Lines 68-180 (`<validation_dimensions>` section) defines exactly 6 dimensions:
   1. Dimension 1: Requirement Coverage (line 70)
@@ -238,6 +255,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/agents/swarm-task-planner.md`
 - Line 84: "Explicit Dependencies: What must complete before this task can start"
 - Line 96: `- Dependencies: None`
@@ -252,6 +270,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/implementation-manager/SKILL.md`
 - Lines 74-95 (ready-tasks command):
   ```bash
@@ -269,6 +288,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/implementation-manager/SKILL.md`
 - Line 74: `#### ready-tasks`
 - Lines 76-95: Full command documentation with output format
@@ -284,6 +304,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/python3-development/SKILL.md`
 - Lines 74-80 (System Tools section):
   ```markdown
@@ -301,6 +322,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/python3-development/SKILL.md`
 - Lines 965-1065 (Linting Discovery Protocol section):
   - Lines 970-998: Discovery sequence for git hook tools
@@ -316,6 +338,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/generate-task/SKILL.md`
 - Line 3 (description): "Generate a single worker task prompt using the existing CLEAR + selective CoVe task design standard"
 - Line 15: "CLEAR ordering (Context, Objective, Inputs, Requirements, Constraints, Expected Outputs, Acceptance Criteria, Verification Steps, CoVe Checks only if needed, Handoff)"
@@ -326,6 +349,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/generate-task/SKILL.md`
 - Lines 70-72 (template structure):
   ```markdown
@@ -340,6 +364,7 @@
 **Status**: PARTIALLY VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/generate-task/SKILL.md`
 - Line 98: "CoVe: included only when Accuracy Risk is Medium/High, and questions are falsifiable"
 - The falsifiability requirement explicitly applies to CoVe questions, not all acceptance criteria
@@ -356,6 +381,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/generate-task/SKILL.md`
 - Lines 44-56 (task template):
   ```markdown
@@ -372,6 +398,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/agents/context-gathering.md`
 - Lines 27-57 (Step 2: Research Everything):
   - Lists specific file patterns to search
@@ -387,6 +414,7 @@
 **Status**: VERIFIED
 
 **Evidence**:
+
 - File: `./plugins/python3-development/skills/generate-task/SKILL.md`
 - Line 52: `- [Assumptions and how to confirm them]`
 - File: `./plugins/python3-development/agents/swarm-task-planner.md`
@@ -453,6 +481,7 @@ For each claim, verification followed this protocol:
 The SSE gap analysis is largely grounded in actual plugin contents. 22 of 27 claims were fully verified with file:line citations. 3 claims were partially verified with qualifications.
 
 **Critical Correction (2026-01-29)**: 2 claims about sub-agent context inheritance were experimentally verified to be INCORRECT. Sub-agents do NOT receive orchestrator conversation context - they start fresh with only their prompt + tool access. The gap analysis has been corrected:
+
 - Principle 1 (Stateless Agents) status changed from PARTIAL to ALIGNED
 - Recommendation 2.2 (Implement Stateless Agent Enforcement) removed
 

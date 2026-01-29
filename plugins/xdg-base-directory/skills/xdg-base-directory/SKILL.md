@@ -1,5 +1,4 @@
 ---
-name: xdg-base-directory
 description: When an application needs to store config, data, cache, or state files. When designing where user-specific files should live. When code writes to ~/.appname or hardcoded home paths. When implementing cross-platform file storage with platformdirs.
 ---
 

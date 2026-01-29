@@ -1,5 +1,4 @@
 ---
-name: claude-hooks-reference-2026
 description: Complete reference for Claude Code hooks system (January 2026). Use when creating hooks, understanding hook events, matchers, exit codes, JSON output control, environment variables, plugin hooks, or implementing hook scripts.
 user-invocable: true
 ---
@@ -205,7 +204,6 @@ Hooks can be defined in frontmatter. These are scoped to the component's lifecyc
 
 ```yaml
 ---
-name: secure-operations
 description: Perform operations with security checks
 hooks:
   PreToolUse:
@@ -220,7 +218,6 @@ hooks:
 
 ```yaml
 ---
-name: code-reviewer
 description: Review code changes
 hooks:
   PostToolUse:

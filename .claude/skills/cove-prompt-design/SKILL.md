@@ -1,7 +1,6 @@
 ---
-name: cove-prompt-design
 description: Explain how and when to use Chain of Verification (CoVe) in prompt design. Use when designing prompts that require factual accuracy, self checking, or reduction of hallucinations.
-argument-hint: "[task or prompt to apply CoVe to]"
+argument-hint: '[task or prompt to apply CoVe to]'
 user-invocable: true
 disable-model-invocation: false
 ---

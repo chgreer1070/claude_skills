@@ -1,6 +1,5 @@
 ---
-name: delegate
-description: 'Quick delegation template for sub-agent prompts. Use when assigning work to a sub-agent, before invoking the Task tool, or when preparing prompts for specialized agents. Provides the WHERE-WHAT-WHY framework. For comprehensive delegation guidance, see /how-to-delegate.'
+description: Quick delegation template for sub-agent prompts. Use when assigning work to a sub-agent, before invoking the Task tool, or when preparing prompts for specialized agents. Provides the WHERE-WHAT-WHY framework. For comprehensive delegation guidance, see /how-to-delegate.
 user-invocable: true
 ---
 

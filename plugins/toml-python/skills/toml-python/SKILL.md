@@ -1,5 +1,4 @@
 ---
-name: toml-python
 description: When reading or writing pyproject.toml or .toml config files in Python. When editing TOML while preserving comments and formatting. When designing configuration file format for a Python tool. When code uses tomlkit or tomllib. When implementing atomic config file updates.
 ---
 

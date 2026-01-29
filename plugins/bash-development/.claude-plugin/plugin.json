@@ -1,6 +1,6 @@
 {
   "name": "bash-development",
-  "version": "2.0.0",
+  "version": "2.0.7",
   "description": "Comprehensive Bash 5.1+ and POSIX shell development plugin with modular skills for scripting, portability, testing, linting, and logging. Includes specialized agents for script development and code auditing.",
   "author": {
     "name": "Jamie Nelson",

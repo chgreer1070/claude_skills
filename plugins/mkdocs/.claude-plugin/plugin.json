@@ -1,7 +1,7 @@
 {
   "name": "mkdocs",
   "description": "Comprehensive guide for creating and managing MkDocs documentation projects with Material theme. Includes official CLI command reference with complete parameters and arguments, and mkdocs.yml configuration reference with all available settings and valid values. Use when working with MkDocs projects including site initialization, mkdocs.yml configuration, Material theme customization, plugin integration, or building static documentation sites from Markdown files.",
-  "version": "1.0.0",
+  "version": "1.0.7",
   "author": {
     "name": "Jamie Hoover",
     "url": "https://github.com/bitflight-devops"

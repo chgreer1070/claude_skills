@@ -1,6 +1,5 @@
 ---
-name: bash-portability
-description: 'This skill should be used when the user asks about "POSIX compatibility", "portable shell scripts", "cross-shell compatibility", "bashisms", "shebang selection", or mentions writing scripts that work on different shells (bash, sh, dash, zsh) or different systems.'
+description: This skill should be used when the user asks about "POSIX compatibility", "portable shell scripts", "cross-shell compatibility", "bashisms", "shebang selection", or mentions writing scripts that work on different shells (bash, sh, dash, zsh) or different systems.
 ---
 
 # Bash Portability
