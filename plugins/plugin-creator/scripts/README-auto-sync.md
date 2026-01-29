@@ -242,6 +242,54 @@ git commit -m "docs: update documentation"
 # ℹ️  No manifest updates needed
 ```
 
+## Hook Behavior Details
+
+### Silent Success (Exit Code 0)
+
+The hook always returns exit code 0, even when it modifies files. This means:
+
+- **Commit proceeds without interruption** - You won't see "files modified, please review" messages
+- **Modified manifests auto-stage** - Updated `plugin.json` and `marketplace.json` are added to your commit automatically
+- **Convenient workflow** - No need to re-run `git commit` after version bumps
+
+This differs from typical pre-commit hooks that return exit code 1 when modifying files.
+
+### Failure Recovery and Double-Bump Protection
+
+**Scenario: Later hook fails (e.g., mypy, linting)**
+
+1. You stage `SKILL.md` and run `git commit`
+2. `auto-sync-manifests` runs successfully:
+   - Detects modified skill
+   - Bumps plugin version `2.14.0` → `2.14.1`
+   - Stages `plugin.json` and `marketplace.json`
+   - Returns exit code 0
+3. `mypy` runs and fails
+4. Commit is aborted
+5. **Current state:** All three files remain staged with version `2.14.1`
+
+**Re-running the commit:**
+
+1. You run `git commit` again (after fixing mypy errors)
+2. `auto-sync-manifests` runs again
+3. **Protection activates** - Script detects `plugin.json` already staged (lines 276-280 of script)
+4. **Skips version bumping** - Returns early without modification
+5. Commit proceeds with version `2.14.1` (no double-bump to `2.14.2`)
+
+**Code reference:**
+
+```python
+# Check if plugin.json is already staged - if so, skip modifying it
+staged_status = run_git_command(["diff", "--cached", "--name-only"])
+if str(plugin_json_path) in staged_status:
+    # File is already staged, don't modify it
+    return False, "0.0.0"
+```
+
+Same protection exists for `marketplace.json`.
+
+**Key insight:** The script only bumps versions when manifests are NOT already staged. This prevents version inflation from repeated commit attempts.
+
 ## Bypassing the Hook
 
 If you need to commit without automatic manifest updates:
@@ -306,6 +354,7 @@ uv run -q --no-sync plugins/plugin-creator/scripts/auto-sync-manifests.py
 - Changes to non-component files (README, CLAUDE.md, etc.)
 - Changes already reflected in manifest
 - `plugin.json` missing or malformed
+- **Manifest already staged** - Protection prevents double-bumping (see Failure Recovery section)
 
 ### Merge Conflicts in manifests
 

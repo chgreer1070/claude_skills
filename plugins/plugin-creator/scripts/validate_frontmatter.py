@@ -50,6 +50,7 @@ error_console = Console(stderr=True)
 # Constants
 MIN_QUOTED_STRING_LENGTH = 2
 RECOMMENDED_DESCRIPTION_LENGTH = 1024
+MAX_SKILL_NAME_LENGTH = 40
 
 
 def _get_table_width(table: Table) -> int:
@@ -309,6 +310,79 @@ def detect_file_type(path: Path) -> FileType:
     if "agents" in path.parts:
         return FileType.AGENT
     return FileType.UNKNOWN
+
+
+def validate_skill_directory_name(skill_dir_name: str) -> list[ValidationIssue]:
+    """Validate skill directory name format.
+
+    Skill directory names must match the pattern used by init_skill.py:
+    - Lowercase letters, digits, and hyphens only
+    - Cannot start or end with hyphen
+    - Max 40 characters
+
+    Source: init_skill.py lines 212-238
+
+    Args:
+        skill_dir_name: Directory name to validate
+
+    Returns:
+        List of validation issues (empty if valid)
+    """
+    issues = []
+
+    if not skill_dir_name:
+        issues.append(
+            ValidationIssue(
+                field="directory",
+                severity="error",
+                message="Skill directory name cannot be empty",
+            )
+        )
+        return issues
+
+    # Check length
+    if len(skill_dir_name) > MAX_SKILL_NAME_LENGTH:
+        issues.append(
+            ValidationIssue(
+                field="directory",
+                severity="error",
+                message=f"Directory name exceeds maximum length of {MAX_SKILL_NAME_LENGTH} characters (got {len(skill_dir_name)})",
+                suggestion=f"Shorten directory name to {MAX_SKILL_NAME_LENGTH} characters or less",
+            )
+        )
+
+    # Check pattern: lowercase, digits, hyphens; no leading/trailing hyphen
+    pattern = r"^[a-z0-9]+(-[a-z0-9]+)*$"
+    if not re.match(pattern, skill_dir_name):
+        # Provide specific error messages for common violations
+        violations = []
+        if re.search(r"[A-Z]", skill_dir_name):
+            violations.append("contains uppercase letters")
+        if re.search(r"[^a-z0-9-]", skill_dir_name):
+            violations.append(
+                "contains invalid characters (only lowercase, digits, hyphens allowed)"
+            )
+        if skill_dir_name.startswith("-"):
+            violations.append("starts with hyphen")
+        if skill_dir_name.endswith("-"):
+            violations.append("ends with hyphen")
+        if "--" in skill_dir_name:
+            violations.append("contains consecutive hyphens")
+        if "_" in skill_dir_name:
+            violations.append("contains underscores (use hyphens instead)")
+
+        violation_msg = "; ".join(violations) if violations else "invalid format"
+
+        issues.append(
+            ValidationIssue(
+                field="directory",
+                severity="error",
+                message=f"Directory name {violation_msg}",
+                suggestion="Use lowercase-hyphen-case (e.g., 'my-skill-name')",
+            )
+        )
+
+    return issues
 
 
 def get_model_class(
@@ -1020,6 +1094,13 @@ def process_file(
 
     # Validate using Pydantic
     _, issues = validate_and_normalize(frontmatter or "", detected_type)
+
+    # Validate skill directory name if this is a SKILL.md file
+    if detected_type == FileType.SKILL and file_path.name == "SKILL.md":
+        # Get parent directory name (skill directory)
+        skill_dir_name = file_path.parent.name
+        dir_issues = validate_skill_directory_name(skill_dir_name)
+        issues.extend(dir_issues)
 
     success = not any(issue.severity == "error" for issue in issues)
     return success, fixes, issues

@@ -4,7 +4,7 @@ description: Performs holistic code review and validation after feature implemen
 model: sonnet
 permissionMode: acceptEdits
 color: yellow
-skills: subagent-contract, python3-development, holistic-linting
+skills: subagent-contract, python3-development, python3-development:validation-protocol, holistic-linting
 ---
 
 # Code Reviewer Agent

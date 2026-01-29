@@ -464,47 +464,50 @@ To establish the skill's contents, analyze each concrete example to create a lis
 
 ### Step 4: Initializing the Skill
 
-At this point, it is time to actually create the skill.
+**CRITICAL: This is the MANDATORY first step for creating ANY skill. Do NOT skip this step.**
 
-Skip this step only if the skill being developed already exists, and iteration or packaging is needed. In this case, continue to the next step.
+**For ALL skills (plugin, project, and user):**
 
-**For plugin skills:**
+Run the `init_skill.py` script. This script generates a complete template skill directory with:
 
-When creating a new skill for plugin distribution, run the `init_skill.py` script. The script conveniently generates a new template skill directory that automatically includes everything a skill requires, making the skill creation process much more efficient and reliable.
+- Proper SKILL.md frontmatter with TODO placeholders
+- Guidance on skill structure patterns
+- Example resource directories (`scripts/`, `references/`, `assets/`)
+- Example files demonstrating best practices
 
-Usage:
+**Usage:**
 
 ```bash
-scripts/init_skill.py <skill-name> --path <output-directory>
+# The script has executable permissions and a shebang - run it directly
+${CLAUDE_PLUGIN_ROOT}/scripts/init_skill.py <skill-name> --path <output-directory>
 ```
 
-The script:
-
-- Creates the skill directory at the specified path
-- Generates a SKILL.md template with proper frontmatter and TODO placeholders
-- Creates example resource directories: `scripts/`, `references/`, and `assets/`
-- Adds example files in each directory that can be customized or deleted
-
-**For project/user skills:**
-
-Create the skill directory manually:
+**Examples:**
 
 ```bash
+# Plugin skill
+${CLAUDE_PLUGIN_ROOT}/scripts/init_skill.py my-new-skill --path plugins/my-plugin/skills
+
 # Project skill
-mkdir -p .claude/skills/my-skill
+${CLAUDE_PLUGIN_ROOT}/scripts/init_skill.py my-skill --path .claude/skills
 
 # User skill
-mkdir -p ~/.claude/skills/my-skill
-
-# Create SKILL.md
-touch .claude/skills/my-skill/SKILL.md
+${CLAUDE_PLUGIN_ROOT}/scripts/init_skill.py my-skill --path ~/.claude/skills
 ```
 
-Create optional subdirectories as needed:
+**What the script does:**
 
-- `references/` for documentation loaded on demand
-- `scripts/` for executable code
-- `assets/` for templates and resources
+- Validates skill name (lowercase, hyphens, max 40 chars)
+- Creates skill directory at specified path
+- Generates SKILL.md template with proper frontmatter and TODO placeholders
+- Creates `scripts/`, `references/`, `assets/` directories
+- Adds example files in each directory with guidance comments
+- Sets executable permissions on example scripts
+- Prints next steps
+
+**IMPORTANT:** Do NOT manually create skill directories. The script provides essential scaffolding, validation, and examples that manual creation misses.
+
+**Only skip if:** The skill directory already exists and you're iterating on an existing skill.
 
 After initialization, customize or remove the generated SKILL.md and example files as needed.
 
