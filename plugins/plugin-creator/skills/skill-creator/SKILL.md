@@ -599,7 +599,7 @@ Write instructions for using the skill and its bundled resources.
    ---
 
    Pull Request Data:
-   \`\!`gh pr view $0 --json title,body,commits`\`\`
+   \`\!\`gh pr view $0 --json title,body,commits\`\`\`
 
    Create a summary of the changes above.
    ```
