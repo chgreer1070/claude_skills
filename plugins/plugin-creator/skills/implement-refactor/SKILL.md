@@ -237,18 +237,19 @@ LSP server 'gopls' not found in $PATH
 
 **SOURCE:** Lines 349-398 of claude-plugins-reference-2026/SKILL.md
 
-### 6. External Agent Dependencies
+### 6. Agent Dependencies
 
-Document any agents referenced in task routing that are NOT included in this plugin:
+**Agents included in plugin-creator:**
+
+- `subagent-refactorer` - Used for AGENT_OPTIMIZE tasks (✅ included)
+- `claude-context-optimizer` - Used for DOC_IMPROVE and ORPHAN_RESOLVE tasks (✅ included)
+- `plugin-assessor` - Used for validation tasks (✅ included)
 
 **Known external agent dependencies:**
 
-- `subagent-refactorer` - Used for AGENT_OPTIMIZE tasks (not in plugin-creator)
-- `claude-context-optimizer` - Used for DOC_IMPROVE and ORPHAN_RESOLVE tasks (not in plugin-creator)
-- `plugin-assessor` - Used for validation tasks (not in plugin-creator)
 - `plugin-docs-writer` - Used for documentation generation (not in plugin-creator)
 
-**Action if agent missing:**
+**Action if external agent missing:**
 
 1. Check if agent exists in user's `~/.claude/agents/` or project `.claude/agents/`
 2. If missing, create follow-up task to install required agent plugin

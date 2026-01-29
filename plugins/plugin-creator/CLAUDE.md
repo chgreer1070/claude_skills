@@ -55,13 +55,16 @@ The model MUST use this plugin when:
 | `/refactor-skill`                | Yes            | Split oversized skills into smaller focused skills                                                          | ✅ Yes   |
 | `/start-refactor-task`           | Yes            | Execute individual refactoring tasks                                                                        | ✅ Yes   |
 
-### Agents (3)
+### Agents (6)
 
-| Agent                | Model  | Tools                                     | Purpose                                       | Verified |
-| -------------------- | ------ | ----------------------------------------- | --------------------------------------------- | -------- |
-| `refactor-planner`   | sonnet | Read, Grep, Glob, Write                   | Analyze plugins and create refactoring plans  | ✅ Yes   |
-| `refactor-executor`  | sonnet | Read, Write, Edit, Grep, Glob, Bash, Task | Execute refactoring tasks from plans          | ✅ Yes   |
-| `refactor-validator` | sonnet | Read, Grep, Glob, Bash                    | Validate refactoring completeness and quality | ✅ Yes   |
+| Agent                      | Model  | Tools                                                                | Purpose                                                                  | Verified |
+| -------------------------- | ------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------- |
+| `refactor-planner`         | sonnet | Read, Grep, Glob, Write                                              | Analyze plugins and create refactoring plans                             | ✅ Yes   |
+| `refactor-executor`        | sonnet | Read, Write, Edit, Grep, Glob, Bash, Task                            | Execute refactoring tasks from plans                                     | ✅ Yes   |
+| `refactor-validator`       | sonnet | Read, Grep, Glob, Bash                                               | Validate refactoring completeness and quality                            | ✅ Yes   |
+| `subagent-refactorer`      | sonnet | Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Skill, MCP tools | Refactor Claude agents using Anthropic prompt engineering best practices | ✅ Yes   |
+| `claude-context-optimizer` | sonnet | (inherits)                                                           | Optimize prompts, SKILL.md, CLAUDE.md for Claude comprehension           | ✅ Yes   |
+| `plugin-assessor`          | sonnet | (inherits)                                                           | Analyze plugins for structure, frontmatter, and quality                  | ✅ Yes   |
 
 ### Commands (1)
 
@@ -80,6 +83,52 @@ The model MUST use this plugin when:
 | `count-skill-lines.sh`        | Count lines in skills, identify oversized ones     | ✅ Yes - used by count-lines command          |
 | `fix-tool-formats.py`         | Fix invalid tool format patterns in frontmatter    | ✅ Yes - scans ~/.claude and repos            |
 | `README.md`                   | Script documentation                               | ✅ Yes - documents fix-tool-formats.py        |
+
+---
+
+## Consolidated Agents (v2.6.0)
+
+**As of version 2.6.0**, the following agents were consolidated from external locations into plugin-creator to make the plugin self-contained:
+
+### subagent-refactorer
+
+**Source:** Previously at `~/.claude/agents/subagent-refactorer.md`
+**Purpose:** Refactor Claude Code subagents using Anthropic prompt engineering best practices
+**Usage:** AGENT_OPTIMIZE task types in refactoring workflows
+**Key Features:**
+
+- Researches current Anthropic documentation before refactoring
+- Applies strategic XML tagging and Constitutional AI patterns
+- Optimizes for Sonnet 4.5 vs Opus 4.1 model selection
+- Generates analysis reports with citations and validation checklists
+
+### claude-context-optimizer
+
+**Source:** Previously at `./.claude/agents/claude-context-optimizer.md`
+**Purpose:** Optimize prompts, SKILL.md, and CLAUDE.md files for Claude comprehension
+**Usage:** DOC_IMPROVE and ORPHAN_RESOLVE task types
+**Key Features:**
+
+- Enables `prompt-optimization-claude-45` skill (external dependency)
+- Applies positive framing over negative constraints
+- Uses concrete examples over abstract descriptions
+- Front-loads critical instructions
+
+**Note:** Requires `prompt-optimization-claude-45` skill from separate plugin.
+
+### plugin-assessor
+
+**Source:** Previously at `./.claude/agents/plugin-assessor.md`
+**Purpose:** Analyze plugins for structure, frontmatter, schema compliance, and quality
+**Usage:** Validation tasks and pre-marketplace review
+**Key Features:**
+
+- Comprehensive reference file audit (orphan detection)
+- Cross-reference validation and link graph analysis
+- Frontmatter schema validation against official specs
+- Generates detailed assessment reports with scoring
+
+**Skills loaded:** `claude-skills-overview-2026`, `claude-plugins-reference-2026`, `claude-hooks-reference-2026` (all included in plugin-creator)
 
 ---
 
@@ -369,13 +418,13 @@ claude plugin validate {plugin-directory}
 
 **Task Types Handled:**
 
-| Type             | Handler                                | Verified         |
-| ---------------- | -------------------------------------- | ---------------- |
-| `SKILL_SPLIT`    | `/plugin-creator:refactor-skill` skill | ✅ Yes           |
-| `AGENT_OPTIMIZE` | `subagent-refactorer` agent            | ⚠️ Not in plugin |
-| `DOC_IMPROVE`    | `claude-context-optimizer` agent       | ⚠️ Not in plugin |
-| `ORPHAN_RESOLVE` | Manual or context optimizer            | ⚠️ Partial       |
-| `STRUCTURE_FIX`  | Direct implementation                  | ✅ Yes           |
+| Type             | Handler                                | Verified |
+| ---------------- | -------------------------------------- | -------- |
+| `SKILL_SPLIT`    | `/plugin-creator:refactor-skill` skill | ✅ Yes   |
+| `AGENT_OPTIMIZE` | `subagent-refactorer` agent            | ✅ Yes   |
+| `DOC_IMPROVE`    | `claude-context-optimizer` agent       | ✅ Yes   |
+| `ORPHAN_RESOLVE` | Manual or context optimizer            | ✅ Yes   |
+| `STRUCTURE_FIX`  | Direct implementation                  | ✅ Yes   |
 
 **OUTPUT:** Task files in `.claude/plan/` directory
 
@@ -520,20 +569,7 @@ uv run plugins/plugin-creator/scripts/fix-tool-formats.py
 
 ---
 
-### Gap 2: External Agent Dependencies
-
-**Agents Referenced But Not Included:**
-
-- `subagent-refactorer` - Used for AGENT_OPTIMIZE tasks
-- `claude-context-optimizer` - Used for DOC_IMPROVE tasks
-
-**Current State:** Refactoring workflows reference these but plugin doesn't include them
-**Impact:** Users need these agents installed separately or workflows fail
-**Recommendation:** Document as external dependencies or include in plugin
-
----
-
-### Gap 3: Incomplete Validation Coverage
+### Gap 2: Incomplete Validation Coverage
 
 **Validated:**
 
@@ -941,10 +977,9 @@ claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
 
 ## Related Plugins
 
-**External Dependencies:**
+**Optional External Skill Dependency:**
 
-- `subagent-refactorer` - Agent optimization (not included in this plugin)
-- `claude-context-optimizer` - Documentation improvement (not included)
+- `prompt-optimization-claude-45` - Used by claude-context-optimizer agent (included in this plugin as agent, requires skill from separate plugin)
 
 **Complementary Plugins:**
 
@@ -956,6 +991,8 @@ claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
 
 ## Version History
 
+- **2.6.0** - Consolidated external agents: subagent-refactorer, claude-context-optimizer, plugin-assessor now included
+- **2.5.0** - Added skill-creator and write-frontmatter-description skills
 - **2.3.0** - Added claude-plugins-reference-2026 and claude-hooks-reference-2026 reference skills
 - **2.2.0** - Added claude-skills-overview-2026 reference skill
 - **2.1.0** - Added agent-creator skill for creating agents
@@ -967,8 +1004,8 @@ claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
 ## Sources
 
 - Plugin.json: `plugins/plugin-creator/.claude-plugin/plugin.json`
-- Skills verified: All 9 SKILL.md files read
-- Agents verified: All 3 agent .md files read
+- Skills verified: All 14 SKILL.md files read
+- Agents verified: All 6 agent .md files read
 - Commands verified: count-lines.md read
 - Scripts verified: All 7 scripts examined
 - Official docs: claude-plugins-reference-2026 skill

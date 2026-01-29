@@ -25,7 +25,10 @@ Auto-fixes common issues like YAML arrays that should be comma-separated strings
 
 from __future__ import annotations
 
+import json
 import re
+import shutil
+import subprocess
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -515,6 +518,373 @@ def apply_fixes(content: str, file_type: FileType) -> tuple[str, list[str]]:
     return f"---\n{new_frontmatter}---\n{body}", fixes
 
 
+def get_git_remote_url(repo_path: Path) -> str | None:
+    """Extract repository URL from git remote.
+
+    Returns:
+        HTTPS URL of git remote origin, or None if not a git repo.
+    """
+    git_path = shutil.which("git")
+    if not git_path:
+        return None
+
+    try:
+        result = subprocess.run(
+            [git_path, "remote", "get-url", "origin"],
+            cwd=repo_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+    remote_url = result.stdout.strip()
+
+    # Convert SSH to HTTPS
+    if remote_url.startswith("git@github.com:"):
+        # git@github.com:user/repo.git -> https://github.com/user/repo
+        remote_url = remote_url.replace("git@github.com:", "https://github.com/")
+
+    return remote_url.removesuffix(".git")
+
+
+def get_git_author() -> dict[str, str] | None:
+    """Extract author info from git config.
+
+    Returns:
+        Dict with 'name' and optionally 'email', or None if not available.
+    """
+    git_path = shutil.which("git")
+    if not git_path:
+        return None
+
+    try:
+        name_result = subprocess.run(
+            [git_path, "config", "user.name"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+    name = name_result.stdout.strip()
+
+    try:
+        email_result = subprocess.run(
+            [git_path, "config", "user.email"],
+            capture_output=True,
+            text=True,
+            check=False,  # Email might not be set
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return {"name": name}
+
+    email = email_result.stdout.strip() if email_result.returncode == 0 else None
+
+    author: dict[str, str] = {"name": name}
+    if email:
+        author["email"] = email
+
+    return author
+
+
+def generate_plugin_metadata(plugin_dir: Path) -> dict[str, Any]:
+    """Generate plugin.json metadata from git and file structure.
+
+    Returns:
+        Dict with repository, homepage, author fields populated from git.
+    """
+    metadata: dict[str, Any] = {}
+
+    # Try to find git root
+    current = plugin_dir
+    while current != current.parent:
+        if (current / ".git").exists():
+            repo_url = get_git_remote_url(current)
+            if repo_url:
+                metadata["repository"] = repo_url
+
+                # Generate homepage from repo + plugin path
+                relative_path = plugin_dir.relative_to(current)
+                metadata["homepage"] = f"{repo_url}/tree/main/{relative_path}"
+            break
+        current = current.parent
+
+    # Get author from git config
+    author = get_git_author()
+    if author:
+        metadata["author"] = author
+
+    return metadata
+
+
+def _find_actual_capabilities(
+    plugin_dir: Path,
+) -> tuple[set[Path], set[Path], set[Path]]:
+    """Find all actual capability files in plugin directory.
+
+    Returns:
+        Tuple of (actual_skills, actual_agents, actual_commands).
+    """
+    actual_skills = {
+        d.relative_to(plugin_dir)
+        for d in (plugin_dir / "skills").glob("*/")
+        if d.is_dir() and (d / "SKILL.md").exists()
+    }
+    actual_agents = {
+        f.relative_to(plugin_dir)
+        for f in (plugin_dir / "agents").glob("*.md")
+        if f.name not in {"CLAUDE.md", "README.md"}
+    }
+    actual_commands = {
+        f.relative_to(plugin_dir)
+        for f in (plugin_dir / "commands").glob("*.md")
+        if f.name not in {"CLAUDE.md", "README.md"}
+    }
+    return actual_skills, actual_agents, actual_commands
+
+
+def _parse_registered_paths(
+    plugin_config: dict[str, Any], plugin_dir: Path, field: str
+) -> set[Path]:
+    """Parse registered paths from plugin.json field.
+
+    Args:
+        plugin_config: Loaded plugin.json content.
+        plugin_dir: Plugin directory path.
+        field: Field name (skills, agents, commands).
+
+    Returns:
+        Set of registered paths.
+    """
+    registered: set[Path] = set()
+
+    if field not in plugin_config:
+        return registered
+
+    value = plugin_config[field]
+
+    if isinstance(value, str):
+        value_path = plugin_dir / value.lstrip("./")
+        if value_path.is_dir():
+            # Directory - find all .md files
+            registered.update(
+                f.relative_to(plugin_dir)
+                for f in value_path.glob("*.md")
+                if f.name not in {"CLAUDE.md", "README.md"}
+            )
+        else:
+            registered.add(Path(value.lstrip("./")))
+    elif isinstance(value, list):
+        registered.update(Path(item.lstrip("./")) for item in value)
+
+    return registered
+
+
+def _check_orphaned_files(
+    actual: set[Path], registered: set[Path], capability_type: str, field: str
+) -> list[ValidationIssue]:
+    """Check for orphaned files (exist but not registered).
+
+    Args:
+        actual: Set of actual capability files.
+        registered: Set of registered capability files.
+        capability_type: Type name (Skill, Agent, Command).
+        field: Field name for suggestion.
+
+    Returns:
+        List of validation issues.
+    """
+    orphaned = actual - registered
+    if not orphaned:
+        return []
+
+    return [
+        ValidationIssue(
+            field="plugin.json",
+            severity="warning",
+            message=f"{capability_type} '{item}' exists but not explicitly registered (relying on default discovery)",
+            suggestion=f"Add './{item}' to plugin.json {field} array for explicit registration",
+        )
+        for item in orphaned
+    ]
+
+
+def _check_broken_references(
+    registered: set[Path],
+    plugin_dir: Path,
+    capability_type: str,
+    is_skill: bool = False,
+) -> list[ValidationIssue]:
+    """Check for broken references (registered but don't exist).
+
+    Args:
+        registered: Set of registered paths.
+        plugin_dir: Plugin directory path.
+        capability_type: Type name (skill, agent, command).
+        is_skill: Whether this is a skill (needs /SKILL.md suffix).
+
+    Returns:
+        List of validation issues.
+    """
+    issues: list[ValidationIssue] = []
+
+    for item in registered:
+        item_path = plugin_dir / item
+        if is_skill:
+            item_path /= "SKILL.md"
+
+        if not item_path.exists():
+            suffix = "/SKILL.md" if is_skill else ""
+            issues.append(
+                ValidationIssue(
+                    field="plugin.json",
+                    severity="error",
+                    message=f"Registered {capability_type} '{item}' does not exist",
+                    suggestion=f"Remove from plugin.json or create {item}{suffix}",
+                )
+            )
+
+    return issues
+
+
+def validate_plugin_registration(plugin_dir: Path) -> list[ValidationIssue]:
+    """Validate that capability files match plugin.json registration.
+
+    Checks:
+    - All capability files are registered in plugin.json (or use default discovery)
+    - All registered paths exist
+    - No broken references
+
+    Returns:
+        List of ValidationIssue for registration problems.
+    """
+    issues: list[ValidationIssue] = []
+
+    plugin_json_path = plugin_dir / ".claude-plugin" / "plugin.json"
+    if not plugin_json_path.exists():
+        # No plugin.json - this might be a user-level directory, not a plugin
+        return issues
+
+    try:
+        with plugin_json_path.open() as f:
+            plugin_config = json.load(f)
+    except json.JSONDecodeError as e:
+        issues.append(
+            ValidationIssue(
+                field="plugin.json",
+                severity="error",
+                message=f"Invalid JSON: {e}",
+                suggestion="Fix JSON syntax errors",
+            )
+        )
+        return issues
+
+    # Find all actual capability files
+    actual_skills, actual_agents, actual_commands = _find_actual_capabilities(
+        plugin_dir
+    )
+
+    # Parse registered paths from plugin.json
+    registered_skills = _parse_registered_paths(plugin_config, plugin_dir, "skills")
+    registered_agents = _parse_registered_paths(plugin_config, plugin_dir, "agents")
+    registered_commands = _parse_registered_paths(plugin_config, plugin_dir, "commands")
+
+    # Check for orphaned files
+    issues.extend(
+        _check_orphaned_files(actual_skills, registered_skills, "Skill", "skills")
+    )
+    issues.extend(
+        _check_orphaned_files(actual_agents, registered_agents, "Agent", "agents")
+    )
+    issues.extend(
+        _check_orphaned_files(
+            actual_commands, registered_commands, "Command", "commands"
+        )
+    )
+
+    # Check for broken references
+    issues.extend(
+        _check_broken_references(registered_skills, plugin_dir, "skill", is_skill=True)
+    )
+    issues.extend(_check_broken_references(registered_agents, plugin_dir, "agent"))
+    issues.extend(_check_broken_references(registered_commands, plugin_dir, "command"))
+
+    return issues
+
+
+def validate_plugin_metadata(plugin_dir: Path) -> list[ValidationIssue]:
+    """Validate plugin.json metadata against git information.
+
+    Returns:
+        List of ValidationIssue for metadata suggestions.
+    """
+    issues: list[ValidationIssue] = []
+
+    plugin_json_path = plugin_dir / ".claude-plugin" / "plugin.json"
+    if not plugin_json_path.exists():
+        return issues
+
+    try:
+        with plugin_json_path.open() as f:
+            plugin_config = json.load(f)
+    except json.JSONDecodeError:
+        return issues
+
+    # Generate metadata from git
+    git_metadata = generate_plugin_metadata(plugin_dir)
+
+    if not git_metadata:
+        # Not in a git repo or git not available
+        return issues
+
+    # Check for missing metadata
+    missing_fields = []
+    suggested_values = {}
+
+    if "repository" not in plugin_config and "repository" in git_metadata:
+        missing_fields.append("repository")
+        suggested_values["repository"] = git_metadata["repository"]
+
+    if "homepage" not in plugin_config and "homepage" in git_metadata:
+        missing_fields.append("homepage")
+        suggested_values["homepage"] = git_metadata["homepage"]
+
+    if "author" not in plugin_config and "author" in git_metadata:
+        missing_fields.append("author")
+        suggested_values["author"] = git_metadata["author"]
+
+    if missing_fields:
+        suggestion_json = json.dumps(suggested_values, indent=2)
+        issues.append(
+            ValidationIssue(
+                field="plugin.json",
+                severity="info",
+                message=f"Plugin metadata could be auto-populated from git: {', '.join(missing_fields)}",
+                suggestion=f"Add to plugin.json:\n{suggestion_json}",
+            )
+        )
+
+    # Check for mismatched metadata
+    if (
+        "repository" in plugin_config
+        and "repository" in git_metadata
+        and plugin_config["repository"] != git_metadata["repository"]
+    ):
+        issues.append(
+            ValidationIssue(
+                field="plugin.json",
+                severity="warning",
+                message=f"Repository URL mismatch: plugin.json has '{plugin_config['repository']}', git has '{git_metadata['repository']}'",
+                suggestion=f"Update repository to: {git_metadata['repository']}",
+            )
+        )
+
+    return issues
+
+
 def find_capability_files(path: Path) -> list[Path]:
     """Find all capability files in path.
 
@@ -641,6 +1011,45 @@ def process_file(
     return success, fixes, issues
 
 
+def _display_issues_by_severity(
+    files_with_issues: list[tuple[Path, list[ValidationIssue]]],
+    severity: str,
+    color: str,
+    icon: str,
+    label: str,
+) -> None:
+    """Display issues of a specific severity.
+
+    Args:
+        files_with_issues: List of (path, issues) tuples.
+        severity: Severity level to filter.
+        color: Rich color for display.
+        icon: Icon character to display.
+        label: Label for the severity (ERROR, WARN, INFO).
+    """
+    filtered = [
+        (path, [i for i in issues if i.severity == severity])
+        for path, issues in files_with_issues
+    ]
+    filtered = [(p, i) for p, i in filtered if i]
+
+    if not filtered:
+        return
+
+    console.print(
+        f"[{color}]{icon} Found {severity}s in {len(filtered)} files:[/{color}]\n"
+    )
+    for file_path, issues in filtered:
+        console.print(f"[cyan]{file_path}[/cyan]")
+        for issue in issues:
+            console.print(
+                f"  [{color}]{label}[/{color}] {issue.field}: {issue.message}"
+            )
+            if issue.suggestion:
+                console.print(f"    [dim]{issue.suggestion}[/dim]")
+        console.print()
+
+
 def display_check_results(
     files_with_errors: list[tuple[Path, list[ValidationIssue]]], total_files: int
 ) -> int:
@@ -649,51 +1058,22 @@ def display_check_results(
     Returns:
         Exit code: 1 if errors found, 0 if only warnings or success.
     """
-    # Separate errors from warnings
-    files_with_actual_errors = [
-        (path, [i for i in issues if i.severity == "error"])
-        for path, issues in files_with_errors
-    ]
-    files_with_actual_errors = [(p, i) for p, i in files_with_actual_errors if i]
+    # Display issues by severity
+    _display_issues_by_severity(files_with_errors, "error", "red", "✗", "ERROR")
+    _display_issues_by_severity(files_with_errors, "warning", "yellow", "⚠", "WARN")
+    _display_issues_by_severity(files_with_errors, "info", "blue", "i", "INFO")
 
-    files_with_warnings = [
-        (path, [i for i in issues if i.severity == "warning"])
-        for path, issues in files_with_errors
-    ]
-    files_with_warnings = [(p, i) for p, i in files_with_warnings if i]
-
-    # Display errors
-    if files_with_actual_errors:
-        console.print(
-            f"[red]✗ Found errors in {len(files_with_actual_errors)} files:[/red]\n"
-        )
-        for file_path, issues in files_with_actual_errors:
-            console.print(f"[cyan]{file_path}[/cyan]")
-            for issue in issues:
-                console.print(f"  [red]ERROR[/red] {issue.field}: {issue.message}")
-                if issue.suggestion:
-                    console.print(f"    [dim]{issue.suggestion}[/dim]")
-            console.print()
-
-    # Display warnings
-    if files_with_warnings:
-        console.print(
-            f"[yellow]⚠ Found warnings in {len(files_with_warnings)} files:[/yellow]\n"
-        )
-        for file_path, issues in files_with_warnings:
-            console.print(f"[cyan]{file_path}[/cyan]")
-            for issue in issues:
-                console.print(f"  [yellow]WARN[/yellow] {issue.field}: {issue.message}")
-                if issue.suggestion:
-                    console.print(f"    [dim]{issue.suggestion}[/dim]")
-            console.print()
+    # Check if we have any errors
+    has_errors = any(
+        any(i.severity == "error" for i in issues) for _, issues in files_with_errors
+    )
 
     # Success message
-    if not files_with_actual_errors and not files_with_warnings:
+    if not files_with_errors:
         console.print(f"[green]✓[/green] All {total_files} files valid")
 
-    # Exit 1 only for errors, not warnings
-    return 1 if files_with_actual_errors else 0
+    # Exit 1 only for errors, not warnings or info
+    return 1 if has_errors else 0
 
 
 def display_fix_results(
@@ -711,51 +1091,28 @@ def display_fix_results(
             f"[green]✓[/green] Fixed {total_fixed} files ({total_fixes} issues)"
         )
 
-    # Separate errors from warnings
-    files_with_actual_errors = [
-        (path, [i for i in issues if i.severity == "error"])
-        for path, issues in files_with_errors
-    ]
-    files_with_actual_errors = [(p, i) for p, i in files_with_actual_errors if i]
+    # Display issues by severity (with newline prefix for separation)
+    has_issues = bool(files_with_errors)
 
-    files_with_warnings = [
-        (path, [i for i in issues if i.severity == "warning"])
-        for path, issues in files_with_errors
-    ]
-    files_with_warnings = [(p, i) for p, i in files_with_warnings if i]
+    if has_issues:
+        # Add newline before displaying remaining issues
+        console.print()
 
-    # Display errors
-    if files_with_actual_errors:
-        console.print(
-            f"\n[red]✗[/red] {len(files_with_actual_errors)} files have unfixable errors:\n"
-        )
-        for file_path, issues in files_with_actual_errors:
-            console.print(f"[cyan]{file_path}[/cyan]")
-            for issue in issues:
-                console.print(f"  [red]ERROR[/red] {issue.field}: {issue.message}")
-                if issue.suggestion:
-                    console.print(f"    [dim]{issue.suggestion}[/dim]")
-            console.print()
+    _display_issues_by_severity(files_with_errors, "error", "red", "✗", "ERROR")
+    _display_issues_by_severity(files_with_errors, "warning", "yellow", "⚠", "WARN")
+    _display_issues_by_severity(files_with_errors, "info", "blue", "i", "INFO")
 
-    # Display warnings
-    if files_with_warnings:
-        console.print(
-            f"\n[yellow]⚠[/yellow] {len(files_with_warnings)} files have warnings:\n"
-        )
-        for file_path, issues in files_with_warnings:
-            console.print(f"[cyan]{file_path}[/cyan]")
-            for issue in issues:
-                console.print(f"  [yellow]WARN[/yellow] {issue.field}: {issue.message}")
-                if issue.suggestion:
-                    console.print(f"    [dim]{issue.suggestion}[/dim]")
-            console.print()
+    # Check if we have any errors
+    has_errors = any(
+        any(i.severity == "error" for i in issues) for _, issues in files_with_errors
+    )
 
     # Success message
-    if not files_with_actual_errors and not files_with_warnings and total_fixes == 0:
+    if not has_issues and total_fixes == 0:
         console.print("[green]✓[/green] All files valid")
 
-    # Exit 1 only for errors, not warnings
-    return 1 if files_with_actual_errors else 0
+    # Exit 1 only for errors, not warnings or info
+    return 1 if has_errors else 0
 
 
 @app.command()
@@ -829,6 +1186,20 @@ def main(
                 files_with_issues.append((file_path, issues))
 
             progress.advance(task)
+
+    # If processing a plugin directory, validate plugin.json cross-references
+    if (
+        target_path.is_dir()
+        and (target_path / ".claude-plugin" / "plugin.json").exists()
+    ):
+        plugin_issues = validate_plugin_registration(target_path)
+        plugin_issues.extend(validate_plugin_metadata(target_path))
+
+        if plugin_issues:
+            files_with_issues.append((
+                target_path / ".claude-plugin" / "plugin.json",
+                plugin_issues,
+            ))
 
     # Show results based on mode
     if check:
