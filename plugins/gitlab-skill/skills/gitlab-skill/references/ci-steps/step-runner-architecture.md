@@ -316,9 +316,7 @@ Step Runner implements error propagation:
 
 ## See Also
 
-- [CI/CD Steps Index](./index.md) - Navigation hub for GitLab CI/CD Steps documentation
-- [Steps Overview and Core Concepts](./steps-overview.md) - Feature capabilities and syntax reference
-- [Usage Examples and Patterns](./examples.md) - Real-world step composition patterns
-- [GitLab Skill Overview](../../SKILL.md) - Main skill documentation
+- [Steps Overview and Core Concepts](./steps-overview.md)
+- [Usage Examples and Patterns](./examples.md)
 - GitLab Steps Blueprint: <https://docs.gitlab.com/ee/architecture/blueprints/gitlab_steps/>
 - Step Runner Repository: <https://gitlab.com/gitlab-org/step-runner>

@@ -565,8 +565,3 @@ child-pipeline:
 8. **Version control configs** - Track `.gitlab-ci.yml` changes
 9. **Monitor performance** - Track pipeline duration and resource usage
 10. **Document patterns** - Share common patterns with team
-
-## See Also
-
-- [GitLab Skill Overview](../SKILL.md) - Main skill documentation covering all GitLab CI/CD capabilities
-- [Pipeline Optimization](./pipeline-optimization.md) - Detailed optimization strategies and performance tuning

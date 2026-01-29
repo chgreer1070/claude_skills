@@ -409,7 +409,3 @@ uv run --with requests ./scripts/validate-glfm.py --file test.md --output render
 - [ ] Code blocks have language tags
 - [ ] Heading hierarchy is consistent
 - [ ] Content is accessible (alt text, semantic structure)
-
-## See Also
-
-- [GitLab Skill Overview](../SKILL.md) - Main skill documentation covering all GitLab CI/CD capabilities

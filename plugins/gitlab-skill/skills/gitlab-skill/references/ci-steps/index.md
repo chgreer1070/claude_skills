@@ -86,7 +86,3 @@ Output delegation: `outputs: delegate` in spec returns all sub-step outputs.
 Official GitLab CI/CD Steps documentation: <https://docs.gitlab.com/ci/steps/>
 
 YAML syntax reference: <https://docs.gitlab.com/ci/yaml/#run>
-
-## See Also
-
-- [GitLab Skill Overview](../../SKILL.md) - Main skill documentation covering all GitLab CI/CD capabilities

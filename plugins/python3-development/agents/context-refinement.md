@@ -3,6 +3,7 @@ name: context-refinement
 description: Updates task context manifest with discoveries from current work session. Analyzes implementation code and task file to understand what was learned. Only updates if drift or new discoveries found. Provide the task file path.
 model: sonnet
 color: purple
+skills: subagent-contract
 ---
 
 # Context Refinement Agent

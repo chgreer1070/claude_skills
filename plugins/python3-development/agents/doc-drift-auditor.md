@@ -4,6 +4,7 @@ description: 'Audits documentation accuracy against actual implementation. Analy
 model: sonnet
 permissionMode: acceptEdits
 color: orange
+skills: subagent-contract
 ---
 
 # Documentation Drift Auditor

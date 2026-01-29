@@ -394,10 +394,3 @@ ubuntu_job:
 2. Bake certificates into job image.
 
 3. For Runner-based resolution: Install certificates in Runner Docker executor configuration.
-
-## See Also
-
-- [CI/CD Steps Index](./index.md) - Navigation hub for GitLab CI/CD Steps documentation
-- [Usage Examples](./examples.md) - Real-world step composition patterns
-- [Step Runner Architecture](./step-runner-architecture.md) - Internal implementation details
-- [GitLab Skill Overview](../../SKILL.md) - Main skill documentation

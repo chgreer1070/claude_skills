@@ -1,6 +1,5 @@
 ---
 description: Create GitLab project access token for CI/CD publishing and add as masked CI variable
-allowed-tools: Bash(glab:*, jq:*)
 ---
 
 # Setup CI Publishing Token
