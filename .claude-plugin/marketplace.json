@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Covers modern Python toolchains, GitLab CI/CD automation, code quality enforcement, MCP server creation, and plugin/agent development patterns.",
-    "version": "2.0.0"
+    "version": "2.1.0"
   },
   "plugins": [
     {
@@ -112,6 +112,10 @@
     {
       "name": "hallucination-detector",
       "source": "./plugins/hallucination-detector"
+    },
+    {
+      "name": "test-plugin-3146578",
+      "source": "./plugins/test-plugin-3146578"
     }
   ]
 }

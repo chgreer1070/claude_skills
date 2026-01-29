@@ -98,6 +98,14 @@ repos:
   # Local hooks for type checking
   - repo: local
     hooks:
+      - id: auto-sync-manifests
+        name: Auto-sync plugin and marketplace manifests
+        entry: uv run -q --no-sync plugins/plugin-creator/scripts/auto-sync-manifests.py
+        language: system
+        stages: [pre-commit]
+        pass_filenames: false
+        files: ^plugins/
+
       - id: mypy
         name: mypy
         entry: uv run -q --no-sync --with pep723-loader --with mypy pep723-loader mypy

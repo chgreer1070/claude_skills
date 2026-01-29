@@ -1066,7 +1066,7 @@ This section lists discrete desired outcomes ready for Stage 2 (Planning with RT
 
 **Dependencies on Existing Components**:
 
-- `skill-creator` skill (when created - see Outcome 4)
+- `skill-creator` skill (existing)
 - `agent-creator` skill (existing)
 - `write-frontmatter-description` skill (description generation)
 - `validate_frontmatter.py` script (validation gate)
@@ -1149,55 +1149,15 @@ This section lists discrete desired outcomes ready for Stage 2 (Planning with RT
 
 ---
 
-### Outcome 4: Create `/skill-creator` Skill (Prerequisite for Outcome 2)
+### Outcome 4: ~~Create `/skill-creator` Skill~~ (ALREADY EXISTS - REMOVED)
 
-**Objective**: Enable systematic skill creation following agent-creator pattern
+**Status**: This outcome has been removed from the roadmap.
 
-**Current State** (Stage 1 Discovery Output):
+**Correction**: During Stage 1 Discovery, the skill-creator skill was incorrectly identified as a gap. The skill already exists at `plugins/plugin-creator/skills/skill-creator/SKILL.md` and is fully functional.
 
-- Gap identified: No skill-creator skill exists
-- Agent-creator skill exists as reference pattern
-- Skills and commands are unified system per official docs
+**Verification**: See Component Inventory line 46 in this document which lists `/skill-creator` as an existing user-invocable skill.
 
-**Prerequisites to Verify (RT-ICA Inputs)**:
-
-- Skill frontmatter schema requirements
-- Skill directory structure conventions
-- Reference file organization patterns
-- Progressive disclosure requirements
-- Template selection patterns from agent-creator
-
-**Dependencies on Existing Components**:
-
-- `agent-creator` skill (template pattern)
-- `write-frontmatter-description` skill (description generation)
-- `claude-skills-overview-2026` skill (skill structure reference)
-- `validate_frontmatter.py` script (validation)
-- `validate-skill-structure.sh` script (quality checks)
-
-**Success Criteria**:
-
-- Skill file created at `skills/skill-creator/SKILL.md`
-- Follows agent-creator workflow pattern
-- Handles scope determination (project/user/plugin)
-- Creates SKILL.md with validated frontmatter
-- Creates references/ and examples/ subdirectories
-- Updates plugin.json if plugin skill
-
-**Acceptance Criteria**:
-
-- `/skill-creator` command appears in skill list
-- Guides user through template selection
-- Generates frontmatter with trigger keywords
-- Runs validation on created skill
-- Creates directory structure with progressive disclosure
-
-**Known Unknowns** (requires RT-ICA assessment):
-
-- What skill templates should be offered?
-- How to determine if skill should be user-invocable?
-- What constitutes "good" progressive disclosure?
-- How to validate trigger keyword effectiveness?
+**Impact on Outcome 2**: Outcome 2 (/extend-plugin workflow) listed skill-creator as a dependency. That dependency is satisfied - no blocking issue exists.
 
 ---
 
@@ -1296,13 +1256,68 @@ This section lists discrete desired outcomes ready for Stage 2 (Planning with RT
 - Updated JSON files staged for commit automatically
 - Version history maintained in CLAUDE.md
 
-**Known Unknowns** (requires RT-ICA assessment):
+**Status**: ✅ **IMPLEMENTED** (2026-01-29)
 
-- What constitutes major vs minor vs patch change?
-- Should version type be in commit message or auto-detected?
-- What if multiple plugins changed in one commit?
-- How to handle version conflicts (concurrent changes)?
-- Integration with existing marketplace.json schema?
+**Implementation**:
+
+- Script: `plugins/plugin-creator/scripts/auto-sync-manifests.py`
+- Hook: Configured in `.pre-commit-config.yaml` as `auto-sync-manifests`
+- Documentation: `plugins/plugin-creator/scripts/README-auto-sync.md`
+
+**How It Works**:
+
+The pre-commit hook automatically:
+
+1. Detects CRUD operations on plugins and components from git staged changes
+2. Updates `plugin.json` component arrays (skills, agents, commands) with proper `./` paths
+3. Bumps plugin versions following semantic versioning:
+   - **Major** (X.0.0): Component deleted (breaking change)
+   - **Minor** (0.X.0): Component added (new feature)
+   - **Patch** (0.0.X): Component modified
+4. Updates `marketplace.json` plugin registry
+5. Bumps marketplace version:
+   - **Major** (X.0.0): Plugin deleted
+   - **Minor** (0.X.0): Plugin added
+   - **Patch** (0.0.X): Plugin component changed
+6. Stages updated manifest files automatically
+
+**Version Bumping Rules**:
+
+```
+Component Change → Plugin Version    → Marketplace Version
+─────────────────────────────────────────────────────────
++ New skill      → Minor (0.1.0→0.2.0) → Patch (1.0.0→1.0.1)
+- Delete agent   → Major (0.1.0→1.0.0) → Patch (1.0.0→1.0.1)
+~ Modify command → Patch (0.1.0→0.1.1) → Patch (1.0.0→1.0.1)
+
++ New plugin     → N/A                 → Minor (1.0.0→1.1.0)
+- Delete plugin  → N/A                 → Major (1.0.0→2.0.0)
+```
+
+**Usage**:
+
+Automatic during `git commit`:
+
+```bash
+git add plugins/my-plugin/skills/new-skill/SKILL.md
+git commit -m "feat(my-plugin): add new skill"
+# ✅ Updated my-plugin → 1.1.0 (+1 components)
+# ✅ Updated marketplace → 2.0.1
+```
+
+Manual execution:
+
+```bash
+uv run -q --no-sync plugins/plugin-creator/scripts/auto-sync-manifests.py
+```
+
+**Resolution of Known Unknowns**:
+
+- ✅ Major/minor/patch determined by file operation type (delete/add/modify)
+- ✅ Version type auto-detected from git diff, independent of commit message
+- ✅ Multiple plugins: Each bumps independently, marketplace bumps once
+- ✅ Version conflicts: Pre-commit stage prevents concurrent modification
+- ✅ Schema integration: Validated against marketplace.json structure
 
 ---
 
