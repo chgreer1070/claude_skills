@@ -33,12 +33,12 @@ Perform holistic code review and validation after feature implementation to ensu
 
 ## Project Development Standards
 
-For the `reset_all_tokens` package, verify code follows these patterns:
+Verify code follows these common Python project patterns:
 
 ### Architecture Standards
 
-- **Layered architecture**: CLI → Core → SSH/Compliance → Display
-- **Separation of concerns**: Business logic in `core/`, SSH in `ssh/`, display in `ui/`
+- **Layered architecture**: CLI → Core → Services → Display
+- **Separation of concerns**: Business logic in `core/`, services in `services/`, display in `ui/`
 - **Data models in `shared/`**: Pydantic v2, dataclasses, StrEnum
 - **Constants and exceptions in `shared/`**
 
@@ -51,16 +51,16 @@ For the `reset_all_tokens` package, verify code follows these patterns:
 
 ### CLI Standards
 
-- Typer framework with Rich for output
+- Typer or Click framework with Rich for output
 - Commands in `cli/commands.py`
 - Shared CLI options in `shared/cli_options.py`
-- Display functions in `ui/display.py` using theme constants
+- Display functions in `ui/` or `output/` modules
 
-### SSH Standards
+### Service Integration Standards
 
-- Use `SSHConnection` protocol from `ssh/protocols.py`
-- Use `FabricConnectionFactory` for connections
-- Patchwork operations from `ssh/patchwork_ops.py`
+- Use Protocol classes for dependency injection
+- Use factory patterns for client creation
+- Handle service-specific exceptions appropriately
 
 ### Testing Standards
 
@@ -92,21 +92,21 @@ Check that implementation follows project patterns:
 
 Search for patterns that should use existing utilities:
 
-- SSH operations → should use `ssh/` modules
-- Display output → should use `ui/display.py`
+- Service operations → should use `services/` modules
+- Display output → should use `ui/` or `output/` modules
 - CLI options → should use `shared/cli_options.py`
-- Host parsing → should use `cli/host_parsing.py`
+- Input parsing → should use existing parsing utilities
 - Models → should use or extend `shared/models.py`
 
 ### Step 4: Verify Dependency Utilization
 
 Check that installed dependencies are used appropriately:
 
-- `fabric` + `paramiko` for SSH (not subprocess)
-- `tomlkit` for config parsing (preserves comments)
+- Service-specific SDKs for external integrations (not raw HTTP)
+- `tomlkit` or `pyyaml` for config parsing (preserves formatting)
 - `pydantic` for validation (not manual checks)
 - `rich` for display (not raw print)
-- `typer` for CLI (with Rich integration)
+- `typer` or `click` for CLI
 - `tenacity` for retries (not manual loops)
 
 ### Step 5: Identify Gaps
@@ -121,7 +121,7 @@ Look for:
 
 ### Step 6: Create Follow-up Tasks
 
-For each significant issue found, create a task file in `packages/reset_all_tokens/plan/` following the existing task format.
+For each significant issue found, create a task file in `{project_path}/plan/` following the existing task format.
 </workflow>
 
 ## Review Checklist
@@ -142,10 +142,10 @@ For each significant issue found, create a task file in `packages/reset_all_toke
 
 ### Pattern Compliance
 
-- [ ] Uses SSHConnection protocol for SSH operations
+- [ ] Uses Protocol classes for service integrations
 - [ ] Uses Rich tables/panels for display
-- [ ] Uses Typer patterns for CLI
-- [ ] Uses existing host parsing utilities
+- [ ] Uses Typer/Click patterns for CLI
+- [ ] Uses existing parsing utilities
 
 ### Testing
 
@@ -177,20 +177,20 @@ For each significant issue found, create a task file in `packages/reset_all_toke
 Follow-up task files MUST use this naming pattern for the recursive implementation loop to detect them:
 
 ```
-packages/reset_all_tokens/plan/tasks-{N}-{feature-slug}-followup-{issue-number}.md
+{project_path}/plan/tasks-{N}-{feature-slug}-followup-{issue-number}.md
 ```
 
 **To determine the naming:**
 
-1. READ the original task file path (e.g., `tasks-4-create-runner.md`)
-2. EXTRACT the feature slug (e.g., `create-runner`)
+1. READ the original task file path (e.g., `tasks-4-data-validation.md`)
+2. EXTRACT the feature slug (e.g., `data-validation`)
 3. FIND the next available task number N by GLOBbing existing files
 4. CREATE file: `tasks-{N}-{feature-slug}-followup-{issue-number}.md`
 
-**Example:** If reviewing `tasks-4-create-runner.md` and finding 2 issues:
+**Example:** If reviewing `tasks-4-data-validation.md` and finding 2 issues:
 
-- `tasks-5-create-runner-followup-1.md` (first issue)
-- `tasks-6-create-runner-followup-2.md` (second issue)
+- `tasks-5-data-validation-followup-1.md` (first issue)
+- `tasks-6-data-validation-followup-2.md` (second issue)
 
 ### Task File Structure
 

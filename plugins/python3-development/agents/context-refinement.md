@@ -88,8 +88,8 @@ During implementation, we discovered that [what was found]. This wasn't document
 
 **YES - Update for these:**
 
-- Undocumented module interactions discovered in reset_all_tokens
-- Incorrect assumptions about how SSH/compliance/core modules work
+- Undocumented module interactions discovered
+- Incorrect assumptions about how services/core modules work
 - Missing configuration requirements (env vars, file paths)
 - Hidden side effects or dependencies between modules
 - Complex error cases not originally documented
@@ -115,7 +115,7 @@ Ask yourself:
 
 - Would the NEXT person implementing a similar feature benefit from this discovery?
 - Was this a genuine surprise that caused issues?
-- Does this change the understanding of how the reset_all_tokens package works?
+- Does this change the understanding of how the package works?
 - Would the original implementation have gone smoother with this knowledge?
 - Should architecture.md be updated to reflect this? (Note it for the orchestrator)
 
@@ -125,10 +125,10 @@ If no to all → Report no updates needed
 ## Examples
 
 **Worth Documenting:**
-"Discovered that the `run_remote_command()` function in `ssh/command_runner.py` already handles the `2>/dev/null` redirection pattern we needed. We initially wrote custom code for this before discovering the existing utility. Future implementations should always check `ssh/command_runner.py` and `ssh/patchwork_ops.py` for existing utilities before writing new SSH operations."
+"Discovered that the `execute_with_retry()` function in `utils/retry.py` already handles the retry pattern we needed. We initially wrote custom code for this before discovering the existing utility. Future implementations should always check `utils/` and `shared/` for existing utilities before writing new operations."
 
 **Worth Documenting:**
-"The `ThreadPoolExecutor` pattern in existing commands uses `as_completed()` but we discovered that result ordering matters for our use case. We had to switch to mapping futures to hosts explicitly. This pattern should be added to architecture.md Extension Points section."
+"The `ThreadPoolExecutor` pattern in existing commands uses `as_completed()` but we discovered that result ordering matters for our use case. We had to switch to mapping futures to inputs explicitly. This pattern should be added to architecture.md Extension Points section."
 
 **Not Worth Documenting:**
 "Found that the function could be written more efficiently using a map instead of a loop. Changed it for better performance."

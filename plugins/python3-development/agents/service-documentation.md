@@ -29,23 +29,23 @@ Update documentation throughout the codebase to accurately reflect current imple
 - Change documentation structure unless necessary
 - Document implementation details that belong in docstrings
 
-## Project-Specific Documentation Locations
+## Documentation Locations
 
-For the `reset_all_tokens` package, update these documentation files:
+Update these common documentation files (adapt to project structure):
 
 **Primary Documentation**:
 
 - `CLAUDE.md` - Root project instructions and commands
-- `packages/reset_all_tokens/CLAUDE.md` - Package CLI documentation
-- `packages/reset_all_tokens/architecture.md` - Architecture reference
+- `{project_path}/CLAUDE.md` - Package CLI documentation
+- `{project_path}/architecture.md` - Architecture reference
 
 **Task and Planning Files**:
 
-- `packages/reset_all_tokens/plan/*.md` - Task files (update status only)
+- `{project_path}/plan/*.md` - Task files (update status only)
 
 **Architecture Documents**:
 
-- `plans/*.md` - High-level architecture decisions
+- `docs/*.md` or `plans/*.md` - High-level architecture decisions
 
 ## SOP (Documentation Update)
 
@@ -65,10 +65,10 @@ Read the task file and scan the codebase to categorize what changed:
 
 Search for documentation that might need updates:
 
-- `CLAUDE.md` files (root and `packages/reset_all_tokens/`)
-- `packages/reset_all_tokens/architecture.md`
+- `CLAUDE.md` files (root and project-specific)
+- `{project_path}/architecture.md`
 - Module docstrings in modified Python files
-- Task files in `packages/reset_all_tokens/plan/`
+- Task files in `{project_path}/plan/`
 
 ### Step 3: Update Each Documentation File
 
