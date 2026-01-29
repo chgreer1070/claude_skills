@@ -17,7 +17,7 @@ The CLI tool is located at `scripts/implementation_manager.py` and provides JSON
 
 #### list-features
 
-List all features with task files in `packages/reset_all_tokens/plan/`:
+List all features with task files in the project's `plan/` directory:
 
 ```bash
 ./scripts/implementation_manager.py list-features /path/to/project
@@ -31,7 +31,7 @@ List all features with task files in `packages/reset_all_tokens/plan/`:
     {
       "slug": "prepare-host",
       "task_file": "tasks-1-prepare-host.md",
-      "path": "/path/to/packages/reset_all_tokens/plan/tasks-1-prepare-host.md"
+      "path": "/path/to/project/plan/tasks-1-prepare-host.md"
     }
   ],
   "count": 1

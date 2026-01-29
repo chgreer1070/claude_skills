@@ -28,26 +28,25 @@ Audit documentation against actual implementation to identify drift and produce 
 - Make subjective judgments without evidence
 - Modify any files except the audit report
 
-## Project-Specific Documentation Locations
+## Documentation Locations
 
-For the `reset_all_tokens` package, audit these documentation files:
+Audit these common documentation files (adapt to project structure):
 
 - `CLAUDE.md` - Root project instructions
-- `packages/reset_all_tokens/CLAUDE.md` - Package-specific documentation
-- `packages/reset_all_tokens/architecture.md` - Architecture reference
-- `packages/reset_all_tokens/plan/*.md` - Task and planning files
-- `plans/*.md` - Architecture decision documents
+- `{project_path}/CLAUDE.md` - Package-specific documentation
+- `{project_path}/architecture.md` - Architecture reference
+- `{project_path}/plan/*.md` - Task and planning files
+- `docs/*.md` or `plans/*.md` - Architecture decision documents
 
 Against these implementation files:
 
-- `packages/reset_all_tokens/cli/commands.py` - CLI command implementations
-- `packages/reset_all_tokens/cli/main.py` - CLI entrypoint and groups
-- `packages/reset_all_tokens/core/*.py` - Business logic modules
-- `packages/reset_all_tokens/ssh/*.py` - SSH protocols and operations
-- `packages/reset_all_tokens/compliance/*.py` - Compliance checking
-- `packages/reset_all_tokens/config_management/*.py` - Config operations
-- `packages/reset_all_tokens/ui/*.py` - Display functions
-- `packages/reset_all_tokens/shared/*.py` - Models, constants, exceptions
+- `{src_dir}/cli/commands.py` - CLI command implementations
+- `{src_dir}/cli/main.py` - CLI entrypoint and groups
+- `{src_dir}/core/*.py` - Business logic modules
+- `{src_dir}/services/*.py` - Service integrations
+- `{src_dir}/utils/*.py` - Utility functions
+- `{src_dir}/ui/*.py` - Display functions
+- `{src_dir}/shared/*.py` - Models, constants, exceptions
 
 ## SOP (Audit)
 
@@ -69,57 +68,57 @@ Against these implementation files:
 
 ## Analysis Techniques
 
-### For Typer CLI Commands (Project Standard)
+### For Typer/Click CLI Commands
 
 ```bash
 # Find all CLI commands
-grep -n "@app.command\|@.*\.command" packages/reset_all_tokens/cli/*.py
+grep -n "@app.command\|@.*\.command\|@click.command" {src_dir}/cli/*.py
 
 # Find command options
-grep -n "typer.Option\|typer.Argument" packages/reset_all_tokens/cli/*.py
+grep -n "typer.Option\|typer.Argument\|click.option" {src_dir}/cli/*.py
 
 # Find callback groups
-grep -n "@app.callback\|def callback" packages/reset_all_tokens/cli/*.py
+grep -n "@app.callback\|def callback" {src_dir}/cli/*.py
 ```
 
 ### For Python Code Structure
 
 ```bash
 # Extract classes and methods
-grep -n "^class " packages/reset_all_tokens/**/*.py
-grep -n "^def \|^async def " packages/reset_all_tokens/**/*.py
+grep -n "^class " {src_dir}/**/*.py
+grep -n "^def \|^async def " {src_dir}/**/*.py
 
 # Find Pydantic models
-grep -n "class.*BaseModel\|class.*StrEnum" packages/reset_all_tokens/**/*.py
+grep -n "class.*BaseModel\|class.*StrEnum" {src_dir}/**/*.py
 
 # Find dataclasses
-grep -n "@dataclass" packages/reset_all_tokens/**/*.py
+grep -n "@dataclass" {src_dir}/**/*.py
 ```
 
 ### For Git History
 
 ```bash
 # File-specific history
-git log --follow --oneline -- packages/reset_all_tokens/cli/commands.py
+git log --follow --oneline -- {src_dir}/cli/commands.py
 
 # Last modification date
-git log -1 --format="%ai" -- packages/reset_all_tokens/CLAUDE.md
+git log -1 --format="%ai" -- {project_path}/CLAUDE.md
 
 # Recent code changes without doc updates
-git log --since="2025-01-01" --oneline -- packages/reset_all_tokens/ | head -20
+git log --since="2025-01-01" --oneline -- {src_dir}/ | head -20
 ```
 
 ### For Documentation Claims
 
 ```bash
 # Find documented commands
-grep -n "^##.*command\|uv run reset" packages/reset_all_tokens/CLAUDE.md
+grep -n "^##.*command\|uv run {cli_command}" {project_path}/CLAUDE.md
 
 # Find architecture claims
-grep -n "^##\|^###" packages/reset_all_tokens/architecture.md
+grep -n "^##\|^###" {project_path}/architecture.md
 
 # Find module responsibilities
-grep -n "Module:\|Purpose:\|Responsibility:" packages/reset_all_tokens/architecture.md
+grep -n "Module:\|Purpose:\|Responsibility:" {project_path}/architecture.md
 ```
 
 ## Severity Classification
@@ -189,8 +188,8 @@ The `DOCUMENTATION_DRIFT_AUDIT.md` report should contain:
 # Documentation Drift Audit Report
 
 **Generated**: {timestamp}
-**Repository**: gitlab-runner-management
-**Package**: reset_all_tokens
+**Repository**: {repository_name}
+**Package**: {package_name}
 
 ## Executive Summary
 

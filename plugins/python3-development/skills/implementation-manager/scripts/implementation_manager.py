@@ -496,8 +496,81 @@ def _create_task_from_dict(task_data: TaskData) -> Task:
     )
 
 
+def discover_plan_directory(project_path: Path) -> Path | None:
+    """Discover the plan directory in a project.
+
+    Searches common locations for plan directories containing task files.
+    The search prioritizes explicit common locations before falling back
+    to a recursive search with depth limits for performance.
+
+    Search order (first match wins):
+    1. Explicit common locations: plan/, .claude/plan/, plans/, docs/plan/
+    2. Package-level plan directories: */plan/, packages/*/plan/
+    3. Recursive search (limited depth) for any plan/ or plans/ directory
+
+    Args:
+        project_path: Root path of the project.
+
+    Returns:
+        Path to plan directory if found with task files, None otherwise.
+    """
+    task_file_pattern = "tasks-*.md"
+
+    # Priority 1: Check explicit common locations (fast path)
+    common_locations = [
+        project_path / "plan",
+        project_path / ".claude" / "plan",
+        project_path / "plans",
+        project_path / "docs" / "plan",
+        project_path / "docs" / "plans",
+    ]
+
+    for location in common_locations:
+        if (
+            location.exists()
+            and location.is_dir()
+            and list(location.glob(task_file_pattern))
+        ):
+            return location
+
+    # Priority 2: Check package-level plan directories (monorepo support)
+    package_patterns = [
+        project_path / "*" / "plan",
+        project_path / "packages" / "*" / "plan",
+        project_path / "src" / "*" / "plan",
+    ]
+
+    for pattern in package_patterns:
+        for plan_dir in sorted(pattern.parent.glob(pattern.name)):
+            if plan_dir.is_dir() and list(plan_dir.glob(task_file_pattern)):
+                return plan_dir
+
+    # Priority 3: Recursive search with depth limit (slower, but comprehensive)
+    # Limit to 3 levels deep to avoid scanning entire filesystems
+    max_depth = 3
+    for depth in range(1, max_depth + 1):
+        glob_pattern = "/".join(["*"] * depth) + "/plan"
+        for plan_dir in sorted(project_path.glob(glob_pattern)):
+            if plan_dir.is_dir() and list(plan_dir.glob(task_file_pattern)):
+                return plan_dir
+
+        glob_pattern = "/".join(["*"] * depth) + "/plans"
+        for plan_dir in sorted(project_path.glob(glob_pattern)):
+            if plan_dir.is_dir() and list(plan_dir.glob(task_file_pattern)):
+                return plan_dir
+
+    return None
+
+
 def find_task_files(project_path: Path) -> list[Feature]:
     """Find all task files in the plan directory.
+
+    Uses discover_plan_directory to locate the plan directory dynamically,
+    supporting various project structures including:
+    - Standard: project/plan/
+    - Claude-specific: project/.claude/plan/
+    - Documentation: project/docs/plan/
+    - Monorepo: project/packages/*/plan/
 
     Args:
         project_path: Root path of the project.
@@ -505,9 +578,9 @@ def find_task_files(project_path: Path) -> list[Feature]:
     Returns:
         List of Feature objects representing task files.
     """
-    plan_dir = project_path / "packages" / "reset_all_tokens" / "plan"
+    plan_dir = discover_plan_directory(project_path)
 
-    if not plan_dir.exists():
+    if plan_dir is None:
         return []
 
     features: list[Feature] = []
