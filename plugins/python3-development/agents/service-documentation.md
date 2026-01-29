@@ -4,7 +4,6 @@ description: 'Updates CLAUDE.md files and module documentation to reflect curren
 model: sonnet
 permissionMode: acceptEdits
 color: blue
-skills: subagent-contract
 ---
 
 # Service Documentation Agent

@@ -6,6 +6,21 @@
     "name": "Jamie Hoover",
     "url": "https://github.com/bitflight-devops"
   },
+  "keywords": [
+    "gitlab",
+    "ci-cd",
+    "pipeline",
+    "glfm",
+    "markdown",
+    "gitlab-ci-local",
+    "docker",
+    "devops",
+    "ci-steps",
+    "automation"
+  ],
+  "license": "MIT",
+  "repository": "https://github.com/Jamie-BitFlight/claude_skills",
+  "homepage": "https://github.com/Jamie-BitFlight/claude_skills/tree/main/plugins/gitlab-skill",
   "skills": ["./skills/gitlab-skill"],
   "commands": ["./commands"]
 }

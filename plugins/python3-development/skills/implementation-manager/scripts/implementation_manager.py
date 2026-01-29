@@ -505,9 +505,21 @@ def find_task_files(project_path: Path) -> list[Feature]:
     Returns:
         List of Feature objects representing task files.
     """
-    plan_dir = project_path / "packages" / "reset_all_tokens" / "plan"
+    # Try to find plan directory - check common locations
+    plan_candidates = [
+        project_path / "plan",  # Standard location
+        project_path / "plans",  # Alternative plural
+        project_path / ".claude" / "plan",  # Claude-specific
+        project_path / "packages" / "reset_all_tokens" / "plan",  # Legacy mono-repo
+    ]
 
-    if not plan_dir.exists():
+    plan_dir = None
+    for candidate in plan_candidates:
+        if candidate.exists() and candidate.is_dir():
+            plan_dir = candidate
+            break
+
+    if plan_dir is None:
         return []
 
     features: list[Feature] = []

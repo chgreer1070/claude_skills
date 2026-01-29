@@ -151,8 +151,8 @@ Examples:
     parser.add_argument(
         "--gitlab-url",
         type=str,
-        default="https://sourcery.assaabloy.net",
-        help="GitLab instance URL (default: https://sourcery.assaabloy.net)",
+        default="https://gitlab.com",
+        help="GitLab instance URL (default: https://gitlab.com)",
     )
 
     parser.add_argument(

@@ -671,3 +671,8 @@ deploy:
 8. **Monitor metrics** - Track duration, cache hits, artifact size
 9. **Use runner tags** - Direct jobs to appropriate runners
 10. **Secure variables** - Mask sensitive data and use protected variables
+
+## See Also
+
+- [GitLab Skill Overview](../SKILL.md) - Main skill documentation covering all GitLab CI/CD capabilities
+- [Common Patterns](./common-patterns.md) - Reusable configuration examples applying these optimization principles
