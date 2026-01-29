@@ -975,6 +975,361 @@ claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
 
 ---
 
+## Development Roadmap
+
+### Missing User-Invocable Workflows
+
+The plugin currently has workflows for refactoring but lacks streamlined user-invocable skills for core plugin lifecycle operations. Following the methodology_development processes, these workflows should be added:
+
+#### 1. `/create-plugin` - Complete Plugin Creation Workflow
+
+**Status:** ⚠️ Partial - has `create_plugin.py` script but no orchestrated skill
+
+**Current State:**
+
+- Script exists: `scripts/create_plugin.py` (interactive CLI)
+- Skill exists: `plugin-creator` (delegates to agents but not systematic workflow)
+
+**Gap:**
+
+- No structured workflow following methodology_development process
+- No RT-ICA (Reverse Thinking - Information Completeness Assessment) phase
+- No integration with validation and quality gates
+- Script is standalone, not integrated with agent orchestration
+
+**Proposed Implementation:**
+
+```yaml
+---
+name: create-plugin
+description: 'Guide plugin creation from concept to validated implementation following systematic methodology. Handles requirement gathering, component design, implementation, validation, and marketplace preparation. Use when starting a new plugin project.'
+user-invocable: true
+model: sonnet
+context: fork
+---
+
+Workflow phases:
+1. Discovery - RT-ICA to gather complete requirements
+2. Component Planning - Determine skills/agents/commands/hooks needed
+3. Structure Creation - Scaffold plugin directory and manifest
+4. Implementation - Create components with validation
+5. Quality Assurance - Run validators and quality checks
+6. Marketplace Preparation - Prepare for distribution
+```
+
+**Dependencies:**
+
+- Load `claude-plugins-reference-2026` skill
+- Load `claude-skills-overview-2026` skill
+- Delegate to `plugin-creator` orchestrator
+- Run validation scripts after each phase
+
+#### 2. `/extend-plugin` - Add Components to Existing Plugin
+
+**Status:** ❌ Missing
+
+**Purpose:** Add new skills, agents, commands, or hooks to an existing plugin
+
+**Gap:**
+
+- No systematic workflow for extending plugins
+- Users manually create components without guidance
+- No validation of compatibility with existing plugin structure
+- No automatic plugin.json updates
+
+**Proposed Implementation:**
+
+```yaml
+---
+name: extend-plugin
+description: 'Add new components (skills, agents, commands, hooks) to existing plugins with validation and integration checks. Ensures new components follow plugin conventions and update plugin.json correctly. Use when adding functionality to existing plugins.'
+user-invocable: true
+argument-hint: <plugin-path> --add <skill|agent|command|hook>
+model: sonnet
+---
+
+Workflow phases:
+1. Plugin Analysis - Read existing plugin structure and conventions
+2. Component Type Selection - Ask user what to add
+3. Requirement Gathering - RT-ICA for new component
+4. Implementation - Create component following existing patterns
+5. Integration - Update plugin.json, validate references
+6. Validation - Run validators on modified plugin
+```
+
+**Dependencies:**
+
+- Load `skill-creator`, `agent-creator` as needed
+- Load `write-frontmatter-description` for descriptions
+- Run `validate_frontmatter.py` after creation
+- Run `claude plugin validate` for structure
+
+#### 3. `/validate-plugin` - Comprehensive Plugin Validation
+
+**Status:** ⚠️ Partial - has validation scripts but no orchestrated workflow
+
+**Current State:**
+
+- Script: `validate_frontmatter.py` (frontmatter only)
+- Script: `validate-skill-structure.sh` (skills only)
+- CLI: `claude plugin validate` (structure only)
+
+**Gap:**
+
+- No single entry point for complete validation
+- No quality scoring or reporting
+- No pre-commit integration
+- No marketplace readiness check
+
+**Proposed Implementation:**
+
+```yaml
+---
+name: validate-plugin
+description: 'Run comprehensive validation suite on plugin including structure, frontmatter, quality checks, and marketplace readiness. Generates validation report with scores and recommendations. Use before commits, releases, or marketplace submission.'
+user-invocable: true
+argument-hint: <plugin-path>
+model: sonnet
+---
+
+Validation suite:
+1. Structure validation - plugin.json schema, paths, references
+2. Frontmatter validation - all SKILL.md and agent files
+3. Quality checks - skill line counts, orphaned files, broken links
+4. Marketplace readiness - README, LICENSE, keywords, description
+5. Version consistency - check all version fields match
+6. Generate report - validation-report.md with scores and recommendations
+```
+
+**Dependencies:**
+
+- `validate_frontmatter.py` (all components)
+- `validate-skill-structure.sh` (all skills)
+- `claude plugin validate` (structure)
+- `plugin-assessor` agent (comprehensive analysis)
+
+#### 4. Pre-Commit Hook for Plugin Validation
+
+**Status:** ❌ Missing
+
+**Purpose:** Automatically validate plugins on git commit
+
+**Gap:**
+
+- No pre-commit hook for plugin validation
+- Changes to plugins aren't validated before commit
+- Easy to commit invalid plugin.json or frontmatter
+
+**Proposed Implementation:**
+
+Create `.pre-commit-config.yaml` entry:
+
+```yaml
+  - repo: local
+    hooks:
+      - id: validate-plugins
+        name: Validate Claude Code Plugins
+        entry: scripts/validate-changed-plugins.sh
+        language: script
+        files: '^plugins/.*/(\.claude-plugin/plugin\.json|.*\.md)$'
+        pass_filenames: false
+```
+
+Create `scripts/validate-changed-plugins.sh`:
+
+```bash
+#!/usr/bin/env bash
+# Validate only plugins that have changes
+
+set -euo pipefail
+
+# Find changed plugin directories
+changed_plugins=$(git diff --cached --name-only | grep '^plugins/' | cut -d'/' -f1-2 | sort -u)
+
+if [ -z "$changed_plugins" ]; then
+  exit 0
+fi
+
+for plugin_dir in $changed_plugins; do
+  echo "Validating $plugin_dir..."
+
+  # Run frontmatter validation
+  uv run plugins/plugin-creator/scripts/validate_frontmatter.py "$plugin_dir"
+
+  # Run plugin structure validation
+  claude plugin validate "$plugin_dir"
+
+  # Run skill structure validation for each skill
+  for skill_dir in "$plugin_dir"/skills/*/; do
+    if [ -f "$skill_dir/SKILL.md" ]; then
+      plugins/plugin-creator/scripts/validate-skill-structure.sh "$skill_dir"
+    fi
+  done
+done
+
+echo "✅ All changed plugins validated successfully"
+```
+
+#### 5. Automated Version Bumping
+
+**Status:** ❌ Missing
+
+**Purpose:** Automatically bump plugin versions and marketplace version on changes
+
+**Gap:**
+
+- Plugin versions not incremented when plugins change
+- Marketplace version not updated automatically
+- Users get stale versions when pulling updates
+
+**Proposed Implementation:**
+
+**Pre-commit hook for version bumping:**
+
+```yaml
+  - repo: local
+    hooks:
+      - id: bump-plugin-versions
+        name: Bump Plugin and Marketplace Versions
+        entry: scripts/bump-plugin-versions.sh
+        language: script
+        files: '^plugins/.*'
+        pass_filenames: false
+```
+
+**Script: `scripts/bump-plugin-versions.sh`:**
+
+```bash
+#!/usr/bin/env bash
+# Automatically bump versions for changed plugins
+
+set -euo pipefail
+
+# Find changed plugins
+changed_plugins=$(git diff --cached --name-only | grep '^plugins/' | cut -d'/' -f1-2 | sort -u)
+
+if [ -z "$changed_plugins" ]; then
+  exit 0
+fi
+
+marketplace_updated=false
+
+for plugin_dir in $changed_plugins; do
+  plugin_json="$plugin_dir/.claude-plugin/plugin.json"
+
+  if [ ! -f "$plugin_json" ]; then
+    continue
+  fi
+
+  # Get current version
+  current_version=$(jq -r '.version' "$plugin_json")
+
+  # Determine bump type from commit message or default to patch
+  # Major: breaking changes, removed components
+  # Minor: new skills, agents, commands added
+  # Patch: bug fixes, documentation updates
+
+  # For now, default to patch bump
+  new_version=$(echo "$current_version" | awk -F. '{$NF++; print}' OFS=.)
+
+  # Update plugin.json
+  jq --arg version "$new_version" '.version = $version' "$plugin_json" > "$plugin_json.tmp"
+  mv "$plugin_json.tmp" "$plugin_json"
+
+  echo "Bumped $plugin_dir version: $current_version → $new_version"
+
+  # Stage the updated plugin.json
+  git add "$plugin_json"
+
+  marketplace_updated=true
+done
+
+# Bump marketplace version if any plugins changed
+if [ "$marketplace_updated" = true ]; then
+  marketplace_json=".claude-plugin/marketplace.json"
+  current_marketplace=$(jq -r '.metadata.version' "$marketplace_json")
+  new_marketplace=$(echo "$current_marketplace" | awk -F. '{$NF++; print}' OFS=.)
+
+  jq --arg version "$new_marketplace" '.metadata.version = $version' "$marketplace_json" > "$marketplace_json.tmp"
+  mv "$marketplace_json.tmp" "$marketplace_json"
+
+  echo "Bumped marketplace version: $current_marketplace → $new_marketplace"
+  git add "$marketplace_json"
+fi
+
+echo "✅ Versions updated automatically"
+```
+
+**Configuration in `.claude-plugin/marketplace.json`:**
+
+```json
+{
+  "metadata": {
+    "version": "1.0.0",
+    "versioningPolicy": "automatic-patch-bump"
+  }
+}
+```
+
+### Implementation Priority
+
+| Priority | Item                       | Effort | Impact | Dependencies                   |
+| -------- | -------------------------- | ------ | ------ | ------------------------------ |
+| **P0**   | Pre-commit validation hook | Small  | High   | validation scripts exist       |
+| **P0**   | Automated version bumping  | Small  | High   | pre-commit hook                |
+| **P1**   | `/validate-plugin` skill   | Medium | High   | plugin-assessor agent          |
+| **P1**   | `/create-plugin` skill     | Medium | High   | existing scripts, RT-ICA skill |
+| **P2**   | `/extend-plugin` skill     | Medium | Medium | skill-creator, agent-creator   |
+
+### Integration with Methodology
+
+All workflows should follow the process documented in `methodology_development/`:
+
+1. **RT-ICA Phase** - Reverse Thinking - Information Completeness Assessment
+
+   - Load `rt-ica` skill before planning
+   - Identify missing requirements before proceeding
+   - Generate comprehensive context manifest
+
+2. **Stateless Agent Methodology (SAM)**
+
+   - Each phase creates artifacts (files) for next phase
+   - No reliance on conversation memory
+   - Clear handoff protocols between agents
+
+3. **Quality Gates**
+   - Each phase has validation checkpoints
+   - Cannot proceed to next phase without passing gates
+   - Automated validation integrated into workflow
+
+### Validation Improvements Needed
+
+**Current validation tools consolidation:**
+
+Currently validation is spread across:
+
+- `validate_frontmatter.py` (Python)
+- `validate-skill-structure.sh` (Bash)
+- `validate-task-file.sh` (Bash)
+- `count-skill-lines.sh` (Bash)
+
+**Recommendation:** Create unified `lint-claude-plugin.py`:
+
+- Single Python 3.11+ script
+- Cross-platform (Windows/Linux/macOS)
+- Pre-commit compatible
+- Token-based complexity metrics (not lines)
+- Comprehensive validation:
+  - Frontmatter schema
+  - Plugin.json structure
+  - Skill complexity (tokens)
+  - Internal link validity
+  - Progressive disclosure
+  - Tool format correctness
+  - Cross-reference validation
+
+---
+
 ## Related Plugins
 
 **Optional External Skill Dependency:**
