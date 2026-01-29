@@ -34,18 +34,16 @@ name: my-super-awesome-long-agent-name-that-exceeds-the-limit  # Invalid - too l
 ### description
 
 - **Type**: string
-- **Max Length**: 1024 characters
+- **Max Length**: 1024 characters (first 1024 chars most important)
 - **Purpose**: Claude uses this to decide when to delegate tasks to this agent
 
-**Required Elements:**
+**Follow the official Anthropic guidance in the `write-frontmatter-description` skill.**
 
-1. Action verbs (what it does)
-2. Trigger phrases (when to use)
-3. Domain keywords (topic areas)
+Must be complete and informative, explaining what the agent does and when to use it. Include trigger scenarios, file types, or tasks.
 
 ```yaml
-# Good - includes all elements
-description: 'Review Python code for security vulnerabilities, performance issues, and PEP 8 compliance. Use when code changes are complete or when reviewing pull requests. Specializes in async/await patterns.'
+# Good - complete and informative
+description: 'Review Python code for security vulnerabilities, performance issues, and PEP 8 compliance. Handles code reviews after changes complete or when reviewing pull requests. Specializes in async/await patterns.'
 
 # Bad - too vague
 description: Helps with Python

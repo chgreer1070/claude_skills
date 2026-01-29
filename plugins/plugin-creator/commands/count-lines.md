@@ -1,9 +1,9 @@
 ---
-description: Quick check of skill line counts to identify oversized skills that may need refactoring.
+description: "Check skill line counts to identify oversized skills exceeding recommended limits (500 lines warning, 800 lines critical). Use when auditing plugin structure before refactoring, planning skill splits, or validating skill complexity. Displays table with line counts and status indicators (OK, WARNING, CRITICAL). Complements the refactor-plugin workflow for comprehensive plugin analysis."
 argument-hint: <plugin-or-skill-path>
 allowed-tools: Read, Glob, Bash
 model: inherit
-context: This command identifies skills exceeding recommended size limits (500 lines warning, 800 lines critical). Use when auditing plugin structure, planning refactoring, or validating skill complexity. Complements /plugin-creator:refactor-plugin for comprehensive plugin analysis.
+context: fork
 ---
 
 # Count Skill Lines

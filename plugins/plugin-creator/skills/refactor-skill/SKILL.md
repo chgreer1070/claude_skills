@@ -260,22 +260,19 @@ This skill loads focused specialist components for comprehensive coverage:
 
 ### Description Field
 
-- Max 1024 characters
-- Include ACTION verbs: "Generate", "Analyze", "Create", "Debug"
-- Include TRIGGER phrases: "Use when", "Activate for", "Helps with"
-- Include KEYWORDS users might mention
+Follow the official Anthropic guidance in the `write-frontmatter-description` skill.
 
-**Template:**
+**Key requirements:**
 
-```
-{Action 1}, {Action 2}, {Action 3}. Use when {situation 1}, {situation 2},
-or when working with {keywords}. Related to {domain}.
-```
+- Max 1024 characters (first 1024 chars are critical)
+- Single-line only (no YAML multiline indicators)
+- Complete and informative explanation of what it does and when to use it
+- Include trigger scenarios, file types, or tasks
 
 **Example:**
 
 ```yaml
-description: 'Debug Python async code, identify race conditions, fix deadlocks. Use when dealing with asyncio, aiohttp, or concurrent Python code. Helps with coroutines, event loops, and async context managers.'
+description: 'Debug Python async code, identify race conditions, fix deadlocks. Handles asyncio, aiohttp, and concurrent Python code. Helps with coroutines, event loops, and async context managers.'
 ```
 
 ### allowed-tools Field

@@ -175,7 +175,7 @@ CREATE the agent file following this structure:
 ```markdown
 ---
 name: {agent-name}
-description: '{Action verbs describing what it does}. Use when {situation 1}, {situation 2}, or when working with {keywords}. {Delegation triggers}.'
+description: '{What it does - action verbs and capabilities}. {When to use it - trigger scenarios, file types, tasks}. {Additional context - specializations, keywords}.'
 model: {sonnet|opus|haiku|inherit}
 tools: {tool-list if restricting}
 disallowedTools: {denylist if needed}
