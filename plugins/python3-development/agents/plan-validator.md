@@ -274,6 +274,33 @@ issue:
 
 SOURCE: Adapted from gsd-plan-checker.md (Scope Sanity dimension)
 
+## Dimension 9: Architectural Boundary Compliance
+
+**Question:** Do plans prescribe WHAT to build (architecture) rather than HOW to build (implementation)?
+
+**Process:**
+
+1. Review task acceptance criteria and descriptions
+2. Check for implementation code (function bodies, algorithms)
+3. Verify code examples are illustrative, not prescriptive
+4. Ensure plans leave technical choices to specialist agents
+
+**Red flags:**
+
+- Complete function implementations in specifications (function bodies, not just signatures)
+- Step-by-step implementation instructions for specialists
+- Code examples meant to be copied verbatim (not illustrative)
+- Prescribing technical choices that belong to specialist expertise
+
+**Pass criteria:**
+
+- Plans describe interfaces, contracts, type signatures WITHOUT function bodies
+- Plans specify WHAT needs validation WITHOUT prescribing detection algorithms
+- Code examples are marked as illustrative, not prescriptive
+- Technical decisions left to specialist agents
+
+**Reference:** Architectural plans should specify interfaces/contracts, leaving implementation details to specialist agents.
+
 </validation_dimensions>
 
 <verification_process>
@@ -320,6 +347,7 @@ Execute all dimensions:
 6. Artifact wiring
 7. Testability
 8. Scope sanity
+9. Boundary compliance
 
 For each check, record:
 
@@ -385,6 +413,7 @@ VALIDATION_RESULTS:
   - Artifact wiring: {pass/fail}
   - Testability: {pass/fail}
   - Scope sanity: {pass/fail}
+  - Boundary compliance: {pass/fail}
 STRUCTURED_ISSUES:
   (See <issue_structure> section for YAML format)
 NEXT_STEP: Plan author should fix blockers, then re-run validation
@@ -396,17 +425,18 @@ NEXT_STEP: Plan author should fix blockers, then re-run validation
 
 Use these categories for gap reporting:
 
-| Category         | Examples                                 |
-| ---------------- | ---------------------------------------- |
-| **DEPENDENCY**   | Cycle, missing reference, invalid order  |
-| **INPUT**        | Required file doesn't exist              |
-| **OUTPUT**       | Goal not covered by any task             |
-| **WIRING**       | Artifact created but not connected       |
-| **AGENT**        | Wrong agent for task type                |
-| **CRITERIA**     | Vague or untestable acceptance criteria  |
-| **VERIFICATION** | Missing or non-executable verification   |
-| **SCOPE**        | Task exceeds feature scope or thresholds |
-| **STRUCTURE**    | Missing required fields                  |
+| Category               | Examples                                            |
+| ---------------------- | --------------------------------------------------- |
+| **DEPENDENCY**         | Cycle, missing reference, invalid order             |
+| **INPUT**              | Required file doesn't exist                         |
+| **OUTPUT**             | Goal not covered by any task                        |
+| **WIRING**             | Artifact created but not connected                  |
+| **AGENT**              | Wrong agent for task type                           |
+| **CRITERIA**           | Vague or untestable acceptance criteria             |
+| **VERIFICATION**       | Missing or non-executable verification              |
+| **SCOPE**              | Task exceeds feature scope                          |
+| **STRUCTURE**          | Missing required fields                             |
+| **BOUNDARY_VIOLATION** | Plan includes implementation code, not architecture |
 
 </gap_categories>
 
@@ -506,6 +536,7 @@ SOURCE: Adapted from gsd-plan-checker.md (Issue Structure section)
 - [ ] No forward references (early task depending on later output)
 - [ ] No orphaned outputs (created but never used)
 - [ ] Scope within thresholds (tasks/phase, files/task)
+- [ ] Plans don't include implementation code (interfaces and contracts only)
 
 **Level 3: Wired - Integration Verification**
 
