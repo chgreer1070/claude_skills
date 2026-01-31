@@ -1,6 +1,5 @@
 ---
-name: universe-of-thoughts
-description: 'Creative reasoning framework for ill-defined problems where conventional solutions are suboptimal. Use when the problem has ambiguous goals, vast solution space, no single correct answer, or requires innovation. Implements three paradigms: combinational (novel combinations of familiar ideas), exploratory (expand solution space boundaries), transformative (alter fundamental constraints). Do not use for well-defined problems, mathematical puzzles, or tasks requiring convergent reasoning.'
+description: Creative reasoning framework for ill-defined problems where conventional solutions are suboptimal. Use when the problem has ambiguous goals, vast solution space, no single correct answer, or requires innovation. Implements three paradigms — combinational (novel combinations of familiar ideas), exploratory (expand solution space boundaries), transformative (alter fundamental constraints). Do not use for well-defined problems, mathematical puzzles, or tasks requiring convergent reasoning.
 user-invocable: true
 ---
 
@@ -31,11 +30,11 @@ Do not use UoT for:
 
 ## Paradigm Selection
 
-| Paradigm | Condition | Output |
-|----------|-----------|--------|
-| **Combinational** | Familiar elements exist but need fresh combinations | Novel hybrids from cross-domain synthesis |
-| **Exploratory** | Current solution space feels exhausted | Expanded boundaries, adjacent possibilities |
-| **Transformative** | Constraints themselves block progress | Redefined rules, radical departures |
+| Paradigm           | Condition                                           | Output                                      |
+| ------------------ | --------------------------------------------------- | ------------------------------------------- |
+| **Combinational**  | Familiar elements exist but need fresh combinations | Novel hybrids from cross-domain synthesis   |
+| **Exploratory**    | Current solution space feels exhausted              | Expanded boundaries, adjacent possibilities |
+| **Transformative** | Constraints themselves block progress               | Redefined rules, radical departures         |
 
 For maximum creativity, run all three sequentially. Each builds on the previous.
 
@@ -215,11 +214,11 @@ SOLUTION PORTFOLIO:
 
 Assess all solutions on three dimensions:
 
-| Dimension | Question | Scale |
-|-----------|----------|-------|
-| **Feasibility** | Does it violate immutable constraints? | Pass/Fail |
-| **Utility** | How effectively does it solve the problem? | 1-10 |
-| **Novelty** | How different from existing approaches? | 1-10 |
+| Dimension       | Question                                   | Scale     |
+| --------------- | ------------------------------------------ | --------- |
+| **Feasibility** | Does it violate immutable constraints?     | Pass/Fail |
+| **Utility**     | How effectively does it solve the problem? | 1-10      |
+| **Novelty**     | How different from existing approaches?    | 1-10      |
 
 Solutions must pass feasibility. Rank passing solutions by (Utility × Novelty).
 
@@ -231,27 +230,27 @@ Solutions must pass feasibility. Rank passing solutions by (Utility × Novelty).
 
 ### Combinational
 
-| Source Domain | Concept | Application |
-|---------------|---------|-------------|
-| Air traffic control | Scheduled slots | Time-slot reservations for vehicles |
-| Packet switching | Dynamic routing | Priority-based direction changes |
-| Tidal systems | Periodic reversal | Time-based directional flow |
+| Source Domain       | Concept           | Application                         |
+| ------------------- | ----------------- | ----------------------------------- |
+| Air traffic control | Scheduled slots   | Time-slot reservations for vehicles |
+| Packet switching    | Dynamic routing   | Priority-based direction changes    |
+| Tidal systems       | Periodic reversal | Time-based directional flow         |
 
 ### Exploratory
 
-| Boundary | Probe | Solution |
-|----------|-------|----------|
-| Vehicles are independent | What if they communicated? | Convoy formation, platooning |
-| Bridge is passive | What if it signaled? | Smart bridge with dynamic indicators |
-| Optimize for fairness | What if throughput mattered more? | Batch processing by direction |
+| Boundary                 | Probe                             | Solution                             |
+| ------------------------ | --------------------------------- | ------------------------------------ |
+| Vehicles are independent | What if they communicated?        | Convoy formation, platooning         |
+| Bridge is passive        | What if it signaled?              | Smart bridge with dynamic indicators |
+| Optimize for fairness    | What if throughput mattered more? | Batch processing by direction        |
 
 ### Transformative
 
-| Constraint | Type | Transformation | Solution |
-|------------|------|----------------|----------|
-| Single lane | Convention | Virtual lanes | Motorcycle/bicycle parallel path |
-| Vehicles | Assumption | Move people, not cars | Pedestrian/bike priority + parking |
-| Bridge | Assumption | Challenge "crossing" | Cable car, ferry, tunnel |
+| Constraint  | Type       | Transformation        | Solution                           |
+| ----------- | ---------- | --------------------- | ---------------------------------- |
+| Single lane | Convention | Virtual lanes         | Motorcycle/bicycle parallel path   |
+| Vehicles    | Assumption | Move people, not cars | Pedestrian/bike priority + parking |
+| Bridge      | Assumption | Challenge "crossing"  | Cable car, ferry, tunnel           |
 
 ---
 

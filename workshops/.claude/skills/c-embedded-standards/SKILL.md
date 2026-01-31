@@ -1,5 +1,5 @@
 ---
-description: 'Reference knowledge for embedded C development: MISRA-C 2012 rules, Zigbee 3.0 door_lock cluster implementation, FreeRTOS task patterns, and C stdlib usage on nRF52/STM32. Use when writing firmware, reviewing embedded code, implementing Zigbee clusters, or working with FreeRTOS APIs.'
+description: Reference knowledge for embedded C development — MISRA-C 2012 rules, Zigbee 3.0 door_lock cluster implementation, FreeRTOS task patterns, and C stdlib usage on nRF52/STM32. Use when writing firmware, reviewing embedded code, implementing Zigbee clusters, or working with FreeRTOS APIs.
 user-invocable: false
 ---
 

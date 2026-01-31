@@ -24,6 +24,17 @@
           }
         ]
       }
+    ],
+    "Setup": [
+      {
+        "matcher": "init|maintenance",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run prek install"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
