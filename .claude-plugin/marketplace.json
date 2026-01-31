@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Covers modern Python toolchains, GitLab CI/CD automation, code quality enforcement, MCP server creation, and plugin/agent development patterns.",
-    "version": "2.3.0"
+    "version": "2.4.0"
   },
   "plugins": [
     {
@@ -84,10 +84,6 @@
     {
       "name": "toml-python",
       "source": "./plugins/toml-python"
-    },
-    {
-      "name": "uv",
-      "source": "./plugins/uv"
     },
     {
       "name": "verification-gate",
