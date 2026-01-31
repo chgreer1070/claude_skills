@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Covers modern Python toolchains, GitLab CI/CD automation, code quality enforcement, MCP server creation, and plugin/agent development patterns.",
-    "version": "2.6.0"
+    "version": "2.7.0"
   },
   "plugins": [
     {
@@ -54,16 +54,8 @@
       "source": "./plugins/llamafile"
     },
     {
-      "name": "mkdocs",
-      "source": "./plugins/mkdocs"
-    },
-    {
       "name": "perl-development",
       "source": "./plugins/perl-development"
-    },
-    {
-      "name": "pre-commit",
-      "source": "./plugins/pre-commit"
     },
     {
       "name": "prompt-optimization-claude-45",
@@ -72,10 +64,6 @@
     {
       "name": "python3-development",
       "source": "./plugins/python3-development"
-    },
-    {
-      "name": "toml-python",
-      "source": "./plugins/toml-python"
     },
     {
       "name": "verification-gate",
