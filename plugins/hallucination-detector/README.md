@@ -13,6 +13,34 @@ Claude sometimes delivers responses that sound confident but contain:
 
 These patterns are difficult to catch because they sound authoritative. This plugin forces Claude to ground its statements in actual observations before completing a task.
 
+## The Problem
+
+LLMs like Claude are optimized during training to produce responses that *appear* helpful and confident. This creates a systematic failure mode:
+
+**Speculation as diagnosis** - When asked "why did X happen?", Claude draws on training patterns to generate plausible-sounding explanations. These explanations feel authoritative but may have no connection to the actual state of your system. Claude hasn't checked logs, read config files, or verified anything - it's pattern-matching from training data.
+
+**Invented causality** - Causal claims ("X because Y") require evidence showing the relationship. Claude often asserts causality based on what *typically* causes similar symptoms, not what *actually* caused this specific instance. The word "because" in Claude's output frequently signals unverified inference.
+
+**Fake rigor** - Scores and percentages ("8/10 quality", "70% improvement") create an illusion of measurement. Without methodology, sample size, and reproducible criteria, these numbers are meaningless - yet they make responses feel more credible.
+
+**Completeness theater** - Claims like "all files checked" or "comprehensive analysis" are rarely true. Claude may have checked *some* files, or the *most likely* files, but stating completeness without enumerating scope is misleading.
+
+### Why This Matters
+
+When Claude's unverified speculation matches reality by chance, the problem is invisible. When it doesn't match, you've wasted time pursuing a false lead - or worse, made changes based on incorrect diagnosis.
+
+The cost compounds in agent workflows where sub-agents act on orchestrator hallucinations, or when hallucinated "facts" persist across sessions as assumed truth.
+
+### Why a Stop Hook
+
+Behavioral instructions ("don't speculate") fail because:
+
+1. Claude's training optimization overrides instructions under completion pressure
+2. Speculation patterns are deeply embedded in how Claude learned to be "helpful"
+3. Self-assessment of speculation is unreliable (Claude doesn't recognize its own patterns)
+
+A Stop hook provides **structural enforcement** - Claude cannot complete a task while trigger language is present. This shifts from "please don't speculate" (ignorable) to "speculation blocks completion" (architectural constraint).
+
 ## What Changes
 
 With this plugin installed, Claude will be blocked from finishing if its response contains:
