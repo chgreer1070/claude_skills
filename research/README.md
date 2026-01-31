@@ -12,22 +12,31 @@ This directory contains curated research on tools, repositories, and patterns re
 research/
 ├── README.md                          # This index file
 ├── agent-frameworks/                  # Agent SDKs and orchestration frameworks
-│   └── ai-agents-frameworks.md        # 10-framework comparative benchmark study
+│   ├── ai-agents-frameworks.md        # 10-framework comparative benchmark study
+│   └── superpowers.md                 # Agentic skills framework and dev methodology (40K+ stars)
 ├── agent-infrastructure/              # Infrastructure for agentic applications
 │   └── plano.md                       # AI-native proxy and data plane for multi-agent orchestration
 ├── code-auditing/                     # Code security and quality auditing tools
 │   └── hound.md                       # Autonomous AI security auditor with knowledge graphs
 ├── coding-agents/                     # Autonomous AI coding agent platforms
 │   └── openhands.md                   # Open platform for cloud coding agents (67K+ stars)
+├── context-management/                # Memory, context window, and RAG tools
+│   └── claude-mem.md                  # Persistent memory compression for Claude Code (15K+ stars)
+├── data-infrastructure/               # Real-time data platforms for analytics
+│   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
 ├── developer-tools/                   # Developer productivity and workflow tools
 │   ├── animejs.md                     # Lightweight JavaScript animation engine (66K+ stars)
-│   └── git-cliff.md                   # Customizable changelog generator from Git history
+│   ├── git-cliff.md                   # Customizable changelog generator from Git history
+│   ├── jscpd.md                       # Copy/paste detector for 150+ languages (5K+ stars)
+│   ├── orbstack.md                    # Fast Docker Desktop and Linux VM alternative for macOS
+│   └── repomix.md                     # Pack codebase into AI-friendly formats (21K+ stars)
 ├── mcp-ecosystem/                     # MCP servers and integrations
 │   ├── docs-mcp-server.md             # Local documentation index (Grounded Docs)
 │   ├── mcpjam.md                      # Local inspector for MCP servers and apps
 │   ├── narsil-mcp.md                  # Comprehensive code intelligence MCP server
 │   └── octocode-mcp.md                # Research Driven Development platform
 ├── research-agent-patterns/           # Multi-agent architectures and orchestration
+│   ├── compound-engineering-plugin.md # Every Inc's Plan/Work/Review/Compound workflow plugin
 │   ├── github-patterns.md             # Patterns from GitHub research agent implementations
 │   └── orchestrator-agent-creation-guide.md  # OpenCode orchestrator agent guide
 ├── skill-generation-tools/            # Tools that create AI skills/prompts
@@ -48,6 +57,7 @@ Research on multi-agent architectures, orchestration patterns, and research work
 
 | Document                                                                                               | Description                                                                                                            | Last Updated |
 | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------ |
+| [compound-engineering-plugin.md](./research-agent-patterns/compound-engineering-plugin.md)             | Every Inc's Claude Code plugin with 27 agents, 20 commands - Plan/Work/Review/Compound workflow (6.8K stars)           | 2026-01-31   |
 | [github-patterns.md](./research-agent-patterns/github-patterns.md)                                     | Patterns from 40+ repositories including Chief of Staff model, 12-agent academic pipelines, Pydantic AI research loops | 2025-12-09   |
 | [orchestrator-agent-creation-guide.md](./research-agent-patterns/orchestrator-agent-creation-guide.md) | Comprehensive guide for creating orchestrator agents in OpenCode - routing, chaining, parallel delegation patterns     | 2026-01-26   |
 
@@ -61,6 +71,12 @@ Research on multi-agent architectures, orchestration patterns, and research work
 - Orchestrator routing patterns and capability maps
 - Sequential chaining vs parallel delegation
 - Context hygiene and token management
+- Plan/Work/Review/Compound workflow (80/20 planning-execution split)
+- 14 parallel review agents for comprehensive code review
+- Knowledge compounding via structured `docs/solutions/` documentation
+- Smart research decision logic (risk-aware, context-aware)
+- Git worktree integration for parallel development
+- Claude Code plugin architecture patterns
 
 ---
 
@@ -154,6 +170,7 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 | Document                                                              | Description                                                                                                                            | Last Updated |
 | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [ai-agents-frameworks.md](./agent-frameworks/ai-agents-frameworks.md) | Comparative learning repository for 10 AI agent frameworks with benchmarks for response time, memory, tokens, RAG, and API integration | 2026-01-31   |
+| [superpowers.md](./agent-frameworks/superpowers.md)                   | Agentic skills framework with 14 skills for TDD, debugging, and subagent-driven development - works with Claude Code, Codex, OpenCode  | 2026-01-31   |
 
 **Key Topics**:
 
@@ -162,6 +179,11 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 - RAG and API integration reliability metrics
 - Token efficiency across frameworks
 - Progressive example structures
+- Subagent-driven development with two-stage review (spec compliance + code quality)
+- Test-driven development enforcement for AI agents
+- Skill triggering patterns and description optimization
+- Fresh context per task to prevent pollution
+- DOT flowcharts as executable specifications
 
 ---
 
@@ -193,10 +215,13 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 
 Developer productivity tools and workflow automation for software engineering with AI assistance.
 
-| Document                                       | Description                                                                                                         | Last Updated |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------ |
-| [animejs.md](./developer-tools/animejs.md)     | Lightweight JavaScript animation engine with declarative API, timelines, staggering, and 30+ easing functions       | 2026-01-31   |
-| [git-cliff.md](./developer-tools/git-cliff.md) | Customizable changelog generator using conventional commits and regex parsers with GitHub/GitLab remote integration | 2026-01-26   |
+| Document                                       | Description                                                                                                                  | Last Updated |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| [animejs.md](./developer-tools/animejs.md)     | Lightweight JavaScript animation engine with declarative API, timelines, staggering, and 30+ easing functions                | 2026-01-31   |
+| [git-cliff.md](./developer-tools/git-cliff.md) | Customizable changelog generator using conventional commits and regex parsers with GitHub/GitLab remote integration          | 2026-01-26   |
+| [jscpd.md](./developer-tools/jscpd.md)         | Copy/paste detector for 150+ programming languages using Rabin-Karp algorithm with CI/CD integration                         | 2026-01-31   |
+| [orbstack.md](./developer-tools/orbstack.md)   | Fast, lightweight Docker Desktop and Linux VM alternative for macOS with 2-second startup and dynamic memory                 | 2026-01-31   |
+| [repomix.md](./developer-tools/repomix.md)     | Pack codebase into single AI-friendly file with token counting, Tree-sitter compression, MCP server, and Claude Code plugins | 2026-01-31   |
 
 **Key Topics**:
 
@@ -209,6 +234,27 @@ Developer productivity tools and workflow automation for software engineering wi
 - Prepend mode for incremental changelog updates
 - Semantic versioning correlation (feat→minor, fix→patch)
 - Configuration hierarchy (global → project → environment)
+- Copy/paste detection with Rabin-Karp algorithm
+- Token-based code analysis across 150+ languages
+- CI/CD integration with threshold-based quality gates
+- SARIF output for GitHub Security tab integration
+- Git blame integration for duplication attribution
+- Docker Desktop alternative with native macOS performance
+- Lightweight Linux VM architecture (similar to WSL 2)
+- Dynamic memory allocation (returns unused to macOS)
+- Kubernetes single-node cluster for local development
+- Multi-distro Linux machine support (15 distributions)
+- Zero-config container domains (\*.orb.local)
+- Headless/CLI mode for CI automation
+- Codebase-to-AI-file packaging for LLM consumption
+- Token counting with Tree-sitter code compression (~70% reduction)
+- Security scanning via Secretlint integration
+- MCP server mode with 7 tools for AI assistant integration
+- Claude Code plugins (repomix-mcp, repomix-commands, repomix-explorer)
+- Agent Skills generation from local and remote repositories
+- Multiple output formats (XML optimized for Claude, Markdown, JSON, Plain)
+- Remote repository processing without local cloning
+- Split output for large codebases exceeding context limits
 
 ---
 
@@ -235,7 +281,30 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 
 ---
 
-### 9. Task Management
+### 9. Data Infrastructure
+
+**Location**: [./data-infrastructure/](./data-infrastructure/)
+
+Real-time data platforms and analytics infrastructure for powering AI applications and agentic workflows.
+
+| Document                                         | Description                                                                                                  | Last Updated |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------ |
+| [tinybird.md](./data-infrastructure/tinybird.md) | Managed ClickHouse platform for real-time analytics APIs with native MCP server and analytics agents support | 2026-01-31   |
+
+**Key Topics**:
+
+- Managed ClickHouse with zero maintenance overhead
+- SQL-to-API instant endpoint generation
+- Incremental materialized views for 100x query speedup
+- Events API for 1K+ RPS JSON streaming
+- Native MCP server integration for AI agents
+- Analytics Agents templates and best practices
+- Data-as-code with Git-based version control
+- Branch-based testing with isolated environments
+
+---
+
+### 10. Task Management
 
 **Location**: [./task-management/](./task-management/)
 
@@ -257,6 +326,29 @@ AI-powered task management systems designed for AI-driven development workflows.
 
 ---
 
+### 11. Context Management
+
+**Location**: [./context-management/](./context-management/)
+
+Memory systems, context window optimization tools, and RAG solutions for maintaining state across AI sessions.
+
+| Document                                            | Description                                                                                                   | Last Updated |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------ |
+| [claude-mem.md](./context-management/claude-mem.md) | Claude-Mem - persistent memory compression plugin for Claude Code with 4 MCP tools and progressive disclosure | 2026-01-31   |
+
+**Key Topics**:
+
+- Persistent memory across Claude Code sessions
+- Progressive disclosure pattern (3-layer workflow for token efficiency)
+- Lifecycle hooks architecture (SessionStart, PostToolUse, SessionEnd, etc.)
+- Hybrid search (SQLite FTS5 + Chroma vector embeddings)
+- MCP tools for memory search (search, timeline, get_observations)
+- Privacy controls with `<private>` tags
+- Web viewer UI for memory inspection
+- Context injection strategies
+
+---
+
 ## Planned Categories
 
 The following categories are planned for future research:
@@ -264,10 +356,11 @@ The following categories are planned for future research:
 | Category                | Description                                        | Status   |
 | ----------------------- | -------------------------------------------------- | -------- |
 | `prompt-engineering/`   | Prompt optimization tools and techniques           | Planned  |
-| `context-management/`   | Memory, context window, and RAG tools              | Planned  |
+| `context-management/`   | Memory, context window, and RAG tools              | **Done** |
 | `mcp-ecosystem/`        | MCP servers and integrations                       | **Done** |
 | `agent-frameworks/`     | Agent SDKs and orchestration frameworks            | **Done** |
 | `agent-infrastructure/` | Infrastructure for deploying agentic apps at scale | **Done** |
+| `data-infrastructure/`  | Real-time data platforms for analytics             | **Done** |
 | `code-auditing/`        | Code security and quality auditing tools           | **Done** |
 | `developer-tools/`      | Developer productivity and workflow tools          | **Done** |
 | `coding-agents/`        | Autonomous AI coding agent platforms               | **Done** |
@@ -371,9 +464,14 @@ When adding new research:
 - [Awesome Claude Code](https://github.com/hesreallyhim/awesome-claude-code) - 17,825 stars
 - [Awesome Claude Code Subagents](https://github.com/VoltAgent/awesome-claude-code-subagents) - 5,616 stars
 - [Awesome MCP Servers](https://github.com/punkpeye/awesome-mcp-servers) - 76,332 stars
+- [Compound Engineering Plugin](https://github.com/EveryInc/compound-engineering-plugin) - Plan/Work/Review/Compound workflow (6,830 stars)
 - [Skill Seekers](https://skillseekersweb.com/) - Documentation to AI skills
 - [OpenHands](https://openhands.dev) - Open platform for cloud coding agents (67,108 stars)
 - [Claude Task Master](https://task-master.dev) - AI-powered task management (25,062 stars)
+- [Tinybird](https://www.tinybird.co) - Real-time data platform with managed ClickHouse and MCP
+- [Claude-Mem](https://claude-mem.ai) - Persistent memory compression for Claude Code (15,681 stars)
+- [Repomix](https://repomix.com) - Pack codebase into AI-friendly formats (21,597 stars)
+- [Superpowers](https://github.com/obra/superpowers) - Agentic skills framework and software development methodology (40,911 stars)
 
 ### Internal References
 
