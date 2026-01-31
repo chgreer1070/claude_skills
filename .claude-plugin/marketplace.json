@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Covers modern Python toolchains, GitLab CI/CD automation, code quality enforcement, MCP server creation, and plugin/agent development patterns.",
-    "version": "2.4.0"
+    "version": "2.5.0"
   },
   "plugins": [
     {
@@ -44,10 +44,6 @@
     {
       "name": "gitlab-skill",
       "source": "./plugins/gitlab-skill"
-    },
-    {
-      "name": "hatchling",
-      "source": "./plugins/hatchling"
     },
     {
       "name": "holistic-linting",
