@@ -15,15 +15,15 @@ These patterns are difficult to catch because they sound authoritative. This plu
 
 ## The Problem
 
-LLMs like Claude are optimized during training to produce responses that *appear* helpful and confident. This creates a systematic failure mode:
+LLMs like Claude are optimized during training to produce responses that _appear_ helpful and confident. This creates a systematic failure mode:
 
 **Speculation as diagnosis** - When asked "why did X happen?", Claude draws on training patterns to generate plausible-sounding explanations. These explanations feel authoritative but may have no connection to the actual state of your system. Claude hasn't checked logs, read config files, or verified anything - it's pattern-matching from training data.
 
-**Invented causality** - Causal claims ("X because Y") require evidence showing the relationship. Claude often asserts causality based on what *typically* causes similar symptoms, not what *actually* caused this specific instance. The word "because" in Claude's output frequently signals unverified inference.
+**Invented causality** - Causal claims ("X because Y") require evidence showing the relationship. Claude often asserts causality based on what _typically_ causes similar symptoms, not what _actually_ caused this specific instance. The word "because" in Claude's output frequently signals unverified inference.
 
 **Fake rigor** - Scores and percentages ("8/10 quality", "70% improvement") create an illusion of measurement. Without methodology, sample size, and reproducible criteria, these numbers are meaningless - yet they make responses feel more credible.
 
-**Completeness theater** - Claims like "all files checked" or "comprehensive analysis" are rarely true. Claude may have checked *some* files, or the *most likely* files, but stating completeness without enumerating scope is misleading.
+**Completeness theater** - Claims like "all files checked" or "comprehensive analysis" are rarely true. Claude may have checked _some_ files, or the _most likely_ files, but stating completeness without enumerating scope is misleading.
 
 ### Why This Matters
 
@@ -123,12 +123,12 @@ Claude: "I don't have enough information yet. Let me check:
 
 ## What Gets Flagged
 
-| Category | Triggers | Required Fix |
-|----------|----------|--------------|
-| Speculation | "I think", "probably", "likely", "seems", "maybe" | State observation or "I don't know yet" |
-| Causality | "because", "due to", "caused by", "therefore" | Cite specific evidence (file, line, output) |
-| Fake rigor | "8/10", "70% improvement" | Show methodology or remove |
-| Completeness | "all files checked", "fully resolved" | List what was actually inspected |
+| Category     | Triggers                                          | Required Fix                                |
+| ------------ | ------------------------------------------------- | ------------------------------------------- |
+| Speculation  | "I think", "probably", "likely", "seems", "maybe" | State observation or "I don't know yet"     |
+| Causality    | "because", "due to", "caused by", "therefore"     | Cite specific evidence (file, line, output) |
+| Fake rigor   | "8/10", "70% improvement"                         | Show methodology or remove                  |
+| Completeness | "all files checked", "fully resolved"             | List what was actually inspected            |
 
 ## What Doesn't Get Flagged
 
