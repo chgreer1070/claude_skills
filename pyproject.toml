@@ -107,7 +107,8 @@ unfixable = ["F401"]
 	"T201", # print() statements are intentional for CI output visibility
 ]
 # Typer evaluates annotations at runtime, conflicting with TC003 + required PEP 563 import
-"plugins/plugin-creator/scripts/*.py" = ["TC003"]
+# B008: Typer's design pattern requires function calls in defaults (standard pattern)
+"plugins/plugin-creator/scripts/*.py" = ["TC003", "B008"]
 # Anti-pattern examples: intentionally incorrect code demonstrating what NOT to do
 "**/assets/nested-typer-exceptions/*.py" = ["DOC", "ANN"]
 # Lazy imports for optional dependency detection (hatchling may not be installed)
