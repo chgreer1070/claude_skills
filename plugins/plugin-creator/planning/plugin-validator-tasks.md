@@ -1373,7 +1373,11 @@ Report:
 
 ### Task T12: Integration Layer
 
-**Status**: ❌ NOT STARTED
+**Status**: ✅ COMPLETE
+
+**Started**: 2026-02-02T18:00:00Z
+
+**Completed**: 2026-02-02T19:15:00Z
 
 **Agent**: python-cli-architect
 
@@ -1449,6 +1453,55 @@ Report:
 - Test results for Claude available/unavailable
 - Test results for git staged files parsing
 - Confirmation of no shell=True usage
+
+**Completion Report**:
+
+**Implementation**: Added integration functions to `plugin-validator.py` lines 1936-2074
+
+**Functions Implemented**:
+
+1. `is_claude_available() -> bool` (lines 1945-1958)
+   - Uses shutil.which() to detect claude CLI
+   - No shell execution
+   - Returns bool indicating availability
+
+2. `validate_with_claude(plugin_dir: Path) -> tuple[bool, str]` (lines 1961-2012)
+   - Executes claude plugin validate if available
+   - Security: list arguments, timeout=30s, shutil.which()
+   - Graceful degradation: skips if claude not available or not a plugin directory
+   - Returns (success, output) tuple
+   - Consolidated returns to pass PLR0911 linting rule (6 returns max)
+
+3. `get_staged_files() -> list[Path]` (lines 2015-2074)
+   - Parses git diff --cached --name-only
+   - Security: list arguments, timeout=10s, shutil.which()
+   - Returns list of Path objects for staged files
+   - Returns empty list on error (graceful degradation)
+
+**Security Compliance**:
+- ✅ No shell=True anywhere
+- ✅ All subprocess calls use list arguments
+- ✅ All subprocess calls have timeout
+- ✅ All commands resolved via shutil.which()
+- ✅ Graceful error handling for missing commands
+
+**Type Safety**:
+- ✅ Passes mypy --strict
+- ✅ All return types properly annotated
+- ✅ Exception handling with proper types
+
+**Linting**:
+- ✅ Passes ruff check (including PLR0911 max returns)
+- ✅ Passes basedpyright
+- ✅ All pre-commit hooks pass
+
+**Verification**:
+- Created verification script: `/tmp/verify_integration_layer.py`
+- Verified all functions work correctly
+- Verified security requirements met
+- Verified graceful degradation when commands unavailable
+
+**Location**: `plugins/plugin-creator/scripts/plugin-validator.py` lines 1936-2074
 
 ---
 

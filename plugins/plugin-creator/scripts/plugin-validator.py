@@ -1934,6 +1934,146 @@ class PluginStructureValidator:
 
 
 # ============================================================================
+# INTEGRATION LAYER (Architecture lines 274-332, Task T12 lines 1374-1452)
+# ============================================================================
+
+
+def is_claude_available() -> bool:
+    """Check if claude CLI is available in PATH.
+
+    Uses shutil.which() to safely detect claude CLI without shell execution.
+    This function is used by validators to determine if Claude CLI-based
+    validation is possible.
+
+    Security: Uses shutil.which() to get full command path, no shell=True.
+
+    Returns:
+        True if claude CLI found in PATH, False otherwise
+    """
+    return shutil.which("claude") is not None
+
+
+def validate_with_claude(plugin_dir: Path) -> tuple[bool, str]:
+    """Run claude plugin validate if available.
+
+    Executes claude CLI validation on a plugin directory. Gracefully handles
+    cases where claude CLI is not available by returning success with skip message.
+
+    Security requirements:
+    - NEVER uses shell=True (command injection risk)
+    - Passes command as list: [cmd_path, arg1, arg2]
+    - Sets timeout to prevent hanging
+    - Gets full command path via shutil.which()
+
+    Args:
+        plugin_dir: Path to plugin directory containing .claude-plugin/plugin.json
+
+    Returns:
+        Tuple of (success, output):
+        - If claude not available: (True, "skipped")
+        - If not a plugin directory: (True, "skipped")
+        - If validation passes: (True, stdout)
+        - If validation fails: (False, stderr + stdout)
+
+    Raises:
+        Never raises - returns (False, error_message) on failure
+    """
+    # Check if claude CLI is available
+    claude_path = shutil.which("claude")
+    if claude_path is None:
+        return True, "claude CLI not available (skipped)"
+
+    # Check if this is a plugin directory
+    plugin_json = plugin_dir / ".claude-plugin" / "plugin.json"
+    if not plugin_json.exists():
+        return True, "Not a plugin directory (skipped)"
+
+    # Run claude plugin validate with security best practices
+    try:
+        result = subprocess.run(
+            [claude_path, "plugin", "validate", str(plugin_dir)],
+            capture_output=True,
+            text=True,
+            timeout=CLAUDE_TIMEOUT,
+            check=False,  # Handle non-zero exit code ourselves
+        )
+    except subprocess.TimeoutExpired:
+        return (
+            False,
+            f"Claude plugin validation timed out after {CLAUDE_TIMEOUT} seconds",
+        )
+    except (FileNotFoundError, OSError) as e:
+        # FileNotFoundError: Claude CLI not found (should be caught by shutil.which)
+        # OSError: Other subprocess errors (permission denied, etc.)
+        is_not_found = isinstance(e, FileNotFoundError)
+        message = (
+            "Claude CLI not found in PATH (skipped)"
+            if is_not_found
+            else f"Failed to run claude plugin validate: {e}"
+        )
+        # Not found is a skip (success), other OS errors are failures
+        return is_not_found, message
+    else:
+        # Return success if validation passed, failure with details otherwise
+        success = result.returncode == 0
+        output = result.stdout if success else result.stderr + "\n" + result.stdout
+        return success, output
+
+
+def get_staged_files() -> list[Path]:
+    """Get list of staged files for pre-commit context.
+
+    Parses output of `git diff --cached --name-only` to identify which files
+    are staged for commit. Used in pre-commit hooks to validate only changed files.
+
+    Security requirements:
+    - Uses list arguments: ["git", "diff", ...]
+    - Sets timeout to prevent hanging
+    - Never uses shell=True
+
+    Returns:
+        List of Path objects for staged files
+        Empty list if not in a git repository or no staged files
+
+    Raises:
+        Never raises - returns empty list on failure
+    """
+    # Get full path to git command
+    git_path = shutil.which("git")
+    if git_path is None:
+        return []
+
+    try:
+        result = subprocess.run(
+            [git_path, "diff", "--cached", "--name-only"],
+            capture_output=True,
+            text=True,
+            timeout=10,  # 10 seconds should be plenty for git diff
+            check=False,
+        )
+
+        # If command failed (not a git repo, etc.), return empty list
+        if result.returncode != 0:
+            return []
+
+        # Parse output into Path objects
+        # Filter out empty lines
+        return [
+            Path(line.strip()) for line in result.stdout.splitlines() if line.strip()
+        ]
+
+    except subprocess.TimeoutExpired:
+        # Git diff shouldn't take this long - something is wrong
+        return []
+    except FileNotFoundError:
+        # Git not found (should be caught by shutil.which check above)
+        return []
+    except OSError:
+        # Other subprocess errors
+        return []
+
+
+# ============================================================================
 # REPORTER PROTOCOL (Architecture lines 206-272)
 # ============================================================================
 
