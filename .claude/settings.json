@@ -52,10 +52,6 @@
     ]
   },
   "enabledPlugins": {
-    "holistic-linting@jamie-bitflight-skills": true,
-    "agent-orchestration@jamie-bitflight-skills": true,
-    "python3-development@jamie-bitflight-skills": true,
-    "hallucination-detector@jamie-bitflight-skills": true,
-    "plugin-creator@jamie-bitflight-skills": true
+    "hallucination-detector@jamie-bitflight-skills": true
   }
 }
