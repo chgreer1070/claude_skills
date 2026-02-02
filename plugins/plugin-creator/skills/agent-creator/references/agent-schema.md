@@ -10,7 +10,7 @@ Complete specification for Claude Code agent frontmatter fields (January 2026).
 - [Agent Frontmatter Schema](https://code.claude.com/docs/en/agents.md) (accessed 2026-01-28)
 - [Tools Reference](https://code.claude.com/docs/en/tools.md) (accessed 2026-01-28)
 - [Skills Reference](https://code.claude.com/docs/en/skills.md) (accessed 2026-01-28)
-- Validation implementation: [./../../scripts/validate_frontmatter.py](./../../scripts/validate_frontmatter.py)
+- Validation implementation: [./../../scripts/plugin-validator.py](./../../scripts/plugin-validator.py)
 
 For plugin agent integration, see [Claude Plugins Reference](./../../skills/claude-plugins-reference-2026/SKILL.md)
 
@@ -370,7 +370,7 @@ When creating agents for plugins, additional considerations apply:
 
 ```bash
 # Validate frontmatter
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate ./agents/my-agent.md
+uv run plugins/plugin-creator/scripts/plugin-validator.py validate ./agents/my-agent.md
 
 # Validate complete plugin
 claude plugin validate ./path/to/plugin
@@ -427,16 +427,16 @@ Use the validation script for comprehensive checks:
 
 ```bash
 # Validate single agent
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate ./agents/my-agent.md
+uv run plugins/plugin-creator/scripts/plugin-validator.py validate ./agents/my-agent.md
 
 # Auto-fix common issues (dry-run first)
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix ./agents/my-agent.md --dry-run
+uv run plugins/plugin-creator/scripts/plugin-validator.py fix ./agents/my-agent.md --dry-run
 
 # Batch validation
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py batch ./agents/
+uv run plugins/plugin-creator/scripts/plugin-validator.py batch ./agents/
 
 # Batch fix
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix-batch ./agents/
+uv run plugins/plugin-creator/scripts/plugin-validator.py fix-batch ./agents/
 ```
 
 **What the validator checks**:
@@ -454,7 +454,7 @@ uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix-batch ./agents
 - Multiline descriptions → single-line quoted strings
 - Unquoted descriptions with special characters
 
-SOURCE: [validate_frontmatter.py](./../../scripts/validate_frontmatter.py) lines 103-187
+SOURCE: [plugin-validator.py](./../../scripts/plugin-validator.py) lines 103-187
 
 ---
 

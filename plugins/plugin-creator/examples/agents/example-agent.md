@@ -46,11 +46,11 @@ Validate your agent using:
 
 ```bash
 # Frontmatter validation
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate ./path/to/agent.md
+uv run plugins/plugin-creator/scripts/plugin-validator.py validate ./path/to/agent.md
 
 # Auto-fix common issues
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix ./path/to/agent.md --dry-run
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix ./path/to/agent.md
+uv run plugins/plugin-creator/scripts/plugin-validator.py fix ./path/to/agent.md --dry-run
+uv run plugins/plugin-creator/scripts/plugin-validator.py fix ./path/to/agent.md
 
 # Plugin validation (if agent is part of a plugin)
 claude plugin validate ./path/to/plugin/

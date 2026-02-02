@@ -88,7 +88,7 @@ Result: `/plugin-creator:skill-creator` appears in menu ✓
 
 ### Validator Auto-Fix
 
-The `validate_frontmatter.py` script now automatically removes `name:` fields from SKILL.md files with this explanation:
+The `plugin-validator.py` script now automatically removes `name:` fields from SKILL.md files with this explanation:
 
 ```
 Removed 'name' field (Claude Code bug: skills with 'name' field don't appear as slash commands)
@@ -165,10 +165,10 @@ The model MUST use this plugin when:
 | Script                        | Purpose                                            | Verified Working                              |
 | ----------------------------- | -------------------------------------------------- | --------------------------------------------- |
 | `create_plugin.py`            | Interactive plugin scaffolding                     | ✅ Yes - creates .claude-plugin/, plugin.json |
-| `validate_frontmatter.py`     | Comprehensive frontmatter validation + auto-fix    | ✅ Yes - validates skills, agents, commands   |
-| `validate-skill-structure.sh` | Skill quality validation (lines, links, structure) | ✅ Yes - bash script                          |
+| `plugin-validator.py`         | Comprehensive plugin validation with token metrics| ✅ Yes - validates plugins, skills, agents, commands |
+| `validate-skill-structure.sh` | Skill quality validation (lines, links, structure) | ✅ Yes - bash script (deprecated, use plugin-validator.py) |
 | `validate-task-file.sh`       | Validate refactoring task file format              | ✅ Yes - bash script                          |
-| `count-skill-lines.sh`        | Count lines in skills, identify oversized ones     | ✅ Yes - used by count-lines command          |
+| `count-skill-lines.sh`        | Count lines in skills, identify oversized ones     | ✅ Yes - used by count-lines command (deprecated, use plugin-validator.py) |
 | `fix-tool-formats.py`         | Fix invalid tool format patterns in frontmatter    | ✅ Yes - scans ~/.claude and repos            |
 | `README.md`                   | Script documentation                               | ✅ Yes - documents fix-tool-formats.py        |
 
@@ -284,7 +284,7 @@ uv run plugins/plugin-creator/scripts/create_plugin.py
    - **Plugin:** Saves to `{plugin}/agents/{name}.md` + updates plugin.json
 
 6. **Validation:**
-   - Runs `validate_frontmatter.py` on agent file
+   - Runs `plugin-validator.py` on agent file
    - If plugin agent: runs `claude plugin validate {plugin-path}`
 
 **Outputs:**
@@ -340,49 +340,69 @@ uv run plugins/plugin-creator/scripts/create_plugin.py
 
 ---
 
-### Workflow 5: Validate Frontmatter
+### Workflow 5: Validate Plugin Components
 
-**Entry Point:** `validate_frontmatter.py` script
+**Entry Point:** `plugin-validator.py` script
 **Verified:** ✅ Yes
 
 **Supported File Types:**
 
-- SKILL.md files
-- Agent .md files
-- Command .md files (user-level)
+- Complete plugins (validates all components)
+- Individual SKILL.md files
+- Individual agent .md files
+- Individual command .md files
 
 **Usage:**
 
 ```bash
 # Validate single file
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate {path}
+uv run plugins/plugin-creator/scripts/plugin-validator.py {path}
 
-# Validate all files in directory
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py batch {directory}
+# Validate entire plugin directory
+uv run plugins/plugin-creator/scripts/plugin-validator.py plugins/my-plugin
 
-# Auto-fix issues (dry-run first)
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix {path} --dry-run
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix {path}
+# Auto-fix issues
+uv run plugins/plugin-creator/scripts/plugin-validator.py --fix {path}
 
-# Batch fix
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix-batch {directory}
+# Validate only (no fixes)
+uv run plugins/plugin-creator/scripts/plugin-validator.py --check {path}
+
+# Verbose output with details
+uv run plugins/plugin-creator/scripts/plugin-validator.py --verbose {path}
+
+# CI mode (no color)
+uv run plugins/plugin-creator/scripts/plugin-validator.py --no-color {path}
 ```
 
 **What It Validates:**
 
-- YAML syntax validity
-- No forbidden multiline indicators (`>-`, `|-`)
-- Required fields present (name, description for agents)
-- Field types match schema (string, bool, object)
-- Field values within constraints (length, pattern)
-- Valid values enumeration (model: sonnet/opus/haiku/inherit)
-- Tools/skills are comma-separated strings (not YAML arrays)
+- **Frontmatter schema:**
+  - YAML syntax validity
+  - No forbidden multiline indicators (`>-`, `|-`)
+  - Required fields present
+  - Field types match schema
+  - Tools/skills are comma-separated strings (not YAML arrays)
+- **Plugin structure:**
+  - plugin.json schema compliance
+  - Component path references
+  - Version consistency
+- **Skill complexity:**
+  - Token-based complexity measurement (not line count)
+  - Warning at 4000 tokens (~500 lines)
+  - Error at 6400 tokens (~800 lines)
+- **Internal links:**
+  - Markdown link validity
+  - Progressive disclosure structure
+- **Component completeness:**
+  - Required files present
+  - Cross-reference validation
 
 **What It Auto-Fixes:**
 
 - YAML arrays → comma-separated strings
 - Multiline descriptions → single-line quoted strings
 - Unquoted descriptions with colons
+- Missing `name:` fields in plugin skills (auto-removes due to Claude Code bug)
 
 **Schema Coverage:**
 
@@ -392,7 +412,9 @@ uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix-batch {directo
 | Agents    | name, description                 | model, tools, disallowedTools, permissionMode, skills, hooks, color | ✅ Yes   |
 | Commands  | description                       | argument-hint, allowed-tools, model, context, agent, hooks          | ✅ Yes   |
 
-**SOURCE:** Lines 103-187 of `validate_frontmatter.py`
+**Error Codes:** See [ERROR_CODES.md](./scripts/ERROR_CODES.md) for complete error code reference (23 codes across 9 validators)
+
+**SOURCE:** `plugin-validator.py` script with comprehensive validation and token-based complexity measurement
 
 ---
 
@@ -661,14 +683,14 @@ uv run plugins/plugin-creator/scripts/fix-tool-formats.py
 
 **Validated:**
 
-- ✅ Frontmatter schema (via validate_frontmatter.py)
+- ✅ Frontmatter schema (via plugin-validator.py)
 - ✅ Plugin.json syntax (via claude plugin validate)
 - ✅ Skill structure quality (via validate-skill-structure.sh)
 
 **Not Validated:**
 
 - ❌ Agent frontmatter vs skill frontmatter differences (validate-skill-structure.sh only checks skills)
-- ❌ Command frontmatter (no dedicated validator beyond general validate_frontmatter.py)
+- ❌ Command frontmatter (no dedicated validator beyond general plugin-validator.py)
 - ❌ Cross-references between components (e.g., agent references non-existent skill)
 
 **Recommendation:** Extend validation to cover agent-specific checks and cross-reference validation
@@ -699,7 +721,7 @@ uv run plugins/plugin-creator/scripts/fix-tool-formats.py
 
 ```
 1. Determine validation type:
-   - Frontmatter → uv run scripts/validate_frontmatter.py validate {path}
+   - Frontmatter → uv run scripts/plugin-validator.py validate {path}
    - Complete plugin → claude plugin validate {path}
    - Skill structure → scripts/validate-skill-structure.sh {path}
 2. Run appropriate validator
@@ -737,7 +759,7 @@ uv run plugins/plugin-creator/scripts/fix-tool-formats.py
    - tools fields must be comma-separated strings
    - All paths must start with ./
 3. Offer fix-tool-formats.py for tool format issues
-4. Offer validate_frontmatter.py fix for frontmatter issues
+4. Offer plugin-validator.py fix for frontmatter issues
 ```
 
 ---
@@ -748,7 +770,7 @@ All scripts use absolute paths or are executable with `uv run`:
 
 ```bash
 # From anywhere in the repository:
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate {path}
+uv run plugins/plugin-creator/scripts/plugin-validator.py validate {path}
 uv run plugins/plugin-creator/scripts/create_plugin.py
 
 # Scripts that work from their directory:
@@ -913,7 +935,7 @@ This documentation was created 2026-01-28 by:
 
 **Current State:** Validation and linting functionality is spread across multiple scripts:
 
-- `validate_frontmatter.py` - Frontmatter schema validation
+- `plugin-validator.py` - Frontmatter schema validation
 - `validate-skill-structure.sh` - Skill structure validation (bash)
 - `count-skill-lines.sh` - Line counting (bash)
 - `validate-task-file.sh` - Task file validation (bash)
@@ -1104,7 +1126,7 @@ This section lists discrete desired outcomes ready for Stage 2 (Planning with RT
 - `claude-plugins-reference-2026` skill (reference documentation)
 - `claude-skills-overview-2026` skill (skill structure guidance)
 - `plugin-creator` orchestrator (existing delegation pattern)
-- `validate_frontmatter.py` script (quality gate)
+- `plugin-validator.py` script (quality gate)
 - `claude plugin validate` command (structure validation)
 
 **Success Criteria**:
@@ -1157,7 +1179,7 @@ This section lists discrete desired outcomes ready for Stage 2 (Planning with RT
 - `skill-creator` skill (existing)
 - `agent-creator` skill (existing)
 - `write-frontmatter-description` skill (description generation)
-- `validate_frontmatter.py` script (validation gate)
+- `plugin-validator.py` script (validation gate)
 - `claude plugin validate` command (structure validation)
 
 **Success Criteria**:
@@ -1191,7 +1213,7 @@ This section lists discrete desired outcomes ready for Stage 2 (Planning with RT
 
 **Current State** (Stage 1 Discovery Output):
 
-- Partial validation: `validate_frontmatter.py` (frontmatter only)
+- Partial validation: `plugin-validator.py` (frontmatter only)
 - Partial validation: `validate-skill-structure.sh` (skills only)
 - Partial validation: `claude plugin validate` (structure only)
 - No unified entry point, no quality scoring, no marketplace readiness check
@@ -1206,7 +1228,7 @@ This section lists discrete desired outcomes ready for Stage 2 (Planning with RT
 
 **Dependencies on Existing Components**:
 
-- `validate_frontmatter.py` script (schema validation)
+- `plugin-validator.py` script (schema validation)
 - `validate-skill-structure.sh` script (quality checks)
 - `claude plugin validate` CLI (structure validation)
 - `plugin-assessor` agent (comprehensive analysis)
@@ -1271,7 +1293,7 @@ This section lists discrete desired outcomes ready for Stage 2 (Planning with RT
 
 - `.pre-commit-config.yaml` (configuration file)
 - `prek` tool (pre-commit runner)
-- `validate_frontmatter.py` script (validation logic)
+- `plugin-validator.py` script (validation logic)
 - `validate-skill-structure.sh` script (quality checks)
 - `claude plugin validate` command (structure validation)
 
@@ -1430,7 +1452,7 @@ uv run -q --no-sync plugins/plugin-creator/scripts/auto-sync-manifests.py
 
 **Dependencies on Existing Components**:
 
-- `validate_frontmatter.py` (frontmatter validation logic)
+- `plugin-validator.py` (frontmatter validation logic)
 - `validate-skill-structure.sh` (quality check logic)
 - `count-skill-lines.sh` (complexity measurement logic)
 - `validate-task-file.sh` (task file validation logic)
@@ -1548,7 +1570,7 @@ Workflow phases:
 
 - Load `skill-creator`, `agent-creator` as needed
 - Load `write-frontmatter-description` for descriptions
-- Run `validate_frontmatter.py` after creation
+- Run `plugin-validator.py` after creation
 - Run `claude plugin validate` for structure
 
 #### 3. `/validate-plugin` - Comprehensive Plugin Validation
@@ -1557,7 +1579,7 @@ Workflow phases:
 
 **Current State:**
 
-- Script: `validate_frontmatter.py` (frontmatter only)
+- Script: `plugin-validator.py` (frontmatter only)
 - Script: `validate-skill-structure.sh` (skills only)
 - CLI: `claude plugin validate` (structure only)
 
@@ -1590,7 +1612,7 @@ Validation suite:
 
 **Dependencies:**
 
-- `validate_frontmatter.py` (all components)
+- `plugin-validator.py` (all components)
 - `validate-skill-structure.sh` (all skills)
 - `claude plugin validate` (structure)
 - `plugin-assessor` agent (comprehensive analysis)
@@ -1641,7 +1663,7 @@ for plugin_dir in $changed_plugins; do
   echo "Validating $plugin_dir..."
 
   # Run frontmatter validation
-  uv run plugins/plugin-creator/scripts/validate_frontmatter.py "$plugin_dir"
+  uv run plugins/plugin-creator/scripts/plugin-validator.py "$plugin_dir"
 
   # Run plugin structure validation
   claude plugin validate "$plugin_dir"
@@ -1795,7 +1817,7 @@ All workflows should follow the process documented in `methodology_development/`
 
 Currently validation is spread across:
 
-- `validate_frontmatter.py` (Python)
+- `plugin-validator.py` (Python)
 - `validate-skill-structure.sh` (Bash)
 - `validate-task-file.sh` (Bash)
 - `count-skill-lines.sh` (Bash)

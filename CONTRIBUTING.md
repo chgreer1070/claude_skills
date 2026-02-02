@@ -213,14 +213,14 @@ Validate skill and agent frontmatter:
 
 ```bash
 # Single file
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate path/to/SKILL.md
+uv run plugins/plugin-creator/scripts/plugin-validator.py validate path/to/SKILL.md
 
 # Entire directory
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py batch plugins/your-plugin/
+uv run plugins/plugin-creator/scripts/plugin-validator.py batch plugins/your-plugin/
 
 # Auto-fix issues (dry-run first)
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix path/to/SKILL.md --dry-run
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix path/to/SKILL.md
+uv run plugins/plugin-creator/scripts/plugin-validator.py fix path/to/SKILL.md --dry-run
+uv run plugins/plugin-creator/scripts/plugin-validator.py fix path/to/SKILL.md
 ```
 
 ### Linting

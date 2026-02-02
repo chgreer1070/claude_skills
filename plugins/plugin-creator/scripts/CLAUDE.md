@@ -19,36 +19,48 @@ Automatically maintains `plugin.json` and `marketplace.json` during pre-commit. 
 - Protects against double-bumping when commit fails and is retried
 - Only operates on staged changes (`git diff --cached`)
 
-### validate_frontmatter.py
+### plugin-validator.py
 
-Validates and auto-fixes YAML frontmatter in skills, agents, and commands.
+Comprehensive validation tool for Claude Code plugins with token-based complexity measurement.
 
 **Usage:**
 
 ```bash
 # Validate single file
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate <path>
+uv run plugins/plugin-creator/scripts/plugin-validator.py <path>
 
-# Validate directory
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py batch <directory>
+# Validate entire plugin
+uv run plugins/plugin-creator/scripts/plugin-validator.py plugins/my-plugin
 
 # Auto-fix issues
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix <path>
+uv run plugins/plugin-creator/scripts/plugin-validator.py --fix <path>
+
+# Validate only (no auto-fix)
+uv run plugins/plugin-creator/scripts/plugin-validator.py --check <path>
+
+# Verbose output
+uv run plugins/plugin-creator/scripts/plugin-validator.py --verbose <path>
+
+# CI mode (no color)
+uv run plugins/plugin-creator/scripts/plugin-validator.py --no-color <path>
 ```
 
 **Validates:**
 
-- YAML syntax
-- Required fields present
-- Field types match schema
-- No forbidden multiline indicators (`>-`, `|-`)
-- Tools/skills are comma-separated strings (not arrays)
+- **Frontmatter:** YAML syntax, required fields, field types, tools/skills format
+- **Plugin structure:** plugin.json schema, component paths, version consistency
+- **Skill complexity:** Token-based metrics (4000 warning, 6400 error thresholds)
+- **Internal links:** Markdown link validity, progressive disclosure
+- **Completeness:** Required files, cross-references
 
 **Auto-fixes:**
 
 - YAML arrays → comma-separated strings
 - Multiline descriptions → single-line quoted strings
 - Unquoted descriptions with colons
+- Removes `name:` field from plugin skills (Claude Code bug workaround)
+
+**Error Codes:** 23 error codes across 9 validators - see ERROR_CODES.md
 
 ### create_plugin.py
 
@@ -129,7 +141,7 @@ Scripts integrated into `.pre-commit-config.yaml`:
 | Hook ID                | Script                    | Trigger Pattern                                           | Purpose                                 |
 | ---------------------- | ------------------------- | --------------------------------------------------------- | --------------------------------------- |
 | `auto-sync-manifests`  | `auto-sync-manifests.py`  | `^plugins/`                                               | Auto-bump versions and update manifests |
-| `validate-frontmatter` | `validate_frontmatter.py` | `^plugins/.*(SKILL\.md\|agents/.*\.md\|commands/.*\.md)$` | Validate and fix frontmatter            |
+| `plugin-validator`     | `plugin-validator.py`     | `^plugins/.*(SKILL\.md\|agents/.*\.md\|commands/.*\.md\|plugin\.json)$` | Comprehensive plugin validation with token metrics |
 
 ## Execution Requirements
 

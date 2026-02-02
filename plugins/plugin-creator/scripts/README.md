@@ -137,48 +137,57 @@ The script runs `claude plugin validate` internally before reporting success to 
 
 ---
 
-## validate_frontmatter.py
+## plugin-validator.py
 
-**Purpose**: Comprehensive YAML frontmatter validation and auto-fix for skills, agents, and commands.
+**Purpose**: Comprehensive validation tool for Claude Code plugins with token-based complexity measurement.
 
-### Supported File Types
+### Supported Validation Types
 
-- SKILL.md files (skills)
-- Agent .md files
-- Command .md files (user-level)
+- Complete plugins (validates all components)
+- Individual SKILL.md files
+- Individual agent .md files
+- Individual command .md files
 
 ### Usage
 
 ```bash
-# Validate single file
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate {path}
+# Validate single file or directory
+uv run plugins/plugin-creator/scripts/plugin-validator.py {path}
 
-# Validate all files in directory
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py batch {directory}
+# Validate entire plugin
+uv run plugins/plugin-creator/scripts/plugin-validator.py plugins/my-plugin
 
-# Auto-fix issues (dry-run first recommended)
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix {path} --dry-run
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix {path}
+# Auto-fix issues
+uv run plugins/plugin-creator/scripts/plugin-validator.py --fix {path}
 
-# Batch fix all files in directory
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py fix-batch {directory}
+# Validate only (no auto-fix)
+uv run plugins/plugin-validator.py --check {path}
+
+# Verbose output with details
+uv run plugins/plugin-creator/scripts/plugin-validator.py --verbose {path}
+
+# CI mode (no color)
+uv run plugins/plugin-creator/scripts/plugin-validator.py --no-color {path}
 ```
 
 ### What It Validates
 
-- YAML syntax validity
-- No forbidden multiline indicators (`>-`, `|-`)
-- Required fields present (varies by file type)
-- Field types match schema (string, bool, object)
-- Field values within constraints (length, pattern)
-- Valid enumeration values (e.g., model: sonnet/opus/haiku/inherit)
-- Tools/skills are comma-separated strings (not YAML arrays)
+- **Frontmatter schema:** YAML syntax, required fields, field types, tools/skills format
+- **Plugin structure:** plugin.json schema, component paths, version consistency
+- **Skill complexity:** Token-based metrics (4000 warning, 6400 error thresholds)
+- **Internal links:** Markdown link validity, progressive disclosure
+- **Component completeness:** Required files, cross-references
 
 ### What It Auto-Fixes
 
-- YAML arrays → comma-separated strings for tools/skills fields
+- YAML arrays → comma-separated strings
 - Multiline descriptions → single-line quoted strings
-- Unquoted descriptions containing colons
+- Unquoted descriptions with colons
+- Removes `name:` field from plugin skills (Claude Code bug workaround)
+
+### Error Codes
+
+23 error codes across 9 validators - see [ERROR_CODES.md](./ERROR_CODES.md)
 
 ### Schema Coverage
 

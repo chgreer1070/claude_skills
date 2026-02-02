@@ -43,7 +43,7 @@ Validate your skill using:
 
 ```bash
 # Frontmatter validation
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py validate ./path/to/skill/SKILL.md
+uv run plugins/plugin-creator/scripts/plugin-validator.py validate ./path/to/skill/SKILL.md
 
 # Structure validation (checks line count, links, references)
 plugins/plugin-creator/scripts/validate-skill-structure.sh ./path/to/skill/

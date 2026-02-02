@@ -72,10 +72,10 @@ Claude Code automatically uses the directory name, so omitting `name:` allows pr
 
 ### Automatic Fix
 
-The `validate_frontmatter.py` script now automatically removes `name:` fields from SKILL.md files:
+The `plugin-validator.py` script now automatically removes `name:` fields from SKILL.md files:
 
 ```bash
-uv run ./scripts/validate_frontmatter.py fix ./skills/my-skill/SKILL.md
+uv run ./scripts/plugin-validator.py fix ./skills/my-skill/SKILL.md
 ```
 
 Output:
@@ -105,10 +105,10 @@ Use this plugin when:
 uv run ./scripts/create_plugin.py
 
 # Validate frontmatter
-uv run ./scripts/validate_frontmatter.py validate ./skills/my-skill/SKILL.md
+uv run ./scripts/plugin-validator.py validate ./skills/my-skill/SKILL.md
 
 # Auto-fix common frontmatter issues
-uv run ./scripts/validate_frontmatter.py fix ./skills/my-skill/SKILL.md
+uv run ./scripts/plugin-validator.py fix ./skills/my-skill/SKILL.md
 ```
 
 ### Refactoring Plugins
@@ -172,7 +172,7 @@ uv run ./scripts/validate_frontmatter.py fix ./skills/my-skill/SKILL.md
 
 | Script                        | Purpose                                       | Usage                                              |
 | ----------------------------- | --------------------------------------------- | -------------------------------------------------- |
-| `validate_frontmatter.py`     | Comprehensive schema validation with auto-fix | `uv run validate_frontmatter.py validate SKILL.md` |
+| `plugin-validator.py`     | Comprehensive schema validation with auto-fix | `uv run plugin-validator.py validate SKILL.md` |
 | `validate-skill-structure.sh` | Skill structure and quality validation        | `./validate-skill-structure.sh ./skills/my-skill`  |
 | `validate-task-file.sh`       | Validate refactoring task file format         | `./validate-task-file.sh tasks.md`                 |
 
@@ -188,17 +188,17 @@ uv run ./scripts/validate_frontmatter.py fix ./skills/my-skill/SKILL.md
 
 ```bash
 # Validate frontmatter (comprehensive)
-uv run ./scripts/validate_frontmatter.py validate ./skills/my-skill/SKILL.md
+uv run ./scripts/plugin-validator.py validate ./skills/my-skill/SKILL.md
 
 # Validate all frontmatter in a directory
-uv run ./scripts/validate_frontmatter.py batch ./plugins/my-plugin
+uv run ./scripts/plugin-validator.py batch ./plugins/my-plugin
 
 # Auto-fix frontmatter issues
-uv run ./scripts/validate_frontmatter.py fix ./skills/my-skill/SKILL.md --dry-run
-uv run ./scripts/validate_frontmatter.py fix ./skills/my-skill/SKILL.md
+uv run ./scripts/plugin-validator.py fix ./skills/my-skill/SKILL.md --dry-run
+uv run ./scripts/plugin-validator.py fix ./skills/my-skill/SKILL.md
 
 # Batch fix all frontmatter
-uv run ./scripts/validate_frontmatter.py fix-batch ./plugins/my-plugin
+uv run ./scripts/plugin-validator.py fix-batch ./plugins/my-plugin
 
 # Validate skill structure (line counts, links, directories)
 ./scripts/validate-skill-structure.sh ./skills/my-skill
@@ -209,7 +209,7 @@ uv run ./scripts/validate_frontmatter.py fix-batch ./plugins/my-plugin
 
 ## Validation Capabilities
 
-### Frontmatter Validation (`validate_frontmatter.py`)
+### Frontmatter Validation (`plugin-validator.py`)
 
 **Checks:**
 
@@ -474,7 +474,7 @@ claude --plugin-dir ./plugins/plugin-creator
 uv run ./scripts/create_plugin.py
 
 # Validate the generated frontmatter
-uv run ./scripts/validate_frontmatter.py batch ./my-new-plugin
+uv run ./scripts/plugin-validator.py batch ./my-new-plugin
 
 # Validate plugin manifest
 claude plugin validate ./my-new-plugin
@@ -513,19 +513,19 @@ Use @"plugin-creator:refactor-validator (agent)" to validate the python3-develop
 
 ```bash
 # Check a single file
-uv run ./scripts/validate_frontmatter.py validate ./skills/my-skill/SKILL.md
+uv run ./scripts/plugin-validator.py validate ./skills/my-skill/SKILL.md
 
 # Validate all skills in a plugin
-uv run ./scripts/validate_frontmatter.py batch ./plugins/my-plugin
+uv run ./scripts/plugin-validator.py batch ./plugins/my-plugin
 
 # Auto-fix issues (dry-run first)
-uv run ./scripts/validate_frontmatter.py fix ./skills/my-skill/SKILL.md --dry-run
+uv run ./scripts/plugin-validator.py fix ./skills/my-skill/SKILL.md --dry-run
 
 # Apply fixes
-uv run ./scripts/validate_frontmatter.py fix ./skills/my-skill/SKILL.md
+uv run ./scripts/plugin-validator.py fix ./skills/my-skill/SKILL.md
 
 # Batch fix entire plugin
-uv run ./scripts/validate_frontmatter.py fix-batch ./plugins/my-plugin
+uv run ./scripts/plugin-validator.py fix-batch ./plugins/my-plugin
 ```
 
 ## Plugin Component Reference

@@ -18,8 +18,8 @@ A description should be a complete and informative explanation of what the skill
 
 ## Validation
 
-After writing, validate with the validation script `validate_frontmatter.py`
+After writing, validate with the validation script `plugin-validator.py`
 
 ```sh
- validate_frontmatter.py [file]
+ plugin-validator.py [file]
 ```

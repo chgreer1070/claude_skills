@@ -889,7 +889,7 @@ Include "ultrathink" anywhere in skill content to enable extended thinking mode.
 ```bash
 # Run in parallel:
 uv run scripts/create_plugin.py validate ./plugins/my-plugin
-uv run scripts/validate_frontmatter.py batch ./plugins/my-plugin
+uv run scripts/plugin-validator.py batch ./plugins/my-plugin
 ```
 
 ### Layer 2: Official Docs Verification
@@ -1065,7 +1065,7 @@ VERDICT: [COMPLETE / NOT COMPLETE - reason]
 | ----------------------------------- | ----------------------------------- |
 | `scripts/create_plugin.py create`   | Scaffold new plugin with validation |
 | `scripts/create_plugin.py validate` | Check existing plugin structure     |
-| `scripts/validate_frontmatter.py`   | Validate frontmatter against schema |
+| `scripts/plugin-validator.py`   | Validate frontmatter against schema |
 
 Scripts use PEP 723 inline metadata - dependencies install automatically via `uv run`.
 
