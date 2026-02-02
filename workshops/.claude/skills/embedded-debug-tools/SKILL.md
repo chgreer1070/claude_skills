@@ -1,5 +1,5 @@
 ---
-description: Debug and flash commands for nRF52 and STM32 development — OpenOCD, nrfjprog, STM32_Programmer_CLI, and J-Link. Use when flashing firmware, starting debug sessions, reading/writing memory, or connecting to targets.
+description: 'Debug and flash commands for nRF52 and STM32 development; OpenOCD, nrfjprog, STM32_Programmer_CLI, and J-Link. Use when flashing firmware, starting debug sessions, reading/writing memory, or connecting to targets.'
 user-invocable: true
 allowed-tools: Bash
 ---

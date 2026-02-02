@@ -17,7 +17,7 @@ C4Context
     System_Ext(claude, "Claude CLI", "Official plugin validation command")
     System_Ext(git, "Git", "Pre-commit hook integration")
 
-    Rel(dev, validator, "Runs validation")
+    Rel(dev, validator, "Runs commands")
     Rel(validator, claude, "Delegates to claude plugin validate")
     Rel(git, validator, "Triggers on commit")
 ```
@@ -154,8 +154,10 @@ class ValidationIssue:
     severity: Literal["error", "warning", "info"]
     field: str
     message: str
+    code: str
     line: int | None = None
     suggestion: str | None = None
+    docs_url: str | None = None
 
 class Validator(Protocol):
     """Protocol for all validators."""
@@ -175,15 +177,15 @@ class Validator(Protocol):
 
 **Required Validators**:
 
-| Validator Class                  | Validates                                 | Auto-Fixable | Source Logic                              |
-| -------------------------------- | ----------------------------------------- | ------------ | ----------------------------------------- |
-| `FrontmatterValidator`           | YAML syntax, required fields, field types | Yes          | validate_frontmatter.py                   |
-| `NameFormatValidator`            | Name lowercase with hyphens only          | No           | validate-skill-structure.sh lines 63-76   |
-| `DescriptionValidator`           | Min length 20 chars, trigger phrases      | No           | validate-skill-structure.sh lines 78-97   |
-| `ComplexityValidator`            | Token count thresholds                    | No           | Replaces count-skill-lines.sh             |
-| `ProgressiveDisclosureValidator` | references/, examples/, scripts/ dirs     | No           | validate-skill-structure.sh lines 114-137 |
-| `InternalLinkValidator`          | Markdown links with ./ prefix exist       | No           | validate-skill-structure.sh lines 139-160 |
-| `PluginStructureValidator`       | plugin.json schema, paths                 | No           | claude plugin validate (external)         |
+| Validator Class                  | Validates                                 | Auto-Fixable | Source Logic                              | Error Codes |
+| -------------------------------- | ----------------------------------------- | ------------ | ----------------------------------------- | ----------- |
+| `FrontmatterValidator`           | YAML syntax, required fields, field types | Yes          | validate_frontmatter.py                   | FM001-FM010 |
+| `NameFormatValidator`            | Name lowercase with hyphens only          | No           | validate-skill-structure.sh lines 63-76   | SK001-SK003 |
+| `DescriptionValidator`           | Min length 20 chars, trigger phrases      | No           | validate-skill-structure.sh lines 78-97   | SK004-SK005 |
+| `ComplexityValidator`            | Token count thresholds                    | No           | Replaces count-skill-lines.sh             | SK006-SK007 |
+| `ProgressiveDisclosureValidator` | references/, examples/, scripts/ dirs     | No           | validate-skill-structure.sh lines 114-137 | PD001-PD003 |
+| `InternalLinkValidator`          | Markdown links with ./ prefix exist       | No           | validate-skill-structure.sh lines 139-160 | LK001-LK002 |
+| `PluginStructureValidator`       | plugin.json schema, paths                 | No           | claude plugin validate (external)         | PL001-PL005 |
 
 **Validation Sequence**:
 
@@ -253,11 +255,12 @@ class Reporter(Protocol):
 
 ```
 plugins/my-plugin/skills/example/SKILL.md
-  ERROR frontmatter: Missing required field 'name'
+  ERROR [FM001] frontmatter: Missing required field 'name'
     → Add name: example-skill to frontmatter
-  WARN description: Length 15 chars (minimum 20 recommended)
+    → https://link.to/docs/ERROR_CODES.md#fm001
+  WARN [SK004] description: Length 15 chars (minimum 20 recommended)
     → Expand description to include trigger phrases
-  INFO progressive-disclosure: No references/ directory
+  INFO [PD001] progressive-disclosure: No references/ directory
     → Consider adding references/ for detailed documentation
 ```
 
@@ -402,8 +405,10 @@ class ValidationIssue:
     field: str
     severity: Literal["error", "warning", "info"]
     message: str
+    code: str
     line: int | None = None
     suggestion: str | None = None
+    docs_url: str | None = None
 
     def format(self) -> str:
         """Format for display."""
@@ -414,7 +419,8 @@ class ValidationIssue:
         }[self.severity]
 
         location = f":{self.line}" if self.line else ""
-        return f"  {severity_icon} {self.field}{location}: {self.message}"
+        docs = f"\n    → {self.docs_url}" if self.docs_url else ""
+        return f"  {severity_icon} [{self.code}] {self.field}{location}: {self.message}{docs}"
 ```
 
 **Token Counting Model**:
@@ -809,6 +815,145 @@ class ExternalToolError(PluginValidatorError):
 
 ---
 
+## Error Code System
+
+### Error Code Schema
+
+**Format**: `[CATEGORY][NUMBER]`
+
+**Categories**:
+
+| Prefix | Category               | Scope                                           |
+| ------ | ---------------------- | ----------------------------------------------- |
+| FM     | Frontmatter            | YAML syntax, required fields, field types       |
+| SK     | Skill                  | Name format, description, complexity, structure |
+| LK     | Links                  | Internal link validity                          |
+| PD     | Progressive Disclosure | Directory structure                             |
+| PL     | Plugin                 | plugin.json structure, paths                    |
+
+### Error Code Catalog
+
+**Frontmatter Errors (FM001-FM010)**:
+
+| Code  | Severity | Description                                  | Auto-Fixable |
+| ----- | -------- | -------------------------------------------- | ------------ |
+| FM001 | error    | Missing required field (name, description)   | No           |
+| FM002 | error    | Invalid YAML syntax                          | No           |
+| FM003 | error    | Frontmatter not closed with `---`            | No           |
+| FM004 | warning  | Forbidden multiline indicator (`>-`, `\|-`)  | Yes          |
+| FM005 | error    | Field type mismatch (expected string/bool)   | No           |
+| FM006 | error    | Invalid field value (model not in enum)      | No           |
+| FM007 | warning  | Tools field is YAML array (not CSV string)   | Yes          |
+| FM008 | warning  | Skills field is YAML array (not CSV string)  | Yes          |
+| FM009 | warning  | Unquoted description with colons             | Yes          |
+| FM010 | error    | Name pattern invalid (not lowercase-hyphens) | No           |
+
+**Skill Errors (SK001-SK007)**:
+
+| Code  | Severity | Description                                   | Auto-Fixable |
+| ----- | -------- | --------------------------------------------- | ------------ |
+| SK001 | error    | Name contains uppercase characters            | No           |
+| SK002 | error    | Name contains underscores (use hyphens)       | No           |
+| SK003 | error    | Name has leading/trailing/consecutive hyphens | No           |
+| SK004 | warning  | Description too short (minimum 20 characters) | No           |
+| SK005 | warning  | Description missing trigger phrases           | No           |
+| SK006 | warning  | Token count exceeds 4000 (consider splitting) | No           |
+| SK007 | error    | Token count exceeds 6400 (must split)         | No           |
+
+**Link Errors (LK001-LK002)**:
+
+| Code  | Severity | Description                                  | Auto-Fixable |
+| ----- | -------- | -------------------------------------------- | ------------ |
+| LK001 | error    | Broken internal link (file does not exist)   | No           |
+| LK002 | warning  | Link missing `./` prefix (not relative path) | No           |
+
+**Progressive Disclosure Errors (PD001-PD003)**:
+
+| Code  | Severity | Description                      | Auto-Fixable |
+| ----- | -------- | -------------------------------- | ------------ |
+| PD001 | info     | No `references/` directory found | No           |
+| PD002 | info     | No `examples/` directory found   | No           |
+| PD003 | info     | No `scripts/` directory found    | No           |
+
+**Plugin Errors (PL001-PL005)**:
+
+| Code  | Severity | Description                                  | Auto-Fixable |
+| ----- | -------- | -------------------------------------------- | ------------ |
+| PL001 | error    | Missing `plugin.json` file                   | No           |
+| PL002 | error    | Invalid JSON syntax in `plugin.json`         | No           |
+| PL003 | error    | Missing required field `name` in plugin.json | No           |
+| PL004 | error    | Component path does not start with `./`      | No           |
+| PL005 | error    | Referenced component file does not exist     | No           |
+
+### Error Code Documentation URL
+
+**Base Documentation URL**: `https://github.com/your-org/claude_skills/blob/main/plugins/plugin-creator/docs/ERROR_CODES.md`
+
+**URL Pattern**: `{base_url}#{code_lowercase}`
+
+**Example**:
+
+- Code: `FM001`
+- URL: `https://github.com/your-org/claude_skills/blob/main/plugins/plugin-creator/docs/ERROR_CODES.md#fm001`
+
+### ValidationIssue Data Model Update
+
+**Updated ValidationIssue**:
+
+```python
+from dataclasses import dataclass
+from typing import Literal
+
+@dataclass
+class ValidationIssue:
+    """A validation issue with context and error code."""
+
+    field: str
+    severity: Literal["error", "warning", "info"]
+    message: str
+    code: str  # Error code (e.g., "FM001", "SK004")
+    line: int | None = None
+    suggestion: str | None = None
+    docs_url: str | None = None  # Link to error code documentation
+
+    def format(self) -> str:
+        """Format for display with error code and documentation link."""
+        severity_icon = {
+            "error": "✗",
+            "warning": "⚠",
+            "info": "i"
+        }[self.severity]
+
+        location = f":{self.line}" if self.line else ""
+        suggestion_line = f"\n    → {self.suggestion}" if self.suggestion else ""
+        docs_line = f"\n    → {self.docs_url}" if self.docs_url else ""
+
+        return f"  {severity_icon} [{self.code}] {self.field}{location}: {self.message}{suggestion_line}{docs_line}"
+```
+
+### Error Code Integration with Validators
+
+**Updated Validator Specification Table**:
+
+| Validator Class                  | Validates                                 | Auto-Fixable | Error Codes |
+| -------------------------------- | ----------------------------------------- | ------------ | ----------- |
+| `FrontmatterValidator`           | YAML syntax, required fields, field types | Yes          | FM001-FM010 |
+| `NameFormatValidator`            | Name lowercase with hyphens only          | No           | SK001-SK003 |
+| `DescriptionValidator`           | Min length 20 chars, trigger phrases      | No           | SK004-SK005 |
+| `ComplexityValidator`            | Token count thresholds                    | No           | SK006-SK007 |
+| `ProgressiveDisclosureValidator` | references/, examples/, scripts/ dirs     | No           | PD001-PD003 |
+| `InternalLinkValidator`          | Markdown links with ./ prefix exist       | No           | LK001-LK002 |
+| `PluginStructureValidator`       | plugin.json schema, paths                 | No           | PL001-PL005 |
+
+**Error Code Assignment Requirements**:
+
+- Each validator MUST assign appropriate error codes to ValidationIssue instances
+- Error codes MUST match the documented error catalog
+- Documentation URL MUST be generated using the base URL pattern
+- Error codes MUST remain stable across releases (no code reuse)
+
+---
+
 ## Integration Patterns
 
 ### Pre-commit Hook Integration
@@ -895,31 +1040,36 @@ repos:
 
 **Checks**:
 
-- YAML syntax valid
-- Frontmatter starts with `---` and closes with `---`
-- Required fields present based on file type:
+- YAML syntax valid (FM002)
+- Frontmatter starts with `---` and closes with `---` (FM003)
+- Required fields present based on file type (FM001):
   - Skills: name (optional), description (optional)
   - Agents: name (required), description (required)
   - Commands: description (required)
-- Field types match schema:
-  - name: string matching pattern `^[a-z0-9][a-z0-9-]*[a-z0-9]$`
+- Field types match schema (FM005):
+  - name: string matching pattern `^[a-z0-9][a-z0-9-]*[a-z0-9]$` (FM010)
   - description: string (no colons except in URLs)
-  - model: one of "sonnet", "opus", "haiku", "inherit"
-  - tools: comma-separated string (not YAML array)
-  - skills: comma-separated string (not YAML array)
-- No forbidden multiline indicators (`>-`, `|-`)
+  - model: one of "sonnet", "opus", "haiku", "inherit" (FM006)
+  - tools: comma-separated string (not YAML array) (FM007)
+  - skills: comma-separated string (not YAML array) (FM008)
+- No forbidden multiline indicators (`>-`, `|-`) (FM004)
+- Unquoted descriptions with colons (FM009)
 
 **Auto-Fixable**:
 
-- YAML arrays → comma-separated strings
-- Multiline descriptions → single-line quoted strings
-- Unquoted descriptions with colons → quoted
+- FM004: YAML arrays → comma-separated strings
+- FM007: Multiline descriptions → single-line quoted strings
+- FM008: Unquoted descriptions with colons → quoted
+- FM009: Unquoted descriptions with colons → quoted
 
 **Not Auto-Fixable**:
 
-- Missing required fields
-- Invalid field types
-- Name format violations
+- FM001: Missing required fields
+- FM002: Invalid YAML syntax
+- FM003: Missing frontmatter delimiters
+- FM005: Invalid field types
+- FM006: Invalid field values
+- FM010: Name format violations
 
 ### Name Format Validation
 
@@ -928,15 +1078,17 @@ repos:
 **Checks**:
 
 - Name field present (if required)
-- Name matches pattern: lowercase, hyphens only
-- No leading/trailing hyphens
-- No consecutive hyphens
-- No underscores
+- Name matches pattern: lowercase, hyphens only (SK001)
+- No leading/trailing hyphens (SK003)
+- No consecutive hyphens (SK003)
+- No underscores (SK002)
 - Max 40 characters for skill directory names
 
 **Severity**: ERROR
 
 **Not Auto-Fixable**: Requires human decision on correct name
+
+**Error Codes**: SK001, SK002, SK003
 
 ### Description Validation
 
@@ -944,8 +1096,8 @@ repos:
 
 **Checks**:
 
-- Description minimum 20 characters
-- Description contains at least one trigger phrase:
+- Description minimum 20 characters (SK004)
+- Description contains at least one trigger phrase (SK005):
   - "use when"
   - "use this"
   - "trigger"
@@ -953,10 +1105,12 @@ repos:
 
 **Severity**:
 
-- Missing trigger phrases: WARNING
-- Too short: WARNING
+- Missing trigger phrases: WARNING (SK005)
+- Too short: WARNING (SK004)
 
 **Not Auto-Fixable**: Requires human-written content
+
+**Error Codes**: SK004, SK005
 
 ### Token-Based Complexity Validation
 
@@ -999,17 +1153,19 @@ def measure_skill_complexity(skill_path: Path) -> ComplexityMetrics:
 
 **Thresholds**:
 
-- WARNING: body_tokens > 4000 (~500 lines equivalent)
-- ERROR: body_tokens > 6400 (~800 lines equivalent)
+- WARNING: body_tokens > 4000 (~500 lines equivalent) (SK006)
+- ERROR: body_tokens > 6400 (~800 lines equivalent) (SK007)
 
 **Rationale**: Token count directly measures Claude processing cost, not line count. A 500-line file with dense code uses fewer tokens than 500 lines of verbose prose.
 
 **Severity**:
 
-- > 4000 tokens: WARNING (consider splitting)
-- > 6400 tokens: ERROR (must split)
+- > 4000 tokens: WARNING (SK006) (consider splitting)
+- > 6400 tokens: ERROR (SK007) (must split)
 
 **Not Auto-Fixable**: Requires content restructuring
+
+**Error Codes**: SK006, SK007
 
 ### Progressive Disclosure Validation
 
@@ -1017,14 +1173,16 @@ def measure_skill_complexity(skill_path: Path) -> ComplexityMetrics:
 
 **Checks**:
 
-- Presence of `references/` directory (INFO if missing)
-- Presence of `examples/` directory (INFO if missing)
-- Presence of `scripts/` directory (INFO if missing)
+- Presence of `references/` directory (INFO if missing) (PD001)
+- Presence of `examples/` directory (INFO if missing) (PD002)
+- Presence of `scripts/` directory (INFO if missing) (PD003)
 - Count files in each directory if present
 
 **Severity**: INFO
 
 **Not Auto-Fixable**: Requires content creation
+
+**Error Codes**: PD001, PD002, PD003
 
 ### Internal Link Validation
 
@@ -1034,8 +1192,9 @@ def measure_skill_complexity(skill_path: Path) -> ComplexityMetrics:
 
 - Extract markdown links: `\[([^]]+)\]\(([^)]+)\)`
 - Filter to relative links starting with `./`
-- Verify each linked file exists
+- Verify each linked file exists (LK001)
 - Report broken links as ERROR
+- Warn about links missing `./` prefix (LK002)
 
 **Link Extraction Pattern**:
 
@@ -1064,6 +1223,14 @@ def validate_internal_links(skill_path: Path) -> list[ValidationIssue]:
     for link_text, link_url in links:
         # Only validate relative links starting with ./
         if not link_url.startswith("./"):
+            issues.append(ValidationIssue(
+                field="internal-links",
+                severity="warning",
+                message=f"Link missing ./ prefix: {link_url}",
+                code="LK002",
+                suggestion="Use relative paths with ./ prefix for internal links",
+                docs_url="https://github.com/your-org/claude_skills/blob/main/plugins/plugin-creator/docs/ERROR_CODES.md#lk002"
+            ))
             continue
 
         # Resolve link relative to skill directory
@@ -1074,15 +1241,19 @@ def validate_internal_links(skill_path: Path) -> list[ValidationIssue]:
                 field="internal-links",
                 severity="error",
                 message=f"Broken link: {link_url}",
-                suggestion=f"Create file at {link_path} or fix link"
+                code="LK001",
+                suggestion=f"Create file at {link_path} or fix link",
+                docs_url="https://github.com/your-org/claude_skills/blob/main/plugins/plugin-creator/docs/ERROR_CODES.md#lk001"
             ))
 
     return issues
 ```
 
-**Severity**: ERROR
+**Severity**: ERROR (LK001), WARNING (LK002)
 
 **Not Auto-Fixable**: Requires file creation or link correction
+
+**Error Codes**: LK001, LK002
 
 ### Plugin Structure Validation
 
@@ -1096,10 +1267,10 @@ def validate_internal_links(skill_path: Path) -> list[ValidationIssue]:
 
 **Checks Delegated to Claude CLI**:
 
-- plugin.json schema validation
-- Required field presence
-- Path format validation (must start with `./`)
-- Referenced files exist
+- plugin.json schema validation (PL002)
+- Required field presence (PL003)
+- Path format validation (must start with `./`) (PL004)
+- Referenced files exist (PL005)
 - Component arrays vs directory strings
 
 **Integration Behavior**:
@@ -1112,6 +1283,8 @@ def validate_internal_links(skill_path: Path) -> list[ValidationIssue]:
 **Severity**: ERROR (if claude validates, otherwise INFO)
 
 **Not Auto-Fixable**: Structural changes required
+
+**Error Codes**: PL001, PL002, PL003, PL004, PL005
 
 ---
 
@@ -1284,6 +1457,26 @@ git commit -m "feat: add new skill"
 - Import from validate_frontmatter.py: Breaks standalone script requirement
 - Rewrite validation: Duplication of effort
 
+### ADR-005: Standardized Error Code System
+
+**Status**: Accepted
+
+**Context**: Need consistent, searchable error identification across validators
+
+**Decision**: Implement structured error codes with category prefixes and documentation links
+
+**Consequences**:
+
+- Positive: Users can search for error codes in documentation
+- Positive: Error codes provide stable references across versions
+- Positive: Documentation URLs enable self-service troubleshooting
+- Negative: Requires maintaining error code catalog and documentation
+
+**Alternatives Considered**:
+
+- Free-form error messages: Less searchable, inconsistent
+- HTTP-style numeric codes: Less semantic, harder to remember
+
 ---
 
 ## Success Criteria
@@ -1297,14 +1490,15 @@ git commit -m "feat: add new skill"
 - ✅ Integration with Claude CLI when available
 - ✅ Pre-commit hook compatible
 - ✅ Exit codes: 0 = success, 1 = errors, 2 = usage
+- ✅ Standardized error codes with documentation
 
 ### Non-Functional Requirements Met
 
 - ✅ Performance: <5s for typical validation
 - ✅ Type Safety: Complete type hints, mypy strict mode passes
 - ✅ Test Coverage: 80% minimum, 95%+ for validators
-- ✅ Error Messages: Clear, actionable, with file:line references
-- ✅ Documentation: Comprehensive architecture spec, usage examples
+- ✅ Error Messages: Clear, actionable, with file:line references and error codes
+- ✅ Documentation: Comprehensive architecture spec, usage examples, error code reference
 
 ### Quality Gates
 
@@ -1313,6 +1507,7 @@ git commit -m "feat: add new skill"
 - ✅ Coverage threshold met (80% minimum)
 - ✅ Pre-commit hooks work in practice
 - ✅ No regressions in existing functionality
+- ✅ Error code documentation complete and accurate
 
 ---
 
@@ -1331,43 +1526,43 @@ git commit -m "feat: add new skill"
 
 ### Skill Validation Checklist
 
-- [ ] Frontmatter exists and is valid YAML
-- [ ] Frontmatter starts with `---` and closes with `---`
+- [ ] Frontmatter exists and is valid YAML (FM002)
+- [ ] Frontmatter starts with `---` and closes with `---` (FM003)
 - [ ] Name field present (optional but recommended)
-- [ ] Name format: lowercase with hyphens only (if present)
+- [ ] Name format: lowercase with hyphens only (if present) (SK001, SK002, SK003, FM010)
 - [ ] Name max 40 characters (if present)
 - [ ] Description present (optional but recommended)
-- [ ] Description minimum 20 characters (if present)
-- [ ] Description contains trigger phrase (if present)
-- [ ] Body token count <4000 (warning if exceeded)
-- [ ] Body token count <6400 (error if exceeded)
-- [ ] No forbidden YAML multiline indicators
-- [ ] Tools field is comma-separated string (not array)
-- [ ] Skills field is comma-separated string (not array)
-- [ ] All internal links (./path) exist
-- [ ] Progressive disclosure structure present (references/, examples/, scripts/)
+- [ ] Description minimum 20 characters (if present) (SK004)
+- [ ] Description contains trigger phrase (if present) (SK005)
+- [ ] Body token count <4000 (warning if exceeded) (SK006)
+- [ ] Body token count <6400 (error if exceeded) (SK007)
+- [ ] No forbidden YAML multiline indicators (FM004)
+- [ ] Tools field is comma-separated string (not array) (FM007)
+- [ ] Skills field is comma-separated string (not array) (FM008)
+- [ ] All internal links (./path) exist (LK001)
+- [ ] Progressive disclosure structure present (references/, examples/, scripts/) (PD001-PD003)
 
 ### Agent Validation Checklist
 
-- [ ] Frontmatter exists and is valid YAML
-- [ ] Name field required and present
-- [ ] Name format: lowercase with hyphens only
-- [ ] Description field required and present
-- [ ] Description minimum 20 characters
-- [ ] Model field one of: sonnet, opus, haiku, inherit (if present)
-- [ ] Tools field comma-separated string (if present)
+- [ ] Frontmatter exists and is valid YAML (FM002)
+- [ ] Name field required and present (FM001)
+- [ ] Name format: lowercase with hyphens only (SK001, SK002, SK003, FM010)
+- [ ] Description field required and present (FM001)
+- [ ] Description minimum 20 characters (SK004)
+- [ ] Model field one of: sonnet, opus, haiku, inherit (if present) (FM006)
+- [ ] Tools field comma-separated string (if present) (FM007)
 - [ ] DisallowedTools field comma-separated string (if present)
-- [ ] Skills field comma-separated string (if present)
-- [ ] No forbidden YAML multiline indicators
+- [ ] Skills field comma-separated string (if present) (FM008)
+- [ ] No forbidden YAML multiline indicators (FM004)
 
 ### Plugin Validation Checklist
 
-- [ ] .claude-plugin/plugin.json exists
-- [ ] plugin.json is valid JSON
-- [ ] Required field 'name' present
+- [ ] .claude-plugin/plugin.json exists (PL001)
+- [ ] plugin.json is valid JSON (PL002)
+- [ ] Required field 'name' present (PL003)
 - [ ] Name format: kebab-case
-- [ ] All component paths start with ./
-- [ ] All referenced files exist
+- [ ] All component paths start with ./ (PL004)
+- [ ] All referenced files exist (PL005)
 - [ ] Skills array contains directory paths
 - [ ] Agents array contains file paths (not directory)
 - [ ] Commands array contains file paths (not directory)

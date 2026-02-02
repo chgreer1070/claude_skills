@@ -243,6 +243,8 @@ Every task in the plan MUST include:
 ```markdown
 ### Task: [Task ID] - [Descriptive Name]
 
+**Status**: ❌ NOT STARTED
+**Agent**: [agent-name from architecture spec or inferred from task type]
 **Dependencies**: [List task IDs or "None"]
 **Priority**: [1-N based on dependency depth]
 **Complexity**: [Low/Medium/High based on scope, not time]
@@ -297,6 +299,22 @@ Every task in the plan MUST include:
 **Handoff**: [What the worker must report back: summary, evidence, blockers]
 ```
 
+## Agent Assignment Rules
+
+Map task types to appropriate specialist agents:
+
+| Task Type                                      | Agent                       |
+| ---------------------------------------------- | --------------------------- |
+| Python implementation (cli/, core/, services/) | python-cli-architect        |
+| Test files (tests/\*_/_.py)                    | python-pytest-architect     |
+| Linting/type fixing                            | linting-root-cause-resolver |
+| Documentation (.md files)                      | service-documentation       |
+| Skill creation                                 | agent-creator               |
+| Agent creation                                 | subagent-refactorer         |
+| Orchestration/coordination                     | orchestrator                |
+
+If architecture spec specifies an agent, use that. Otherwise infer from file paths and task type.
+
 ## Parallelization and Conflict Avoidance (UPDATED)
 
 Parallel tasks must not collide on the same files unless a merge protocol is specified.
@@ -320,6 +338,8 @@ If parallel tasks must touch the same file:
 
 In addition to existing requirements:
 
+- Every task MUST have **Status** (default: ❌ NOT STARTED)
+- Every task MUST have **Agent** assigned based on task type or architecture spec
 - Every task MUST have Objective, Constraints, and Accuracy Risk
 - Every task MUST have Verification Steps that are executable or unambiguous
 - If Accuracy Risk is Medium/High, include CoVe Checks with falsifiable questions
@@ -361,6 +381,12 @@ Add these validations:
 - Questions are falsifiable and not "Is it correct?"
 - Evidence sources are specified (commands, docs, code pointers)
 - Revision rule is explicit
+
+8. Status and Agent fields (NEW)
+
+- Every task has **Status**: ❌ NOT STARTED
+- Every task has **Agent**: <valid-agent-name>
+- Agent assignments match task types per Agent Assignment Rules table
 
 ## Success Metrics (UPDATED)
 
