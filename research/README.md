@@ -16,6 +16,8 @@ research/
 │   └── superpowers.md                 # Agentic skills framework and dev methodology (40K+ stars)
 ├── agent-infrastructure/              # Infrastructure for agentic applications
 │   └── plano.md                       # AI-native proxy and data plane for multi-agent orchestration
+├── async-libraries/                   # Python async I/O libraries and concurrency frameworks
+│   └── trio.md                        # Structured concurrency async library for Python (7K+ stars)
 ├── code-auditing/                     # Code security and quality auditing tools
 │   └── hound.md                       # Autonomous AI security auditor with knowledge graphs
 ├── coding-agents/                     # Autonomous AI coding agent platforms
@@ -372,6 +374,29 @@ Memory systems, context window optimization tools, and RAG solutions for maintai
 
 ---
 
+### 12. Async Libraries
+
+**Location**: [./async-libraries/](./async-libraries/)
+
+Python async I/O libraries and concurrency frameworks for building concurrent applications.
+
+| Document                             | Description                                                                                           | Last Updated |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------ |
+| [trio.md](./async-libraries/trio.md) | Trio - structured concurrency async library for Python with nurseries, cancel scopes (7K+ stars, 218M downloads/month) | 2026-02-04   |
+
+**Key Topics**:
+
+- Structured concurrency via nurseries (tasks complete within scope)
+- Cancel scopes for unified timeout and cancellation handling
+- Static checkpoint guarantees (predictable interleaving points)
+- Natural exception propagation through nursery boundaries
+- No callbacks, futures, or promises - pure async/await
+- Composable timeouts with predictable nesting semantics
+- Task completion guarantees preventing orphan operations
+- anyio compatibility for asyncio/trio portability
+
+---
+
 ## Planned Categories
 
 The following categories are planned for future research:
@@ -383,6 +408,7 @@ The following categories are planned for future research:
 | `mcp-ecosystem/`        | MCP servers and integrations                       | **Done** |
 | `agent-frameworks/`     | Agent SDKs and orchestration frameworks            | **Done** |
 | `agent-infrastructure/` | Infrastructure for deploying agentic apps at scale | **Done** |
+| `async-libraries/`      | Python async I/O and concurrency frameworks        | **Done** |
 | `data-infrastructure/`  | Real-time data platforms for analytics             | **Done** |
 | `code-auditing/`        | Code security and quality auditing tools           | **Done** |
 | `developer-tools/`      | Developer productivity and workflow tools          | **Done** |
@@ -496,6 +522,7 @@ When adding new research:
 - [Claude-Mem](https://claude-mem.ai) - Persistent memory compression for Claude Code (15,681 stars)
 - [Repomix](https://repomix.com) - Pack codebase into AI-friendly formats (21,597 stars)
 - [Superpowers](https://github.com/obra/superpowers) - Agentic skills framework and software development methodology (40,911 stars)
+- [Trio](https://github.com/python-trio/trio) - Structured concurrency async library for Python (7,143 stars)
 
 ### Internal References
 
