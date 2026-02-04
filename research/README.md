@@ -91,6 +91,7 @@ MCP servers, tools, and integrations for extending AI assistant capabilities.
 | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------ |
 | [docs-mcp-server.md](./mcp-ecosystem/docs-mcp-server.md) | Grounded Docs - local documentation index with semantic search, open-source Context7 alternative         | 2026-01-26   |
 | [mcpjam.md](./mcp-ecosystem/mcpjam.md)                   | Local inspector for MCP servers, ChatGPT apps, MCP Apps with LLM playground, OAuth debugger, E2E testing | 2026-01-26   |
+| [mimir-mcp.md](./mcp-ecosystem/mimir-mcp.md)             | Git-backed AI memory system with 7 MCP tools, graph associations, and version-controlled persistence     | 2026-02-04   |
 | [narsil-mcp.md](./mcp-ecosystem/narsil-mcp.md)           | Rust MCP server with 90 tools for code intelligence, security scanning, call graphs                      | 2026-01-26   |
 | [octocode-mcp.md](./mcp-ecosystem/octocode-mcp.md)       | Research Driven Development platform with GitHub search, LSP, and GAN-inspired adversarial flow          | 2026-01-26   |
 
@@ -117,6 +118,11 @@ MCP servers, tools, and integrations for extending AI assistant capabilities.
 - AI-powered test case generation
 - E2E evaluation across MCP clients
 - Multi-LLM playground testing
+- Git-backed persistent memory for LLM applications
+- Graph-based memory associations with typed relationships
+- Human-aligned tool design (intent-based naming)
+- Supersedes relationships for handling outdated information
+- Multi-user memory isolation with SAML 2.0 support
 
 ---
 
