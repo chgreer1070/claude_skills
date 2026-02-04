@@ -4,7 +4,7 @@
 **Source URL**: <https://github.com/tejzpr/mimir-mcp>
 **GitHub Repository**: <https://github.com/tejzpr/mimir-mcp>
 **Docker Hub**: <https://hub.docker.com/r/tejzpr/mimir-mcp>
-**Version at Research**: Latest (no tagged releases)
+**Version at Research**: v1.0.2
 **License**: MPL-2.0 (Mozilla Public License 2.0)
 
 ---
@@ -34,7 +34,7 @@ Mimir is a Model Context Protocol (MCP) server that provides persistent, git-ver
 
 | Metric | Value |
 | ------ | ----- |
-| GitHub Stars | 1 |
+| GitHub Stars | 2 |
 | Forks | 0 |
 | Open Issues | 0 |
 | Primary Language | Go (1.24+) |
@@ -43,7 +43,7 @@ Mimir is a Model Context Protocol (MCP) server that provides persistent, git-ver
 | Repository Size | 1,065 KB |
 | MCP Tools | 7 |
 
-**Note**: Very new project (1 day old at research time). Statistics expected to change rapidly.
+**Note**: New project (released v1.0.2 on 2026-02-03). Early stage but actively developed.
 
 ---
 
@@ -342,13 +342,13 @@ The repository includes sample prompts for AI assistants:
 | Field | Value |
 | ----- | ----- |
 | Last Verified | 2026-02-04 |
-| Version at Verification | Latest (no tagged releases) |
-| GitHub Stars at Verification | 1 |
+| Version at Verification | v1.0.2 |
+| GitHub Stars at Verification | 2 |
 | Next Review Recommended | 2026-05-04 (3 months) |
 
 **Change Detection Indicators**:
 
-- Monitor GitHub releases for version tags
+- Monitor GitHub releases for new versions (current: v1.0.2, released 2026-02-03)
 - Check Docker Hub for image updates
 - Watch for star growth indicating adoption
 - Review for production readiness indicators
