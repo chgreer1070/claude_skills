@@ -1,7 +1,7 @@
 ---
-last-updated: 2026-02-01
+last-updated: 2026-02-05
 p0-count: 0
-p1-count: 7
+p1-count: 8
 p2-count: 9
 ideas-count: 6
 ---
@@ -67,6 +67,18 @@ _(Empty)_
 **Description**: Define mechanism to detect when execution diverges from plan. How does Forensic Review detect that the execution agent solved a different problem than planned?
 **Research first**: How does GSD plan-checker detect deviation? What diff/comparison techniques exist? How do code review tools detect scope creep in PRs?
 **Suggested location**: `methodology_development/stateless-software-engineering-framework.md` (section 3.6 Forensic Review)
+
+### Replace requests with httpx in all scripts
+
+**Source**: CI/pre-commit inconsistency discovery (2026-02-05)
+**Added**: 2026-02-05
+**Description**: Migrate all scripts from `requests` to `httpx`. The `requests` library requires `types-requests` stubs for mypy, adding friction. `httpx` has built-in type annotations and is already the project standard (see python3-development skill modern-modules reference). Add ruff rule to ban `requests` imports.
+**Tasks**:
+- Audit all scripts for `requests` usage (currently: `validate-glfm.py`)
+- Replace with `httpx` equivalents
+- Add ruff ban rule: `"requests" = ["banned-api"]` or similar
+- Update any PEP 723 inline dependencies
+**Suggested location**: Scripts in `plugins/**/scripts/`
 
 ### Extract claude-plugin-lint to standalone PyPI package
 
