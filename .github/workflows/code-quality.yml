@@ -68,7 +68,9 @@ jobs:
         run: uv run basedpyright
 
       - name: Run mypy
-        run: uv run mypy .
+        run: |
+          # Use pep723-loader to handle inline script dependencies (matches pre-commit)
+          uv run --with pep723-loader --with mypy pep723-loader mypy .
 
   # =============================================================================
   # JavaScript/TypeScript: Biome linting and formatting
