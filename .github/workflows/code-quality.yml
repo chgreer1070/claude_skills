@@ -237,10 +237,12 @@ jobs:
             exit 1
           fi
 
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+
       - name: Check YAML syntax
         run: |
-          pip install --quiet pyyaml
-          python3 -c "
+          uv run --with pyyaml python -c "
           import yaml
           import sys
           from pathlib import Path
