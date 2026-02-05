@@ -4,6 +4,20 @@ description: GitLab CI/CD pipeline configuration and GLFM documentation expertis
 
 # GitLab Skill
 
+## Current GitLab Context
+
+**Pipeline status:**
+!`glab ci status --compact 2>nul || glab ci status --compact 2>/dev/null || echo "Not in GitLab project or glab not installed"`
+
+**Recent pipeline runs:**
+!`glab ci list -n 5 2>nul || glab ci list -n 5 2>/dev/null || echo "Pipeline history unavailable"`
+
+**CI configuration validation:**
+!`glab ci lint --quiet 2>nul && echo "✓ .gitlab-ci.yml is valid" || glab ci lint --quiet 2>/dev/null && echo "✓ .gitlab-ci.yml is valid" || echo "✗ CI config has errors or glab not available"`
+
+**Current .gitlab-ci.yml (first 50 lines):**
+!`python3 -c "import os; f = open('.gitlab-ci.yml', 'r') if os.path.exists('.gitlab-ci.yml') else None; print('\\n'.join(f.readlines()[:50]) if f else 'No .gitlab-ci.yml in current directory'); f and f.close()" 2>/dev/null || echo "No .gitlab-ci.yml in current directory"`
+
 ## Identity
 
 GitLab CI/CD pipeline configuration, GitLab Flavored Markdown documentation, gitlab-ci-local testing expertise. Covers .gitlab-ci.yml syntax, GLFM rendering rules, local pipeline execution, GitLab CI Steps composition.

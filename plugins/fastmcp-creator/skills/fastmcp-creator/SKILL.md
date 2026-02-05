@@ -4,6 +4,17 @@ description: Build Model Context Protocol (MCP) servers - comprehensive coverage
 
 # MCP Server Development
 
+## Current MCP Environment
+
+**Python interpreter:**
+!`python3 --version 2>/dev/null || python --version 2>/dev/null || echo "Python not found in PATH"`
+
+**Available MCP servers (if configured):**
+!`python3 -c "import os; print('\\n'.join(os.listdir('mcp_servers')) if os.path.exists('mcp_servers') else 'No mcp_servers/ directory found')" 2>/dev/null || echo "No mcp_servers/ directory found"`
+
+**Current directory:**
+!`python3 -c "import os; print(os.getcwd())" 2>/dev/null || pwd`
+
 ## Scope
 
 TRIGGER: The model must activate when building MCP (Model Context Protocol) servers

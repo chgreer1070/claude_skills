@@ -6,6 +6,20 @@ user-invocable: true
 
 # Skill Creator
 
+## Current Skills Environment
+
+**Existing user-level skills:**
+!`python3 -c "import os, pathlib; home = pathlib.Path.home(); skills = home / '.claude' / 'skills'; print('\\n'.join(sorted([d.name for d in skills.iterdir() if d.is_dir()])[:20]) if skills.exists() else 'No user-level skills found')" 2>/dev/null || echo "No user-level skills found"`
+
+**Existing project-level skills:**
+!`python3 -c "import os, pathlib; skills = pathlib.Path('.claude/skills'); print('\\n'.join(sorted([d.name for d in skills.iterdir() if d.is_dir()])[:20]) if skills.exists() else 'No project-level skills found')" 2>/dev/null || echo "No project-level skills found"`
+
+**Sample skill descriptions (for pattern reference):**
+!`python3 -c "import pathlib, re; dirs = [pathlib.Path.home() / '.claude' / 'skills', pathlib.Path('.claude/skills')]; descs = []; [descs.extend([line.strip() for line in (d / 'SKILL.md').read_text(encoding='utf-8', errors='ignore').splitlines() if line.strip().startswith('description:')][:1]) for base in dirs if base.exists() for d in base.iterdir() if d.is_dir() and (d / 'SKILL.md').exists()]; print('\\n'.join(descs[:10]) if descs else 'No skill descriptions found')" 2>/dev/null || echo "No skill descriptions found"`
+
+**Current directory:**
+!`python3 -c "import os; print(os.getcwd())" 2>/dev/null || echo "Unable to determine current directory"`
+
 This skill provides guidance for creating effective skills.
 
 ## About Skills
