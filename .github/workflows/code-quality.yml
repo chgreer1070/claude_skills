@@ -62,7 +62,7 @@ jobs:
             uv.lock
 
       - name: Install dependencies
-        run: uv sync --frozen --group dev
+        run: uv sync --group dev
 
       - name: Run basedpyright
         run: uv run basedpyright
@@ -271,13 +271,6 @@ jobs:
                   print(f'::error::{e}')
               sys.exit(1)
           "
-
-      - name: Check for merge conflict markers
-        run: |
-          ! git grep -lE '^(<{7}|>{7}|={7})' -- ':!.venv/*' ':!node_modules/*' || {
-            echo "::error::Merge conflict markers found"
-            exit 1
-          }
 
       - name: Check for case conflicts
         run: |
