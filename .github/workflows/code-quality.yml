@@ -239,6 +239,7 @@ jobs:
 
       - name: Check YAML syntax
         run: |
+          pip install --quiet pyyaml
           python3 -c "
           import yaml
           import sys
