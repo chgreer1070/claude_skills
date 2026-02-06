@@ -1,9 +1,9 @@
 ---
 last-updated: 2026-02-05
 p0-count: 0
-p1-count: 8
+p1-count: 7
 p2-count: 9
-ideas-count: 6
+ideas-count: 10
 ---
 
 # Backlog
@@ -19,14 +19,6 @@ _(Empty)_
 ---
 
 ## P1 - Should Have
-
-### Create ecosystem-researcher agent
-
-**Source**: [external-pattern-integration-2026-02-01.md](.claude/external-pattern-integration-2026-02-01.md)
-**Added**: 2026-02-01
-**Description**: New agent for ecosystem/domain research before roadmap creation. Supports three modes - Ecosystem discovery, Feasibility assessment, Comparison analysis.
-**Patterns from**: gsd-project-researcher.md (research modes)
-**Suggested location**: `plugins/python3-development/agents/ecosystem-researcher.md`
 
 ### SAM: Error Recovery / Rollback Procedures
 
@@ -218,11 +210,70 @@ _(Empty)_
 **Description**: Explore how SAM handles documentation-only tasks, configuration changes, infrastructure work. Adapt templates?
 **Research first**: How do GSD and BMAD-METHOD handle non-code work? What artifact types exist beyond code?
 
+### Carbonyl Browser Integration for Claude Code
+
+**Source**: Session experimentation 2026-02-05
+**Added**: 2026-02-05
+**Description**: Research whether carbonyl (terminal Chromium browser) can work with Claude Code for reliable web content extraction. Carbonyl renders pages in terminal but needs a TTY.
+**Research areas**:
+- Can carbonyl run via tmux/screen/script to provide a pseudo-TTY?
+- Could carbonyl be wrapped with a screenshot tool (e.g., termshot, asciinema) that passes images back to Claude?
+- What's the minimal TTY setup needed for headless carbonyl operation?
+- Compare with is-fast, lynx, w3m for text extraction capabilities
+**Context**: WebFetch is unreliable (summarizing agents hallucinate), Playwright requires browser downloads that may be blocked. Carbonyl is self-contained but needs TTY.
+
+### Validate is-fast for Web Content Extraction
+
+**Source**: Session experimentation 2026-02-05
+**Added**: 2026-02-05
+**Description**: Test is-fast CLI tool on host with unrestricted network access.
+**Validation steps**:
+- Install: `curl --proto '=https' --tlsv1.2 -LsSf https://github.com/Magic-JD/is-fast/releases/latest/download/is-fast-installer.sh | sh`
+- Test: `is-fast --direct https://code.claude.com/docs/en/skills --piped`
+- Verify it extracts text content from JS-rendered pages
+- Compare output quality with curl, lynx, w3m
+- Test CSS selector filtering with `--selector`
+**Blocked on 2026-02-05**: DNS resolution failed in restricted environment
+
+### Validate agent-browser for Web Automation
+
+**Source**: Session experimentation 2026-02-05
+**Added**: 2026-02-05
+**Description**: Test agent-browser (Playwright-based) on host with unrestricted network and Playwright browsers installed.
+**Validation steps**:
+- Install browsers: `npx playwright install`
+- Test: `npx agent-browser open https://code.claude.com/docs/en/skills`
+- Test: `npx agent-browser snapshot -i` (get element refs)
+- Test: `npx agent-browser get text body` (extract page text)
+- Verify snapshot/interact/re-snapshot workflow works
+- Document prerequisites for skill to function
+**Blocked on 2026-02-05**: Could not download Playwright browsers (DNS resolution failed, missing system libs)
+**Skill location**: `.claude/skills/agent-browser/SKILL.md`
+
+### Validate carbonyl Terminal Browser
+
+**Source**: Session experimentation 2026-02-05
+**Added**: 2026-02-05
+**Description**: Test carbonyl on host with proper TTY and network access.
+**Validation steps**:
+- Test basic: `npx -y carbonyl --no-sandbox https://example.com`
+- Test with tmux: `tmux new-session -d -s carbonyl 'npx -y carbonyl --no-sandbox https://example.com'`
+- Test screenshot capture: Can we grab terminal output as image?
+- Test text extraction: Can we pipe output or capture rendered text?
+- Compare JS rendering quality with other tools
+**Blocked on 2026-02-05**: Needs TTY (Inappropriate ioctl for device), DNS also blocked
+
 ---
 
 ## Completed
 
-_(Move items here when done, with completion date)_
+### Create ecosystem-researcher agent
+
+**Source**: [external-pattern-integration-2026-02-01.md](.claude/external-pattern-integration-2026-02-01.md)
+**Completed**: 2026-02-05
+**Description**: New agent for ecosystem/domain research before roadmap creation. Supports three modes - Ecosystem discovery, Feasibility assessment, Comparison analysis.
+**Patterns from**: gsd-project-researcher.md (research modes)
+**Location**: `plugins/python3-development/agents/ecosystem-researcher.md`
 
 ---
 
