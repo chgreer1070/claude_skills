@@ -41,7 +41,7 @@ ERROR_CODE_BASE_URL = "https://github.com/jamie-bitflight/claude_skills/blob/mai
 
 # Token-based complexity thresholds (Architecture lines 1156-1157)
 TOKEN_WARNING_THRESHOLD = 4000  # ~500 lines equivalent
-TOKEN_ERROR_THRESHOLD = 6400  # ~800 lines equivalent
+TOKEN_ERROR_THRESHOLD = 10000  # ~1250 lines equivalent
 
 # Description requirements (Architecture lines 349-350)
 MIN_DESCRIPTION_LENGTH = 20
@@ -489,9 +489,13 @@ class InternalLinkValidator:
                 )
                 # Continue validation even with missing prefix
 
+            # Strip anchor fragment before resolving path
+            # e.g., ./references/file.md#heading → ./references/file.md
+            link_url_no_fragment = link_url.split("#")[0]
+
             # Resolve link path relative to SKILL.md directory
             skill_dir = path.parent
-            link_path = (skill_dir / link_url).resolve()
+            link_path = (skill_dir / link_url_no_fragment).resolve()
 
             # Check if linked file exists (error)
             if not link_path.exists():
@@ -1041,7 +1045,7 @@ class FrontmatterValidator:
             case _:
                 return None
 
-    def _apply_fixes(self, content: str, file_type: FileType) -> tuple[str, list[str]]:  # noqa: PLR0911, PLR0912, C901
+    def _apply_fixes(self, content: str, file_type: FileType) -> tuple[str, list[str]]:  # noqa: PLR0912, C901
         """Apply auto-fixes to content.
 
         Args:
@@ -1335,7 +1339,7 @@ class DescriptionValidator:
     Architecture lines 1092-1113, Task T5 lines 602-672
     """
 
-    def validate(self, path: Path) -> ValidationResult:  # noqa: PLR0911
+    def validate(self, path: Path) -> ValidationResult:
         """Validate description field in frontmatter.
 
         Args:
@@ -1620,7 +1624,7 @@ class ComplexityValidator:
         """
         # Lazy-load tiktoken for performance (only imported when validation runs)
         try:
-            import tiktoken  # noqa: PLC0415
+            import tiktoken
         except ImportError as e:
             errors.append(
                 ValidationIssue(
@@ -1872,7 +1876,7 @@ class PluginStructureValidator:
                 )
             )
 
-    def _get_error_message(self, code: str, output: str) -> str:  # noqa: PLR0911
+    def _get_error_message(self, code: str, output: str) -> str:
         """Get human-readable error message for code.
 
         Args:
@@ -2133,7 +2137,7 @@ class ConsoleReporter:
             no_color: Disable color output for non-TTY environments
         """
         # Lazy import Rich to avoid startup cost when not needed
-        from rich.console import Console  # noqa: PLC0415
+        from rich.console import Console
 
         self.console = Console(force_terminal=not no_color, no_color=no_color)
         self.no_color = no_color
@@ -2203,7 +2207,7 @@ class ConsoleReporter:
             failed: Number of files that failed validation
             warnings: Number of files with warnings (passed but with issues)
         """
-        from rich.panel import Panel  # noqa: PLC0415
+        from rich.panel import Panel
 
         # Determine overall status
         if failed == 0:

@@ -1,89 +1,38 @@
 {
   "name": "jamie-bitflight-skills",
-  "owner": {
-    "name": "Jamie Nelson",
-    "email": "jamie@bitflight.io"
-  },
+  "owner": { "name": "Jamie Nelson", "email": "jamie@bitflight.io" },
   "metadata": {
     "description": "Professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Covers modern Python toolchains, GitLab CI/CD automation, code quality enforcement, MCP server creation, and plugin/agent development patterns.",
-    "version": "2.8.0"
+    "version": "2.8.1"
   },
   "plugins": [
-    {
-      "name": "agent-orchestration",
-      "source": "./plugins/agent-orchestration"
-    },
-    {
-      "name": "bash-development",
-      "source": "./plugins/bash-development"
-    },
-    {
-      "name": "brainstorming-skill",
-      "source": "./plugins/brainstorming-skill"
-    },
-    {
-      "name": "clang-format",
-      "source": "./plugins/clang-format"
-    },
-    {
-      "name": "commitlint",
-      "source": "./plugins/commitlint"
-    },
+    { "name": "agent-orchestration", "source": "./plugins/agent-orchestration" },
+    { "name": "bash-development", "source": "./plugins/bash-development" },
+    { "name": "brainstorming-skill", "source": "./plugins/brainstorming-skill" },
+    { "name": "clang-format", "source": "./plugins/clang-format" },
+    { "name": "commitlint", "source": "./plugins/commitlint" },
     {
       "name": "conventional-commits",
       "source": "./plugins/conventional-commits"
     },
-    {
-      "name": "fastmcp-creator",
-      "source": "./plugins/fastmcp-creator"
-    },
-    {
-      "name": "gitlab-skill",
-      "source": "./plugins/gitlab-skill"
-    },
-    {
-      "name": "holistic-linting",
-      "source": "./plugins/holistic-linting"
-    },
-    {
-      "name": "litellm",
-      "source": "./plugins/litellm"
-    },
-    {
-      "name": "llamafile",
-      "source": "./plugins/llamafile"
-    },
-    {
-      "name": "perl-development",
-      "source": "./plugins/perl-development"
-    },
+    { "name": "fastmcp-creator", "source": "./plugins/fastmcp-creator" },
+    { "name": "gitlab-skill", "source": "./plugins/gitlab-skill" },
+    { "name": "holistic-linting", "source": "./plugins/holistic-linting" },
+    { "name": "litellm", "source": "./plugins/litellm" },
+    { "name": "llamafile", "source": "./plugins/llamafile" },
+    { "name": "perl-development", "source": "./plugins/perl-development" },
     {
       "name": "prompt-optimization-claude-45",
       "source": "./plugins/prompt-optimization-claude-45"
     },
-    {
-      "name": "python3-development",
-      "source": "./plugins/python3-development"
-    },
-    {
-      "name": "verification-gate",
-      "source": "./plugins/verification-gate"
-    },
-    {
-      "name": "xdg-base-directory",
-      "source": "./plugins/xdg-base-directory"
-    },
-    {
-      "name": "plugin-creator",
-      "source": "./plugins/plugin-creator"
-    },
+    { "name": "python3-development", "source": "./plugins/python3-development" },
+    { "name": "verification-gate", "source": "./plugins/verification-gate" },
+    { "name": "xdg-base-directory", "source": "./plugins/xdg-base-directory" },
+    { "name": "plugin-creator", "source": "./plugins/plugin-creator" },
     {
       "name": "hallucination-detector",
       "source": "./plugins/hallucination-detector"
     },
-    {
-      "name": "summarizer",
-      "source": "./plugins/summarizer"
-    }
+    { "name": "summarizer", "source": "./plugins/summarizer" }
   ]
 }
