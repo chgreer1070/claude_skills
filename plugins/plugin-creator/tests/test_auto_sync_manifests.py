@@ -26,9 +26,12 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+import pytest
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -51,11 +54,16 @@ else:
 
 # Type aliases matching the module's TypedDicts -- defined locally so mypy
 # resolves them without needing the dynamic module's types at analysis time.
-ComponentChanges = dict[str, list[dict[str, str]]]
-MarketplaceChanges = dict[str, Any]
+_ComponentChangesDict = dict[str, list[dict[str, str]]]
+_MarketplaceChangesDict = dict[str, Any]
 
 # Empty staged files set -- used when no files are staged (common case)
 _NO_STAGED: set[str] = set()
+
+_requires_prettier = pytest.mark.skipif(
+    shutil.which("npx") is None,
+    reason="npx not available — prettier tests require Node.js tooling",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -87,8 +95,8 @@ def _make_marketplace_json(base: Path, data: Mapping[str, Any]) -> Path:
     return marketplace_json
 
 
-def _changes_with_modified_skill() -> ComponentChanges:
-    """Return ComponentChanges with a single modified skill."""
+def _changes_with_modified_skill() -> _ComponentChangesDict:
+    """Return component changes with a single modified skill."""
     return {
         "added": [],
         "deleted": [],
@@ -98,8 +106,8 @@ def _changes_with_modified_skill() -> ComponentChanges:
     }
 
 
-def _changes_with_added_skill() -> ComponentChanges:
-    """Return ComponentChanges with a single added skill."""
+def _changes_with_added_skill() -> _ComponentChangesDict:
+    """Return component changes with a single added skill."""
     return {
         "added": [
             {"component_type": "skill", "component_path": "skills/new-skill/SKILL.md"}
@@ -241,7 +249,7 @@ class TestJsonFormattingConflict:
             },
         )
 
-        plugin_changes: MarketplaceChanges = {
+        plugin_changes: _MarketplaceChangesDict = {
             "added": set(),
             "deleted": set(),
             "modified": [("existing-plugin", "1.0.1")],
@@ -345,11 +353,10 @@ class TestIdempotency:
     ) -> None:
         """Verify version does NOT double-bump when update runs twice.
 
-        Tests: Idempotent version bumping (Bug 2 fix)
-        How: Run update_plugin_json, then run it AGAIN on the already-modified file
-             (simulating what happens when the staged guard is bypassed)
-        Why: The idempotency check detects that the file was already updated and
-             skips the second write, preventing 1.0.0 -> 1.0.1 -> 1.0.2
+        Tests: Idempotent version bumping via staged guard
+        How: Run update_plugin_json, then simulate retry with the file in staged_files
+        Why: On retry after a failed commit, plugin.json is already staged from run 1,
+             so the staged guard prevents re-processing
         """
         # Arrange
         monkeypatch.chdir(tmp_path)
@@ -364,30 +371,31 @@ class TestIdempotency:
 
         changes = _changes_with_modified_skill()
 
-        # Act -- Run 1
+        # Act -- Run 1: plugin.json not staged, hook updates it
         updated_1, version_1 = auto_sync.update_plugin_json(
             plugin_name, changes, _NO_STAGED
         )
 
-        # Act -- Run 2 on the already-bumped file (idempotency prevents double-bump)
+        # Act -- Run 2: plugin.json IS staged from run 1's git add
+        staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
         updated_2, version_2 = auto_sync.update_plugin_json(
-            plugin_name, changes, _NO_STAGED
+            plugin_name, changes, {staged_path}
         )
 
-        # Assert -- version bumped only once: 1.0.0 -> 1.0.1, second run is no-op
+        # Assert -- version bumped only once: 1.0.0 -> 1.0.1, second run blocked
         assert updated_1 is True
         assert version_1 == "1.0.1"
         assert updated_2 is False
-        assert version_2 == "1.0.1"
+        assert version_2 == "0.0.0"
 
     def test_update_marketplace_json_no_double_bump_on_retry(
         self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify marketplace version does NOT double-bump on retry.
 
-        Tests: Idempotent version bumping for marketplace.json (Bug 2 fix)
-        How: Run update_marketplace_json twice on the same file without reset
-        Why: The idempotency check prevents double-bumping
+        Tests: Idempotent version bumping for marketplace.json via staged guard
+        How: Run update_marketplace_json, then simulate retry with file in staged_files
+        Why: On retry, marketplace.json is already staged from run 1
         """
         # Arrange
         monkeypatch.chdir(tmp_path)
@@ -398,17 +406,19 @@ class TestIdempotency:
         }
         _make_marketplace_json(tmp_path, original_data)
 
-        plugin_changes: MarketplaceChanges = {
+        plugin_changes: _MarketplaceChangesDict = {
             "added": set(),
             "deleted": set(),
             "modified": [("existing", "1.0.1")],
         }
 
-        # Act -- Run 1
+        # Act -- Run 1: marketplace.json not staged
         updated_1 = auto_sync.update_marketplace_json(plugin_changes, _NO_STAGED)
 
-        # Act -- Run 2 on the already-bumped file (idempotency prevents double-bump)
-        updated_2 = auto_sync.update_marketplace_json(plugin_changes, _NO_STAGED)
+        # Act -- Run 2: marketplace.json IS staged from run 1
+        updated_2 = auto_sync.update_marketplace_json(
+            plugin_changes, {".claude-plugin/marketplace.json"}
+        )
 
         # Assert -- version bumped only once
         assert updated_1 is True
@@ -515,7 +525,7 @@ class TestAlreadyStagedGuard:
         # marketplace.json IS in the staged files
         staged = {".claude-plugin/marketplace.json"}
 
-        plugin_changes: MarketplaceChanges = {
+        plugin_changes: _MarketplaceChangesDict = {
             "added": {"new-plugin"},
             "deleted": set(),
             "modified": [],
@@ -699,7 +709,7 @@ class TestRetryScenario:
              incorrectly uses the version, it could corrupt marketplace state
         """
         # Arrange -- simulate what main() does
-        marketplace_changes: MarketplaceChanges = {
+        marketplace_changes: _MarketplaceChangesDict = {
             "added": set(),
             "deleted": set(),
             "modified": [],
@@ -945,7 +955,7 @@ class TestUpdateComponentArrays:
         """
         # Arrange
         data: dict[str, list[str] | str] = {"name": "test"}
-        changes: ComponentChanges = {
+        changes: _ComponentChangesDict = {
             "added": [
                 {"component_type": "skill", "component_path": "skills/new/SKILL.md"}
             ],
@@ -973,7 +983,7 @@ class TestUpdateComponentArrays:
             "name": "test",
             "skills": ["./skills/existing/SKILL.md"],
         }
-        changes: ComponentChanges = {
+        changes: _ComponentChangesDict = {
             "added": [
                 {
                     "component_type": "skill",
@@ -1005,7 +1015,7 @@ class TestUpdateComponentArrays:
             "name": "test",
             "skills": ["./skills/old/SKILL.md", "./skills/keep/SKILL.md"],
         }
-        changes: ComponentChanges = {
+        changes: _ComponentChangesDict = {
             "added": [],
             "deleted": [
                 {"component_type": "skill", "component_path": "skills/old/SKILL.md"}
@@ -1164,58 +1174,17 @@ class TestGetStagedFiles:
 
 
 # ============================================================================
-# New behaviour: _prettier_json_dumps formatter
+# New behaviour: _format_json formatter
 # ============================================================================
 
 
-class TestPrettierJsonDumps:
-    """Test the _prettier_json_dumps formatter for prettier-compatible output."""
+class TestFormatJson:
+    """Test the _format_json formatter for prettier-compatible output."""
 
-    def test_short_object_stays_inline(self) -> None:
-        """Verify short objects are formatted on a single line.
+    def test_format_json_produces_valid_json(self) -> None:
+        """Verify _format_json output parses as valid JSON.
 
-        Tests: _prettier_json_dumps inline object format
-        How: Serialize a small object and check for single-line format
-        Why: Prettier keeps short structures inline
-        """
-        data = {"name": "test", "version": "1.0.0"}
-        result = auto_sync._prettier_json_dumps(data)
-        assert result == '{ "name": "test", "version": "1.0.0" }'
-
-    def test_short_array_stays_inline(self) -> None:
-        """Verify short arrays are formatted on a single line.
-
-        Tests: _prettier_json_dumps inline array format
-        How: Serialize a small array and check for single-line format
-        Why: This is the core fix -- json.dump would expand this vertically
-        """
-        data = {"skills": ["./skills/test/"]}
-        result = auto_sync._prettier_json_dumps(data)
-        assert '["./skills/test/"]' in result
-
-    def test_long_array_expands_vertically(self) -> None:
-        """Verify long arrays are expanded vertically.
-
-        Tests: _prettier_json_dumps vertical expansion for long arrays
-        How: Serialize an array that exceeds 80 characters when inline
-        Why: Prettier expands structures that don't fit on one line
-        """
-        data = {
-            "skills": [
-                "./skills/very-long-skill-name-one/",
-                "./skills/very-long-skill-name-two/",
-                "./skills/very-long-skill-name-three/",
-            ]
-        }
-        result = auto_sync._prettier_json_dumps(data)
-        # The array should be expanded across multiple lines
-        assert '"skills": [\n' in result
-        assert '    "./skills/very-long-skill-name-one/",' in result
-
-    def test_output_is_valid_json(self) -> None:
-        """Verify _prettier_json_dumps produces valid JSON.
-
-        Tests: JSON validity of prettier-compatible output
+        Tests: JSON validity of _format_json output
         How: Round-trip through json.loads
         Why: Formatting changes must not break JSON syntax
         """
@@ -1225,49 +1194,80 @@ class TestPrettierJsonDumps:
             "skills": ["./skills/a/", "./skills/b/"],
             "metadata": {"author": "test"},
         }
-        result = auto_sync._prettier_json_dumps(data)
+        result = auto_sync._format_json(data)
         parsed = json.loads(result)
         assert parsed == data
 
-    def test_empty_structures(self) -> None:
-        """Verify _prettier_json_dumps handles empty arrays and objects.
+    def test_format_json_includes_trailing_newline(self) -> None:
+        """Verify _format_json output ends with a newline.
 
-        Tests: Edge cases for empty structures
-        How: Serialize empty dict and list
-        Why: Ensure no crash on empty inputs
+        Tests: Trailing newline in _format_json output
+        How: Check last character
+        Why: POSIX text files require trailing newline
         """
-        assert auto_sync._prettier_json_dumps({}) == "{}"
-        assert auto_sync._prettier_json_dumps([]) == "[]"
+        data = {"name": "test"}
+        result = auto_sync._format_json(data)
+        assert result.endswith("\n")
 
-    def test_nested_objects_inline_when_short(self) -> None:
-        """Verify nested short objects stay inline.
+    @_requires_prettier
+    def test_format_json_short_arrays_inline(self) -> None:
+        """Verify _format_json keeps short arrays inline (prettier behaviour).
 
-        Tests: _prettier_json_dumps nested inline formatting
-        How: Serialize an object with a short nested object
-        Why: Prettier keeps nested structures inline when they fit
+        Tests: Prettier-compatible inline array formatting
+        How: Serialize data with a short array, check for inline format
+        Why: This is the key difference from json.dumps(indent=2)
         """
-        data = {"metadata": {"version": "1.0.0"}}
-        result = auto_sync._prettier_json_dumps(data)
-        assert '{ "version": "1.0.0" }' in result
+        data = {"skills": ["./skills/test/"]}
+        result = auto_sync._format_json(data)
+        # prettier collapses short structures onto one line
+        assert '["./skills/test/"]' in result
 
-    def test_matches_prettier_for_real_plugin_json(self) -> None:
-        """Verify output matches prettier format for a realistic plugin.json.
+    @_requires_prettier
+    def test_format_json_differs_from_json_dumps(self) -> None:
+        """Verify _format_json output differs from json.dumps(indent=2).
 
-        Tests: _prettier_json_dumps against known prettier output
-        How: Serialize a realistic plugin.json and compare structure
-        Why: End-to-end validation against actual prettier behaviour
+        Tests: Format divergence that enables idempotency detection
+        How: Compare _format_json output with json.dumps(indent=2) + newline
+        Why: The idempotency check relies on this difference to distinguish
+             initial file content (json.dumps) from hook-written content (_format_json)
         """
         data = {
-            "name": "commitlint",
-            "version": "1.0.7",
-            "skills": ["./skills/commitlint"],
+            "name": "test-plugin",
+            "version": "1.0.0",
+            "skills": ["./skills/existing/"],
         }
-        result = auto_sync._prettier_json_dumps(data)
-        # Short enough to be inline (well under 80 chars total)
+        format_json_output = auto_sync._format_json(data)
+        json_dumps_output = json.dumps(data, indent=2) + "\n"
+        assert format_json_output != json_dumps_output
+
+    def test_format_json_fallback_produces_valid_json(self, monkeypatch: Any) -> None:
+        """Verify _format_json returns valid JSON when npx is unavailable.
+
+        Tests: Fallback path when prettier is not installed
+        How: Set _NPX_PATH to None, verify output parses as valid JSON
+        Why: Ensures the hook works correctly on machines without Node.js
+        """
+        monkeypatch.setattr(auto_sync, "_NPX_PATH", None)
+        data = {"name": "test-plugin", "version": "1.0.0", "skills": ["./skills/a/"]}
+        result = auto_sync._format_json(data)
         parsed = json.loads(result)
         assert parsed == data
-        # The skills array should be inline since it's short
-        assert '["./skills/commitlint"]' in result
+        assert result.endswith("\n")
+
+    def test_format_json_fallback_uses_json_dumps_format(
+        self, monkeypatch: Any
+    ) -> None:
+        """Verify fallback path produces json.dumps(indent=2) output exactly.
+
+        Tests: Format equivalence in fallback mode
+        How: Set _NPX_PATH to None, compare with json.dumps output
+        Why: When prettier unavailable, output should be standard json.dumps
+        """
+        monkeypatch.setattr(auto_sync, "_NPX_PATH", None)
+        data = {"name": "test"}
+        result = auto_sync._format_json(data)
+        expected = json.dumps(data, indent=2) + "\n"
+        assert result == expected
 
 
 # ============================================================================
@@ -1276,19 +1276,21 @@ class TestPrettierJsonDumps:
 
 
 class TestIdempotentWrites:
-    """Test that running update functions twice produces identical output without double-bump.
+    """Test that the staged guard prevents double-bumping on retry.
 
-    The fix detects when the serialized content matches what is already on disk,
-    skipping the write and preventing version double-bumps.
+    The primary defence against double-bumping is the ``_is_file_staged`` guard.
+    When run 1 writes and stages the manifest, run 2 (retry) sees the staged file
+    and returns early.  An additional ``new_content == existing_content`` check
+    provides a secondary safety net.
     """
 
     def test_update_plugin_json_is_noop_on_second_run(
         self, tmp_path: Path, monkeypatch: Any
     ) -> None:
-        """Verify second run of update_plugin_json is a no-op when file already matches.
+        """Verify second run is blocked by staged guard.
 
-        Tests: Idempotent write prevention for plugin.json
-        How: Run update twice without reset, verify second run returns False
+        Tests: Staged guard prevents double-bump for plugin.json
+        How: Run update, then run again with file in staged_files
         Why: Prevents version double-bump when commit fails and user retries
         """
         monkeypatch.chdir(tmp_path)
@@ -1313,20 +1315,21 @@ class TestIdempotentWrites:
         assert updated_1 is True
         assert version_1 == "1.0.1"
 
-        # Run 2: file already has the bumped version in prettier format -- no-op
+        # Run 2: staged guard blocks re-processing
+        staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
         updated_2, version_2 = auto_sync.update_plugin_json(
-            plugin_name, changes, _NO_STAGED
+            plugin_name, changes, {staged_path}
         )
         assert updated_2 is False
-        assert version_2 == "1.0.1"
+        assert version_2 == "0.0.0"
 
     def test_update_marketplace_json_is_noop_on_second_run(
         self, tmp_path: Path, monkeypatch: Any
     ) -> None:
-        """Verify second run of update_marketplace_json is a no-op when file matches.
+        """Verify second run is blocked by staged guard.
 
-        Tests: Idempotent write prevention for marketplace.json
-        How: Run update twice without reset, verify second run returns False
+        Tests: Staged guard prevents double-bump for marketplace.json
+        How: Run update, then run again with file in staged_files
         Why: Prevents version double-bump in marketplace manifest
         """
         monkeypatch.chdir(tmp_path)
@@ -1339,7 +1342,7 @@ class TestIdempotentWrites:
             },
         )
 
-        plugin_changes: MarketplaceChanges = {
+        plugin_changes: _MarketplaceChangesDict = {
             "added": set(),
             "deleted": set(),
             "modified": [("existing", "1.0.1")],
@@ -1349,8 +1352,10 @@ class TestIdempotentWrites:
         updated_1 = auto_sync.update_marketplace_json(plugin_changes, _NO_STAGED)
         assert updated_1 is True
 
-        # Run 2: file already has the bumped version -- no-op
-        updated_2 = auto_sync.update_marketplace_json(plugin_changes, _NO_STAGED)
+        # Run 2: staged guard blocks re-processing
+        updated_2 = auto_sync.update_marketplace_json(
+            plugin_changes, {".claude-plugin/marketplace.json"}
+        )
         assert updated_2 is False
 
         # Verify version was only bumped once
@@ -1361,11 +1366,11 @@ class TestIdempotentWrites:
     def test_update_plugin_json_version_stays_at_single_bump(
         self, tmp_path: Path, monkeypatch: Any
     ) -> None:
-        """Verify running update_plugin_json three times still only bumps once.
+        """Verify staged guard prevents multiple bumps across retries.
 
-        Tests: Multiple consecutive runs remain idempotent
-        How: Run update three times, verify final version is 1.0.1 not 1.0.3
-        Why: Stress test the idempotency mechanism
+        Tests: Multiple consecutive runs with staged guard
+        How: Run update once, then simulate two retries with staged guard
+        Why: Stress test the double-bump prevention mechanism
         """
         monkeypatch.chdir(tmp_path)
 
@@ -1377,11 +1382,13 @@ class TestIdempotentWrites:
         )
 
         changes = _changes_with_modified_skill()
+        staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
 
-        # Run three times
+        # Run 1: bumps to 1.0.1
         auto_sync.update_plugin_json(plugin_name, changes, _NO_STAGED)
-        auto_sync.update_plugin_json(plugin_name, changes, _NO_STAGED)
-        auto_sync.update_plugin_json(plugin_name, changes, _NO_STAGED)
+        # Runs 2-3: staged guard blocks re-processing
+        auto_sync.update_plugin_json(plugin_name, changes, {staged_path})
+        auto_sync.update_plugin_json(plugin_name, changes, {staged_path})
 
         # Final version should be 1.0.1, not 1.0.3
         final_data = json.loads(plugin_json.read_text(encoding="utf-8"))

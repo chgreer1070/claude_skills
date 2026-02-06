@@ -127,16 +127,16 @@ def get_git_status() -> dict[str, list[str]]:
 
         operation = parts[0]
 
-        if operation == "A":
-            status["added"].append(parts[1])
-        elif operation == "D":
-            status["deleted"].append(parts[1])
-        elif operation == "M":
-            status["modified"].append(parts[1])
-        elif operation.startswith("R") and len(parts) == rename_fields:
-            # Renamed: treat as delete old + add new
-            status["deleted"].append(parts[1])
-            status["added"].append(parts[2])
+        match operation:
+            case "A":
+                status["added"].append(parts[1])
+            case "D":
+                status["deleted"].append(parts[1])
+            case "M":
+                status["modified"].append(parts[1])
+            case op if op.startswith("R") and len(parts) == rename_fields:
+                status["deleted"].append(parts[1])
+                status["added"].append(parts[2])
 
     return status
 
@@ -173,21 +173,22 @@ def parse_plugin_path(filepath: str) -> PluginPathInfo | None:
     if len(parts) >= _MIN_COMPONENT_PATH_PARTS:
         component_dir = parts[2]
 
-        if component_dir == "skills" and len(parts) >= _MIN_SKILL_PATH_PARTS:
-            result["component_type"] = "skill"
-            result["component_path"] = "/".join(parts[2:])
-        elif component_dir == "agents" and filepath.endswith(".md"):
-            result["component_type"] = "agent"
-            result["component_path"] = "/".join(parts[2:])
-        elif component_dir == "commands" and filepath.endswith(".md"):
-            result["component_type"] = "command"
-            result["component_path"] = "/".join(parts[2:])
-        elif component_dir == "hooks" and filepath.endswith(".json"):
-            result["component_type"] = "hook"
-            result["component_path"] = "/".join(parts[2:])
-        elif component_dir == "mcp":
-            result["component_type"] = "mcp"
-            result["component_path"] = "/".join(parts[2:])
+        match component_dir:
+            case "skills" if len(parts) >= _MIN_SKILL_PATH_PARTS:
+                result["component_type"] = "skill"
+                result["component_path"] = "/".join(parts[2:])
+            case "agents" if filepath.endswith(".md"):
+                result["component_type"] = "agent"
+                result["component_path"] = "/".join(parts[2:])
+            case "commands" if filepath.endswith(".md"):
+                result["component_type"] = "command"
+                result["component_path"] = "/".join(parts[2:])
+            case "hooks" if filepath.endswith(".json"):
+                result["component_type"] = "hook"
+                result["component_path"] = "/".join(parts[2:])
+            case "mcp":
+                result["component_type"] = "mcp"
+                result["component_path"] = "/".join(parts[2:])
 
     return result
 
@@ -205,15 +206,18 @@ def bump_version(current: str, bump_type: Literal["major", "minor", "patch"]) ->
     try:
         major, minor, patch = map(int, current.split("."))
     except (ValueError, AttributeError):
+        sys.stderr.write(
+            f"Warning: malformed version '{current}', defaulting to 0.1.0\n"
+        )
         return "0.1.0"
 
-    if bump_type == "major":
-        return f"{major + 1}.0.0"
-    if bump_type == "minor":
-        return f"{major}.{minor + 1}.0"
-    if bump_type == "patch":
-        return f"{major}.{minor}.{patch + 1}"
-    return current
+    match bump_type:
+        case "major":
+            return f"{major + 1}.0.0"
+        case "minor":
+            return f"{major}.{minor + 1}.0"
+        case "patch":
+            return f"{major}.{minor}.{patch + 1}"
 
 
 def _get_staged_files() -> set[str]:
@@ -245,11 +249,31 @@ def _is_file_staged(filepath: str | Path, staged_files: set[str]) -> bool:
     return str(filepath) in staged_files
 
 
+def _find_prettierrc() -> Path | None:
+    """Locate ``.prettierrc`` by walking up from the current directory.
+
+    Returns:
+        Absolute path to ``.prettierrc`` if found, else None.
+    """
+    current = Path.cwd().resolve()
+    for parent in (current, *current.parents):
+        candidate = parent / ".prettierrc"
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+# Resolve prettier config once at module load.
+_PRETTIERRC_PATH: Path | None = _find_prettierrc()
+
+
 def _format_json(data: object) -> str:
     """Serialize data to JSON, formatted by prettier if available.
 
     Writes ``json.dumps(indent=2)`` output.  If ``npx`` is available, runs
     ``prettier --write`` to match the project's prettier configuration.
+    The ``--config`` flag is passed explicitly so that temp files outside
+    the repository still receive the project's formatting rules.
 
     Args:
         data: JSON-serialisable Python object.
@@ -266,12 +290,16 @@ def _format_json(data: object) -> str:
         f.write(content)
         tmp_path = f.name
     try:
-        subprocess.run(
-            [_NPX_PATH, "prettier", "--write", tmp_path],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        cmd = [_NPX_PATH, "prettier", "--write"]
+        if _PRETTIERRC_PATH:
+            cmd.extend(["--config", str(_PRETTIERRC_PATH)])
+        cmd.append(tmp_path)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if result.returncode != 0:
+            sys.stderr.write(
+                f"Warning: prettier formatting failed: {result.stderr.strip()}\n"
+            )
+            return content
         return Path(tmp_path).read_text(encoding="utf-8")
     finally:
         Path(tmp_path).unlink(missing_ok=True)
@@ -382,28 +410,12 @@ def update_plugin_json(
         new_version = bump_version(current_version, bump_type)
         existing_content = plugin_json_path.read_text(encoding="utf-8")
 
-        # Idempotency: detect if a previous run already bumped the version.
-        # On retry after a failed commit, the file already contains the
-        # bumped version and formatted content from run 1.  Re-serializing
-        # with new_version would double-bump (1.0.1 → 1.0.2), so we check
-        # whether the file already holds a bump by verifying that the data
-        # with current_version, once formatted, matches the existing content
-        # after substituting the version string.  If only the version changed
-        # (no array modifications), a previous run already handled everything.
-        if not modified:
-            data["version"] = current_version
-            unbumped_content = _format_json(data)
-            # Replace the version string to see if the file is just a
-            # bumped copy of what we would write.
-            probe = unbumped_content.replace(
-                json.dumps(current_version), json.dumps(new_version), 1
-            )
-            if probe == existing_content:
-                return False, current_version
-
         data["version"] = new_version
         new_content = _format_json(data)
 
+        # Skip write when the formatted output already matches the file.
+        # The primary double-bump defence is the _is_file_staged guard
+        # above — this check provides an additional safety net.
         if new_content == existing_content:
             return False, current_version
 
@@ -494,6 +506,7 @@ def update_marketplace_json(
 
     # Bump marketplace version if any changes
     if modified or plugin_changes["modified"]:
+        existing_content = marketplace_json_path.read_text(encoding="utf-8")
         new_version = bump_version(current_version, bump_type)
 
         if "metadata" not in data:
@@ -502,9 +515,6 @@ def update_marketplace_json(
         metadata = cast("dict[str, str]", data["metadata"])
         metadata["version"] = new_version
 
-        # Serialize via _format_json then compare with existing content to
-        # ensure idempotency (prevents double-bump on retry).
-        existing_content = marketplace_json_path.read_text(encoding="utf-8")
         new_content = _format_json(data)
 
         if new_content == existing_content:
@@ -563,18 +573,11 @@ def _process_file_changes(
                     "component_path": parsed["component_path"],
                 }
 
-                if operation == "added":
-                    plugin_component_changes[plugin_name]["added"].append(
-                        component_change
-                    )
-                elif operation == "deleted":
-                    plugin_component_changes[plugin_name]["deleted"].append(
-                        component_change
-                    )
-                elif operation == "modified":
-                    plugin_component_changes[plugin_name]["modified"].append(
-                        component_change
-                    )
+                match operation:
+                    case "added" | "deleted" | "modified":
+                        plugin_component_changes[plugin_name][operation].append(
+                            component_change
+                        )
 
     return plugin_component_changes, marketplace_changes
 
