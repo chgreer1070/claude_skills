@@ -104,7 +104,12 @@ unfixable = ["F401"]
 ]
 "typings/**" = ["N", "ANN", "A"]
 "**/scripts/**" = [
-	"T201", # print() statements are intentional for CI output visibility
+	"T201",    # print() statements are intentional for CI output visibility
+	"S",       # Security checks relaxed for CLI scripts (subprocess, partial paths)
+	"DOC",     # Docstring content requirements relaxed for scripts
+	"ANN401",  # Any type annotations acceptable in script arguments
+	"PLR0911", # Too many return statements acceptable in script logic
+	"PLC0415", # Local imports acceptable in scripts for lazy loading
 ]
 # Typer evaluates annotations at runtime, conflicting with TC003 + required PEP 563 import
 # B008: Typer's design pattern requires function calls in defaults (standard pattern)

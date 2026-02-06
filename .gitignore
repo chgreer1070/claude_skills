@@ -38,3 +38,4 @@ uv.lock
 !.claude/knowledge/workflow-diagrams
 .env
 package-lock.json
+.hypothesis/

@@ -27,6 +27,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Literal, TypedDict, cast
 
+# Prettier compatibility constants
+_PRETTIER_PRINT_WIDTH = 80
+
 # Git status parsing constants
 _EXPECTED_PARTS_COUNT = 2
 _MIN_PLUGIN_PATH_PARTS = 2
@@ -196,6 +199,135 @@ def bump_version(current: str, bump_type: Literal["major", "minor", "patch"]) ->
     return current
 
 
+def _is_file_staged(filepath: str | Path) -> bool:
+    """Check whether a file path appears in the staged files list.
+
+    Uses line-by-line exact matching instead of substring containment
+    to prevent false positives (e.g. ``plugin.json.bak`` matching ``plugin.json``).
+
+    Args:
+        filepath: Path to check in the staged files list.
+
+    Returns:
+        True if the exact path appears as a line in ``git diff --cached --name-only``.
+    """
+    staged_output = run_git_command(["diff", "--cached", "--name-only"])
+    staged_files = staged_output.splitlines()
+    return str(filepath) in staged_files
+
+
+def _prettier_json_dumps(data: object) -> str:
+    """Serialize data to JSON matching prettier's formatting conventions.
+
+    Prettier collapses arrays and objects onto a single line when the result
+    fits within the print width (80 characters by default).  When the single-line
+    form exceeds that width, prettier expands the structure vertically with
+    ``indent=2``.
+
+    This function reproduces that behaviour so that the pre-commit hook and
+    prettier never produce differing output for the same data, eliminating
+    stash conflicts during commit retries.
+
+    Args:
+        data: JSON-serialisable Python object.
+
+    Returns:
+        A prettier-compatible JSON string (without trailing newline).
+    """
+    return _prettier_format_value(data, indent_level=0)
+
+
+def _prettier_format_value(value: object, *, indent_level: int) -> str:
+    """Recursively format a JSON value in prettier style.
+
+    Args:
+        value: The value to format.
+        indent_level: Current indentation depth (number of 2-space indents).
+
+    Returns:
+        Formatted JSON string fragment.
+    """
+    if isinstance(value, dict):
+        return _prettier_format_object(value, indent_level=indent_level)
+    if isinstance(value, list):
+        return _prettier_format_array(value, indent_level=indent_level)
+    return json.dumps(value)
+
+
+def _prettier_format_object(obj: dict[str, object], *, indent_level: int) -> str:
+    """Format a JSON object in prettier style.
+
+    Args:
+        obj: Dictionary to format.
+        indent_level: Current indentation depth.
+
+    Returns:
+        Formatted JSON object string.
+    """
+    if not obj:
+        return "{}"
+
+    indent = "  " * indent_level
+    child_indent = "  " * (indent_level + 1)
+
+    # Build entries with recursively formatted values
+    entries: list[str] = []
+    for key, val in obj.items():
+        formatted_val = _prettier_format_value(val, indent_level=indent_level + 1)
+        entries.append(f"{json.dumps(key)}: {formatted_val}")
+
+    # Try single-line form
+    single_line = "{ " + ", ".join(entries) + " }"
+    line_start_width = len(indent)
+    if line_start_width + len(single_line) <= _PRETTIER_PRINT_WIDTH:
+        return single_line
+
+    # Multi-line form
+    lines = ["{"]
+    for i, (key, val) in enumerate(obj.items()):
+        formatted_val = _prettier_format_value(val, indent_level=indent_level + 1)
+        comma = "," if i < len(obj) - 1 else ""
+        lines.append(f"{child_indent}{json.dumps(key)}: {formatted_val}{comma}")
+    lines.append(f"{indent}}}")
+    return "\n".join(lines)
+
+
+def _prettier_format_array(arr: list[object], *, indent_level: int) -> str:
+    """Format a JSON array in prettier style.
+
+    Args:
+        arr: List to format.
+        indent_level: Current indentation depth.
+
+    Returns:
+        Formatted JSON array string.
+    """
+    if not arr:
+        return "[]"
+
+    indent = "  " * indent_level
+    child_indent = "  " * (indent_level + 1)
+
+    # Build elements with recursively formatted values
+    elements: list[str] = [
+        _prettier_format_value(item, indent_level=indent_level + 1) for item in arr
+    ]
+
+    # Try single-line form
+    single_line = "[" + ", ".join(elements) + "]"
+    line_start_width = len(indent)
+    if line_start_width + len(single_line) <= _PRETTIER_PRINT_WIDTH:
+        return single_line
+
+    # Multi-line form
+    lines = ["["]
+    for i, element in enumerate(elements):
+        comma = "," if i < len(arr) - 1 else ""
+        lines.append(f"{child_indent}{element}{comma}")
+    lines.append(f"{indent}]")
+    return "\n".join(lines)
+
+
 def _update_component_arrays(
     data: dict[str, list[str] | str], changes: ComponentChanges
 ) -> bool:
@@ -273,10 +405,8 @@ def update_plugin_json(plugin_name: str, changes: ComponentChanges) -> tuple[boo
     if not plugin_json_path.exists():
         return False, "0.0.0"
 
-    # Check if plugin.json is already staged - if so, skip modifying it
-    staged_status = run_git_command(["diff", "--cached", "--name-only"])
-    if str(plugin_json_path) in staged_status:
-        # File is already staged, don't modify it
+    # Check if plugin.json is already staged using exact line matching
+    if _is_file_staged(plugin_json_path):
         return False, "0.0.0"
 
     with plugin_json_path.open(encoding="utf-8") as f:
@@ -300,14 +430,72 @@ def update_plugin_json(plugin_name: str, changes: ComponentChanges) -> tuple[boo
         new_version = bump_version(current_version, bump_type)
         data["version"] = new_version
 
-        # Write updated plugin.json
-        with plugin_json_path.open("w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-            f.write("\n")
+        # Serialize in prettier-compatible format then compare with existing
+        # content to ensure idempotency (prevents double-bump on retry).
+        # When the hook runs again after a failed commit, the arrays are already
+        # correct (modified=False) and the version was already bumped, so the
+        # serialized output with the SAME version matches the file on disk.
+        # We must compare using the current_version first to detect this case,
+        # then only write if the bumped version produces different content.
+        existing_content = plugin_json_path.read_text(encoding="utf-8")
+
+        # Check if file is already in the target state from a previous run.
+        # Re-serialize with current (unbumped) version to see if arrays changed.
+        data["version"] = current_version
+        check_content = _prettier_json_dumps(data) + "\n"
+        if not modified and check_content == existing_content:
+            # Arrays are correct and file is already prettier-formatted --
+            # a previous run already bumped the version.
+            return False, current_version
+
+        # Apply the bumped version and write
+        data["version"] = new_version
+        new_content = _prettier_json_dumps(data) + "\n"
+
+        if new_content == existing_content:
+            return False, current_version
+
+        plugin_json_path.write_text(new_content, encoding="utf-8")
 
         return True, new_version
 
     return False, current_version
+
+
+def _update_marketplace_plugins(
+    data: dict[str, dict[str, str] | list[dict[str, str]]],
+    plugin_changes: MarketplaceChanges,
+) -> bool:
+    """Add and remove plugins in the marketplace data structure.
+
+    Args:
+        data: Marketplace JSON data dictionary (mutated in place).
+        plugin_changes: Changes describing added/deleted plugins.
+
+    Returns:
+        True if the plugins list was modified.
+    """
+    modified = False
+
+    for plugin_name in plugin_changes["added"]:
+        plugin_entry = {"name": plugin_name, "source": f"./plugins/{plugin_name}"}
+
+        if "plugins" not in data:
+            data["plugins"] = []
+
+        plugins_list = cast("list[dict[str, str]]", data["plugins"])
+
+        if not any(p["name"] == plugin_name for p in plugins_list):
+            plugins_list.append(plugin_entry)
+            modified = True
+
+    for plugin_name in plugin_changes["deleted"]:
+        if "plugins" in data:
+            plugins_list = cast("list[dict[str, str]]", data["plugins"])
+            data["plugins"] = [p for p in plugins_list if p["name"] != plugin_name]
+            modified = True
+
+    return modified
 
 
 def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
@@ -329,10 +517,8 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
         print("Warning: marketplace.json not found")
         return False
 
-    # Check if marketplace.json is already staged - if so, skip modifying it
-    staged_status = run_git_command(["diff", "--cached", "--name-only"])
-    if str(marketplace_json_path) in staged_status:
-        # File is already staged, don't modify it
+    # Check if marketplace.json is already staged using exact line matching
+    if _is_file_staged(marketplace_json_path):
         return False
 
     with marketplace_json_path.open(encoding="utf-8") as f:
@@ -341,7 +527,6 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
     metadata = cast("dict[str, str]", data.get("metadata", {}))
     current_version = metadata.get("version", "0.0.0")
     bump_type: Literal["major", "minor", "patch"] = "patch"
-    modified = False
 
     # Determine bump type
     if plugin_changes["deleted"]:
@@ -349,29 +534,21 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
     elif plugin_changes["added"]:
         bump_type = "minor"  # New plugins
 
-    # Add new plugins
-    for plugin_name in plugin_changes["added"]:
-        plugin_entry = {"name": plugin_name, "source": f"./plugins/{plugin_name}"}
-
-        if "plugins" not in data:
-            data["plugins"] = []
-
-        plugins_list = cast("list[dict[str, str]]", data["plugins"])
-
-        # Check if already exists
-        if not any(p["name"] == plugin_name for p in plugins_list):
-            plugins_list.append(plugin_entry)
-            modified = True
-
-    # Remove deleted plugins
-    for plugin_name in plugin_changes["deleted"]:
-        if "plugins" in data:
-            plugins_list = cast("list[dict[str, str]]", data["plugins"])
-            data["plugins"] = [p for p in plugins_list if p["name"] != plugin_name]
-            modified = True
+    # Add and remove plugins
+    modified = _update_marketplace_plugins(data, plugin_changes)
 
     # Bump marketplace version if any changes
     if modified or plugin_changes["modified"]:
+        existing_content = marketplace_json_path.read_text(encoding="utf-8")
+
+        # Check if file is already in the target state from a previous run.
+        # Re-serialize with current (unbumped) version to see if plugins changed.
+        check_content = _prettier_json_dumps(data) + "\n"
+        if not modified and check_content == existing_content:
+            # Plugins are correct and file is already prettier-formatted --
+            # a previous run already bumped the version.
+            return False
+
         new_version = bump_version(current_version, bump_type)
 
         if "metadata" not in data:
@@ -380,10 +557,12 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
         metadata = cast("dict[str, str]", data["metadata"])
         metadata["version"] = new_version
 
-        # Write updated marketplace.json
-        with marketplace_json_path.open("w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-            f.write("\n")
+        new_content = _prettier_json_dumps(data) + "\n"
+
+        if new_content == existing_content:
+            return False
+
+        marketplace_json_path.write_text(new_content, encoding="utf-8")
 
         return True
 

@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are validating a summarizer sub-agent's output. The agent was tasked with producing a structured summary.\n\nCheck the agent transcript for these required elements:\n1. YAML frontmatter with source_type, source_path, method, confidence, confidence_notes\n2. A Summary section (BLUF style)\n3. A 'What Was Found' section with source references\n4. A 'What Was NOT Found' section (must exist even if empty with 'None')\n5. An 'Uncertain' section (must exist even if empty with 'None')\n6. A 'Sources' section with attribution\n\nAlso check for these fidelity violations:\n- Counts replaced with vague quantifiers ('most', 'several', 'some' instead of exact numbers)\n- 'Not found' upgraded to 'doesn't exist' or 'is not supported'\n- Missing confidence assessment\n- Content summarized without reading the source first\n\nIf the output contains all required sections and no fidelity violations, return {\"ok\": true}.\nIf sections are missing or fidelity violations found, return {\"ok\": false, \"reason\": \"Missing sections: [list]. Fidelity violations: [list].\"}.\n\nNote: Only validate outputs from summarizer agents (file-summarizer, url-summarizer, image-summarizer). For other agents, return {\"ok\": true}.",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
