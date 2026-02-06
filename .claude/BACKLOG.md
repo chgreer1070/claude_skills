@@ -1,9 +1,9 @@
 ---
 last-updated: 2026-02-05
 p0-count: 0
-p1-count: 8
+p1-count: 7
 p2-count: 9
-ideas-count: 11
+ideas-count: 10
 ---
 
 # Backlog
