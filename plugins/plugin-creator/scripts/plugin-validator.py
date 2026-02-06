@@ -2382,9 +2382,95 @@ class SummaryReporter:
 # ============================================================================
 
 
-def main(  # noqa: PLR0912, C901
-    path: Path = typer.Argument(
-        ..., help="Path to plugin, skill, agent, or command file to validate"
+def _validate_single_path(
+    path: Path, *, check: bool, fix: bool, verbose: bool
+) -> list[tuple[Path, ValidationResult]]:
+    """Validate a single path and return results.
+
+    Args:
+        path: Path to validate.
+        check: Validate only, don't auto-fix.
+        fix: Auto-fix issues where possible.
+        verbose: Show detailed output.
+
+    Returns:
+        List of (path, result) tuples from validation.
+
+    Raises:
+        typer.Exit: If path doesn't exist or file type is unknown.
+
+    Note:
+        Complexity warnings suppressed (PLR0912, C901) for validation entry point.
+        Branching complexity is inherent to file type detection and workflow routing.
+    """
+    if not path.exists():
+        typer.echo(f"Error: Path does not exist: {path}", err=True)
+        raise typer.Exit(2) from None
+
+    # Detect file type
+    file_type = FileType.detect_file_type(path)
+
+    # Initialize validators based on file type
+    validators: list[Validator] = []
+
+    if file_type in {FileType.SKILL, FileType.AGENT, FileType.COMMAND}:
+        # Capability files: validate frontmatter, name, description
+        validators.extend([
+            FrontmatterValidator(),
+            NameFormatValidator(),
+            DescriptionValidator(),
+        ])
+
+        # Skill-specific validators
+        if file_type == FileType.SKILL:
+            validators.extend([
+                ComplexityValidator(),
+                InternalLinkValidator(),
+                ProgressiveDisclosureValidator(),
+            ])
+
+    elif file_type == FileType.PLUGIN:
+        # Plugin directories: validate structure
+        validators.append(PluginStructureValidator())
+
+    else:
+        # Unknown type
+        typer.echo(f"Error: Cannot determine file type for: {path}", err=True)
+        typer.echo(
+            "Expected: SKILL.md, agent .md, command .md, or plugin directory", err=True
+        )
+        raise typer.Exit(2) from None
+
+    # Run validation
+    results: list[tuple[Path, ValidationResult]] = []
+    for validator in validators:
+        result = validator.validate(path)
+        results.append((path, result))
+
+    # Apply fixes if requested and validator supports it
+    if fix:
+        fixes_applied: list[str] = []
+        for validator in validators:
+            if validator.can_fix():
+                try:
+                    validator_fixes = validator.fix(path)
+                    fixes_applied.extend(validator_fixes)
+                except NotImplementedError:
+                    pass  # Validator doesn't support fixing
+
+        # Re-validate after fixes
+        if fixes_applied:
+            results = []
+            for validator in validators:
+                result = validator.validate(path)
+                results.append((path, result))
+
+    return results
+
+
+def main(
+    paths: list[Path] = typer.Argument(
+        ..., help="Paths to plugin, skill, agent, or command files to validate"
     ),
     check: bool = typer.Option(False, "--check", help="Validate only, don't auto-fix"),
     fix: bool = typer.Option(False, "--fix", help="Auto-fix issues where possible"),
@@ -2403,9 +2489,14 @@ def main(  # noqa: PLR0912, C901
     Validates frontmatter schema, plugin structure, skill complexity, internal links,
     and progressive disclosure. Optionally auto-fixes issues.
 
+    Accepts one or more paths (compatible with pre-commit pass_filenames).
+
     Examples:
         # Validate single file
         ./plugin-validator.py path/to/SKILL.md
+
+        # Validate multiple files (pre-commit mode)
+        ./plugin-validator.py file1.md file2.md file3.md
 
         # Validate entire plugin
         ./plugin-validator.py plugins/my-plugin
@@ -2421,92 +2512,29 @@ def main(  # noqa: PLR0912, C901
         1: Validation errors found
         2: Usage error (invalid arguments)
         130: Interrupted by user (Ctrl+C)
-
-    Note:
-        Complexity warnings suppressed (PLR0912, C901) for CLI entry point.
-        Branching complexity is inherent to argument validation and workflow routing.
     """
     try:
-        # Validate arguments
-        if not path.exists():
-            typer.echo(f"Error: Path does not exist: {path}", err=True)
-            raise typer.Exit(2) from None
-
         if check and fix:
             typer.echo("Error: Cannot use both --check and --fix flags", err=True)
             raise typer.Exit(2) from None
 
-        # Detect file type
-        file_type = FileType.detect_file_type(path)
-
-        # Initialize validators based on file type
-        validators: list[Validator] = []
-
-        if file_type in {FileType.SKILL, FileType.AGENT, FileType.COMMAND}:
-            # Capability files: validate frontmatter, name, description
-            validators.extend([
-                FrontmatterValidator(),
-                NameFormatValidator(),
-                DescriptionValidator(),
-            ])
-
-            # Skill-specific validators
-            if file_type == FileType.SKILL:
-                validators.extend([
-                    ComplexityValidator(),
-                    InternalLinkValidator(),
-                    ProgressiveDisclosureValidator(),
-                ])
-
-        elif file_type == FileType.PLUGIN:
-            # Plugin directories: validate structure
-            validators.append(PluginStructureValidator())
-
-        else:
-            # Unknown type
-            typer.echo(f"Error: Cannot determine file type for: {path}", err=True)
-            typer.echo(
-                "Expected: SKILL.md, agent .md, command .md, or plugin directory",
-                err=True,
-            )
-            raise typer.Exit(2) from None
-
-        # Run validation
-        results: list[tuple[Path, ValidationResult]] = []
-        for validator in validators:
-            result = validator.validate(path)
-            results.append((path, result))
-
-        # Apply fixes if requested and validator supports it
-        if fix:
-            fixes_applied: list[str] = []
-            for validator in validators:
-                if validator.can_fix():
-                    try:
-                        validator_fixes = validator.fix(path)
-                        fixes_applied.extend(validator_fixes)
-                    except NotImplementedError:
-                        pass  # Validator doesn't support fixing
-
-            # Re-validate after fixes
-            if fixes_applied:
-                results = []
-                for validator in validators:
-                    result = validator.validate(path)
-                    results.append((path, result))
+        all_results: list[tuple[Path, ValidationResult]] = []
+        for path in paths:
+            results = _validate_single_path(path, check=check, fix=fix, verbose=verbose)
+            all_results.extend(results)
 
         # Select reporter based on --no-color flag
         reporter: Reporter
         reporter = CIReporter() if no_color else ConsoleReporter(no_color=no_color)
 
         # Report results
-        reporter.report(results, verbose=verbose)
+        reporter.report(all_results, verbose=verbose)
 
         # Calculate summary statistics
-        total_files = len(results)
-        passed = sum(1 for _, r in results if r.passed)
-        failed = sum(1 for _, r in results if not r.passed)
-        warnings = sum(1 for _, r in results if r.warnings and r.passed)
+        total_files = len(all_results)
+        passed = sum(1 for _, r in all_results if r.passed)
+        failed = sum(1 for _, r in all_results if not r.passed)
+        warnings = sum(1 for _, r in all_results if r.warnings and r.passed)
 
         # Display summary
         reporter.summarize(total_files, passed, failed, warnings)

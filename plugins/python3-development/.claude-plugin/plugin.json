@@ -35,7 +35,8 @@
     "./skills/async-python-patterns/SKILL.md",
     "./skills/mkdocs/SKILL.md",
     "./skills/pre-commit/SKILL.md",
-    "./skills/toml-python/SKILL.md"
+    "./skills/toml-python/SKILL.md",
+    "./skills/implementation-manager/scripts/get-task-context.py"
   ],
   "agents": [
     "./agents/python-cli-architect.md",
