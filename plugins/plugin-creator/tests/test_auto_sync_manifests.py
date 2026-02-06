@@ -12,11 +12,12 @@ Bug areas tested:
    collapses short arrays onto one line, producing different file content for the same data.
 2. Idempotency -- running the same update functions twice must produce identical output
    without double-bumping versions.
-3. The "already staged" guard -- lines 276-280 and 332-335 skip ALL processing when the
-   manifest file is already in ``git diff --cached``, which changes behavior on retry.
+3. The "already staged" guard -- _is_file_staged checks skip ALL processing when the
+   manifest file is already staged, which changes behavior on retry.
 
 Test isolation strategy:
-- All git subprocess calls are mocked via pytest-mock.
+- Functions that previously called git internally now receive a ``staged_files`` set,
+  eliminating the need to mock ``run_git_command`` for staging checks.
 - All file I/O uses pytest tmp_path fixtures with monkeypatch.chdir.
 - Each test is fully independent with no shared state.
 """
@@ -52,6 +53,9 @@ else:
 # resolves them without needing the dynamic module's types at analysis time.
 ComponentChanges = dict[str, list[dict[str, str]]]
 MarketplaceChanges = dict[str, Any]
+
+# Empty staged files set -- used when no files are staged (common case)
+_NO_STAGED: set[str] = set()
 
 
 # ---------------------------------------------------------------------------
@@ -171,7 +175,7 @@ class TestJsonFormattingConflict:
         assert json.loads(json_dump_output) == json.loads(prettier_output)
 
     def test_update_plugin_json_writes_prettier_compatible_format(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify update_plugin_json writes prettier-compatible JSON format.
 
@@ -195,12 +199,12 @@ class TestJsonFormattingConflict:
             },
         )
 
-        mocker.patch.object(auto_sync, "run_git_command", return_value="")
-
         changes = _changes_with_modified_skill()
 
         # Act
-        updated, _new_version = auto_sync.update_plugin_json(plugin_name, changes)
+        updated, _new_version = auto_sync.update_plugin_json(
+            plugin_name, changes, _NO_STAGED
+        )
 
         # Assert
         assert updated is True
@@ -215,7 +219,7 @@ class TestJsonFormattingConflict:
         assert data["skills"] == ["./skills/existing-skill/"]
 
     def test_update_marketplace_json_writes_prettier_compatible_format(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify update_marketplace_json writes prettier-compatible JSON format.
 
@@ -237,8 +241,6 @@ class TestJsonFormattingConflict:
             },
         )
 
-        mocker.patch.object(auto_sync, "run_git_command", return_value="")
-
         plugin_changes: MarketplaceChanges = {
             "added": set(),
             "deleted": set(),
@@ -247,7 +249,7 @@ class TestJsonFormattingConflict:
 
         # Act
         marketplace_json = tmp_path / ".claude-plugin" / "marketplace.json"
-        updated = auto_sync.update_marketplace_json(plugin_changes)
+        updated = auto_sync.update_marketplace_json(plugin_changes, _NO_STAGED)
 
         # Assert
         assert updated is True
@@ -294,7 +296,7 @@ class TestIdempotency:
         assert first_bump != second_bump
 
     def test_update_plugin_json_same_output_when_run_twice_from_same_state(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify running update_plugin_json twice from the same initial state is idempotent.
 
@@ -316,19 +318,21 @@ class TestIdempotency:
         original_content = json.dumps(original_data, indent=2) + "\n"
         plugin_json = _make_plugin_json(tmp_path, plugin_name, original_data)
 
-        mocker.patch.object(auto_sync, "run_git_command", return_value="")
-
         changes = _changes_with_modified_skill()
 
         # Act -- Run 1: from original state
-        updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
+        updated_1, version_1 = auto_sync.update_plugin_json(
+            plugin_name, changes, _NO_STAGED
+        )
         content_after_run1 = plugin_json.read_text(encoding="utf-8")
 
         # Reset to original state
         plugin_json.write_text(original_content, encoding="utf-8")
 
         # Act -- Run 2: from same original state
-        updated_2, version_2 = auto_sync.update_plugin_json(plugin_name, changes)
+        updated_2, version_2 = auto_sync.update_plugin_json(
+            plugin_name, changes, _NO_STAGED
+        )
         content_after_run2 = plugin_json.read_text(encoding="utf-8")
 
         # Assert -- both runs produced identical results
@@ -337,7 +341,7 @@ class TestIdempotency:
         assert content_after_run1 == content_after_run2
 
     def test_update_plugin_json_no_double_bump_on_retry(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify version does NOT double-bump when update runs twice.
 
@@ -358,16 +362,17 @@ class TestIdempotency:
         }
         _make_plugin_json(tmp_path, plugin_name, original_data)
 
-        # Mock git: always report nothing staged (bypassing the guard)
-        mocker.patch.object(auto_sync, "run_git_command", return_value="")
-
         changes = _changes_with_modified_skill()
 
         # Act -- Run 1
-        updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
+        updated_1, version_1 = auto_sync.update_plugin_json(
+            plugin_name, changes, _NO_STAGED
+        )
 
         # Act -- Run 2 on the already-bumped file (idempotency prevents double-bump)
-        updated_2, version_2 = auto_sync.update_plugin_json(plugin_name, changes)
+        updated_2, version_2 = auto_sync.update_plugin_json(
+            plugin_name, changes, _NO_STAGED
+        )
 
         # Assert -- version bumped only once: 1.0.0 -> 1.0.1, second run is no-op
         assert updated_1 is True
@@ -376,7 +381,7 @@ class TestIdempotency:
         assert version_2 == "1.0.1"
 
     def test_update_marketplace_json_no_double_bump_on_retry(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify marketplace version does NOT double-bump on retry.
 
@@ -393,8 +398,6 @@ class TestIdempotency:
         }
         _make_marketplace_json(tmp_path, original_data)
 
-        mocker.patch.object(auto_sync, "run_git_command", return_value="")
-
         plugin_changes: MarketplaceChanges = {
             "added": set(),
             "deleted": set(),
@@ -402,10 +405,10 @@ class TestIdempotency:
         }
 
         # Act -- Run 1
-        updated_1 = auto_sync.update_marketplace_json(plugin_changes)
+        updated_1 = auto_sync.update_marketplace_json(plugin_changes, _NO_STAGED)
 
         # Act -- Run 2 on the already-bumped file (idempotency prevents double-bump)
-        updated_2 = auto_sync.update_marketplace_json(plugin_changes)
+        updated_2 = auto_sync.update_marketplace_json(plugin_changes, _NO_STAGED)
 
         # Assert -- version bumped only once
         assert updated_1 is True
@@ -449,9 +452,9 @@ class TestIdempotency:
 
 
 class TestAlreadyStagedGuard:
-    """Test the "already staged" guard at lines 276-280 and 332-335.
+    """Test the "already staged" guard via _is_file_staged.
 
-    The guard checks ``git diff --cached --name-only`` for the manifest file.
+    The guard checks the ``staged_files`` set for the manifest file.
     If found, it skips ALL processing and returns ``(False, "0.0.0")``.
 
     This is the mechanism that prevents double-bumping on retry, but it also
@@ -460,12 +463,12 @@ class TestAlreadyStagedGuard:
     """
 
     def test_update_plugin_json_skips_when_plugin_json_already_staged(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify update_plugin_json returns (False, "0.0.0") when plugin.json is staged.
 
-        Tests: Already-staged guard in update_plugin_json (lines 276-280)
-        How: Mock git diff --cached to include the plugin.json path, call update
+        Tests: Already-staged guard in update_plugin_json
+        How: Pass staged_files containing the plugin.json path, call update
         Why: On retry after failed commit, plugin.json is already staged from run 1
         """
         # Arrange
@@ -475,14 +478,14 @@ class TestAlreadyStagedGuard:
         data = {"name": "test-plugin", "version": "1.5.0", "skills": []}
         plugin_json = _make_plugin_json(tmp_path, plugin_name, data)
 
-        # Mock git: plugin.json IS in the staged files list
+        # plugin.json IS in the staged files set
         staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
-        mocker.patch.object(auto_sync, "run_git_command", return_value=staged_path)
+        staged = {staged_path}
 
         changes = _changes_with_modified_skill()
 
         # Act
-        updated, version = auto_sync.update_plugin_json(plugin_name, changes)
+        updated, version = auto_sync.update_plugin_json(plugin_name, changes, staged)
 
         # Assert -- guard triggered: returns False with "0.0.0" not the actual version
         assert updated is False
@@ -492,12 +495,12 @@ class TestAlreadyStagedGuard:
         assert json.loads(plugin_json.read_text(encoding="utf-8"))["version"] == "1.5.0"
 
     def test_update_marketplace_json_skips_when_already_staged(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify update_marketplace_json returns False when marketplace.json is staged.
 
-        Tests: Already-staged guard in update_marketplace_json (lines 332-335)
-        How: Mock git diff --cached to include marketplace.json path, call update
+        Tests: Already-staged guard in update_marketplace_json
+        How: Pass staged_files containing marketplace.json path, call update
         Why: Same pattern as plugin.json guard
         """
         # Arrange
@@ -509,10 +512,8 @@ class TestAlreadyStagedGuard:
         }
         marketplace_json = _make_marketplace_json(tmp_path, data)
 
-        # Mock git: marketplace.json IS in the staged files
-        mocker.patch.object(
-            auto_sync, "run_git_command", return_value=".claude-plugin/marketplace.json"
-        )
+        # marketplace.json IS in the staged files
+        staged = {".claude-plugin/marketplace.json"}
 
         plugin_changes: MarketplaceChanges = {
             "added": {"new-plugin"},
@@ -521,7 +522,7 @@ class TestAlreadyStagedGuard:
         }
 
         # Act
-        updated = auto_sync.update_marketplace_json(plugin_changes)
+        updated = auto_sync.update_marketplace_json(plugin_changes, staged)
 
         # Assert -- guard triggered, no modifications
         assert updated is False
@@ -529,7 +530,7 @@ class TestAlreadyStagedGuard:
         assert loaded["metadata"]["version"] == "2.0.0"
 
     def test_staged_guard_returns_zero_version_not_actual_version(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify the guard returns "0.0.0" rather than the file's actual version.
 
@@ -547,12 +548,12 @@ class TestAlreadyStagedGuard:
         _make_plugin_json(tmp_path, plugin_name, data)
 
         staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
-        mocker.patch.object(auto_sync, "run_git_command", return_value=staged_path)
+        staged = {staged_path}
 
         changes = _changes_with_added_skill()
 
         # Act
-        updated, version = auto_sync.update_plugin_json(plugin_name, changes)
+        updated, version = auto_sync.update_plugin_json(plugin_name, changes, staged)
 
         # Assert -- returns "0.0.0" not "3.2.1"
         assert updated is False
@@ -560,14 +561,14 @@ class TestAlreadyStagedGuard:
         assert version != "3.2.1"
 
     def test_staged_guard_uses_exact_line_match_not_substring(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
-        """Verify the guard uses exact line matching, not substring containment.
+        """Verify the guard uses exact matching, not substring containment.
 
         Tests: Guard matching semantics
-        How: Return staged output containing only a longer filename that has the
+        How: Pass staged_files containing only a longer filename that has the
              target path as a substring, verify guard does NOT trigger
-        Why: With exact line matching, "plugin.json.bak" no longer falsely
+        Why: With exact matching, "plugin.json.bak" no longer falsely
              matches "plugin.json" -- the false positive is eliminated
         """
         # Arrange
@@ -577,24 +578,20 @@ class TestAlreadyStagedGuard:
         data = {"name": "test", "version": "1.0.0"}
         _make_plugin_json(tmp_path, plugin_name, data)
 
-        # The staged output contains a DIFFERENT file that has our path as substring
-        mocker.patch.object(
-            auto_sync,
-            "run_git_command",
-            return_value="plugins/test/.claude-plugin/plugin.json.bak",
-        )
+        # The staged set contains a DIFFERENT file that has our path as substring
+        staged = {"plugins/test/.claude-plugin/plugin.json.bak"}
 
         changes = _changes_with_modified_skill()
 
         # Act
-        updated, version = auto_sync.update_plugin_json(plugin_name, changes)
+        updated, version = auto_sync.update_plugin_json(plugin_name, changes, staged)
 
         # Assert -- guard does NOT trigger (exact match required, substring rejected)
         assert updated is True
         assert version == "1.0.1"
 
     def test_staged_guard_does_not_trigger_for_different_plugin(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify the guard does not trigger when a DIFFERENT plugin's json is staged.
 
@@ -610,16 +607,12 @@ class TestAlreadyStagedGuard:
         _make_plugin_json(tmp_path, plugin_name, data)
 
         # A DIFFERENT plugin's json is staged
-        mocker.patch.object(
-            auto_sync,
-            "run_git_command",
-            return_value="plugins/other-plugin/.claude-plugin/plugin.json",
-        )
+        staged = {"plugins/other-plugin/.claude-plugin/plugin.json"}
 
         changes = _changes_with_modified_skill()
 
         # Act
-        updated, version = auto_sync.update_plugin_json(plugin_name, changes)
+        updated, version = auto_sync.update_plugin_json(plugin_name, changes, staged)
 
         # Assert -- guard did NOT trigger, update proceeds
         assert updated is True
@@ -649,12 +642,12 @@ class TestRetryScenario:
     """
 
     def test_retry_scenario_guard_prevents_double_bump(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Simulate the retry: first run bumps, second run is blocked by guard.
 
         Tests: Complete retry flow
-        How: Run update twice, second time with plugin.json in staged list
+        How: Run update twice, second time with plugin.json in staged set
         Why: Verify the guard prevents double-bumping on commit retry
         """
         # Arrange
@@ -671,9 +664,9 @@ class TestRetryScenario:
         changes = _changes_with_modified_skill()
 
         # --- Run 1: plugin.json NOT staged, hook modifies it ---
-        mocker.patch.object(auto_sync, "run_git_command", return_value="")
-
-        updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
+        updated_1, version_1 = auto_sync.update_plugin_json(
+            plugin_name, changes, _NO_STAGED
+        )
 
         assert updated_1 is True
         assert version_1 == "1.0.1"
@@ -681,12 +674,13 @@ class TestRetryScenario:
 
         # --- Simulate: commit fails, prek rolls back, user retries ---
         # On retry, plugin.json IS in staged files from run 1's git add
-
         staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
-        mocker.patch.object(auto_sync, "run_git_command", return_value=staged_path)
+        staged = {staged_path}
 
         # --- Run 2: guard should prevent double-bump ---
-        updated_2, version_2 = auto_sync.update_plugin_json(plugin_name, changes)
+        updated_2, version_2 = auto_sync.update_plugin_json(
+            plugin_name, changes, staged
+        )
 
         assert updated_2 is False
         assert version_2 == "0.0.0"  # Guard returns "0.0.0"
@@ -704,7 +698,7 @@ class TestRetryScenario:
              appending to marketplace_changes["modified"], but if the caller
              incorrectly uses the version, it could corrupt marketplace state
         """
-        # Arrange -- simulate what main() does at lines 469-480
+        # Arrange -- simulate what main() does
         marketplace_changes: MarketplaceChanges = {
             "added": set(),
             "deleted": set(),
@@ -732,7 +726,7 @@ class TestRetryScenario:
         assert not any(v == "0.0.0" for _, v in marketplace_changes["modified"])
 
     def test_full_retry_with_prettier_no_conflict(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify the hook writes prettier-compatible format, eliminating stash conflicts.
 
@@ -756,9 +750,9 @@ class TestRetryScenario:
         changes = _changes_with_modified_skill()
 
         # --- Run 1: hook writes prettier-compatible format ---
-        mocker.patch.object(auto_sync, "run_git_command", return_value="")
-
-        updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
+        updated_1, version_1 = auto_sync.update_plugin_json(
+            plugin_name, changes, _NO_STAGED
+        )
         assert updated_1 is True
         assert version_1 == "1.0.1"
         hook_output = plugin_json.read_text(encoding="utf-8")
@@ -771,10 +765,12 @@ class TestRetryScenario:
 
         # --- Simulate: commit fails, user retries ---
         staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
-        mocker.patch.object(auto_sync, "run_git_command", return_value=staged_path)
+        staged = {staged_path}
 
         # --- Run 2: guard prevents re-processing ---
-        updated_2, version_2 = auto_sync.update_plugin_json(plugin_name, changes)
+        updated_2, version_2 = auto_sync.update_plugin_json(
+            plugin_name, changes, staged
+        )
 
         # Assert -- guard blocked re-processing
         assert updated_2 is False
@@ -841,6 +837,32 @@ class TestParsePluginPath:
         result = auto_sync.parse_plugin_path("plugins/my-plugin/agents/my-agent.md")
         assert result is not None
         assert result["component_type"] == "agent"
+
+    def test_mcp_substring_in_non_mcp_path_is_not_mcp(self) -> None:
+        """Verify 'mcp' as a substring in a non-mcp directory does not match as mcp.
+
+        Tests: parse_plugin_path false-positive prevention for mcp detection
+        How: Pass a script path containing 'mcp' as a substring in the filename
+        Why: Previously ``"mcp" in filepath`` matched any path containing 'mcp',
+             e.g. plugins/demo/scripts/mcp-utils.py was incorrectly typed as mcp
+        """
+        result = auto_sync.parse_plugin_path("plugins/demo/scripts/mcp-utils.py")
+        assert result is not None
+        assert result["plugin"] == "demo"
+        # scripts/ is not a recognised component directory, so no component_type
+        assert result["component_type"] is None
+
+    def test_mcp_directory_is_detected(self) -> None:
+        """Verify files in the mcp/ directory are correctly detected as mcp type.
+
+        Tests: parse_plugin_path for mcp files
+        How: Pass a path with mcp as the component directory
+        Why: Ensure the mcp detection still works for actual mcp components
+        """
+        result = auto_sync.parse_plugin_path("plugins/my-plugin/mcp/my-server.json")
+        assert result is not None
+        assert result["component_type"] == "mcp"
+        assert result["component_path"] == "mcp/my-server.json"
 
 
 class TestProcessFileChanges:
@@ -1020,7 +1042,9 @@ class TestUpdatePluginJsonFileNotFound:
         changes = _changes_with_modified_skill()
 
         # Act
-        updated, version = auto_sync.update_plugin_json("nonexistent", changes)
+        updated, version = auto_sync.update_plugin_json(
+            "nonexistent", changes, _NO_STAGED
+        )
 
         # Assert
         assert updated is False
@@ -1033,85 +1057,110 @@ class TestUpdatePluginJsonFileNotFound:
 
 
 class TestIsFileStaged:
-    """Test the _is_file_staged helper for exact line matching."""
+    """Test the _is_file_staged helper for exact set membership."""
 
-    def test_exact_match_returns_true(self, mocker: MockerFixture) -> None:
-        """Verify _is_file_staged returns True for an exact line match.
+    def test_exact_match_returns_true(self) -> None:
+        """Verify _is_file_staged returns True for an exact match.
 
         Tests: _is_file_staged exact matching
-        How: Mock git output with the exact path on its own line
+        How: Pass staged_files set containing the exact path
         Why: Ensure basic positive matching works
         """
-        mocker.patch.object(
-            auto_sync,
-            "run_git_command",
-            return_value="plugins/foo/.claude-plugin/plugin.json",
-        )
+        staged = {"plugins/foo/.claude-plugin/plugin.json"}
         assert (
-            auto_sync._is_file_staged("plugins/foo/.claude-plugin/plugin.json") is True
+            auto_sync._is_file_staged("plugins/foo/.claude-plugin/plugin.json", staged)
+            is True
         )
 
-    def test_substring_match_returns_false(self, mocker: MockerFixture) -> None:
+    def test_substring_match_returns_false(self) -> None:
         """Verify _is_file_staged rejects substring matches.
 
         Tests: _is_file_staged substring rejection
-        How: Mock git output with a longer path containing the target as substring
+        How: Pass staged_files with a longer path containing the target as substring
         Why: Prevents false positives from paths like plugin.json.bak
         """
-        mocker.patch.object(
-            auto_sync,
-            "run_git_command",
-            return_value="plugins/foo/.claude-plugin/plugin.json.bak",
-        )
+        staged = {"plugins/foo/.claude-plugin/plugin.json.bak"}
         assert (
-            auto_sync._is_file_staged("plugins/foo/.claude-plugin/plugin.json") is False
+            auto_sync._is_file_staged("plugins/foo/.claude-plugin/plugin.json", staged)
+            is False
         )
 
-    def test_multiline_output_matches_correct_line(self, mocker: MockerFixture) -> None:
-        """Verify _is_file_staged matches the right line in multiline output.
+    def test_multiline_output_matches_correct_entry(self) -> None:
+        """Verify _is_file_staged matches the right entry in a set with multiple files.
 
         Tests: _is_file_staged with multiple staged files
-        How: Mock git output with several lines, one of which matches
+        How: Pass staged_files set with several entries, one of which matches
         Why: Real git output contains multiple files
         """
-        staged_output = (
-            "plugins/bar/.claude-plugin/plugin.json\n"
-            "plugins/foo/.claude-plugin/plugin.json\n"
-            "README.md"
-        )
-        mocker.patch.object(auto_sync, "run_git_command", return_value=staged_output)
+        staged = {
+            "plugins/bar/.claude-plugin/plugin.json",
+            "plugins/foo/.claude-plugin/plugin.json",
+            "README.md",
+        }
         assert (
-            auto_sync._is_file_staged("plugins/foo/.claude-plugin/plugin.json") is True
+            auto_sync._is_file_staged("plugins/foo/.claude-plugin/plugin.json", staged)
+            is True
         )
 
-    def test_empty_output_returns_false(self, mocker: MockerFixture) -> None:
-        """Verify _is_file_staged returns False for empty git output.
+    def test_empty_set_returns_false(self) -> None:
+        """Verify _is_file_staged returns False for empty staged files set.
 
         Tests: _is_file_staged with no staged files
-        How: Mock empty git output
+        How: Pass empty set
         Why: Edge case when nothing is staged
         """
-        mocker.patch.object(auto_sync, "run_git_command", return_value="")
         assert (
-            auto_sync._is_file_staged("plugins/foo/.claude-plugin/plugin.json") is False
+            auto_sync._is_file_staged("plugins/foo/.claude-plugin/plugin.json", set())
+            is False
         )
 
-    def test_accepts_path_object(self, mocker: MockerFixture) -> None:
+    def test_accepts_path_object(self) -> None:
         """Verify _is_file_staged works with Path objects.
 
         Tests: _is_file_staged type flexibility
         How: Pass a Path object instead of a string
         Why: The function signature accepts str | Path
         """
-        mocker.patch.object(
-            auto_sync,
-            "run_git_command",
-            return_value="plugins/foo/.claude-plugin/plugin.json",
-        )
+        staged = {"plugins/foo/.claude-plugin/plugin.json"}
         assert (
-            auto_sync._is_file_staged(Path("plugins/foo/.claude-plugin/plugin.json"))
+            auto_sync._is_file_staged(
+                Path("plugins/foo/.claude-plugin/plugin.json"), staged
+            )
             is True
         )
+
+
+# ============================================================================
+# New behaviour: _get_staged_files helper
+# ============================================================================
+
+
+class TestGetStagedFiles:
+    """Test the _get_staged_files helper for correct set construction."""
+
+    def test_returns_set_of_paths(self, mocker: MockerFixture) -> None:
+        """Verify _get_staged_files returns a set of file paths.
+
+        Tests: _get_staged_files return type and content
+        How: Mock run_git_command to return multiline output
+        Why: Ensure correct parsing of git output into set
+        """
+        mocker.patch.object(
+            auto_sync, "run_git_command", return_value="file1.txt\nfile2.txt\nfile3.txt"
+        )
+        result = auto_sync._get_staged_files()
+        assert result == {"file1.txt", "file2.txt", "file3.txt"}
+
+    def test_returns_empty_set_for_no_output(self, mocker: MockerFixture) -> None:
+        """Verify _get_staged_files returns empty set when nothing is staged.
+
+        Tests: _get_staged_files edge case
+        How: Mock empty git output
+        Why: Empty output must not produce a set with empty string
+        """
+        mocker.patch.object(auto_sync, "run_git_command", return_value="")
+        result = auto_sync._get_staged_files()
+        assert result == set()
 
 
 # ============================================================================
@@ -1234,7 +1283,7 @@ class TestIdempotentWrites:
     """
 
     def test_update_plugin_json_is_noop_on_second_run(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify second run of update_plugin_json is a no-op when file already matches.
 
@@ -1255,22 +1304,24 @@ class TestIdempotentWrites:
             },
         )
 
-        mocker.patch.object(auto_sync, "run_git_command", return_value="")
-
         changes = _changes_with_modified_skill()
 
         # Run 1: should update
-        updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
+        updated_1, version_1 = auto_sync.update_plugin_json(
+            plugin_name, changes, _NO_STAGED
+        )
         assert updated_1 is True
         assert version_1 == "1.0.1"
 
         # Run 2: file already has the bumped version in prettier format -- no-op
-        updated_2, version_2 = auto_sync.update_plugin_json(plugin_name, changes)
+        updated_2, version_2 = auto_sync.update_plugin_json(
+            plugin_name, changes, _NO_STAGED
+        )
         assert updated_2 is False
         assert version_2 == "1.0.1"
 
     def test_update_marketplace_json_is_noop_on_second_run(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify second run of update_marketplace_json is a no-op when file matches.
 
@@ -1288,8 +1339,6 @@ class TestIdempotentWrites:
             },
         )
 
-        mocker.patch.object(auto_sync, "run_git_command", return_value="")
-
         plugin_changes: MarketplaceChanges = {
             "added": set(),
             "deleted": set(),
@@ -1297,11 +1346,11 @@ class TestIdempotentWrites:
         }
 
         # Run 1: should update
-        updated_1 = auto_sync.update_marketplace_json(plugin_changes)
+        updated_1 = auto_sync.update_marketplace_json(plugin_changes, _NO_STAGED)
         assert updated_1 is True
 
         # Run 2: file already has the bumped version -- no-op
-        updated_2 = auto_sync.update_marketplace_json(plugin_changes)
+        updated_2 = auto_sync.update_marketplace_json(plugin_changes, _NO_STAGED)
         assert updated_2 is False
 
         # Verify version was only bumped once
@@ -1310,7 +1359,7 @@ class TestIdempotentWrites:
         assert final_data["metadata"]["version"] == "1.0.1"
 
     def test_update_plugin_json_version_stays_at_single_bump(
-        self, tmp_path: Path, monkeypatch: Any, mocker: MockerFixture
+        self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify running update_plugin_json three times still only bumps once.
 
@@ -1327,14 +1376,12 @@ class TestIdempotentWrites:
             {"name": "test-plugin", "version": "1.0.0", "skills": []},
         )
 
-        mocker.patch.object(auto_sync, "run_git_command", return_value="")
-
         changes = _changes_with_modified_skill()
 
         # Run three times
-        auto_sync.update_plugin_json(plugin_name, changes)
-        auto_sync.update_plugin_json(plugin_name, changes)
-        auto_sync.update_plugin_json(plugin_name, changes)
+        auto_sync.update_plugin_json(plugin_name, changes, _NO_STAGED)
+        auto_sync.update_plugin_json(plugin_name, changes, _NO_STAGED)
+        auto_sync.update_plugin_json(plugin_name, changes, _NO_STAGED)
 
         # Final version should be 1.0.1, not 1.0.3
         final_data = json.loads(plugin_json.read_text(encoding="utf-8"))

@@ -188,6 +188,36 @@ Before finalizing:
 - [ ] Each category has `index.md` with working links
 - [ ] Validation script passes
 
+---
+
+## Agent Team Alternative for Stage 2
+
+When Stage 2 (category research) involves 3+ independent categories where findings from one category inform or challenge another, consider agent teams instead of sequential subagents.
+
+### When Agent Teams Apply
+
+A category research workflow is a candidate for agent teams when ALL of these are true:
+
+1. 3+ independent categories to research (enough parallelism to justify coordination overhead)
+2. Categories benefit from cross-communication (findings from one category inform or challenge another)
+3. No shared file mutations (each teammate owns different category files)
+4. Result is a synthesis, not a concatenation (value comes from combining, deduplicating, or reconciling findings across categories)
+
+### When Subagents Suffice
+
+A category research workflow is NOT a candidate for agent teams when:
+
+- Only 1-2 categories (subagent overhead is lower)
+- Categories are fully independent with no cross-communication need (subagents suffice)
+- Result is just collecting N outputs (no synthesis step)
+- Work is sequential (each step depends on the previous)
+
+### Reference
+
+See [Agent Teams Documentation](./../../../plugins/plugin-creator/skills/claude-skills-overview-2026/resources/agent-teams.md) for complete criteria, architecture, and usage patterns.
+
+SOURCE: Lines 27-39 of agent-teams.md (accessed 2026-02-06)
+
 ## References
 
 - [Agent Prompt Templates](./references/agent-prompts.md)

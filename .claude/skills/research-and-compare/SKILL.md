@@ -591,3 +591,33 @@ You are a **research agent**, not a knowledge worker. Your value comes from:
 **Do READ. Do CITE. Do COMPARE. Do REPORT.**
 
 **The template is your specification. Follow it exactly.**
+
+---
+
+## Agent Team Alternative for Domain Worksheets
+
+When domain worksheets involve 3+ independent research domains where findings from one domain inform or challenge another, consider agent teams instead of sequential subagents.
+
+### When Agent Teams Apply
+
+A domain research workflow is a candidate for agent teams when ALL of these are true:
+
+1. 3+ independent domains of research (enough parallelism to justify coordination overhead)
+2. Domains benefit from cross-communication (findings from one domain inform or challenge another)
+3. No shared file mutations (each teammate owns different output files)
+4. Result is a synthesis, not a concatenation (value comes from combining, deduplicating, or reconciling findings across domains)
+
+### When Subagents Suffice
+
+A domain research workflow is NOT a candidate for agent teams when:
+
+- Only 1-2 sources or targets (subagent overhead is lower)
+- Domains are fully independent with no cross-communication need (subagents suffice)
+- Result is just collecting N outputs (no synthesis step)
+- Work is sequential (each step depends on the previous)
+
+### Reference
+
+See [Agent Teams Documentation](./../../../plugins/plugin-creator/skills/claude-skills-overview-2026/resources/agent-teams.md) for complete criteria, architecture, and usage patterns.
+
+SOURCE: Lines 27-39 of agent-teams.md (accessed 2026-02-06)

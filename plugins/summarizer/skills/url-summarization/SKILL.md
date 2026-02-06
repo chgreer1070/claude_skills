@@ -1,5 +1,5 @@
 ---
-description: URL and web content summarization methodology. Activates when the model receives a URL to summarize. Trigger phrases include summarize this URL, what does this page say, summarize this article, read and summarize, summarize the documentation at. Routes to appropriate fetching strategy based on content type. Enforces quote-grounding technique where key passages are extracted before summarizing. Handles partial accessibility and reports what was accessible versus what was not.
+description: Summarize web content by fetching URLs, extracting key passages with quote-grounding, and producing structured output. Activates on summarize this URL, what does this page say, summarize this article, read and summarize, summarize the documentation at, tl;dr this link, give me the highlights of this page, what's important on this site. Routes to fetching strategy based on content type — documentation, articles, API references, READMEs. Reports partial accessibility explicitly.
 ---
 # URL Summarization
 
@@ -113,7 +113,7 @@ SOURCE: Grounding technique from Anthropic prompt engineering documentation (<ht
 
 ## Structured Output
 
-The model MUST use the format defined in [Output Format](../summarizer/references/output-format.md).
+The model MUST use the format defined in [Structured Summary](../summarizer/templates/structured.md).
 
 Required components:
 
@@ -136,6 +136,12 @@ The model MUST follow all rules in [Fidelity Rules](../summarizer/references/fid
 - State confidence explicitly (with rationale in YAML frontmatter)
 - Structured output always (use all sections, write "None" if empty)
 
+## Output Rendering
+
+1. **Read template** - Load the template file at `../summarizer/templates/{format_id}.md` (default: `structured`). The template defines the schema, required sections, and fidelity constraints for the selected format.
+2. **Render** - Produce output following the template's Schema section. Use the template's Example as a reference for structure and style.
+3. **Verify fidelity** - Confirm the output satisfies the template's Fidelity Constraints and all applicable [Fidelity Rules](../summarizer/references/fidelity-rules.md).
+
 ## Anti-Patterns
 
 The model MUST NOT:
@@ -151,7 +157,7 @@ The model MUST NOT:
 
 ## Example Output
 
-See [Output Format](../summarizer/references/output-format.md) for complete specification. Brief example:
+See [Structured Summary](../summarizer/templates/structured.md) for complete specification. Brief example:
 
 ```yaml
 ---

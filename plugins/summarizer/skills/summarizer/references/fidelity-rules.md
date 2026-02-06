@@ -132,7 +132,7 @@ SOURCE: Confidence scoring methodology adapted from Anthropic knowledge-synthesi
 
 ## Rule 7: Structured Output Always
 
-Every summary MUST use the structured output format defined in [output-format.md](./output-format.md).
+Every summary MUST use the structured output format defined in [Structured Summary](../templates/structured.md).
 
 The structured sections (Summary, What Was Found, What Was NOT Found, Uncertain, Sources) exist to force explicit categorization. Omitting any section is prohibited - if nothing belongs in a section, write "None" or "N/A."
 

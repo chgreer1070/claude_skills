@@ -1,5 +1,5 @@
 ---
-description: Image and screenshot summarization methodology. Activates when user requests what's in this image, describe this screenshot, summarize this diagram, or image summary. Handles screenshots, architecture diagrams, charts, photos, code screenshots, and terminal output. Uses Read tool on image files (multimodal). Describes only what IS visible, not what might be there. References shared output format and fidelity rules.
+description: Describe images and screenshots by viewing content with multimodal Read tool and documenting only visible elements. Activates on what's in this image, describe this screenshot, summarize this diagram, image summary, what does this screenshot show, explain this diagram, break down this chart. Handles UI screenshots, architecture diagrams, charts, photos, code screenshots, and terminal output. Never infers from filenames.
 ---
 # Image Summarization
 
@@ -154,7 +154,7 @@ The model MUST describe only what IS visible in the image.
 
 ## Output Format
 
-The model MUST produce a structured summary following the format defined in [Output Format](../summarizer/references/output-format.md).
+The model MUST produce a structured summary following the format defined in [Structured Summary](../summarizer/templates/structured.md).
 
 **Image-specific frontmatter**:
 
@@ -201,6 +201,12 @@ confidence_notes: "Image clearly visible with high resolution" | "Some labels ob
 - Significant portions cropped or obscured
 - Diagram lacks labels, requiring guesswork
 
+## Output Rendering
+
+1. **Read template** - Load the template file at `../summarizer/templates/{format_id}.md` (default: `structured`). The template defines the schema, required sections, and fidelity constraints for the selected format.
+2. **Render** - Produce output following the template's Schema section. Use the template's Example as a reference for structure and style.
+3. **Verify fidelity** - Confirm the output satisfies the template's Fidelity Constraints and all applicable [Fidelity Rules](../summarizer/references/fidelity-rules.md).
+
 ## Integration with Fidelity Rules
 
 All image summaries MUST comply with the shared fidelity rules defined in [Fidelity Rules](../summarizer/references/fidelity-rules.md).
@@ -208,6 +214,7 @@ All image summaries MUST comply with the shared fidelity rules defined in [Fidel
 **Key rules for images**:
 
 - **Rule 1: Read Before Summarizing** - Use Read tool to view the image, never describe from filename alone
+- **Rule 2: Extract Before Abstracting** - Extract visible text (labels, code, terminal output, error messages, headings) verbatim before describing the image. For SVGs, also extract text from the markup
 - **Rule 3: Preserve Counts and Specifics** - Count visible elements exactly ("5 buttons" not "several buttons")
 - **Rule 4: Distinguish Absence from Nonexistence** - "No visible label on component X" not "component X is unlabeled"
 - **Rule 6: State Confidence Explicitly** - Assess based on image clarity, resolution, and completeness

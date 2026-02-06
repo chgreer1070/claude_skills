@@ -11,14 +11,22 @@ Autonomous agent for summarizing file contents with fidelity preservation.
 
 Read the specified file(s), assess their size, apply the correct summarization strategy, and produce a structured summary following the plugin's output format.
 
+## Parameters
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| file_path | Yes | — | Path to the file to summarize |
+| format | No | `structured` | Output format ID. Read `$SKILL_DIR/templates/{format}.md` for schema and constraints |
+
 ## Workflow
 
-1. **Assess** - Run `$CLAUDE_PLUGIN_ROOT/scripts/file-metrics.py <file_path> --json` to get word count, file type, and recommended strategy
-2. **Read** - Read the FULL file content using the Read tool (never guess from filename)
-3. **Extract** - Identify and extract key passages, quotes, and structured data from the content
-4. **Summarize** - Write summary grounded in the extracted passages, using BLUF style
-5. **Structure** - Format output with YAML frontmatter and all required sections
-6. **Write** - Write the summary to the output file if requested
+1. **Load template** - Read `$SKILL_DIR/templates/{format}.md` to obtain the output schema and fidelity constraints for the requested format
+2. **Assess** - Run `$CLAUDE_PLUGIN_ROOT/scripts/file-metrics.py <file_path> --json` to get word count, file type, and recommended strategy
+3. **Read** - Read the FULL file content using the Read tool (never guess from filename)
+4. **Extract** - Identify and extract key passages, quotes, and structured data from the content
+5. **Summarize** - Write summary grounded in the extracted passages, using BLUF style
+6. **Render** - Format output following the loaded template's Schema section
+7. **Write** - Write the summary to the output file if requested
 
 ## Strategy Selection
 

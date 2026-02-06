@@ -787,6 +787,36 @@ Task(agent="python-pytest-architect", ...)       # Phase 8 tests
 
 ---
 
+---
+
+## Agent Team Alternative for Phase 4
+
+When Phase 4 (quality improvement implementation) involves 3+ independent improvement areas where findings from one area inform or challenge another, consider agent teams instead of sequential subagents.
+
+### When Agent Teams Apply
+
+A quality improvement workflow is a candidate for agent teams when ALL of these are true:
+
+1. 3+ independent improvement areas (enough parallelism to justify coordination overhead)
+2. Areas benefit from cross-communication (findings from one area inform or challenge another)
+3. No shared file mutations (each teammate owns different files)
+4. Result is a synthesis, not a concatenation (value comes from combining, deduplicating, or reconciling findings across areas)
+
+### When Subagents Suffice
+
+A quality improvement workflow is NOT a candidate for agent teams when:
+
+- Only 1-2 improvement areas (subagent overhead is lower)
+- Areas are fully independent with no cross-communication need (subagents suffice)
+- Result is just collecting N outputs (no synthesis step)
+- Work is sequential (each step depends on the previous)
+
+### Reference
+
+See [Agent Teams Documentation](./../../../plugin-creator/skills/claude-skills-overview-2026/resources/agent-teams.md) for complete criteria, architecture, and usage patterns.
+
+SOURCE: Lines 27-39 of agent-teams.md (accessed 2026-02-06)
+
 ## References
 
 ### External Documentation

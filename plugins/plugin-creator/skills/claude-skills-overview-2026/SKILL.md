@@ -282,6 +282,22 @@ Skills and subagents work together in two directions:
 
 With `context: fork`, you write the task in your skill and pick an agent type to execute it. For the inverse (defining a custom subagent that uses skills as reference material), see the Sub-Agents documentation.
 
+### Skills vs Agent Teams
+
+Agent teams coordinate multiple independent Claude Code instances with inter-agent messaging and a shared task list. Unlike subagents (which report back to caller only), teammates communicate directly with each other.
+
+| Criterion | Subagents | Agent Teams |
+| --- | --- | --- |
+| Communication | Results return to caller only | Teammates message each other directly |
+| Best for | Focused tasks where only the result matters | Complex work requiring cross-challenge and synthesis |
+| Token cost | Lower | Higher (each teammate is separate instance) |
+
+Use agent teams when 3+ workers need to share findings, challenge each other, and coordinate independently. Use subagents when workers report back without needing cross-communication.
+
+For complete agent teams reference including architecture, display modes, lifecycle management, and use case patterns, see [Agent Teams Reference](./resources/agent-teams.md). For implementation-level API details (TeammateTool operations, message formats, spawn backends), activate the `/orchestrating-swarms` skill.
+
+**Source**: [Agent Teams Documentation](https://code.claude.com/docs/en/agent-teams.md) (accessed 2026-02-06)
+
 ---
 
 ## Invocation Control

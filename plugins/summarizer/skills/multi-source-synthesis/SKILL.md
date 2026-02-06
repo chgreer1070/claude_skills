@@ -19,8 +19,9 @@ The model MUST activate this skill when:
 Before applying this skill, the model MUST ensure:
 
 1. Each source has been individually summarized using the summarizer skill
-2. Each summary follows the structured format from [Output Format](../summarizer/references/output-format.md)
-3. Source attribution is present in each individual summary
+2. Each individual summary followed Rule 1 (Read Before Summarizing) and Rule 2 (Extract Before Abstracting) from [Fidelity Rules](../summarizer/references/fidelity-rules.md)
+3. Each summary follows the structured format from [Structured Summary](../summarizer/templates/structured.md)
+4. Source attribution is present in each individual summary
 
 ## Synthesis Workflow
 
@@ -121,7 +122,7 @@ Produce a narrative synthesis with proper attribution:
 
 **Rules**:
 
-- Use the structured output format from [Output Format](../summarizer/references/output-format.md)
+- Use the structured output format from [Structured Summary](../summarizer/templates/structured.md)
 - Set `source_type: multi-source` in frontmatter
 - List all source paths in `source_path` as a YAML list
 - Attribute claims to their sources inline: `(source: A)` or `(sources: A, B, C)`
@@ -199,7 +200,7 @@ When sources disagree, the model MUST surface conflicts explicitly:
 
 ## Multi-Source Output Format
 
-Use the structured format from [Output Format](../summarizer/references/output-format.md) with these multi-source specifics:
+Use the structured format from [Structured Summary](../summarizer/templates/structured.md) with these multi-source specifics:
 
 **YAML frontmatter**:
 
@@ -227,6 +228,38 @@ confidence_notes: "Three sources from 2025-2026, all authoritative. One minor co
 3. **What Was NOT Found** - Items searched across all sources but absent
 4. **Uncertain** - Conflicts, ambiguities, items requiring clarification
 5. **Sources** - Complete list with access dates
+
+## Team Coordination Mode
+
+When this skill is invoked after a team-based summarization (teammates instead of subagents), the synthesis workflow is the same but the input format differs:
+
+### Input: Teammate Messages vs Subagent Returns
+
+| Orchestration | Input to Synthesis |
+|---|---|
+| Subagents | Summary text returned directly from Task tool calls |
+| Teammates | Findings delivered via Teammate inbox messages to the leader |
+
+### Cross-Checking During Summarization
+
+In team mode, teammates message each other directly when they discover overlapping or contradictory information. This means some deduplication and conflict detection happens *during* the map step rather than only in this reduce step.
+
+The leader MUST still run the full synthesis workflow (Steps 1-6) on the collected findings. Teammate cross-checking reduces but does not eliminate the need for post-hoc deduplication and conflict handling.
+
+### Leader Responsibilities
+
+1. Collect all teammate findings from the inbox
+2. Run the synthesis workflow (Steps 1-6) on the collected findings
+3. Request shutdown for all teammates after synthesis is complete
+4. Cleanup the team
+
+SOURCE: Team coordination pattern from [orchestrating-swarms skill](https://code.claude.com/docs/en/agent-teams.md) (accessed 2026-02-06). Swarm pattern (self-organizing workers with shared task list) applied to multi-source summarization.
+
+## Output Rendering
+
+1. **Read template** - Load the template file at `../summarizer/templates/{format_id}.md` (default: `structured`). The template defines the schema, required sections, and fidelity constraints for the selected format.
+2. **Render** - Produce output following the template's Schema section. Use the template's Example as a reference for structure and style.
+3. **Verify fidelity** - Confirm the output satisfies the template's Fidelity Constraints and all applicable [Fidelity Rules](../summarizer/references/fidelity-rules.md).
 
 ## Anti-Patterns
 

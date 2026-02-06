@@ -21,20 +21,24 @@ Version Bumping:
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
+import tempfile
 from collections import defaultdict
 from pathlib import Path
 from typing import Literal, TypedDict, cast
 
-# Prettier compatibility constants
-_PRETTIER_PRINT_WIDTH = 80
+# Prettier formatting
+_NPX_PATH: str | None = shutil.which("npx")
 
 # Git status parsing constants
-_EXPECTED_PARTS_COUNT = 2
 _MIN_PLUGIN_PATH_PARTS = 2
 _MIN_COMPONENT_PATH_PARTS = 3
 _MIN_SKILL_PATH_PARTS = 4
+
+# Resolve git binary once at module load
+_GIT_PATH: str | None = shutil.which("git")
 
 
 class PluginPathInfo(TypedDict):
@@ -76,10 +80,19 @@ def run_git_command(args: list[str]) -> str:
 
     Returns:
         Git command stdout output stripped of whitespace
+
+    Raises:
+        FileNotFoundError: If git binary is not found in PATH.
     """
+    if _GIT_PATH is None:
+        msg = "git executable not found in PATH"
+        raise FileNotFoundError(msg)
+
     result = subprocess.run(
-        ["/usr/bin/git", *args], capture_output=True, text=True, check=False
+        [_GIT_PATH, *args], capture_output=True, text=True, check=False
     )
+    if result.returncode != 0 and result.stderr:
+        sys.stderr.write(f"git {' '.join(args)}: {result.stderr.strip()}\n")
     return result.stdout.strip()
 
 
@@ -98,28 +111,32 @@ def get_git_status() -> dict[str, list[str]]:
     # Get staged changes
     output = run_git_command(["diff", "--cached", "--name-status"])
 
+    min_fields = 2
+    rename_fields = 3
+
     for line in output.split("\n"):
         if not line.strip():
             continue
 
-        parts = line.split("\t", 1)
-        if len(parts) != _EXPECTED_PARTS_COUNT:
+        # Split all tab-separated fields:
+        #   A/D/M produce 2 fields: [operation, filepath]
+        #   R{score} produces 3 fields: [operation, old_path, new_path]
+        parts = line.split("\t")
+        if len(parts) < min_fields:
             continue
 
-        operation, filepath = parts
+        operation = parts[0]
 
         if operation == "A":
-            status["added"].append(filepath)
+            status["added"].append(parts[1])
         elif operation == "D":
-            status["deleted"].append(filepath)
+            status["deleted"].append(parts[1])
         elif operation == "M":
-            status["modified"].append(filepath)
-        elif operation.startswith("R"):  # Renamed
-            # For renames, treat as delete old + add new
-            old_new = filepath.split("\t")
-            if len(old_new) == _EXPECTED_PARTS_COUNT:
-                status["deleted"].append(old_new[0])
-                status["added"].append(old_new[1])
+            status["modified"].append(parts[1])
+        elif operation.startswith("R") and len(parts) == rename_fields:
+            # Renamed: treat as delete old + add new
+            status["deleted"].append(parts[1])
+            status["added"].append(parts[2])
 
     return status
 
@@ -168,7 +185,7 @@ def parse_plugin_path(filepath: str) -> PluginPathInfo | None:
         elif component_dir == "hooks" and filepath.endswith(".json"):
             result["component_type"] = "hook"
             result["component_path"] = "/".join(parts[2:])
-        elif component_dir == "mcp" or "mcp" in filepath:
+        elif component_dir == "mcp":
             result["component_type"] = "mcp"
             result["component_path"] = "/".join(parts[2:])
 
@@ -199,133 +216,65 @@ def bump_version(current: str, bump_type: Literal["major", "minor", "patch"]) ->
     return current
 
 
-def _is_file_staged(filepath: str | Path) -> bool:
-    """Check whether a file path appears in the staged files list.
+def _get_staged_files() -> set[str]:
+    """Return the set of currently staged file paths.
 
-    Uses line-by-line exact matching instead of substring containment
-    to prevent false positives (e.g. ``plugin.json.bak`` matching ``plugin.json``).
-
-    Args:
-        filepath: Path to check in the staged files list.
+    Calls ``git diff --cached --name-only`` once and returns a set for O(1)
+    membership tests, avoiding repeated subprocess invocations.
 
     Returns:
-        True if the exact path appears as a line in ``git diff --cached --name-only``.
+        Set of staged file paths (strings).
     """
     staged_output = run_git_command(["diff", "--cached", "--name-only"])
-    staged_files = staged_output.splitlines()
+    return set(staged_output.splitlines()) if staged_output else set()
+
+
+def _is_file_staged(filepath: str | Path, staged_files: set[str]) -> bool:
+    """Check whether a file path appears in the staged files set.
+
+    Uses exact matching to prevent false positives
+    (e.g. ``plugin.json.bak`` matching ``plugin.json``).
+
+    Args:
+        filepath: Path to check.
+        staged_files: Pre-fetched set from ``_get_staged_files()``.
+
+    Returns:
+        True if the exact path appears in the staged files set.
+    """
     return str(filepath) in staged_files
 
 
-def _prettier_json_dumps(data: object) -> str:
-    """Serialize data to JSON matching prettier's formatting conventions.
+def _format_json(data: object) -> str:
+    """Serialize data to JSON, formatted by prettier if available.
 
-    Prettier collapses arrays and objects onto a single line when the result
-    fits within the print width (80 characters by default).  When the single-line
-    form exceeds that width, prettier expands the structure vertically with
-    ``indent=2``.
-
-    This function reproduces that behaviour so that the pre-commit hook and
-    prettier never produce differing output for the same data, eliminating
-    stash conflicts during commit retries.
+    Writes ``json.dumps(indent=2)`` output.  If ``npx`` is available, runs
+    ``prettier --write`` to match the project's prettier configuration.
 
     Args:
         data: JSON-serialisable Python object.
 
     Returns:
-        A prettier-compatible JSON string (without trailing newline).
+        A prettier-formatted JSON string with trailing newline.
     """
-    return _prettier_format_value(data, indent_level=0)
-
-
-def _prettier_format_value(value: object, *, indent_level: int) -> str:
-    """Recursively format a JSON value in prettier style.
-
-    Args:
-        value: The value to format.
-        indent_level: Current indentation depth (number of 2-space indents).
-
-    Returns:
-        Formatted JSON string fragment.
-    """
-    if isinstance(value, dict):
-        return _prettier_format_object(value, indent_level=indent_level)
-    if isinstance(value, list):
-        return _prettier_format_array(value, indent_level=indent_level)
-    return json.dumps(value)
-
-
-def _prettier_format_object(obj: dict[str, object], *, indent_level: int) -> str:
-    """Format a JSON object in prettier style.
-
-    Args:
-        obj: Dictionary to format.
-        indent_level: Current indentation depth.
-
-    Returns:
-        Formatted JSON object string.
-    """
-    if not obj:
-        return "{}"
-
-    indent = "  " * indent_level
-    child_indent = "  " * (indent_level + 1)
-
-    # Build entries with recursively formatted values
-    entries: list[str] = []
-    for key, val in obj.items():
-        formatted_val = _prettier_format_value(val, indent_level=indent_level + 1)
-        entries.append(f"{json.dumps(key)}: {formatted_val}")
-
-    # Try single-line form
-    single_line = "{ " + ", ".join(entries) + " }"
-    line_start_width = len(indent)
-    if line_start_width + len(single_line) <= _PRETTIER_PRINT_WIDTH:
-        return single_line
-
-    # Multi-line form
-    lines = ["{"]
-    for i, (key, val) in enumerate(obj.items()):
-        formatted_val = _prettier_format_value(val, indent_level=indent_level + 1)
-        comma = "," if i < len(obj) - 1 else ""
-        lines.append(f"{child_indent}{json.dumps(key)}: {formatted_val}{comma}")
-    lines.append(f"{indent}}}")
-    return "\n".join(lines)
-
-
-def _prettier_format_array(arr: list[object], *, indent_level: int) -> str:
-    """Format a JSON array in prettier style.
-
-    Args:
-        arr: List to format.
-        indent_level: Current indentation depth.
-
-    Returns:
-        Formatted JSON array string.
-    """
-    if not arr:
-        return "[]"
-
-    indent = "  " * indent_level
-    child_indent = "  " * (indent_level + 1)
-
-    # Build elements with recursively formatted values
-    elements: list[str] = [
-        _prettier_format_value(item, indent_level=indent_level + 1) for item in arr
-    ]
-
-    # Try single-line form
-    single_line = "[" + ", ".join(elements) + "]"
-    line_start_width = len(indent)
-    if line_start_width + len(single_line) <= _PRETTIER_PRINT_WIDTH:
-        return single_line
-
-    # Multi-line form
-    lines = ["["]
-    for i, element in enumerate(elements):
-        comma = "," if i < len(arr) - 1 else ""
-        lines.append(f"{child_indent}{element}{comma}")
-    lines.append(f"{indent}]")
-    return "\n".join(lines)
+    content = json.dumps(data, indent=2) + "\n"
+    if not _NPX_PATH:
+        return content
+    with tempfile.NamedTemporaryFile(
+        encoding="utf-8", mode="w", suffix=".json", delete=False
+    ) as f:
+        f.write(content)
+        tmp_path = f.name
+    try:
+        subprocess.run(
+            [_NPX_PATH, "prettier", "--write", tmp_path],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return Path(tmp_path).read_text(encoding="utf-8")
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
 
 
 def _update_component_arrays(
@@ -386,7 +335,9 @@ def _update_component_arrays(
     return modified
 
 
-def update_plugin_json(plugin_name: str, changes: ComponentChanges) -> tuple[bool, str]:
+def update_plugin_json(
+    plugin_name: str, changes: ComponentChanges, staged_files: set[str]
+) -> tuple[bool, str]:
     """Update plugin.json based on component changes.
 
     Args:
@@ -396,6 +347,7 @@ def update_plugin_json(plugin_name: str, changes: ComponentChanges) -> tuple[boo
             'deleted': [{'component_type': 'agent', 'component_path': 'agents/bar.md'}],
             'modified': [...],
         }
+        staged_files: Pre-fetched set of staged file paths from ``_get_staged_files()``.
 
     Returns:
         (updated: bool, new_version: str)
@@ -406,7 +358,7 @@ def update_plugin_json(plugin_name: str, changes: ComponentChanges) -> tuple[boo
         return False, "0.0.0"
 
     # Check if plugin.json is already staged using exact line matching
-    if _is_file_staged(plugin_json_path):
+    if _is_file_staged(plugin_json_path, staged_files):
         return False, "0.0.0"
 
     with plugin_json_path.open(encoding="utf-8") as f:
@@ -428,29 +380,29 @@ def update_plugin_json(plugin_name: str, changes: ComponentChanges) -> tuple[boo
     # Bump version if changes were made
     if modified or changes["modified"]:
         new_version = bump_version(current_version, bump_type)
-        data["version"] = new_version
-
-        # Serialize in prettier-compatible format then compare with existing
-        # content to ensure idempotency (prevents double-bump on retry).
-        # When the hook runs again after a failed commit, the arrays are already
-        # correct (modified=False) and the version was already bumped, so the
-        # serialized output with the SAME version matches the file on disk.
-        # We must compare using the current_version first to detect this case,
-        # then only write if the bumped version produces different content.
         existing_content = plugin_json_path.read_text(encoding="utf-8")
 
-        # Check if file is already in the target state from a previous run.
-        # Re-serialize with current (unbumped) version to see if arrays changed.
-        data["version"] = current_version
-        check_content = _prettier_json_dumps(data) + "\n"
-        if not modified and check_content == existing_content:
-            # Arrays are correct and file is already prettier-formatted --
-            # a previous run already bumped the version.
-            return False, current_version
+        # Idempotency: detect if a previous run already bumped the version.
+        # On retry after a failed commit, the file already contains the
+        # bumped version and formatted content from run 1.  Re-serializing
+        # with new_version would double-bump (1.0.1 → 1.0.2), so we check
+        # whether the file already holds a bump by verifying that the data
+        # with current_version, once formatted, matches the existing content
+        # after substituting the version string.  If only the version changed
+        # (no array modifications), a previous run already handled everything.
+        if not modified:
+            data["version"] = current_version
+            unbumped_content = _format_json(data)
+            # Replace the version string to see if the file is just a
+            # bumped copy of what we would write.
+            probe = unbumped_content.replace(
+                json.dumps(current_version), json.dumps(new_version), 1
+            )
+            if probe == existing_content:
+                return False, current_version
 
-        # Apply the bumped version and write
         data["version"] = new_version
-        new_content = _prettier_json_dumps(data) + "\n"
+        new_content = _format_json(data)
 
         if new_content == existing_content:
             return False, current_version
@@ -498,7 +450,9 @@ def _update_marketplace_plugins(
     return modified
 
 
-def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
+def update_marketplace_json(
+    plugin_changes: MarketplaceChanges, staged_files: set[str]
+) -> bool:
     """Update marketplace.json based on plugin changes.
 
     Args:
@@ -507,6 +461,7 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
             'deleted': ['plugin-name'],
             'modified': [('plugin-name', 'new-version')],
         }
+        staged_files: Pre-fetched set of staged file paths from ``_get_staged_files()``.
 
     Returns:
         updated: bool
@@ -518,7 +473,7 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
         return False
 
     # Check if marketplace.json is already staged using exact line matching
-    if _is_file_staged(marketplace_json_path):
+    if _is_file_staged(marketplace_json_path, staged_files):
         return False
 
     with marketplace_json_path.open(encoding="utf-8") as f:
@@ -539,16 +494,6 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
 
     # Bump marketplace version if any changes
     if modified or plugin_changes["modified"]:
-        existing_content = marketplace_json_path.read_text(encoding="utf-8")
-
-        # Check if file is already in the target state from a previous run.
-        # Re-serialize with current (unbumped) version to see if plugins changed.
-        check_content = _prettier_json_dumps(data) + "\n"
-        if not modified and check_content == existing_content:
-            # Plugins are correct and file is already prettier-formatted --
-            # a previous run already bumped the version.
-            return False
-
         new_version = bump_version(current_version, bump_type)
 
         if "metadata" not in data:
@@ -557,7 +502,10 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
         metadata = cast("dict[str, str]", data["metadata"])
         metadata["version"] = new_version
 
-        new_content = _prettier_json_dumps(data) + "\n"
+        # Serialize via _format_json then compare with existing content to
+        # ensure idempotency (prevents double-bump on retry).
+        existing_content = marketplace_json_path.read_text(encoding="utf-8")
+        new_content = _format_json(data)
 
         if new_content == existing_content:
             return False
@@ -631,6 +579,23 @@ def _process_file_changes(
     return plugin_component_changes, marketplace_changes
 
 
+def _git_stage_file(filepath: str) -> None:
+    """Stage a file with git add, logging warnings on failure.
+
+    Args:
+        filepath: Relative path to stage.
+    """
+    if not _GIT_PATH:
+        return
+    result = subprocess.run(
+        [_GIT_PATH, "add", filepath], capture_output=True, text=True, check=False
+    )
+    if result.returncode != 0:
+        sys.stderr.write(
+            f"Warning: git add {filepath} failed: {result.stderr.strip()}\n"
+        )
+
+
 def main() -> int:
     """Main entry point.
 
@@ -638,6 +603,7 @@ def main() -> int:
         Exit code (0 for success)
     """
     status = get_git_status()
+    staged_files = _get_staged_files()
 
     # Track changes by plugin
     plugin_component_changes, marketplace_changes = _process_file_changes(status)
@@ -646,14 +612,14 @@ def main() -> int:
     plugins_updated = False
     marketplace_updated = False
     for plugin_name, changes in plugin_component_changes.items():
-        updated, new_version = update_plugin_json(plugin_name, changes)
+        updated, new_version = update_plugin_json(plugin_name, changes, staged_files)
 
         if updated:
             plugins_updated = True
             plugin_json_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
 
             # Stage the updated file
-            subprocess.run(["/usr/bin/git", "add", plugin_json_path], check=False)
+            _git_stage_file(plugin_json_path)
 
             # Track for marketplace update
             marketplace_changes["modified"].append((plugin_name, new_version))
@@ -681,12 +647,10 @@ def main() -> int:
         or marketplace_changes["deleted"]
         or marketplace_changes["modified"]
     ):
-        marketplace_updated = update_marketplace_json(marketplace_changes)
+        marketplace_updated = update_marketplace_json(marketplace_changes, staged_files)
 
         if marketplace_updated:
-            subprocess.run(
-                ["/usr/bin/git", "add", ".claude-plugin/marketplace.json"], check=False
-            )
+            _git_stage_file(".claude-plugin/marketplace.json")
 
             with Path(".claude-plugin/marketplace.json").open(encoding="utf-8") as f:
                 data = json.load(f)

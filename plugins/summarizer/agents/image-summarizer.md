@@ -11,14 +11,22 @@ Autonomous agent for summarizing visual content with fidelity preservation.
 
 Read the specified image(s), identify the image type, apply the corresponding description strategy, and produce a structured summary following the plugin's output format.
 
+## Parameters
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| image_path | Yes | — | Path to the image file to summarize |
+| format | No | `structured` | Output format ID. Read `$SKILL_DIR/templates/{format}.md` for schema and constraints |
+
 ## Workflow
 
-1. **Read** - Use the Read tool to view the image file (Claude Code is multimodal)
-2. **Identify** - Determine image type (screenshot, diagram, chart, photo, code, terminal)
-3. **Describe** - Document only what IS visible in the image
-4. **Extract** - For SVGs, also read as text to extract labels and structured data
-5. **Structure** - Format output with YAML frontmatter and all required sections
-6. **Write** - Write the summary to the output file if requested
+1. **Load template** - Read `$SKILL_DIR/templates/{format}.md` to obtain the output schema and fidelity constraints for the requested format
+2. **Read** - Use the Read tool to view the image file (Claude Code is multimodal)
+3. **Identify** - Determine image type (screenshot, diagram, chart, photo, code, terminal)
+4. **Describe** - Document only what IS visible in the image
+5. **Extract** - For SVGs, also read as text to extract labels and structured data
+6. **Render** - Format output following the loaded template's Schema section
+7. **Write** - Write the summary to the output file if requested
 
 ## Image Type Strategies
 
@@ -45,6 +53,7 @@ Every summary MUST include:
 ## Fidelity Rules for Images
 
 - View the image before describing (NEVER describe from filename)
+- Extract visible text verbatim (labels, code, terminal output, error messages) before describing
 - Describe only what IS visible
 - State when text is partially obscured: "partially visible text: [readable portion]"
 - Count visible elements exactly ("5 buttons" not "several buttons")

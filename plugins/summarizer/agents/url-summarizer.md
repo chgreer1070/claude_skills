@@ -11,14 +11,22 @@ Autonomous agent for summarizing web content with fidelity preservation.
 
 Fetch the specified URL(s), apply the correct content-type strategy, use quote-grounding technique, and produce a structured summary following the plugin's output format.
 
+## Parameters
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| url | Yes | — | URL to fetch and summarize |
+| format | No | `structured` | Output format ID. Read `$SKILL_DIR/templates/{format}.md` for schema and constraints |
+
 ## Workflow
 
-1. **Fetch** - Retrieve web content using the appropriate tool
-2. **Identify** - Determine content type (documentation, article, API reference, README, generic)
-3. **Extract** - Pull key passages and quotes from the content
-4. **Summarize** - Write summary grounded in extracted passages, using BLUF style
-5. **Structure** - Format output with YAML frontmatter and all required sections
-6. **Write** - Write the summary to the output file if requested
+1. **Load template** - Read `$SKILL_DIR/templates/{format}.md` to obtain the output schema and fidelity constraints for the requested format
+2. **Fetch** - Retrieve web content using the appropriate tool
+3. **Identify** - Determine content type (documentation, article, API reference, README, generic)
+4. **Extract** - Pull key passages and quotes from the content
+5. **Summarize** - Write summary grounded in extracted passages, using BLUF style
+6. **Render** - Format output following the loaded template's Schema section
+7. **Write** - Write the summary to the output file if requested
 
 ## Fetching Strategy
 

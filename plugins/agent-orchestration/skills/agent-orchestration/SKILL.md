@@ -1061,3 +1061,33 @@ This formula maximizes agent effectiveness by:
 - Trusting agent expertise (leverages specialized domain knowledge)
 
 Apply this framework to every sub-agent delegation to ensure optimal outcomes.
+
+---
+
+## Agent Teams: When Subagents Are Not Enough
+
+Agent teams coordinate multiple Claude Code instances working as a team with inter-agent messaging and shared task lists. Use subagents when workers report back independently. Use agent teams when workers must share findings, challenge each other, and coordinate on their own.
+
+### When Agent Teams Apply
+
+A workflow is a candidate for agent teams when ALL of these are true:
+
+1. 3+ independent units of work (enough parallelism to justify coordination overhead)
+2. Units benefit from cross-communication (findings from one unit inform or challenge another)
+3. No shared file mutations (two teammates editing the same file leads to overwrites)
+4. Result is a synthesis, not a concatenation (value comes from combining, deduplicating, or reconciling findings across units)
+
+### When Subagents Suffice
+
+A workflow is NOT a candidate for agent teams when:
+
+- Work is sequential (each step depends on the previous)
+- Only 1-2 sources or targets (subagent overhead is lower)
+- Units are fully independent with no cross-communication need (subagents suffice)
+- Result is just collecting N outputs (no synthesis step)
+
+### Reference
+
+See [Agent Teams Documentation](./../../../plugin-creator/skills/claude-skills-overview-2026/resources/agent-teams.md) for complete criteria, architecture, and usage patterns.
+
+SOURCE: Lines 10-39 of agent-teams.md (accessed 2026-02-06)

@@ -1,5 +1,5 @@
 ---
-description: File summarization methodology for Claude Code. Activates on triggers — 'summarize this file', 'what's in this file', 'describe this codebase', 'file summary', 'analyze this file'. Routes to type-specific strategies based on file extension and size. Enforces extractive approach with read-then-extract-then-summarize flow. Prevents hallucination from filename guessing.
+description: Summarize files by reading content, extracting key passages, and applying type-specific strategies. Activates on summarize this file, what's in this file, describe this codebase, file summary, analyze this file, tl;dr this file, what does this code do, explain this config, break down this script. Routes to strategies for code, config, data, documentation, markup, and binary files based on extension and word count.
 ---
 # File Summarization
 
@@ -25,7 +25,7 @@ Before summarizing any file, the model MUST:
 | Medium (2,000-10,000 words) | Section-based extraction | Read full file, identify sections/modules, extract from each section, synthesize |
 | Large (> 10,000 words) | Chunk and map-reduce | Split into chunks, summarize each chunk, synthesize chunk summaries |
 
-SOURCE: Size thresholds adapted from [Output Format](../summarizer/references/output-format.md) lines 115-121.
+SOURCE: Size thresholds adapted from Anthropic knowledge-synthesis skill (knowledge-work-plugins repository, accessed 2026-02-06). Strategy patterns informed by Map-Reduce Summarization methodology.
 
 ## File Type Strategies
 
@@ -222,7 +222,7 @@ SOURCE: Technique adapted from [Fidelity Rules](../summarizer/references/fidelit
 
 ## Output Format
 
-All file summaries MUST use the structured output format defined in [Output Format](../summarizer/references/output-format.md).
+All file summaries MUST use the structured output format defined in [Structured Summary](../summarizer/templates/structured.md).
 
 Required sections:
 
@@ -265,6 +265,12 @@ If a file cannot be read:
 3. Do NOT speculate about file contents
 4. Do NOT proceed with summarization
 5. Ask user if they want to try alternative access methods
+
+## Output Rendering
+
+1. **Read template** - Load the template file at `../summarizer/templates/{format_id}.md` (default: `structured`). The template defines the schema, required sections, and fidelity constraints for the selected format.
+2. **Render** - Produce output following the template's Schema section. Use the template's Example as a reference for structure and style.
+3. **Verify fidelity** - Confirm the output satisfies the template's Fidelity Constraints and all applicable [Fidelity Rules](../summarizer/references/fidelity-rules.md).
 
 ## Anti-Patterns
 
