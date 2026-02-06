@@ -2,21 +2,306 @@ name: Code quality
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
+# Prevent duplicate runs when pushing to a PR branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+# Minimal permissions by default
+permissions: {}
+
 jobs:
-  quality:
+  # =============================================================================
+  # Python: Ruff linting and formatting
+  # =============================================================================
+  lint-python:
+    name: Python / Ruff
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
+
+      - name: Lint with Ruff
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "check --output-format=github"
+
+      - name: Check formatting with Ruff
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: "format --check --diff"
+
+  # =============================================================================
+  # Python: Type checking with basedpyright and mypy
+  # =============================================================================
+  typecheck-python:
+    name: Python / Type Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run basedpyright
+        run: uv run basedpyright
+
+      - name: Run mypy
+        run: |
+          # Use pep723-loader to handle inline script dependencies (matches pre-commit)
+          uv run --with pep723-loader --with mypy pep723-loader mypy .
+
+  # =============================================================================
+  # JavaScript/TypeScript: Biome linting and formatting
+  # =============================================================================
+  lint-js:
+    name: JS/TS / Biome
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
       - name: Setup Biome
         uses: biomejs/setup-biome@v2
         with:
           version: 2.3.13
+
       - name: Run Biome
-        run: biome ci .
+        run: biome ci --error-on-warnings .
+
+  # =============================================================================
+  # Markdown: markdownlint
+  # =============================================================================
+  lint-markdown:
+    name: Markdown / markdownlint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run markdownlint-cli2
+        run: npx markdownlint-cli2@0.19.1 "**/*.md" "#node_modules" "#.venv"
+
+  # =============================================================================
+  # Shell: shellcheck and shfmt
+  # =============================================================================
+  lint-shell:
+    name: Shell / shellcheck + shfmt
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Find shell scripts
+        id: find-scripts
+        run: |
+          # Find .sh files and files with shell shebangs
+          scripts=$(find . -type f \( -name "*.sh" -o -name "*.bash" \) -not -path "./.venv/*" -not -path "./node_modules/*" 2>/dev/null || true)
+          shebang_scripts=$(grep -rlE "^#!.*/(ba)?sh" --include="*" . 2>/dev/null | grep -v ".venv" | grep -v "node_modules" || true)
+          all_scripts=$(echo -e "$scripts\n$shebang_scripts" | sort -u | grep -v "^$" || true)
+
+          if [ -z "$all_scripts" ]; then
+            echo "has_scripts=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_scripts=true" >> "$GITHUB_OUTPUT"
+            echo "scripts<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$all_scripts" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run shellcheck
+        if: steps.find-scripts.outputs.has_scripts == 'true'
+        run: |
+          echo "${{ steps.find-scripts.outputs.scripts }}" | xargs shellcheck -f gcc || true
+
+      - name: Run shfmt
+        if: steps.find-scripts.outputs.has_scripts == 'true'
+        run: |
+          echo "${{ steps.find-scripts.outputs.scripts }}" | xargs shfmt -d -i 4 -ci || true
+
+  # =============================================================================
+  # JSON: Prettier formatting
+  # =============================================================================
+  lint-json:
+    name: JSON / Prettier
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check JSON formatting
+        run: npx prettier@3.5.3 --check "**/*.json" --ignore-path .gitignore
+
+  # =============================================================================
+  # Local hooks: validate-frontmatter
+  # =============================================================================
+  validate-local:
+    name: Local / Frontmatter validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Validate frontmatter
+        run: uv run plugins/plugin-creator/scripts/validate_frontmatter.py --check
+
+  # =============================================================================
+  # File hygiene: trailing whitespace, line endings, etc.
+  # =============================================================================
+  file-hygiene:
+    name: Files / Hygiene checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Check for trailing whitespace
+        run: |
+          ! git grep -lE '\s+$' -- ':!*.lock' ':!.venv/*' ':!node_modules/*' || {
+            echo "::error::Files with trailing whitespace found"
+            exit 1
+          }
+
+      - name: Check for missing final newline
+        run: |
+          files_missing_newline=""
+          while IFS= read -r -d '' file; do
+            if [ -s "$file" ] && [ "$(tail -c 1 "$file" | wc -l)" -eq 0 ]; then
+              files_missing_newline="$files_missing_newline $file"
+            fi
+          done < <(git ls-files -z -- ':!*.lock' ':!.venv/*' ':!node_modules/*' ':!*.png' ':!*.jpg' ':!*.gif' ':!*.ico')
+
+          if [ -n "$files_missing_newline" ]; then
+            echo "::error::Files missing final newline:$files_missing_newline"
+            exit 1
+          fi
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Check YAML syntax
+        run: |
+          uv run --with pyyaml python -c "
+          import yaml
+          import sys
+          from pathlib import Path
+
+          errors = []
+          for f in Path('.').rglob('*.yml'):
+              if '.venv' in str(f) or 'node_modules' in str(f):
+                  continue
+              try:
+                  yaml.safe_load(f.read_text())
+              except yaml.YAMLError as e:
+                  errors.append(f'{f}: {e}')
+
+          for f in Path('.').rglob('*.yaml'):
+              if '.venv' in str(f) or 'node_modules' in str(f):
+                  continue
+              try:
+                  yaml.safe_load(f.read_text())
+              except yaml.YAMLError as e:
+                  errors.append(f'{f}: {e}')
+
+          if errors:
+              for e in errors:
+                  print(f'::error::{e}')
+              sys.exit(1)
+          "
+
+      - name: Check for case conflicts
+        run: |
+          git ls-files | sort -f | uniq -di | while read -r file; do
+            echo "::error::Case conflict detected: $file"
+            exit 1
+          done
+
+  # =============================================================================
+  # Summary job that requires all checks to pass
+  # =============================================================================
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs:
+      - lint-python
+      - typecheck-python
+      - lint-js
+      - lint-markdown
+      - lint-shell
+      - lint-json
+      - validate-local
+      - file-hygiene
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          results="${{ toJSON(needs.*.result) }}"
+          echo "Job results: $results"
+          if echo "$results" | grep -qE '"(failure|cancelled)"'; then
+            echo "::error::One or more quality checks failed"
+            exit 1
+          fi
+          echo "All quality checks passed"

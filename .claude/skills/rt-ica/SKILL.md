@@ -154,7 +154,6 @@ The model MUST produce this summary block for each goal/sub-goal:
 
 ```text
 RT-ICA SUMMARY
-==============
 
 Goal:
 - [one sentence]
@@ -284,7 +283,6 @@ When requesting missing inputs, use structured questions:
 
 ```text
 RT-ICA SUMMARY
-==============
 
 Goal:
 - Implement user authentication service for the application

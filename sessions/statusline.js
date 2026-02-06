@@ -41,7 +41,7 @@ function supportsAnsi() {
     try {
       // On Windows 10+, ANSI is typically supported
       const winVer = require('node:os').release();
-      const majorVer = parseInt(winVer.split('.')[0]);
+      const majorVer = parseInt(winVer.split('.')[0], 10);
       if (majorVer >= 10) {
         // Windows 10+ has built-in ANSI support
         return true;
@@ -353,11 +353,13 @@ function main() {
             execSync(`git -C "${cwd}" rev-list --count @{u}..HEAD`, {
               encoding: 'utf-8',
             }).trim(),
+            10,
           );
           const behind = parseInt(
             execSync(`git -C "${cwd}" rev-list --count HEAD..@{u}`, {
               encoding: 'utf-8',
             }).trim(),
+            10,
           );
 
           const upstreamParts = [];
