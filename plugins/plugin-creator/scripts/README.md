@@ -92,7 +92,6 @@ Found 448 files to check
 ✓ Fixed: /home/user/.claude/commands/gsd/verify-work.md
 ✓ Fixed: /home/user/repos/project/.claude/commands/agent-workflow.md
 
-============================================================
 Fixed: 28 files
 Skipped: 420 files (no changes needed)
 Total: 448 files
