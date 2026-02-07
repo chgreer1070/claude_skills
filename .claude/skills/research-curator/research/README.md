@@ -14,6 +14,14 @@ Foundational async/concurrency libraries for Python async development.
 |----------|-------------|---------|--------------|
 | [AnyIO](./async-libraries/anyio.md) | Unified async API across asyncio/Trio with structured concurrency | 4.12.1 | 2026-02-04 |
 
+### Context Management
+
+Memory, RAG, context window tools for persistent AI knowledge.
+
+| Resource | Description | Version | Last Updated |
+|----------|-------------|---------|--------------|
+| [Local Memory](./context-management/local-memory.md) | Persistent memory infrastructure for AI agents with MCP, REST API, CLI, and multi-provider AI backend | 1.4.0 | 2026-02-07 |
+
 ---
 
 ## Adding New Entries
