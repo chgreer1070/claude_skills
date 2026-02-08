@@ -8,8 +8,5 @@
   },
   "skills": ["./skills/holistic-linting"],
   "commands": ["./commands"],
-  "agents": [
-    "./agents/linting-root-cause-resolver.md",
-    "./agents/post-linting-architecture-reviewer.md"
-  ]
+  "agents": ["./agents/linting-root-cause-resolver.md", "./agents/post-linting-architecture-reviewer.md"]
 }
