@@ -22,6 +22,14 @@ Memory, RAG, context window tools for persistent AI knowledge.
 |----------|-------------|---------|--------------|
 | [Local Memory](./context-management/local-memory.md) | Persistent memory infrastructure for AI agents with MCP, REST API, CLI, and multi-provider AI backend | 1.4.0 | 2026-02-07 |
 
+### Skill Generation Tools
+
+Tools that create, translate, and manage AI agent skills and prompts.
+
+| Resource | Description | Version | Last Updated |
+|----------|-------------|---------|--------------|
+| [SkillKit](./skill-generation-tools/skillkit.md) | Universal package manager for AI agent skills with cross-agent translation (32 agents), marketplace (15K+ skills), session memory, and AI generation | 1.14.0 | 2026-02-08 |
+
 ### Developer Tools
 
 Open-source developer utilities, file processing, and infrastructure tools.
