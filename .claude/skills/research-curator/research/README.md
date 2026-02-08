@@ -22,6 +22,14 @@ Memory, RAG, context window tools for persistent AI knowledge.
 |----------|-------------|---------|--------------|
 | [Local Memory](./context-management/local-memory.md) | Persistent memory infrastructure for AI agents with MCP, REST API, CLI, and multi-provider AI backend | 1.4.0 | 2026-02-07 |
 
+### Developer Tools
+
+Open-source developer utilities, file processing, and infrastructure tools.
+
+| Resource | Description | Version | Last Updated |
+|----------|-------------|---------|--------------|
+| [VERT](./developer-tools/vert.md) | WebAssembly-based file converter (250+ formats) with client-side processing via FFmpeg, ImageMagick, and Pandoc WASM | 0.0.1 | 2026-02-08 |
+
 ---
 
 ## Adding New Entries
