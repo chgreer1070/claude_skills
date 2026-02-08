@@ -144,6 +144,8 @@ max-complexity = 12
 [tool.mypy]
 python_version = "3.11"
 strict = true
+explicit_package_bases = true
+exclude = ['tests/']
 extra_checks = true
 warn_unused_configs = true
 warn_redundant_casts = true

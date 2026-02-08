@@ -7,8 +7,5 @@
     "url": "https://github.com/bitflight-devops"
   },
   "skills": ["./skills"],
-  "agents": [
-    "./agents/bash-script-developer.md",
-    "./agents/bash-script-auditor.md"
-  ]
+  "agents": ["./agents/bash-script-developer.md", "./agents/bash-script-auditor.md"]
 }

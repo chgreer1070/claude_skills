@@ -7,9 +7,5 @@
     "url": "https://github.com/bitflight-devops"
   },
   "skills": ["./skills"],
-  "agents": [
-    "./agents/perl-script-developer.md",
-    "./agents/perl-script-auditor.md",
-    "./agents/perl-cli-architect.md"
-  ]
+  "agents": ["./agents/perl-script-developer.md", "./agents/perl-script-auditor.md", "./agents/perl-cli-architect.md"]
 }

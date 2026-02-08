@@ -188,7 +188,7 @@ def count_metrics(file_path: Path) -> dict[str, Any]:
 
 
 def extract_excerpt(
-    file_path: Path, head_lines: int = 20, tail_lines: int = 10,
+    file_path: Path, head_lines: int = 20, tail_lines: int = 10
 ) -> dict[str, Any]:
     """Extract head and tail excerpts from a text file.
 
@@ -311,7 +311,7 @@ def format_human_readable(metrics: dict[str, Any]) -> str:
 def main() -> None:
     """Entry point."""
     parser = argparse.ArgumentParser(
-        description="File metrics for summarization strategy selection",
+        description="File metrics for summarization strategy selection"
     )
     parser.add_argument("file_path", type=Path, help="Path to the file to analyze")
     parser.add_argument(
@@ -326,7 +326,7 @@ def main() -> None:
         help="Output as JSON instead of human-readable text",
     )
     parser.add_argument(
-        "--no-excerpt", action="store_true", help="Skip excerpt extraction",
+        "--no-excerpt", action="store_true", help="Skip excerpt extraction"
     )
 
     args = parser.parse_args()
