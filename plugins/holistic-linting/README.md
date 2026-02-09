@@ -13,15 +13,59 @@ When you ask Claude to write or modify code, Claude sometimes:
 
 This plugin makes Claude treat code quality checks as a required part of every task.
 
-## What Changes
+## What You Get
 
-With this plugin installed, Claude will:
+### Claude Improvements
 
-- Automatically format and lint modified files before saying a task is complete
-- Investigate the root cause of linting errors instead of just suppressing them
-- Read your project's linting configuration from `CLAUDE.md` to know which tools to use
-- Fix type errors by understanding what the types should be, not just adding ignore comments
-- Verify that fixes actually work by re-running linters
+With this plugin, Claude will:
+
+**Automatically verify code quality** - Before marking any code task complete, Claude formats and lints the files it modified. No more "done!" messages with linting errors left behind.
+
+**Investigate root causes** - When linting errors appear, Claude researches the rule documentation, examines the code context, and implements proper fixes instead of adding suppression comments.
+
+**Use your project's linters** - Claude discovers which linters your project uses (ruff, mypy, pyright, eslint, prettier, etc.) by scanning your configuration files.
+
+**Delegate systematically** - When you're in the interactive Claude Code CLI, Claude delegates linting resolution to specialized agents that handle formatting, linting, and fixes concurrently.
+
+**Verify fixes work** - After implementing fixes, Claude re-runs linters to confirm issues are actually resolved.
+
+### Commands
+
+#### /lint [files...]
+
+Shorthand for activating the holistic-linting skill:
+
+```bash
+/lint src/auth.py
+/lint src/*.py
+/lint path/to/directory/
+```
+
+Activates the full holistic-linting workflow — linter detection, formatting, linting, root-cause resolution via specialized agents, and verification. Equivalent to running `/holistic-linting:holistic-linting` directly with file path arguments.
+
+### Specialized Agents
+
+This plugin provides two agents that Claude delegates to when orchestrating linting work:
+
+**linting-root-cause-resolver** - Investigates and fixes linting errors. Loads project context, researches rule documentation, follows Python 3.11+ standards, and rewrites code to address underlying issues. Never suppresses errors unless fundamentally unsolvable.
+
+**post-linting-architecture-reviewer** - Reviews linting resolution quality after fixes are complete. Examines resolution artifacts, validates fixes align with codebase patterns, checks type safety improvements, and identifies opportunities for systemic improvements.
+
+### Skills Included
+
+This plugin provides three complementary skills that work together:
+
+**holistic-linting** - Core skill providing linter detection, formatting workflows, and the rules knowledge base. Entry point for all linting operations.
+
+**holistic-linting-orchestrator** - Delegation workflows for the interactive CLI. Guides Claude on when and how to delegate to linting agents for systematic resolution.
+
+**holistic-linting-resolver** - Linter-specific resolution procedures for sub-agents. Provides systematic workflows for resolving ruff, mypy, and pyright errors with suppression gates and verification steps.
+
+### Included Resources
+
+**Rules Knowledge Base** - Complete documentation for 933+ ruff rules (19 families), mypy error codes (organized by category), and 65+ bandit security checks. Claude references these when researching fixes.
+
+**Resolution Workflows** - Systematic procedures for resolving issues reported by ruff, mypy, pyright, and basedpyright. Includes suppression gates, verification steps, and root-cause analysis patterns.
 
 ## Installation
 
@@ -41,24 +85,19 @@ Then install the plugin:
 
 ### Automatic Behavior
 
-Just install it - Claude will automatically check code quality when finishing tasks involving code changes.
+Just install it. Claude automatically checks code quality when finishing tasks involving code changes.
 
-### Manual Commands
+When Claude is orchestrating work (interactive CLI), it delegates to specialized agents that handle all formatting, linting, and resolution work.
 
-**Check specific files**:
+When Claude is a sub-agent (delegated task), it formats and lints files it modified before marking the task complete.
 
-```bash
-/lint src/auth.py
-/lint src/*.py
-```
+### Manual Linting
 
-**Auto-detect your project's linters**:
+Use `/lint` as a shorthand to activate the holistic-linting skill on specific files:
 
 ```bash
-/lint init
+/lint src/auth.py src/utils.py
 ```
-
-This scans your project (pyproject.toml, .pre-commit-config.yaml, package.json, etc.) and documents which linters you use in `CLAUDE.md`.
 
 ## Example
 
@@ -77,30 +116,29 @@ You: "There are 5 linting errors..."
 ```
 You: "Add authentication to the API"
 Claude: [writes code]
-Claude: [automatically runs ruff format, ruff check, mypy]
-Claude: [finds 5 errors, investigates root causes, fixes them properly]
-Claude: [verifies fixes with linters]
+Claude: [automatically formats and lints modified files]
+Claude: [finds 5 errors, investigates root causes, fixes them]
+Claude: [verifies fixes by re-running linters]
 Claude: "Done! I've added authentication middleware. All linting checks pass."
 ```
-
-## What's Included
-
-- **Automatic quality checks** - Claude formats and lints code before finishing
-- **Root cause analysis** - Investigates why linting errors happen
-- **Manual `/lint` command** - Check code quality on demand
-- **Project linter detection** - `/lint init` auto-discovers your linters
-- **Rules documentation** - Complete reference for ruff, mypy, and bandit rules
 
 ## Requirements
 
 - Claude Code v2.0+
-- Python projects: ruff, mypy, pyright, or similar linters
-- Other languages: eslint, prettier, shellcheck, etc.
+- Python projects: ruff, mypy, pyright, bandit, or similar linters
+- JavaScript/TypeScript projects: eslint, prettier
+- Shell scripts: shellcheck, shfmt
+- Markdown: markdownlint
+- Pre-commit framework: pre-commit or prek
 
 ## Supported Linters
 
-- **Python**: ruff, mypy, pyright, basedpyright, bandit
-- **JavaScript/TypeScript**: eslint, prettier
-- **Shell**: shellcheck, shfmt
-- **Markdown**: markdownlint
-- **Pre-commit hooks**: pre-commit, prek
+**Python**: ruff, mypy, pyright, basedpyright, bandit
+
+**JavaScript/TypeScript**: eslint, prettier
+
+**Shell**: shellcheck, shfmt
+
+**Markdown**: markdownlint
+
+**Pre-commit hooks**: pre-commit, prek

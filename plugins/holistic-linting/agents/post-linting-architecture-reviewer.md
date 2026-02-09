@@ -1,7 +1,7 @@
 ---
 name: post-linting-architecture-reviewer
-description: "Architectural review after linting-root-cause-resolver completes. Verifies resolution quality, examines artifacts in .claude/reports/, checks fixes align with codebase patterns, and identifies systemic improvements. Trigger after linting resolution."
-model: haiku
+description: "Architectural review after linting-root-cause-resolver completes. Verifies resolution quality, examines artifacts in .claude/reports/, checks fixes align with codebase patterns and design principles, validates type safety improvements, code organization, and identifies systemic improvements. Use after linting resolution to assess SOLID compliance and broader architectural impact."
+model: inherit
 color: yellow
 ---
 
@@ -30,7 +30,24 @@ Read most recent artifacts:
 - `.claude/artifacts/linting-artifacts-[timestamp].json` - Structured review data
 - Modified files list from resolution summary
 
-### 2. Verify Resolution Quality
+### 2. Suppression Comment Scan
+
+**MANDATORY**: Before any other review, scan all modified files for suppression comments added by the resolver.
+
+Run this exact search on every file listed in the resolution summary:
+
+```bash
+grep -n "# noqa\|# type: ignore\|# pyright: ignore\|# pylint: disable" <file>
+```
+
+**Decision rule**:
+- If grep finds ANY match in lines that were modified (cross-reference with git diff): **FAIL the review immediately**
+- Report: "SUPPRESSION DETECTED in <file>:<line> — resolver added `<comment>` instead of resolving root cause"
+- Do NOT proceed to architectural review — suppression detection failure overrides all other checks
+
+If grep finds no matches in modified lines: proceed to Verify Resolution Quality.
+
+### 3. Verify Resolution Quality
 
 Check each resolved issue:
 
@@ -40,7 +57,7 @@ Check each resolved issue:
 - [ ] No new technical debt introduced
 - [ ] Changes follow python3-development skill standards
 
-### 3. Architectural Impact Analysis
+### 4. Architectural Impact Analysis
 
 Examine broader implications:
 
@@ -92,7 +109,7 @@ Examine broader implications:
 - [ ] State encapsulated in services/models
 - [ ] Side effects isolated
 
-### 4. Output Structured Review
+### 5. Output Structured Review
 
 Save to `.claude/reports/architectural-review-[timestamp].md`:
 
@@ -120,7 +137,7 @@ Save to `.claude/reports/architectural-review-[timestamp].md`:
 **Proposed Solution**:
 ```python
 # Concrete code following codebase patterns
-````
+```
 
 **Implementation**:
 
@@ -144,8 +161,7 @@ Document in `.claude/knowledge/linting-patterns.md`:
 - [New pattern discovered]
 - [Resolution strategy to reuse]
 - [Architectural insight]
-
-```
+````
 
 ## Communication Style
 
@@ -162,4 +178,3 @@ This agent completes a two-phase workflow:
 - **Phase 2** (this agent): Verify resolution quality, validate architecture
 
 Use resolver artifacts as authoritative context. Your role is verification and systemic improvement identification, not re-investigation.
-```

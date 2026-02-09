@@ -14,9 +14,9 @@ This index tracks all plugin refactoring projects, linking to detailed task brea
 
 ## Completed Refactoring Projects
 
-| Plugin | Task File | Completion Date | Score Improvement | Final Score |
-| ------ | --------- | --------------- | ----------------- | ----------- |
-| _None_ | _-_       | _-_             | _-_               | _-_         |
+| Plugin           | Task File                                                                  | Completion Date | Score Improvement | Final Score |
+| ---------------- | -------------------------------------------------------------------------- | --------------- | ----------------- | ----------- |
+| holistic-linting | [tasks-refactor-holistic-linting.md](./tasks-refactor-holistic-linting.md) | 2026-02-09      | +24 points        | 92/100      |
 
 ---
 

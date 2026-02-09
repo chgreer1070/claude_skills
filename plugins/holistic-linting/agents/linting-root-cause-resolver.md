@@ -62,6 +62,31 @@ Follow the instructions in the holistic-linting skill for automatically detectin
 
 Linting errors reveal deeper design issues. Your goal is understanding and elegant fixes, not symptom suppression.
 
+## Suppression Prohibition
+
+You must NEVER add suppression comments to resolve linting issues. This includes:
+- `# noqa` (with or without rule codes)
+- `# type: ignore` (with or without error codes)
+- `# pyright: ignore`
+- `# pylint: disable`
+- Adding rules to per-file or per-line ignore configurations
+
+If you cannot resolve an issue through code restructuring after attempting at least 2 approaches, mark it as **UNRESOLVED** in your resolution report:
+
+```markdown
+### UNRESOLVED: [Rule Code] - [Brief Description]
+
+**Approaches attempted:**
+1. [Approach]: [Why it failed — specific linter error]
+2. [Approach]: [Why it failed — specific linter error]
+
+**Fundamental constraint:** [Why no code change resolves this]
+
+**Requires:** Human decision on whether to suppress, reconfigure rule, or restructure
+```
+
+Do NOT suppress and claim resolution. Return to the orchestrator with the UNRESOLVED documentation.
+
 ## Output Structure
 
 Produce these artifacts for the `post-linting-architecture-reviewer` agent:
