@@ -33,27 +33,27 @@ dev = [
 
 [tool.pytest.ini_options]
 addopts = [
-    "-v",
-    "--tb=short",
-    "--strict-markers",
-    "--strict-config",
     "--cov=scripts",
+    "--strict-config",
+    "--strict-markers",
+    "--tb=short",
     "-n",
+    "-v",
     "auto",
 ]
 markers = [
+    "demos: marks tests as demonstration tests",
+    "e2e: marks tests as end-to-end tests",
+    "integration: marks tests as integration tests",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "unit: marks tests as unit tests",
-    "integration: marks tests as integration tests",
-    "e2e: marks tests as end-to-end tests",
-    "demos: marks tests as demonstration tests",
 ]
 pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.ruff]
 fix = true
-src = ["packages", "scripts", "tests", "typings", ".gitlab", ".github"]
+src = [".github", ".gitlab", "packages", "scripts", "tests", "typings"]
 target-version = "py311"
 unsafe-fixes = true
 
@@ -115,13 +115,13 @@ ignore = [
     "DOC502", # Raised exception is not explicitly raised
     "E501", # Line too long ({width} > {limit})
     "EXE003", # Shebang should contain python, pytest, or uv run (doesn't handle global arguments)
+    "PLR0913",
+    "PLR6301", #
     "S404", # subprocess possibly insecure - still need to use subprocess though
     "S603", # subprocess without shell=True
     "S606", # os.exec* without shell - intentional for privilege elevation (safer than with shell)
-    "PLR6301", #
-    "PLR0913",
-    "TRY003", # Long error messages are fine
     "T201", # print() statements are intentional for CI output visibility
+    "TRY003", # Long error messages are fine
 ]
 preview = true
 unfixable = ["F401"]
@@ -144,34 +144,34 @@ max-complexity = 12
 
 [tool.ruff.lint.per-file-ignores]
 # Anti-pattern examples: intentionally incorrect code demonstrating what NOT to do
-"**/assets/nested-typer-exceptions/*.py" = ["DOC", "ANN"]
+"**/assets/nested-typer-exceptions/*.py" = ["ANN", "DOC"]
 # Lazy imports for optional dependency detection (hatchling may not be installed)
 "**/assets/version.py" = ["PLC0415"]
 "**/scripts/**" = [
-    "T201", # print() statements are intentional for CI output visibility
-    "S", # Security checks relaxed for CLI scripts (subprocess, partial paths)
-    "DOC", # Docstring content requirements relaxed for scripts
     "ANN401", # Any type annotations acceptable in script arguments
-    "PLR0911", # Too many return statements acceptable in script logic
+    "DOC", # Docstring content requirements relaxed for scripts
     "PLC0415", # Local imports acceptable in scripts for lazy loading
+    "PLR0911", # Too many return statements acceptable in script logic
+    "S", # Security checks relaxed for CLI scripts (subprocess, partial paths)
+    "T201", # print() statements are intentional for CI output visibility
 ]
 "**/tests/**" = [
-    "S", # Security checks not needed in tests
-    "D", # Docstring requirements relaxed for tests
-    "E501", # Line length relaxed for test data
     "ANN", # Type annotations optional for test fixtures/methods
+    "D", # Docstring requirements relaxed for tests
     "DOC", # Docstring content requirements relaxed
-    "PLC", # Local imports acceptable in test helpers
-    "SLF", # Private name imports acceptable for testing internals
-    "PLR", # Testing private methods is valid test pattern
+    "E501", # Line length relaxed for test data
     "EXE", # Shebang executable check skipped for PEP723 test files
     "N", # camelCase in test names acceptable when testing API fields
+    "PLC", # Local imports acceptable in test helpers
+    "PLR", # Testing private methods is valid test pattern
+    "S", # Security checks not needed in tests
+    "SLF", # Private name imports acceptable for testing internals
     "T", # print() statements are intentional for CI output visibility
 ]
 # Typer evaluates annotations at runtime, conflicting with TC003 + required PEP 563 import
 # B008: Typer's design pattern requires function calls in defaults (standard pattern)
-"plugins/plugin-creator/scripts/*.py" = ["TC003", "B008"]
-"typings/**" = ["N", "ANN", "A"]
+"plugins/plugin-creator/scripts/*.py" = ["B008", "TC003"]
+"typings/**" = ["A", "ANN", "N"]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 120
@@ -251,8 +251,13 @@ sort_first = [
 
 [tool.tomlsort.overrides."build-system"]
 first = ["requires", "build-backend"]
+inline_arrays = true
+
+[tool.tomlsort.overrides."dependency-groups"]
+inline_arrays = true
 
 [tool.tomlsort.overrides."project"]
+inline_arrays = true
 first = [
     "name",
     "version",
@@ -268,6 +273,18 @@ first = [
     "dependencies",
 ]
 
+[tool.tomlsort.overrides."tool.pytest.*"]
+inline_arrays = true
+
+[tool.tomlsort.overrides."tool.ruff"]
+inline_arrays = true
+
+[tool.tomlsort.overrides."tool.ruff.*"]
+inline_arrays = true
+
+[tool.tomlsort.overrides."tool.semantic_release.commit_parser_options"]
+inline_arrays = true
+
 [tool.tomlsort.overrides."tool.tomlsort"]
 table_keys = false
 inline_arrays = false
@@ -275,6 +292,12 @@ inline_arrays = false
 [tool.tomlsort.overrides."tool.tomlsort.*"]
 table_keys = false
 inline_arrays = false
+
+[tool.tomlsort.overrides."tool.ty"]
+inline_arrays = true
+
+[tool.tomlsort.overrides."tool.ty.*"]
+inline_arrays = true
 
 [tool.coverage.report]
 exclude_lines = [
