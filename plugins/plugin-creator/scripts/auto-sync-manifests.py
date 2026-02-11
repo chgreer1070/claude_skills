@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """Automatically sync plugin.json and marketplace.json based on git changes.
 
-This script detects CRUD operations on plugins and their components during pre-commit,
-then updates manifests and bumps versions accordingly.
+This script has two modes:
 
-CRUD Detection:
+1. **Pre-commit mode** (default): Detects CRUD operations on plugins and their
+   components during pre-commit, then updates manifests and bumps versions.
+
+2. **Reconcile mode** (``--reconcile``): Full directory scan that compares
+   filesystem state against plugin.json and marketplace.json entries.  Adds
+   missing components, removes stale references, and reports drift.
+
+CRUD Detection (pre-commit mode):
 - Plugin created: New plugins/ directory with .claude-plugin/plugin.json
 - Plugin deleted: Removed plugins/ directory
 - Component created: New skill/agent/command/hook/mcp file
@@ -20,6 +26,7 @@ Version Bumping:
 
 from __future__ import annotations
 
+import argparse
 import json
 import shutil
 import subprocess
@@ -599,50 +606,565 @@ def _git_stage_file(filepath: str) -> None:
         )
 
 
-def main() -> int:
-    """Main entry point.
+def _discover_skills(plugin_dir: Path) -> list[str]:
+    """Discover skill components on disk for a plugin.
+
+    Finds SKILL.md files and script files within skill directories.
+
+    Args:
+        plugin_dir: Root directory of the plugin (e.g., plugins/my-plugin/)
+
+    Returns:
+        List of relative paths (e.g., ``./skills/foo``, ``./skills/bar/SKILL.md``)
+    """
+    skills_dir = plugin_dir / "skills"
+    if not skills_dir.is_dir():
+        return []
+
+    found: list[str] = []
+
+    for item in sorted(skills_dir.iterdir()):
+        if item.name.startswith("."):
+            continue
+
+        if item.is_dir():
+            skill_md = item / "SKILL.md"
+            if skill_md.is_file():
+                # Skill directory with SKILL.md
+                found.append(f"./skills/{item.name}")
+
+            # Also discover scripts within skill directories
+            scripts_dir = item / "scripts"
+            if scripts_dir.is_dir():
+                found.extend(
+                    f"./skills/{item.name}/scripts/{script.name}"
+                    for script in sorted(scripts_dir.glob("*.py"))
+                )
+
+            # Check for nested skill directories (e.g., skills/testing/*)
+            for nested in sorted(item.iterdir()):
+                if nested.is_dir() and not nested.name.startswith("."):
+                    nested_skill_md = nested / "SKILL.md"
+                    if nested_skill_md.is_file():
+                        found.append(f"./skills/{item.name}/{nested.name}")
+
+        elif item.suffix == ".md" and item.name == "SKILL.md":
+            # Bare SKILL.md directly in skills/ (unusual but valid)
+            found.append("./skills/SKILL.md")
+
+    return found
+
+
+def _discover_agents(plugin_dir: Path) -> list[str]:
+    """Discover agent files on disk for a plugin.
+
+    Args:
+        plugin_dir: Root directory of the plugin
+
+    Returns:
+        List of relative paths (e.g., ``./agents/my-agent.md``)
+    """
+    agents_dir = plugin_dir / "agents"
+    if not agents_dir.is_dir():
+        return []
+
+    return [
+        f"./agents/{f.name}"
+        for f in sorted(agents_dir.iterdir())
+        if f.is_file() and f.suffix == ".md" and not f.name.startswith(".")
+    ]
+
+
+def _discover_commands(plugin_dir: Path) -> list[str]:
+    """Discover command files on disk for a plugin.
+
+    Args:
+        plugin_dir: Root directory of the plugin
+
+    Returns:
+        List of relative paths (e.g., ``./commands/my-command.md``)
+    """
+    commands_dir = plugin_dir / "commands"
+    if not commands_dir.is_dir():
+        return []
+
+    return [
+        f"./commands/{f.name}"
+        for f in sorted(commands_dir.iterdir())
+        if f.is_file() and f.suffix == ".md" and not f.name.startswith(".")
+    ]
+
+
+def _is_skill_user_invocable(skill_md_path: Path) -> bool:
+    """Check if a SKILL.md file has ``user-invocable: true`` in its frontmatter.
+
+    Parses the YAML frontmatter (between ``---`` delimiters) and looks for
+    the ``user-invocable`` field.  Skills default to user-invocable when the
+    field is absent, matching Claude Code's behavior.
+
+    Args:
+        skill_md_path: Absolute path to a SKILL.md file
+
+    Returns:
+        True if the skill is user-invocable (explicit ``true`` or field absent)
+    """
+    if not skill_md_path.is_file():
+        return False
+
+    try:
+        text = skill_md_path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+
+    # Extract frontmatter between first two --- lines
+    if not text.startswith("---"):
+        return True  # No frontmatter = default (invocable)
+
+    end = text.find("\n---", 3)
+    if end == -1:
+        return True
+
+    frontmatter = text[3:end]
+
+    for line in frontmatter.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("user-invocable:"):
+            value = stripped.split(":", 1)[1].strip().lower()
+            return value in {"true", "yes"}
+
+    # Field absent = default invocable
+    return True
+
+
+def _discover_invocable_skills(plugin_dir: Path) -> list[str]:
+    """Discover skills with ``user-invocable: true`` for the commands array.
+
+    User-invocable skills appear as ``/skill-name`` shortcuts in Claude Code
+    and must be registered in both the ``skills`` and ``commands`` arrays
+    of plugin.json.
+
+    Args:
+        plugin_dir: Root directory of the plugin
+
+    Returns:
+        List of relative skill paths (e.g., ``./skills/my-skill``)
+    """
+    skills_dir = plugin_dir / "skills"
+    if not skills_dir.is_dir():
+        return []
+
+    found: list[str] = []
+
+    for item in sorted(skills_dir.iterdir()):
+        if item.name.startswith(".") or not item.is_dir():
+            continue
+
+        skill_md = item / "SKILL.md"
+        if skill_md.is_file() and _is_skill_user_invocable(skill_md):
+            found.append(f"./skills/{item.name}")
+
+        # Check nested skill directories (e.g., skills/testing/*)
+        for nested in sorted(item.iterdir()):
+            if nested.is_dir() and not nested.name.startswith("."):
+                nested_skill_md = nested / "SKILL.md"
+                if nested_skill_md.is_file() and _is_skill_user_invocable(
+                    nested_skill_md
+                ):
+                    found.append(f"./skills/{item.name}/{nested.name}")
+
+    return found
+
+
+def _normalize_skill_ref(ref: str) -> str:
+    """Normalize a skill reference for comparison.
+
+    Both ``./skills/foo`` and ``./skills/foo/SKILL.md`` refer to the same skill.
+    This normalizes to the directory form.
+
+    Args:
+        ref: Skill reference path from plugin.json
+
+    Returns:
+        Normalized path for comparison
+    """
+    if ref.endswith("/SKILL.md"):
+        return ref[: -len("/SKILL.md")]
+    return ref
+
+
+def _reconcile_one_plugin(
+    plugin_name: str, plugins_root: Path, *, dry_run: bool
+) -> bool:
+    """Reconcile a single plugin's plugin.json against its directory contents.
+
+    Args:
+        plugin_name: Name of the plugin
+        plugins_root: Path to the plugins/ directory
+        dry_run: If True, only report; do not modify files
+
+    Returns:
+        True if changes were made (or would be made in dry_run)
+    """
+    plugin_dir = plugins_root / plugin_name
+    plugin_json_path = plugin_dir / ".claude-plugin" / "plugin.json"
+
+    if not plugin_json_path.exists():
+        return False
+
+    with plugin_json_path.open(encoding="utf-8") as f:
+        data: dict[str, list[str] | str] = json.load(f)
+
+    disk_skills = _discover_skills(plugin_dir)
+    disk_agents = _discover_agents(plugin_dir)
+    disk_commands = _discover_commands(plugin_dir)
+    invocable_skills = _discover_invocable_skills(plugin_dir)
+
+    # Commands include both commands/ files and user-invocable skills
+    disk_commands_full = disk_commands + invocable_skills
+
+    has_drift = False
+
+    # Reconcile skills
+    has_drift |= _reconcile_component_array(
+        data, "skills", disk_skills, plugin_name, plugin_dir, dry_run=dry_run
+    )
+
+    # Reconcile agents
+    has_drift |= _reconcile_component_array(
+        data, "agents", disk_agents, plugin_name, plugin_dir, dry_run=dry_run
+    )
+
+    # Reconcile commands (includes user-invocable skills)
+    has_drift |= _reconcile_component_array(
+        data, "commands", disk_commands_full, plugin_name, plugin_dir, dry_run=dry_run
+    )
+
+    if has_drift and not dry_run:
+        current_version = cast("str", data.get("version", "0.0.0"))
+        data["version"] = bump_version(current_version, "minor")
+        plugin_json_path.write_text(_format_json(data), encoding="utf-8")
+        print(f"  Updated {plugin_name} -> {data['version']}")
+
+    return has_drift
+
+
+def _refs_match(ref_a: str, ref_b: str, *, normalize: bool) -> bool:
+    """Check if two component references are equivalent.
+
+    Args:
+        ref_a: First reference path
+        ref_b: Second reference path
+        normalize: If True, normalize skill paths before comparison
+
+    Returns:
+        True if references point to the same component
+    """
+    if normalize:
+        return _normalize_skill_ref(ref_a) == _normalize_skill_ref(ref_b)
+    return ref_a == ref_b
+
+
+def _find_missing_items(
+    disk_items: list[str], registered: list[str], *, normalize: bool
+) -> list[str]:
+    """Find items on disk that are not registered in the manifest.
+
+    Args:
+        disk_items: Paths discovered on disk
+        registered: Paths currently in the manifest
+        normalize: If True, normalize skill paths before comparison
+
+    Returns:
+        List of disk items with no matching registered entry
+    """
+    return [
+        item
+        for item in disk_items
+        if not any(_refs_match(reg, item, normalize=normalize) for reg in registered)
+    ]
+
+
+def _find_stale_items(
+    registered: list[str], disk_items: list[str], plugin_dir: Path, *, normalize: bool
+) -> list[str]:
+    """Find registered items that no longer exist on disk.
+
+    Uses two checks: first compares against the discovery list, then verifies
+    the referenced path truly does not exist on disk.  This prevents false
+    positives for template files, wildcard directory references, and
+    cross-component references (e.g., skills in the commands array).
+
+    Skips script entries (``/scripts/``) since those are intentional
+    companion registrations not tied to a single SKILL.md.
+
+    Args:
+        registered: Paths currently in the manifest
+        disk_items: Paths discovered on disk
+        plugin_dir: Root directory of the plugin for existence checks
+        normalize: If True, normalize skill paths before comparison
+
+    Returns:
+        List of registered items with no matching disk entry
+    """
+    stale: list[str] = []
+    for reg in registered:
+        # Skip script entries — intentional companion registrations
+        if "/scripts/" in reg:
+            continue
+
+        # Check if it matches a discovered item
+        if any(_refs_match(reg, item, normalize=normalize) for item in disk_items):
+            continue
+
+        # Verify the referenced path truly does not exist on disk
+        # Strip leading ./ for filesystem check
+        rel_path = reg.lstrip("./")
+        full_path = plugin_dir / rel_path
+        if full_path.exists():
+            continue
+
+        stale.append(reg)
+
+    return stale
+
+
+def _apply_drift_changes(
+    data: dict[str, list[str] | str],
+    field_name: str,
+    missing: list[str],
+    stale: list[str],
+    plugin_name: str,
+    *,
+    dry_run: bool,
+) -> None:
+    """Report and optionally apply missing/stale changes to a component array.
+
+    Args:
+        data: Plugin.json data dictionary (mutated in place unless dry_run)
+        field_name: Array field name
+        missing: Items to add
+        stale: Items to remove
+        plugin_name: Plugin name for logging
+        dry_run: If True, only report
+    """
+    label_add = "Would add" if dry_run else "Adding"
+    label_rm = "Would remove" if dry_run else "Removing"
+
+    for item in missing:
+        print(f"  {label_add} {field_name}: {item} ({plugin_name})")
+
+    for item in stale:
+        print(f"  {label_rm} stale {field_name}: {item} ({plugin_name})")
+
+    if dry_run:
+        return
+
+    if missing:
+        if field_name not in data:
+            data[field_name] = []
+        field_value = data[field_name]
+        if isinstance(field_value, list):
+            field_value.extend(missing)
+
+    if stale:
+        field_value = data.get(field_name, [])
+        if isinstance(field_value, list):
+            data[field_name] = [r for r in field_value if r not in stale]
+
+
+def _reconcile_component_array(
+    data: dict[str, list[str] | str],
+    field_name: str,
+    disk_items: list[str],
+    plugin_name: str,
+    plugin_dir: Path,
+    *,
+    dry_run: bool,
+) -> bool:
+    """Reconcile a component array (skills/agents/commands) against disk.
+
+    Args:
+        data: Plugin.json data dictionary (mutated in place unless dry_run)
+        field_name: Array field name (``skills``, ``agents``, ``commands``)
+        disk_items: Items discovered on disk
+        plugin_name: Plugin name for logging
+        plugin_dir: Root directory of the plugin for existence checks
+        dry_run: If True, only report
+
+    Returns:
+        True if drift was detected
+    """
+    raw = data.get(field_name, [])
+    registered = (
+        list(raw) if isinstance(raw, list) else [raw] if isinstance(raw, str) else []
+    )
+    normalize = field_name == "skills"
+
+    missing = _find_missing_items(disk_items, registered, normalize=normalize)
+    stale = _find_stale_items(registered, disk_items, plugin_dir, normalize=normalize)
+
+    if missing or stale:
+        _apply_drift_changes(
+            data, field_name, missing, stale, plugin_name, dry_run=dry_run
+        )
+        return True
+
+    return False
+
+
+def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
+    """Reconcile marketplace.json against plugins on disk.
+
+    Ensures every plugin directory with a valid plugin.json is listed
+    in marketplace.json, and removes entries for deleted plugins.
+
+    Args:
+        plugins_root: Path to the plugins/ directory
+        dry_run: If True, only report
+
+    Returns:
+        True if changes were made (or would be made in dry_run)
+    """
+    marketplace_path = Path(".claude-plugin/marketplace.json")
+    if not marketplace_path.exists():
+        print("Warning: marketplace.json not found")
+        return False
+
+    with marketplace_path.open(encoding="utf-8") as f:
+        data: dict[str, dict[str, str] | list[dict[str, str]]] = json.load(f)
+
+    plugins_list = cast("list[dict[str, str]]", data.get("plugins", []))
+    registered_names = {p["name"] for p in plugins_list}
+
+    # Discover plugins on disk
+    disk_plugins: set[str] = set()
+    for d in sorted(plugins_root.iterdir()):
+        if d.is_dir() and (d / ".claude-plugin" / "plugin.json").exists():
+            disk_plugins.add(d.name)
+
+    missing = disk_plugins - registered_names
+    stale = registered_names - disk_plugins
+    has_drift = bool(missing or stale)
+
+    if missing:
+        label = "Would add" if dry_run else "Adding"
+        for name in sorted(missing):
+            print(f"  {label} plugin to marketplace: {name}")
+        if not dry_run:
+            for name in sorted(missing):
+                plugins_list.append({"name": name, "source": f"./plugins/{name}"})
+
+    if stale:
+        label = "Would remove" if dry_run else "Removing"
+        for name in sorted(stale):
+            print(f"  {label} stale plugin from marketplace: {name}")
+        if not dry_run:
+            data["plugins"] = [p for p in plugins_list if p["name"] not in stale]
+
+    if has_drift and not dry_run:
+        metadata = cast("dict[str, str]", data.get("metadata", {}))
+        current_version = metadata.get("version", "0.0.0")
+        bump_type: Literal["major", "minor", "patch"] = "major" if stale else "minor"
+        metadata["version"] = bump_version(current_version, bump_type)
+        data["metadata"] = metadata
+        marketplace_path.write_text(_format_json(data), encoding="utf-8")
+        print(f"  Updated marketplace -> {metadata['version']}")
+
+    return has_drift
+
+
+def reconcile(*, dry_run: bool) -> int:
+    """Run full filesystem reconciliation.
+
+    Scans all plugin directories, compares against manifest files,
+    and fixes drift.
+
+    Args:
+        dry_run: If True, only report drift without modifying files
+
+    Returns:
+        Exit code (0 for success)
+    """
+    plugins_root = Path("plugins")
+    if not plugins_root.is_dir():
+        sys.stderr.write("Error: plugins/ directory not found\n")
+        return 1
+
+    mode = "DRY RUN" if dry_run else "RECONCILE"
+    print(f"[{mode}] Scanning plugins/ for manifest drift...\n")
+
+    any_drift = False
+
+    # Reconcile each plugin
+    for plugin_dir in sorted(plugins_root.iterdir()):
+        if not plugin_dir.is_dir():
+            continue
+        plugin_json = plugin_dir / ".claude-plugin" / "plugin.json"
+        if not plugin_json.exists():
+            continue
+
+        drift = _reconcile_one_plugin(plugin_dir.name, plugins_root, dry_run=dry_run)
+        if drift:
+            any_drift = True
+
+    # Reconcile marketplace
+    print()
+    drift = _reconcile_marketplace(plugins_root, dry_run=dry_run)
+    if drift:
+        any_drift = True
+
+    if not any_drift:
+        print("No drift detected — all manifests match filesystem.")
+    elif dry_run:
+        print("\nDrift detected. Run without --dry-run to fix.")
+
+    return 0
+
+
+def _report_plugin_update(
+    plugin_name: str, new_version: str, changes: ComponentChanges
+) -> None:
+    """Print a summary of component changes for a plugin update.
+
+    Args:
+        plugin_name: Name of the updated plugin
+        new_version: New version after bumping
+        changes: The component changes that triggered the update
+    """
+    parts: list[str] = []
+    if changes["added"]:
+        parts.append(f"+{len(changes['added'])}")
+    if changes["deleted"]:
+        parts.append(f"-{len(changes['deleted'])}")
+    if changes["modified"]:
+        parts.append(f"~{len(changes['modified'])}")
+    print(f"Updated {plugin_name} -> {new_version} ({', '.join(parts)} components)")
+
+
+def _precommit_sync() -> int:
+    """Run the pre-commit sync mode (original behavior).
+
+    Detects staged git changes and updates plugin.json / marketplace.json.
 
     Returns:
         Exit code (0 for success)
     """
     status = get_git_status()
     staged_files = _get_staged_files()
-
-    # Track changes by plugin
     plugin_component_changes, marketplace_changes = _process_file_changes(status)
 
-    # Update plugin.json files
     plugins_updated = False
     marketplace_updated = False
+
     for plugin_name, changes in plugin_component_changes.items():
         updated, new_version = update_plugin_json(plugin_name, changes, staged_files)
 
         if updated:
             plugins_updated = True
             plugin_json_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
-
-            # Stage the updated file
             _git_stage_file(plugin_json_path)
-
-            # Track for marketplace update
             marketplace_changes["modified"].append((plugin_name, new_version))
-
-            # Report changes
-            added_count = len(changes["added"])
-            deleted_count = len(changes["deleted"])
-            modified_count = len(changes["modified"])
-
-            changes_desc = []
-            if added_count:
-                changes_desc.append(f"+{added_count}")
-            if deleted_count:
-                changes_desc.append(f"-{deleted_count}")
-            if modified_count:
-                changes_desc.append(f"~{modified_count}")
-
-            print(
-                f"Updated {plugin_name} -> {new_version} ({', '.join(changes_desc)} components)"
-            )
+            _report_plugin_update(plugin_name, new_version, changes)
 
     # Update marketplace.json
     if (
@@ -672,6 +1194,33 @@ def main() -> int:
         print("Info: No manifest updates needed")
 
     return 0
+
+
+def main() -> int:
+    """Main entry point — dispatches to pre-commit or reconcile mode.
+
+    Returns:
+        Exit code (0 for success)
+    """
+    parser = argparse.ArgumentParser(
+        description="Sync plugin and marketplace manifests."
+    )
+    parser.add_argument(
+        "--reconcile",
+        action="store_true",
+        help="Full directory scan to fix drift between filesystem and manifests",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Report drift without modifying files (requires --reconcile)",
+    )
+    args = parser.parse_args()
+
+    if args.reconcile:
+        return reconcile(dry_run=args.dry_run)
+
+    return _precommit_sync()
 
 
 if __name__ == "__main__":

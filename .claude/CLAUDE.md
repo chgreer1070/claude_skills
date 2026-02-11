@@ -6,6 +6,18 @@ This repository contains a Claude Code Marketplace Plugin providing Skills for C
 
 ---
 
+## Session Setup
+
+Before responding to the user, the model MUST run:
+
+```bash
+uv run prek install
+```
+
+This installs the pre-commit git hooks so that linting, formatting, and manifest syncing run automatically on every `git commit`. Without this step, commits bypass all quality checks.
+
+---
+
 ## Skill Creator Activation Protocol
 
 <skill_activation_triggers>
@@ -161,6 +173,34 @@ console.log(JSON.stringify({ hookSpecificOutput: { ... } }));
 - Existing legacy scripts (do not create new ones)
 
 </skill_component_languages>
+
+### Script Invocation Rule
+
+<script_invocation>
+
+The model MUST NOT use `python3`, `python`, or `node` to invoke scripts in this repository. All scripts have shebangs and executable permissions enforced by pre-commit hooks (`check-executables-have-shebangs`, `check-shebang-scripts-are-executable`).
+
+**Correct invocation methods (in order of preference):**
+
+1. **Direct execution via shebang**: `./plugins/plugin-creator/scripts/auto-sync-manifests.py --reconcile --dry-run`
+2. **Via uv run** (for PEP 723 scripts with dependencies): `uv run plugins/python3-development/skills/uv/scripts/sync-uv-releases.py --force`
+
+**Prohibited:**
+
+```bash
+# WRONG - bypasses shebang, ignores PEP 723 dependency resolution
+python3 plugins/plugin-creator/scripts/auto-sync-manifests.py --reconcile
+node .claude/hooks/session-start-backlog.js
+```
+
+**Why this matters:**
+
+- `uv run` resolves PEP 723 inline dependencies automatically
+- Shebangs may specify `uv run --script` which handles venv and deps
+- Bare `python3` skips dependency resolution and may use the wrong interpreter
+- Scripts are designed to be self-contained executables, not library modules
+
+</script_invocation>
 
 ---
 

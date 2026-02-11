@@ -229,7 +229,7 @@ jobs:
         run: |
           files_missing_newline=""
           while IFS= read -r -d '' file; do
-            if [ -s "$file" ] && [ "$(tail -c 1 "$file" | wc -l)" -eq 0 ]; then
+            if [ -f "$file" ] && [ ! -L "$file" ] && [ -s "$file" ] && [ "$(tail -c 1 "$file" | wc -l)" -eq 0 ]; then
               files_missing_newline="$files_missing_newline $file"
             fi
           done < <(git ls-files -z -- ':!*.lock' ':!.venv/*' ':!node_modules/*' ':!*.png' ':!*.jpg' ':!*.gif' ':!*.ico')
