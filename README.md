@@ -2,7 +2,7 @@
 
 Professional development workflow extensions for Claude Code. Make Claude more thorough, accurate, and productive across Python, shell, Perl, CI/CD, and AI tooling.
 
-**What's Here**: 20 plugins ranging from comprehensive development frameworks (15+ commands, specialized agents, 600KB+ reference docs) to focused knowledge clip-ins (single-skill convention guides). Whether you need a complete Python TDD workflow or just want Claude to write proper commit messages, there's a plugin for that.
+**What's Here**: 20 plugins ranging from comprehensive development frameworks (15+ commands, specialized agents, extensive reference docs) to focused knowledge clip-ins (single-skill convention guides). Whether you need a complete Python TDD workflow or just want Claude to write proper commit messages, there's a plugin for that.
 
 ## Quick Start
 
@@ -36,6 +36,7 @@ These are comprehensive frameworks with multiple skills, commands, and specializ
 These are focused plugins that teach Claude specific conventions or tools without heavy workflows.
 
 #### Python & Package Management
+
 | Plugin | What It Does |
 | ------ | ------------ |
 | [litellm](./plugins/litellm) | Call any LLM API (OpenAI/Anthropic/local) from Python with unified interface and retry logic |
@@ -43,6 +44,7 @@ These are focused plugins that teach Claude specific conventions or tools withou
 | [xdg-base-directory](./plugins/xdg-base-directory) | Store config and data files in correct XDG-compliant directories using platformdirs |
 
 #### Git & CI/CD
+
 | Plugin | What It Does |
 | ------ | ------------ |
 | [conventional-commits](./plugins/conventional-commits) | Write consistent commit messages (feat/fix/chore) for semantic versioning and changelog generation |
@@ -50,12 +52,14 @@ These are focused plugins that teach Claude specific conventions or tools withou
 | [gitlab-skill](./plugins/gitlab-skill) | Write GitLab CI pipelines and GLFM documentation with local testing before pushing |
 
 #### AI & LLM Tools
+
 | Plugin | What It Does |
 | ------ | ------------ |
 | [fastmcp-creator](./plugins/fastmcp-creator) | Build production-ready Model Context Protocol (MCP) servers with FastMCP framework and agent-centric design patterns |
 | [prompt-optimization-claude-45](./plugins/prompt-optimization-claude-45) | Optimize CLAUDE.md and skills using Anthropic's best practices - transforms negative rules into positive patterns |
 
 #### Better Claude Behavior
+
 | Plugin | What It Does |
 | ------ | ------------ |
 | [agent-orchestration](./plugins/agent-orchestration) | Makes Claude more thorough on complex tasks by investigating root causes and verifying work actually functions |
@@ -68,7 +72,7 @@ These are focused plugins that teach Claude specific conventions or tools withou
 Claude Code plugins extend Claude's capabilities in specific domains. This collection includes:
 
 **Full-Featured Development Systems** - Complete frameworks with commands, specialized agents, and comprehensive workflows:
-- **python3-development**: 15+ commands, 17 agents, TDD methodology, 676KB of reference docs
+- **python3-development**: 15+ commands, 17 agents, TDD methodology, extensive reference docs
 - **bash/perl-development**: Complete scripting frameworks with testing, linting, and auditing agents
 - **plugin-creator**: 6 agents for systematic plugin development workflows
 - **holistic-linting**: Automatic quality enforcement with root-cause analysis
@@ -116,11 +120,11 @@ plugins/plugin-name/
 
 ### For Python Developers
 
-**[python3-development](./plugins/python3-development)** - The most comprehensive plugin in this collection. Transform Claude into a Python 3.11+ expert with 15+ commands, 17 specialized agents, TDD workflows, modern library selection (Typer, Rich, httpx, pytest), and SAM methodology for complete feature development. Includes 676KB of reference documentation covering 50+ modern Python libraries.
+**[python3-development](./plugins/python3-development)** - The most comprehensive plugin in this collection. Transform Claude into a Python 3.11+ expert with 15+ commands, 17 specialized agents, TDD workflows, modern library selection (Typer, Rich, httpx, pytest), and SAM methodology for complete feature development. Includes extensive reference documentation covering 50+ modern Python libraries.
 
 **[holistic-linting](./plugins/holistic-linting)** - Automatic code quality enforcement with root-cause fixing. Claude discovers your project's linters (ruff, mypy, bandit), runs them before completing tasks, and resolves issues through systematic analysis rather than suppression comments.
 
-**[uv](./plugins/uv)** - Expert guidance for Astral's uv - the 10-100x faster Python package manager that replaces pip, poetry, pyenv, and virtualenv. Creates modern projects with lockfiles, writes portable scripts with PEP 723 inline dependencies, and configures CI/CD using best practices.
+**[uv](./plugins/uv)** - Expert guidance for Astral's uv - the extremely fast Python package manager that replaces pip, poetry, pyenv, and virtualenv. Creates modern projects with lockfiles, writes portable scripts with PEP 723 inline dependencies, and configures CI/CD using best practices.
 
 ### For Systems Programming
 
@@ -136,7 +140,7 @@ plugins/plugin-name/
 
 **[hallucination-detector](./plugins/hallucination-detector)** - Stop-hook that blocks task completion on speculation patterns. Catches ungrounded causality, pseudo-quantification without methodology, and completeness overclaims - forcing evidence-first rewrites.
 
-**[brainstorming-skill](./plugins/brainstorming-skill)** - Improves idea generation with 30+ research-validated prompt patterns (role-based perspectives, constraint exploration, analogical thinking, inversion techniques). Research shows 20-30% improvement in idea quantity.
+**[brainstorming-skill](./plugins/brainstorming-skill)** - Improves idea generation with 30+ research-validated prompt patterns (role-based perspectives, constraint exploration, analogical thinking, inversion techniques). Structured techniques generate more ideas with reasoning while working within your actual constraints.
 
 ### For Plugin & Tool Developers
 
