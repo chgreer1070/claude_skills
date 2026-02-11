@@ -2,6 +2,8 @@
 
 Professional development workflow extensions for Claude Code. Make Claude more thorough, accurate, and productive across Python, shell, Perl, CI/CD, and AI tooling.
 
+**What's Here**: 20 plugins ranging from comprehensive development frameworks (15+ commands, specialized agents, 600KB+ reference docs) to focused knowledge clip-ins (single-skill convention guides). Whether you need a complete Python TDD workflow or just want Claude to write proper commit messages, there's a plugin for that.
+
 ## Quick Start
 
 ```bash
@@ -189,8 +191,9 @@ MIT License - see individual plugins for specifics.
 
 ## Marketplace Info
 
-**Marketplace Name**: `jamie-bitflight-skills`
-**Owner**: Jamie BitFlight (<jamie@bitflight.io>)
-**Version**: 2.0.0
+**Marketplace Name**: `jamie-bitflight-skills`  
+**Owner**: Jamie BitFlight (<jamie@bitflight.io>)  
+**Version**: 2.0.0  
+**Plugin Count**: 20 plugins (8 full-featured systems, 12 lightweight clip-ins)
 
-This marketplace provides professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Covers modern Python toolchains, GitLab CI/CD automation, code quality enforcement, MCP server creation, and plugin/agent development patterns.
+This marketplace provides professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Includes comprehensive frameworks for Python 3.11+, Bash 5.1+, and Perl 5.30+ development with TDD workflows, specialized agents, and automated quality enforcement. Also covers GitLab CI/CD automation, commit message standards, LLM integration patterns, MCP server creation, and Claude behavior improvements for hallucination prevention and systematic problem-solving.
