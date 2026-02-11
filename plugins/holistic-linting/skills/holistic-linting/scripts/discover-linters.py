@@ -210,7 +210,9 @@ def scan_pyproject_toml(config_file: Path) -> list[LinterConfig]:
     linters: list[LinterConfig] = []
 
     try:
-        config: dict[str, Any] = tomlkit.parse(config_file.read_text(encoding="utf-8")).unwrap()
+        config: dict[str, Any] = tomlkit.parse(
+            config_file.read_text(encoding="utf-8")
+        ).unwrap()
 
         # Check for ruff
         if "tool" in config and "ruff" in config["tool"]:
