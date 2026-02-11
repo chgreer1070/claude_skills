@@ -6,6 +6,18 @@ This repository contains a Claude Code Marketplace Plugin providing Skills for C
 
 ---
 
+## Session Setup
+
+Before responding to the user, the model MUST run:
+
+```bash
+uv run prek install
+```
+
+This installs the pre-commit git hooks so that linting, formatting, and manifest syncing run automatically on every `git commit`. Without this step, commits bypass all quality checks.
+
+---
+
 ## Skill Creator Activation Protocol
 
 <skill_activation_triggers>
