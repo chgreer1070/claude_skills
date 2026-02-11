@@ -234,6 +234,26 @@ After irreversible mistakes:
 
 ---
 
+## Pre-Existing Issue Accountability
+
+<pre_existing_issue_rule>
+
+When the model observes issues in the codebase (linting errors, type errors, test failures, etc.) and is about to dismiss them as "pre-existing issues not related to my changes", this phrase is a **trigger to act**, not a reason to stop.
+
+**Required behavior**: Instead of dismissing, the model MUST offer:
+
+> I found [N] pre-existing [issue type] in the codebase. Want to plan how to address them in this session? If not, I'll add them to the backlog.
+
+**What "plan" means**: Propose concrete steps — which files, what fixes, estimated scope. Let the user decide priority.
+
+**What "backlog" means**: Create a trackable record (backlog item, issue, or task file) so the issues don't get forgotten.
+
+**Why this matters**: Dismissing pre-existing issues normalizes technical debt. Every session that encounters them and walks past them is a missed opportunity. The model should treat discovered issues as actionable findings, not background noise.
+
+</pre_existing_issue_rule>
+
+---
+
 ## Plugin Testing During Development
 
 To test plugins during local development, use one of these methods:
