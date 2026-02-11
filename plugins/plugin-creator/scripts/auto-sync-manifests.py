@@ -695,6 +695,86 @@ def _discover_commands(plugin_dir: Path) -> list[str]:
     ]
 
 
+def _is_skill_user_invocable(skill_md_path: Path) -> bool:
+    """Check if a SKILL.md file has ``user-invocable: true`` in its frontmatter.
+
+    Parses the YAML frontmatter (between ``---`` delimiters) and looks for
+    the ``user-invocable`` field.  Skills default to user-invocable when the
+    field is absent, matching Claude Code's behavior.
+
+    Args:
+        skill_md_path: Absolute path to a SKILL.md file
+
+    Returns:
+        True if the skill is user-invocable (explicit ``true`` or field absent)
+    """
+    if not skill_md_path.is_file():
+        return False
+
+    try:
+        text = skill_md_path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+
+    # Extract frontmatter between first two --- lines
+    if not text.startswith("---"):
+        return True  # No frontmatter = default (invocable)
+
+    end = text.find("\n---", 3)
+    if end == -1:
+        return True
+
+    frontmatter = text[3:end]
+
+    for line in frontmatter.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("user-invocable:"):
+            value = stripped.split(":", 1)[1].strip().lower()
+            return value in {"true", "yes"}
+
+    # Field absent = default invocable
+    return True
+
+
+def _discover_invocable_skills(plugin_dir: Path) -> list[str]:
+    """Discover skills with ``user-invocable: true`` for the commands array.
+
+    User-invocable skills appear as ``/skill-name`` shortcuts in Claude Code
+    and must be registered in both the ``skills`` and ``commands`` arrays
+    of plugin.json.
+
+    Args:
+        plugin_dir: Root directory of the plugin
+
+    Returns:
+        List of relative skill paths (e.g., ``./skills/my-skill``)
+    """
+    skills_dir = plugin_dir / "skills"
+    if not skills_dir.is_dir():
+        return []
+
+    found: list[str] = []
+
+    for item in sorted(skills_dir.iterdir()):
+        if item.name.startswith(".") or not item.is_dir():
+            continue
+
+        skill_md = item / "SKILL.md"
+        if skill_md.is_file() and _is_skill_user_invocable(skill_md):
+            found.append(f"./skills/{item.name}")
+
+        # Check nested skill directories (e.g., skills/testing/*)
+        for nested in sorted(item.iterdir()):
+            if nested.is_dir() and not nested.name.startswith("."):
+                nested_skill_md = nested / "SKILL.md"
+                if nested_skill_md.is_file() and _is_skill_user_invocable(
+                    nested_skill_md
+                ):
+                    found.append(f"./skills/{item.name}/{nested.name}")
+
+    return found
+
+
 def _normalize_skill_ref(ref: str) -> str:
     """Normalize a skill reference for comparison.
 
@@ -737,6 +817,10 @@ def _reconcile_one_plugin(
     disk_skills = _discover_skills(plugin_dir)
     disk_agents = _discover_agents(plugin_dir)
     disk_commands = _discover_commands(plugin_dir)
+    invocable_skills = _discover_invocable_skills(plugin_dir)
+
+    # Commands include both commands/ files and user-invocable skills
+    disk_commands_full = disk_commands + invocable_skills
 
     has_drift = False
 
@@ -750,9 +834,9 @@ def _reconcile_one_plugin(
         data, "agents", disk_agents, plugin_name, plugin_dir, dry_run=dry_run
     )
 
-    # Reconcile commands
+    # Reconcile commands (includes user-invocable skills)
     has_drift |= _reconcile_component_array(
-        data, "commands", disk_commands, plugin_name, plugin_dir, dry_run=dry_run
+        data, "commands", disk_commands_full, plugin_name, plugin_dir, dry_run=dry_run
     )
 
     if has_drift and not dry_run:
