@@ -16,6 +16,7 @@ dev = [
     "basedpyright>=1.33.0",
     "generate-changelog>=0.16.0",
     "hatch-vcs>=0.5.0",
+    "hypothesis>=6.0.0",
     "prek>=0.2.19",
     "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.2.1",
@@ -181,9 +182,12 @@ convention = "google"
 
 [tool.mypy]
 disable_error_code = ["call-arg", "misc"]
+exclude = ["typings/"]
+explicit_package_bases = true
 extra_checks = true
 ignore_missing_imports = true
 mypy_path = ["packages", "scripts", "."]
+namespace_packages = true
 pretty = true
 python_version = "3.11"
 show_error_codes = true
@@ -196,10 +200,10 @@ warn_unused_ignores = true
 disable_error_code = [
     "attr-defined",
     "call-arg",
-    "var-annotated",
-    "valid-type",
-    "no-any-return",
     "index",
+    "no-any-return",
+    "valid-type",
+    "var-annotated",
 ]
 module = [
     "test.*",
