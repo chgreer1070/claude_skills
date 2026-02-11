@@ -15,6 +15,13 @@ When working on Python projects, you might encounter:
 
 This plugin helps Claude guide you toward modern Python project practices using uv.
 
+## Note
+
+This plugin is a compatibility wrapper. The uv skill was consolidated into the
+`python3-development` plugin. This plugin provides the same skill via symlink so
+existing installations continue to work. For new installations, prefer
+`python3-development@jamie-bitflight-skills`.
+
 ## What Changes
 
 With this plugin installed, Claude will:
@@ -25,6 +32,7 @@ With this plugin installed, Claude will:
 - Configure CI/CD pipelines that are fast and reproducible
 - Help migrate existing projects from pip, requirements.txt, or poetry
 - Troubleshoot Python dependency and version issues more effectively
+- Self-update its documentation via `sync-uv-releases.py` to stay current with new uv releases
 
 ## Installation
 
@@ -118,6 +126,25 @@ This plugin is especially useful when you:
 ## What is uv?
 
 uv is Astral's Rust-based Python package manager that replaces pip, pipx, poetry, pyenv, and virtualenv with a single tool that's 10-100x faster. Think of it as a modern alternative to pip that handles project management, virtual environments, and Python versions all in one place.
+
+## Self-Updating Documentation
+
+This plugin includes a sync script that fetches the latest uv release notes from
+GitHub and updates the skill documentation automatically:
+
+```bash
+# Check for new releases (dry run)
+uv run scripts/sync-uv-releases.py --dry-run
+
+# Update the skill documentation
+uv run scripts/sync-uv-releases.py
+
+# Force update (bypass cooldown)
+uv run scripts/sync-uv-releases.py --force
+```
+
+The script detects your locally installed uv version and shows what features are
+available at your version versus the latest release.
 
 ## Requirements
 
