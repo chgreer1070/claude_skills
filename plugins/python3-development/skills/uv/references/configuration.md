@@ -1,6 +1,6 @@
 # uv Configuration Reference
 
-Complete configuration guide for uv (v0.9.5).
+Complete configuration guide for uv (v0.10.2).
 
 ## Configuration Files
 
@@ -113,18 +113,29 @@ python-downloads = "automatic"  # automatic/manual/never
 keyring-provider = "subprocess"  # subprocess/disabled
 allow-insecure-host = ["packages.example.com"]
 
+# Dependency exclusions (0.9.8+)
+dependency-exclusions = ["unwanted-package"]
+
+# PyTorch accelerator backend (0.9.18+ in config)
+torch-backend = "auto"  # or "cu121", "rocm7.0", "rocm7.1", "cpu"
+
+# Git LFS (0.9.15+)
+git-lfs = true
+
 # Preview features
 preview = true
 ```
 
 ### Package Indexes
 
+**Breaking (0.10.0)**: Multiple `default = true` indexes now error. Unnamed `explicit` indexes now error (must have a `name`).
+
 ```toml
 [[tool.uv.index]]
 name = "pytorch-cu121"
 url = "https://download.pytorch.org/whl/cu121"
-explicit = true              # Require explicit pinning
-default = false              # Replace PyPI as default
+explicit = true              # Require explicit pinning (must have name)
+default = false              # Replace PyPI as default (only one allowed)
 authenticate = "always"      # always/never
 cache-control = "max-age=3600"
 
@@ -244,7 +255,7 @@ universal = false
 # Directories
 UV_CACHE_DIR=/custom/cache
 UV_PROJECT_ENVIRONMENT=.venv
-UV_WORKING_DIRECTORY=/path/to/project
+UV_WORKING_DIR=/path/to/project  # Preferred name since 0.9.14
 
 # Configuration
 UV_CONFIG_FILE=/path/to/uv.toml
@@ -312,7 +323,7 @@ UV_BUILD_CONSTRAINT=/path/to/constraints.txt
 # Resolution strategy
 UV_RESOLUTION=highest          # highest/lowest/lowest-direct
 UV_PRERELEASE=if-necessary     # allow/disallow/if-necessary/if-necessary-or-explicit
-UV_EXCLUDE_NEWER=2025-01-01T00:00:00Z
+UV_EXCLUDE_NEWER=2025-01-01T00:00:00Z  # Also supports relative: "2 days ago", "1w" (0.9.17+)
 
 # Lock and sync
 UV_FROZEN=1
@@ -359,6 +370,44 @@ UV_LOG_CONTEXT=1
 ```bash
 UV_TOOL_DIR=~/.local/share/uv/tools
 UV_TOOL_BIN_DIR=~/.local/bin
+```
+
+### Dependency Groups (0.9.8+)
+
+```bash
+UV_NO_GROUP="docs"             # Exclude specific groups
+UV_NO_SOURCES=1                # Ignore [tool.uv.sources]
+UV_NO_DEFAULT_GROUPS=1         # Skip default dependency groups
+```
+
+### Virtual Environment (0.10.0+)
+
+```bash
+UV_VENV_CLEAR=1                # Auto-remove existing venvs on uv venv
+```
+
+### Build Output (0.9.15+)
+
+```bash
+UV_HIDE_BUILD_OUTPUT=1         # Suppress build log output
+```
+
+### Git LFS (0.9.15+)
+
+```bash
+UV_GIT_LFS=1                  # Enable Git LFS for dependencies
+```
+
+### PyTorch Backend
+
+```bash
+UV_TORCH_BACKEND="cu121"      # Accelerator backend (cu121/rocm7.0/rocm7.1/cpu/auto)
+```
+
+### SSL Certificates (0.9.10+)
+
+```bash
+SSL_CERT_DIR="/path/to/certs"  # Custom CA certificate directory
 ```
 
 ### Preview Features

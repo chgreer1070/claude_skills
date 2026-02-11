@@ -64,6 +64,10 @@ myproject/
 # Production dependencies
 uv add requests 'flask>=2.0,<3.0' pydantic
 
+# With automatic version bounds (stable in 0.10.0)
+uv add --bounds compatible requests  # Adds requests>=2.31,<3
+uv add --bounds exact flask          # Adds flask==3.0.0
+
 # Development dependencies
 uv add --dev pytest pytest-cov ruff mypy black
 
@@ -105,6 +109,7 @@ uv sync --no-dev
 
 # Install with optional groups
 uv sync --extra docs --extra test
+uv sync --extra docs,test  # Comma-separated (0.9.30+)
 
 # Sync without updating lockfile (CI mode)
 uv sync --frozen
@@ -195,7 +200,7 @@ chmod +x example.py
 - Always include `requires-python` for compatibility
 - Use version constraints for critical dependencies
 - Lock scripts before sharing for reproducibility
-- Add `exclude-newer` in `[tool.uv]` for time-based pinning
+- Add `exclude-newer` in `[tool.uv]` for time-based pinning (supports relative durations like `"2 days ago"` or `"1w"` since 0.9.17)
 
 ### 5. Tool Management
 
@@ -256,19 +261,27 @@ uv tool update-shell
 uv python install 3.12
 uv python install 3.11 3.12 3.13  # Multiple at once
 
+# Install and compile standard library bytecode (0.9.25+)
+uv python install --compile-bytecode 3.12
+
+# Request GIL-enabled interpreter for free-threaded Python (0.9.8+)
+uv python install 3.13+gil
+
 # List available versions
 uv python list
 uv python list --all-versions
 
 # Pin Python version for project
 uv python pin 3.12  # Creates .python-version
+uv python pin --global 3.12  # Global pin
 
 # Find Python executable
 uv python find 3.11
 
-# Upgrade Python installations
+# Upgrade Python installations (stable in 0.10.0)
 uv python upgrade 3.11
 uv python upgrade --all
+uv python upgrade --compile-bytecode 3.11
 
 # Use specific Python for command
 uv run --python 3.11 script.py
@@ -277,9 +290,10 @@ uv venv --python 3.12.0
 
 **Python is automatically downloaded when needed:**
 
-- Supports CPython, PyPy, GraalPy, and other implementations
+- Supports CPython, PyPy, GraalPy, Pyodide, and other implementations
 - Managed installations stored in `~/.local/share/uv/python/` (Unix)
 - Preference configurable: `only-managed`, `managed`, `system`, `only-system`
+- **0.10.0 change**: Alternative implementations (PyPy, GraalPy, Pyodide) now install executables under their implementation name (e.g., `pypy3.10` instead of `python3.10`)
 
 ### 7. Virtual Environment Management
 
@@ -288,6 +302,9 @@ uv venv --python 3.12.0
 ```bash
 # Create in .venv directory (default)
 uv venv
+
+# Clear and recreate existing environment (required since 0.10.0)
+uv venv --clear
 
 # Create with specific Python version
 uv venv --python 3.11
@@ -307,7 +324,7 @@ source .venv/bin/activate  # Unix
 .venv\Scripts\activate     # Windows
 ```
 
-**Warning**: Running `uv venv` again **wipes existing environment** without confirmation.
+**Warning (changed in 0.10.0)**: `uv venv` now **refuses to overwrite** an existing environment. Pass `--clear` (or set `UV_VENV_CLEAR=1`) to remove and recreate it.
 
 ### 8. pip-Compatible Interface
 
@@ -339,6 +356,7 @@ uv pip uninstall -r requirements.txt
 uv pip list
 uv pip list --format json
 uv pip freeze > requirements.txt
+uv pip freeze --exclude setuptools --exclude pip  # Exclude packages (0.9.27+)
 
 # Show package info
 uv pip show requests
@@ -402,7 +420,46 @@ uv run --package my-package python script.py
 uv lock
 ```
 
-### 10. Package Building and Publishing
+### 10. Workspace Commands (Stable in 0.10.0)
+
+**List and inspect workspace members:**
+
+```bash
+# List all workspace members
+uv workspace list
+
+# Show workspace member paths
+uv workspace list --paths
+
+# Print workspace root directory
+uv workspace dir
+```
+
+### 11. Dependency Exclusions (0.9.8+)
+
+**Exclude packages from resolution:**
+
+```toml
+# In pyproject.toml
+[tool.uv]
+dependency-exclusions = ["unwanted-package"]
+```
+
+```bash
+# Or via CLI
+uv sync --exclude unwanted-package
+```
+
+### 12. SBOM Export (0.9.11+)
+
+**Export Software Bill of Materials:**
+
+```bash
+# Export dependencies as CycloneDX SBOM
+uv export --format cyclonedx-json -o sbom.json
+```
+
+### 13. Package Building and Publishing
 
 **Build distributions:**
 
@@ -434,6 +491,15 @@ uv publish --publish-url https://test.pypi.org/legacy/
 
 # Smoke test before publishing
 uv run --isolated --no-project --with dist/*.whl python -c "import my_package"
+```
+
+**PEP 740 attestations (0.9.12+)**: `uv publish` automatically collects and uploads attestations when available.
+
+**Build before publishing:**
+
+```bash
+uv build --clear  # Remove old artifacts first (0.9.6+)
+uv publish --build  # Build and publish in one step
 ```
 
 ## Configuration
@@ -485,6 +551,12 @@ index-strategy = "first-index"
 compile-bytecode = true
 no-build-isolation-package = ["flash-attn"]
 
+# Dependency exclusions (0.9.8+)
+dependency-exclusions = ["unwanted-package"]
+
+# PyTorch accelerator backend (0.9.18+ in config)
+torch-backend = "auto"  # or "cu121", "rocm7.0", "cpu"
+
 # Python management
 python-preference = "managed"
 python-downloads = "automatic"
@@ -509,6 +581,7 @@ explicit = true
 # Cache and directories
 export UV_CACHE_DIR="/custom/cache"
 export UV_PROJECT_ENVIRONMENT=".venv"
+export UV_WORKING_DIR="/path/to/project"  # Preferred over UV_WORKING_DIRECTORY (0.9.14+)
 
 # Python management
 export UV_PYTHON_PREFERENCE="managed"
@@ -530,6 +603,26 @@ export UV_NO_CACHE=1
 
 # System Python
 export UV_SYSTEM_PYTHON=1
+
+# Dependency group control (0.9.8+)
+export UV_NO_GROUP="docs"
+export UV_NO_SOURCES=1
+export UV_NO_DEFAULT_GROUPS=1
+
+# Virtual environment (0.10.0+)
+export UV_VENV_CLEAR=1  # Auto-remove existing venvs
+
+# Build output control (0.9.15+)
+export UV_HIDE_BUILD_OUTPUT=1
+
+# Git LFS (0.9.15+)
+export UV_GIT_LFS=1
+
+# PyTorch accelerator backend
+export UV_TORCH_BACKEND="cu121"  # or rocm7.0, rocm7.1, cpu, auto
+
+# SSL certificate directory (0.9.10+)
+export SSL_CERT_DIR="/path/to/certs"
 ```
 
 For complete configuration reference, see `references/configuration.md`.
@@ -671,6 +764,8 @@ jobs:
 
 ### Docker Integration
 
+**Note (0.10.0)**: Debian Bookworm, Alpine 3.21, and Python 3.8 Docker images are no longer published. Use `uv:trixie`/`uv:debian` and `uv:alpine3.22`/`uv:alpine` instead.
+
 ```dockerfile
 FROM python:3.12-slim
 
@@ -770,6 +865,7 @@ uv sync --frozen  # Don't update lockfile
 **Solutions**:
 
 ```bash
+uv cache size           # Show cache disk usage (0.9.8+)
 uv cache clean          # Clean entire cache
 uv cache prune          # Remove unreachable entries
 uv --no-cache <command> # Bypass cache temporarily
@@ -777,19 +873,27 @@ uv --no-cache <command> # Bypass cache temporarily
 
 ### Common Pitfalls
 
-**1. Forgetting to sync after adding dependencies:**
+**1. Forgetting `--clear` when recreating venvs (0.10.0+):**
+
+```bash
+# Since 0.10.0, uv venv refuses to overwrite
+uv venv          # Errors if .venv already exists
+uv venv --clear  # Required to remove and recreate
+```
+
+**2. Forgetting to sync after adding dependencies:**
 
 ```bash
 uv add requests  # Adds to pyproject.toml and updates lockfile
 uv sync          # Required to actually install the package
 ```
 
-**2. Incorrect workspace glob patterns:**
+**3. Incorrect workspace glob patterns:**
 
 - Wrong: `members = ["packages/"]` (missing asterisk)
 - Correct: `members = ["packages/*"]`
 
-**3. Missing build-system for libraries:**
+**4. Missing build-system for libraries:**
 
 Libraries and packages require a `[build-system]` section:
 
@@ -799,24 +903,24 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 ```
 
-**4. Wrong file mode for TOML operations:**
+**5. Wrong file mode for TOML operations:**
 
 - Use text mode `'r'` and `'w'` with tomlkit
 - Do not use binary mode `'rb'` or `'wb'`
 
-**5. Incorrect workspace source syntax:**
+**6. Incorrect workspace source syntax:**
 
 - Wrong: `{ workspace = "true" }` (string "true")
 - Correct: `{ workspace = true }` (boolean true)
 
-**6. Not using --frozen in CI:**
+**7. Not using --frozen in CI:**
 
 ```bash
 # CI should fail if lockfile is outdated
 uv sync --frozen
 ```
 
-**7. Incompatible Python version ranges in workspaces:**
+**8. Incompatible Python version ranges in workspaces:**
 
 All workspace members must have compatible `requires-python` ranges. If one member requires `>=3.11` and another requires `>=3.12`, the workspace will use `>=3.12`.
 
@@ -850,15 +954,57 @@ This skill includes comprehensive reference documentation:
 
 ## Version Information
 
-Current latest version: **0.9.5** (October 2025)
+Current latest version: **0.10.2** (February 2026)
 
-Key recent features:
+### 0.10.0 Breaking Changes (February 2026)
 
-- Python 3.14 support with free-threaded builds
-- Enhanced authentication system
-- Advanced build configuration
-- Workspace improvements
-- Docker image optimizations
+- `uv venv` no longer auto-removes existing environments -- pass `--clear` or set `UV_VENV_CLEAR=1`
+- Multiple `default = true` indexes now error (previously silently accepted)
+- Unnamed `explicit` indexes now error (must have a `name` for `[tool.uv.sources]` references)
+- Alternative Python implementations (PyPy, GraalPy, Pyodide) install under their implementation name (e.g., `pypy3.10` not `python3.10`)
+- `uv tool run` and `uv tool install` respect the global Python version pin
+- Docker: Debian Bookworm, Alpine 3.21, and Python 3.8 images removed; use `uv:trixie`/`uv:debian` and `uv:alpine3.22`/`uv:alpine`
+- `uv format` upgraded to Ruff 0.15.0 (2026 style guide); pin with `uv format --version 0.14.14` to opt out
+- `exclude-newer` lockfile changes no longer cause full version upgrades; use `--upgrade` explicitly
+
+### Features Stabilized in 0.10.0
+
+- `uv python upgrade` / `uv python install --upgrade`
+- `uv workspace list` / `uv workspace dir`
+- `uv add --bounds` and `add-bounds` configuration
+- `extra-build-dependencies` configuration
+
+### Key Features Added Since 0.9.5
+
+- `uv cache size` command (0.9.8)
+- First-class dependency exclusions via `tool.uv.dependency-exclusions` (0.9.8)
+- Free-threaded Python `+gil` suffix for interpreter requests (0.9.8)
+- SBOM export format in `uv export` (0.9.11)
+- PEP 740 attestation auto-collection in `uv publish` (0.9.12)
+- Git LFS support via `UV_GIT_LFS` (0.9.15)
+- Relative durations for `exclude-newer` (e.g., `"2 days ago"`, `"1w"`) (0.9.17)
+- `--torch-backend` in `[tool.uv]` configuration (0.9.18)
+- ROCm 6.4, 7.0, 7.1 accelerator backend support (0.9.15, 0.9.27)
+- Pyodide interpreter support on Windows (0.9.28)
+- `--compile-bytecode` for `uv python install`/`upgrade` (0.9.25)
+- `uv pip freeze --exclude` (0.9.27)
+- Comma-separated values for `--extra`, `--no-binary`, `--only-binary` (0.9.30, 0.9.20)
+- `uv build --clear` to remove old build artifacts (0.9.6)
+- 5-minute default timeout on file locks (0.9.16)
+- Proxy variables configurable via global/user config files (0.9.23)
+
+### Python Versions Added Since 0.9.5
+
+- CPython 3.15.0a2 through 3.15.0a5
+- CPython 3.14.1, 3.14.2, 3.14.3
+- CPython 3.13.10, 3.13.11, 3.13.12
+- Pyodide 0.29.2, 0.29.3
+- GraalPy 25.0.1, 25.0.2
+
+### Deprecations
+
+- `--project` flag in `uv init` deprecated; use positional argument or `--name` (0.9.9)
+- `UV_WORKING_DIRECTORY` superseded by `UV_WORKING_DIR` (0.9.14)
 
 ## External Resources
 

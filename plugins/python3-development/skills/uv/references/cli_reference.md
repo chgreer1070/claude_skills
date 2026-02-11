@@ -1,6 +1,6 @@
 # uv CLI Reference
 
-Complete command-line interface reference for uv (v0.9.5).
+Complete command-line interface reference for uv (v0.10.2).
 
 ## Global Flags
 
@@ -41,7 +41,10 @@ uv init [OPTIONS] [PATH]
 --python <VERSION>      Python version requirement
 --vcs <VCS>             Version control (git/none)
 --python-pin            Create .python-version
+--name <NAME>           Project name (replaces deprecated --project)
 ```
+
+**Deprecation (0.9.9)**: `--project` flag deprecated. Use positional argument or `--name`.
 
 ### uv add
 
@@ -57,7 +60,7 @@ uv add [OPTIONS] <PACKAGES>...
 --frozen                Skip lockfile updates
 --locked                Assert lockfile unchanged
 --no-sync               Skip environment sync
---bounds <TYPE>         Version constraint (lowest/compatible/exact)
+--bounds <TYPE>         Version constraint (lowest/compatible/exact) [stable 0.10.0]
 --branch <BRANCH>       Git branch
 --tag <TAG>             Git tag
 --rev <REV>             Git revision
@@ -85,7 +88,7 @@ Synchronize project environment with lockfile.
 ```bash
 uv sync [OPTIONS]
 
---extra <EXTRA>, -E     Include optional dependencies
+--extra <EXTRA>, -E     Include optional dependencies (comma-separated OK since 0.9.30)
 --all-extras            Include all optional dependencies
 --no-dev                Exclude dev dependencies
 --only-dev              Only dev dependencies
@@ -96,6 +99,8 @@ uv sync [OPTIONS]
 --locked                Assert lockfile unchanged
 --inexact               Allow non-exact versions
 --python <VERSION>      Target Python version
+--package <PKG>         Sync specific workspace packages (multiple OK since 0.9.8)
+--exclude <PKG>         Exclude packages from resolution (0.9.8+)
 ```
 
 ### uv lock
@@ -156,12 +161,14 @@ Export dependencies to various formats.
 ```bash
 uv export [OPTIONS]
 
---format <FORMAT>       Output format (requirements-txt/pylock)
+--format <FORMAT>       Output format (requirements-txt/pylock/cyclonedx-json) [SBOM since 0.9.11]
 -o, --output-file <FILE>  Output file path
 --extra <EXTRA>         Include optional dependencies
 --all-extras            Include all optional dependencies
 --no-dev                Exclude dev dependencies
 --frozen                Use existing lockfile
+--package <PKG>         Export for specific workspace packages (multiple OK since 0.9.8)
+--only-emit-workspace   Filter to workspace-only dependencies (0.9.9+)
 ```
 
 ## Tool Management
@@ -233,6 +240,8 @@ uv python install [OPTIONS] <VERSIONS>...
 
 --force                 Reinstall if present
 --preview               Allow preview versions
+--upgrade               Upgrade to latest patch version [stable 0.10.0]
+--compile-bytecode      Compile standard library to bytecode (0.9.25+)
 ```
 
 ### uv python list
@@ -274,7 +283,10 @@ Update Python installations.
 uv python upgrade [OPTIONS] [VERSION]
 
 --all                   Upgrade all installations
+--compile-bytecode      Compile standard library to bytecode (0.9.25+)
 ```
+
+**Stable in 0.10.0** (was preview).
 
 ## pip Interface
 
@@ -369,6 +381,7 @@ List installed packages.
 uv pip freeze [OPTIONS]
 
 --exclude-editable           Exclude editable packages
+--exclude <PKG>              Exclude specific packages (0.9.27+)
 --strict                     Fail on missing dependencies
 --python <PYTHON>            Target Python environment
 ```
@@ -438,9 +451,12 @@ uv venv [OPTIONS] [PATH]
 --prompt <PROMPT>            Custom environment prompt
 --system-site-packages       Access to system packages
 --relocatable                Relocatable environment
+--clear                      Remove existing venv first [required since 0.10.0]
 --allow-existing             Allow existing directory
 --no-project                 Don't detect project
 ```
+
+**Breaking (0.10.0)**: `uv venv` no longer auto-removes existing environments. Use `--clear` or `UV_VENV_CLEAR=1`.
 
 ## Build and Publish
 
@@ -458,6 +474,8 @@ uv build [OPTIONS] [SRC]
 --no-build-isolation         Disable build isolation
 --build-constraint <FILE>    Apply build constraints
 --config-setting <KEY=VALUE> Pass settings to build backend
+--clear                      Remove old build artifacts first (0.9.6+)
+--no-create-gitignore        Don't create .gitignore in output dir (0.9.6+)
 ```
 
 ### uv publish
@@ -501,12 +519,40 @@ uv cache prune [OPTIONS]
 --ci                         Optimize for CI (keep wheels, remove downloads)
 ```
 
+### uv cache size (0.9.8+)
+
+Show cache disk usage.
+
+```bash
+uv cache size
+```
+
 ### uv cache dir
 
 Show cache directory path.
 
 ```bash
 uv cache dir
+```
+
+## Workspace Commands (Stable in 0.10.0)
+
+### uv workspace list
+
+List all workspace members.
+
+```bash
+uv workspace list [OPTIONS]
+
+--paths                      Show member paths
+```
+
+### uv workspace dir
+
+Print workspace root directory.
+
+```bash
+uv workspace dir
 ```
 
 ## Self Management

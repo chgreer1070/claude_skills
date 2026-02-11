@@ -1,6 +1,6 @@
 # uv Troubleshooting Guide
 
-Common issues and solutions for uv (v0.9.5).
+Common issues and solutions for uv (v0.10.2).
 
 ## Installation and Setup Issues
 
@@ -75,29 +75,26 @@ uv run --script script.py  # Creates isolated environment
 # Don't use --system with uv-managed Python
 ```
 
-### Virtual Environment Accidentally Deleted
+### Virtual Environment Won't Recreate (0.10.0+)
 
-**Problem**: Running `uv venv` again wipes existing environment
+**Problem**: `uv venv` errors when `.venv` already exists
 
-**Cause**: uv doesn't prompt before overwriting `.venv`
+**Cause**: Since 0.10.0, `uv venv` no longer auto-removes existing environments
 
-**Prevention**:
+**Solutions**:
 
 ```bash
-# Check before recreating
-if [ -d ".venv" ]; then
-    echo "Warning: .venv exists"
-    # Use --force if intentional
-    uv venv --force
-else
-    uv venv
-fi
+# Pass --clear to explicitly remove and recreate
+uv venv --clear
 
-# Or use different path
+# Or set environment variable globally
+export UV_VENV_CLEAR=1
+
+# Or use a different path
 uv venv myenv
 ```
 
-**Recovery**:
+**Recovery after accidental venv loss**:
 
 ```bash
 # Recreate and reinstall
@@ -443,8 +440,8 @@ export UV_NO_PROGRESS=1
 **Solutions**:
 
 ```bash
-# Check cache size
-du -sh $(uv cache dir)
+# Check cache size (0.9.8+)
+uv cache size
 
 # Clean entire cache
 uv cache clean
@@ -689,7 +686,7 @@ uv python find
 
 # Cache information
 uv cache dir
-du -sh $(uv cache dir)
+uv cache size
 
 # Tool information
 uv tool dir
