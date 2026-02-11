@@ -98,17 +98,17 @@ from rich import print
 **Before**: Installing dependencies for a project
 
 ```
-pip install takes 2-3 minutes
-No caching between projects
-Manual virtual environment management
+pip install from PyPI with wheel builds
+Per-project virtual environment setup required
+Cache exists but installations still copy files
 ```
 
 **After**: With uv-based workflow
 
 ```
-uv sync completes in 5-10 seconds
-Intelligent caching across projects
-Automatic environment handling
+uv sync resolves and installs via hardlinks from global cache
+Automatic virtual environment creation and management
+Near-instant warm-cache installs (milliseconds, not seconds)
 ```
 
 ## When This Helps
@@ -143,8 +143,8 @@ uv run scripts/sync-uv-releases.py
 uv run scripts/sync-uv-releases.py --force
 ```
 
-The script detects your locally installed uv version and shows what features are
-available at your version versus the latest release.
+The script annotates each feature with the version it was introduced in, so
+Claude can compare against whatever uv version you have installed.
 
 ## Requirements
 

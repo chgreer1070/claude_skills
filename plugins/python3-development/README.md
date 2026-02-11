@@ -63,6 +63,10 @@ Run these commands directly to trigger specific workflows:
 | `comprehensive-test-review`        | Test quality auditing                                                |
 | `analyze-test-failures`            | Investigate failing tests                                            |
 | `test-failure-mindset`             | Set balanced investigative approach                                  |
+| `add-new-feature`                  | SAM-style feature initiation: discovery, analysis, task decomposition |
+| `implement-feature`                | Execute a SAM task plan by looping and delegating ready tasks         |
+| `start-task`                       | Start or complete a specific task inside a SAM task file              |
+| `complete-implementation`          | Holistic completion workflow: review, verify, integrate, document     |
 | `create-feature-task`              | Structure feature development                                        |
 | `use-command-template`             | Create new skills from templates                                     |
 | `async-python-patterns`            | Master asyncio and async/await patterns for high-performance apps    |
@@ -91,6 +95,9 @@ Run these commands directly to trigger specific workflows:
 | `context-gathering`       | Gather comprehensive context for task implementation     |
 | `context-refinement`      | Update task context with discoveries from implementation |
 | `doc-drift-auditor`       | Audit documentation accuracy against implementation      |
+| `ecosystem-researcher`    | Research domain ecosystems and technology landscapes      |
+| `ecosystem-researcher-v1.1-rt-ica` | Enhanced ecosystem researcher with RT-ICA validation |
+| `code-reviewer`           | Holistic code review and validation after implementation |
 | `feature-researcher`      | Research feature requests and produce discovery context  |
 | `feature-verifier`        | Goal-backward verification after feature implementation  |
 | `integration-checker`     | Verify cross-module integration and end-to-end flows     |

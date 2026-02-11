@@ -11,17 +11,16 @@
 Queries the GitHub Releases API for astral-sh/uv, identifies releases
 newer than the last recorded version, categorizes changes (features,
 breaking, deprecations, new commands/flags), and updates the Version
-Information section in SKILL.md.
+Information section in SKILL.md with version-annotated entries.
 
-Also detects the locally installed uv version for comparison.
+The AI using this skill compares these version annotations against the
+user's installed uv version at runtime to determine feature availability.
 """
 
 from __future__ import annotations
 
 import json
 import re
-import shutil
-import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
@@ -89,33 +88,6 @@ def parse_version(tag: str) -> tuple[int, ...]:
         except ValueError:
             parts.append(0)
     return tuple(parts)
-
-
-def get_installed_uv_version() -> str | None:
-    """Detect the locally installed uv version.
-
-    Returns:
-        Version string or None if uv is not installed
-    """
-    uv_path = shutil.which("uv")
-    if not uv_path:
-        return None
-    try:
-        result = subprocess.run(
-            [uv_path, "--version"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        if result.returncode == 0:
-            # Output is like "uv 0.10.2 (abcdef123 2026-02-10)"
-            match = re.search(r"uv\s+([\d.]+)", result.stdout)
-            if match:
-                return match.group(1)
-    except (subprocess.TimeoutExpired, OSError):
-        pass
-    return None
 
 
 def check_cooldown(working_dir: Path, force: bool) -> bool:
@@ -423,15 +395,15 @@ def _format_breaking_changes(releases: list[dict[str, str]], lines: list[str]) -
 
 
 def build_version_section(
-    releases: list[dict[str, str]],
-    installed_version: str | None,
-    current_doc_version: str | None,
+    releases: list[dict[str, str]], current_doc_version: str | None
 ) -> str:
     """Build the Version Information section content.
 
+    Produces version-annotated entries so the AI using this skill can
+    compare feature availability against the user's installed uv version.
+
     Args:
         releases: List of release dicts (newest first)
-        installed_version: Locally installed uv version
         current_doc_version: Version currently documented in SKILL.md
 
     Returns:
@@ -442,16 +414,6 @@ def build_version_section(
 
     latest = releases[0]
     lines = [f"Current latest version: **{latest['version']}** ({latest['date']})\n"]
-
-    # Show installed version comparison
-    if installed_version:
-        if parse_version(installed_version) < parse_version(latest["version"]):
-            lines.append(
-                f"Locally installed: **{installed_version}** "
-                f"(update available: `uv self update`)\n"
-            )
-        else:
-            lines.append(f"Locally installed: **{installed_version}** (up to date)\n")
 
     _, feature_highlights, stabilized, deprecations = _collect_release_data(releases)
 
@@ -518,38 +480,28 @@ def update_skill_file(skill_file: Path, version_content: str) -> None:
     skill_file.write_text(new_content, encoding="utf-8")
 
 
-def display_release_summary(
-    releases: list[dict[str, str]], installed_version: str | None
-) -> None:
+def display_release_summary(releases: list[dict[str, str]]) -> None:
     """Print a summary table of releases to the console.
 
     Args:
         releases: List of release dicts
-        installed_version: Locally installed uv version
     """
     table = Table(title="uv Releases Summary")
     table.add_column("Version", style="cyan")
     table.add_column("Date", style="green")
     table.add_column("Breaking", style="red")
     table.add_column("Features", style="blue")
-    table.add_column("Status")
 
     for r in releases[:15]:
         cats = categorize_release(r["body"])
         breaking_count = len(cats["breaking"])
         feature_count = len(cats["features"])
-        status = ""
-        if installed_version and r["version"] == installed_version:
-            status = "INSTALLED"
-        elif r == releases[0]:
-            status = "LATEST"
 
         table.add_row(
             r["version"],
             r["date"],
             str(breaking_count) if breaking_count else "-",
             str(feature_count) if feature_count else "-",
-            status,
         )
 
     console.print(table)
@@ -589,9 +541,7 @@ def main(
 
     Fetches release notes from astral-sh/uv GitHub releases, categorizes
     changes (breaking, features, deprecations, new commands), and updates
-    the Version Information section in SKILL.md.
-
-    Also detects the locally installed uv version for comparison.
+    the Version Information section in SKILL.md with version-annotated entries.
     """
     resolved_dir = working_dir if working_dir is not None else Path.cwd()
 
@@ -600,13 +550,6 @@ def main(
         raise typer.Exit(code=0)
 
     skill_file = resolved_dir / "SKILL.md"
-
-    # Detect installed version
-    installed_version = get_installed_uv_version()
-    if installed_version:
-        console.print(f"Detected installed uv: [cyan]{installed_version}[/cyan]")
-    else:
-        console.print("[yellow]uv not found in PATH[/yellow]")
 
     # Determine baseline version
     current_doc_version = get_current_skill_version(skill_file)
@@ -653,7 +596,7 @@ def main(
         )
 
         # Display summary
-        display_release_summary(releases, installed_version)
+        display_release_summary(releases)
 
         if dry_run:
             console.print(
@@ -664,9 +607,7 @@ def main(
                 )
             )
             # Still build the content to show what would change
-            version_content = build_version_section(
-                new_releases, installed_version, baseline
-            )
+            version_content = build_version_section(new_releases, baseline)
             console.print(
                 "\n[bold]Would write to Version Information section:[/bold]\n"
             )
@@ -674,9 +615,7 @@ def main(
             raise typer.Exit(code=0)
 
         # Build and write version section
-        version_content = build_version_section(
-            new_releases, installed_version, baseline
-        )
+        version_content = build_version_section(new_releases, baseline)
         update_skill_file(skill_file, version_content)
 
         latest_version = releases[0]["version"]
