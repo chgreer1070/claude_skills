@@ -1,7 +1,7 @@
 ---
-last-updated: 2026-02-06
+last-updated: 2026-02-11
 p0-count: 0
-p1-count: 6
+p1-count: 7
 p2-count: 6
 ideas-count: 10
 ---
@@ -59,6 +59,22 @@ _(Empty)_
 **Description**: Define mechanism to detect when execution diverges from plan. How does Forensic Review detect that the execution agent solved a different problem than planned?
 **Research first**: How does GSD plan-checker detect deviation? What diff/comparison techniques exist? How do code review tools detect scope creep in PRs?
 **Suggested location**: `methodology_development/stateless-software-engineering-framework.md` (section 3.6 Forensic Review)
+
+### Resolve 48 pre-existing ty (Astral type checker) diagnostics
+
+**Source**: `uv run ty check .` run during session 2026-02-11
+**Added**: 2026-02-11
+**Description**: ty v0.0.16 found 48 diagnostics across the codebase. Breakdown by category:
+- **25 unresolved-import errors**: PEP 723 inline script dependencies (`httpx`, `anthropic`, `mcp`, `pandas`, `frontmatter`, `defusedxml`, etc.) not in the project venv. Also `plugin_validator`, `implementation_manager`, `file_metrics` — local module imports that ty can't resolve.
+- **12 possibly-missing-attribute warnings**: `TempDoc | None` and `Path | None` unions not narrowed before attribute access in `find-temp-documentation.py` and `get-task-context.py`.
+- **6 invalid-argument-type errors**: Functions receiving `T | None` when they expect `T` — same narrowing issue.
+- **3 unsupported-operator / invalid-key errors**: Path `/` operator on union types, TypedDict subscript with runtime string key.
+**Approach**:
+1. Configure `ty.toml` or `pyproject.toml [tool.ty]` to exclude PEP 723 scripts (their deps are resolved at runtime, not in the venv)
+2. Fix real type narrowing issues in `find-temp-documentation.py` and `get-task-context.py` (add `assert doc is not None` or `if doc is None: return` guards)
+3. Fix `TypedDict` subscript issue with proper typing
+4. Consider adding `ty check` to CI alongside basedpyright and mypy
+**Files affected**: `.claude/utilities/find-temp-documentation.py`, `plugins/python3-development/skills/implementation-manager/scripts/get-task-context.py`, `plugins/plugin-creator/scripts/plugin-validator.py`, `plugins/summarizer/tests/test_file_metrics.py`
 
 ### Extract claude-plugin-lint to standalone PyPI package
 

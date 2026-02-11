@@ -868,7 +868,7 @@ SP: 0x20001ff0"
 ### The Awesome Agent Skills Repository
 
 The community maintains a curated list of skills at:
-**https://github.com/VoltAgent/awesome-agent-skills**
+**<https://github.com/VoltAgent/awesome-agent-skills>**
 
 ### Skills Relevant for Embedded Engineers
 
@@ -932,9 +932,9 @@ curl -o ~/.claude/skills/static-analysis/SKILL.md \
 
 | Resource | URL |
 |----------|-----|
-| Claude Code Skills | https://docs.anthropic.com/en/docs/claude-code/skills |
-| Claude Code Agents | https://docs.anthropic.com/en/docs/claude-code/agents |
-| Agent Skills Standard | https://agentskills.io |
+| Claude Code Skills | <https://docs.anthropic.com/en/docs/claude-code/skills> |
+| Claude Code Agents | <https://docs.anthropic.com/en/docs/claude-code/agents> |
+| Agent Skills Standard | <https://agentskills.io> |
 
 ### Community Resources
 

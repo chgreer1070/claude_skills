@@ -49,7 +49,7 @@ def get_git_root() -> Path | None:
     try:
         # S607: git must use PATH lookup for cross-platform portability (Linux/macOS/Windows install paths differ)
         result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],  # noqa: S607
+            ["git", "rev-parse", "--show-toplevel"],
             capture_output=True,
             text=True,
             check=True,

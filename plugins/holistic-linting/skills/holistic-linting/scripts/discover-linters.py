@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "typer>=0.19.2",
-#     "toml>=0.10.2",
+#     "tomlkit>=0.13.0",
 #     "types-pyyaml>=6.0.0",
 # ]
 # ///
@@ -20,13 +20,14 @@ import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
-import toml  # type: ignore[import-untyped]
+import tomlkit
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from tomlkit.exceptions import ParseError as TOMLParseError
 
 # Console setup
 console = Console()
@@ -66,7 +67,7 @@ def check_git_hooks() -> bool:
         # Check if we're in a git repository
         # S607: git must use PATH lookup for cross-platform portability (Linux/macOS/Windows install paths differ)
         subprocess.run(
-            ["git", "rev-parse", "--git-dir"],  # noqa: S607
+            ["git", "rev-parse", "--git-dir"],
             capture_output=True,
             check=True,
             timeout=5,
@@ -75,7 +76,7 @@ def check_git_hooks() -> bool:
         # Check for pre-commit hook
         # S607: git must use PATH lookup for cross-platform portability (Linux/macOS/Windows install paths differ)
         result = subprocess.run(
-            ["git", "config", "--get", "core.hooksPath"],  # noqa: S607
+            ["git", "config", "--get", "core.hooksPath"],
             check=False,
             capture_output=True,
             text=True,
@@ -169,7 +170,7 @@ def scan_pre_commit_config(config_file: Path) -> list[LinterConfig]:
         List of discovered linter configurations
     """
     try:
-        import yaml  # noqa: PLC0415
+        import yaml
     except ImportError:
         console.print(
             "[yellow]Warning: pyyaml not installed, skipping .pre-commit-config.yaml[/yellow]"
@@ -209,7 +210,7 @@ def scan_pyproject_toml(config_file: Path) -> list[LinterConfig]:
     linters: list[LinterConfig] = []
 
     try:
-        config = toml.load(config_file)
+        config: dict[str, Any] = tomlkit.parse(config_file.read_text(encoding="utf-8")).unwrap()
 
         # Check for ruff
         if "tool" in config and "ruff" in config["tool"]:
@@ -234,7 +235,7 @@ def scan_pyproject_toml(config_file: Path) -> list[LinterConfig]:
                 LinterConfig(name="bandit", patterns=["*.py"], is_linter=True)
             )
 
-    except (OSError, toml.TomlDecodeError, KeyError, TypeError) as e:
+    except (OSError, TOMLParseError, KeyError, TypeError) as e:
         console.print(f"[yellow]Warning: Failed to parse pyproject.toml: {e}[/yellow]")
 
     return linters

@@ -10,7 +10,7 @@
 | Twitter/X     | <https://x.com/typedotai>                                    |
 | YouTube       | <https://www.youtube.com/@typedotai>                         |
 | License       | Proprietary (SaaS)                                           |
-| Contact       | hello@type.ai                                                |
+| Contact       | <hello@type.ai>                                                |
 
 ---
 

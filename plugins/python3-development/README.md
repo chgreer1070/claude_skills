@@ -1,108 +1,157 @@
-# Python Development
+# Python 3 Development
 
-Teaches Claude modern Python 3.11+ patterns and your preferred workflows.
+Modern Python 3.11+ development workflows with CLI apps, testing patterns, code quality tools, and TDD best practices.
 
 ## Why Install This?
 
-When you ask Claude to write Python code, Claude sometimes:
+When you ask Claude to write Python code without this plugin, you might notice:
 
-- Uses outdated syntax (old typing patterns, Python 3.8 style)
-- Picks random libraries instead of ones that work well together
-- Creates inconsistent project structures across different projects
-- Immediately fixes tests to make them pass without investigating why they failed
-- Doesn't follow conventions you use in your existing projects
-- Jumps into implementation without proper planning
+- Outdated syntax patterns from Python 3.8 or earlier
+- Random library choices instead of proven combinations
+- Inconsistent project structures across different files
+- Tests that get immediately "fixed" to pass instead of being investigated
+- Missing modern type hints and pattern matching
+- Implementation that starts before understanding requirements
 
-## What Changes
+## What You Get
 
 With this plugin installed, Claude will:
 
-- **Plan before coding**: Every task starts with discovery and planning phases
-- **Write modern Python 3.11+**: Native generics, union types with `|`, pattern matching
-- **Use proven library combinations**: Typer+Rich for CLIs, pytest-mock for testing
-- **Follow consistent project structure**: `packages/` directory, hatchling build system
-- **Investigate test failures**: Balanced approach considers both test bugs and implementation bugs
-- **Apply quality workflows**: Linting, formatting, type checking, and testing
-- **Reference 50+ libraries**: Modern Python modules with usage guidance
+- **Plan before coding**: Discovery and analysis phases before implementation
+- **Write modern Python 3.11+**: Native generics (`list[str]`), union types (`str | None`), pattern matching
+- **Use proven libraries**: Typer+Rich for CLIs, pytest-mock for testing, httpx for HTTP, pydantic for validation
+- **Follow consistent structure**: `packages/` directory layout, hatchling build system, proper type hints
+- **Investigate test failures**: Balanced approach that considers both test issues and real bugs
+- **Apply quality workflows**: Integrated linting (ruff), formatting, type checking (mypy), and testing (pytest)
+- **Reference 50+ modern libraries**: Built-in guidance for asyncio, FastAPI, SQLAlchemy, and more
 
-## User-Invocable Commands
+## Commands
 
 Run these commands directly to trigger specific workflows:
 
-| Command                             | Purpose                                                              | Example                                    |
-| ----------------------------------- | -------------------------------------------------------------------- | ------------------------------------------ |
-| `/shebangpython`                    | Validate Python shebangs and PEP 723 metadata                        | `/shebangpython scripts/*.py`              |
-| `/modernpython`                     | Apply modern Python 3.11+ patterns                                   | `/modernpython src/module.py`              |
-| `/python3-add-feature`              | Guided feature addition with TDD                                     | `/python3-add-feature Add CSV export`      |
-| `/python3-review`                   | Comprehensive code review                                            | `/python3-review src/`                     |
-| `/stinkysnake`                      | Progressive quality improvement (code smells, architecture, linting) | `/stinkysnake src/`                        |
-| `/snakepolish`                      | Implementation phase for stinkysnake (runs until tests pass)         | `/snakepolish src/`                        |
-| `/python3-bug`                      | Debug functional issues with logs and specs                          | `/python3-bug "feature X not working"`     |
-| `/python3-packaging`                | Configure pyproject.toml                                             | `/python3-packaging`                       |
-| `/python3-publish-release-pipeline` | Set up CI/CD for PyPI                                                | `/python3-publish-release-pipeline github` |
-| `/comprehensive-test-review`        | Audit test quality                                                   | `/comprehensive-test-review tests/`        |
-| `/analyze-test-failures`            | Investigate failing tests                                            | `/analyze-test-failures test_auth.py`      |
-| `/test-failure-mindset`             | Set balanced test investigation approach                             | `/test-failure-mindset`                    |
-| `/create-feature-task`              | Structure feature development                                        | `/create-feature-task OAuth2 login`        |
+### Code Quality
 
-## Skills
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `/shebangpython` | Validate Python shebangs and PEP 723 metadata | `/shebangpython scripts/*.py` |
+| `/modernpython` | Apply modern Python 3.11+ patterns | `/modernpython src/module.py` |
+| `/stinkysnake` | Progressive quality improvement (analysis → planning → implementation) | `/stinkysnake src/` |
+| `/snakepolish` | Implementation phase for stinkysnake (runs until tests pass) | `/snakepolish src/` |
+| `/python3-review` | Comprehensive code review | `/python3-review src/` |
 
-| Skill                              | Purpose                                                              |
-| ---------------------------------- | -------------------------------------------------------------------- |
-| `python3-development`              | Core orchestration and modern Python patterns                        |
-| `python3-test-design`              | Test suite architecture and strategy                                 |
-| `shebangpython`                    | Shebang validation and PEP 723 metadata                              |
-| `modernpython`                     | Modern Python 3.11+ patterns and transformations                     |
-| `python3-add-feature`              | Guided feature addition workflow                                     |
-| `python3-review`                   | Comprehensive code review checklist                                  |
-| `stinkysnake`                      | Progressive quality improvement (code smells, architecture, linting) |
-| `snakepolish`                      | Implementation phase - implements functions until tests pass         |
-| `python3-bug`                      | Debug functional issues using specs, logs, and observed behavior     |
-| `python3-packaging`                | pyproject.toml and packaging configuration                           |
-| `python3-publish-release-pipeline` | CI/CD pipeline for PyPI publishing                                   |
-| `comprehensive-test-review`        | Test quality auditing                                                |
-| `analyze-test-failures`            | Investigate failing tests                                            |
-| `test-failure-mindset`             | Set balanced investigative approach                                  |
-| `add-new-feature`                  | SAM-style feature initiation: discovery, analysis, task decomposition |
-| `implement-feature`                | Execute a SAM task plan by looping and delegating ready tasks         |
-| `start-task`                       | Start or complete a specific task inside a SAM task file              |
-| `complete-implementation`          | Holistic completion workflow: review, verify, integrate, document     |
-| `create-feature-task`              | Structure feature development                                        |
-| `use-command-template`             | Create new skills from templates                                     |
-| `async-python-patterns`            | Master asyncio and async/await patterns for high-performance apps    |
-| `clear-cove-task-design`           | Write and lint agent task files with CLEAR + CoVe methodology        |
-| `generate-task`                    | Generate single worker task prompts using CLEAR + CoVe standards     |
-| `hatchling`                        | Comprehensive Hatchling build backend documentation                  |
-| `implementation-manager`           | Query and manage feature implementation task status                  |
-| `mkdocs`                           | MkDocs documentation project creation and management                 |
-| `planner-rt-ica`                   | Planning-phase input completeness analysis for safe planning         |
-| `pre-commit`                       | Configure git hooks using pre-commit or prek frameworks              |
-| `pypi-readme-creator`              | Generate PyPI-compliant README files in Markdown or RST              |
-| `toml-python`                      | Work with TOML files using tomlkit (preserves comments/formatting)   |
-| `uv`                               | Astral uv package and project manager expert guidance                |
-| `validation-protocol`              | Scientific validation protocol for verifying fixes work              |
+### Feature Development
 
-## Agents
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `/python3-add-feature` | Guided feature addition with TDD | `/python3-add-feature Add CSV export` |
+| `/create-feature-task` | Structure feature development with tracking | `/create-feature-task OAuth2 login` |
+| `/add-new-feature` | SAM-style feature workflow (discovery → analysis → tasks) | `/add-new-feature user authentication` |
+| `/implement-feature` | Execute SAM task plan by delegating ready tasks | `/implement-feature plan/tasks-auth.md` |
+| `/start-task` | Start or complete specific task in SAM task file | `/start-task plan/tasks-auth.md --task 1.1` |
+| `/complete-implementation` | Holistic completion (review, verify, integrate, document) | `/complete-implementation plan/tasks-auth.md` |
 
-| Agent                     | Purpose                                                  |
-| ------------------------- | -------------------------------------------------------- |
-| `python-cli-architect`    | Build CLIs with Typer and Rich                           |
-| `python-pytest-architect` | Create and modernize test suites                         |
-| `python-code-reviewer`    | Review code for quality and best practices               |
-| `python-cli-design-spec`  | Design CLI architecture (WHAT, not HOW)                  |
-| `swarm-task-planner`      | Break down complex tasks for parallel execution          |
-| `codebase-analyzer`       | Explore codebase patterns and write structured analysis  |
-| `context-gathering`       | Gather comprehensive context for task implementation     |
-| `context-refinement`      | Update task context with discoveries from implementation |
-| `doc-drift-auditor`       | Audit documentation accuracy against implementation      |
-| `ecosystem-researcher`    | Research domain ecosystems and technology landscapes      |
-| `ecosystem-researcher-v1.1-rt-ica` | Enhanced ecosystem researcher with RT-ICA validation |
-| `code-reviewer`           | Holistic code review and validation after implementation |
-| `feature-researcher`      | Research feature requests and produce discovery context  |
-| `feature-verifier`        | Goal-backward verification after feature implementation  |
-| `integration-checker`     | Verify cross-module integration and end-to-end flows     |
-| `plan-validator`          | Validate implementation plans before execution           |
-| `service-documentation`   | Update CLAUDE.md and module documentation                |
+### Testing
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `/comprehensive-test-review` | Audit test quality and coverage | `/comprehensive-test-review tests/` |
+| `/analyze-test-failures` | Investigate failing tests systematically | `/analyze-test-failures test_auth.py` |
+| `/test-failure-mindset` | Set balanced test investigation approach | `/test-failure-mindset` |
+
+### Packaging & Publishing
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `/python3-packaging` | Configure pyproject.toml | `/python3-packaging` |
+| `/python3-publish-release-pipeline` | Set up CI/CD for PyPI | `/python3-publish-release-pipeline github` |
+
+### Debugging & Task Management
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `/python3-bug` | Debug functional issues with logs and specs | `/python3-bug "feature X not working"` |
+| `/clear-cove-task-design` | Write and lint agent task files (CLEAR + CoVe) | `/clear-cove-task-design [draft-task]` |
+| `/generate-task` | Generate single worker task prompt | `/generate-task "Implement login endpoint"` |
+| `/use-command-template` | Create new skills from templates | `/use-command-template "API client wrapper"` |
+
+## Claude Improvements
+
+### Automatic Behaviors
+
+Once installed, Claude automatically applies these improvements when working with Python code:
+
+**Modern Python Patterns**:
+- Uses `list[str]` instead of `List[str]`
+- Applies `str | None` instead of `Optional[str]`
+- Leverages pattern matching for complex conditionals
+- Implements proper `async/await` patterns for I/O-bound work
+
+**Library Selection**:
+- CLI apps: Typer + Rich (progress bars, formatted output)
+- HTTP clients: httpx (async support, modern API)
+- JSON handling: orjson (faster than stdlib)
+- Configuration: pydantic-settings (typed config)
+- Testing: pytest + pytest-mock + hypothesis
+
+**Project Structure**:
+- `packages/` directory for multi-package repos
+- `pyproject.toml` with hatchling build backend
+- `uv` for dependency management (10-100x faster than pip)
+- PEP 723 inline metadata for standalone scripts
+
+**Testing Philosophy**:
+- Investigates failures instead of auto-fixing tests
+- Considers both test bugs and implementation bugs
+- Writes tests before implementation (TDD)
+- Uses mutation testing for critical code paths
+
+**Code Quality**:
+- Runs ruff for linting and formatting
+- Applies mypy for type checking
+- Eliminates `Any` types progressively
+- Follows DRY and SRP principles
+
+### Specialized Skills
+
+The plugin includes 25 skills that guide Claude's behavior:
+
+| Skill | What It Does |
+|-------|--------------|
+| `python3-development` | Core orchestration and modern Python patterns |
+| `python3-test-design` | Test suite architecture and strategy |
+| `async-python-patterns` | Master asyncio and async/await for high-performance apps |
+| `uv` | Astral uv package manager expert guidance |
+| `hatchling` | Comprehensive hatchling build backend documentation |
+| `mkdocs` | MkDocs documentation project creation and management |
+| `pre-commit` | Configure git hooks using pre-commit or prek |
+| `pypi-readme-creator` | Generate PyPI-compliant README files |
+| `toml-python` | Work with TOML using tomlkit (preserves formatting) |
+| `validation-protocol` | Scientific validation protocol for verifying fixes |
+| `implementation-manager` | Query and manage feature task status |
+| `planner-rt-ica` | Planning-phase input completeness analysis |
+
+And more specialized skills for code review, packaging, bug fixing, and feature development.
+
+### Specialized Agents
+
+The plugin provides 16 agents Claude can delegate to for specialized tasks:
+
+| Agent | Specialization |
+|-------|----------------|
+| `python-cli-architect` | Build CLIs with Typer and Rich |
+| `python-pytest-architect` | Create and modernize test suites |
+| `python-code-reviewer` | Review code for quality and best practices |
+| `context-gathering` | Gather comprehensive context for implementation |
+| `codebase-analyzer` | Explore patterns and write structured analysis |
+| `ecosystem-researcher` | Research domain ecosystems and technology landscapes |
+| `feature-researcher` | Research features and produce discovery context |
+| `feature-verifier` | Goal-backward verification after implementation |
+| `integration-checker` | Verify cross-module integration and end-to-end flows |
+| `plan-validator` | Validate implementation plans before execution |
+| `code-reviewer` | Holistic code review after implementation |
+| `doc-drift-auditor` | Audit documentation accuracy against code |
+| `context-refinement` | Update task context with implementation discoveries |
+| `service-documentation` | Update CLAUDE.md and module documentation |
 
 ## Installation
 
@@ -120,26 +169,81 @@ Then install the plugin:
 
 ## Usage
 
-Just install it - Claude uses it automatically when working with Python code. You'll notice:
+Just install it - Claude uses it automatically when working with Python code.
 
-- **Task Planning**: Claude gathers context and plans before implementing
-- **Modern Code**: Cleaner Python 3.11+ syntax throughout
-- **Consistent Structure**: `packages/` layout, proper typing
-- **Better Testing**: pytest-mock, hypothesis, mutation testing for critical code
-- **Quality Gates**: Linting, formatting, and type checking integrated
+### With Commands
 
-## Development continuity (power-outage safe plan)
+Invoke specific workflows directly:
 
-If you were interrupted mid-development and want a checkpointed, resume-friendly plan to complete the ongoing workflow work (including command→skill migration and vendoring external artifacts), follow:
+```bash
+# Improve code quality progressively
+/stinkysnake src/myapp/
 
-- [Workflow Port Plan](./skills/python3-development/planning/python3-development-workflow-port-plan.md)
+# Add a new feature with TDD
+/python3-add-feature "Add rate limiting to API"
+
+# Review test coverage
+/comprehensive-test-review tests/
+
+# Set up PyPI publishing
+/python3-publish-release-pipeline github
+```
+
+### Automatic Application
+
+Claude automatically uses this plugin when you:
+
+- Ask to create Python files
+- Request code reviews
+- Work with Python projects
+- Debug Python issues
+- Add features to Python codebases
 
 ## Example
 
-**Without this plugin**: You say "build a CLI tool to process CSV files". Claude creates it with argparse, prints plain text, uses `List[str]` syntax, puts code in `src/`, and when a test fails, immediately changes the test to match the implementation.
+**Without this plugin**:
 
-**With this plugin**: Same request, but Claude first gathers context and plans the approach. Then it uses Typer+Rich (progress bars, formatted tables), writes `list[str]` with native generics, puts code in `packages/csv_tool/`, includes comprehensive type hints, and when a test fails, investigates whether the test caught a real bug before deciding what to fix.
+You say: "Build a CLI tool to process CSV files"
+
+Claude creates:
+- `argparse` for CLI (verbose, dated API)
+- Plain text output
+- `List[str]` and `Optional[str]` syntax
+- Code in `src/` directory
+- When test fails, immediately changes test to match implementation
+
+**With this plugin**:
+
+Same request, but Claude:
+
+1. **Gathers context**: Checks for existing project structure, dependencies
+2. **Plans approach**: Designs CLI with Typer, identifies output format needs
+3. **Implements modern code**:
+   - Typer + Rich (progress bars, formatted tables)
+   - `list[str]` and `str | None` native syntax
+   - Code in `packages/csv_tool/`
+   - Comprehensive type hints
+   - PEP 723 metadata for standalone script option
+4. **Tests first**: Writes pytest tests before implementation
+5. **Investigates failures**: When test fails, analyzes whether it's a test bug or real bug before deciding what to fix
+
+## Reference Documentation
+
+The plugin includes extensive reference documentation:
+
+- **50+ Modern Python Libraries**: Usage patterns and best practices for asyncio, FastAPI, SQLAlchemy, pydantic, httpx, typer, rich, and more
+- **User Project Conventions**: Extracted patterns from real-world production projects
+- **Tool & Library Registry**: Development tools for linting, testing, build automation
+- **API References**: Integration guides for common APIs
+- **Workflow Patterns**: TDD, feature addition, refactoring, code review
 
 ## Requirements
 
 - Claude Code v2.0+
+- Python 3.11+ recommended (for modern syntax patterns)
+
+## Development Continuity
+
+If interrupted mid-development and need to resume workflow work (command→skill migration, vendoring):
+
+- [Workflow Port Plan](./skills/python3-development/planning/python3-development-workflow-port-plan.md)
