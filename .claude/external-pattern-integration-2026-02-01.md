@@ -2,10 +2,10 @@
 
 **Date**: 2026-02-01
 **Sources**:
-- https://raw.githubusercontent.com/glittercowboy/get-shit-done/main/agents/gsd-codebase-mapper.md
-- https://raw.githubusercontent.com/glittercowboy/get-shit-done/main/agents/gsd-project-researcher.md
-- https://raw.githubusercontent.com/glittercowboy/get-shit-done/main/agents/gsd-research-synthesizer.md
-- https://raw.githubusercontent.com/glittercowboy/get-shit-done/main/agents/gsd-plan-checker.md
+- <https://raw.githubusercontent.com/glittercowboy/get-shit-done/main/agents/gsd-codebase-mapper.md>
+- <https://raw.githubusercontent.com/glittercowboy/get-shit-done/main/agents/gsd-project-researcher.md>
+- <https://raw.githubusercontent.com/glittercowboy/get-shit-done/main/agents/gsd-research-synthesizer.md>
+- <https://raw.githubusercontent.com/glittercowboy/get-shit-done/main/agents/gsd-plan-checker.md>
 **Status**: IN_PROGRESS (Phase 1 Complete)
 
 ---
@@ -30,6 +30,7 @@
 **Workflow Stage**: Discovery/Planning
 
 **Local Candidates**:
+
 | Local File | Similarity Reason | Priority |
 |------------|-------------------|----------|
 | `plugins/python3-development/agents/codebase-analyzer.md` | Nearly identical purpose - writes to `plan/codebase/` | **High** |
@@ -54,6 +55,7 @@
 **Workflow Stage**: Discovery (pre-Planning)
 
 **Local Candidates**:
+
 | Local File | Similarity Reason | Priority |
 |------------|-------------------|----------|
 | `plugins/plugin-creator/skills/feature-discovery/SKILL.md` | Autonomous research producing artifacts, identifies gaps | **High** |
@@ -80,6 +82,7 @@
 **Workflow Stage**: Planning/Synthesis
 
 **Local Candidates**:
+
 | Local File | Similarity Reason | Priority |
 |------------|-------------------|----------|
 | `plugins/python3-development/agents/codebase-analyzer.md` | Writes analysis docs, similar aggregation | Medium |
@@ -107,6 +110,7 @@
 **Workflow Stage**: Planning/Pre-Execution Verification
 
 **Local Candidates**:
+
 | Local File | Similarity Reason | Priority |
 |------------|-------------------|----------|
 | `plugins/python3-development/agents/plan-validator.md` | Goal-backward validation BEFORE execution | **High** |
@@ -144,6 +148,7 @@
 ## Results
 
 **Files Modified**:
+
 | File | Enhancements Applied | Source |
 |------|---------------------|--------|
 | `plugins/python3-development/agents/codebase-analyzer.md` | Added "concerns" focus area, CONCERNS.md template, prescriptive guidance section, Python-specific issue detection patterns | gsd-codebase-mapper |
@@ -152,6 +157,7 @@
 | `.claude/skills/external-pattern-integrator/SKILL.md` | Fixed description to remove colons | (linting fix) |
 
 **Deferred Enhancements** (didn't fit current files):
+
 | Enhancement | Reason Deferred | Suggested Location |
 |-------------|-----------------|-------------------|
 | Research modes (Ecosystem/Feasibility/Comparison) | feature-researcher is task-scoped, not ecosystem-scoped | New dedicated ecosystem-researcher agent |

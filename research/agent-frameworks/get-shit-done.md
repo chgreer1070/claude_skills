@@ -1,8 +1,8 @@
 # Get Shit Done (GSD)
 
 **Research Date**: 2026-02-01
-**Source URL**: https://github.com/glittercowboy/get-shit-done
-**npm Package**: https://www.npmjs.com/package/get-shit-done-cc
+**Source URL**: <https://github.com/glittercowboy/get-shit-done>
+**npm Package**: <https://www.npmjs.com/package/get-shit-done-cc>
 **Version at Research**: v1.11.1
 **License**: MIT
 
@@ -290,12 +290,12 @@ Stopping to approve `date` and `git commit` 50 times defeats the purpose of auto
 
 ## References
 
-1. **GitHub Repository** - https://github.com/glittercowboy/get-shit-done (accessed 2026-02-01)
-2. **npm Package** - https://www.npmjs.com/package/get-shit-done-cc (accessed 2026-02-01)
-3. **README Documentation** - https://raw.githubusercontent.com/glittercowboy/get-shit-done/main/README.md (accessed 2026-02-01)
-4. **Agent Definitions** - https://github.com/glittercowboy/get-shit-done/tree/main/agents (accessed 2026-02-01)
-5. **Command Definitions** - https://github.com/glittercowboy/get-shit-done/tree/main/commands/gsd (accessed 2026-02-01)
-6. **Discord Community** - https://discord.gg/5JJgD5svVS (referenced in README)
+1. **GitHub Repository** - <https://github.com/glittercowboy/get-shit-done> (accessed 2026-02-01)
+2. **npm Package** - <https://www.npmjs.com/package/get-shit-done-cc> (accessed 2026-02-01)
+3. **README Documentation** - <https://raw.githubusercontent.com/glittercowboy/get-shit-done/main/README.md> (accessed 2026-02-01)
+4. **Agent Definitions** - <https://github.com/glittercowboy/get-shit-done/tree/main/agents> (accessed 2026-02-01)
+5. **Command Definitions** - <https://github.com/glittercowboy/get-shit-done/tree/main/commands/gsd> (accessed 2026-02-01)
+6. **Discord Community** - <https://discord.gg/5JJgD5svVS> (referenced in README)
 
 ---
 

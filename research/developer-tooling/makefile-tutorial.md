@@ -3,7 +3,7 @@
 | Field          | Value                                   |
 | -------------- | --------------------------------------- |
 | Research Date  | 2026-01-31                              |
-| GitHub URL     | https://github.com/vampy/Makefile       |
+| GitHub URL     | <https://github.com/vampy/Makefile>       |
 | Version        | N/A (reference documentation)           |
 | License        | MIT                                     |
 | Primary Author | vampy                                   |
@@ -161,10 +161,10 @@ make clean
 
 | Source | URL | Accessed |
 | ------ | --- | -------- |
-| vampy/Makefile Repository | https://github.com/vampy/Makefile | 2026-01-31 |
-| theicfire/makefiletutorial (original source) | https://github.com/theicfire/makefiletutorial | 2026-01-31 |
-| GNU Make Manual (HTML) | https://www.gnu.org/software/make/manual/make.html | 2026-01-31 |
-| GNU Make Book (PDF) | https://www.cl.cam.ac.uk/teaching/0910/UnixTools/make.pdf | 2026-01-31 |
+| vampy/Makefile Repository | <https://github.com/vampy/Makefile> | 2026-01-31 |
+| theicfire/makefiletutorial (original source) | <https://github.com/theicfire/makefiletutorial> | 2026-01-31 |
+| GNU Make Manual (HTML) | <https://www.gnu.org/software/make/manual/make.html> | 2026-01-31 |
+| GNU Make Book (PDF) | <https://www.cl.cam.ac.uk/teaching/0910/UnixTools/make.pdf> | 2026-01-31 |
 
 ---
 

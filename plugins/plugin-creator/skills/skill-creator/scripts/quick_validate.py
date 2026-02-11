@@ -15,7 +15,7 @@ MAX_DESCRIPTION_LENGTH = 1024
 REQUIRED_ARGC = 2  # script name + skill-path
 
 
-def validate_skill(skill_path: str | Path) -> tuple[bool, str]:  # noqa: C901, PLR0911, PLR0912
+def validate_skill(skill_path: str | Path) -> tuple[bool, str]:  # noqa: C901, PLR0912
     """Basic validation of a skill.
 
     Args:
