@@ -46,7 +46,9 @@ TaskCreate(subject="Final: Return to orchestrator", description="Return to orche
 
 ## Phase 1: Plugin Assessment
 
-**Objective**: Generate a comprehensive Plugin Assessment Report by analyzing the plugin structure, quality, and refactoring opportunities.
+**Objective**: Generate a comprehensive Plugin Assessment Report through a 4-tier assessment pipeline that progresses from structural analysis to deep semantic validation.
+
+### Tier 1: Structural Analysis
 
 **Action**: LAUNCH the plugin-assessor agent using the Task tool with this exact prompt:
 
@@ -133,12 +135,47 @@ Each recommendation must include:
 )
 ```
 
+### Tier 2: Skill Lifecycle Audit
+
+After Tier 1 completes, invoke the skill lifecycle audit for semantic validation of skill interconnections:
+
+```
+Skill(command: "plugin-creator:audit-skill-lifecycle", args: "$ARGUMENTS")
+```
+
+This audit traces call chains, detects circular dependencies, finds instruction contradictions, identifies duplicated datasets, and discovers scriptable sequences across all skills in the plugin.
+
+### Tier 3: Agent Lifecycle Audit
+
+After Tier 2 completes, invoke the agent lifecycle audit for execution capability validation:
+
+```
+Skill(command: "plugin-creator:audit-agent-lifecycle", args: "$ARGUMENTS")
+```
+
+This audit validates agent capability-configuration alignment, skill loading correctness, inter-agent contracts, tool sufficiency, and identifies dead agents.
+
+### Tier 4: Skill Completeness Audit (Optional)
+
+For skills identified as marketplace candidates or quality improvement targets, optionally invoke the completeness audit per skill:
+
+```
+Skill(command: "plugin-creator:audit-skill-completeness", args: "./plugins/$ARGUMENTS/skills/{skill-name}")
+```
+
+This evaluates individual skills against 8 quality categories derived from Anthropic's official skills repository.
+
+RULE: Tier 4 is optional. Invoke it when:
+- The plugin is being prepared for marketplace submission
+- Specific skills scored low in Tier 1 structural analysis
+- The user explicitly requests deep quality evaluation
+
 **Phase 1 Completion Requirements**:
 
-After the plugin-assessor agent completes, YOU MUST:
+After all tiers complete, YOU MUST:
 
 1. **UPDATE TASK**: Mark "Phase 1: Generate Plugin Assessment Report" as `in_progress` before verification
-2. VERIFY the agent produced a complete Plugin Assessment Report
+2. VERIFY all tier reports are complete
 3. DISPLAY this structured summary:
 
 ```
@@ -149,21 +186,38 @@ Overall Score: [X/100]
 Marketplace Ready: [Yes / No / With Changes]
 Critical Issues: [count]
 
-Skills Analyzed: [count]
-- Skills >500 lines (refactor candidates): [list]
-- Skills with multi-domain coverage: [list]
+Tier 1 - Structural:
+  Skills Analyzed: [count]
+  - Skills >500 lines (refactor candidates): [list]
+  - Skills with multi-domain coverage: [list]
+  Agents Analyzed: [count]
+  - Agents needing optimization: [list]
+  Orphaned Files: [count]
+  Documentation Quality Issues: [count]
 
-Agents Analyzed: [count]
-- Agents needing optimization: [list]
+Tier 2 - Skill Lifecycle:
+  Call Chain Issues: [count]
+  Circular Dependencies: [count]
+  Instruction Contradictions: [count]
+  Duplicated Datasets: [count]
 
-Orphaned Files: [count]
-Documentation Quality Issues: [count]
+Tier 3 - Agent Lifecycle:
+  Capability Misalignments: [count]
+  Tool Sufficiency Issues: [count]
+  Dead Agents: [count]
+  Contract Mismatches: [count]
 
-Assessment Report: [inline or note that it's in agent output]
+Tier 4 - Completeness (if run):
+  Skills Evaluated: [count]
+  Average Score: [X%]
+  Below-Threshold Skills: [list]
+
+Assessment Report: [inline or note location]
+Audit Reports: .claude/audits/
 ```
 
 4. CONFIRM all sections are populated before proceeding to Phase 2
-5. If any section is incomplete, STOP and request the agent to complete it
+5. If any section is incomplete, STOP and request completion
 6. **UPDATE TASK**: Mark "Phase 1: Generate Plugin Assessment Report" as `completed`
 
 ---

@@ -25,11 +25,14 @@
     "./skills/refactor-plugin",
     "./skills/refactor-skill",
     "./skills/start-refactor-task",
+    "./skills/audit-skill-lifecycle",
+    "./skills/audit-agent-lifecycle",
+    "./skills/audit-skill-completeness",
     "./skills/.claude/settings.json",
     "./skills/claude-skills-overview-2026/resources/agent-teams.md",
-    "./skills/assessor/references/agent-lifecycle-audit.md",
-    "./skills/assessor/references/skill-completeness-checklist.md",
-    "./skills/assessor/references/skill-lifecycle-audit.md"
+    "./skills/audit-skill-lifecycle/references/skill-lifecycle-audit.md",
+    "./skills/audit-agent-lifecycle/references/agent-lifecycle-audit.md",
+    "./skills/audit-skill-completeness/references/skill-completeness-checklist.md"
   ],
   "agents": [
     "./agents/refactor-planner.md",
@@ -51,6 +54,9 @@
     "./skills/implement-refactor",
     "./skills/refactor-plugin",
     "./skills/refactor-skill",
-    "./skills/start-refactor-task"
+    "./skills/start-refactor-task",
+    "./skills/audit-skill-lifecycle",
+    "./skills/audit-agent-lifecycle",
+    "./skills/audit-skill-completeness"
   ]
 }
