@@ -164,13 +164,7 @@ Ignore specific rule in file:
 
 ## Referenced Documentation
 
-For official Ruff documentation, activate the Ruff skill with:
-
-```python
-Skill(command: "/astral-sh/ruff")
-```
-
-Or visit the [Official Ruff Documentation](https://docs.astral.sh/ruff/)
+For official Ruff documentation, visit the [Official Ruff Documentation](https://docs.astral.sh/ruff/).
 
 ---
 

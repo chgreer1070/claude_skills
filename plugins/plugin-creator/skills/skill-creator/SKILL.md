@@ -32,7 +32,7 @@ equipped with procedural knowledge that no model can fully possess.
 **This skill is for creating NEW skills from scratch.** For refactoring EXISTING skills (splitting oversized skills, reorganizing multi-domain skills), use the skill-refactor skill:
 
 ```
-Skill(command: "refactor-skill")
+Skill(command: "plugin-creator:refactor-skill")
 ```
 
 **When to use skill-creator vs skill-refactor:**

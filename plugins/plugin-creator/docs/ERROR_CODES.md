@@ -9,6 +9,7 @@ This document provides detailed explanations, examples, and fixes for all error 
 - [Link Errors (LK001-LK002)](#link-errors)
 - [Progressive Disclosure (PD001-PD003)](#progressive-disclosure)
 - [Plugin Errors (PL001-PL005)](#plugin-errors)
+- [Namespace Reference Errors (NR001-NR002)](#namespace-reference-errors)
 
 ---
 
@@ -588,10 +589,21 @@ description: "Use this when processing files and analyzing code. Activate for qu
 
 - "use when"
 - "use this"
+- "used when"
+- "used by"
+- "when " (followed by a space, e.g., "When reading..." or "When setting up...")
 - "trigger"
 - "activate"
 
-**Why It Matters**: Trigger phrases help Claude understand the skill's activation conditions.
+**Example (Good - "When" starter)**:
+
+```yaml
+---
+description: "When reading or writing pyproject.toml files, this skill provides TOML-specific validation and formatting guidance."
+---
+```
+
+**Why It Matters**: Trigger phrases help Claude understand the skill's activation conditions. Descriptions starting with "When..." or containing "used when"/"used by" naturally express activation context.
 
 **Related Validators**: DescriptionValidator
 
@@ -996,6 +1008,70 @@ touch agents/non-existent.md
 
 ---
 
+## Namespace Reference Errors
+
+### NR001
+
+**Severity**: Error
+**Auto-Fixable**: No
+**Category**: Namespace References
+
+**Description**: Namespace reference target does not exist
+
+**When It Occurs**:
+A namespace-qualified reference in the file body points to a skill, agent, or command that does not exist in the referenced plugin directory.
+
+The validator checks these reference patterns:
+
+- `Skill(command: "plugin:skill-name")`
+- `Skill(skill="plugin:skill-name")`
+- `Task(agent="plugin:agent-name")`
+- `@plugin:agent-name` (prose agent references)
+- `/plugin:skill-name` (slash command references)
+
+**Example (Bad)**:
+
+```markdown
+Activate the linting skill: Skill(command: "holistic-linting:nonexistent-skill")
+```
+
+**Fix**: Create the missing target file or correct the reference.
+
+```bash
+# If the skill should exist, create it
+mkdir -p plugins/holistic-linting/skills/nonexistent-skill
+touch plugins/holistic-linting/skills/nonexistent-skill/SKILL.md
+
+# OR fix the reference to point to an existing skill
+# Change "nonexistent-skill" to the correct skill name
+```
+
+**Notes**:
+
+- Only namespace-qualified references (containing `:`) are checked
+- Built-in agent types (Explore, general-purpose, Plan, etc.) are skipped
+- Template placeholders containing `{` or `}` are skipped
+- References in YAML frontmatter are not checked (body only)
+
+**Related Validators**: NamespaceReferenceValidator
+
+---
+
+### NR002
+
+**Severity**: Error
+**Auto-Fixable**: No
+**Category**: Namespace References
+
+**Description**: Namespace reference points outside plugin directory
+
+**When It Occurs**:
+Reserved for future use. Intended for cases where a namespace reference resolves to a path outside the expected plugin directory tree.
+
+**Related Validators**: NamespaceReferenceValidator
+
+---
+
 ## See Also
 
 - [Plugin Validator Architecture](../planning/plugin-validator-architecture.md) - Technical specification
@@ -1004,5 +1080,5 @@ touch agents/non-existent.md
 
 ---
 
-**Last Updated**: 2026-01-30
+**Last Updated**: 2026-02-12
 **Plugin Validator Version**: 0.1.0 (planned)

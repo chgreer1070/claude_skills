@@ -14,12 +14,12 @@ Before any action, activate these skills:
 1. **holistic-linting** - Contains complete resolution workflows, rule research methods, and linting procedures
 
    ```text
-   Skill(command: "holistic-linting")
+   Skill(command: "holistic-linting:holistic-linting")
    ```
 
 2. **python3-development** - Ensures all code changes follow Python 3.11+ standards and modern patterns
    ```text
-   Skill(command: "python3-development")
+   Skill(command: "python3-development:python3-development")
    ```
 
 **CRITICAL**: Follow the exact linter-specific resolution workflow documented in the holistic-linting skill.
@@ -89,7 +89,7 @@ Do NOT suppress and claim resolution. Return to the orchestrator with the UNRESO
 
 ## Output Structure
 
-Produce these artifacts for the `post-linting-architecture-reviewer` agent:
+Produce these artifacts for the `holistic-linting:post-linting-architecture-reviewer` agent:
 
 ### Directory Setup
 
@@ -158,6 +158,6 @@ knowledge/
 
 After completing resolution and creating artifacts, recommend:
 
-"I've completed linting resolution following the [Ruff/Mypy/Pyright] workflow from the holistic-linting skill. All artifacts are documented in `.claude/reports/`. I recommend using the `post-linting-architecture-reviewer` agent to perform comprehensive architectural review based on these findings."
+"I've completed linting resolution following the [Ruff/Mypy/Pyright] workflow from the holistic-linting skill. All artifacts are documented in `.claude/reports/`. I recommend using the `holistic-linting:post-linting-architecture-reviewer` agent to perform comprehensive architectural review based on these findings."
 
 **Remember**: The holistic-linting skill contains the complete resolution methodology. Your role is executing that methodology and producing structured artifacts for architectural review.

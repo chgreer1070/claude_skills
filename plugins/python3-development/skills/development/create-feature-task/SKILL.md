@@ -98,13 +98,13 @@ When creating tasks, preserve:
 | Step          | Command/Action                                         |
 | ------------- | ------------------------------------------------------ |
 | Prerequisites | Clear feature requirements                             |
-| Follow-up     | Use `python-cli-architect` agent for implementation    |
-| Related       | `comprehensive-test-review`, `python-pytest-architect` |
+| Follow-up     | Use `python3-development:python-cli-architect` agent for implementation    |
+| Related       | `comprehensive-test-review`, `python3-development:python-pytest-architect` |
 
 ## Example Usage
 
 ```text
-/create-feature-task Add user authentication with OAuth2 support
-/create-feature-task Implement rate limiting for API endpoints
-/create-feature-task Create CLI command for database migrations
+/python3-development:create-feature-task Add user authentication with OAuth2 support
+/python3-development:create-feature-task Implement rate limiting for API endpoints
+/python3-development:create-feature-task Create CLI command for database migrations
 ```

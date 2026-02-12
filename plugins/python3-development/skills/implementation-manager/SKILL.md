@@ -161,14 +161,14 @@ The `task_status_hook.py` script provides automated task status tracking via Cla
 
 | Command              | Hook Event   | Matcher             | Purpose                                        |
 | -------------------- | ------------ | ------------------- | ---------------------------------------------- |
-| `/implement-feature` | SubagentStop | (all)               | Mark task COMPLETE, add Completed timestamp    |
-| `/start-task`        | PostToolUse  | `Write\|Edit\|Bash` | Update LastActivity timestamp during execution |
+| `/python3-development:implement-feature` | SubagentStop | (all)               | Mark task COMPLETE, add Completed timestamp    |
+| `/python3-development:start-task`        | PostToolUse  | `Write\|Edit\|Bash` | Update LastActivity timestamp during execution |
 
 ### How It Works
 
 **SubagentStop (Task Completion)**:
 
-When `/implement-feature` launches a sub-agent via `/start-task {task_file} --task {id}`, the SubagentStop hook fires when the sub-agent completes. The hook script:
+When `/python3-development:implement-feature` launches a sub-agent via `/start-task {task_file} --task {id}`, the SubagentStop hook fires when the sub-agent completes. The hook script:
 
 1. Parses the original prompt to extract task file path and task ID
 2. Updates task status from `🔄 IN PROGRESS` to `✅ COMPLETE`
@@ -176,7 +176,7 @@ When `/implement-feature` launches a sub-agent via `/start-task {task_file} --ta
 
 **PostToolUse (Activity Tracking)**:
 
-When `/start-task` runs, it creates a context file at `.claude/context/active-task-{session_id}.json` containing the task file path and task ID. On each Write, Edit, or Bash operation, the PostToolUse hook:
+When `/python3-development:start-task` runs, it creates a context file at `.claude/context/active-task-{session_id}.json` containing the task file path and task ID. On each Write, Edit, or Bash operation, the PostToolUse hook:
 
 1. Reads the context file to identify the active task
 2. Updates `**LastActivity**: {ISO timestamp}` in the task section
@@ -185,13 +185,13 @@ When `/start-task` runs, it creates a context file at `.claude/context/active-ta
 
 | Field              | Added By                  | When                              |
 | ------------------ | ------------------------- | --------------------------------- |
-| `**Started**`      | Agent (via `/start-task`) | When agent begins work on task    |
+| `**Started**`      | Agent (via `/python3-development:start-task`) | When agent begins work on task    |
 | `**Completed**`    | Hook (SubagentStop)       | When sub-agent finishes           |
 | `**LastActivity**` | Hook (PostToolUse)        | On each Write, Edit, or Bash call |
 
 ## Integration with /implement-feature
 
-The `/implement-feature` orchestrator uses this skill to:
+The `/python3-development:implement-feature` orchestrator uses this skill to:
 
 1. Query task file status via `implementation_manager.py status`
 2. Find ready tasks via `implementation_manager.py ready-tasks`

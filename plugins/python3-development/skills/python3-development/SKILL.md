@@ -53,7 +53,7 @@ Orchestration guide for Python development using specialized agents and modern P
 - Reference material for creating slash commands (NOT the actual slash commands)
 - Command templates and patterns for development
 - Testing and development workflow guides
-- See [Commands README](./commands/README.md) for details
+- See `../../commands/` directory for details
 
 **Scripts and Assets:**
 
@@ -263,439 +263,9 @@ When adding try/except, answer: "What specific error do I expect, and what is my
 
 **Python Version**: Python 3.11+ is required unless explicitly documented otherwise. Older versions are rare, documented exceptions.
 
-**The model MUST read the official mypy documentation examples before implementing type patterns. Each subsection links to authoritative mypy docs.**
+**The model MUST read the official mypy documentation examples before implementing type patterns.**
 
-#### When to Use Generics
-
-Use generics for type-safe container classes and functions that work with multiple types.
-
-**Applicable scenarios:**
-
-- Custom collection classes (stacks, queues, boxes)
-- Functions accepting multiple type variants
-- Decorators and factory methods
-- Reusable protocols and type aliases
-
-**MUST read examples before implementing**: [Mypy Generics Documentation](./references/mypy-docs/generics.rst)
-
-**Python 3.11 Generic Pattern** (TypeVar with Generic):
-
-```python
-from typing import TypeVar, Generic, Sequence
-
-T = TypeVar('T')
-
-class Stack(Generic[T]):
-    def __init__(self) -> None:
-        self._items: list[T] = []
-
-    def push(self, item: T) -> None:
-        self._items.append(item)
-
-    def pop(self) -> T:
-        return self._items.pop()
-
-def first(seq: Sequence[T]) -> T:
-    return seq[0]
-```
-
-**Python 3.12+ Generic Pattern** (Native Syntax):
-
-```python
-class Stack[T]:
-    def __init__(self) -> None:
-        self._items: list[T] = []
-
-    def push(self, item: T) -> None:
-        self._items.append(item)
-
-    def pop(self) -> T:
-        return self._items.pop()
-
-def first[T](seq: Sequence[T]) -> T:
-    return seq[0]
-```
-
-**Type Variable Bounds** (restrict to subtypes):
-
-```python
-from collections.abc import Sequence
-from typing import Protocol
-
-class SupportsAbs[T](Protocol):
-    def __abs__(self) -> T: ...
-
-def max_by_abs[T: SupportsAbs[float]](*xs: T) -> T:
-    return max(xs, key=abs)
-```
-
-**Value Restrictions** (limit to specific types):
-
-```python
-def concat[S: (str, bytes)](x: S, y: S) -> S:
-    return x + y  # Type-safe for str OR bytes, but not mixed
-```
-
-**Generic Method Chaining** (precise return types):
-
-```python
-from typing import Self
-
-class Shape:
-    scale: float = 1.0
-
-    def set_scale(self, scale: float) -> Self:
-        self.scale = scale
-        return self  # Returns precise subclass type
-```
-
-#### When to Use Protocols
-
-Use protocols for structural subtyping when you need duck typing with type safety. Protocols check whether an object has required methods/attributes regardless of inheritance.
-
-**Applicable scenarios:**
-
-- Accept any object with specific capabilities without requiring inheritance
-- Define interfaces for duck-typed code
-- Create flexible callback types
-- Ensure compatibility without tight coupling
-
-**MUST read examples before implementing**: [Mypy Protocols Documentation](./references/mypy-docs/protocols.rst)
-
-**Basic Protocol Pattern**:
-
-```python
-from typing import Protocol
-
-class SupportsClose(Protocol):
-    def close(self) -> None: ...
-
-def close_resource(resource: SupportsClose) -> None:
-    resource.close()  # Works with ANY object having close() method
-
-# No inheritance needed - structural match
-class FileHandler:
-    def close(self) -> None:
-        print("Closing file")
-
-close_resource(FileHandler())  # ✅ Type-safe
-```
-
-**Read-Only Attributes** (use @property to avoid invariance issues):
-
-```python
-from typing import Protocol
-
-class Named(Protocol):
-    @property
-    def name(self) -> str: ...  # Read-only via property
-```
-
-**Recursive Protocols** (tree structures):
-
-```python
-from typing import Protocol
-
-class TreeLike(Protocol):
-    value: int
-
-    @property
-    def left(self) -> TreeLike | None: ...
-
-    @property
-    def right(self) -> TreeLike | None: ...
-```
-
-**Runtime Checks**:
-
-```python
-from typing import Protocol, runtime_checkable
-
-@runtime_checkable
-class Drawable(Protocol):
-    def draw(self) -> None: ...
-
-def render(obj: object) -> None:
-    if isinstance(obj, Drawable):  # Runtime check enabled
-        obj.draw()
-```
-
-**WARNING**: `isinstance()` with protocols only verifies attribute existence, NOT type correctness. Use for structural validation, not precise type guarantees.
-
-#### TypedDict for Dictionary Typing
-
-Use TypedDict for dictionaries with fixed schemas and string keys where each key has a specific value type.
-
-**Applicable scenarios:**
-
-- Dictionaries representing objects with predictable structure
-- JSON-like data structures
-- Configuration dictionaries
-- API request/response payloads
-
-**MUST read examples before implementing**: [Mypy TypedDict Documentation](./references/mypy-docs/typed_dict.rst)
-
-**Required Fields Pattern** (all keys required):
-
-```python
-from typing import TypedDict
-
-class Movie(TypedDict):
-    name: str
-    year: int
-    director: str
-
-movie: Movie = {
-    "name": "Blade Runner",
-    "year": 1982,
-    "director": "Ridley Scott"
-}  # All keys required
-```
-
-**Optional Fields Pattern** (total=False):
-
-```python
-from typing import TypedDict
-
-class MovieOptions(TypedDict, total=False):
-    subtitles: bool
-    audio_language: str
-
-options: MovieOptions = {}  # ✅ Empty dict valid
-options2: MovieOptions = {"subtitles": True}  # ✅ Partial valid
-```
-
-**Mixed Required/Optional Pattern**:
-
-```python
-from typing import TypedDict
-
-class MovieBase(TypedDict):
-    name: str  # Required
-    year: int  # Required
-
-class Movie(MovieBase, total=False):
-    director: str  # Optional
-    rating: float  # Optional
-
-movie: Movie = {"name": "Alien", "year": 1979}  # ✅ Valid
-```
-
-**CRITICAL**: Always annotate variables when assigning TypedDict literals. Without annotation, mypy infers `dict[str, Any]`:
-
-```python
-# ❌ Wrong - inferred as dict[str, Any]
-movie = {"name": "Alien", "year": 1979}
-
-# ✅ Correct - explicitly typed
-movie: Movie = {"name": "Alien", "year": 1979}
-```
-
-#### Type Narrowing
-
-Use type narrowing to refine broad union types to specific types based on runtime checks.
-
-**Applicable scenarios:**
-
-- Handling union types (e.g., `str | int | None`)
-- Optional value processing
-- Validating input types
-- Control flow-based type refinement
-
-**MUST read examples before implementing**: [Mypy Type Narrowing Documentation](./references/mypy-docs/type_narrowing.rst)
-
-**isinstance() Narrowing**:
-
-```python
-def process_value(value: str | int) -> str:
-    if isinstance(value, str):
-        return value.upper()  # Narrowed to str
-    else:
-        return str(value * 2)  # Narrowed to int
-```
-
-**None Checks**:
-
-```python
-def greet(name: str | None) -> str:
-    if name is not None:
-        return f"Hello, {name}"  # Narrowed to str
-    return "Hello, stranger"
-```
-
-**Type Guards** (custom narrowing functions):
-
-```python
-from typing import TypeGuard
-
-def is_str_list(val: list[object]) -> TypeGuard[list[str]]:
-    return all(isinstance(x, str) for x in val)
-
-def process(values: list[object]) -> None:
-    if is_str_list(values):
-        # Narrowed to list[str] in this branch
-        print(" ".join(values))
-```
-
-**TypeIs (Python 3.13+, more powerful than TypeGuard)**:
-
-```python
-from typing import TypeIs
-
-def is_str(val: object) -> TypeIs[str]:
-    return isinstance(val, str)
-
-def process(val: str | int) -> None:
-    if is_str(val):
-        print(val.upper())  # Narrowed to str
-    else:
-        print(val * 2)  # Narrowed to int (complement type)
-```
-
-**Key difference**: TypeGuard narrows only the if-branch; TypeIs narrows both branches (if-branch to the specified type, else-branch to the complement).
-
-#### attrs vs dataclasses vs pydantic
-
-**Decision Matrix**:
-
-| Feature                | attrs                              | dataclasses                            | pydantic                                 |
-| ---------------------- | ---------------------------------- | -------------------------------------- | ---------------------------------------- |
-| **Performance**        | Fastest (compiled)                 | Fast (native)                          | Slower (validation overhead)             |
-| **Validation**         | Basic (via converters/validators)  | None (requires custom `__post_init__`) | Comprehensive (built-in)                 |
-| **Immutability**       | `@frozen`                          | `frozen=True`                          | `frozen=True` (v2)                       |
-| **Evolution**          | Excellent (`evolve()`)             | Basic (`replace()`)                    | Good (`model_copy()`)                    |
-| **Slots**              | Automatic                          | Manual (`slots=True`)                  | Automatic (v2)                           |
-| **Type Coercion**      | Manual                             | None                                   | Automatic                                |
-| **JSON Serialization** | Manual                             | Manual                                 | Native (`model_dump_json()`)             |
-| **Use When**           | High-performance, pure Python data | Stdlib-only requirement                | External data validation (APIs, configs) |
-
-**attrs Pattern** (high performance, pure Python):
-
-```python
-from attrs import define, field
-
-@define
-class User:
-    name: str
-    age: int = field(validator=lambda i, a, v: v >= 0)
-    email: str | None = None
-```
-
-**MUST read examples**: [Mypy Additional Features - Attrs](./references/mypy-docs/additional_features.rst)
-
-**dataclasses Pattern** (stdlib-only):
-
-```python
-from dataclasses import dataclass
-
-@dataclass(frozen=True, slots=True)
-class User:
-    name: str
-    age: int
-    email: str | None = None
-
-    def __post_init__(self) -> None:
-        if self.age < 0:
-            raise ValueError("Age must be non-negative")
-```
-
-**pydantic Pattern** (external data validation):
-
-```python
-from pydantic import BaseModel, Field, field_validator
-
-class User(BaseModel):
-    name: str
-    age: int = Field(ge=0)
-    email: str | None = None
-
-    @field_validator('age')
-    @classmethod
-    def validate_age(cls, v: int) -> int:
-        if v < 0:
-            raise ValueError('Age must be non-negative')
-        return v
-```
-
-**Recommendation**:
-
-- **Default**: Use `attrs` for internal data structures (best performance, most features)
-- **Stdlib-only requirement**: Use `dataclasses`
-- **External data (APIs, configs, user input)**: Use `pydantic` (if already a dependency)
-
-**NEVER add pydantic as a dependency solely for dataclasses. Use attrs or stdlib dataclasses instead.**
-
-#### Additional Mypy Features
-
-**MUST read before using advanced patterns**: [Mypy Additional Features](./references/mypy-docs/additional_features.rst)
-
-**Generic Dataclasses**:
-
-```python
-from dataclasses import dataclass
-from typing import Generic, TypeVar
-
-T = TypeVar('T')
-
-@dataclass
-class Box(Generic[T]):
-    value: T
-
-int_box: Box[int] = Box(value=42)
-str_box: Box[str] = Box(value="hello")
-```
-
-**Self Type for Method Chaining**:
-
-```python
-from typing import Self
-
-class Builder:
-    def set_name(self, name: str) -> Self:
-        self.name = name
-        return self
-
-    def set_value(self, value: int) -> Self:
-        self.value = value
-        return self
-
-# Type-safe chaining
-builder = Builder().set_name("test").set_value(42)
-```
-
-#### Mypy Configuration Best Practices
-
-**Strict Mode Configuration** (pyproject.toml):
-
-```toml
-[tool.mypy]
-python_version = "3.11"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_any_generics = true
-check_untyped_defs = true
-no_implicit_reexport = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-```
-
-**Per-Module Overrides** (for gradual typing):
-
-```toml
-[[tool.mypy.overrides]]
-module = "third_party_lib.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "legacy_code.*"
-disallow_untyped_defs = false
-```
-
-**See**: [Tool & Library Registry - Mypy Configuration](./references/tool-library-registry.md) for complete configuration examples.
+For comprehensive type safety guidance including Generics, Protocols, TypedDict, Type Narrowing, attrs/dataclasses/pydantic comparison, and mypy configuration, see [Type Safety with Mypy Reference](./references/type-safety-mypy.md).
 
 <section ROLE_TYPE="orchestrator">
 
@@ -780,13 +350,13 @@ The orchestrator delegates Python development tasks to specialized agents rather
 
 | Task Type          | Delegation Target                |
 | ------------------ | -------------------------------- |
-| Python code        | `@agent-python-cli-architect`    |
-| Test creation      | `@agent-python-pytest-architect` |
-| Code review        | `@agent-python-code-reviewer`    |
-| Stdlib-only script | `@agent-python-portable-script`  |
-| Architecture       | `@agent-python-cli-design-spec`  |
-| Task breakdown     | `@agent-swarm-task-planner`      |
-| Requirements       | `@agent-spec-analyst`            |
+| Python code        | `@python3-development:python-cli-architect`    |
+| Test creation      | `@python3-development:python-pytest-architect` |
+| Code review        | `@python3-development:python-code-reviewer`    |
+| Stdlib-only script | `@python-portable-script`  |
+| Architecture       | `@python3-development:python-cli-design-spec`  |
+| Task breakdown     | `@python3-development:swarm-task-planner`      |
+| Requirements       | `@spec-analyst`            |
 
 **Reason for delegation table**: Clear mapping prevents orchestrator from implementing when it should coordinate.
 
@@ -812,17 +382,17 @@ User: "Build a CLI tool to process CSV files"
 Orchestrator workflow:
 0. Read("${CLAUDE_PLUGIN_ROOT}/skills/python3-development/references/python-development-orchestration.md")
    "I have read the orchestration guide. Using FEATURE ADDITION workflow with agents:
-    @agent-python-cli-architect → @agent-python-pytest-architect → @agent-python-code-reviewer"
+    @python3-development:python-cli-architect → @python3-development:python-pytest-architect → @python3-development:python-code-reviewer"
 
-1. Delegate to @agent-python-cli-architect (FOCUSED SCOPE: implementation only)
+1. Delegate to @python3-development:python-cli-architect (FOCUSED SCOPE: implementation only)
    "Create CSV processing CLI with Typer+Rich progress bars. Scope: src/csv_tool.py only."
 
-2. Delegate to @agent-python-pytest-architect (FOCUSED SCOPE: tests only)
+2. Delegate to @python3-development:python-pytest-architect (FOCUSED SCOPE: tests only)
    "Create test suite for CSV processor. Scope: tests/test_csv_tool.py only."
 
-3. Instruct agent to run: /shebangpython, /modernpython
+3. Instruct agent to run: /python3-development:shebangpython, /python3-development:modernpython
 
-4. Delegate to @agent-python-code-reviewer (FOCUSED SCOPE: review only)
+4. Delegate to @python3-development:python-code-reviewer (FOCUSED SCOPE: review only)
    "Review CSV processor implementation for patterns and quality."
 
 5. Validate: Code quality checks per holistic-linting skill, then uv run pytest
@@ -834,7 +404,7 @@ Orchestrator workflow:
 
 ## Command Usage
 
-### /modernpython
+### /python3-development:modernpython
 
 **Purpose**: Comprehensive reference guide for Python 3.11+ patterns with official PEP citations
 
@@ -851,7 +421,7 @@ Orchestrator workflow:
 **Usage**:
 
 ```text
-/modernpython
+/python3-development:modernpython
 → Loads comprehensive reference guide
 → Provides Python 3.11+ pattern examples
 → Includes PEP citations with research tool guidance (prefer MCP tools: Ref/exa over WebFetch)
@@ -870,12 +440,12 @@ Research tool preference for PEP documentation:
 **With file path argument**:
 
 ```text
-/modernpython src/mymodule.py
+/python3-development:modernpython src/mymodule.py
 → Loads guide for reference while working on specified file
 → Use guide to manually identify and refactor legacy patterns
 ```
 
-### /shebangpython
+### /python3-development:shebangpython
 
 **Purpose**: Validate correct shebang for ALL Python scripts based on their dependencies and execution context
 
@@ -899,7 +469,7 @@ Research tool preference for PEP documentation:
 **Pattern**:
 
 ```text
-/shebangpython scripts/deploy.py
+/python3-development:shebangpython scripts/deploy.py
 → Analyzes imports to determine dependency type
 → **Corrects shebang** to match script type (edits file if wrong)
 → **Adds PEP 723 metadata** if external dependencies detected (edits file)
@@ -1074,8 +644,8 @@ Always detect from project configuration rather than assuming.
 2. **Linting**: `uv run ruff check <files>` (clean, after formatting)
 3. **Type checking**: Use **detected type checker** (`basedpyright`, `pyright`, or `mypy`)
 4. **Tests**: `uv run pytest` (>80% coverage)
-5. **Modern patterns**: `/modernpython` (no legacy typing)
-6. **Script compliance**: `/shebangpython` (for standalone scripts)
+5. **Modern patterns**: `/python3-development:modernpython` (no legacy typing)
+6. **Script compliance**: `/python3-development:shebangpython` (for standalone scripts)
 
 **Preferred execution method**:
 
@@ -1254,10 +824,10 @@ These templates implement the patterns documented in [User Project Conventions](
 | -------------------------------------- | ------------------------------------------------------------------------------ |
 | **Delegating without reading guide**   | **ALWAYS read orchestration guide first, state workflow pattern**              |
 | Sending one massive task to agent      | Break into focused delegations with bounded scope                              |
-| Writing Python code directly           | Delegate to `@agent-python-cli-architect` with clear requirements              |
+| Writing Python code directly           | Delegate to `@python3-development:python-cli-architect` with clear requirements              |
 | Skipping validation steps              | Complete workflow: implement → test → review → validate                        |
 | Pre-deciding technical implementations | Let agents determine HOW based on requirements                                 |
-| Implementing and testing in same step  | Chain agents: `@agent-python-cli-architect` → `@agent-python-pytest-architect` |
+| Implementing and testing in same step  | Chain agents: `@python3-development:python-cli-architect` → `@python3-development:python-pytest-architect` |
 
 **Reason**: Orchestrators coordinate workflows. Agents have specialized expertise and focused tool access for implementation.
 
@@ -1307,8 +877,8 @@ grep -i "^## " references/python-development-orchestration.md
 
 These skills are bundled with this plugin and available as slash commands:
 
-- [/modernpython](../modernpython/SKILL.md) - Python 3.11+ patterns and PEP references
-- [/shebangpython](../shebangpython/SKILL.md) - PEP 723 validation and shebang standards
+- [/python3-development:modernpython](../modernpython/SKILL.md) - Python 3.11+ patterns and PEP references
+- [/python3-development:shebangpython](../shebangpython/SKILL.md) - PEP 723 validation and shebang standards
 
 ## Summary
 
@@ -1318,7 +888,7 @@ These skills are bundled with this plugin and available as slash commands:
 
 - Modern Python 3.11+ standards and patterns
 - Quality gates: ruff, pyright, mypy, pytest (>80% coverage)
-- Command standards: /modernpython, /shebangpython
+- Command standards: /python3-development:modernpython, /python3-development:shebangpython
 - Reference documentation for 50+ modern Python modules
 - Tool and library registry
 

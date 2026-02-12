@@ -30,8 +30,8 @@ Comprehensive guide for orchestrating Python development tasks using specialized
 
 ### Commands (in this skill: references/commands/)
 
-- **/modernpython**: Apply Python 3.11+ best practices and modern patterns
-- **/shebangpython**: Validate PEP 723 shebang compliance
+- **/python3-development:modernpython**: Apply Python 3.11+ best practices and modern patterns
+- **/python3-development:shebangpython**: Validate PEP 723 shebang compliance
 
 ### External Skills
 
@@ -46,25 +46,25 @@ Comprehensive guide for orchestrating Python development tasks using specialized
 **Pattern**:
 
 ```text
-1. Design → @agent-python-cli-design-spec
+1. Design → @python3-development:python-cli-design-spec
    Input: Feature requirements
    Output: Architecture design, component interfaces
 
-2. Write Tests → @agent-python-pytest-architect
+2. Write Tests → @python3-development:python-pytest-architect
    Input: Architecture design, expected behavior
    Output: Complete test suite (fails initially)
 
-3. Implement → @agent-python-cli-architect OR @agent-python-portable-script
+3. Implement → @python3-development:python-cli-architect OR @python-portable-script
    Input: Tests, architecture design
    Output: Implementation that makes tests pass
 
-4. Review → @agent-python-code-reviewer
+4. Review → @python3-development:python-code-reviewer
    Input: Implementation + tests
    Output: Review feedback, improvement suggestions
 
 5. Validate
    - Code quality checks (linting, formatting) performed and issues addressed per the holistic-linting skill
-   - Apply: /modernpython to check modern patterns
+   - Apply: /python3-development:modernpython to check modern patterns
    - Run: uv run pytest
    - Verify: CI compatibility by checking .gitlab-ci.yml or .github/workflows/
 ```
@@ -74,19 +74,19 @@ Comprehensive guide for orchestrating Python development tasks using specialized
 ```text
 User: "Build a CLI tool to process CSV files with progress bars"
 
-Step 1: @agent-python-cli-design-spec
+Step 1: @python3-development:python-cli-design-spec
   "Design architecture for CSV processing CLI with progress tracking"
   → Architecture design with components
 
-Step 2: @agent-python-pytest-architect
+Step 2: @python3-development:python-pytest-architect
   "Create test suite for CSV processor based on this architecture"
   → Test files in tests/
 
-Step 3: @agent-python-cli-architect
+Step 3: @python3-development:python-cli-architect
   "Implement CSV processor CLI with Typer+Rich based on these tests"
   → Implementation in packages/
 
-Step 4: @agent-python-code-reviewer
+Step 4: @python3-development:python-code-reviewer
   "Review this implementation against the architecture and test requirements"
   → Review findings, suggested improvements
 
@@ -101,26 +101,26 @@ Step 5: Validate
 **Pattern**:
 
 ```text
-1. Requirements → User or @agent-spec-analyst
+1. Requirements → User or @spec-analyst
    Output: Clear requirements, acceptance criteria
 
-2. Architecture → @agent-python-cli-design-spec
+2. Architecture → @python3-development:python-cli-design-spec
    Input: Requirements, existing codebase structure
    Output: Design that integrates with existing code
 
-3. Implementation Plan → @agent-swarm-task-planner
+3. Implementation Plan → @python3-development:swarm-task-planner
    Input: Architecture design
    Output: Step-by-step implementation tasks
 
-4. Implement → @agent-python-cli-architect OR @agent-python-portable-script
+4. Implement → @python3-development:python-cli-architect OR @python-portable-script
    Input: Implementation plan, existing code patterns
    Output: New feature implementation
 
-5. Testing → @agent-python-pytest-architect
+5. Testing → @python3-development:python-pytest-architect
    Input: Implementation, edge cases
    Output: Tests for new feature + integration tests
 
-6. Review → @agent-python-code-reviewer
+6. Review → @python3-development:python-code-reviewer
    Input: All changes (implementation + tests)
    Output: Quality assessment, improvements
 
@@ -128,7 +128,7 @@ Step 5: Validate
    - Check: No regressions in existing tests
    - Verify: New feature has >80% coverage
    - Code quality checks (linting, formatting) performed and issues addressed per the holistic-linting skill
-   - Apply: /modernpython for consistency
+   - Apply: /python3-development:modernpython for consistency
 ```
 
 ### 3. Code Review Workflow
@@ -138,15 +138,15 @@ Step 5: Validate
 **Pattern**:
 
 ```text
-1. Self-Review → Apply /modernpython
+1. Self-Review → Apply /python3-development:modernpython
    Check: Modern Python patterns used
    Check: No legacy typing imports
 
-2. Standards Validation → Apply /shebangpython (if scripts)
+2. Standards Validation → Apply /python3-development:shebangpython (if scripts)
    Check: PEP 723 compliance
    Check: Correct shebang format
 
-3. Agent Review → @agent-python-code-reviewer
+3. Agent Review → @python3-development:python-code-reviewer
    Input: All changed files
    Output: Comprehensive review findings
 
@@ -170,9 +170,9 @@ Step 5: Validate
 1. Tests First → Verify existing test coverage
    Check: Tests exist for code being refactored
    Check: Tests pass before refactoring
-   If missing: @agent-python-pytest-architect creates tests
+   If missing: @python3-development:python-pytest-architect creates tests
 
-2. Refactor → @agent-python-cli-architect or @agent-python-portable-script
+2. Refactor → @python3-development:python-cli-architect or @python-portable-script
    Input: Code to refactor + test suite
    Constraint: Must not break existing tests
    Output: Refactored code
@@ -181,12 +181,12 @@ Step 5: Validate
    Run: uv run pytest
    Verify: Coverage maintained or improved
 
-4. Review → @agent-python-code-reviewer
+4. Review → @python3-development:python-code-reviewer
    Input: Before/after comparison
    Output: Verification refactoring improved quality
 
 5. Apply Standards
-   - Apply: /modernpython for modern patterns
+   - Apply: /python3-development:modernpython for modern patterns
    - Code quality checks (linting, formatting) performed and issues addressed per the holistic-linting skill
 ```
 
@@ -198,7 +198,7 @@ Step 5: Validate
 
 ```text
 1. Reproduce → Write failing test
-   @agent-python-pytest-architect
+   @python3-development:python-pytest-architect
    Input: Bug description, steps to reproduce
    Output: Test that demonstrates bug
 
@@ -207,7 +207,7 @@ Step 5: Validate
    Identify: Specific code causing issue
 
 3. Fix → Appropriate agent
-   @agent-python-cli-architect or @agent-python-portable-script
+   @python3-development:python-cli-architect or @python-portable-script
    Input: Failing test + root cause
    Output: Fix that makes test pass
 
@@ -216,12 +216,12 @@ Step 5: Validate
    Verify: Bug test now passes
    Verify: No other tests broke
 
-5. Review → @agent-python-code-reviewer
+5. Review → @python3-development:python-code-reviewer
    Input: Fix + test
    Output: Verification fix is proper solution
 
 6. Validate
-   - Apply: /modernpython
+   - Apply: /python3-development:modernpython
    - Code quality checks (linting, formatting) performed and issues addressed per the holistic-linting skill
 ```
 
@@ -391,7 +391,7 @@ If answers indicate restrictions → python-portable-script
 
 ## Command Usage Patterns
 
-### /modernpython
+### /python3-development:modernpython
 
 **Apply to**: Load as reference guide (optional file path argument for context)
 
@@ -408,7 +408,7 @@ If answers indicate restrictions → python-portable-script
 **Usage**:
 
 ```text
-/modernpython
+/python3-development:modernpython
 → Loads comprehensive reference guide
 → Provides Python 3.11+ pattern examples
 → Includes PEP citations with WebFetch commands
@@ -420,12 +420,12 @@ If answers indicate restrictions → python-portable-script
 **With file path**:
 
 ```text
-/modernpython packages/mymodule.py
+/python3-development:modernpython packages/mymodule.py
 → Loads guide for reference while working on specified file
 → Use guide to manually identify and refactor legacy patterns
 ```
 
-### /shebangpython
+### /python3-development:shebangpython
 
 **Apply to**: Individual Python scripts
 
@@ -438,7 +438,7 @@ If answers indicate restrictions → python-portable-script
 **Pattern**:
 
 ```text
-/shebangpython scripts/deploy.py
+/python3-development:shebangpython scripts/deploy.py
 → Analyzes imports to determine dependency type
 → **Corrects shebang** to match script type (edits file if wrong)
 → **Adds PEP 723 metadata** if external dependencies detected (edits file)
@@ -470,8 +470,8 @@ If answers indicate restrictions → python-portable-script
 
 1. **Code quality**: Activate holistic-linting skill for linting, formatting, and type checking workflows
 2. **Tests**: `uv run pytest` (>80% coverage)
-3. **Standards**: `/modernpython` for modern patterns
-4. **Script compliance**: `/shebangpython` for standalone scripts
+3. **Standards**: `/python3-development:modernpython` for modern patterns
+4. **Script compliance**: `/python3-development:shebangpython` for standalone scripts
 
 **For critical code** (payments, auth, security):
 
@@ -505,25 +505,25 @@ Use this as the reference implementation when creating CLI tools.
 User: "Build a CLI tool to validate YAML configurations"
 
 Orchestrator:
-1. @agent-python-cli-design-spec
+1. @python3-development:python-cli-design-spec
    "Design architecture for YAML validation CLI"
    → Component design, validation rules
 
-2. @agent-python-pytest-architect
+2. @python3-development:python-pytest-architect
    "Create test suite for YAML validator"
    → tests/test_validator.py with fixtures
 
-3. @agent-python-cli-architect
+3. @python3-development:python-cli-architect
    "Implement YAML validator CLI with Typer based on tests"
    Reference: `${CLAUDE_PLUGIN_ROOT}/skills/python3-development/assets/python-cli-demo.py` for patterns
    → packages/validator.py with Typer+Rich UI
 
 4. Validation:
-   /shebangpython packages/validator.py
+   /python3-development:shebangpython packages/validator.py
    Activate holistic-linting skill for code quality checks on packages/validator.py tests/
    uv run pytest
 
-5. @agent-python-code-reviewer
+5. @python3-development:python-code-reviewer
    "Review validator implementation"
    → Quality check, improvements
 
@@ -536,11 +536,11 @@ Orchestrator:
 User: "Fix bug where CSV parser fails on empty rows"
 
 Orchestrator:
-1. @agent-python-pytest-architect
+1. @python3-development:python-pytest-architect
    "Write test that reproduces CSV parser bug with empty rows"
    → tests/test_csv_parser.py::test_empty_rows (failing)
 
-2. @agent-python-cli-architect
+2. @python3-development:python-cli-architect
    "Fix CSV parser to handle empty rows, making test pass"
    → packages/csv_parser.py updated
 
@@ -548,12 +548,12 @@ Orchestrator:
    uv run pytest  # Verify bug test passes
    uv run pytest  # Verify no regression
 
-4. @agent-python-code-reviewer
+4. @python3-development:python-code-reviewer
    "Review bug fix and test"
    → Verify proper solution
 
 5. Apply standards:
-   /modernpython packages/csv_parser.py
+   /python3-development:modernpython packages/csv_parser.py
    Activate holistic-linting skill for code quality checks on packages/csv_parser.py tests/
 ```
 
@@ -568,8 +568,8 @@ Orchestrator:
 ### Do: Delegate to appropriate agent
 
 ```text
-✅ @agent-python-cli-architect writes implementation
-✅ @agent-python-code-reviewer validates it
+✅ @python3-development:python-cli-architect writes implementation
+✅ @python3-development:python-code-reviewer validates it
 ```
 
 ### Don't: Skip validation steps

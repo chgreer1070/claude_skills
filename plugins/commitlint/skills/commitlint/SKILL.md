@@ -488,7 +488,7 @@ rules: {
 For pre-commit hook integration with commitlint, activate the pre-commit skill:
 
 ```text
-Skill(command: "pre-commit")
+Skill(command: "python3-development:pre-commit")
 ```
 
 ## Conventional Commits Reference
@@ -496,7 +496,7 @@ Skill(command: "pre-commit")
 For Conventional Commits format specification and examples, activate the conventional-commits skill:
 
 ```text
-Skill(command: "conventional-commits")
+Skill(command: "conventional-commits:conventional-commits")
 ```
 
 ## References

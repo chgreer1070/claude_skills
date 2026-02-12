@@ -69,7 +69,7 @@ $ARGUMENTS
 │  └── Stop after tests written                                               │
 │           │                                                                 │
 │           ▼                                                                 │
-│  Phase 9: IMPLEMENTATION (/snakepolish)                                     │
+│  Phase 9: IMPLEMENTATION (/python3-development:snakepolish)                                     │
 │  ├── context: fork with python-cli-architect                                │
 │  ├── Follow plans and implement functions                                   │
 │  └── Run tests until passing                                                │
@@ -83,13 +83,13 @@ This skill integrates with plugins in the same marketplace:
 
 ### holistic-linting Plugin
 
-**Activation**: `Skill(command: "holistic-linting")`
+**Activation**: `Skill(command: "holistic-linting:holistic-linting")`
 
 Provides: Linting rules knowledge base, `linting-root-cause-resolver` agent, automatic linter detection.
 
 ### pre-commit Plugin
 
-**Activation**: `Skill(command: "pre-commit")`
+**Activation**: `Skill(command: "python3-development:pre-commit")`
 
 Provides: Git hook automation for quality gates.
 
@@ -241,7 +241,7 @@ Plan how to apply modern Python features to eliminate type gaps and improve desi
 ### Step 3.1: Load modernpython Skill
 
 ```text
-Skill(command: "modernpython")
+Skill(command: "python3-development:modernpython")
 ```
 
 ### Step 3.2: Plan Type System Improvements
@@ -716,12 +716,12 @@ uv run pytest tests/ -v
 
 ## Phase 9: Implementation
 
-Use the `/snakepolish` skill to implement until tests pass.
+Use the `/python3-development:snakepolish` skill to implement until tests pass.
 
 ### Step 9.1: Launch Implementation Skill
 
 ```text
-/snakepolish $ARGUMENTS
+/python3-development:snakepolish $ARGUMENTS
 ```
 
 This skill:
@@ -765,24 +765,24 @@ The complete workflow produces:
 ### Skill Activations
 
 ```text
-Skill(command: "holistic-linting")     # Linting workflows
-Skill(command: "pre-commit")           # Git hooks
-Skill(command: "modernpython")         # Python 3.11+ patterns
-Skill(command: "python3-development")  # Core patterns
+Skill(command: "holistic-linting:holistic-linting")     # Linting workflows
+Skill(command: "python3-development:pre-commit")       # Git hooks
+Skill(command: "python3-development:modernpython")     # Python 3.11+ patterns
+Skill(command: "python3-development:python3-development")  # Core patterns
 ```
 
 ### Agent Delegations
 
 ```text
-Task(agent="linting-root-cause-resolver", ...)  # Phase 1 linting
-Task(agent="python-code-reviewer", ...)          # Phase 4 review
-Task(agent="python-pytest-architect", ...)       # Phase 8 tests
+Task(agent="holistic-linting:linting-root-cause-resolver", ...)  # Phase 1 linting
+Task(agent="python3-development:python-code-reviewer", ...)     # Phase 4 review
+Task(agent="python3-development:python-pytest-architect", ...)  # Phase 8 tests
 ```
 
 ### Related Skills
 
 ```text
-/snakepolish  # Phase 9 implementation (context: fork)
+/python3-development:snakepolish  # Phase 9 implementation (context: fork)
 ```
 
 ---

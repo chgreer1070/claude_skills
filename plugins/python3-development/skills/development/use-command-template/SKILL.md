@@ -108,9 +108,9 @@ Add skill path to `plugin.json`:
 ## Example Usage
 
 ```text
-/use-command-template analyze API endpoints for rate limiting
-/use-command-template validate database migrations for safety
-/use-command-template generate Pydantic classes from schema
+/python3-development:use-command-template analyze API endpoints for rate limiting
+/python3-development:use-command-template validate database migrations for safety
+/python3-development:use-command-template generate Pydantic classes from schema
 ```
 
 ## Migration Note

@@ -60,7 +60,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementat
 - Launch the agent with a prompt that invokes `start-task`:
 
 ```text
-Skill(skill="start-task", args="{task_file_path} --task {task_id}")
+Skill(skill="python3-development:start-task", args="{task_file_path} --task {task_id}")
 ```
 
 4. Repeat until no tasks remain ready.
@@ -72,5 +72,5 @@ Skill(skill="start-task", args="{task_file_path} --task {task_id}")
 When all tasks show `COMPLETE`, invoke:
 
 ```text
-Skill(skill="complete-implementation", args="{task_file_path}")
+Skill(skill="python3-development:complete-implementation", args="{task_file_path}")
 ```

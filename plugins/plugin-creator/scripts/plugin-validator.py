@@ -53,7 +53,15 @@ NAME_PATTERN = r"^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$"
 MAX_SKILL_NAME_LENGTH = 40
 
 # Trigger phrase requirements (Architecture line 357)
-REQUIRED_TRIGGER_PHRASES = ["use when", "use this", "trigger", "activate"]
+REQUIRED_TRIGGER_PHRASES = [
+    "use when",
+    "use this",
+    "used when",
+    "used by",
+    "when ",
+    "trigger",
+    "activate",
+]
 
 # ============================================================================
 # ERROR CODE CONSTANTS (Architecture lines 836-887)
@@ -95,6 +103,10 @@ PL002 = "PL002"  # Invalid JSON syntax in `plugin.json`
 PL003 = "PL003"  # Missing required field `name` in plugin.json
 PL004 = "PL004"  # Component path does not start with `./`
 PL005 = "PL005"  # Referenced component file does not exist
+
+# Namespace Reference Errors (NR001-NR002)
+NR001 = "NR001"  # Namespace reference target does not exist
+NR002 = "NR002"  # Namespace reference points outside plugin directory
 
 # Claude CLI timeout
 CLAUDE_TIMEOUT = 3  # seconds
@@ -436,6 +448,38 @@ class InternalLinkValidator:
     # Regex pattern for extracting markdown links (Architecture line 1219)
     LINK_PATTERN: ClassVar[str] = r"\[([^\]]+)\]\(([^)]+)\)"
 
+    # Regex pattern for fenced code blocks (``` or ~~~, with optional language specifier).
+    # Uses backreference to match opening/closing fence of equal or greater length.
+    CODE_FENCE_PATTERN: ClassVar[str] = r"^(`{3,}|~{3,})[^\n]*\n.*?\n\1\s*$"
+
+    # Regex pattern for inline code spans (single or multiple backticks)
+    INLINE_CODE_PATTERN: ClassVar[str] = r"(`+)(?!`)(.+?)(?<!`)\1(?!`)"
+
+    @staticmethod
+    def _strip_code_blocks(content: str) -> str:
+        """Remove fenced code blocks and inline code spans from content.
+
+        Strips fenced code blocks delimited by ``` or ~~~ (with optional
+        language specifiers) and inline code spans wrapped in backticks.
+        This prevents code examples from being scanned for markdown links.
+
+        Args:
+            content: Raw markdown content
+
+        Returns:
+            Content with code blocks and inline code spans removed
+        """
+        # Strip fenced code blocks first (handles nested fences via greedy
+        # backreference matching: a 4-backtick fence won't close on 3 backticks)
+        stripped = re.sub(
+            InternalLinkValidator.CODE_FENCE_PATTERN,
+            "",
+            content,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+        # Strip inline code spans
+        return re.sub(InternalLinkValidator.INLINE_CODE_PATTERN, "", stripped)
+
     def validate(self, path: Path) -> ValidationResult:
         """Validate internal markdown links in SKILL.md.
 
@@ -473,8 +517,13 @@ class InternalLinkValidator:
                 passed=False, errors=errors, warnings=warnings, info=info
             )
 
-        # Extract all markdown links
-        matches = re.finditer(self.LINK_PATTERN, content)
+        # Strip fenced code blocks and inline code spans before scanning for
+        # links.  Code examples often contain bracket-paren patterns (e.g.
+        # Python generics like Sequence[T]) that match the link regex.
+        scannable_content = self._strip_code_blocks(content)
+
+        # Extract all markdown links from non-code content
+        matches = re.finditer(self.LINK_PATTERN, scannable_content)
 
         # Process each link
         for match in matches:
@@ -570,6 +619,398 @@ class InternalLinkValidator:
 
         # Ignore absolute paths
         return bool(url.startswith("/"))
+
+
+# ============================================================================
+# NAMESPACE REFERENCE VALIDATOR
+# ============================================================================
+
+
+class NamespaceReferenceValidator:
+    """Validates namespace-qualified references in plugin files.
+
+    Checks that ``Skill()``, ``Task()``, ``@agent``, and ``/command`` references
+    with namespace prefixes (``plugin:name``) resolve to actual files in the
+    referenced plugin directory.
+
+    Detects patterns such as:
+    - ``Skill(command: "plugin:skill-name")``
+    - ``Skill(skill="plugin:skill-name")``
+    - ``Task(agent="plugin:agent-name")``
+    - ``@plugin:agent-name`` (prose agent references)
+    - ``/plugin:skill-name`` (slash command references)
+    """
+
+    # Regex patterns for extracting namespace-qualified references
+    SKILL_COMMAND_PATTERN: ClassVar[str] = r'Skill\(command:\s*"([^"]+):([^"]+)"'
+    SKILL_SKILL_PATTERN: ClassVar[str] = r'Skill\(skill="([^"]+):([^"]+)"'
+    TASK_AGENT_PATTERN: ClassVar[str] = r'Task\(agent[=:]\s*"([^"]+):([^"]+)"'
+    AT_AGENT_PATTERN: ClassVar[str] = r"@([a-z0-9-]+):([a-z0-9-]+)"
+    SLASH_COMMAND_PATTERN: ClassVar[str] = r"(?<!\w)/([a-z0-9-]+):([a-z0-9-]+)"
+
+    # Built-in agent types that should be skipped (not plugin agents)
+    BUILTIN_AGENTS: ClassVar[frozenset[str]] = frozenset({
+        "Explore",
+        "general-purpose",
+        "Plan",
+        "Bash",
+        "context-gathering",
+        "code-review",
+        "code-refactorer-agent",
+        "system-architect",
+        "comprehensive-researcher",
+        "technical-researcher",
+        "trace-protocol-investigator",
+        "doc-freshness-guardian",
+        "documentation-expert",
+        "test-architect",
+        "live-api-integration-tester",
+        "subagent-generator",
+        "github-project-manager",
+        "metadata-vault-manager",
+        "doc-drift-auditor",
+        "service-documentation",
+        "backlog-item-groomer",
+        "plugin-assessor",
+        "skill-refactorer-agent",
+        "claude-context-optimizer",
+        "plugin-docs-writer",
+        "logging",
+        "context-refinement",
+        "qa-devops-lead",
+        "embedded-dev-specialist",
+        "c-systems-programmer",
+        "statusline-setup",
+        "linting-root-cause-resolver",
+        "python-cli-architect",
+        "python-portable-script",
+        "python-code-reviewer",
+    })
+
+    def validate(self, path: Path) -> ValidationResult:
+        """Validate namespace-qualified references in a plugin file.
+
+        Extracts references from the file body (after frontmatter) and verifies
+        each namespace-qualified reference resolves to an existing file in the
+        referenced plugin directory.
+
+        Args:
+            path: Path to a SKILL.md, agent .md, or command .md file
+
+        Returns:
+            ValidationResult with errors for broken references
+        """
+        errors: list[ValidationIssue] = []
+        warnings: list[ValidationIssue] = []
+        info: list[ValidationIssue] = []
+
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError as e:
+            errors.append(
+                ValidationIssue(
+                    field="(file)",
+                    severity="error",
+                    message=f"Could not read file: {e}",
+                    code=NR001,
+                    docs_url=generate_docs_url(NR001),
+                )
+            )
+            return ValidationResult(
+                passed=False, errors=errors, warnings=warnings, info=info
+            )
+
+        # Only check the body (after frontmatter)
+        body = self._extract_body(content)
+        if not body:
+            return ValidationResult(
+                passed=True, errors=errors, warnings=warnings, info=info
+            )
+
+        # Find the plugins root directory
+        plugins_root = self._find_plugins_root(path)
+        if plugins_root is None:
+            # Not inside a plugins directory structure -- skip validation
+            return ValidationResult(
+                passed=True, errors=errors, warnings=warnings, info=info
+            )
+
+        # Collect all references: (pattern_label, plugin, name, ref_type)
+        references = self._extract_references(body)
+
+        for label, plugin, name, ref_type in references:
+            # Skip template placeholders containing { or }
+            if "{" in plugin or "}" in plugin or "{" in name or "}" in name:
+                continue
+
+            match ref_type:
+                case "skill":
+                    found = self._resolve_skill_reference(plugins_root, plugin, name)
+                    expected = (
+                        f"plugins/{plugin}/skills/{name}/SKILL.md "
+                        f"or plugins/{plugin}/skills/*/{name}/SKILL.md"
+                    )
+                case "agent":
+                    # Skip built-in agent names
+                    if name in self.BUILTIN_AGENTS or plugin in self.BUILTIN_AGENTS:
+                        continue
+                    found = self._resolve_agent_reference(plugins_root, plugin, name)
+                    expected = f"plugins/{plugin}/agents/{name}.md"
+                case "command":
+                    found = self._resolve_command_reference(plugins_root, plugin, name)
+                    expected = (
+                        f"plugins/{plugin}/skills/{name}/SKILL.md, "
+                        f"plugins/{plugin}/skills/*/{name}/SKILL.md, "
+                        f"or plugins/{plugin}/commands/{name}.md"
+                    )
+                case _:
+                    continue
+
+            # Check if the reference target is inside the plugins root
+            plugin_dir = plugins_root / plugin
+            if not plugin_dir.is_dir():
+                errors.append(
+                    ValidationIssue(
+                        field="namespace-reference",
+                        severity="error",
+                        message=(
+                            f"Namespace reference target does not exist: "
+                            f"{label} -- plugin directory '{plugin}' not found"
+                        ),
+                        code=NR001,
+                        docs_url=generate_docs_url(NR001),
+                        suggestion=(
+                            f"Expected plugin directory at: {plugins_root / plugin}. "
+                            f"Create the plugin or fix the namespace prefix."
+                        ),
+                    )
+                )
+                continue
+
+            if not found:
+                errors.append(
+                    ValidationIssue(
+                        field="namespace-reference",
+                        severity="error",
+                        message=(f"Namespace reference target does not exist: {label}"),
+                        code=NR001,
+                        docs_url=generate_docs_url(NR001),
+                        suggestion=f"Expected file at: {expected}",
+                    )
+                )
+
+        passed = len(errors) == 0
+        return ValidationResult(
+            passed=passed, errors=errors, warnings=warnings, info=info
+        )
+
+    def can_fix(self) -> bool:
+        """Check if validator supports auto-fixing.
+
+        Returns:
+            False (namespace references require manual correction)
+        """
+        return False
+
+    def fix(self, path: Path) -> list[str]:
+        """Auto-fix namespace reference issues (not supported).
+
+        Args:
+            path: Path to file to fix
+
+        Raises:
+            NotImplementedError: Namespace reference validation cannot be auto-fixed
+
+        Returns:
+            Never returns (always raises)
+        """
+        raise NotImplementedError(
+            "Namespace reference validation cannot be auto-fixed. "
+            "Broken references require creating missing files or correcting "
+            "the namespace prefix manually."
+        )
+
+    def _extract_body(self, content: str) -> str:
+        """Extract file body content after YAML frontmatter.
+
+        Args:
+            content: Full file content
+
+        Returns:
+            Body text after the closing ``---`` delimiter, or the full content
+            if no frontmatter is present
+        """
+        if not content.startswith("---"):
+            return content
+
+        # Find closing delimiter
+        end_match = re.search(r"\n---\s*\n", content[3:])
+        if not end_match:
+            return content
+
+        # Return everything after the closing ---
+        return content[3 + end_match.end() :]
+
+    def _find_plugins_root(self, path: Path) -> Path | None:
+        """Find the repository-level ``plugins/`` directory from a file path.
+
+        Walks up from the file path looking for a directory named ``plugins``
+        that appears in the path's parents.
+
+        Args:
+            path: Path to a file inside a plugin
+
+        Returns:
+            Path to the ``plugins/`` directory, or None if not found
+        """
+        resolved = path.resolve()
+        parts = resolved.parts
+        for i in range(len(parts) - 1, -1, -1):
+            if parts[i] == "plugins":
+                candidate = Path(*parts[: i + 1])
+                if candidate.is_dir():
+                    return candidate
+        return None
+
+    def _resolve_skill_reference(
+        self, plugins_root: Path, plugin: str, name: str
+    ) -> bool:
+        """Check if a skill reference resolves to an existing file.
+
+        Checks direct path and nested (category) paths.
+
+        Args:
+            plugins_root: Path to the ``plugins/`` directory
+            plugin: Plugin name (namespace prefix)
+            name: Skill name
+
+        Returns:
+            True if the skill SKILL.md exists at any valid location
+        """
+        # Direct: plugins/{plugin}/skills/{name}/SKILL.md
+        direct = plugins_root / plugin / "skills" / name / "SKILL.md"
+        if direct.is_file():
+            return True
+
+        # Nested: plugins/{plugin}/skills/*/{name}/SKILL.md
+        nested_pattern = plugins_root / plugin / "skills"
+        if nested_pattern.is_dir():
+            for category_dir in nested_pattern.iterdir():
+                if category_dir.is_dir():
+                    nested = category_dir / name / "SKILL.md"
+                    if nested.is_file():
+                        return True
+
+        return False
+
+    def _resolve_agent_reference(
+        self, plugins_root: Path, plugin: str, name: str
+    ) -> bool:
+        """Check if an agent reference resolves to an existing file.
+
+        Args:
+            plugins_root: Path to the ``plugins/`` directory
+            plugin: Plugin name (namespace prefix)
+            name: Agent name
+
+        Returns:
+            True if the agent .md file exists
+        """
+        agent_path = plugins_root / plugin / "agents" / f"{name}.md"
+        return agent_path.is_file()
+
+    def _resolve_command_reference(
+        self, plugins_root: Path, plugin: str, name: str
+    ) -> bool:
+        """Check if a command/slash-command reference resolves to an existing file.
+
+        Slash command references can resolve to skills or commands.
+
+        Args:
+            plugins_root: Path to the ``plugins/`` directory
+            plugin: Plugin name (namespace prefix)
+            name: Command or skill name
+
+        Returns:
+            True if the target exists as a skill or command
+        """
+        # Check as skill first (most common)
+        if self._resolve_skill_reference(plugins_root, plugin, name):
+            return True
+
+        # Check as command: plugins/{plugin}/commands/{name}.md
+        command_path = plugins_root / plugin / "commands" / f"{name}.md"
+        return command_path.is_file()
+
+    @staticmethod
+    def _strip_urls_and_code(body: str) -> str:
+        """Remove URLs, fenced code blocks, and inline code spans from body.
+
+        Strips content that may contain slash-colon patterns that are not
+        real namespace references (e.g. ``http://localhost:8080``).
+
+        Args:
+            body: Markdown body content
+
+        Returns:
+            Body with URLs, fenced code blocks, and inline code spans removed
+        """
+        # Strip fenced code blocks (``` or ~~~ delimited)
+        stripped = re.sub(
+            r"^(`{3,}|~{3,})[^\n]*\n.*?\n\1\s*$",
+            "",
+            body,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+        # Strip inline code spans
+        stripped = re.sub(r"(`+)(?!`)(.+?)(?<!`)\1(?!`)", "", stripped)
+        # Strip URLs (http:// and https:// through end of URL)
+        return re.sub(r"https?://[^\s)\]>\"']+", "", stripped)
+
+    def _extract_references(self, body: str) -> list[tuple[str, str, str, str]]:
+        """Extract all namespace-qualified references from file body.
+
+        Args:
+            body: File body content (after frontmatter)
+
+        Returns:
+            List of (label, plugin, name, ref_type) tuples where ref_type is
+            one of 'skill', 'agent', or 'command'
+        """
+        references: list[tuple[str, str, str, str]] = []
+
+        # Skill(command: "plugin:name")
+        for match in re.finditer(self.SKILL_COMMAND_PATTERN, body):
+            plugin, name = match.group(1), match.group(2)
+            label = f'Skill(command: "{plugin}:{name}")'
+            references.append((label, plugin, name, "skill"))
+
+        # Skill(skill="plugin:name")
+        for match in re.finditer(self.SKILL_SKILL_PATTERN, body):
+            plugin, name = match.group(1), match.group(2)
+            label = f'Skill(skill="{plugin}:{name}")'
+            references.append((label, plugin, name, "skill"))
+
+        # Task(agent="plugin:name")
+        for match in re.finditer(self.TASK_AGENT_PATTERN, body):
+            plugin, name = match.group(1), match.group(2)
+            label = f'Task(agent="{plugin}:{name}")'
+            references.append((label, plugin, name, "agent"))
+
+        # @plugin:agent-name
+        for match in re.finditer(self.AT_AGENT_PATTERN, body):
+            plugin, name = match.group(1), match.group(2)
+            label = f"@{plugin}:{name}"
+            references.append((label, plugin, name, "agent"))
+
+        # /plugin:skill-name -- use stripped body to avoid URL false positives
+        stripped_body = self._strip_urls_and_code(body)
+        for match in re.finditer(self.SLASH_COMMAND_PATTERN, stripped_body):
+            plugin, name = match.group(1), match.group(2)
+            label = f"/{plugin}:{name}"
+            references.append((label, plugin, name, "command"))
+
+        return references
 
 
 # ============================================================================
@@ -2450,6 +2891,9 @@ def _validate_single_path(
             NameFormatValidator(),
             DescriptionValidator(),
         ])
+
+        # Namespace reference validation for all capability files
+        validators.append(NamespaceReferenceValidator())
 
         # Skill-specific validators
         if file_type == FileType.SKILL:

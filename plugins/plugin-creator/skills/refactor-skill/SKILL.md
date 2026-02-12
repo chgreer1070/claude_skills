@@ -123,7 +123,7 @@ user-invocable: true
 
 ## Related Skills
 
-For {topic}, activate `Skill(command: "{related-skill-name}")`.
+For {topic}, activate `Skill(command: "{plugin-name}:{related-skill-name}")`.
 
 ## {Main Sections}
 
@@ -147,7 +147,7 @@ Between new skills, use skill activation syntax:
 
 ```markdown
 For advanced {topic}, activate the {skill-name} skill:
-Skill(command: "{skill-name}")
+Skill(command: "{plugin-name}:{skill-name}")
 ```
 
 Within same skill, use relative links:
@@ -221,13 +221,13 @@ This skill loads focused specialist components for comprehensive coverage:
 
 ## Specialist Skills
 
-- **{skill-1}**: {description} - `Skill(command: "{skill-1}")` for {use case}
-- **{skill-2}**: {description} - `Skill(command: "{skill-2}")` for {use case}
-- **{skill-3}**: {description} - `Skill(command: "{skill-3}")` for {use case}
+- **{skill-1}**: {description} - `Skill(command: "{plugin-name}:{skill-1}")` for {use case}
+- **{skill-2}**: {description} - `Skill(command: "{plugin-name}:{skill-2}")` for {use case}
+- **{skill-3}**: {description} - `Skill(command: "{plugin-name}:{skill-3}")` for {use case}
 
 ## Usage
 
-**Full coverage**: `Skill(command: "{original-name}")` loads all specialist skills
+**Full coverage**: `Skill(command: "{plugin-name}:{original-name}")` loads all specialist skills
 **Focused work**: Activate specific specialist skill for targeted context
 
 ## Quick Reference
@@ -237,7 +237,7 @@ This skill loads focused specialist components for comprehensive coverage:
 
 2. **Verify backwards compatibility**:
 
-   - Search for all references: `grep -r "Skill(command: \"{original-name}\")" .`
+   - Search for all references: `grep -r "Skill(command: \"{plugin-name}:{original-name}\")" .`
    - Search for all slash command invocations: `grep -r "/{original-name}" .`
    - Confirm all existing references will continue to work
 
@@ -363,7 +363,7 @@ project-setup -> project-init
 5. Create circular dependencies
 6. Over-fragment (don't create skills <50 lines)
 7. **DELETE the original skill** - it MUST become a facade/meta-skill that loads all new specialist skills
-8. **INTRODUCE breaking changes** - existing references to the original skill (e.g., `Skill(command: "python3-development")` or `/python3-development`) MUST continue to work
+8. **INTRODUCE breaking changes** - existing references to the original skill (e.g., `Skill(command: "python3-development:python3-development")` or `/python3-development`) MUST continue to work
 
 ### Minimum Viable Skill Size
 

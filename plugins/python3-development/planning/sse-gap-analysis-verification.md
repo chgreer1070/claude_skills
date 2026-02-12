@@ -96,8 +96,8 @@
 - File: `./plugins/python3-development/skills/implementation-manager/SKILL.md`
 - Lines 157-158 (Hook Configuration table):
   ```
-  | `/implement-feature` | SubagentStop | (all) | Mark task COMPLETE, add Completed timestamp |
-  | `/start-task`        | PostToolUse  | `Write\|Edit\|Bash` | Update LastActivity timestamp during execution |
+  | `/python3-development:implement-feature` | SubagentStop | (all) | Mark task COMPLETE, add Completed timestamp |
+  | `/python3-development:start-task`        | PostToolUse  | `Write\|Edit\|Bash` | Update LastActivity timestamp during execution |
   ```
 - Lines 182-183 (Timestamp Field Responsibilities):
   ```
@@ -137,8 +137,8 @@
   ❌ Orchestrator writes implementation directly
 
   ### Do: Delegate to appropriate agent
-  ✅ @agent-python-cli-architect writes implementation
-  ✅ @agent-python-code-reviewer validates it
+  ✅ @python3-development:python-cli-architect writes implementation
+  ✅ @python3-development:python-code-reviewer validates it
   ```
 
 - Lines 589-595 explicitly prohibit mixing agent contexts

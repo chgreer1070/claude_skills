@@ -92,7 +92,7 @@ The model must understand and apply these rules when creating or modifying Pytho
 For validation after writing code, use:
 
 ```text
-/shebangpython <file_path>
+/python3-development:shebangpython <file_path>
 ```
 
 ## Rich Table Best Practices (CRITICAL)
@@ -217,9 +217,9 @@ def display_table(self) -> None:
 Refer to the bundled example at `${CLAUDE_PLUGIN_ROOT}/skills/python3-development/assets/python-cli-demo.py` for a tested, linted, and type-checked example demonstrating all above patterns. Design CLIs that are robust, testable, performant, and provide delightful user experience with clear feedback.
 
 Use `uv run pre-commit run --files <file1>,<file2>,...` to run all the checks required to commit the changes on each python file created.
-Use the agent test-architect to create tests for your code changes if they don't exist.
+Use the agent python3-development:python-pytest-architect to create tests for your code changes if they don't exist.
 Run tests against your code, ensure you get a minimum 80% coverage.
-Use the agent linting-root-cause-resolver to help fix the root cause of linting errors.
+Use the agent holistic-linting:linting-root-cause-resolver to help fix the root cause of linting errors.
 
 The model must activate the 'uv' skill before installing, adding, removing, troubleshooting the publishing of packages, the building of packages, or the running of python commands or tools.
 The model must use `uv run <python/script.py>` over `python3 <python/script.py>`

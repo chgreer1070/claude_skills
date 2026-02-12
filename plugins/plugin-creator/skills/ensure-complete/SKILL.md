@@ -1,5 +1,5 @@
 ---
-description: 'Perform holistic review of completed refactoring, validate improvements, and create follow-up tasks if needed'
+description: 'Use when refactoring is complete and needs validation. Performs holistic review of completed plugin refactoring, validates improvements against original assessment score, checks for documentation drift, and creates follow-up task files if issues remain'
 argument-hint: <task-file-path>
 model: sonnet
 user-invocable: true
@@ -15,7 +15,7 @@ $ARGUMENTS
 
 ## Mission
 
-EXECUTE this multi-phase review workflow to validate refactoring completeness. This workflow is **recursive** - if the review creates follow-up tasks, the orchestrator should run `/implement-refactor` again until no more tasks are generated.
+EXECUTE this multi-phase review workflow to validate refactoring completeness. This workflow is **recursive** - if the review creates follow-up tasks, the orchestrator should run `/plugin-creator:implement-refactor` again until no more tasks are generated.
 
 ---
 
@@ -496,7 +496,7 @@ FOLLOW-UP TASKS:
 NEXT STEPS:
 -----------
 [If follow-up tasks exist]:
-→ Run: /implement-refactor {followup-task-file} to continue refactoring
+→ Run: /plugin-creator:implement-refactor {followup-task-file} to continue refactoring
 
 [If no follow-up tasks]:
 → Refactoring is COMPLETE
@@ -516,8 +516,8 @@ NEXT STEPS:
 This workflow supports **recursive validation**:
 
 1. If Phase 4 creates follow-up task files
-2. The orchestrator should run `/implement-refactor` to address those tasks
-3. Then run `/complete-refactor` again on the new task file
+2. The orchestrator should run `/plugin-creator:implement-refactor` to address those tasks
+3. Then run `/plugin-creator:ensure-complete` again on the new task file
 4. Repeat until Phase 4 creates NO new tasks
 
 This ensures the plugin is truly refactored and meets all quality standards.
@@ -549,7 +549,7 @@ When refactoring is complete (no follow-up tasks):
 1. DISPLAY the BLOCKED status with the missing requirements
 2. DO NOT proceed to the next phase
 3. RETURN to user with instructions to resolve the blocker
-4. User can re-run `/complete-refactor` after resolving
+4. User can re-run `/plugin-creator:ensure-complete` after resolving
 
 **IF task file path is invalid**:
 

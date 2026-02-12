@@ -219,6 +219,6 @@ tests/
 
 ## Related Resources
 
-- **Agent**: Use `python-pytest-architect` for test implementation
+- **Agent**: Use `python3-development:python-pytest-architect` for test implementation
 - **Skill**: `python3-development` for general Python patterns
-- **Command**: `/modernpython` for modern Python syntax reference
+- **Command**: `/python3-development:modernpython` for modern Python syntax reference

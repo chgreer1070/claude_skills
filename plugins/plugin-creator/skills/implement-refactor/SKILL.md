@@ -1,5 +1,5 @@
 ---
-description: 'Execute refactoring tasks from a task file with parallel agent orchestration'
+description: 'Use when a refactoring task file exists from /assessor and tasks need execution. Reads task files, resolves dependencies, delegates to specialist agents (SKILL_SPLIT, AGENT_OPTIMIZE, DOC_IMPROVE), and tracks completion with parallel orchestration'
 argument-hint: <plugin-slug or task-file-path>
 model: sonnet
 user-invocable: true
@@ -260,10 +260,10 @@ When all tasks show `✅ COMPLETE`:
 
 ### Invoke Complete Refactor
 
-AUTOMATICALLY invoke the complete-refactor command to trigger verification:
+AUTOMATICALLY invoke the ensure-complete command to trigger verification:
 
 ```
-Skill(skill="complete-refactor", args="{task_file_path}")
+Skill(skill="plugin-creator:ensure-complete", args="{task_file_path}")
 ```
 
 This runs 4 phases:
@@ -275,7 +275,7 @@ This runs 4 phases:
 
 ### Check for Follow-up Tasks
 
-After complete-refactor finishes, CHECK if follow-up tasks were created:
+After ensure-complete finishes, CHECK if follow-up tasks were created:
 
 ```
 GLOB for: .claude/plan/tasks-refactor-{plugin-slug}-followup*.md
@@ -300,7 +300,7 @@ Continuing recursive refactoring...
 2. RECURSIVELY call implement-refactor on each follow-up task:
 
 ```
-Skill(skill="implement-refactor", args="{followup_task_file_path}")
+Skill(skill="plugin-creator:implement-refactor", args="{followup_task_file_path}")
 ```
 
 3. REPEAT until no more follow-up tasks are generated

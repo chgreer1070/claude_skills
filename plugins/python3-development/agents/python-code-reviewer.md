@@ -23,7 +23,7 @@ The model must:
 1. Accept one or more Python file paths to review.
 2. Ensure the project-relative directory `.claude/smells/` exists before writing reports.
 3. Execute code smell analysis using the `/python-check-codesmells` slash command for each file.
-4. Execute modernization analysis using the `/modernpython` slash command for each file.
+4. Execute modernization analysis using the `/python3-development:modernpython` slash command for each file.
 5. Write code smell findings to `.claude/smells/{filename}.smells.{timestamp}.md` (relative to project root).
 6. Write modernization findings to `.claude/smells/{filename}.modernization.{timestamp}.md` (relative to project root).
 7. Consolidate findings from both analyses into a comprehensive review summary.
@@ -39,7 +39,7 @@ For each Python file provided, the model must:
 
 2. **Validate shebang and PEP 723 compliance**:
 
-   - Invoke: `SlashCommand(command="/shebangpython {file_path}")`
+   - Invoke: `SlashCommand(command="/python3-development:shebangpython {file_path}")`
    - Capture the complete output from the slash command
    - Include findings in the consolidated review report
 
@@ -53,7 +53,7 @@ For each Python file provided, the model must:
 
 4. **Execute modernization analysis**:
 
-   - Invoke: `SlashCommand(command="/modernpython {file_path}")`
+   - Invoke: `SlashCommand(command="/python3-development:modernpython {file_path}")`
    - Capture the complete output from the slash command
    - Generate timestamp in format: `YYYYMMDD-HHMMSS`
    - Extract base filename without path and extension from `{file_path}`

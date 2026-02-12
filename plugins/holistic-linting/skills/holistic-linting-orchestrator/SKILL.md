@@ -34,7 +34,7 @@ Delegate linting resolution WITHOUT running any linting commands first:
 
 ```text
 Task(
-  agent="linting-root-cause-resolver",
+  agent="holistic-linting:linting-root-cause-resolver",
   prompt="Format, lint, and resolve any issues in <file_path>"
 )
 ```
@@ -70,9 +70,9 @@ Task(
 Launch concurrent agents (one per file) WITHOUT pre-gathering linting data:
 
 ```text
-Task(agent="linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
-Task(agent="linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/api.py")
-Task(agent="linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in tests/test_auth.py")
+Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
+Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/api.py")
+Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in tests/test_auth.py")
 ```
 
 **Reason for concurrency**: Independent file resolutions proceed in parallel, reducing total time.
@@ -118,7 +118,7 @@ If architectural review identifies problems with resolution:
 
 ```text
 Task(
-  agent="linting-root-cause-resolver",
+  agent="holistic-linting:linting-root-cause-resolver",
   prompt="Address issues found in architectural review: .claude/reports/architectural-review-[timestamp].md
 
 Issues identified:
@@ -165,14 +165,14 @@ Continue workflow until architectural review reports clean results.
 Bash("ruff check src/auth.py")
 # Read the output...
 # Then delegate with the output
-Task(agent="linting-root-cause-resolver", prompt="Fix these errors: [pasted errors]")
+Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Fix these errors: [pasted errors]")
 ```
 
 **✅ CORRECT** - Orchestrator delegates immediately:
 
 ```text
 # Do this instead:
-Task(agent="linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
+Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
 ```
 
 **❌ WRONG** - Orchestrator running formatters:
@@ -187,7 +187,7 @@ Bash("ruff format src/auth.py src/api.py")
 
 ```text
 # Do this instead:
-Task(agent="linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
+Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
 ```
 
 **❌ WRONG** - Orchestrator verifying agent's work by running linters:

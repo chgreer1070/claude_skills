@@ -33,46 +33,46 @@ Run these commands directly to trigger specific workflows:
 
 | Command | Purpose | Example |
 |---------|---------|---------|
-| `/shebangpython` | Validate Python shebangs and PEP 723 metadata | `/shebangpython scripts/*.py` |
-| `/modernpython` | Apply modern Python 3.11+ patterns | `/modernpython src/module.py` |
-| `/stinkysnake` | Progressive quality improvement (analysis → planning → implementation) | `/stinkysnake src/` |
-| `/snakepolish` | Implementation phase for stinkysnake (runs until tests pass) | `/snakepolish src/` |
-| `/python3-review` | Comprehensive code review | `/python3-review src/` |
+| `/python3-development:shebangpython` | Validate Python shebangs and PEP 723 metadata | `/python3-development:shebangpython scripts/*.py` |
+| `/python3-development:modernpython` | Apply modern Python 3.11+ patterns | `/python3-development:modernpython src/module.py` |
+| `/python3-development:stinkysnake` | Progressive quality improvement (analysis → planning → implementation) | `/python3-development:stinkysnake src/` |
+| `/python3-development:snakepolish` | Implementation phase for stinkysnake (runs until tests pass) | `/python3-development:snakepolish src/` |
+| `/python3-development:python3-review` | Comprehensive code review | `/python3-development:python3-review src/` |
 
 ### Feature Development
 
 | Command | Purpose | Example |
 |---------|---------|---------|
-| `/python3-add-feature` | Guided feature addition with TDD | `/python3-add-feature Add CSV export` |
-| `/create-feature-task` | Structure feature development with tracking | `/create-feature-task OAuth2 login` |
-| `/add-new-feature` | SAM-style feature workflow (discovery → analysis → tasks) | `/add-new-feature user authentication` |
-| `/implement-feature` | Execute SAM task plan by delegating ready tasks | `/implement-feature plan/tasks-auth.md` |
-| `/start-task` | Start or complete specific task in SAM task file | `/start-task plan/tasks-auth.md --task 1.1` |
-| `/complete-implementation` | Holistic completion (review, verify, integrate, document) | `/complete-implementation plan/tasks-auth.md` |
+| `/python3-development:python3-add-feature` | Guided feature addition with TDD | `/python3-development:python3-add-feature Add CSV export` |
+| `/python3-development:create-feature-task` | Structure feature development with tracking | `/python3-development:create-feature-task OAuth2 login` |
+| `/python3-development:add-new-feature` | SAM-style feature workflow (discovery → analysis → tasks) | `/python3-development:add-new-feature user authentication` |
+| `/python3-development:implement-feature` | Execute SAM task plan by delegating ready tasks | `/python3-development:implement-feature plan/tasks-auth.md` |
+| `/python3-development:start-task` | Start or complete specific task in SAM task file | `/python3-development:start-task plan/tasks-auth.md --task 1.1` |
+| `/python3-development:complete-implementation` | Holistic completion (review, verify, integrate, document) | `/python3-development:complete-implementation plan/tasks-auth.md` |
 
 ### Testing
 
 | Command | Purpose | Example |
 |---------|---------|---------|
-| `/comprehensive-test-review` | Audit test quality and coverage | `/comprehensive-test-review tests/` |
-| `/analyze-test-failures` | Investigate failing tests systematically | `/analyze-test-failures test_auth.py` |
-| `/test-failure-mindset` | Set balanced test investigation approach | `/test-failure-mindset` |
+| `/python3-development:comprehensive-test-review` | Audit test quality and coverage | `/python3-development:comprehensive-test-review tests/` |
+| `/python3-development:analyze-test-failures` | Investigate failing tests systematically | `/python3-development:analyze-test-failures test_auth.py` |
+| `/python3-development:test-failure-mindset` | Set balanced test investigation approach | `/python3-development:test-failure-mindset` |
 
 ### Packaging & Publishing
 
 | Command | Purpose | Example |
 |---------|---------|---------|
-| `/python3-packaging` | Configure pyproject.toml | `/python3-packaging` |
-| `/python3-publish-release-pipeline` | Set up CI/CD for PyPI | `/python3-publish-release-pipeline github` |
+| `/python3-development:python3-packaging` | Configure pyproject.toml | `/python3-development:python3-packaging` |
+| `/python3-development:python3-publish-release-pipeline` | Set up CI/CD for PyPI | `/python3-development:python3-publish-release-pipeline github` |
 
 ### Debugging & Task Management
 
 | Command | Purpose | Example |
 |---------|---------|---------|
-| `/python3-bug` | Debug functional issues with logs and specs | `/python3-bug "feature X not working"` |
-| `/clear-cove-task-design` | Write and lint agent task files (CLEAR + CoVe) | `/clear-cove-task-design [draft-task]` |
-| `/generate-task` | Generate single worker task prompt | `/generate-task "Implement login endpoint"` |
-| `/use-command-template` | Create new skills from templates | `/use-command-template "API client wrapper"` |
+| `/python3-development:python3-bug` | Debug functional issues with logs and specs | `/python3-development:python3-bug "feature X not working"` |
+| `/python3-development:clear-cove-task-design` | Write and lint agent task files (CLEAR + CoVe) | `/python3-development:clear-cove-task-design [draft-task]` |
+| `/python3-development:generate-task` | Generate single worker task prompt | `/python3-development:generate-task "Implement login endpoint"` |
+| `/python3-development:use-command-template` | Create new skills from templates | `/python3-development:use-command-template "API client wrapper"` |
 
 ## Claude Improvements
 
@@ -177,16 +177,16 @@ Invoke specific workflows directly:
 
 ```bash
 # Improve code quality progressively
-/stinkysnake src/myapp/
+/python3-development:stinkysnake src/myapp/
 
 # Add a new feature with TDD
-/python3-add-feature "Add rate limiting to API"
+/python3-development:python3-add-feature "Add rate limiting to API"
 
 # Review test coverage
-/comprehensive-test-review tests/
+/python3-development:comprehensive-test-review tests/
 
 # Set up PyPI publishing
-/python3-publish-release-pipeline github
+/python3-development:python3-publish-release-pipeline github
 ```
 
 ### Automatic Application

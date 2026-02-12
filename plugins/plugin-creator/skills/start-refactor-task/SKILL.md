@@ -190,7 +190,7 @@ Before implementing:
 ```
 # Good: Verify format before writing
 READ ./plugins/example-plugin/skills/example/SKILL.md  # Check actual format
-Skill(skill="claude-skills-overview-2026")  # Load format reference
+Skill(skill="plugin-creator:claude-skills-overview-2026")  # Load format reference
 ```
 
 ### Quality Standards

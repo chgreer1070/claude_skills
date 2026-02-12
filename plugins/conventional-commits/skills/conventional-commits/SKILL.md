@@ -411,7 +411,7 @@ echo 'feat(api): add new endpoint' | npx commitlint
 For comprehensive commitlint configuration guidance, activate the commitlint skill:
 
 ```text
-Skill(command: "commitlint")
+Skill(command: "commitlint:commitlint")
 ```
 
 ### Pre-commit Hooks
@@ -419,7 +419,7 @@ Skill(command: "commitlint")
 Enforce commit message format with pre-commit hooks. For complete pre-commit setup guidance, activate the pre-commit skill:
 
 ```text
-Skill(command: "pre-commit")
+Skill(command: "python3-development:pre-commit")
 ```
 
 ### Changelog Generation

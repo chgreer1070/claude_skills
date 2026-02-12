@@ -8,7 +8,7 @@ user-invocable: true
 
 # Snake Polish - Implementation Phase
 
-Execute the implementation plan from `/stinkysnake` Phase 9. Implement functions following the modernization plan, run tests iteratively until all pass.
+Execute the implementation plan from `/python3-development:stinkysnake` Phase 9. Implement functions following the modernization plan, run tests iteratively until all pass.
 
 ## Arguments
 
@@ -18,10 +18,10 @@ $ARGUMENTS
 
 Before invoking this skill, ensure:
 
-1. `/stinkysnake` phases 1-8 completed
+1. `/python3-development:stinkysnake` phases 1-8 completed
 2. Modernization plan reviewed and refined
 3. Interfaces designed and documented
-4. Failing tests written by `python-pytest-architect`
+4. Failing tests written by `python3-development:python-pytest-architect`
 
 ## Instructions
 
