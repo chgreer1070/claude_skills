@@ -158,7 +158,7 @@ def parse_plugin_path(filepath: str) -> PluginPathInfo | None:
         {
             'plugin': 'plugin-name',
             'component_type': 'skill' | 'agent' | 'command' | 'hook' | 'mcp' | None,
-            'component_path': 'skills/skill-name/SKILL.md',
+            'component_path': 'skills/skill-name',
         }
     """
     parts = Path(filepath).parts
@@ -182,8 +182,15 @@ def parse_plugin_path(filepath: str) -> PluginPathInfo | None:
 
         match component_dir:
             case "skills" if len(parts) >= _MIN_SKILL_PATH_PARTS:
-                result["component_type"] = "skill"
-                result["component_path"] = "/".join(parts[2:])
+                # parts[3] is the top-level skill directory name
+                skill_dir_name = parts[3]
+                if skill_dir_name.startswith("."):
+                    # Hidden directories (e.g. .claude/) are not skills
+                    pass
+                else:
+                    result["component_type"] = "skill"
+                    # Register the skill directory, not the full file path
+                    result["component_path"] = f"skills/{skill_dir_name}"
             case "agents" if filepath.endswith(".md"):
                 result["component_type"] = "agent"
                 result["component_path"] = "/".join(parts[2:])
@@ -739,9 +746,14 @@ def _is_skill_user_invocable(skill_md_path: Path) -> bool:
 def _discover_invocable_skills(plugin_dir: Path) -> list[str]:
     """Discover skills with ``user-invocable: true`` for the commands array.
 
-    User-invocable skills appear as ``/skill-name`` shortcuts in Claude Code
-    and must be registered in both the ``skills`` and ``commands`` arrays
-    of plugin.json.
+    User-invocable skills appear as ``/skill-name`` shortcuts in Claude Code.
+    Registration in the ``skills`` array alone is sufficient -- Claude Code
+    deduplicates entries that appear in both ``skills`` and ``commands``.
+
+    This function exists as a compatibility measure from Claude Code v2.19
+    when skills did not reliably appear as commands without explicit
+    ``commands`` array registration. As of 2026-02-13 testing, the
+    duplication is harmless but unnecessary.
 
     Args:
         plugin_dir: Root directory of the plugin
