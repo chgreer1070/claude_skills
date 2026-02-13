@@ -36,6 +36,7 @@ Open-source developer utilities, file processing, and infrastructure tools.
 
 | Resource | Description | Version | Last Updated |
 |----------|-------------|---------|--------------|
+| [GrepAI](./developer-tools/grepai.md) | Semantic code search CLI with AI embeddings (Ollama/OpenAI), call graph tracing (12 languages), built-in MCP server, and 27 AI agent skills | v0.31.0 | 2026-02-13 |
 | [VERT](./developer-tools/vert.md) | WebAssembly-based file converter (250+ formats) with client-side processing via FFmpeg, ImageMagick, and Pandoc WASM | 0.0.1 | 2026-02-08 |
 | [Loguru](./developer-tools/loguru.md) | Zero-config Python logging library replacing stdlib `logging` with modern formatting, structured output, file rotation, and exception catching | 0.7.3 | 2026-02-09 |
 
