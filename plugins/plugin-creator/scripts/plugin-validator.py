@@ -112,13 +112,22 @@ NR002 = "NR002"  # Namespace reference points outside plugin directory
 CLAUDE_TIMEOUT = 3  # seconds
 
 
-def _is_claude_code_remote() -> bool:
-    """Detect if running inside a Claude Code remote cloud session.
+def _should_skip_claude_validate() -> bool:
+    """Detect if running in a context where claude CLI validation should be skipped.
 
-    Checks for ``CLAUDE_CODE_REMOTE=true`` which is set in all
-    cloud-hosted Claude Code agent environments.
+    Skips validation when either:
+    - CLAUDE_CODE_REMOTE=true (cloud-hosted Claude Code sessions)
+    - CLAUDECODE is set (nested Claude Code session detected by Anthropic)
+
+    Returns:
+        True if claude plugin validate should be skipped, False otherwise
     """
-    return os.environ.get("CLAUDE_CODE_REMOTE", "").lower() == "true"
+    # Check for remote cloud session
+    if os.environ.get("CLAUDE_CODE_REMOTE", "").lower() == "true":
+        return True
+
+    # Check for nested Claude Code session (CLAUDECODE env var set by Anthropic)
+    return bool(os.environ.get("CLAUDECODE"))
 
 
 # ============================================================================
@@ -2144,14 +2153,14 @@ class PluginStructureValidator:
                 passed=True, errors=errors, warnings=warnings, info=info
             )
 
-        # Skip claude plugin validate in remote cloud sessions where the
-        # CLI is present but hangs waiting for interactive auth/proxy setup.
-        if _is_claude_code_remote():
+        # Skip claude plugin validate when running inside a Claude Code session
+        # (nested CLI invocations are blocked by Anthropic safety measure).
+        if _should_skip_claude_validate():
             info.append(
                 ValidationIssue(
                     field="(plugin-structure)",
                     severity="info",
-                    message="Skipping claude plugin validate in remote cloud environment",
+                    message="Skipping claude plugin validate (nested CLI sessions not supported)",
                     code=PL001,
                     docs_url=generate_docs_url(PL001),
                 )
