@@ -298,7 +298,7 @@ jobs:
     steps:
       - name: Check all jobs passed
         run: |
-          results="${{ toJSON(needs.*.result) }}"
+          results='${{ toJSON(needs.*.result) }}'
           echo "Job results: $results"
           if echo "$results" | grep -qE '"(failure|cancelled)"'; then
             echo "::error::One or more quality checks failed"
