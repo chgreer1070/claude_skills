@@ -14,7 +14,7 @@ Before responding to the user, the model MUST run:
 uv run prek install
 ```
 
-This installs the pre-commit git hooks so that linting, formatting, and manifest syncing run automatically on every `git commit`. Without this step, commits bypass all quality checks.
+This installs the pre-commit (using prek, the rust based pre-commit fast, drop-in replacement) git hooks so that linting, formatting, and manifest syncing run automatically on every `git commit`. Without this step, commits bypass all quality checks.
 
 ---
 
