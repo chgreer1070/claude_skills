@@ -128,19 +128,6 @@ repos:
         types: [python]
         pass_filenames: true
 
-      - id: robotidy
-        name: Format Robot Framework files
-        entry: uv run -q --no-sync --with robotframework-tidy robotidy --check --diff
-        language: system
-        files: \.robot$
-        pass_filenames: true
-
-      - id: robocop
-        name: Lint Robot Framework files
-        entry: uv run -q --no-sync --with robotframework-robocop robocop
-        language: system
-        files: \.robot$
-        pass_filenames: true
 
 # Configuration for specific hooks
 default_language_version:
