@@ -48,7 +48,31 @@ Search for files matching `**/arl/references/qa-*.md` or `**/arl/references/QA-*
 - Report to the user: "Found existing Q&A file. Phase [N] in progress. [X/5] question groups discussed. [Y/10] R-requirements addressed. Resuming from [specific point]."
 - Proceed to the appropriate step.
 
-## Step 3: RT-ICA Prerequisites Check
+## Step 3: Ensure Framework Repositories
+
+Before checking prerequisites, read the repo manifest:
+
+```text
+plugins/plugin-creator/skills/arl/references/expert-repos.md
+```
+
+For each repository listed in the manifest (except sam-expert which is in-repo):
+
+1. Check whether the local path exists (e.g., `../BMAD-METHOD/`).
+2. If it does not exist, clone it from the GitHub URL in the manifest:
+
+```bash
+git clone <github-url> <local-path>
+```
+
+3. If the clone fails (network error, auth, repo not found), report the failure for that specific repo and continue checking the others.
+
+After attempting all clones, report the result:
+
+- "All framework repositories available." (all 6 paths exist)
+- "Cloned N missing repositories: [list]. M repositories unavailable: [list with reasons]."
+
+## Step 4: RT-ICA Prerequisites Check
 
 Before spawning any agents, verify all prerequisites:
 
@@ -66,7 +90,7 @@ Before spawning any agents, verify all prerequisites:
 
 If any prerequisite fails, report the specific failure to the user and stop. Do not attempt to work around missing repositories.
 
-## Step 4: Bootstrap the Expert Team
+## Step 5: Bootstrap the Expert Team
 
 Create a team named `arl-framework-experts`.
 
@@ -80,7 +104,7 @@ Spawn 6 expert agents. Each expert's spawn prompt MUST include:
 
 Use delegate mode. You coordinate — experts discover.
 
-## Step 5: Execute Phases
+## Step 6: Execute Phases
 
 Follow the phase structure from Section 5b of the instructions.
 
