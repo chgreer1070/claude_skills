@@ -47,8 +47,8 @@ Assess → Plan → Implement → Review → Repeat until converged
 
 **Primary research files (read these first):**
 
-- `plugins/plugin-creator/skills/assessor/references/ARL/autonomous-refinement-loop-research.md`
-- `plugins/plugin-creator/skills/assessor/references/ARL/human-out-of-loop-prerequisites.md`
+- `plugins/plugin-creator/skills/arl/references/autonomous-refinement-loop-research.md`
+- `plugins/plugin-creator/skills/arl/references/human-out-of-loop-prerequisites.md`
 
 ---
 
@@ -150,14 +150,16 @@ Previous sessions produced synthesis documents and intermediate findings. This s
 
 ## 3. Framework Expert Team
 
-| Expert          | Assigned Repository        |
-| --------------- | -------------------------- |
-| bmad-expert     | ../BMAD-METHOD/            |
-| gastown-expert  | ../gastown/                |
-| gsd-expert      | ../get-shit-done/          |
-| octocode-expert | ../octocode-mcp/           |
-| ralph-expert    | ../ralph-orchestrator/     |
-| sam-expert      | ./methodology_development/ |
+| Expert | Assigned Repository | GitHub URL |
+| --- | --- | --- |
+| bmad-expert | ../BMAD-METHOD/ | <https://github.com/bmad-code-org/BMAD-METHOD> |
+| gastown-expert | ../gastown/ | <https://github.com/steveyegge/gastown> |
+| gsd-expert | ../get-shit-done/ | <https://github.com/glittercowboy/get-shit-done> |
+| octocode-expert | ../octocode-mcp/ | <https://github.com/bgauryy/octocode-mcp> |
+| ralph-expert | ../ralph-orchestrator/ | <https://github.com/mikeyobrien/ralph-orchestrator> |
+| sam-expert | ./methodology_development/ | (in-repo) |
+
+See [expert-repos.md](./expert-repos.md) for the full manifest with URL sources.
 
 Experts discover and report what their framework contributes — do not prescribe answers. The orchestrator asks; experts respond from their own analysis of the code.
 
