@@ -1,1 +1,1 @@
-/home/ubuntulinuxqa2/repos/claude_skills/plugins/agent-orchestration/skills/agent-orchestration/references/accessing_online_resources.md
+../../../../agent-orchestration/skills/agent-orchestration/references/accessing_online_resources.md
