@@ -1047,56 +1047,60 @@ quality-gate:
 
 <gh_cli_usage>
 
-The `gh` CLI is available in this environment for GitHub API operations.
+### Installation
 
-**Installation verification**:
+`gh` is **not pre-installed** in this environment. Install it before first use:
 
 ```bash
-gh --version
+(type -p gh > /dev/null) || {
+  curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+    | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+  sudo apt-get update -qq && sudo apt-get install -qq -y gh
+}
 ```
 
-**Authentication**: `gh` is pre-authenticated via `GITHUB_TOKEN` in CI environments. For local use, authenticate with:
+### Authentication and Repo Detection
 
-```bash
-gh auth login
+`GITHUB_TOKEN` is set in the environment — `gh` authenticates automatically.
+
+**However**, the git remote points to a **local proxy** (`127.0.0.1`), not `github.com`. `gh` cannot auto-detect the repository from the remote URL. Every `gh` command will fail with:
+
+```text
+failed to determine base repo: none of the git remotes configured for this repository point to a known GitHub host.
 ```
 
-**Common operations**:
+**Fix**: Pass `-R` (or `--repo`) on every command:
 
 ```bash
-# Check workflow run status
-gh run list --workflow=code-quality.yml --limit=5
+gh <command> -R Jamie-BitFlight/claude_skills
+```
 
-# View a specific run's jobs and their statuses
-gh run view <run-id>
+### Usage Examples
 
-# View job logs for a failed step
-gh run view <run-id> --log-failed
+All examples include the required `-R` flag:
 
-# Watch a running workflow
-gh run watch <run-id>
+```bash
+# List recent workflow runs
+gh run list -R Jamie-BitFlight/claude_skills --limit=5
 
-# Re-run failed jobs only
-gh run rerun <run-id> --failed
+# View a specific run
+gh run view <run-id> -R Jamie-BitFlight/claude_skills
+
+# View failed job logs
+gh run view <run-id> -R Jamie-BitFlight/claude_skills --log-failed
+
+# Check PR status
+gh pr checks <pr-number> -R Jamie-BitFlight/claude_skills
 
 # Create a PR
-gh pr create --title "title" --body "body"
-
-# View PR status checks
-gh pr checks <pr-number>
-
-# View PR review status
-gh pr view <pr-number>
+gh pr create -R Jamie-BitFlight/claude_skills --title "title" --body "body"
 ```
 
-**When to use `gh` in this repository**:
+### When to Use
 
-1. After pushing workflow changes — verify the run succeeded with `gh run list` and `gh run view`
-2. When debugging CI failures — use `gh run view --log-failed` to read the actual error
-3. When creating PRs — use `gh pr create` with structured body
-4. When checking if advisory jobs are trending toward fixable — use `gh run view` to inspect individual job outcomes
-
-**The model MUST use `gh` to verify workflow changes when possible** rather than assuming the push succeeded. Observing the actual CI output is part of Phase 5 (Verify) in the CI Workflow Modification Protocol above.
+The model MUST use `gh` to verify workflow changes rather than assuming the push succeeded. Observing actual CI output is part of Phase 5 (Verify) in the CI Workflow Modification Protocol above.
 
 </gh_cli_usage>
 
