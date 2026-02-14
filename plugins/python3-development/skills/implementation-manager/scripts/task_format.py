@@ -245,7 +245,8 @@ def normalize_status(old_status: str) -> str:
 
     # Remove common Unicode emoji characters
     status_clean = (
-        status_clean.replace("\u2705", "")  # check mark
+        status_clean
+        .replace("\u2705", "")  # check mark
         .replace("\u274c", "")  # cross mark
         .replace("\U0001f504", "")  # counterclockwise arrows
     )
