@@ -123,7 +123,7 @@ repos:
 
       - id: mypy
         name: mypy
-        entry: uv run -q --no-sync --with pep723-loader --with mypy pep723-loader mypy
+        entry: uv run -q --no-sync --with pep723-loader --with mypy pep723-loader mypy --no-incremental
         language: system
         types: [python]
         pass_filenames: true
