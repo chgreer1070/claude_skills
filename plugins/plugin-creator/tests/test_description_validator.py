@@ -5,6 +5,7 @@ Tests:
 - Short description warnings (SK004)
 - Missing trigger phrase warnings (SK005)
 - Boundary conditions
+- File-type-aware scoping (SK004/SK005 per FileType)
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ import pytest
 # Add parent directory to path to import plugin_validator
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from plugin_validator import DescriptionValidator
+from plugin_validator import DescriptionValidator, FileType
 
 
 class TestDescriptionValidatorBasic:
@@ -412,3 +413,112 @@ description: "Use this, when testing validation!"
 
         # "Use this" should be detected despite comma
         assert not any(issue.code == "SK005" for issue in result.warnings)
+
+
+class TestFileTypeAwareScoping:
+    """Test that SK004 and SK005 are scoped by FileType."""
+
+    def test_command_does_not_receive_sk005(self, tmp_path: Path) -> None:
+        """Test COMMAND file does NOT receive SK005 warning.
+
+        Tests: Commands do not need trigger phrases
+        How: Validate command file with no trigger phrases
+        Why: Commands have different frontmatter schema
+        """
+        command_md = tmp_path / "commands" / "test.md"
+        command_md.parent.mkdir(parents=True, exist_ok=True)
+        command_md.write_text("""---
+description: "A valid command description without trigger phrases here"
+---
+""")
+
+        validator = DescriptionValidator(file_type=FileType.COMMAND)
+        result = validator.validate(command_md)
+
+        assert result.passed is True
+        assert not any(issue.code == "SK005" for issue in result.warnings)
+
+    def test_command_does_not_receive_sk004(self, tmp_path: Path) -> None:
+        """Test COMMAND file does NOT receive SK004 warning.
+
+        Tests: Commands are exempt from minimum description length
+        How: Validate command file with short description
+        Why: Commands have different frontmatter schema
+        """
+        command_md = tmp_path / "commands" / "test.md"
+        command_md.parent.mkdir(parents=True, exist_ok=True)
+        command_md.write_text("""---
+description: "short"
+---
+""")
+
+        validator = DescriptionValidator(file_type=FileType.COMMAND)
+        result = validator.validate(command_md)
+
+        assert result.passed is True
+        assert not any(issue.code == "SK004" for issue in result.warnings)
+
+    def test_agent_does_not_receive_sk005(self, tmp_path: Path) -> None:
+        """Test AGENT file does NOT receive SK005 warning.
+
+        Tests: Agents do not need trigger phrases
+        How: Validate agent file with good description but no trigger phrases
+        Why: Trigger phrases are only relevant for skill discovery
+        """
+        agent_md = tmp_path / "agents" / "test.md"
+        agent_md.parent.mkdir(parents=True, exist_ok=True)
+        agent_md.write_text("""---
+name: test-agent
+description: "A valid agent description without any trigger phrases here"
+---
+""")
+
+        validator = DescriptionValidator(file_type=FileType.AGENT)
+        result = validator.validate(agent_md)
+
+        assert result.passed is True
+        assert not any(issue.code == "SK005" for issue in result.warnings)
+
+    def test_agent_still_receives_sk004_for_short_description(
+        self, tmp_path: Path
+    ) -> None:
+        """Test AGENT file still receives SK004 for short description.
+
+        Tests: Agents still need minimum description length
+        How: Validate agent file with short description
+        Why: SK004 applies to both SKILL and AGENT files
+        """
+        agent_md = tmp_path / "agents" / "test.md"
+        agent_md.parent.mkdir(parents=True, exist_ok=True)
+        agent_md.write_text("""---
+name: test-agent
+description: "short"
+---
+""")
+
+        validator = DescriptionValidator(file_type=FileType.AGENT)
+        result = validator.validate(agent_md)
+
+        assert result.passed is True
+        assert any(issue.code == "SK004" for issue in result.warnings)
+
+    def test_skill_still_receives_both_sk004_and_sk005(self, tmp_path: Path) -> None:
+        """Test SKILL file still receives both SK004 and SK005.
+
+        Tests: Skills get full description validation
+        How: Validate skill file with short description and no trigger phrases
+        Why: Skills require both minimum length and trigger phrases
+        """
+        skill_md = tmp_path / "SKILL.md"
+        skill_md.write_text("""---
+description: "test skill"
+---
+""")
+
+        validator = DescriptionValidator(file_type=FileType.SKILL)
+        result = validator.validate(skill_md)
+
+        assert result.passed is True
+        warning_codes = {issue.code for issue in result.warnings}
+        assert "SK004" in warning_codes
+        assert "SK005" in warning_codes

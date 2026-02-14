@@ -539,3 +539,123 @@ class TestWorkflowIntegration:
 
         assert result.exit_code == 0
         assert "\x1b[" not in result.stdout  # No ANSI codes
+
+
+class TestFileGroupedReporting:
+    """Test that reports count unique files, not validator invocations."""
+
+    def test_single_skill_shows_total_files_1(
+        self, cli_runner: CliRunner, sample_skill_dir: Path, no_color_env: None
+    ) -> None:
+        """Verify validating 1 skill file reports 'Total files: 1'.
+
+        Tests: Summary counts unique files, not validator invocations
+        How: Validate a single skill (which runs 7 validators), check summary line
+        Why: Previous bug counted each validator as a separate file
+        """
+        skill_file = sample_skill_dir / "SKILL.md"
+        result = cli_runner.invoke(
+            plugin_validator.app, ["--no-color", str(skill_file)]
+        )
+
+        assert result.exit_code == 0
+        assert "Total files: 1" in result.stdout, (
+            f"Expected 'Total files: 1' but got: {result.stdout}"
+        )
+
+    def test_two_files_shows_total_files_2(
+        self, cli_runner: CliRunner, tmp_path: Path, no_color_env: None
+    ) -> None:
+        """Verify validating 2 files reports 'Total files: 2'.
+
+        Tests: Summary counts unique file paths across multiple arguments
+        How: Validate two separate skill files, check summary line
+        Why: Ensures count reflects actual file count regardless of validator count
+        """
+        # Create two valid skill files
+        for name in ("skill-a", "skill-b"):
+            skill_dir = tmp_path / name
+            skill_dir.mkdir()
+            (skill_dir / "SKILL.md").write_text(
+                "---\n"
+                "description: Use this skill when testing file count reporting\n"
+                "tools: Read, Write\n"
+                "model: sonnet\n"
+                "---\n\n# Test Skill\n\nContent here.\n"
+            )
+
+        skill_a = tmp_path / "skill-a" / "SKILL.md"
+        skill_b = tmp_path / "skill-b" / "SKILL.md"
+        result = cli_runner.invoke(
+            plugin_validator.app, ["--no-color", str(skill_a), str(skill_b)]
+        )
+
+        assert result.exit_code == 0
+        assert "Total files: 2" in result.stdout, (
+            f"Expected 'Total files: 2' but got: {result.stdout}"
+        )
+
+    def test_validator_names_in_verbose_output(
+        self, cli_runner: CliRunner, tmp_path: Path, no_color_env: None
+    ) -> None:
+        """Verify validator class names appear in per-file output sections.
+
+        Tests: Each validator result is labeled with the validator class name
+        How: Create file with a validation error, check verbose output
+        Why: Users need to know which validator produced each result
+        """
+        # Create skill with uppercase name to trigger NameFormatValidator error
+        skill_dir = tmp_path / "bad-validator-name-skill"
+        skill_dir.mkdir()
+        skill_file = skill_dir / "SKILL.md"
+        skill_file.write_text(
+            "---\n"
+            "name: Bad-Name\n"
+            "description: Test skill for checking validator names in output\n"
+            "---\n\n# Test Skill\n"
+        )
+
+        result = cli_runner.invoke(
+            plugin_validator.app, ["--no-color", str(skill_file)]
+        )
+
+        # Should contain validator class names in output
+        assert "NameFormatValidator" in result.stdout, (
+            f"Expected 'NameFormatValidator' in output: {result.stdout}"
+        )
+        assert "FrontmatterValidator" in result.stdout, (
+            f"Expected 'FrontmatterValidator' in output: {result.stdout}"
+        )
+
+    def test_file_passes_only_when_all_validators_pass(
+        self, cli_runner: CliRunner, tmp_path: Path, no_color_env: None
+    ) -> None:
+        """Verify a file is counted as failed when any validator fails.
+
+        Tests: File-level pass/fail aggregates across all its validators
+        How: Create a file where one validator fails, check it counts as failed
+        Why: A file should only pass if ALL its validators pass
+        """
+        # Create skill with uppercase name (fails NameFormatValidator)
+        skill_dir = tmp_path / "partial-fail-skill"
+        skill_dir.mkdir()
+        skill_file = skill_dir / "SKILL.md"
+        skill_file.write_text(
+            "---\n"
+            "name: Bad-Name\n"
+            "description: Test skill for partial failure counting\n"
+            "---\n\n# Test Skill\n"
+        )
+
+        result = cli_runner.invoke(
+            plugin_validator.app, ["--no-color", str(skill_file)]
+        )
+
+        # Should show failure
+        assert result.exit_code == 1
+        assert "Failed: 1" in result.stdout, (
+            f"Expected 'Failed: 1' but got: {result.stdout}"
+        )
+        assert "Total files: 1" in result.stdout, (
+            f"Expected 'Total files: 1' but got: {result.stdout}"
+        )

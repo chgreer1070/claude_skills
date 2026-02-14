@@ -24,6 +24,7 @@ Token-based complexity measurement replaces line counting for accurate AI cost e
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -104,6 +105,14 @@ PL003 = "PL003"  # Missing required field `name` in plugin.json
 PL004 = "PL004"  # Component path does not start with `./`
 PL005 = "PL005"  # Referenced component file does not exist
 
+# Command Errors (CM001)
+CM001 = "CM001"  # Command-specific validation (reserved)
+
+# Hook Errors (HK001-HK003)
+HK001 = "HK001"  # Invalid hooks.json structure
+HK002 = "HK002"  # Invalid event type in hooks.json
+HK003 = "HK003"  # Invalid hook entry structure
+
 # Namespace Reference Errors (NR001-NR002)
 NR001 = "NR001"  # Namespace reference target does not exist
 NR002 = "NR002"  # Namespace reference points outside plugin directory
@@ -142,6 +151,8 @@ class FileType(StrEnum):
     AGENT = "agent"
     COMMAND = "command"
     PLUGIN = "plugin"
+    HOOK_SCRIPT = "hook_script"
+    HOOK_CONFIG = "hook_config"
     UNKNOWN = "unknown"
 
     @staticmethod
@@ -162,6 +173,10 @@ class FileType(StrEnum):
             return FileType.AGENT
         if "commands" in path.parts:
             return FileType.COMMAND
+        if path.name == "hooks.json":
+            return FileType.HOOK_CONFIG
+        if path.suffix == ".js" and "hooks" in path.parts:
+            return FileType.HOOK_SCRIPT
         return FileType.UNKNOWN
 
 
@@ -203,6 +218,12 @@ class ValidationResult:
     errors: list[ValidationIssue]
     warnings: list[ValidationIssue]
     info: list[ValidationIssue]
+
+
+# Type alias: maps each unique file path to a list of (validator_name, result) pairs.
+# This groups validator results by file so reports count unique files, not validator
+# invocations.
+FileResults = dict[Path, list[tuple[str, ValidationResult]]]
 
 
 @dataclass(frozen=True)
@@ -757,7 +778,7 @@ class NamespaceReferenceValidator:
                     found = self._resolve_skill_reference(plugins_root, plugin, name)
                     expected = (
                         f"plugins/{plugin}/skills/{name}/SKILL.md "
-                        f"or plugins/{plugin}/skills/*/{name}/SKILL.md"
+                        f"or plugins/{plugin}/skills/{{category}}/{name}/SKILL.md"
                     )
                 case "agent":
                     # Skip built-in agent names
@@ -769,7 +790,7 @@ class NamespaceReferenceValidator:
                     found = self._resolve_command_reference(plugins_root, plugin, name)
                     expected = (
                         f"plugins/{plugin}/skills/{name}/SKILL.md, "
-                        f"plugins/{plugin}/skills/*/{name}/SKILL.md, "
+                        f"plugins/{plugin}/skills/{{category}}/{name}/SKILL.md, "
                         f"or plugins/{plugin}/commands/{name}.md"
                     )
                 case _:
@@ -1791,13 +1812,23 @@ class DescriptionValidator:
     """Validates description field quality.
 
     Checks:
-    - Minimum length (20 characters)
-    - Presence of trigger phrases to help users know when to use the skill/agent/command
+    - Minimum length (20 characters) — SKILL and AGENT files only
+    - Presence of trigger phrases — SKILL files only
 
     Both checks produce warnings, not errors, since description quality is subjective.
+    Commands have different frontmatter schemas and do not require trigger phrases.
 
     Architecture lines 1092-1113, Task T5 lines 602-672
     """
+
+    def __init__(self, file_type: FileType = FileType.SKILL) -> None:
+        """Initialize with file type to scope validation checks.
+
+        Args:
+            file_type: The type of file being validated. SK004 (too short) applies
+                to SKILL and AGENT files. SK005 (missing triggers) applies to SKILL only.
+        """
+        self.file_type = file_type
 
     def validate(self, path: Path) -> ValidationResult:
         """Validate description field in frontmatter.
@@ -1868,8 +1899,11 @@ class DescriptionValidator:
                 passed=True, errors=errors, warnings=warnings, info=info
             )
 
-        # Check minimum length
-        if len(description) < MIN_DESCRIPTION_LENGTH:
+        # Check minimum length — SKILL and AGENT files only (not COMMAND)
+        if (
+            self.file_type in {FileType.SKILL, FileType.AGENT}
+            and len(description) < MIN_DESCRIPTION_LENGTH
+        ):
             warnings.append(
                 ValidationIssue(
                     field="description",
@@ -1881,23 +1915,24 @@ class DescriptionValidator:
                 )
             )
 
-        # Check for trigger phrases (case-insensitive)
-        description_lower = description.lower()
-        has_trigger = any(
-            phrase in description_lower for phrase in REQUIRED_TRIGGER_PHRASES
-        )
-
-        if not has_trigger:
-            warnings.append(
-                ValidationIssue(
-                    field="description",
-                    severity="warning",
-                    message="Description missing trigger phrases",
-                    code=SK005,
-                    docs_url=generate_docs_url(SK005),
-                    suggestion=f"Include at least one trigger phrase: {', '.join(REQUIRED_TRIGGER_PHRASES)}",
-                )
+        # Check for trigger phrases (case-insensitive) — SKILL files only
+        if self.file_type == FileType.SKILL:
+            description_lower = description.lower()
+            has_trigger = any(
+                phrase in description_lower for phrase in REQUIRED_TRIGGER_PHRASES
             )
+
+            if not has_trigger:
+                warnings.append(
+                    ValidationIssue(
+                        field="description",
+                        severity="warning",
+                        message="Description missing trigger phrases",
+                        code=SK005,
+                        docs_url=generate_docs_url(SK005),
+                        suggestion=f"Include at least one trigger phrase: {', '.join(REQUIRED_TRIGGER_PHRASES)}",
+                    )
+                )
 
         # Pass if no errors (warnings don't fail validation)
         passed = len(errors) == 0
@@ -2414,6 +2449,351 @@ class PluginStructureValidator:
 
 
 # ============================================================================
+# HOOK VALIDATOR
+# ============================================================================
+
+
+class HookValidator:
+    """Validates Claude Code hook files.
+
+    For HOOK_CONFIG (hooks.json): validates JSON structure, event types, hook entries.
+    For HOOK_SCRIPT (.js in hooks/): validates file exists and has shebang.
+    """
+
+    VALID_EVENT_TYPES: ClassVar[frozenset[str]] = frozenset({
+        "PreToolUse",
+        "PostToolUse",
+        "Notification",
+        "SubagentStop",
+        "Stop",
+    })
+
+    VALID_HOOK_TYPES: ClassVar[frozenset[str]] = frozenset({"command", "prompt"})
+
+    def validate(self, path: Path) -> ValidationResult:
+        """Validate a hook config or hook script file.
+
+        Args:
+            path: Path to hooks.json or .js hook script
+
+        Returns:
+            ValidationResult with errors/warnings for hook issues
+        """
+        if path.name == "hooks.json":
+            return self._validate_hook_config(path)
+        return self._validate_hook_script(path)
+
+    def can_fix(self) -> bool:
+        """Check if validator supports auto-fixing.
+
+        Returns:
+            False (hook validation cannot be auto-fixed)
+        """
+        return False
+
+    def fix(self, path: Path) -> list[str]:
+        """Auto-fix hook issues (not supported).
+
+        Args:
+            path: Path to hook file to fix
+
+        Raises:
+            NotImplementedError: Hook validation cannot be auto-fixed
+
+        Returns:
+            Never returns (always raises)
+        """
+        raise NotImplementedError("Hook validation cannot be auto-fixed.")
+
+    def _validate_hook_config(self, path: Path) -> ValidationResult:
+        """Validate hooks.json structure and contents.
+
+        Checks:
+        1. Valid JSON (HK001 if invalid)
+        2. Top-level has "hooks" key that is a dict (HK001 if not)
+        3. Each key in hooks is a valid event type (HK002 if not)
+        4. Each event type value is a list of hook groups (HK003)
+        5. Each hook group has "hooks" key with list of entries (HK003)
+        6. Each entry has valid "type" field (HK003)
+        7. "command" type requires "command" field (HK003)
+        8. "prompt" type requires "prompt" field (HK003)
+
+        Args:
+            path: Path to hooks.json file
+
+        Returns:
+            ValidationResult with errors for structural issues
+        """
+        errors: list[ValidationIssue] = []
+        warnings: list[ValidationIssue] = []
+        info: list[ValidationIssue] = []
+
+        # Read and parse JSON
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError as e:
+            errors.append(
+                ValidationIssue(
+                    field="(file)",
+                    severity="error",
+                    message=f"Could not read file: {e}",
+                    code=HK001,
+                    docs_url=generate_docs_url(HK001),
+                )
+            )
+            return ValidationResult(
+                passed=False, errors=errors, warnings=warnings, info=info
+            )
+
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as e:
+            errors.append(
+                ValidationIssue(
+                    field="(json)",
+                    severity="error",
+                    message=f"Invalid JSON syntax: {e}",
+                    code=HK001,
+                    docs_url=generate_docs_url(HK001),
+                    suggestion="Fix JSON syntax errors in hooks.json",
+                )
+            )
+            return ValidationResult(
+                passed=False, errors=errors, warnings=warnings, info=info
+            )
+
+        # Check top-level structure
+        if not isinstance(data, dict) or "hooks" not in data:
+            errors.append(
+                ValidationIssue(
+                    field="hooks",
+                    severity="error",
+                    message="Missing required top-level 'hooks' key",
+                    code=HK001,
+                    docs_url=generate_docs_url(HK001),
+                    suggestion='hooks.json must have structure: {"hooks": {...}}',
+                )
+            )
+            return ValidationResult(
+                passed=False, errors=errors, warnings=warnings, info=info
+            )
+
+        hooks_obj = data["hooks"]
+        if not isinstance(hooks_obj, dict):
+            errors.append(
+                ValidationIssue(
+                    field="hooks",
+                    severity="error",
+                    message="'hooks' value must be an object",
+                    code=HK001,
+                    docs_url=generate_docs_url(HK001),
+                )
+            )
+            return ValidationResult(
+                passed=False, errors=errors, warnings=warnings, info=info
+            )
+
+        # Validate each event type
+        for event_type, hook_groups in hooks_obj.items():
+            if event_type not in self.VALID_EVENT_TYPES:
+                errors.append(
+                    ValidationIssue(
+                        field=f"hooks.{event_type}",
+                        severity="error",
+                        message=f"Invalid event type: '{event_type}'",
+                        code=HK002,
+                        docs_url=generate_docs_url(HK002),
+                        suggestion=f"Valid event types: {', '.join(sorted(self.VALID_EVENT_TYPES))}",
+                    )
+                )
+                continue
+
+            # Each event type value must be a list of hook groups
+            if not isinstance(hook_groups, list):
+                errors.append(
+                    ValidationIssue(
+                        field=f"hooks.{event_type}",
+                        severity="error",
+                        message=f"Event type '{event_type}' value must be an array of hook groups",
+                        code=HK003,
+                        docs_url=generate_docs_url(HK003),
+                    )
+                )
+                continue
+
+            # Validate each hook group
+            for group_idx, group in enumerate(hook_groups):
+                self._validate_hook_group(group, event_type, group_idx, errors)
+
+        passed = len(errors) == 0
+        return ValidationResult(
+            passed=passed, errors=errors, warnings=warnings, info=info
+        )
+
+    def _validate_hook_group(
+        self,
+        group: object,
+        event_type: str,
+        group_idx: int,
+        errors: list[ValidationIssue],
+    ) -> None:
+        """Validate a single hook group within an event type.
+
+        Args:
+            group: The hook group object to validate
+            event_type: Parent event type name
+            group_idx: Index of this group in the event type array
+            errors: List to append validation errors to
+        """
+        if not isinstance(group, dict):
+            errors.append(
+                ValidationIssue(
+                    field=f"hooks.{event_type}[{group_idx}]",
+                    severity="error",
+                    message="Hook group must be an object",
+                    code=HK003,
+                    docs_url=generate_docs_url(HK003),
+                )
+            )
+            return
+
+        if "hooks" not in group or not isinstance(group["hooks"], list):
+            errors.append(
+                ValidationIssue(
+                    field=f"hooks.{event_type}[{group_idx}]",
+                    severity="error",
+                    message="Hook group must have 'hooks' array",
+                    code=HK003,
+                    docs_url=generate_docs_url(HK003),
+                    suggestion='Each hook group needs: {"hooks": [...]}',
+                )
+            )
+            return
+
+        for entry_idx, entry in enumerate(group["hooks"]):
+            self._validate_hook_entry(entry, event_type, group_idx, entry_idx, errors)
+
+    def _validate_hook_entry(
+        self,
+        entry: object,
+        event_type: str,
+        group_idx: int,
+        entry_idx: int,
+        errors: list[ValidationIssue],
+    ) -> None:
+        """Validate a single hook entry.
+
+        Args:
+            entry: The hook entry object to validate
+            event_type: Parent event type name
+            group_idx: Index of the parent group
+            entry_idx: Index of this entry in the hooks array
+            errors: List to append validation errors to
+        """
+        field_prefix = f"hooks.{event_type}[{group_idx}].hooks[{entry_idx}]"
+
+        if not isinstance(entry, dict):
+            errors.append(
+                ValidationIssue(
+                    field=field_prefix,
+                    severity="error",
+                    message="Hook entry must be an object",
+                    code=HK003,
+                    docs_url=generate_docs_url(HK003),
+                )
+            )
+            return
+
+        hook_type = entry.get("type")
+        if hook_type not in self.VALID_HOOK_TYPES:
+            errors.append(
+                ValidationIssue(
+                    field=f"{field_prefix}.type",
+                    severity="error",
+                    message=f"Invalid or missing hook type: '{hook_type}'",
+                    code=HK003,
+                    docs_url=generate_docs_url(HK003),
+                    suggestion=f"Hook type must be one of: {', '.join(sorted(self.VALID_HOOK_TYPES))}",
+                )
+            )
+            return
+
+        match hook_type:
+            case "command":
+                if "command" not in entry:
+                    errors.append(
+                        ValidationIssue(
+                            field=f"{field_prefix}.command",
+                            severity="error",
+                            message="Hook type 'command' requires 'command' field",
+                            code=HK003,
+                            docs_url=generate_docs_url(HK003),
+                        )
+                    )
+            case "prompt":
+                if "prompt" not in entry:
+                    errors.append(
+                        ValidationIssue(
+                            field=f"{field_prefix}.prompt",
+                            severity="error",
+                            message="Hook type 'prompt' requires 'prompt' field",
+                            code=HK003,
+                            docs_url=generate_docs_url(HK003),
+                        )
+                    )
+
+    def _validate_hook_script(self, path: Path) -> ValidationResult:
+        """Validate a .js hook script file.
+
+        Checks that the script has a shebang line.
+
+        Args:
+            path: Path to .js hook script
+
+        Returns:
+            ValidationResult with warnings for missing shebangs
+        """
+        errors: list[ValidationIssue] = []
+        warnings: list[ValidationIssue] = []
+        info: list[ValidationIssue] = []
+
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError as e:
+            errors.append(
+                ValidationIssue(
+                    field="(file)",
+                    severity="error",
+                    message=f"Could not read file: {e}",
+                    code=HK003,
+                    docs_url=generate_docs_url(HK003),
+                )
+            )
+            return ValidationResult(
+                passed=False, errors=errors, warnings=warnings, info=info
+            )
+
+        # Check for shebang line
+        first_line = content.split("\n", maxsplit=1)[0] if content else ""
+        if not first_line.startswith("#!"):
+            warnings.append(
+                ValidationIssue(
+                    field="shebang",
+                    severity="warning",
+                    message="Hook script missing shebang line",
+                    code=HK003,
+                    docs_url=generate_docs_url(HK003),
+                    suggestion="Add shebang line, e.g.: #!/usr/bin/env node",
+                )
+            )
+
+        passed = len(errors) == 0
+        return ValidationResult(
+            passed=passed, errors=errors, warnings=warnings, info=info
+        )
+
+
+# ============================================================================
 # INTEGRATION LAYER (Architecture lines 274-332, Task T12 lines 1374-1452)
 # ============================================================================
 
@@ -2566,13 +2946,12 @@ class Reporter(Protocol):
     plain text for CI, summary).
     """
 
-    def report(
-        self, results: list[tuple[Path, ValidationResult]], verbose: bool = False
-    ) -> None:
-        """Display validation results.
+    def report(self, file_results: FileResults, verbose: bool = False) -> None:
+        """Display validation results grouped by file.
 
         Args:
-            results: List of (file_path, ValidationResult) tuples from validation
+            file_results: Mapping of file paths to lists of (validator_name,
+                ValidationResult) tuples from validation
             verbose: Whether to show additional detail like info messages
         """
         ...
@@ -2583,10 +2962,10 @@ class Reporter(Protocol):
         """Display summary statistics.
 
         Args:
-            total_files: Total number of files validated
-            passed: Number of files that passed validation
-            failed: Number of files that failed validation
-            warnings: Number of files with warnings (passed but with issues)
+            total_files: Total number of unique files validated
+            passed: Number of files where all validators passed
+            failed: Number of files where any validator failed
+            warnings: Number of files with warnings (all passed but with issues)
         """
         ...
 
@@ -2618,59 +2997,84 @@ class ConsoleReporter:
         self.console = Console(force_terminal=not no_color, no_color=no_color)
         self.no_color = no_color
 
-    def report(
-        self, results: list[tuple[Path, ValidationResult]], verbose: bool = False
-    ) -> None:
-        """Display validation results with Rich formatting.
+    def report(self, file_results: FileResults, verbose: bool = False) -> None:
+        """Display validation results with Rich formatting, grouped by file.
 
         Args:
-            results: List of (file_path, ValidationResult) tuples from validation
+            file_results: Mapping of file paths to lists of (validator_name,
+                ValidationResult) tuples from validation
             verbose: Whether to show info messages in addition to errors/warnings
         """
-        for file_path, result in results:
-            # Collect all issues to display
-            issues_to_show = [*result.errors, *result.warnings]
-            if verbose:
-                issues_to_show.extend(result.info)
+        for file_path, validator_results in file_results.items():
+            # Determine overall file status
+            all_passed = all(r.passed for _, r in validator_results)
+            any_issues = False
 
-            if not issues_to_show:
-                # File passed with no issues
+            for _vname, result in validator_results:
+                issues_to_show = [*result.errors, *result.warnings]
+                if verbose:
+                    issues_to_show.extend(result.info)
+                if issues_to_show:
+                    any_issues = True
+
+            if all_passed and not any_issues:
+                # File passed all validators with no issues
                 self.console.print(
                     f":white_check_mark: [green]{file_path}[/green] - PASSED"
                 )
                 continue
 
-            # File has issues - show them
+            # File has issues - show file header once, then per-validator results
             self.console.print(f"\n[bold]{file_path}[/bold]")
 
-            for issue in issues_to_show:
-                # Format issue with severity icon, code, field, message
-                severity_icons = {
-                    "error": ":cross_mark:",
-                    "warning": ":warning:",
-                    "info": ":information:",
-                }
-                severity_colors = {"error": "red", "warning": "yellow", "info": "blue"}
+            for validator_name, result in validator_results:
+                issues_to_show = [*result.errors, *result.warnings]
+                if verbose:
+                    issues_to_show.extend(result.info)
 
-                icon = severity_icons.get(issue.severity, "")
-                color = severity_colors.get(issue.severity, "white")
-                location = f":{issue.line}" if issue.line else ""
-
-                # Main message line
-                self.console.print(
-                    f"  {icon} [{color}][{issue.code}][/{color}] "
-                    f"{issue.field}{location}: {issue.message}"
-                )
-
-                # Suggestion line (if present)
-                if issue.suggestion:
-                    self.console.print(f"    [dim]→[/dim] {issue.suggestion}")
-
-                # Docs URL line (if present)
-                if issue.docs_url:
+                if not issues_to_show:
+                    # This validator passed
                     self.console.print(
-                        f"    [dim]→[/dim] [link]{issue.docs_url}[/link]"
+                        f"  :white_check_mark: [dim]{validator_name}:[/dim] PASSED"
                     )
+                    continue
+
+                # Show validator name as sub-header
+                status_icon = ":cross_mark:" if not result.passed else ":warning:"
+                self.console.print(f"  {status_icon} [dim]{validator_name}:[/dim]")
+
+                for issue in issues_to_show:
+                    # Format issue with severity icon, code, field, message
+                    severity_icons = {
+                        "error": ":cross_mark:",
+                        "warning": ":warning:",
+                        "info": ":information:",
+                    }
+                    severity_colors = {
+                        "error": "red",
+                        "warning": "yellow",
+                        "info": "blue",
+                    }
+
+                    icon = severity_icons.get(issue.severity, "")
+                    color = severity_colors.get(issue.severity, "white")
+                    location = f":{issue.line}" if issue.line else ""
+
+                    # Main message line
+                    self.console.print(
+                        f"    {icon} [{color}][{issue.code}][/{color}] "
+                        f"{issue.field}{location}: {issue.message}"
+                    )
+
+                    # Suggestion line (if present)
+                    if issue.suggestion:
+                        self.console.print(f"      [dim]→[/dim] {issue.suggestion}")
+
+                    # Docs URL line (if present)
+                    if issue.docs_url:
+                        self.console.print(
+                            f"      [dim]→[/dim] [link]{issue.docs_url}[/link]"
+                        )
 
     def summarize(
         self, total_files: int, passed: int, failed: int, warnings: int
@@ -2678,10 +3082,10 @@ class ConsoleReporter:
         """Display summary statistics with Rich formatting.
 
         Args:
-            total_files: Total number of files validated
-            passed: Number of files that passed validation
-            failed: Number of files that failed validation
-            warnings: Number of files with warnings (passed but with issues)
+            total_files: Total number of unique files validated
+            passed: Number of files where all validators passed
+            failed: Number of files where any validator failed
+            warnings: Number of files with warnings (all passed but with issues)
         """
         from rich.panel import Panel
 
@@ -2735,51 +3139,70 @@ class CIReporter:
     Architecture lines 239-252
     """
 
-    def report(
-        self, results: list[tuple[Path, ValidationResult]], verbose: bool = False
-    ) -> None:
-        """Display validation results in plain text.
+    def report(self, file_results: FileResults, verbose: bool = False) -> None:
+        """Display validation results in plain text, grouped by file.
 
         Args:
-            results: List of (file_path, ValidationResult) tuples from validation
+            file_results: Mapping of file paths to lists of (validator_name,
+                ValidationResult) tuples from validation
             verbose: Whether to show info messages in addition to errors/warnings
         """
-        for file_path, result in results:
-            # Collect all issues to display
-            issues_to_show = [*result.errors, *result.warnings]
-            if verbose:
-                issues_to_show.extend(result.info)
+        for file_path, validator_results in file_results.items():
+            # Determine overall file status
+            all_passed = all(r.passed for _, r in validator_results)
+            any_issues = False
 
-            if not issues_to_show:
-                # File passed with no issues
+            for _vname, result in validator_results:
+                issues_to_show = [*result.errors, *result.warnings]
+                if verbose:
+                    issues_to_show.extend(result.info)
+                if issues_to_show:
+                    any_issues = True
+
+            if all_passed and not any_issues:
+                # File passed all validators with no issues
                 print(f"✓ {file_path} - PASSED")
                 continue
 
-            # File has issues - show them
+            # File has issues - show file header once, then per-validator results
             print(f"\n{file_path}")
 
-            for issue in issues_to_show:
-                # Format: file:line [CODE] field: message
-                severity_prefixes = {
-                    "error": "✗ ERROR",
-                    "warning": "⚠ WARN",
-                    "info": "i INFO",
-                }
-                prefix = severity_prefixes.get(issue.severity, "")
-                location = f":{issue.line}" if issue.line else ""
+            for validator_name, result in validator_results:
+                issues_to_show = [*result.errors, *result.warnings]
+                if verbose:
+                    issues_to_show.extend(result.info)
 
-                # Main message line
-                print(
-                    f"  {prefix} [{issue.code}] {issue.field}{location}: {issue.message}"
-                )
+                if not issues_to_show:
+                    print(f"  ✓ {validator_name}: PASSED")
+                    continue
 
-                # Suggestion line (if present)
-                if issue.suggestion:
-                    print(f"    → {issue.suggestion}")
+                # Show validator name as sub-header
+                status_icon = "✗" if not result.passed else "⚠"
+                print(f"  {status_icon} {validator_name}:")
 
-                # Docs URL line (if present)
-                if issue.docs_url:
-                    print(f"    → {issue.docs_url}")
+                for issue in issues_to_show:
+                    # Format: file:line [CODE] field: message
+                    severity_prefixes = {
+                        "error": "✗ ERROR",
+                        "warning": "⚠ WARN",
+                        "info": "i INFO",
+                    }
+                    prefix = severity_prefixes.get(issue.severity, "")
+                    location = f":{issue.line}" if issue.line else ""
+
+                    # Main message line
+                    print(
+                        f"    {prefix} [{issue.code}] "
+                        f"{issue.field}{location}: {issue.message}"
+                    )
+
+                    # Suggestion line (if present)
+                    if issue.suggestion:
+                        print(f"      → {issue.suggestion}")
+
+                    # Docs URL line (if present)
+                    if issue.docs_url:
+                        print(f"      → {issue.docs_url}")
 
     def summarize(
         self, total_files: int, passed: int, failed: int, warnings: int
@@ -2820,13 +3243,12 @@ class SummaryReporter:
     Architecture lines 239-252
     """
 
-    def report(
-        self, results: list[tuple[Path, ValidationResult]], verbose: bool = False
-    ) -> None:
+    def report(self, file_results: FileResults, verbose: bool = False) -> None:
         """Display nothing (summary-only reporter).
 
         Args:
-            results: List of (file_path, ValidationResult) tuples from validation
+            file_results: Mapping of file paths to lists of (validator_name,
+                ValidationResult) tuples (ignored for summary reporter)
             verbose: Whether to show info messages (ignored for summary reporter)
         """
         # Summary reporter only shows final summary, not per-file results
@@ -2862,10 +3284,10 @@ class SummaryReporter:
 # ============================================================================
 
 
-def _validate_single_path(
+def _validate_single_path(  # noqa: PLR0912, C901
     path: Path, *, check: bool, fix: bool, verbose: bool
-) -> list[tuple[Path, ValidationResult]]:
-    """Validate a single path and return results.
+) -> FileResults:
+    """Validate a single path and return results grouped by file.
 
     Args:
         path: Path to validate.
@@ -2874,7 +3296,7 @@ def _validate_single_path(
         verbose: Show detailed output.
 
     Returns:
-        List of (path, result) tuples from validation.
+        Mapping of file path to list of (validator_class_name, result) tuples.
 
     Raises:
         typer.Exit: If path doesn't exist or file type is unknown.
@@ -2898,7 +3320,7 @@ def _validate_single_path(
         validators.extend([
             FrontmatterValidator(),
             NameFormatValidator(),
-            DescriptionValidator(),
+            DescriptionValidator(file_type=file_type),
         ])
 
         # Namespace reference validation for all capability files
@@ -2916,19 +3338,24 @@ def _validate_single_path(
         # Plugin directories: validate structure
         validators.append(PluginStructureValidator())
 
+    elif file_type in {FileType.HOOK_CONFIG, FileType.HOOK_SCRIPT}:
+        # Hook files: validate structure/shebang
+        validators.append(HookValidator())
+
     else:
         # Unknown type
         typer.echo(f"Error: Cannot determine file type for: {path}", err=True)
         typer.echo(
-            "Expected: SKILL.md, agent .md, command .md, or plugin directory", err=True
+            "Expected: SKILL.md, agent .md, command .md, hook file, or plugin directory",
+            err=True,
         )
         raise typer.Exit(2) from None
 
-    # Run validation
-    results: list[tuple[Path, ValidationResult]] = []
+    # Run validation — group results by file path with validator class names
+    validator_results: list[tuple[str, ValidationResult]] = []
     for validator in validators:
         result = validator.validate(path)
-        results.append((path, result))
+        validator_results.append((type(validator).__name__, result))
 
     # Apply fixes if requested and validator supports it
     if fix:
@@ -2943,12 +3370,12 @@ def _validate_single_path(
 
         # Re-validate after fixes
         if fixes_applied:
-            results = []
+            validator_results = []
             for validator in validators:
                 result = validator.validate(path)
-                results.append((path, result))
+                validator_results.append((type(validator).__name__, result))
 
-    return results
+    return {path: validator_results}
 
 
 def main(
@@ -3001,10 +3428,17 @@ def main(
             typer.echo("Error: Cannot use both --check and --fix flags", err=True)
             raise typer.Exit(2) from None
 
-        all_results: list[tuple[Path, ValidationResult]] = []
+        all_results: FileResults = {}
         for path in paths:
-            results = _validate_single_path(path, check=check, fix=fix, verbose=verbose)
-            all_results.extend(results)
+            file_results = _validate_single_path(
+                path, check=check, fix=fix, verbose=verbose
+            )
+            # Merge results — extend existing entries if same path appears twice
+            for file_path, validator_results in file_results.items():
+                if file_path in all_results:
+                    all_results[file_path].extend(validator_results)
+                else:
+                    all_results[file_path] = list(validator_results)
 
         # Select reporter based on --no-color flag
         reporter: Reporter
@@ -3013,11 +3447,21 @@ def main(
         # Report results
         reporter.report(all_results, verbose=verbose)
 
-        # Calculate summary statistics
+        # Calculate summary statistics — per unique file, not per validator
         total_files = len(all_results)
-        passed = sum(1 for _, r in all_results if r.passed)
-        failed = sum(1 for _, r in all_results if not r.passed)
-        warnings = sum(1 for _, r in all_results if r.warnings and r.passed)
+        passed = sum(
+            1 for vr_list in all_results.values() if all(r.passed for _, r in vr_list)
+        )
+        failed = sum(
+            1
+            for vr_list in all_results.values()
+            if any(not r.passed for _, r in vr_list)
+        )
+        warnings = sum(
+            1
+            for vr_list in all_results.values()
+            if all(r.passed for _, r in vr_list) and any(r.warnings for _, r in vr_list)
+        )
 
         # Display summary
         reporter.summarize(total_files, passed, failed, warnings)

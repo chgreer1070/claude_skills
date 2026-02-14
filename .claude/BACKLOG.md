@@ -409,6 +409,7 @@ _(Empty)_
 **Source**: Experimental validation of plugin-validator.py against all component types (2026-02-13)
 **Added**: 2026-02-13
 **Last groomed**: 2026-02-13
+**Plan**: plan/tasks-2-validator-ux-coverage.md
 **File**: `./plugins/plugin-creator/scripts/plugin-validator.py` (2934+ lines)
 **Tests**: `./plugins/plugin-creator/tests/` (12 test files, 93% pass rate per QA report)
 **QA report**: `./plugins/plugin-creator/planning/plugin-validator-qa-report.md`
