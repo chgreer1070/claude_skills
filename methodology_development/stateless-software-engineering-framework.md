@@ -1322,3 +1322,15 @@ The `ARTIFACT:DISCOVERY(SCOPE:...)` MUST include (e.g. `discovery-output.md`):
   - Uniqueness verified: Yes
   - Name conflicts resolved: {if any}
 ```
+
+---
+
+## Extensions
+
+### Autonomous Loop Control
+
+SAM is predominantly a single-pass framework — each stage completes before the next begins. For iterative refinement loops (Assess → Plan → Implement → Review → Repeat), see [Autonomous Loop Principles](./autonomous-loop-principles.md), which addresses convergence tracking, oscillation detection, purpose drift detection, and loop health monitoring across iterations.
+
+### Research Methodology
+
+For building evidence-based datasets that inform skills and systems through multi-agent source code analysis, see [Expert Panel Methodology](./expert-panel-methodology.md).

@@ -446,10 +446,11 @@ After splitting, update task content in individual files.
 
 **Phase 4: Adoption** (in progress)
 
-1. ✅ Update task creation workflows to use new format
-2. ⏳ Migrate existing task files to YAML format or directories
-3. ⏳ Mark old format as deprecated in documentation
-4. ⏳ Remove markdown parsing support after migration complete
+1. ✅ Update task creation workflows to use new format (swarm-task-planner, generate-task, start-task updated 2026-02-13)
+2. ✅ Migrated `plan/tasks-1-plugin-linter.md` to `plan/tasks-1-plugin-linter/` directory (proof-of-concept, 2026-02-13)
+3. ⏳ Migrate remaining task files to YAML format or directories
+4. ⏳ Mark old format as deprecated in documentation
+5. ⏳ Remove markdown parsing support after migration complete
 
 ### Conversion Example
 

@@ -4,6 +4,14 @@
 This CLI tool provides commands to query task files for feature implementations,
 returning JSON output for orchestrator consumption.
 
+Supports two task file formats:
+- **YAML frontmatter**: Individual ``.md`` files with ``---`` delimited metadata
+- **Legacy markdown**: Monolithic ``.md`` files with ``## Task X.Y:`` headers
+
+And two organizational structures:
+- **Single file**: All tasks in one ``tasks-*.md`` file
+- **Directory**: One task per ``.md`` file in a ``tasks-*/`` directory
+
 Usage:
     ./implementation_manager.py list-features /path/to/project
     ./implementation_manager.py status /path/to/project prepare-host
@@ -15,13 +23,27 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from dataclasses import dataclass, field
 from enum import IntEnum, StrEnum
 from pathlib import Path
-from typing import Annotated, TypedDict
+from typing import Annotated, Any, TypedDict
 
 import typer
 from rich.console import Console
+
+# task_format.py is a sibling module in the same scripts/ directory.
+# Ensure the script directory is on sys.path for direct execution.
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:  # pragma: no cover
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+from task_format import (  # noqa: E402
+    VALID_STATUSES,
+    has_yaml_frontmatter,
+    normalize_status,
+    parse_yaml_frontmatter,
+)
 
 app = typer.Typer(
     name="implementation-manager",
@@ -42,6 +64,18 @@ class TaskStatus(StrEnum):
     NOT_STARTED = "NOT STARTED"
     IN_PROGRESS = "IN PROGRESS"
     COMPLETE = "COMPLETE"
+    BLOCKED = "BLOCKED"
+
+
+# Mapping from YAML frontmatter status values to TaskStatus enum members.
+# Source: TASK_FILE_FORMAT.md line 283 defines valid statuses as
+# not-started, in-progress, complete, blocked.
+_YAML_STATUS_TO_ENUM: dict[str, TaskStatus] = {
+    "not-started": TaskStatus.NOT_STARTED,
+    "in-progress": TaskStatus.IN_PROGRESS,
+    "complete": TaskStatus.COMPLETE,
+    "blocked": TaskStatus.BLOCKED,
+}
 
 
 class TaskPriority(IntEnum):
@@ -63,7 +97,7 @@ class Task:
     """Represents a single task parsed from a task file.
 
     Args:
-        id: Task identifier (e.g., "1.1", "2.3")
+        id: Task identifier (e.g., "1.1", "T1", "T15")
         name: Task name/title
         status: Current task status
         dependencies: List of dependency task IDs
@@ -105,12 +139,12 @@ class Task:
 
 @dataclass
 class Feature:
-    """Represents a feature with its task file.
+    """Represents a feature with its task file or task directory.
 
     Args:
-        slug: Feature slug derived from filename
-        task_file: Filename of the task file
-        path: Full path to the task file
+        slug: Feature slug derived from filename or directory name
+        task_file: Filename of the task file or directory name
+        path: Full path to the task file or directory
     """
 
     slug: str
@@ -171,6 +205,7 @@ def parse_status(status_text: str) -> TaskStatus:
     """Parse task status from various formats.
 
     Handles emoji formats like :white_check_mark:, :x:, etc.
+    Also handles YAML frontmatter hyphenated values (not-started, in-progress).
 
     Args:
         status_text: Raw status text from task file.
@@ -178,7 +213,14 @@ def parse_status(status_text: str) -> TaskStatus:
     Returns:
         Normalized TaskStatus enum value.
     """
-    status_lower = status_text.lower().strip()
+    status_stripped = status_text.strip()
+
+    # Check YAML frontmatter format first (e.g., "not-started", "in-progress")
+    normalized = normalize_status(status_stripped)
+    if normalized in _YAML_STATUS_TO_ENUM:
+        return _YAML_STATUS_TO_ENUM[normalized]
+
+    status_lower = status_stripped.lower()
 
     # Check for COMPLETE indicators
     complete_patterns = [
@@ -204,6 +246,12 @@ def parse_status(status_text: str) -> TaskStatus:
         if pattern in status_lower:
             return TaskStatus.IN_PROGRESS
 
+    # Check for BLOCKED indicators
+    blocked_patterns = ["blocked", "blocking"]
+    for pattern in blocked_patterns:
+        if pattern in status_lower:
+            return TaskStatus.BLOCKED
+
     # Check for NOT STARTED indicators
     not_started_patterns = [
         "not started",
@@ -223,7 +271,12 @@ def parse_status(status_text: str) -> TaskStatus:
 def parse_dependencies(dep_text: str) -> list[str]:
     """Parse dependency references from task file.
 
-    Handles formats like "Task 1, Task 2", "Task 1.1, Task 1.2", "None".
+    Handles formats like:
+    - "Task 1, Task 2" (legacy numeric)
+    - "Task 1.1, Task 1.2" (legacy dotted)
+    - "Task T1, Task T2" (alphanumeric with prefix)
+    - "T1, T2" (bare alphanumeric IDs)
+    - "None" (no dependencies)
 
     Args:
         dep_text: Raw dependencies text from task file.
@@ -234,10 +287,142 @@ def parse_dependencies(dep_text: str) -> list[str]:
     if not dep_text or dep_text.lower().strip() == "none":
         return []
 
-    # Extract task IDs from various formats
-    # Match "Task X.Y" or "Task X" patterns
-    pattern = r"Task\s+(\d+(?:\.\d+)?)"
-    return re.findall(pattern, dep_text, re.IGNORECASE)
+    # Try "Task X" pattern first (handles both "Task 1.1" and "Task T1")
+    task_pattern = r"Task\s+([A-Za-z0-9]+(?:\.\d+)?)"
+    matches = re.findall(task_pattern, dep_text, re.IGNORECASE)
+    if matches:
+        return matches
+
+    # Fall back to bare alphanumeric IDs (e.g., "T1, T2" or "1.1, 2.3")
+    bare_pattern = r"\b([A-Z]?\d+(?:\.\d+)?)\b"
+    return re.findall(bare_pattern, dep_text)
+
+
+# =============================================================================
+# YAML Frontmatter Parsing
+# =============================================================================
+
+
+def _parse_yaml_status(raw_status: str) -> TaskStatus:
+    """Convert a YAML frontmatter status string to TaskStatus enum.
+
+    Args:
+        raw_status: Status value from YAML frontmatter (e.g., "not-started").
+
+    Returns:
+        Corresponding TaskStatus enum member.
+    """
+    normalized = normalize_status(raw_status)
+    if normalized in _YAML_STATUS_TO_ENUM:
+        return _YAML_STATUS_TO_ENUM[normalized]
+    return TaskStatus.NOT_STARTED
+
+
+def _coerce_timestamp(value: Any) -> str | None:
+    """Coerce a YAML timestamp value to an ISO 8601 string or None.
+
+    PyYAML automatically parses ISO 8601 timestamps into datetime objects.
+    This function converts them back to strings for consistent Task storage.
+
+    Args:
+        value: Raw value from YAML frontmatter (may be str, datetime, or None).
+
+    Returns:
+        ISO 8601 string representation, or None if value is falsy.
+    """
+    if value is None:
+        return None
+    return str(value)
+
+
+def _parse_yaml_dependencies(raw_deps: Any) -> list[str]:
+    """Parse dependencies from YAML frontmatter value.
+
+    Handles both list format (``[T1, T2]``) and string format (``"T1, T2"``).
+
+    Args:
+        raw_deps: Dependencies value from YAML frontmatter.
+
+    Returns:
+        List of dependency task ID strings.
+    """
+    if raw_deps is None:
+        return []
+    if isinstance(raw_deps, list):
+        return [str(dep) for dep in raw_deps]
+    if isinstance(raw_deps, str):
+        return parse_dependencies(raw_deps)
+    return []
+
+
+def parse_task_from_frontmatter(content: str) -> Task:
+    """Parse a single task from YAML frontmatter content.
+
+    Extracts metadata from the YAML frontmatter block and maps fields
+    to a Task dataclass. Falls back to defaults for missing optional fields.
+
+    Field mapping (YAML field -> Task attribute):
+    - task -> id
+    - title -> name
+    - status -> status (via normalize_status)
+    - agent -> agent
+    - dependencies -> dependencies
+    - priority -> priority
+    - complexity -> complexity
+    - started -> started
+    - completed -> completed
+
+    Args:
+        content: File content with YAML frontmatter delimiters.
+
+    Returns:
+        Task object populated from frontmatter metadata.
+
+    Raises:
+        ValueError: If frontmatter is missing required fields (task, title, status).
+    """
+    frontmatter, _body = parse_yaml_frontmatter(content)
+
+    # Validate required fields
+    missing = [f for f in ("task", "title", "status") if f not in frontmatter]
+    if missing:
+        msg = f"Missing required YAML frontmatter fields: {', '.join(missing)}"
+        raise ValueError(msg)
+
+    task_id = str(frontmatter["task"])
+    title = str(frontmatter["title"])
+    status = _parse_yaml_status(str(frontmatter["status"]))
+    dependencies = _parse_yaml_dependencies(frontmatter.get("dependencies"))
+    agent = frontmatter.get("agent")
+    if agent is not None:
+        agent = str(agent)
+        if agent.lower() in {"none", "n/a", "-", ""}:
+            agent = None
+
+    raw_priority = frontmatter.get("priority")
+    priority = (
+        TaskPriority(int(raw_priority))
+        if raw_priority is not None
+        else TaskPriority.MEDIUM
+    )
+
+    raw_complexity = frontmatter.get("complexity", "medium")
+    complexity = str(raw_complexity).capitalize()
+
+    started = _coerce_timestamp(frontmatter.get("started"))
+    completed = _coerce_timestamp(frontmatter.get("completed"))
+
+    return Task(
+        id=task_id,
+        name=title,
+        status=status,
+        dependencies=dependencies,
+        agent=agent,
+        priority=priority,
+        complexity=complexity,
+        started=started,
+        completed=completed,
+    )
 
 
 # =============================================================================
@@ -427,7 +612,12 @@ def _parse_line(line: str, task_data: TaskData) -> None:
 def parse_task_content(content: str) -> list[Task]:
     """Parse task content and extract all tasks.
 
-    Follows SRP by delegating field parsing to FieldParser implementations.
+    Automatically detects format:
+    - YAML frontmatter: Single task per file with ``---`` delimited metadata.
+    - Legacy markdown: Multiple tasks with ``## Task X.Y: Title`` headers.
+
+    Follows SRP by delegating field parsing to FieldParser implementations
+    for legacy format, and to parse_task_from_frontmatter for YAML format.
 
     Args:
         content: Raw text content of task file.
@@ -435,8 +625,24 @@ def parse_task_content(content: str) -> list[Task]:
     Returns:
         List of Task objects parsed from the content.
     """
+    # YAML frontmatter path: file contains a single task with --- metadata
+    if has_yaml_frontmatter(content):
+        try:
+            task = parse_task_from_frontmatter(content)
+        except (ValueError, TypeError):
+            # Fall through to legacy parsing if YAML parsing fails
+            pass
+        else:
+            return [task]
+
+    # Legacy markdown path: multiple tasks with ## Task headers
     tasks: list[Task] = []
-    task_header_pattern = re.compile(r"^##\s+Task\s+([\d.]+):\s*(.+)$")
+    # Widened regex to accept:
+    # - "## Task 1.1: Title" (original numeric)
+    # - "### Task T1: Title" (h3 with alphanumeric ID)
+    # - "## Task T15 - Title" (dash separator)
+    # - "## Task: T1 Title" (colon after Task)
+    task_header_pattern = re.compile(r"^#{2,3}\s+Task:?\s+([A-Za-z0-9.]+)[:\s-]+(.+)$")
     current_task: TaskData | None = None
 
     for line in content.split("\n"):
@@ -457,21 +663,80 @@ def parse_task_content(content: str) -> list[Task]:
 
 
 def parse_task_file(file_path: Path) -> list[Task]:
-    """Parse a task file and extract all tasks.
+    """Parse a task file or task directory and extract all tasks.
+
+    Handles both single files and directories:
+    - **File**: Reads content and delegates to parse_task_content.
+    - **Directory**: Discovers all ``.md`` files with YAML frontmatter,
+      parses each as a single task.
 
     Follows DIP by separating file I/O from parsing logic.
 
     Args:
-        file_path: Path to the task file.
+        file_path: Path to the task file or task directory.
 
     Returns:
-        List of Task objects parsed from the file.
+        List of Task objects parsed from the file(s).
 
     Raises:
         FileNotFoundError: If the task file does not exist.
     """
+    if file_path.is_dir():
+        return _parse_task_directory(file_path)
+
     content = file_path.read_text(encoding="utf-8")
     return parse_task_content(content)
+
+
+def _parse_task_directory(dir_path: Path) -> list[Task]:
+    """Parse all task files in a directory.
+
+    Each ``.md`` file in the directory is expected to contain a single task
+    with YAML frontmatter. Files without YAML frontmatter are attempted
+    with legacy parsing.
+
+    Tasks are sorted by ID using natural sort order (T1, T2, T10, not T1, T10, T2).
+
+    Args:
+        dir_path: Path to directory containing individual task files.
+
+    Returns:
+        List of Task objects from all parseable files in the directory.
+    """
+    tasks: list[Task] = []
+
+    for md_file in sorted(dir_path.glob("*.md")):
+        if not md_file.is_file():
+            continue
+        content = md_file.read_text(encoding="utf-8")
+        parsed = parse_task_content(content)
+        tasks.extend(parsed)
+
+    # Sort tasks by ID using natural sort (numeric part extraction)
+    tasks.sort(key=_task_sort_key)
+    return tasks
+
+
+def _task_sort_key(task: Task) -> tuple[str, int, int]:
+    """Generate a sort key for natural ordering of task IDs.
+
+    Handles IDs like "T1", "T10", "1.1", "15" by extracting the
+    alphabetic prefix and numeric components.
+
+    Args:
+        task: Task to generate sort key for.
+
+    Returns:
+        Tuple of (alpha_prefix, major_number, minor_number) for sorting.
+    """
+    match = re.match(r"^([A-Za-z]*)(\d+)(?:\.(\d+))?$", task.id)
+    if match:
+        prefix = match.group(1).upper()
+        major = int(match.group(2))
+        minor = int(match.group(3)) if match.group(3) else 0
+        return (prefix, major, minor)
+    # Fallback: sort alphabetically
+    return (task.id, 0, 0)
 
 
 def _create_task_from_dict(task_data: TaskData) -> Task:
@@ -496,10 +761,36 @@ def _create_task_from_dict(task_data: TaskData) -> Task:
     )
 
 
+def _has_task_content(directory: Path) -> bool:
+    """Check if a directory contains task files or task subdirectories.
+
+    A directory qualifies if it contains either:
+    - ``tasks-*.md`` files (monolithic task files)
+    - ``tasks-*/`` subdirectories (directory-based task organization)
+
+    Args:
+        directory: Path to check for task content.
+
+    Returns:
+        True if the directory contains task files or task subdirectories.
+    """
+    if list(directory.glob("tasks-*.md")):
+        return True
+    for child in directory.iterdir():
+        if (
+            child.is_dir()
+            and child.name.startswith("tasks-")
+            and list(child.glob("*.md"))
+        ):
+            return True
+    return False
+
+
 def discover_plan_directory(project_path: Path) -> Path | None:
     """Discover the plan directory in a project.
 
-    Searches common locations for plan directories containing task files.
+    Searches common locations for plan directories containing task files
+    (either ``tasks-*.md`` files or ``tasks-*/`` subdirectories).
     The search prioritizes explicit common locations before falling back
     to a recursive search with depth limits for performance.
 
@@ -514,8 +805,6 @@ def discover_plan_directory(project_path: Path) -> Path | None:
     Returns:
         Path to plan directory if found with task files, None otherwise.
     """
-    task_file_pattern = "tasks-*.md"
-
     # Priority 1: Check explicit common locations (fast path)
     common_locations = [
         project_path / "plan",
@@ -526,11 +815,7 @@ def discover_plan_directory(project_path: Path) -> Path | None:
     ]
 
     for location in common_locations:
-        if (
-            location.exists()
-            and location.is_dir()
-            and list(location.glob(task_file_pattern))
-        ):
+        if location.exists() and location.is_dir() and _has_task_content(location):
             return location
 
     # Priority 2: Check package-level plan directories (monorepo support)
@@ -542,7 +827,7 @@ def discover_plan_directory(project_path: Path) -> Path | None:
 
     for pattern in package_patterns:
         for plan_dir in sorted(pattern.parent.glob(pattern.name)):
-            if plan_dir.is_dir() and list(plan_dir.glob(task_file_pattern)):
+            if plan_dir.is_dir() and _has_task_content(plan_dir):
                 return plan_dir
 
     # Priority 3: Recursive search with depth limit (slower, but comprehensive)
@@ -551,19 +836,19 @@ def discover_plan_directory(project_path: Path) -> Path | None:
     for depth in range(1, max_depth + 1):
         glob_pattern = "/".join(["*"] * depth) + "/plan"
         for plan_dir in sorted(project_path.glob(glob_pattern)):
-            if plan_dir.is_dir() and list(plan_dir.glob(task_file_pattern)):
+            if plan_dir.is_dir() and _has_task_content(plan_dir):
                 return plan_dir
 
         glob_pattern = "/".join(["*"] * depth) + "/plans"
         for plan_dir in sorted(project_path.glob(glob_pattern)):
-            if plan_dir.is_dir() and list(plan_dir.glob(task_file_pattern)):
+            if plan_dir.is_dir() and _has_task_content(plan_dir):
                 return plan_dir
 
     return None
 
 
 def find_task_files(project_path: Path) -> list[Feature]:
-    """Find all task files in the plan directory.
+    """Find all task files and task directories in the plan directory.
 
     Uses discover_plan_directory to locate the plan directory dynamically,
     supporting various project structures including:
@@ -572,11 +857,15 @@ def find_task_files(project_path: Path) -> list[Feature]:
     - Documentation: project/docs/plan/
     - Monorepo: project/packages/*/plan/
 
+    Discovers both:
+    - ``tasks-*.md`` monolithic task files
+    - ``tasks-*/`` directories containing individual task files
+
     Args:
         project_path: Root path of the project.
 
     Returns:
-        List of Feature objects representing task files.
+        List of Feature objects representing task files or directories.
     """
     plan_dir = discover_plan_directory(project_path)
 
@@ -584,28 +873,38 @@ def find_task_files(project_path: Path) -> list[Feature]:
         return []
 
     features: list[Feature] = []
-    pattern = re.compile(r"tasks-(\d+)-(.+)\.md$")
 
+    # Pattern for monolithic task files: tasks-001-feature-name.md
+    file_pattern = re.compile(r"tasks-(\d+)-(.+)\.md$")
     for file_path in sorted(plan_dir.glob("tasks-*.md")):
-        match = pattern.match(file_path.name)
+        match = file_pattern.match(file_path.name)
         if match:
             slug = match.group(2)
             features.append(
                 Feature(slug=slug, task_file=file_path.name, path=file_path)
             )
 
+    # Pattern for task directories: tasks-feature-name/
+    dir_pattern = re.compile(r"tasks-(.+)$")
+    for child in sorted(plan_dir.iterdir()):
+        if child.is_dir() and child.name.startswith("tasks-"):
+            dir_match = dir_pattern.match(child.name)
+            if dir_match and list(child.glob("*.md")):
+                slug = dir_match.group(1)
+                features.append(Feature(slug=slug, task_file=child.name, path=child))
+
     return features
 
 
 def find_task_file_by_slug(project_path: Path, slug: str) -> Path | None:
-    """Find task file by feature slug.
+    """Find task file or directory by feature slug.
 
     Args:
         project_path: Root path of the project.
         slug: Feature slug (e.g., "prepare-host").
 
     Returns:
-        Path to task file if found, None otherwise.
+        Path to task file or directory if found, None otherwise.
     """
     features = find_task_files(project_path)
 
@@ -645,12 +944,10 @@ def get_ready_tasks(tasks: list[Task]) -> list[Task]:
             continue
 
         # Check if all dependencies are complete
-        deps_satisfied = True
-        for dep_id in task.dependencies:
-            dep_status = status_by_id.get(dep_id)
-            if dep_status != TaskStatus.COMPLETE:
-                deps_satisfied = False
-                break
+        deps_satisfied = all(
+            status_by_id.get(dep_id) == TaskStatus.COMPLETE
+            for dep_id in task.dependencies
+        )
 
         if deps_satisfied:
             ready.append(task)
@@ -712,12 +1009,13 @@ def status(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
         raise typer.Exit(1)
 
     tasks = parse_task_file(task_file)
-    ready_tasks = get_ready_tasks(tasks)
+    ready = get_ready_tasks(tasks)
 
     # Calculate statistics
     completed = sum(1 for t in tasks if t.status == TaskStatus.COMPLETE)
     in_progress = sum(1 for t in tasks if t.status == TaskStatus.IN_PROGRESS)
     not_started = sum(1 for t in tasks if t.status == TaskStatus.NOT_STARTED)
+    blocked = sum(1 for t in tasks if t.status == TaskStatus.BLOCKED)
 
     output = {
         "feature": feature_slug,
@@ -726,9 +1024,8 @@ def status(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
         "completed": completed,
         "in_progress": in_progress,
         "not_started": not_started,
-        "ready_tasks": [
-            {"id": t.id, "name": t.name, "agent": t.agent} for t in ready_tasks
-        ],
+        "blocked": blocked,
+        "ready_tasks": [{"id": t.id, "name": t.name, "agent": t.agent} for t in ready],
         "tasks": [t.to_dict() for t in tasks],
     }
 
@@ -769,6 +1066,9 @@ def ready_tasks(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
 def validate(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
     """Validate task file frontmatter and structure.
 
+    Supports both YAML frontmatter and legacy markdown formats.
+    Validates required fields, dependency references, and duplicate IDs.
+
     Args:
         project_path: Path to the project root directory.
         feature_slug: Feature slug or partial match.
@@ -788,15 +1088,22 @@ def validate(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
     warnings: list[str] = []
 
     # Validate each task
+    task_ids = {t.id for t in tasks}
     for task in tasks:
         # Check for missing agent field
         if not task.agent:
             warnings.append(f"Task {task.id} missing Agent field")
 
+        # Validate status is a recognized value
+        normalized = normalize_status(task.status.value)
+        if normalized not in VALID_STATUSES:
+            warnings.append(
+                f"Task {task.id} has non-standard status: {task.status.value}"
+            )
+
         # Priority validation happens at parse time via TaskPriority enum constructor
 
         # Validate dependencies exist
-        task_ids = {t.id for t in tasks}
         errors.extend(
             f"Task {task.id} has unknown dependency: Task {dep_id}"
             for dep_id in task.dependencies

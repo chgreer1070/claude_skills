@@ -174,10 +174,10 @@ Single File Pattern (PLAN.md for <500 lines):
 description: "One-line plan description"
 version: "1.0"
 tasks:
-  - [ ] Priority 1: Task A
-  - [ ] Priority 1: Task B
-  - [x] Priority 1: Task C (completed example)
-  - [ ] Priority 2: Task D
+  - T1: Task A
+  - T2: Task B
+  - T3: Task C
+  - T4: Task D
 task_exports:
   enabled: false
   directory: "TASK"
@@ -210,8 +210,14 @@ Default behavior:
 
 TASK file template:
 
-```markdown
-# Task: <task-id> - <short title>
+````markdown
+```yaml
+---
+task: <task-id>
+title: <short title>
+status: not-started
+---
+```
 
 ## Context
 ## Objective
@@ -223,7 +229,7 @@ TASK file template:
 ## Verification Steps
 ## CoVe Checks (only if needed)
 ## Handoff
-```
+````
 
 ### 5. Revision Management
 
@@ -238,17 +244,24 @@ Revision Protocol:
 
 ## Task Structure Requirements (UPDATED)
 
-Every task in the plan MUST include:
+Every task in the plan MUST use YAML frontmatter for metadata fields followed by CLEAR-ordered body sections:
 
-```markdown
-### Task: [Task ID] - [Descriptive Name]
-
-**Status**: ❌ NOT STARTED
-**Agent**: [agent-name from architecture spec or inferred from task type]
-**Dependencies**: [List task IDs or "None"]
-**Priority**: [1-N based on dependency depth]
-**Complexity**: [Low/Medium/High based on scope, not time]
-**Accuracy Risk**: [Low/Medium/High]
+````markdown
+```yaml
+---
+task: [Task ID]
+title: [Descriptive Name]
+status: not-started
+agent: [agent-name from architecture spec or inferred from task type]
+dependencies: []
+priority: [1-5 based on dependency depth]
+complexity: [low/medium/high based on scope, not time]
+accuracy-risk: [low/medium/high]
+parallelize-with: []
+reason: [Why parallelization is safe; avoid file conflicts]
+handoff: [What the worker must report back: summary, evidence, blockers]
+---
+```
 
 ## Context
 [Only what the worker needs; reference specific files/sections]
@@ -282,7 +295,7 @@ Every task in the plan MUST include:
 1. [How to verify criterion 1]
 2. [How to verify criterion 2]
 
-## CoVe Checks (ONLY if Accuracy Risk is Medium/High)
+## CoVe Checks (ONLY if accuracy-risk is medium or high)
 - Key claims to verify:
   - [Claim 1]
   - [Claim 2]
@@ -293,11 +306,7 @@ Every task in the plan MUST include:
   - [Commands run, docs referenced, code pointers]
 - Revision rule:
   - If any check fails or uncertainty remains, revise and state what changed.
-
-**Can Parallelize With**: [List task IDs that can run concurrently, or "None - blocks on dependencies"]
-**Reason**: [Why parallelization is safe; avoid file conflicts]
-**Handoff**: [What the worker must report back: summary, evidence, blockers]
-```
+````
 
 ## Agent Assignment Rules
 
@@ -338,11 +347,11 @@ If parallel tasks must touch the same file:
 
 In addition to existing requirements:
 
-- Every task MUST have **Status** (default: ❌ NOT STARTED)
-- Every task MUST have **Agent** assigned based on task type or architecture spec
-- Every task MUST have Objective, Constraints, and Accuracy Risk
+- Every task MUST have `status` in YAML frontmatter (default: `not-started`)
+- Every task MUST have `agent` in YAML frontmatter assigned based on task type or architecture spec
+- Every task MUST have Objective, Constraints, and `accuracy-risk` in YAML frontmatter
 - Every task MUST have Verification Steps that are executable or unambiguous
-- If Accuracy Risk is Medium/High, include CoVe Checks with falsifiable questions
+- If `accuracy-risk` is `medium` or `high`, include CoVe Checks with falsifiable questions
 - Prefer primary sources: repo code, tests, official docs, config schemas
 
 ### Phase 4: Plan Creation (UPDATED)
@@ -371,10 +380,10 @@ Add these validations:
 
 6. Schema completeness (NEW)
 
-- Every task includes: Objective, Constraints, Accuracy Risk
+- Every task includes: Objective, Constraints, `accuracy-risk` in YAML frontmatter
 - Every task includes: Expected Outputs with paths
 - Every task includes: Verification Steps
-- If Accuracy Risk is Medium/High, task includes CoVe Checks
+- If `accuracy-risk` is `medium` or `high`, task includes CoVe Checks
 
 7. CoVe question quality (NEW, only when present)
 
@@ -382,10 +391,10 @@ Add these validations:
 - Evidence sources are specified (commands, docs, code pointers)
 - Revision rule is explicit
 
-8. Status and Agent fields (NEW)
+8. YAML frontmatter completeness (NEW)
 
-- Every task has **Status**: ❌ NOT STARTED
-- Every task has **Agent**: <valid-agent-name>
+- Every task has `status` field in YAML frontmatter (default: `not-started`)
+- Every task has `agent` field in YAML frontmatter with a valid agent name
 - Agent assignments match task types per Agent Assignment Rules table
 
 ## Success Metrics (UPDATED)

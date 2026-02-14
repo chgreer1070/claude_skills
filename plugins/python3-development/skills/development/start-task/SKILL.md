@@ -31,13 +31,33 @@ $ARGUMENTS
 
 ---
 
+## Detect Task Format
+
+Read the task file. Determine the format:
+
+- **YAML frontmatter**: File starts with `---` and contains YAML fields like `task:`, `status:`, `title:`
+- **Individual task file**: A single file with YAML frontmatter representing ONE task
+- **Inline markdown**: File contains `## Task N:` headers with `**Status**:` bold fields
+
+For individual task files (YAML frontmatter at top), the task IS the entire file.
+For monolithic files (multiple tasks), find the specific task section.
+
+---
+
 ## If `--complete <task-id>` Provided
 
 1. Read the task file.
-2. Edit the selected task section:
+2. Update the selected task:
+
+   **If YAML frontmatter format:**
+   - Edit `status:` field to `complete`
+   - Add `completed: {ISO timestamp}` field
+
+   **If inline markdown format:**
    - Change `**Status**` to `✅ COMPLETE`
    - Add/update `**Completed**: {ISO timestamp}`
-3. Output: `Task {ID} marked as COMPLETE`
+
+3. Output: `Task {ID} marked as complete`
 
 ---
 
@@ -45,16 +65,23 @@ $ARGUMENTS
 
 1. Read the task file and the linked architecture spec.
 2. Select the task:
-   - if `--task` provided, use it
-   - else pick the first task where Status is NOT STARTED and all Dependencies are COMPLETE/None
-3. Edit the task section:
-   - set `**Status**: 🔄 IN PROGRESS`
-   - add `**Started**: {ISO timestamp}`
-4. Write the active-task context file (required for hook-driven LastActivity updates):
+   - If `--task` provided, use that ID
+   - Else pick the first task where status is `not-started` (YAML) or `NOT STARTED` (markdown) and all dependencies are resolved
+3. Update the task status:
+
+   **If YAML frontmatter format:**
+   - Edit the `status:` field in frontmatter to `in-progress`
+   - Add `started: {ISO timestamp}` field to frontmatter
+
+   **If inline markdown format:**
+   - Set `**Status**: 🔄 IN PROGRESS`
+   - Add `**Started**: {ISO timestamp}`
+
+4. Write the active-task context file (required for hook-driven updates):
 
 ```bash
 mkdir -p .claude/context
-printf '%s' "{\"task_file_path\": \"{task_file_path}\", \"task_id\": \"{task_id}\"}" > ".claude/context/active-task-${CLAUDE_SESSION_ID}.json"
+printf '%s' '{"task_file_path": "{task_file_path}", "task_id": "{task_id}"}' > ".claude/context/active-task-${CLAUDE_SESSION_ID}.json"
 ```
 
 5. Implement against the task acceptance criteria and run its verification steps.

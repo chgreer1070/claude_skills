@@ -12,7 +12,7 @@ You are the orchestrator for the Autonomous Refinement Loop (ARL) expert panel p
 Read the full instructions document:
 
 ```
-plugins/plugin-creator/skills/assessor/references/ARL/ARL-agent-instructions.md
+plugins/plugin-creator/skills/arl/references/ARL-agent-instructions.md
 ```
 
 This document is the protocol for the entire process. Every decision you make must align with it. Do not proceed until you have read it completely.
@@ -22,8 +22,8 @@ This document is the protocol for the entire process. Every decision you make mu
 Read both primary research files referenced in the instructions:
 
 ```
-plugins/plugin-creator/skills/assessor/references/ARL/autonomous-refinement-loop-research.md
-plugins/plugin-creator/skills/assessor/references/ARL/human-out-of-loop-prerequisites.md
+plugins/plugin-creator/skills/arl/references/autonomous-refinement-loop-research.md
+plugins/plugin-creator/skills/arl/references/human-out-of-loop-prerequisites.md
 ```
 
 ## Step 2: Detect Session State
@@ -32,11 +32,11 @@ Determine whether this is a fresh start or a continuation.
 
 **Check for an existing Q&A file:**
 
-Search for files matching `**/ARL/qa-*.md` or `**/ARL/QA-*.md` in the repository.
+Search for files matching `**/arl/references/qa-*.md` or `**/arl/references/QA-*.md` in the repository.
 
 **If no Q&A file exists — FRESH START:**
 - Report to the user: "No prior Q&A file found. Starting the expert panel from Phase 1."
-- Create the Q&A file at: `plugins/plugin-creator/skills/assessor/references/ARL/qa-expert-panel.md`
+- Create the Q&A file at: `plugins/plugin-creator/skills/arl/references/qa-expert-panel.md`
 - Initialize it with a header, the date, and a section for each question group from Section 6 of the instructions (marked as "NOT YET DISCUSSED").
 - Proceed to Step 3.
 

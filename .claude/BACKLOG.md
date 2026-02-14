@@ -1,8 +1,8 @@
 ---
-last-updated: 2026-02-11
+last-updated: 2026-02-13
 p0-count: 0
-p1-count: 7
-p2-count: 6
+p1-count: 10
+p2-count: 8
 ideas-count: 10
 ---
 
@@ -76,6 +76,41 @@ _(Empty)_
 4. Consider adding `ty check` to CI alongside basedpyright and mypy
 **Files affected**: `.claude/utilities/find-temp-documentation.py`, `plugins/python3-development/skills/implementation-manager/scripts/get-task-context.py`, `plugins/plugin-creator/scripts/plugin-validator.py`, `plugins/summarizer/tests/test_file_metrics.py`
 
+### Meta-Process Capture — Expert Panel Dataset Builder
+
+**Source**: ARL expert panel process (sessions 2026-02-12 to 2026-02-13)
+**Added**: 2026-02-13
+**Description**: Document the multi-agent expert panel methodology as a reusable system for building datasets that inform skills and systems. The process — assign framework experts to repositories, ask structured questions, cross-examine, synthesize, map to requirements, validate — produced high-quality sourced findings. Capture this as a repeatable pattern.
+**Key elements to document**:
+- Expert assignment protocol (one agent per source repo, source-code-only evidence standard)
+- Question group design (themed questions → cross-examination → synthesis)
+- Cross-examination as adversarial validation (experts challenge each other's claims)
+- Phased output (discussion → requirement mapping → synthesis → validation)
+- Traceability chain (claim → expert citation → file:line evidence)
+- Session continuity handling (state file enables cross-session resumption)
+**Input artifacts**: `plugins/plugin-creator/skills/assessor/references/ARL/ARL-agent-instructions.md`, `qa-expert-panel.md`
+**Suggested location**: New skill or methodology document — captures the meta-process, not the ARL content
+
+### SAM Extension — Integrate ARL General Theory
+
+**Source**: ARL expert panel Phase 3 output
+**Added**: 2026-02-13
+**Description**: Integrate the 7 universal principles from `synthesis-general-theory.md` into SAM methodology documents. These principles (structure over instruction, front-loading reduces gates, AI cannot self-evaluate, compression is architectural, iteration-aware state required, parallelism enables independent verification, failure paths need more compression) extend SAM's scope to cover autonomous refinement loops.
+**Input artifacts**: `plugins/plugin-creator/skills/assessor/references/ARL/synthesis-general-theory.md`
+**Target files**: `methodology_development/stateless-agent-methodology.md`, `methodology_development/stateless-software-engineering-framework.md`
+**Dependencies**: None — general theory is framework-agnostic
+**Related backlog items**: SAM gap items (error recovery, human escalation, scope creep detection) — the general theory findings inform several of these
+
+### ARL Skill Development
+
+**Source**: ARL expert panel Phase 3 output
+**Added**: 2026-02-13
+**Description**: Build the Autonomous Refinement Loop as a skill using `synthesis-arl-applicable.md` as its reference foundation. The ARL is a logical process (Assess → Plan → Implement → Review → Repeat) for autonomous skill refinement with R1-R10 requirement gates.
+**Input artifacts**: `plugins/plugin-creator/skills/assessor/references/ARL/synthesis-arl-applicable.md`, `synthesis-general-theory.md`
+**Scope**: Logical process design — what gates fire when, what each gate checks, success/failure criteria. NOT implementation artifacts (schemas, thresholds, pseudocode).
+**Dependencies**: Benefits from SAM extension being done first (ARL would be a SAM-based skill)
+**Suggested location**: New skill under `plugins/plugin-creator/skills/` or standalone plugin
+
 ### Extract claude-plugin-lint to standalone PyPI package
 
 **Source**: Gap analysis - no existing Claude Code plugin linters exist
@@ -95,6 +130,20 @@ _(Empty)_
 ---
 
 ## P2 - Could Have
+
+### SAM: Parser regex false positive on "## Task Summary Statistics"
+
+**Source**: Migration proof-of-concept (2026-02-13)
+**Added**: 2026-02-13
+**Description**: The widened task header regex `^#{2,3}\s+Task:?\s+([A-Za-z0-9.]+)[:\s-]+(.+)$` in `implementation_manager.py` matches `## Task Summary Statistics` as task ID "Summary" with title "Statistics". The regex needs a negative lookahead or post-parse filter to exclude non-task sections. Observed when parsing `plan/tasks-1-plugin-linter.md`.
+**File**: `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` line 645
+
+### SAM: Replace validate-task-file.sh with Python validator
+
+**Source**: Task format standardization plan (2026-02-13)
+**Added**: 2026-02-13
+**Description**: The bash validator at `plugins/plugin-creator/scripts/validate-task-file.sh` validates a different schema (`tasks-refactor-*.md`) and doesn't understand YAML frontmatter. Replace with Python validator that uses the shared `task_format.py` module.
+**File**: `plugins/plugin-creator/scripts/validate-task-file.sh`
 
 ### SAM: Parallel Execution Details
 
@@ -326,3 +375,82 @@ _(Empty)_
 2. If more research needed: `/research-and-compare <framework>` for specific topics
 3. Synthesize findings into SAM framework update
 4. Mark backlog item complete
+
+### P1: plugin-validator UX and coverage gaps
+
+**Source**: Experimental validation of plugin-validator.py against all component types (2026-02-13)
+**Added**: 2026-02-13
+**Last groomed**: 2026-02-13
+**File**: `./plugins/plugin-creator/scripts/plugin-validator.py` (2934+ lines)
+**Tests**: `./plugins/plugin-creator/tests/` (12 test files, 93% pass rate per QA report)
+**QA report**: `./plugins/plugin-creator/planning/plugin-validator-qa-report.md`
+
+#### Sub-issue 1: UX — report counts validator results, not files
+
+**Severity**: UX bug
+**Lines**: 2928-2931 (result collection loop), 2698-2702 (summary display)
+
+**Root cause**: Lines 2928-2931 iterate over `validators` (not files), appending `(path, result)` for each validator. When 1 file has 4 validators (FrontmatterValidator, NameFormatValidator, DescriptionValidator, NamespaceReferenceValidator), the `results` list has 4 entries all pointing to the same path. The report loop at line 2630 then prints "PASSED" 4 times for 1 file, and the summary at line 2702 shows "Total files: 4".
+
+**Acceptance criteria**:
+- Running validator on 1 file shows "Total files: 1"
+- Each validator result is labeled with the validator name (e.g., "FrontmatterValidator: PASSED")
+- Summary counts unique files, not validator invocations
+
+#### Sub-issue 2: Commands receive skill-specific SK005 warning
+
+**Severity**: False positive
+**Lines**: 1884-1900 (SK005 check in DescriptionValidator), 2896-2901 (validator selection)
+
+**Root cause**: `DescriptionValidator.validate()` (line 1802) has no file-type awareness. It applies SK004 ("description too short") and SK005 ("missing trigger phrases") to all file types. The validator selection at line 2896 applies DescriptionValidator to SKILL, AGENT, and COMMAND equally. Commands have a different frontmatter schema — they use `argument-hint`, `allowed-tools`, `agent` fields and do not need trigger phrases in their description.
+
+**Acceptance criteria**:
+- SK005 only fires on SKILL files (not COMMAND or AGENT)
+- SK004 fires on SKILL and AGENT files (both need meaningful descriptions) but not COMMAND
+- New error code series CM001+ for command-specific checks (e.g., validate `allowed-tools` format, `argument-hint` presence)
+- DescriptionValidator receives file type context (via constructor parameter or path inspection)
+
+#### Sub-issue 3: Hooks have zero validation
+
+**Severity**: Missing feature
+**Lines**: 148-165 (detect_file_type returns UNKNOWN for .js hooks and hooks.json)
+
+**Root cause**: `FileType` enum (line 141-145) has no HOOK variant. `detect_file_type()` only matches SKILL.md, plugin.json, agents/*, commands/*. Hook files (`.js` in `hooks/` directories, `hooks.json` configs) fall through to UNKNOWN, which triggers the error at line 2920.
+
+**Acceptance criteria**:
+- `FileType` enum includes HOOK_SCRIPT and HOOK_CONFIG (or combined HOOK)
+- `detect_file_type()` recognizes `.js` files in `hooks/` directories
+- `detect_file_type()` recognizes `hooks.json` files
+- New error code series HK001+ for hook validation (e.g., valid JSON in hooks.json, valid event types, valid hook matcher patterns)
+- New `HookValidator` class following existing Validator protocol
+- Reference: `/plugin-creator:claude-hooks-reference-2026` skill for hooks.json schema
+
+#### Sub-issue 4: Dead code — nested skill resolution pattern
+
+**Severity**: Code quality
+**Lines**: 904-911 (in `_resolve_skill_reference` method of NamespaceReferenceValidator)
+
+**Root cause**: Lines 904-911 search for `plugins/{plugin}/skills/*/{name}/SKILL.md` (nested category pattern). This pattern does not exist in the repository. Actual skill layout is `plugins/{plugin}/skills/{name}/SKILL.md` (flat). The direct check at lines 899-902 handles all real cases. The nested search at 904-911 is dead code. Additionally, lines 759-760 and 771-772 reference the nested pattern in error message strings.
+
+**Note**: The original backlog item referenced lines 651-656 and 778-785 as dead code for `_discover_skills` and `_discover_invocable_skills`. Those methods do not exist in the current source. The actual dead code is in `_resolve_skill_reference` at lines 904-911.
+
+**Acceptance criteria**:
+- Remove lines 904-911 (nested skill resolution)
+- Update error message strings at lines 759-760 and 771-772 to remove nested pattern references
+- Verify no test depends on nested skill resolution (grep tests for `skills/*/` double-nested patterns)
+
+#### Dependencies
+
+- Sub-issues 1-4 are independent and can be implemented in parallel
+- Sub-issue 3 (hooks) is the largest — requires new FileType, new Validator class, new error codes
+- Sub-issue 2 (command SK005) requires deciding on a command-specific error code series
+
+#### Related prior work
+
+- QA report documents 15 pre-existing test failures (93% pass rate) — check for conflicts before modifying validators
+- `/plugin-creator:claude-hooks-reference-2026` — hooks.json schema reference for sub-issue 3
+- `/plugin-creator:claude-skills-overview-2026` — skill vs command schema differences for sub-issue 2
+
+#### Approach
+
+Use `/python3-development:add-new-feature` to extend `plugin-validator.py`. Delegate implementation to `@python-cli-architect`. Each sub-issue is a separate task.

@@ -37,6 +37,20 @@ Instead of trying to make Claude "smarter," SAM treats Claude like a pure functi
 - Implementation roadmap with 5 phases
 - Naming candidates and comparison with GSD
 
+**[autonomous-loop-principles.md](./autonomous-loop-principles.md)** — Universal principles for autonomous iterative refinement
+
+- 7 principles extracted from cross-framework analysis of 6 AI development frameworks
+- Decision trees for replacing human gates with machine-verifiable conditions
+- Complements SAM for iterative scenarios (SAM is single-pass)
+- Source: ARL expert panel synthesis (2026-02-13)
+
+**[expert-panel-methodology.md](./expert-panel-methodology.md)** — Multi-agent source code survey methodology
+
+- Reusable protocol for extracting patterns from code repositories using specialist agents
+- 4-phase structure: Discussion, Requirement Mapping, Synthesis, Validation
+- Evidence standards, traceability chain, failure modes, reproducibility requirements
+- Source: Developed through ARL expert panel process (2026-02-12 to 2026-02-13)
+
 ### Comparison Documents
 
 These documents compare SAM to established frameworks and methodologies, identifying complementary strengths and integration opportunities.
