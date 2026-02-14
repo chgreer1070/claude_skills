@@ -180,10 +180,10 @@ jobs:
         run: npx prettier@3.5.3 --check "**/*.json" --ignore-path .gitignore
 
   # =============================================================================
-  # Local hooks: plugin validation and manifest sync
+  # Local hooks: frontmatter validation (blocking)
   # =============================================================================
-  validate-local:
-    name: Local / Plugin validation
+  validate-frontmatter:
+    name: Local / Frontmatter
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -204,22 +204,41 @@ jobs:
       - name: Validate frontmatter
         run: uv run plugins/plugin-creator/scripts/validate_frontmatter.py --check
 
+  # =============================================================================
+  # Local hooks: plugin validation and manifest sync (non-blocking, pre-existing failures)
+  # TODO: Make blocking once backlog items are resolved:
+  #   - "Resolve plugin-validator pre-existing errors" (P1, 2026-02-14)
+  #   - "Resolve manifest drift" (P1, 2026-02-14)
+  # =============================================================================
+  validate-plugins:
+    name: Local / Plugin validation (advisory)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
       - name: Validate plugins
+        continue-on-error: true
         run: |
-          # Non-blocking until pre-existing errors (broken links, token limits) are resolved.
-          # Track: 19 errors, 63 warnings as of 2026-02-14.
           uv run plugins/plugin-creator/scripts/plugin-validator.py \
             $(find plugins .claude -type f \( -name 'SKILL.md' -o -path '*/agents/*.md' -o -path '*/commands/*.md' -o -name 'plugin.json' \) \
-              -not -path './.venv/*' -not -path './node_modules/*' 2>/dev/null) || {
-            echo "::warning::Plugin validation found errors (see log above)"
-          }
+              -not -path './.venv/*' -not -path './node_modules/*' 2>/dev/null)
 
       - name: Check manifest sync
-        run: |
-          # Non-blocking until pre-existing manifest drift is resolved.
-          uv run plugins/plugin-creator/scripts/auto-sync-manifests.py --reconcile --dry-run || {
-            echo "::warning::Manifest drift detected (see log above)"
-          }
+        continue-on-error: true
+        run: uv run plugins/plugin-creator/scripts/auto-sync-manifests.py --reconcile --dry-run
 
   # =============================================================================
   # File hygiene: trailing whitespace, line endings, etc.
@@ -438,8 +457,10 @@ jobs:
       - lint-markdown
       - lint-shell
       - lint-json
-      - validate-local
+      - validate-frontmatter
       - file-hygiene
+      # validate-plugins is intentionally excluded — it is advisory only
+      # until pre-existing errors are resolved (see backlog P1 items, 2026-02-14)
     if: always()
     steps:
       - name: Check all jobs passed
