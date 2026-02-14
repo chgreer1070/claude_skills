@@ -205,13 +205,13 @@ jobs:
         run: uv run plugins/plugin-creator/scripts/validate_frontmatter.py --check
 
   # =============================================================================
-  # Local hooks: plugin validation and manifest sync (non-blocking, pre-existing failures)
-  # TODO: Make blocking once backlog items are resolved:
-  #   - "Resolve plugin-validator pre-existing errors" (P1, 2026-02-14)
-  #   - "Resolve manifest drift" (P1, 2026-02-14)
+  # Local hooks: plugin validation and manifest sync
+  # Has pre-existing failures — listed in quality-gate allowed-failures.
+  # Backlog: "Resolve plugin-validator pre-existing errors" (P1, 2026-02-14)
+  # Backlog: "Resolve manifest drift" (P1, 2026-02-14)
   # =============================================================================
   validate-plugins:
-    name: Local / Plugin validation (advisory)
+    name: Local / Plugin validation
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -230,14 +230,12 @@ jobs:
             uv.lock
 
       - name: Validate plugins
-        continue-on-error: true
         run: |
           uv run plugins/plugin-creator/scripts/plugin-validator.py \
             $(find plugins .claude -type f \( -name 'SKILL.md' -o -path '*/agents/*.md' -o -path '*/commands/*.md' -o -name 'plugin.json' \) \
               -not -path './.venv/*' -not -path './node_modules/*' 2>/dev/null)
 
       - name: Check manifest sync
-        continue-on-error: true
         run: uv run plugins/plugin-creator/scripts/auto-sync-manifests.py --reconcile --dry-run
 
   # =============================================================================
@@ -449,7 +447,7 @@ jobs:
   # =============================================================================
   quality-gate:
     name: Quality Gate
-    runs-on: ubuntu-latest
+    if: always()
     needs:
       - lint-python
       - typecheck-python
@@ -458,17 +456,16 @@ jobs:
       - lint-shell
       - lint-json
       - validate-frontmatter
+      - validate-plugins
       - file-hygiene
-      # validate-plugins is intentionally excluded — it is advisory only
-      # until pre-existing errors are resolved (see backlog P1 items, 2026-02-14)
-    if: always()
+    runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
-        run: |
-          results='${{ toJSON(needs.*.result) }}'
-          echo "Job results: $results"
-          if echo "$results" | grep -qE '"(failure|cancelled)"'; then
-            echo "::error::One or more quality checks failed"
-            exit 1
-          fi
-          echo "All quality checks passed"
+        uses: re-actors/alls-green@release/v1
+        with:
+          # Jobs listed here may fail without blocking the gate.
+          # Remove a job from this list to make it blocking.
+          # Backlog: "Resolve plugin-validator pre-existing errors" (P1, 2026-02-14)
+          # Backlog: "Resolve manifest drift" (P1, 2026-02-14)
+          allowed-failures: validate-plugins
+          jobs: ${{ toJSON(needs) }}
