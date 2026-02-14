@@ -1393,7 +1393,7 @@ class FrontmatterValidator:
                         message=f"Exceeds recommended length of {RECOMMENDED_DESCRIPTION_LENGTH} characters (got {len(validated.description)})",
                         code=SK004,
                         docs_url=generate_docs_url(SK004),
-                        suggestion=f"Front-load critical information in first {RECOMMENDED_DESCRIPTION_LENGTH} characters",
+                        suggestion=f"Front-load critical information in first {RECOMMENDED_DESCRIPTION_LENGTH} characters. Run /plugin-creator:write-frontmatter-description to generate an optimized description",
                     )
                 )
 
@@ -1911,7 +1911,7 @@ class DescriptionValidator:
                     message=f"Description too short (minimum {MIN_DESCRIPTION_LENGTH} characters, got {len(description)})",
                     code=SK004,
                     docs_url=generate_docs_url(SK004),
-                    suggestion="Add more detail to help users understand when to use this capability",
+                    suggestion="Run /plugin-creator:write-frontmatter-description to generate an optimized description with proper length and trigger phrases",
                 )
             )
 
@@ -1930,7 +1930,7 @@ class DescriptionValidator:
                         message="Description missing trigger phrases",
                         code=SK005,
                         docs_url=generate_docs_url(SK005),
-                        suggestion=f"Include at least one trigger phrase: {', '.join(REQUIRED_TRIGGER_PHRASES)}",
+                        suggestion=f"Required trigger phrases: {', '.join(REQUIRED_TRIGGER_PHRASES)}. Run /plugin-creator:write-frontmatter-description to generate a compliant description",
                     )
                 )
 
@@ -2052,7 +2052,7 @@ class ComplexityValidator:
                     message=f"Skill body exceeds token limit ({body_tokens} tokens > {TOKEN_ERROR_THRESHOLD} threshold)",
                     code=SK007,
                     docs_url=generate_docs_url(SK007),
-                    suggestion="Split skill into multiple smaller skills to reduce complexity and context window usage",
+                    suggestion="Run /plugin-creator:refactor-skill to split into multiple smaller skills",
                 )
             )
         elif body_tokens > TOKEN_WARNING_THRESHOLD:
@@ -2064,7 +2064,7 @@ class ComplexityValidator:
                     message=f"Skill body is large ({body_tokens} tokens > {TOKEN_WARNING_THRESHOLD} threshold)",
                     code=SK006,
                     docs_url=generate_docs_url(SK006),
-                    suggestion="Consider splitting into multiple focused skills for better maintainability",
+                    suggestion="Run /plugin-creator:refactor-skill to split into focused skills, or reduce content to stay under threshold",
                 )
             )
 
