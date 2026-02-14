@@ -1,163 +1,117 @@
 # Claude Skills Repository - AI-Facing Project Instructions
 
-This repository contains a Claude Code Marketplace Plugin providing Skills for Claude - modular packages that extend Claude's capabilities with specialized knowledge, workflows, and tools.
+Repository containing Claude Code Marketplace Plugin with modular skills (specialized knowledge, workflows, tools).
 
-**Contributing**: When adding, removing, or updating plugins in this repository, follow the procedures documented in [CONTRIBUTING.md](./CONTRIBUTING.md). The model MUST update `.claude-plugin/marketplace.json` when plugins are added or removed.
-
----
-
-## Session Setup
-
-Before responding to the user, the model MUST run:
-
-```bash
-uv run prek install
-```
-
-This installs the pre-commit (using prek, the rust based pre-commit fast, drop-in replacement) git hooks so that linting, formatting, and manifest syncing run automatically on every `git commit`. Without this step, commits bypass all quality checks.
+CRITICAL FIRST ACTIONS on session start:
+1. Run `uv run prek install` to enable git hooks (linting, formatting, manifest sync)
+2. Check if task involves skill creation/modification → activate `/plugin-creator:skill-creator`
+3. Follow [CONTRIBUTING.md](./CONTRIBUTING.md) procedures when modifying plugins
+4. Update `.claude-plugin/marketplace.json` when adding/removing plugins
 
 ---
 
-## Skill Creator Activation Protocol
+## Skill Creator Activation Triggers
 
 <skill_activation_triggers>
 
-The model MUST activate the skill-creator skill from the <available_skills> list when ANY of these conditions are met:
+Activate `/plugin-creator:skill-creator` when ANY condition matches:
 
-**Positive Triggers** (MUST activate):
+**Activation Required:**
+- User requests creating, modifying, or reviewing a skill
+- About to modify `*/SKILL.md` or `*/references/*.md` within skill directory
+- User asks about skill structure, frontmatter format, or validation requirements
+- Converting documentation into AI-optimized instruction format
 
-- User explicitly requests creating, modifying, or reviewing a skill
-- Model is about to modify files matching patterns: `*/SKILL.md`, `*/references/*.md` within a skill directory
-- User asks questions about skill structure, frontmatter format, or validation requirements
-- Model needs to convert documentation into AI-optimized instruction format
-- User requests optimization of existing skill documentation for LLM consumption
+**Activation Prohibited:**
+- Read-only skill usage
+- Referencing skill in conversation without modification intent
+- General coding unrelated to skill creation
 
-**Activation Syntax**:
+**Pre-Activation Checklist:**
+1. Task involves skill creation/modification (not just usage)
+2. No specialized skill better matches task domain
+3. Existing skill files have been read if being modified
 
-```claude
-Skill(command: "plugin-creator:skill-creator")
-```
-
-**Negative Conditions** (MUST NOT activate):
-
-- Simply using an existing skill (read-only activation)
-- Referencing a skill in conversation without modification intent
-- General coding tasks unrelated to skill creation
-- Reading skill documentation for context without editing
-
-**Verification**: Before activating skill-creator, the model MUST verify:
-
-1. The task involves skill creation/modification (not just usage)
-2. No other specialized skill better matches the task domain
-3. The model has read any existing skill files being modified
+Syntax: `Skill(command: "plugin-creator:skill-creator")`
 
 </skill_activation_triggers>
 
 ---
 
-## Task Delegation Rule
+## Task Delegation Standards
 
-**When invoking the Task tool, follow the Delegation Template in the agent-orchestration skill.**
+Follow Delegation Template in `/agent-orchestration` skill when invoking Task tool.
 
-### Path Conventions for Sub-Agent Delegation
+### Path Conventions
 
 <delegation_path_rules>
 
-The model MUST use paths relative to the current working directory when delegating tasks to sub-agents.
+Use paths relative to current working directory when delegating to sub-agents.
 
-**Correct Pattern:**
-
-```text
-CONTEXT:
-- Location: ./gitlab-skill/scripts/
-- File to modify: ./gitlab-skill/scripts/sync-gitlab-docs.py
+```mermaid
+flowchart TD
+    Start([Construct path for sub-agent]) --> Q{Path starts with?}
+    Q -->|./ relative| Use[Use as-is]
+    Q -->|/home/ or /usr/| Abs[Convert to ./relative/path]
+    Q -->|~/.claude/skills/| Sym[Convert to ./relative/path]
+    Abs -->|Why| Reason1[Absolute paths are verbose and non-portable]
+    Sym -->|Why| Reason2[Symlink paths trigger manual approval on every file op]
+    Use --> Done([Sub-agent inherits same working directory])
 ```
 
-**Incorrect Patterns:**
-
-```text
-# Absolute paths - unnecessary, verbose
-- Location: /home/user/repos/project/gitlab-skill/scripts/
-
-# Symlink paths - triggers security prompts, outside repo
-- Location: ~/.claude/skills/gitlab-skill/scripts/
-```
-
-**Why This Matters:**
-
-1. **Security**: Paths outside the current repository trigger manual approval prompts for every file operation
-2. **Simplicity**: Relative paths are shorter and clearer
-3. **Portability**: Relative paths work regardless of where the repo is cloned
-4. **Symlinks**: Skills are symlinked from `~/.claude/skills/` to this repo - always use the repo path, not the symlink
-
-**Rule**: If the file exists within the current working directory tree, use `./relative/path`. The sub-agent inherits the same working directory.
+Skills symlink from `~/.claude/skills/` to repo — always use the repo-relative path, not the symlink.
 
 </delegation_path_rules>
 
-### Sub-Agent Selection Rules
+### Agent Selection
 
 <sub_agent_selection>
 
-**CRITICAL: Never use the Explore agent for codebase exploration or contextual questions.**
+```mermaid
+flowchart TD
+    Start([Select agent for task]) --> Q1{Task requires reasoning, interpretation, or analysis?}
+    Q1 -->|No — exact file pattern or keyword search| Explore[Explore agent acceptable]
+    Q1 -->|Yes| Q2{Needs repo convention awareness?}
+    Q2 -->|Yes| CG[context-gathering agent]
+    Q2 -->|No — general interpretation| Q3{Prompt optimization or AI-facing content?}
+    Q3 -->|Yes| CCO[claude-context-optimizer agent]
+    Q3 -->|No| CG
+    Explore -.->|⚠️ Haiku-based ~50% hallucination rate on ambiguous queries| Warning[Never use for reasoning tasks]
+```
 
-The Explore agent uses Haiku, which has a ~50% hallucination rate on ambiguous queries. Experimental testing (2026-02-02) demonstrated:
+**Explore Failure Modes** (validated 2026-02-02, 2/4 accuracy):
+- Semantic ambiguity: matched pre-commit hooks instead of Claude Code hooks
+- Premature termination: declared "not found" instead of deeper search
+- Fabricated implementations: suggested bash when repo uses Python/JavaScript
 
-| Agent | Accuracy on Contextual Questions |
-| ----- | -------------------------------- |
-| Explore | 2/4 correct (grabbed wrong scope, gave up early) |
-| context-gathering | 4/4 correct (disambiguated correctly, searched thoroughly) |
-
-**Observed Failure Modes with Explore:**
-
-1. **Semantic ambiguity** - "hooks" matched pre-commit hooks instead of Claude Code hooks
-2. **Premature termination** - declared "not found" instead of searching deeper
-3. **Fabricated implementations** - suggested bash scripts when repo convention is Python/JavaScript
-
-**Agent Selection Matrix:**
-
-| Task Type | Correct Agent | Wrong Agent |
-| --------- | ------------- | ----------- |
-| Codebase exploration | context-gathering | Explore |
-| Contextual questions | context-gathering | Explore |
-| Finding specific files by pattern | Explore (acceptable) | - |
-| Exact keyword search | Explore (acceptable) | - |
-| Interpretation/analysis | context-gathering, claude-context-optimizer | Explore |
-| Recommendations grounded in repo conventions | context-gathering | Explore |
-
-**The model MUST use context-gathering instead of Explore when:**
-
-- The task requires understanding repo conventions
-- The query has semantic ambiguity
-- The answer requires interpretation, not just retrieval
-- Recommendations must be grounded in existing patterns
-
-**SOURCE**: Experimental validation in conversation (2026-02-02). Tested 4 questions with both agents. Context-gathering correctly disambiguated and found evidence in all cases; Explore failed on 2/4 due to semantic confusion and incomplete search.
+SOURCE: Experimental validation (2026-02-02). Context-gathering: 4/4 correct. Explore: 2/4 correct.
 
 </sub_agent_selection>
 
-### Language Conventions for Skill Components
+### Language Conventions
 
 <skill_component_languages>
 
-**Established through experimental validation (2026-02-02):**
+```mermaid
+flowchart TD
+    Start([Choose language for new component]) --> Q{Component type?}
+    Q -->|Claude Code hook| JS["JavaScript (Node.js)<br>Evidence: 9 hooks in .claude/hooks/"]
+    Q -->|Companion script| PY["Python 3.11+ with PEP 723<br>Evidence: 27+ scripts in plugins/**/scripts/"]
+    Q -->|Pre-commit hook| PY2["Python 3.11+<br>Evidence: auto-sync-manifests.py, validate_frontmatter.py"]
+    Q -->|CI/CD wrapper| Bash["Bash acceptable<br>Simple wrappers only"]
+    Q -->|Anything else| Never["Never use bash for hooks or scripts"]
+```
 
-| Component Type | Required Language | Evidence |
-| -------------- | ----------------- | -------- |
-| Claude Code hooks | JavaScript (Node.js) | 9 existing hooks in `.claude/hooks/` and `sessions/hooks/` |
-| Companion scripts | Python 3.11+ with PEP 723 | 27+ scripts in `plugins/**/scripts/` |
-| Pre-commit hooks | Python 3.11+ | `auto-sync-manifests.py`, `validate_frontmatter.py` |
+**Pattern Templates:**
 
-**JavaScript Hook Pattern** (from `.claude/hooks/session-start-backlog.js`):
-
+JavaScript hook:
 ```javascript
 #!/usr/bin/env node
 const fs = require('node:fs');
-// ... implementation
 console.log(JSON.stringify({ hookSpecificOutput: { ... } }));
 ```
 
-**Python Script Pattern** (from `plugins/plugin-creator/scripts/create_plugin.py`):
-
+Python script (PEP 723):
 ```python
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
@@ -166,70 +120,54 @@ console.log(JSON.stringify({ hookSpecificOutput: { ... } }));
 # ///
 ```
 
-**The model MUST NOT suggest bash scripts** for hooks or companion scripts in this repository. Bash is only acceptable for:
+Bash scripts prohibited for new hooks/companion scripts. Legacy bash scripts may remain but avoid creating new ones.
 
-- Simple CI/CD wrappers
-- POSIX compatibility layers
-- Existing legacy scripts (do not create new ones)
+SOURCE: Experimental validation (2026-02-02). Evidence from `.claude/hooks/session-start-backlog.js`, `plugins/plugin-creator/scripts/create_plugin.py`.
 
 </skill_component_languages>
 
-### Script Invocation Rule
+### Script Invocation
 
 <script_invocation>
 
-The model MUST NOT use `python3`, `python`, or `node` to invoke scripts in this repository. All scripts have shebangs and executable permissions enforced by pre-commit hooks (`check-executables-have-shebangs`, `check-shebang-scripts-are-executable`).
+All scripts have shebangs and executable permissions (enforced by `check-executables-have-shebangs`, `check-shebang-scripts-are-executable` pre-commit hooks).
 
-**Correct invocation methods (in order of preference):**
+**Invocation Priority:**
+1. Direct execution: `./plugins/plugin-creator/scripts/auto-sync-manifests.py --reconcile --dry-run`
+2. Via uv run (PEP 723 scripts): `uv run plugins/python3-development/skills/uv/scripts/sync-uv-releases.py --force`
 
-1. **Direct execution via shebang**: `./plugins/plugin-creator/scripts/auto-sync-manifests.py --reconcile --dry-run`
-2. **Via uv run** (for PEP 723 scripts with dependencies): `uv run plugins/python3-development/skills/uv/scripts/sync-uv-releases.py --force`
-
-**Prohibited:**
-
+**Prohibited Patterns:**
 ```bash
-# WRONG - bypasses shebang, ignores PEP 723 dependency resolution
+# ❌ Bypasses shebang, ignores PEP 723 dependency resolution
 python3 plugins/plugin-creator/scripts/auto-sync-manifests.py --reconcile
 node .claude/hooks/session-start-backlog.js
 ```
 
-**Why this matters:**
-
-- `uv run` resolves PEP 723 inline dependencies automatically
-- Shebangs may specify `uv run --script` which handles venv and deps
-- Bare `python3` skips dependency resolution and may use the wrong interpreter
-- Scripts are designed to be self-contained executables, not library modules
+**Why**: `uv run` resolves PEP 723 inline dependencies. Shebangs may specify `uv run --script` (handles venv and deps). Bare `python3` skips dependency resolution and may use wrong interpreter. Scripts are self-contained executables, not library modules.
 
 </script_invocation>
 
 ---
 
-## Path Fidelity Rule
+## Path Fidelity
 
-When user provides file or directory paths, use them exactly as given:
-
-- Do NOT add filenames to directory paths
-- Do NOT narrow scope by appending specific files
-- A skill/plugin is a DIRECTORY containing SKILL.md, references/, assets/ - examine the ecosystem, not one file
+Use user-provided paths exactly as given:
+- Preserve directory paths (do not append filenames)
+- Do not narrow scope by adding specific files
+- Skill/plugin is DIRECTORY containing SKILL.md, references/, assets/ (examine ecosystem, not single file)
 
 ---
 
-## Pre-Deletion Verification
+## Deletion Safety Protocol
 
 Before deleting any file:
-
-1. Verify the replacement contains equivalent content
-2. If agent comparison says "NEEDS MERGE" but user says proceed, ASK for clarification
-3. Never delete based on flawed/incomplete comparison
-
----
-
-## Post-Mistake Behavior
+1. Verify replacement contains equivalent content
+2. If agent says "NEEDS MERGE" but user says proceed, ASK for clarification (do not assume)
+3. Reject deletion based on flawed/incomplete comparison
 
 After irreversible mistakes:
-
 - State concretely what was lost and what can/cannot be recovered
-- Do NOT speculate optimistically ("probably small loss")
+- Do not speculate optimistically ("probably small loss" is prohibited)
 - Ask user what they want to do next
 
 ---
@@ -238,154 +176,130 @@ After irreversible mistakes:
 
 <pre_existing_issue_rule>
 
-When the model observes issues in the codebase (linting errors, type errors, test failures, etc.) and is about to dismiss them as "pre-existing issues not related to my changes", this phrase is a **trigger to act**, not a reason to stop.
+Phrase "pre-existing issues not related to my changes" is a TRIGGER TO ACT, not dismissal justification.
 
-**Required behavior**: Instead of dismissing, the model MUST offer:
-
+**Required Response:**
 > I found [N] pre-existing [issue type] in the codebase. Want to plan how to address them in this session? If not, I'll add them to the backlog.
 
-**What "plan" means**: Propose concrete steps — which files, what fixes, estimated scope. Let the user decide priority.
+**"Plan"**: Concrete steps (files, fixes, scope estimate). User decides priority.
+**"Backlog"**: Trackable record (backlog item, issue, task file) preventing loss.
 
-**What "backlog" means**: Create a trackable record (backlog item, issue, or task file) so the issues don't get forgotten.
-
-**Why this matters**: Dismissing pre-existing issues normalizes technical debt. Every session that encounters them and walks past them is a missed opportunity. The model should treat discovered issues as actionable findings, not background noise.
+**Why**: Dismissing pre-existing issues normalizes technical debt. Each session encountering issues is opportunity for remediation. Treat discovered issues as actionable findings, not background noise.
 
 </pre_existing_issue_rule>
 
 ---
 
-## Plugin Testing During Development
+## Plugin Development Workflows
 
-To test plugins during local development, use one of these methods:
+### Local Testing Methods
 
-**Option 1: Session-based loading**
-
+**Option 1 - Session-based loading:**
 ```bash
 claude --plugin-dir ./plugins/plugin-name
 ```
 
-**Option 2: Local marketplace with enable/disable**
-
+**Option 2 - Local marketplace:**
 ```bash
-# Add local marketplace (one-time)
+# One-time setup
 /plugin marketplace add ./.claude-plugin/marketplace.json
 
-# Install plugin (--scope local keeps it gitignored)
+# Install (--scope local keeps gitignored)
 /plugin install plugin-name@jamie-bitflight-skills --scope local
 
-# Disable/enable as needed
+# Toggle as needed
 /plugin disable plugin-name@jamie-bitflight-skills
 /plugin enable plugin-name@jamie-bitflight-skills
 ```
 
----
+### Marketplace Maintenance Procedures
 
-## Marketplace Maintenance
+**Adding Plugin:**
+1. Create structure under `plugins/`
+2. Validate: `claude plugin validate plugins/plugin-name/`
+3. Add entry to `.claude-plugin/marketplace.json` plugins array (MANDATORY)
+4. Bump `metadata.version` minor version (MANDATORY)
+5. Validate JSON: `python3 -m json.tool .claude-plugin/marketplace.json`
 
-**The model MUST follow these rules when modifying the plugin structure:**
+**Removing Plugin:**
+1. Remove `plugins/plugin-name/` directory
+2. Remove entry from `.claude-plugin/marketplace.json` (MANDATORY)
+3. Bump `metadata.version` (major if breaking, minor if experimental) (MANDATORY)
+4. Validate JSON
 
-### Adding a New Plugin
+**Version Bumping:**
+- Major (X.0.0): Breaking changes, removed widely-used plugins
+- Minor (1.X.0): New plugins, significant additions
+- Patch (1.0.X): Bug fixes, documentation only
 
-1. Create plugin directory structure under `plugins/`
-2. Validate plugin: `claude plugin validate plugins/plugin-name/`
-3. **MANDATORY**: Add entry to `.claude-plugin/marketplace.json` in the `plugins` array
-4. **MANDATORY**: Bump `metadata.version` (minor version for new plugins)
-5. Validate marketplace JSON: `python3 -m json.tool .claude-plugin/marketplace.json`
-
-### Removing a Plugin
-
-1. Remove plugin directory: `plugins/plugin-name/`
-2. **MANDATORY**: Remove entry from `.claude-plugin/marketplace.json`
-3. **MANDATORY**: Bump `metadata.version` (major if breaking, minor if experimental)
-4. Validate marketplace JSON
-
-### Version Bumping Rules
-
-- **Major** (X.0.0): Breaking changes, removed widely-used plugins
-- **Minor** (1.X.0): New plugins added, significant additions
-- **Patch** (1.0.X): Bug fixes, documentation only
-
-**Complete procedures**: See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed step-by-step instructions.
+Complete procedures: [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ---
 
 ## Content Optimization for Skills
 
-<content_optimization_purpose> When tasked with rewriting text for LLM consumption: Transform input into concise, technical instructions, reference material, and rules suitable for AI consumption. The audience is an AI model with expert-level comprehension of all technical concepts. Assume complete familiarity with domain internals. </content_optimization_purpose>
+<content_optimization_purpose>
+Transform input into concise, technical instructions for AI consumption. Audience is AI model with expert-level comprehension. Assume complete familiarity with domain internals.
+</content_optimization_purpose>
 
 ### Core Principles
 
-The model MUST follow these principles when transforming text into RULES, CONDITIONS, and CONSTRAINTS:
-
+When transforming text into RULES, CONDITIONS, CONSTRAINTS:
 - Write focused, imperative, actionable, scoped rules
-- Keep rules concise (target: under 500 lines per file)
-- Split significant concepts into multiple composable rules or contextually tagged data sets
-- Preemptively provide URLs to further reading and links to referenced files
-- Avoid vague guidance - write rules as clear internal documentation
-- Use declarative phrasing ("The model MUST") for all instructions
-- Produce deterministic, flat ASCII text - avoid stylistic markdown (bold, italic) - use only structural markdown (headings, lists, links, code fences with language specifiers)
-- Include explicit sections for: identity, intent, task rules, issue handling, triggers, external references
-- Preserve or expand structured examples found in source text
+- Target under 500 lines per file
+- Split large concepts into composable rules or tagged data sets
+- Preemptively provide URLs and file links
+- Write as clear internal documentation (avoid vague guidance)
+- Use declarative phrasing ("The model MUST")
+- Produce deterministic flat ASCII (structural markdown only: headings, lists, links, code fences with language specifiers)
+- Include sections: identity, intent, task rules, issue handling, triggers, external references
+- Preserve/expand structured examples from source
 
-### Strategic XML Tag Usage
+### XML Tag Strategy
 
-<xml_usage_guidelines>
+Tags improve clarity, accuracy, flexibility, parseability when prompts have multiple components (context, instructions, examples).
 
-**When to Use XML Tags** (Source: Anthropic docs.claude.com/prompt-engineering/use-xml-tags):
+Use tags to separate prompt parts: `<instructions>`, `<example>`, `<formatting>`, `<constraints>`
+- Prevents mixing instructions with examples/context
+- Consistent tag names throughout
+- Nest hierarchically: `<outer><inner></inner></outer>`
+- Combine with multishot (`<examples>`) or chain of thought (`<thinking>`, `<answer>`)
 
-XML tags improve clarity, accuracy, flexibility, and parseability when prompts involve multiple components such as context, instructions, and examples.
+No canonical "best" tags—use semantic names matching information type.
 
-**Application**:
+SOURCE: [Anthropic prompt engineering - XML tags](https://docs.anthropic.com/prompt-engineering/use-xml-tags)
 
-- Use tags like `<instructions>`, `<example>`, `<formatting>` to separate prompt parts
-- Prevents Claude from mixing up instructions with examples or context
-- Be consistent with tag names throughout prompts
-- Nest tags `<outer><inner></inner></outer>` for hierarchical content
-- Combine with multishot prompting (`<examples>`) or chain of thought (`<thinking>`, `<answer>`)
+### Transformation Checklist
 
-**Key Insight**: There are no canonical "best" XML tags - use semantic names that make sense with the information they surround.
-
-</xml_usage_guidelines>
-
-### Text Transformation Rules
-
-<transformation_rules>
-
-When rewriting text for AI consumption, the model MUST:
-
-1. Open with a directive on how to read and apply the rules
-2. Maximize information density using technical jargon, dense terminology, equations, industry-specific terms
+1. Open with directive on how to read/apply rules
+2. Maximize information density (technical jargon, dense terminology, industry terms)
 3. Rephrase for accuracy and specificity
-4. Address an expert, scientific, or academic audience
-5. Use only visible ASCII characters
-6. Write as lookup references for AI consumption - optimize as decision triggers and pattern-matching rules for an AI that already knows technical details, NOT educational content
+4. Address expert/scientific/academic audience
+5. Use visible ASCII only
+6. Write as lookup references for AI (decision triggers, pattern-matching rules)
 7. Omit greetings and unnecessary prose
-8. Preserve original text's output structure specifications if observed
-9. Use precise, deterministic ACTION→TRIGGER→OUTCOME format in frontmatter descriptions
-10. Set clear priority levels between rules to resolve conflicts efficiently
-11. Provide concise positive and negative examples of rule application
-12. Optimize for AI context window efficiency - remove non-essential information
-13. Use standard glob patterns without quotes (e.g., _.js, src/\*\*/_.{ts,js})
-14. Keep frontmatter descriptions rich with TRIGGERS for when rules should be used
+8. Preserve output structure specifications
+9. Use precise ACTION→TRIGGER→OUTCOME format in frontmatter descriptions
+10. Set clear priority levels between rules
+11. Provide concise positive/negative examples
+12. Optimize for context window efficiency
+13. Use standard glob patterns without quotes (`*.js`, `src/**/*.{ts,js}`)
+14. Rich frontmatter descriptions with TRIGGERS
 15. Limit examples to essential patterns only
-
-</transformation_rules>
 
 ---
 
-## File Reference Patterns in Skills
+## File Reference Standards
 
 ### Code Fence Language Specifiers
 
-The model MUST add a language specifier to ALL opening code fences:
-
-Markdown file containing nested code blocks
+Add language specifier to ALL code fences:
 
 ````markdown
 # Section Title
 
 ```text
-Plain text content or structured ASCII
+Plain text content
 ```
 
 ```python
@@ -394,393 +308,238 @@ def example():
 ```
 ````
 
-<rationale>4 backticks on outer fence, language specifiers on all inner fences, proper nesting</rationale>
+4 backticks on outer fence, language specifiers on all inner fences, proper nesting.
 
-### Markdown Links with Relative Paths
+### Markdown Links
 
-<correct_pattern>
-
-When creating references between files within a skill, the model MUST use markdown links with relative paths starting with `./`:
+Use markdown links with relative paths starting with `./`:
 
 **Syntax**: `[descriptive text](./path/to/file.md)`
 
-**Examples from Anthropic's mcp-builder skill**:
+**Directory Context:**
+- From SKILL.md → references: `[text](./references/filename.md)`
+- From references/file.md → same dir: `[text](./filename.md)`
+- From references/file.md → subdir: `[text](./subdir/filename.md)`
 
-```markdown
-[📋 View Best Practices](./reference/mcp_best_practices.md) [🐍 Python Implementation Guide](./reference/python_mcp_server.md) [✅ Evaluation Guide](./reference/evaluation.md)
+**Why**:
+1. Navigability: Claude Code click-through
+2. Portability: Works regardless of installation location
+3. Progressive disclosure: Load referenced files on demand
+4. User experience: Natural reference following
+
+**File Reference Decision:**
+
+```mermaid
+flowchart TD
+    Start([Reference a file]) --> Q1{Is it a skill?}
+    Q1 -->|Yes| Skill[Use activation syntax: Skill command colon name]
+    Q1 -->|No| Q2{Is it a file in the repo?}
+    Q2 -->|Yes| Q3{Path starts with ./?}
+    Q3 -->|Yes| Link["Use markdown link: [text](./path/to/file.md)"]
+    Q3 -->|No — missing ./ prefix| Fix["Add ./ prefix: [text](./references/file.md)"]
+    Q2 -->|No — external| Ext[Use full URL with access date]
+    Link --> Done([Correct])
+    Fix --> Done
+    Skill --> Done
+    Ext --> Done
+    Q3 -.->|Never| Bad1["Backtick paths: modern-modules/httpx.md"]
+    Q3 -.->|Never| Bad2["Absolute paths: /home/user/repos/.../file.md"]
 ```
-
-**Directory Context Rules**:
-
-- From `SKILL.md` → reference files: `[text](./references/filename.md)`
-- From `references/modern-modules.md` → same dir: `[text](./filename.md)`
-- From `references/modern-modules.md` → subdir: `[text](./modern-modules/filename.md)`
-
-**Why This Matters**:
-
-1. Navigability: Markdown links allow Claude Code to click through to referenced files
-2. Portability: Relative paths work regardless of installation location
-3. Progressive Disclosure: Claude can load referenced files on demand, preserving context efficiency
-4. User Experience: Users and Claude can follow references naturally
-
-</correct_pattern>
-
-<anti_patterns>
-
-The model MUST NOT use these patterns:
-
-**❌ Backticks Around Filenames** (not navigable):
-
-```markdown
-See `modern-modules/httpx.md` for details
-```
-
-**❌ Absolute Paths** (not portable):
-
-```markdown
-See [httpx](/home/user/repos/claude_skills/python3-development/references/modern-modules/httpx.md)
-```
-
-**❌ Skill Activation as File Path** (incorrect syntax):
-
-```markdown
-See `/uv/SKILL.md` for uv documentation
-```
-
-Correct: `Activate the uv skill with @uv or Skill(command: "uv")`
-
-**❌ Relative Paths Without `./` Prefix** (ambiguous):
-
-```markdown
-[text](references/file.md)
-```
-
-Correct: `[text](./references/file.md)`
-
-</anti_patterns>
 
 ### Skill Activation References
 
-<skill_reference_pattern>
+Reference other skills using activation syntax:
 
-When referencing other skills, the model MUST use activation syntax in descriptive text:
-
-**✅ Correct**:
-
-```markdown
-For comprehensive Astral uv documentation, activate the uv skill:
-
-Skill(command: "uv")
-```
-
-**❌ Incorrect**:
-
-```markdown
-See `/uv/SKILL.md` for uv documentation
-```
-
-</skill_reference_pattern>
+✅ `For comprehensive Astral uv documentation, activate the uv skill: Skill(command: "uv")`
+❌ `See /uv/SKILL.md for uv documentation`
 
 ---
 
-## Skill Documentation Verification Requirements
+## Skill Documentation Verification
 
 <critical_understanding>
 
-**Skill documentation (SKILL.md, reference files) is AI-facing documentation, NOT user-facing documentation.**
+Skill documentation (SKILL.md, reference files) is AI-facing, NOT user-facing.
 
-**Primary Audience**:
+**Primary Audience:**
+1. Orchestrator (Claude) - guides orchestration decisions, agent selection, workflow patterns
+2. Sub-agents - load and follow guidance when delegated tasks
+3. Future sessions - persist across conversations, inform all future AI instances
 
-1. The orchestrator (Claude) - reads skills to guide orchestration decisions, agent selection, workflow patterns
-2. Sub-agents - load and follow the same skill guidance when delegated tasks
-3. Future sessions - skills persist across conversations and inform all future AI instances
-
-**NOT the Primary Audience**:
-
-- Human users do not directly read SKILL.md line-by-line
-- Skills are NOT user-facing product documentation
-- Skills are AI→AI instruction sets
+**Not Primary Audience:**
+- Human users (do not read SKILL.md line-by-line)
+- Skills are AI→AI instruction sets, not product docs
 
 </critical_understanding>
 
-### Why Verification Matters for Skill Documentation
+### Why Verification Matters
 
-<verification_importance>
+False/unverified/assumed information in skill documentation causes:
+1. Model misleads itself (references and believes fabricated content later)
+2. Sub-agents misled (follow incorrect guidance in implementations)
+3. Future sessions misled (false information persists and compounds)
+4. Human receives wrong results (all AI instances follow bad guidance)
+5. False feedback loops (wrong information becomes "truth" in context)
 
-When the model writes false, unverified, or assumed information in skill documentation:
+Treat skill documentation with same rigor as code: verified, cited, accurate.
 
-1. **The model misleads itself** - will reference and believe fabricated content later
-2. **Sub-agents are misled** - follow incorrect guidance in their implementations
-3. **Future sessions are misled** - false information persists and compounds
-4. **The human receives wrong results** - because all AI instances follow bad guidance
-5. **Creates false feedback loops** - wrong information becomes "truth" in context
-
-**Critical Principle**: The model must treat skill documentation with the same rigor as code - it must be verified, cited, and accurate.
-
-</verification_importance>
-
-### Mandatory Verification Protocol
+### Verification Protocol
 
 <verification_protocol>
 
-Before documenting ANY behavior, capability, or characteristic of:
+Before documenting behavior/capability/characteristic of commands (`~/.claude/commands/`), agents (`~/.claude/agents/`), tools, libraries, or system configuration:
 
-- Commands (slash commands in `~/.claude/commands/`)
-- Agents (in `~/.claude/agents/`)
-- Tools (CLI tools, system commands)
-- Libraries or packages
-- System behavior or configuration
+**Execute ALL steps:**
 
-**The model MUST execute ALL of these steps**:
+1. **Read Actual Source**
+   - Commands: Read entire file, note line numbers
+   - Agents: Read YAML frontmatter and complete prompt
+   - Official docs: Use WebSearch, WebFetch, mcp__Ref tools
+   - Library code: Read source directly
 
-<verification_steps>
-
-1. **Read the Actual Source**
-
-   - Command files: Read entire file, note line numbers
-   - Agent files: Read YAML frontmatter and complete prompt
-   - Official documentation: Use WebSearch, WebFetch, or mcp\_\_Ref tools
-   - Library code: Read source files directly
-
-2. **Verify the Behavior**
-
-   - Execute commands/scripts if possible to observe actual behavior
+2. **Verify Behavior**
+   - Execute commands/scripts to observe actual behavior
    - Cite evidence from source files with line number references
-   - Test against documented claims before writing them
+   - Test against documented claims before writing
 
 3. **Cite Observations**
-
    - Format: "According to lines X-Y of [file path]..."
    - Format: "Testing command X produces output: [exact output]"
    - Format: "Per official documentation at [URL]..."
 
 4. **Never Fabricate**
-
    - If unknown, state "unverified" explicitly
-   - Research using available tools (Read, Grep, WebSearch, mcp\_\_Ref)
-   - If unable to verify, state "Unable to verify [claim] due to [reason]"
+   - Research using tools (Read, Grep, WebSearch, mcp__Ref)
+   - If unable to verify: "Unable to verify [claim] due to [reason]"
 
 5. **Distinguish Assumption from Fact**
-   - Mark assumptions explicitly: "Assuming [X] based on [pattern/inference]"
+   - Mark assumptions: "Assuming [X] based on [pattern/inference]"
    - Separate verified facts from reasonable inferences
-   - Never present assumptions as facts
+   - Present assumptions as assumptions, not facts
 
-</verification_steps>
-
-**Minimum Requirements**:
-
+**Minimum Requirements:**
 - Cite minimum 3 independent authoritative sources for major claims
 - Include line numbers when referencing code files
-- Execute test if behavior can be observed directly
+- Execute test if behavior observable directly
 - Note publication dates for documentation sources
 
 </verification_protocol>
 
 ### Verification Examples
 
-<examples>
-
 <example type="violation">
-  <scenario>Documenting command behavior without reading source</scenario>
-  <incorrect_output>
-→ Validates shebang matches script type
-→ Checks PEP 723 metadata if external dependencies detected
-  </incorrect_output>
-  <problem>Written without reading actual command file to verify what it does</problem>
-  <consequence>If command doesn't actually validate shebangs, this creates false information in AI knowledge base</consequence>
-</example>
+**Scenario**: Documenting command behavior without reading source
 
-<example type="violation">
-  <scenario>Assuming tool capabilities without verification</scenario>
-  <incorrect_output>
-python-portable-script agent creates stdlib-only scripts
-  </incorrect_output>
-  <problem>Written without reading agent implementation or verifying PEP 723 requirement</problem>
-  <consequence>Sub-agents will follow incorrect guidance when using this agent</consequence>
-</example>
+**Wrong**: "→ Validates shebang matches script type → Checks PEP 723 metadata if external dependencies detected"
 
-<example type="violation">
-  <scenario>Inventing requirements from training data patterns</scenario>
-  <incorrect_output>
-Stdlib-only scripts need PEP 723 for self-contained execution
-  </incorrect_output>
-  <problem>Based on pattern-matching from training, not verification of PEP 723 specification</problem>
-  <consequence>Creates false technical requirement that propagates across sessions</consequence>
+**Problem**: Written without reading actual command file to verify what it does
 </example>
 
 <example type="correct">
-  <scenario>Verified documentation with source citation</scenario>
-  <correct_output>
-→ Corrects shebang to match script type
-→ Adds PEP 723 metadata if external dependencies detected
-→ Removes PEP 723 if stdlib-only
-→ Sets execute bit if needed
+**Scenario**: Verified documentation with source citation
 
-Source: Lines 137, 154 of plugins/python3-development/skills/shebangpython/SKILL.md </correct_output> <rationale>Includes specific line number citations from actual source file</rationale> </example>
+**Right**: "→ Corrects shebang to match script type → Adds PEP 723 metadata if external dependencies detected → Removes PEP 723 if stdlib-only → Sets execute bit if needed"
 
-<example type="correct">
-  <scenario>Explicit uncertainty when unable to verify</scenario>
-  <correct_output>
-The python-portable-script agent purpose is not yet verified. Before documenting its behavior, I will read the agent file to confirm its actual capabilities.
-  </correct_output>
-  <rationale>States uncertainty explicitly and commits to verification before documenting</rationale>
+Source: Lines 137, 154 of `plugins/python3-development/skills/shebangpython/SKILL.md`
 </example>
 
-</examples>
+<example type="correct">
+**Scenario**: Explicit uncertainty when unable to verify
+
+**Right**: "The python-portable-script agent purpose is not yet verified. Before documenting its behavior, I will read the agent file to confirm its actual capabilities."
+</example>
 
 ---
 
-## Reference Documentation Citation Requirements
+## Citation Requirements
 
 <citation_requirements>
 
-**Principle**: Reference documentation is only as reliable as its sources. Without citations, guidance cannot be verified, updated, or trusted.
+Reference documentation reliability depends on sources. Without citations, guidance cannot be verified, updated, or trusted.
 
-**The model MUST provide source attribution for ALL reference documentation using one of these methods:**
+Provide source attribution using one of these methods:
 
-### Citation Method 1: Inline Citations
+### Citation Method 1: Inline
 
-Cite sources directly within the contextual section where the information is used:
+Cite within contextual section:
 
 ```markdown
 ### Tool Naming Standards
 
-RULE: Use snake*case for tool names with pattern `{service}*{action}\_{resource}`
+RULE: Use snake_case for tool names with pattern `{service}_{action}_{resource}`
 
 SOURCE: [MCP Best Practices - Tool Naming](https://modelcontextprotocol.io/docs/best-practices#tool-naming) (accessed 2025-01-15)
 
-EXAMPLES:
-
-- `slack_send_message` (not just `send_message`)
+EXAMPLES: `slack_send_message` (not `send_message`)
 ```
 
 ### Citation Method 2: References Footer
-
-Add a "## References" section at the end of the document:
 
 ```markdown
 ## References
 
 1. **MCP Protocol Specification** - https://modelcontextprotocol.io/llms-full.txt (accessed 2025-01-15)
 2. **FastMCP Documentation** - https://github.com/jlowin/fastmcp (accessed 2025-01-15)
-3. **Tool Design Patterns** - Community consensus from FastMCP examples repository
 ```
 
-Reference in text using: `[1]`, `[2]`, etc.
+Reference in text: `[1]`, `[2]`
 
-### Citation Method 3: Separate references.md File
+### Citation Method 3: Separate File
 
-For skills with extensive citations, create `./references/references.md`:
-
-```markdown
-# References for fastmcp-creator Skill
-
-## Official Documentation
-
-- MCP Protocol: https://modelcontextprotocol.io/llms-full.txt
-- FastMCP: https://github.com/jlowin/fastmcp
-
-## Community Resources
-
-- FastMCP Examples: https://github.com/jlowin/fastmcp/tree/main/examples
-```
+For extensive citations: `./references/references.md`
 
 Reference in SKILL.md: `See [References](./references/references.md) for complete source list`
 
-### Required Citation Details by Source Type
+### Citation Details by Source Type
 
-**Derived from Another Skill:**
-
+**Derived from Skill:**
 ```markdown
-SOURCE: Based on [mcp-builder skill](https://github.com/anthropics/claude-code-examples/tree/main/mcp-builder) ADAPTATIONS: Modified tool naming conventions for Python-specific patterns
+SOURCE: Based on [mcp-builder skill](https://github.com/anthropics/claude-code-examples/tree/main/mcp-builder)
+ADAPTATIONS: Modified tool naming conventions for Python-specific patterns
 ```
 
-**Collated from Websites/Forums:**
-
-The model MUST cite EVERY source when aggregating information:
-
+**Collated from Websites/Forums (cite EVERY source):**
 ```markdown
 SOURCES:
-
 - [MCP Best Practices](https://modelcontextprotocol.io/docs/best-practices) (accessed 2025-01-15)
 - [FastMCP GitHub Issues #42](https://github.com/jlowin/fastmcp/issues/42) (accessed 2025-01-15)
-- [Reddit: r/ClaudeAI - MCP Tool Design Discussion](https://reddit.com/r/ClaudeAI/comments/xyz) (accessed 2025-01-15)
+- [Reddit: r/ClaudeAI - MCP Tool Design](https://reddit.com/r/ClaudeAI/comments/xyz) (accessed 2025-01-15)
 
-RATIONALE: Allows verification and updates as new information becomes available
+RATIONALE: Allows verification and updates when information changes
 ```
 
-**Based on User Preferences/Discussions:**
-
-The model MUST document the origin with date:
-
+**User Preferences/Discussions:**
 ```markdown
-SOURCE: User preference established in conversation (2025-01-15) CONTEXT: User prefers 5-part tool description structure based on improved AI tool selection in testing VALIDATION: Tested on 20 tools, improved selection accuracy from 65% to 89%
+SOURCE: User preference established in conversation (2025-01-15)
+CONTEXT: User prefers 5-part tool description structure based on improved AI tool selection
+VALIDATION: Tested on 20 tools, improved selection accuracy from 65% to 89%
 ```
 
-**Based on Experiments/Testing:**
-
-The model MUST document the experimental basis:
-
+**Experiments/Testing:**
 ```markdown
-SOURCE: Experimental validation (2025-01-15) METHOD: Tested 15 tools with varying description formats across 50 prompts RESULTS: 5-part structure yielded 89% correct tool selection vs 65% for unstructured descriptions DATASET: Available at ./references/experiments/tool-description-testing.md
+SOURCE: Experimental validation (2025-01-15)
+METHOD: Tested 15 tools with varying description formats across 50 prompts
+RESULTS: 5-part structure yielded 89% correct tool selection vs 65% for unstructured
+DATASET: ./references/experiments/tool-description-testing.md
 ```
 
-### Verification Requirements
+### Citation Verification Checklist
 
-When creating or updating reference documentation, the model MUST verify:
-
-- [ ] Every factual claim has a cited source
-- [ ] URLs include access dates (format: YYYY-MM-DD)
+- [ ] Every factual claim has cited source
+- [ ] URLs include access dates (YYYY-MM-DD)
 - [ ] Skill derivations link to source skill repository
-- [ ] User preferences note the conversation date
+- [ ] User preferences note conversation date
 - [ ] Experimental claims reference datasets or methodology
-- [ ] Citations distinguish between official docs, community practices, and opinions
-
-### Prohibited Patterns
-
-**❌ Uncited Best Practices:**
-
-```markdown
-RULE: Tool descriptions must be concise and actionable
-```
-
-**✅ Properly Cited:**
-
-```markdown
-RULE: Tool descriptions must be concise and actionable SOURCE: [MCP Best Practices](https://modelcontextprotocol.io/docs/best-practices#descriptions) (accessed 2025-01-15)
-```
-
-**❌ Vague Attribution:**
-
-```markdown
-Based on community best practices
-```
-
-**✅ Specific Attribution:**
-
-```markdown
-SOURCE: Pattern observed across FastMCP example projects:
-
-- https://github.com/jlowin/fastmcp/tree/main/examples/weather (accessed 2025-01-15)
-- https://github.com/jlowin/fastmcp/tree/main/examples/github (accessed 2025-01-15)
-```
-
-### Rationale
+- [ ] Citations distinguish official docs, community practices, opinions
 
 **Why Citations Matter:**
+1. Verifiability - Claims checkable against original sources
+2. Updateability - Know what to update when upstream changes
+3. Authority - Distinguish official specs from opinions
+4. Trust - Future AI sessions validate guidance before following
+5. Debugging - When guidance fails, reveal if source changed or was misinterpreted
 
-1. **Verifiability** - Claims can be checked against original sources
-2. **Updateability** - When upstream documentation changes, we know what to update
-3. **Authority** - Distinguishes official specs from opinions
-4. **Trust** - Future AI sessions can validate guidance before following it
-5. **Debugging** - When guidance fails, citations reveal whether source changed or was misinterpreted
-
-**Without Citations:**
-
-- Cannot distinguish fact from assumption
-- Cannot update when sources change
-- Cannot verify correctness
-- Creates false feedback loops in AI knowledge
+Without citations: Cannot distinguish fact from assumption, cannot update when sources change, cannot verify correctness, creates false feedback loops in AI knowledge.
 
 </citation_requirements>
 
@@ -788,53 +547,39 @@ SOURCE: Pattern observed across FastMCP example projects:
 
 ## File Reference Verification Checklist
 
-<verification_checklist>
-
-When creating or updating reference files, the model MUST verify:
+When creating/updating reference files, verify:
 
 - [ ] All file references use markdown link syntax: `[text](./path)`
 - [ ] Relative paths start with `./`
-- [ ] Paths are relative to the file containing the reference
-- [ ] Referenced files actually exist at those paths (verify with Read tool)
-- [ ] No backticks used for file references (unless showing code/commands)
-- [ ] Language specifiers present on all code fences
-- [ ] Nested code blocks use proper backtick counts (4 for outer, 3 for inner)
-
-</verification_checklist>
+- [ ] Paths relative to file containing reference
+- [ ] Referenced files exist at those paths (verify with Read tool)
+- [ ] No backticks for file references (unless showing code/commands)
+- [ ] Language specifiers on all code fences
+- [ ] Nested code blocks use proper backtick counts (4 outer, 3 inner)
 
 ---
 
 ## Skill Validation vs Packaging
 
-<skill_validation>
+**Validation: YES** - Validate skills to ensure quality:
+- YAML frontmatter properly formatted
+- Required fields present (name, description, tools, model)
+- File references correct and target files exist
+- Directory structure valid
 
-**Validation: YES** - The model MUST validate skills to ensure quality standards:
-
-- YAML frontmatter is properly formatted
-- Required fields are present (name, description, tools, model)
-- File references are correct and target files exist
-- Directory structure is valid
-
-**Packaging: NO** - The model MUST NOT package skills into .zip files for distribution:
-
+**Packaging: NO** - Do not package skills into .zip files:
 - Skills in this repository are for local use
-- Already in their final location
+- Already in final location
 - Packaging creates unnecessary files
 - Serves no purpose for local development
-
-</skill_validation>
 
 ---
 
 ## Markdown Formatting Standards
 
-<markdown_standards>
+**MD031/blanks-around-fences**: Fenced code blocks surrounded by blank lines
 
-The model MUST follow these markdown formatting rules:
-
-**MD031/blanks-around-fences**: Fenced code blocks MUST be surrounded by blank lines
-
-**Example**:
+Example:
 
 ````markdown
 This is a paragraph.
@@ -843,35 +588,26 @@ This is a paragraph.
 def example():
     return True
 ```
-````
 
 This is another paragraph.
-
 ````
-
-</markdown_standards>
 
 ---
 
-## Local Formatting and Linting Tools
+## Local Formatting and Linting
 
-<available_tools>
-
-The model MUST use these tools for formatting and linting in this repository:
+Use these tools for formatting/linting:
 
 ```bash
 uv run prek run --files <file>
 ```
 
-**Note**: This repository uses `prek` (Rust-based pre-commit replacement), not `pre-commit`. Both use the same `.pre-commit-config.yaml` with identical syntax.
+Repository uses `prek` (Rust-based pre-commit replacement), not `pre-commit`. Both use same `.pre-commit-config.yaml` with identical syntax.
 
-**When to use**:
-
+**When to use:**
 - Before committing skill documentation
 - After modifying SKILL.md or reference files
 - To validate markdown formatting compliance
-
-</available_tools>
 
 ---
 
@@ -879,51 +615,39 @@ uv run prek run --files <file>
 
 <linting_exceptions>
 
-The model MUST NOT ignore or bypass linting errors UNLESS the code falls into one of these categories:
+Do not ignore/bypass linting errors UNLESS code falls into these categories:
 
-**Acceptable Exceptions** (OK to ignore linting):
+**Acceptable Exceptions:**
+1. **Vendored code** - Third-party code copied without modification (not authored by model)
+2. **What-not-to-do examples** - Intentionally incorrect code for educational/negative test cases
+3. **Historic Python version pinning** - Code for Python <3.11 where modern syntax unavailable (currently no code in this category—verify before assuming)
+4. **Python derivatives** - CircuitPython, MicroPython, or implementations with different syntax/missing stdlib modules
 
-1. **Vendored code** - Third-party code copied into the repository without modification. The model did not author this code and should not modify it.
+Update linting config files (`pyproject.toml`, `.vscode/settings.json`) to exclude these files. Do not use inline comments (`# noqa`, `# type: ignore`).
 
-2. **Examples of what-not-to-do** - Intentionally incorrect code used for educational purposes or negative test cases. The linting errors are the point.
+**Unacceptable Exceptions (MUST fix or escalate):**
 
-3. **Code specifically and intentionally pinned to historic Python version** - Code that must remain compatible with Python versions older than 3.11 where modern syntax is unavailable. Right now, no code in this repository is in this category, but call it out if you see it and ask about it.
+If NONE of above apply:
+1. Fix linting smell using `/hollistic-linting:hollistic-linting` Skill (exact methodology for addressing linting issues)
+2. If unable to fix, document specific blocker
+3. Never add `# type: ignore`, `# noqa` without explicit user approval
 
-4. **Code for Python derivatives** - CircuitPython, MicroPython, or other Python implementations with different syntax requirements or missing standard library modules.
-Do not modify the files with inline comments that prevent linting like `# noqa`. Instead update the linting configuration files, such as the pyproject.toml or .vscode/settings.json to exclude the files that fall into these categories. If the user asks about why you are adding a file to the exclusions, you must double check the rules above and ensure that the file does actually fit. If it does fit, then you can say the file fits the linting_exception list item {item}.
+**Rule Codes That MUST Always Be Fixed (never suppress):**
+- BLE001 (blind-except): Replace `except Exception` with specific exception types
+- D103 (missing-docstring-in-public-function): Add docstrings to public functions
+- TRY300 (try-consider-else): Restructure try/except/else blocks properly
 
-**Unacceptable Exceptions** (MUST fix or escalate):
-
-If NONE of the above conditions apply, the model MUST:
-
-1. Fix the linting smell by using the hollistic-linting:hollistic-linting Skill, which describes the exact methodology required when addressing linting issues.
-2. If unable to fix, document the specific blocker
-3. Never add `# type: ignore`, `# noqa`, or similar suppressions without explicit user approval
-
-**Rule Codes That MUST Always Be Fixed** (never suppress):
-
-These rule codes indicate real code quality issues that must be resolved at root cause:
-
-- **BLE001** (blind-except): Replace generic `except Exception` with specific exception types
-- **D103** (missing-docstring-in-public-function): Add docstrings to public functions
-- **TRY300** (try-consider-else): Restructure try/except/else blocks properly
-
-**Per-File Exceptions in pyproject.toml** (acceptable):
-
-The following rules may be configured as per-file ignores in `pyproject.toml` `[tool.ruff.lint.per-file-ignores]`:
-
+**Per-File Exceptions in pyproject.toml (acceptable):**
 - `**/scripts/**`: T201 (print), S (security), DOC, ANN401, PLR0911, PLR0917, PLC0415
 - `**/tests/**`: S, D, E501, ANN, DOC, PLC, SLF, PLR, EXE, N, T
 - `**/assets/**`: PLC0415, DOC
 - `typings/**`: N, ANN, A
 
-These configurations allow relaxed checking in appropriate contexts without inline suppressions.
+Relaxed checking in appropriate contexts without inline suppressions.
 
-**Touched Files Must Be Clean**:
+**Touched Files Must Be Clean**: When files modified/moved/renamed, all linting issues MUST be resolved before committing. Touching file means taking responsibility for quality.
 
-When files are modified, moved, or renamed, all linting issues in those files MUST be resolved before committing. Touching a file means taking responsibility for its quality.
-
-**SOURCE**: User policy established in conversation (2025-01-15)
+SOURCE: User policy established in conversation (2025-01-15)
 
 </linting_exceptions>
 
@@ -933,80 +657,74 @@ When files are modified, moved, or renamed, all linting issues in those files MU
 
 <ci_modification_protocol>
 
-The model MUST follow this phase-gate checklist when creating, modifying, or debugging GitHub Actions workflows. Each phase gates the next — do not advance until the current phase is complete.
+Follow this phase-gate checklist when creating/modifying/debugging GitHub Actions workflows. Each phase gates the next.
 
 ### Phase 1: Research
 
-Before writing or modifying any workflow YAML, the model MUST:
+Before writing/modifying workflow YAML:
+1. Read existing workflow file(s) in `.github/workflows/` to understand current state
+2. Identify specific problem/requirement (broken, missing, needs change)
+3. Research best practices for pattern needed (quality gates, caching, matrix builds)
+4. Search established patterns in mature projects (CPython, Rust, TypeScript)
+5. Document findings: patterns, trade-offs, scenario fit
 
-1. Read the existing workflow file(s) in `.github/workflows/` to understand current state
-2. Identify the specific problem or requirement — what is broken, what is missing, what needs to change
-3. Research best practices for the specific pattern needed (quality gates, caching, matrix builds, etc.)
-4. Search for established patterns in mature projects (CPython, Rust, TypeScript) using web search or known references
-5. Document findings: what patterns exist, what trade-offs they have, which fits this scenario
-
-**Gate**: The model can state what pattern to use and why, citing at least one external reference.
+**Gate**: State what pattern to use and why, citing at least one external reference.
 
 ### Phase 2: Plan
 
-The model MUST write a concrete plan before making changes:
-
-1. List every file that will be modified or created
+Write concrete plan before changes:
+1. List every file to be modified/created
 2. For each change, describe what will change and why
-3. Identify interactions with branch protection settings, required status checks, and the quality gate job
-4. Identify pre-existing failures that the change must account for (do not silently mask them)
-5. State acceptance criteria: what does "done" look like? How will the model verify the change works?
+3. Identify interactions with branch protection, required status checks, quality gate job
+4. Identify pre-existing failures to account for (do not silently mask)
+5. State acceptance criteria: what does "done" look like? How to verify?
 
-**Gate**: The plan is written and covers all affected files and interactions.
+**Gate**: Plan written and covers all affected files and interactions.
 
 ### Phase 3: Review Plan
 
-Before executing, the model MUST review the plan for:
+Before executing, review plan:
+1. Does each change align with researched best practice?
+2. Side effects not accounted for? (e.g., renaming job breaks branch protection required checks)
+3. Does plan honestly represent failures? No masking exit codes, no `|| true` on checks that should report real status
+4. Is plan minimal? Avoids unnecessary changes beyond stated requirement?
 
-1. Does each change align with the researched best practice?
-2. Are there side effects the plan does not account for? (e.g., renaming a job breaks branch protection required checks)
-3. Does the plan honestly represent failures? No masking exit codes, no `|| true` on checks that should report their real status
-4. Is the plan minimal? Does it avoid unnecessary changes beyond the stated requirement?
-
-**Gate**: The model has verified the plan against the research findings and found no gaps.
+**Gate**: Plan verified against research findings, no gaps found.
 
 ### Phase 4: Execute
 
-Implement the plan:
-
+Implement plan:
 1. Make changes to workflow YAML files
 2. Validate YAML syntax: `python3 -m yaml <file>` or equivalent
 3. Run `uv run prek run --files <file>` if applicable
-4. Commit with a descriptive message explaining what changed and why
+4. Commit with descriptive message explaining what changed and why
 
-**Gate**: Changes are committed and pass local validation.
+**Gate**: Changes committed and pass local validation.
 
 ### Phase 5: Verify
 
-After execution, the model MUST verify:
+After execution, verify:
+1. Re-read modified workflow file(s) and confirm match plan
+2. Trace quality gate logic: which jobs required? Which advisory? Does gate correctly aggregate?
+3. Confirm no exit codes swallowed (`|| true`, `|| echo`, bare `continue-on-error` without explanation)
+4. If pre-existing failures exist, confirm handled via `alls-green` allowed-failures pattern (not masked)
+5. Push and check workflow run if possible
 
-1. Re-read the modified workflow file(s) and confirm they match the plan
-2. Trace the quality gate logic: which jobs are required? Which are advisory? Does the gate correctly aggregate them?
-3. Confirm no exit codes are being swallowed (`|| true`, `|| echo`, bare `continue-on-error` without explanation)
-4. If pre-existing failures exist, confirm they are handled via the `alls-green` allowed-failures pattern (not masked)
-5. Push and check the workflow run (if possible)
-
-**Gate**: The model can state exactly what will pass, what will fail, and what the PR status will show — with no ambiguity.
+**Gate**: State exactly what will pass, what will fail, what PR status will show—with no ambiguity.
 
 ### Quality Gate Pattern (Required)
 
 <quality_gate_pattern>
 
-This repository uses the `alls-green` quality gate pattern, following CPython's established practice.
+Repository uses `alls-green` quality gate pattern (following CPython established practice).
 
-**How it works**:
+**How it works:**
+- Individual jobs run without `continue-on-error`, report real pass/fail status
+- Quality gate job is ONLY required status check in branch protection
+- Jobs with known pre-existing failures listed in `allowed-failures`
+- Gate passes if all non-allowed jobs succeed and allowed jobs either succeed or fail
 
-- Individual jobs run without `continue-on-error` and report their real pass/fail status
-- The quality gate job is the ONLY required status check in branch protection
-- Jobs with known pre-existing failures are listed in `allowed-failures`
-- The gate passes if all non-allowed jobs succeed and allowed jobs either succeed or fail
-
-**Implementation**: Uses `re-actors/alls-green` action.
+**Implementation:** Uses `re-actors/alls-green` action.
 
 ```yaml
 quality-gate:
@@ -1021,21 +739,24 @@ quality-gate:
         jobs: ${{ toJSON(needs) }}
 ```
 
-**Promoting an advisory check to blocking**: Remove it from `allowed-failures`. One-line change.
+**Promoting advisory check to blocking**: Remove from `allowed-failures`. One-line change.
 
-**Anti-patterns the model MUST NOT use**:
+**CI step review decision:**
 
-| Pattern | Problem |
-|---------|---------|
-| `\|\| echo ::warning::` | Swallows exit code, step reports success |
-| `\|\| true` | Same — masks real failure |
-| Job-level `continue-on-error: true` | `needs.*.result` reports `success`, gate cannot detect failure |
-| Step-level `continue-on-error` on quality checks | Step shows as passed, real status hidden |
-| Omitting advisory jobs from the gate `needs` | Gate does not wait for them, no visibility |
+```mermaid
+flowchart TD
+    Start([Review CI step]) --> Q1{Does step use || true or || echo?}
+    Q1 -->|Yes| Reject1[Remove — swallows exit code, masks real failure]
+    Q1 -->|No| Q2{Does job have continue-on-error: true?}
+    Q2 -->|Yes| Q3{Is this a quality check job?}
+    Q3 -->|Yes| Reject2[Remove — needs.result reports success, gate blind to failure]
+    Q3 -->|No — post-processing only: metrics, cache, coverage| Accept[Acceptable]
+    Q2 -->|No| Q4{Is advisory job listed in gate needs?}
+    Q4 -->|Yes| OK[Correct — gate has visibility]
+    Q4 -->|No| Reject3[Add to needs — gate cannot wait for invisible jobs]
+```
 
-**Acceptable use of `continue-on-error`**: Only for genuinely non-critical post-processing steps within a job (metrics uploads, cache saves, coverage reports) where failure has no bearing on code quality.
-
-**SOURCE**: CPython `build.yml` quality gate pattern, GitHub Actions docs on `continue-on-error` behavior and branch protection interaction (2026-02-14)
+SOURCE: CPython `build.yml` quality gate pattern, GitHub Actions docs on `continue-on-error` behavior and branch protection interaction (2026-02-14)
 
 </quality_gate_pattern>
 
@@ -1049,7 +770,7 @@ quality-gate:
 
 ### Installation
 
-`gh` is **not pre-installed** in this environment. Install it before first use:
+`gh` not pre-installed. Install before first use:
 
 ```bash
 (type -p gh > /dev/null) || {
@@ -1063,9 +784,9 @@ quality-gate:
 
 ### Authentication and Repo Detection
 
-`GITHUB_TOKEN` is set in the environment — `gh` authenticates automatically.
+`GITHUB_TOKEN` set in environment—`gh` authenticates automatically.
 
-**However**, the git remote points to a **local proxy** (`127.0.0.1`), not `github.com`. `gh` cannot auto-detect the repository from the remote URL. Every `gh` command will fail with:
+Git remote points to local proxy (`127.0.0.1`), not `github.com`. `gh` cannot auto-detect repository from remote URL. Every `gh` command fails with:
 
 ```text
 failed to determine base repo: none of the git remotes configured for this repository point to a known GitHub host.
@@ -1079,13 +800,13 @@ gh <command> -R Jamie-BitFlight/claude_skills
 
 ### Usage Examples
 
-All examples include the required `-R` flag:
+All examples include required `-R` flag:
 
 ```bash
 # List recent workflow runs
 gh run list -R Jamie-BitFlight/claude_skills --limit=5
 
-# View a specific run
+# View specific run
 gh run view <run-id> -R Jamie-BitFlight/claude_skills
 
 # View failed job logs
@@ -1094,18 +815,19 @@ gh run view <run-id> -R Jamie-BitFlight/claude_skills --log-failed
 # Check PR status
 gh pr checks <pr-number> -R Jamie-BitFlight/claude_skills
 
-# Create a PR
+# Create PR
 gh pr create -R Jamie-BitFlight/claude_skills --title "title" --body "body"
 ```
 
 ### When to Use
 
-The model MUST use `gh` to verify workflow changes rather than assuming the push succeeded. Observing actual CI output is part of Phase 5 (Verify) in the CI Workflow Modification Protocol above.
+Use `gh` to verify workflow changes rather than assuming push succeeded. Observing actual CI output is part of Phase 5 (Verify) in CI Workflow Modification Protocol.
 
 </gh_cli_usage>
 
 ---
 
-When referencing a skill we do not use the '@' symbol, we use '/'. When referencing an agent we use '@' and not '/'.
-You are NEVER allowed to suppose anything. No Speculation as diagnosis. You say what occured, and what you observed when it occured. You do not project causality into the situation when you can't show that relationship
-````
+## Final Rules
+
+- When referencing skill: use `/` (not `@`). When referencing agent: use `@` (not `/`).
+- No speculation as diagnosis. State what occurred and what was observed when it occurred. Do not project causality into situation when relationship cannot be shown.
