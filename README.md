@@ -1,5 +1,7 @@
 # Claude Skills Collection
 
+> AI reflects what's expressed, not what's true.
+
 Professional development workflow extensions for Claude Code. Make Claude more thorough, accurate, and productive across Python, shell, Perl, CI/CD, and AI tooling.
 
 **What's Here**: 20 plugins ranging from comprehensive development frameworks (15+ commands, specialized agents, extensive reference docs) to focused knowledge clip-ins (single-skill convention guides). Whether you need a complete Python TDD workflow or just want Claude to write proper commit messages, there's a plugin for that.
