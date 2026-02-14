@@ -180,10 +180,10 @@ jobs:
         run: npx prettier@3.5.3 --check "**/*.json" --ignore-path .gitignore
 
   # =============================================================================
-  # Local hooks: validate-frontmatter
+  # Local hooks: frontmatter validation (blocking)
   # =============================================================================
-  validate-local:
-    name: Local / Frontmatter validation
+  validate-frontmatter:
+    name: Local / Frontmatter
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -203,6 +203,40 @@ jobs:
 
       - name: Validate frontmatter
         run: uv run plugins/plugin-creator/scripts/validate_frontmatter.py --check
+
+  # =============================================================================
+  # Local hooks: plugin validation and manifest sync
+  # Has pre-existing failures — listed in quality-gate allowed-failures.
+  # Backlog: "Resolve plugin-validator pre-existing errors" (P1, 2026-02-14)
+  # Backlog: "Resolve manifest drift" (P1, 2026-02-14)
+  # =============================================================================
+  validate-plugins:
+    name: Local / Plugin validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Validate plugins
+        run: |
+          uv run plugins/plugin-creator/scripts/plugin-validator.py \
+            $(find plugins .claude -type f \( -name 'SKILL.md' -o -path '*/agents/*.md' -o -path '*/commands/*.md' -o -name 'plugin.json' \) \
+              -not -path './.venv/*' -not -path './node_modules/*' 2>/dev/null)
+
+      - name: Check manifest sync
+        run: uv run plugins/plugin-creator/scripts/auto-sync-manifests.py --reconcile --dry-run
 
   # =============================================================================
   # File hygiene: trailing whitespace, line endings, etc.
@@ -239,8 +273,137 @@ jobs:
             exit 1
           fi
 
+      - name: Check for merge conflict markers
+        run: |
+          # Only match unambiguous conflict markers (<<<<<<< and >>>>>>>).
+          # Excludes ======= which is valid RST heading underline syntax.
+          conflict_files=$(git grep -lE '^(<{7}|>{7})( |$)' -- ':!*.lock' ':!.venv/*' ':!node_modules/*' || true)
+          if [ -n "$conflict_files" ]; then
+            echo "::error::Files with merge conflict markers found:"
+            echo "$conflict_files"
+            exit 1
+          fi
+
+      - name: Check for mixed line endings
+        run: |
+          mixed=""
+          while IFS= read -r -d '' file; do
+            if [ -f "$file" ] && [ ! -L "$file" ] && [ -s "$file" ] && file "$file" | grep -q "text"; then
+              if grep -Pql '\r\n' "$file" 2>/dev/null; then
+                mixed="$mixed $file"
+              fi
+            fi
+          done < <(git ls-files -z -- ':!*.lock' ':!.venv/*' ':!node_modules/*' ':!*.png' ':!*.jpg' ':!*.gif' ':!*.ico')
+
+          if [ -n "$mixed" ]; then
+            echo "::error::Files with CRLF line endings (should be LF):$mixed"
+            exit 1
+          fi
+
+      - name: Check for broken symlinks
+        run: |
+          broken=""
+          while IFS= read -r -d '' file; do
+            if [ -L "$file" ] && [ ! -e "$file" ]; then
+              broken="$broken $file"
+            fi
+          done < <(git ls-files -z)
+
+          if [ -n "$broken" ]; then
+            echo "::error::Broken symlinks found:$broken"
+            exit 1
+          fi
+
+      - name: Check for large files
+        run: |
+          # 10MB limit, matching prek check-added-large-files --maxkb=10000
+          large_files=$(git ls-files -z | xargs -0 -I{} find {} -maxdepth 0 -size +10M 2>/dev/null || true)
+          if [ -n "$large_files" ]; then
+            echo "::error::Files exceeding 10MB limit:"
+            echo "$large_files"
+            exit 1
+          fi
+
+      - name: Check executables have shebangs
+        run: |
+          errors=""
+          while IFS= read -r -d '' file; do
+            if [ -x "$file" ] && [ -f "$file" ] && [ ! -L "$file" ] && [ -s "$file" ] && file "$file" | grep -q "text"; then
+              first_bytes=$(head -c 2 "$file")
+              if [ "$first_bytes" != "#!" ]; then
+                errors="$errors $file"
+              fi
+            fi
+          done < <(git ls-files -z -- ':!*.lock' ':!.venv/*' ':!node_modules/*')
+
+          if [ -n "$errors" ]; then
+            echo "::error::Executable files missing shebangs:$errors"
+            exit 1
+          fi
+
+      - name: Check shebang scripts are executable
+        run: |
+          errors=""
+          while IFS= read -r -d '' file; do
+            if [ -f "$file" ] && [ ! -L "$file" ] && [ -s "$file" ]; then
+              first_bytes=$(head -c 2 "$file")
+              if [ "$first_bytes" = "#!" ] && [ ! -x "$file" ]; then
+                errors="$errors $file"
+              fi
+            fi
+          done < <(git ls-files -z -- ':!*.lock' ':!.venv/*' ':!node_modules/*')
+
+          if [ -n "$errors" ]; then
+            echo "::error::Scripts with shebangs missing executable permission:$errors"
+            exit 1
+          fi
+
       - name: Setup uv
         uses: astral-sh/setup-uv@v6
+
+      - name: Check JSON syntax
+        run: |
+          uv run python -c "
+          import json
+          import sys
+          from pathlib import Path
+
+          errors = []
+          for f in Path('.').rglob('*.json'):
+              if '.venv' in str(f) or 'node_modules' in str(f):
+                  continue
+              try:
+                  json.loads(f.read_text())
+              except json.JSONDecodeError as e:
+                  errors.append(f'{f}: {e}')
+
+          if errors:
+              for e in errors:
+                  print(f'::error::{e}')
+              sys.exit(1)
+          "
+
+      - name: Check TOML syntax
+        run: |
+          uv run python -c "
+          import tomllib
+          import sys
+          from pathlib import Path
+
+          errors = []
+          for f in Path('.').rglob('*.toml'):
+              if '.venv' in str(f) or 'node_modules' in str(f):
+                  continue
+              try:
+                  tomllib.loads(f.read_text())
+              except tomllib.TOMLDecodeError as e:
+                  errors.append(f'{f}: {e}')
+
+          if errors:
+              for e in errors:
+                  print(f'::error::{e}')
+              sys.exit(1)
+          "
 
       - name: Check YAML syntax
         run: |
@@ -284,7 +447,7 @@ jobs:
   # =============================================================================
   quality-gate:
     name: Quality Gate
-    runs-on: ubuntu-latest
+    if: always()
     needs:
       - lint-python
       - typecheck-python
@@ -292,16 +455,17 @@ jobs:
       - lint-markdown
       - lint-shell
       - lint-json
-      - validate-local
+      - validate-frontmatter
+      - validate-plugins
       - file-hygiene
-    if: always()
+    runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
-        run: |
-          results="${{ toJSON(needs.*.result) }}"
-          echo "Job results: $results"
-          if echo "$results" | grep -qE '"(failure|cancelled)"'; then
-            echo "::error::One or more quality checks failed"
-            exit 1
-          fi
-          echo "All quality checks passed"
+        uses: re-actors/alls-green@release/v1
+        with:
+          # Jobs listed here may fail without blocking the gate.
+          # Remove a job from this list to make it blocking.
+          # Backlog: "Resolve plugin-validator pre-existing errors" (P1, 2026-02-14)
+          # Backlog: "Resolve manifest drift" (P1, 2026-02-14)
+          allowed-failures: validate-plugins
+          jobs: ${{ toJSON(needs) }}

@@ -52,7 +52,7 @@ repos:
 
   # Python formatting and linting
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.4
+    rev: v0.15.1
     hooks:
       - id: ruff
         name: Lint Python with ruff
@@ -128,19 +128,6 @@ repos:
         types: [python]
         pass_filenames: true
 
-      - id: robotidy
-        name: Format Robot Framework files
-        entry: uv run -q --no-sync --with robotframework-tidy robotidy --check --diff
-        language: system
-        files: \.robot$
-        pass_filenames: true
-
-      - id: robocop
-        name: Lint Robot Framework files
-        entry: uv run -q --no-sync --with robotframework-robocop robocop
-        language: system
-        files: \.robot$
-        pass_filenames: true
 
 # Configuration for specific hooks
 default_language_version:

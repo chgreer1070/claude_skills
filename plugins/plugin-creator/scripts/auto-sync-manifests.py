@@ -1129,6 +1129,7 @@ def reconcile(*, dry_run: bool) -> int:
         print("No drift detected — all manifests match filesystem.")
     elif dry_run:
         print("\nDrift detected. Run without --dry-run to fix.")
+        return 1
 
     return 0
 
