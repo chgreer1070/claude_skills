@@ -172,7 +172,8 @@ max-complexity = 12
 ]
 # Typer evaluates annotations at runtime, conflicting with TC003 + required PEP 563 import
 # B008: Typer's design pattern requires function calls in defaults (standard pattern)
-"plugins/plugin-creator/scripts/*.py" = ["B008", "TC003"]
+# PLR0917: Typer CLI entry points require one parameter per flag (6 flags = 6 params)
+"plugins/plugin-creator/scripts/*.py" = ["B008", "TC003", "PLR0917"]
 "typings/**" = ["A", "ANN", "N"]
 
 [tool.ruff.lint.pycodestyle]

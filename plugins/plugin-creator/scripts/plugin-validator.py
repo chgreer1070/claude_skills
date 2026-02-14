@@ -153,6 +153,9 @@ class FileType(StrEnum):
     PLUGIN = "plugin"
     HOOK_SCRIPT = "hook_script"
     HOOK_CONFIG = "hook_config"
+    CLAUDE_MD = "claude_md"
+    REFERENCE = "reference"
+    MARKDOWN = "markdown"
     UNKNOWN = "unknown"
 
     @staticmethod
@@ -177,6 +180,12 @@ class FileType(StrEnum):
             return FileType.HOOK_CONFIG
         if path.suffix == ".js" and "hooks" in path.parts:
             return FileType.HOOK_SCRIPT
+        if path.name == "CLAUDE.md":
+            return FileType.CLAUDE_MD
+        if "references" in path.parts and path.suffix == ".md":
+            return FileType.REFERENCE
+        if path.suffix == ".md":
+            return FileType.MARKDOWN
         return FileType.UNKNOWN
 
 
@@ -2153,6 +2162,156 @@ class ComplexityValidator:
 
 
 # ============================================================================
+# MARKDOWN TOKEN COUNTER (General markdown files)
+# ============================================================================
+
+
+class MarkdownTokenCounter:
+    """Counts tokens in general markdown files (CLAUDE.md, references, etc.).
+
+    Unlike ComplexityValidator which only processes SKILL.md files and applies
+    skill-specific threshold checks, this counter works on any markdown file.
+    It reports total and body token counts as info messages without applying
+    skill-specific thresholds or triggering errors/warnings.
+    """
+
+    def validate(self, path: Path) -> ValidationResult:
+        """Count tokens in a markdown file and report as info.
+
+        Args:
+            path: Path to markdown file
+
+        Returns:
+            ValidationResult with token count info (always passes)
+        """
+        errors: list[ValidationIssue] = []
+        warnings: list[ValidationIssue] = []
+        info: list[ValidationIssue] = []
+
+        # Read file
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError as e:
+            errors.append(
+                ValidationIssue(
+                    field="(file)",
+                    severity="error",
+                    message=f"Could not read file: {e}",
+                    code=FM002,
+                    docs_url=generate_docs_url(FM002),
+                )
+            )
+            return ValidationResult(
+                passed=False, errors=errors, warnings=warnings, info=info
+            )
+
+        # Split frontmatter and body
+        frontmatter_text, _start_line, _end_line = extract_frontmatter(content)
+
+        if frontmatter_text is not None:
+            end_match = re.search(r"\n---\s*\n", content[3:])
+            body = content[end_match.end() + 3 :] if end_match else content
+        else:
+            body = content
+
+        # Count tokens
+        total_tokens = self._count_tokens(content)
+        body_tokens = self._count_tokens(body)
+        frontmatter_tokens = (
+            total_tokens - body_tokens if total_tokens and body_tokens else 0
+        )
+
+        if total_tokens is None:
+            errors.append(
+                ValidationIssue(
+                    field="(token-counting)",
+                    severity="error",
+                    message="tiktoken library not available for token counting",
+                    code=FM002,
+                    docs_url=generate_docs_url(FM002),
+                    suggestion="Install tiktoken: pip install tiktoken>=0.8.0",
+                )
+            )
+            return ValidationResult(
+                passed=False, errors=errors, warnings=warnings, info=info
+            )
+
+        info.append(
+            ValidationIssue(
+                field="token-count",
+                severity="info",
+                message=(
+                    f"Total: {total_tokens} tokens "
+                    f"(frontmatter: {frontmatter_tokens}, body: {body_tokens})"
+                ),
+                code="TC001",
+            )
+        )
+
+        return ValidationResult(
+            passed=True, errors=errors, warnings=warnings, info=info
+        )
+
+    def count_file_tokens(self, path: Path) -> int | None:
+        """Count total tokens in a file for programmatic use.
+
+        Args:
+            path: Path to markdown file
+
+        Returns:
+            Total token count, or None if counting failed
+        """
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError:
+            return None
+        return self._count_tokens(content)
+
+    def can_fix(self) -> bool:
+        """Check if validator supports auto-fixing.
+
+        Returns:
+            False (token counting is read-only)
+        """
+        return False
+
+    def fix(self, path: Path) -> list[str]:
+        """Auto-fix not supported for token counting.
+
+        Args:
+            path: Path to file
+
+        Raises:
+            NotImplementedError: Token counting cannot be auto-fixed
+
+        Returns:
+            Never returns (always raises)
+        """
+        raise NotImplementedError("Token counting is read-only, no fixes to apply.")
+
+    @staticmethod
+    def _count_tokens(text: str) -> int | None:
+        """Count tokens in text using tiktoken.
+
+        Args:
+            text: Text content to count tokens in
+
+        Returns:
+            Token count, or None if tiktoken unavailable
+        """
+        try:
+            import tiktoken
+        except ImportError:
+            return None
+
+        try:
+            encoding = tiktoken.get_encoding("cl100k_base")
+            return len(encoding.encode(text))
+        except (ValueError, KeyError):
+            return None
+
+
+# ============================================================================
 # PLUGIN STRUCTURE VALIDATOR (CLAUDE CLI INTEGRATION)
 # ============================================================================
 
@@ -3342,11 +3501,15 @@ def _validate_single_path(  # noqa: PLR0912, C901
         # Hook files: validate structure/shebang
         validators.append(HookValidator())
 
+    elif file_type in {FileType.CLAUDE_MD, FileType.REFERENCE, FileType.MARKDOWN}:
+        # General markdown files: token counting only (no skill-specific validators)
+        validators.append(MarkdownTokenCounter())
+
     else:
         # Unknown type
         typer.echo(f"Error: Cannot determine file type for: {path}", err=True)
         typer.echo(
-            "Expected: SKILL.md, agent .md, command .md, hook file, or plugin directory",
+            "Expected: SKILL.md, agent .md, command .md, hook file, plugin directory, or markdown file",
             err=True,
         )
         raise typer.Exit(2) from None
@@ -3378,6 +3541,35 @@ def _validate_single_path(  # noqa: PLR0912, C901
     return {path: validator_results}
 
 
+def _handle_tokens_only(paths: list[Path]) -> None:
+    """Output only the integer token count for each path, then exit.
+
+    For a single path, prints just the integer. For multiple paths, prints
+    one integer per line in the same order as the input paths.
+
+    Args:
+        paths: Paths to count tokens for
+
+    Raises:
+        typer.Exit: Always exits (code 0 on success, code 2 on error)
+    """
+    counter = MarkdownTokenCounter()
+    counts: list[int] = []
+    for path in paths:
+        if not path.exists():
+            typer.echo(f"Error: Path does not exist: {path}", err=True)
+            raise typer.Exit(2) from None
+        token_count = counter.count_file_tokens(path)
+        if token_count is None:
+            typer.echo(f"Error: Could not count tokens for: {path}", err=True)
+            raise typer.Exit(2) from None
+        counts.append(token_count)
+
+    for count in counts:
+        print(count)
+    raise typer.Exit(0) from None
+
+
 def main(
     paths: list[Path] = typer.Argument(
         ..., help="Paths to plugin, skill, agent, or command files to validate"
@@ -3393,11 +3585,18 @@ def main(
     no_color: bool = typer.Option(
         False, "--no-color", help="Disable color output for CI environments"
     ),
+    tokens_only: bool = typer.Option(
+        False,
+        "--tokens-only",
+        help="Output only the integer token count (for programmatic use)",
+    ),
 ) -> None:
     """Validate Claude Code plugins, skills, agents, and commands.
 
     Validates frontmatter schema, plugin structure, skill complexity, internal links,
     and progressive disclosure. Optionally auto-fixes issues.
+
+    Supports token counting for any markdown file (CLAUDE.md, reference docs, etc.).
 
     Accepts one or more paths (compatible with pre-commit pass_filenames).
 
@@ -3417,6 +3616,12 @@ def main(
         # Validate for CI (no color)
         ./plugin-validator.py --no-color plugins/my-plugin
 
+        # Count tokens in any markdown file
+        ./plugin-validator.py --verbose .claude/CLAUDE.md
+
+        # Get just the token count for programmatic use
+        ./plugin-validator.py --tokens-only .claude/CLAUDE.md
+
     Exit Codes:
         0: Success (all checks passed)
         1: Validation errors found
@@ -3424,6 +3629,10 @@ def main(
         130: Interrupted by user (Ctrl+C)
     """
     try:
+        # Handle --tokens-only mode early (bypasses all other flags)
+        if tokens_only:
+            _handle_tokens_only(paths)
+
         if check and fix:
             typer.echo("Error: Cannot use both --check and --fix flags", err=True)
             raise typer.Exit(2) from None
