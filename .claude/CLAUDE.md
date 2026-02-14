@@ -929,6 +929,179 @@ When files are modified, moved, or renamed, all linting issues in those files MU
 
 ---
 
+## GitHub Actions CI Workflow Modification Protocol
+
+<ci_modification_protocol>
+
+The model MUST follow this phase-gate checklist when creating, modifying, or debugging GitHub Actions workflows. Each phase gates the next — do not advance until the current phase is complete.
+
+### Phase 1: Research
+
+Before writing or modifying any workflow YAML, the model MUST:
+
+1. Read the existing workflow file(s) in `.github/workflows/` to understand current state
+2. Identify the specific problem or requirement — what is broken, what is missing, what needs to change
+3. Research best practices for the specific pattern needed (quality gates, caching, matrix builds, etc.)
+4. Search for established patterns in mature projects (CPython, Rust, TypeScript) using web search or known references
+5. Document findings: what patterns exist, what trade-offs they have, which fits this scenario
+
+**Gate**: The model can state what pattern to use and why, citing at least one external reference.
+
+### Phase 2: Plan
+
+The model MUST write a concrete plan before making changes:
+
+1. List every file that will be modified or created
+2. For each change, describe what will change and why
+3. Identify interactions with branch protection settings, required status checks, and the quality gate job
+4. Identify pre-existing failures that the change must account for (do not silently mask them)
+5. State acceptance criteria: what does "done" look like? How will the model verify the change works?
+
+**Gate**: The plan is written and covers all affected files and interactions.
+
+### Phase 3: Review Plan
+
+Before executing, the model MUST review the plan for:
+
+1. Does each change align with the researched best practice?
+2. Are there side effects the plan does not account for? (e.g., renaming a job breaks branch protection required checks)
+3. Does the plan honestly represent failures? No masking exit codes, no `|| true` on checks that should report their real status
+4. Is the plan minimal? Does it avoid unnecessary changes beyond the stated requirement?
+
+**Gate**: The model has verified the plan against the research findings and found no gaps.
+
+### Phase 4: Execute
+
+Implement the plan:
+
+1. Make changes to workflow YAML files
+2. Validate YAML syntax: `python3 -m yaml <file>` or equivalent
+3. Run `uv run prek run --files <file>` if applicable
+4. Commit with a descriptive message explaining what changed and why
+
+**Gate**: Changes are committed and pass local validation.
+
+### Phase 5: Verify
+
+After execution, the model MUST verify:
+
+1. Re-read the modified workflow file(s) and confirm they match the plan
+2. Trace the quality gate logic: which jobs are required? Which are advisory? Does the gate correctly aggregate them?
+3. Confirm no exit codes are being swallowed (`|| true`, `|| echo`, bare `continue-on-error` without explanation)
+4. If pre-existing failures exist, confirm they are handled via the `alls-green` allowed-failures pattern (not masked)
+5. Push and check the workflow run (if possible)
+
+**Gate**: The model can state exactly what will pass, what will fail, and what the PR status will show — with no ambiguity.
+
+### Quality Gate Pattern (Required)
+
+<quality_gate_pattern>
+
+This repository uses the `alls-green` quality gate pattern, following CPython's established practice.
+
+**How it works**:
+
+- Individual jobs run without `continue-on-error` and report their real pass/fail status
+- The quality gate job is the ONLY required status check in branch protection
+- Jobs with known pre-existing failures are listed in `allowed-failures`
+- The gate passes if all non-allowed jobs succeed and allowed jobs either succeed or fail
+
+**Implementation**: Uses `re-actors/alls-green` action.
+
+```yaml
+quality-gate:
+  name: Quality Gate
+  if: always()
+  needs: [lint, test, type-check, validate-plugins]
+  runs-on: ubuntu-latest
+  steps:
+    - uses: re-actors/alls-green@v1.2.2
+      with:
+        allowed-failures: validate-plugins
+        jobs: ${{ toJSON(needs) }}
+```
+
+**Promoting an advisory check to blocking**: Remove it from `allowed-failures`. One-line change.
+
+**Anti-patterns the model MUST NOT use**:
+
+| Pattern | Problem |
+|---------|---------|
+| `\|\| echo ::warning::` | Swallows exit code, step reports success |
+| `\|\| true` | Same — masks real failure |
+| Job-level `continue-on-error: true` | `needs.*.result` reports `success`, gate cannot detect failure |
+| Step-level `continue-on-error` on quality checks | Step shows as passed, real status hidden |
+| Omitting advisory jobs from the gate `needs` | Gate does not wait for them, no visibility |
+
+**Acceptable use of `continue-on-error`**: Only for genuinely non-critical post-processing steps within a job (metrics uploads, cache saves, coverage reports) where failure has no bearing on code quality.
+
+**SOURCE**: CPython `build.yml` quality gate pattern, GitHub Actions docs on `continue-on-error` behavior and branch protection interaction (2026-02-14)
+
+</quality_gate_pattern>
+
+</ci_modification_protocol>
+
+---
+
+## GitHub CLI (gh) Usage
+
+<gh_cli_usage>
+
+The `gh` CLI is available in this environment for GitHub API operations.
+
+**Installation verification**:
+
+```bash
+gh --version
+```
+
+**Authentication**: `gh` is pre-authenticated via `GITHUB_TOKEN` in CI environments. For local use, authenticate with:
+
+```bash
+gh auth login
+```
+
+**Common operations**:
+
+```bash
+# Check workflow run status
+gh run list --workflow=code-quality.yml --limit=5
+
+# View a specific run's jobs and their statuses
+gh run view <run-id>
+
+# View job logs for a failed step
+gh run view <run-id> --log-failed
+
+# Watch a running workflow
+gh run watch <run-id>
+
+# Re-run failed jobs only
+gh run rerun <run-id> --failed
+
+# Create a PR
+gh pr create --title "title" --body "body"
+
+# View PR status checks
+gh pr checks <pr-number>
+
+# View PR review status
+gh pr view <pr-number>
+```
+
+**When to use `gh` in this repository**:
+
+1. After pushing workflow changes — verify the run succeeded with `gh run list` and `gh run view`
+2. When debugging CI failures — use `gh run view --log-failed` to read the actual error
+3. When creating PRs — use `gh pr create` with structured body
+4. When checking if advisory jobs are trending toward fixable — use `gh run view` to inspect individual job outcomes
+
+**The model MUST use `gh` to verify workflow changes when possible** rather than assuming the push succeeded. Observing the actual CI output is part of Phase 5 (Verify) in the CI Workflow Modification Protocol above.
+
+</gh_cli_usage>
+
+---
+
 When referencing a skill we do not use the '@' symbol, we use '/'. When referencing an agent we use '@' and not '/'.
 You are NEVER allowed to suppose anything. No Speculation as diagnosis. You say what occured, and what you observed when it occured. You do not project causality into the situation when you can't show that relationship
 ````
