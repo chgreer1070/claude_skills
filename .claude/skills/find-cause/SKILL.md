@@ -44,9 +44,66 @@ Do NOT proceed to Step 2 until the user has confirmed which interpretation is co
 
 If the user selects "Other" and provides additional context, reformulate the interpretations and ask again. Only proceed when you have a single, unambiguous question to investigate.
 
+### Step 1.5 — Prerequisite check and reproduction safety
+
+Before investigating, assess two things: what you need to know, and whether reproduction is safe.
+
+#### A. List unknowns and fastest verification paths
+
+For each unknown in the investigation:
+
+1. **State the unknown** — What do you need to know?
+2. **Identify the fastest verification** — Can you observe it directly by running the system, or must you read source/docs?
+3. **Prefer direct observation** — If the system under investigation is available to run, running it produces observed facts. Reading source files and documentation to theorize about behavior is slower and less reliable.
+
+If any unknown can be resolved by running the system, that verification MUST happen in Step 2 (reproduction), not through source reading or documentation research.
+
+#### B. Classify reproduction constraints
+
+<reproduction_safety>
+
+Determine whether the problem has **bound** or **unbound** constraints:
+
+**Bound constraints** — You can see the full system and evaluate the risks yourself:
+
+- You can read the relevant files, understand what the operation does, and assess its effects
+- All inputs, variables, and side effects are visible and evaluable
+- You can determine whether reproduction is safe, destructive, or requires precautions
+- Examples: a skill you can read and activate, a script whose behavior you can trace, a config you can parse
+
+**Action**: Evaluate the risk. If safe, proceed to Step 2. If destructive or risky, establish precautions (temp directory, dry-run flag, backup) before reproducing. Do not ask the user further questions until you encounter something you cannot evaluate yourself.
+
+**Unbound constraints** — You cannot see or evaluate the full system:
+
+The operation involves systems you cannot inspect, infrastructure you do not have access to, credentials you do not possess, inputs/variables you cannot observe, or side effects you cannot predict.
+
+**Action**: Before reproducing, evaluate and ask the user:
+
+1. **Is the operation destructive?** — Does it delete data, send messages, modify shared state, deploy code, or have side effects that cannot be undone?
+2. **What sandbox is needed?** — Docker container, temp directory, CI pipeline, remote host, local VM, cloud environment? What is available?
+3. **Do you have all inputs?** — List what you know (commands, arguments, env vars, config values). State what is missing.
+4. **Are there aspects you might have overlooked?** — Ask the user explicitly.
+
+Use `AskUserQuestion` to gather missing sandbox requirements and inputs. Structure questions by what you know vs what you need.
+
+</reproduction_safety>
+
+Do NOT proceed to Step 2 until: (bound) you have confirmed reproduction is safe, or (unbound) the user has provided the missing inputs and sandbox strategy.
+
 ### Step 2 — Reproduce the problem
 
-Execute the failing operation yourself. Capture the exact command, the exact output, and the exit code. If you cannot reproduce it, state that and ask the user for reproduction steps.
+Execute the **same operation the user performed**, end-to-end. Not adjacent diagnostic commands — the actual operation.
+
+- If the user activated a skill, activate that skill
+- If the user ran a command, run that command
+- If the user triggered a workflow, trigger that workflow
+- If the operation is destructive, execute it in the sandbox established in Step 1.5
+
+Capture the exact command/action, the exact output, and the exit code or observable result.
+
+Diagnostic commands (ls, env, grep) are NOT reproduction. They are Step 3 (source reading). Reproduction means experiencing the same failure path the user experienced.
+
+If you cannot reproduce the operation, state that and ask the user for reproduction steps.
 
 Do NOT skip this step by relying on a transcript or description of the failure. Run it yourself.
 
@@ -94,3 +151,4 @@ UNVERIFIED ITEMS: [List any claims marked VERIFIED: no, with what would make the
 - Do NOT assert causality without citing the observed evidence that supports it
 - Do NOT skip reproduction by referencing a user-provided transcript — reproduce it yourself
 - Do NOT fill gaps with theories — state "I don't have that information" and describe what tool or action would fill the gap
+- Do NOT investigate components of a system before reproducing the system's behavior end-to-end — reproduction eliminates unknowns that component inspection cannot
