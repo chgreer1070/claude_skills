@@ -505,20 +505,20 @@ Run the `init_skill.py` script. This script generates a complete template skill 
 
 ```bash
 # The script has executable permissions and a shebang - run it directly
-${CLAUDE_PLUGIN_ROOT}/scripts/init_skill.py <skill-name> --path <output-directory>
+${CLAUDE_PLUGIN_ROOT}/skills/skill-creator/scripts/init_skill.py <skill-name> --path <output-directory>
 ```
 
 **Examples:**
 
 ```bash
 # Plugin skill
-${CLAUDE_PLUGIN_ROOT}/scripts/init_skill.py my-new-skill --path plugins/my-plugin/skills
+${CLAUDE_PLUGIN_ROOT}/skills/skill-creator/scripts/init_skill.py my-new-skill --path plugins/my-plugin/skills
 
 # Project skill
-${CLAUDE_PLUGIN_ROOT}/scripts/init_skill.py my-skill --path .claude/skills
+${CLAUDE_PLUGIN_ROOT}/skills/skill-creator/scripts/init_skill.py my-skill --path .claude/skills
 
 # User skill
-${CLAUDE_PLUGIN_ROOT}/scripts/init_skill.py my-skill --path ~/.claude/skills
+${CLAUDE_PLUGIN_ROOT}/skills/skill-creator/scripts/init_skill.py my-skill --path ~/.claude/skills
 ```
 
 **What the script does:**
