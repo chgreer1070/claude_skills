@@ -13,6 +13,7 @@ research/
 ├── README.md                          # This index file
 ├── agent-frameworks/                  # Agent SDKs and orchestration frameworks
 │   ├── ai-agents-frameworks.md        # 10-framework comparative benchmark study
+│   ├── liteagents.md                  # Multi-tool AI development toolkit with 11 agents and session memory
 │   └── superpowers.md                 # Agentic skills framework and dev methodology (40K+ stars)
 ├── agent-infrastructure/              # Infrastructure for agentic applications
 │   └── plano.md                       # AI-native proxy and data plane for multi-agent orchestration
@@ -20,6 +21,7 @@ research/
 │   ├── fastapi.md                     # Modern Python web framework with Pydantic (95K+ stars)
 │   └── tornado.md                     # Python web framework and async networking library (22K+ stars)
 ├── async-libraries/                   # Python async I/O libraries and concurrency frameworks
+│   ├── anyio.md                       # Backend-agnostic async concurrency library (426M downloads/month)
 │   └── trio.md                        # Structured concurrency async library for Python (7K+ stars)
 ├── ml-infrastructure/                 # ML compute engines and model serving platforms
 │   └── ray.md                         # AI compute engine for scaling Python/ML workloads (41K+ stars)
@@ -34,27 +36,37 @@ research/
 ├── coding-agents/                     # Autonomous AI coding agent platforms
 │   └── openhands.md                   # Open platform for cloud coding agents (67K+ stars)
 ├── context-management/                # Memory, context window, and RAG tools
-│   └── claude-mem.md                  # Persistent memory compression for Claude Code (15K+ stars)
+│   ├── claude-mem.md                  # Persistent memory compression for Claude Code (15K+ stars)
+│   └── local-memory.md               # Persistent memory infrastructure for AI agents (MCP + REST + CLI)
 ├── data-infrastructure/               # Real-time data platforms for analytics
 │   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
 ├── developer-tools/                   # Developer productivity and workflow tools
 │   ├── animejs.md                     # Lightweight JavaScript animation engine (66K+ stars)
 │   ├── copier-astral.md               # Python project template with Astral toolchain (uv, ruff, ty)
 │   ├── git-cliff.md                   # Customizable changelog generator from Git history
+│   ├── grepai.md                      # Semantic code search and call graph analysis for AI agents (1.2K stars)
 │   ├── jscpd.md                       # Copy/paste detector for 150+ languages (5K+ stars)
+│   ├── loguru.md                      # Python logging made simple with zero config (23K+ stars)
+│   ├── niteni.md                      # AI-powered code review for GitLab CI pipelines
 │   ├── orbstack.md                    # Fast Docker Desktop and Linux VM alternative for macOS
-│   └── repomix.md                     # Pack codebase into AI-friendly formats (21K+ stars)
+│   ├── repomix.md                     # Pack codebase into AI-friendly formats (21K+ stars)
+│   ├── traycer.md                     # Spec-driven AI development orchestrator (commercial SaaS)
+│   ├── vert.md                        # WebAssembly-based file converter (13K+ stars)
+│   └── yume.md                        # Native desktop GUI for Claude Code CLI (Tauri + Rust)
 ├── mcp-ecosystem/                     # MCP servers and integrations
 │   ├── docs-mcp-server.md             # Local documentation index (Grounded Docs)
 │   ├── mcpjam.md                      # Local inspector for MCP servers and apps
 │   ├── narsil-mcp.md                  # Comprehensive code intelligence MCP server
 │   └── octocode-mcp.md                # Research Driven Development platform
 ├── research-agent-patterns/           # Multi-agent architectures and orchestration
+│   ├── claw-loop.md                   # Autonomous development orchestration via tmux + cron
 │   ├── compound-engineering-plugin.md # Every Inc's Plan/Work/Review/Compound workflow plugin
 │   ├── github-patterns.md             # Patterns from GitHub research agent implementations
 │   └── orchestrator-agent-creation-guide.md  # OpenCode orchestrator agent guide
 ├── skill-generation-tools/            # Tools that create AI skills/prompts
-│   └── skill-seekers.md               # Documentation-to-skill automation tool
+│   ├── mcpskills-cli.md               # MCP-to-skill converter via Streamable HTTP discovery
+│   ├── skill-seekers.md               # Documentation-to-skill automation tool
+│   └── skillkit.md                    # Universal package manager for AI agent skills (32 agents)
 └── task-management/                   # AI-powered task management for development
     └── claude-task-master.md          # Task management system for AI-driven development (25K+ stars)
 ```
@@ -71,6 +83,7 @@ Research on multi-agent architectures, orchestration patterns, and research work
 
 | Document                                                                                               | Description                                                                                                            | Last Updated |
 | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------ |
+| [claw-loop.md](./research-agent-patterns/claw-loop.md)                                                 | The Claw Loop v2.0 - autonomous development orchestration via tmux + cron with supervisor-worker pattern               | 2026-02-15   |
 | [compound-engineering-plugin.md](./research-agent-patterns/compound-engineering-plugin.md)             | Every Inc's Claude Code plugin with 27 agents, 20 commands - Plan/Work/Review/Compound workflow (6.8K stars)           | 2026-01-31   |
 | [github-patterns.md](./research-agent-patterns/github-patterns.md)                                     | Patterns from 40+ repositories including Chief of Staff model, 12-agent academic pipelines, Pydantic AI research loops | 2025-12-09   |
 | [orchestrator-agent-creation-guide.md](./research-agent-patterns/orchestrator-agent-creation-guide.md) | Comprehensive guide for creating orchestrator agents in OpenCode - routing, chaining, parallel delegation patterns     | 2026-01-26   |
@@ -91,6 +104,12 @@ Research on multi-agent architectures, orchestration patterns, and research work
 - Smart research decision logic (risk-aware, context-aware)
 - Git worktree integration for parallel development
 - Claude Code plugin architecture patterns
+- Supervisor-worker AI agent orchestration via tmux terminals
+- Cron-based polling with one-action-per-cycle discipline
+- Context clearing between phases for clean context windows
+- State-file-driven workflow progression (not memory-based)
+- Model switching per task type (Opus for reasoning, Sonnet for execution)
+- Fail-gracefully design (crashes, rate limits as expected events)
 
 ---
 
@@ -145,9 +164,11 @@ MCP servers, tools, and integrations for extending AI assistant capabilities.
 
 Tools and services that automate the creation of AI skills from documentation, code, and other sources.
 
-| Document                                                      | Description                                                                            | Last Updated |
-| ------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------ |
-| [skill-seekers.md](./skill-generation-tools/skill-seekers.md) | Skill Seekers - converts docs, GitHub repos, and PDFs into Claude/Gemini/OpenAI skills | 2026-01-26   |
+| Document                                                            | Description                                                                                                    | Last Updated |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------ |
+| [mcpskills-cli.md](./skill-generation-tools/mcpskills-cli.md)       | mcpskills-cli - MCP-to-skill converter generating SKILL.md and polyglot call scripts from Streamable HTTP servers | 2026-02-15   |
+| [skill-seekers.md](./skill-generation-tools/skill-seekers.md)       | Skill Seekers - converts docs, GitHub repos, and PDFs into Claude/Gemini/OpenAI skills                          | 2026-01-26   |
+| [skillkit.md](./skill-generation-tools/skillkit.md)                  | SkillKit - universal package manager for AI agent skills with 15K+ skills, 32 agent support, and cross-format translation | 2026-02-08   |
 
 **Key Topics**:
 
@@ -156,6 +177,15 @@ Tools and services that automate the creation of AI skills from documentation, c
 - Conflict detection between docs and implementation
 - Three-Stream Architecture (Code/Docs/Insights)
 - Multi-platform skill packaging
+- MCP tool schema to SKILL.md conversion via Jinja2 templates
+- Polyglot call script generation (bash, python, node, go, rust)
+- Token optimization via on-demand skill loading vs all-at-once MCP tools
+- Streamable HTTP transport for MCP server discovery
+- Cross-agent skill format translation (32 agent formats)
+- Git-based `.skills` manifest for team skill consistency
+- AI-powered skill generation with multi-provider LLM support
+- Skill security scanning for prompt injection and malicious patterns
+- Smart recommendations based on codebase analysis
 
 ---
 
@@ -191,6 +221,7 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [ai-agents-frameworks.md](./agent-frameworks/ai-agents-frameworks.md) | Comparative learning repository for 10 AI agent frameworks with benchmarks for response time, memory, tokens, RAG, and API integration | 2026-01-31   |
 | [get-shit-done.md](./agent-frameworks/get-shit-done.md)               | Meta-prompting, context engineering, and spec-driven development system with 11 agents for Claude Code, OpenCode, Gemini (10K+ stars)  | 2026-02-01   |
+| [liteagents.md](./agent-frameworks/liteagents.md)                     | Multi-tool AI development toolkit with 11 agents, 22 commands, Hot Memory pipeline, and session friction analysis for 4 AI coding tools | 2026-02-15   |
 | [superpowers.md](./agent-frameworks/superpowers.md)                   | Agentic skills framework with 14 skills for TDD, debugging, and subagent-driven development - works with Claude Code, Codex, OpenCode  | 2026-01-31   |
 
 **Key Topics**:
@@ -213,6 +244,11 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 - Model profile configuration (quality/balanced/budget)
 - Orchestrator-worker separation pattern
 - Spec-driven development with plan-verify loops
+- Hot Memory pipeline (stash, friction analysis, remember consolidation)
+- Session friction analysis with 14 weighted behavioral signals
+- Multi-tool installer with format translation across 4 AI coding tools
+- Auto-triggering skills for TDD enforcement and verification
+- Intent-based agent routing with lazy frontmatter discovery
 
 ---
 
@@ -279,12 +315,18 @@ Developer productivity tools and workflow automation for software engineering wi
 
 | Document                                               | Description                                                                                                                  | Last Updated |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| [animejs.md](./developer-tools/animejs.md)             | Lightweight JavaScript animation engine with declarative API, timelines, staggering, and 30+ easing functions                | 2026-01-31   |
-| [copier-astral.md](./developer-tools/copier-astral.md) | Copier template for Python projects with Astral toolchain (uv, ruff, ty), pytest, MkDocs, Typer, GitHub Actions, Docker      | 2026-01-31   |
-| [git-cliff.md](./developer-tools/git-cliff.md)         | Customizable changelog generator using conventional commits and regex parsers with GitHub/GitLab remote integration          | 2026-01-26   |
-| [jscpd.md](./developer-tools/jscpd.md)                 | Copy/paste detector for 150+ programming languages using Rabin-Karp algorithm with CI/CD integration                         | 2026-01-31   |
-| [orbstack.md](./developer-tools/orbstack.md)           | Fast, lightweight Docker Desktop and Linux VM alternative for macOS with 2-second startup and dynamic memory                 | 2026-01-31   |
-| [repomix.md](./developer-tools/repomix.md)             | Pack codebase into single AI-friendly file with token counting, Tree-sitter compression, MCP server, and Claude Code plugins | 2026-01-31   |
+| [animejs.md](./developer-tools/animejs.md)             | Lightweight JavaScript animation engine with declarative API, timelines, staggering, and 30+ easing functions                        | 2026-01-31   |
+| [copier-astral.md](./developer-tools/copier-astral.md) | Copier template for Python projects with Astral toolchain (uv, ruff, ty), pytest, MkDocs, Typer, GitHub Actions, Docker              | 2026-01-31   |
+| [git-cliff.md](./developer-tools/git-cliff.md)         | Customizable changelog generator using conventional commits and regex parsers with GitHub/GitLab remote integration                  | 2026-01-26   |
+| [grepai.md](./developer-tools/grepai.md)               | Semantic code search and call graph analysis for AI agents with MCP server, 12-language trace, and embedding-based search (1.2K stars) | 2026-02-13   |
+| [jscpd.md](./developer-tools/jscpd.md)                 | Copy/paste detector for 150+ programming languages using Rabin-Karp algorithm with CI/CD integration                                 | 2026-01-31   |
+| [loguru.md](./developer-tools/loguru.md)               | Loguru - zero-config Python logging with rotation, structured output, exception catching, and contextvars support (23K+ stars)        | 2026-02-09   |
+| [niteni.md](./developer-tools/niteni.md)               | Niteni - AI-powered code review for GitLab CI using Gemini with inline diff comments and severity classification                     | 2026-02-15   |
+| [orbstack.md](./developer-tools/orbstack.md)           | Fast, lightweight Docker Desktop and Linux VM alternative for macOS with 2-second startup and dynamic memory                         | 2026-01-31   |
+| [repomix.md](./developer-tools/repomix.md)             | Pack codebase into single AI-friendly file with token counting, Tree-sitter compression, MCP server, and Claude Code plugins         | 2026-01-31   |
+| [traycer.md](./developer-tools/traycer.md)             | Traycer - spec-driven AI development orchestrator with multi-model ensemble, plan-execute-verify loop, and 6 agent handoffs          | 2026-02-15   |
+| [vert.md](./developer-tools/vert.md)                   | VERT - WebAssembly-based file converter for 250+ formats with client-side processing and self-hostable video daemon (13K+ stars)     | 2026-02-08   |
+| [yume.md](./developer-tools/yume.md)                   | Yume - native desktop GUI for Claude Code CLI with parallel agents, crash recovery, and multi-provider model support (Tauri + Rust)  | 2026-02-15   |
 
 **Key Topics**:
 
@@ -324,6 +366,25 @@ Developer productivity tools and workflow automation for software engineering wi
 - Copier update mechanism for propagating template improvements
 - Hatch envs for multi-Python version matrix testing
 - Makefile abstraction for complex uv/hatch commands
+- Semantic code search via embedding-based cosine similarity
+- Call graph tracing (callers, callees, dependency graphs) across 12 languages
+- MCP server integration for AI agent semantic search
+- Workspace-aware cross-project search and tracing
+- Zero-config Python logging with automatic file rotation and compression
+- Structured logging with JSON serialization and contextvars context injection
+- Exception catching decorators with variable-value tracebacks
+- AI-powered GitLab CI code review with inline diff comments
+- Severity-classified review findings (CRITICAL, HIGH, MEDIUM, LOW)
+- GitLab suggestion blocks for one-click fix application
+- Spec-driven development with plan-execute-verify loop
+- Multi-model ensemble architecture (different models for different tasks)
+- Artifact decomposition hierarchy (Artifact, Epic, Ticket, Phase)
+- WebAssembly file conversion in browser (FFmpeg, ImageMagick, Pandoc)
+- Privacy-first local processing with self-hostable server fallback
+- Native desktop GUI wrapping CLI with zero-flicker rendering
+- Specialist agent roles (Architect, Explorer, Implementer, Guardian)
+- Auto-compaction at 75% context window capacity
+- CLI process spawning for full ecosystem compatibility
 
 ---
 
@@ -401,9 +462,10 @@ AI-powered task management systems designed for AI-driven development workflows.
 
 Memory systems, context window optimization tools, and RAG solutions for maintaining state across AI sessions.
 
-| Document                                            | Description                                                                                                   | Last Updated |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------ |
-| [claude-mem.md](./context-management/claude-mem.md) | Claude-Mem - persistent memory compression plugin for Claude Code with 4 MCP tools and progressive disclosure | 2026-01-31   |
+| Document                                                  | Description                                                                                                                    | Last Updated |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------ |
+| [claude-mem.md](./context-management/claude-mem.md)       | Claude-Mem - persistent memory compression plugin for Claude Code with 4 MCP tools and progressive disclosure                  | 2026-01-31   |
+| [local-memory.md](./context-management/local-memory.md)   | Local Memory - persistent memory infrastructure with MCP, REST API, CLI, embedded Qdrant, and knowledge evolution (L0-L3)      | 2026-02-07   |
 
 **Key Topics**:
 
@@ -415,6 +477,12 @@ Memory systems, context window optimization tools, and RAG solutions for maintai
 - Privacy controls with `<private>` tags
 - Web viewer UI for memory inspection
 - Context injection strategies
+- Four-level knowledge hierarchy (L0 Observations, L1 Learnings, L2 Patterns, L3 Schemas)
+- Contradiction detection with five-layer heuristics
+- Multi-provider AI backend with split embedding/chat providers
+- Embedded Qdrant vector search with 10-57ms response times
+- Agent attribution and hostname tracking for multi-device workflows
+- Domain cascade resolution (explicit > config file > default)
 
 ---
 
@@ -424,9 +492,10 @@ Memory systems, context window optimization tools, and RAG solutions for maintai
 
 Python async I/O libraries and concurrency frameworks for building concurrent applications.
 
-| Document                             | Description                                                                                           | Last Updated |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------ |
-| [trio.md](./async-libraries/trio.md) | Trio - structured concurrency async library for Python with nurseries, cancel scopes (7K+ stars, 218M downloads/month) | 2026-02-04   |
+| Document                               | Description                                                                                                              | Last Updated |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------ |
+| [anyio.md](./async-libraries/anyio.md) | AnyIO - backend-agnostic async concurrency library providing unified API across asyncio and Trio (426M downloads/month)  | 2026-02-04   |
+| [trio.md](./async-libraries/trio.md)   | Trio - structured concurrency async library for Python with nurseries, cancel scopes (7K+ stars, 218M downloads/month)   | 2026-02-04   |
 
 **Key Topics**:
 
@@ -438,6 +507,12 @@ Python async I/O libraries and concurrency frameworks for building concurrent ap
 - Composable timeouts with predictable nesting semantics
 - Task completion guarantees preventing orphan operations
 - anyio compatibility for asyncio/trio portability
+- Backend-agnostic async API (asyncio + Trio unified)
+- Level cancellation via cancel scopes (vs asyncio edge cancellation)
+- Memory object streams with typed async communication
+- Worker threads and process pools with capacity limiters
+- Async file I/O and Path operations
+- Task initialization with `TaskGroup.start()` readiness signaling
 
 ---
 
@@ -680,6 +755,18 @@ When adding new research:
 - [RustPython](https://rustpython.github.io/) - Python 3 interpreter written in Rust with WASM support and JIT compiler (21,752 stars)
 - [PyO3](https://pyo3.rs) - Rust bindings for Python with maturin build tool and abi3 stable ABI (15,268 stars)
 - [Tornado](https://www.tornadoweb.org/) - Python web framework and async networking library for WebSockets and long-polling (22,437 stars)
+- [AnyIO](https://github.com/agronholm/anyio) - Backend-agnostic async concurrency library for Python (2,374 stars, 426M downloads/month)
+- [LiteAgents](https://github.com/hamr0/liteagents) - Multi-tool AI development toolkit with 11 agents and Hot Memory pipeline (npm)
+- [Local Memory](https://www.localmemory.co/) - Persistent memory infrastructure for AI agents with embedded Qdrant vector search
+- [GrepAI](https://github.com/yoanbernabeu/grepai) - Semantic code search and call graph analysis for AI agents (1,222 stars)
+- [Loguru](https://github.com/Delgan/loguru) - Zero-config Python logging with structured output and exception catching (23,577 stars)
+- [Niteni](https://gitlab.com/denyherianto/niteni) - AI-powered code review for GitLab CI with inline diff suggestions
+- [Traycer](https://traycer.ai) - Spec-driven AI development orchestrator with multi-model ensemble architecture
+- [VERT](https://vert.sh) - WebAssembly-based file converter for 250+ formats (13,809 stars)
+- [Yume](https://aofp.github.io/yume/) - Native desktop GUI for Claude Code CLI with parallel agents (Tauri + Rust)
+- [The Claw Loop](https://www.dontsleeponai.com/claw-loop) - Autonomous development orchestration via tmux + cron
+- [mcpskills-cli](https://github.com/dhanababum/mcpskills-cli) - MCP-to-skill converter via Streamable HTTP discovery
+- [SkillKit](https://github.com/rohitg00/skillkit) - Universal package manager for AI agent skills (32 agents, 15K+ skills)
 
 ### Internal References
 

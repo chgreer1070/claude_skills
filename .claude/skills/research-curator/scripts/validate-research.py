@@ -1,0 +1,393 @@
+#!/usr/bin/env -S uv run --quiet --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["typer>=0.21.0"]
+# ///
+"""Validate research entries against the research-curator quality standard."""
+
+from __future__ import annotations
+
+import json
+import re
+import sys
+from datetime import date, timedelta
+from pathlib import Path
+from typing import Any, TypedDict
+
+import typer
+
+
+class Issue(TypedDict):
+    """A single validation issue found in a research entry."""
+
+    check: str
+    severity: str
+    message: str
+    line: int | None
+
+
+app = typer.Typer(add_completion=False)
+
+REQUIRED_SECTIONS = [
+    "Overview",
+    "Problem Addressed",
+    "Key Statistics",
+    "Key Features",
+    "Technical Architecture",
+    "Installation & Usage",
+    "Relevance to Claude Code Development",
+    "References",
+    "Freshness Tracking",
+]
+
+# Alternative accepted spellings for section headings
+SECTION_ALIASES: dict[str, list[str]] = {
+    "Installation & Usage": ["Installation and Usage"]
+}
+
+REQUIRED_HEADER_FIELDS = [
+    "Research Date",
+    "Source URL",
+    "Version at Research",
+    "License",
+]
+
+FRESHNESS_REQUIRED_FIELDS = [
+    "Last Verified",
+    "Version at Verification",
+    "Next Review Recommended",
+]
+
+# Alternative field names accepted in Freshness Tracking
+FRESHNESS_ALIASES: dict[str, list[str]] = {
+    "Last Verified": ["Research Date"],
+    "Next Review Recommended": ["Next Review"],
+}
+
+URL_PATTERN = re.compile(r"https?://[^\s>)\]]+")
+ACCESS_DATE_PATTERN = re.compile(
+    r"(?:accessed\s+\d{4}-\d{2}-\d{2}|\(\d{4}-\d{2}-\d{2}\))"
+)
+DATE_PATTERN = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
+
+
+def _parse_sections(lines: list[str]) -> dict[str, tuple[int, int]]:
+    """Return mapping of section heading -> (start_line, end_line) (1-indexed)."""
+    sections: dict[str, tuple[int, int]] = {}
+    heading_positions: list[tuple[str, int]] = []
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("## ") and not stripped.startswith("### "):
+            heading = stripped[3:].strip()
+            heading_positions.append((heading, i + 1))
+
+    for idx, (heading, start) in enumerate(heading_positions):
+        end = (
+            heading_positions[idx + 1][1] - 1
+            if idx + 1 < len(heading_positions)
+            else len(lines)
+        )
+        sections[heading] = (start, end)
+
+    return sections
+
+
+def _get_header_block(lines: list[str]) -> tuple[list[str], int]:
+    """Return lines before the first --- separator and the line count."""
+    header_lines: list[str] = []
+    for i, line in enumerate(lines):
+        if line.strip() == "---":
+            return header_lines, i
+        header_lines.append(line)
+    return header_lines, len(lines)
+
+
+def _section_content(lines: list[str], start: int, end: int) -> str:
+    """Extract content between section heading and next heading/separator (0-indexed range)."""
+    content_lines = []
+    for line in lines[start:end]:
+        stripped = line.strip()
+        if stripped == "---":
+            break
+        if stripped.startswith("## "):
+            continue
+        content_lines.append(stripped)
+    return "\n".join(content_lines).strip()
+
+
+def _check_section_completeness(sections: dict[str, tuple[int, int]]) -> list[Issue]:
+    """Check that all required sections exist."""
+    issues: list[Issue] = []
+    section_names = set(sections.keys())
+
+    for required in REQUIRED_SECTIONS:
+        found = required in section_names
+        if not found:
+            aliases = SECTION_ALIASES.get(required, [])
+            found = any(alias in section_names for alias in aliases)
+        if not found:
+            issues.append({
+                "check": "section_completeness",
+                "severity": "error",
+                "message": f"Missing section: {required}",
+                "line": None,
+            })
+    return issues
+
+
+def _check_header_fields(header_lines: list[str]) -> list[Issue]:
+    """Check that required header fields exist."""
+    issues: list[Issue] = []
+    header_text = "\n".join(header_lines)
+
+    for field in REQUIRED_HEADER_FIELDS:
+        # Match both **Field** and Field patterns
+        patterns = [f"**{field}**", f"{field}:", f"{field}**:"]
+        found = any(p in header_text for p in patterns)
+        if not found:
+            issues.append({
+                "check": "header_fields",
+                "severity": "error",
+                "message": f"Missing header field: {field}",
+                "line": None,
+            })
+    return issues
+
+
+def _check_empty_sections(
+    lines: list[str], sections: dict[str, tuple[int, int]]
+) -> list[Issue]:
+    """Check for sections that exist but have no content."""
+    issues: list[Issue] = []
+    for heading, (start, end) in sections.items():
+        content = _section_content(lines, start - 1, end)
+        if not content:
+            issues.append({
+                "check": "empty_sections",
+                "severity": "error",
+                "message": f"Empty section: {heading}",
+                "line": start,
+            })
+    return issues
+
+
+def _check_access_dates(
+    lines: list[str], sections: dict[str, tuple[int, int]]
+) -> list[Issue]:
+    """Check that URLs in References section have access dates."""
+    issues: list[Issue] = []
+
+    ref_section = sections.get("References")
+    if ref_section is None:
+        return issues
+
+    start, end = ref_section
+    for i in range(start - 1, end):
+        if i >= len(lines):
+            break
+        line = lines[i]
+        urls = URL_PATTERN.findall(line)
+        if urls and not ACCESS_DATE_PATTERN.search(line):
+            issues.append({
+                "check": "access_dates",
+                "severity": "warning",
+                "message": f"Reference without access date on line {i + 1}",
+                "line": i + 1,
+            })
+    return issues
+
+
+def _check_freshness_tracking(
+    lines: list[str], sections: dict[str, tuple[int, int]]
+) -> list[Issue]:
+    """Check that Freshness Tracking section has required fields."""
+    issues: list[Issue] = []
+
+    ft_section = sections.get("Freshness Tracking")
+    if ft_section is None:
+        return issues
+
+    start, end = ft_section
+    section_text = "\n".join(lines[start - 1 : end])
+
+    for field in FRESHNESS_REQUIRED_FIELDS:
+        found = field in section_text
+        if not found:
+            aliases = FRESHNESS_ALIASES.get(field, [])
+            found = any(alias in section_text for alias in aliases)
+        if not found:
+            issues.append({
+                "check": "freshness_tracking",
+                "severity": "warning",
+                "message": f"Freshness Tracking missing field: {field}",
+                "line": start,
+            })
+    return issues
+
+
+def _check_statistics_currency(
+    lines: list[str], sections: dict[str, tuple[int, int]], today: date
+) -> list[Issue]:
+    """Check for stale dates in Key Statistics section."""
+    issues: list[Issue] = []
+    cutoff = today - timedelta(days=180)
+
+    ks_section = sections.get("Key Statistics")
+    if ks_section is None:
+        return issues
+
+    start, end = ks_section
+    for i in range(start - 1, end):
+        if i >= len(lines):
+            break
+        line = lines[i]
+        for match in DATE_PATTERN.finditer(line):
+            date_str = match.group(1)
+            try:
+                d = date.fromisoformat(date_str)
+            except ValueError:
+                continue
+            if d < cutoff:
+                issues.append({
+                    "check": "statistics_currency",
+                    "severity": "warning",
+                    "message": f"Stale date {date_str} in Key Statistics (older than 6 months)",
+                    "line": i + 1,
+                })
+    return issues
+
+
+def _check_url_format(lines: list[str]) -> list[Issue]:
+    """Check for malformed URLs throughout the document."""
+    issues: list[Issue] = []
+    bare_url_pattern = re.compile(r"(?<!\()(?<!<)(?:www\.)\S+", re.IGNORECASE)
+
+    for i, line in enumerate(lines):
+        for match in bare_url_pattern.finditer(line):
+            url = match.group()
+            if not url.startswith(("http://", "https://")):
+                issues.append({
+                    "check": "url_format",
+                    "severity": "warning",
+                    "message": f"URL missing scheme (http/https) on line {i + 1}: {url[:60]}",
+                    "line": i + 1,
+                })
+    return issues
+
+
+def validate_file(filepath: Path, research_root: Path, today: date) -> dict[str, Any]:
+    """Validate a single research markdown file."""
+    relative = str(filepath.relative_to(research_root))
+    text = filepath.read_text(encoding="utf-8")
+    lines = text.splitlines()
+
+    header_lines, _ = _get_header_block(lines)
+    sections = _parse_sections(lines)
+
+    all_issues: list[Issue] = []
+    all_issues.extend(_check_section_completeness(sections))
+    all_issues.extend(_check_header_fields(header_lines))
+    all_issues.extend(_check_empty_sections(lines, sections))
+    all_issues.extend(_check_access_dates(lines, sections))
+    all_issues.extend(_check_freshness_tracking(lines, sections))
+    all_issues.extend(_check_statistics_currency(lines, sections, today))
+    all_issues.extend(_check_url_format(lines))
+
+    has_errors = any(i["severity"] == "error" for i in all_issues)
+    status = "fail" if has_errors else "pass"
+
+    return {"file": relative, "status": status, "issues": all_issues}
+
+
+def collect_files(path: Path) -> list[Path]:
+    """Collect markdown files to validate, excluding README.md."""
+    if path.is_file():
+        return [path] if path.suffix == ".md" and path.name != "README.md" else []
+    files = sorted(path.rglob("*.md"))
+    return [f for f in files if f.name != "README.md"]
+
+
+_PATH_ARG = typer.Argument(Path("./research/"), help="File or directory to validate")
+_JSON_OPT = typer.Option(False, "--json", help="Output machine-readable JSON")
+_VERBOSE_OPT = typer.Option(False, "--verbose", help="Show per-file detail")
+
+
+@app.command()
+def main(
+    path: Path = _PATH_ARG, output_json: bool = _JSON_OPT, verbose: bool = _VERBOSE_OPT
+) -> None:
+    """Validate research entries against quality standards."""
+    research_root = path if path.is_dir() else path.parent
+    today = date.today()
+
+    files = collect_files(path)
+    if not files:
+        if output_json:
+            print(
+                json.dumps(
+                    {
+                        "summary": {
+                            "total": 0,
+                            "passed": 0,
+                            "errors": 0,
+                            "warnings": 0,
+                        },
+                        "entries": [],
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            print("No research files found.")
+        sys.exit(0)
+
+    entries = [validate_file(f, research_root, today) for f in files]
+
+    total = len(entries)
+    passed = sum(1 for e in entries if e["status"] == "pass")
+    total_errors = sum(
+        1 for e in entries for i in e["issues"] if i["severity"] == "error"
+    )
+    total_warnings = sum(
+        1 for e in entries for i in e["issues"] if i["severity"] == "warning"
+    )
+
+    if output_json:
+        result = {
+            "summary": {
+                "total": total,
+                "passed": passed,
+                "errors": total_errors,
+                "warnings": total_warnings,
+            },
+            "entries": entries,
+        }
+        print(json.dumps(result, indent=2))
+    else:
+        failed = total - passed
+        print(f"Research Validation: {total} entries scanned")
+        print(f"  \u2713 {passed} passed")
+        if failed > 0:
+            print(
+                f"  \u2717 {failed} failed ({total_errors} errors, {total_warnings} warnings)"
+            )
+        else:
+            print(f"  {total_warnings} warnings")
+
+        if verbose:
+            print()
+            for entry in entries:
+                marker = "\u2713" if entry["status"] == "pass" else "\u2717"
+                print(f"{marker} {entry['file']}")
+                for issue in entry["issues"]:
+                    severity_label = issue["severity"].upper()
+                    print(f"  {severity_label}: {issue['message']}")
+
+    if total_errors > 0:
+        sys.exit(1)
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    app()
