@@ -30,6 +30,14 @@ Tools that create, translate, and manage AI agent skills and prompts.
 |----------|-------------|---------|--------------|
 | [SkillKit](./skill-generation-tools/skillkit.md) | Universal package manager for AI agent skills with cross-agent translation (32 agents), marketplace (15K+ skills), session memory, and AI generation | 1.14.0 | 2026-02-08 |
 
+### Agent Frameworks
+
+Agent SDKs, orchestration frameworks, and multi-agent toolkits.
+
+| Resource | Description | Version | Last Updated |
+|----------|-------------|---------|--------------|
+| [LiteAgents](./agent-frameworks/liteagents.md) | Multi-tool AI development toolkit with 11 specialized agents, 22 commands/skills, session friction analysis, and Hot Memory pipeline for Claude Code, Opencode, Ampcode, and Droid | 2.5.3 | 2026-02-15 |
+
 ### Developer Tools
 
 Open-source developer utilities, file processing, and infrastructure tools.
