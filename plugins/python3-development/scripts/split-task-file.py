@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["typer>=0.21.0", "pyyaml>=6.0.0", "rich>=13.0.0"]
+# dependencies = ["typer>=0.21.0", "pyyaml>=6.0.0"]
 # ///
 """Split multi-task markdown file into one-task-per-file directory structure.
 

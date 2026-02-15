@@ -3,7 +3,6 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "typer>=0.21.0",
-#     "rich>=13.0.0",
 #     "pyyaml>=6.0",
 #     "types-PyYAML>=6.0",
 #     "pydantic>=2.0.0",

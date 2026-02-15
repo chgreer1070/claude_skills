@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "typer>=0.19.2",
+#     "typer>=0.21.0",
 #     "httpx>=0.28.1",
 #     "pyyaml>=6.0.0",
 #     "types-pyyaml>=6.0.0",

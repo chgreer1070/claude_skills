@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "typer>=0.19.2",
+#     "typer>=0.21.0",
 # ]
 # ///
 """Install linting-root-cause-resolver agent to user or project scope.

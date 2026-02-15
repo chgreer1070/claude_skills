@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv --quiet run --active --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["typer>=0.19.2"]
+# dependencies = ["typer>=0.21.0"]
 # ///
 """Validate Python shebang compliance using the 4-rule decision system.
 

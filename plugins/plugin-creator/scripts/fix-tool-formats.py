@@ -17,8 +17,7 @@ Converts:
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "typer>=0.19.0",
-#     "rich>=13.0.0",
+#     "typer>=0.21.0",
 #     "pyyaml>=6.0.0",
 # ]
 # ///
