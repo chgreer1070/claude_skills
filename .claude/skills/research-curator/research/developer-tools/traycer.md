@@ -3,7 +3,10 @@
 **Research Date**: 2026-02-15
 **Website**: <https://traycer.ai>
 **Docs**: <https://docs.traycer.ai>
+**GitHub**: <https://github.com/traycerai/community> (Apache-2.0, community repo)
+**VS Code Extension**: `Traycer.traycer-vscode` v2.15.6
 **License**: Proprietary (SOC2 Type 2 Certified, GDPR Compliant)
+**Company**: Traycer AI, Inc., Walnut Creek, CA
 **Type**: Commercial SaaS (VS Code / Cursor / Windsurf extension + GitHub App)
 
 ---
@@ -40,7 +43,10 @@ Traycer is a spec-driven development platform that serves as the workflow layer 
 | Compliance Certifications | SOC2 Type 2, GDPR | 2026-02-15 |
 | IDE Extensions | VS Code, Cursor, Windsurf | 2026-02-15 |
 | Workflow Modes | 3 (Plan, Phase, Review) | 2026-02-15 |
-| Location | Silicon Valley | 2026-02-15 |
+| VS Code Extension Version | 2.15.6 | 2026-02-15 |
+| Company | Traycer AI, Inc., Walnut Creek, CA | 2026-02-15 |
+| GitHub Community Repo | traycerai/community (Apache-2.0) | 2026-02-15 |
+| Blog Author | Tanveer Gill | 2026-02-15 |
 
 ---
 
@@ -74,10 +80,19 @@ Traycer is a spec-driven development platform that serves as the workflow layer 
 - **Team sharing**: Instantly share any Artifact with teammates for feedback and collaborative editing
 - **Editability**: All Artifacts are structured and editable, not opaque agent outputs
 
+### Epic Mode
+
+- **Living specs**: Epics are systems of mini-specs (PRD, tech plan, edge-case clarifications, wireframes) scoped tightly for stability and reviewability
+- **Two-sided dialogue**: AI elicits constraints, edge cases, and "invisible rules" through pointed questions rather than just generating text
+- **Command-driven**: Move fast, skip around, go back, branch, or override at any time
+- **Traycer Agile Workflow**: Opinionated default workflow shipped with Epic Mode
+- **Execution styles**: "Execute in Phases" (controlled checkpoints) or "Handoff to Agent" (direct execution)
+- **Bart Orchestrator (Smart YOLO)**: Watches system state, steers task graph as reality changes, splits/merges/reorders tickets, escalates to humans when needed (released Feb 5, 2026)
+
 ### Task Orchestration
 
 - **Epics**: High-level work groupings
-- **Tickets**: Granular task units within Epics
+- **Tickets**: Granular task units within Epics with acceptance criteria
 - **Phases**: Sequential execution stages for complex projects
 - **One-click handoff**: Pass full context to coding agents in a single action
 
@@ -141,6 +156,24 @@ Traycer is a spec-driven development platform that serves as the workflow layer 
 Workflow Loop:
   Plan ──> Execute (via coding agent) ──> Verify ──> Iterate
 ```
+
+### Multi-Model Ensemble Architecture
+
+Traycer uses different AI models as specialists rather than relying on a single all-purpose model:
+
+| Model | Role | Rationale |
+|-------|------|-----------|
+| Sonnet 4.5 | Planning and task decomposition | Accuracy and planning speed |
+| GPT 5.1 | Verification, code critique, debugging | Better at code analysis and review |
+| Grok 4.1-fast | Parallel scouts for context gathering | Low-latency file relevance ranking |
+| GPT-5.1-mini | Summarizing large context and tool outputs | Cost-efficient for plumbing tasks |
+| parallel.ai | Web lookups for documentation and patterns | Low-latency, high-accuracy external context |
+
+**Design principles**: Use the right model for the right job. Keep "thinking" (strong models) and "gathering" (fast models) separate. Scouts don't editorialize. Exploit parallelism everywhere.
+
+**Outer loop vs. inner loop**: Most AI dev tools live in the inner loop (generate code, patch file, run tests). Traycer sits in the outer loop: planning, decomposing, gathering context, and verifying changes produced by inner-loop code-gen agents.
+
+SOURCE: Blog post "Inside Traycer's Multi-Model Architecture" (Nov 26, 2025, by Tanveer Gill) accessed 2026-02-15
 
 ### Core Workflow
 
@@ -211,6 +244,8 @@ GitHub App integration available for repository-level workflows.
 
 4. **Agent-Agnostic Orchestration**: Traycer sits above coding agents rather than replacing them. This architecture pattern (orchestrator + any agent) shows that the planning and verification layers are agent-independent.
 
+5. **Multi-Model Ensemble as Outer Loop**: Traycer's use of different models for different tasks (Sonnet for planning, GPT for verification, Grok for scouting) demonstrates that outer-loop orchestration can leverage model specialization while remaining agnostic about which inner-loop coding agent does the implementation.
+
 ### Patterns Worth Adopting
 
 1. **Plan-Execute-Verify Loop**: The explicit three-phase cycle (generate plan, execute via agent, verify results) as a first-class workflow rather than ad-hoc prompting. Each phase produces auditable artifacts.
@@ -249,13 +284,15 @@ GitHub App integration available for repository-level workflows.
 
 1. **Traycer Homepage** - <https://traycer.ai> (accessed 2026-02-15)
 2. **Traycer Documentation** - <https://docs.traycer.ai> (accessed 2026-02-15)
-3. **Traycer Docs - Plan Mode** - <https://docs.traycer.ai> (accessed 2026-02-15)
-4. **Traycer Docs - Phase Mode** - <https://docs.traycer.ai> (accessed 2026-02-15)
-5. **Traycer Docs - Review Mode** - <https://docs.traycer.ai> (accessed 2026-02-15)
-6. **Traycer Docs - Integrations (Cursor, Claude Code, Windsurf, GitHub Copilot, Cline)** - <https://docs.traycer.ai> (accessed 2026-02-15)
-7. **Traycer Docs - MCP Support** - <https://docs.traycer.ai> (accessed 2026-02-15)
-8. **Traycer Docs - AGENTS.md Support** - <https://docs.traycer.ai> (accessed 2026-02-15)
-9. **Traycer Pricing Page** - <https://traycer.ai> (accessed 2026-02-15)
+3. **Traycer GitHub Community Repo** - <https://github.com/traycerai/community> (accessed 2026-02-15)
+4. **VS Code Marketplace** - <https://marketplace.visualstudio.com/items?itemName=Traycer.traycer-vscode> (accessed 2026-02-15)
+5. **Blog: "Build With Intent, Ship With Confidence"** - <https://traycer.ai/blog/build-with-intent-ship-with-confidence> (Oct 21, 2025, accessed 2026-02-15)
+6. **Blog: "Inside Traycer's Multi-Model Architecture"** - <https://traycer.ai/blog/multi-model-architecture> (Nov 26, 2025, accessed 2026-02-15)
+7. **Blog: "Epic Mode - Turning Intent to Code"** - <https://traycer.ai/blog/epic-mode-turning-intent-to-code> (Jan 7, 2026, accessed 2026-02-15)
+8. **Blog: "Ralph Loops. Bart Orchestrates."** - <https://traycer.ai/blog/ralph-loops-bart-orchestrates> (Jan 29, 2026, accessed 2026-02-15)
+9. **Traycer Docs - Integrations** - <https://docs.traycer.ai> (accessed 2026-02-15)
+10. **Traycer Terms of Service** - <https://traycer.ai/terms-of-service> (accessed 2026-02-15)
+11. **Traycer Privacy Policy** - <https://traycer.ai/privacy-policy> (accessed 2026-02-15)
 
 ---
 
