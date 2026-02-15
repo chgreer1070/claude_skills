@@ -1,7 +1,7 @@
 ---
 last-updated: 2026-02-14
 p0-count: 0
-p1-count: 12
+p1-count: 13
 p2-count: 8
 ideas-count: 10
 ---
@@ -403,6 +403,19 @@ _(Empty)_
 2. If more research needed: `/research-and-compare <framework>` (in stateless-agent-methodology repo) for specific topics
 3. Synthesize findings into SAM framework update
 4. Mark backlog item complete
+
+### P1: plugin-validator pre-commit output is too noisy
+
+**Source**: `prek --all-files` run during session 2026-02-15
+**Added**: 2026-02-15
+**Description**: Running `prek --all-files` produces pages of plugin-validator output — every file in the repo gets validated, and pre-existing warnings/errors (broken links, SK006 complexity, missing trigger phrases) for files unrelated to the current change drown out actionable information. The validator needs a review of its pre-commit integration to reduce noise.
+**Observed symptoms**:
+- Full `prek --all-files` run produces hundreds of lines of validator output
+- Pre-existing LK001 (broken links), SK006 (complexity warnings), SK005 (missing triggers) reported on every run
+- FM003 (no frontmatter) fires on template files (`commands/development/templates/*.md`) that are not components — they're templates meant to be copied and filled in, not commands/skills/agents
+- Difficult to find actual issues in changed files among the noise
+**Related**: "plugin-validator UX and coverage gaps" sub-issues below, "Resolve plugin-validator pre-existing errors to make CI gate blocking" backlog item
+**File**: `plugins/plugin-creator/scripts/plugin-validator.py`, `.pre-commit-config.yaml`
 
 ### P1: plugin-validator UX and coverage gaps
 
