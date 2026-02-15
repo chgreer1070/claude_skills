@@ -126,7 +126,7 @@ The model MUST use this plugin when:
 
 ## Component Inventory
 
-### Skills (12)
+### Skills (13)
 
 | Skill                            | User-Invocable | Purpose                                                                                                     | Verified |
 | -------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------- | -------- |
@@ -135,6 +135,7 @@ The model MUST use this plugin when:
 | `/claude-skills-overview-2026`   | Yes            | Complete reference for Claude Code skills system (January 2026)                                             | ✅ Yes   |
 | `/claude-plugins-reference-2026` | Yes            | Complete reference for Claude Code plugins system (January 2026)                                            | ✅ Yes   |
 | `/claude-hooks-reference-2026`   | Yes            | Complete reference for Claude Code hooks system (January 2026)                                              | ✅ Yes   |
+| `/add-doc-updater`               | Yes            | Orchestrate adding doc sync pipeline to skills wrapping external documentation (APIs, frameworks, CLIs). Creates Python script with cooldown, validation | ✅ Yes   |
 | `/assessor`                      | Yes            | Analyze plugin structure and create refactoring task files                                                  | ✅ Yes   |
 | `/ensure-complete`               | Yes            | Validate refactoring completeness and create follow-up tasks                                                | ✅ Yes   |
 | `/feature-discovery`             | No             | Research features and identify gaps (delegated)                                                             | ✅ Yes   |
@@ -528,13 +529,19 @@ claude plugin validate {plugin-directory}
 
 **Task Types Handled:**
 
-| Type             | Handler                                | Verified |
-| ---------------- | -------------------------------------- | -------- |
-| `SKILL_SPLIT`    | `/plugin-creator:refactor-skill` skill | ✅ Yes   |
-| `AGENT_OPTIMIZE` | `subagent-refactorer` agent            | ✅ Yes   |
-| `DOC_IMPROVE`    | `claude-context-optimizer` agent       | ✅ Yes   |
-| `ORPHAN_RESOLVE` | Manual or context optimizer            | ✅ Yes   |
-| `STRUCTURE_FIX`  | Direct implementation                  | ✅ Yes   |
+| Type              | Handler                                 | Verified |
+| ----------------- | --------------------------------------- | -------- |
+| `SKILL_SPLIT`     | `/plugin-creator:refactor-skill` skill  | ✅ Yes   |
+| `AGENT_OPTIMIZE`  | `subagent-refactorer` agent             | ✅ Yes   |
+| `DOC_IMPROVE`     | `claude-context-optimizer` agent        | ✅ Yes   |
+| `DOC_UPDATER_ADD` | `/plugin-creator:add-doc-updater` skill | ✅ Yes   |
+| `ORPHAN_RESOLVE`  | Manual or context optimizer             | ✅ Yes   |
+| `STRUCTURE_FIX`   | Direct implementation                   | ✅ Yes   |
+
+**When DOC_UPDATER_ADD is identified:**
+- Skill wraps external documentation (API specs, CLI refs, frameworks)
+- Documentation source updates regularly (weekly, monthly)
+- Skill would benefit from automated sync vs. manual updates
 
 **OUTPUT:** Task files in `.claude/plan/` directory
 
@@ -597,6 +604,71 @@ claude plugin validate {plugin-directory}
 | python3 | 650 | 580 | WARNING (>500) |
 | testing | 320 | 280 | OK |
 ```
+
+---
+
+### Workflow 12: Add Documentation Updater to Skill
+
+**Entry Point:** `/add-doc-updater` skill
+**Verified:** ✅ Yes
+
+**Trigger Phrases:**
+
+- "Add doc sync to {skill}"
+- "Automate documentation updates for {skill}"
+- "This skill needs to wrap {external docs}"
+
+**Process Flow:**
+
+1. **Phase 0 - Variable Collection:**
+
+   - Validate target skill path
+   - Infer defaults (skill name, cooldown 7 days)
+   - Collect 6 template variables via AskUserQuestion
+   - Confirm before proceeding
+
+2. **Phase 1 - Implementation:**
+
+   - Load `/python3-development` orchestration
+   - Substitute template variables
+   - Delegate to `@python-cli-architect` agent
+   - Creates `scripts/update-{LOCAL_DOC_DIR}-docs.py`
+
+3. **Phase 2 - Code Review:**
+
+   - Delegate to `@python-code-reviewer` agent
+   - Validate: ReDoS-safe regex, atomic operations, link transformation
+   - Loop back to Phase 1 on failure
+
+4. **Phase 3 - Quality Gates:**
+
+   - Sequential: ruff format → ruff check → mypy → pyright → prek
+   - All must pass to proceed
+   - Loop back to Phase 1 on failure
+
+5. **Phase 4 - Testing & Validation:**
+
+   - 7-point checklist: execution, file existence, Hugo shortcode removal, link sampling, SKILL.md integration, cooldown enforcement, force flag
+   - Loop back to Phase 1 on failure
+
+6. **Phase 5 - Integration:**
+   - Update SKILL.md Execution Protocol section
+   - Add .gitignore entries for lock files and downloaded docs
+   - Integration test via general-purpose agent
+   - Loop back to Phase 1 if agent cannot discover documentation
+
+**Success Criteria:**
+
+- Script passes all quality gates
+- All 7 validation tests pass
+- SKILL.md includes execution protocol
+- Integration test demonstrates autonomous documentation access
+- Cooldown prevents excessive upstream requests
+- Force flag allows manual override
+
+**OUTPUT:** Documentation updater ready for use
+
+**SOURCE:** Verified by reading add-doc-updater/SKILL.md lines 1-354
 
 ---
 

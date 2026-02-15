@@ -145,7 +145,12 @@ EXPLORE:
   - Integration patterns
   - Data model patterns
   - Configuration patterns
+  - Auto-updating docs pattern (see below)
 ```
+
+- **Auto-updating docs pattern:** Flag features wrapping external docs as `/plugin-creator:add-doc-updater` candidates
+  - Record: upstream source URL, update frequency
+  - Examples: API specs, CLI references, framework guides
 
 For each similar pattern found, record:
 

@@ -48,6 +48,18 @@ Skill(command: "plugin-creator:refactor-skill")
 3. Domain expertise - Company-specific knowledge, schemas, business logic
 4. Bundled resources - Scripts, references, and assets for complex and repetitive tasks
 
+### Auto-Updating Documentation Pattern
+
+Add automated doc updater when skill wraps external docs (API specs, frameworks, CLI refs) that change regularly. Self-maintaining pipeline: download → process → index upstream docs.
+
+**Trigger**: Skill provides access to documentation that updates over time.
+
+**Add after skill creation**: `/plugin-creator:add-doc-updater <skill-path>`
+- Collects 6 variables (source URL, local path, cooldown days)
+- 5-phase workflow: implementation → review → quality gates → testing → integration
+
+**Candidates**: GitLab CI docs, CLI tools (glab, gh, kubectl), frameworks (React, Django), API specs (OpenAPI)
+
 ## Core Principles
 
 ### Concise is Key
@@ -541,6 +553,14 @@ These files contain established best practices for effective skill design.
 #### Start with Reusable Skill Contents
 
 To begin implementation, start with the reusable resources identified above: `scripts/`, `references/`, and `assets/` files. Note that this step may require user input. For example, when implementing a `brand-guidelines` skill, the user may need to provide brand assets or templates to store in `assets/`, or documentation to store in `references/`.
+
+**Documentation-wrapping skills**: If the skill provides access to external docs (API specs, framework guides, CLI references), add automated updater BEFORE finalizing implementation:
+
+```bash
+/plugin-creator:add-doc-updater {skill-path}
+```
+
+This creates self-maintaining doc pipeline: download → process → index with cooldown enforcement.
 
 Added scripts must be tested by actually running them to ensure there are no bugs and that the output matches what is expected. If there are many similar scripts, only a representative sample needs to be tested to ensure confidence that they all work while balancing time to completion.
 
