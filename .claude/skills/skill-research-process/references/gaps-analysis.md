@@ -32,9 +32,9 @@ Analysis of the skill-research-process compared to repository best practices.
 
 ### 4. Missing Anti-Hallucination Verification
 
-**Issue**: research-and-compare skill has explicit anti-hallucination checkpoints. This skill lacks them.
+**Issue**: [research-and-compare skill](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/.claude/skills/research-and-compare/SKILL.md) has explicit anti-hallucination checkpoints. This skill lacks them.
 
-**Example from research-and-compare**:
+**Example from research-and-compare** (now in stateless-agent-methodology repo):
 
 ```markdown
 **Anti-hallucination verification**:

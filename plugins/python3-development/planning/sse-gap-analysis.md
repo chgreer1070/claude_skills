@@ -3,7 +3,7 @@
 **Date**: 2026-01-29
 **Status**: Review Complete
 **Scope**: Full plugin review against Stateless Software Engineering Framework
-**Source Framework**: `./methodology_development/stateless-software-engineering-framework.md`
+**Source Framework**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md)
 
 ---
 
@@ -398,7 +398,7 @@ Implementing the Priority 1 recommendations would significantly improve SSE alig
 
 ## References
 
-- SSE Framework: `./methodology_development/stateless-software-engineering-framework.md`
+- SSE Framework: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md)
 - Plugin root: `./plugins/python3-development/`
 - Key plugin files reviewed:
   - `./plugins/python3-development/skills/implementation-manager/SKILL.md`

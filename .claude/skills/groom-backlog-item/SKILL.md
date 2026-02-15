@@ -92,7 +92,7 @@ Create a grooming report:
 - {items that could be worked together}
 
 ### Research Gaps
-- {topics needing /research-and-compare runs}
+- {topics needing research-and-compare runs — skill moved to [stateless-agent-methodology](https://github.com/bitflight-devops/stateless-agent-methodology) repo}
 ```
 
 ### Step 6: Save Report (Optional)

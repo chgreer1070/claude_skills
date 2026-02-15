@@ -25,7 +25,7 @@ Search existing SAM comparisons for relevant findings:
 
 ```text
 Grep pattern: {keywords from item}
-Path: methodology_development/.meta/v1_comparisons/
+Path: https://github.com/bitflight-devops/stateless-agent-methodology/tree/main/.meta/v1_comparisons/
 ```
 
 For each match, note:
@@ -62,7 +62,7 @@ Search for commits or files touching related topics:
 
 ```text
 Grep pattern: {key terms from item}
-Path: methodology_development/
+Path: https://github.com/bitflight-devops/stateless-agent-methodology/tree/main/
 ```
 
 ### 5. Identify Dependencies

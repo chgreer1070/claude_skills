@@ -82,7 +82,7 @@ Before spawning any agents, verify all prerequisites:
    - `../get-shit-done/` (gsd-expert)
    - `../octocode-mcp/` (octocode-expert)
    - `../ralph-orchestrator/` (ralph-expert)
-   - `./methodology_development/` (sam-expert)
+   - `../stateless-agent-methodology/` (sam-expert)
 
 2. **ARL research docs are readable** (verified in Step 1)
 

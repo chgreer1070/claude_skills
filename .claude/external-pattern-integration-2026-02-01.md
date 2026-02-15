@@ -59,7 +59,7 @@
 | Local File | Similarity Reason | Priority |
 |------------|-------------------|----------|
 | `plugins/plugin-creator/skills/feature-discovery/SKILL.md` | Autonomous research producing artifacts, identifies gaps | **High** |
-| `.claude/skills/research-and-compare/SKILL.md` | Verification protocol, confidence levels | **High** |
+| [research-and-compare SKILL.md](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/.claude/skills/research-and-compare/SKILL.md) | Verification protocol, confidence levels (moved to stateless-agent-methodology repo) | **High** |
 | `plugins/python3-development/agents/feature-researcher.md` | Researches before implementation, surfaces questions | Medium |
 
 ---

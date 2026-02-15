@@ -1089,7 +1089,7 @@ claude --plugin-dir ./plugin-one --plugin-dir ./plugin-two
 
 This section lists discrete desired outcomes ready for Stage 2 (Planning with RT-ICA) following the Stateless Software Engineering Framework. Each outcome can be worked through independently by specialist agents.
 
-**Methodology Reference**: `/home/ubuntulinuxqa2/repos/claude_skills/methodology_development/stateless-software-engineering-framework.md`
+**Methodology Reference**: [stateless-software-engineering-framework.md](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md)
 
 **SSE Stage Progression for Each Outcome**:
 
@@ -1488,7 +1488,7 @@ uv run -q --no-sync plugins/plugin-creator/scripts/auto-sync-manifests.py
 
 ### Missing User-Invocable Workflows
 
-The plugin currently has workflows for refactoring but lacks streamlined user-invocable skills for core plugin lifecycle operations. Following the methodology_development processes, these workflows should be added:
+The plugin currently has workflows for refactoring but lacks streamlined user-invocable skills for core plugin lifecycle operations. Following the [SAM methodology](https://github.com/bitflight-devops/stateless-agent-methodology) processes, these workflows should be added:
 
 #### 1. `/create-plugin` - Complete Plugin Creation Workflow
 
@@ -1501,7 +1501,7 @@ The plugin currently has workflows for refactoring but lacks streamlined user-in
 
 **Gap:**
 
-- No structured workflow following methodology_development process
+- No structured workflow following SAM methodology process
 - No RT-ICA (Reverse Thinking - Information Completeness Assessment) phase
 - No integration with validation and quality gates
 - Script is standalone, not integrated with agent orchestration
@@ -1792,7 +1792,7 @@ echo "✅ Versions updated automatically"
 
 ### Integration with Methodology
 
-All workflows should follow the process documented in `methodology_development/`:
+All workflows should follow the process documented in the [SAM methodology](https://github.com/bitflight-devops/stateless-agent-methodology):
 
 1. **RT-ICA Phase** - Reverse Thinking - Information Completeness Assessment
 

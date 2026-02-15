@@ -140,4 +140,4 @@ Complete detail on each gate, framework patterns, and prerequisites:
 - [ARL Research](./references/autonomous-refinement-loop-research.md) — Problem definition, what replaces human judgment
 - [Human-Out-of-Loop Prerequisites](./references/human-out-of-loop-prerequisites.md) — Conditions for removing human gates
 - [Expert Panel Q&A](./references/qa-expert-panel.md) — Phase 1-2 expert panel findings
-- [Autonomous Loop Principles](../../../../methodology_development/autonomous-loop-principles.md) — SAM extension analysis (cross-reference)
+- [Autonomous Loop Principles](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/autonomous-loop-principles.md) — SAM extension analysis (cross-reference)

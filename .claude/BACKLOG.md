@@ -26,7 +26,7 @@ _(Empty)_
 **Added**: 2026-02-01
 **Description**: Define explicit procedure when a task fails irrecoverably. How to undo artifact changes? How to restore artifact plane to consistent state after failure?
 **Research first**: How do GSD, BMAD-METHOD, AutoGPT, and traditional CI/CD handle rollback? What patterns exist for transactional artifact updates?
-**Suggested location**: `methodology_development/stateless-software-engineering-framework.md` (new Appendix or Part 6 addition)
+**Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (new Appendix or Part 6 addition)
 
 ### SAM: Human Escalation Criteria
 
@@ -34,7 +34,7 @@ _(Empty)_
 **Added**: 2026-02-01
 **Description**: Define explicit triggers for escalating to human at each stage (not just Discovery). When should agents block and ask vs attempt repair vs fail?
 **Research first**: How do GSD deviation rules work? How does BMAD-METHOD handle human checkpoints? What escalation patterns exist in agent frameworks?
-**Suggested location**: `methodology_development/stateless-software-engineering-framework.md` (each Agent Specification section)
+**Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (each Agent Specification section)
 
 ### SAM: Timeout/Stall Detection
 
@@ -42,7 +42,7 @@ _(Empty)_
 **Added**: 2026-02-01
 **Description**: Define mechanism to detect when an agent is stuck or has stalled. Include timeout thresholds per stage, health check patterns, and recovery actions.
 **Research first**: How do orchestration frameworks (Temporal, Prefect, Airflow) handle task timeouts? What heartbeat patterns exist? How does Gas Town handle session recycling?
-**Suggested location**: `methodology_development/stateless-software-engineering-framework.md` (Orchestrator section 3.8)
+**Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (Orchestrator section 3.8)
 
 ### SAM: Artifact Schema Validation
 
@@ -50,7 +50,7 @@ _(Empty)_
 **Added**: 2026-02-01
 **Description**: Define formal validation rules or JSON schemas for artifact formats. Currently only templates provided. Enable automated validation at stage boundaries.
 **Research first**: How do GSD artifacts (STATE.md, ROADMAP.md) enforce structure? What validation approaches exist in BMAD-METHOD? JSON Schema vs YAML validation vs custom parsers?
-**Suggested location**: `methodology_development/sam-artifact-schemas/` (new directory with schema files)
+**Suggested location**: [`sam-artifact-schemas/`](https://github.com/bitflight-devops/stateless-agent-methodology) (new directory with schema files)
 
 ### SAM: Scope Creep Detection
 
@@ -58,7 +58,7 @@ _(Empty)_
 **Added**: 2026-02-01
 **Description**: Define mechanism to detect when execution diverges from plan. How does Forensic Review detect that the execution agent solved a different problem than planned?
 **Research first**: How does GSD plan-checker detect deviation? What diff/comparison techniques exist? How do code review tools detect scope creep in PRs?
-**Suggested location**: `methodology_development/stateless-software-engineering-framework.md` (section 3.6 Forensic Review)
+**Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (section 3.6 Forensic Review)
 
 ### Resolve 48 pre-existing ty (Astral type checker) diagnostics
 
@@ -97,7 +97,7 @@ _(Empty)_
 **Added**: 2026-02-13
 **Description**: Integrate the 7 universal principles from `synthesis-general-theory.md` into SAM methodology documents. These principles (structure over instruction, front-loading reduces gates, AI cannot self-evaluate, compression is architectural, iteration-aware state required, parallelism enables independent verification, failure paths need more compression) extend SAM's scope to cover autonomous refinement loops.
 **Input artifacts**: `plugins/plugin-creator/skills/assessor/references/ARL/synthesis-general-theory.md`
-**Target files**: `methodology_development/stateless-agent-methodology.md`, `methodology_development/stateless-software-engineering-framework.md`
+**Target files**: [`stateless-agent-methodology.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-agent-methodology.md), [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md)
 **Dependencies**: None — general theory is framework-agnostic
 **Related backlog items**: SAM gap items (error recovery, human escalation, scope creep detection) — the general theory findings inform several of these
 
@@ -179,7 +179,7 @@ _(Empty)_
 **Added**: 2026-02-01
 **Description**: Detail safe parallelization within SAM pipeline. When can tasks run in parallel? How to handle merge conflicts? Reference GSD wave execution pattern.
 **Research first**: How does GSD wave execution work in detail? How do task orchestrators (Temporal, Prefect) handle parallel dependencies? What conflict resolution patterns exist?
-**Suggested location**: `methodology_development/stateless-software-engineering-framework.md` (new section 2.4 or Appendix)
+**Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (new section 2.4 or Appendix)
 
 ### SAM: Multi-Model Strategy
 
@@ -187,7 +187,7 @@ _(Empty)_
 **Added**: 2026-02-01
 **Description**: Define guidance for using different models for different agent types. E.g., cheaper/faster models for simple verification, stronger models for planning.
 **Research first**: How do agent frameworks handle model selection? What cost/quality tradeoffs exist? How does Claude Code's haiku/sonnet/opus selection work?
-**Suggested location**: `methodology_development/stateless-software-engineering-framework.md` (Implementation Roadmap or new Appendix)
+**Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (Implementation Roadmap or new Appendix)
 
 ### SAM: Audit Trail / Observability
 
@@ -195,7 +195,7 @@ _(Empty)_
 **Added**: 2026-02-01
 **Description**: Beyond artifacts, define logging/metrics/tracing guidance. How to diagnose pipeline issues? What telemetry to capture?
 **Research first**: How do GSD and BMAD-METHOD handle logging? What observability patterns exist in agent frameworks? OpenTelemetry for LLM workflows?
-**Suggested location**: `methodology_development/stateless-software-engineering-framework.md` (new Appendix I)
+**Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (new Appendix I)
 
 ### SAM: Partial Success Handling
 
@@ -203,7 +203,7 @@ _(Empty)_
 **Added**: 2026-02-01
 **Description**: Define how to represent and handle partial task success. Task completes some DoD items but not all. How is this state represented in artifacts?
 **Research first**: How do GSD checkpoints represent partial progress? How do CI/CD systems handle partial test passes? What state machine patterns exist?
-**Suggested location**: `methodology_development/stateless-software-engineering-framework.md` (section 3.5 Execution Agent output)
+**Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (section 3.5 Execution Agent output)
 
 ### SAM: Context Size Management
 
@@ -211,7 +211,7 @@ _(Empty)_
 **Added**: 2026-02-01
 **Description**: Define explicit guidance for measuring and managing context size per agent. What's the target token budget? How to detect context pressure?
 **Research first**: How do agent frameworks measure context usage? What token counting approaches exist? How does Claude Code handle context limits internally?
-**Suggested location**: `methodology_development/stateless-software-engineering-framework.md` (section 2.1 or Appendix C)
+**Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (section 2.1 or Appendix C)
 
 ### SAM: Conflicting Review Findings
 
@@ -219,7 +219,7 @@ _(Empty)_
 **Added**: 2026-02-01
 **Description**: Define protocol when forensic review and self-verification disagree. Which takes precedence? How to adjudicate conflicts?
 **Research first**: How do code review systems handle conflicting reviewers? What adjudication patterns exist in multi-agent systems? How does GSD handle verification disagreements?
-**Suggested location**: `methodology_development/stateless-software-engineering-framework.md` (section 3.6 Forensic Review)
+**Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (section 3.6 Forensic Review)
 
 ---
 
@@ -350,7 +350,7 @@ _(Empty)_
 **Source**: Gap analysis of SAM framework
 **Completed**: 2026-02-06
 **Description**: Implemented storage-agnostic semantic tokens using pattern `ARTIFACT:{TYPE}({SCOPE_OR_ID})` with disambiguators (CTX, PREREQ, EXEC, VERIFY). Provides both filesystem-backed and SQL-backed example implementations.
-**Location**: `methodology_development/stateless-software-engineering-framework.md` (section 2.1.2)
+**Location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (section 2.1.2)
 
 ### Create ecosystem-researcher agent
 
@@ -377,15 +377,15 @@ _(Empty)_
 
 ### Research Resources
 
-**Skill for research phase**: `/research-and-compare <methodology-name-or-url>`
+**Skill for research phase**: `/research-and-compare <methodology-name-or-url>` (moved to [stateless-agent-methodology](https://github.com/bitflight-devops/stateless-agent-methodology) repo)
 
 - Produces structured comparison documents following SAM comparison template
 - Includes overlap/divergence analysis, weakness discovery, implementation pairing
-- Outputs to `methodology_development/.meta/v1_comparisons/`
+- Outputs to [`stateless-agent-methodology/.meta/v1_comparisons/`](https://github.com/bitflight-devops/stateless-agent-methodology/tree/main/.meta/v1_comparisons)
 
 **Existing SAM comparisons** (start here before running new research):
 
-- [methodology_development/.meta/v1_comparisons/](../methodology_development/.meta/v1_comparisons/)
+- [SAM v1 comparisons](https://github.com/bitflight-devops/stateless-agent-methodology/tree/main/.meta/v1_comparisons)
   - sam-vs-get-shit-done.md
   - sam-vs-bmad-method.md
   - sam-vs-gastown.md
@@ -400,7 +400,7 @@ _(Empty)_
 **Workflow for SAM gap items**:
 
 1. Check existing comparisons for relevant findings
-2. If more research needed: `/research-and-compare <framework>` for specific topics
+2. If more research needed: `/research-and-compare <framework>` (in stateless-agent-methodology repo) for specific topics
 3. Synthesize findings into SAM framework update
 4. Mark backlog item complete
 

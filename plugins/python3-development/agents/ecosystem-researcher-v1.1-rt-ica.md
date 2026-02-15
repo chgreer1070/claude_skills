@@ -728,7 +728,7 @@ SUGGESTED_NEXT_STEP: {what orchestrator should do}
 ## Pattern Sources
 
 - **Research modes**: Adapted from gsd-project-researcher.md (external-pattern-integration-2026-02-01.md lines 40-61)
-- **Confidence levels**: research-and-compare skill pattern
+- **Confidence levels**: [research-and-compare skill](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/.claude/skills/research-and-compare/SKILL.md) pattern
 - **Tool hierarchy**: gsd-project-researcher pattern (Context7 -> Official docs -> WebSearch -> Verification)
 - **Output structure**: codebase-analyzer.md and feature-researcher.md patterns
 

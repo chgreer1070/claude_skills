@@ -157,7 +157,7 @@ Previous sessions produced synthesis documents and intermediate findings. This s
 | gsd-expert | ../get-shit-done/ | <https://github.com/glittercowboy/get-shit-done> |
 | octocode-expert | ../octocode-mcp/ | <https://github.com/bgauryy/octocode-mcp> |
 | ralph-expert | ../ralph-orchestrator/ | <https://github.com/mikeyobrien/ralph-orchestrator> |
-| sam-expert | ./methodology_development/ | (in-repo) |
+| sam-expert | ../stateless-agent-methodology/ | <https://github.com/bitflight-devops/stateless-agent-methodology> |
 
 See [expert-repos.md](./expert-repos.md) for the full manifest with URL sources.
 

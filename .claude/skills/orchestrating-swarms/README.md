@@ -148,7 +148,7 @@ TeammateTool provides native infrastructure for:
 
 ### For Stateless Agent Methodology
 
-TeammateTool aligns with the [Stateless Agent Methodology](../../methodology_development/stateless-agent-methodology.md):
+TeammateTool aligns with the [Stateless Agent Methodology](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-agent-methodology.md):
 
 | SAM Stage               | TeammateTool Support                                 |
 | ----------------------- | ---------------------------------------------------- |
