@@ -158,7 +158,7 @@
   │
   └─ NO → Is uv installable in the environment?
           ├─ YES → Use python-cli-architect (default)
-          └─ NO → Use python-portable-script (exception)
+          └─ NO → Use /python3-development:stdlib-scripting (exception, last resort)
   ```
 
 ---

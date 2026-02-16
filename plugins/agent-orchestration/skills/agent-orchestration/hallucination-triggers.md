@@ -254,7 +254,7 @@ Analysis Coverage:
 
 - Files analyzed: 5 (code-reviewer.md, test-runner.md, refactorer.md, documentation-expert.md, linting-resolver.md)
 - Files discovered: 6 (Glob result)
-- Missing from analysis: python-portable-script.md
+- Missing from analysis: stdlib-scripting (skill)
 - Coverage: 83% (5/6)
 
 Consensus Assessment:
@@ -417,7 +417,7 @@ Files analyzed: 5 of 6 discovered (83% coverage)
 - refactorer.md (analyzed)
 - documentation-expert.md (analyzed)
 - linting-resolver.md (analyzed)
-- python-portable-script.md (NOT analyzed - discovered during verification)
+- stdlib-scripting (skill) (NOT analyzed - discovered during verification)
 
 Quality Findings:
 

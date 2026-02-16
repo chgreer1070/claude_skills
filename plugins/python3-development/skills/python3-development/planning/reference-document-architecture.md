@@ -1978,7 +1978,7 @@ def find_dependent_documents(target_doc: Path, skill_root: Path) -> list[Path]:
 - [ ] Extract Typer/Rich standards from @pattern-extraction.md#L227-L234
 - [ ] Document Rich table pattern from @pattern-extraction.md#L376-L421
 - [ ] Create complete CLI tool example from @pattern-extraction.md#L429-L461
-- [ ] Document argparse patterns from python-portable-script
+- [ ] Document argparse patterns from /python3-development:stdlib-scripting
 - [ ] Create subprocess execution patterns from @pattern-extraction.md#L511-L540
 
 **Validation**:

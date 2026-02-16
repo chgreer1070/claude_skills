@@ -353,7 +353,7 @@ The orchestrator delegates Python development tasks to specialized agents rather
 | Python code        | `@python3-development:python-cli-architect`    |
 | Test creation      | `@python3-development:python-pytest-architect` |
 | Code review        | `@python3-development:python-code-reviewer`    |
-| Stdlib-only script | `@python-portable-script`  |
+| Stdlib-only script | `/python3-development:stdlib-scripting` |
 | Architecture       | `@python3-development:python-cli-design-spec`  |
 | Task breakdown     | `@python3-development:swarm-task-planner`      |
 | Requirements       | `@spec-analyst`            |

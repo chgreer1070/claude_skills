@@ -264,7 +264,7 @@ See `agent-recommendations.md` for prioritized actionable fixes.
 graph TD
     A[python-cli-architect] -->|Task| B[python-pytest-architect]
     A -->|Task| C[python-code-reviewer]
-    B -->|Task| D[python-portable-script]
+    B -->|Task| D[stdlib-scripting skill]
 ```
 
 ## Agent → Skill Loading

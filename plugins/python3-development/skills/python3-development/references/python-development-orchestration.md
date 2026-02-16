@@ -22,7 +22,7 @@ Comprehensive guide for orchestrating Python development tasks using specialized
 ### Agents (bundled in this plugin)
 
 - **python-cli-architect**: Build modern CLI applications with Typer and Rich
-- **python-portable-script**: Create stdlib-only portable scripts
+- **/python3-development:stdlib-scripting**: Create stdlib-only portable scripts (last resort for confirmed restricted environments)
 - **python-pytest-architect**: Design comprehensive test suites
 - **python-code-reviewer**: Review Python code for quality and standards
 - **python-cli-design-spec**: Design system architecture
@@ -54,7 +54,7 @@ Comprehensive guide for orchestrating Python development tasks using specialized
    Input: Architecture design, expected behavior
    Output: Complete test suite (fails initially)
 
-3. Implement → @python3-development:python-cli-architect OR @python-portable-script
+3. Implement → @python3-development:python-cli-architect OR /python3-development:stdlib-scripting
    Input: Tests, architecture design
    Output: Implementation that makes tests pass
 
@@ -112,7 +112,7 @@ Step 5: Validate
    Input: Architecture design
    Output: Step-by-step implementation tasks
 
-4. Implement → @python3-development:python-cli-architect OR @python-portable-script
+4. Implement → @python3-development:python-cli-architect OR /python3-development:stdlib-scripting
    Input: Implementation plan, existing code patterns
    Output: New feature implementation
 
@@ -172,7 +172,7 @@ Step 5: Validate
    Check: Tests pass before refactoring
    If missing: @python3-development:python-pytest-architect creates tests
 
-2. Refactor → @python3-development:python-cli-architect or @python-portable-script
+2. Refactor → @python3-development:python-cli-architect or /python3-development:stdlib-scripting
    Input: Code to refactor + test suite
    Constraint: Must not break existing tests
    Output: Refactored code
@@ -207,7 +207,7 @@ Step 5: Validate
    Identify: Specific code causing issue
 
 3. Fix → Appropriate agent
-   @python3-development:python-cli-architect or @python-portable-script
+   @python3-development:python-cli-architect or /python3-development:stdlib-scripting
    Input: Failing test + root cause
    Output: Fix that makes test pass
 
@@ -265,14 +265,18 @@ Step 5: Validate
 - "Create a script to scan git repositories and show status tree"
 - "Build a deployment verification tool with progress bars"
 
-### When to Use python-portable-script
+### When to Use /python3-development:stdlib-scripting
 
-**Use when** (RARE - ask user first if unclear):
+**LAST RESORT** — only for confirmed restricted environments. Ask user first if unclear.
+
+**Use when**:
 
 - **Restricted environment**: No internet access (airgapped, embedded systems)
 - **No uv available**: Locked-down systems where uv cannot be installed
 - **Hard stdlib-only requirement**: Explicitly requested by user
 - **1% case**: Only when deployment environment truly restricts dependencies
+
+**Activation**: `Skill(command: "python3-development:stdlib-scripting")`
 
 **Characteristics**:
 
@@ -281,7 +285,7 @@ Step 5: Validate
 - Cross-platform compatibility
 - Stdlib only (no PEP 723 needed - nothing to declare)
 - Use PEP 723 ONLY if adding external dependencies later
-- Ask deployment environment questions before choosing this agent
+- Ask deployment environment questions before choosing this skill
 - This is the EXCEPTION, not the rule
 - Consider python-cli-architect first unless restrictions confirmed
 
@@ -292,9 +296,9 @@ Step 5: Validate
 - ❌ **Basic UX** - Limited formatting capabilities
 - ✅ **Maximum portability** - The ONLY reason to choose this: runs anywhere Python exists without network access
 
-**This agent is NOT simpler to use - it requires MORE work to build the same functionality. Choose it ONLY for portability, not for simplicity.**
+**This skill is NOT simpler to use - it requires MORE work to build the same functionality. Choose it ONLY for portability, not for simplicity.**
 
-**Note**: Only use this agent if deployment environment restrictions are confirmed. With PEP 723 + uv, python-cli-architect is preferred for better UX. ASK: "Will this run without internet access or where uv cannot be installed?" See [PEP 723 Reference](./PEP723.md) for details on when to use inline script metadata.
+**Note**: Only activate this skill if deployment environment restrictions are confirmed. With PEP 723 + uv, python-cli-architect is preferred for better UX. ASK: "Will this run without internet access or where uv cannot be installed?" See [PEP 723 Reference](./PEP723.md) for details on when to use inline script metadata.
 
 **Example tasks**:
 
@@ -311,7 +315,7 @@ Step 5: Validate
 - PEP 723 + uv handles dependencies (still single file)
 - Works in 99% of scenarios
 
-**Step 2: Only use python-portable-script if:**
+**Step 2: Only use /python3-development:stdlib-scripting if:**
 
 - User explicitly states "stdlib only" requirement
 - OR deployment environment is confirmed restricted:
@@ -337,13 +341,13 @@ Does the deployment environment have internet access?
         ├─ YES → Use python-cli-architect (default)
         │         uv can cache dependencies for offline use
         │
-        └─ NO → Use python-portable-script (exception)
+        └─ NO → Use /python3-development:stdlib-scripting (last resort)
                  Truly restricted environment requires stdlib-only
 ```
 
 If answers indicate normal environment → python-cli-architect
 
-If answers indicate restrictions → python-portable-script
+If answers indicate restrictions → /python3-development:stdlib-scripting
 
 **When in doubt**: Use python-cli-architect. PEP 723 + uv makes single-file scripts with dependencies just as portable as stdlib-only scripts for 99% of deployment scenarios.
 
@@ -587,7 +591,7 @@ Orchestrator:
 ### Don't: Mix agent contexts
 
 ```cpp
-❌ Ask python-portable-script to build Typer CLI
+❌ Ask /python3-development:stdlib-scripting to build Typer CLI
 ❌ Ask python-cli-architect to avoid all dependencies
 ```
 
@@ -595,7 +599,7 @@ Orchestrator:
 
 ```text
 ✅ python-cli-architect for user-facing CLI tools
-✅ python-portable-script for stdlib-only scripts
+✅ /python3-development:stdlib-scripting for stdlib-only scripts
 ```
 
 ## Summary

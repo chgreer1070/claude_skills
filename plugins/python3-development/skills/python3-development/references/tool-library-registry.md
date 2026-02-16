@@ -2320,7 +2320,7 @@ iso = now.isoformat()
 - User requirement
 - Pattern: Time-aware scripts
 
-**Source**: User requirements list, python-portable-script-analysis.md
+**Source**: User requirements list, stdlib-scripting-analysis.md
 
 ---
 
@@ -2653,7 +2653,7 @@ def deploy_cluster():
 - User requirement
 - Pattern: DevOps automation
 
-**Source**: User requirements list, python-portable-script-analysis.md
+**Source**: User requirements list, stdlib-scripting-analysis.md
 
 ---
 
