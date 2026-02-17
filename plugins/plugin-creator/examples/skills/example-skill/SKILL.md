@@ -78,5 +78,5 @@ Skills can be located in:
 ## Sources
 
 - [Skills Reference](https://code.claude.com/docs/en/skills.md) (accessed 2026-01-28)
-- [Skills Overview](./plugins/plugin-creator/skills/claude-skills-overview-2026/SKILL.md) - Complete reference
-- [Plugin Creator Validation Scripts](./plugins/plugin-creator/scripts/README.md)
+- [Skills Overview](../../../skills/claude-skills-overview-2026/SKILL.md) - Complete reference
+- [Plugin Creator Validation Scripts](../../../scripts/)
