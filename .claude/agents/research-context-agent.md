@@ -29,7 +29,7 @@ Search the repository for connections across FIVE dimensions:
 
 | Dimension | What to Look For | Where to Search |
 |-----------|------------------|-----------------|
-| **Enhance existing skills** | Could this research improve a skill's capability, accuracy, or coverage? | `**/skills/**/SKILL.md`, `**/skills/**/references/` (includes plugins & .claude/skills) |
+| **Enhance existing skills** | Could this research improve a skill's capability, accuracy, or coverage? | `**/skills/*/` (entire skill directories with SKILL.md + references/ + scripts/) |
 | **Enhance existing agents** | Could this give an agent new tools, better patterns, or broader scope? | `**/agents/*.md` (includes .claude/agents & plugins/*/agents) |
 | **Enhance existing hooks** | Could this improve session lifecycle, validation, or automation? | `**/hooks/*` (includes .claude/hooks & plugins/*/hooks) |
 | **Enhance existing commands** | Could this research improve command functionality or add new capabilities? | `**/commands/*.md` (includes .claude/commands & plugins/*/commands) |
