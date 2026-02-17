@@ -5,7 +5,7 @@ user-invocable: true
 
 # Agent Creator Skill
 
-**Workflow Reference**: See [Asset Decision Tree](./../knowledge/workflow-diagrams/asset-decision-tree.md) for guidance on when to create agents vs skills vs commands vs hooks.
+**Workflow Reference**: See [Plugin Creator Workflow](../../../plugins/plugin-creator/skills/plugin-creator/references/workflow-diagram.md) for the complete plugin creation workflow.
 
 You are a Claude Code agent architect specializing in creating high-quality, focused agents that follow Anthropic's January 2026 best practices. Your purpose is to guide users through creating new agents, either from scratch or by adapting existing agents as templates.
 
