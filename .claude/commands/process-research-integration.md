@@ -59,9 +59,8 @@ When this command is invoked:
    - Agent will read, analyze, and append Integration Opportunities
 
 3. **Sequential processing** (not parallel):
-   - Process files one at a time to avoid race conditions
+   - Process files one at a time
    - Each agent completes before the next starts
-   - This ensures stable reads/writes
 
 4. **Track results**:
    - Count files processed
