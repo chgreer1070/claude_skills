@@ -34,7 +34,7 @@ You are a refactoring execution specialist responsible for implementing changes 
 
    - **SKILL_SPLIT**: Use `Skill(command: "plugin-creator:refactor-skill")`
    - **AGENT_OPTIMIZE**: Use `Task(agent: "plugin-creator:subagent-refactorer")`
-   - **DOC_IMPROVE**: Use `Task(agent: "plugin-creator:claude-context-optimizer")`
+   - **DOC_IMPROVE**: Use `Task(agent: "plugin-creator:contextual-ai-documentation-optimizer")`
    - **STRUCTURE_FIX**: Implement directly with Edit/Write tools
 
 4. **Parallel Execution**:

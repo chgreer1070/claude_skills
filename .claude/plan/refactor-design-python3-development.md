@@ -693,12 +693,12 @@ All 6 commands can be fixed simultaneously:
 
 | Task                                      | Agent                    | Target File                                          |
 | ----------------------------------------- | ------------------------ | ---------------------------------------------------- |
-| Fix create-feature-task frontmatter       | claude-context-optimizer | `commands/development/create-feature-task.md`        |
-| Fix use-command-template frontmatter      | claude-context-optimizer | `commands/development/use-command-template.md`       |
-| Fix command-template frontmatter          | claude-context-optimizer | `commands/development/templates/command-template.md` |
-| Fix analyze-test-failures frontmatter     | claude-context-optimizer | `commands/testing/analyze-test-failures.md`          |
-| Fix comprehensive-test-review frontmatter | claude-context-optimizer | `commands/testing/comprehensive-test-review.md`      |
-| Fix test-failure-mindset frontmatter      | claude-context-optimizer | `commands/testing/test-failure-mindset.md`           |
+| Fix create-feature-task frontmatter       | contextual-ai-documentation-optimizer | `commands/development/create-feature-task.md`        |
+| Fix use-command-template frontmatter      | contextual-ai-documentation-optimizer | `commands/development/use-command-template.md`       |
+| Fix command-template frontmatter          | contextual-ai-documentation-optimizer | `commands/development/templates/command-template.md` |
+| Fix analyze-test-failures frontmatter     | contextual-ai-documentation-optimizer | `commands/testing/analyze-test-failures.md`          |
+| Fix comprehensive-test-review frontmatter | contextual-ai-documentation-optimizer | `commands/testing/comprehensive-test-review.md`      |
+| Fix test-failure-mindset frontmatter      | contextual-ai-documentation-optimizer | `commands/testing/test-failure-mindset.md`           |
 
 ### Sequential Dependencies
 
@@ -733,7 +733,7 @@ All 6 commands can be fixed simultaneously:
 
 | ID  | Task                            | Priority | Agent                    | Estimated Time |
 | --- | ------------------------------- | -------- | ------------------------ | -------------- |
-| 2.6 | Fix 6 command frontmatter files | High     | claude-context-optimizer | 20 min         |
+| 2.6 | Fix 6 command frontmatter files | High     | contextual-ai-documentation-optimizer | 20 min         |
 
 ### Phase 3: Reference Migration
 

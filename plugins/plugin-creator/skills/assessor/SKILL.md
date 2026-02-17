@@ -122,7 +122,7 @@ Categorized by:
 Each recommendation must include:
 - Target file path
 - Issue type and severity (Critical/High/Medium/Low)
-- Recommended agent: plugin-creator:refactor-skill | subagent-refactorer | claude-context-optimizer | plugin-docs-writer
+- Recommended agent: plugin-creator:refactor-skill | subagent-refactorer | contextual-ai-documentation-optimizer | plugin-docs-writer
 - Expected outcome
 </output_specification>
 
@@ -485,7 +485,7 @@ PERFORM these planning steps:
    **Dependencies**: [Comma-separated Task IDs or "None"]
    **Priority**: [Integer 1-5, where 1 is highest]
    **Complexity**: [Low/Medium/High]
-   **Agent**: [plugin-creator:refactor-skill | subagent-refactorer | claude-context-optimizer | plugin-docs-writer]
+   **Agent**: [plugin-creator:refactor-skill | subagent-refactorer | contextual-ai-documentation-optimizer | plugin-docs-writer]
 
    **Target**: [File path being refactored]
    **Issue Type**: [SKILL_SPLIT | AGENT_OPTIMIZE | DOC_IMPROVE | ORPHAN_RESOLVE | STRUCTURE_FIX]
@@ -514,8 +514,8 @@ PERFORM these planning steps:
    **Agent Selection Rules**:
    - SKILL_SPLIT tasks → `plugin-creator:refactor-skill`
    - AGENT_OPTIMIZE tasks → `subagent-refactorer`
-   - DOC_IMPROVE tasks (skills/agents) → `claude-context-optimizer`
-   - ORPHAN_RESOLVE tasks → `claude-context-optimizer` (integrate) or orchestrator (remove)
+   - DOC_IMPROVE tasks (skills/agents) → `contextual-ai-documentation-optimizer`
+   - ORPHAN_RESOLVE tasks → `contextual-ai-documentation-optimizer` (integrate) or orchestrator (remove)
    - Documentation generation → `plugin-docs-writer`
 
    AFTER all refactoring tasks, ALWAYS include these verification tasks:

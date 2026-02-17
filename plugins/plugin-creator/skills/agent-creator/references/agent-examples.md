@@ -60,7 +60,7 @@ description: Use ONLY when explicitly requested by user or when invoked by a pro
 
 ## Example 3: Context Optimizer (Specialized Domain)
 
-**Source**: `.claude/agents/claude-context-optimizer.md`
+**Source**: `.claude/agents/contextual-ai-documentation-optimizer.md`
 
 This agent demonstrates:
 
@@ -71,7 +71,7 @@ This agent demonstrates:
 
 ```yaml
 ---
-name: claude-context-optimizer
+name: contextual-ai-documentation-optimizer
 description: Use this agent when the user wants to improve, rewrite, or optimize prompts, SKILL.md, CLAUDE.md files for better Claude comprehension and response quality. This includes refining system prompts, user instructions, agent configurations, or any text meant to guide AI behavior.
 model: sonnet
 color: yellow

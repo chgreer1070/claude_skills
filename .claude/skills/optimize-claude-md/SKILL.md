@@ -1,5 +1,5 @@
 ---
-description: 'Optimize CLAUDE.md, SKILL.md, agent definitions, and other AI-facing files for Claude comprehension and economy. Measures baseline metrics, delegates to @claude-context-optimizer agent with file-type-specific context, runs independent verification via second agent, measures post-optimization metrics, and presents comprehensive before/after report. Supports iterative mode for large targets. Use when improving prompt effectiveness, reducing token waste, rewriting instructions for LLM consumption, or enhancing files with latest Claude Code features. Invoke with /optimize-claude-md <file-or-directory>.'
+description: 'Optimize CLAUDE.md, SKILL.md, agent definitions, and other AI-facing files for Claude comprehension and economy. Measures baseline metrics, delegates to @contextual-ai-documentation-optimizer agent with file-type-specific context, runs independent verification via second agent, measures post-optimization metrics, and presents comprehensive before/after report. Supports iterative mode for large targets. Use when improving prompt effectiveness, reducing token waste, rewriting instructions for LLM consumption, or enhancing files with latest Claude Code features. Invoke with /optimize-claude-md <file-or-directory>.'
 argument-hint: '<file-or-directory-path>'
 user-invocable: true
 disable-model-invocation: true
@@ -42,7 +42,7 @@ Read the file or directory at `$ARGUMENTS`. Verify existence. Determine scope (s
 
 **Record metrics** for reporting.
 
-### Phase 3: Delegate to @claude-context-optimizer
+### Phase 3: Delegate to @contextual-ai-documentation-optimizer
 
 Spawn the optimization agent via Task tool with enhanced delegation template (see below). Pass file-type-specific context, baseline metrics, and constraints.
 

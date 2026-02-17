@@ -36,7 +36,7 @@
     "./agents/refactor-executor.md",
     "./agents/refactor-validator.md",
     "./agents/subagent-refactorer.md",
-    "./agents/claude-context-optimizer.md",
+    "./agents/contextual-ai-documentation-optimizer.md",
     "./agents/plugin-assessor.md"
   ],
   "commands": ["./commands/count-lines.md"]

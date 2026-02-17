@@ -152,7 +152,7 @@ The model MUST use this plugin when:
 | `refactor-executor`        | sonnet | Read, Write, Edit, Grep, Glob, Bash, Task                            | Execute refactoring tasks from plans                                     | ✅ Yes   |
 | `refactor-validator`       | sonnet | Read, Grep, Glob, Bash                                               | Validate refactoring completeness and quality                            | ✅ Yes   |
 | `subagent-refactorer`      | sonnet | Read, Write, Edit, Grep, Glob, WebFetch, WebSearch, Skill, MCP tools | Refactor Claude agents using Anthropic prompt engineering best practices | ✅ Yes   |
-| `claude-context-optimizer` | sonnet | (inherits)                                                           | Optimize prompts, SKILL.md, CLAUDE.md for Claude comprehension           | ✅ Yes   |
+| `contextual-ai-documentation-optimizer` | sonnet | (inherits)                                                           | Optimize prompts, SKILL.md, CLAUDE.md for Claude comprehension           | ✅ Yes   |
 | `plugin-assessor`          | sonnet | (inherits)                                                           | Analyze plugins for structure, frontmatter, and quality                  | ✅ Yes   |
 
 ### Commands (1)
@@ -191,9 +191,9 @@ The model MUST use this plugin when:
 - Optimizes for Sonnet 4.5 vs Opus 4.1 model selection
 - Generates analysis reports with citations and validation checklists
 
-### claude-context-optimizer
+### contextual-ai-documentation-optimizer
 
-**Source:** Previously at `./.claude/agents/claude-context-optimizer.md`
+**Source:** Previously at `./.claude/agents/contextual-ai-documentation-optimizer.md`
 **Purpose:** Optimize prompts, SKILL.md, and CLAUDE.md files for Claude comprehension
 **Usage:** DOC_IMPROVE and ORPHAN_RESOLVE task types
 **Key Features:**
@@ -533,7 +533,7 @@ claude plugin validate {plugin-directory}
 | ----------------- | --------------------------------------- | -------- |
 | `SKILL_SPLIT`     | `/plugin-creator:refactor-skill` skill  | ✅ Yes   |
 | `AGENT_OPTIMIZE`  | `subagent-refactorer` agent             | ✅ Yes   |
-| `DOC_IMPROVE`     | `claude-context-optimizer` agent        | ✅ Yes   |
+| `DOC_IMPROVE`     | `contextual-ai-documentation-optimizer` agent        | ✅ Yes   |
 | `DOC_UPDATER_ADD` | `/plugin-creator:add-doc-updater` skill | ✅ Yes   |
 | `ORPHAN_RESOLVE`  | Manual or context optimizer             | ✅ Yes   |
 | `STRUCTURE_FIX`   | Direct implementation                   | ✅ Yes   |
@@ -1915,7 +1915,7 @@ Currently validation is spread across:
 
 **Optional External Skill Dependency:**
 
-- `prompt-optimization-claude-45` - Used by claude-context-optimizer agent (included in this plugin as agent, requires skill from separate plugin)
+- `prompt-optimization-claude-45` - Used by contextual-ai-documentation-optimizer agent (included in this plugin as agent, requires skill from separate plugin)
 
 **Complementary Plugins:**
 
@@ -1927,7 +1927,7 @@ Currently validation is spread across:
 
 ## Version History
 
-- **2.6.0** - Consolidated external agents: subagent-refactorer, claude-context-optimizer, plugin-assessor now included
+- **2.6.0** - Consolidated external agents: subagent-refactorer, contextual-ai-documentation-optimizer, plugin-assessor now included
 - **2.5.0** - Added skill-creator and write-frontmatter-description skills
 - **2.3.0** - Added claude-plugins-reference-2026 and claude-hooks-reference-2026 reference skills
 - **2.2.0** - Added claude-skills-overview-2026 reference skill

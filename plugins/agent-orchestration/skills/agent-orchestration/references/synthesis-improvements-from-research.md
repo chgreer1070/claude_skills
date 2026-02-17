@@ -19,7 +19,7 @@ sources:
 
 ## Purpose
 
-This document synthesizes orchestration patterns from multiple sources to identify improvements for the agent-orchestration SKILL.md. It will serve as input for a multi-agent analysis experiment where different specialized agents (claude-context-optimizer, subagent-generator, subagent-refactorer, python-cli-architect) will critically analyze using ultrathink and sequential-thinking MCP how they would integrate and revise the agent-orchestration/SKILL.md.
+This document synthesizes orchestration patterns from multiple sources to identify improvements for the agent-orchestration SKILL.md. It will serve as input for a multi-agent analysis experiment where different specialized agents (contextual-ai-documentation-optimizer, subagent-generator, subagent-refactorer, python-cli-architect) will critically analyze using ultrathink and sequential-thinking MCP how they would integrate and revise the agent-orchestration/SKILL.md.
 
 ## Current State Analysis
 
@@ -633,4 +633,4 @@ The current SKILL.md has a strong foundation with scientific delegation framewor
 - Using story-based framing for faster anti-pattern detection
 - Adding decision support for common orchestration scenarios
 
-**Next Steps:** This synthesis will be provided to four specialized agents (claude-context-optimizer, subagent-generator, subagent-refactorer, python-cli-architect) who will critically analyze using ultrathink and sequential-thinking MCP how they would integrate and revise the agent-orchestration/SKILL.md based on these findings.
+**Next Steps:** This synthesis will be provided to four specialized agents (contextual-ai-documentation-optimizer, subagent-generator, subagent-refactorer, python-cli-architect) who will critically analyze using ultrathink and sequential-thinking MCP how they would integrate and revise the agent-orchestration/SKILL.md based on these findings.

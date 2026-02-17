@@ -72,7 +72,7 @@ flowchart TD
     Q1 -->|Yes| Q2{Needs repo convention awareness?}
     Q2 -->|Yes| CG[context-gathering agent]
     Q2 -->|No — general interpretation| Q3{Prompt optimization or AI-facing content?}
-    Q3 -->|Yes| CCO[claude-context-optimizer agent]
+    Q3 -->|Yes| CCO[contextual-ai-documentation-optimizer agent]
     Q3 -->|No| CG
     Explore -.->|⚠️ Haiku-based ~50% hallucination rate on ambiguous queries| Warning[Never use for reasoning tasks]
 ```

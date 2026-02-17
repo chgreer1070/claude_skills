@@ -320,7 +320,7 @@
 **Dependencies**: None
 **Priority**: 1
 **Complexity**: Low
-**Agent**: claude-context-optimizer
+**Agent**: contextual-ai-documentation-optimizer
 
 **Target**: All 6 command files in `./plugins/python3-development/commands/`
 **Issue Type**: DOC_IMPROVE

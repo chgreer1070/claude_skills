@@ -70,7 +70,7 @@ This index tracks all plugin refactoring projects, linking to detailed task brea
 
 - `skill-refactorer` - Splits monolithic skills
 - `subagent-refactorer` - Optimizes agent files
-- `claude-context-optimizer` - Improves AI-facing docs
+- `contextual-ai-documentation-optimizer` - Improves AI-facing docs
 - `plugin-docs-writer` - Generates user documentation
 - `plugin-assessor` - Validates final structure
 
@@ -306,7 +306,7 @@ git commit -m "plan: move python3-development to completed (score 62→85)"
 - `python-cli-design-spec` - Phase 2 refactoring design
 - `task-planner` - Phase 3 task breakdown (this document)
 - `skill-refactorer` - Phase 4 skill splitting execution
-- `claude-context-optimizer` - Phase 4 frontmatter and doc optimization
+- `contextual-ai-documentation-optimizer` - Phase 4 frontmatter and doc optimization
 - `plugin-docs-writer` - Phase 5 user documentation generation
 
 ---

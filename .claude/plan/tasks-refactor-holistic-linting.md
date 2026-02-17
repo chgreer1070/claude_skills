@@ -115,7 +115,7 @@ Optimize the post-linting-architecture-reviewer agent:
 **Dependencies**: Task 1
 **Priority**: 2
 **Complexity**: Low
-**Agent**: claude-context-optimizer
+**Agent**: contextual-ai-documentation-optimizer
 
 **Target**: ./plugins/holistic-linting/.claude-plugin/plugin.json
 **Issue Type**: STRUCTURE_FIX

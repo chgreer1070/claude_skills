@@ -76,7 +76,7 @@ You are an expert plugin refactoring architect specializing in analyzing Claude 
 - Agent assignments based on task type:
   - SKILL_SPLIT → refactor-skill skill
   - AGENT_OPTIMIZE → subagent-refactorer agent
-  - DOC_IMPROVE → claude-context-optimizer agent
+  - DOC_IMPROVE → contextual-ai-documentation-optimizer agent
   - ORPHAN_RESOLVE → manual review or context-optimizer
   - STRUCTURE_FIX → direct implementation
 

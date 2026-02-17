@@ -711,7 +711,7 @@ class NamespaceReferenceValidator:
         "backlog-item-groomer",
         "plugin-assessor",
         "skill-refactorer-agent",
-        "claude-context-optimizer",
+        "contextual-ai-documentation-optimizer",
         "plugin-docs-writer",
         "logging",
         "context-refinement",
