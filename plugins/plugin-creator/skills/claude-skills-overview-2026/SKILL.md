@@ -9,6 +9,8 @@ Skills extend what Claude can do. Create a `SKILL.md` file with instructions, an
 
 **Skills and slash commands are now unified** - they are the same system. A file at `.claude/commands/review.md` and a skill at `.claude/skills/review/SKILL.md` both create `/review` and work identically. Skills are the recommended approach as they support additional features like supporting files and advanced frontmatter options.
 
+> **Portable skills?** This reference covers **Claude Code-specific** features (hooks, context fork, model selection, invocation control). If you need to create skills that work across Claude Code, Cursor, Gemini CLI, OpenAI Codex, VS Code, and 20+ other agents, see the [Agent Skills Open Standard](../agentskills/SKILL.md) skill instead — it covers the portable subset of the format defined at [agentskills.io](https://agentskills.io).
+
 ---
 
 ## SKILL.md Complete Format
@@ -54,9 +56,11 @@ Your instructions here...
 
 All fields are optional. Only `description` is recommended so Claude knows when to use the skill.
 
+The fields `name`, `description`, `license`, `compatibility`, `metadata`, and `allowed-tools` are part of the [Agent Skills Open Standard](../agentskills/SKILL.md) and are portable across all compatible agents. The remaining fields below are Claude Code extensions.
+
 | Field                      | Required    | Type    | Max Length | Description                                                                                                                                           |
 | -------------------------- | ----------- | ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`                     | No          | string  | 64 chars   | Display name for the skill. If omitted, uses the directory name. Lowercase letters, numbers, and hyphens only.                                        |
+| `name`                     | No          | string  | 64 chars   | Display name for the skill. If omitted, uses the directory name. Lowercase letters, numbers, and hyphens only. **Plugin skills:** Omit `name` (see note below). |
 | `description`              | Recommended | string  | 1024 chars | What the skill does and when to use it. Claude uses this to decide when to apply the skill. If omitted, uses the first paragraph of markdown content. |
 | `argument-hint`            | No          | string  | —          | Hint shown during autocomplete to indicate expected arguments. Example: `[issue-number]` or `[filename] [format]`.                                    |
 | `allowed-tools`            | No          | string  | —          | Tools Claude can use without asking permission when this skill is active (comma-separated). Example: `Read, Grep, Glob, Bash(npm run:*)`              |
@@ -77,6 +81,9 @@ All fields are optional. Only `description` is recommended so Claude knows when 
 >
 > The `allowed-tools` field exists primarily to scope the tool surface exposed to the skill, reducing prompt and context size by including only the tool definitions the skill may need.
 
+> [!NOTE]
+> **Plugin skills:** Omit the `name` field — a known behavior prevents plugin skills with explicit `name:` from appearing as slash commands. See plugin-creator CLAUDE.md for details.
+
 ---
 
 ## Skill Tokenomics
@@ -85,34 +92,36 @@ Skills use progressive disclosure - only frontmatter loads initially (~100 token
 
 ### Budget Constraints
 
-| Resource                   | Limit         | Notes                               |
-| -------------------------- | ------------- | ----------------------------------- |
-| `name` field               | 64 chars      | Lowercase, numbers, hyphens only    |
-| `description` field        | 1024 chars    | Critical for skill selection        |
-| `<available_skills>` block | ~15,000 chars | Separate from global context window |
-| Skills before truncation   | ~34-36        | Varies by description complexity    |
+| Resource                   | Limit                                      | Notes                               |
+| -------------------------- | ------------------------------------------ | ----------------------------------- |
+| `name` field               | 64 chars                                   | Lowercase, numbers, hyphens only    |
+| `description` field        | 1024 chars                                  | Critical for skill selection        |
+| `<available_skills>` block | 2% of context window (fallback 16,000 chars) | Scales dynamically; separate from global context |
+| Skills before truncation   | ~34-36                                     | Varies by description complexity    |
 
 ### YAML Multiline Bug
 
-**Do NOT use YAML multiline indicators** (`>-`, `|`, `|-`) for descriptions. Claude Code's skill indexer does not parse them correctly - the description appears as ">-" instead of actual content.
+**Use single-line quoted strings for descriptions** — Claude Code's skill indexer does not parse YAML multiline indicators (`>-`, `|`, `|-`) correctly; the description may appear as ">-" instead of actual content.
 
 ```yaml
-# WRONG - will show ">-" as description
-description: 'This is a multiline description that breaks.  # WRONG - same problem'
-description: 'This breaks too.  # CORRECT - single quoted string'
-description: 'This works correctly. Use single quotes for descriptions with special characters or keep on one line.'
+# Correct — single quoted string
+description: 'Extract text from PDFs. Use when the user mentions PDFs or document extraction.'
+
+# Wrong — multiline indicators break the indexer
+description: >-
+  This appears as ">-" in the index
 ```
 
 ### Truncation Behavior
 
-When total skill metadata exceeds ~15,000 characters:
+When total skill metadata exceeds the budget (2% of context window, fallback 16,000 characters):
 
 1. Skills are truncated from the `<available_skills>` block
 2. Truncated skills cannot be auto-invoked by Claude
 3. User can still invoke truncated skills explicitly with `/skill-name`
 4. Run `/context` to check for a warning about excluded skills
 
-To increase the limit, set the `SLASH_COMMAND_TOOL_CHAR_BUDGET` environment variable.
+To override the limit, set the `SLASH_COMMAND_TOOL_CHAR_BUDGET` environment variable.
 
 **Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Troubleshooting")
 
@@ -183,12 +192,15 @@ skill-name/
 ├── SKILL.md              # Required
 ├── references/           # Optional: docs loaded on demand
 ├── scripts/              # Optional: executed, not loaded into context
-└── templates/            # Optional: reusable content
+├── templates/            # Optional: reusable content
+└── examples/             # Optional: sample output showing expected format
 ```
+
+Supporting files can also live at the skill root (e.g., `reference.md`, `forms.md`). Reference them from SKILL.md so Claude knows what each file contains and when to load it.
 
 ### Location Priority (Highest to Lowest)
 
-1. **Managed/Enterprise** - System-level (see [managed settings](/en/iam#managed-settings))
+1. **Managed/Enterprise** - System-level (see [managed settings](/en/permissions#managed-settings))
 2. **Personal** - `~/.claude/skills/`
 3. **Project** - `.claude/skills/`
 4. **Plugin** - Bundled with plugins (see [./claude-plugins-reference-2026/SKILL.md](../claude-plugins-reference-2026/SKILL.md))
@@ -198,6 +210,12 @@ When skills share the same name across levels, higher-priority locations win: en
 #### Automatic Discovery from Nested Directories
 
 When you work with files in subdirectories, Claude Code automatically discovers skills from nested `.claude/skills/` directories. For example, if you're editing a file in `packages/frontend/`, Claude Code also looks for skills in `packages/frontend/.claude/skills/`. This supports monorepo setups where packages have their own skills.
+
+#### Skills from Additional Directories
+
+Skills defined in `.claude/skills/` within directories added via `--add-dir` are loaded automatically and picked up by live change detection, so you can edit them during a session without restarting.
+
+**Note**: CLAUDE.md files from `--add-dir` directories are not loaded by default. Set `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1` to load them. See memory documentation for details.
 
 **Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Where skills live")
 
@@ -240,7 +258,7 @@ For complete hook configuration including all events, matchers, JSON output cont
 
 Add `context: fork` to your frontmatter when you want a skill to run in isolation. The skill content becomes the prompt that drives the subagent. It won't have access to your conversation history.
 
-**WARNING**: `context: fork` only makes sense for skills with explicit instructions. If your skill contains guidelines like "use these API conventions" without a task, the subagent receives the guidelines but no actionable prompt, and returns without meaningful output.
+**Use `context: fork` only when the skill includes explicit instructions and a clear task.** If the skill contains guidelines like "use these API conventions" without a task, the subagent receives the guidelines but no actionable prompt and may return without meaningful output.
 
 ### Agent Types
 
@@ -324,7 +342,7 @@ In a regular session, skill descriptions are loaded into context so Claude knows
 
 ### Restrict Claude's skill access
 
-By default, Claude can invoke any skill that doesn't have `disable-model-invocation: true` set. Skills that define `allowed-tools` grant Claude access to those tools without per-use approval when the skill is active. Your [permission settings](/en/iam) still govern baseline approval behavior for all other tools. Built-in commands like `/compact` and `/init` are not available through the Skill tool.
+By default, Claude can invoke any skill that doesn't have `disable-model-invocation: true` set. Skills that define `allowed-tools` grant Claude access to those tools without per-use approval when the skill is active. Your [permission settings](/en/permissions) still govern baseline approval behavior for all other tools. Built-in commands like `/compact` and `/init` are not available through the Skill tool.
 
 Three ways to control which skills Claude can invoke:
 
@@ -335,7 +353,7 @@ Three ways to control which skills Claude can invoke:
 Skill
 ```
 
-**Allow or deny specific skills** using [permission rules](/en/iam):
+**Allow or deny specific skills** using [permission rules](/en/permissions):
 
 ```
 # Allow only specific skills
@@ -504,22 +522,39 @@ Only runs when user types `/deploy-production`.
 
 ## Recent Updates (2.1+)
 
-- **Unified skills and commands** - `.claude/commands/` files now work as skills, skills recommended
+- **Dynamic token budget** — 2% of context window (fallback 16,000 chars) for skill metadata
+- **Skills from --add-dir** — Loaded with live change detection
+- **Unified skills and commands** — `.claude/commands/` files now work as skills, skills recommended
 - **Dynamic context injection** - \!\`command\` syntax for preprocessing shell command output
 - **`argument-hint` field** - Show autocomplete hints for expected arguments
 - **Optional name/description** - If omitted, uses directory name and first paragraph
 - **`once: true` for hooks** - Run only once per session
 - **`${CLAUDE_SESSION_ID}`** - Session-scoped operations
-- **15,000 character budget** for skill metadata
 - **`context: fork`** with agent selection
 - **Hot reload** - immediate updates without restart
 
 ---
 
+## Troubleshooting
+
+**Skill not triggering?** Check the description includes keywords users would naturally say; verify the skill appears in "What skills are available?"; try rephrasing the request; invoke directly with `/skill-name` if user-invocable.
+
+**Skill triggers too often?** Make the description more specific; add `disable-model-invocation: true` if you only want manual invocation.
+
+**Claude doesn't see all skills?** Run `/context` to check for excluded-skills warnings. The budget scales at 2% of context (fallback 16,000 chars). Set `SLASH_COMMAND_TOOL_CHAR_BUDGET` to override.
+
+---
+
+## Related Skills
+
+- **[Agent Skills Open Standard](../agentskills/SKILL.md)** — The portable specification (agentskills.io). Use when creating skills for cross-agent compatibility. Covers the subset of frontmatter fields (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`) recognized by all 25+ compatible agents.
+- **[Claude Plugins Reference](../claude-plugins-reference-2026/SKILL.md)** — Plugin creation, distribution, and plugin.json schema.
+- **[Claude Hooks Reference](../claude-hooks-reference-2026/SKILL.md)** — Complete hook events, matchers, and configuration.
+
 ## Sources
 
-- **Primary**: [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills.md) (accessed 2026-01-28)
-- **Standards**: [Agent Skills Open Standard](https://agentskills.io)
+- **Primary**: [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills.md) (accessed 2026-02-17)
+- **Standards**: [Agent Skills Open Standard](https://agentskills.io) — see also the [agentskills skill](../agentskills/SKILL.md) for the full portable specification reference
 - **Examples**: [anthropics/skills](https://github.com/anthropics/skills)
 - **Blog**: [Anthropic Engineering Blog - Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
 - **Experimental**: Context fork tool restrictions verified 2026-01-22

@@ -40,7 +40,7 @@ Syntax: `Skill(command: "plugin-creator:skill-creator")`
 
 ## Task Delegation Standards
 
-Follow Delegation Template in `/agent-orchestration` skill when invoking Task tool.
+Follow Delegation Template in agent-orchestration:agent-orchestration skill when invoking Task tool.
 
 ### Path Conventions
 
@@ -58,8 +58,6 @@ flowchart TD
     Sym -->|Why| Reason2[Symlink paths trigger manual approval on every file op]
     Use --> Done([Sub-agent inherits same working directory])
 ```
-
-Skills symlink from `~/.claude/skills/` to repo — always use the repo-relative path, not the symlink.
 
 </delegation_path_rules>
 

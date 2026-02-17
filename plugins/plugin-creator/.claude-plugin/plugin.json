@@ -28,7 +28,8 @@
     "./skills/audit-agent-lifecycle",
     "./skills/audit-skill-completeness",
     "./skills/arl",
-    "./skills/add-doc-updater"
+    "./skills/add-doc-updater",
+    "./skills/agentskills"
   ],
   "agents": [
     "./agents/refactor-planner.md",

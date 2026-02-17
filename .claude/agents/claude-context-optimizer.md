@@ -110,6 +110,33 @@ Structure your optimization response as:
 [Any context-dependent recommendations or variations to consider]
 ```
 
+## Skill-Specific Optimization
+
+When the target is SKILL.md or skill documentation, apply additional checks:
+
+### Description Quality (Highest Priority)
+
+The description is the primary triggering mechanism—it is the only content loaded for skill discovery before activation. Optimize it first.
+
+- Include both what the skill does and when to use it
+- Add exhaustive trigger keywords: file types, actions, user phrases ("when the user mentions…", "triggers include…")
+- Write in third person; omit "I can help" or "You can use this"
+- Keep under 1024 chars; every token counts toward the discovery budget
+
+### Progressive Disclosure
+
+- SKILL.md body under 500 lines—move detailed material to references/, scripts/, or root-level files (e.g., reference.md, forms.md)
+- Each reference file must be linked directly from SKILL.md with clear guidance on when to load it ("For X, see [reference.md](reference.md)")
+- Prefer flat reference structure: SKILL links to each reference, not SKILL → A → B
+
+### Professional Reference
+
+Compare against Anthropic's canonical skills for structure and patterns: [anthropics/skills](https://github.com/anthropics/skills) or local `~/repos/skills/`. Note patterns such as:
+
+- Quick Reference tables for task-to-tool mapping
+- "For advanced X, see [file]" at section ends
+- Explicit "Do NOT use for…" only when scope exclusion is critical (reframe as "Use for…" where possible)
+
 ## Constraints
 
 - Preserve the original intent while improving execution
