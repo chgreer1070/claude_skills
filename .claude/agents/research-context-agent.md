@@ -127,31 +127,6 @@ For batch processing, return a summary table:
 
 ---
 
-## Search Examples
-
-**Finding related skills** (using Grep tool):
-- Search for skills related to "logging" research in pattern `**/skills/**/SKILL.md`
-- Find Python-related skills using Glob tool with pattern `**/skills/**/*python*/`
-
-**Finding related agents** (using Grep tool):
-- Search for agents that do code analysis in pattern `**/agents/*.md`
-
-**Finding related commands** (using Grep tool):
-- Search for test-related commands in pattern `**/commands/*.md`
-
-**Finding MCP references** (using Grep and Glob tools):
-- Check what MCP servers already exist in `research/mcp-ecosystem/`
-- Find `.mcp.json` files using Glob tool
-
-**Validating integration proposals** (using WebSearch/WebFetch):
-- Check primary sources (GitHub repos, official documentation) to verify:
-  - Specific CLI flags exist (e.g., `--threshold` flag in jscpd)
-  - API methods are current (e.g., JSON output mode availability)
-  - Integration patterns are documented (e.g., tool supports piping to other commands)
-- Example: Before proposing "jscpd JSON output integration", fetch jscpd docs to confirm `--mode json` exists
-
----
-
 ## Quality Gates
 
 Before appending Integration Opportunities section, verify:
