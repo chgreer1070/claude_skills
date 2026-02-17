@@ -62,7 +62,20 @@ Skill(skill="groom-backlog-item", args="{item title}")
 
 Capture the grooming output (context manifest with Related Research, Supporting Skills, Related Agents, Prior Work, Dependencies, Blockers, Suggested First Steps).
 
-### Step 4: Compose Feature Request
+### Step 4: RT-ICA Checkpoint
+
+Before composing the feature request, verify the grooming context manifest contains an RT-ICA summary. If it does not, perform RT-ICA now on the backlog item:
+
+1. **Goal statement**: What completing this item achieves
+2. **Reverse prerequisites**: Conditions required for success
+3. **Availability check**: AVAILABLE / DERIVABLE / MISSING for each condition
+4. **Decision**: APPROVED or BLOCKED
+
+**If BLOCKED**: Present the missing inputs to the user. Ask for the missing information before proceeding. Do NOT invoke SAM planning with known gaps.
+
+**If APPROVED**: Proceed. Carry forward assumptions to confirm.
+
+### Step 5: Compose Feature Request
 
 Build the feature request string that will become `$ARGUMENTS` for `add-new-feature`:
 
@@ -85,12 +98,17 @@ Build the feature request string that will become `$ARGUMENTS` for `add-new-feat
 
 {suggested_location text, or "To be determined during architecture phase" if absent}
 
+### RT-ICA Assessment
+
+{RT-ICA summary — goal, conditions, verification status, decision}
+{If DERIVABLE items exist: list assumptions to confirm}
+
 ### Grooming Context
 
 {full context manifest from Step 3, if available}
 ```
 
-### Step 5: Invoke SAM Planning
+### Step 6: Invoke SAM Planning
 
 ```text
 Skill(skill="python3-development:add-new-feature", args="{composed feature request}")
@@ -98,7 +116,7 @@ Skill(skill="python3-development:add-new-feature", args="{composed feature reque
 
 This runs the full SAM workflow: discovery, codebase analysis, architecture spec, task decomposition, validation, context manifest.
 
-### Step 6: Update Backlog with Plan Reference
+### Step 7: Update Backlog with Plan Reference
 
 After `add-new-feature` completes, identify the task file it created by searching:
 
@@ -121,7 +139,7 @@ Add a `**Plan**:` field to the backlog item in `.claude/BACKLOG.md`:
 
 Update `last-updated:` in the BACKLOG.md YAML frontmatter to today's date.
 
-### Step 7: Report Next Steps
+### Step 8: Report Next Steps
 
 ```text
 Backlog item "{title}" is now planned.

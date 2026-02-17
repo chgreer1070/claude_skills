@@ -36,27 +36,51 @@ For each target item, extract:
 - Source
 - Suggested location
 
-### Step 3: Spawn Groomer Agents
+### Step 3: RT-ICA Assessment
 
-**For single item**: Run `@backlog-item-groomer` inline
+Before grooming, run an RT-ICA (Reverse Thinking - Information Completeness Assessment) on each item.
+
+For each item, reverse-think from the goal to identify:
+
+- **Goal statement**: What completing this item achieves
+- **Conditions**: Prerequisites that must be true (functional requirements, integration points, environment needs, data requirements, dependencies)
+- **Availability**: For each condition — AVAILABLE (in backlog description), DERIVABLE (inferable from codebase context), or MISSING
+
+Produce a compact RT-ICA summary per item:
+
+```text
+RT-ICA: {item title}
+Goal: {one sentence}
+Conditions:
+1. {condition} | Status: {AVAILABLE|DERIVABLE|MISSING} | Info needed: {what}
+...
+Decision: {APPROVED|BLOCKED}
+Missing: {list of missing inputs, if any}
+```
+
+This RT-ICA summary becomes input to the groomer agent, directing its discovery search toward filling MISSING and validating DERIVABLE conditions.
+
+### Step 4: Spawn Groomer Agents
+
+**For single item**: Run `@backlog-item-groomer` inline, passing the RT-ICA summary alongside item details.
 
 **For multiple items**: Spawn parallel agents using Task tool:
 
 ```text
 Task(
   subagent_type: "general-purpose",
-  prompt: "Act as @backlog-item-groomer. Groom this item: {item details}",
+  prompt: "Act as @backlog-item-groomer. Groom this item: {item details}\n\nRT-ICA Assessment:\n{rt-ica summary}",
   model: "haiku"
 )
 ```
 
 Spawn up to 5 agents in parallel. If more than 5 items, batch in waves.
 
-### Step 4: Collect Results
+### Step 5: Collect Results
 
 Gather context manifests from all agents.
 
-### Step 5: Produce Summary Report
+### Step 6: Produce Summary Report
 
 Create a grooming report:
 
@@ -69,9 +93,9 @@ Create a grooming report:
 
 ## Summary
 
-| Item | Research Found | Skills | Agents | Blockers |
-|------|----------------|--------|--------|----------|
-| {title} | {count} | {count} | {count} | {count} |
+| Item | RT-ICA | Research Found | Skills | Agents | Blockers |
+|------|--------|----------------|--------|--------|----------|
+| {title} | {APPROVED/BLOCKED} | {count} | {count} | {count} | {count} |
 
 ## Individual Manifests
 
@@ -82,6 +106,14 @@ Create a grooming report:
 {manifest from agent}
 
 ...
+
+## RT-ICA Results
+
+### BLOCKED Items (missing information)
+- {item title}: {list of missing inputs}
+
+### APPROVED Items (ready to plan)
+- {item title}: {count} conditions verified, {count} assumptions to confirm
 
 ## Cross-Item Findings
 
@@ -95,7 +127,7 @@ Create a grooming report:
 - {topics needing research-and-compare runs — skill moved to [stateless-agent-methodology](https://github.com/bitflight-devops/stateless-agent-methodology) repo}
 ```
 
-### Step 6: Save Report (Optional)
+### Step 7: Save Report (Optional)
 
 If grooming multiple items, offer to save report to:
 
@@ -119,7 +151,9 @@ If grooming multiple items, offer to save report to:
 ## Success Criteria
 
 - [ ] Target items identified from arguments
-- [ ] Groomer agent(s) spawned for each item
+- [ ] RT-ICA assessment completed for each item
+- [ ] Groomer agent(s) spawned with RT-ICA context
 - [ ] Context manifests collected
+- [ ] RT-ICA results section included in report
 - [ ] Summary report produced
 - [ ] Cross-item findings identified (if multiple items)

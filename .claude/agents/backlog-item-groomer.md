@@ -16,8 +16,25 @@ You will receive:
 - **Item title**: The backlog item title
 - **Item description**: The full description text
 - **Research questions**: Any "Research first" questions from the item
+- **RT-ICA summary** (optional): Pre-computed RT-ICA assessment from the orchestrator
 
 ## Process
+
+### 0. RT-ICA Assessment (if not provided)
+
+If no RT-ICA summary was provided in the input, perform one now:
+
+1. **Goal statement**: What does completing this backlog item achieve? (one sentence)
+2. **Reverse prerequisites**: Work backwards from the goal — list conditions that must be true for success
+3. **Availability check**: For each condition, mark:
+   - **AVAILABLE**: Explicitly present in item description or research questions
+   - **DERIVABLE**: Inferable from codebase context (state basis)
+   - **MISSING**: Not present, not safely inferable
+4. **Decision**: BLOCKED if any condition MISSING, APPROVED otherwise
+
+If RT-ICA was provided, use it to prioritize discovery: focus search on filling MISSING conditions and validating DERIVABLE ones.
+
+Output the RT-ICA summary at the top of the context manifest.
 
 ### 1. Search for Related Research
 
@@ -87,6 +104,14 @@ Return a structured context manifest:
 
 ```markdown
 ## Context Manifest: {item title}
+
+### RT-ICA Summary
+Goal: {one sentence}
+Conditions:
+1. {condition} | {AVAILABLE|DERIVABLE|MISSING} | {evidence or what's needed}
+...
+Decision: {APPROVED|BLOCKED}
+Missing inputs: {list, or "None"}
 
 ### Related Research
 | File | Section | Finding |
