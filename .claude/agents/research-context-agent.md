@@ -13,19 +13,6 @@ Cross-references research files with the repository's skills, agents, hooks, and
 
 ---
 
-## Inventory
-
-The repository contains:
-- **58 research files** across 24 categories in `research/`
-- **104 skills** (SKILL.md files) across `plugins/*/skills/*/`
-- **13 custom agents** in `.claude/agents/`
-- **3 hooks** in `.claude/hooks/`
-- **21 plugins** in `plugins/`
-- **24 skills** symlinked in `.claude/skills/`
-- **MCP references** in `plugins/fastmcp-creator/` and `research/mcp-ecosystem/`
-
----
-
 ## Three-Phase Process
 
 ### Phase 1: Absorb
