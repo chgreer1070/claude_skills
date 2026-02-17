@@ -1,9 +1,5 @@
 ---
 description: Process all research files to add/update Integration Opportunities sections. Orchestrates the research-context-agent to cross-reference each file with existing skills, agents, and plugins.
-triggers:
-  - /process-research-integration
-  - /update-research-opportunities
-  - /research-integrate
 ---
 
 # Process Research Integration Opportunities
