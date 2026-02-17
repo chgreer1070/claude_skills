@@ -135,7 +135,6 @@ repos:
         language: system
         types: [python]
         pass_filenames: true
-        exclude: ^plugins/development-harness/skills/implementation-manager/scripts/task_format\.py$
 
       - id: ty
         name: ty check
