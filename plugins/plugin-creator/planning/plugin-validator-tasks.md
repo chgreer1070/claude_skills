@@ -237,7 +237,7 @@ Create type-safe data models for ValidationResult, ValidationIssue, ComplexityMe
 
 **Expected Outputs**:
 
-- File created: `plugins/plugin-creator/scripts/plugin-validator.py` (initial structure with data models only)
+- File created: `plugins/plugin-creator/scripts/plugin_validator.py` (initial structure with data models only)
 - Models: ValidationResult, ValidationIssue, ComplexityMetrics, FileType
 - Constants: ERROR_CODE_BASE_URL, token thresholds, name patterns
 
@@ -253,7 +253,7 @@ Create type-safe data models for ValidationResult, ValidationIssue, ComplexityMe
 
 ```bash
 # Type checking
-uv run mypy --strict plugins/plugin-creator/scripts/plugin-validator.py
+uv run mypy --strict plugins/plugin-creator/scripts/plugin_validator.py
 
 # Unit test data models
 uv run pytest tests/test_data_models.py -v
@@ -343,7 +343,7 @@ Create Validator protocol with validate(), can_fix(), and fix() methods using Py
 
 **Expected Outputs**:
 
-- Protocol class added to `plugins/plugin-creator/scripts/plugin-validator.py`
+- Protocol class added to `plugins/plugin-creator/scripts/plugin_validator.py`
 - Class: `Validator` with three protocol methods
 
 **Acceptance Criteria**:
@@ -357,7 +357,7 @@ Create Validator protocol with validate(), can_fix(), and fix() methods using Py
 
 ```bash
 # Type checking
-uv run mypy --strict plugins/plugin-creator/scripts/plugin-validator.py
+uv run mypy --strict plugins/plugin-creator/scripts/plugin_validator.py
 
 # Create test validator to verify protocol
 uv run pytest tests/test_validator_protocol.py -v
@@ -990,7 +990,7 @@ uv run pytest tests/test_internal_link_validator.py -v
 
 **Implementation Summary**:
 
-- ✅ Class added at lines 412-553 of plugin-validator.py
+- ✅ Class added at lines 412-553 of plugin_validator.py
 - ✅ Implements Validator protocol correctly
 - ✅ Link extraction using regex pattern `\[([^\]]+)\]\(([^)]+)\)`
 - ✅ Filters external links (http://, https://, ftp://)
@@ -1128,7 +1128,7 @@ Report:
 
 **Completion Summary**:
 
-**Implementation Location**: `plugins/plugin-creator/scripts/plugin-validator.py` lines 1657-1931
+**Implementation Location**: `plugins/plugin-creator/scripts/plugin_validator.py` lines 1657-1931
 
 **Key Features Implemented**:
 1. `validate(path: Path) -> ValidationResult` - Validates plugin structure using claude CLI
@@ -1351,10 +1351,10 @@ Create Typer-based CLI with main() command that orchestrates validation workflow
 uv run pytest tests/test_cli.py -v
 
 # Manual CLI testing
-./plugin-validator.py --help
-./plugin-validator.py plugins/plugin-creator/skills/plugin-creator/SKILL.md
-./plugin-validator.py --check plugins/plugin-creator
-./plugin-validator.py --fix plugins/plugin-creator/skills/test-skill/SKILL.md
+./plugin_validator.py --help
+./plugin_validator.py plugins/plugin-creator/skills/plugin-creator/SKILL.md
+./plugin_validator.py --check plugins/plugin-creator
+./plugin_validator.py --fix plugins/plugin-creator/skills/test-skill/SKILL.md
 ```
 
 **Can Parallelize With**: T12 (after validators complete)
@@ -1456,7 +1456,7 @@ Report:
 
 **Completion Report**:
 
-**Implementation**: Added integration functions to `plugin-validator.py` lines 1936-2074
+**Implementation**: Added integration functions to `plugin_validator.py` lines 1936-2074
 
 **Functions Implemented**:
 
@@ -1501,7 +1501,7 @@ Report:
 - Verified security requirements met
 - Verified graceful degradation when commands unavailable
 
-**Location**: `plugins/plugin-creator/scripts/plugin-validator.py` lines 1936-2074
+**Location**: `plugins/plugin-creator/scripts/plugin_validator.py` lines 1936-2074
 
 ---
 
@@ -1980,7 +1980,7 @@ Report:
 Consolidate all validators, reporters, CLI, and integration code into single PEP 723 script with inline dependencies.
 
 **Objective**:
-Create standalone executable script at `plugins/plugin-creator/scripts/plugin-validator.py` with PEP 723 metadata and shebang.
+Create standalone executable script at `plugins/plugin-creator/scripts/plugin_validator.py` with PEP 723 metadata and shebang.
 
 **Required Inputs**:
 
@@ -2010,7 +2010,7 @@ Create standalone executable script at `plugins/plugin-creator/scripts/plugin-va
 
 **Expected Outputs**:
 
-- File: `plugins/plugin-creator/scripts/plugin-validator.py` (renamed from validate_frontmatter.py)
+- File: `plugins/plugin-creator/scripts/plugin_validator.py` (renamed from validate_frontmatter.py)
 - Executable permissions set
 - PEP 723 metadata block complete
 
@@ -2020,7 +2020,7 @@ Create standalone executable script at `plugins/plugin-creator/scripts/plugin-va
 2. PEP 723 metadata block valid
 3. All dependencies listed
 4. File is executable (chmod +x)
-5. Script runs standalone: `./plugin-validator.py --help`
+5. Script runs standalone: `./plugin_validator.py --help`
 6. File size under 1500 lines
 7. All validators integrated
 8. CLI works correctly
@@ -2029,13 +2029,13 @@ Create standalone executable script at `plugins/plugin-creator/scripts/plugin-va
 
 ```bash
 # Verify PEP 723 format
-uv run --script plugins/plugin-creator/scripts/plugin-validator.py --help
+uv run --script plugins/plugin-creator/scripts/plugin_validator.py --help
 
 # Test standalone execution
-./plugins/plugin-creator/scripts/plugin-validator.py --help
+./plugins/plugin-creator/scripts/plugin_validator.py --help
 
 # Verify line count
-wc -l plugins/plugin-creator/scripts/plugin-validator.py
+wc -l plugins/plugin-creator/scripts/plugin_validator.py
 ```
 
 **CoVe Checks**:
@@ -2093,7 +2093,7 @@ Report:
 **Accuracy Risk**: Low (YAML configuration)
 
 **Context**:
-Update `.pre-commit-config.yaml` to use new `plugin-validator.py` script with new hook ID.
+Update `.pre-commit-config.yaml` to use new `plugin_validator.py` script with new hook ID.
 
 **Objective**:
 Replace validate-frontmatter hook with plugin-validator hook in pre-commit configuration.
@@ -2107,7 +2107,7 @@ Replace validate-frontmatter hook with plugin-validator hook in pre-commit confi
 **Requirements**:
 
 1. Update hook ID: `validate-frontmatter` → `plugin-validator`
-2. Update entry path: `validate_frontmatter.py` → `plugin-validator.py`
+2. Update entry path: `validate_frontmatter.py` → `plugin_validator.py`
 3. Keep file pattern: `'^plugins/.*/.*\.(md|json)$'`
 4. Test hook execution
 5. Verify changed files passed to script
@@ -2125,7 +2125,7 @@ Replace validate-frontmatter hook with plugin-validator hook in pre-commit confi
 **Acceptance Criteria**:
 
 1. Hook ID updated to `plugin-validator`
-2. Entry path updated to `plugin-validator.py`
+2. Entry path updated to `plugin_validator.py`
 3. Hook runs on plugin file changes
 4. Hook passes changed files to script
 5. Hook respects file pattern
@@ -2174,7 +2174,7 @@ Report:
 **Accuracy Risk**: Medium (must update all references consistently)
 
 **Context**:
-Update 68 references across 14 files from `validate_frontmatter.py` to `plugin-validator.py` and update hook ID references.
+Update 68 references across 14 files from `validate_frontmatter.py` to `plugin_validator.py` and update hook ID references.
 
 **Objective**:
 Replace all script name and hook ID references in documentation with new names.
@@ -2192,7 +2192,7 @@ Replace all script name and hook ID references in documentation with new names.
 4. Update scripts documentation (8 references across 2 files)
 5. Update examples (5 references across 2 files)
 6. Update plugin-creator README.md (13 references)
-7. Replace `validate_frontmatter.py` → `plugin-validator.py`
+7. Replace `validate_frontmatter.py` → `plugin_validator.py`
 8. Replace `validate-frontmatter` → `plugin-validator` (hook ID)
 9. Update command examples to use new name
 
@@ -2226,7 +2226,7 @@ grep -r "validate-frontmatter" .pre-commit-config.yaml plugins/plugin-creator/
 # Should return no results
 
 # Test sample command from docs
-uv run plugins/plugin-creator/scripts/plugin-validator.py --help
+uv run plugins/plugin-creator/scripts/plugin_validator.py --help
 ```
 
 **Can Parallelize With**: T21, T22 (independent doc updates)
@@ -2286,7 +2286,7 @@ Move bash scripts to scripts/deprecated/ with deprecation notices, update any do
 - Must not delete scripts (preserve history)
 - Must add clear deprecation notices
 - Must update any documentation referring to scripts
-- Must note replacement tool (plugin-validator.py)
+- Must note replacement tool (plugin_validator.py)
 
 **Expected Outputs**:
 
@@ -2420,7 +2420,7 @@ Report:
 **Accuracy Risk**: High (must verify no regressions)
 
 **Context**:
-End-to-end verification that plugin-validator.py works correctly and all documentation is accurate.
+End-to-end verification that plugin_validator.py works correctly and all documentation is accurate.
 
 **Objective**:
 Verify complete migration with no regressions, test all workflows, validate documentation accuracy.
@@ -2480,21 +2480,21 @@ Verify complete migration with no regressions, test all workflows, validate docu
 uv run pytest --cov=plugin_validator --cov-report=term-missing --cov-report=html -v
 
 # Type checking
-uv run mypy --strict plugins/plugin-creator/scripts/plugin-validator.py
+uv run mypy --strict plugins/plugin-creator/scripts/plugin_validator.py
 
 # End-to-end workflow test
-./plugins/plugin-creator/scripts/plugin-validator.py plugins/plugin-creator
-./plugins/plugin-creator/scripts/plugin-validator.py --fix plugins/plugin-creator/skills/test-skill/SKILL.md
+./plugins/plugin-creator/scripts/plugin_validator.py plugins/plugin-creator
+./plugins/plugin-creator/scripts/plugin_validator.py --fix plugins/plugin-creator/skills/test-skill/SKILL.md
 
 # Pre-commit hook test
 git add plugins/plugin-creator/skills/test-skill/SKILL.md
 uv run prek run plugin-validator
 
 # Performance test
-time ./plugins/plugin-creator/scripts/plugin-validator.py plugins/plugin-creator
+time ./plugins/plugin-creator/scripts/plugin_validator.py plugins/plugin-creator
 
 # Documentation example test (sample from CONTRIBUTING.md)
-uv run plugins/plugin-creator/scripts/plugin-validator.py validate plugins/plugin-creator/skills/plugin-creator/SKILL.md
+uv run plugins/plugin-creator/scripts/plugin_validator.py validate plugins/plugin-creator/skills/plugin-creator/SKILL.md
 ```
 
 **CoVe Checks**:
@@ -2508,7 +2508,7 @@ uv run plugins/plugin-creator/scripts/plugin-validator.py validate plugins/plugi
 
 - Verification questions:
 
-  1. Does plugin-validator.py validate the same skills that validate_frontmatter.py validated?
+  1. Does plugin_validator.py validate the same skills that validate_frontmatter.py validated?
   2. Is token-based complexity measurement more accurate than line counting?
   3. Does the script work on Windows/Linux/macOS without bash?
   4. Is performance <5s for typical plugin validation?

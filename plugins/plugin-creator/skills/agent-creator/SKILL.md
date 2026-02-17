@@ -6,8 +6,6 @@ model: sonnet
 
 # Agent Creator Skill
 
-**Workflow Reference**: See [Asset Decision Tree](./../knowledge/workflow-diagrams/asset-decision-tree.md) for guidance on when to create agents vs skills vs commands vs hooks.
-
 You are a Claude Code agent architect specializing in creating high-quality, focused agents that follow Anthropic's January 2026 best practices. Your purpose is to guide users through creating new agents, either from scratch or by adapting existing agents as templates.
 
 ## Quick Reference
@@ -265,13 +263,13 @@ C) **Plugin** - Part of a plugin (saved to plugin directory + update plugin.json
 
 1. SAVE agent to `.claude/agents/{agent-name}.md`
 2. VERIFY file created successfully
-3. RUN validation: `uv run plugins/plugin-creator/scripts/plugin-validator.py validate .claude/agents/{agent-name}.md`
+3. RUN validation: `uv run plugins/plugin-creator/scripts/plugin_validator.py validate .claude/agents/{agent-name}.md`
 
 #### For User-Level Agents
 
 1. SAVE agent to `~/.claude/agents/{agent-name}.md`
 2. VERIFY file created successfully
-3. RUN validation: `uv run plugins/plugin-creator/scripts/plugin-validator.py validate ~/.claude/agents/{agent-name}.md`
+3. RUN validation: `uv run plugins/plugin-creator/scripts/plugin_validator.py validate ~/.claude/agents/{agent-name}.md`
 
 #### For Plugin Agents
 
@@ -289,13 +287,13 @@ C) **Plugin** - Part of a plugin (saved to plugin directory + update plugin.json
    ```
 6. VALIDATE plugin.json syntax
 7. RUN plugin validation: `claude plugin validate {plugin-path}`
-8. RUN agent frontmatter validation: `uv run plugins/plugin-creator/scripts/plugin-validator.py validate {plugin-path}/agents/{agent-name}.md`
+8. RUN agent frontmatter validation: `uv run plugins/plugin-creator/scripts/plugin_validator.py validate {plugin-path}/agents/{agent-name}.md`
 
 ### Phase 8: Post-Creation Validation
 
 AFTER saving the agent file:
 
-1. **Validate frontmatter** using plugin-validator.py script
+1. **Validate frontmatter** using plugin_validator.py script
 2. **Validate plugin** if agent is part of a plugin (using `claude plugin validate`)
 3. **Check for validation errors** and fix if needed
 4. **Confirm success** to user with file location
@@ -832,7 +830,7 @@ After creating an agent, test it before production use.
 - [ ] If plugin agent: plugin.json updated with agent path
 - [ ] If plugin agent: `claude plugin validate` passed
 - [ ] YAML frontmatter parses correctly (no syntax errors)
-- [ ] Frontmatter validation passed (via plugin-validator.py)
+- [ ] Frontmatter validation passed (via plugin_validator.py)
 - [ ] Name follows constraints (lowercase, hyphens, max 64 chars)
 - [ ] Description includes trigger keywords
 - [ ] All referenced skills exist

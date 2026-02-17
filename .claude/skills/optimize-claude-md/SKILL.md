@@ -32,7 +32,7 @@ Read the file or directory at `$ARGUMENTS`. Verify existence. Determine scope (s
 **For all files**:
 
 - Determine file type (CLAUDE.md, SKILL.md, agent definition, reference file)
-- Measure token count: `uv run plugins/plugin-creator/scripts/plugin-validator.py --check <file>`
+- Measure token count: `uv run plugins/plugin-creator/scripts/plugin_validator.py --check <file>`
 - Record baseline token count
 
 **For SKILL.md files only**:

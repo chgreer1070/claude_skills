@@ -31,7 +31,7 @@ Implement HookConfigValidator class following Validator protocol to validate hoo
 
 - Architecture spec: ./architect-plugin-linter.md lines 360-420 (HookConfigValidator spec)
 - Completed Task 4: HookConfig Pydantic models available
-- Validator protocol: plugin-validator.py lines 249-286
+- Validator protocol: plugin_validator.py lines 249-286
 
 #### Requirements
 
@@ -54,7 +54,7 @@ Implement HookConfigValidator class following Validator protocol to validate hoo
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (new validator class)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (new validator class)
 - HookConfigValidator class with ~150 lines of implementation
 - Error handling for all HK001-HK010 error codes
 - Fuzzy matching suggestions for unknown event types

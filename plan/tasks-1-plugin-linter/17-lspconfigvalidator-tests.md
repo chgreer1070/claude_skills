@@ -28,7 +28,7 @@ Remove dead code after verifying unreachability with coverage analysis.
 #### Required Inputs
 
 - Architecture spec: ./architect-plugin-linter.md lines 1149-1165 (Dead code removal)
-- Current implementation: plugin-validator.py lines 904-911
+- Current implementation: plugin_validator.py lines 904-911
 - Test coverage report from existing test suite
 
 #### Requirements
@@ -48,7 +48,7 @@ Remove dead code after verifying unreachability with coverage analysis.
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (lines 904-911 removed)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (lines 904-911 removed)
 - Coverage report showing 0% coverage on removed lines
 - Git commit message documenting removal with evidence
 - Test suite passing after removal

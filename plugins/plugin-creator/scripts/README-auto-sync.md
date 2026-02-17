@@ -2,7 +2,7 @@
 
 ## Overview
 
-`auto-sync-manifests.py` automatically maintains `plugin.json` and `marketplace.json` files based on git changes detected during pre-commit. It detects CRUD operations on plugins and components, updates manifests accordingly, and bumps semantic versions.
+`auto_sync_manifests.py` automatically maintains `plugin.json` and `marketplace.json` files based on git changes detected during pre-commit. It detects CRUD operations on plugins and components, updates manifests accordingly, and bumps semantic versions.
 
 ## How It Works
 
@@ -69,7 +69,7 @@ The script runs automatically during `git commit` via `.pre-commit-config.yaml`:
   hooks:
     - id: auto-sync-manifests
       name: Auto-sync plugin and marketplace manifests
-      entry: uv run -q --no-sync plugins/plugin-creator/scripts/auto-sync-manifests.py
+      entry: uv run -q --no-sync plugins/plugin-creator/scripts/auto_sync_manifests.py
       language: system
       stages: [pre-commit]
       pass_filenames: false
@@ -82,7 +82,7 @@ Run manually to preview changes without committing:
 
 ```bash
 # From repository root
-uv run -q --no-sync plugins/plugin-creator/scripts/auto-sync-manifests.py
+uv run -q --no-sync plugins/plugin-creator/scripts/auto_sync_manifests.py
 ```
 
 The script only operates on **staged changes** (via `git diff --cached`), so manually running it requires staged changes.
@@ -346,7 +346,7 @@ git diff --cached --name-only | grep '^plugins/'
 
 ```bash
 # Manually run script to see output
-uv run -q --no-sync plugins/plugin-creator/scripts/auto-sync-manifests.py
+uv run -q --no-sync plugins/plugin-creator/scripts/auto_sync_manifests.py
 ```
 
 **Common causes:**
@@ -383,7 +383,7 @@ The script only processes staged changes, not the entire repository, ensuring fa
 
 ## Source Code
 
-Location: `plugins/plugin-creator/scripts/auto-sync-manifests.py`
+Location: `plugins/plugin-creator/scripts/auto_sync_manifests.py`
 
 Dependencies:
 

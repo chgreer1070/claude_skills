@@ -28,7 +28,7 @@ Implement LSPConfigValidator class following Validator protocol to validate LSP 
 
 - Architecture spec: ./architect-plugin-linter.md lines 475-528 (LSPConfigValidator spec)
 - Completed Task 6: LSPConfig Pydantic models available
-- Validator protocol: plugin-validator.py lines 249-286
+- Validator protocol: plugin_validator.py lines 249-286
 
 #### Requirements
 
@@ -53,7 +53,7 @@ Implement LSPConfigValidator class following Validator protocol to validate LSP 
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (new validator class)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (new validator class)
 - LSPConfigValidator class with ~120 lines of implementation
 - Error handling for LS001-LS010 codes
 - Clear error messages for extension format violations

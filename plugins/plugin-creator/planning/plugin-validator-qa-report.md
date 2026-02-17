@@ -55,14 +55,14 @@ All 23 error codes are implemented and defined in the codebase:
 - ✅ PL004: Component path doesn't start with `./`
 - ✅ PL005: Referenced component file missing
 
-**Verification:** Lines 62-96 of plugin-validator.py
+**Verification:** Lines 62-96 of plugin_validator.py
 
 ---
 
 ## 2. Type Checking ✅
 
 ```bash
-$ mypy --strict plugins/plugin-creator/scripts/plugin-validator.py
+$ mypy --strict plugins/plugin-creator/scripts/plugin_validator.py
 Success: no issues found in 1 source file
 ```
 
@@ -74,7 +74,7 @@ Success: no issues found in 1 source file
 ## 3. Self-Validation ✅
 
 ```bash
-$ uv run plugins/plugin-creator/scripts/plugin-validator.py plugins/plugin-creator --verbose
+$ uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/plugin-creator --verbose
 ✅ plugins/plugin-creator - PASSED
 
 ╭─ Validation Summary ─╮
@@ -286,25 +286,25 @@ CoverageWarning: No data was collected. (no-data-collected)
 ### Critical (Blocking T23 Completion)
 
 1. **FrontmatterValidator Code Path Bug**
-   - File: `plugin-validator.py`, FrontmatterValidator.validate()
+   - File: `plugin_validator.py`, FrontmatterValidator.validate()
    - Issue: UnboundLocalError for `suggestion` variable
    - Impact: 2 test failures
    - Fix: Initialize `suggestion = None` at function start
 
 2. **FrontmatterValidator Auto-Fix Not Working**
-   - File: `plugin-validator.py`, FrontmatterValidator.fix()
+   - File: `plugin_validator.py`, FrontmatterValidator.fix()
    - Issue: FM007 and FM009 auto-fixes not applying
    - Impact: 2 test failures
    - Fix: Implement auto-fix detection and application
 
 3. **ComplexityValidator Threshold Logic**
-   - File: `plugin-validator.py`, ComplexityValidator.validate()
+   - File: `plugin_validator.py`, ComplexityValidator.validate()
    - Issue: Using `>` instead of `>=` for thresholds
    - Impact: 2 test failures
    - Fix: Change threshold comparison to `>=`
 
 4. **DescriptionValidator Boundary Condition**
-   - File: `plugin-validator.py`, DescriptionValidator.validate()
+   - File: `plugin_validator.py`, DescriptionValidator.validate()
    - Issue: Off-by-one error (20 chars should pass)
    - Impact: 1 test failure
    - Fix: Change comparison from `<=` to `<`
@@ -312,13 +312,13 @@ CoverageWarning: No data was collected. (no-data-collected)
 ### Medium Priority
 
 5. **YAML Syntax Validation**
-   - File: `plugin-validator.py`, FrontmatterValidator
+   - File: `plugin_validator.py`, FrontmatterValidator
    - Issue: Invalid YAML passing validation
    - Impact: 1 test failure
    - Fix: Add stricter YAML parsing checks
 
 6. **NameFormatValidator Edge Cases**
-   - File: `plugin-validator.py`, NameFormatValidator
+   - File: `plugin_validator.py`, NameFormatValidator
    - Issue: Single hyphen and empty name passing
    - Impact: 2 test failures
    - Fix: Add explicit edge case checks
@@ -505,7 +505,7 @@ Execution time: 7.30s
 ## 16. Files Verified
 
 **Implementation:**
-- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/scripts/plugin-validator.py` (2900+ lines)
+- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/scripts/plugin_validator.py` (2900+ lines)
 
 **Tests:**
 - `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/tests/test_frontmatter_validator.py`

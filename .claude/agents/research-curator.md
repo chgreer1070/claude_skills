@@ -160,7 +160,7 @@ flowchart TD
 
 ### `--fix` Mode (fix validation issues)
 
-- Receive specific issues to fix (from validate-research.py output)
+- Receive specific issues to fix (from validate_research.py output)
 - Read the entry file
 - Fix only the specified issues
 - Do not rewrite sections that are not flagged

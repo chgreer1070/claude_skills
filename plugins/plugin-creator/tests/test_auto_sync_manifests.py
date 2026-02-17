@@ -1,4 +1,4 @@
-"""Tests reproducing the pre-commit hook stash conflict bug in auto-sync-manifests.py.
+"""Tests reproducing the pre-commit hook stash conflict bug in auto_sync_manifests.py.
 
 Observed symptom: When a commit attempt fails (e.g., ruff errors on other files) and the
 user retries ``git commit``, prek reports::
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Module import -- script has a hyphen in the filename so we use importlib
 # ---------------------------------------------------------------------------
-_SCRIPT_PATH = Path(__file__).parent.parent / "scripts" / "auto-sync-manifests.py"
+_SCRIPT_PATH = Path(__file__).parent.parent / "scripts" / "auto_sync_manifests.py"
 _spec = importlib.util.spec_from_file_location("auto_sync_manifests", _SCRIPT_PATH)
 if _spec and _spec.loader:
     auto_sync = importlib.util.module_from_spec(_spec)

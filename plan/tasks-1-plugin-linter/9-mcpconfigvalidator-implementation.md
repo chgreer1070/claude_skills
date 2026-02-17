@@ -54,7 +54,7 @@ Create type-safe Pydantic models for LSP server configuration validation with co
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (new models section)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (new models section)
 - 3 new models (LSPTransport enum, LSPServer, LSPConfig)
 - Field validators for extension format, language format, timeouts
 - Docstrings with schema source citation

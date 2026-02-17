@@ -1,12 +1,12 @@
 # Plugin Validator Architecture
 
-Technical reference for the plugin-validator.py implementation, design patterns, and extension guide.
+Technical reference for the plugin_validator.py implementation, design patterns, and extension guide.
 
 ---
 
 ## Overview
 
-**File**: `plugins/plugin-creator/scripts/plugin-validator.py`
+**File**: `plugins/plugin-creator/scripts/plugin_validator.py`
 **Lines**: 2534 lines total
 **Language**: Python 3.11+ with PEP 723 inline dependencies
 **Execution**: Standalone script using `uv` package manager
@@ -521,7 +521,7 @@ repos:
     hooks:
       - id: plugin-validator
         name: Validate Plugin Components
-        entry: uv run plugins/plugin-creator/scripts/plugin-validator.py
+        entry: uv run plugins/plugin-creator/scripts/plugin_validator.py
         language: system
         files: '^plugins/.*/.*\.(md|json)$'
         pass_filenames: false
@@ -873,7 +873,7 @@ def test_token_count_deterministic(text):
 
 - [ERROR_CODES.md](./ERROR_CODES.md) - Complete error code reference
 - [USAGE.md](./USAGE.md) - CLI usage and workflow examples
-- [plugin-validator.py](../scripts/plugin-validator.py) - Source code
+- [plugin_validator.py](../scripts/plugin_validator.py) - Source code
 - [PEP 723](https://peps.python.org/pep-0723/) - Inline script metadata
 - [Typer Documentation](https://typer.tiangolo.com/) - CLI framework
 - [tiktoken Documentation](https://github.com/openai/tiktoken) - Token counting

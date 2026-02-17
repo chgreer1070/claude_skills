@@ -28,7 +28,7 @@ Implement MCPConfigValidator class following Validator protocol to validate MCP 
 
 - Architecture spec: ./architect-plugin-linter.md lines 422-473 (MCPConfigValidator spec)
 - Completed Task 5: MCPConfig Pydantic models available
-- Validator protocol: plugin-validator.py lines 249-286
+- Validator protocol: plugin_validator.py lines 249-286
 
 #### Requirements
 
@@ -51,7 +51,7 @@ Implement MCPConfigValidator class following Validator protocol to validate MCP 
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (new validator class)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (new validator class)
 - MCPConfigValidator class with ~100 lines of implementation
 - Error handling for MC001-MC010 codes
 - Warning-level issues for MC004 and MC007

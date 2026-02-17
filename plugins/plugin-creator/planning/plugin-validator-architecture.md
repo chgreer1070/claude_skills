@@ -966,7 +966,7 @@ repos:
     hooks:
       - id: plugin-validator
         name: Validate Claude Code Plugins
-        entry: plugins/plugin-creator/scripts/plugin-validator.py
+        entry: plugins/plugin-creator/scripts/plugin_validator.py
         language: script
         files: '^plugins/.*/.*\.(md|json)$'
         pass_filenames: true
@@ -1294,46 +1294,46 @@ def validate_internal_links(skill_path: Path) -> list[ValidationIssue]:
 
 ```bash
 # Validate skill
-./plugin-validator.py plugins/my-plugin/skills/example/SKILL.md
+./plugin_validator.py plugins/my-plugin/skills/example/SKILL.md
 
 # Validate agent
-./plugin-validator.py plugins/my-plugin/agents/worker.md
+./plugin_validator.py plugins/my-plugin/agents/worker.md
 
 # Validate command
-./plugin-validator.py ~/.claude/commands/helper.md
+./plugin_validator.py ~/.claude/commands/helper.md
 ```
 
 ### Validate Directory
 
 ```bash
 # Validate entire plugin
-./plugin-validator.py plugins/my-plugin
+./plugin_validator.py plugins/my-plugin
 
 # Validate skills directory
-./plugin-validator.py plugins/my-plugin/skills
+./plugin_validator.py plugins/my-plugin/skills
 
 # Validate current directory
-./plugin-validator.py .
+./plugin_validator.py .
 ```
 
 ### Auto-Fix Mode
 
 ```bash
 # Fix frontmatter issues automatically
-./plugin-validator.py --fix plugins/my-plugin/skills/example/SKILL.md
+./plugin_validator.py --fix plugins/my-plugin/skills/example/SKILL.md
 
 # Fix all skills in plugin
-./plugin-validator.py --fix plugins/my-plugin
+./plugin_validator.py --fix plugins/my-plugin
 ```
 
 ### Verbose Output
 
 ```bash
 # Show all checks, not just failures
-./plugin-validator.py --verbose plugins/my-plugin
+./plugin_validator.py --verbose plugins/my-plugin
 
 # Show verbose output without color (CI)
-./plugin-validator.py --verbose --no-color plugins/my-plugin
+./plugin_validator.py --verbose --no-color plugins/my-plugin
 ```
 
 ### Pre-commit Hook Usage
@@ -1341,7 +1341,7 @@ def validate_internal_links(skill_path: Path) -> list[ValidationIssue]:
 ```bash
 # Pre-commit automatically calls with changed files
 git commit -m "feat: add new skill"
-# → Runs: plugin-validator.py file1.md file2.md ...
+# → Runs: plugin_validator.py file1.md file2.md ...
 ```
 
 ---
@@ -1350,7 +1350,7 @@ git commit -m "feat: add new skill"
 
 ### Phase 1: Create Consolidated Tool
 
-1. Create `plugin-validator.py` as PEP 723 standalone script
+1. Create `plugin_validator.py` as PEP 723 standalone script
 2. Port frontmatter validation from `validate_frontmatter.py`
 3. Port structure validation from `validate-skill-structure.sh`
 4. Implement token-based complexity (replaces `count-skill-lines.sh`)
@@ -1358,7 +1358,7 @@ git commit -m "feat: add new skill"
 
 ### Phase 2: Update Pre-commit Hooks
 
-1. Update `.pre-commit-config.yaml` to use `plugin-validator.py`
+1. Update `.pre-commit-config.yaml` to use `plugin_validator.py`
 2. Remove old `validate-frontmatter` hook
 3. Test hook execution
 

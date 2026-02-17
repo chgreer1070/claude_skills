@@ -29,7 +29,7 @@ Enhance AgentFrontmatter Pydantic model with enum validation for agent-specific 
 
 - Architecture spec: ./architect-plugin-linter.md lines 267-312 (Agent enum schema)
 - Official docs: <https://docs.anthropic.com/en/docs/claude-code/sub-agents.md> (cite)
-- Current AgentFrontmatter model: plugin-validator.py lines 1167-1235
+- Current AgentFrontmatter model: plugin_validator.py lines 1167-1235
 
 #### Requirements
 
@@ -50,7 +50,7 @@ Enhance AgentFrontmatter Pydantic model with enum validation for agent-specific 
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (lines 1167-1235 region)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (lines 1167-1235 region)
 - 3 new StrEnum classes added
 - AgentFrontmatter model fields updated to use enums
 - Docstrings cite official schema URL

@@ -6,6 +6,6 @@
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "skills": ["./skills/gitlab-skill", "./skills/gitlab-skill/scripts/get-gitlab-context.py"],
+  "skills": ["./skills/gitlab-skill", "./skills/gitlab-skill/scripts/get_gitlab_context.py"],
   "commands": ["./commands"]
 }

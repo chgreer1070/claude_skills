@@ -337,7 +337,7 @@ def show_results_summary(
 
 
 app = typer.Typer(
-    name="lint-orchestrator",
+    name="lint_orchestrator",
     help="Run project linters based on CLAUDE.md configuration",
     rich_markup_mode="rich",
 )
@@ -384,7 +384,7 @@ def main(
     except ValueError as e:
         error_console.print(f":cross_mark: [red]Configuration error:[/red] {e}")
         error_console.print(
-            "\n[yellow]Run:[/yellow] uv run python scripts/discover-linters.py"
+            "\n[yellow]Run:[/yellow] uv run python scripts/discover_linters.py"
         )
         raise typer.Exit(code=1) from e
 

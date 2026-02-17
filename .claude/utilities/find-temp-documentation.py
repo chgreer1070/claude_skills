@@ -47,7 +47,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
 
 import frontmatter
 import typer
@@ -146,7 +146,7 @@ class TempDoc:
         try:
             # Load file using frontmatter.load()
             # Reference: https://python-frontmatter.readthedocs.io/
-            post = frontmatter.load(path)
+            post = frontmatter.load(str(path))
 
             # Check if it's a temporary doc
             if not post.get("temporary", False):
@@ -180,14 +180,14 @@ class TempDoc:
             return cls(
                 path=path.absolute(),
                 temporary=bool(post["temporary"]),
-                type=post["type"],
-                task=post["task"],
-                agent=post["agent"],
+                type=cast("DocType", post["type"]),
+                task=str(post["task"]),
+                agent=str(post["agent"]),
                 created=created_date,
-                cleanup_trigger=post["cleanup_trigger"],
-                cleanup_action=post["cleanup_action"],
-                status=post["status"],
-                content=post.content,
+                cleanup_trigger=str(post["cleanup_trigger"]),
+                cleanup_action=cast("CleanupAction", post["cleanup_action"]),
+                status=cast("StatusType", post["status"]),
+                content=str(post.content),
             )
         except (OSError, KeyError, TypeError, ValueError):
             # Return None for file errors, missing keys, type mismatches, or date parsing errors
@@ -1157,7 +1157,7 @@ def state(
     console.print(f"[dim]New status:[/] {new_status}")
 
     # Load frontmatter and update status field
-    post = frontmatter.load(doc.path)
+    post = frontmatter.load(str(doc.path))
     post["status"] = new_status
 
     # Write back to file

@@ -3,7 +3,7 @@ feature: plugin-validator UX and coverage gaps
 status: complete
 created: 2026-02-14
 source: .claude/BACKLOG.md (P1)
-target-file: ./plugins/plugin-creator/scripts/plugin-validator.py
+target-file: ./plugins/plugin-creator/scripts/plugin_validator.py
 test-dir: ./plugins/plugin-creator/tests/
 pre-existing-failures: 18
 ---
@@ -12,7 +12,7 @@ pre-existing-failures: 18
 
 ## Feature Summary
 
-Fix UX bugs and expand validation coverage in `plugin-validator.py`.
+Fix UX bugs and expand validation coverage in `plugin_validator.py`.
 Four independent sub-issues from groomed backlog item.
 
 ## Pre-existing Test State
@@ -24,7 +24,7 @@ Do NOT regress any passing tests. Do NOT fix pre-existing failures unless they a
 
 ### Primary Files
 
-- `./plugins/plugin-creator/scripts/plugin-validator.py` (3045 lines)
+- `./plugins/plugin-creator/scripts/plugin_validator.py` (3045 lines)
 - `./plugins/plugin-creator/tests/conftest.py` (341 lines)
 
 ### Architecture

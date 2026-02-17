@@ -50,7 +50,7 @@ Create type-safe Pydantic models for MCP server configuration validation.
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (new models section)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (new models section)
 - 2 new Pydantic models defined
 - Field validators for command, args, env, cwd
 - Docstrings with schema source citation

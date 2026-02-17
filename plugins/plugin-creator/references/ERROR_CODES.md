@@ -1,6 +1,6 @@
 # Plugin Validator Error Codes
 
-Complete reference for all error codes emitted by `plugin-validator.py`.
+Complete reference for all error codes emitted by `plugin_validator.py`.
 
 **Total Error Codes**: 23 across 9 validator classes
 
@@ -779,7 +779,7 @@ python3 -m json.tool .claude-plugin/plugin.json
 **Usage**:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin-validator.py --fix <path>
+uv run plugins/plugin-creator/scripts/plugin_validator.py --fix <path>
 ```
 
 **Important**: Auto-fix modifies files in-place. Always commit or backup files before running auto-fix.
@@ -806,4 +806,4 @@ uv run plugins/plugin-creator/scripts/plugin-validator.py --fix <path>
 
 - [USAGE.md](./USAGE.md) - CLI usage and workflow examples
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Validator design and implementation
-- [plugin-validator.py](../scripts/plugin-validator.py) - Source code
+- [plugin_validator.py](../scripts/plugin_validator.py) - Source code

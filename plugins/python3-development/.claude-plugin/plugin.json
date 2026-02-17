@@ -39,8 +39,8 @@
     "./skills/hatchling/SKILL.md",
     "./skills/pypi-readme-creator/SKILL.md",
     "./skills/uv",
-    "./skills/implementation-manager/scripts/get-task-context.py",
-    "./skills/uv/scripts/sync-uv-releases.py",
+    "./skills/implementation-manager/scripts/get_task_context.py",
+    "./skills/uv/scripts/sync_uv_releases.py",
     "./skills/stdlib-scripting"
   ],
   "agents": [

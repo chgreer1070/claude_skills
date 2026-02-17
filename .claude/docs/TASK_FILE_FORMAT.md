@@ -97,7 +97,7 @@ Create type-safe data models for ValidationResult, ValidationIssue, ComplexityMe
 
 ## Expected Outputs
 
-- File created: plugins/plugin-creator/scripts/plugin-validator.py
+- File created: plugins/plugin-creator/scripts/plugin_validator.py
 - Models: ValidationResult, ValidationIssue, ComplexityMetrics
 
 ## Acceptance Criteria
@@ -108,7 +108,7 @@ Create type-safe data models for ValidationResult, ValidationIssue, ComplexityMe
 ## Verification Steps
 
 ```bash
-uv run mypy --strict plugins/plugin-creator/scripts/plugin-validator.py
+uv run mypy --strict plugins/plugin-creator/scripts/plugin_validator.py
 uv run pytest tests/test_data_models.py -v
 ```
 
@@ -226,7 +226,7 @@ Create type-safe data models for ValidationResult, ValidationIssue, and Complexi
 ```markdown
 ## Expected Outputs
 
-- File created: plugins/plugin-creator/scripts/plugin-validator.py
+- File created: plugins/plugin-creator/scripts/plugin_validator.py
 - Models: ValidationResult, ValidationIssue, ComplexityMetrics
 - Constants: ERROR_CODE_BASE_URL, token thresholds
 ```
@@ -248,7 +248,7 @@ Create type-safe data models for ValidationResult, ValidationIssue, and Complexi
 
 ```bash
 # Type checking
-uv run mypy --strict plugins/plugin-creator/scripts/plugin-validator.py
+uv run mypy --strict plugins/plugin-creator/scripts/plugin_validator.py
 
 # Unit test data models
 uv run pytest tests/test_data_models.py -v

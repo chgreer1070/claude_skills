@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Extend `plugin-validator.py` (2934+ lines, Typer/Rich CLI with Pydantic validation) into a comprehensive static analysis linter covering all 7 Claude Code plugin component types. Add validation for hooks.json, .mcp.json, .lsp.json configurations with 30+ new error codes while maintaining token-based complexity measurement and auto-fix capabilities.
+Extend `plugin_validator.py` (2934+ lines, Typer/Rich CLI with Pydantic validation) into a comprehensive static analysis linter covering all 7 Claude Code plugin component types. Add validation for hooks.json, .mcp.json, .lsp.json configurations with 30+ new error codes while maintaining token-based complexity measurement and auto-fix capabilities.
 
 **Scope:** Architectural specification defining WHAT to build (interfaces, contracts, schemas). Implementation details delegated to development agents.
 
@@ -840,7 +840,7 @@ def validate_path(path: Path) -> ValidationResult:
 
 ### Current Issue
 
-**Lines 2928-2931 in plugin-validator.py:**
+**Lines 2928-2931 in plugin_validator.py:**
 
 ```python
 # Current: counts validators not files
@@ -1084,10 +1084,10 @@ tests/
 
 ```bash
 # Benchmark typical pre-commit scenario
-time uv run plugin-validator.py plugins/example/skills/test/SKILL.md
+time uv run plugin_validator.py plugins/example/skills/test/SKILL.md
 
 # Benchmark full plugin validation
-time uv run plugin-validator.py plugins/example/
+time uv run plugin_validator.py plugins/example/
 ```
 
 **Target Thresholds:**
@@ -1105,11 +1105,11 @@ time uv run plugin-validator.py plugins/example/
 
 ```bash
 # Unchanged behavior
-uv run plugin-validator.py <path>
-uv run plugin-validator.py --fix <path>
-uv run plugin-validator.py --check <path>
-uv run plugin-validator.py --verbose <path>
-uv run plugin-validator.py --no-color <path>
+uv run plugin_validator.py <path>
+uv run plugin_validator.py --fix <path>
+uv run plugin_validator.py --check <path>
+uv run plugin_validator.py --verbose <path>
+uv run plugin_validator.py --no-color <path>
 ```
 
 **New behavior (additive only):**
@@ -1131,7 +1131,7 @@ uv run plugin-validator.py --no-color <path>
 # .pre-commit-config.yaml (unchanged)
 - id: plugin-validator
   name: Validate Plugin Components
-  entry: plugins/plugin-creator/scripts/plugin-validator.py
+  entry: plugins/plugin-creator/scripts/plugin_validator.py
   language: script
   files: '^plugins/.*(SKILL\.md|agents/.*\.md|commands/.*\.md|plugin\.json)$'
 ```
@@ -1148,7 +1148,7 @@ files: '^plugins/.*(SKILL\.md|agents/.*\.md|commands/.*\.md|plugin\.json|hooks\.
 
 ### Issue Identified
 
-**Lines 904-911 in plugin-validator.py:**
+**Lines 904-911 in plugin_validator.py:**
 
 Nested skill reference resolution code is unreachable due to early return on line 903.
 
@@ -1493,7 +1493,7 @@ def check_command_exists(command: str) -> bool:
 - Plugins: https://docs.anthropic.com/en/docs/claude-code/plugins.md
 
 **Codebase References:**
-- Existing validator: `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/scripts/plugin-validator.py`
+- Existing validator: `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/scripts/plugin_validator.py`
 - Feature context: `/home/ubuntulinuxqa2/repos/claude_skills/plan/feature-context-plugin-linter.md`
 - Error code docs: `plugins/plugin-creator/scripts/ERROR_CODES.md`
 

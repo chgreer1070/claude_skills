@@ -29,7 +29,7 @@ Split the 1221-line monolithic SKILL.md into 3 focused skills:
 3. **holistic-linting-resolver** — New skill ~500 lines containing linter-specific resolution workflows currently in lines 376-991 (Ruff 380-513, Mypy 514-707, Pyright 709-957, Integration 958-991). Deduplicate the shared suppression gate sections (duplicated 3x), "Load python3-development skill" steps, and verification patterns into a common methodology section.
 
 **Additional fixes during split**:
-- Lines 1005-1011: Change `python holistic-linting/scripts/install-agents.py` to `uv run ./scripts/install-agents.py` for path consistency
+- Lines 1005-1011: Change `python holistic-linting/scripts/install_agents.py` to `uv run ./scripts/install_agents.py` for path consistency
 
 **Acceptance Criteria**:
 1. Main holistic-linting/SKILL.md is under 450 lines and contains only router/core content
@@ -38,7 +38,7 @@ Split the 1221-line monolithic SKILL.md into 3 focused skills:
 4. All three skills have valid YAML frontmatter with appropriate descriptions containing trigger keywords
 5. Cross-references between the three skills use correct relative paths
 6. No content is lost — all 1221 lines of original content are preserved across the three files (minus deduplication)
-7. The install-agents.py path on former lines 1005-1011 uses `uv run ./scripts/install-agents.py`
+7. The install_agents.py path on former lines 1005-1011 uses `uv run ./scripts/install_agents.py`
 
 **Required Inputs**:
 - Design spec section: "Skill Split"
@@ -59,7 +59,7 @@ Split the 1221-line monolithic SKILL.md into 3 focused skills:
 4. Verify frontmatter in all three files: `head -5 ./plugins/holistic-linting/skills/*/SKILL.md`
 5. Grep for cross-references: `grep -r "holistic-linting-orchestrator\|holistic-linting-resolver" ./plugins/holistic-linting/skills/holistic-linting/SKILL.md`
 6. Verify no suppression gate duplication: `grep -c "Suppression Gate" ./plugins/holistic-linting/skills/holistic-linting-resolver/SKILL.md` — should be 1 (shared section)
-7. Verify install path fix: `grep "install-agents" ./plugins/holistic-linting/skills/holistic-linting/SKILL.md` — should show `uv run ./scripts/`
+7. Verify install path fix: `grep "install_agents" ./plugins/holistic-linting/skills/holistic-linting/SKILL.md` — should show `uv run ./scripts/`
 
 ---
 
@@ -276,7 +276,7 @@ The source SKILL.md (1221 lines) contains 4 distinct domains that will be split 
 
 **Deduplication Opportunity**: Lines 376-991 contain ~36 lines of duplicated suppression gate sections (12 lines × 3 linters) and shared methodology steps. Extract common resolution pattern into shared section to reduce from ~616 lines to target ~500 lines.
 
-**Path Fix**: Lines 1005-1011 use `python holistic-linting/scripts/install-agents.py` which is relative to skills directory parent. Will be changed to `uv run ./scripts/install-agents.py` for consistency with other script references.
+**Path Fix**: Lines 1005-1011 use `python holistic-linting/scripts/install_agents.py` which is relative to skills directory parent. Will be changed to `uv run ./scripts/install_agents.py` for consistency with other script references.
 
 ### Cross-Reference Map
 
@@ -355,8 +355,8 @@ Beyond the rules knowledge base, the plugin contains:
 
 **Scripts**:
 
-- `./scripts/detect-hook-tool.py` — Git hook tool detection (prek vs pre-commit)
-- `./scripts/install-agents.py` — Agent installation to user/project scope
+- `./scripts/detect_hook_tool.py` — Git hook tool detection (prek vs pre-commit)
+- `./scripts/install_agents.py` — Agent installation to user/project scope
 - Referenced in SKILL.md lines 302-310 (detection) and 1005-1011 (installation)
 
 All reference files use relative paths from SKILL.md location and remain unchanged by the split.

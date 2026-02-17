@@ -4,7 +4,7 @@ Utility scripts for maintaining Claude Code plugins, skills, agents, and command
 
 ---
 
-## fix-tool-formats.py
+## fix_tool_formats.py
 
 **Purpose**: Fix invalid tool format patterns in Claude Code frontmatter.
 
@@ -54,7 +54,7 @@ tools: Read, Grep, Glob, Write
 
 ```bash
 # Run from anywhere - scans all .claude directories recursively
-python3 plugins/plugin-creator/scripts/fix-tool-formats.py
+python3 plugins/plugin-creator/scripts/fix_tool_formats.py
 ```
 
 ### Scan Locations
@@ -137,7 +137,7 @@ The script runs `claude plugin validate` internally before reporting success to 
 
 ---
 
-## plugin-validator.py
+## plugin_validator.py
 
 **Purpose**: Comprehensive validation tool for Claude Code plugins with token-based complexity measurement.
 
@@ -152,22 +152,22 @@ The script runs `claude plugin validate` internally before reporting success to 
 
 ```bash
 # Validate single file or directory
-uv run plugins/plugin-creator/scripts/plugin-validator.py {path}
+uv run plugins/plugin-creator/scripts/plugin_validator.py {path}
 
 # Validate entire plugin
-uv run plugins/plugin-creator/scripts/plugin-validator.py plugins/my-plugin
+uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/my-plugin
 
 # Auto-fix issues
-uv run plugins/plugin-creator/scripts/plugin-validator.py --fix {path}
+uv run plugins/plugin-creator/scripts/plugin_validator.py --fix {path}
 
 # Validate only (no auto-fix)
-uv run plugins/plugin-validator.py --check {path}
+uv run plugins/plugin_validator.py --check {path}
 
 # Verbose output with details
-uv run plugins/plugin-creator/scripts/plugin-validator.py --verbose {path}
+uv run plugins/plugin-creator/scripts/plugin_validator.py --verbose {path}
 
 # CI mode (no color)
-uv run plugins/plugin-creator/scripts/plugin-validator.py --no-color {path}
+uv run plugins/plugin-creator/scripts/plugin_validator.py --no-color {path}
 ```
 
 ### What It Validates

@@ -66,15 +66,15 @@ _(Empty)_
 **Added**: 2026-02-11
 **Description**: ty v0.0.16 found 48 diagnostics across the codebase. Breakdown by category:
 - **25 unresolved-import errors**: PEP 723 inline script dependencies (`httpx`, `anthropic`, `mcp`, `pandas`, `frontmatter`, `defusedxml`, etc.) not in the project venv. Also `plugin_validator`, `implementation_manager`, `file_metrics` — local module imports that ty can't resolve.
-- **12 possibly-missing-attribute warnings**: `TempDoc | None` and `Path | None` unions not narrowed before attribute access in `find-temp-documentation.py` and `get-task-context.py`.
+- **12 possibly-missing-attribute warnings**: `TempDoc | None` and `Path | None` unions not narrowed before attribute access in `find-temp-documentation.py` and `get_task_context.py`.
 - **6 invalid-argument-type errors**: Functions receiving `T | None` when they expect `T` — same narrowing issue.
 - **3 unsupported-operator / invalid-key errors**: Path `/` operator on union types, TypedDict subscript with runtime string key.
 **Approach**:
 1. Configure `ty.toml` or `pyproject.toml [tool.ty]` to exclude PEP 723 scripts (their deps are resolved at runtime, not in the venv)
-2. Fix real type narrowing issues in `find-temp-documentation.py` and `get-task-context.py` (add `assert doc is not None` or `if doc is None: return` guards)
+2. Fix real type narrowing issues in `find-temp-documentation.py` and `get_task_context.py` (add `assert doc is not None` or `if doc is None: return` guards)
 3. Fix `TypedDict` subscript issue with proper typing
 4. Consider adding `ty check` to CI alongside basedpyright and mypy
-**Files affected**: `.claude/utilities/find-temp-documentation.py`, `plugins/python3-development/skills/implementation-manager/scripts/get-task-context.py`, `plugins/plugin-creator/scripts/plugin-validator.py`, `plugins/summarizer/tests/test_file_metrics.py`
+**Files affected**: `.claude/utilities/find-temp-documentation.py`, `plugins/python3-development/skills/implementation-manager/scripts/get_task_context.py`, `plugins/plugin-creator/scripts/plugin_validator.py`, `plugins/summarizer/tests/test_file_metrics.py`
 
 ### Meta-Process Capture — Expert Panel Dataset Builder
 
@@ -131,9 +131,9 @@ _(Empty)_
 
 **Source**: CI pipeline run 22018867027 on claude/fix-ci-pipeline-RJ0Tw (2026-02-14)
 **Added**: 2026-02-14
-**Description**: `auto-sync-manifests.py --reconcile --dry-run` found drift across most plugins — dozens of skills, commands, and agents exist on disk but aren't registered in their plugin.json files. The CI "Check manifest sync" step is currently non-blocking. Once drift is resolved, the step should be made blocking.
+**Description**: `auto_sync_manifests.py --reconcile --dry-run` found drift across most plugins — dozens of skills, commands, and agents exist on disk but aren't registered in their plugin.json files. The CI "Check manifest sync" step is currently non-blocking. Once drift is resolved, the step should be made blocking.
 **Approach**:
-1. Run `uv run plugins/plugin-creator/scripts/auto-sync-manifests.py --reconcile` (without `--dry-run`) to fix all drift
+1. Run `uv run plugins/plugin-creator/scripts/auto_sync_manifests.py --reconcile` (without `--dry-run`) to fix all drift
 2. Review the changes — ensure no stale entries are being added
 3. Commit the synced manifests
 4. After drift reaches 0: change CI step from `|| echo ::warning::` to a blocking gate
@@ -328,8 +328,8 @@ _(Empty)_
 
 **Source**: CI/pre-commit inconsistency discovery (2026-02-05)
 **Completed**: 2026-02-06
-**Description**: Migrated `validate-glfm.py` from `requests` to `httpx`. Added TID251 ruff ban rule for `requests` imports. Removed `types-requests` from dev dependencies. `sync-gitlab-docs.py` was already using httpx.
-**Location**: `plugins/gitlab-skill/skills/gitlab-skill/scripts/validate-glfm.py`, `pyproject.toml`
+**Description**: Migrated `validate_glfm.py` from `requests` to `httpx`. Added TID251 ruff ban rule for `requests` imports. Removed `types-requests` from dev dependencies. `sync_gitlab_docs.py` was already using httpx.
+**Location**: `plugins/gitlab-skill/skills/gitlab-skill/scripts/validate_glfm.py`, `pyproject.toml`
 
 ### Enhance swarm-task-planner with multi-source synthesis
 
@@ -415,15 +415,15 @@ _(Empty)_
 - FM003 (no frontmatter) fires on template files (`commands/development/templates/*.md`) that are not components — they're templates meant to be copied and filled in, not commands/skills/agents
 - Difficult to find actual issues in changed files among the noise
 **Related**: "plugin-validator UX and coverage gaps" sub-issues below, "Resolve plugin-validator pre-existing errors to make CI gate blocking" backlog item
-**File**: `plugins/plugin-creator/scripts/plugin-validator.py`, `.pre-commit-config.yaml`
+**File**: `plugins/plugin-creator/scripts/plugin_validator.py`, `.pre-commit-config.yaml`
 
 ### P1: plugin-validator UX and coverage gaps
 
-**Source**: Experimental validation of plugin-validator.py against all component types (2026-02-13)
+**Source**: Experimental validation of plugin_validator.py against all component types (2026-02-13)
 **Added**: 2026-02-13
 **Last groomed**: 2026-02-13
 **Plan**: plan/tasks-2-validator-ux-coverage.md
-**File**: `./plugins/plugin-creator/scripts/plugin-validator.py` (2934+ lines)
+**File**: `./plugins/plugin-creator/scripts/plugin_validator.py` (2934+ lines)
 **Tests**: `./plugins/plugin-creator/tests/` (12 test files, 93% pass rate per QA report)
 **QA report**: `./plugins/plugin-creator/planning/plugin-validator-qa-report.md`
 
@@ -495,4 +495,4 @@ _(Empty)_
 
 #### Approach
 
-Use `/python3-development:add-new-feature` to extend `plugin-validator.py`. Delegate implementation to `@python-cli-architect`. Each sub-issue is a separate task.
+Use `/python3-development:add-new-feature` to extend `plugin_validator.py`. Delegate implementation to `@python-cli-architect`. Each sub-issue is a separate task.

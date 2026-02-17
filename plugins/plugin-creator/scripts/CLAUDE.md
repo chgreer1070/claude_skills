@@ -6,7 +6,7 @@ This directory contains executable scripts for plugin development, validation, a
 
 ## Scripts Overview
 
-### auto-sync-manifests.py
+### auto_sync_manifests.py
 
 Automatically maintains `plugin.json` and `marketplace.json` during pre-commit. Detects CRUD operations on plugins/components and bumps semantic versions.
 
@@ -19,7 +19,7 @@ Automatically maintains `plugin.json` and `marketplace.json` during pre-commit. 
 - Protects against double-bumping when commit fails and is retried
 - Only operates on staged changes (`git diff --cached`)
 
-### plugin-validator.py
+### plugin_validator.py
 
 Comprehensive validation tool for Claude Code plugins with token-based complexity measurement.
 
@@ -27,22 +27,22 @@ Comprehensive validation tool for Claude Code plugins with token-based complexit
 
 ```bash
 # Validate single file
-uv run plugins/plugin-creator/scripts/plugin-validator.py <path>
+uv run plugins/plugin-creator/scripts/plugin_validator.py <path>
 
 # Validate entire plugin
-uv run plugins/plugin-creator/scripts/plugin-validator.py plugins/my-plugin
+uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/my-plugin
 
 # Auto-fix issues
-uv run plugins/plugin-creator/scripts/plugin-validator.py --fix <path>
+uv run plugins/plugin-creator/scripts/plugin_validator.py --fix <path>
 
 # Validate only (no auto-fix)
-uv run plugins/plugin-creator/scripts/plugin-validator.py --check <path>
+uv run plugins/plugin-creator/scripts/plugin_validator.py --check <path>
 
 # Verbose output
-uv run plugins/plugin-creator/scripts/plugin-validator.py --verbose <path>
+uv run plugins/plugin-creator/scripts/plugin_validator.py --verbose <path>
 
 # CI mode (no color)
-uv run plugins/plugin-creator/scripts/plugin-validator.py --no-color <path>
+uv run plugins/plugin-creator/scripts/plugin_validator.py --no-color <path>
 ```
 
 **Validates:**
@@ -78,7 +78,7 @@ uv run plugins/plugin-creator/scripts/create_plugin.py
 - Optional `skills/`, `agents/`, `commands/` directories
 - Self-validates before completion
 
-### fix-tool-formats.py
+### fix_tool_formats.py
 
 Scans codebase for invalid tool format patterns in frontmatter and fixes them.
 
@@ -86,7 +86,7 @@ Scans codebase for invalid tool format patterns in frontmatter and fixes them.
 
 ```bash
 # Scans ~/.claude and ~/repos recursively
-uv run plugins/plugin-creator/scripts/fix-tool-formats.py
+uv run plugins/plugin-creator/scripts/fix_tool_formats.py
 ```
 
 **Fixes:**
@@ -140,8 +140,8 @@ Scripts integrated into `.pre-commit-config.yaml`:
 
 | Hook ID                | Script                    | Trigger Pattern                                           | Purpose                                 |
 | ---------------------- | ------------------------- | --------------------------------------------------------- | --------------------------------------- |
-| `auto-sync-manifests`  | `auto-sync-manifests.py`  | `^plugins/`                                               | Auto-bump versions and update manifests |
-| `plugin-validator`     | `plugin-validator.py`     | `^plugins/.*(SKILL\.md\|agents/.*\.md\|commands/.*\.md\|plugin\.json)$` | Comprehensive plugin validation with token metrics |
+| `auto-sync-manifests`  | `auto_sync_manifests.py`  | `^plugins/`                                               | Auto-bump versions and update manifests |
+| `plugin-validator`     | `plugin_validator.py`     | `^plugins/.*(SKILL\.md\|agents/.*\.md\|commands/.*\.md\|plugin\.json)$` | Comprehensive plugin validation with token metrics |
 
 ## Execution Requirements
 
@@ -198,7 +198,7 @@ Before referencing script behavior, the model MUST:
 
 **Example citation:**
 
-> "The script protects against double-bumping (lines 276-280 of auto-sync-manifests.py) by checking if plugin.json is already staged."
+> "The script protects against double-bumping (lines 276-280 of auto_sync_manifests.py) by checking if plugin.json is already staged."
 
 ### Verification Protocol
 

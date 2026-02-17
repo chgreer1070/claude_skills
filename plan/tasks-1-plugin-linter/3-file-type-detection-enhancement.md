@@ -21,7 +21,7 @@ complexity: m
 
 #### Context
 
-The FileType enum (lines 138-166 of plugin-validator.py) currently lacks variants for hook configs, MCP configs, LSP configs, and hook scripts. All subsequent file type detection and validator selection depends on this enum.
+The FileType enum (lines 138-166 of plugin_validator.py) currently lacks variants for hook configs, MCP configs, LSP configs, and hook scripts. All subsequent file type detection and validator selection depends on this enum.
 
 #### Objective
 
@@ -30,7 +30,7 @@ Add 4 new FileType enum values to enable detection of hook configurations, MCP s
 #### Required Inputs
 
 - Architecture spec: ./architect-plugin-linter.md lines 85-130 (FileType enum specification)
-- Current implementation: plugin-validator.py lines 138-166
+- Current implementation: plugin_validator.py lines 138-166
 
 #### Requirements
 
@@ -49,7 +49,7 @@ Add 4 new FileType enum values to enable detection of hook configurations, MCP s
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (lines 138-166 region)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (lines 138-166 region)
 - 4 new enum values added with string values
 - Existing enum structure preserved
 
@@ -62,8 +62,8 @@ Add 4 new FileType enum values to enable detection of hook configurations, MCP s
 
 #### Verification Steps
 
-1. Run `ruff check plugins/plugin-creator/scripts/plugin-validator.py`
-2. Run `mypy plugins/plugin-creator/scripts/plugin-validator.py --strict`
+1. Run `ruff check plugins/plugin-creator/scripts/plugin_validator.py`
+2. Run `mypy plugins/plugin-creator/scripts/plugin_validator.py --strict`
 3. Import FileType in Python REPL and verify `len(FileType)` == 9
 4. Verify `FileType.HOOK_CONFIG.value == "hook_config"`
 

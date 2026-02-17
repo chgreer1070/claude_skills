@@ -1,7 +1,7 @@
 # Plugin Validator Architecture
 
 **Analysis Date:** 2026-02-13
-**Target:** `plugins/plugin-creator/scripts/plugin-validator.py`
+**Target:** `plugins/plugin-creator/scripts/plugin_validator.py`
 **Total Lines:** 3045
 **Purpose:** Comprehensive validation framework for Claude Code plugins with token-based complexity measurement
 

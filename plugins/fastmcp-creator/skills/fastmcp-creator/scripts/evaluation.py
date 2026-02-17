@@ -13,10 +13,11 @@ import sys
 import time
 import traceback
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 import defusedxml.ElementTree as DefusedElementTree
 from anthropic import Anthropic
+from anthropic.types import Message, MessageParam, TextBlock, ToolParam, ToolUseBlock
 from connections import MCPConnection, create_connection
 
 if TYPE_CHECKING:
@@ -146,16 +147,18 @@ async def agent_loop(
         Tuple of (response_text, tool_metrics) where response_text may be None
         if no text response was generated, and tool_metrics contains usage data.
     """
-    messages: list[dict[str, Any]] = [{"role": "user", "content": question}]
+    messages: list[MessageParam] = [{"role": "user", "content": question}]
 
-    response = await asyncio.to_thread(
+    raw_response = await asyncio.to_thread(
         client.messages.create,
         model=model,
         max_tokens=4096,
         system=EVALUATION_PROMPT,
         messages=messages,
-        tools=tools,
+        tools=cast("list[ToolParam]", tools),
     )
+    assert isinstance(raw_response, Message)
+    response = raw_response
 
     messages.append({"role": "assistant", "content": response.content})
 
@@ -163,6 +166,7 @@ async def agent_loop(
 
     while response.stop_reason == "tool_use":
         tool_use = next(block for block in response.content if block.type == "tool_use")
+        assert isinstance(tool_use, ToolUseBlock)
         tool_name = tool_use.name
         tool_input = tool_use.input
 
@@ -202,19 +206,22 @@ async def agent_loop(
             ],
         })
 
-        response = await asyncio.to_thread(
+        raw_response = await asyncio.to_thread(
             client.messages.create,
             model=model,
             max_tokens=4096,
             system=EVALUATION_PROMPT,
             messages=messages,
-            tools=tools,
+            tools=cast("list[ToolParam]", tools),
         )
+        assert isinstance(raw_response, Message)
+        response = raw_response
         messages.append({"role": "assistant", "content": response.content})
 
-    response_text = next(
-        (block.text for block in response.content if hasattr(block, "text")), None
+    text_block = next(
+        (block for block in response.content if isinstance(block, TextBlock)), None
     )
+    response_text: str | None = text_block.text if text_block is not None else None
     return response_text, tool_metrics
 
 

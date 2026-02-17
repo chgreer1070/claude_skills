@@ -11,7 +11,7 @@
 
 ## Original Request
 
-Extend `./plugins/plugin-creator/scripts/plugin-validator.py` (2934+ lines) into a comprehensive `ruff`-like static analysis linter that validates ALL 7 component types in the Claude Code plugin ecosystem against official schemas.
+Extend `./plugins/plugin-creator/scripts/plugin_validator.py` (2934+ lines) into a comprehensive `ruff`-like static analysis linter that validates ALL 7 component types in the Claude Code plugin ecosystem against official schemas.
 
 **Official Schema Sources (already fetched and verified)**:
 - Skills (SKILL.md) — 10 frontmatter fields
@@ -68,7 +68,7 @@ A single comprehensive static analysis tool that validates all Claude Code plugi
 
 #### Pattern 1: Existing Validator Architecture
 
-- **Location**: `plugins/plugin-creator/scripts/plugin-validator.py:249-286`
+- **Location**: `plugins/plugin-creator/scripts/plugin_validator.py:249-286`
 - **Relevance**: Protocol-based validator pattern with validate/can_fix/fix methods
 - **Reusable**:
   - Validator protocol interface
@@ -78,14 +78,14 @@ A single comprehensive static analysis tool that validates all Claude Code plugi
 
 #### Pattern 2: FileType Detection
 
-- **Location**: `plugins/plugin-creator/scripts/plugin-validator.py:138-165`
+- **Location**: `plugins/plugin-creator/scripts/plugin_validator.py:138-165`
 - **Relevance**: Enum-based file type classification
 - **Gap**: No HOOK, MCP_CONFIG, LSP_CONFIG variants
 - **Reusable**: detect_file_type() static method pattern
 
 #### Pattern 3: Token-Based Complexity Measurement
 
-- **Location**: `plugins/plugin-creator/scripts/plugin-validator.py:1939-2122` (ComplexityValidator class)
+- **Location**: `plugins/plugin-creator/scripts/plugin_validator.py:1939-2122` (ComplexityValidator class)
 - **Relevance**: Uses tiktoken library for accurate AI cost estimation
 - **Reusable**:
   - Token counting via tiktoken encoding
@@ -94,7 +94,7 @@ A single comprehensive static analysis tool that validates all Claude Code plugi
 
 #### Pattern 4: Pydantic Schema Validation
 
-- **Location**: `plugins/plugin-creator/scripts/plugin-validator.py:1030-1236`
+- **Location**: `plugins/plugin-creator/scripts/plugin_validator.py:1030-1236`
 - **Relevance**: Type-safe frontmatter validation with field validators
 - **Reusable**:
   - SkillFrontmatter, AgentFrontmatter, CommandFrontmatter models
@@ -138,13 +138,13 @@ A single comprehensive static analysis tool that validates all Claude Code plugi
 
 ### Code References
 
-- `plugins/plugin-creator/scripts/plugin-validator.py:71-109` — error code constants
-- `plugins/plugin-creator/scripts/plugin-validator.py:138-165` — FileType enum
-- `plugins/plugin-creator/scripts/plugin-validator.py:249-286` — Validator protocol
-- `plugins/plugin-creator/scripts/plugin-validator.py:1030-1236` — Pydantic models
-- `plugins/plugin-creator/scripts/plugin-validator.py:2928-2931` — UX issue: report counts validators not files
-- `plugins/plugin-creator/scripts/plugin-validator.py:1802` — SK005 fires on commands (no file-type awareness)
-- `plugins/plugin-creator/scripts/plugin-validator.py:904-911` — dead code in nested skill reference resolution
+- `plugins/plugin-creator/scripts/plugin_validator.py:71-109` — error code constants
+- `plugins/plugin-creator/scripts/plugin_validator.py:138-165` — FileType enum
+- `plugins/plugin-creator/scripts/plugin_validator.py:249-286` — Validator protocol
+- `plugins/plugin-creator/scripts/plugin_validator.py:1030-1236` — Pydantic models
+- `plugins/plugin-creator/scripts/plugin_validator.py:2928-2931` — UX issue: report counts validators not files
+- `plugins/plugin-creator/scripts/plugin_validator.py:1802` — SK005 fires on commands (no file-type awareness)
+- `plugins/plugin-creator/scripts/plugin_validator.py:904-911` — dead code in nested skill reference resolution
 
 ---
 
@@ -186,7 +186,7 @@ A single comprehensive static analysis tool that validates all Claude Code plugi
 ### Scenario 4: Developer Manual Validation
 
 **Actor**: Developer creating new hook configuration
-**Trigger**: `uv run plugin-validator.py hooks.json`
+**Trigger**: `uv run plugin_validator.py hooks.json`
 **Goal**: Verify hook config before testing
 **Expected Outcome**:
 - Validates against 15 event type schemas
@@ -403,7 +403,7 @@ After questions are resolved:
 
 ## Backward Compatibility Concerns
 
-**CLI Interface** — Current invocation: `uv run plugin-validator.py <path>`
+**CLI Interface** — Current invocation: `uv run plugin_validator.py <path>`
 - New flags must not break existing usage
 - Existing error codes must remain stable
 - Exit codes must remain 0 (pass) or non-zero (fail)

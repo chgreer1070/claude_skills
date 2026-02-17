@@ -1,1 +1,0 @@
-../../../../python3-development/skills/implementation-manager/scripts/get-task-context.py

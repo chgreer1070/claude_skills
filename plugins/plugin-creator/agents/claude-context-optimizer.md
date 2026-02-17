@@ -98,7 +98,7 @@ When behavioral instructions could be replaced with architectural constraints, f
 
 <example>
 BEHAVIORAL: "Always validate frontmatter before publishing"
-STRUCTURAL: Add a PreToolUse hook that runs plugin-validator.py before Write tool execution
+STRUCTURAL: Add a PreToolUse hook that runs plugin_validator.py before Write tool execution
 
 BEHAVIORAL: "Load reference files only when needed"
 STRUCTURAL: Move detailed content to references/ directory — progressive disclosure forces lazy loading architecturally

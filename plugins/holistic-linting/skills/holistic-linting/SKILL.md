@@ -106,13 +106,13 @@ Use the detection script to identify and run the correct tool:
 
 ```bash
 # Detect tool (outputs 'prek' or 'pre-commit')
-uv run ./scripts/detect-hook-tool.py
+uv run ./scripts/detect_hook_tool.py
 
 # Run detected tool with arguments
-uv run ./scripts/detect-hook-tool.py run --files path/to/file.py
+uv run ./scripts/detect_hook_tool.py run --files path/to/file.py
 
 # Check different repository on specific files
-uv run ./scripts/detect-hook-tool.py --directory /path/to/repo run --files path/to/file.py
+uv run ./scripts/detect_hook_tool.py --directory /path/to/repo run --files path/to/file.py
 ```
 
 **Important - Scoped Operations**: Always use `--files` or staged file patterns rather than `--all-files`. Running hooks on all files formats code outside your current branch, causing:
@@ -191,13 +191,13 @@ This agent systematically investigates and resolves linting errors by understand
 
 ```bash
 # Install to user scope (~/.claude/agents/)
-uv run ./scripts/install-agents.py --scope user
+uv run ./scripts/install_agents.py --scope user
 
 # Install to project scope (<git-root>/.claude/agents/)
-uv run ./scripts/install-agents.py --scope project
+uv run ./scripts/install_agents.py --scope project
 
 # Overwrite existing agent file
-uv run ./scripts/install-agents.py --scope user --force
+uv run ./scripts/install_agents.py --scope user --force
 ```
 
 **Philosophy**:
@@ -288,8 +288,8 @@ Each check documents:
 
 Available in [`./scripts/`](./scripts/):
 
-1. **install-agents.py** - Install the linting-root-cause-resolver agent to user or project scope
-2. **detect-hook-tool.py** - Detect and run the correct git hook tool (prek vs pre-commit)
+1. **install_agents.py** - Install the linting-root-cause-resolver agent to user or project scope
+2. **detect_hook_tool.py** - Detect and run the correct git hook tool (prek vs pre-commit)
 
 ## Slash Commands
 

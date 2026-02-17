@@ -197,8 +197,8 @@ flowchart TD
     Start([Parse --validate target]) --> Q{Target value?}
     Q -->|category/name| Single[Validate single entry]
     Q -->|all| All[Validate all entries]
-    Single --> RunScript["Run ./scripts/validate-research.py --json ./research/category/name.md"]
-    All --> RunScriptAll["Run ./scripts/validate-research.py --json ./research/"]
+    Single --> RunScript["Run ./scripts/validate_research.py --json ./research/category/name.md"]
+    All --> RunScriptAll["Run ./scripts/validate_research.py --json ./research/"]
     RunScript --> ParseJSON[Parse JSON output]
     RunScriptAll --> ParseJSON
     ParseJSON --> HasErrors{Any error-severity issues?}
@@ -212,10 +212,10 @@ flowchart TD
 ### Script Invocation
 
 ```bash
-./scripts/validate-research.py --json ./research/{target}
+./scripts/validate_research.py --json ./research/{target}
 ```
 
-The script is located at `.claude/skills/research-curator/scripts/validate-research.py` relative to the repo root. Invoke from the skill directory or use the full relative path.
+The script is located at `.claude/skills/research-curator/scripts/validate_research.py` relative to the repo root. Invoke from the skill directory or use the full relative path.
 
 ### Issue Handling
 

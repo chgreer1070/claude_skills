@@ -3616,25 +3616,25 @@ def main(
 
     Examples:
         # Validate single file
-        ./plugin-validator.py path/to/SKILL.md
+        ./plugin_validator.py path/to/SKILL.md
 
         # Validate multiple files (pre-commit mode)
-        ./plugin-validator.py file1.md file2.md file3.md
+        ./plugin_validator.py file1.md file2.md file3.md
 
         # Validate entire plugin
-        ./plugin-validator.py plugins/my-plugin
+        ./plugin_validator.py plugins/my-plugin
 
         # Auto-fix issues
-        ./plugin-validator.py --fix path/to/SKILL.md
+        ./plugin_validator.py --fix path/to/SKILL.md
 
         # Validate for CI (no color)
-        ./plugin-validator.py --no-color plugins/my-plugin
+        ./plugin_validator.py --no-color plugins/my-plugin
 
         # Count tokens in any markdown file
-        ./plugin-validator.py --verbose .claude/CLAUDE.md
+        ./plugin_validator.py --verbose .claude/CLAUDE.md
 
         # Get just the token count for programmatic use
-        ./plugin-validator.py --tokens-only .claude/CLAUDE.md
+        ./plugin_validator.py --tokens-only .claude/CLAUDE.md
 
     Exit Codes:
         0: Success (all checks passed)

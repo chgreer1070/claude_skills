@@ -28,7 +28,7 @@ Add file_type parameter to DescriptionValidator.validate() to skip SK005 check f
 #### Required Inputs
 
 - Architecture spec: ./architect-plugin-linter.md lines 582-629 (DescriptionValidator modification)
-- Current implementation: plugin-validator.py lines 1790-1936
+- Current implementation: plugin_validator.py lines 1790-1936
 - Completed Task 3: FileType detection available
 
 #### Requirements
@@ -49,7 +49,7 @@ Add file_type parameter to DescriptionValidator.validate() to skip SK005 check f
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (lines 1790-1936 region)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (lines 1790-1936 region)
 - Updated validate() method signature
 - Conditional SK005 check based on file_type
 - Updated docstring

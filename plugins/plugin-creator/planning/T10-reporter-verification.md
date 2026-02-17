@@ -10,7 +10,7 @@ Successfully implemented the Reporter Layer for the plugin validator, adding thr
 
 ## Files Modified
 
-### plugins/plugin-creator/scripts/plugin-validator.py
+### plugins/plugin-creator/scripts/plugin_validator.py
 
 Added lines 1936-2237 (302 lines):
 

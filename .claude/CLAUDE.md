@@ -95,7 +95,7 @@ flowchart TD
     Start([Choose language for new component]) --> Q{Component type?}
     Q -->|Claude Code hook| JS["JavaScript (Node.js)<br>Evidence: 9 hooks in .claude/hooks/"]
     Q -->|Companion script| PY["Python 3.11+ with PEP 723<br>Evidence: 27+ scripts in plugins/**/scripts/"]
-    Q -->|Pre-commit hook| PY2["Python 3.11+<br>Evidence: auto-sync-manifests.py, validate_frontmatter.py"]
+    Q -->|Pre-commit hook| PY2["Python 3.11+<br>Evidence: auto_sync_manifests.py, validate_frontmatter.py"]
     Q -->|CI/CD wrapper| Bash["Bash acceptable<br>Simple wrappers only"]
     Q -->|Anything else| Never["Never use bash for hooks or scripts"]
 ```
@@ -131,13 +131,13 @@ SOURCE: Experimental validation (2026-02-02). Evidence from `.claude/hooks/sessi
 All scripts have shebangs and executable permissions (enforced by `check-executables-have-shebangs`, `check-shebang-scripts-are-executable` pre-commit hooks).
 
 **Invocation Priority:**
-1. Direct execution: `./plugins/plugin-creator/scripts/auto-sync-manifests.py --reconcile --dry-run`
-2. Via uv run (PEP 723 scripts): `uv run plugins/python3-development/skills/uv/scripts/sync-uv-releases.py --force`
+1. Direct execution: `./plugins/plugin-creator/scripts/auto_sync_manifests.py --reconcile --dry-run`
+2. Via uv run (PEP 723 scripts): `uv run plugins/python3-development/skills/uv/scripts/sync_uv_releases.py --force`
 
 **Prohibited Patterns:**
 ```bash
 # ❌ Bypasses shebang, ignores PEP 723 dependency resolution
-python3 plugins/plugin-creator/scripts/auto-sync-manifests.py --reconcile
+python3 plugins/plugin-creator/scripts/auto_sync_manifests.py --reconcile
 node .claude/hooks/session-start-backlog.js
 ```
 

@@ -29,8 +29,8 @@ Implement AgentEnumValidator class to validate agent-specific enum fields and re
 
 - Architecture spec: ./architect-plugin-linter.md lines 530-580 (AgentEnumValidator spec)
 - Completed Task 7: Agent enum models available
-- Validator protocol: plugin-validator.py lines 249-286
-- FrontmatterValidator pattern: plugin-validator.py lines 1243-1600
+- Validator protocol: plugin_validator.py lines 249-286
+- FrontmatterValidator pattern: plugin_validator.py lines 1243-1600
 
 #### Requirements
 
@@ -54,7 +54,7 @@ Implement AgentEnumValidator class to validate agent-specific enum fields and re
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (new validator class)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (new validator class)
 - AgentEnumValidator class with ~100 lines of implementation
 - Error handling for AG001-AG010 codes
 - Enum value suggestions in error messages

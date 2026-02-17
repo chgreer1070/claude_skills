@@ -1,6 +1,6 @@
 # Validation Rules
 
-Checks performed by `./scripts/validate-research.py` and severity mapping for the `/research-curator --validate` mode.
+Checks performed by `./scripts/validate_research.py` and severity mapping for the `/research-curator --validate` mode.
 
 ---
 

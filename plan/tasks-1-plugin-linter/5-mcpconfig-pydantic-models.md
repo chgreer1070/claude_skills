@@ -28,7 +28,7 @@ Extend FileType.detect_file_type() to correctly classify all 7 plugin component 
 #### Required Inputs
 
 - Architecture spec: ./architect-plugin-linter.md lines 105-130 (Detection rules)
-- Current implementation: plugin-validator.py lines 147-165
+- Current implementation: plugin_validator.py lines 147-165
 - Completed Task 1: New FileType enum values available
 
 #### Requirements
@@ -49,7 +49,7 @@ Extend FileType.detect_file_type() to correctly classify all 7 plugin component 
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (lines 147-165 region)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (lines 147-165 region)
 - Enhanced detect_file_type() method with 4 new detection cases
 - Docstring updated with detection priority order
 
@@ -74,7 +74,7 @@ Extend FileType.detect_file_type() to correctly classify all 7 plugin component 
    assert FileType.detect_file_type(Path(".lsp.json")) == FileType.LSP_CONFIG
    assert FileType.detect_file_type(Path("hooks/test.js")) == FileType.HOOK_SCRIPT
    ```
-3. Run `mypy plugins/plugin-creator/scripts/plugin-validator.py --strict`
+3. Run `mypy plugins/plugin-creator/scripts/plugin_validator.py --strict`
 
 #### CoVe Checks
 

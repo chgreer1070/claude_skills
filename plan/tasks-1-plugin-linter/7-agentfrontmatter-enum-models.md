@@ -54,7 +54,7 @@ Create type-safe Pydantic models for hooks.json validation that enforce official
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (new models section)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (new models section)
 - 5 new Pydantic models defined
 - Field validators for type matching and regex validation
 - Docstrings with schema source citations

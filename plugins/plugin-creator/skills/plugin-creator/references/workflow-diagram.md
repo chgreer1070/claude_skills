@@ -130,7 +130,7 @@ flowchart TD
     PLUGIN[Created Plugin] --> T4A[Task 4a: Automated Validation]
     PLUGIN --> T4B[Task 4b: Verify vs Official Docs]
 
-    T4A --> SCRIPTS["create_plugin.py validate + plugin-validator.py"]
+    T4A --> SCRIPTS["create_plugin.py validate + plugin_validator.py"]
     T4B --> GP[general-purpose Agent + mcp__Ref__ref_read_url]
 
     SCRIPTS --> RESULTS[Validation Results]
@@ -289,7 +289,7 @@ flowchart TD
 | Script                        | Purpose                         | Location                         |
 | ----------------------------- | ------------------------------- | -------------------------------- |
 | `create_plugin.py`            | Plugin scaffolding + validation | `${CLAUDE_PLUGIN_ROOT}/scripts/` |
-| `plugin-validator.py`     | Frontmatter schema validation   | `${CLAUDE_PLUGIN_ROOT}/scripts/` |
+| `plugin_validator.py`     | Frontmatter schema validation   | `${CLAUDE_PLUGIN_ROOT}/scripts/` |
 | `validate-skill-structure.sh` | Skill quality checks            | `${CLAUDE_PLUGIN_ROOT}/scripts/` |
 
 **SOURCE**: Verified from plugin-creator plugin scripts directory

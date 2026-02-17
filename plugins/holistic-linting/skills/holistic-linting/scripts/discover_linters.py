@@ -503,7 +503,7 @@ def update_claude_md(output_file: Path, linters_section: str, force: bool) -> bo
 
 
 app = typer.Typer(
-    name="discover-linters",
+    name="discover_linters",
     help="Discover project linters and generate LINTERS section for CLAUDE.md",
     rich_markup_mode="rich",
 )

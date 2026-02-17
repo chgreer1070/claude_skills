@@ -87,7 +87,7 @@ The model must enforce these non-negotiable GLFM rendering requirements:
 1. Alert types MUST be lowercase: `[!note]` not `[!Note]` or `[!NOTE]`
 2. `<details><summary>` MUST be single line: `<details><summary>Text</summary>` not multi-line
 3. No markdown syntax inside `<summary>` tags - use HTML equivalents (`<code>`, `<strong>`)
-4. The model must validate rendering with validate-glfm.py script before finalizing
+4. The model must validate rendering with validate_glfm.py script before finalizing
 
 **REFERENCE:**
 
@@ -261,7 +261,7 @@ The model must verify before committing GLFM files:
 - [ ] GitLab references used: #issue, !MR, @user
 - [ ] Code blocks have language specifiers
 - [ ] Heading hierarchy consistent (no skipped levels)
-- [ ] Rendered output validated with validate-glfm.py
+- [ ] Rendered output validated with validate_glfm.py
 
 ### Local Testing Validation
 
@@ -276,7 +276,7 @@ The model must verify local test environment:
 
 ## Utility Scripts
 
-### validate-glfm.py
+### validate_glfm.py
 
 Python script validates GLFM rendering via GitLab Markdown API.
 
@@ -284,13 +284,13 @@ Python script validates GLFM rendering via GitLab Markdown API.
 
 ```bash
 # Validate markdown file
-uv run --with requests ./scripts/validate-glfm.py --file README.md
+uv run --with requests ./scripts/validate_glfm.py --file README.md
 
 # Validate inline markdown
-uv run --with requests ./scripts/validate-glfm.py --markdown "> [!note]\n> Test alert"
+uv run --with requests ./scripts/validate_glfm.py --markdown "> [!note]\n> Test alert"
 
 # Save rendered HTML to file
-uv run --with requests ./scripts/validate-glfm.py --file test.md --output rendered.html
+uv run --with requests ./scripts/validate_glfm.py --file test.md --output rendered.html
 ```
 
 **Capabilities:**
@@ -343,7 +343,7 @@ The model must follow this sequence when gitlab-skill applies:
 3. Load domain-specific reference files for technical specifications
 4. Apply domain constraints and validation rules
 5. Execute domain-specific validation checklist
-6. Validate output using appropriate tooling (gitlab-ci-local or validate-glfm.py)
+6. Validate output using appropriate tooling (gitlab-ci-local or validate_glfm.py)
 
 ## Quick Start Paths
 
@@ -357,7 +357,7 @@ The model must follow this sequence when gitlab-skill applies:
 
 1. Load [glfm-syntax.md](./references/glfm-syntax.md)
 2. Apply CRITICAL_SYNTAX_RULES during writing
-3. Validate rendering with validate-glfm.py script
+3. Validate rendering with validate_glfm.py script
 
 **IF task involves local pipeline testing:**
 
@@ -632,4 +632,3 @@ ci/
     ├── [Optimize GitLab CI/CD configuration files](./references/ci/yaml/yaml_optimization.md)
         Use YAML anchors, !reference tags, and the `extends` keyword to reduce CI/CD configuration file complexity.
 ```
-

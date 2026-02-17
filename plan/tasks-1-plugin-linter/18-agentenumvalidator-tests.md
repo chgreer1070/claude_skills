@@ -28,8 +28,8 @@ Change report summary to count unique files validated instead of validator runs.
 #### Required Inputs
 
 - Architecture spec: ./architect-plugin-linter.md lines 836-893 (Report generation fix)
-- Current implementation: plugin-validator.py lines 2681-2709
-- Reporter protocol: plugin-validator.py lines 2561-2592
+- Current implementation: plugin_validator.py lines 2681-2709
+- Reporter protocol: plugin_validator.py lines 2561-2592
 
 #### Requirements
 
@@ -49,7 +49,7 @@ Change report summary to count unique files validated instead of validator runs.
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (lines 2561-2807 region)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (lines 2561-2807 region)
 - Updated Reporter protocol signature
 - Updated all 3 reporter implementations
 - Updated caller sites to pass dict structure

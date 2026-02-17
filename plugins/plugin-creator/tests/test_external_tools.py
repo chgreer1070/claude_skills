@@ -4,7 +4,7 @@ Tests Claude CLI detection, subprocess security, timeout handling, and git integ
 WITHOUT mocking the actual Claude CLI - tests the integration layer implementation.
 
 Architecture: Task T17 (lines 1882-1958 of plugin-validator-tasks.md)
-Implementation: plugin-validator.py lines 1936-2074
+Implementation: plugin_validator.py lines 1936-2074
 """
 
 from __future__ import annotations

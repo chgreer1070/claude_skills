@@ -169,7 +169,7 @@ def install_agent(source_file: Path, target_dir: Path, force: bool = False) -> b
 
 
 app = typer.Typer(
-    name="install-agents",
+    name="install_agents",
     help="Install linting-root-cause-resolver agent to user or project scope",
     rich_markup_mode="rich",
 )

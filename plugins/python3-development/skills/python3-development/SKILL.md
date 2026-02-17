@@ -551,7 +551,7 @@ Each workflow uses agent chaining with specific quality gates. See the orchestra
    uv run python -c "print(open('.git/hooks/pre-commit').readlines()[1].split()[4].rstrip(':') if __import__('pathlib').Path('.git/hooks/pre-commit').exists() else 'prek')"
 
    # Or use the holistic-linting detection script if available
-   uv run holistic-linting/scripts/detect-hook-tool.py run --files <files>
+   uv run holistic-linting/scripts/detect_hook_tool.py run --files <files>
    ```
 
    Detection logic: reads `.git/hooks/pre-commit` line 2, token 5 identifies the tool. Defaults to `prek`.

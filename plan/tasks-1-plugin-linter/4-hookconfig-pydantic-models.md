@@ -28,7 +28,7 @@ Add 40 error code string constants to enable new validators to reference consist
 #### Required Inputs
 
 - Architecture spec: ./architect-plugin-linter.md lines 700-763 (Error code registry)
-- Current implementation: plugin-validator.py lines 71-109
+- Current implementation: plugin_validator.py lines 71-109
 
 #### Requirements
 
@@ -48,7 +48,7 @@ Add 40 error code string constants to enable new validators to reference consist
 
 #### Expected Outputs
 
-- Modified file: `plugins/plugin-creator/scripts/plugin-validator.py` (lines 71-109 region)
+- Modified file: `plugins/plugin-creator/scripts/plugin_validator.py` (lines 71-109 region)
 - 40 new string constants added
 - Comment blocks added for each series
 
@@ -61,8 +61,8 @@ Add 40 error code string constants to enable new validators to reference consist
 
 #### Verification Steps
 
-1. Run `grep -E "^(HK|MC|LS|AG)[0-9]{3} = " plugins/plugin-creator/scripts/plugin-validator.py | wc -l` (should be 40)
-2. Run `ruff check plugins/plugin-creator/scripts/plugin-validator.py`
+1. Run `grep -E "^(HK|MC|LS|AG)[0-9]{3} = " plugins/plugin-creator/scripts/plugin_validator.py | wc -l` (should be 40)
+2. Run `ruff check plugins/plugin-creator/scripts/plugin_validator.py`
 3. Verify no duplicate constants with `sort < file | uniq -d`
 4. Import constants in REPL: `from plugin_validator import HK001, MC001, LS001, AG001`
 

@@ -91,13 +91,13 @@ This plugin includes a sync script that fetches the latest uv release notes from
 
 ```bash
 # Check for new releases (dry run)
-uv run scripts/sync-uv-releases.py --dry-run
+uv run scripts/sync_uv_releases.py --dry-run
 
 # Update the skill documentation
-uv run scripts/sync-uv-releases.py
+uv run scripts/sync_uv_releases.py
 
 # Force update (bypass cooldown)
-uv run scripts/sync-uv-releases.py --force
+uv run scripts/sync_uv_releases.py --force
 ```
 
 The script annotates each feature with the version it was introduced in, so Claude can compare against whatever uv version you have installed.

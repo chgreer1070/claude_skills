@@ -29,7 +29,7 @@ graph TD
     AllPass -->|Yes| Testing[Phase 4: Testing]
     AllPass -->|No| Architect
 
-    Testing --> RunScript[Run sync-gitlab-docs.py]
+    Testing --> RunScript[Run sync_gitlab_docs.py]
     RunScript --> VerifyFiles[Verify files downloaded]
     VerifyFiles --> CheckShortcodes[Verify Hugo shortcodes removed]
     CheckShortcodes --> CheckLinks[Verify link transformation]
@@ -189,7 +189,7 @@ Follow this sequence when {SKILL_NAME} applies:
 
 1. **Update documentation reference** (first step on skill activation):
    ```bash
-   uv run scripts/sync-gitlab-docs.py --working-dir .
+   uv run scripts/sync_gitlab_docs.py --working-dir .
    ```
 ````
 
@@ -198,7 +198,7 @@ Follow this sequence when {SKILL_NAME} applies:
 - Respects {COOLDOWN_DAYS}-day cooldown (successful runs only)
 - Use `--force` to bypass cooldown when needed
 - Creates/updates Documentation Index in SKILL.md
-- Lock file: `.sync-gitlab-docs.lock` (gitignored)
+- Lock file: `.sync_gitlab_docs.lock` (gitignored)
 
 2. [Rest of existing protocol steps...]
 ```
@@ -215,7 +215,7 @@ Add to repository root:
 
 ```text
 # {SKILL_NAME} documentation sync lock files and generated docs
-*/.sync-gitlab-docs.lock
+*/.sync_gitlab_docs.lock
 {SKILL_NAME}/references/{LOCAL_DOC_DIR}/
 ```
 
@@ -230,7 +230,7 @@ Add to repository root:
 1. Load skills: `python3-development`, `skill-creator`
 2. Delegate to `python-cli-architect`:
    - Provide all requirements above
-   - Specify path: `{SKILL_NAME}/scripts/sync-gitlab-docs.py`
+   - Specify path: `{SKILL_NAME}/scripts/sync_gitlab_docs.py`
    - Request comprehensive error handling and progress feedback
 
 **Phase 2: Code Review**
@@ -248,14 +248,14 @@ Execute sequentially (each gates the next):
 1. Format: `ruff format`
 2. Lint: `ruff check`
 3. Type check: `mypy`, `pyright`
-4. Pre-commit: `uv run pre-commit run --files scripts/sync-gitlab-docs.py`
+4. Pre-commit: `uv run pre-commit run --files scripts/sync_gitlab_docs.py`
 
 **Rationale for ordering**: Format first prevents lint errors on whitespace. Type checking validates after style compliance.
 
 **Phase 4: Testing & Validation**
 
 <validation_checklist>
-1. Run script: `uv run scripts/sync-gitlab-docs.py --working-dir .`
+1. Run script: `uv run scripts/sync_gitlab_docs.py --working-dir .`
 2. Verify downloaded files exist
 3. Validate Hugo shortcode removal:
    ```bash

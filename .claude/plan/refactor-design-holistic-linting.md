@@ -12,7 +12,7 @@ The holistic-linting plugin has a single 1221-line SKILL.md covering 4 distinct 
 
 ## Corrected Assessment Notes
 
-The Phase 1 assessment incorrectly flagged `./scripts/` as a broken link. The scripts directory exists at `skills/holistic-linting/scripts/` and the `./scripts/` link in SKILL.md resolves correctly relative to SKILL.md's location. However, lines 1005-1011 use `python holistic-linting/scripts/install-agents.py` which is relative to the skills directory parent, not to SKILL.md — this is a documentation accuracy issue (wrong relative path in code examples), not a broken file link.
+The Phase 1 assessment incorrectly flagged `./scripts/` as a broken link. The scripts directory exists at `skills/holistic-linting/scripts/` and the `./scripts/` link in SKILL.md resolves correctly relative to SKILL.md's location. However, lines 1005-1011 use `python holistic-linting/scripts/install_agents.py` which is relative to the skills directory parent, not to SKILL.md — this is a documentation accuracy issue (wrong relative path in code examples), not a broken file link.
 
 ## Skill Split
 
@@ -107,12 +107,12 @@ plugins/holistic-linting/
 
 ## Documentation Improvements
 
-### 1. Fix install-agents.py Path in SKILL.md
+### 1. Fix install_agents.py Path in SKILL.md
 
 **Source**: ./plugins/holistic-linting/skills/holistic-linting/SKILL.md lines 1003-1012
-**Current**: `python holistic-linting/scripts/install-agents.py --scope user`
+**Current**: `python holistic-linting/scripts/install_agents.py --scope user`
 **Issue**: Path is relative to skills directory parent, inconsistent with other script references that use `./scripts/`
-**Fix**: Change to `python ./scripts/install-agents.py --scope user` (or `uv run ./scripts/install-agents.py --scope user` for consistency)
+**Fix**: Change to `python ./scripts/install_agents.py --scope user` (or `uv run ./scripts/install_agents.py --scope user` for consistency)
 
 ### 2. plugin.json Metadata Enhancement
 
@@ -161,7 +161,7 @@ Task 3: Update plugin.json (metadata + skills array)
   ├── Depends on: Task 1 (needs new skill directories to exist)
   └── Blocks: Task V1
 
-Task 4: Fix install-agents.py paths in SKILL.md
+Task 4: Fix install_agents.py paths in SKILL.md
   ├── Depends on: Task 1 (will be part of SKILL.md content during split)
   └── Can be merged into Task 1
 
