@@ -869,6 +869,7 @@ SP: 0x20001ff0"
 
 The community maintains a curated list of skills at:
 **<https://github.com/VoltAgent/awesome-agent-skills>**
+Repository contents change frequently; treat numeric counts in examples as time-bound snapshots.
 
 ### Skills Relevant for Embedded Engineers
 
@@ -886,13 +887,14 @@ The community maintains a curated list of skills at:
 **Method 1: Clone directly to skills directory**
 
 ```bash
-# Clone a skill to your user skills directory
+# Clone the Trail of Bits marketplace repo, then copy one plugin locally
 cd ~/.claude/skills
-git clone https://github.com/trailofbits/skills/tree/main/plugins/static-analysis
+git clone https://github.com/trailofbits/skills
+cp -r skills/plugins/static-analysis ./static-analysis
 
 # Or for project-specific
 cd your-project/.claude/skills
-git clone <skill-repo-url>
+cp -r <path-to-trailofbits-skills-clone>/plugins/static-analysis ./static-analysis
 ```
 
 **Method 2: Manual download**
@@ -940,7 +942,7 @@ curl -o ~/.claude/skills/static-analysis/SKILL.md \
 
 | Resource | Description |
 |----------|-------------|
-| [awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills) | Curated list of 172+ skills |
+| [awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills) | Curated list of cross-vendor skills (catalog size changes frequently) |
 | [Anthropic Skills Repo](https://github.com/anthropics/skills) | Official example skills |
 | [Trail of Bits Skills](https://github.com/trailofbits/skills) | Security-focused skills |
 
@@ -978,6 +980,17 @@ Consider adapting these for your needs:
 2. **Build a review agent** - Automate your code review checklist
 3. **Share with your team** - Commit skills to `.claude/skills/` in your repo
 4. **Iterate based on usage** - Refine skills as you discover gaps
+
+### Assumptions and Unknowns (researched 2026-02-17)
+
+| Topic | Status | Notes | Reference(s) |
+|-------|--------|-------|--------------|
+| Skill and slash-command behavior | Confirmed in repo docs | Skills and `.claude/commands/*.md` are documented as a unified system. | [R1] |
+| Skill location guidance | Confirmed in repo docs | Personal (`~/.claude/skills`), project (`.claude/skills`), and plugin levels are documented. | [R1], [R2] |
+| Agent permission mode examples | Confirmed in repo docs | `default`, `acceptEdits`, `dontAsk`, and `plan` are documented in repo references. | [R3] |
+| `context: fork` + `agent` orchestration pattern | Confirmed in repo docs | Skill frontmatter can run in forked context with a selected agent type. | [R1] |
+| External marketplace size claims | Assumption (time-bound) | Public repository content evolves; avoid fixed counts unless date-stamped. | [R4] |
+| Third-party plugin layout stability | Partial / verify before use | External repositories can reorganize plugin paths; verify current layout before workshop delivery. | [R5] |
 
 ---
 
@@ -1081,3 +1094,22 @@ You now know how to:
 - Apply best practices for descriptions, tool access, and model selection
 
 **Questions?** Check the resources above or experiment with your own skills and agents.
+
+## References
+
+Internal file citations below are relative to this repository root: `Jamie-BitFlight/claude_skills`.
+
+- [R1] Repository path: `plugins/plugin-creator/skills/claude-skills-overview-2026/SKILL.md` (skills/commands unification, frontmatter fields, location priority, context fork)
+- [R2] Repository path: `plugins/plugin-creator/examples/skills/example-skill/SKILL.md` (personal/project skill location examples)
+- [R3] Repository path: `plugins/plugin-creator/skills/agent-creator/references/agent-schema.md` (agent frontmatter and permission modes)
+- [R4] <https://github.com/VoltAgent/awesome-agent-skills> (accessed 2026-02-17)
+- [R5] <https://raw.githubusercontent.com/trailofbits/skills/main/README.md> (accessed 2026-02-17)
+- [R6] <https://agentskills.io> (accessed 2026-02-17)
+
+## Bibliography
+
+- Anthropic. "Claude Code Skills" documentation. <https://docs.anthropic.com/en/docs/claude-code/skills> (accessed 2026-02-17).
+- Anthropic. "Claude Code Agents" documentation. <https://docs.anthropic.com/en/docs/claude-code/agents> (accessed 2026-02-17).
+- Agent Skills Foundation. "Agent Skills." <https://agentskills.io> (accessed 2026-02-17).
+- VoltAgent community. "awesome-agent-skills." <https://github.com/VoltAgent/awesome-agent-skills> (accessed 2026-02-17).
+- Trail of Bits. "Skills Marketplace README." <https://raw.githubusercontent.com/trailofbits/skills/main/README.md> (accessed 2026-02-17).
