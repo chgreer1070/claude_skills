@@ -1,4 +1,4 @@
-"""Tests reproducing the pre-commit hook stash conflict bug in auto_sync_manifests.py.
+"""Tests for auto_sync_manifests.py pre-commit hook.
 
 Observed symptom: When a commit attempt fails (e.g., ruff errors on other files) and the
 user retries ``git commit``, prek reports::
@@ -12,12 +12,12 @@ Bug areas tested:
    collapses short arrays onto one line, producing different file content for the same data.
 2. Idempotency -- running the same update functions twice must produce identical output
    without double-bumping versions.
-3. The "already staged" guard -- _is_file_staged checks skip ALL processing when the
-   manifest file is already staged, which changes behavior on retry.
+3. The version-comparison guard -- ``_version_already_bumped`` compares the working copy
+   version against HEAD to skip bumping when a bump already occurred.
 
 Test isolation strategy:
-- Functions that previously called git internally now receive a ``staged_files`` set,
-  eliminating the need to mock ``run_git_command`` for staging checks.
+- The version-comparison guard is tested by mocking ``_read_head_json`` to control
+  what HEAD returns, avoiding real git subprocess calls.
 - All file I/O uses pytest tmp_path fixtures with monkeypatch.chdir.
 - Each test is fully independent with no shared state.
 """
@@ -35,8 +35,6 @@ import pytest
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-
-    from pytest_mock import MockerFixture
 
 # ---------------------------------------------------------------------------
 # Module import -- script has a hyphen in the filename so we use importlib
@@ -56,9 +54,6 @@ else:
 # resolves them without needing the dynamic module's types at analysis time.
 _ComponentChangesDict = dict[str, list[dict[str, str]]]
 _MarketplaceChangesDict = dict[str, Any]
-
-# Empty staged files set -- used when no files are staged (common case)
-_NO_STAGED: set[str] = set()
 
 _requires_prettier = pytest.mark.skipif(
     shutil.which("npx") is None,
@@ -210,9 +205,7 @@ class TestJsonFormattingConflict:
         changes = _changes_with_modified_skill()
 
         # Act
-        updated, _new_version = auto_sync.update_plugin_json(
-            plugin_name, changes, _NO_STAGED
-        )
+        updated, _new_version = auto_sync.update_plugin_json(plugin_name, changes)
 
         # Assert
         assert updated is True
@@ -257,7 +250,7 @@ class TestJsonFormattingConflict:
 
         # Act
         marketplace_json = tmp_path / ".claude-plugin" / "marketplace.json"
-        updated = auto_sync.update_marketplace_json(plugin_changes, _NO_STAGED)
+        updated = auto_sync.update_marketplace_json(plugin_changes)
 
         # Assert
         assert updated is True
@@ -329,18 +322,14 @@ class TestIdempotency:
         changes = _changes_with_modified_skill()
 
         # Act -- Run 1: from original state
-        updated_1, version_1 = auto_sync.update_plugin_json(
-            plugin_name, changes, _NO_STAGED
-        )
+        updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
         content_after_run1 = plugin_json.read_text(encoding="utf-8")
 
         # Reset to original state
         plugin_json.write_text(original_content, encoding="utf-8")
 
         # Act -- Run 2: from same original state
-        updated_2, version_2 = auto_sync.update_plugin_json(
-            plugin_name, changes, _NO_STAGED
-        )
+        updated_2, version_2 = auto_sync.update_plugin_json(plugin_name, changes)
         content_after_run2 = plugin_json.read_text(encoding="utf-8")
 
         # Assert -- both runs produced identical results
@@ -353,10 +342,10 @@ class TestIdempotency:
     ) -> None:
         """Verify version does NOT double-bump when update runs twice.
 
-        Tests: Idempotent version bumping via staged guard
-        How: Run update_plugin_json, then simulate retry with the file in staged_files
-        Why: On retry after a failed commit, plugin.json is already staged from run 1,
-             so the staged guard prevents re-processing
+        Tests: Idempotent version bumping via version comparison guard
+        How: Run update_plugin_json twice; second run sees version already > HEAD
+        Why: On retry after a failed commit, the version in the file is already
+             bumped, so the version comparison guard prevents re-processing
         """
         # Arrange
         monkeypatch.chdir(tmp_path)
@@ -371,31 +360,31 @@ class TestIdempotency:
 
         changes = _changes_with_modified_skill()
 
-        # Act -- Run 1: plugin.json not staged, hook updates it
-        updated_1, version_1 = auto_sync.update_plugin_json(
-            plugin_name, changes, _NO_STAGED
+        # Simulate HEAD having the original version
+        monkeypatch.setattr(
+            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
         )
 
-        # Act -- Run 2: plugin.json IS staged from run 1's git add
-        staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
-        updated_2, version_2 = auto_sync.update_plugin_json(
-            plugin_name, changes, {staged_path}
-        )
+        # Act -- Run 1: HEAD version == file version, hook updates it
+        updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
+
+        # Act -- Run 2: file version (1.0.1) > HEAD version (1.0.0), guard blocks
+        updated_2, version_2 = auto_sync.update_plugin_json(plugin_name, changes)
 
         # Assert -- version bumped only once: 1.0.0 -> 1.0.1, second run blocked
         assert updated_1 is True
         assert version_1 == "1.0.1"
         assert updated_2 is False
-        assert version_2 == "0.0.0"
+        assert version_2 == "1.0.1"
 
     def test_update_marketplace_json_no_double_bump_on_retry(
         self, tmp_path: Path, monkeypatch: Any
     ) -> None:
         """Verify marketplace version does NOT double-bump on retry.
 
-        Tests: Idempotent version bumping for marketplace.json via staged guard
-        How: Run update_marketplace_json, then simulate retry with file in staged_files
-        Why: On retry, marketplace.json is already staged from run 1
+        Tests: Idempotent version bumping for marketplace.json via version guard
+        How: Run update_marketplace_json twice; second run sees version > HEAD
+        Why: On retry, marketplace.json version is already bumped from run 1
         """
         # Arrange
         monkeypatch.chdir(tmp_path)
@@ -412,13 +401,16 @@ class TestIdempotency:
             "modified": [("existing", "1.0.1")],
         }
 
-        # Act -- Run 1: marketplace.json not staged
-        updated_1 = auto_sync.update_marketplace_json(plugin_changes, _NO_STAGED)
-
-        # Act -- Run 2: marketplace.json IS staged from run 1
-        updated_2 = auto_sync.update_marketplace_json(
-            plugin_changes, {".claude-plugin/marketplace.json"}
+        # Simulate HEAD having the original version
+        monkeypatch.setattr(
+            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
         )
+
+        # Act -- Run 1: HEAD version == file version
+        updated_1 = auto_sync.update_marketplace_json(plugin_changes)
+
+        # Act -- Run 2: file version (1.0.1) > HEAD version (1.0.0), guard blocks
+        updated_2 = auto_sync.update_marketplace_json(plugin_changes)
 
         # Assert -- version bumped only once
         assert updated_1 is True
@@ -461,69 +453,68 @@ class TestIdempotency:
 # ============================================================================
 
 
-class TestAlreadyStagedGuard:
-    """Test the "already staged" guard via _is_file_staged.
+class TestVersionComparisonGuard:
+    """Test the version-comparison guard via _version_already_bumped.
 
-    The guard checks the ``staged_files`` set for the manifest file.
-    If found, it skips ALL processing and returns ``(False, "0.0.0")``.
-
-    This is the mechanism that prevents double-bumping on retry, but it also
-    means that on retry, the hook effectively becomes a no-op for that plugin,
-    returning a version of "0.0.0" instead of the actual current version.
+    The guard compares the working copy version against the HEAD version.
+    If the working version is strictly greater, the bump is skipped.
     """
 
-    def test_update_plugin_json_skips_when_plugin_json_already_staged(
+    def test_update_plugin_json_skips_when_version_already_bumped(
         self, tmp_path: Path, monkeypatch: Any
     ) -> None:
-        """Verify update_plugin_json returns (False, "0.0.0") when plugin.json is staged.
+        """Verify update_plugin_json skips when file version > HEAD version.
 
-        Tests: Already-staged guard in update_plugin_json
-        How: Pass staged_files containing the plugin.json path, call update
-        Why: On retry after failed commit, plugin.json is already staged from run 1
+        Tests: Version guard in update_plugin_json
+        How: Set file version > HEAD version via _read_head_json mock
+        Why: On retry after failed commit, file already has bumped version
         """
         # Arrange
         monkeypatch.chdir(tmp_path)
 
         plugin_name = "test-plugin"
+        # File has version 1.5.0, HEAD has 1.4.0 -> already bumped
         data = {"name": "test-plugin", "version": "1.5.0", "skills": []}
         plugin_json = _make_plugin_json(tmp_path, plugin_name, data)
 
-        # plugin.json IS in the staged files set
-        staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
-        staged = {staged_path}
+        head_data = {"name": "test-plugin", "version": "1.4.0", "skills": []}
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: dict(head_data))
 
         changes = _changes_with_modified_skill()
 
         # Act
-        updated, version = auto_sync.update_plugin_json(plugin_name, changes, staged)
+        updated, version = auto_sync.update_plugin_json(plugin_name, changes)
 
-        # Assert -- guard triggered: returns False with "0.0.0" not the actual version
+        # Assert -- guard triggered: returns False with current version
         assert updated is False
-        assert version == "0.0.0"
+        assert version == "1.5.0"
 
         # File was NOT modified
         assert json.loads(plugin_json.read_text(encoding="utf-8"))["version"] == "1.5.0"
 
-    def test_update_marketplace_json_skips_when_already_staged(
+    def test_update_marketplace_json_skips_when_version_already_bumped(
         self, tmp_path: Path, monkeypatch: Any
     ) -> None:
-        """Verify update_marketplace_json returns False when marketplace.json is staged.
+        """Verify update_marketplace_json skips when version already > HEAD.
 
-        Tests: Already-staged guard in update_marketplace_json
-        How: Pass staged_files containing marketplace.json path, call update
+        Tests: Version guard in update_marketplace_json
+        How: Set marketplace version > HEAD version via mock
         Why: Same pattern as plugin.json guard
         """
         # Arrange
         monkeypatch.chdir(tmp_path)
 
         data = {
-            "metadata": {"version": "2.0.0"},
+            "metadata": {"version": "2.1.0"},
             "plugins": [{"name": "p1", "source": "./plugins/p1"}],
         }
         marketplace_json = _make_marketplace_json(tmp_path, data)
 
-        # marketplace.json IS in the staged files
-        staged = {".claude-plugin/marketplace.json"}
+        head_data = {
+            "metadata": {"version": "2.0.0"},
+            "plugins": [{"name": "p1", "source": "./plugins/p1"}],
+        }
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: dict(head_data))
 
         plugin_changes: _MarketplaceChangesDict = {
             "added": {"new-plugin"},
@@ -532,23 +523,21 @@ class TestAlreadyStagedGuard:
         }
 
         # Act
-        updated = auto_sync.update_marketplace_json(plugin_changes, staged)
+        updated = auto_sync.update_marketplace_json(plugin_changes)
 
         # Assert -- guard triggered, no modifications
         assert updated is False
         loaded = json.loads(marketplace_json.read_text(encoding="utf-8"))
-        assert loaded["metadata"]["version"] == "2.0.0"
+        assert loaded["metadata"]["version"] == "2.1.0"
 
-    def test_staged_guard_returns_zero_version_not_actual_version(
+    def test_guard_returns_current_version_not_zero(
         self, tmp_path: Path, monkeypatch: Any
     ) -> None:
-        """Verify the guard returns "0.0.0" rather than the file's actual version.
+        """Verify the guard returns the actual current version, not "0.0.0".
 
-        Tests: Return value fidelity of the staged guard
-        How: Set up plugin.json with version "3.2.1", trigger the guard, inspect return
-        Why: The "0.0.0" return value propagates to marketplace_changes["modified"] as
-             a tuple ("plugin-name", "0.0.0"), which could cause marketplace version
-             tracking to use incorrect data
+        Tests: Return value fidelity of the version guard
+        How: Set up plugin.json with version already bumped, inspect return
+        Why: Unlike the old staged guard, the new guard returns the real version
         """
         # Arrange
         monkeypatch.chdir(tmp_path)
@@ -557,29 +546,26 @@ class TestAlreadyStagedGuard:
         data = {"name": "my-plugin", "version": "3.2.1", "skills": []}
         _make_plugin_json(tmp_path, plugin_name, data)
 
-        staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
-        staged = {staged_path}
+        head_data = {"name": "my-plugin", "version": "3.2.0", "skills": []}
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: dict(head_data))
 
         changes = _changes_with_added_skill()
 
         # Act
-        updated, version = auto_sync.update_plugin_json(plugin_name, changes, staged)
+        updated, version = auto_sync.update_plugin_json(plugin_name, changes)
 
-        # Assert -- returns "0.0.0" not "3.2.1"
+        # Assert -- returns actual version "3.2.1", not "0.0.0"
         assert updated is False
-        assert version == "0.0.0"
-        assert version != "3.2.1"
+        assert version == "3.2.1"
 
-    def test_staged_guard_uses_exact_line_match_not_substring(
+    def test_guard_allows_bump_when_version_equals_head(
         self, tmp_path: Path, monkeypatch: Any
     ) -> None:
-        """Verify the guard uses exact matching, not substring containment.
+        """Verify update proceeds when file version == HEAD version.
 
-        Tests: Guard matching semantics
-        How: Pass staged_files containing only a longer filename that has the
-             target path as a substring, verify guard does NOT trigger
-        Why: With exact matching, "plugin.json.bak" no longer falsely
-             matches "plugin.json" -- the false positive is eliminated
+        Tests: Guard pass-through when no prior bump
+        How: Set file and HEAD to same version
+        Why: Normal case -- user hasn't manually bumped
         """
         # Arrange
         monkeypatch.chdir(tmp_path)
@@ -588,26 +574,25 @@ class TestAlreadyStagedGuard:
         data = {"name": "test", "version": "1.0.0"}
         _make_plugin_json(tmp_path, plugin_name, data)
 
-        # The staged set contains a DIFFERENT file that has our path as substring
-        staged = {"plugins/test/.claude-plugin/plugin.json.bak"}
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: dict(data))
 
         changes = _changes_with_modified_skill()
 
         # Act
-        updated, version = auto_sync.update_plugin_json(plugin_name, changes, staged)
+        updated, version = auto_sync.update_plugin_json(plugin_name, changes)
 
-        # Assert -- guard does NOT trigger (exact match required, substring rejected)
+        # Assert -- guard did NOT trigger, update proceeds
         assert updated is True
         assert version == "1.0.1"
 
-    def test_staged_guard_does_not_trigger_for_different_plugin(
+    def test_guard_allows_bump_when_file_not_in_head(
         self, tmp_path: Path, monkeypatch: Any
     ) -> None:
-        """Verify the guard does not trigger when a DIFFERENT plugin's json is staged.
+        """Verify update proceeds when HEAD has no version of the file.
 
-        Tests: Guard specificity
-        How: Stage a different plugin's plugin.json, call update for our plugin
-        Why: Ensure the guard only activates for the exact plugin being updated
+        Tests: Guard pass-through for new files
+        How: Mock _read_head_json to return None (file not in HEAD)
+        Why: New plugin.json files should always be bumped
         """
         # Arrange
         monkeypatch.chdir(tmp_path)
@@ -616,13 +601,12 @@ class TestAlreadyStagedGuard:
         data = {"name": "my-plugin", "version": "1.0.0", "skills": []}
         _make_plugin_json(tmp_path, plugin_name, data)
 
-        # A DIFFERENT plugin's json is staged
-        staged = {"plugins/other-plugin/.claude-plugin/plugin.json"}
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: None)
 
         changes = _changes_with_modified_skill()
 
         # Act
-        updated, version = auto_sync.update_plugin_json(plugin_name, changes, staged)
+        updated, version = auto_sync.update_plugin_json(plugin_name, changes)
 
         # Assert -- guard did NOT trigger, update proceeds
         assert updated is True
@@ -644,8 +628,8 @@ class TestRetryScenario:
     4. prek stashes hook changes, restores original
     5. User runs ``git commit`` again
     6. auto-sync-manifests hook runs AGAIN
-    7. This time plugin.json IS in staged files (from step 2's git add)
-    8. The "already staged" guard kicks in, skipping processing
+    7. File version (1.0.1) > HEAD version (1.0.0), guard kicks in
+    8. The version-comparison guard skips processing
 
     But between steps 4 and 6, prettier may have also modified the file,
     creating a conflict.
@@ -657,7 +641,7 @@ class TestRetryScenario:
         """Simulate the retry: first run bumps, second run is blocked by guard.
 
         Tests: Complete retry flow
-        How: Run update twice, second time with plugin.json in staged set
+        How: Run update twice; second run sees version already > HEAD
         Why: Verify the guard prevents double-bumping on commit retry
         """
         # Arrange
@@ -673,40 +657,35 @@ class TestRetryScenario:
 
         changes = _changes_with_modified_skill()
 
-        # --- Run 1: plugin.json NOT staged, hook modifies it ---
-        updated_1, version_1 = auto_sync.update_plugin_json(
-            plugin_name, changes, _NO_STAGED
+        # Simulate HEAD having the original version
+        monkeypatch.setattr(
+            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
         )
+
+        # --- Run 1: HEAD version == file version, hook modifies it ---
+        updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
 
         assert updated_1 is True
         assert version_1 == "1.0.1"
         content_after_run1 = plugin_json.read_text(encoding="utf-8")
 
-        # --- Simulate: commit fails, prek rolls back, user retries ---
-        # On retry, plugin.json IS in staged files from run 1's git add
-        staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
-        staged = {staged_path}
-
-        # --- Run 2: guard should prevent double-bump ---
-        updated_2, version_2 = auto_sync.update_plugin_json(
-            plugin_name, changes, staged
-        )
+        # --- Run 2: file version (1.0.1) > HEAD (1.0.0), guard blocks ---
+        updated_2, version_2 = auto_sync.update_plugin_json(plugin_name, changes)
 
         assert updated_2 is False
-        assert version_2 == "0.0.0"  # Guard returns "0.0.0"
+        assert version_2 == "1.0.1"
 
         # File content unchanged from run 1
         assert plugin_json.read_text(encoding="utf-8") == content_after_run1
 
     def test_retry_guard_version_propagates_to_marketplace_changes(self) -> None:
-        """Verify that guard's "0.0.0" return propagates to marketplace tracking.
+        """Verify that guard's return propagates correctly to marketplace tracking.
 
         Tests: Interaction between guard return value and main() flow
         How: Simulate the code in main() that appends (plugin_name, new_version)
              to marketplace_changes when updated is True, and skips when False
-        Why: When the guard returns (False, "0.0.0"), main() correctly skips
-             appending to marketplace_changes["modified"], but if the caller
-             incorrectly uses the version, it could corrupt marketplace state
+        Why: When the guard returns (False, current_version), main() correctly
+             skips appending to marketplace_changes["modified"]
         """
         # Arrange -- simulate what main() does
         marketplace_changes: _MarketplaceChangesDict = {
@@ -724,16 +703,14 @@ class TestRetryScenario:
 
         # Run 2 result: guard blocked
         updated_run2 = False
-        version_run2 = "0.0.0"
+        version_run2 = "1.0.1"  # Guard now returns actual version, not "0.0.0"
 
         if updated_run2:
             marketplace_changes["modified"].append(("my-plugin", version_run2))
 
-        # Assert -- only run 1's version appears
+        # Assert -- only run 1's version appears (run 2 was blocked)
         assert len(marketplace_changes["modified"]) == 1
         assert marketplace_changes["modified"][0] == ("my-plugin", "1.0.1")
-        # "0.0.0" never appears because updated was False
-        assert not any(v == "0.0.0" for _, v in marketplace_changes["modified"])
 
     def test_full_retry_with_prettier_no_conflict(
         self, tmp_path: Path, monkeypatch: Any
@@ -742,7 +719,7 @@ class TestRetryScenario:
 
         Tests: End-to-end conflict elimination
         How: Run 1 writes prettier-compatible format. Prettier has nothing to change.
-             Run 2 (retry) encounters the staged guard. File remains stable throughout.
+             Run 2 (retry) encounters the version guard. File remains stable.
         Why: With prettier-compatible output, the hook and prettier produce identical
              content, so prek stash/restore never encounters conflicting diffs.
         """
@@ -759,10 +736,13 @@ class TestRetryScenario:
 
         changes = _changes_with_modified_skill()
 
-        # --- Run 1: hook writes prettier-compatible format ---
-        updated_1, version_1 = auto_sync.update_plugin_json(
-            plugin_name, changes, _NO_STAGED
+        # Simulate HEAD having the original version
+        monkeypatch.setattr(
+            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
         )
+
+        # --- Run 1: hook writes prettier-compatible format ---
+        updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
         assert updated_1 is True
         assert version_1 == "1.0.1"
         hook_output = plugin_json.read_text(encoding="utf-8")
@@ -770,21 +750,12 @@ class TestRetryScenario:
         # Verify hook wrote prettier-compatible format (short arrays inline)
         assert '"skills": ["./skills/existing/"]' in hook_output
 
-        # Prettier would NOT modify this output -- it is already in prettier format.
-        # No stash conflict can occur because hook and prettier agree on format.
-
-        # --- Simulate: commit fails, user retries ---
-        staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
-        staged = {staged_path}
-
-        # --- Run 2: guard prevents re-processing ---
-        updated_2, version_2 = auto_sync.update_plugin_json(
-            plugin_name, changes, staged
-        )
+        # --- Run 2: version guard prevents re-processing ---
+        updated_2, version_2 = auto_sync.update_plugin_json(plugin_name, changes)
 
         # Assert -- guard blocked re-processing
         assert updated_2 is False
-        assert version_2 == "0.0.0"
+        assert version_2 == "1.0.1"
 
         # File content unchanged from run 1
         final_content = plugin_json.read_text(encoding="utf-8")
@@ -1052,9 +1023,7 @@ class TestUpdatePluginJsonFileNotFound:
         changes = _changes_with_modified_skill()
 
         # Act
-        updated, version = auto_sync.update_plugin_json(
-            "nonexistent", changes, _NO_STAGED
-        )
+        updated, version = auto_sync.update_plugin_json("nonexistent", changes)
 
         # Assert
         assert updated is False
@@ -1062,115 +1031,254 @@ class TestUpdatePluginJsonFileNotFound:
 
 
 # ============================================================================
-# New behaviour: _is_file_staged helper
+# New behaviour: _parse_version_tuple helper
 # ============================================================================
 
 
-class TestIsFileStaged:
-    """Test the _is_file_staged helper for exact set membership."""
+class TestParseVersionTuple:
+    """Test the _parse_version_tuple helper for semantic version parsing."""
 
-    def test_exact_match_returns_true(self) -> None:
-        """Verify _is_file_staged returns True for an exact match.
+    def test_valid_version_string(self) -> None:
+        """Verify _parse_version_tuple parses a valid semantic version.
 
-        Tests: _is_file_staged exact matching
-        How: Pass staged_files set containing the exact path
-        Why: Ensure basic positive matching works
+        Tests: _parse_version_tuple basic parsing
+        How: Pass a "1.2.3" string and check the returned tuple
+        Why: Ensure correct extraction of major, minor, patch integers
         """
-        staged = {"plugins/foo/.claude-plugin/plugin.json"}
-        assert (
-            auto_sync._is_file_staged("plugins/foo/.claude-plugin/plugin.json", staged)
-            is True
+        assert auto_sync._parse_version_tuple("1.2.3") == (1, 2, 3)
+
+    def test_zero_version(self) -> None:
+        """Verify _parse_version_tuple handles all-zero version.
+
+        Tests: _parse_version_tuple edge case
+        How: Pass "0.0.0"
+        Why: Initial versions must parse correctly
+        """
+        assert auto_sync._parse_version_tuple("0.0.0") == (0, 0, 0)
+
+    def test_large_version_numbers(self) -> None:
+        """Verify _parse_version_tuple handles large integers.
+
+        Tests: _parse_version_tuple large values
+        How: Pass "100.200.300"
+        Why: No arbitrary upper limit on version components
+        """
+        assert auto_sync._parse_version_tuple("100.200.300") == (100, 200, 300)
+
+    def test_non_numeric_returns_none(self) -> None:
+        """Verify _parse_version_tuple returns None for non-numeric input.
+
+        Tests: _parse_version_tuple malformed input
+        How: Pass "a.b.c"
+        Why: Non-integer components are invalid
+        """
+        assert auto_sync._parse_version_tuple("a.b.c") is None
+
+    def test_too_few_parts_returns_none(self) -> None:
+        """Verify _parse_version_tuple returns None for incomplete version.
+
+        Tests: _parse_version_tuple insufficient parts
+        How: Pass "1.2"
+        Why: Semantic version requires exactly three components
+        """
+        assert auto_sync._parse_version_tuple("1.2") is None
+
+    def test_too_many_parts_returns_none(self) -> None:
+        """Verify _parse_version_tuple returns None for extra parts.
+
+        Tests: _parse_version_tuple excess parts
+        How: Pass "1.2.3.4"
+        Why: Only major.minor.patch is accepted
+        """
+        assert auto_sync._parse_version_tuple("1.2.3.4") is None
+
+    def test_empty_string_returns_none(self) -> None:
+        """Verify _parse_version_tuple returns None for empty string.
+
+        Tests: _parse_version_tuple empty input
+        How: Pass ""
+        Why: Edge case for missing version field
+        """
+        assert auto_sync._parse_version_tuple("") is None
+
+
+# ============================================================================
+# New behaviour: _extract_version_from_json helper
+# ============================================================================
+
+
+class TestExtractVersionFromJson:
+    """Test the _extract_version_from_json helper for nested key traversal."""
+
+    def test_top_level_version(self) -> None:
+        """Verify _extract_version_from_json extracts a top-level version.
+
+        Tests: _extract_version_from_json single-key path
+        How: Pass {"version": "1.2.3"} with key_path ["version"]
+        Why: plugin.json stores version at top level
+        """
+        data: dict[str, object] = {"version": "1.2.3"}
+        assert auto_sync._extract_version_from_json(data, ["version"]) == (1, 2, 3)
+
+    def test_nested_version(self) -> None:
+        """Verify _extract_version_from_json traverses nested keys.
+
+        Tests: _extract_version_from_json multi-key path
+        How: Pass {"metadata": {"version": "2.0.1"}} with key_path ["metadata", "version"]
+        Why: marketplace.json stores version under metadata.version
+        """
+        data: dict[str, object] = {"metadata": {"version": "2.0.1"}}
+        assert auto_sync._extract_version_from_json(data, ["metadata", "version"]) == (
+            2,
+            0,
+            1,
         )
 
-    def test_substring_match_returns_false(self) -> None:
-        """Verify _is_file_staged rejects substring matches.
+    def test_missing_key_returns_none(self) -> None:
+        """Verify _extract_version_from_json returns None for missing key.
 
-        Tests: _is_file_staged substring rejection
-        How: Pass staged_files with a longer path containing the target as substring
-        Why: Prevents false positives from paths like plugin.json.bak
+        Tests: _extract_version_from_json missing path
+        How: Pass data without the requested key
+        Why: Graceful handling when JSON structure differs from expected
         """
-        staged = {"plugins/foo/.claude-plugin/plugin.json.bak"}
+        data: dict[str, object] = {"name": "test"}
+        assert auto_sync._extract_version_from_json(data, ["version"]) is None
+
+    def test_non_dict_intermediate_returns_none(self) -> None:
+        """Verify _extract_version_from_json returns None for non-dict intermediate.
+
+        Tests: _extract_version_from_json type mismatch in path
+        How: Pass {"metadata": "not-a-dict"} with path ["metadata", "version"]
+        Why: Cannot traverse into a string value
+        """
+        data: dict[str, object] = {"metadata": "not-a-dict"}
         assert (
-            auto_sync._is_file_staged("plugins/foo/.claude-plugin/plugin.json", staged)
+            auto_sync._extract_version_from_json(data, ["metadata", "version"]) is None
+        )
+
+    def test_non_string_version_returns_none(self) -> None:
+        """Verify _extract_version_from_json returns None when version is not a string.
+
+        Tests: _extract_version_from_json wrong value type
+        How: Pass {"version": 123} with path ["version"]
+        Why: Version must be a string to parse
+        """
+        data: dict[str, object] = {"version": 123}
+        assert auto_sync._extract_version_from_json(data, ["version"]) is None
+
+    def test_non_dict_root_returns_none(self) -> None:
+        """Verify _extract_version_from_json returns None for non-dict root.
+
+        Tests: _extract_version_from_json invalid root type
+        How: Pass a list instead of dict
+        Why: JSON root must be traversable as dict
+        """
+        assert (
+            auto_sync._extract_version_from_json(["not", "a", "dict"], ["version"])
+            is None
+        )
+
+
+# ============================================================================
+# New behaviour: _version_already_bumped helper
+# ============================================================================
+
+
+class TestVersionAlreadyBumped:
+    """Test the _version_already_bumped helper for version comparison logic."""
+
+    def test_returns_true_when_current_greater(
+        self, tmp_path: Path, monkeypatch: Any
+    ) -> None:
+        """Verify _version_already_bumped returns True when file version > HEAD.
+
+        Tests: _version_already_bumped positive detection
+        How: Write file with version 1.1.0, mock HEAD with 1.0.0
+        Why: Core guard logic -- skip bump when already bumped
+        """
+        monkeypatch.chdir(tmp_path)
+        plugin_json = tmp_path / "plugin.json"
+        plugin_json.write_text(json.dumps({"version": "1.1.0"}))
+
+        monkeypatch.setattr(
+            auto_sync, "_read_head_json", lambda _fp: {"version": "1.0.0"}
+        )
+
+        assert auto_sync._version_already_bumped(str(plugin_json), ["version"]) is True
+
+    def test_returns_false_when_versions_equal(
+        self, tmp_path: Path, monkeypatch: Any
+    ) -> None:
+        """Verify _version_already_bumped returns False when versions match.
+
+        Tests: _version_already_bumped equal versions
+        How: Write file with version 1.0.0, mock HEAD with 1.0.0
+        Why: Equal versions mean no bump has occurred yet
+        """
+        monkeypatch.chdir(tmp_path)
+        plugin_json = tmp_path / "plugin.json"
+        plugin_json.write_text(json.dumps({"version": "1.0.0"}))
+
+        monkeypatch.setattr(
+            auto_sync, "_read_head_json", lambda _fp: {"version": "1.0.0"}
+        )
+
+        assert auto_sync._version_already_bumped(str(plugin_json), ["version"]) is False
+
+    def test_returns_false_when_head_none(
+        self, tmp_path: Path, monkeypatch: Any
+    ) -> None:
+        """Verify _version_already_bumped returns False when file not in HEAD.
+
+        Tests: _version_already_bumped new file
+        How: Mock _read_head_json returning None
+        Why: New files not yet committed should allow bumping
+        """
+        monkeypatch.chdir(tmp_path)
+        plugin_json = tmp_path / "plugin.json"
+        plugin_json.write_text(json.dumps({"version": "1.0.0"}))
+
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: None)
+
+        assert auto_sync._version_already_bumped(str(plugin_json), ["version"]) is False
+
+    def test_returns_false_when_file_missing(self, monkeypatch: Any) -> None:
+        """Verify _version_already_bumped returns False when file does not exist.
+
+        Tests: _version_already_bumped missing file
+        How: Pass non-existent path with valid HEAD data
+        Why: Graceful handling when file is deleted
+        """
+        monkeypatch.setattr(
+            auto_sync, "_read_head_json", lambda _fp: {"version": "1.0.0"}
+        )
+
+        assert (
+            auto_sync._version_already_bumped("/nonexistent/plugin.json", ["version"])
             is False
         )
 
-    def test_multiline_output_matches_correct_entry(self) -> None:
-        """Verify _is_file_staged matches the right entry in a set with multiple files.
+    def test_nested_key_path(self, tmp_path: Path, monkeypatch: Any) -> None:
+        """Verify _version_already_bumped works with nested key paths.
 
-        Tests: _is_file_staged with multiple staged files
-        How: Pass staged_files set with several entries, one of which matches
-        Why: Real git output contains multiple files
+        Tests: _version_already_bumped marketplace-style path
+        How: Use ["metadata", "version"] key path for marketplace.json
+        Why: marketplace.json stores version under metadata.version
         """
-        staged = {
-            "plugins/bar/.claude-plugin/plugin.json",
-            "plugins/foo/.claude-plugin/plugin.json",
-            "README.md",
-        }
-        assert (
-            auto_sync._is_file_staged("plugins/foo/.claude-plugin/plugin.json", staged)
-            is True
+        monkeypatch.chdir(tmp_path)
+        marketplace_json = tmp_path / "marketplace.json"
+        marketplace_json.write_text(json.dumps({"metadata": {"version": "2.1.0"}}))
+
+        monkeypatch.setattr(
+            auto_sync, "_read_head_json", lambda _fp: {"metadata": {"version": "2.0.0"}}
         )
 
-    def test_empty_set_returns_false(self) -> None:
-        """Verify _is_file_staged returns False for empty staged files set.
-
-        Tests: _is_file_staged with no staged files
-        How: Pass empty set
-        Why: Edge case when nothing is staged
-        """
         assert (
-            auto_sync._is_file_staged("plugins/foo/.claude-plugin/plugin.json", set())
-            is False
-        )
-
-    def test_accepts_path_object(self) -> None:
-        """Verify _is_file_staged works with Path objects.
-
-        Tests: _is_file_staged type flexibility
-        How: Pass a Path object instead of a string
-        Why: The function signature accepts str | Path
-        """
-        staged = {"plugins/foo/.claude-plugin/plugin.json"}
-        assert (
-            auto_sync._is_file_staged(
-                Path("plugins/foo/.claude-plugin/plugin.json"), staged
+            auto_sync._version_already_bumped(
+                str(marketplace_json), ["metadata", "version"]
             )
             is True
         )
-
-
-# ============================================================================
-# New behaviour: _get_staged_files helper
-# ============================================================================
-
-
-class TestGetStagedFiles:
-    """Test the _get_staged_files helper for correct set construction."""
-
-    def test_returns_set_of_paths(self, mocker: MockerFixture) -> None:
-        """Verify _get_staged_files returns a set of file paths.
-
-        Tests: _get_staged_files return type and content
-        How: Mock run_git_command to return multiline output
-        Why: Ensure correct parsing of git output into set
-        """
-        mocker.patch.object(
-            auto_sync, "run_git_command", return_value="file1.txt\nfile2.txt\nfile3.txt"
-        )
-        result = auto_sync._get_staged_files()
-        assert result == {"file1.txt", "file2.txt", "file3.txt"}
-
-    def test_returns_empty_set_for_no_output(self, mocker: MockerFixture) -> None:
-        """Verify _get_staged_files returns empty set when nothing is staged.
-
-        Tests: _get_staged_files edge case
-        How: Mock empty git output
-        Why: Empty output must not produce a set with empty string
-        """
-        mocker.patch.object(auto_sync, "run_git_command", return_value="")
-        result = auto_sync._get_staged_files()
-        assert result == set()
 
 
 # ============================================================================
@@ -1276,71 +1384,66 @@ class TestFormatJson:
 
 
 class TestIdempotentWrites:
-    """Test that the staged guard prevents double-bumping on retry.
+    """Test that the version-comparison guard prevents double-bumping on retry.
 
-    The primary defence against double-bumping is the ``_is_file_staged`` guard.
-    When run 1 writes and stages the manifest, run 2 (retry) sees the staged file
-    and returns early.  An additional ``new_content == existing_content`` check
-    provides a secondary safety net.
+    The primary defence against double-bumping is ``_version_already_bumped``.
+    When run 1 writes a bumped version, run 2 (retry) sees the file version >
+    HEAD version and returns early.  An additional ``new_content == existing_content``
+    check provides a secondary safety net.
     """
 
     def test_update_plugin_json_is_noop_on_second_run(
         self, tmp_path: Path, monkeypatch: Any
     ) -> None:
-        """Verify second run is blocked by staged guard.
+        """Verify second run is blocked by version comparison guard.
 
-        Tests: Staged guard prevents double-bump for plugin.json
-        How: Run update, then run again with file in staged_files
+        Tests: Version guard prevents double-bump for plugin.json
+        How: Run update twice; second run detects version already > HEAD
         Why: Prevents version double-bump when commit fails and user retries
         """
         monkeypatch.chdir(tmp_path)
 
         plugin_name = "test-plugin"
-        _make_plugin_json(
-            tmp_path,
-            plugin_name,
-            {
-                "name": "test-plugin",
-                "version": "1.0.0",
-                "skills": ["./skills/existing/"],
-            },
-        )
+        original_data = {
+            "name": "test-plugin",
+            "version": "1.0.0",
+            "skills": ["./skills/existing/"],
+        }
+        _make_plugin_json(tmp_path, plugin_name, original_data)
 
         changes = _changes_with_modified_skill()
 
-        # Run 1: should update
-        updated_1, version_1 = auto_sync.update_plugin_json(
-            plugin_name, changes, _NO_STAGED
+        # Simulate HEAD having the original version
+        monkeypatch.setattr(
+            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
         )
+
+        # Run 1: should update (1.0.0 == HEAD 1.0.0, so bump proceeds)
+        updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
         assert updated_1 is True
         assert version_1 == "1.0.1"
 
-        # Run 2: staged guard blocks re-processing
-        staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
-        updated_2, version_2 = auto_sync.update_plugin_json(
-            plugin_name, changes, {staged_path}
-        )
+        # Run 2: version guard blocks (1.0.1 > HEAD 1.0.0)
+        updated_2, version_2 = auto_sync.update_plugin_json(plugin_name, changes)
         assert updated_2 is False
-        assert version_2 == "0.0.0"
+        assert version_2 == "1.0.1"
 
     def test_update_marketplace_json_is_noop_on_second_run(
         self, tmp_path: Path, monkeypatch: Any
     ) -> None:
-        """Verify second run is blocked by staged guard.
+        """Verify second run is blocked by version comparison guard.
 
-        Tests: Staged guard prevents double-bump for marketplace.json
-        How: Run update, then run again with file in staged_files
+        Tests: Version guard prevents double-bump for marketplace.json
+        How: Run update twice; second run detects version already > HEAD
         Why: Prevents version double-bump in marketplace manifest
         """
         monkeypatch.chdir(tmp_path)
 
-        _make_marketplace_json(
-            tmp_path,
-            {
-                "metadata": {"version": "1.0.0"},
-                "plugins": [{"name": "existing", "source": "./plugins/existing"}],
-            },
-        )
+        original_data = {
+            "metadata": {"version": "1.0.0"},
+            "plugins": [{"name": "existing", "source": "./plugins/existing"}],
+        }
+        _make_marketplace_json(tmp_path, original_data)
 
         plugin_changes: _MarketplaceChangesDict = {
             "added": set(),
@@ -1348,14 +1451,17 @@ class TestIdempotentWrites:
             "modified": [("existing", "1.0.1")],
         }
 
+        # Simulate HEAD having the original version
+        monkeypatch.setattr(
+            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
+        )
+
         # Run 1: should update
-        updated_1 = auto_sync.update_marketplace_json(plugin_changes, _NO_STAGED)
+        updated_1 = auto_sync.update_marketplace_json(plugin_changes)
         assert updated_1 is True
 
-        # Run 2: staged guard blocks re-processing
-        updated_2 = auto_sync.update_marketplace_json(
-            plugin_changes, {".claude-plugin/marketplace.json"}
-        )
+        # Run 2: version guard blocks (1.0.1 > HEAD 1.0.0)
+        updated_2 = auto_sync.update_marketplace_json(plugin_changes)
         assert updated_2 is False
 
         # Verify version was only bumped once
@@ -1366,29 +1472,30 @@ class TestIdempotentWrites:
     def test_update_plugin_json_version_stays_at_single_bump(
         self, tmp_path: Path, monkeypatch: Any
     ) -> None:
-        """Verify staged guard prevents multiple bumps across retries.
+        """Verify version guard prevents multiple bumps across retries.
 
-        Tests: Multiple consecutive runs with staged guard
-        How: Run update once, then simulate two retries with staged guard
+        Tests: Multiple consecutive runs with version guard
+        How: Run update once, then run two more times
         Why: Stress test the double-bump prevention mechanism
         """
         monkeypatch.chdir(tmp_path)
 
         plugin_name = "test-plugin"
-        plugin_json = _make_plugin_json(
-            tmp_path,
-            plugin_name,
-            {"name": "test-plugin", "version": "1.0.0", "skills": []},
-        )
+        original_data = {"name": "test-plugin", "version": "1.0.0", "skills": []}
+        plugin_json = _make_plugin_json(tmp_path, plugin_name, original_data)
 
         changes = _changes_with_modified_skill()
-        staged_path = f"plugins/{plugin_name}/.claude-plugin/plugin.json"
+
+        # Simulate HEAD having the original version
+        monkeypatch.setattr(
+            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
+        )
 
         # Run 1: bumps to 1.0.1
-        auto_sync.update_plugin_json(plugin_name, changes, _NO_STAGED)
-        # Runs 2-3: staged guard blocks re-processing
-        auto_sync.update_plugin_json(plugin_name, changes, {staged_path})
-        auto_sync.update_plugin_json(plugin_name, changes, {staged_path})
+        auto_sync.update_plugin_json(plugin_name, changes)
+        # Runs 2-3: version guard blocks (1.0.1 > HEAD 1.0.0)
+        auto_sync.update_plugin_json(plugin_name, changes)
+        auto_sync.update_plugin_json(plugin_name, changes)
 
         # Final version should be 1.0.1, not 1.0.3
         final_data = json.loads(plugin_json.read_text(encoding="utf-8"))

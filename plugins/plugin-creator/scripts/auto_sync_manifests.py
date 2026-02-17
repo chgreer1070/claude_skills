@@ -234,33 +234,119 @@ def bump_version(current: str, bump_type: Literal["major", "minor", "patch"]) ->
             return f"{major}.{minor}.{patch + 1}"
 
 
-def _get_staged_files() -> set[str]:
-    """Return the set of currently staged file paths.
-
-    Calls ``git diff --cached --name-only`` once and returns a set for O(1)
-    membership tests, avoiding repeated subprocess invocations.
-
-    Returns:
-        Set of staged file paths (strings).
-    """
-    staged_output = run_git_command(["diff", "--cached", "--name-only"])
-    return set(staged_output.splitlines()) if staged_output else set()
-
-
-def _is_file_staged(filepath: str | Path, staged_files: set[str]) -> bool:
-    """Check whether a file path appears in the staged files set.
-
-    Uses exact matching to prevent false positives
-    (e.g. ``plugin.json.bak`` matching ``plugin.json``).
+def _parse_version_tuple(version_str: str) -> tuple[int, int, int] | None:
+    """Parse a semantic version string into a comparable tuple.
 
     Args:
-        filepath: Path to check.
-        staged_files: Pre-fetched set from ``_get_staged_files()``.
+        version_str: Version string (e.g., "1.2.3")
 
     Returns:
-        True if the exact path appears in the staged files set.
+        Tuple of (major, minor, patch) integers, or None if malformed.
     """
-    return str(filepath) in staged_files
+    try:
+        major, minor, patch = map(int, version_str.split("."))
+    except (ValueError, AttributeError):
+        return None
+    return (major, minor, patch)
+
+
+def _extract_version_from_json(
+    data: object, key_path: list[str]
+) -> tuple[int, int, int] | None:
+    """Traverse a JSON object by key path and parse the version string found.
+
+    Args:
+        data: Parsed JSON data (typically a nested dict).
+        key_path: Keys to traverse to reach the version value.
+
+    Returns:
+        Version tuple ``(major, minor, patch)``, or None if the path is
+        invalid, the value is not a string, or the version is malformed.
+    """
+    obj: object = data
+    for key in key_path:
+        if not isinstance(obj, dict):
+            return None
+        # json.loads produces dict[str, Any]; cast for type checker compat.
+        node = cast("dict[str, object]", obj)
+        if key not in node:
+            return None
+        obj = node[key]
+    if not isinstance(obj, str):
+        return None
+    return _parse_version_tuple(obj)
+
+
+def _read_head_json(filepath: str | Path) -> object | None:
+    """Read and parse JSON content of a file from HEAD.
+
+    Args:
+        filepath: Path to the JSON file (relative to repo root).
+
+    Returns:
+        Parsed JSON data, or None if the file does not exist in HEAD
+        or cannot be parsed.
+    """
+    if _GIT_PATH is None:
+        return None
+
+    result = subprocess.run(
+        [_GIT_PATH, "show", f"HEAD:{filepath}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+
+    try:
+        parsed: object = json.loads(result.stdout)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    return parsed
+
+
+def _version_already_bumped(filepath: str | Path, version_key_path: list[str]) -> bool:
+    """Check if the working copy version is already greater than HEAD.
+
+    Compares the version in the current file against the version in the
+    last commit (``HEAD``).  If the working version is strictly greater,
+    a bump has already occurred and the caller should skip bumping again.
+
+    Args:
+        filepath: Path to the JSON file (relative to repo root).
+        version_key_path: Keys to traverse to reach the version value.
+            For ``plugin.json``: ``["version"]``
+            For ``marketplace.json``: ``["metadata", "version"]``
+
+    Returns:
+        True if the current file version is strictly greater than HEAD,
+        meaning a bump already happened.  Returns False if versions are
+        equal, HEAD lacks the file, or any parsing error occurs.
+    """
+    head_data = _read_head_json(filepath)
+    if head_data is None:
+        return False
+
+    head_version = _extract_version_from_json(head_data, version_key_path)
+    if head_version is None:
+        return False
+
+    # Read the current working copy version
+    current_path = Path(filepath)
+    if not current_path.exists():
+        return False
+
+    try:
+        current_data = json.loads(current_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, ValueError, OSError):
+        return False
+
+    current_version = _extract_version_from_json(current_data, version_key_path)
+    if current_version is None:
+        return False
+
+    return current_version > head_version
 
 
 def _find_prettierrc() -> Path | None:
@@ -377,9 +463,7 @@ def _update_component_arrays(
     return modified
 
 
-def update_plugin_json(
-    plugin_name: str, changes: ComponentChanges, staged_files: set[str]
-) -> tuple[bool, str]:
+def update_plugin_json(plugin_name: str, changes: ComponentChanges) -> tuple[bool, str]:
     """Update plugin.json based on component changes.
 
     Args:
@@ -389,7 +473,6 @@ def update_plugin_json(
             'deleted': [{'component_type': 'agent', 'component_path': 'agents/bar.md'}],
             'modified': [...],
         }
-        staged_files: Pre-fetched set of staged file paths from ``_get_staged_files()``.
 
     Returns:
         (updated: bool, new_version: str)
@@ -399,14 +482,15 @@ def update_plugin_json(
     if not plugin_json_path.exists():
         return False, "0.0.0"
 
-    # Check if plugin.json is already staged using exact line matching
-    if _is_file_staged(plugin_json_path, staged_files):
-        return False, "0.0.0"
-
     with plugin_json_path.open(encoding="utf-8") as f:
         data: dict[str, list[str] | str] = json.load(f)
 
     current_version = cast("str", data.get("version", "0.0.0"))
+
+    # Skip if the version was already bumped (e.g., user manually edited
+    # plugin.json in the same commit, or commit retry after hook failure).
+    if _version_already_bumped(str(plugin_json_path), ["version"]):
+        return False, current_version
     bump_type: Literal["major", "minor", "patch"] = "patch"
     modified = False
 
@@ -428,8 +512,8 @@ def update_plugin_json(
         new_content = _format_json(data)
 
         # Skip write when the formatted output already matches the file.
-        # The primary double-bump defence is the _is_file_staged guard
-        # above — this check provides an additional safety net.
+        # The primary double-bump defence is the _version_already_bumped
+        # guard above — this check provides an additional safety net.
         if new_content == existing_content:
             return False, current_version
 
@@ -476,9 +560,7 @@ def _update_marketplace_plugins(
     return modified
 
 
-def update_marketplace_json(
-    plugin_changes: MarketplaceChanges, staged_files: set[str]
-) -> bool:
+def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
     """Update marketplace.json based on plugin changes.
 
     Args:
@@ -487,7 +569,6 @@ def update_marketplace_json(
             'deleted': ['plugin-name'],
             'modified': [('plugin-name', 'new-version')],
         }
-        staged_files: Pre-fetched set of staged file paths from ``_get_staged_files()``.
 
     Returns:
         updated: bool
@@ -498,15 +579,16 @@ def update_marketplace_json(
         print("Warning: marketplace.json not found")
         return False
 
-    # Check if marketplace.json is already staged using exact line matching
-    if _is_file_staged(marketplace_json_path, staged_files):
-        return False
-
     with marketplace_json_path.open(encoding="utf-8") as f:
         data: dict[str, dict[str, str] | list[dict[str, str]]] = json.load(f)
 
     metadata = cast("dict[str, str]", data.get("metadata", {}))
     current_version = metadata.get("version", "0.0.0")
+
+    # Skip if the version was already bumped (e.g., user manually edited
+    # marketplace.json in the same commit, or commit retry after hook failure).
+    if _version_already_bumped(str(marketplace_json_path), ["metadata", "version"]):
+        return False
     bump_type: Literal["major", "minor", "patch"] = "patch"
 
     # Determine bump type
@@ -1171,14 +1253,13 @@ def _precommit_sync() -> int:
         Exit code (0 for success)
     """
     status = get_git_status()
-    staged_files = _get_staged_files()
     plugin_component_changes, marketplace_changes = _process_file_changes(status)
 
     plugins_updated = False
     marketplace_updated = False
 
     for plugin_name, changes in plugin_component_changes.items():
-        updated, new_version = update_plugin_json(plugin_name, changes, staged_files)
+        updated, new_version = update_plugin_json(plugin_name, changes)
 
         if updated:
             plugins_updated = True
@@ -1193,7 +1274,7 @@ def _precommit_sync() -> int:
         or marketplace_changes["deleted"]
         or marketplace_changes["modified"]
     ):
-        marketplace_updated = update_marketplace_json(marketplace_changes, staged_files)
+        marketplace_updated = update_marketplace_json(marketplace_changes)
 
         if marketplace_updated:
             _git_stage_file(".claude-plugin/marketplace.json")
