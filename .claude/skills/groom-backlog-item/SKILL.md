@@ -1,88 +1,70 @@
 ---
-description: Groom backlog items by discovering related research, skills, plugins, and prior work. Accepts item title substring, priority section, or "all" to groom multiple items in parallel. Produces context manifests to prepare for working on items.
+description: "Groom backlog items — trigger /groom-backlog-item <title|section|all> — runs RT-ICA per item then spawns @backlog-item-groomer agents to discover research, skills, agents, prior work, and dependencies. Produces context manifests and grooming report. Use when preparing backlog items for planning or execution."
 argument-hint: <item-title-or-section-or-all>
 user-invocable: true
 ---
 
 # Groom Backlog Item
 
-Prepare backlog items for work by discovering related context.
+Orchestrate backlog grooming: parse arguments, assess information completeness via RT-ICA, spawn discovery agents, produce report.
 
 ## Arguments
 
-`$ARGUMENTS` can be:
+`$ARGUMENTS` accepts:
 
-- **Item title substring**: e.g., "Error Recovery" - grooms matching item
-- **Section**: e.g., "P1" or "P2" or "Ideas" - grooms all items in section
-- **"all"**: grooms all items (uses parallel agents)
+- **Title substring** — e.g., `Error Recovery` — grooms matching item (case-insensitive)
+- **Section** — `P0`, `P1`, `P2`, or `Ideas` — grooms all items in that section
+- **`all`** — grooms all items across P0, P1, P2, Ideas (parallel agents)
 
 ## Workflow
 
 ### Step 1: Parse Arguments and Load Backlog
 
-Read `.claude/BACKLOG.md` and identify target items.
-
-**If title substring**: Find items whose title contains the substring (case-insensitive)
-**If section**: Collect all items under that priority section
-**If "all"**: Collect all items from P0, P1, P2, Ideas
+Read `.claude/BACKLOG.md`. Identify target items based on argument type above.
 
 ### Step 2: Extract Item Details
 
-For each target item, extract:
+For each target item, extract: title, description, research-first questions (if present), source, suggested location.
 
-- Title
-- Description
-- Research first questions (if present)
-- Source
-- Suggested location
+### Step 3: RT-ICA Assessment Per Item
 
-### Step 3: RT-ICA Assessment
+Perform Reverse Thinking — Information Completeness Assessment before spawning groomer agents. This directs the groomer's discovery toward filling gaps rather than broad search.
 
-Before grooming, run an RT-ICA (Reverse Thinking - Information Completeness Assessment) on each item.
-
-For each item, reverse-think from the goal to identify:
-
-- **Goal statement**: What completing this item achieves
-- **Conditions**: Prerequisites that must be true (functional requirements, integration points, environment needs, data requirements, dependencies)
-- **Availability**: For each condition — AVAILABLE (in backlog description), DERIVABLE (inferable from codebase context), or MISSING
-
-Produce a compact RT-ICA summary per item:
+For each item, produce:
 
 ```text
 RT-ICA: {item title}
-Goal: {one sentence}
+Goal: {one sentence — what completing this item achieves}
 Conditions:
 1. {condition} | Status: {AVAILABLE|DERIVABLE|MISSING} | Info needed: {what}
 ...
 Decision: {APPROVED|BLOCKED}
-Missing: {list of missing inputs, if any}
+Missing: {list of missing inputs, or "None"}
 ```
 
-This RT-ICA summary becomes input to the groomer agent, directing its discovery search toward filling MISSING and validating DERIVABLE conditions.
+- **AVAILABLE**: Explicitly stated in item description or research questions
+- **DERIVABLE**: Safely inferable from codebase context (state basis)
+- **MISSING**: Not present, not safely inferable — groomer must find it
+
+Pass the RT-ICA summary to the groomer alongside item details.
 
 ### Step 4: Spawn Groomer Agents
 
-**For single item**: Run `@backlog-item-groomer` inline, passing the RT-ICA summary alongside item details.
+**Single item** — invoke `@backlog-item-groomer` directly, passing item details and RT-ICA summary.
 
-**For multiple items**: Spawn parallel agents using Task tool:
+**Multiple items** — spawn parallel Task agents (max 5 concurrent; batch in waves if more):
 
 ```text
 Task(
   subagent_type: "general-purpose",
-  prompt: "Act as @backlog-item-groomer. Groom this item: {item details}\n\nRT-ICA Assessment:\n{rt-ica summary}",
+  prompt: "Act as @backlog-item-groomer. Groom this item:\n{item details}\n\nRT-ICA Assessment:\n{rt-ica summary}",
   model: "haiku"
 )
 ```
 
-Spawn up to 5 agents in parallel. If more than 5 items, batch in waves.
+### Step 5: Collect and Report
 
-### Step 5: Collect Results
-
-Gather context manifests from all agents.
-
-### Step 6: Produce Summary Report
-
-Create a grooming report:
+Gather context manifests. Produce grooming report:
 
 ```markdown
 # Backlog Grooming Report
@@ -99,61 +81,42 @@ Create a grooming report:
 
 ## Individual Manifests
 
-### {Item 1 title}
+### {Item title}
 {manifest from agent}
-
-### {Item 2 title}
-{manifest from agent}
-
-...
 
 ## RT-ICA Results
 
-### BLOCKED Items (missing information)
+### BLOCKED Items
 - {item title}: {list of missing inputs}
 
-### APPROVED Items (ready to plan)
-- {item title}: {count} conditions verified, {count} assumptions to confirm
+### APPROVED Items
+- {item title}: {count} conditions verified
 
 ## Cross-Item Findings
 
 ### Shared Dependencies
-- {items that multiple backlog items depend on}
+- {items multiple backlog items depend on}
 
 ### Suggested Groupings
 - {items that could be worked together}
 
 ### Research Gaps
-- {topics needing research-and-compare runs — skill moved to [stateless-agent-methodology](https://github.com/bitflight-devops/stateless-agent-methodology) repo}
+- {topics needing research — methodology: [stateless-agent-methodology](https://github.com/bitflight-devops/stateless-agent-methodology)}
 ```
 
-### Step 7: Save Report (Optional)
+If grooming multiple items, offer to save report to `.claude/grooming-reports/grooming-{YYYY-MM-DD}.md`.
 
-If grooming multiple items, offer to save report to:
-
-```text
-.claude/grooming-reports/grooming-{YYYY-MM-DD}.md
-```
-
-## Example Usage
+## Example Invocations
 
 ```text
-# Groom a specific item
 /groom-backlog-item Error Recovery
-
-# Groom all P1 items
 /groom-backlog-item P1
-
-# Groom everything
 /groom-backlog-item all
 ```
 
-## Success Criteria
+## Completion Criteria
 
-- [ ] Target items identified from arguments
-- [ ] RT-ICA assessment completed for each item
-- [ ] Groomer agent(s) spawned with RT-ICA context
-- [ ] Context manifests collected
-- [ ] RT-ICA results section included in report
-- [ ] Summary report produced
-- [ ] Cross-item findings identified (if multiple items)
+- RT-ICA summary included for each item
+- Groomer agent(s) received RT-ICA context
+- Report contains RT-ICA Results section
+- Cross-item findings present (if multiple items groomed)
