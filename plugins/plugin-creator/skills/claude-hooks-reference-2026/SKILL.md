@@ -196,7 +196,7 @@ Or define inline:
 
 ## Hooks in Skills, Agents, and Slash Commands
 
-Hooks can be defined in frontmatter. These are scoped to the component's lifecycle. For complete skill documentation, see [./claude-skills-reference-2026/SKILL.md](../claude-skills-reference-2026/SKILL.md).
+Hooks can be defined in frontmatter. These are scoped to the component's lifecycle. For complete skill documentation, see [claude-skills-overview-2026](../claude-skills-overview-2026/SKILL.md).
 
 **Supported events**: `PreToolUse`, `PostToolUse`, `Stop`
 

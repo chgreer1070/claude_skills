@@ -89,7 +89,6 @@ Research from authoritative sources with verified prompt patterns:
 - [ITONICS Innovation Platform](./references/itonics-innovation-platform.md) - 79 documented prompts across 8 categories
 - [Machine Learning Mastery](./references/machine-learning-mastery.md) - Actor-Request-Context-Constraints framework
 - [Medium: Shushant Lakhyani](./references/medium-shushant-lakhyani.md) - 10 creative + 10 LinkedIn content templates
-- [Geeky Gadgets](./references/geeky-gadgets.md) - Advanced techniques (TRIZ, Six Thinking Hats, Disney Method)
 
 **Academic & Research Sources:**
 

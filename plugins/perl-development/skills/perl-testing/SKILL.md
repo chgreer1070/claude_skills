@@ -423,7 +423,6 @@ open cover_db/coverage.html
 ### Reference Files
 
 - [Test Examples](./references/test-examples/) - Complete working test files
-- [Mock Patterns](./references/mock-patterns.md) - Common mocking strategies
 
 ### Related Skills
 
