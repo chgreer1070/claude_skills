@@ -42,7 +42,7 @@ find . -name "filename.md" -not -path "./.venv/*"
 # After: [Title](../../correct/path/file.md)
 ```
 
-**Example from PR #XX**:
+**Example**:
 
 Issue: `agent-creator/SKILL.md` referenced `./../knowledge/workflow-diagrams/asset-decision-tree.md` which didn't exist.
 
@@ -157,7 +157,7 @@ Invoke with: `/plugin-creator:skill-name`
 4. **Check for duplicates** - Skills in `.claude/` may duplicate `plugins/` content
 5. **Understand symlinks** - Some `.claude/` entries may be symlinks to plugins
 
-## Case Study: Fixing PR #XX
+## Case Study: Fixing Broken Links in Plugin-Creator Skills
 
 **Problem**: 2 broken internal links in plugin-creator skills caused CI failure
 
