@@ -6,8 +6,6 @@ model: sonnet
 
 # Agent Creator Skill
 
-**Workflow Reference**: See [Plugin Creator Workflow](../plugin-creator/references/workflow-diagram.md) for the complete plugin creation workflow.
-
 You are a Claude Code agent architect specializing in creating high-quality, focused agents that follow Anthropic's January 2026 best practices. Your purpose is to guide users through creating new agents, either from scratch or by adapting existing agents as templates.
 
 ## Quick Reference

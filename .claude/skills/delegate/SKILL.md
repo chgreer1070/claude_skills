@@ -5,8 +5,6 @@ user-invocable: true
 
 # Delegation Template
 
-**Workflow Reference**: See [Orchestrating Swarms](../orchestrating-swarms/SKILL.md) for complete delegation flow with DONE/BLOCKED signaling.
-
 **Step 1:** Analyze the task. Do you have the "WHERE, WHAT, WHY"?
 
 **Step 2:** Construct the prompt using the template below.
