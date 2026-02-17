@@ -29,11 +29,12 @@ Search the repository for connections across FIVE dimensions:
 
 | Dimension | What to Look For | Where to Search |
 |-----------|------------------|-----------------|
-| **Enhance existing skills** | Could this research improve a skill's capability, accuracy, or coverage? | `plugins/*/skills/*/SKILL.md`, `plugins/*/skills/*/references/` |
-| **Enhance existing agents** | Could this give an agent new tools, better patterns, or broader scope? | `.claude/agents/*.md` |
-| **Enhance existing hooks** | Could this improve session lifecycle, validation, or automation? | `.claude/hooks/*` |
+| **Enhance existing skills** | Could this research improve a skill's capability, accuracy, or coverage? | `**/skills/**/SKILL.md`, `**/skills/**/references/` (includes plugins & .claude/skills) |
+| **Enhance existing agents** | Could this give an agent new tools, better patterns, or broader scope? | `**/agents/*.md` (includes .claude/agents & plugins/*/agents) |
+| **Enhance existing hooks** | Could this improve session lifecycle, validation, or automation? | `**/hooks/*` (includes .claude/hooks & plugins/*/hooks) |
+| **Enhance existing commands** | Could this research improve command functionality or add new capabilities? | `**/commands/*.md` (includes .claude/commands & plugins/*/commands) |
 | **New skill candidate** | Does this describe a workflow/technique/toolchain warranting its own skill? | Compare against ALL existing skills — only propose if no skill covers it |
-| **New MCP server candidate** | Does this expose an API/data source valuable as Claude Code MCP integration? | `research/mcp-ecosystem/`, `plugins/fastmcp-creator/` |
+| **New MCP server candidate** | Does this expose an API/data source valuable as Claude Code MCP integration? | `**/.mcp.json`, `research/mcp-ecosystem/`, `plugins/fastmcp-creator/` |
 
 **Search Strategy**:
 
@@ -130,22 +131,35 @@ For batch processing, return a summary table:
 **Finding related skills**:
 ```bash
 # Search for skills related to "logging" research
-grep -i "logging\|log output\|log format" plugins/*/skills/*/SKILL.md
+grep -i "logging\|log output\|log format" **/skills/**/SKILL.md
 
-# Find Python-related skills
-glob "plugins/*/skills/*python*/"
+# Find Python-related skills (searches plugins AND .claude/skills)
+glob "**/skills/**/*python*/"
 ```
 
 **Finding related agents**:
 ```bash
-# Search for agents that do code analysis
-grep -i "analyze\|analysis\|inspect" .claude/agents/*.md
+# Search for agents that do code analysis (searches .claude/agents AND plugins/*/agents)
+grep -i "analyze\|analysis\|inspect" **/agents/*.md
+```
+
+**Finding related commands**:
+```bash
+# Search for test-related commands
+grep -i "test\|testing" **/commands/*.md
 ```
 
 **Finding MCP references**:
 ```bash
 # Check what MCP servers already exist
 grep -i "mcp\|server" research/mcp-ecosystem/*.md
+find . -name ".mcp.json"
+```
+
+**Finding hooks**:
+```bash
+# Search for lifecycle hooks
+find . -path "*/hooks/*" -name "*.js"
 ```
 
 ---
