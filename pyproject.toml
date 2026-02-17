@@ -65,7 +65,6 @@ pythonpath = [
     "./plugins/python3-development/skills/mkdocs/scripts",
     "./plugins/python3-development/skills/uv/scripts",
     "./plugins/summarizer/scripts",
-    "./scripts",
 ]
 testpaths = ["**/tests"]
 
@@ -98,9 +97,8 @@ extra-paths = [
     "./plugins/python3-development/skills/mkdocs/scripts",
     "./plugins/python3-development/skills/uv/scripts",
     "./plugins/summarizer/scripts",
-    "./scripts",
 ]
-root = ["./scripts", "./plugins"]
+root = ["./plugins"]
 
 [[tool.ty.overrides]]
 include = ["**/test_*.py", "tests/**"]
