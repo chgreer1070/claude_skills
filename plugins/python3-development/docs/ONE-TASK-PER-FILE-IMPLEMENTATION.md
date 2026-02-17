@@ -28,7 +28,7 @@ Implemented directory-based task organization for SAM (Stateless Agent Methodolo
 
 ### 2. Split Script
 
-**File**: `plugins/python3-development/scripts/split-task-file.py`
+**File**: `plugins/python3-development/scripts/split_task_file.py`
 
 **Purpose**: Convert multi-task files into directory structure
 
@@ -43,13 +43,13 @@ Implemented directory-based task organization for SAM (Stateless Agent Methodolo
 **Usage**:
 ```bash
 # Split into tasks/ subdirectory
-split-task-file.py plugin-validator-tasks.md
+split_task_file.py plugin-validator-tasks.md
 
 # Split into custom directory
-split-task-file.py tasks.md ./my-tasks/
+split_task_file.py tasks.md ./my-tasks/
 
 # Force overwrite
-split-task-file.py --force tasks.md
+split_task_file.py --force tasks.md
 ```
 
 ### 3. Documentation Updates
@@ -82,7 +82,7 @@ Examples:
 ### Test Case 1: Split Existing File
 
 ```bash
-split-task-file.py \
+split_task_file.py \
   /home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/planning/plugin-validator-tasks.md \
   /home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/planning/tasks \
   --force
@@ -182,7 +182,7 @@ Tasks are sorted numerically by extracting integer components from task IDs:
 
 1. **Run split script** on existing multi-task file:
    ```bash
-   split-task-file.py tasks-feature-name.md
+   split_task_file.py tasks-feature-name.md
    ```
 
 2. **Review generated files** in `tasks/` directory
@@ -215,7 +215,7 @@ The parser maintains full backward compatibility:
    - All tests pass
    - All linting passes
 
-2. `plugins/python3-development/scripts/split-task-file.py`
+2. `plugins/python3-development/scripts/split_task_file.py`
    - New file, 238 lines
    - PEP 723 compliant
    - Executable with proper shebang

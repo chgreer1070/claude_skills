@@ -208,7 +208,7 @@ from rich.panel import Panel
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "typer>=0.19.2",
+#     "typer>=0.21.2",
 # ]
 # ///
 

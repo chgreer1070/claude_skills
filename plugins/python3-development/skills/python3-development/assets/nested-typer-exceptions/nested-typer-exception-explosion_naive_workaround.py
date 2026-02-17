@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["typer>=0.19.2"]
+# dependencies = ["typer>=0.21.2"]
 # ///
 # ruff: noqa: TRY300, TRY301
 # mypy: ignore-errors

@@ -13,16 +13,16 @@ frontmatter format while preserving all metadata and content.
 
 Usage:
     # Migrate single file
-    ./migrate-task-format.py tasks-refactor-plugin.md
+    ./migrate_task_format.py tasks-refactor-plugin.md
 
     # Migrate all task files in directory
-    ./migrate-task-format.py .claude/plan/
+    ./migrate_task_format.py .claude/plan/
 
     # Dry run (show changes without writing)
-    ./migrate-task-format.py --dry-run tasks.md
+    ./migrate_task_format.py --dry-run tasks.md
 
     # Validate migrated files
-    ./migrate-task-format.py --validate tasks.md
+    ./migrate_task_format.py --validate tasks.md
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 app = typer.Typer(
-    name="migrate-task-format",
+    name="migrate_task_format",
     help="Migrate task files from markdown to YAML frontmatter format.",
     no_args_is_help=True,
 )

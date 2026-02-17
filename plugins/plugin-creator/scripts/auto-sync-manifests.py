@@ -588,8 +588,16 @@ def _process_file_changes(
                 }
 
                 match operation:
-                    case "added" | "deleted" | "modified":
-                        plugin_component_changes[plugin_name][operation].append(
+                    case "added":
+                        plugin_component_changes[plugin_name]["added"].append(
+                            component_change
+                        )
+                    case "deleted":
+                        plugin_component_changes[plugin_name]["deleted"].append(
+                            component_change
+                        )
+                    case "modified":
+                        plugin_component_changes[plugin_name]["modified"].append(
                             component_change
                         )
 

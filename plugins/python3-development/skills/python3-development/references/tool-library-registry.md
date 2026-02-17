@@ -100,7 +100,7 @@ uv sync
 name = "{{project_name_from_directory_or_git_remote}}"
 version = "{{version_from_git_tag_or_default_0_1_0}}"
 dependencies = [
-    "typer>=0.19.2",
+    "typer>=0.21.2",
     "pydantic>=2.0.0",
 ]
 
@@ -1764,7 +1764,7 @@ markers = [
 tool_name: typer
 category: cli
 python_versions: [3.11, 3.12, 3.13, 3.14]
-installation: "typer>=0.19.2" # In PEP 723 dependencies
+installation: "typer>=0.21.2" # In PEP 723 dependencies
 purpose: "Type-based CLI framework with Rich integration"
 mandatory: true
 scenarios:
@@ -1791,7 +1791,7 @@ alternatives:
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "typer>=0.19.2",  # Includes Rich - do NOT add Rich separately
+#     "typer>=0.21.2",  # Includes Rich - do NOT add Rich separately
 # ]
 # ///
 
@@ -1871,7 +1871,7 @@ def download() -> None:
 # WRONG: Adding Rich separately
 # /// script
 # dependencies = [
-#     "typer>=0.19.2",
+#     "typer>=0.21.2",
 #     "rich>=13.0.0",  # ✗ WRONG - Rich is included with Typer
 # ]
 # ///
@@ -1879,7 +1879,7 @@ def download() -> None:
 # CORRECT: Typer only
 # /// script
 # dependencies = [
-#     "typer>=0.19.2",  # ✓ Rich is bundled
+#     "typer>=0.21.2",  # ✓ Rich is bundled
 # ]
 # ///
 ```
@@ -1901,7 +1901,7 @@ def download() -> None:
 tool_name: rich
 category: cli
 python_versions: [3.11, 3.12, 3.13, 3.14]
-installation: "Bundled with Typer >=0.19.2"
+installation: "Bundled with Typer >=0.21.2"
 purpose: "Beautiful terminal formatting and output"
 mandatory: false # Bundled with Typer
 scenarios:
@@ -2989,7 +2989,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "typer>=0.19.2",
+    "typer>=0.21.2",
     "pydantic>=2.0.0",
 ]
 
@@ -3638,7 +3638,7 @@ graph TD
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "typer>=0.19.2",     # Rich bundled - do NOT add separately
+#     "typer>=0.21.2",     # Rich bundled - do NOT add separately
 # ]
 # ///
 
@@ -3855,7 +3855,7 @@ authors = [
     {name = "{{author_name_from_git_config_user_name}}", email = "{{author_email_from_git_config_user_email}}"},
 ]
 dependencies = [
-    "typer>=0.19.2",
+    "typer>=0.21.2",
     "pydantic>=2.0.0",
 ]
 
@@ -3901,7 +3901,7 @@ uv publish                 # Publish to PyPI
 | mypy     | ✓    | ✓    | ✓    | ✓    | Universal          |
 | pyright  | ✓    | ✓    | ✓    | ✓    | Universal          |
 | pytest   | ✓    | ✓    | ✓    | ✓    | Universal          |
-| typer    | ✓    | ✓    | ✓    | ✓    | Requires 0.19.2+   |
+| typer    | ✓    | ✓    | ✓    | ✓    | Requires 0.21.2+   |
 | rich     | ✓    | ✓    | ✓    | ✓    | Bundled with Typer |
 | pydantic | ✓    | ✓    | ✓    | ✓    | v2 recommended     |
 | httpx    | ✓    | ✓    | ✓    | ✓    | Async support      |
@@ -3915,7 +3915,7 @@ uv publish                 # Publish to PyPI
 
 | Tool     | Minimum Version | Reason                         |
 | -------- | --------------- | ------------------------------ |
-| typer    | 0.19.2          | Rich bundling, modern features |
+| typer    | 0.21.2          | Rich bundling, typing.Literal choices, modern features |
 | pydantic | 2.0.0           | V2 rewrite, performance        |
 | pytest   | 8.0.0           | Modern fixtures                |
 | mypy     | 1.11.0          | Python 3.11+ support           |
@@ -3947,7 +3947,7 @@ uv publish                 # Publish to PyPI
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "typer>=0.19.2",     # Rich bundled
+#     "typer>=0.21.2",     # Rich bundled
 #     "pydantic>=2.0.0",
 #     "httpx>=0.27.0",
 # ]

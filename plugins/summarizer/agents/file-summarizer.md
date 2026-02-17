@@ -1,6 +1,6 @@
 ---
 name: file-summarizer
-description: Autonomous file summarization agent. Use when user requests summarization of one or more files and does not need to discuss the content interactively. Reads files using the Read tool, runs file-metrics.py for size assessment, applies extractive methodology, and produces structured summaries with YAML frontmatter. Handles code, config, data, documentation, and markup files.
+description: Autonomous file summarization agent. Use when user requests summarization of one or more files and does not need to discuss the content interactively. Reads files using the Read tool, runs file_metrics.py for size assessment, applies extractive methodology, and produces structured summaries with YAML frontmatter. Handles code, config, data, documentation, and markup files.
 ---
 
 # File Summarizer Agent
@@ -21,7 +21,7 @@ Read the specified file(s), assess their size, apply the correct summarization s
 ## Workflow
 
 1. **Load template** - Read `$SKILL_DIR/templates/{format}.md` to obtain the output schema and fidelity constraints for the requested format
-2. **Assess** - Run `$CLAUDE_PLUGIN_ROOT/scripts/file-metrics.py <file_path> --json` to get word count, file type, and recommended strategy
+2. **Assess** - Run `$CLAUDE_PLUGIN_ROOT/scripts/file_metrics.py <file_path> --json` to get word count, file type, and recommended strategy
 3. **Read** - Read the FULL file content using the Read tool (never guess from filename)
 4. **Extract** - Identify and extract key passages, quotes, and structured data from the content
 5. **Summarize** - Write summary grounded in the extracted passages, using BLUF style
@@ -30,7 +30,7 @@ Read the specified file(s), assess their size, apply the correct summarization s
 
 ## Strategy Selection
 
-Based on file-metrics.py output:
+Based on file_metrics.py output:
 
 | Strategy | Word Count | Approach |
 |----------|-----------|----------|

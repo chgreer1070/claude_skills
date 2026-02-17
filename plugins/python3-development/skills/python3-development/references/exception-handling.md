@@ -152,7 +152,7 @@ def validate_config(data: dict) -> dict:
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["typer>=0.19.2"]
+# dependencies = ["typer>=0.21.2"]
 # ///
 import json
 from pathlib import Path
@@ -320,13 +320,18 @@ Invalid JSON in broken.json at line 1, column 1: Expecting value
 - ✅ Validation at boundaries (user input, external APIs)
 - ✅ Clear, specific exception types
 
+## Environment Variables (Typer 0.20.1+)
+
+- **TYPER_STANDARD_TRACEBACK**: Set to enable standard traceback format instead of Rich (useful for CI/log parsing).
+- **TYPER_USE_RICH** (0.23.1+): Set to disable Rich completely when needed.
+
 ## Reference: Typer Documentation
 
 Official Typer guidance on exits and exceptions:
 
-- [Terminating](https://github.com/fastapi/typer/blob/master/docs/tutorial/terminating.md)
-- [Exceptions](https://github.com/fastapi/typer/blob/master/docs/tutorial/exceptions.md)
-- [Printing](https://github.com/fastapi/typer/blob/master/docs/tutorial/printing.md)
+- [Terminating](https://typer.tiangolo.com/tutorial/terminating/)
+- [Exceptions](https://typer.tiangolo.com/tutorial/exceptions/)
+- [Printing](https://typer.tiangolo.com/tutorial/printing/)
 
 ## Demonstration Scripts
 

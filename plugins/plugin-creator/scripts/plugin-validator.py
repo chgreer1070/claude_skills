@@ -31,7 +31,7 @@ import subprocess
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, ClassVar, Literal, Protocol
+from typing import Annotated, Any, ClassVar, Literal, Protocol, cast
 
 import typer
 import yaml
@@ -2815,7 +2815,9 @@ class HookValidator:
             )
             return
 
-        if "hooks" not in group or not isinstance(group["hooks"], list):
+        group_dict = cast("dict[str, Any]", group)
+
+        if "hooks" not in group_dict or not isinstance(group_dict["hooks"], list):
             errors.append(
                 ValidationIssue(
                     field=f"hooks.{event_type}[{group_idx}]",
@@ -2828,7 +2830,7 @@ class HookValidator:
             )
             return
 
-        for entry_idx, entry in enumerate(group["hooks"]):
+        for entry_idx, entry in enumerate(group_dict["hooks"]):
             self._validate_hook_entry(entry, event_type, group_idx, entry_idx, errors)
 
     def _validate_hook_entry(
@@ -2862,7 +2864,8 @@ class HookValidator:
             )
             return
 
-        hook_type = entry.get("type")
+        entry_dict = cast("dict[str, Any]", entry)
+        hook_type = entry_dict.get("type")
         if hook_type not in self.VALID_HOOK_TYPES:
             errors.append(
                 ValidationIssue(
@@ -2878,7 +2881,7 @@ class HookValidator:
 
         match hook_type:
             case "command":
-                if "command" not in entry:
+                if "command" not in entry_dict:
                     errors.append(
                         ValidationIssue(
                             field=f"{field_prefix}.command",
@@ -2889,7 +2892,7 @@ class HookValidator:
                         )
                     )
             case "prompt":
-                if "prompt" not in entry:
+                if "prompt" not in entry_dict:
                     errors.append(
                         ValidationIssue(
                             field=f"{field_prefix}.prompt",
@@ -3570,25 +3573,37 @@ def _handle_tokens_only(paths: list[Path]) -> None:
 
 
 def main(
-    paths: list[Path] = typer.Argument(
-        ..., help="Paths to plugin, skill, agent, or command files to validate"
-    ),
-    check: bool = typer.Option(False, "--check", help="Validate only, don't auto-fix"),
-    fix: bool = typer.Option(False, "--fix", help="Auto-fix issues where possible"),
-    verbose: bool = typer.Option(
-        False,
-        "--verbose",
-        "-v",
-        help="Show detailed validation output including info messages",
-    ),
-    no_color: bool = typer.Option(
-        False, "--no-color", help="Disable color output for CI environments"
-    ),
-    tokens_only: bool = typer.Option(
-        False,
-        "--tokens-only",
-        help="Output only the integer token count (for programmatic use)",
-    ),
+    paths: Annotated[
+        list[Path],
+        typer.Argument(
+            help="Paths to plugin, skill, agent, or command files to validate"
+        ),
+    ],
+    check: Annotated[
+        bool, typer.Option("--check", help="Validate only, don't auto-fix")
+    ] = False,
+    fix: Annotated[
+        bool, typer.Option("--fix", help="Auto-fix issues where possible")
+    ] = False,
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "--verbose",
+            "-v",
+            help="Show detailed validation output including info messages",
+        ),
+    ] = False,
+    no_color: Annotated[
+        bool,
+        typer.Option("--no-color", help="Disable color output for CI environments"),
+    ] = False,
+    tokens_only: Annotated[
+        bool,
+        typer.Option(
+            "--tokens-only",
+            help="Output only the integer token count (for programmatic use)",
+        ),
+    ] = False,
 ) -> None:
     """Validate Claude Code plugins, skills, agents, and commands.
 

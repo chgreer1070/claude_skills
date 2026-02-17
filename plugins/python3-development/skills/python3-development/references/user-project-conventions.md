@@ -804,7 +804,7 @@ All projects include domain-specific keywords related to their purpose.
 
 [project]
 dependencies = [
-    "typer>=0.19.2",
+    "typer>=0.21.2",
 ]
 ```
 

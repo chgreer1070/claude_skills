@@ -11,7 +11,7 @@ Before summarizing any file, the model MUST:
 
 1. **Read the file** - Use the Read tool to access the actual content. Never guess from the filename.
 
-2. **Assess size** - Run `$CLAUDE_PLUGIN_ROOT/scripts/file-metrics.py` to determine word count and file type. If the script is unavailable, use the Read tool and manually estimate word count from line count.
+2. **Assess size** - Run `$CLAUDE_PLUGIN_ROOT/scripts/file_metrics.py` to determine word count and file type. If the script is unavailable, use the Read tool and manually estimate word count from line count.
 
 3. **Select strategy** - Based on size thresholds from the table below.
 

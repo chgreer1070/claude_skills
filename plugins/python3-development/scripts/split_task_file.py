@@ -9,14 +9,14 @@ This script converts a task file containing multiple tasks (either YAML frontmat
 format or legacy markdown format) into a directory of individual task files.
 
 Usage:
-    split-task-file.py <input-file> [output-directory]
+    split_task_file.py <input-file> [output-directory]
 
 Examples:
     # Split into tasks/ subdirectory
-    split-task-file.py plugin-validator-tasks.md
+    split_task_file.py plugin-validator-tasks.md
 
     # Split into custom directory
-    split-task-file.py tasks.md ./my-tasks/
+    split_task_file.py tasks.md ./my-tasks/
 
 File Naming Convention:
     Output files are named: {task-id}-{slug}.md
@@ -43,14 +43,15 @@ import typer
 from rich.console import Console
 
 sys.path.insert(
-    0, str(Path(__file__).parent.parent / "skills/implementation-manager/scripts")
+    0,
+    str(Path(__file__).parent.parent / "skills" / "implementation_manager" / "scripts"),
 )
 
 from implementation_manager import Task, parse_task_file
 from task_format import has_yaml_frontmatter
 
 app = typer.Typer(
-    name="split-task-file",
+    name="split_task_file",
     help="Split multi-task file into one-task-per-file directory",
     no_args_is_help=True,
 )

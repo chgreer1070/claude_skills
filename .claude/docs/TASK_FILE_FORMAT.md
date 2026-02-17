@@ -402,13 +402,13 @@ Convert existing multi-task files to directory structure:
 
 ```bash
 # Split into tasks/ subdirectory
-split-task-file.py plugin-validator-tasks.md
+split_task_file.py plugin-validator-tasks.md
 
 # Split into custom directory
-split-task-file.py tasks.md ./my-tasks/
+split_task_file.py tasks.md ./my-tasks/
 
 # Force overwrite existing files
-split-task-file.py --force tasks.md
+split_task_file.py --force tasks.md
 ```
 
 The script:
@@ -439,7 +439,7 @@ After splitting, update task content in individual files.
 
 **Phase 3: Migration Script** (✅ COMPLETE)
 
-1. ✅ Created `plugins/python3-development/scripts/split-task-file.py`
+1. ✅ Created `plugins/python3-development/scripts/split_task_file.py`
 2. ✅ Converts existing markdown tasks to YAML frontmatter
 3. ✅ Preserves all metadata and content
 4. ✅ Supports directory-based organization
@@ -689,7 +689,7 @@ Report to orchestrator:
 
 ## Migration Script Specification
 
-**Script**: `plugins/python3-development/scripts/migrate-task-format.py`
+**Script**: `plugins/python3-development/scripts/migrate_task_format.py`
 
 **Purpose**: Convert existing markdown-format task files to YAML frontmatter format
 
@@ -708,16 +708,16 @@ Report to orchestrator:
 
 ```bash
 # Migrate single file
-uv run plugins/python3-development/scripts/migrate-task-format.py tasks-refactor-plugin.md
+uv run plugins/python3-development/scripts/migrate_task_format.py tasks-refactor-plugin.md
 
 # Migrate all task files in directory
-uv run plugins/python3-development/scripts/migrate-task-format.py .claude/plan/
+uv run plugins/python3-development/scripts/migrate_task_format.py .claude/plan/
 
 # Dry run (report changes without writing)
-uv run plugins/python3-development/scripts/migrate-task-format.py --dry-run tasks.md
+uv run plugins/python3-development/scripts/migrate_task_format.py --dry-run tasks.md
 
 # Validate migrated files
-uv run plugins/python3-development/scripts/migrate-task-format.py --validate tasks.md
+uv run plugins/python3-development/scripts/migrate_task_format.py --validate tasks.md
 ```
 
 **Output**:
@@ -861,7 +861,7 @@ completed: 2026-02-02
 
 1. **Parser Implementation**: Update `implementation_manager.py` to parse YAML frontmatter
 2. **Template Creation**: Create `sam-task-template.md` with documentation
-3. **Migration Script**: Implement `migrate-task-format.py` converter
+3. **Migration Script**: Implement `migrate_task_format.py` converter
 4. **Testing**: Validate migration on existing task files
 5. **Documentation**: Update SAM methodology docs to reference new format
 

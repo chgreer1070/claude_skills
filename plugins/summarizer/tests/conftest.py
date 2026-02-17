@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for file-metrics tests.
+"""Shared pytest fixtures for file_metrics tests.
 
 Provides reusable test fixtures for:
 - Module loading of the hyphenated script
@@ -18,8 +18,8 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-# Load the file-metrics module (has hyphen in name, so use importlib)
-_METRICS_PATH = Path(__file__).parent.parent / "scripts" / "file-metrics.py"
+# Load the file_metrics module (has hyphen in name, so use importlib)
+_METRICS_PATH = Path(__file__).parent.parent / "scripts" / "file_metrics.py"
 _spec = importlib.util.spec_from_file_location("file_metrics", _METRICS_PATH)
 if _spec and _spec.loader:
     file_metrics = importlib.util.module_from_spec(_spec)

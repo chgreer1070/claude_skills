@@ -9,7 +9,7 @@ Provides word count, line count, character count, file type detection,
 and excerpt extraction using only Python standard library.
 
 Usage:
-    python file-metrics.py <file_path> [--excerpt-lines N] [--json]
+    python file_metrics.py <file_path> [--excerpt-lines N] [--json]
 
 Output (default): Human-readable metrics
 Output (--json):  JSON object with all metrics
@@ -232,8 +232,15 @@ def summarization_strategy(word_count: int | None) -> str:
     return "large"
 
 
-def get_file_metrics(file_path: Path, excerpt_lines: int = 20) -> dict[str, Any]:
+def get_file_metrics(
+    file_path: Path, excerpt_lines: int = 20, tail_lines: int = 10
+) -> dict[str, Any]:
     """Get comprehensive file metrics for summarization planning.
+
+    Args:
+        file_path: Path to the file to analyze.
+        excerpt_lines: Number of head lines to include in excerpt (0 to skip).
+        tail_lines: Number of tail lines to include in excerpt.
 
     Returns:
         Dict with path, name, extension, category, mime_type, is_text,
@@ -266,7 +273,9 @@ def get_file_metrics(file_path: Path, excerpt_lines: int = 20) -> dict[str, Any]
         result["strategy"] = summarization_strategy(metrics.get("word_count"))
 
         if excerpt_lines > 0:
-            excerpt = extract_excerpt(file_path, head_lines=excerpt_lines)
+            excerpt = extract_excerpt(
+                file_path, head_lines=excerpt_lines, tail_lines=tail_lines
+            )
             result["excerpt"] = excerpt
     else:
         result["word_count"] = None
@@ -321,6 +330,12 @@ def main() -> None:
         help="Number of head lines to include in excerpt (default: 20)",
     )
     parser.add_argument(
+        "--tail-lines",
+        type=int,
+        default=10,
+        help="Number of tail lines to include in excerpt (default: 10)",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Output as JSON instead of human-readable text",
@@ -331,8 +346,15 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    if args.excerpt_lines < 0:
+        parser.error("--excerpt-lines must be >= 0")
+    if args.tail_lines < 0:
+        parser.error("--tail-lines must be >= 0")
+
     excerpt_lines = 0 if args.no_excerpt else args.excerpt_lines
-    metrics = get_file_metrics(args.file_path, excerpt_lines=excerpt_lines)
+    metrics = get_file_metrics(
+        args.file_path, excerpt_lines=excerpt_lines, tail_lines=args.tail_lines
+    )
 
     if args.json:
         print(json.dumps(metrics, indent=2, default=str))

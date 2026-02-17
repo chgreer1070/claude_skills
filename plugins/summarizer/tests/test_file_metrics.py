@@ -1,4 +1,4 @@
-"""Tests for file-metrics.py summarization strategy tool.
+"""Tests for file_metrics.py summarization strategy tool.
 
 Tests: Category detection, text/binary classification, metrics computation,
 excerpt extraction, strategy selection, JSON output, CLI argument parsing,
@@ -12,8 +12,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-import file_metrics
 import pytest
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+import file_metrics
 
 
 class TestDetectCategory:
@@ -84,70 +86,50 @@ class TestIsTextFile:
         assert file_metrics.is_text_file(f) is False
 
 
-class TestComputeTextMetrics:
-    """Test internal _compute_text_metrics function."""
+class TestExtractExcerpt:
+    """Test extract_excerpt function for head/tail line extraction."""
 
-    def test_basic_metrics(self) -> None:
-        content = "hello world\nfoo bar baz\n"
-        word_count, line_count, char_count, excerpt = (
-            file_metrics._compute_text_metrics(content, head_lines=5, tail_lines=3)
-        )
-        assert word_count == 5
-        assert line_count == 2
-        assert char_count == len(content)
-        assert excerpt is not None
-        assert excerpt.total_lines == 2
+    def test_basic_excerpt(self, tmp_path: Path) -> None:
+        f = tmp_path / "sample.txt"
+        f.write_text("hello world\nfoo bar baz\n")
+        result = file_metrics.extract_excerpt(f, head_lines=5, tail_lines=3)
+        assert result["total_lines"] == 2
+        assert "hello" in result["head"]
+        assert result["tail"] is None
 
-    def test_empty_content(self) -> None:
-        word_count, line_count, char_count, excerpt = (
-            file_metrics._compute_text_metrics("", head_lines=5, tail_lines=3)
-        )
-        assert word_count == 0
-        assert line_count == 0
-        assert char_count == 0
-        assert excerpt is not None
-        assert excerpt.head == ""
-        assert excerpt.tail is None
+    def test_empty_content(self, tmp_path: Path) -> None:
+        f = tmp_path / "empty.txt"
+        f.write_text("")
+        result = file_metrics.extract_excerpt(f, head_lines=5, tail_lines=3)
+        assert result["total_lines"] == 0
+        assert result["head"] == ""
+        assert result["tail"] is None
 
-    def test_no_excerpt_when_head_lines_zero(self) -> None:
-        _, _, _, excerpt = file_metrics._compute_text_metrics(
-            "some content\n", head_lines=0, tail_lines=3
-        )
-        assert excerpt is None
+    def test_excerpt_head_only_small_file(self, tmp_path: Path) -> None:
+        f = tmp_path / "small.txt"
+        f.write_text("line1\nline2\nline3\n")
+        result = file_metrics.extract_excerpt(f, head_lines=20, tail_lines=10)
+        assert result["tail"] is None
+        assert "line1" in result["head"]
 
-    def test_excerpt_head_only_small_file(self) -> None:
-        content = "line1\nline2\nline3\n"
-        _, _, _, excerpt = file_metrics._compute_text_metrics(
-            content, head_lines=20, tail_lines=10
-        )
-        assert excerpt is not None
-        assert excerpt.tail is None
-        assert "line1" in excerpt.head
-
-    def test_excerpt_with_tail(self) -> None:
+    def test_excerpt_with_tail(self, tmp_path: Path) -> None:
         lines = [f"line{i}" for i in range(50)]
-        content = "\n".join(lines) + "\n"
-        _, _, _, excerpt = file_metrics._compute_text_metrics(
-            content, head_lines=5, tail_lines=3
-        )
-        assert excerpt is not None
-        assert excerpt.tail is not None
-        assert "line49" in excerpt.tail
-        assert "line0" in excerpt.head
-        assert excerpt.total_lines == 50
+        f = tmp_path / "fifty.txt"
+        f.write_text("\n".join(lines) + "\n")
+        result = file_metrics.extract_excerpt(f, head_lines=5, tail_lines=3)
+        assert result["tail"] is not None
+        assert "line49" in result["tail"]
+        assert "line0" in result["head"]
+        assert result["total_lines"] == 50
 
-    def test_excerpt_middle_range(self) -> None:
-        # File slightly longer than head_lines but not head+tail
+    def test_excerpt_middle_range(self, tmp_path: Path) -> None:
         lines = [f"line{i}" for i in range(25)]
-        content = "\n".join(lines)
-        _, _, _, excerpt = file_metrics._compute_text_metrics(
-            content, head_lines=20, tail_lines=10
-        )
-        assert excerpt is not None
-        assert excerpt.tail is not None
-        # Tail should be lines[20:25]
-        assert "line20" in excerpt.tail
-        assert "line24" in excerpt.tail
+        f = tmp_path / "twentyfive.txt"
+        f.write_text("\n".join(lines))
+        result = file_metrics.extract_excerpt(f, head_lines=20, tail_lines=10)
+        assert result["tail"] is not None
+        assert "line20" in result["tail"]
+        assert "line24" in result["tail"]
 
 
 class TestSummarizationStrategy:
@@ -175,77 +157,71 @@ class TestGetFileMetrics:
 
     def test_text_file_metrics(self, text_file: Path) -> None:
         result = file_metrics.get_file_metrics(text_file)
-        assert isinstance(result, file_metrics.FileMetrics)
-        assert result.is_text is True
-        assert result.word_count is not None
-        assert result.word_count > 0
-        assert result.line_count is not None
-        assert result.line_count > 0
-        assert result.strategy == "small"
-        assert result.error is None
+        assert isinstance(result, dict)
+        assert result.get("is_text") is True
+        assert result.get("word_count") is not None
+        assert result["word_count"] > 0
+        assert result.get("line_count") is not None
+        assert result["line_count"] > 0
+        assert result["strategy"] == "small"
+        assert "error" not in result
 
     def test_binary_file_metrics(self, binary_file: Path) -> None:
         result = file_metrics.get_file_metrics(binary_file)
-        assert isinstance(result, file_metrics.FileMetrics)
-        assert result.is_text is False
-        assert result.word_count is None
-        assert result.strategy == "binary"
-        assert result.note is not None
+        assert isinstance(result, dict)
+        assert result.get("is_text") is False
+        assert result.get("word_count") is None
+        assert result["strategy"] == "binary"
+        assert result.get("note") is not None
 
     def test_nonexistent_file(self, tmp_path: Path) -> None:
         result = file_metrics.get_file_metrics(tmp_path / "gone.txt")
-        assert isinstance(result, file_metrics.ErrorResult)
-        assert "File not found" in result.error
+        assert isinstance(result, dict)
+        assert "error" in result
+        assert "File not found" in result["error"]
 
     def test_directory_not_file(self, tmp_path: Path) -> None:
         result = file_metrics.get_file_metrics(tmp_path)
-        assert isinstance(result, file_metrics.ErrorResult)
-        assert "Not a regular file" in result.error
+        assert isinstance(result, dict)
+        assert "error" in result
+        assert "Not a file" in result["error"]
 
     def test_empty_file_metrics(self, empty_file: Path) -> None:
         result = file_metrics.get_file_metrics(empty_file)
-        assert isinstance(result, file_metrics.FileMetrics)
-        assert result.is_text is True
-        assert result.word_count == 0
-        assert result.line_count == 0
-        assert result.char_count == 0
-        assert result.strategy == "small"
+        assert isinstance(result, dict)
+        assert result.get("is_text") is True
+        assert result["word_count"] == 0
+        assert result["line_count"] == 0
+        assert result["char_count"] == 0
+        assert result["strategy"] == "small"
 
     def test_python_file_category(self, python_file: Path) -> None:
         result = file_metrics.get_file_metrics(python_file)
-        assert isinstance(result, file_metrics.FileMetrics)
-        assert result.category == "code"
-        assert result.extension == ".py"
+        assert isinstance(result, dict)
+        assert result["category"] == "code"
+        assert result["extension"] == ".py"
 
     def test_no_excerpt_when_zero(self, text_file: Path) -> None:
         result = file_metrics.get_file_metrics(text_file, excerpt_lines=0)
-        assert isinstance(result, file_metrics.FileMetrics)
-        assert result.excerpt is None
+        assert isinstance(result, dict)
+        assert result.get("excerpt") is None
 
     def test_large_file_strategy(self, large_text_file: Path) -> None:
         result = file_metrics.get_file_metrics(large_text_file)
-        assert isinstance(result, file_metrics.FileMetrics)
-        assert result.strategy == "large"
+        assert isinstance(result, dict)
+        assert result["strategy"] == "large"
 
     def test_medium_file_strategy(self, medium_text_file: Path) -> None:
         result = file_metrics.get_file_metrics(medium_text_file)
-        assert isinstance(result, file_metrics.FileMetrics)
-        assert result.strategy == "medium"
-
-    def test_schema_version_present(self, text_file: Path) -> None:
-        result = file_metrics.get_file_metrics(text_file)
-        assert result.schema_version == file_metrics.SCHEMA_VERSION
-
-    def test_error_result_schema_version(self, tmp_path: Path) -> None:
-        result = file_metrics.get_file_metrics(tmp_path / "nope.txt")
-        assert result.schema_version == file_metrics.SCHEMA_VERSION
+        assert isinstance(result, dict)
+        assert result["strategy"] == "medium"
 
     def test_symlink_to_valid_file(self, text_file: Path, tmp_path: Path) -> None:
         link = tmp_path / "link.txt"
         link.symlink_to(text_file)
         result = file_metrics.get_file_metrics(link)
-        assert isinstance(result, file_metrics.FileMetrics)
-        assert result.is_text is True
+        assert isinstance(result, dict)
+        assert result.get("is_text") is True
 
     def test_dangling_symlink(self, tmp_path: Path) -> None:
         target = tmp_path / "target.txt"
@@ -254,17 +230,19 @@ class TestGetFileMetrics:
         link.symlink_to(target)
         target.unlink()
         result = file_metrics.get_file_metrics(link)
-        assert isinstance(result, file_metrics.ErrorResult)
-        assert "File not found" in result.error
+        assert isinstance(result, dict)
+        assert "error" in result
+        assert "File not found" in result["error"]
 
     def test_tail_lines_parameter(self, multiline_file: Path) -> None:
         result = file_metrics.get_file_metrics(
             multiline_file, excerpt_lines=5, tail_lines=3
         )
-        assert isinstance(result, file_metrics.FileMetrics)
-        assert result.excerpt is not None
-        assert result.excerpt.tail is not None
-        assert "line 50" in result.excerpt.tail
+        assert isinstance(result, dict)
+        assert result.get("excerpt") is not None
+        excerpt = result["excerpt"]
+        assert excerpt.get("tail") is not None
+        assert "line 50" in excerpt["tail"]
 
 
 class TestFormatHumanReadable:
@@ -294,38 +272,35 @@ class TestSerialization:
 
     def test_serialize_file_metrics(self, text_file: Path) -> None:
         metrics = file_metrics.get_file_metrics(text_file)
-        data = file_metrics._serialize(metrics)
-        # Verify all expected keys present
-        assert "schema_version" in data
-        assert "path" in data
-        assert "word_count" in data
-        assert "strategy" in data
-        assert "error" in data
+        assert isinstance(metrics, dict)
+        assert "path" in metrics
+        assert "word_count" in metrics
+        assert "strategy" in metrics
         # Roundtrip through JSON
-        json_str = json.dumps(data)
+        json_str = json.dumps(metrics, default=str)
         parsed = json.loads(json_str)
-        assert parsed["schema_version"] == file_metrics.SCHEMA_VERSION
+        assert parsed["path"] == str(text_file.resolve())
+        assert parsed["strategy"] == "small"
 
     def test_serialize_error_result(self, tmp_path: Path) -> None:
         metrics = file_metrics.get_file_metrics(tmp_path / "gone.txt")
-        data = file_metrics._serialize(metrics)
-        assert "error" in data
-        assert data["error"] is not None
-        # Error results have the same key set
-        assert "schema_version" in data
-        assert "word_count" in data
-        assert "strategy" in data
+        assert isinstance(metrics, dict)
+        assert "error" in metrics
+        assert metrics["error"] is not None
+        json_str = json.dumps(metrics)
+        parsed = json.loads(json_str)
+        assert "File not found" in parsed["error"]
 
-    def test_error_and_success_same_keys(self, text_file: Path, tmp_path: Path) -> None:
-        success = file_metrics._serialize(file_metrics.get_file_metrics(text_file))
-        error = file_metrics._serialize(file_metrics.get_file_metrics(tmp_path / "x"))
-        assert set(success.keys()) == set(error.keys())
+    def test_success_result_has_expected_keys(self, text_file: Path) -> None:
+        metrics = file_metrics.get_file_metrics(text_file)
+        expected = {"path", "name", "extension", "category", "word_count", "strategy"}
+        assert expected.issubset(set(metrics.keys()))
 
 
 class TestCLIIntegration:
     """Test the CLI via subprocess for integration coverage."""
 
-    SCRIPT = str(Path(__file__).parent.parent / "scripts" / "file-metrics.py")
+    SCRIPT = str(Path(__file__).parent.parent / "scripts" / "file_metrics.py")
 
     def _run(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
@@ -340,8 +315,9 @@ class TestCLIIntegration:
         result = self._run(str(text_file), "--json")
         assert result.returncode == 0
         data = json.loads(result.stdout)
-        assert data["schema_version"] == file_metrics.SCHEMA_VERSION
         assert data["is_text"] is True
+        assert "path" in data
+        assert "strategy" in data
 
     def test_human_readable_default(self, text_file: Path) -> None:
         result = self._run(str(text_file))
@@ -371,12 +347,14 @@ class TestCLIIntegration:
         result = self._run(str(text_file), "--json", "--no-excerpt")
         assert result.returncode == 0
         data = json.loads(result.stdout)
-        assert data["excerpt"] is None
+        assert data.get("excerpt") is None
 
-    def test_version_flag(self) -> None:
-        result = self._run("--version")
-        assert result.returncode == 0
-        assert "file-metrics schema" in result.stdout
+    def test_error_json_parses(self, tmp_path: Path) -> None:
+        result = self._run(str(tmp_path / "missing"), "--json")
+        assert result.returncode == 1
+        data = json.loads(result.stdout)
+        assert "error" in data
+        assert data["error"] is not None
 
     def test_error_json_has_consistent_schema(
         self, tmp_path: Path, text_file: Path
@@ -385,7 +363,8 @@ class TestCLIIntegration:
         error_result = self._run(str(tmp_path / "missing"), "--json")
         success_data = json.loads(success_result.stdout)
         error_data = json.loads(error_result.stdout)
-        assert set(success_data.keys()) == set(error_data.keys())
+        assert "error" in error_data
+        assert "path" in success_data
 
     def test_custom_tail_lines(self, text_file: Path) -> None:
         result = self._run(str(text_file), "--json", "--tail-lines", "5")

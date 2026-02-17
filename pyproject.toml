@@ -18,6 +18,7 @@ dev = [
     "hatch-vcs>=0.5.0",
     "hypothesis>=6.0.0",
     "prek>=0.2.19",
+    "pypfmt>=0.1.0",
     "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.2.1",
     "pytest-mock>=3.14.1",
@@ -27,8 +28,8 @@ dev = [
     "python-semantic-release>=10.4.1",
     "tiktoken>=0.12.0",
     "toml-sort>=0.24.3",
-    "ty>=0.0.16",
-    "typer>=0.20.0",
+    "ty>=0.0.17",
+    "typer>=0.21.0",
     "types-pyyaml>=6.0.12.20250915",
     "uv-sort>=0.7.0",
 ]
@@ -40,7 +41,6 @@ addopts = [
     "--strict-markers",
     "--tb=short",
     "-n",
-    "-v",
     "auto",
 ]
 markers = [
@@ -50,12 +50,76 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "unit: marks tests as unit tests",
 ]
-pythonpath = ["."]
-testpaths = ["tests"]
+pythonpath = [
+    ".",
+    "./.claude/skills/create-merge-request-changelog/scripts",
+    "./.claude/skills/research-curator/scripts",
+    "./plugins/development-harness/skills/implementation-manager/scripts",
+    "./plugins/fastmcp-creator/skills/fastmcp-creator/scripts",
+    "./plugins/gitlab-skill/skills/gitlab-skill/scripts",
+    "./plugins/holistic-linting/skills/holistic-linting/scripts",
+    "./plugins/plugin-creator/scripts",
+    "./plugins/plugin-creator/skills/skill-creator/scripts",
+    "./plugins/python3-development/scripts",
+    "./plugins/python3-development/skills/implementation-manager/scripts",
+    "./plugins/python3-development/skills/mkdocs/scripts",
+    "./plugins/python3-development/skills/uv/scripts",
+    "./plugins/summarizer/scripts",
+    "./scripts",
+]
+testpaths = ["**/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
+
+[tool.coverage.run]
+omit = ["tests/*", "*/tests/*", "**/test_*.py"]
+source = ["**/scripts"]
+
+[tool.ty.environment]
+extra-paths = [
+    "./.claude/skills/create-merge-request-changelog/scripts",
+    "./.claude/skills/research-curator/scripts",
+    "./plugins/development-harness/skills/implementation-manager/scripts",
+    "./plugins/fastmcp-creator/skills/fastmcp-creator/scripts",
+    "./plugins/gitlab-skill/skills/gitlab-skill/scripts",
+    "./plugins/holistic-linting/skills/holistic-linting/scripts",
+    "./plugins/plugin-creator/scripts",
+    "./plugins/plugin-creator/skills/skill-creator/scripts",
+    "./plugins/python3-development/scripts",
+    "./plugins/python3-development/skills/implementation-manager/scripts",
+    "./plugins/python3-development/skills/mkdocs/scripts",
+    "./plugins/python3-development/skills/uv/scripts",
+    "./plugins/summarizer/scripts",
+    "./scripts",
+]
+root = ["./scripts", "./plugins"]
+
+[[tool.ty.overrides]]
+include = ["**/test_*.py", "tests/**"]
+
+[tool.ty.overrides.rules]
+invalid-argument-type = "warn"
+invalid-assignment = "warn"
+possibly-unresolved-reference = "warn"
+too-many-positional-arguments = "warn"
+unresolved-attribute = "warn"
+
+[tool.ty.rules]
+
+[tool.ty.src]
+include = ["**/*.py"]
 
 [tool.ruff]
 fix = true
-src = [".github", ".gitlab", "packages", "scripts", "tests", "typings"]
+src = [".github", ".gitlab", "plugins", "scripts", "tests", "typings"]
 target-version = "py311"
 unsafe-fixes = true
 
@@ -68,71 +132,69 @@ skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
 extend-select = [
-    "A", # see: https://docs.astral.sh/ruff/rules/#flake8-builtins-a
-    "ANN", # see: https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
+    "A",     # see: https://docs.astral.sh/ruff/rules/#flake8-builtins-a
+    "ANN",   # see: https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
     "ASYNC", # see: https://docs.astral.sh/ruff/rules/#flake8-async-async
-    "B", # see: https://docs.astral.sh/ruff/rules/#flake8-bugbear-b
-    "BLE", # see: https://docs.astral.sh/ruff/rules/#flake8-blind-except-ble
-    "C4", # see: https://docs.astral.sh/ruff/rules/#flake8-comprehensions-c4
-    "C90", # see: https://docs.astral.sh/ruff/rules/#mccabe-c90
-    "D", # see: https://docs.astral.sh/ruff/rules/#pydocstyle-d
-    "DOC", # see: https://docs.astral.sh/ruff/rules/#pydoclint-doc
-    "E", # see: https://docs.astral.sh/ruff/rules/#error-e
-    "EXE", # see: https://docs.astral.sh/ruff/rules/#flake8-executable-exe
-    "F", # see: https://docs.astral.sh/ruff/rules/#pyflakes-f
-    "FA", # see: https://docs.astral.sh/ruff/rules/#flake8-annotations-fa
-    "FAST", # see: https://docs.astral.sh/ruff/rules/#fastapi-fast
-    "FLY", # see: https://docs.astral.sh/ruff/rules/#flynt-fly
-    "FURB", # see: https://docs.astral.sh/ruff/rules/#refurb-furb
-    "G201", # see: https://docs.astral.sh/ruff/rules/logging-exc-info/
-    "G202", # see: https://docs.astral.sh/ruff/rules/logging-redundant-exc-info/
-    "I", # see: https://docs.astral.sh/ruff/rules/#isort-i
-    "N", # see: https://docs.astral.sh/ruff/rules/#flake8-quotes-n
-    "PERF", # see: https://docs.astral.sh/ruff/rules/#perflint-perf
-    "PGH", # see: https://docs.astral.sh/ruff/rules/#pygrep-hooks-pgh
-    "PIE", # see: https://docs.astral.sh/ruff/rules/#flake8-pie-pie
-    "PL", # see: https://docs.astral.sh/ruff/rules/#pyflakes-f
-    "PT", # see: https://docs.astral.sh/ruff/rules/#flake8-pytest-style-pt
-    "PTH", # see: https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
-    "PYI", # see: https://docs.astral.sh/ruff/rules/#flake8-pyi-pyi
-    "Q", # see: https://docs.astral.sh/ruff/rules/#flake8-quotes-q
-    "RET", # see: https://docs.astral.sh/ruff/rules/#flake8-return-ret
-    "RSE", # see: https://docs.astral.sh/ruff/rules/#flake8-raise-rse
-    "RUF", # see: https://docs.astral.sh/ruff/rules/#ruff-ruf
-    "S", # see: https://docs.astral.sh/ruff/rules/#flake8-bandit-s
-    "SIM", # see: https://docs.astral.sh/ruff/rules/#flake8-simplify-sim
-    "SLF", # see: https://docs.astral.sh/ruff/rules/#flake8-self-slf
-    "SLOT", # see: https://docs.astral.sh/ruff/rules/#flake8-slots-slot
-    "T10", # see: https://docs.astral.sh/ruff/rules/#flake8-debugger-t10
-    "T20", # see: https://docs.astral.sh/ruff/rules/#flake8-typing-t20
-    "TC", # see: https://docs.astral.sh/ruff/rules/#flake8-type-checking-tc
-    "TID", # see: https://docs.astral.sh/ruff/rules/#flake8-tidy-imports-tid
-    "TRY", # see: https://docs.astral.sh/ruff/rules/#tryceratops-try
-    "UP", # see: https://docs.astral.sh/ruff/rules/#pyupgrade-up
-    "W", # see: https://docs.astral.sh/ruff/rules/#warning-w
-    "YTT", # see: https://docs.astral.sh/ruff/rules/#flake8-2020-ytt
+    "B",     # see: https://docs.astral.sh/ruff/rules/#flake8-bugbear-b
+    "BLE",   # see: https://docs.astral.sh/ruff/rules/#flake8-blind-except-ble
+    "C4",    # see: https://docs.astral.sh/ruff/rules/#flake8-comprehensions-c4
+    "C90",   # see: https://docs.astral.sh/ruff/rules/#mccabe-c90
+    "D",     # see: https://docs.astral.sh/ruff/rules/#pydocstyle-d
+    "DOC",   # see: https://docs.astral.sh/ruff/rules/#pydoclint-doc
+    "E",     # see: https://docs.astral.sh/ruff/rules/#error-e
+    "EXE",   # see: https://docs.astral.sh/ruff/rules/#flake8-executable-exe
+    "F",     # see: https://docs.astral.sh/ruff/rules/#pyflakes-f
+    "FA",    # see: https://docs.astral.sh/ruff/rules/#flake8-annotations-fa
+    "FAST",  # see: https://docs.astral.sh/ruff/rules/#fastapi-fast
+    "FLY",   # see: https://docs.astral.sh/ruff/rules/#flynt-fly
+    "FURB",  # see: https://docs.astral.sh/ruff/rules/#refurb-furb
+    "G201",  # see: https://docs.astral.sh/ruff/rules/logging-exc-info/
+    "G202",  # see: https://docs.astral.sh/ruff/rules/logging-redundant-exc-info/
+    "I",     # see: https://docs.astral.sh/ruff/rules/#isort-i
+    "N",     # see: https://docs.astral.sh/ruff/rules/#flake8-quotes-n
+    "PERF",  # see: https://docs.astral.sh/ruff/rules/#perflint-perf
+    "PGH",   # see: https://docs.astral.sh/ruff/rules/#pygrep-hooks-pgh
+    "PIE",   # see: https://docs.astral.sh/ruff/rules/#flake8-pie-pie
+    "PL",    # see: https://docs.astral.sh/ruff/rules/#pyflakes-f
+    "PT",    # see: https://docs.astral.sh/ruff/rules/#flake8-pytest-style-pt
+    "PTH",   # see: https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
+    "PYI",   # see: https://docs.astral.sh/ruff/rules/#flake8-pyi-pyi
+    "Q",     # see: https://docs.astral.sh/ruff/rules/#flake8-quotes-q
+    "RET",   # see: https://docs.astral.sh/ruff/rules/#flake8-return-ret
+    "RSE",   # see: https://docs.astral.sh/ruff/rules/#flake8-raise-rse
+    "RUF",   # see: https://docs.astral.sh/ruff/rules/#ruff-ruf
+    "S",     # see: https://docs.astral.sh/ruff/rules/#flake8-bandit-s
+    "SIM",   # see: https://docs.astral.sh/ruff/rules/#flake8-simplify-sim
+    "SLF",   # see: https://docs.astral.sh/ruff/rules/#flake8-self-slf
+    "SLOT",  # see: https://docs.astral.sh/ruff/rules/#flake8-slots-slot
+    "T10",   # see: https://docs.astral.sh/ruff/rules/#flake8-debugger-t10
+    "T20",   # see: https://docs.astral.sh/ruff/rules/#flake8-typing-t20
+    "TC",    # see: https://docs.astral.sh/ruff/rules/#flake8-type-checking-tc
+    "TID",   # see: https://docs.astral.sh/ruff/rules/#flake8-tidy-imports-tid
+    "TRY",   # see: https://docs.astral.sh/ruff/rules/#tryceratops-try
+    "UP",    # see: https://docs.astral.sh/ruff/rules/#pyupgrade-up
+    "W",     # see: https://docs.astral.sh/ruff/rules/#warning-w
+    "YTT",   # see: https://docs.astral.sh/ruff/rules/#flake8-2020-ytt
 ]
 ignore = [
-    "DOC501", # Raised exception {id} missing from docstring
-    "DOC502", # Raised exception is not explicitly raised
-    "E501", # Line too long ({width} > {limit})
-    "EXE003", # Shebang should contain python, pytest, or uv run (doesn't handle global arguments)
+    "DOC501",  # Raised exception {id} missing from docstring
+    "DOC502",  # Raised exception is not explicitly raised
+    "E501",    # Line too long ({width} > {limit})
+    "EXE003",  # Shebang should contain python, pytest, or uv run (doesn't handle global arguments)
     "PLR0913",
+    "PLR0917",
     "PLR6301", #
-    "S404", # subprocess possibly insecure - still need to use subprocess though
-    "S603", # subprocess without shell=True
-    "S606", # os.exec* without shell - intentional for privilege elevation (safer than with shell)
-    "T201", # print() statements are intentional for CI output visibility
-    "TRY003", # Long error messages are fine
+    "S404",    # subprocess possibly insecure - still need to use subprocess though
+    "S603",    # subprocess without shell=True
+    "S606",    # os.exec* without shell - intentional for privilege elevation (safer than with shell)
+    "T201",    # print() statements are intentional for CI output visibility
+    "TRY003",  # Long error messages are fine
 ]
 preview = true
 unfixable = ["F401"]
 
 [tool.ruff.lint.flake8-quotes]
 docstring-quotes = "double"
-
-[tool.ruff.lint.flake8-tidy-imports.banned-api]
-"requests".msg = "Use httpx instead. httpx has built-in type annotations and is the project standard."
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
@@ -150,30 +212,26 @@ max-complexity = 12
 # Lazy imports for optional dependency detection (hatchling may not be installed)
 "**/assets/version.py" = ["PLC0415"]
 "**/scripts/**" = [
-    "ANN401", # Any type annotations acceptable in script arguments
-    "DOC", # Docstring content requirements relaxed for scripts
+    "ANN401",  # Any type annotations acceptable in script arguments
+    "DOC",     # Docstring content requirements relaxed for scripts
     "PLC0415", # Local imports acceptable in scripts for lazy loading
     "PLR0911", # Too many return statements acceptable in script logic
-    "S", # Security checks relaxed for CLI scripts (subprocess, partial paths)
-    "T201", # print() statements are intentional for CI output visibility
+    "S",       # Security checks relaxed for CLI scripts (subprocess, partial paths)
+    "T201",    # print() statements are intentional for CI output visibility
 ]
 "**/tests/**" = [
-    "ANN", # Type annotations optional for test fixtures/methods
-    "D", # Docstring requirements relaxed for tests
-    "DOC", # Docstring content requirements relaxed
+    "ANN",  # Type annotations optional for test fixtures/methods
+    "D",    # Docstring requirements relaxed for tests
+    "DOC",  # Docstring content requirements relaxed
     "E501", # Line length relaxed for test data
-    "EXE", # Shebang executable check skipped for PEP723 test files
-    "N", # camelCase in test names acceptable when testing API fields
-    "PLC", # Local imports acceptable in test helpers
-    "PLR", # Testing private methods is valid test pattern
-    "S", # Security checks not needed in tests
-    "SLF", # Private name imports acceptable for testing internals
-    "T", # print() statements are intentional for CI output visibility
+    "EXE",  # Shebang executable check skipped for PEP723 test files
+    "N",    # camelCase in test names acceptable when testing API fields
+    "PLC",  # Local imports acceptable in test helpers
+    "PLR",  # Testing private methods is valid test pattern
+    "S",    # Security checks not needed in tests
+    "SLF",  # Private name imports acceptable for testing internals
+    "T",    # print() statements are intentional for CI output visibility
 ]
-# Typer evaluates annotations at runtime, conflicting with TC003 + required PEP 563 import
-# B008: Typer's design pattern requires function calls in defaults (standard pattern)
-# PLR0917: Typer CLI entry points require one parameter per flag (6 flags = 6 params)
-"plugins/plugin-creator/scripts/*.py" = ["B008", "TC003", "PLR0917"]
 "typings/**" = ["A", "ANN", "N"]
 
 [tool.ruff.lint.pycodestyle]
@@ -181,6 +239,9 @@ max-line-length = 120
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"requests".msg = "Use httpx instead. httpx has built-in type annotations and is the project standard."
 
 [tool.mypy]
 disable_error_code = ["call-arg", "misc"]
@@ -216,9 +277,9 @@ module = [
 ]
 
 [tool.basedpyright]
-extraPaths = ["**/packages", "**/scripts", "**/tests"]
+extraPaths = ["**/plugins", "**/scripts", "**/tests"]
 ignore = ["**/typings", "**/tests"]
-include = ["**/packages", "**/scripts"]
+include = ["**/plugins", "**/scripts"]
 pythonVersion = "3.11"
 reportImplicitRelativeImport = false
 reportMissingImports = false
@@ -226,95 +287,3 @@ reportMissingTypeStubs = false
 reportPrivateImportUsage = false
 reportUnnecessaryTypeIgnoreComment = "error"
 typeCheckingMode = "basic"
-
-[tool.tomlsort]
-in_place = true
-sort_table_keys = true
-spaces_indent_inline_array = 4
-trailing_comma_inline_array = true
-sort_first = [
-    "project",
-    "project.*",
-    "build-system",
-    "dependency-groups",
-    "tool.hatch",
-    "tool.git-cliff",
-    "tool.pypis_delivery_service",
-    "tool.uv",
-    "tool.pytest",
-    "tool.ty",
-    "tool.ruff",
-    "tool.mypy",
-    "tool.pyright",
-    "tool.basedpyright",
-    "tool.pylint",
-    "tool.isort",
-    "tool.black",
-    "tool.semantic_release",
-    "tool.*",
-    "tool.tomlsort",
-]
-
-[tool.tomlsort.overrides."build-system"]
-first = ["requires", "build-backend"]
-inline_arrays = true
-
-[tool.tomlsort.overrides."dependency-groups"]
-inline_arrays = true
-
-[tool.tomlsort.overrides."project"]
-inline_arrays = true
-first = [
-    "name",
-    "version",
-    "description",
-    "readme",
-    "dynamic",
-    "authors",
-    "maintainers",
-    "license",
-    "classifiers",
-    "keywords",
-    "requires-python",
-    "dependencies",
-]
-
-[tool.tomlsort.overrides."tool.pytest.*"]
-inline_arrays = true
-
-[tool.tomlsort.overrides."tool.ruff"]
-inline_arrays = true
-
-[tool.tomlsort.overrides."tool.ruff.*"]
-inline_arrays = true
-
-[tool.tomlsort.overrides."tool.semantic_release.commit_parser_options"]
-inline_arrays = true
-
-[tool.tomlsort.overrides."tool.tomlsort"]
-table_keys = false
-inline_arrays = false
-
-[tool.tomlsort.overrides."tool.tomlsort.*"]
-table_keys = false
-inline_arrays = false
-
-[tool.tomlsort.overrides."tool.ty"]
-inline_arrays = true
-
-[tool.tomlsort.overrides."tool.ty.*"]
-inline_arrays = true
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "if __name__ == .__main__.:",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if TYPE_CHECKING:",
-]
-
-[tool.coverage.run]
-omit = ["tests/*", "*/tests/*"]
-source = ["scripts"]

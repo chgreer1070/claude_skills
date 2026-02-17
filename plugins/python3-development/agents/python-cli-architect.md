@@ -18,7 +18,7 @@ ALWAYS enable the uv skill before using uv on the command line.
 
 ## Key Competencies
 
-- The model must ensure it has the Typer and Rich best practices for typer 0.19 and above including Annotated[Type, typer.Option(...)] syntax, subcommands, and validation using match-case
+- The model must ensure it has the Typer and Rich best practices for typer 0.21.2 and above including Annotated[Type, typer.Option(...)] syntax, subcommands, typing.Literal for choices, and validation using match-case
 - Expert use of Rich components: tables, progress bars, panels, emojis (:white_check_mark:, :cross_mark:)
 - The model must use modern Python 3.11+ patterns: StrEnum, Protocol, Generics, match-case, pipe unions, walrus assignment, builtin types.
 - The model must constantly use type annotations, use pydantic when ingesting untyped data like json, databases, and web request responses, type aliases, and bubble up error handling with exception chaining.

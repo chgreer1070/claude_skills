@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "typer>=0.19.2",     # Typer includes Rich - do NOT add Rich separately
+#     "typer>=0.21.2",     # Typer includes Rich - do NOT add Rich separately
 # ]
 # ///
 """Working demonstration of all Python CLI patterns from the enhanced guide.

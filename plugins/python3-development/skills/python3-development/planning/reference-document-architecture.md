@@ -1778,7 +1778,7 @@ related_docs:
   - @docs/standards/type-hints.md
   - @docs/frameworks/typer-rich/standards.md
 dependencies:
-  - typer>=0.19.2
+  - typer>=0.21.2
   - ruff
   - mypy
 python_versions: [3.11, 3.12, 3.13, 3.14]

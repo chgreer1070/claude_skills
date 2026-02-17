@@ -111,7 +111,7 @@ C4Container
 
 ### Core Framework
 
-- **CLI Framework**: Typer 0.19.2+ (includes Rich for terminal output)
+- **CLI Framework**: Typer 0.21.2+ (includes Rich for terminal output)
 - **Type System**: Native Python 3.11+ type hints
 - **Configuration**: tomllib (stdlib), pydantic-settings for validation
 - **Package Manager**: uv for dependency management and execution
@@ -267,7 +267,7 @@ version = "0.1.0"
 description = "Modern CLI tool"
 requires-python = ">=3.11"
 dependencies = [
-    "typer>=0.19.2",
+    "typer>=0.21.2",
     "pydantic>=2.0.0",
 ]
 
@@ -332,7 +332,7 @@ mytool/
 - `pytest-cov>=6.0.0` for coverage reporting (80% minimum, 95%+ for critical code)
 - `pytest-mock>=3.14.0` for mocking (NEVER use unittest.mock directly)
 - `pytest-asyncio>=0.24.0` for async test support
-- `typer.testing.CliRunner` for CLI testing (Typer 0.19.2+)
+- `typer.testing.CliRunner` for CLI testing (Typer 0.21.2+)
 - `hypothesis>=6.100.0` for property-based testing of critical logic
 - `mutmut>=2.4.0` for mutation testing of critical code paths (payments, auth, validation)
 - `pytest-benchmark>=4.0.0` for performance regression testing

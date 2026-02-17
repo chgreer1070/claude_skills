@@ -66,7 +66,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "typer>=0.15.0",
+    "typer>=0.21.2",
     "rich>=13.0.0",
 ]
 

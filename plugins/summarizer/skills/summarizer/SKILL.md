@@ -29,7 +29,7 @@ INPUT RECEIVED
   │
   ├─ Is it a FILE path?
   │   ├─ Yes → Load file-summarization skill
-  │   │         Run file-metrics.py to assess size
+  │   │         Run file_metrics.py to assess size
   │   │         Select strategy based on size thresholds
   │   └─ No ↓
   │
