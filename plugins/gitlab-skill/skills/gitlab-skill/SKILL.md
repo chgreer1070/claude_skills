@@ -416,6 +416,7 @@ ci/
     ├── [Make Docker-in-Docker builds faster with Docker layer caching](./references/ci/docker/docker_layer_caching.md)
     ├── [Build Docker images with BuildKit](./references/ci/docker/using_buildkit.md)
     ├── [Use Docker to build Docker images](./references/ci/docker/using_docker_build.md)
+        Build and push container images in GitLab CI/CD using the shell executor, Docker-in-Docker, socket binding, or pipe binding.
     ├── [Run your CI/CD jobs in Docker containers](./references/ci/docker/using_docker_images.md)
         Learn how to run your CI/CD jobs in Docker containers hosted on dedicated CI/CD build servers or your local machine.
     ├── [Use kaniko to build Docker images (removed)](./references/ci/docker/using_kaniko.md)
@@ -435,6 +436,7 @@ ci/
         Kubernetes, CI/CD, risk mitigation, and deployment.
     ├── [Dashboard for Kubernetes](./references/ci/environments/kubernetes_dashboard.md)
     ├── [Protected environments](./references/ci/environments/protected_environments.md)
+        Restrict deployment access by protecting environments. Control who can deploy to specific environments based on roles, users, or group membership.
   ├── examples/
     ├── [GitLab CI/CD examples](./references/ci/examples/_index.md)
     ├── [Testing PHP projects](./references/ci/examples/php.md)
@@ -442,6 +444,8 @@ ci/
     ├── deployment/
       ├── [Using Dpl as a deployment tool](./references/ci/examples/deployment/_index.md)
       ├── [Running Composer and npm scripts with deployment via SCP in GitLab CI/CD](./references/ci/examples/deployment/composer-npm-deploy.md)
+  ├── functions/
+    ├── [GitLab CI/CD Functions](./references/ci/functions/_index.md)
   ├── gitlab_google_cloud_integration/
     ├── [GitLab and Google Cloud integration](./references/ci/gitlab_google_cloud_integration/_index.md)
         Cloud services and Kubernetes deployments.
@@ -502,6 +506,7 @@ ci/
     ├── [Merge trains](./references/ci/pipelines/merge_trains.md)
         Use merge trains to queue merge requests and prevent branch conflicts in GitLab CI/CD.
     ├── [Merged results pipelines](./references/ci/pipelines/merged_results_pipelines.md)
+        Use merged results pipelines to test code from source and target branches combined before merging.
     ├── [Troubleshooting merge request pipelines](./references/ci/pipelines/mr_pipeline_troubleshooting.md)
     ├── [Pipeline architecture](./references/ci/pipelines/pipeline_architectures.md)
     ├── [Pipeline efficiency](./references/ci/pipelines/pipeline_efficiency.md)
@@ -523,6 +528,7 @@ ci/
     ├── [Configuring runners](./references/ci/runners/configure_runners.md)
         Set timeouts, protect sensitive information, control behavior with tags and variables, and configure artifact and cache settings of your GitLab Runner.
     ├── [Using Git submodules with GitLab CI/CD](./references/ci/runners/git_submodules.md)
+        Use Git submodules to include code from other repositories in CI/CD pipelines with relative URLs, absolute URLs, and CI/CD variables.
     ├── [Long polling](./references/ci/runners/long_polling.md)
     ├── [Migrating to the new runner registration workflow](./references/ci/runners/new_creation_workflow.md)
     ├── [Provision runners in Google Cloud Compute Engine](./references/ci/runners/provision_runners_google_cloud.md)
@@ -536,13 +542,21 @@ ci/
       ├── [Hosted runners on Linux](./references/ci/runners/hosted_runners/linux.md)
       ├── [Hosted runners on macOS](./references/ci/runners/hosted_runners/macos.md)
       ├── [Hosted runners on Windows](./references/ci/runners/hosted_runners/windows.md)
+    ├── job_router/
+      ├── [Job router](./references/ci/runners/job_router/_index.md)
+          Route CI/CD jobs through the job router for advanced job orchestration.
+      ├── [Runner controllers](./references/ci/runners/job_router/runner_controllers.md)
+          Control job admission with runner controllers.
   ├── secrets/
     ├── [Use external secrets in CI/CD](./references/ci/secrets/_index.md)
     ├── [Use AWS Secrets Manager secrets in GitLab CI/CD](./references/ci/secrets/aws_secrets_manager.md)
     ├── [Use Azure Key Vault secrets in GitLab CI/CD](./references/ci/secrets/azure_key_vault.md)
+        Learn how to use Azure Key Vault secrets in GitLab CI/CD pipelines
     ├── [Tutorial: Update HashiCorp Vault configuration to use ID Tokens](./references/ci/secrets/convert-to-id-tokens.md)
+        Learn how to convert from deprecated `CI_JOB_JWT` variable to ID tokens
     ├── [Tutorial: Use Fortanix Data Security Manager (DSM) with GitLab](./references/ci/secrets/fortanix_dsm_integration.md)
     ├── [Use GCP Secret Manager secrets in GitLab CI/CD](./references/ci/secrets/gcp_secret_manager.md)
+        Learn how to use GCP Secret Manager secrets in GitLab CI/CD pipelines
     ├── [Use HashiCorp Vault secrets in GitLab CI/CD](./references/ci/secrets/hashicorp_vault.md)
     ├── [Tutorial: Authenticating and reading secrets with HashiCorp Vault](./references/ci/secrets/hashicorp_vault_tutorial.md)
     ├── [OpenID Connect (OIDC) Authentication Using ID Tokens](./references/ci/secrets/id_token_authentication.md)
@@ -557,7 +571,7 @@ ci/
     ├── [Using PostgreSQL](./references/ci/services/postgres.md)
     ├── [Using Redis](./references/ci/services/redis.md)
   ├── steps/
-    ├── [CI/CD steps](./references/ci/steps/_index.md)
+    ├── [_index.md](./references/ci/steps/_index.md)
   ├── test_cases/
     ├── [Test cases](./references/ci/test_cases/_index.md)
         Test cases in GitLab can help your teams create testing scenarios in their existing development platform.
@@ -566,7 +580,9 @@ ci/
         Generate test reports, code quality analysis, and security scans that display in merge requests.
     ├── [Accessibility testing](./references/ci/testing/accessibility_testing.md)
     ├── [Browser Performance Testing](./references/ci/testing/browser_performance_testing.md)
+        Measure web page rendering performance with Sitespeed.io in GitLab CI/CD. View performance metrics and impacts in merge requests automatically.
     ├── [Code Quality](./references/ci/testing/code_quality.md)
+        Documentation for integrating code quality scanning tools and linters into CI/CD pipelines
     ├── [Configure CodeClimate-based Code Quality scanning (deprecated)](./references/ci/testing/code_quality_codeclimate_scanning.md)
     ├── [Troubleshooting Code Quality](./references/ci/testing/code_quality_troubleshooting.md)
     ├── [Fail Fast Testing](./references/ci/testing/fail_fast_testing.md)
@@ -576,6 +592,7 @@ ci/
     ├── [Metrics reports](./references/ci/testing/metrics_reports.md)
         Track and compare performance, memory, and custom metrics.
     ├── [Unit test report examples](./references/ci/testing/unit_test_report_examples.md)
+        JUnit XML configuration examples for Ruby, Go, Java, Python, JavaScript, and other languages.
     ├── [Unit test reports](./references/ci/testing/unit_test_reports.md)
         View and debug unit test results without searching through job logs.
     ├── code_coverage/
@@ -607,9 +624,12 @@ ci/
     ├── [Matrix expressions in GitLab CI/CD](./references/ci/yaml/matrix_expressions.md)
     ├── [Make jobs start earlier with `needs`](./references/ci/yaml/needs.md)
     ├── [Scripts and job logs](./references/ci/yaml/script.md)
+        Learn how to write GitLab CI/CD `script` sections and improve job logs with special syntax or configuration.
     ├── [Troubleshooting scripts and job logs](./references/ci/yaml/script_troubleshooting.md)
     ├── [Use Sigstore for keyless signing and verification](./references/ci/yaml/signing_examples.md)
     ├── [GitLab CI/CD `workflow` keyword](./references/ci/yaml/workflow.md)
+        GitLab CI/CD `workflow` keyword usage for pipeline control, rule management, and preventing duplicate pipelines.
     ├── [Optimize GitLab CI/CD configuration files](./references/ci/yaml/yaml_optimization.md)
         Use YAML anchors, !reference tags, and the `extends` keyword to reduce CI/CD configuration file complexity.
 ```
+
