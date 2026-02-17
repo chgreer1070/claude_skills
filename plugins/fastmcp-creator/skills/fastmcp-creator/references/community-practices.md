@@ -1,10 +1,10 @@
 # FastMCP Community Practices
 
-Mid-2025+ best practices, tooling improvements, and patterns from the MCP developer community.
+Best practices for FastMCP 3.x (2025-2026), including packaging, security, observability, testing, performance, and ecosystem patterns from the MCP developer community.
 
 ## Overview
 
-Since mid-2025, the MCP developer community (spanning OpenAI, Anthropic, Hugging Face, and independent developers) has converged on several best practices that make MCP servers more reliable and easier to integrate.
+Since 2025-2026, the MCP developer community (spanning OpenAI, Anthropic, Hugging Face, and independent developers) has converged on best practices that make MCP servers more reliable, secure, and easier to integrate. FastMCP 3.x builds on these patterns with native support for many community-requested features.
 
 ## One-Click Deployment & Packaging
 
@@ -420,14 +420,17 @@ async def stream_large_file(path: str):
             yield {"chunk": chunk}
 ```
 
-**Recent update**: FastMCP v2.10+ (mid-2025) supports streaming HTTP responses, aligning with 6/18/2025 MCP spec.
+**Updated for FastMCP 3.x**: Streaming supported in HTTP mode with automatic threadpool for sync tools.
 
 ### Performance Best Practices
 
-1. **Cache file indexes** in memory
+1. **Cache file indexes** in memory using lru_cache
 2. **Use asyncio.gather** for independent operations
 3. **Stream partial results** to avoid timeout limits
-4. **Upgrade to latest FastMCP** for performance improvements
+4. **Use background tasks** for operations >30 seconds
+5. **Configure OpenTelemetry** for performance monitoring
+6. **Leverage automatic threadpool** for CPU-bound sync operations
+7. **Use component versioning** instead of breaking changes
 
 ## Ecosystem and Compatibility
 
@@ -614,6 +617,192 @@ CONSTRAINTS:
 - **MetaMCP** - Agent that discovers and installs servers
 - **Ultimate MCP Server** - Model delegation patterns
 
+## FastMCP 3.x Community Patterns (2025-2026)
+
+### Provider-Based Server Organization
+
+Community pattern: Use FileSystemProvider for modular tool organization:
+
+```python
+from fastmcp import FastMCP
+from fastmcp.server.providers import FileSystemProvider
+
+# Organize tools in separate files
+mcp = FastMCP("organized-server", providers=[
+    FileSystemProvider("tools/", reload=True)
+])
+
+# tools/search.py
+from fastmcp.tools import tool
+
+@tool
+def search(query: str) -> dict:
+    """Search operation."""
+    ...
+
+# tools/fetch.py
+from fastmcp.tools import tool
+
+@tool
+def fetch(url: str) -> dict:
+    """Fetch operation."""
+    ...
+```
+
+Benefits:
+- No import coupling between tools
+- Hot reload during development
+- Clear separation of concerns
+- Easy to test individual tools
+
+### Component Versioning Strategy
+
+Community best practice: Use semantic versioning for API evolution:
+
+```python
+# Maintain v1 for backward compatibility
+@mcp.tool(version="1.0")
+def process_data(data: str) -> dict:
+    """Legacy v1 implementation."""
+    return {"result": simple_process(data)}
+
+# Add v2 with enhanced features
+@mcp.tool(version="2.0")
+def process_data(data: str, options: dict = None) -> dict:
+    """Enhanced v2 with options support."""
+    return {
+        "result": enhanced_process(data, options),
+        "version": "2.0"
+    }
+```
+
+Pattern adopted by:
+- Large-scale API servers
+- Enterprise MCP deployments
+- Multi-tenant platforms
+
+### Session-Scoped Feature Gating
+
+Community pattern: Use session visibility for premium features:
+
+```python
+@mcp.tool(tags={"premium"})
+def premium_analysis(data: str) -> dict:
+    """Premium-only analysis tool."""
+    ...
+
+@mcp.tool()
+async def upgrade_session(ctx: Context, license_key: str) -> str:
+    """Unlock premium features with license."""
+    if validate_license(license_key):
+        await ctx.enable_components(tags={"premium"})
+        await ctx.set_state("license", license_key)
+        return "Premium features unlocked"
+    raise ToolError("Invalid license key")
+
+# Globally disable premium - users unlock per-session
+mcp.disable(tags={"premium"})
+```
+
+Use cases:
+- SaaS MCP servers with tiered access
+- Trial/demo modes
+- Role-based feature access
+
+### Background Task Patterns
+
+Community best practice: Use background tasks for long operations:
+
+```python
+from fastmcp.server.tasks import TaskConfig
+
+@mcp.tool(task=TaskConfig(mode="required"))
+async def process_dataset(dataset_id: str) -> dict:
+    """Process large dataset (background only)."""
+    # Long-running computation
+    results = await analyze_dataset(dataset_id)
+    return {
+        "dataset_id": dataset_id,
+        "status": "complete",
+        "summary": results
+    }
+
+@mcp.tool()
+async def check_job_status(ctx: Context, job_id: str) -> dict:
+    """Check background job status."""
+    status = await ctx.get_state(f"job_{job_id}")
+    return {"job_id": job_id, "status": status}
+```
+
+Adopted by:
+- Data processing servers
+- Report generation tools
+- Batch operation platforms
+
+### OpenTelemetry Integration Pattern
+
+Community standard: Configure OTEL for production observability:
+
+```python
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+# Configure once at startup
+provider = TracerProvider()
+provider.add_span_processor(
+    BatchSpanProcessor(OTLPSpanExporter(endpoint="http://otel-collector:4317"))
+)
+trace.set_tracer_provider(provider)
+
+# FastMCP automatically traces all operations
+mcp = FastMCP("traced-server")
+
+@mcp.tool()
+async def traced_operation(data: str) -> dict:
+    # Automatic span creation with context propagation
+    result = await process(data)
+    return {"result": result}
+```
+
+Benefits:
+- Distributed tracing across services
+- Performance monitoring
+- Error tracking
+- Request correlation
+
+### Transform-Based Tool Curation
+
+Community pattern: Use ToolTransform to optimize auto-generated tools:
+
+```python
+from fastmcp.server.providers.openapi import OpenAPIProvider
+from fastmcp.server.transforms import ToolTransform
+from fastmcp.tools.tool_transform import ToolTransformConfig
+
+# Start with OpenAPI spec
+api_provider = OpenAPIProvider(openapi_spec=spec, client=httpx_client)
+
+# Curate auto-generated tools for agents
+api_provider.add_transform(ToolTransform({
+    "get_api_v1_users_user_id_": ToolTransformConfig(
+        name="get_user",
+        description="Get user by ID - returns profile, settings, and activity",
+        tags={"users", "read"}
+    ),
+    "post_api_v1_users_": ToolTransformConfig(
+        name="create_user",
+        description="Create new user account",
+        tags={"users", "write"}
+    )
+}))
+
+mcp = FastMCP("curated-api", providers=[api_provider])
+```
+
+Solves: Auto-generated tools often have poor names/descriptions for LLM consumption.
+
 ## Production Deployment Practices
 
 ### Standard Production Setup
@@ -711,6 +900,7 @@ MANDATORY_PRACTICES:
    - The model must use confirmation flags for destructive operations
    - The model must set destructiveHint annotation for state-changing tools
    - The model must rate limit expensive operations
+   - The model must use authorization system for granular access control
 
 3. PERFORMANCE:
 
@@ -718,6 +908,7 @@ MANDATORY_PRACTICES:
    - The model must use async for I/O-bound operations
    - The model must stream large responses in HTTP mode
    - The model must add performance annotations for orchestration
+   - The model must use background tasks for long-running operations
 
 4. OBSERVABILITY:
 
@@ -725,8 +916,19 @@ MANDATORY_PRACTICES:
    - The model must emit tools/list_changed for dynamic tool updates
    - The model must use Context.info() for progress logging
    - The model must verify tool schemas before deployment
+   - The model must configure OpenTelemetry for production tracing
 
 5. COMPATIBILITY:
+
    - The model must provide OpenAI function schemas when targeting GPT-4
    - The model must configure transport per platform requirements
    - The model must follow platform-specific config formats
+
+6. FASTMCP 3.x PATTERNS:
+
+   - The model must use FileSystemProvider for modular organization
+   - The model must version components when making breaking changes
+   - The model must use session-scoped visibility for feature gating
+   - The model must use TaskConfig for background operations
+   - The model must use ToolTransform to curate auto-generated tools
+   - The model must configure distributed state storage for multi-instance deployments
