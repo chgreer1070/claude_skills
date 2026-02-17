@@ -45,32 +45,35 @@ Batch process all research markdown files to discover and document integration o
 
 <implementation>
 
-When this command is invoked:
+This command uses the batch processing script at `./scripts/process-research-integration.py`.
 
-1. **Find all research files**:
-   ```bash
-   find research/ -name "*.md" -type f ! -name "README.md"
-   ```
+**Script Features**:
+- Cross-platform Python script using `uv` with inline script metadata
+- CLI built with Typer for command-line options
+- Rich console output for progress tracking and results visualization
+- Supports category filtering, single file processing, force reprocessing, and dry-run mode
 
-2. **For each file, spawn research-context-agent**:
-   - Use the Task tool with agent_type: "general-purpose" 
-   - Load the research-context-agent
-   - Pass the file path to process
-   - Agent will read, analyze, and append Integration Opportunities
+**For manual invocation**:
+```bash
+# Using uv (recommended - handles dependencies automatically)
+uv run ./scripts/process-research-integration.py --help
 
-3. **Sequential processing** (not parallel):
-   - Process files one at a time
-   - Each agent completes before the next starts
+# Or make executable and run directly
+chmod +x ./scripts/process-research-integration.py
+./scripts/process-research-integration.py --help
+```
 
-4. **Track results**:
-   - Count files processed
-   - Count enhancements found
-   - Count new skill/MCP candidates
-   - Show summary table
+**Processing workflow**:
+1. Find research files matching criteria (category/file/all)
+2. For each file, spawn research-context-agent via Task tool
+3. Agent reads, analyzes, validates with WebSearch, appends Integration Opportunities
+4. Track and display results in formatted tables
 
-5. **Error handling**:
-   - If a file fails, log it and continue
-   - Report all failures at the end
+**Agent orchestration** (to be implemented):
+- Use Task tool to spawn research-context-agent instances
+- Pass file path as parameter
+- Sequential processing (one file at a time)
+- Collect results and generate summary
 
 </implementation>
 
@@ -130,5 +133,6 @@ The research-context-agent applies these quality gates:
 ## Related
 
 - Agent: `.claude/agents/research-context-agent.md` — The agent that does the actual processing
+- Script: `./scripts/process-research-integration.py` — Python batch processing implementation
 - Skill: `.claude/skills/research-curator/` — Related research management workflow
 - Directory: `research/` — All research entries
