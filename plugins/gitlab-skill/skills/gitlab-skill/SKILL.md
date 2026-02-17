@@ -571,7 +571,7 @@ ci/
     ├── [Using PostgreSQL](./references/ci/services/postgres.md)
     ├── [Using Redis](./references/ci/services/redis.md)
   ├── steps/
-    ├── [_index.md](./references/ci/steps/_index.md)
+    ├── [CI/CD steps (redirect to functions)](./references/ci/steps/_index.md)
   ├── test_cases/
     ├── [Test cases](./references/ci/test_cases/_index.md)
         Test cases in GitLab can help your teams create testing scenarios in their existing development platform.
