@@ -102,6 +102,28 @@ Before: ~N tokens | After: ~M tokens | Delta: X%
 [Deliverables summary or missing inputs]
 ```
 
+## Decision Logic Formatting
+
+```mermaid
+flowchart TD
+    Start([Content expresses conditional logic]) --> Q1{Pattern type?}
+    Q1 -->|"when X then Y"| Mermaid["Use Mermaid flowchart<br>Allows arbitrary chaining per path"]
+    Q1 -->|"if A → B, else C → D"| Mermaid
+    Q1 -->|Branching with constraints| Mermaid
+    Q1 -->|Flat key-value data<br>no branching| Table[Table acceptable]
+    Q1 -->|Enumerated list<br>no dependencies| Bullets[Bullets acceptable]
+    Mermaid --> Why["Tables force every row into identical generic columns.<br>Flowcharts attach constraints to individual paths<br>and chain steps with precise sequencing."]
+```
+
+When producing or recommending decision logic in ANY file type (CLAUDE.md, SKILL.md, agent definitions, reference files):
+
+- **Use Mermaid flowcharts** for conditional/decision patterns — `when X then Y`, `if/else`, branching with per-path constraints, multi-step sequences
+- **Tables are prohibited** for decision logic — they flatten branching into generic columns, losing sequencing precision and per-path constraints
+- **Tables remain acceptable** for flat, non-branching data (field definitions, property lists, version matrices)
+- **Bullets remain acceptable** for unordered enumerations without dependencies between items
+
+Apply this rule when analyzing, diagnosing, and rewriting content. Flag existing tables that encode decision logic as optimization candidates and convert them to Mermaid flowcharts.
+
 ## Constraints
 
 - Preserve original intent while improving execution
