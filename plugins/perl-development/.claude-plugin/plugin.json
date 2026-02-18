@@ -1,11 +1,27 @@
 {
   "name": "perl-development",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Comprehensive Perl 5.30+ development plugin with modular skills for scripting, CPAN ecosystem, environment setup, testing, linting, and validation. Includes specialized agents for script development, code auditing, and CLI architecture.",
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "skills": ["./skills", "./skills/perl-testing"],
-  "agents": ["./agents/perl-script-developer.md", "./agents/perl-script-auditor.md", "./agents/perl-cli-architect.md"]
+  "skills": [
+    "./skills",
+    "./skills/perl-testing",
+    "./skills/perl-cpan-ecosystem",
+    "./skills/perl-development",
+    "./skills/perl-environment-setup",
+    "./skills/perl-lint",
+    "./skills/perl-validate"
+  ],
+  "agents": ["./agents/perl-script-developer.md", "./agents/perl-script-auditor.md", "./agents/perl-cli-architect.md"],
+  "commands": [
+    "./skills/perl-cpan-ecosystem",
+    "./skills/perl-development",
+    "./skills/perl-environment-setup",
+    "./skills/perl-lint",
+    "./skills/perl-testing",
+    "./skills/perl-validate"
+  ]
 }

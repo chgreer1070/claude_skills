@@ -1,7 +1,7 @@
 {
   "name": "plugin-creator",
   "description": "Complete plugin development toolkit for creating, refactoring, and validating Claude Code plugins and agents. Use when creating new plugins/skills/agents, refactoring existing plugins/skills, validating frontmatter, or restructuring plugin components. Includes specialized agents for assessment, planning, execution, and validation workflows.",
-  "version": "5.1.0",
+  "version": "5.2.0",
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
@@ -34,7 +34,11 @@
     "./skills/add-doc-updater",
     "./skills/agentskills",
     "./skills/memory-and-rules",
-    "./skills/permissions"
+    "./skills/permissions",
+    "./skills/assessor",
+    "./skills/skill-creator/scripts/init_skill.py",
+    "./skills/skill-creator/scripts/package_skill.py",
+    "./skills/skill-creator/scripts/quick_validate.py"
   ],
   "agents": [
     "./agents/refactor-planner.md",
@@ -44,5 +48,30 @@
     "./agents/contextual-ai-documentation-optimizer.md",
     "./agents/plugin-assessor.md"
   ],
-  "commands": []
+  "commands": [
+    "./skills/add-doc-updater",
+    "./skills/agent-creator",
+    "./skills/agentskills",
+    "./skills/arl",
+    "./skills/assessor",
+    "./skills/audit-agent-lifecycle",
+    "./skills/audit-skill-completeness",
+    "./skills/audit-skill-lifecycle",
+    "./skills/claude-hooks-reference-2026",
+    "./skills/claude-plugins-reference-2026",
+    "./skills/claude-skills-overview-2026",
+    "./skills/ensure-complete",
+    "./skills/hooks-core-reference",
+    "./skills/hooks-io-api",
+    "./skills/hooks-patterns",
+    "./skills/implement-refactor",
+    "./skills/memory-and-rules",
+    "./skills/permissions",
+    "./skills/plugin-creator",
+    "./skills/refactor-plugin",
+    "./skills/refactor-skill",
+    "./skills/skill-creator",
+    "./skills/start-refactor-task",
+    "./skills/write-frontmatter-description"
+  ]
 }

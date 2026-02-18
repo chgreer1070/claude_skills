@@ -1,7 +1,7 @@
 ---
 last-updated: 2026-02-18
 p0-count: 0
-p1-count: 15
+p1-count: 14
 p2-count: 12
 ideas-count: 11
 ---
@@ -127,17 +127,6 @@ _(Empty)_
 **CI file**: `.github/workflows/code-quality.yml` lines 207-215
 **Related backlog**: "plugin-validator UX and coverage gaps" — sub-issue 1 (report counts) would make triage easier
 
-### Resolve manifest drift to make CI sync check blocking
-
-**Source**: CI pipeline run 22018867027 on claude/fix-ci-pipeline-RJ0Tw (2026-02-14)
-**Added**: 2026-02-14
-**Description**: `auto_sync_manifests.py --reconcile --dry-run` found drift across most plugins — dozens of skills, commands, and agents exist on disk but aren't registered in their plugin.json files. The CI "Check manifest sync" step is currently non-blocking. Once drift is resolved, the step should be made blocking.
-**Approach**:
-1. Run `uv run plugins/plugin-creator/scripts/auto_sync_manifests.py --reconcile` (without `--dry-run`) to fix all drift
-2. Review the changes — ensure no stale entries are being added
-3. Commit the synced manifests
-4. After drift reaches 0: change CI step from `|| echo ::warning::` to a blocking gate
-**CI file**: `.github/workflows/code-quality.yml` lines 217-222
 
 ### Extract claude-plugin-lint to standalone PyPI package
 
@@ -374,6 +363,13 @@ _(Empty)_
 ---
 
 ## Completed
+
+### Resolve manifest drift to make CI sync check blocking
+
+**Source**: CI pipeline run 22018867027 on claude/fix-ci-pipeline-RJ0Tw (2026-02-14)
+**Completed**: 2026-02-18
+**Description**: Ran `auto_sync_manifests.py --reconcile` to sync all 22 plugin.json manifests with on-disk skills, commands, and agents (153 drift entries fixed). Split the `validate-plugins` CI job into two: `validate-plugins` (plugin-validator, stays in `allowed-failures`) and `manifest-sync` (now blocking in quality gate). Version bumps applied to all affected plugins.
+**Location**: `plugins/*/. claude-plugin/plugin.json`, `.github/workflows/code-quality.yml`
 
 ### Replace requests with httpx in all scripts
 

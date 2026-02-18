@@ -78,7 +78,7 @@ MUST deliver:
 1. Complete Plugin Assessment Report with ALL sections populated
 2. Overall score out of 100
 3. Marketplace readiness determination (Yes / No / With Changes)
-4. All skills analyzed with line counts and quality scores
+4. All skills analyzed with token counts (from validator) and quality scores
 5. All orphaned files identified and classified
 6. Specific refactoring recommendations with severity levels
 </success_criteria>
@@ -103,7 +103,7 @@ GENERATE a Plugin Assessment Report with these key sections:
 - Overall Score: X/100
 - Marketplace Ready: Yes / No / With Changes
 - Critical Issues: count
-- Skills needing refactoring: list (>500 lines or multi-domain)
+- Skills needing refactoring: list (SK006/SK007 token threshold exceeded or multi-domain)
 - Agents needing optimization: list
 - Orphaned files: count
 
@@ -113,7 +113,7 @@ GENERATE a Plugin Assessment Report with these key sections:
 
 ### Refactoring Recommendations
 Categorized by:
-- SKILL_SPLIT: Skills >500 lines or covering multiple domains
+- SKILL_SPLIT: Skills exceeding the validator token threshold (SK006/SK007) or covering multiple domains
 - AGENT_OPTIMIZE: Agents with vague instructions or poor triggers
 - DOC_IMPROVE: Skills/agents with low description quality
 - ORPHAN_RESOLVE: Orphaned files needing integration or removal
@@ -188,7 +188,7 @@ Critical Issues: [count]
 
 Tier 1 - Structural:
   Skills Analyzed: [count]
-  - Skills >500 lines (refactor candidates): [list]
+  - Skills exceeding validator token threshold (refactor candidates): [list]
   - Skills with multi-domain coverage: [list]
   Agents Analyzed: [count]
   - Agents needing optimization: [list]
@@ -245,7 +245,7 @@ WHERE you are designing:
 - Claude Code skill format reference: claude-skills-overview-2026
 
 WHAT patterns to follow:
-- Skills should be <500 lines with progressive disclosure via references/
+- Skills should minimize token count via progressive disclosure (references/ extraction); run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` to verify
 - Skills should cover single domain (not multi-domain)
 - Agent descriptions need trigger keywords for delegation matching
 - Frontmatter must follow Claude Code schema exactly
@@ -275,7 +275,7 @@ EXECUTE these steps in order:
 DESIGN and DOCUMENT these aspects for each refactoring target:
 
 ### For SKILL_SPLIT targets:
-- Current skill path and line count
+- Current skill path and token count (from validator output)
 - Identified domains within the skill
 - Proposed new skills with names and scopes
 - Content distribution plan (which sections go where)

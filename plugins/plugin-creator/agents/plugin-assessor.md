@@ -92,7 +92,7 @@ Bash(npm:install)          # Specific command only
 
 #### 3b. Content Analysis
 
-- SKILL.md length (should be under 500 lines)
+- SKILL.md token count (run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` — flag SK006 warning and SK007 error)
 - Progressive disclosure usage (links to ./references/\*.md)
 - Example quality and completeness
 - Instruction clarity and actionability

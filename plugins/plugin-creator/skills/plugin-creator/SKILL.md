@@ -322,7 +322,7 @@ Task(
     <files>skills/{skill-name}/SKILL.md</files>
     <action>Create skill with frontmatter and core instructions</action>
     <verify>grep -q '^---' skills/{skill-name}/SKILL.md</verify>
-    <done>SKILL.md has valid frontmatter and content under 500 lines</done>
+    <done>SKILL.md has valid frontmatter and passes token-count validation</done>
   </task>
 
   Generate 2-5 atomic tasks. Each task must have:

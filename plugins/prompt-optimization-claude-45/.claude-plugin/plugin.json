@@ -1,10 +1,11 @@
 {
   "name": "prompt-optimization-claude-45",
   "description": "Optimize CLAUDE.md files and Skills for Claude Code CLI. Use when reviewing, creating, or improving system prompts, CLAUDE.md configurations, or Skill files. Transforms negative instructions into positive patterns following Anthropic's official best practices.",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "skills": ["./skills/prompt-optimization-claude-45"]
+  "skills": ["./skills/prompt-optimization-claude-45"],
+  "commands": ["./skills/prompt-optimization-claude-45"]
 }

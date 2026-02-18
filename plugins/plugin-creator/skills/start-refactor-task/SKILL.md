@@ -199,7 +199,7 @@ Skill(skill="plugin-creator:claude-skills-overview-2026")  # Load format referen
 - Preserve content fidelity during splits (no information loss)
 - Maintain or improve frontmatter quality
 - Ensure all cross-references resolve
-- Keep line counts under thresholds (skills <500 lines)
+- Keep token counts within thresholds (run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` after writing and follow its guidance on sizing)
 
 ---
 

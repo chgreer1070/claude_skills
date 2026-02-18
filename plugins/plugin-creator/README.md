@@ -90,7 +90,7 @@ Use this plugin when:
 
 - Creating new plugins, skills, commands, or agents
 - Validating frontmatter in SKILL.md or agent files
-- A skill exceeds 500 lines and needs splitting
+- A skill exceeds the validator token threshold and needs splitting
 - Skills cover multiple distinct domains
 - Agent descriptions have weak triggers
 - Plugin structure needs reorganization

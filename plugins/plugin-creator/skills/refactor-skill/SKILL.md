@@ -74,7 +74,7 @@ ANALYZE the source skill thoroughly to determine whether splitting is warranted:
 2. **Read all reference files** in `references/` subdirectory
 3. **Identify domains** - distinct topics, use cases, or tool patterns
 4. **Map dependencies** - which sections reference others
-5. **Assess size** - line counts per section, total complexity
+5. **Assess size** - token counts per section (via validator), total complexity
 6. **Note frontmatter** - tools, hooks, model requirements per domain
 
 **Domain Identification Criteria:**
@@ -234,7 +234,7 @@ For each new skill:
 - [ ] All internal links resolve
 - [ ] Reference files properly linked
 - [ ] Cross-references to related skills present
-- [ ] Under 500 lines (or justified exception)
+- [ ] Token count within threshold (run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` and follow its guidance on sizing)
 
 #### 4c. No-Loss Verification
 
@@ -404,7 +404,7 @@ project-setup -> project-init
 1. Have a single, clear focus
 2. Be usable independently (or document dependencies)
 3. Have description with trigger keywords
-4. Be under 500 lines (SKILL.md content)
+4. Pass token-count validation (run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` and follow its guidance on sizing)
 5. Use progressive disclosure (link to references)
 6. Cross-reference related skills appropriately
 
@@ -415,7 +415,7 @@ project-setup -> project-init
 3. Break existing workflows
 4. Duplicate content without justification
 5. Create circular dependencies
-6. Over-fragment (don't create skills <50 lines)
+6. Over-fragment (don't create skills too small to be independently useful — at least a few meaningful instructions)
 7. **DELETE the original skill** - it MUST become a facade/meta-skill that loads all new specialist skills
 8. **INTRODUCE breaking changes** - existing references to the original skill (e.g., `Skill(command: "python3-development:python3-development")` or `/python3-development`) MUST continue to work
 
@@ -423,7 +423,7 @@ project-setup -> project-init
 
 A skill should have enough substance to be useful alone:
 
-- At least 50 lines of meaningful content
+- Enough meaningful content to be independently useful (at least 2-3 distinct instructions)
 - At least 2-3 distinct instructions or rules
 - Clear value proposition in description
 

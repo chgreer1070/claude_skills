@@ -205,7 +205,7 @@ The Markdown body after the frontmatter contains the skill instructions. Structu
 - **Input/output examples** — Concrete patterns that show expected behavior
 - **Common edge cases** — Situations that require special handling
 
-The agent loads this entire file once it decides to activate the skill. Keep the main SKILL.md under 500 lines; split longer content into referenced files.
+The agent loads this entire file once it decides to activate the skill. Keep the main SKILL.md lean; split content into referenced files when the validator warns. Run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` after writing and follow its guidance on token-based sizing.
 
 ---
 
@@ -248,7 +248,7 @@ Skills should be structured for efficient use of context:
 2. **Instructions** (<5000 tokens recommended): The full SKILL.md body is loaded when the skill is activated
 3. **Resources** (as needed): Files in `scripts/`, `references/`, `assets/` are loaded only when required
 
-**Keep your main SKILL.md under 500 lines.** Move detailed reference material to separate files.
+**Keep your main SKILL.md lean.** Move detailed reference material to separate files. Run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` after writing and follow its guidance on token-based sizing.
 
 ---
 

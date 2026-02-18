@@ -118,7 +118,7 @@ The model MUST use this plugin when:
 - User asks to "create a new agent"
 - User asks to "validate frontmatter" in SKILL.md or agent files
 - User asks to "refactor a plugin" or "split a skill"
-- User asks to "check skill line counts"
+- User asks to "check skill size" or "check skill complexity"
 - User needs to validate plugin.json or plugin structure
 - User wants to fix tool formatting issues in frontmatter
 
@@ -461,7 +461,7 @@ claude plugin validate {plugin-directory}
 1. **Assessment** (delegates to `@"plugin-creator:refactor-planner (agent)"`):
 
    - Analyzes plugin structure
-   - Identifies oversized skills (>500 lines)
+   - Identifies oversized skills (exceeding validator token threshold SK006/SK007)
    - Checks agent descriptions for weak triggers
    - Detects orphaned files
    - Creates assessment report
@@ -518,7 +518,7 @@ claude plugin validate {plugin-directory}
 
 - "Split the {skill-name} skill"
 - "Refactor oversized skill"
-- "This skill is over 800 lines"
+- "This skill exceeds the token limit"
 
 **Process:**
 
@@ -739,10 +739,9 @@ uv run plugins/plugin-creator/scripts/fix_tool_formats.py
 **If user says:** "Refactor {plugin}" or "This skill is too large"
 
 ```
-1. If skill >500 lines:
-   - Run uv run plugins/plugin-creator/scripts/plugin_validator.py {path} to show token complexity
-   - Offer /refactor-skill for individual skill
-   - Offer /refactor-plugin for whole plugin
+1. If skill may be oversized:
+   - Run uv run plugins/plugin-creator/scripts/plugin_validator.py {path} to check token complexity
+   - If validator reports SK006 or SK007: Offer /refactor-skill for individual skill or /refactor-plugin for whole plugin
 2. If general plugin refactoring:
    - Delegate to refactor-planner agent
    - Review generated plan with user
@@ -858,9 +857,7 @@ When commands execute, they have access to:
 
 ### Skill Size Limits
 
-- **Recommended:** <500 lines (body content)
-- **Warning:** 500-800 lines
-- **Critical:** >800 lines (must split)
+Run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` after writing and follow its guidance. Thresholds are defined as `TOKEN_WARNING_THRESHOLD` (SK006) and `TOKEN_ERROR_THRESHOLD` (SK007) in `plugin_validator.py` — not as line counts. SK006 triggers `references/` extraction; SK007 requires skill splitting.
 
 ### Frontmatter Requirements
 
@@ -1592,7 +1589,7 @@ model: sonnet
 Validation suite:
 1. Structure validation - plugin.json schema, paths, references
 2. Frontmatter validation - all SKILL.md and agent files
-3. Quality checks - skill line counts, orphaned files, broken links
+3. Quality checks - skill token complexity, orphaned files, broken links
 4. Marketplace readiness - README, LICENSE, keywords, description
 5. Version consistency - check all version fields match
 6. Generate report - validation-report.md with scores and recommendations

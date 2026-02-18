@@ -205,10 +205,10 @@ jobs:
         run: uv run plugins/plugin-creator/scripts/validate_frontmatter.py --check
 
   # =============================================================================
-  # Local hooks: plugin validation and manifest sync
-  # Has pre-existing failures — listed in quality-gate allowed-failures.
+  # Local hooks: plugin validation (plugin_validator.py)
+  # Currently passes (exit 0, warnings only as of 2026-02-18).
+  # Listed in quality-gate allowed-failures as safety net.
   # Backlog: "Resolve plugin-validator pre-existing errors" (P1, 2026-02-14)
-  # Backlog: "Resolve manifest drift" (P1, 2026-02-14)
   # =============================================================================
   validate-plugins:
     name: Local / Plugin validation
@@ -234,6 +234,29 @@ jobs:
           uv run plugins/plugin-creator/scripts/plugin_validator.py \
             $(find plugins .claude -type f \( -name 'SKILL.md' -o -path '*/agents/*.md' -o -path '*/commands/*.md' -o -name 'plugin.json' \) \
               -not -path './.venv/*' -not -path './node_modules/*' 2>/dev/null)
+
+  # =============================================================================
+  # Local hooks: manifest sync (auto_sync_manifests.py)
+  # Blocking — drift was resolved 2026-02-18.
+  # =============================================================================
+  manifest-sync:
+    name: Local / Manifest sync
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
 
       - name: Check manifest sync
         run: uv run plugins/plugin-creator/scripts/auto_sync_manifests.py --reconcile --dry-run
@@ -457,6 +480,7 @@ jobs:
       - lint-json
       - validate-frontmatter
       - validate-plugins
+      - manifest-sync
       - file-hygiene
     runs-on: ubuntu-latest
     steps:
@@ -466,6 +490,5 @@ jobs:
           # Jobs listed here may fail without blocking the gate.
           # Remove a job from this list to make it blocking.
           # Backlog: "Resolve plugin-validator pre-existing errors" (P1, 2026-02-14)
-          # Backlog: "Resolve manifest drift" (P1, 2026-02-14)
           allowed-failures: validate-plugins
           jobs: ${{ toJSON(needs) }}

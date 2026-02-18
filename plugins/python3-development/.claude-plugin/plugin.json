@@ -1,7 +1,7 @@
 {
   "name": "python3-development",
   "description": "Python 3.11+ development workflows including CLI apps with Typer/Rich, script writing, test development, code review, linting troubleshooting, and pyproject.toml configuration. Provides TDD patterns, modern type hints, PEP 723 metadata, and solutions for common Python errors.",
-  "version": "1.8.5",
+  "version": "1.9.0",
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
@@ -41,7 +41,11 @@
     "./skills/uv",
     "./skills/implementation-manager/scripts/get_task_context.py",
     "./skills/uv/scripts/sync_uv_releases.py",
-    "./skills/stdlib-scripting"
+    "./skills/stdlib-scripting",
+    "./skills/implementation-manager/scripts/implementation_manager.py",
+    "./skills/implementation-manager/scripts/task_format.py",
+    "./skills/implementation-manager/scripts/task_status_hook.py",
+    "./skills/mkdocs/scripts/example.py"
   ],
   "agents": [
     "./agents/python-cli-architect.md",
@@ -61,5 +65,38 @@
     "./agents/service-documentation.md",
     "./agents/context-refinement.md",
     "./agents/code-reviewer.md"
+  ],
+  "commands": [
+    "./skills/async-python-patterns",
+    "./skills/clear-cove-task-design",
+    "./skills/development/add-new-feature",
+    "./skills/development/complete-implementation",
+    "./skills/development/create-feature-task",
+    "./skills/development/implement-feature",
+    "./skills/development/start-task",
+    "./skills/development/use-command-template",
+    "./skills/generate-task",
+    "./skills/hatchling",
+    "./skills/mkdocs",
+    "./skills/modernpython",
+    "./skills/pre-commit",
+    "./skills/pypi-readme-creator",
+    "./skills/python3-add-feature",
+    "./skills/python3-bug",
+    "./skills/python3-development",
+    "./skills/python3-packaging",
+    "./skills/python3-publish-release-pipeline",
+    "./skills/python3-review",
+    "./skills/python3-test-design",
+    "./skills/shebangpython",
+    "./skills/snakepolish",
+    "./skills/stdlib-scripting",
+    "./skills/stinkysnake",
+    "./skills/testing/analyze-test-failures",
+    "./skills/testing/comprehensive-test-review",
+    "./skills/testing/test-failure-mindset",
+    "./skills/toml-python",
+    "./skills/uv",
+    "./skills/validation-protocol"
   ]
 }

@@ -32,7 +32,7 @@ Before optimizing, assess information completeness:
 Identify which principles are violated or underutilized. Use file-type-specific strategies:
 
 <file_type_strategies>
-**CLAUDE.md:** Front-load identity and constraints; use Mermaid flowcharts for decision logic; compress verbose sections using TRIGGER->PROCEDURE->OUTPUT format; target <500 lines; check for behavioral instructions that could be hooks.
+**CLAUDE.md:** Front-load identity and constraints; use Mermaid flowcharts for decision logic; compress verbose sections using TRIGGER->PROCEDURE->OUTPUT format; minimize content and run the plugin validator after writing to check token complexity; check for behavioral instructions that could be hooks.
 
 **SKILL.md:** Evaluate against 8 completeness categories using audit-skill-completeness; verify progressive disclosure structure; check description <1024 chars with trigger keywords; verify no YAML multiline indicators; validate token count <4000 (warn) or <6400 (critical).
 
