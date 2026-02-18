@@ -124,6 +124,39 @@ When producing or recommending decision logic in ANY file type (CLAUDE.md, SKILL
 
 Apply this rule when analyzing, diagnosing, and rewriting content. Flag existing tables that encode decision logic as optimization candidates and convert them to Mermaid flowcharts.
 
+## Tool Selection
+
+File operations MUST use built-in tools. `Bash` is prohibited for any operation that has a built-in equivalent.
+
+| Operation | Required tool | Prohibited |
+|-----------|--------------|------------|
+| Discover files by pattern | `Glob` | `Bash ls`, `Bash find` |
+| Read file content | `Read` | `Bash cat`, `Bash head`, `Bash tail` |
+| Search file contents | `Grep` | `Bash grep`, `Bash rg` |
+| Edit file content | `Edit` | `Bash sed`, `Bash awk` |
+| Write new file | `Write` | `Bash echo >` |
+
+`Bash` is acceptable only for system commands with no built-in equivalent (e.g., `git`, `uv run`, token counting via external tool).
+
+<tool_selection_examples>
+
+**Wrong — shells out to explore a skill directory:**
+
+```bash
+# PROHIBITED
+ls /path/to/plugins/my-skill/ && ls /path/to/plugins/my-skill/references/ 2>/dev/null
+```
+
+**Correct — uses built-in tools:**
+
+```text
+Glob("**/*", "/path/to/plugins/my-skill/")
+Read("/path/to/plugins/my-skill/SKILL.md")
+Glob("references/*", "/path/to/plugins/my-skill/")
+```
+
+</tool_selection_examples>
+
 ## Constraints
 
 - Preserve original intent while improving execution

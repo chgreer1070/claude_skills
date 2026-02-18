@@ -153,13 +153,17 @@ VERIFICATION REQUIREMENTS:
 - Provide evidence for each checklist item as you complete it
 - If checklist reveals missing work, complete that work before proceeding
 
-AVAILABLE RESOURCES:
-[See "Writing Effective AVAILABLE RESOURCES" section below for examples]
+ECOSYSTEM CONTEXT:
+# Describe the ecosystem — not a tool list. Correct pattern:
+# - "The `gh` CLI is pre-authenticated for GitHub operations"
+# - "This Python project uses `uv` — activate the uv skill"
+# - "Excellent MCP servers available — prefer Ref/context7/exa over built-in tools"
+# See ECOSYSTEM CONTEXT section below for complete guidance.
 ```
 
-## Writing Effective AVAILABLE RESOURCES
+## Writing Effective ECOSYSTEM CONTEXT
 
-The AVAILABLE RESOURCES section provides world-building context about the environment, not a restrictive tool list. Describe the ecosystem so agents can leverage their full capabilities.
+The ECOSYSTEM CONTEXT section provides world-building context about the environment, not a restrictive tool list. Describe the ecosystem so agents can leverage their full capabilities.
 
 **Anti-pattern (reductive, limiting):**
 

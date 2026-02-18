@@ -1,6 +1,6 @@
 ---
-description: "Invoke when the user starts work on a backlog item — TRIGGER item title substring provided; reads .claude/BACKLOG.md, auto-grooms if no manifest exists, runs RT-ICA to BLOCK on missing inputs before SAM planning, invokes add-new-feature, then writes Plan reference back to BACKLOG.md. STOPS if item already has a Plan field or RT-ICA returns BLOCKED."
-argument-hint: <item-title-substring>
+description: "Bridges BACKLOG.md to the SAM planning pipeline — no args shows interactive backlog browser with grooming status; with args finds item by title substring, auto-grooms if needed, runs RT-ICA to BLOCK on missing inputs before SAM planning, invokes add-new-feature, then updates backlog with plan reference. STOPS if item already has a Plan field or RT-ICA returns BLOCKED."
+argument-hint: "[item-title-substring]"
 user-invocable: true
 ---
 
@@ -8,40 +8,92 @@ user-invocable: true
 
 Bridge a `.claude/BACKLOG.md` item into the SAM planning pipeline via `/python3-development:add-new-feature`, then record the resulting plan file back in BACKLOG.md.
 
+When invoked with no arguments, shows an interactive backlog browser. When invoked with a title substring, proceeds directly to the planning workflow.
+
 ## Arguments
 
-`$ARGUMENTS` — case-insensitive substring matching an H3 heading in BACKLOG.md.
+`$ARGUMENTS` is an optional case-insensitive title substring matching an H3 heading in BACKLOG.md.
 
 ```text
-/work-backlog-item Error Recovery
+/work-backlog-item                    # interactive browser
+/work-backlog-item Error Recovery     # direct match
 /work-backlog-item regex false positive
 /work-backlog-item validate-task-file
 ```
 
 ## Workflow
 
+### Step 0: Interactive Browser (no arguments only)
+
+**Trigger:** `$ARGUMENTS` is empty.
+
+<step0_procedure>
+
+1. Read `.claude/BACKLOG.md`. Parse all H3 headings (`### ...`) from P0, P1, P2, and Ideas sections. Record each item's priority section and title.
+
+2. For each item, determine grooming status:
+   - **Has plan** — item has a `**Plan**:` field in BACKLOG.md
+   - **Groomed** — `.claude/grooming-reports/` contains a file whose content references the item title (search with Grep)
+   - **Ungroomed** — neither condition above is true
+
+3. Present a numbered list. Use these status indicators in user-visible output only:
+
+   ```text
+   Backlog Items:
+
+   P0
+     1. ✅ SAM: Error Recovery / Rollback Procedures
+     2. 🔍 SAM: Regex False Positive Suppression
+
+   P1
+     3. 📋 SAM: Validate Task File Schema
+     4. 📋 SAM: Implement Feature Dry-Run Mode
+
+   P2
+     5. 🔍 SAM: Context Window Budget Tracking
+
+   Ideas
+     6. 📋 SAM: Multi-Repo Support
+
+   Status: ✅ = planned  🔍 = groomed  📋 = not yet groomed
+
+   Options:
+     [number]   — Select item to work on
+     G [number] — Groom a specific item
+     G all      — Groom all ungroomed items
+     D [number] — Show full details for an item
+   ```
+
+4. Use `AskUserQuestion` to ask: "Which item would you like to work on next?"
+
+5. Handle the response:
+   - `[number]` — set `$ARGUMENTS` to that item's title and proceed to Step 1
+   - `G [number]` — invoke `Skill(skill="groom-backlog-item", args="{item title}")` then re-display the list
+   - `G all` — invoke `Skill(skill="groom-backlog-item", args="all")` then re-display the list
+   - `D [number]` — display the full item description, research_first field, and grooming manifest if it exists in `.claude/grooming-reports/`, then re-display the list
+
+</step0_procedure>
+
 ### Step 1: Find the Backlog Item
 
 Read `.claude/BACKLOG.md`. Search H3 headings (`### ...`) for case-insensitive match against `$ARGUMENTS`.
 
-- Zero matches: report `No backlog item found matching: {$ARGUMENTS}` and stop.
+- Zero matches: report "No backlog item found matching: {$ARGUMENTS}" and stop.
 - Multiple matches: list all matches and ask the user to pick one.
 
 Record the priority section (P0, P1, P2, Ideas) the item belongs to.
 
 ### Step 2: Extract Item Fields
 
-Extract these fields (all use **bold-key**: value format on separate lines):
+From the matched item, extract these fields (all are `**bold-key**: value` format on separate lines):
 
-| Field              | Key in BACKLOG.md         | Required |
-|--------------------|---------------------------|----------|
-| title              | H3 heading text           | Yes      |
-| source             | `**Source**:`             | No       |
-| added              | `**Added**:`              | No       |
-| description        | `**Description**:`        | Yes      |
-| research_first     | `**Research first**:`     | No       |
-| suggested_location | `**Suggested location**:` | No       |
-| plan               | `**Plan**:`               | No       |
+- `title` — the H3 heading text (required)
+- `source` — `**Source**:` value (optional)
+- `added` — `**Added**:` value (optional)
+- `description` — `**Description**:` value (required)
+- `research_first` — `**Research first**:` value (optional)
+- `suggested_location` — `**Suggested location**:` value (optional)
+- `plan` — `**Plan**:` value (optional)
 
 If the item already has a `**Plan**:` field, report:
 
@@ -54,16 +106,17 @@ Then stop.
 ### Step 3: Auto-Groom (if needed)
 
 <groom_check>
-1. Search `.claude/grooming-reports/` for files containing the item title.
+
+1. Search `.claude/grooming-reports/` for files whose content references the item title (use Grep)
 2. Search conversation context for a recent `groom-backlog-item` output matching this item.
 
-If no grooming context exists, invoke:
+If no grooming report exists:
 
 ```text
 Skill(command: "groom-backlog-item", args: "{item title}")
 ```
 
-Capture the grooming output: context manifest containing Related Research, Supporting Skills, Related Agents, Prior Work, Dependencies, Blockers, Suggested First Steps.
+Capture the grooming output — context manifest with Related Research, Supporting Skills, Related Agents, Prior Work, Dependencies, Blockers, Suggested First Steps.
 </groom_check>
 
 ### Step 4: RT-ICA Checkpoint
@@ -142,17 +195,15 @@ This runs the full SAM workflow: discovery, codebase analysis, architecture spec
 
 ### Step 7: Update Backlog with Plan Reference
 
-After `add-new-feature` completes, derive the task file slug:
-
-- slug = item title lowercased, spaces replaced with hyphens
-
-Search for the generated plan file:
+After `add-new-feature` completes, identify the task file it created:
 
 ```text
 Glob(pattern="plan/tasks-*-{slug}*")
 ```
 
-Add a `**Plan**:` field to the matched item in `.claude/BACKLOG.md`:
+Where `{slug}` is the item title lowercased with spaces replaced by hyphens.
+
+Add a `**Plan**:` field to the backlog item in `.claude/BACKLOG.md`:
 
 ```text
 ### SAM: {item title}
@@ -177,16 +228,15 @@ Backlog item "{title}" is now planned.
 
 ## Error Handling
 
-| Condition                          | Action                                                                  |
-|------------------------------------|-------------------------------------------------------------------------|
-| Item not found                     | List available items from BACKLOG.md with priority sections             |
-| Multiple matches                   | Present numbered list, ask user to choose                               |
-| Grooming fails                     | Proceed without grooming context; note the gap in the feature request   |
-| RT-ICA returns BLOCKED             | Present missing inputs; wait for user; do not invoke `add-new-feature` |
-| `add-new-feature` fails            | Report the failure; do not update BACKLOG.md                            |
-| Plan file not found after planning | Search `plan/` directory broadly; ask user to confirm the path          |
+- Item not found: list available items from BACKLOG.md with their priority sections
+- Multiple matches: present numbered list, ask user to choose
+- Grooming fails: proceed without grooming context, note the gap in the feature request
+- RT-ICA returns BLOCKED: present missing inputs, wait for user, do not invoke `add-new-feature`
+- `add-new-feature` fails: report the failure, do not update BACKLOG.md
+- Plan file not found after planning: search `plan/` directory broadly, ask user to confirm the path
+- Grooming reports directory does not exist: treat all items as ungroomed
 
-## Example Session
+## Example Session (with argument)
 
 ```text
 > /work-backlog-item Error Recovery
