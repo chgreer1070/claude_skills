@@ -58,7 +58,8 @@ research/
 │   ├── docs-mcp-server.md             # Local documentation index (Grounded Docs)
 │   ├── mcpjam.md                      # Local inspector for MCP servers and apps
 │   ├── narsil-mcp.md                  # Comprehensive code intelligence MCP server
-│   └── octocode-mcp.md                # Research Driven Development platform
+│   ├── octocode-mcp.md                # Research Driven Development platform
+│   └── retio-pagemap.md               # MCP server compressing HTML to 2-5K token structured maps
 ├── research-agent-patterns/           # Multi-agent architectures and orchestration
 │   ├── claw-loop.md                   # Autonomous development orchestration via tmux + cron
 │   ├── compound-engineering-plugin.md # Every Inc's Plan/Work/Review/Compound workflow plugin
@@ -127,6 +128,7 @@ MCP servers, tools, and integrations for extending AI assistant capabilities.
 | [mimir-mcp.md](./mcp-ecosystem/mimir-mcp.md)             | Git-backed AI memory system with 7 MCP tools, graph associations, and version-controlled persistence     | 2026-02-04   |
 | [narsil-mcp.md](./mcp-ecosystem/narsil-mcp.md)           | Rust MCP server with 90 tools for code intelligence, security scanning, call graphs                      | 2026-01-26   |
 | [octocode-mcp.md](./mcp-ecosystem/octocode-mcp.md)       | Research Driven Development platform with GitHub search, LSP, and GAN-inspired adversarial flow          | 2026-01-26   |
+| [retio-pagemap.md](./mcp-ecosystem/retio-pagemap.md)     | Retio PageMap - MCP server compressing HTML pages to 2-5K token structured maps with 95.2% task success  | 2026-02-18   |
 
 **Key Topics**:
 
@@ -156,6 +158,12 @@ MCP servers, tools, and integrations for extending AI assistant capabilities.
 - Human-aligned tool design (intent-based naming)
 - Supersedes relationships for handling outdated information
 - Multi-user memory isolation with SAML 2.0 support
+- HTML-to-structured-map compression (97% token reduction for web browsing)
+- 3-tier interactive element detection (ARIA roles, implicit HTML, CDP event listeners)
+- Token-budget-aware output assembly with tiktoken enforcement
+- Nonce-based prompt injection defense for untrusted web content
+- SSRF protection with scheme whitelist and private IP blocking
+- Multilingual web content extraction (Korean, English, Japanese, French, German)
 
 ---
 
@@ -778,6 +786,7 @@ When adding new research:
 - [mcpskills-cli](https://github.com/dhanababum/mcpskills-cli) - MCP-to-skill converter via Streamable HTTP discovery
 - [SkillKit](https://github.com/rohitg00/skillkit) - Universal package manager for AI agent skills (32 agents, 15K+ skills)
 - [Claude Conductor](https://github.com/rbarcante/claude-conductor) - Context-Driven Development plugin for Claude Code with skill ecosystem and quality intelligence (34 stars)
+- [Retio PageMap](https://github.com/Retio-ai/Retio-pagemap) - MCP server compressing HTML pages to 2-5K token structured maps with 95.2% task success (14 stars)
 
 ### Internal References
 
