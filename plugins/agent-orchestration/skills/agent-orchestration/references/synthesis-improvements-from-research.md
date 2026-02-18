@@ -4,7 +4,7 @@ description: "Analysis of orchestration patterns from multiple sources to identi
 date: 2025-11-14
 sources:
   - "https://anyblockers.com/posts/working-with-coding-agents"
-  - "~/.claude/commands/how-to-delegate.md"
+  - "plugins/agent-orchestration/skills/how-to-delegate/SKILL.md"
   - "~/repos/claude_skills/commands/orchestration-best-practicing.md"
   - "~/.claude/commands/am-i-complete.md"
   - "~/repos/claude_skills/.claude/commands/is-it-done.md"

@@ -251,7 +251,7 @@ convention = "google"
 
 [tool.mypy]
 disable_error_code = ["call-arg", "misc"]
-exclude = ["typings/"]
+exclude = ["typings/", "plugins/development-harness/.*/scripts/"]
 explicit_package_bases = true
 extra_checks = true
 ignore_missing_imports = true

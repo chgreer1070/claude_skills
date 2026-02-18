@@ -26,7 +26,7 @@ config_value=${grep "^timeout=" config.txt | cut -d= -f2;}
 benchmark_substitution() {
     local i
     local start end
-    
+
     echo "Testing traditional substitution..."
     start="${EPOCHREALTIME}"
     for ((i = 0; i < 1000; i++)); do
@@ -35,7 +35,7 @@ benchmark_substitution() {
     end="${EPOCHREALTIME}"
     printf 'Traditional: %.4f seconds\n' \
         "$(awk "BEGIN {print ${end} - ${start}}")"
-    
+
     echo "Testing new in-shell substitution..."
     start="${EPOCHREALTIME}"
     for ((i = 0; i < 1000; i++)); do
@@ -68,13 +68,13 @@ echo "Today is: ${REPLY}"
 get_system_info() {
     ${|uname -s;}
     local os="${REPLY}"
-    
+
     ${|uname -r;}
     local kernel="${REPLY}"
-    
+
     ${|hostname;}
     local host="${REPLY}"
-    
+
     printf 'System: %s %s on %s\n' "${os}" "${kernel}" "${host}"
 }
 
@@ -84,19 +84,19 @@ get_system_info
 process_data() {
     ${|grep "ERROR" logfile.txt | wc -l;}
     local error_count="${REPLY}"
-    
+
     ${|grep "WARNING" logfile.txt | wc -l;}
     local warning_count="${REPLY}"
-    
+
     printf 'Errors: %d, Warnings: %d\n' "${error_count}" "${warning_count}"
 }
 
 # Example: Conditional logic with REPLY
 check_service() {
     local service="${1}"
-    
+
     ${|systemctl is-active "${service}" 2>/dev/null;}
-    
+
     if [[ "${REPLY}" == "active" ]]; then
         echo "Service ${service} is running"
         return 0
@@ -147,12 +147,12 @@ GLOBSORT="size:desc" # Descending size sort
 # Practical example: Process largest files first
 process_by_size() {
     local dir="${1}"
-    
+
     GLOBSORT="size:desc"
-    
+
     for file in "${dir}"/*; do
         [[ -f "${file}" ]] || continue
-        
+
         size=$(stat -f%z "${file}" 2>/dev/null || stat -c%s "${file}" 2>/dev/null)
         printf 'Processing %s (%d bytes)\n' "${file}" "${size}"
         # Process file...
@@ -165,10 +165,10 @@ process_by_size "/var/log"
 process_newest() {
     local dir="${1}"
     local -a files
-    
+
     GLOBSORT="date:desc"
     files=("${dir}"/*)
-    
+
     echo "Processing files from newest to oldest:"
     for file in "${files[@]}"; do
         [[ -f "${file}" ]] || continue
@@ -204,14 +204,14 @@ done
 get_available_commands() {
     local prefix="${1}"
     local -a commands
-    
+
     compgen -V commands -c "${prefix}"
-    
+
     if [[ ${#commands[@]} -eq 0 ]]; then
         echo "No commands found starting with '${prefix}'"
         return 1
     fi
-    
+
     printf 'Available commands (%d):\n' "${#commands[@]}"
     printf '  - %s\n' "${commands[@]}"
 }
@@ -227,10 +227,10 @@ Interactive input with autocompletion:
 # Enable readline completion during read
 choose_file() {
     local file
-    
+
     echo "Enter filename (tab for completion):"
     read -e -r -E -p "> " file
-    
+
     if [[ -f "${file}" ]]; then
         echo "Selected: ${file}"
         return 0
@@ -245,10 +245,10 @@ choose_file
 # Practical example: Interactive configuration
 configure_app() {
     local config_file
-    
+
     echo "Select configuration file:"
     read -e -r -E -p "Config: " config_file
-    
+
     if [[ -f "${config_file}" ]]; then
         ${|grep -c "^[^#]" "${config_file}";}
         echo "Found ${REPLY} active configuration lines"
@@ -275,10 +275,10 @@ load_library() {
         "/usr/local/lib"
         "/opt/lib"
     )
-    
+
     local search_path
     search_path=$(IFS=:; echo "${search_paths[*]}")
-    
+
     if source -p "${search_path}" "${lib_name}" 2>/dev/null; then
         echo "Loaded library: ${lib_name}"
         return 0
@@ -307,11 +307,11 @@ printf 'Length: %d bytes\n' "${#text}"
 build_command() {
     local -a args=("$@")
     local arg cmd=""
-    
+
     for arg in "${args[@]}"; do
         cmd+=$(printf '%q ' "${arg}")
     done
-    
+
     echo "Safe command: ${cmd}"
 }
 
@@ -346,16 +346,16 @@ echo "Debug: ${config[debug_mode]}"
 load_env_config() {
     local config_file="${1}"
     declare -gA APP_CONFIG
-    
+
     while IFS='=' read -r key value; do
         # Skip comments and empty lines
         [[ "${key}" =~ ^[[:space:]]*# ]] && continue
         [[ -z "${key}" ]] && continue
-        
+
         # Trim whitespace
         key="${key#"${key%%[![:space:]]*}"}"
         value="${value#"${value%%[![:space:]]*}"}"
-        
+
         APP_CONFIG["${key}"]="${value}"
     done < "${config_file}"
 }
@@ -380,10 +380,10 @@ echo "Date: $(date -d "@${timestamp}" '+%Y-%m-%d %H:%M:%S')"
 parse_log_timestamp() {
     local log_line="${1}"
     local timestamp_str date_format timestamp
-    
+
     # Extract timestamp from log line
     timestamp_str="${log_line%% *}"
-    
+
     # Parse different date formats
     if [[ "${timestamp_str}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
         date_format="%Y-%m-%d"
@@ -393,7 +393,7 @@ parse_log_timestamp() {
         echo "Unknown date format" >&2
         return 1
     fi
-    
+
     timestamp=$(strptime "${date_format}" "${timestamp_str}")
     echo "${timestamp}"
 }
@@ -418,11 +418,11 @@ calculate_average() {
     local -a values=("$@")
     local sum=0.0
     local count=${#values[@]}
-    
+
     for value in "${values[@]}"; do
         sum=$(fltexpr "${sum} + ${value}")
     done
-    
+
     local average
     average=$(fltexpr "${sum} / ${count}")
     echo "${average}"
@@ -437,7 +437,7 @@ calculate_percentage() {
     local part="${1}"
     local total="${2}"
     local percentage
-    
+
     percentage=$(fltexpr "(${part} / ${total}) * 100.0")
     printf '%.2f%%\n' "${percentage}"
 }
@@ -492,7 +492,7 @@ fi
 validate_pattern() {
     local pattern="${1}"
     local test_string="test"
-    
+
     if [[ "${test_string}" =~ ${pattern} ]] 2>/dev/null; then
         echo "Pattern is valid"
         return 0
@@ -529,7 +529,7 @@ Bash source updated to C23 standard:
 benchmark() {
     local iterations=10000
     local i start end
-    
+
     start="${EPOCHREALTIME}"
     for ((i = 0; i < iterations; i++)); do
         result=$(echo test)
@@ -537,7 +537,7 @@ benchmark() {
     end="${EPOCHREALTIME}"
     printf 'Traditional: %.4f seconds\n' \
         "$(awk "BEGIN {print ${end} - ${start}}")"
-    
+
     start="${EPOCHREALTIME}"
     for ((i = 0; i < iterations; i++)); do
         result=${echo test;}
@@ -606,5 +606,5 @@ fi
 
 For broader Bash development patterns and best practices, see:
 - [../bash-development/SKILL.md](../bash-development/SKILL.md) - Core Bash development patterns
-- [../bash-5.1-features/SKILL.md](../bash-5.1-features/SKILL.md) - Bash 5.1 features
-- [../bash-5.2-features/SKILL.md](../bash-5.2-features/SKILL.md) - Bash 5.2 features
+- [../bash-51-features/SKILL.md](../bash-51-features/SKILL.md) - Bash 5.1 features
+- [../bash-52-features/SKILL.md](../bash-52-features/SKILL.md) - Bash 5.2 features

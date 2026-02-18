@@ -226,7 +226,7 @@ When an agent loads this skill, it will:
 
 **Delegation formula**: `Delegation = Observations + Success Criteria + Resources - Assumptions - Micromanagement`
 
-**Related skills**: For comprehensive 10-step delegation guidance, use `/how-to-delegate` command.
+**Related skills**: For comprehensive 10-step delegation guidance, activate `/agent-orchestration:how-to-delegate`.
 
 ---
 

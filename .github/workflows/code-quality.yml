@@ -231,12 +231,12 @@ jobs:
 
       - name: Validate plugins
         run: |
-          uv run plugins/plugin-creator/scripts/plugin-validator.py \
+          uv run plugins/plugin-creator/scripts/plugin_validator.py \
             $(find plugins .claude -type f \( -name 'SKILL.md' -o -path '*/agents/*.md' -o -path '*/commands/*.md' -o -name 'plugin.json' \) \
               -not -path './.venv/*' -not -path './node_modules/*' 2>/dev/null)
 
       - name: Check manifest sync
-        run: uv run plugins/plugin-creator/scripts/auto-sync-manifests.py --reconcile --dry-run
+        run: uv run plugins/plugin-creator/scripts/auto_sync_manifests.py --reconcile --dry-run
 
   # =============================================================================
   # File hygiene: trailing whitespace, line endings, etc.

@@ -127,17 +127,17 @@ done
 parse_config() {
     declare -gA app_config
     local line key value
-    
+
     while IFS='=' read -r key value; do
         [[ "${key}" =~ ^[[:space:]]*# ]] && continue  # Skip comments
         [[ -z "${key}" ]] && continue                  # Skip empty lines
-        
+
         # Trim whitespace
         key="${key#"${key%%[![:space:]]*}"}"
         key="${key%"${key##*[![:space:]]}"}"
         value="${value#"${value%%[![:space:]]*}"}"
         value="${value%"${value##*[![:space:]]}"}"
-        
+
         app_config["${key}"]="${value}"
     done < config.ini
 }

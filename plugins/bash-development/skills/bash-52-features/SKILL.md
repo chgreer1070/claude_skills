@@ -33,14 +33,14 @@ fi
 validate_config() {
     local -a required_vars=("DATABASE_URL" "API_KEY" "LOG_DIR")
     local var
-    
+
     for var in "${required_vars[@]}"; do
         if [[ -z "${!var:-}" ]]; then
             printf 'Error: Required variable %s is not set\n' "${var}" >&2
             return 1
         fi
     done
-    
+
     echo "All required configuration variables are set"
 }
 
@@ -60,7 +60,7 @@ Enhanced reference variable handling:
 process_array() {
     local -n arr_ref="${1}"  # Create nameref to array
     local item
-    
+
     echo "Processing array '${1}':"
     for item in "${arr_ref[@]}"; do
         printf '  - %s\n' "${item}"
@@ -80,7 +80,7 @@ array_push() {
 array_pop() {
     local -n array_ref="${1}"
     local last_index=$((${#array_ref[@]} - 1))
-    
+
     if [[ ${last_index} -ge 0 ]]; then
         unset 'array_ref[last_index]'
         return 0
@@ -128,13 +128,13 @@ read_input() {
     local var_name="${2}"
     local default="${3:-}"
     local input
-    
+
     if [[ -n "${default}" ]]; then
         read -r -e -p "${prompt} [${default}]: " -i "${default}" input
     else
         read -r -e -p "${prompt}: " input
     fi
-    
+
     printf -v "${var_name}" '%s' "${input}"
 }
 
@@ -162,13 +162,13 @@ process_batch() {
     local -a items=("$@")
     local batch_size=3
     local i
-    
+
     for ((i = 0; i < ${#items[@]}; i += batch_size)); do
         local -a batch=("${items[@]:i:batch_size}")
         printf 'Processing batch %d: %s\n' \
             "$((i / batch_size + 1))" \
             "${batch[*]}"
-        
+
         # Process batch items...
         for item in "${batch[@]}"; do
             echo "  Processing: ${item}"
@@ -213,7 +213,7 @@ cache_get() {
     local key="${1}"
     local timestamp="${cache_timestamps[${key}]:-0}"
     local age=$((EPOCHSECONDS - timestamp))
-    
+
     if [[ ${age} -lt ${CACHE_TTL} ]] && [[ -n "${cache[${key}]:-}" ]]; then
         echo "${cache[${key}]}"
         return 0
@@ -246,19 +246,19 @@ shopt -u nocasematch
 # Practical example: String sanitization
 sanitize_filename() {
     local filename="${1}"
-    
+
     # Remove leading/trailing whitespace
     filename="${filename#"${filename%%[![:space:]]*}"}"
     filename="${filename%"${filename##*[![:space:]]}"}"
-    
+
     # Replace invalid characters with underscore
     filename="${filename//[^a-zA-Z0-9._-]/_}"
-    
+
     # Remove consecutive underscores
     while [[ "${filename}" =~ __ ]]; do
         filename="${filename//__/_}"
     done
-    
+
     echo "${filename}"
 }
 
@@ -285,20 +285,20 @@ printf 'Date: %s/%s/%s Time: %s:%s\n' \
 parse_url() {
     local url="${1}"
     local protocol scheme host port path
-    
+
     # Extract protocol
     protocol="${url%%://*}"
-    
+
     # Remove protocol
     url="${url#*://}"
-    
+
     # Extract host and port
     if [[ "${url}" =~ ^([^/:]+)(:([0-9]+))?(/.*)?$ ]]; then
         host="${BASH_REMATCH[1]}"
         port="${BASH_REMATCH[3]:-80}"
         path="${BASH_REMATCH[4]:-/}"
     fi
-    
+
     printf 'Protocol: %s\nHost: %s\nPort: %s\nPath: %s\n' \
         "${protocol}" "${host}" "${port}" "${path}"
 }
@@ -319,7 +319,7 @@ Bash 5.2 includes several security-related fixes:
 export_safe() {
     local var_name="${1}"
     local var_value="${2}"
-    
+
     # Validate variable name
     if [[ "${var_name}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
         printf -v "${var_name}" '%s' "${var_value}"
@@ -347,19 +347,19 @@ benchmark_arrays() {
     local -a array
     local i
     local start end
-    
+
     start="${EPOCHREALTIME}"
-    
+
     # Large array operations are faster in 5.2
     for ((i = 0; i < 10000; i++)); do
         array+=("item_${i}")
     done
-    
+
     end="${EPOCHREALTIME}"
-    
+
     printf 'Array population time: %.4f seconds\n' \
         "$(awk "BEGIN {print ${end} - ${start}}")"
-    
+
     echo "Array size: ${#array[@]}"
 }
 
@@ -430,4 +430,4 @@ done
 
 For broader Bash development patterns and best practices, see:
 - [../bash-development/SKILL.md](../bash-development/SKILL.md) - Core Bash development patterns
-- [../bash-5.1-features/SKILL.md](../bash-5.1-features/SKILL.md) - Bash 5.1 features
+- [../bash-51-features/SKILL.md](../bash-51-features/SKILL.md) - Bash 5.1 features
