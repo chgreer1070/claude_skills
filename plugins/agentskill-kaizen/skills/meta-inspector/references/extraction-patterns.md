@@ -8,13 +8,16 @@ JSONL files, one JSON record per line. Replace `FILE` with the actual path.
 
 ### Tool invocations by name
 
+The `message.content` field is a JSON-encoded string containing an array, not a native DuckDB array. Use `from_json()` to parse it. Some assistant messages have plain string content (e.g., slash command echoes), so filter to rows where content starts with `[`.
+
 ```sql
 SELECT
   json_extract_string(c.value, '$.name') AS tool_name,
   COUNT(*) AS cnt
 FROM read_ndjson_auto('FILE', ignore_errors := true) t,
-  LATERAL (SELECT unnest(json_extract(t.message, '$.content')::JSON[]) AS value) c
+  LATERAL (SELECT unnest(from_json(json_extract(t.message, '$.content'), '["JSON"]')) AS value) c
 WHERE t.type = 'assistant'
+  AND json_extract(t.message, '$.content')::VARCHAR LIKE '[%'
   AND json_extract_string(c.value, '$.type') = 'tool_use'
 GROUP BY tool_name
 ORDER BY cnt DESC
