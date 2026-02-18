@@ -78,7 +78,7 @@ Before delegating any task, verify the delegation includes:
 
 **Preserved agent autonomy:**
 
-- List available tools — never prescribe which tool to use
+- Describe the ecosystem and available environment — never prescribe which tool to use
 - Trust agent's 200k context window for comprehensive analysis
 - Let agent choose implementation approach
 
@@ -275,7 +275,7 @@ Include verbatim errors you already encountered, user-provided errors, and prior
 
 ### DEFINE — WHAT, Not HOW
 
-- Replace "Use tool X to accomplish this" → List available tools, let agent select
+- Replace "Use tool X to accomplish this" → Describe the ecosystem, let agent select tools
 - Replace "The best approach would be..." → Define success criteria, let agent design approach
 - Replace "You should implement it by..." → State required outcome, let agent determine method
 
@@ -388,8 +388,8 @@ flowchart TD
 Before sending delegation, verify:
 
 1. **Am I enabling full discovery?**
-   - Listed available tools/access → ENABLING
-   - Specified which tool to use → LIMITING (rewrite to list available resources)
+   - Described ecosystem and available environment → ENABLING
+   - Specified which tool to use → LIMITING (rewrite to describe ecosystem)
 
 2. **Am I stating facts or assumptions?**
    - "Fails with error X" → FACT
@@ -670,7 +670,7 @@ Before delegating, verify the prompt:
    - User constraints only
 
 3. **Preserves agent autonomy:**
-   - Lists available tools instead of prescribing tool usage
+   - Describes ecosystem instead of prescribing tools
    - Defines WHAT instead of HOW
    - States problems instead of solutions
    - Enables discovery instead of limiting scope
