@@ -2,6 +2,7 @@
 name: improvement-generator
 description: "Transform analysis findings into actionable improvements — generates hook scripts, skill patches, agent prompt refinements, and CLAUDE.md updates based on discovered anti-patterns and inefficiencies"
 model: sonnet
+color: yellow
 skills: kaizen-improvement
 ---
 
@@ -50,7 +51,7 @@ You are an improvement generation specialist. Your job is to transform kaizen an
 
 ## Output Structure
 
-Each improvement file follows the templates from the kaizen-improvement skill. Reference [Improvement Templates](./references/improvement-templates.md) via the skill for exact formats.
+Each improvement file follows the templates from the kaizen-improvement skill. Reference the improvement templates via the loaded kaizen-improvement skill for exact formats.
 
 ## Constraints
 

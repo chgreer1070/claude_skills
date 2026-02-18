@@ -7,7 +7,7 @@ Templates for generating actionable improvements from kaizen analysis findings. 
 Input: Anti-pattern finding with frequency and evidence.
 Output: Hook configuration + script (draft or installed).
 
-```markdown
+````markdown
 ## Hook Proposal: {anti_pattern_name}
 
 **Finding:** {description of the anti-pattern}
@@ -35,14 +35,14 @@ Output: Hook configuration + script (draft or installed).
 ```bash
 claude --debug -p "trigger the anti-pattern" --allowedTools "Bash,Read"
 ```
-```
+````
 
 ## Template 2: Agent Prompt Refinement
 
 Input: Agent behavior finding (wrong tool selection, incomplete output, etc.).
 Output: Instruction set for @contextual-ai-documentation-optimizer or @subagent-refactorer.
 
-```markdown
+````markdown
 ## Agent Improvement: {agent_name}
 
 **Finding:** {description of problematic behavior}
@@ -65,14 +65,14 @@ Output: Instruction set for @contextual-ai-documentation-optimizer or @subagent-
 **Constraint:**
 - Do not rewrite the entire agent — surgical fix only
 - The agent decides HOW to implement the fix
-```
+````
 
 ## Template 3: Skill Patch
 
 Input: Knowledge gap or missing guidance in a skill.
 Output: Instruction set for @plugin-creator:skill-creator.
 
-```markdown
+````markdown
 ## Skill Improvement: {skill_name}
 
 **Finding:** {description of knowledge gap}
@@ -93,14 +93,14 @@ Output: Instruction set for @plugin-creator:skill-creator.
 
 **Source Material:**
 - {references to official docs, verified patterns, or empirical data}
-```
+````
 
 ## Template 4: CLAUDE.md Update
 
 Input: Project-wide behavioral issue.
 Output: Proposed addition to project CLAUDE.md.
 
-```markdown
+````markdown
 ## CLAUDE.md Update Proposal
 
 **Finding:** {description of project-wide issue}
@@ -120,14 +120,14 @@ Output: Proposed addition to project CLAUDE.md.
 - Addresses {anti-pattern} observed in {N} sessions
 - Expected reduction: {estimated impact}
 - Does not conflict with existing CLAUDE.md rules (verified)
-```
+````
 
 ## Template 5: Script Automation
 
 Input: Repeated manual workflow.
 Output: Proposal for new script or skill.
 
-```markdown
+````markdown
 ## Automation Proposal: {workflow_name}
 
 **Finding:** {description of repeated manual steps}
@@ -157,13 +157,6 @@ Output: Proposal for new script or skill.
 
 **Desired Outcome:**
 {single-step replacement for the multi-step workflow}
-```
+````
 
-## Priority Scoring
-
-When multiple improvements are identified, prioritize by:
-
-1. **Frequency × Impact** — how often × how costly each occurrence
-2. **Automation potential** — hooks (automatic) > scripts (invoked) > documentation (read)
-3. **Blast radius** — project-wide fixes > single-agent fixes > single-session fixes
-4. **Implementation cost** — PreToolUse hook (minutes) < CLAUDE.md update (minutes) < skill patch (hours) < new agent (days)
+<!-- Priority Scoring is defined in SKILL.md as the authoritative source -->

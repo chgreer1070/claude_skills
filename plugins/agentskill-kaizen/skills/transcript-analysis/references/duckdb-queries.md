@@ -2,6 +2,8 @@
 
 SQL patterns for querying Claude Code JSONL transcripts via the MotherDuck MCP server (`execute_query` tool). All queries use DuckDB dialect.
 
+**Path substitution:** Replace `/path/to/*.jsonl` in all queries below with the actual transcript glob path from the Data Location section of the parent skill (e.g., `~/.claude/projects/-home-user-repos-myproject/*.jsonl`).
+
 ## Loading JSONL Data
 
 DuckDB reads JSONL natively via `read_ndjson_auto()`:

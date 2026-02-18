@@ -1,5 +1,5 @@
 ---
-description: 'Methodology and data reference for analyzing Claude Code session transcripts. Triggers on "analyze transcripts", "session analysis", "find anti-patterns", "kaizen", "transcript mining", "tool misuse detection", "frustration signals", or "workflow patterns". Provides JSONL schema, signal catalog with field paths, SQL query patterns for DuckDB, and process mining methodology for PM4Py.'
+description: 'This skill should be used when analyzing Claude Code session transcripts, reviewing agent performance, finding anti-patterns or tool misuse, detecting user frustration signals, mining workflow patterns, running kaizen analysis, debugging agent behavior, or performing session forensics. Provides JSONL schema with field paths, DuckDB SQL query patterns, 10 analysis dimensions, and PM4Py process mining methodology.'
 ---
 
 # Transcript Analysis
@@ -8,7 +8,7 @@ Analyze Claude Code JSONL session transcripts to detect anti-patterns, inefficie
 
 ## Data Location
 
-Transcripts live under `~/.claude/projects/` in project-specific directories named after the project path (with hyphens replacing slashes).
+Find transcripts under `~/.claude/projects/` in project-specific directories named after the project path (with hyphens replacing slashes).
 
 ```text
 ~/.claude/projects/{project-key}/
@@ -23,7 +23,7 @@ Transcripts live under `~/.claude/projects/` in project-specific directories nam
 
 ## JSONL Record Types
 
-Every line is a JSON object. The `type` field discriminates record types.
+Each JSONL line is a JSON object discriminated by the `type` field.
 
 Primary record types for analysis:
 
@@ -42,17 +42,9 @@ Ten analysis dimensions, each with extraction methodology.
 
 ### 1. Tool Misuse Detection
 
-Extract from `assistant.message.content[]` where `name == "Bash"`. Parse `input.command` for file-operation patterns that should use built-in tools.
+Extract from `assistant.message.content[]` where `name == "Bash"`. Parse `input.command` for file-operation patterns that should use built-in tools. For SQL extraction queries, see [DuckDB Query Patterns](./references/duckdb-queries.md).
 
-```sql
-SELECT
-  json_extract_string(line, '$.message.content') as content,
-  json_extract_string(line, '$.sessionId') as session_id
-FROM read_ndjson_auto('path/to/*.jsonl')
-WHERE json_extract_string(line, '$.type') = 'assistant'
-```
-
-Then parse tool_use blocks for Bash commands matching:
+Parse tool_use blocks for Bash commands matching:
 
 - `grep` → should use Grep tool
 - `find -name` → should use Glob tool
@@ -114,7 +106,7 @@ For SQL query patterns and examples, see [DuckDB Query Patterns](./references/du
 
 ## Process Mining Methodology
 
-Use the custom kaizen MCP server tools for analyses SQL cannot express:
+Use the `kaizen-analysis` MCP server tools for analyses SQL cannot express:
 
 - `extract_tool_sequences` — Convert JSONL → ordered tool-call arrays per session
 - `discover_process_model` — PM4Py Heuristic Miner on tool-call event logs

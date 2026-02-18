@@ -54,7 +54,9 @@ process.exit(0);
 
 ### Edit-Before-Read Prevention
 
-Deny Edit calls when the target file has not been Read in the current session:
+Deny Edit calls when the target file has not been Read in the current session.
+
+**Caveat:** A `prompt` type hook relies on the model's session memory, which may be unreliable after context compaction. For deterministic enforcement, use a `command` type hook with state tracking (e.g., a script that records Read calls and checks against them).
 
 ```json
 {
