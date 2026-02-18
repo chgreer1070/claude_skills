@@ -23,6 +23,7 @@ Token-based complexity measurement replaces line counting for accurate AI cost e
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import re
@@ -118,6 +119,15 @@ NR002 = "NR002"  # Namespace reference points outside plugin directory
 
 # Claude CLI timeout
 CLAUDE_TIMEOUT = 3  # seconds
+
+# Filenames exempt from frontmatter requirement (case-sensitive)
+FRONTMATTER_EXEMPT_FILENAMES: frozenset[str] = frozenset({
+    "AGENT.md",
+    "AGENTS.md",
+    "GEMINI.md",
+    "CLAUDE.md",
+    "README.md",
+})
 
 
 def _should_skip_claude_validate() -> bool:
@@ -3107,13 +3117,20 @@ class Reporter(Protocol):
     plain text for CI, summary).
     """
 
-    def report(self, file_results: FileResults, verbose: bool = False) -> None:
+    def report(
+        self,
+        file_results: FileResults,
+        verbose: bool = False,
+        *,
+        show_progress: bool = False,
+    ) -> None:
         """Display validation results grouped by file.
 
         Args:
             file_results: Mapping of file paths to lists of (validator_name,
                 ValidationResult) tuples from validation
             verbose: Whether to show additional detail like info messages
+            show_progress: Whether to show per-file PASSED status for clean files
         """
         ...
 
@@ -3158,13 +3175,51 @@ class ConsoleReporter:
         self.console = Console(force_terminal=not no_color, no_color=no_color)
         self.no_color = no_color
 
-    def report(self, file_results: FileResults, verbose: bool = False) -> None:
+    def _print_issue(self, issue: ValidationIssue) -> None:
+        """Print a single validation issue with Rich formatting.
+
+        Args:
+            issue: The validation issue to display
+        """
+        severity_icons = {
+            "error": ":cross_mark:",
+            "warning": ":warning:",
+            "info": ":information:",
+        }
+        severity_colors = {"error": "red", "warning": "yellow", "info": "blue"}
+
+        icon = severity_icons.get(issue.severity, "")
+        color = severity_colors.get(issue.severity, "white")
+        location = f":{issue.line}" if issue.line else ""
+
+        # Main message line
+        self.console.print(
+            f"    {icon} [{color}][{issue.code}][/{color}] "
+            f"{issue.field}{location}: {issue.message}"
+        )
+
+        # Suggestion line (if present)
+        if issue.suggestion:
+            self.console.print(f"      [dim]→[/dim] {issue.suggestion}")
+
+        # Docs URL line (if present)
+        if issue.docs_url:
+            self.console.print(f"      [dim]→[/dim] [link]{issue.docs_url}[/link]")
+
+    def report(
+        self,
+        file_results: FileResults,
+        verbose: bool = False,
+        *,
+        show_progress: bool = False,
+    ) -> None:
         """Display validation results with Rich formatting, grouped by file.
 
         Args:
             file_results: Mapping of file paths to lists of (validator_name,
                 ValidationResult) tuples from validation
             verbose: Whether to show info messages in addition to errors/warnings
+            show_progress: Whether to show per-file PASSED status for clean files
         """
         for file_path, validator_results in file_results.items():
             # Determine overall file status
@@ -3180,9 +3235,10 @@ class ConsoleReporter:
 
             if all_passed and not any_issues:
                 # File passed all validators with no issues
-                self.console.print(
-                    f":white_check_mark: [green]{file_path}[/green] - PASSED"
-                )
+                if show_progress:
+                    self.console.print(
+                        f":white_check_mark: [green]{file_path}[/green] - PASSED"
+                    )
                 continue
 
             # File has issues - show file header once, then per-validator results
@@ -3194,10 +3250,11 @@ class ConsoleReporter:
                     issues_to_show.extend(result.info)
 
                 if not issues_to_show:
-                    # This validator passed
-                    self.console.print(
-                        f"  :white_check_mark: [dim]{validator_name}:[/dim] PASSED"
-                    )
+                    # This validator passed — only show if progress requested
+                    if show_progress:
+                        self.console.print(
+                            f"  :white_check_mark: [dim]{validator_name}:[/dim] PASSED"
+                        )
                     continue
 
                 # Show validator name as sub-header
@@ -3205,37 +3262,7 @@ class ConsoleReporter:
                 self.console.print(f"  {status_icon} [dim]{validator_name}:[/dim]")
 
                 for issue in issues_to_show:
-                    # Format issue with severity icon, code, field, message
-                    severity_icons = {
-                        "error": ":cross_mark:",
-                        "warning": ":warning:",
-                        "info": ":information:",
-                    }
-                    severity_colors = {
-                        "error": "red",
-                        "warning": "yellow",
-                        "info": "blue",
-                    }
-
-                    icon = severity_icons.get(issue.severity, "")
-                    color = severity_colors.get(issue.severity, "white")
-                    location = f":{issue.line}" if issue.line else ""
-
-                    # Main message line
-                    self.console.print(
-                        f"    {icon} [{color}][{issue.code}][/{color}] "
-                        f"{issue.field}{location}: {issue.message}"
-                    )
-
-                    # Suggestion line (if present)
-                    if issue.suggestion:
-                        self.console.print(f"      [dim]→[/dim] {issue.suggestion}")
-
-                    # Docs URL line (if present)
-                    if issue.docs_url:
-                        self.console.print(
-                            f"      [dim]→[/dim] [link]{issue.docs_url}[/link]"
-                        )
+                    self._print_issue(issue)
 
     def summarize(
         self, total_files: int, passed: int, failed: int, warnings: int
@@ -3300,13 +3327,42 @@ class CIReporter:
     Architecture lines 239-252
     """
 
-    def report(self, file_results: FileResults, verbose: bool = False) -> None:
+    @staticmethod
+    def _print_issue(issue: ValidationIssue) -> None:
+        """Print a single validation issue in plain text.
+
+        Args:
+            issue: The validation issue to display
+        """
+        severity_prefixes = {"error": "✗ ERROR", "warning": "⚠ WARN", "info": "i INFO"}
+        prefix = severity_prefixes.get(issue.severity, "")
+        location = f":{issue.line}" if issue.line else ""
+
+        # Main message line
+        print(f"    {prefix} [{issue.code}] {issue.field}{location}: {issue.message}")
+
+        # Suggestion line (if present)
+        if issue.suggestion:
+            print(f"      → {issue.suggestion}")
+
+        # Docs URL line (if present)
+        if issue.docs_url:
+            print(f"      → {issue.docs_url}")
+
+    def report(
+        self,
+        file_results: FileResults,
+        verbose: bool = False,
+        *,
+        show_progress: bool = False,
+    ) -> None:
         """Display validation results in plain text, grouped by file.
 
         Args:
             file_results: Mapping of file paths to lists of (validator_name,
                 ValidationResult) tuples from validation
             verbose: Whether to show info messages in addition to errors/warnings
+            show_progress: Whether to show per-file PASSED status for clean files
         """
         for file_path, validator_results in file_results.items():
             # Determine overall file status
@@ -3322,7 +3378,8 @@ class CIReporter:
 
             if all_passed and not any_issues:
                 # File passed all validators with no issues
-                print(f"✓ {file_path} - PASSED")
+                if show_progress:
+                    print(f"✓ {file_path} - PASSED")
                 continue
 
             # File has issues - show file header once, then per-validator results
@@ -3334,7 +3391,8 @@ class CIReporter:
                     issues_to_show.extend(result.info)
 
                 if not issues_to_show:
-                    print(f"  ✓ {validator_name}: PASSED")
+                    if show_progress:
+                        print(f"  ✓ {validator_name}: PASSED")
                     continue
 
                 # Show validator name as sub-header
@@ -3342,28 +3400,7 @@ class CIReporter:
                 print(f"  {status_icon} {validator_name}:")
 
                 for issue in issues_to_show:
-                    # Format: file:line [CODE] field: message
-                    severity_prefixes = {
-                        "error": "✗ ERROR",
-                        "warning": "⚠ WARN",
-                        "info": "i INFO",
-                    }
-                    prefix = severity_prefixes.get(issue.severity, "")
-                    location = f":{issue.line}" if issue.line else ""
-
-                    # Main message line
-                    print(
-                        f"    {prefix} [{issue.code}] "
-                        f"{issue.field}{location}: {issue.message}"
-                    )
-
-                    # Suggestion line (if present)
-                    if issue.suggestion:
-                        print(f"      → {issue.suggestion}")
-
-                    # Docs URL line (if present)
-                    if issue.docs_url:
-                        print(f"      → {issue.docs_url}")
+                    self._print_issue(issue)
 
     def summarize(
         self, total_files: int, passed: int, failed: int, warnings: int
@@ -3404,13 +3441,20 @@ class SummaryReporter:
     Architecture lines 239-252
     """
 
-    def report(self, file_results: FileResults, verbose: bool = False) -> None:
+    def report(
+        self,
+        file_results: FileResults,
+        verbose: bool = False,
+        *,
+        show_progress: bool = False,
+    ) -> None:
         """Display nothing (summary-only reporter).
 
         Args:
             file_results: Mapping of file paths to lists of (validator_name,
                 ValidationResult) tuples (ignored for summary reporter)
             verbose: Whether to show info messages (ignored for summary reporter)
+            show_progress: Whether to show per-file PASSED status (ignored)
         """
         # Summary reporter only shows final summary, not per-file results
 
@@ -3438,6 +3482,143 @@ class SummaryReporter:
             status += f" ({warnings} with warnings)"
 
         print(f"{status_icon} {status}")
+
+
+# ============================================================================
+# IGNORE PATTERN SUPPORT
+# ============================================================================
+
+
+def _load_ignore_patterns() -> list[str]:
+    """Load glob patterns from .pluginvalidatorignore file.
+
+    Searches for the ignore file in the following order:
+    1. Current working directory (.pluginvalidatorignore)
+    2. .claude/.pluginvalidatorignore
+
+    Each line is a gitignore-style glob pattern. Lines starting with '#' are
+    comments, blank lines are ignored.
+
+    Returns:
+        List of glob patterns to match against file paths.
+    """
+    candidates = [
+        Path.cwd() / ".pluginvalidatorignore",
+        Path.cwd() / ".claude" / ".pluginvalidatorignore",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            lines = candidate.read_text(encoding="utf-8").splitlines()
+            return [
+                line.strip()
+                for line in lines
+                if line.strip() and not line.strip().startswith("#")
+            ]
+    return []
+
+
+def _is_ignored(path: Path, patterns: list[str]) -> bool:
+    """Check whether a path matches any ignore pattern.
+
+    Patterns follow gitignore-style glob semantics:
+    - ``**/templates/*.md`` matches any ``templates`` directory at any depth
+    - ``plugins/foo/bar.md`` matches that exact relative path
+
+    The path is tested as a POSIX string (forward slashes) so patterns work
+    consistently across platforms.
+
+    Args:
+        path: File path to check (absolute or relative).
+        patterns: Glob patterns loaded from .pluginvalidatorignore.
+
+    Returns:
+        True if the path matches any pattern and should be skipped.
+    """
+    path_str = path.as_posix()
+    for pattern in patterns:
+        if fnmatch.fnmatch(path_str, pattern):
+            return True
+        # Also match against just the relative-to-cwd representation
+        try:
+            rel = path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+        except ValueError:
+            rel = path_str
+        if fnmatch.fnmatch(rel, pattern):
+            return True
+    return False
+
+
+# ============================================================================
+# FRONTMATTER REQUIREMENT LOGIC
+# ============================================================================
+
+
+class _FrontmatterRequirement(StrEnum):
+    """Whether a file requires YAML frontmatter."""
+
+    REQUIRED = "required"
+    OPTIONAL = "optional"
+    EXEMPT = "exempt"
+
+
+def _frontmatter_requirement(path: Path) -> _FrontmatterRequirement:
+    """Determine whether frontmatter is required for a given path.
+
+    Rules:
+    - Files in FRONTMATTER_EXEMPT_FILENAMES are always exempt.
+    - ``**/skills/*/SKILL.md`` (direct child of skill dir) -- required.
+    - ``**/agents/*.md`` (direct child of agents dir) -- required.
+    - ``**/commands/*.md`` (direct child of commands dir) -- required.
+    - Deeper nested files under agents/ or commands/ -- optional.
+      If the file already contains frontmatter it will be validated normally;
+      if it does not, frontmatter validation is skipped entirely.
+
+    Args:
+        path: Path to the markdown file.
+
+    Returns:
+        _FrontmatterRequirement indicating the frontmatter policy for this file.
+    """
+    # Exempt well-known filenames regardless of location
+    if path.name in FRONTMATTER_EXEMPT_FILENAMES:
+        return _FrontmatterRequirement.EXEMPT
+
+    # SKILL.md files are always required (the FileType detector already handles this)
+    if path.name == "SKILL.md":
+        return _FrontmatterRequirement.REQUIRED
+
+    # Check parent directory name to distinguish direct child vs nested
+    parent_name = path.parent.name
+
+    if parent_name == "agents":
+        return _FrontmatterRequirement.REQUIRED
+    if parent_name == "commands":
+        return _FrontmatterRequirement.REQUIRED
+
+    # If "agents" or "commands" appears anywhere in the path parts but the
+    # immediate parent is NOT that directory, this is a nested subdirectory file.
+    parts = set(path.parts)
+    if "agents" in parts or "commands" in parts:
+        return _FrontmatterRequirement.OPTIONAL
+
+    # Default: required (preserves existing behavior for any other case)
+    return _FrontmatterRequirement.REQUIRED
+
+
+def _file_has_frontmatter(path: Path) -> bool:
+    """Quick check whether a file starts with a YAML frontmatter delimiter.
+
+    Args:
+        path: Path to file to check.
+
+    Returns:
+        True if the file content starts with ``---``.
+    """
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return content.startswith("---")
 
 
 # ============================================================================
@@ -3477,12 +3658,25 @@ def _validate_single_path(  # noqa: PLR0912, C901
     validators: list[Validator] = []
 
     if file_type in {FileType.SKILL, FileType.AGENT, FileType.COMMAND}:
-        # Capability files: validate frontmatter, name, description
-        validators.extend([
-            FrontmatterValidator(),
-            NameFormatValidator(),
-            DescriptionValidator(file_type=file_type),
-        ])
+        # Determine frontmatter requirement for this path
+        fm_req = _frontmatter_requirement(path)
+
+        if fm_req == _FrontmatterRequirement.EXEMPT:
+            # Exempt files skip all capability validation entirely
+            return {path: []}
+
+        # Add FrontmatterValidator only when frontmatter is required or
+        # when it is optional AND the file already contains frontmatter.
+        if fm_req == _FrontmatterRequirement.REQUIRED or _file_has_frontmatter(path):
+            validators.append(FrontmatterValidator())
+
+        # Name and description validators only make sense when frontmatter
+        # is present (they read parsed frontmatter data).
+        if fm_req == _FrontmatterRequirement.REQUIRED or _file_has_frontmatter(path):
+            validators.extend([
+                NameFormatValidator(),
+                DescriptionValidator(file_type=file_type),
+            ])
 
         # Namespace reference validation for all capability files
         validators.append(NamespaceReferenceValidator())
@@ -3604,6 +3798,16 @@ def main(
             help="Output only the integer token count (for programmatic use)",
         ),
     ] = False,
+    show_progress: Annotated[
+        bool,
+        typer.Option(
+            "--show-progress", help="Show per-file PASSED/FAILED status for all files"
+        ),
+    ] = False,
+    show_summary: Annotated[
+        bool,
+        typer.Option("--show-summary", help="Show validation summary panel at the end"),
+    ] = False,
 ) -> None:
     """Validate Claude Code plugins, skills, agents, and commands.
 
@@ -3615,10 +3819,10 @@ def main(
     Accepts one or more paths (compatible with pre-commit pass_filenames).
 
     Examples:
-        # Validate single file
+        # Validate single file (silent on success)
         ./plugin_validator.py path/to/SKILL.md
 
-        # Validate multiple files (pre-commit mode)
+        # Validate multiple files (pre-commit mode, silent on success)
         ./plugin_validator.py file1.md file2.md file3.md
 
         # Validate entire plugin
@@ -3629,6 +3833,12 @@ def main(
 
         # Validate for CI (no color)
         ./plugin_validator.py --no-color plugins/my-plugin
+
+        # Show per-file PASSED/FAILED status
+        ./plugin_validator.py --show-progress plugins/my-plugin
+
+        # Show summary panel at the end
+        ./plugin_validator.py --show-summary plugins/my-plugin
 
         # Count tokens in any markdown file
         ./plugin_validator.py --verbose .claude/CLAUDE.md
@@ -3651,8 +3861,15 @@ def main(
             typer.echo("Error: Cannot use both --check and --fix flags", err=True)
             raise typer.Exit(2) from None
 
+        # Load ignore patterns once before processing paths
+        ignore_patterns = _load_ignore_patterns()
+
         all_results: FileResults = {}
         for path in paths:
+            # Skip paths matching .pluginvalidatorignore patterns
+            if ignore_patterns and _is_ignored(path, ignore_patterns):
+                continue
+
             file_results = _validate_single_path(
                 path, check=check, fix=fix, verbose=verbose
             )
@@ -3668,7 +3885,7 @@ def main(
         reporter = CIReporter() if no_color else ConsoleReporter(no_color=no_color)
 
         # Report results
-        reporter.report(all_results, verbose=verbose)
+        reporter.report(all_results, verbose=verbose, show_progress=show_progress)
 
         # Calculate summary statistics — per unique file, not per validator
         total_files = len(all_results)
@@ -3686,8 +3903,9 @@ def main(
             if all(r.passed for _, r in vr_list) and any(r.warnings for _, r in vr_list)
         )
 
-        # Display summary
-        reporter.summarize(total_files, passed, failed, warnings)
+        # Display summary only when requested
+        if show_summary:
+            reporter.summarize(total_files, passed, failed, warnings)
 
         # Exit with appropriate code
         if failed > 0:

@@ -555,7 +555,7 @@ class TestFileGroupedReporting:
         """
         skill_file = sample_skill_dir / "SKILL.md"
         result = cli_runner.invoke(
-            plugin_validator.app, ["--no-color", str(skill_file)]
+            plugin_validator.app, ["--no-color", "--show-summary", str(skill_file)]
         )
 
         assert result.exit_code == 0
@@ -587,7 +587,8 @@ class TestFileGroupedReporting:
         skill_a = tmp_path / "skill-a" / "SKILL.md"
         skill_b = tmp_path / "skill-b" / "SKILL.md"
         result = cli_runner.invoke(
-            plugin_validator.app, ["--no-color", str(skill_a), str(skill_b)]
+            plugin_validator.app,
+            ["--no-color", "--show-summary", str(skill_a), str(skill_b)],
         )
 
         assert result.exit_code == 0
@@ -648,7 +649,7 @@ class TestFileGroupedReporting:
         )
 
         result = cli_runner.invoke(
-            plugin_validator.app, ["--no-color", str(skill_file)]
+            plugin_validator.app, ["--no-color", "--show-summary", str(skill_file)]
         )
 
         # Should show failure
