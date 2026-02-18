@@ -46,20 +46,24 @@ Comprehensive guide for orchestrating Python development tasks using specialized
 **Pattern**:
 
 ```text
+# Note: "Context to pass" means file paths, outcomes, and user requirements only.
+# Do not pass file contents, summaries, or pre-gathered data.
+# Agents discover and read files themselves.
+
 1. Design → @python3-development:python-cli-design-spec
-   Input: Feature requirements
+   Context to pass: Feature requirements
    Output: Architecture design, component interfaces
 
 2. Write Tests → @python3-development:python-pytest-architect
-   Input: Architecture design, expected behavior
+   Context to pass: Architecture design, expected behavior
    Output: Complete test suite (fails initially)
 
 3. Implement → @python3-development:python-cli-architect OR /python3-development:stdlib-scripting
-   Input: Tests, architecture design
+   Context to pass: Tests, architecture design
    Output: Implementation that makes tests pass
 
 4. Review → @python3-development:python-code-reviewer
-   Input: Implementation + tests
+   Context to pass: Implementation + tests
    Output: Review feedback, improvement suggestions
 
 5. Validate
@@ -83,7 +87,7 @@ Step 2: @python3-development:python-pytest-architect
   → Test files in tests/
 
 Step 3: @python3-development:python-cli-architect
-  "Implement CSV processor CLI with Typer+Rich based on these tests"
+  "Implement CSV processor CLI with Typer+Rich. Tests are in tests/. Make all tests pass."
   → Implementation in packages/
 
 Step 4: @python3-development:python-code-reviewer
@@ -105,23 +109,23 @@ Step 5: Validate
    Output: Clear requirements, acceptance criteria
 
 2. Architecture → @python3-development:python-cli-design-spec
-   Input: Requirements, existing codebase structure
+   Context to pass: Requirements, existing codebase structure
    Output: Design that integrates with existing code
 
 3. Implementation Plan → @python3-development:swarm-task-planner
-   Input: Architecture design
+   Context to pass: Architecture design
    Output: Step-by-step implementation tasks
 
 4. Implement → @python3-development:python-cli-architect OR /python3-development:stdlib-scripting
-   Input: Implementation plan, existing code patterns
+   Context to pass: Implementation plan, existing code patterns
    Output: New feature implementation
 
 5. Testing → @python3-development:python-pytest-architect
-   Input: Implementation, edge cases
+   Context to pass: Implementation, edge cases
    Output: Tests for new feature + integration tests
 
 6. Review → @python3-development:python-code-reviewer
-   Input: All changes (implementation + tests)
+   Context to pass: All changes (implementation + tests)
    Output: Quality assessment, improvements
 
 7. Validate
@@ -147,11 +151,11 @@ Step 5: Validate
    Check: Correct shebang format
 
 3. Agent Review → @python3-development:python-code-reviewer
-   Input: All changed files
+   Context to pass: All changed files
    Output: Comprehensive review findings
 
 4. Fix Issues → Appropriate agent
-   Input: Review findings
+   Context to pass: Review findings
    Output: Corrections
 
 5. Re-validate
@@ -173,7 +177,7 @@ Step 5: Validate
    If missing: @python3-development:python-pytest-architect creates tests
 
 2. Refactor → @python3-development:python-cli-architect or /python3-development:stdlib-scripting
-   Input: Code to refactor + test suite
+   Context to pass: Code to refactor + test suite
    Constraint: Must not break existing tests
    Output: Refactored code
 
@@ -182,7 +186,7 @@ Step 5: Validate
    Verify: Coverage maintained or improved
 
 4. Review → @python3-development:python-code-reviewer
-   Input: Before/after comparison
+   Context to pass: Before/after comparison
    Output: Verification refactoring improved quality
 
 5. Apply Standards
@@ -199,7 +203,7 @@ Step 5: Validate
 ```text
 1. Reproduce → Write failing test
    @python3-development:python-pytest-architect
-   Input: Bug description, steps to reproduce
+   Context to pass: Bug description, steps to reproduce
    Output: Test that demonstrates bug
 
 2. Trace → Investigate root cause
@@ -208,7 +212,7 @@ Step 5: Validate
 
 3. Fix → Appropriate agent
    @python3-development:python-cli-architect or /python3-development:stdlib-scripting
-   Input: Failing test + root cause
+   Context to pass: Failing test + root cause
    Output: Fix that makes test pass
 
 4. Test → Verify fix + no regressions
@@ -217,7 +221,7 @@ Step 5: Validate
    Verify: No other tests broke
 
 5. Review → @python3-development:python-code-reviewer
-   Input: Fix + test
+   Context to pass: Fix + test
    Output: Verification fix is proper solution
 
 6. Validate
