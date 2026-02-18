@@ -154,11 +154,11 @@ VERIFICATION REQUIREMENTS:
 - If checklist reveals missing work, complete that work before proceeding
 
 ECOSYSTEM CONTEXT:
-# Describe the ecosystem — not a tool list. Correct pattern:
-# - "The `gh` CLI is pre-authenticated for GitHub operations"
-# - "This Python project uses `uv` — activate the uv skill"
-# - "Excellent MCP servers available — prefer Ref/context7/exa over built-in tools"
-# See ECOSYSTEM CONTEXT section below for complete guidance.
+- Full project context available — explore freely with all tools
+- Check <functions> list for MCP tools — prefer MCP specialists (Ref, context7, exa) over built-in alternatives
+- Check <available_skills> and activate relevant skills for domain expertise
+- Maximize parallel execution for independent tool calls
+- [Add project-specific context here: authenticated CLIs, toolchain conventions, validation scripts]
 ```
 
 ## Writing Effective ECOSYSTEM CONTEXT
