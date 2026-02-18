@@ -1,5 +1,5 @@
 ---
-description: Start a complete plugin refactoring workflow. Analyzes plugin structure, creates refactoring plan with tasks, and guides through execution.
+description: Start a complete plugin refactoring workflow that analyzes plugin structure, creates a refactoring plan with tasks, and guides through execution. Use when you need to refactor an entire plugin — triggers assessment, design, planning, and parallel agent execution phases.
 argument-hint: <plugin-path>
 user-invocable: true
 ---

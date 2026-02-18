@@ -1,5 +1,5 @@
 ---
-description: 'Assess a plugin and create refactoring task files for parallel agent execution'
+description: 'Assess a plugin and create refactoring task files for parallel agent execution. Use when you need to analyze a plugin structure, score its quality, and generate a phased refactoring plan with design map and implementation tasks.'
 argument-hint: <plugin-name>
 user-invocable: true
 model: inherit

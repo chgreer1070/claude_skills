@@ -1,5 +1,5 @@
 ---
-description: Knowledge reference for Autonomous Refinement Loop research — pattern research into prerequisites for autonomous execution without synchronous human blocking gates. Defines failure categories, prerequisites, and conditions for replacing human judgment with machine-verifiable checks.
+description: Knowledge reference for Autonomous Refinement Loop research — pattern research into prerequisites for autonomous execution without synchronous human blocking gates. Defines failure categories, prerequisites, and conditions for replacing human judgment with machine-verifiable checks. Use when designing or evaluating autonomous agent loops, gate conditions, or HOOTL execution patterns.
 user-invocable: true
 model: opus
 context: fork

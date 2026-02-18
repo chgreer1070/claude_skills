@@ -1,5 +1,5 @@
 ---
-description: 'Refactor oversized or multi-domain skills into smaller, purpose-built skills while preserving full fidelity and capability coverage. Use when a skill spans too many topics, exceeds ~500 lines, or would benefit from clearer separation of concerns and independent invocation. This skill reviews the existing content, identifies logical boundaries, designs a split plan, generates new SKILL.md files for each extracted skill, and validates that the refactor maintains complete functional and content parity with the original.'
+description: 'Assess and refactor oversized or multi-domain skills. First determines whether splitting or references/ extraction is appropriate — then executes the correct action. Use when a skill exceeds token thresholds (SK006/SK007) or covers multiple independent domains. Performs candidate assessment before any structural changes; cohesive single-intent skills are redirected to references/ extraction instead of splitting. When splitting is warranted — domain analysis gate, split plan, new SKILL.md generation, validation, and backwards-compatible facade conversion.'
 model: opus
 argument-hint: "path to skill directory (or plugin) to refactor"
 user-invocable: true
@@ -20,9 +20,55 @@ The paths provided below, like `references/` are relative to the skill directory
 
 <workflow>
 
-### Phase 1: Analysis
+### Phase 0: Candidate Assessment (GATE)
 
-ANALYZE the source skill thoroughly:
+Before analyzing for a split, determine whether skill splitting is the appropriate action at all.
+
+**Step 1 — Measure size and read the skill:**
+
+1. Run the plugin validator to get the token count and any error codes:
+   `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>`
+2. Read the complete SKILL.md — every line, every section.
+
+**Step 2 — Determine the correct path:**
+
+```mermaid
+flowchart TD
+    Start([Skill flagged for review]) --> Q1{Validator reports SK007 error?}
+    Q1 -->|Yes — token error threshold exceeded| Split[Proceed to Phase 1 - Domain Analysis]
+    Q1 -->|No — SK006 warning or below| Q2{Is content cohesive?<br>Single user intent, sequential workflow,<br>phases that depend on each other}
+    Q2 -->|Yes — cohesive single-intent skill| Refs[References/ Extraction Path<br>Move detailed reference content to ./references/<br>Link from main skill — STOP here]
+    Q2 -->|No — multiple independent intents| Q3{Count domain signals<br>from Phase 1 criteria<br>How many are genuinely present?}
+    Q3 -->|Fewer than 2 signals present| NotCandidate[OUTPUT: Not a candidate for skill splitting<br>Recommend references/ extraction instead<br>STOP — do not proceed to Phase 1]
+    Q3 -->|2 or more signals present| Split
+```
+
+**SK006 vs SK007 threshold distinction:**
+
+The plugin validator defines two token thresholds (see `TOKEN_WARNING_THRESHOLD` and `TOKEN_ERROR_THRESHOLD` in `plugin_validator.py`):
+
+- **SK006 (warning):** Token count exceeds warning threshold. First action is `references/` extraction. Only proceed to skill splitting if content covers genuinely independent domains with separate invocation triggers.
+- **SK007 (error):** Token count exceeds error threshold. Skill splitting is required — proceed directly to Phase 1.
+
+If the skill is at SK006 but not SK007, exhaust `references/` extraction options before proceeding to skill splitting.
+
+**References/ extraction path (when content is cohesive):**
+
+When the only issue is token count (SK006) and the skill covers a single user intent:
+
+1. Identify sections with detailed reference content — large tables, comprehensive examples, multi-step procedures that are consulted rather than executed sequentially.
+2. Move each such section to `./references/<topic>.md`.
+3. Replace the section in SKILL.md with a brief summary and a markdown link: `[Topic Details](./references/topic.md)`.
+4. Re-run the validator to confirm token count is now below the warning threshold.
+5. Report the token reduction achieved and STOP — do not proceed to skill splitting.
+
+**STOP condition:** If the Phase 0 assessment concludes that skill splitting is not warranted, output the finding, recommend the appropriate alternative (references/ extraction or no action), and STOP. Do not proceed to Phase 1.
+
+---
+
+### Phase 1: Domain Analysis (GATE)
+
+ANALYZE the source skill thoroughly to determine whether splitting is warranted:
 
 1. **Read the complete SKILL.md** - every line, every section
 2. **Read all reference files** in `references/` subdirectory
@@ -33,14 +79,22 @@ ANALYZE the source skill thoroughly:
 
 **Domain Identification Criteria:**
 
-| Signal                        | Indicates Separate Skill      |
-| ----------------------------- | ----------------------------- |
-| Different tool requirements   | `tools` would differ          |
-| Different invocation triggers | Description keywords diverge  |
-| Independent use cases         | Can be used without the other |
-| Different expertise domains   | Distinct knowledge areas      |
-| Section size >200 lines       | Too large for single concern  |
-| Different hook requirements   | Lifecycle needs differ        |
+Evaluate each signal explicitly. Document each as PRESENT or ABSENT with evidence before proceeding.
+
+| Signal | Indicates Separate Skill | Notes |
+| --- | --- | --- |
+| Different tool requirements | `tools` would differ between sections | Must be actual tool divergence, not task delegation |
+| Different invocation triggers | Description keywords diverge | Sections serve different user intents at the point of invocation |
+| Independent use cases | Can be used without the other | Each section must be meaningful when invoked alone |
+| Different expertise domains | Distinct knowledge areas | Sections require different reference knowledge, not just different phases |
+| Section size >200 lines with distinct trigger | Large AND has its own invocation trigger | A large section with detailed reference content is a candidate for `references/` extraction, not skill splitting. This signal applies only when the section also has an independent invocation trigger. |
+| Different hook requirements | Lifecycle needs differ | |
+
+**GATE: Evaluate the signal count before proceeding.**
+
+- Document each criterion as PRESENT or ABSENT with a one-sentence evidence statement.
+- If fewer than 2 signals are PRESENT: this skill does not meet the criteria for splitting. Output the signal evaluation, state "Not a candidate for skill splitting," recommend `references/` extraction if token count warrants action, and STOP.
+- If 2 or more signals are PRESENT: proceed to Phase 2.
 
 ### Phase 2: Planning
 
@@ -467,9 +521,11 @@ Task(
 WHEN invoked:
 
 1. CONFIRM the skill path
-2. READ the complete skill and all references
-3. ANALYZE for domains and split points
-4. PRESENT refactoring plan
+2. RUN validator and READ the complete skill and all references (Phase 0)
+3. ASSESS candidate status — output finding and STOP if not a split candidate
+4. ANALYZE for domain signals with explicit PRESENT/ABSENT evaluation (Phase 1)
+5. STOP if fewer than 2 signals are PRESENT — output finding and recommend alternative
+6. PRESENT refactoring plan only if Phase 1 gate passes (Phase 2)
 
 ### During Execution
 

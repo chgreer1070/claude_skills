@@ -1,4 +1,4 @@
 reports/
 artifacts/
-knowledge/
-!knowledge/workflow-diagrams
+knowledge/*
+!knowledge/workflow-diagrams/

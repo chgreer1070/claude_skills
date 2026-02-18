@@ -248,161 +248,24 @@ Skill(command: "python3-development:modernpython")
 
 For each `Any` in the inventory, plan the replacement using appropriate constructs:
 
-#### Protocol (Structural Subtyping)
+Select the appropriate type construct for each `Any` replacement:
 
-Use when: Multiple unrelated classes share behavior but not inheritance.
+- **Protocol** — duck-typed objects sharing behavior without inheritance
+- **Generic** — containers/functions preserving type info across multiple types
+- **TypeGuard** — runtime checks that should narrow types for the checker
+- **TypeAlias** — repeated complex types needing a name
+- **TypedDict** — dicts with known keys and specific value types
+- **Dataclass/Pydantic** — structured data with optional validation
 
-```python
-# Before: Any for duck-typed objects
-def process(handler: Any) -> None:
-    handler.handle(data)
-
-# After: Protocol defines required interface
-class Handler(Protocol):
-    def handle(self, data: bytes) -> None: ...
-
-def process(handler: Handler) -> None:
-    handler.handle(data)
-```
-
-#### Generic (Parameterized Types)
-
-Use when: Container or function works with multiple types while preserving type info.
-
-```python
-# Before: Any loses type information
-def first(items: list[Any]) -> Any:
-    return items[0]
-
-# After: Generic preserves type
-T = TypeVar("T")
-def first(items: list[T]) -> T:
-    return items[0]
-```
-
-#### TypeGuard (Type Narrowing)
-
-Use when: Runtime check should narrow type for type checker.
-
-```python
-# Before: Type checker doesn't understand the check
-def process(data: str | dict[str, Any]) -> None:
-    if isinstance(data, dict):
-        # data still str | dict here without TypeGuard
-
-# After: TypeGuard narrows the type
-def is_dict_response(data: str | dict[str, Any]) -> TypeGuard[dict[str, Any]]:
-    return isinstance(data, dict)
-
-def process(data: str | dict[str, Any]) -> None:
-    if is_dict_response(data):
-        # data is dict[str, Any] here
-```
-
-#### TypeAlias (Named Types)
-
-Use when: Complex type is repeated or needs documentation.
-
-```python
-# Before: Repeated complex type
-def fetch(url: str) -> dict[str, str | int | list[str] | None]: ...
-def parse(data: dict[str, str | int | list[str] | None]) -> Model: ...
-
-# After: Named alias
-JSONValue: TypeAlias = str | int | float | bool | None | list["JSONValue"] | dict[str, "JSONValue"]
-APIResponse: TypeAlias = dict[str, JSONValue]
-
-def fetch(url: str) -> APIResponse: ...
-def parse(data: APIResponse) -> Model: ...
-```
-
-#### TypedDict (Dict Shape)
-
-Use when: Dict has known keys with specific types.
-
-```python
-# Before: dict[str, Any]
-def get_user() -> dict[str, Any]:
-    return {"name": "Alice", "age": 30, "active": True}
-
-# After: TypedDict defines shape
-class User(TypedDict):
-    name: str
-    age: int
-    active: bool
-
-def get_user() -> User:
-    return {"name": "Alice", "age": 30, "active": True}
-```
-
-#### Dataclass / Pydantic
-
-Use when: Need structured data with validation.
-
-```python
-# Before: Plain dict or untyped class
-user = {"name": "Alice", "email": "alice@example.com"}
-
-# After: Dataclass for internal data
-@dataclass
-class User:
-    name: str
-    email: str
-
-# After: Pydantic for external/validated data
-class UserInput(BaseModel):
-    name: str
-    email: EmailStr
-```
+See [Type Pattern Examples](./references/type-patterns.md) for before/after code samples and library modernization reference table.
 
 ### Step 3.3: Plan Library Modernization
 
-| Legacy     | Modern    | Benefit                           |
-| ---------- | --------- | --------------------------------- |
-| `requests` | `httpx`   | Async support, HTTP/2, type hints |
-| `json`     | `orjson`  | 10x faster, better types          |
-| `toml`     | `tomlkit` | Preserves formatting, comments    |
-| `argparse` | `typer`   | Type-driven CLI, auto-help        |
-| `print()`  | `rich`    | Formatted output, progress bars   |
-| `curses`   | `textual` | Modern TUI framework              |
+See the library modernization reference table in [Type Pattern Examples](./references/type-patterns.md#library-modernization-reference).
 
 ### Step 3.4: Create Modernization Plan Document
 
-```text
-## Modernization Plan
-
-### Type System Changes
-
-1. **Eliminate Any in api.py**
-   - Line 23: response: Any → response: APIResponse (TypeAlias)
-   - Line 45: callback: Any → callback: Callable[[Event], None]
-   - Line 67: data: Any → data: UserData (TypedDict)
-
-2. **Add Protocols for duck typing**
-   - Create Handler protocol for plugin system
-   - Create Serializable protocol for export functions
-
-3. **Add Generics for containers**
-   - Cache[T] generic class
-   - Result[T, E] for error handling
-
-### Library Migrations
-
-1. **requests → httpx**
-   - Files affected: api.py, client.py
-   - Breaking changes: Session → Client, response.json() typing
-   - Async opportunity: Yes
-
-2. **json → orjson**
-   - Files affected: serialization.py
-   - Breaking changes: orjson.dumps returns bytes
-   - Performance gain: ~10x
-
-### Estimated Impact
-- Files to modify: 12
-- New type definitions: 8
-- Breaking changes: 3 (internal only)
-```
+Create plan at `.claude/plans/stinkysnake-plan.md` using the template in [Plan Templates](./references/plan-templates.md#modernization-plan-template-phase-3-output).
 
 ---
 
@@ -412,97 +275,11 @@ Delegate to a review agent with context fork to critique the plan.
 
 ### Step 4.1: Launch Plan Review Agent
 
-```text
-Task(
-  agent="python-code-reviewer",
-  prompt="Review the modernization plan at .claude/plans/stinkysnake-plan.md
-
-REVIEW CRITERIA:
-
-1. **Pythonic Best Practices**
-   - Are the proposed patterns idiomatic Python?
-   - Do they follow PEP guidelines?
-   - Are simpler solutions available?
-
-2. **Online Verification**
-   - Verify type patterns against mypy/pyright docs
-   - Check library recommendations against current best practices
-   - Confirm version compatibility claims
-
-3. **Feasibility Assessment**
-   - Are the proposed changes realistic?
-   - What is the effort vs benefit ratio?
-   - Are there hidden dependencies?
-
-4. **Breaking Change Analysis**
-   - What interfaces change?
-   - What downstream code is affected?
-   - Is backward compatibility needed?
-
-5. **Risk Assessment**
-   - What could go wrong?
-   - What tests are needed?
-   - What rollback plan exists?
-
-OUTPUT:
-Create review report at .claude/reports/plan-review-{timestamp}.md with:
-- Issues found (blocking, warning, suggestion)
-- Verification results with sources
-- Feasibility scores per change
-- Breaking change inventory
-- Recommended modifications"
-)
-```
+Delegate to `python-code-reviewer` using the prompt in [Agent Prompts](./references/agent-prompts.md#phase-4-plan-review).
 
 ### Step 4.2: Review Report Structure
 
-The reviewer produces:
-
-```text
-## Plan Review Report
-
-### Summary
-- Blocking Issues: N
-- Warnings: N
-- Suggestions: N
-- Overall Feasibility: High/Medium/Low
-
-### Blocking Issues
-
-#### Issue 1: Protocol misuse in Handler
-**Location**: Plan section 2.1
-**Problem**: Protocol used where ABC is more appropriate
-**Evidence**: [link to mypy docs on Protocol vs ABC]
-**Recommendation**: Use ABC with @abstractmethod
-
-### Warnings
-
-#### Warning 1: orjson bytes return
-**Location**: Library migration section
-**Risk**: Downstream code expects str from json.dumps
-**Mitigation**: Add .decode() or update all callers
-
-### Verification Results
-
-| Claim | Verified | Source |
-|-------|----------|--------|
-| TypeGuard narrows in if blocks | ✓ | mypy docs |
-| httpx is drop-in for requests | ✗ | API differs |
-| orjson 10x faster | ✓ | benchmark link |
-
-### Breaking Change Inventory
-
-| Change | Affected Code | Severity |
-|--------|--------------|----------|
-| APIResponse type | 5 functions | Medium |
-| httpx migration | 12 call sites | High |
-
-### Recommended Modifications
-
-1. Split httpx migration into separate PR
-2. Add compatibility shim for json.dumps
-3. Use ABC instead of Protocol for Handler
-```
+The reviewer produces a report following the template in [Plan Templates](./references/plan-templates.md#plan-review-report-template-phase-4-output).
 
 ---
 
@@ -535,30 +312,7 @@ For each suggestion:
 
 ### Step 5.4: Update Plan Document
 
-```text
-## Modernization Plan (Revised)
-
-### Changes from Review
-
-1. **Handler: Protocol → ABC**
-   - Reason: Plugin system requires inheritance
-   - Evidence: [reviewer's mypy docs link]
-
-2. **httpx migration: Deferred**
-   - Reason: High breaking change risk
-   - Alternative: Create separate PR after core changes
-
-3. **orjson: Added decode shim**
-   - Added: compat.dumps() wrapper returning str
-
-### Updated Implementation Order
-
-1. Type aliases and TypedDicts (no breaking changes)
-2. Protocol/ABC additions (additive)
-3. Generic containers (additive)
-4. Any elimination (may require caller updates)
-5. [DEFERRED] httpx migration
-```
+Update `.claude/plans/stinkysnake-plan.md` using the revised plan format in [Plan Templates](./references/plan-templates.md#revised-plan-template-phase-5-output).
 
 ---
 
@@ -578,29 +332,7 @@ uv run rg "^\s+\"\"\"" $ARGUMENTS
 
 ### Step 6.2: Map Code to Docs
 
-```text
-## Documentation Update Plan
-
-### Files to Update
-
-| Doc File | Section | Change Needed |
-|----------|---------|---------------|
-| README.md | Installation | Add orjson dependency |
-| docs/api.md | fetch_data() | Update return type |
-| CHANGELOG.md | Unreleased | Add type improvements |
-
-### Docstrings to Update
-
-| Code File | Function | Docstring Change |
-|-----------|----------|------------------|
-| api.py | fetch_data | Update return type docs |
-| models.py | User | Add field descriptions |
-
-### New Documentation Needed
-
-- docs/types.md: Document TypeAliases
-- docs/migration.md: Breaking change guide
-```
+Create documentation update plan using the template in [Plan Templates](./references/plan-templates.md#documentation-update-plan-template-phase-6-output).
 
 ---
 
@@ -664,44 +396,7 @@ Delegate to python-pytest-architect to write failing tests against the interface
 
 ### Step 8.1: Launch Test Writing Agent
 
-```text
-Task(
-  agent="python-pytest-architect",
-  prompt="Write failing tests for the interfaces defined in the modernization plan.
-
-CONTEXT:
-- Plan: .claude/plans/stinkysnake-plan.md
-- Interfaces: src/types.py, src/protocols.py, src/schemas.py
-
-REQUIREMENTS:
-
-1. **Test Each Protocol**
-   - Test that protocol can be satisfied
-   - Test that non-conforming types are rejected
-   - Test protocol runtime behavior if applicable
-
-2. **Test Each TypedDict**
-   - Test required keys
-   - Test optional keys (NotRequired)
-   - Test type validation
-
-3. **Test Each Function Signature**
-   - Test return type matches TypeAlias
-   - Test parameter types
-   - Test edge cases
-
-4. **Test Behavioral Expectations**
-   - Test that refactored code maintains behavior
-   - Test error handling patterns
-   - Test async behavior if applicable
-
-OUTPUT:
-- Create test files in tests/
-- Tests MUST fail (implementations don't exist yet)
-- Stop after tests are written
-- Report test file locations"
-)
-```
+Delegate to `python-pytest-architect` using the prompt in [Agent Prompts](./references/agent-prompts.md#phase-8-test-writing-agent).
 
 ### Step 8.2: Verify Tests Fail
 
@@ -818,6 +513,12 @@ See [Agent Teams Documentation](./../../../plugin-creator/skills/claude-skills-o
 SOURCE: Lines 27-39 of agent-teams.md (accessed 2026-02-06)
 
 ## References
+
+### Skill Reference Files
+
+- [Type Pattern Examples](./references/type-patterns.md) — before/after code samples for Protocol, Generic, TypeGuard, TypeAlias, TypedDict, Dataclass/Pydantic, and library modernization table
+- [Plan Templates](./references/plan-templates.md) — document formats for modernization plan, review report, revised plan, and documentation update plan
+- [Agent Prompts](./references/agent-prompts.md) — pre-built delegation prompts for Phase 4 review agent and Phase 8 test writing agent
 
 ### External Documentation
 

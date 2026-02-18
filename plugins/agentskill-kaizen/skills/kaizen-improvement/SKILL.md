@@ -45,11 +45,7 @@ flowchart TD
 
 ## Hook Generation
 
-Read findings → generate hook configuration + optional script.
-
-For hook patterns mapped to each anti-pattern type, see [Hook Patterns](./references/hook-patterns.md).
-
-Key principles: one anti-pattern per hook, prefer `command` type for deterministic checks, scope matchers narrowly. For full guidelines and patterns, see [Hook Patterns](./references/hook-patterns.md).
+Read findings → generate hook configuration + optional script. For patterns mapped to each anti-pattern type, guidelines, and examples, see [Hook Patterns](./references/hook-patterns.md).
 
 ## Delegation Protocol
 

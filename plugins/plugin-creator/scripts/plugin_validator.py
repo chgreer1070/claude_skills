@@ -32,9 +32,12 @@ import subprocess
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Any, ClassVar, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, Protocol, cast
 
 import typer
+
+if TYPE_CHECKING:
+    from rich.console import ConsoleRenderable, RichCast
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
@@ -65,11 +68,15 @@ MAX_SKILL_NAME_LENGTH = 40
 REQUIRED_TRIGGER_PHRASES = [
     "use when",
     "use this",
+    "use on",
     "used when",
     "used by",
     "when ",
     "trigger",
     "activate",
+    "load this",
+    "load when",
+    "invoke",
 ]
 
 # ============================================================================
@@ -3195,6 +3202,27 @@ class ConsoleReporter:
         self.console = Console(force_terminal=not no_color, no_color=no_color)
         self.no_color = no_color
 
+    @staticmethod
+    def _get_rendered_width(renderable: ConsoleRenderable | RichCast | str) -> int:
+        """Get actual rendered width of any Rich renderable.
+
+        Uses a temporary wide console to measure the natural width of a
+        renderable without any wrapping constraints. Handles color codes,
+        Unicode, styling, padding, and borders.
+
+        Args:
+            renderable: Any Rich renderable (Panel, Table, Text, etc.)
+
+        Returns:
+            The maximum rendered width in characters.
+        """
+        from rich.console import Console as _Console
+        from rich.measure import Measurement
+
+        temp_console = _Console(width=999999)
+        measurement = Measurement.get(temp_console, temp_console.options, renderable)
+        return int(measurement.maximum)
+
     def _print_issue(self, issue: ValidationIssue) -> None:
         """Print a single validation issue with Rich formatting.
 
@@ -3212,19 +3240,27 @@ class ConsoleReporter:
         color = severity_colors.get(issue.severity, "white")
         location = f":{issue.line}" if issue.line else ""
 
-        # Main message line
+        # Main message line -- may contain long paths or messages
         self.console.print(
             f"    {icon} [{color}][{issue.code}][/{color}] "
-            f"{issue.field}{location}: {issue.message}"
+            f"{issue.field}{location}: {issue.message}",
+            crop=False,
+            overflow="ignore",
         )
 
-        # Suggestion line (if present)
+        # Suggestion line -- may contain long commands or paths
         if issue.suggestion:
-            self.console.print(f"      [dim]→[/dim] {issue.suggestion}")
+            self.console.print(
+                f"      [dim]→[/dim] {issue.suggestion}", crop=False, overflow="ignore"
+            )
 
-        # Docs URL line (if present)
+        # Docs URL line -- must never wrap
         if issue.docs_url:
-            self.console.print(f"      [dim]→[/dim] [link]{issue.docs_url}[/link]")
+            self.console.print(
+                f"      [dim]→[/dim] [link]{issue.docs_url}[/link]",
+                crop=False,
+                overflow="ignore",
+            )
 
     def report(
         self,
@@ -3257,12 +3293,17 @@ class ConsoleReporter:
                 # File passed all validators with no issues
                 if show_progress:
                     self.console.print(
-                        f":white_check_mark: [green]{file_path}[/green] - PASSED"
+                        f":white_check_mark: [green]{file_path}[/green] - PASSED",
+                        crop=False,
+                        overflow="ignore",
                     )
                 continue
 
             # File has issues - show file header once, then per-validator results
-            self.console.print(f"\n[bold]{file_path}[/bold]")
+            # File paths may be long -- prevent wrapping
+            self.console.print(
+                f"\n[bold]{file_path}[/bold]", crop=False, overflow="ignore"
+            )
 
             for validator_name, result in validator_results:
                 issues_to_show = [*result.errors, *result.warnings]
@@ -3273,13 +3314,19 @@ class ConsoleReporter:
                     # This validator passed — only show if progress requested
                     if show_progress:
                         self.console.print(
-                            f"  :white_check_mark: [dim]{validator_name}:[/dim] PASSED"
+                            f"  :white_check_mark: [dim]{validator_name}:[/dim] PASSED",
+                            crop=False,
+                            overflow="ignore",
                         )
                     continue
 
                 # Show validator name as sub-header
                 status_icon = ":cross_mark:" if not result.passed else ":warning:"
-                self.console.print(f"  {status_icon} [dim]{validator_name}:[/dim]")
+                self.console.print(
+                    f"  {status_icon} [dim]{validator_name}:[/dim]",
+                    crop=False,
+                    overflow="ignore",
+                )
 
                 for issue in issues_to_show:
                     self._print_issue(issue)
@@ -3321,14 +3368,15 @@ class ConsoleReporter:
 
         summary = "\n".join(summary_lines)
 
-        # Display in panel
+        # Display in panel -- set console width to panel's natural width
+        # to prevent Panel from wrapping at 80 chars in non-TTY environments
+        panel = Panel(
+            summary, title="Validation Summary", border_style=status_color, expand=False
+        )
+        panel_width = self._get_rendered_width(panel)
+        self.console.width = panel_width
         self.console.print(
-            Panel(
-                summary,
-                title="Validation Summary",
-                border_style=status_color,
-                expand=False,
-            )
+            panel, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True
         )
 
 

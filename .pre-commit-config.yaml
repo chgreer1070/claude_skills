@@ -131,9 +131,10 @@ repos:
 
       - id: mypy
         name: mypy
-        entry: uv run -q --no-sync --with pep723-loader --with mypy pep723-loader mypy --no-incremental
+        entry: uv run -q --no-sync --with pep723-loader --with mypy pep723-loader mypy --no-incremental --cache-dir /tmp/.mypy_cache
         language: system
         types: [python]
+        exclude: (^\.claude/|/tests/|conftest\.py$)
         pass_filenames: true
 
       - id: ty

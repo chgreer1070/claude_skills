@@ -1,12 +1,12 @@
 ---
-description: Global contract for all specialist subagents. Enforces role boundaries, scope discipline, and DONE/BLOCKED status signaling. Load this skill in any agent that should operate as a bounded specialist following supervisor delegation patterns.
+description: Global contract for all specialist subagents — enforces role boundaries, scope discipline, and DONE/BLOCKED status signaling. Use when loading any agent that should operate as a bounded specialist following supervisor delegation patterns.
 user-invocable: false
 disable-model-invocation: false
 ---
 
 # Subagent Contract
 
-**Workflow Reference**: See [Multi-Agent Orchestration](./../knowledge/workflow-diagrams/multi-agent-orchestration.md) for the complete delegation flow, DONE/BLOCKED signaling protocol, and agent selection guide.
+**Workflow Reference**: See [Multi-Agent Orchestration](./../../knowledge/workflow-diagrams/multi-agent-orchestration.md) for the complete delegation flow, DONE/BLOCKED signaling protocol, and agent selection guide.
 
 This contract governs all specialist agents. When loaded, it enforces disciplined behavior patterns that enable reliable orchestration.
 

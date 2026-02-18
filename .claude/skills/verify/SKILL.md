@@ -5,7 +5,7 @@ user-invocable: true
 
 # Verification Protocol
 
-**Workflow Reference**: See [Master Workflow](./../knowledge/workflow-diagrams/master-workflow.md) for how this skill fits into the verification stage of the agentic workflow.
+**Workflow Reference**: See [Master Workflow](./../../knowledge/workflow-diagrams/master-workflow.md) for how this skill fits into the verification stage of the agentic workflow.
 
 **STOP.** You are NOT done yet. Generate this checklist and provide **EVIDENCE** for every item.
 

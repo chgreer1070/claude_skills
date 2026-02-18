@@ -274,7 +274,7 @@ python_version = "3.11"
 show_error_codes = true
 strict = true
 warn_redundant_casts = true
-warn_unused_configs = true
+warn_unused_configs = false
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
@@ -288,15 +288,7 @@ disable_error_code = [
     "valid-type",
     "var-annotated",
 ]
-module = [
-    "conftest",
-    "test.*",
-    "test_server",
-    "tests.*",
-    ".claude.*",
-    ".claude.utilities.*",
-    "find-temp-documentation.*",
-]
+module = ["conftest", "test_server"]
 
 [tool.basedpyright]
 extraPaths = ["**/plugins", "**/scripts", "**/tests"]

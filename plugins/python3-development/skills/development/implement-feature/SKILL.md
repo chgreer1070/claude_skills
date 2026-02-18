@@ -1,5 +1,5 @@
 ---
-description: Execute a SAM task plan (plan/tasks-*.md) by looping ready tasks, delegating each task to its specified agent, and relying on hooks to update task timestamps/status.
+description: Execute a SAM task plan (plan/tasks-*.md) by looping ready tasks, delegating each to its specified agent, and relying on hooks to update task timestamps/status. Use when a task file exists and you need to run the implementation loop that picks up ready tasks and delegates them to agents.
 argument-hint: <task-file-path or feature-slug>
 user-invocable: true
 hooks:
