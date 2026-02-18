@@ -2,7 +2,24 @@
 
 Detailed analysis of ECOSYSTEM CONTEXT anti-patterns and correct patterns for delegating to sub-agents.
 
-## Anti-Pattern: Tool List Enumeration
+## The Inheritance Rule
+
+Sub-agents automatically inherit the following context. Do not repeat any of it in ECOSYSTEM CONTEXT:
+
+- Both CLAUDE.md files (global `~/.claude/CLAUDE.md` + project `.claude/CLAUDE.md`)
+- Rules files (e.g., `source-fidelity.md`)
+- MEMORY.md content
+- Git status snapshot
+- Environment info (platform, shell, working directory)
+- Current date
+- All tool descriptions (including tool usage guidelines, git safety rules, PR workflow)
+- Deferred MCP tool list (via ToolSearch)
+
+Anything in these sources is already visible to the agent. Repeating it wastes prompt tokens and trains the orchestrator to parrot instead of provide unique value.
+
+---
+
+## Anti-Pattern 1: Tool List Enumeration
 
 **Why this anti-pattern is harmful:**
 
@@ -27,91 +44,15 @@ AVAILABLE RESOURCES:
 
 **Why tool lists feel natural but are wrong:**
 
-The orchestrator has 50+ tools available, including specialized MCP servers for documentation, web research, GitHub, Docker, and more. A list of 3 generic tools implies the rest do not exist or should not be used. This is the opposite of empowering world-building context.
+The orchestrator has 50+ tools available, including specialized MCP servers for documentation, web research, GitHub, Docker, and more. A list of 3 generic tools implies the rest do not exist or should not be used.
 
 ---
 
-## Correct Pattern: Ecosystem Description
+## Anti-Pattern 2: Parroting Inherited Context
 
-**What world-building context achieves:**
+This is the more subtle and dangerous anti-pattern. The orchestrator repeats information that agents already receive through context inheritance.
 
-- Agent understands the project toolchain and can make informed decisions
-- Agent knows which MCP servers are preferred for which tasks
-- Agent understands activated skills and domain conventions
-- Agent can discover better approaches because full context is available
-
-**Correct pattern example (world-building, empowering):**
-
-```text
-ECOSYSTEM CONTEXT:
-- The `gh` CLI is pre-authenticated for GitHub operations (issues, PRs, API queries)
-- Excellent MCP servers installed — check your <functions> list and prefer MCP tools
-  (like `Ref`, `context7`, `exa`) over built-in alternatives since they are domain specialists
-- This Python project uses `uv` — activate the `uv` skill, use `uv run python` instead of
-  `python3`, `uv pip` instead of `pip`
-- Project uses `hatchling` as build backend — activate the `hatchling` skill for build/publish guidance
-- Recent linting fixes documented in `.claude/reports/` showing common issues and resolutions
-- Package validation scripts in `./scripts/` — check README.md for available validators
-- Full project context available including tests, configs, and documentation
-```
-
-**Why this works:**
-
-1. Describes the ecosystem — agent knows what tools are contextually relevant
-2. Names preferred MCP alternatives — agent avoids low-fidelity fallbacks
-3. Specifies activated skills — agent leverages domain expertise
-4. Points to relevant documentation locations — agent discovers efficiently
-5. Full project access confirmed — agent does not artificially limit scope
-
----
-
-## Pattern Components
-
-### Authenticated CLI Tools
-
-When CLI tools are pre-authenticated, explicitly state this:
-
-```text
-The `gh` CLI is pre-authenticated for GitHub operations
-The `glab` CLI is configured for GitLab access
-AWS CLI is configured with appropriate credentials
-```
-
-**Why**: Agents default to API-based approaches when CLI availability is unknown. Stating authentication removes this uncertainty.
-
-### MCP Server Preferences
-
-Name which MCP servers are available and why they are preferred:
-
-```text
-Excellent MCP servers installed — check <functions> list and prefer these specialists:
-- `Ref` — high-fidelity verbatim documentation (unlike WebFetch which returns AI summaries)
-- `context7` — library API docs (current versions, comprehensive)
-- `exa` — web research (curated, high-quality sources)
-- `mcp-docker` — container operations
-```
-
-**Documentation fidelity hierarchy:**
-
-- `Ref` — high fidelity (output IS the source, verbatim)
-- `exa` — medium fidelity (Markdown-formatted extraction, preserves code blocks)
-- `WebFetch` — low fidelity (summarized, strips specifics) — NEVER for "how-to" implementation
-
-See [Accessing Online Resources](./accessing_online_resources.md) for tool selection criteria and experimental evidence.
-
-### Language and Tooling Ecosystems
-
-State the toolchain so agents use correct commands:
-
-```text
-Python project using `uv` — activate `uv` skill, use `uv run`/`uv pip` exclusively
-Node project using `pnpm` — use `pnpm` instead of `npm`
-Rust project — use `cargo` commands, check Cargo.toml for features
-```
-
-### Baseline Context (Always Include)
-
-Every delegation should include this baseline:
+**Parroting anti-pattern example:**
 
 ```text
 ECOSYSTEM CONTEXT:
@@ -119,22 +60,125 @@ ECOSYSTEM CONTEXT:
 - Check <functions> list for MCP tools — prefer MCP specialists (Ref, context7, exa) over built-in alternatives
 - Check <available_skills> and activate relevant skills for domain expertise
 - Maximize parallel execution for independent tool calls
-- [Add project-specific context here: authenticated CLIs, toolchain conventions, validation scripts]
+- This Python project uses `uv` — use `uv run python` instead of `python3`
 ```
 
-The last line is the single customization point. The baseline above it is always correct.
+**Why each line is redundant:**
+
+- "Full project context available" — agents always have full tool access; this is the default state
+- "Check `<functions>` list for MCP tools" — tool descriptions already explain this to agents
+- "Check `<available_skills>` and activate relevant skills" — CLAUDE.md already instructs skill activation
+- "Maximize parallel execution" — CLAUDE.md already instructs this explicitly
+- "This Python project uses `uv`" — project CLAUDE.md already documents the toolchain
+
+This pattern trains the orchestrator to treat ECOSYSTEM CONTEXT as a boilerplate section to fill rather than as a place for genuinely unique context. It also wastes token budget that could hold real observations.
 
 ---
 
-## Common Mistakes Reference
+## Correct Pattern: Session-Specific Facts Only
 
-| Mistake | What it does | Better approach |
+**What belongs in ECOSYSTEM CONTEXT:**
+
+Information that exists nowhere the agent can see — session-specific or task-specific facts that vary per run.
+
+**Correct pattern example:**
+
+```text
+ECOSYSTEM CONTEXT:
+- The `gh` CLI is pre-authenticated for GitHub operations (issues, PRs, API queries)
+- CI logs for PR #42 accessible via MCP GitHub tool
+- Recent linting reports in `.claude/reports/` show previously resolved issues
+```
+
+**Why this works:**
+
+1. Authentication state — whether a CLI is authenticated varies per session; agents cannot assume it from CLAUDE.md
+2. Task-specific access — CI logs for a specific PR are not in any static file
+3. Non-obvious discovery shortcuts — file locations that would require extra exploration to find
+
+---
+
+## Pattern Components
+
+### Authenticated CLI Tools
+
+When CLI tools are pre-authenticated, explicitly state this — authentication state is session-specific:
+
+```text
+The `gh` CLI is pre-authenticated for GitHub operations
+The `glab` CLI is configured for GitLab access
+AWS CLI is configured with credentials for the staging account
+```
+
+**Why**: CLAUDE.md may document that `gh` is available, but it cannot know whether it is authenticated in the current session. This is genuinely new information.
+
+### Session-Specific Access
+
+State task-relevant resources that are specific to this delegation:
+
+```text
+CI logs for PR #42 accessible via MCP GitHub tool
+The staging deployment at staging.example.com is available for testing
+Database seed data is loaded at localhost:5432
+```
+
+**Why**: These facts vary per task and session. They are not discoverable from project files.
+
+### Non-Obvious Document Locations
+
+Point to locations that would require extra exploration to discover organically:
+
+```text
+Recent linting reports in `.claude/reports/` document previously resolved issues
+Package validation scripts in `./scripts/` — see README.md for usage
+Architecture decision records in `./docs/adr/`
+```
+
+**Why**: These locations may not be obvious from the directory structure. A hint saves investigation time. Do not list obvious locations (tests/, src/, etc.) that any agent would check first.
+
+### MCP Tool Preferences for This Task
+
+When a specific MCP tool is particularly relevant to the task at hand, name it:
+
+```text
+Use `mcp-server-docker` for container operations — it has direct daemon access
+CI logs accessible via MCP GitHub tool (faster than `gh run view` for log content)
+```
+
+Do not name MCP tools generically ("MCP servers installed — check your functions list") — that is already in the tool descriptions. Name specific tools only when they are the best fit for a specific task.
+
+**Documentation fidelity hierarchy** (for reference when recommending documentation tools):
+
+- `Ref` — high fidelity (output IS the source, verbatim)
+- `exa` — medium fidelity (Markdown-formatted extraction, preserves code blocks)
+- `WebFetch` — low fidelity (summarized, strips specifics) — NEVER for "how-to" implementation
+
+See [Accessing Online Resources](./accessing_online_resources.md) for tool selection criteria and experimental evidence.
+
+---
+
+## Omission Rule
+
+**When there is nothing session-specific to add, omit ECOSYSTEM CONTEXT entirely.**
+
+The section only earns its place when it contains information the agent cannot find in CLAUDE.md, tool descriptions, or the project files it will read. An empty ECOSYSTEM CONTEXT or one filled with inherited context is worse than no section — it trains the orchestrator to fill boilerplate.
+
+---
+
+## Quick Reference
+
+| Content type | Belongs in ECOSYSTEM CONTEXT? | Reason |
 |---|---|---|
-| `- WebFetch tool` | Names a low-fidelity tool without context | `Excellent MCP servers available — prefer Ref/exa over WebFetch` |
-| `- Read tool` | States a universal capability as if it's special | Omit — agents always have Read; describe what's worth reading |
-| `- Bash tool` | States a universal capability | Omit — describe what bash-accessible tooling is relevant |
-| Tool list only | No ecosystem context | Describe the toolchain, authenticated CLIs, activated skills |
-| Missing MCP names | Agent defaults to WebFetch | Name Ref, context7, exa and their specializations |
-| No skill references | Agent misses domain expertise | Name activated skills and what they provide |
+| Authenticated CLI state (`gh` is logged in) | YES | Session-specific, varies per run |
+| Task-specific access (CI logs for PR #42) | YES | Specific to this delegation |
+| Non-obvious doc location (`.claude/reports/`) | YES | Saves discovery time |
+| Runtime state (docker running, DB seeded) | YES | Varies per session |
+| "Full project context available" | NO | Always true; inherited |
+| "Check `<functions>` for MCP tools" | NO | In tool descriptions; inherited |
+| "Activate relevant skills" | NO | In CLAUDE.md; inherited |
+| "Maximize parallel execution" | NO | In CLAUDE.md; inherited |
+| Toolchain conventions (uv, pnpm, cargo) | NO | In project CLAUDE.md; inherited |
+| Generic MCP server list (Ref, context7, exa) | NO | In tool descriptions; inherited |
 
+SOURCE: Agent context audit (2026-02-17) confirming what sub-agents automatically inherit vs what must be provided.
 SOURCE: Prior diagnostic session identifying 6 structural causes of orchestrator tool-enumeration anti-pattern (2026-02-17)

@@ -154,80 +154,88 @@ VERIFICATION REQUIREMENTS:
 - If checklist reveals missing work, complete that work before proceeding
 
 ECOSYSTEM CONTEXT:
-- Full project context available — explore freely with all tools
-- Check <functions> list for MCP tools — prefer MCP specialists (Ref, context7, exa) over built-in alternatives
-- Check <available_skills> and activate relevant skills for domain expertise
-- Maximize parallel execution for independent tool calls
-- [Add project-specific context here: authenticated CLIs, toolchain conventions, validation scripts]
+- [Authenticated CLIs available: e.g., "`gh` CLI is pre-authenticated for GitHub operations"]
+- [Session-specific access: e.g., "CI logs for PR #42 accessible via MCP GitHub tool"]
+- [Non-obvious doc locations: e.g., "linting reports in `.claude/reports/`"]
+- [Omit anything already in CLAUDE.md — agents inherit CLAUDE.md and do not need it repeated]
 ```
 
 ## Writing Effective ECOSYSTEM CONTEXT
 
-The ECOSYSTEM CONTEXT section provides world-building context about the environment, not a restrictive tool list. Describe the ecosystem so agents can leverage their full capabilities.
+ECOSYSTEM CONTEXT belongs ONLY in the delegation prompt when it contains information the agent cannot find in CLAUDE.md, the project files it will read, or its own tool descriptions.
 
-**Anti-pattern**: Listing tool names (WebFetch, Read, Bash) instead of ecosystem context.
-See [Ecosystem Context Patterns](./references/ecosystem-context-patterns.md) for detailed anti-pattern analysis.
+**The inheritance rule**: Agents automatically inherit both CLAUDE.md files, MEMORY.md, rules files, git status, and all tool descriptions. Do not repeat any of that in ECOSYSTEM CONTEXT — it is noise that displaces real context.
 
-**Correct pattern (world-building, empowering):**
+### What belongs in ECOSYSTEM CONTEXT
+
+Include only session-specific or task-specific facts that exist nowhere the agent can see:
+
+**Authenticated CLIs** — whether a CLI is authenticated varies per session; agents cannot assume it:
+
+```text
+- The `gh` CLI is pre-authenticated for GitHub operations (issues, PRs, API queries)
+- The `glab` CLI is configured for GitLab access
+- AWS CLI is configured with credentials for the staging account
+```
+
+**Session-specific access** — CI logs, PR context, external resources relevant to this specific task:
+
+```text
+- CI logs for PR #42 are accessible via the MCP GitHub tool
+- The staging deployment at staging.example.com is available for testing
+```
+
+**Non-obvious document locations** — file locations the agent would not discover without a hint:
+
+```text
+- Recent linting reports in `.claude/reports/` document previously resolved issues
+- Package validation scripts in `./scripts/` — see README.md for usage
+```
+
+**Credentials or runtime state that varies** — anything that depends on the current session environment:
+
+```text
+- Docker daemon is running and accessible
+- The database seed data is loaded at localhost:5432
+```
+
+### What does NOT belong in ECOSYSTEM CONTEXT
+
+These items are inherited from CLAUDE.md or tool descriptions — do not repeat them:
+
+- "Full project context available — explore freely" — agents always have full tool access
+- "Check `<functions>` list for MCP tools" — tool descriptions already tell agents this
+- "Maximize parallel execution" — CLAUDE.md already instructs this
+- "Activate relevant skills for domain expertise" — CLAUDE.md already covers skill activation
+- "This Python project uses `uv`" — CLAUDE.md already states the toolchain
+- Language/toolchain conventions already in CLAUDE.md (uv, pnpm, cargo, etc.)
+
+**Anti-pattern — parroting inherited context:**
+
+```text
+ECOSYSTEM CONTEXT:
+- Full project context available — explore freely with all tools
+- Check <functions> list for MCP tools — prefer MCP specialists over built-in
+- This Python project uses `uv` — activate `uv` skill
+- Maximize parallel execution for independent tool calls
+```
+
+All four lines are already in CLAUDE.md or tool descriptions. This section adds zero information.
+
+**Correct pattern — session-specific facts only:**
 
 ```text
 ECOSYSTEM CONTEXT:
 - The `gh` CLI is pre-authenticated for GitHub operations (issues, PRs, API queries)
-- Excellent MCP servers installed — check your <functions> list and prefer MCP tools
-  (like `Ref`, `context7`, `exa`) over built-in alternatives since they are domain specialists
-- This Python project uses `uv` — activate the `uv` skill, use `uv run python` instead of
-  `python3`, `uv pip` instead of `pip`
-- Project uses `hatchling` as build backend — activate the `hatchling` skill for build/publish guidance
-- Recent linting fixes documented in `.claude/reports/` showing common issues and resolutions
-- Package validation scripts in `./scripts/` — check README.md for available validators
-- Full project context available including tests, configs, and documentation
+- CI logs for PR #42 accessible via MCP GitHub tool
+- Recent linting reports in `.claude/reports/` show resolved issues for reference
 ```
 
-### Resource Description Patterns
+These three lines are not in any CLAUDE.md and vary per session.
 
-**Authenticated CLI tools:**
+**When there is nothing session-specific to add, omit ECOSYSTEM CONTEXT entirely.** The section only earns its place when it contains information the agent cannot find anywhere else.
 
-```text
-The `gh` CLI is pre-authenticated for GitHub operations
-The `glab` CLI is configured for GitLab access
-AWS CLI is configured with appropriate credentials
-```
-
-**MCP server preferences:**
-
-```text
-Excellent MCP servers installed — check <functions> list and prefer these specialists:
-- `Ref` — high-fidelity verbatim documentation (unlike WebFetch which returns AI summaries)
-- `context7` — library API docs (current versions, comprehensive)
-- `exa` — web research (curated, high-quality sources)
-- `mcp-docker` — container operations
-```
-
-For technical documentation, high-fidelity access is essential:
-
-- `Ref` — high fidelity (output IS the source, verbatim)
-- `exa` — medium fidelity (Markdown-formatted extraction, preserves code blocks)
-- `WebFetch` — low fidelity (summarized, strips specifics) — NEVER for "how-to" implementation
-
-See [Accessing Online Resources](./references/accessing_online_resources.md) for tool selection criteria and experimental evidence.
-
-**Language/tooling ecosystems:**
-
-```text
-Python project using `uv` — activate `uv` skill, use `uv run`/`uv pip` exclusively
-Node project using `pnpm` — use `pnpm` instead of `npm`
-Rust project — use `cargo` commands, check Cargo.toml for features
-```
-
-**Baseline permissions (always include):**
-
-```text
-ECOSYSTEM CONTEXT:
-- Proactively explore your `<functions>` list for MCP tools — prefer MCP specialists over built-in
-- Maximize parallel execution for independent tool calls
-- Proactively check `<available_skills>` and activate relevant skills for domain expertise
-- [Add project-specific context: CLI tools, ecosystem conventions, validation scripts, doc locations]
-```
+See [Ecosystem Context Patterns](./references/ecosystem-context-patterns.md) for detailed examples and the documentation fidelity hierarchy for MCP tool selection.
 
 ## Inclusion Rules
 
