@@ -151,6 +151,7 @@ Every record with session context carries:
 Two subtypes within `data.type`:
 
 **`hook_progress`** — Hook execution notification:
+
 ```json
 {
   "type": "progress",
@@ -166,6 +167,7 @@ Two subtypes within `data.type`:
 ```
 
 **`agent_progress`** — Subagent streaming (full inner turn):
+
 ```json
 {
   "type": "progress",
@@ -183,6 +185,7 @@ Two subtypes within `data.type`:
 #### `system` — Metadata Events
 
 **`stop_hook_summary`** — After every turn:
+
 ```json
 {
   "type": "system",
@@ -199,6 +202,7 @@ Two subtypes within `data.type`:
 ```
 
 **`turn_duration`** — Turn timing:
+
 ```json
 {
   "type": "system",
@@ -209,6 +213,7 @@ Two subtypes within `data.type`:
 ```
 
 **`api_error`** — API failures:
+
 ```json
 {
   "type": "system",
@@ -222,6 +227,7 @@ Two subtypes within `data.type`:
 ```
 
 **`compact_boundary`** — Context compaction:
+
 ```json
 {
   "type": "system",
@@ -233,6 +239,7 @@ Two subtypes within `data.type`:
 ```
 
 **`local_command`** — User slash commands:
+
 ```json
 {
   "type": "system",
@@ -349,6 +356,7 @@ Main session JSONL (orchestrator):
 Subagent final output is returned via the parent session's tool_result when the Task completes (synchronous) or when `TaskOutput` is polled (asynchronous, `run_in_background: true`).
 
 **Async agent flow:**
+
 1. Orchestrator calls `Task` with `run_in_background: true`
 2. Tool result: "Async agent launched successfully. agentId: abc. output_file: /tmp/..."
 3. Orchestrator calls `TaskOutput` to poll
@@ -366,6 +374,7 @@ Subagent final output is returned via the parent session's tool_result when the 
 **Data field path:** `assistant.message.content[].input.command` where `assistant.message.content[].name == "Bash"`
 
 **Extraction:** Parse the `command` string for these patterns:
+
 ```python
 patterns = {
     'should_use_grep': r'\bgrep\b(?!.*\|.*grep)',   # standalone grep
@@ -378,6 +387,7 @@ patterns = {
 ```
 
 **Corpus-wide counts (this project):**
+
 ```
 grep:  182 occurrences
 ls:    215 occurrences
@@ -393,6 +403,7 @@ sed:     6 occurrences
 **Caveats:** Must exclude legitimate uses: `git ... | grep`, `uv run ... | head`, pipeline contexts where piping to grep is appropriate. The `description` field on Bash calls sometimes signals intent.
 
 **Example:**
+
 ```json
 {
   "name": "Bash",
@@ -402,6 +413,7 @@ sed:     6 occurrences
   }
 }
 ```
+
 → This violates the `Grep` tool rule AND pipes to `head` (should use `Grep` with `head_limit`).
 
 ---
@@ -443,6 +455,7 @@ sed:     6 occurrences
 **Data field path:** `user.message.content[text]` where `user.toolUseResult` is absent/false.
 
 **Patterns to match:**
+
 ```python
 frustration_signals = [
     r'\[Request interrupted by user\]',        # User hit Ctrl+C
@@ -453,16 +466,19 @@ frustration_signals = [
 ```
 
 **Corpus stats (88 substantive sessions):**
+
 - User interrupts: 106 occurrences
 - Direct corrections ("No,", "Why did you", "wrong"): ~43 real messages
 
 **Key challenge:** Must filter out:
+
 - System-generated messages with `Context: This summary...`
 - Session continuation messages (`This session is being continued...`)
 - Stop hook feedback messages (`Stop hook feedback:...`)
 - Skill injection messages (`Base directory for this skill:...`)
 
 **Real examples found:**
+
 ```
 "WHy would we ever want to use additional scripts. especially a bash script when this repo is meant to run cross platform?"
 "why did your agent planner...end up specifying `command -v claude`...?"
@@ -482,6 +498,7 @@ frustration_signals = [
 **Data field path:** `assistant.message.content[].name` (tool_use blocks), in message order.
 
 **Most common 3-tool trigrams (this project):**
+
 ```
 1066: Bash → Bash → Bash
 700:  Read → Read → Read
@@ -496,6 +513,7 @@ frustration_signals = [
 ```
 
 **Most common tool usage across all sessions:**
+
 ```
 Read:       2,248
 Bash:       2,245
@@ -512,6 +530,7 @@ Write:        211
 **Observation:** `Bash` and `Read` are nearly equal — suggesting Bash is used in place of Read in many cases. `Bash` should be ~10-20% of `Read`+`Grep`+`Glob` combined in a well-disciplined workflow.
 
 **Workflow fingerprinting feasibility:** Session-level tool sequences can be extracted and compared with:
+
 - Edit distance (Levenshtein on tool-name arrays)
 - Subsequence mining (PrefixSpan)
 - TF-IDF on tool-sequence bigrams
@@ -527,6 +546,7 @@ Write:        211
 **Data field path:** `assistant.message.content[].input` where `name == "Task"`
 
 **Full input schema:**
+
 ```json
 {
   "description": "Research LLM observability platforms",
@@ -541,6 +561,7 @@ Write:        211
 ```
 
 **Subagent types used (all sessions, ranked):**
+
 ```
 127: general-purpose
  57: python3-development:python-cli-architect
@@ -569,10 +590,12 @@ Write:        211
 **Signal:** Orchestrator reads a file then immediately delegates a Task where the same file path appears in the Task's prompt.
 
 **Data field paths:**
+
 - `Read` input: `assistant.message.content[].input.file_path` where `name == "Read"`
 - `Task` prompt: `assistant.message.content[].input.prompt` where `name == "Task"`
 
 **Detection algorithm:**
+
 ```python
 # Within a session, track (tool_name, file_path) tuples in order
 # Flag: Read(X) followed within 5 turns by Task(prompt contains X)
@@ -592,28 +615,28 @@ The most common wasted file: `.claude/CLAUDE.md` — orchestrator reads the proj
 
 These analyses require only regex/string matching on the JSONL corpus:
 
-| Analysis | Method | Output |
-|----------|--------|--------|
-| Tool misuse rate per session | Count Bash with file-op patterns ÷ total Bash | Per-session score |
-| Error rate per session | Count `is_error: true` tool results ÷ total tool calls | Per-session score |
-| User interrupt rate | Count interrupt messages ÷ total user turns | Frustration proxy |
-| Billing error sessions | Scan for `error: "billing_error"` | Blocked sessions |
-| Subagent type distribution | Count `Task.input.subagent_type` | Agent usage map |
-| Context waste occurrences | Read→Task overlap within 5 turns | Waste instances |
-| Session length distribution | Line count of JSONL files | Complexity proxy |
-| Token usage per session | Sum `usage.input_tokens + output_tokens` | Cost analysis |
-| Cache efficiency | `cache_read_input_tokens ÷ total_input_tokens` | Cache hit rate |
+| Analysis                     | Method                                                 | Output            |
+| ---------------------------- | ------------------------------------------------------ | ----------------- |
+| Tool misuse rate per session | Count Bash with file-op patterns ÷ total Bash          | Per-session score |
+| Error rate per session       | Count `is_error: true` tool results ÷ total tool calls | Per-session score |
+| User interrupt rate          | Count interrupt messages ÷ total user turns            | Frustration proxy |
+| Billing error sessions       | Scan for `error: "billing_error"`                      | Blocked sessions  |
+| Subagent type distribution   | Count `Task.input.subagent_type`                       | Agent usage map   |
+| Context waste occurrences    | Read→Task overlap within 5 turns                       | Waste instances   |
+| Session length distribution  | Line count of JSONL files                              | Complexity proxy  |
+| Token usage per session      | Sum `usage.input_tokens + output_tokens`               | Cost analysis     |
+| Cache efficiency             | `cache_read_input_tokens ÷ total_input_tokens`         | Cache hit rate    |
 
 ### 3.2 What Requires Deeper Techniques
 
-| Analysis | Why Harder | Approach |
-|----------|-----------|---------|
-| Workflow clustering | Need to compare sequences across 720 sessions | Sequence similarity + k-means |
-| "Same mistake" detection | Need semantic similarity of error messages | Embedding + clustering |
-| Instruction drift detection | Match user corrections to prior assistant output | Context-window pair analysis |
-| Inefficiency pattern mining | Extract frequent tool sequences that correlate with errors | PrefixSpan + rule mining |
-| Missing tool opportunities | Detect bash pipelines that match Glob/Grep/Read semantics | AST parsing of bash cmds |
-| User frustration severity scoring | Classify correction messages by severity | LLM classifier or keyword scoring |
+| Analysis                          | Why Harder                                                 | Approach                          |
+| --------------------------------- | ---------------------------------------------------------- | --------------------------------- |
+| Workflow clustering               | Need to compare sequences across 720 sessions              | Sequence similarity + k-means     |
+| "Same mistake" detection          | Need semantic similarity of error messages                 | Embedding + clustering            |
+| Instruction drift detection       | Match user corrections to prior assistant output           | Context-window pair analysis      |
+| Inefficiency pattern mining       | Extract frequent tool sequences that correlate with errors | PrefixSpan + rule mining          |
+| Missing tool opportunities        | Detect bash pipelines that match Glob/Grep/Read semantics  | AST parsing of bash cmds          |
+| User frustration severity scoring | Classify correction messages by severity                   | LLM classifier or keyword scoring |
 
 ---
 
@@ -622,6 +645,7 @@ These analyses require only regex/string matching on the JSONL corpus:
 ### 4.1 Processing Strategy
 
 With 720 sessions and ~57k total records, full corpus processing is fast in Python:
+
 - Estimated corpus size: ~500MB total
 - Single-pass scan with Counter: ~30 seconds
 - Session-level analysis with dict building: ~2 minutes
@@ -689,6 +713,7 @@ Phase 4: Report (template-driven)
 1. **Line-by-line parsing** — Do not `json.loads(file.read())`. JSONL files are line-delimited.
 
 2. **Subagent discovery:**
+
    ```python
    subagent_path = Path(f"{proj_dir}/{session_id}/subagents/agent-{agent_id}.jsonl")
    ```
@@ -746,30 +771,33 @@ Phase 4: Report (template-driven)
 Based on corpus analysis, these three signals are **trivial to extract** and **high-value**:
 
 ### Signal 1: Bash File-Op Misuse Rate
+
 - **Where:** `assistant.message.content[].input.command` for Bash calls
 - **How:** Regex for `grep\b`, `find\b.*-name`, `cat\b.*\.md`, `head\b.*\.\w+`
 - **Why:** 593 violations in this project alone
 
 ### Signal 2: Edit-Before-Read Error
+
 - **Where:** `user.message.content[].content` for tool_results with `is_error: true`
 - **Pattern:** Error text contains "File has not been read yet"
 - **Why:** Direct detection of anti-pattern, no ambiguity
 
 ### Signal 3: User Interrupt Rate Per Session
+
 - **Where:** `user.message.content` for non-toolUseResult messages containing "[Request interrupted"
 - **Why:** Strong frustration proxy, zero false positives
 
 ---
 
-*Analysis performed with direct observation of JSONL corpus. No training data assumptions used. All counts and schemas verified against sampled sessions.*
+_Analysis performed with direct observation of JSONL corpus. No training data assumptions used. All counts and schemas verified against sampled sessions._
 
 ---
 
 ## 7. Anthropic Official Skills Repository — Token Count Analysis
 
 **Date:** 2026-02-17
-**Source:** `/home/ubuntulinuxqa2/repos/skills/skills/` (Anthropic official skills repository)
-**Tool:** `plugins/plugin-creator/scripts/plugin_validator.py --tokens-only`
+**Source:** (Anthropic official skills repository)
+**Tool:** `/plugin-creator:lint --tokens-only ../skills/`
 **Skills found:** 16 SKILL.md files
 
 ### 7.1 Summary Statistics
@@ -788,24 +816,24 @@ Std deviation:   1,407.59 tokens
 
 ### 7.2 All Skills Sorted by Token Count (Descending)
 
-| Skill Name | Tokens |
-|---|---|
-| docx | 4,945 |
-| algorithmic-art | 4,150 |
-| skill-creator | 3,705 |
-| doc-coauthoring | 3,289 |
-| xlsx | 2,814 |
-| pptx | 2,403 |
-| canvas-design | 2,343 |
-| pdf | 2,079 |
-| slack-gif-creator | 1,982 |
-| mcp-builder | 1,922 |
-| webapp-testing | 881 |
-| frontend-design | 858 |
-| web-artifacts-builder | 702 |
-| theme-factory | 654 |
-| brand-guidelines | 517 |
-| internal-comms | 326 |
+| Skill Name            | Tokens |
+| --------------------- | ------ |
+| docx                  | 4,945  |
+| algorithmic-art       | 4,150  |
+| skill-creator         | 3,705  |
+| doc-coauthoring       | 3,289  |
+| xlsx                  | 2,814  |
+| pptx                  | 2,403  |
+| canvas-design         | 2,343  |
+| pdf                   | 2,079  |
+| slack-gif-creator     | 1,982  |
+| mcp-builder           | 1,922  |
+| webapp-testing        | 881    |
+| frontend-design       | 858    |
+| web-artifacts-builder | 702    |
+| theme-factory         | 654    |
+| brand-guidelines      | 517    |
+| internal-comms        | 326    |
 
 ### 7.3 Observations
 
@@ -815,4 +843,4 @@ Std deviation:   1,407.59 tokens
 - `internal-comms` at 326 tokens is an outlier on the low end; it is ~15x smaller than `docx`.
 - The high standard deviation (1,408 tokens) relative to the mean (2,098) indicates no consistent sizing norm across the official skill set.
 
-*Data collected 2026-02-17. Token counts produced by `plugin_validator.py --tokens-only` run against each SKILL.md file directly.*
+_Data collected 2026-02-17. Token counts produced by `plugin_validator.py --tokens-only` run against each SKILL.md file directly._
