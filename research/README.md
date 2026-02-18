@@ -42,6 +42,7 @@ research/
 │   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
 ├── developer-tools/                   # Developer productivity and workflow tools
 │   ├── animejs.md                     # Lightweight JavaScript animation engine (66K+ stars)
+│   ├── claude-conductor.md            # Context-Driven Development plugin for Claude Code (9 commands, skill ecosystem)
 │   ├── copier-astral.md               # Python project template with Astral toolchain (uv, ruff, ty)
 │   ├── git-cliff.md                   # Customizable changelog generator from Git history
 │   ├── grepai.md                      # Semantic code search and call graph analysis for AI agents (1.2K stars)
@@ -316,6 +317,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | Document                                               | Description                                                                                                                  | Last Updated |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [animejs.md](./developer-tools/animejs.md)             | Lightweight JavaScript animation engine with declarative API, timelines, staggering, and 30+ easing functions                        | 2026-01-31   |
+| [claude-conductor.md](./developer-tools/claude-conductor.md) | Claude Conductor - Context-Driven Development plugin with 9 commands, skill ecosystem, pattern reference layer, and quality intelligence | 2026-02-17   |
 | [copier-astral.md](./developer-tools/copier-astral.md) | Copier template for Python projects with Astral toolchain (uv, ruff, ty), pytest, MkDocs, Typer, GitHub Actions, Docker              | 2026-01-31   |
 | [git-cliff.md](./developer-tools/git-cliff.md)         | Customizable changelog generator using conventional commits and regex parsers with GitHub/GitLab remote integration                  | 2026-01-26   |
 | [grepai.md](./developer-tools/grepai.md)               | Semantic code search and call graph analysis for AI agents with MCP server, 12-language trace, and embedding-based search (1.2K stars) | 2026-02-13   |
@@ -385,6 +387,14 @@ Developer productivity tools and workflow automation for software engineering wi
 - Specialist agent roles (Architect, Explorer, Implementer, Guardian)
 - Auto-compaction at 75% context window capacity
 - CLI process spawning for full ecosystem compatibility
+- Context-Driven Development (CDD) lifecycle: Context -> Spec & Plan -> Implement
+- Skill activation scoring with weighted keyword/file/language/framework signals
+- SKILL-SUMMARY lazy loading for 74% token reduction
+- Universal File Resolution Protocol (UFRP) via index.md navigation files
+- Dual-format documentation (AI Quick Reference + Human Documentation)
+- Anti-pattern detection (god objects, mutable defaults, deep nesting, magic numbers)
+- Architecture Decision Record logging per feature track
+- Parallel sub-agents for code quality, security, and coverage analysis
 
 ---
 
@@ -767,6 +777,7 @@ When adding new research:
 - [The Claw Loop](https://www.dontsleeponai.com/claw-loop) - Autonomous development orchestration via tmux + cron
 - [mcpskills-cli](https://github.com/dhanababum/mcpskills-cli) - MCP-to-skill converter via Streamable HTTP discovery
 - [SkillKit](https://github.com/rohitg00/skillkit) - Universal package manager for AI agent skills (32 agents, 15K+ skills)
+- [Claude Conductor](https://github.com/rbarcante/claude-conductor) - Context-Driven Development plugin for Claude Code with skill ecosystem and quality intelligence (34 stars)
 
 ### Internal References
 

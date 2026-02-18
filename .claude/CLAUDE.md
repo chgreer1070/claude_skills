@@ -1,5 +1,9 @@
 # Claude Skills Repository - AI-Facing Project Instructions
 
+Reminder: Please provide a concise, precise response without unnecessary elaboration.
+
+Return only the direct answer. Do not include introductions, summaries, opinions, or additional context unless explicitly asked.
+
 Repository containing Claude Code Marketplace Plugin with modular skills (specialized knowledge, workflows, tools).
 
 CRITICAL FIRST ACTIONS on session start:
