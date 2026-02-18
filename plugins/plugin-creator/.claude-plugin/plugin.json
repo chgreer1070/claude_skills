@@ -1,7 +1,7 @@
 {
   "name": "plugin-creator",
   "description": "Complete plugin development toolkit for creating, refactoring, and validating Claude Code plugins and agents. Use when creating new plugins/skills/agents, refactoring existing plugins/skills, validating frontmatter, or restructuring plugin components. Includes specialized agents for assessment, planning, execution, and validation workflows.",
-  "version": "5.2.0",
+  "version": "5.3.0",
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
@@ -38,7 +38,8 @@
     "./skills/assessor",
     "./skills/skill-creator/scripts/init_skill.py",
     "./skills/skill-creator/scripts/package_skill.py",
-    "./skills/skill-creator/scripts/quick_validate.py"
+    "./skills/skill-creator/scripts/quick_validate.py",
+    "./skills/lint"
   ],
   "agents": [
     "./agents/refactor-planner.md",

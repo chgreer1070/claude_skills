@@ -206,9 +206,7 @@ jobs:
 
   # =============================================================================
   # Local hooks: plugin validation (plugin_validator.py)
-  # Currently passes (exit 0, warnings only as of 2026-02-18).
-  # Listed in quality-gate allowed-failures as safety net.
-  # Backlog: "Resolve plugin-validator pre-existing errors" (P1, 2026-02-14)
+  # Blocking since 2026-02-18 — all pre-existing errors resolved.
   # =============================================================================
   validate-plugins:
     name: Local / Plugin validation
@@ -489,6 +487,4 @@ jobs:
         with:
           # Jobs listed here may fail without blocking the gate.
           # Remove a job from this list to make it blocking.
-          # Backlog: "Resolve plugin-validator pre-existing errors" (P1, 2026-02-14)
-          allowed-failures: validate-plugins
           jobs: ${{ toJSON(needs) }}

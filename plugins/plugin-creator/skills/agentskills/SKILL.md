@@ -158,7 +158,7 @@ Static resources used in output (templates, images, data files). Not loaded into
 
 ## Authoring Best Practices
 
-For the complete Anthropic authoring guide, see [references/best-practices.md](references/best-practices.md).
+For the complete Anthropic authoring guide, see [references/best-practices.md](./references/best-practices.md).
 
 Key principles:
 
@@ -239,9 +239,9 @@ The open standard defines a **portable subset**. Claude Code extends it with add
 
 ## Detailed References
 
-- **Full specification details**: See [references/specification.md](references/specification.md)
-- **Authoring best practices**: See [references/best-practices.md](references/best-practices.md)
-- **Agent integration guide**: See [references/integration.md](references/integration.md)
+- **Full specification details**: See [references/specification.md](./references/specification.md)
+- **Authoring best practices**: See [references/best-practices.md](./references/best-practices.md)
+- **Agent integration guide**: See [references/integration.md](./references/integration.md)
 
 ## External Links
 

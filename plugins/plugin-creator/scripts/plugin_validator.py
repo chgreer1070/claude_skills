@@ -32,7 +32,16 @@ import subprocess
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, Protocol, cast
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    ClassVar,
+    Literal,
+    NoReturn,
+    Protocol,
+    cast,
+)
 
 import typer
 
@@ -3844,13 +3853,28 @@ def _handle_tokens_only(paths: list[Path], *, batch: bool = False) -> None:
     raise typer.Exit(0) from None
 
 
-def main(  # noqa: PLR0912, C901
+def _show_help_and_exit(ctx: typer.Context, code: int = 0) -> NoReturn:
+    """Print the help text for the current command and exit.
+
+    Args:
+        ctx: The Typer/Click context to extract help from.
+        code: Exit code to use.
+
+    Raises:
+        typer.Exit: Always raised to terminate after displaying help.
+    """
+    typer.echo(ctx.get_help())
+    raise typer.Exit(code) from None
+
+
+def main(  # noqa: PLR0912, PLR0915, C901
+    ctx: typer.Context,
     paths: Annotated[
-        list[Path],
+        list[Path] | None,
         typer.Argument(
             help="Paths to plugin, skill, agent, or command files to validate"
         ),
-    ],
+    ] = None,
     check: Annotated[
         bool, typer.Option("--check", help="Validate only, don't auto-fix")
     ] = False,
@@ -3962,6 +3986,20 @@ def main(  # noqa: PLR0912, C901
         2: Usage error (invalid arguments)
         130: Interrupted by user (Ctrl+C)
     """
+    # Show help when no arguments provided
+    if not paths:
+        _show_help_and_exit(ctx, code=0)
+
+    # Validate that all provided paths exist; report non-existent ones
+    bad_paths = [str(p) for p in paths if not p.exists()]
+    if bad_paths:
+        typer.echo(
+            f"These don't match the required arguments: {', '.join(bad_paths)}",
+            err=True,
+        )
+        typer.echo("", err=True)
+        _show_help_and_exit(ctx, code=2)
+
     try:
         # Validate mutual exclusion of --filter and --filter-type
         if filter_glob is not None and filter_type is not None:

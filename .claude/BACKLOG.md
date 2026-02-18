@@ -1,7 +1,7 @@
 ---
 last-updated: 2026-02-18
 p0-count: 0
-p1-count: 14
+p1-count: 13
 p2-count: 12
 ideas-count: 11
 ---
@@ -111,21 +111,6 @@ _(Empty)_
 **Dependencies**: Benefits from SAM extension being done first (ARL would be a SAM-based skill)
 **Suggested location**: New skill under `plugins/plugin-creator/skills/` or standalone plugin
 
-### Resolve plugin-validator pre-existing errors to make CI gate blocking
-
-**Source**: CI pipeline run 22018867027 on claude/fix-ci-pipeline-RJ0Tw (2026-02-14)
-**Added**: 2026-02-14
-**Description**: plugin-validator found 19 errors and 63 warnings across existing skills. The CI "Validate plugins" step is currently non-blocking (`|| echo ::warning::`) because of these pre-existing failures. Once resolved, the step should be made blocking.
-**Error breakdown**:
-- **LK001 (broken links)**: Skills reference files that don't exist (e.g., `workflow-diagrams/multi-agent-orchestration.md`, `asset-decision-tree.md` in delegate and agent-creator skills)
-- **SK007 (token limit exceeded)**: `orchestrating-swarms` at 12,453 tokens (limit: 10,000) — needs splitting into multiple skills
-- **SK006 (token warning)**: `agent-creator` at 5,939 tokens (threshold: 4,000) — consider splitting
-**Approach**:
-1. Fix LK001 errors: either create the missing reference files or update the broken links
-2. Fix SK007 errors: split oversized skills into multiple focused skills
-3. After errors reach 0: change CI step from `|| echo ::warning::` to a blocking gate
-**CI file**: `.github/workflows/code-quality.yml` lines 207-215
-**Related backlog**: "plugin-validator UX and coverage gaps" — sub-issue 1 (report counts) would make triage easier
 
 
 ### Extract claude-plugin-lint to standalone PyPI package
@@ -363,6 +348,14 @@ _(Empty)_
 ---
 
 ## Completed
+
+### Resolve plugin-validator pre-existing errors to make CI gate blocking
+
+**Source**: CI pipeline run 22018867027 on claude/fix-ci-pipeline-RJ0Tw (2026-02-14)
+**Completed**: 2026-02-18
+**Description**: Original 19 errors and 63 warnings (from 2026-02-14) were resolved across multiple prior sessions: LK001 broken links fixed, SK007 orchestrating-swarms split into 4 sub-skills, SK005 trigger phrase issues resolved. Final session fixed 4 remaining LK002 warnings in agentskills/SKILL.md (added `./` prefix) and promoted `validate-plugins` from `allowed-failures` to blocking in the quality gate.
+**Location**: `plugins/plugin-creator/skills/agentskills/SKILL.md`, `.github/workflows/code-quality.yml`
+**Plan**: plan/tasks-3-validator-ci-gate.md
 
 ### Resolve manifest drift to make CI sync check blocking
 
