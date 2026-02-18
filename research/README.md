@@ -64,7 +64,8 @@ research/
 │   ├── claw-loop.md                   # Autonomous development orchestration via tmux + cron
 │   ├── compound-engineering-plugin.md # Every Inc's Plan/Work/Review/Compound workflow plugin
 │   ├── github-patterns.md             # Patterns from GitHub research agent implementations
-│   └── orchestrator-agent-creation-guide.md  # OpenCode orchestrator agent guide
+│   ├── orchestrator-agent-creation-guide.md  # OpenCode orchestrator agent guide
+│   └── tinyclaw.md                    # Multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs
 ├── skill-generation-tools/            # Tools that create AI skills/prompts
 │   ├── mcpskills-cli.md               # MCP-to-skill converter via Streamable HTTP discovery
 │   ├── skill-seekers.md               # Documentation-to-skill automation tool
@@ -89,6 +90,7 @@ Research on multi-agent architectures, orchestration patterns, and research work
 | [compound-engineering-plugin.md](./research-agent-patterns/compound-engineering-plugin.md)             | Every Inc's Claude Code plugin with 27 agents, 20 commands - Plan/Work/Review/Compound workflow (6.8K stars)           | 2026-01-31   |
 | [github-patterns.md](./research-agent-patterns/github-patterns.md)                                     | Patterns from 40+ repositories including Chief of Staff model, 12-agent academic pipelines, Pydantic AI research loops | 2025-12-09   |
 | [orchestrator-agent-creation-guide.md](./research-agent-patterns/orchestrator-agent-creation-guide.md) | Comprehensive guide for creating orchestrator agents in OpenCode - routing, chaining, parallel delegation patterns     | 2026-01-26   |
+| [tinyclaw.md](./research-agent-patterns/tinyclaw.md)                                                   | TinyClaw - multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs and file-based queue (2.1K stars)    | 2026-02-18   |
 
 **Key Topics**:
 
@@ -112,6 +114,13 @@ Research on multi-agent architectures, orchestration patterns, and research work
 - State-file-driven workflow progression (not memory-based)
 - Model switching per task type (Opus for reasoning, Sonnet for execution)
 - Fail-gracefully design (crashes, rate limits as expected events)
+- Peer-to-peer agent handoff via `[@teammate: message]` bracket tags
+- File-based queue with atomic incoming/processing/outgoing state machine
+- Isolated agent workspaces with per-agent provider, model, and personality
+- Multi-channel routing (Discord, Telegram, WhatsApp) to shared agent pool
+- SOUL.md declarative personality specification for consistent agent voice
+- Heartbeat-driven proactive agent activation on schedule
+- Sender pairing allowlist for access control
 
 ---
 
@@ -787,6 +796,7 @@ When adding new research:
 - [SkillKit](https://github.com/rohitg00/skillkit) - Universal package manager for AI agent skills (32 agents, 15K+ skills)
 - [Claude Conductor](https://github.com/rbarcante/claude-conductor) - Context-Driven Development plugin for Claude Code with skill ecosystem and quality intelligence (34 stars)
 - [Retio PageMap](https://github.com/Retio-ai/Retio-pagemap) - MCP server compressing HTML pages to 2-5K token structured maps with 95.2% task success (14 stars)
+- [TinyClaw](https://github.com/jlia0/tinyclaw) - Multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs and file-based queue (2,124 stars)
 
 ### Internal References
 
