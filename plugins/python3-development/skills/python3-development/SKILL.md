@@ -389,11 +389,14 @@ Orchestrator workflow:
    "I have read the orchestration guide. Using FEATURE ADDITION workflow with agents:
     @python3-development:python-cli-architect → @python3-development:python-pytest-architect → @python3-development:python-code-reviewer"
 
-1. Delegate to @python3-development:python-cli-architect (FOCUSED SCOPE: implementation only)
-   "Create CSV processing CLI with Typer+Rich progress bars. Scope: src/csv_tool.py only."
+1. Delegate to @python3-development:python-cli-architect
+   "Create a CSV processing CLI with Typer+Rich progress bars.
+    Success: CLI accepts CSV file input, displays progress bar, outputs results.
+    Follow existing project structure and conventions."
 
-2. Delegate to @python3-development:python-pytest-architect (FOCUSED SCOPE: tests only)
-   "Create test suite for CSV processor. Scope: tests/test_csv_tool.py only."
+2. Delegate to @python3-development:python-pytest-architect
+   "Create test suite for the CSV processor CLI.
+    Success: Tests cover all CLI commands, edge cases, and error paths. Coverage >80%."
 
 3. Instruct agent to run: /python3-development:shebangpython, /python3-development:modernpython
 
