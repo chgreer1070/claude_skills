@@ -165,21 +165,13 @@ ECOSYSTEM CONTEXT:
 
 The ECOSYSTEM CONTEXT section provides world-building context about the environment, not a restrictive tool list. Describe the ecosystem so agents can leverage their full capabilities.
 
-**Anti-pattern (reductive, limiting):**
-
-```text
-AVAILABLE RESOURCES:
-- WebFetch tool
-- Read tool
-- Bash tool
-```
-
-Problem: Lists specific tools, implying these are the only options. Additionally, listing WebFetch without mentioning superior MCP alternatives causes agents to use low-fidelity tools.
+**Anti-pattern**: Listing tool names (WebFetch, Read, Bash) instead of ecosystem context.
+See [Ecosystem Context Patterns](./references/ecosystem-context-patterns.md) for detailed anti-pattern analysis.
 
 **Correct pattern (world-building, empowering):**
 
 ```text
-AVAILABLE RESOURCES:
+ECOSYSTEM CONTEXT:
 - The `gh` CLI is pre-authenticated for GitHub operations (issues, PRs, API queries)
 - Excellent MCP servers installed — check your <functions> list and prefer MCP tools
   (like `Ref`, `context7`, `exa`) over built-in alternatives since they are domain specialists
@@ -230,7 +222,7 @@ Rust project — use `cargo` commands, check Cargo.toml for features
 **Baseline permissions (always include):**
 
 ```text
-AVAILABLE RESOURCES:
+ECOSYSTEM CONTEXT:
 - Proactively explore your `<functions>` list for MCP tools — prefer MCP specialists over built-in
 - Maximize parallel execution for independent tool calls
 - Proactively check `<available_skills>` and activate relevant skills for domain expertise
