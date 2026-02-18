@@ -41,9 +41,17 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 # Error code base URL for documentation links
 ERROR_CODE_BASE_URL = "https://github.com/jamie-bitflight/claude_skills/blob/main/plugins/plugin-creator/docs/ERROR_CODES.md"
 
-# Token-based complexity thresholds (Architecture lines 1156-1157)
-TOKEN_WARNING_THRESHOLD = 4000  # ~500 lines equivalent
-TOKEN_ERROR_THRESHOLD = 10000  # ~1250 lines equivalent
+# Token-based complexity thresholds (body content, frontmatter excluded)
+TOKEN_WARNING_THRESHOLD = 4400
+TOKEN_ERROR_THRESHOLD = 8800
+
+# Convenience glob patterns for --filter-type option
+FILTER_TYPE_MAP: dict[str, str] = {
+    "skills": "**/skills/*/SKILL.md",
+    "agents": "**/agents/*.md",
+    "commands": "**/commands/*.md",
+    "all": "**/*.md",
+}
 
 # Description requirements (Architecture lines 349-350)
 MIN_DESCRIPTION_LENGTH = 20
@@ -86,8 +94,8 @@ SK002 = "SK002"  # Name contains underscores (use hyphens)
 SK003 = "SK003"  # Name has leading/trailing/consecutive hyphens
 SK004 = "SK004"  # Description too short (minimum 20 characters)
 SK005 = "SK005"  # Description missing trigger phrases
-SK006 = "SK006"  # Token count exceeds 4000 (consider splitting)
-SK007 = "SK007"  # Token count exceeds 10000 (must split)
+SK006 = "SK006"  # Token count exceeds TOKEN_WARNING_THRESHOLD (larger than Anthropic's official skills)
+SK007 = "SK007"  # Token count exceeds TOKEN_ERROR_THRESHOLD (must split)
 
 # Link Errors (LK001-LK002)
 LK001 = "LK001"  # Broken internal link (file does not exist)
@@ -2074,7 +2082,7 @@ class ComplexityValidator:
                 )
             )
         elif body_tokens > TOKEN_WARNING_THRESHOLD:
-            # WARNING: Consider splitting
+            # WARNING: Larger than Anthropic's official skills
             warnings.append(
                 ValidationIssue(
                     field="complexity",
@@ -2082,7 +2090,7 @@ class ComplexityValidator:
                     message=f"Skill body is large ({body_tokens} tokens > {TOKEN_WARNING_THRESHOLD} threshold)",
                     code=SK006,
                     docs_url=generate_docs_url(SK006),
-                    suggestion="Run /plugin-creator:refactor-skill to split into focused skills, or reduce content to stay under threshold",
+                    suggestion="This skill is larger than Anthropic's official skills. Review whether content can be moved to references/ or if the skill covers multiple domains that could be separated",
                 )
             )
 
@@ -3788,7 +3796,7 @@ def _handle_tokens_only(paths: list[Path], *, batch: bool = False) -> None:
     raise typer.Exit(0) from None
 
 
-def main(
+def main(  # noqa: PLR0912, C901
     paths: Annotated[
         list[Path],
         typer.Argument(
@@ -3830,6 +3838,32 @@ def main(
         bool,
         typer.Option("--show-summary", help="Show validation summary panel at the end"),
     ] = False,
+    filter_glob: Annotated[
+        str | None,
+        typer.Option(
+            "--filter",
+            help=(
+                "Glob pattern to match files within a directory "
+                "(e.g. '**/skills/*/SKILL.md'). "
+                "Ignored when the positional path is a file. "
+                "Mutually exclusive with --filter-type."
+            ),
+        ),
+    ] = None,
+    filter_type: Annotated[
+        str | None,
+        typer.Option(
+            "--filter-type",
+            help=(
+                "Shortcut for common filter patterns. "
+                "Choices: skills (**/skills/*/SKILL.md), "
+                "agents (**/agents/*.md), "
+                "commands (**/commands/*.md), "
+                "all (**/*.md). "
+                "Mutually exclusive with --filter."
+            ),
+        ),
+    ] = None,
 ) -> None:
     """Validate Claude Code plugins, skills, agents, and commands.
 
@@ -3868,6 +3902,12 @@ def main(
         # Get just the token count for programmatic use
         ./plugin_validator.py --tokens-only .claude/CLAUDE.md
 
+        # Token counts for all skills in a plugin directory (batch mode)
+        ./plugin_validator.py --tokens-only --filter-type=skills plugins/my-plugin
+
+        # Token counts matching a custom glob pattern
+        ./plugin_validator.py --tokens-only --filter='**/SKILL.md' ../other-repo
+
     Exit Codes:
         0: Success (all checks passed)
         1: Validation errors found
@@ -3875,9 +3915,37 @@ def main(
         130: Interrupted by user (Ctrl+C)
     """
     try:
+        # Validate mutual exclusion of --filter and --filter-type
+        if filter_glob is not None and filter_type is not None:
+            typer.echo(
+                "Error: --filter and --filter-type are mutually exclusive", err=True
+            )
+            raise typer.Exit(2) from None
+
+        # Resolve --filter-type to a glob pattern
+        resolved_glob: str | None = filter_glob
+        if filter_type is not None:
+            if filter_type not in FILTER_TYPE_MAP:
+                valid = ", ".join(FILTER_TYPE_MAP)
+                typer.echo(f"Error: --filter-type must be one of: {valid}", err=True)
+                raise typer.Exit(2) from None
+            resolved_glob = FILTER_TYPE_MAP[filter_type]
+
+        # Expand directory paths using resolved_glob when provided
+        expanded_paths: list[Path] = []
+        is_batch = False
+        for path in paths:
+            if resolved_glob is not None and path.is_dir():
+                # Path.glob() handles ** patterns natively
+                matched = sorted(path.glob(resolved_glob))
+                expanded_paths.extend(matched)
+                is_batch = True
+            else:
+                expanded_paths.append(path)
+
         # Handle --tokens-only mode early (bypasses all other flags)
         if tokens_only:
-            _handle_tokens_only(paths)
+            _handle_tokens_only(expanded_paths, batch=is_batch)
 
         if check and fix:
             typer.echo("Error: Cannot use both --check and --fix flags", err=True)
@@ -3887,7 +3955,7 @@ def main(
         ignore_patterns = _load_ignore_patterns()
 
         all_results: FileResults = {}
-        for path in paths:
+        for path in expanded_paths:
             # Skip paths matching .pluginvalidatorignore patterns
             if ignore_patterns and _is_ignored(path, ignore_patterns):
                 continue

@@ -114,18 +114,9 @@ uv run ./scripts/plugin_validator.py fix ./skills/my-skill/SKILL.md
 ### Refactoring Plugins
 
 ```bash
-# Quick check of skill line counts
-/plugin-creator:count-lines ./plugins/my-plugin
-
-# Validate skill structure
-./scripts/validate-skill-structure.sh ./skills/my-skill
+# Check skill complexity via token metrics
+uv run ./scripts/plugin_validator.py --verbose ./plugins/my-plugin
 ```
-
-## Commands
-
-| Command                       | Purpose                | Example                                           |
-| ----------------------------- | ---------------------- | ------------------------------------------------- |
-| `/plugin-creator:count-lines` | Quick line count check | `/plugin-creator:count-lines ./plugins/my-plugin` |
 
 ## Skills
 
@@ -173,7 +164,6 @@ uv run ./scripts/plugin_validator.py fix ./skills/my-skill/SKILL.md
 | Script                        | Purpose                                       | Usage                                              |
 | ----------------------------- | --------------------------------------------- | -------------------------------------------------- |
 | `plugin_validator.py`     | Comprehensive schema validation with auto-fix | `uv run plugin_validator.py validate SKILL.md` |
-| `validate-skill-structure.sh` | Skill structure and quality validation        | `./validate-skill-structure.sh ./skills/my-skill`  |
 | `validate-task-file.sh`       | Validate refactoring task file format         | `./validate-task-file.sh tasks.md`                 |
 
 ### Utility Scripts
@@ -181,7 +171,6 @@ uv run ./scripts/plugin_validator.py fix ./skills/my-skill/SKILL.md
 | Script                 | Purpose                                   | Usage                                        |
 | ---------------------- | ----------------------------------------- | -------------------------------------------- |
 | `create_plugin.py`     | Interactive plugin scaffolding            | `uv run create_plugin.py`                    |
-| `count-skill-lines.sh` | Count lines and identify oversized skills | `./count-skill-lines.sh ./plugins/my-plugin` |
 | `fix_tool_formats.py`  | Fix tool field formatting issues          | `uv run fix_tool_formats.py`                 |
 
 ### Script Usage Examples
@@ -200,11 +189,6 @@ uv run ./scripts/plugin_validator.py fix ./skills/my-skill/SKILL.md
 # Batch fix all frontmatter
 uv run ./scripts/plugin_validator.py fix-batch ./plugins/my-plugin
 
-# Validate skill structure (line counts, links, directories)
-./scripts/validate-skill-structure.sh ./skills/my-skill
-
-# Count skill lines
-./scripts/count-skill-lines.sh ./plugins/my-plugin
 ```
 
 ## Validation Capabilities
@@ -231,19 +215,6 @@ uv run ./scripts/plugin_validator.py fix-batch ./plugins/my-plugin
 - Skills (SKILL.md)
 - Agents (.md in agents/ directories)
 - Commands (.md in commands/ directories)
-
-### Skill Structure Validation (`validate-skill-structure.sh`)
-
-**Checks:**
-
-- SKILL.md presence and frontmatter structure
-- Name and description fields
-- Name format (lowercase, hyphens)
-- Description length (minimum 20 characters)
-- Description trigger phrases
-- Line count limits (warns >500, errors >800)
-- Progressive disclosure structure (references/, examples/, scripts/)
-- Internal markdown link validity
 
 ## Refactoring Workflow
 
@@ -308,9 +279,10 @@ uv run ./scripts/plugin_validator.py fix-batch ./plugins/my-plugin
 
 ### Skill Size Limits
 
-- **Recommended**: <500 lines (body content)
-- **Warning**: 500-800 lines - consider splitting
-- **Critical**: >800 lines - must split
+Complexity is measured by token count (via `plugin_validator.py`). Token thresholds replace line-count heuristics.
+
+- **Warning**: TOKEN_WARNING_THRESHOLD tokens - consider splitting
+- **Critical**: TOKEN_ERROR_THRESHOLD tokens - must split
 
 ### Skill Split Requirements
 
@@ -483,15 +455,12 @@ claude plugin validate ./my-new-plugin
 ### Refactoring an Existing Plugin
 
 ```bash
-# 1. Check skill sizes
-/plugin-creator:count-lines ./plugins/python3-development
+# 1. Check skill complexity
+uv run ./scripts/plugin_validator.py --verbose ./plugins/python3-development
 
-# Output shows skills over 500 lines
+# Output shows skills over token thresholds
 
-# 2. Validate skill structures
-./scripts/validate-skill-structure.sh ./plugins/python3-development/skills/python3
-
-# 3. Invoke @"plugin-creator:refactor-planner (agent)"
+# 2. Invoke @"plugin-creator:refactor-planner (agent)"
 Use @"plugin-creator:refactor-planner (agent)" to analyze ./plugins/python3-development
 
 # Assessment runs, creates plan files

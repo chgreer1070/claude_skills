@@ -430,10 +430,9 @@ description: "Use when analyzing log files to generate detailed reports"
 **Auto-fix**: No
 **Validator**: `ComplexityValidator`
 
-**Description**: Skill body content exceeds 4000 tokens (~500 line equivalent). Consider splitting into smaller, focused skills.
+**Description**: Skill body content exceeds `TOKEN_WARNING_THRESHOLD`. Consider splitting into smaller, focused skills.
 
-**Token threshold**: 4000 tokens
-**Line equivalent**: ~500 lines
+**Threshold**: Defined in `plugin_validator.py` as `TOKEN_WARNING_THRESHOLD`
 
 **Recommendation**: Split skill using progressive disclosure:
 1. Keep high-level guidance in main SKILL.md
@@ -461,10 +460,9 @@ skill-name/
 **Auto-fix**: No
 **Validator**: `ComplexityValidator`
 
-**Description**: Skill body content exceeds 6400 tokens (~800 line equivalent). Skill MUST be split.
+**Description**: Skill body content exceeds `TOKEN_ERROR_THRESHOLD`. Skill MUST be split.
 
-**Token threshold**: 6400 tokens
-**Line equivalent**: ~800 lines
+**Threshold**: Defined in `plugin_validator.py` as `TOKEN_ERROR_THRESHOLD`
 
 **Reason**: Skills exceeding this threshold cause:
 - Slow Claude Code loading

@@ -16,6 +16,7 @@ dev = [
     "anthropic>=0.80.0",
     "basedpyright>=1.33.0",
     "defusedxml>=0.7.1",
+    "fastmcp==3.0.0rc2",
     "generate-changelog>=0.16.0",
     "hatch-vcs>=0.5.0",
     "httpx>=0.28.1",
@@ -23,6 +24,8 @@ dev = [
     "matplotlib>=3.10.8",
     "mcp[cli]>=1.26.0",
     "pandas>=3.0.0",
+    "pm4py>=2.7.0",
+    "prefixspan>=0.5.2",
     "prek>=0.2.19",
     "pydantic>=2.12.3",
     "pypfmt>=0.1.0",
@@ -34,6 +37,7 @@ dev = [
     "python-dotenv>=1.1.1",
     "python-frontmatter>=1.1.0",
     "python-semantic-release>=10.4.1",
+    "scikit-learn>=1.0",
     "tiktoken>=0.12.0",
     "toml-sort>=0.24.3",
     "ty>=0.0.17",
@@ -94,6 +98,7 @@ source = ["**/scripts"]
 extra-paths = [
     "./.claude/skills/create-merge-request-changelog/scripts",
     "./.claude/skills/research-curator/scripts",
+    "./plugins/agentskill-kaizen/mcp",
     "./plugins/development-harness/skills/implementation-manager/scripts",
     "./plugins/fastmcp-creator/skills/fastmcp-creator/scripts",
     "./plugins/gitlab-skill/skills/gitlab-skill/scripts",
@@ -109,9 +114,16 @@ extra-paths = [
 root = ["./plugins"]
 
 [[tool.ty.overrides]]
-include = ["**/test_*.py", "tests/**"]
+include = ["plugins/agentskill-kaizen/**"]
 
 [tool.ty.overrides.rules]
+call-non-callable = "warn" # prefixspan has incomplete type stubs
+
+[[tool.ty.overrides]]
+include = ["**/test_*.py", "**/conftest.py", "**/tests/**", "tests/**"]
+
+[tool.ty.overrides.rules]
+call-non-callable = "warn"
 invalid-argument-type = "warn"
 invalid-assignment = "warn"
 possibly-unresolved-reference = "warn"
@@ -255,7 +267,7 @@ exclude = ["typings/", "plugins/development-harness/.*/scripts/"]
 explicit_package_bases = true
 extra_checks = true
 ignore_missing_imports = true
-mypy_path = ["packages", "scripts", "."]
+mypy_path = ["packages", "plugins/agentskill-kaizen/mcp", "scripts", "."]
 namespace_packages = true
 pretty = true
 python_version = "3.11"
@@ -267,15 +279,19 @@ warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 disable_error_code = [
+    "arg-type",
     "attr-defined",
     "call-arg",
     "index",
     "no-any-return",
+    "operator",
     "valid-type",
     "var-annotated",
 ]
 module = [
+    "conftest",
     "test.*",
+    "test_server",
     "tests.*",
     ".claude.*",
     ".claude.utilities.*",
@@ -284,7 +300,7 @@ module = [
 
 [tool.basedpyright]
 extraPaths = ["**/plugins", "**/scripts", "**/tests"]
-ignore = ["**/typings", "**/tests"]
+ignore = ["**/typings", "**/tests", "plugins/agentskill-kaizen"]
 include = ["**/plugins", "**/scripts"]
 pythonVersion = "3.11"
 reportImplicitRelativeImport = false

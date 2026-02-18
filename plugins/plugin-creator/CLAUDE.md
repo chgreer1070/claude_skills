@@ -155,21 +155,15 @@ The model MUST use this plugin when:
 | `contextual-ai-documentation-optimizer` | sonnet | (inherits)                                                           | Optimize prompts, SKILL.md, CLAUDE.md for Claude comprehension           | ✅ Yes   |
 | `plugin-assessor`          | sonnet | (inherits)                                                           | Analyze plugins for structure, frontmatter, and quality                  | ✅ Yes   |
 
-### Commands (1)
+### Commands (0)
 
-| Command                       | Purpose                          | Script Used            | Verified |
-| ----------------------------- | -------------------------------- | ---------------------- | -------- |
-| `/plugin-creator:count-lines` | Quick check of skill line counts | `count-skill-lines.sh` | ✅ Yes   |
-
-### Scripts (7)
+### Scripts (5)
 
 | Script                        | Purpose                                            | Verified Working                              |
 | ----------------------------- | -------------------------------------------------- | --------------------------------------------- |
 | `create_plugin.py`            | Interactive plugin scaffolding                     | ✅ Yes - creates .claude-plugin/, plugin.json |
 | `plugin_validator.py`         | Comprehensive plugin validation with token metrics| ✅ Yes - validates plugins, skills, agents, commands |
-| `validate-skill-structure.sh` | Skill quality validation (lines, links, structure) | ✅ Yes - bash script (deprecated, use plugin_validator.py) |
 | `validate-task-file.sh`       | Validate refactoring task file format              | ✅ Yes - bash script                          |
-| `count-skill-lines.sh`        | Count lines in skills, identify oversized ones     | ✅ Yes - used by count-lines command (deprecated, use plugin_validator.py) |
 | `fix_tool_formats.py`         | Fix invalid tool format patterns in frontmatter    | ✅ Yes - scans ~/.claude and repos            |
 | `README.md`                   | Script documentation                               | ✅ Yes - documents fix_tool_formats.py        |
 
@@ -389,8 +383,7 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py --no-color {path}
   - Version consistency
 - **Skill complexity:**
   - Token-based complexity measurement (not line count)
-  - Warning at 4000 tokens (~500 lines)
-  - Error at 6400 tokens (~800 lines)
+  - Thresholds defined as `TOKEN_WARNING_THRESHOLD` and `TOKEN_ERROR_THRESHOLD` in `plugin_validator.py`
 - **Internal links:**
   - Markdown link validity
   - Progressive disclosure structure
@@ -416,39 +409,6 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py --no-color {path}
 **Error Codes:** See [ERROR_CODES.md](./scripts/ERROR_CODES.md) for complete error code reference (23 codes across 9 validators)
 
 **SOURCE:** `plugin_validator.py` script with comprehensive validation and token-based complexity measurement
-
----
-
-### Workflow 6: Validate Skill Structure
-
-**Entry Point:** `validate-skill-structure.sh` script
-**Verified:** ✅ Yes
-
-**Purpose:** Quality checks beyond frontmatter validation
-
-**Usage:**
-
-```bash
-plugins/plugin-creator/scripts/validate-skill-structure.sh {skill-directory}
-```
-
-**What It Validates:**
-
-1. **Frontmatter Presence:** SKILL.md starts with `---` and closes properly
-2. **Name Field:** Present, lowercase, hyphens only
-3. **Description Field:** Present, minimum 20 characters, includes trigger phrases
-4. **Line Count Limits:**
-   - WARN if body >500 lines
-   - ERROR if body >800 lines
-5. **Progressive Disclosure:** Checks for `references/`, `examples/`, `scripts/` directories
-6. **Internal Links:** Validates markdown links with `./` prefix point to existing files
-
-**Exit Codes:**
-
-- 0: Pass (all checks or warnings only)
-- 1: Fail (errors found)
-
-**SOURCE:** Verified by reading `validate-skill-structure.sh` lines 1-176
 
 ---
 
@@ -576,34 +536,6 @@ claude plugin validate {plugin-directory}
 - Complete fidelity
 - Backwards compatibility maintained
 - All cross-references valid
-
----
-
-### Workflow 10: Count Skill Lines
-
-**Entry Point:** `/plugin-creator:count-lines` command
-**Verified:** ✅ Yes
-
-**Usage:**
-
-```bash
-/plugin-creator:count-lines {plugin-or-skill-path}
-```
-
-**What It Does:**
-
-1. Runs `${CLAUDE_PLUGIN_ROOT}/scripts/count-skill-lines.sh`
-2. Displays table with line counts
-3. Shows status: OK / WARNING (>500) / CRITICAL (>800)
-
-**Output Format:**
-
-```text
-| Skill | Total | Body | Status |
-|-------|-------|------|--------|
-| python3 | 650 | 580 | WARNING (>500) |
-| testing | 320 | 280 | OK |
-```
 
 ---
 
@@ -757,11 +689,11 @@ uv run plugins/plugin-creator/scripts/fix_tool_formats.py
 
 - ✅ Frontmatter schema (via plugin_validator.py)
 - ✅ Plugin.json syntax (via claude plugin validate)
-- ✅ Skill structure quality (via validate-skill-structure.sh)
+- ✅ Skill complexity (token-based, via plugin_validator.py)
 
 **Not Validated:**
 
-- ❌ Agent frontmatter vs skill frontmatter differences (validate-skill-structure.sh only checks skills)
+- ❌ Agent frontmatter vs skill frontmatter differences (plugin_validator.py validates both but does not enforce agent-specific constraints)
 - ❌ Command frontmatter (no dedicated validator beyond general plugin_validator.py)
 - ❌ Cross-references between components (e.g., agent references non-existent skill)
 
@@ -794,8 +726,8 @@ uv run plugins/plugin-creator/scripts/fix_tool_formats.py
 ```
 1. Determine validation type:
    - Frontmatter → uv run scripts/plugin_validator.py validate {path}
-   - Complete plugin → claude plugin validate {path}
-   - Skill structure → scripts/validate-skill-structure.sh {path}
+   - Complete plugin → uv run scripts/plugin_validator.py {plugin-path} then claude plugin validate {path}
+   - Skill structure → uv run scripts/plugin_validator.py {path}
 2. Run appropriate validator
 3. Report results with specific file:line references
 ```
@@ -808,7 +740,7 @@ uv run plugins/plugin-creator/scripts/fix_tool_formats.py
 
 ```
 1. If skill >500 lines:
-   - Run /plugin-creator:count-lines first to show problem
+   - Run uv run plugins/plugin-creator/scripts/plugin_validator.py {path} to show token complexity
    - Offer /refactor-skill for individual skill
    - Offer /refactor-plugin for whole plugin
 2. If general plugin refactoring:
@@ -847,8 +779,6 @@ uv run plugins/plugin-creator/scripts/create_plugin.py
 
 # Scripts that work from their directory:
 cd plugins/plugin-creator/scripts
-./validate-skill-structure.sh {path}
-./count-skill-lines.sh {path}
 ./validate-task-file.sh {path}
 ```
 
@@ -919,12 +849,6 @@ When commands execute, they have access to:
 | `${CLAUDE_PLUGIN_ROOT}` | Absolute path to plugin directory                      | Used in commands to reference scripts |
 | `${CLAUDE_PROJECT_DIR}` | Project root directory (where Claude Code was started) | Project-relative paths                |
 | `$ARGUMENTS`            | Command arguments from user                            | Passed to command's bash execution    |
-
-**Example from count-lines.md:**
-
-```bash
-${CLAUDE_PLUGIN_ROOT}/scripts/count-skill-lines.sh "$ARGUMENTS"
-```
 
 **SOURCE:** Lines 415-434 of claude-plugins-reference-2026/SKILL.md
 
@@ -1007,9 +931,7 @@ This documentation was created 2026-01-28 by:
 
 **Current State:** Validation and linting functionality is spread across multiple scripts:
 
-- `plugin_validator.py` - Frontmatter schema validation
-- `validate-skill-structure.sh` - Skill structure validation (bash)
-- `count-skill-lines.sh` - Line counting (bash)
+- `plugin_validator.py` - Frontmatter schema validation, skill complexity (token-based), internal links
 - `validate-task-file.sh` - Task file validation (bash)
 - `fix_tool_formats.py` - Tool format fixing
 
@@ -1285,8 +1207,7 @@ This section lists discrete desired outcomes ready for Stage 2 (Planning with RT
 
 **Current State** (Stage 1 Discovery Output):
 
-- Partial validation: `plugin_validator.py` (frontmatter only)
-- Partial validation: `validate-skill-structure.sh` (skills only)
+- Partial validation: `plugin_validator.py` (frontmatter, complexity, links)
 - Partial validation: `claude plugin validate` (structure only)
 - No unified entry point, no quality scoring, no marketplace readiness check
 
@@ -1300,8 +1221,7 @@ This section lists discrete desired outcomes ready for Stage 2 (Planning with RT
 
 **Dependencies on Existing Components**:
 
-- `plugin_validator.py` script (schema validation)
-- `validate-skill-structure.sh` script (quality checks)
+- `plugin_validator.py` script (schema validation, complexity, links)
 - `claude plugin validate` CLI (structure validation)
 - `plugin-assessor` agent (comprehensive analysis)
 - Reference skills for validation rules
@@ -1365,8 +1285,7 @@ This section lists discrete desired outcomes ready for Stage 2 (Planning with RT
 
 - `.pre-commit-config.yaml` (configuration file)
 - `prek` tool (pre-commit runner)
-- `plugin_validator.py` script (validation logic)
-- `validate-skill-structure.sh` script (quality checks)
+- `plugin_validator.py` script (validation logic, quality checks)
 - `claude plugin validate` command (structure validation)
 
 **Success Criteria**:
@@ -1524,9 +1443,7 @@ uv run -q --no-sync plugins/plugin-creator/scripts/auto_sync_manifests.py
 
 **Dependencies on Existing Components**:
 
-- `plugin_validator.py` (frontmatter validation logic)
-- `validate-skill-structure.sh` (quality check logic)
-- `count-skill-lines.sh` (complexity measurement logic)
+- `plugin_validator.py` (frontmatter validation, complexity, quality check logic)
 - `validate-task-file.sh` (task file validation logic)
 - `fix_tool_formats.py` (auto-fix logic)
 
@@ -1651,8 +1568,7 @@ Workflow phases:
 
 **Current State:**
 
-- Script: `plugin_validator.py` (frontmatter only)
-- Script: `validate-skill-structure.sh` (skills only)
+- Script: `plugin_validator.py` (frontmatter, complexity, internal links)
 - CLI: `claude plugin validate` (structure only)
 
 **Gap:**
@@ -1684,8 +1600,7 @@ Validation suite:
 
 **Dependencies:**
 
-- `plugin_validator.py` (all components)
-- `validate-skill-structure.sh` (all skills)
+- `plugin_validator.py` (all components, skill quality checks)
 - `claude plugin validate` (structure)
 - `plugin-assessor` agent (comprehensive analysis)
 
@@ -1740,12 +1655,6 @@ for plugin_dir in $changed_plugins; do
   # Run plugin structure validation
   claude plugin validate "$plugin_dir"
 
-  # Run skill structure validation for each skill
-  for skill_dir in "$plugin_dir"/skills/*/; do
-    if [ -f "$skill_dir/SKILL.md" ]; then
-      plugins/plugin-creator/scripts/validate-skill-structure.sh "$skill_dir"
-    fi
-  done
 done
 
 echo "✅ All changed plugins validated successfully"
@@ -1889,10 +1798,8 @@ All workflows should follow the process documented in the [SAM methodology](http
 
 Currently validation is spread across:
 
-- `plugin_validator.py` (Python)
-- `validate-skill-structure.sh` (Bash)
+- `plugin_validator.py` (Python — frontmatter, complexity, links)
 - `validate-task-file.sh` (Bash)
-- `count-skill-lines.sh` (Bash)
 
 **Recommendation:** Create unified `lint-claude-plugin.py`:
 
@@ -1942,6 +1849,6 @@ Currently validation is spread across:
 - Plugin.json: `plugins/plugin-creator/.claude-plugin/plugin.json`
 - Skills verified: All 14 SKILL.md files read
 - Agents verified: All 6 agent .md files read
-- Commands verified: count-lines.md read
-- Scripts verified: All 7 scripts examined
+- Commands verified: none (commands array empty)
+- Scripts verified: All 5 scripts examined
 - Official docs: claude-plugins-reference-2026 skill

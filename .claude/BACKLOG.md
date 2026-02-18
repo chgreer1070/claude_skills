@@ -1,9 +1,9 @@
 ---
-last-updated: 2026-02-14
+last-updated: 2026-02-18
 p0-count: 0
-p1-count: 13
-p2-count: 8
-ideas-count: 10
+p1-count: 15
+p2-count: 12
+ideas-count: 11
 ---
 
 # Backlog
@@ -221,9 +221,60 @@ _(Empty)_
 **Research first**: How do code review systems handle conflicting reviewers? What adjudication patterns exist in multi-agent systems? How does GSD handle verification disagreements?
 **Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (section 3.6 Forensic Review)
 
+### Multi-session build state lost during context compaction
+
+**Source**: agentskill-kaizen plugin build (2026-02-18), 3 sessions with 1 compaction
+**Added**: 2026-02-18
+**Description**: During the agentskill-kaizen build (8-phase `/plugin-dev:create-plugin` workflow), context compaction mid-build converted structured task state into a narrative summary. The resuming session had to reconstruct "what's done vs pending" from prose rather than a checklist. Background agent results that were already consumed and applied reappeared as late notifications after compaction, requiring manual deduplication ("did I already handle this?"). No persistent artifact tracked phase completion, commit SHAs per phase, deferred items, or agent result consumption status.
+**Observed symptoms**:
+- Phase completion status existed only in ephemeral context — lost on compaction
+- Background agent notifications arrived after their findings were already applied (3 duplicate notifications)
+- Plan committed early (`87a0b93`) diverged from actual implementation but was never updated
+- No mechanism to mark agent results as "consumed" — each notification required re-evaluation
+
+### `/plugin-dev:create-plugin` workflow lacks intra-phase parallelism tracking
+
+**Source**: agentskill-kaizen plugin build (2026-02-18)
+**Added**: 2026-02-18
+**Description**: The 8-phase create-plugin workflow treats each phase as a serial step, but Phase 5 (Implementation) actually consisted of 6 parallel sub-tasks and Phase 6 (Validation) spawned 3 parallel review agents. The workflow provides no structure for tracking parallel work within a phase — no task dependencies, no completion gates, no way to know which sub-tasks are done after compaction. Batching validation fixes by file rather than by finding would also have been more efficient (SKILL.md was edited 3 separate times when one pass would have sufficed).
+
+### Background agent result deduplication after compaction
+
+**Source**: agentskill-kaizen plugin build sessions 2-3 (2026-02-18)
+**Added**: 2026-02-18
+**Description**: Background agents launched in session N may complete after context compaction or session restart. The system delivers their results as `<task-notification>` messages, but there is no mechanism to mark results as already consumed. During the kaizen build, 3 review agents (plugin-validator, 2x skill-reviewer) completed during Phase 6 and their findings were applied in commit `0d61480`. After compaction, all 3 re-delivered their notifications in session 3, requiring manual evaluation each time ("was this already handled?"). A persistent state file (e.g., `.planning/kaizen/agent-results.json` tracking task IDs → consumed/pending) would eliminate this waste.
+
+### `/plugin-dev:create-plugin` Phase 6 validation should batch fixes by file, not by finding
+
+**Source**: agentskill-kaizen plugin build Phase 6 (2026-02-18)
+**Added**: 2026-02-18
+**Description**: Phase 6 collected findings from 3 parallel review agents, then applied fixes one finding at a time. This resulted in SKILL.md being edited 3 separate times (description rewrite, SQL removal, MCP server name fix) when a single pass through the file would have applied all fixes together. The workflow should group all findings by file, then make one editing pass per file. Reduces Edit tool calls and context consumed by repeated reads.
+
+### Plan artifact diverges from implementation without update mechanism
+
+**Source**: agentskill-kaizen plugin build (2026-02-18), plan committed as `87a0b93`
+**Added**: 2026-02-18
+**Description**: The research/plan from Phase 2-3 was committed early as a markdown file. During implementation (Phase 5), decisions changed — the MCP server grew from planned scope, analysis dimensions were rebalanced, hook patterns shifted. The plan was never updated to reflect actual implementation. After compaction, the stale plan became a potential source of confusion. Two options to address: (1) update the plan artifact after each phase, or (2) treat the plan as disposable and track only the living state (what's done, what's pending, what deferred).
+
+### Evaluate scikit-learn dependency weight for agentskill-kaizen cluster_sessions tool
+
+**Source**: agentskill-kaizen MCP server review (2026-02-18)
+**Added**: 2026-02-18
+**Description**: The `cluster_sessions` tool in `plugins/agentskill-kaizen/mcp/server.py` uses `scikit-learn` (`KMeans`, `CountVectorizer`) for session clustering. scikit-learn pulls in ~40MB of transitive dependencies (numpy, scipy, joblib, threadpoolctl). The typical use case is clustering dozens of sessions, not thousands. The Phase 1-2 research produced no durable artifact evaluating library choices — `scikit-learn` was assumed from the backlog without validation. Investigate whether a lighter alternative (e.g., `pyclustering`, stdlib-based implementation, or just `numpy` directly) would suffice for this scale, and whether the KMeans-on-bag-of-words approach is even appropriate for tool-call sequence similarity.
+**Research first**: What clustering approaches work for short categorical sequences? Is cosine similarity on bag-of-words tool vectors meaningful for workflow comparison? What lightweight Python clustering libraries exist that don't pull in scipy?
+
 ---
 
 ## Ideas
+
+### Configurable Token Thresholds for plugin_validator.py
+
+**Source**: Session 2026-02-18, token threshold analysis
+**Added**: 2026-02-18
+**Description**: `plugin_validator.py` token complexity thresholds (4400 warn, 8800 error) are hardcoded constants. Allow per-project or per-plugin configuration via a config file (e.g., `.claude-plugin/validator.json` or a `[tool.plugin-validator]` section in `pyproject.toml`) so different projects can set their own limits.
+**Suggested location**: `plugins/plugin-creator/scripts/plugin_validator.py`
+
+---
 
 ### SAM: Cost/Token Management
 

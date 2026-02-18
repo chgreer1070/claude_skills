@@ -49,7 +49,7 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py --no-color <path>
 
 - **Frontmatter:** YAML syntax, required fields, field types, tools/skills format
 - **Plugin structure:** plugin.json schema, component paths, version consistency
-- **Skill complexity:** Token-based metrics (4000 warning, 6400 error thresholds)
+- **Skill complexity:** Token-based metrics (4400 warning, 8800 error thresholds)
 - **Internal links:** Markdown link validity, progressive disclosure
 - **Completeness:** Required files, cross-references
 
@@ -95,34 +95,6 @@ uv run plugins/plugin-creator/scripts/fix_tool_formats.py
 - JSON array → comma-separated string
 
 **Documentation:** [README.md](./README.md)
-
-### count-skill-lines.sh
-
-Counts lines in skills and identifies oversized ones (>500 lines warning, >800 lines critical).
-
-**Usage:**
-
-```bash
-plugins/plugin-creator/scripts/count-skill-lines.sh <plugin-or-skill-path>
-```
-
-### validate-skill-structure.sh
-
-Quality checks for skill structure beyond frontmatter validation.
-
-**Validates:**
-
-- Frontmatter presence and closure
-- Name field format (lowercase, hyphens)
-- Description length and trigger phrases
-- Line count limits
-- Progressive disclosure structure
-- Internal link validity
-
-**Exit codes:**
-
-- 0: Pass
-- 1: Fail (errors found)
 
 ### validate-task-file.sh
 

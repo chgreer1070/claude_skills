@@ -2,7 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "fastmcp>=2.0.0",
+#     "fastmcp>=3.0.0rc1,<4",
 #     "pm4py>=2.7.0",
 #     "pandas>=2.0.0",
 #     "prefixspan>=0.5.2",
@@ -25,21 +25,73 @@ Tools:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import operator
 import pathlib
 import re
 from collections import Counter
-from typing import Any
+from typing import Annotated, Any
 
 import pandas as pd
 import pm4py
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
+from fastmcp.exceptions import ToolError
 from prefixspan import PrefixSpan
+from pydantic import Field
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import CountVectorizer
 
-mcp = FastMCP("kaizen-analysis")
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+_DEFAULT_MIN_SUPPORT: int = 2
+_DEFAULT_N_CLUSTERS: int = 3
+_MESSAGE_TRUNCATION_LIMIT: int = 200
+_TOP_TOOLS_PER_CLUSTER: int = 5
+_KMEANS_RANDOM_STATE: int = 42
+_KMEANS_N_INIT: int = 10
+
+_READONLY_ANNOTATIONS: dict[str, bool] = {
+    "readOnlyHint": True,
+    "destructiveHint": False,
+    "idempotentHint": True,
+    "openWorldHint": False,
+}
+
+# ---------------------------------------------------------------------------
+# Frustration signal patterns
+# ---------------------------------------------------------------------------
+
+_FRUSTRATION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    (
+        "correction",
+        re.compile(
+            r"\b(?:no[,.]?\s|don'?t|wrong|incorrect|stop|undo|revert)\b", re.IGNORECASE
+        ),
+    ),
+    (
+        "denial",
+        re.compile(
+            r"\b(?:that'?s not|i didn'?t|never|absolutely not)\b", re.IGNORECASE
+        ),
+    ),
+    (
+        "interrupt",
+        re.compile(
+            r"\b(?:wait|hold on|cancel|abort|forget it|nevermind)\b", re.IGNORECASE
+        ),
+    ),
+    (
+        "frustration",
+        re.compile(
+            r"\b(?:why did you|you keep|again\?|still wrong|broken)\b", re.IGNORECASE
+        ),
+    ),
+]
+
+mcp = FastMCP("kaizen-analysis", mask_error_details=False)
 
 
 # ---------------------------------------------------------------------------
@@ -58,10 +110,9 @@ def _read_jsonl(file_path: str) -> list[dict[str, Any]]:
     """
     records: list[dict[str, Any]] = []
     with pathlib.Path(file_path).open(encoding="utf-8") as fh:
-        for line in fh:
-            stripped = line.strip()
-            if stripped:
-                records.append(json.loads(stripped))
+        records.extend(
+            json.loads(stripped) for line in fh if (stripped := line.strip())
+        )
     return records
 
 
@@ -154,270 +205,6 @@ def _build_event_log(sequences: dict[str, list[str]]) -> pd.DataFrame:
     )
 
 
-# ---------------------------------------------------------------------------
-# MCP Tools
-# ---------------------------------------------------------------------------
-
-
-def _extract_tool_sequences_impl(glob_path: str) -> dict[str, list[str]]:
-    """Core implementation for extracting tool sequences from JSONL files.
-
-    Args:
-        glob_path: Glob pattern pointing to JSONL files.
-
-    Returns:
-        Dict mapping session filename (stem) to list of tool names.
-    """
-    files = _resolve_glob(glob_path)
-    result: dict[str, list[str]] = {}
-    for file_path in files:
-        session_id = file_path.rsplit("/", maxsplit=1)[-1].removesuffix(".jsonl")
-        records = _read_jsonl(file_path)
-        tools = _extract_tools_from_records(records)
-        if tools:
-            result[session_id] = tools
-    return result
-
-
-@mcp.tool()
-def extract_tool_sequences(glob_path: str) -> dict[str, list[str]]:
-    """Extract ordered tool-call sequences from JSONL transcript files.
-
-    Reads each JSONL file matching the glob pattern, extracts tool_use
-    blocks from assistant messages, and returns the ordered tool names
-    per session.
-
-    Args:
-        glob_path: Glob pattern pointing to JSONL files
-            (e.g. ``/home/user/.claude/projects/**/sessions/*.jsonl``).
-
-    Returns:
-        Dict mapping session filename (stem) to list of tool names.
-    """
-    return _extract_tool_sequences_impl(glob_path)
-
-
-@mcp.tool()
-def discover_process_model(
-    glob_path: str = "", sequences: dict[str, list[str]] | None = None
-) -> str:
-    """Discover a process model from tool-call sequences using PM4Py Heuristic Miner.
-
-    Provide either a glob path to JSONL files or pre-extracted sequences.
-    Returns a string representation of the discovered heuristic net.
-
-    Args:
-        glob_path: Glob pattern for JSONL files (used if sequences is None).
-        sequences: Pre-extracted tool sequences from extract_tool_sequences.
-
-    Returns:
-        String representation of the discovered heuristic net showing
-        nodes and their connection strengths.
-    """
-    if sequences is None:
-        if not glob_path:
-            return "Error: provide either glob_path or sequences"
-        sequences = _extract_tool_sequences_impl(glob_path)
-    if not sequences:
-        return "Error: no tool sequences found"
-
-    event_log = _build_event_log(sequences)
-    if event_log.empty:
-        return "Error: empty event log"
-
-    heu_net = pm4py.discover_heuristics_net(event_log)
-    return repr(heu_net)
-
-
-@mcp.tool()
-def check_conformance(
-    glob_path: str = "",
-    sequences: dict[str, list[str]] | None = None,
-    reference_glob_path: str = "",
-    reference_sequences: dict[str, list[str]] | None = None,
-) -> list[dict[str, Any]]:
-    """Check conformance of sessions against a reference process model.
-
-    Discovers a Petri net from the reference sequences via Heuristic
-    Miner, then runs token-based replay on the target sessions.
-
-    Args:
-        glob_path: Glob pattern for target JSONL files to check.
-        sequences: Pre-extracted target tool sequences.
-        reference_glob_path: Glob pattern for reference JSONL files.
-        reference_sequences: Pre-extracted reference tool sequences.
-
-    Returns:
-        List of per-trace conformance dicts with keys including
-        ``trace_is_fit``, ``trace_fitness``, ``missing_tokens``,
-        ``remaining_tokens``, and the ``session_id``.
-    """
-    if sequences is None:
-        if not glob_path:
-            return [{"error": "provide either glob_path or sequences for target"}]
-        sequences = _extract_tool_sequences_impl(glob_path)
-
-    if reference_sequences is None:
-        if not reference_glob_path:
-            return [
-                {"error": "provide either reference_glob_path or reference_sequences"}
-            ]
-        reference_sequences = _extract_tool_sequences_impl(reference_glob_path)
-
-    if not reference_sequences:
-        return [{"error": "no reference sequences found"}]
-    if not sequences:
-        return [{"error": "no target sequences found"}]
-
-    # Build reference model
-    ref_log = _build_event_log(reference_sequences)
-    heu_net = pm4py.discover_heuristics_net(ref_log)
-    net, initial_marking, final_marking = pm4py.convert_to_petri_net(heu_net)
-
-    # Build target event log
-    target_log = _build_event_log(sequences)
-    replay_results = pm4py.conformance_diagnostics_token_based_replay(
-        target_log, net, initial_marking, final_marking
-    )
-
-    # Attach session IDs to results
-    session_ids = list(sequences.keys())
-    output: list[dict[str, Any]] = []
-    for idx, diag in enumerate(replay_results):
-        entry: dict[str, Any] = {
-            "session_id": session_ids[idx]
-            if idx < len(session_ids)
-            else f"trace_{idx}",
-            "trace_is_fit": diag.get("trace_is_fit", False),
-            "trace_fitness": diag.get("trace_fitness", 0.0),
-            "missing_tokens": diag.get("missing_tokens", 0),
-            "remaining_tokens": diag.get("remaining_tokens", 0),
-            "consumed_tokens": diag.get("consumed_tokens", 0),
-            "produced_tokens": diag.get("produced_tokens", 0),
-        }
-        output.append(entry)
-    return output
-
-
-@mcp.tool()
-def find_frequent_patterns(
-    glob_path: str = "",
-    sequences: dict[str, list[str]] | None = None,
-    min_support: int = 2,
-) -> list[dict[str, Any]]:
-    """Find frequent sequential patterns in tool-call sequences using PrefixSpan.
-
-    Args:
-        glob_path: Glob pattern for JSONL files (used if sequences is None).
-        sequences: Pre-extracted tool sequences from extract_tool_sequences.
-        min_support: Minimum number of sessions a pattern must appear in.
-
-    Returns:
-        List of dicts with ``pattern`` (list of tool names) and
-        ``support`` (count of sessions containing the pattern),
-        sorted by support descending.
-    """
-    if sequences is None:
-        if not glob_path:
-            return [{"error": "provide either glob_path or sequences"}]
-        sequences = _extract_tool_sequences_impl(glob_path)
-    if not sequences:
-        return [{"error": "no tool sequences found"}]
-
-    db = list(sequences.values())
-    ps = PrefixSpan(db)
-    ps.minlen = 2
-    frequent = ps.frequent(min_support)
-
-    results: list[dict[str, Any]] = [
-        {"support": count, "pattern": pattern} for count, pattern in frequent
-    ]
-    results.sort(key=operator.itemgetter("support"), reverse=True)
-    return results
-
-
-# Frustration signal patterns
-_FRUSTRATION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    (
-        "correction",
-        re.compile(
-            r"\b(?:no[,.]?\s|don'?t|wrong|incorrect|stop|undo|revert)\b", re.IGNORECASE
-        ),
-    ),
-    (
-        "denial",
-        re.compile(
-            r"\b(?:that'?s not|i didn'?t|never|absolutely not)\b", re.IGNORECASE
-        ),
-    ),
-    (
-        "interrupt",
-        re.compile(
-            r"\b(?:wait|hold on|cancel|abort|forget it|nevermind)\b", re.IGNORECASE
-        ),
-    ),
-    (
-        "frustration",
-        re.compile(
-            r"\b(?:why did you|you keep|again\?|still wrong|broken)\b", re.IGNORECASE
-        ),
-    ),
-]
-
-
-@mcp.tool()
-def detect_frustration_signals(glob_path: str) -> list[dict[str, str]]:
-    """Detect user frustration signals in JSONL transcripts.
-
-    Scans user-type messages for patterns indicating corrections,
-    denials, interrupts, and expressions of frustration. Filters
-    out system-generated messages (tool results).
-
-    Args:
-        glob_path: Glob pattern for JSONL files to scan.
-
-    Returns:
-        List of dicts with ``session_id``, ``timestamp``,
-        ``signal_type``, and ``message_text``.
-    """
-    files = _resolve_glob(glob_path)
-    signals: list[dict[str, str]] = []
-
-    for file_path in files:
-        session_id = file_path.rsplit("/", maxsplit=1)[-1].removesuffix(".jsonl")
-        records = _read_jsonl(file_path)
-
-        for record in records:
-            if record.get("type") != "user":
-                continue
-            # Skip tool results (system-generated)
-            if record.get("toolUseResult"):
-                continue
-
-            message = record.get("message")
-            if not isinstance(message, dict):
-                continue
-
-            # Extract text from message content
-            text = _extract_user_text(message)
-            if not text:
-                continue
-
-            timestamp = record.get("timestamp", "")
-
-            for signal_type, pattern in _FRUSTRATION_PATTERNS:
-                if pattern.search(text):
-                    signals.append({
-                        "session_id": session_id,
-                        "timestamp": str(timestamp),
-                        "signal_type": signal_type,
-                        "message_text": text[:200],
-                    })
-                    break  # One signal per message
-
-    return signals
-
-
 def _extract_user_text(message: dict[str, Any]) -> str:
     """Extract plain text from a user message content field.
 
@@ -446,11 +233,422 @@ def _extract_user_text(message: dict[str, Any]) -> str:
     return ""
 
 
-@mcp.tool()
-def cluster_sessions(
-    glob_path: str = "",
-    sequences: dict[str, list[str]] | None = None,
-    n_clusters: int = 3,
+# ---------------------------------------------------------------------------
+# MCP Tools
+# ---------------------------------------------------------------------------
+
+
+def _extract_tool_sequences_impl(glob_path: str) -> dict[str, list[str]]:
+    """Core implementation for extracting tool sequences from JSONL files.
+
+    This private helper exists to avoid mypy FunctionTool errors when
+    decorated tools call each other directly.
+
+    Args:
+        glob_path: Glob pattern pointing to JSONL files.
+
+    Returns:
+        Dict mapping session filename (stem) to list of tool names.
+    """
+    files = _resolve_glob(glob_path)
+    result: dict[str, list[str]] = {}
+    for file_path in files:
+        session_id = file_path.rsplit("/", maxsplit=1)[-1].removesuffix(".jsonl")
+        records = _read_jsonl(file_path)
+        tools = _extract_tools_from_records(records)
+        if tools:
+            result[session_id] = tools
+    return result
+
+
+def _resolve_sequences(
+    glob_path: str,
+    sequences: dict[str, list[str]] | None,
+    *,
+    target_name: str = "target",
+) -> dict[str, list[str]]:
+    """Resolve tool sequences from either a glob path or pre-extracted data.
+
+    Args:
+        glob_path: Glob pattern for JSONL files.
+        sequences: Pre-extracted tool sequences, or None.
+        target_name: Human-readable name for error messages (e.g. "target",
+            "reference").
+
+    Returns:
+        Dict mapping session ID to tool name list.
+
+    Raises:
+        ToolError: If neither glob_path nor sequences is provided, or if
+            the resolved sequences are empty.
+    """
+    if sequences is not None:
+        if not sequences:
+            raise ToolError(f"No {target_name} sequences found")
+        return sequences
+
+    if not glob_path:
+        raise ToolError(f"Provide either glob_path or sequences for {target_name}")
+    resolved = _extract_tool_sequences_impl(glob_path)
+    if not resolved:
+        raise ToolError(f"No {target_name} tool sequences found in matched files")
+    return resolved
+
+
+@mcp.tool(annotations=_READONLY_ANNOTATIONS)
+async def extract_tool_sequences(
+    glob_path: Annotated[
+        str,
+        Field(
+            description=(
+                "Glob pattern pointing to JSONL transcript files, "
+                "e.g. ~/.claude/projects/-my-project/*.jsonl"
+            )
+        ),
+    ],
+) -> dict[str, list[str]]:
+    """Extract ordered tool-call sequences from JSONL transcript files.
+
+    Reads each JSONL file matching the glob pattern, extracts tool_use
+    blocks from assistant messages, and returns the ordered tool names
+    per session.
+
+    Args:
+        glob_path: Glob pattern pointing to JSONL files.
+
+    Returns:
+        Dict mapping session filename (stem) to list of tool names.
+    """
+    return await asyncio.to_thread(_extract_tool_sequences_impl, glob_path)
+
+
+@mcp.tool(annotations=_READONLY_ANNOTATIONS)
+async def discover_process_model(
+    glob_path: Annotated[
+        str,
+        Field(
+            default="",
+            description=(
+                "Glob pattern for JSONL transcript files; "
+                "used when sequences is not provided"
+            ),
+        ),
+    ] = "",
+    sequences: Annotated[
+        dict[str, list[str]] | None,
+        Field(
+            default=None,
+            description=(
+                "Pre-extracted tool sequences from extract_tool_sequences; "
+                "pass this to avoid re-reading files"
+            ),
+        ),
+    ] = None,
+    *,
+    context: Context,
+) -> str:
+    """Discover a process model using PM4Py Heuristic Miner.
+
+    Provide either a glob path to JSONL files or pre-extracted sequences.
+    Returns a string representation of the discovered heuristic net.
+
+    Args:
+        glob_path: Glob pattern for JSONL files (used if sequences is None).
+        sequences: Pre-extracted tool sequences from extract_tool_sequences.
+        context: FastMCP context for progress reporting.
+
+    Returns:
+        String representation of the discovered heuristic net showing
+        nodes and their connection strengths.
+
+    Raises:
+        ToolError: If inputs are missing or the event log is empty.
+    """
+    await context.info("Resolving tool sequences...")
+    resolved = await asyncio.to_thread(
+        _resolve_sequences, glob_path, sequences, target_name="target"
+    )
+
+    await context.info("Building event log from sequences...")
+    event_log = _build_event_log(resolved)
+    if event_log.empty:
+        raise ToolError("Event log is empty after building from sequences")
+
+    await context.info("Running Heuristic Miner...")
+    heu_net = await asyncio.to_thread(pm4py.discover_heuristics_net, event_log)
+    return repr(heu_net)
+
+
+@mcp.tool(annotations=_READONLY_ANNOTATIONS)
+async def check_conformance(
+    glob_path: Annotated[
+        str,
+        Field(
+            default="",
+            description="Glob pattern for target JSONL files to check conformance",
+        ),
+    ] = "",
+    sequences: Annotated[
+        dict[str, list[str]] | None,
+        Field(default=None, description="Pre-extracted target tool sequences to check"),
+    ] = None,
+    reference_glob_path: Annotated[
+        str,
+        Field(
+            default="",
+            description="Glob pattern for reference JSONL files (the 'golden' model)",
+        ),
+    ] = "",
+    reference_sequences: Annotated[
+        dict[str, list[str]] | None,
+        Field(
+            default=None,
+            description="Pre-extracted reference tool sequences for the model",
+        ),
+    ] = None,
+    *,
+    context: Context,
+) -> list[dict[str, Any]]:
+    """Check conformance of sessions against a reference process model.
+
+    Discovers a Petri net from the reference sequences via Heuristic
+    Miner, then runs token-based replay on the target sessions.
+
+    Args:
+        glob_path: Glob pattern for target JSONL files to check.
+        sequences: Pre-extracted target tool sequences.
+        reference_glob_path: Glob pattern for reference JSONL files.
+        reference_sequences: Pre-extracted reference tool sequences.
+        context: FastMCP context for progress reporting.
+
+    Returns:
+        List of per-trace conformance dicts with keys including
+        ``trace_is_fit``, ``trace_fitness``, ``missing_tokens``,
+        ``remaining_tokens``, and the ``session_id``.
+
+    Raises:
+        ToolError: If required inputs are missing or sequences are empty.
+    """
+    await context.info("Resolving target sequences...")
+    resolved_target = await asyncio.to_thread(
+        _resolve_sequences, glob_path, sequences, target_name="target"
+    )
+
+    await context.info("Resolving reference sequences...")
+    resolved_ref = await asyncio.to_thread(
+        _resolve_sequences,
+        reference_glob_path,
+        reference_sequences,
+        target_name="reference",
+    )
+
+    await context.info("Building reference model (Heuristic Miner -> Petri Net)...")
+
+    def _build_reference_model(ref_seqs: dict[str, list[str]]) -> tuple[Any, Any, Any]:
+        ref_log = _build_event_log(ref_seqs)
+        heu_net = pm4py.discover_heuristics_net(ref_log)
+        result: tuple[Any, Any, Any] = pm4py.convert_to_petri_net(heu_net)
+        return result
+
+    net, initial_marking, final_marking = await asyncio.to_thread(
+        _build_reference_model, resolved_ref
+    )
+
+    await context.info("Running token-based replay on target sessions...")
+
+    def _run_replay(target_seqs: dict[str, list[str]]) -> list[dict[str, Any]]:
+        target_log = _build_event_log(target_seqs)
+        result: list[dict[str, Any]] = pm4py.conformance_diagnostics_token_based_replay(
+            target_log, net, initial_marking, final_marking
+        )
+        return result
+
+    replay_results: list[dict[str, Any]] = await asyncio.to_thread(
+        _run_replay, resolved_target
+    )
+
+    session_ids = list(resolved_target.keys())
+    output: list[dict[str, Any]] = []
+    for idx, diag in enumerate(replay_results):
+        entry: dict[str, Any] = {
+            "session_id": session_ids[idx]
+            if idx < len(session_ids)
+            else f"trace_{idx}",
+            "trace_is_fit": diag.get("trace_is_fit", False),
+            "trace_fitness": diag.get("trace_fitness", 0.0),
+            "missing_tokens": diag.get("missing_tokens", 0),
+            "remaining_tokens": diag.get("remaining_tokens", 0),
+            "consumed_tokens": diag.get("consumed_tokens", 0),
+            "produced_tokens": diag.get("produced_tokens", 0),
+        }
+        output.append(entry)
+    return output
+
+
+@mcp.tool(annotations=_READONLY_ANNOTATIONS)
+async def find_frequent_patterns(
+    glob_path: Annotated[
+        str,
+        Field(
+            default="",
+            description=(
+                "Glob pattern for JSONL files; used when sequences is not provided"
+            ),
+        ),
+    ] = "",
+    sequences: Annotated[
+        dict[str, list[str]] | None,
+        Field(
+            default=None,
+            description=(
+                "Pre-extracted tool sequences from extract_tool_sequences; "
+                "pass this to avoid re-reading files"
+            ),
+        ),
+    ] = None,
+    min_support: Annotated[
+        int,
+        Field(
+            default=_DEFAULT_MIN_SUPPORT,
+            description="Minimum number of sessions a pattern must appear in",
+            ge=1,
+        ),
+    ] = _DEFAULT_MIN_SUPPORT,
+) -> list[dict[str, Any]]:
+    """Find frequent sequential patterns in tool-call sequences using PrefixSpan.
+
+    Args:
+        glob_path: Glob pattern for JSONL files (used if sequences is None).
+        sequences: Pre-extracted tool sequences from extract_tool_sequences.
+        min_support: Minimum number of sessions a pattern must appear in.
+
+    Returns:
+        List of dicts with ``pattern`` (list of tool names) and
+        ``support`` (count of sessions containing the pattern),
+        sorted by support descending.
+
+    Raises:
+        ToolError: If neither glob_path nor sequences is provided.
+    """
+    resolved = await asyncio.to_thread(
+        _resolve_sequences, glob_path, sequences, target_name="target"
+    )
+
+    def _mine_patterns(
+        seqs: dict[str, list[str]], min_sup: int
+    ) -> list[dict[str, Any]]:
+        db = list(seqs.values())
+        ps = PrefixSpan(db)
+        ps.minlen = 2
+        # PrefixSpan lacks type stubs; ty infers ps.frequent as Unknown | None.
+        # The callable guard narrows the type for static analysis.
+        frequent_method = ps.frequent
+        if not callable(frequent_method):
+            msg = "PrefixSpan.frequent is not callable"
+            raise TypeError(msg)
+        frequent: list[tuple[int, list[str]]] = frequent_method(min_sup)
+        results: list[dict[str, Any]] = [
+            {"support": count, "pattern": pattern} for count, pattern in frequent
+        ]
+        results.sort(key=operator.itemgetter("support"), reverse=True)
+        return results
+
+    return await asyncio.to_thread(_mine_patterns, resolved, min_support)
+
+
+@mcp.tool(annotations=_READONLY_ANNOTATIONS)
+async def detect_frustration_signals(
+    glob_path: Annotated[
+        str,
+        Field(
+            description="Glob pattern for JSONL transcript files to scan for frustration signals"
+        ),
+    ],
+) -> list[dict[str, str]]:
+    """Detect user frustration signals in JSONL transcripts.
+
+    Scans user-type messages for patterns indicating corrections,
+    denials, interrupts, and expressions of frustration. Filters
+    out system-generated messages (tool results).
+
+    Args:
+        glob_path: Glob pattern for JSONL files to scan.
+
+    Returns:
+        List of dicts with ``session_id``, ``timestamp``,
+        ``signal_type``, and ``message_text``.
+    """
+
+    def _scan(glob: str) -> list[dict[str, str]]:
+        files = _resolve_glob(glob)
+        signals: list[dict[str, str]] = []
+
+        for file_path in files:
+            session_id = file_path.rsplit("/", maxsplit=1)[-1].removesuffix(".jsonl")
+            records = _read_jsonl(file_path)
+
+            for record in records:
+                if record.get("type") != "user":
+                    continue
+                if record.get("toolUseResult"):
+                    continue
+
+                message = record.get("message")
+                if not isinstance(message, dict):
+                    continue
+
+                text = _extract_user_text(message)
+                if not text:
+                    continue
+
+                timestamp = record.get("timestamp", "")
+
+                for signal_type, pattern in _FRUSTRATION_PATTERNS:
+                    if pattern.search(text):
+                        signals.append({
+                            "session_id": session_id,
+                            "timestamp": str(timestamp),
+                            "signal_type": signal_type,
+                            "message_text": text[:_MESSAGE_TRUNCATION_LIMIT],
+                        })
+                        break  # One signal per message
+
+        return signals
+
+    return await asyncio.to_thread(_scan, glob_path)
+
+
+@mcp.tool(annotations=_READONLY_ANNOTATIONS)
+async def cluster_sessions(
+    glob_path: Annotated[
+        str,
+        Field(
+            default="",
+            description=(
+                "Glob pattern for JSONL files; used when sequences is not provided"
+            ),
+        ),
+    ] = "",
+    sequences: Annotated[
+        dict[str, list[str]] | None,
+        Field(
+            default=None,
+            description=(
+                "Pre-extracted tool sequences from extract_tool_sequences; "
+                "pass this to avoid re-reading files"
+            ),
+        ),
+    ] = None,
+    n_clusters: Annotated[
+        int,
+        Field(
+            default=_DEFAULT_N_CLUSTERS,
+            description="Number of clusters to create via KMeans",
+            ge=1,
+        ),
+    ] = _DEFAULT_N_CLUSTERS,
+    *,
+    context: Context,
 ) -> dict[str, Any]:
     """Group sessions by behavioral similarity using tool-call sequence profiles.
 
@@ -461,48 +659,57 @@ def cluster_sessions(
         glob_path: Glob pattern for JSONL files (used if sequences is None).
         sequences: Pre-extracted tool sequences from extract_tool_sequences.
         n_clusters: Number of clusters to create.
+        context: FastMCP context for progress reporting.
 
     Returns:
         Dict with ``clusters`` mapping cluster_id to list of session_ids,
         and ``cluster_profiles`` mapping cluster_id to the most common
         tools in that cluster.
+
+    Raises:
+        ToolError: If neither glob_path nor sequences is provided, or if
+            there are no sessions to cluster.
     """
-    if sequences is None:
-        if not glob_path:
-            return {"error": "provide either glob_path or sequences"}
-        sequences = _extract_tool_sequences_impl(glob_path)
-    if not sequences:
-        return {"error": "no tool sequences found"}
+    await context.info("Resolving tool sequences...")
+    resolved = await asyncio.to_thread(
+        _resolve_sequences, glob_path, sequences, target_name="target"
+    )
 
-    session_ids = list(sequences.keys())
-    # Encode each session as a space-joined string for CountVectorizer
-    docs = [" ".join(tools) for tools in sequences.values()]
+    session_ids = list(resolved.keys())
+    docs = [" ".join(tools) for tools in resolved.values()]
 
-    n_clusters = min(n_clusters, len(docs))
-    if n_clusters < 1:
-        return {"error": "need at least 1 session to cluster"}
+    effective_clusters = min(n_clusters, len(docs))
+    if effective_clusters < 1:
+        raise ToolError("Need at least 1 session to cluster")
 
-    vectorizer = CountVectorizer()
-    feature_matrix = vectorizer.fit_transform(docs)
-    _ = vectorizer.get_feature_names_out()  # validates vocabulary was built
+    await context.info(
+        f"Clustering {len(docs)} sessions into {effective_clusters} clusters..."
+    )
 
-    km = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-    labels = km.fit_predict(feature_matrix)
+    def _run_clustering(documents: list[str], k: int) -> list[int]:
+        vectorizer = CountVectorizer()
+        feature_matrix = vectorizer.fit_transform(documents)
+        km = KMeans(
+            n_clusters=k, random_state=_KMEANS_RANDOM_STATE, n_init=_KMEANS_N_INIT
+        )
+        return list(km.fit_predict(feature_matrix))
+
+    labels = await asyncio.to_thread(_run_clustering, docs, effective_clusters)
 
     clusters: dict[str, list[str]] = {}
     cluster_profiles: dict[str, list[str]] = {}
 
-    for cluster_id in range(n_clusters):
+    for cluster_id in range(effective_clusters):
         cid = str(cluster_id)
         member_indices = [i for i, lbl in enumerate(labels) if lbl == cluster_id]
         clusters[cid] = [session_ids[i] for i in member_indices]
 
-        # Build profile: most common tools across cluster members
         tool_counts: Counter[str] = Counter()
         for i in member_indices:
-            tool_counts.update(sequences[session_ids[i]])
-        top_tools = 5
-        cluster_profiles[cid] = [t for t, _ in tool_counts.most_common(top_tools)]
+            tool_counts.update(resolved[session_ids[i]])
+        cluster_profiles[cid] = [
+            t for t, _ in tool_counts.most_common(_TOP_TOOLS_PER_CLUSTER)
+        ]
 
     return {"clusters": clusters, "cluster_profiles": cluster_profiles}
 

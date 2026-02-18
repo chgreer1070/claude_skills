@@ -42,11 +42,8 @@ Use this as a reference when creating new skills. All fields shown above are val
 Validate your skill using:
 
 ```bash
-# Frontmatter validation
-uv run plugins/plugin-creator/scripts/plugin_validator.py validate ./path/to/skill/SKILL.md
-
-# Structure validation (checks line count, links, references)
-plugins/plugin-creator/scripts/validate-skill-structure.sh ./path/to/skill/
+# Frontmatter and structure validation (checks token complexity, links, references)
+uv run plugins/plugin-creator/scripts/plugin_validator.py ./path/to/skill/SKILL.md
 
 # Plugin validation (if skill is part of a plugin)
 claude plugin validate ./path/to/plugin/

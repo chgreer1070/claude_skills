@@ -2245,7 +2245,7 @@ Report:
 
 ### Task T21: Bash Script Deprecation
 
-**Status**: ❌ NOT STARTED
+**Status**: ✅ COMPLETED — validate-skill-structure.sh and count-skill-lines.sh deleted (2026-02-18)
 
 **Agent**: service-documentation
 
@@ -2305,12 +2305,13 @@ Move bash scripts to scripts/deprecated/ with deprecation notices, update any do
 **Verification Steps**:
 
 ```bash
-# Verify scripts moved
-ls -la plugins/plugin-creator/scripts/deprecated/
+# Verify scripts deleted (should show no results)
+ls plugins/plugin-creator/scripts/validate-skill-structure.sh 2>/dev/null || echo "deleted"
+ls plugins/plugin-creator/scripts/count-skill-lines.sh 2>/dev/null || echo "deleted"
 
-# Search for references to deprecated scripts
-grep -r "validate-skill-structure.sh" plugins/plugin-creator/
-grep -r "count-skill-lines.sh" plugins/plugin-creator/
+# Verify no live callers remain (historical notes in planning/ are expected)
+grep -r "validate-skill-structure.sh" plugins/plugin-creator/ --include="*.md" | grep -v planning/
+grep -r "count-skill-lines.sh" plugins/plugin-creator/ --include="*.md" | grep -v planning/
 ```
 
 **Can Parallelize With**: T20, T22 (independent doc updates)

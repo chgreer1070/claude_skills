@@ -403,17 +403,16 @@ class TestPathArguments:
         """
         skill_file = sample_skill_dir / "SKILL.md"
 
-        # Make path relative
+        # Make path relative — skip if paths share no common ancestor
         cwd = Path.cwd()
-        try:
-            relative_path = skill_file.relative_to(cwd)
-            result = cli_runner.invoke(plugin_validator.app, [str(relative_path)])
-            # May succeed or fail depending on whether path exists from CWD
-            # This test just verifies CLI doesn't crash on relative paths
-            assert result.exit_code in {0, 1, 2}
-        except ValueError:
-            # Paths not relative to each other, skip test
-            pytest.skip("Test requires relative path resolution")
+        if not skill_file.is_relative_to(cwd):
+            raise pytest.skip.Exception("Test requires relative path resolution")
+
+        relative_path = skill_file.relative_to(cwd)
+        result = cli_runner.invoke(plugin_validator.app, [str(relative_path)])
+        # May succeed or fail depending on whether path exists from CWD
+        # This test just verifies CLI doesn't crash on relative paths
+        assert result.exit_code in {0, 1, 2}
 
 
 class TestErrorMessages:

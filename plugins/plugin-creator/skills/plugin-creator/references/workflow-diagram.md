@@ -289,8 +289,7 @@ flowchart TD
 | Script                        | Purpose                         | Location                         |
 | ----------------------------- | ------------------------------- | -------------------------------- |
 | `create_plugin.py`            | Plugin scaffolding + validation | `${CLAUDE_PLUGIN_ROOT}/scripts/` |
-| `plugin_validator.py`     | Frontmatter schema validation   | `${CLAUDE_PLUGIN_ROOT}/scripts/` |
-| `validate-skill-structure.sh` | Skill quality checks            | `${CLAUDE_PLUGIN_ROOT}/scripts/` |
+| `plugin_validator.py`     | Frontmatter schema validation, skill quality checks | `${CLAUDE_PLUGIN_ROOT}/scripts/` |
 
 **SOURCE**: Verified from plugin-creator plugin scripts directory
 

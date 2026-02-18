@@ -615,12 +615,12 @@ description: "When reading or writing pyproject.toml files, this skill provides 
 **Auto-Fixable**: No
 **Category**: Skill
 
-**Description**: Token count exceeds 4000 (consider splitting)
+**Description**: Token count exceeds TOKEN_WARNING_THRESHOLD (consider splitting)
 
 **When It Occurs**:
-The skill body (excluding frontmatter) contains more than 4000 tokens (approximately 500 lines).
+The skill body (excluding frontmatter) exceeds `TOKEN_WARNING_THRESHOLD` defined in `plugin_validator.py`.
 
-**Example**: (Large skill file with 4500 tokens)
+**Example**: (Skill file exceeding warning threshold)
 
 **Fix**: Consider splitting the skill into smaller, focused skills:
 
@@ -645,10 +645,10 @@ Split into:
 **Auto-Fixable**: No
 **Category**: Skill
 
-**Description**: Token count exceeds 6400 (must split)
+**Description**: Token count exceeds TOKEN_ERROR_THRESHOLD (must split)
 
 **When It Occurs**:
-The skill body contains more than 6400 tokens (approximately 800 lines).
+The skill body exceeds `TOKEN_ERROR_THRESHOLD` defined in `plugin_validator.py`.
 
 **Example**: (Very large skill file with 7000 tokens)
 

@@ -426,8 +426,8 @@ After questions are resolved:
 - `pylint` — Comprehensive linter (model: checker classes with register/run)
 
 **Existing Validation in Codebase**:
-- `validate-skill-structure.sh` — Bash script, deprecated
-- `count-skill-lines.sh` — Line counting, superseded by token metrics
+- `validate-skill-structure.sh` — REMOVED (logic ported to plugin_validator.py)
+- `count-skill-lines.sh` — REMOVED (superseded by token metrics in plugin_validator.py)
 - `validate-task-file.sh` — Task file validation
 - `claude plugin validate` — Built-in CLI command (black box)
 

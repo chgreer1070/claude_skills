@@ -99,14 +99,6 @@ Total: 448 files
 
 ---
 
-## count-skill-lines.sh
-
-**Purpose**: Count lines in skill files to identify oversized skills.
-
-See `/plugin-creator:count-lines` command for usage.
-
----
-
 ## create_plugin.py
 
 **Purpose**: Interactive plugin scaffolding tool that creates a new Claude Code plugin with proper structure.
@@ -196,34 +188,6 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py --no-color {path}
 | Skills    | None              | name, description, model, allowed-tools, user-invocable      |
 | Agents    | name, description | model, tools, disallowedTools, permissionMode, skills, hooks |
 | Commands  | description       | argument-hint, allowed-tools, model, context, agent          |
-
----
-
-## validate-skill-structure.sh
-
-**Purpose**: Quality checks for skill structure beyond frontmatter validation.
-
-### Usage
-
-```bash
-plugins/plugin-creator/scripts/validate-skill-structure.sh {skill-directory}
-```
-
-### What It Validates
-
-1. **Frontmatter Presence**: SKILL.md starts with `---` and has proper closing
-2. **Name Field**: Present, lowercase, hyphens only
-3. **Description Field**: Present, minimum 20 characters, includes trigger phrases
-4. **Line Count Limits**:
-   - WARN if body >500 lines
-   - ERROR if body >800 lines
-5. **Progressive Disclosure**: Checks for `references/`, `examples/`, `scripts/` directories
-6. **Internal Links**: Validates markdown links with `./` prefix point to existing files
-
-### Exit Codes
-
-- 0: Pass (all checks passed or warnings only)
-- 1: Fail (errors found)
 
 ---
 

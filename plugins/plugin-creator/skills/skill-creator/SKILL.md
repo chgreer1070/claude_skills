@@ -38,7 +38,7 @@ Skill(command: "plugin-creator:refactor-skill")
 **When to use skill-creator vs skill-refactor:**
 
 - **skill-creator:** Creating a new skill from requirements, examples, or user needs
-- **skill-refactor:** Splitting an existing skill that's >4000 tokens (~500 lines) or covers multiple domains
+- **skill-refactor:** Splitting an existing skill that exceeds the warning threshold (run `plugin_validator.py` to check) or covers multiple domains
 - Both skills can be used together: create with skill-creator, refactor later with skill-refactor as needs evolve
 
 ### What Skills Provide
@@ -335,7 +335,7 @@ Skills use a three-level loading system to manage context efficiently:
 
 #### Progressive Disclosure Patterns
 
-Keep SKILL.md body to the essentials and under 4000 tokens (~500 lines) to minimize context bloat. Split content into separate files when approaching this limit. When splitting out content into other files, it is very important to reference them from SKILL.md and describe clearly when to read them, to ensure the reader of the skill knows they exist and when to use them.
+Keep SKILL.md body lean to minimize context bloat. Run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` to check token complexity — split into separate files when the validator warns. When splitting out content into other files, it is very important to reference them from SKILL.md and describe clearly when to read them, to ensure the reader of the skill knows they exist and when to use them.
 
 **Key principle:** When a skill supports multiple variations, frameworks, or options, keep only the core workflow and selection guidance in SKILL.md. Move variant-specific details (patterns, examples, configuration) into separate reference files.
 
@@ -537,7 +537,7 @@ ${CLAUDE_PLUGIN_ROOT}/skills/skill-creator/scripts/init_skill.py my-skill --path
 
 After initialization, customize or remove the generated SKILL.md and example files as needed.
 
-### Step 4: Edit the Skill
+### Step 5: Edit the Skill
 
 When editing the (newly-generated or existing) skill, remember that the skill is being created for another instance of Claude to use. Include information that would be beneficial and non-obvious to Claude. Consider what procedural knowledge, domain-specific details, or reusable assets would help another Claude instance execute these tasks more effectively.
 
@@ -582,7 +582,7 @@ Write the YAML frontmatter. All fields are optional, but `description` is strong
   - **CRITICAL:** Do NOT use YAML multiline indicators (`>-`, `|-`, `|`) - they are broken and will display as ">-" instead of your text. Use single-line quoted strings instead.
   - Example description for a `docx` skill: "Comprehensive document creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction. Use when Claude needs to work with professional documents (.docx files) for: (1) Creating new documents, (2) Modifying or editing content, (3) Working with tracked changes, (4) Adding comments, or any other document tasks"
 - `argument-hint`: Optional. Hint shown during autocomplete to indicate expected arguments. Example: `[issue-number]` or `[filename] [format]`.
-- `allowed-tools`: Optional. Capability scoping mechanism — scopes the tool surface exposed to the skill, reducing prompt and context size. Not an automatic approval mechanism; approval and availability are distinct concerns handled by the runtime. When omitted, the skill inherits tool capabilities from the parent agent. (comma-separated). Example: `Read, Grep, Glob, Bash(npm run:*)`
+- `allowed-tools`: Optional. Lists tools Claude can use without asking permission when this skill is active, and restricts Claude to only those tools. Also reduces context size by limiting included tool definitions. When omitted, the skill inherits all tool capabilities from the parent agent. (comma-separated). Example: `Read, Grep, Glob, Bash(npm run:*)`
 - `model`: Optional. Model to use when this skill is active. Options: `claude-opus-4-5-20251101`, `claude-sonnet-4-20250514`, `opus`, `sonnet`, `haiku`
 - `context`: Optional. Set to `fork` to run in a forked subagent context for isolation. See advanced patterns below.
 - `agent`: Optional. Which subagent type to use when `context: fork` is set. Options: `Explore`, `Plan`, `general-purpose`, or custom agent name.
@@ -684,7 +684,7 @@ If validation fails, the script will report the errors and exit without creating
 
 Instead of creating standalone .skill files, you can include skills directly in a plugin's `skills/` directory and reference them in `plugin.json`. This is the recommended approach for plugin-bundled skills. See [claude-plugins-reference-2026](../claude-plugins-reference-2026/SKILL.md) for plugin creation documentation.
 
-### Step 6: Iterate
+### Step 7: Iterate
 
 After testing the skill, users may request improvements. Often this happens right after using the skill, with fresh context of how the skill performed.
 

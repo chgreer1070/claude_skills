@@ -106,9 +106,9 @@ class ComplexityValidator:
             # WARNING: Consider splitting
 ```
 
-**Thresholds**:
-- **4000 tokens**: Warning (≈500 lines) - consider splitting
-- **6400 tokens**: Error (≈800 lines) - must split
+**Thresholds** (defined as constants in `plugin_validator.py`):
+- **TOKEN_WARNING_THRESHOLD**: Consider splitting
+- **TOKEN_ERROR_THRESHOLD**: Must split
 
 **Rationale**:
 - Token count correlates with API cost
@@ -142,7 +142,7 @@ subprocess.run(
 
 ```
 skill-name/
-├── SKILL.md (high-level workflow, <4000 tokens)
+├── SKILL.md (high-level workflow, under warning threshold)
 ├── references/
 │   ├── detailed-guide.md (reference material)
 │   └── api-reference.md (technical details)

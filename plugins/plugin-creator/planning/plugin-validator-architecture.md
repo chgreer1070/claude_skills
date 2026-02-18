@@ -180,11 +180,11 @@ class Validator(Protocol):
 | Validator Class                  | Validates                                 | Auto-Fixable | Source Logic                              | Error Codes |
 | -------------------------------- | ----------------------------------------- | ------------ | ----------------------------------------- | ----------- |
 | `FrontmatterValidator`           | YAML syntax, required fields, field types | Yes          | validate_frontmatter.py                   | FM001-FM010 |
-| `NameFormatValidator`            | Name lowercase with hyphens only          | No           | validate-skill-structure.sh lines 63-76   | SK001-SK003 |
-| `DescriptionValidator`           | Min length 20 chars, trigger phrases      | No           | validate-skill-structure.sh lines 78-97   | SK004-SK005 |
-| `ComplexityValidator`            | Token count thresholds                    | No           | Replaces count-skill-lines.sh             | SK006-SK007 |
-| `ProgressiveDisclosureValidator` | references/, examples/, scripts/ dirs     | No           | validate-skill-structure.sh lines 114-137 | PD001-PD003 |
-| `InternalLinkValidator`          | Markdown links with ./ prefix exist       | No           | validate-skill-structure.sh lines 139-160 | LK001-LK002 |
+| `NameFormatValidator`            | Name lowercase with hyphens only          | No           | Ported from validate-skill-structure.sh lines 63-76 (script removed)   | SK001-SK003 |
+| `DescriptionValidator`           | Min length 20 chars, trigger phrases      | No           | Ported from validate-skill-structure.sh lines 78-97 (script removed)   | SK004-SK005 |
+| `ComplexityValidator`            | Token count thresholds                    | No           | Replaces count-skill-lines.sh (script removed)                          | SK006-SK007 |
+| `ProgressiveDisclosureValidator` | references/, examples/, scripts/ dirs     | No           | Ported from validate-skill-structure.sh lines 114-137 (script removed) | PD001-PD003 |
+| `InternalLinkValidator`          | Markdown links with ./ prefix exist       | No           | Ported from validate-skill-structure.sh lines 139-160 (script removed) | LK001-LK002 |
 | `PluginStructureValidator`       | plugin.json schema, paths                 | No           | claude plugin validate (external)         | PL001-PL005 |
 
 **Validation Sequence**:
@@ -1073,7 +1073,7 @@ repos:
 
 ### Name Format Validation
 
-**Source Logic**: validate-skill-structure.sh lines 63-76
+**Source Logic**: Ported from validate-skill-structure.sh lines 63-76 (script removed — logic now in plugin_validator.py)
 
 **Checks**:
 
@@ -1092,7 +1092,7 @@ repos:
 
 ### Description Validation
 
-**Source Logic**: validate-skill-structure.sh lines 78-97
+**Source Logic**: Ported from validate-skill-structure.sh lines 78-97 (script removed — logic now in plugin_validator.py)
 
 **Checks**:
 
@@ -1114,7 +1114,7 @@ repos:
 
 ### Token-Based Complexity Validation
 
-**Source Logic**: NEW - replaces count-skill-lines.sh
+**Source Logic**: NEW - replaces count-skill-lines.sh (script removed)
 
 **Measurement Strategy**:
 
@@ -1169,7 +1169,7 @@ def measure_skill_complexity(skill_path: Path) -> ComplexityMetrics:
 
 ### Progressive Disclosure Validation
 
-**Source Logic**: validate-skill-structure.sh lines 114-137
+**Source Logic**: Ported from validate-skill-structure.sh lines 114-137 (script removed — logic now in plugin_validator.py)
 
 **Checks**:
 
@@ -1186,7 +1186,7 @@ def measure_skill_complexity(skill_path: Path) -> ComplexityMetrics:
 
 ### Internal Link Validation
 
-**Source Logic**: validate-skill-structure.sh lines 139-160
+**Source Logic**: Ported from validate-skill-structure.sh lines 139-160 (script removed — logic now in plugin_validator.py)
 
 **Checks**:
 
@@ -1348,13 +1348,13 @@ git commit -m "feat: add new skill"
 
 ## Migration Path from Existing Scripts
 
-### Phase 1: Create Consolidated Tool
+### Phase 1: Create Consolidated Tool (COMPLETED)
 
-1. Create `plugin_validator.py` as PEP 723 standalone script
-2. Port frontmatter validation from `validate_frontmatter.py`
-3. Port structure validation from `validate-skill-structure.sh`
-4. Implement token-based complexity (replaces `count-skill-lines.sh`)
-5. Add Claude CLI integration
+1. Created `plugin_validator.py` as PEP 723 standalone script
+2. Ported frontmatter validation from `validate_frontmatter.py`
+3. Ported structure validation from `validate-skill-structure.sh` (now removed)
+4. Implemented token-based complexity (replaced `count-skill-lines.sh`, now removed)
+5. Added Claude CLI integration
 
 ### Phase 2: Update Pre-commit Hooks
 

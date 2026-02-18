@@ -75,11 +75,9 @@ The fields `name`, `description`, `license`, `compatibility`, `metadata`, and `a
 >
 > When an `allowed-tools` field is not specified, the skill inherits the tool capabilities of the parent agent. This is a common pattern for skills that need to use tools from the parent agent. Such as when a skill is used by the orchestrator agent for knowledge or task information, no `allowed-tools` field is needed.
 >
-> The `allowed-tools` field is a capability scoping mechanism.
-> The `allowed-tools` field is not an automatic approval mechanism.
-> Making a tool available does not imply permission to use it; approval and availability are distinct concerns handled by the runtime.
->
-> The `allowed-tools` field exists primarily to scope the tool surface exposed to the skill, reducing prompt and context size by including only the tool definitions the skill may need.
+> The `allowed-tools` field is both a pre-approval mechanism and a capability scoping mechanism.
+> Listed tools are granted to Claude without per-use permission prompts when the skill is active, and Claude is restricted to only those tools.
+> This also reduces context size by limiting included tool definitions to only those the skill may need.
 
 > [!NOTE]
 > **Plugin skills:** Omit the `name` field — a known behavior prevents plugin skills with explicit `name:` from appearing as slash commands. See plugin-creator CLAUDE.md for details.
