@@ -682,6 +682,15 @@ def _process_file_changes(
                         plugin_component_changes[plugin_name]["modified"].append(
                             component_change
                         )
+            # Non-component file changed inside plugin dir — still
+            # triggers a patch version bump.  plugin.json is excluded
+            # because it is already handled above for marketplace
+            # add/delete detection.
+            elif not filepath.endswith(".claude-plugin/plugin.json"):
+                plugin_component_changes[plugin_name]["modified"].append({
+                    "component_type": "other",
+                    "component_path": "/".join(Path(filepath).parts[2:]),
+                })
 
     return plugin_component_changes, marketplace_changes
 

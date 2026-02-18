@@ -806,7 +806,8 @@ class TestParsePluginPath:
         assert result is not None
         assert result["plugin"] == "my-plugin"
         assert result["component_type"] == "skill"
-        assert result["component_path"] == "skills/my-skill/SKILL.md"
+        # parse_plugin_path registers the skill directory, not the full file path
+        assert result["component_path"] == "skills/my-skill"
 
     def test_agent_path_parsed(self) -> None:
         """Verify agent .md path is correctly categorised.
@@ -1500,3 +1501,191 @@ class TestIdempotentWrites:
         # Final version should be 1.0.1, not 1.0.3
         final_data = json.loads(plugin_json.read_text(encoding="utf-8"))
         assert final_data["version"] == "1.0.1"
+
+
+# ============================================================================
+# Area 4: Non-component file change tracking
+# ============================================================================
+
+
+class TestNonComponentFileTracking:
+    """Test that non-component files inside plugin dirs trigger patch bumps.
+
+    Files like scripts/, tests/, CLAUDE.md, README.md are inside plugin
+    directories but do not match a recognized component_type in
+    parse_plugin_path.  These changes should still appear in the modified
+    list so the plugin version gets a patch bump.
+    """
+
+    def test_script_file_modification_recorded(self) -> None:
+        """Verify modifying a script file inside a plugin triggers tracking.
+
+        Tests: _process_file_changes with modified scripts/bar.py
+        How: Pass status with a modified script path
+        Why: Scripts are non-component files that should still trigger a version bump
+        """
+        status: dict[str, list[str]] = {
+            "added": [],
+            "deleted": [],
+            "modified": ["plugins/foo/scripts/bar.py"],
+        }
+
+        component_changes, _ = auto_sync._process_file_changes(status)
+
+        assert "foo" in component_changes
+        assert len(component_changes["foo"]["modified"]) == 1
+        assert component_changes["foo"]["modified"][0]["component_type"] == "other"
+        assert (
+            component_changes["foo"]["modified"][0]["component_path"]
+            == "scripts/bar.py"
+        )
+
+    def test_test_file_modification_recorded(self) -> None:
+        """Verify modifying a test file inside a plugin triggers tracking.
+
+        Tests: _process_file_changes with modified tests/test_bar.py
+        How: Pass status with a modified test path
+        Why: Test files are non-component files that should trigger a version bump
+        """
+        status: dict[str, list[str]] = {
+            "added": [],
+            "deleted": [],
+            "modified": ["plugins/foo/tests/test_bar.py"],
+        }
+
+        component_changes, _ = auto_sync._process_file_changes(status)
+
+        assert "foo" in component_changes
+        assert len(component_changes["foo"]["modified"]) == 1
+        assert component_changes["foo"]["modified"][0]["component_type"] == "other"
+        assert (
+            component_changes["foo"]["modified"][0]["component_path"]
+            == "tests/test_bar.py"
+        )
+
+    def test_claude_md_modification_recorded(self) -> None:
+        """Verify modifying CLAUDE.md inside a plugin triggers tracking.
+
+        Tests: _process_file_changes with modified CLAUDE.md
+        How: Pass status with a modified CLAUDE.md path
+        Why: CLAUDE.md is a non-component file that should trigger a version bump
+        """
+        status: dict[str, list[str]] = {
+            "added": [],
+            "deleted": [],
+            "modified": ["plugins/foo/CLAUDE.md"],
+        }
+
+        component_changes, _ = auto_sync._process_file_changes(status)
+
+        assert "foo" in component_changes
+        assert len(component_changes["foo"]["modified"]) == 1
+        assert component_changes["foo"]["modified"][0]["component_type"] == "other"
+        assert component_changes["foo"]["modified"][0]["component_path"] == "CLAUDE.md"
+
+    def test_readme_modification_recorded(self) -> None:
+        """Verify modifying README.md inside a plugin triggers tracking.
+
+        Tests: _process_file_changes with modified README.md
+        How: Pass status with a modified README.md path
+        Why: README.md is a non-component file that should trigger a version bump
+        """
+        status: dict[str, list[str]] = {
+            "added": [],
+            "deleted": [],
+            "modified": ["plugins/foo/README.md"],
+        }
+
+        component_changes, _ = auto_sync._process_file_changes(status)
+
+        assert "foo" in component_changes
+        assert len(component_changes["foo"]["modified"]) == 1
+        assert component_changes["foo"]["modified"][0]["component_type"] == "other"
+        assert component_changes["foo"]["modified"][0]["component_path"] == "README.md"
+
+    def test_plugin_json_modification_not_recorded_as_component(self) -> None:
+        """Verify plugin.json modifications are NOT tracked as non-component changes.
+
+        Tests: _process_file_changes excludes plugin.json from non-component tracking
+        How: Pass status with a modified .claude-plugin/plugin.json path
+        Why: plugin.json is already handled separately for marketplace add/delete
+             detection and should not appear in the modified list
+        """
+        status: dict[str, list[str]] = {
+            "added": [],
+            "deleted": [],
+            "modified": ["plugins/foo/.claude-plugin/plugin.json"],
+        }
+
+        component_changes, _ = auto_sync._process_file_changes(status)
+
+        # plugin.json should NOT create a component change entry
+        assert "foo" not in component_changes
+
+    def test_added_non_component_file_recorded(self) -> None:
+        """Verify adding a non-component file inside a plugin triggers tracking.
+
+        Tests: _process_file_changes with added non-component file
+        How: Pass status with an added script path
+        Why: Added non-component files should also trigger a patch bump
+        """
+        status: dict[str, list[str]] = {
+            "added": ["plugins/foo/scripts/new_script.py"],
+            "deleted": [],
+            "modified": [],
+        }
+
+        component_changes, _ = auto_sync._process_file_changes(status)
+
+        assert "foo" in component_changes
+        assert len(component_changes["foo"]["modified"]) == 1
+        assert component_changes["foo"]["modified"][0]["component_type"] == "other"
+
+    def test_deleted_non_component_file_recorded(self) -> None:
+        """Verify deleting a non-component file inside a plugin triggers tracking.
+
+        Tests: _process_file_changes with deleted non-component file
+        How: Pass status with a deleted test path
+        Why: Deleted non-component files should also trigger a patch bump
+        """
+        status: dict[str, list[str]] = {
+            "added": [],
+            "deleted": ["plugins/foo/tests/old_test.py"],
+            "modified": [],
+        }
+
+        component_changes, _ = auto_sync._process_file_changes(status)
+
+        assert "foo" in component_changes
+        assert len(component_changes["foo"]["modified"]) == 1
+        assert component_changes["foo"]["modified"][0]["component_type"] == "other"
+
+    def test_non_component_change_triggers_patch_bump(
+        self, tmp_path: Path, monkeypatch: Any
+    ) -> None:
+        """Verify non-component changes result in a patch version bump.
+
+        Tests: End-to-end flow from _process_file_changes through update_plugin_json
+        How: Process a non-component file change, pass to update_plugin_json
+        Why: Ensures the entire pipeline correctly bumps the version
+        """
+        monkeypatch.chdir(tmp_path)
+
+        plugin_name = "foo"
+        original_data = {"name": "foo", "version": "1.0.0", "skills": []}
+        _make_plugin_json(tmp_path, plugin_name, original_data)
+
+        status: dict[str, list[str]] = {
+            "added": [],
+            "deleted": [],
+            "modified": ["plugins/foo/scripts/helper.py"],
+        }
+
+        component_changes, _ = auto_sync._process_file_changes(status)
+
+        updated, new_version = auto_sync.update_plugin_json(
+            plugin_name, component_changes[plugin_name]
+        )
+
+        assert updated is True
+        assert new_version == "1.0.1"

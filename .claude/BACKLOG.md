@@ -2,7 +2,7 @@
 last-updated: 2026-02-14
 p0-count: 0
 p1-count: 13
-p2-count: 9
+p2-count: 8
 ideas-count: 10
 ---
 
@@ -158,13 +158,6 @@ _(Empty)_
 ---
 
 ## P2 - Could Have
-
-### auto_sync_manifests: test_skill_path_parsed assertion mismatch
-
-**Source**: Pre-existing test failure discovered during version-bump guard fix (2026-02-17)
-**Added**: 2026-02-17
-**Description**: `TestParsePluginPath::test_skill_path_parsed` expects `component_path` to be `skills/my-skill/SKILL.md` but `_parse_plugin_path()` returns `skills/my-skill`. The test expectation or the parsing logic needs to be reconciled.
-**File**: `plugins/plugin-creator/tests/test_auto_sync_manifests.py` and `plugins/plugin-creator/scripts/auto_sync_manifests.py` (`_parse_plugin_path`)
 
 ### SAM: Parser regex false positive on "## Task Summary Statistics"
 
