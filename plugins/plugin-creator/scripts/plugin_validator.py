@@ -87,7 +87,7 @@ SK003 = "SK003"  # Name has leading/trailing/consecutive hyphens
 SK004 = "SK004"  # Description too short (minimum 20 characters)
 SK005 = "SK005"  # Description missing trigger phrases
 SK006 = "SK006"  # Token count exceeds 4000 (consider splitting)
-SK007 = "SK007"  # Token count exceeds 6400 (must split)
+SK007 = "SK007"  # Token count exceeds 10000 (must split)
 
 # Link Errors (LK001-LK002)
 LK001 = "LK001"  # Broken internal link (file does not exist)
@@ -2261,19 +2261,31 @@ class MarkdownTokenCounter:
             passed=True, errors=errors, warnings=warnings, info=info
         )
 
-    def count_file_tokens(self, path: Path) -> int | None:
-        """Count total tokens in a file for programmatic use.
+    def count_file_tokens(self, path: Path, *, body_only: bool = False) -> int | None:
+        """Count tokens in a file for programmatic use.
 
         Args:
             path: Path to markdown file
+            body_only: When True, strip frontmatter and count only the body.
+                Matches what ComplexityValidator measures for threshold comparisons.
 
         Returns:
-            Total token count, or None if counting failed
+            Token count (body or total), or None if counting failed
         """
         try:
             content = path.read_text(encoding="utf-8")
         except OSError:
             return None
+
+        if body_only:
+            frontmatter_text, _start, _end = extract_frontmatter(content)
+            if frontmatter_text is not None:
+                end_match = re.search(r"\n---\s*\n", content[3:])
+                text = content[end_match.end() + 3 :] if end_match else content
+            else:
+                text = content
+            return self._count_tokens(text)
+
         return self._count_tokens(content)
 
     def can_fix(self) -> bool:
@@ -3737,32 +3749,42 @@ def _validate_single_path(  # noqa: PLR0912, C901
     return {path: validator_results}
 
 
-def _handle_tokens_only(paths: list[Path]) -> None:
-    """Output only the integer token count for each path, then exit.
+def _handle_tokens_only(paths: list[Path], *, batch: bool = False) -> None:
+    r"""Output only the integer token count for each path, then exit.
 
-    For a single path, prints just the integer. For multiple paths, prints
-    one integer per line in the same order as the input paths.
+    For a single path, prints just the integer. For multiple paths (or when
+    ``batch`` is True), prints one entry per line. When ``batch`` is True,
+    each line is tab-separated ``<count>\\t<path>`` for machine readability.
+
+    Token counting always uses body-only (frontmatter stripped) so that the
+    numbers match what ComplexityValidator measures against thresholds.
 
     Args:
         paths: Paths to count tokens for
+        batch: When True, emit ``<count>\\t<path>`` tab-separated output.
 
     Raises:
         typer.Exit: Always exits (code 0 on success, code 2 on error)
     """
     counter = MarkdownTokenCounter()
-    counts: list[int] = []
+    entries: list[tuple[int, Path]] = []
     for path in paths:
         if not path.exists():
             typer.echo(f"Error: Path does not exist: {path}", err=True)
             raise typer.Exit(2) from None
-        token_count = counter.count_file_tokens(path)
+        # Always count body-only so output matches ComplexityValidator thresholds
+        token_count = counter.count_file_tokens(path, body_only=True)
         if token_count is None:
             typer.echo(f"Error: Could not count tokens for: {path}", err=True)
             raise typer.Exit(2) from None
-        counts.append(token_count)
+        entries.append((token_count, path))
 
-    for count in counts:
-        print(count)
+    if batch:
+        for count, path in entries:
+            print(f"{count}\t{path}")
+    else:
+        for count, _path in entries:
+            print(count)
     raise typer.Exit(0) from None
 
 

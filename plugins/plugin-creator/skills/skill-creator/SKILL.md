@@ -38,7 +38,7 @@ Skill(command: "plugin-creator:refactor-skill")
 **When to use skill-creator vs skill-refactor:**
 
 - **skill-creator:** Creating a new skill from requirements, examples, or user needs
-- **skill-refactor:** Splitting an existing skill that's >500 lines or covers multiple domains
+- **skill-refactor:** Splitting an existing skill that's >4000 tokens (~500 lines) or covers multiple domains
 - Both skills can be used together: create with skill-creator, refactor later with skill-refactor as needs evolve
 
 ### What Skills Provide
@@ -84,12 +84,12 @@ Skills use progressive disclosure to manage context efficiently:
 | -------------------------- | ------------- | ---------------------------------------------------------------- |
 | `name` field               | 64 chars      | Lowercase, numbers, hyphens only                                 |
 | `description` field        | 1024 chars    | Critical for skill selection                                     |
-| `<available_skills>` block | ~15,000 chars | Separate from global context window, includes ALL skill metadata |
+| `<available_skills>` block | 2% of context window (fallback 16,000 chars) | Scales dynamically; separate from global context |
 | Skills before truncation   | ~34-36        | Varies by description complexity and length                      |
 
 **Truncation Behavior:**
 
-When total skill metadata exceeds ~15,000 characters:
+When total skill metadata exceeds the budget (2% of context window, fallback 16,000 characters):
 
 1. Skills are truncated from the `<available_skills>` block
 2. Truncated skills cannot be auto-invoked by Claude
@@ -335,7 +335,7 @@ Skills use a three-level loading system to manage context efficiently:
 
 #### Progressive Disclosure Patterns
 
-Keep SKILL.md body to the essentials and under 500 lines to minimize context bloat. Split content into separate files when approaching this limit. When splitting out content into other files, it is very important to reference them from SKILL.md and describe clearly when to read them, to ensure the reader of the skill knows they exist and when to use them.
+Keep SKILL.md body to the essentials and under 4000 tokens (~500 lines) to minimize context bloat. Split content into separate files when approaching this limit. When splitting out content into other files, it is very important to reference them from SKILL.md and describe clearly when to read them, to ensure the reader of the skill knows they exist and when to use them.
 
 **Key principle:** When a skill supports multiple variations, frameworks, or options, keep only the core workflow and selection guidance in SKILL.md. Move variant-specific details (patterns, examples, configuration) into separate reference files.
 
@@ -411,7 +411,7 @@ Claude reads REDLINING.md or OOXML.md only when the user needs those features.
 **Important guidelines:**
 
 - **Avoid deeply nested references** - Keep references one level deep from SKILL.md. All reference files should link directly from SKILL.md.
-- **Structure longer reference files** - For files longer than 100 lines, include a table of contents at the top so Claude can see the full scope when previewing.
+- **Add a Table of Contents to reference documents** - Claude Code often peeks at files (partial reads) instead of reading in full. Place a ToC at the very top of reference files so the full scope is visible even during a partial read. This is especially important for reference documents, API docs, and multi-section guides. It is a judgment call based on content type, not a size threshold.
 
 ## Skill Creation Process
 
@@ -582,7 +582,7 @@ Write the YAML frontmatter. All fields are optional, but `description` is strong
   - **CRITICAL:** Do NOT use YAML multiline indicators (`>-`, `|-`, `|`) - they are broken and will display as ">-" instead of your text. Use single-line quoted strings instead.
   - Example description for a `docx` skill: "Comprehensive document creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction. Use when Claude needs to work with professional documents (.docx files) for: (1) Creating new documents, (2) Modifying or editing content, (3) Working with tracked changes, (4) Adding comments, or any other document tasks"
 - `argument-hint`: Optional. Hint shown during autocomplete to indicate expected arguments. Example: `[issue-number]` or `[filename] [format]`.
-- `allowed-tools`: Optional. Tools Claude can use without asking permission when this skill is active (comma-separated). Example: `Read, Grep, Glob, Bash(npm run:*)`
+- `allowed-tools`: Optional. Capability scoping mechanism — scopes the tool surface exposed to the skill, reducing prompt and context size. Not an automatic approval mechanism; approval and availability are distinct concerns handled by the runtime. When omitted, the skill inherits tool capabilities from the parent agent. (comma-separated). Example: `Read, Grep, Glob, Bash(npm run:*)`
 - `model`: Optional. Model to use when this skill is active. Options: `claude-opus-4-5-20251101`, `claude-sonnet-4-20250514`, `opus`, `sonnet`, `haiku`
 - `context`: Optional. Set to `fork` to run in a forked subagent context for isolation. See advanced patterns below.
 - `agent`: Optional. Which subagent type to use when `context: fork` is set. Options: `Explore`, `Plan`, `general-purpose`, or custom agent name.
