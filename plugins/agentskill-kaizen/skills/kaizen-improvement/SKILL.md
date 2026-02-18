@@ -1,6 +1,89 @@
 ---
-description: "Transform transcript analysis findings into actionable improvements — hook scripts, agent patches, skill enhancements, and delegation prompts. Use when generating PreToolUse hooks from anti-patterns, producing outcome-focused improvement instructions for other agents, or creating automation for recurring manual corrections."
+description: 'Transform transcript analysis findings into actionable improvements. Triggers on "generate hooks from findings", "improve agent", "fix anti-pattern", "kaizen improvement", "generate hook proposals", or "create improvement plan". Provides templates for hook generation, agent prompt refinement, skill patches, CLAUDE.md updates, and script automation from analysis data.'
 ---
 
-<!-- Phase 5: Full skill content will be implemented here -->
-<!-- See .claude/kaizen-plugin-plan.md for specification -->
+# Kaizen Improvement
+
+Transform analysis findings from `.planning/kaizen/` into actionable improvements — hooks, agent patches, skill refinements, CLAUDE.md updates, and automation scripts.
+
+## Improvement Types
+
+Five categories of output, each with a delegation template:
+
+1. **Hook generation** — PreToolUse deny/redirect, SubagentStart context injection, Stop quality gates
+2. **Agent prompt refinement** — surgical fixes to agent system prompts via @subagent-refactorer
+3. **Skill patches** — add missing knowledge to skills via /plugin-creator:skill-creator
+4. **CLAUDE.md updates** — project-wide behavioral rules
+5. **Script automation** — replace repeated manual workflows with scripts or skills
+
+For detailed templates and examples, see [Improvement Templates](./references/improvement-templates.md).
+
+## Workflow
+
+```mermaid
+flowchart TD
+    Start([Read analysis findings]) --> Parse[Extract anti-patterns with frequency and evidence]
+    Parse --> Score[Score by frequency × impact]
+    Score --> Top[Select top findings]
+    Top --> Type{Improvement type?}
+    Type -->|Repeated tool misuse| Hook[Generate hook — deny/redirect]
+    Type -->|Agent behavior issue| Agent[Generate agent patch instruction set]
+    Type -->|Knowledge gap| Skill[Generate skill patch instruction set]
+    Type -->|Project-wide issue| Claude[Generate CLAUDE.md addition]
+    Type -->|Manual workflow| Script[Generate automation proposal]
+    Hook --> Output[Write to .planning/kaizen/improvements/]
+    Agent --> Output
+    Skill --> Output
+    Claude --> Output
+    Script --> Output
+    Output --> Install{--install flag?}
+    Install -->|Yes| Apply[Write hooks to settings, apply patches]
+    Install -->|No| Draft[Leave as proposals for review]
+```
+
+## Hook Generation
+
+Read findings → generate hook configuration + optional script.
+
+For hook patterns mapped to each anti-pattern type, see [Hook Patterns](./references/hook-patterns.md).
+
+Key principles:
+
+- One anti-pattern per hook — focused and testable
+- `command` type for deterministic checks (regex, file existence)
+- `prompt` type for semantic checks (intent, quality assessment)
+- Narrow `matcher` scope — only trigger on relevant tools
+- Draft first, install later — write to `.planning/kaizen/hooks/` for review
+
+## Delegation Protocol
+
+Improvements are instruction sets for specialist agents, not direct edits. Follow outcome-focused delegation:
+
+- Describe the problem with evidence (session IDs, tool calls, frequency)
+- State the desired outcome
+- Let the specialist agent determine the implementation approach
+- Never prescribe specific code changes in the delegation prompt
+
+## Output Modes
+
+### Draft mode (default)
+
+Write all proposals to `.planning/kaizen/improvements/` as markdown files. Each file contains:
+
+- Finding summary with evidence
+- Proposed improvement
+- Delegation prompt for the appropriate specialist agent
+- Priority score
+
+### Install mode (--install flag)
+
+For hooks only — write directly to `.claude/settings.json` or `hooks/hooks.json`. Other improvement types always produce delegation prompts (never direct edits).
+
+## Priority Scoring
+
+Rank improvements by:
+
+1. **Frequency × Impact** — occurrences across sessions × cost per occurrence
+2. **Automation potential** — hooks > scripts > documentation
+3. **Blast radius** — project-wide > single-agent > single-session
+4. **Implementation cost** — hook (minutes) < CLAUDE.md (minutes) < skill (hours) < agent (days)
