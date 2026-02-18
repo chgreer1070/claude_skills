@@ -287,6 +287,11 @@ For comprehensive type safety guidance including Generics, Protocols, TypedDict,
 
 **BLOCKING RULE**: If you cannot answer steps 2-5 from memory, you have NOT read the orchestration guide. Go back to step 1.
 
+**Important distinction**: Step 1 reads the orchestration meta-guide to understand HOW to coordinate agents.
+This is the only file the orchestrator reads before delegating.
+Do NOT read task codebase files, source code, or configuration before delegating — pass file paths to agents.
+Agents discover and verify file contents themselves as part of their Chain of Verification.
+
 #### Why This Protocol Exists
 
 **Problem observed**: Orchestrators skip reading the guide, send one massive task to a single agent, the agent runs out of context, makes architectural mistakes, and user must intervene.
