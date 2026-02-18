@@ -62,8 +62,17 @@ FILTER_TYPE_MAP: dict[str, str] = {
     "skills": "**/skills/*/SKILL.md",
     "agents": "**/agents/*.md",
     "commands": "**/commands/*.md",
-    "all": "**/*.md",
 }
+
+# Default patterns for auto-discovering validatable files in bare directories
+DEFAULT_SCAN_PATTERNS: tuple[str, ...] = (
+    "**/skills/*/SKILL.md",
+    "**/agents/*.md",
+    "**/commands/*.md",
+    "**/.claude-plugin/plugin.json",
+    "**/hooks/hooks.json",
+    "**/CLAUDE.md",
+)
 
 # Description requirements (Architecture lines 349-350)
 MIN_DESCRIPTION_LENGTH = 20
@@ -3853,6 +3862,31 @@ def _handle_tokens_only(paths: list[Path], *, batch: bool = False) -> None:
     raise typer.Exit(0) from None
 
 
+def _discover_validatable_paths(directory: Path) -> list[Path]:
+    """Auto-discover validatable files in a bare directory.
+
+    Globs ``DEFAULT_SCAN_PATTERNS`` against *directory* and returns
+    deduplicated, sorted paths.  For any ``.claude-plugin/plugin.json``
+    match the **plugin root directory** (grandparent of plugin.json) is
+    returned instead of the file itself, because ``detect_file_type``
+    recognises directories that contain ``.claude-plugin/plugin.json``.
+
+    Args:
+        directory: The directory to scan.
+
+    Returns:
+        Sorted list of unique paths suitable for validation.
+    """
+    discovered: set[Path] = set()
+    for pattern in DEFAULT_SCAN_PATTERNS:
+        for match in directory.glob(pattern):
+            if match.name == "plugin.json":
+                discovered.add(match.parent.parent)
+            else:
+                discovered.add(match)
+    return sorted(discovered)
+
+
 def _show_help_and_exit(ctx: typer.Context, code: int = 0) -> NoReturn:
     """Print the help text for the current command and exit.
 
@@ -3930,8 +3964,7 @@ def main(  # noqa: PLR0912, PLR0915, C901
                 "Shortcut for common filter patterns. "
                 "Choices: skills (**/skills/*/SKILL.md), "
                 "agents (**/agents/*.md), "
-                "commands (**/commands/*.md), "
-                "all (**/*.md). "
+                "commands (**/commands/*.md). "
                 "Mutually exclusive with --filter."
             ),
         ),
@@ -4026,6 +4059,14 @@ def main(  # noqa: PLR0912, PLR0915, C901
                 matched = sorted(path.glob(resolved_glob))
                 expanded_paths.extend(matched)
                 is_batch = True
+            elif resolved_glob is None and path.is_dir():
+                # Bare directory without --filter/--filter-type:
+                # If it's already a plugin dir, pass through as-is
+                if (path / ".claude-plugin/plugin.json").exists():
+                    expanded_paths.append(path)
+                else:
+                    expanded_paths.extend(_discover_validatable_paths(path))
+                    is_batch = True
             else:
                 expanded_paths.append(path)
 
