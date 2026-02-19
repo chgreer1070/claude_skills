@@ -1514,7 +1514,7 @@ class FrontmatterValidator:
                     suggestion = "Use format: 'tool1, tool2, tool3'"
                 elif "colon" in msg.lower():
                     code = FM009
-                    suggestion = "Quote the description or remove colons"
+                    suggestion = "Quote the description value or avoid colons. ruamel.yaml handles quoting on write, but hand-edited YAML with unquoted colons fails to parse"
                 else:
                     code = FM005
                     suggestion = None
@@ -1546,10 +1546,10 @@ class FrontmatterValidator:
                     ValidationIssue(
                         field="description",
                         severity="error",
-                        message="Unquoted description contains colons",
+                        message="description contains unquoted colons — this will break YAML parsing. Quote the value or remove colons",
                         code=FM009,
                         docs_url=generate_docs_url(FM009),
-                        suggestion="Quote the description or remove colons",
+                        suggestion="Quote the description value or avoid colons. ruamel.yaml handles quoting on write, but hand-edited YAML with unquoted colons fails to parse",
                     )
                 )
 
