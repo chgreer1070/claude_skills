@@ -1800,7 +1800,6 @@ python_versions: [3.11, 3.12, 3.13]
 """Track document dependencies and flag updates."""
 
 from pathlib import Path
-import yaml
 
 def extract_dependencies(doc_path: Path) -> dict:
     """Extract dependencies from document frontmatter."""
@@ -1810,7 +1809,9 @@ def extract_dependencies(doc_path: Path) -> dict:
     if content.startswith('---'):
         end = content.find('---', 3)
         if end > 0:
-            frontmatter = yaml.safe_load(content[3:end])
+            from ruamel.yaml import YAML
+            yaml = YAML(typ="safe")
+            frontmatter = yaml.load(content[3:end])
             return frontmatter
 
     return {}

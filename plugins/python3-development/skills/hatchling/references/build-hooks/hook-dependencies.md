@@ -137,14 +137,14 @@ class CustomBuildHook(BuildHookInterface):
         return [
             "jinja2>=2.11",
             "pillow>=8.0",
-            "PyYAML>=5.0",
+            "ruamel.yaml>=0.18",
         ]
 
     def initialize(self, version: str, build_data: dict) -> None:
         # These imports are safe now - dependencies are installed
         from jinja2 import Template, Environment, FileSystemLoader
         from PIL import Image
-        import yaml
+        from ruamel.yaml import YAML
 
         # Use the libraries
         env = Environment(loader=FileSystemLoader('templates'))
@@ -234,14 +234,14 @@ class CustomBuildHook(BuildHookInterface):
             "jinja2>=2.11",
             "pillow>=8.0",
             "click>=7.0,<9.0",
-            "PyYAML>=5.0",
+            "ruamel.yaml>=0.18",
         ]
 
     def initialize(self, version: str, build_data: dict) -> None:
         from jinja2 import Environment, FileSystemLoader
         from PIL import Image
         import click
-        import yaml
+        from ruamel.yaml import YAML
 
         # Use all libraries
         self.generate_images()

@@ -236,7 +236,7 @@ enable-by-default = true
 
 # Pass configuration to hooks
 option1 = "value1"
-dependencies = ["requests", "pyyaml"]
+dependencies = ["requests", "ruamel.yaml"]
 
 [tool.hatch.build.hooks.version]
 # Version hook configuration

@@ -133,7 +133,7 @@ shiv -c myapp -o myapp.pyz myapp
 
 ```bash
 # Bundle multiple packages
-shiv -o toolkit.pyz requests click pyyaml
+shiv -o toolkit.pyz requests click ruamel.yaml
 ```
 
 **From requirements.txt:**
