@@ -31,10 +31,10 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
         with:
+          python-version: "3.11"
           enable-cache: true
-          cache-dependency-glob: |
-            pyproject.toml
-            uv.lock
+          cache-dependency-glob: "**/uv.lock"
+          cache-python: true
 
       - name: Install Python dependencies
         run: uv sync --group dev
@@ -47,6 +47,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "22"
+          # No package-lock.json -- disable auto-caching to prevent cache key failure
+          package-manager-cache: false
 
       - name: Install Node dependencies
         run: npm install
