@@ -394,8 +394,8 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py --no-color {path}
 **What It Auto-Fixes:**
 
 - YAML arrays → comma-separated strings
-- Multiline descriptions → single-line quoted strings
-- Unquoted descriptions with colons
+- Multiline descriptions → single-line strings
+- Unquoted colons in descriptions — adds quotes to prevent YAML parsing failures
 - Missing `name:` fields in plugin skills (auto-removes due to Claude Code bug)
 
 **Schema Coverage:**

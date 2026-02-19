@@ -207,8 +207,8 @@ uv run ./scripts/plugin_validator.py fix-batch ./plugins/my-plugin
 **Auto-fixes:**
 
 - YAML arrays → comma-separated strings (tools, skills, etc.)
-- Multiline descriptions → single-line quoted strings
-- Unquoted descriptions with colons
+- Multiline descriptions → single-line strings
+- Unquoted colons in descriptions — adds quotes to prevent YAML parsing failures
 
 **Supports:**
 
