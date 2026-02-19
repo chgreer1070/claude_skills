@@ -1,6 +1,6 @@
 ---
-description: 'Wrap investigation requests with evidence-chain discipline. Use when the user asks to find out why something happens, look into something, research a root cause, debug an issue, or investigate unexpected behavior. Transforms vague investigation requests into reproducible-proof investigations. Invoke with /find-cause <description of what to investigate>.'
-argument-hint: '<what to investigate>'
+description: Wrap investigation requests with evidence-chain discipline. Use when the user asks to find out why something happens, look into something, research a root cause, debug an issue, or investigate unexpected behavior. Transforms vague investigation requests into reproducible-proof investigations. Invoke with /find-cause <description of what to investigate>.
+argument-hint: <what to investigate>
 ---
 
 # Find Cause

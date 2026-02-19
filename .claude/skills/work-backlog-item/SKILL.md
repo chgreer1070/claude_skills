@@ -1,6 +1,6 @@
 ---
-description: "Bridges BACKLOG.md to the SAM planning pipeline — use when you want to pick a backlog item and move it into a SAM plan. No args shows interactive backlog browser with grooming status; with args finds item by title substring, auto-grooms if needed, runs RT-ICA to BLOCK on missing inputs before SAM planning, invokes add-new-feature, then updates backlog with plan reference. STOPS if item already has a Plan field or RT-ICA returns BLOCKED."
-argument-hint: "[item-title-substring]"
+description: Bridges BACKLOG.md to the SAM planning pipeline — use when you want to pick a backlog item and move it into a SAM plan. No args shows interactive backlog browser with grooming status; with args finds item by title substring, auto-grooms if needed, runs RT-ICA to BLOCK on missing inputs before SAM planning, invokes add-new-feature, then updates backlog with plan reference. STOPS if item already has a Plan field or RT-ICA returns BLOCKED.
+argument-hint: '[item-title-substring]'
 user-invocable: true
 ---
 

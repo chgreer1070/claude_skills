@@ -1,6 +1,6 @@
 ---
-description: "The packages configuration option for Hatchling wheel builds. Explains path collapsing behavior, comparison with only-include plus sources, common source layouts, and when to use packages versus alternative approaches."
-keywords: ["packages", "hatchling", "wheel builds", "path collapsing", "source layouts", "src layout"]
+description: The packages configuration option for Hatchling wheel builds. Explains path collapsing behavior, comparison with only-include plus sources, common source layouts, and when to use packages versus alternative approaches.
+keywords: [packages, hatchling, wheel builds, path collapsing, source layouts, src layout]
 ---
 
 # Packages Option

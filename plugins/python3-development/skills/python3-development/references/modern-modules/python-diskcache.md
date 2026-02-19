@@ -1,13 +1,13 @@
 ---
-title: "python-diskcache - SQLite-Backed Persistent Cache for Python"
+title: python-diskcache - SQLite-Backed Persistent Cache for Python
 library_name: python-diskcache
 pypi_package: diskcache
 category: caching
-python_compatibility: "3.0+"
-last_updated: "2025-11-02"
-official_docs: "https://grantjenks.com/docs/diskcache"
-official_repository: "https://github.com/grantjenks/python-diskcache"
-maintenance_status: "active"
+python_compatibility: 3.0+
+last_updated: '2025-11-02'
+official_docs: https://grantjenks.com/docs/diskcache
+official_repository: https://github.com/grantjenks/python-diskcache
+maintenance_status: active
 ---
 
 # python-diskcache - SQLite-Backed Persistent Cache for Python

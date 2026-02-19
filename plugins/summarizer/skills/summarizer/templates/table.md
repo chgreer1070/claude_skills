@@ -3,13 +3,14 @@ format_id: table
 format_name: Table
 description: Findings presented as a markdown table with columns for item, detail, source reference, and status. Compact visual format for scanning many findings quickly.
 fidelity_sections_required:
-  - Findings table
-  - Not Found (rows or section)
-  - Uncertain (rows or section)
+- Findings table
+- Not Found (rows or section)
+- Uncertain (rows or section)
 metadata_preserved:
-  - source_path
-  - confidence
+- source_path
+- confidence
 ---
+
 # Table Format
 
 Tabular output for quick visual scanning of findings. Each row represents one finding with its source reference and status.

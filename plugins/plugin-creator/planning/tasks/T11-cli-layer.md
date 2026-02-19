@@ -1,13 +1,13 @@
 ---
-task: "T11"
-title: "CLI Layer"
+task: T11
+title: CLI Layer
 status: complete
-agent: "python-cli-architect"
-dependencies: ["T10"]
+agent: python-cli-architect
+dependencies: [T10]
 priority: 3
 complexity: medium
-started: "2026-02-02T17:35:00Z"
-completed: "2026-02-02T17:50:00Z"
+started: '2026-02-02T17:35:00Z'
+completed: '2026-02-02T17:50:00Z'
 ---
 
 ## Context

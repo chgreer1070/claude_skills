@@ -1,15 +1,15 @@
 ---
 category: build-system
 topics:
-  - reproducible-builds
-  - source-date-epoch
-  - deterministic-builds
-  - build-timestamps
-  - ci-cd-builds
+- reproducible-builds
+- source-date-epoch
+- deterministic-builds
+- build-timestamps
+- ci-cd-builds
 related:
-  - build-options
-  - environment-variables
-  - build-hooks
+- build-options
+- environment-variables
+- build-hooks
 ---
 
 # Reproducible Builds Guide for Claude

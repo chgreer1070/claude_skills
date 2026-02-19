@@ -3,11 +3,11 @@ title: User Project Conventions
 date: 2025-11-17
 source: Extracted from user's production projects
 projects_analyzed:
-  - pre-commit-pep723-linter-wrapper (PyPI/GitHub)
-  - python_picotool (GitLab)
-  - usb_powertools (GitLab)
-  - picod (GitLab)
-  - i2c_analyzer (GitLab)
+- pre-commit-pep723-linter-wrapper (PyPI/GitHub)
+- python_picotool (GitLab)
+- usb_powertools (GitLab)
+- picod (GitLab)
+- i2c_analyzer (GitLab)
 ---
 
 # User Project Conventions

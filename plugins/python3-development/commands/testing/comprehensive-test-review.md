@@ -1,11 +1,11 @@
 ---
-title: "Comprehensive Test Review"
-description: "Perform thorough test review following standard checklist"
-command_type: "testing"
-last_updated: "2025-11-02"
+title: Comprehensive Test Review
+description: Perform thorough test review following standard checklist
+command_type: testing
+last_updated: '2025-11-02'
 related_docs:
-  - "./analyze-test-failures.md"
-  - "./test-failure-mindset.md"
+- ./analyze-test-failures.md
+- ./test-failure-mindset.md
 ---
 
 # Comprehensive Test Review

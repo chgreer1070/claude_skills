@@ -1,7 +1,7 @@
 ---
-description: 'Assess and refactor oversized or multi-domain skills. First determines whether splitting or references/ extraction is appropriate — then executes the correct action. Use when a skill exceeds token thresholds (SK006/SK007) or covers multiple independent domains. Performs candidate assessment before any structural changes; cohesive single-intent skills are redirected to references/ extraction instead of splitting. When splitting is warranted — domain analysis gate, split plan, new SKILL.md generation, validation, and backwards-compatible facade conversion.'
+description: Assess and refactor oversized or multi-domain skills. First determines whether splitting or references/ extraction is appropriate — then executes the correct action. Use when a skill exceeds token thresholds (SK006/SK007) or covers multiple independent domains. Performs candidate assessment before any structural changes; cohesive single-intent skills are redirected to references/ extraction instead of splitting. When splitting is warranted — domain analysis gate, split plan, new SKILL.md generation, validation, and backwards-compatible facade conversion.
 model: opus
-argument-hint: "path to skill directory (or plugin) to refactor"
+argument-hint: path to skill directory (or plugin) to refactor
 user-invocable: true
 ---
 

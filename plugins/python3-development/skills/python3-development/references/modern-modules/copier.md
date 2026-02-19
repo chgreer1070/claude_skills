@@ -1,13 +1,13 @@
 ---
-title: "Copier: Project Template Renderer with Update Capabilities"
+title: 'Copier: Project Template Renderer with Update Capabilities'
 library_name: copier
 pypi_package: copier
 category: project_templating
-python_compatibility: "3.9+"
-last_updated: "2025-11-02"
-official_docs: "https://copier.readthedocs.io"
-official_repository: "https://github.com/copier-org/copier"
-maintenance_status: "active"
+python_compatibility: 3.9+
+last_updated: '2025-11-02'
+official_docs: https://copier.readthedocs.io
+official_repository: https://github.com/copier-org/copier
+maintenance_status: active
 ---
 
 # Copier: Project Template Renderer with Update Capabilities

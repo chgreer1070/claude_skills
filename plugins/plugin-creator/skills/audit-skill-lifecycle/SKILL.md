@@ -1,5 +1,5 @@
 ---
-description: "Audit skill lifecycle by tracing call chains, detecting circular dependencies, finding instruction contradictions, identifying duplicated datasets, analyzing bidirectional coherence, discovering scriptable sequences, and learning patterns. Use when checking skill coherence, validating skill workflow, finding semantic gaps in plugin structure, or auditing plugin before marketplace submission. Generates audit reports to .claude/audits/ with findings by dimension."
+description: Audit skill lifecycle by tracing call chains, detecting circular dependencies, finding instruction contradictions, identifying duplicated datasets, analyzing bidirectional coherence, discovering scriptable sequences, and learning patterns. Use when checking skill coherence, validating skill workflow, finding semantic gaps in plugin structure, or auditing plugin before marketplace submission. Generates audit reports to .claude/audits/ with findings by dimension.
 user-invocable: true
 argument-hint: <plugin-path>
 model: sonnet

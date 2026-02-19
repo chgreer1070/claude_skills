@@ -1,5 +1,5 @@
 ---
-description: 'Use when a refactoring task file exists from /assessor and tasks need execution. Reads task files, resolves dependencies, delegates to specialist agents (SKILL_SPLIT, AGENT_OPTIMIZE, DOC_IMPROVE), and tracks completion with parallel orchestration'
+description: Use when a refactoring task file exists from /assessor and tasks need execution. Reads task files, resolves dependencies, delegates to specialist agents (SKILL_SPLIT, AGENT_OPTIMIZE, DOC_IMPROVE), and tracks completion with parallel orchestration
 argument-hint: <plugin-slug or task-file-path>
 model: sonnet
 user-invocable: true

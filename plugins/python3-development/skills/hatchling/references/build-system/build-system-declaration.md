@@ -1,16 +1,16 @@
 ---
 category: build-system
 topics:
-  - build-system-table
-  - pyproject-toml
-  - build-backend
-  - build-requirements
-  - pep-517
-  - pep-518
+- build-system-table
+- pyproject-toml
+- build-backend
+- build-requirements
+- pep-517
+- pep-518
 related:
-  - pep-standards
-  - build-options
-  - build-hooks
+- pep-standards
+- build-options
+- build-hooks
 ---
 
 # Build System Declaration Guide for Claude

@@ -1,5 +1,5 @@
 ---
-description: "Dasel v3 selectors for Spring bean factory XML — use when querying any Spring ApplicationContext XML for bean discovery, dependency wiring, JMS destination mapping, property injection extraction, or cross-bean reference tracing. Load this skill before writing dasel selectors against Spring bean XML files (applicationContext.xml, *_beans.xml, spring-*.xml)."
+description: Dasel v3 selectors for Spring bean factory XML — use when querying any Spring ApplicationContext XML for bean discovery, dependency wiring, JMS destination mapping, property injection extraction, or cross-bean reference tracing. Load this skill before writing dasel selectors against Spring bean XML files (applicationContext.xml, *_beans.xml, spring-*.xml).
 ---
 
 # Spring Bean Factory XML — Dasel v3 Query Patterns

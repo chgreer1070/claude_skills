@@ -1,13 +1,13 @@
 ---
-title: "Prefect: Modern Workflow Orchestration Platform"
+title: 'Prefect: Modern Workflow Orchestration Platform'
 library_name: prefect
 pypi_package: prefect
 category: workflow-orchestration
-python_compatibility: "3.9+"
-last_updated: "2025-11-02"
-official_docs: "https://docs.prefect.io"
-official_repository: "https://github.com/PrefectHQ/prefect"
-maintenance_status: "active"
+python_compatibility: 3.9+
+last_updated: '2025-11-02'
+official_docs: https://docs.prefect.io
+official_repository: https://github.com/PrefectHQ/prefect
+maintenance_status: active
 ---
 
 # Prefect: Modern Workflow Orchestration

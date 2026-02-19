@@ -1,18 +1,18 @@
 ---
-title: "Synthesis: Improvements for Agent Orchestration Skill"
-description: "Analysis of orchestration patterns from multiple sources to identify improvements for agent-orchestration SKILL.md"
+title: 'Synthesis: Improvements for Agent Orchestration Skill'
+description: Analysis of orchestration patterns from multiple sources to identify improvements for agent-orchestration SKILL.md
 date: 2025-11-14
 sources:
-  - "https://anyblockers.com/posts/working-with-coding-agents"
-  - "plugins/agent-orchestration/skills/how-to-delegate/SKILL.md"
-  - "{git_root}/commands/orchestration-best-practicing.md"
-  - "~/.claude/commands/am-i-complete.md"
-  - "{git_root}/.claude/commands/is-it-done.md"
-  - "{git_root}/story-based-framing/SKILL.md"
-  - "{git_root}/python3-development/references/python-development-orchestration.md"
-  - "{git_root}/research_skills_process.md"
-  - "https://claudefa.st"
-  - "https://claudefa.st/docs/orchestrating-agents"
+- https://anyblockers.com/posts/working-with-coding-agents
+- plugins/agent-orchestration/skills/how-to-delegate/SKILL.md
+- '{git_root}/commands/orchestration-best-practicing.md'
+- ~/.claude/commands/am-i-complete.md
+- '{git_root}/.claude/commands/is-it-done.md'
+- '{git_root}/story-based-framing/SKILL.md'
+- '{git_root}/python3-development/references/python-development-orchestration.md'
+- '{git_root}/research_skills_process.md'
+- https://claudefa.st
+- https://claudefa.st/docs/orchestrating-agents
 ---
 
 # Synthesis: Improvements for Agent Orchestration Skill

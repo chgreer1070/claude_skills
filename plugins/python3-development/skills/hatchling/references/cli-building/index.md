@@ -1,8 +1,7 @@
 ---
 category: cli-building
 topics: [command-line, build-system, hatchling, package-distribution]
-related:
-  [overview.md, building-wheels.md, building-sdist.md, python-build-tool.md, local-install.md, output-customization.md]
+related: [overview.md, building-wheels.md, building-sdist.md, python-build-tool.md, local-install.md, output-customization.md]
 ---
 
 # Hatchling Command-Line Building Reference

@@ -1,13 +1,13 @@
 ---
-title: "paho-mqtt: Eclipse Paho MQTT Python Client"
+title: 'paho-mqtt: Eclipse Paho MQTT Python Client'
 library_name: paho-mqtt
 pypi_package: paho-mqtt
 category: networking
-python_compatibility: "3.7+"
-last_updated: "2025-11-02"
-official_docs: "https://eclipse.dev/paho/files/paho.mqtt.python/html"
-official_repository: "https://github.com/eclipse-paho/paho.mqtt.python"
-maintenance_status: "active"
+python_compatibility: 3.7+
+last_updated: '2025-11-02'
+official_docs: https://eclipse.dev/paho/files/paho.mqtt.python/html
+official_repository: https://github.com/eclipse-paho/paho.mqtt.python
+maintenance_status: active
 ---
 
 # paho-mqtt: Eclipse Paho MQTT Python Client

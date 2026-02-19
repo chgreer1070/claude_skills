@@ -1,15 +1,7 @@
 ---
 category: standards
 topics: [python-packaging, standards-reference, hatchling-standards, pep-reference-guide, metadata-standards]
-related:
-  [
-    python-packaging-overview.md,
-    pep-references.md,
-    core-metadata.md,
-    distribution-formats.md,
-    dependency-formats.md,
-    vcs-integration.md,
-  ]
+related: [python-packaging-overview.md, pep-references.md, core-metadata.md, distribution-formats.md, dependency-formats.md, vcs-integration.md]
 ---
 
 # Related Standards & Specifications for Hatchling

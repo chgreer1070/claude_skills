@@ -1,17 +1,17 @@
 ---
 category: build-system
 topics:
-  - tool-hatch-build
-  - build-configuration
-  - file-selection
-  - artifacts
-  - force-include
-  - dev-mode
+- tool-hatch-build
+- build-configuration
+- file-selection
+- artifacts
+- force-include
+- dev-mode
 related:
-  - output-directory
-  - reproducible-builds
-  - vcs-integration
-  - build-targets
+- output-directory
+- reproducible-builds
+- vcs-integration
+- build-targets
 ---
 
 # Build Options Configuration Guide for Claude

@@ -1,6 +1,6 @@
 ---
-argument-hint: "/temp-doc <document>"
-description: "Manage temporary documentation created during task execution - prevent git pollution from AI-generated checklists, reports, and investigation notes."
+argument-hint: /temp-doc <document>
+description: Manage temporary documentation created during task execution - prevent git pollution from AI-generated checklists, reports, and investigation notes.
 disable-model-invocation: false
 ---
 

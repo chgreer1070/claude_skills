@@ -1,13 +1,13 @@
 ---
-title: "GitPython: Python Library for Git Repository Interaction"
+title: 'GitPython: Python Library for Git Repository Interaction'
 library_name: GitPython
 pypi_package: GitPython
 category: version_control
-python_compatibility: "3.7+"
-last_updated: "2025-11-02"
-official_docs: "https://gitpython.readthedocs.io"
-official_repository: "https://github.com/gitpython-developers/GitPython"
-maintenance_status: "stable"
+python_compatibility: 3.7+
+last_updated: '2025-11-02'
+official_docs: https://gitpython.readthedocs.io
+official_repository: https://github.com/gitpython-developers/GitPython
+maintenance_status: stable
 ---
 
 # GitPython: Python Library for Git Repository Interaction

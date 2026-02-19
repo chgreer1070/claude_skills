@@ -1,8 +1,8 @@
 ---
 title: Modern Python Modules Reference
 description: Comprehensive guide to high-quality, Python 3.11+ compatible modules organized by use case
-last_updated: "2025-10-29"
-python_compatibility: "3.11+"
+last_updated: '2025-10-29'
+python_compatibility: 3.11+
 ---
 
 # Modern Python Modules Reference

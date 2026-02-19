@@ -1,12 +1,12 @@
 ---
-task: "T1"
-title: "Data Models and Error Codes"
+task: T1
+title: Data Models and Error Codes
 status: complete
-agent: "python-cli-architect"
+agent: python-cli-architect
 priority: 1
 complexity: medium
-started: "2026-02-02T15:15:00Z"
-completed: "2026-02-02T15:30:00Z"
+started: '2026-02-02T15:15:00Z'
+completed: '2026-02-02T15:30:00Z'
 ---
 
 ## Context

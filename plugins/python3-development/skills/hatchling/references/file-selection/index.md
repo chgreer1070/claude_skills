@@ -1,6 +1,6 @@
 ---
-description: "Reference guide for Hatchling's file selection, pattern matching, and build target configuration system. Provides comprehensive documentation on include/exclude patterns, path remapping, precedence rules, and real-world configuration examples."
-keywords: ["hatchling", "file selection", "build configuration", "patterns", "wheel", "sdist"]
+description: Reference guide for Hatchling's file selection, pattern matching, and build target configuration system. Provides comprehensive documentation on include/exclude patterns, path remapping, precedence rules, and real-world configuration examples.
+keywords: [hatchling, file selection, build configuration, patterns, wheel, sdist]
 ---
 
 # Hatchling File Selection and Patterns

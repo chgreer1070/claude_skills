@@ -1,6 +1,6 @@
 ---
 name: prompt-writer
-description: "Analyze and optimize Claude prompts, agents, and commands. Use at session end, after 5+ min idle, after significant work, or when repetitive patterns observed. Captures session insights to improve future interactions."
+description: Analyze and optimize Claude prompts, agents, and commands. Use at session end, after 5+ min idle, after significant work, or when repetitive patterns observed. Captures session insights to improve future interactions.
 model: opus
 color: purple
 ---

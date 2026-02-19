@@ -1,8 +1,8 @@
 ---
 name: report
-description: "Generate summary report from existing analysis in .planning/kaizen/"
-argument-hint: "[--latest] [--all]"
-allowed-tools: "Read,Write,Glob,Grep"
+description: Generate summary report from existing analysis in .planning/kaizen/
+argument-hint: '[--latest] [--all]'
+allowed-tools: Read,Write,Glob,Grep
 ---
 
 Generate a summary report from existing kaizen analysis files. Does not run new analysis — reads previously generated findings.

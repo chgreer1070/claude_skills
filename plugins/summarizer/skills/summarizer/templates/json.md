@@ -3,22 +3,23 @@ format_id: json
 format_name: JSON
 description: Machine-readable JSON output with all metadata and findings as structured fields. Parseable by downstream tools. Fidelity enforced through required keys.
 fidelity_sections_required:
-  - summary
-  - findings
-  - not_found
-  - uncertain
-  - sources
+- summary
+- findings
+- not_found
+- uncertain
+- sources
 metadata_preserved:
-  - source_type
-  - source_path
-  - summarized_at
-  - method
-  - word_count_source
-  - word_count_summary
-  - compression_ratio
-  - confidence
-  - confidence_notes
+- source_type
+- source_path
+- summarized_at
+- method
+- word_count_source
+- word_count_summary
+- compression_ratio
+- confidence
+- confidence_notes
 ---
+
 # JSON Format
 
 Machine-readable JSON output containing all metadata and findings as structured fields. Designed for programmatic consumption and downstream tool integration.

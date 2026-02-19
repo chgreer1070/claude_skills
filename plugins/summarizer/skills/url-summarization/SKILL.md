@@ -1,6 +1,7 @@
 ---
 description: Summarize web content by fetching URLs, extracting key passages with quote-grounding, and producing structured output. Activates on summarize this URL, what does this page say, summarize this article, read and summarize, summarize the documentation at, tl;dr this link, give me the highlights of this page, what's important on this site. Routes to fetching strategy based on content type — documentation, articles, API references, READMEs. Reports partial accessibility explicitly.
 ---
+
 # URL Summarization
 
 Apply this methodology when summarizing web content from URLs.

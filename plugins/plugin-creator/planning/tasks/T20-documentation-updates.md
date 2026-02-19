@@ -1,13 +1,13 @@
 ---
-task: "T20"
-title: "Documentation Updates"
+task: T20
+title: Documentation Updates
 status: complete
-agent: "service-documentation"
-dependencies: ["T18"]
+agent: service-documentation
+dependencies: [T18]
 priority: 5
 complexity: medium
-started: "2026-02-02T18:40:00Z"
-completed: "2026-02-02T19:00:00Z"
+started: '2026-02-02T18:40:00Z'
+completed: '2026-02-02T19:00:00Z'
 ---
 
 ## Context

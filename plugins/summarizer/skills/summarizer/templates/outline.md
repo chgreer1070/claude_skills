@@ -3,13 +3,14 @@ format_id: outline
 format_name: Outline
 description: Hierarchical indented outline mirroring the source document structure. Preserves the source's own organization with nested headings and sub-items. Good for documentation and long-form content.
 fidelity_sections_required:
-  - Outline body
-  - Not Found
-  - Uncertain
+- Outline body
+- Not Found
+- Uncertain
 metadata_preserved:
-  - source_path
-  - confidence
+- source_path
+- confidence
 ---
+
 # Outline Format
 
 Hierarchical outline that mirrors the source document's structure. Preserves the original organization while condensing content at each level.

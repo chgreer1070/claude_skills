@@ -1,11 +1,11 @@
 ---
-title: "Analyze Test Failures"
-description: "Analyze failing test cases with a balanced, investigative approach"
-command_type: "testing"
-last_updated: "2025-11-02"
+title: Analyze Test Failures
+description: Analyze failing test cases with a balanced, investigative approach
+command_type: testing
+last_updated: '2025-11-02'
 related_docs:
-  - "./test-failure-mindset.md"
-  - "./comprehensive-test-review.md"
+- ./test-failure-mindset.md
+- ./comprehensive-test-review.md
 ---
 
 # Analyze Test Failures

@@ -1,6 +1,6 @@
 ---
 name: plan-validator
-description: 'Validates implementation plans BEFORE execution begins. Checks for completeness, contradictions, missing dependencies, and executability. Returns READY or BLOCKED with specific gaps. Prevents wasted effort from flawed plans.'
+description: Validates implementation plans BEFORE execution begins. Checks for completeness, contradictions, missing dependencies, and executability. Returns READY or BLOCKED with specific gaps. Prevents wasted effort from flawed plans.
 tools: Read, Grep, Glob, Bash, mcp__sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa
 model: opus
 skills: subagent-contract

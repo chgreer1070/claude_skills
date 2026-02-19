@@ -1,6 +1,6 @@
 ---
-name: "Hatchling Target-Specific Dependencies"
-description: "Configure build-time dependencies per target: runtime dependencies, optional features, conditional dependencies, and dependency isolation"
+name: Hatchling Target-Specific Dependencies
+description: 'Configure build-time dependencies per target: runtime dependencies, optional features, conditional dependencies, and dependency isolation'
 ---
 
 # Target-Specific Dependencies and Features

@@ -1,13 +1,13 @@
 ---
-task: "T4"
-title: "NameFormatValidator"
+task: T4
+title: NameFormatValidator
 status: complete
-agent: "python-cli-architect"
-dependencies: ["T2"]
+agent: python-cli-architect
+dependencies: [T2]
 priority: 2
 complexity: low
-started: "2026-02-02T16:05:00Z"
-completed: "2026-02-02T16:10:00Z"
+started: '2026-02-02T16:05:00Z'
+completed: '2026-02-02T16:10:00Z'
 ---
 
 ## Context

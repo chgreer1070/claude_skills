@@ -1,5 +1,5 @@
 ---
-description: "Dasel v3 query patterns for InstallAnywhere .iap_xml installer definitions — use when querying action sequences, discovering variables, resolving platform conditions, navigating panels, or comparing installer variants. Files are 2.5+ MB, 65,000+ lines — too large for context reads, requires structural dasel queries."
+description: Dasel v3 query patterns for InstallAnywhere .iap_xml installer definitions — use when querying action sequences, discovering variables, resolving platform conditions, navigating panels, or comparing installer variants. Files are 2.5+ MB, 65,000+ lines — too large for context reads, requires structural dasel queries.
 ---
 
 # InstallAnywhere .iap_xml Query Patterns

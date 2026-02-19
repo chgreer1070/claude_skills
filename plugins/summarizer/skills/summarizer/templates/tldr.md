@@ -3,11 +3,12 @@ format_id: tldr
 format_name: TL;DR
 description: Single-paragraph executive summary -- 2-4 sentences maximum. Captures the single most important takeaway. Appends confidence and source as a footer line.
 fidelity_sections_required:
-  - TL;DR paragraph
+- TL;DR paragraph
 metadata_preserved:
-  - source_path
-  - confidence
+- source_path
+- confidence
 ---
+
 # TL;DR Format
 
 Ultra-concise single-paragraph summary for maximum brevity. Captures the essential takeaway in 2-4 sentences.

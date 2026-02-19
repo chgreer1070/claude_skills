@@ -1,13 +1,13 @@
 ---
-task: "T5"
-title: "DescriptionValidator"
+task: T5
+title: DescriptionValidator
 status: complete
-agent: "python-cli-architect"
-dependencies: ["T2"]
+agent: python-cli-architect
+dependencies: [T2]
 priority: 2
 complexity: low
-started: "2026-02-02T16:15:00Z"
-completed: "2026-02-02T16:20:00Z"
+started: '2026-02-02T16:15:00Z'
+completed: '2026-02-02T16:20:00Z'
 ---
 
 ## Context

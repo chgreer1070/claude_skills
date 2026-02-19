@@ -1,6 +1,6 @@
 ---
 name: transcript-analyst
-description: "Deep-dive into Claude Code session transcripts using DuckDB SQL and process mining tools — spawned by analyze and explore commands to query JSONL data, detect anti-patterns, extract frustration signals, and mine workflow patterns across sessions"
+description: Deep-dive into Claude Code session transcripts using DuckDB SQL and process mining tools — spawned by analyze and explore commands to query JSONL data, detect anti-patterns, extract frustration signals, and mine workflow patterns across sessions
 model: sonnet
 color: cyan
 skills: transcript-analysis

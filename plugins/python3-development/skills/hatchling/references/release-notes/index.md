@@ -1,14 +1,7 @@
 ---
 category: release-notes
 topics: [hatchling, navigation, index, features, pep-639, metadata-hooks, build-hooks, performance, version-management]
-related:
-  [
-    RELEASE_NOTES.md,
-    PEP_639_LICENSE_METADATA.md,
-    METADATA_HOOKS_AND_VERSION_SOURCES.md,
-    BUILD_HOOKS_AND_PERFORMANCE.md,
-    README.md,
-  ]
+related: [RELEASE_NOTES.md, PEP_639_LICENSE_METADATA.md, METADATA_HOOKS_AND_VERSION_SOURCES.md, BUILD_HOOKS_AND_PERFORMANCE.md, README.md]
 ---
 
 # Hatchling Release Notes & Version History Index

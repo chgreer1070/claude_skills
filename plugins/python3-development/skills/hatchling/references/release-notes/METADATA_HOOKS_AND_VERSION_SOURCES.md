@@ -1,15 +1,6 @@
 ---
 category: release-notes
-topics:
-  [
-    metadata-hooks,
-    version-sources,
-    dynamic-metadata,
-    version-management,
-    build-hooks,
-    dynamic-versioning,
-    configuration,
-  ]
+topics: [metadata-hooks, version-sources, dynamic-metadata, version-management, build-hooks, dynamic-versioning, configuration]
 related: [INDEX.md, RELEASE_NOTES.md, README.md, BUILD_HOOKS_AND_PERFORMANCE.md, PEP_639_LICENSE_METADATA.md]
 ---
 

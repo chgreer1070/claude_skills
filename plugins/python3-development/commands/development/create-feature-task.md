@@ -1,11 +1,11 @@
 ---
-title: "Create Feature Development Task"
-description: "Set up comprehensive feature development task with proper tracking"
-command_type: "development"
-last_updated: "2025-11-02"
+title: Create Feature Development Task
+description: Set up comprehensive feature development task with proper tracking
+command_type: development
+last_updated: '2025-11-02'
 related_docs:
-  - "./use-command-template.md"
-  - "../../references/python-development-orchestration.md"
+- ./use-command-template.md
+- ../../references/python-development-orchestration.md
 ---
 
 # Create Feature Development Task

@@ -1,6 +1,6 @@
 ---
-description: 'Optimize CLAUDE.md, SKILL.md, agent definitions, and other AI-facing files for Claude comprehension and economy. Measures baseline metrics, delegates to @contextual-ai-documentation-optimizer agent with file-type-specific context, runs independent verification via second agent, measures post-optimization metrics, and presents comprehensive before/after report. Supports iterative mode for large targets. Use when improving prompt effectiveness, reducing token waste, rewriting instructions for LLM consumption, or enhancing files with latest Claude Code features. Invoke with /optimize-claude-md <file-or-directory>.'
-argument-hint: '<file-or-directory-path>'
+description: Optimize CLAUDE.md, SKILL.md, agent definitions, and other AI-facing files for Claude comprehension and economy. Measures baseline metrics, delegates to @contextual-ai-documentation-optimizer agent with file-type-specific context, runs independent verification via second agent, measures post-optimization metrics, and presents comprehensive before/after report. Supports iterative mode for large targets. Use when improving prompt effectiveness, reducing token waste, rewriting instructions for LLM consumption, or enhancing files with latest Claude Code features. Invoke with /optimize-claude-md <file-or-directory>.
+argument-hint: <file-or-directory-path>
 user-invocable: true
 disable-model-invocation: true
 ---

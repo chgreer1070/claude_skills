@@ -1,12 +1,12 @@
 ---
-task: "T16"
-title: "Token Counting Tests (Property-Based)"
+task: T16
+title: Token Counting Tests (Property-Based)
 status: complete
-agent: "python-pytest-architect"
-dependencies: ["T13"]
+agent: python-pytest-architect
+dependencies: [T13]
 priority: 4
 complexity: medium
-completed: "2026-02-04T18:43:16Z"
+completed: '2026-02-04T18:43:16Z'
 ---
 
 ## Context

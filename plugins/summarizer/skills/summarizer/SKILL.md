@@ -1,6 +1,7 @@
 ---
 description: Route summarization requests to the correct methodology and enforce fidelity rules. Activates on summarize, tl;dr, give me the highlights, what's important in this, break down this, what does this code do, explain this file, describe this image, read and summarize. Routes files, URLs, images, and multi-source content to type-specific strategies. Enforces anti-hallucination rules — read before summarizing, extract before abstracting, preserve counts, distinguish absence from nonexistence, prevent lossy re-summarization chains.
 ---
+
 # Summarizer
 
 Route to the correct summarization methodology and enforce fidelity rules across all summarization operations.

@@ -1,6 +1,6 @@
 ---
-name: "Hatchling Custom Builder"
-description: "Extend Hatchling with custom build targets: implementing BuilderInterface, build hooks, configuration management, and testing strategies"
+name: Hatchling Custom Builder
+description: 'Extend Hatchling with custom build targets: implementing BuilderInterface, build hooks, configuration management, and testing strategies'
 ---
 
 # Custom Builder

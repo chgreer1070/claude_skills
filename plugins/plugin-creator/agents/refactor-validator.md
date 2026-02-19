@@ -1,6 +1,6 @@
 ---
 name: refactor-validator
-description: "Validate plugin refactoring completeness — verifies task completion, plugin structure integrity, and regression absence. Use when refactoring results need verification, when checking refactoring goals were achieved without content loss, when checking for regressions after changes, or when validating plugin structure after systematic improvements. Runs plugin_validator.py and generates comprehensive validation reports with quality metrics."
+description: Validate plugin refactoring completeness — verifies task completion, plugin structure integrity, and regression absence. Use when refactoring results need verification, when checking refactoring goals were achieved without content loss, when checking for regressions after changes, or when validating plugin structure after systematic improvements. Runs plugin_validator.py and generates comprehensive validation reports with quality metrics.
 model: sonnet
 color: yellow
 ---

@@ -1,6 +1,6 @@
 ---
-name: "Hatchling Wheel Builder"
-description: "Configure wheel builds for binary distributions: file selection, platform-specific wheels, metadata control, and editable wheels"
+name: Hatchling Wheel Builder
+description: 'Configure wheel builds for binary distributions: file selection, platform-specific wheels, metadata control, and editable wheels'
 ---
 
 # Wheel Builder

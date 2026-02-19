@@ -1,13 +1,13 @@
 ---
-title: "uvloop: Ultra-Fast AsyncIO Event Loop"
+title: 'uvloop: Ultra-Fast AsyncIO Event Loop'
 library_name: uvloop
 pypi_package: uvloop
 category: async-io
-python_compatibility: "3.8+"
-last_updated: "2025-11-02"
-official_docs: "https://uvloop.readthedocs.io"
-official_repository: "https://github.com/MagicStack/uvloop"
-maintenance_status: "active"
+python_compatibility: 3.8+
+last_updated: '2025-11-02'
+official_docs: https://uvloop.readthedocs.io
+official_repository: https://github.com/MagicStack/uvloop
+maintenance_status: active
 ---
 
 # uvloop: Ultra-Fast AsyncIO Event Loop

@@ -1,6 +1,7 @@
 ---
 description: Combines multiple summaries into coherent synthesis. Activates when user requests combine these summaries, synthesize results, merge findings, or multi-source synthesis. This is the reduce step after individual sources have been summarized. Enforces deduplication, conflict surfacing, confidence scoring across sources, and attribution to all sources.
 ---
+
 # Multi-Source Synthesis
 
 Combine multiple summaries into a single coherent synthesis with proper attribution, deduplication, and conflict handling.

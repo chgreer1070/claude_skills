@@ -1,11 +1,11 @@
 ---
-title: "Test Failure Analysis Mindset"
-description: "Set balanced investigative approach for test failures"
-command_type: "testing"
-last_updated: "2025-11-02"
+title: Test Failure Analysis Mindset
+description: Set balanced investigative approach for test failures
+command_type: testing
+last_updated: '2025-11-02'
 related_docs:
-  - "./analyze-test-failures.md"
-  - "./comprehensive-test-review.md"
+- ./analyze-test-failures.md
+- ./comprehensive-test-review.md
 ---
 
 # Test Failure Analysis Mindset

@@ -1,16 +1,16 @@
 ---
-title: "Reference Document Architecture"
-description: "Complete reference document structure for the python3-development skill"
-version: "1.0.0"
-last_updated: "2025-11-02"
-document_type: "architecture"
-status: "historical-proposal"
-implementation_status: "not-implemented"
-archived_date: "2025-11-02"
-note: "This document represents an architectural proposal that was never implemented. The actual python3-development skill uses a different structure (references/ and commands/ directories) than the one proposed here (docs/scenarios/ and docs/standards/). Preserved for historical reference."
+title: Reference Document Architecture
+description: Complete reference document structure for the python3-development skill
+version: 1.0.0
+last_updated: '2025-11-02'
+document_type: architecture
+status: historical-proposal
+implementation_status: not-implemented
+archived_date: '2025-11-02'
+note: This document represents an architectural proposal that was never implemented. The actual python3-development skill uses a different structure (references/ and commands/ directories) than the one proposed here (docs/scenarios/ and docs/standards/). Preserved for historical reference.
 related_docs:
-  - "./SKILL.md"
-  - "./references/python-development-orchestration.md"
+- ./SKILL.md
+- ./references/python-development-orchestration.md
 ---
 
 <!-- markdownlint-disable MD040 -->

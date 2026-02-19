@@ -1,14 +1,14 @@
 ---
 category: build-system
 topics:
-  - output-directory
-  - build-location
-  - environment-variables
-  - ci-cd-integration
+- output-directory
+- build-location
+- environment-variables
+- ci-cd-integration
 related:
-  - build-options
-  - environment-variables
-  - reproducible-builds
+- build-options
+- environment-variables
+- reproducible-builds
 ---
 
 # Output Directory Configuration Guide for Claude

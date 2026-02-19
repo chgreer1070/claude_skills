@@ -1,8 +1,8 @@
 ---
 name: explore
-description: "Interactive transcript exploration — presents findings, user steers investigation"
-argument-hint: "[--project <name>]"
-allowed-tools: "Read,Write,Glob,Grep,Bash,Task"
+description: Interactive transcript exploration — presents findings, user steers investigation
+argument-hint: '[--project <name>]'
+allowed-tools: Read,Write,Glob,Grep,Bash,Task
 ---
 
 Start an interactive transcript exploration session. Present initial findings from the transcript corpus, then let the user steer deeper investigation.

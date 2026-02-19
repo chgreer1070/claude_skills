@@ -1,13 +1,7 @@
 ---
 category: build-environment
 topics: [build-internals, environment-setup, configuration, dependency-management]
-related:
-  [
-    build-environment-configuration.md,
-    build-dependencies-management.md,
-    environment-variables.md,
-    environment-isolation.md,
-  ]
+related: [build-environment-configuration.md, build-dependencies-management.md, environment-variables.md, environment-isolation.md]
 ---
 
 # Hatchling Build Environment Internals Reference

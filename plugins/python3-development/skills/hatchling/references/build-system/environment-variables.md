@@ -1,15 +1,15 @@
 ---
 category: build-system
 topics:
-  - environment-variables
-  - hatch-build-variables
-  - build-configuration
-  - ci-cd-variables
-  - hook-control
+- environment-variables
+- hatch-build-variables
+- build-configuration
+- ci-cd-variables
+- hook-control
 related:
-  - output-directory
-  - reproducible-builds
-  - build-hooks
+- output-directory
+- reproducible-builds
+- build-hooks
 ---
 
 # Environment Variables Guide for Claude
