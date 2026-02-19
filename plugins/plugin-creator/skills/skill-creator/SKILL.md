@@ -123,8 +123,9 @@ description: >-
 description: |-
   This breaks too.
 
-# CORRECT - single quoted string
-description: 'This works correctly. Use single quotes for descriptions with special characters or keep on one line.'
+# CORRECT - single-line string; quote only when YAML syntax requires it (colons, leading special chars, boolean literals)
+description: This works correctly without quotes when no special characters are present.
+description: 'This works when the value contains colons or other YAML-special characters.'
 ```
 
 The Claude Code skill indexer does not parse YAML multiline indicators correctly - the description appears as ">-" instead of actual content.

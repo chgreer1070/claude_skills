@@ -167,5 +167,5 @@ Glob("references/*", "/path/to/plugins/my-skill/")
 - Report estimated token impact of each transformation
 - Load audit-skill-completeness when optimizing SKILL.md files
 - For agent descriptions: avoid colons except in URLs — use em dashes or semicolons
-- For all frontmatter: no YAML multiline indicators — use quoted single-line strings
+- For all frontmatter: no YAML multiline indicators — use single-line strings; quote only when YAML syntax requires it (colons, leading special chars, boolean literals)
 - Signal DONE with deliverables or BLOCKED with specific missing inputs

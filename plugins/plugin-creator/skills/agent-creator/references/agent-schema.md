@@ -59,8 +59,9 @@ description: >-
   This is a multiline
   description that breaks.
 
-# CORRECT - single quoted string
-description: 'This works correctly. Use single quotes for descriptions with special characters or keep on one line.'
+# CORRECT - single-line string; quote only when YAML syntax requires it (colons, leading special chars, boolean literals)
+description: This works correctly without quotes when no special characters are present.
+description: 'This works correctly. Quote when the value contains colons or other YAML-special characters.'
 ```
 
 ---
@@ -451,8 +452,8 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py fix-batch ./agents/
 **What the validator auto-fixes**:
 
 - YAML arrays → comma-separated strings
-- Multiline descriptions → single-line quoted strings
-- Unquoted descriptions with special characters
+- Multiline descriptions → single-line strings
+- Unquoted descriptions with colons or YAML-special characters → quoted strings
 
 SOURCE: [plugin_validator.py](./../../scripts/plugin_validator.py) lines 103-187
 
