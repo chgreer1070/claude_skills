@@ -40,6 +40,10 @@ class RuamelYAMLHandler(YAMLHandler):
         super().__init__()
         self._yaml = YAML(typ="rt")
         self._yaml.preserve_quotes = False
+        # Prevent ruamel.yaml from wrapping long scalar values into block scalars.
+        # Without this, descriptions longer than ~80 chars become multi-line
+        # block scalars which break downstream validators expecting single-line strings.
+        self._yaml.width = 2147483647
 
     def load(self, fm: str, **kwargs: object) -> Any:
         """Parse YAML frontmatter string using ruamel.yaml round-trip loader.
