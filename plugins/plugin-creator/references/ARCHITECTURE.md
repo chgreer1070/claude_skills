@@ -808,7 +808,7 @@ def test_token_count_deterministic(text):
 #     "typer>=0.21.0",
 #     "rich>=13.0.0",
 #     "tiktoken>=0.8.0",
-#     "pyyaml>=6.0",
+#     "ruamel.yaml>=0.18.0",
 #     "pydantic>=2.0.0",
 # ]
 # ///
@@ -818,7 +818,7 @@ def test_token_count_deterministic(text):
 - **typer**: CLI framework (includes Click)
 - **rich**: Terminal formatting and colors
 - **tiktoken**: Token counting (OpenAI tokenizer)
-- **pyyaml**: YAML parsing
+- **ruamel.yaml**: YAML parsing with round-trip comment preservation
 - **pydantic**: Schema validation with type hints
 
 **Installation**: Automatic with `uv run` (no manual install needed)

@@ -243,12 +243,12 @@ skills: skill-one, skill-two
 ---
 ```
 
-### FM009 - Unquoted Description With Colons
+### FM009 - Unquoted Colons in Description
 
 **Severity**: ERROR
 **Auto-fix**: Yes
 
-**Description**: Description field contains colons but is not quoted, causing YAML parsing issues.
+**Description**: Unquoted colons in description — breaks YAML parsing.
 
 **Example violation**:
 
@@ -258,6 +258,8 @@ name: test-skill
 description: Use when: analyzing logs  # Colon causes parse error
 ---
 ```
+
+**Fix**: Quote the description value or avoid colons.
 
 **Auto-fix result**:
 
@@ -741,7 +743,7 @@ python3 -m json.tool .claude-plugin/plugin.json
 | FM006 | Frontmatter          | ERROR    | No       | Invalid field value                     |
 | FM007 | Frontmatter          | ERROR    | Yes      | Tools field is YAML array               |
 | FM008 | Frontmatter          | ERROR    | Yes      | Skills field is YAML array              |
-| FM009 | Frontmatter          | ERROR    | Yes      | Unquoted description with colons        |
+| FM009 | Frontmatter          | ERROR    | Yes      | Unquoted colons in description          |
 | FM010 | Frontmatter          | ERROR    | No       | Invalid name pattern                    |
 | SK001 | Skill/Agent Name     | ERROR    | No       | Name contains uppercase                 |
 | SK002 | Skill/Agent Name     | ERROR    | No       | Name contains underscores               |
