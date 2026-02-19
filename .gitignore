@@ -39,3 +39,6 @@ uv.lock
 .env
 package-lock.json
 .hypothesis/
+
+# Git worktrees
+.worktrees/
