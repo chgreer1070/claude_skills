@@ -16,7 +16,8 @@ research/
 │   ├── liteagents.md                  # Multi-tool AI development toolkit with 11 agents and session memory
 │   └── superpowers.md                 # Agentic skills framework and dev methodology (40K+ stars)
 ├── agent-infrastructure/              # Infrastructure for agentic applications
-│   └── plano.md                       # AI-native proxy and data plane for multi-agent orchestration
+│   ├── plano.md                       # AI-native proxy and data plane for multi-agent orchestration
+│   └── zeroclaw.md                    # Rust AI assistant infrastructure — sub-5MB RAM, 28+ providers, trait-driven (14.9K stars)
 ├── api-frameworks/                    # High-performance API frameworks for backend services
 │   ├── fastapi.md                     # Modern Python web framework with Pydantic (95K+ stars)
 │   └── tornado.md                     # Python web framework and async networking library (22K+ stars)
@@ -295,7 +296,8 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 
 | Document                                    | Description                                                                                                     | Last Updated |
 | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------ |
-| [plano.md](./agent-infrastructure/plano.md) | AI-native proxy and data plane built on Envoy - handles orchestration, model routing, observability, guardrails | 2026-01-26   |
+| [plano.md](./agent-infrastructure/plano.md)       | AI-native proxy and data plane built on Envoy - handles orchestration, model routing, observability, guardrails | 2026-01-26   |
+| [zeroclaw.md](./agent-infrastructure/zeroclaw.md) | Rust autonomous AI assistant — sub-5MB RAM, 28+ AI providers, 15+ channels, trait-driven swappable subsystems (14.9K stars) | 2026-02-19   |
 
 **Key Topics**:
 
@@ -306,6 +308,15 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 - Zero-code OpenTelemetry tracing ("Agentic Signals")
 - Filter chains for guardrails and moderation
 - Prompt targets for deterministic API calls
+- Sub-5MB RAM single-binary Rust AI agents for edge/embedded deployment
+- Trait-driven swappable subsystems (Provider, Channel, Memory, Tool, Tunnel)
+- SQLite hybrid search (FTS5 + cosine vector) with no external vector DB dependency
+- Deny-by-default channel allowlists (empty = deny all; `"*"` = explicit open)
+- SKILL.md + TOML manifest skill system (structural parallel to Claude Code skills)
+- HEARTBEAT.md periodic task engine for proactive agent activation
+- OpenAI Codex OAuth and Claude Code auth integration with encrypted profile store
+- 6-digit one-time pairing code security with bearer token webhooks
+- Docker runtime sandboxing for tool execution isolation
 
 ---
 
@@ -847,6 +858,7 @@ When adding new research:
 - [Pilot](https://github.com/alekspetrov/pilot) - Autonomous development pipeline wrapping Claude Code CLI with ticket-to-PR automation (BSL 1.1)
 - [The Unwind AI](https://www.theunwindai.com) - AI builder newsletter with 500+ Python AI agent examples (95,911 stars companion repo)
 - [HumanCompiler](https://github.com/Gerstep/HumanCompiler) - Interview-to-agent plugin generator for Claude Code (MIT)
+- [ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw) - Rust autonomous AI assistant with sub-5MB RAM, 28+ AI providers, 15+ messaging channels, trait-driven architecture (14,966 stars)
 
 ### Internal References
 
