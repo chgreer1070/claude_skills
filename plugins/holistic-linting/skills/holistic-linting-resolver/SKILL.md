@@ -32,17 +32,33 @@ Skill(command: "python3-development:python3-development")
 
 ### 2. Suppression Gate (MANDATORY)
 
-Before implementing any fix, verify it is a code change — not suppression:
+Before implementing any fix, verify it is a code change — not suppression. Each category below is an immediate STOP:
 
-- If your proposed fix adds `# noqa`, `# type: ignore`, `# pyright: ignore`, or any suppression comment: **STOP**
-- If your proposed fix adds the rule code to a per-file or per-line ignore list: **STOP**
-- If no code restructuring resolves the issue, document the constraint:
-  1. What you tried (minimum 2 approaches)
-  2. Why each approach failed (with the specific linter error it produced)
-  3. The fundamental constraint (e.g., "ruff cannot evaluate `sys.platform` branches")
-- Return this documentation to the orchestrator as an **UNRESOLVED** issue — do not suppress
+**Inline suppression comments:**
+- Adding `# noqa`, `# type: ignore`, `# pyright: ignore`, `# pylint: disable`, or any suppression comment
 
-Suppression is **never** a valid resolution from this workflow. If the issue cannot be resolved through code changes, it requires human decision.
+**Configuration-level suppression (equally forbidden):**
+- Adding a rule to `[tool.ruff.lint] ignore = [...]` in `pyproject.toml`
+- Adding an entry to `[tool.ruff.lint.per-file-ignores]`
+- Changing `[tool.pyright] reportX = "warning"` or any other severity downgrade
+- Adding `disable_error_code = [...]` to `[tool.mypy]`
+- Modifying any linter config file (`pyproject.toml`, `ruff.toml`, `mypy.ini`, `.flake8`, `setup.cfg`) to reduce the scope, severity, or applicability of a rule
+
+**Reason**: A pyproject.toml severity downgrade achieves the same silencing effect as `# type: ignore` but at project scope, affecting all future code. Both are standards degradation. Neither is a code fix.
+
+**Deletion-as-resolution (equally forbidden):**
+- Removing a function, class, method, or test to eliminate the linting error within it
+- Deleting lines of code solely because they contain a linting error
+
+If any proposed fix falls into these categories: **STOP**.
+
+**When no code restructuring works** (minimum 2 approaches attempted), document the constraint and return UNRESOLVED:
+
+1. What you tried (each approach, minimum 2)
+2. Why each approach failed (exact linter error produced)
+3. The fundamental constraint (e.g., "ruff cannot evaluate `sys.platform` branches")
+
+Return this as an **UNRESOLVED** item in your resolution report. The orchestrator will surface it to the user for a human decision on whether to suppress, reconfigure, or accept the limitation.
 
 ### 3. Check Architectural Context
 
@@ -60,7 +76,7 @@ uv run rg "function_name" --type py
 
 ### 4. Verify Resolution
 
-After implementing fixes, rerun the appropriate linter to confirm:
+After implementing fixes, rerun the appropriate linter on the primary file:
 
 ```bash
 # For Ruff:
@@ -74,6 +90,25 @@ uv run pyright /path/to/file.py
 # or
 uv run basedpyright /path/to/file.py
 ```
+
+**Verify incidentally modified files**: If you touched any file other than the primary target during the fix (e.g., added an import to a utility module, moved a function, updated a type alias), run the linter on those files too:
+
+```bash
+uv run ruff check /path/to/incidentally/modified/file.py
+uv run mypy /path/to/incidentally/modified/file.py
+```
+
+All incidentally modified files must also produce zero errors before resolution is complete.
+
+**Record the before and after issue counts** in the resolution report header:
+
+```markdown
+**Issues before resolution:** N (from initial linter run)
+**Issues after resolution:** 0 (from final linter run — must be 0 for all touched files)
+**UNRESOLVED items:** N (must be explicitly listed even if 0)
+```
+
+**Pre-existing issues detected**: If the initial linter run reveals issues in files you did not touch — see [Pre-Existing Issues Protocol](../holistic-linting/references/pre-existing-issues-protocol.md). Every detected issue gets recorded. Silence is not permitted.
 
 ## Ruff Resolution Workflow
 
@@ -444,15 +479,7 @@ uv run basedpyright /path/to/file.py
    name: str = data["name"]  # pyright knows this is str
    ```
 
-   **Strategy E: Configure rule if genuinely too strict**
-
-   Only as a last resort, adjust `pyproject.toml`:
-
-   ```toml
-   [tool.pyright]
-   reportOptionalMemberAccess = "warning"  # Downgrade from error
-   ```
-
+   **When all strategies fail**: Apply the Suppression Gate — document approaches tried and fundamental constraint, then return UNRESOLVED to the orchestrator. The pyproject.toml severity level is a project configuration decision, not a linting resolution action. Config changes require explicit user approval via the UNRESOLVED escalation path, not autonomous agent action.
 
 ## Integration: Resolution Process with python3-development
 
@@ -493,3 +520,4 @@ All linter resolution workflows integrate with the python3-development skill at 
 
 - [holistic-linting](../holistic-linting/SKILL.md) - Core linting skill with linter detection and resource documentation
 - [holistic-linting-orchestrator](../holistic-linting-orchestrator/SKILL.md) - Orchestrator delegation workflows
+- [Pre-Existing Issues Protocol](../holistic-linting/references/pre-existing-issues-protocol.md) - Recording and triage pipeline for issues found outside current task scope

@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
-# requires-python = ">=3.11"
+# requires-python = ">=3.11,<3.14"
 # dependencies = [
 #     "fastmcp>=3.0.0rc1,<4",
 #     "pm4py>=2.7.0",
@@ -34,6 +34,7 @@ import json
 import operator
 import pathlib
 import re
+import webbrowser
 from collections import Counter
 from typing import Annotated, Any
 
@@ -63,6 +64,15 @@ _READONLY_ANNOTATIONS: dict[str, bool] = {
     "idempotentHint": True,
     "openWorldHint": False,
 }
+
+_DASHBOARD_ANNOTATIONS: dict[str, bool] = {
+    "readOnlyHint": False,
+    "destructiveHint": False,
+    "idempotentHint": True,
+    "openWorldHint": True,
+}
+
+_dashboard_state: dict[str, bool] = {"browser_opened": False}
 
 # ---------------------------------------------------------------------------
 # Frustration signal patterns
@@ -245,7 +255,7 @@ def _extract_user_text(message: dict[str, Any]) -> str:
 def _extract_tool_sequences_impl(glob_path: str) -> dict[str, list[str]]:
     """Core implementation for extracting tool sequences from JSONL files.
 
-    This private helper exists to avoid mypy FunctionTool errors when
+    This private helper exists to avoid type-checker FunctionTool errors when
     decorated tools call each other directly.
 
     Args:
@@ -716,6 +726,45 @@ async def cluster_sessions(
         ]
 
     return {"clusters": clusters, "cluster_profiles": cluster_profiles}
+
+
+@mcp.tool(annotations=_DASHBOARD_ANNOTATIONS)
+def open_dashboard() -> dict[str, str | bool]:
+    """Open the Kaizen sentiment dashboard in the default browser.
+
+    On the first call, opens the dashboard URL in the system browser.
+    Subsequent calls return the URL without re-opening the browser.
+
+    Returns:
+        Dict with ``url``, ``opened_browser`` flag, and a human-readable
+        ``message``.
+
+    Raises:
+        ToolError: If the dashboard is not running.
+    """
+    from dashboard import get_dashboard_url  # noqa: PLC0415
+
+    url = get_dashboard_url()
+    if url is None:
+        raise ToolError(
+            "Dashboard is not running. "
+            "The MCP server may have failed to start the dashboard thread."
+        )
+
+    if not _dashboard_state["browser_opened"]:
+        webbrowser.open(url)
+        _dashboard_state["browser_opened"] = True
+        return {
+            "url": url,
+            "opened_browser": True,
+            "message": f"Dashboard opened in browser at {url}",
+        }
+
+    return {
+        "url": url,
+        "opened_browser": False,
+        "message": f"Dashboard is running at {url}",
+    }
 
 
 if __name__ == "__main__":

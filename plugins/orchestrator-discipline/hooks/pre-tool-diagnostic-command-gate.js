@@ -2,7 +2,7 @@
 /**
  * PreToolUse hook: warns when the orchestrator runs diagnostic commands directly.
  *
- * Diagnostic commands (ty, ruff, mypy, pytest, pylint, etc.) produce large outputs
+ * Diagnostic commands (ty, ruff, pytest, pylint, etc.) produce large outputs
  * that consume orchestrator context. The orchestrator should delegate these to an
  * agent and receive a summary instead.
  *
@@ -20,7 +20,7 @@
 const DIAGNOSTIC_PATTERNS = [
   /\bty\s+check\b/,
   /\bruff\s+check\b/,
-  /\bmypy\b/,
+
   /\bpyright\b/,
   /\bbasedpyright\b/,
   /\bpylint\b/,
@@ -67,7 +67,7 @@ process.stdin.on('end', () => {
     process.exit(0);
   }
 
-  const command = (data.tool_input || {}).command || '';
+  const command = data.tool_input?.command || '';
   const matched = matchesDiagnosticCommand(command);
 
   if (!matched) {

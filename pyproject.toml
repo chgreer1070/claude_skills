@@ -5,7 +5,6 @@ requires-python = ">=3.11"
 dependencies = [
     "bandit[toml]>=1.8.6",
     "gitpython>=3.1.45",
-    "mypy>=1.17.1",
     "pyright>=1.1.404",
     "ruff>=0.12.10",
     "typer>=0.19.2",
@@ -260,40 +259,6 @@ convention = "google"
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "requests".msg = "Use httpx instead. httpx has built-in type annotations and is the project standard."
-
-[tool.mypy]
-disable_error_code = ["call-arg", "misc"]
-exclude = ["typings/", "plugins/development-harness/.*/scripts/"]
-explicit_package_bases = true
-extra_checks = true
-ignore_missing_imports = true
-mypy_path = ["packages", "plugins/agentskill-kaizen/mcp", "scripts", "."]
-namespace_packages = true
-pretty = true
-python_version = "3.11"
-show_error_codes = true
-strict = true
-warn_redundant_casts = true
-warn_unused_configs = false
-warn_unused_ignores = true
-
-[[tool.mypy.overrides]]
-disable_error_code = [
-    "arg-type",
-    "attr-defined",
-    "call-arg",
-    "index",
-    "no-any-return",
-    "operator",
-    "valid-type",
-    "var-annotated",
-]
-module = ["conftest", "test_server"]
-
-[[tool.mypy.overrides]]
-# Panel/HoloViz ecosystem lacks type stubs; suppress untyped-call in dashboard module
-disable_error_code = ["no-untyped-call"]
-module = ["dashboard"]
 
 [tool.basedpyright]
 extraPaths = ["**/plugins", "**/scripts", "**/tests"]

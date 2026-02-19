@@ -14,14 +14,23 @@ Dashboard views:
 
 from __future__ import annotations
 
+import json
 import logging
+import os
+import socket
 import threading
+import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import holoviews as hv  # ty: ignore[unresolved-import]
 import hvplot.pandas  # noqa: F401  # ty: ignore[unresolved-import]
 import pandas as pd
 import panel as pn  # ty: ignore[unresolved-import]
+import tornado.web  # ty: ignore[unresolved-import]
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +56,14 @@ _SCORE_MAX: float = 1.0
 _PREVIEW_TRUNCATE: int = 80
 _HISTOGRAM_BINS: int = 30
 
+# ---------------------------------------------------------------------------
+# Module-level state — written by start_dashboard(), read by HealthHandler
+# ---------------------------------------------------------------------------
+
+_dashboard_port: int | None = None
+_dashboard_start_time: float | None = None
+_dashboard_csv_path: Path | None = None
+_dashboard_csv_rows: int | None = None
 
 # ---------------------------------------------------------------------------
 # Data loading
@@ -298,19 +315,27 @@ def _build_hotspots(df: pd.DataFrame) -> pn.pane.Perspective | pn.widgets.Tabula
 # ---------------------------------------------------------------------------
 
 
-def _build_dashboard(csv_path: Path) -> pn.Tabs:
+def _build_dashboard(csv_path: Path, df: pd.DataFrame | None = None) -> pn.Tabs:
     """Assemble the full dashboard with all four views.
 
     Reads the CSV and builds each tab. If the CSV is missing, returns
     a placeholder tab with instructions.
 
+    When called from ``_refresh()`` the pre-loaded *df* is passed in so
+    the CSV is not read a second time.  When *df* is not provided (e.g.
+    the initial build in ``_create_app()``), the function loads the data
+    internally via ``_load_sentiment_data()``.
+
     Args:
         csv_path: Path to the sentiment CSV file.
+        df: Optional pre-loaded sentiment DataFrame.  When ``None``
+            (the default), data is loaded from *csv_path*.
 
     Returns:
         A Panel Tabs component containing all dashboard views.
     """
-    df = _load_sentiment_data(csv_path)
+    if df is None:
+        df = _load_sentiment_data(csv_path)
 
     if df is None:
         return pn.Tabs(("Overview", _build_placeholder(csv_path)), dynamic=True)
@@ -327,8 +352,10 @@ def _build_dashboard(csv_path: Path) -> pn.Tabs:
 def _create_app(csv_path: Path) -> pn.template.FastListTemplate:
     """Create the Panel application with auto-refresh capability.
 
-    Uses a periodic callback to reload the CSV and rebuild the dashboard
-    views when the file changes on disk.
+    Called by ``pn.serve`` as a factory function **after** the Tornado
+    event loop is running, which allows ``pn.state.add_periodic_callback``
+    to succeed. Calling this function eagerly (before ``pn.serve``) would
+    raise ``RuntimeError: no running event loop``.
 
     Args:
         csv_path: Path to the sentiment CSV file.
@@ -347,6 +374,7 @@ def _create_app(csv_path: Path) -> pn.template.FastListTemplate:
 
     def _refresh() -> None:
         """Check if the CSV has changed and rebuild the dashboard if so."""
+        global _dashboard_csv_rows  # noqa: PLW0603
         try:
             current_mtime = csv_path.stat().st_mtime if csv_path.exists() else 0.0
         except OSError:
@@ -354,10 +382,18 @@ def _create_app(csv_path: Path) -> pn.template.FastListTemplate:
 
         if current_mtime != state["last_mtime"]:
             state["last_mtime"] = current_mtime
-            dashboard_container.objects = [_build_dashboard(csv_path)]
+            df = _load_sentiment_data(csv_path)
+            _dashboard_csv_rows = len(df) if df is not None else None
+            dashboard_container.objects = [_build_dashboard(csv_path, df)]
 
-    # Register periodic callback for auto-refresh
-    pn.state.add_periodic_callback(_refresh, period=_REFRESH_INTERVAL_MS)
+    # Defer periodic callback registration until the app is fully loaded.
+    # pn.state.onload runs after the Bokeh/Tornado event loop is active,
+    # avoiding "RuntimeError: no running event loop" when the dashboard
+    # is started in a daemon thread.
+    def _register_periodic() -> None:
+        pn.state.add_periodic_callback(_refresh, period=_REFRESH_INTERVAL_MS)
+
+    pn.state.onload(_register_periodic)
 
     return pn.template.FastListTemplate(
         title="Kaizen Sentiment Dashboard",
@@ -369,46 +405,207 @@ def _create_app(csv_path: Path) -> pn.template.FastListTemplate:
 
 
 # ---------------------------------------------------------------------------
+# Port allocation and state management
+# ---------------------------------------------------------------------------
+
+
+def _allocate_port() -> int:
+    """Allocate a free ephemeral port from the OS.
+
+    Creates a TCP socket, sets ``SO_REUSEADDR``, binds to localhost on
+    port 0 (OS picks a free port), reads the assigned port, and closes
+    the socket.  The caller should pass the returned port to
+    ``pn.serve(port=...)`` promptly to minimise the TOCTOU window.
+
+    Returns:
+        The OS-assigned port number.
+
+    Raises:
+        OSError: If the socket cannot be created or bound.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("localhost", 0))
+        port: int = sock.getsockname()[1]
+    finally:
+        sock.close()
+    return port
+
+
+def _reset_dashboard_state() -> None:
+    """Reset all module-level dashboard state variables to ``None``.
+
+    Called from ``_serve()`` exception handlers when the dashboard
+    fails to start or crashes, so that ``get_dashboard_url()`` returns
+    ``None`` and the ``open_dashboard`` MCP tool reports the dashboard
+    as not running.
+    """
+    global _dashboard_port, _dashboard_start_time, _dashboard_csv_path, _dashboard_csv_rows  # noqa: PLW0603
+    _dashboard_port = None
+    _dashboard_start_time = None
+    _dashboard_csv_path = None
+    _dashboard_csv_rows = None
+
+
+def get_dashboard_url() -> str | None:
+    """Return the dashboard URL if the dashboard is running, else ``None``.
+
+    This is the public accessor that ``server.py`` imports and calls
+    from the ``open_dashboard`` MCP tool.
+
+    Returns:
+        The full URL string (e.g. ``"http://localhost:49152/"``) when
+        ``_dashboard_port`` is set, or ``None`` when no dashboard is
+        running in this process.
+    """
+    if _dashboard_port is not None:
+        return f"http://localhost:{_dashboard_port}/"
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Health endpoint
+# ---------------------------------------------------------------------------
+
+
+class HealthHandler(tornado.web.RequestHandler):
+    """Tornado handler for the ``GET /health`` endpoint.
+
+    Returns JSON with dashboard status, port, PID, CSV info, and uptime.
+    Registered via ``pn.serve(..., extra_patterns=[("/health", HealthHandler, kwargs)])``.
+
+    The handler receives lambda-based accessors for module-level state via
+    ``initialize()`` kwargs, ensuring it always reads current values rather
+    than stale copies captured at thread-start time.
+    """
+
+    _get_port: Callable[[], int | None]
+    _get_start_time: Callable[[], float | None]
+    _get_csv_path: Callable[[], Path | None]
+    _get_csv_rows: Callable[[], int | None]
+
+    def initialize(
+        self,
+        get_port: Callable[[], int | None],
+        get_start_time: Callable[[], float | None],
+        get_csv_path: Callable[[], Path | None],
+        get_csv_rows: Callable[[], int | None],
+    ) -> None:
+        """Store accessor lambdas for module-level dashboard state.
+
+        Args:
+            get_port: Returns the current dashboard port or ``None``.
+            get_start_time: Returns the monotonic start time or ``None``.
+            get_csv_path: Returns the CSV path or ``None``.
+            get_csv_rows: Returns the cached CSV row count or ``None``.
+        """
+        self._get_port = get_port
+        self._get_start_time = get_start_time
+        self._get_csv_path = get_csv_path
+        self._get_csv_rows = get_csv_rows
+
+    def get(self) -> None:
+        """Handle ``GET /health`` — return JSON with dashboard status.
+
+        Always returns HTTP 200 when the handler is reachable.  The
+        ``csv_exists`` field uses a live ``Path.exists()`` check; all other
+        fields are read from cached module-level state.
+        """
+        port = self._get_port()
+        start_time = self._get_start_time()
+        csv_path = self._get_csv_path()
+        csv_rows = self._get_csv_rows()
+
+        csv_path_obj = Path(csv_path) if csv_path is not None else None
+        csv_exists = csv_path_obj.exists() if csv_path_obj is not None else False
+
+        uptime = (time.monotonic() - start_time) if start_time is not None else 0.0
+
+        response = {
+            "status": "ok",
+            "port": port,
+            "pid": os.getpid(),
+            "csv_path": str(csv_path) if csv_path is not None else None,
+            "csv_exists": csv_exists,
+            "csv_rows": csv_rows,
+            "uptime_seconds": round(uptime, 2),
+        }
+
+        self.set_header("Content-Type", "application/json")
+        self.write(json.dumps(response))
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
 
-def start_dashboard(
-    csv_path: Path | None = None, port: int = 5006
-) -> threading.Thread | None:
+def start_dashboard(csv_path: Path | None = None) -> threading.Thread | None:
     """Start the Panel dashboard server in a daemon thread.
-
-    Launches the dashboard on ``localhost:{port}`` in a background thread
-    so that the MCP server can continue its normal startup. The dashboard
-    auto-refreshes when the underlying CSV file changes.
 
     Args:
         csv_path: Path to the sentiment CSV. Defaults to
             ``~/.claude/kaizen/sentiment.csv``.
-        port: TCP port for the dashboard server. Defaults to ``5006``.
 
     Returns:
         The daemon ``threading.Thread`` running the server, or ``None``
-        if the server failed to start.
+        if the dashboard could not be started.
     """
+    global _dashboard_port, _dashboard_start_time, _dashboard_csv_path, _dashboard_csv_rows  # noqa: PLW0603
+
+    if _dashboard_port is not None:
+        logger.info(
+            "Dashboard already running on http://localhost:%d/", _dashboard_port
+        )
+        return None
+
     resolved_path = (csv_path or Path("~/.claude/kaizen/sentiment.csv")).expanduser()
+
+    try:
+        port = _allocate_port()
+    except OSError:
+        logger.warning("Failed to allocate a port for the dashboard")
+        return None
+    _dashboard_port = port
+    _dashboard_start_time = time.monotonic()
+    _dashboard_csv_path = resolved_path
+    _dashboard_csv_rows = None
+
+    # Pre-count CSV rows if the file exists
+    df = _load_sentiment_data(resolved_path)
+    if df is not None:
+        _dashboard_csv_rows = len(df)
 
     def _serve() -> None:
         """Target function for the daemon thread."""
         try:
-            app = _create_app(resolved_path)
+
+            def _app_factory() -> pn.template.FastListTemplate:
+                return _create_app(resolved_path)
+
+            health_state_kwargs = {
+                "get_port": lambda: _dashboard_port,
+                "get_start_time": lambda: _dashboard_start_time,
+                "get_csv_path": lambda: _dashboard_csv_path,
+                "get_csv_rows": lambda: _dashboard_csv_rows,
+            }
+
             pn.serve(
-                {"/": app},
-                port=port,
+                {"/": _app_factory},
                 address="localhost",
+                port=port,
                 show=False,
                 start=True,
                 threaded=False,
                 verbose=False,
+                extra_patterns=[("/health", HealthHandler, health_state_kwargs)],
             )
         except OSError as exc:
+            _reset_dashboard_state()
             logger.warning("Dashboard server failed to start: %s", exc)
         except Exception:
+            _reset_dashboard_state()
             logger.exception("Unexpected error in dashboard server")
 
     thread = threading.Thread(target=_serve, name="kaizen-dashboard", daemon=True)

@@ -160,7 +160,7 @@ Before appending Integration Opportunities section, verify:
 Input: `Process research file: research/developer-tools/loguru.md`
 
 1. **Absorb**: Read file, extract that Loguru is a Python logging library with zero-config, structured logging, exception catching
-2. **Search**: 
+2. **Search**:
    - Find `plugins/python3-development/skills/python3-development/` mentions logging
    - Find `.claude/agents/logging.md` is a logging-focused agent
    - Check if any MCP servers expose logging APIs

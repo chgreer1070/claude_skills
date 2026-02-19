@@ -5701,17 +5701,15 @@ If `true`, a space is inserted after C style casts.
 ```yaml
 true:                                  false:
 (int) i;                       vs.     (int)i;
-
 ```
 
 **SpaceAfterLogicalNot** ( `Boolean`) clang-format 9 [¶](https://clang.llvm.org/docs/ClangFormatStyleOptions.html#spaceafterlogicalnot)
 
-If `true`, a space is inserted after the logical not operator ( `!`).
+If `true`, a space is inserted after the logical not operator (!).
 
 ```yaml
 true:                                  false:
 ! someExpression();            vs.     !someExpression();
-
 ```
 
 **SpaceAfterOperatorKeyword** ( `Boolean`) clang-format 21 [¶](https://clang.llvm.org/docs/ClangFormatStyleOptions.html#spaceafteroperatorkeyword)

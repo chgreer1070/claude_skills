@@ -178,7 +178,6 @@ def matches_pattern(file_path: Path, patterns: list[str]) -> bool:
 TOOL_COMMANDS: dict[str, list[str]] = {
     "ruff format": ["uv", "run", "ruff", "format"],
     "ruff check": ["uv", "run", "ruff", "check"],
-    "mypy": ["uv", "run", "mypy"],
     "pyright": ["uv", "run", "pyright"],
     "bandit": ["uv", "run", "bandit"],
     "prettier": ["npx", "prettier", "--write"],

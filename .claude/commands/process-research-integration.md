@@ -11,7 +11,7 @@ Batch process all research markdown files to discover and document integration o
 ## What This Does
 
 1. Finds all markdown files in `research/` (excluding README.md files)
-2. For each research file, spawns the **research-context-agent** 
+2. For each research file, spawns the **research-context-agent**
 3. Agent reads the file, searches for connections, appends Integration Opportunities section
 4. Reports summary of all processed files
 
@@ -89,7 +89,7 @@ Found 58 research files across 24 categories
 Processing: research/developer-tools/loguru.md
 ✅ Completed (2 enhancements, 0 skills, 1 cross-ref)
 
-Processing: research/developer-tools/traycer.md  
+Processing: research/developer-tools/traycer.md
 ✅ Completed (1 enhancement, 0 skills, 0 cross-refs)
 
 ...
@@ -122,11 +122,11 @@ Failures:               0
 
 The research-context-agent applies these quality gates:
 
-✅ Concrete, actionable descriptions (not vague suggestions)  
-✅ Specific connection between research and target  
-✅ Empty sections omitted (not filled with "None")  
-✅ Existing content preserved (append-only)  
-✅ Idempotent (can re-run without duplication)  
+✅ Concrete, actionable descriptions (not vague suggestions)
+✅ Specific connection between research and target
+✅ Empty sections omitted (not filled with "None")
+✅ Existing content preserved (append-only)
+✅ Idempotent (can re-run without duplication)
 
 ---
 

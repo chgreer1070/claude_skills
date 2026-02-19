@@ -369,6 +369,25 @@ Sub-agent:
 9. Returns to orchestrator with completed, lint-free module ✓
 ```
 
+## Pre-Existing Issues Protocol
+
+When a linter run reveals issues in files the current agent did not modify, "pre-existing issues not related to my changes" is a trigger to act — not a reason to skip. Every detected problem gets recorded. No detected issue silently disappears.
+
+**Two outcomes based on whether the issue blocks the pipeline:**
+
+- **Blocking** (linter exits nonzero, CI would fail, or current task verification cannot pass) → fix it now using the standard resolution workflow
+- **Non-blocking** (advisory warning, file unrelated to current task) → discover the repo's tracking system and record it
+
+**Discover the tracking system** (search in order): `BACKLOG.md`, `.claude/tasks/`, `TODO.md`, `.claude/BACKLOG.md`, `TODO`, `docs/TODO.md`, `.gsd/`, `sam.md`. If none exists, create `BACKLOG.md` at repo root.
+
+**Record each non-blocking issue** with: tool, rule code, file:line, exact linter message, discovery date.
+
+**Report all pre-existing activity** in the resolution report — both issues fixed and issues recorded.
+
+For the full triage pipeline (groom → reproduce → plan → execute), see [Pre-Existing Issues Protocol](./references/pre-existing-issues-protocol.md).
+
+When uncertain whether an issue is blocking: treat it as blocking and fix it.
+
 ## Best Practices
 
 1. **Orchestrators delegate immediately** - Do NOT run formatters or linters before delegating. Agent gathers its own context.
@@ -376,10 +395,13 @@ Sub-agent:
 3. **Format before linting (Sub-Agents only)** - Formatters auto-fix trivial issues (end-of-file, whitespace)
 4. **Run linters concurrently (Sub-Agents only)** - Use parallel execution for multiple files or multiple linters
 5. **Use the rules knowledge base** - Reference official rule documentation when investigating
-6. **Never suppress** - Agents must not add `# type: ignore`, `# noqa`, or any suppression comment. If a code change cannot resolve the issue, escalate to the orchestrator as UNRESOLVED with documentation of what was tried
-7. **Orchestrators delegate, sub-agents execute** - Orchestrators launch agents and read reports. Sub-agents run formatters, linters, and resolve issues.
-8. **Verify after fixes (Sub-Agents only)** - Always re-run linters to confirm issues are resolved
-9. **Trust agent verification (Orchestrators)** - Read resolution reports instead of re-running linters to verify
+6. **Never suppress** - Agents must not add `# type: ignore`, `# noqa`, suppression comments, or modify linter config to reduce rule severity. If a code change cannot resolve the issue, escalate as UNRESOLVED with documentation of what was tried
+7. **Never delete to fix** - Removing a function, test, or class to eliminate a linting error is prohibited. Document it as a cleanup recommendation instead
+8. **Record pre-existing issues** - Every linting issue discovered — whether in files you touched or not — gets recorded. Apply the Pre-Existing Issues Protocol
+9. **Orchestrators delegate, sub-agents execute** - Orchestrators launch agents and read reports. Sub-agents run formatters, linters, and resolve issues.
+10. **Check UNRESOLVED items before architecture review** - Orchestrators read the resolution report and surface UNRESOLVED items to the user before delegating to the architecture reviewer
+11. **Verify after fixes (Sub-Agents only)** - Re-run linters on primary file AND any incidentally touched files to confirm all are clean
+12. **Trust agent verification (Orchestrators)** - Read resolution reports instead of re-running linters to verify
 
 ## Troubleshooting
 
@@ -396,7 +418,7 @@ Sub-agent:
 **Solution**: Check that linters are installed. Use `uv run <tool>` for Python tools to ensure virtual environment activation.
 
 **Problem**: "False positive linting error"
-**Solution**: Investigate using the rule's documentation. If truly a false positive, configure the rule in pyproject.toml/config file rather than using ignore comments.
+**Solution**: Investigate using the rule's documentation. If the rule fires on code that is genuinely correct, document what you tried and why each approach failed, then return UNRESOLVED. The user decides whether to reconfigure the rule — agents do not modify linter configuration autonomously.
 
 **Problem**: "No code change resolves the linting error"
 **Solution**: This is expected for some issues (e.g., platform-conditional imports where ruff can't evaluate `sys.platform`). Mark the issue as UNRESOLVED in the resolution report with: (1) approaches attempted, (2) why each failed, (3) the fundamental constraint. The orchestrator will present this to the user for a human decision on suppression vs. rule reconfiguration.

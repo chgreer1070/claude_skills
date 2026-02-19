@@ -14,6 +14,7 @@ Tests cover:
 from __future__ import annotations
 
 import json
+import sys
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -21,6 +22,7 @@ import pytest
 import server as kaizen_server  # conftest.py stubs fastmcp before this runs
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from pathlib import Path
     from unittest.mock import AsyncMock
 
@@ -978,3 +980,126 @@ class TestFrustrationPatterns:
             assert not pattern.search(text), (
                 f"Text '{text}' should not match any frustration pattern"
             )
+
+
+# ===================================================================
+# MCP Tool: open_dashboard
+# ===================================================================
+
+
+class TestOpenDashboard:
+    """Tests for the open_dashboard synchronous MCP tool.
+
+    Covers first-call browser open, subsequent-call skip, and
+    not-running error path. Each test resets the mutable
+    ``_dashboard_state`` dict and stubs the deferred
+    ``dashboard.get_dashboard_url`` import.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _reset_dashboard_state(self) -> None:
+        """Reset _dashboard_state before every test.
+
+        The open_dashboard tool stores browser-opened state in the
+        mutable dict ``server._dashboard_state``. Reset it to False
+        so each test starts from a clean state.
+        """
+        kaizen_server._dashboard_state["browser_opened"] = False
+
+    @pytest.fixture(autouse=True)
+    def _stub_dashboard_module(self) -> Generator[None, None, None]:
+        """Insert a stub ``dashboard`` module into sys.modules.
+
+        The open_dashboard tool performs a deferred import:
+        ``from dashboard import get_dashboard_url``. The real
+        dashboard module pulls in heavy third-party dependencies
+        (panel, holoviews, bokeh). This fixture inserts a
+        lightweight stub so the import succeeds without those deps.
+
+        The stub's ``get_dashboard_url`` is overwritten per-test
+        via ``unittest.mock.patch``.
+        """
+        import types as _types
+
+        stub = _types.ModuleType("dashboard")
+        stub.get_dashboard_url = lambda: None  # type: ignore[attr-defined]
+        prev = sys.modules.get("dashboard")
+        sys.modules["dashboard"] = stub
+        yield
+        if prev is not None:
+            sys.modules["dashboard"] = prev
+        else:
+            sys.modules.pop("dashboard", None)
+
+    def test_open_dashboard_first_call(self) -> None:
+        """First invocation opens the browser and returns opened_browser=True.
+
+        Tests: open_dashboard MCP tool first-call behavior
+        How: Mock get_dashboard_url to return a URL, mock webbrowser.open,
+            call open_dashboard, verify webbrowser.open was called and
+            opened_browser is True in the response and module state.
+        Why: The tool must open the browser exactly once on first use so
+            the user sees the dashboard without manual URL copying.
+        """
+        from unittest.mock import patch
+
+        test_url = "http://localhost:49152/"
+
+        with (
+            patch("dashboard.get_dashboard_url", return_value=test_url),
+            patch.object(kaizen_server.webbrowser, "open") as mock_wb_open,
+        ):
+            result = kaizen_server.open_dashboard()
+
+        assert result["url"] == test_url
+        assert result["opened_browser"] is True
+        assert test_url in result["message"]
+        mock_wb_open.assert_called_once_with(test_url)
+        assert kaizen_server._dashboard_state["browser_opened"] is True
+
+    def test_open_dashboard_subsequent_call(self) -> None:
+        """Subsequent invocations skip the browser and return opened_browser=False.
+
+        Tests: open_dashboard MCP tool subsequent-call behavior
+        How: Set _dashboard_state["browser_opened"] to True before calling,
+            mock get_dashboard_url to return a URL, mock webbrowser.open,
+            verify webbrowser.open was NOT called and opened_browser is
+            False in the response.
+        Why: Re-opening the browser on every tool call would be disruptive.
+            After the first open, the tool should only report the URL.
+        """
+        from unittest.mock import patch
+
+        kaizen_server._dashboard_state["browser_opened"] = True
+        test_url = "http://localhost:49152/"
+
+        with (
+            patch("dashboard.get_dashboard_url", return_value=test_url),
+            patch.object(kaizen_server.webbrowser, "open") as mock_wb_open,
+        ):
+            result = kaizen_server.open_dashboard()
+
+        assert result["url"] == test_url
+        assert result["opened_browser"] is False
+        assert test_url in result["message"]
+        mock_wb_open.assert_not_called()
+
+    def test_open_dashboard_when_not_running(self) -> None:
+        """Raises ToolError when the dashboard is not running.
+
+        Tests: open_dashboard MCP tool error path
+        How: Mock get_dashboard_url to return None (dashboard not started),
+            call open_dashboard, verify ToolError is raised with a message
+            containing "not running".
+        Why: The tool must give a clear error when the dashboard thread
+            failed to start, rather than returning a None URL.
+        """
+        from unittest.mock import patch
+
+        from fastmcp.exceptions import ToolError
+
+        with (
+            patch("dashboard.get_dashboard_url", return_value=None),
+            pytest.raises(ToolError, match="not running"),
+        ):
+            kaizen_server.open_dashboard()

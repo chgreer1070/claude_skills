@@ -230,14 +230,18 @@ vendor/library.h
 
 ### Pattern Rules
 
-- **Blank lines** are skipped
-- **Leading/trailing spaces** are trimmed
-- **`#` prefix** indicates a comment
-- **`/` separator** for directories
-- **Patterns are relative** to the `.clang-format-ignore` file location
-- **Absolute patterns** start with `/`
-- **Bash globstar `**`\*\* is supported
-- **`!` prefix** negates the pattern
+The following rules use characters that are also special in Markdown (`#`, `**`, `!`, `/`), so they are listed in a code block to avoid ambiguity:
+
+```text
+Blank lines are skipped
+Leading/trailing spaces are trimmed
+# prefix indicates a comment
+/ separator for directories
+Patterns are relative to the .clang-format-ignore file location
+Absolute patterns start with /
+Bash globstar ** is supported
+! prefix negates the pattern
+```
 
 ### Multiple .clang-format-ignore Files
 

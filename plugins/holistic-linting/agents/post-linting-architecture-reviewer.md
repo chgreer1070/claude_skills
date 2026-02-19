@@ -30,22 +30,60 @@ Read most recent artifacts:
 - `.claude/artifacts/linting-artifacts-[timestamp].json` - Structured review data
 - Modified files list from resolution summary
 
-### 2. Suppression Comment Scan
+### 2. Standards-Degradation Scan (MANDATORY — runs before any other review step)
 
-**MANDATORY**: Before any other review, scan all modified files for suppression comments added by the resolver.
+Four sub-checks run in sequence. Any failure stops the review and returns a fail status to the orchestrator. The orchestrator must resolve the failure before architectural review proceeds.
 
-Run this exact search on every file listed in the resolution summary:
+**2a. Inline suppression scan** — run on every source file listed in the resolution summary:
 
 ```bash
 grep -n "# noqa\|# type: ignore\|# pyright: ignore\|# pylint: disable" <file>
 ```
 
-**Decision rule**:
-- If grep finds ANY match in lines that were modified (cross-reference with git diff): **FAIL the review immediately**
-- Report: "SUPPRESSION DETECTED in <file>:<line> — resolver added `<comment>` instead of resolving root cause"
-- Do NOT proceed to architectural review — suppression detection failure overrides all other checks
+Cross-reference matches against `git diff` to confirm they appear in modified lines.
 
-If grep finds no matches in modified lines: proceed to Verify Resolution Quality.
+Failure report: "SUPPRESSION DETECTED in `<file>:<line>` — resolver added `<comment>` instead of resolving root cause."
+
+**2b. Config-file degradation scan** — identify which linter config files were modified during the session:
+
+```bash
+git diff --name-only HEAD | grep -E "pyproject\.toml|ruff\.toml|mypy\.ini|\.flake8|setup\.cfg"
+```
+
+For each config file in the diff, examine the changes:
+
+```bash
+git diff HEAD -- pyproject.toml
+```
+
+Look for new or modified entries in:
+
+- `[tool.ruff.lint] ignore = [...]`
+- `[tool.ruff.lint.per-file-ignores]`
+- `[tool.pyright] report* = "warning"` or `report* = "none"`
+- `[tool.mypy] disable_error_code` or `ignore_errors`
+
+Failure report: "CONFIG DEGRADATION DETECTED — `<config-file>` was modified to silence `<rule>`. This requires UNRESOLVED escalation and explicit user approval, not an autonomous config change."
+
+**2c. UNRESOLVED item check** — parse the resolution report:
+
+```bash
+grep "### UNRESOLVED:" .claude/reports/linting-resolution-*.md
+```
+
+If any UNRESOLVED items exist, flag them and include in the review output as a blocking section. The orchestrator must present each UNRESOLVED item to the user before the task can be marked complete.
+
+Flag report: "UNRESOLVED ITEMS — N items require human decision before task-complete. Orchestrator must surface these to the user."
+
+**2d. Before/after count verification** — the resolution report must contain all three fields:
+
+- `**Issues before resolution:**` with a specific number
+- `**Issues after resolution:** 0` (must be zero for all touched files)
+- `**UNRESOLVED items:**` present even if 0
+
+If any field is missing: flag as a report quality issue in the review output.
+
+Proceed to step 3 only when all four sub-checks pass (or flags are recorded for orchestrator action).
 
 ### 3. Verify Resolution Quality
 
@@ -56,6 +94,7 @@ Check each resolved issue:
 - [ ] Type safety maintained or improved
 - [ ] No new technical debt introduced
 - [ ] Changes follow python3-development skill standards
+- [ ] No callable surfaces (functions, classes, methods, tests) were deleted to eliminate a linting error
 
 ### 4. Architectural Impact Analysis
 
@@ -119,13 +158,31 @@ Save to `.claude/reports/architectural-review-[timestamp].md`:
 ## Resolution Context
 - Files reviewed: [list]
 - Issues resolved: [count] ([rule codes])
+- Issues before resolution: [N from resolution report]
+- Issues after resolution: [0 — confirmed]
+- UNRESOLVED items: [N — list each]
+- Pre-existing issues recorded: [N — and where]
 - Patterns discovered: [list from resolution summary]
 - Artifacts reviewed: [paths]
+
+## Standards-Degradation Scan Results
+
+### 2a. Inline Suppression: [PASS / FAIL]
+[Detail any failures with file:line references]
+
+### 2b. Config Degradation: [PASS / FAIL]
+[Detail any config file modifications found]
+
+### 2c. UNRESOLVED Items: [NONE / N ITEMS REQUIRING HUMAN DECISION]
+[List each UNRESOLVED item — orchestrator must surface these to the user]
+
+### 2d. Before/After Report Quality: [PASS / INCOMPLETE]
+[Note any missing fields]
 
 ## Verification Results
 
 ### Resolution Quality: [PASS/ISSUES FOUND]
-[Checklist results from step 2]
+[Checklist results from step 3]
 
 ## Architectural Findings
 
@@ -174,6 +231,7 @@ Document in `.claude/knowledge/linting-patterns.md`:
 ## Integration with Resolver Phase
 
 This agent completes a two-phase workflow:
+
 - **Phase 1** (linting-root-cause-resolver): Investigate root causes, create artifacts
 - **Phase 2** (this agent): Verify resolution quality, validate architecture
 

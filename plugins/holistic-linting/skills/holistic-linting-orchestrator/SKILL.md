@@ -39,26 +39,17 @@ Task(
 )
 ```
 
-**What NOT to do before delegating**:
+**What to delegate immediately, without pre-gathering data**:
 
-- ❌ Do NOT run `ruff format` before delegating
-- ❌ Do NOT run `ruff check` before delegating
-- ❌ Do NOT run `mypy` before delegating
-- ❌ Do NOT gather linting output for the agent
-- ❌ Do NOT read error messages to provide to the agent
-
-**What TO do**:
-
-- ✅ Delegate immediately with just the file path
-- ✅ Let agent gather its own linting data
-- ✅ Trust agent to run formatters and linters itself
-- ✅ Wait for agent to complete and produce reports
+- File path only — the agent discovers linters, runs formatters, and resolves issues autonomously
+- The agent also applies the Pre-Existing Issues Protocol: any issue found in files outside the task scope gets classified (blocking vs. non-blocking) and recorded in the repo's tracking system
 
 **Reason**: The agent follows systematic root-cause analysis workflows. It autonomously:
 
 - Discovers project linters by scanning configuration files
 - Runs formatters on modified files (ruff format, prettier, etc.)
 - Executes linters to identify issues (ruff, mypy, pyright, etc.)
+- Records pre-existing issues it finds to the repo's tracking system
 - Researches rule documentation
 - Traces type flows and architectural context
 - Implements elegant fixes following python3-development patterns
@@ -77,9 +68,35 @@ Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint,
 
 **Reason for concurrency**: Independent file resolutions proceed in parallel, reducing total time.
 
-**Step 2: Delegate to post-linting-architecture-reviewer**
+**Step 2: Read resolution reports — check for UNRESOLVED items before proceeding**
 
-After linting agent completes, delegate architectural review:
+After all linting agents complete, read each resolution report:
+
+```claude
+Read(".claude/reports/linting-resolution-[timestamp].md")
+```
+
+For each report, check these sections in order:
+
+1. `**UNRESOLVED items:**` — if nonzero, surface each item to the user NOW (see below)
+2. `## Pre-Existing Issues Recorded` — acknowledge what was found and where it was recorded
+3. `**Issues after resolution:** 0` — confirm all touched files are clean
+
+**If UNRESOLVED items exist**:
+
+Present each UNRESOLVED item to the user with the constraint documented by the resolver. Ask for one of three decisions:
+
+- **Suppress via config**: User approves a specific config change — delegate back to resolver with explicit instruction to apply the approved change
+- **Restructure further**: User wants more investigation — delegate back to resolver with additional context
+- **Accept as backlog item**: Record the issue in the repo's tracking system and continue
+
+The task is NOT complete while UNRESOLVED items remain without a user decision. This is a hard gate.
+
+**If all issues resolved and zero UNRESOLVED items**: proceed to Step 3.
+
+**Step 3: Delegate to post-linting-architecture-reviewer**
+
+After confirming zero UNRESOLVED items (or user decisions on each), delegate architectural review:
 
 ```text
 Task(
@@ -90,13 +107,13 @@ Task(
 
 **What the reviewer does**:
 
-- Loads resolution artifacts from `.claude/reports/` and `.claude/artifacts/`
-- Verifies resolution quality (root cause addressed, no symptom suppression)
+- Runs a four-part standards-degradation scan: inline suppression, config file degradation, UNRESOLVED items, before/after counts
+- Verifies resolution quality (root cause addressed, no suppression, no deletions)
 - Validates architectural implications (design principles, type safety, code organization)
 - Identifies systemic improvements applicable across codebase
 - Generates architectural review report
 
-**Step 3: Read reviewer report**
+**Step 4: Read reviewer report**
 
 The orchestrator reads the review report to determine if additional work is needed:
 
@@ -112,7 +129,7 @@ Read(".claude/reports/architectural-review-[timestamp].md")
 
 **Orchestrator's role**: Read reports and decide next steps. Do NOT run linting commands to verify agent's work.
 
-**Step 4: If issues found, delegate back to linting agent**
+**Step 5: If issues found, delegate back to linting agent**
 
 If architectural review identifies problems with resolution:
 
@@ -129,7 +146,7 @@ Review report contains detailed context and proposed solutions."
 )
 ```
 
-**Step 5: Repeat review if needed**
+**Step 6: Repeat review if needed**
 
 After re-resolution, delegate to reviewer again:
 
@@ -144,66 +161,72 @@ Continue workflow until architectural review reports clean results.
 
 ### Workflow Summary
 
-```text
-[Implementation complete]
-  → [Step 1: Delegate to linting-root-cause-resolver] (agent formats, lints, resolves)
-  → [Step 2: Delegate to post-linting-architecture-reviewer]
-  → [Step 3: Orchestrator reads review report]
-  → [Step 4: If issues found, delegate back to resolver with review path]
-  → [Step 5: Repeat review until clean]
-  → [Task complete ✓]
+```mermaid
+flowchart TD
+    Start([Implementation complete]) --> Step1[Step 1: Delegate to linting-root-cause-resolver\nagent formats, lints, resolves, records pre-existing issues]
+    Step1 --> Step2[Step 2: Read resolution report\ncheck UNRESOLVED items and pre-existing issues]
+    Step2 --> Q1{UNRESOLVED items?}
+    Q1 -->|Yes| User[Present to user — get decision\nsuppress / restructure / accept as backlog]
+    User --> Q2{User decision made?}
+    Q2 -->|Suppress| Resolver2[Delegate back to resolver\nwith explicit user-approved config change]
+    Q2 -->|Restructure| Resolver2
+    Q2 -->|Accept as backlog| Record[Record in tracking system\nthen continue]
+    Resolver2 --> Step2
+    Record --> Q1
+    Q1 -->|None| Step3[Step 3: Delegate to post-linting-architecture-reviewer]
+    Step3 --> Step4[Step 4: Read architectural review report]
+    Step4 --> Q3{Issues found?}
+    Q3 -->|Yes| Step5[Step 5: Delegate back to resolver with review context]
+    Step5 --> Step3
+    Q3 -->|No| Done([Task complete])
 ```
 
-**Key Principle**: Orchestrator delegates immediately and reads reports. Agent does ALL actionable work (formatting, linting, resolution). Orchestrator does NOT run commands or gather linting data.
+**Key Principle**: Orchestrator delegates immediately and reads reports. Agent does ALL actionable work. Orchestrator does NOT run commands or gather linting data.
 
 ### Common Anti-Patterns to Avoid
 
-**❌ WRONG** - Orchestrator pre-gathering linting data:
+**Pre-gathering linting data before delegating** — wastes orchestrator context and duplicates agent work:
 
 ```text
-# Don't do this:
+# Wrong:
 Bash("ruff check src/auth.py")
-# Read the output...
-# Then delegate with the output
 Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Fix these errors: [pasted errors]")
-```
 
-**✅ CORRECT** - Orchestrator delegates immediately:
-
-```text
-# Do this instead:
+# Correct:
 Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
 ```
 
-**❌ WRONG** - Orchestrator running formatters:
+**Skipping the UNRESOLVED check** — allows incomplete resolutions to reach the architecture reviewer:
 
 ```text
-# Don't do this:
-Bash("ruff format src/auth.py src/api.py")
-# Then delegate linting
+# Wrong:
+# Agent completes → immediately delegate to reviewer
+
+# Correct:
+# Agent completes → read resolution report → check UNRESOLVED items → then delegate to reviewer
 ```
 
-**✅ CORRECT** - Agent handles both formatting and linting:
+**Dismissing pre-existing issues** — every detected problem gets recorded:
 
 ```text
-# Do this instead:
-Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
+# Wrong:
+# "The resolver found issues in other files — pre-existing, not our concern."
+
+# Correct:
+# Read the Pre-Existing Issues Recorded section of the resolution report.
+# Confirm each issue was classified and recorded.
+# If the tracking system was created fresh, acknowledge it.
 ```
 
-**❌ WRONG** - Orchestrator verifying agent's work by running linters:
+**Verifying agent's work by running linters** — read reports instead:
 
 ```text
-# Don't do this:
-# Agent completes
-Bash("ruff check src/auth.py")  # Verifying agent's work
-```
+# Wrong:
+Bash("ruff check src/auth.py")  # After agent completed
 
-**✅ CORRECT** - Trust agent's verification, read reports instead:
-
-```text
-# Do this instead:
+# Correct:
 Read(".claude/reports/linting-resolution-[timestamp].md")
-# Report shows agent already verified with linter output
+# Report shows agent already verified with before/after linter output
 ```
 
 ## Related Skills

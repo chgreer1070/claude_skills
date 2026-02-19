@@ -40,7 +40,7 @@ jobs:
           args: "format --check --diff"
 
   # =============================================================================
-  # Python: Type checking with basedpyright and mypy
+  # Python: Type checking with basedpyright
   # =============================================================================
   typecheck-python:
     name: Python / Type Check
@@ -61,16 +61,8 @@ jobs:
           cache-dependency-glob: "**/uv.lock"
           cache-python: true
 
-      - name: Install dependencies
-        run: uv sync --group dev
-
       - name: Run basedpyright
-        run: uv run basedpyright
-
-      - name: Run mypy
-        run: |
-          # Use pep723-loader to handle inline script dependencies (matches pre-commit)
-          uv run --with pep723-loader --with mypy pep723-loader mypy .
+        run: uv run --with pep723-loader --with basedpyright pep723-loader basedpyright
 
   # =============================================================================
   # Python: Type checking with ty (Astral)

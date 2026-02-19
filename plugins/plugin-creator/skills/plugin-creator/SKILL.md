@@ -585,24 +585,9 @@ This section documents powerful plugin capabilities the AI MUST consider when de
 
 ### Dynamic Context Injection
 
-The `!`command`` syntax runs shell commands BEFORE skill content is sent to Claude. Output replaces the placeholder.
+The '!`command`' syntax runs shell commands BEFORE skill content is sent to Claude. Output replaces the placeholder.
 
-```yaml
----
-description: Summarize changes in a pull request
-context: fork
-agent: Explore
-allowed-tools: Bash(gh:*)
----
-
-## Pull request context
-- PR diff: !`gh pr diff`
-- PR comments: !`gh pr view --comments`
-- Changed files: !`gh pr diff --name-only`
-
-## Your task
-Summarize this pull request...
-```
+See @${CLAUDE_PLUGIN_ROOT}/skills/claude-skills-overview-2026/resources/pr-summary-example.md
 
 **How it works:**
 

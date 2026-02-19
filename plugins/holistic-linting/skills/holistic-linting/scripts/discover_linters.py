@@ -129,7 +129,6 @@ _HOOK_CONFIGS: dict[str, LinterConfig] = {
     "ruff-format": LinterConfig(
         name="ruff format", patterns=["*.py"], is_formatter=True
     ),
-    "mypy": LinterConfig(name="mypy", patterns=["*.py"], is_linter=True),
     "prettier": LinterConfig(
         name="prettier", patterns=["*.{ts,tsx,js,jsx,json,md}"], is_formatter=True
     ),
@@ -220,10 +219,6 @@ def scan_pyproject_toml(config_file: Path) -> list[LinterConfig]:
                 LinterConfig(name="ruff format", patterns=["*.py"], is_formatter=True),
                 LinterConfig(name="ruff check", patterns=["*.py"], is_linter=True),
             ))
-
-        # Check for mypy
-        if "tool" in config and "mypy" in config["tool"]:
-            linters.append(LinterConfig(name="mypy", patterns=["*.py"], is_linter=True))
 
         # Check for pyright
         if "tool" in config and "pyright" in config["tool"]:

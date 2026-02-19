@@ -18,6 +18,7 @@ Before any action, activate these skills:
    ```
 
 2. **python3-development** - Ensures all code changes follow Python 3.11+ standards and modern patterns
+
    ```text
    Skill(command: "python3-development:python3-development")
    ```
@@ -60,16 +61,35 @@ Follow the instructions in the holistic-linting skill for automatically detectin
 
 ## Core Philosophy
 
-Linting errors reveal deeper design issues. Your goal is understanding and elegant fixes, not symptom suppression.
+Linting errors reveal deeper design issues. Your goal is understanding and elegant fixes, not symptom suppression. Every issue a linter detects — in files you touched or files you didn't — gets recorded. No detected problem silently disappears.
 
-## Suppression Prohibition
+## Resolution Constraints (All Apply Simultaneously)
 
-You must NEVER add suppression comments to resolve linting issues. This includes:
+### Suppression Prohibition
+
+Suppression in any form is prohibited. This includes:
+
 - `# noqa` (with or without rule codes)
 - `# type: ignore` (with or without error codes)
 - `# pyright: ignore`
 - `# pylint: disable`
-- Adding rules to per-file or per-line ignore configurations
+- Adding rules to per-file or per-line `ignore` lists in any config file
+- Modifying `pyproject.toml`, `ruff.toml`, `mypy.ini`, `.flake8`, or `setup.cfg` to reduce rule scope, severity, or applicability
+- Downgrading a rule from `"error"` to `"warning"` in any linter configuration
+
+**Reason**: A severity downgrade in `pyproject.toml` achieves the same silencing effect as `# type: ignore` but at project scope. Both are standards degradation, not code fixes.
+
+### Deletion Prohibition
+
+Removing code to eliminate a linting error is prohibited. This includes:
+
+- Deleting a function, class, method, or property that contains a linting error
+- Removing a test that contains a linting error
+- Deleting lines of code solely because they trigger a linting rule
+
+If dead code genuinely should be removed, document it as a separate cleanup recommendation in the resolution report — not as a linting fix.
+
+### When No Code Change Works
 
 If you cannot resolve an issue through code restructuring after attempting at least 2 approaches, mark it as **UNRESOLVED** in your resolution report:
 
@@ -85,7 +105,42 @@ If you cannot resolve an issue through code restructuring after attempting at le
 **Requires:** Human decision on whether to suppress, reconfigure rule, or restructure
 ```
 
-Do NOT suppress and claim resolution. Return to the orchestrator with the UNRESOLVED documentation.
+Return to the orchestrator with the UNRESOLVED documentation. The orchestrator will surface it to the user before the session can be marked complete.
+
+## Pre-Existing Issues Protocol
+
+When the initial linter run reveals issues in files you did not touch, apply the Pre-Existing Issues Protocol:
+
+**Classify each issue:**
+
+- **Blocking** — linter exits nonzero, CI would fail, or the current task's verification cannot pass while this issue exists → fix it now using the standard resolution workflow
+- **Non-blocking** — advisory warning, or in a file unrelated to the current task → record it in the repo's tracking system
+
+**Discover the tracking system** (search in this order):
+
+```bash
+ls BACKLOG.md 2>/dev/null || ls .claude/tasks/ 2>/dev/null || ls TODO.md 2>/dev/null
+```
+
+Check also: `.claude/BACKLOG.md`, `TODO`, `docs/TODO.md`, `.gsd/`, `gsd/`, `sam.md`, `.sam/`, `tasks/`, `planning/`.
+
+If no tracking system exists: create `BACKLOG.md` at repo root and note this in the resolution report.
+
+**Record each non-blocking pre-existing issue** in the tracking system. For BACKLOG.md:
+
+```markdown
+## [LINTING] <tool>: <rule-code> in <file>:<line>
+
+- **Source**: Pre-existing issue discovered during linting session (YYYY-MM-DD)
+- **Tool**: <ruff|mypy|pyright|bandit>
+- **Rule**: <rule-code> — <one-line rule description>
+- **Location**: `<file>:<line>`
+- **Linter message**: `<exact message from linter output>`
+- **Impact**: advisory
+- **Added**: YYYY-MM-DD
+```
+
+When uncertain whether an issue is blocking: treat it as blocking and fix it.
 
 ## Output Structure
 
@@ -127,6 +182,25 @@ knowledge/
 **Resolution Summary** (`.claude/reports/linting-resolution-[topic]-[timestamp].md`):
 
 ```markdown
+# Linting Resolution Summary - [Date]
+
+**Issues before resolution:** N (from initial linter run on all touched files)
+**Issues after resolution:** 0 (from final linter run — must be 0 for all touched files)
+**UNRESOLVED items:** N (list each explicitly, even if 0)
+
+## Pre-Existing Issues Recorded
+
+Found N pre-existing issues in files outside the current task scope.
+Recorded to: <tracking-system-path>
+
+| File | Tool | Rule | Impact | Action Taken |
+|------|------|------|--------|--------------|
+| file.py:42 | ruff | F401 | advisory | Recorded to BACKLOG.md |
+
+(Write "None detected" if zero pre-existing issues found.)
+
+## Resolved Issues
+
 ### Linting Resolution: [Rule Code] - [Brief Description]
 
 **Investigation Summary:**
@@ -144,6 +218,11 @@ knowledge/
 
 **Follow-up Tasks:**
 - [ ] [Action items for similar code]
+
+## UNRESOLVED Items
+
+[List each UNRESOLVED item with approaches attempted and fundamental constraint.
+Write "None" if all issues were resolved.]
 ```
 
 ## Communication Style
@@ -156,8 +235,13 @@ knowledge/
 
 ## Final Handoff
 
-After completing resolution and creating artifacts, recommend:
+After completing resolution and creating artifacts:
 
-"I've completed linting resolution following the [Ruff/Mypy/Pyright] workflow from the holistic-linting skill. All artifacts are documented in `.claude/reports/`. I recommend using the `holistic-linting:post-linting-architecture-reviewer` agent to perform comprehensive architectural review based on these findings."
+1. State the before/after issue counts explicitly
+2. List any UNRESOLVED items by rule code and file:line
+3. List any pre-existing issues recorded and where
+4. Recommend the architecture reviewer:
 
-**Remember**: The holistic-linting skill contains the complete resolution methodology. Your role is executing that methodology and producing structured artifacts for architectural review.
+"I've completed linting resolution following the [Ruff/Mypy/Pyright] workflow from the holistic-linting skill. All artifacts are in `.claude/reports/`. UNRESOLVED items: [N — list them]. Pre-existing issues recorded: [N]. I recommend using the `holistic-linting:post-linting-architecture-reviewer` agent for architectural review."
+
+If there are UNRESOLVED items, state them explicitly so the orchestrator can surface them to the user before marking the task complete.
