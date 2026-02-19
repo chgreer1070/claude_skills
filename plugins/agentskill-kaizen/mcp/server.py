@@ -7,6 +7,10 @@
 #     "pandas>=2.0.0",
 #     "prefixspan>=0.5.2",
 #     "scikit-learn>=1.0",
+#     "panel>=1.3.0",
+#     "hvplot>=0.9.0",
+#     "holoviews>=1.18.0",
+#     "bokeh>=3.3.0",
 # ]
 # ///
 """Kaizen Analysis MCP Server.
@@ -715,4 +719,7 @@ async def cluster_sessions(
 
 
 if __name__ == "__main__":
+    from dashboard import start_dashboard
+
+    start_dashboard()
     mcp.run()

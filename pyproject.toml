@@ -290,6 +290,11 @@ disable_error_code = [
 ]
 module = ["conftest", "test_server"]
 
+[[tool.mypy.overrides]]
+# Panel/HoloViz ecosystem lacks type stubs; suppress untyped-call in dashboard module
+disable_error_code = ["no-untyped-call"]
+module = ["dashboard"]
+
 [tool.basedpyright]
 extraPaths = ["**/plugins", "**/scripts", "**/tests"]
 ignore = ["**/typings", "**/tests", "plugins/agentskill-kaizen"]
