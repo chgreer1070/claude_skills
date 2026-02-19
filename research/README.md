@@ -33,8 +33,11 @@ research/
 │   └── logfire.md                     # Pydantic Logfire - full-stack AI observability with MCP (4K+ stars)
 ├── code-auditing/                     # Code security and quality auditing tools
 │   └── hound.md                       # Autonomous AI security auditor with knowledge graphs
+├── ai-research-tools/                 # AI research tools and newsletters
+│   └── the-unwind-ai.md              # AI builder newsletter with 95K+ star open-source companion repo
 ├── coding-agents/                     # Autonomous AI coding agent platforms
-│   └── openhands.md                   # Open platform for cloud coding agents (67K+ stars)
+│   ├── openhands.md                   # Open platform for cloud coding agents (67K+ stars)
+│   └── pilot.md                       # Autonomous development pipeline wrapping Claude Code CLI (BSL 1.1)
 ├── context-management/                # Memory, context window, and RAG tools
 │   ├── claude-mem.md                  # Persistent memory compression for Claude Code (15K+ stars)
 │   └── local-memory.md               # Persistent memory infrastructure for AI agents (MCP + REST + CLI)
@@ -65,8 +68,10 @@ research/
 │   ├── compound-engineering-plugin.md # Every Inc's Plan/Work/Review/Compound workflow plugin
 │   ├── github-patterns.md             # Patterns from GitHub research agent implementations
 │   ├── orchestrator-agent-creation-guide.md  # OpenCode orchestrator agent guide
-│   └── tinyclaw.md                    # Multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs
+│   ├── tinyclaw.md                    # Multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs
+│   └── ollama-subagents-web-search-claude-code.md  # Ollama native subagents and web search for Claude Code (163K+ stars)
 ├── skill-generation-tools/            # Tools that create AI skills/prompts
+│   ├── human-compiler.md              # Interview-to-agent plugin generator for Claude Code (MIT)
 │   ├── mcpskills-cli.md               # MCP-to-skill converter via Streamable HTTP discovery
 │   ├── skill-seekers.md               # Documentation-to-skill automation tool
 │   └── skillkit.md                    # Universal package manager for AI agent skills (32 agents)
@@ -91,6 +96,7 @@ Research on multi-agent architectures, orchestration patterns, and research work
 | [github-patterns.md](./research-agent-patterns/github-patterns.md)                                     | Patterns from 40+ repositories including Chief of Staff model, 12-agent academic pipelines, Pydantic AI research loops | 2025-12-09   |
 | [orchestrator-agent-creation-guide.md](./research-agent-patterns/orchestrator-agent-creation-guide.md) | Comprehensive guide for creating orchestrator agents in OpenCode - routing, chaining, parallel delegation patterns     | 2026-01-26   |
 | [tinyclaw.md](./research-agent-patterns/tinyclaw.md)                                                   | TinyClaw - multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs and file-based queue (2.1K stars)    | 2026-02-18   |
+| [ollama-subagents-web-search-claude-code.md](./research-agent-patterns/ollama-subagents-web-search-claude-code.md) | Ollama v0.16.2 native subagents and web search for Claude Code with Anthropic API compatibility (163K+ stars) | 2026-02-19   |
 
 **Key Topics**:
 
@@ -121,6 +127,11 @@ Research on multi-agent architectures, orchestration patterns, and research work
 - SOUL.md declarative personality specification for consistent agent voice
 - Heartbeat-driven proactive agent activation on schedule
 - Sender pairing allowlist for access control
+- Ollama native subagent support for parallel tasks in isolated context windows
+- Zero-config Claude Code launch via `ollama launch claude`
+- Anthropic API compatibility layer for local/cloud model swapping
+- Built-in web search without MCP servers or API keys
+- Model-level subagent and tool calling with streaming and vision support
 
 ---
 
@@ -184,6 +195,7 @@ Tools and services that automate the creation of AI skills from documentation, c
 
 | Document                                                            | Description                                                                                                    | Last Updated |
 | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------ |
+| [human-compiler.md](./skill-generation-tools/human-compiler.md)     | HumanCompiler - interview-to-agent plugin generator that replicates human decision-making via 8-phase structured interviews (MIT) | 2026-02-19   |
 | [mcpskills-cli.md](./skill-generation-tools/mcpskills-cli.md)       | mcpskills-cli - MCP-to-skill converter generating SKILL.md and polyglot call scripts from Streamable HTTP servers | 2026-02-15   |
 | [skill-seekers.md](./skill-generation-tools/skill-seekers.md)       | Skill Seekers - converts docs, GitHub repos, and PDFs into Claude/Gemini/OpenAI skills                          | 2026-01-26   |
 | [skillkit.md](./skill-generation-tools/skillkit.md)                  | SkillKit - universal package manager for AI agent skills with 15K+ skills, 32 agent support, and cross-format translation | 2026-02-08   |
@@ -204,6 +216,11 @@ Tools and services that automate the creation of AI skills from documentation, c
 - AI-powered skill generation with multi-provider LLM support
 - Skill security scanning for prompt injection and malicious patterns
 - Smart recommendations based on codebase analysis
+- 8-phase structured interview pipeline for capturing human expertise
+- Interview-to-agent plugin generation via Handlebars templates
+- Dual-mode agent output (autonomous + advisory) from single behavioral profile
+- MCP-powered answer verification against real work artifacts (Notion, Asana)
+- Phase-decomposed orchestrator with progressive state persistence
 
 ---
 
@@ -424,6 +441,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 | Document                                     | Description                                                                                       | Last Updated |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------ |
 | [openhands.md](./coding-agents/openhands.md) | OpenHands - open platform for cloud coding agents with 77.6% SWE-bench score, SDK, CLI, and cloud | 2026-01-26   |
+| [pilot.md](./coding-agents/pilot.md)         | Pilot - autonomous development pipeline wrapping Claude Code CLI with ticket-to-PR automation (BSL 1.1) | 2026-02-19   |
 
 **Key Topics**:
 
@@ -435,6 +453,12 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 - REST-based agent server for scaling
 - GitHub, GitLab, Slack, Jira integrations
 - Open-source alternatives to proprietary coding agents
+- Autonomous ticket-to-PR pipeline wrapping Claude Code CLI
+- Multi-model routing (Haiku for triage, Opus for implementation)
+- Three autopilot modes (dev/stage/prod) with trust escalation
+- Epic decomposition with Haiku pre-planning before heavy-model execution
+- GitHub/Linear/Jira/Asana ticket ingestion
+- BSL 1.1 licensing with Apache 2.0 conversion after 4 years
 
 ---
 
@@ -645,6 +669,27 @@ Rust-Python interoperability libraries for building high-performance Python exte
 
 ---
 
+### 18. AI Research Tools
+
+**Location**: [./ai-research-tools/](./ai-research-tools/)
+
+AI research newsletters, curated resource collections, and tools for staying current with AI development practices.
+
+| Document                                                  | Description                                                                                                                    | Last Updated |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------ |
+| [the-unwind-ai.md](./ai-research-tools/the-unwind-ai.md) | The Unwind AI - AI builder newsletter with 740+ posts, companion awesome-llm-apps repo (95K+ stars, Apache 2.0)               | 2026-02-19   |
+
+**Key Topics**:
+
+- AI builder newsletter covering agents, RAG, and LLMs (~3 posts/week)
+- Companion open-source repository with 500+ working Python AI agent examples
+- Same-day analysis of model releases with practitioner perspective
+- SOUL.md agent identity pattern coverage
+- MCP ecosystem and Anthropic tooling coverage
+- Multi-agent framework comparisons and implementation guides
+
+---
+
 ## Planned Categories
 
 The following categories are planned for future research:
@@ -667,6 +712,7 @@ The following categories are planned for future research:
 | `python-runtimes/`      | Alternative Python interpreters and runtimes       | **Done** |
 | `rust-python-bindings/` | Rust-Python interoperability and binding libraries | **Done** |
 | `ai-observability/`     | AI/LLM observability and debugging platforms       | **Done** |
+| `ai-research-tools/`   | AI research tools and newsletters                  | **Done** |
 | `evaluation-testing/`   | Agent evaluation and testing tools                 | Planned  |
 
 ---
@@ -797,6 +843,10 @@ When adding new research:
 - [Claude Conductor](https://github.com/rbarcante/claude-conductor) - Context-Driven Development plugin for Claude Code with skill ecosystem and quality intelligence (34 stars)
 - [Retio PageMap](https://github.com/Retio-ai/Retio-pagemap) - MCP server compressing HTML pages to 2-5K token structured maps with 95.2% task success (14 stars)
 - [TinyClaw](https://github.com/jlia0/tinyclaw) - Multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs and file-based queue (2,124 stars)
+- [Ollama](https://ollama.com) - Local LLM runtime with native Claude Code subagents, web search, and Anthropic API compatibility (162,863 stars)
+- [Pilot](https://github.com/alekspetrov/pilot) - Autonomous development pipeline wrapping Claude Code CLI with ticket-to-PR automation (BSL 1.1)
+- [The Unwind AI](https://www.theunwindai.com) - AI builder newsletter with 500+ Python AI agent examples (95,911 stars companion repo)
+- [HumanCompiler](https://github.com/Gerstep/HumanCompiler) - Interview-to-agent plugin generator for Claude Code (MIT)
 
 ### Internal References
 

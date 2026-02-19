@@ -54,12 +54,12 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
+          python-version: "3.11"
           enable-cache: true
-          cache-dependency-glob: |
-            pyproject.toml
-            uv.lock
+          cache-dependency-glob: "**/uv.lock"
+          cache-python: true
 
       - name: Install dependencies
         run: uv sync --group dev
@@ -109,9 +109,10 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
+          package-manager-cache: false
 
       - name: Run markdownlint-cli2
         run: npx markdownlint-cli2@0.19.1 "**/*.md" "#node_modules" "#.venv"
@@ -172,9 +173,10 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22"
+          package-manager-cache: false
 
       - name: Check JSON formatting
         run: npx prettier@3.5.3 --check "**/*.json" --ignore-path .gitignore
@@ -194,12 +196,12 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
+          python-version: "3.11"
           enable-cache: true
-          cache-dependency-glob: |
-            pyproject.toml
-            uv.lock
+          cache-dependency-glob: "**/uv.lock"
+          cache-python: true
 
       - name: Validate frontmatter
         run: uv run plugins/plugin-creator/scripts/validate_frontmatter.py --check
@@ -220,12 +222,12 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
+          python-version: "3.11"
           enable-cache: true
-          cache-dependency-glob: |
-            pyproject.toml
-            uv.lock
+          cache-dependency-glob: "**/uv.lock"
+          cache-python: true
 
       - name: Validate plugins
         run: |
@@ -249,12 +251,12 @@ jobs:
           persist-credentials: false
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
+          python-version: "3.11"
           enable-cache: true
-          cache-dependency-glob: |
-            pyproject.toml
-            uv.lock
+          cache-dependency-glob: "**/uv.lock"
+          cache-python: true
 
       - name: Check manifest sync
         run: uv run plugins/plugin-creator/scripts/auto_sync_manifests.py --reconcile --dry-run
@@ -380,7 +382,7 @@ jobs:
           fi
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
 
       - name: Check JSON syntax
         run: |
