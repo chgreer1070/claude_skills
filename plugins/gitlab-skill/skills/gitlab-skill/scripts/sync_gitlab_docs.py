@@ -4,8 +4,7 @@
 # dependencies = [
 #     "typer>=0.21.0",
 #     "httpx>=0.28.1",
-#     "pyyaml>=6.0.0",
-#     "types-pyyaml>=6.0.0",
+#     "ruamel.yaml>=0.18.0",
 # ]
 # ///
 """Download and update GitLab CI documentation from official repository.
@@ -30,7 +29,6 @@ from typing import Annotated
 
 import httpx
 import typer
-import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
@@ -42,6 +40,8 @@ from rich.progress import (
     TimeRemainingColumn,
     TransferSpeedColumn,
 )
+from ruamel.yaml import YAML
+from ruamel.yaml.scanner import ScannerError
 
 # Console setup
 console = Console()
@@ -89,7 +89,8 @@ def extract_frontmatter(file_path: Path) -> dict[str, str]:
             return {}
 
         frontmatter_text = match.group(1)
-        frontmatter_data = yaml.safe_load(frontmatter_text)
+        yaml = YAML(typ="safe")
+        frontmatter_data = yaml.load(frontmatter_text)
 
         if not isinstance(frontmatter_data, dict):
             return {}
@@ -101,7 +102,7 @@ def extract_frontmatter(file_path: Path) -> dict[str, str]:
         if "description" in frontmatter_data:
             result["description"] = str(frontmatter_data["description"])
 
-    except (OSError, yaml.YAMLError):
+    except (OSError, ScannerError):
         return {}
     else:
         return result
