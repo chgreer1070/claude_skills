@@ -103,7 +103,7 @@ Search for patterns that should use existing utilities:
 Check that installed dependencies are used appropriately:
 
 - Service-specific SDKs for external integrations (not raw HTTP)
-- `tomlkit` or `pyyaml` for config parsing (preserves formatting)
+- `tomlkit` for TOML config parsing (preserves formatting), `ruamel.yaml` for YAML config parsing
 - `pydantic` for validation (not manual checks)
 - `rich` for display (not raw print)
 - `typer` or `click` for CLI

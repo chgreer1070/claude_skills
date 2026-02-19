@@ -1474,7 +1474,7 @@ Feature: File Processing
 
 - TOML: Best for human-editable config (use `tomllib` in Python 3.11+)
 - JSON: Good for programmatic config
-- YAML: Avoid (PyYAML is C extension, security issues)
+- YAML: Avoid for config files when TOML suffices; use `ruamel.yaml` (not `pyyaml`) when YAML is required
 
 **Configuration Validation**:
 

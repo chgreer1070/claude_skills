@@ -523,7 +523,7 @@ Implement core data structures...
 
 **Changes**:
 
-1. Add YAML parser import: `import yaml`
+1. Add YAML parser import: `from ruamel.yaml import YAML`
 2. Add frontmatter detection function
 3. Create YAML parsing path
 4. Maintain backwards compatibility with markdown parsing
@@ -547,7 +547,8 @@ def parse_yaml_frontmatter(content: str) -> tuple[dict[str, object], str]:
     if len(parts) < 3:
         raise ValueError("Invalid frontmatter format")
 
-    frontmatter = yaml.safe_load(parts[1])
+    yaml = YAML(typ='safe')
+    frontmatter = yaml.load(parts[1])
     body = parts[2].strip()
 
     return frontmatter, body
@@ -739,7 +740,7 @@ Migrating: tasks-refactor-plugin.md
 
 ### Developer Benefits
 
-1. **Easier Parsing**: Use `yaml.safe_load()` instead of complex regex
+1. **Easier Parsing**: Use `YAML(typ='safe').load()` instead of complex regex
 2. **Type Safety**: Validate fields with JSON schema
 3. **Better Errors**: Schema validation provides clear error messages
 4. **Extensibility**: Add new fields without breaking parser

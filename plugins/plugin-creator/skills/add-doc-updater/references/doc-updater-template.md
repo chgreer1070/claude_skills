@@ -90,7 +90,7 @@ Create `{SKILL_NAME}/scripts/update-{LOCAL_DOC_DIR}-docs.py`
 <technical_requirements>
 **Python**: 3.11+ with PEP 723 inline metadata
 **Shebang**: `#!/usr/bin/env -S uv --quiet run --active --script`
-**Dependencies**: `httpx>=0.28.1`, `typer>=0.19.2`, `pyyaml>=6.0.0`, `types-pyyaml>=6.0.0`
+**Dependencies**: `httpx>=0.28.1`, `typer>=0.19.2`, `ruamel.yaml>=0.18.0`
 </technical_requirements>
 
 #### Download & Extract
