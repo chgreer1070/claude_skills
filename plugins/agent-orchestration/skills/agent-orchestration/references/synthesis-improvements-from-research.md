@@ -5,12 +5,12 @@ date: 2025-11-14
 sources:
   - "https://anyblockers.com/posts/working-with-coding-agents"
   - "plugins/agent-orchestration/skills/how-to-delegate/SKILL.md"
-  - "~/repos/claude_skills/commands/orchestration-best-practicing.md"
+  - "{git_root}/commands/orchestration-best-practicing.md"
   - "~/.claude/commands/am-i-complete.md"
-  - "~/repos/claude_skills/.claude/commands/is-it-done.md"
-  - "~/repos/claude_skills/story-based-framing/SKILL.md"
-  - "~/repos/claude_skills/python3-development/references/python-development-orchestration.md"
-  - "~/repos/claude_skills/research_skills_process.md"
+  - "{git_root}/.claude/commands/is-it-done.md"
+  - "{git_root}/story-based-framing/SKILL.md"
+  - "{git_root}/python3-development/references/python-development-orchestration.md"
+  - "{git_root}/research_skills_process.md"
   - "https://claudefa.st"
   - "https://claudefa.st/docs/orchestrating-agents"
 ---

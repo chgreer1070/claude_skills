@@ -505,20 +505,20 @@ Execution time: 7.30s
 ## 16. Files Verified
 
 **Implementation:**
-- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/scripts/plugin_validator.py` (2900+ lines)
+- `{git_root}/plugins/plugin-creator/scripts/plugin_validator.py` (2900+ lines)
 
 **Tests:**
-- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/tests/test_frontmatter_validator.py`
-- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/tests/test_name_format_validator.py`
-- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/tests/test_description_validator.py`
-- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/tests/test_complexity_validator.py`
-- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/tests/test_progressive_disclosure_validator.py`
-- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/tests/test_internal_link_validator.py`
-- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/tests/test_plugin_structure_validator.py`
-- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/tests/conftest.py`
-- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/tests/test_cli.py`
-- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/tests/test_token_counting.py`
-- `/home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/tests/test_external_tools.py`
+- `{git_root}/plugins/plugin-creator/tests/test_frontmatter_validator.py`
+- `{git_root}/plugins/plugin-creator/tests/test_name_format_validator.py`
+- `{git_root}/plugins/plugin-creator/tests/test_description_validator.py`
+- `{git_root}/plugins/plugin-creator/tests/test_complexity_validator.py`
+- `{git_root}/plugins/plugin-creator/tests/test_progressive_disclosure_validator.py`
+- `{git_root}/plugins/plugin-creator/tests/test_internal_link_validator.py`
+- `{git_root}/plugins/plugin-creator/tests/test_plugin_structure_validator.py`
+- `{git_root}/plugins/plugin-creator/tests/conftest.py`
+- `{git_root}/plugins/plugin-creator/tests/test_cli.py`
+- `{git_root}/plugins/plugin-creator/tests/test_token_counting.py`
+- `{git_root}/plugins/plugin-creator/tests/test_external_tools.py`
 
 **Configuration:**
 - `.pre-commit-config.yaml` (hook configuration)

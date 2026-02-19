@@ -1571,7 +1571,7 @@ def validate_all_references(skill_root: Path) -> dict[str, list]:
 
 # Usage in pre-commit hook
 if __name__ == "__main__":
-    skill_root = Path("~/repos/claude_skills/opinionated-python-development")
+    skill_root = Path("./opinionated-python-development")
     results = validate_all_references(skill_root)
 
     print(f"Cross-Reference Validation:")
@@ -1758,15 +1758,18 @@ version: "1.2.0" # Document version
 
 ### Deprecated Code
 
-\```python from typing import List, Dict # DEPRECATED \```
+```python
+from typing import List, Dict # DEPRECATED
+```
 
 ## Modern Pattern (CURRENT)
 
-\```python
-
+```python
 # Use native generics (Python 3.11+)
 
-def process(items: list[str]) -> dict[str, int]: pass \```
+def process(items: list[str]) -> dict[str, int]: pass
+```
+
 ````
 
 ### 6.4 Dependency Tracking
@@ -1781,7 +1784,7 @@ dependencies:
   - typer>=0.21.2
   - ruff
   - mypy
-python_versions: [3.11, 3.12, 3.13, 3.14]
+python_versions: [3.11, 3.12, 3.13]
 ```
 
 **Update Propagation**:

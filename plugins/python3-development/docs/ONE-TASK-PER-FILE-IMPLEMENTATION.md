@@ -83,8 +83,8 @@ Examples:
 
 ```bash
 split_task_file.py \
-  /home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/planning/plugin-validator-tasks.md \
-  /home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/planning/tasks \
+  ${CLAUDE_PLUGIN_ROOT}/planning/plugin-validator-tasks.md \
+  ${CLAUDE_PLUGIN_ROOT}/planning/tasks \
   --force
 ```
 
@@ -94,8 +94,8 @@ split_task_file.py \
 
 ```bash
 implementation_manager.py status \
-  /home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/planning \
-  tasks
+   ${CLAUDE_PLUGIN_ROOT}/planning \
+   tasks
 ```
 
 **Result**: ✅ Discovered and parsed all 23 tasks correctly
@@ -104,7 +104,7 @@ implementation_manager.py status \
 
 ```bash
 implementation_manager.py ready-tasks \
-  /home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/planning \
+  ${CLAUDE_PLUGIN_ROOT}/planning \
   tasks
 ```
 
@@ -114,7 +114,7 @@ implementation_manager.py ready-tasks \
 
 ```bash
 implementation_manager.py status \
-  /home/ubuntulinuxqa2/repos/claude_skills/plugins/plugin-creator/planning \
+  ${CLAUDE_PLUGIN_ROOT}/planning \
   plugin-validator-tasks.md
 ```
 

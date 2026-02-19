@@ -1151,7 +1151,7 @@ Report:
 
 **Test Results**:
 ✅ Instantiation successful
-✅ Claude CLI detection working (found at /home/ubuntulinuxqa2/.local/bin/claude)
+✅ Claude CLI detection working (found at ~/.local/bin/claude)
 ✅ can_fix() returns False
 ✅ fix() raises NotImplementedError with descriptive message
 ✅ Plugin directory detection working (found plugins/plugin-creator)

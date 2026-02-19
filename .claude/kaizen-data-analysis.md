@@ -12,7 +12,7 @@
 ### 1.1 Corpus Overview
 
 ```
-Location:    /home/ubuntulinuxqa2/.claude/projects/-home-ubuntulinuxqa2-repos-claude-skills/
+Location:    ~/.claude/projects/-home-ubuntulinuxqa2-repos-claude-skills/
 Total files: 720 JSONL files in the main project directory
   - 614 main session JSONL files (named {uuid}.jsonl)
   - 106 top-level agent JSONL files (named agent-{id}.jsonl, orphan agents)
@@ -58,7 +58,7 @@ Every record with session context carries:
   "parentUuid": "<parent-uuid | null>",
   "timestamp": "2026-01-30T16:39:40.005Z",
   "sessionId": "<session-uuid>",
-  "cwd": "/home/ubuntulinuxqa2/repos/claude_skills",
+  "cwd": "~/my/current/dir",
   "version": "2.1.25",
   "gitBranch": "main",
   "isSidechain": false,
@@ -159,7 +159,7 @@ Two subtypes within `data.type`:
     "type": "hook_progress",
     "hookEvent": "SessionStart",
     "hookName": "SessionStart:startup",
-    "command": "node \"/home/ubuntulinuxqa2/.claude/hooks/gsd-check-update.js\""
+    "command": "node \"~/.claude/hooks/gsd-check-update.js\""
   },
   "parentToolUseID": "...",
   "toolUseID": "..."

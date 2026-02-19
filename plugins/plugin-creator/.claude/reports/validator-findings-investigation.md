@@ -168,12 +168,12 @@ Neither finding is a linter bug.
 
   Path resolution test (Python):
   ```
-  skill_dir = /home/ubuntulinuxqa2/repos/claude_skills/.claude/skills/subagent-contract
+  skill_dir = {git_root}/.claude/skills/subagent-contract
   link = ./../knowledge/workflow-diagrams/multi-agent-orchestration.md
-  resolved = /home/ubuntulinuxqa2/repos/claude_skills/.claude/skills/knowledge/workflow-diagrams/multi-agent-orchestration.md
+  resolved = {git_root}/.claude/skills/knowledge/workflow-diagrams/multi-agent-orchestration.md
   exists = False
 
-  correct = /home/ubuntulinuxqa2/repos/claude_skills/.claude/knowledge/workflow-diagrams/multi-agent-orchestration.md
+  correct = {git_root}/.claude/knowledge/workflow-diagrams/multi-agent-orchestration.md
   correct.exists = True
   ```
 
