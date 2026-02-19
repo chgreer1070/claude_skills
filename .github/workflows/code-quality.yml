@@ -74,7 +74,7 @@ jobs:
 
   # =============================================================================
   # Python: Type checking with ty (Astral)
-  # In allowed-failures for conservative rollout — promote to blocking once clean.
+  # Blocking as of 2026-02-19 — CI run 22188303914 passed cleanly.
   # =============================================================================
   typecheck-ty:
     name: Python / ty
@@ -517,7 +517,4 @@ jobs:
       - name: Check all jobs passed
         uses: re-actors/alls-green@release/v1
         with:
-          # Jobs listed here may fail without blocking the gate.
-          # Remove a job from this list to make it blocking.
-          allowed-failures: typecheck-ty
           jobs: ${{ toJSON(needs) }}
