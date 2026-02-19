@@ -1022,7 +1022,7 @@ class TestOpenDashboard:
         import types as _types
 
         stub = _types.ModuleType("dashboard")
-        stub.get_dashboard_url = lambda: None  # type: ignore[attr-defined]
+        stub.get_dashboard_url = lambda: None
         prev = sys.modules.get("dashboard")
         sys.modules["dashboard"] = stub
         yield
