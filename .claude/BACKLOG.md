@@ -1,7 +1,7 @@
 ---
 last-updated: 2026-02-19
 p0-count: 0
-p1-count: 14
+p1-count: 13
 p2-count: 12
 ideas-count: 11
 ---
@@ -67,21 +67,6 @@ _(Empty)_
 **Research first**: How does GSD plan-checker detect deviation? What diff/comparison techniques exist? How do code review tools detect scope creep in PRs?
 **Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (section 3.6 Forensic Review)
 
-### Resolve 48 pre-existing ty (Astral type checker) diagnostics
-
-**Source**: `uv run ty check .` run during session 2026-02-11
-**Added**: 2026-02-11
-**Description**: ty v0.0.16 found 48 diagnostics across the codebase. Breakdown by category:
-- **25 unresolved-import errors**: PEP 723 inline script dependencies (`httpx`, `anthropic`, `mcp`, `pandas`, `frontmatter`, `defusedxml`, etc.) not in the project venv. Also `plugin_validator`, `implementation_manager`, `file_metrics` — local module imports that ty can't resolve.
-- **12 possibly-missing-attribute warnings**: `TempDoc | None` and `Path | None` unions not narrowed before attribute access in `find-temp-documentation.py` and `get_task_context.py`.
-- **6 invalid-argument-type errors**: Functions receiving `T | None` when they expect `T` — same narrowing issue.
-- **3 unsupported-operator / invalid-key errors**: Path `/` operator on union types, TypedDict subscript with runtime string key.
-**Approach**:
-1. Configure `ty.toml` or `pyproject.toml [tool.ty]` to exclude PEP 723 scripts (their deps are resolved at runtime, not in the venv)
-2. Fix real type narrowing issues in `find-temp-documentation.py` and `get_task_context.py` (add `assert doc is not None` or `if doc is None: return` guards)
-3. Fix `TypedDict` subscript issue with proper typing
-4. Consider adding `ty check` to CI alongside basedpyright and mypy
-**Files affected**: `.claude/utilities/find-temp-documentation.py`, `plugins/python3-development/skills/implementation-manager/scripts/get_task_context.py`, `plugins/plugin-creator/scripts/plugin_validator.py`, `plugins/summarizer/tests/test_file_metrics.py`
 
 ### Meta-Process Capture — Expert Panel Dataset Builder
 
@@ -355,6 +340,13 @@ _(Empty)_
 ---
 
 ## Completed
+
+### Resolve 48 pre-existing ty (Astral type checker) diagnostics
+
+**Source**: `uv run ty check .` run during session 2026-02-11
+**Completed**: 2026-02-19
+**Description**: ty v0.0.16 reported 48 diagnostics. By v0.0.17 with existing `extra-paths` config, count dropped to 34 warnings (0 errors), all in `plugins/agentskill-kaizen/tests/`. Root causes: FastMCP `@mcp.tool()` decorator returns `FunctionTool` (ty sees as non-callable), and `ModuleType` dynamic attribute stubs. Suppressed `call-non-callable` and `unresolved-attribute` to `"ignore"` in test-file override scope. Added `typecheck-ty` CI job in `allowed-failures` for conservative rollout.
+**Location**: `pyproject.toml` (`[tool.ty.overrides]`), `.github/workflows/code-quality.yml`
 
 ### Resolve plugin-validator pre-existing errors to make CI gate blocking
 

@@ -123,12 +123,12 @@ call-non-callable = "warn" # prefixspan has incomplete type stubs
 include = ["**/test_*.py", "**/conftest.py", "**/tests/**", "tests/**"]
 
 [tool.ty.overrides.rules]
-call-non-callable = "warn"
+call-non-callable = "ignore"
 invalid-argument-type = "warn"
 invalid-assignment = "warn"
 possibly-unresolved-reference = "warn"
 too-many-positional-arguments = "warn"
-unresolved-attribute = "warn"
+unresolved-attribute = "ignore"
 
 [tool.ty.rules]
 

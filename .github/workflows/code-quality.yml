@@ -73,6 +73,35 @@ jobs:
           uv run --with pep723-loader --with mypy pep723-loader mypy .
 
   # =============================================================================
+  # Python: Type checking with ty (Astral)
+  # In allowed-failures for conservative rollout — promote to blocking once clean.
+  # =============================================================================
+  typecheck-ty:
+    name: Python / ty
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
+          cache-python: true
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run ty
+        run: uv run ty check .
+
+  # =============================================================================
   # JavaScript/TypeScript: Biome linting and formatting
   # =============================================================================
   lint-js:
@@ -474,6 +503,7 @@ jobs:
     needs:
       - lint-python
       - typecheck-python
+      - typecheck-ty
       - lint-js
       - lint-markdown
       - lint-shell
@@ -489,4 +519,5 @@ jobs:
         with:
           # Jobs listed here may fail without blocking the gate.
           # Remove a job from this list to make it blocking.
+          allowed-failures: typecheck-ty
           jobs: ${{ toJSON(needs) }}
