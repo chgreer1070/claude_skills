@@ -47,6 +47,7 @@ research/
 ├── developer-tools/                   # Developer productivity and workflow tools
 │   ├── animejs.md                     # Lightweight JavaScript animation engine (66K+ stars)
 │   ├── claude-conductor.md            # Context-Driven Development plugin for Claude Code (9 commands, skill ecosystem)
+│   ├── claude-quickstarts.md          # Official Anthropic quickstart projects — computer use, browser automation, multi-session agent (14.7K stars)
 │   ├── copier-astral.md               # Python project template with Astral toolchain (uv, ruff, ty)
 │   ├── git-cliff.md                   # Customizable changelog generator from Git history
 │   ├── grepai.md                      # Semantic code search and call graph analysis for AI agents (1.2K stars)
@@ -362,7 +363,8 @@ Developer productivity tools and workflow automation for software engineering wi
 | Document                                               | Description                                                                                                                  | Last Updated |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [animejs.md](./developer-tools/animejs.md)             | Lightweight JavaScript animation engine with declarative API, timelines, staggering, and 30+ easing functions                        | 2026-01-31   |
-| [claude-conductor.md](./developer-tools/claude-conductor.md) | Claude Conductor - Context-Driven Development plugin with 9 commands, skill ecosystem, pattern reference layer, and quality intelligence | 2026-02-17   |
+| [claude-conductor.md](./developer-tools/claude-conductor.md)       | Claude Conductor - Context-Driven Development plugin with 9 commands, skill ecosystem, pattern reference layer, and quality intelligence | 2026-02-17   |
+| [claude-quickstarts.md](./developer-tools/claude-quickstarts.md)   | Official Anthropic quickstart projects — computer use (Docker+VNC), browser automation, multi-session coding agent, minimal agent loop reference (<300 lines), Next.js UIs (14.7K stars) | 2026-02-19   |
 | [copier-astral.md](./developer-tools/copier-astral.md) | Copier template for Python projects with Astral toolchain (uv, ruff, ty), pytest, MkDocs, Typer, GitHub Actions, Docker              | 2026-01-31   |
 | [git-cliff.md](./developer-tools/git-cliff.md)         | Customizable changelog generator using conventional commits and regex parsers with GitHub/GitLab remote integration                  | 2026-01-26   |
 | [grepai.md](./developer-tools/grepai.md)               | Semantic code search and call graph analysis for AI agents with MCP server, 12-language trace, and embedding-based search (1.2K stars) | 2026-02-13   |
@@ -440,6 +442,15 @@ Developer productivity tools and workflow automation for software engineering wi
 - Anti-pattern detection (god objects, mutable defaults, deep nesting, magic numbers)
 - Architecture Decision Record logging per feature track
 - Parallel sub-agents for code quality, security, and coverage analysis
+- Two-agent multi-session orchestration pattern (initializer + coding agent; progress via feature_list.json + git)
+- Minimal agent loop reference (<300 lines): raw Claude API tool loop with local tools + MCP server integration
+- `computer_use_20251124` tool version with zoom actions and `str_replace_based_edit_tool` (authoritative beta reference)
+- Security hook pattern: bash command allowlist as pre-execution gate (analogous to Claude Code PreToolUse hooks)
+- Monorepo CLAUDE.md pattern: per-project headings with Setup, Testing, Code Style in single root file
+- Feature list as session handoff: JSON file tracking cross-session progress without external state store
+- Docker as isolation boundary for computer use agents (filesystem + network scoping)
+- Claude Agent SDK (`claude-code-sdk`) programmatic session spawning reference
+- AWS Bedrock and Google Vertex backends supported alongside Anthropic API for computer use
 
 ---
 
@@ -857,6 +868,7 @@ When adding new research:
 - [Ollama](https://ollama.com) - Local LLM runtime with native Claude Code subagents, web search, and Anthropic API compatibility (162,863 stars)
 - [Pilot](https://github.com/alekspetrov/pilot) - Autonomous development pipeline wrapping Claude Code CLI with ticket-to-PR automation (BSL 1.1)
 - [The Unwind AI](https://www.theunwindai.com) - AI builder newsletter with 500+ Python AI agent examples (95,911 stars companion repo)
+- [Claude Quickstarts](https://github.com/anthropics/claude-quickstarts) - Official Anthropic quickstart projects: computer use, browser automation, multi-session coding agent, minimal agent loop, Next.js UIs (14,681 stars)
 - [HumanCompiler](https://github.com/Gerstep/HumanCompiler) - Interview-to-agent plugin generator for Claude Code (MIT)
 - [ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw) - Rust autonomous AI assistant with sub-5MB RAM, 28+ AI providers, 15+ messaging channels, trait-driven architecture (14,966 stars)
 
