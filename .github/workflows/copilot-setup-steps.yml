@@ -1,0 +1,73 @@
+name: "Copilot Setup Steps"
+
+# Allow validation when the file changes and manual testing via Actions tab
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  # Job MUST be called `copilot-setup-steps` or Copilot will not detect it.
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Copilot gets its own token for operations. We only need read for checkout.
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # ---------------------------------------------------------------
+      # Python toolchain: uv + Python 3.11 + all project dependencies
+      # Matches CI job: typecheck-python, validate-frontmatter, etc.
+      # ---------------------------------------------------------------
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
+      - name: Install Python dependencies
+        run: uv sync --group dev
+
+      # ---------------------------------------------------------------
+      # Node.js toolchain: Node 22 + Biome (JS/TS linting)
+      # Matches CI jobs: lint-js, lint-markdown, lint-json
+      # ---------------------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Node dependencies
+        run: npm install
+
+      # ---------------------------------------------------------------
+      # Pre-commit hooks via prek (Rust-based pre-commit replacement)
+      # Enables commit-msg and pre-commit hooks for the coding agent
+      # ---------------------------------------------------------------
+      - name: Install prek git hooks
+        run: uv run prek install
+
+      # ---------------------------------------------------------------
+      # Verify environment is functional
+      # ---------------------------------------------------------------
+      - name: Verify Python toolchain
+        run: |
+          uv run python --version
+          uv run ruff --version
+          uv run basedpyright --version
+
+      - name: Verify Node toolchain
+        run: |
+          node --version
+          npx biome --version

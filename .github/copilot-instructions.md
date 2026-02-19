@@ -239,4 +239,5 @@ Before submitting changes:
 - Always use `uv run` prefix for Python commands
 - Test new plugins with `claude --plugin-dir ./plugins/plugin-name`
 - Paths in skills use `./` relative prefix
-- No GitHub Actions workflows exist; validation is local via pre-commit
+- CI runs via `.github/workflows/code-quality.yml` with quality gate pattern
+- Environment setup for coding agent defined in `.github/workflows/copilot-setup-steps.yml`
