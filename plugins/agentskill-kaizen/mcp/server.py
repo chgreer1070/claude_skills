@@ -36,14 +36,13 @@ import pathlib
 import re
 import webbrowser
 from collections import Counter
-from typing import Annotated, Any
+from typing import Any
 
 import pandas as pd
 import pm4py
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from prefixspan import PrefixSpan
-from pydantic import Field
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -309,18 +308,10 @@ def _resolve_sequences(
     return resolved
 
 
+# TODO: Restore Annotated[..., Field(...)] parameter annotations once
+# https://github.com/PrefectHQ/fastmcp/issues/3238 is resolved.
 @mcp.tool(annotations=_READONLY_ANNOTATIONS)
-async def extract_tool_sequences(
-    glob_path: Annotated[
-        str,
-        Field(
-            description=(
-                "Glob pattern pointing to JSONL transcript files, "
-                "e.g. ~/.claude/projects/-my-project/*.jsonl"
-            )
-        ),
-    ],
-) -> dict[str, list[str]]:
+async def extract_tool_sequences(glob_path: str) -> dict[str, list[str]]:
     """Extract ordered tool-call sequences from JSONL transcript files.
 
     Reads each JSONL file matching the glob pattern, extracts tool_use
@@ -328,7 +319,8 @@ async def extract_tool_sequences(
     per session.
 
     Args:
-        glob_path: Glob pattern pointing to JSONL files.
+        glob_path: Glob pattern pointing to JSONL transcript files,
+            e.g. ~/.claude/projects/-my-project/*.jsonl
 
     Returns:
         Dict mapping session filename (stem) to list of tool names.
@@ -336,28 +328,12 @@ async def extract_tool_sequences(
     return await asyncio.to_thread(_extract_tool_sequences_impl, glob_path)
 
 
+# TODO: Restore Annotated[..., Field(...)] parameter annotations once
+# https://github.com/PrefectHQ/fastmcp/issues/3238 is resolved.
 @mcp.tool(annotations=_READONLY_ANNOTATIONS)
 async def discover_process_model(
-    glob_path: Annotated[
-        str,
-        Field(
-            default="",
-            description=(
-                "Glob pattern for JSONL transcript files; "
-                "used when sequences is not provided"
-            ),
-        ),
-    ] = "",
-    sequences: Annotated[
-        dict[str, list[str]] | None,
-        Field(
-            default=None,
-            description=(
-                "Pre-extracted tool sequences from extract_tool_sequences; "
-                "pass this to avoid re-reading files"
-            ),
-        ),
-    ] = None,
+    glob_path: str = "",
+    sequences: dict[str, list[str]] | None = None,
     *,
     context: Context,
 ) -> str:
@@ -367,8 +343,10 @@ async def discover_process_model(
     Returns a string representation of the discovered heuristic net.
 
     Args:
-        glob_path: Glob pattern for JSONL files (used if sequences is None).
-        sequences: Pre-extracted tool sequences from extract_tool_sequences.
+        glob_path: Glob pattern for JSONL transcript files; used when
+            sequences is not provided.
+        sequences: Pre-extracted tool sequences from extract_tool_sequences;
+            pass this to avoid re-reading files.
         context: FastMCP context for progress reporting.
 
     Returns:
@@ -393,33 +371,14 @@ async def discover_process_model(
     return repr(heu_net)
 
 
+# TODO: Restore Annotated[..., Field(...)] parameter annotations once
+# https://github.com/PrefectHQ/fastmcp/issues/3238 is resolved.
 @mcp.tool(annotations=_READONLY_ANNOTATIONS)
 async def check_conformance(
-    glob_path: Annotated[
-        str,
-        Field(
-            default="",
-            description="Glob pattern for target JSONL files to check conformance",
-        ),
-    ] = "",
-    sequences: Annotated[
-        dict[str, list[str]] | None,
-        Field(default=None, description="Pre-extracted target tool sequences to check"),
-    ] = None,
-    reference_glob_path: Annotated[
-        str,
-        Field(
-            default="",
-            description="Glob pattern for reference JSONL files (the 'golden' model)",
-        ),
-    ] = "",
-    reference_sequences: Annotated[
-        dict[str, list[str]] | None,
-        Field(
-            default=None,
-            description="Pre-extracted reference tool sequences for the model",
-        ),
-    ] = None,
+    glob_path: str = "",
+    sequences: dict[str, list[str]] | None = None,
+    reference_glob_path: str = "",
+    reference_sequences: dict[str, list[str]] | None = None,
     *,
     context: Context,
 ) -> list[dict[str, Any]]:
@@ -429,10 +388,12 @@ async def check_conformance(
     Miner, then runs token-based replay on the target sessions.
 
     Args:
-        glob_path: Glob pattern for target JSONL files to check.
-        sequences: Pre-extracted target tool sequences.
-        reference_glob_path: Glob pattern for reference JSONL files.
-        reference_sequences: Pre-extracted reference tool sequences.
+        glob_path: Glob pattern for target JSONL files to check conformance.
+        sequences: Pre-extracted target tool sequences to check.
+        reference_glob_path: Glob pattern for reference JSONL files (the
+            'golden' model).
+        reference_sequences: Pre-extracted reference tool sequences for the
+            model.
         context: FastMCP context for progress reporting.
 
     Returns:
@@ -499,41 +460,21 @@ async def check_conformance(
     return output
 
 
+# TODO: Restore Annotated[..., Field(...)] parameter annotations once
+# https://github.com/PrefectHQ/fastmcp/issues/3238 is resolved.
 @mcp.tool(annotations=_READONLY_ANNOTATIONS)
 async def find_frequent_patterns(
-    glob_path: Annotated[
-        str,
-        Field(
-            default="",
-            description=(
-                "Glob pattern for JSONL files; used when sequences is not provided"
-            ),
-        ),
-    ] = "",
-    sequences: Annotated[
-        dict[str, list[str]] | None,
-        Field(
-            default=None,
-            description=(
-                "Pre-extracted tool sequences from extract_tool_sequences; "
-                "pass this to avoid re-reading files"
-            ),
-        ),
-    ] = None,
-    min_support: Annotated[
-        int,
-        Field(
-            default=_DEFAULT_MIN_SUPPORT,
-            description="Minimum number of sessions a pattern must appear in",
-            ge=1,
-        ),
-    ] = _DEFAULT_MIN_SUPPORT,
+    glob_path: str = "",
+    sequences: dict[str, list[str]] | None = None,
+    min_support: int = _DEFAULT_MIN_SUPPORT,
 ) -> list[dict[str, Any]]:
     """Find frequent sequential patterns in tool-call sequences using PrefixSpan.
 
     Args:
-        glob_path: Glob pattern for JSONL files (used if sequences is None).
-        sequences: Pre-extracted tool sequences from extract_tool_sequences.
+        glob_path: Glob pattern for JSONL files; used when sequences is not
+            provided.
+        sequences: Pre-extracted tool sequences from extract_tool_sequences;
+            pass this to avoid re-reading files.
         min_support: Minimum number of sessions a pattern must appear in.
 
     Returns:
@@ -570,15 +511,10 @@ async def find_frequent_patterns(
     return await asyncio.to_thread(_mine_patterns, resolved, min_support)
 
 
+# TODO: Restore Annotated[..., Field(...)] parameter annotations once
+# https://github.com/PrefectHQ/fastmcp/issues/3238 is resolved.
 @mcp.tool(annotations=_READONLY_ANNOTATIONS)
-async def detect_frustration_signals(
-    glob_path: Annotated[
-        str,
-        Field(
-            description="Glob pattern for JSONL transcript files to scan for frustration signals"
-        ),
-    ],
-) -> list[dict[str, str]]:
+async def detect_frustration_signals(glob_path: str) -> list[dict[str, str]]:
     """Detect user frustration signals in JSONL transcripts.
 
     Scans user-type messages for patterns indicating corrections,
@@ -586,7 +522,8 @@ async def detect_frustration_signals(
     out system-generated messages (tool results).
 
     Args:
-        glob_path: Glob pattern for JSONL files to scan.
+        glob_path: Glob pattern for JSONL transcript files to scan for
+            frustration signals.
 
     Returns:
         List of dicts with ``session_id``, ``timestamp``,
@@ -632,35 +569,13 @@ async def detect_frustration_signals(
     return await asyncio.to_thread(_scan, glob_path)
 
 
+# TODO: Restore Annotated[..., Field(...)] parameter annotations once
+# https://github.com/PrefectHQ/fastmcp/issues/3238 is resolved.
 @mcp.tool(annotations=_READONLY_ANNOTATIONS)
 async def cluster_sessions(
-    glob_path: Annotated[
-        str,
-        Field(
-            default="",
-            description=(
-                "Glob pattern for JSONL files; used when sequences is not provided"
-            ),
-        ),
-    ] = "",
-    sequences: Annotated[
-        dict[str, list[str]] | None,
-        Field(
-            default=None,
-            description=(
-                "Pre-extracted tool sequences from extract_tool_sequences; "
-                "pass this to avoid re-reading files"
-            ),
-        ),
-    ] = None,
-    n_clusters: Annotated[
-        int,
-        Field(
-            default=_DEFAULT_N_CLUSTERS,
-            description="Number of clusters to create via KMeans",
-            ge=1,
-        ),
-    ] = _DEFAULT_N_CLUSTERS,
+    glob_path: str = "",
+    sequences: dict[str, list[str]] | None = None,
+    n_clusters: int = _DEFAULT_N_CLUSTERS,
     *,
     context: Context,
 ) -> dict[str, Any]:
@@ -670,9 +585,11 @@ async def cluster_sessions(
     then applies KMeans clustering.
 
     Args:
-        glob_path: Glob pattern for JSONL files (used if sequences is None).
-        sequences: Pre-extracted tool sequences from extract_tool_sequences.
-        n_clusters: Number of clusters to create.
+        glob_path: Glob pattern for JSONL files; used when sequences is not
+            provided.
+        sequences: Pre-extracted tool sequences from extract_tool_sequences;
+            pass this to avoid re-reading files.
+        n_clusters: Number of clusters to create via KMeans.
         context: FastMCP context for progress reporting.
 
     Returns:
