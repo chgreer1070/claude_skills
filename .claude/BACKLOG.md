@@ -1,7 +1,7 @@
 ---
-last-updated: 2026-02-18
+last-updated: 2026-02-19
 p0-count: 0
-p1-count: 13
+p1-count: 14
 p2-count: 12
 ideas-count: 11
 ---
@@ -19,6 +19,13 @@ _(Empty)_
 ---
 
 ## P1 - Should Have
+
+### Validate and verify orchestrator-discipline plugin hooks and processes
+
+**Source**: Plugin creation session 2026-02-19
+**Added**: 2026-02-19
+**Description**: The `orchestrator-discipline` plugin was created from session anti-pattern analysis. Its 2 hooks (`pre-tool-orchestrator-read-warning.js`, `pre-tool-diagnostic-command-gate.js`), rules/CLAUDE.md, skill, and investigation-escalation reference need end-to-end validation. Verify: hooks fire correctly on matching tool calls, hooks do NOT fire on legitimate orchestrator reads (BACKLOG.md, plan files, files being edited), rules load into session context, skill activates on trigger phrases, no personal/private data in any plugin file, plugin passes `claude plugin validate`.
+**Suggested location**: `plugins/orchestrator-discipline/`
 
 ### SAM: Error Recovery / Rollback Procedures
 
