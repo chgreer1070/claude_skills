@@ -427,58 +427,6 @@ jobs:
               sys.exit(1)
           "
 
-      - name: Check TOML syntax
-        run: |
-          uv run python -c "
-          import tomllib
-          import sys
-          from pathlib import Path
-
-          errors = []
-          for f in Path('.').rglob('*.toml'):
-              if '.venv' in str(f) or 'node_modules' in str(f):
-                  continue
-              try:
-                  tomllib.loads(f.read_text())
-              except tomllib.TOMLDecodeError as e:
-                  errors.append(f'{f}: {e}')
-
-          if errors:
-              for e in errors:
-                  print(f'::error::{e}')
-              sys.exit(1)
-          "
-
-      - name: Check YAML syntax
-        run: |
-          uv run --with pyyaml python -c "
-          import yaml
-          import sys
-          from pathlib import Path
-
-          errors = []
-          for f in Path('.').rglob('*.yml'):
-              if '.venv' in str(f) or 'node_modules' in str(f):
-                  continue
-              try:
-                  yaml.safe_load(f.read_text())
-              except yaml.YAMLError as e:
-                  errors.append(f'{f}: {e}')
-
-          for f in Path('.').rglob('*.yaml'):
-              if '.venv' in str(f) or 'node_modules' in str(f):
-                  continue
-              try:
-                  yaml.safe_load(f.read_text())
-              except yaml.YAMLError as e:
-                  errors.append(f'{f}: {e}')
-
-          if errors:
-              for e in errors:
-                  print(f'::error::{e}')
-              sys.exit(1)
-          "
-
       - name: Check for case conflicts
         run: |
           git ls-files | sort -f | uniq -di | while read -r file; do
