@@ -71,6 +71,7 @@ research/
 │   ├── tinyclaw.md                    # Multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs
 │   └── ollama-subagents-web-search-claude-code.md  # Ollama native subagents and web search for Claude Code (163K+ stars)
 ├── skill-generation-tools/            # Tools that create AI skills/prompts
+│   ├── human-compiler.md              # Interview-to-agent plugin generator for Claude Code (MIT)
 │   ├── mcpskills-cli.md               # MCP-to-skill converter via Streamable HTTP discovery
 │   ├── skill-seekers.md               # Documentation-to-skill automation tool
 │   └── skillkit.md                    # Universal package manager for AI agent skills (32 agents)
@@ -194,6 +195,7 @@ Tools and services that automate the creation of AI skills from documentation, c
 
 | Document                                                            | Description                                                                                                    | Last Updated |
 | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------ |
+| [human-compiler.md](./skill-generation-tools/human-compiler.md)     | HumanCompiler - interview-to-agent plugin generator that replicates human decision-making via 8-phase structured interviews (MIT) | 2026-02-19   |
 | [mcpskills-cli.md](./skill-generation-tools/mcpskills-cli.md)       | mcpskills-cli - MCP-to-skill converter generating SKILL.md and polyglot call scripts from Streamable HTTP servers | 2026-02-15   |
 | [skill-seekers.md](./skill-generation-tools/skill-seekers.md)       | Skill Seekers - converts docs, GitHub repos, and PDFs into Claude/Gemini/OpenAI skills                          | 2026-01-26   |
 | [skillkit.md](./skill-generation-tools/skillkit.md)                  | SkillKit - universal package manager for AI agent skills with 15K+ skills, 32 agent support, and cross-format translation | 2026-02-08   |
@@ -214,6 +216,11 @@ Tools and services that automate the creation of AI skills from documentation, c
 - AI-powered skill generation with multi-provider LLM support
 - Skill security scanning for prompt injection and malicious patterns
 - Smart recommendations based on codebase analysis
+- 8-phase structured interview pipeline for capturing human expertise
+- Interview-to-agent plugin generation via Handlebars templates
+- Dual-mode agent output (autonomous + advisory) from single behavioral profile
+- MCP-powered answer verification against real work artifacts (Notion, Asana)
+- Phase-decomposed orchestrator with progressive state persistence
 
 ---
 
@@ -839,6 +846,7 @@ When adding new research:
 - [Ollama](https://ollama.com) - Local LLM runtime with native Claude Code subagents, web search, and Anthropic API compatibility (162,863 stars)
 - [Pilot](https://github.com/alekspetrov/pilot) - Autonomous development pipeline wrapping Claude Code CLI with ticket-to-PR automation (BSL 1.1)
 - [The Unwind AI](https://www.theunwindai.com) - AI builder newsletter with 500+ Python AI agent examples (95,911 stars companion repo)
+- [HumanCompiler](https://github.com/Gerstep/HumanCompiler) - Interview-to-agent plugin generator for Claude Code (MIT)
 
 ### Internal References
 
