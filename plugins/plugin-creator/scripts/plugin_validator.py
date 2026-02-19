@@ -4,7 +4,8 @@
 # dependencies = [
 #     "typer>=0.21.0",
 #     "tiktoken>=0.8.0",
-#     "pyyaml>=6.0",
+#     "ruamel.yaml>=0.18.0",
+#     "python-frontmatter>=1.1.0",
 #     "pydantic>=2.0.0",
 # ]
 # ///
@@ -29,8 +30,10 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from enum import StrEnum
+from io import StringIO
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -44,11 +47,70 @@ from typing import (
 )
 
 import typer
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from ruamel.yaml import YAML, YAMLError
 
 if TYPE_CHECKING:
     from rich.console import ConsoleRenderable, RichCast
-import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+
+# Make frontmatter_utils importable from same directory
+sys.path.insert(0, str(Path(__file__).parent))
+from frontmatter_utils import RuamelYAMLHandler
+
+# Module-level ruamel.yaml safe-mode instance (replaces yaml.safe_load)
+_yaml_safe = YAML(typ="safe")
+
+# Round-trip YAML instance (via shared handler) for dumping with format preservation
+_rt_handler = RuamelYAMLHandler()
+_rt_yaml = _rt_handler._yaml  # noqa: SLF001
+
+
+def _safe_load_yaml(text: str) -> Any:
+    """Parse a YAML string using ruamel.yaml safe loader.
+
+    Args:
+        text: YAML text to parse.
+
+    Returns:
+        Parsed YAML data (dict, list, scalar, or None).
+
+    Raises:
+        YAMLError: If the YAML is syntactically invalid.
+    """
+    if not text or not text.strip():
+        return {}
+    return _yaml_safe.load(text)
+
+
+def _dump_yaml(data: dict[str, Any]) -> str:
+    """Serialize a dict to YAML using the round-trip handler.
+
+    Produces output consistent with frontmatter_utils: values without
+    special YAML characters stay unquoted, values requiring quotes
+    (e.g. colon-space) get double-quoted for pyyaml compatibility.
+
+    Args:
+        data: Dictionary to serialize.
+
+    Returns:
+        YAML string (may include trailing newline).
+    """
+    from ruamel.yaml.scalarstring import DoubleQuotedScalarString
+
+    # Wrap string values that require quoting (contain `: `) in
+    # DoubleQuotedScalarString so ruamel.yaml emits double quotes,
+    # matching the quoting style that pyyaml used.
+    prepared: dict[str, Any] = {}
+    for key, value in data.items():
+        if isinstance(value, str) and ": " in value:
+            prepared[key] = DoubleQuotedScalarString(value)
+        else:
+            prepared[key] = value
+
+    buf = StringIO()
+    _rt_yaml.dump(prepared, buf)
+    return buf.getvalue()
+
 
 # Error code base URL for documentation links
 ERROR_CODE_BASE_URL = "https://github.com/jamie-bitflight/claude_skills/blob/main/plugins/plugin-creator/docs/ERROR_CODES.md"
@@ -1111,6 +1173,7 @@ class SkillFrontmatter(BaseModel):
     description: str | None = None
     argument_hint: str | None = Field(None, alias="argument-hint")
     allowed_tools: str | None = Field(None, alias="allowed-tools")
+    tools: str | None = None
     model: str | None = None
     skills: str | None = None
     context: Literal["fork"] | None = None
@@ -1121,7 +1184,7 @@ class SkillFrontmatter(BaseModel):
     )
     hooks: dict[str, Any] | None = None
 
-    @field_validator("skills", "allowed_tools", mode="before")
+    @field_validator("skills", "allowed_tools", "tools", mode="before")
     @classmethod
     def normalize_comma_separated(cls, v: object) -> str | None:
         """Convert YAML arrays to comma-separated strings.
@@ -1144,32 +1207,6 @@ class SkillFrontmatter(BaseModel):
         if isinstance(v, str) and "\n" in v:
             return " ".join(v.split())
         return v if isinstance(v, str) else None
-
-    @field_validator("description", mode="after")
-    @classmethod
-    def validate_no_colons(cls, v: str | None) -> str | None:
-        """Reject descriptions containing colons except in URLs.
-
-        Returns:
-            Validated description or None.
-
-        Raises:
-            ValueError: If description contains colons outside URLs.
-        """
-        if not v:
-            return v
-
-        # Allow colons in URLs
-        temp = v.replace("http://", "").replace("https://", "")
-
-        if ":" in temp:
-            msg = (
-                "Description cannot contain colons (:) except in URLs. "
-                "They trigger YAML quoting. Use alternatives: "
-                "semicolons (;), em dashes (—), or rephrase."
-            )
-            raise ValueError(msg)
-        return v
 
 
 class CommandFrontmatter(BaseModel):
@@ -1211,29 +1248,6 @@ class CommandFrontmatter(BaseModel):
         if isinstance(v, str) and "\n" in v:
             return " ".join(v.split())
         return v if isinstance(v, str) else None
-
-    @field_validator("description", mode="after")
-    @classmethod
-    def validate_no_colons(cls, v: str) -> str:
-        """Reject descriptions containing colons except in URLs.
-
-        Returns:
-            Validated description.
-
-        Raises:
-            ValueError: If description contains colons outside URLs.
-        """
-        # Allow colons in URLs
-        temp = v.replace("http://", "").replace("https://", "")
-
-        if ":" in temp:
-            msg = (
-                "Description cannot contain colons (:) except in URLs. "
-                "They trigger YAML quoting. Use alternatives: "
-                "semicolons (;), em dashes (—), or rephrase."
-            )
-            raise ValueError(msg)
-        return v
 
 
 class AgentFrontmatter(BaseModel):
@@ -1282,29 +1296,6 @@ class AgentFrontmatter(BaseModel):
         if isinstance(v, str) and "\n" in v:
             return " ".join(v.split())
         return v if isinstance(v, str) else None
-
-    @field_validator("description", mode="after")
-    @classmethod
-    def validate_no_colons(cls, v: str) -> str:
-        """Reject descriptions containing colons except in URLs.
-
-        Returns:
-            Validated description.
-
-        Raises:
-            ValueError: If description contains colons outside URLs.
-        """
-        # Allow colons in URLs
-        temp = v.replace("http://", "").replace("https://", "")
-
-        if ":" in temp:
-            msg = (
-                "Description cannot contain colons (:) except in URLs. "
-                "They trigger YAML quoting. Use alternatives: "
-                "semicolons (;), em dashes (—), or rephrase."
-            )
-            raise ValueError(msg)
-        return v
 
 
 # ============================================================================
@@ -1389,10 +1380,29 @@ class FrontmatterValidator:
                 )
             )
 
+        # Detect ambiguous indentation: a key with an inline scalar value
+        # followed by an indented ``- `` line. YAML silently merges this
+        # into a multi-line plain scalar, but the user almost certainly
+        # intended a list. The pattern requires a non-whitespace char after
+        # ``key: `` on the same line (ruling out proper ``key:\n  - item``).
+        if re.search(r": \S[^\n]*\n\s+- ", frontmatter_text):
+            errors.append(
+                ValidationIssue(
+                    field="(yaml)",
+                    severity="error",
+                    message="Invalid YAML syntax: scalar value followed by indented list item",
+                    code=FM002,
+                    docs_url=generate_docs_url(FM002),
+                )
+            )
+            return ValidationResult(
+                passed=False, errors=errors, warnings=warnings, info=info
+            )
+
         # Parse YAML
         try:
-            data = yaml.safe_load(frontmatter_text)
-        except yaml.YAMLError as e:
+            data = _safe_load_yaml(frontmatter_text)
+        except YAMLError as e:
             errors.append(
                 ValidationIssue(
                     field="(yaml)",
@@ -1419,6 +1429,25 @@ class FrontmatterValidator:
             return ValidationResult(
                 passed=False, errors=errors, warnings=warnings, info=info
             )
+
+        # FM007/FM008: Detect YAML arrays for tools/skills fields before
+        # Pydantic normalizes them to comma-separated strings.
+        for array_field, error_code, label in (
+            ("tools", FM007, "Tools"),
+            ("allowed-tools", FM007, "Tools"),
+            ("skills", FM008, "Skills"),
+        ):
+            if isinstance(data.get(array_field), list):
+                errors.append(
+                    ValidationIssue(
+                        field=array_field,
+                        severity="error",
+                        message=f"{label} field is YAML array (should be comma-separated string)",
+                        code=error_code,
+                        docs_url=generate_docs_url(error_code),
+                        suggestion="Use format: 'tool1, tool2, tool3'",
+                    )
+                )
 
         # Select Pydantic model based on file type
         model_class = self._get_model_class(file_type)
@@ -1454,6 +1483,7 @@ class FrontmatterValidator:
                 field = ".".join(str(x) for x in error["loc"])
                 msg = error["msg"]
                 code = FM005  # Default to type mismatch
+                suggestion: str | None = None
 
                 # Determine specific error code
                 if "Field required" in msg:
@@ -1497,6 +1527,29 @@ class FrontmatterValidator:
                         code=code,
                         docs_url=generate_docs_url(code),
                         suggestion=suggestion,
+                    )
+                )
+
+        # FM009: Detect unquoted description containing colons.
+        # Check the raw frontmatter text for an unquoted description value
+        # that contains a colon (outside of URLs). Quoted values are safe
+        # because YAML parsers handle them correctly.
+        fm009_match = re.search(
+            r'^description:\s+(?!["\'])(.+)$', frontmatter_text, re.MULTILINE
+        )
+        if fm009_match:
+            raw_value = fm009_match.group(1)
+            # Strip URL schemes before checking for colons
+            temp = raw_value.replace("http://", "").replace("https://", "")
+            if ":" in temp:
+                errors.append(
+                    ValidationIssue(
+                        field="description",
+                        severity="error",
+                        message="Unquoted description contains colons",
+                        code=FM009,
+                        docs_url=generate_docs_url(FM009),
+                        suggestion="Quote the description or remove colons",
                     )
                 )
 
@@ -1600,10 +1653,32 @@ class FrontmatterValidator:
             return content, []
         body = content[end_match.end() + 3 :]
 
+        # Track fixes
+        fixes: list[str] = []
+
+        # FM009: Detect unquoted descriptions with colons before parsing.
+        # An unquoted colon in a description value causes a YAML parse error
+        # in ruamel.yaml safe mode. Detect this and quote the description
+        # line so parsing succeeds.
+        colon_fix_applied = False
+        fm009_match = re.search(
+            r'^(description:\s+)(?!["\'])(.+:.+)$', frontmatter_text, re.MULTILINE
+        )
+        if fm009_match:
+            raw_value = fm009_match.group(2)
+            temp = raw_value.replace("http://", "").replace("https://", "")
+            if ":" in temp:
+                colon_fix_applied = True
+                fixes.append("Quoted description containing colons (FM009)")
+                # Quote the description inline so YAML parsing succeeds
+                frontmatter_text = frontmatter_text.replace(
+                    fm009_match.group(0), f'{fm009_match.group(1)}"{raw_value}"', 1
+                )
+
         # Parse YAML
         try:
-            original_data = yaml.safe_load(frontmatter_text)
-        except yaml.YAMLError:
+            original_data = _safe_load_yaml(frontmatter_text)
+        except YAMLError:
             return content, []
 
         if not isinstance(original_data, dict):
@@ -1620,10 +1695,11 @@ class FrontmatterValidator:
                 by_alias=True, exclude_none=True, mode="python"
             )
         except ValidationError:
-            return content, []
-
-        # Track fixes
-        fixes = []
+            if not colon_fix_applied:
+                return content, []
+            # Colon in description caused validation failure -- rebuild
+            # the dict directly from original_data without Pydantic normalization
+            normalized_dict = dict(original_data)
 
         # CRITICAL BUG WORKAROUND: Remove 'name' field from skills
         # Source: validate_frontmatter.py lines 560-573
@@ -1655,14 +1731,10 @@ class FrontmatterValidator:
         if not fixes:
             return content, []
 
-        # Regenerate frontmatter with PyYAML
-        new_frontmatter = yaml.dump(
-            normalized_dict,
-            default_flow_style=False,
-            allow_unicode=True,
-            sort_keys=False,
-            width=10000,
-        )
+        # Regenerate frontmatter with ruamel.yaml round-trip handler.
+        # ruamel.yaml automatically quotes values containing colon-space,
+        # which is the correct fix for FM009.
+        new_frontmatter = _dump_yaml(normalized_dict)
 
         return f"---\n{new_frontmatter}---\n{body}", fixes
 
@@ -1724,8 +1796,8 @@ class NameFormatValidator:
 
         # Parse YAML
         try:
-            data = yaml.safe_load(frontmatter_text)
-        except yaml.YAMLError:
+            data = _safe_load_yaml(frontmatter_text)
+        except YAMLError:
             # Invalid YAML - not our concern (FrontmatterValidator handles this)
             return ValidationResult(
                 passed=True, errors=errors, warnings=warnings, info=info
@@ -1924,8 +1996,8 @@ class DescriptionValidator:
 
         # Parse YAML
         try:
-            data = yaml.safe_load(frontmatter_text)
-        except yaml.YAMLError:
+            data = _safe_load_yaml(frontmatter_text)
+        except YAMLError:
             # Invalid YAML - not our concern (FrontmatterValidator handles this)
             return ValidationResult(
                 passed=True, errors=errors, warnings=warnings, info=info
