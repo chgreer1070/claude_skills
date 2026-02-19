@@ -8,6 +8,7 @@
 - [Detection Signals](#detection-signals)
 - [Correct Workflow](#correct-workflow)
 - [Anti-Pattern Examples](#anti-pattern-examples)
+- [Variant: Agent Output Polling](#variant-agent-output-polling)
 
 ---
 
@@ -195,3 +196,112 @@ Orchestrator: Spot-check deliverable.
 
 Total: ~500 chars consumed in orchestrator context.
 ```
+
+---
+
+## Variant: Agent Output Polling
+
+**Same root cause as investigation escalation** — orchestrator reads instead of waiting or delegating. The surface form differs: instead of reading source files, the orchestrator reads a running agent's output file mid-execution.
+
+**Observed in**: Session 77509a5e (2026-02-19, dasel plugin creation).
+
+### What Happens
+
+The orchestrator launches a background agent with `run_in_background: true`, then calls `TaskOutput` with `block=false` on the running agent's output file to "peek" at progress. This pulls the raw JSONL agent transcript — full message payloads, tool call records, intermediate reasoning — directly into the orchestrator's context window.
+
+**Cost**: A single mid-execution peek at an agent transcript can consume thousands of tokens for zero information value. The agent completion notification delivers the same information automatically at zero orchestrator context cost.
+
+### Why "Checking Progress" Is Not a Justification
+
+The rationalization "I'm just checking progress" has the same structure as "I'm just baselining the diagnostics" — it frames an investigation read as a necessary preparatory step. It is not. The agent completion notification arrives automatically. There is no signal gap that polling fills.
+
+Presence of this phrase is a trigger signal, not a justification.
+
+### Boundary Rules
+
+```mermaid
+flowchart TD
+    Start([Need information about a background agent]) --> Q1{Is the agent still running?}
+    Q1 -->|Yes| Prohibited["Prohibited — do not call TaskOutput with block=false<br>Do not read .output files directly<br>Continue other work and wait for completion notification"]
+    Q1 -->|No — completion notification received| Q2{Did the completion notification summary cover what you need?}
+    Q2 -->|Yes| Done[Use the summary — no further reads needed]
+    Q2 -->|No — need more detail| Q3{Can you derive what you need by delegating?}
+    Q3 -->|Yes| Delegate["Delegate a focused reader agent:<br>'Summarize the agent output at [path]<br>focusing on [specific aspect]'"]
+    Q3 -->|No — you must read directly| Direct["Read only the final output artifact<br>not the raw transcript or .output file"]
+    Prohibited -.->|Rationalization to reject| Peek["'I'm just checking progress'<br>'I need to see if it's on track'<br>'Let me peek at the current state'"]
+```
+
+### Prohibited and Correct Patterns
+
+<anti_pattern>
+
+**Wrong**: Agent is still running. Orchestrator calls `TaskOutput(task_id, block=false)` to see intermediate progress. Raw JSONL transcript floods orchestrator context.
+
+```text
+Orchestrator: "Let me check how the agent is progressing"
+  → TaskOutput(task_id="abc123", block=false)
+  → Returns: 4,200 tokens of raw JSONL agent transcript
+  → Orchestrator consumes transcript, gains no actionable information
+  → Agent completes 30 seconds later with completion notification anyway
+```
+
+</anti_pattern>
+
+<correct_pattern>
+
+**Correct**: Launch the agent, continue other work, receive the automatic completion notification.
+
+```text
+Orchestrator: Task(agent="specialist", ..., run_in_background=true)
+  → Continues working on other tasks
+  → Receives completion notification automatically
+  → Reads the summary from the notification
+  → If more detail needed: delegates a reader agent to summarize the output file
+```
+
+</correct_pattern>
+
+<anti_pattern>
+
+**Wrong**: Agent completed. Orchestrator reads the raw `.output` file directly via `Read` tool instead of using the completion notification summary.
+
+```text
+Orchestrator: Read("/tmp/agent-output/task-abc123.output")
+  → Returns: full JSONL transcript including all tool calls, reasoning steps, intermediate messages
+  → Orchestrator consumes thousands of tokens of agent internals
+```
+
+</anti_pattern>
+
+<correct_pattern>
+
+**Correct**: Use the completion notification summary. If insufficient, delegate a reader agent.
+
+```text
+Orchestrator: [receives completion notification with summary]
+  → Summary: "Agent created dasel plugin at plugins/dasel/. SKILL.md, plugin.json, and hooks.json written. Validation passed."
+  → Orchestrator proceeds — no file read needed.
+
+  [If summary is insufficient:]
+  → Delegate: "Read /tmp/agent-output/task-abc123.output and extract: files created, validation results, any errors. 5 sentences maximum."
+```
+
+</correct_pattern>
+
+### Detection Signals
+
+**Prohibited operations** (never valid):
+
+- `TaskOutput` with `block=false` on a running agent
+- `Read` on any `.output` file in orchestrator context
+- `Read` on any agent transcript or JSONL file
+
+**Rationalization phrases** (presence is a warning signal, not a justification):
+
+- "I'm just checking progress"
+- "Let me see how the agent is doing"
+- "Let me peek at the current state"
+- "I need to verify it's on track"
+- "Let me check if the agent is stuck"
+
+**Connection to investigation escalation**: Both patterns share the same root cause — the orchestrator believes it needs to read information directly rather than receive it through the delegation channel (agent summary, completion notification). The fix is identical: wait for the channel to deliver, or delegate a focused reader if the channel summary is insufficient.

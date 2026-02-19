@@ -19,6 +19,8 @@ These rules enforce delegation discipline for the orchestrator role. The orchest
 - Config files (`.toml`, `.yaml`, `.yml`, `.json`) you will not edit this turn
 - Test files
 - Output from diagnostic commands (`ty check`, `ruff check`, `mypy`, `pytest`, `eslint`, `cargo check`)
+- Agent `.output` files or JSONL transcripts — use the completion notification summary instead
+- `TaskOutput` with `block=false` on a running agent — the completion notification arrives automatically
 
 **Falsifiable test before every Read/Grep/Bash on a source or config file**:
 
@@ -66,6 +68,42 @@ flowchart TD
 **Trigger signal**: 3+ Read/Grep/Bash calls on source files without an intervening Edit/Write or Task delegation.
 
 **Response when triggered**: STOP. Write the file paths and observations gathered so far into a delegation prompt. Do not read one more file. Delegate.
+
+---
+
+## Agent Output Polling Anti-Pattern
+
+A variant of investigation escalation where the orchestrator reads a running agent's output file mid-execution, rationalizing it as "checking progress." Same root cause — orchestrator reads instead of waiting or delegating.
+
+**Observed in**: Session 77509a5e (2026-02-19, dasel plugin creation).
+
+**Why polling is never valid**: The agent completion notification arrives automatically. There is no signal gap that polling fills. Raw agent transcripts are JSONL with full message payloads — enormous context cost for zero information value.
+
+**Prohibited operations**:
+
+- `TaskOutput` with `block=false` on a **running** agent
+- `Read` on any `.output` file or agent JSONL transcript
+
+**Rationalization phrase** (trigger signal, not justification):
+
+> "I'm just checking progress" / "Let me see how the agent is doing" / "Let me peek at the current state"
+
+**Correct workflow**:
+
+```mermaid
+flowchart TD
+    Start([Background agent launched]) --> Wait[Continue other work]
+    Wait --> Notify[Receive automatic completion notification]
+    Notify --> Q1{Notification summary sufficient?}
+    Q1 -->|Yes| Done[Proceed — no reads needed]
+    Q1 -->|No| Delegate["Delegate focused reader agent:<br>'Summarize [output path] focusing on [aspect]. 5 sentences max.'"]
+    Delegate --> Done
+
+    Start -.->|ANTI-PATTERN| Poll["Call TaskOutput with block=false<br>Read .output file directly<br>Rationalization: 'I'm just checking progress'"]
+    Poll -.->|Result| Waste["Thousands of tokens of JSONL transcript<br>consumed for zero information value"]
+```
+
+**Connection**: Investigation escalation reads source files instead of delegating. Agent output polling reads agent transcripts instead of waiting. Both patterns share the identical fix: stop reading, use the delegation channel.
 
 ---
 
