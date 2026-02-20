@@ -152,49 +152,73 @@ The dashboard will automatically pick up the data once the file exists.
     )
 
 
+_ROLLING_WINDOW: int = 50
+
+
 def _build_timeline(df: pd.DataFrame) -> pn.pane.HoloViews:
-    """Build the Session Timeline scatter plot.
+    """Build the Session Timeline with a smoothed trend line overlay.
 
-    Plots compound sentiment score per message over time, colored by
-    score value using a continuous RdYlGn colormap. A single series is
-    rendered instead of one overlay per session, which eliminates the
-    O(n_sessions) HoloViews overlay cost and makes the visualization
-    useful at scale (1000+ sessions).
+    Renders two layers on a shared x-axis (message_index, integer sequence):
 
-    Hover tooltips retain session_id and message details so the user can
-    still identify which log file to examine.
+    * **Background scatter** — all raw compound scores at low opacity so
+      individual outliers remain visible without dominating the chart.
+    * **Trend line** — rolling mean of compound score (window=50 messages)
+      drawn in steelblue.  Message-order-based windowing (not time-based)
+      ensures the rolling window is uniform regardless of session density.
+
+    A dashed red zero-reference line marks the neutral boundary.
 
     Args:
-        df: Sentiment DataFrame with columns ``timestamp``, ``compound``,
-            ``session_id``, and ``message_preview``.
+        df: Sentiment DataFrame with columns ``session_id``, ``timestamp``,
+            ``message_index``, ``compound``, and ``message_preview``.
 
     Returns:
-        A HoloViews pane containing the interactive scatter plot.
+        A HoloViews pane containing the interactive composite plot.
     """
-    # Truncate previews for tooltip readability
+    # Sort by message_index for correct temporal ordering and rolling window
     plot_df = df.copy()
+    plot_df = plot_df.sort_values("message_index").reset_index(drop=True)
     plot_df["preview"] = plot_df["message_preview"].str[:_PREVIEW_TRUNCATE]
 
+    # Compute rolling mean on the sorted sequence
+    plot_df["rolling_mean"] = (
+        plot_df["compound"]
+        .rolling(window=_ROLLING_WINDOW, min_periods=1, center=True)
+        .mean()
+    )
+
+    # Background scatter — faded gray context dots, no colorbar, no legend
     scatter = plot_df.hvplot.scatter(
-        x="timestamp",
+        x="message_index",
         y="compound",
-        c="compound",
-        cmap="RdYlGn",
-        clim=(_SCORE_MIN, _SCORE_MAX),
-        hover_cols=["session_id", "preview", "message_index"],
-        title="Compound Sentiment Score Over Time",
-        xlabel="Timestamp",
+        color="gray",
+        alpha=0.15,
+        size=4,
+        hover_cols=["session_id", "preview", "timestamp"],
+        title="Sentiment Trend (rolling mean, window=50)",
+        xlabel="Message Index",
         ylabel="Compound Score",
         ylim=(_SCORE_MIN, _SCORE_MAX),
         height=450,
         responsive=True,
-        colorbar=True,
+        colorbar=False,
+        legend=False,
     )
 
-    # Add a zero reference line
-    zero_line = hv.HLine(0).opts(color="gray", line_dash="dashed", line_width=1)
+    # Trend line — rolling mean in steelblue, solid, no colorbar
+    trend = plot_df.hvplot.line(
+        x="message_index",
+        y="rolling_mean",
+        color="steelblue",
+        line_width=2,
+        hover=False,
+        legend=False,
+    )
 
-    return pn.pane.HoloViews(scatter * zero_line, sizing_mode="stretch_width")
+    # Zero reference line — dashed red at y=0
+    zero_line = hv.HLine(0).opts(color="red", line_dash="dashed", line_width=1)
+
+    return pn.pane.HoloViews(scatter * trend * zero_line, sizing_mode="stretch_width")
 
 
 def _build_heatmap(df: pd.DataFrame) -> pn.pane.HoloViews:
@@ -211,9 +235,12 @@ def _build_heatmap(df: pd.DataFrame) -> pn.pane.HoloViews:
     Returns:
         A HoloViews pane containing the heatmap.
     """
-    # Shorten session IDs for display (last 8 chars)
+    # Shorten session IDs for display (last 8 chars), aggregate duplicates
     plot_df = df.copy()
     plot_df["session_short"] = plot_df["session_id"].str[-8:]
+    plot_df = plot_df.groupby(["session_short", "message_index"], as_index=False)[
+        "compound"
+    ].mean()
 
     heatmap = plot_df.hvplot.heatmap(
         x="message_index",
@@ -224,7 +251,7 @@ def _build_heatmap(df: pd.DataFrame) -> pn.pane.HoloViews:
         title="Sentiment by Session and Message Index",
         xlabel="Message Index",
         ylabel="Session (last 8 chars)",
-        height=max(300, len(plot_df["session_id"].unique()) * 25 + 100),
+        height=max(300, len(plot_df["session_short"].unique()) * 25 + 100),
         responsive=True,
         colorbar=True,
     )
@@ -269,7 +296,7 @@ def _build_distribution(df: pd.DataFrame) -> pn.pane.HoloViews:
     return pn.pane.HoloViews(overlay, sizing_mode="stretch_width")
 
 
-def _build_hotspots(df: pd.DataFrame) -> pn.pane.Markdown | pn.widgets.Tabulator:
+def _build_hotspots(df: pd.DataFrame) -> pn.pane.Markdown | pn.Column:
     """Build the Hot Spots table of most negative messages.
 
     Filters messages with compound score below the threshold and displays
@@ -280,8 +307,10 @@ def _build_hotspots(df: pd.DataFrame) -> pn.pane.Markdown | pn.widgets.Tabulator
 
     Returns:
         A Markdown pane with an informational message when no hot spots are
-        found, or a Tabulator widget showing the hot spot messages sorted
-        most-negative first.
+        found, or a Column containing a Tabulator widget showing the hot spot
+        messages sorted most-negative first. The Column carries an explicit
+        ``height=500`` anchor so Panel can compute stretch sizing correctly
+        even when the tab is first activated from a hidden state.
     """
     hotspots = (
         df
@@ -299,10 +328,10 @@ def _build_hotspots(df: pd.DataFrame) -> pn.pane.Markdown | pn.widgets.Tabulator
     # Format compound for display
     hotspots["compound"] = hotspots["compound"].round(4)
 
-    return pn.widgets.Tabulator(
+    table = pn.widgets.Tabulator(
         hotspots,
         sizing_mode="stretch_width",
-        height=500,
+        max_height=500,
         show_index=False,
         frozen_columns=["session_id"],
         text_align={"compound": "right"},
@@ -313,6 +342,10 @@ def _build_hotspots(df: pd.DataFrame) -> pn.pane.Markdown | pn.widgets.Tabulator
             "message_preview": "Message Preview",
         },
     )
+    # Wrap in a Column with an explicit height to prevent layout miscalculation
+    # when the tab is rendered for the first time (Panel cannot compute stretch
+    # sizing on hidden containers without an anchor height).
+    return pn.Column(table, sizing_mode="stretch_width", height=500)
 
 
 # ---------------------------------------------------------------------------
@@ -343,14 +376,13 @@ def _build_dashboard(csv_path: Path, df: pd.DataFrame | None = None) -> pn.Tabs:
         df = _load_sentiment_data(csv_path)
 
     if df is None:
-        return pn.Tabs(("Overview", _build_placeholder(csv_path)), dynamic=True)
+        return pn.Tabs(("Overview", _build_placeholder(csv_path)))
 
     return pn.Tabs(
         ("Session Timeline", _build_timeline(df)),
         ("Session Heatmap", _build_heatmap(df)),
         ("Distribution", _build_distribution(df)),
         ("Hot Spots", _build_hotspots(df)),
-        dynamic=True,
     )
 
 
@@ -369,6 +401,7 @@ def _create_app(csv_path: Path) -> pn.template.FastListTemplate:
         A Panel FastListTemplate ready to be served.
     """
     hv.extension("bokeh")
+    pn.extension("tabulator")
 
     # Track file modification time for change detection
     state: dict[str, float] = {"last_mtime": 0.0}
