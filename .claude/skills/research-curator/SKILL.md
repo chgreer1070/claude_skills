@@ -27,18 +27,6 @@ flowchart TD
 
 ---
 
-## Prerequisites
-
-Before spawning research agents, run the gh setup script. It is idempotent — checks the installed version and exits early if already up to date.
-
-```bash
-uv run .claude/skills/gh/scripts/setup_gh.py
-```
-
-See the [gh skill](./../gh/SKILL.md) for usage patterns and the required `-R` flag in proxy environments.
-
----
-
 ## Research Directory
 
 Single source of truth: `./research/` (repo-root relative).
