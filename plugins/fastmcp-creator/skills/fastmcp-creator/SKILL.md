@@ -1,5 +1,5 @@
 ---
-description: Build Model Context Protocol (MCP) servers - comprehensive coverage of generic MCP protocol AND FastMCP framework specialization. Use when creating any MCP server (Python FastMCP preferred, TypeScript/Node also covered). Includes agent-centric design principles, evaluation creation, Pydantic/Zod validation, async patterns, STDIO/HTTP/SSE transports, FastMCP Cloud deployment, .mcpb packaging, security patterns, and mid-2025+ community practices. Standalone skill with no external dependencies.
+description: Build Model Context Protocol (MCP) servers - comprehensive coverage of generic MCP protocol AND FastMCP 3.x framework specialization. Use when creating any MCP server (Python FastMCP preferred, TypeScript/Node also covered). Includes agent-centric design principles, provider/transform architecture, component versioning, session state, authorization, evaluation creation, Pydantic/Zod validation, async patterns, STDIO/HTTP/SSE transports, background tasks, OpenTelemetry tracing, .mcpb packaging, security patterns, and 2025-2026 community practices. Standalone skill with no external dependencies.
 ---
 
 # MCP Server Development
@@ -19,22 +19,31 @@ description: Build Model Context Protocol (MCP) servers - comprehensive coverage
 
 TRIGGER: The model must activate when building MCP (Model Context Protocol) servers
 
-SPECIALIZATION: FastMCP framework (Python, decorator-based) FALLBACK: Generic Python SDK, TypeScript SDK also covered
+SPECIALIZATION: FastMCP 3.x framework (Python, decorator-based, provider/transform architecture) FALLBACK: Generic Python SDK, TypeScript SDK also covered
 
 COVERAGE:
 
 - Generic MCP protocol (all implementations)
 - Agent-centric design principles
-- FastMCP framework (Python, decorator-based, Pydantic validation)
+- FastMCP 3.x framework features:
+  - Provider/Transform composable architecture
+  - Component versioning (tools, resources, prompts)
+  - Session-scoped state management
+  - Authorization system (component-level and server-wide)
+  - Background tasks (SEP-1686 with Docket integration)
+  - OpenTelemetry tracing
+  - Visibility system (dynamic enable/disable)
+  - Hot reload and automatic threadpool
 - TypeScript/Node MCP SDK (Zod validation)
 - Evaluation creation for testing server quality
-- Production deployment and packaging
+- Production deployment and packaging (.mcpb format)
 - Security, performance, and observability patterns
 
 EXCLUSIONS:
 
 - Low-level MCP transport layer details (handled by SDKs/frameworks)
 - Client-side MCP implementations
+- FastMCP 2.x deprecated features (use FastMCP 3.x patterns instead)
 
 ## High-Level Workflow
 
@@ -378,7 +387,11 @@ python scripts/evaluation.py \
 
 ## Quick Reference
 
-### FastMCP (Python) Quick Start
+### FastMCP 3.x (Python) Quick Start
+
+**IMPORTANT**: FastMCP 3.0 requires explicit installation: `pip install "fastmcp>=3.0.0"` or `uv add "fastmcp>=3.0.0"`
+
+**Basic Server:**
 
 ```python
 from fastmcp import FastMCP
@@ -407,6 +420,75 @@ def explain_topic(topic: str) -> str:
 if __name__ == "__main__":
     mcp.run()  # STDIO transport
     # OR: mcp.run(transport="http", port=8000)
+```
+
+**FastMCP 3.x Key Changes from 2.x:**
+
+```python
+# 1. Decorators now return callable functions (v2 returned objects)
+@mcp.tool()
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+
+greet("World")  # Now works! Returns "Hello, World!"
+
+# 2. State methods are now async
+@mcp.tool()
+async def increment(ctx: Context) -> int:
+    count = await ctx.get_state("counter") or 0  # async now
+    await ctx.set_state("counter", count + 1)     # async now
+    return count + 1
+
+# 3. Component versioning support
+@mcp.tool(version="1.0")
+def add(x: int, y: int) -> int:
+    return x + y
+
+@mcp.tool(version="2.0")
+def add(x: int, y: int, z: int = 0) -> int:
+    return x + y + z  # Highest version exposed by default
+
+# 4. Authorization at component level
+from fastmcp.server.auth import require_scopes, restrict_tag
+
+@mcp.tool(auth=require_scopes("write"))
+def protected_tool(): ...
+
+@mcp.resource("data://secret", auth=require_scopes("read"))
+def secret_data(): ...
+
+# 5. Provider/Transform architecture
+from fastmcp.server.providers import FileSystemProvider
+from fastmcp.server.transforms import Namespace
+
+# Create server with filesystem provider (hot-reload capable)
+mcp = FastMCP("server", providers=[
+    FileSystemProvider("mcp/", reload=True)
+])
+
+# Mount another server with namespace
+sub = FastMCP("Sub")
+mcp.mount(sub, prefix="sub")  # greet becomes "sub_greet"
+
+# 6. Background tasks (SEP-1686)
+from fastmcp.server.tasks import TaskConfig
+
+@mcp.tool(task=TaskConfig(mode="required"))
+async def long_running():
+    # Must execute as background task
+    ...
+
+# 7. Session-scoped visibility control
+@mcp.tool()
+async def unlock_premium(ctx: Context) -> str:
+    await ctx.enable_components(tags={"premium"})
+    return "Premium features unlocked for this session"
+
+# 8. OpenTelemetry tracing (built-in)
+# Just configure OTEL, FastMCP auto-traces everything
+
+# 9. Hot reload during development
+# fastmcp dev server.py  # Auto-restarts on file changes
 ```
 
 ### TypeScript/Node Quick Start

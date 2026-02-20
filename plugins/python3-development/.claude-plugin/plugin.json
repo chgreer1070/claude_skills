@@ -1,7 +1,7 @@
 {
   "name": "python3-development",
   "description": "Python 3.11+ development workflows including CLI apps with Typer/Rich, script writing, test development, code review, linting troubleshooting, and pyproject.toml configuration. Provides TDD patterns, modern type hints, PEP 723 metadata, and solutions for common Python errors.",
-  "version": "1.9.2",
+  "version": "1.10.0",
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
@@ -39,13 +39,7 @@
     "./skills/hatchling/SKILL.md",
     "./skills/pypi-readme-creator/SKILL.md",
     "./skills/uv",
-    "./skills/implementation-manager/scripts/get_task_context.py",
-    "./skills/uv/scripts/sync_uv_releases.py",
-    "./skills/stdlib-scripting",
-    "./skills/implementation-manager/scripts/implementation_manager.py",
-    "./skills/implementation-manager/scripts/task_format.py",
-    "./skills/implementation-manager/scripts/task_status_hook.py",
-    "./skills/mkdocs/scripts/example.py"
+    "./skills/stdlib-scripting"
   ],
   "agents": [
     "./agents/python-cli-architect.md",
