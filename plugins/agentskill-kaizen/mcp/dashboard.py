@@ -272,7 +272,7 @@ def _build_distribution(df: pd.DataFrame) -> pn.pane.HoloViews:
     return pn.pane.HoloViews(overlay, sizing_mode="stretch_width")
 
 
-def _build_hotspots(df: pd.DataFrame) -> pn.pane.Perspective | pn.widgets.Tabulator:
+def _build_hotspots(df: pd.DataFrame) -> pn.pane.Markdown | pn.widgets.Tabulator:
     """Build the Hot Spots table of most negative messages.
 
     Filters messages with compound score below the threshold and displays
@@ -282,7 +282,9 @@ def _build_hotspots(df: pd.DataFrame) -> pn.pane.Perspective | pn.widgets.Tabula
         df: Sentiment DataFrame.
 
     Returns:
-        A Tabulator widget showing the hot spot messages.
+        A Markdown pane with an informational message when no hot spots are
+        found, or a Tabulator widget showing the hot spot messages sorted
+        most-negative first.
     """
     hotspots = (
         df
