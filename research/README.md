@@ -64,6 +64,7 @@ research/
 │   ├── mcpjam.md                      # Local inspector for MCP servers and apps
 │   ├── narsil-mcp.md                  # Comprehensive code intelligence MCP server
 │   ├── octocode-mcp.md                # Research Driven Development platform
+│   ├── perplexity-mcp-server.md       # Perplexity AI real-time web search and reasoning MCP server
 │   └── retio-pagemap.md               # MCP server compressing HTML to 2-5K token structured maps
 ├── research-agent-patterns/           # Multi-agent architectures and orchestration
 │   ├── claw-loop.md                   # Autonomous development orchestration via tmux + cron
@@ -73,6 +74,8 @@ research/
 │   ├── tinyclaw.md                    # Multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs
 │   └── ollama-subagents-web-search-claude-code.md  # Ollama native subagents and web search for Claude Code (163K+ stars)
 ├── skill-generation-tools/            # Tools that create AI skills/prompts
+│   ├── clawhub.md                     # Skill registry for AI agents with vector search
+│   ├── claude-skillz.md               # 18+ behavioral skills, 12 personas, Claude Launcher utility
 │   ├── human-compiler.md              # Interview-to-agent plugin generator for Claude Code (MIT)
 │   ├── mcpskills-cli.md               # MCP-to-skill converter via Streamable HTTP discovery
 │   ├── skill-seekers.md               # Documentation-to-skill automation tool
@@ -150,6 +153,7 @@ MCP servers, tools, and integrations for extending AI assistant capabilities.
 | [mimir-mcp.md](./mcp-ecosystem/mimir-mcp.md)             | Git-backed AI memory system with 7 MCP tools, graph associations, and version-controlled persistence     | 2026-02-04   |
 | [narsil-mcp.md](./mcp-ecosystem/narsil-mcp.md)           | Rust MCP server with 90 tools for code intelligence, security scanning, call graphs                      | 2026-01-26   |
 | [octocode-mcp.md](./mcp-ecosystem/octocode-mcp.md)       | Research Driven Development platform with GitHub search, LSP, and GAN-inspired adversarial flow          | 2026-01-26   |
+| [perplexity-mcp-server.md](./mcp-ecosystem/perplexity-mcp-server.md) | Perplexity API Platform MCP server with real-time web search, deep research, and reasoning via 4 Sonar tools (2K stars) | 2026-02-20   |
 | [retio-pagemap.md](./mcp-ecosystem/retio-pagemap.md)     | Retio PageMap - MCP server compressing HTML pages to 2-5K token structured maps with 95.2% task success  | 2026-02-18   |
 
 **Key Topics**:
@@ -186,6 +190,11 @@ MCP servers, tools, and integrations for extending AI assistant capabilities.
 - Nonce-based prompt injection defense for untrusted web content
 - SSRF protection with scheme whitelist and private IP blocking
 - Multilingual web content extraction (Korean, English, Japanese, French, German)
+- Real-time web search via Perplexity Sonar models (search, ask, research, reason)
+- Multi-transport MCP deployment (stdio for desktop, HTTP/Docker for cloud)
+- Proxy cascade configuration for enterprise environments
+- Token optimization via optional `strip_thinking` response filtering
+- Tool specialization pattern (4 distinct tools for different query complexity levels)
 
 ---
 
@@ -197,6 +206,8 @@ Tools and services that automate the creation of AI skills from documentation, c
 
 | Document                                                            | Description                                                                                                    | Last Updated |
 | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------ |
+| [clawhub.md](./skill-generation-tools/clawhub.md)                    | ClawHub - skill registry for AI agents with vector search capabilities                                           | 2026-02-20   |
+| [claude-skillz.md](./skill-generation-tools/claude-skillz.md)       | Claude Skillz - 18+ behavioral skills, 12 personas, 10 plugins, and Claude Launcher for rapid persona switching (238 stars) | 2026-02-20   |
 | [human-compiler.md](./skill-generation-tools/human-compiler.md)     | HumanCompiler - interview-to-agent plugin generator that replicates human decision-making via 8-phase structured interviews (MIT) | 2026-02-19   |
 | [mcpskills-cli.md](./skill-generation-tools/mcpskills-cli.md)       | mcpskills-cli - MCP-to-skill converter generating SKILL.md and polyglot call scripts from Streamable HTTP servers | 2026-02-15   |
 | [skill-seekers.md](./skill-generation-tools/skill-seekers.md)       | Skill Seekers - converts docs, GitHub repos, and PDFs into Claude/Gemini/OpenAI skills                          | 2026-01-26   |
@@ -223,6 +234,13 @@ Tools and services that automate the creation of AI skills from documentation, c
 - Dual-mode agent output (autonomous + advisory) from single behavioral profile
 - MCP-powered answer verification against real work artifacts (Notion, Asana)
 - Phase-decomposed orchestrator with progressive state persistence
+- Centralized skill registry with vector-based semantic search
+- Claude Launcher utility for rapid persona/model switching via fuzzy search
+- @ reference pre-processing to embed skills at launch time (avoiding 18K+ token overhead)
+- Composable persona-skill separation (identity decoupled from behavioral skills)
+- Hook-based automation (auto code review on session stop, 5 Whys verification)
+- Instructive vs descriptive prompt writing patterns for skill authoring
+- State machine governance for TDD and process-driven skill workflows
 
 ---
 
@@ -871,6 +889,9 @@ When adding new research:
 - [Claude Quickstarts](https://github.com/anthropics/claude-quickstarts) - Official Anthropic quickstart projects: computer use, browser automation, multi-session coding agent, minimal agent loop, Next.js UIs (14,681 stars)
 - [HumanCompiler](https://github.com/Gerstep/HumanCompiler) - Interview-to-agent plugin generator for Claude Code (MIT)
 - [ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw) - Rust autonomous AI assistant with sub-5MB RAM, 28+ AI providers, 15+ messaging channels, trait-driven architecture (14,966 stars)
+- [Perplexity MCP Server](https://github.com/perplexityai/modelcontextprotocol) - Official Perplexity AI MCP server with real-time web search, deep research, and reasoning (1,959 stars)
+- [ClawHub](https://www.clawhub.ai/skills) - Skill registry for AI agents with vector search capabilities
+- [Claude Skillz](https://github.com/NTCoding/claude-skillz) - 18+ behavioral skills, 12 personas, 10 plugins, and Claude Launcher for Claude Code (238 stars)
 
 ### Internal References
 
