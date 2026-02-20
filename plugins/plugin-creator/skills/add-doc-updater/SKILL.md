@@ -1,5 +1,5 @@
 ---
-description: 'Add automated documentation updater to any Claude skill. Creates a Python sync script that downloads upstream docs, processes markdown for AI consumption, and maintains local cache with configurable refresh. Collects template variables, then delegates implementation through 5-phase workflow. Use when adding auto-updating reference documentation to plugins or skills.'
+description: Add automated documentation updater to any Claude skill. Creates a Python sync script that downloads upstream docs, processes markdown for AI consumption, and maintains local cache with configurable refresh. Collects template variables, then delegates implementation through 5-phase workflow. Use when adding auto-updating reference documentation to plugins or skills.
 argument-hint: <target-plugin-or-skill-path>
 user-invocable: true
 model: sonnet

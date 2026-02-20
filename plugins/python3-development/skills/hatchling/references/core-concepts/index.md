@@ -1,17 +1,7 @@
 ---
 category: core-concepts
 topics: [reference, index, hatchling, concepts, design-principles]
-related:
-  [
-    pep-517-backend.md,
-    minimal-philosophy.md,
-    vcs-file-selection.md,
-    build-hooks.md,
-    version-management.md,
-    wheel-vs-sdist.md,
-    reproducible-builds.md,
-    development-vs-distribution.md,
-  ]
+related: [pep-517-backend.md, minimal-philosophy.md, vcs-file-selection.md, build-hooks.md, version-management.md, wheel-vs-sdist.md, reproducible-builds.md, development-vs-distribution.md]
 ---
 
 # Hatchling Core Concepts Reference Index

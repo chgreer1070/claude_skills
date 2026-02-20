@@ -1,13 +1,13 @@
 ---
-title: "Robot Framework: Generic Test Automation Framework"
+title: 'Robot Framework: Generic Test Automation Framework'
 library_name: robotframework
 pypi_package: robotframework
 category: testing
-python_compatibility: "3.8+"
-last_updated: "2025-11-02"
-official_docs: "https://robotframework.org"
-official_repository: "https://github.com/robotframework/robotframework"
-maintenance_status: "active"
+python_compatibility: 3.8+
+last_updated: '2025-11-02'
+official_docs: https://robotframework.org
+official_repository: https://github.com/robotframework/robotframework
+maintenance_status: active
 ---
 
 # Robot Framework

@@ -1,15 +1,15 @@
 ---
 category: build-system
 topics:
-  - hatchling-configuration
-  - pyproject-toml
-  - build-backend
-  - pep-517
-  - pep-518
+- hatchling-configuration
+- pyproject-toml
+- build-backend
+- pep-517
+- pep-518
 related:
-  - build-hooks
-  - build-targets
-  - build-environment
+- build-hooks
+- build-targets
+- build-environment
 ---
 
 # Build System Configuration Guide for Claude

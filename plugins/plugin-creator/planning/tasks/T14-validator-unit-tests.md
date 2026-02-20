@@ -1,13 +1,13 @@
 ---
-task: "T14"
-title: "Validator Unit Tests"
+task: T14
+title: Validator Unit Tests
 status: complete
-agent: "python-pytest-architect"
-dependencies: ["T13"]
+agent: python-pytest-architect
+dependencies: [T13]
 priority: 4
 complexity: medium
-started: "2026-02-02T15:45:00Z"
-completed: "2026-02-02T15:50:00Z"
+started: '2026-02-02T15:45:00Z'
+completed: '2026-02-02T15:50:00Z'
 ---
 
 ## Context

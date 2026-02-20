@@ -1,6 +1,7 @@
 ---
 description: Describe images and screenshots by viewing content with multimodal Read tool and documenting only visible elements. Activates on what's in this image, describe this screenshot, summarize this diagram, image summary, what does this screenshot show, explain this diagram, break down this chart. Handles UI screenshots, architecture diagrams, charts, photos, code screenshots, and terminal output. Never infers from filenames.
 ---
+
 # Image Summarization
 
 Methodology for summarizing visual content including screenshots, diagrams, charts, photos, code screenshots, and terminal output.

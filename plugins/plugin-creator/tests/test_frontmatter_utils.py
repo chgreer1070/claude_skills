@@ -1,4 +1,8 @@
-"""Tests for frontmatter_utils shared module."""
+"""Tests for frontmatter_utils module.
+
+Tests the shared frontmatter utility module backed by ruamel.yaml.
+Covers the RuamelYAMLHandler, convenience API, and edge cases.
+"""
 
 from __future__ import annotations
 
@@ -9,185 +13,191 @@ if TYPE_CHECKING:
 
 
 class TestRuamelYAMLHandler:
-    """Test the custom python-frontmatter handler using ruamel.yaml."""
+    """Tests for the RuamelYAMLHandler subclass."""
 
-    def test_load_simple_frontmatter(self, tmp_path: Path) -> None:
+    def test_load_simple_frontmatter(self) -> None:
         """Handler parses simple frontmatter without quotes."""
-        md = tmp_path / "test.md"
-        md.write_text(
-            "---\ndescription: A simple description\ntools: Bash, Read\n---\nBody content\n"
-        )
-        from frontmatter_utils import load_frontmatter
+        from frontmatter_utils import loads_frontmatter
 
-        post = load_frontmatter(md)
-        assert post["description"] == "A simple description"
-        assert post["tools"] == "Bash, Read"
-        assert post.content == "Body content"
+        text = "---\ndescription: A simple skill\ntools: Read, Write\n---\n\n# Body\n"
+        post = loads_frontmatter(text)
 
-    def test_load_quoted_frontmatter(self, tmp_path: Path) -> None:
+        assert post.metadata["description"] == "A simple skill"
+        assert post.metadata["tools"] == "Read, Write"
+
+    def test_load_quoted_frontmatter(self) -> None:
         """Handler preserves quotes when YAML syntax requires them."""
-        md = tmp_path / "test.md"
-        md.write_text('---\ndescription: "Has: colon in value"\n---\nBody\n')
-        from frontmatter_utils import load_frontmatter
+        from frontmatter_utils import loads_frontmatter
 
-        post = load_frontmatter(md)
-        assert post["description"] == "Has: colon in value"
+        text = '---\ndescription: "Has colon: in value"\n---\n\n# Body\n'
+        post = loads_frontmatter(text)
 
-    def test_load_no_frontmatter(self, tmp_path: Path) -> None:
+        assert post.metadata["description"] == "Has colon: in value"
+
+    def test_load_no_frontmatter(self) -> None:
         """Handler returns empty metadata for files without frontmatter."""
-        md = tmp_path / "test.md"
-        md.write_text("Just body content, no frontmatter.\n")
-        from frontmatter_utils import load_frontmatter
+        from frontmatter_utils import loads_frontmatter
 
-        post = load_frontmatter(md)
-        assert dict(post.metadata) == {}
-        assert "Just body content" in post.content
+        text = "# Just a heading\n\nSome content.\n"
+        post = loads_frontmatter(text)
 
-    def test_roundtrip_preserves_unquoted(self, tmp_path: Path) -> None:
+        assert post.metadata == {}
+        assert "Just a heading" in post.content
+
+    def test_roundtrip_preserves_unquoted(self) -> None:
         """Round-trip does not add unnecessary quotes."""
-        original = (
-            "---\ndescription: No quotes needed here\ntools: Bash, Read\n---\nBody\n"
-        )
-        md = tmp_path / "test.md"
-        md.write_text(original)
-        from frontmatter_utils import dump_frontmatter, load_frontmatter
+        from frontmatter_utils import dump_frontmatter, loads_frontmatter
 
-        post = load_frontmatter(md)
+        text = "---\ndescription: Simple value\nname: test-skill\n---\n\n# Body\n"
+        post = loads_frontmatter(text)
         result = dump_frontmatter(post)
-        assert "description: No quotes needed here" in result
-        assert '"No quotes needed here"' not in result
-        assert "'No quotes needed here'" not in result
 
-    def test_roundtrip_preserves_required_quotes(self, tmp_path: Path) -> None:
-        """Round-trip keeps quotes where YAML syntax demands them."""
-        original = '---\ndescription: "Contains: colon that needs quoting"\n---\nBody\n'
-        md = tmp_path / "test.md"
-        md.write_text(original)
-        from frontmatter_utils import dump_frontmatter, load_frontmatter
+        assert "description: Simple value" in result
+        assert "name: test-skill" in result
+        assert '"' not in result.split("---")[1]
+        assert "'" not in result.split("---")[1]
 
-        post = load_frontmatter(md)
+    def test_roundtrip_preserves_required_quotes(self) -> None:
+        """Round-trip keeps quotes where YAML demands them (colon-space)."""
+        from frontmatter_utils import dump_frontmatter, loads_frontmatter
+
+        text = '---\ndescription: "Has colon: in value"\n---\n\n# Body\n'
+        post = loads_frontmatter(text)
         result = dump_frontmatter(post)
-        # The colon-space in value means quotes are required
-        assert "Contains: colon that needs quoting" in result
 
-    def test_roundtrip_removes_unnecessary_quotes(self, tmp_path: Path) -> None:
+        lines = result.split("\n")
+        desc_line = next(line for line in lines if line.startswith("description:"))
+        assert "Has colon: in value" in desc_line
+        assert "'" in desc_line or '"' in desc_line
+
+    def test_roundtrip_removes_unnecessary_quotes(self) -> None:
         """Round-trip strips quotes that YAML does not require."""
-        original = '---\ndescription: "No special chars at all"\n---\nBody\n'
-        md = tmp_path / "test.md"
-        md.write_text(original)
-        from frontmatter_utils import dump_frontmatter, load_frontmatter
+        from frontmatter_utils import dump_frontmatter, loads_frontmatter
 
-        post = load_frontmatter(md)
+        text = '---\ndescription: "No special characters here"\n---\n\n# Body\n'
+        post = loads_frontmatter(text)
         result = dump_frontmatter(post)
-        # ruamel.yaml with preserve_quotes may keep them — verify behavior
-        # This test documents actual behavior
-        assert "No special chars at all" in result
+
+        lines = result.split("\n")
+        desc_line = next(line for line in lines if line.startswith("description:"))
+        assert desc_line == "description: No special characters here"
 
 
 class TestConvenienceAPI:
-    """Test load/dump/update convenience functions."""
+    """Tests for the module-level convenience functions."""
 
     def test_loads_frontmatter_from_string(self) -> None:
         """Parse frontmatter from a string."""
         from frontmatter_utils import loads_frontmatter
 
-        text = "---\ndescription: Test\nmodel: sonnet\n---\nContent here\n"
+        text = "---\nname: my-skill\ndescription: A test\n---\n\nContent here.\n"
         post = loads_frontmatter(text)
-        assert post["description"] == "Test"
-        assert post["model"] == "sonnet"
-        assert post.content == "Content here"
+
+        assert post.metadata["name"] == "my-skill"
+        assert post.metadata["description"] == "A test"
+        assert post.content == "Content here."
 
     def test_dumps_frontmatter_to_file(self, tmp_path: Path) -> None:
         """Write frontmatter post to a file."""
-        from frontmatter_utils import dumps_frontmatter, loads_frontmatter
+        from frontmatter_utils import (
+            dumps_frontmatter,
+            load_frontmatter,
+            loads_frontmatter,
+        )
 
-        text = "---\ndescription: Written to file\n---\nBody\n"
+        text = "---\nname: my-skill\n---\n\n# Body\n"
         post = loads_frontmatter(text)
-        out = tmp_path / "output.md"
-        dumps_frontmatter(post, out)
-        assert out.exists()
-        content = out.read_text()
-        assert "description: Written to file" in content
-        assert "Body" in content
+
+        target = tmp_path / "output.md"
+        dumps_frontmatter(post, target)
+
+        assert target.exists()
+        reloaded = load_frontmatter(target)
+        assert reloaded.metadata["name"] == "my-skill"
 
     def test_update_field_existing(self, tmp_path: Path) -> None:
         """Update an existing field without re-serializing everything."""
-        md = tmp_path / "test.md"
-        md.write_text("---\ndescription: Old value\ntools: Bash\n---\nBody\n")
         from frontmatter_utils import load_frontmatter, update_field
 
-        update_field(md, "description", "New value")
-        post = load_frontmatter(md)
-        assert post["description"] == "New value"
-        assert post["tools"] == "Bash"
+        md_file = tmp_path / "test.md"
+        md_file.write_text(
+            "---\nname: old-name\ndescription: Keep this\n---\n\n# Body\n"
+        )
+
+        update_field(md_file, "name", "new-name")
+
+        post = load_frontmatter(md_file)
+        assert post.metadata["name"] == "new-name"
+        assert post.metadata["description"] == "Keep this"
 
     def test_update_field_new(self, tmp_path: Path) -> None:
         """Add a new field that did not exist."""
-        md = tmp_path / "test.md"
-        md.write_text("---\ndescription: Existing\n---\nBody\n")
         from frontmatter_utils import load_frontmatter, update_field
 
-        update_field(md, "model", "sonnet")
-        post = load_frontmatter(md)
-        assert post["description"] == "Existing"
-        assert post["model"] == "sonnet"
+        md_file = tmp_path / "test.md"
+        md_file.write_text("---\nname: my-skill\n---\n\n# Body\n")
 
-    def test_body_content_preserved(self, tmp_path: Path) -> None:
+        update_field(md_file, "model", "sonnet")
+
+        post = load_frontmatter(md_file)
+        assert post.metadata["model"] == "sonnet"
+        assert post.metadata["name"] == "my-skill"
+
+    def test_body_content_preserved(self) -> None:
         """Markdown body with code blocks and special chars survives round-trip."""
-        body = "# Heading\n\nSome text with `code` and **bold**.\n\n```python\ndef foo():\n    pass\n```\n"
-        md = tmp_path / "test.md"
-        md.write_text(f"---\ndescription: Test\n---\n{body}")
-        from frontmatter_utils import dump_frontmatter, load_frontmatter
+        from frontmatter_utils import dump_frontmatter, loads_frontmatter
 
-        post = load_frontmatter(md)
+        body = "# Title\n\n```python\ndef foo():\n    return 'bar: baz'\n```\n\n> Quote with special chars: <>&"
+        text = f"---\nname: test\n---\n\n{body}\n"
+        post = loads_frontmatter(text)
         result = dump_frontmatter(post)
-        # Body content after the closing --- must match
-        body_part = result.split("---\n", 2)[2]
-        assert "```python" in body_part
-        assert "def foo():" in body_part
+
+        assert "def foo():" in result
+        assert "return 'bar: baz'" in result
+        assert "> Quote with special chars: <>&" in result
 
 
 class TestEdgeCases:
-    """Edge cases and error handling."""
+    """Tests for edge cases and boundary conditions."""
 
     def test_empty_file(self, tmp_path: Path) -> None:
         """Empty file does not crash."""
-        md = tmp_path / "empty.md"
-        md.write_text("")
         from frontmatter_utils import load_frontmatter
 
-        post = load_frontmatter(md)
-        assert dict(post.metadata) == {}
+        md_file = tmp_path / "empty.md"
+        md_file.write_text("")
 
-    def test_frontmatter_with_boolean_values(self, tmp_path: Path) -> None:
-        """Boolean-like strings in frontmatter are preserved as strings when quoted."""
-        md = tmp_path / "test.md"
-        md.write_text('---\ndescription: "true"\nuser-invocable: true\n---\nBody\n')
-        from frontmatter_utils import load_frontmatter
+        post = load_frontmatter(md_file)
+        assert post.metadata == {}
+        assert post.content == ""
 
-        post = load_frontmatter(md)
-        assert post["user-invocable"] is True
+    def test_frontmatter_with_boolean_values(self) -> None:
+        """Boolean-like strings preserved as strings when quoted, actual booleans as True."""
+        from frontmatter_utils import loads_frontmatter
 
-    def test_frontmatter_with_list_values(self, tmp_path: Path) -> None:
-        """List values in frontmatter are handled correctly."""
-        md = tmp_path / "test.md"
-        md.write_text(
-            "---\ndescription: Test\ntools:\n  - Bash\n  - Read\n  - Write\n---\nBody\n"
-        )
-        from frontmatter_utils import load_frontmatter
+        text = '---\nuser-invocable: true\nquoted_bool: "true"\n---\n\n# Body\n'
+        post = loads_frontmatter(text)
 
-        post = load_frontmatter(md)
-        assert post["tools"] == ["Bash", "Read", "Write"]
+        assert post.metadata["user-invocable"] is True
+        assert post.metadata["quoted_bool"] == "true"
 
-    def test_unicode_in_description(self, tmp_path: Path) -> None:
-        """Unicode characters survive round-trip."""
-        md = tmp_path / "test.md"
-        md.write_text(
-            "---\ndescription: Handles em\u2014dashes and curly \u201cquotes\u201d\n---\nBody\n"
-        )
-        from frontmatter_utils import dump_frontmatter, load_frontmatter
+    def test_frontmatter_with_list_values(self) -> None:
+        """List values handled correctly."""
+        from frontmatter_utils import loads_frontmatter
 
-        post = load_frontmatter(md)
+        text = "---\nitems:\n  - one\n  - two\n  - three\n---\n\n# Body\n"
+        post = loads_frontmatter(text)
+
+        assert post.metadata["items"] == ["one", "two", "three"]
+
+    def test_unicode_in_description(self) -> None:
+        """Unicode characters survive round-trip (em-dashes, curly quotes)."""
+        from frontmatter_utils import dump_frontmatter, loads_frontmatter
+
+        text = "---\ndescription: Uses em\u2014dash and \u201ccurly quotes\u201d\n---\n\n# Body\n"
+        post = loads_frontmatter(text)
         result = dump_frontmatter(post)
+
         assert "\u2014" in result
         assert "\u201c" in result
+        assert "\u201d" in result

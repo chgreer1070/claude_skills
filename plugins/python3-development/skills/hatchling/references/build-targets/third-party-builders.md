@@ -1,6 +1,6 @@
 ---
-name: "Hatchling Third-Party Builders"
-description: "Integrate specialized build systems: scikit-build-core for C/C++, maturin for Rust, language extensions, framework integration, and plugin patterns"
+name: Hatchling Third-Party Builders
+description: 'Integrate specialized build systems: scikit-build-core for C/C++, maturin for Rust, language extensions, framework integration, and plugin patterns'
 ---
 
 # Third-Party Builders

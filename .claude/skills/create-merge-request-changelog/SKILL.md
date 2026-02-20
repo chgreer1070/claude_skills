@@ -1,5 +1,5 @@
 ---
-description: 'Analyze git branches and generate comprehensive merge request descriptions with structured domain-based change categorization (bug fixes, enhancements, technical debt, documentation, testing). Use when preparing MR/PR descriptions, documenting branch changes, or analyzing git diffs for release notes. Works with any git repository without requiring JIRA or issue tracker integration.'
+description: Analyze git branches and generate comprehensive merge request descriptions with structured domain-based change categorization (bug fixes, enhancements, technical debt, documentation, testing). Use when preparing MR/PR descriptions, documenting branch changes, or analyzing git diffs for release notes. Works with any git repository without requiring JIRA or issue tracker integration.
 argument-hint: '[base-branch] [head-branch]'
 ---
 

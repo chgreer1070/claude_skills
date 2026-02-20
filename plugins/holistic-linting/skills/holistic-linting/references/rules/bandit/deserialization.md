@@ -189,56 +189,54 @@ config = yaml.load(untrusted_yaml)
 
 ### When This IS NOT a Vulnerability
 
-Using `yaml.safe_load()` is always safe:
+Using `ruamel.yaml` with `typ='safe'` is always safe:
 
 ```python
-import yaml
+from ruamel.yaml import YAML
 
+yaml = YAML(typ="safe")
 untrusted_yaml = open("user_config.yaml").read()
 
 # Safe - can't execute code
-config = yaml.safe_load(untrusted_yaml)
+config = yaml.load(untrusted_yaml)
 ```
 
 ### How to Fix
 
-**Use yaml.safe_load()**:
+**Use ruamel.yaml safe mode**:
 
 ```python
-import yaml
+from ruamel.yaml import YAML
 
-# WRONG - Default loader
+yaml = YAML(typ="safe")
+
+# WRONG - pyyaml default loader
+# config = yaml_module.load(config_string)
+
+# RIGHT - ruamel.yaml safe loader
 config = yaml.load(config_string)
-
-# RIGHT - Safe loader
-config = yaml.safe_load(config_string)
-
-# Also safe - explicit safe loader
-config = yaml.load(config_string, Loader=yaml.SafeLoader)
 ```
 
 **For Custom YAML Types**:
 
 ```python
-import yaml
+from ruamel.yaml import YAML
 from datetime import datetime
 
-class SafeYAML:
-    """Custom YAML loader with safe custom types."""
+def create_safe_yaml():
+    """Create ruamel.yaml instance with safe custom types."""
+    yaml = YAML(typ="safe")
 
-    @staticmethod
     def date_constructor(loader, node):
         value = loader.construct_scalar(node)
         return datetime.fromisoformat(value)
 
-    @staticmethod
-    def create_loader():
-        loader = yaml.SafeLoader
-        loader.add_constructor("!date", SafeYAML.date_constructor)
-        return loader
+    yaml.constructor.add_constructor("!date", date_constructor)
+    return yaml
 
 # Use custom safe loader
-config = yaml.load(config_string, Loader=SafeYAML.create_loader())
+yaml = create_safe_yaml()
+config = yaml.load(config_string)
 ```
 
 ---

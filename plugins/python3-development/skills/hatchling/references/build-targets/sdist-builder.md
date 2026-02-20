@@ -1,6 +1,6 @@
 ---
-name: "Hatchling Source Distribution Builder"
-description: "Build source distributions (sdist): file selection, VCS integration, reproducible builds, legacy support, and archive configuration"
+name: Hatchling Source Distribution Builder
+description: 'Build source distributions (sdist): file selection, VCS integration, reproducible builds, legacy support, and archive configuration'
 ---
 
 # Source Distribution Builder

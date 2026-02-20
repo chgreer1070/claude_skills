@@ -1,6 +1,7 @@
 ---
 description: Rules for orchestrators handling sub-agent results without lossy re-summarization. Activates when receiving agent output, relaying research results, passing data between agents, or combining agent findings. Prevents the failure mode where 'not found' becomes 'doesn't exist' and counts get dropped.
 ---
+
 # Agent Result Relay
 
 Rules for how orchestrators MUST handle sub-agent results to prevent information corruption in the relay chain.

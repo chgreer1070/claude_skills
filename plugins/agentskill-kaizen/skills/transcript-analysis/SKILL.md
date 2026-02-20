@@ -1,5 +1,5 @@
 ---
-description: 'This skill should be used when analyzing Claude Code session transcripts, reviewing agent performance, finding anti-patterns or tool misuse, detecting user frustration signals, mining workflow patterns, running kaizen analysis, debugging agent behavior, or performing session forensics. Provides JSONL schema with field paths, DuckDB SQL query patterns, 10 analysis dimensions, and PM4Py process mining methodology.'
+description: This skill should be used when analyzing Claude Code session transcripts, reviewing agent performance, finding anti-patterns or tool misuse, detecting user frustration signals, mining workflow patterns, running kaizen analysis, debugging agent behavior, or performing session forensics. Provides JSONL schema with field paths, DuckDB SQL query patterns, 10 analysis dimensions, and PM4Py process mining methodology.
 ---
 
 # Transcript Analysis

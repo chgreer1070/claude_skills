@@ -1,6 +1,6 @@
 ---
 name: post-linting-architecture-reviewer
-description: "Architectural review after linting-root-cause-resolver completes. Verifies resolution quality, examines artifacts in .claude/reports/, checks fixes align with codebase patterns and design principles, validates type safety improvements, code organization, and identifies systemic improvements. Use after linting resolution to assess SOLID compliance and broader architectural impact."
+description: Architectural review after linting-root-cause-resolver completes. Verifies resolution quality, examines artifacts in .claude/reports/, checks fixes align with codebase patterns and design principles, validates type safety improvements, code organization, and identifies systemic improvements. Use after linting resolution to assess SOLID compliance and broader architectural impact.
 model: inherit
 color: yellow
 ---

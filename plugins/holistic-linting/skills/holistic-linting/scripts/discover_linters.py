@@ -4,7 +4,7 @@
 # dependencies = [
 #     "typer>=0.21.0",
 #     "tomlkit>=0.13.0",
-#     "types-pyyaml>=6.0.0",
+#     "ruamel.yaml>=0.18.0",
 # ]
 # ///
 """Discover project linters and generate LINTERS section for CLAUDE.md.
@@ -27,6 +27,7 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from ruamel.yaml import YAML, YAMLError
 from tomlkit.exceptions import ParseError as TOMLParseError
 
 # Console setup
@@ -168,19 +169,11 @@ def scan_pre_commit_config(config_file: Path) -> list[LinterConfig]:
     Returns:
         List of discovered linter configurations
     """
-    try:
-        import yaml
-    except ImportError:
-        console.print(
-            "[yellow]Warning: pyyaml not installed, skipping .pre-commit-config.yaml[/yellow]"
-        )
-        return []
-
     linters: list[LinterConfig] = []
 
     try:
         with config_file.open(encoding="utf-8") as f:
-            config = yaml.safe_load(f)
+            config = YAML(typ="safe").load(f)
 
         for repo in config.get("repos", []):
             for hook in repo.get("hooks", []):
@@ -189,7 +182,7 @@ def scan_pre_commit_config(config_file: Path) -> list[LinterConfig]:
                 if linter_config:
                     linters.append(linter_config)
 
-    except (OSError, yaml.YAMLError, KeyError, TypeError) as e:
+    except (OSError, YAMLError, KeyError, TypeError) as e:
         console.print(
             f"[yellow]Warning: Failed to parse .pre-commit-config.yaml: {e}[/yellow]"
         )

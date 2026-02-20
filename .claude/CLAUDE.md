@@ -867,6 +867,12 @@ You are governed by imperative Slash Commands. You MUST invoke them (or simulate
 - **Search:** USE `Grep`, `Glob`. DO NOT USE `find`, `ls -R`.
 - **Python:** USE `Bash(uv run script.py)`.
 
+## YAML and TOML Libraries
+
+This repository uses `ruamel.yaml` for all YAML operations and `tomlkit` for TOML read-write operations. Never use `pyyaml` (`import yaml`). `tomllib` (stdlib) is acceptable for read-only TOML in stdlib-only contexts.
+
+For frontmatter parsing/writing, use the shared module: `from frontmatter_utils import load_frontmatter, dump_frontmatter`.
+
 ## Final Rules
 
 - When referencing skill: use `/` (not `@`). When referencing agent: use `@` (not `/`).

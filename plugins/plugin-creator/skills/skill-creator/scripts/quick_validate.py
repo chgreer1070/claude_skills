@@ -7,7 +7,10 @@ import re
 import sys
 from pathlib import Path
 
-import yaml
+from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
+
+_yaml = YAML(typ="safe")
 
 # Constants
 MAX_NAME_LENGTH = 64
@@ -45,10 +48,10 @@ def validate_skill(skill_path: str | Path) -> tuple[bool, str]:  # noqa: C901, P
 
     # Parse YAML frontmatter
     try:
-        frontmatter = yaml.safe_load(frontmatter_text)
+        frontmatter = _yaml.load(frontmatter_text)
         if not isinstance(frontmatter, dict):
             return False, "Frontmatter must be a YAML dictionary"
-    except yaml.YAMLError as e:
+    except YAMLError as e:
         return False, f"Invalid YAML in frontmatter: {e}"
 
     # Define allowed properties (all optional per January 2026 spec)

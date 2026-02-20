@@ -1,9 +1,9 @@
 ---
-title: "Post-Completion Validation Protocol"
-purpose: "Orchestrator guidance for verifying sub-agent task completion by commit type"
-source: "Synthesized from am-i-complete.md and is-it-done.md"
-version: "1.0.0"
-last_updated: "2025-11-15"
+title: Post-Completion Validation Protocol
+purpose: Orchestrator guidance for verifying sub-agent task completion by commit type
+source: Synthesized from am-i-complete.md and is-it-done.md
+version: 1.0.0
+last_updated: '2025-11-15'
 ---
 
 # Post-Completion Validation Protocol

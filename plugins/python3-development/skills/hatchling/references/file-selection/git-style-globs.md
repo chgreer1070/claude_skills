@@ -1,6 +1,6 @@
 ---
-description: "Git-style glob pattern syntax for Hatchling file selection. Covers pattern matching rules, anchoring, character classes, recursive matching, and differences from standard Unix glob patterns."
-keywords: ["glob patterns", "git-style", "pattern matching", "hatchling", "include", "exclude"]
+description: Git-style glob pattern syntax for Hatchling file selection. Covers pattern matching rules, anchoring, character classes, recursive matching, and differences from standard Unix glob patterns.
+keywords: [glob patterns, git-style, pattern matching, hatchling, include, exclude]
 ---
 
 # Git-Style Glob Patterns in Hatchling

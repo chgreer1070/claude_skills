@@ -1,13 +1,13 @@
 ---
-title: "python-box: Advanced Python Dictionaries with Dot Notation Access"
+title: 'python-box: Advanced Python Dictionaries with Dot Notation Access'
 library_name: python-box
 pypi_package: python-box
 category: data_structures
-python_compatibility: "3.9+"
-last_updated: "2025-11-02"
-official_docs: "https://github.com/cdgriffith/Box/wiki"
-official_repository: "https://github.com/cdgriffith/Box"
-maintenance_status: "active"
+python_compatibility: 3.9+
+last_updated: '2025-11-02'
+official_docs: https://github.com/cdgriffith/Box/wiki
+official_repository: https://github.com/cdgriffith/Box
+maintenance_status: active
 ---
 
 # python-box: Advanced Python Dictionaries with Dot Notation Access

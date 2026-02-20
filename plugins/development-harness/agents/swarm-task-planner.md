@@ -6,7 +6,7 @@ model: sonnet
 user-invocable: true
 disable-model-invocation: false
 skills: clear-cove-task-design
-whenToUse: '<example> Context: User has architecture document and needs execution plan. user: "Break down architecture.md into tasks for parallel agent execution" assistant: "I''ll use swarm-task-planner to create a dependency-based roadmap." </example> <example> Context: User has PRD and needs implementation plan. user: "Create a task plan from PRD.md for the team" assistant: "I''ll use swarm-task-planner to generate prioritized tasks with acceptance criteria." </example> <example> Context: User needs to coordinate multiple agents on a project. user: "Plan the work breakdown for this feature across multiple agents" assistant: "I''ll use swarm-task-planner to identify parallelization opportunities and sync points." </example>'
+whenToUse: "<example> Context: User has architecture document and needs execution plan. user: \"Break down architecture.md into tasks for parallel agent execution\" assistant: \"I'll use swarm-task-planner to create a dependency-based roadmap.\" </example> <example> Context: User has PRD and needs implementation plan. user: \"Create a task plan from PRD.md for the team\" assistant: \"I'll use swarm-task-planner to generate prioritized tasks with acceptance criteria.\" </example> <example> Context: User needs to coordinate multiple agents on a project. user: \"Plan the work breakdown for this feature across multiple agents\" assistant: \"I'll use swarm-task-planner to identify parallelization opportunities and sync points.\" </example>"
 ---
 
 # AI Agent Swarm Coordination Planner

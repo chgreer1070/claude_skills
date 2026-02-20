@@ -1,9 +1,9 @@
 ---
-task: "T23"
-title: "Verification and QA"
+task: T23
+title: Verification and QA
 status: not-started
-agent: "python-pytest-architect"
-dependencies: ["T19", "T20", "T21", "T22"]
+agent: python-pytest-architect
+dependencies: [T19, T20, T21, T22]
 priority: 5
 complexity: medium
 ---

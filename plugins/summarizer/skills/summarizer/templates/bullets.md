@@ -3,13 +3,14 @@ format_id: bullets
 format_name: Bullet Points
 description: Concise bulleted list of key findings with inline source references. No YAML frontmatter in output. Preserves fidelity through mandatory Not-Found and Uncertain bullets.
 fidelity_sections_required:
-  - Key Findings (bullets)
-  - Not Found (bullets)
-  - Uncertain (bullets)
+- Key Findings (bullets)
+- Not Found (bullets)
+- Uncertain (bullets)
 metadata_preserved:
-  - source_path
-  - confidence
+- source_path
+- confidence
 ---
+
 # Bullet Points Format
 
 Concise bulleted output for quick consumption. Each bullet is a self-contained finding with inline attribution.

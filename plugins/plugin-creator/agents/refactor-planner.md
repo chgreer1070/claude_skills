@@ -1,6 +1,6 @@
 ---
 name: refactor-planner
-description: "Analyze plugin structure and create comprehensive executable refactoring plans with prioritized tasks and parallelization strategy. Use when planning plugin refactoring, breaking down large refactoring efforts into executable tasks, splitting oversized skills that exceed validator token thresholds (SK006/SK007), or assessing plugin quality before systematic improvements. Identifies refactoring opportunities, maps dependencies, and generates task files for execution."
+description: Analyze plugin structure and create comprehensive executable refactoring plans with prioritized tasks and parallelization strategy. Use when planning plugin refactoring, breaking down large refactoring efforts into executable tasks, splitting oversized skills that exceed validator token thresholds (SK006/SK007), or assessing plugin quality before systematic improvements. Identifies refactoring opportunities, maps dependencies, and generates task files for execution.
 model: sonnet
 color: cyan
 ---

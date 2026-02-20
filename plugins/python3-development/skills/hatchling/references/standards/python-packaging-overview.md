@@ -1,14 +1,6 @@
 ---
 category: standards
-topics:
-  [
-    python-packaging,
-    pep-specifications,
-    pypa-standards,
-    version-identification,
-    dependency-specification,
-    build-backend,
-  ]
+topics: [python-packaging, pep-specifications, pypa-standards, version-identification, dependency-specification, build-backend]
 related: [pep-references.md, core-metadata.md, distribution-formats.md, dependency-formats.md, vcs-integration.md]
 ---
 

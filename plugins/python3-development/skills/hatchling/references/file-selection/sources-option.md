@@ -1,6 +1,6 @@
 ---
-description: "The sources configuration option for Hatchling builds. Explains path remapping, prefix removal and addition, multiple source roots, and how sources interact with other file selection options like include and packages."
-keywords: ["sources", "path mapping", "path remapping", "hatchling", "prefix", "path rewriting"]
+description: The sources configuration option for Hatchling builds. Explains path remapping, prefix removal and addition, multiple source roots, and how sources interact with other file selection options like include and packages.
+keywords: [sources, path mapping, path remapping, hatchling, prefix, path rewriting]
 ---
 
 # Sources Option - Path Mapping

@@ -1,15 +1,6 @@
 ---
 category: release-notes
-topics:
-  [
-    metadata-hooks,
-    version-sources,
-    dynamic-metadata,
-    version-management,
-    build-hooks,
-    dynamic-versioning,
-    configuration,
-  ]
+topics: [metadata-hooks, version-sources, dynamic-metadata, version-management, build-hooks, dynamic-versioning, configuration]
 related: [INDEX.md, RELEASE_NOTES.md, README.md, BUILD_HOOKS_AND_PERFORMANCE.md, PEP_639_LICENSE_METADATA.md]
 ---
 
@@ -247,7 +238,7 @@ class CustomMetadataHook:
 
     def dependencies(self):
         # Return list of packages needed for this hook
-        return ['requests>=2.0.0', 'pyyaml>=5.0']
+        return ['requests>=2.0.0', 'ruamel.yaml>=0.18']
 
     def update(self, metadata):
         # Metadata is now updated with hook dependencies

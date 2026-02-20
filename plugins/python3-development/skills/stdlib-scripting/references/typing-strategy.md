@@ -1,10 +1,10 @@
 ---
-title: "Typing Strategy Reference"
-description: "Guide for choosing Protocol, TypeVar, ParamSpec, or concrete types in stdlib-only scripts"
-version: "1.0.0"
-last_updated: "2026-02-15"
-document_type: "reference"
-python_compatibility: "3.11+"
+title: Typing Strategy Reference
+description: Guide for choosing Protocol, TypeVar, ParamSpec, or concrete types in stdlib-only scripts
+version: 1.0.0
+last_updated: '2026-02-15'
+document_type: reference
+python_compatibility: 3.11+
 ---
 
 # Typing Strategy Reference

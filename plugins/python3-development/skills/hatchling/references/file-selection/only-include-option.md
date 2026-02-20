@@ -1,6 +1,6 @@
 ---
-description: "The only-include configuration option for Hatchling builds. Explains how it differs from include patterns, its performance benefits, and when to use it for explicit path selection without directory traversal."
-keywords: ["only-include", "hatchling", "file selection", "explicit paths", "performance", "exact paths"]
+description: The only-include configuration option for Hatchling builds. Explains how it differs from include patterns, its performance benefits, and when to use it for explicit path selection without directory traversal.
+keywords: [only-include, hatchling, file selection, explicit paths, performance, exact paths]
 ---
 
 # Only-Include Option

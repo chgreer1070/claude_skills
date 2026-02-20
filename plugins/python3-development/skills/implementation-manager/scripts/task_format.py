@@ -16,7 +16,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
-import yaml
+from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
+
+_yaml = YAML(typ="safe")
 
 # =============================================================================
 # Constants
@@ -116,8 +119,8 @@ def parse_yaml_frontmatter(content: str) -> tuple[dict[str, Any], str]:
     body = parts[2]
 
     try:
-        parsed = yaml.safe_load(raw_yaml)
-    except yaml.YAMLError as exc:
+        parsed = _yaml.load(raw_yaml)
+    except YAMLError as exc:
         msg = f"YAML parsing failed: {exc}"
         raise ValueError(msg) from exc
     if not isinstance(parsed, dict):

@@ -1,13 +1,13 @@
 ---
-title: "Fabric: High-Level SSH Command Execution and Deployment"
+title: 'Fabric: High-Level SSH Command Execution and Deployment'
 library_name: fabric
 pypi_package: fabric
 category: ssh-automation
-python_compatibility: "3.6+"
-last_updated: "2025-11-02"
-official_docs: "https://docs.fabfile.org"
-official_repository: "https://github.com/fabric/fabric"
-maintenance_status: "stable"
+python_compatibility: 3.6+
+last_updated: '2025-11-02'
+official_docs: https://docs.fabfile.org
+official_repository: https://github.com/fabric/fabric
+maintenance_status: stable
 ---
 
 # Fabric: High-Level SSH Command Execution and Deployment

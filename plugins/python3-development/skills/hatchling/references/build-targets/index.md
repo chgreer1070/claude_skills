@@ -1,6 +1,6 @@
 ---
-name: "Hatchling Build Targets - Index"
-description: "Navigation guide to all Hatchling build target types with quick reference configuration examples"
+name: Hatchling Build Targets - Index
+description: Navigation guide to all Hatchling build target types with quick reference configuration examples
 ---
 
 # Hatchling Build Targets Reference

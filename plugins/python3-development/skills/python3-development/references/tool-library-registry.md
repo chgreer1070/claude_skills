@@ -1,13 +1,13 @@
 ---
-title: "Tool and Library Registry"
-version: "1.1.0"
-date: "2025-11-17"
-purpose: "Comprehensive registry of tools, libraries, and frameworks for opinionated Python development with template variable system for pyproject.toml"
+title: Tool and Library Registry
+version: 1.1.0
+date: '2025-11-17'
+purpose: Comprehensive registry of tools, libraries, and frameworks for opinionated Python development with template variable system for pyproject.toml
 sources:
-  - "skill-metadata/pattern-extraction.md (Section 3)"
-  - "skill-metadata/taxonomy.md (Section 8)"
-  - "skill-metadata/discovery/* (13 discovery reports)"
-python_versions: ["3.11", "3.12", "3.13", "3.14"]
+- skill-metadata/pattern-extraction.md (Section 3)
+- skill-metadata/taxonomy.md (Section 8)
+- skill-metadata/discovery/* (13 discovery reports)
+python_versions: ['3.11', '3.12', '3.13', '3.14']
 ---
 
 # Tool and Library Registry

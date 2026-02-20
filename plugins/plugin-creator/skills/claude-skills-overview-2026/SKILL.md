@@ -99,7 +99,7 @@ Skills use progressive disclosure - only frontmatter loads initially (~100 token
 
 ### YAML Multiline Bug
 
-**Use single-line quoted strings for descriptions** — Claude Code's skill indexer does not parse YAML multiline indicators (`>-`, `|`, `|-`) correctly; the description may appear as ">-" instead of actual content.
+**Use single-line strings for descriptions** — Claude Code's skill indexer does not parse YAML multiline indicators (`>-`, `|`, `|-`) correctly; the description may appear as ">-" instead of actual content. Quote the value only when YAML syntax requires it (colons, leading special characters, boolean literals).
 
 ```yaml
 # Correct — single quoted string

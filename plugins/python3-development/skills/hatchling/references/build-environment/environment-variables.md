@@ -1,8 +1,7 @@
 ---
 category: build-environment
 topics: [environment-variables, configuration, compiler-flags, build-control]
-related:
-  [build-environment-configuration.md, build-dependencies-management.md, cython-build-tools.md, uv-vs-pip-installer.md]
+related: [build-environment-configuration.md, build-dependencies-management.md, cython-build-tools.md, uv-vs-pip-installer.md]
 ---
 
 # Environment Variables

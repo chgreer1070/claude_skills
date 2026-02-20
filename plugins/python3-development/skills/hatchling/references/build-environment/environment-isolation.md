@@ -1,13 +1,7 @@
 ---
 category: build-environment
 topics: [isolation, reproducible-builds, virtual-environments, ci-cd]
-related:
-  [
-    build-environment-configuration.md,
-    build-dependencies-management.md,
-    environment-variables.md,
-    uv-vs-pip-installer.md,
-  ]
+related: [build-environment-configuration.md, build-dependencies-management.md, environment-variables.md, uv-vs-pip-installer.md]
 ---
 
 # Environment Isolation

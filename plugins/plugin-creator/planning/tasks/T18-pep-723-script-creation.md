@@ -1,13 +1,13 @@
 ---
-task: "T18"
-title: "PEP 723 Script Creation"
+task: T18
+title: PEP 723 Script Creation
 status: complete
-agent: "python-cli-architect"
-dependencies: ["T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"]
+agent: python-cli-architect
+dependencies: [T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]
 priority: 5
 complexity: low
-started: "2026-02-02T18:35:00Z"
-completed: "2026-02-02T18:35:00Z"
+started: '2026-02-02T18:35:00Z'
+completed: '2026-02-02T18:35:00Z'
 ---
 
 ## Context

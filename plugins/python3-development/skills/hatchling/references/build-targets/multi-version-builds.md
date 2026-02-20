@@ -1,6 +1,6 @@
 ---
-name: "Hatchling Multi-Version Builds"
-description: "Build multiple variants from one source: platform-specific wheels, feature variants, dev vs production, and version-specific configurations"
+name: Hatchling Multi-Version Builds
+description: 'Build multiple variants from one source: platform-specific wheels, feature variants, dev vs production, and version-specific configurations'
 ---
 
 # Multi-Version Build Support

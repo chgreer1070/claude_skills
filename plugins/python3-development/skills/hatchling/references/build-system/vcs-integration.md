@@ -1,16 +1,16 @@
 ---
 category: build-system
 topics:
-  - vcs-integration
-  - gitignore
-  - hgignore
-  - file-selection
-  - ignore-vcs
-  - artifacts
+- vcs-integration
+- gitignore
+- hgignore
+- file-selection
+- ignore-vcs
+- artifacts
 related:
-  - build-options
-  - file-selection
-  - artifacts
+- build-options
+- file-selection
+- artifacts
 ---
 
 # VCS Integration Guide for Claude

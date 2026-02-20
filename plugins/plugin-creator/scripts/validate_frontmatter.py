@@ -3,8 +3,8 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "typer>=0.21.0",
-#     "pyyaml>=6.0",
-#     "types-PyYAML>=6.0",
+#     "ruamel.yaml>=0.18.0",
+#     "python-frontmatter>=1.1.0",
 #     "pydantic>=2.0.0",
 # ]
 # ///
@@ -28,14 +28,19 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 import typer
-import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from ruamel.yaml import YAMLError
+
+# Make sibling module importable without package install
+sys.path.insert(0, str(Path(__file__).parent))
+from frontmatter_utils import RuamelYAMLHandler
 from rich.console import Console
 from rich.measure import Measurement
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -45,6 +50,9 @@ if TYPE_CHECKING:
 
 console = Console()
 error_console = Console(stderr=True)
+
+# Shared YAML handler backed by ruamel.yaml round-trip mode
+_yaml_handler = RuamelYAMLHandler()
 
 # Constants
 MIN_QUOTED_STRING_LENGTH = 2
@@ -447,8 +455,8 @@ def validate_and_normalize(
 
     # Parse YAML
     try:
-        data = yaml.safe_load(frontmatter_text)
-    except yaml.YAMLError as e:
+        data = _yaml_handler.load(frontmatter_text)
+    except YAMLError as e:
         issues.append(
             ValidationIssue(
                 field="(yaml)", severity="error", message=f"Invalid YAML syntax: {e}"
@@ -543,8 +551,8 @@ def apply_fixes(content: str, file_type: FileType) -> tuple[str, list[str]]:
 
     # Parse YAML
     try:
-        original_data = yaml.safe_load(frontmatter_text)
-    except yaml.YAMLError:
+        original_data = _yaml_handler.load(frontmatter_text)
+    except YAMLError:
         return content, []
 
     if not isinstance(original_data, dict):
@@ -593,16 +601,10 @@ def apply_fixes(content: str, file_type: FileType) -> tuple[str, list[str]]:
     if not fixes:
         return content, []
 
-    # Regenerate frontmatter with PyYAML
-    new_frontmatter = yaml.dump(
-        normalized_dict,
-        default_flow_style=False,
-        allow_unicode=True,
-        sort_keys=False,
-        width=10000,
-    )
+    # Regenerate frontmatter with ruamel.yaml via shared handler
+    new_frontmatter = _yaml_handler.export(normalized_dict)
 
-    return f"---\n{new_frontmatter}---\n{body}", fixes
+    return f"---\n{new_frontmatter}\n---\n{body}", fixes
 
 
 def get_git_remote_url(repo_path: Path) -> str | None:

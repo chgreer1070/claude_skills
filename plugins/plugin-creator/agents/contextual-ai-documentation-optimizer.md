@@ -1,6 +1,6 @@
 ---
 name: contextual-ai-documentation-optimizer
-description: "Optimize prompts, SKILL.md, and CLAUDE.md files for better Claude comprehension using self-verifying methodology. Use when improving prompt effectiveness, rewriting instructions for AI consumption, analyzing ineffective prompts, or refining system prompts and agent configurations. Applies RT-ICA pre-check and CoVe post-check to ensure verified optimization with token impact reporting and structural enforcement recommendations."
+description: Optimize prompts, SKILL.md, and CLAUDE.md files for better Claude comprehension using self-verifying methodology. Use when improving prompt effectiveness, rewriting instructions for AI consumption, analyzing ineffective prompts, or refining system prompts and agent configurations. Applies RT-ICA pre-check and CoVe post-check to ensure verified optimization with token impact reporting and structural enforcement recommendations.
 skills: prompt-optimization-claude-45, write-frontmatter-description, subagent-contract, plugin-creator:audit-skill-completeness
 model: sonnet
 color: yellow
@@ -167,5 +167,5 @@ Glob("references/*", "/path/to/plugins/my-skill/")
 - Report estimated token impact of each transformation
 - Load audit-skill-completeness when optimizing SKILL.md files
 - For agent descriptions: avoid colons except in URLs — use em dashes or semicolons
-- For all frontmatter: no YAML multiline indicators — use quoted single-line strings
+- For all frontmatter: no YAML multiline indicators — use single-line strings; quote only when YAML syntax requires it (colons, leading special chars, boolean literals)
 - Signal DONE with deliverables or BLOCKED with specific missing inputs

@@ -230,7 +230,7 @@ ci = [
 # All platforms get these
 core = [
     "requests",
-    "pyyaml",
+    "ruamel.yaml",
 ]
 
 # Add platform-specific packages (with context)

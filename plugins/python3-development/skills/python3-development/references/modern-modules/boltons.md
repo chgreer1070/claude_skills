@@ -1,13 +1,13 @@
 ---
-title: "Boltons: Pure-Python Standard Library Extensions"
+title: 'Boltons: Pure-Python Standard Library Extensions'
 library_name: boltons
 pypi_package: boltons
 category: utilities
-python_compatibility: "3.7+"
-last_updated: "2025-11-02"
-official_docs: "https://boltons.readthedocs.io"
-official_repository: "https://github.com/mahmoud/boltons"
-maintenance_status: "active"
+python_compatibility: 3.7+
+last_updated: '2025-11-02'
+official_docs: https://boltons.readthedocs.io
+official_repository: https://github.com/mahmoud/boltons
+maintenance_status: active
 ---
 
 # Boltons: Pure-Python Standard Library Extensions

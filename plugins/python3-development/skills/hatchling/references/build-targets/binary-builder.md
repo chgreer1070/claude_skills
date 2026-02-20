@@ -1,6 +1,6 @@
 ---
-name: "Hatchling Binary Builder"
-description: "Create standalone executables from Python applications: PyApp integration, cross-compilation, multi-version binaries, and distribution strategies"
+name: Hatchling Binary Builder
+description: 'Create standalone executables from Python applications: PyApp integration, cross-compilation, multi-version binaries, and distribution strategies'
 ---
 
 # Binary Builder

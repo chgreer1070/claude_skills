@@ -1,6 +1,6 @@
 ---
 name: refactor-validator
-description: "Validate plugin refactoring completeness — verifies task completion, plugin structure integrity, and regression absence. Use when refactoring results need verification, when checking refactoring goals were achieved without content loss, when checking for regressions after changes, or when validating plugin structure after systematic improvements. Runs plugin_validator.py and generates comprehensive validation reports with quality metrics."
+description: Validate plugin refactoring completeness — verifies task completion, plugin structure integrity, and regression absence. Use when refactoring results need verification, when checking refactoring goals were achieved without content loss, when checking for regressions after changes, or when validating plugin structure after systematic improvements. Runs plugin_validator.py and generates comprehensive validation reports with quality metrics.
 model: sonnet
 color: yellow
 ---
@@ -62,7 +62,7 @@ You are a refactoring validation specialist responsible for verifying that refac
 - [ ] Skill frontmatter: `description` field is present and contains trigger keywords
 - [ ] Skill frontmatter: tool restrictions use `allowed-tools` field (comma-separated string), NOT `tools`
 - [ ] No YAML multiline indicators (`>-`, `|-`) in any frontmatter `description` field
-- [ ] Description is single-line quoted string, not multiline
+- [ ] Description is single-line string (quoted only if YAML syntax requires — colons, leading special chars, boolean literals); not multiline
 - [ ] Progressive disclosure used for complex skills (references/, examples/, scripts/)
 - [ ] No duplicate content across skills
 

@@ -1,13 +1,13 @@
 ---
-task: "T8"
-title: "InternalLinkValidator"
+task: T8
+title: InternalLinkValidator
 status: complete
-agent: "python-cli-architect"
-dependencies: ["T2"]
+agent: python-cli-architect
+dependencies: [T2]
 priority: 2
 complexity: medium
-started: "2026-02-02T16:45:00Z"
-completed: "2026-02-02T17:30:00Z"
+started: '2026-02-02T16:45:00Z'
+completed: '2026-02-02T17:30:00Z'
 ---
 
 ## Context

@@ -1,13 +1,13 @@
 ---
-title: "Blinker: Fast Signal/Event Dispatching System"
+title: 'Blinker: Fast Signal/Event Dispatching System'
 library_name: blinker
 pypi_package: blinker
 category: event-system
-python_compatibility: "3.8+"
-last_updated: "2025-11-02"
-official_docs: "https://blinker.readthedocs.io"
-official_repository: "https://github.com/pallets-eco/blinker"
-maintenance_status: "active"
+python_compatibility: 3.8+
+last_updated: '2025-11-02'
+official_docs: https://blinker.readthedocs.io
+official_repository: https://github.com/pallets-eco/blinker
+maintenance_status: active
 ---
 
 # Blinker: Fast Signal/Event Dispatching System

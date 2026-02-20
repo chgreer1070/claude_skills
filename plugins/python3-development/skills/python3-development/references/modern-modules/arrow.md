@@ -1,13 +1,13 @@
 ---
-title: "Arrow - Better Dates & Times for Python"
+title: Arrow - Better Dates & Times for Python
 library_name: arrow
 pypi_package: arrow
 category: datetime
-python_compatibility: "3.8+"
-last_updated: "2025-11-02"
-official_docs: "https://arrow.readthedocs.io"
-official_repository: "https://github.com/arrow-py/arrow"
-maintenance_status: "active"
+python_compatibility: 3.8+
+last_updated: '2025-11-02'
+official_docs: https://arrow.readthedocs.io
+official_repository: https://github.com/arrow-py/arrow
+maintenance_status: active
 ---
 
 # Arrow - Better Dates & Times for Python

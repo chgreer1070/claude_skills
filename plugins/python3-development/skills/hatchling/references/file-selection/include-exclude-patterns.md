@@ -1,6 +1,6 @@
 ---
-description: "Include and exclude pattern configuration for Hatchling builds. Explains how to use include/exclude options, precedence rules, pattern combination strategies, and target-specific configuration for wheel and sdist builds."
-keywords: ["include patterns", "exclude patterns", "hatchling", "precedence", "file selection", "build targets"]
+description: Include and exclude pattern configuration for Hatchling builds. Explains how to use include/exclude options, precedence rules, pattern combination strategies, and target-specific configuration for wheel and sdist builds.
+keywords: [include patterns, exclude patterns, hatchling, precedence, file selection, build targets]
 ---
 
 # Include and Exclude Patterns

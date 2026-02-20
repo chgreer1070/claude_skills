@@ -1,7 +1,6 @@
 ---
 category: release-notes
-topics:
-  [build-hooks, performance, optimization, file-selection, directory-traversal, metadata-optimization, best-practices]
+topics: [build-hooks, performance, optimization, file-selection, directory-traversal, metadata-optimization, best-practices]
 related: [INDEX.md, RELEASE_NOTES.md, README.md, METADATA_HOOKS_AND_VERSION_SOURCES.md]
 ---
 

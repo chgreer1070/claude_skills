@@ -1,6 +1,6 @@
 ---
 name: backlog-item-groomer
-description: "Produce a context manifest for a backlog item — discovers related skills, agents, prior work, and dependency graph; performs RT-ICA assessment if not pre-computed by orchestrator. Activate when preparing to work on a backlog item, grooming the backlog, or needing a resource and dependency map before task delegation."
+description: Produce a context manifest for a backlog item — discovers related skills, agents, prior work, and dependency graph; performs RT-ICA assessment if not pre-computed by orchestrator. Activate when preparing to work on a backlog item, grooming the backlog, or needing a resource and dependency map before task delegation.
 tools: Glob, Grep, Read
 model: haiku
 ---

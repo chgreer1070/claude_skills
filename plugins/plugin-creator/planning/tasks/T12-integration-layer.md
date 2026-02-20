@@ -1,13 +1,13 @@
 ---
-task: "T12"
-title: "Integration Layer"
+task: T12
+title: Integration Layer
 status: complete
-agent: "python-cli-architect"
-dependencies: ["T9"]
+agent: python-cli-architect
+dependencies: [T9]
 priority: 3
 complexity: low
-started: "2026-02-02T18:00:00Z"
-completed: "2026-02-02T19:15:00Z"
+started: '2026-02-02T18:00:00Z'
+completed: '2026-02-02T19:15:00Z'
 ---
 
 ## Context

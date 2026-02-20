@@ -1,13 +1,13 @@
 ---
-task: "T2"
-title: "Validator Protocol Definition"
+task: T2
+title: Validator Protocol Definition
 status: complete
-agent: "python-cli-architect"
-dependencies: ["T1"]
+agent: python-cli-architect
+dependencies: [T1]
 priority: 1
 complexity: low
-started: "2026-02-02T15:35:00Z"
-completed: "2026-02-02T15:40:00Z"
+started: '2026-02-02T15:35:00Z'
+completed: '2026-02-02T15:40:00Z'
 ---
 
 ## Context

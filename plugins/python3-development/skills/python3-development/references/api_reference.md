@@ -1,9 +1,9 @@
 ---
-title: "API Reference Template"
-description: "Template for detailed reference documentation"
-version: "1.0.0"
-last_updated: "2025-11-02"
-document_type: "template"
+title: API Reference Template
+description: Template for detailed reference documentation
+version: 1.0.0
+last_updated: '2025-11-02'
+document_type: template
 ---
 
 # Reference Documentation for Python3 Development

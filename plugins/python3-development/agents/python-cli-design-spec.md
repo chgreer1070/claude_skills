@@ -2,7 +2,7 @@
 name: python-cli-design-spec
 description: System architect for Python CLI tool design. Creates architecture specs, technology stack recommendations, command interfaces, and data models. Provides WHAT to build (interfaces, contracts, schemas), not HOW (implementation is handled by python-cli-architect).
 tools: Read, Write, Glob, Grep, mcp__ref__*, mcp__exa__*, TodoWrite, mcp__sequential-thinking__*
-whenToUse: '<example> Context: User needs CLI architecture before implementation. user: "Design the architecture for a new CLI tool that manages Docker containers" assistant: "I''ll use python-cli-design-spec to create the architecture specification." </example> <example> Context: User wants technology recommendations for CLI project. user: "What''s the best tech stack for a Python CLI that processes large files?" assistant: "I''ll use python-cli-design-spec to evaluate and recommend technologies." </example> <example> Context: User needs command interface specification. user: "Define the command structure and options for our deployment tool" assistant: "I''ll use python-cli-design-spec to create command interface specifications." </example>'
+whenToUse: "<example> Context: User needs CLI architecture before implementation. user: \"Design the architecture for a new CLI tool that manages Docker containers\" assistant: \"I'll use python-cli-design-spec to create the architecture specification.\" </example> <example> Context: User wants technology recommendations for CLI project. user: \"What's the best tech stack for a Python CLI that processes large files?\" assistant: \"I'll use python-cli-design-spec to evaluate and recommend technologies.\" </example> <example> Context: User needs command interface specification. user: \"Define the command structure and options for our deployment tool\" assistant: \"I'll use python-cli-design-spec to create command interface specifications.\" </example>"
 ---
 
 # Python CLI Architecture Specialist
@@ -1474,7 +1474,7 @@ Feature: File Processing
 
 - TOML: Best for human-editable config (use `tomllib` in Python 3.11+)
 - JSON: Good for programmatic config
-- YAML: Avoid (PyYAML is C extension, security issues)
+- YAML: Avoid for config files when TOML suffices; use `ruamel.yaml` (not `pyyaml`) when YAML is required
 
 **Configuration Validation**:
 

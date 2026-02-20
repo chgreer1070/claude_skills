@@ -1,8 +1,7 @@
 ---
 category: integration
 topics: [pep-compliance, migration, tool-integration, extensions]
-related:
-  [pep-standards.md, legacy-setup-py.md, setuptools-compatibility.md, cmake-scikit-build.md, extension-modules.md]
+related: [pep-standards.md, legacy-setup-py.md, setuptools-compatibility.md, cmake-scikit-build.md, extension-modules.md]
 ---
 
 # Integration & Compatibility Guide

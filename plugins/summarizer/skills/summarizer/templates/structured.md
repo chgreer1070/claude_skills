@@ -3,22 +3,23 @@ format_id: structured
 format_name: Structured Summary
 description: Full structured summary with YAML frontmatter, five mandatory sections, and inline source references. Default format when no format is specified.
 fidelity_sections_required:
-  - Summary
-  - What Was Found
-  - What Was NOT Found
-  - Uncertain
-  - Sources
+- Summary
+- What Was Found
+- What Was NOT Found
+- Uncertain
+- Sources
 metadata_preserved:
-  - source_type
-  - source_path
-  - summarized_at
-  - method
-  - word_count_source
-  - word_count_summary
-  - compression_ratio
-  - confidence
-  - confidence_notes
+- source_type
+- source_path
+- summarized_at
+- method
+- word_count_source
+- word_count_summary
+- compression_ratio
+- confidence
+- confidence_notes
 ---
+
 # Structured Summary Format
 
 Default output format for all summarization operations. Produces a complete, machine-parseable summary with YAML frontmatter and five mandatory body sections.

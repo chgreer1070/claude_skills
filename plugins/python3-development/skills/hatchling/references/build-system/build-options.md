@@ -1,17 +1,17 @@
 ---
 category: build-system
 topics:
-  - tool-hatch-build
-  - build-configuration
-  - file-selection
-  - artifacts
-  - force-include
-  - dev-mode
+- tool-hatch-build
+- build-configuration
+- file-selection
+- artifacts
+- force-include
+- dev-mode
 related:
-  - output-directory
-  - reproducible-builds
-  - vcs-integration
-  - build-targets
+- output-directory
+- reproducible-builds
+- vcs-integration
+- build-targets
 ---
 
 # Build Options Configuration Guide for Claude
@@ -236,7 +236,7 @@ enable-by-default = true
 
 # Pass configuration to hooks
 option1 = "value1"
-dependencies = ["requests", "pyyaml"]
+dependencies = ["requests", "ruamel.yaml"]
 
 [tool.hatch.build.hooks.version]
 # Version hook configuration

@@ -1,13 +1,13 @@
 ---
-title: "httpx - Next Generation HTTP Client for Python"
+title: httpx - Next Generation HTTP Client for Python
 library_name: httpx
 pypi_package: httpx
 category: http_client
-python_compatibility: "3.9+"
-last_updated: "2025-11-02"
-official_docs: "https://www.python-httpx.org"
-official_repository: "https://github.com/encode/httpx"
-maintenance_status: "active"
+python_compatibility: 3.9+
+last_updated: '2025-11-02'
+official_docs: https://www.python-httpx.org
+official_repository: https://github.com/encode/httpx
+maintenance_status: active
 ---
 
 # httpx - Next Generation HTTP Client for Python

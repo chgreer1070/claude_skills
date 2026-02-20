@@ -1,13 +1,13 @@
 ---
-title: "shiv: Python Zipapp Builder for Self-Contained Applications"
+title: 'shiv: Python Zipapp Builder for Self-Contained Applications'
 library_name: shiv
 pypi_package: shiv
 category: packaging-distribution
-python_compatibility: "3.8+"
-last_updated: "2025-11-02"
-official_docs: "https://shiv.readthedocs.io"
-official_repository: "https://github.com/linkedin/shiv"
-maintenance_status: "active"
+python_compatibility: 3.8+
+last_updated: '2025-11-02'
+official_docs: https://shiv.readthedocs.io
+official_repository: https://github.com/linkedin/shiv
+maintenance_status: active
 ---
 
 # shiv
@@ -133,7 +133,7 @@ shiv -c myapp -o myapp.pyz myapp
 
 ```bash
 # Bundle multiple packages
-shiv -o toolkit.pyz requests click pyyaml
+shiv -o toolkit.pyz requests click ruamel.yaml
 ```
 
 **From requirements.txt:**

@@ -1,8 +1,8 @@
 ---
 name: generate-hooks
-description: "Produce hook scripts from discovered anti-patterns — drafts by default, --install writes to settings"
-argument-hint: "[--install] [--from <analysis-file>]"
-allowed-tools: "Read,Write,Edit,Glob,Grep,Task"
+description: Produce hook scripts from discovered anti-patterns — drafts by default, --install writes to settings
+argument-hint: '[--install] [--from <analysis-file>]'
+allowed-tools: Read,Write,Edit,Glob,Grep,Task
 ---
 
 Generate Claude Code hook configurations from kaizen analysis findings. Translates discovered anti-patterns into automated prevention hooks.

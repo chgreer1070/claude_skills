@@ -1,5 +1,5 @@
 ---
-description: 'SAM Stage 1 — Structured requirements gathering through discussion with user. Produces the DISCOVERY artifact containing feature requirements, NFRs, goals, anti-goals, references, and resolved questions. Use when starting a new feature or gathering requirements.'
+description: SAM Stage 1 — Structured requirements gathering through discussion with user. Produces the DISCOVERY artifact containing feature requirements, NFRs, goals, anti-goals, references, and resolved questions. Use when starting a new feature or gathering requirements.
 user-invocable: true
 model: sonnet
 ---

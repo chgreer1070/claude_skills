@@ -1,13 +1,13 @@
 ---
-task: "T3"
-title: "Port FrontmatterValidator"
+task: T3
+title: Port FrontmatterValidator
 status: complete
-agent: "python-cli-architect"
-dependencies: ["T2"]
+agent: python-cli-architect
+dependencies: [T2]
 priority: 1
 complexity: high
-started: "2026-02-02T15:45:00Z"
-completed: "2026-02-02T16:00:00Z"
+started: '2026-02-02T15:45:00Z'
+completed: '2026-02-02T16:00:00Z'
 ---
 
 ## Context

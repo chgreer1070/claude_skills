@@ -1,5 +1,5 @@
 ---
-description: 'Use when refactoring is complete and needs validation. Performs holistic review of completed plugin refactoring, validates improvements against original assessment score, checks for documentation drift, and creates follow-up task files if issues remain'
+description: Use when refactoring is complete and needs validation. Performs holistic review of completed plugin refactoring, validates improvements against original assessment score, checks for documentation drift, and creates follow-up task files if issues remain
 argument-hint: <task-file-path>
 model: sonnet
 user-invocable: true

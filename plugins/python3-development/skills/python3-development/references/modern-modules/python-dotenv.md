@@ -1,13 +1,13 @@
 ---
-title: "python-dotenv: Environment Variable Management for Python"
+title: 'python-dotenv: Environment Variable Management for Python'
 library_name: python-dotenv
 pypi_package: python-dotenv
 category: configuration
-python_compatibility: "3.9+"
-last_updated: "2025-11-02"
-official_docs: "https://github.com/theskumar/python-dotenv#readme"
-official_repository: "https://github.com/theskumar/python-dotenv"
-maintenance_status: "active"
+python_compatibility: 3.9+
+last_updated: '2025-11-02'
+official_docs: https://github.com/theskumar/python-dotenv#readme
+official_repository: https://github.com/theskumar/python-dotenv
+maintenance_status: active
 ---
 
 # python-dotenv: Environment Variable Management for Python

@@ -1,6 +1,6 @@
 ---
-description: "The force-include configuration option for Hatchling builds. Explains highest precedence behavior, flexible source path formats, exact mapping requirements, security considerations, and use cases for including external files."
-keywords: ["force-include", "hatchling", "external files", "highest precedence", "file mapping", "build configuration"]
+description: The force-include configuration option for Hatchling builds. Explains highest precedence behavior, flexible source path formats, exact mapping requirements, security considerations, and use cases for including external files.
+keywords: [force-include, hatchling, external files, highest precedence, file mapping, build configuration]
 ---
 
 # Force-Include Option

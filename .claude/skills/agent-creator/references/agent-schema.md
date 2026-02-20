@@ -49,8 +49,9 @@ description: >-
   This is a multiline
   description that breaks.
 
-# CORRECT - single quoted string
-description: 'This works correctly. Use single quotes for descriptions with special characters or keep on one line.'
+# CORRECT - single-line string; quote only when YAML syntax requires it (colons, leading special chars, boolean literals)
+description: This works correctly without quotes when no special characters are present.
+description: 'This works correctly. Quote when the value contains colons or other YAML-special characters.'
 ```
 
 ---

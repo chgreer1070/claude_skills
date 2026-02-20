@@ -1,5 +1,5 @@
 ---
-description: "Groom backlog items — trigger /groom-backlog-item <title|section|all> — runs RT-ICA per item then spawns @backlog-item-groomer agents to discover research, skills, agents, prior work, and dependencies. Produces context manifests and grooming report. Use when preparing backlog items for planning or execution."
+description: Groom backlog items — trigger /groom-backlog-item <title|section|all> — runs RT-ICA per item then spawns @backlog-item-groomer agents to discover research, skills, agents, prior work, and dependencies. Produces context manifests and grooming report. Use when preparing backlog items for planning or execution.
 argument-hint: <item-title-or-section-or-all>
 user-invocable: true
 ---

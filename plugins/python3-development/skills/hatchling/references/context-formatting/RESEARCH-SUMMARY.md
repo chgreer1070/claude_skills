@@ -1,15 +1,7 @@
 ---
 category: Research & Reference
 topics: [context-formatting, dynamic-configuration, research-summary, evidence-based, hatchling]
-related:
-  [
-    README.md,
-    global-fields.md,
-    environment-fields.md,
-    optional-dependencies.md,
-    dynamic-configuration.md,
-    configuration-interpolation.md,
-  ]
+related: [README.md, global-fields.md, environment-fields.md, optional-dependencies.md, dynamic-configuration.md, configuration-interpolation.md]
 ---
 
 # Research Summary: Context Formatting & Dynamic Configuration in Hatchling

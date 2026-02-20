@@ -1,6 +1,6 @@
 ---
-description: "Pattern precedence rules for Hatchling file selection. Explains the five-level precedence hierarchy from force-include (highest) to VCS ignore files (lowest), with examples and algorithms for understanding resolution order."
-keywords: ["precedence", "hatchling", "force-include", "exclude", "file selection", "pattern resolution"]
+description: Pattern precedence rules for Hatchling file selection. Explains the five-level precedence hierarchy from force-include (highest) to VCS ignore files (lowest), with examples and algorithms for understanding resolution order.
+keywords: [precedence, hatchling, force-include, exclude, file selection, pattern resolution]
 ---
 
 # Pattern Precedence in Hatchling

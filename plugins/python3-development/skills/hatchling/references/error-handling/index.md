@@ -1,16 +1,7 @@
 ---
 category: Error Handling
 topics: [error-handling, validation, troubleshooting, build-errors, resolution-strategies]
-related:
-  [
-    ./path-validation.md,
-    ./wheel-file-selection.md,
-    ./version-validation.md,
-    ./spdx-validation.md,
-    ./metadata-compatibility.md,
-    ./heuristic-failures.md,
-    ./build-validation.md,
-  ]
+related: [./path-validation.md, ./wheel-file-selection.md, ./version-validation.md, ./spdx-validation.md, ./metadata-compatibility.md, ./heuristic-failures.md, ./build-validation.md]
 ---
 
 # Hatchling Error Handling & Validation Reference

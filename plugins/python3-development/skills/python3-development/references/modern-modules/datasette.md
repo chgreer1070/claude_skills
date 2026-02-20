@@ -1,13 +1,13 @@
 ---
-title: "Datasette: Instant JSON API for Your SQLite Data"
+title: 'Datasette: Instant JSON API for Your SQLite Data'
 library_name: datasette
 pypi_package: datasette
 category: data_exploration
-python_compatibility: "3.10+"
-last_updated: "2025-11-02"
-official_docs: "https://docs.datasette.io"
-official_repository: "https://github.com/simonw/datasette"
-maintenance_status: "active"
+python_compatibility: 3.10+
+last_updated: '2025-11-02'
+official_docs: https://docs.datasette.io
+official_repository: https://github.com/simonw/datasette
+maintenance_status: active
 ---
 
 # Datasette - Instant Data Publishing and Exploration

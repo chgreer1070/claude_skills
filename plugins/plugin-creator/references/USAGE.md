@@ -610,7 +610,7 @@ echo "✅ Pre-release validation passed"
 3. Validate YAML with external tool:
 
 ```bash
-python3 -c "import yaml; yaml.safe_load(open('SKILL.md').read().split('---')[1])"
+python3 -c "from ruamel.yaml import YAML; y = YAML(typ='safe'); y.load(open('SKILL.md').read().split('---')[1])"
 ```
 
 ### Issue: "Token count exceeds 6400" but file looks reasonable

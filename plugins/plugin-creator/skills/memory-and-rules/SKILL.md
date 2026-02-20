@@ -1,5 +1,5 @@
 ---
-description: 'Configure and manage Claude Code persistent memory (CLAUDE.md, auto memory, rules) across sessions. Use when setting up project memory, organizing .claude/rules/, managing auto memory files, creating CLAUDE.md with imports, debugging memory loading, or advising on memory hierarchy and best practices.'
+description: Configure and manage Claude Code persistent memory (CLAUDE.md, auto memory, rules) across sessions. Use when setting up project memory, organizing .claude/rules/, managing auto memory files, creating CLAUDE.md with imports, debugging memory loading, or advising on memory hierarchy and best practices.
 user-invocable: true
 ---
 

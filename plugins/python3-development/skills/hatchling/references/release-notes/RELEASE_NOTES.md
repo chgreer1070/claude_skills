@@ -1,14 +1,7 @@
 ---
 category: release-notes
 topics: [hatchling, changelog, releases, breaking-changes, deprecations, features, versions, all-versions]
-related:
-  [
-    INDEX.md,
-    README.md,
-    PEP_639_LICENSE_METADATA.md,
-    METADATA_HOOKS_AND_VERSION_SOURCES.md,
-    BUILD_HOOKS_AND_PERFORMANCE.md,
-  ]
+related: [INDEX.md, README.md, PEP_639_LICENSE_METADATA.md, METADATA_HOOKS_AND_VERSION_SOURCES.md, BUILD_HOOKS_AND_PERFORMANCE.md]
 ---
 
 # Hatchling Release Notes & Version History

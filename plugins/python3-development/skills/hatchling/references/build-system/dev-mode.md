@@ -1,15 +1,15 @@
 ---
 category: build-system
 topics:
-  - dev-mode
-  - editable-installs
-  - development-mode
-  - pip-editable
-  - dev-mode-dirs
+- dev-mode
+- editable-installs
+- development-mode
+- pip-editable
+- dev-mode-dirs
 related:
-  - build-options
-  - editable-installs
-  - build-environment
+- build-options
+- editable-installs
+- build-environment
 ---
 
 # Development Mode Configuration Guide for Claude

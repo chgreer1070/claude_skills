@@ -1,8 +1,8 @@
 ---
 name: analyze
-description: "Run autonomous transcript analysis pipeline across sessions"
-argument-hint: "[--project <name>] [--dimensions <list>]"
-allowed-tools: "Read,Write,Glob,Grep,Bash,Task"
+description: Run autonomous transcript analysis pipeline across sessions
+argument-hint: '[--project <name>] [--dimensions <list>]'
+allowed-tools: Read,Write,Glob,Grep,Bash,Task
 ---
 
 Run the autonomous transcript analysis pipeline. Spawn the @transcript-analyst agent to query JSONL session data, detect anti-patterns, and write structured findings.

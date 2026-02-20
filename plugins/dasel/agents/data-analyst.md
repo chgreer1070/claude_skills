@@ -1,6 +1,6 @@
 ---
 name: data-analyst
-description: "Structural analysis agent for schema comparison, pattern detection, cross-file relationship analysis, and migration planning across JSON, YAML, TOML, XML, CSV — handles schema drift detection, multi-file diffing, and batch analysis; includes enterprise XML domain patterns for InstallAnywhere .iap_xml, Spring bean XML, Maven POM, Hibernate HBM, and Tomcat web.xml"
+description: Structural analysis agent for schema comparison, pattern detection, cross-file relationship analysis, and migration planning across JSON, YAML, TOML, XML, CSV — handles schema drift detection, multi-file diffing, and batch analysis; includes enterprise XML domain patterns for InstallAnywhere .iap_xml, Spring bean XML, Maven POM, Hibernate HBM, and Tomcat web.xml
 tools: Read, Bash, Write, Edit, Grep, Glob
 model: sonnet
 color: cyan

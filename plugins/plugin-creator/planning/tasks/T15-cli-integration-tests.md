@@ -1,12 +1,12 @@
 ---
-task: "T15"
-title: "CLI Integration Tests"
+task: T15
+title: CLI Integration Tests
 status: complete
-agent: "python-pytest-architect"
-dependencies: ["T13"]
+agent: python-pytest-architect
+dependencies: [T13]
 priority: 4
 complexity: low
-completed: "2026-02-04T18:43:16Z"
+completed: '2026-02-04T18:43:16Z'
 ---
 
 ## Context

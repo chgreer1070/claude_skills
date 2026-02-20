@@ -1,14 +1,7 @@
 ---
 category: Context Formatting & Dynamic Configuration
 topics: [context-formatting, dynamic-fields, configuration-interpolation, dependencies, metadata-hooks, monorepo]
-related:
-  [
-    global-fields.md,
-    environment-fields.md,
-    optional-dependencies.md,
-    dynamic-configuration.md,
-    configuration-interpolation.md,
-  ]
+related: [global-fields.md, environment-fields.md, optional-dependencies.md, dynamic-configuration.md, configuration-interpolation.md]
 ---
 
 # Context Formatting & Dynamic Configuration in Hatchling

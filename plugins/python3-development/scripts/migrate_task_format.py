@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "typer>=0.21.0",
-#     "pyyaml>=6.0.0",
+#     "ruamel.yaml>=0.18.0",
 # ]
 # ///
 """Migrate task files from markdown format to YAML frontmatter format.
@@ -29,15 +29,16 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
+from io import StringIO
 from pathlib import Path
 from typing import Annotated
 
 import typer
-import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from ruamel.yaml import YAML
 
 app = typer.Typer(
     name="migrate_task_format",
@@ -184,9 +185,11 @@ class TaskData:
             frontmatter["blocked-by"] = self.blocked_by
 
         # Convert to YAML
-        yaml_str = yaml.dump(
-            frontmatter, default_flow_style=False, allow_unicode=True, sort_keys=False
-        )
+        yaml = YAML()
+        yaml.default_flow_style = False
+        buf = StringIO()
+        yaml.dump(frontmatter, buf)
+        yaml_str = buf.getvalue()
 
         # Build complete section
         return f"---\n{yaml_str}---\n\n{self.body}\n"
@@ -380,9 +383,7 @@ def migrate_file(
     # Write new content
     if errors == 0:
         # Backup original
-        backup_path = file_path.with_suffix(
-            f".md.backup.{datetime.now(tz=UTC):%Y%m%d%H%M%S}"
-        )
+        backup_path = file_path.with_suffix(f".md.backup.{datetime.now():%Y%m%d%H%M%S}")
         backup_path.write_text(content, encoding="utf-8")
         console.print(f"[dim]Backup created: {backup_path.name}[/dim]")
 

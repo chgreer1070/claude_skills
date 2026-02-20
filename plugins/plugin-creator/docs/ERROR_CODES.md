@@ -336,10 +336,10 @@ skills: python3-development, holistic-linting
 **Auto-Fixable**: Yes
 **Category**: Frontmatter
 
-**Description**: Unquoted description with colons
+**Description**: Unquoted colons in description — breaks YAML parsing
 
 **When It Occurs**:
-The `description` field contains colons but is not quoted, which can cause YAML parsing issues.
+The `description` field contains colons but is not quoted, which breaks YAML parsing.
 
 **Example (Bad)**:
 
@@ -350,7 +350,7 @@ description: Use this when: processing files or analyzing code
 ---
 ```
 
-**Fix** (Auto-Fixed):
+**Fix**: Quote the description value or avoid colons. (Auto-Fixed):
 
 ```yaml
 ---

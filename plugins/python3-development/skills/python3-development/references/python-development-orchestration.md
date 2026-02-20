@@ -1,14 +1,14 @@
 ---
-title: "Python Development Orchestration Guide"
-description: "Guide for orchestrating Python development tasks using specialized agents and commands"
-version: "1.0.0"
-last_updated: "2025-11-02"
-document_type: "guide"
-python_compatibility: "3.11+"
+title: Python Development Orchestration Guide
+description: Guide for orchestrating Python development tasks using specialized agents and commands
+version: 1.0.0
+last_updated: '2025-11-02'
+document_type: guide
+python_compatibility: 3.11+
 related_docs:
-  - "../SKILL.md"
-  - "./modern-modules.md"
-  - "./tool-library-registry.md"
+- ../SKILL.md
+- ./modern-modules.md
+- ./tool-library-registry.md
 ---
 
 # Python Development Orchestration Guide

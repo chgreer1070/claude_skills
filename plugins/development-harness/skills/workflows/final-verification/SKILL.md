@@ -1,5 +1,5 @@
 ---
-description: 'SAM Stage 7 — Goal-backward certification that the feature achieves its original objectives. Used when all tasks pass forensic review; starts from expected outcomes, works backwards to verify each was achieved. Returns CERTIFIED or NOT_CERTIFIED with specific gaps.'
+description: SAM Stage 7 — Goal-backward certification that the feature achieves its original objectives. Used when all tasks pass forensic review; starts from expected outcomes, works backwards to verify each was achieved. Returns CERTIFIED or NOT_CERTIFIED with specific gaps.
 user-invocable: false
 ---
 

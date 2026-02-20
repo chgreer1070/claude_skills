@@ -1,16 +1,16 @@
 ---
 category: build-system
 topics:
-  - pep-517
-  - pep-518
-  - pep-660
-  - build-hooks
-  - build-isolation
-  - config-settings
+- pep-517
+- pep-518
+- pep-660
+- build-hooks
+- build-isolation
+- config-settings
 related:
-  - build-system-declaration
-  - build-options
-  - reproducible-builds
+- build-system-declaration
+- build-options
+- reproducible-builds
 ---
 
 # PEP Standards Implementation Guide for Claude

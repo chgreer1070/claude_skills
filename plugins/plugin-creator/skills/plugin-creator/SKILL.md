@@ -1,5 +1,5 @@
 ---
-description: 'Orchestrates specialized agents to create high-quality Claude Code plugins. Delegates to researcher agents for domain knowledge, Explore agents for code discovery, validation agents for official docs verification, and review agents for quality checks. Use when creating new plugins or improving existing ones.'
+description: Orchestrates specialized agents to create high-quality Claude Code plugins. Delegates to researcher agents for domain knowledge, Explore agents for code discovery, validation agents for official docs verification, and review agents for quality checks. Use when creating new plugins or improving existing ones.
 user-invocable: true
 model: sonnet
 ---

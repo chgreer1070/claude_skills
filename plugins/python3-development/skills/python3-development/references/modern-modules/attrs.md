@@ -1,13 +1,13 @@
 ---
-title: "attrs: Python Classes Without Boilerplate"
+title: 'attrs: Python Classes Without Boilerplate'
 library_name: attrs
 pypi_package: attrs
 category: dataclasses
-python_compatibility: "3.9+"
-last_updated: "2025-11-02"
-official_docs: "https://www.attrs.org"
-official_repository: "https://github.com/python-attrs/attrs"
-maintenance_status: "active"
+python_compatibility: 3.9+
+last_updated: '2025-11-02'
+official_docs: https://www.attrs.org
+official_repository: https://github.com/python-attrs/attrs
+maintenance_status: active
 ---
 
 # attrs: Python Classes Without Boilerplate

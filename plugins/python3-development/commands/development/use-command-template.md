@@ -1,11 +1,11 @@
 ---
-title: "Use Command Template"
-description: "Create new Claude Code command following established patterns"
-command_type: "development"
-last_updated: "2025-11-02"
+title: Use Command Template
+description: Create new Claude Code command following established patterns
+command_type: development
+last_updated: '2025-11-02'
 related_docs:
-  - "./templates/command-template.md"
-  - "./create-feature-task.md"
+- ./templates/command-template.md
+- ./create-feature-task.md
 ---
 
 # Use Command Template

@@ -1,5 +1,5 @@
 ---
-description: 'Audit agent lifecycle — validates agent execution capability against configuration. Accepts plugin path, runs 8 semantic audits (capability vs config alignment, skill loading correctness, inter-agent contracts, prompt contradictions, tool sufficiency, dead agents, scriptable patterns, pattern learning), writes reports to .claude/audits/. Use when auditing agent lifecycle, checking agent capabilities, verifying tool access, finding dead agents, validating agent contract alignment, or confirming agents can execute workflows.'
+description: Audit agent lifecycle — validates agent execution capability against configuration. Accepts plugin path, runs 8 semantic audits (capability vs config alignment, skill loading correctness, inter-agent contracts, prompt contradictions, tool sufficiency, dead agents, scriptable patterns, pattern learning), writes reports to .claude/audits/. Use when auditing agent lifecycle, checking agent capabilities, verifying tool access, finding dead agents, validating agent contract alignment, or confirming agents can execute workflows.
 model: sonnet
 user-invocable: true
 argument-hint: <plugin-path>

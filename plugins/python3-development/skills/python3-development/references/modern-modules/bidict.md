@@ -1,13 +1,13 @@
 ---
-title: "bidict: Bidirectional Mapping Library"
+title: 'bidict: Bidirectional Mapping Library'
 library_name: bidict
 pypi_package: bidict
 category: data-structures
-python_compatibility: "3.9+"
-last_updated: "2025-11-02"
-official_docs: "https://bidict.readthedocs.io"
-official_repository: "https://github.com/jab/bidict"
-maintenance_status: "active"
+python_compatibility: 3.9+
+last_updated: '2025-11-02'
+official_docs: https://bidict.readthedocs.io
+official_repository: https://github.com/jab/bidict
+maintenance_status: active
 ---
 
 # bidict: Bidirectional Mapping Library

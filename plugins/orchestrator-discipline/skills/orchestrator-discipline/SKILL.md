@@ -1,5 +1,5 @@
 ---
-description: 'Orchestrator context window discipline enforcement. Prevents the orchestrator from reading source files it will not edit, running diagnostic commands that waste context, and rationalizing delegation bypasses. Use when setting up orchestrator guardrails, reviewing delegation discipline, or diagnosing context window waste in multi-agent workflows. Activates PreToolUse hooks that surface decision points before source file reads and diagnostic command execution.'
+description: Orchestrator context window discipline enforcement. Prevents the orchestrator from reading source files it will not edit, running diagnostic commands that waste context, and rationalizing delegation bypasses. Use when setting up orchestrator guardrails, reviewing delegation discipline, or diagnosing context window waste in multi-agent workflows. Activates PreToolUse hooks that surface decision points before source file reads and diagnostic command execution.
 ---
 
 # Orchestrator Discipline
