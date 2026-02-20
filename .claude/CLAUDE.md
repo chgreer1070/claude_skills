@@ -772,17 +772,7 @@ SOURCE: CPython `build.yml` quality gate pattern, GitHub Actions docs on `contin
 
 ### Installation
 
-`gh` not pre-installed. Install before first use:
-
-```bash
-(type -p gh > /dev/null) || {
-  curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-    | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-    | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-  sudo apt-get update -qq && sudo apt-get install -qq -y gh
-}
-```
+`gh` not pre-installed. To install `gh`, follow the instructions in the `gh` skill available in this project: activate `Skill(command: "gh")`.
 
 ### Authentication and Repo Detection
 
