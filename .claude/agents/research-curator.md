@@ -53,13 +53,7 @@ flowchart TD
 
 ## Prerequisites
 
-Before starting research, run the gh setup script to ensure the CLI is available. The script is idempotent — it checks the installed version and exits early if already up to date.
-
-```bash
-uv run .claude/skills/gh/scripts/setup_gh.py
-```
-
-For usage patterns and the required `-R` flag in proxy environments, see the [gh skill](./../skills/gh/SKILL.md).
+This agent uses `gh` CLI for GitHub API calls. Before starting research, follow the [gh skill](./../skills/gh/SKILL.md) to ensure `gh` is installed and review the required `-R` flag for proxy environments.
 
 ---
 
