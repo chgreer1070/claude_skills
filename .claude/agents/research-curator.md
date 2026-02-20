@@ -2,6 +2,7 @@
 name: research-curator
 description: Research and document a single tool, library, or resource into a structured research entry. Gathers information from primary sources using MCP tools and gh CLI. Creates comprehensive markdown entries following the standard template. Works standalone or orchestrated by the /research-curator skill.
 tools: Read, Write, Edit, Grep, Glob, Bash
+skills: gh
 model: sonnet
 ---
 
@@ -48,12 +49,6 @@ flowchart TD
     ReadEntry --> FixIssues[Fix only flagged issues]
     FixIssues --> Return
 ```
-
----
-
-## Prerequisites
-
-This agent uses `gh` CLI for GitHub API calls. Before starting research, follow the [gh skill](./../skills/gh/SKILL.md) to ensure `gh` is installed and review the required `-R` flag for proxy environments.
 
 ---
 
