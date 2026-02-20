@@ -1,8 +1,8 @@
 ---
-last-updated: 2026-02-19
+last-updated: 2026-02-20
 p0-count: 0
 p1-count: 13
-p2-count: 12
+p2-count: 13
 ideas-count: 11
 ---
 
@@ -24,6 +24,7 @@ _(Empty)_
 
 **Source**: Plugin creation session 2026-02-19
 **Added**: 2026-02-19
+**Plan**: plan/tasks-4-validate-orchestrator-discipline.md
 **Description**: The `orchestrator-discipline` plugin was created from session anti-pattern analysis. Its 2 hooks (`pre-tool-orchestrator-read-warning.js`, `pre-tool-diagnostic-command-gate.js`), rules/CLAUDE.md, skill, and investigation-escalation reference need end-to-end validation. Verify: hooks fire correctly on matching tool calls, hooks do NOT fire on legitimate orchestrator reads (BACKLOG.md, plan files, files being edited), rules load into session context, skill activates on trigger phrases, no personal/private data in any plugin file, plugin passes `claude plugin validate`.
 **Suggested location**: `plugins/orchestrator-discipline/`
 
@@ -124,6 +125,14 @@ _(Empty)_
 ---
 
 ## P2 - Could Have
+
+### kaizen: MCP consolidation analysis
+
+**Source**: Design session 2026-02-20
+**Added**: 2026-02-20
+**Description**: The plugin currently runs two MCP servers (`kaizen-duckdb` via mcp-server-motherduck, `kaizen-analysis` via server.py) plus a standalone CLI script (`sentiment-score.py`). Investigate: (1) What does each MCP server provide that the other cannot? Can they be merged into a single server? (2) Why is `sentiment-score.py` a standalone script rather than an MCP tool inside `server.py`? What would be gained or lost by moving scoring into the MCP server (always-on scoring, no manual invocation, lock ownership)? (3) Is there a clean boundary between "batch processing" (script) and "query/serve" (MCP) that should be preserved?
+**Decision needed**: Consolidate vs. keep separate, with rationale.
+**Suggested location**: `plugins/agentskill-kaizen/`
 
 ### SAM: Parser regex false positive on "## Task Summary Statistics"
 

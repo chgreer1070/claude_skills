@@ -21,6 +21,7 @@ Output columns:
 from __future__ import annotations
 
 import csv
+import enum
 import json
 import statistics
 import sys
@@ -391,6 +392,32 @@ def _write_csv(results: list[ScoredMessage], output: Path) -> None:
 
 _DEFAULT_DB = "~/.claude/kaizen/kaizen.duckdb"
 
+
+class ScopeTarget(enum.StrEnum):
+    """Output scope for lesson files."""
+
+    user = "user"
+    project = "project"
+    local = "local"
+
+
+def _resolve_scope_path(scope: ScopeTarget) -> Path:
+    """Return the resolved output path for *scope*.
+
+    Args:
+        scope: The target scope for lesson output.
+
+    Returns:
+        Absolute path to the lesson file or directory.
+    """
+    if scope == ScopeTarget.user:
+        return Path("~/.claude/kaizen/lessons/").expanduser()
+    if scope == ScopeTarget.project:
+        return Path.cwd() / ".claude" / "kaizen" / "lessons.md"
+    # local
+    return Path.cwd() / ".claude" / "kaizen" / "lessons.local.md"
+
+
 _DB_CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS sentiment (
     session_id      TEXT    NOT NULL,
@@ -560,6 +587,18 @@ def score(
             rich_help_panel="Output Options",
         ),
     ] = Path(_DEFAULT_DB),
+    scope: Annotated[
+        ScopeTarget | None,
+        typer.Option(
+            "--scope",
+            help=(
+                "Lesson output scope: 'user' → ~/.claude/kaizen/lessons/, "
+                "'project' → {cwd}/.claude/kaizen/lessons.md (git-tracked), "
+                "'local' → {cwd}/.claude/kaizen/lessons.local.md (gitignored)."
+            ),
+            rich_help_panel="Output Options",
+        ),
+    ] = None,
 ) -> None:
     r"""Score user-message sentiment in Claude Code JSONL transcripts.
 
@@ -615,6 +654,11 @@ def score(
 
     _write_csv(results, resolved_output)
     _write_duckdb(results, db.expanduser())
+    if scope is not None:
+        scope_path = _resolve_scope_path(scope)
+        stderr.print(
+            f"[dim]Lesson scope:[/dim] [cyan]{scope.value}[/cyan] → {scope_path}"
+        )
     _print_summary(stats, stderr)
 
 

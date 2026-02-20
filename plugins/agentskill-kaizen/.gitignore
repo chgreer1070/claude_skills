@@ -1,0 +1,2 @@
+# Local-scope lesson output (gitignored by design — use --scope project for tracked lessons)
+.claude/kaizen/lessons.local.md

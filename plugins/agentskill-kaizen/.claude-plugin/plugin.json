@@ -1,6 +1,6 @@
 {
   "name": "agentskill-kaizen",
-  "version": "0.6.12",
+  "version": "0.6.13",
   "description": "Analyze Claude Code agent session transcripts to identify inefficiencies, anti-patterns, repeated mistakes, missing tooling opportunities, and user frustration signals for continuous improvement",
   "author": {
     "name": "Jamie Nelson",
@@ -29,7 +29,7 @@
   "mcpServers": {
     "kaizen-duckdb": {
       "command": "uvx",
-      "args": ["mcp-server-motherduck", "--db-path", "${HOME}/.claude/kaizen/kaizen.duckdb", "--read-write"]
+      "args": ["mcp-server-motherduck", "--db-path", "${HOME}/.claude/kaizen/kaizen.duckdb", "--read-only"]
     },
     "kaizen-analysis": {
       "command": "uv",
