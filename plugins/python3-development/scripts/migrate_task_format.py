@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -380,7 +380,9 @@ def migrate_file(
     # Write new content
     if errors == 0:
         # Backup original
-        backup_path = file_path.with_suffix(f".md.backup.{datetime.now():%Y%m%d%H%M%S}")
+        backup_path = file_path.with_suffix(
+            f".md.backup.{datetime.now(tz=UTC):%Y%m%d%H%M%S}"
+        )
         backup_path.write_text(content, encoding="utf-8")
         console.print(f"[dim]Backup created: {backup_path.name}[/dim]")
 
