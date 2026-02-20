@@ -34,6 +34,8 @@ research/
 │   └── logfire.md                     # Pydantic Logfire - full-stack AI observability with MCP (4K+ stars)
 ├── code-auditing/                     # Code security and quality auditing tools
 │   └── hound.md                       # Autonomous AI security auditor with knowledge graphs
+├── ai-design-tools/                   # AI-powered visual creation and design platforms
+│   └── hedra.md                       # AI video/image/audio creation platform
 ├── ai-research-tools/                 # AI research tools and newsletters
 │   └── the-unwind-ai.md              # AI builder newsletter with 95K+ star open-source companion repo
 ├── coding-agents/                     # Autonomous AI coding agent platforms
@@ -50,12 +52,15 @@ research/
 │   ├── animejs.md                     # Lightweight JavaScript animation engine (66K+ stars)
 │   ├── claude-conductor.md            # Context-Driven Development plugin for Claude Code (9 commands, skill ecosystem)
 │   ├── claude-openocd-spi-dump.md     # Claude Code plugin for SPI flash dumping via OpenOCD
-│   ├── claude-quickstarts.md          # Official Anthropic quickstart projects — computer use, browser automation, multi-session agent (14.7K stars)
+│   ├── claude-quickstarts.md          # Official Anthropic quickstart projects (14.7K stars)
 │   ├── copier-astral.md               # Python project template with Astral toolchain (uv, ruff, ty)
 │   ├── git-cliff.md                   # Customizable changelog generator from Git history
+│   ├── github-cli.md                  # Official GitHub CLI tool for PRs, issues, workflows (37.8K stars)
 │   ├── grepai.md                      # Semantic code search and call graph analysis for AI agents (1.2K stars)
+│   ├── jirajs.md                      # TypeScript Jira API client for Cloud, Server, and Data Center
 │   ├── jscpd.md                       # Copy/paste detector for 150+ languages (5K+ stars)
 │   ├── loguru.md                      # Python logging made simple with zero config (23K+ stars)
+│   ├── kythe.md                       # Google's language-agnostic code intelligence platform (2.1K stars)
 │   ├── lopaka.md                      # Graphics editor for embedded displays with C/C++ code generation (1.2K stars)
 │   ├── niteni.md                      # AI-powered code review for GitLab CI pipelines
 │   ├── orbstack.md                    # Fast Docker Desktop and Linux VM alternative for macOS
@@ -83,7 +88,9 @@ research/
 │   ├── human-compiler.md              # Interview-to-agent plugin generator for Claude Code (MIT)
 │   ├── mcpskills-cli.md               # MCP-to-skill converter via Streamable HTTP discovery
 │   ├── skill-seekers.md               # Documentation-to-skill automation tool
-│   └── skillkit.md                    # Universal package manager for AI agent skills (32 agents)
+│   ├── skillkit.md                    # Universal package manager for AI agent skills (32 agents)
+│   ├── softaworks-agent-toolkit.md    # 43 skills, 6 agents, 7 slash commands for Claude Code (621 stars)
+│   └── vercel-labs-skills.md          # Universal skill installer for 40+ AI coding agents (6.3K stars)
 └── task-management/                   # AI-powered task management for development
     └── claude-task-master.md          # Task management system for AI-driven development (25K+ stars)
 ```
@@ -216,6 +223,8 @@ Tools and services that automate the creation of AI skills from documentation, c
 | [mcpskills-cli.md](./skill-generation-tools/mcpskills-cli.md)       | mcpskills-cli - MCP-to-skill converter generating SKILL.md and polyglot call scripts from Streamable HTTP servers | 2026-02-15   |
 | [skill-seekers.md](./skill-generation-tools/skill-seekers.md)       | Skill Seekers - converts docs, GitHub repos, and PDFs into Claude/Gemini/OpenAI skills                          | 2026-01-26   |
 | [skillkit.md](./skill-generation-tools/skillkit.md)                  | SkillKit - universal package manager for AI agent skills with 15K+ skills, 32 agent support, and cross-format translation | 2026-02-08   |
+| [softaworks-agent-toolkit.md](./skill-generation-tools/softaworks-agent-toolkit.md) | Softaworks Agent Toolkit - 43 skills, 6 agents, 7 slash commands for Claude Code with multi-platform support (621 stars) | 2026-02-20   |
+| [vercel-labs-skills.md](./skill-generation-tools/vercel-labs-skills.md) | Vercel Labs Skills - universal CLI for installing skills to 40+ AI coding agents with symlink-first design (6.3K stars) | 2026-02-20   |
 
 **Key Topics**:
 
@@ -245,6 +254,14 @@ Tools and services that automate the creation of AI skills from documentation, c
 - Hook-based automation (auto code review on session stop, 5 Whys verification)
 - Instructive vs descriptive prompt writing patterns for skill authoring
 - State machine governance for TDD and process-driven skill workflows
+- Multi-platform skill toolkit with 43 skills across 10 categories (AI, Meta, Docs, Design, Dev, Planning)
+- Agent Skills format (agentskills.io) for cross-tool compatibility
+- Specialized agent roles (security-hardener, researcher, git-master, ai-architect)
+- Universal skill installer CLI supporting 40+ AI coding agents
+- Symlink-first installation with copy mode fallback
+- Auto-detection of installed agents and platform-specific path resolution
+- Claude Code plugin manifest format compatibility
+- Non-interactive CI/CD mode for automated skill deployment
 
 ---
 
@@ -390,9 +407,12 @@ Developer productivity tools and workflow automation for software engineering wi
 | [claude-quickstarts.md](./developer-tools/claude-quickstarts.md)   | Official Anthropic quickstart projects — computer use (Docker+VNC), browser automation, multi-session coding agent, minimal agent loop reference (<300 lines), Next.js UIs (14.7K stars) | 2026-02-19   |
 | [copier-astral.md](./developer-tools/copier-astral.md) | Copier template for Python projects with Astral toolchain (uv, ruff, ty), pytest, MkDocs, Typer, GitHub Actions, Docker              | 2026-01-31   |
 | [git-cliff.md](./developer-tools/git-cliff.md)         | Customizable changelog generator using conventional commits and regex parsers with GitHub/GitLab remote integration                  | 2026-01-26   |
+| [github-cli.md](./developer-tools/github-cli.md)       | GitHub CLI (gh) - official CLI for PRs, issues, workflows, extensions with scriptable API access (37.8K stars)                        | 2026-02-20   |
 | [grepai.md](./developer-tools/grepai.md)               | Semantic code search and call graph analysis for AI agents with MCP server, 12-language trace, and embedding-based search (1.2K stars) | 2026-02-13   |
+| [jirajs.md](./developer-tools/jirajs.md)               | jira.js - TypeScript Jira API client for Cloud, Server, and Data Center with full REST API coverage                                   | 2026-02-20   |
 | [jscpd.md](./developer-tools/jscpd.md)                 | Copy/paste detector for 150+ programming languages using Rabin-Karp algorithm with CI/CD integration                                 | 2026-01-31   |
 | [loguru.md](./developer-tools/loguru.md)               | Loguru - zero-config Python logging with rotation, structured output, exception catching, and contextvars support (23K+ stars)        | 2026-02-09   |
+| [kythe.md](./developer-tools/kythe.md)                 | Kythe - Google's language-agnostic code intelligence platform with graph-based semantic indexing (2.1K stars)                          | 2026-02-20   |
 | [lopaka.md](./developer-tools/lopaka.md)               | Lopaka - web-based graphics editor for embedded displays with multi-library C/C++ code generation (1.2K stars)                        | 2026-02-20   |
 | [niteni.md](./developer-tools/niteni.md)               | Niteni - AI-powered code review for GitLab CI using Gemini with inline diff comments and severity classification                     | 2026-02-15   |
 | [orbstack.md](./developer-tools/orbstack.md)           | Fast, lightweight Docker Desktop and Linux VM alternative for macOS with 2-second startup and dynamic memory                         | 2026-01-31   |
@@ -483,6 +503,15 @@ Developer productivity tools and workflow automation for software engineering wi
 - MCU register maps for 6 chip families (STM32, SAM, nRF, RP2040, ESP32, GD32)
 - Progressive multi-phase guided workflows for complex hardware tasks
 - Domain knowledge capture (register maps, troubleshooting tables, protocol details) for AI retrieval
+- GitHub CLI (gh) for scriptable PR, issue, workflow, and API automation
+- Extension ecosystem supporting any language with marketplace distribution
+- `gh api` for REST/GraphQL access with pagination and JSON filtering
+- AI agent integration patterns (automated PR creation, CI debugging, issue management)
+- TypeScript Jira API client with full REST coverage across Cloud/Server/Data Center
+- Agile board, sprint, backlog, and issue management automation
+- Graph-based semantic code indexing with hub-and-spoke architecture (Kythe)
+- Language-agnostic cross-reference and call graph generation
+- VName-based extensible schema for custom semantic information
 
 ---
 
@@ -766,6 +795,25 @@ AI research newsletters, curated resource collections, and tools for staying cur
 
 ---
 
+### 20. AI Design Tools
+
+**Location**: [./ai-design-tools/](./ai-design-tools/)
+
+AI-powered visual creation platforms for video, image, and audio content generation.
+
+| Document                                    | Description                                                                                                | Last Updated |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------ |
+| [hedra.md](./ai-design-tools/hedra.md)      | Hedra - AI-powered visual creation platform for video, image, and audio with character animation            | 2026-02-20   |
+
+**Key Topics**:
+
+- AI video synthesis and character animation
+- Audio-visual synchronization for content generation
+- SaaS-based creative AI platform for non-technical users
+- Commercial application of generative AI for marketing and content
+
+---
+
 ## Planned Categories
 
 The following categories are planned for future research:
@@ -790,6 +838,7 @@ The following categories are planned for future research:
 | `ai-observability/`     | AI/LLM observability and debugging platforms       | **Done** |
 | `ai-research-tools/`   | AI research tools and newsletters                  | **Done** |
 | `documentation-tools/`  | Architecture documentation and living docs         | **Done** |
+| `ai-design-tools/`      | AI-powered visual creation and design platforms    | **Done** |
 | `evaluation-testing/`   | Agent evaluation and testing tools                 | Planned  |
 
 ---
@@ -932,6 +981,12 @@ When adding new research:
 - [Living Architecture](https://github.com/NTCoding/living-architecture) - Operational flow architecture extraction from code with Rivière schema and AI-assisted workflows (79 stars)
 - [Lopaka](https://lopaka.app) - Web-based graphics editor for embedded displays with multi-library C/C++ code generation (1,150 stars)
 - [claude-openocd-spi-dump](https://github.com/lukejenkins/claude-openocd-spi-dump) - Claude Code plugin for SPI flash dumping via OpenOCD with RAM-resident code for 6 MCU families
+- [Softaworks Agent Toolkit](https://github.com/softaworks/agent-toolkit) - 43 skills, 6 agents, 7 slash commands for Claude Code with multi-platform support (621 stars)
+- [Vercel Labs Skills](https://github.com/vercel-labs/skills) - Universal CLI for installing skills to 40+ AI coding agents (6,324 stars)
+- [jira.js](https://mrrefactoring.github.io/jira.js/) - TypeScript Jira API client for Cloud, Server, and Data Center
+- [Hedra](https://www.hedra.com) - AI-powered visual creation platform for video, image, and audio content
+- [Kythe](https://kythe.io) - Google's language-agnostic code intelligence platform with graph-based semantic indexing (2,094 stars)
+- [GitHub CLI](https://github.com/cli/cli) - Official GitHub CLI for PRs, issues, workflows, and extensions (37,800+ stars)
 
 ### Internal References
 
