@@ -1793,17 +1793,13 @@ class TestDiscoverSkills:
 class TestFindStaleItemsScripts:
     """Verify _find_stale_items correctly identifies script entries as stale."""
 
-    def test_undiscovered_entries_are_stale(self, tmp_path: Path) -> None:
+    def test_undiscovered_entries_are_stale(self) -> None:
         """Registered entries not in the discovery list are stale.
 
-        Tests: Core stale detection — discovery is authoritative
-        How: Pass script paths as registered with no matching disk_items
-        Why: Anything not returned by discovery functions does not belong
-             in the component array
+        Tests: Core stale detection — discovery is the sole authority
+        How: Pass entries as registered with no matching disk_items
+        Why: Anything not returned by discovery does not belong in the array
         """
-        plugin_dir = tmp_path / "plugins" / "test-plugin"
-        plugin_dir.mkdir(parents=True)
-
         registered = [
             "./skills/my-skill",
             "./skills/my-skill/scripts/helper.py",
@@ -1811,37 +1807,47 @@ class TestFindStaleItemsScripts:
         ]
         disk_items = ["./skills/my-skill"]
 
-        stale = auto_sync._find_stale_items(
-            registered, disk_items, plugin_dir, normalize=True
-        )
+        stale = auto_sync._find_stale_items(registered, disk_items, normalize=True)
 
         assert "./skills/my-skill/scripts/helper.py" in stale
         assert "./skills/my-skill/scripts/evaluate.py" in stale
         assert "./skills/my-skill" not in stale
 
-    def test_existing_files_not_flagged_stale(self, tmp_path: Path) -> None:
-        """Files that exist on disk are not flagged stale even if undiscovered.
+    def test_disk_existence_does_not_protect_undiscovered_entries(
+        self, tmp_path: Path
+    ) -> None:
+        """Files existing on disk are stale if not in the discovery list.
 
-        Tests: Existence fallback protects valid manual entries
-        How: Create actual script files on disk, verify they are NOT stale
-        Why: The existence check prevents false positives for directory-style
-             references and other valid entries not returned by discovery
+        Tests: Discovery is sole authority — filesystem existence is irrelevant
+        How: Entries that exist on disk but are not discovered are still stale
+        Why: The discovery functions define what belongs in each component
+             array. Disk existence is not a factor.
         """
-        plugin_dir = tmp_path / "plugins" / "test-plugin"
-        skill_dir = plugin_dir / "skills" / "my-skill"
-        scripts_dir = skill_dir / "scripts"
-        scripts_dir.mkdir(parents=True)
-        (skill_dir / "SKILL.md").write_text("# Skill\n")
-        (scripts_dir / "helper.py").write_text("pass\n")
-
-        registered = ["./skills/my-skill", "./skills/my-skill/scripts/helper.py"]
+        registered = [
+            "./skills/my-skill",
+            "./skills/my-skill/scripts/helper.py",
+            "./skills/summarizer/templates/bullets.md",
+        ]
         disk_items = ["./skills/my-skill"]
 
-        stale = auto_sync._find_stale_items(
-            registered, disk_items, plugin_dir, normalize=True
-        )
+        stale = auto_sync._find_stale_items(registered, disk_items, normalize=True)
 
-        # Skill dir matched by discovery — not stale
         assert "./skills/my-skill" not in stale
-        # Script file exists on disk — existence fallback protects it
-        assert "./skills/my-skill/scripts/helper.py" not in stale
+        assert "./skills/my-skill/scripts/helper.py" in stale
+        assert "./skills/summarizer/templates/bullets.md" in stale
+
+    def test_bare_directory_refs_are_stale(self) -> None:
+        """Bare directory references like ./skills are stale.
+
+        Tests: Redundant directory refs are detected as stale
+        How: Register ./skills (bare dir), discovery returns specific paths
+        Why: Auto-discovery already loads default directories. Bare refs
+             are redundant and should be removed by reconcile.
+        """
+        registered = ["./skills", "./skills/my-skill"]
+        disk_items = ["./skills/my-skill"]
+
+        stale = auto_sync._find_stale_items(registered, disk_items, normalize=True)
+
+        assert "./skills" in stale
+        assert "./skills/my-skill" not in stale

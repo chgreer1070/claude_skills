@@ -1,6 +1,6 @@
 {
   "name": "summarizer",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Faithful information summarization with fidelity preservation, structured output, and anti-hallucination methodology. Provides skills for file, URL, and image summarization; agents for autonomous summarization tasks; and hooks for validating agent output structure.",
   "author": {
     "name": "jamie-bitflight-skills",
@@ -9,12 +9,6 @@
   "license": "MIT",
   "keywords": ["summarization", "fidelity", "anti-hallucination", "synthesis", "extractive"],
   "skills": [
-    "./skills/summarizer/templates/bullets.md",
-    "./skills/summarizer/templates/json.md",
-    "./skills/summarizer/templates/outline.md",
-    "./skills/summarizer/templates/structured.md",
-    "./skills/summarizer/templates/table.md",
-    "./skills/summarizer/templates/tldr.md",
     "./skills/agent-result-relay",
     "./skills/file-summarization",
     "./skills/image-summarization",
