@@ -155,9 +155,14 @@ The dashboard will automatically pick up the data once the file exists.
 def _build_timeline(df: pd.DataFrame) -> pn.pane.HoloViews:
     """Build the Session Timeline scatter plot.
 
-    Plots compound sentiment score per message over time, with each
-    session rendered in a distinct color. Hover tooltips show the
-    message preview.
+    Plots compound sentiment score per message over time, colored by
+    score value using a continuous RdYlGn colormap. A single series is
+    rendered instead of one overlay per session, which eliminates the
+    O(n_sessions) HoloViews overlay cost and makes the visualization
+    useful at scale (1000+ sessions).
+
+    Hover tooltips retain session_id and message details so the user can
+    still identify which log file to examine.
 
     Args:
         df: Sentiment DataFrame with columns ``timestamp``, ``compound``,
@@ -173,15 +178,17 @@ def _build_timeline(df: pd.DataFrame) -> pn.pane.HoloViews:
     scatter = plot_df.hvplot.scatter(
         x="timestamp",
         y="compound",
-        by="session_id",
-        hover_cols=["preview", "message_index"],
+        c="compound",
+        cmap="RdYlGn",
+        clim=(_SCORE_MIN, _SCORE_MAX),
+        hover_cols=["session_id", "preview", "message_index"],
         title="Compound Sentiment Score Over Time",
         xlabel="Timestamp",
         ylabel="Compound Score",
         ylim=(_SCORE_MIN, _SCORE_MAX),
         height=450,
         responsive=True,
-        legend="bottom",
+        colorbar=True,
     )
 
     # Add a zero reference line
