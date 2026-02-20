@@ -1793,13 +1793,13 @@ class TestDiscoverSkills:
 class TestFindStaleItemsScripts:
     """Verify _find_stale_items correctly identifies script entries as stale."""
 
-    def test_script_entries_detected_as_stale(self, tmp_path: Path) -> None:
-        """Script paths in registered list are stale when not on disk.
+    def test_undiscovered_entries_are_stale(self, tmp_path: Path) -> None:
+        """Registered entries not in the discovery list are stale.
 
-        Tests: Script entries that were incorrectly added are now detected as stale
-        How: Pass script paths as registered, with no matching disk items
-        Why: After the discovery fix, existing script entries in manifests should
-             be flagged as stale so reconcile mode can remove them
+        Tests: Core stale detection — discovery is authoritative
+        How: Pass script paths as registered with no matching disk_items
+        Why: Anything not returned by discovery functions does not belong
+             in the component array
         """
         plugin_dir = tmp_path / "plugins" / "test-plugin"
         plugin_dir.mkdir(parents=True)
@@ -1811,11 +1811,6 @@ class TestFindStaleItemsScripts:
         ]
         disk_items = ["./skills/my-skill"]
 
-        # Create the skill dir so it passes the existence check
-        skill_dir = plugin_dir / "skills" / "my-skill"
-        skill_dir.mkdir(parents=True)
-        (skill_dir / "SKILL.md").write_text("# Skill\n")
-
         stale = auto_sync._find_stale_items(
             registered, disk_items, plugin_dir, normalize=True
         )
@@ -1824,14 +1819,13 @@ class TestFindStaleItemsScripts:
         assert "./skills/my-skill/scripts/evaluate.py" in stale
         assert "./skills/my-skill" not in stale
 
-    def test_script_entries_stale_even_when_files_exist(self, tmp_path: Path) -> None:
-        """Script paths are stale even when the files exist on disk.
+    def test_existing_files_not_flagged_stale(self, tmp_path: Path) -> None:
+        """Files that exist on disk are not flagged stale even if undiscovered.
 
-        Tests: Scripts are categorically invalid in component arrays
-        How: Create actual script files and verify they ARE still stale
-        Why: Script files are companion utilities, not components. They should
-             never appear in skills/agents/commands arrays regardless of disk
-             existence. The existence fallback must not protect them.
+        Tests: Existence fallback protects valid manual entries
+        How: Create actual script files on disk, verify they are NOT stale
+        Why: The existence check prevents false positives for directory-style
+             references and other valid entries not returned by discovery
         """
         plugin_dir = tmp_path / "plugins" / "test-plugin"
         skill_dir = plugin_dir / "skills" / "my-skill"
@@ -1847,7 +1841,7 @@ class TestFindStaleItemsScripts:
             registered, disk_items, plugin_dir, normalize=True
         )
 
-        # The skill dir is found via disk_items match — not stale
+        # Skill dir matched by discovery — not stale
         assert "./skills/my-skill" not in stale
-        # The script file is categorically wrong in component arrays — stale
-        assert "./skills/my-skill/scripts/helper.py" in stale
+        # Script file exists on disk — existence fallback protects it
+        assert "./skills/my-skill/scripts/helper.py" not in stale

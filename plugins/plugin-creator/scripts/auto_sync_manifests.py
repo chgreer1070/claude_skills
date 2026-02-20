@@ -993,9 +993,10 @@ def _find_stale_items(
     """Find registered items that no longer exist on disk.
 
     Uses two checks: first compares against the discovery list, then verifies
-    the referenced path truly does not exist on disk.  This prevents false
-    positives for template files, wildcard directory references, and
-    cross-component references (e.g., skills in the commands array).
+    the referenced path truly does not exist on disk.  The existence fallback
+    prevents false positives for directory-style references (e.g.,
+    ``./skills`` or ``./commands``) that are valid plugin.json entries but
+    are not returned by the individual-item discovery functions.
 
     Args:
         registered: Paths currently in the manifest
@@ -1010,14 +1011,6 @@ def _find_stale_items(
     for reg in registered:
         # Check if it matches a discovered item
         if any(_refs_match(reg, item, normalize=normalize) for item in disk_items):
-            continue
-
-        # Script files (e.g., ./skills/foo/scripts/bar.py) are companion
-        # utilities, not skills/agents/commands.  They should never appear
-        # in a component array regardless of whether the file exists on
-        # disk.  Mark them stale immediately without the existence fallback.
-        if "/scripts/" in reg and Path(reg).suffix:
-            stale.append(reg)
             continue
 
         # Verify the referenced path truly does not exist on disk
