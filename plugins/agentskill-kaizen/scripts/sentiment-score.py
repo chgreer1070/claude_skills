@@ -2,6 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
+#     "duckdb>=1.0.0",
 #     "typer>=0.23.1",
 #     "vaderSentiment>=3.3.2",
 # ]
@@ -388,6 +389,92 @@ def _write_csv(results: list[ScoredMessage], output: Path) -> None:
             })
 
 
+_DEFAULT_DB = "~/.claude/kaizen/kaizen.duckdb"
+
+_DB_CREATE_SQL = """
+CREATE TABLE IF NOT EXISTS sentiment (
+    session_id      TEXT    NOT NULL,
+    timestamp       TEXT,
+    message_index   INTEGER NOT NULL,
+    compound        DOUBLE,
+    positive        DOUBLE,
+    negative        DOUBLE,
+    neutral         DOUBLE,
+    message_length  INTEGER,
+    message_preview TEXT,
+    project_path    TEXT,
+    project_name    TEXT,
+    PRIMARY KEY (session_id, message_index)
+)
+"""
+
+_DB_UPSERT_SQL = """
+INSERT INTO sentiment (
+    session_id, timestamp, message_index,
+    compound, positive, negative, neutral,
+    message_length, message_preview,
+    project_path, project_name
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (session_id, message_index) DO UPDATE SET
+    timestamp       = excluded.timestamp,
+    compound        = excluded.compound,
+    positive        = excluded.positive,
+    negative        = excluded.negative,
+    neutral         = excluded.neutral,
+    message_length  = excluded.message_length,
+    message_preview = excluded.message_preview,
+    project_path    = excluded.project_path,
+    project_name    = excluded.project_name
+"""
+
+
+def _write_duckdb(results: list[ScoredMessage], db_path: Path) -> None:
+    """Upsert *results* into the persistent DuckDB database at *db_path*.
+
+    Creates the database and table if they do not exist. Uses INSERT OR REPLACE
+    to avoid duplicate rows on re-runs.
+
+    The table schema matches ScoredMessage fields plus a surrogate primary key
+    of (session_id, message_index).
+
+    Args:
+        results: Scored messages to persist.
+        db_path: Path to the DuckDB file (created if missing).
+    """
+    try:
+        import duckdb
+    except ImportError:
+        import warnings
+
+        warnings.warn(
+            "duckdb is not installed — skipping database write. "
+            "Install with: pip install duckdb",
+            stacklevel=2,
+        )
+        return
+
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = [
+        (
+            msg.session_id,
+            msg.timestamp,
+            msg.message_index,
+            msg.compound,
+            msg.positive,
+            msg.negative,
+            msg.neutral,
+            msg.message_length,
+            msg.message_preview,
+            msg.project_path,
+            msg.project_name,
+        )
+        for msg in results
+    ]
+    with duckdb.connect(str(db_path)) as con:
+        con.execute(_DB_CREATE_SQL)
+        con.executemany(_DB_UPSERT_SQL, rows)
+
+
 def _print_summary(stats: SessionStats, stderr: Console) -> None:
     """Print summary statistics to stderr.
 
@@ -465,6 +552,14 @@ def score(
             rich_help_panel="Filter Options",
         ),
     ] = None,
+    db: Annotated[
+        Path,
+        typer.Option(
+            "--db",
+            help="Path to DuckDB database file.",
+            rich_help_panel="Output Options",
+        ),
+    ] = Path(_DEFAULT_DB),
 ) -> None:
     r"""Score user-message sentiment in Claude Code JSONL transcripts.
 
@@ -519,6 +614,7 @@ def score(
         stats.record(msg)
 
     _write_csv(results, resolved_output)
+    _write_duckdb(results, db.expanduser())
     _print_summary(stats, stderr)
 
 
