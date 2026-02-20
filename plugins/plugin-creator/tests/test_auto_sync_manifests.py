@@ -1689,3 +1689,165 @@ class TestNonComponentFileTracking:
 
         assert updated is True
         assert new_version == "1.0.1"
+
+
+# ============================================================================
+# Area 7: Skill discovery — scripts must not be registered as skills
+# ============================================================================
+
+
+class TestDiscoverSkills:
+    """Verify _discover_skills only returns skill directories, not scripts."""
+
+    def test_discovers_skill_directory_with_skill_md(self, tmp_path: Path) -> None:
+        """A directory with SKILL.md is discovered as a skill.
+
+        Tests: Basic skill discovery for a well-formed skill directory
+        How: Create skills/my-skill/SKILL.md and call _discover_skills
+        Why: Ensures the core discovery path works
+        """
+        plugin_dir = tmp_path / "plugins" / "test-plugin"
+        skill_dir = plugin_dir / "skills" / "my-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# My Skill\n")
+
+        result = auto_sync._discover_skills(plugin_dir)
+
+        assert result == ["./skills/my-skill"]
+
+    def test_scripts_in_skill_dir_not_discovered_as_skills(
+        self, tmp_path: Path
+    ) -> None:
+        """Python scripts inside a skill's scripts/ dir must NOT appear as skills.
+
+        Tests: Bug fix — scripts were incorrectly added to the skills array
+        How: Create skills/my-skill/scripts/*.py and verify they are excluded
+        Why: Scripts are companion utilities, not skills. The plugin.json skills
+             array should only contain skill directory paths per the plugin spec.
+        """
+        plugin_dir = tmp_path / "plugins" / "test-plugin"
+        skill_dir = plugin_dir / "skills" / "my-skill"
+        scripts_dir = skill_dir / "scripts"
+        scripts_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# My Skill\n")
+        (scripts_dir / "helper.py").write_text("print('hello')\n")
+        (scripts_dir / "evaluate.py").write_text("print('eval')\n")
+
+        result = auto_sync._discover_skills(plugin_dir)
+
+        assert result == ["./skills/my-skill"]
+        assert not any("/scripts/" in p for p in result)
+
+    def test_multiple_skills_with_scripts_excluded(self, tmp_path: Path) -> None:
+        """Multiple skills with scripts/ dirs — only skill dirs appear.
+
+        Tests: Multiple skills each having scripts/ subdirectories
+        How: Create two skill dirs each with scripts/*.py, verify only dirs returned
+        Why: Ensures the fix works across all skills in a plugin, not just one
+        """
+        plugin_dir = tmp_path / "plugins" / "test-plugin"
+        for name in ("alpha", "beta"):
+            skill_dir = plugin_dir / "skills" / name
+            scripts_dir = skill_dir / "scripts"
+            scripts_dir.mkdir(parents=True)
+            (skill_dir / "SKILL.md").write_text(f"# {name}\n")
+            (scripts_dir / "run.py").write_text("pass\n")
+
+        result = auto_sync._discover_skills(plugin_dir)
+
+        assert result == ["./skills/alpha", "./skills/beta"]
+
+    def test_nested_skills_discovered_correctly(self, tmp_path: Path) -> None:
+        """Nested skill directories (e.g., skills/testing/unit) are discovered.
+
+        Tests: Nested skill directory discovery is not broken by the fix
+        How: Create skills/parent/child/SKILL.md and verify discovery
+        Why: Ensures the nested skill path remains intact after removing script code
+        """
+        plugin_dir = tmp_path / "plugins" / "test-plugin"
+        parent = plugin_dir / "skills" / "testing"
+        parent.mkdir(parents=True)
+        child = parent / "unit-tests"
+        child.mkdir()
+        (child / "SKILL.md").write_text("# Unit Tests\n")
+
+        result = auto_sync._discover_skills(plugin_dir)
+
+        assert result == ["./skills/testing/unit-tests"]
+
+    def test_no_skills_directory(self, tmp_path: Path) -> None:
+        """Plugin with no skills/ directory returns empty list.
+
+        Tests: Edge case — no skills directory at all
+        How: Call _discover_skills on a plugin dir without skills/
+        Why: Ensures graceful handling of plugins that have no skills
+        """
+        plugin_dir = tmp_path / "plugins" / "test-plugin"
+        plugin_dir.mkdir(parents=True)
+
+        result = auto_sync._discover_skills(plugin_dir)
+
+        assert result == []
+
+
+class TestFindStaleItemsScripts:
+    """Verify _find_stale_items correctly identifies script entries as stale."""
+
+    def test_script_entries_detected_as_stale(self, tmp_path: Path) -> None:
+        """Script paths in registered list are stale when not on disk.
+
+        Tests: Script entries that were incorrectly added are now detected as stale
+        How: Pass script paths as registered, with no matching disk items
+        Why: After the discovery fix, existing script entries in manifests should
+             be flagged as stale so reconcile mode can remove them
+        """
+        plugin_dir = tmp_path / "plugins" / "test-plugin"
+        plugin_dir.mkdir(parents=True)
+
+        registered = [
+            "./skills/my-skill",
+            "./skills/my-skill/scripts/helper.py",
+            "./skills/my-skill/scripts/evaluate.py",
+        ]
+        disk_items = ["./skills/my-skill"]
+
+        # Create the skill dir so it passes the existence check
+        skill_dir = plugin_dir / "skills" / "my-skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# Skill\n")
+
+        stale = auto_sync._find_stale_items(
+            registered, disk_items, plugin_dir, normalize=True
+        )
+
+        assert "./skills/my-skill/scripts/helper.py" in stale
+        assert "./skills/my-skill/scripts/evaluate.py" in stale
+        assert "./skills/my-skill" not in stale
+
+    def test_script_entries_stale_even_when_files_exist(self, tmp_path: Path) -> None:
+        """Script paths are stale even when the files exist on disk.
+
+        Tests: Scripts are categorically invalid in component arrays
+        How: Create actual script files and verify they ARE still stale
+        Why: Script files are companion utilities, not components. They should
+             never appear in skills/agents/commands arrays regardless of disk
+             existence. The existence fallback must not protect them.
+        """
+        plugin_dir = tmp_path / "plugins" / "test-plugin"
+        skill_dir = plugin_dir / "skills" / "my-skill"
+        scripts_dir = skill_dir / "scripts"
+        scripts_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# Skill\n")
+        (scripts_dir / "helper.py").write_text("pass\n")
+
+        registered = ["./skills/my-skill", "./skills/my-skill/scripts/helper.py"]
+        disk_items = ["./skills/my-skill"]
+
+        stale = auto_sync._find_stale_items(
+            registered, disk_items, plugin_dir, normalize=True
+        )
+
+        # The skill dir is found via disk_items match — not stale
+        assert "./skills/my-skill" not in stale
+        # The script file is categorically wrong in component arrays — stale
+        assert "./skills/my-skill/scripts/helper.py" in stale

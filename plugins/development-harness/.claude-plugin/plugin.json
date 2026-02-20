@@ -1,7 +1,7 @@
 {
   "name": "development-harness",
   "description": "Language-agnostic development process harness implementing the Stateless Agent Methodology (SAM) 7-stage pipeline with ARL human touchpoint model and Voltron-style language plugin composition. Provides orchestration, workflows, planning, verification, and testing methodology that any language plugin can compose with.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
@@ -22,9 +22,7 @@
     "./skills/testing/comprehensive-test-review",
     "./skills/testing/analyze-test-failures",
     "./skills/testing/test-failure-mindset",
-    "./skills/implementation-manager",
-    "./skills/implementation-manager/scripts/implementation_manager.py",
-    "./skills/implementation-manager/scripts/task_format.py"
+    "./skills/implementation-manager"
   ],
   "agents": [
     "./agents/swarm-task-planner.md",

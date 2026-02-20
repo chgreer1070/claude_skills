@@ -6,12 +6,6 @@
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "skills": [
-    "./skills/fastmcp-creator",
-    "./skills/fastmcp-creator/scripts/get-environment.py",
-    "./skills/fastmcp-creator/scripts/connections.py",
-    "./skills/fastmcp-creator/scripts/evaluation.py",
-    "./skills/fastmcp-creator/scripts/get_environment.py"
-  ],
+  "skills": ["./skills/fastmcp-creator"],
   "commands": ["./skills/fastmcp-creator"]
 }

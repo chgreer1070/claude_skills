@@ -739,14 +739,6 @@ def _discover_skills(plugin_dir: Path) -> list[str]:
                 # Skill directory with SKILL.md
                 found.append(f"./skills/{item.name}")
 
-            # Also discover scripts within skill directories
-            scripts_dir = item / "scripts"
-            if scripts_dir.is_dir():
-                found.extend(
-                    f"./skills/{item.name}/scripts/{script.name}"
-                    for script in sorted(scripts_dir.glob("*.py"))
-                )
-
             # Check for nested skill directories (e.g., skills/testing/*)
             for nested in sorted(item.iterdir()):
                 if nested.is_dir() and not nested.name.startswith("."):
@@ -1005,9 +997,6 @@ def _find_stale_items(
     positives for template files, wildcard directory references, and
     cross-component references (e.g., skills in the commands array).
 
-    Skips script entries (``/scripts/``) since those are intentional
-    companion registrations not tied to a single SKILL.md.
-
     Args:
         registered: Paths currently in the manifest
         disk_items: Paths discovered on disk
@@ -1019,12 +1008,16 @@ def _find_stale_items(
     """
     stale: list[str] = []
     for reg in registered:
-        # Skip script entries — intentional companion registrations
-        if "/scripts/" in reg:
-            continue
-
         # Check if it matches a discovered item
         if any(_refs_match(reg, item, normalize=normalize) for item in disk_items):
+            continue
+
+        # Script files (e.g., ./skills/foo/scripts/bar.py) are companion
+        # utilities, not skills/agents/commands.  They should never appear
+        # in a component array regardless of whether the file exists on
+        # disk.  Mark them stale immediately without the existence fallback.
+        if "/scripts/" in reg and Path(reg).suffix:
+            stale.append(reg)
             continue
 
         # Verify the referenced path truly does not exist on disk
