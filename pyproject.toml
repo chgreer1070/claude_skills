@@ -235,6 +235,7 @@ max-complexity = 12
 "**/scripts/**" = [
     "ANN401",  # Any type annotations acceptable in script arguments
     "DOC",     # Docstring content requirements relaxed for scripts
+    "E402",    # PEP 723 scripts require sys.path manipulation before importing co-located library modules
     "PLC0415", # Local imports acceptable in scripts for lazy loading
     "PLR0911", # Too many return statements acceptable in script logic
     "S",       # Security checks relaxed for CLI scripts (subprocess, partial paths)
