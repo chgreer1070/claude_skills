@@ -30,6 +30,5 @@
     "./skills/domains/enterprise-maven-pom",
     "./skills/domains/enterprise-hibernate-hbm",
     "./skills/domains/enterprise-tomcat-web"
-  ],
-  "hooks": "./hooks/hooks.json"
+  ]
 }
