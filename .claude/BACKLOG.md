@@ -1,5 +1,6 @@
 ---
 last-updated: 2026-02-20
+last-completed: 2026-02-20
 p0-count: 0
 p1-count: 14
 p2-count: 12
@@ -24,6 +25,8 @@ _(Empty)_
 
 **Source**: Frontmatter validation bug-fix session 2026-02-20
 **Added**: 2026-02-20
+**Completed**: 2026-02-20
+**Status**: DONE — commit bfb03f1 on branch claude/fix-frontmatter-validation-u2iV2
 **Priority**: P1
 **Description**: `plugin_validator.py` (4190 lines) copy-pastes frontmatter
 validation logic from `validate_frontmatter.py` (1341 lines) instead of
