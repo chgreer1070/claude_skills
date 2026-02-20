@@ -1,10 +1,17 @@
 {
   "name": "fastmcp-creator",
   "description": "Build Model Context Protocol (MCP) servers - comprehensive coverage of generic MCP protocol AND FastMCP 3.x framework specialization. Use when creating any MCP server (Python FastMCP preferred, TypeScript/Node also covered). Includes agent-centric design principles, provider/transform architecture, component versioning, session state, authorization, evaluation creation, Pydantic/Zod validation, async patterns, STDIO/HTTP/SSE transports, background tasks, OpenTelemetry tracing, .mcpb packaging, security patterns, and 2025-2026 community practices. Standalone skill with no external dependencies.",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "skills": ["./skills/fastmcp-creator", "./skills/fastmcp-creator/scripts/get-environment.py"]
+  "skills": [
+    "./skills/fastmcp-creator",
+    "./skills/fastmcp-creator/scripts/get-environment.py",
+    "./skills/fastmcp-creator/scripts/connections.py",
+    "./skills/fastmcp-creator/scripts/evaluation.py",
+    "./skills/fastmcp-creator/scripts/get_environment.py"
+  ],
+  "commands": ["./skills/fastmcp-creator"]
 }
