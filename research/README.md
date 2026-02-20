@@ -14,6 +14,7 @@ research/
 ├── agent-frameworks/                  # Agent SDKs and orchestration frameworks
 │   ├── ai-agents-frameworks.md        # 10-framework comparative benchmark study
 │   ├── liteagents.md                  # Multi-tool AI development toolkit with 11 agents and session memory
+│   ├── micro-agent.md                 # Lightweight Python ReAct agent framework with MCP multi-server support (MIT)
 │   └── superpowers.md                 # Agentic skills framework and dev methodology (40K+ stars)
 ├── agent-infrastructure/              # Infrastructure for agentic applications
 │   ├── plano.md                       # AI-native proxy and data plane for multi-agent orchestration
@@ -69,6 +70,7 @@ research/
 │   ├── vert.md                        # WebAssembly-based file converter (13K+ stars)
 │   └── yume.md                        # Native desktop GUI for Claude Code CLI (Tauri + Rust)
 ├── mcp-ecosystem/                     # MCP servers and integrations
+│   ├── browsermcp-mcp.md              # Chrome browser automation MCP server via extension bridge (5.8K stars)
 │   ├── docs-mcp-server.md             # Local documentation index (Grounded Docs)
 │   ├── mcpjam.md                      # Local inspector for MCP servers and apps
 │   ├── narsil-mcp.md                  # Comprehensive code intelligence MCP server
@@ -85,6 +87,7 @@ research/
 ├── skill-generation-tools/            # Tools that create AI skills/prompts
 │   ├── clawhub.md                     # Skill registry for AI agents with vector search
 │   ├── claude-skillz.md               # 18+ behavioral skills, 12 personas, Claude Launcher utility
+│   ├── codex-skills.md                # 19-skill catalog for OpenAI Codex CLI with npx installer (116 stars)
 │   ├── human-compiler.md              # Interview-to-agent plugin generator for Claude Code (MIT)
 │   ├── mcpskills-cli.md               # MCP-to-skill converter via Streamable HTTP discovery
 │   ├── skill-seekers.md               # Documentation-to-skill automation tool
@@ -159,6 +162,7 @@ MCP servers, tools, and integrations for extending AI assistant capabilities.
 
 | Document                                                 | Description                                                                                              | Last Updated |
 | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------ |
+| [browsermcp-mcp.md](./mcp-ecosystem/browsermcp-mcp.md)   | Browser MCP - Chrome browser automation via extension bridge, preserving auth sessions and real fingerprint (5.8K stars) | 2026-02-20   |
 | [docs-mcp-server.md](./mcp-ecosystem/docs-mcp-server.md) | Grounded Docs - local documentation index with semantic search, open-source Context7 alternative         | 2026-01-26   |
 | [mcpjam.md](./mcp-ecosystem/mcpjam.md)                   | Local inspector for MCP servers, ChatGPT apps, MCP Apps with LLM playground, OAuth debugger, E2E testing | 2026-01-26   |
 | [mimir-mcp.md](./mcp-ecosystem/mimir-mcp.md)             | Git-backed AI memory system with 7 MCP tools, graph associations, and version-controlled persistence     | 2026-02-04   |
@@ -201,6 +205,14 @@ MCP servers, tools, and integrations for extending AI assistant capabilities.
 - Nonce-based prompt injection defense for untrusted web content
 - SSRF protection with scheme whitelist and private IP blocking
 - Multilingual web content extraction (Korean, English, Japanese, French, German)
+- Chrome extension WebSocket bridge for live-profile browser automation (no new browser instance)
+- ARIA accessibility tree snapshot as structured page perception (compact, token-efficient vs raw HTML)
+- Post-action snapshot return pattern: updated page state appended automatically after every mutation tool
+- Authentication and session preservation via user's existing Chrome profile (cookies, tokens intact)
+- Stealth automation: extension API avoids `navigator.webdriver` flag and Playwright detection signals
+- Zod-to-JSON-Schema tool definition pattern for type-safe MCP tool schemas
+- Typed WebSocket message protocol (`SocketMessageMap`) shared between server and extension via monorepo
+- `browser_get_console_logs` for AI-driven runtime error diagnosis of web applications
 - Real-time web search via Perplexity Sonar models (search, ask, research, reason)
 - Multi-transport MCP deployment (stdio for desktop, HTTP/Docker for cloud)
 - Proxy cascade configuration for enterprise environments
@@ -219,6 +231,7 @@ Tools and services that automate the creation of AI skills from documentation, c
 | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------ |
 | [clawhub.md](./skill-generation-tools/clawhub.md)                    | ClawHub - skill registry for AI agents with vector search capabilities                                           | 2026-02-20   |
 | [claude-skillz.md](./skill-generation-tools/claude-skillz.md)       | Claude Skillz - 18+ behavioral skills, 12 personas, 10 plugins, and Claude Launcher for rapid persona switching (238 stars) | 2026-02-20   |
+| [codex-skills.md](./skill-generation-tools/codex-skills.md)         | codex-skills - 19-skill catalog for OpenAI Codex CLI with npx installer, global ledger pattern, and prompt-injection hardening (116 stars) | 2026-02-20   |
 | [human-compiler.md](./skill-generation-tools/human-compiler.md)     | HumanCompiler - interview-to-agent plugin generator that replicates human decision-making via 8-phase structured interviews (MIT) | 2026-02-19   |
 | [mcpskills-cli.md](./skill-generation-tools/mcpskills-cli.md)       | mcpskills-cli - MCP-to-skill converter generating SKILL.md and polyglot call scripts from Streamable HTTP servers | 2026-02-15   |
 | [skill-seekers.md](./skill-generation-tools/skill-seekers.md)       | Skill Seekers - converts docs, GitHub repos, and PDFs into Claude/Gemini/OpenAI skills                          | 2026-01-26   |
@@ -262,6 +275,14 @@ Tools and services that automate the creation of AI skills from documentation, c
 - Auto-detection of installed agents and platform-specific path resolution
 - Claude Code plugin manifest format compatibility
 - Non-interactive CI/CD mode for automated skill deployment
+- Drop-in SKILL.md skill folders auto-discovered by Codex CLI from `~/.agents/skills/`
+- npx CLI for listing, searching, and installing individual skills or entire categories
+- Global ledger pattern (`~/.codex/AGENTS.MD`) for cross-project cross-session agent context
+- Prompt-injection hardening via invisible Unicode character scanner run in CI on every push/PR
+- Stdlib-only SKILL.md validation (no PyYAML) for zero-dependency CI integration
+- Registry-as-generated-artifact: `skills.json` regenerated from source, not hand-maintained
+- User vs. repo-local install scope via `--dir` flag
+- Minimal frontmatter constraints (name ≤100 chars, description ≤500 chars single-line)
 
 ---
 
@@ -298,6 +319,7 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 | [ai-agents-frameworks.md](./agent-frameworks/ai-agents-frameworks.md) | Comparative learning repository for 10 AI agent frameworks with benchmarks for response time, memory, tokens, RAG, and API integration | 2026-01-31   |
 | [get-shit-done.md](./agent-frameworks/get-shit-done.md)               | Meta-prompting, context engineering, and spec-driven development system with 11 agents for Claude Code, OpenCode, Gemini (10K+ stars)  | 2026-02-01   |
 | [liteagents.md](./agent-frameworks/liteagents.md)                     | Multi-tool AI development toolkit with 11 agents, 22 commands, Hot Memory pipeline, and session friction analysis for 4 AI coding tools | 2026-02-15   |
+| [micro-agent.md](./agent-frameworks/micro-agent.md)                   | Micro-Agent - lightweight Python 3.12 ReAct agent framework with MCP multi-server support, token budget enforcement, and execution visualization (MIT) | 2026-02-20   |
 | [superpowers.md](./agent-frameworks/superpowers.md)                   | Agentic skills framework with 14 skills for TDD, debugging, and subagent-driven development - works with Claude Code, Codex, OpenCode  | 2026-01-31   |
 
 **Key Topics**:
@@ -325,6 +347,15 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 - Multi-tool installer with format translation across 4 AI coding tools
 - Auto-triggering skills for TDD enforcement and verification
 - Intent-based agent routing with lazy frontmatter discovery
+- ReAct (Reasoning + Acting) step loop with `think()` / `act()` separation and state machine (`IDLE`/`RUNNING`/`FINISHED`/`ERROR`)
+- Callable service interface (`run_agent(task_name, prompt)`) for embedding agent logic in upstream applications
+- Multi-server MCP aggregation via simultaneous stdio (subprocess) and SSE (HTTP) transports
+- Tool schema refresh every N steps to handle dynamic MCP server state changes mid-task
+- Token budget enforcement via `TokenLimitExceeded` before context overflow; tiktoken-based counting with image tile estimation
+- Step-level `Record` persistence (thought + action + result + token_usage) as JSON + auto-generated HTML visualization report
+- Duplicate-response detection (`duplicate_threshold`) preventing infinite agent loops
+- TOML-based per-model LLM config for switching Claude models (opus/sonnet/haiku) per agent role without code changes
+- Docker-first SSH-accessible sandbox for shell execution isolation
 
 ---
 
@@ -987,6 +1018,9 @@ When adding new research:
 - [Hedra](https://www.hedra.com) - AI-powered visual creation platform for video, image, and audio content
 - [Kythe](https://kythe.io) - Google's language-agnostic code intelligence platform with graph-based semantic indexing (2,094 stars)
 - [GitHub CLI](https://github.com/cli/cli) - Official GitHub CLI for PRs, issues, workflows, and extensions (37,800+ stars)
+- [codex-skills](https://github.com/jMerta/codex-skills) - 19-skill catalog for OpenAI Codex CLI with npx installer, global ledger pattern, and prompt-injection hardening (116 stars)
+- [Browser MCP](https://browsermcp.io) - Chrome browser automation MCP server via extension bridge, preserving auth sessions and real fingerprint (5,814 stars)
+- [Micro-Agent](https://github.com/fdueblab/Micro-Agent) - Lightweight Python 3.12 ReAct agent framework with MCP multi-server support, token budget enforcement, and step-level execution visualization (MIT)
 
 ### Internal References
 
