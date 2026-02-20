@@ -53,13 +53,13 @@ flowchart TD
 
 ## Prerequisites
 
-Before starting research, ensure `gh` CLI is available:
+Before starting research, run the gh setup script to ensure the CLI is available. The script is idempotent — it checks the installed version and exits early if already up to date.
 
 ```bash
-command -v gh || uv run .claude/skills/gh/scripts/setup_gh.py
+uv run .claude/skills/gh/scripts/setup_gh.py
 ```
 
-For full `gh` usage patterns and repository detection rules (required `-R` flag), see the [gh skill](./../skills/gh/SKILL.md).
+For usage patterns and the required `-R` flag in proxy environments, see the [gh skill](./../skills/gh/SKILL.md).
 
 ---
 
