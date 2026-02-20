@@ -51,6 +51,18 @@ flowchart TD
 
 ---
 
+## Prerequisites
+
+Before starting research, ensure `gh` CLI is available:
+
+```bash
+command -v gh || uv run .claude/skills/gh/scripts/setup_gh.py
+```
+
+For full `gh` usage patterns and repository detection rules (required `-R` flag), see the [gh skill](./../skills/gh/SKILL.md).
+
+---
+
 ## Available Research Tools
 
 <research_tools>

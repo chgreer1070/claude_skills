@@ -27,6 +27,18 @@ flowchart TD
 
 ---
 
+## Prerequisites
+
+Before spawning research agents, ensure `gh` CLI is available for GitHub API calls:
+
+```bash
+command -v gh || uv run .claude/skills/gh/scripts/setup_gh.py
+```
+
+See the [gh skill](./../gh/SKILL.md) for usage patterns and the required `-R` flag for repository detection.
+
+---
+
 ## Research Directory
 
 Single source of truth: `./research/` (repo-root relative).
