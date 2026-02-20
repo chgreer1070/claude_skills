@@ -380,8 +380,12 @@ def _create_app(csv_path: Path) -> pn.template.FastListTemplate:
     # Track file modification time for change detection
     state: dict[str, float] = {"last_mtime": 0.0}
 
+    # Start with an empty container — data loads async via onload so the page
+    # shell is delivered to the browser immediately without blocking on CSV I/O
+    # and chart rendering.
     dashboard_container = pn.Column(
-        _build_dashboard(csv_path), sizing_mode="stretch_width"
+        pn.pane.Markdown("Loading…", sizing_mode="stretch_width"),
+        sizing_mode="stretch_width",
     )
 
     def _refresh() -> None:
@@ -399,14 +403,16 @@ def _create_app(csv_path: Path) -> pn.template.FastListTemplate:
                 _dashboard_csv_rows = len(df) if df is not None else None
             dashboard_container.objects = [_build_dashboard(csv_path, df)]
 
-    # Defer periodic callback registration until the app is fully loaded.
-    # pn.state.onload runs after the Bokeh/Tornado event loop is active,
-    # avoiding "RuntimeError: no running event loop" when the dashboard
-    # is started in a daemon thread.
-    def _register_periodic() -> None:
+    def _initial_load() -> None:
+        """Load data and register the periodic refresh after the page is served."""
+        _refresh()
         pn.state.add_periodic_callback(_refresh, period=_REFRESH_INTERVAL_MS)
 
-    pn.state.onload(_register_periodic)
+    # pn.state.onload runs after the Bokeh/Tornado event loop is active and
+    # the page shell has been delivered to the browser.  Heavy CSV I/O and
+    # chart rendering happen here, not during _create_app(), so the browser
+    # receives the page structure immediately.
+    pn.state.onload(_initial_load)
 
     return pn.template.FastListTemplate(
         title="Kaizen Sentiment Dashboard",
