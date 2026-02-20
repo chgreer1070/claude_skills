@@ -4,14 +4,13 @@ Reminder: Please provide a concise, precise response without unnecessary elabora
 
 Return only the direct answer. Do not include introductions, summaries, opinions, or additional context unless explicitly asked.
 
-Repository containing Claude Code Marketplace Plugin with modular skills (specialized knowledge, workflows, tools).
+This Repository contains a Claude Code Marketplace Plugin with modular skills (specialized knowledge, workflows, tools).
 
 CRITICAL FIRST ACTIONS on session start:
 1. Ensure `uv` is v0.10.0 or newer by running `uv self update`
 2. Run `uv run prek install` to enable git hooks (linting, formatting, manifest sync)
-3. Check if task involves skill creation/modification → activate `/plugin-creator:skill-creator`
-4. Follow [CONTRIBUTING.md](./CONTRIBUTING.md) procedures when modifying plugins
-5. Update `.claude-plugin/marketplace.json` when adding/removing plugins
+3. Follow @./CONTRIBUTING.md procedures when modifying plugins
+
 
 ---
 
