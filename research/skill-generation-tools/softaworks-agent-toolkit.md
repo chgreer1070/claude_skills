@@ -2,11 +2,11 @@
 
 | Field         | Value                                                    |
 | ------------- | -------------------------------------------------------- |
-| Research Date | 2026-01-31                                               |
+| Research Date | 2026-02-20                                               |
 | Primary URL   | <https://github.com/softaworks/agent-toolkit>            |
 | GitHub        | <https://github.com/softaworks/agent-toolkit>            |
 | Installation  | `npx skills add softaworks/agent-toolkit`                |
-| Version       | Active development (last pushed 2026-01-28)              |
+| Version       | Active development (last pushed 2026-02-08)              |
 | License       | MIT                                                      |
 | Author        | [@leonardocouy](https://github.com/leonardocouy)         |
 | Organization  | [Softaworks](https://github.com/softaworks)              |
@@ -15,21 +15,21 @@
 
 ## Overview
 
-Softaworks Agent Toolkit is a curated collection of 40+ skills for AI coding agents that follow the Agent Skills format. Skills are packaged instructions and scripts extending agent capabilities across development, documentation, planning, and professional workflows. The toolkit works with Claude Code, OpenAI Codex, Cursor, and other AI coding assistants, offering both marketplace-based installation and direct skill copying.
+Softaworks Agent Toolkit is a curated collection of 43 skills for AI coding agents that follow the Agent Skills format. Skills are packaged instructions and scripts extending agent capabilities across development, documentation, planning, and professional workflows. The toolkit works with Claude Code, OpenAI Codex, Cursor, AdaL, and other AI coding assistants, offering marketplace-based installation via plugin system and npx-based quick install.
 
 ---
 
 ## Problem Addressed
 
-| Problem                                              | Solution                                                                  |
-| ---------------------------------------------------- | ------------------------------------------------------------------------- |
-| AI coding agents lack specialized domain knowledge   | 40+ pre-built skills covering development, docs, planning, communication  |
-| Skills scattered across repositories and formats     | Unified Agent Skills format with consistent SKILL.md structure            |
-| Installing skills requires manual copying            | Multiple install methods: npx, plugin marketplace, direct copy            |
-| Skills not portable across different AI agents       | Agent Skills format works with Claude Code, Codex, Cursor, claude.ai      |
-| No organized taxonomy for agent capabilities         | Categorized skills: AI Tools, Meta, Documentation, Design, Development    |
-| Agents and commands are separate from skills         | Unified plugin system includes skills, agents, and slash commands         |
-| Skills lack usage documentation                      | Each skill has SKILL.md (for agents) + README.md (for users)              |
+| Problem                                              | Solution                                                                     |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------- |
+| AI coding agents lack specialized domain knowledge   | 43 pre-built skills covering development, docs, planning, communication      |
+| Skills scattered across repositories and formats     | Unified Agent Skills format with consistent SKILL.md structure               |
+| Installing skills requires manual copying            | Multiple install methods: npx quick install, plugin marketplace, manual copy |
+| Skills not portable across different AI agents       | Agent Skills format works with Claude Code, Codex, Cursor, AdaL, claude.ai   |
+| No organized taxonomy for agent capabilities         | Categorized skills: AI Tools, Meta, Documentation, Design, Development       |
+| Agents and commands are separate from skills         | Unified plugin system includes skills, agents, and slash commands            |
+| Skills lack usage documentation                      | Each skill has SKILL.md (for agents) + README.md (for users)                 |
 
 ---
 
@@ -37,14 +37,15 @@ Softaworks Agent Toolkit is a curated collection of 40+ skills for AI coding age
 
 | Metric            | Value                     | Date Gathered |
 | ----------------- | ------------------------- | ------------- |
-| GitHub Stars      | 378                       | 2026-01-31    |
-| GitHub Forks      | 17                        | 2026-01-31    |
-| Open Issues       | 0                         | 2026-01-31    |
-| Primary Language  | Python                    | 2026-01-31    |
-| Repository Age    | Since 2026-01-19          | 2026-01-31    |
-| Total Skills      | 40+                       | 2026-01-31    |
-| Total Agents      | 6                         | 2026-01-31    |
-| Slash Commands    | 7                         | 2026-01-31    |
+| GitHub Stars      | 621                       | 2026-02-20    |
+| GitHub Forks      | 43                        | 2026-02-20    |
+| Contributors      | 3                         | 2026-02-20    |
+| Open Issues       | 0                         | 2026-02-20    |
+| Primary Language  | Python                    | 2026-02-20    |
+| Repository Age    | Since 2026-01-19          | 2026-02-20    |
+| Total Skills      | 43                        | 2026-02-20    |
+| Total Agents      | 6                         | 2026-02-20    |
+| Slash Commands    | 7                         | 2026-02-20    |
 
 ---
 
@@ -52,18 +53,18 @@ Softaworks Agent Toolkit is a curated collection of 40+ skills for AI coding age
 
 ### Skill Categories
 
-| Category           | Count | Examples                                             |
-| ------------------ | ----- | ---------------------------------------------------- |
-| AI Tools           | 3     | codex (GPT-5.2), gemini (200k context), perplexity   |
-| Meta               | 4     | agent-md-refactor, command-creator, plugin-forge     |
-| Documentation      | 10    | c4-architecture, mermaid-diagrams, excalidraw        |
-| Design & Frontend  | 5     | mui, react-dev, openapi-to-typescript                |
-| Development        | 5     | database-schema-designer, dependency-updater         |
-| Planning           | 4     | gepetto, requirements-clarity, game-changing-features|
-| Professional       | 4     | daily-meeting-update, feedback-mastery               |
-| Testing            | 1     | qa-test-planner                                      |
-| Git                | 1     | commit-work                                          |
-| Utilities          | 7     | humanizer, jira, web-to-markdown, meme-factory       |
+| Category           | Count | Examples                                                    |
+| ------------------ | ----- | ----------------------------------------------------------- |
+| AI Tools           | 3     | codex (GPT-5.2), gemini (200k context), perplexity          |
+| Meta               | 4     | agent-md-refactor, command-creator, plugin-forge            |
+| Documentation      | 10    | c4-architecture, mermaid-diagrams, excalidraw               |
+| Design & Frontend  | 5     | mui, react-dev, openapi-to-typescript                       |
+| Development        | 6     | database-schema-designer, dependency-updater, session-handoff|
+| Planning           | 4     | gepetto, requirements-clarity, game-changing-features       |
+| Professional       | 4     | daily-meeting-update, feedback-mastery                      |
+| Testing            | 1     | qa-test-planner                                             |
+| Git                | 1     | commit-work                                                 |
+| Utilities          | 5     | humanizer, jira, web-to-markdown, domain-name-brainstormer  |
 
 ### Agents (Claude Code Exclusive)
 
@@ -90,11 +91,11 @@ Softaworks Agent Toolkit is a curated collection of 40+ skills for AI coding age
 
 ### Installation Methods
 
-1. **Quick Install (Recommended)**: `npx skills add softaworks/agent-toolkit`
-2. **Plugin Marketplace**: `/plugin marketplace add softaworks/agent-toolkit`
-3. **Direct Install**: `/plugin install codex@agent-toolkit`
-4. **Manual Copy**: `cp -r skills/<skill-name> ~/.claude/skills/`
-5. **claude.ai**: Paste SKILL.md contents into conversation
+1. **Quick Install (Recommended)**: `npx skills add softaworks/agent-toolkit` - Works with Claude Code, Codex, Cursor, AdaL
+2. **Plugin Marketplace**: `/plugin marketplace add softaworks/agent-toolkit` then browse/install via `/plugin` UI
+3. **Direct Install**: `/plugin install codex@agent-toolkit` or `/plugin install agent-<name>@agent-toolkit`
+4. **Manual Copy (Skills only)**: `cp -r skills/<skill-name> ~/.claude/skills/`
+5. **claude.ai (Skills only)**: Paste SKILL.md contents into conversation or add to project knowledge
 
 ### Notable Skills Deep Dive
 
@@ -215,14 +216,15 @@ Skills follow the [Agent Skills](https://agentskills.io/) format, ensuring porta
 
 | Source                    | URL                                                                 | Accessed   |
 | ------------------------- | ------------------------------------------------------------------- | ---------- |
-| GitHub Repository         | <https://github.com/softaworks/agent-toolkit>                       | 2026-01-31 |
-| GitHub README             | <https://github.com/softaworks/agent-toolkit/blob/main/README.md>   | 2026-01-31 |
-| GitHub API (Metadata)     | <https://api.github.com/repos/softaworks/agent-toolkit>             | 2026-01-31 |
-| Agent Skills Format       | <https://agentskills.io/>                                           | 2026-01-31 |
+| GitHub Repository         | <https://github.com/softaworks/agent-toolkit>                       | 2026-02-20 |
+| GitHub README             | <https://github.com/softaworks/agent-toolkit/blob/main/README.md>   | 2026-02-20 |
+| GitHub API (Metadata)     | <https://api.github.com/repos/softaworks/agent-toolkit>             | 2026-02-20 |
+| GitHub API (Contributors) | <https://api.github.com/repos/softaworks/agent-toolkit/contributors>| 2026-02-20 |
+| Agent Skills Format       | <https://agentskills.io/>                                           | 2026-02-20 |
 | Codex Skill               | skills/codex/SKILL.md (via raw GitHub)                              | 2026-01-31 |
 | Gepetto Skill             | skills/gepetto/SKILL.md (via raw GitHub)                            | 2026-01-31 |
 
-**Research Method**: Information gathered from GitHub repository README, GitHub API for repository metadata (stars, forks, license, dates), and raw skill files for technical details. Statistics verified via direct API calls on 2026-01-31.
+**Research Method**: Information gathered from GitHub repository README via GitHub API raw content endpoint, GitHub API for repository metadata (stars, forks, license, dates, contributors), directory structure via GitHub contents API, and skill counting via API directory listing. Statistics verified via direct API calls on 2026-02-20.
 
 ---
 
@@ -231,16 +233,26 @@ Skills follow the [Agent Skills](https://agentskills.io/) format, ensuring porta
 | Field              | Value                               |
 | ------------------ | ----------------------------------- |
 | Version Documented | Active development                  |
-| Last Pushed        | 2026-01-28                          |
-| GitHub Stars       | 378 (as of 2026-01-31)              |
-| Total Skills       | 40+ (as of 2026-01-31)              |
-| Next Review Date   | 2026-05-01                          |
+| Last Pushed        | 2026-02-08                          |
+| GitHub Stars       | 621 (as of 2026-02-20)              |
+| GitHub Forks       | 43 (as of 2026-02-20)               |
+| Total Skills       | 43 (as of 2026-02-20)               |
+| Contributors       | 3 (as of 2026-02-20)                |
+| Next Review Date   | 2026-05-20                          |
 
 **Review Triggers**:
 
-- GitHub stars milestone (500, 1K)
+- GitHub stars milestone (1K, 2K)
 - Major new skill categories added
 - Plugin marketplace format changes
 - New AI agent platform support
 - Significant skill additions (10+ new skills)
 - Changes to Agent Skills format specification
+
+**Changes Since Last Review (2026-01-31)**:
+
+- Stars increased from 378 to 621 (+64%)
+- Forks increased from 17 to 43 (+153%)
+- Skills increased from 40+ to 43 (+3 skills)
+- Added Contributors metric (3 total)
+- Last pushed date updated from 2026-01-28 to 2026-02-08

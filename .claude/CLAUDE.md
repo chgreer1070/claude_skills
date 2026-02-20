@@ -4,13 +4,13 @@ Reminder: Please provide a concise, precise response without unnecessary elabora
 
 Return only the direct answer. Do not include introductions, summaries, opinions, or additional context unless explicitly asked.
 
-Repository containing Claude Code Marketplace Plugin with modular skills (specialized knowledge, workflows, tools).
+This Repository contains a Claude Code Marketplace Plugin with modular skills (specialized knowledge, workflows, tools).
 
 CRITICAL FIRST ACTIONS on session start:
-1. Run `uv run prek install` to enable git hooks (linting, formatting, manifest sync)
-2. Check if task involves skill creation/modification → activate `/plugin-creator:skill-creator`
-3. Follow [CONTRIBUTING.md](./CONTRIBUTING.md) procedures when modifying plugins
-4. Update `.claude-plugin/marketplace.json` when adding/removing plugins
+1. Ensure `uv` is v0.10.0 or newer by running `uv self update`
+2. Run `uv run prek install` to enable git hooks (linting, formatting, manifest sync)
+3. Follow @./CONTRIBUTING.md procedures when modifying plugins
+
 
 ---
 
@@ -772,17 +772,7 @@ SOURCE: CPython `build.yml` quality gate pattern, GitHub Actions docs on `contin
 
 ### Installation
 
-`gh` not pre-installed. Install before first use:
-
-```bash
-(type -p gh > /dev/null) || {
-  curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-    | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-    | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-  sudo apt-get update -qq && sudo apt-get install -qq -y gh
-}
-```
+`gh` not pre-installed. To install `gh`, follow the instructions in the `gh` skill available in this project: activate `Skill(command: "gh")`.
 
 ### Authentication and Repo Detection
 

@@ -45,7 +45,7 @@ import shutil
 import sys
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Annotated, Literal, cast
 
@@ -157,7 +157,12 @@ class TempDoc:
             if isinstance(created_value, date):
                 created_date = created_value
             elif isinstance(created_value, str):
-                created_date = datetime.strptime(created_value, "%Y-%m-%d").date()
+                created_date = (
+                    datetime
+                    .strptime(created_value, "%Y-%m-%d")
+                    .replace(tzinfo=UTC)
+                    .date()
+                )
             else:
                 return None
 

@@ -1,7 +1,7 @@
 ---
 name: research-curator
 description: Research and document a single tool, library, or resource into a structured research entry. Gathers information from primary sources using MCP tools and gh CLI. Creates comprehensive markdown entries following the standard template. Works standalone or orchestrated by the /research-curator skill.
-tools: Read, Write, Edit, Grep, Glob, Bash
+skills: gh
 model: sonnet
 ---
 

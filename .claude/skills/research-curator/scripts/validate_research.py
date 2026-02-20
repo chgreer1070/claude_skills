@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import re
 import sys
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -319,7 +319,7 @@ def main(
 ) -> None:
     """Validate research entries against quality standards."""
     research_root = path if path.is_dir() else path.parent
-    today = date.today()
+    today = datetime.now(tz=UTC).date()
 
     files = collect_files(path)
     if not files:

@@ -22,9 +22,7 @@
     "./skills/testing/comprehensive-test-review",
     "./skills/testing/analyze-test-failures",
     "./skills/testing/test-failure-mindset",
-    "./skills/implementation-manager",
-    "./skills/implementation-manager/scripts/implementation_manager.py",
-    "./skills/implementation-manager/scripts/task_format.py"
+    "./skills/implementation-manager"
   ],
   "agents": [
     "./agents/swarm-task-planner.md",

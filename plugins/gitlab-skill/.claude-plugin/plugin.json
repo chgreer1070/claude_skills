@@ -1,16 +1,11 @@
 {
   "name": "gitlab-skill",
   "description": "The model must apply when tasks involve .gitlab-ci.yml configuration, GitLab Flavored Markdown (GLFM) syntax, gitlab-ci-local testing, CI/CD pipeline optimization, GitLab CI Steps composition, Docker-in-Docker workflows, or GitLab documentation creation. Triggers include modifying pipelines, writing GitLab README/Wiki content, debugging CI jobs locally, implementing caching strategies, or configuring release workflows.",
-  "version": "1.3.0",
+  "version": "1.6.0",
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "skills": [
-    "./skills/gitlab-skill",
-    "./skills/gitlab-skill/scripts/get_gitlab_context.py",
-    "./skills/gitlab-skill/scripts/sync_gitlab_docs.py",
-    "./skills/gitlab-skill/scripts/validate_glfm.py"
-  ],
-  "commands": ["./commands", "./commands/setup-ci-publish-token.md", "./skills/gitlab-skill"]
+  "skills": ["./skills/gitlab-skill"],
+  "commands": ["./commands/setup-ci-publish-token.md", "./skills/gitlab-skill"]
 }

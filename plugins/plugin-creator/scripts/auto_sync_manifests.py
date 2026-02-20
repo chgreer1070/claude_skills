@@ -739,14 +739,6 @@ def _discover_skills(plugin_dir: Path) -> list[str]:
                 # Skill directory with SKILL.md
                 found.append(f"./skills/{item.name}")
 
-            # Also discover scripts within skill directories
-            scripts_dir = item / "scripts"
-            if scripts_dir.is_dir():
-                found.extend(
-                    f"./skills/{item.name}/scripts/{script.name}"
-                    for script in sorted(scripts_dir.glob("*.py"))
-                )
-
             # Check for nested skill directories (e.g., skills/testing/*)
             for nested in sorted(item.iterdir()):
                 if nested.is_dir() and not nested.name.startswith("."):
@@ -937,17 +929,17 @@ def _reconcile_one_plugin(
 
     # Reconcile skills
     has_drift |= _reconcile_component_array(
-        data, "skills", disk_skills, plugin_name, plugin_dir, dry_run=dry_run
+        data, "skills", disk_skills, plugin_name, dry_run=dry_run
     )
 
     # Reconcile agents
     has_drift |= _reconcile_component_array(
-        data, "agents", disk_agents, plugin_name, plugin_dir, dry_run=dry_run
+        data, "agents", disk_agents, plugin_name, dry_run=dry_run
     )
 
     # Reconcile commands (includes user-invocable skills)
     has_drift |= _reconcile_component_array(
-        data, "commands", disk_commands_full, plugin_name, plugin_dir, dry_run=dry_run
+        data, "commands", disk_commands_full, plugin_name, dry_run=dry_run
     )
 
     if has_drift and not dry_run:
@@ -996,47 +988,26 @@ def _find_missing_items(
 
 
 def _find_stale_items(
-    registered: list[str], disk_items: list[str], plugin_dir: Path, *, normalize: bool
+    registered: list[str], disk_items: list[str], *, normalize: bool
 ) -> list[str]:
-    """Find registered items that no longer exist on disk.
+    """Find registered items not present in the discovery list.
 
-    Uses two checks: first compares against the discovery list, then verifies
-    the referenced path truly does not exist on disk.  This prevents false
-    positives for template files, wildcard directory references, and
-    cross-component references (e.g., skills in the commands array).
-
-    Skips script entries (``/scripts/``) since those are intentional
-    companion registrations not tied to a single SKILL.md.
+    Discovery functions are the sole authority on what belongs in each
+    component array.  Any registered entry not matched by discovery is stale.
 
     Args:
         registered: Paths currently in the manifest
         disk_items: Paths discovered on disk
-        plugin_dir: Root directory of the plugin for existence checks
         normalize: If True, normalize skill paths before comparison
 
     Returns:
-        List of registered items with no matching disk entry
+        List of registered items with no matching discovered entry
     """
-    stale: list[str] = []
-    for reg in registered:
-        # Skip script entries — intentional companion registrations
-        if "/scripts/" in reg:
-            continue
-
-        # Check if it matches a discovered item
-        if any(_refs_match(reg, item, normalize=normalize) for item in disk_items):
-            continue
-
-        # Verify the referenced path truly does not exist on disk
-        # Strip leading ./ for filesystem check
-        rel_path = reg.lstrip("./")
-        full_path = plugin_dir / rel_path
-        if full_path.exists():
-            continue
-
-        stale.append(reg)
-
-    return stale
+    return [
+        reg
+        for reg in registered
+        if not any(_refs_match(reg, item, normalize=normalize) for item in disk_items)
+    ]
 
 
 def _apply_drift_changes(
@@ -1088,7 +1059,6 @@ def _reconcile_component_array(
     field_name: str,
     disk_items: list[str],
     plugin_name: str,
-    plugin_dir: Path,
     *,
     dry_run: bool,
 ) -> bool:
@@ -1099,7 +1069,6 @@ def _reconcile_component_array(
         field_name: Array field name (``skills``, ``agents``, ``commands``)
         disk_items: Items discovered on disk
         plugin_name: Plugin name for logging
-        plugin_dir: Root directory of the plugin for existence checks
         dry_run: If True, only report
 
     Returns:
@@ -1112,7 +1081,7 @@ def _reconcile_component_array(
     normalize = field_name == "skills"
 
     missing = _find_missing_items(disk_items, registered, normalize=normalize)
-    stale = _find_stale_items(registered, disk_items, plugin_dir, normalize=normalize)
+    stale = _find_stale_items(registered, disk_items, normalize=normalize)
 
     if missing or stale:
         _apply_drift_changes(
