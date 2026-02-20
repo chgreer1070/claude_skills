@@ -1,0 +1,18 @@
+test: invalid-glfm
+description: "Markdown file with invalid GLFM alert type and malformed mermaid block"
+expected_workflow: formatting-validation
+expected_chain:
+  - formatting-validation
+expected_validators:
+  - glfm-validator
+expected_status: FAILED
+required_findings:
+  - type: glfm-error
+    evidence_required: true
+    description: "Invalid alert type CAUTION_EXTENDED not supported in GLFM"
+  - type: mermaid-syntax-error
+    evidence_required: true
+    description: "Malformed mermaid block — missing arrow syntax between nodes"
+notes:
+  - "glfm-validator requires GITLAB_TOKEN environment variable"
+  - "If GITLAB_TOKEN is absent, this test cannot be run — note in NOTES field"

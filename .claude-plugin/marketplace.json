@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Covers modern Python toolchains, GitLab CI/CD automation, code quality enforcement, MCP server creation, and plugin/agent development patterns.",
-    "version": "2.14.25"
+    "version": "2.15.0"
   },
   "plugins": [
     {
@@ -92,6 +92,10 @@
     {
       "name": "summarizer",
       "source": "./plugins/summarizer"
+    },
+    {
+      "name": "the-rewrite-room",
+      "source": "./plugins/the-rewrite-room"
     },
     {
       "name": "uv",

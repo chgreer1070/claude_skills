@@ -1,0 +1,21 @@
+{
+  "name": "the-rewrite-room",
+  "version": "1.2.0",
+  "description": "Authoring and documentation workflow router. Routes documentation tasks \u2014 sync, drift audit, prompt optimization, summarization, GLFM/Markdown validation, audience-aware rewriting \u2014 to canonical workflows with validation harness and fidelity enforcement.",
+  "author": {
+    "name": "Jamie BitFlight",
+    "url": "https://github.com/Jamie-BitFlight/claude_skills"
+  },
+  "keywords": [
+    "documentation",
+    "authoring",
+    "audit",
+    "drift",
+    "sync",
+    "summarization",
+    "prompt-optimization",
+    "glfm",
+    "routing"
+  ],
+  "skills": ["./skills/the-rewrite-room"]
+}

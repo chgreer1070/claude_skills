@@ -239,6 +239,7 @@ max-complexity = 12
     "PLR0911", # Too many return statements acceptable in script logic
     "S",       # Security checks relaxed for CLI scripts (subprocess, partial paths)
     "T201",    # print() statements are intentional for CI output visibility
+    "TC",      # Type-checking imports kept at runtime for Typer annotation resolution
 ]
 "**/tests/**" = [
     "ANN",  # Type annotations optional for test fixtures/methods

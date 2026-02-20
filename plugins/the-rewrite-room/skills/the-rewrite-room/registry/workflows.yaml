@@ -1,0 +1,280 @@
+workflows:
+  - id: drift-audit
+    name: "Drift Audit"
+    description: "Evidence-based comparison of docs vs code using git forensics"
+    canonical_agent: doc-drift-auditor
+    canonical_path: "plugins/development-harness/agents/doc-drift-auditor.md"
+    legacy_components:
+      - name: doc-freshness-guardian
+        path: "~/.claude/agents/doc-freshness-guardian.md"
+        model: inherit
+        note: "Bidirectional doc-code sync with freshness tracking. Adds YAML frontmatter freshness headers (last_updated, last_verified, applies_to_version, related_files, update_required_when). Alerts on stale docs (>90 days). Runs pre-task discovery AND post-task update. Model inherits from caller."
+      - name: service-documentation
+        path: "~/.claude/agents/service-documentation.md"
+        model: inherit
+        note: "Updates CLAUDE.md and module docs (SKILL.md, references/, agent definitions) after code changes. Invoked at context compaction or task completion. Input: task file path. Scope: project-level CLAUDE.md only — not global docs."
+    triggers:
+      - "docs out of date"
+      - "code changed but docs not updated"
+      - "audit docs vs code"
+      - "find undocumented features"
+      - "documented but not implemented"
+      - "drift"
+      - "documentation drift"
+      - "implemented but undocumented"
+      - "docs don't match code"
+      - "verify documentation accuracy"
+      - "git history divergence"
+      - "freshness check"
+      - "stale documentation"
+      - "update docs after code change"
+      - "sync CLAUDE.md"
+      - "update SKILL.md"
+    source_types: [files, diffs, git-history]
+    artifact_targets: [README.md, "docs/", "references/"]
+    validators:
+      - link-checker
+      - cross-reference-validator
+    output_contract: audit-block-v1
+    chain_next: [formatting-validation]
+    dependencies:
+      scripts: []
+      references: ["./references/output-contracts.md"]
+
+  - id: documentation-sync
+    name: "Documentation Sync"
+    description: "Outbound sync pipeline — downloads upstream docs into skill references/ directory and creates a Python sync script with cooldown enforcement"
+    canonical_skill: add-doc-updater
+    canonical_path: "plugins/plugin-creator/skills/add-doc-updater/SKILL.md"
+    triggers:
+      - "sync docs"
+      - "doc sync"
+      - "automate documentation"
+      - "documentation updater"
+      - "keep docs in sync"
+      - "upstream docs"
+      - "download docs"
+      - "refresh docs"
+      - "documentation pipeline"
+      - "doc updater script"
+      - "external documentation"
+    source_types: [upstream-url, external-source]
+    artifact_targets: ["references/", "docs/"]
+    validators:
+      - link-checker
+      - frontmatter-validator
+    output_contract: status-block-v1
+    chain_next: [drift-audit, formatting-validation]
+    dependencies:
+      scripts: []
+      references: ["./references/output-contracts.md"]
+
+  - id: authoring
+    name: "Authoring"
+    description: "Audience-appropriate rewriting — tone, structure, clarity, positive framing, compression for human-facing content"
+    canonical_skill: prompt-optimization-claude-45
+    canonical_path: "plugins/prompt-optimization-claude-45/skills/prompt-optimization-claude-45/SKILL.md"
+    legacy_components:
+      - name: documentation-expert
+        path: "~/.claude/agents/documentation-expert.md"
+        model: haiku
+        note: "User-facing docs specialist (NOT AI-facing). Covers user manuals, API docs, tutorials, troubleshooting guides. Explicitly excludes CLAUDE.md/AGENTS.md — route those to prompt-optimization workflow instead."
+      - name: gitlab-docs-expert
+        path: "~/.claude/agents/gitlab-docs-expert.md"
+        model: sonnet
+        note: "GitLab-project-specific authoring. Extends documentation-expert with GLFM syntax mastery, alert blocks, collapsibles, Mermaid diagrams, and GitLab reference syntax. Also registers in formatting-validation workflow."
+    triggers:
+      - "rewrite"
+      - "rephrase"
+      - "tone"
+      - "audience"
+      - "style"
+      - "clarity"
+      - "structure this"
+      - "improve this writing"
+      - "make this more concise"
+      - "positive framing"
+      - "prohibition to directive"
+      - "compress this"
+      - "edit this prose"
+      - "transform this text"
+      - "human-facing"
+      - "user-facing"
+      - "make clearer"
+      - "write documentation"
+      - "user manual"
+      - "API docs"
+      - "README"
+      - "tutorial"
+      - "troubleshooting guide"
+    source_types: [inline-text, file]
+    artifact_targets: [README.md, "docs/", user-facing-content]
+    validators:
+      - prompt-structure-validator
+    output_contract: status-block-v1
+    chain_next: []
+    dependencies:
+      scripts: []
+      references: ["./references/output-contracts.md"]
+
+  - id: prompt-optimization
+    name: "Prompt Optimization"
+    description: "AI-facing documentation optimization — CLAUDE.md, SKILL.md, agent definitions. Full orchestration with baseline measurement, CoVe verification, before/after diff."
+    canonical_skill: optimize-claude-md
+    canonical_path: ".claude/skills/optimize-claude-md/SKILL.md"
+    canonical_agent: contextual-ai-documentation-optimizer
+    canonical_agent_path: "plugins/plugin-creator/agents/contextual-ai-documentation-optimizer.md"
+    knowledge_reference: "plugins/prompt-optimization-claude-45/skills/prompt-optimization-claude-45/SKILL.md"
+    legacy_components:
+      - name: subagent-refactorer
+        path: "~/.claude/agents/subagent-refactorer.md"
+        model: sonnet
+        note: "Refactors existing Claude Code agents using Anthropic official prompt engineering best practices. MUST consult official Anthropic docs first. Applies strategic XML tagging (not full XML conversion), Constitutional AI patterns, instruction strengthening, and example enhancement. Produces analysis report + refactored agent file + validation checklist. Also listed in plugins/plugin-creator/agents/subagent-refactorer.md (repo canonical)."
+      - name: subagent-generator
+        path: "~/.claude/agents/subagent-generator.md"
+        note: "Creates new Claude Code agent files from scratch. Knows agent frontmatter format, tool selection guidelines, model selection criteria, Constitutional AI patterns for agents. Saves to .claude/agents/{name}.md."
+    triggers:
+      - "optimize CLAUDE.md"
+      - "improve SKILL.md"
+      - "agent definition quality"
+      - "prompt effectiveness"
+      - "reduce token waste"
+      - "rewrite for AI"
+      - "LLM instruction quality"
+      - "front-load priorities"
+      - "AI-facing documentation"
+      - "skill description"
+      - "agent description"
+      - "refactor agent"
+      - "improve agent prompt"
+      - "create new agent"
+      - "new subagent"
+      - "agent engineering"
+      - "Constitutional AI"
+    source_types: [CLAUDE.md, SKILL.md, agent-definition]
+    artifact_targets: [CLAUDE.md, SKILL.md, "agents/"]
+    validators:
+      - prompt-structure-validator
+      - frontmatter-validator
+    output_contract: optimization-block-v1
+    chain_next: [formatting-validation]
+    dependencies:
+      scripts: []
+      references: ["./references/output-contracts.md"]
+
+  - id: summarization
+    name: "Summarization"
+    description: "Fidelity-enforced summarization — file, URL, image, or multi-source. Dispatches to type-specific strategy via summarizer skill router."
+    canonical_skill: summarizer
+    canonical_path: "plugins/summarizer/skills/summarizer/SKILL.md"
+    triggers:
+      - "summarize"
+      - "tl;dr"
+      - "give me the highlights"
+      - "what's important"
+      - "break down this"
+      - "what does this code do"
+      - "explain this file"
+      - "describe this image"
+      - "read and summarize"
+      - "synthesize"
+      - "combine these summaries"
+      - "multi-source"
+      - "merge findings"
+      - "condense"
+      - "overview"
+      - "abstract"
+    source_types: [file, url, image, multi-source]
+    artifact_targets: [summary-output, report]
+    validators:
+      - fidelity-enforcer
+    output_contract: summary-block-v1
+    chain_next: []
+    dependencies:
+      scripts: []
+      references: ["./references/fidelity-rules.md", "./references/output-contracts.md"]
+
+  - id: formatting-validation
+    name: "Formatting Validation"
+    description: "GLFM/Markdown syntax validation, YAML frontmatter schema checks, plugin structure validation, token complexity reporting"
+    canonical_skill: plugin-creator-lint
+    canonical_path: "plugins/plugin-creator/skills/lint/SKILL.md"
+    canonical_skill_secondary: holistic-linting
+    canonical_path_secondary: "plugins/holistic-linting/skills/holistic-linting/SKILL.md"
+    canonical_agent_glfm: gitlab-docs-expert
+    canonical_agent_glfm_path: "~/.claude/agents/gitlab-docs-expert.md"
+    legacy_components:
+      - name: cursor-mdc-editor
+        path: "~/.claude/skills/cursor-mdc-editor/SKILL.md"
+        note: "Creates and optimizes Cursor .mdc rule files using SCP (Structured Context Protocol) and XML-based prompt engineering. Not GLFM-specific — targets .cursor/rules/*.mdc format. Applies same imperative/quantifiable/verifiable rule principles as formatting-validation but for Cursor IDE rule files. Use when creating new MDC rules, converting guidelines to MDC format, or migrating from .cursorrules."
+    triggers:
+      - "validate frontmatter"
+      - "check skill quality"
+      - "lint plugin"
+      - "token complexity"
+      - "broken links"
+      - "frontmatter issues"
+      - "markdown format"
+      - "YAML frontmatter"
+      - "validate SKILL.md"
+      - "plugin validation"
+      - "frontmatter schema"
+      - "check agent file"
+      - "validate format"
+      - "check markdown"
+      - "GLFM"
+      - "lint docs"
+      - "formatting errors"
+      - "GitLab markdown"
+      - "GLFM syntax"
+      - "alert blocks"
+      - "collapsible sections"
+      - "GitLab flavored markdown"
+    source_types: [file, markdown-content]
+    artifact_targets: [any-markdown-file]
+    validators:
+      - frontmatter-validator
+      - plugin-structure-validator
+      - glfm-validator
+    output_contract: status-block-v1
+    chain_next: []
+    dependencies:
+      scripts:
+        - "plugins/plugin-creator/scripts/plugin_validator.py"
+        - "plugins/gitlab-skill/skills/gitlab-skill/scripts/validate_glfm.py"
+      references: ["./references/output-contracts.md"]
+
+  - id: research-utilities
+    name: "Research Utilities"
+    description: "Token counting, file metrics, component discovery, and data extraction from documentation and transcripts"
+    canonical_tools:
+      - name: "plugin_validator.py (token/metrics)"
+        path: "plugins/plugin-creator/scripts/plugin_validator.py"
+      - name: "file_metrics.py"
+        path: "plugins/the-rewrite-room/skills/the-rewrite-room/scripts/file_metrics.py"
+      - name: "meta-inspector skill (kaizen data)"
+        path: "plugins/agentskill-kaizen/skills/meta-inspector/SKILL.md"
+    triggers:
+      - "count tokens"
+      - "file word count"
+      - "how large is this skill"
+      - "file metrics"
+      - "data extraction"
+      - "extract data points"
+      - "how many sessions"
+      - "tool timing"
+      - "query counts"
+      - "error summary from transcript"
+      - "discover"
+      - "inventory"
+      - "token count"
+      - "list components"
+    source_types: [directory, repo, file]
+    artifact_targets: [inventory-report, metrics-report]
+    validators: []
+    output_contract: status-block-v1
+    chain_next: []
+    dependencies:
+      scripts:
+        - "plugins/the-rewrite-room/skills/the-rewrite-room/scripts/file_metrics.py"
+      references: ["./references/output-contracts.md"]

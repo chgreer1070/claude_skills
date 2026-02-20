@@ -1,0 +1,22 @@
+test: negative-prompt-patterns
+description: "SKILL.md with 10 prohibition-only patterns and no positive alternatives"
+expected_workflow: prompt-optimization
+expected_chain:
+  - prompt-optimization
+  - formatting-validation
+  - prompt-structure-validator
+expected_status: DONE
+required_findings:
+  - type: prohibition-pattern-normalized
+    count_min: 1
+    description: "At least 1 prohibition converted to positive directive with rationale"
+  - type: frontmatter-valid
+    evidence_required: false
+    description: "Frontmatter description has no colons, allowed-tools is comma-separated string"
+output_requirements:
+  - "Before/after diff showing prohibition conversions"
+  - "Token delta report (tokens_before vs tokens_after)"
+  - "CoVe verification confirming positive alternatives are present"
+forbidden_in_output:
+  - "likely"
+  - "probably"
