@@ -451,11 +451,11 @@ RULE: The model must understand STDIO transport bypasses all auth
 Protect individual components with auth decorators:
 
 ```python
-from fastmcp.server.auth import require_auth, require_scopes
+from fastmcp.server.auth import require_scopes, restrict_tag
 
-@mcp.tool(auth=require_auth)
+@mcp.tool(auth=require_scopes("write"))
 def protected_tool():
-    """Requires any valid token."""
+    """Requires 'write' scope."""
     ...
 
 @mcp.resource("data://secret", auth=require_scopes("read"))
@@ -470,7 +470,6 @@ def admin_prompt():
 ```
 
 Built-in auth checks:
-- `require_auth`: Requires any valid token
 - `require_scopes(*scopes)`: Requires specific OAuth scopes
 - `restrict_tag(tag, scopes)`: Requires scopes only for tagged components
 
@@ -480,10 +479,10 @@ Apply authorization globally via AuthMiddleware:
 
 ```python
 from fastmcp.server.middleware import AuthMiddleware
-from fastmcp.server.auth import require_auth, restrict_tag
+from fastmcp.server.auth import require_scopes, restrict_tag
 
-# Require auth for all components
-mcp = FastMCP(middleware=[AuthMiddleware(auth=require_auth)])
+# Require specific scopes for all components
+mcp = FastMCP(middleware=[AuthMiddleware(auth=require_scopes("read"))])
 
 # Tag-based restrictions
 mcp = FastMCP(middleware=[

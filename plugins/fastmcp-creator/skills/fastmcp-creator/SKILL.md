@@ -449,9 +449,9 @@ def add(x: int, y: int, z: int = 0) -> int:
     return x + y + z  # Highest version exposed by default
 
 # 4. Authorization at component level
-from fastmcp.server.auth import require_auth, require_scopes
+from fastmcp.server.auth import require_scopes, restrict_tag
 
-@mcp.tool(auth=require_auth)
+@mcp.tool(auth=require_scopes("write"))
 def protected_tool(): ...
 
 @mcp.resource("data://secret", auth=require_scopes("read"))
