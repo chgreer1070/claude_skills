@@ -45,6 +45,7 @@ dev = [
     "ty>=0.0.17",
     "typer>=0.21.0",
     "uv-sort>=0.7.0",
+    "vadersentiment>=3.3.2",
 ]
 
 [tool.pytest.ini_options]
