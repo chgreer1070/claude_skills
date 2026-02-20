@@ -44,15 +44,19 @@ research/
 │   └── local-memory.md               # Persistent memory infrastructure for AI agents (MCP + REST + CLI)
 ├── data-infrastructure/               # Real-time data platforms for analytics
 │   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
+├── documentation-tools/                # Architecture documentation and living docs
+│   └── living-architecture.md         # Operational flow architecture extraction with Rivière schema (79 stars)
 ├── developer-tools/                   # Developer productivity and workflow tools
 │   ├── animejs.md                     # Lightweight JavaScript animation engine (66K+ stars)
 │   ├── claude-conductor.md            # Context-Driven Development plugin for Claude Code (9 commands, skill ecosystem)
+│   ├── claude-openocd-spi-dump.md     # Claude Code plugin for SPI flash dumping via OpenOCD
 │   ├── claude-quickstarts.md          # Official Anthropic quickstart projects — computer use, browser automation, multi-session agent (14.7K stars)
 │   ├── copier-astral.md               # Python project template with Astral toolchain (uv, ruff, ty)
 │   ├── git-cliff.md                   # Customizable changelog generator from Git history
 │   ├── grepai.md                      # Semantic code search and call graph analysis for AI agents (1.2K stars)
 │   ├── jscpd.md                       # Copy/paste detector for 150+ languages (5K+ stars)
 │   ├── loguru.md                      # Python logging made simple with zero config (23K+ stars)
+│   ├── lopaka.md                      # Graphics editor for embedded displays with C/C++ code generation (1.2K stars)
 │   ├── niteni.md                      # AI-powered code review for GitLab CI pipelines
 │   ├── orbstack.md                    # Fast Docker Desktop and Linux VM alternative for macOS
 │   ├── repomix.md                     # Pack codebase into AI-friendly formats (21K+ stars)
@@ -382,12 +386,14 @@ Developer productivity tools and workflow automation for software engineering wi
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [animejs.md](./developer-tools/animejs.md)             | Lightweight JavaScript animation engine with declarative API, timelines, staggering, and 30+ easing functions                        | 2026-01-31   |
 | [claude-conductor.md](./developer-tools/claude-conductor.md)       | Claude Conductor - Context-Driven Development plugin with 9 commands, skill ecosystem, pattern reference layer, and quality intelligence | 2026-02-17   |
+| [claude-openocd-spi-dump.md](./developer-tools/claude-openocd-spi-dump.md) | Claude Code plugin for SPI flash dumping via OpenOCD with RAM-resident code and MCU register maps for 6 chip families | 2026-02-20   |
 | [claude-quickstarts.md](./developer-tools/claude-quickstarts.md)   | Official Anthropic quickstart projects — computer use (Docker+VNC), browser automation, multi-session coding agent, minimal agent loop reference (<300 lines), Next.js UIs (14.7K stars) | 2026-02-19   |
 | [copier-astral.md](./developer-tools/copier-astral.md) | Copier template for Python projects with Astral toolchain (uv, ruff, ty), pytest, MkDocs, Typer, GitHub Actions, Docker              | 2026-01-31   |
 | [git-cliff.md](./developer-tools/git-cliff.md)         | Customizable changelog generator using conventional commits and regex parsers with GitHub/GitLab remote integration                  | 2026-01-26   |
 | [grepai.md](./developer-tools/grepai.md)               | Semantic code search and call graph analysis for AI agents with MCP server, 12-language trace, and embedding-based search (1.2K stars) | 2026-02-13   |
 | [jscpd.md](./developer-tools/jscpd.md)                 | Copy/paste detector for 150+ programming languages using Rabin-Karp algorithm with CI/CD integration                                 | 2026-01-31   |
 | [loguru.md](./developer-tools/loguru.md)               | Loguru - zero-config Python logging with rotation, structured output, exception catching, and contextvars support (23K+ stars)        | 2026-02-09   |
+| [lopaka.md](./developer-tools/lopaka.md)               | Lopaka - web-based graphics editor for embedded displays with multi-library C/C++ code generation (1.2K stars)                        | 2026-02-20   |
 | [niteni.md](./developer-tools/niteni.md)               | Niteni - AI-powered code review for GitLab CI using Gemini with inline diff comments and severity classification                     | 2026-02-15   |
 | [orbstack.md](./developer-tools/orbstack.md)           | Fast, lightweight Docker Desktop and Linux VM alternative for macOS with 2-second startup and dynamic memory                         | 2026-01-31   |
 | [repomix.md](./developer-tools/repomix.md)             | Pack codebase into single AI-friendly file with token counting, Tree-sitter compression, MCP server, and Claude Code plugins         | 2026-01-31   |
@@ -469,10 +475,40 @@ Developer productivity tools and workflow automation for software engineering wi
 - Docker as isolation boundary for computer use agents (filesystem + network scoping)
 - Claude Agent SDK (`claude-code-sdk`) programmatic session spawning reference
 - AWS Bedrock and Google Vertex backends supported alongside Anthropic API for computer use
+- Visual-to-code editor for embedded displays (TFT_eSPI, U8g2, AdafruitGFX, FlipperZero)
+- Multi-library code generation from single visual interface
+- Bitmap-to-C-array conversion for embedded graphics
+- AI-assisted hardware reverse engineering via Claude Code plugin
+- RAM-resident code loading for SPI flash dumping without dedicated programmers
+- MCU register maps for 6 chip families (STM32, SAM, nRF, RP2040, ESP32, GD32)
+- Progressive multi-phase guided workflows for complex hardware tasks
+- Domain knowledge capture (register maps, troubleshooting tables, protocol details) for AI retrieval
 
 ---
 
-### 9. Coding Agents
+### 9. Documentation Tools
+
+**Location**: [./documentation-tools/](./documentation-tools/)
+
+Architecture documentation, living documentation, and code-to-architecture extraction tools.
+
+| Document                                                          | Description                                                                                                                | Last Updated |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| [living-architecture.md](./documentation-tools/living-architecture.md) | Living Architecture (Rivière) - operational flow architecture extraction from code with AI-assisted workflows (79 stars) | 2026-02-20   |
+
+**Key Topics**:
+
+- Operational flow-based architecture modeling (UI → API → UseCase → DomainOp → Event → EventHandler)
+- Language-agnostic JSON schema (Rivière) for polyglot system documentation
+- AI-assisted architecture extraction via CLAUDE.md integration
+- Interactive visualization with click-through navigation to source code
+- Living documentation that stays synchronized with codebase
+- Domain terminology management and cross-domain analysis
+- NX monorepo architecture with strict quality gates (100% test coverage)
+
+---
+
+### 10. Coding Agents
 
 **Location**: [./coding-agents/](./coding-agents/)
 
@@ -502,7 +538,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 
 ---
 
-### 10. Data Infrastructure
+### 11. Data Infrastructure
 
 **Location**: [./data-infrastructure/](./data-infrastructure/)
 
@@ -525,7 +561,7 @@ Real-time data platforms and analytics infrastructure for powering AI applicatio
 
 ---
 
-### 11. Task Management
+### 12. Task Management
 
 **Location**: [./task-management/](./task-management/)
 
@@ -547,7 +583,7 @@ AI-powered task management systems designed for AI-driven development workflows.
 
 ---
 
-### 12. Context Management
+### 13. Context Management
 
 **Location**: [./context-management/](./context-management/)
 
@@ -577,7 +613,7 @@ Memory systems, context window optimization tools, and RAG solutions for maintai
 
 ---
 
-### 13. Async Libraries
+### 14. Async Libraries
 
 **Location**: [./async-libraries/](./async-libraries/)
 
@@ -607,7 +643,7 @@ Python async I/O libraries and concurrency frameworks for building concurrent ap
 
 ---
 
-### 14. ML Infrastructure
+### 15. ML Infrastructure
 
 **Location**: [./ml-infrastructure/](./ml-infrastructure/)
 
@@ -634,7 +670,7 @@ ML compute engines, model serving platforms, and distributed computing infrastru
 
 ---
 
-### 15. Python Runtimes
+### 16. Python Runtimes
 
 **Location**: [./python-runtimes/](./python-runtimes/)
 
@@ -659,7 +695,7 @@ Alternative Python interpreters and runtime implementations for specialized use 
 
 ---
 
-### 16. AI Observability
+### 17. AI Observability
 
 **Location**: [./ai-observability/](./ai-observability/)
 
@@ -684,7 +720,7 @@ AI-native observability platforms for monitoring, debugging, and optimizing LLM 
 
 ---
 
-### 17. Rust-Python Bindings
+### 18. Rust-Python Bindings
 
 **Location**: [./rust-python-bindings/](./rust-python-bindings/)
 
@@ -709,7 +745,7 @@ Rust-Python interoperability libraries for building high-performance Python exte
 
 ---
 
-### 18. AI Research Tools
+### 19. AI Research Tools
 
 **Location**: [./ai-research-tools/](./ai-research-tools/)
 
@@ -753,6 +789,7 @@ The following categories are planned for future research:
 | `rust-python-bindings/` | Rust-Python interoperability and binding libraries | **Done** |
 | `ai-observability/`     | AI/LLM observability and debugging platforms       | **Done** |
 | `ai-research-tools/`   | AI research tools and newsletters                  | **Done** |
+| `documentation-tools/`  | Architecture documentation and living docs         | **Done** |
 | `evaluation-testing/`   | Agent evaluation and testing tools                 | Planned  |
 
 ---
@@ -892,6 +929,9 @@ When adding new research:
 - [Perplexity MCP Server](https://github.com/perplexityai/modelcontextprotocol) - Official Perplexity AI MCP server with real-time web search, deep research, and reasoning (1,959 stars)
 - [ClawHub](https://www.clawhub.ai/skills) - Skill registry for AI agents with vector search capabilities
 - [Claude Skillz](https://github.com/NTCoding/claude-skillz) - 18+ behavioral skills, 12 personas, 10 plugins, and Claude Launcher for Claude Code (238 stars)
+- [Living Architecture](https://github.com/NTCoding/living-architecture) - Operational flow architecture extraction from code with Rivière schema and AI-assisted workflows (79 stars)
+- [Lopaka](https://lopaka.app) - Web-based graphics editor for embedded displays with multi-library C/C++ code generation (1,150 stars)
+- [claude-openocd-spi-dump](https://github.com/lukejenkins/claude-openocd-spi-dump) - Claude Code plugin for SPI flash dumping via OpenOCD with RAM-resident code for 6 MCU families
 
 ### Internal References
 
