@@ -122,6 +122,25 @@ function stripLowSignalRegions(text) {
   return out;
 }
 
+// Change 1: Evidence marker helper — suppresses causality flags when nearby text
+// already contains observable evidence (code, quoted text, error codes, file refs).
+const EVIDENCE_MARKERS = [
+  /`[^`]+`/, // inline code
+  /["'][^"']{3,}["']/, // quoted text
+  /\b(?:error|exit)\s*(?:code)?\s*\d+/i, // error codes
+  /\b[A-Z]\d{3,4}\b/, // linter codes E501, W291
+  /\b(?:returned|reported|showed|output|printed|logged|threw|raised|exited|failed)\b/i,
+  /\b(?:stdout|stderr|traceback|exception|stack\s*trace)\b/i,
+  /[\w/]+\.\w{1,6}:\d+/, // file:line references
+];
+
+function hasEvidenceNearby(text, idx, windowSize = 150) {
+  const start = Math.max(0, idx - windowSize);
+  const end = Math.min(text.length, idx + windowSize);
+  const window = text.slice(start, end);
+  return EVIDENCE_MARKERS.some((re) => re.test(window));
+}
+
 function isIndexWithinQuestion(text, idx) {
   // Heuristic: treat the containing "sentence" as a question if it includes a '?'
   // between the nearest prior sentence boundary and the next sentence boundary.
@@ -145,12 +164,48 @@ function isIndexWithinQuestion(text, idx) {
   return segment.includes('?');
 }
 
+// Change 4: isQualityScore — distinguishes genuine quality ratings from ratios/counts.
+function isQualityScore(text, matchStr, matchIndex) {
+  const [numStr] = matchStr.split('/');
+  const numerator = parseFloat(numStr);
+
+  // 10/10 identity ratio = count, not score
+  if (numerator === 10) return false;
+
+  // Decimal numerator = strong quality signal
+  if (numStr.includes('.')) return true;
+
+  // Followed by a count noun = ratio not score
+  const after = text.slice(matchIndex + matchStr.length, matchIndex + matchStr.length + 35);
+  if (
+    /^\s+(?:requirements?|items?|tests?|files?|checks?|tasks?|steps?|issues?|points?|modules?|cases?|features?|commits?|lines?|rules?)\b/i.test(
+      after,
+    )
+  )
+    return false;
+
+  return true;
+}
+
+// Change 5: hasEnumerationNearby — suppresses structural completeness flags when
+// the preceding context contains a numbered/bulleted list (2+ items).
+function hasEnumerationNearby(text, idx) {
+  const start = Math.max(0, idx - 200);
+  const preceding = text.slice(start, idx);
+  const listItemRe = /^\s*(?:\d+[.)]\s|\*\s|-\s)/m;
+  const globalListItemRe = /^\s*(?:\d+[.)]\s|\*\s|-\s)/gm;
+  if (!listItemRe.test(preceding)) return false;
+  const allMatches = preceding.match(globalListItemRe);
+  return allMatches !== null && allMatches.length >= 2;
+}
+
 function findTriggerMatches(text) {
   const matches = [];
   const haystack = stripLowSignalRegions(normalizeForScan(text));
   const lower = haystack.toLowerCase();
 
   // 1) Assumption/speculation language (explicitly discouraged by repo policy)
+  // Change 3: 'should be' removed from speculationPhrases; handled via regex below.
   const speculationPhrases = [
     'i think',
     'i believe',
@@ -158,7 +213,6 @@ function findTriggerMatches(text) {
     'likely',
     'it seems',
     'seems like',
-    'should be',
     'i assume',
     'assume',
     'maybe',
@@ -175,8 +229,51 @@ function findTriggerMatches(text) {
     }
   }
 
-  // 2) Hard causality claims (heuristic trigger): "X because Y" / "due to" / "caused by"
-  // We don't try to prove they're wrong; we require evidence wording when asserting causality.
+  // Change 3: Three-way classification for 'should be'.
+  if (lower.includes('should be') || lower.includes('should')) {
+    // Allow: prescriptive (followed by a value/identifier/type literal, or a bare
+    // word identifier — handles the case where inline code was stripped by
+    // stripLowSignalRegions before the pattern runs)
+    const PRESCRIPTIVE_SHOULD =
+      /\bshould\s+be\s+(?:`[^`]+`|["'][^"']+["']|\d[\d.]*\b|(?:true|false|null|undefined|none|int|str|float|string|boolean|void)\b|(?:a|an|the)\s+\w[\w-]*|[\w][\w-]{1,})/i;
+    // Allow: hypothesis framing
+    const HYPOTHESIS_SHOULD =
+      /\b(?:H[0₀aA1₁]|hypothesis|null hypothesis|prediction)\b[^.]*\bshould\b/i;
+    // Allow: instructional ("you should set/use/configure")
+    const INSTRUCTIONAL_SHOULD =
+      /\byou\s+should\s+(?:set|configure|change|update|use|add|remove|ensure|verify|check)\b/i;
+    // Flag: epistemic ("it/this/that should be working/fixed/done")
+    const EPISTEMIC_SUBJECT_SHOULD = /\b(?:it|this|that|everything|things?)\s+should\s+be\b/i;
+
+    // Epistemic check runs first — it is the most specific/dangerous signal.
+    if (EPISTEMIC_SUBJECT_SHOULD.test(haystack)) {
+      matches.push({ kind: 'speculation_language', evidence: 'should be (epistemic)' });
+    } else if (HYPOTHESIS_SHOULD.test(haystack)) {
+      // suppressed — hypothesis framing
+    } else if (INSTRUCTIONAL_SHOULD.test(haystack)) {
+      // suppressed — instructional usage
+    } else if (PRESCRIPTIVE_SHOULD.test(haystack)) {
+      // suppressed — prescriptive usage (value/identifier/type follows, or code was stripped)
+    } else if (lower.includes('should be')) {
+      // Fallback: apply question check on first occurrence
+      const idx = lower.indexOf('should be');
+      if (!isIndexWithinQuestion(haystack, idx)) {
+        matches.push({ kind: 'speculation_language', evidence: 'should be' });
+      }
+    }
+  }
+
+  // 2) Hard causality claims (heuristic trigger): require evidence wording when asserting causality.
+  // Change 2 & 6: Expanded phrase list + evidence suppression.
+
+  // Temporal 'since' exclusion (Change 6)
+  const TEMPORAL_SINCE =
+    /\bsince\s+(?:last\s+)?(?:yesterday|today|then|\d{4}|\d{1,2}[/-]\d{1,2}|\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago|the\s+(?:beginning|start|end)|version\s+\d)/i;
+
+  // Hedged-because pattern (Change 2)
+  const HEDGED_BECAUSE =
+    /\b(?:probably|likely|possibly|perhaps|maybe|might\s+be|could\s+be)\s+because\b/i;
+
   const causalityPhrases = [
     'caused by',
     'due to',
@@ -184,37 +281,155 @@ function findTriggerMatches(text) {
     'as a result',
     'therefore',
     'this means',
+    // Change 6 additions
+    'consequently',
+    'as a consequence',
+    'hence',
+    'thus',
+    'it follows that',
+    'this suggests that',
+    'this indicates that',
+    'this implies that',
+    'which is why',
+    'which means',
+    'which explains',
+    'the root cause',
+    'stems from',
+    'results from',
+    'resulted in',
+    'led to',
+    'attributable to',
+    'given that',
+    'since',
   ];
+
   for (const phrase of causalityPhrases) {
     const idx = lower.indexOf(phrase);
-    if (idx !== -1) {
-      // Allow question-form hypotheses; only gate declarative causality.
-      if (isIndexWithinQuestion(haystack, idx)) continue;
-      matches.push({ kind: 'causality_language', evidence: phrase });
+    if (idx === -1) continue;
+    if (isIndexWithinQuestion(haystack, idx)) continue;
+
+    // Temporal exclusion for 'since'
+    if (phrase === 'since') {
+      const nearby = haystack.slice(Math.max(0, idx - 50), Math.min(haystack.length, idx + 100));
+      if (TEMPORAL_SINCE.test(nearby)) continue;
     }
+
+    if (phrase === 'because') {
+      // Hedged because: always flag regardless of evidence
+      if (HEDGED_BECAUSE.test(haystack)) {
+        matches.push({ kind: 'causality_language', evidence: 'because (hedged)' });
+        continue;
+      }
+      // Evidence nearby suppresses plain 'because'
+      if (hasEvidenceNearby(haystack, idx)) continue;
+      matches.push({ kind: 'causality_language', evidence: phrase });
+      continue;
+    }
+
+    // All other causality phrases: suppress when evidence is nearby
+    if (hasEvidenceNearby(haystack, idx)) continue;
+    matches.push({ kind: 'causality_language', evidence: phrase });
+  }
+
+  // Change 7: Implicit, nominalized, and passive causality patterns.
+  const IMPLICIT_CAUSALITY = [
+    /\.\s+This\s+(?:made|caused|meant|led\s+to|resulted\s+in|explains?\s+why|is\s+(?:why|because))\b/i,
+    /\.\s+That(?:'s|\s+is)\s+(?:why|because|the\s+reason)\b/i,
+  ];
+  const NOMINALIZED_CAUSALITY = [
+    /\bthe\s+(?:likely|probable|possible|main|primary|underlying)\s+(?:cause|reason|explanation)\b/i,
+    /\bthe\s+(?:cause|reason|explanation|root\s+cause)\s+(?:of|for|behind)\s+(?:this|that|the)\b/i,
+  ];
+  const PASSIVE_CAUSALITY = [
+    /\bwas\s+(?:caused|triggered|produced)\s+by\b/i,
+    /\bresulted\s+(?:from|in)\b/i,
+    /\bcan\s+be\s+traced\s+(?:back\s+)?to\b/i,
+  ];
+
+  for (const re of [...IMPLICIT_CAUSALITY, ...NOMINALIZED_CAUSALITY, ...PASSIVE_CAUSALITY]) {
+    const m = haystack.match(re);
+    if (!m) continue;
+    if (isIndexWithinQuestion(haystack, m.index)) continue;
+    if (hasEvidenceNearby(haystack, m.index)) continue;
+    matches.push({ kind: 'causality_language', evidence: m[0].trim() });
   }
 
   // 3) Fake rigor / uncited quantification
-  const fakeRigorRegexes = [/\b\d+(?:\.\d+)?\s*\/\s*10\b/i, /\b\d{1,3}(?:\.\d+)?\s*%\b/i];
-  for (const re of fakeRigorRegexes) {
-    const m = haystack.match(re);
-    if (m) {
-      matches.push({ kind: 'pseudo_quantification', evidence: m[0] });
-    }
+  // Change 4: isQualityScore replaces the raw N/10 regex.
+  const nOverTenRe = /\b(\d+(?:\.\d+)?)\s*\/\s*10\b/i;
+  const m10 = haystack.match(nOverTenRe);
+  if (m10 && isQualityScore(haystack, m10[0], m10.index)) {
+    matches.push({ kind: 'pseudo_quantification', evidence: m10[0] });
+  }
+
+  const percentRe = /\b\d{1,3}(?:\.\d+)?\s*%\b/i;
+  const mp = haystack.match(percentRe);
+  if (mp) {
+    matches.push({ kind: 'pseudo_quantification', evidence: mp[0] });
   }
 
   // 4) Over-claiming completeness (must be backed by explicit actions/observations)
+  // Change 5: Expanded phrase list + structural regex patterns.
   const completenessPhrases = [
+    // Original phrases
     'all files checked',
     'comprehensive analysis',
     'everything is fixed',
     'fully resolved',
     'complete solution',
+    // Expanded phrases
+    'all issues resolved',
+    'all issues fixed',
+    'all tests pass',
+    'all tests passing',
+    'no issues found',
+    'no errors found',
+    'no remaining issues',
+    'no remaining errors',
+    'nothing left to do',
+    'task is complete',
+    'task is done',
+    'fully implemented',
+    'fully complete',
+    'fully functional',
+    'completely resolved',
+    'completely fixed',
+    'completely done',
+    'all done',
+    'all complete',
+    'all fixed',
+    'all resolved',
+    'entirely resolved',
+    'entirely fixed',
+    'nothing else to fix',
+    'nothing else to do',
+    'everything works',
+    'everything is working',
   ];
+
   for (const phrase of completenessPhrases) {
-    if (lower.includes(phrase)) {
+    const idx = lower.indexOf(phrase);
+    if (idx !== -1) {
       matches.push({ kind: 'completeness_claim', evidence: phrase });
     }
+  }
+
+  // Structural completeness regex patterns (Change 5)
+  const completenessRegexes = [
+    /\ball\s+\w+\s+have\s+been\s+(?:fixed|resolved|updated|added|removed|checked|verified|addressed|handled|processed|completed)\b/i,
+    /\bno\s+remaining\s+\w+\b/i,
+    /\b(?:fully|completely)\s+\w+(?:ed|d)\b/i,
+    /\beverything\s+(?:is|has\s+been)\s+\w+\b/i,
+    /\ball\s+(?:of\s+)?(?:the\s+)?\w+\s+(?:are|is)\s+now\s+\w+\b/i,
+  ];
+
+  for (const re of completenessRegexes) {
+    const m = haystack.match(re);
+    if (!m) continue;
+    if (isIndexWithinQuestion(haystack, m.index)) continue;
+    // Suppress when inside an enumeration list (Change 5)
+    if (hasEnumerationNearby(haystack, m.index)) continue;
+    matches.push({ kind: 'completeness_claim', evidence: m[0].trim() });
   }
 
   return matches;
@@ -304,6 +519,7 @@ function main() {
     '- If information is missing, say "I don\'t know yet" / "I don\'t have that information" / "I can check using my tools".',
     '- Do not assert causality unless you explicitly cite the observed evidence that supports it.',
     '- Remove speculative hedging (e.g., "probably", "likely", "seems"). Replace with verification steps or uncertainty statements.',
+    '- If you need to reference or discuss a flagged phrase in your rewrite, wrap it in backticks (e.g., `probably`, `because`) so the hook does not re-trigger on the explanation.',
     '',
     `Kinds flagged: ${uniqueKinds.join(', ')}`,
   ].join('\n');

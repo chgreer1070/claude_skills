@@ -34,7 +34,6 @@ import json
 import operator
 import pathlib
 import re
-import webbrowser
 from collections import Counter
 from typing import Any
 
@@ -70,8 +69,6 @@ _DASHBOARD_ANNOTATIONS: dict[str, bool] = {
     "idempotentHint": True,
     "openWorldHint": True,
 }
-
-_dashboard_state: dict[str, bool] = {"browser_opened": False}
 
 # ---------------------------------------------------------------------------
 # Frustration signal patterns
@@ -647,14 +644,14 @@ async def cluster_sessions(
 
 @mcp.tool(annotations=_DASHBOARD_ANNOTATIONS)
 def open_dashboard() -> dict[str, str | bool]:
-    """Open the Kaizen sentiment dashboard in the default browser.
+    """Return the Kaizen sentiment dashboard URL.
 
-    On the first call, opens the dashboard URL in the system browser.
-    Subsequent calls return the URL without re-opening the browser.
+    Does not open a browser — opening the browser while Tornado is
+    initializing causes IOLoop exhaustion and a blank/unresponsive page.
+    Copy the returned URL and open it manually.
 
     Returns:
-        Dict with ``url``, ``opened_browser`` flag, and a human-readable
-        ``message``.
+        Dict with ``url`` and a human-readable ``message``.
 
     Raises:
         ToolError: If the dashboard is not running.
@@ -668,19 +665,10 @@ def open_dashboard() -> dict[str, str | bool]:
             "The MCP server may have failed to start the dashboard thread."
         )
 
-    if not _dashboard_state["browser_opened"]:
-        webbrowser.open(url)
-        _dashboard_state["browser_opened"] = True
-        return {
-            "url": url,
-            "opened_browser": True,
-            "message": f"Dashboard opened in browser at {url}",
-        }
-
     return {
         "url": url,
         "opened_browser": False,
-        "message": f"Dashboard is running at {url}",
+        "message": f"Dashboard is running at {url} — open this URL in your browser",
     }
 
 

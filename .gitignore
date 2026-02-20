@@ -20,6 +20,9 @@ sessions/.archived/
 **/comparative-analysis-*.md
 **/synthesis-analysis.md
 
+# Kaizen transcript analysis artifacts (may contain session excerpts and local paths)
+.claude/kaizen/
+
 # MCP configuration with API keys
 .mcp.json
 
