@@ -22,91 +22,49 @@ Complete plugin development toolkit for creating, refactoring, and validating Cl
 
 ---
 
-## CRITICAL: Skill Name Field Bug (Plugin Skills Only)
+## Skill Name Field (Resolved Bug History)
 
-**Discovery Date:** 2026-01-29
-**Status:** Confirmed Claude Code v2.1.23 bug
-**Scope:** **Only affects plugin skills** - does NOT affect `.claude/skills/` directories
+**Bug Discovered:** 2026-01-29 (Claude Code v2.1.23)
+**Bug Resolved:** 2026-02-20
+**Scope:** Was limited to plugin skills only; `.claude/skills/` was never affected
 
-### The Bug
+### Current Behavior (Bug Resolved)
 
-**Plugin skills** with an explicit `name:` field in their frontmatter **DO NOT appear as slash commands**, even when `user-invocable: true` is set.
-
-**Important:** This bug only affects skills distributed via plugins. Skills in `.claude/skills/` (personal/project) work fine with or without the `name:` field.
-
-**Symptoms (Plugin Skills Only):**
-
-- Skill listed in `skills` array of plugin.json
-- Skill has `user-invocable: true` in frontmatter
-- Skill has `name: skill-name` in frontmatter
-- **Result:** Skill does NOT appear in `/plugin-name:skill-name` autocomplete menu
-
-**Not Affected:**
-
-- Skills in `~/.claude/skills/` (user-level)
-- Skills in `.claude/skills/` (project-level)
-- These work fine with `name:` field present
-
-**Workaround:**
-
-- Remove the `name:` field entirely from SKILL.md frontmatter
-- Claude Code will use the directory name instead
-- **Result:** Skill WILL appear as `/plugin-name:skill-name`
-
-### Evidence
-
-**Test performed:**
-
-1. plugin-creator had 14 skills, only `/count-lines` (a command) appeared
-2. Removed `name:` field from 3 skills (skill-creator, agent-creator, assessor)
-3. Those 3 skills immediately appeared as slash commands
-4. Removed `name:` from all remaining skills
-5. All skills now appear in autocomplete
-
-**Before fix:**
+Plugin skills **must include** the `name:` field in their frontmatter. The `name:` field value must be lowercase letters, digits, and hyphens only (pattern: `^[a-z][a-z0-9-]*$`), matching the directory name.
 
 ```yaml
 ---
-name: skill-creator  # <-- This PREVENTS slash command registration
+name: skill-creator
 description: Guide for creating effective skills
 user-invocable: true
 ---
 ```
 
-Result: `/plugin-creator:skill-creator` NOT in menu
+### Bug History
 
-**After fix:**
-
-```yaml
----
-description: Guide for creating effective skills
-user-invocable: true
----
-```
-
-Result: `/plugin-creator:skill-creator` appears in menu ✓
+A bug in Claude Code v2.1.23 caused plugin skills with an explicit `name:` field to not appear as slash commands. A workaround was applied: validators automatically removed the `name:` field from all plugin skill frontmatter. This workaround has been reversed now that the bug is resolved.
 
 ### Validator Auto-Fix
 
-The `plugin_validator.py` script now automatically removes `name:` fields from SKILL.md files with this explanation:
+`plugin_validator.py` and `validate_frontmatter.py` now automatically **add** the `name:` field to SKILL.md files where it is absent, deriving the value from the parent directory name:
 
 ```
-Removed 'name' field (Claude Code bug: skills with 'name' field don't appear as slash commands)
+Added 'name' field 'skill-creator' derived from directory name
 ```
 
-### Official Documentation Contradiction
+If the directory name does not match `^[a-z][a-z0-9-]*$`, no `name:` field is added automatically; the field must be set manually.
+
+### Official Documentation
 
 The official Claude Code documentation states:
 
 > `name`: Display name for the skill. If omitted, uses the directory name.
 
-This implies `name:` is optional and should work either way. However, **having the field prevents slash command registration entirely**. This is a bug in Claude Code, not intended behavior.
+The `name:` field is optional per spec; Claude Code uses the directory name when absent. However, including it explicitly is recommended for clarity.
 
 ### Recommendation
 
-**For plugin skills:** DO NOT use `name:` field in SKILL.md files until this bug is fixed in Claude Code.
-
-**For `.claude/skills/` (personal/project skills):** The `name:` field works correctly and can be used if desired (though it's optional since directory name is used by default).
+**For all skills (plugin and personal):** Include the `name:` field in SKILL.md frontmatter. The value must match the directory name and satisfy `^[a-z][a-z0-9-]*$`.
 
 ---
 

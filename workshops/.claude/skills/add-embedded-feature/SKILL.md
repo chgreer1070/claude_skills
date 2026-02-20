@@ -1,9 +1,9 @@
 ---
-description: 'Plan embedded firmware features using AST-based code analysis to trace call graphs, identify touch points, and decompose into implementation tasks. Use when adding features to nRF52/STM32 firmware, planning Zigbee cluster implementations, or analyzing FreeRTOS task interactions.'
+name: add-embedded-feature
+description: Plan embedded firmware features using AST-based code analysis to trace call graphs, identify touch points, and decompose into implementation tasks. Use when adding features to nRF52/STM32 firmware, planning Zigbee cluster implementations, or analyzing FreeRTOS task interactions.
 argument-hint: <feature description or existing doc path>
 user-invocable: true
 ---
-
 # Add Embedded Feature (Research & Planning Workflow)
 
 Convert firmware feature requests into durable planning artifacts under the repo:

@@ -1,10 +1,10 @@
 ---
+name: refactor-skill
 description: Assess and refactor oversized or multi-domain skills. First determines whether splitting or references/ extraction is appropriate — then executes the correct action. Use when a skill exceeds token thresholds (SK006/SK007) or covers multiple independent domains. Performs candidate assessment before any structural changes; cohesive single-intent skills are redirected to references/ extraction instead of splitting. When splitting is warranted — domain analysis gate, split plan, new SKILL.md generation, validation, and backwards-compatible facade conversion.
-model: opus
 argument-hint: path to skill directory (or plugin) to refactor
+model: opus
 user-invocable: true
 ---
-
 Refactoring LLM resources and prompts is the intentional restructuring of prompt content, tool definitions, and supporting context (e.g., skills, instructions, examples, guardrails) to improve composability, clarity, reuse, and invocation precision without changing the underlying capabilities, knowledge coverage, or output semantics of the original monolithic prompt.
 
 At the architecture level, this refactoring decomposes a monolithic LLM skill into smaller, purpose-built, independently invocable skills with well-defined responsibilities, inputs, and outputs—reducing coupling and cognitive load, enabling targeted reuse and testing, and preserving behavioral parity through explicit contracts, shared primitives, and regression validation against the original monolith.

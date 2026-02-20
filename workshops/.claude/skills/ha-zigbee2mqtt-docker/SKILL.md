@@ -1,9 +1,9 @@
 ---
-description: 'Home Assistant with Zigbee2MQTT Docker setup; container configuration, coordinator setup, device pairing, and automation. Use when deploying Home Assistant, configuring Zigbee2MQTT, pairing Zigbee devices, or creating automations.'
-user-invocable: true
+name: ha-zigbee2mqtt-docker
+description: Home Assistant with Zigbee2MQTT Docker setup; container configuration, coordinator setup, device pairing, and automation. Use when deploying Home Assistant, configuring Zigbee2MQTT, pairing Zigbee devices, or creating automations.
 allowed-tools: Bash, Read, Write
+user-invocable: true
 ---
-
 # Home Assistant with Zigbee2MQTT Docker Setup
 
 Deploy Home Assistant and Zigbee2MQTT in Docker containers for Zigbee device integration and testing.

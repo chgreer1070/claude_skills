@@ -1,7 +1,7 @@
 ---
+name: data-transformation
 description: Use when modifying, converting, or transforming structured data with dasel v3 — in-place mutations, format conversion, batch operations, array manipulation, object construction, and merge patterns across JSON, YAML, TOML, XML, CSV, HCL, INI
 ---
-
 # Data Transformation with Dasel v3
 
 <when_to_use>

@@ -1,9 +1,9 @@
 ---
-description: 'Execute embedded firmware implementation from a task plan. Loops through tasks, delegates to appropriate agents, and tracks completion. Use after /add-embedded-feature has created a plan, or when resuming implementation work.'
+name: implement-embedded-feature
+description: Execute embedded firmware implementation from a task plan. Loops through tasks, delegates to appropriate agents, and tracks completion. Use after /add-embedded-feature has created a plan, or when resuming implementation work.
 argument-hint: <task-file-path or feature-slug>
 user-invocable: true
 ---
-
 # Implement Embedded Feature
 
 Execute tasks from a plan file created by `/add-embedded-feature`. Loops through ready tasks, delegates each to its specified agent, and tracks progress.

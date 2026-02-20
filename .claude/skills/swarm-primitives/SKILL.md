@@ -1,7 +1,7 @@
 ---
+name: swarm-primitives
 description: Understand swarm orchestration fundamentals -- teams, teammates, tasks, inboxes, and their relationships. Use when learning multi-agent concepts, understanding file layouts, team config structure, or the swarm lifecycle before building workflows.
 ---
-
 # Swarm Primitives
 
 Core concepts for Claude Code multi-agent orchestration.

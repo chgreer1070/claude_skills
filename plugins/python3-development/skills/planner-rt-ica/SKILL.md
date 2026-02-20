@@ -1,10 +1,10 @@
 ---
+name: planner-rt-ica
 description: Identify required inputs, dependencies, and uncertainty during planning. Use when generating plans or task graphs under incomplete information. Does not block plan generation; instead localizes gaps and creates unblock dependencies.
 argument-hint: '[optional-scope-or-task-id]'
 user-invocable: false
 disable-model-invocation: false
 ---
-
 # Planner RT-ICA (Planning-Phase Input Completeness Analysis)
 
 ## Role

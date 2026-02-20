@@ -1,9 +1,9 @@
 ---
+name: python3-packaging
 description: Configure pyproject.toml and Python packaging for distribution. Use when setting up a new Python package, when configuring build tools and dependencies, or when preparing a project for PyPI publishing.
 argument-hint: '[project-path]'
 user-invocable: true
 ---
-
 # Python Packaging Configuration
 
 The model configures modern Python packaging using pyproject.toml and PEP standards.

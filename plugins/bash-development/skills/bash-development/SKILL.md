@@ -1,7 +1,7 @@
 ---
+name: bash-development
 description: This skill should be used when the user asks to "write a bash script", "create a shell script", "implement bash function", "parse arguments in bash", "handle errors in bash", or mentions bash development, shell scripting, script templates, or modern bash patterns.
 ---
-
 # Bash Development
 
 Core patterns and best practices for Bash 5.1+ script development. Provides modern bash idioms, error handling, argument parsing, and pure-bash alternatives to external commands.

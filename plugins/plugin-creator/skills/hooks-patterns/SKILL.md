@@ -1,8 +1,8 @@
 ---
+name: hooks-patterns
 description: Hook recipes and working examples — plugin hooks, frontmatter hooks in skills/agents/commands, prompt-based LLM hooks, and complete code examples in Python and Node.js. Use when building hook scripts, integrating hooks into plugins, implementing prompt-based hooks, or looking for hook configuration patterns.
 user-invocable: true
 ---
-
 # Claude Code Hooks — Patterns & Examples (January 2026)
 
 Working examples and recipes for building hooks. For hook system fundamentals, activate `Skill(command: "plugin-creator:hooks-core-reference")`. For JSON I/O schemas, activate `Skill(command: "plugin-creator:hooks-io-api")`.

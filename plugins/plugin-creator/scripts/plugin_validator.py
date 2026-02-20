@@ -144,6 +144,44 @@ RECOMMENDED_DESCRIPTION_LENGTH = 1024
 NAME_PATTERN = r"^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$"
 MAX_SKILL_NAME_LENGTH = 40
 
+# Pattern used to validate a directory name before using it as skill 'name' field value.
+# Matches the SkillFrontmatter model pattern: lowercase letters, digits, hyphens; starts with letter.
+_SKILL_DIR_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9-]*$")
+
+
+def _fix_skill_name_field(
+    normalized_dict: dict[str, Any], file_path: Path, fixes: list[str]
+) -> dict[str, Any]:
+    """Add or correct the 'name' field to match the skill's parent directory name.
+
+    The 'name' field must equal the directory name containing SKILL.md.
+    If absent, it is derived from the directory name.
+    If present but wrong, it is corrected.
+    If the directory name does not match the required pattern, no change is made.
+
+    Args:
+        normalized_dict: Current frontmatter key/value pairs.
+        file_path: Path to the SKILL.md file.
+        fixes: Mutable list of fix descriptions to append to.
+
+    Returns:
+        Updated normalized_dict (may be a new dict if name was prepended).
+    """
+    dir_name = file_path.parent.name
+    if not _SKILL_DIR_NAME_PATTERN.match(dir_name):
+        return normalized_dict
+    current_name = normalized_dict.get("name")
+    if current_name is None:
+        fixes.append(f"Added 'name' field '{dir_name}' derived from directory name")
+        return {"name": dir_name, **normalized_dict}
+    if current_name != dir_name:
+        fixes.append(
+            f"Corrected 'name' field from '{current_name}' to '{dir_name}' to match directory name"
+        )
+        normalized_dict["name"] = dir_name
+    return normalized_dict
+
+
 # Trigger phrase requirements (Architecture line 357)
 REQUIRED_TRIGGER_PHRASES = [
     "use when",
@@ -1550,6 +1588,28 @@ class FrontmatterValidator:
                     )
                 )
 
+        # Check that 'name' field matches directory name for SKILL.md files
+        if file_type == FileType.SKILL and path.name == "SKILL.md":
+            skill_name_in_fm = data.get("name") if isinstance(data, dict) else None
+            skill_dir_name = path.parent.name
+            if skill_name_in_fm and skill_name_in_fm != skill_dir_name:
+                warnings.append(
+                    ValidationIssue(
+                        field="name",
+                        severity="warning",
+                        message=(
+                            f"'name' field value '{skill_name_in_fm}' does not match "
+                            f"directory name '{skill_dir_name}'"
+                        ),
+                        code=FM010,
+                        docs_url=generate_docs_url(FM010),
+                        suggestion=(
+                            f"Set name: {skill_dir_name} to match the directory, "
+                            "or remove the 'name' field to use the directory name automatically"
+                        ),
+                    )
+                )
+
         passed = len(errors) == 0
         return ValidationResult(
             passed=passed, errors=errors, warnings=warnings, info=info
@@ -1585,7 +1645,7 @@ class FrontmatterValidator:
             file_type = FileType.SKILL
 
         # Apply fixes
-        fixed_content, fixes = self._apply_fixes(content, file_type)
+        fixed_content, fixes = self._apply_fixes(content, file_type, path)
 
         if not fixes:
             return []
@@ -1627,12 +1687,15 @@ class FrontmatterValidator:
             case _:
                 return None
 
-    def _apply_fixes(self, content: str, file_type: FileType) -> tuple[str, list[str]]:  # noqa: PLR0912, C901
+    def _apply_fixes(  # noqa: PLR0912, C901
+        self, content: str, file_type: FileType, file_path: Path | None = None
+    ) -> tuple[str, list[str]]:
         """Apply auto-fixes to content.
 
         Args:
             content: File content with frontmatter
             file_type: Type of capability file
+            file_path: Optional path to file, used to derive skill name from directory
 
         Returns:
             Tuple of (fixed_content, list_of_fixes_applied)
@@ -1698,13 +1761,12 @@ class FrontmatterValidator:
             # the dict directly from original_data without Pydantic normalization
             normalized_dict = dict(original_data)
 
-        # CRITICAL BUG WORKAROUND: Remove 'name' field from skills
-        # Source: validate_frontmatter.py lines 560-573
-        if file_type == FileType.SKILL and "name" in normalized_dict:
-            del normalized_dict["name"]
-            fixes.append(
-                "Removed 'name' field (Claude Code bug: plugin skills with 'name' don't appear as slash commands)"
-            )
+        # Restore 'name' field for skills and ensure it matches the directory name.
+        # The Claude Code bug (2026-01-29) that caused plugin skills with a 'name' field
+        # to not appear as slash commands has been resolved. Skills should now include the
+        # 'name' field whose value matches the parent directory name.
+        if file_type == FileType.SKILL and file_path is not None:
+            normalized_dict = _fix_skill_name_field(normalized_dict, file_path, fixes)
 
         # Compare to detect changes
         for key, value in normalized_dict.items():

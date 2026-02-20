@@ -1,11 +1,11 @@
 ---
+name: snakepolish
 description: Implementation phase for stinkysnake workflow. Use when tests are written and plan is ready. Implements functions following the modernization plan, runs tests until passing.
 argument-hint: '[file-paths-or-module]'
 context: fork
 agent: python-cli-architect
 user-invocable: true
 ---
-
 # Snake Polish - Implementation Phase
 
 Execute the implementation plan from `/python3-development:stinkysnake` Phase 9. Implement functions following the modernization plan, run tests iteratively until all pass.

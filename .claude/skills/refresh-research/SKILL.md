@@ -1,9 +1,9 @@
 ---
+name: refresh-research
 description: TRIGGER — /refresh-research invoked or bulk research update requested. Inventories ./research/ entries, detects stale entries by review date or age, runs RT-ICA pre-flight, spawns research-curator agents in waves of 5, collects per-wave results, updates README, produces summary report, lints and commits. All targeted entries re-verified with updated Freshness Tracking. Supports --all, --stale, --category, --dry-run flags.
 argument-hint: '[--all | --stale | --category <name> | --dry-run]'
 user-invocable: true
 ---
-
 # Refresh Research
 
 Orchestrate parallel research-curator agents to bulk-refresh research entries in `./research/`. Detects staleness, skips fresh entries, updates only what qualifies. Safe to run repeatedly.

@@ -1,10 +1,10 @@
 ---
+name: test-failure-mindset
 description: This skill should be used when encountering failing tests or when the user asks about "test failure analysis", "debugging tests", "why tests fail", or needs to set a balanced investigative approach for test failures. Establishes mindset that treats test failures as valuable signals requiring investigation, not automatic dismissal.
 user-invocable: true
 version: 1.0.0
 last_updated: '2026-01-25'
 ---
-
 # Test Failure Analysis Mindset
 
 Establish a balanced investigative approach for all test failures encountered in this session.

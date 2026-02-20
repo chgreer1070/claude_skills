@@ -1,4 +1,5 @@
 ---
+name: add-new-feature
 argument-hint: <feature description or existing doc path>
 user-invocable: true
 description:"SAM-style feature initiation workflow: discovery -> codebase analysis -> architecture spec -> task decomposition -> validation -> context manifest. Use when a user asks to add a feature, plan a feature, or convert an idea into executable task files."
@@ -6,7 +7,6 @@ version: 1.0.0
 last_updated: '2026-01-27'
 python_compatibility: 3.11+
 ---
-
 # Add New Feature (SAM Workflow)
 
 You MUST convert the user's request into **durable SAM artifacts** under the repo:

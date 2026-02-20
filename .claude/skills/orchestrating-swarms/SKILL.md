@@ -1,7 +1,7 @@
 ---
+name: orchestrating-swarms
 description: Master multi-agent orchestration using Claude Code's swarm system. Use when coordinating multiple agents, running parallel code reviews, creating pipeline workflows with dependencies, building self-organizing task queues, or any task benefiting from divide-and-conquer patterns. This facade loads specialist skills for primitives, spawning, operations, and patterns.
 ---
-
 # Claude Code Swarm Orchestration
 
 Master multi-agent orchestration using Claude Code's TeamCreate, SendMessage, TeamDelete, and Task tools.

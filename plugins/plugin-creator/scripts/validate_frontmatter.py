@@ -533,8 +533,51 @@ def validate_and_normalize(
         return normalized_dict, issues
 
 
-def apply_fixes(content: str, file_type: FileType) -> tuple[str, list[str]]:
+_SKILL_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9-]*$")
+
+
+def _fix_skill_name(
+    normalized_dict: dict[str, Any], file_path: Path, fixes: list[str]
+) -> dict[str, Any]:
+    """Add or correct the 'name' field to match the skill's parent directory name.
+
+    The 'name' field must equal the directory name containing SKILL.md.
+    If absent, it is derived from the directory name.
+    If present but wrong, it is corrected.
+    If the directory name does not match the required pattern, no change is made.
+
+    Args:
+        normalized_dict: Current frontmatter key/value pairs.
+        file_path: Path to the SKILL.md file.
+        fixes: Mutable list of fix descriptions to append to.
+
+    Returns:
+        Updated normalized_dict (may be a new dict if name was inserted).
+    """
+    dir_name = file_path.parent.name
+    if not _SKILL_NAME_PATTERN.match(dir_name):
+        return normalized_dict
+    current_name = normalized_dict.get("name")
+    if current_name is None:
+        fixes.append(f"Added 'name' field '{dir_name}' derived from directory name")
+        return {"name": dir_name, **normalized_dict}
+    if current_name != dir_name:
+        fixes.append(
+            f"Corrected 'name' field from '{current_name}' to '{dir_name}' to match directory name"
+        )
+        normalized_dict["name"] = dir_name
+    return normalized_dict
+
+
+def apply_fixes(
+    content: str, file_type: FileType, file_path: Path | None = None
+) -> tuple[str, list[str]]:
     """Parse, normalize via Pydantic, and regenerate frontmatter.
+
+    Args:
+        content: File content to fix
+        file_type: Detected type of the file
+        file_path: Optional path to the file, used to derive skill name from directory
 
     Returns:
         Tuple of (fixed_content, list_of_fixes_applied)
@@ -564,19 +607,12 @@ def apply_fixes(content: str, file_type: FileType) -> tuple[str, list[str]]:
     # Track what was fixed
     fixes = []
 
-    # CRITICAL BUG WORKAROUND: Remove 'name' field from skills
-    # Bug discovered 2026-01-29: PLUGIN skills with explicit 'name' field in frontmatter
-    # DO NOT appear as slash commands in Claude Code, even when user-invocable: true.
-    # Only skills WITHOUT 'name' field appear as /plugin-name:skill-name commands.
-    # The 'name' field is supposed to be optional per official docs, but having it
-    # prevents slash command registration in plugins. Claude Code uses directory name regardless.
-    # NOTE: Bug only affects plugin skills, not .claude/skills/, but removing 'name' is harmless
-    # since directory name is used anyway.
-    if file_type == FileType.SKILL and "name" in normalized_dict:
-        del normalized_dict["name"]
-        fixes.append(
-            "Removed 'name' field (Claude Code bug: plugin skills with 'name' don't appear as slash commands)"
-        )
+    # Restore 'name' field for skills and ensure it matches the directory name.
+    # The Claude Code bug (2026-01-29) that caused plugin skills with a 'name' field
+    # to not appear as slash commands has been resolved. Skills should now include the
+    # 'name' field whose value matches the parent directory name.
+    if file_type == FileType.SKILL and file_path is not None:
+        normalized_dict = _fix_skill_name(normalized_dict, file_path, fixes)
 
     # Compare to detect what changed
     for key, value in normalized_dict.items():
@@ -1073,7 +1109,7 @@ def process_file(
     # Auto-fix if not check-only
     fixes: list[str] = []
     if not check_only:
-        fixed_content, fixes = apply_fixes(content, detected_type)
+        fixed_content, fixes = apply_fixes(content, detected_type, file_path)
         if fixes:
             try:
                 file_path.write_text(fixed_content, encoding="utf-8")
@@ -1094,14 +1130,32 @@ def process_file(
                 )
 
     # Validate using Pydantic
-    _, issues = validate_and_normalize(frontmatter or "", detected_type)
+    normalized_data, issues = validate_and_normalize(frontmatter or "", detected_type)
 
-    # Validate skill directory name if this is a SKILL.md file
+    # Validate skill directory name and name-field consistency if this is a SKILL.md file
     if detected_type == FileType.SKILL and file_path.name == "SKILL.md":
         # Get parent directory name (skill directory)
         skill_dir_name = file_path.parent.name
         dir_issues = validate_skill_directory_name(skill_dir_name)
         issues.extend(dir_issues)
+
+        # Check that 'name' field matches the directory name when both are present
+        skill_name_in_fm = normalized_data.get("name")
+        if skill_name_in_fm and skill_name_in_fm != skill_dir_name:
+            issues.append(
+                ValidationIssue(
+                    field="name",
+                    severity="warning",
+                    message=(
+                        f"'name' field value '{skill_name_in_fm}' does not match "
+                        f"directory name '{skill_dir_name}'"
+                    ),
+                    suggestion=(
+                        f"Set name: {skill_dir_name} to match the directory, "
+                        "or remove the 'name' field to use the directory name automatically"
+                    ),
+                )
+            )
 
     success = not any(issue.severity == "error" for issue in issues)
     return success, fixes, issues

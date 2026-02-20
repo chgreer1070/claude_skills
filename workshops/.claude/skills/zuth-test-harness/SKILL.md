@@ -1,9 +1,9 @@
 ---
-description: 'ZUTH (Zigbee Unified Test Harness) setup, configuration, and test execution for Zigbee certification testing. Use when setting up ZUTH environment, running certification tests, configuring test cases, or debugging Zigbee protocol compliance.'
-user-invocable: true
+name: zuth-test-harness
+description: ZUTH (Zigbee Unified Test Harness) setup, configuration, and test execution for Zigbee certification testing. Use when setting up ZUTH environment, running certification tests, configuring test cases, or debugging Zigbee protocol compliance.
 allowed-tools: Bash, Read, Write
+user-invocable: true
 ---
-
 # ZUTH Zigbee Test Harness
 
 Setup and usage guide for Zigbee Unified Test Harness (ZUTH) for certification testing.

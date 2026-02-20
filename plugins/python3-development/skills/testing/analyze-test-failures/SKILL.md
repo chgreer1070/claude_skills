@@ -1,4 +1,5 @@
 ---
+name: analyze-test-failures
 description: This skill should be used when the user asks to "analyze failing tests", "debug test failures", "investigate test errors", or provides specific failing test cases to examine. Analyzes failing test cases with a balanced, investigative approach to determine whether failures indicate test issues or genuine bugs.
 argument-hint: <test_file_or_test_name>
 user-invocable: true
@@ -6,7 +7,6 @@ version: 1.0.0
 last_updated: '2026-01-25'
 python_compatibility: 3.11+
 ---
-
 # Analyze Test Failures
 
 Analyze failing test cases with a balanced, investigative approach.

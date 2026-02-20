@@ -1,7 +1,7 @@
 ---
+name: enterprise-tomcat-web
 description: Dasel v3 patterns for querying Tomcat web.xml deployment descriptors — use when inspecting servlet enumeration, filter chain discovery, listener listing, context parameter extraction, or init-param inspection in web.xml files
 ---
-
 # Tomcat web.xml Dasel Query Patterns
 
 <when_to_use>

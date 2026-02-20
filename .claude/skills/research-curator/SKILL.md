@@ -1,9 +1,9 @@
 ---
+name: research-curator
 description: Add resources to the research directory with comprehensive documentation. Supports single URL, batch processing via --batch, re-research via --rerun, and validation via --validate. Triggers on "add to research", "document this tool", "research this", or URLs to novel agentic development resources.
 argument-hint: '[url] [--batch url1 url2 ...] [--rerun category/name|all] [--validate category/name|all]'
 user-invocable: true
 ---
-
 # Research Curator -- Multi-Mode Orchestrator
 
 Orchestrate research entry creation, maintenance, and validation in `./research/`. Spawns `@research-curator` agents for content work; handles coordination, README updates, and post-actions.

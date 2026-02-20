@@ -1,9 +1,9 @@
 ---
+name: shebangpython
 description: Validate Python shebangs and PEP 723 inline script metadata. Use when checking if Python files have correct shebangs based on their dependency requirements, when fixing incorrect shebang patterns, or when adding PEP 723 script blocks to standalone scripts with external dependencies.
 argument-hint: '[file-paths...]'
 user-invocable: true
 ---
-
 # Python Shebang Validation
 
 The model validates Python shebangs against dependency requirements and ensures correct PEP 723 inline script metadata.

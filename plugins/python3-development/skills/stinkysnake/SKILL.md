@@ -1,9 +1,9 @@
 ---
+name: stinkysnake
 description: Progressive Python quality improvement with static analysis, type refinement, modernization planning, plan review, and test-driven implementation. Use when addressing technical debt, eliminating Any types, applying modern Python patterns, or refactoring for better design.
 argument-hint: '[file-paths-or-module]'
 user-invocable: true
 ---
-
 # Python Quality Improvement System
 
 Systematic Python code quality improvement through static analysis, type refinement, modernization planning with review, and test-driven implementation.

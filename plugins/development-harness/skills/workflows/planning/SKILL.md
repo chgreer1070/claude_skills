@@ -1,9 +1,9 @@
 ---
+name: planning
 description: SAM Stage 2 — Transform discovery into actionable design with RT-ICA prerequisite verification. Produces the PLAN artifact with approach, components, success criteria, acceptance tests, and risks. Use when discovery is complete and design must begin. Blocks on missing prerequisites.
-user-invocable: true
 model: sonnet
+user-invocable: true
 ---
-
 # SAM Stage 2 — Planning
 
 ## Role

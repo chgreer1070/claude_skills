@@ -1,4 +1,5 @@
 ---
+name: skill-research-process
 description: Systematic process for building comprehensive Claude Code skills using parallel research agents. Triggers on "research for skill", "build skill from docs", "create comprehensive skill", or when needing to gather extensive documentation from official sources before skill creation.
 argument-hint: <tool-or-library-name>
 model: sonnet
@@ -6,7 +7,6 @@ context: fork
 agent: general-purpose
 user-invocable: true
 ---
-
 # Skill Research Process
 
 Systematic, scalable approach for building comprehensive Claude Code skills using parallel research agents. Use this when a skill requires extensive documentation gathering from official sources.

@@ -1,4 +1,5 @@
 ---
+name: complete-implementation
 argument-hint: <task-file-path>
 user-invocable: true
 description:"\"Holistic completion workflow after a feature's tasks are marked COMPLETE: code review, feature verification, integration check, documentation drift audit/update, and context refinement. Creates follow-up task files when issues are found.\""
@@ -6,7 +7,6 @@ version: 1.0.0
 last_updated: '2026-01-27'
 python_compatibility: 3.11+
 ---
-
 # Complete Implementation (Quality Gates + Recursion)
 
 You MUST validate that the implemented feature meets its goals and quality gates. This workflow is recursive: if follow-up task files are created, re-run `implement-feature` on them and then re-run this skill.

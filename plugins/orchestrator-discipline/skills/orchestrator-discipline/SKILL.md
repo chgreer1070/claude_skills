@@ -1,7 +1,7 @@
 ---
+name: orchestrator-discipline
 description: Orchestrator context window discipline enforcement. Prevents the orchestrator from reading source files it will not edit, running diagnostic commands that waste context, and rationalizing delegation bypasses. Use when setting up orchestrator guardrails, reviewing delegation discipline, or diagnosing context window waste in multi-agent workflows. Activates PreToolUse hooks that surface decision points before source file reads and diagnostic command execution.
 ---
-
 # Orchestrator Discipline
 
 Enforce delegation discipline for the orchestrator role in multi-agent Claude Code workflows. The orchestrator's context window is a shared resource across the entire session — agents get fresh context per task, the orchestrator does not.

@@ -1,9 +1,9 @@
 ---
-description: 'Debug and flash commands for nRF52 and STM32 development; OpenOCD, nrfjprog, STM32_Programmer_CLI, and J-Link. Use when flashing firmware, starting debug sessions, reading/writing memory, or connecting to targets.'
-user-invocable: true
+name: embedded-debug-tools
+description: Debug and flash commands for nRF52 and STM32 development; OpenOCD, nrfjprog, STM32_Programmer_CLI, and J-Link. Use when flashing firmware, starting debug sessions, reading/writing memory, or connecting to targets.
 allowed-tools: Bash
+user-invocable: true
 ---
-
 # Embedded Debug Tools
 
 Commands for flashing, debugging, and inspecting nRF52 and STM32 targets.

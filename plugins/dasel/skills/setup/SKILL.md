@@ -1,9 +1,9 @@
 ---
+name: setup
 description: Install, update, and troubleshoot dasel v3 binary — run the install script, verify installation, check version, diagnose PATH issues
-user-invocable: true
 allowed-tools: Bash, Read
+user-invocable: true
 ---
-
 ## Purpose
 
 Install or update the dasel v3 binary from GitHub Releases into user-space (`~/.local/bin` on Linux/WSL2/macOS, `%LOCALAPPDATA%\Programs\dasel` on Windows). The install script handles platform detection, SHA256 verification, and PATH setup.

@@ -1,8 +1,8 @@
 ---
+name: verify
 description: Rigorous self-assessment checklist before marking any task as complete. Use when about to claim task completion, before final commit, when user asks "is it done?", or when transitioning from implementation to reporting. Prevents premature completion claims by requiring evidence for every assertion.
 user-invocable: true
 ---
-
 # Verification Protocol
 
 **Workflow Reference**: See [Master Workflow](./../../knowledge/workflow-diagrams/master-workflow.md) for how this skill fits into the verification stage of the agentic workflow.

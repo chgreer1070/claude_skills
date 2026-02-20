@@ -1,10 +1,10 @@
 ---
+name: audit-skill-lifecycle
 description: Audit skill lifecycle by tracing call chains, detecting circular dependencies, finding instruction contradictions, identifying duplicated datasets, analyzing bidirectional coherence, discovering scriptable sequences, and learning patterns. Use when checking skill coherence, validating skill workflow, finding semantic gaps in plugin structure, or auditing plugin before marketplace submission. Generates audit reports to .claude/audits/ with findings by dimension.
-user-invocable: true
 argument-hint: <plugin-path>
 model: sonnet
+user-invocable: true
 ---
-
 # Audit Skill Lifecycle
 
 Deep semantic validation of how skills interconnect, what they load, what they produce, and whether the resulting call graph forms a coherent, non-contradictory workflow.

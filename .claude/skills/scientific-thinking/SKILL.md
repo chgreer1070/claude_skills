@@ -1,8 +1,8 @@
 ---
+name: scientific-thinking
 description: Forces hypothesis-driven scientific reasoning for complex problems. Use when debugging strange behavior, investigating root causes, designing architecture, performing complex refactoring, or when initial attempts have failed. Activates when facing problems that require systematic investigation rather than quick fixes.
 user-invocable: true
 ---
-
 # Scientific Thinking Mode
 
 **Workflow Reference**: See [Investigation Workflow](./../../knowledge/workflow-diagrams/investigation-workflow.md) for the complete hypothesis-driven scientific method flow.

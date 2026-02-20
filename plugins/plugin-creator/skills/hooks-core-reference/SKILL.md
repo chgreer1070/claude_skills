@@ -1,8 +1,8 @@
 ---
+name: hooks-core-reference
 description: Hook system fundamentals — all events, configuration structure, matchers per event type, environment variables, execution behavior, security, and debugging. Use when creating hooks, understanding hook events, matchers, configuration locations, environment variables, or troubleshooting hook issues.
 user-invocable: true
 ---
-
 # Claude Code Hooks — Core Reference (January 2026)
 
 Hooks execute custom commands or prompts in response to Claude Code events. Use for automation, validation, formatting, and security.
