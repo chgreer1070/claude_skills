@@ -1033,15 +1033,37 @@ Automatic span attributes:
 Limit foreground execution time:
 
 ```python
+import httpx
+from urllib.parse import urlparse
+from fastmcp.exceptions import ToolError
+
+# Define allowed destinations to prevent SSRF attacks
+ALLOWED_SCHEMES = {"https"}
+ALLOWED_HOSTS = {
+    "api.example.com",
+    "services.internal.example",
+}
+
 @mcp.tool(timeout=30.0)
 async def fetch_data(url: str) -> dict:
-    """Fetch with 30-second timeout."""
+    """Fetch JSON from an allowed URL with a 30-second timeout.
+
+    The URL is validated against an allowlist to prevent SSRF attacks.
+    """
+    parsed = urlparse(url)
+
+    if parsed.scheme not in ALLOWED_SCHEMES or parsed.hostname not in ALLOWED_HOSTS:
+        raise ToolError("URL not allowed; must use https and an approved host")
+
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
+        response.raise_for_status()
         return response.json()
 ```
 
-When exceeded, clients receive MCP error code `-32000`.
+When timeout is exceeded, clients receive MCP error code `-32000`.
+
+**Security Note**: Always validate URLs against an allowlist to prevent SSRF (Server-Side Request Forgery) attacks where malicious users could access internal services, cloud metadata endpoints, or protected resources.
 
 **Note**: Timeouts don't apply to background tasks (those use Docket's lifecycle).
 
