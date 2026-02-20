@@ -2082,7 +2082,7 @@ Report:
 
 **Status**: ❌ NOT STARTED
 
-**Agent**: service-documentation
+**Agent**: service-docs-maintainer
 
 **Dependencies**: T18 (needs renamed script)
 
@@ -2163,7 +2163,7 @@ Report:
 
 **Completed**: 2026-02-02T19:00:00Z
 
-**Agent**: service-documentation
+**Agent**: service-docs-maintainer
 
 **Dependencies**: T18 (needs new script name)
 
@@ -2247,7 +2247,7 @@ Report:
 
 **Status**: ✅ COMPLETED — validate-skill-structure.sh and count-skill-lines.sh deleted (2026-02-18)
 
-**Agent**: service-documentation
+**Agent**: service-docs-maintainer
 
 **Dependencies**: T18 (new script must work before deprecating old ones)
 
@@ -2331,7 +2331,7 @@ Report:
 
 **Status**: ❌ NOT STARTED
 
-**Agent**: service-documentation
+**Agent**: service-docs-maintainer
 
 **Dependencies**: T18 (needs new script)
 

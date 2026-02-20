@@ -2,7 +2,7 @@
 task: "T21"
 title: "Bash Script Deprecation"
 status: complete
-agent: "service-documentation"
+agent: "service-docs-maintainer"
 dependencies: ["T18"]
 priority: 5
 complexity: low

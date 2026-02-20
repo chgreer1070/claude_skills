@@ -51,7 +51,7 @@ Your choice:
 
 - Wait for user confirmation before proceeding
 
-2. service-documentation agent - Update CLAUDE.md files
+2. service-docs-maintainer agent - Update CLAUDE.md files
    Include: List of services modified during task
 
 3. logging agent - Finalize task documentation

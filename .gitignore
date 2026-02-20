@@ -42,3 +42,4 @@ package-lock.json
 
 # Git worktrees
 .worktrees/
+.claude/agent-memory

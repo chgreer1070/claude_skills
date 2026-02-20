@@ -750,7 +750,7 @@ class NamespaceReferenceValidator:
         "github-project-manager",
         "metadata-vault-manager",
         "doc-drift-auditor",
-        "service-documentation",
+        "service-docs-maintainer",
         "backlog-item-groomer",
         "plugin-assessor",
         "skill-refactorer-agent",

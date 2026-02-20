@@ -145,7 +145,7 @@ SOURCE: Cycle detection algorithm adapted from gsd-plan-checker.md
 | Source code (implementation files)  | architect              |
 | Test files                         | test-designer          |
 | Linting, type checking             | linting (from manifest)|
-| Documentation (.md files)          | service-documentation  |
+| Documentation (.md files)          | service-docs-maintainer  |
 | Agent/skill creation               | agent-creator          |
 
 Roles are resolved to concrete agents via the active language manifest at execution time. Validation checks that the role is appropriate for the task type, not that a specific agent name is used.
@@ -153,7 +153,7 @@ Roles are resolved to concrete agents via the active language manifest at execut
 **Red flags:**
 
 - Documentation task assigned to architect role
-- Test task assigned to service-documentation role
+- Test task assigned to service-docs-maintainer role
 - Role field missing
 
 ## Dimension 5: Input/Output Validity

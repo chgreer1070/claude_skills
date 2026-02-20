@@ -43,7 +43,7 @@ Launch `doc-drift-auditor` with the task file path (audit-only).
 
 ## Phase 5: Documentation Update (if drift found)
 
-If drift exists or docs must be updated for the feature, launch `service-documentation`.
+If drift exists or docs must be updated for the feature, launch `service-docs-maintainer`.
 
 ---
 

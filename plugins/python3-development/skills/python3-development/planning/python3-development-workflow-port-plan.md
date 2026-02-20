@@ -29,7 +29,7 @@ The goal is that you can **stop at any checkpoint** and resume later without re-
   - `plan-validator.md`
   - `context-gathering.md`
   - `feature-verifier.md`
-  - (plus any “complete-implementation phase” agents it calls: `integration-checker.md`, `doc-drift-auditor.md`, `service-documentation.md`, `context-refinement.md`, `code-reviewer.md`)
+  - (plus any “complete-implementation phase” agents it calls: `integration-checker.md`, `doc-drift-auditor.md`, `service-docs-maintainer.md`, `context-refinement.md`, `code-reviewer.md`)
 - `~/repos/gitlab-runner-management/.claude/skills/implementation-manager/`
   - `SKILL.md`
   - `scripts/implementation_manager.py`
@@ -93,7 +93,7 @@ Port agents from `gitlab-runner-management/.claude/agents/` into `plugins/python
   - `feature-verifier.md`
   - `integration-checker.md`
   - `doc-drift-auditor.md`
-  - `service-documentation.md`
+  - `service-docs-maintainer.md`
   - `context-refinement.md`
   - `code-reviewer.md` (or map to existing `python-code-reviewer.md` if the prompts are compatible)
 

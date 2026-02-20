@@ -364,8 +364,9 @@ if (!isApiCommand && taskCompletionDetected) {
       activeForm: 'Running logging agent to consolidate work logs',
     }),
     new CCTodo({
-      content: 'Run service-documentation agent to update CLAUDE.md files and other documentation',
-      activeForm: 'Running service-documentation agent to update documentation',
+      content:
+        'Run service-docs-maintainer agent to update CLAUDE.md files and other documentation',
+      activeForm: 'Running service-docs-maintainer agent to update documentation',
     }),
     new CCTodo({
       content: 'Mark task file complete and move to tasks/done/',
@@ -666,8 +667,8 @@ if (!isApiCommand && compactionDetected) {
       activeForm: 'Running context-refinement agent to check for discoveries',
     }),
     new CCTodo({
-      content: 'Run service-documentation agent if service interfaces changed',
-      activeForm: 'Running service-documentation agent if service interfaces changed',
+      content: 'Run service-docs-maintainer agent if service interfaces changed',
+      activeForm: 'Running service-docs-maintainer agent if service interfaces changed',
     }),
   ];
 

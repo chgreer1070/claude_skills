@@ -2,7 +2,7 @@
 task: "T20"
 title: "Documentation Updates"
 status: complete
-agent: "service-documentation"
+agent: "service-docs-maintainer"
 dependencies: ["T18"]
 priority: 5
 complexity: medium

@@ -2,7 +2,7 @@
 task: "T22"
 title: "Reference Updates (Comprehensive)"
 status: complete
-agent: "service-documentation"
+agent: "service-docs-maintainer"
 dependencies: ["T18"]
 priority: 5
 complexity: low

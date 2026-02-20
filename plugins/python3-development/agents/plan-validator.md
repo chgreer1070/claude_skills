@@ -145,13 +145,13 @@ SOURCE: Cycle detection algorithm adapted from gsd-plan-checker.md
 | Python code (cli/, core/, services/, shared/) | python-cli-architect        |
 | Test files (tests/)                           | python-pytest-architect     |
 | Linting, type checking                        | linting-root-cause-resolver |
-| Documentation (.md files)                     | service-documentation       |
+| Documentation (.md files)                     | service-docs-maintainer       |
 | Agent/skill creation                          | agent-creator               |
 
 **Red flags:**
 
 - Documentation task assigned to python-cli-architect
-- Test task assigned to service-documentation
+- Test task assigned to service-docs-maintainer
 - Agent field missing
 
 ## Dimension 5: Input/Output Validity

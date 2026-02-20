@@ -316,7 +316,7 @@ Map task types to roles. Roles are resolved to concrete agents via the language 
 | Implementation (source code)     | architect              |
 | Test files                       | test-designer          |
 | Linting/type fixing              | linting (from manifest)|
-| Documentation (.md files)        | service-documentation  |
+| Documentation (.md files)        | service-docs-maintainer  |
 | Skill creation                   | agent-creator          |
 | Agent creation                   | subagent-refactorer    |
 | Orchestration/coordination       | orchestrator           |

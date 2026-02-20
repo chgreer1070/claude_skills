@@ -151,7 +151,7 @@ The plugin provides 16 agents Claude can delegate to for specialized tasks:
 | `code-reviewer` | Holistic code review after implementation |
 | `doc-drift-auditor` | Audit documentation accuracy against code |
 | `context-refinement` | Update task context with implementation discoveries |
-| `service-documentation` | Update CLAUDE.md and module documentation |
+| `service-docs-maintainer` | Update CLAUDE.md and module documentation |
 
 ## Installation
 

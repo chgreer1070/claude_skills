@@ -317,7 +317,7 @@ Map task types to appropriate specialist agents:
 | Python implementation (cli/, core/, services/) | python-cli-architect        |
 | Test files (tests/\*_/_.py)                    | python-pytest-architect     |
 | Linting/type fixing                            | linting-root-cause-resolver |
-| Documentation (.md files)                      | service-documentation       |
+| Documentation (.md files)                      | service-docs-maintainer       |
 | Skill creation                                 | agent-creator               |
 | Agent creation                                 | subagent-refactorer         |
 | Orchestration/coordination                     | orchestrator                |

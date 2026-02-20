@@ -43,10 +43,10 @@ Before compacting, delegate to agents:
    ✓ Complete - [No updates needed / Context manifest updated]
    ```
 
-3. **service-documentation agent** - Update CLAUDE.md files
+3. **service-docs-maintainer agent** - Update CLAUDE.md files
 
    ```markdown
-   [RUNNING: Service-Documentation Agent] Updating service documentation if needed...
+   [RUNNING: service-docs-maintainer agent] Updating service documentation if needed...
    ```
 
    - Only if service interfaces changed significantly

@@ -190,7 +190,7 @@ The manifest schema is documented in [./skills/development-harness/references/la
 **Documentation:**
 
 - `@development-harness:doc-drift-auditor` - Detect documentation drift from implementation
-- `@development-harness:service-documentation` - Generate and maintain service documentation
+- `@service-docs-maintainer` - Generate and maintain service documentation
 
 ---
 

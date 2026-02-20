@@ -32,6 +32,8 @@ import tornado.web  # ty: ignore[unresolved-import]
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from panel.io.server import StoppableThread  # ty: ignore[unresolved-import]
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -64,6 +66,14 @@ _dashboard_port: int | None = None
 _dashboard_start_time: float | None = None
 _dashboard_csv_path: Path | None = None
 _dashboard_csv_rows: int | None = None
+
+# Coarse lock protecting all four state variables above.  Acquired by:
+#   - start_dashboard()  — guard check (read) and state write block (write)
+#   - _reset_dashboard_state() — four null assignments (write)
+#   - get_dashboard_url()  — _dashboard_port read (read)
+#   - _refresh()           — _dashboard_csv_rows write (write)
+# NOT acquired by HealthHandler.get() — see comment at health_state_kwargs.
+_state_lock: threading.Lock = threading.Lock()
 
 # ---------------------------------------------------------------------------
 # Data loading
@@ -383,7 +393,8 @@ def _create_app(csv_path: Path) -> pn.template.FastListTemplate:
         if current_mtime != state["last_mtime"]:
             state["last_mtime"] = current_mtime
             df = _load_sentiment_data(csv_path)
-            _dashboard_csv_rows = len(df) if df is not None else None
+            with _state_lock:
+                _dashboard_csv_rows = len(df) if df is not None else None
             dashboard_container.objects = [_build_dashboard(csv_path, df)]
 
     # Defer periodic callback registration until the app is fully loaded.
@@ -442,10 +453,11 @@ def _reset_dashboard_state() -> None:
     as not running.
     """
     global _dashboard_port, _dashboard_start_time, _dashboard_csv_path, _dashboard_csv_rows  # noqa: PLW0603
-    _dashboard_port = None
-    _dashboard_start_time = None
-    _dashboard_csv_path = None
-    _dashboard_csv_rows = None
+    with _state_lock:
+        _dashboard_port = None
+        _dashboard_start_time = None
+        _dashboard_csv_path = None
+        _dashboard_csv_rows = None
 
 
 def get_dashboard_url() -> str | None:
@@ -459,8 +471,10 @@ def get_dashboard_url() -> str | None:
         ``_dashboard_port`` is set, or ``None`` when no dashboard is
         running in this process.
     """
-    if _dashboard_port is not None:
-        return f"http://localhost:{_dashboard_port}/"
+    with _state_lock:
+        port = _dashboard_port
+    if port is not None:
+        return f"http://localhost:{port}/"
     return None
 
 
@@ -554,11 +568,12 @@ def start_dashboard(csv_path: Path | None = None) -> threading.Thread | None:
     """
     global _dashboard_port, _dashboard_start_time, _dashboard_csv_path, _dashboard_csv_rows  # noqa: PLW0603
 
-    if _dashboard_port is not None:
-        logger.info(
-            "Dashboard already running on http://localhost:%d/", _dashboard_port
-        )
-        return None
+    with _state_lock:
+        if _dashboard_port is not None:
+            logger.info(
+                "Dashboard already running on http://localhost:%d/", _dashboard_port
+            )
+            return None
 
     resolved_path = (csv_path or Path("~/.claude/kaizen/sentiment.csv")).expanduser()
 
@@ -567,15 +582,15 @@ def start_dashboard(csv_path: Path | None = None) -> threading.Thread | None:
     except OSError:
         logger.warning("Failed to allocate a port for the dashboard")
         return None
-    _dashboard_port = port
-    _dashboard_start_time = time.monotonic()
-    _dashboard_csv_path = resolved_path
-    _dashboard_csv_rows = None
 
-    # Pre-count CSV rows if the file exists
+    # Pre-count CSV rows if the file exists (outside the lock — pure I/O).
     df = _load_sentiment_data(resolved_path)
-    if df is not None:
-        _dashboard_csv_rows = len(df)
+
+    with _state_lock:
+        _dashboard_port = port
+        _dashboard_start_time = time.monotonic()
+        _dashboard_csv_path = resolved_path
+        _dashboard_csv_rows = len(df) if df is not None else None
 
     def _serve() -> None:
         """Target function for the daemon thread."""
@@ -584,6 +599,20 @@ def start_dashboard(csv_path: Path | None = None) -> threading.Thread | None:
             def _app_factory() -> pn.template.FastListTemplate:
                 return _create_app(resolved_path)
 
+            # HealthHandler.get() does NOT acquire _state_lock — intentionally.
+            # All four lambdas below are called from Tornado's IOLoop thread,
+            # which is the same thread that runs _refresh().  Because Tornado's
+            # IOLoop is single-threaded, HealthHandler.get() and _refresh()
+            # cannot interleave with each other.  The startup writes
+            # (_dashboard_port, _dashboard_start_time, etc.) happen before
+            # pn.serve() is called — before the IOLoop is even accepting
+            # requests.  The crash-path writes in _reset_dashboard_state() happen
+            # after the IOLoop has already stopped.  There is therefore no window
+            # in which HealthHandler.get() can observe a partially-reset state.
+            # Adding the lock here would be incorrect: _reset_dashboard_state()
+            # can be called from the MCP server thread while the IOLoop thread
+            # is still draining — the lock would not protect against that race
+            # any better than the architectural guarantee above.
             health_state_kwargs = {
                 "get_port": lambda: _dashboard_port,
                 "get_start_time": lambda: _dashboard_start_time,
@@ -591,22 +620,38 @@ def start_dashboard(csv_path: Path | None = None) -> threading.Thread | None:
                 "get_csv_rows": lambda: _dashboard_csv_rows,
             }
 
-            pn.serve(
+            # pn.serve(threaded=True) starts Panel's Tornado IOLoop on a
+            # StoppableThread and returns that thread immediately.  We join
+            # it so _serve() — and therefore this daemon thread — blocks
+            # until the Panel thread exits.  That makes the else clause
+            # below a reliable post-exit cleanup point.
+            #
+            # StoppableThread inherits daemon status from its creator thread
+            # (this daemon thread), so it is also a daemon thread — the
+            # process will not be kept alive by it.
+            panel_thread: StoppableThread = pn.serve(
                 {"/": _app_factory},
                 address="localhost",
                 port=port,
                 show=False,
                 start=True,
-                threaded=False,
+                threaded=True,
                 verbose=False,
                 extra_patterns=[("/health", HealthHandler, health_state_kwargs)],
             )
+            panel_thread.join()
         except OSError as exc:
             _reset_dashboard_state()
             logger.warning("Dashboard server failed to start: %s", exc)
         except Exception:
             _reset_dashboard_state()
             logger.exception("Unexpected error in dashboard server")
+        else:
+            # The Panel thread exited normally (stop() was called or the
+            # IOLoop returned).  Reset state so get_dashboard_url() returns
+            # None and the open_dashboard MCP tool reports no running server.
+            _reset_dashboard_state()
+            logger.info("Dashboard server stopped")
 
     thread = threading.Thread(target=_serve, name="kaizen-dashboard", daemon=True)
     thread.start()
