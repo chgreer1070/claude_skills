@@ -14,6 +14,7 @@ research/
 ├── agent-frameworks/                  # Agent SDKs and orchestration frameworks
 │   ├── ai-agents-frameworks.md        # 10-framework comparative benchmark study
 │   ├── liteagents.md                  # Multi-tool AI development toolkit with 11 agents and session memory
+│   ├── micro-agent.md                 # Lightweight Python ReAct agent framework with MCP multi-server support (MIT)
 │   └── superpowers.md                 # Agentic skills framework and dev methodology (40K+ stars)
 ├── agent-infrastructure/              # Infrastructure for agentic applications
 │   ├── plano.md                       # AI-native proxy and data plane for multi-agent orchestration
@@ -318,6 +319,7 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 | [ai-agents-frameworks.md](./agent-frameworks/ai-agents-frameworks.md) | Comparative learning repository for 10 AI agent frameworks with benchmarks for response time, memory, tokens, RAG, and API integration | 2026-01-31   |
 | [get-shit-done.md](./agent-frameworks/get-shit-done.md)               | Meta-prompting, context engineering, and spec-driven development system with 11 agents for Claude Code, OpenCode, Gemini (10K+ stars)  | 2026-02-01   |
 | [liteagents.md](./agent-frameworks/liteagents.md)                     | Multi-tool AI development toolkit with 11 agents, 22 commands, Hot Memory pipeline, and session friction analysis for 4 AI coding tools | 2026-02-15   |
+| [micro-agent.md](./agent-frameworks/micro-agent.md)                   | Micro-Agent - lightweight Python 3.12 ReAct agent framework with MCP multi-server support, token budget enforcement, and execution visualization (MIT) | 2026-02-20   |
 | [superpowers.md](./agent-frameworks/superpowers.md)                   | Agentic skills framework with 14 skills for TDD, debugging, and subagent-driven development - works with Claude Code, Codex, OpenCode  | 2026-01-31   |
 
 **Key Topics**:
@@ -345,6 +347,15 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 - Multi-tool installer with format translation across 4 AI coding tools
 - Auto-triggering skills for TDD enforcement and verification
 - Intent-based agent routing with lazy frontmatter discovery
+- ReAct (Reasoning + Acting) step loop with `think()` / `act()` separation and state machine (`IDLE`/`RUNNING`/`FINISHED`/`ERROR`)
+- Callable service interface (`run_agent(task_name, prompt)`) for embedding agent logic in upstream applications
+- Multi-server MCP aggregation via simultaneous stdio (subprocess) and SSE (HTTP) transports
+- Tool schema refresh every N steps to handle dynamic MCP server state changes mid-task
+- Token budget enforcement via `TokenLimitExceeded` before context overflow; tiktoken-based counting with image tile estimation
+- Step-level `Record` persistence (thought + action + result + token_usage) as JSON + auto-generated HTML visualization report
+- Duplicate-response detection (`duplicate_threshold`) preventing infinite agent loops
+- TOML-based per-model LLM config for switching Claude models (opus/sonnet/haiku) per agent role without code changes
+- Docker-first SSH-accessible sandbox for shell execution isolation
 
 ---
 
@@ -1009,6 +1020,7 @@ When adding new research:
 - [GitHub CLI](https://github.com/cli/cli) - Official GitHub CLI for PRs, issues, workflows, and extensions (37,800+ stars)
 - [codex-skills](https://github.com/jMerta/codex-skills) - 19-skill catalog for OpenAI Codex CLI with npx installer, global ledger pattern, and prompt-injection hardening (116 stars)
 - [Browser MCP](https://browsermcp.io) - Chrome browser automation MCP server via extension bridge, preserving auth sessions and real fingerprint (5,814 stars)
+- [Micro-Agent](https://github.com/fdueblab/Micro-Agent) - Lightweight Python 3.12 ReAct agent framework with MCP multi-server support, token budget enforcement, and step-level execution visualization (MIT)
 
 ### Internal References
 
