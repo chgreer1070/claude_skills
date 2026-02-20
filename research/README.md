@@ -85,6 +85,7 @@ research/
 ├── skill-generation-tools/            # Tools that create AI skills/prompts
 │   ├── clawhub.md                     # Skill registry for AI agents with vector search
 │   ├── claude-skillz.md               # 18+ behavioral skills, 12 personas, Claude Launcher utility
+│   ├── codex-skills.md                # 19-skill catalog for OpenAI Codex CLI with npx installer (116 stars)
 │   ├── human-compiler.md              # Interview-to-agent plugin generator for Claude Code (MIT)
 │   ├── mcpskills-cli.md               # MCP-to-skill converter via Streamable HTTP discovery
 │   ├── skill-seekers.md               # Documentation-to-skill automation tool
@@ -219,6 +220,7 @@ Tools and services that automate the creation of AI skills from documentation, c
 | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------ |
 | [clawhub.md](./skill-generation-tools/clawhub.md)                    | ClawHub - skill registry for AI agents with vector search capabilities                                           | 2026-02-20   |
 | [claude-skillz.md](./skill-generation-tools/claude-skillz.md)       | Claude Skillz - 18+ behavioral skills, 12 personas, 10 plugins, and Claude Launcher for rapid persona switching (238 stars) | 2026-02-20   |
+| [codex-skills.md](./skill-generation-tools/codex-skills.md)         | codex-skills - 19-skill catalog for OpenAI Codex CLI with npx installer, global ledger pattern, and prompt-injection hardening (116 stars) | 2026-02-20   |
 | [human-compiler.md](./skill-generation-tools/human-compiler.md)     | HumanCompiler - interview-to-agent plugin generator that replicates human decision-making via 8-phase structured interviews (MIT) | 2026-02-19   |
 | [mcpskills-cli.md](./skill-generation-tools/mcpskills-cli.md)       | mcpskills-cli - MCP-to-skill converter generating SKILL.md and polyglot call scripts from Streamable HTTP servers | 2026-02-15   |
 | [skill-seekers.md](./skill-generation-tools/skill-seekers.md)       | Skill Seekers - converts docs, GitHub repos, and PDFs into Claude/Gemini/OpenAI skills                          | 2026-01-26   |
@@ -262,6 +264,14 @@ Tools and services that automate the creation of AI skills from documentation, c
 - Auto-detection of installed agents and platform-specific path resolution
 - Claude Code plugin manifest format compatibility
 - Non-interactive CI/CD mode for automated skill deployment
+- Drop-in SKILL.md skill folders auto-discovered by Codex CLI from `~/.agents/skills/`
+- npx CLI for listing, searching, and installing individual skills or entire categories
+- Global ledger pattern (`~/.codex/AGENTS.MD`) for cross-project cross-session agent context
+- Prompt-injection hardening via invisible Unicode character scanner run in CI on every push/PR
+- Stdlib-only SKILL.md validation (no PyYAML) for zero-dependency CI integration
+- Registry-as-generated-artifact: `skills.json` regenerated from source, not hand-maintained
+- User vs. repo-local install scope via `--dir` flag
+- Minimal frontmatter constraints (name ≤100 chars, description ≤500 chars single-line)
 
 ---
 
@@ -987,6 +997,7 @@ When adding new research:
 - [Hedra](https://www.hedra.com) - AI-powered visual creation platform for video, image, and audio content
 - [Kythe](https://kythe.io) - Google's language-agnostic code intelligence platform with graph-based semantic indexing (2,094 stars)
 - [GitHub CLI](https://github.com/cli/cli) - Official GitHub CLI for PRs, issues, workflows, and extensions (37,800+ stars)
+- [codex-skills](https://github.com/jMerta/codex-skills) - 19-skill catalog for OpenAI Codex CLI with npx installer, global ledger pattern, and prompt-injection hardening (116 stars)
 
 ### Internal References
 
