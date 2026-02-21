@@ -2,8 +2,8 @@
 last-updated: 2026-02-21
 last-completed: 2026-02-20
 p0-count: 0
-p1-count: 24
-p2-count: 24
+p1-count: 23
+p2-count: 23
 ideas-count: 11
 ---
 
@@ -31,28 +31,31 @@ _(Empty)_
 - `plugins/gitlab-skill/skills/gitlab-skill/scripts/validate_glfm.py` (lines 152-153)
 - `plugins/gitlab-skill/skills/gitlab-skill/references/gitlab-ci-local-guide.md` (line 51)
 
-### bash-development: Verify Bash 5.3 features against primary sources
+### bash-development: Fix task_output naming collision in log_functions.sh
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
 **Priority**: P1
-**Status**: UNVERIFIED — review agent used 0 web lookups; fabrication claims are training-data-based and may themselves be incorrect
-**Description**: The `bash-53-features` skill was flagged for fabricated features by a review agent that performed zero web searches. Claims about `${command;}` syntax, `GLOBSORT :asc/:desc`, `read -E`, `source -p` need verification against the official Bash 5.3 CHANGES file. The `task_output` function in `log_functions.sh` (line 1401) has variable naming bugs (`task_output` used both as function name and variable) — this structural finding remains valid.
-**Required**: WebFetch the official Bash 5.3 CHANGES file (<https://tiswww.case.edu/php/chet/bash/CHANGES>) and compare each documented feature.
+**Status**: FACT-CHECKED 2026-02-21 — Bash 5.3 features VERIFIED against primary sources (CHANGES file, NEWS file, bash.1 manpage from official tarball). `${ command; }` syntax, GLOBSORT, `read -E`, `source -p`, `compgen -V`, C23 conformance all confirmed. GLOBSORT uses `+`/`-` prefix syntax (not `:asc`/`:desc` — minor documentation correction needed). Original review agent fabrication claims were wrong.
+**Description**: The `task_output` function in `log_functions.sh` (line 1401) has variable naming bugs (`task_output` used both as function name and variable). GLOBSORT documentation uses `:asc`/`:desc` suffix syntax but actual Bash 5.3 uses `+`/`-` prefix (e.g., `-mtime` for descending, `+mtime` or just `mtime` for ascending).
+**Citations**:
+- Bash CHANGES: <https://tiswww.case.edu/php/chet/bash/CHANGES> (accessed 2026-02-21)
+- Bash 5.3 tarball: <https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz> `doc/bash.1` (accessed 2026-02-21)
 **Files**:
-- `plugins/bash-development/skills/bash-53-features/SKILL.md`
 - `plugins/bash-development/skills/bash-logging/scripts/log_functions.sh` (line 1401)
+- `plugins/bash-development/skills/bash-53-features/SKILL.md` (GLOBSORT syntax correction needed)
 
-### commitlint: Verify --last flag and exit codes against primary sources
+### ~~commitlint: Verify --last flag and exit codes against primary sources~~ RESOLVED
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
+**Resolved**: 2026-02-21
 **Priority**: P1
-**Status**: UNVERIFIED — review agent used 0 web lookups; claims about `--last` being fabricated are training-data-based
-**Description**: SKILL.md lines 217 and 241 reference `npx commitlint --last` — a review agent claimed this flag doesn't exist, but performed zero web searches to verify. The skill also documents specific exit codes and mixes async/sync patterns. All CLI flags and exit codes need verification against official commitlint documentation (<https://commitlint.js.org/>).
-**Required**: WebFetch commitlint CLI docs and `npx commitlint --help` output to verify flag existence.
-**Files**:
-- `plugins/commitlint/skills/commitlint/SKILL.md` (lines 217, 241)
+**Status**: FACT-CHECKED 2026-02-21 — `--last` flag VERIFIED across 4 independent sources. Flag exists in source code (`cli.ts` with alias `-l`), official CLI reference docs, commitlint help output, and raw documentation. Exit codes verified against `ExitCode` enum in `cli-error.ts`. Original review agent claim that `--last` was fabricated was wrong.
+**Citations**:
+- commitlint source: `@commitlint/cli/src/cli.ts` (accessed 2026-02-21)
+- commitlint docs: <https://commitlint.js.org/reference/cli.html> (accessed 2026-02-21)
+- commitlint source: `@commitlint/cli/src/cli-error.ts` `ExitCode` enum (accessed 2026-02-21)
 
 ### clang-format: Fix broken YAML frontmatter
 
@@ -117,7 +120,11 @@ _(Empty)_
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
 **Priority**: P1
-**Description**: The plugin contains over 1200 lines of FastMCP 3.x API documentation derived from a release candidate version, with no source citations. Per CLAUDE.md citation requirements, all factual claims must have cited sources. The `require_auth` parameter was flagged as a potential hallucination during review. All API documentation needs verification against official FastMCP sources and proper citation.
+**Status**: FACT-CHECKED 2026-02-21 — `require_auth` hallucination flag was WRONG. The string `require_auth` does not appear anywhere in the plugin. The actual auth APIs documented (`require_scopes`, `restrict_tag`, `AuthContext`, `AuthMiddleware`) are all VERIFIED against installed FastMCP 3.0.0rc2 source code (`fastmcp/server/auth/authorization.py`, `fastmcp/server/middleware/authorization.py`). Citation need still valid — documentation lacks source attribution.
+**Description**: The plugin contains over 1200 lines of FastMCP 3.x API documentation derived from a release candidate version, with no source citations. Per CLAUDE.md citation requirements, all factual claims must have cited sources. Auth API claims verified but citations still needed for all documentation.
+**Citations**:
+- FastMCP auth: `fastmcp/server/auth/__init__.py` lines 8-13, `authorization.py` lines 48, 78, 106 (accessed 2026-02-21)
+- FastMCP middleware: `fastmcp/server/middleware/authorization.py` line 51 (accessed 2026-02-21)
 **Files**:
 - `plugins/fastmcp-creator/skills/fastmcp-creator/references/` (multiple files)
 
@@ -262,15 +269,12 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 
 ## P2 - Could Have
 
-### Add ty support alongside mypy in distributed plugins
+### ~~Add ty support alongside mypy in distributed plugins~~ COMPLETED
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
-**Description**: This repo's internal toolchain switched from mypy to ty (Astral ecosystem). Distributed plugins (`plugins/`) that reference type checking should document **both** ty and mypy as options, since plugin users may use either. Key plugins to update: holistic-linting (add ty workflows alongside existing mypy workflows), python3-development (add ty as alternative to mypy in tool registry and examples), development-harness (add ty to default quality gate options). Do NOT replace mypy with ty — add ty as an additional supported option.
-**Files**:
-- `plugins/holistic-linting/` (add ty resolution workflow, keep mypy workflow)
-- `plugins/python3-development/` (add ty to tool registry alongside mypy)
-- `plugins/development-harness/` (add ty to fallback quality gates)
+**Completed**: 2026-02-21
+**Description**: Completed as full mypy-to-ty migration across all active documentation, skills, agents, and reference files. All stale mypy references updated to ty (Astral ecosystem). Third-party reference docs (mypy-docs/, rules/mypy/) retained as-is. Historical plan/ files left unchanged.
 
 ### conventional-commits: Fix CHANGELOG references to nonexistent files
 
@@ -288,11 +292,17 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 - `plugins/dasel/` (skill files with `-f` flag usage)
 - `plugins/dasel/.claude-plugin/plugin.json` (missing hook registration)
 
-### litellm: Remove private API documentation and update verification date
+### ~~litellm: Remove private API documentation and update verification date~~ RESOLVED
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
-**Description**: SKILL.md line 257 teaches usage of `litellm._should_retry()` — a private/internal API (prefixed with underscore). Private APIs can change without notice and should not be documented as recommended patterns. Replace with the public retry mechanism. Also update stale verification date.
+**Resolved**: 2026-02-21
+**Status**: FACT-CHECKED 2026-02-21 — Review claim REFUTED. `litellm._should_retry()` is NOT a private/internal API. It is explicitly documented in official litellm Exception Mapping docs (<https://docs.litellm.ai/docs/exception_mapping>) with code examples showing `litellm._should_retry(e.status_code)`. Despite the underscore prefix, this is an intentionally public utility function exported in `__init__.py`. The function exists at `utils.py:6506`.
+**Description**: Original review flagged `_should_retry()` as private API. Fact-checking verified it is documented public API in official docs. Stale verification date may still need updating.
+**Citations**:
+- litellm docs: <https://docs.litellm.ai/docs/exception_mapping> (accessed 2026-02-21)
+- litellm source: `litellm/utils.py` line 6506 (accessed 2026-02-21)
+- litellm source: `litellm/__init__.py` type stub exports `_should_retry` (accessed 2026-02-21)
 **Files**:
 - `plugins/litellm/skills/litellm/SKILL.md` (line 257)
 
@@ -310,15 +320,18 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 **Description**: Contains a hardcoded machine-specific path (likely `/home/user/...` or similar) that won't work on other systems. Version references have drifted from actual tool versions. Role table has inconsistencies between documented and actual roles.
 **Files**: `plugins/development-harness/` (SKILL.md and reference files)
 
-### llamafile: Verify SourceForge mirror URL and model download URLs
+### llamafile: Verify HuggingFace model download URLs
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
-**Status**: UNVERIFIED — reviewer flagged URL as suspicious but did not web-verify whether SourceForge mirror is legitimate
-**Description**: SKILL.md line 69 references a SourceForge mirror URL (`https://sourceforge.net/projects/llamafile.mirror/files/0.9.3/`) — reviewer flagged as suspicious because llamafile official releases are on GitHub. However, SourceForge mirrors exist for many projects. URL needs actual verification via web fetch. Multiple model download URLs also need verification.
-**Required**: WebFetch the SourceForge URL to check if it's a real mirror; check llamafile GitHub releases for official mirror list.
+**Priority**: P2
+**Status**: FACT-CHECKED 2026-02-21 — SourceForge URL VERIFIED (HTTP 200, legitimate mirror page). HuggingFace model URLs partially REFUTED — `Mozilla/Qwen3-0.6B-gguf`, `Mozilla/Mistral-7B-gguf`, `Mozilla/gemma-3-3b-it-gguf` all return 404 on HuggingFace. Model names may be incorrect or repos have been renamed/removed.
+**Description**: SourceForge mirror URL is confirmed legitimate. However, multiple HuggingFace model download URLs in the plugin return 404. Model names need verification against current HuggingFace Mozilla organization page.
+**Citations**:
+- SourceForge: <https://sourceforge.net/projects/llamafile.mirror/files/0.9.3/> HTTP 200 (accessed 2026-02-21)
+- HuggingFace 404s: `Mozilla/Qwen3-0.6B-gguf`, `Mozilla/Mistral-7B-gguf`, `Mozilla/gemma-3-3b-it-gguf` (accessed 2026-02-21)
 **Files**:
-- `plugins/llamafile/skills/llamafile/SKILL.md` (line 69 and model URLs)
+- `plugins/llamafile/skills/llamafile/SKILL.md` (model download URLs)
 
 ### prompt-optimization: Fix unreachable reference files and raw JSX/MDX markup
 
