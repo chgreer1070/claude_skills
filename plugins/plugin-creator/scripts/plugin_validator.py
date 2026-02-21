@@ -190,8 +190,9 @@ DEFAULT_SCAN_PATTERNS: tuple[str, ...] = (
 MIN_DESCRIPTION_LENGTH = 20
 # RECOMMENDED_DESCRIPTION_LENGTH and MAX_SKILL_NAME_LENGTH imported from frontmatter_core
 
-# Name format (Architecture lines 352-354)
-NAME_PATTERN = r"^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$"
+# Name format — matches agentskills.io/specification and init_skill.py convention:
+# lowercase a-z/0-9/hyphen, no leading/trailing/consecutive hyphens.
+NAME_PATTERN = r"^[a-z0-9]+(-[a-z0-9]+)*$"
 
 
 # Trigger phrase requirements (Architecture line 357)

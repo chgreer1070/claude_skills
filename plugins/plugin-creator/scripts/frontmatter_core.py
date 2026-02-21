@@ -58,8 +58,15 @@ RECOMMENDED_DESCRIPTION_LENGTH: int = 1024
 MAX_SKILL_NAME_LENGTH: int = 40
 """Maximum allowed length for a skill name or directory name."""
 
-_SKILL_DIR_NAME_PATTERN: re.Pattern[str] = re.compile(r"^[a-z][a-z0-9-]*$")
-"""Pattern for valid skill directory names (and 'name' field values)."""
+_SKILL_DIR_NAME_PATTERN: re.Pattern[str] = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+"""Pattern for valid skill directory names (and 'name' field values).
+
+Rules (per agentskills.io/specification and init_skill.py):
+- Lowercase letters, digits, and hyphens only (a-z, 0-9, -)
+- May start with a digit or letter
+- Must not start or end with a hyphen
+- Must not contain consecutive hyphens (--)
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +82,7 @@ class SkillFrontmatter(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    name: str | None = Field(None, max_length=64, pattern=r"^[a-z][a-z0-9-]*$")
+    name: str | None = Field(None, max_length=64, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")
     description: str | None = None
     argument_hint: str | None = Field(None, alias="argument-hint")
     allowed_tools: str | None = Field(None, alias="allowed-tools")
@@ -163,7 +170,7 @@ class AgentFrontmatter(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    name: str = Field(max_length=64, pattern=r"^[a-z][a-z0-9-]*$")
+    name: str = Field(max_length=64, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")
     description: str
     tools: str | None = None
     disallowedTools: str | None = None  # noqa: N815
