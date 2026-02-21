@@ -320,18 +320,20 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 **Description**: Contains a hardcoded machine-specific path (likely `/home/user/...` or similar) that won't work on other systems. Version references have drifted from actual tool versions. Role table has inconsistencies between documented and actual roles.
 **Files**: `plugins/development-harness/` (SKILL.md and reference files)
 
-### llamafile: Verify HuggingFace model download URLs
+### llamafile: Fix HuggingFace model URLs (wrong org name + fabricated repos)
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
 **Priority**: P2
-**Status**: FACT-CHECKED 2026-02-21 — SourceForge URL VERIFIED (HTTP 200, legitimate mirror page). HuggingFace model URLs partially REFUTED — `Mozilla/Qwen3-0.6B-gguf`, `Mozilla/Mistral-7B-gguf`, `Mozilla/gemma-3-3b-it-gguf` all return 404 on HuggingFace. Model names may be incorrect or repos have been renamed/removed.
-**Description**: SourceForge mirror URL is confirmed legitimate. However, multiple HuggingFace model download URLs in the plugin return 404. Model names need verification against current HuggingFace Mozilla organization page.
+**Status**: FACT-CHECKED 2026-02-21 — SourceForge URL VERIFIED (legitimate auto-mirror with explicit disclaimer). HuggingFace model URLs REFUTED — wrong org name (`Mozilla` should be `mozilla-ai`) and model repo names (`gemma-3-3b-it-gguf`, `Qwen3-0.6B-gguf`, `Mistral-7B-gguf`, `Llama-3.1-8B-gguf`) all return 404. GitHub URLs using `mozilla-ai/llamafile` are correct (old `Mozilla-Ocho` redirects).
+**Description**: SourceForge mirror is confirmed legitimate (auto-mirror with disclaimer). HuggingFace URLs need two fixes: (1) org name `Mozilla` must be changed to `mozilla-ai`, (2) model repo names need verification against actual `mozilla-ai` org repos — current names appear fabricated. The `llava-v1.5-7b-llamafile` URL works only via redirect.
 **Citations**:
-- SourceForge: <https://sourceforge.net/projects/llamafile.mirror/files/0.9.3/> HTTP 200 (accessed 2026-02-21)
-- HuggingFace 404s: `Mozilla/Qwen3-0.6B-gguf`, `Mozilla/Mistral-7B-gguf`, `Mozilla/gemma-3-3b-it-gguf` (accessed 2026-02-21)
+- SourceForge mirror: <https://sourceforge.net/projects/llamafile.mirror/files/0.9.3/> — disclaimer states "exact mirror of the llamafile project" (accessed 2026-02-21)
+- HuggingFace 404s: `Mozilla/Qwen3-0.6B-gguf`, `Mozilla/Mistral-7B-gguf`, `Mozilla/gemma-3-3b-it-gguf`, `Mozilla/Llama-3.1-8B-gguf` (accessed 2026-02-21)
+- HuggingFace redirect: `Mozilla/llava-v1.5-7b-llamafile` redirects to `mozilla-ai/llava-v1.5-7b-llamafile` (accessed 2026-02-21)
+- GitHub: `mozilla-ai/llamafile` resolves correctly; `Mozilla-Ocho/llamafile` redirects (accessed 2026-02-21)
 **Files**:
-- `plugins/llamafile/skills/llamafile/SKILL.md` (model download URLs)
+- `plugins/llamafile/skills/llamafile/SKILL.md` (lines 78, 87-92 model URLs; line 69 SourceForge OK)
 
 ### prompt-optimization: Fix unreachable reference files and raw JSX/MDX markup
 
