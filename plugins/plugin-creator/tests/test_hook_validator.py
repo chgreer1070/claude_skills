@@ -38,12 +38,12 @@ class TestDetectFileType:
         result = FileType.detect_file_type(hooks_json)
         assert result == FileType.HOOK_CONFIG
 
-    def test_js_in_hooks_dir_detected_as_hook_script(self, tmp_path: Path) -> None:
-        """Test .js file in hooks/ directory is detected as HOOK_SCRIPT.
+    def test_js_in_hooks_dir_detected_as_unknown(self, tmp_path: Path) -> None:
+        """Test .js file in hooks/ directory is detected as UNKNOWN.
 
         Tests: FileType detection for .js hook scripts
         How: Create hooks/my-hook.js, call detect_file_type
-        Why: Ensure .js files in hooks/ are routed to HookValidator
+        Why: HOOK_SCRIPT was removed; hooks are now .cjs and not content-validated
         """
         hooks_dir = tmp_path / "hooks"
         hooks_dir.mkdir()
@@ -51,14 +51,14 @@ class TestDetectFileType:
         hook_js.write_text("#!/usr/bin/env node\nconsole.log('hook');")
 
         result = FileType.detect_file_type(hook_js)
-        assert result == FileType.HOOK_SCRIPT
+        assert result == FileType.UNKNOWN
 
     def test_js_outside_hooks_dir_not_detected_as_hook(self, tmp_path: Path) -> None:
-        """Test .js file outside hooks/ directory is NOT detected as HOOK_SCRIPT.
+        """Test .js file outside hooks/ directory is detected as UNKNOWN.
 
         Tests: FileType detection scope limitation
         How: Create scripts/util.js, call detect_file_type
-        Why: Only .js files inside hooks/ directories should be hook scripts
+        Why: Script files are not content-validated
         """
         scripts_dir = tmp_path / "scripts"
         scripts_dir.mkdir()
@@ -275,48 +275,6 @@ class TestHookConfigValidation:
         validator = HookValidator()
         with pytest.raises(NotImplementedError):
             validator.fix(tmp_path / "hooks.json")
-
-
-class TestHookScriptValidation:
-    """Test HookValidator on .js hook scripts."""
-
-    def test_js_with_shebang_passes(self, tmp_path: Path) -> None:
-        """Test .js file with shebang passes validation.
-
-        Tests: Hook script happy path
-        How: Write .js file with #!/usr/bin/env node shebang, validate
-        Why: Scripts with shebangs are properly executable
-        """
-        hooks_dir = tmp_path / "hooks"
-        hooks_dir.mkdir()
-        hook_js = hooks_dir / "my-hook.js"
-        hook_js.write_text("#!/usr/bin/env node\nconsole.log('hook');")
-
-        validator = HookValidator()
-        result = validator.validate(hook_js)
-
-        assert result.passed is True
-        assert len(result.errors) == 0
-        assert len(result.warnings) == 0
-
-    def test_js_without_shebang_warns(self, tmp_path: Path) -> None:
-        """Test .js file without shebang produces warning.
-
-        Tests: Missing shebang detection
-        How: Write .js file without shebang, validate
-        Why: Hook scripts should have shebangs for direct execution
-        """
-        hooks_dir = tmp_path / "hooks"
-        hooks_dir.mkdir()
-        hook_js = hooks_dir / "my-hook.js"
-        hook_js.write_text("console.log('no shebang');")
-
-        validator = HookValidator()
-        result = validator.validate(hook_js)
-
-        assert result.passed is True  # Warning, not error
-        assert len(result.warnings) == 1
-        assert result.warnings[0].code == "HK003"
 
     def test_hooks_json_with_matcher_and_timeout(self, tmp_path: Path) -> None:
         """Test hooks.json with optional matcher and timeout fields passes.
