@@ -45,6 +45,21 @@ When `$ARGUMENTS` starts with `--auto`, the following substitutions apply at eve
 
 ## Workflow
 
+### Routing (evaluated first, before any step)
+
+Inspect the arguments string and dispatch before executing any step:
+
+| Condition on arguments | Route |
+|---|---|
+| Empty | Step 0 — interactive browser |
+| Starts with `--auto` | Strip prefix, set AUTO_MODE=true, title = remainder → Step 1 |
+| Starts with `close` | Extract title → Step 9 (close path) |
+| Starts with `resolve` | Extract title → Step 9 (resolve path) |
+| Exactly `setup-github` | setup-github command |
+| Any other non-empty string | Title substring → Step 1 (interactive mode) |
+
+**AUTO_MODE** — when set, all `AskUserQuestion` calls are replaced with evidence-derived decisions. See the `--auto mode rules` table in the Arguments section for each substitution.
+
 ### Step 0: Interactive Browser (no arguments only)
 
 **Trigger:** `$ARGUMENTS` is empty.
@@ -102,10 +117,12 @@ When `$ARGUMENTS` starts with `--auto`, the following substitutions apply at eve
 
 ### Step 1: Find the Backlog Item
 
-Read `.claude/BACKLOG.md`. Search H3 headings (`### ...`) for case-insensitive match against `$ARGUMENTS`.
+Read `.claude/BACKLOG.md`. Search H3 headings (`### ...`) for case-insensitive match against the title (the portion of `$ARGUMENTS` after any `--auto` prefix has been stripped).
 
-- Zero matches: report "No backlog item found matching: {$ARGUMENTS}" and stop.
-- Multiple matches: list all matches and ask the user to pick one.
+- **Zero matches (interactive mode):** report "No backlog item found matching: {title}" and offer to create one via `/create-backlog-item`.
+- **Zero matches (AUTO_MODE):** log `[AUTO] No item found — invoking create-backlog-item --auto {title}`, invoke `Skill(command: "create-backlog-item", args: "--auto {title}")`, then re-run Step 1.
+- **Multiple matches (interactive mode):** list all matches and ask the user to pick one.
+- **Multiple matches (AUTO_MODE):** log `[AUTO] Multiple matches — picking first: {title}`, proceed with first match.
 
 Record the priority section (P0, P1, P2, Ideas) the item belongs to.
 
