@@ -12,6 +12,7 @@ driving analyze_git_changes.py and publish_daily_release.py.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
@@ -22,6 +23,12 @@ import typer
 from rich.console import Console
 
 EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+REPO = "Jamie-BitFlight/claude_skills"
+
+# Must match GENERATOR_VERSION in publish_daily_release.py.
+# Bump both to force regeneration of all existing releases on next run.
+GENERATOR_VERSION = "1.0"
+_MARKER_RE = re.compile(r"<!-- created-by-release-generator: v([\d.]+) -->")
 
 app = typer.Typer(
     name="list_daily_ranges",
@@ -48,6 +55,38 @@ def run_git(args: list[str], check: bool = True) -> subprocess.CompletedProcess[
     except subprocess.CalledProcessError as e:
         msg = f"Git command failed: {' '.join(args)}\n{e.stderr}"
         raise ListRangesError(msg) from e
+
+
+def run_gh(args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
+    """Run a gh command against the configured repo."""
+    try:
+        return subprocess.run(
+            ["gh", *args, "-R", REPO],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=check,
+        )
+    except subprocess.CalledProcessError as e:
+        msg = f"gh command failed: {' '.join(args)}\n{e.stderr}"
+        raise ListRangesError(msg) from e
+
+
+def get_release_generator_version(tag: str) -> str | None:
+    """Return the generator version embedded in an existing release body, or None.
+
+    Returns None if the release does not exist, the body is missing, or the
+    marker comment is not present.
+    """
+    result = run_gh(["release", "view", tag, "--json", "body"], check=False)
+    if result.returncode != 0:
+        return None
+    try:
+        body = json.loads(result.stdout).get("body", "")
+    except (json.JSONDecodeError, AttributeError):
+        return None
+    match = _MARKER_RE.search(body)
+    return match.group(1) if match else None
 
 
 def get_parent(commit_hash: str) -> str:
@@ -159,7 +198,15 @@ def main(
         tag = f"v{day_str.replace('-', '.')}"
         exists = tag_exists(tag)
         current_tag_commit = get_tag_commit(tag) if exists else None
-        needs_update = exists and current_tag_commit != newest_commit
+        commit_changed = exists and current_tag_commit != newest_commit
+        # Only fetch the release body when the tag exists and commits haven't
+        # changed — if commits changed we're already updating.
+        if exists and not commit_changed:
+            release_version = get_release_generator_version(tag)
+            version_outdated = release_version != GENERATOR_VERSION
+        else:
+            version_outdated = False
+        needs_update = exists and (commit_changed or version_outdated)
 
         entry = DayRange(
             date=day_str,

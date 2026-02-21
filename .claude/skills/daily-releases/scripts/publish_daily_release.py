@@ -27,6 +27,10 @@ app = typer.Typer(
 )
 console = Console()
 
+# Bump this to force regeneration of all existing releases on next run.
+GENERATOR_VERSION = "1.0"
+GENERATOR_MARKER = f"<!-- created-by-release-generator: v{GENERATOR_VERSION} -->"
+
 
 class PublishError(Exception):
     """Error during release publishing."""
@@ -102,7 +106,7 @@ def main(
         raise typer.Exit(1)
 
     title = f"Daily Release - {release_date}"
-    notes_content = notes_file.read_text(encoding="utf-8")
+    notes_content = notes_file.read_text(encoding="utf-8").rstrip() + f"\n\n{GENERATOR_MARKER}\n"
 
     if dry_run:
         console.print(f"[dim]DRY RUN - would publish:[/dim]")
