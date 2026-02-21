@@ -1,6 +1,5 @@
 ---
-description: 'Create GitHub Releases and git tags for every calendar day with commits. Groups commits by UTC date, categorizes by conventional commit type (feat/fix/refactor/docs/test/ci/chore), and generates structured changelogs. Use to backfill daily releases for the entire repository history or maintain ongoing daily release artifacts.'
-disable-model-invocation: true
+description: 'Create GitHub Releases and git tags for every calendar day with commits. Groups commits by UTC date, categorizes by conventional commit type (feat/fix/refactor/docs/test/ci/chore), and generates structured changelogs. Use to backfill daily releases for the entire repository history or maintain ongoing daily release artifacts. Automatically invoked; idempotent and safe to run repeatedly without duplicating releases.'
 argument-hint: '[options]'
 ---
 
@@ -51,7 +50,7 @@ The script reads all commits on a branch, groups them by UTC date, and for each 
 ```
 --start-date TEXT       Only process days on or after this date (YYYY-MM-DD)
 --end-date TEXT         Only process days on or before this date (YYYY-MM-DD)
---branch TEXT           Git branch/ref to read commits from (default: HEAD)
+--branch TEXT           Git branch/ref to read commits from (default: origin/main)
 --dry-run              Print what would be created without making changes
 --skip-existing        Skip days where release tag already exists (default: True)
 ```

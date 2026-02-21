@@ -82,11 +82,11 @@ def run_git_command(
         raise ReleasesError(msg) from e
 
 
-def get_commits_by_day(branch: str = "HEAD") -> dict[str, list[CommitInfo]]:
+def get_commits_by_day(branch: str = "origin/main") -> dict[str, list[CommitInfo]]:
     """Get all commits grouped by UTC date.
 
     Args:
-        branch: Git branch/ref to read from
+        branch: Git branch/ref to read from (default: origin/main)
 
     Returns:
         dict mapping YYYY-MM-DD to list of CommitInfo
@@ -699,8 +699,8 @@ def create_releases(
     ] = None,
     branch: Annotated[
         str,
-        typer.Option(help="Git branch/ref to read from"),
-    ] = "HEAD",
+        typer.Option(help="Git branch/ref to read from (default: origin/main)"),
+    ] = "origin/main",
     dry_run: Annotated[
         bool,
         typer.Option(help="Print what would be created without making changes"),
