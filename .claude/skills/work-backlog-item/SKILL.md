@@ -12,13 +12,16 @@ When invoked with no arguments, shows an interactive backlog browser. When invok
 
 ## Arguments
 
-`$ARGUMENTS` is one of:
+`$0` selects the operating mode; remaining positional args (`$1`, `$2`, ...) form the title or parameter:
 
-- **Empty** — interactive browser
-- **Title substring** — case-insensitive match against H3 headings; triggers planning workflow
-- **`--auto {title}`** — autonomous mode: no `AskUserQuestion` calls; derives missing data from research files and context; logs all decisions; skips interactive GitHub prompts; suitable for agent use without a human in the loop
-- **`close {title}`** — verify and close a completed item
-- **`resolve {title}`** — mark an item as no longer applicable (with reason)
+| `$0` value | Remaining args | Mode |
+|---|---|---|
+| (empty) | — | Interactive browser |
+| `--auto` | `$1`+ = title | Autonomous — no `AskUserQuestion` calls |
+| `close` | `$1`+ = title | Verify and close a completed item |
+| `resolve` | `$1`+ = title | Mark no longer applicable (reason required) |
+| `setup-github` | — | Initialize labels, project, first milestone |
+| (any other) | — | `$ARGUMENTS` treated as title substring → planning |
 
 ```text
 /work-backlog-item                                    # interactive browser
@@ -30,7 +33,7 @@ When invoked with no arguments, shows an interactive backlog browser. When invok
 
 ### --auto mode rules
 
-When `$ARGUMENTS` starts with `--auto`, the following substitutions apply at every interactive decision point:
+When `$0` is `--auto`, the following substitutions apply at every interactive decision point:
 
 | Normal behaviour | `--auto` substitution |
 |---|---|
@@ -47,22 +50,22 @@ When `$ARGUMENTS` starts with `--auto`, the following substitutions apply at eve
 
 ### Routing (evaluated first, before any step)
 
-Inspect the arguments string and dispatch before executing any step:
+Dispatch based on `$0` (the first argument word) before executing any step:
 
-| Condition on arguments | Route |
-|---|---|
-| Empty | Step 0 — interactive browser |
-| Starts with `--auto` | Strip prefix, set AUTO_MODE=true, title = remainder → Step 1 |
-| Starts with `close` | Extract title → Step 9 (close path) |
-| Starts with `resolve` | Extract title → Step 9 (resolve path) |
-| Exactly `setup-github` | setup-github command |
-| Any other non-empty string | Title substring → Step 1 (interactive mode) |
+| `$0` value | Title source | Route |
+|---|---|---|
+| (empty) | — | Step 0 — interactive browser |
+| `--auto` | `$1`+ joined | AUTO_MODE=true → Step 1 |
+| `close` | `$1`+ joined | Step 9 (close path) |
+| `resolve` | `$1`+ joined | Step 9 (resolve path) |
+| `setup-github` | — | setup-github command |
+| (any other) | `$ARGUMENTS` | Title substring → Step 1 (interactive mode) |
 
 **AUTO_MODE** — when set, all `AskUserQuestion` calls are replaced with evidence-derived decisions. See the `--auto mode rules` table in the Arguments section for each substitution.
 
 ### Step 0: Interactive Browser (no arguments only)
 
-**Trigger:** `$ARGUMENTS` is empty.
+**Trigger:** `$0` is empty (no arguments passed).
 
 <step0_procedure>
 
@@ -104,20 +107,20 @@ Inspect the arguments string and dispatch before executing any step:
 4. Use `AskUserQuestion` to ask: "Which item would you like to work on next?"
 
 5. Handle the response:
-   - `[number]` — set `$ARGUMENTS` to that item's title and proceed to Step 1
+   - `[number]` — use that item's title as the working title and proceed to Step 1
    - `G [number]` — invoke `Skill(skill="groom-backlog-item", args="{item title}")` then re-display the list
    - `G all` — invoke `Skill(skill="groom-backlog-item", args="all")` then re-display the list
    - `D [number]` — display the full item description, research_first field, and grooming manifest if it exists in `.claude/grooming-reports/`, then re-display the list
-   - `C [number]` — set `$ARGUMENTS` to `close {item title}` and proceed to Step 9
-   - `R [number]` — set `$ARGUMENTS` to `resolve {item title}` and proceed to Step 9
+   - `C [number]` — proceed to Step 9 (close path) with that item's title
+   - `R [number]` — proceed to Step 9 (resolve path) with that item's title
 
 </step0_procedure>
 
-**Routing:** If `$ARGUMENTS` starts with `close` or `resolve`, extract the title substring and jump directly to Step 9.
+**Routing:** If `$0` is `close` or `resolve`, extract `$1`+ as the title and jump directly to Step 9.
 
 ### Step 1: Find the Backlog Item
 
-Read `.claude/BACKLOG.md`. Search H3 headings (`### ...`) for case-insensitive match against the title (the portion of `$ARGUMENTS` after any `--auto` prefix has been stripped).
+Read `.claude/BACKLOG.md`. Search H3 headings (`### ...`) for case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
 
 - **Zero matches (interactive mode):** report "No backlog item found matching: {title}" and offer to create one via `/create-backlog-item`.
 - **Zero matches (AUTO_MODE):** log `[AUTO] No item found — invoking create-backlog-item --auto {title}`, invoke `Skill(command: "create-backlog-item", args: "--auto {title}")`, then re-run Step 1.
@@ -195,7 +198,7 @@ Proceed to Step 5. Carry DERIVABLE items forward as "Assumptions to confirm" in 
 
 ### Step 5: Compose Feature Request
 
-Build the `$ARGUMENTS` string for `add-new-feature`:
+Build the feature request string for `add-new-feature`:
 
 ```text
 ## Backlog Item: {title}
@@ -272,14 +275,14 @@ Backlog item "{title}" is now planned.
 
 ### Step 9: Verify and Close
 
-**Trigger:** `$ARGUMENTS` starts with `close` or `resolve`.
+**Trigger:** `$0` is `close` or `resolve`.
 
 <step9_procedure>
 
-Extract the operation and title substring from `$ARGUMENTS`:
+Extract the operation from `$0` and title from `$1`+:
 
-- `close {title}` → verify implementation and mark COMPLETED
-- `resolve {title}` → mark no longer applicable (no verification required)
+- `$0` = `close`: `$1`+ = title → verify implementation and mark COMPLETED
+- `$0` = `resolve`: `$1`+ = title → mark no longer applicable (no verification required)
 
 #### 9a: Find Item
 
@@ -471,7 +474,7 @@ If no `**Issue**:` field, skip silently.
 
 ### setup-github Command
 
-**Trigger:** `$ARGUMENTS` is exactly `setup-github`. Initializes label taxonomy, first milestone, and GitHub Project.
+**Trigger:** `$0` is `setup-github`. Initializes label taxonomy, first milestone, and GitHub Project.
 
 ```bash
 uv run .claude/skills/gh/scripts/github_project_setup.py labels --repo Jamie-BitFlight/claude_skills
