@@ -111,15 +111,15 @@ class TestThresholdBoundaries:
     """Test threshold boundary conditions."""
 
     def test_warning_threshold_4000_tokens(self, tmp_path: Path) -> None:
-        """Test warning triggered at 4000 token threshold (SK006).
+        """Test warning triggered above TOKEN_WARNING_THRESHOLD (SK006).
 
         Tests: Skill approaching complexity limit
-        How: Create skill with ~4000 tokens, validate
+        How: Create skill with ~4500 tokens (above 4400 threshold), validate
         Why: Ensure SK006 warning at warning threshold
         """
         skill_md = tmp_path / "SKILL.md"
-        # Approximately 4000 tokens (~3 chars per token average)
-        content = "word " * 3000  # ~12000 chars = ~4000 tokens
+        # TOKEN_WARNING_THRESHOLD = 4400; use ~4501 tokens to exceed it
+        content = "word " * 4500  # ~4501 tokens (above 4400 threshold)
         skill_md.write_text(f"""---
 description: Test skill
 ---
@@ -137,15 +137,15 @@ description: Test skill
         assert any(issue.code == "SK006" for issue in result.warnings)
 
     def test_error_threshold_6400_tokens(self, tmp_path: Path) -> None:
-        """Test error triggered at 6400 token threshold (SK007).
+        """Test error triggered above TOKEN_ERROR_THRESHOLD (SK007).
 
         Tests: Skill exceeding complexity limit
-        How: Create skill with ~6400 tokens, validate
+        How: Create skill with ~9001 tokens (above 8800 threshold), validate
         Why: Ensure SK007 error at error threshold
         """
         skill_md = tmp_path / "SKILL.md"
-        # Approximately 6400 tokens (~3 chars per token average)
-        content = "word " * 5000  # ~20000 chars = ~6666 tokens
+        # TOKEN_ERROR_THRESHOLD = 8800; use ~9001 tokens to exceed it
+        content = "word " * 9000  # ~9001 tokens (above 8800 threshold)
         skill_md.write_text(f"""---
 description: Test skill
 ---
@@ -364,14 +364,14 @@ class TestMultipleSeverityLevels:
     """Test both warning and error can be present."""
 
     def test_only_warning_when_between_thresholds(self, tmp_path: Path) -> None:
-        """Test only warning when between 4000-6400 tokens.
+        """Test only warning when between TOKEN_WARNING_THRESHOLD and TOKEN_ERROR_THRESHOLD.
 
         Tests: Single severity level
-        How: Create skill with 5000 tokens, validate
+        How: Create skill with ~5001 tokens (between 4400 and 8800), validate
         Why: Ensure only warning raised in middle range
         """
         skill_md = tmp_path / "SKILL.md"
-        content = "word " * 3700  # ~14800 chars = ~4900 tokens
+        content = "word " * 5000  # ~5001 tokens (between 4400 and 8800 thresholds)
         skill_md.write_text(f"""---
 description: Test skill
 ---

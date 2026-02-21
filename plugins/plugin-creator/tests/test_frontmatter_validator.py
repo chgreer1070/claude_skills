@@ -126,9 +126,9 @@ class TestFrontmatterYAMLErrors:
         Why: Ensure FM002 error raised for invalid YAML
         """
         skill_md = tmp_path / "SKILL.md"
+        # Use YAML that ruamel.yaml (the active parser) rejects: unclosed flow sequence
         skill_md.write_text("""---
-description: Test
-  - invalid indentation
+description: [unclosed bracket
 ---
 
 # Content

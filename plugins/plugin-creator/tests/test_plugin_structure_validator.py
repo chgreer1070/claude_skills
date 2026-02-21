@@ -236,6 +236,10 @@ class TestClaudeOutputParsing:
         Why: Ensure validator captures validation failures
         """
         mocker.patch("shutil.which", return_value="/usr/local/bin/claude")
+        # Prevent skip in Claude Code session environments (CLAUDECODE / CLAUDE_CODE_REMOTE env vars)
+        mocker.patch(
+            "plugin_validator._should_skip_claude_validate", return_value=False
+        )
 
         mock_run = mocker.patch("subprocess.run")
         mock_run.return_value = mocker.Mock(

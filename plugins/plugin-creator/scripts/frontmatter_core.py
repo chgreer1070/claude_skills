@@ -113,29 +113,6 @@ class SkillFrontmatter(BaseModel):
             return " ".join(v.split())
         return v if isinstance(v, str) else None
 
-    @field_validator("description", mode="after")
-    @classmethod
-    def validate_no_colons(cls, v: str | None) -> str | None:
-        """Reject descriptions containing colons except in URLs.
-
-        Returns:
-            Validated description or None.
-
-        Raises:
-            ValueError: If description contains colons outside URLs.
-        """
-        if not v:
-            return v
-        temp = v.replace("http://", "").replace("https://", "")
-        if ":" in temp:
-            msg = (
-                "Description cannot contain colons (:) except in URLs. "
-                "They trigger YAML quoting. Use alternatives: "
-                "semicolons (;), em dashes (—), or rephrase."
-            )
-            raise ValueError(msg)
-        return v
-
 
 class CommandFrontmatter(BaseModel):
     """Pydantic model for commands/*.md frontmatter validation."""
@@ -173,27 +150,6 @@ class CommandFrontmatter(BaseModel):
         if isinstance(v, str) and "\n" in v:
             return " ".join(v.split())
         return v if isinstance(v, str) else None
-
-    @field_validator("description", mode="after")
-    @classmethod
-    def validate_no_colons(cls, v: str) -> str:
-        """Reject descriptions containing colons except in URLs.
-
-        Returns:
-            Validated description.
-
-        Raises:
-            ValueError: If description contains colons outside URLs.
-        """
-        temp = v.replace("http://", "").replace("https://", "")
-        if ":" in temp:
-            msg = (
-                "Description cannot contain colons (:) except in URLs. "
-                "They trigger YAML quoting. Use alternatives: "
-                "semicolons (;), em dashes (—), or rephrase."
-            )
-            raise ValueError(msg)
-        return v
 
 
 class AgentFrontmatter(BaseModel):
@@ -242,27 +198,6 @@ class AgentFrontmatter(BaseModel):
         if isinstance(v, str) and "\n" in v:
             return " ".join(v.split())
         return v if isinstance(v, str) else None
-
-    @field_validator("description", mode="after")
-    @classmethod
-    def validate_no_colons(cls, v: str) -> str:
-        """Reject descriptions containing colons except in URLs.
-
-        Returns:
-            Validated description.
-
-        Raises:
-            ValueError: If description contains colons outside URLs.
-        """
-        temp = v.replace("http://", "").replace("https://", "")
-        if ":" in temp:
-            msg = (
-                "Description cannot contain colons (:) except in URLs. "
-                "They trigger YAML quoting. Use alternatives: "
-                "semicolons (;), em dashes (—), or rephrase."
-            )
-            raise ValueError(msg)
-        return v
 
 
 # ---------------------------------------------------------------------------

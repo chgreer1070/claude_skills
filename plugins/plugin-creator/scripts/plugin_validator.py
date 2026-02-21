@@ -5,6 +5,7 @@
 #     "typer>=0.21.0",
 #     "tiktoken>=0.8.0",
 #     "ruamel.yaml>=0.18.0",
+#     "python-frontmatter>=1.1.0",
 #     "pydantic>=2.0.0",
 # ]
 # ///
@@ -121,6 +122,44 @@ def _dump_yaml(data: dict[str, Any]) -> str:
     buf = StringIO()
     _rt_yaml.dump(prepared, buf)
     return buf.getvalue()
+
+
+def _fix_unquoted_colons(frontmatter_text: str) -> tuple[str, list[str]]:
+    """Quote description (and similar string) values that contain unquoted colons.
+
+    Detects lines of the form ``key: value: more`` where the unquoted colon
+    causes a YAML parse error and wraps the value in double-quotes.
+
+    Args:
+        frontmatter_text: Raw YAML frontmatter (without ``---`` delimiters).
+
+    Returns:
+        Tuple of (possibly-fixed frontmatter text, list of fix descriptions).
+    """
+    fixes: list[str] = []
+    lines = frontmatter_text.splitlines(keepends=True)
+    new_lines = []
+
+    # Regex: key: value where value contains an unquoted colon
+    # Only matches simple single-line scalar values, not block scalars or already-quoted values
+    unquoted_colon_re = re.compile(r'^(\s*[\w-]+:\s+)([^\'"\[\{|>].+:.*)$')
+
+    for line in lines:
+        m = unquoted_colon_re.match(line.rstrip("\n"))
+        if m:
+            prefix = m.group(1)
+            value = m.group(2)
+            # Escape any existing double-quotes inside the value
+            escaped = value.replace('"', '\\"')
+            new_line = f'{prefix}"{escaped}"\n'
+            fixes.append("Quoted description value containing unquoted colon")
+            new_lines.append(new_line)
+        else:
+            new_lines.append(line)
+
+    if fixes:
+        return "".join(new_lines), fixes
+    return frontmatter_text, []
 
 
 # Error code base URL for documentation links
@@ -1355,6 +1394,7 @@ class FrontmatterValidator:
                 field = ".".join(str(x) for x in error["loc"])
                 msg = error["msg"]
                 code = FM005  # Default to type mismatch
+                suggestion = None  # Initialize before conditional assignment
 
                 # Determine specific error code
                 if "Field required" in msg:
@@ -1400,6 +1440,34 @@ class FrontmatterValidator:
                         suggestion=suggestion,
                     )
                 )
+
+        # Check for list-valued tool/skill fields that were not caught by Pydantic
+        # (e.g. 'tools' is an extra field in SkillFrontmatter but may still be a list)
+        if isinstance(data, dict):
+            for field_name, field_val in data.items():
+                if isinstance(field_val, list):
+                    if field_name in {"tools", "disallowedTools", "allowed-tools"}:
+                        errors.append(
+                            ValidationIssue(
+                                field=field_name,
+                                severity="error",
+                                message="Tools field is YAML array (should be comma-separated string)",
+                                code=FM007,
+                                docs_url=generate_docs_url(FM007),
+                                suggestion="Use format: 'tool1, tool2, tool3'",
+                            )
+                        )
+                    elif field_name == "skills":
+                        errors.append(
+                            ValidationIssue(
+                                field=field_name,
+                                severity="error",
+                                message="Skills field is YAML array (should be comma-separated string)",
+                                code=FM008,
+                                docs_url=generate_docs_url(FM008),
+                                suggestion="Use format: 'skill1, skill2, skill3'",
+                            )
+                        )
 
         # Check that 'name' field matches directory name for SKILL.md files
         if file_type == FileType.SKILL and path.name == "SKILL.md":
@@ -1536,11 +1604,22 @@ class FrontmatterValidator:
             return content, []
         body = content[end_match.end() + 3 :]
 
-        # Parse YAML
+        # Parse YAML — if parse fails, attempt to fix unquoted colons first
+        colon_fixes: list[str] = []
         try:
             original_data = _safe_load_yaml(frontmatter_text)
         except YAMLError:
-            return content, []
+            fixed_fm, colon_fixes = _fix_unquoted_colons(frontmatter_text)
+            if not colon_fixes:
+                return content, []
+            try:
+                original_data = _safe_load_yaml(fixed_fm)
+                # Rebuild full content with fixed frontmatter so downstream
+                # regeneration uses the corrected values.
+                content = f"---\n{fixed_fm}\n---\n{body}"
+                frontmatter_text = fixed_fm
+            except YAMLError:
+                return content, []
 
         if not isinstance(original_data, dict):
             return content, []
@@ -1556,10 +1635,13 @@ class FrontmatterValidator:
                 by_alias=True, exclude_none=True, mode="python"
             )
         except ValidationError:
+            # Validation failed after YAML parse — still apply colon fixes if any
+            if colon_fixes:
+                return content, colon_fixes
             return content, []
 
-        # Track fixes
-        fixes = []
+        # Track fixes — carry over any colon fixes already applied
+        fixes = list(colon_fixes)
 
         # Restore 'name' field for skills and ensure it matches the directory name.
         # The Claude Code bug (2026-01-29) that caused plugin skills with a 'name' field
@@ -1568,8 +1650,24 @@ class FrontmatterValidator:
         if file_type == FileType.SKILL and file_path is not None:
             normalized_dict = fix_skill_name_field(normalized_dict, file_path, fixes)
 
+        # Convert any list-valued tool/skill extra fields to comma-separated strings
+        tool_fields = {"tools", "disallowedTools", "allowed-tools", "skills"}
+        for field_name in tool_fields:
+            if field_name in normalized_dict and isinstance(
+                normalized_dict[field_name], list
+            ):
+                normalized_dict[field_name] = ", ".join(
+                    str(x) for x in normalized_dict[field_name]
+                )
+                fixes.append(
+                    f"Converted {field_name} from YAML array to comma-separated string"
+                )
+
         # Compare to detect changes
         for key, value in normalized_dict.items():
+            if key in tool_fields:
+                # Already handled above
+                continue
             if key in original_data and original_data[key] != value:
                 if isinstance(original_data[key], list) and isinstance(value, str):
                     fixes.append(
@@ -1667,12 +1765,42 @@ class NameFormatValidator:
 
         # Extract name field
         name = data.get("name")
-        if not name or not isinstance(name, str):
+        if name is None or not isinstance(name, str):
             # No name field or not a string - skip validation
             return ValidationResult(
                 passed=True, errors=errors, warnings=warnings, info=info
             )
 
+        # Empty name string is invalid — `not name` is True for "" after isinstance check
+        if not name:
+            errors.append(
+                ValidationIssue(
+                    field="name",
+                    severity="error",
+                    message="Name field is empty",
+                    code=SK003,
+                    docs_url=generate_docs_url(SK003),
+                    suggestion="Provide a non-empty name using lowercase letters, numbers, and hyphens",
+                )
+            )
+            return ValidationResult(
+                passed=False, errors=errors, warnings=warnings, info=info
+            )
+
+        self._check_name_format(name, errors)
+
+        passed = len(errors) == 0
+        return ValidationResult(
+            passed=passed, errors=errors, warnings=warnings, info=info
+        )
+
+    def _check_name_format(self, name: str, errors: list[ValidationIssue]) -> None:
+        """Append format errors for a non-empty name string.
+
+        Args:
+            name: The name value to check (must be non-empty str).
+            errors: Mutable list to append ValidationIssue objects to.
+        """
         # Check for uppercase characters
         if any(c.isupper() for c in name):
             errors.append(
@@ -1751,11 +1879,6 @@ class NameFormatValidator:
                     suggestion="Use lowercase letters, numbers, and hyphens only (e.g., 'my-skill-name')",
                 )
             )
-
-        passed = len(errors) == 0
-        return ValidationResult(
-            passed=passed, errors=errors, warnings=warnings, info=info
-        )
 
     def can_fix(self) -> bool:
         """Check if validator supports auto-fixing.
@@ -1867,7 +1990,7 @@ class DescriptionValidator:
 
         # Extract description field
         description = data.get("description")
-        if not description:
+        if description is None:
             # No description field - skip validation (pass with no warnings)
             return ValidationResult(
                 passed=True, errors=errors, warnings=warnings, info=info
@@ -4319,10 +4442,7 @@ def main(  # noqa: PLR0912, PLR0915, C901
     # Validate that all provided paths exist; report non-existent ones
     bad_paths = [str(p) for p in paths if not p.exists()]
     if bad_paths:
-        typer.echo(
-            f"These don't match the required arguments: {', '.join(bad_paths)}",
-            err=True,
-        )
+        typer.echo(f"Path does not exist: {', '.join(bad_paths)}", err=True)
         typer.echo("", err=True)
         _show_help_and_exit(ctx, code=2)
 

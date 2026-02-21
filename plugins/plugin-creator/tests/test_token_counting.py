@@ -304,16 +304,16 @@ description: Test skill below error threshold
         )
 
     def test_error_threshold_above_6400_tokens_triggers(self, tmp_path: Path) -> None:
-        """Test error triggers above 6400 tokens.
+        """Test error triggers above TOKEN_ERROR_THRESHOLD (8800 tokens).
 
         Tests: Error threshold boundary (over threshold)
-        How: Create skill with ~6800 body tokens, validate
-        Why: Ensure SK007 error appears when >6400
+        How: Create skill with ~9000 body tokens, validate
+        Why: Ensure SK007 error appears when >8800
         """
         validator = ComplexityValidator()
 
-        # Generate content with ~6800 tokens (safely over error threshold)
-        content = generate_exact_token_content(6800)
+        # Generate content with ~9000 tokens (safely over error threshold of 8800)
+        content = generate_exact_token_content(9000)
 
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text(f"""---
@@ -326,9 +326,9 @@ description: Test skill over error threshold
         result = validator.validate(skill_md)
 
         # Should have error SK007
-        assert result.passed is False, "Should fail above 6400 tokens"
+        assert result.passed is False, "Should fail above 8800 tokens"
         assert any(issue.code == "SK007" for issue in result.errors), (
-            "Should have SK007 error above 6400 tokens"
+            "Should have SK007 error above 8800 tokens"
         )
 
     def test_no_warning_well_below_threshold(self, tmp_path: Path) -> None:
