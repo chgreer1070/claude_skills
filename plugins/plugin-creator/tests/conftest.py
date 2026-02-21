@@ -36,9 +36,10 @@ def cli_runner() -> CliRunner:
     """Provide CliRunner configured for testing.
 
     Returns:
-        CliRunner with mix_stderr=False to separate stdout/stderr
+        CliRunner with mix_stderr=False to separate stdout/stderr and NO_COLOR
+        to suppress ANSI escape codes in captured output.
     """
-    return CliRunner(mix_stderr=False)
+    return CliRunner(mix_stderr=False, env={"NO_COLOR": "1"})
 
 
 @pytest.fixture
