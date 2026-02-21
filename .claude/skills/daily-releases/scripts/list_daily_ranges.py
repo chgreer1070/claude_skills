@@ -156,7 +156,7 @@ def main(
         newest_commit = commits[-1]
 
         base_ref = get_parent(oldest_commit)
-        tag = f"daily-{day_str}"
+        tag = f"v{day_str.replace('-', '.')}"
         exists = tag_exists(tag)
         current_tag_commit = get_tag_commit(tag) if exists else None
         needs_update = exists and current_tag_commit != newest_commit

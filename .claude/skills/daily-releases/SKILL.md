@@ -31,7 +31,7 @@ This outputs a JSON array. Each entry has:
 ```json
 {
   "date": "2026-02-21",
-  "tag": "daily-2026-02-21",
+  "tag": "v2026.02.21",
   "base_ref": "<parent-commit-hash>",
   "head_ref": "<last-commit-hash-of-day>",
   "commit_count": 12,

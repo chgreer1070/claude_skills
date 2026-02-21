@@ -75,7 +75,7 @@ def gh_release_exists(tag: str) -> bool:
 
 
 def get_next_revision_tag(base_tag: str) -> str:
-    """Get the next available revision tag (e.g., daily-2026-02-21-r2)."""
+    """Get the next available revision tag (e.g., v2026.02.21-r2)."""
     revision = 2
     while tag_exists(f"{base_tag}-r{revision}"):
         revision += 1
@@ -85,7 +85,7 @@ def get_next_revision_tag(base_tag: str) -> str:
 @app.command()
 def main(
     release_date: Annotated[str, typer.Option("--date", help="Date in YYYY-MM-DD format")],
-    tag: Annotated[str, typer.Option(help="Git tag name (e.g., daily-2026-02-21)")],
+    tag: Annotated[str, typer.Option(help="Git tag name (e.g., v2026.02.21)")],
     head_ref: Annotated[str, typer.Option(help="Commit hash the tag should point to")],
     notes_file: Annotated[Path, typer.Option(help="Path to rendered markdown release notes")],
     dry_run: Annotated[bool, typer.Option(help="Print what would happen without making changes")] = False,
@@ -95,7 +95,7 @@ def main(
 
     Creates or updates a git tag and GitHub release for the given date.
     If the tag already exists, the old tag is renamed to a revision suffix
-    (daily-YYYY-MM-DD-r2) before the new tag is created at head_ref.
+    (vYYYY.MM.DD-r2) before the new tag is created at head_ref.
     """
     if not notes_file.exists():
         console.print(f"[red]Notes file not found: {notes_file}[/red]", file=sys.stderr)
