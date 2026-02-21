@@ -747,7 +747,7 @@ Produce results in this structure:
 
 This codebase uses:
 - `poe` task runner (not npm scripts)
-- `basedpyright` (not mypy)
+- `basedpyright` (not ty/mypy)
 - Test files end with `_test.py` (not `test_*.py`)
 ```
 

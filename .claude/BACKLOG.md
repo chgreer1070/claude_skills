@@ -1,9 +1,9 @@
 ---
-last-updated: 2026-02-20
+last-updated: 2026-02-21
 last-completed: 2026-02-20
 p0-count: 0
-p1-count: 14
-p2-count: 13
+p1-count: 24
+p2-count: 24
 ideas-count: 11
 ---
 
@@ -20,6 +20,106 @@ _(Empty)_
 ---
 
 ## P1 - Should Have
+
+### gitlab-skill: Remove hardcoded corporate URL
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Priority**: P1
+**Description**: `validate_glfm.py` lines 152-153 hardcode `https://sourcery.assaabloy.net` as the default GitLab instance URL. `gitlab-ci-local-guide.md` line 51 also references this URL. This leaks a corporate internal URL into a public repository. Replace with a generic placeholder (e.g., `https://gitlab.example.com`) or make the URL a required argument with no default.
+**Files**:
+- `plugins/gitlab-skill/skills/gitlab-skill/scripts/validate_glfm.py` (lines 152-153)
+- `plugins/gitlab-skill/skills/gitlab-skill/references/gitlab-ci-local-guide.md` (line 51)
+
+### bash-development: Verify Bash 5.3 features against primary sources
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Priority**: P1
+**Status**: UNVERIFIED — review agent used 0 web lookups; fabrication claims are training-data-based and may themselves be incorrect
+**Description**: The `bash-53-features` skill was flagged for fabricated features by a review agent that performed zero web searches. Claims about `${command;}` syntax, `GLOBSORT :asc/:desc`, `read -E`, `source -p` need verification against the official Bash 5.3 CHANGES file. The `task_output` function in `log_functions.sh` (line 1401) has variable naming bugs (`task_output` used both as function name and variable) — this structural finding remains valid.
+**Required**: WebFetch the official Bash 5.3 CHANGES file (<https://tiswww.case.edu/php/chet/bash/CHANGES>) and compare each documented feature.
+**Files**:
+- `plugins/bash-development/skills/bash-53-features/SKILL.md`
+- `plugins/bash-development/skills/bash-logging/scripts/log_functions.sh` (line 1401)
+
+### commitlint: Verify --last flag and exit codes against primary sources
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Priority**: P1
+**Status**: UNVERIFIED — review agent used 0 web lookups; claims about `--last` being fabricated are training-data-based
+**Description**: SKILL.md lines 217 and 241 reference `npx commitlint --last` — a review agent claimed this flag doesn't exist, but performed zero web searches to verify. The skill also documents specific exit codes and mixes async/sync patterns. All CLI flags and exit codes need verification against official commitlint documentation (<https://commitlint.js.org/>).
+**Required**: WebFetch commitlint CLI docs and `npx commitlint --help` output to verify flag existence.
+**Files**:
+- `plugins/commitlint/skills/commitlint/SKILL.md` (lines 217, 241)
+
+### clang-format: Fix broken YAML frontmatter
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Priority**: P1
+**Description**: SKILL.md line 3 has `description:"Configure clang-format..."` — missing the required space after the `description:` key. This causes YAML parsing failures. The frontmatter should be `description: "Configure clang-format..."`.
+**Files**:
+- `plugins/clang-format/skills/clang-format/SKILL.md` (line 3)
+
+### agent-orchestration: Remove phantom /is-it-done command references
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Priority**: P1
+**Description**: The `/is-it-done` command is referenced 12 times across 4 files in the agent-orchestration plugin, but the command does not exist in the repository. No `is-it-done` command file exists in any `commands/` directory. All references should be removed or replaced with the actual verification mechanism. Also contains orphaned "Clavix" references in `clear-framework.md` (lines 3, 15-20) — Clavix is an external tool not present in this repo.
+**Files**:
+- `plugins/agent-orchestration/skills/how-to-delegate/SKILL.md`
+- `plugins/agent-orchestration/skills/agent-orchestration/SKILL.md`
+- `plugins/agent-orchestration/skills/agent-orchestration/post-completion-validation-protocol.md`
+- `plugins/agent-orchestration/skills/agent-orchestration/references/synthesis-improvements-from-research.md`
+- `plugins/agent-orchestration/skills/agent-orchestration/clear-framework.md` (Clavix references)
+
+### perl-development: Fix shell injection vulnerability in example template
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Priority**: P1
+**Description**: The Perl example template in `perl_example_file.pl` references undefined `App::Logger` module and contains patterns vulnerable to shell injection. Example templates used by AI to generate code should demonstrate secure coding practices. Missing shebangs on example scripts also violate repo conventions.
+**Files**:
+- `plugins/perl-development/skills/perl-development/references/perl_example_file.pl`
+
+### hallucination-detector: Fix dead backtick evidence marker and multi-occurrence "because" bug
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Priority**: P1
+**Description**: The `hallucination-audit-stop.js` hook has two critical bugs: (1) Evidence markers using backticks are not properly detected, causing false negatives when evidence is inline-code formatted. (2) The "because" pattern matcher has a multi-occurrence bug where only the first match is processed, missing subsequent hallucination indicators in the same response.
+**Files**:
+- `plugins/hallucination-detector/scripts/hallucination-audit-stop.js`
+
+### python3-development: Fix 3 malformed frontmatter files
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Priority**: P1
+**Description**: Three frontmatter files in the python3-development plugin have malformed YAML frontmatter (similar missing-space-after-colon pattern). Also contains a ghost agent reference (referencing an agent that doesn't exist in the plugin). Template comment loss indicates content was stripped during automated processing.
+**Files**: TBD — run `uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/python3-development/` to identify exact files
+
+### the-rewrite-room: Fix nonexistent script reference and 6 broken links
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Priority**: P1
+**Description**: `validators.yaml` line 12 references `plugins/plugin-creator/scripts/validate_frontmatter.py` as a script path — this file exists but the path may not resolve correctly from the rewrite-room context. `research-utilities.md` references a `--json` flag on `file_metrics.py` (lines 62, 71) that may not exist. 6 additional broken links need verification and fixing.
+**Files**:
+- `plugins/the-rewrite-room/skills/the-rewrite-room/registry/validators.yaml` (line 12)
+- `plugins/the-rewrite-room/skills/the-rewrite-room/workflows/research-utilities.md` (lines 62, 71)
+
+### fastmcp-creator: Add citations for 1200+ lines of FastMCP 3.x API documentation
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Priority**: P1
+**Description**: The plugin contains over 1200 lines of FastMCP 3.x API documentation derived from a release candidate version, with no source citations. Per CLAUDE.md citation requirements, all factual claims must have cited sources. The `require_auth` parameter was flagged as a potential hallucination during review. All API documentation needs verification against official FastMCP sources and proper citation.
+**Files**:
+- `plugins/fastmcp-creator/skills/fastmcp-creator/references/` (multiple files)
 
 ### Consolidate validate_frontmatter.py into plugin_validator.py
 
@@ -161,6 +261,92 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 ---
 
 ## P2 - Could Have
+
+### Add ty support alongside mypy in distributed plugins
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Description**: This repo's internal toolchain switched from mypy to ty (Astral ecosystem). Distributed plugins (`plugins/`) that reference type checking should document **both** ty and mypy as options, since plugin users may use either. Key plugins to update: holistic-linting (add ty workflows alongside existing mypy workflows), python3-development (add ty as alternative to mypy in tool registry and examples), development-harness (add ty to default quality gate options). Do NOT replace mypy with ty — add ty as an additional supported option.
+**Files**:
+- `plugins/holistic-linting/` (add ty resolution workflow, keep mypy workflow)
+- `plugins/python3-development/` (add ty to tool registry alongside mypy)
+- `plugins/development-harness/` (add ty to fallback quality gates)
+
+### conventional-commits: Fix CHANGELOG references to nonexistent files
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Description**: CHANGELOG references files that do not exist in the repository. Additionally, related skills referenced in the plugin do not exist. All dead references need to be either created or removed.
+**Files**: `plugins/conventional-commits/` (CHANGELOG and skill cross-references)
+
+### dasel: Reconcile 265 `-f` flag occurrences with reference documentation
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Description**: Reference documentation states dasel uses a specific flag pattern, but 265 occurrences of the `-f` flag across the skill contradict this documentation. The hook file exists on disk but is not registered in the plugin manifest (`plugin.json`). Run `auto_sync_manifests.py --reconcile` to fix manifest drift, and audit `-f` flag usage against official dasel documentation.
+**Files**:
+- `plugins/dasel/` (skill files with `-f` flag usage)
+- `plugins/dasel/.claude-plugin/plugin.json` (missing hook registration)
+
+### litellm: Remove private API documentation and update verification date
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Description**: SKILL.md line 257 teaches usage of `litellm._should_retry()` — a private/internal API (prefixed with underscore). Private APIs can change without notice and should not be documented as recommended patterns. Replace with the public retry mechanism. Also update stale verification date.
+**Files**:
+- `plugins/litellm/skills/litellm/SKILL.md` (line 257)
+
+### verification-gate: Remove unsubstantiated 95% confidence claim
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Description**: The skill contains an unsubstantiated claim about "95% confidence" with no supporting data, citation, or methodology. Per CLAUDE.md verification protocol, claims must be cited. Either add supporting evidence or remove the specific percentage. Also fix missing code fence language specifiers and stale dates.
+**Files**: `plugins/verification-gate/` (SKILL.md and reference files)
+
+### development-harness: Remove hardcoded machine path and fix version drift
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Description**: Contains a hardcoded machine-specific path (likely `/home/user/...` or similar) that won't work on other systems. Version references have drifted from actual tool versions. Role table has inconsistencies between documented and actual roles.
+**Files**: `plugins/development-harness/` (SKILL.md and reference files)
+
+### llamafile: Verify SourceForge mirror URL and model download URLs
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Status**: UNVERIFIED — reviewer flagged URL as suspicious but did not web-verify whether SourceForge mirror is legitimate
+**Description**: SKILL.md line 69 references a SourceForge mirror URL (`https://sourceforge.net/projects/llamafile.mirror/files/0.9.3/`) — reviewer flagged as suspicious because llamafile official releases are on GitHub. However, SourceForge mirrors exist for many projects. URL needs actual verification via web fetch. Multiple model download URLs also need verification.
+**Required**: WebFetch the SourceForge URL to check if it's a real mirror; check llamafile GitHub releases for official mirror list.
+**Files**:
+- `plugins/llamafile/skills/llamafile/SKILL.md` (line 69 and model URLs)
+
+### prompt-optimization: Fix unreachable reference files and raw JSX/MDX markup
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Description**: Two reference files are unreachable (not linked from SKILL.md or any other file). Contains raw Anthropic JSX/MDX markup that should be converted to standard markdown for compatibility with Claude Code's markdown rendering.
+**Files**: `plugins/prompt-optimization-claude-45/` (reference files)
+
+### brainstorming-skill: Remove orphaned bibliography entry and cross-reference headings
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Description**: Contains an orphaned bibliography entry (referenced nowhere) and orphaned cross-reference section headings that point to removed or renamed content.
+**Files**: `plugins/brainstorming-skill/` (SKILL.md and reference files)
+
+### uv: Fix incorrect script paths in README
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Description**: README contains incorrect script paths that don't match the actual file locations. The README is also disproportionately large for what is essentially a thin wrapper plugin.
+**Files**: `plugins/uv/` (README.md)
+
+### plugin-creator: Remove dead code and triplicated regex
+
+**Source**: Plugin code review session 2026-02-21
+**Added**: 2026-02-21
+**Description**: Contains triplicated regex patterns (same regex defined 3 times), a dead `skipped` list that is populated but never read, an unused `sum()` call, and HK005 warning is incorrectly treated as an error in certain code paths. Also has a `noqa BLE001` suppression that should be addressed per CLAUDE.md linting policy.
+**Files**: `plugins/plugin-creator/` (scripts and skill files)
 
 ### Add PR003/PR004 test coverage to plugin registration validator
 
