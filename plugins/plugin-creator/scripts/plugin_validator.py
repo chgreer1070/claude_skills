@@ -323,6 +323,7 @@ class FileType(StrEnum):
     COMMAND = "command"
     PLUGIN = "plugin"
     HOOK_CONFIG = "hook_config"
+    HOOK_SCRIPT = "hook_script"
     CLAUDE_MD = "claude_md"
     REFERENCE = "reference"
     MARKDOWN = "markdown"
@@ -348,6 +349,9 @@ class FileType(StrEnum):
             return FileType.COMMAND
         if path.name == "hooks.json":
             return FileType.HOOK_CONFIG
+        # JavaScript/CJS hook scripts inside a hooks/ directory
+        if "hooks" in path.parts and path.suffix in {".js", ".cjs"}:
+            return FileType.HOOK_SCRIPT
         if path.name == "CLAUDE.md":
             return FileType.CLAUDE_MD
         if "references" in path.parts and path.suffix == ".md":
@@ -4401,6 +4405,12 @@ def _validate_single_path(  # noqa: PLR0912, C901
     elif file_type == FileType.HOOK_CONFIG:
         # hooks.json: validate structure, event types, hook entries
         validators.append(HookValidator())
+
+    elif file_type == FileType.HOOK_SCRIPT:
+        # Hook scripts (.js/.cjs in hooks/) are validated by language-specific linters
+        # (biome, eslint) rather than this validator. No content checks are applied;
+        # the file is accepted without error so it does not produce an UNKNOWN warning.
+        pass
 
     elif file_type in {FileType.CLAUDE_MD, FileType.REFERENCE, FileType.MARKDOWN}:
         # General markdown files: token counting only (no skill-specific validators)
