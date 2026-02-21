@@ -102,13 +102,13 @@ Create type-safe data models for ValidationResult, ValidationIssue, ComplexityMe
 
 ## Acceptance Criteria
 
-1. All dataclasses type-check with mypy strict mode
+1. All dataclasses type-check with ty
 2. ValidationIssue.format() produces expected output format
 
 ## Verification Steps
 
 ```bash
-uv run mypy --strict plugins/plugin-creator/scripts/plugin_validator.py
+uv run ty check plugins/plugin-creator/scripts/plugin_validator.py
 uv run pytest tests/test_data_models.py -v
 ```
 
@@ -121,7 +121,7 @@ T2 (after data models complete)
 Report:
 - Data model file path
 - All error codes implemented (count 23)
-- mypy strict mode status
+- ty type check status
 ```
 
 ### Field Definitions
@@ -236,7 +236,7 @@ Create type-safe data models for ValidationResult, ValidationIssue, and Complexi
 ```markdown
 ## Acceptance Criteria
 
-1. All dataclasses type-check with mypy strict mode
+1. All dataclasses type-check with ty
 2. Error code constants match architecture catalog exactly
 3. ValidationIssue.format() produces expected output format
 ```
@@ -248,7 +248,7 @@ Create type-safe data models for ValidationResult, ValidationIssue, and Complexi
 
 ```bash
 # Type checking
-uv run mypy --strict plugins/plugin-creator/scripts/plugin_validator.py
+uv run ty check plugins/plugin-creator/scripts/plugin_validator.py
 
 # Unit test data models
 uv run pytest tests/test_data_models.py -v
