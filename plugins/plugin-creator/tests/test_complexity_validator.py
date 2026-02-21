@@ -2,7 +2,7 @@
 
 Tests:
 - Token counting accuracy
-- Threshold boundary conditions (4000, 6400)
+- Threshold boundary conditions (TOKEN_WARNING_THRESHOLD, TOKEN_ERROR_THRESHOLD)
 - Frontmatter exclusion from token count
 - Warning and error thresholds
 """
