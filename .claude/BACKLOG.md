@@ -31,19 +31,29 @@ _(Empty)_
 - `plugins/gitlab-skill/skills/gitlab-skill/scripts/validate_glfm.py` (lines 152-153)
 - `plugins/gitlab-skill/skills/gitlab-skill/references/gitlab-ci-local-guide.md` (line 51)
 
-### bash-development: Fix task_output naming collision in log_functions.sh
+### bash-development: Fix bash-53-features inaccuracies and task_output bug
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
 **Priority**: P1
-**Status**: FACT-CHECKED 2026-02-21 — Bash 5.3 features VERIFIED against primary sources (CHANGES file, NEWS file, bash.1 manpage from official tarball). `${ command; }` syntax, GLOBSORT, `read -E`, `source -p`, `compgen -V`, C23 conformance all confirmed. GLOBSORT uses `+`/`-` prefix syntax (not `:asc`/`:desc` — minor documentation correction needed). Original review agent fabrication claims were wrong.
-**Description**: The `task_output` function in `log_functions.sh` (line 1401) has variable naming bugs (`task_output` used both as function name and variable). GLOBSORT documentation uses `:asc`/`:desc` suffix syntax but actual Bash 5.3 uses `+`/`-` prefix (e.g., `-mtime` for descending, `+mtime` or just `mtime` for ascending).
+**Status**: FACT-CHECKED 2026-02-21 — All 11 Bash 5.3 features verified against CHANGES file, NEWS file, and bash.1 manpage from official tarball. Features exist but SKILL.md has detail inaccuracies. Original review agent "fabrication" claim was wrong.
+**Description**: Two issues:
+
+1. **bash-53-features/SKILL.md inaccuracies** (features exist but details wrong):
+   - GLOBSORT: `:asc`/`:desc` suffixes fabricated — actual syntax is `+`/`-` prefix; `date` not a valid specifier (should be `mtime`); missing specifiers: `blocks`, `atime`, `ctime`, `numeric`, `nosort`
+   - `${ command; }` examples: missing required space after `{` (bash.1 requires space/tab/newline/`|` after `{`)
+   - `${| command; }` REPLY examples: misleading — REPLY is local within substitution, restored after completion
+   - C23 claim overstated: build minimum is C90, not C23; C23 changes are about conformance
+   - `kv`/`strptime` usage examples: unverifiable from official sources (existence confirmed, interface speculative)
+2. **log_functions.sh bug** (line 1401): `task_output()` function references `${task_output}` variable on lines 1410/1412, but only `raw_task_output` is assigned (line 1406). Output will be empty.
+
 **Citations**:
-- Bash CHANGES: <https://tiswww.case.edu/php/chet/bash/CHANGES> (accessed 2026-02-21)
-- Bash 5.3 tarball: <https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz> `doc/bash.1` (accessed 2026-02-21)
+- Bash CHANGES: <https://tiswww.case.edu/php/chet/bash/CHANGES> lines 850-860 (accessed 2026-02-21)
+- Bash NEWS: <https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz> extracted NEWS lines 48-57 (accessed 2026-02-21)
+- Bash manpage: `bash-5.3/doc/bash.1` lines 2525-2566 (GLOBSORT), 4146+ (command substitution) (accessed 2026-02-21)
 **Files**:
-- `plugins/bash-development/skills/bash-logging/scripts/log_functions.sh` (line 1401)
-- `plugins/bash-development/skills/bash-53-features/SKILL.md` (GLOBSORT syntax correction needed)
+- `plugins/bash-development/skills/bash-53-features/SKILL.md` (GLOBSORT, examples, C23)
+- `plugins/bash-development/skills/bash-logging/scripts/log_functions.sh` (lines 1401, 1410, 1412)
 
 ### ~~commitlint: Verify --last flag and exit codes against primary sources~~ RESOLVED
 
