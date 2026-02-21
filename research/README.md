@@ -69,6 +69,10 @@ research/
 │   ├── traycer.md                     # Spec-driven AI development orchestrator (commercial SaaS)
 │   ├── vert.md                        # WebAssembly-based file converter (13K+ stars)
 │   └── yume.md                        # Native desktop GUI for Claude Code CLI (Tauri + Rust)
+├── evaluation-testing/                # Agent evaluation, testing, and harness engineering
+│   ├── harness-engineering-martin-fowler.md  # Harness engineering discipline for AI coding agents (Martin Fowler / Böckeler)
+│   ├── harness-engineering-openai.md  # Harness engineering practices from OpenAI Codex team (1M lines, 3.5 PRs/day)
+│   └── codex-harness-openai.md        # Codex App Server bidirectional JSON-RPC harness architecture (61K+ stars)
 ├── mcp-ecosystem/                     # MCP servers and integrations
 │   ├── browsermcp-mcp.md              # Chrome browser automation MCP server via extension bridge (5.8K stars)
 │   ├── docs-mcp-server.md             # Local documentation index (Grounded Docs)
@@ -845,6 +849,38 @@ AI-powered visual creation platforms for video, image, and audio content generat
 
 ---
 
+### 21. Evaluation & Testing
+
+**Location**: [./evaluation-testing/](./evaluation-testing/)
+
+Harness engineering, evaluation infrastructure, and testing methodologies for AI coding agents.
+
+| Document                                                                                          | Description                                                                                                                           | Last Updated |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| [harness-engineering-martin-fowler.md](./evaluation-testing/harness-engineering-martin-fowler.md) | Harness engineering discipline -- deterministic constraints + LLM agents to keep AI coding agents in check (Böckeler / Fowler, 2026)  | 2026-02-21   |
+| [harness-engineering-openai.md](./evaluation-testing/harness-engineering-openai.md)               | OpenAI Codex harness engineering -- 3-7 engineers, 1M lines, 3.5 PRs/day via agent-first architecture with custom linters and CI      | 2026-02-21   |
+| [codex-harness-openai.md](./evaluation-testing/codex-harness-openai.md)                           | Codex App Server -- bidirectional JSON-RPC protocol unifying all Codex client surfaces via single Rust core library (61K+ stars)      | 2026-02-21   |
+
+**Key Topics**:
+
+- Harness engineering as a discipline for constraining AI coding agents
+- Three harness layers: Context Engineering, Architectural Constraints, Garbage Collection Agents
+- AGENTS.md as table of contents pointing into structured `docs/` system of record
+- Custom linters with error messages written as agent remediation instructions
+- Strict layered architecture with validated dependency directions
+- Recurring "garbage collection" Codex tasks for drift detection and cleanup PRs
+- Agent-legibility requires mechanical enforcement, not documentation alone
+- Iterative improvement loop: agent failure signals harness gap; agent writes fix
+- Constraining solution space increases agent reliability (not expanding it)
+- Bidirectional JSON-RPC "lite" protocol (JSONL over stdio) for agent harness integration
+- Three conversation primitives: Item (typed I/O), Turn (unit of work), Thread (durable session)
+- Schema-first protocol: Rust types generate TypeScript bindings and JSON Schema
+- Repository-as-operating-environment pattern for agent development
+- Harnesses predicted to replace service templates as "golden path" artifacts
+- 1/10th development time via harness-constrained agent workflows
+
+---
+
 ## Planned Categories
 
 The following categories are planned for future research:
@@ -870,7 +906,7 @@ The following categories are planned for future research:
 | `ai-research-tools/`   | AI research tools and newsletters                  | **Done** |
 | `documentation-tools/`  | Architecture documentation and living docs         | **Done** |
 | `ai-design-tools/`      | AI-powered visual creation and design platforms    | **Done** |
-| `evaluation-testing/`   | Agent evaluation and testing tools                 | Planned  |
+| `evaluation-testing/`   | Agent evaluation and testing tools                 | **Done** |
 
 ---
 
@@ -1021,6 +1057,9 @@ When adding new research:
 - [codex-skills](https://github.com/jMerta/codex-skills) - 19-skill catalog for OpenAI Codex CLI with npx installer, global ledger pattern, and prompt-injection hardening (116 stars)
 - [Browser MCP](https://browsermcp.io) - Chrome browser automation MCP server via extension bridge, preserving auth sessions and real fingerprint (5,814 stars)
 - [Micro-Agent](https://github.com/fdueblab/Micro-Agent) - Lightweight Python 3.12 ReAct agent framework with MCP multi-server support, token budget enforcement, and step-level execution visualization (MIT)
+- [Harness Engineering (Fowler/Böckeler)](https://martinfowler.com/articles/exploring-gen-ai/harness-engineering.html) - Harness engineering discipline for constraining AI coding agents via deterministic + LLM infrastructure
+- [Harness Engineering (OpenAI)](https://openai.com/index/harness-engineering/) - OpenAI Codex team's harness engineering practices: 1M lines, 3.5 PRs/engineer/day, agent-first architecture
+- [Unlocking the Codex Harness (OpenAI)](https://openai.com/index/unlocking-the-codex-harness/) - Codex App Server bidirectional JSON-RPC protocol and Rust core library (61,233 stars)
 
 ### Internal References
 
