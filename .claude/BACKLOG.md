@@ -3,7 +3,7 @@ last-updated: 2026-02-20
 last-completed: 2026-02-20
 p0-count: 0
 p1-count: 14
-p2-count: 12
+p2-count: 13
 ideas-count: 11
 ---
 
@@ -158,6 +158,14 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 ---
 
 ## P2 - Could Have
+
+### Add PR003/PR004 test coverage to plugin registration validator
+
+**Source**: Code review session 2026-02-21
+**Added**: 2026-02-21
+**Description**: `PluginRegistrationValidator` defines PR003 (missing metadata fields: repository, homepage, author) and PR004 (repository URL mismatches git remote URL) at lines 276-277 of `plugin_validator.py`, and emits them at lines 2815 and 2834. Tests exist for PR001 (unregistered) and PR002 (missing file), but not PR003/PR004. Add tests to `plugins/plugin-creator/tests/test_plugin_registration_validator.py` covering: (1) PR003 emitted when metadata fields absent; (2) PR004 emitted when repo URL mismatches remote.
+
+---
 
 ### kaizen: MCP consolidation analysis
 
