@@ -7,7 +7,5 @@
     "url": "https://github.com/bitflight-devops"
   },
   "skills": ["./skills/orchestrator-discipline"],
-  "hooks": "./hooks.json",
-  "rules": ["./rules"],
-  "commands": ["./skills/orchestrator-discipline"]
+  "hooks": "./hooks.json"
 }
