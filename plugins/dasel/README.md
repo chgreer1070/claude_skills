@@ -1,51 +1,78 @@
-# dasel — Structured Data Query and Transform
+# dasel
 
-Query, modify, and convert structured data files (JSON, YAML, TOML, XML, CSV, HCL, INI) using [dasel v3](https://github.com/TomWright/dasel). One consistent query syntax for every format.
+Gives Claude the ability to query, modify, and convert structured data files — JSON, YAML, TOML,
+XML, CSV, HCL, INI — using [dasel v3](https://github.com/TomWright/dasel), a single tool with a
+unified query syntax across all formats.
 
 ## Why Install This?
 
-When you ask Claude to extract, update, or convert structured data files, Claude may:
+When you ask Claude to work with config files, data files, or XML documents, Claude may:
 
-- Use slow, format-specific tools (separate commands for JSON vs YAML vs XML)
-- Write custom scripts for simple one-field updates
-- Read entire config files into context when a targeted query would suffice
-- Suggest `jq` for JSON but have no equivalent for YAML, TOML, or XML
+- Read entire config files into context just to extract one field
+- Write a custom Python or jq script for a simple value lookup or update
+- Suggest a different tool for each format (jq for JSON, yq for YAML, xmllint for XML) with no
+  consistent approach
+- Produce format-specific code that doesn't generalize across your project's file types
+- Not know how to query large XML files (2MB+) that can't be loaded into context
 
-This plugin gives Claude deep knowledge of dasel v3 syntax and workflows, plus installation tooling, so Claude can query and transform any supported format with a single tool.
+This plugin gives Claude knowledge of dasel v3 — its query syntax, exploration workflows,
+transformation patterns, and enterprise XML domain knowledge — so Claude uses a single consistent
+tool across all structured data formats.
 
 ## What You Get
 
+### Claude Improvements
+
+With this plugin installed, Claude will:
+
+**Use a single tool for all structured data formats** — Whether you have a JSON API response, a
+YAML Kubernetes manifest, a TOML config, or a Maven `pom.xml`, Claude applies dasel rather than
+reaching for a format-specific tool or loading the whole file.
+
+**Extract targeted values without reading full files** — For large config files or XML documents,
+Claude runs a focused dasel query instead of loading the entire file into context.
+
+**Apply safe modification patterns** — When updating config values, Claude follows the temp-file
+pattern (transform to a temp file, then rename) to avoid truncating files in place.
+
+**Handle large enterprise XML files** — For InstallAnywhere `.iap_xml`, Spring bean XML, Maven
+POMs, Hibernate HBM mappings, and Tomcat `web.xml` files (which can exceed 2MB), Claude uses
+structural dasel queries rather than attempting to read the file into context.
+
+**Explore unfamiliar structures systematically** — When you hand Claude an unknown config or data
+file, Claude follows a discovery sequence (top-level keys → nested keys → array sampling → type
+inspection) before making changes.
+
+**Convert between formats** — Claude transforms data from one format to another (JSON to YAML, TOML
+to JSON, CSV to JSON, etc.) in a single dasel pipeline.
+
 ### Skills
 
-**dasel-reference** — Complete dasel v3 syntax reference. Covers selectors (dot notation, array indexing, slices, recursive descent, object construction), all 19 built-in functions (`filter`, `map`, `each`, `search`, `sortBy`, `keys`, `merge`, and more), modification syntax, format conversion, variable assignment, and conditionals. Includes detailed references for format-specific patterns.
-
-**data-exploration** — Systematic workflows for exploring unfamiliar structured data. Claude follows a step-by-step sequence: discover top-level keys, navigate nested structures, sample arrays, inspect types, and extract values — without reading entire large files into context.
-
-**data-transformation** — Patterns for modifying and converting structured data safely. Covers in-place field updates, format conversion, array append/batch-update, object construction via spread, field removal by reconstruction, and multi-step transformations with variables.
-
-**setup** — Install, update, and troubleshoot the dasel v3 binary. Covers all platforms, SHA256 verification, PATH setup, and common error diagnosis.
-
-**Enterprise XML domain skills** — Five specialized skills for common enterprise XML formats:
-
-| Skill | File type | Coverage |
-|---|---|---|
-| `enterprise-installanywhere` | `.iap_xml` | Action sequences, variables, platform branches, installer comparison |
-| `enterprise-spring-xml` | Spring bean XML | Bean discovery, dependency wiring, JMS mapping, property injection |
-| `enterprise-maven-pom` | `pom.xml` | Dependency versions, groupId/scope filtering, multi-module hierarchy |
-| `enterprise-hibernate-hbm` | `.hbm.xml` | Entity-table bindings, property-column mapping, relationship tracing |
-| `enterprise-tomcat-web` | `web.xml` | Servlet enumeration, filter chains, listener listing, context params |
+| Skill | What Claude Gains |
+| --- | --- |
+| `dasel-reference` | Complete v3 selector syntax, all 19 built-in functions, modification patterns, format-specific caveats |
+| `data-exploration` | Step-by-step discovery workflow for unfamiliar structured data files |
+| `data-transformation` | Safe patterns for in-place updates, format conversion, array batch operations, object construction |
+| `setup` | Knowledge to install, update, and troubleshoot the dasel binary across platforms |
+| `enterprise-installanywhere` | Query patterns for InstallAnywhere `.iap_xml` installer definitions (65,000+ line files) |
+| `enterprise-spring-xml` | Bean discovery, dependency wiring, JMS mapping, property injection in Spring bean XML |
+| `enterprise-maven-pom` | Dependency version extraction, groupId/scope filtering, multi-module hierarchy in `pom.xml` |
+| `enterprise-hibernate-hbm` | Entity-table bindings, property-column mapping, relationship tracing in Hibernate `.hbm.xml` |
+| `enterprise-tomcat-web` | Servlet enumeration, filter chains, listener listing in Tomcat `web.xml` |
 
 ### Agents
 
-**data-explorer** (`haiku`) — Fast read-only exploration agent. Executes dasel queries against structured data files, discovers structure, lists keys, samples arrays, and extracts values. Always shows the exact command it ran. Never modifies files.
+**data-explorer** — Read-only exploration agent (Haiku). Discovers the structure of any supported
+data file, lists keys, samples arrays, and extracts values. Always shows the exact command it ran.
+Never modifies files.
 
-**dasel-guide** (`haiku`) — Teaches dasel v3 query syntax. Does not execute commands — explains how to construct selectors, provides complete copy-pasteable examples, and clarifies v3 syntax differences from v2.
+**dasel-guide** — Query construction agent (Haiku). Constructs dasel v3 selectors for any supported
+format, explains how the selector works, and gives complete copy-pasteable commands. Covers
+enterprise XML domain patterns for Spring, Maven, Hibernate, Tomcat, and InstallAnywhere files.
 
-**data-analyst** (`sonnet`) — Structural analysis agent for multi-file work. Handles schema comparison, pattern detection across large file sets, cross-file diffing, and migration planning. Writes intermediate results to `/tmp/` and produces reproducible analysis reports.
-
-### Session Hook
-
-At session start, the plugin checks whether dasel is installed and injects its version into session context. If dasel is missing, Claude is prompted to run `/dasel:setup`.
+**data-analyst** — Structural analysis agent (Sonnet). Handles multi-file analysis: schema
+comparison, pattern detection across large file sets, cross-file diffing, and migration planning.
+Writes intermediate results to `/tmp/` and produces reproducible analysis reports.
 
 ## Installation
 
@@ -61,178 +88,72 @@ Then install the plugin:
 /plugin install dasel@jamie-bitflight-skills
 ```
 
-## Install dasel
+## Install the dasel Binary
 
-After installing the plugin, install the dasel binary:
+After installing the plugin, Claude needs the dasel binary on your system. Run:
 
 ```bash
 /dasel:setup
 ```
 
-This runs `scripts/install_dasel.py`, which detects your platform, downloads the correct binary from [GitHub Releases](https://github.com/TomWright/dasel/releases), verifies the SHA256 digest, and installs to user-space:
+This installs the latest dasel v3 release from [GitHub Releases](https://github.com/TomWright/dasel/releases),
+verifies the SHA256 digest, and places the binary in user-space:
 
 - **Linux / macOS / WSL2**: `~/.local/bin/dasel`
 - **Windows**: `%LOCALAPPDATA%\Programs\dasel\dasel.exe`
 
-Supported platforms: Linux x86\_64, Linux ARM64, macOS, Windows x64.
+Supported platforms: Linux x86\_64, Linux ARM64, macOS amd64/ARM64, Windows x64.
 
-Options:
+Available options:
 
 ```bash
 /dasel:setup              # Install or update to latest
 /dasel:setup --force      # Reinstall even if already at latest
-/dasel:setup --dry-run    # Preview without changes
+/dasel:setup --dry-run    # Preview what would happen without making changes
 ```
 
-## Usage
-
-Once installed, Claude automatically applies dasel knowledge when you work with structured data files.
-
-### Query data
-
-```
-Extract all database hostnames from config.yaml
-```
-
-Claude uses dasel to navigate nested YAML without reading the entire file:
-
-```bash
-cat config.yaml | dasel -i yaml 'database.connection.host'
-```
-
-### Explore unknown files
-
-```
-What fields does this JSON response have?
-```
-
-Claude discovers structure systematically:
-
-```bash
-cat response.json | dasel -i json 'keys($this)'
-cat response.json | dasel -i json 'users[0]'
-```
-
-### Update config values
-
-```
-Set the server port to 9090 in config.yaml
-```
-
-Claude uses the safe update pattern (write to temp, then rename):
-
-```bash
-cat config.yaml | dasel -i yaml --root 'server.port = 9090' > config_tmp.yaml && mv config_tmp.yaml config.yaml
-```
-
-### Convert formats
-
-```
-Convert this JSON config to YAML
-```
-
-```bash
-cat data.json | dasel -i json -o yaml > data.yaml
-```
-
-### Batch updates
-
-```
-Increment all version fields in data.json by 1
-```
-
-```bash
-cat data.json | dasel -i json --root 'items.each(version = version + 1)'
-```
-
-### Query XML
-
-```
-List all bean IDs in this Spring applicationContext.xml
-```
-
-Claude uses enterprise XML patterns:
-
-```bash
-dasel -f applicationContext.xml -i xml 'beans.bean.filter(has("-id")).map("-id")'
-```
-
-## Example: Before and After
+## Example
 
 **Without this plugin:**
 
 ```
-You: Extract all active user emails from users.json
-Claude: [reads the entire file, then writes a Python script]
+You: What database host is configured in config.yaml?
+Claude: [reads the entire config.yaml into context]
+Claude: The database host is "db.example.com".
+```
+
+```
+You: Update the server port to 9090 in config.yaml
+Claude: [reads config.yaml into context, writes Python to parse and rewrite YAML, applies it]
 ```
 
 **With this plugin:**
 
 ```
-You: Extract all active user emails from users.json
-Claude: [runs targeted dasel query]
-
-  cat users.json | dasel -i json 'users.filter(active == true).map(email)'
-
-  Result:
-  "alice@example.com"
-  "bob@example.com"
+You: What database host is configured in config.yaml?
+Claude: [runs a targeted dasel query on just that field]
+Claude: The database host is "db.example.com".
 ```
 
-## dasel v3 Basics
-
-dasel uses a unified query syntax across all supported formats. Input comes from stdin; format must be specified explicitly with `-i`:
-
-```bash
-# Query a value
-echo '{"db": {"host": "localhost"}}' | dasel -i json 'db.host'
-
-# Format conversion
-cat config.toml | dasel -i toml -o yaml
-
-# Modify and output full document
-echo '{"port": 3000}' | dasel -i json --root 'port = 8080'
-
-# Filter and map
-cat data.json | dasel -i json 'users.filter(active == true).map(name)'
+```
+You: Update the server port to 9090 in config.yaml
+Claude: [applies a dasel transformation, writes to a temp file, then renames to avoid data loss]
+Claude: Done. server.port is now 9090.
 ```
 
-**Key flags:**
-
-| Flag | Purpose |
-|---|---|
-| `-i <format>` | Input format (json, yaml, toml, xml, csv, hcl, ini) |
-| `-o <format>` | Output format (defaults to input format) |
-| `--root` | Output full document after modification |
-| `--compact` | Compact output |
-| `--var name=value` | Pass a variable into the query |
-
-**v3 differences from v2:**
-
-- `put` and `delete` subcommands removed — use assignment with `--root` instead
-- Query/selector syntax completely revamped — v2 selectors are not compatible
-- CLI framework changed from Cobra to Kong
-
-## Supported Formats
-
-| Format | File types |
-|---|---|
-| JSON | `.json` |
-| YAML | `.yaml`, `.yml` |
-| TOML | `.toml` |
-| XML | `.xml`, `.iap_xml`, and others |
-| CSV | `.csv` |
-| HCL | `.hcl`, `.tf` |
-| INI | `.ini` |
+```
+You: How many beans are in chaosrouter_beans.xml?
+Claude: [runs a count query — no attempt to load the 2MB file into context]
+Claude: chaosrouter_beans.xml contains 47 beans.
+```
 
 ## Requirements
 
 - Claude Code v2.0+
-- dasel v3 binary (install with `/dasel:setup`)
+- dasel v3 binary (installed via `/dasel:setup`)
 - Python 3.11+ and `uv` (for the install script)
 
 ## References
 
 - [dasel GitHub repository](https://github.com/TomWright/dasel)
 - [dasel v3 documentation](https://daseldocs.tomwright.me)
-- [dasel releases](https://github.com/TomWright/dasel/releases)
