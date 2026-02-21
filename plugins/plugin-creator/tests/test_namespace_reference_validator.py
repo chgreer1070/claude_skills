@@ -645,6 +645,40 @@ class TestBrokenReference:
         assert len(nr001_errors) >= 1
         assert all(e.suggestion is not None for e in nr001_errors)
 
+    def test_broken_skill_suggestion_uses_category_placeholder_not_wildcard(
+        self, tmp_path: Path
+    ) -> None:
+        """Test NR001 suggestion for broken skill ref uses {category} not */ wildcard.
+
+        Tests: Error message clarity — no glob wildcards in user-facing strings
+        How: Break a skill reference, inspect the suggestion text
+        Why: Suggestion must show concrete placeholder paths, not shell globs
+        """
+        plugins_root = _make_plugins_root(tmp_path)
+        _make_plugin_dir(plugins_root, "target-plugin")
+
+        body = 'Activate Skill(command: "target-plugin:missing-skill").\n'
+        source_skill = _make_skill_md_with_body(plugins_root, "source-plugin", body)
+
+        validator = NamespaceReferenceValidator()
+        result = validator.validate(source_skill)
+
+        assert result.passed is False
+        nr001_errors = [e for e in result.errors if e.code == "NR001"]
+        assert len(nr001_errors) >= 1
+        # Suggestion must not contain shell glob wildcard (*/)
+        for err in nr001_errors:
+            if err.suggestion:
+                assert "*/" not in err.suggestion, (
+                    f"Suggestion contains shell glob wildcard '*/': {err.suggestion!r}"
+                )
+            # Suggestion should use {category} placeholder for nested paths
+            if err.suggestion and "or" in err.suggestion:
+                assert "{category}" in err.suggestion, (
+                    f"Expected '{{category}}' placeholder in multi-path suggestion: "
+                    f"{err.suggestion!r}"
+                )
+
 
 class TestEdgeCases:
     """Test edge cases: no body, no frontmatter, frontmatter-only, template placeholders."""
