@@ -4,7 +4,7 @@
 # dependencies = [
 #     "typer>=0.21.0",
 #     "tiktoken>=0.8.0",
-#     "pyyaml>=6.0",
+#     "ruamel.yaml>=0.18.0",
 #     "pydantic>=2.0.0",
 # ]
 # ///
@@ -32,6 +32,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from enum import StrEnum
+from io import StringIO
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -45,8 +46,8 @@ from typing import (
 )
 
 import typer
-import yaml
 from pydantic import ValidationError
+from ruamel.yaml import YAML, YAMLError
 
 if TYPE_CHECKING:
     from rich.console import ConsoleRenderable, RichCast
@@ -68,6 +69,59 @@ from frontmatter_core import (
     fix_skill_name_field,
     get_frontmatter_model,
 )
+from frontmatter_utils import RuamelYAMLHandler
+
+# Module-level ruamel.yaml safe-mode instance (replaces yaml.safe_load)
+_yaml_safe = YAML(typ="safe")
+
+# Round-trip YAML instance (via shared handler) for dumping with format preservation
+_rt_handler = RuamelYAMLHandler()
+_rt_yaml = _rt_handler._yaml  # noqa: SLF001
+_rt_yaml.width = 10000  # prevent line wrapping
+
+
+def _safe_load_yaml(text: str) -> Any:
+    """Parse a YAML string using ruamel.yaml safe loader.
+
+    Args:
+        text: YAML text to parse (frontmatter content, no --- delimiters).
+
+    Returns:
+        Parsed YAML data (dict, list, scalar, or None).
+
+    Raises:
+        YAMLError: If the YAML is syntactically invalid.
+    """
+    if not text or not text.strip():
+        return {}
+    return _yaml_safe.load(text)
+
+
+def _dump_yaml(data: dict[str, Any]) -> str:
+    """Serialize a dict to YAML using the round-trip handler.
+
+    Preserves key insertion order. Values containing ': ' are wrapped in
+    double quotes so YAML parsers handle them correctly.
+
+    Args:
+        data: Dictionary to serialize.
+
+    Returns:
+        YAML string (may include trailing newline).
+    """
+    from ruamel.yaml.scalarstring import DoubleQuotedScalarString
+
+    prepared: dict[str, Any] = {}
+    for key, value in data.items():
+        if isinstance(value, str) and ": " in value:
+            prepared[key] = DoubleQuotedScalarString(value)
+        else:
+            prepared[key] = value
+
+    buf = StringIO()
+    _rt_yaml.dump(prepared, buf)
+    return buf.getvalue()
+
 
 # Error code base URL for documentation links
 ERROR_CODE_BASE_URL = "https://github.com/jamie-bitflight/claude_skills/blob/main/plugins/plugin-creator/docs/ERROR_CODES.md"
@@ -1238,8 +1292,8 @@ class FrontmatterValidator:
 
         # Parse YAML
         try:
-            data = yaml.safe_load(frontmatter_text)
-        except yaml.YAMLError as e:
+            data = _safe_load_yaml(frontmatter_text)
+        except YAMLError as e:
             errors.append(
                 ValidationIssue(
                     field="(yaml)",
@@ -1484,8 +1538,8 @@ class FrontmatterValidator:
 
         # Parse YAML
         try:
-            original_data = yaml.safe_load(frontmatter_text)
-        except yaml.YAMLError:
+            original_data = _safe_load_yaml(frontmatter_text)
+        except YAMLError:
             return content, []
 
         if not isinstance(original_data, dict):
@@ -1536,14 +1590,8 @@ class FrontmatterValidator:
         if not fixes:
             return content, []
 
-        # Regenerate frontmatter with PyYAML
-        new_frontmatter = yaml.dump(
-            normalized_dict,
-            default_flow_style=False,
-            allow_unicode=True,
-            sort_keys=False,
-            width=10000,
-        )
+        # Regenerate frontmatter with ruamel.yaml (preserves order, quotes colons)
+        new_frontmatter = _dump_yaml(normalized_dict)
 
         return f"---\n{new_frontmatter}---\n{body}", fixes
 
@@ -1605,8 +1653,8 @@ class NameFormatValidator:
 
         # Parse YAML
         try:
-            data = yaml.safe_load(frontmatter_text)
-        except yaml.YAMLError:
+            data = _safe_load_yaml(frontmatter_text)
+        except YAMLError:
             # Invalid YAML - not our concern (FrontmatterValidator handles this)
             return ValidationResult(
                 passed=True, errors=errors, warnings=warnings, info=info
@@ -1805,8 +1853,8 @@ class DescriptionValidator:
 
         # Parse YAML
         try:
-            data = yaml.safe_load(frontmatter_text)
-        except yaml.YAMLError:
+            data = _safe_load_yaml(frontmatter_text)
+        except YAMLError:
             # Invalid YAML - not our concern (FrontmatterValidator handles this)
             return ValidationResult(
                 passed=True, errors=errors, warnings=warnings, info=info
