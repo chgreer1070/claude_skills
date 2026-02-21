@@ -37,7 +37,7 @@ The architecture spec (`plan/architect-validate-orchestrator-discipline.md`) res
 
 **Decision 1 — rules/CLAUDE.md delivery mechanism**: Move content verbatim to a new file at `plugins/orchestrator-discipline/CLAUDE.md` (plugin root). This is the same pattern used by `plugins/development-harness/CLAUDE.md` and `plugins/plugin-creator/CLAUDE.md`. The `rules/` directory and `rules/CLAUDE.md` are to be deleted after content is confirmed moved. Option B (merge into SKILL.md body) was rejected because SKILL.md content loads on demand rather than passively. Option C (references file) was also rejected.
 
-**Decision 2 — Grep directory path coverage**: Add `isDirectory()` + `looksLikeDirectory()` to the Grep branch in `pre-tool-orchestrator-read-warning.js`. Fire the warning for ALL directory-targeted Grep calls — no allowlist, no pattern heuristic. The hook is non-blocking so the noise cost is acceptable.
+**Decision 2 — Grep directory path coverage**: Add `isDirectory()` + `looksLikeDirectory()` to the Grep branch in `pre-tool-orchestrator-read-warning.cjs`. Fire the warning for ALL directory-targeted Grep calls — no allowlist, no pattern heuristic. The hook is non-blocking so the noise cost is acceptable.
 
 **Decision 3 — SKILL.md `user-invocable` field**: Add `user-invocable: true` to SKILL.md frontmatter. Do NOT add a `name:` field. The absence of `name:` is intentional and correct — adding it would suppress slash command registration due to a confirmed Claude Code v2.1.23 bug (documented in `plugins/plugin-creator/CLAUDE.md`, "CRITICAL: Skill Name Field Bug" section).
 
@@ -68,7 +68,7 @@ Target state after T1: remove `"rules"` and `"commands"` lines. Do NOT touch `ve
 
 **`plugins/orchestrator-discipline/CLAUDE.md`** — does NOT exist yet. T1 creates it by copying `rules/CLAUDE.md` content verbatim.
 
-**`plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js`** — 86-line CommonJS Node.js hook. Current structure:
+**`plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs`** — 86-line CommonJS Node.js hook. Current structure:
 
 - Lines 15-16: `SOURCE_FILE_EXTENSIONS` regex and `TEST_PATH_PATTERN` regex constants.
 - Lines 23-26: `isSourceOrConfigFile(filePath)` function — returns true if path matches extension regex OR test path pattern.
@@ -87,7 +87,7 @@ description: Orchestrator context window discipline enforcement. Prevents...
 
 Target state after T3: add `user-invocable: true` on line 3, before closing `---`. No `name:` field. Body content unchanged.
 
-**`plugins/orchestrator-discipline/hooks.json`** — does NOT need modification. It wires two PreToolUse hooks: `Read|Grep` matcher to `pre-tool-orchestrator-read-warning.js` and `Bash` matcher to `pre-tool-diagnostic-command-gate.js`, both invoked as `node "${CLAUDE_PLUGIN_ROOT}/hooks/..."`.
+**`plugins/orchestrator-discipline/hooks.json`** — does NOT need modification. It wires two PreToolUse hooks: `Read|Grep` matcher to `pre-tool-orchestrator-read-warning.cjs` and `Bash` matcher to `pre-tool-diagnostic-command-gate.cjs`, both invoked as `node "${CLAUDE_PLUGIN_ROOT}/hooks/..."`.
 
 ---
 
@@ -206,14 +206,14 @@ Linting tool: `uv run prek run --files <path>` — runs all configured pre-commi
 | `plugins/orchestrator-discipline/.claude-plugin/plugin.json` | T1 | Remove `rules` and `commands` fields |
 | `plugins/orchestrator-discipline/CLAUDE.md` | T1 | Create — copy verbatim content from `rules/CLAUDE.md` |
 | `plugins/orchestrator-discipline/rules/CLAUDE.md` | T1 | Document for deletion (do not delete in T1 — leave for human) |
-| `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` | T2 | Add `fs` require + two helper functions + extend Grep shouldWarn |
+| `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` | T2 | Add `fs` require + two helper functions + extend Grep shouldWarn |
 | `plugins/orchestrator-discipline/skills/orchestrator-discipline/SKILL.md` | T3 | Add `user-invocable: true` to frontmatter only |
 
 Reference files (read-only):
 
 - `plugins/plugin-creator/skills/claude-plugins-reference-2026/SKILL.md` — lines 32-52 (schema), lines 148-153 (auto-loading table)
 - `plugins/plugin-creator/CLAUDE.md` — skill name field bug, plugin.json requirements
-- `plugins/orchestrator-discipline/hooks/pre-tool-diagnostic-command-gate.js` — do NOT modify (out of scope)
+- `plugins/orchestrator-discipline/hooks/pre-tool-diagnostic-command-gate.cjs` — do NOT modify (out of scope)
 - `plugins/orchestrator-discipline/skills/orchestrator-discipline/references/investigation-escalation.md` — do NOT modify (out of scope)
 
 ---
@@ -336,8 +336,8 @@ verified loading mechanism, and make `claude plugin validate plugins/orchestrato
 #### Constraints
 
 - Do NOT change the behavioral semantics of the hooks (what they warn about, what they allow).
-- Do NOT modify `hooks/pre-tool-orchestrator-read-warning.js` or
-  `hooks/pre-tool-diagnostic-command-gate.js` — those are T2's scope.
+- Do NOT modify `hooks/pre-tool-orchestrator-read-warning.cjs` or
+  `hooks/pre-tool-diagnostic-command-gate.cjs` — those are T2's scope.
 - Do NOT modify `skills/orchestrator-discipline/SKILL.md` frontmatter fields — that is T3's scope.
   You may append content to the body if merging rules, but do not touch frontmatter.
 - Do NOT manually bump the version in `plugin.json` — the `auto_sync_manifests.py` pre-commit hook
@@ -420,7 +420,7 @@ revise the delivery mechanism choice and state what changed in the handoff.
 ```yaml
 ---
 task: T2
-title: Fix Grep directory path coverage in pre-tool-orchestrator-read-warning.js
+title: Fix Grep directory path coverage in pre-tool-orchestrator-read-warning.cjs
 status: not-started
 agent: general-purpose
 dependencies: []
@@ -435,7 +435,7 @@ handoff: "Report: the exact code change made (diff or before/after), output of `
 
 #### Context
 
-`plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` (86 lines) fires a
+`plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` (86 lines) fires a
 `<orchestrator-read-warning>` advisory for `Read` and `Grep` tool calls when the target path has a
 source file extension. The current gate function:
 
@@ -468,7 +468,7 @@ crashes or false-positive noise on legitimate markdown/plan-file searches.
 
 #### Required Inputs
 
-- `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` — full file to
+- `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` — full file to
   read before editing
 - `plan/codebase/orchestrator-discipline-patterns.md` sections 4 and 5 — gap analysis and
   detection options
@@ -505,18 +505,18 @@ crashes or false-positive noise on legitimate markdown/plan-file searches.
 
 #### Expected Outputs
 
-- `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` — modified with
+- `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` — modified with
   directory detection logic added to the Grep branch
 
 #### Acceptance Criteria
 
-1. `node --check plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js`
+1. `node --check plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs`
    exits 0 (no syntax errors).
 2. A test script that simulates `Grep({ pattern: "foo", path: "src/" })` via stdin produces JSON
    output containing `"additionalContext"`. (Simulate by piping JSON to the script via
    `echo '{"tool_name":"Grep","tool_input":{"path":"src/","pattern":"foo"}}' | node
-   plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js`.)
-3. A test with `path: "plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js"` (an
+   plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs`.)
+3. A test with `path: "plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs"` (an
    existing `.js` file) produces `"additionalContext"` (existing behavior preserved).
 4. A test with `path: "BACKLOG.md"` produces `{}` (no warning — markdown file excluded by
    extension check; not a source file extension, not a directory).
@@ -524,11 +524,11 @@ crashes or false-positive noise on legitimate markdown/plan-file searches.
 
 #### Verification Steps
 
-1. `node --check plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js`
-2. `echo '{"tool_name":"Grep","tool_input":{"path":"src/","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` — output must contain `additionalContext`.
-3. `echo '{"tool_name":"Grep","tool_input":{"path":"plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` — output must contain `additionalContext`.
-4. `echo '{"tool_name":"Grep","tool_input":{"path":"BACKLOG.md","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` — output must be `{}`.
-5. `echo '{"tool_name":"Grep","tool_input":{"path":"","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` — output must be `{}` and script must not throw.
+1. `node --check plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs`
+2. `echo '{"tool_name":"Grep","tool_input":{"path":"src/","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` — output must contain `additionalContext`.
+3. `echo '{"tool_name":"Grep","tool_input":{"path":"plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` — output must contain `additionalContext`.
+4. `echo '{"tool_name":"Grep","tool_input":{"path":"BACKLOG.md","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` — output must be `{}`.
+5. `echo '{"tool_name":"Grep","tool_input":{"path":"","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` — output must be `{}` and script must not throw.
 
 #### CoVe Checks
 
@@ -543,7 +543,7 @@ Key claims to verify:
 Verification questions:
 
 1. Does the current hook file read Grep path as `toolInput.path` (not `toolInput.file_path` or
-   another field)? Read `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js`
+   another field)? Read `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs`
    lines 48-51 to confirm.
 2. Does `BACKLOG.md` end with `/`? Does it have no `.` in the last segment? (Both are false — it
    ends in `.md`.) Confirm that neither heuristic matches it and `fs.statSync("BACKLOG.md").isDirectory()` returns false (it is a file).
@@ -552,7 +552,7 @@ Verification questions:
 
 Evidence to collect:
 
-- Read lines 42-60 of `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js`
+- Read lines 42-60 of `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs`
   to confirm field names.
 - Run verification step 4 (BACKLOG.md test) and record the output.
 - Search `plugins/*/hooks/*.js` for `statSync` to confirm or deny prior usage.
@@ -754,7 +754,7 @@ handoff: "Report: output of each validation command (copy-pasted, not summarized
 T1, T2, and T3 have each addressed one gap in the orchestrator-discipline plugin:
 
 - T1: Removed invalid `rules` field from `plugin.json`
-- T2: Extended Grep directory detection in `pre-tool-orchestrator-read-warning.js`
+- T2: Extended Grep directory detection in `pre-tool-orchestrator-read-warning.cjs`
 - T3: Added `user-invocable: true` to SKILL.md frontmatter
 
 T4 runs the complete validation suite across all plugin files to confirm the fixes integrate
@@ -822,15 +822,15 @@ behavior is verified end-to-end via the five test commands defined in T2's verif
 2. `plugin_validator.py plugins/orchestrator-discipline/` exits 0, OR any non-zero exit is
    explained by pre-existing issues documented with file:line citations.
 3. `uv run prek run --files` passes (exit 0) for every file modified in T1, T2, and T3.
-4. Hook test — directory path: `echo '{"tool_name":"Grep","tool_input":{"path":"src/","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` produces JSON containing `"additionalContext"`.
-5. Hook test — source file path: `echo '{"tool_name":"Grep","tool_input":{"path":"plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` produces JSON containing `"additionalContext"`.
-6. Hook test — markdown path: `echo '{"tool_name":"Grep","tool_input":{"path":"BACKLOG.md","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` produces `{}`.
-7. Hook test — empty path: `echo '{"tool_name":"Grep","tool_input":{"path":"","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` produces `{}` and exits without error.
+4. Hook test — directory path: `echo '{"tool_name":"Grep","tool_input":{"path":"src/","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` produces JSON containing `"additionalContext"`.
+5. Hook test — source file path: `echo '{"tool_name":"Grep","tool_input":{"path":"plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` produces JSON containing `"additionalContext"`.
+6. Hook test — markdown path: `echo '{"tool_name":"Grep","tool_input":{"path":"BACKLOG.md","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` produces `{}`.
+7. Hook test — empty path: `echo '{"tool_name":"Grep","tool_input":{"path":"","pattern":"foo"}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` produces `{}` and exits without error.
 8. SKILL.md frontmatter contains `user-invocable: true` and no `name:` field (confirmed by grep).
 9. `plugin.json` contains no `rules` key (confirmed by grep or cat).
 10. `rules/CLAUDE.md` content (the "no exemption categories" language) is present in the
     destination file chosen in T1.
-11. Hook test — extensionless directory path: `echo '{"tool_name":"Grep","tool_input":{"path":"plugins/orchestrator-discipline/hooks","pattern":"def "}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` produces JSON containing `"additionalContext"` (tests the `looksLikeDirectory` heuristic for paths with no file extension and no trailing slash).
+11. Hook test — extensionless directory path: `echo '{"tool_name":"Grep","tool_input":{"path":"plugins/orchestrator-discipline/hooks","pattern":"def "}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` produces JSON containing `"additionalContext"` (tests the `looksLikeDirectory` heuristic for paths with no file extension and no trailing slash).
 
 #### Verification Steps
 
@@ -841,7 +841,7 @@ behavior is verified end-to-end via the five test commands defined in T2's verif
 5. `grep -n "rules" plugins/orchestrator-discipline/.claude-plugin/plugin.json` — confirm no output.
 6. `grep -n "user-invocable" plugins/orchestrator-discipline/skills/orchestrator-discipline/SKILL.md` — confirm `user-invocable: true` on output.
 7. `grep -n "no exemption categories" <destination-file-from-T1>` — confirm content present.
-8. `echo '{"tool_name":"Grep","tool_input":{"path":"plugins/orchestrator-discipline/hooks","pattern":"def "}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` — output must contain `additionalContext` (extensionless directory path coverage).
+8. `echo '{"tool_name":"Grep","tool_input":{"path":"plugins/orchestrator-discipline/hooks","pattern":"def "}}' | node plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` — output must contain `additionalContext` (extensionless directory path coverage).
 
 ---
 

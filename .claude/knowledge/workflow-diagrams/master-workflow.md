@@ -11,7 +11,7 @@ flowchart TB
     subgraph INPUT["1. INPUT RECEPTION ⚠️"]
         I1[User Request]
         I2["/sessions command"]
-        I3["session-start-rtica.js hook"]
+        I3["session-start-rtica.cjs hook"]
     end
 
     subgraph CONTEXT["2. CONTEXT GATHERING ✅"]
@@ -75,7 +75,7 @@ flowchart LR
 
     subgraph ASSETS["Available Assets"]
         A1["/sessions<br/>Session management"]
-        A2["session-start-rtica.js<br/>Auto-trigger rt-ica"]
+        A2["session-start-rtica.cjs<br/>Auto-trigger rt-ica"]
     end
 
     subgraph GAPS["Identified Gaps"]
@@ -94,7 +94,7 @@ flowchart LR
 | Asset                  | Type    | Function                            |
 | ---------------------- | ------- | ----------------------------------- |
 | /sessions              | Command | Manage session state, trigger modes |
-| session-start-rtica.js | Hook    | Auto-load rt-ica on session start   |
+| session-start-rtica.cjs | Hook    | Auto-load rt-ica on session start   |
 
 **Gap Analysis:** No automated classification of incoming requests. Manual determination required for task type, complexity, and routing.
 

@@ -20,11 +20,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-rtica.js\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-rtica.cjs\""
           },
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-backlog.js\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-backlog.cjs\""
           }
         ]
       }
@@ -34,7 +34,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop-backlog-reminder.js\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop-backlog-reminder.cjs\""
           }
         ]
       }

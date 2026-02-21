@@ -27,7 +27,7 @@ The `orchestrator-discipline` plugin enforces delegation discipline in multi-age
 
 - Fix the `rules` field in `plugins/orchestrator-discipline/.claude-plugin/plugin.json` to pass `claude plugin validate`
 - Determine whether `rules/CLAUDE.md` loads automatically or requires a different mechanism, and implement the correct approach
-- Extend `hooks/pre-tool-orchestrator-read-warning.js` to fire when `Grep` targets a directory path (not just extension-matched file paths)
+- Extend `hooks/pre-tool-orchestrator-read-warning.cjs` to fire when `Grep` targets a directory path (not just extension-matched file paths)
 - Determine whether `skills/orchestrator-discipline/SKILL.md` needs `user-invocable: true` and add it if so
 - Verify hooks fire correctly after fixes
 - Version bump per convention (patch fix or minor improvement)
@@ -73,8 +73,8 @@ The `orchestrator-discipline` plugin enforces delegation discipline in multi-age
 
 - `plugins/plugin-creator/skills/claude-plugins-reference-2026/SKILL.md` — authoritative plugin.json schema reference, consulted directly
 - `plugins/plugin-creator/skills/hooks-io-api/SKILL.md` — hook output format reference (not read in this session; for implementer reference)
-- `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` — 86-line JS hook, fully read
-- `plugins/orchestrator-discipline/hooks/pre-tool-diagnostic-command-gate.js` — 110-line JS hook, fully read
+- `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` — 86-line JS hook, fully read
+- `plugins/orchestrator-discipline/hooks/pre-tool-diagnostic-command-gate.cjs` — 110-line JS hook, fully read
 - `plugins/orchestrator-discipline/.claude-plugin/plugin.json` — manifest, fully read
 - `plugins/orchestrator-discipline/hooks.json` — hook wiring config, fully read
 - `plugins/orchestrator-discipline/rules/CLAUDE.md` — 143-line rules file, fully read
@@ -84,8 +84,8 @@ The `orchestrator-discipline` plugin enforces delegation discipline in multi-age
 
 - `plugins/orchestrator-discipline/.claude-plugin/plugin.json:11` — `"rules": ["./rules"]` — the unrecognized field causing validation failure
 - `plugins/orchestrator-discipline/.claude-plugin/plugin.json:12` — `"commands": ["./skills/orchestrator-discipline"]` — skills exposed as commands
-- `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js:15-26` — `SOURCE_FILE_EXTENSIONS` regex and `isSourceOrConfigFile()` — the function that gates hook firing; does not handle directory paths
-- `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js:48-58` — `Grep` path extraction and extension check — gap: a bare directory path like `src/` has no extension, so the check returns false and no warning fires
+- `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs:15-26` — `SOURCE_FILE_EXTENSIONS` regex and `isSourceOrConfigFile()` — the function that gates hook firing; does not handle directory paths
+- `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs:48-58` — `Grep` path extraction and extension check — gap: a bare directory path like `src/` has no extension, so the check returns false and no warning fires
 - `plugins/orchestrator-discipline/skills/orchestrator-discipline/SKILL.md:1-3` — frontmatter has only `description:`, no `user-invocable: true`
 - `plugins/plugin-creator/skills/claude-plugins-reference-2026/SKILL.md:32-52` — plugin.json schema, no `rules` field listed
 - `plugins/plugin-creator/skills/claude-plugins-reference-2026/SKILL.md:148-153` — default directory auto-loading table; no `rules/` row present
@@ -147,7 +147,7 @@ The `orchestrator-discipline` plugin enforces delegation discipline in multi-age
 | # | Category | Gap Description | Impact |
 |---|----------|-----------------|--------|
 | 1 | Scope | `rules` field in plugin.json is not a recognized schema key — causes validation failure | Blocks plugin installation via `claude plugin validate` |
-| 2 | Behavior | `pre-tool-orchestrator-read-warning.js` does not fire when `Grep` uses a directory path (no extension to match) | Hook misses the most common orchestrator investigation pattern: scanning a directory |
+| 2 | Behavior | `pre-tool-orchestrator-read-warning.cjs` does not fire when `Grep` uses a directory path (no extension to match) | Hook misses the most common orchestrator investigation pattern: scanning a directory |
 | 3 | Integration | Whether `rules/CLAUDE.md` loads into session context is unverified; no other plugin uses this pattern | Rules content may not reach the model at all |
 | 4 | Integration | SKILL.md lacks `user-invocable: true`; slash command registration unverified | Users cannot manually invoke the skill to review discipline guidance |
 | 5 | Scope | `commands` field points to `./skills/orchestrator-discipline` — unclear if this is intentional or a schema misuse | The skill may be double-registered or not registered correctly |
@@ -183,7 +183,7 @@ The `orchestrator-discipline` plugin enforces delegation discipline in multi-age
 ### Q3: What is the correct behavior for `Grep` with a directory path in the hook?
 
 - **Category**: Behavior
-- **Gap**: `pre-tool-orchestrator-read-warning.js` checks `isSourceOrConfigFile(targetPath)` where `targetPath` is `toolInput.path`. When `path` is a directory like `"src/"` or `"plugins/"`, the extension regex returns false and no warning fires. This is the primary failure mode documented in the groomed context.
+- **Gap**: `pre-tool-orchestrator-read-warning.cjs` checks `isSourceOrConfigFile(targetPath)` where `targetPath` is `toolInput.path`. When `path` is a directory like `"src/"` or `"plugins/"`, the extension regex returns false and no warning fires. This is the primary failure mode documented in the groomed context.
 - **Question**: When the hook receives a `Grep` call where `path` is a directory, should it always fire (any directory), fire only when the directory name suggests source code (e.g., `src/`, `plugins/`, `tests/`), or fire based on the `pattern` parameter instead?
 - **Options**:
   - A) Always fire when `Grep.path` is a directory (most conservative — any directory grep by orchestrator is suspect)
@@ -211,7 +211,7 @@ The `orchestrator-discipline` plugin enforces delegation discipline in multi-age
 _These goals will be finalized after questions are resolved._
 
 1. `claude plugin validate plugins/orchestrator-discipline/` passes with no errors
-2. `pre-tool-orchestrator-read-warning.js` fires when `Grep` is called with a directory path targeting source code areas
+2. `pre-tool-orchestrator-read-warning.cjs` fires when `Grep` is called with a directory path targeting source code areas
 3. `rules/CLAUDE.md` content reaches the model via a mechanism that is confirmed to work (whether that is skill content, reference file, or removal)
 4. `skills/orchestrator-discipline/SKILL.md` has correct frontmatter for intended registration behavior (`user-invocable` set appropriately)
 5. Plugin version is bumped to reflect the fixes
@@ -240,7 +240,7 @@ Declaring both `skills` and `commands` pointing to the same path in plugin.json 
 
 ### Risk 4: Hook script executable permissions after caching
 
-The plugin.json schema reference notes that scripts must be executable (`chmod +x`). The JS hooks use `node` via the `command` field in `hooks.json`. Hook files at `hooks/pre-tool-orchestrator-read-warning.js` and `hooks/pre-tool-diagnostic-command-gate.js` start with `#!/usr/bin/env node` but are invoked as `node "${CLAUDE_PLUGIN_ROOT}/hooks/..."` — so executable permission is not required for the hooks themselves. This risk is low but worth confirming.
+The plugin.json schema reference notes that scripts must be executable (`chmod +x`). The JS hooks use `node` via the `command` field in `hooks.json`. Hook files at `hooks/pre-tool-orchestrator-read-warning.cjs` and `hooks/pre-tool-diagnostic-command-gate.cjs` start with `#!/usr/bin/env node` but are invoked as `node "${CLAUDE_PLUGIN_ROOT}/hooks/..."` — so executable permission is not required for the hooks themselves. This risk is low but worth confirming.
 
 ### Risk 5: Version bump triggers auto-sync manifest side effects
 
@@ -287,9 +287,9 @@ Per `plugins/plugin-creator/CLAUDE.md` (skill name field bug section):
 ## Definition of Done
 
 1. `claude plugin validate plugins/orchestrator-discipline/` exits with no errors
-2. `pre-tool-orchestrator-read-warning.js` fires (injects `additionalContext`) when tested with a `Grep` call using a directory path (e.g., `Grep(pattern="def ", path="src/")`)
-3. `pre-tool-orchestrator-read-warning.js` continues to fire for `Grep` calls with source file extension paths
-4. `pre-tool-orchestrator-read-warning.js` does not fire for `Grep` calls targeting `.md` files or `plan/` directories (no regression on legitimate orchestrator operations)
+2. `pre-tool-orchestrator-read-warning.cjs` fires (injects `additionalContext`) when tested with a `Grep` call using a directory path (e.g., `Grep(pattern="def ", path="src/")`)
+3. `pre-tool-orchestrator-read-warning.cjs` continues to fire for `Grep` calls with source file extension paths
+4. `pre-tool-orchestrator-read-warning.cjs` does not fire for `Grep` calls targeting `.md` files or `plan/` directories (no regression on legitimate orchestrator operations)
 5. `rules/CLAUDE.md` content is either confirmed to load via a verified mechanism, merged into skill/reference files, or removed with documented rationale
 6. SKILL.md frontmatter is updated to reflect correct `user-invocable` value per Q2 resolution
 7. `plugin.json` contains no unrecognized fields

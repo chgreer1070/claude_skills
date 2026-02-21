@@ -15,8 +15,8 @@ plugins/orchestrator-discipline/
 │   └── plugin.json                          (670 bytes)
 ├── hooks.json                               (597 bytes — at ROOT, not in hooks/)
 ├── hooks/
-│   ├── pre-tool-orchestrator-read-warning.js    (2648 bytes, chmod +x)
-│   └── pre-tool-diagnostic-command-gate.js      (3302 bytes, chmod +x)
+│   ├── pre-tool-orchestrator-read-warning.cjs    (2648 bytes, chmod +x)
+│   └── pre-tool-diagnostic-command-gate.cjs      (3302 bytes, chmod +x)
 ├── rules/
 │   └── CLAUDE.md                            (6615 bytes)
 └── skills/
@@ -43,11 +43,11 @@ File: `plugins/orchestrator-discipline/hooks.json` (at plugin root)
     "PreToolUse": [
       {
         "matcher": "Read|Grep",
-        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-orchestrator-read-warning.js\"" }]
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-orchestrator-read-warning.cjs\"" }]
       },
       {
         "matcher": "Bash",
-        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-diagnostic-command-gate.js\"" }]
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-diagnostic-command-gate.cjs\"" }]
       }
     ]
   }
@@ -62,7 +62,7 @@ Both hooks: `type: command`, invoke Node.js scripts via `${CLAUDE_PLUGIN_ROOT}` 
 
 ### Hook Logic Summary
 
-#### pre-tool-orchestrator-read-warning.js
+#### pre-tool-orchestrator-read-warning.cjs
 
 **Trigger condition**: `Read` or `Grep` tool call where target path matches:
 
@@ -83,7 +83,7 @@ Both hooks: `type: command`, invoke Node.js scripts via `${CLAUDE_PLUGIN_ROOT}` 
 
 **Gap identified**: Grep with a directory `path` argument (e.g., `Grep pattern /path/to/src`) does not fire because the directory path has no extension. This is a false negative — the hook only checks the `path` field of Grep, which may be a directory. Broad `Grep` searches across source directories are not caught.
 
-#### pre-tool-diagnostic-command-gate.js
+#### pre-tool-diagnostic-command-gate.cjs
 
 **Trigger condition**: `Bash` tool call where `command` matches any of:
 
@@ -303,7 +303,7 @@ The `908f73e` commit updated SKILL.md frontmatter quoting. The initial commit `0
 - If no: Find the correct mechanism to ship rules with a plugin — possibly by moving rules content into the SKILL.md or using a different field.
 
 **Hook gap — Grep on directory paths**:
-When the orchestrator calls `Grep` with a directory as the `path` argument (no file extension), `pre-tool-orchestrator-read-warning.js` does not fire. The hook checks if `toolInput.path` matches `SOURCE_FILE_EXTENSIONS`, but directories have no extension. This is a false negative for broad codebase searches.
+When the orchestrator calls `Grep` with a directory as the `path` argument (no file extension), `pre-tool-orchestrator-read-warning.cjs` does not fire. The hook checks if `toolInput.path` matches `SOURCE_FILE_EXTENSIONS`, but directories have no extension. This is a false negative for broad codebase searches.
 
 **Unverified — rules loading behavior**:
 Whether `rules/CLAUDE.md` actually loads into the session context when the plugin is installed has not been tested. The hook behavior was verified (live tests). The rules loading depends on Claude Code's plugin rules mechanism, which is separate from the hook mechanism.

@@ -124,7 +124,7 @@ Python script (PEP 723):
 
 Bash scripts prohibited for new hooks/companion scripts. Legacy bash scripts may remain but avoid creating new ones.
 
-SOURCE: Experimental validation (2026-02-02). Evidence from `.claude/hooks/session-start-backlog.js`, `plugins/plugin-creator/scripts/create_plugin.py`.
+SOURCE: Experimental validation (2026-02-02). Evidence from `.claude/hooks/session-start-backlog.cjs`, `plugins/plugin-creator/scripts/create_plugin.py`.
 
 </skill_component_languages>
 
@@ -142,7 +142,7 @@ All scripts have shebangs and executable permissions (enforced by `check-executa
 ```bash
 # ❌ Bypasses shebang, ignores PEP 723 dependency resolution
 python3 plugins/plugin-creator/scripts/auto_sync_manifests.py --reconcile
-node .claude/hooks/session-start-backlog.js
+node .claude/hooks/session-start-backlog.cjs
 ```
 
 **Why**: `uv run` resolves PEP 723 inline dependencies. Shebangs may specify `uv run --script` (handles venv and deps). Bare `python3` skips dependency resolution and may use wrong interpreter. Scripts are self-contained executables, not library modules.

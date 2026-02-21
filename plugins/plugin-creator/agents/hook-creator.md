@@ -397,4 +397,4 @@ Expected output:
 - [Hooks Guide](https://code.claude.com/docs/en/hooks-guide.md) (accessed 2026-01-28)
 - [Plugin Components Reference](https://code.claude.com/docs/en/plugins-reference.md#hooks) (accessed 2026-01-28)
 - Local references: `plugin-creator:hooks-core-reference`, `plugin-creator:hooks-io-api`, `plugin-creator:hooks-patterns`
-- Pattern evidence: `.claude/hooks/session-start-backlog.js` (Node.js hook pattern, lines 1-69)
+- Pattern evidence: `.claude/hooks/session-start-backlog.cjs` (Node.js hook pattern, lines 1-69)
