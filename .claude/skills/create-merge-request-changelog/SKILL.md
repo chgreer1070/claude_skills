@@ -31,13 +31,13 @@ Create GitHub Releases with changelogs for every calendar day that had commits. 
 
 ```bash
 # Dry run - preview what would be created
-python scripts/create_daily_releases.py --dry-run
+uv run scripts/create_daily_releases.py --dry-run
 
 # Create all daily releases (backfill entire history)
-python scripts/create_daily_releases.py
+uv run scripts/create_daily_releases.py
 
 # Process specific date range
-python scripts/create_daily_releases.py --start-date 2026-02-20 --end-date 2026-02-21
+uv run scripts/create_daily_releases.py --start-date 2026-02-20 --end-date 2026-02-21
 ```
 
 **Output:**
@@ -49,10 +49,10 @@ python scripts/create_daily_releases.py --start-date 2026-02-20 --end-date 2026-
 **Options:**
 
 ```bash
-python scripts/create_daily_releases.py \
+uv run scripts/create_daily_releases.py \
   --start-date 2026-02-01 \        # Only process days on or after this date
   --end-date 2026-02-28 \          # Only process days on or before this date
-  --branch main \                  # Git branch to read commits from (default: HEAD)
+  --branch main \                  # Git branch to read commits from (default: origin/main)
   --dry-run \                      # Preview without making changes
   --skip-existing                  # Skip days where release already exists (default: True)
 ```
@@ -66,23 +66,23 @@ python scripts/create_daily_releases.py \
 Run the Python CLI to gather commits, diffs, and statistics:
 
 ```bash
-python scripts/analyze_git_changes.py [base_ref] [head_ref] --output-dir /tmp/mr-analysis
+uv run scripts/analyze_git_changes.py [base_ref] [head_ref] --output-dir /tmp/mr-analysis
 ```
 
 **Examples:**
 
 ```bash
 # Current branch vs main (default)
-python scripts/analyze_git_changes.py
+uv run scripts/analyze_git_changes.py
 
 # Specific branch vs develop
-python scripts/analyze_git_changes.py develop feature/new-auth
+uv run scripts/analyze_git_changes.py develop feature/new-auth
 
 # Specific commit range
-python scripts/analyze_git_changes.py abc123f def456g
+uv run scripts/analyze_git_changes.py abc123f def456g
 
 # Custom output directory
-python scripts/analyze_git_changes.py main HEAD --output-dir ./analysis-output
+uv run scripts/analyze_git_changes.py main HEAD --output-dir ./analysis-output
 ```
 
 **Output files created:**
@@ -101,26 +101,26 @@ python scripts/analyze_git_changes.py main HEAD --output-dir ./analysis-output
 Use the GitLab CLI integration to fetch existing MR data:
 
 ```bash
-python scripts/fetch_gitlab_mr.py <mr-id> --output /tmp/mr-data.json
+uv run scripts/fetch_gitlab_mr.py <mr-id> --output /tmp/mr-data.json
 ```
 
 **Examples:**
 
 ```bash
 # By MR ID
-python scripts/fetch_gitlab_mr.py 123
+uv run scripts/fetch_gitlab_mr.py 123
 
 # By !notation
-python scripts/fetch_gitlab_mr.py !123
+uv run scripts/fetch_gitlab_mr.py !123
 
 # By full URL
-python scripts/fetch_gitlab_mr.py https://gitlab.com/org/project/-/merge_requests/123
+uv run scripts/fetch_gitlab_mr.py https://gitlab.com/org/project/-/merge_requests/123
 
 # Without diff (faster)
-python scripts/fetch_gitlab_mr.py 123 --no-diff
+uv run scripts/fetch_gitlab_mr.py 123 --no-diff
 
 # Custom output file
-python scripts/fetch_gitlab_mr.py 123 --output ./mr-metadata.json
+uv run scripts/fetch_gitlab_mr.py 123 --output ./mr-metadata.json
 ```
 
 **Output:** JSON file with MR metadata, commits, and diffs
@@ -146,7 +146,7 @@ The AI analysis will:
 Use the Python formatter to generate polished markdown from AI analysis:
 
 ```bash
-python scripts/format_mr_description.py <analysis-json> --output /tmp/mr-description.md
+uv run scripts/format_mr_description.py <analysis-json> --output /tmp/mr-description.md
 ```
 
 **Examples:**

@@ -32,7 +32,7 @@ Rules:
 Example resolution:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementation_manager.py" \
+uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementation_manager.py" \
   status "${CLAUDE_PROJECT_DIR}" "$ARGUMENTS"
 ```
 
@@ -43,14 +43,14 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementat
 1. Query status:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementation_manager.py" \
+uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementation_manager.py" \
   status "${CLAUDE_PROJECT_DIR}" "$ARGUMENTS"
 ```
 
 2. If tasks remain, query ready tasks:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementation_manager.py" \
+uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementation_manager.py" \
   ready-tasks "${CLAUDE_PROJECT_DIR}" "$ARGUMENTS"
 ```
 
