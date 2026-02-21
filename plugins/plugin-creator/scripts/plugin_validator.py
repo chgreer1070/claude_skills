@@ -255,7 +255,6 @@ class FileType(StrEnum):
     AGENT = "agent"
     COMMAND = "command"
     PLUGIN = "plugin"
-    HOOK_SCRIPT = "hook_script"
     HOOK_CONFIG = "hook_config"
     CLAUDE_MD = "claude_md"
     REFERENCE = "reference"
@@ -282,8 +281,6 @@ class FileType(StrEnum):
             return FileType.COMMAND
         if path.name == "hooks.json":
             return FileType.HOOK_CONFIG
-        if path.suffix == ".js" and "hooks" in path.parts:
-            return FileType.HOOK_SCRIPT
         if path.name == "CLAUDE.md":
             return FileType.CLAUDE_MD
         if "references" in path.parts and path.suffix == ".md":
@@ -2739,34 +2736,41 @@ class PluginStructureValidator:
 
 
 class HookValidator:
-    """Validates Claude Code hook files.
+    """Validates Claude Code hooks.json configuration files.
 
-    For HOOK_CONFIG (hooks.json): validates JSON structure, event types, hook entries.
-    For HOOK_SCRIPT (.js in hooks/): validates file exists and has shebang.
+    Validates JSON structure, event types, and hook entries.
+    Hook scripts themselves are language-agnostic (any executable) and validated
+    by their respective language linters (biome, ruff, shellcheck, etc.).
     """
 
     VALID_EVENT_TYPES: ClassVar[frozenset[str]] = frozenset({
         "PreToolUse",
+        "PermissionRequest",
         "PostToolUse",
+        "PostToolUseFailure",
         "Notification",
-        "SubagentStop",
+        "UserPromptSubmit",
         "Stop",
+        "SubagentStart",
+        "SubagentStop",
+        "PreCompact",
+        "Setup",
+        "SessionStart",
+        "SessionEnd",
     })
 
     VALID_HOOK_TYPES: ClassVar[frozenset[str]] = frozenset({"command", "prompt"})
 
     def validate(self, path: Path) -> ValidationResult:
-        """Validate a hook config or hook script file.
+        """Validate a hooks.json configuration file.
 
         Args:
-            path: Path to hooks.json or .js hook script
+            path: Path to hooks.json
 
         Returns:
             ValidationResult with errors/warnings for hook issues
         """
-        if path.name == "hooks.json":
-            return self._validate_hook_config(path)
-        return self._validate_hook_script(path)
+        return self._validate_hook_config(path)
 
     def can_fix(self) -> bool:
         """Check if validator supports auto-fixing.
@@ -3029,56 +3033,6 @@ class HookValidator:
                             docs_url=generate_docs_url(HK003),
                         )
                     )
-
-    def _validate_hook_script(self, path: Path) -> ValidationResult:
-        """Validate a .js hook script file.
-
-        Checks that the script has a shebang line.
-
-        Args:
-            path: Path to .js hook script
-
-        Returns:
-            ValidationResult with warnings for missing shebangs
-        """
-        errors: list[ValidationIssue] = []
-        warnings: list[ValidationIssue] = []
-        info: list[ValidationIssue] = []
-
-        try:
-            content = path.read_text(encoding="utf-8")
-        except OSError as e:
-            errors.append(
-                ValidationIssue(
-                    field="(file)",
-                    severity="error",
-                    message=f"Could not read file: {e}",
-                    code=HK003,
-                    docs_url=generate_docs_url(HK003),
-                )
-            )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
-
-        # Check for shebang line
-        first_line = content.split("\n", maxsplit=1)[0] if content else ""
-        if not first_line.startswith("#!"):
-            warnings.append(
-                ValidationIssue(
-                    field="shebang",
-                    severity="warning",
-                    message="Hook script missing shebang line",
-                    code=HK003,
-                    docs_url=generate_docs_url(HK003),
-                    suggestion="Add shebang line, e.g.: #!/usr/bin/env node",
-                )
-            )
-
-        passed = len(errors) == 0
-        return ValidationResult(
-            passed=passed, errors=errors, warnings=warnings, info=info
-        )
 
 
 # ============================================================================
@@ -3851,8 +3805,8 @@ def _validate_single_path(  # noqa: PLR0912, C901
         # Plugin directories: validate structure
         validators.append(PluginStructureValidator())
 
-    elif file_type in {FileType.HOOK_CONFIG, FileType.HOOK_SCRIPT}:
-        # Hook files: validate structure/shebang
+    elif file_type == FileType.HOOK_CONFIG:
+        # hooks.json: validate structure, event types, hook entries
         validators.append(HookValidator())
 
     elif file_type in {FileType.CLAUDE_MD, FileType.REFERENCE, FileType.MARKDOWN}:
@@ -3863,7 +3817,7 @@ def _validate_single_path(  # noqa: PLR0912, C901
         # Unknown type
         typer.echo(f"Error: Cannot determine file type for: {path}", err=True)
         typer.echo(
-            "Expected: SKILL.md, agent .md, command .md, hook file, plugin directory, or markdown file",
+            "Expected: SKILL.md, agent .md, command .md, hooks.json, plugin directory, or markdown file",
             err=True,
         )
         raise typer.Exit(2) from None
