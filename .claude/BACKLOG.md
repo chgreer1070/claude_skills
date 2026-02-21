@@ -57,9 +57,19 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 
 **Source**: Plugin creation session 2026-02-19
 **Added**: 2026-02-19
+**Completed**: 2026-02-21
+**Status**: DONE — commits 49e0ae5, ea3e737 on branch claude/bulk-backlog-grooming-LIQDi
 **Plan**: plan/tasks-4-validate-orchestrator-discipline.md
-**Description**: The `orchestrator-discipline` plugin was created from session anti-pattern analysis. Its 2 hooks (`pre-tool-orchestrator-read-warning.cjs`, `pre-tool-diagnostic-command-gate.cjs`), rules/CLAUDE.md, skill, and investigation-escalation reference need end-to-end validation. Verify: hooks fire correctly on matching tool calls, hooks do NOT fire on legitimate orchestrator reads (BACKLOG.md, plan files, files being edited), rules load into session context, skill activates on trigger phrases, no personal/private data in any plugin file, plugin passes `claude plugin validate`.
+**Description**: T1-T4 complete. Plugin passes `claude plugin validate`. Hook directory detection added. `user-invocable: true` added to SKILL.md. All 5 hook behavior tests pass.
 **Suggested location**: `plugins/orchestrator-discipline/`
+
+### orchestrator-discipline: Remove name field from SKILL.md to enable slash command registration
+
+**Source**: T4 validation discovery (2026-02-21)
+**Added**: 2026-02-21
+**Priority**: P1
+**Description**: `plugins/orchestrator-discipline/skills/orchestrator-discipline/SKILL.md` has `name: orchestrator-discipline` on line 2. Per `plugin-creator/CLAUDE.md` "CRITICAL: Skill Name Field Bug" section, the presence of `name:` in SKILL.md frontmatter suppresses slash command registration in Claude Code v2.1.23. The `user-invocable: true` field added in ea3e737 will not enable skill activation until `name:` is removed. Remove the `name:` field and verify skill appears in `/` command list.
+**File**: `plugins/orchestrator-discipline/skills/orchestrator-discipline/SKILL.md` line 2
 
 ### SAM: Error Recovery / Rollback Procedures
 
