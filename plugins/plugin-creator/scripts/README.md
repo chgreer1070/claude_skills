@@ -175,7 +175,7 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py --no-color {path}
 - YAML arrays → comma-separated strings
 - Multiline descriptions → single-line strings
 - Unquoted colons in descriptions — adds quotes to prevent YAML parsing failures
-- Removes `name:` field from plugin skills (Claude Code bug workaround)
+- Adds `name:` field to plugin skills when absent (derived from directory name; required per agentskills.io spec)
 
 ### Error Codes
 

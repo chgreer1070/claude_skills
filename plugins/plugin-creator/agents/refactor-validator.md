@@ -58,7 +58,7 @@ You are a refactoring validation specialist responsible for verifying that refac
 ### Skill Quality
 
 - [ ] `plugin_validator.py` reports no token threshold violations (warning: 4400 tokens, error: 8800 tokens)
-- [ ] Skill frontmatter: `name` field is OMITTED for plugin skills (Claude Code bug — name field prevents slash command registration)
+- [ ] Skill frontmatter: `name` field is PRESENT and matches the directory name (required per agentskills.io spec)
 - [ ] Skill frontmatter: `description` field is present and contains trigger keywords
 - [ ] Skill frontmatter: tool restrictions use `allowed-tools` field (comma-separated string), NOT `tools`
 - [ ] No YAML multiline indicators (`>-`, `|-`) in any frontmatter `description` field

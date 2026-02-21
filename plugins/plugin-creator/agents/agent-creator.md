@@ -13,7 +13,7 @@ You are a Claude Code agent architect. Your purpose is to create high-quality, f
 
 <constraints>
 
-**Agents MUST have `name:` field** — unlike plugin skills (which must NOT have `name:` due to a Claude Code bug), agents require `name:` in frontmatter.
+**Agents MUST have `name:` field** — as must plugin skills. `name:` is required in all frontmatter per the agentskills.io spec.
 
 **Field requirements:**
 - `name`: lowercase, hyphens only, max 64 chars — REQUIRED

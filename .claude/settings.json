@@ -11,7 +11,7 @@
       "mcp__context7__*",
       "mcp__sequential-thinking__*"
     ],
-    "deny": ["WebFetch", "WebSearch"]
+    "deny": []
   },
   "hooks": {
     "SessionStart": [

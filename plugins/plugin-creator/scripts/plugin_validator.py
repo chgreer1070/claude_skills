@@ -1529,8 +1529,7 @@ class FrontmatterValidator:
                         code=FM010,
                         docs_url=generate_docs_url(FM010),
                         suggestion=(
-                            f"Set name: {skill_dir_name} to match the directory, "
-                            "or remove the 'name' field to use the directory name automatically"
+                            f"Set name: {skill_dir_name} to match the directory name"
                         ),
                     )
                 )
