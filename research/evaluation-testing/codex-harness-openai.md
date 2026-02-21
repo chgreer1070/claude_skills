@@ -1,0 +1,290 @@
+# Unlocking the Codex Harness: How We Built the App Server (OpenAI)
+
+**Research Date**: 2026-02-21
+**Source URL**: <https://openai.com/index/unlocking-the-codex-harness/>
+**GitHub Repository**: <https://github.com/openai/codex>
+**Version at Research**: rust-v0.104.0
+**License**: Apache License 2.0
+
+---
+
+## Overview
+
+This OpenAI engineering article (published 2026-02-04, authored by Celia Chen) documents the architecture and design decisions behind the Codex App Server -- a bidirectional JSON-RPC API that serves as the universal integration layer connecting the Codex coding agent harness to all client surfaces (web app, CLI, VS Code extension, Desktop app, JetBrains, Xcode). The App Server exposes the full Codex agent loop, thread lifecycle management, tool execution, and authentication flows through a stable, backward-compatible protocol. It replaces ad-hoc per-surface implementations with a single "Codex core" runtime that any client can drive via JSON-RPC over stdio (JSONL).
+
+---
+
+## Problem Addressed
+
+| Problem | Solution |
+|---------|----------|
+| Agent loop re-implemented for every client surface (TUI, VS Code, web, mobile) | Single "Codex core" library hosted by the App Server process; all surfaces drive same harness via JSON-RPC |
+| Request/response RPC insufficient for streaming agent progress (diffs, tool calls, approvals) | Bidirectional JSON-RPC with explicit item/turn/thread lifecycle primitives; server initiates requests for approvals |
+| Breaking changes across client releases when server evolves | Backward-compatible JSON-RPC surface; older clients talk to newer servers safely; TypeScript types generated from Rust protocol definitions |
+| MCP semantics insufficient for rich session interactions (diff updates, session state) | Custom JSON-RPC "lite" protocol layered over stdio (JSONL); MCP retained as a separate, narrower integration path |
+| Web sessions drop agent state when tab closes or network fails | Server-side thread persistence; clients reconnect and catch up from saved event history without rebuilding state |
+| IDE and desktop partners cannot decouple release cycles from agent core | Partners (Xcode, JetBrains) point to a pinned or updated App Server binary independently of their client release |
+| Multi-agent orchestration requires launching many concurrent agent sessions | Thread manager spawns one Codex core session per thread; App Server process hosts all threads concurrently |
+
+---
+
+## Key Statistics
+
+| Metric | Value | Date Gathered |
+|--------|-------|---------------|
+| GitHub Stars (openai/codex) | 61,233 | 2026-02-21 |
+| Forks | 8,118 | 2026-02-21 |
+| Contributors | 361 | 2026-02-21 |
+| Latest Release | rust-v0.104.0 | 2026-02-18 |
+| Article Publication Date | 2026-02-04 | 2026-02-21 |
+| Article Author | Celia Chen (Member of Technical Staff, OpenAI) | 2026-02-21 |
+| Primary Language (repo) | Rust | 2026-02-21 |
+
+---
+
+## Key Features
+
+### App Server Protocol Architecture
+
+- JSON-RPC "lite" variant: retains request/response/notification shape but omits `"jsonrpc": "2.0"` header; framed as JSONL over stdio
+- Fully bidirectional: clients send requests, server sends notifications, and server can also initiate requests (e.g., approval prompts) that pause agent turns until the client replies
+- Protocol versioning and capability negotiation via `initialize` handshake before any other method
+- TypeScript client bindings auto-generated from Rust protocol definitions via `codex app-server generate-ts`
+- JSON Schema bundle exportable for any language's code generator via `codex app-server generate-json-schema`
+- Clients implemented across Go, Python, TypeScript, Swift, and Kotlin by Codex surfaces and partners
+
+### Three Conversation Primitives
+
+- **Item**: Atomic typed unit of I/O (user message, agent message, tool execution, approval request, diff); explicit three-phase lifecycle: `item/started` → optional `item/*/delta` streaming → `item/completed`
+- **Turn**: One unit of agent work from user input to final agent output; contains ordered sequence of items representing intermediate steps
+- **Thread**: Durable container for an ongoing user-agent session; supports create, resume, fork, archive; history persisted for client reconnection
+
+### Codex Core Components Exposed
+
+- Thread lifecycle and persistence: create, resume, fork, archive; event history enables consistent UI re-rendering across reconnects
+- Config and auth: loads configuration, manages defaults, runs `Sign in with ChatGPT` authentication flows including credential state
+- Tool execution and extensions: executes shell/file tools in sandbox; wires MCP servers and skills under a consistent policy model
+- Core agent loop: orchestrates interaction between user, model, and tools
+
+### App Server Process Architecture
+
+- Four components: stdio reader, Codex message processor, thread manager, core threads
+- Thread manager spins up one `CodexCore` session per thread
+- Codex message processor translates client JSON-RPC requests into Codex core operations and transforms low-level events into stable, UI-ready JSON-RPC notifications
+- One client request produces many event update notifications; enables rich UI rendering
+
+### Integration Patterns for Clients
+
+- **Local apps and IDEs** (VS Code, Desktop App, JetBrains, Xcode): bundle or fetch platform-specific App Server binary, launch as long-lived child process, communicate over stdio
+- **Codex Web**: worker provisions container with checked-out workspace, launches App Server binary inside container; web app uses HTTP and SSE; stdio streams tunneled over persistent network connection (WebSocket-like) inside container
+- **TUI/CLI**: planned refactor to use App Server as standard client rather than native direct Rust type access (enables remote machine execution)
+
+### Integration Method Selection Guide
+
+| Method | Best For | Limitation |
+|--------|----------|------------|
+| Codex App Server | Full harness, stable UI-ready event stream, rich session semantics | Client-side JSON-RPC binding implementation required |
+| Codex as MCP server (`codex mcp-server`) | Existing MCP-based workflows, invoking Codex as a callable tool | MCP subset only; Codex-specific interactions (diff updates) may not map cleanly |
+| Codex Exec | One-off tasks, CI pipelines, non-interactive automation | Single command only, not interactive |
+| Codex SDK (TypeScript) | Native library interface without JSON-RPC client | Fewer languages, smaller surface area than App Server |
+| Cross-provider agent harness protocols | Multi-provider agent coordination | Converges on common subset; provider-specific semantics lost |
+
+---
+
+## Technical Architecture
+
+The Codex codebase is split into two main directories:
+
+```text
+openai/codex/
+  codex-rs/          # Rust implementation
+    app-server/      # App Server long-lived process
+    app-server-protocol/  # JSON-RPC protocol type definitions
+    app-server-test-client/  # Test client for debugging
+    core/            # Codex core agent loop library
+    cli/             # CLI binary
+    config/          # Configuration handling
+    chatgpt/         # ChatGPT auth integration
+    mcp-server/      # MCP server integration
+  codex-cli/         # TypeScript CLI components
+  sdk/               # TypeScript SDK
+```
+
+Agent execution flow:
+
+```text
+Client (VS Code / Desktop / Web / TUI)
+    |
+    | JSON-RPC over stdio (JSONL)
+    v
+App Server Process
+    ├── stdio reader          (reads JSONL from client)
+    ├── Codex message processor  (translates JSON-RPC ↔ Codex core events)
+    ├── Thread manager        (one CodexCore session per thread)
+    └── Core threads          (agent loop, tool execution, persistence)
+```
+
+For web sessions, stdio is tunneled:
+
+```text
+Browser (HTTP + SSE) → Codex Backend → Worker → Container (App Server binary over stdio)
+```
+
+The protocol uses `initialize` as a mandatory first message. Subsequent agent interactions follow this pattern:
+
+```text
+Client → thread/create
+Client → turn/submit (user input)
+Server → thread/started
+Server → turn/started
+Server → item/started (user message)
+Server → item/completed (user message)
+Server → item/started (tool call)
+... (tool execution)
+Server → [approval request] (pauses turn)
+Client → approval response
+Server → item/started (agent message)
+Server → item/*/delta (streaming)
+Server → item/completed (agent message)
+Server → turn/completed
+```
+
+---
+
+## Installation & Usage
+
+The App Server is part of the Codex CLI binary. Install via npm:
+
+```bash
+npm install -g @openai/codex
+```
+
+Or from source (Rust):
+
+```bash
+git clone https://github.com/openai/codex
+cd openai/codex/codex-rs
+cargo build --release
+```
+
+Debug the App Server with the built-in test client:
+
+```bash
+codex debug app-server send-message-v2 "run tests and summarize failures"
+```
+
+Generate TypeScript client bindings from Rust protocol definitions:
+
+```bash
+codex app-server generate-ts
+```
+
+Generate JSON Schema bundle for any language's code generator:
+
+```bash
+codex app-server generate-json-schema
+```
+
+Run Codex as an MCP server (narrower integration path):
+
+```bash
+codex mcp-server
+```
+
+Run Codex non-interactively for CI pipelines:
+
+```bash
+codex exec "run tests and summarize failures"
+```
+
+Initialize handshake example (JSON-RPC):
+
+```json
+{
+  "method": "initialize",
+  "id": 0,
+  "params": {
+    "clientInfo": {
+      "name": "codex_vscode",
+      "title": "Codex VS Code Extension",
+      "version": "0.1.0"
+    }
+  }
+}
+```
+
+---
+
+## Relevance to Claude Code Development
+
+### Applications
+
+- **Reference architecture for multi-surface agent deployment**: The App Server pattern directly applies to any agent (including Claude Code) that needs to serve multiple client surfaces (CLI, web, IDE) from a single harness without duplicating agent logic
+- **Agent loop protocol design**: The item/turn/thread primitives provide a proven vocabulary for streaming agent interactions that map cleanly to UI rendering needs; applicable to designing Claude Code's own conversation streaming API
+- **Approval flow patterns**: The bidirectional approval-pause-resume mechanism (server initiates approval request, turn pauses, client responds) is directly applicable to Claude Code's permission and approval UX
+- **Thread persistence for reconnect**: The server-side event history pattern enabling client reconnect without state rebuild is relevant to Claude Code's long-running task management
+
+### Patterns Worth Adopting
+
+- **Three-level conversation hierarchy** (item → turn → thread): Clean separation of concerns; items stream incrementally, turns bound a unit of agent work, threads provide durable session context
+- **Backward-compatible protocol evolution**: Designing JSON-RPC surfaces with versioning and capability negotiation from the start prevents breaking changes as the protocol evolves
+- **Schema-first protocol generation**: Defining the protocol in a typed language (Rust) and generating client bindings (TypeScript, JSON Schema) eliminates hand-written client boilerplate and keeps protocol definitions as the single source of truth
+- **Explicit item lifecycle events** (`started`/`delta`/`completed`): Enables clients to begin rendering immediately on `started`, stream incremental updates, and finalize on `completed` -- directly applicable to Claude Code streaming output
+- **Stdio as universal transport**: JSON-RPC over stdio (JSONL) works for local processes, can be tunneled over WebSocket for remote/container sessions, and requires no HTTP server infrastructure for local integrations
+
+### Integration Opportunities
+
+- **Claude Code App Server**: Claude Code could adopt an analogous App Server architecture to expose its agent loop to multiple surfaces (Cursor, Windsurf, JetBrains, web UIs) without re-implementing the agent logic per integration
+- **MCP interoperability**: The article explicitly positions MCP as a narrower "callable tool" integration path while the App Server handles richer session semantics -- Claude Code skill development should account for the same distinction when designing MCP vs. native integration APIs
+- **Protocol generation tooling**: The `codex app-server generate-ts` / `generate-json-schema` commands are a pattern worth replicating in Claude Code skills for any protocol that needs multi-language clients
+- **Remote agent execution**: The planned TUI refactor to App Server enables remote machine execution (agent close to compute, client displays locally) -- same pattern applicable to Claude Code remote development scenarios
+
+---
+
+## References
+
+- [Unlocking the Codex harness: how we built the App Server](https://openai.com/index/unlocking-the-codex-harness/) (accessed 2026-02-21)
+- [openai/codex GitHub repository](https://github.com/openai/codex) (accessed 2026-02-21)
+- [Codex CLI README](https://github.com/openai/codex/blob/main/README.md) (accessed 2026-02-21)
+- [Codex app-server-protocol source](https://github.com/openai/codex/tree/main/codex-rs/app-server-protocol) (accessed 2026-02-21)
+- [Codex app-server source](https://github.com/openai/codex/tree/main/codex-rs/app-server) (accessed 2026-02-21)
+- [Harness engineering: leveraging Codex in an agent-first world (companion post)](https://openai.com/index/harness-engineering-leveraging-codex-in-an-agent-first-world/) (accessed 2026-02-21)
+
+---
+
+## Freshness Tracking
+
+| Field | Value |
+|-------|-------|
+| Last Verified | 2026-02-21 |
+| Version at Verification | rust-v0.104.0 |
+| Next Review Recommended | 2026-05-21 |
+
+---
+
+## Integration Opportunities
+
+> Auto-generated by research-context-agent. Review before acting.
+
+### Enhances Existing
+
+| Target | Type | How |
+|--------|------|-----|
+| `plugins/development-harness/skills/development-harness/` | skill | The Codex item/turn/thread three-level conversation hierarchy maps directly onto the harness's artifact lifecycle (task → stage → thread); the `human-touchpoint-model.md` pause-and-resume escalation pattern mirrors Codex's bidirectional approval-pause-resume mechanism where the server initiates an approval request and the turn pauses until the client replies. Documenting this correspondence in `references/human-touchpoint-model.md` would give harness authors a proven vocabulary for the pause/resume interface. |
+| `plugins/development-harness/skills/development-harness/references/human-touchpoint-model.md` | skill reference | Codex's explicit three-phase item lifecycle (`item/started` → `item/*/delta` → `item/completed`) provides a pattern for streaming harness stage progress to clients that begin rendering on `started` and finalise on `completed`. The current model escalates but has no partial-progress streaming primitives; adopting this lifecycle would allow orchestrators to observe stage progress incrementally rather than waiting for artifact completion. |
+| `plugins/agent-orchestration/skills/agent-orchestration/` | skill | The App Server's thread persistence pattern (server-side event history enables clients to reconnect and catch up without rebuilding state) is directly applicable to the orchestrator's sub-agent context constraint problem documented in SKILL.md lines 356-364: sub-agents do not inherit orchestrator conversation history. A thread-persistence reference in the orchestration skill would inform how to design durable session context for long-running multi-stage tasks that span Claude Code sessions. |
+| `plugins/fastmcp-creator/skills/fastmcp-creator/` | skill | The research article's explicit integration method selection guide distinguishes the App Server (rich session semantics, full harness) from `codex mcp-server` (narrower, callable tool only). The fastmcp-creator skill teaches MCP server design but does not distinguish when MCP is the wrong integration path. Adding a section documenting the MCP-vs-App-Server tradeoff — with Codex as a concrete reference — would prevent authors from choosing MCP when they need richer session or diff-streaming semantics. |
+| `plugins/plugin-creator/skills/hooks-core-reference/` | skill | The Codex App Server uses JSON-RPC over stdio (JSONL) as its universal local transport, tunnelled over WebSocket for remote/container sessions. The hooks-core-reference skill documents that Claude Code hook scripts communicate over stdio with JSON output; documenting the JSONL framing convention from Codex as a proven pattern would help hook authors designing multi-event streaming hooks understand how to structure multi-message stdio output without conflating with single-response JSON hooks. |
+| `.claude/hooks/session-start-backlog.cjs` | hook | The App Server's `initialize` capability-negotiation handshake (mandatory first message before any other method) is the same pattern this hook attempts: inject context at session start before work begins. The hook currently reads a static BACKLOG.md. The Codex pattern of versioned capability negotiation suggests the hook could be extended to include a protocol version field in its `hookSpecificOutput` so future session-start hooks can negotiate what context they provide, enabling backward-compatible evolution of the session-start context layer. |
+
+### New Skill Candidates
+
+- **`codex-app-server-protocol`**: A skill teaching Claude to design bidirectional JSON-RPC protocols over stdio (JSONL) using the Codex App Server pattern, covering the mandatory `initialize` handshake, the three-level item/turn/thread hierarchy, backward-compatible capability negotiation via `generate-ts` / `generate-json-schema` tooling, and the integration method selection guide (App Server vs MCP server vs `codex exec` vs SDK). This directly addresses the need identified in the `fastmcp-creator` skill for guidance on when MCP is insufficient and a richer session protocol is required.
+
+- **`agent-session-persistence`**: A skill documenting patterns for durable agent session state — covering server-side event history for client reconnect, thread fork/archive/resume semantics, and per-worktree isolation — derived from the Codex thread lifecycle and the harness engineering pattern of keeping all knowledge in the repository as versioned artifacts. Would complement the `development-harness` artifact-conventions model by adding session-reconnect resilience to multi-stage tasks that outlast individual Claude Code sessions.
+
+### Cross-References
+
+- Related research: `research/evaluation-testing/harness-engineering-openai.md` — both files document the same OpenAI Codex engineering effort from complementary angles: `harness-engineering-openai.md` covers the workflow philosophy and documentation structure discipline; this file covers the App Server protocol architecture and multi-surface client integration. Together they provide a complete reference for harness design at both the process and protocol levels.
+- Related research: `research/evaluation-testing/harness-engineering-martin-fowler.md` — Böckeler's three-layer harness model (context layer, constraint layer, entropy-fighting agents) maps onto the Codex App Server's four components (stdio reader, message processor, thread manager, core threads); the constraint layer's custom linter pattern with agent-readable error messages is the deterministic analogue to the App Server's bidirectional approval flow.
+- Related research: `research/mcp-ecosystem/` (multiple files) — the App Server's explicit positioning of MCP as a narrower "callable tool" path versus the App Server for rich session semantics is directly relevant to every MCP server research entry; these files should be read alongside this one when deciding whether a new integration should be MCP-based or App-Server-style.

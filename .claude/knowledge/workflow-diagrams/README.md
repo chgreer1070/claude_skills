@@ -97,7 +97,7 @@ classDef neutral fill:#e0e0e0,stroke:#757575,stroke-width:1px,color:#424242
 
 | Hook                   | Stage Coverage | Primary Purpose                      |
 | ---------------------- | -------------- | ------------------------------------ |
-| session-start-rtica.js | Input          | Auto-trigger rt-ica on session start |
+| session-start-rtica.cjs | Input          | Auto-trigger rt-ica on session start |
 
 ---
 
@@ -106,7 +106,7 @@ classDef neutral fill:#e0e0e0,stroke:#757575,stroke-width:1px,color:#424242
 ```text
 Stage 1: INPUT RECEPTION
 ├── Coverage: ⚠️ PARTIAL
-├── Assets: /sessions, session-start-rtica.js
+├── Assets: /sessions, session-start-rtica.cjs
 └── Gaps: No task classification, no routing
 
 Stage 2: CONTEXT GATHERING

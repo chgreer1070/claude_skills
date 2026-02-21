@@ -48,7 +48,7 @@ Option C (root-level `CLAUDE.md`) matches the confirmed pattern, delivers conten
 
 ### Decision 2: Grep directory path coverage in hook
 
-**Chosen option**: Add a directory detection branch to the Grep path evaluation in `pre-tool-orchestrator-read-warning.js`. Use `fs.statSync(targetPath).isDirectory()` as the primary check, with `looksLikeDirectory()` heuristic as fallback. Fire the warning for all Grep calls where the path resolves to a directory — no source-name allowlist.
+**Chosen option**: Add a directory detection branch to the Grep path evaluation in `pre-tool-orchestrator-read-warning.cjs`. Use `fs.statSync(targetPath).isDirectory()` as the primary check, with `looksLikeDirectory()` heuristic as fallback. Fire the warning for all Grep calls where the path resolves to a directory — no source-name allowlist.
 
 **Rationale**:
 
@@ -69,7 +69,7 @@ Option A fires on all directory Grep calls. The concern raised in the feature co
 
 **Exact logic change**:
 
-Location: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js`
+Location: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs`
 
 Add `require('node:fs')` at the top of the file alongside existing requires (the file currently uses no `fs` import).
 
@@ -200,7 +200,7 @@ Content: full content of `plugins/orchestrator-discipline/rules/CLAUDE.md`, verb
 
 After content is confirmed moved to plugin root `CLAUDE.md`.
 
-### File: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js`
+### File: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs`
 
 Three changes:
 

@@ -41,8 +41,8 @@ process.stdin.on('end', () => {
 });
 ```
 
-Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js:28-40`
-Source: `plugins/orchestrator-discipline/hooks/pre-tool-diagnostic-command-gate.js:50-64`
+Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs:28-40`
+Source: `plugins/orchestrator-discipline/hooks/pre-tool-diagnostic-command-gate.cjs:50-64`
 Source: `plugins/dasel/hooks/session-start-dasel-check.cjs:39-43`
 
 **Exception**: `Stop` and `SessionStart` hooks that do not need tool input may skip stdin reading entirely and output directly via `console.log`. Example:
@@ -53,7 +53,7 @@ const output = { hookSpecificOutput: { hookEventName: 'SessionStart', additional
 console.log(JSON.stringify(output));
 ```
 
-Source: `.claude/hooks/session-start-rtica.js:7-16`
+Source: `.claude/hooks/session-start-rtica.cjs:7-16`
 
 **Alternative synchronous stdin**: The hallucination-detector Stop hook uses synchronous `fs.readFileSync(0, 'utf-8')` instead of async stdin events:
 
@@ -77,7 +77,7 @@ For PreToolUse hooks, the stdin JSON contains:
 | `tool_name`  | string | Name of the tool being called        | `data.tool_name`               |
 | `tool_input` | object | Tool-specific parameters object      | `data.tool_input`              |
 
-Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js:42-53`
+Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs:42-53`
 
 For Stop hooks, the stdin JSON contains:
 
@@ -108,11 +108,11 @@ process.exit(0);
 
 The `additionalContext` value is always wrapped in a named XML tag. Tag naming follows the plugin domain:
 
-- `<orchestrator-read-warning>` — `pre-tool-orchestrator-read-warning.js:62-79`
-- `<orchestrator-diagnostic-warning>` — `pre-tool-diagnostic-command-gate.js:81-104`
-- `<backlog-summary>` — `.claude/hooks/session-start-backlog.js:63-66`
-- `<rt-ica-checkpoint>` — `.claude/hooks/session-start-rtica.js:10-13`
-- `<backlog-reminder>` — `.claude/hooks/stop-backlog-reminder.js:8-13`
+- `<orchestrator-read-warning>` — `pre-tool-orchestrator-read-warning.cjs:62-79`
+- `<orchestrator-diagnostic-warning>` — `pre-tool-diagnostic-command-gate.cjs:81-104`
+- `<backlog-summary>` — `.claude/hooks/session-start-backlog.cjs:63-66`
+- `<rt-ica-checkpoint>` — `.claude/hooks/session-start-rtica.cjs:10-13`
+- `<backlog-reminder>` — `.claude/hooks/stop-backlog-reminder.cjs:8-13`
 
 **Variation in Stop hook output (no `hookSpecificOutput` wrapper)**:
 
@@ -124,7 +124,7 @@ const output = {
 };
 ```
 
-Source: `.claude/hooks/stop-backlog-reminder.js:8-14`
+Source: `.claude/hooks/stop-backlog-reminder.cjs:8-14`
 
 All `PreToolUse` hooks in this repo use the `hookSpecificOutput` wrapper.
 
@@ -154,7 +154,7 @@ try {
 }
 ```
 
-Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js:36-40`
+Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs:36-40`
 
 Early exit with empty object `{}` on non-matching tool names:
 
@@ -165,7 +165,7 @@ if (toolName !== 'Bash') {
 }
 ```
 
-Source: `plugins/orchestrator-discipline/hooks/pre-tool-diagnostic-command-gate.js:65-68`
+Source: `plugins/orchestrator-discipline/hooks/pre-tool-diagnostic-command-gate.cjs:65-68`
 
 ### 1.6 Accessing tool-specific fields
 
@@ -177,7 +177,7 @@ if (toolName === 'Read') {
 }
 ```
 
-Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js:46-48`
+Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs:46-48`
 
 **Grep tool** — target path is in `tool_input.path`:
 
@@ -187,7 +187,7 @@ Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warnin
 }
 ```
 
-Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js:49-51`
+Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs:49-51`
 
 **Bash tool** — command string is in `tool_input.command`:
 
@@ -195,7 +195,7 @@ Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warnin
 const command = data.tool_input?.command || '';
 ```
 
-Source: `plugins/orchestrator-discipline/hooks/pre-tool-diagnostic-command-gate.js:70`
+Source: `plugins/orchestrator-discipline/hooks/pre-tool-diagnostic-command-gate.cjs:70`
 
 ---
 
@@ -290,7 +290,7 @@ Three types observed in this repo:
 The environment variable `${CLAUDE_PLUGIN_ROOT}` is used in all plugin hook command strings for path resolution. Paths must be quoted when the plugin root could contain spaces:
 
 ```json
-"command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-orchestrator-read-warning.js\""
+"command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-orchestrator-read-warning.cjs\""
 ```
 
 Source: `plugins/orchestrator-discipline/hooks.json:11`
@@ -380,7 +380,7 @@ When Claude Code fires a `PreToolUse` hook for a Grep call, the `tool_input` obj
 }
 ```
 
-Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js:48-51`
+Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs:48-51`
 
 The hook reads `toolInput.path || ''` to get the target path.
 
@@ -393,7 +393,7 @@ const SOURCE_FILE_EXTENSIONS =
   /\.(py|toml|yaml|yml|js|ts|jsx|tsx|json|cfg|ini|env|sh|bash|go|rs|rb|java|c|cpp|h|hpp)$/i;
 ```
 
-Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js:15-16`
+Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs:15-16`
 
 This regex tests whether the path **ends with a source file extension**. It does **not** match directory paths (which have no extension). Therefore:
 
@@ -409,7 +409,7 @@ The `TEST_PATH_PATTERN` also matches:
 const TEST_PATH_PATTERN = /\/(tests?|spec|__tests?__)\/|test_[^/]+\.(py|js|ts)$/i;
 ```
 
-Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js:17`
+Source: `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs:17`
 
 This matches paths containing `/tests/`, `/test/`, `/spec/`, `/__tests__/` as directory segments.
 
@@ -530,8 +530,8 @@ Two patterns observed:
 - `console.log(JSON.stringify(output))` — used in SessionStart hooks (adds trailing newline, acceptable for these events)
 
 Source:
-- `process.stdout.write`: `pre-tool-orchestrator-read-warning.js:83`, `pre-tool-diagnostic-command-gate.js:108`
-- `console.log`: `.claude/hooks/session-start-backlog.js:69`, `.claude/hooks/session-start-rtica.js:16`
+- `process.stdout.write`: `pre-tool-orchestrator-read-warning.cjs:83`, `pre-tool-diagnostic-command-gate.cjs:108`
+- `console.log`: `.claude/hooks/session-start-backlog.cjs:69`, `.claude/hooks/session-start-rtica.cjs:16`
 
 ### 6.5 Exit codes
 
@@ -594,9 +594,9 @@ The orchestrator-discipline hooks do not specify a timeout (they run fast, no su
 
 | Tool  | Input field for path/target  | Source                                             |
 |-------|------------------------------|----------------------------------------------------|
-| Read  | `tool_input.file_path`       | `pre-tool-orchestrator-read-warning.js:47`         |
-| Grep  | `tool_input.path`            | `pre-tool-orchestrator-read-warning.js:50`         |
-| Bash  | `tool_input.command`         | `pre-tool-diagnostic-command-gate.js:70`           |
+| Read  | `tool_input.file_path`       | `pre-tool-orchestrator-read-warning.cjs:47`         |
+| Grep  | `tool_input.path`            | `pre-tool-orchestrator-read-warning.cjs:50`         |
+| Bash  | `tool_input.command`         | `pre-tool-diagnostic-command-gate.cjs:70`           |
 
 ### Quick lookup: hook output structures
 

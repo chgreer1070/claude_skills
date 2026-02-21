@@ -226,7 +226,7 @@ flowchart TD
     Q4 -->|"No"| NO
 
     subgraph EXAMPLES["Hook Examples"]
-        E1["session-start-rtica.js → Auto-load rt-ica"]
+        E1["session-start-rtica.cjs → Auto-load rt-ica"]
         E2["pre-commit → Validate before commit"]
         E3["post-tool → Log tool usage"]
     end
@@ -306,7 +306,7 @@ flowchart LR
     AGENT -->|"Follows patterns in"| SKILL
 ```
 
-**Example: session-start-rtica.js**
+**Example: session-start-rtica.cjs**
 
 1. Hook triggers on session start
 2. Loads rt-ica skill

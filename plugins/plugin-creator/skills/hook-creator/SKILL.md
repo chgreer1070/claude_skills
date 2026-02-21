@@ -26,9 +26,9 @@ flowchart TD
     Correct --> Pattern[Follow Node.js hook pattern below]
 ```
 
-**Evidence**: `orchestrator-discipline` plugin hooks (`pre-tool-orchestrator-read-warning.js`, `pre-tool-diagnostic-command-gate.js`), `.claude/hooks/session-start-backlog.js`, `.claude/hooks/session-start-rtica.js`, `.claude/hooks/stop-backlog-reminder.js`.
+**Evidence**: `orchestrator-discipline` plugin hooks (`pre-tool-orchestrator-read-warning.cjs`, `pre-tool-diagnostic-command-gate.cjs`), `.claude/hooks/session-start-backlog.cjs`, `.claude/hooks/session-start-rtica.cjs`, `.claude/hooks/stop-backlog-reminder.cjs`.
 
-SOURCE: Repository observation 2026-02-19 — 9 hooks, all `.js` (Node.js).
+SOURCE: Repository observation 2026-02-21 — all hooks use `.cjs` (Node.js CommonJS).
 
 ---
 
@@ -429,8 +429,8 @@ Common issues:
 ## Sources
 
 - `plugins/orchestrator-discipline/hooks.json` — verified plugin hooks.json format (lines 1-25, 2026-02-19)
-- `.claude/hooks/session-start-backlog.js` — verified Node.js hook pattern (lines 1-69, 2026-02-19)
-- `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.js` — verified stdin handling pattern (lines 28-85, 2026-02-19)
+- `.claude/hooks/session-start-backlog.cjs` — verified Node.js hook pattern (lines 1-69, 2026-02-19)
+- `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` — verified stdin handling pattern (lines 28-85, 2026-02-19)
 - `Skill(command: "plugin-creator:hooks-core-reference")` — event reference, matchers, environment variables (accessed 2026-01-28)
 - `Skill(command: "plugin-creator:hooks-io-api")` — JSON input/output schemas (accessed 2026-01-28)
 - `Skill(command: "plugin-creator:hooks-patterns")` — prompt-based hooks, code examples (accessed 2026-01-28)
