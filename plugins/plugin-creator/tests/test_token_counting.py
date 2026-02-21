@@ -2,7 +2,7 @@
 
 Tests:
 - Token counting determinism using hypothesis property-based testing
-- Threshold boundary conditions (exact values: 3999, 4000, 4001, 6400, 6401)
+- Threshold boundary conditions using TOKEN_WARNING_THRESHOLD and TOKEN_ERROR_THRESHOLD
 - Encoding consistency (cl100k_base)
 - Frontmatter exclusion from token counts
 - Known sample texts with verified token counts
@@ -30,7 +30,11 @@ from hypothesis import given, settings, strategies as st
 # Add parent directory to path to import plugin_validator
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from plugin_validator import ComplexityValidator
+from plugin_validator import (
+    TOKEN_ERROR_THRESHOLD,
+    TOKEN_WARNING_THRESHOLD,
+    ComplexityValidator,
+)
 
 
 def generate_exact_token_content(target_tokens: int) -> str:
@@ -209,16 +213,16 @@ class TestThresholdBoundaries:
     """
 
     def test_warning_threshold_below_4000_tokens(self, tmp_path: Path) -> None:
-        """Test no warning below 4000 tokens.
+        """Test no warning below TOKEN_WARNING_THRESHOLD.
 
         Tests: Warning threshold boundary
-        How: Create skill with ~3900 body tokens, validate
-        Why: Ensure SK006 warning appears only at >4000
+        How: Create skill with body tokens safely below TOKEN_WARNING_THRESHOLD, validate
+        Why: Ensure SK006 warning appears only at >TOKEN_WARNING_THRESHOLD
         """
         validator = ComplexityValidator()
 
-        # Generate content with ~3900 tokens (safely below threshold)
-        content = generate_exact_token_content(3900)
+        # Generate content safely below warning threshold
+        content = generate_exact_token_content(TOKEN_WARNING_THRESHOLD - 500)
 
         # Create skill file
         skill_md = tmp_path / "SKILL.md"
@@ -235,23 +239,23 @@ description: Test skill below warning threshold
         # Should pass with no warnings (well below threshold)
         assert result.passed is True, "Should pass below threshold"
         assert not any(issue.code == "SK006" for issue in result.warnings), (
-            "Should not have warning below 4000 tokens"
+            "Should not have warning below TOKEN_WARNING_THRESHOLD"
         )
         assert not any(issue.code == "SK007" for issue in result.errors), (
-            "Should not have error below 4000 tokens"
+            "Should not have error below TOKEN_WARNING_THRESHOLD"
         )
 
     def test_warning_threshold_above_4000_tokens_triggers(self, tmp_path: Path) -> None:
-        """Test warning triggers above 4000 tokens.
+        """Test warning triggers above TOKEN_WARNING_THRESHOLD.
 
         Tests: Warning threshold boundary (over threshold)
-        How: Create skill with ~4500 body tokens, validate
-        Why: Ensure SK006 warning appears when >4000
+        How: Create skill with body tokens safely above TOKEN_WARNING_THRESHOLD, validate
+        Why: Ensure SK006 warning appears when >TOKEN_WARNING_THRESHOLD
         """
         validator = ComplexityValidator()
 
-        # Generate content with ~4500 tokens (safely over warning threshold)
-        content = generate_exact_token_content(4500)
+        # Generate content safely over warning threshold
+        content = generate_exact_token_content(TOKEN_WARNING_THRESHOLD + 100)
 
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text(f"""---
@@ -266,23 +270,23 @@ description: Test skill over warning threshold
         # Should have warning SK006
         assert result.passed is True, "Should pass (warnings don't fail)"
         assert any(issue.code == "SK006" for issue in result.warnings), (
-            "Should have SK006 warning above 4000 tokens"
+            "Should have SK006 warning above TOKEN_WARNING_THRESHOLD"
         )
         assert not any(issue.code == "SK007" for issue in result.errors), (
-            "Should not have error below 6400 tokens"
+            "Should not have error below TOKEN_ERROR_THRESHOLD"
         )
 
     def test_error_threshold_below_6400_tokens(self, tmp_path: Path) -> None:
-        """Test no error below 6400 tokens.
+        """Test no error below TOKEN_ERROR_THRESHOLD.
 
         Tests: Error threshold boundary
-        How: Create skill with ~6200 body tokens, validate
-        Why: Ensure SK007 error appears only at >6400
+        How: Create skill with body tokens safely below TOKEN_ERROR_THRESHOLD, validate
+        Why: Ensure SK007 error appears only at >TOKEN_ERROR_THRESHOLD
         """
         validator = ComplexityValidator()
 
-        # Generate content with ~6200 tokens (safely below error threshold)
-        content = generate_exact_token_content(6200)
+        # Generate content safely below error threshold (but above warning threshold)
+        content = generate_exact_token_content(TOKEN_ERROR_THRESHOLD - 2600)
 
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text(f"""---
@@ -297,23 +301,23 @@ description: Test skill below error threshold
         # Should have warning but NOT error
         assert result.passed is True, "Should pass below error threshold"
         assert any(issue.code == "SK006" for issue in result.warnings), (
-            "Should have warning (>4000 tokens)"
+            "Should have warning (>TOKEN_WARNING_THRESHOLD tokens)"
         )
         assert not any(issue.code == "SK007" for issue in result.errors), (
-            "Should not have error below 6400 tokens"
+            "Should not have error below TOKEN_ERROR_THRESHOLD"
         )
 
     def test_error_threshold_above_6400_tokens_triggers(self, tmp_path: Path) -> None:
-        """Test error triggers above TOKEN_ERROR_THRESHOLD (8800 tokens).
+        """Test error triggers above TOKEN_ERROR_THRESHOLD.
 
         Tests: Error threshold boundary (over threshold)
-        How: Create skill with ~9000 body tokens, validate
-        Why: Ensure SK007 error appears when >8800
+        How: Create skill with body tokens safely above TOKEN_ERROR_THRESHOLD, validate
+        Why: Ensure SK007 error appears when >TOKEN_ERROR_THRESHOLD
         """
         validator = ComplexityValidator()
 
-        # Generate content with ~9000 tokens (safely over error threshold of 8800)
-        content = generate_exact_token_content(9000)
+        # Generate content safely over error threshold
+        content = generate_exact_token_content(TOKEN_ERROR_THRESHOLD + 200)
 
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text(f"""---
@@ -326,22 +330,22 @@ description: Test skill over error threshold
         result = validator.validate(skill_md)
 
         # Should have error SK007
-        assert result.passed is False, "Should fail above 8800 tokens"
+        assert result.passed is False, "Should fail above TOKEN_ERROR_THRESHOLD"
         assert any(issue.code == "SK007" for issue in result.errors), (
-            "Should have SK007 error above 8800 tokens"
+            "Should have SK007 error above TOKEN_ERROR_THRESHOLD"
         )
 
     def test_no_warning_well_below_threshold(self, tmp_path: Path) -> None:
-        """Test no warning well below threshold.
+        """Test no warning well below TOKEN_WARNING_THRESHOLD.
 
         Tests: Well below warning threshold
-        How: Create skill with ~3000 body tokens, validate
-        Why: Ensure no warnings well below 4000 token threshold
+        How: Create skill with body tokens well below TOKEN_WARNING_THRESHOLD, validate
+        Why: Ensure no warnings well below TOKEN_WARNING_THRESHOLD
         """
         validator = ComplexityValidator()
 
-        # Generate content with ~3000 tokens (well below all thresholds)
-        content = generate_exact_token_content(3000)
+        # Generate content well below all thresholds
+        content = generate_exact_token_content(TOKEN_WARNING_THRESHOLD - 1400)
 
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text(f"""---
@@ -355,8 +359,12 @@ description: Test skill well below thresholds
 
         # Should pass with no warnings or errors
         assert result.passed is True, "Should pass well below thresholds"
-        assert len(result.warnings) == 0, "Should have no warnings below 4000 tokens"
-        assert len(result.errors) == 0, "Should have no errors below 4000 tokens"
+        assert len(result.warnings) == 0, (
+            "Should have no warnings below TOKEN_WARNING_THRESHOLD"
+        )
+        assert len(result.errors) == 0, (
+            "Should have no errors below TOKEN_WARNING_THRESHOLD"
+        )
 
 
 class TestEncodingConsistency:
@@ -488,7 +496,7 @@ Just a few sentences to verify frontmatter exclusion works correctly.
         """Test small frontmatter with large body triggers warning.
 
         Tests: Body token counting is accurate
-        How: Create skill with minimal frontmatter but large body (>4000 tokens)
+        How: Create skill with minimal frontmatter but large body (>TOKEN_WARNING_THRESHOLD)
         Why: Verify body content is correctly measured
         """
         validator = ComplexityValidator()
@@ -497,18 +505,18 @@ Just a few sentences to verify frontmatter exclusion works correctly.
 
         enc = tiktoken.get_encoding("cl100k_base")
 
-        # Generate large body content (>4000 tokens)
+        # Generate large body content (>TOKEN_WARNING_THRESHOLD tokens)
         large_body = (
             "This is a test sentence for the body. " * 400
         )  # ~8 tokens * 400 = 3200 tokens
-        # Add more to reach >4000
+        # Add more to reach >TOKEN_WARNING_THRESHOLD
         large_body += (
             "Additional content to reach threshold. " * 150
         )  # ~6 tokens * 150 = 900 more
 
         tokens_in_body = len(enc.encode(large_body))
-        assert tokens_in_body > 4000, (
-            f"Test setup: body should be >4000 tokens, got {tokens_in_body}"
+        assert tokens_in_body > TOKEN_WARNING_THRESHOLD, (
+            f"Test setup: body should be >{TOKEN_WARNING_THRESHOLD} tokens, got {tokens_in_body}"
         )
 
         skill_md = tmp_path / "SKILL.md"
@@ -587,7 +595,7 @@ Activate this skill when you need guidance on skill creation.
 
         # Verify known token count
         expected_tokens = len(enc.encode(sample_text))
-        # This sample should be well under 4000 tokens
+        # This sample should be well under TOKEN_WARNING_THRESHOLD
         assert expected_tokens < 100, (
             f"Test assumption: sample should be <100 tokens, got {expected_tokens}"
         )

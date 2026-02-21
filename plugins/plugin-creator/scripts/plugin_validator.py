@@ -124,7 +124,7 @@ def _dump_yaml(data: dict[str, Any]) -> str:
     return buf.getvalue()
 
 
-def _fix_unquoted_colons(frontmatter_text: str) -> tuple[str, list[str]]:
+def _fix_unquoted_colons(frontmatter_text: str) -> tuple[str, list[str], list[str]]:
     """Quote description (and similar string) values that contain unquoted colons.
 
     Detects lines of the form ``key: value: more`` where the unquoted colon
@@ -134,32 +134,37 @@ def _fix_unquoted_colons(frontmatter_text: str) -> tuple[str, list[str]]:
         frontmatter_text: Raw YAML frontmatter (without ``---`` delimiters).
 
     Returns:
-        Tuple of (possibly-fixed frontmatter text, list of fix descriptions).
+        Tuple of (possibly-fixed frontmatter text, list of fix descriptions,
+        list of field names that were fixed).  The field names list has one entry
+        per fixed line and is used by callers to emit FM009 info issues.
     """
     fixes: list[str] = []
+    fixed_fields: list[str] = []
     lines = frontmatter_text.splitlines(keepends=True)
     new_lines = []
 
     # Regex: key: value where value contains an unquoted colon
     # Only matches simple single-line scalar values, not block scalars or already-quoted values
-    unquoted_colon_re = re.compile(r'^(\s*[\w-]+:\s+)([^\'"\[\{|>].+:.*)$')
+    unquoted_colon_re = re.compile(r'^(\s*([\w-]+):\s+)([^\'"\[\{|>].+:.*)$')
 
     for line in lines:
         m = unquoted_colon_re.match(line.rstrip("\n"))
         if m:
             prefix = m.group(1)
-            value = m.group(2)
+            field_name = m.group(2)
+            value = m.group(3)
             # Escape any existing double-quotes inside the value
             escaped = value.replace('"', '\\"')
             new_line = f'{prefix}"{escaped}"\n'
             fixes.append("Quoted description value containing unquoted colon")
+            fixed_fields.append(field_name)
             new_lines.append(new_line)
         else:
             new_lines.append(line)
 
     if fixes:
-        return "".join(new_lines), fixes
-    return frontmatter_text, []
+        return "".join(new_lines), fixes, fixed_fields
+    return frontmatter_text, [], []
 
 
 # Error code base URL for documentation links
@@ -1289,7 +1294,10 @@ class FrontmatterValidator:
         """
         errors: list[ValidationIssue] = []
         warnings: list[ValidationIssue] = []
-        info: list[ValidationIssue] = []
+        # Drain any FM009 info issues queued by a preceding fix() call so that
+        # --verbose output shows what was silently repaired.
+        info: list[ValidationIssue] = self._pending_fm009_info
+        self._pending_fm009_info = []
 
         # Read file
         try:
@@ -1603,7 +1611,27 @@ class FrontmatterValidator:
         """
         return get_frontmatter_model(file_type.value)
 
-    def _apply_fixes(  # noqa: PLR0912, C901
+    def _queue_fm009_info(self, fixed_fields: list[str]) -> None:
+        """Append FM009 info issues for fields that were auto-fixed by colon quoting.
+
+        Args:
+            fixed_fields: Field names whose values were quoted.
+        """
+        for field_name in fixed_fields:
+            self._pending_fm009_info.append(
+                ValidationIssue(
+                    field=field_name,
+                    severity="info",
+                    message=(
+                        f"Auto-fixed: unquoted value containing colon was quoted"
+                        f" in field '{field_name}'"
+                    ),
+                    code=FM009,
+                    docs_url=generate_docs_url(FM009),
+                )
+            )
+
+    def _apply_fixes(  # noqa: PLR0912, PLR0914, C901
         self, content: str, file_type: FileType, file_path: Path | None = None
     ) -> tuple[str, list[str]]:
         """Apply auto-fixes to content.
@@ -1632,9 +1660,12 @@ class FrontmatterValidator:
         try:
             original_data = _safe_load_yaml(frontmatter_text)
         except YAMLError:
-            fixed_fm, colon_fixes = _fix_unquoted_colons(frontmatter_text)
+            fixed_fm, colon_fixes, colon_fields = _fix_unquoted_colons(frontmatter_text)
             if not colon_fixes:
                 return content, []
+            # Queue FM009 info issues so the subsequent validate() call can surface
+            # them in --verbose output, making the silent auto-repair visible.
+            self._queue_fm009_info(colon_fields)
             try:
                 original_data = _safe_load_yaml(fixed_fm)
                 # Rebuild full content with fixed frontmatter so downstream
