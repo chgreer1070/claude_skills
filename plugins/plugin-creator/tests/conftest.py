@@ -11,23 +11,17 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import re
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
-from typer.testing import CliRunner
+from typer.testing import CliRunner, Result
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-
-# Suppress ANSI colour output before the module-level import below.
-# Rich reads NO_COLOR / FORCE_COLOR at console-initialisation time (module
-# load), so these must be set before exec_module() runs, not in a fixture.
-# GitHub Actions sets FORCE_COLOR=1 which overrides NO_COLOR; unset it first.
-os.environ.pop("FORCE_COLOR", None)
-os.environ["NO_COLOR"] = "1"
 
 # Load the plugin-validator module (has hyphen in name, so use importlib)
 _VALIDATOR_PATH = Path(__file__).parent.parent / "scripts" / "plugin_validator.py"
@@ -37,16 +31,35 @@ if spec and spec.loader:
     sys.modules["plugin_validator"] = plugin_validator
     spec.loader.exec_module(plugin_validator)
 
+_ANSI_ESCAPE = re.compile(rb"\x1b\[[0-9;]*[mGKHFJA-Z]")
+
+
+class _PlainCliRunner(CliRunner):
+    """CliRunner that strips ANSI escape codes from captured output.
+
+    Click 8.x no longer strips ANSI from result.stdout. GitHub Actions sets
+    FORCE_COLOR=1, causing Rich to emit ANSI codes regardless of NO_COLOR or
+    stream-TTY status. Stripping at the byte level is the only reliable fix.
+    """
+
+    def invoke(self, *args: Any, **kwargs: Any) -> Result:
+        """Invoke CLI and strip ANSI codes from stdout/stderr bytes."""
+        result = super().invoke(*args, **kwargs)
+        result.stdout_bytes = _ANSI_ESCAPE.sub(b"", result.stdout_bytes)
+        if result.stderr_bytes is not None:
+            result.stderr_bytes = _ANSI_ESCAPE.sub(b"", result.stderr_bytes)
+        return result
+
 
 @pytest.fixture
 def cli_runner() -> CliRunner:
     """Provide CliRunner configured for testing.
 
     Returns:
-        CliRunner with mix_stderr=False to separate stdout/stderr and NO_COLOR
-        to suppress ANSI escape codes in captured output.
+        _PlainCliRunner with mix_stderr=False that strips ANSI escape codes
+        from captured output for environment-independent string assertions.
     """
-    return CliRunner(mix_stderr=False)
+    return _PlainCliRunner(mix_stderr=False)
 
 
 @pytest.fixture
