@@ -1,7 +1,7 @@
 ---
 name: create-backlog-item
-description: "Create a new item in .claude/BACKLOG.md. No args: guided intake via AskUserQuestion. With 'quick {title}': inline capture from user description. Writes item to correct priority section, updates frontmatter counts, offers GitHub Issue creation for P0/P1. Enforces required fields (title, priority, description) and duplicate detection before writing."
-argument-hint: '[quick {title} | <empty for guided intake>]'
+description: "Create a new item in .claude/BACKLOG.md. No args: guided intake via AskUserQuestion. With 'quick {title}': inline capture from user description. With '--auto {title}': fully autonomous — derives all fields from research files and task context, skips all AskUserQuestion calls, logs decisions made. Writes item to correct priority section, updates frontmatter counts, offers GitHub Issue creation for P0/P1. Enforces required fields (title, priority, description) and duplicate detection before writing."
+argument-hint: '[quick {title} | --auto {title} | <empty for guided intake>]'
 user-invocable: true
 ---
 # Create Backlog Item
@@ -14,15 +14,41 @@ Capture a new backlog item and append it to `.claude/BACKLOG.md` in the correct 
 
 - **Empty** — guided intake via `AskUserQuestion` prompts
 - **`quick {title}`** — skip title question, ask for description and priority only
+- **`--auto {title}`** — fully autonomous: derive all fields from context, skip all interactive prompts, log every decision made with evidence
 
 ```text
-/create-backlog-item                        # guided intake
-/create-backlog-item quick GitHub milestone skill  # quick entry
+/create-backlog-item                                   # guided intake
+/create-backlog-item quick GitHub milestone skill      # quick entry
+/create-backlog-item --auto vercel skills npm package  # autonomous (agent use)
 ```
 
 ## Workflow
 
 ### Step 1: Collect Item Fields
+
+**If `$ARGUMENTS` starts with `--auto`:**
+
+Extract title from remainder of `$ARGUMENTS`. Do not call `AskUserQuestion`. Instead:
+
+1. Search `research/` recursively for any file whose name or content matches the title (case-insensitive). Read the best match.
+2. Search `.claude/BACKLOG.md` for related items to understand existing priority patterns.
+3. Derive all fields from the research file, task description, and available context:
+   - **Title**: from `$ARGUMENTS` after `--auto`
+   - **Priority**: infer from description urgency keywords (`critical`, `required`, `must` → P1; `nice to have`, `optional` → P2; default P1)
+   - **Description**: summarize from research file overview + problem statement
+   - **Source**: `"Agent task — auto-derived from research/{filename}"`
+   - **Type**: infer from description (`install`, `integrate`, `add` → Feature; default Feature)
+4. Log every decision:
+
+```text
+[AUTO] Title: {title} — from $ARGUMENTS
+[AUTO] Priority: P1 — inferred from description (no urgency keywords found, defaulting P1)
+[AUTO] Description: derived from research/skill-generation-tools/vercel-labs-skills.md
+[AUTO] Source: Agent task — auto-derived from research/skill-generation-tools/vercel-labs-skills.md
+[AUTO] Type: Feature — inferred from "integrate" keyword
+```
+
+Proceed to Step 2 (validate). Skip Steps 7 (GitHub issue) — auto mode does not create GitHub issues unless `--create-issue` is also passed.
 
 **If `$ARGUMENTS` is empty (guided intake):**
 
@@ -104,6 +130,8 @@ Proceed anyway? (y/n)
 ```
 
 Use `AskUserQuestion` with Yes / No options. If No: stop.
+
+**In `--auto` mode**: if a duplicate is found, log `[AUTO] STOP — duplicate detected: "{existing title}" in {section}` and stop without writing. Do not ask.
 
 ### Step 4: Compose Item Block
 

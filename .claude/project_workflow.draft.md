@@ -19,6 +19,8 @@ flowchart TD
     Invoke -->|"close {title}"| Close9Start
     Invoke -->|"resolve {title}"| Resolve9Start
     Invoke -->|"Title substring"| Step1
+    Invoke -->|"--auto {title}"| AutoFlag["Set AUTO flag\nNo AskUserQuestion calls\nDerive from context\nLog all decisions"]
+    AutoFlag --> Step1
 
     %% ─── INTERACTIVE BROWSER MODE ───
     Browser["Step 0: Interactive Browser\nRead BACKLOG.md\nParse H3 headings: P0, P1, P2, Ideas\nDetermine grooming status per item"]
@@ -59,6 +61,8 @@ flowchart TD
     OfferCreate --> CreateDecision{"User wants\nto create item?"}
     CreateDecision -->|"No"| STOP_NOTFOUND(["STOP — no item found, user declined creation"])
     CreateDecision -->|"Yes"| InvokeCreate["Invoke /create-backlog-item\n(guided or quick mode)"]
+    CreateDecision -->|"--auto: skip ask\nauto-invoke"| AutoCreate["Invoke /create-backlog-item --auto {title}\nLog: [AUTO] No item found — auto-creating\nDerive fields from research/ files"]
+    AutoCreate --> CreateDone
     InvokeCreate --> CreateDone{"Item created\nsuccessfully?"}
     CreateDone -->|"No"| STOP_CREATEFAIL(["STOP — item creation failed\nor user cancelled"])
     CreateDone -->|"Yes"| Step1
@@ -85,6 +89,8 @@ flowchart TD
 
     IssueField -->|"Not found + P0/P1"| OfferIssue["Prompt:\n'This P1/P0 item has no linked GitHub issue.\nCreate one? (yes/no)'"]
     IssueField -->|"Not found + P2/Ideas"| Step3
+    IssueField -->|"Not found + P0/P1 + --auto"| AutoSkipIssue["Log: [AUTO] Skipping GitHub issue offer"]
+    AutoSkipIssue --> Step3
 
     OfferIssue -->|"no"| Step3
     OfferIssue -->|"yes"| CreateIssue

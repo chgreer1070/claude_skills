@@ -1,7 +1,7 @@
 ---
 name: work-backlog-item
-description: "Use when working, planning, or closing a backlog item. Bridges BACKLOG.md to the SAM planning pipeline with optional GitHub Issue/Project/Milestone tracking. No args: interactive browser. With title substring: auto-grooming, RT-ICA gate, GitHub issue sync, SAM planning, plan reference recorded. 'close {title}': verifies plan checklist 100% complete, closes GitHub issue, marks DONE. 'resolve {title}': marks item no longer applicable with reason. 'setup-github': initializes labels, creates project and first milestone. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
-argument-hint: '[item-title-substring | close {title} | resolve {title} | setup-github]'
+description: "Use when working, planning, or closing a backlog item. Bridges BACKLOG.md to the SAM planning pipeline with optional GitHub Issue/Project/Milestone tracking. No args: interactive browser. With title substring: auto-grooming, RT-ICA gate, GitHub issue sync, SAM planning, plan reference recorded. '--auto {title}': fully autonomous mode — no AskUserQuestion calls, derives missing data from research files, logs all decisions, skips interactive GitHub prompts; suitable for agent use without human in the loop. 'close {title}': verifies plan checklist 100% complete, closes GitHub issue, marks DONE. 'resolve {title}': marks item no longer applicable with reason. 'setup-github': initializes labels, creates project and first milestone. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
+argument-hint: '[--auto {title} | item-title-substring | close {title} | resolve {title} | setup-github]'
 user-invocable: true
 ---
 # Work Backlog Item
@@ -16,16 +16,32 @@ When invoked with no arguments, shows an interactive backlog browser. When invok
 
 - **Empty** — interactive browser
 - **Title substring** — case-insensitive match against H3 headings; triggers planning workflow
+- **`--auto {title}`** — autonomous mode: no `AskUserQuestion` calls; derives missing data from research files and context; logs all decisions; skips interactive GitHub prompts; suitable for agent use without a human in the loop
 - **`close {title}`** — verify and close a completed item
 - **`resolve {title}`** — mark an item as no longer applicable (with reason)
 
 ```text
-/work-backlog-item                         # interactive browser
-/work-backlog-item Error Recovery          # direct match → planning
-/work-backlog-item regex false positive    # planning
-/work-backlog-item close Error Recovery    # verify and close
-/work-backlog-item resolve commitlint      # mark no longer applicable
+/work-backlog-item                                    # interactive browser
+/work-backlog-item Error Recovery                    # direct match → planning
+/work-backlog-item --auto vercel skills npm package  # autonomous → planning
+/work-backlog-item close Error Recovery              # verify and close
+/work-backlog-item resolve commitlint                # mark no longer applicable
 ```
+
+### --auto mode rules
+
+When `$ARGUMENTS` starts with `--auto`, the following substitutions apply at every interactive decision point:
+
+| Normal behaviour | `--auto` substitution |
+|---|---|
+| Step 1: zero matches → ask user to create | Auto-invoke `create-backlog-item --auto {title}`, log `[AUTO] No item found — invoking create-backlog-item --auto` |
+| Step 1: multiple matches → ask user to pick | Log `[AUTO] Multiple matches — picking first: {title}`, proceed with first match |
+| Step 2.5: offer GitHub issue for P0/P1 | Log `[AUTO] Skipping GitHub issue offer`, continue without issue |
+| Step 2.5: ask milestone assignment | Log `[AUTO] Skipping milestone assignment`, skip |
+| RT-ICA BLOCKED | Log `[AUTO] STOP — RT-ICA BLOCKED: {missing inputs}`, stop (cannot resolve without human) |
+| Any other `AskUserQuestion` | Log `[AUTO] Decision: {chosen option} — reason: {evidence}`, proceed with logged choice |
+
+`--auto` does NOT change the behaviour of Steps 3–8 (grooming, RT-ICA evaluation, SAM planning, BACKLOG.md write) — those are already agent-executable without human input.
 
 ## Workflow
 
