@@ -171,7 +171,6 @@ def _fetch_count(
 
 @dataclass
 class _FileStats:
-    primary_sid: str
     slug: str
     project_name: str
     first_ts: str
@@ -186,14 +185,11 @@ class _FileStats:
 def _scan_records(path: Path, records: list[dict]) -> _FileStats:
     """Extract statistics from parsed JSONL records."""
     slug = path.parent.name
-    session_ids: set[str] = set()
     timestamps: list[str] = []
     user_msgs: list[dict] = []
     assistant_turns = 0
 
     for rec in records:
-        sid = rec.get("sessionId", "unknown")
-        session_ids.add(sid)
         ts = rec.get("timestamp", "")
         if ts:
             timestamps.append(ts)
@@ -201,12 +197,11 @@ def _scan_records(path: Path, records: list[dict]) -> _FileStats:
         if msg_type == "user" and "toolUseResult" not in rec:
             content = _extract_text(rec.get("message", {}).get("content"))
             if content and not _is_noise(content):
-                user_msgs.append({"sid": sid, "ts": ts, "content": content})
+                user_msgs.append({"ts": ts, "content": content})
         elif msg_type == "assistant":
             assistant_turns += 1
 
     return _FileStats(
-        primary_sid=next(iter(session_ids), path.stem),
         slug=slug,
         project_name=_slug_to_project_name(slug),
         first_ts=min(timestamps) if timestamps else "",
@@ -220,13 +215,19 @@ def _scan_records(path: Path, records: list[dict]) -> _FileStats:
 
 
 def _index_file(con: duckdb.DuckDBPyConnection, path: Path) -> tuple[int, int]:
-    """Index one JSONL file. Returns (user_msgs_indexed, assistant_turns)."""
+    """Index one JSONL file. Returns (user_msgs_indexed, assistant_turns).
+
+    Uses path.stem as the canonical session_id — stable, 1-per-file, matches
+    the filesystem UUID the user sees with `ls ~/.claude/projects/*/`.
+    """
     stats = _scan_records(path, _iter_records(path))
-    sid = stats.primary_sid
+    sid = path.stem  # filename UUID — stable, never changes
+    SUMMARIES_DIR.mkdir(parents=True, exist_ok=True)
+    has_summary = (SUMMARIES_DIR / f"{sid}.md").exists()
 
     con.execute(
         """
-        INSERT INTO sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, ?)
+        INSERT INTO sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (session_id, file_path) DO UPDATE SET
             first_ts = excluded.first_ts,
             last_ts = excluded.last_ts,
@@ -234,6 +235,7 @@ def _index_file(con: duckdb.DuckDBPyConnection, path: Path) -> tuple[int, int]:
             user_msg_count = excluded.user_msg_count,
             assistant_turns = excluded.assistant_turns,
             file_size_kb = excluded.file_size_kb,
+            has_summary = excluded.has_summary,
             indexed_at = excluded.indexed_at
     """,
         [
@@ -247,6 +249,7 @@ def _index_file(con: duckdb.DuckDBPyConnection, path: Path) -> tuple[int, int]:
             len(stats.user_msgs),
             stats.assistant_turns,
             stats.file_kb,
+            has_summary,
             stats.now,
         ],
     )
@@ -368,8 +371,10 @@ def cmd_list(
     table.add_column("KB", justify="right", style="dim")
     table.add_column("Summary", justify="center")
 
-    for sid, proj, last_ts, umsg, aturns, kb, has_sum, _ in rows:
+    for sid, proj, last_ts, umsg, aturns, kb, _has_sum_db, _ in rows:
         date_str = last_ts[:16].replace("T", " ") if last_ts else "?"
+        # Check filesystem directly — survives --rebuild without re-running mark-summarized
+        summary_exists = (SUMMARIES_DIR / f"{sid}.md").exists()
         table.add_row(
             sid[:12],
             proj or "unknown",
@@ -377,7 +382,7 @@ def cmd_list(
             str(umsg or 0),
             str(aturns or 0),
             f"{kb:.0f}" if kb else "?",
-            "✓" if has_sum else "·",
+            "✓" if summary_exists else "·",
         )
 
     stdout.print(table)
