@@ -1,137 +1,132 @@
 ---
-description: 'Create GitHub Releases and git tags for every calendar day with commits. Groups commits by UTC date, categorizes by conventional commit type (feat/fix/refactor/docs/test/ci/chore), and generates structured changelogs. Use to backfill daily releases for the entire repository history or maintain ongoing daily release artifacts. Automatically invoked; idempotent and safe to run repeatedly without duplicating releases.'
-argument-hint: '[options]'
+description: 'Create GitHub Releases with AI-analyzed changelogs for every calendar day with commits on origin/main. Uses the same analyze → AI-categorize → format pipeline as /create-merge-request-changelog for rich, structured output. Idempotent: skips days that are already up to date, updates releases where new commits have been added. Automatically invoked when command is run; accepts optional --start-date, --end-date, --branch, --dry-run arguments.'
+argument-hint: '[--start-date YYYY-MM-DD] [--end-date YYYY-MM-DD] [--branch BRANCH] [--dry-run]'
 ---
 
 # Daily Releases
 
-Automatically create GitHub Releases with categorized changelogs for every calendar day the repository had commits.
+Create GitHub Releases with AI-categorized changelogs for every day that had commits. Uses the same pipeline as `/create-merge-request-changelog` — real AI analysis, not template substitution.
 
-## Quick Start
+## Automatic Invocation
+
+When this skill is activated, immediately begin processing without asking the user. Parse any arguments from `$ARGUMENTS`:
+
+```text
+--start-date YYYY-MM-DD   Only process days on or after this date
+--end-date YYYY-MM-DD     Only process days on or before this date (default: today)
+--branch BRANCH           Git branch (default: origin/main)
+--dry-run                 Preview without creating releases
+```
+
+## Process
+
+### Step 1: List days to process
 
 ```bash
-# Preview what would be created (no changes)
-/daily-releases --dry-run
-
-# Create all daily releases for entire history
-/daily-releases
-
-# Process specific date range
-/daily-releases --start-date 2026-02-01 --end-date 2026-02-28
-
-# Process one specific day
-/daily-releases --start-date 2026-02-21 --end-date 2026-02-21
+uv run scripts/list_daily_ranges.py [--branch BRANCH] [--start-date ...] [--end-date ...]
 ```
 
-## How It Works
+This outputs a JSON array. Each entry has:
 
-The script reads all commits on a branch, groups them by UTC date, and for each day intelligently handles releases:
-
-1. **Groups commits** by conventional commit type:
-   - `feat:` → Enhancements
-   - `fix:` → Bug Fixes
-   - `refactor:` → Technical Debt
-   - `docs:` → Documentation
-   - `test:` → Testing
-   - `ci:`, `build:` → Build & CI
-   - `chore:`, `style:`, `perf:` → Non-Functional
-
-2. **Generates markdown changelog** with categorized changes
-
-3. **Smart release handling**:
-   - **New day** (no release exists): Creates `daily-YYYY-MM-DD` tag and GitHub Release
-   - **New commits on existing day**: Renames old tag to `daily-YYYY-MM-DD-r2` (or `-r3`, etc.), creates new `daily-YYYY-MM-DD` tag, updates release with all commits
-   - **Same commits, missing release notes**: Updates release body only (tag unchanged)
-
-4. **Pushes tags and releases** to remote
-
-## Options
-
-```
---start-date TEXT       Only process days on or after this date (YYYY-MM-DD)
---end-date TEXT         Only process days on or before this date (YYYY-MM-DD)
---branch TEXT           Git branch/ref to read commits from (default: origin/main)
---dry-run              Print what would be created without making changes
---skip-existing        Skip days where release tag already exists (default: True)
+```json
+{
+  "date": "2026-02-21",
+  "tag": "daily-2026-02-21",
+  "base_ref": "<parent-commit-hash>",
+  "head_ref": "<last-commit-hash-of-day>",
+  "commit_count": 12,
+  "release_exists": true,
+  "needs_update": false
+}
 ```
 
-## Features
+Skip entries where `release_exists: true` and `needs_update: false` — those are up to date.
 
-- **Smart updates**: Detects new commits on existing days and updates releases appropriately
-  - New commits → Creates versioned tag (`-r2`, `-r3`, etc.) for old commits, updates main tag
-  - Missing release notes → Updates notes only, tag unchanged
-  - No changes → Skips day (no duplicates)
-- **Backfill capable**: Process entire repository history in one run
-- **Conventional commits**: Automatically parses commit types for categorization
-- **Dry-run preview**: See exactly what would be created before making changes
-- **Date filtering**: Process specific date ranges or single days
-- **Safe re-runs**: Can run daily without creating duplicates or orphaned releases
+For `--dry-run`, print the list and stop.
 
-## Examples
+### Step 2: For each day that needs a release
 
-### Backfill entire repository
+Work through days chronologically. For each day:
+
+#### 2a. Extract git data
 
 ```bash
-/daily-releases
+uv run ../create-merge-request-changelog/scripts/analyze_git_changes.py \
+  <base_ref> <head_ref> /tmp/daily-releases/<date>/
 ```
 
-Processes all commits grouped by date. On first run, creates releases for every day with commits.
+This writes to `/tmp/daily-releases/<date>/`:
 
-### Preview before committing
+- `commits_oneline.txt` — one-line commit list
+- `commits_detailed.txt` — full commit messages with metadata
+- `changes.diff` — unified diff
+- `changes_stat.txt` — diffstat summary
+- `changed_files.txt` — file list with A/M/D status
+- `changes_numstat.txt` — per-file line counts
+- `summary.json` — machine-readable stats
+
+#### 2b. AI analysis
+
+Read the extracted data and apply the primary analysis prompt from:
+
+```text
+../create-merge-request-changelog/references/analysis_prompts.md
+```
+
+Use the **Primary Analysis Prompt** section with the day's data substituted in:
+
+- `{commit_details}` → contents of `commits_detailed.txt`
+- `{changes_diff}` → contents of `changes.diff` (truncate to ~4000 chars if very large; use `changes_stat.txt` summary instead)
+- `{changed_files}` → contents of `changed_files.txt`
+- `{commit_count}`, `{files_changed}`, `{lines_added}`, `{lines_deleted}` → from `summary.json`
+
+Produce the structured JSON analysis output defined in the prompt's `<output_format>` section.
+
+Also generate a title using the **Title Generation Prompt**:
+
+```text
+Daily Release - <date>
+```
+
+Save the complete analysis JSON to `/tmp/daily-releases/<date>/analysis.json`.
+
+#### 2c. Format into release notes
 
 ```bash
-/daily-releases --dry-run
+uv run ../create-merge-request-changelog/scripts/format_mr_description.py \
+  /tmp/daily-releases/<date>/analysis.json \
+  --no-preview \
+  --title "Daily Release - <date>" \
+  --output /tmp/daily-releases/<date>/description.md
 ```
 
-Shows what releases would be created without making any changes.
-
-### Process specific month
+#### 2d. Publish the release
 
 ```bash
-/daily-releases --start-date 2026-02-01 --end-date 2026-02-28
+uv run scripts/publish_daily_release.py \
+  --date <date> \
+  --tag <tag> \
+  --head-ref <head_ref> \
+  --notes-file /tmp/daily-releases/<date>/description.md
 ```
 
-Creates releases only for February 2026.
+Add `--keep-existing-tag=false` if updating a release that already has the correct tag commit.
 
-### Daily updates with new commits
+### Step 3: Report
 
-```bash
-/daily-releases
+After processing all days, print a summary:
+
+```text
+Processed N days:
+  - Created: X new releases
+  - Updated: Y existing releases
+  - Skipped: Z already up to date
 ```
 
-Run this daily. The script automatically:
-- Creates releases for new days
-- Updates release notes if commits changed but tag didn't
-- Renames old tags to `-r2`, `-r3` if new commits added to existing day
-- Main tag always points to latest commit of the day
+## Reference files
 
-### Verify output before pushing
-
-```bash
-/daily-releases --start-date 2026-02-21 --end-date 2026-02-21 --dry-run
-```
-
-Preview a single day's release before creating it.
-
-## Output
-
-For each day processed:
-
-- **Git tag**: `daily-YYYY-MM-DD` (points to last commit of that day)
-- **GitHub Release**: Named `Daily Release - YYYY-MM-DD` with markdown changelog
-- **Changelog content**: Changes grouped by type (Enhancements, Bug Fixes, etc.)
-
-## Requirements
-
-- Git repository with commits
-- `gh` (GitHub CLI) installed and authenticated
-- Commits on a branch (default: HEAD/main)
-
-## Notes
-
-- Day boundaries are UTC
-- Merge commits are categorized as non-functional/chore
-- When new commits appear on an existing day, old tag is renamed to `-r2`, `-r3`, etc.
-- New main tag (`daily-YYYY-MM-DD`) always points to the latest commit of the day
-- Safe to run daily without creating duplicates
-- Use `--dry-run` to preview changes before committing
+- [./scripts/list_daily_ranges.py](./scripts/list_daily_ranges.py) — list days + commit ranges
+- [./scripts/publish_daily_release.py](./scripts/publish_daily_release.py) — create/update git tag + GitHub release
+- [../create-merge-request-changelog/scripts/analyze_git_changes.py](../create-merge-request-changelog/scripts/analyze_git_changes.py) — extract git data per day
+- [../create-merge-request-changelog/references/analysis_prompts.md](../create-merge-request-changelog/references/analysis_prompts.md) — AI analysis prompts
+- [../create-merge-request-changelog/scripts/format_mr_description.py](../create-merge-request-changelog/scripts/format_mr_description.py) — render AI analysis to markdown
