@@ -1,7 +1,7 @@
 ---
 name: work-backlog-item
-description: Bridges BACKLOG.md to the SAM planning pipeline — use when you want to pick a backlog item and move it into a SAM plan. No args shows interactive backlog browser with grooming status; with args finds item by title substring, auto-grooms if needed, runs RT-ICA to BLOCK on missing inputs before SAM planning, invokes add-new-feature, then updates backlog with plan reference. STOPS if item already has a Plan field or RT-ICA returns BLOCKED.
-argument-hint: '[item-title-substring]'
+description: "Bridges BACKLOG.md to the SAM planning pipeline. No args: interactive browser. With title substring: auto-grooming, RT-ICA gate, SAM planning, plan reference recorded. 'close {title}': verifies plan checklist 100% complete, spawns acceptance-criteria agent, marks DONE on pass. 'resolve {title}': marks item no longer applicable with reason. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
+argument-hint: '[item-title-substring | close {title} | resolve {title}]'
 user-invocable: true
 ---
 # Work Backlog Item
@@ -12,13 +12,19 @@ When invoked with no arguments, shows an interactive backlog browser. When invok
 
 ## Arguments
 
-`$ARGUMENTS` is an optional case-insensitive title substring matching an H3 heading in BACKLOG.md.
+`$ARGUMENTS` is one of:
+
+- **Empty** — interactive browser
+- **Title substring** — case-insensitive match against H3 headings; triggers planning workflow
+- **`close {title}`** — verify and close a completed item
+- **`resolve {title}`** — mark an item as no longer applicable (with reason)
 
 ```text
-/work-backlog-item                    # interactive browser
-/work-backlog-item Error Recovery     # direct match
-/work-backlog-item regex false positive
-/work-backlog-item validate-task-file
+/work-backlog-item                         # interactive browser
+/work-backlog-item Error Recovery          # direct match → planning
+/work-backlog-item regex false positive    # planning
+/work-backlog-item close Error Recovery    # verify and close
+/work-backlog-item resolve commitlint      # mark no longer applicable
 ```
 
 ## Workflow
@@ -71,8 +77,12 @@ When invoked with no arguments, shows an interactive backlog browser. When invok
    - `G [number]` — invoke `Skill(skill="groom-backlog-item", args="{item title}")` then re-display the list
    - `G all` — invoke `Skill(skill="groom-backlog-item", args="all")` then re-display the list
    - `D [number]` — display the full item description, research_first field, and grooming manifest if it exists in `.claude/grooming-reports/`, then re-display the list
+   - `C [number]` — set `$ARGUMENTS` to `close {item title}` and proceed to Step 9
+   - `R [number]` — set `$ARGUMENTS` to `resolve {item title}` and proceed to Step 9
 
 </step0_procedure>
+
+**Routing:** If `$ARGUMENTS` starts with `close` or `resolve`, extract the title substring and jump directly to Step 9.
 
 ### Step 1: Find the Backlog Item
 
@@ -224,7 +234,158 @@ Backlog item "{title}" is now planned.
 - Plan file: plan/tasks-{N}-{slug}.md (or plan/tasks-{N}-{slug}/ directory)
 - To execute:      /python3-development:implement-feature {slug}
 - To check status: /python3-development:implementation-manager status . {slug}
+- To close when done: /work-backlog-item close {slug}
 ```
+
+### Step 9: Verify and Close
+
+**Trigger:** `$ARGUMENTS` starts with `close` or `resolve`.
+
+<step9_procedure>
+
+Extract the operation and title substring from `$ARGUMENTS`:
+
+- `close {title}` → verify implementation and mark COMPLETED
+- `resolve {title}` → mark no longer applicable (no verification required)
+
+#### 9a: Find Item
+
+Read `.claude/BACKLOG.md`. Search H3 headings for case-insensitive match against `{title}`.
+
+- Zero matches: report "No backlog item found matching: {title}" and stop.
+- Multiple matches: list all matches and ask user to pick one.
+- Item already in `## Completed` section: report "Item already closed on {Completed date}" and stop.
+
+#### 9b: Resolve path (skip verification)
+
+If operation is `resolve`:
+
+1. Use `AskUserQuestion` to ask: "Why is this item no longer applicable?" (free text)
+2. Update the matched item in `.claude/BACKLOG.md`:
+
+```text
+### {original title}
+
+**Source**: {source}
+**Added**: {added}
+**Resolved**: {YYYY-MM-DD}
+**Status**: RESOLVED — {user-provided reason}
+**Description**: {description}
+```
+
+3. Update `last-updated:` in BACKLOG.md YAML frontmatter to today's date.
+4. Report:
+
+```text
+Backlog item "{title}" resolved.
+Reason: {reason}
+```
+
+Then stop.
+
+#### 9c: Close path — checklist verification
+
+If operation is `close`:
+
+1. Extract `**Plan**:` field from the matched item. If absent:
+
+```text
+No plan file recorded for "{title}". Cannot verify checklist.
+Either run /work-backlog-item {title} first to create a plan,
+or use /work-backlog-item resolve {title} if no plan was needed.
+```
+
+Then stop.
+
+2. Read the plan file. Count:
+   - `total_tasks` — lines matching `- \[ \]` or `- \[x\]`
+   - `checked_tasks` — lines matching `- \[x\]`
+
+3. If `checked_tasks < total_tasks`:
+
+```text
+Checklist incomplete: {checked_tasks}/{total_tasks} tasks done.
+
+Remaining:
+{list of unchecked task lines}
+
+Complete all tasks before closing this item.
+```
+
+Then stop.
+
+#### 9d: Close path — acceptance criteria verification
+
+4. Spawn a verification agent:
+
+```text
+Task(
+  subagent_type: "general-purpose",
+  prompt: "You are verifying whether a completed backlog item genuinely satisfies its stated goal.
+
+Backlog item title: {title}
+Description and acceptance criteria:
+{description text from BACKLOG.md}
+
+Plan file: {plan file path}
+Plan checklist: {checked_tasks}/{total_tasks} — 100% complete.
+
+Your task:
+1. Read the plan file to understand what was implemented.
+2. Search git log for commits referencing this item (use: git log --oneline -20).
+3. Read 2-3 key changed files to verify the implementation exists.
+4. Assess: Does the implementation satisfy the stated goal? Is the product better for it?
+
+Return:
+- PASS or FAIL
+- One sentence of evidence (file:line or commit SHA)
+- Any gaps you found (if FAIL)"
+)
+```
+
+5. Collect agent verdict:
+   - **PASS**: proceed to 9e
+   - **FAIL**: report gaps, do not close:
+
+```text
+Verification FAILED for "{title}".
+
+Gaps found:
+{agent findings}
+
+Address these gaps before closing.
+```
+
+Then stop.
+
+#### 9e: Write closing record
+
+6. Update the matched item in `.claude/BACKLOG.md`:
+
+```text
+### {original title}
+
+**Source**: {source}
+**Added**: {added}
+**Completed**: {YYYY-MM-DD}
+**Status**: DONE — verified by checklist ({checked}/{total}) + acceptance criteria check
+**Plan**: {plan file path}
+**Description**: {description}
+```
+
+7. Update `last-updated:` and `last-completed:` in BACKLOG.md YAML frontmatter to today's date.
+
+8. Report:
+
+```text
+Backlog item "{title}" closed.
+
+- Checklist: {checked}/{total} tasks complete
+- Acceptance criteria: PASS
+- Status written to BACKLOG.md
+```
+
+</step9_procedure>
 
 ## Error Handling
 
@@ -235,8 +396,15 @@ Backlog item "{title}" is now planned.
 - `add-new-feature` fails: report the failure, do not update BACKLOG.md
 - Plan file not found after planning: search `plan/` directory broadly, ask user to confirm the path
 - Grooming reports directory does not exist: treat all items as ungroomed
+- `close` with no `**Plan**:` field: report and offer `resolve` as alternative
+- `close` with incomplete checklist: list remaining tasks, do not close
+- `close` with verification FAIL: report gaps, do not close
+- `close` on already-completed item: report closed date, do not re-close
+- `resolve` with no reason provided: block until user provides reason (reason is required evidence)
 
-## Example Session (with argument)
+## Example Sessions
+
+### Planning (with argument)
 
 ```text
 > /work-backlog-item Error Recovery
@@ -257,4 +425,41 @@ Updated BACKLOG.md with Plan: plan/tasks-2-error-recovery.md
 Next steps:
 - To execute:      /python3-development:implement-feature error-recovery
 - To check status: /python3-development:implementation-manager status . error-recovery
+- To close when done: /work-backlog-item close error-recovery
+```
+
+### Closing a completed item
+
+```text
+> /work-backlog-item close validator UX
+
+Found: "plugin-validator UX and coverage gaps" (P1)
+Plan: plan/tasks-2-validator-ux-coverage.md
+Checklist: 12/12 tasks complete
+
+Spawning acceptance criteria verification agent...
+
+Verdict: PASS
+Evidence: Sub-issues 1-4 implemented in plugins/plugin-creator/scripts/plugin_validator.py
+          commit 4a2f1b3 — "fix(validator): report unique files, add hook validation"
+
+Backlog item "plugin-validator UX and coverage gaps" closed.
+- Checklist: 12/12 tasks complete
+- Acceptance criteria: PASS
+- Status written to BACKLOG.md
+```
+
+### Resolving a no-longer-applicable item
+
+```text
+> /work-backlog-item resolve commitlint verify last flag
+
+Found: "commitlint: Verify --last flag and exit codes against primary sources" (P1)
+Why is this item no longer applicable?
+> REFUTED by fact-check: --last flag is verified in commitlint source cli.ts. No fix needed.
+
+Backlog item resolved.
+  Resolved: 2026-02-21
+  Status: RESOLVED — REFUTED by fact-check: --last flag verified against commitlint
+          source cli.ts and official docs. No fix needed.
 ```
