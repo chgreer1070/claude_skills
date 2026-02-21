@@ -1,9 +1,9 @@
 ---
+name: plugin-creator
 description: Orchestrates specialized agents to create high-quality Claude Code plugins. Delegates to researcher agents for domain knowledge, Explore agents for code discovery, validation agents for official docs verification, and review agents for quality checks. Use when creating new plugins or improving existing ones.
-user-invocable: true
 model: sonnet
+user-invocable: true
 ---
-
 # Claude Code Plugin Creator - Agentic Orchestration Workflow
 
 This skill orchestrates specialized agents through a comprehensive plugin creation workflow. The orchestrator (you) delegates to sub-agents for research, discovery, validation, and implementation - never performing these tasks directly.

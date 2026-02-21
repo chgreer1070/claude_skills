@@ -1,10 +1,10 @@
 ---
+name: arl
 description: Knowledge reference for Autonomous Refinement Loop research — pattern research into prerequisites for autonomous execution without synchronous human blocking gates. Defines failure categories, prerequisites, and conditions for replacing human judgment with machine-verifiable checks. Use when designing or evaluating autonomous agent loops, gate conditions, or HOOTL execution patterns.
-user-invocable: true
 model: opus
 context: fork
+user-invocable: true
 ---
-
 # Autonomous Refinement Loop (ARL) — Knowledge Reference
 
 **Autonomous Refinement Loop (ARL)** is pattern research into what an AI assistant needs — in information, tools, verification mechanisms, access to external resources, and knowledge of past failures — to produce outcomes that match the user's vision without requiring the human to be a synchronous blocking gate during execution.

@@ -126,9 +126,9 @@ class TestFrontmatterYAMLErrors:
         Why: Ensure FM002 error raised for invalid YAML
         """
         skill_md = tmp_path / "SKILL.md"
+        # Use YAML that ruamel.yaml (the active parser) rejects: unclosed flow sequence
         skill_md.write_text("""---
-description: Test
-  - invalid indentation
+description: [unclosed bracket
 ---
 
 # Content
@@ -550,3 +550,148 @@ def test_parametrized_error_codes(
 
     assert result.passed is False
     assert any(issue.code == expected_error_code for issue in result.errors)
+
+
+class TestNameFieldRestoration:
+    """Test that the name field is restored during auto-fix (bug workaround reversed).
+
+    The Claude Code bug (2026-01-29) that caused plugin skills with a 'name' field to
+    not appear as slash commands has been resolved. The validators previously removed the
+    'name' field as a workaround; they now add it back when absent.
+    """
+
+    def test_name_field_added_from_directory_when_missing(self, tmp_path: Path) -> None:
+        """Test auto-fix adds name field derived from parent directory name.
+
+        Tests: Skill missing 'name' field gets name added from parent dir
+        How: Create SKILL.md inside a named directory, run fix(), check result
+        Why: Ensure restored behavior adds 'name' when absent
+        """
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text("""---
+description: A test skill without a name field
+tools: Read, Write
+---
+
+# Content
+""")
+
+        validator = FrontmatterValidator()
+        fixes = validator.fix(skill_md)
+
+        assert any("name" in fix.lower() and "my-skill" in fix for fix in fixes)
+        content = skill_md.read_text()
+        assert "name: my-skill" in content
+
+    def test_name_field_preserved_when_already_present(self, tmp_path: Path) -> None:
+        """Test auto-fix does NOT remove or overwrite existing name field.
+
+        Tests: Skill with existing valid 'name' field keeps it unchanged
+        How: Create SKILL.md with name field, run fix(), verify name unchanged
+        Why: Ensure existing valid name is not modified
+        """
+        skill_dir = tmp_path / "my-skill"
+        skill_dir.mkdir()
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text("""---
+name: my-skill
+description: A test skill with a name field
+---
+
+# Content
+""")
+
+        validator = FrontmatterValidator()
+        # No fixable issues — fix() returns empty list
+        fixes = validator.fix(skill_md)
+
+        # The name field must not be removed
+        content = skill_md.read_text()
+        assert "name: my-skill" in content
+        # Fix list must not contain a removal message
+        assert not any(
+            "removed" in fix.lower() and "name" in fix.lower() for fix in fixes
+        )
+
+    def test_name_field_not_added_when_directory_name_invalid(
+        self, tmp_path: Path
+    ) -> None:
+        """Test auto-fix skips adding name when directory name is invalid.
+
+        Tests: Skill in directory with non-conforming name (e.g. underscores)
+        How: Create SKILL.md in underscore-named dir, run fix(), check no name added
+        Why: Ensure validator does not add a name that would fail validation
+        """
+        skill_dir = tmp_path / "my_skill_with_underscores"
+        skill_dir.mkdir()
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text("""---
+description: Skill in directory with underscores in name
+---
+
+# Content
+""")
+
+        validator = FrontmatterValidator()
+        validator.fix(skill_md)
+
+        content = skill_md.read_text()
+        # Name must not have been added since the dir name is invalid
+        assert "name: my_skill_with_underscores" not in content
+
+    def test_mismatched_name_corrected_to_directory_name(self, tmp_path: Path) -> None:
+        """Test auto-fix corrects name field that doesn't match directory name.
+
+        Tests: Skill with name field that doesn't match its parent directory
+        How: Create SKILL.md with wrong name, run fix(), verify name corrected
+        Why: Ensure name field always matches directory name after fix
+        """
+        skill_dir = tmp_path / "correct-name"
+        skill_dir.mkdir()
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text("""---
+name: wrong-name
+description: Skill with mismatched name
+---
+
+# Content
+""")
+
+        validator = FrontmatterValidator()
+        fixes = validator.fix(skill_md)
+
+        assert any("correct-name" in fix for fix in fixes)
+        content = skill_md.read_text()
+        assert "name: correct-name" in content
+        assert "name: wrong-name" not in content
+
+    def test_mismatched_name_raises_validation_warning(self, tmp_path: Path) -> None:
+        """Test validation warns when name field doesn't match directory name.
+
+        Tests: Skill with name: field value different from parent directory
+        How: Create SKILL.md with mismatched name, run validate(), check warning
+        Why: Ensure validator catches name/directory mismatches
+        """
+        skill_dir = tmp_path / "actual-dir-name"
+        skill_dir.mkdir()
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text("""---
+name: different-name
+description: Skill with mismatched name field
+---
+
+# Content
+""")
+
+        validator = FrontmatterValidator()
+        result = validator.validate(skill_md)
+
+        # Mismatch is a warning, not an error — passed should be True
+        assert result.passed is True
+        all_issues = result.warnings + result.errors
+        assert any(
+            "name" in issue.field.lower() and "actual-dir-name" in issue.message
+            for issue in all_issues
+        )

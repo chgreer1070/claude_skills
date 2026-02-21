@@ -1,8 +1,8 @@
 ---
+name: universe-of-thoughts
 description: Creative reasoning framework for ill-defined problems where conventional solutions are suboptimal. Use when the problem has ambiguous goals, vast solution space, no single correct answer, or requires innovation. Implements three paradigms — combinational (novel combinations of familiar ideas), exploratory (expand solution space boundaries), transformative (alter fundamental constraints). Do not use for well-defined problems, mathematical puzzles, or tasks requiring convergent reasoning.
 user-invocable: true
 ---
-
 # Universe of Thoughts (UoT)
 
 Creative reasoning framework based on Margaret Boden's cognitive science theory of creativity. Implements three paradigms that build sequentially: Combinational → Exploratory → Transformative.

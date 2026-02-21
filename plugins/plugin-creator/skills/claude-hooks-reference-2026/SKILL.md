@@ -1,8 +1,8 @@
 ---
+name: claude-hooks-reference-2026
 description: Complete reference for Claude Code hooks system (January 2026). Loads focused specialist skills for hooks-core-reference, hooks-io-api, and hooks-patterns. Use when creating hooks, understanding hook events, matchers, exit codes, JSON output control, environment variables, plugin hooks, or implementing hook scripts.
 user-invocable: true
 ---
-
 # Claude Code Hooks System - Complete Reference (January 2026)
 
 This skill loads focused specialist components for comprehensive hooks coverage.

@@ -1,7 +1,7 @@
 ---
+name: stdlib-scripting
 description: LAST RESORT for stdlib-only Python 3.11+ scripts in CONFIRMED restricted environments (airgapped systems, no uv, no internet access). Creates portable dependency-free scripts using argparse, logging, config management (JSON/TOML/INI), and cross-platform patterns. Use ONLY when environment restrictions prevent Typer+Rich with PEP 723. Triggers on "stdlib-only script", "no dependencies", "airgapped", "restricted environment", "portable script no network". For standard CLI development, use python-cli-architect with Typer+Rich instead.
 ---
-
 # Stdlib Scripting
 
 ## Positioning

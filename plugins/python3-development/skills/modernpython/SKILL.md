@@ -1,9 +1,9 @@
 ---
+name: modernpython
 description: Apply modern Python 3.11+ best practices with proper types, DRY, SRP, and framework patterns. Use when reviewing Python code for modernization opportunities, when writing new Python code to ensure modern patterns, or when refactoring legacy Python code to use current idioms.
 argument-hint: '[file-paths-or-topic]'
 user-invocable: true
 ---
-
 # Python Modernization Guide
 
 The model applies modern Python 3.11+ patterns when writing or reviewing Python code.

@@ -706,10 +706,11 @@ class TestStateLock:
         )
         refresh_fn = _pn_state.add_periodic_callback.call_args[0][0]
 
-        # The csv_file was written above so it exists on disk with a real mtime.
-        # _refresh checks: current_mtime = csv_path.stat().st_mtime if csv_path.exists()
-        # The real mtime will differ from the initial state["last_mtime"] of 0.0,
-        # so the update branch fires without needing to mock Path methods.
+        # _initial_load() already called _refresh() once, which set state["last_mtime"]
+        # to csv_file's current mtime.  Advance the mtime so the next _refresh()
+        # call sees a change and the update branch (with _state_lock) fires.
+        future_time = time.time() + 100
+        os.utime(csv_file, (future_time, future_time))
 
         mock_lock = MagicMock()
         mock_lock.__enter__ = MagicMock(return_value=None)

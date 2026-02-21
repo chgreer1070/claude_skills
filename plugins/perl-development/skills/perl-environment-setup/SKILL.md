@@ -1,7 +1,7 @@
 ---
+name: perl-environment-setup
 description: This skill should be used when the user asks to "install perlbrew", "set up Perl environment", "install Perl version", "manage Perl versions", "switch Perl version", "install plenv", or mentions Perl version management, development environment setup, or multiple Perl installations.
 ---
-
 # Perl Environment Setup
 
 Guide for setting up Perl development environments using perlbrew for version management.

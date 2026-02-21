@@ -1,4 +1,5 @@
 ---
+name: commit-staged
 description: Generate descriptive commit messages by analyzing git diffs, very fast and context-pollution safe. Use when the user asks to commit staged changes or needs a conventional-commits message generated from the current diff.
 argument-hint: '[notes or comments to account for in the commit message]'
 allowed-tools: Bash(git:*), Read, Glob, Grep, Bash(grep:*), Bash(find:*), Bash(fdfind:*), Bash(prek:*), Bash(uv run prek:*), Bash(uv run pre-commit:*), Bash(pre-commit:*)
@@ -6,7 +7,6 @@ model: haiku
 context: fork
 user-invocable: true
 ---
-
 Analyze these staged changes and generate commit message, then commit the changes:
 !`uv run prek run >/dev/null 2>&1 || git add -u`
 !`git --no-pager status || true`

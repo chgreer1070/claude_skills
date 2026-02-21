@@ -1,7 +1,7 @@
 ---
+name: holistic-linting-orchestrator
 description: Orchestrator delegation workflows for linting. Guides orchestrators on when and how to delegate to linting-root-cause-resolver and post-linting-architecture-reviewer agents. Use when orchestrating linting tasks, delegating quality checks, or reading linting resolution reports.
 ---
-
 # Holistic Linting: Orchestrator Delegation
 
 This skill provides orchestrator-specific workflows for delegating linting and resolution tasks to specialized agents.

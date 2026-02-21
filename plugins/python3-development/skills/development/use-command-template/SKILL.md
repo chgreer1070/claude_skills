@@ -1,4 +1,5 @@
 ---
+name: use-command-template
 argument-hint: <skill_purpose_description>
 user-invocable: true
 ? description:'This skill should be used when the user asks to \"create a new skill\", \"add a skill to plugin\", \"write skill from template\", or needs to create new Claude Code skills following established patterns. Note
@@ -6,7 +7,6 @@ user-invocable: true
 version: 1.0.0
 last_updated: '2026-01-25'
 ---
-
 # Use Skill Template
 
 Create a new Claude Code skill following established patterns.

@@ -1,4 +1,5 @@
 ---
+name: file-summarization
 description: Summarize files by reading content, extracting key passages, and applying type-specific strategies. Activates on summarize this file, what's in this file, describe this codebase, file summary, analyze this file, tl;dr this file, what does this code do, explain this config, break down this script. Routes to strategies for code, config, data, documentation, markup, and binary files based on extension and word count.
 ---
 

@@ -2,7 +2,7 @@
 
 Tests:
 - Token counting accuracy
-- Threshold boundary conditions (4000, 6400)
+- Threshold boundary conditions (TOKEN_WARNING_THRESHOLD, TOKEN_ERROR_THRESHOLD)
 - Frontmatter exclusion from token count
 - Warning and error thresholds
 """
@@ -17,7 +17,11 @@ import pytest
 # Add parent directory to path to import plugin_validator
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from plugin_validator import ComplexityValidator
+from plugin_validator import (
+    TOKEN_ERROR_THRESHOLD,
+    TOKEN_WARNING_THRESHOLD,
+    ComplexityValidator,
+)
 
 
 class TestComplexityValidatorBasic:
@@ -111,15 +115,16 @@ class TestThresholdBoundaries:
     """Test threshold boundary conditions."""
 
     def test_warning_threshold_4000_tokens(self, tmp_path: Path) -> None:
-        """Test warning triggered at 4000 token threshold (SK006).
+        """Test warning triggered above TOKEN_WARNING_THRESHOLD (SK006).
 
         Tests: Skill approaching complexity limit
-        How: Create skill with ~4000 tokens, validate
+        How: Create skill with tokens above TOKEN_WARNING_THRESHOLD, validate
         Why: Ensure SK006 warning at warning threshold
         """
         skill_md = tmp_path / "SKILL.md"
-        # Approximately 4000 tokens (~3 chars per token average)
-        content = "word " * 3000  # ~12000 chars = ~4000 tokens
+        content = "word " * (
+            TOKEN_WARNING_THRESHOLD + 100
+        )  # tokens above warning threshold
         skill_md.write_text(f"""---
 description: Test skill
 ---
@@ -137,15 +142,16 @@ description: Test skill
         assert any(issue.code == "SK006" for issue in result.warnings)
 
     def test_error_threshold_6400_tokens(self, tmp_path: Path) -> None:
-        """Test error triggered at 6400 token threshold (SK007).
+        """Test error triggered above TOKEN_ERROR_THRESHOLD (SK007).
 
         Tests: Skill exceeding complexity limit
-        How: Create skill with ~6400 tokens, validate
+        How: Create skill with tokens above TOKEN_ERROR_THRESHOLD, validate
         Why: Ensure SK007 error at error threshold
         """
         skill_md = tmp_path / "SKILL.md"
-        # Approximately 6400 tokens (~3 chars per token average)
-        content = "word " * 5000  # ~20000 chars = ~6666 tokens
+        content = "word " * (
+            TOKEN_ERROR_THRESHOLD + 200
+        )  # tokens above error threshold
         skill_md.write_text(f"""---
 description: Test skill
 ---
@@ -364,14 +370,15 @@ class TestMultipleSeverityLevels:
     """Test both warning and error can be present."""
 
     def test_only_warning_when_between_thresholds(self, tmp_path: Path) -> None:
-        """Test only warning when between 4000-6400 tokens.
+        """Test only warning when between TOKEN_WARNING_THRESHOLD and TOKEN_ERROR_THRESHOLD.
 
         Tests: Single severity level
-        How: Create skill with 5000 tokens, validate
+        How: Create skill with tokens between warning and error thresholds, validate
         Why: Ensure only warning raised in middle range
         """
         skill_md = tmp_path / "SKILL.md"
-        content = "word " * 3700  # ~14800 chars = ~4900 tokens
+        midpoint = (TOKEN_WARNING_THRESHOLD + TOKEN_ERROR_THRESHOLD) // 2
+        content = "word " * midpoint  # tokens between warning and error thresholds
         skill_md.write_text(f"""---
 description: Test skill
 ---

@@ -1,7 +1,7 @@
 ---
+name: holistic-linting-resolver
 description: Linter-specific resolution workflows for ruff, mypy, pyright, and basedpyright. Provides systematic root-cause analysis procedures, suppression gates, and verification steps. Use when resolving linting errors as a sub-agent, implementing fixes systematically, or conducting type flow analysis.
 ---
-
 # Holistic Linting: Resolution Workflows
 
 This skill provides systematic resolution procedures for Python linting tools. Sub-agents executing linting resolution tasks MUST follow the appropriate workflow based on the linter reporting issues.

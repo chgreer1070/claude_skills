@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import re
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
-from typer.testing import CliRunner
+from typer.testing import CliRunner, Result
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -30,15 +31,35 @@ if spec and spec.loader:
     sys.modules["plugin_validator"] = plugin_validator
     spec.loader.exec_module(plugin_validator)
 
+_ANSI_ESCAPE = re.compile(rb"\x1b\[[0-9;]*[mGKHFJA-Z]")
+
+
+class _PlainCliRunner(CliRunner):
+    """CliRunner that strips ANSI escape codes from captured output.
+
+    Click 8.x no longer strips ANSI from result.stdout. GitHub Actions sets
+    FORCE_COLOR=1, causing Rich to emit ANSI codes regardless of NO_COLOR or
+    stream-TTY status. Stripping at the byte level is the only reliable fix.
+    """
+
+    def invoke(self, *args: Any, **kwargs: Any) -> Result:
+        """Invoke CLI and strip ANSI codes from stdout/stderr bytes."""
+        result = super().invoke(*args, **kwargs)
+        result.stdout_bytes = _ANSI_ESCAPE.sub(b"", result.stdout_bytes)
+        if result.stderr_bytes is not None:
+            result.stderr_bytes = _ANSI_ESCAPE.sub(b"", result.stderr_bytes)
+        return result
+
 
 @pytest.fixture
 def cli_runner() -> CliRunner:
     """Provide CliRunner configured for testing.
 
     Returns:
-        CliRunner with mix_stderr=False to separate stdout/stderr
+        _PlainCliRunner with mix_stderr=False that strips ANSI escape codes
+        from captured output for environment-independent string assertions.
     """
-    return CliRunner(mix_stderr=False)
+    return _PlainCliRunner(mix_stderr=False)
 
 
 @pytest.fixture

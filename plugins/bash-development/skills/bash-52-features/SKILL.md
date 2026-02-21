@@ -1,7 +1,7 @@
 ---
+name: bash-52-features
 description: Bash 5.2 release features and improvements with practical examples. Use when working with Bash 5.2 features, variable handling enhancements, readline improvements, or when user asks about Bash 5.2 changes, new features, or version-specific capabilities.
 ---
-
 # Bash 5.2 Features and Improvements
 
 Released in September 2022, Bash 5.2 brought enhancements to variable handling, readline integration, array support, and numerous bug fixes.

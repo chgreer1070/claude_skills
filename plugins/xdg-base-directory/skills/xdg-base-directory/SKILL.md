@@ -1,7 +1,7 @@
 ---
+name: xdg-base-directory
 description: When an application needs to store config, data, cache, or state files. When designing where user-specific files should live. When code writes to ~/.appname or hardcoded home paths. When implementing cross-platform file storage with platformdirs.
 ---
-
 # XDG Base Directory Specification
 
 Implement standardized directory paths for configuration, data, cache, and state files following the XDG Base Directory Specification.

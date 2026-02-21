@@ -1,4 +1,5 @@
 ---
+name: agent-result-relay
 description: Rules for orchestrators handling sub-agent results without lossy re-summarization. Activates when receiving agent output, relaying research results, passing data between agents, or combining agent findings. Prevents the failure mode where 'not found' becomes 'doesn't exist' and counts get dropped.
 ---
 

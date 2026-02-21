@@ -1,8 +1,8 @@
 ---
+name: claude-plugins-reference-2026
 description: Complete reference for Claude Code plugins system (January 2026). Use when creating plugins, understanding plugin.json schema, marketplace configuration, bundling skills/commands/agents/hooks/MCP/LSP servers, plugin caching, validation, or distribution. Covers plugin components, directory structure, installation scopes, environment variables, CLI commands, debugging, and enterprise features.
 user-invocable: true
 ---
-
 # Claude Code Plugins System - Complete Reference (January 2026)
 
 Plugins extend Claude Code with skills, agents, hooks, MCP servers, and LSP servers. This reference provides complete technical specifications for creating and distributing plugins.

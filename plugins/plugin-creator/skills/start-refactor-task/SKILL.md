@@ -1,10 +1,10 @@
 ---
+name: start-refactor-task
 description: Start or complete a specific refactoring task from a task file. Use when a sub-agent needs to pick up a refactoring task, update its status, implement acceptance criteria, and run verification steps.
 argument-hint: <task-file-path> [--task <task-id>] [--complete <task-id>]
-user-invocable: true
 model: sonnet
+user-invocable: true
 ---
-
 # Start Refactor Task
 
 You are implementing a specific refactoring task from a plugin refactoring plan.

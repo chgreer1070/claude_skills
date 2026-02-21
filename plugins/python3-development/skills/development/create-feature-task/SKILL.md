@@ -1,4 +1,5 @@
 ---
+name: create-feature-task
 description: This skill should be used when the user asks to "create a feature task", "set up development tracking", "plan a feature implementation", or needs to structure a new feature development with proper tracking and phases.
 argument-hint: <feature_name_and_description>
 user-invocable: true
@@ -6,7 +7,6 @@ version: 1.0.0
 last_updated: '2026-01-25'
 python_compatibility: 3.11+
 ---
-
 # Create Feature Development Task
 
 Set up a comprehensive feature development task with proper tracking, phases, and documentation.

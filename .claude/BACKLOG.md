@@ -1,7 +1,8 @@
 ---
 last-updated: 2026-02-20
+last-completed: 2026-02-20
 p0-count: 0
-p1-count: 13
+p1-count: 14
 p2-count: 13
 ideas-count: 11
 ---
@@ -19,6 +20,38 @@ _(Empty)_
 ---
 
 ## P1 - Should Have
+
+### Consolidate validate_frontmatter.py into plugin_validator.py
+
+**Source**: Frontmatter validation bug-fix session 2026-02-20
+**Added**: 2026-02-20
+**Completed**: 2026-02-20
+**Status**: DONE — commit bfb03f1 on branch claude/fix-frontmatter-validation-u2iV2
+**Priority**: P1
+**Description**: `plugin_validator.py` (4190 lines) copy-pastes frontmatter
+validation logic from `validate_frontmatter.py` (1341 lines) instead of
+importing it. Comments acknowledge this: "PYDANTIC FRONTMATTER MODELS (from
+validate_frontmatter.py)" and "Complexity preserved from validate_frontmatter.py
+for behavioral parity." This creates two maintenance surfaces: any change must
+be applied to both scripts (as seen when reversing the name-field bug workaround).
+
+**Required work:**
+1. Audit both scripts for all divergences (validation checks, Pydantic models,
+   helper functions, CLI flags, scan patterns).
+2. Extract shared code (Pydantic models, `_fix_skill_name*`, `extract_frontmatter`,
+   `detect_file_type`, `validate_and_normalize`) into a shared module
+   `plugins/plugin-creator/scripts/frontmatter_core.py`.
+3. Refactor `validate_frontmatter.py` and `plugin_validator.py` to import from
+   `frontmatter_core.py`.
+4. Port any validation steps present in `validate_frontmatter.py` but missing
+   from `plugin_validator.py` (e.g. skill-directory-name check, name-mismatch
+   warning added in 2026-02-20).
+5. Update `frontmatter_utils.py` if overlap exists.
+6. Update all documentation: CLAUDE.md, reference files, script docstrings.
+7. Update tests to import from the correct locations.
+8. Run full test suite; verify pre-commit hooks still pass.
+
+**Suggested location**: `plugins/plugin-creator/scripts/`
 
 ### Validate and verify orchestrator-discipline plugin hooks and processes
 
@@ -125,6 +158,14 @@ _(Empty)_
 ---
 
 ## P2 - Could Have
+
+### Add PR003/PR004 test coverage to plugin registration validator
+
+**Source**: Code review session 2026-02-21
+**Added**: 2026-02-21
+**Description**: `PluginRegistrationValidator` defines PR003 (missing metadata fields: repository, homepage, author) and PR004 (repository URL mismatches git remote URL) at lines 276-277 of `plugin_validator.py`, and emits them at lines 2815 and 2834. Tests exist for PR001 (unregistered) and PR002 (missing file), but not PR003/PR004. Add tests to `plugins/plugin-creator/tests/test_plugin_registration_validator.py` covering: (1) PR003 emitted when metadata fields absent; (2) PR004 emitted when repo URL mismatches remote.
+
+---
 
 ### kaizen: MCP consolidation analysis
 

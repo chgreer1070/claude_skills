@@ -1,4 +1,5 @@
 ---
+name: comprehensive-test-review
 description: This skill should be used when the user asks to "review test coverage", "audit test quality", "check tests for completeness", or mentions reviewing pytest test suites. Performs thorough test review following standard checklist for test isolation, mock usage, naming, and coverage.
 argument-hint: <test_file_or_directory>
 user-invocable: true
@@ -6,7 +7,6 @@ version: 1.0.0
 last_updated: '2026-01-25'
 python_compatibility: 3.11+
 ---
-
 # Comprehensive Test Review
 
 Perform thorough test review for the specified test files or directories.

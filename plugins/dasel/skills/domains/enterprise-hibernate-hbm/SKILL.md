@@ -1,7 +1,7 @@
 ---
+name: enterprise-hibernate-hbm
 description: Dasel v3 query patterns for Hibernate .hbm.xml mapping files — entity-table binding, Java property-to-column extraction, one-to-many set/list/bag relationship tracing, many-to-one foreign key discovery, batch scanning across 60+ HBM files. Use when querying Hibernate ORM class mappings, extracting schema metadata from Java persistence layer, or auditing entity-column relationships in enterprise legacy codebases.
 ---
-
 # Hibernate HBM Mapping Queries
 
 <when_to_use>

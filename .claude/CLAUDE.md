@@ -8,7 +8,7 @@ This Repository contains a Claude Code Marketplace Plugin with modular skills (s
 
 CRITICAL FIRST ACTIONS on session start:
 1. Ensure `uv` is v0.10.0 or newer by running `uv self update`
-2. Run `uv run prek install` to enable git hooks (linting, formatting, manifest sync)
+2. Run `uv run prek install -t pre-commit -t commit-msg -t pre-rebase -t post-merge` to enable git hooks (linting, formatting, manifest sync, rerere)
 3. Follow @./CONTRIBUTING.md procedures when modifying plugins
 
 

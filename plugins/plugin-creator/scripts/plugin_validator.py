@@ -47,14 +47,29 @@ from typing import (
 )
 
 import typer
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import ValidationError
 from ruamel.yaml import YAML, YAMLError
 
 if TYPE_CHECKING:
-    from rich.console import ConsoleRenderable, RichCast
+    from rich.console import Console, ConsoleRenderable, RichCast
 
-# Make frontmatter_utils importable from same directory
-sys.path.insert(0, str(Path(__file__).parent))
+# Enable import of sibling library modules (frontmatter_core, frontmatter_utils).
+# PEP 723 scripts run in an isolated venv; sys.path insertion exposes co-located
+# library modules that are not PEP 723 scripts themselves.
+_SCRIPTS_DIR = str(Path(__file__).parent)
+if _SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPTS_DIR)
+
+from frontmatter_core import (
+    MAX_SKILL_NAME_LENGTH,
+    RECOMMENDED_DESCRIPTION_LENGTH,
+    AgentFrontmatter,
+    CommandFrontmatter,
+    SkillFrontmatter,
+    extract_frontmatter,
+    fix_skill_name_field,
+    get_frontmatter_model,
+)
 from frontmatter_utils import RuamelYAMLHandler
 
 # Module-level ruamel.yaml safe-mode instance (replaces yaml.safe_load)
@@ -63,13 +78,14 @@ _yaml_safe = YAML(typ="safe")
 # Round-trip YAML instance (via shared handler) for dumping with format preservation
 _rt_handler = RuamelYAMLHandler()
 _rt_yaml = _rt_handler._yaml  # noqa: SLF001
+_rt_yaml.width = 10000  # prevent line wrapping
 
 
 def _safe_load_yaml(text: str) -> Any:
     """Parse a YAML string using ruamel.yaml safe loader.
 
     Args:
-        text: YAML text to parse.
+        text: YAML text to parse (frontmatter content, no --- delimiters).
 
     Returns:
         Parsed YAML data (dict, list, scalar, or None).
@@ -85,9 +101,8 @@ def _safe_load_yaml(text: str) -> Any:
 def _dump_yaml(data: dict[str, Any]) -> str:
     """Serialize a dict to YAML using the round-trip handler.
 
-    Produces output consistent with frontmatter_utils: values without
-    special YAML characters stay unquoted, values requiring quotes
-    (e.g. colon-space) get double-quoted for pyyaml compatibility.
+    Preserves key insertion order. Values containing ': ' are wrapped in
+    double quotes so YAML parsers handle them correctly.
 
     Args:
         data: Dictionary to serialize.
@@ -97,9 +112,6 @@ def _dump_yaml(data: dict[str, Any]) -> str:
     """
     from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
-    # Wrap string values that require quoting (contain `: `) in
-    # DoubleQuotedScalarString so ruamel.yaml emits double quotes,
-    # matching the quoting style that pyyaml used.
     prepared: dict[str, Any] = {}
     for key, value in data.items():
         if isinstance(value, str) and ": " in value:
@@ -110,6 +122,49 @@ def _dump_yaml(data: dict[str, Any]) -> str:
     buf = StringIO()
     _rt_yaml.dump(prepared, buf)
     return buf.getvalue()
+
+
+def _fix_unquoted_colons(frontmatter_text: str) -> tuple[str, list[str], list[str]]:
+    """Quote description (and similar string) values that contain unquoted colons.
+
+    Detects lines of the form ``key: value: more`` where the unquoted colon
+    causes a YAML parse error and wraps the value in double-quotes.
+
+    Args:
+        frontmatter_text: Raw YAML frontmatter (without ``---`` delimiters).
+
+    Returns:
+        Tuple of (possibly-fixed frontmatter text, list of fix descriptions,
+        list of field names that were fixed).  The field names list has one entry
+        per fixed line and is used by callers to emit FM009 info issues.
+    """
+    fixes: list[str] = []
+    fixed_fields: list[str] = []
+    lines = frontmatter_text.splitlines(keepends=True)
+    new_lines = []
+
+    # Regex: key: value where value contains an unquoted colon
+    # Only matches simple single-line scalar values, not block scalars or already-quoted values
+    unquoted_colon_re = re.compile(r'^(\s*([\w-]+):\s+)([^\'"\[\{|>].+:.*)$')
+
+    for line in lines:
+        m = unquoted_colon_re.match(line.rstrip("\n"))
+        if m:
+            prefix = m.group(1)
+            field_name = m.group(2)
+            value = m.group(3)
+            # Escape any existing double-quotes inside the value
+            escaped = value.replace('"', '\\"')
+            new_line = f'{prefix}"{escaped}"\n'
+            fixes.append("Quoted description value containing unquoted colon")
+            fixed_fields.append(field_name)
+            new_lines.append(new_line)
+        else:
+            new_lines.append(line)
+
+    if fixes:
+        return "".join(new_lines), fixes, fixed_fields
+    return frontmatter_text, [], []
 
 
 # Error code base URL for documentation links
@@ -138,11 +193,12 @@ DEFAULT_SCAN_PATTERNS: tuple[str, ...] = (
 
 # Description requirements (Architecture lines 349-350)
 MIN_DESCRIPTION_LENGTH = 20
-RECOMMENDED_DESCRIPTION_LENGTH = 1024
+# RECOMMENDED_DESCRIPTION_LENGTH and MAX_SKILL_NAME_LENGTH imported from frontmatter_core
 
-# Name format (Architecture lines 352-354)
-NAME_PATTERN = r"^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$"
-MAX_SKILL_NAME_LENGTH = 40
+# Name format — matches agentskills.io/specification and init_skill.py convention:
+# lowercase a-z/0-9/hyphen, no leading/trailing/consecutive hyphens.
+NAME_PATTERN = r"^[a-z0-9]+(-[a-z0-9]+)*$"
+
 
 # Trigger phrase requirements (Architecture line 357)
 REQUIRED_TRIGGER_PHRASES = [
@@ -203,14 +259,25 @@ PL005 = "PL005"  # Referenced component file does not exist
 # Command Errors (CM001)
 CM001 = "CM001"  # Command-specific validation (reserved)
 
-# Hook Errors (HK001-HK003)
+# Hook Errors (HK001-HK005)
 HK001 = "HK001"  # Invalid hooks.json structure
 HK002 = "HK002"  # Invalid event type in hooks.json
 HK003 = "HK003"  # Invalid hook entry structure
+HK004 = "HK004"  # Hook script referenced but not found
+HK005 = "HK005"  # Hook script exists but is not executable
 
 # Namespace Reference Errors (NR001-NR002)
 NR001 = "NR001"  # Namespace reference target does not exist
 NR002 = "NR002"  # Namespace reference points outside plugin directory
+
+# Plugin Registration Errors (PR001-PR004)
+PR001 = "PR001"  # Capability exists but not explicitly registered in plugin.json
+PR002 = "PR002"  # Registered capability path does not exist
+PR003 = "PR003"  # Plugin metadata fields (repository, homepage, author) not populated
+PR004 = "PR004"  # Plugin metadata repository URL mismatches git remote URL
+
+# Skill Directory Errors (SK008)
+SK008 = "SK008"  # Skill directory name violates naming convention
 
 # Claude CLI timeout
 CLAUDE_TIMEOUT = 3  # seconds
@@ -433,29 +500,7 @@ def generate_docs_url(error_code: str) -> str:
     return f"{ERROR_CODE_BASE_URL}#{error_code.lower()}"
 
 
-def extract_frontmatter(content: str) -> tuple[str | None, int, int]:
-    """Extract YAML frontmatter from content.
-
-    Args:
-        content: File content potentially containing YAML frontmatter
-
-    Returns:
-        Tuple of (frontmatter_text, start_line, end_line) or (None, 0, 0)
-    """
-    if not content.startswith("---"):
-        return None, 0, 0
-
-    # Find closing delimiter
-    end_match = re.search(r"\n---\s*\n", content[3:])
-    if not end_match:
-        return None, 0, 0
-
-    frontmatter = content[4 : end_match.start() + 3]
-    start_line = 1
-    end_line = frontmatter.count("\n") + 2
-
-    return frontmatter, start_line, end_line
-
+# extract_frontmatter imported from frontmatter_core
 
 # ============================================================================
 # PROGRESSIVE DISCLOSURE VALIDATOR
@@ -809,7 +854,7 @@ class NamespaceReferenceValidator:
         "github-project-manager",
         "metadata-vault-manager",
         "doc-drift-auditor",
-        "service-docs-maintainer",
+        "service-documentation",
         "backlog-item-groomer",
         "plugin-assessor",
         "skill-refactorer-agent",
@@ -1153,146 +1198,65 @@ class NamespaceReferenceValidator:
         return references
 
 
-# ============================================================================
-# PYDANTIC FRONTMATTER MODELS (from validate_frontmatter.py)
-# ============================================================================
+# SkillFrontmatter, CommandFrontmatter, AgentFrontmatter imported from frontmatter_core
 
 
-class SkillFrontmatter(BaseModel):
-    """Pydantic model for skill frontmatter validation.
+_SKILL_DIR_CONVENTION_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
-    Source: validate_frontmatter.py lines 95-166
+
+def _validate_skill_directory_name(skill_dir_name: str) -> list[tuple[str, str]]:
+    """Validate skill directory name against naming conventions.
+
+    Checks: non-empty, max 40 chars, lowercase+digits+hyphens only,
+    no leading/trailing/consecutive hyphens, no underscores.
+
+    Args:
+        skill_dir_name: Directory name to validate.
+
+    Returns:
+        List of (message, suggestion) tuples for each violation found.
+        Empty list if the name is valid.
     """
+    if not skill_dir_name:
+        return [
+            (
+                "Skill directory name cannot be empty",
+                "Provide a non-empty directory name",
+            )
+        ]
 
-    model_config = ConfigDict(extra="allow")
+    results: list[tuple[str, str]] = []
 
-    name: str | None = Field(None, max_length=64, pattern=r"^[a-z][a-z0-9-]*$")
-    description: str | None = None
-    argument_hint: str | None = Field(None, alias="argument-hint")
-    allowed_tools: str | None = Field(None, alias="allowed-tools")
-    tools: str | None = None
-    model: str | None = None
-    skills: str | None = None
-    context: Literal["fork"] | None = None
-    agent: str | None = None
-    user_invocable: bool | None = Field(None, alias="user-invocable")
-    disable_model_invocation: bool | None = Field(
-        None, alias="disable-model-invocation"
-    )
-    hooks: dict[str, Any] | None = None
+    if len(skill_dir_name) > MAX_SKILL_NAME_LENGTH:
+        results.append((
+            f"Directory name exceeds maximum length of {MAX_SKILL_NAME_LENGTH} characters "
+            f"(got {len(skill_dir_name)})",
+            f"Shorten directory name to {MAX_SKILL_NAME_LENGTH} characters or less",
+        ))
 
-    @field_validator("skills", "allowed_tools", "tools", mode="before")
-    @classmethod
-    def normalize_comma_separated(cls, v: object) -> str | None:
-        """Convert YAML arrays to comma-separated strings.
+    if not _SKILL_DIR_CONVENTION_PATTERN.match(skill_dir_name):
+        violations: list[str] = []
+        if re.search(r"[A-Z]", skill_dir_name):
+            violations.append("contains uppercase letters")
+        if re.search(r"[^a-z0-9-]", skill_dir_name):
+            violations.append(
+                "contains invalid characters (only lowercase, digits, hyphens allowed)"
+            )
+        if skill_dir_name.startswith("-"):
+            violations.append("starts with hyphen")
+        if skill_dir_name.endswith("-"):
+            violations.append("ends with hyphen")
+        if "--" in skill_dir_name:
+            violations.append("contains consecutive hyphens")
+        if "_" in skill_dir_name:
+            violations.append("contains underscores (use hyphens instead)")
+        violation_msg = "; ".join(violations) if violations else "invalid format"
+        results.append((
+            f"Directory name {violation_msg}",
+            "Use lowercase-hyphen-case (e.g., 'my-skill-name')",
+        ))
 
-        Returns:
-            Normalized comma-separated string or None.
-        """
-        if isinstance(v, list):
-            return ", ".join(str(x) for x in v)
-        return v if isinstance(v, str) else None
-
-    @field_validator("description", mode="before")
-    @classmethod
-    def normalize_single_line(cls, v: object) -> str | None:
-        """Collapse multiline descriptions to single line.
-
-        Returns:
-            Normalized single-line string or None.
-        """
-        if isinstance(v, str) and "\n" in v:
-            return " ".join(v.split())
-        return v if isinstance(v, str) else None
-
-
-class CommandFrontmatter(BaseModel):
-    """Pydantic model for command frontmatter validation.
-
-    Source: validate_frontmatter.py lines 168-227
-    """
-
-    model_config = ConfigDict(extra="allow")
-
-    description: str
-    argument_hint: str | None = Field(None, alias="argument-hint")
-    allowed_tools: str | None = Field(None, alias="allowed-tools")
-    model: str | None = None
-    context: Literal["fork"] | None = None
-    agent: str | None = None
-    hooks: dict[str, Any] | None = None
-
-    @field_validator("allowed_tools", mode="before")
-    @classmethod
-    def normalize_comma_separated(cls, v: object) -> str | None:
-        """Convert YAML arrays to comma-separated strings.
-
-        Returns:
-            Normalized comma-separated string or None.
-        """
-        if isinstance(v, list):
-            return ", ".join(str(x) for x in v)
-        return v if isinstance(v, str) else None
-
-    @field_validator("description", mode="before")
-    @classmethod
-    def normalize_single_line(cls, v: object) -> str | None:
-        """Collapse multiline descriptions to single line.
-
-        Returns:
-            Normalized single-line string or None.
-        """
-        if isinstance(v, str) and "\n" in v:
-            return " ".join(v.split())
-        return v if isinstance(v, str) else None
-
-
-class AgentFrontmatter(BaseModel):
-    """Pydantic model for agent frontmatter validation.
-
-    Source: validate_frontmatter.py lines 229-297
-
-    Note: Field names use camelCase to match the official agent schema.
-    Ruff N815 warnings suppressed for these fields as they match external spec.
-    """
-
-    model_config = ConfigDict(extra="allow")
-
-    name: str = Field(max_length=64, pattern=r"^[a-z][a-z0-9-]*$")
-    description: str
-    tools: str | None = None
-    disallowedTools: str | None = None  # noqa: N815
-    model: Literal["sonnet", "opus", "haiku", "inherit"] | None = None
-    permissionMode: (  # noqa: N815
-        Literal["default", "acceptEdits", "dontAsk", "bypassPermissions", "plan"] | None
-    ) = None
-    skills: str | None = None
-    hooks: dict[str, Any] | None = None
-    color: str | None = None
-
-    @field_validator("skills", "tools", "disallowedTools", mode="before")
-    @classmethod
-    def normalize_comma_separated(cls, v: object) -> str | None:
-        """Convert YAML arrays to comma-separated strings.
-
-        Returns:
-            Normalized comma-separated string or None.
-        """
-        if isinstance(v, list):
-            return ", ".join(str(x) for x in v)
-        return v if isinstance(v, str) else None
-
-    @field_validator("description", mode="before")
-    @classmethod
-    def normalize_single_line(cls, v: object) -> str | None:
-        """Collapse multiline descriptions to single line.
-
-        Returns:
-            Normalized single-line string or None.
-        """
-        if isinstance(v, str) and "\n" in v:
-            return " ".join(v.split())
-        return v if isinstance(v, str) else None
+    return results
 
 
 # ============================================================================
@@ -1304,10 +1268,19 @@ class FrontmatterValidator:
     """Validates and auto-fixes YAML frontmatter in capability files.
 
     Implements Validator protocol for frontmatter validation of skills, agents,
-    and commands. Preserves exact behavior from validate_frontmatter.py.
-
-    Source: validate_frontmatter.py lines 95-607
+    and commands. Uses shared Pydantic models from frontmatter_core.
     """
+
+    def __init__(self) -> None:
+        """Initialize frontmatter validator.
+
+        ``_pending_fm009_info`` accumulates FM009 info issues produced by
+        :meth:`fix` (via :meth:`_apply_fixes`) so that the next
+        :meth:`validate` call can surface them as ``info`` entries.  This lets
+        ``--verbose`` output show exactly which fields were silently repaired by
+        the unquoted-colon auto-fix.
+        """
+        self._pending_fm009_info: list[ValidationIssue] = []
 
     def validate(self, path: Path) -> ValidationResult:  # noqa: PLR0914, PLR0912, PLR0915, C901
         """Validate frontmatter in file.
@@ -1318,12 +1291,13 @@ class FrontmatterValidator:
         Returns:
             ValidationResult with errors, warnings, and info issues
 
-        Note:
-            Complexity preserved from validate_frontmatter.py for behavioral parity.
         """
         errors: list[ValidationIssue] = []
         warnings: list[ValidationIssue] = []
-        info: list[ValidationIssue] = []
+        # Drain any FM009 info issues queued by a preceding fix() call so that
+        # --verbose output shows what was silently repaired.
+        info: list[ValidationIssue] = self._pending_fm009_info
+        self._pending_fm009_info = []
 
         # Read file
         try:
@@ -1377,25 +1351,6 @@ class FrontmatterValidator:
                 )
             )
 
-        # Detect ambiguous indentation: a key with an inline scalar value
-        # followed by an indented ``- `` line. YAML silently merges this
-        # into a multi-line plain scalar, but the user almost certainly
-        # intended a list. The pattern requires a non-whitespace char after
-        # ``key: `` on the same line (ruling out proper ``key:\n  - item``).
-        if re.search(r": \S[^\n]*\n\s+- ", frontmatter_text):
-            errors.append(
-                ValidationIssue(
-                    field="(yaml)",
-                    severity="error",
-                    message="Invalid YAML syntax: scalar value followed by indented list item",
-                    code=FM002,
-                    docs_url=generate_docs_url(FM002),
-                )
-            )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
-
         # Parse YAML
         try:
             data = _safe_load_yaml(frontmatter_text)
@@ -1426,25 +1381,6 @@ class FrontmatterValidator:
             return ValidationResult(
                 passed=False, errors=errors, warnings=warnings, info=info
             )
-
-        # FM007/FM008: Detect YAML arrays for tools/skills fields before
-        # Pydantic normalizes them to comma-separated strings.
-        for array_field, error_code, label in (
-            ("tools", FM007, "Tools"),
-            ("allowed-tools", FM007, "Tools"),
-            ("skills", FM008, "Skills"),
-        ):
-            if isinstance(data.get(array_field), list):
-                errors.append(
-                    ValidationIssue(
-                        field=array_field,
-                        severity="error",
-                        message=f"{label} field is YAML array (should be comma-separated string)",
-                        code=error_code,
-                        docs_url=generate_docs_url(error_code),
-                        suggestion="Use format: 'tool1, tool2, tool3'",
-                    )
-                )
 
         # Select Pydantic model based on file type
         model_class = self._get_model_class(file_type)
@@ -1480,7 +1416,7 @@ class FrontmatterValidator:
                 field = ".".join(str(x) for x in error["loc"])
                 msg = error["msg"]
                 code = FM005  # Default to type mismatch
-                suggestion: str | None = None
+                suggestion = None  # Initialize before conditional assignment
 
                 # Determine specific error code
                 if "Field required" in msg:
@@ -1511,7 +1447,7 @@ class FrontmatterValidator:
                     suggestion = "Use format: 'tool1, tool2, tool3'"
                 elif "colon" in msg.lower():
                     code = FM009
-                    suggestion = "Quote the description value or avoid colons. ruamel.yaml handles quoting on write, but hand-edited YAML with unquoted colons fails to parse"
+                    suggestion = "Quote the description or remove colons"
                 else:
                     code = FM005
                     suggestion = None
@@ -1527,28 +1463,82 @@ class FrontmatterValidator:
                     )
                 )
 
-        # FM009: Detect unquoted description containing colons.
-        # Check the raw frontmatter text for an unquoted description value
-        # that contains a colon (outside of URLs). Quoted values are safe
-        # because YAML parsers handle them correctly.
-        fm009_match = re.search(
-            r'^description:\s+(?!["\'])(.+)$', frontmatter_text, re.MULTILINE
-        )
-        if fm009_match:
-            raw_value = fm009_match.group(1)
-            # Strip URL schemes before checking for colons
-            temp = raw_value.replace("http://", "").replace("https://", "")
-            if ":" in temp:
-                errors.append(
+        # Check for list-valued tool/skill fields that were not caught by Pydantic
+        # (e.g. 'tools' is an extra field in SkillFrontmatter but may still be a list)
+        if isinstance(data, dict):
+            for field_name, field_val in data.items():
+                if isinstance(field_val, list):
+                    if field_name in {"tools", "disallowedTools", "allowed-tools"}:
+                        errors.append(
+                            ValidationIssue(
+                                field=field_name,
+                                severity="error",
+                                message="Tools field is YAML array (should be comma-separated string)",
+                                code=FM007,
+                                docs_url=generate_docs_url(FM007),
+                                suggestion="Use format: 'tool1, tool2, tool3'",
+                            )
+                        )
+                    elif field_name == "skills":
+                        errors.append(
+                            ValidationIssue(
+                                field=field_name,
+                                severity="error",
+                                message="Skills field is YAML array (should be comma-separated string)",
+                                code=FM008,
+                                docs_url=generate_docs_url(FM008),
+                                suggestion="Use format: 'skill1, skill2, skill3'",
+                            )
+                        )
+
+        # Check that 'name' field matches directory name for SKILL.md files
+        if file_type == FileType.SKILL and path.name == "SKILL.md":
+            skill_name_in_fm = data.get("name") if isinstance(data, dict) else None
+            skill_dir_name = path.parent.name
+
+            # Validate directory name format only when inside a proper plugin structure
+            # (i.e., <plugin>/skills/<skill-name>/SKILL.md). Avoids false positives
+            # for SKILL.md files in ad-hoc or test directories.
+            if path.parent.parent.name == "skills":
+                dir_name_issues = _validate_skill_directory_name(skill_dir_name)
+                for issue_msg, issue_suggestion in dir_name_issues:
+                    errors.append(
+                        ValidationIssue(
+                            field="directory",
+                            severity="error",
+                            message=issue_msg,
+                            code=SK008,
+                            docs_url=generate_docs_url(SK008),
+                            suggestion=issue_suggestion,
+                        )
+                    )
+
+            if skill_name_in_fm and skill_name_in_fm != skill_dir_name:
+                warnings.append(
                     ValidationIssue(
-                        field="description",
-                        severity="error",
-                        message="description contains unquoted colons — this will break YAML parsing. Quote the value or remove colons",
-                        code=FM009,
-                        docs_url=generate_docs_url(FM009),
-                        suggestion="Quote the description value or avoid colons. ruamel.yaml handles quoting on write, but hand-edited YAML with unquoted colons fails to parse",
+                        field="name",
+                        severity="warning",
+                        message=(
+                            f"'name' field value '{skill_name_in_fm}' does not match "
+                            f"directory name '{skill_dir_name}'"
+                        ),
+                        code=FM010,
+                        docs_url=generate_docs_url(FM010),
+                        suggestion=(
+                            f"Set name: {skill_dir_name} to match the directory, "
+                            "or remove the 'name' field to use the directory name automatically"
+                        ),
                     )
                 )
+
+        # Validate hook script file-path references declared in frontmatter ``hooks:`` field.
+        # The ``hooks:`` field in SKILL.md / agent / command frontmatter uses the same
+        # structure as the root ``"hooks"`` key in hooks.json.
+        if isinstance(data, dict) and isinstance(data.get("hooks"), dict):
+            hook_validator = HookValidator()
+            hook_validator._validate_hook_script_references_in_hooks_dict(  # noqa: SLF001
+                data["hooks"], path.parent, errors
+            )
 
         passed = len(errors) == 0
         return ValidationResult(
@@ -1585,7 +1575,7 @@ class FrontmatterValidator:
             file_type = FileType.SKILL
 
         # Apply fixes
-        fixed_content, fixes = self._apply_fixes(content, file_type)
+        fixed_content, fixes = self._apply_fixes(content, file_type, path)
 
         if not fixes:
             return []
@@ -1614,31 +1604,46 @@ class FrontmatterValidator:
     ) -> type[SkillFrontmatter | CommandFrontmatter | AgentFrontmatter] | None:
         """Get Pydantic model class for file type.
 
+        Delegates to frontmatter_core.get_frontmatter_model().
+
         Returns:
             Pydantic model class or None if unknown type.
         """
-        match file_type:
-            case FileType.SKILL:
-                return SkillFrontmatter
-            case FileType.COMMAND:
-                return CommandFrontmatter
-            case FileType.AGENT:
-                return AgentFrontmatter
-            case _:
-                return None
+        return get_frontmatter_model(file_type.value)
 
-    def _apply_fixes(self, content: str, file_type: FileType) -> tuple[str, list[str]]:  # noqa: PLR0912, C901
+    def _queue_fm009_info(self, fixed_fields: list[str]) -> None:
+        """Append FM009 info issues for fields that were auto-fixed by colon quoting.
+
+        Args:
+            fixed_fields: Field names whose values were quoted.
+        """
+        for field_name in fixed_fields:
+            self._pending_fm009_info.append(
+                ValidationIssue(
+                    field=field_name,
+                    severity="info",
+                    message=(
+                        f"Auto-fixed: unquoted value containing colon was quoted"
+                        f" in field '{field_name}'"
+                    ),
+                    code=FM009,
+                    docs_url=generate_docs_url(FM009),
+                )
+            )
+
+    def _apply_fixes(  # noqa: PLR0912, PLR0914, C901
+        self, content: str, file_type: FileType, file_path: Path | None = None
+    ) -> tuple[str, list[str]]:
         """Apply auto-fixes to content.
 
         Args:
             content: File content with frontmatter
             file_type: Type of capability file
+            file_path: Optional path to file, used to derive skill name from directory
 
         Returns:
             Tuple of (fixed_content, list_of_fixes_applied)
 
-        Note:
-            Complexity preserved from validate_frontmatter.py for behavioral parity.
         """
         frontmatter_text, _, _ = self._extract_frontmatter(content)
         if frontmatter_text is None:
@@ -1650,33 +1655,25 @@ class FrontmatterValidator:
             return content, []
         body = content[end_match.end() + 3 :]
 
-        # Track fixes
-        fixes: list[str] = []
-
-        # FM009: Detect unquoted descriptions with colons before parsing.
-        # An unquoted colon in a description value causes a YAML parse error
-        # in ruamel.yaml safe mode. Detect this and quote the description
-        # line so parsing succeeds.
-        colon_fix_applied = False
-        fm009_match = re.search(
-            r'^(description:\s+)(?!["\'])(.+:.+)$', frontmatter_text, re.MULTILINE
-        )
-        if fm009_match:
-            raw_value = fm009_match.group(2)
-            temp = raw_value.replace("http://", "").replace("https://", "")
-            if ":" in temp:
-                colon_fix_applied = True
-                fixes.append("Quoted description containing colons (FM009)")
-                # Quote the description inline so YAML parsing succeeds
-                frontmatter_text = frontmatter_text.replace(
-                    fm009_match.group(0), f'{fm009_match.group(1)}"{raw_value}"', 1
-                )
-
-        # Parse YAML
+        # Parse YAML — if parse fails, attempt to fix unquoted colons first
+        colon_fixes: list[str] = []
         try:
             original_data = _safe_load_yaml(frontmatter_text)
         except YAMLError:
-            return content, []
+            fixed_fm, colon_fixes, colon_fields = _fix_unquoted_colons(frontmatter_text)
+            if not colon_fixes:
+                return content, []
+            # Queue FM009 info issues so the subsequent validate() call can surface
+            # them in --verbose output, making the silent auto-repair visible.
+            self._queue_fm009_info(colon_fields)
+            try:
+                original_data = _safe_load_yaml(fixed_fm)
+                # Rebuild full content with fixed frontmatter so downstream
+                # regeneration uses the corrected values.
+                content = f"---\n{fixed_fm}\n---\n{body}"
+                frontmatter_text = fixed_fm
+            except YAMLError:
+                return content, []
 
         if not isinstance(original_data, dict):
             return content, []
@@ -1692,22 +1689,39 @@ class FrontmatterValidator:
                 by_alias=True, exclude_none=True, mode="python"
             )
         except ValidationError:
-            if not colon_fix_applied:
-                return content, []
-            # Colon in description caused validation failure -- rebuild
-            # the dict directly from original_data without Pydantic normalization
-            normalized_dict = dict(original_data)
+            # Validation failed after YAML parse — still apply colon fixes if any
+            if colon_fixes:
+                return content, colon_fixes
+            return content, []
 
-        # CRITICAL BUG WORKAROUND: Remove 'name' field from skills
-        # Source: validate_frontmatter.py lines 560-573
-        if file_type == FileType.SKILL and "name" in normalized_dict:
-            del normalized_dict["name"]
-            fixes.append(
-                "Removed 'name' field (Claude Code bug: plugin skills with 'name' don't appear as slash commands)"
-            )
+        # Track fixes — carry over any colon fixes already applied
+        fixes = list(colon_fixes)
+
+        # Restore 'name' field for skills and ensure it matches the directory name.
+        # The Claude Code bug (2026-01-29) that caused plugin skills with a 'name' field
+        # to not appear as slash commands has been resolved. Skills should now include the
+        # 'name' field whose value matches the parent directory name.
+        if file_type == FileType.SKILL and file_path is not None:
+            normalized_dict = fix_skill_name_field(normalized_dict, file_path, fixes)
+
+        # Convert any list-valued tool/skill extra fields to comma-separated strings
+        tool_fields = {"tools", "disallowedTools", "allowed-tools", "skills"}
+        for field_name in tool_fields:
+            if field_name in normalized_dict and isinstance(
+                normalized_dict[field_name], list
+            ):
+                normalized_dict[field_name] = ", ".join(
+                    str(x) for x in normalized_dict[field_name]
+                )
+                fixes.append(
+                    f"Converted {field_name} from YAML array to comma-separated string"
+                )
 
         # Compare to detect changes
         for key, value in normalized_dict.items():
+            if key in tool_fields:
+                # Already handled above
+                continue
             if key in original_data and original_data[key] != value:
                 if isinstance(original_data[key], list) and isinstance(value, str):
                     fixes.append(
@@ -1728,9 +1742,7 @@ class FrontmatterValidator:
         if not fixes:
             return content, []
 
-        # Regenerate frontmatter with ruamel.yaml round-trip handler.
-        # ruamel.yaml automatically quotes values containing colon-space,
-        # which is the correct fix for FM009.
+        # Regenerate frontmatter with ruamel.yaml (preserves order, quotes colons)
         new_frontmatter = _dump_yaml(normalized_dict)
 
         return f"---\n{new_frontmatter}---\n{body}", fixes
@@ -1807,12 +1819,42 @@ class NameFormatValidator:
 
         # Extract name field
         name = data.get("name")
-        if not name or not isinstance(name, str):
+        if name is None or not isinstance(name, str):
             # No name field or not a string - skip validation
             return ValidationResult(
                 passed=True, errors=errors, warnings=warnings, info=info
             )
 
+        # Empty name string is invalid — `not name` is True for "" after isinstance check
+        if not name:
+            errors.append(
+                ValidationIssue(
+                    field="name",
+                    severity="error",
+                    message="Name field is empty",
+                    code=SK003,
+                    docs_url=generate_docs_url(SK003),
+                    suggestion="Provide a non-empty name using lowercase letters, numbers, and hyphens",
+                )
+            )
+            return ValidationResult(
+                passed=False, errors=errors, warnings=warnings, info=info
+            )
+
+        self._check_name_format(name, errors)
+
+        passed = len(errors) == 0
+        return ValidationResult(
+            passed=passed, errors=errors, warnings=warnings, info=info
+        )
+
+    def _check_name_format(self, name: str, errors: list[ValidationIssue]) -> None:
+        """Append format errors for a non-empty name string.
+
+        Args:
+            name: The name value to check (must be non-empty str).
+            errors: Mutable list to append ValidationIssue objects to.
+        """
         # Check for uppercase characters
         if any(c.isupper() for c in name):
             errors.append(
@@ -1891,11 +1933,6 @@ class NameFormatValidator:
                     suggestion="Use lowercase letters, numbers, and hyphens only (e.g., 'my-skill-name')",
                 )
             )
-
-        passed = len(errors) == 0
-        return ValidationResult(
-            passed=passed, errors=errors, warnings=warnings, info=info
-        )
 
     def can_fix(self) -> bool:
         """Check if validator supports auto-fixing.
@@ -2007,7 +2044,7 @@ class DescriptionValidator:
 
         # Extract description field
         description = data.get("description")
-        if not description:
+        if description is None:
             # No description field - skip validation (pass with no warnings)
             return ValidationResult(
                 passed=True, errors=errors, warnings=warnings, info=info
@@ -2432,6 +2469,413 @@ class MarkdownTokenCounter:
             return len(encoding.encode(text))
         except (ValueError, KeyError):
             return None
+
+
+# ============================================================================
+# PLUGIN REGISTRATION VALIDATOR
+# ============================================================================
+
+
+def _get_git_remote_url(repo_dir: Path) -> str | None:
+    """Extract the remote URL for the git repository at repo_dir.
+
+    Args:
+        repo_dir: Root of a git repository (directory containing .git/).
+
+    Returns:
+        Remote URL string with .git suffix stripped, or None if unavailable.
+    """
+    git_path = shutil.which("git")
+    if not git_path:
+        return None
+
+    try:
+        result = subprocess.run(
+            [git_path, "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            cwd=str(repo_dir),
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+    remote_url = result.stdout.strip()
+    if not remote_url:
+        return None
+
+    return remote_url.removesuffix(".git")
+
+
+def _get_git_author() -> dict[str, str] | None:
+    """Extract author info from git config.
+
+    Returns:
+        Dict with 'name' and optionally 'email', or None if unavailable.
+    """
+    git_path = shutil.which("git")
+    if not git_path:
+        return None
+
+    try:
+        name_result = subprocess.run(
+            [git_path, "config", "user.name"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+    name = name_result.stdout.strip()
+    if not name:
+        return None
+
+    try:
+        email_result = subprocess.run(
+            [git_path, "config", "user.email"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return {"name": name}
+
+    email = email_result.stdout.strip() if email_result.returncode == 0 else None
+    author: dict[str, str] = {"name": name}
+    if email:
+        author["email"] = email
+    return author
+
+
+def _generate_plugin_metadata(plugin_dir: Path) -> dict[str, Any]:
+    """Generate plugin.json metadata from git and file structure.
+
+    Args:
+        plugin_dir: Path to the plugin directory.
+
+    Returns:
+        Dict with repository, homepage, and author fields populated from git.
+        Empty dict if git is unavailable or not in a repo.
+    """
+    metadata: dict[str, Any] = {}
+
+    current = plugin_dir
+    while current != current.parent:
+        if (current / ".git").exists():
+            repo_url = _get_git_remote_url(current)
+            if repo_url:
+                metadata["repository"] = repo_url
+                relative_path = plugin_dir.relative_to(current)
+                metadata["homepage"] = f"{repo_url}/tree/main/{relative_path}"
+            break
+        current = current.parent
+
+    author = _get_git_author()
+    if author:
+        metadata["author"] = author
+
+    return metadata
+
+
+def _find_actual_capabilities(
+    plugin_dir: Path,
+) -> tuple[set[Path], set[Path], set[Path]]:
+    """Find all actual capability files in a plugin directory.
+
+    Args:
+        plugin_dir: Path to the plugin directory.
+
+    Returns:
+        Tuple of (actual_skills, actual_agents, actual_commands) as sets of
+        paths relative to plugin_dir.
+    """
+    actual_skills: set[Path] = set()
+    actual_agents: set[Path] = set()
+    actual_commands: set[Path] = set()
+
+    skills_dir = plugin_dir / "skills"
+    if skills_dir.is_dir():
+        actual_skills = {
+            d.relative_to(plugin_dir)
+            for d in skills_dir.glob("*/")
+            if d.is_dir() and (d / "SKILL.md").exists()
+        }
+
+    agents_dir = plugin_dir / "agents"
+    if agents_dir.is_dir():
+        actual_agents = {
+            f.relative_to(plugin_dir)
+            for f in agents_dir.glob("*.md")
+            if f.name not in {"CLAUDE.md", "README.md"}
+        }
+
+    commands_dir = plugin_dir / "commands"
+    if commands_dir.is_dir():
+        actual_commands = {
+            f.relative_to(plugin_dir)
+            for f in commands_dir.glob("*.md")
+            if f.name not in {"CLAUDE.md", "README.md"}
+        }
+
+    return actual_skills, actual_agents, actual_commands
+
+
+def _parse_registered_paths(
+    plugin_config: dict[str, Any], plugin_dir: Path, field: str
+) -> set[Path]:
+    """Parse registered capability paths from a plugin.json field.
+
+    Args:
+        plugin_config: Loaded plugin.json content.
+        plugin_dir: Plugin directory path.
+        field: Field name (skills, agents, commands).
+
+    Returns:
+        Set of registered paths relative to plugin_dir.
+    """
+    registered: set[Path] = set()
+
+    if field not in plugin_config:
+        return registered
+
+    value = plugin_config[field]
+
+    if isinstance(value, str):
+        value_path = plugin_dir / value.lstrip("./")
+        if value_path.is_dir():
+            registered.update(
+                f.relative_to(plugin_dir)
+                for f in value_path.glob("*.md")
+                if f.name not in {"CLAUDE.md", "README.md"}
+            )
+        else:
+            registered.add(Path(value.lstrip("./")))
+    elif isinstance(value, list):
+        registered.update(Path(item.lstrip("./")) for item in value)
+
+    return registered
+
+
+class PluginRegistrationValidator:
+    """Validates capability registration against plugin.json.
+
+    Checks that all capability files are registered and all registered paths
+    exist. Also validates plugin.json metadata against git-derived values.
+
+    Open/Closed: new capability types can be added by extending
+    _find_actual_capabilities() and adding entries in validate().
+    """
+
+    def validate(self, path: Path) -> ValidationResult:
+        """Validate registration and metadata for the plugin containing path.
+
+        Args:
+            path: Path to a file or directory within the plugin.
+
+        Returns:
+            ValidationResult with registration and metadata issues.
+        """
+        errors: list[ValidationIssue] = []
+        warnings: list[ValidationIssue] = []
+        info: list[ValidationIssue] = []
+
+        plugin_dir = self._find_plugin_dir(path)
+        if plugin_dir is None:
+            return ValidationResult(
+                passed=True, errors=errors, warnings=warnings, info=info
+            )
+
+        plugin_json_path = plugin_dir / ".claude-plugin" / "plugin.json"
+        if not plugin_json_path.exists():
+            return ValidationResult(
+                passed=True, errors=errors, warnings=warnings, info=info
+            )
+
+        try:
+            with plugin_json_path.open() as f:
+                plugin_config = json.load(f)
+        except json.JSONDecodeError as e:
+            errors.append(
+                ValidationIssue(
+                    field="plugin.json",
+                    severity="error",
+                    message=f"Invalid JSON: {e}",
+                    code=PL002,
+                    docs_url=generate_docs_url(PL002),
+                    suggestion="Fix JSON syntax errors",
+                )
+            )
+            return ValidationResult(
+                passed=False, errors=errors, warnings=warnings, info=info
+            )
+
+        # Registration checks
+        actual_skills, actual_agents, actual_commands = _find_actual_capabilities(
+            plugin_dir
+        )
+        registered_skills = _parse_registered_paths(plugin_config, plugin_dir, "skills")
+        registered_agents = _parse_registered_paths(plugin_config, plugin_dir, "agents")
+        registered_commands = _parse_registered_paths(
+            plugin_config, plugin_dir, "commands"
+        )
+
+        warnings.extend(
+            ValidationIssue(
+                field="plugin.json",
+                severity="warning",
+                message=f"Skill '{orphan}' exists but is not registered (relies on default discovery)",
+                code=PR001,
+                docs_url=generate_docs_url(PR001),
+                suggestion=f"Add './{orphan}' to the skills array in plugin.json",
+            )
+            for orphan in actual_skills - registered_skills
+        )
+
+        warnings.extend(
+            ValidationIssue(
+                field="plugin.json",
+                severity="warning",
+                message=f"Agent '{orphan}' exists but is not registered",
+                code=PR001,
+                docs_url=generate_docs_url(PR001),
+                suggestion=f"Add './{orphan}' to the agents array in plugin.json",
+            )
+            for orphan in actual_agents - registered_agents
+        )
+
+        warnings.extend(
+            ValidationIssue(
+                field="plugin.json",
+                severity="warning",
+                message=f"Command '{orphan}' exists but is not registered",
+                code=PR001,
+                docs_url=generate_docs_url(PR001),
+                suggestion=f"Add './{orphan}' to the commands array in plugin.json",
+            )
+            for orphan in actual_commands - registered_commands
+        )
+
+        errors.extend(
+            ValidationIssue(
+                field="plugin.json",
+                severity="error",
+                message=f"Registered skill '{ref}' does not exist",
+                code=PR002,
+                docs_url=generate_docs_url(PR002),
+                suggestion=f"Remove from plugin.json or create {ref}/SKILL.md",
+            )
+            for ref in registered_skills
+            if not (plugin_dir / ref / "SKILL.md").exists()
+        )
+
+        errors.extend(
+            ValidationIssue(
+                field="plugin.json",
+                severity="error",
+                message=f"Registered agent '{ref}' does not exist",
+                code=PR002,
+                docs_url=generate_docs_url(PR002),
+                suggestion=f"Remove from plugin.json or create {ref}",
+            )
+            for ref in registered_agents
+            if not (plugin_dir / ref).exists()
+        )
+
+        errors.extend(
+            ValidationIssue(
+                field="plugin.json",
+                severity="error",
+                message=f"Registered command '{ref}' does not exist",
+                code=PR002,
+                docs_url=generate_docs_url(PR002),
+                suggestion=f"Remove from plugin.json or create {ref}",
+            )
+            for ref in registered_commands
+            if not (plugin_dir / ref).exists()
+        )
+
+        # Metadata checks (informational)
+        git_metadata = _generate_plugin_metadata(plugin_dir)
+        if git_metadata:
+            missing = [
+                k
+                for k in ("repository", "homepage", "author")
+                if k not in plugin_config and k in git_metadata
+            ]
+            if missing:
+                suggestion_json = json.dumps(
+                    {k: git_metadata[k] for k in missing}, indent=2
+                )
+                info.append(
+                    ValidationIssue(
+                        field="plugin.json",
+                        severity="info",
+                        message=f"Metadata could be populated from git: {', '.join(missing)}",
+                        code=PR003,
+                        docs_url=generate_docs_url(PR003),
+                        suggestion=f"Add to plugin.json:\n{suggestion_json}",
+                    )
+                )
+
+            if (
+                "repository" in plugin_config
+                and "repository" in git_metadata
+                and plugin_config["repository"] != git_metadata["repository"]
+            ):
+                warnings.append(
+                    ValidationIssue(
+                        field="plugin.json",
+                        severity="warning",
+                        message=(
+                            f"Repository URL mismatch: plugin.json has "
+                            f"'{plugin_config['repository']}', git has '{git_metadata['repository']}'"
+                        ),
+                        code=PR004,
+                        docs_url=generate_docs_url(PR004),
+                        suggestion=f"Update repository to: {git_metadata['repository']}",
+                    )
+                )
+
+        return ValidationResult(
+            passed=len(errors) == 0, errors=errors, warnings=warnings, info=info
+        )
+
+    def can_fix(self) -> bool:
+        """Check if validator supports auto-fixing.
+
+        Returns:
+            False (registration issues require manual plugin.json edits).
+        """
+        return False
+
+    def fix(self, path: Path) -> list[str]:
+        """Auto-fix registration issues (not supported).
+
+        Args:
+            path: Path to file or directory.
+
+        Raises:
+            NotImplementedError: Registration issues require manual fixes.
+        """
+        raise NotImplementedError(
+            "Plugin registration issues require manual edits to plugin.json."
+        )
+
+    def _find_plugin_dir(self, path: Path) -> Path | None:
+        """Find the plugin directory containing .claude-plugin/plugin.json.
+
+        Args:
+            path: Path to start searching from.
+
+        Returns:
+            Plugin directory path, or None if not found.
+        """
+        search_path = path.parent if path.is_file() else path
+        for parent in [search_path, *search_path.parents]:
+            if (parent / ".claude-plugin" / "plugin.json").exists():
+                return parent
+        return None
 
 
 # ============================================================================
@@ -2914,6 +3358,13 @@ class HookValidator:
             for group_idx, group in enumerate(hook_groups):
                 self._validate_hook_group(group, event_type, group_idx, errors)
 
+        # Validate that file-path command references actually exist and are executable.
+        # HK004/HK005 issues are appended directly to the combined errors list so that
+        # missing-script warnings surface in the same result as structural errors.
+        self._validate_hook_script_references_in_hooks_dict(
+            hooks_obj, path.parent, errors
+        )
+
         passed = len(errors) == 0
         return ValidationResult(
             passed=passed, errors=errors, warnings=warnings, info=info
@@ -3033,6 +3484,139 @@ class HookValidator:
                             docs_url=generate_docs_url(HK003),
                         )
                     )
+
+    @staticmethod
+    def _is_file_path_reference(command: str) -> bool:
+        """Return True if *command* looks like a file path rather than a bare shell command.
+
+        File path references start with ``./``, ``../``, ``/`` (absolute), or
+        ``${CLAUDE_PLUGIN_ROOT}/``.  Bare shell commands (e.g. ``echo hello``,
+        ``python3 -m pytest``) do not match.
+
+        Args:
+            command: The ``command`` value from a hook entry.
+
+        Returns:
+            True if command is a file path reference, False otherwise.
+        """
+        return bool(command) and (
+            command.startswith(("./", "../", "/", "${CLAUDE_PLUGIN_ROOT}/"))
+        )
+
+    @staticmethod
+    def _find_plugin_root(base_dir: Path) -> Path:
+        """Walk up from *base_dir* to find the plugin root directory.
+
+        The plugin root is the first ancestor directory that contains a
+        ``.claude-plugin/`` subdirectory.  Falls back to *base_dir* if not found.
+
+        Args:
+            base_dir: Starting directory for the search.
+
+        Returns:
+            Plugin root Path, or *base_dir* if the plugin root cannot be determined.
+        """
+        current = base_dir.resolve()
+        for parent in [current, *current.parents]:
+            if (parent / ".claude-plugin").is_dir():
+                return parent
+        return base_dir
+
+    def _validate_command_script_references(
+        self,
+        hook_entries: list[dict[str, Any]],
+        base_dir: Path,
+        errors: list[ValidationIssue],
+    ) -> None:
+        """Check that file-path ``command`` values in hook entries actually exist.
+
+        For each entry where ``type == "command"`` and the ``command`` value
+        looks like a file path reference (starts with ``./``, ``../``, ``/``,
+        or ``${CLAUDE_PLUGIN_ROOT}/``), resolve the path relative to *base_dir*
+        and verify:
+
+        - The file exists (HK004 error if not).
+        - The file is executable (HK005 warning if not).
+
+        Bare shell commands such as ``echo hello`` or ``python3 -m pytest`` are
+        intentionally skipped.
+
+        Args:
+            hook_entries: List of hook entry dicts to inspect.
+            base_dir: Directory to use as the resolution base for relative paths.
+            errors: List to append HK004 errors and HK005 warnings to.
+        """
+        plugin_root = self._find_plugin_root(base_dir)
+
+        for entry in hook_entries:
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("type") != "command":
+                continue
+
+            command = entry.get("command", "")
+            if not isinstance(command, str) or not self._is_file_path_reference(
+                command
+            ):
+                continue
+
+            # Substitute ${CLAUDE_PLUGIN_ROOT} with the detected plugin root
+            resolved_command = command.replace(
+                "${CLAUDE_PLUGIN_ROOT}", str(plugin_root)
+            )
+
+            resolved_path = Path(resolved_command)
+            if not resolved_path.is_absolute():
+                resolved_path = (base_dir / resolved_command).resolve()
+
+            if not resolved_path.exists():
+                errors.append(
+                    ValidationIssue(
+                        field="command",
+                        severity="error",
+                        message=f"Hook script not found: {command}",
+                        code=HK004,
+                        docs_url=generate_docs_url(HK004),
+                        suggestion=f"Create the script at {resolved_path} or fix the path",
+                    )
+                )
+            elif not os.access(resolved_path, os.X_OK):
+                errors.append(
+                    ValidationIssue(
+                        field="command",
+                        severity="warning",
+                        message=f"Hook script is not executable: {command}",
+                        code=HK005,
+                        docs_url=generate_docs_url(HK005),
+                        suggestion=f"Run: chmod +x {resolved_path}",
+                    )
+                )
+
+    def _validate_hook_script_references_in_hooks_dict(
+        self, hooks_dict: dict[str, Any], base_dir: Path, errors: list[ValidationIssue]
+    ) -> None:
+        """Validate command file-path references in a hooks configuration dict.
+
+        Iterates over a hooks configuration dict (same structure as the root
+        ``"hooks"`` key in ``hooks.json``) and calls
+        :meth:`_validate_command_script_references` for every hook entry found.
+
+        Args:
+            hooks_dict: Hooks configuration mapping event types to groups.
+            base_dir: Directory used as base for resolving relative script paths.
+            errors: List to append HK004 errors and HK005 warnings to.
+        """
+        for groups in hooks_dict.values():
+            if not isinstance(groups, list):
+                continue
+            for group in groups:
+                if not isinstance(group, dict):
+                    continue
+                for entry in group.get("hooks", []):
+                    if isinstance(entry, dict):
+                        self._validate_command_script_references(
+                            [entry], base_dir, errors
+                        )
 
 
 # ============================================================================
@@ -3234,16 +3818,25 @@ class ConsoleReporter:
     Architecture lines 239-252
     """
 
-    def __init__(self, no_color: bool = False) -> None:
+    def __init__(
+        self, console: Console | None = None, *, no_color: bool = False
+    ) -> None:
         """Initialize console reporter.
 
         Args:
-            no_color: Disable color output for non-TTY environments
+            console: Optional pre-built Rich Console instance. When provided,
+                the ``no_color`` parameter is ignored because color behaviour is
+                determined by the supplied console.
+            no_color: Disable color output for non-TTY environments. Only used
+                when ``console`` is not provided.
         """
-        # Lazy import Rich to avoid startup cost when not needed
-        from rich.console import Console
+        if console is not None:
+            self.console = console
+        else:
+            # Lazy import Rich to avoid startup cost when not needed
+            from rich.console import Console as _Console
 
-        self.console = Console(force_terminal=not no_color, no_color=no_color)
+            self.console = _Console(force_terminal=not no_color, no_color=no_color)
         self.no_color = no_color
 
     @staticmethod
@@ -4052,10 +4645,7 @@ def main(  # noqa: PLR0912, PLR0915, C901
     # Validate that all provided paths exist; report non-existent ones
     bad_paths = [str(p) for p in paths if not p.exists()]
     if bad_paths:
-        typer.echo(
-            f"These don't match the required arguments: {', '.join(bad_paths)}",
-            err=True,
-        )
+        typer.echo(f"Path does not exist: {', '.join(bad_paths)}", err=True)
         typer.echo("", err=True)
         _show_help_and_exit(ctx, code=2)
 

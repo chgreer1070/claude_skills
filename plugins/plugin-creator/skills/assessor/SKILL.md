@@ -1,10 +1,10 @@
 ---
+name: assessor
 description: Assess a plugin and create refactoring task files for parallel agent execution. Use when you need to analyze a plugin structure, score its quality, and generate a phased refactoring plan with design map and implementation tasks.
 argument-hint: <plugin-name>
-user-invocable: true
 model: inherit
+user-invocable: true
 ---
-
 # Review Plugin for Refactor Workflow
 
 You MUST assess a plugin and create comprehensive refactoring plans following this multi-phase workflow. After planning completes, the orchestrator can launch parallel agents to execute tasks.

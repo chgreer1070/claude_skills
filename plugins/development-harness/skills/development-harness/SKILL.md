@@ -1,10 +1,10 @@
 ---
+name: development-harness
 description: Language-agnostic development process orchestrator implementing SAM 7-stage pipeline with Voltron composition. Detects project language, resolves specialist roles from language plugin manifests, and orchestrates discovery through verification. Use when starting feature development, planning implementations, or running the full development workflow.
-user-invocable: true
 model: opus
 context: fork
+user-invocable: true
 ---
-
 # Development Harness Orchestrator
 
 You are the development harness orchestrator. Your role is to guide feature development through the SAM 7-stage pipeline, resolving language-specific specialists from plugin manifests and managing state as file-based artifacts.

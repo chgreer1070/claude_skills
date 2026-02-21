@@ -1,4 +1,5 @@
 ---
+name: multi-source-synthesis
 description: Combines multiple summaries into coherent synthesis. Activates when user requests combine these summaries, synthesize results, merge findings, or multi-source synthesis. This is the reduce step after individual sources have been summarized. Enforces deduplication, conflict surfacing, confidence scoring across sources, and attribution to all sources.
 ---
 

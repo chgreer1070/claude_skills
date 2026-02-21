@@ -204,10 +204,10 @@ class TestBoundaryConditions:
         How: Create description with exactly 20 chars, validate
         Why: Ensure boundary condition at MIN_DESCRIPTION_LENGTH
         """
-        # "use when testing x" = 20 chars
+        # "use when testing abc" = 20 chars (verified: len("use when testing abc") == 20)
         skill_md = tmp_path / "SKILL.md"
         skill_md.write_text("""---
-description: "use when testing x"
+description: "use when testing abc"
 ---
 """)
 

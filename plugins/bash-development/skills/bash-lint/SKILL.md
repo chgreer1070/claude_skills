@@ -1,7 +1,7 @@
 ---
+name: bash-lint
 description: This skill should be used when the user asks to "lint bash script", "run shellcheck", "format shell script", "use shfmt", "fix shellcheck errors", or mentions shell script linting, formatting, code quality, or pre-commit hooks for bash.
 ---
-
 # Bash Linting
 
 Shellcheck and shfmt integration for bash script quality assurance.

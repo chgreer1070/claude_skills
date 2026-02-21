@@ -1,7 +1,7 @@
 ---
+name: dasel-reference
 description: Complete dasel v3 query syntax reference — selectors, functions, conditionals, variables, spread operator, type casting, and format-specific patterns for JSON, YAML, TOML, XML, CSV, HCL, INI
 ---
-
 # dasel v3 Syntax Reference
 
 Single-binary CLI for querying, modifying, and converting structured data. Replaces `jq` + `yq` + `xmllint` with one unified query syntax across all formats.

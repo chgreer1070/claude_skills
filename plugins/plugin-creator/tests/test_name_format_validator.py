@@ -164,20 +164,20 @@ class TestInvalidNamesHyphens:
     """Test hyphen placement detection (SK003)."""
 
     @pytest.mark.parametrize(
-        "invalid_name",
+        ("invalid_name", "yaml_repr"),
         [
-            "-test",  # Leading hyphen
-            "test-",  # Trailing hyphen
-            "-test-",  # Both leading and trailing
-            "test--skill",  # Consecutive hyphens
-            "test---skill",  # Multiple consecutive hyphens
-            "-",  # Single hyphen only
-            "--test",  # Multiple leading hyphens
-            "test--",  # Multiple trailing hyphens
+            ("-test", "-test"),  # Leading hyphen
+            ("test-", "test-"),  # Trailing hyphen
+            ("-test-", "-test-"),  # Both leading and trailing
+            ("test--skill", "test--skill"),  # Consecutive hyphens
+            ("test---skill", "test---skill"),  # Multiple consecutive hyphens
+            ("-", '"-"'),  # Single hyphen only — must be quoted in YAML
+            ("--test", "--test"),  # Multiple leading hyphens
+            ("test--", "test--"),  # Multiple trailing hyphens
         ],
     )
     def test_hyphen_placement_detection(
-        self, tmp_path: Path, invalid_name: str
+        self, tmp_path: Path, invalid_name: str, yaml_repr: str
     ) -> None:
         """Test error when name has invalid hyphen placement (SK003).
 
@@ -188,7 +188,7 @@ class TestInvalidNamesHyphens:
         agent_md = tmp_path / "agents" / "test.md"
         agent_md.parent.mkdir(parents=True, exist_ok=True)
         agent_md.write_text(f"""---
-name: {invalid_name}
+name: {yaml_repr}
 description: Test agent
 ---
 """)

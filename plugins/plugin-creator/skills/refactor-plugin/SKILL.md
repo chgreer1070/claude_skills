@@ -1,9 +1,9 @@
 ---
+name: refactor-plugin
 description: Start a complete plugin refactoring workflow that analyzes plugin structure, creates a refactoring plan with tasks, and guides through execution. Use when you need to refactor an entire plugin — triggers assessment, design, planning, and parallel agent execution phases.
 argument-hint: <plugin-path>
 user-invocable: true
 ---
-
 # Plugin Refactoring Workflow
 
 Start a comprehensive plugin refactoring workflow for the specified plugin.

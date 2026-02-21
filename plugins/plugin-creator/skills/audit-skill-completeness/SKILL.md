@@ -1,10 +1,10 @@
 ---
+name: audit-skill-completeness
 description: Evaluate a single skill's quality against 8 completeness categories derived from Anthropic's official skills repository. Scores preparation, progression, verification, scripts, examples, anti-patterns, references, and assets. Generates scored report to .claude/audits/. Use when auditing skill quality, checking marketplace readiness, evaluating skill completeness score, performing pre-publication evaluation, or comparing to Anthropic skills.
-user-invocable: true
 argument-hint: <skill-path>
 model: sonnet
+user-invocable: true
 ---
-
 # Audit Skill Completeness
 
 ## Purpose
