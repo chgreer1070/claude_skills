@@ -204,28 +204,10 @@ jobs:
 
   # =============================================================================
   # Local hooks: frontmatter validation (blocking)
+  # validate_frontmatter.py was consolidated into plugin_validator.py
+  # (refactor: consolidate frontmatter validation into shared frontmatter_core module)
+  # Frontmatter is now validated by the validate-plugins job below.
   # =============================================================================
-  validate-frontmatter:
-    name: Local / Frontmatter
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.11"
-          enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
-          cache-python: true
-
-      - name: Validate frontmatter
-        run: uv run plugins/plugin-creator/scripts/validate_frontmatter.py --check
 
   # =============================================================================
   # Local hooks: plugin validation (plugin_validator.py)
@@ -435,6 +417,67 @@ jobs:
           done
 
   # =============================================================================
+  # Python: pytest test suite
+  # =============================================================================
+  test-python:
+    name: Python / Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
+          cache-python: true
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run pytest
+        run: uv run pytest
+
+  # =============================================================================
+  # JavaScript/TypeScript: test suite
+  # No tests defined yet — job passes when no test script exists in package.json,
+  # and automatically becomes blocking once `npm test` is wired up.
+  # =============================================================================
+  test-node:
+    name: JS/TS / Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run tests
+        run: |
+          if node -e "const p = require('./package.json'); process.exit(p.scripts && p.scripts.test ? 0 : 1)" 2>/dev/null; then
+            npm test
+          else
+            echo "No test script defined in package.json — skipping"
+          fi
+
+  # =============================================================================
   # Summary job that requires all checks to pass
   # =============================================================================
   quality-gate:
@@ -448,10 +491,11 @@ jobs:
       - lint-markdown
       - lint-shell
       - lint-json
-      - validate-frontmatter
       - validate-plugins
       - manifest-sync
       - file-hygiene
+      - test-python
+      - test-node
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
