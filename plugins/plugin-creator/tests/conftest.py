@@ -23,9 +23,11 @@ if TYPE_CHECKING:
 
 
 # Suppress ANSI colour output before the module-level import below.
-# Rich reads NO_COLOR at console-initialisation time (module load), so this
-# must be set before exec_module() runs, not in a pytest fixture.
-os.environ.setdefault("NO_COLOR", "1")
+# Rich reads NO_COLOR / FORCE_COLOR at console-initialisation time (module
+# load), so these must be set before exec_module() runs, not in a fixture.
+# GitHub Actions sets FORCE_COLOR=1 which overrides NO_COLOR; unset it first.
+os.environ.pop("FORCE_COLOR", None)
+os.environ["NO_COLOR"] = "1"
 
 # Load the plugin-validator module (has hyphen in name, so use importlib)
 _VALIDATOR_PATH = Path(__file__).parent.parent / "scripts" / "plugin_validator.py"
