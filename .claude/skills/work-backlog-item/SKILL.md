@@ -1,7 +1,7 @@
 ---
 name: work-backlog-item
-description: "Bridges BACKLOG.md to the SAM planning pipeline. No args: interactive browser. With title substring: auto-grooming, RT-ICA gate, SAM planning, plan reference recorded. 'close {title}': verifies plan checklist 100% complete, spawns acceptance-criteria agent, marks DONE on pass. 'resolve {title}': marks item no longer applicable with reason. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
-argument-hint: '[item-title-substring | close {title} | resolve {title}]'
+description: "Use when working, planning, or closing a backlog item. Bridges BACKLOG.md to the SAM planning pipeline with optional GitHub Issue/Project/Milestone tracking. No args: interactive browser. With title substring: auto-grooming, RT-ICA gate, GitHub issue sync, SAM planning, plan reference recorded. 'close {title}': verifies plan checklist 100% complete, closes GitHub issue, marks DONE. 'resolve {title}': marks item no longer applicable with reason. 'setup-github': initializes labels, creates project and first milestone. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
+argument-hint: '[item-title-substring | close {title} | resolve {title} | setup-github]'
 user-invocable: true
 ---
 # Work Backlog Item
@@ -387,6 +387,68 @@ Backlog item "{title}" closed.
 
 </step9_procedure>
 
+## GitHub Integration
+
+BACKLOG.md is the local development scratchpad. GitHub Issues are the published, tracked view. They are linked — when you work a P0/P1 backlog item, a GitHub Issue can be created and kept in sync.
+
+```text
+BACKLOG.md          →  GitHub Issue
+  Priority section  →  priority:* label
+  Description       →  Issue body (story format)
+  Status            →  status:* label
+  Plan file         →  Issue body Notes
+  **Issue**: #N     ←  written back after creation
+  Completed         →  Issue closed
+```
+
+Full step-by-step commands and example sessions: [github-integration.md](./references/github-integration.md)
+
+### Step 2.5: GitHub Issue Sync
+
+After Step 2, check for `**Issue**: #N` field in the matched item.
+
+- Found: verify issue state with `gh issue view N -R Jamie-BitFlight/claude_skills --json number,title,state,labels`
+- Not found + P0/P1: offer to create a GitHub Issue (proceed to Step 2.5a)
+- Not found + P2/Ideas: skip silently
+
+### Step 2.5a: Create GitHub Issue
+
+Build story-format body (Story / Description / Acceptance Criteria / Context sections). Run `gh issue create` with `priority:*`, `type:*`, and `status:needs-grooming` labels. Capture the issue number and write `**Issue**: #N` back to BACKLOG.md. Optionally assign to a milestone.
+
+### Step 2.7: Set In-Progress Label
+
+If the item has `**Issue**: #N`:
+
+```bash
+gh issue edit N -R Jamie-BitFlight/claude_skills \
+  --add-label "status:in-progress" \
+  --remove-label "status:needs-grooming"
+```
+
+### Step 9 Extension: Close GitHub Issue
+
+After writing the closing record (Step 9e), if the item has `**Issue**: #N`:
+
+```bash
+gh issue close N -R Jamie-BitFlight/claude_skills \
+  --comment "Completed. Checklist {checked}/{total} — PASS. Plan: {plan file path}"
+```
+
+If no `**Issue**:` field, skip silently.
+
+### setup-github Command
+
+**Trigger:** `$ARGUMENTS` is exactly `setup-github`. Initializes label taxonomy, first milestone, and GitHub Project.
+
+```bash
+uv run .claude/skills/gh/scripts/github_project_setup.py labels --repo Jamie-BitFlight/claude_skills
+gh api repos/Jamie-BitFlight/claude_skills/milestones -X POST \
+  -f title="v1.0 — Skills Foundation" -f due_on="2026-03-31T00:00:00Z"
+gh project create --owner Jamie-BitFlight --title "claude_skills Backlog"
+```
+
+Full setup steps and expected output: [github-integration.md](./references/github-integration.md)
+
 ## Error Handling
 
 - Item not found: list available items from BACKLOG.md with their priority sections
@@ -401,6 +463,10 @@ Backlog item "{title}" closed.
 - `close` with verification FAIL: report gaps, do not close
 - `close` on already-completed item: report closed date, do not re-close
 - `resolve` with no reason provided: block until user provides reason (reason is required evidence)
+- GitHub issue creation fails: report error, continue with BACKLOG.md-only workflow; do not block SAM planning
+- `gh` not installed: run `uv run .claude/skills/gh/scripts/setup_gh.py` first
+- Label not found during issue create: create it on the fly with `gh label create`, then retry
+- Milestone not found: skip milestone assignment; do not fail
 
 ## Example Sessions
 
@@ -463,3 +529,11 @@ Backlog item resolved.
   Status: RESOLVED — REFUTED by fact-check: --last flag verified against commitlint
           source cli.ts and official docs. No fix needed.
 ```
+
+GitHub-specific example sessions (issue creation flow and setup-github): [github-integration.md](./references/github-integration.md)
+
+---
+
+## Validation Plan
+
+See [validation-plan.md](./references/validation-plan.md) for V1–V6 verification commands and the full integration test sequence.
