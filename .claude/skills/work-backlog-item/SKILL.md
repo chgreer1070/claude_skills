@@ -1,7 +1,7 @@
 ---
 name: work-backlog-item
-description: "Bridges BACKLOG.md to the SAM planning pipeline. No args: interactive browser. With title substring: auto-grooming, RT-ICA gate, SAM planning, plan reference recorded. 'close {title}': verifies plan checklist 100% complete, spawns acceptance-criteria agent, marks DONE on pass. 'resolve {title}': marks item no longer applicable with reason. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
-argument-hint: '[item-title-substring | close {title} | resolve {title}]'
+description: "Use when working, planning, or closing a backlog item. Bridges BACKLOG.md to the SAM planning pipeline with optional GitHub Issue/Project/Milestone tracking. No args: interactive browser. With title substring: auto-grooming, RT-ICA gate, GitHub issue sync, SAM planning, plan reference recorded. '--auto {title}': fully autonomous mode — no AskUserQuestion calls, derives missing data from research files, logs all decisions, skips interactive GitHub prompts; suitable for agent use without human in the loop. 'close {title}': verifies plan checklist 100% complete, closes GitHub issue, marks DONE. 'resolve {title}': marks item no longer applicable with reason. 'setup-github': initializes labels, creates project and first milestone. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
+argument-hint: '[--auto {title} | item-title-substring | close {title} | resolve {title} | setup-github]'
 user-invocable: true
 ---
 # Work Backlog Item
@@ -12,26 +12,60 @@ When invoked with no arguments, shows an interactive backlog browser. When invok
 
 ## Arguments
 
-`$ARGUMENTS` is one of:
+`$0` selects the operating mode; remaining positional args (`$1`, `$2`, ...) form the title or parameter:
 
-- **Empty** — interactive browser
-- **Title substring** — case-insensitive match against H3 headings; triggers planning workflow
-- **`close {title}`** — verify and close a completed item
-- **`resolve {title}`** — mark an item as no longer applicable (with reason)
+| `$0` value | Remaining args | Mode |
+|---|---|---|
+| (empty) | — | Interactive browser |
+| `--auto` | `$1`+ = title | Autonomous — no `AskUserQuestion` calls |
+| `close` | `$1`+ = title | Verify and close a completed item |
+| `resolve` | `$1`+ = title | Mark no longer applicable (reason required) |
+| `setup-github` | — | Initialize labels, project, first milestone |
+| (any other) | — | `$ARGUMENTS` treated as title substring → planning |
 
 ```text
-/work-backlog-item                         # interactive browser
-/work-backlog-item Error Recovery          # direct match → planning
-/work-backlog-item regex false positive    # planning
-/work-backlog-item close Error Recovery    # verify and close
-/work-backlog-item resolve commitlint      # mark no longer applicable
+/work-backlog-item                                    # interactive browser
+/work-backlog-item Error Recovery                    # direct match → planning
+/work-backlog-item --auto vercel skills npm package  # autonomous → planning
+/work-backlog-item close Error Recovery              # verify and close
+/work-backlog-item resolve commitlint                # mark no longer applicable
 ```
+
+### --auto mode rules
+
+When `$0` is `--auto`, the following substitutions apply at every interactive decision point:
+
+| Normal behaviour | `--auto` substitution |
+|---|---|
+| Step 1: zero matches → ask user to create | Auto-invoke `create-backlog-item --auto {title}`, log `[AUTO] No item found — invoking create-backlog-item --auto` |
+| Step 1: multiple matches → ask user to pick | Log `[AUTO] Multiple matches — picking first: {title}`, proceed with first match |
+| Step 2.5: offer GitHub issue for P0/P1 | Log `[AUTO] Skipping GitHub issue offer`, continue without issue |
+| Step 2.5: ask milestone assignment | Log `[AUTO] Skipping milestone assignment`, skip |
+| RT-ICA BLOCKED | Log `[AUTO] STOP — RT-ICA BLOCKED: {missing inputs}`, stop (cannot resolve without human) |
+| Any other `AskUserQuestion` | Log `[AUTO] Decision: {chosen option} — reason: {evidence}`, proceed with logged choice |
+
+`--auto` does NOT change the behaviour of Steps 3–8 (grooming, RT-ICA evaluation, SAM planning, BACKLOG.md write) — those are already agent-executable without human input.
 
 ## Workflow
 
+### Routing (evaluated first, before any step)
+
+Dispatch based on `$0` (the first argument word) before executing any step:
+
+| `$0` value | Title source | Route |
+|---|---|---|
+| (empty) | — | Step 0 — interactive browser |
+| `--auto` | `$1`+ joined | AUTO_MODE=true → Step 1 |
+| `close` | `$1`+ joined | Step 9 (close path) |
+| `resolve` | `$1`+ joined | Step 9 (resolve path) |
+| `setup-github` | — | setup-github command |
+| (any other) | `$ARGUMENTS` | Title substring → Step 1 (interactive mode) |
+
+**AUTO_MODE** — when set, all `AskUserQuestion` calls are replaced with evidence-derived decisions. See the `--auto mode rules` table in the Arguments section for each substitution.
+
 ### Step 0: Interactive Browser (no arguments only)
 
-**Trigger:** `$ARGUMENTS` is empty.
+**Trigger:** `$0` is empty (no arguments passed).
 
 <step0_procedure>
 
@@ -73,23 +107,25 @@ When invoked with no arguments, shows an interactive backlog browser. When invok
 4. Use `AskUserQuestion` to ask: "Which item would you like to work on next?"
 
 5. Handle the response:
-   - `[number]` — set `$ARGUMENTS` to that item's title and proceed to Step 1
+   - `[number]` — use that item's title as the working title and proceed to Step 1
    - `G [number]` — invoke `Skill(skill="groom-backlog-item", args="{item title}")` then re-display the list
    - `G all` — invoke `Skill(skill="groom-backlog-item", args="all")` then re-display the list
    - `D [number]` — display the full item description, research_first field, and grooming manifest if it exists in `.claude/grooming-reports/`, then re-display the list
-   - `C [number]` — set `$ARGUMENTS` to `close {item title}` and proceed to Step 9
-   - `R [number]` — set `$ARGUMENTS` to `resolve {item title}` and proceed to Step 9
+   - `C [number]` — proceed to Step 9 (close path) with that item's title
+   - `R [number]` — proceed to Step 9 (resolve path) with that item's title
 
 </step0_procedure>
 
-**Routing:** If `$ARGUMENTS` starts with `close` or `resolve`, extract the title substring and jump directly to Step 9.
+**Routing:** If `$0` is `close` or `resolve`, extract `$1`+ as the title and jump directly to Step 9.
 
 ### Step 1: Find the Backlog Item
 
-Read `.claude/BACKLOG.md`. Search H3 headings (`### ...`) for case-insensitive match against `$ARGUMENTS`.
+Read `.claude/BACKLOG.md`. Search H3 headings (`### ...`) for case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
 
-- Zero matches: report "No backlog item found matching: {$ARGUMENTS}" and stop.
-- Multiple matches: list all matches and ask the user to pick one.
+- **Zero matches (interactive mode):** report "No backlog item found matching: {title}" and offer to create one via `/create-backlog-item`.
+- **Zero matches (AUTO_MODE):** log `[AUTO] No item found — invoking create-backlog-item --auto {title}`, invoke `Skill(command: "create-backlog-item", args: "--auto {title}")`, then re-run Step 1.
+- **Multiple matches (interactive mode):** list all matches and ask the user to pick one.
+- **Multiple matches (AUTO_MODE):** log `[AUTO] Multiple matches — picking first: {title}`, proceed with first match.
 
 Record the priority section (P0, P1, P2, Ideas) the item belongs to.
 
@@ -162,7 +198,7 @@ Proceed to Step 5. Carry DERIVABLE items forward as "Assumptions to confirm" in 
 
 ### Step 5: Compose Feature Request
 
-Build the `$ARGUMENTS` string for `add-new-feature`:
+Build the feature request string for `add-new-feature`:
 
 ```text
 ## Backlog Item: {title}
@@ -239,14 +275,14 @@ Backlog item "{title}" is now planned.
 
 ### Step 9: Verify and Close
 
-**Trigger:** `$ARGUMENTS` starts with `close` or `resolve`.
+**Trigger:** `$0` is `close` or `resolve`.
 
 <step9_procedure>
 
-Extract the operation and title substring from `$ARGUMENTS`:
+Extract the operation from `$0` and title from `$1`+:
 
-- `close {title}` → verify implementation and mark COMPLETED
-- `resolve {title}` → mark no longer applicable (no verification required)
+- `$0` = `close`: `$1`+ = title → verify implementation and mark COMPLETED
+- `$0` = `resolve`: `$1`+ = title → mark no longer applicable (no verification required)
 
 #### 9a: Find Item
 
@@ -387,6 +423,68 @@ Backlog item "{title}" closed.
 
 </step9_procedure>
 
+## GitHub Integration
+
+BACKLOG.md is the local development scratchpad. GitHub Issues are the published, tracked view. They are linked — when you work a P0/P1 backlog item, a GitHub Issue can be created and kept in sync.
+
+```text
+BACKLOG.md          →  GitHub Issue
+  Priority section  →  priority:* label
+  Description       →  Issue body (story format)
+  Status            →  status:* label
+  Plan file         →  Issue body Notes
+  **Issue**: #N     ←  written back after creation
+  Completed         →  Issue closed
+```
+
+Full step-by-step commands and example sessions: [github-integration.md](./references/github-integration.md)
+
+### Step 2.5: GitHub Issue Sync
+
+After Step 2, check for `**Issue**: #N` field in the matched item.
+
+- Found: verify issue state with `gh issue view N -R Jamie-BitFlight/claude_skills --json number,title,state,labels`
+- Not found + P0/P1: offer to create a GitHub Issue (proceed to Step 2.5a)
+- Not found + P2/Ideas: skip silently
+
+### Step 2.5a: Create GitHub Issue
+
+Build story-format body (Story / Description / Acceptance Criteria / Context sections). Run `gh issue create` with `priority:*`, `type:*`, and `status:needs-grooming` labels. Capture the issue number and write `**Issue**: #N` back to BACKLOG.md. Optionally assign to a milestone.
+
+### Step 2.7: Set In-Progress Label
+
+If the item has `**Issue**: #N`:
+
+```bash
+gh issue edit N -R Jamie-BitFlight/claude_skills \
+  --add-label "status:in-progress" \
+  --remove-label "status:needs-grooming"
+```
+
+### Step 9 Extension: Close GitHub Issue
+
+After writing the closing record (Step 9e), if the item has `**Issue**: #N`:
+
+```bash
+gh issue close N -R Jamie-BitFlight/claude_skills \
+  --comment "Completed. Checklist {checked}/{total} — PASS. Plan: {plan file path}"
+```
+
+If no `**Issue**:` field, skip silently.
+
+### setup-github Command
+
+**Trigger:** `$0` is `setup-github`. Initializes label taxonomy, first milestone, and GitHub Project.
+
+```bash
+uv run .claude/skills/gh/scripts/github_project_setup.py labels --repo Jamie-BitFlight/claude_skills
+gh api repos/Jamie-BitFlight/claude_skills/milestones -X POST \
+  -f title="v1.0 — Skills Foundation" -f due_on="2026-03-31T00:00:00Z"
+gh project create --owner Jamie-BitFlight --title "claude_skills Backlog"
+```
+
+Full setup steps and expected output: [github-integration.md](./references/github-integration.md)
+
 ## Error Handling
 
 - Item not found: list available items from BACKLOG.md with their priority sections
@@ -401,6 +499,10 @@ Backlog item "{title}" closed.
 - `close` with verification FAIL: report gaps, do not close
 - `close` on already-completed item: report closed date, do not re-close
 - `resolve` with no reason provided: block until user provides reason (reason is required evidence)
+- GitHub issue creation fails: report error, continue with BACKLOG.md-only workflow; do not block SAM planning
+- `gh` not installed: run `uv run .claude/skills/gh/scripts/setup_gh.py` first
+- Label not found during issue create: create it on the fly with `gh label create`, then retry
+- Milestone not found: skip milestone assignment; do not fail
 
 ## Example Sessions
 
@@ -463,3 +565,11 @@ Backlog item resolved.
   Status: RESOLVED — REFUTED by fact-check: --last flag verified against commitlint
           source cli.ts and official docs. No fix needed.
 ```
+
+GitHub-specific example sessions (issue creation flow and setup-github): [github-integration.md](./references/github-integration.md)
+
+---
+
+## Validation Plan
+
+See [validation-plan.md](./references/validation-plan.md) for V1–V6 verification commands and the full integration test sequence.
