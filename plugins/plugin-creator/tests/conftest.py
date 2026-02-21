@@ -22,6 +22,11 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
 
+# Suppress ANSI colour output before the module-level import below.
+# Rich reads NO_COLOR at console-initialisation time (module load), so this
+# must be set before exec_module() runs, not in a pytest fixture.
+os.environ.setdefault("NO_COLOR", "1")
+
 # Load the plugin-validator module (has hyphen in name, so use importlib)
 _VALIDATOR_PATH = Path(__file__).parent.parent / "scripts" / "plugin_validator.py"
 spec = importlib.util.spec_from_file_location("plugin_validator", _VALIDATOR_PATH)
@@ -39,7 +44,7 @@ def cli_runner() -> CliRunner:
         CliRunner with mix_stderr=False to separate stdout/stderr and NO_COLOR
         to suppress ANSI escape codes in captured output.
     """
-    return CliRunner(mix_stderr=False, env={"NO_COLOR": "1"})
+    return CliRunner(mix_stderr=False)
 
 
 @pytest.fixture
