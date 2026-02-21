@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run --quiet --script
+#!/usr/bin/env -S uv --quiet run --active --script
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
@@ -28,7 +28,9 @@ from typing import Annotated
 
 import duckdb
 import typer
+from rich import box
 from rich.console import Console
+from rich.measure import Measurement
 from rich.table import Table
 
 app = typer.Typer(
@@ -64,7 +66,19 @@ _NOISE_PREFIXES = (
 )
 
 
-def _extract_text(content: str | list | None) -> str:
+def _extract_text(content: str | list[str | dict] | None) -> str:
+    """Extract plain text from a message content field.
+
+    Args:
+        content: Raw content value from a JSONL record. May be a plain string,
+            a list of content blocks (dicts with ``type`` and ``text`` keys),
+            or ``None``.
+
+    Returns:
+        Concatenated text from all ``text``-type blocks, joined by newlines.
+        Returns an empty string when ``content`` is ``None`` or contains no
+        text blocks.
+    """
     if content is None:
         return ""
     if isinstance(content, str):
@@ -79,12 +93,29 @@ def _extract_text(content: str | list | None) -> str:
 
 
 def _is_noise(text: str) -> bool:
+    """Return True when a message starts with a known noise prefix.
+
+    Args:
+        text: The plain-text content of a user message.
+
+    Returns:
+        ``True`` if the stripped text begins with any prefix in
+        ``_NOISE_PREFIXES``, ``False`` otherwise.
+    """
     stripped = text.lstrip()
     return any(stripped.startswith(p) for p in _NOISE_PREFIXES)
 
 
 def _iter_records(path: Path) -> list[dict]:
-    """Parse a JSONL file, return all records as dicts."""
+    """Parse a JSONL file and return all valid records as dicts.
+
+    Args:
+        path: Filesystem path to a ``.jsonl`` file.
+
+    Returns:
+        A list of parsed JSON objects. Lines that are empty or fail to parse
+        are silently skipped. Non-dict objects are also skipped.
+    """
     records: list[dict] = []
     with path.open(encoding="utf-8", errors="replace") as fh:
         for raw_line in fh:
@@ -101,6 +132,21 @@ def _iter_records(path: Path) -> list[dict]:
 
 
 def _slug_to_project_name(slug: str) -> str:
+    """Convert a filesystem slug (directory name) to a human-readable project name.
+
+    The slug format used by Claude Code encodes the full filesystem path of the
+    project as a hyphen-separated string. This function strips leading path
+    components (home directory, username, and optional location token) to
+    return only the project portion.
+
+    Args:
+        slug: A hyphen-separated directory slug, e.g.
+            ``"home-alice-repos-my-project"``.
+
+    Returns:
+        The project name portion of the slug, e.g. ``"my-project"``.  Falls
+        back to the original ``slug`` when no identifiable prefix is found.
+    """
     parts = [p for p in slug.split("-") if p]
     location_tokens = {
         "repos",
@@ -155,6 +201,14 @@ CREATE TABLE IF NOT EXISTS user_messages (
 
 
 def _open_db() -> duckdb.DuckDBPyConnection:
+    """Open (or create) the DuckDB session index and ensure schema exists.
+
+    Creates ``CACHE_DIR`` and its parents if they do not already exist, then
+    connects to ``DB_PATH`` and runs the DDL to create any missing tables.
+
+    Returns:
+        An open ``DuckDBPyConnection`` with the session schema initialised.
+    """
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(DB_PATH))
     con.execute(_DDL)
@@ -164,7 +218,17 @@ def _open_db() -> duckdb.DuckDBPyConnection:
 def _fetch_count(
     con: duckdb.DuckDBPyConnection, sql: str, params: list | None = None
 ) -> int:
-    """Execute a COUNT query and return the integer result."""
+    """Execute a COUNT query and return the integer result.
+
+    Args:
+        con: An open DuckDB connection.
+        sql: A SQL query whose first column in the first row is the count.
+        params: Optional positional parameters for the query.
+
+    Returns:
+        The integer value of the first column of the first row, or ``0`` if
+        no rows are returned.
+    """
     row = con.execute(sql, params or []).fetchone()
     return int(row[0]) if row else 0
 
@@ -183,7 +247,16 @@ class _FileStats:
 
 
 def _scan_records(path: Path, records: list[dict]) -> _FileStats:
-    """Extract statistics from parsed JSONL records."""
+    """Extract statistics from parsed JSONL records.
+
+    Args:
+        path: Path to the source ``.jsonl`` file (used to derive the slug).
+        records: Pre-parsed list of record dicts from the file.
+
+    Returns:
+        A ``_FileStats`` dataclass populated with aggregated metadata including
+        timestamps, user message list, assistant turn count, and file size.
+    """
     slug = path.parent.name
     timestamps: list[str] = []
     user_msgs: list[dict] = []
@@ -215,10 +288,17 @@ def _scan_records(path: Path, records: list[dict]) -> _FileStats:
 
 
 def _index_file(con: duckdb.DuckDBPyConnection, path: Path) -> tuple[int, int]:
-    """Index one JSONL file. Returns (user_msgs_indexed, assistant_turns).
+    """Index one JSONL file into the DuckDB session index.
 
-    Uses path.stem as the canonical session_id — stable, 1-per-file, matches
-    the filesystem UUID the user sees with `ls ~/.claude/projects/*/`.
+    Uses ``path.stem`` as the canonical session ID — stable, one-per-file,
+    matches the filesystem UUID visible via ``ls ~/.claude/projects/*/``.
+
+    Args:
+        con: An open DuckDB connection with the session schema initialised.
+        path: Path to the ``.jsonl`` file to index.
+
+    Returns:
+        A tuple of ``(user_msgs_indexed, assistant_turns)`` for the file.
     """
     stats = _scan_records(path, _iter_records(path))
     sid = path.stem  # filename UUID — stable, never changes
@@ -270,6 +350,30 @@ def _index_file(con: duckdb.DuckDBPyConnection, path: Path) -> tuple[int, int]:
 
 
 # ---------------------------------------------------------------------------
+# Rich table helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_table_width(table: Table) -> int:
+    """Get the natural rendered width of a Rich table.
+
+    Measures the table against a very wide temporary console so that Rich
+    reports its unconstrained natural width rather than wrapping to the
+    current terminal width.
+
+    Args:
+        table: The Rich ``Table`` instance to measure.
+
+    Returns:
+        The width in characters required to render the table without any
+        column wrapping or truncation.
+    """
+    temp_console = Console(width=9999)
+    measurement = Measurement.get(temp_console, temp_console.options, table)
+    return int(measurement.maximum)
+
+
+# ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
 
@@ -283,7 +387,14 @@ def cmd_index(
         str, typer.Option("--project", "-p", help="Filter by project name substring.")
     ] = "",
 ) -> None:
-    """Build or update the DuckDB session index from ~/.claude/projects/."""
+    """Build or update the DuckDB session index from ~/.claude/projects/.
+
+    Args:
+        rebuild: When ``True``, all existing index data is deleted before
+            re-indexing.
+        project: Optional substring filter; only files whose parent directory
+            name contains this value (case-insensitive) are indexed.
+    """
     con = _open_db()
 
     if rebuild:
@@ -314,7 +425,11 @@ def cmd_index(
 
 
 def _ensure_indexed(con: duckdb.DuckDBPyConnection) -> None:
-    """Build index from scratch if it is empty."""
+    """Build the index from scratch when it contains no sessions.
+
+    Args:
+        con: An open DuckDB connection with the session schema initialised.
+    """
     if _fetch_count(con, "SELECT COUNT(*) FROM sessions") == 0:
         stderr.print("[yellow]Index is empty — building now...[/yellow]")
         for f in sorted(
@@ -335,7 +450,13 @@ def cmd_list(
         bool, typer.Option("--rebuild", help="Re-index before listing.")
     ] = False,
 ) -> None:
-    """List recent sessions with metadata. Runs index if DB is empty."""
+    """List recent sessions with metadata. Runs index if DB is empty.
+
+    Args:
+        limit: Maximum number of sessions to display.
+        project: Optional substring filter on project name.
+        rebuild: When ``True``, clears and rebuilds the index before listing.
+    """
     con = _open_db()
 
     if rebuild:
@@ -362,10 +483,12 @@ def cmd_list(
         stdout.print("[yellow]No sessions found. Run 'index' first.[/yellow]")
         return
 
-    table = Table(title="Recent Sessions", show_lines=False)
-    table.add_column("Session ID", style="cyan", width=12)
-    table.add_column("Project", style="green")
-    table.add_column("Last Active", style="dim")
+    table = Table(
+        title="Recent Sessions", show_lines=False, box=box.MINIMAL_DOUBLE_HEAD
+    )
+    table.add_column("Session ID", style="cyan", no_wrap=True)
+    table.add_column("Project", style="green", no_wrap=True)
+    table.add_column("Last Active", style="dim", no_wrap=True)
     table.add_column("User Msgs", justify="right")
     table.add_column("Asst Turns", justify="right")
     table.add_column("KB", justify="right", style="dim")
@@ -376,16 +499,17 @@ def cmd_list(
         # Check filesystem directly — survives --rebuild without re-running mark-summarized
         summary_exists = (SUMMARIES_DIR / f"{sid}.md").exists()
         table.add_row(
-            sid[:12],
+            sid,
             proj or "unknown",
             date_str,
             str(umsg or 0),
             str(aturns or 0),
             f"{kb:.0f}" if kb else "?",
-            "✓" if summary_exists else "·",
+            ":white_check_mark:" if summary_exists else ":radio_button:",
         )
 
-    stdout.print(table)
+    table.width = _get_table_width(table)
+    stdout.print(table, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
     stdout.print(
         "\n[dim]Use 'messages <session-id>' for verbatim user messages, "
         "'search <text>' to search raw files.[/dim]"
@@ -401,7 +525,17 @@ def cmd_messages(
         bool, typer.Option("--raw", help="Output plain text, no formatting.")
     ] = False,
 ) -> None:
-    """Print verbatim user messages for a session."""
+    """Print verbatim user messages for a session.
+
+    Args:
+        session_id: Full or prefix session ID, or the literal string ``"last"``
+            to select the most recently active session.
+        raw: When ``True``, outputs plain text without Rich markup.
+
+    Raises:
+        typer.Exit: With exit code 1 when no sessions are indexed or the
+            requested session ID has no messages in the index.
+    """
     con = _open_db()
 
     if session_id == "last":
@@ -447,7 +581,21 @@ def cmd_messages(
 
 
 def _highlight_excerpt(pattern: re.Pattern, content: str, context_chars: int) -> str:
-    """Extract context window around first match and bold the match text."""
+    """Extract a context window around the first match and bold the matched text.
+
+    Args:
+        pattern: Compiled regular expression to search for.
+        content: Full text of a user message.
+        context_chars: Number of characters of context to include around the
+            match (split equally before and after).
+
+    Returns:
+        A Rich-markup string with the matched text wrapped in
+        ``[bold yellow]...[/bold yellow]``, with leading/trailing ellipsis
+        characters when the excerpt does not start or end at the content
+        boundaries. Returns a plain prefix of ``content`` when there is no
+        match.
+    """
     match = pattern.search(content)
     if not match:
         return content[:context_chars]
@@ -465,7 +613,18 @@ def _highlight_excerpt(pattern: re.Pattern, content: str, context_chars: int) ->
 def _search_file(
     path: Path, pattern: re.Pattern, limit: int, hits: list[tuple[str, str, str, str]]
 ) -> None:
-    """Search one JSONL file for pattern matches, appending to hits."""
+    """Search one JSONL file for pattern matches, appending results to ``hits``.
+
+    Silently skips the file on ``OSError``. Stops appending once ``hits``
+    reaches ``limit`` entries.
+
+    Args:
+        path: Path to a ``.jsonl`` file to search.
+        pattern: Compiled regular expression to match against user message text.
+        limit: Maximum total number of hits to collect across all files.
+        hits: Mutable list to which matching tuples are appended. Each tuple
+            contains ``(file_path_str, session_id, timestamp, content)``.
+    """
     try:
         records = _iter_records(path)
     except OSError:
@@ -501,6 +660,13 @@ def cmd_search(
     """Search raw JSONL files for text. Returns verbatim matching user messages.
 
     IMPORTANT: Searches raw files, not the summary cache.
+
+    Args:
+        query: Case-insensitive text to search for.
+        limit: Maximum number of matching messages to return.
+        project: Optional substring filter on project directory name.
+        context_chars: Number of characters of context to show around each
+            match in the output.
     """
     pattern = re.compile(re.escape(query), re.IGNORECASE)
     files = sorted(
@@ -526,7 +692,7 @@ def cmd_search(
     for path_str, sid, ts, content in hits:
         date_str = ts[:16].replace("T", " ") if ts else "?"
         proj = _slug_to_project_name(Path(path_str).parent.name)
-        stdout.print(f"[dim]── {proj} / {sid[:12]} @ {date_str} ──[/dim]")
+        stdout.print(f"[dim]── {proj} / {sid} @ {date_str} ──[/dim]")
         stdout.print(_highlight_excerpt(pattern, content, context_chars))
         stdout.print()
 
@@ -535,7 +701,16 @@ def cmd_search(
 def cmd_show(
     session_id: Annotated[str, typer.Argument(help="Session ID prefix or 'last'.")],
 ) -> None:
-    """Show cached summary for a session, or print metadata for manual summarization."""
+    """Show cached summary for a session, or print metadata for manual summarization.
+
+    Args:
+        session_id: Full or prefix session ID, or the literal string ``"last"``
+            to select the most recently active session.
+
+    Raises:
+        typer.Exit: With exit code 1 when no sessions are indexed or the
+            requested session ID is not found in the index.
+    """
     con = _open_db()
 
     if session_id == "last":
@@ -586,7 +761,7 @@ File size:     {kb:.1f} KB
 Summary:       {summary_status}
 
 [dim]To generate summary: read the file, then write to {summary_path}[/dim]
-[dim]To view user messages: session-historian messages {sid[:12]}[/dim]
+[dim]To view user messages: session-historian messages {sid}[/dim]
 """)
 
 
@@ -596,7 +771,11 @@ def cmd_mark_summarized(
         str, typer.Argument(help="Session ID to mark as having a cached summary.")
     ],
 ) -> None:
-    """Mark a session as having a cached summary in the index."""
+    """Mark a session as having a cached summary in the index.
+
+    Args:
+        session_id: Full or prefix session ID to match against the index.
+    """
     con = _open_db()
     con.execute(
         "UPDATE sessions SET has_summary = TRUE WHERE session_id LIKE ?",
