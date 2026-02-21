@@ -12,8 +12,10 @@
  * are not disrupted. The reminder surfaces the decision point.
  */
 
+const fs = require('node:fs');
+
 const SOURCE_FILE_EXTENSIONS =
-  /\.(py|toml|yaml|yml|js|ts|jsx|tsx|json|cfg|ini|env|sh|bash|go|rs|rb|java|c|cpp|h|hpp)$/i;
+  /\.(py|toml|yaml|yml|js|cjs|mjs|ts|jsx|tsx|json|cfg|ini|env|sh|bash|go|rs|rb|java|c|cpp|h|hpp)$/i;
 const TEST_PATH_PATTERN = /\/(tests?|spec|__tests?__)\/|test_[^/]+\.(py|js|ts)$/i;
 
 /**
@@ -23,6 +25,38 @@ const TEST_PATH_PATTERN = /\/(tests?|spec|__tests?__)\/|test_[^/]+\.(py|js|ts)$/
 function isSourceOrConfigFile(filePath) {
   if (!filePath) return false;
   return SOURCE_FILE_EXTENSIONS.test(filePath) || TEST_PATH_PATTERN.test(filePath);
+}
+
+/**
+ * Returns true if the path resolves to a directory on disk.
+ * Safe to call on non-existent paths — returns false on any error.
+ * Note: .md files (e.g. BACKLOG.md) are excluded by isSourceOrConfigFile already;
+ * this function only fires for paths that already passed the directory check branch.
+ *
+ * @param {string} targetPath
+ * @returns {boolean}
+ */
+function isDirectory(targetPath) {
+  try {
+    return fs.statSync(targetPath).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Returns true if the path looks like a directory by convention:
+ * - ends with '/' or '\'  (explicit directory separator)
+ * - last path segment contains no '.' character (no file extension)
+ *
+ * @param {string} targetPath
+ * @returns {boolean}
+ */
+function looksLikeDirectory(targetPath) {
+  if (!targetPath) return false;
+  if (targetPath.endsWith('/') || targetPath.endsWith('\\')) return true;
+  const lastSegment = targetPath.split(/[\\/]/).filter(Boolean).pop() || '';
+  return !lastSegment.includes('.');
 }
 
 let input = '';
@@ -43,16 +77,21 @@ process.stdin.on('end', () => {
   const toolInput = data.tool_input || {};
 
   let targetPath = '';
+  let shouldWarn = false;
   if (toolName === 'Read') {
     targetPath = toolInput.file_path || '';
+    shouldWarn = isSourceOrConfigFile(targetPath);
   } else if (toolName === 'Grep') {
     targetPath = toolInput.path || '';
+    shouldWarn = isSourceOrConfigFile(targetPath)
+              || isDirectory(targetPath)
+              || looksLikeDirectory(targetPath);
   } else {
     process.stdout.write(JSON.stringify({}));
     process.exit(0);
   }
 
-  if (!isSourceOrConfigFile(targetPath)) {
+  if (!shouldWarn) {
     process.stdout.write(JSON.stringify({}));
     process.exit(0);
   }
