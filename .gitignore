@@ -12,7 +12,7 @@ sessions/transcripts/
 sessions/.archived/
 # Build artifacts
 *.zip
-.coverage
+.coverage*
 # Code review reports
 .claude/smells/
 # Agent research artifacts (intermediate analysis files)

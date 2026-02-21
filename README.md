@@ -124,7 +124,7 @@ plugins/plugin-name/
 
 **[python3-development](./plugins/python3-development)** - The most comprehensive plugin in this collection. Transform Claude into a Python 3.11+ expert with 15+ commands, 17 specialized agents, TDD workflows, modern library selection (Typer, Rich, httpx, pytest), and SAM methodology for complete feature development. Includes extensive reference documentation covering 50+ modern Python libraries.
 
-**[holistic-linting](./plugins/holistic-linting)** - Automatic code quality enforcement with root-cause fixing. Claude discovers your project's linters (ruff, mypy, bandit), runs them before completing tasks, and resolves issues through systematic analysis rather than suppression comments.
+**[holistic-linting](./plugins/holistic-linting)** - Automatic code quality enforcement with root-cause fixing. Claude discovers your project's linters (ruff, ty, bandit), runs them before completing tasks, and resolves issues through systematic analysis rather than suppression comments.
 
 **[uv](./plugins/uv)** - Expert guidance for Astral's uv - the extremely fast Python package manager that replaces pip, poetry, pyenv, and virtualenv. Creates modern projects with lockfiles, writes portable scripts with PEP 723 inline dependencies, and configures CI/CD using best practices.
 

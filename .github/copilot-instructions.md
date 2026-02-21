@@ -83,8 +83,8 @@ uv run ruff check --fix path/to/file.py
 # Run ruff formatter
 uv run ruff format path/to/file.py
 
-# Run mypy type checking
-uv run mypy path/to/file.py
+# Run ty type checking
+uv run ty check path/to/file.py
 
 # Run pre-commit hooks on specific files (preferred method)
 uv run prek run --files path/to/file.py
@@ -111,7 +111,7 @@ The following hooks run on commit:
 | `prettier`                                 | YAML, JSON, Markdown formatting |
 | `check-yaml`, `check-json`, `check-toml`   | Syntax validation               |
 | `trailing-whitespace`, `end-of-file-fixer` | Whitespace normalization        |
-| `mypy`                                     | Python type checking            |
+| `ty-check`                                 | Python type checking            |
 | `basedpyright`                             | Additional Python type checking |
 | `conventional-pre-commit`                  | Commit message validation       |
 
@@ -215,7 +215,7 @@ Before submitting changes:
 
 1. Run `uv sync` if dependencies changed
 2. Run `uv run ruff check --fix` and `uv run ruff format` on Python files
-3. Run `uv run mypy` on Python files
+3. Run `uv run ty check` on Python files
 4. Verify plugin structure: `/plugin validate ./plugins/plugin-name`
 5. Check markdown links are relative with `./` prefix
 6. Ensure SKILL.md has valid YAML frontmatter
@@ -226,7 +226,7 @@ Before submitting changes:
 | Purpose              | Location                          |
 | -------------------- | --------------------------------- |
 | Linting config       | `pyproject.toml` [tool.ruff]      |
-| Type checking config | `pyproject.toml` [tool.mypy]      |
+| Type checking config | `pyproject.toml` [tool.ty]        |
 | Pre-commit hooks     | `.pre-commit-config.yaml`         |
 | Markdown lint config | `.markdownlint-cli2.jsonc`        |
 | Plugin registry      | `.claude-plugin/marketplace.json` |
