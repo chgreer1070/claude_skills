@@ -1,9 +1,9 @@
 ---
 last-updated: 2026-02-21
-last-completed: 2026-02-20
+last-completed: 2026-02-21
 p0-count: 0
 p1-count: 23
-p2-count: 23
+p2-count: 22
 ideas-count: 11
 ---
 
@@ -175,9 +175,9 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 **Source**: Plugin creation session 2026-02-19
 **Added**: 2026-02-19
 **Completed**: 2026-02-21
-**Status**: DONE — commits 49e0ae5, ea3e737 on branch claude/bulk-backlog-grooming-LIQDi
-**Plan**: plan/tasks-4-validate-orchestrator-discipline.md
-**Description**: T1-T4 complete. Plugin passes `claude plugin validate`. Hook directory detection added. `user-invocable: true` added to SKILL.md. All 5 hook behavior tests pass.
+**Status**: DONE — commits 49e0ae5, ea3e737, 1eb708d on branch claude/bulk-backlog-grooming-LIQDi. FACT-CHECKED 2026-02-21: all 3 pre-conditions verified true; all fixes confirmed applied; 4/4 live hook tests pass.
+**Plan**: plan/tasks-4-validate-orchestrator-discipline.md (note: task statuses in plan file never updated to reflect completion)
+**Description**: T1-T3 complete. Plugin passes `claude plugin validate`. Hook directory detection added. `user-invocable: true` added to SKILL.md. All 5 hook behavior tests pass. `name:` field added per policy reversal in `49a24cf`. Remaining: `rules/CLAUDE.md` still duplicates `CLAUDE.md` (deferred to human review per plan).
 **Suggested location**: `plugins/orchestrator-discipline/`
 
 
@@ -373,10 +373,12 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 **Description**: Contains triplicated regex patterns (same regex defined 3 times), a dead `skipped` list that is populated but never read, an unused `sum()` call, and HK005 warning is incorrectly treated as an error in certain code paths. Also has a `noqa BLE001` suppression that should be addressed per CLAUDE.md linting policy.
 **Files**: `plugins/plugin-creator/` (scripts and skill files)
 
-### Add PR003/PR004 test coverage to plugin registration validator
+### ~~Add PR003/PR004 test coverage to plugin registration validator~~ DONE
 
 **Source**: Code review session 2026-02-21
 **Added**: 2026-02-21
+**Completed**: 2026-02-21
+**Status**: DONE — commit `23014ec` in PR #71. FACT-CHECKED 2026-02-21: `TestMissingMetadata` (lines 742-876, 6 tests) checks `result.info` for PR003. `TestRepositoryMismatch` (lines 879-1031, 6 tests) checks `result.warnings` for PR004. Uses `unittest.mock.patch` (not monkeypatch). 41/41 tests pass.
 **Description**: `PluginRegistrationValidator` defines PR003 (missing metadata fields: repository, homepage, author) and PR004 (repository URL mismatches git remote URL) at lines 276-277 of `plugin_validator.py`, and emits them at lines 2815 and 2834. Tests exist for PR001 (unregistered) and PR002 (missing file), but not PR003/PR004. Add tests to `plugins/plugin-creator/tests/test_plugin_registration_validator.py` covering: (1) PR003 emitted when metadata fields absent; (2) PR004 emitted when repo URL mismatches remote.
 
 ---
@@ -715,7 +717,7 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 **Observed symptoms**:
 - Full `prek --all-files` run produces hundreds of lines of validator output
 - Pre-existing LK001 (broken links), SK006 (complexity warnings), SK005 (missing triggers) reported on every run
-- FM003 (no frontmatter) fires on template files (`commands/development/templates/*.md`) that are not components — they're templates meant to be copied and filled in, not commands/skills/agents
+- FM003 (no frontmatter) fires on template files (`commands/development/templates/*.md`) that are not components — they're templates meant to be copied and filled in, not commands/skills/agents. FACT-CHECK NOTE: `plugins/python3-development/commands/development/templates/` exists with 2 files; claim that directory "does not exist" (grooming report) was wrong.
 - Difficult to find actual issues in changed files among the noise
 **Related**: "plugin-validator UX and coverage gaps" sub-issues below, "Resolve plugin-validator pre-existing errors to make CI gate blocking" backlog item
 **File**: `plugins/plugin-creator/scripts/plugin_validator.py`, `.pre-commit-config.yaml`
@@ -727,47 +729,41 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 **Last groomed**: 2026-02-13
 **Plan**: plan/tasks-2-validator-ux-coverage.md
 **File**: `./plugins/plugin-creator/scripts/plugin_validator.py` (2934+ lines)
-**Tests**: `./plugins/plugin-creator/tests/` (12 test files, 93% pass rate per QA report)
+**Tests**: `./plugins/plugin-creator/tests/` (18 test files as of 2026-02-21; grooming report claimed 19, original backlog stated 12; 498 passed/1 skipped/0 failures)
 **QA report**: `./plugins/plugin-creator/planning/plugin-validator-qa-report.md`
 
-#### Sub-issue 1: UX — report counts validator results, not files
+#### Sub-issue 1: UX — report counts validator results, not files — DONE
 
 **Severity**: UX bug
-**Lines**: 2928-2931 (result collection loop), 2698-2702 (summary display)
-
-**Root cause**: Lines 2928-2931 iterate over `validators` (not files), appending `(path, result)` for each validator. When 1 file has 4 validators (FrontmatterValidator, NameFormatValidator, DescriptionValidator, NamespaceReferenceValidator), the `results` list has 4 entries all pointing to the same path. The report loop at line 2630 then prints "PASSED" 4 times for 1 file, and the summary at line 2702 shows "Total files: 4".
+**Status**: DONE — commit `0393451` in PR #71. FACT-CHECKED 2026-02-21: `FileResults` is `dict[Path, ...]`, `len(all_results)` at line 4733 counts unique paths. Test `TestReportCountsUniqueFiles` (`test_reporters.py:353-451`) verifies 1 file with 3 validators shows "Total files: 1".
 
 **Acceptance criteria**:
-- Running validator on 1 file shows "Total files: 1"
-- Each validator result is labeled with the validator name (e.g., "FrontmatterValidator: PASSED")
-- Summary counts unique files, not validator invocations
+- ~~Running validator on 1 file shows "Total files: 1"~~ VERIFIED
+- ~~Each validator result is labeled with the validator name~~ VERIFIED (`test_ci_reporter_labels_validator_names_in_output`)
+- ~~Summary counts unique files, not validator invocations~~ VERIFIED
 
-#### Sub-issue 2: Commands receive skill-specific SK005 warning
+#### Sub-issue 2: Commands receive skill-specific SK005 warning — DONE
 
 **Severity**: False positive
-**Lines**: 1884-1900 (SK005 check in DescriptionValidator), 2896-2901 (validator selection)
-
-**Root cause**: `DescriptionValidator.validate()` (line 1802) has no file-type awareness. It applies SK004 ("description too short") and SK005 ("missing trigger phrases") to all file types. The validator selection at line 2896 applies DescriptionValidator to SKILL, AGENT, and COMMAND equally. Commands have a different frontmatter schema — they use `argument-hint`, `allowed-tools`, `agent` fields and do not need trigger phrases in their description.
+**Status**: DONE — commit `1929a87` in PR #71. FACT-CHECKED 2026-02-21: SK005 gated by `self.file_type == FileType.SKILL` at line 2078. SK004 gated by `{FileType.SKILL, FileType.AGENT}` at lines 2062-2064. CM001 constant defined. Tests in `TestFileTypeAwareScoping` (`test_description_validator.py:418-534`) cover all 5 file-type/check combinations.
 
 **Acceptance criteria**:
-- SK005 only fires on SKILL files (not COMMAND or AGENT)
-- SK004 fires on SKILL and AGENT files (both need meaningful descriptions) but not COMMAND
-- New error code series CM001+ for command-specific checks (e.g., validate `allowed-tools` format, `argument-hint` presence)
-- DescriptionValidator receives file type context (via constructor parameter or path inspection)
+- ~~SK005 only fires on SKILL files (not COMMAND or AGENT)~~ VERIFIED
+- ~~SK004 fires on SKILL and AGENT files but not COMMAND~~ VERIFIED
+- ~~New error code series CM001+ for command-specific checks~~ CM001 stub defined
+- ~~DescriptionValidator receives file type context~~ VERIFIED (`__init__` at line 1984)
 
-#### Sub-issue 3: Hooks have zero validation
+#### Sub-issue 3: Hooks have zero validation — DONE
 
 **Severity**: Missing feature
-**Lines**: 148-165 (detect_file_type returns UNKNOWN for .js hooks and hooks.json)
-
-**Root cause**: `FileType` enum (line 141-145) has no HOOK variant. `detect_file_type()` only matches SKILL.md, plugin.json, agents/*, commands/*. Hook files (`.js` in `hooks/` directories, `hooks.json` configs) fall through to UNKNOWN, which triggers the error at line 2920.
+**Status**: DONE — commit `010980b` in PR #71. FACT-CHECKED 2026-02-21: `FileType` enum has both `HOOK_CONFIG` (line 325) and `HOOK_SCRIPT` (line 326). `detect_file_type()` at lines 350-354 detects `hooks.json` → HOOK_CONFIG and `.js`/`.cjs` in `hooks/` → HOOK_SCRIPT. `HookValidator` class exists with HK001-HK003 codes. Tests in `test_hook_validator.py` (327 lines) cover detection and validation. HOOK_SCRIPT files accepted without error at lines 4408-4411.
 
 **Acceptance criteria**:
-- `FileType` enum includes HOOK_SCRIPT and HOOK_CONFIG (or combined HOOK)
-- `detect_file_type()` recognizes `.js` files in `hooks/` directories
-- `detect_file_type()` recognizes `hooks.json` files
-- New error code series HK001+ for hook validation (e.g., valid JSON in hooks.json, valid event types, valid hook matcher patterns)
-- New `HookValidator` class following existing Validator protocol
+- ~~`FileType` enum includes HOOK_SCRIPT and HOOK_CONFIG~~ VERIFIED
+- ~~`detect_file_type()` recognizes `.js` files in `hooks/` directories~~ VERIFIED
+- ~~`detect_file_type()` recognizes `hooks.json` files~~ VERIFIED
+- ~~New error code series HK001+ for hook validation~~ VERIFIED (HK001-HK003)
+- ~~New `HookValidator` class following existing Validator protocol~~ VERIFIED
 - Reference: `/plugin-creator:claude-hooks-reference-2026` skill for hooks.json schema
 
 #### Sub-issue 4: Dead code — nested skill resolution pattern
