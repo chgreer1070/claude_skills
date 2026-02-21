@@ -136,6 +136,14 @@ repos:
         types: [python]
         pass_filenames: true
 
+      - id: enable-rerere
+        name: Enable git rerere (auto-replay conflict resolutions)
+        entry: bash -c 'git config rerere.enabled true && git config rerere.autoupdate true'
+        language: system
+        stages: [pre-rebase, post-merge]
+        always_run: true
+        pass_filenames: false
+
 
 # Configuration for specific hooks
 default_language_version:
