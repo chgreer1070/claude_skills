@@ -60,7 +60,7 @@ The fields `name`, `description`, `license`, `compatibility`, `metadata`, and `a
 
 | Field                      | Required    | Type    | Max Length | Description                                                                                                                                           |
 | -------------------------- | ----------- | ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`                     | No          | string  | 64 chars   | Display name for the skill. If omitted, uses the directory name. Lowercase letters, numbers, and hyphens only. **Plugin skills:** Omit `name` (see note below). |
+| `name`                     | **Yes**     | string  | 64 chars   | Display name for the skill. Required per agentskills.io spec. Lowercase letters, numbers, and hyphens only. Must match directory name. |
 | `description`              | Recommended | string  | 1024 chars | What the skill does and when to use it. Claude uses this to decide when to apply the skill. If omitted, uses the first paragraph of markdown content. |
 | `argument-hint`            | No          | string  | —          | Hint shown during autocomplete to indicate expected arguments. Example: `[issue-number]` or `[filename] [format]`.                                    |
 | `allowed-tools`            | No          | string  | —          | Tools Claude can use without asking permission when this skill is active (comma-separated). Example: `Read, Grep, Glob, Bash(npm run:*)`              |
@@ -80,7 +80,7 @@ The fields `name`, `description`, `license`, `compatibility`, `metadata`, and `a
 > This also reduces context size by limiting included tool definitions to only those the skill may need.
 
 > [!NOTE]
-> **Plugin skills:** Omit the `name` field — a known behavior prevents plugin skills with explicit `name:` from appearing as slash commands. See plugin-creator CLAUDE.md for details.
+> **`name:` is required** per the [Agent Skills open standard](https://agentskills.io/specification). A bug in Claude Code v2.1.23 caused plugin skills with `name:` to not appear as slash commands; that bug was resolved 2026-02-20. Include `name:` in all SKILL.md files. The value must match the directory name.
 
 ---
 

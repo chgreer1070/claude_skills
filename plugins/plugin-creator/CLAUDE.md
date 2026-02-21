@@ -56,11 +56,11 @@ If the directory name does not match `^[a-z][a-z0-9-]*$`, no `name:` field is ad
 
 ### Official Documentation
 
-The official Claude Code documentation states:
+Per the [Agent Skills open standard](https://agentskills.io/specification), `name:` is **required**:
 
-> `name`: Display name for the skill. If omitted, uses the directory name.
+> `name` (required): Max 64 characters. Lowercase letters, numbers, and hyphens only. Must not start or end with a hyphen. Must match the parent directory name.
 
-The `name:` field is optional per spec; Claude Code uses the directory name when absent. However, including it explicitly is recommended for clarity.
+Claude Code also accepts skills without `name:`, falling back to the directory name — but the agentskills.io spec makes `name:` mandatory for portability across compatible agents.
 
 ### Recommendation
 
@@ -354,7 +354,7 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py --no-color {path}
 - YAML arrays → comma-separated strings
 - Multiline descriptions → single-line strings
 - Unquoted colons in descriptions — adds quotes to prevent YAML parsing failures
-- Missing `name:` fields in plugin skills (auto-removes due to Claude Code bug)
+- Missing `name:` fields in plugin skills (auto-adds from directory name; required per agentskills.io spec)
 
 **Schema Coverage:**
 

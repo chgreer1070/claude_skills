@@ -18,7 +18,7 @@ import pytest
 # Add parent directory to path to import plugin_validator
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from plugin_validator import DescriptionValidator, FileType
+from plugin_validator import CM001, DescriptionValidator, FileType
 
 
 class TestDescriptionValidatorBasic:
@@ -522,3 +522,13 @@ description: "test skill"
         warning_codes = {issue.code for issue in result.warnings}
         assert "SK004" in warning_codes
         assert "SK005" in warning_codes
+
+    def test_cm001_error_code_is_defined(self) -> None:
+        """Test CM001 error code constant is exported from plugin_validator.
+
+        Tests: CM001 stub defined for command-specific description checks
+        How: Import CM001 from plugin_validator, verify it is a non-empty string
+        Why: CM001 is reserved for future command-specific validation rules;
+             its presence confirms the error code namespace is correctly established
+        """
+        assert CM001 == "CM001", f"CM001 constant must equal 'CM001', got {CM001!r}"

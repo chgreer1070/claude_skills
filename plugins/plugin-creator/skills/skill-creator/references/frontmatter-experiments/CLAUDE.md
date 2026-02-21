@@ -240,7 +240,7 @@ Scenarios that need experiments but have not been tested yet. When creating an e
 | U4 | What happens when skill `allowed-tools` conflicts with agent `disallowedTools`? | Medium | `allowed-tools`, `disallowedTools` |
 | U5 | Does `disable-model-invocation: true` prevent loading when skill is in agent `skills:` list? | Medium | `disable-model-invocation`, agent `skills` |
 | U6 | Does omitting `description` fall back to first paragraph in all invocation contexts? | Medium | `description` |
-| U7 | Does the `name` field bug (prevents slash command registration) still exist in current Claude Code version? | Medium | `name` |
+| U7 | ~~Does the `name` field bug (prevents slash command registration) still exist in current Claude Code version?~~ **Resolved 2026-02-20** — bug fixed in Claude Code; `name:` is now required per agentskills.io spec. | Closed | `name` |
 | U8 | What is the minimum frontmatter for a working skill in each invocation context? | Low | All fields |
 | U9 | Do skill-scoped `hooks` fire when the skill is auto-invoked vs user-invoked vs agent-preloaded? | Medium | `hooks` |
 | U10 | When multiple skills are preloaded into one agent, how do their `allowed-tools` fields interact? | Low | `allowed-tools`, agent `skills` |

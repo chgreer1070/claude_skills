@@ -152,8 +152,8 @@ Every skill consists of a required SKILL.md file and optional bundled resources:
 skill-name/
 ├── SKILL.md (required)
 │   ├── YAML frontmatter metadata (required)
+│   │   └── name: (required — must match directory name; per agentskills.io spec)
 │   │   └── description: (recommended)
-│   │   └── ⚠️  DO NOT include 'name:' field (Claude Code bug - prevents slash command registration)
 │   └── Markdown instructions (required)
 └── Bundled Resources (optional)
     ├── scripts/          - Executable code (Python/Bash/etc.)
@@ -609,9 +609,8 @@ Write instructions for using the skill and its bundled resources.
 
    ```markdown
    ---
+   name: migrate-component
    description: Migrate a component from one framework to another
-   # NOTE: Do NOT add 'name:' field for plugin skills (Claude Code bug)
-   # Skill name comes from directory name automatically
    ---
 
    Migrate the $0 component from $1 to $2.

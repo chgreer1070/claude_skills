@@ -1,9 +1,9 @@
 """Unit tests for HookValidator and hook file type detection.
 
 Tests:
-- FileType.detect_file_type() for hooks.json and .js in hooks/
+- FileType.detect_file_type() for hooks.json, .js and .cjs in hooks/
 - HookValidator on hooks.json files (HK001-HK003)
-- HookValidator on .js hook scripts (shebang checking)
+- HOOK_SCRIPT files validated without UNKNOWN error (no content validation)
 """
 
 from __future__ import annotations
@@ -38,12 +38,13 @@ class TestDetectFileType:
         result = FileType.detect_file_type(hooks_json)
         assert result == FileType.HOOK_CONFIG
 
-    def test_js_in_hooks_dir_detected_as_unknown(self, tmp_path: Path) -> None:
-        """Test .js file in hooks/ directory is detected as UNKNOWN.
+    def test_js_in_hooks_dir_detected_as_hook_script(self, tmp_path: Path) -> None:
+        """Test .js file in hooks/ directory is detected as HOOK_SCRIPT.
 
         Tests: FileType detection for .js hook scripts
         How: Create hooks/my-hook.js, call detect_file_type
-        Why: HOOK_SCRIPT was removed; hooks are now .cjs and not content-validated
+        Why: HOOK_SCRIPT routes hook scripts away from UNKNOWN so they do not
+             trigger the 'cannot determine file type' error in _validate_single_path
         """
         hooks_dir = tmp_path / "hooks"
         hooks_dir.mkdir()
@@ -51,14 +52,29 @@ class TestDetectFileType:
         hook_js.write_text("#!/usr/bin/env node\nconsole.log('hook');")
 
         result = FileType.detect_file_type(hook_js)
-        assert result == FileType.UNKNOWN
+        assert result == FileType.HOOK_SCRIPT
+
+    def test_cjs_in_hooks_dir_detected_as_hook_script(self, tmp_path: Path) -> None:
+        """Test .cjs file in hooks/ directory is detected as HOOK_SCRIPT.
+
+        Tests: FileType detection for .cjs hook scripts
+        How: Create hooks/my-hook.cjs, call detect_file_type
+        Why: Claude Code hooks are commonly .cjs files; must be HOOK_SCRIPT not UNKNOWN
+        """
+        hooks_dir = tmp_path / "hooks"
+        hooks_dir.mkdir()
+        hook_cjs = hooks_dir / "my-hook.cjs"
+        hook_cjs.write_text("#!/usr/bin/env node\nconsole.log('hook');")
+
+        result = FileType.detect_file_type(hook_cjs)
+        assert result == FileType.HOOK_SCRIPT
 
     def test_js_outside_hooks_dir_not_detected_as_hook(self, tmp_path: Path) -> None:
         """Test .js file outside hooks/ directory is detected as UNKNOWN.
 
         Tests: FileType detection scope limitation
         How: Create scripts/util.js, call detect_file_type
-        Why: Script files are not content-validated
+        Why: Only .js/.cjs files inside a hooks/ directory are HOOK_SCRIPT
         """
         scripts_dir = tmp_path / "scripts"
         scripts_dir.mkdir()
