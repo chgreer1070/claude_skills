@@ -96,7 +96,6 @@ Save the complete analysis JSON to `/tmp/daily-releases/<date>/analysis.json`.
 uv run ../create-merge-request-changelog/scripts/format_mr_description.py \
   /tmp/daily-releases/<date>/analysis.json \
   --no-preview \
-  --title "Daily Release - <date>" \
   --output /tmp/daily-releases/<date>/description.md
 ```
 
