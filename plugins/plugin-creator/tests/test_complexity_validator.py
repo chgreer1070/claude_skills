@@ -17,7 +17,11 @@ import pytest
 # Add parent directory to path to import plugin_validator
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from plugin_validator import ComplexityValidator
+from plugin_validator import (
+    TOKEN_ERROR_THRESHOLD,
+    TOKEN_WARNING_THRESHOLD,
+    ComplexityValidator,
+)
 
 
 class TestComplexityValidatorBasic:
@@ -114,12 +118,13 @@ class TestThresholdBoundaries:
         """Test warning triggered above TOKEN_WARNING_THRESHOLD (SK006).
 
         Tests: Skill approaching complexity limit
-        How: Create skill with ~4500 tokens (above 4400 threshold), validate
+        How: Create skill with tokens above TOKEN_WARNING_THRESHOLD, validate
         Why: Ensure SK006 warning at warning threshold
         """
         skill_md = tmp_path / "SKILL.md"
-        # TOKEN_WARNING_THRESHOLD = 4400; use ~4501 tokens to exceed it
-        content = "word " * 4500  # ~4501 tokens (above 4400 threshold)
+        content = "word " * (
+            TOKEN_WARNING_THRESHOLD + 100
+        )  # tokens above warning threshold
         skill_md.write_text(f"""---
 description: Test skill
 ---
@@ -140,12 +145,13 @@ description: Test skill
         """Test error triggered above TOKEN_ERROR_THRESHOLD (SK007).
 
         Tests: Skill exceeding complexity limit
-        How: Create skill with ~9001 tokens (above 8800 threshold), validate
+        How: Create skill with tokens above TOKEN_ERROR_THRESHOLD, validate
         Why: Ensure SK007 error at error threshold
         """
         skill_md = tmp_path / "SKILL.md"
-        # TOKEN_ERROR_THRESHOLD = 8800; use ~9001 tokens to exceed it
-        content = "word " * 9000  # ~9001 tokens (above 8800 threshold)
+        content = "word " * (
+            TOKEN_ERROR_THRESHOLD + 200
+        )  # tokens above error threshold
         skill_md.write_text(f"""---
 description: Test skill
 ---
@@ -367,11 +373,12 @@ class TestMultipleSeverityLevels:
         """Test only warning when between TOKEN_WARNING_THRESHOLD and TOKEN_ERROR_THRESHOLD.
 
         Tests: Single severity level
-        How: Create skill with ~5001 tokens (between 4400 and 8800), validate
+        How: Create skill with tokens between warning and error thresholds, validate
         Why: Ensure only warning raised in middle range
         """
         skill_md = tmp_path / "SKILL.md"
-        content = "word " * 5000  # ~5001 tokens (between 4400 and 8800 thresholds)
+        midpoint = (TOKEN_WARNING_THRESHOLD + TOKEN_ERROR_THRESHOLD) // 2
+        content = "word " * midpoint  # tokens between warning and error thresholds
         skill_md.write_text(f"""---
 description: Test skill
 ---

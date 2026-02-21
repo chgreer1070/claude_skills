@@ -51,7 +51,7 @@ from pydantic import ValidationError
 from ruamel.yaml import YAML, YAMLError
 
 if TYPE_CHECKING:
-    from rich.console import ConsoleRenderable, RichCast
+    from rich.console import Console, ConsoleRenderable, RichCast
 
 # Enable import of sibling library modules (frontmatter_core, frontmatter_utils).
 # PEP 723 scripts run in an isolated venv; sys.path insertion exposes co-located
@@ -254,10 +254,12 @@ PL005 = "PL005"  # Referenced component file does not exist
 # Command Errors (CM001)
 CM001 = "CM001"  # Command-specific validation (reserved)
 
-# Hook Errors (HK001-HK003)
+# Hook Errors (HK001-HK005)
 HK001 = "HK001"  # Invalid hooks.json structure
 HK002 = "HK002"  # Invalid event type in hooks.json
 HK003 = "HK003"  # Invalid hook entry structure
+HK004 = "HK004"  # Hook script referenced but not found
+HK005 = "HK005"  # Hook script exists but is not executable
 
 # Namespace Reference Errors (NR001-NR002)
 NR001 = "NR001"  # Namespace reference target does not exist
@@ -1264,6 +1266,17 @@ class FrontmatterValidator:
     and commands. Uses shared Pydantic models from frontmatter_core.
     """
 
+    def __init__(self) -> None:
+        """Initialize frontmatter validator.
+
+        ``_pending_fm009_info`` accumulates FM009 info issues produced by
+        :meth:`fix` (via :meth:`_apply_fixes`) so that the next
+        :meth:`validate` call can surface them as ``info`` entries.  This lets
+        ``--verbose`` output show exactly which fields were silently repaired by
+        the unquoted-colon auto-fix.
+        """
+        self._pending_fm009_info: list[ValidationIssue] = []
+
     def validate(self, path: Path) -> ValidationResult:  # noqa: PLR0914, PLR0912, PLR0915, C901
         """Validate frontmatter in file.
 
@@ -1509,6 +1522,15 @@ class FrontmatterValidator:
                         ),
                     )
                 )
+
+        # Validate hook script file-path references declared in frontmatter ``hooks:`` field.
+        # The ``hooks:`` field in SKILL.md / agent / command frontmatter uses the same
+        # structure as the root ``"hooks"`` key in hooks.json.
+        if isinstance(data, dict) and isinstance(data.get("hooks"), dict):
+            hook_validator = HookValidator()
+            hook_validator._validate_hook_script_references_in_hooks_dict(  # noqa: SLF001
+                data["hooks"], path.parent, errors
+            )
 
         passed = len(errors) == 0
         return ValidationResult(
@@ -3305,6 +3327,13 @@ class HookValidator:
             for group_idx, group in enumerate(hook_groups):
                 self._validate_hook_group(group, event_type, group_idx, errors)
 
+        # Validate that file-path command references actually exist and are executable.
+        # HK004/HK005 issues are appended directly to the combined errors list so that
+        # missing-script warnings surface in the same result as structural errors.
+        self._validate_hook_script_references_in_hooks_dict(
+            hooks_obj, path.parent, errors
+        )
+
         passed = len(errors) == 0
         return ValidationResult(
             passed=passed, errors=errors, warnings=warnings, info=info
@@ -3424,6 +3453,139 @@ class HookValidator:
                             docs_url=generate_docs_url(HK003),
                         )
                     )
+
+    @staticmethod
+    def _is_file_path_reference(command: str) -> bool:
+        """Return True if *command* looks like a file path rather than a bare shell command.
+
+        File path references start with ``./``, ``../``, ``/`` (absolute), or
+        ``${CLAUDE_PLUGIN_ROOT}/``.  Bare shell commands (e.g. ``echo hello``,
+        ``python3 -m pytest``) do not match.
+
+        Args:
+            command: The ``command`` value from a hook entry.
+
+        Returns:
+            True if command is a file path reference, False otherwise.
+        """
+        return bool(command) and (
+            command.startswith(("./", "../", "/", "${CLAUDE_PLUGIN_ROOT}/"))
+        )
+
+    @staticmethod
+    def _find_plugin_root(base_dir: Path) -> Path:
+        """Walk up from *base_dir* to find the plugin root directory.
+
+        The plugin root is the first ancestor directory that contains a
+        ``.claude-plugin/`` subdirectory.  Falls back to *base_dir* if not found.
+
+        Args:
+            base_dir: Starting directory for the search.
+
+        Returns:
+            Plugin root Path, or *base_dir* if the plugin root cannot be determined.
+        """
+        current = base_dir.resolve()
+        for parent in [current, *current.parents]:
+            if (parent / ".claude-plugin").is_dir():
+                return parent
+        return base_dir
+
+    def _validate_command_script_references(
+        self,
+        hook_entries: list[dict[str, Any]],
+        base_dir: Path,
+        errors: list[ValidationIssue],
+    ) -> None:
+        """Check that file-path ``command`` values in hook entries actually exist.
+
+        For each entry where ``type == "command"`` and the ``command`` value
+        looks like a file path reference (starts with ``./``, ``../``, ``/``,
+        or ``${CLAUDE_PLUGIN_ROOT}/``), resolve the path relative to *base_dir*
+        and verify:
+
+        - The file exists (HK004 error if not).
+        - The file is executable (HK005 warning if not).
+
+        Bare shell commands such as ``echo hello`` or ``python3 -m pytest`` are
+        intentionally skipped.
+
+        Args:
+            hook_entries: List of hook entry dicts to inspect.
+            base_dir: Directory to use as the resolution base for relative paths.
+            errors: List to append HK004 errors and HK005 warnings to.
+        """
+        plugin_root = self._find_plugin_root(base_dir)
+
+        for entry in hook_entries:
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("type") != "command":
+                continue
+
+            command = entry.get("command", "")
+            if not isinstance(command, str) or not self._is_file_path_reference(
+                command
+            ):
+                continue
+
+            # Substitute ${CLAUDE_PLUGIN_ROOT} with the detected plugin root
+            resolved_command = command.replace(
+                "${CLAUDE_PLUGIN_ROOT}", str(plugin_root)
+            )
+
+            resolved_path = Path(resolved_command)
+            if not resolved_path.is_absolute():
+                resolved_path = (base_dir / resolved_command).resolve()
+
+            if not resolved_path.exists():
+                errors.append(
+                    ValidationIssue(
+                        field="command",
+                        severity="error",
+                        message=f"Hook script not found: {command}",
+                        code=HK004,
+                        docs_url=generate_docs_url(HK004),
+                        suggestion=f"Create the script at {resolved_path} or fix the path",
+                    )
+                )
+            elif not os.access(resolved_path, os.X_OK):
+                errors.append(
+                    ValidationIssue(
+                        field="command",
+                        severity="warning",
+                        message=f"Hook script is not executable: {command}",
+                        code=HK005,
+                        docs_url=generate_docs_url(HK005),
+                        suggestion=f"Run: chmod +x {resolved_path}",
+                    )
+                )
+
+    def _validate_hook_script_references_in_hooks_dict(
+        self, hooks_dict: dict[str, Any], base_dir: Path, errors: list[ValidationIssue]
+    ) -> None:
+        """Validate command file-path references in a hooks configuration dict.
+
+        Iterates over a hooks configuration dict (same structure as the root
+        ``"hooks"`` key in ``hooks.json``) and calls
+        :meth:`_validate_command_script_references` for every hook entry found.
+
+        Args:
+            hooks_dict: Hooks configuration mapping event types to groups.
+            base_dir: Directory used as base for resolving relative script paths.
+            errors: List to append HK004 errors and HK005 warnings to.
+        """
+        for groups in hooks_dict.values():
+            if not isinstance(groups, list):
+                continue
+            for group in groups:
+                if not isinstance(group, dict):
+                    continue
+                for entry in group.get("hooks", []):
+                    if isinstance(entry, dict):
+                        self._validate_command_script_references(
+                            [entry], base_dir, errors
+                        )
 
 
 # ============================================================================
@@ -3625,16 +3787,25 @@ class ConsoleReporter:
     Architecture lines 239-252
     """
 
-    def __init__(self, no_color: bool = False) -> None:
+    def __init__(
+        self, console: Console | None = None, *, no_color: bool = False
+    ) -> None:
         """Initialize console reporter.
 
         Args:
-            no_color: Disable color output for non-TTY environments
+            console: Optional pre-built Rich Console instance. When provided,
+                the ``no_color`` parameter is ignored because color behaviour is
+                determined by the supplied console.
+            no_color: Disable color output for non-TTY environments. Only used
+                when ``console`` is not provided.
         """
-        # Lazy import Rich to avoid startup cost when not needed
-        from rich.console import Console
+        if console is not None:
+            self.console = console
+        else:
+            # Lazy import Rich to avoid startup cost when not needed
+            from rich.console import Console as _Console
 
-        self.console = Console(force_terminal=not no_color, no_color=no_color)
+            self.console = _Console(force_terminal=not no_color, no_color=no_color)
         self.no_color = no_color
 
     @staticmethod
