@@ -498,3 +498,10 @@ TESTING_STRATEGY:
 ## Summary
 
 These best practices represent comprehensive guidelines for building secure, efficient, and compliant MCP servers that work well within the ecosystem. Developers should follow these guidelines to ensure their MCP servers meet standards for inclusion in the MCP directory and provide a safe, reliable experience for users.
+
+## Sources
+
+- [FastMCP GitHub Repository (PrefectHQ/fastmcp)](https://github.com/prefecthq/fastmcp) (accessed 2026-02-22)
+- [FastMCP Official Documentation](https://gofastmcp.com/) (accessed 2026-02-22)
+- [MCP Protocol Specification](https://spec.modelcontextprotocol.io/) (accessed 2026-02-22)
+- [MCP Server Registry](https://github.com/modelcontextprotocol/servers) (accessed 2026-02-22)

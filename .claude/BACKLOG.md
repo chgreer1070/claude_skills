@@ -134,8 +134,9 @@ _(Empty)_
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
+**Completed**: 2026-02-22
 **Priority**: P1
-**Status**: FACT-CHECKED 2026-02-21 — `require_auth` hallucination flag was WRONG. The string `require_auth` does not appear anywhere in the plugin. The actual auth APIs documented (`require_scopes`, `restrict_tag`, `AuthContext`, `AuthMiddleware`) are all VERIFIED against installed FastMCP 3.0.0rc2 source code (`fastmcp/server/auth/authorization.py`, `fastmcp/server/middleware/authorization.py`). Citation need still valid — documentation lacks source attribution.
+**Status**: DONE — Added `## Sources` sections to all 7 reference files in `plugins/fastmcp-creator/skills/fastmcp-creator/references/`: `development-guidelines.md` (FastMCP GitHub, docs, PyPI, launch post, MCP spec, verified auth source files), `community-practices.md` (FastMCP GitHub, docs, PyPI, MCP spec), `evaluation-guide.md` (FastMCP GitHub, docs, MCP spec), `example-projects.md` (FastMCP GitHub, docs, MCP server registry, TypeScript SDK), `mcp-best-practices.md` (FastMCP GitHub, docs, MCP spec, registry), `prompts-and-templates.md` (FastMCP GitHub, docs, MCP spec prompts), `typescript-mcp-server.md` (TypeScript SDK, MCP spec, FastMCP docs, Zod). Auth API citations from 2026-02-21 fact-check preserved inline in development-guidelines.md Sources section.
 **Description**: The plugin contains over 1200 lines of FastMCP 3.x API documentation derived from a release candidate version, with no source citations. Per CLAUDE.md citation requirements, all factual claims must have cited sources. Auth API claims verified but citations still needed for all documentation.
 **Citations**:
 - FastMCP auth: `fastmcp/server/auth/__init__.py` lines 8-13, `authorization.py` lines 48, 78, 106 (accessed 2026-02-21)

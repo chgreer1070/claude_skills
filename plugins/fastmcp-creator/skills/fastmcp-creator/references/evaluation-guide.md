@@ -406,3 +406,9 @@ Evaluation creation is critical for MCP server quality. Follow these guidelines 
 - Challenge the LLM's ability to use tools effectively
 - Provide verifiable, stable answers
 - Guide improvement of tool design and documentation
+
+## Sources
+
+- [FastMCP GitHub Repository (PrefectHQ/fastmcp)](https://github.com/prefecthq/fastmcp) (accessed 2026-02-22)
+- [FastMCP Official Documentation](https://gofastmcp.com/) (accessed 2026-02-22)
+- [MCP Protocol Specification](https://spec.modelcontextprotocol.io/) (accessed 2026-02-22)

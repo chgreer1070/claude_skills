@@ -19,7 +19,7 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 |---|---|---|
 | (empty) | — | Interactive browser |
 | `#N` | — | Issue-first: load item from GitHub Issue #N |
-| `--auto` | `$1`+ = title | Autonomous — no `AskUserQuestion` calls |
+| `--auto` | `$1`+ = title (or empty → auto-select first open P0/P1 item) | Autonomous — no `AskUserQuestion` calls |
 | `close` | `$1`+ = title or `#N` | Verify and close a completed item |
 | `resolve` | `$1`+ = title or `#N` | Mark no longer applicable (reason required) |
 | `setup-github` | — | Initialize labels, project, first milestone |
@@ -29,6 +29,7 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 /work-backlog-item                                    # interactive browser
 /work-backlog-item #42                               # issue-first → planning
 /work-backlog-item Error Recovery                    # direct match → planning
+/work-backlog-item --auto                            # autonomous → auto-select first open P0/P1
 /work-backlog-item --auto vercel skills npm package  # autonomous → planning
 /work-backlog-item close Error Recovery              # verify and close by title
 /work-backlog-item close #42                         # verify and close by issue number
@@ -42,6 +43,7 @@ When `$0` is `--auto`, the following substitutions apply at every interactive de
 
 | Normal behaviour | `--auto` substitution |
 |---|---|
+| No title given (`$1` is empty) | Scan BACKLOG.md P0 then P1 sections for the first item that has no `**Completed**:` line, no `**Status**: DONE`, and no ~~strikethrough~~ heading. Log `[AUTO] No title — auto-selected: {title}`, use that item's title as the working title and proceed. If no open P0/P1 item exists, log `[AUTO] STOP — no open P0/P1 items found` and stop. |
 | Step 1b: issue not found | Log `[AUTO] STOP — Issue #N not found`, stop |
 | Step 1: zero matches → ask user to create | Auto-invoke `create-backlog-item --auto {title}`, log `[AUTO] No item found — invoking create-backlog-item --auto` |
 | Step 1: multiple matches → ask user to pick | Log `[AUTO] Multiple matches — picking first: {title}`, proceed with first match |
@@ -62,7 +64,7 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 |---|---|---|
 | (empty) | — | Step 0 — interactive browser |
 | `#N` (starts with `#`) | issue number | Step 1b — Issue-first path |
-| `--auto` | `$1`+ joined | AUTO_MODE=true → Step 1 |
+| `--auto` | `$1`+ joined (empty → auto-select first open P0/P1) | AUTO_MODE=true → Step 1 |
 | `close` | `$1`+ joined (title or `#N`) | Step 9 (close path) |
 | `resolve` | `$1`+ joined (title or `#N`) | Step 9 (resolve path) |
 | `setup-github` | — | setup-github command |
@@ -165,6 +167,8 @@ Skip to Step 3 with the assembled item.
 ### Step 1: Find the Backlog Item
 
 Read `.claude/BACKLOG.md`. Search H3 headings (`### ...`) for case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
+
+**AUTO_MODE with no title (`$1` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items whose H3 heading contains ~~strikethrough~~, or whose body contains a `**Completed**:` line or `**Status**: DONE`.
 
 - **Zero matches (interactive mode):** report "No backlog item found matching: {title}" and offer to create one via `/create-backlog-item`.
 - **Zero matches (AUTO_MODE):** log `[AUTO] No item found — invoking create-backlog-item --auto {title}`, invoke `Skill(command: "create-backlog-item", args: "--auto {title}")`, then re-run Step 1.

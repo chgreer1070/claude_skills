@@ -303,3 +303,10 @@ Study these projects to:
 - Understand real-world architectures
 
 When building your own server, chances are someone has open-sourced a similar one - consulting those repositories can save time and highlight edge cases you might not have considered.
+
+## Sources
+
+- [FastMCP GitHub Repository (PrefectHQ/fastmcp)](https://github.com/prefecthq/fastmcp) (accessed 2026-02-22)
+- [FastMCP Official Documentation — Examples](https://gofastmcp.com/) (accessed 2026-02-22)
+- [MCP Server Registry / Awesome MCP Servers](https://github.com/modelcontextprotocol/servers) (accessed 2026-02-22)
+- [TypeScript MCP SDK](https://github.com/modelcontextprotocol/typescript-sdk) (accessed 2026-02-22)

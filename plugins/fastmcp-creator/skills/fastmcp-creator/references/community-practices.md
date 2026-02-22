@@ -932,3 +932,11 @@ MANDATORY_PRACTICES:
    - The model must use TaskConfig for background operations
    - The model must use ToolTransform to curate auto-generated tools
    - The model must configure distributed state storage for multi-instance deployments
+
+## Sources
+
+- [FastMCP GitHub Repository (PrefectHQ/fastmcp)](https://github.com/prefecthq/fastmcp) (accessed 2026-02-22)
+- [FastMCP Official Documentation](https://gofastmcp.com/) (accessed 2026-02-22)
+- [FastMCP on PyPI](https://pypi.org/project/fastmcp/) (accessed 2026-02-22)
+- [MCP Protocol Specification](https://spec.modelcontextprotocol.io/) (accessed 2026-02-22)
+- Claude Desktop Extensions (.mcpb format) — Anthropic official announcement and FastMCP packaging docs via <https://gofastmcp.com/> (accessed 2026-02-22)
