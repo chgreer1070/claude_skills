@@ -1,8 +1,8 @@
 ---
-last-updated: 2026-02-21
-last-completed: 2026-02-20
+last-updated: 2026-02-22
+last-completed: 2026-02-22
 p0-count: 0
-p1-count: 23
+p1-count: 22
 p2-count: 23
 ideas-count: 11
 ---
@@ -25,7 +25,9 @@ _(Empty)_
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
+**Completed**: 2026-02-22
 **Priority**: P1
+**Status**: DONE — replaced `https://sourcery.assaabloy.net` with generic placeholder `https://gitlab.example.com` in validate_glfm.py (default arg + help text) and gitlab-ci-local-guide.md (example URL)
 **Description**: `validate_glfm.py` lines 152-153 hardcode `https://sourcery.assaabloy.net` as the default GitLab instance URL. `gitlab-ci-local-guide.md` line 51 also references this URL. This leaks a corporate internal URL into a public repository. Replace with a generic placeholder (e.g., `https://gitlab.example.com`) or make the URL a required argument with no default.
 **Files**:
 - `plugins/gitlab-skill/skills/gitlab-skill/scripts/validate_glfm.py` (lines 152-153)

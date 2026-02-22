@@ -48,7 +48,7 @@ Before setup, ensure you have:
 
 Create a personal access token from your GitLab instance:
 
-1. Log in to your GitLab instance (e.g., <https://sourcery.assaabloy.net>)
+1. Log in to your GitLab instance (e.g., <https://gitlab.example.com>)
 2. Go to **User Settings** → **Access Tokens**
 3. Create a new token with these scopes:
 
