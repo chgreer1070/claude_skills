@@ -6,9 +6,9 @@ The registry is the machine-readable source of truth for all workflows, validato
 
 Three YAML files:
 
-- [./workflows.yaml](./workflows.yaml) — canonical workflow definitions (7 workflows)
-- [./validators.yaml](./validators.yaml) — validator definitions with invocation patterns
-- [./routing-rules.yaml](./routing-rules.yaml) — keyword signals, source/artifact signals, chain rules, disambiguation rules
+- [../registry/workflows.yaml](../registry/workflows.yaml) — canonical workflow definitions (7 workflows)
+- [../registry/validators.yaml](../registry/validators.yaml) — validator definitions with invocation patterns
+- [../registry/routing-rules.yaml](../registry/routing-rules.yaml) — keyword signals, source/artifact signals, chain rules, disambiguation rules
 
 ## How Routing Decisions Are Made
 
@@ -32,7 +32,7 @@ flowchart TD
 
 ## How to Add a New Workflow
 
-1. Add an entry to [./workflows.yaml](./workflows.yaml):
+1. Add an entry to [../registry/workflows.yaml](../registry/workflows.yaml):
 
 ```yaml
 - id: my-new-workflow
@@ -54,7 +54,7 @@ flowchart TD
     references: ["./references/output-contracts.md"]
 ```
 
-2. Add intent signals to [./routing-rules.yaml](./routing-rules.yaml) under `intent_signals`:
+2. Add intent signals to [../registry/routing-rules.yaml](../registry/routing-rules.yaml) under `intent_signals`:
 
 ```yaml
 my-new-workflow:
@@ -80,7 +80,7 @@ chain_rules:
 
 ## How to Add a New Validator
 
-Add an entry to [./validators.yaml](./validators.yaml):
+Add an entry to [../registry/validators.yaml](../registry/validators.yaml):
 
 ```yaml
 - id: my-validator

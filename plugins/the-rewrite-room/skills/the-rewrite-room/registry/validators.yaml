@@ -9,7 +9,7 @@ validators:
 
   - id: frontmatter-validator
     name: "SKILL.md Frontmatter Validator"
-    script: "plugins/plugin-creator/scripts/validate_frontmatter.py"
+    script: "plugins/plugin-creator/scripts/plugin_validator.py"
     invocation: "uv run {script} {target}"
     requires_env: []
     applies_to: [SKILL.md, agent-definitions]
@@ -62,6 +62,6 @@ validators:
     applies_to: [SKILL.md, "docs/", README.md]
     hard_stop: false
     checks:
-      - "all [text](./path) links resolve to existing files"
+      - "all relative markdown links resolve to existing files"
       - "no absolute paths in markdown links"
       - "skill activation references use Skill() syntax"

@@ -302,6 +302,8 @@ Add a `**Plan**:` field to the backlog item in `.claude/BACKLOG.md`:
 **Description**: {description}
 ```
 
+If the item has `**Issue**: #N`, record it in the plan file header comment and include `Fixes #N` in any commit message produced during implementation.
+
 Update `last-updated:` in the BACKLOG.md YAML frontmatter to today's date.
 
 ### Step 8: Report Next Steps
@@ -480,6 +482,30 @@ BACKLOG.md          →  GitHub Issue
 ```
 
 Full step-by-step commands and example sessions: [github-integration.md](./references/github-integration.md)
+
+### Commit Messages and PR Body — `Fixes #N`
+
+When implementing a backlog item that has a linked GitHub Issue (`**Issue**: #N`), **every commit and the PR description MUST reference the issue** so GitHub auto-closes it on merge:
+
+- **Commit messages**: end the subject line with `(fixes #N)` or add a `Fixes #N` footer in the body:
+  ```text
+  fix(perl-development): replace shell injection in run_command (fixes #80)
+  ```
+  or
+  ```text
+  fix(perl-development): replace shell injection in run_command
+
+  Fixes #80
+  ```
+- **PR description**: include at least one `Fixes #N` line in the PR body so GitHub links and auto-closes the issue when the PR is merged.
+- When a PR fixes **multiple issues**, list each on a separate line:
+  ```text
+  Fixes #80
+  Fixes #83
+  ```
+- Use `Fixes` (not `Closes`) for bugs and security issues; either works for feature work.
+
+This convention ensures issues are automatically closed on merge without manual intervention.
 
 ### Step 2.5: GitHub Issue Sync
 
