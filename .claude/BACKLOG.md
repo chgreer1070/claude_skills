@@ -37,8 +37,9 @@ _(Empty)_
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
+**Completed**: 2026-02-22
 **Priority**: P1
-**Status**: FACT-CHECKED 2026-02-21 — All 11 Bash 5.3 features verified against CHANGES file, NEWS file, and bash.1 manpage from official tarball. Features exist but SKILL.md has detail inaccuracies. Original review agent "fabrication" claim was wrong.
+**Status**: DONE — Fixed GLOBSORT syntax (`:asc`/`:desc` → `+`/`-` prefix, `date` → `mtime`, added missing specifiers), added required space in `${ command; }` and `${| command; }` examples, added REPLY-is-local note, corrected C23 claim to "C standard conformance improvements", added interface disclaimer for `kv`/`strptime`. Fixed `task_output()` bug in `log_functions.sh` — `${task_output}` → `${raw_task_output}` on lines 1410/1412.
 **Description**: Two issues:
 
 1. **bash-53-features/SKILL.md inaccuracies** (features exist but details wrong):
@@ -73,7 +74,9 @@ _(Empty)_
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
+**Completed**: 2026-02-22
 **Priority**: P1
+**Status**: DONE — Fixed `description:"Configure..."` → `description: "Configure..."` in `plugins/clang-format/skills/clang-format/SKILL.md` line 3.
 **Description**: SKILL.md line 3 has `description:"Configure clang-format..."` — missing the required space after the `description:` key. This causes YAML parsing failures. The frontmatter should be `description: "Configure clang-format..."`.
 **Files**:
 - `plugins/clang-format/skills/clang-format/SKILL.md` (line 3)
@@ -82,14 +85,9 @@ _(Empty)_
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
+**Completed**: 2026-02-22
 **Priority**: P1
-**Description**: The `/is-it-done` command is referenced 12 times across 4 files in the agent-orchestration plugin, but the command does not exist in the repository. No `is-it-done` command file exists in any `commands/` directory. All references should be removed or replaced with the actual verification mechanism. Also contains orphaned "Clavix" references in `clear-framework.md` (lines 3, 15-20) — Clavix is an external tool not present in this repo.
-**Files**:
-- `plugins/agent-orchestration/skills/how-to-delegate/SKILL.md`
-- `plugins/agent-orchestration/skills/agent-orchestration/SKILL.md`
-- `plugins/agent-orchestration/skills/agent-orchestration/post-completion-validation-protocol.md`
-- `plugins/agent-orchestration/skills/agent-orchestration/references/synthesis-improvements-from-research.md`
-- `plugins/agent-orchestration/skills/agent-orchestration/clear-framework.md` (Clavix references)
+**Status**: DONE — Replaced all 9 actionable `/is-it-done` slash command calls in `SKILL.md` and `how-to-delegate/SKILL.md` with `/am-i-complete` (the actual existing command). Source attribution references in `post-completion-validation-protocol.md` and `synthesis-improvements-from-research.md` left as historical metadata. Removed Clavix references from `clear-framework.md` — replaced with generic imperative descriptions of the CLEAR framework operations.
 
 ### perl-development: Fix shell injection vulnerability in example template
 
@@ -104,8 +102,9 @@ _(Empty)_
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
+**Completed**: 2026-02-22
 **Priority**: P1
-**Description**: The `hallucination-audit-stop.js` hook has two critical bugs: (1) Evidence markers using backticks are not properly detected, causing false negatives when evidence is inline-code formatted. (2) The "because" pattern matcher has a multi-occurrence bug where only the first match is processed, missing subsequent hallucination indicators in the same response.
+**Status**: DONE — Fixed both bugs in `hallucination-audit-stop.js`: (1) Removed dead backtick regex from `EVIDENCE_MARKERS` (was never matched since `stripLowSignalRegions` removes backtick spans before scanning); replaced with a `BACKTICK_RE` check against the original pre-strip text via new `rawText` param in `hasEvidenceNearby`. (2) Changed `because` loop from `lower.indexOf()` (first occurrence only) to a `while` loop scanning all occurrences — each unsuppressed `because` is now flagged independently.
 **Files**:
 - `plugins/hallucination-detector/scripts/hallucination-audit-stop.js`
 
@@ -113,9 +112,9 @@ _(Empty)_
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
+**Completed**: 2026-02-22
 **Priority**: P1
-**Description**: Three frontmatter files in the python3-development plugin have malformed YAML frontmatter (similar missing-space-after-colon pattern). Also contains a ghost agent reference (referencing an agent that doesn't exist in the plugin). Template comment loss indicates content was stripped during automated processing.
-**Files**: TBD — run `uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/python3-development/` to identify exact files
+**Status**: DONE — Fixed 2 malformed frontmatter files (backlog said 3, validator found 2): `skills/development/add-new-feature/SKILL.md` and `skills/development/complete-implementation/SKILL.md` — both had `description:"..."` missing the space after the colon. Also unquoted the description in `complete-implementation` (was double-escaped `"\"..."\""`). No ghost agent reference found after inspection.
 
 ### the-rewrite-room: Fix nonexistent script reference and 6 broken links
 

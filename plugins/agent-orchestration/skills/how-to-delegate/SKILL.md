@@ -260,13 +260,12 @@ CONTEXT:
 [From Step 5 — WHERE, WHAT, WHY]
 
 YOUR TASK:
-1. Run SlashCommand /is-it-done to understand completion criteria
-2. Perform comprehensive context gathering using available tools, skills, and resources
-3. Form hypothesis based on evidence
-4. Design and execute experiments
-5. Verify findings against authoritative sources
-6. Implement solution following best practices
-7. Verify /is-it-done criteria satisfied with evidence
+1. Perform comprehensive context gathering using available tools, skills, and resources
+2. Form hypothesis based on evidence
+3. Design and execute experiments
+4. Verify findings against authoritative sources
+5. Implement solution following best practices
+6. Verify `/am-i-complete` criteria satisfied with evidence
 
 AVAILABLE RESOURCES:
 [From Step 6 — describe ecosystem, do not prescribe tools]

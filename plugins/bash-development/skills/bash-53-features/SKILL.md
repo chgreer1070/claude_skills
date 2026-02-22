@@ -4,11 +4,11 @@ description: Bash 5.3 release features and improvements with practical examples.
 ---
 # Bash 5.3 Features and Improvements
 
-Released in July 2025, Bash 5.3 introduces significant enhancements including revolutionary command substitution syntax, new variables, loadable builtins, and C23 compliance.
+Released in July 2025, Bash 5.3 introduces significant enhancements including revolutionary command substitution syntax, new variables, loadable builtins, and improved C standard conformance.
 
 ## Revolutionary Command Substitution
 
-### Efficient In-Shell Execution: `${command;}`
+### Efficient In-Shell Execution: `${ command; }`
 
 Execute commands without forking, dramatically improving performance:
 
@@ -17,10 +17,11 @@ Execute commands without forking, dramatically improving performance:
 result=$(echo "Hello, World")
 
 # NEW: In-shell command substitution (no fork!)
-result=${echo "Hello, World";}
+# Note: a space (or tab/newline/|) is required after the opening '{'
+result=${ echo "Hello, World"; }
 
 # Practical example: Fast variable assignment
-config_value=${grep "^timeout=" config.txt | cut -d= -f2;}
+config_value=${ grep "^timeout=" config.txt | cut -d= -f2; }
 
 # Performance comparison function
 benchmark_substitution() {
@@ -39,7 +40,7 @@ benchmark_substitution() {
     echo "Testing new in-shell substitution..."
     start="${EPOCHREALTIME}"
     for ((i = 0; i < 1000; i++)); do
-        result=${echo "${i}";}
+        result=${ echo "${i}"; }
     done
     end="${EPOCHREALTIME}"
     printf 'In-shell: %.4f seconds\n' \
@@ -55,25 +56,29 @@ benchmark_substitution
 - Reduced resource usage in loops
 - Same syntax familiarity as command substitution
 
-### REPLY Variable Capture: `${|command;}`
+### REPLY Variable Capture: `${| command; }`
 
-Execute commands and automatically store output in `REPLY`:
+Execute commands and automatically store output in `REPLY`. Note: `REPLY` is local to the
+substitution — its value is restored after completion, so capture it immediately:
 
 ```bash
-# Output goes to REPLY variable
-${|date +%Y-%m-%d;}
-echo "Today is: ${REPLY}"
+# Output goes to REPLY — capture it right away
+${| date +%Y-%m-%d; }
+today="${REPLY}"
+echo "Today is: ${today}"
 
 # Practical example: Multiple captures
 get_system_info() {
-    ${|uname -s;}
-    local os="${REPLY}"
+    local os kernel host
 
-    ${|uname -r;}
-    local kernel="${REPLY}"
+    ${| uname -s; }
+    os="${REPLY}"
 
-    ${|hostname;}
-    local host="${REPLY}"
+    ${| uname -r; }
+    kernel="${REPLY}"
+
+    ${| hostname; }
+    host="${REPLY}"
 
     printf 'System: %s %s on %s\n' "${os}" "${kernel}" "${host}"
 }
@@ -82,22 +87,26 @@ get_system_info
 
 # Example: Processing pipeline results
 process_data() {
-    ${|grep "ERROR" logfile.txt | wc -l;}
-    local error_count="${REPLY}"
+    local error_count warning_count
 
-    ${|grep "WARNING" logfile.txt | wc -l;}
-    local warning_count="${REPLY}"
+    ${| grep "ERROR" logfile.txt | wc -l; }
+    error_count="${REPLY}"
+
+    ${| grep "WARNING" logfile.txt | wc -l; }
+    warning_count="${REPLY}"
 
     printf 'Errors: %d, Warnings: %d\n' "${error_count}" "${warning_count}"
 }
 
-# Example: Conditional logic with REPLY
+# Example: Conditional logic — capture REPLY before using it
 check_service() {
     local service="${1}"
+    local status
 
-    ${|systemctl is-active "${service}" 2>/dev/null;}
+    ${| systemctl is-active "${service}" 2>/dev/null; }
+    status="${REPLY}"
 
-    if [[ "${REPLY}" == "active" ]]; then
+    if [[ "${status}" == "active" ]]; then
         echo "Service ${service} is running"
         return 0
     else
@@ -120,11 +129,11 @@ check_service "ssh"
 ```bash
 # String manipulation - use in-shell for efficiency
 filename="document.txt"
-basename=${echo "${filename%.*}";}
-extension=${echo "${filename##*.}";}
+basename=${ echo "${filename%.*}"; }
+extension=${ echo "${filename##*.}"; }
 
 # Output capture - use REPLY for clarity
-${|df -h / | tail -1 | awk '{print $5}';}
+${| df -h / | tail -1 | awk '{print $5}'; }
 disk_usage="${REPLY}"
 echo "Disk usage: ${disk_usage}"
 
@@ -134,21 +143,24 @@ result=$(cat file.txt | grep pattern | sort | uniq)
 
 ## GLOBSORT Variable
 
-Control the sorting order of filename and pathname completion:
+Control the sorting order of filename and pathname expansion. The specifier is optionally
+prefixed with `+` (ascending, default) or `-` (descending):
 
 ```bash
-# Set sort order for globbing
-GLOBSORT="name"      # Sort by name (default)
-GLOBSORT="size"      # Sort by file size
-GLOBSORT="date"      # Sort by modification time
-GLOBSORT="name:asc"  # Explicit ascending name sort
-GLOBSORT="size:desc" # Descending size sort
+# Set sort order for globbing (prefix + = ascending, - = descending)
+GLOBSORT="name"       # Sort by name (default, ascending)
+GLOBSORT="+name"      # Explicit ascending name sort
+GLOBSORT="-name"      # Descending name sort
+GLOBSORT="+size"      # Sort by file size (ascending)
+GLOBSORT="-size"      # Descending size sort
+GLOBSORT="+mtime"     # Sort by modification time (ascending)
+GLOBSORT="-mtime"     # Newest files last
 
 # Practical example: Process largest files first
 process_by_size() {
     local dir="${1}"
 
-    GLOBSORT="size:desc"
+    GLOBSORT="-size"
 
     for file in "${dir}"/*; do
         [[ -f "${file}" ]] || continue
@@ -166,7 +178,7 @@ process_newest() {
     local dir="${1}"
     local -a files
 
-    GLOBSORT="date:desc"
+    GLOBSORT="-mtime"
     files=("${dir}"/*)
 
     echo "Processing files from newest to oldest:"
@@ -179,11 +191,16 @@ process_newest() {
 process_newest "/tmp"
 ```
 
-**Available sort modes:**
-- `name` - Alphabetical by filename
-- `size` - By file size
-- `date` - By modification time
-- Suffixes: `:asc` (ascending), `:desc` (descending)
+**Available sort specifiers:**
+- `name` — Alphabetical by filename
+- `size` — By file size
+- `mtime` — By modification time
+- `atime` — By access time
+- `ctime` — By inode change time
+- `blocks` — By allocated block count
+- `numeric` — Numeric sort on leading digits in filename
+- `nosort` — Disable sorting (glob order)
+- Prefix: `+` (ascending, default) or `-` (descending)
 
 ## Enhanced Builtins
 
@@ -250,8 +267,9 @@ configure_app() {
     read -e -r -E -p "Config: " config_file
 
     if [[ -f "${config_file}" ]]; then
-        ${|grep -c "^[^#]" "${config_file}";}
-        echo "Found ${REPLY} active configuration lines"
+        ${| grep -c "^[^#]" "${config_file}"; }
+        local line_count="${REPLY}"
+        echo "Found ${line_count} active configuration lines"
     fi
 }
 ```
@@ -322,7 +340,9 @@ build_command ls "-l" "file with spaces.txt"
 
 ### `kv` - Key-Value Arrays
 
-Create associative arrays from key-value data:
+Create associative arrays from key-value data. **Note:** The `kv` builtin existence is
+confirmed in Bash 5.3; the exact interface shown below is illustrative — verify with
+`help kv` after loading:
 
 ```bash
 # Enable kv builtin (if not already loaded)
@@ -363,7 +383,9 @@ load_env_config() {
 
 ### `strptime` - Date Parsing
 
-Parse textual dates into Unix timestamps:
+Parse textual dates into Unix timestamps. **Note:** The `strptime` builtin existence is
+confirmed in Bash 5.3; the exact interface shown below is illustrative — verify with
+`help strptime` after loading:
 
 ```bash
 # Enable strptime builtin
@@ -506,12 +528,12 @@ validate_pattern "[a-z]+"  # Valid
 validate_pattern "[a-z"    # Invalid
 ```
 
-## C23 Compliance
+## C Standard Conformance Improvements
 
-Bash source updated to C23 standard:
+Bash 5.3 improves conformance to modern C standards (the build minimum remains C90):
 
 - No longer compiles with K&R C compilers
-- Modernized codebase
+- Modernized codebase for better conformance
 - Better optimization opportunities
 - Improved type safety
 
@@ -519,7 +541,7 @@ Bash source updated to C23 standard:
 
 ## Performance Improvements
 
-- Command substitution without forking (`${cmd;}`) dramatically reduces overhead
+- Command substitution without forking (`${ cmd; }`) dramatically reduces overhead
 - Optimized globbing with `GLOBSORT`
 - Faster builtin operations
 - Reduced memory usage in various operations
@@ -565,12 +587,12 @@ done
 
 # NEW (faster):
 for file in *; do
-    ${|stat -f%z "${file}" 2>/dev/null;}
+    ${| stat -f%z "${file}" 2>/dev/null; }
     size="${REPLY}"
 done
 
 # Use GLOBSORT for better file processing
-GLOBSORT="date:desc"
+GLOBSORT="-mtime"
 for file in *.log; do
     process_recent_log "${file}"
 done

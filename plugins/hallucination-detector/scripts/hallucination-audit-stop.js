@@ -124,8 +124,10 @@ function stripLowSignalRegions(text) {
 
 // Change 1: Evidence marker helper — suppresses causality flags when nearby text
 // already contains observable evidence (code, quoted text, error codes, file refs).
+// Note: EVIDENCE_MARKERS are tested against the stripped haystack, so the backtick
+// inline-code marker would be dead (stripped text has no backticks). Instead we
+// pass the original (pre-strip) text as `rawText` and check it separately.
 const EVIDENCE_MARKERS = [
-  /`[^`]+`/, // inline code
   /["'][^"']{3,}["']/, // quoted text
   /\b(?:error|exit)\s*(?:code)?\s*\d+/i, // error codes
   /\b[A-Z]\d{3,4}\b/, // linter codes E501, W291
@@ -134,11 +136,21 @@ const EVIDENCE_MARKERS = [
   /[\w/]+\.\w{1,6}:\d+/, // file:line references
 ];
 
-function hasEvidenceNearby(text, idx, windowSize = 150) {
+const BACKTICK_RE = /`[^`\n]+`/; // inline code — tested against raw (pre-strip) text
+
+function hasEvidenceNearby(text, idx, rawText, windowSize = 150) {
   const start = Math.max(0, idx - windowSize);
   const end = Math.min(text.length, idx + windowSize);
   const window = text.slice(start, end);
-  return EVIDENCE_MARKERS.some((re) => re.test(window));
+  if (EVIDENCE_MARKERS.some((re) => re.test(window))) return true;
+  // Backtick evidence is checked against the original unstripped text around the same position.
+  if (rawText) {
+    const rawStart = Math.max(0, idx - windowSize);
+    const rawEnd = Math.min(rawText.length, idx + windowSize);
+    const rawWindow = rawText.slice(rawStart, rawEnd);
+    if (BACKTICK_RE.test(rawWindow)) return true;
+  }
+  return false;
 }
 
 function isIndexWithinQuestion(text, idx) {
@@ -201,7 +213,8 @@ function hasEnumerationNearby(text, idx) {
 
 function findTriggerMatches(text) {
   const matches = [];
-  const haystack = stripLowSignalRegions(normalizeForScan(text));
+  const rawText = normalizeForScan(text);
+  const haystack = stripLowSignalRegions(rawText);
   const lower = haystack.toLowerCase();
 
   // 1) Assumption/speculation language (explicitly discouraged by repo policy)
@@ -304,31 +317,38 @@ function findTriggerMatches(text) {
   ];
 
   for (const phrase of causalityPhrases) {
-    const idx = lower.indexOf(phrase);
-    if (idx === -1) continue;
-    if (isIndexWithinQuestion(haystack, idx)) continue;
+    // Scan all occurrences of the phrase, not just the first
+    let searchFrom = 0;
+    while (true) {
+      const idx = lower.indexOf(phrase, searchFrom);
+      if (idx === -1) break;
+      searchFrom = idx + phrase.length;
 
-    // Temporal exclusion for 'since'
-    if (phrase === 'since') {
-      const nearby = haystack.slice(Math.max(0, idx - 50), Math.min(haystack.length, idx + 100));
-      if (TEMPORAL_SINCE.test(nearby)) continue;
-    }
+      if (isIndexWithinQuestion(haystack, idx)) continue;
 
-    if (phrase === 'because') {
-      // Hedged because: always flag regardless of evidence
-      if (HEDGED_BECAUSE.test(haystack)) {
-        matches.push({ kind: 'causality_language', evidence: 'because (hedged)' });
+      // Temporal exclusion for 'since'
+      if (phrase === 'since') {
+        const nearby = haystack.slice(Math.max(0, idx - 50), Math.min(haystack.length, idx + 100));
+        if (TEMPORAL_SINCE.test(nearby)) continue;
+      }
+
+      if (phrase === 'because') {
+        // Hedged because: always flag regardless of evidence
+        if (HEDGED_BECAUSE.test(haystack)) {
+          matches.push({ kind: 'causality_language', evidence: 'because (hedged)' });
+          break; // one flag per hedged-because pattern is sufficient
+        }
+        // Evidence nearby suppresses plain 'because'
+        if (hasEvidenceNearby(haystack, idx, rawText)) continue;
+        matches.push({ kind: 'causality_language', evidence: phrase });
         continue;
       }
-      // Evidence nearby suppresses plain 'because'
-      if (hasEvidenceNearby(haystack, idx)) continue;
-      matches.push({ kind: 'causality_language', evidence: phrase });
-      continue;
-    }
 
-    // All other causality phrases: suppress when evidence is nearby
-    if (hasEvidenceNearby(haystack, idx)) continue;
-    matches.push({ kind: 'causality_language', evidence: phrase });
+      // All other causality phrases: suppress when evidence is nearby
+      if (hasEvidenceNearby(haystack, idx, rawText)) continue;
+      matches.push({ kind: 'causality_language', evidence: phrase });
+      break; // one flag per phrase kind is sufficient for non-because phrases
+    }
   }
 
   // Change 7: Implicit, nominalized, and passive causality patterns.
@@ -350,7 +370,7 @@ function findTriggerMatches(text) {
     const m = haystack.match(re);
     if (!m) continue;
     if (isIndexWithinQuestion(haystack, m.index)) continue;
-    if (hasEvidenceNearby(haystack, m.index)) continue;
+    if (hasEvidenceNearby(haystack, m.index, rawText)) continue;
     matches.push({ kind: 'causality_language', evidence: m[0].trim() });
   }
 
