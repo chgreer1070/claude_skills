@@ -191,6 +191,7 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 
 **Source**: Gap analysis of SAM framework
 **Added**: 2026-02-01
+**Plan**: plan/tasks-5-sam-error-recovery.md
 **Description**: Define explicit procedure when a task fails irrecoverably. How to undo artifact changes? How to restore artifact plane to consistent state after failure?
 **Research first**: How do GSD, BMAD-METHOD, AutoGPT, and traditional CI/CD handle rollback? What patterns exist for transactional artifact updates?
 **Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (new Appendix or Part 6 addition)
