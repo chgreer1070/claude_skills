@@ -67,7 +67,25 @@ gh label create "status:in-progress" \
 
 ### Step 5: Bulk Label Transition
 
-For each open issue in the milestone:
+Use the Python automation script (preferred — avoids per-issue bash loops):
+
+```bash
+uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
+  --number {number} --repo Jamie-BitFlight/claude_skills
+```
+
+Or, to preview changes without applying them:
+
+```bash
+uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
+  --number {number} --dry-run
+```
+
+The script removes `status:needs-grooming` and adds `status:in-progress` to each
+open issue, creates the label if missing, reports per-issue results, and exits
+non-zero if any issue fails.
+
+**Fallback** — if the script is unavailable, edit issues individually:
 
 ```bash
 gh issue edit {number} \

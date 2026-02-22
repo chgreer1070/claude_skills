@@ -19,6 +19,7 @@ Usage:
     github_project_setup.py labels   --repo OWNER/REPO [--force]
     github_project_setup.py milestone create --repo OWNER/REPO --title TITLE [--due YYYY-MM-DD]
     github_project_setup.py milestone list   --repo OWNER/REPO
+    github_project_setup.py milestone start  --repo OWNER/REPO --number N [--dry-run]
     github_project_setup.py issue create     --repo OWNER/REPO --title TITLE [options]
     github_project_setup.py issue list       --repo OWNER/REPO [--priority p1] [--state open]
 """
@@ -85,7 +86,7 @@ LABELS: list[dict[str, str]] = [
     {
         "name": "status:in-progress",
         "color": "1D76DB",
-        "description": "Actively being worked",
+        "description": "Actively being worked on",
     },
     {
         "name": "status:blocked",
@@ -203,6 +204,109 @@ def milestone_list(
             f"  #{m.number:3d}  [{m.state}]  {m.title}  "
             f"({m.open_issues} open, {m.closed_issues} closed)  due: {due}"
         )
+
+
+@milestone_app.command("start")
+def milestone_start(
+    number: Annotated[int, typer.Option("--number", "-n", help="Milestone number")],
+    repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
+    dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
+) -> None:
+    """Transition open milestone issues from status:needs-grooming to status:in-progress."""
+    gh = get_github()
+    repository = get_repo(gh, repo)
+
+    try:
+        milestone = repository.get_milestone(number)
+    except GithubException as exc:
+        typer.echo(f"ERROR: Milestone #{number} not found.", err=True)
+        open_milestones = list(repository.get_milestones(state="open"))
+        if open_milestones:
+            typer.echo("Open milestones:", err=True)
+            for m in open_milestones:
+                typer.echo(f"  #{m.number}  {m.title}", err=True)
+        raise typer.Exit(1) from exc
+
+    if milestone.state == "closed":
+        typer.echo(
+            f"ERROR: Milestone #{number} '{milestone.title}' is already closed.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    if milestone.open_issues == 0:
+        typer.echo(
+            f"WARNING: Milestone #{number} '{milestone.title}' has no open issues. "
+            "Add items first with /group-items-to-milestone."
+        )
+        raise typer.Exit(0)
+
+    open_issues = list(repository.get_issues(milestone=milestone, state="open"))
+    typer.echo(f"Milestone #{milestone.number}: {milestone.title}")
+    typer.echo(f"  {milestone.open_issues} open issue(s) — transitioning labels:\n")
+
+    for issue in open_issues:
+        label_names = [lbl.name for lbl in issue.labels]
+        typer.echo(
+            f"  #{issue.number:4d}  {issue.title[:60]:<60}  [{', '.join(label_names)}]"
+        )
+
+    if dry_run:
+        typer.echo("\n[dry-run] No changes made.")
+        return
+
+    in_progress_label = _ensure_label(
+        repository, "status:in-progress", "1D76DB", "Actively being worked on"
+    )
+    succeeded, skipped, failed = _transition_issues(open_issues, in_progress_label)
+
+    typer.echo(
+        f"\nMilestone #{milestone.number} '{milestone.title}' started.\n"
+        f"  {succeeded} transitioned, {skipped} already in-progress, {failed} failed.\n"
+        f"\nWork on individual items:\n"
+        f"  /work-backlog-item {{title}}\n"
+        f"\nTrack progress:\n"
+        f"  uv run .claude/skills/gh/scripts/github_project_setup.py issue list "
+        f"--repo {repo}"
+    )
+    if failed:
+        raise typer.Exit(1)
+
+
+def _ensure_label(repository: Any, name: str, color: str, description: str) -> Any:
+    """Return the label, creating it if it does not exist."""
+    try:
+        return repository.get_label(name)
+    except GithubException:
+        label = repository.create_label(name=name, color=color, description=description)
+        typer.echo(f"\n  Created label: {name}")
+        return label
+
+
+def _transition_issues(
+    open_issues: list[Any], in_progress_label: Any
+) -> tuple[int, int, int]:
+    """Apply label transition to each issue; return (succeeded, skipped, failed)."""
+    succeeded = failed = skipped = 0
+    typer.echo()
+    for issue in open_issues:
+        label_names = [lbl.name for lbl in issue.labels]
+        if "status:in-progress" in label_names:
+            typer.echo(f"  #{issue.number}  already has status:in-progress — skipped")
+            skipped += 1
+            continue
+        try:
+            labels_to_set = [
+                lbl for lbl in issue.labels if lbl.name != "status:needs-grooming"
+            ]
+            labels_to_set.append(in_progress_label)
+            issue.edit(labels=labels_to_set)
+            typer.echo(f"  #{issue.number}  {issue.title[:60]}  → status:in-progress")
+            succeeded += 1
+        except GithubException as exc:
+            typer.echo(f"  #{issue.number}  FAILED: {exc}", err=True)
+            failed += 1
+    return succeeded, skipped, failed
 
 
 @issue_app.command("create")
