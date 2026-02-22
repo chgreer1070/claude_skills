@@ -136,6 +136,10 @@ await octokit.rest.issues.update({
 uv run .claude/skills/gh/scripts/github_project_setup.py milestone list
 uv run .claude/skills/gh/scripts/github_project_setup.py milestone create \
   --title "v1.0 — Skills Foundation" --due 2026-03-31
+uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
+  --number 3
+uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
+  --number 3 --dry-run
 ```
 
 ---

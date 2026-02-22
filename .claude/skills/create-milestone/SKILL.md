@@ -44,18 +44,19 @@ If user chooses existing: print its number and stop.
 
 ### Step 3: Create Milestone
 
+Use the Python script (preferred — returns structured output):
+
 ```bash
-gh api repos/Jamie-BitFlight/claude_skills/milestones \
-  -X POST \
-  -f title="{title}" \
-  -f description="{description}" \
-  -f due_on="{YYYY-MM-DDT00:00:00Z}" \
-  -f state="open"
+uv run .claude/skills/gh/scripts/github_project_setup.py milestone create \
+  --repo Jamie-BitFlight/claude_skills \
+  --title "{title}" \
+  --description "{description}" \
+  --due "{YYYY-MM-DD}"
 ```
 
-Omit `due_on` if not provided. Omit `description` if not provided.
+Omit `--due` if not provided. Omit `--description` if not provided.
 
-Capture the returned `number` field.
+Capture the milestone number from the output line `Created milestone #{number}: …`.
 
 ### Step 4: Confirm
 
