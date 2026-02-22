@@ -3,7 +3,7 @@ last-updated: 2026-02-22
 last-completed: 2026-02-22
 p0-count: 0
 p1-count: 22
-p2-count: 23
+p2-count: 26
 ideas-count: 11
 ---
 
@@ -497,7 +497,33 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 
 ---
 
-## Ideas
+### github_project_setup.py: add `milestone close` command
+
+**Source**: PR #149 follow-up — start-milestone automation (2026-02-22)
+**Added**: 2026-02-22
+**Description**: `github_project_setup.py` now has `milestone start` which bulk-transitions `status:needs-grooming` → `status:in-progress`. Add a symmetric `milestone close` command for the `complete-milestone` skill. The command should: (1) validate the milestone is open, (2) list all still-open issues (warn if any remain), (3) transition open issues from `status:in-progress` → `status:done` or close them, (4) close the milestone itself via `milestone.edit(state="closed")`, (5) print a completion summary. Update `complete-milestone/SKILL.md` to reference the script (consistent with `start-milestone`).
+**Suggested location**: `.claude/skills/gh/scripts/github_project_setup.py` — add `milestone close` subcommand under `milestone_app`; update `.claude/skills/complete-milestone/SKILL.md`
+
+---
+
+### work-backlog-item: accept `#N` in `close` and `resolve` routing
+
+**Source**: PR #149 follow-up — start-milestone automation (2026-02-22)
+**Added**: 2026-02-22
+**Description**: `work-backlog-item close` currently expects a title substring. Since GitHub Issues are now the canonical source of truth, `close #N` and `resolve #N` should also be valid — fetch the title from the issue and proceed. This eliminates the need to remember exact title substrings for the common case of closing work started with `/work-backlog-item #N`. Routing table in `SKILL.md` needs a new `#N` row for the close/resolve paths.
+**Suggested location**: `.claude/skills/work-backlog-item/SKILL.md` — Routing table (Step 9 path column), plus Step 9 Extension GitHub issue close command
+
+---
+
+### github_project_setup.py: add GitHub Projects V2 status field updates
+
+**Source**: PR #149 follow-up — start-milestone automation (2026-02-22)
+**Added**: 2026-02-22
+**Description**: The `milestone start` and `milestone close` commands transition `status:*` labels on issues but do not update the GitHub Projects V2 `Status` field (the kanban column). These are separate systems — labels are on the issue, the V2 status is a project-level field. Add `project update-status` subcommand to `github_project_setup.py` that uses the GraphQL API to set the `Status` field on project items. This unlocks the full kanban board view in GitHub Projects.
+**Research first**: Projects V2 GraphQL API — `updateProjectV2ItemFieldValue` mutation. Field ID discovery via `projectV2Fields` query. Reference: `.claude/skills/gh/references/projects-v2.md`.
+**Suggested location**: `.claude/skills/gh/scripts/github_project_setup.py` — add `project_app` Typer sub-app with `project update-status --project-number N --issue-number N --status "In Progress"` command
+
+---
 
 ### Configurable Token Thresholds for plugin_validator.py
 
