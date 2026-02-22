@@ -25,6 +25,9 @@ research/
 ├── async-libraries/                   # Python async I/O libraries and concurrency frameworks
 │   ├── anyio.md                       # Backend-agnostic async concurrency library (426M downloads/month)
 │   └── trio.md                        # Structured concurrency async library for Python (7K+ stars)
+├── llm-infrastructure/                # LLM inference and serving infrastructure
+│   ├── localai.md                     # Free open-source local AI inference server, OpenAI-compatible API, no GPU required (43K+ stars)
+│   └── tensorzero.md                  # Industrial-grade LLM gateway with <1ms latency, fine-tuning, and A/B testing (Rust)
 ├── ml-infrastructure/                 # ML compute engines and model serving platforms
 │   └── ray.md                         # AI compute engine for scaling Python/ML workloads (41K+ stars)
 ├── python-runtimes/                   # Alternative Python interpreters and runtimes
@@ -881,6 +884,33 @@ Harness engineering, evaluation infrastructure, and testing methodologies for AI
 
 ---
 
+### 22. LLM Infrastructure
+
+**Location**: [./llm-infrastructure/](./llm-infrastructure/)
+
+Self-hosted LLM inference servers, multi-provider gateways, and LLMOps platforms for production AI applications.
+
+| Document | Description | Last Updated |
+| -------- | ----------- | ------------ |
+| [localai.md](./llm-infrastructure/localai.md) | LocalAI - free open-source local AI inference server with OpenAI-compatible API, no GPU required, 40+ backends including llama.cpp, diffusers, whisper (43K+ stars) | 2026-02-22 |
+| [tensorzero.md](./llm-infrastructure/tensorzero.md) | TensorZero - industrial-grade LLM gateway written in Rust with <1ms p99 latency, 20+ providers, fine-tuning, A/B testing, and observability (10.9K stars) | 2026-01-31 |
+
+**Key Topics**:
+
+- OpenAI-compatible REST API as local inference drop-in
+- CPU-only inference without GPU requirement
+- Plugin-style backend architecture with automatic hardware detection
+- P2P distributed inference via libp2p
+- MCP (Model Context Protocol) integration for agentic tool calling
+- Multi-provider gateway with unified API surface
+- Feedback-driven continuous prompt and model optimization
+- Adaptive A/B testing with multi-armed bandits for variant selection
+- Fine-tuning pipelines from production feedback (SFT, RLHF)
+- Model gallery with declarative YAML configuration
+- Drop-in API compatibility for zero-code migration of existing clients
+
+---
+
 ## Planned Categories
 
 The following categories are planned for future research:
@@ -907,6 +937,7 @@ The following categories are planned for future research:
 | `documentation-tools/`  | Architecture documentation and living docs         | **Done** |
 | `ai-design-tools/`      | AI-powered visual creation and design platforms    | **Done** |
 | `evaluation-testing/`   | Agent evaluation and testing tools                 | **Done** |
+| `llm-infrastructure/`   | LLM inference servers and multi-provider gateways  | **Done** |
 
 ---
 
