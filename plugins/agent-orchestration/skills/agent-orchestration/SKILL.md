@@ -124,21 +124,20 @@ CONTEXT:
 - Constraints: [User requirements only]
 
 YOUR TASK:
-1. Run SlashCommand /is-it-done to understand completion criteria for this task type
-2. Use the /is-it-done checklists as your working guide throughout this task
-3. Perform comprehensive context gathering using:
+1. Use the `/am-i-complete` checklist as your working guide throughout this task
+2. Perform comprehensive context gathering using:
    - Available functions and MCP tools from the <functions> list
    - Relevant skills from the <available_skills> list
    - Project file exploration and structure analysis
    - External resources (CI/CD logs, API responses, configurations)
    - Official documentation and best practices
    - Known issues, forums, GitHub issues if relevant
-4. Form hypothesis based on gathered evidence
-5. Design and execute experiments to test hypothesis
-6. Verify findings against authoritative sources
-7. Implement solution following discovered best practices
-8. Verify each /is-it-done checklist item as you complete it
-9. Only report completion after all /is-it-done criteria satisfied with evidence
+3. Form hypothesis based on gathered evidence
+4. Design and execute experiments to test hypothesis
+5. Verify findings against authoritative sources
+6. Implement solution following discovered best practices
+7. Verify each `/am-i-complete` checklist item as you complete it
+8. Only report completion after all `/am-i-complete` criteria satisfied with evidence
 
 INVESTIGATION REQUIREMENTS:
 - Trace the issue through the complete stack before proposing fixes
@@ -148,8 +147,8 @@ INVESTIGATION REQUIREMENTS:
 - If proposing workaround, document why root cause cannot be fixed
 
 VERIFICATION REQUIREMENTS:
-- /is-it-done is step 1 — run it before starting work
-- Use /is-it-done checklists as working guide, not post-mortem report
+- `/am-i-complete` is the verification check — run it before claiming done
+- Use `/am-i-complete` checklists as working guide, not post-mortem report
 - Provide evidence for each checklist item as you complete it
 - If checklist reveals missing work, complete that work before proceeding
 
@@ -470,12 +469,12 @@ DEFINITION OF SUCCESS:
 - All assign-then-check conditionals converted to walrus where appropriate
 
 YOUR TASK:
-1. Run SlashCommand /is-it-done to understand completion criteria
+1. Verify acceptance criteria via `/am-i-complete` before claiming done
 2. Fix the specific instance user identified
 3. Audit entire [file/module] for similar patterns
 4. Apply same fix to all discovered instances
 5. Document pattern occurrences found and fixed
-6. Verify /is-it-done checklist items satisfied with evidence
+6. Verify `/am-i-complete` checklist items satisfied with evidence
 ```
 
 ## Anti-Patterns to Avoid
@@ -580,7 +579,7 @@ CONTEXT:
 - Linting configured in pyproject.toml
 
 YOUR TASK:
-1. Run /is-it-done for completion criteria
+1. Verify acceptance criteria via `/am-i-complete` before claiming done
 2. Activate holistic-linting skill
 3. Run linting tools to gather comprehensive data
 4. Research root causes for each error category
@@ -612,7 +611,7 @@ CONTEXT:
 - Authentication module recently refactored
 
 YOUR TASK:
-1. Run /is-it-done for completion criteria
+1. Verify acceptance criteria via `/am-i-complete` before claiming done
 2. Run pytest to identify failures
 3. Investigate root causes
 4. Implement fixes
