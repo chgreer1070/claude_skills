@@ -394,6 +394,17 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 - OpenAI Codex OAuth and Claude Code auth integration with encrypted profile store
 - 6-digit one-time pairing code security with bearer token webhooks
 - Docker runtime sandboxing for tool execution isolation
+- Browsers-as-a-service with isolated VM-per-browser Chrome instances (no shared containers)
+- CDP passthrough enabling drop-in Playwright/Puppeteer compatibility without code changes
+- Browser Pools for pre-warming Chrome instances eliminating cold start latency
+- Persistent Profiles for cross-session cookie/localStorage/auth state replay
+- 72-hour session limits enabling human-in-the-loop pause-and-resume workflows
+- Managed Auth credential vault for agent-driven OAuth and form-fill automation
+- Web Bot Auth cryptographic request signing for improved bot-detection pass-through (10-20%)
+- Per-second billing with idle time exclusion for cost-efficient automation
+- MCP server integration (`onkernel/kernel-mcp-server`, MIT) for Claude Code browser tool access
+- Playwright code execution inside VM for zero-CDP-round-trip complex interactions
+- Batch action dispatch reducing network round-trips in tight automation loops
 
 ---
 
@@ -1043,6 +1054,7 @@ When adding new research:
 - [The Unwind AI](https://www.theunwindai.com) - AI builder newsletter with 500+ Python AI agent examples (95,911 stars companion repo)
 - [Claude Quickstarts](https://github.com/anthropics/claude-quickstarts) - Official Anthropic quickstart projects: computer use, browser automation, multi-session coding agent, minimal agent loop, Next.js UIs (14,681 stars)
 - [HumanCompiler](https://github.com/Gerstep/HumanCompiler) - Interview-to-agent plugin generator for Claude Code (MIT)
+- [Kernel](https://www.kernel.sh) - Browsers-as-a-service API with isolated VM-per-browser Chrome, 72h sessions, CDP passthrough, MCP server, and Browser Pools ($22M raised, 670 stars)
 - [ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw) - Rust autonomous AI assistant with sub-5MB RAM, 28+ AI providers, 15+ messaging channels, trait-driven architecture (14,966 stars)
 - [Perplexity MCP Server](https://github.com/perplexityai/modelcontextprotocol) - Official Perplexity AI MCP server with real-time web search, deep research, and reasoning (1,959 stars)
 - [ClawHub](https://www.clawhub.ai/skills) - Skill registry for AI agents with vector search capabilities
