@@ -7,7 +7,9 @@ polished merge request description following the template standards.
 
 from __future__ import annotations
 
+from io import TextIOWrapper
 import json
+import sys
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -22,7 +24,17 @@ app = typer.Typer(
     help="Format AI analysis into markdown MR description",
     add_completion=False,
 )
-console = Console()
+
+# Ensure UTF-8 output on Windows (cp1252 default cannot encode emoji/spinner chars).
+# reconfigure() is available on Python 3.7+ when stdout is a TextIOWrapper.
+if isinstance(sys.stdout, TextIOWrapper):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if isinstance(sys.stderr, TextIOWrapper):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+# legacy_windows=False forces Rich to use ANSI escape sequences instead of the
+# Windows Console API, avoiding charmap encoding failures on legacy consoles.
+console = Console(legacy_windows=False)
 
 
 class FormatError(Exception):
