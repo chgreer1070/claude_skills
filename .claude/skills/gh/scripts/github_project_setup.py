@@ -179,9 +179,12 @@ def milestone_create(
     repository = get_repo(gh, repo)
 
     due_dt = datetime.strptime(due, "%Y-%m-%d").replace(tzinfo=UTC) if due else None
-    milestone = repository.create_milestone(
-        title=title, description=description, due_on=due_dt
-    )
+    create_kwargs: dict[str, object] = {"title": title}
+    if description:
+        create_kwargs["description"] = description
+    if due_dt is not None:
+        create_kwargs["due_on"] = due_dt
+    milestone = repository.create_milestone(**create_kwargs)
     typer.echo(f"Created milestone #{milestone.number}: {milestone.title}")
     typer.echo(f"  URL: {milestone.html_url}")
 
@@ -296,11 +299,11 @@ def _transition_issues(
             skipped += 1
             continue
         try:
-            labels_to_set = [
-                lbl for lbl in issue.labels if lbl.name != "status:needs-grooming"
+            new_label_names = [
+                lbl.name for lbl in issue.labels if lbl.name != "status:needs-grooming"
             ]
-            labels_to_set.append(in_progress_label)
-            issue.edit(labels=labels_to_set)
+            new_label_names.append(in_progress_label.name)
+            issue.edit(labels=new_label_names)
             typer.echo(f"  #{issue.number}  {issue.title[:60]}  → status:in-progress")
             succeeded += 1
         except GithubException as exc:
