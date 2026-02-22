@@ -20,8 +20,8 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 | (empty) | — | Interactive browser |
 | `#N` | — | Issue-first: load item from GitHub Issue #N |
 | `--auto` | `$1`+ = title | Autonomous — no `AskUserQuestion` calls |
-| `close` | `$1`+ = title | Verify and close a completed item |
-| `resolve` | `$1`+ = title | Mark no longer applicable (reason required) |
+| `close` | `$1`+ = title or `#N` | Verify and close a completed item |
+| `resolve` | `$1`+ = title or `#N` | Mark no longer applicable (reason required) |
 | `setup-github` | — | Initialize labels, project, first milestone |
 | (any other) | — | `$ARGUMENTS` treated as title substring → planning |
 
@@ -30,8 +30,10 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 /work-backlog-item #42                               # issue-first → planning
 /work-backlog-item Error Recovery                    # direct match → planning
 /work-backlog-item --auto vercel skills npm package  # autonomous → planning
-/work-backlog-item close Error Recovery              # verify and close
+/work-backlog-item close Error Recovery              # verify and close by title
+/work-backlog-item close #42                         # verify and close by issue number
 /work-backlog-item resolve commitlint                # mark no longer applicable
+/work-backlog-item resolve #17                       # mark no longer applicable by issue
 ```
 
 ### --auto mode rules
@@ -61,8 +63,8 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 | (empty) | — | Step 0 — interactive browser |
 | `#N` (starts with `#`) | issue number | Step 1b — Issue-first path |
 | `--auto` | `$1`+ joined | AUTO_MODE=true → Step 1 |
-| `close` | `$1`+ joined | Step 9 (close path) |
-| `resolve` | `$1`+ joined | Step 9 (resolve path) |
+| `close` | `$1`+ joined (title or `#N`) | Step 9 (close path) |
+| `resolve` | `$1`+ joined (title or `#N`) | Step 9 (resolve path) |
 | `setup-github` | — | setup-github command |
 | (any other) | `$ARGUMENTS` | Title substring → Step 1 (interactive mode) |
 
@@ -323,14 +325,24 @@ Backlog item "{title}" is now planned.
 
 <step9_procedure>
 
-Extract the operation from `$0` and title from `$1`+:
+Extract the operation from `$0` and the argument from `$1`+:
 
-- `$0` = `close`: `$1`+ = title → verify implementation and mark COMPLETED
-- `$0` = `resolve`: `$1`+ = title → mark no longer applicable (no verification required)
+- `$0` = `close`: `$1`+ = title or `#N` → verify implementation and mark COMPLETED
+- `$0` = `resolve`: `$1`+ = title or `#N` → mark no longer applicable (no verification required)
 
 #### 9a: Find Item
 
-Read `.claude/BACKLOG.md`. Search H3 headings for case-insensitive match against `{title}`.
+If `$1` starts with `#` (e.g., `close #42`), treat it as an issue number:
+
+```bash
+gh issue view {issue_number} -R Jamie-BitFlight/claude_skills \
+  --json number,title,state,body,labels
+```
+
+- If the issue is not found, report and stop.
+- Extract `title` from the issue response and use it as the working title.
+
+Otherwise, read `.claude/BACKLOG.md` and search H3 headings for case-insensitive match against `{title}`.
 
 - Zero matches: report "No backlog item found matching: {title}" and stop.
 - Multiple matches: list all matches and ask user to pick one.
@@ -550,14 +562,19 @@ gh issue edit {issue_number} -R Jamie-BitFlight/claude_skills \
 
 ### Step 9 Extension: Close GitHub Issue
 
-After writing the closing record (Step 9e), if the item has `**Issue**: #N`:
+After writing the closing record (Step 9e), determine the issue number:
+
+- If invoked as `close #N` or `resolve #N`: use the issue number from `$1`.
+- Otherwise, check the matched BACKLOG.md item for an `**Issue**: #N` field.
+
+If an issue number is found:
 
 ```bash
 gh issue close {issue_number} -R Jamie-BitFlight/claude_skills \
   --comment "Completed. Checklist {checked}/{total} — PASS. Plan: {plan file path}"
 ```
 
-If no `**Issue**:` field, skip silently.
+If no issue number is available, skip silently.
 
 ### setup-github Command
 
@@ -576,6 +593,7 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 
 - `#N` not found: report and list open issues with `gh issue list -R Jamie-BitFlight/claude_skills --state open`
 - `#N` already closed: warn and stop; offer `close` or `resolve` if needed
+- `close #N` / `resolve #N` — issue not found: report and stop
 - Item not found: list available items from BACKLOG.md with their priority sections
 - Multiple matches: present numbered list, ask user to choose
 - Grooming fails: proceed without grooming context, note the gap in the feature request
@@ -651,7 +669,7 @@ Next steps:
 - To close when done: /work-backlog-item close error-recovery
 ```
 
-### Closing a completed item
+### Closing a completed item (by title)
 
 ```text
 > /work-backlog-item close validator UX
@@ -670,6 +688,31 @@ Backlog item "plugin-validator UX and coverage gaps" closed.
 - Checklist: 12/12 tasks complete
 - Acceptance criteria: PASS
 - Status written to BACKLOG.md
+```
+
+### Closing a completed item (by issue number)
+
+```text
+> /work-backlog-item close #131
+
+Fetching GitHub Issue #131...
+  Title: plugin-validator UX and coverage gaps
+  State: open
+
+Found BACKLOG.md match: "plugin-validator UX and coverage gaps" (P1)
+Plan: plan/tasks-2-validator-ux-coverage.md
+Checklist: 12/12 tasks complete
+
+Spawning acceptance criteria verification agent...
+
+Verdict: PASS
+Evidence: commit 4a2f1b3 — "fix(validator): report unique files, add hook validation"
+
+Backlog item "plugin-validator UX and coverage gaps" closed.
+- Checklist: 12/12 tasks complete
+- Acceptance criteria: PASS
+- Status written to BACKLOG.md
+- GitHub Issue #131 closed
 ```
 
 ### Resolving a no-longer-applicable item

@@ -20,6 +20,7 @@ Usage:
     github_project_setup.py milestone create --repo OWNER/REPO --title TITLE [--due YYYY-MM-DD]
     github_project_setup.py milestone list   --repo OWNER/REPO
     github_project_setup.py milestone start  --repo OWNER/REPO --number N [--dry-run]
+    github_project_setup.py milestone close  --repo OWNER/REPO --number N [--dry-run]
     github_project_setup.py issue create     --repo OWNER/REPO --title TITLE [options]
     github_project_setup.py issue list       --repo OWNER/REPO [--priority p1] [--state open]
 """
@@ -87,6 +88,11 @@ LABELS: list[dict[str, str]] = [
         "name": "status:in-progress",
         "color": "1D76DB",
         "description": "Actively being worked on",
+    },
+    {
+        "name": "status:done",
+        "color": "0E8A16",
+        "description": "Work complete, milestone closing",
     },
     {
         "name": "status:blocked",
@@ -274,6 +280,109 @@ def milestone_start(
     )
     if failed:
         raise typer.Exit(1)
+
+
+@milestone_app.command("close")
+def milestone_close(
+    number: Annotated[int, typer.Option("--number", "-n", help="Milestone number")],
+    repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
+    dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
+) -> None:
+    """Close a milestone: transition open issues to status:done and close the milestone."""
+    gh = get_github()
+    repository = get_repo(gh, repo)
+
+    try:
+        milestone = repository.get_milestone(number)
+    except GithubException as exc:
+        typer.echo(f"ERROR: Milestone #{number} not found.", err=True)
+        open_milestones = list(repository.get_milestones(state="open"))
+        if open_milestones:
+            typer.echo("Open milestones:", err=True)
+            for m in open_milestones:
+                typer.echo(f"  #{m.number}  {m.title}", err=True)
+        raise typer.Exit(1) from exc
+
+    if milestone.state == "closed":
+        typer.echo(
+            f"ERROR: Milestone #{number} '{milestone.title}' is already closed.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    open_issues = list(repository.get_issues(milestone=milestone, state="open"))
+    closed_issues = list(repository.get_issues(milestone=milestone, state="closed"))
+    total = len(open_issues) + len(closed_issues)
+
+    typer.echo(f"Milestone #{milestone.number}: {milestone.title}")
+    typer.echo(f"  {len(closed_issues)} closed, {len(open_issues)} open\n")
+
+    if open_issues:
+        typer.echo("Open issues (will be transitioned to status:done):")
+        for issue in open_issues:
+            label_names = [lbl.name for lbl in issue.labels]
+            typer.echo(
+                f"  #{issue.number:4d}  {issue.title[:60]:<60}  [{', '.join(label_names)}]"
+            )
+        typer.echo()
+
+    if dry_run:
+        typer.echo("[dry-run] No changes made.")
+        return
+
+    succeeded = skipped = failed = 0
+    if open_issues:
+        done_label = _ensure_label(
+            repository, "status:done", "0E8A16", "Work complete, milestone closing"
+        )
+        succeeded, skipped, failed = _transition_to_done(open_issues, done_label)
+
+    # Close the milestone
+    milestone.edit(state="closed")
+    typer.echo(f"\nMilestone #{milestone.number} '{milestone.title}' closed.")
+    if open_issues:
+        typer.echo(
+            f"  {succeeded} transitioned to status:done, "
+            f"{skipped} already done, {failed} failed."
+        )
+    typer.echo(
+        f"  {len(closed_issues)}/{total} issues were closed before milestone close."
+    )
+    if failed:
+        raise typer.Exit(1)
+
+
+def _transition_to_done(
+    open_issues: list[Any], done_label: Any
+) -> tuple[int, int, int]:
+    """Apply status:done label to each open issue.
+
+    Returns:
+        Tuple of (succeeded, skipped, failed) counts.
+    """
+    status_labels_to_remove = {"status:in-progress", "status:needs-grooming"}
+    succeeded = failed = skipped = 0
+    typer.echo()
+    for issue in open_issues:
+        label_names = [lbl.name for lbl in issue.labels]
+        if "status:done" in label_names:
+            typer.echo(f"  #{issue.number}  already has status:done — skipped")
+            skipped += 1
+            continue
+        try:
+            new_label_names = [
+                lbl.name
+                for lbl in issue.labels
+                if lbl.name not in status_labels_to_remove
+            ]
+            new_label_names.append(done_label.name)
+            issue.edit(labels=new_label_names)
+            typer.echo(f"  #{issue.number}  {issue.title[:60]}  → status:done")
+            succeeded += 1
+        except GithubException as exc:
+            typer.echo(f"  #{issue.number}  FAILED: {exc}", err=True)
+            failed += 1
+    return succeeded, skipped, failed
 
 
 def _ensure_label(repository: Any, name: str, color: str, description: str) -> Any:

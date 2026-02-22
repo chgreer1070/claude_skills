@@ -504,6 +504,8 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 
 **Source**: PR #149 follow-up — start-milestone automation (2026-02-22)
 **Added**: 2026-02-22
+**Completed**: 2026-02-22
+**Status**: DONE — Added `milestone close` subcommand to `github_project_setup.py`: validates milestone is open, lists open issues, transitions `status:in-progress` → `status:done`, closes milestone, prints summary. Added `status:done` to LABELS taxonomy. Added `_transition_to_done()` helper. Updated `complete-milestone/SKILL.md` Step 4 to reference the script command (consistent with `start-milestone`).
 **Description**: `github_project_setup.py` now has `milestone start` which bulk-transitions `status:needs-grooming` → `status:in-progress`. Add a symmetric `milestone close` command for the `complete-milestone` skill. The command should: (1) validate the milestone is open, (2) list all still-open issues (warn if any remain), (3) transition open issues from `status:in-progress` → `status:done` or close them, (4) close the milestone itself via `milestone.edit(state="closed")`, (5) print a completion summary. Update `complete-milestone/SKILL.md` to reference the script (consistent with `start-milestone`).
 **Suggested location**: `.claude/skills/gh/scripts/github_project_setup.py` — add `milestone close` subcommand under `milestone_app`; update `.claude/skills/complete-milestone/SKILL.md`
 
@@ -513,6 +515,8 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 
 **Source**: PR #149 follow-up — start-milestone automation (2026-02-22)
 **Added**: 2026-02-22
+**Completed**: 2026-02-22
+**Status**: DONE — Updated `work-backlog-item/SKILL.md`: Arguments table now shows `close #N` / `resolve #N` forms; Routing table updated with `(title or #N)` annotation; Step 9a now handles `#N` argument by fetching title from GitHub Issue via `gh issue view`; Step 9 Extension updated to use issue number from `$1` when invoked as `close #N`; Error Handling and Example Sessions updated.
 **Description**: `work-backlog-item close` currently expects a title substring. Since GitHub Issues are now the canonical source of truth, `close #N` and `resolve #N` should also be valid — fetch the title from the issue and proceed. This eliminates the need to remember exact title substrings for the common case of closing work started with `/work-backlog-item #N`. Routing table in `SKILL.md` needs a new `#N` row for the close/resolve paths.
 **Suggested location**: `.claude/skills/work-backlog-item/SKILL.md` — Routing table (Step 9 path column), plus Step 9 Extension GitHub issue close command
 
