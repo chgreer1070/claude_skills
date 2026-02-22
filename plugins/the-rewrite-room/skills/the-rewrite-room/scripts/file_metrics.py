@@ -61,7 +61,7 @@ def count(
     metrics = _measure_file(file)
 
     if json_output:
-        console.print(json.dumps(metrics))
+        typer.echo(json.dumps(metrics))
         return
 
     console.print(f"\n[bold]{file}[/bold]")
@@ -94,7 +94,7 @@ def scan(
     all_metrics.sort(key=operator.itemgetter("estimated_tokens"), reverse=True)
 
     if json_output:
-        console.print(json.dumps(all_metrics))
+        typer.echo(json.dumps(all_metrics))
         return
 
     table = Table(

@@ -13,6 +13,8 @@ use Time::HiRes qw(time);       # For more precise timing
 use Cwd qw(abs_path);
 use File::Basename qw(basename dirname);
 use File::Spec;
+use IO::Handle;                  # Required for STDOUT->flush() method
+use IO::Select;
 
 # --- Process Management (for safe system calls) ---
 use IPC::Open3;
@@ -42,7 +44,8 @@ sub should_use_color {
 }
 
 # Command existence check (useful for tool compatibility)
-# Note: Unix-focused — uses $ENV{PATH} and -x file test. On Windows, use Win32::ShellQuote or IPC::Cmd::can_run.
+# Note: Unix-focused — uses $ENV{PATH} and -x file test. For cross-platform/Windows support,
+# consider IPC::Cmd::can_run or modules like File::Which / Win32::Which.
 sub command_exists {
     my ($cmd) = @_;
     return scalar grep { -x File::Spec->catfile($_, $cmd) } File::Spec->path();
@@ -51,6 +54,7 @@ sub command_exists {
 # Safe system call with error handling
 # Pass command and arguments as a LIST to prevent shell injection.
 # Do NOT join args into a string — that opens a shell injection vector.
+# stdout and stderr are drained concurrently via IO::Select to prevent pipe deadlock.
 sub run_command {
     my (@args) = @_;
     my ($in_fh, $out_fh, $err_fh);
@@ -59,11 +63,23 @@ sub run_command {
     if ($@) {
         return ('', 127);  # Command not found / exec failure
     }
-    my $output = do { local $/; <$out_fh> };
-    $output .= do { local $/; <$err_fh> };
+    close($in_fh);  # Not writing to stdin — close to signal EOF to child
+
+    # Drain both handles concurrently to avoid pipe deadlock when one buffer fills.
+    my $sel = IO::Select->new($out_fh, $err_fh);
+    my %buf = ($out_fh => '', $err_fh => '');
+    while (my @ready = $sel->can_read()) {
+        for my $fh (@ready) {
+            my $chunk;
+            my $n = sysread($fh, $chunk, 4096);
+            if ($n) { $buf{$fh} .= $chunk }
+            else    { $sel->remove($fh) }   # EOF on this handle
+        }
+    }
+
     waitpid($pid, 0);
     my $exit_code = $? >> 8;
-    return ($output, $exit_code);
+    return ($buf{$out_fh} . $buf{$err_fh}, $exit_code);
 }
 
 # --- Critical Lessons from Complex CLI Development ---
@@ -86,13 +102,12 @@ sub query_terminal_safely {
     return unless $? == 0;
     chomp $stty_save;
 
-    # Set raw mode and query
-    system('stty', 'raw', '-echo');
+    # Set raw mode and query — redirect stderr to suppress errors in non-standard environments
+    { local *STDERR; open(STDERR, '>', File::Spec->devnull()); system('stty', 'raw', '-echo'); }
     print STDOUT $query;
     STDOUT->flush();
 
     # Read response with timeout (non-blocking)
-    require IO::Select;
     my $select = IO::Select->new(\*STDIN);
     my $response = '';
     my $timeout = 0.05;  # 50ms
@@ -101,8 +116,8 @@ sub query_terminal_safely {
         sysread(STDIN, $response, 1024);
     }
 
-    # CRITICAL: Always restore terminal state
-    system('stty', $stty_save);
+    # CRITICAL: Always restore terminal state — suppress errors during restore too
+    { local *STDERR; open(STDERR, '>', File::Spec->devnull()); system('stty', $stty_save); }
     return $response;
 }
 
