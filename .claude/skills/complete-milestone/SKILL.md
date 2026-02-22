@@ -113,6 +113,24 @@ gh issue close {N} -R Jamie-BitFlight/claude_skills \
 
 ### Step 4: Close Milestone
 
+Use the Python automation script (preferred — handles label transitions and milestone close atomically):
+
+```bash
+uv run .claude/skills/gh/scripts/github_project_setup.py milestone close \
+  --number {number} --repo Jamie-BitFlight/claude_skills
+```
+
+Or, to preview changes without applying them:
+
+```bash
+uv run .claude/skills/gh/scripts/github_project_setup.py milestone close \
+  --number {number} --dry-run
+```
+
+The script transitions all remaining open issues to `status:done`, closes the milestone, and prints a completion summary. It exits non-zero if any issue label update fails.
+
+**Fallback** — if the script is unavailable, close the milestone directly:
+
 ```bash
 gh api repos/Jamie-BitFlight/claude_skills/milestones/{number} \
   -X PATCH -f state="closed"
