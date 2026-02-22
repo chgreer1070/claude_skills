@@ -1211,3 +1211,14 @@ FastMCP 3.x encourages a composable, production-ready architecture:
 - Rich result classes for structured responses
 
 By following these guidelines - clear function schemas, thorough validation, async for I/O, proper versioning, and careful auth/visibility handling - you build a reliable, scalable, production-ready MCP server that leverages the full power of FastMCP 3.x.
+
+## Sources
+
+- [FastMCP GitHub Repository (PrefectHQ/fastmcp)](https://github.com/prefecthq/fastmcp) (accessed 2026-02-22)
+- [FastMCP Official Documentation](https://gofastmcp.com/) (accessed 2026-02-22)
+- [FastMCP on PyPI](https://pypi.org/project/fastmcp/) (accessed 2026-02-22)
+- [FastMCP 3.0 GA launch post](https://www.jlowin.dev/blog/fastmcp-3-launch) (accessed 2026-02-22)
+- [MCP Protocol Specification](https://spec.modelcontextprotocol.io/) (accessed 2026-02-22)
+- Authorization API — `fastmcp/server/auth/__init__.py` lines 8–13, `fastmcp/server/auth/authorization.py` lines 48, 78, 106 (verified against FastMCP 3.0.0rc2, 2026-02-21)
+- Authorization middleware — `fastmcp/server/middleware/authorization.py` line 51 (verified against FastMCP 3.0.0rc2, 2026-02-21)
+- Key–value storage backend — [py-key-value (strawgate/py-key-value)](https://github.com/strawgate/py-key-value) (accessed 2026-02-22)

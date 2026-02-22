@@ -669,3 +669,10 @@ TypeScript MCP server development requires:
 - Production-ready build process
 
 Follow these guidelines to create type-safe, maintainable MCP servers in TypeScript.
+
+## Sources
+
+- [MCP TypeScript SDK (modelcontextprotocol/typescript-sdk)](https://github.com/modelcontextprotocol/typescript-sdk) (accessed 2026-02-22)
+- [MCP Protocol Specification](https://spec.modelcontextprotocol.io/) (accessed 2026-02-22)
+- [FastMCP Official Documentation](https://gofastmcp.com/) (accessed 2026-02-22)
+- [Zod Schema Validation Library](https://github.com/colinhacks/zod) (accessed 2026-02-22)

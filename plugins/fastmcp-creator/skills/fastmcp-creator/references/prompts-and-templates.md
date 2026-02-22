@@ -426,3 +426,9 @@ Prompts and templates in FastMCP serve two roles:
 - Test prompts with real AI assistants to validate effectiveness
 
 By centralizing prompts in your MCP server and providing clear tool descriptions, you enable AI assistants to use your tools effectively and consistently.
+
+## Sources
+
+- [FastMCP GitHub Repository (PrefectHQ/fastmcp)](https://github.com/prefecthq/fastmcp) (accessed 2026-02-22)
+- [FastMCP Official Documentation](https://gofastmcp.com/) (accessed 2026-02-22)
+- [MCP Protocol Specification — Prompts](https://spec.modelcontextprotocol.io/specification/server/prompts/) (accessed 2026-02-22)
