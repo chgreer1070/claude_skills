@@ -17,10 +17,14 @@
             ]
         },
         "kernel": {
-            "url": "https://mcp.onkernel.com/mcp",
-            "headers": {
-                "Authorization": "Bearer $KERNEL_API_KEY"
-            }
+            "command": "npx",
+            "args": [
+                "-y",
+                "mcp-remote",
+                "https://mcp.onkernel.com/mcp",
+                "--header",
+                "Authorization: Bearer $KERNEL_API_KEY"
+            ]
         }
     }
 }
