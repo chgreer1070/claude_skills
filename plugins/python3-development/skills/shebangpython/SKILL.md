@@ -184,6 +184,31 @@ import re
 from pathlib import Path
 ```
 
+---
+
+## Bundled Transitive Dependency Constraint
+
+`typer>=0.12.0` ships with `rich` and `shellingham` as bundled transitive dependencies. When `typer` appears in a PEP 723 `dependencies` block, the model MUST NOT add `rich` or `shellingham` as separate entries.
+
+```python
+# WRONG — rich is transitively installed by typer
+# dependencies = [
+#   "typer>=0.21.2",
+#   "rich>=13.0.0",   # ← redundant, DO NOT ADD
+# ]
+
+# CORRECT — typer only; rich and shellingham arrive automatically
+# dependencies = [
+#   "typer>=0.21.2",
+# ]
+```
+
+This rule applies regardless of how much rich API surface the script uses (`Console`, `Panel`, `Progress`, `Table`, etc.). The import works because typer guarantees rich's presence.
+
+SOURCE: "By default, `typer` comes with `rich` and `shellingham`." — https://typer.tiangolo.com/#installation (accessed 2026-02-22)
+
+---
+
 ### Example 2: Add PEP 723 to script with external dependencies
 
 **Before** (invalid - missing PEP 723):

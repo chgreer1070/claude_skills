@@ -29,7 +29,7 @@
   "mcpServers": {
     "kaizen-duckdb": {
       "command": "uvx",
-      "args": ["mcp-server-motherduck", "--db-path", "${HOME}/.claude/kaizen/kaizen.duckdb", "--read-only"]
+      "args": ["mcp-server-motherduck", "--db-path", "${CLAUDE_PLUGIN_ROOT}/data/kaizen.duckdb", "--read-only"]
     },
     "kaizen-analysis": {
       "command": "uv",

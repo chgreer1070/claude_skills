@@ -1,7 +1,7 @@
-#!/usr/bin/env -S uv run --quiet --script
+#!/usr/bin/env -S uv --quiet run --active --script
 # /// script
-# requires-python = ">=3.12"
-# dependencies = ["python-gitlab", "gitpython"]
+# requires-python = ">=3.11"
+# dependencies = ["python-gitlab>=4.0.0", "gitpython>=3.1.0"]
 # ///
 """Gather GitLab CI context for skill preprocessing.
 

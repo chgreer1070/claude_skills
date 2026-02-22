@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv --quiet run --active --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["typer>=0.21.0", "rich>=14.0.0"]
+# ///
 """MR description formatter - formats AI analysis into markdown description.
 
 This script takes structured JSON analysis from AI and formats it into a

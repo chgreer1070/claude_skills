@@ -1,6 +1,6 @@
-#!/usr/bin/env -S uv run --quiet --script
+#!/usr/bin/env -S uv --quiet run --active --script
 # /// script
-# requires-python = ">=3.12"
+# requires-python = ">=3.11"
 # dependencies = [
 #     "httpx>=0.28.1",
 #     "typer>=0.21.0",
