@@ -1,14 +1,15 @@
 ---
 name: work-backlog-item
-description: "Use when working, planning, or closing a backlog item. Bridges BACKLOG.md to the SAM planning pipeline with optional GitHub Issue/Project/Milestone tracking. No args: interactive browser. With title substring: auto-grooming, RT-ICA gate, GitHub issue sync, SAM planning, plan reference recorded. '--auto {title}': fully autonomous mode — no AskUserQuestion calls, derives missing data from research files, logs all decisions, skips interactive GitHub prompts; suitable for agent use without human in the loop. 'close {title}': verifies plan checklist 100% complete, closes GitHub issue, marks DONE. 'resolve {title}': marks item no longer applicable with reason. 'setup-github': initializes labels, creates project and first milestone. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
-argument-hint: '[--auto {title} | item-title-substring | close {title} | resolve {title} | setup-github]'
+description: "Use when working, planning, or closing a backlog item. Bridges BACKLOG.md to the SAM planning pipeline with optional GitHub Issue/Project/Milestone tracking. No args: interactive browser. With '#N': load item directly from GitHub Issue #N (labels and milestone are canonical status). With title substring: auto-grooming, RT-ICA gate, GitHub issue sync, SAM planning, plan reference recorded. '--auto {title}': fully autonomous mode — no AskUserQuestion calls, derives missing data from research files, logs all decisions, skips interactive GitHub prompts; suitable for agent use without human in the loop. 'close {title}': verifies plan checklist 100% complete, closes GitHub issue, marks DONE. 'resolve {title}': marks item no longer applicable with reason. 'setup-github': initializes labels, creates project and first milestone. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
+argument-hint: '[#N | --auto {title} | item-title-substring | close {title} | resolve {title} | setup-github]'
 user-invocable: true
 ---
 # Work Backlog Item
 
-Bridge a `.claude/BACKLOG.md` item into the SAM planning pipeline via `/python3-development:add-new-feature`, then record the resulting plan file back in BACKLOG.md.
+Bridge a backlog item into the SAM planning pipeline via `/python3-development:add-new-feature`.
+Primary source of truth is **GitHub Issues** (labels + milestone = canonical status); `.claude/BACKLOG.md` is the local scratchpad and is kept in sync.
 
-When invoked with no arguments, shows an interactive backlog browser. When invoked with a title substring, proceeds directly to the planning workflow.
+When invoked with no arguments, shows an interactive browser. When invoked with `#N` or a title substring, proceeds directly to the planning workflow.
 
 ## Arguments
 
@@ -17,6 +18,7 @@ When invoked with no arguments, shows an interactive backlog browser. When invok
 | `$0` value | Remaining args | Mode |
 |---|---|---|
 | (empty) | — | Interactive browser |
+| `#N` | — | Issue-first: load item from GitHub Issue #N |
 | `--auto` | `$1`+ = title | Autonomous — no `AskUserQuestion` calls |
 | `close` | `$1`+ = title | Verify and close a completed item |
 | `resolve` | `$1`+ = title | Mark no longer applicable (reason required) |
@@ -25,6 +27,7 @@ When invoked with no arguments, shows an interactive backlog browser. When invok
 
 ```text
 /work-backlog-item                                    # interactive browser
+/work-backlog-item #42                               # issue-first → planning
 /work-backlog-item Error Recovery                    # direct match → planning
 /work-backlog-item --auto vercel skills npm package  # autonomous → planning
 /work-backlog-item close Error Recovery              # verify and close
@@ -37,6 +40,7 @@ When `$0` is `--auto`, the following substitutions apply at every interactive de
 
 | Normal behaviour | `--auto` substitution |
 |---|---|
+| Step 1b: issue not found | Log `[AUTO] STOP — Issue #N not found`, stop |
 | Step 1: zero matches → ask user to create | Auto-invoke `create-backlog-item --auto {title}`, log `[AUTO] No item found — invoking create-backlog-item --auto` |
 | Step 1: multiple matches → ask user to pick | Log `[AUTO] Multiple matches — picking first: {title}`, proceed with first match |
 | Step 2.5: offer GitHub issue for P0/P1 | Log `[AUTO] Skipping GitHub issue offer`, continue without issue |
@@ -55,6 +59,7 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 | `$0` value | Title source | Route |
 |---|---|---|
 | (empty) | — | Step 0 — interactive browser |
+| `#N` (starts with `#`) | issue number | Step 1b — Issue-first path |
 | `--auto` | `$1`+ joined | AUTO_MODE=true → Step 1 |
 | `close` | `$1`+ joined | Step 9 (close path) |
 | `resolve` | `$1`+ joined | Step 9 (resolve path) |
@@ -71,10 +76,13 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 
 1. Read `.claude/BACKLOG.md`. Parse all H3 headings (`### ...`) from P0, P1, P2, and Ideas sections. Record each item's priority section and title.
 
-2. For each item, determine grooming status:
-   - **Has plan** — item has a `**Plan**:` field in BACKLOG.md
-   - **Groomed** — `.claude/grooming-reports/` contains a file whose content references the item title (search with Grep)
-   - **Ungroomed** — neither condition above is true
+2. For each item, determine status using two sources (prefer GitHub when an `**Issue**: #N` field is present):
+   - **GitHub status** (preferred when `**Issue**: #N` exists) — fetch `status:*` label and milestone title from:
+     ```bash
+     gh issue view {issue_number} -R Jamie-BitFlight/claude_skills --json number,state,labels,milestone \
+       --jq '[.state, (.labels|map(.name)|join(",")), (.milestone.title // "—")] | @tsv'
+     ```
+   - **Local status** (fallback when no `**Issue**: #N`) — check for `**Plan**:` field (planned) or grooming report in `.claude/grooming-reports/` (groomed)
 
 3. Present a numbered list. Use these status indicators in user-visible output only:
 
@@ -82,20 +90,20 @@ Dispatch based on `$0` (the first argument word) before executing any step:
    Backlog Items:
 
    P0
-     1. ✅ SAM: Error Recovery / Rollback Procedures
-     2. 🔍 SAM: Regex False Positive Suppression
+     1. ✅ SAM: Error Recovery / Rollback Procedures       [#12  status:in-progress  v1.0]
+     2. 🔍 SAM: Regex False Positive Suppression           [#14  status:needs-grooming  v1.0]
 
    P1
-     3. 📋 SAM: Validate Task File Schema
-     4. 📋 SAM: Implement Feature Dry-Run Mode
+     3. 📋 SAM: Validate Task File Schema                  [no issue]
+     4. 📋 SAM: Implement Feature Dry-Run Mode             [no issue]
 
    P2
-     5. 🔍 SAM: Context Window Budget Tracking
+     5. 🔍 SAM: Context Window Budget Tracking             [#18  status:needs-grooming  —]
 
    Ideas
-     6. 📋 SAM: Multi-Repo Support
+     6. 📋 SAM: Multi-Repo Support                         [no issue]
 
-   Status: ✅ = planned  🔍 = groomed  📋 = not yet groomed
+   Status: ✅ = planned/in-progress  🔍 = groomed/needs-grooming  📋 = not yet groomed
 
    Options:
      [number]   — Select item to work on
@@ -117,6 +125,40 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 </step0_procedure>
 
 **Routing:** If `$0` is `close` or `resolve`, extract `$1`+ as the title and jump directly to Step 9.
+
+### Step 1b: Issue-First Path (`#N`)
+
+**Trigger:** `$0` matches `#[0-9]+`.
+
+<issue_first_procedure>
+
+Extract the issue number `{issue_number}` from `$0`. Fetch the issue:
+
+```bash
+gh issue view {issue_number} -R Jamie-BitFlight/claude_skills \
+  --json number,title,state,body,labels,milestone
+```
+
+If the issue does not exist, report and stop.
+If the issue is already closed, warn: "Issue #{issue_number} is closed. Use `close` or `resolve` if needed." and stop.
+
+From the issue response build the working item:
+
+| Field | Source |
+|---|---|
+| `title` | issue `title` |
+| `description` | issue `body` (full text) |
+| `source` | `"GitHub Issue #N"` |
+| `priority` | `priority:*` label → P0 / P1 / P2 / Ideas |
+| `status` | `status:*` label (canonical — do not read BACKLOG.md for status) |
+| `milestone` | issue `milestone.title` |
+| `plan` | search `body` for `**Plan**:` line |
+
+Then try to find a matching item in `.claude/BACKLOG.md` by issue number (`**Issue**: #N`) or title. If found, use it to supplement any missing fields (e.g. `research_first`, `suggested_location`). If not found, continue without a BACKLOG.md record — the GitHub Issue is sufficient.
+
+Skip to Step 3 with the assembled item.
+
+</issue_first_procedure>
 
 ### Step 1: Find the Backlog Item
 
@@ -443,20 +485,39 @@ Full step-by-step commands and example sessions: [github-integration.md](./refer
 
 After Step 2, check for `**Issue**: #N` field in the matched item.
 
-- Found: verify issue state with `gh issue view N -R Jamie-BitFlight/claude_skills --json number,title,state,labels`
+- Found: verify issue state with `gh issue view {issue_number} -R Jamie-BitFlight/claude_skills --json number,title,state,labels`
 - Not found + P0/P1: offer to create a GitHub Issue (proceed to Step 2.5a)
 - Not found + P2/Ideas: skip silently
 
 ### Step 2.5a: Create GitHub Issue
 
-Build story-format body (Story / Description / Acceptance Criteria / Context sections). Run `gh issue create` with `priority:*`, `type:*`, and `status:needs-grooming` labels. Capture the issue number and write `**Issue**: #N` back to BACKLOG.md. Optionally assign to a milestone.
+Build story-format body (Story / Description / Acceptance Criteria / Context sections). Use the Python script to create the issue with the correct labels:
+
+```bash
+uv run .claude/skills/gh/scripts/github_project_setup.py issue create \
+  --repo Jamie-BitFlight/claude_skills \
+  --title "{conventional-commits-type}: {item title}" \
+  --body "{story body}" \
+  --priority-label "priority:{p0|p1|p2|idea}" \
+  --type-label "type:{feature|bug|refactor|docs|chore}" \
+  --milestone {milestone_number}
+```
+
+Capture the issue number from output and write `**Issue**: #N` back to BACKLOG.md.
 
 ### Step 2.7: Set In-Progress Label
 
-If the item has `**Issue**: #N`:
+If the item has `**Issue**: #N`, transition the issue to in-progress:
 
 ```bash
-gh issue edit N -R Jamie-BitFlight/claude_skills \
+uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
+  --number {milestone_number} --repo Jamie-BitFlight/claude_skills
+```
+
+If no milestone is assigned, transition only the single issue's label directly:
+
+```bash
+gh issue edit {issue_number} -R Jamie-BitFlight/claude_skills \
   --add-label "status:in-progress" \
   --remove-label "status:needs-grooming"
 ```
@@ -466,7 +527,7 @@ gh issue edit N -R Jamie-BitFlight/claude_skills \
 After writing the closing record (Step 9e), if the item has `**Issue**: #N`:
 
 ```bash
-gh issue close N -R Jamie-BitFlight/claude_skills \
+gh issue close {issue_number} -R Jamie-BitFlight/claude_skills \
   --comment "Completed. Checklist {checked}/{total} — PASS. Plan: {plan file path}"
 ```
 
@@ -487,6 +548,8 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 
 ## Error Handling
 
+- `#N` not found: report and list open issues with `gh issue list -R Jamie-BitFlight/claude_skills --state open`
+- `#N` already closed: warn and stop; offer `close` or `resolve` if needed
 - Item not found: list available items from BACKLOG.md with their priority sections
 - Multiple matches: present numbered list, ask user to choose
 - Grooming fails: proceed without grooming context, note the gap in the feature request
@@ -501,12 +564,44 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 - `resolve` with no reason provided: block until user provides reason (reason is required evidence)
 - GitHub issue creation fails: report error, continue with BACKLOG.md-only workflow; do not block SAM planning
 - `gh` not installed: run `uv run .claude/skills/gh/scripts/setup_gh.py` first
-- Label not found during issue create: create it on the fly with `gh label create`, then retry
+- Label not found during issue create: `github_project_setup.py` creates it automatically
 - Milestone not found: skip milestone assignment; do not fail
 
 ## Example Sessions
 
-### Planning (with argument)
+### Issue-first planning (`#N`)
+
+```text
+> /work-backlog-item #131
+
+Loading GitHub Issue #131...
+  Title:     plugin-validator: UX and coverage gaps
+  Labels:    priority:p1, status:needs-grooming
+  Milestone: v1.1 — Quality Gates
+  State:     open
+
+Matched BACKLOG.md item for additional context: ✓
+No grooming manifest found. Running groom-backlog-item first...
+
+[grooming output]
+
+RT-ICA: APPROVED — all conditions available.
+Setting status:in-progress on issue #131...
+  ✓ status:needs-grooming → status:in-progress
+
+Composing feature request...
+Invoking /python3-development:add-new-feature...
+
+[SAM phases run]
+
+Updated BACKLOG.md with Plan: plan/tasks-2-validator-ux-coverage.md
+
+Next steps:
+- To execute:      /python3-development:implement-feature validator-ux-coverage
+- To close when done: /work-backlog-item close plugin-validator UX and coverage gaps
+```
+
+### Planning (with title substring)
 
 ```text
 > /work-backlog-item Error Recovery

@@ -65,16 +65,15 @@ Use `AskUserQuestion`: "Which items to add? (comma-separated numbers, or 'all', 
 
 For each selected item with no `**Issue**: #N`:
 
-Build story-format body (Story / Description / Acceptance Criteria / Context). Create issue:
+Build story-format body (Story / Description / Acceptance Criteria / Context). Create issue using the Python script (preferred — handles label creation automatically):
 
 ```bash
-gh issue create \
-  -R Jamie-BitFlight/claude_skills \
+uv run .claude/skills/gh/scripts/github_project_setup.py issue create \
+  --repo Jamie-BitFlight/claude_skills \
   --title "{type}: {title}" \
   --body "{story body}" \
-  --label "priority:{p0|p1|p2}" \
-  --label "type:{feature|bug|refactor|docs|chore}" \
-  --label "status:needs-grooming" \
+  --priority-label "priority:{p0|p1|p2|idea}" \
+  --type-label "type:{feature|bug|refactor|docs|chore}" \
   --milestone {number}
 ```
 

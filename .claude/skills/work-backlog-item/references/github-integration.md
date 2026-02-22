@@ -86,10 +86,17 @@ After extracting item fields (Step 2), check for an existing linked issue:
 
 When `$ARGUMENTS` is a title substring (active work mode, not browser mode):
 
-If the item has a linked issue (`**Issue**: #N`):
+If the item has a linked issue (`**Issue**: #N`) and is in a milestone, use the Python script:
 
 ```bash
-gh issue edit N -R Jamie-BitFlight/claude_skills \
+uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
+  --number {milestone_number} --repo Jamie-BitFlight/claude_skills
+```
+
+If the item has a linked issue but no milestone, edit only that issue:
+
+```bash
+gh issue edit {issue_number} -R Jamie-BitFlight/claude_skills \
   --add-label "status:in-progress" \
   --remove-label "status:needs-grooming"
 ```
@@ -103,7 +110,7 @@ gh issue edit N -R Jamie-BitFlight/claude_skills \
 After writing the closing record to BACKLOG.md (Step 9e), if the item has `**Issue**: #N`:
 
 ```bash
-gh issue close N -R Jamie-BitFlight/claude_skills \
+gh issue close {issue_number} -R Jamie-BitFlight/claude_skills \
   --comment "Completed. Checklist {checked}/{total} — PASS. Plan: {plan file path}"
 ```
 
