@@ -23,9 +23,6 @@ sessions/.archived/
 # Kaizen transcript analysis artifacts (may contain session excerpts and local paths)
 .claude/kaizen/
 
-# MCP configuration with API keys
-.mcp.json
-
 # GitLab skill sync lock files
 */.sync-gitlab-docs.lock
 

@@ -32,23 +32,23 @@ Generate comprehensive, business-focused merge request descriptions by analyzing
 Run the Python CLI to gather commits, diffs, and statistics:
 
 ```bash
-python scripts/analyze_git_changes.py [base_ref] [head_ref] --output-dir /tmp/mr-analysis
+uv run scripts/analyze_git_changes.py [base_ref] [head_ref] --output-dir /tmp/mr-analysis
 ```
 
 **Examples:**
 
 ```bash
 # Current branch vs main (default)
-python scripts/analyze_git_changes.py
+uv run scripts/analyze_git_changes.py
 
 # Specific branch vs develop
-python scripts/analyze_git_changes.py develop feature/new-auth
+uv run scripts/analyze_git_changes.py develop feature/new-auth
 
 # Specific commit range
-python scripts/analyze_git_changes.py abc123f def456g
+uv run scripts/analyze_git_changes.py abc123f def456g
 
 # Custom output directory
-python scripts/analyze_git_changes.py main HEAD --output-dir ./analysis-output
+uv run scripts/analyze_git_changes.py main HEAD --output-dir ./analysis-output
 ```
 
 **Output files created:**
@@ -67,26 +67,26 @@ python scripts/analyze_git_changes.py main HEAD --output-dir ./analysis-output
 Use the GitLab CLI integration to fetch existing MR data:
 
 ```bash
-python scripts/fetch_gitlab_mr.py <mr-id> --output /tmp/mr-data.json
+uv run scripts/fetch_gitlab_mr.py <mr-id> --output /tmp/mr-data.json
 ```
 
 **Examples:**
 
 ```bash
 # By MR ID
-python scripts/fetch_gitlab_mr.py 123
+uv run scripts/fetch_gitlab_mr.py 123
 
 # By !notation
-python scripts/fetch_gitlab_mr.py !123
+uv run scripts/fetch_gitlab_mr.py !123
 
 # By full URL
-python scripts/fetch_gitlab_mr.py https://gitlab.com/org/project/-/merge_requests/123
+uv run scripts/fetch_gitlab_mr.py https://gitlab.com/org/project/-/merge_requests/123
 
 # Without diff (faster)
-python scripts/fetch_gitlab_mr.py 123 --no-diff
+uv run scripts/fetch_gitlab_mr.py 123 --no-diff
 
 # Custom output file
-python scripts/fetch_gitlab_mr.py 123 --output ./mr-metadata.json
+uv run scripts/fetch_gitlab_mr.py 123 --output ./mr-metadata.json
 ```
 
 **Output:** JSON file with MR metadata, commits, and diffs
@@ -112,7 +112,7 @@ The AI analysis will:
 Use the Python formatter to generate polished markdown from AI analysis:
 
 ```bash
-python scripts/format_mr_description.py <analysis-json> --output /tmp/mr-description.md
+uv run scripts/format_mr_description.py <analysis-json> --output /tmp/mr-description.md
 ```
 
 **Examples:**
@@ -495,6 +495,43 @@ Formats AI analysis into markdown MR description.
 - `--no-preview`: Skip markdown preview
 - `--max-files INT`: Max files to show per change (default: 5)
 
+## CLI Scripts Reference
+
+### analyze_git_changes.py
+
+Extracts git data between two references.
+
+**Usage:** `python scripts/analyze_git_changes.py [BASE_REF] [HEAD_REF] [OPTIONS]`
+
+**Options:**
+- `--output-dir PATH`: Output directory (default: current directory)
+
+**Defaults:** BASE_REF=main, HEAD_REF=HEAD
+
+### fetch_gitlab_mr.py
+
+Fetches GitLab MR data using glab CLI.
+
+**Usage:** `python scripts/fetch_gitlab_mr.py MR_ID [OPTIONS]`
+
+**Options:**
+- `--output PATH`: Output JSON file (default: stdout)
+- `--no-diff`: Skip diff fetching (faster)
+
+**MR ID formats:** `123`, `!123`, or full URL
+
+### format_mr_description.py
+
+Formats AI analysis into markdown MR description.
+
+**Usage:** `python scripts/format_mr_description.py ANALYSIS_JSON [OPTIONS]`
+
+**Options:**
+- `--output PATH`: Output file (default: stdout, `-` for explicit stdout)
+- `--title TEXT`: Custom MR title
+- `--no-preview`: Skip markdown preview
+- `--max-files INT`: Max files to show per change (default: 5)
+
 ## Resources
 
 - **scripts/analyze_git_changes.py**: Python CLI to extract git data
@@ -503,3 +540,7 @@ Formats AI analysis into markdown MR description.
 - **scripts/README.md**: Comprehensive CLI documentation and examples
 - **references/analysis_prompts.md**: AI prompts for categorization and formatting
 - **references/output_template.md**: MR description template structure
+
+## Daily Releases
+
+Use the `/daily-releases` skill to create AI-analyzed GitHub Releases for every day with commits. It uses this skill's `analyze_git_changes.py`, `analysis_prompts.md`, and `format_mr_description.py` as the rendering pipeline.

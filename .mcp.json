@@ -1,0 +1,30 @@
+{
+    "mcpServers": {
+        "Ref": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "ref-tools-mcp@latest"
+            ]
+        },
+        "context7": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@upstash/context7-mcp",
+                "--api-key",
+                "$CONTEXT7_API_KEY"
+            ]
+        },
+        "kernel": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "mcp-remote",
+                "https://mcp.onkernel.com/mcp",
+                "--header",
+                "Authorization: Bearer $KERNEL_API_KEY"
+            ]
+        }
+    }
+}

@@ -1,4 +1,10 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv --quiet run --active --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "typer>=0.21.0",
+# ]
+# ///
 """Git change analysis script - extracts commits, diffs, and statistics.
 
 This script analyzes git changes between two references and outputs detailed
@@ -15,7 +21,8 @@ from typing import Annotated
 
 import typer
 from rich import box
-from rich.console import Console
+from rich.console import Console, RenderableType
+from rich.measure import Measurement
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
@@ -24,12 +31,30 @@ _MIN_NUMSTAT_FIELDS = (
     2  # Minimum fields in git diff --numstat output (added, deleted, filename)
 )
 
+
+def get_rendered_width(renderable: RenderableType) -> int:
+    """Get actual rendered width of a Rich renderable.
+
+    Handles color codes, Unicode, styling, padding, and borders.
+    Works with Panel, Table, or any Rich container.
+
+    Args:
+        renderable: Any Rich renderable object
+
+    Returns:
+        Actual rendered width in characters
+    """
+    temp_console = Console(width=99999)
+    measurement = Measurement.get(temp_console, temp_console.options, renderable)
+    return int(measurement.maximum)
+
+
 app = typer.Typer(
     name="analyze_git_changes",
     help="Extract commits, diffs, and statistics from git changes",
     add_completion=False,
 )
-console = Console()
+console = Console(highlight=False)
 
 
 class GitAnalysisError(Exception):
@@ -53,7 +78,7 @@ def run_git_command(
     """
     try:
         return subprocess.run(
-            ["git", *args], capture_output=True, text=True, check=check
+            ["git", *args], capture_output=True, text=True, encoding="utf-8", check=check
         )
     except subprocess.CalledProcessError as e:
         msg = f"Git command failed: {e.stderr.strip()}"
@@ -498,24 +523,25 @@ def analyze(
 
         # Display summary
         console.print()
-        console.print(
-            Panel.fit(
-                f"Analysis complete. Results written to [cyan]{output_dir.absolute()}[/cyan]",
-                title=":white_check_mark: Success",
-                border_style="green",
-            )
+        success_panel = Panel.fit(
+            f"Analysis complete. Results written to [cyan]{output_dir.absolute()}[/cyan]",
+            title=":white_check_mark: Success",
+            border_style="green",
         )
+        console.width = get_rendered_width(success_panel)
+        console.print(success_panel)
         console.print()
 
         summary_table = create_summary_table(
             current_branch, base_ref, head_ref, merge_base, commit_count, stats=stats
         )
-        console.print(summary_table)
+        summary_table.width = get_rendered_width(summary_table)
+        console.print(summary_table, crop=False, overflow="ignore")
 
     except GitAnalysisError as e:
-        console.print(
-            Panel.fit(f"[red]{e}[/red]", title=":cross_mark: Error", border_style="red")
-        )
+        err_panel = Panel.fit(f"[red]{e}[/red]", title=":cross_mark: Error", border_style="red")
+        console.width = get_rendered_width(err_panel)
+        console.print(err_panel)
         raise typer.Exit(code=1) from e
     except KeyboardInterrupt:
         console.print("\n[yellow]Operation cancelled by user[/yellow]")
