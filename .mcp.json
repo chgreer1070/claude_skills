@@ -17,10 +17,10 @@
             ]
         },
         "kernel": {
-      "url": "https://mcp.onkernel.com/mcp",
-      "headers": {
-        "Authorization": "Bearer $KERNEL_API_KEY"
-      }
-    }
+            "url": "https://mcp.onkernel.com/mcp",
+            "headers": {
+                "Authorization": "Bearer $KERNEL_API_KEY"
+            }
+        }
     }
 }
