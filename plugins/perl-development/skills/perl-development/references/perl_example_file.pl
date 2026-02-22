@@ -1,3 +1,5 @@
+#!/usr/bin/env perl
+
 # --- Essential Pragmas ---
 # These are the Perl equivalent of "set -euo pipefail" in Bash
 use strict;    # Enforces strict variable declarations and rules
@@ -10,23 +12,19 @@ use Pod::Usage qw(pod2usage);   # For generating help from documentation
 use Time::HiRes qw(time);       # For more precise timing
 use Cwd qw(abs_path);
 use File::Basename qw(basename dirname);
+use File::Spec;
 
-# --- Find and Include Local Modules ---
-# This allows the script to find our custom App::Logger module
-# when it's in the same directory as the script.
-use FindBin;
-use lib $FindBin::Bin;
+# --- Process Management (for safe system calls) ---
+use IPC::Open3;
+use Symbol 'gensym';
 
-# --- Custom Modules ---
-# For simple scripts, you might inline logging functions
-# For complex CLI tools, consider a dedicated logging module
-use App::Logger qw(
-    print_success
-    print_error
-    print_info
-    print_debug
-    print_warning
-);
+# --- Inline Logging Functions ---
+# For complex CLI tools, consider a dedicated module (e.g., Log::Any from CPAN).
+sub print_success { print "[SUCCESS] @_\n" }
+sub print_error   { print STDERR "[ERROR] @_\n" }
+sub print_info    { print "[INFO] @_\n" }
+sub print_debug   { print "[DEBUG] @_\n" }
+sub print_warning { print "[WARNING] @_\n" }
 
 # --- Advanced CLI Tool Patterns ---
 # Uncomment and modify these patterns for terminal/CLI applications
@@ -44,16 +42,26 @@ sub should_use_color {
 }
 
 # Command existence check (useful for tool compatibility)
+# Note: Unix-focused — uses $ENV{PATH} and -x file test. On Windows, use Win32::ShellQuote or IPC::Cmd::can_run.
 sub command_exists {
     my ($cmd) = @_;
-    my $result = `command -v "$cmd" 2>/dev/null`;
-    return $? == 0;
+    return scalar grep { -x File::Spec->catfile($_, $cmd) } File::Spec->path();
 }
 
 # Safe system call with error handling
+# Pass command and arguments as a LIST to prevent shell injection.
+# Do NOT join args into a string — that opens a shell injection vector.
 sub run_command {
-    my ($cmd) = @_;
-    my $output = `$cmd 2>&1`;
+    my (@args) = @_;
+    my ($in_fh, $out_fh, $err_fh);
+    $err_fh = gensym();
+    my $pid = eval { open3($in_fh, $out_fh, $err_fh, @args) };
+    if ($@) {
+        return ('', 127);  # Command not found / exec failure
+    }
+    my $output = do { local $/; <$out_fh> };
+    $output .= do { local $/; <$err_fh> };
+    waitpid($pid, 0);
     my $exit_code = $? >> 8;
     return ($output, $exit_code);
 }
@@ -79,7 +87,7 @@ sub query_terminal_safely {
     chomp $stty_save;
 
     # Set raw mode and query
-    system("stty raw -echo 2>/dev/null");
+    system('stty', 'raw', '-echo');
     print STDOUT $query;
     STDOUT->flush();
 
@@ -94,7 +102,7 @@ sub query_terminal_safely {
     }
 
     # CRITICAL: Always restore terminal state
-    system("stty $stty_save 2>/dev/null");
+    system('stty', $stty_save);
     return $response;
 }
 

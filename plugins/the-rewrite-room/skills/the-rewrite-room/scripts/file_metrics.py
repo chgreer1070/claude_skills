@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import json
 import operator
 from pathlib import Path
 from typing import Annotated
@@ -46,13 +47,23 @@ def _measure_file(filepath: Path) -> dict[str, int | str]:
 
 
 @app.command()
-def count(file: Annotated[Path, typer.Argument(help="File to measure")]) -> None:
+def count(
+    file: Annotated[Path, typer.Argument(help="File to measure")],
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output metrics as JSON")
+    ] = False,
+) -> None:
     """Estimate token count and report size metrics for a single file."""
     if not file.exists():
         err_console.print(f"[red]ERROR[/red] File not found: {file}")
         raise typer.Exit(1)
 
     metrics = _measure_file(file)
+
+    if json_output:
+        console.print(json.dumps(metrics))
+        return
+
     console.print(f"\n[bold]{file}[/bold]")
     console.print(f"  Lines:             {metrics['lines']:>8,}")
     console.print(f"  Characters:        {metrics['chars']:>8,}")
@@ -65,6 +76,9 @@ def scan(
     top: Annotated[
         int, typer.Option("--top", help="Show top N files by token count")
     ] = 20,
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output metrics as JSON")
+    ] = False,
 ) -> None:
     """Scan all .md files in a directory and report metrics sorted by estimated token count."""
     if not directory.is_dir():
@@ -78,6 +92,10 @@ def scan(
 
     all_metrics = [_measure_file(f) for f in md_files]
     all_metrics.sort(key=operator.itemgetter("estimated_tokens"), reverse=True)
+
+    if json_output:
+        console.print(json.dumps(all_metrics))
+        return
 
     table = Table(
         title=f"File Metrics — {directory}", show_header=True, header_style="bold cyan"

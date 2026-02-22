@@ -93,8 +93,9 @@ _(Empty)_
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
+**Completed**: 2026-02-22
 **Priority**: P1
-**Description**: The Perl example template in `perl_example_file.pl` references undefined `App::Logger` module and contains patterns vulnerable to shell injection. Example templates used by AI to generate code should demonstrate secure coding practices. Missing shebangs on example scripts also violate repo conventions.
+**Status**: DONE — Added `#!/usr/bin/env perl` shebang. Replaced undefined `App::Logger` import with inline logging functions (`print_success`, `print_error`, `print_info`, `print_debug`, `print_warning`). Added `use File::Spec`, `use IPC::Open3`, `use Symbol 'gensym'` for safe system calls. Fixed `command_exists` to use `File::Spec->path()` instead of backtick `command -v` shell call. Fixed `run_command` to accept list args and use `IPC::Open3::open3` instead of backtick string injection. Fixed `system("stty ...")` calls in `query_terminal_safely` to use list form.
 **Files**:
 - `plugins/perl-development/skills/perl-development/references/perl_example_file.pl`
 
@@ -120,11 +121,14 @@ _(Empty)_
 
 **Source**: Plugin code review session 2026-02-21
 **Added**: 2026-02-21
+**Completed**: 2026-02-22
 **Priority**: P1
-**Description**: `validators.yaml` line 12 references `plugins/plugin-creator/scripts/validate_frontmatter.py` as a script path — this file exists but the path may not resolve correctly from the rewrite-room context. `research-utilities.md` references a `--json` flag on `file_metrics.py` (lines 62, 71) that may not exist. 6 additional broken links need verification and fixing.
+**Status**: DONE — Fixed `validators.yaml` line 12: changed `validate_frontmatter.py` (no longer exists) to `plugin_validator.py`. Fixed 6 broken links in `registry-guide.md` (lines 9, 10, 11, 35, 57, 83) — updated `./workflows.yaml`, `./validators.yaml`, `./routing-rules.yaml` to `../registry/workflows.yaml`, `../registry/validators.yaml`, `../registry/routing-rules.yaml`. Added `--json` flag to `file_metrics.py` (`count` and `scan` commands) to support machine-readable output as referenced in `research-utilities.md`. Also fixed `validators.yaml` line 65 false-positive link pattern.
 **Files**:
-- `plugins/the-rewrite-room/skills/the-rewrite-room/registry/validators.yaml` (line 12)
-- `plugins/the-rewrite-room/skills/the-rewrite-room/workflows/research-utilities.md` (lines 62, 71)
+- `plugins/the-rewrite-room/skills/the-rewrite-room/registry/validators.yaml`
+- `plugins/the-rewrite-room/skills/the-rewrite-room/references/registry-guide.md`
+- `plugins/the-rewrite-room/skills/the-rewrite-room/workflows/research-utilities.md`
+- `plugins/the-rewrite-room/skills/the-rewrite-room/scripts/file_metrics.py`
 
 ### fastmcp-creator: Add citations for 1200+ lines of FastMCP 3.x API documentation
 
