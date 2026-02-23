@@ -263,6 +263,10 @@ class KBEntry:
     version: str | None = None
     license: str | None = None
     tags: list[str] = field(default_factory=list)
+    # SDLC layer metadata (see .claude/docs/sdlc-layers/)
+    layer: str | None = None
+    language: str | None = None
+    stack: str | None = None
 
     # Runtime-only fields — not written to frontmatter
     file_path: Path = field(default_factory=Path)
@@ -994,6 +998,16 @@ def _from_skill_spec_meta(top: Any, path: Path) -> KBEntry:
         str(inner["version"]) if inner.get("version") is not None else None
     )
 
+    layer_val: str | None = (
+        str(inner["layer"]) if inner.get("layer") is not None else None
+    )
+    language_val: str | None = (
+        str(inner["language"]) if inner.get("language") is not None else None
+    )
+    stack_val: str | None = (
+        str(inner["stack"]) if inner.get("stack") is not None else None
+    )
+
     return KBEntry(
         topic=str(inner["topic"]),
         name=str(top["name"]),
@@ -1006,6 +1020,9 @@ def _from_skill_spec_meta(top: Any, path: Path) -> KBEntry:
         version=version_val,
         license=license_val,
         tags=_parse_tags_field(inner.get("tags")),
+        layer=layer_val,
+        language=language_val,
+        stack=stack_val,
         file_path=path,
         body="",  # filled by caller
         has_frontmatter=True,
@@ -1046,6 +1063,16 @@ def _from_flat_meta(meta: Any, path: Path) -> KBEntry:
         str(meta["license"]) if meta.get("license") is not None else None
     )
 
+    layer_val: str | None = (
+        str(meta["layer"]) if meta.get("layer") is not None else None
+    )
+    language_val: str | None = (
+        str(meta["language"]) if meta.get("language") is not None else None
+    )
+    stack_val: str | None = (
+        str(meta["stack"]) if meta.get("stack") is not None else None
+    )
+
     return KBEntry(
         topic=str(meta["topic"]),
         name=str(meta["name"]),
@@ -1058,6 +1085,9 @@ def _from_flat_meta(meta: Any, path: Path) -> KBEntry:
         version=version_val,
         license=license_val,
         tags=_parse_tags_field(meta.get("tags")),
+        layer=layer_val,
+        language=language_val,
+        stack=stack_val,
         file_path=path,
         body="",  # filled by caller
         has_frontmatter=True,
@@ -1303,6 +1333,12 @@ def entry_to_post(entry: KBEntry) -> frontmatter.Post:
     inner["next_review"] = DoubleQuotedScalarString(str(entry.next_review))
     if entry.tags:
         inner["tags"] = DoubleQuotedScalarString(",".join(entry.tags))
+    if entry.layer is not None:
+        inner["layer"] = DoubleQuotedScalarString(entry.layer)
+    if entry.language is not None:
+        inner["language"] = entry.language
+    if entry.stack is not None:
+        inner["stack"] = entry.stack
 
     meta["metadata"] = inner
 
@@ -1550,13 +1586,21 @@ def main_callback(
 
 
 @app.command("list")
-def list_kb() -> None:
+def list_kb(
+    layer: Annotated[
+        str | None,
+        typer.Option("--layer", "-l", help="Filter by SDLC layer (0, 1, or 2)"),
+    ] = None,
+) -> None:
     """Show a tree view of all knowledge base entries.
 
     Displays category summaries with entry count and overdue count,
     plus per-entry version, verified date, review date, and overdue status.
+    Use --layer to filter by SDLC layer (0=process, 1=language, 2=stack).
     """
     entries = build_tree(KB_ROOT)
+    if layer is not None:
+        entries = [e for e in entries if e.layer == layer]
     if not entries:
         console.print("[yellow]No entries found in knowledge base.[/yellow]")
         return
@@ -1628,6 +1672,9 @@ def show_template() -> None:
         f'  verified: "{today.isoformat()}"\n'
         f'  next_review: "{next_review.isoformat()}"\n'
         '  tags: "tag1,tag2"\n'
+        '  # layer: "0" | "1" | "2"  # SDLC layer (optional)\n'
+        '  # language: python | typescript | ...  # optional\n'
+        '  # stack: fastapi | tornado | ...  # optional\n'
         "---\n"
         "\n"
         "# Display Name\n"

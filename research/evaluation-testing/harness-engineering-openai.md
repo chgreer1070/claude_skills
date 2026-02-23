@@ -5,6 +5,7 @@ license: N/A (OpenAI proprietary engineering blog post)
 metadata:
   topic: harness-engineering-openai
   category: evaluation-testing
+  layer: "0"
   source_url: https://openai.com/index/harness-engineering/
   version: "N/A"
   verified: "2026-02-21"

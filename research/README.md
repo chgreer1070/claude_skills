@@ -135,6 +135,26 @@ research/
 
 ---
 
+## Layer Mapping
+
+Research entries can include SDLC layer metadata for discovery. See [.claude/docs/sdlc-layers/](../.claude/docs/sdlc-layers/) for the three-layer model.
+
+| Layer | Scope | Example Entries |
+|-------|-------|-----------------|
+| **Layer 0** | SDLC-agnostic process | evaluation-testing/harness-engineering-*.md |
+| **Layer 1** | Language-specific | developer-tools/copier-astral.md (Python toolchain) |
+| **Layer 2** | Stack/Goal-specific | api-frameworks/fastapi.md, api-frameworks/tornado.md |
+
+**Metadata** (optional, in frontmatter `metadata:` block):
+
+- `layer`: `0` \| `1` \| `2`
+- `language`: `python` \| `typescript` \| `rust` \| ...
+- `stack`: `fastapi` \| `tornado` \| `python-cli` \| ...
+
+**Filter by layer**: `uv run research/knowledge-explorer.py list --layer 2`
+
+---
+
 ## Research Categories
 
 ### 1. Research Agent Patterns

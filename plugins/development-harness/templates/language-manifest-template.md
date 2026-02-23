@@ -12,7 +12,7 @@
 
 - format: `{format command} {files}`
 - lint: `{lint command} {files}`
-- typecheck: `{typecheck command} {files}`
+- typecheck: `{typecheck command} {files}` or `(none)` for non-typed languages
 - test: `{test command}`
 - standards: /{plugin}:{standards-skill}
 

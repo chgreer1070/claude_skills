@@ -5,6 +5,9 @@ license: Apache-2.0
 metadata:
   topic: tornado
   category: api-frameworks
+  layer: "2"
+  language: python
+  stack: python-tornado
   source_url: https://www.tornadoweb.org/en/stable/
   github: tornadoweb/tornado
   version: "6.5.4 (latest); 6.5.0 released 2025-05-15"

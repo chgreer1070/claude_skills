@@ -5,6 +5,9 @@ license: MIT
 metadata:
   topic: fastapi
   category: api-frameworks
+  layer: "2"
+  language: python
+  stack: python-fastapi
   source_url: https://fastapi.tiangolo.com/
   github: fastapi/fastapi
   version: "0.128.1"

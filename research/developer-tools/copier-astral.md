@@ -5,6 +5,9 @@ license: MIT
 metadata:
   topic: copier-astral
   category: developer-tools
+  layer: "1"
+  language: python
+  stack: python-cli
   source_url: https://ritwiktiwari.github.io/copier-astral/
   github: ritwiktiwari/copier-astral
   version: "v1.1"

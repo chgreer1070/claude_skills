@@ -12,7 +12,7 @@ Orchestrate research entry creation, maintenance, and validation in `./research/
 
 ## Mode Routing
 
-Parse `$ARGUMENTS` to select operating mode.
+Parse `$ARGUMENTS` to select operating mode. Optional `--layer 0|1|2` filters discovery by SDLC layer when used with knowledge-explorer or refresh-research.
 
 ```mermaid
 flowchart TD

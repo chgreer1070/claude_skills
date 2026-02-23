@@ -1,12 +1,12 @@
 ---
 name: work-backlog-item
-description: "Use when working, planning, or closing a backlog item. Bridges BACKLOG.md to the SAM planning pipeline with optional GitHub Issue/Project/Milestone tracking. No args: interactive browser. With '#N': load item directly from GitHub Issue #N (labels and milestone are canonical status). With title substring: auto-grooming, RT-ICA gate, GitHub issue sync, SAM planning, plan reference recorded. '--auto {title}': fully autonomous mode — no AskUserQuestion calls, derives missing data from research files, logs all decisions, skips interactive GitHub prompts; suitable for agent use without human in the loop. 'close {title}': verifies plan checklist 100% complete, closes GitHub issue, marks DONE. 'resolve {title}': marks item no longer applicable with reason. 'setup-github': initializes labels, creates project and first milestone. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
-argument-hint: '[#N | --auto {title} | item-title-substring | close {title} | resolve {title} | setup-github]'
+description: "Use when working, planning, or closing a backlog item. Bridges BACKLOG.md to the SAM planning pipeline with optional GitHub Issue/Project/Milestone tracking. No args: interactive browser. With '#N': load item directly from GitHub Issue #N (labels and milestone are canonical status). With title substring: auto-grooming, RT-ICA gate, GitHub issue sync, SAM planning, plan reference recorded. '--auto {title}': fully autonomous mode — no AskUserQuestion calls, derives missing data from research files, logs all decisions, skips interactive GitHub prompts; suitable for agent use without human in the loop. 'close {title}': verifies plan checklist 100% complete, closes GitHub issue, marks DONE. 'resolve {title}': marks item no longer applicable with reason. 'setup-github': initializes labels, creates project and first milestone. Optional '--language {python|typescript|...}' and '--stack {python-fastapi|python-cli|...}' select Layer 1/2 profile. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
+argument-hint: '[#N | --auto {title} | --language {lang} | --stack {stack} | item-title-substring | close {title} | resolve {title} | setup-github]'
 user-invocable: true
 ---
 # Work Backlog Item
 
-Bridge a backlog item into the SAM planning pipeline via `/python3-development:add-new-feature`.
+Bridge a backlog item into the SAM planning pipeline via `/python3-development:add-new-feature` (default). Optional `--language` and `--stack` select Layer 1/2 profiles — see [.claude/docs/sdlc-layers/](../docs/sdlc-layers/).
 
 **SAM** — Stateless Agent Methodology. See [sam-definition.md](./references/sam-definition.md) for what SAM is and how to embody it. SAM lives in `../stateless-agent-methodology/` (or `bitflight-devops/stateless-agent-methodology` on GitHub).
 Primary source of truth is **GitHub Issues** (labels + milestone = canonical status); `.claude/BACKLOG.md` is the local scratchpad and is kept in sync.
@@ -27,6 +27,8 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 | `setup-github` | — | Initialize labels, project, first milestone |
 | (any other) | — | `$ARGUMENTS` treated as title substring → planning |
 
+**Optional flags** (when `$0` is title substring or `--auto`): `--language <lang>` selects language plugin (default: python); `--stack <profile>` selects stack profile (e.g., python-fastapi, python-cli). See [.claude/docs/sdlc-layers/](../docs/sdlc-layers/).
+
 ```text
 /work-backlog-item                                    # interactive browser
 /work-backlog-item #42                               # issue-first → planning
@@ -37,6 +39,7 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 /work-backlog-item close #42                         # verify and close by issue number
 /work-backlog-item resolve commitlint                # mark no longer applicable
 /work-backlog-item resolve #17                       # mark no longer applicable by issue
+/work-backlog-item --language python --stack python-fastapi Add auth  # Layer 2 stack profile
 ```
 
 ### --auto mode rules
@@ -227,6 +230,8 @@ Before composing the feature request, verify the grooming context manifest conta
 
 **If BLOCKED:**
 
+When RT-ICA blocks, optionally offer ARL human-probing questions (e.g., "What went wrong in the past?", "What references are essential?") to capture invisible knowledge. Add answers to `.claude/domain-knowledge/` with staleness tracking. See [.claude/docs/sdlc-layers/arl-human-probing-design.md](../docs/sdlc-layers/arl-human-probing-design.md).
+
 Present a structured summary to the user:
 
 ```text
@@ -248,7 +253,7 @@ Proceed to Step 5. Carry DERIVABLE items forward as "Assumptions to confirm" in 
 
 ### Step 5: Compose Feature Request
 
-Build the feature request string for `add-new-feature`:
+Build the feature request string for `add-new-feature`. If `--stack` was specified, append a "Stack profile" line to the feature request. If `--language` was specified and is not `python`, invoke the corresponding language plugin (e.g., `/typescript-development:add-new-feature` for `typescript`).
 
 ```text
 ## Backlog Item: {title}
@@ -279,6 +284,10 @@ Build the feature request string for `add-new-feature`:
 ### Grooming Context
 
 {full context manifest from Step 3, if available}
+
+### Stack Profile (optional)
+
+{stack profile name if --stack specified, e.g., python-fastapi}
 ```
 
 ### Step 6: Invoke SAM Planning

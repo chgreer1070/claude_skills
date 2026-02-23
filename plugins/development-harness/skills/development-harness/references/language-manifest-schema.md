@@ -4,9 +4,23 @@ The schema for language plugin manifests that compose with the development harne
 
 ---
 
+## Inherits from Layer 0
+
+Language manifests extend Layer 0 (SDLC-agnostic). They do **not** redefine:
+
+- SAM 7-stage pipeline
+- Human touchpoint model
+- Artifact conventions
+- RT-ICA, verification protocol
+- Task file format
+
+See [.claude/docs/sdlc-layers/layer-0/](../../../../.claude/docs/sdlc-layers/layer-0/). Layer 0 gates apply before role resolution.
+
+---
+
 ## Sections
 
-A language manifest contains four required sections and one optional section.
+A language manifest contains four required sections and optional sections (Conventions, Process Flow Override).
 
 ### 1. Role Fulfillment (Required)
 
@@ -57,6 +71,7 @@ Declares the commands the harness runs at quality checkpoints.
 - The `test` gate does not take a `{files}` placeholder (runs entire test suite)
 - The `standards` gate is optional and references a skill for language-specific standards enforcement
 - Commands must be runnable from the project root directory
+- **Non-typed languages**: Use `typecheck: (none)` to skip the typecheck gate (e.g., Bash, Perl without strict typing)
 
 ---
 
@@ -83,7 +98,41 @@ Declares how the harness identifies this language in a project.
 
 ---
 
-### 4. Process Flow Override (Optional)
+### 4. Conventions (Optional)
+
+Declares language-specific standards for naming, structure, testing, and documentation.
+
+**Format:**
+
+```markdown
+## Conventions
+
+- naming: {rules array}
+- structure: {rules array}
+- testing: {rules array}
+- documentation: {rules array}
+```
+
+**Schema:**
+
+Each convention category has `rules` (array of strings) and optional `examples` (array of strings).
+
+```yaml
+conventions:
+  naming:
+    rules: ["Use snake_case for functions", "Use PascalCase for classes"]
+    examples: ["get_user_by_id", "UserService"]
+  structure:
+    rules: ["Source in src/", "Tests in tests/"]
+  testing:
+    rules: ["Test file naming: test_*.py or *_test.py"]
+  documentation:
+    rules: ["Docstrings for public APIs"]
+```
+
+---
+
+### 5. Process Flow Override (Optional)
 
 Replaces the default SAM pipeline with a language-specific flow.
 
@@ -220,6 +269,74 @@ flowchart TD
 
 ---
 
+## Skeleton Example — Bash (Non-Typed)
+
+```markdown
+# Language Manifest: Bash
+
+## Role Fulfillment
+
+- architect: @bash-development:bash-architect
+- test-designer: @bash-development:bash-test-designer
+- code-reviewer: @bash-development:bash-code-reviewer
+- design-spec: @bash-development:bash-design-spec
+- linting: /bash-development:shellcheck
+
+## Quality Gates
+
+- format: `shfmt -w {files}`
+- lint: `shellcheck {files}`
+- typecheck: (none)
+- test: `bats tests/`
+- standards: /bash-development:bash-standards
+
+## Project Detection
+
+- markers: Makefile, .bashrc, *.sh
+- source-patterns: **/*.sh, scripts/**/*
+- test-patterns: tests/**/*.bats, **/test_*.sh
+
+## Process Flow Override
+
+(none — uses default harness flow)
+```
+
+---
+
+## Skeleton Example — Perl (Non-Typed)
+
+```markdown
+# Language Manifest: Perl
+
+## Role Fulfillment
+
+- architect: @perl-development:perl-architect
+- test-designer: @perl-development:perl-test-designer
+- code-reviewer: @perl-development:perl-code-reviewer
+- design-spec: @perl-development:perl-design-spec
+- linting: /perl-development:perlcritic
+
+## Quality Gates
+
+- format: `perltidy -b {files}`
+- lint: `perlcritic {files}`
+- typecheck: (none)
+- test: `prove -r t/`
+- standards: /perl-development:perl-standards
+
+## Project Detection
+
+- markers: Makefile.PL, cpanfile, META.json
+- source-patterns: lib/**/*.pm, script/**/*
+- test-patterns: t/**/*.t
+
+## Process Flow Override
+
+(none — uses default harness flow)
+```
+
+---
+
 ## Validation Rules
 
 When the harness loads a manifest, it validates:
@@ -238,3 +355,4 @@ Validation failures produce warnings but do not block the pipeline. The harness 
 
 - Role resolution protocol: [./role-resolution-protocol.md](./role-resolution-protocol.md)
 - Language manifest template: [../../templates/language-manifest-template.md](../../templates/language-manifest-template.md)
+- Layer 1 overview: [.claude/docs/sdlc-layers/layer-1/layer-1-overview.md](../../../../.claude/docs/sdlc-layers/layer-1/layer-1-overview.md)

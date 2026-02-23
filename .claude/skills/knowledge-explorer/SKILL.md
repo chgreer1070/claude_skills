@@ -24,8 +24,11 @@ uv run research/knowledge-explorer.py [--verbose] <command> [args]
 Browse all KB entries grouped by category with freshness metadata.
 
 ```bash
-uv run research/knowledge-explorer.py list
+uv run research/knowledge-explorer.py list [--layer 0|1|2]
 ```
+
+**Options:**
+- `--layer` / `-l`: Filter by SDLC layer (0=process, 1=language, 2=stack). See [.claude/docs/sdlc-layers/](../docs/sdlc-layers/).
 
 Observed output (2026-02-22, truncated):
 

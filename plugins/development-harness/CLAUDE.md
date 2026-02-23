@@ -212,6 +212,12 @@ Do NOT use when:
 
 ---
 
+## Layer Model
+
+This harness implements the **SDLC Layer Separation Architecture**. Layer 0 = framework (this harness); Layer 1 = language plugin; Layer 2 = stack profile (optional). See [.claude/docs/sdlc-layers/](../../.claude/docs/sdlc-layers/) and [plugins/development-harness/docs/layer-2/](./docs/layer-2/).
+
+---
+
 ## References
 
 - [Default Development Flow](./skills/development-harness/references/default-development-flow.md)
