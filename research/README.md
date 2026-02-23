@@ -102,6 +102,8 @@ research/
 │   ├── skillkit.md                    # Universal package manager for AI agent skills (32 agents)
 │   ├── softaworks-agent-toolkit.md    # 43 skills, 6 agents, 7 slash commands for Claude Code (621 stars)
 │   └── vercel-labs-skills.md          # Universal skill installer for 40+ AI coding agents (6.3K stars)
+├── prompt-engineering/                # Prompt optimization and testing platforms
+│   └── google-ai-studio.md            # Google AI Studio — browser-based Gemini IDE with 20+ models, function calling, grounding, and OpenAI-compatible API
 └── task-management/                   # AI-powered task management for development
     └── claude-task-master.md          # Task management system for AI-driven development (25K+ stars)
 ```
@@ -924,13 +926,45 @@ Self-hosted LLM inference servers, multi-provider gateways, and LLMOps platforms
 
 ---
 
+### 23. Prompt Engineering
+
+**Location**: [./prompt-engineering/](./prompt-engineering/)
+
+Interactive prompt development platforms and tools for iterating on LLM prompts, system instructions, and model parameters.
+
+| Document | Description | Last Updated |
+| -------- | ----------- | ------------ |
+| [google-ai-studio.md](./prompt-engineering/google-ai-studio.md) | Google AI Studio — free browser-based IDE for Gemini API with 20+ models, function calling, Google Search grounding, sandboxed code execution, and OpenAI-compatible endpoint | 2026-02-23 |
+
+**Key Topics**:
+
+- Browser-based prompt playground with no local setup
+- Adjustable generation parameters (temperature, top-P, top-K, max tokens)
+- System instruction / user turn separation pattern
+- One-click code export (Python, JS, Go, Java, C#, REST)
+- Gemini model family access (text, image, video, audio, embeddings, robotics)
+- Multimodal input support (images, PDFs, audio, video, URLs)
+- Function calling with structured JSON tool dispatch
+- Sandboxed Python code execution within prompt sessions
+- Google Search grounding for real-time factual augmentation
+- Deep Research for autonomous multi-step research workflows
+- Context caching for repeated prompt prefixes to reduce cost
+- Batch API (50% cost reduction) for bulk asynchronous inference
+- OpenAI-compatible REST endpoint for drop-in SDK integration
+- Live API (WebSockets) for real-time audio/video agent sessions
+- Ephemeral token scoping for secure multi-user deployments
+- Token counting API for pre-request cost estimation
+- Tiered rate limits (Free → Tier 1 → Tier 2 → Tier 3) with dashboard visibility
+
+---
+
 ## Planned Categories
 
 The following categories are planned for future research:
 
 | Category                | Description                                        | Status   |
 | ----------------------- | -------------------------------------------------- | -------- |
-| `prompt-engineering/`   | Prompt optimization tools and techniques           | Planned  |
+| `prompt-engineering/`   | Prompt optimization tools and techniques           | **Done** |
 | `context-management/`   | Memory, context window, and RAG tools              | **Done** |
 | `mcp-ecosystem/`        | MCP servers and integrations                       | **Done** |
 | `agent-frameworks/`     | Agent SDKs and orchestration frameworks            | **Done** |
