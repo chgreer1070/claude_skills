@@ -34,6 +34,7 @@ research/
 │   ├── localai.md                     # Free open-source local AI inference server, OpenAI-compatible API, no GPU required (43K+ stars)
 │   └── tensorzero.md                  # Industrial-grade LLM gateway with <1ms latency, fine-tuning, and A/B testing (Rust)
 ├── ml-infrastructure/                 # ML compute engines and model serving platforms
+│   ├── microgpt-playground.md         # Browser-native GPT training and inference, zero-dependency JS port of Karpathy's microgpt.py (65 stars)
 │   └── ray.md                         # AI compute engine for scaling Python/ML workloads (41K+ stars)
 ├── python-runtimes/                   # Alternative Python interpreters and runtimes
 │   └── rustpython.md                  # Python 3 interpreter written in Rust with WASM support (22K+ stars)
@@ -773,6 +774,7 @@ ML compute engines, model serving platforms, and distributed computing infrastru
 | Document                           | Description                                                                                                | Last Updated |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------ |
 | [ray.md](./ml-infrastructure/ray.md) | Ray - AI compute engine for scaling Python/ML applications with LLM serving and MCP server deployment (41K+ stars) | 2026-02-05   |
+| [microgpt-playground.md](./ml-infrastructure/microgpt-playground.md) | microgpt Playground - browser-native GPT training and inference demo, zero-dependency JavaScript port of Karpathy's microgpt.py (65 stars) | 2026-02-23   |
 
 **Key Topics**:
 
