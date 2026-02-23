@@ -56,12 +56,15 @@ research/
 ├── context-management/                # Memory, context window, and RAG tools
 │   ├── claude-mem.md                  # Persistent memory compression for Claude Code (15K+ stars)
 │   ├── jina-ai.md                     # Search foundation: Reader API, multilingual embeddings, rerankers (acquired by Elastic 2025)
-│   └── local-memory.md               # Persistent memory infrastructure for AI agents (MCP + REST + CLI)
+│   ├── local-memory.md               # Persistent memory infrastructure for AI agents (MCP + REST + CLI)
+│   └── sourcesyncai.md               # Managed RAG platform with auto-syncing connectors and hybrid search
 ├── data-infrastructure/               # Real-time data platforms for analytics
+│   ├── cocoindex.md                   # Ultra-performant AI data transformation framework with Rust core, incremental processing, and dataflow model (Apache 2.0)
 │   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
 ├── documentation-tools/                # Architecture documentation and living docs
 │   └── living-architecture.md         # Operational flow architecture extraction with Rivière schema (79 stars)
 ├── developer-tools/                   # Developer productivity and workflow tools
+│   ├── biome.md                       # Rust-based web toolchain: formatter + linter + import organizer, 97% Prettier compat, ~35× faster (23.8K stars)
 │   ├── animejs.md                     # Lightweight JavaScript animation engine (66K+ stars)
 │   ├── claude-conductor.md            # Context-Driven Development plugin for Claude Code (9 commands, skill ecosystem)
 │   ├── claude-openocd-spi-dump.md     # Claude Code plugin for SPI flash dumping via OpenOCD
@@ -191,6 +194,7 @@ MCP servers, tools, and integrations for extending AI assistant capabilities.
 | [octocode-mcp.md](./mcp-ecosystem/octocode-mcp.md)       | Research Driven Development platform with GitHub search, LSP, and GAN-inspired adversarial flow          | 2026-01-26   |
 | [perplexity-mcp-server.md](./mcp-ecosystem/perplexity-mcp-server.md) | Perplexity API Platform MCP server with real-time web search, deep research, and reasoning via 4 Sonar tools (2K stars) | 2026-02-20   |
 | [retio-pagemap.md](./mcp-ecosystem/retio-pagemap.md)     | Retio PageMap - MCP server compressing HTML pages to 2-5K token structured maps with 95.2% task success  | 2026-02-18   |
+| [sourcesyncai-mcp.md](./mcp-ecosystem/sourcesyncai-mcp.md) | SourceSync.ai MCP Server - 28-tool MCP bridge for AI-ready knowledge bases with multi-source ingestion, hybrid search, and auto-sync | 2026-02-23   |
 
 **Key Topics**:
 
@@ -487,6 +491,7 @@ Developer productivity tools and workflow automation for software engineering wi
 
 | Document                                               | Description                                                                                                                  | Last Updated |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| [biome.md](./developer-tools/biome.md)                 | Biome - Rust-based web toolchain with formatter (97% Prettier compat, ~35× faster), linter (450+ rules), import organizer, and v2 type-aware linting without TypeScript compiler (23.8K stars) | 2026-02-23   |
 | [animejs.md](./developer-tools/animejs.md)             | Lightweight JavaScript animation engine with declarative API, timelines, staggering, and 30+ easing functions                        | 2026-01-31   |
 | [claude-conductor.md](./developer-tools/claude-conductor.md)       | Claude Conductor - Context-Driven Development plugin with 9 commands, skill ecosystem, pattern reference layer, and quality intelligence | 2026-02-17   |
 | [claude-openocd-spi-dump.md](./developer-tools/claude-openocd-spi-dump.md) | Claude Code plugin for SPI flash dumping via OpenOCD with RAM-resident code and MCU register maps for 6 chip families | 2026-02-20   |
@@ -606,6 +611,15 @@ Developer productivity tools and workflow automation for software engineering wi
 - Real-time per-node metrics (latency, throughput, error rates, cache-hit ratios) in simulation
 - Failure-first architecture thinking: discover failure modes before writing code
 - LLM gateway and vector database as first-class system design components
+- Biome: single-binary Rust toolchain (format + lint + import organize) replacing ESLint + Prettier
+- 97% Prettier formatting compatibility with ~35× speed advantage
+- 450+ lint rules from ESLint, typescript-eslint, and other sources with safe-fix support
+- v2 type inference engine: type-aware linting without TypeScript compiler (`tsc`)
+- Multi-file project scanner for monorepo-aware type analysis (opt-in, no default perf impact)
+- Nested biome.json configuration for per-package monorepo overrides
+- `biome ci` command for zero-write CI enforcement with non-zero exit on violations
+- Standalone binary deployment without Node.js
+- First-party LSP editor extensions (VS Code, IntelliJ, Zed)
 
 ---
 
@@ -723,6 +737,7 @@ Memory systems, context window optimization tools, and RAG solutions for maintai
 | [claude-mem.md](./context-management/claude-mem.md)       | Claude-Mem - persistent memory compression plugin for Claude Code with 4 MCP tools and progressive disclosure                  | 2026-01-31   |
 | [jina-ai.md](./context-management/jina-ai.md)             | Jina AI - search foundation platform with Reader API (URL→Markdown), multimodal embeddings, rerankers, and DeepSearch (acquired by Elastic 2025) | 2026-02-23   |
 | [local-memory.md](./context-management/local-memory.md)   | Local Memory - persistent memory infrastructure with MCP, REST API, CLI, embedded Qdrant, and knowledge evolution (L0-L3)      | 2026-02-07   |
+| [sourcesyncai.md](./context-management/sourcesyncai.md)   | SourceSync.ai - managed RAG platform with 15+ auto-syncing connectors, hybrid search, BYOC storage, and MCP integration       | 2026-02-23   |
 
 **Key Topics**:
 
@@ -989,6 +1004,7 @@ Interactive prompt development platforms and tools for iterating on LLM prompts,
 | Document | Description | Last Updated |
 | -------- | ----------- | ------------ |
 | [google-ai-studio.md](./prompt-engineering/google-ai-studio.md) | Google AI Studio — free browser-based IDE for Gemini API with 20+ models, function calling, Google Search grounding, sandboxed code execution, and OpenAI-compatible endpoint | 2026-02-23 |
+| [prompt-engine.md](./prompt-engineering/prompt-engine.md) | Prompt Engine — SaaS prompt generator and optimizer that converts plain-language descriptions into professional-grade prompts in < 15 seconds; includes library/tagging for reuse ($19/month) | 2026-02-23 |
 
 **Key Topics**:
 
