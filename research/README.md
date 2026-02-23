@@ -46,7 +46,8 @@ research/
 ├── code-auditing/                     # Code security and quality auditing tools
 │   └── hound.md                       # Autonomous AI security auditor with knowledge graphs
 ├── ai-design-tools/                   # AI-powered visual creation and design platforms
-│   └── hedra.md                       # AI video/image/audio creation platform
+│   ├── hedra.md                       # AI video/image/audio creation platform
+│   └── jimeng.md                      # ByteDance SeedDance 2.0 AI video/image generation with cinematic camera control
 ├── ai-research-tools/                 # AI research tools and newsletters
 │   └── the-unwind-ai.md              # AI builder newsletter with 95K+ star open-source companion repo
 ├── coding-agents/                     # Autonomous AI coding agent platforms
@@ -901,6 +902,7 @@ AI-powered visual creation platforms for video, image, and audio content generat
 | Document                                    | Description                                                                                                | Last Updated |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------ |
 | [hedra.md](./ai-design-tools/hedra.md)      | Hedra - AI-powered visual creation platform for video, image, and audio with character animation            | 2026-02-20   |
+| [jimeng.md](./ai-design-tools/jimeng.md)    | Jimeng AI (即梦AI) - ByteDance SeedDance 2.0 multimodal video/image generation with cinematic camera control | 2026-02-23   |
 
 **Key Topics**:
 
@@ -908,6 +910,7 @@ AI-powered visual creation platforms for video, image, and audio content generat
 - Audio-visual synchronization for content generation
 - SaaS-based creative AI platform for non-technical users
 - Commercial application of generative AI for marketing and content
+- Cinematic camera control in AI video generation (dolly-in, orbit, crane shot)
 
 ---
 
