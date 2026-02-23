@@ -78,7 +78,11 @@ def run_git_command(
     """
     try:
         return subprocess.run(
-            ["git", *args], capture_output=True, text=True, encoding="utf-8", check=check
+            ["git", *args],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=check,
         )
     except subprocess.CalledProcessError as e:
         msg = f"Git command failed: {e.stderr.strip()}"
@@ -405,6 +409,34 @@ def create_summary_table(
     return table
 
 
+def _display_results(
+    console: Console,
+    output_dir: Path,
+    current_branch: str,
+    base_ref: str,
+    head_ref: str,
+    merge_base: str,
+    commit_count: int,
+    stats: dict,
+) -> None:
+    """Print the success panel and summary table to the console."""
+    console.print()
+    success_panel = Panel.fit(
+        f"Analysis complete. Results written to [cyan]{output_dir.absolute()}[/cyan]",
+        title=":white_check_mark: Success",
+        border_style="green",
+    )
+    console.width = get_rendered_width(success_panel)
+    console.print(success_panel)
+    console.print()
+
+    summary_table = create_summary_table(
+        current_branch, base_ref, head_ref, merge_base, commit_count, stats=stats
+    )
+    summary_table.width = get_rendered_width(summary_table)
+    console.print(summary_table, crop=False, overflow="ignore")
+
+
 @app.command()
 def analyze(
     base_ref: Annotated[
@@ -522,24 +554,21 @@ def analyze(
             progress.remove_task(task)
 
         # Display summary
-        console.print()
-        success_panel = Panel.fit(
-            f"Analysis complete. Results written to [cyan]{output_dir.absolute()}[/cyan]",
-            title=":white_check_mark: Success",
-            border_style="green",
+        _display_results(
+            console,
+            output_dir,
+            current_branch,
+            base_ref,
+            head_ref,
+            merge_base,
+            commit_count,
+            stats,
         )
-        console.width = get_rendered_width(success_panel)
-        console.print(success_panel)
-        console.print()
-
-        summary_table = create_summary_table(
-            current_branch, base_ref, head_ref, merge_base, commit_count, stats=stats
-        )
-        summary_table.width = get_rendered_width(summary_table)
-        console.print(summary_table, crop=False, overflow="ignore")
 
     except GitAnalysisError as e:
-        err_panel = Panel.fit(f"[red]{e}[/red]", title=":cross_mark: Error", border_style="red")
+        err_panel = Panel.fit(
+            f"[red]{e}[/red]", title=":cross_mark: Error", border_style="red"
+        )
         console.width = get_rendered_width(err_panel)
         console.print(err_panel)
         raise typer.Exit(code=1) from e

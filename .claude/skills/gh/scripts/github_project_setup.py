@@ -32,7 +32,7 @@ from datetime import UTC, datetime
 from typing import Annotated, Any
 
 import typer
-from github import Auth, Github, GithubException  # ty: ignore[unresolved-import]
+from github import Auth, Github, GithubException
 
 app = typer.Typer(help="GitHub Project management automation via PyGithub")
 milestone_app = typer.Typer(help="Milestone operations")
