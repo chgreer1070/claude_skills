@@ -13,6 +13,7 @@ research/
 ├── README.md                          # This index file
 ├── agent-frameworks/                  # Agent SDKs and orchestration frameworks
 │   ├── ai-agents-frameworks.md        # 10-framework comparative benchmark study
+│   ├── copilotkit.md                  # React-first agentic frontend framework with bi-directional state sync and AG-UI protocol (28.9K stars)
 │   ├── liteagents.md                  # Multi-tool AI development toolkit with 11 agents and session memory
 │   ├── micro-agent.md                 # Lightweight Python ReAct agent framework with MCP multi-server support (MIT)
 │   └── superpowers.md                 # Agentic skills framework and dev methodology (40K+ stars)
@@ -325,6 +326,7 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 | Document                                                              | Description                                                                                                                            | Last Updated |
 | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [ai-agents-frameworks.md](./agent-frameworks/ai-agents-frameworks.md) | Comparative learning repository for 10 AI agent frameworks with benchmarks for response time, memory, tokens, RAG, and API integration | 2026-01-31   |
+| [copilotkit.md](./agent-frameworks/copilotkit.md)                     | React-first agentic frontend framework with bi-directional state sync, generative UI, AG-UI protocol, and human-in-the-loop (28.9K stars) | 2026-02-23   |
 | [get-shit-done.md](./agent-frameworks/get-shit-done.md)               | Meta-prompting, context engineering, and spec-driven development system with 11 agents for Claude Code, OpenCode, Gemini (10K+ stars)  | 2026-02-01   |
 | [liteagents.md](./agent-frameworks/liteagents.md)                     | Multi-tool AI development toolkit with 11 agents, 22 commands, Hot Memory pipeline, and session friction analysis for 4 AI coding tools | 2026-02-15   |
 | [micro-agent.md](./agent-frameworks/micro-agent.md)                   | Micro-Agent - lightweight Python 3.12 ReAct agent framework with MCP multi-server support, token budget enforcement, and execution visualization (MIT) | 2026-02-20   |
