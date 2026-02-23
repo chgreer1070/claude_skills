@@ -259,7 +259,6 @@ max-complexity = 12
 ]
 "research/knowledge-explorer.py" = [
     "ANN401", # Any required for YAMLHandler base class kwargs and JSON return types
-    "DTZ",    # Timezone-aware dates not required for research staleness comparisons
     "S",      # Security checks relaxed for CLI scripts
     "T201",   # print() acceptable in CLI scripts
 ]

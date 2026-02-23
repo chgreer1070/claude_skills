@@ -428,11 +428,9 @@ def find_entry_by_topic(topic: str, kb_root: Path) -> Path | None:
                 meta = post.metadata
                 # New skill-spec format: topic is inside metadata block
                 raw_inner = meta.get("metadata")
-                inner: dict[str, Any] = (
-                    cast("dict[str, Any]", raw_inner)
-                    if isinstance(raw_inner, dict)
-                    else {}
-                )
+                inner: dict[str, Any] = {}
+                if isinstance(raw_inner, dict):
+                    inner = cast("dict[str, Any]", raw_inner)
                 stored_topic = inner.get("topic") if inner else meta.get("topic")
                 if stored_topic == topic:
                     return md_file
