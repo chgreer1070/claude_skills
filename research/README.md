@@ -58,6 +58,7 @@ research/
 │   ├── local-memory.md               # Persistent memory infrastructure for AI agents (MCP + REST + CLI)
 │   └── sourcesyncai.md               # Managed RAG platform with auto-syncing connectors and hybrid search
 ├── data-infrastructure/               # Real-time data platforms for analytics
+│   ├── cocoindex.md                   # Ultra-performant AI data transformation framework with Rust core, incremental processing, and dataflow model (Apache 2.0)
 │   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
 ├── documentation-tools/                # Architecture documentation and living docs
 │   └── living-architecture.md         # Operational flow architecture extraction with Rivière schema (79 stars)
