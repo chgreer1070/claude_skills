@@ -20,6 +20,7 @@ research/
 │   ├── fly-io.md                      # Cloud platform for running apps globally in Firecracker microVMs; Sprites for AI agent sandboxes, first-class MCP support (18 regions)
 │   ├── kernel-sh.md                   # Browsers-as-a-service: isolated VM-per-browser Chrome, MCP server, 5.8x faster than Browserbase (670 stars)
 │   ├── plano.md                       # AI-native proxy and data plane for multi-agent orchestration
+│   ├── tinyfish.md                    # Serverless web agent API: 1,000 parallel ops, AgentQL MCP, all-in pricing at $0.04/op (148 stars)
 │   └── zeroclaw.md                    # Rust AI assistant infrastructure — sub-5MB RAM, 28+ providers, trait-driven (14.9K stars)
 ├── api-frameworks/                    # High-performance API frameworks for backend services
 │   ├── fastapi.md                     # Modern Python web framework with Pydantic (95K+ stars)
@@ -380,6 +381,7 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 | [fly-io.md](./agent-infrastructure/fly-io.md)     | Fly.io - cloud platform running apps in Firecracker microVMs across 18 regions; Sprites for AI agent sandboxes, first-class MCP deployment, Machines API for programmatic VM orchestration | 2026-02-23   |
 | [kernel-sh.md](./agent-infrastructure/kernel-sh.md) | Kernel - browsers-as-a-service API with isolated VM-per-browser Chrome, 72h sessions, Playwright CDP passthrough, MCP server, and Browser Pools ($22M, 670 stars) | 2026-02-22   |
 | [plano.md](./agent-infrastructure/plano.md)       | AI-native proxy and data plane built on Envoy - handles orchestration, model routing, observability, guardrails | 2026-01-26   |
+| [tinyfish.md](./agent-infrastructure/tinyfish.md) | TinyFish - serverless web agent API for 1,000 parallel agentic ops, AgentQL MCP server, all-in pricing at $0.04/op (148 stars) | 2026-02-23   |
 | [zeroclaw.md](./agent-infrastructure/zeroclaw.md) | Rust autonomous AI assistant — sub-5MB RAM, 28+ AI providers, 15+ channels, trait-driven swappable subsystems (14.9K stars) | 2026-02-19   |
 
 **Key Topics**:
@@ -411,6 +413,13 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 - MCP server integration (`onkernel/kernel-mcp-server`, MIT) for Claude Code browser tool access
 - Playwright code execution inside VM for zero-CDP-round-trip complex interactions
 - Batch action dispatch reducing network round-trips in tight automation loops
+- Serverless agentic web automation with 1,000 simultaneous parallel operations
+- All-in cost model: browser + proxy + LLM inference + anti-bot = single per-step price ($0.04/op)
+- Goal-oriented natural language extraction without XPath/CSS selectors
+- SSE streaming pattern for real-time agent task progress (no polling)
+- AgentQL MCP server (`extract-web-data` tool) for Claude Code structured web data access
+- Stealth browser profiles and geo-targeted residential proxies included by default
+- Live data extraction from authenticated, form-gated, and JavaScript-heavy sites
 
 ---
 
