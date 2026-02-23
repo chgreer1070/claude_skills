@@ -6,8 +6,8 @@ Complete documentation for adding Model Context Protocol (MCP) servers to claude
 
 ## Overview
 
-**Current State:** 1 of 27 plugins has MCP tooling  
-**Goal:** Universal MCP interface for all high-value plugins  
+**Current State:** 1 of 27 plugins has MCP tooling
+**Goal:** Universal MCP interface for all high-value plugins
 **Pattern:** FastMCP with Python 3.11+ (PEP 723 scripts)
 
 ---
@@ -15,8 +15,8 @@ Complete documentation for adding Model Context Protocol (MCP) servers to claude
 ## Documents
 
 ### 1. [MCP Architecture Analysis](./mcp-architecture-analysis.md)
-**Purpose:** Comprehensive analysis of MCP needs across all plugins  
-**Audience:** Technical leads, architects  
+**Purpose:** Comprehensive analysis of MCP needs across all plugins
+**Audience:** Technical leads, architects
 **Key Sections:**
 - Plugin MCP needs assessment (Tier 1/2/3)
 - MCP philosophy and principles
@@ -29,8 +29,8 @@ Complete documentation for adding Model Context Protocol (MCP) servers to claude
 ---
 
 ### 2. [MCP Implementation Roadmap](./mcp-implementation-roadmap.md)
-**Purpose:** Phased rollout plan with timelines and metrics  
-**Audience:** Project managers, developers  
+**Purpose:** Phased rollout plan with timelines and metrics
+**Audience:** Project managers, developers
 **Key Sections:**
 - 3-phase implementation plan (Q1-Q3 2026)
 - Status matrix for all plugins
@@ -44,8 +44,8 @@ Complete documentation for adding Model Context Protocol (MCP) servers to claude
 ---
 
 ### 3. [MCP Quick Start Guide](./mcp-quickstart.md)
-**Purpose:** Practical 30-minute tutorial for adding MCP to a plugin  
-**Audience:** Plugin developers  
+**Purpose:** Practical 30-minute tutorial for adding MCP to a plugin
+**Audience:** Plugin developers
 **Key Sections:**
 - 7-step implementation guide
 - Code templates and patterns
@@ -112,9 +112,9 @@ Use this checklist when adding MCP to a plugin:
 ## Reference Implementations
 
 ### Proven Example
-**Plugin:** agentskill-kaizen  
-**Location:** `plugins/agentskill-kaizen/mcp/server.py`  
-**Tools:** 7 (process mining, clustering, pattern detection)  
+**Plugin:** agentskill-kaizen
+**Location:** `plugins/agentskill-kaizen/mcp/server.py`
+**Tools:** 7 (process mining, clustering, pattern detection)
 **Quality:** Production-ready, includes dashboard
 
 **Key Features to Study:**
@@ -130,21 +130,21 @@ Use this checklist when adding MCP to a plugin:
 ## External Resources
 
 ### MCP Protocol
-- **Spec:** https://modelcontextprotocol.io/specification/draft
-- **Sitemap:** https://modelcontextprotocol.io/sitemap.xml (use this to find docs)
+- **Spec:** <https://modelcontextprotocol.io/specification/draft>
+- **Sitemap:** <https://modelcontextprotocol.io/sitemap.xml> (use this to find docs)
 
 ### SDKs
-- **Python SDK:** https://github.com/modelcontextprotocol/python-sdk
-- **TypeScript SDK:** https://github.com/modelcontextprotocol/typescript-sdk
-- **FastMCP:** https://github.com/jlowin/fastmcp
+- **Python SDK:** <https://github.com/modelcontextprotocol/python-sdk>
+- **TypeScript SDK:** <https://github.com/modelcontextprotocol/typescript-sdk>
+- **FastMCP:** <https://github.com/jlowin/fastmcp>
 
 ### Tools
 - **MCP Inspector:** `npx @modelcontextprotocol/inspector <command>`
-- **uv (Python):** https://github.com/astral-sh/uv
+- **uv (Python):** <https://github.com/astral-sh/uv>
 
 ### Warp-Specific
-- **Warp MCP Docs:** https://docs.warp.dev/agent-platform/capabilities/mcp
-- **Warp University Examples:** https://app.gitbook.com/o/-MbqIZLCtzerswjFm7mh/s/c5dAwvMCRiTxUOdDicqy/
+- **Warp MCP Docs:** <https://docs.warp.dev/agent-platform/capabilities/mcp>
+- **Warp University Examples:** <https://app.gitbook.com/o/-MbqIZLCtzerswjFm7mh/s/c5dAwvMCRiTxUOdDicqy/>
 
 ---
 

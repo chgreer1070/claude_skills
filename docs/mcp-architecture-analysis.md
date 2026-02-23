@@ -226,14 +226,14 @@ _READONLY_ANNOTATIONS = {
 @mcp.tool(annotations=_READONLY_ANNOTATIONS)
 async def tool_name(param: str, *, context: Context) -> dict:
     """Tool description.
-    
+
     Args:
         param: Parameter description
         context: FastMCP context for progress reporting
-    
+
     Returns:
         Result dictionary
-    
+
     Raises:
         ToolError: When operation fails
     """

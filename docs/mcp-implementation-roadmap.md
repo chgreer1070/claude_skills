@@ -47,7 +47,7 @@
 ```
 
 **Target Completion:** February 2026
-**Expected Impact:** 
+**Expected Impact:**
 - 80% of plugin development tasks now MCP-enabled
 - Python quality workflows fully automated
 - Consistent linting across all language plugins
@@ -142,17 +142,17 @@ async def tool_name(
     context: Context
 ) -> dict[str, Any]:
     """One-line tool description.
-    
+
     Detailed explanation of what this tool does,
     when to use it, and what it returns.
-    
+
     Args:
         param: Parameter description with type info
         context: FastMCP context for progress updates
-    
+
     Returns:
         Dict with 'status' and result data
-    
+
     Raises:
         ToolError: When validation or execution fails
     """
@@ -222,14 +222,14 @@ async def test_fix_workflow():
         plugin_dir="/path/to/plugin"
     )
     assert analysis["status"] == "complete"
-    
+
     # Apply fixes for each issue
     for issue in analysis["issues"]:
         fix_result = await mcp.tools["auto_fix_frontmatter"](
             file_path=issue["file"]
         )
         assert fix_result["status"] == "fixed"
-    
+
     # Validate all files pass
     validation = await mcp.tools["validate_frontmatter"](
         plugin_dir="/path/to/plugin"
@@ -405,10 +405,10 @@ Track these metrics per plugin:
 
 ## Resources
 
-- **MCP Protocol Spec:** https://modelcontextprotocol.io/specification/draft
-- **FastMCP Docs:** https://github.com/jlowin/fastmcp
-- **TypeScript SDK:** https://github.com/modelcontextprotocol/typescript-sdk
-- **Python SDK:** https://github.com/modelcontextprotocol/python-sdk
+- **MCP Protocol Spec:** <https://modelcontextprotocol.io/specification/draft>
+- **FastMCP Docs:** <https://github.com/jlowin/fastmcp>
+- **TypeScript SDK:** <https://github.com/modelcontextprotocol/typescript-sdk>
+- **Python SDK:** <https://github.com/modelcontextprotocol/python-sdk>
 - **Example Server:** `plugins/agentskill-kaizen/mcp/server.py`
 - **MCP Best Practices:** `./reference/mcp_best_practices.md`
 - **Evaluation Guide:** `./reference/evaluation.md`

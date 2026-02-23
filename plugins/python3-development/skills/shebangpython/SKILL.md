@@ -205,7 +205,7 @@ from pathlib import Path
 
 This rule applies regardless of how much rich API surface the script uses (`Console`, `Panel`, `Progress`, `Table`, etc.). The import works because typer guarantees rich's presence.
 
-SOURCE: "By default, `typer` comes with `rich` and `shellingham`." — https://typer.tiangolo.com/#installation (accessed 2026-02-22)
+SOURCE: "By default, `typer` comes with `rich` and `shellingham`." — <https://typer.tiangolo.com/#installation> (accessed 2026-02-22)
 
 ---
 

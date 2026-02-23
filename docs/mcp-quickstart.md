@@ -90,30 +90,30 @@ async def validate_something(
     context: Context,
 ) -> dict[str, Any]:
     """Validate a file against rules.
-    
+
     Args:
         file_path: Path to file to validate
         context: FastMCP context for progress reporting
-    
+
     Returns:
         Dict with 'status' and 'errors' if any found
-    
+
     Raises:
         ToolError: If file not found or validation fails
     """
     await context.info(f"Validating {file_path}...")
-    
+
     # If you have an existing script function:
     from your_plugin.validators import validate_file
-    
+
     result = await asyncio.to_thread(validate_file, file_path)
-    
+
     if result.errors:
         return {
             "status": "invalid",
             "errors": [str(e) for e in result.errors]
         }
-    
+
     return {"status": "valid"}
 ```
 
@@ -247,7 +247,7 @@ async def run_my_tool(
 ) -> dict[str, Any]:
     """Run my_tool on target."""
     await context.info(f"Processing {target}...")
-    
+
     result = await asyncio.to_thread(
         subprocess.run,
         ["python", "scripts/my_tool.py", target],
@@ -255,10 +255,10 @@ async def run_my_tool(
         text=True,
         check=False,
     )
-    
+
     if result.returncode != 0:
         raise ToolError(f"Tool failed: {result.stderr}")
-    
+
     return {"output": result.stdout}
 ```
 
@@ -276,20 +276,20 @@ async def modify_file(
 ) -> dict[str, Any]:
     """Safely modify a file."""
     path = pathlib.Path(file_path)
-    
+
     # Validate path (prevent traversal)
     if ".." in path.parts:
         raise ToolError("Path traversal not allowed")
-    
+
     if not path.exists():
         raise ToolError(f"File not found: {file_path}")
-    
+
     await context.info(f"Backing up {file_path}...")
-    
+
     # Backup original
     backup = path.with_suffix(path.suffix + ".bak")
     await asyncio.to_thread(path.rename, backup)
-    
+
     try:
         await context.info(f"Writing new content...")
         await asyncio.to_thread(path.write_text, new_content)
@@ -312,17 +312,17 @@ async def analyze_directory(
     """Analyze all files in directory."""
     path = pathlib.Path(directory)
     files = list(path.rglob("*.py"))
-    
+
     await context.info(f"Found {len(files)} files to analyze")
-    
+
     results = []
     for i, file in enumerate(files, 1):
         await context.info(f"Analyzing {file.name} ({i}/{len(files)})")
         result = await asyncio.to_thread(analyze_file, file)
         results.append(result)
-    
+
     await context.info("Analysis complete")
-    
+
     return {
         "total_files": len(files),
         "results": results,
@@ -341,17 +341,17 @@ async def risky_operation(
     """Operation that might fail."""
     try:
         await context.info("Starting risky operation...")
-        
+
         result = await asyncio.to_thread(do_something, param)
-        
+
         if not result.success:
             raise ToolError(
                 f"Operation failed: {result.error}. "
                 f"Try adjusting the {result.problematic_field} parameter."
             )
-        
+
         return {"status": "success", "data": result.data}
-    
+
     except FileNotFoundError as e:
         raise ToolError(f"Required file not found: {e.filename}") from e
     except ValueError as e:
@@ -444,8 +444,8 @@ Before committing your MCP implementation:
 - **Example:** `plugins/agentskill-kaizen/mcp/server.py`
 - **Docs:** `docs/mcp-architecture-analysis.md`
 - **Roadmap:** `docs/mcp-implementation-roadmap.md`
-- **FastMCP:** https://github.com/jlowin/fastmcp
-- **MCP Spec:** https://modelcontextprotocol.io/
+- **FastMCP:** <https://github.com/jlowin/fastmcp>
+- **MCP Spec:** <https://modelcontextprotocol.io/>
 
 ---
 
