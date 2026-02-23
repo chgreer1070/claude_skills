@@ -62,6 +62,7 @@ research/
 ├── documentation-tools/                # Architecture documentation and living docs
 │   └── living-architecture.md         # Operational flow architecture extraction with Rivière schema (79 stars)
 ├── developer-tools/                   # Developer productivity and workflow tools
+│   ├── biome.md                       # Rust-based web toolchain: formatter + linter + import organizer, 97% Prettier compat, ~35× faster (23.8K stars)
 │   ├── animejs.md                     # Lightweight JavaScript animation engine (66K+ stars)
 │   ├── claude-conductor.md            # Context-Driven Development plugin for Claude Code (9 commands, skill ecosystem)
 │   ├── claude-openocd-spi-dump.md     # Claude Code plugin for SPI flash dumping via OpenOCD
@@ -487,6 +488,7 @@ Developer productivity tools and workflow automation for software engineering wi
 
 | Document                                               | Description                                                                                                                  | Last Updated |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| [biome.md](./developer-tools/biome.md)                 | Biome - Rust-based web toolchain with formatter (97% Prettier compat, ~35× faster), linter (450+ rules), import organizer, and v2 type-aware linting without TypeScript compiler (23.8K stars) | 2026-02-23   |
 | [animejs.md](./developer-tools/animejs.md)             | Lightweight JavaScript animation engine with declarative API, timelines, staggering, and 30+ easing functions                        | 2026-01-31   |
 | [claude-conductor.md](./developer-tools/claude-conductor.md)       | Claude Conductor - Context-Driven Development plugin with 9 commands, skill ecosystem, pattern reference layer, and quality intelligence | 2026-02-17   |
 | [claude-openocd-spi-dump.md](./developer-tools/claude-openocd-spi-dump.md) | Claude Code plugin for SPI flash dumping via OpenOCD with RAM-resident code and MCU register maps for 6 chip families | 2026-02-20   |
@@ -605,6 +607,15 @@ Developer productivity tools and workflow automation for software engineering wi
 - Real-time per-node metrics (latency, throughput, error rates, cache-hit ratios) in simulation
 - Failure-first architecture thinking: discover failure modes before writing code
 - LLM gateway and vector database as first-class system design components
+- Biome: single-binary Rust toolchain (format + lint + import organize) replacing ESLint + Prettier
+- 97% Prettier formatting compatibility with ~35× speed advantage
+- 450+ lint rules from ESLint, typescript-eslint, and other sources with safe-fix support
+- v2 type inference engine: type-aware linting without TypeScript compiler (`tsc`)
+- Multi-file project scanner for monorepo-aware type analysis (opt-in, no default perf impact)
+- Nested biome.json configuration for per-package monorepo overrides
+- `biome ci` command for zero-write CI enforcement with non-zero exit on violations
+- Standalone binary deployment without Node.js
+- First-party LSP editor extensions (VS Code, IntelliJ, Zed)
 
 ---
 
