@@ -7,6 +7,8 @@ user-invocable: true
 # Work Backlog Item
 
 Bridge a backlog item into the SAM planning pipeline via `/python3-development:add-new-feature`.
+
+**SAM** — Stateless Agent Methodology. See [sam-definition.md](./references/sam-definition.md) for what SAM is and how to embody it. SAM lives in `../stateless-agent-methodology/` (or `bitflight-devops/stateless-agent-methodology` on GitHub).
 Primary source of truth is **GitHub Issues** (labels + milestone = canonical status); `.claude/BACKLOG.md` is the local scratchpad and is kept in sync.
 
 When invoked with no arguments, shows an interactive browser. When invoked with `#N` or a title substring, proceeds directly to the planning workflow.
