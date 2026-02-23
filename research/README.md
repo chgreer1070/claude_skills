@@ -61,6 +61,7 @@ research/
 │   ├── copier-astral.md               # Python project template with Astral toolchain (uv, ruff, ty)
 │   ├── git-cliff.md                   # Customizable changelog generator from Git history
 │   ├── github-cli.md                  # Official GitHub CLI tool for PRs, issues, workflows (37.8K stars)
+│   ├── google-ai-studio.md            # Google AI Studio — browser-based IDE and playground for Gemini API (1M-token context, free tier)
 │   ├── grepai.md                      # Semantic code search and call graph analysis for AI agents (1.2K stars)
 │   ├── jirajs.md                      # TypeScript Jira API client for Cloud, Server, and Data Center
 │   ├── jscpd.md                       # Copy/paste detector for 150+ languages (5K+ stars)
@@ -459,6 +460,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [copier-astral.md](./developer-tools/copier-astral.md) | Copier template for Python projects with Astral toolchain (uv, ruff, ty), pytest, MkDocs, Typer, GitHub Actions, Docker              | 2026-01-31   |
 | [git-cliff.md](./developer-tools/git-cliff.md)         | Customizable changelog generator using conventional commits and regex parsers with GitHub/GitLab remote integration                  | 2026-01-26   |
 | [github-cli.md](./developer-tools/github-cli.md)       | GitHub CLI (gh) - official CLI for PRs, issues, workflows, extensions with scriptable API access (37.8K stars)                        | 2026-02-20   |
+| [google-ai-studio.md](./developer-tools/google-ai-studio.md) | Google AI Studio — free browser-based IDE and playground for Gemini API with 1M-token context, OpenAI compatibility, and built-in Google Search grounding | 2026-02-23   |
 | [grepai.md](./developer-tools/grepai.md)               | Semantic code search and call graph analysis for AI agents with MCP server, 12-language trace, and embedding-based search (1.2K stars) | 2026-02-13   |
 | [jirajs.md](./developer-tools/jirajs.md)               | jira.js - TypeScript Jira API client for Cloud, Server, and Data Center with full REST API coverage                                   | 2026-02-20   |
 | [jscpd.md](./developer-tools/jscpd.md)                 | Copy/paste detector for 150+ programming languages using Rabin-Karp algorithm with CI/CD integration                                 | 2026-01-31   |
