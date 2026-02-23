@@ -22,7 +22,7 @@ import os
 from typing import Annotated, Any
 
 import typer
-from github import Auth, Github, GithubException  # ty: ignore[unresolved-import]
+from github import Auth, Github, GithubException
 
 app = typer.Typer(
     help="Remove experiment-created GitHub resources between test iterations"

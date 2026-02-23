@@ -1,17 +1,15 @@
-# TensorZero
-
-| Field         | Value                                      |
-| ------------- | ------------------------------------------ |
-| Research Date | 2026-01-31                                 |
-| Primary URL   | <https://tensorzero.com>                   |
-| GitHub        | <https://github.com/tensorzero/tensorzero> |
-| Documentation | <https://www.tensorzero.com/docs>          |
-| PyPI          | <https://pypi.org/project/tensorzero/>     |
-| Version       | 2026.1.8 (released 2026-01-30)             |
-| License       | Apache-2.0                                 |
-| Slack         | <https://www.tensorzero.com/slack>         |
-| Discord       | <https://www.tensorzero.com/discord>       |
-
+---
+name: TensorZero
+description: 'TensorZero is an open-source stack for industrial-grade LLM applications, written in Rust for extreme performance (<1ms p99 latency). It unifies five core capabilities: a multi-provider LLM gateway,...'
+license: Apache-2.0
+metadata:
+  topic: tensorzero
+  category: llm-infrastructure
+  source_url: https://tensorzero.com
+  github: tensorzero/tensorzero
+  version: "2026.1.8"
+  verified: "2026-01-31"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -327,26 +325,3 @@ The repository includes complete runnable examples:
 | Example: Agentic RAG     | <https://github.com/tensorzero/tensorzero/tree/main/examples/rag-retrieval-augmented-generation> | 2026-01-31 |
 
 **Research Method**: Information gathered from official GitHub repository README, GitHub API (stars, forks, issues, contributors, releases), PyPI package metadata, PyPI download statistics API, and Cargo.toml workspace configuration. Statistics verified via direct API calls on 2026-01-31.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                     |
-| ------------------ | ------------------------- |
-| Version Documented | 2026.1.8                  |
-| Release Date       | 2026-01-30                |
-| GitHub Stars       | 10,886 (as of 2026-01-31) |
-| Monthly Downloads  | 45,236 (as of 2026-01-31) |
-| Next Review Date   | 2026-05-01                |
-
-**Review Triggers**:
-
-- Major version release
-- Significant new optimization algorithm
-- GitHub stars milestone (15K, 20K)
-- PyPI downloads milestone (100K monthly)
-- TensorZero Autopilot general availability
-- New model provider integrations of note
-- Breaking changes to gateway API or configuration format
-- Significant updates to evaluation framework

@@ -1,13 +1,14 @@
-# Makefile Tutorial (vampy/Makefile)
-
-| Field          | Value                                   |
-| -------------- | --------------------------------------- |
-| Research Date  | 2026-01-31                              |
-| GitHub URL     | <https://github.com/vampy/Makefile>       |
-| Version        | N/A (reference documentation)           |
-| License        | MIT                                     |
-| Primary Author | vampy                                   |
-
+---
+name: Makefile Tutorial (vampy/Makefile)
+description: A comprehensive Makefile tutorial that teaches GNU Make through practical examples. The repository consolidates Makefile syntax, patterns, and best practices into a single markdown document,...
+license: MIT
+metadata:
+  topic: makefile-tutorial
+  category: developer-tooling
+  source_url: https://github.com/makefile-tutorial
+  version: "N/A"
+  verified: "2026-01-31"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -165,20 +166,3 @@ make clean
 | theicfire/makefiletutorial (original source) | <https://github.com/theicfire/makefiletutorial> | 2026-01-31 |
 | GNU Make Manual (HTML) | <https://www.gnu.org/software/make/manual/make.html> | 2026-01-31 |
 | GNU Make Book (PDF) | <https://www.cl.cam.ac.uk/teaching/0910/UnixTools/make.pdf> | 2026-01-31 |
-
----
-
-## Freshness Tracking
-
-| Field               | Value                    |
-| ------------------- | ------------------------ |
-| Version Documented  | master branch (2021-01-10) |
-| Stars at Research   | 93                       |
-| Last Commit         | 2021-01-10               |
-| Next Review Date    | 2026-05-01               |
-
-**Review Triggers**:
-
-- Significant star growth (>50% increase)
-- New commits after 4+ year dormancy
-- Changes to referenced GNU Make manual

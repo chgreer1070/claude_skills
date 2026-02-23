@@ -1,12 +1,15 @@
-# LiteAgents - Multi-Tool AI Development Toolkit
-
-**Research Date**: 2026-02-15
-**GitHub**: <https://github.com/hamr0/liteagents>
-**npm**: <https://www.npmjs.com/package/liteagents>
-**Version**: 2.5.3 (latest release 2026-02-11)
-**License**: MIT
-**Primary Language**: JavaScript (Node.js)
-
+---
+name: LiteAgents - Multi-Tool AI Development Toolkit
+description: LiteAgents is an npm-distributed AI development toolkit providing 11 specialized agents and 22 commands/skills for product management, agile development, and software engineering workflows. It...
+license: MIT
+metadata:
+  topic: liteagents
+  category: agent-frameworks
+  source_url: https://github.com/liteagents
+  github: hamr0/liteagents
+  version: "2.5.3"
+  verified: "2026-02-15"
+  next_review: "2026-05-15"
 ---
 
 ## Overview
@@ -357,28 +360,3 @@ liteagents friction ~/.claude/projects
 12. **Stash Command** - `packages/claude/commands/stash.md` with context capture design (cloned and read 2026-02-15)
 13. **Subagentic Manual** - `packages/subagentic-manual.md` complete agent/command reference (file exists, 13,204 bytes)
 14. **Variants Configuration** - `packages/claude/variants.json` showing Pro-only config (cloned and read 2026-02-15)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Version Documented | 2.5.3 |
-| Package Created | 2025-11-02 |
-| Latest Changelog Entry | 2026-02-11 (v2.5.2) |
-| Supported Tools | 4 |
-| Agent Count | 11 |
-| Command/Skill Count | 22 |
-| Research Date | 2026-02-15 |
-| Next Review | 2026-05-15 |
-
-### Update Triggers
-
-- Major version release or breaking changes to agent/command format
-- Addition of new AI tool support beyond the current 4
-- Changes to the Hot Memory pipeline or friction signal taxonomy
-- Addition of new agents beyond the current 11
-- npm download statistics crossing significant thresholds (1K, 10K weekly)
-- Changes to Claude Code session log format affecting friction analysis
-- License changes from MIT

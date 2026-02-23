@@ -1,12 +1,15 @@
-# Octocode-MCP - Research Driven Development Platform for AI
-
-**Research Date**: January 26, 2026
-**Source URL**: <https://octocode.ai>
-**GitHub Repository**: <https://github.com/bgauryy/octocode-mcp>
-**npm Package**: <https://www.npmjs.com/package/octocode-mcp>
-**Version at Research**: 12.0.0 (npm), GitHub release 9.1.1
-**License**: MIT
-
+---
+name: Octocode-MCP - Research Driven Development Platform for AI
+description: Octocode is an MCP server and methodology platform that transforms AI code assistants from pattern-matching systems into research-driven developers. It provides semantic code search across GitHub...
+license: MIT
+metadata:
+  topic: octocode-mcp
+  category: mcp-ecosystem
+  source_url: https://octocode.ai
+  github: bgauryy/octocode-mcp
+  version: "12.0.0"
+  verified: "2026-01-26"
+  next_review: "2026-04-26"
 ---
 
 ## Overview
@@ -347,24 +350,3 @@ Cursor, VS Code, Claude Desktop, Claude Code, Codex, Cline, Windsurf, Warp, Goos
 8. **MCP.so Listing**: <https://mcp.so/server/octocode/bgauryy> (accessed 2026-01-26)
 9. **YouTube Channel**: <https://www.youtube.com/@Octocode-ai>
 10. **GitHub Releases**: <https://github.com/bgauryy/octocode-mcp/releases> (accessed 2026-01-26)
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                 |
-| ---------------------------- | --------------------- |
-| Last Verified                | 2026-01-26            |
-| npm Version at Verification  | 12.0.0                |
-| GitHub Release at Verif.     | 9.1.1                 |
-| GitHub Stars at Verification | 689                   |
-| Next Review Recommended      | 2026-04-26 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor npm for version changes (active development: 12.x currently)
-- Check GitHub releases for new features and breaking changes
-- Review MANIFEST.md for methodology updates
-- Track star growth as adoption indicator (689 stars in ~7 months)
-- Verify tool additions/removals (token optimization strategy may affect tools)
-- Monitor Research Skill updates for prompt improvements

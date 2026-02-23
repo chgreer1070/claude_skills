@@ -1,12 +1,15 @@
-# Perplexity API Platform MCP Server
-
-**Research Date**: 2026-02-20
-**Source URL**: <https://docs.perplexity.ai/guides/mcp-server>
-**GitHub Repository**: <https://github.com/perplexityai/modelcontextprotocol>
-**npm Package**: <https://www.npmjs.com/package/@perplexity-ai/mcp-server>
-**Version at Research**: v0.8.2
-**License**: MIT
-
+---
+name: Perplexity API Platform MCP Server
+description: The official MCP server implementation from Perplexity AI provides AI assistants with real-time web search, deep research, and advanced reasoning capabilities through the Perplexity API Platform....
+license: MIT
+metadata:
+  topic: perplexity-mcp-server
+  category: mcp-ecosystem
+  source_url: https://docs.perplexity.ai/guides/mcp-server
+  github: perplexityai/modelcontextprotocol
+  version: "v0.8.2"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -421,23 +424,3 @@ export PERPLEXITY_TIMEOUT_MS=900000  # 15 minutes
 4. **Perplexity API Portal**: <https://www.perplexity.ai/account/api/group> (accessed 2026-02-20)
 5. **Perplexity Community Forum**: <https://community.perplexity.ai> (accessed 2026-02-20)
 6. **MCP Protocol Specification**: <https://modelcontextprotocol.io/> (accessed 2026-02-20)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-20 |
-| Version at Verification | v0.8.2 |
-| GitHub Stars at Verification | 1,959 |
-| npm Downloads at Verification | 29,095 (last 30 days) |
-| Next Review Recommended | 2026-05-20 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor npm for version updates: `npm view @perplexity-ai/mcp-server version`
-- Check GitHub releases for new features
-- Watch for new Sonar model announcements from Perplexity
-- Track MCP SDK compatibility updates (@modelcontextprotocol/sdk)
-- Monitor API pricing changes at Perplexity API Portal

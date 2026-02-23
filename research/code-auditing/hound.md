@@ -1,11 +1,14 @@
-# Hound - Autonomous AI Security Auditor with Knowledge Graphs
-
-**Research Date**: January 26, 2026
-**Source URL**: <https://github.com/scabench-org/hound>
-**Academic Paper**: <https://arxiv.org/abs/2510.09633>
-**Version at Research**: Commit from October 15, 2025 (no tagged releases)
-**License**: Apache 2.0
-
+---
+name: Hound - Autonomous AI Security Auditor with Knowledge Graphs
+description: Hound is a language-agnostic AI auditor that autonomously builds and refines adaptive knowledge graphs for deep, iterative code reasoning in security audits. It introduces a relation-first graph...
+license: Apache 2.0
+metadata:
+  topic: hound
+  category: code-auditing
+  source_url: https://github.com/scabench-org/hound
+  version: "Commit Oct 15, 2025"
+  verified: "2026-01-26"
+  next_review: "2026-04-26"
 ---
 
 ## Overview
@@ -293,21 +296,3 @@ cp hound/config.yaml.example hound/config.yaml
 3. **Paper Abstract**: <https://arxiv.org/abs/2510.09633> (accessed 2026-01-26)
 4. **Author Walkthrough**: <https://muellerberndt.medium.com/hunting-for-security-bugs-in-code-with-ai-agents-a-full-walkthrough-a0dc24e1adf0>
 5. **ScaBench Benchmark**: Referenced in paper as evaluation dataset
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                             |
-| ---------------------------- | --------------------------------- |
-| Last Verified                | 2026-01-26                        |
-| Version at Verification      | Commit Oct 15, 2025 (no releases) |
-| GitHub Stars at Verification | 671                               |
-| Next Review Recommended      | 2026-04-26 (3 months)             |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub for new commits and releases
-- Check for paper updates on arXiv
-- Review issues for feature announcements
-- Track star growth (671 -> goal tracking)

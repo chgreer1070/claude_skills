@@ -1,16 +1,15 @@
-# Softaworks Agent Toolkit
-
-| Field         | Value                                                    |
-| ------------- | -------------------------------------------------------- |
-| Research Date | 2026-02-20                                               |
-| Primary URL   | <https://github.com/softaworks/agent-toolkit>            |
-| GitHub        | <https://github.com/softaworks/agent-toolkit>            |
-| Installation  | `npx skills add softaworks/agent-toolkit`                |
-| Version       | Active development (last pushed 2026-02-08)              |
-| License       | MIT                                                      |
-| Author        | [@leonardocouy](https://github.com/leonardocouy)         |
-| Organization  | [Softaworks](https://github.com/softaworks)              |
-
+---
+name: Softaworks Agent Toolkit
+description: Softaworks Agent Toolkit is a curated collection of 43 skills for AI coding agents that follow the Agent Skills format. Skills are packaged instructions and scripts extending agent capabilities...
+license: MIT
+metadata:
+  topic: softaworks-agent-toolkit
+  category: skill-generation-tools
+  source_url: https://github.com/softaworks/agent-toolkit
+  github: softaworks/agent-toolkit
+  version: "Active development"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -225,34 +224,3 @@ Skills follow the [Agent Skills](https://agentskills.io/) format, ensuring porta
 | Gepetto Skill             | skills/gepetto/SKILL.md (via raw GitHub)                            | 2026-01-31 |
 
 **Research Method**: Information gathered from GitHub repository README via GitHub API raw content endpoint, GitHub API for repository metadata (stars, forks, license, dates, contributors), directory structure via GitHub contents API, and skill counting via API directory listing. Statistics verified via direct API calls on 2026-02-20.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | Active development                  |
-| Last Pushed        | 2026-02-08                          |
-| GitHub Stars       | 621 (as of 2026-02-20)              |
-| GitHub Forks       | 43 (as of 2026-02-20)               |
-| Total Skills       | 43 (as of 2026-02-20)               |
-| Contributors       | 3 (as of 2026-02-20)                |
-| Next Review Date   | 2026-05-20                          |
-
-**Review Triggers**:
-
-- GitHub stars milestone (1K, 2K)
-- Major new skill categories added
-- Plugin marketplace format changes
-- New AI agent platform support
-- Significant skill additions (10+ new skills)
-- Changes to Agent Skills format specification
-
-**Changes Since Last Review (2026-01-31)**:
-
-- Stars increased from 378 to 621 (+64%)
-- Forks increased from 17 to 43 (+153%)
-- Skills increased from 40+ to 43 (+3 skills)
-- Added Contributors metric (3 total)
-- Last pushed date updated from 2026-01-28 to 2026-02-08

@@ -1,12 +1,14 @@
-# Niteni - AI-Powered Code Review for GitLab CI Pipelines
-
-**Research Date**: 2026-02-15
-**GitLab**: <https://gitlab.com/denyherianto/niteni>
-**GitHub Mirror**: <https://github.com/denyherianto/niteni>
-**Version**: 1.0.0
-**License**: MIT
-**Primary Language**: TypeScript
-
+---
+name: Niteni - AI-Powered Code Review for GitLab CI Pipelines
+description: 'Niteni (Javanese: "to observe carefully, to pay close attention") is an AI-powered automated code review tool for GitLab CI pipelines. It uses the Google Gemini REST API to analyze merge request...'
+license: MIT
+metadata:
+  topic: niteni
+  category: developer-tools
+  source_url: https://github.com/niteni
+  version: "1.0.0"
+  verified: "2026-02-15"
+  next_review: "2026-05-15"
 ---
 
 ## Overview
@@ -260,26 +262,3 @@ npm run build
 4. **Google Gemini API Documentation** - <https://ai.google.dev/docs> (accessed 2026-02-15)
 5. **GitLab Merge Request API** - <https://docs.gitlab.com/ee/api/merge_requests.html> (accessed 2026-02-15)
 6. **GitLab Suggestion Blocks** - <https://docs.gitlab.com/ee/user/project/merge_requests/reviews/suggestions.html> (accessed 2026-02-15)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Version Documented | 1.0.0 |
-| AI Provider | Google Gemini (gemini-3-pro-preview) |
-| CI Platform | GitLab CI |
-| Node.js Requirement | >= 18.0.0 |
-| Research Date | 2026-02-15 |
-| Next Review | 2026-05-15 |
-
-### Update Triggers
-
-- Major version release or breaking API changes
-- Addition of support for AI providers beyond Gemini (Claude, GPT, etc.)
-- Addition of CI platform support beyond GitLab (GitHub Actions, Bitbucket Pipelines)
-- Significant changes to the finding severity model or suggestion format
-- Addition of runtime dependencies changing the zero-dependency profile
-- License changes from MIT
-- Community growth indicators (stars, forks, contributors) suggesting broader adoption

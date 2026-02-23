@@ -1,15 +1,14 @@
-# NotebookLM
-
-| Field         | Value                                                                                 |
-| ------------- | ------------------------------------------------------------------------------------- |
-| Research Date | 2026-01-31                                                                            |
-| Primary URL   | <https://notebooklm.google>                                                           |
-| Support       | <https://support.google.com/notebooklm>                                               |
-| Android App   | <https://play.google.com/store/apps/details?id=com.google.android.apps.labs.tailwind> |
-| iOS App       | App Store (Google NotebookLM)                                                         |
-| Version       | Android 2026.01.06 / iOS 1.21.0                                                       |
-| License       | Proprietary (Google)                                                                  |
-
+---
+name: NotebookLM
+description: NotebookLM (Google NotebookLM; LM = "Language Model") is a research and note-taking online tool developed by Google Labs that uses Google Gemini to assist users in interacting with their documents....
+license: Proprietary (Google)
+metadata:
+  topic: notebooklm
+  category: ai-research-tools
+  source_url: https://notebooklm.google
+  version: "Android 2026.01.06 / iOS 1.21.0"
+  verified: "2026-01-31"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -233,24 +232,3 @@ NotebookLM responses are grounded in user-uploaded content, reducing hallucinati
 | The Verge: Project Tailwind   | <https://www.theverge.com/2023/5/10/23719866/google-project-tailwind-ai-notebook>       | 2026-01-31 |
 
 **Research Method**: Information gathered from Wikipedia article (citing multiple primary sources), Google official blog posts, official NotebookLM website, and Google Play Store listing. Feature timeline and version numbers verified via Wikipedia citations to TechCrunch, The Verge, 9to5Google, and official Google announcements.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                                   |
-| ------------------ | --------------------------------------- |
-| Version Documented | Android 2026.01.06 / iOS 1.21.0         |
-| Last Major Feature | Infographics and Slide Decks (Nov 2025) |
-| AI Model           | Google Gemini                           |
-| Next Review Date   | 2026-05-01                              |
-
-**Review Triggers**:
-
-- New major feature release (beyond current Video/Infographic capabilities)
-- Significant pricing changes to NotebookLM Plus
-- New platform support (desktop apps, API access)
-- Integration with additional Google services
-- Changes to AI model (Gemini version updates)
-- Enterprise-specific feature announcements
-- API or developer access announcements

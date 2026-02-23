@@ -1,11 +1,15 @@
-# Browser MCP
-
-**Research Date**: 2026-02-20
-**Source URL**: <https://browsermcp.io>
-**GitHub Repository**: <https://github.com/BrowserMCP/mcp>
-**Version at Research**: v0.1.3
-**License**: Apache License 2.0
-
+---
+name: Browser MCP
+description: Browser MCP is an MCP server that connects AI applications (Claude, Cursor, VS Code, Windsurf) to the user's existing Chrome browser via a WebSocket bridge to a Chrome extension. Unlike...
+license: Apache License 2.0
+metadata:
+  topic: browsermcp-mcp
+  category: mcp-ecosystem
+  source_url: https://browsermcp.io
+  github: BrowserMCP/mcp
+  version: "v0.1.3"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -179,13 +183,3 @@ The Chrome extension must be installed separately from the Chrome Web Store. Aft
 - [npm: @browsermcp/mcp](https://www.npmjs.com/package/@browsermcp/mcp) (accessed 2026-02-20)
 - [Playwright MCP Server (upstream)](https://github.com/microsoft/playwright-mcp) (accessed 2026-02-20)
 - [GitHub API: repos/BrowserMCP/mcp](https://api.github.com/repos/BrowserMCP/mcp) (accessed 2026-02-20)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-20 |
-| Version at Verification | v0.1.3 |
-| Next Review Recommended | 2026-05-20 |

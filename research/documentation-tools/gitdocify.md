@@ -1,14 +1,14 @@
-# GitDocify
-
-| Field         | Value                                  |
-| ------------- | -------------------------------------- |
-| Research Date | 2026-01-31                             |
-| Primary URL   | <https://gitdocify.com>                |
-| Backend URL   | <https://api.gitdocify.com>            |
-| Version       | Production (SaaS)                      |
-| License       | Proprietary (commercial SaaS)          |
-| Hosting       | Vercel (frontend), Supabase (database) |
-
+---
+name: GitDocify
+description: GitDocify is a commercial SaaS tool that generates README documentation for GitHub repositories using AI. Users connect their GitHub account, select a repository (public or private depending on...
+license: Proprietary (commercial SaaS)
+metadata:
+  topic: gitdocify
+  category: documentation-tools
+  source_url: https://gitdocify.com
+  version: "Production"
+  verified: "2026-01-31"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -180,22 +180,3 @@ There is no command-line interface or self-hosted option. The service operates e
 | Main JS Bundle (config)        | <https://gitdocify.com/assets/index-DPVmzviH.js>    | 2026-01-31 |
 
 **Research Method**: Information extracted from client-side JavaScript bundles as the site is a React SPA without server-rendered content. No public documentation, GitHub repository, or press coverage was found.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                                   |
-| ------------------ | --------------------------------------- |
-| Version Documented | Production SaaS (2026-01-31)            |
-| Site Last Modified | 2025-12-06                              |
-| Service Launch     | ~2025-01-16 (Supabase project creation) |
-| Next Review Date   | 2026-05-01                              |
-
-**Review Triggers**:
-
-- Launch of "Full Documentation" feature (currently announced as "coming soon")
-- Public API release
-- Open-source components released
-- Significant pricing changes
-- Product Hunt launch or major press coverage

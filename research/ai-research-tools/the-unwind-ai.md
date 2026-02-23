@@ -1,11 +1,15 @@
-# The Unwind AI
-
-**Research Date**: 2026-02-19
-**Source URL**: <https://www.theunwindai.com>
-**GitHub Repository**: <https://github.com/Shubhamsaboo/awesome-llm-apps>
-**Version at Research**: N/A (newsletter, no versioned releases)
-**License**: Apache 2.0 (associated open-source repository)
-
+---
+name: The Unwind AI
+description: The Unwind AI is a free Beehiiv-hosted newsletter and open-source ecosystem targeting practitioners building with AI agents, RAG pipelines, and LLMs. Published by Shubham Saboo (Senior AI PM at...
+license: Apache 2.0 (associated open-source repository)
+metadata:
+  topic: the-unwind-ai
+  category: ai-research-tools
+  source_url: https://www.theunwindai.com
+  github: Shubhamsaboo/awesome-llm-apps
+  version: "N/A"
+  verified: "2026-02-19"
+  next_review: "2026-05-19"
 ---
 
 ## Overview
@@ -153,13 +157,3 @@ Individual posts: https://www.theunwindai.com/p/{slug}
 - [Shubham Saboo - GitHub Profile](https://github.com/Shubhamsaboo) (accessed 2026-02-19)
 - [Unwind AI - LinkedIn](https://www.linkedin.com/company/unwind-ai) (accessed 2026-02-19)
 - [Unwind AI - X/Twitter](https://x.com/unwind_ai_) (accessed 2026-02-19)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-19 |
-| Version at Verification | N/A (newsletter) |
-| Next Review Recommended | 2026-05-19 |

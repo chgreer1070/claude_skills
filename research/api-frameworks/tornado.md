@@ -1,18 +1,15 @@
-# Tornado
-
-| Field         | Value                                                              |
-| ------------- | ------------------------------------------------------------------ |
-| Research Date | 2026-02-05                                                         |
-| Primary URL   | <https://www.tornadoweb.org/en/stable/>                            |
-| GitHub        | <https://github.com/tornadoweb/tornado>                            |
-| PyPI          | <https://pypi.org/project/tornado/>                                |
-| Version       | 6.5.4 (latest); 6.5.0 released 2025-05-15                          |
-| License       | Apache-2.0                                                         |
-| Author        | Facebook (originally FriendFeed)                                   |
-| Mailing List  | <https://groups.google.com/forum/#!forum/python-tornado>           |
-| Stack Overflow| <https://stackoverflow.com/questions/tagged/tornado>               |
-| Chat          | <https://gitter.im/tornadoweb/tornado>                             |
-
+---
+name: Tornado
+description: Tornado is a Python web framework and asynchronous networking library, originally developed at FriendFeed (acquired by Facebook in 2009). By using non-blocking network I/O, Tornado can scale to tens...
+license: Apache-2.0
+metadata:
+  topic: tornado
+  category: api-frameworks
+  source_url: https://www.tornadoweb.org/en/stable/
+  github: tornadoweb/tornado
+  version: "6.5.4 (latest); 6.5.0 released 2025-05-15"
+  verified: "2026-02-05"
+  next_review: "2026-05-05"
 ---
 
 ## Overview
@@ -390,24 +387,3 @@ Tornado has been deployed in production at scale by major organizations:
 | User's Guide                | <https://www.tornadoweb.org/en/stable/guide.html>                  | 2026-02-05 |
 
 **Research Method**: Information gathered from official GitHub repository README, GitHub API (stars, forks, issues, contributors), PyPI metadata, official documentation, and release notes. Download statistics from PyPI Stats API.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | 6.5.4                               |
-| Release Date       | 2025-05-15 (6.5.0 base release)     |
-| GitHub Stars       | 22,437 (as of 2026-02-05)           |
-| Monthly Downloads  | 95,420,268 (as of 2026-02-05)       |
-| Next Review Date   | 2026-05-05                          |
-
-**Review Triggers**:
-
-- Major version release (7.0)
-- Significant async/asyncio integration changes
-- GitHub stars milestone (25K)
-- Breaking changes to WebSocket or HTTP APIs
-- New security features or CVE fixes
-- Python 3.14 free-threading mode stabilization

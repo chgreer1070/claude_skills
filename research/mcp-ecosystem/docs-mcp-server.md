@@ -1,12 +1,15 @@
-# Docs MCP Server (Grounded Docs) - Local Documentation Index for AI Assistants
-
-**Research Date**: January 26, 2026
-**Source URL**: <https://grounded.tools>
-**GitHub Repository**: <https://github.com/arabold/docs-mcp-server>
-**npm Package**: <https://www.npmjs.com/package/@arabold/docs-mcp-server>
-**Version at Research**: v1.36.0
-**License**: MIT
-
+---
+name: Docs MCP Server (Grounded Docs) - Local Documentation Index for AI Assistants
+description: Docs MCP Server (branded as "Grounded Docs") is an open-source MCP server that solves AI hallucinations and outdated knowledge by providing a personal, always-current documentation index. It fetches...
+license: MIT
+metadata:
+  topic: docs-mcp-server
+  category: mcp-ecosystem
+  source_url: https://grounded.tools
+  github: arabold/docs-mcp-server
+  version: "v1.36.0"
+  verified: "2026-01-26"
+  next_review: "2026-04-26"
 ---
 
 ## Overview
@@ -330,23 +333,3 @@ This fills a gap in the research directory's MCP ecosystem coverage:
 4. **Architecture Documentation**: <https://github.com/arabold/docs-mcp-server/blob/main/ARCHITECTURE.md> (accessed 2026-01-26)
 5. **Installation Guide**: <https://github.com/arabold/docs-mcp-server/blob/main/docs/setup/installation.md>
 6. **MCP Protocol Specification**: <https://modelcontextprotocol.io/>
-
----
-
-## Freshness Tracking
-
-| Field                         | Value                 |
-| ----------------------------- | --------------------- |
-| Last Verified                 | 2026-01-26            |
-| Version at Verification       | v1.36.0               |
-| GitHub Stars at Verification  | 954                   |
-| npm Downloads at Verification | Not available         |
-| Next Review Recommended       | 2026-04-26 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes
-- Check npm for new versions
-- Review changelog for breaking changes
-- Track MCP protocol compatibility updates
-- Monitor for new embedding provider support

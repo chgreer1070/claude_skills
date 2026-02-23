@@ -1,15 +1,15 @@
-# Claude Quickstarts
-
-| Field         | Value                                                                      |
-| ------------- | -------------------------------------------------------------------------- |
-| Research Date | 2026-02-19                                                                 |
-| Primary URL   | <https://github.com/anthropics/claude-quickstarts>                         |
-| GitHub        | <https://github.com/anthropics/claude-quickstarts>                         |
-| Version       | No releases; tracked via main branch commits (last push 2026-02-05)        |
-| License       | MIT                                                                        |
-| Maintainer    | Anthropic (official)                                                       |
-| Docs          | <https://docs.claude.com>                                                  |
-
+---
+name: Claude Quickstarts
+description: Claude Quickstarts is the official Anthropic repository of deployable reference applications built on the Claude API. Each project is a self-contained, runnable implementation demonstrating a...
+license: MIT
+metadata:
+  topic: claude-quickstarts
+  category: developer-tools
+  source_url: https://github.com/anthropics/claude-quickstarts
+  github: anthropics/claude-quickstarts
+  version: "No releases; tracked via main branch commits"
+  verified: "2026-02-19"
+  next_review: "2026-08-19"
 ---
 
 ## Overview
@@ -261,23 +261,3 @@ npm run dev:chat      # chat-only variant
 | GitHub API (contributors)  | `gh api repos/anthropics/claude-quickstarts/contributors?per_page=1&anon=true`  | 2026-02-19 |
 
 **Research Method**: GitHub API for repository metadata, language breakdown, and contributor count (Link header pagination). README and sub-project READMEs decoded from base64 GitHub contents API. CLAUDE.md read for development patterns.
-
----
-
-## Freshness Tracking
-
-| Field               | Value                                               |
-| ------------------- | --------------------------------------------------- |
-| Version Documented  | No versioned releases; main branch as of 2026-02-05 |
-| GitHub Stars        | 14,681 (as of 2026-02-19)                           |
-| GitHub Forks        | 2,446 (as of 2026-02-19)                            |
-| Next Review Date    | 2026-08-19                                          |
-
-**Review Triggers**:
-
-- New quickstart project added to the repository
-- Computer use tool version update (currently `computer_use_20251124`)
-- `str_replace_based_edit_tool` replaced or versioned
-- Claude Agent SDK (`claude-code-sdk`) major version change affecting autonomous-coding patterns
-- Stars exceed 20K (indicates sustained developer adoption)
-- Versioned releases introduced

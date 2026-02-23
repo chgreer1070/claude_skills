@@ -1,11 +1,15 @@
-# GitHub CLI (gh)
-
-**Research Date**: 2026-02-20
-**Source URL**: <https://cli.github.com>
-**GitHub Repository**: <https://github.com/cli/cli>
-**Version at Research**: v2.64.0
-**License**: MIT
-
+---
+name: GitHub CLI (gh)
+description: GitHub CLI (gh) is the official command-line interface for GitHub, enabling developers to manage issues, pull requests, repositories, releases, workflows, and extensions directly from the terminal....
+license: MIT
+metadata:
+  topic: github-cli
+  category: developer-tools
+  source_url: https://cli.github.com
+  github: cli/cli
+  version: "v2.64.0"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -466,13 +470,3 @@ gh run list --limit 5
 - [GitHub REST API Documentation](https://docs.github.com/en/rest) (accessed 2026-02-20)
 - [GitHub CLI Extension Development](https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions) (accessed 2026-02-20)
 - [Claude Skills Repository - gh CLI Usage](https://github.com/Jamie-BitFlight/claude_skills/blob/main/.claude/CLAUDE.md#github-cli-gh-usage) (accessed 2026-02-20)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-20 |
-| Version at Verification | v2.64.0 |
-| Next Review Recommended | 2026-05-20 |
