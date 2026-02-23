@@ -2,8 +2,8 @@
 last-updated: 2026-02-23
 last-completed: 2026-02-22
 p0-count: 0
-p1-count: 22
-p2-count: 26
+p1-count: 23
+p2-count: 30
 ideas-count: 21
 ---
 
@@ -637,6 +637,54 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 - Test text extraction: Can we pipe output or capture rendered text?
 - Compare JS rendering quality with other tools
 **Blocked on 2026-02-05**: Needs TTY (Inappropriate ioctl for device), DNS also blocked
+
+---
+
+### work-backlog-item: Implement --language and --stack routing
+
+**Source**: Session observation — SDLC layer implementation (2026-02-23)
+**Added**: 2026-02-23
+**Priority**: P2
+**Type**: Feature
+**Description**: The `--language` and `--stack` arguments are documented in work-backlog-item but not yet implemented. When provided, they should route to the appropriate language manifest and stack profile for SAM planning. Success: invoking `/work-backlog-item --language python --stack fastapi {title}` loads Python + FastAPI context. Constraint: must integrate with existing language-manifest-schema and stack-profile-schema.
+**Suggested location**: `.claude/skills/work-backlog-item/SKILL.md` and related scripts
+
+### refresh-research: Implement --layer filtering logic
+
+**Source**: Session observation — SDLC layer implementation (2026-02-23)
+**Added**: 2026-02-23
+**Priority**: P2
+**Type**: Feature
+**Description**: The `--layer` flag is documented in refresh-research but filtering logic is not implemented. When `--layer 0`, `--layer 1`, or `--layer 2` is passed, only research entries with matching layer metadata should be refreshed. Success: `/refresh-research --layer 1` processes only Layer 1 entries. Depends on research entries having `layer` metadata (already added).
+**Suggested location**: `.claude/skills/refresh-research/SKILL.md` and `knowledge-explorer.py`
+
+### ARL human-probing: Implement skill/agent
+
+**Source**: Session observation — SDLC layer implementation (2026-02-23)
+**Added**: 2026-02-23
+**Priority**: P1
+**Type**: Feature
+**Issue**: #194
+**Description**: Design exists in `arl-human-probing-design.md`; implementation is missing. Build the skill/agent that probes humans at ARL touchpoints (e.g., when agent blocks on ambiguity, when verification fails). Success: agent can invoke human-probing flow per design; groom-backlog-item integration works.
+**Suggested location**: New skill under `.claude/skills/` or `plugins/`; design at `.claude/docs/sdlc-layers/arl-meta-layer/arl-human-probing-design.md`
+
+### evaluate-sdlc-layers: Run and fix findings
+
+**Source**: Session observation — SDLC layer implementation (2026-02-23)
+**Added**: 2026-02-23
+**Priority**: P2
+**Type**: Chore
+**Description**: The evaluate-sdlc-layers skill exists with six checks (cross-refs, doc completeness, knowledge-explorer, research metadata, integration points, plan consistency). Run `/evaluate-sdlc-layers` and address any findings. Success: all checks pass with `--fix` applied where applicable.
+**Suggested location**: `.claude/skills/evaluate-sdlc-layers/SKILL.md`; run against `.claude/docs/sdlc-layers/`
+
+### SDLC layers: Cross-reference audit
+
+**Source**: Session observation — SDLC layer implementation (2026-02-23)
+**Added**: 2026-02-23
+**Priority**: P2
+**Type**: Chore
+**Description**: Verify all cross-references in SDLC layer docs resolve. Paths in layer-0, layer-1, layer-2, and ARL docs may point to files that moved or were renamed. Success: no broken links; all `[text](path)` resolve.
+**Suggested location**: `.claude/docs/sdlc-layers/` and `plugins/development-harness/docs/layer-2/`
 
 ---
 

@@ -461,9 +461,15 @@ def issue_create(
                 err=True,
             )
 
-    issue = repository.create_issue(
-        title=title, body=body, labels=label_objects, milestone=milestone_obj
-    )
+    create_kwargs: dict[str, Any] = {
+        "title": title,
+        "body": body or "",
+        "labels": label_objects,
+    }
+    if milestone_obj is not None:
+        create_kwargs["milestone"] = milestone_obj
+
+    issue = repository.create_issue(**create_kwargs)
     typer.echo(f"Created issue #{issue.number}: {issue.title}")
     typer.echo(f"  URL: {issue.html_url}")
 
