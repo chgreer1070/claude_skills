@@ -1,0 +1,48 @@
+name: Backlog sync
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".claude/BACKLOG.md"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync P0/P1 to GitHub
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
+          cache-python: true
+
+      - name: Sync backlog to GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          uv run .claude/skills/gh/scripts/sync_backlog_to_github.py -R Jamie-BitFlight/claude_skills
+
+      - name: Commit and push if updated
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet .claude/BACKLOG.md; then
+            echo "No changes to commit."
+          else
+            git add .claude/BACKLOG.md
+            git commit -m "chore(backlog): sync P0/P1 items to GitHub issues [skip ci]"
+            git push
+          fi
