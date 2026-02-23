@@ -491,13 +491,12 @@ Refs: 676104e, a215868
 
 **Commit message validation and enforcement:**
 
-- `commitlint` - Configure and use commitlint for commit message validation
-- `pre-commit` - Set up pre-commit hooks for automated validation
+- `commitlint` - Configure and use commitlint for commit message validation. Activate: `Skill(command: "commitlint:commitlint")`
+- `pre-commit` - Set up pre-commit hooks for automated validation. Activate: `Skill(command: "python3-development:pre-commit")`
 
 **Git workflow tools:**
 
-- `git-commit-helper` - Generate commit messages from git diffs
-- `semantic-release` - Automate versioning and changelog generation
+- `commit-staged` - Generate conventional commit messages from diffs. Activate: `Skill(command: "commit-staged")`
 
 ## References
 

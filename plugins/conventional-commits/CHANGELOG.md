@@ -24,8 +24,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 
 - Created comprehensive README.md with features, installation, and usage
-- Added docs/examples.md with 15 real-world usage scenarios
 - Included references to Conventional Commits v1.0.0 specification
 - Added tool integration guides for commitlint, semantic-release, and git-cliff
-
-[1.0.0]: https://github.com/owner/conventional-commits/releases/tag/v1.0.0

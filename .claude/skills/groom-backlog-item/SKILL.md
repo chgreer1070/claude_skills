@@ -1,12 +1,12 @@
 ---
 name: groom-backlog-item
-description: Groom backlog items — trigger /groom-backlog-item <title|section|all> — fact-checks item claims against primary sources, runs RT-ICA per item, then spawns @backlog-item-groomer agents to discover research, skills, agents, prior work, and dependencies. Produces context manifests and grooming report. Use when preparing backlog items for planning or execution.
+description: Groom backlog items — trigger /groom-backlog-item <title|section|all> — fact-checks item claims against primary sources, runs RT-ICA per item, then spawns @backlog-item-groomer agents. Writes groomed content into per-item files in .claude/backlog/. Use when preparing backlog items for planning or execution.
 argument-hint: <item-title-or-section-or-all>
 user-invocable: true
 ---
 # Groom Backlog Item
 
-Orchestrate backlog grooming: parse arguments, assess information completeness via RT-ICA, spawn discovery agents, produce report.
+Orchestrate backlog grooming: parse arguments, assess information completeness via RT-ICA, spawn discovery agents, write groomed content into per-item files.
 
 ## Arguments
 
@@ -86,51 +86,41 @@ Pass the RT-ICA summary and fact-check summary to the groomer alongside item det
 ```text
 Task(
   subagent_type: "general-purpose",
-  prompt: "Act as @backlog-item-groomer. Groom this item:\n{item details}\n\nRT-ICA Assessment:\n{rt-ica summary}\n\nFact-Check Verdicts:\n{fact-check summary}",
+  prompt: "Act as @backlog-item-groomer. Groom this item and output groomed content in the standard template format (see .claude/docs/backlog-item-groomed-schema.md). Output only the groomed body (no ## Groomed header).\n\nItem:\n{item details}\n\nRT-ICA Assessment:\n{rt-ica summary}\n\nFact-Check Verdicts:\n{fact-check summary}",
   model: "haiku"
 )
 ```
 
-### Step 6: Collect and Report
+### Step 6: Write Groomed Content to Item Files
 
-Gather context manifests. Produce grooming report:
+For each item, the groomer agent returns groomed content in the standard template format. Write it into the per-item file:
+
+1. **Write groomed content to a temp file** (e.g., `.claude/backlog/.groomed-{slug}.md` or system temp)
+2. **Invoke backlog script**:
+   ```text
+   backlog groom "{item title}" --groomed-file {temp_path}
+   ```
+   Or, if piping from agent output:
+   ```text
+   {groomed_content} | backlog groom "{item title}"
+   ```
+3. **Delete temp file** after successful write (if used)
+
+The backlog script updates `.claude/backlog/{priority}-{slug}.md` with a `## Groomed (YYYY-MM-DD)` section and sets `groomed` in frontmatter.
+
+**Bulk grooming (multiple items)** — when grooming 2+ items, optionally persist a session summary to `.claude/grooming-sessions/{YYYY-MM-DD}.md`:
 
 ```markdown
-# Backlog Grooming Report
+# Grooming Session {YYYY-MM-DD}
 
-**Date**: {YYYY-MM-DD}
 **Items groomed**: {count}
 **Arguments**: {original arguments}
 
 ## Summary
 
-| Item | Fact-Check | RT-ICA | Research Found | Skills | Agents | Blockers |
-|------|------------|--------|----------------|--------|--------|----------|
-| {title} | {V}/{R}/{I} | {APPROVED/BLOCKED} | {count} | {count} | {count} | {count} |
-
-## Individual Manifests
-
-### {Item title}
-{manifest from agent}
-
-## Fact-Check Results
-
-### Refuted Claims
-- {item title}: {claim text} — REFUTED by {source URL}
-
-### Inconclusive Claims
-- {item title}: {claim text} — INCONCLUSIVE: {what additional verification is needed}
-
-### Verified Claims
-- {item title}: {count} claims verified against primary sources
-
-## RT-ICA Results
-
-### BLOCKED Items
-- {item title}: {list of missing inputs, including any from refuted claims}
-
-### APPROVED Items
-- {item title}: {count} conditions verified
+| Item | Fact-Check | RT-ICA | Written |
+|------|------------|--------|---------|
+| {title} | {V}/{R}/{I} | {APPROVED/BLOCKED} | ✓ |
 
 ## Cross-Item Findings
 
@@ -141,10 +131,10 @@ Gather context manifests. Produce grooming report:
 - {items that could be worked together}
 
 ### Research Gaps
-- {topics needing research — methodology: [stateless-agent-methodology](https://github.com/bitflight-devops/stateless-agent-methodology)}
+- {topics needing research}
 ```
 
-If grooming multiple items, offer to save report to `.claude/grooming-reports/grooming-{YYYY-MM-DD}.md`.
+Per-item groomed content lives in each item file; this session file holds only metadata and cross-item findings.
 
 ## Example Invocations
 
@@ -160,5 +150,5 @@ If grooming multiple items, offer to save report to `.claude/grooming-reports/gr
 - Fact-check verdicts passed into RT-ICA conditions (REFUTED → MISSING)
 - RT-ICA summary included for each item
 - Groomer agent(s) received RT-ICA context and fact-check verdicts
-- Report contains Fact-Check Results section and RT-ICA Results section
-- Cross-item findings present (if multiple items groomed)
+- Groomed content written to each item file via `backlog groom` or `backlog update --groomed`
+- Bulk session summary optionally saved to `.claude/grooming-sessions/{date}.md` when grooming multiple items

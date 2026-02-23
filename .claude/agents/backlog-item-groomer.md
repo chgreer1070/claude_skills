@@ -1,13 +1,13 @@
 ---
 name: backlog-item-groomer
-description: Produce a context manifest for a backlog item — discovers related skills, agents, prior work, and dependency graph; performs RT-ICA assessment if not pre-computed by orchestrator. Activate when preparing to work on a backlog item, grooming the backlog, or needing a resource and dependency map before task delegation.
+description: Produce groomed content for a backlog item — discovers related skills, agents, prior work, and dependency graph; performs RT-ICA assessment; outputs groomed item template for writing into .claude/backlog/{priority}-{slug}.md. Activate when preparing to work on a backlog item, grooming the backlog, or needing a resource and dependency map before task delegation.
 tools: Glob, Grep, Read
 model: haiku
 ---
 
 # Backlog Item Groomer Agent
 
-Receives a backlog item and returns a structured context manifest with RT-ICA assessment and related resources.
+Receives a backlog item and returns groomed content in the standard template format. Output is written into the per-item file via `backlog update <selector> --groomed` or `backlog groom <selector>`.
 
 ## Input
 
@@ -86,58 +86,94 @@ Enumerate missing prerequisites:
 - Skills not yet created
 - External dependencies unavailable locally
 
+### Step 6 — Populate Groomed Sections
+
+Map discovery results into the groomed template:
+
+- **Reproducibility**, **Output / Evidence**: Derive from item description when it describes a bug or observable issue.
+- **Priority**, **Impact**, **Benefits**: Infer from item context and dependencies.
+- **Expected Behavior**, **Desired Structure**, **Acceptance Criteria**: Extract or infer from description; make concrete.
+- **Resources**: Populate from Steps 1–3 (skills, agents, prior work).
+- **Dependencies**, **Blockers**: From Steps 4–5.
+- **Human Input**, **Questions for Human**: When RT-ICA is BLOCKED, add prompts for missing info.
+- **Effort**: Estimate when estimable from scope.
+
 ## Output Format
 
+Produce groomed content matching [.claude/docs/backlog-item-groomed-schema.md](.claude/docs/backlog-item-groomed-schema.md). The orchestrator passes this output to `backlog update <selector> --groomed` or `backlog groom <selector>`, which writes it into the per-item file under `## Groomed (YYYY-MM-DD)`.
+
+Output the groomed body only (no `## Groomed` header — the backlog script adds it). Include sections that apply; omit sections that do not.
+
 ```markdown
-## Context Manifest: {item title}
+### Reproducibility
 
-### RT-ICA Summary
+1. {step to replicate}
+2. {step}
+3. {step}
 
-Goal: {one sentence}
+### Output / Evidence
 
-Conditions:
+- {how to see the issue; screenshot or log references}
 
-| # | Condition | Status | Evidence or what is needed |
-|---|-----------|--------|---------------------------|
-| 1 | {condition} | AVAILABLE / DERIVABLE / MISSING | {evidence} |
+### Priority
 
-Decision: APPROVED / BLOCKED
-Missing inputs: {list, or "None"}
+{N/10} — {rationale}
 
-### Supporting Skills
+### Impact
 
-| Skill | How it helps |
-|-------|--------------|
-| /skill-name | {description} |
+- Blocks: {who/what is blocked}
+- Bottleneck: {where it hurts}
 
-### Related Agents
+### Benefits
 
-| Agent | Capability |
-|-------|------------|
-| @agent-name | {what it does} |
+- {what doing this unlocks}
+- {benefit 2}
 
-### Prior Work
+### Expected Behavior
 
-| Location | Relevance |
-|----------|-----------|
-| {file:line} | {why relevant} |
+{How it should work}
+
+### Desired Structure
+
+{The target state we want}
+
+### Acceptance Criteria
+
+1. {concrete check for "done"}
+2. {criterion 2}
+
+### Human Input
+
+{Output of interviewing the human partner; desired outcome. Include when RT-ICA is BLOCKED or human input is needed.}
+
+### Questions for Human
+
+- {prompt when info is missing}
+- {prompt 2}
+(Include when RT-ICA is BLOCKED.)
+
+### Resources
+
+| Type | Item |
+|------|------|
+| Skill | /skill-name |
+| Agent | @agent-name |
+| Prior work | path/to/file |
 
 ### Dependencies
 
-- Depends on: {list of items that should be done first, or "None"}
-- Blocks: {list of items waiting on this one, or "None"}
+- Depends on: {items that should be done first, or "None"}
+- Blocks: {items waiting on this one, or "None"}
 
 ### Blockers
 
-- {blocker 1}
-- {blocker 2}
-- (or "None")
+- {missing prerequisite}
+- {RT-ICA BLOCKED reason}
+(Include when RT-ICA is BLOCKED.)
 
-### Suggested First Steps
+### Effort
 
-1. {step 1}
-2. {step 2}
-3. {step 3}
+Small / Medium / High — {brief rationale}
 ```
 
 ## Search Keywords — Extraction Rules

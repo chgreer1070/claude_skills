@@ -89,9 +89,9 @@ Dispatch based on `$0` (the first argument word) before executing any step:
    uv run .claude/skills/backlog/scripts/backlog.py list --format json --with-status -R Jamie-BitFlight/claude_skills
    ```
 
-   Parse the JSON output. Each entry has `section`, `title`, `issue`, `plan`, `status`, `milestone`.
+   Parse the JSON output. Each entry has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
 
-2. For items without `issue`, check for grooming report in `.claude/grooming-reports/` (groomed)
+2. **Groomed** = item has `groomed: true` in JSON, or `## Groomed` section in its per-item file (`.claude/backlog/{priority}-{slug}.md`). Read the item file; if groomed sections present, use them.
 
 3. Present a numbered list. Use these status indicators in user-visible output only:
 
@@ -127,7 +127,7 @@ Dispatch based on `$0` (the first argument word) before executing any step:
    - `[number]` — use that item's title as the working title and proceed to Step 1
    - `G [number]` — invoke `Skill(skill="groom-backlog-item", args="{item title}")` then re-display the list
    - `G all` — invoke `Skill(skill="groom-backlog-item", args="all")` then re-display the list
-   - `D [number]` — display the full item description, research_first field, and grooming manifest if it exists in `.claude/grooming-reports/`, then re-display the list
+   - `D [number]` — display the full item description, research_first field, and groomed content (if present in the item file under `## Groomed`), then re-display the list
    - `C [number]` — proceed to Step 9 (close path) with that item's title
    - `R [number]` — proceed to Step 9 (resolve path) with that item's title
 
@@ -206,22 +206,22 @@ Then stop.
 
 <groom_check>
 
-1. Search `.claude/grooming-reports/` for files whose content references the item title (use Grep)
+1. **Check if item is groomed**: For index format, read the per-item file (from `file_path` in list JSON, or locate via `{priority}-{slug}.md` in `.claude/backlog/`). If the file has `groomed` in frontmatter or `## Groomed` section in body, the item is groomed — use that content.
 2. Search conversation context for a recent `groom-backlog-item` output matching this item.
 
-If no grooming report exists:
+If no groomed content exists in the item file:
 
 ```text
 Skill(command: "groom-backlog-item", args: "{item title}")
 ```
 
-Capture the grooming output — context manifest with Related Research, Supporting Skills, Related Agents, Prior Work, Dependencies, Blockers, Suggested First Steps.
+The groom skill writes groomed content into the per-item file. Capture the groomed output (Reproducibility, Resources, Dependencies, Blockers, etc.) for use in the feature request.
 </groom_check>
 
 ### Step 4: RT-ICA Checkpoint
 
 <rtica_gate>
-Before composing the feature request, verify the grooming context manifest contains an RT-ICA summary. If absent, perform RT-ICA now:
+Before composing the feature request, verify the groomed content (from item file or groom-backlog-item output) contains an RT-ICA summary. If absent, perform RT-ICA now:
 
 1. **Goal statement** — What completing this item achieves.
 2. **Reverse prerequisites** — Conditions required for success (enumerate each).
@@ -596,9 +596,9 @@ Loading GitHub Issue #131...
   State:     open
 
 Matched BACKLOG.md item for additional context: ✓
-No grooming manifest found. Running groom-backlog-item first...
+No groomed content in item file. Running groom-backlog-item first...
 
-[grooming output]
+[groomed content written to item file]
 
 RT-ICA: APPROVED — all conditions available.
 Setting status:in-progress on issue #131...
@@ -622,9 +622,9 @@ Next steps:
 > /work-backlog-item Error Recovery
 
 Found: "SAM: Error Recovery / Rollback Procedures" (P1)
-No grooming manifest found. Running groom-backlog-item first...
+No groomed content in item file. Running groom-backlog-item first...
 
-[grooming output]
+[groomed content written to item file]
 
 RT-ICA: APPROVED — all conditions available.
 Composing feature request...
