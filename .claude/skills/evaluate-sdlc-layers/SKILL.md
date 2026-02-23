@@ -126,6 +126,12 @@ After evaluation:
 
 ---
 
+## Experiments
+
+Flow experiments and learnings live in [sam-flow-experiments](https://github.com/Jamie-BitFlight/sam-flow-experiments). Clone via SSH: `git clone git@github.com:Jamie-BitFlight/sam-flow-experiments.git`. When iterating, consider running experiments against concept fixtures to validate changes.
+
+---
+
 ## References
 
 - [.claude/docs/sdlc-layers/](../docs/sdlc-layers/)

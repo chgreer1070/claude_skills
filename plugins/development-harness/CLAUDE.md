@@ -232,5 +232,6 @@ This harness implements the **SDLC Layer Separation Architecture**. Layer 0 = fr
 ## Sources
 
 - SAM methodology: <https://github.com/bitflight-devops/stateless-agent-methodology>
+- Flow experiments & learnings: <https://github.com/Jamie-BitFlight/sam-flow-experiments>
 - ARL skill: `plugins/plugin-creator/skills/arl/`
 - RT-ICA skill: `plugins/python3-development/skills/planner-rt-ica/`

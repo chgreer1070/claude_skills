@@ -58,6 +58,12 @@ Use the `evaluate-sdlc-layers` skill to validate and iterate on this implementat
 
 ---
 
+## Experiments & Learnings
+
+Flow experiments run in [sam-flow-experiments](https://github.com/Jamie-BitFlight/sam-flow-experiments). Clone via SSH: `git clone git@github.com:Jamie-BitFlight/sam-flow-experiments.git`. Each experiment tests orchestrations, prompts, and task handoffs against concept fixtures from stateless-agent-methodology. Findings feed back into layer docs, skills, and the ARL Observation Layer.
+
+---
+
 ## References
 
 - [SAM definition](../skills/work-backlog-item/references/sam-definition.md)

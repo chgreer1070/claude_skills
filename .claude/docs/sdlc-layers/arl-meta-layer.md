@@ -41,6 +41,12 @@ Design: [arl-human-probing-design.md](./arl-human-probing-design.md) — trigger
 
 ---
 
+## Experiments & Learnings
+
+Flow experiments run in [sam-flow-experiments](https://github.com/Jamie-BitFlight/sam-flow-experiments). Learnings from experiments feed back into ARL improvements, skill instructions, and layer docs.
+
+---
+
 ## Canonical Provenance
 
 [PROVENANCE.md](../../../stateless-agent-methodology/research/arl/PROVENANCE.md) — HOOTL, ARL, agentskill-kaizen; relationship triangle; author design intent.

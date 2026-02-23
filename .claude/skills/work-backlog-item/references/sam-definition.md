@@ -6,7 +6,7 @@
 
 **Core insight**: Claude is a pure function. Input: complete context (task file with all answers). Output: verified result. No side effects: fresh context each time. No memory: everything externalized to artifact files.
 
-The **canonical SAM specification** lives in the [bitflight-devops/stateless-agent-methodology](https://github.com/bitflight-devops/stateless-agent-methodology) repository. The `work-backlog-item` skill and `development-harness` plugin in claude_skills implement SAM patterns for backlog-driven feature work. This file is the self-contained SAM definition for use within this repo.
+The **canonical SAM specification** lives in the [bitflight-devops/stateless-agent-methodology](https://github.com/bitflight-devops/stateless-agent-methodology) repository. The `work-backlog-item` skill and `development-harness` plugin in claude_skills implement SAM patterns for backlog-driven feature work. This file is the self-contained SAM definition for use within this repo. Flow experiments and learnings live in [sam-flow-experiments](https://github.com/Jamie-BitFlight/sam-flow-experiments).
 
 ---
 
