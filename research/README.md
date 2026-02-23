@@ -55,7 +55,8 @@ research/
 │   └── pilot.md                       # Autonomous development pipeline wrapping Claude Code CLI (BSL 1.1)
 ├── context-management/                # Memory, context window, and RAG tools
 │   ├── claude-mem.md                  # Persistent memory compression for Claude Code (15K+ stars)
-│   └── local-memory.md               # Persistent memory infrastructure for AI agents (MCP + REST + CLI)
+│   ├── local-memory.md               # Persistent memory infrastructure for AI agents (MCP + REST + CLI)
+│   └── sourcesyncai.md               # Managed RAG platform with auto-syncing connectors and hybrid search
 ├── data-infrastructure/               # Real-time data platforms for analytics
 │   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
 ├── documentation-tools/                # Architecture documentation and living docs
@@ -720,6 +721,7 @@ Memory systems, context window optimization tools, and RAG solutions for maintai
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------ |
 | [claude-mem.md](./context-management/claude-mem.md)       | Claude-Mem - persistent memory compression plugin for Claude Code with 4 MCP tools and progressive disclosure                  | 2026-01-31   |
 | [local-memory.md](./context-management/local-memory.md)   | Local Memory - persistent memory infrastructure with MCP, REST API, CLI, embedded Qdrant, and knowledge evolution (L0-L3)      | 2026-02-07   |
+| [sourcesyncai.md](./context-management/sourcesyncai.md)   | SourceSync.ai - managed RAG platform with 15+ auto-syncing connectors, hybrid search, BYOC storage, and MCP integration       | 2026-02-23   |
 
 **Key Topics**:
 
