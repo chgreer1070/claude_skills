@@ -52,7 +52,8 @@ research/
 │   └── the-unwind-ai.md              # AI builder newsletter with 95K+ star open-source companion repo
 ├── coding-agents/                     # Autonomous AI coding agent platforms
 │   ├── openhands.md                   # Open platform for cloud coding agents (67K+ stars)
-│   └── pilot.md                       # Autonomous development pipeline wrapping Claude Code CLI (BSL 1.1)
+│   ├── pilot.md                       # Autonomous development pipeline wrapping Claude Code CLI (BSL 1.1)
+│   └── tembo.md                       # Cloud AI coding agent orchestration (Claude Code, Codex, Cursor, Amp, OpenCode)
 ├── context-management/                # Memory, context window, and RAG tools
 │   ├── claude-mem.md                  # Persistent memory compression for Claude Code (15K+ stars)
 │   ├── local-memory.md               # Persistent memory infrastructure for AI agents (MCP + REST + CLI)
@@ -655,6 +656,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 | [cline.md](./coding-agents/cline.md)         | Cline - open-source autonomous coding agent (VS Code + CLI) with human-in-the-loop approvals, multi-provider LLM support, and enterprise governance (Apache-2.0) | 2026-02-23   |
 | [openhands.md](./coding-agents/openhands.md) | OpenHands - open platform for cloud coding agents with 77.6% SWE-bench score, SDK, CLI, and cloud | 2026-01-26   |
 | [pilot.md](./coding-agents/pilot.md)         | Pilot - autonomous development pipeline wrapping Claude Code CLI with ticket-to-PR automation (BSL 1.1) | 2026-02-19   |
+| [tembo.md](./coding-agents/tembo.md)         | Tembo - cloud AI coding agent orchestration platform (Claude Code, Codex, Cursor, Amp, OpenCode) with multi-repo PRs, Sentry/Linear/Jira/Slack integrations, and event-driven automations | 2026-02-23   |
 
 **Key Topics**:
 
@@ -677,6 +679,10 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 - Multi-provider LLM support with bring-your-own-key model
 - MCP extensibility with custom tools and data sources
 - VS Code extension + CLI for headless/CI-CD workflows
+- Cloud-hosted agent orchestration with event-driven automations
+- Multi-repository PR generation in a single task
+- Agent-agnostic backend (Claude Code, Codex, Cursor, Amp, OpenCode)
+- Sentry integration for automatic error-to-PR workflows
 
 ---
 
