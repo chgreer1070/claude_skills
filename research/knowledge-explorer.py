@@ -25,7 +25,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from io import StringIO
 from pathlib import Path
 from typing import Annotated, Any, Literal, cast
@@ -272,7 +272,7 @@ class KBEntry:
 
     def __post_init__(self) -> None:
         """Compute derived fields."""
-        self.is_overdue = self.next_review < date.today()
+        self.is_overdue = self.next_review < datetime.now(tz=UTC).date()
 
 
 @dataclass
@@ -448,7 +448,7 @@ def _build_readme_row(entry: KBEntry) -> str:
     Returns:
         Markdown table row string.
     """
-    today_iso = date.today().isoformat()
+    today_iso = datetime.now(tz=UTC).date().isoformat()
     summary = _extract_first_paragraph(entry.body) or entry.name
     if len(summary) > _README_SUMMARY_MAX_LEN:
         summary = summary[: _README_SUMMARY_MAX_LEN - 1] + "\u2026"
@@ -649,7 +649,7 @@ def _parse_research_date(value: str) -> date:
     except ValueError:
         pass
     try:
-        return datetime.strptime(value, "%B %d, %Y").date()
+        return datetime.strptime(value, "%B %d, %Y").replace(tzinfo=UTC).date()
     except ValueError:
         pass
     raise ParseError(
@@ -1231,7 +1231,7 @@ def build_draft(repo_slug: str, meta: GitHubMetadata, category: str) -> KBEntry:
         Draft KBEntry with the provided category.
     """
     topic_slug = re.sub(r"[^a-z0-9-]", "-", meta.name.lower()).strip("-")
-    today = date.today()
+    today = datetime.now(tz=UTC).date()
 
     # Build description from GitHub repo description (max 1024 chars)
     desc_max = 1024
@@ -1609,7 +1609,7 @@ def list_kb() -> None:
 @app.command("show-template")
 def show_template() -> None:
     """Print the skill-spec compatible frontmatter template with body structure."""
-    today = date.today()
+    today = datetime.now(tz=UTC).date()
     next_review = today + timedelta(days=_DEFAULT_REVIEW_DAYS)
     cats_comment = f"# one of: {', '.join(sorted(VALID_CATEGORIES))}"
     template = (
@@ -1783,7 +1783,7 @@ def update_append(
             console.print("[yellow]No update content provided. Aborted.[/yellow]")
             raise typer.Exit(code=0)
 
-        today = date.today()
+        today = datetime.now(tz=UTC).date()
         update_block = format_update_block(update_content, today)
 
         # Update frontmatter dates
