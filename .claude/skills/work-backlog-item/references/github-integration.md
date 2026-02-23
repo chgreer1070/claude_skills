@@ -30,93 +30,38 @@ After extracting item fields (Step 2), check for an existing linked issue:
 
 ## Step 2.5a: Create GitHub Issue
 
-<github_create_issue>
+Invoke the backlog script:
 
-1. Construct the issue body from the story template:
+```bash
+uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --create-issue -R Jamie-BitFlight/claude_skills
+```
 
-   ```markdown
-   ## Story
-
-   As a **developer**, I want **{description goal}** so that **{benefit}**.
-
-   ## Description
-
-   {description text from BACKLOG.md}
-
-   ## Acceptance Criteria
-
-   - [ ] {derive from description — 2-3 concrete criteria}
-
-   ## Context
-
-   - **Source**: {source}
-   - **Priority**: {P0 / P1 / P2 / Idea}
-   - **Added**: {added date}
-   - **Research questions**: {research_first text, or "None"}
-   ```
-
-2. Run:
-
-   ```bash
-   gh issue create -R Jamie-BitFlight/claude_skills \
-     --title "{conventional-commits-type}: {item title}" \
-     --body "{constructed body}" \
-     --label "priority:{p0|p1|p2|idea}" \
-     --label "type:{feature|bug|refactor|docs|chore}" \
-     --label "status:needs-grooming"
-   ```
-
-   Type label inference:
-   - Bug descriptions → `type:bug`
-   - "add", "create", "implement" → `type:feature`
-   - "fix", "correct", "remove hardcoded" → `type:bug` or `type:refactor`
-   - "document", "update SKILL.md" → `type:docs`
-
-3. Capture the issue number from the output URL.
-
-4. Write back to BACKLOG.md: add `**Issue**: #N` field to the matched item.
-
-5. If a milestone exists in the repo, ask: "Add to a milestone?" — optionally assign.
-
-</github_create_issue>
+The script creates the issue and writes `**Issue**: #N` back to BACKLOG.md.
 
 ## Step 2.7: Set In-Progress Label
 
-<github_in_progress>
+Invoke the backlog script:
 
-When `$ARGUMENTS` is a title substring (active work mode, not browser mode):
+```bash
+uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --status in-progress -R Jamie-BitFlight/claude_skills
+```
 
-If the item has a linked issue (`**Issue**: #N`) and is in a milestone, use the Python script:
+If the item is in a milestone with other issues, also run `milestone start`:
 
 ```bash
 uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
   --number {milestone_number} --repo Jamie-BitFlight/claude_skills
 ```
 
-If the item has a linked issue but no milestone, edit only that issue:
+## Step 9: Close — backlog script
+
+Invoke the backlog script (replaces direct BACKLOG write + gh issue close):
 
 ```bash
-gh issue edit {issue_number} -R Jamie-BitFlight/claude_skills \
-  --add-label "status:in-progress" \
-  --remove-label "status:needs-grooming"
+uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --plan "{plan path}" --checklist-pass -R Jamie-BitFlight/claude_skills
 ```
 
-</github_in_progress>
-
-## Step 9 Extension: Close GitHub Issue
-
-<github_close_issue>
-
-After writing the closing record to BACKLOG.md (Step 9e), if the item has `**Issue**: #N`:
-
-```bash
-gh issue close {issue_number} -R Jamie-BitFlight/claude_skills \
-  --comment "Completed. Checklist {checked}/{total} — PASS. Plan: {plan file path}"
-```
-
-If the item has no `**Issue**:` field, skip silently.
-
-</github_close_issue>
+The script writes the closing record to BACKLOG.md and closes the GitHub issue.
 
 ## setup-github Command
 

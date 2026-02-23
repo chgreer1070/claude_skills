@@ -155,30 +155,32 @@ If research questions were embedded in the description (lines starting with `?` 
 **Research first**: {extracted questions}
 ```
 
-### Step 5: Write to BACKLOG.md
+### Step 5: Write to BACKLOG.md via backlog script
 
-Read `.claude/BACKLOG.md`.
+Build the command. Base:
 
-Locate the correct section heading:
+```bash
+uv run .claude/skills/backlog/scripts/backlog.py add \
+  --title "{title}" \
+  --priority "{priority}" \
+  --description "{description}" \
+  --source "{source}" \
+  --type "{type}" \
+  -R Jamie-BitFlight/claude_skills
+```
 
-- P0 → `## P0 - Must Have`
-- P1 → `## P1 - Should Have`
-- P2 → `## P2 - Nice to Have`
-- Idea → `## Ideas`
+- If research_first is non-empty: append `--research-first "{research_first}"`
 
-Insert the item block:
+**GitHub Issue creation:**
 
-- If section contains `_(Empty)_`: replace that line with the item block.
-- Otherwise: append the item block after the last `###` item in the section (before the next `---` or `##` heading).
-
-Update the YAML frontmatter:
-
-- Increment the count field for the relevant priority (`p0-count`, `p1-count`, `p2-count`, `ideas-count`).
-- Set `last-updated` to today's date.
+- If priority is P0 or P1 and (guided/quick mode with user said Yes, or `--auto` with `--create-issue` passed): do NOT add `--no-create-issue` (script creates issue by default).
+- If priority is P2 or Idea: add `--no-create-issue`.
+- If priority is P0 or P1 and user said No (skip): add `--no-create-issue`.
+- If `$0` is `--auto` and user did not pass `--create-issue`: add `--no-create-issue`.
 
 ### Step 6: Confirm Write
 
-Report:
+The script outputs the confirmation. Report to user:
 
 ```text
 Backlog item created.
@@ -193,85 +195,17 @@ Next steps:
   Work:   /work-backlog-item {title}
 ```
 
-### Step 7: GitHub Issue (P0 and P1 only)
-
-If priority is P0 or P1, ask:
-
-```text
-Create a GitHub Issue for this item?
-  options: Yes | No (skip)
-```
-
-If Yes:
-
-Build a story-format issue body:
-
-```markdown
-## Story
-
-As a developer using this repository, I want {one-line goal derived from description}.
-
-## Description
-
-{description}
-
-## Acceptance Criteria
-
-- [ ] {inferred criterion 1 from description}
-- [ ] {inferred criterion 2 from description}
-
-## Context
-
-- Priority: {priority}
-- Type: {type}
-- Added: {date}
-- Source: {source}
-```
-
-Run:
-
-```bash
-gh issue create \
-  -R Jamie-BitFlight/claude_skills \
-  --title "{title}" \
-  --body "$(cat <<'EOF'
-{issue body}
-EOF
-)" \
-  --label "priority:{p0|p1|p2|idea}" \
-  --label "type:{feature|bug|refactor|docs|chore}" \
-  --label "status:needs-grooming"
-```
-
-Capture the returned issue number. Write `**Issue**: #{N}` back to the item in BACKLOG.md immediately after the `**Type**:` line.
-
-If `gh` is not installed, report:
-
-```text
-gh not available. Run: uv run .claude/skills/gh/scripts/setup_gh.py
-Issue creation skipped.
-```
-
-If label not found, create it on the fly:
-
-```bash
-gh label create "priority:{value}" --color "#e4e669" -R Jamie-BitFlight/claude_skills
-```
-
-then retry issue creation.
-
 ## Error Handling
 
 - Missing required field: report field name, stop.
 - Duplicate detected and user says No: stop without writing.
-- BACKLOG.md section not found: report section heading expected, stop.
-- GitHub issue creation fails: report error, write item to BACKLOG.md anyway (do not block local write).
-- `gh` not installed: skip GitHub step silently after reporting setup command.
+- backlog script fails: report error, stop.
+- GITHUB_TOKEN not set (for P0/P1 issue creation): script reports; item still written to BACKLOG.md.
 
 ## Completion Criteria
 
-- Item written to correct BACKLOG.md section
-- Frontmatter counts updated
-- `last-updated` set to today
-- GitHub Issue created and `**Issue**: #N` written back (P0/P1 only, if user confirmed)
+- backlog add invoked successfully
+- Item written to correct BACKLOG.md section (script handles)
+- Frontmatter counts updated (script handles)
+- GitHub Issue created and `**Issue**: #N` written back (P0/P1 only, if --create-issue; script handles)
 - Next-step commands shown to user

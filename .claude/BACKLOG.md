@@ -1,9 +1,9 @@
 ---
 last-updated: 2026-02-23
-last-completed: 2026-02-22
+last-completed: 2026-02-23
 p0-count: 0
 p1-count: 23
-p2-count: 30
+p2-count: 32
 ideas-count: 21
 ---
 
@@ -687,6 +687,29 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 **Suggested location**: `.claude/docs/sdlc-layers/` and `plugins/development-harness/docs/layer-2/`
 
 ---
+
+### TEST: Backlog script verification
+
+**Source**: Automated test
+**Added**: 2026-02-23
+**Priority**: P2
+**Type**: Feature
+**Description**: Smoke test for backlog.py workflow
+**Plan**: .claude/docs/TASK_FILE_FORMAT.md
+
+**Completed**: 2026-02-23
+**Status**: DONE — verified by checklist + acceptance criteria
+**Plan**: .claude/docs/TASK_FILE_FORMAT.md
+
+### TEST: Resolve verification
+
+**Source**: Automated test
+**Added**: 2026-02-23
+**Priority**: P2
+**Type**: Feature
+**Description**: Smoke test for backlog resolve
+**Resolved**: 2026-02-23 — Duplicate test item - no longer needed
+
 
 ## Ideas — MCP Servers for Plugins
 

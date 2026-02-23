@@ -222,6 +222,20 @@ Phrase "pre-existing issues not related to my changes" is a TRIGGER TO ACT, not 
 
 </pre_existing_issue_rule>
 
+### Backlog Operations
+
+<backlog_operations>
+
+**Single interface**: Use `.claude/skills/backlog/scripts/backlog.py` for all backlog and GitHub issue CRUD. Do not edit `.claude/BACKLOG.md` or create/close issues directly via `gh`.
+
+```bash
+uv run .claude/skills/backlog/scripts/backlog.py add|list|sync|close|resolve|update ...
+```
+
+Skills `create-backlog-item` and `work-backlog-item` invoke this script. See `.claude/skills/backlog/SKILL.md`.
+
+</backlog_operations>
+
 ---
 
 ## Plugin Development Workflows

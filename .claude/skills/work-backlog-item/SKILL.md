@@ -83,15 +83,15 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 
 <step0_procedure>
 
-1. Read `.claude/BACKLOG.md`. Parse all H3 headings (`### ...`) from P0, P1, P2, and Ideas sections. Record each item's priority section and title.
+1. Invoke the backlog script to list items with status:
 
-2. For each item, determine status using two sources (prefer GitHub when an `**Issue**: #N` field is present):
-   - **GitHub status** (preferred when `**Issue**: #N` exists) — fetch `status:*` label and milestone title from:
-     ```bash
-     gh issue view {issue_number} -R Jamie-BitFlight/claude_skills --json number,state,labels,milestone \
-       --jq '[.state, (.labels|map(.name)|join(",")), (.milestone.title // "—")] | @tsv'
-     ```
-   - **Local status** (fallback when no `**Issue**: #N`) — check for `**Plan**:` field (planned) or grooming report in `.claude/grooming-reports/` (groomed)
+   ```bash
+   uv run .claude/skills/backlog/scripts/backlog.py list --format json --with-status -R Jamie-BitFlight/claude_skills
+   ```
+
+   Parse the JSON output. Each entry has `section`, `title`, `issue`, `plan`, `status`, `milestone`.
+
+2. For items without `issue`, check for grooming report in `.claude/grooming-reports/` (groomed)
 
 3. Present a numbered list. Use these status indicators in user-visible output only:
 
@@ -308,20 +308,13 @@ Glob(pattern="plan/tasks-*-{slug}*")
 
 Where `{slug}` is the item title lowercased with spaces replaced by hyphens.
 
-Add a `**Plan**:` field to the backlog item in `.claude/BACKLOG.md`:
+Invoke the backlog script to add the Plan:
 
-```text
-### SAM: {item title}
-
-**Source**: {source}
-**Added**: {added date}
-**Plan**: plan/tasks-{N}-{slug}.md
-**Description**: {description}
+```bash
+uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --plan "plan/tasks-{N}-{slug}.md" -R Jamie-BitFlight/claude_skills
 ```
 
 If the item has `**Issue**: #N`, record it in the plan file header comment and include `Fixes #N` in any commit message produced during implementation.
-
-Update `last-updated:` in the BACKLOG.md YAML frontmatter to today's date.
 
 ### Step 8: Report Next Steps
 
@@ -368,25 +361,13 @@ Otherwise, read `.claude/BACKLOG.md` and search H3 headings for case-insensitive
 If operation is `resolve`:
 
 1. Use `AskUserQuestion` to ask: "Why is this item no longer applicable?" (free text)
-2. Update the matched item in `.claude/BACKLOG.md`:
+2. Invoke the backlog script:
 
-```text
-### {original title}
-
-**Source**: {source}
-**Added**: {added}
-**Resolved**: {YYYY-MM-DD}
-**Status**: RESOLVED — {user-provided reason}
-**Description**: {description}
+```bash
+uv run .claude/skills/backlog/scripts/backlog.py resolve "{title or #N}" --reason "{reason}" -R Jamie-BitFlight/claude_skills
 ```
 
-3. Update `last-updated:` in BACKLOG.md YAML frontmatter to today's date.
-4. Report:
-
-```text
-Backlog item "{title}" resolved.
-Reason: {reason}
-```
+3. Report the script output to the user.
 
 Then stop.
 
@@ -465,32 +446,21 @@ Address these gaps before closing.
 
 Then stop.
 
-#### 9e: Write closing record
+#### 9e: Invoke backlog close
 
-6. Update the matched item in `.claude/BACKLOG.md`:
+6. Invoke the backlog script (script writes to BACKLOG.md and closes GitHub issue):
 
-```text
-### {original title}
-
-**Source**: {source}
-**Added**: {added}
-**Completed**: {YYYY-MM-DD}
-**Status**: DONE — verified by checklist ({checked}/{total}) + acceptance criteria check
-**Plan**: {plan file path}
-**Description**: {description}
+```bash
+uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --plan "{plan file path}" --checklist-pass -R Jamie-BitFlight/claude_skills
 ```
 
-7. Update `last-updated:` and `last-completed:` in BACKLOG.md YAML frontmatter to today's date.
+If invoked as `close #N`, use `#N` as the selector:
 
-8. Report:
-
-```text
-Backlog item "{title}" closed.
-
-- Checklist: {checked}/{total} tasks complete
-- Acceptance criteria: PASS
-- Status written to BACKLOG.md
+```bash
+uv run .claude/skills/backlog/scripts/backlog.py close "#{N}" --plan "{plan file path}" --checklist-pass -R Jamie-BitFlight/claude_skills
 ```
+
+7. Report the script output to the user.
 
 </step9_procedure>
 
@@ -544,52 +514,38 @@ After Step 2, check for `**Issue**: #N` field in the matched item.
 
 ### Step 2.5a: Create GitHub Issue
 
-Build story-format body (Story / Description / Acceptance Criteria / Context sections). Use the Python script to create the issue with the correct labels:
+Invoke the backlog script:
 
 ```bash
-uv run .claude/skills/gh/scripts/github_project_setup.py issue create \
-  --repo Jamie-BitFlight/claude_skills \
-  --title "{conventional-commits-type}: {item title}" \
-  --body "{story body}" \
-  --priority-label "priority:{p0|p1|p2|idea}" \
-  --type-label "type:{feature|bug|refactor|docs|chore}" \
-  --milestone {milestone_number}
+uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --create-issue -R Jamie-BitFlight/claude_skills
 ```
 
-Capture the issue number from output and write `**Issue**: #N` back to BACKLOG.md.
+The script creates the issue and writes `**Issue**: #N` back to BACKLOG.md.
 
 ### Step 2.7: Set In-Progress Label
 
-If the item has `**Issue**: #N`, transition the issue to in-progress:
+If the item has `**Issue**: #N`, invoke the backlog script:
+
+```bash
+uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --status in-progress -R Jamie-BitFlight/claude_skills
+```
+
+If the item is in a milestone with other issues, also run `milestone start` for the milestone:
 
 ```bash
 uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
   --number {milestone_number} --repo Jamie-BitFlight/claude_skills
 ```
 
-If no milestone is assigned, transition only the single issue's label directly:
+### Step 9: Close — Use backlog script
+
+After verifying checklist (9a–9d) and acceptance criteria (9d) PASS, invoke the backlog script instead of writing to BACKLOG.md directly:
 
 ```bash
-gh issue edit {issue_number} -R Jamie-BitFlight/claude_skills \
-  --add-label "status:in-progress" \
-  --remove-label "status:needs-grooming"
+uv run .claude/skills/backlog/scripts/backlog.py close "{title or #N}" --plan "{plan path}" --checklist-pass -R Jamie-BitFlight/claude_skills
 ```
 
-### Step 9 Extension: Close GitHub Issue
-
-After writing the closing record (Step 9e), determine the issue number:
-
-- If invoked as `close #N` or `resolve #N`: use the issue number from `$1`.
-- Otherwise, check the matched BACKLOG.md item for an `**Issue**: #N` field.
-
-If an issue number is found:
-
-```bash
-gh issue close {issue_number} -R Jamie-BitFlight/claude_skills \
-  --comment "Completed. Checklist {checked}/{total} — PASS. Plan: {plan file path}"
-```
-
-If no issue number is available, skip silently.
+The script writes the closing record to BACKLOG.md and closes the GitHub issue.
 
 ### setup-github Command
 
