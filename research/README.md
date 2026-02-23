@@ -189,6 +189,7 @@ MCP servers, tools, and integrations for extending AI assistant capabilities.
 | [octocode-mcp.md](./mcp-ecosystem/octocode-mcp.md)       | Research Driven Development platform with GitHub search, LSP, and GAN-inspired adversarial flow          | 2026-01-26   |
 | [perplexity-mcp-server.md](./mcp-ecosystem/perplexity-mcp-server.md) | Perplexity API Platform MCP server with real-time web search, deep research, and reasoning via 4 Sonar tools (2K stars) | 2026-02-20   |
 | [retio-pagemap.md](./mcp-ecosystem/retio-pagemap.md)     | Retio PageMap - MCP server compressing HTML pages to 2-5K token structured maps with 95.2% task success  | 2026-02-18   |
+| [sourcesyncai-mcp.md](./mcp-ecosystem/sourcesyncai-mcp.md) | SourceSync.ai MCP Server - 28-tool MCP bridge for AI-ready knowledge bases with multi-source ingestion, hybrid search, and auto-sync | 2026-02-23   |
 
 **Key Topics**:
 
