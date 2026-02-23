@@ -57,6 +57,7 @@ research/
 │   ├── claude-mem.md                  # Persistent memory compression for Claude Code (15K+ stars)
 │   └── local-memory.md               # Persistent memory infrastructure for AI agents (MCP + REST + CLI)
 ├── data-infrastructure/               # Real-time data platforms for analytics
+│   ├── motherduck.md                  # Serverless cloud DuckDB warehouse with Dual Execution and native MCP integration (36K+ stars)
 │   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
 ├── documentation-tools/                # Architecture documentation and living docs
 │   └── living-architecture.md         # Operational flow architecture extraction with Rivière schema (79 stars)
@@ -670,12 +671,15 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 
 Real-time data platforms and analytics infrastructure for powering AI applications and agentic workflows.
 
-| Document                                         | Description                                                                                                  | Last Updated |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------ |
-| [tinybird.md](./data-infrastructure/tinybird.md) | Managed ClickHouse platform for real-time analytics APIs with native MCP server and analytics agents support | 2026-01-31   |
+| Document                                                 | Description                                                                                                  | Last Updated |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------ |
+| [motherduck.md](./data-infrastructure/motherduck.md)     | Serverless cloud DuckDB warehouse with Dual Execution engine and native MCP integration for AI agents        | 2026-02-23   |
+| [tinybird.md](./data-infrastructure/tinybird.md)         | Managed ClickHouse platform for real-time analytics APIs with native MCP server and analytics agents support | 2026-01-31   |
 
 **Key Topics**:
 
+- Serverless cloud DuckDB with Dual Execution (local + cloud hybrid query routing)
+- Native MCP server integration for AI agents and Claude Code
 - Managed ClickHouse with zero maintenance overhead
 - SQL-to-API instant endpoint generation
 - Incremental materialized views for 100x query speedup
