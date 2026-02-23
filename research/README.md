@@ -122,7 +122,9 @@ research/
 │   ├── softaworks-agent-toolkit.md    # 43 skills, 6 agents, 7 slash commands for Claude Code (621 stars)
 │   └── vercel-labs-skills.md          # Universal skill installer for 40+ AI coding agents (6.3K stars)
 ├── prompt-engineering/                # Prompt optimization and testing platforms
-│   └── google-ai-studio.md            # Google AI Studio — browser-based Gemini IDE with 20+ models, function calling, grounding, and OpenAI-compatible API
+│   ├── google-ai-studio.md            # Google AI Studio — browser-based Gemini IDE with 20+ models, function calling, grounding, and OpenAI-compatible API
+│   ├── prompt-engine.md               # SaaS prompt generator converting plain-language to professional-grade prompts in <15s ($19/month)
+│   └── system-prompts-ai-tools.md     # Leaked system prompts and model configs for 30+ AI tools including Claude Code, Cursor, Windsurf, Devin AI (117.9K stars)
 └── task-management/                   # AI-powered task management for development
     └── claude-task-master.md          # Task management system for AI-driven development (25K+ stars)
 ```
@@ -1037,6 +1039,7 @@ Interactive prompt development platforms and tools for iterating on LLM prompts,
 | [google-ai-studio.md](./prompt-engineering/google-ai-studio.md) | Google AI Studio — free browser-based IDE for Gemini API with 20+ models, function calling, Google Search grounding, sandboxed code execution, and OpenAI-compatible endpoint | 2026-02-23 |
 | [nano-banana-pro-prompting.md](./prompt-engineering/nano-banana-pro-prompting.md) | Nano-Banana Pro Prompting Guide — 10-category strategy guide for Google's `gemini-3-pro-image-preview` Thinking image model covering text rendering, character consistency, Search grounding, in-painting, 2D↔3D translation, 4K output, visual reasoning, storyboarding, and structural layout control | 2026-02-23 |
 | [prompt-engine.md](./prompt-engineering/prompt-engine.md) | Prompt Engine — SaaS prompt generator and optimizer that converts plain-language descriptions into professional-grade prompts in < 15 seconds; includes library/tagging for reuse ($19/month) | 2026-02-23 |
+| [system-prompts-ai-tools.md](./prompt-engineering/system-prompts-ai-tools.md) | x1xhlol/system-prompts-and-models-of-ai-tools — 30,000+ lines of leaked system prompts and model configs for 30+ AI tools including Claude Code, Cursor, Windsurf, Devin AI, Copilot, v0, Replit (117.9K stars, GPL-3.0) | 2026-02-23 |
 
 **Key Topics**:
 
@@ -1057,6 +1060,13 @@ Interactive prompt development platforms and tools for iterating on LLM prompts,
 - Ephemeral token scoping for secure multi-user deployments
 - Token counting API for pre-request cost estimation
 - Tiered rate limits (Free → Tier 1 → Tier 2 → Tier 3) with dashboard visibility
+- Comprehensive collection of 30,000+ lines of leaked/reverse-engineered AI system prompts
+- Coverage of 30+ tools: Claude Code, Cursor, Windsurf, Devin AI, GitHub Copilot, v0, Replit, Lovable, Manus, Perplexity, and more
+- Internal tool definitions (JSON function-call schemas) for production AI agents
+- Model configuration details (model selection, temperature, context window) where disclosed
+- Real-world examples of tool use protocols, safety constraints, and task decomposition strategies
+- Community-maintained with active updates (last push: 2026-02-17; 117.9K stars, 30.6K forks)
+- DeepWiki integration for AI-powered cross-collection search
 
 ---
 
