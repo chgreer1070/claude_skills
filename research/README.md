@@ -67,6 +67,7 @@ research/
 │   ├── animejs.md                     # Lightweight JavaScript animation engine (66K+ stars)
 │   ├── claude-conductor.md            # Context-Driven Development plugin for Claude Code (9 commands, skill ecosystem)
 │   ├── claude-openocd-spi-dump.md     # Claude Code plugin for SPI flash dumping via OpenOCD
+│   ├── claude-pilot.md                # Quality-enforcement layer for Claude Code with 15 hooks, TDD enforcement, /spec workflow, and persistent memory (1,390 stars)
 │   ├── claude-quickstarts.md          # Official Anthropic quickstart projects (14.7K stars)
 │   ├── copier-astral.md               # Python project template with Astral toolchain (uv, ruff, ty)
 │   ├── git-cliff.md                   # Customizable changelog generator from Git history
@@ -493,6 +494,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [animejs.md](./developer-tools/animejs.md)             | Lightweight JavaScript animation engine with declarative API, timelines, staggering, and 30+ easing functions                        | 2026-01-31   |
 | [claude-conductor.md](./developer-tools/claude-conductor.md)       | Claude Conductor - Context-Driven Development plugin with 9 commands, skill ecosystem, pattern reference layer, and quality intelligence | 2026-02-17   |
 | [claude-openocd-spi-dump.md](./developer-tools/claude-openocd-spi-dump.md) | Claude Code plugin for SPI flash dumping via OpenOCD with RAM-resident code and MCU register maps for 6 chip families | 2026-02-20   |
+| [claude-pilot.md](./developer-tools/claude-pilot.md) | Claude Pilot — quality-enforcement layer for Claude Code CLI with 15 lifecycle hooks, TDD enforcement, /spec worktree workflow, and cross-session persistent memory (1,390 stars) | 2026-02-23   |
 | [claude-quickstarts.md](./developer-tools/claude-quickstarts.md)   | Official Anthropic quickstart projects — computer use (Docker+VNC), browser automation, multi-session coding agent, minimal agent loop reference (<300 lines), Next.js UIs (14.7K stars) | 2026-02-19   |
 | [copier-astral.md](./developer-tools/copier-astral.md) | Copier template for Python projects with Astral toolchain (uv, ruff, ty), pytest, MkDocs, Typer, GitHub Actions, Docker              | 2026-01-31   |
 | [git-cliff.md](./developer-tools/git-cliff.md)         | Customizable changelog generator using conventional commits and regex parsers with GitHub/GitLab remote integration                  | 2026-01-26   |
