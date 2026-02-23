@@ -22,6 +22,7 @@ research/
 │   └── zeroclaw.md                    # Rust AI assistant infrastructure — sub-5MB RAM, 28+ providers, trait-driven (14.9K stars)
 ├── api-frameworks/                    # High-performance API frameworks for backend services
 │   ├── fastapi.md                     # Modern Python web framework with Pydantic (95K+ stars)
+│   ├── motia.md                       # Unified backend framework replacing APIs/queues/workflows/AI agents with one Step primitive (15K+ stars)
 │   └── tornado.md                     # Python web framework and async networking library (22K+ stars)
 ├── async-libraries/                   # Python async I/O libraries and concurrency frameworks
 │   ├── anyio.md                       # Backend-agnostic async concurrency library (426M downloads/month)
@@ -420,6 +421,7 @@ High-performance API frameworks for building backend services, tool endpoints, a
 | Document                                   | Description                                                                                               | Last Updated |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------ |
 | [fastapi.md](./api-frameworks/fastapi.md)  | Modern Python web framework with Pydantic validation, automatic OpenAPI docs, async support (95K+ stars)  | 2026-02-05   |
+| [motia.md](./api-frameworks/motia.md)      | Motia - unified backend framework replacing APIs, queues, workflows, and AI agents with one Step primitive (15K+ stars) | 2026-02-23   |
 | [tornado.md](./api-frameworks/tornado.md)  | Python web framework and async networking library for WebSockets and long-polling (22K+ stars, 95M+ downloads/month) | 2026-02-05   |
 
 **Key Topics**:
@@ -441,6 +443,15 @@ High-performance API frameworks for building backend services, tool endpoints, a
 - Built-in template engine with inheritance and escaping
 - Jupyter notebook server foundation
 - run_in_executor bridge for blocking operations
+- Unified backend framework via single Step primitive (config + handler)
+- Step trigger types: http, queue, cron, state, stream — all same pattern
+- Auto-discovery of Step files by filename convention (`*.step.ts`, `*_step.py`)
+- Emit/subscribe event-driven wiring between Steps without manual glue code
+- Built-in key-value state management shared across flow Steps
+- Multi-language Steps in one project (TypeScript, JavaScript, Python, Ruby)
+- Visual Workbench debugger with flow diagrams, traces, and state inspection
+- AGENTS.md bundled in scaffolded projects for AI coding tool context
+- Core runtime rewritten in Rust for performance
 
 ---
 
