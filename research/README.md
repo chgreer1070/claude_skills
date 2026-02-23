@@ -27,6 +27,7 @@ research/
 ├── api-frameworks/                    # High-performance API frameworks for backend services
 │   ├── fastapi.md                     # Modern Python web framework with Pydantic (95K+ stars)
 │   ├── motia.md                       # Unified backend framework replacing APIs/queues/workflows/AI agents with one Step primitive (15K+ stars)
+│   ├── pocketbase.md                  # Open-source Go backend in 1 file: SQLite, realtime, auth, files, admin dashboard (56K+ stars)
 │   └── tornado.md                     # Python web framework and async networking library (22K+ stars)
 ├── async-libraries/                   # Python async I/O libraries and concurrency frameworks
 │   ├── anyio.md                       # Backend-agnostic async concurrency library (426M downloads/month)
@@ -457,6 +458,7 @@ High-performance API frameworks for building backend services, tool endpoints, a
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------ |
 | [fastapi.md](./api-frameworks/fastapi.md)  | Modern Python web framework with Pydantic validation, automatic OpenAPI docs, async support (95K+ stars)  | 2026-02-05   |
 | [motia.md](./api-frameworks/motia.md)      | Motia - unified backend framework replacing APIs, queues, workflows, and AI agents with one Step primitive (15K+ stars) | 2026-02-23   |
+| [pocketbase.md](./api-frameworks/pocketbase.md) | PocketBase - open-source Go backend in 1 file: embedded SQLite, realtime subscriptions, auth (password/OTP/OAuth2/MFA), file storage, admin dashboard (56K+ stars) | 2026-02-23   |
 | [tornado.md](./api-frameworks/tornado.md)  | Python web framework and async networking library for WebSockets and long-polling (22K+ stars, 95M+ downloads/month) | 2026-02-05   |
 
 **Key Topics**:
@@ -487,6 +489,15 @@ High-performance API frameworks for building backend services, tool endpoints, a
 - Visual Workbench debugger with flow diagrams, traces, and state inspection
 - AGENTS.md bundled in scaffolded projects for AI coding tool context
 - Core runtime rewritten in Rust for performance
+- Single-binary Go backend (no Docker, no runtime) with embedded SQLite, auth, files, realtime, and admin UI
+- SSE-based realtime subscriptions on any collection without external broker (no Redis/Pusher)
+- 3 collection types: Base (app data), View (read-only SQL SELECT), Auth (users with built-in auth fields)
+- Declarative access control via filter rule DSL (`@request.auth.id`, `&&`/`||`, nested relation traversal)
+- Stateless JWT auth (no server-side sessions); password, OTP, OAuth2 (30+ providers), MFA
+- File field type with local disk or S3 backend; single-call storage config switch
+- Go hook system (`app.On*()`) for lifecycle event interception without forking core
+- JS VM plugin (Goja) for extending PocketBase with JavaScript without recompiling
+- `CGO_ENABLED=0 go build` produces statically linked binary for any target platform
 
 ---
 
