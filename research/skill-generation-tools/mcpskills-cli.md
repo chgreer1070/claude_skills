@@ -1,12 +1,15 @@
-# mcpskills-cli - MCP-to-Skill Converter via Streamable HTTP Discovery
-
-**Research Date**: 2026-02-15
-**GitHub**: <https://github.com/dhanababum/mcpskills-cli>
-**PyPI**: <https://pypi.org/project/mcpskills-cli/>
-**Version**: 0.1.2
-**License**: MIT (Copyright 2026 Dhana Babu)
-**Primary Language**: Python
-
+---
+name: mcpskills-cli - MCP-to-Skill Converter via Streamable HTTP Discovery
+description: mcpskills-cli is a Python CLI tool that connects to MCP (Model Context Protocol) servers via Streamable HTTP transport, discovers available tools, and generates agent skill files (SKILL.md + call...
+license: MIT (Copyright 2026 Dhana Babu)
+metadata:
+  topic: mcpskills-cli
+  category: skill-generation-tools
+  source_url: https://github.com/mcpskills-cli
+  github: dhanababum/mcpskills-cli
+  version: "0.1.2"
+  verified: "2026-02-15"
+  next_review: "2026-05-15"
 ---
 
 ## Overview
@@ -250,24 +253,3 @@ mcpskills --url https://mcp.example.com/sse --token <token> --multi-skills
 4. **mcpskills-cli Token Optimization Docs** - <https://github.com/dhanababum/mcpskills-cli/blob/main/docs/LOW_TOKEN_SKILLS.md> (accessed 2026-02-15)
 5. **fastmcp Documentation** - <https://github.com/jlowin/fastmcp> (accessed 2026-02-15)
 6. **MCP Protocol Specification** - <https://modelcontextprotocol.io/llms-full.txt> (accessed 2026-02-15)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Version Documented | 0.1.2 |
-| Primary Language | Python |
-| Core Dependencies | fastmcp>=2.3, jinja2>=3.1 |
-| Research Date | 2026-02-15 |
-| Next Review | 2026-05-15 |
-
-### Update Triggers
-
-- Version bump beyond 0.1.x indicating API stabilization
-- Addition of new transport types (stdio, SSE) beyond Streamable HTTP
-- Addition of new template languages or skill output formats
-- Changes to fastmcp dependency version requirements
-- Addition of skill validation or schema checking capabilities
-- Emergence of competing MCP-to-skill conversion tools

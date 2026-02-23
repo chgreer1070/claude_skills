@@ -1,12 +1,15 @@
-# Skill Seekers - Documentation to AI Skills Automation
-
-**Research Date**: January 26, 2026
-**Source URL**: <https://skillseekersweb.com/>
-**GitHub Repository**: <https://github.com/yusufkaraaslan/Skill_Seekers>
-**PyPI Package**: <https://pypi.org/project/skill-seekers/>
-**Version at Research**: v2.7.4
-**License**: MIT
-
+---
+name: Skill Seekers - Documentation to AI Skills Automation
+description: Skill Seekers is an open-source Python tool that automatically converts documentation websites, GitHub repositories, and PDF files into production-ready AI skills for Claude, Gemini, OpenAI, and...
+license: MIT
+metadata:
+  topic: skill-seekers
+  category: skill-generation-tools
+  source_url: https://skillseekersweb.com/
+  github: yusufkaraaslan/Skill_Seekers
+  version: "v2.7.4"
+  verified: "2026-01-26"
+  next_review: "2026-04-26"
 ---
 
 ## Overview
@@ -408,21 +411,3 @@ User Input (URL/GitHub/PDF)
 3. **PyPI Package**: <https://pypi.org/project/skill-seekers/> (accessed 2026-01-26)
 4. **Three-Stream Implementation Summary**: <https://github.com/yusufkaraaslan/Skill_Seekers/blob/main/docs/IMPLEMENTATION_SUMMARY_THREE_STREAM.md>
 5. **Claude AI Skills Announcement**: <https://www.anthropic.com/news/skills>
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                 |
-| ---------------------------- | --------------------- |
-| Last Verified                | 2026-01-26            |
-| Version at Verification      | v2.7.4                |
-| GitHub Stars at Verification | 7,734                 |
-| Next Review Recommended      | 2026-04-26 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes
-- Check PyPI for new features
-- Review changelog for breaking changes
-- Verify stat changes (stars, forks, contributors)

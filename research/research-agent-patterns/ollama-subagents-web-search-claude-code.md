@@ -1,11 +1,15 @@
-# Ollama Subagents and Web Search in Claude Code
-
-**Research Date**: 2026-02-19
-**Source URL**: <https://ollama.com/blog/web-search-subagents-claude-code>
-**GitHub Repository**: <https://github.com/ollama/ollama>
-**Version at Research**: v0.16.2
-**License**: MIT
-
+---
+name: Ollama Subagents and Web Search in Claude Code
+description: Ollama v0.16.2 adds native subagent support and built-in web search to Claude Code without requiring MCP servers or external API keys. Subagents run parallel tasks (file search, code exploration,...
+license: MIT
+metadata:
+  topic: ollama-subagents-web-search-claude-code
+  category: research-agent-patterns
+  source_url: https://ollama.com/blog/web-search-subagents-claude-code
+  github: ollama/ollama
+  version: "v0.16.2"
+  verified: "2026-02-19"
+  next_review: "2026-05-19"
 ---
 
 ## Overview
@@ -208,13 +212,3 @@ claude --model minimax-m2.5:cloud
 - [ollama launch - Ollama Blog](https://ollama.com/blog/launch) (accessed 2026-02-19)
 - [Claude Code with Anthropic API compatibility - Ollama Blog](https://ollama.com/blog/claude) (accessed 2026-02-19)
 - [ollama/ollama GitHub Repository](https://github.com/ollama/ollama) (accessed 2026-02-19)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-19 |
-| Version at Verification | v0.16.2 |
-| Next Review Recommended | 2026-05-19 |

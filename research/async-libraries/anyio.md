@@ -1,13 +1,15 @@
-# AnyIO - Async Concurrency and Networking Library
-
-**Research Date**: 2026-02-04
-**Documentation**: <https://anyio.readthedocs.io/en/stable/>
-**GitHub**: <https://github.com/agronholm/anyio>
-**PyPI**: <https://pypi.org/project/anyio/>
-**Version**: 4.12.1
-**License**: MIT
-**Python**: >=3.9
-
+---
+name: AnyIO - Async Concurrency and Networking Library
+description: AnyIO is a high-level asynchronous networking and concurrency library that provides a unified API across asyncio and Trio backends. It implements Trio-style structured concurrency on top of asyncio...
+license: MIT
+metadata:
+  topic: anyio
+  category: async-libraries
+  source_url: https://github.com/anyio
+  github: agronholm/anyio
+  version: "4.12.1"
+  verified: "2026-02-04"
+  next_review: "2026-05-04"
 ---
 
 ## Overview
@@ -305,22 +307,3 @@ async def main():
 8. **AnyIO Synchronization Documentation** - <https://raw.githubusercontent.com/agronholm/anyio/master/docs/synchronization.rst> (accessed 2026-02-04)
 9. **GitHub API** - Repository statistics via api.github.com (accessed 2026-02-04)
 10. **PyPI Stats API** - <https://pypistats.org/api/packages/anyio/recent> (accessed 2026-02-04)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Version Documented | 4.12.1 |
-| GitHub Stars | 2,374 |
-| Monthly Downloads | 426,490,365 |
-| Research Date | 2026-02-04 |
-| Next Review | 2026-05-04 |
-
-### Update Triggers
-
-- Major version release (5.x)
-- Significant new features (check GitHub releases)
-- Breaking changes to core APIs
-- New Python version support (3.14+ features documented)

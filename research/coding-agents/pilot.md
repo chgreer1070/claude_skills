@@ -1,11 +1,15 @@
-# Pilot
-
-**Research Date**: 2026-02-19
-**Source URL**: <https://pilot.quantflow.studio/>
-**GitHub Repository**: <https://github.com/alekspetrov/pilot>
-**Version at Research**: v1.46.7
-**License**: Business Source License 1.1 (BSL 1.1) — converts to Apache 2.0 after 4 years
-
+---
+name: Pilot
+description: Pilot is an autonomous development pipeline that ingests tickets from GitHub, Linear, Jira, or Asana and produces pull requests without human involvement in the implementation phase. Written in Go,...
+license: Business Source License 1.1 (BSL 1.1) — converts to Apache 2.0 after 4 years
+metadata:
+  topic: pilot
+  category: coding-agents
+  source_url: https://pilot.quantflow.studio/
+  github: alekspetrov/pilot
+  version: "v1.46.7"
+  verified: "2026-02-19"
+  next_review: "2026-05-19"
 ---
 
 ## Overview
@@ -201,13 +205,3 @@ executor:
 - [GitHub API: repos/alekspetrov/pilot](https://api.github.com/repos/alekspetrov/pilot) (accessed 2026-02-19)
 - [GitHub API: releases/latest v1.46.7](https://api.github.com/repos/alekspetrov/pilot/releases/latest) (accessed 2026-02-19)
 - [Business Source License 1.1](https://mariadb.com/bsl11/) (accessed 2026-02-19)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-19 |
-| Version at Verification | v1.46.7 |
-| Next Review Recommended | 2026-05-19 |

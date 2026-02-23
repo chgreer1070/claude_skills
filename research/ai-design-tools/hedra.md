@@ -1,11 +1,14 @@
-# Hedra
-
-**Research Date**: 2026-02-20
-**Source URL**: <https://www.hedra.com>
-**GitHub Repository**: Not publicly available
-**Version at Research**: Not specified (SaaS platform)
-**License**: Proprietary
-
+---
+name: Hedra
+description: Hedra is an AI-powered visual creation platform for video, image, and audio content. It enables users to create professional-quality multimedia content using AI tools without requiring design skills....
+license: Proprietary
+metadata:
+  topic: hedra
+  category: ai-design-tools
+  source_url: https://www.hedra.com
+  version: "N/A"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -130,25 +133,3 @@ Access via browser:
 - [Hedra Official Website](https://www.hedra.com) (accessed 2026-02-20)
 - [Hedra Twitter/X Account](https://twitter.com/hedra_labs) (accessed 2026-02-20)
 - Website metadata description: "The visual creation platform for video, image, and audio. Create professional content with AI-powered tools — no design skills needed."
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-20 |
-| Version at Verification | N/A (SaaS platform) |
-| Next Review Recommended | 2026-05-20 |
-
----
-
-## Research Notes
-
-- Hedra does not appear to have publicly accessible GitHub repositories
-- Platform is proprietary SaaS with no open-source components identified
-- Limited technical documentation publicly available
-- Twitter handle @hedra_labs suggests "Hedra Labs" as the company name
-- Platform appears to be in active development based on website presence
-- Pricing information not publicly displayed on homepage (may require account creation)
-- Technical architecture details are inferred from platform description and industry patterns

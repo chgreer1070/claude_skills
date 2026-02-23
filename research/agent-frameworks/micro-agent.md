@@ -1,11 +1,15 @@
-# Micro-Agent
-
-**Research Date**: 2026-02-20
-**Source URL**: <https://github.com/fdueblab/Micro-Agent>
-**GitHub Repository**: <https://github.com/fdueblab/Micro-Agent>
-**Version at Research**: v1.0.0 (from README badge; no formal releases published)
-**License**: MIT
-
+---
+name: Micro-Agent
+description: Micro-Agent is a flexible, extensible Python agent framework designed to provide intelligent agent capabilities as a callable service layer for upstream applications. The "Micro" naming mirrors...
+license: MIT
+metadata:
+  topic: micro-agent
+  category: agent-frameworks
+  source_url: https://github.com/fdueblab/Micro-Agent
+  github: fdueblab/Micro-Agent
+  version: "v1.0.0"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -226,13 +230,3 @@ analyze dependencies, and generate a structured report.
 - [app/mcp/server.py - Built-in MCP server](https://github.com/fdueblab/Micro-Agent/blob/master/app/mcp/server.py) (accessed 2026-02-20)
 - [requirements.txt](https://github.com/fdueblab/Micro-Agent/blob/master/requirements.txt) (accessed 2026-02-20)
 - [GitHub API - repos/fdueblab/Micro-Agent](https://api.github.com/repos/fdueblab/Micro-Agent) (accessed 2026-02-20)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-20 |
-| Version at Verification | v1.0.0 (README badge; no formal releases) |
-| Next Review Recommended | 2026-05-20 |

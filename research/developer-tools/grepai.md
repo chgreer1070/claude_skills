@@ -1,12 +1,15 @@
-# GrepAI - Semantic Code Search for AI Agents
-
-**Research Date**: 2026-02-13
-**Website**: <https://yoanbernabeu.github.io/grepai/>
-**GitHub**: <https://github.com/yoanbernabeu/grepai>
-**Version**: v0.31.0 (released 2026-02-13)
-**License**: MIT
-**Primary Language**: Go
-
+---
+name: GrepAI - Semantic Code Search for AI Agents
+description: GrepAI is a CLI tool written in Go that provides semantic code search and call graph analysis for AI coding agents. It indexes codebases using embedding models (locally via Ollama or cloud via...
+license: MIT
+metadata:
+  topic: grepai
+  category: developer-tools
+  source_url: https://github.com/grepai
+  github: yoanbernabeu/grepai
+  version: "v0.31.0"
+  verified: "2026-02-13"
+  next_review: "2026-05-13"
 ---
 
 ## Overview
@@ -327,25 +330,3 @@ grepai update           # Download and install latest
 13. **GitHub API - Contributors** - `gh api repos/yoanbernabeu/grepai/contributors` (accessed 2026-02-13)
 14. **GitHub API - Release Downloads** - `gh api repos/yoanbernabeu/grepai/releases` (accessed 2026-02-13)
 15. **Reddit r/ollama** - <https://www.reddit.com/r/ollama/comments/1qiv7v8/> (accessed 2026-02-13)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Version Documented | v0.31.0 |
-| GitHub Stars | 1,222 |
-| GitHub Forks | 93 |
-| Release Downloads | 5,166 |
-| Research Date | 2026-02-13 |
-| Next Review | 2026-05-13 |
-
-### Update Triggers
-
-- Major version release or breaking API changes
-- Addition of new embedding providers or storage backends
-- New MCP tools beyond the current 5
-- Significant growth beyond 3,000 stars indicating broader adoption
-- Changes to the skills distribution model
-- License changes from MIT

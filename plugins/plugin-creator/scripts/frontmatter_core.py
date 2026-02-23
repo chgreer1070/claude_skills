@@ -178,8 +178,13 @@ class AgentFrontmatter(BaseModel):
     permissionMode: (  # noqa: N815
         Literal["default", "acceptEdits", "dontAsk", "bypassPermissions", "plan"] | None
     ) = None
+    maxTurns: int | None = None  # noqa: N815
     skills: str | None = None
+    mcpServers: list[Any] | dict[str, Any] | None = None  # noqa: N815
     hooks: dict[str, Any] | None = None
+    memory: Literal["user", "project", "local"] | None = None
+    background: bool | None = None
+    isolation: Literal["worktree"] | None = None
     color: str | None = None
 
     @field_validator("skills", "tools", "disallowedTools", mode="before")

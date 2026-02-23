@@ -1,11 +1,15 @@
-# HumanCompiler
-
-**Research Date**: 2026-02-19
-**Source URL**: <https://github.com/Gerstep/HumanCompiler>
-**GitHub Repository**: <https://github.com/Gerstep/HumanCompiler>
-**Version at Research**: v0.1.0
-**License**: MIT
-
+---
+name: HumanCompiler
+description: HumanCompiler is a Claude Code plugin that "compiles" a human into an installable AI agent plugin by conducting an 8-phase deep behavioral interview combined with MCP-powered analysis of real work...
+license: MIT
+metadata:
+  topic: human-compiler
+  category: skill-generation-tools
+  source_url: https://github.com/Gerstep/HumanCompiler
+  github: Gerstep/HumanCompiler
+  version: "v0.1.0"
+  verified: "2026-02-19"
+  next_review: "2026-05-19"
 ---
 
 ## Overview
@@ -194,13 +198,3 @@ bun run scripts/generate-plugin.ts ~/.human-compiler/<name>/profile.yaml
 - [HumanCompiler interviewer.md agent](https://github.com/Gerstep/HumanCompiler/blob/master/agents/interviewer.md) (accessed 2026-02-19)
 - [HumanCompiler plugin.json manifest](https://github.com/Gerstep/HumanCompiler/blob/master/.claude-plugin/plugin.json) (accessed 2026-02-19)
 - [HumanCompiler package.json](https://github.com/Gerstep/HumanCompiler/blob/master/package.json) (accessed 2026-02-19)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-19 |
-| Version at Verification | v0.1.0 |
-| Next Review Recommended | 2026-05-19 |

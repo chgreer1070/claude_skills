@@ -1,11 +1,15 @@
-# Claude Conductor - Context-Driven Development Plugin for Claude Code
-
-**Research Date**: 2026-02-17
-**Source URL**: <https://github.com/rbarcante/claude-conductor>
-**GitHub Repository**: <https://github.com/rbarcante/claude-conductor>
-**Version at Research**: v1.2.1
-**License**: Apache-2.0
-
+---
+name: Claude Conductor - Context-Driven Development Plugin for Claude Code
+description: Claude Conductor is a Claude Code plugin that implements Context-Driven Development (CDD), a structured lifecycle for software projects following a strict Context -> Spec & Plan -> Implement...
+license: Apache-2.0
+metadata:
+  topic: claude-conductor
+  category: developer-tools
+  source_url: https://github.com/rbarcante/claude-conductor
+  github: rbarcante/claude-conductor
+  version: "v1.2.1"
+  verified: "2026-02-17"
+  next_review: "2026-05-17"
 ---
 
 ## Overview
@@ -278,22 +282,3 @@ Conductor is a direct peer to the claude_skills repository: both are Claude Code
 5. **GitHub API - Repository metadata**: <https://api.github.com/repos/rbarcante/claude-conductor> (accessed 2026-02-17)
 6. **GitHub API - Contributors**: <https://api.github.com/repos/rbarcante/claude-conductor/contributors> (accessed 2026-02-17)
 7. **Original upstream project (Gemini CLI)**: <https://github.com/gemini-cli-extensions/conductor> (referenced in README NOTICE section)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-17 |
-| Version at Verification | v1.2.1 |
-| GitHub Stars at Verification | 34 |
-| Next Review Recommended | 2026-05-17 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes (project uses release-please for automated semver)
-- Watch for new commands beyond the current 9 (`setup`, `newTrack`, `implement`, `status`, `revert`, `codeReview`, `patterns`, `skills`, `snippet`)
-- Track new sub-agents added to the `agents/` directory (5 as of v1.1.0)
-- Check if project adds topics/description to GitHub repository metadata (currently absent)
-- Monitor star growth as adoption indicator; 34 stars at research with active development (pushed same day as research)

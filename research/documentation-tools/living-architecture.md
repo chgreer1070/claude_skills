@@ -1,11 +1,15 @@
-# Living Architecture
-
-**Research Date**: 2026-02-20
-**Source URL**: <https://github.com/NTCoding/living-architecture>
-**GitHub Repository**: <https://github.com/NTCoding/living-architecture>
-**Version at Research**: 0.0.0 (monorepo)
-**License**: Apache-2.0
-
+---
+name: Living Architecture
+description: Living Architecture extracts operational flow-based architecture from code as living documentation using the Rivière schema. Created by Nick Tune, it provides a language-agnostic approach to...
+license: Apache-2.0
+metadata:
+  topic: living-architecture
+  category: documentation-tools
+  source_url: https://github.com/NTCoding/living-architecture
+  github: NTCoding/living-architecture
+  version: "0.0.0"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -321,13 +325,3 @@ Open <http://localhost:5173/eclair> and load your graph JSON file.
 - [Sample Architecture: ecommerce-complete.json](https://raw.githubusercontent.com/NTCoding/living-architecture/main/apps/eclair/public/ecommerce-complete.json) (accessed 2026-02-20)
 - [GitHub API Repository Metadata](https://api.github.com/repos/NTCoding/living-architecture) (accessed 2026-02-20)
 - [npm Downloads Statistics](https://api.npmjs.org/downloads/point/last-month/@living-architecture/riviere-cli) (accessed 2026-02-20)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-20 |
-| Version at Verification | 0.0.0 (pre-release monorepo) |
-| Next Review Recommended | 2026-05-20 |

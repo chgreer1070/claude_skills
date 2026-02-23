@@ -1,16 +1,15 @@
-# Microsoft GraphRAG
-
-| Field         | Value                                                                                                       |
-| ------------- | ----------------------------------------------------------------------------------------------------------- |
-| Research Date | 2026-01-31                                                                                                  |
-| Primary URL   | <https://microsoft.github.io/graphrag/>                                                                     |
-| GitHub        | <https://github.com/microsoft/graphrag>                                                                     |
-| PyPI          | <https://pypi.org/project/graphrag/>                                                                        |
-| arXiv Paper   | <https://arxiv.org/pdf/2404.16130>                                                                          |
-| Version       | v3.0.1 (released 2026-01-28)                                                                                |
-| License       | MIT                                                                                                         |
-| Blog Post     | <https://www.microsoft.com/en-us/research/blog/graphrag-unlocking-llm-discovery-on-narrative-private-data/> |
-
+---
+name: Microsoft GraphRAG
+description: GraphRAG is a modular graph-based Retrieval-Augmented Generation (RAG) system developed by Microsoft Research. It extracts meaningful, structured data from unstructured text using LLMs to create a...
+license: MIT
+metadata:
+  topic: microsoft-graphrag
+  category: context-management
+  source_url: https://microsoft.github.io/graphrag/
+  github: microsoft/graphrag
+  version: "v3.0.1"
+  verified: "2026-01-31"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -284,26 +283,3 @@ The README explicitly warns: "GraphRAG indexing can be an expensive operation." 
 | Architecture Documentation | <https://microsoft.github.io/graphrag/index/architecture/>                                                  | 2026-01-31 |
 
 **Research Method**: Information gathered from official GitHub repository README, RAI transparency document, documentation pages (query overview, index overview, architecture), GitHub API for statistics, PyPI API for package info and download statistics. All claims verified against primary sources.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                     |
-| ------------------ | ------------------------- |
-| Version Documented | v3.0.1                    |
-| Release Date       | 2026-01-28                |
-| GitHub Stars       | 30,637 (as of 2026-01-31) |
-| Monthly Downloads  | 60,312 (as of 2026-01-31) |
-| Next Review Date   | 2026-05-01                |
-
-**Review Triggers**:
-
-- Major version release (v4.x)
-- Significant new query mechanisms
-- New storage or model provider integrations
-- GitHub stars milestone (40K, 50K)
-- PyPI downloads milestone (100K monthly)
-- New community detection algorithms
-- Breaking changes to knowledge model or API
-- Integration with Claude/Anthropic models

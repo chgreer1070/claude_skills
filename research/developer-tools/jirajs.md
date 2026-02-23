@@ -1,12 +1,15 @@
-# jira.js - JavaScript/TypeScript Client for Jira
-
-**Research Date**: 2026-02-20
-**Source URL**: <https://mrrefactoring.github.io/jira.js/>
-**GitHub Repository**: <https://github.com/MrRefactoring/jira.js>
-**npm Package**: <https://www.npmjs.com/package/jira.js>
-**Version at Research**: v4.0.1
-**License**: MIT
-
+---
+name: jira.js - JavaScript/TypeScript Client for Jira
+description: jira.js is a comprehensive JavaScript and TypeScript client library for Atlassian Jira's REST API. It provides full coverage of Jira Cloud, Jira Server, and Jira Data Center APIs with strong...
+license: MIT
+metadata:
+  topic: jirajs
+  category: developer-tools
+  source_url: https://mrrefactoring.github.io/jira.js/
+  github: MrRefactoring/jira.js
+  version: "v4.0.1"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -595,24 +598,3 @@ jira.js demonstrates that comprehensive API client libraries can make complex ex
 | [atlassian-js-api](https://www.npmjs.com/package/atlassian-js-api) | Multi-product Atlassian client (Jira, Confluence, Bitbucket) |
 | [@octokit/rest](https://www.npmjs.com/package/@octokit/rest) | Similar pattern for GitHub API |
 | [gitlab](https://www.npmjs.com/package/gitlab) | Similar pattern for GitLab API |
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-20 |
-| Version at Verification | v4.0.1 |
-| GitHub Stars at Verification | 1,800+ |
-| npm Weekly Downloads | 150,000+ |
-| Next Review Recommended | 2026-05-20 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor npm for new version releases (v4.x active development)
-- Check GitHub releases for API coverage updates
-- Watch Atlassian Jira API changelog for new endpoints
-- Track TypeScript type definition updates
-- Review documentation for new authentication methods
-- Monitor for Jira Cloud vs Server/Data Center API divergence

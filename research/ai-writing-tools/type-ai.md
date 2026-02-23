@@ -1,17 +1,13 @@
-# Type.ai
-
-| Field         | Value                                                        |
-| ------------- | ------------------------------------------------------------ |
-| Research Date | 2026-01-31                                                   |
-| Primary URL   | <https://type.ai>                                            |
-| Blog          | <https://blog.type.ai>                                       |
-| YCombinator   | <https://www.ycombinator.com/companies/type>                 |
-| LinkedIn      | <https://www.linkedin.com/company/type-ai/>                  |
-| Twitter/X     | <https://x.com/typedotai>                                    |
-| YouTube       | <https://www.youtube.com/@typedotai>                         |
-| License       | Proprietary (SaaS)                                           |
-| Contact       | <hello@type.ai>                                                |
-
+---
+name: Type.ai
+description: Type.ai is an AI-first document editor designed for long-form professional writing. Unlike chat-based AI tools (ChatGPT, Claude), Type.ai embeds AI capabilities directly into a feature-rich document...
+license: Proprietary (SaaS)
+metadata:
+  topic: type-ai
+  category: ai-writing-tools
+  source_url: https://type.ai
+  verified: "2026-01-31"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -234,25 +230,3 @@ Unlike chat interfaces (ChatGPT, Claude), Type.ai integrates AI directly into th
 | Type.ai FAQ             | <https://blog.type.ai/faqs>                            | 2026-01-31 |
 
 **Research Method**: Information gathered from Type.ai official website, YCombinator company profile, blog content, and FAQ. Statistics verified through direct observation of marketing materials and pricing pages.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                             |
-| ------------------ | --------------------------------- |
-| Product Type       | SaaS (continuously updated)       |
-| Active Writers     | 200,000+ (as of 2026-01-31)       |
-| AI Models          | GPT-5, Claude 4.5 Sonnet          |
-| Annual Pricing     | $12/month (as of 2026-01-31)      |
-| Next Review Date   | 2026-05-01                        |
-
-**Review Triggers**:
-
-- New AI model integration announcements
-- Major feature releases (especially collaborative or API features)
-- Pricing changes
-- User milestone announcements (500k users, etc.)
-- New free tool additions
-- Mobile app release
-- API availability for developers

@@ -1,11 +1,15 @@
-# claude-openocd-spi-dump
-
-**Research Date**: 2026-02-20
-**Source URL**: <https://github.com/lukejenkins/claude-openocd-spi-dump>
-**GitHub Repository**: <https://github.com/lukejenkins/claude-openocd-spi-dump>
-**Version at Research**: 1.0.0
-**License**: No license file (public repository)
-
+---
+name: claude-openocd-spi-dump
+description: A Claude Code plugin that enables AI-assisted dumping of SPI flash/EEPROM memory through a microcontroller's debug interface (SWD/JTAG) via OpenOCD, without requiring dedicated SPI programming...
+license: No license file (public repository)
+metadata:
+  topic: claude-openocd-spi-dump
+  category: developer-tools
+  source_url: https://github.com/lukejenkins/claude-openocd-spi-dump
+  github: lukejenkins/claude-openocd-spi-dump
+  version: "1.0.0"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -303,20 +307,3 @@ Adding new MCU families requires only finding SPI/GPIO register addresses in the
 - Repository README.md (accessed 2026-02-20)
 - skills/spi-flash-dump/SKILL.md (accessed 2026-02-20)
 - commands/spi-dump.md (accessed 2026-02-20)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-20 |
-| Version at Verification | 1.0.0 |
-| Next Review Recommended | 2026-05-20 |
-
-**Review Triggers:**
-- New MCU family support added
-- OpenOCD version compatibility changes
-- Additional flash chip protocols supported
-- Automation script enhancements
-- GitHub star count increases significantly (>50 stars indicates growing adoption)

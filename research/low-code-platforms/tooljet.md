@@ -1,15 +1,15 @@
-# ToolJet
-
-| Field         | Value                                                    |
-| ------------- | -------------------------------------------------------- |
-| Research Date | 2026-01-31                                               |
-| Primary URL   | <https://tooljet.com>                                    |
-| GitHub        | <https://github.com/ToolJet/ToolJet>                     |
-| Documentation | <https://docs.tooljet.com>                               |
-| Version       | v3.20.82-lts (released 2026-01-30)                       |
-| License       | AGPL-3.0                                                 |
-| Docker Hub    | <https://hub.docker.com/r/tooljet/tooljet-ce>            |
-
+---
+name: ToolJet
+description: ToolJet is an open-source low-code platform for building internal tools, dashboards, business applications, workflows, and AI agents. The platform provides a visual drag-and-drop builder with 60+...
+license: AGPL-3.0
+metadata:
+  topic: tooljet
+  category: low-code-platforms
+  source_url: https://tooljet.com
+  github: ToolJet/ToolJet
+  version: "v3.20.82-lts"
+  verified: "2026-01-31"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -297,25 +297,3 @@ tooljet plugin publish
 | Project Roadmap           | <https://github.com/orgs/ToolJet/projects/15>            | 2026-01-31 |
 
 **Research Method**: Information gathered from official GitHub repository README, GitHub API (stars, forks, issues, releases, contributors), Docker Hub API (pull counts), and official documentation. Statistics verified via direct API calls on 2026-01-31.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | v3.20.82-lts                        |
-| Release Date       | 2026-01-30                          |
-| GitHub Stars       | 37,363 (as of 2026-01-31)           |
-| Docker Pulls       | 2,184,706 (as of 2026-01-31)        |
-| Next Review Date   | 2026-05-01                          |
-
-**Review Triggers**:
-
-- Major version release (v4.x)
-- Significant AI feature additions
-- GitHub stars milestone (40K, 50K)
-- Docker pulls milestone (3M, 5M)
-- New Agent Builder capabilities
-- MCP or Claude integration announcements
-- Changes to open-source licensing

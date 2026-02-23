@@ -1,16 +1,15 @@
-# PyO3
-
-| Field         | Value                                                              |
-| ------------- | ------------------------------------------------------------------ |
-| Research Date | 2026-02-05                                                         |
-| Primary URL   | <https://pyo3.rs>                                                  |
-| GitHub        | <https://github.com/PyO3/pyo3>                                     |
-| Crates.io     | <https://crates.io/crates/pyo3>                                    |
-| Docs.rs       | <https://docs.rs/pyo3/>                                            |
-| Version       | 0.28.0 (released 2026-02-01, requires Rust 1.83+)                  |
-| License       | MIT OR Apache-2.0 (dual-licensed)                                  |
-| Discord       | <https://discord.gg/33kcChzH7f>                                    |
-
+---
+name: PyO3
+description: PyO3 provides Rust bindings for Python, enabling developers to write native Python extension modules in Rust with automatic memory management and type conversions. It supports both directions:...
+license: MIT OR Apache-2.0 (dual-licensed)
+metadata:
+  topic: pyo3
+  category: rust-python-bindings
+  source_url: https://pyo3.rs
+  github: PyO3/pyo3
+  version: "0.28.0"
+  verified: "2026-02-05"
+  next_review: "2026-05-05"
 ---
 
 ## Overview
@@ -479,27 +478,3 @@ async fn async_sleep(seconds: f64) -> PyResult<String> {
 | GitHub API (statistics)       | API calls for stars, forks, releases                               | 2026-02-05 |
 
 **Research Method**: Information gathered from official GitHub repository README, Cargo.toml feature definitions, raw file fetches from main branch, and GitHub API for statistics. maturin statistics verified via separate API call. All statistics verified via direct API calls on 2026-02-05.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | 0.28.0                              |
-| Rust Edition       | 2021                                |
-| Min Rust Version   | 1.83                                |
-| GitHub Stars       | 15,268 (as of 2026-02-05)           |
-| maturin Stars      | 5,354 (as of 2026-02-05)            |
-| Next Review Date   | 2026-05-05                          |
-
-**Review Triggers**:
-
-- Major version release (0.29.0, 1.0.0)
-- Free-threaded Python (no-GIL) exits experimental status
-- PyPy or GraalPy compatibility changes
-- New significant type integrations added
-- GitHub stars milestone (20K)
-- maturin major release
-- Breaking changes to macro API
-- New stable ABI versions (abi3-py315)

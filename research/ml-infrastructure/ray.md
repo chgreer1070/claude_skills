@@ -1,17 +1,15 @@
-# Ray
-
-| Field         | Value                                                              |
-| ------------- | ------------------------------------------------------------------ |
-| Research Date | 2026-02-05                                                         |
-| Primary URL   | <https://docs.ray.io/en/latest/>                                   |
-| GitHub        | <https://github.com/ray-project/ray>                               |
-| PyPI          | <https://pypi.org/project/ray/>                                    |
-| Version       | ray-2.53.0 (released 2025-12-20)                                   |
-| License       | Apache-2.0                                                         |
-| Discord/Slack | <https://www.ray.io/join-slack>                                    |
-| Forum         | <https://discuss.ray.io/>                                          |
-| Managed       | <https://www.anyscale.com/> (Anyscale - commercial Ray platform)   |
-
+---
+name: Ray
+description: Ray is an AI compute engine for scaling Python and AI applications from a laptop to a cluster. The framework consists of a core distributed runtime and a set of AI libraries (Ray Data, Ray Train, Ray...
+license: Apache-2.0
+metadata:
+  topic: ray
+  category: ml-infrastructure
+  source_url: https://docs.ray.io/en/latest/
+  github: ray-project/ray
+  version: "ray-2.53.0"
+  verified: "2026-02-05"
+  next_review: "2026-05-05"
 ---
 
 ## Overview
@@ -360,25 +358,3 @@ result = trainer.fit()
 | Anyscale (Managed Ray)      | <https://www.anyscale.com/>                                        | 2026-02-05 |
 
 **Research Method**: Information gathered from official GitHub repository README, GitHub API (stars, forks, issues, contributors), PyPI statistics API, and official documentation. Statistics verified via direct API calls on 2026-02-05.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | ray-2.53.0                          |
-| Release Date       | 2025-12-20                          |
-| GitHub Stars       | 41,140 (as of 2026-02-05)           |
-| Monthly Downloads  | 43,801,701 (as of 2026-02-05)       |
-| Next Review Date   | 2026-05-05                          |
-
-**Review Triggers**:
-
-- Major version release (ray-3.x)
-- Significant MCP integration updates
-- New Ray Serve LLM capabilities
-- GitHub stars milestone (45K, 50K)
-- PyPI downloads milestone (50M monthly)
-- Breaking changes to Ray Serve or Ray Core APIs
-- New agent/agentic workflow features

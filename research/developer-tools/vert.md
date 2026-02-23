@@ -1,12 +1,15 @@
-# VERT - WebAssembly-Based File Converter
-
-**Research Date**: 2026-02-08
-**Website**: <https://vert.sh>
-**GitHub**: <https://github.com/VERT-sh/VERT>
-**Version**: 0.0.1 (package.json), commit 897ae56 (deployed)
-**License**: AGPL-3.0
-**Primary Language**: Svelte (49.6%), TypeScript (43.3%)
-
+---
+name: VERT - WebAssembly-Based File Converter
+description: VERT is an open-source file conversion utility that uses WebAssembly to convert image, audio, and document files entirely in the browser, with no server-side processing. Video conversion is handled...
+license: AGPL-3.0
+metadata:
+  topic: vert
+  category: developer-tools
+  source_url: https://github.com/vert
+  github: VERT-sh/VERT
+  version: "0.0.1"
+  verified: "2026-02-08"
+  next_review: "2026-05-08"
 ---
 
 ## Overview
@@ -264,23 +267,3 @@ docker run -d --restart unless-stopped -p 3000:80 --name "vert" vert-sh/vert
 11. **GitHub API - VERT Languages** - <https://api.github.com/repos/VERT-sh/VERT/languages> (accessed 2026-02-08)
 12. **vertd Repository** - <https://github.com/VERT-sh/vertd> (accessed 2026-02-08, via GitHub API)
 13. **VERT Website HTML Source** - <https://vert.sh> (accessed 2026-02-08, for meta tags and footer commit reference 897ae56)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Version Documented | 0.0.1 (package.json) / commit 897ae56 (deployed) |
-| GitHub Stars | 13,809 |
-| GitHub Forks | 713 |
-| Research Date | 2026-02-08 |
-| Next Review | 2026-05-08 |
-
-### Update Triggers
-
-- Formal versioned release (currently no GitHub releases; repo uses commit-based deployment)
-- Addition of new conversion engines beyond FFmpeg, ImageMagick, Pandoc
-- Changes to privacy model or external request behavior
-- License changes from AGPL-3.0
-- Significant growth beyond 15,000 stars indicating broader adoption

@@ -1,16 +1,13 @@
-# InstallAnywhere Specification Collection Process
-
-> **STATUS: DRAFT v0.1** -- This process file is iterative. Each research session
-> should refine the process itself, update findings, and record what worked and
-> what didn't. See [Self-Improvement Log](#9-self-improvement-log) at the bottom.
-
-**Created**: 2026-02-19
-**Last Updated**: 2026-02-19
-**Goal**: Collect all specification sheets, file format documentation, manifest
-structures, and configuration file references for Revenera InstallAnywhere --
-sufficient to interpret a Windows InstallAnywhere manifest and install the
-target application on Linux.
-
+---
+name: InstallAnywhere Specification Collection Process
+description: 'Given a Windows-targeted InstallAnywhere installer (`.exe`), produce a complete understanding of its internal structure such that we can:'
+metadata:
+  topic: installanywhere-specs-collection
+  category: installer-tools
+  source_url: https://github.com/installanywhere-specs-collection
+  version: "InstallAnywhere 2025 R2"
+  verified: "2026-02-19"
+  next_review: "2026-05-19"
 ---
 
 ## 1. Objective
@@ -345,13 +342,3 @@ When resuming work on this process:
 - [Revenera InstallAnywhere Documentation](https://docs.revenera.com/installanywhere/Default.htm) (accessed 2026-02-19)
 - [InstallAnywhere 2025 R2 User Guide PDF](https://docs.revenera.com/installanywhere/pdf/InstallAnywhere2025R2UserGuide.pdf) (accessed 2026-02-19)
 - [Revenera Community Forums](https://community.revenera.com) (not yet accessed)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-19 |
-| Version at Verification | InstallAnywhere 2025 R2 |
-| Next Review Recommended | 2026-05-19 |

@@ -1,13 +1,13 @@
-# Yume - Native Desktop GUI for Claude Code CLI
-
-**Research Date**: 2026-02-15
-**Website**: <https://aofp.github.io/yume/>
-**GitHub**: <https://github.com/aofp> (inferred from GitHub Pages domain)
-**License**: Not specified (advertised as free forever)
-**Type**: Native desktop application (Tauri + Rust)
-**Platforms**: macOS (Apple Silicon), macOS (Intel), Windows, Linux
-**Price**: Free
-
+---
+name: Yume - Native Desktop GUI for Claude Code CLI
+description: 'Yume (Japanese: "dream") is a native desktop GUI wrapper around the Claude Code CLI that adds 30+ features the CLI does not provide, including zero-flicker rendering, parallel agent orchestration,...'
+license: Not specified (advertised as free forever)
+metadata:
+  topic: yume
+  category: developer-tools
+  source_url: https://github.com/yume
+  verified: "2026-02-15"
+  next_review: "2026-05-15"
 ---
 
 ## Overview
@@ -267,28 +267,3 @@ Downloads available from the official website:
 1. **Yume Official Website** - <https://aofp.github.io/yume/> (accessed 2026-02-15)
 2. **Yume GitHub Pages Host** - <https://github.com/aofp> (inferred from GitHub Pages domain, accessed 2026-02-15)
 3. **Claude Code CLI Flickering Issue** - Referenced by Yume website as having 700+ upvotes (accessed 2026-02-15; original GitHub issue URL not provided by source)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Version Documented | Not specified (no version number identified) |
-| Runtime Framework | Tauri + Rust |
-| Supported Providers | Claude (Sonnet, Opus), Gemini (2.5 Pro, 2.5 Flash), OpenAI (GPT-5.2, Codex) |
-| Platform Support | macOS (Apple Silicon + Intel), Windows, Linux |
-| Feature Count | 30+ (per website) |
-| Research Date | 2026-02-15 |
-| Next Review | 2026-05-15 |
-
-### Update Triggers
-
-- Public source repository or license disclosure changes the closed-source/license-ambiguity assessment
-- Version numbering or formal release process established
-- Independent performance benchmarks validating or contradicting marketing claims
-- Changes to Claude Code CLI that affect Yume's CLI-spawning integration model
-- Addition of new AI provider support beyond Claude, Gemini, OpenAI
-- Community adoption metrics (GitHub stars, user count) becoming available
-- Pricing model changes from "free forever"
-- Yume Guard security hook gaining notable adoption or audit results

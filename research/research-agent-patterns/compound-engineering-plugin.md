@@ -1,12 +1,14 @@
-# Compound Engineering Plugin - AI-Powered Development Workflow
-
-**Research Date**: January 31, 2026
-**Source URL**: <https://github.com/EveryInc/compound-engineering-plugin>
-**npm Package**: <https://www.npmjs.com/package/@every-env/compound-plugin>
-**Documentation**: <https://everyinc.github.io/compound-engineering-plugin/>
-**Version at Research**: v2.28.0
-**License**: MIT
-
+---
+name: Compound Engineering Plugin - AI-Powered Development Workflow
+description: The Compound Engineering Plugin is a Claude Code plugin marketplace featuring a comprehensive collection of AI agents, commands, and skills designed to make each unit of engineering work easier than...
+license: MIT
+metadata:
+  topic: compound-engineering-plugin
+  category: research-agent-patterns
+  source_url: https://github.com/EveryInc/compound-engineering-plugin
+  version: "v2.28.0"
+  verified: "2026-01-31"
+  next_review: "2026-04-30"
 ---
 
 ## Overview
@@ -298,22 +300,3 @@ bunx @every-env/compound-plugin install compound-engineering --to codex
 5. **Story Behind Compound Engineering**: <https://every.to/source-code/my-ai-had-already-fixed-the-code-before-i-saw-it> (accessed 2026-01-31)
 6. **Plugin README**: <https://github.com/EveryInc/compound-engineering-plugin/blob/main/plugins/compound-engineering/README.md> (accessed 2026-01-31)
 7. **CHANGELOG**: <https://github.com/EveryInc/compound-engineering-plugin/blob/main/plugins/compound-engineering/CHANGELOG.md> (accessed 2026-01-31)
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                 |
-| ---------------------------- | --------------------- |
-| Last Verified                | 2026-01-31            |
-| Version at Verification      | v2.28.0               |
-| GitHub Stars at Verification | 6,830                 |
-| Next Review Recommended      | 2026-04-30 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes (currently v2.28.0)
-- Check CHANGELOG.md for new agents, commands, or skills
-- Review npm package updates (@every-env/compound-plugin)
-- Watch for new workflow patterns in the `/workflows:` namespace
-- Track growth metrics (stars approaching 7K milestone)

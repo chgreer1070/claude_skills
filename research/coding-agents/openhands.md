@@ -1,12 +1,15 @@
-# OpenHands - Open Platform for Cloud Coding Agents
-
-**Research Date**: January 26, 2026
-**Source URL**: <https://openhands.dev>
-**GitHub Repository**: <https://github.com/OpenHands/OpenHands>
-**Documentation**: <https://docs.openhands.dev>
-**Version at Research**: v1.2.1
-**License**: MIT (core), Source-Available (enterprise)
-
+---
+name: OpenHands - Open Platform for Cloud Coding Agents
+description: OpenHands is an open-source, model-agnostic platform for building and deploying AI coding agents. It provides a composable Python SDK, CLI, and cloud infrastructure for running agents that write...
+license: MIT (core), Source-Available (enterprise)
+metadata:
+  topic: openhands
+  category: coding-agents
+  source_url: https://openhands.dev
+  github: OpenHands/OpenHands
+  version: "v1.2.1"
+  verified: "2026-01-26"
+  next_review: "2026-04-26"
 ---
 
 ## Overview
@@ -289,23 +292,3 @@ docker run -p 3000:3000 openhands/openhands
 5. **CodeAct 2.1 Announcement**: <https://openhands.dev/blog/openhands-codeact-21-an-open-state-of-the-art-software-development-agent> (accessed 2026-01-26)
 6. **OpenHands LM 32B Announcement**: <https://openhands.dev/blog/introducing-openhands-lm-32b-a-strong-open-coding-agent-model> (accessed 2026-01-26)
 7. **Research Paper**: <https://arxiv.org/abs/2511.03690> (accessed 2026-01-26)
-
----
-
-## Freshness Tracking
-
-| Field                           | Value                 |
-| ------------------------------- | --------------------- |
-| Last Verified                   | 2026-01-26            |
-| Version at Verification         | v1.2.1                |
-| GitHub Stars at Verification    | 67,108                |
-| SWE-Bench Score at Verification | 77.6%                 |
-| Next Review Recommended         | 2026-04-26 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes
-- Check SWE-bench leaderboard for performance updates
-- Review blog for new agent capabilities
-- Track star growth (currently ~2K/month)
-- Watch for new enterprise features

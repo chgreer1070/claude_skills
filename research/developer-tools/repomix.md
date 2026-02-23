@@ -1,12 +1,15 @@
-# Repomix - Pack Codebase into AI-Friendly Formats
-
-**Research Date**: January 31, 2026
-**Source URL**: <https://repomix.com>
-**GitHub Repository**: <https://github.com/yamadashy/repomix>
-**npm Package**: <https://www.npmjs.com/package/repomix>
-**Version at Research**: v1.11.1
-**License**: MIT
-
+---
+name: Repomix - Pack Codebase into AI-Friendly Formats
+description: Repomix is a powerful tool that packs entire repositories into a single, AI-friendly file optimized for consumption by Large Language Models (LLMs) such as Claude, ChatGPT, DeepSeek, Perplexity,...
+license: MIT
+metadata:
+  topic: repomix
+  category: developer-tools
+  source_url: https://repomix.com
+  github: yamadashy/repomix
+  version: "v1.11.1"
+  verified: "2026-01-31"
+  next_review: "2026-04-30"
 ---
 
 ## Overview
@@ -317,23 +320,3 @@ TypeScript configuration also supported (`repomix.config.ts`) with `defineConfig
 8. **Anthropic XML Tags Guide**: <https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags>
 9. **Tree-sitter**: <https://github.com/tree-sitter/tree-sitter>
 10. **Secretlint**: <https://github.com/secretlint/secretlint>
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                 |
-| ---------------------------- | --------------------- |
-| Last Verified                | 2026-01-31            |
-| Version at Verification      | v1.11.1               |
-| GitHub Stars at Verification | 21,597                |
-| Forks at Verification        | 1,004                 |
-| Next Review Recommended      | 2026-04-30 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes
-- Check npm for new features
-- Review Discord for community updates
-- Watch for MCP protocol evolution
-- Track Claude Code plugin updates

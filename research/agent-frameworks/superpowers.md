@@ -1,11 +1,14 @@
-# Superpowers - Agentic Skills Framework and Software Development Methodology
-
-**Research Date**: 2026-01-31
-**Source URL**: <https://github.com/obra/superpowers>
-**Marketplace URL**: <https://github.com/obra/superpowers-marketplace>
-**Version at Research**: v4.1.1
-**License**: MIT
-
+---
+name: Superpowers - Agentic Skills Framework and Software Development Methodology
+description: Superpowers is a complete software development workflow for AI coding agents, built on composable skills that transform how agents approach development tasks. Rather than letting agents jump directly...
+license: MIT
+metadata:
+  topic: superpowers
+  category: agent-frameworks
+  source_url: https://github.com/obra/superpowers
+  version: "v4.1.1"
+  verified: "2026-01-31"
+  next_review: "2026-04-30"
 ---
 
 ## Overview
@@ -322,21 +325,3 @@ The `writing-skills` skill treats skill creation as TDD for documentation:
 2. **Marketplace Repository**: <https://github.com/obra/superpowers-marketplace> (accessed 2026-01-31)
 3. **Author Blog Post**: <https://blog.fsck.com/2025/10/09/superpowers/> (referenced in README)
 4. **Release Notes**: <https://github.com/obra/superpowers/blob/main/RELEASE-NOTES.md> (accessed 2026-01-31)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-01-31 |
-| Version at Verification | v4.1.1 |
-| GitHub Stars at Verification | 40,911 |
-| Next Review Recommended | 2026-04-30 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes (rapid development: 4 major versions since October 2025)
-- Check release notes for breaking changes (v4.1.0 had OpenCode breaking change)
-- Review for new skills or skill consolidations
-- Track star growth (40K+ indicates mainstream adoption)

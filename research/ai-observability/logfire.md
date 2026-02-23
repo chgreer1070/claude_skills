@@ -1,17 +1,15 @@
-# Pydantic Logfire
-
-| Field         | Value                                                                     |
-| ------------- | ------------------------------------------------------------------------- |
-| Research Date | 2026-02-05                                                                |
-| Primary URL   | <https://logfire.pydantic.dev/docs/>                                      |
-| GitHub        | <https://github.com/pydantic/logfire>                                     |
-| PyPI          | <https://pypi.org/project/logfire/>                                       |
-| Version       | 4.22.0 (released 2026-02-04)                                              |
-| License       | MIT                                                                       |
-| Slack         | <https://logfire.pydantic.dev/docs/join-slack/>                           |
-| Managed       | <https://logfire.pydantic.dev/> (Pydantic - cloud platform)               |
-| MCP Server    | <https://github.com/pydantic/logfire-mcp>                                 |
-
+---
+name: Pydantic Logfire
+description: Pydantic Logfire is an AI-native observability platform built by the team behind Pydantic. It provides full-stack tracing for LLM applications using OpenTelemetry, combining AI-specific features...
+license: MIT
+metadata:
+  topic: logfire
+  category: ai-observability
+  source_url: https://logfire.pydantic.dev/docs/
+  github: pydantic/logfire
+  version: "4.22.0"
+  verified: "2026-02-05"
+  next_review: "2026-05-05"
 ---
 
 ## Overview
@@ -374,24 +372,3 @@ LIMIT 100
 | Pricing/Costs                | <https://logfire.pydantic.dev/docs/logfire-costs/>                         | 2026-02-05 |
 
 **Research Method**: Information gathered from official GitHub repository README, GitHub API (stars, forks, description, topics), PyPI package metadata, and official documentation markdown files fetched directly from GitHub. Statistics verified via direct API calls on 2026-02-05.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | 4.22.0                              |
-| Release Date       | 2026-02-04                          |
-| GitHub Stars       | 3,984 (as of 2026-02-05)            |
-| Next Review Date   | 2026-05-05                          |
-
-**Review Triggers**:
-
-- Major version release (5.x)
-- Significant new LLM framework integrations
-- MCP server feature additions
-- pydantic-evals major updates
-- GitHub stars milestone (5K, 10K)
-- New AI-specific dashboard features
-- Claude Code native integration announcements

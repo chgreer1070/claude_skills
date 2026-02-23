@@ -1,14 +1,15 @@
-# Plannotator
-
-| Field         | Value                                           |
-| ------------- | ----------------------------------------------- |
-| Research Date | 2026-01-31                                      |
-| Primary URL   | <https://plannotator.ai>                        |
-| GitHub        | <https://github.com/backnotprop/plannotator>    |
-| Version       | No formal releases (monorepo, continuous dev)   |
-| License       | BSL 1.1 (Business Source License)               |
-| Created       | 2025-12-28                                      |
-
+---
+name: Plannotator
+description: Plannotator is an interactive plan review tool for AI coding agents that intercepts agent plans via hooks, displays them in a visual browser-based UI for annotation, and sends structured feedback...
+license: BSL 1.1 (Business Source License)
+metadata:
+  topic: plannotator
+  category: developer-tooling
+  source_url: https://plannotator.ai
+  github: backnotprop/plannotator
+  version: "No formal releases"
+  verified: "2026-01-31"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -343,27 +344,3 @@ Opens diff viewer for unstaged git changes with annotation support.
 | OpenCode Demo          | <https://youtu.be/_N7uo0EFI-U>                         | 2026-01-31 |
 
 **Research Method**: Information gathered from official GitHub repository via GitHub API, README and CLAUDE.md files fetched directly, LICENSE file reviewed for licensing terms. Statistics verified via direct API calls on research date.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                              |
-| ------------------ | ---------------------------------- |
-| Version Documented | No formal releases (monorepo)      |
-| Last Push          | 2026-01-29                         |
-| GitHub Stars       | 1,538 (as of 2026-01-31)           |
-| GitHub Forks       | 97 (as of 2026-01-31)              |
-| Next Review Date   | 2026-05-01                         |
-
-**Review Triggers**:
-
-- First formal version release
-- Significant star growth (5K, 10K milestones)
-- New agent platform integrations beyond Claude Code and OpenCode
-- Major annotation system changes
-- New collaboration features (real-time sync, commenting)
-- Changes to hook system or plugin structure
-- BSL license change date (2030-01-01 conversion to open source)
-- Breaking changes to API endpoints
-- Native Claude Code plan review feature release (competitive context)

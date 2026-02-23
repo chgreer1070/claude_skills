@@ -1,12 +1,15 @@
-# Claude-Mem - Persistent Memory Compression for Claude Code
-
-**Research Date**: January 31, 2026
-**Source URL**: <https://claude-mem.ai>
-**GitHub Repository**: <https://github.com/thedotmack/claude-mem>
-**Documentation**: <https://docs.claude-mem.ai>
-**Version at Research**: v6.5.0
-**License**: AGPL-3.0
-
+---
+name: Claude-Mem - Persistent Memory Compression for Claude Code
+description: Claude-Mem is a Claude Code plugin that automatically captures tool usage observations during coding sessions, compresses them with AI using Claude's Agent SDK, and injects relevant context back into...
+license: AGPL-3.0
+metadata:
+  topic: claude-mem
+  category: context-management
+  source_url: https://claude-mem.ai
+  github: thedotmack/claude-mem
+  version: "v6.5.0"
+  verified: "2026-01-31"
+  next_review: "2026-04-30"
 ---
 
 ## Overview
@@ -240,23 +243,3 @@ Settings are managed in `~/.claude-mem/settings.json`:
 8. **Configuration Guide**: <https://docs.claude-mem.ai/configuration> (accessed 2026-01-31)
 9. **Author Twitter/X**: <https://x.com/Claude_Memory>
 10. **Discord Community**: <https://discord.com/invite/J4wttp9vDu>
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                 |
-| ---------------------------- | --------------------- |
-| Last Verified                | 2026-01-31            |
-| Version at Verification      | v6.5.0                |
-| GitHub Stars at Verification | 15,681                |
-| Forks at Verification        | 1,094                 |
-| Next Review Recommended      | 2026-04-30 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes
-- Check for new MCP tools or hooks
-- Review changelog for architecture changes
-- Verify star/fork growth trends
-- Watch for beta features graduating to stable

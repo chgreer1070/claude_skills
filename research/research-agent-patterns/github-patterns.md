@@ -1,8 +1,12 @@
-# GitHub Research: Existing Research Agent Patterns
-
-**Research Date**: December 9, 2025
-**Methodology**: Systematic search of GitHub repositories for Claude Code research agents, awesome lists, and multi-agent research workflows.
-
+---
+name: 'GitHub Research: Existing Research Agent Patterns'
+description: '| Repository                                                                                                | Stars  | Description                                                                     ...'
+metadata:
+  topic: github-patterns
+  category: research-agent-patterns
+  source_url: https://github.com/github-patterns
+  verified: "2025-12-09"
+  next_review: "2026-03-09"
 ---
 
 ## Awesome Lists Found

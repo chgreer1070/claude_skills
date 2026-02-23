@@ -1,14 +1,14 @@
-# Google Stitch
-
-| Field         | Value                                                  |
-| ------------- | ------------------------------------------------------ |
-| Research Date | 2026-01-31                                             |
-| Primary URL   | <https://stitch.withgoogle.com>                        |
-| Announced     | Google I/O 2025 (May 20, 2025)                         |
-| Version       | Beta (SaaS)                                            |
-| License       | Proprietary (Google product)                           |
-| Twitter       | [@stitchbygoogle](https://twitter.com/stitchbygoogle)  |
-
+---
+name: Google Stitch
+description: Google Stitch is an AI-powered design tool that generates UI elements and code for mobile and web applications. Launched at Google I/O 2025, Stitch uses Google's Gemini 2.5 models to create app...
+license: Proprietary (Google product)
+metadata:
+  topic: google-stitch
+  category: ai-design-tools
+  source_url: https://stitch.withgoogle.com
+  version: "Beta"
+  verified: "2026-01-31"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -206,23 +206,3 @@ Jules complements Stitch by handling backend/infrastructure while Stitch focuses
 | Twitter Account               | <https://twitter.com/stitchbygoogle>                                                     | 2026-01-31 |
 
 **Research Method**: Information gathered from official homepage meta tags, TechCrunch exclusive coverage from Google I/O 2025, and production JavaScript bundle analysis. The site is an Angular SPA requiring authentication for full access.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | Beta (as of 2026-01-31)             |
-| Launch Date        | May 20, 2025 (Google I/O 2025)      |
-| Product Manager    | Kathy Korevec (Google)              |
-| Next Review Date   | 2026-05-01                          |
-
-**Review Triggers**:
-
-- Exit from beta to general availability
-- Public API or SDK release
-- Addition of screenshot annotation feature
-- New export format support (beyond Figma)
-- Integration with other Google Workspace tools
-- Pricing model announcement

@@ -1,13 +1,14 @@
-# Tinybird - Real-Time Data Platform for Analytics APIs
-
-**Research Date**: January 31, 2026
-**Source URL**: <https://www.tinybird.co/product>
-**Documentation**: <https://www.tinybird.co/docs>
-**LLM Documentation**: <https://www.tinybird.co/llms.txt>, <https://www.tinybird.co/docs/llms.txt>
-**GitHub Organization**: <https://github.com/tinybirdco> (169 repositories)
-**PyPI Package**: <https://pypi.org/project/tinybird-cli/> (v6.0.1)
-**License**: Proprietary (SaaS) with open-source CLI and templates
-
+---
+name: Tinybird - Real-Time Data Platform for Analytics APIs
+description: Tinybird is a real-time data platform that helps developers build data products and analytics APIs. It provides a serverless platform for ingesting, transforming, and serving real-time data through...
+license: Proprietary (SaaS) with open-source CLI and templates
+metadata:
+  topic: tinybird
+  category: data-infrastructure
+  source_url: https://www.tinybird.co/product
+  version: "v6.0.1"
+  verified: "2026-01-31"
+  next_review: "2026-04-30"
 ---
 
 ## Overview
@@ -280,22 +281,3 @@ curl -X POST 'https://api.tinybird.co/v0/events?name=events' \
 8. **Analytics Agents Documentation**: <https://www.tinybird.co/docs/forward/analytics-agents> (accessed 2026-01-31)
 9. **MCP Server Documentation**: <https://www.tinybird.co/docs/forward/analytics-agents/mcp> (accessed 2026-01-31)
 10. **Best Practices for AI Agents**: <https://www.tinybird.co/blog/md/tinybird-best-practices-for-ai-agents> (published 2026-01-27)
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                 |
-| ---------------------------- | --------------------- |
-| Last Verified                | 2026-01-31            |
-| CLI Version at Verification  | v6.0.1                |
-| GitHub Repos at Verification | 169                   |
-| Next Review Recommended      | 2026-04-30 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor PyPI for CLI version changes
-- Check GitHub organization for new repositories (templates, MCP servers)
-- Review blog for new features and best practices
-- Monitor pricing page for plan changes
-- Check documentation for new connector additions

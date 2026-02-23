@@ -1,12 +1,15 @@
-# Kernel
-
-**Research Date**: 2026-02-22
-**Source URL**: <https://www.kernel.sh>
-**GitHub Repository**: <https://github.com/kernel/kernel-images> (core infra, Apache-2.0)
-**GitHub Repository (MCP)**: <https://github.com/onkernel/kernel-mcp-server> (MIT)
-**Version at Research**: No versioned SDK releases; kernel-images tagged via commits (updated 2026-02-22)
-**License**: Apache-2.0 (kernel-images), MIT (kernel-mcp-server)
-
+---
+name: Kernel
+description: Kernel is a browsers-as-a-service (BaaS) API platform that provisions cloud-based Chrome browser instances for AI agents and web automations. It solves the infrastructure burden of managing...
+license: Apache-2.0 (kernel-images), MIT (kernel-mcp-server)
+metadata:
+  topic: kernel-sh
+  category: agent-infrastructure
+  source_url: https://www.kernel.sh
+  github: kernel/kernel-images> (core infra, Apache-2.0)
+  version: "No versioned SDK release; kernel-images last commit 2026-02-22"
+  verified: "2026-02-22"
+  next_review: "2026-05-22"
 ---
 
 ## Overview
@@ -227,13 +230,3 @@ kernel logs my-action --follow
 - [Kernel $22M Series A announcement](https://www.kernel.sh/blog/series-a-announcement) (accessed 2026-02-22)
 - [kernel/kernel-images GitHub repository](https://github.com/kernel/kernel-images) (accessed 2026-02-22)
 - [onkernel/kernel-mcp-server GitHub repository](https://github.com/onkernel/kernel-mcp-server) (accessed 2026-02-22)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-22 |
-| Version at Verification | No versioned SDK release; kernel-images last commit 2026-02-22 |
-| Next Review Recommended | 2026-05-22 |

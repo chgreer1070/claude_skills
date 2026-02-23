@@ -1,14 +1,14 @@
-# OrbStack - Fast, Lightweight Docker Desktop and Linux VM Alternative
-
-**Research Date**: January 31, 2026
-**Source URL**: <https://orbstack.dev>
-**Documentation**: <https://docs.orbstack.dev>
-**GitHub Organization**: <https://github.com/orbstack>
-**Twitter**: <https://twitter.com/orbstack>
-**Discord**: <https://discord.gg/Tfjyd5N5Eq>
-**Version at Research**: v2.0.5 (November 2024)
-**License**: Proprietary (Free for personal/educational use; commercial license required for business use)
-
+---
+name: OrbStack - Fast, Lightweight Docker Desktop and Linux VM Alternative
+description: OrbStack is a fast, lightweight, and efficient Docker Desktop alternative for macOS that also supports full Linux virtual machines and Kubernetes. Built with a native Swift app and purpose-built...
+license: Proprietary (Free for personal/educational use; commercial license required for business use)
+metadata:
+  topic: orbstack
+  category: developer-tools
+  source_url: https://orbstack.dev
+  version: "v2.0.5"
+  verified: "2026-01-31"
+  next_review: "2026-04-30"
 ---
 
 ## Overview
@@ -344,23 +344,3 @@ OrbStack demonstrates that significant performance improvements come from purpos
 | [UTM](https://mac.getutm.app/)                                    | Full virtualization for macOS (not Docker-focused)         |
 | [Rancher Desktop](https://rancherdesktop.io/)                     | Open-source Kubernetes/Docker alternative                  |
 | [Podman Desktop](https://podman-desktop.io/)                      | Daemonless container engine alternative                    |
-
----
-
-## Freshness Tracking
-
-| Field                   | Value                         |
-| ----------------------- | ----------------------------- |
-| Last Verified           | 2026-01-31                    |
-| Version at Verification | v2.0.5                        |
-| Platform                | macOS (Intel + Apple Silicon) |
-| Next Review Recommended | 2026-04-30 (3 months)         |
-
-**Change Detection Indicators**:
-
-- Monitor release notes at <https://docs.orbstack.dev/release-notes> for version changes
-- Check for new Linux distribution support
-- Track Kubernetes version updates
-- Review pricing changes at <https://orbstack.dev/pricing>
-- Watch for Windows support (currently macOS only)
-- Monitor feature parity with Docker Desktop updates

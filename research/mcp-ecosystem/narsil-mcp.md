@@ -1,13 +1,15 @@
-# Narsil-MCP - Comprehensive Code Intelligence MCP Server
-
-**Research Date**: January 26, 2026
-**Source URL**: <https://narsilmcp.com/>
-**GitHub Repository**: <https://github.com/postrv/narsil-mcp>
-**npm Package**: <https://www.npmjs.com/package/narsil-mcp>
-**Crates.io**: <https://crates.io/crates/narsil-mcp>
-**Version at Research**: v1.3.1
-**License**: Apache-2.0 / MIT (dual-licensed)
-
+---
+name: Narsil-MCP - Comprehensive Code Intelligence MCP Server
+description: Narsil-MCP is a Rust-powered MCP (Model Context Protocol) server providing AI assistants with deep code intelligence through 90 specialized tools. It supports 32 programming languages with features...
+license: Apache-2.0 / MIT (dual-licensed)
+metadata:
+  topic: narsil-mcp
+  category: mcp-ecosystem
+  source_url: https://narsilmcp.com/
+  github: postrv/narsil-mcp
+  version: "v1.3.1"
+  verified: "2026-01-26"
+  next_review: "2026-04-26"
 ---
 
 ## Overview
@@ -376,22 +378,3 @@ CLI flags > Environment vars > Project config (`.narsil.yaml`) > User config (`~
 7. **Claude Code Integration Playbook**: <https://github.com/postrv/narsil-mcp/blob/main/docs/playbooks/integrations/claude-code.md>
 8. **npm Package**: <https://www.npmjs.com/package/narsil-mcp>
 9. **Crates.io**: <https://crates.io/crates/narsil-mcp>
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                 |
-| ---------------------------- | --------------------- |
-| Last Verified                | 2026-01-26            |
-| Version at Verification      | v1.3.1                |
-| GitHub Stars at Verification | 82                    |
-| Next Review Recommended      | 2026-04-26 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes (rapid development: 94 commits in ~1 month)
-- Check CHANGELOG.md for new features and breaking changes
-- Review tool count changes (currently 90 tools)
-- Track star growth as adoption indicator (early project, high potential)
-- Verify security rule count and language support expansion

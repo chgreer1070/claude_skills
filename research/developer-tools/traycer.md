@@ -1,14 +1,14 @@
-# Traycer - Spec-Driven AI Development Orchestrator
-
-**Research Date**: 2026-02-15
-**Website**: <https://traycer.ai>
-**Docs**: <https://docs.traycer.ai>
-**GitHub**: <https://github.com/traycerai/community> (Apache-2.0, community repo)
-**VS Code Extension**: `Traycer.traycer-vscode` v2.15.6
-**License**: Proprietary (SOC2 Type 2 Certified, GDPR Compliant)
-**Company**: Traycer AI, Inc., Walnut Creek, CA
-**Type**: Commercial SaaS (VS Code / Cursor / Windsurf extension + GitHub App)
-
+---
+name: Traycer - Spec-Driven AI Development Orchestrator
+description: Traycer is a spec-driven development platform that serves as the workflow layer between developer intent and AI coding agents. It captures intent as structured, editable Artifacts (PRDs, tech specs,...
+license: Proprietary (SOC2 Type 2 Certified, GDPR Compliant)
+metadata:
+  topic: traycer
+  category: developer-tools
+  source_url: https://github.com/traycer
+  github: traycerai/community> (Apache-2.0, community repo)
+  verified: "2026-02-15"
+  next_review: "2026-05-15"
 ---
 
 ## Overview
@@ -293,27 +293,3 @@ GitHub App integration available for repository-level workflows.
 9. **Traycer Docs - Integrations** - <https://docs.traycer.ai> (accessed 2026-02-15)
 10. **Traycer Terms of Service** - <https://traycer.ai/terms-of-service> (accessed 2026-02-15)
 11. **Traycer Privacy Policy** - <https://traycer.ai/privacy-policy> (accessed 2026-02-15)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Product Type | Commercial SaaS (Proprietary) |
-| Supported Agents | Cursor, Claude Code, Windsurf, GitHub Copilot, Cline, custom CLI |
-| Compliance | SOC2 Type 2, GDPR |
-| Pro Tier Price | $25/user/month |
-| Research Date | 2026-02-15 |
-| Next Review | 2026-05-15 |
-
-### Update Triggers
-
-- Public version release or major feature announcements
-- Changes to pricing tiers or artifact slot limits
-- Addition of new coding agent integrations beyond the current 6
-- Addition of standalone CLI, API, or CI/CD integration mode
-- Changes to MCP integration capabilities
-- New IDE support beyond VS Code, Cursor, Windsurf
-- SOC2 or compliance certification changes
-- Acquisition, shutdown, or significant business model changes
