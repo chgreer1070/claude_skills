@@ -999,6 +999,7 @@ Interactive prompt development platforms and tools for iterating on LLM prompts,
 | Document | Description | Last Updated |
 | -------- | ----------- | ------------ |
 | [google-ai-studio.md](./prompt-engineering/google-ai-studio.md) | Google AI Studio — free browser-based IDE for Gemini API with 20+ models, function calling, Google Search grounding, sandboxed code execution, and OpenAI-compatible endpoint | 2026-02-23 |
+| [nano-banana-pro-prompting.md](./prompt-engineering/nano-banana-pro-prompting.md) | Nano-Banana Pro Prompting Guide — 10-category strategy guide for Google's `gemini-3-pro-image-preview` Thinking image model covering text rendering, character consistency, Search grounding, in-painting, 2D↔3D translation, 4K output, visual reasoning, storyboarding, and structural layout control | 2026-02-23 |
 | [prompt-engine.md](./prompt-engineering/prompt-engine.md) | Prompt Engine — SaaS prompt generator and optimizer that converts plain-language descriptions into professional-grade prompts in < 15 seconds; includes library/tagging for reuse ($19/month) | 2026-02-23 |
 
 **Key Topics**:
