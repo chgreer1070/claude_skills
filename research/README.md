@@ -55,6 +55,7 @@ research/
 │   └── pilot.md                       # Autonomous development pipeline wrapping Claude Code CLI (BSL 1.1)
 ├── context-management/                # Memory, context window, and RAG tools
 │   ├── claude-mem.md                  # Persistent memory compression for Claude Code (15K+ stars)
+│   ├── jina-ai.md                     # Search foundation: Reader API, multilingual embeddings, rerankers (acquired by Elastic 2025)
 │   └── local-memory.md               # Persistent memory infrastructure for AI agents (MCP + REST + CLI)
 ├── data-infrastructure/               # Real-time data platforms for analytics
 │   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
@@ -718,10 +719,14 @@ Memory systems, context window optimization tools, and RAG solutions for maintai
 | Document                                                  | Description                                                                                                                    | Last Updated |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------ |
 | [claude-mem.md](./context-management/claude-mem.md)       | Claude-Mem - persistent memory compression plugin for Claude Code with 4 MCP tools and progressive disclosure                  | 2026-01-31   |
+| [jina-ai.md](./context-management/jina-ai.md)             | Jina AI - search foundation platform with Reader API (URL→Markdown), multimodal embeddings, rerankers, and DeepSearch (acquired by Elastic 2025) | 2026-02-23   |
 | [local-memory.md](./context-management/local-memory.md)   | Local Memory - persistent memory infrastructure with MCP, REST API, CLI, embedded Qdrant, and knowledge evolution (L0-L3)      | 2026-02-07   |
 
 **Key Topics**:
 
+- URL-to-Markdown extraction via Reader API (r.jina.ai prefix pattern)
+- Multimodal and multilingual embeddings for semantic search
+- Two-stage retrieval: embed → shortlist → rerank pipeline
 - Persistent memory across Claude Code sessions
 - Progressive disclosure pattern (3-layer workflow for token efficiency)
 - Lifecycle hooks architecture (SessionStart, PostToolUse, SessionEnd, etc.)
