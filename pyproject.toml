@@ -234,11 +234,6 @@ max-complexity = 12
 "**/assets/nested-typer-exceptions/*.py" = ["ANN", "DOC"]
 # Lazy imports for optional dependency detection (hatchling may not be installed)
 "**/assets/version.py" = ["PLC0415"]
-"research/knowledge-explorer.py" = [
-    "ANN401",  # Any required for YAMLHandler base class kwargs and JSON return types
-    "S",       # Security checks relaxed for CLI scripts
-    "T201",    # print() acceptable in CLI scripts
-]
 "**/scripts/**" = [
     "ANN401",  # Any type annotations acceptable in script arguments
     "DOC",     # Docstring content requirements relaxed for scripts
@@ -261,6 +256,12 @@ max-complexity = 12
     "S",    # Security checks not needed in tests
     "SLF",  # Private name imports acceptable for testing internals
     "T",    # print() statements are intentional for CI output visibility
+]
+"research/knowledge-explorer.py" = [
+    "ANN401", # Any required for YAMLHandler base class kwargs and JSON return types
+    "DTZ",    # Timezone-aware dates not required for research staleness comparisons
+    "S",      # Security checks relaxed for CLI scripts
+    "T201",   # print() acceptable in CLI scripts
 ]
 "typings/**" = ["A", "ANN", "N"]
 

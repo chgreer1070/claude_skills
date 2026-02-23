@@ -237,9 +237,9 @@ cors_origins = "https://app.example.com"
 | Tool | Scope | Validation | Sync | MCP Server | Language |
 |------|-------|------------|------|------------|----------|
 | Skrills | Claude + Codex + Copilot | Yes (per-target) | Yes (bidirectional) | Yes (40+ tools) | Rust |
-| SkillKit | Universal (32 agents) | No | No | No | Unknown |
-| vercel-labs-skills | 40+ CLI agents | No | No | No | Unknown |
-| mcpskills-cli | MCP → skill conversion | No | No | No | Unknown |
+| SkillKit | Universal (32 agents) | No | No | No | TypeScript |
+| vercel-labs-skills | 40+ CLI agents | No | No | No | TypeScript |
+| mcpskills-cli | MCP → skill conversion | No | No | No | Python |
 | codex-skills | Codex only | No | No | No | TypeScript |
 
 ---
