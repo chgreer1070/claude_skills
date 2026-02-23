@@ -222,6 +222,19 @@ Phrase "pre-existing issues not related to my changes" is a TRIGGER TO ACT, not 
 
 </pre_existing_issue_rule>
 
+### Request Progression
+
+<request_progression>
+
+For every user request that implies multi-step work:
+1. **Backlog**: Ensure a backlog item exists — create via `create-backlog-item` or match via `work-backlog-item`.
+2. **Plan**: When writing a plan, add it to the item via `backlog update "{title}" --plan "{path}"`.
+3. **Progress**: When completing actions, update the task/plan artifact (checklist, status) so progression is visible.
+
+Skip for trivial single-step requests (typos, one-off questions).
+
+</request_progression>
+
 ### Backlog Operations
 
 <backlog_operations>
