@@ -17,6 +17,7 @@ research/
 │   ├── micro-agent.md                 # Lightweight Python ReAct agent framework with MCP multi-server support (MIT)
 │   └── superpowers.md                 # Agentic skills framework and dev methodology (40K+ stars)
 ├── agent-infrastructure/              # Infrastructure for agentic applications
+│   ├── fly-io.md                      # Cloud platform for running apps globally in Firecracker microVMs; Sprites for AI agent sandboxes, first-class MCP support (18 regions)
 │   ├── kernel-sh.md                   # Browsers-as-a-service: isolated VM-per-browser Chrome, MCP server, 5.8x faster than Browserbase (670 stars)
 │   ├── plano.md                       # AI-native proxy and data plane for multi-agent orchestration
 │   └── zeroclaw.md                    # Rust AI assistant infrastructure — sub-5MB RAM, 28+ providers, trait-driven (14.9K stars)
@@ -375,6 +376,7 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 
 | Document                                    | Description                                                                                                     | Last Updated |
 | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------ |
+| [fly-io.md](./agent-infrastructure/fly-io.md)     | Fly.io - cloud platform running apps in Firecracker microVMs across 18 regions; Sprites for AI agent sandboxes, first-class MCP deployment, Machines API for programmatic VM orchestration | 2026-02-23   |
 | [kernel-sh.md](./agent-infrastructure/kernel-sh.md) | Kernel - browsers-as-a-service API with isolated VM-per-browser Chrome, 72h sessions, Playwright CDP passthrough, MCP server, and Browser Pools ($22M, 670 stars) | 2026-02-22   |
 | [plano.md](./agent-infrastructure/plano.md)       | AI-native proxy and data plane built on Envoy - handles orchestration, model routing, observability, guardrails | 2026-01-26   |
 | [zeroclaw.md](./agent-infrastructure/zeroclaw.md) | Rust autonomous AI assistant — sub-5MB RAM, 28+ AI providers, 15+ channels, trait-driven swappable subsystems (14.9K stars) | 2026-02-19   |
