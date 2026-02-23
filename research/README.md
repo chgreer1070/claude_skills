@@ -58,6 +58,7 @@ research/
 │   └── tembo.md                       # Cloud AI coding agent orchestration (Claude Code, Codex, Cursor, Amp, OpenCode)
 ├── context-management/                # Memory, context window, and RAG tools
 │   ├── claude-mem.md                  # Persistent memory compression for Claude Code (15K+ stars)
+│   ├── jina-ai.md                     # Search foundation: Reader API, multilingual embeddings, rerankers (acquired by Elastic 2025)
 │   ├── local-memory.md               # Persistent memory infrastructure for AI agents (MCP + REST + CLI)
 │   └── sourcesyncai.md               # Managed RAG platform with auto-syncing connectors and hybrid search
 ├── data-infrastructure/               # Real-time data platforms for analytics
@@ -78,6 +79,7 @@ research/
 │   ├── github-cli.md                  # Official GitHub CLI tool for PRs, issues, workflows (37.8K stars)
 │   ├── google-ai-studio.md            # Google AI Studio — browser-based IDE and playground for Gemini API (1M-token context, free tier)
 │   ├── grepai.md                      # Semantic code search and call graph analysis for AI agents (1.2K stars)
+│   ├── jina-reader.md                 # Jina Reader — URL-to-Markdown API via r.jina.ai prefix, full SPA/PDF support, Apache 2.0 (~9.8K stars)
 │   ├── jirajs.md                      # TypeScript Jira API client for Cloud, Server, and Data Center
 │   ├── jscpd.md                       # Copy/paste detector for 150+ languages (5K+ stars)
 │   ├── loguru.md                      # Python logging made simple with zero config (23K+ stars)
@@ -536,6 +538,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [github-cli.md](./developer-tools/github-cli.md)       | GitHub CLI (gh) - official CLI for PRs, issues, workflows, extensions with scriptable API access (37.8K stars)                        | 2026-02-20   |
 | [google-ai-studio.md](./developer-tools/google-ai-studio.md) | Google AI Studio — free browser-based IDE and playground for Gemini API with 1M-token context, OpenAI compatibility, and built-in Google Search grounding | 2026-02-23   |
 | [grepai.md](./developer-tools/grepai.md)               | Semantic code search and call graph analysis for AI agents with MCP server, 12-language trace, and embedding-based search (1.2K stars) | 2026-02-13   |
+| [jina-reader.md](./developer-tools/jina-reader.md)     | Jina Reader - Apache 2.0 URL-to-Markdown API (`r.jina.ai` prefix), full SPA/PDF support via Puppeteer, web search grounding via `s.jina.ai` (~9.8K stars) | 2026-02-23   |
 | [jirajs.md](./developer-tools/jirajs.md)               | jira.js - TypeScript Jira API client for Cloud, Server, and Data Center with full REST API coverage                                   | 2026-02-20   |
 | [jscpd.md](./developer-tools/jscpd.md)                 | Copy/paste detector for 150+ programming languages using Rabin-Karp algorithm with CI/CD integration                                 | 2026-01-31   |
 | [loguru.md](./developer-tools/loguru.md)               | Loguru - zero-config Python logging with rotation, structured output, exception catching, and contextvars support (23K+ stars)        | 2026-02-09   |
@@ -784,11 +787,15 @@ Memory systems, context window optimization tools, and RAG solutions for maintai
 | Document                                                  | Description                                                                                                                    | Last Updated |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------ |
 | [claude-mem.md](./context-management/claude-mem.md)       | Claude-Mem - persistent memory compression plugin for Claude Code with 4 MCP tools and progressive disclosure                  | 2026-01-31   |
+| [jina-ai.md](./context-management/jina-ai.md)             | Jina AI - search foundation platform with Reader API (URL→Markdown), multimodal embeddings, rerankers, and DeepSearch (acquired by Elastic 2025) | 2026-02-23   |
 | [local-memory.md](./context-management/local-memory.md)   | Local Memory - persistent memory infrastructure with MCP, REST API, CLI, embedded Qdrant, and knowledge evolution (L0-L3)      | 2026-02-07   |
 | [sourcesyncai.md](./context-management/sourcesyncai.md)   | SourceSync.ai - managed RAG platform with 15+ auto-syncing connectors, hybrid search, BYOC storage, and MCP integration       | 2026-02-23   |
 
 **Key Topics**:
 
+- URL-to-Markdown extraction via Reader API (r.jina.ai prefix pattern)
+- Multimodal and multilingual embeddings for semantic search
+- Two-stage retrieval: embed → shortlist → rerank pipeline
 - Persistent memory across Claude Code sessions
 - Progressive disclosure pattern (3-layer workflow for token efficiency)
 - Lifecycle hooks architecture (SessionStart, PostToolUse, SessionEnd, etc.)
