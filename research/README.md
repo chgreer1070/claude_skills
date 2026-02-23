@@ -44,7 +44,8 @@ research/
 ├── ai-observability/                  # AI/LLM observability and debugging platforms
 │   └── logfire.md                     # Pydantic Logfire - full-stack AI observability with MCP (4K+ stars)
 ├── code-auditing/                     # Code security and quality auditing tools
-│   └── hound.md                       # Autonomous AI security auditor with knowledge graphs
+│   ├── hound.md                       # Autonomous AI security auditor with knowledge graphs
+│   └── snyk-cli-cpp-scans.md          # Snyk CLI hash-based open-source vulnerability scanning for C/C++ unmanaged dependencies
 ├── ai-design-tools/                   # AI-powered visual creation and design platforms
 │   ├── hedra.md                       # AI video/image/audio creation platform
 │   └── jimeng.md                      # ByteDance SeedDance 2.0 AI video/image generation with cinematic camera control
@@ -322,6 +323,7 @@ Tools and frameworks for autonomous code security auditing and vulnerability det
 | Document                             | Description                                                                                           | Last Updated |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------ |
 | [hound.md](./code-auditing/hound.md) | Autonomous AI security auditor using knowledge graphs, belief systems, and hypothesis-driven analysis | 2026-01-26   |
+| [snyk-cli-cpp-scans.md](./code-auditing/snyk-cli-cpp-scans.md) | Snyk CLI hash-based open-source vulnerability scanning for C/C++ unmanaged dependencies via `--unmanaged` flag | 2026-02-23   |
 
 **Key Topics**:
 
@@ -332,6 +334,9 @@ Tools and frameworks for autonomous code security auditing and vulnerability det
 - Interactive steering via chatbot UI
 - Session persistence and recovery
 - Professional report generation with PoC integration
+- Hash-based dependency fingerprinting for packageless C/C++ projects
+- Confidence-scored dependency identification from source code
+- CVE mapping for vendored open-source libraries
 
 ---
 
