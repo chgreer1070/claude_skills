@@ -1,11 +1,15 @@
-# codex-skills
-
-**Research Date**: 2026-02-20
-**Source URL**: <https://github.com/jMerta/codex-skills>
-**GitHub Repository**: <https://github.com/jMerta/codex-skills>
-**Version at Research**: v2.0.0
-**License**: MIT
-
+---
+name: codex-skills
+description: codex-skills is a curated skill catalog for the OpenAI Codex CLI, providing drop-in skill folders that extend the agent with specialized workflows. Skills are installed into `~/.agents/skills/` and...
+license: MIT
+metadata:
+  topic: codex-skills
+  category: skill-generation-tools
+  source_url: https://github.com/jMerta/codex-skills
+  github: jMerta/codex-skills
+  version: "v2.0.0"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -216,13 +220,3 @@ python3 scripts/check_invisible_chars.py --all
 - [skills.json catalog (v2.0.0)](https://raw.githubusercontent.com/jMerta/codex-skills/main/skills.json) (accessed 2026-02-20)
 - [GitHub Pages catalog](https://jmerta.github.io/codex-skills/) (accessed 2026-02-20)
 - [npm: codex-skills](https://www.npmjs.com/package/codex-skills) (accessed 2026-02-20)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-20 |
-| Version at Verification | v2.0.0 |
-| Next Review Recommended | 2026-05-20 |

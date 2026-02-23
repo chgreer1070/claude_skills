@@ -1,11 +1,15 @@
-# TinyClaw - Multi-Agent Multi-Channel 24/7 AI Assistant Platform
-
-**Research Date**: 2026-02-18
-**GitHub**: <https://github.com/jlia0/tinyclaw>
-**Version**: 0.0.5 (latest release 2026-02-15)
-**License**: MIT
-**Primary Language**: Shell (TypeScript runtime core)
-
+---
+name: TinyClaw - Multi-Agent Multi-Channel 24/7 AI Assistant Platform
+description: TinyClaw is an experimental multi-agent orchestration platform that runs named AI agents 24/7 across Discord, Telegram, and WhatsApp simultaneously. Agents are isolated processes (each running their...
+license: MIT
+metadata:
+  topic: tinyclaw
+  category: research-agent-patterns
+  source_url: https://github.com/tinyclaw
+  github: jlia0/tinyclaw
+  version: "0.0.5"
+  verified: "2026-02-18"
+  next_review: "2026-05-18"
 ---
 
 ## Overview
@@ -425,29 +429,3 @@ help me with this                      → routes to default agent
 7. **GitHub API Latest Release** - v0.0.5, published 2026-02-15, asset: tinyclaw-bundle.tar.gz (41.8 MB), release note: "Add `agent provider` command" (accessed 2026-02-18)
 8. **GitHub API Contributors** - 4 contributors (Link header page count, accessed 2026-02-18)
 9. **OpenClaw by Peter Steinberger** - Credited as inspiration in TinyClaw README (accessed 2026-02-18 via [1])
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Version Documented | 0.0.5 |
-| Repository Created | 2026-02-09 |
-| Latest Release | 2026-02-15 |
-| Stars at Research Date | 2,124 |
-| Open Issues | 54 |
-| Stability | Experimental |
-| Research Date | 2026-02-18 |
-| Next Review | 2026-05-18 |
-
-### Update Triggers
-
-- Version bump to v0.1.0 or v1.0.0 (stability milestone)
-- Addition of new channel integrations beyond Discord/Telegram/WhatsApp
-- Addition of new AI provider support beyond Anthropic and OpenAI
-- Introduction of test suite (significant quality signal for experimental project)
-- Breaking changes to SOUL.md format, team configuration schema, or queue protocol
-- OpenClaw integration or collaboration that affects architecture
-- Community Discord activity indicating direction change or feature freeze
-- Stars crossing 5K or 10K (adoption signal for risk assessment update)

@@ -1,11 +1,15 @@
-# Lopaka
-
-**Research Date**: 2026-02-20
-**Source URL**: <https://lopaka.app>
-**GitHub Repository**: <https://github.com/sbrin/lopaka>
-**Version at Research**: v0.5
-**License**: Apache License 2.0
-
+---
+name: Lopaka
+description: Lopaka is an open-source web-based graphics editor specifically designed for creating pixel-perfect graphics for embedded systems displays. It generates ready-to-use C/C++ code for popular embedded...
+license: Apache License 2.0
+metadata:
+  topic: lopaka
+  category: developer-tools
+  source_url: https://lopaka.app
+  github: sbrin/lopaka
+  version: "v0.5"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -237,13 +241,3 @@ void drawIcon(TFT_eSPI &tft, int x, int y) {
 - [TFT_eSPI Library](https://github.com/Bodmer/TFT_eSPI) (accessed 2026-02-20)
 - [U8g2 Library](https://github.com/olikraus/u8g2) (accessed 2026-02-20)
 - [AdafruitGFX Library](https://github.com/adafruit/Adafruit-GFX-Library) (accessed 2026-02-20)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-20 |
-| Version at Verification | v0.5 |
-| Next Review Recommended | 2026-05-20 |

@@ -1,10 +1,10 @@
 ---
-last-updated: 2026-02-22
+last-updated: 2026-02-23
 last-completed: 2026-02-22
 p0-count: 0
 p1-count: 22
 p2-count: 26
-ideas-count: 11
+ideas-count: 21
 ---
 
 # Backlog
@@ -637,6 +637,83 @@ be applied to both scripts (as seen when reversing the name-field bug workaround
 - Test text extraction: Can we pipe output or capture rendered text?
 - Compare JS rendering quality with other tools
 **Blocked on 2026-02-05**: Needs TTY (Inappropriate ioctl for device), DNS also blocked
+
+---
+
+## Ideas — MCP Servers for Plugins
+
+Each plugin with scripts or external tooling should expose a universal MCP interface. The `agentskill-kaizen` plugin is the reference example (two MCP servers: `kaizen-duckdb` via mcp-server-motherduck, `kaizen-analysis` via FastMCP `server.py`). Below are MCP server ideas for every plugin that would benefit.
+
+### plugin-creator: Plugin Validation & Scaffolding MCP
+
+**Source**: MCP backlog audit 2026-02-23
+**Added**: 2026-02-23
+**Description**: Wrap `plugin_validator.py`, `auto_sync_manifests.py`, `create_plugin.py`, and `normalize_frontmatter.py` as MCP tools. Agents could validate plugins, scaffold new ones, sync manifests, and normalize frontmatter without shell invocations. Tools: `validate_plugin`, `create_plugin`, `sync_manifests`, `normalize_frontmatter`, `list_validation_errors`.
+**Suggested location**: `plugins/plugin-creator/mcp/server.py`
+
+### hallucination-detector: Hallucination Audit MCP
+
+**Source**: MCP backlog audit 2026-02-23
+**Added**: 2026-02-23
+**Description**: Expose `hallucination-audit-stop.js` logic as an MCP tool. Currently only runs as a Stop hook — an MCP server would let any agent or workflow request on-demand hallucination scanning of arbitrary text. Tools: `audit_text`, `audit_file`.
+**Suggested location**: `plugins/hallucination-detector/mcp/server.py` (reimplement core logic in Python) or `plugins/hallucination-detector/mcp/server.js` (wrap existing JS)
+
+### gitlab-skill: GitLab CI & GLFM Validation MCP
+
+**Source**: MCP backlog audit 2026-02-23
+**Added**: 2026-02-23
+**Description**: Wrap `validate_glfm.py` and `sync_gitlab_docs.py` as MCP tools. Agents could validate GitLab Flavored Markdown compliance and sync documentation without shell access. Tools: `validate_glfm`, `sync_docs`, `list_glfm_errors`.
+**Suggested location**: `plugins/gitlab-skill/mcp/server.py`
+
+### holistic-linting: Linting Orchestration MCP
+
+**Source**: MCP backlog audit 2026-02-23
+**Added**: 2026-02-23
+**Description**: Wrap `holistic_lint.py` as an MCP tool. Currently agents must invoke linting via shell. An MCP server would expose structured linting results (errors, warnings, fixes applied) as tool outputs. Tools: `lint_files`, `list_lint_errors`, `auto_fix`.
+**Suggested location**: `plugins/holistic-linting/mcp/server.py`
+
+### development-harness: Task Status MCP
+
+**Source**: MCP backlog audit 2026-02-23
+**Added**: 2026-02-23
+**Description**: Wrap `implementation_manager.py` CLI as MCP tools. Agents could query task status, list pending tasks, and update task state programmatically. Tools: `query_tasks`, `list_pending`, `update_task_status`, `parse_task_file`.
+**Suggested location**: `plugins/development-harness/mcp/server.py`
+
+### summarizer: File Metrics & Summarization MCP
+
+**Source**: MCP backlog audit 2026-02-23
+**Added**: 2026-02-23
+**Description**: Wrap `file_metrics.py` as MCP tools. Agents could request file complexity analysis, token counts, and structured summaries. Tools: `count_tokens`, `scan_files`, `summarize_file`.
+**Suggested location**: `plugins/summarizer/mcp/server.py`
+
+### the-rewrite-room: Document Analysis MCP
+
+**Source**: MCP backlog audit 2026-02-23
+**Added**: 2026-02-23
+**Description**: Wrap `file_metrics.py` (count/scan commands with `--json` support) as MCP tools. Provides structured document analysis for the rewriting workflow router. Tools: `count_document_metrics`, `scan_documents`, `compare_versions`.
+**Suggested location**: `plugins/the-rewrite-room/mcp/server.py`
+
+### fastmcp-creator: MCP Meta-Tooling MCP
+
+**Source**: MCP backlog audit 2026-02-23
+**Added**: 2026-02-23
+**Description**: Wrap `connections.py`, `evaluation.py`, and `get_environment.py` as MCP tools. An MCP server that helps build MCP servers — agents could test connections, run evaluations, and inspect environments. Tools: `test_mcp_connection`, `run_evaluation`, `get_mcp_environment`, `validate_mcp_config`.
+**Suggested location**: `plugins/fastmcp-creator/mcp/server.py`
+
+### python3-development: Python Development Toolchain MCP
+
+**Source**: MCP backlog audit 2026-02-23
+**Added**: 2026-02-23
+**Description**: Wrap the various scripts under python3-development (mkdocs sync, uv release sync) as MCP tools. Agents could manage Python project tooling without shell access. Tools: `sync_mkdocs`, `sync_uv_releases`, `check_python_environment`.
+**Suggested location**: `plugins/python3-development/mcp/server.py`
+
+### dasel: Structured Data Query MCP
+
+**Source**: MCP backlog audit 2026-02-23
+**Added**: 2026-02-23
+**Description**: Wrap dasel CLI operations as MCP tools. Agents could query, transform, and convert structured data (JSON, YAML, TOML, XML, CSV) without shell piping. Tools: `query_data`, `transform_data`, `convert_format`, `install_dasel`.
+**Research first**: Evaluate whether wrapping the dasel binary (subprocess) or reimplementing core operations in Python is better for MCP transport.
+**Suggested location**: `plugins/dasel/mcp/server.py`
 
 ---
 

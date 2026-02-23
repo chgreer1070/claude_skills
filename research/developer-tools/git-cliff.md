@@ -1,12 +1,15 @@
-# git-cliff - Customizable Changelog Generator
-
-**Research Date**: January 26, 2026
-**Source URL**: <https://git-cliff.org>
-**GitHub Repository**: <https://github.com/orhun/git-cliff>
-**Documentation**: <https://git-cliff.org/docs>
-**Version at Research**: v2.12.0
-**License**: Apache-2.0 / MIT (dual-licensed)
-
+---
+name: git-cliff - Customizable Changelog Generator
+description: git-cliff is a highly customizable changelog generator that creates structured changelogs from Git history using conventional commits and regex-powered custom parsers. Built in Rust for performance,...
+license: Apache-2.0 / MIT (dual-licensed)
+metadata:
+  topic: git-cliff
+  category: developer-tools
+  source_url: https://git-cliff.org
+  github: orhun/git-cliff
+  version: "v2.12.0"
+  verified: "2026-01-26"
+  next_review: "2026-04-26"
 ---
 
 ## Overview
@@ -329,22 +332,3 @@ git-cliff demonstrates that structured commit messages (conventional commits) en
 | [release-plz](https://github.com/MarcoIeni/release-plz)   | Rust release automation using git-cliff              |
 | [cliff-jumper](https://github.com/favware/cliff-jumper)   | NodeJS wrapper combining git-cliff + version bumping |
 | [git-changelog](https://github.com/pawamoy/git-changelog) | Python alternative using Jinja2                      |
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                 |
-| ---------------------------- | --------------------- |
-| Last Verified                | 2026-01-26            |
-| Version at Verification      | v2.12.0               |
-| GitHub Stars at Verification | 11,274                |
-| Next Review Recommended      | 2026-04-26 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes
-- Check crates.io for new versions
-- Review changelog for new template formats
-- Track new remote integrations (Forgejo, etc.)
-- Watch for breaking changes in cliff.toml schema

@@ -1,16 +1,15 @@
-# ZeroClaw
-
-| Field         | Value                                                               |
-| ------------- | ------------------------------------------------------------------- |
-| Research Date | 2026-02-19                                                          |
-| Primary URL   | <https://github.com/zeroclaw-labs/zeroclaw>                         |
-| GitHub        | <https://github.com/zeroclaw-labs/zeroclaw>                         |
-| Version       | v0.1.0 (released 2026-02-19)                                        |
-| License       | Other (MIT per README badge; NOASSERTION per GitHub API)            |
-| X/Twitter     | <https://x.com/zeroclawlabs>                                        |
-| Telegram      | <https://t.me/zeroclawlabs>                                         |
-| Reddit        | <https://www.reddit.com/r/zeroclawlabs/>                            |
-
+---
+name: ZeroClaw
+description: Lightweight Rust-based autonomous agent infrastructure supporting 28+ AI providers, 15+ messaging channels (Telegram, Discord, Slack, Matrix, Signal, WhatsApp), pluggable SQLite memory backends with FTS5 vector search, and trait-driven swappable subsystems. Use when deploying agents to resource-constrained hardware (sub-5MB RAM, $10 edge boards), integrating multi-provider AI support, connecting agents to messaging platforms, implementing deny-by-default security models, achieving near-instant cold starts, or avoiding vendor lock-in through fully configurable architecture.
+license: Other (MIT per README badge; NOASSERTION per GitHub API)
+metadata:
+  topic: zeroclaw
+  category: agent-infrastructure
+  source_url: https://github.com/zeroclaw-labs/zeroclaw
+  github: zeroclaw-labs/zeroclaw
+  version: "v0.1.0"
+  verified: "2026-02-19"
+  next_review: "2026-05-19"
 ---
 
 ## Overview
@@ -265,24 +264,3 @@ ZeroClaw was created on 2026-02-13 and reached v0.1.0 on 2026-02-19 — it is si
 | Anthropic Auth Notice   | <https://code.claude.com/docs/en/legal-and-compliance#authentication-and-credential-use> | 2026-02-19 |
 
 **Research Method**: Information gathered from GitHub API (stars, forks, issues, releases, contributors via Link header pagination), and README decoded from base64 GitHub contents API response. No external web search required — all data sourced from primary GitHub repository.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | v0.1.0                              |
-| Release Date       | 2026-02-19                          |
-| GitHub Stars       | 14,966 (as of 2026-02-19)           |
-| GitHub Forks       | 1,568 (as of 2026-02-19)            |
-| Next Review Date   | 2026-05-19                          |
-
-**Review Triggers**:
-
-- Any stable release milestone (v0.2.0+, v1.0.0)
-- Stars exceed 25K (indicates sustained community traction vs. viral spike)
-- Production deployments documented in community
-- Changes to Anthropic auth terms affecting zeroclaw integration
-- New memory backend or channel additions
-- Security advisories (project is six days old; surface area likely growing rapidly)

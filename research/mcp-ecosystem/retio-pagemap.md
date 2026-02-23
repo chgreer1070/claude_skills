@@ -1,12 +1,15 @@
-# Retio PageMap
-
-**Research Date**: 2026-02-18
-**Source URL**: <https://github.com/Retio-ai/Retio-pagemap>
-**GitHub Repository**: <https://github.com/Retio-ai/Retio-pagemap>
-**PyPI Package**: <https://pypi.org/project/retio-pagemap/>
-**Version at Research**: v0.1.3
-**License**: MIT
-
+---
+name: Retio PageMap
+description: Retio PageMap is a Python MCP server that compresses raw HTML pages (~100K tokens) into structured 2-5K token PageMap representations while preserving all interactive elements with numbered reference...
+license: MIT
+metadata:
+  topic: retio-pagemap
+  category: mcp-ecosystem
+  source_url: https://github.com/Retio-ai/Retio-pagemap
+  github: Retio-ai/Retio-pagemap
+  version: "v0.1.3"
+  verified: "2026-02-18"
+  next_review: "2026-05-18"
 ---
 
 ## Overview
@@ -241,13 +244,3 @@ asyncio.run(main())
 - [GitHub API: repos/Retio-ai/Retio-pagemap](https://api.github.com/repos/Retio-ai/Retio-pagemap) (accessed 2026-02-18)
 - [GitHub API: releases/latest](https://api.github.com/repos/Retio-ai/Retio-pagemap/releases/latest) (accessed 2026-02-18)
 - [Smithery MCP Registry Configuration](https://smithery.ai/docs/config#smitheryyaml) (accessed 2026-02-18)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-18 |
-| Version at Verification | v0.1.3 |
-| Next Review Recommended | 2026-05-18 |

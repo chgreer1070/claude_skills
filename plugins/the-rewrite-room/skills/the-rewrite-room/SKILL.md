@@ -1,8 +1,8 @@
 ---
-description: "Route documentation and authoring tasks to the right workflow — sync, drift audit, prompt optimization, summarization fidelity, GLFM/Markdown validation, or audience-appropriate rewriting. Selects canonical workflow, runs validation harness, enforces output contracts."
+name: the-rewrite-room
+description: Route documentation and authoring tasks to the right workflow — sync, drift audit, prompt optimization, summarization fidelity, GLFM/Markdown validation, or audience-appropriate rewriting. Selects canonical workflow, runs validation harness, enforces output contracts.
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
-
 # The Rewrite Room
 
 This plugin is a workflow router for documentation and authoring tasks. It is NOT a writing tool itself. It selects the correct canonical workflow, delegates to the appropriate agent or skill, runs the validation harness, and enforces the output contract.

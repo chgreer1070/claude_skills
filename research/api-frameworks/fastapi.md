@@ -1,18 +1,15 @@
-# FastAPI
-
-| Field         | Value                                                              |
-| ------------- | ------------------------------------------------------------------ |
-| Research Date | 2026-02-05                                                         |
-| Primary URL   | <https://fastapi.tiangolo.com/>                                    |
-| GitHub        | <https://github.com/fastapi/fastapi>                               |
-| PyPI          | <https://pypi.org/project/fastapi/>                                |
-| Version       | 0.128.1 (released 2026-02-04)                                      |
-| License       | MIT                                                                |
-| Author        | Sebastian Ramirez (tiangolo)                                       |
-| Discord       | <https://discord.gg/VQjSZaeJmf>                                    |
-| Discussions   | <https://github.com/fastapi/fastapi/discussions>                   |
-| Managed       | <https://fastapicloud.com/> (FastAPI Cloud - official hosting)     |
-
+---
+name: FastAPI
+description: FastAPI is a modern, high-performance web framework for building APIs with Python based on standard Python type hints. Built on Starlette (ASGI framework) and Pydantic (data validation), FastAPI...
+license: MIT
+metadata:
+  topic: fastapi
+  category: api-frameworks
+  source_url: https://fastapi.tiangolo.com/
+  github: fastapi/fastapi
+  version: "0.128.1"
+  verified: "2026-02-05"
+  next_review: "2026-05-05"
 ---
 
 ## Overview
@@ -406,23 +403,3 @@ FastAPI is used in production by major organizations:
 | FastMCP                     | <https://github.com/jlowin/fastmcp>                                | 2026-02-05 |
 
 **Research Method**: Information gathered from official GitHub repository README, GitHub API (stars, forks, issues, contributors), PyPI metadata, and pyproject.toml dependencies. Enterprise adoption quotes verified from README testimonials with linked references.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | 0.128.1                             |
-| Release Date       | 2026-02-04                          |
-| GitHub Stars       | 94,804 (as of 2026-02-05)           |
-| Next Review Date   | 2026-05-05                          |
-
-**Review Triggers**:
-
-- Major version release (1.0.0)
-- Significant MCP/FastMCP integration updates
-- GitHub stars milestone (100K)
-- Breaking changes to core APIs (routing, DI, Pydantic integration)
-- New async features or performance improvements
-- FastAPI Cloud general availability changes

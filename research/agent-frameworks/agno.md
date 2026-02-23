@@ -1,16 +1,15 @@
-# Agno
-
-| Field         | Value                                                    |
-| ------------- | -------------------------------------------------------- |
-| Research Date | 2026-01-31                                               |
-| Primary URL   | <https://docs.agno.com>                                  |
-| GitHub        | <https://github.com/agno-agi/agno>                       |
-| PyPI          | <https://pypi.org/project/agno/>                         |
-| Version       | v2.4.7 (released 2026-01-28)                             |
-| License       | Apache-2.0                                               |
-| Discord       | <https://www.agno.com/discord>                           |
-| Community     | <https://community.agno.com/>                            |
-
+---
+name: Agno
+description: Agno is a Python framework for building multi-agent systems that learn and improve with every interaction. Unlike stateless agents that forget after each session, Agno agents persist user profiles...
+license: Apache-2.0
+metadata:
+  topic: agno
+  category: agent-frameworks
+  source_url: https://docs.agno.com
+  github: agno-agi/agno
+  version: "v2.4.7"
+  verified: "2026-01-31"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -305,25 +304,3 @@ The [cookbook](https://github.com/agno-agi/agno/tree/main/cookbook) provides hun
 | LLM Documentation         | <https://docs.agno.com/llms-full.txt>                    | 2026-01-31 |
 
 **Research Method**: Information gathered from official GitHub repository README, GitHub API (stars, forks, issues, releases), PyPI statistics API, and cookbook README. Statistics verified via direct API calls.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | v2.4.7                              |
-| Release Date       | 2026-01-28                          |
-| GitHub Stars       | 37,379 (as of 2026-01-31)           |
-| Monthly Downloads  | 1,158,777 (as of 2026-01-31)        |
-| Next Review Date   | 2026-05-01                          |
-
-**Review Triggers**:
-
-- Major version release (v3.x)
-- Significant new feature (new learning modes, orchestration patterns)
-- GitHub stars milestone (40K, 50K)
-- PyPI downloads milestone (2M monthly)
-- New production runtime capabilities
-- Breaking changes to Teams/Workflows API
-- New model provider integrations of note

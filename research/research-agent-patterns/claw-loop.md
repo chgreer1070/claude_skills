@@ -1,13 +1,14 @@
-# The Claw Loop - Autonomous Development Orchestration Pattern
-
-**Research Date**: 2026-02-15
-**Website**: <https://www.dontsleeponai.com/claw-loop>
-**Version**: 2.0 (February 12, 2026)
-**Author**: Jordan Olsen
-**Publisher**: Don't Sleep On AI (<https://dontsleeponai.com>)
-**Copyright**: 2026 Don't Sleep On AI
-**License**: Not specified (prompt-based methodology, not a software package)
-
+---
+name: The Claw Loop - Autonomous Development Orchestration Pattern
+description: The Claw Loop is an autonomous development orchestration methodology where a supervisory AI agent ("Clawdbot") drives Claude Code through entire development sprints via tmux terminal sessions, with a...
+license: Not specified (prompt-based methodology, not a software package)
+metadata:
+  topic: claw-loop
+  category: research-agent-patterns
+  source_url: https://github.com/claw-loop
+  version: "2.0"
+  verified: "2026-02-15"
+  next_review: "2026-05-15"
 ---
 
 ## Overview
@@ -290,27 +291,3 @@ Socket path: ${TMPDIR:-/tmp}/clawdbot-tmux-sockets/clawdbot.sock
 2. **Don't Sleep On AI (Publisher)** - <https://dontsleeponai.com> (accessed 2026-02-15)
 3. **BMAD Method** - Referenced as story-driven workflow integration within the Claw Loop; methodology for create-story / dev-story / code-review cycles (accessed 2026-02-15 via [1])
 4. **GSD (Get Shit Done) Method** - Referenced as phase-based workflow integration within the Claw Loop; methodology for discuss / plan / execute / verify cycles (accessed 2026-02-15 via [1])
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Version Documented | 2.0 |
-| Author | Jordan Olsen |
-| Publisher | Don't Sleep On AI |
-| Supported Workflows | 3 (BMAD, GSD, Custom) |
-| Core Principles | 7 |
-| Research Date | 2026-02-15 |
-| Next Review | 2026-05-15 |
-
-### Update Triggers
-
-- New version release with additional principles or workflow integrations
-- Publication of the Claw Loop as a packaged tool (installer, CLI, or repository)
-- Changes to Claude Code's `/clear` behavior or context management that affect the methodology
-- Addition of new supported AI tools beyond Claude Code
-- Author publishes implementation code (state file schema, cron scripts, tmux configuration)
-- Significant community adoption or forks creating derivative methodologies
-- Changes to tmux send-keys behavior affecting the text/Enter separation requirement

@@ -1,13 +1,15 @@
-# SkillKit - Universal Package Manager for AI Agent Skills
-
-**Research Date**: 2026-02-08
-**Website**: <https://agenstskills.com>
-**GitHub**: <https://github.com/rohitg00/skillkit>
-**NPM**: <https://www.npmjs.com/package/skillkit>
-**Version**: 1.14.0
-**License**: Apache-2.0
-**Primary Language**: TypeScript (99.4%)
-
+---
+name: SkillKit - Universal Package Manager for AI Agent Skills
+description: SkillKit is an open-source CLI package manager for AI coding agent skills. It aggregates 15,000+ skills from GitHub repositories, provides a `skillkit install` command to fetch them, and...
+license: Apache-2.0
+metadata:
+  topic: skillkit
+  category: skill-generation-tools
+  source_url: https://github.com/skillkit
+  github: rohitg00/skillkit
+  version: "1.14.0"
+  verified: "2026-02-08"
+  next_review: "2026-05-08"
 ---
 
 ## Overview
@@ -294,25 +296,3 @@ skillkit manifest install                 # Install from manifest
 8. **NPM Package Registry** - <https://registry.npmjs.org/skillkit> (accessed 2026-02-08)
 9. **NPM Download Statistics** - <https://api.npmjs.org/downloads/> endpoints (accessed 2026-02-08)
 10. **Website HTML Source / JS Bundle** - <https://agenstskills.com/assets/index-BDs2-uIT.js> (accessed 2026-02-08, for feature strings and collection names)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Version Documented | 1.14.0 |
-| GitHub Stars | 202 |
-| GitHub Forks | 16 |
-| Monthly NPM Downloads | 4,129 |
-| Research Date | 2026-02-08 |
-| Next Review | 2026-05-08 |
-
-### Update Triggers
-
-- Major version release or significant API changes
-- Growth beyond 1,000 GitHub stars indicating broader adoption
-- Addition of new AI agent format support
-- Changes to the skill aggregation model (hosting original skills vs. indexing)
-- Emergence of competing universal skill package managers
-- Team expansion beyond single maintainer

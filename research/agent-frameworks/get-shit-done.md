@@ -1,11 +1,14 @@
-# Get Shit Done (GSD)
-
-**Research Date**: 2026-02-01
-**Source URL**: <https://github.com/glittercowboy/get-shit-done>
-**npm Package**: <https://www.npmjs.com/package/get-shit-done-cc>
-**Version at Research**: v1.11.1
-**License**: MIT
-
+---
+name: Get Shit Done (GSD)
+description: Get Shit Done (GSD) is a lightweight meta-prompting, context engineering, and spec-driven development system for Claude Code, OpenCode, and Gemini CLI. It solves "context rot" - the quality...
+license: MIT
+metadata:
+  topic: get-shit-done
+  category: agent-frameworks
+  source_url: https://github.com/glittercowboy/get-shit-done
+  version: "v1.11.1"
+  verified: "2026-02-01"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -296,15 +299,3 @@ Stopping to approve `date` and `git commit` 50 times defeats the purpose of auto
 4. **Agent Definitions** - <https://github.com/glittercowboy/get-shit-done/tree/main/agents> (accessed 2026-02-01)
 5. **Command Definitions** - <https://github.com/glittercowboy/get-shit-done/tree/main/commands/gsd> (accessed 2026-02-01)
 6. **Discord Community** - <https://discord.gg/5JJgD5svVS> (referenced in README)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-01 |
-| Version at Verification | v1.11.1 |
-| Stars at Verification | 10,193 |
-| Forks at Verification | 989 |
-| Next Review Recommended | 2026-05-01 |

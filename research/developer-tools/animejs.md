@@ -1,13 +1,15 @@
-# Anime.js - JavaScript Animation Engine
-
-**Research Date**: January 31, 2026
-**Source URL**: <https://animejs.com>
-**GitHub Repository**: <https://github.com/juliangarnier/anime>
-**Documentation**: <https://animejs.com/documentation>
-**npm Package**: <https://www.npmjs.com/package/animejs>
-**Version at Research**: v4.3.5
-**License**: MIT
-
+---
+name: Anime.js - JavaScript Animation Engine
+description: Anime.js is a fast, multipurpose, and lightweight JavaScript animation library with a simple yet powerful API. It works with CSS properties, SVG, DOM attributes, and JavaScript Objects. Version 4...
+license: MIT
+metadata:
+  topic: animejs
+  category: developer-tools
+  source_url: https://animejs.com
+  github: juliangarnier/anime
+  version: "v4.3.5"
+  verified: "2026-01-31"
+  next_review: "2026-04-30"
 ---
 
 ## Overview
@@ -306,23 +308,3 @@ Anime.js demonstrates that declarative, composable APIs with semantic naming con
 | [Framer Motion](https://www.framer.com/motion/)               | React-specific animation library                       |
 | [Popmotion](https://popmotion.io/)                            | Functional animation library                           |
 | [Lottie](https://airbnb.design/lottie/)                       | After Effects animation player for web                 |
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                 |
-| ---------------------------- | --------------------- |
-| Last Verified                | 2026-01-31            |
-| Version at Verification      | v4.3.5                |
-| GitHub Stars at Verification | 66,288                |
-| npm Weekly Downloads         | 487,588               |
-| Next Review Recommended      | 2026-04-30 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor npm for new version releases (v4.x active development)
-- Check GitHub releases for changelog updates
-- Watch for new easing functions or timeline features
-- Track browser compatibility updates
-- Review documentation for API additions

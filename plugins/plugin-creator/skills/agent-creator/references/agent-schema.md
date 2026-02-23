@@ -277,6 +277,62 @@ hooks:
 
 For complete hook reference, see [Claude Hooks Reference](./../../skills/claude-hooks-reference-2026/SKILL.md)
 
+### maxTurns
+
+- **Type**: integer
+- **Default**: none
+- **Purpose**: Maximum number of agentic turns before the subagent stops
+
+```yaml
+maxTurns: 10
+```
+
+### mcpServers
+
+- **Type**: list or object
+- **Default**: none
+- **Purpose**: MCP servers available to this subagent. Each entry is either a server name referencing an already-configured server or an inline definition with the server name as key and a full MCP server config as value.
+
+```yaml
+mcpServers:
+  - slack
+```
+
+### memory
+
+- **Type**: string
+- **Default**: none
+- **Options**: `user`, `project`, `local`
+- **Purpose**: Enables cross-session learning via persistent memory scope.
+  - `user`: `~/.claude/agent-memory/<name-of-agent>/`
+  - `project`: `.claude/agent-memory/<name-of-agent>/`
+  - `local`: `.claude/agent-memory-local/<name-of-agent>/`
+
+```yaml
+memory: project
+```
+
+### background
+
+- **Type**: boolean
+- **Default**: `false`
+- **Purpose**: Set to `true` to always run this subagent as a background task.
+
+```yaml
+background: true
+```
+
+### isolation
+
+- **Type**: string
+- **Default**: none
+- **Options**: `worktree`
+- **Purpose**: Set to `worktree` to run the subagent in a temporary git worktree, giving it an isolated copy of the repository.
+
+```yaml
+isolation: worktree
+```
+
 ### color
 
 - **Type**: string
@@ -416,7 +472,13 @@ Before saving an agent, verify:
 
    - [ ] Valid option with justification if bypassPermissions
 
-7. **YAML syntax**
+7. **memory** (if specified)
+   - [ ] Valid option: user, project, local
+
+8. **isolation** (if specified)
+   - [ ] Valid option: worktree
+
+9. **YAML syntax**
    - [ ] Valid YAML
    - [ ] Proper quoting for multiline strings
    - [ ] No trailing commas or syntax errors

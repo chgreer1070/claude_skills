@@ -1,13 +1,15 @@
-# Claude Task Master - AI-Powered Task Management for Development
-
-**Research Date**: January 26, 2026
-**Source URL**: <https://task-master.dev>
-**GitHub Repository**: <https://github.com/eyaltoledano/claude-task-master>
-**Documentation**: <https://docs.task-master.dev>
-**npm Package**: <https://www.npmjs.com/package/task-master-ai>
-**Version at Research**: v0.42.0
-**License**: MIT with Commons Clause
-
+---
+name: Claude Task Master - AI-Powered Task Management for Development
+description: Claude Task Master (Taskmaster) is an AI-powered task management system designed for AI-driven development workflows. It integrates with Cursor, Windsurf, VS Code, and other AI-enabled IDEs via MCP...
+license: MIT with Commons Clause
+metadata:
+  topic: claude-task-master
+  category: task-management
+  source_url: https://task-master.dev
+  github: eyaltoledano/claude-task-master
+  version: "0.42.0"
+  verified: "2026-01-26"
+  next_review: "2026-04-26"
 ---
 
 ## Overview
@@ -360,23 +362,3 @@ Task Master provides a Claude Code plugin for native integration:
 4. **npm Package**: <https://www.npmjs.com/package/task-master-ai> (accessed 2026-01-26)
 5. **Configuration Guide**: <https://github.com/eyaltoledano/claude-task-master/blob/main/docs/configuration.md> (accessed 2026-01-26)
 6. **Claude Code Integration**: <https://github.com/eyaltoledano/claude-task-master/blob/main/docs/examples/claude-code-usage.md> (accessed 2026-01-26)
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                 |
-| ---------------------------- | --------------------- |
-| Last Verified                | 2026-01-26            |
-| Version at Verification      | v0.42.0               |
-| GitHub Stars at Verification | 25,062                |
-| npm Version at Verification  | 0.42.0                |
-| Next Review Recommended      | 2026-04-26 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes
-- Check npm for new releases
-- Review changelog for new features
-- Track star growth (rapid growth since March 2025)
-- Watch for new AI provider support

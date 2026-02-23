@@ -1,13 +1,15 @@
-# Loguru - Python Logging Made Simple
-
-**Research Date**: 2026-02-09
-**Website**: <https://loguru.readthedocs.io>
-**GitHub**: <https://github.com/Delgan/loguru>
-**PyPI**: <https://pypi.org/project/loguru/>
-**Version**: 0.7.3
-**License**: MIT
-**Primary Language**: Python (100%)
-
+---
+name: Loguru - Python Logging Made Simple
+description: Loguru is a drop-in replacement for Python's standard `logging` module that eliminates boilerplate configuration. It provides a single pre-configured global `logger` object that outputs to `stderr`...
+license: MIT
+metadata:
+  topic: loguru
+  category: developer-tools
+  source_url: https://github.com/loguru
+  github: Delgan/loguru
+  version: "0.7.3"
+  verified: "2026-02-09"
+  next_review: "2026-05-09"
 ---
 
 ## Overview
@@ -339,23 +341,3 @@ logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 6. **Installed Package Metadata** - `importlib.metadata.metadata('loguru')` on loguru 0.7.3: version, license, Python requirement, dependencies
 7. **Installed Package Source** - `/usr/local/lib/python3.11/dist-packages/loguru/`: file sizes, architecture, type stubs verified by direct inspection
 8. **Installed Package Help** - `help(logger.add)`, `help(logger.catch)`, `help(logger.opt)`, `help(logger.bind)`, `help(logger.contextualize)`: parameter documentation and signatures verified by direct execution
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Version Documented | 0.7.3 |
-| GitHub Stars | 23,577 |
-| GitHub Forks | 766 |
-| Research Date | 2026-02-09 |
-| Next Review | 2026-05-09 |
-
-### Update Triggers
-
-- New major/minor release beyond 0.7.x
-- Growth beyond 25,000 stars
-- Addition of async-native features or major API changes
-- Python version support changes (currently >=3.5)
-- Changes to dependency model (currently zero deps on Linux/macOS)

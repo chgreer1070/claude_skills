@@ -1,11 +1,14 @@
-# Orchestrator Agent Creation Guide (OpenCode)
-
-**Research Date**: January 26, 2026
-**Source URL**: <https://gist.github.com/gc-victor/1d3eeb46ddfda5257c08744972e0fc4c>
-**Author**: Víctor García (gc-victor)
-**Platform**: OpenCode
-**License**: Public Gist (no explicit license)
-
+---
+name: Orchestrator Agent Creation Guide (OpenCode)
+description: A comprehensive guide for creating Orchestrator Agents in OpenCode - central dispatch systems that route user requests to specialized subagents without executing tasks directly. The guide defines the...
+license: Public Gist (no explicit license)
+metadata:
+  topic: orchestrator-agent-creation-guide
+  category: research-agent-patterns
+  source_url: https://gist.github.com/gc-victor/1d3eeb46ddfda5257c08744972e0fc4c
+  version: "Not versioned"
+  verified: "2026-01-26"
+  next_review: "2026-04-26"
 ---
 
 ## Overview
@@ -607,22 +610,3 @@ If you cannot route safely, ask up to 3 clarifying questions and stop.
 5. **Related Article**: "Long-horizon agents: OpenCode + GPT-5.2 Codex Experiment" by Maxim Saplin, Dev.to (2026-01-22)
 6. **Related Article**: "OpenCode Agents: Another Path to Self-Healing Documentation Pipelines" by Rick Hightower, Medium (2025-09-17)
 7. **GitHub Issue**: "[feat] True Async/Background Sub-Agent Delegation #5887" - anomalyco/opencode (2025-12-20)
-
----
-
-## Freshness Tracking
-
-| Field                            | Value                                    |
-| -------------------------------- | ---------------------------------------- |
-| Last Verified                    | 2026-01-26                               |
-| Gist Version at Verification     | e5bc09b056dc4c151e04fbf2246ad6a1673cbc8b |
-| OpenCode Version at Verification | Not versioned (active development)       |
-| OpenCode Stars at Verification   | 87,758                                   |
-| Next Review Recommended          | 2026-04-26 (3 months)                    |
-
-**Change Detection Indicators**:
-
-- Monitor Gist raw URL for content changes
-- Check OpenCode releases for agent system updates
-- Review OpenCode documentation for pattern evolution
-- Track GitHub issues for async delegation features (#5887)

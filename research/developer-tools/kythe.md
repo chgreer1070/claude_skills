@@ -1,11 +1,15 @@
-# Kythe
-
-**Research Date**: 2026-02-20
-**Source URL**: <https://kythe.io/docs/kythe-overview.html>
-**GitHub Repository**: <https://github.com/kythe/kythe>
-**Version at Research**: No formal releases (continuous development)
-**License**: Apache License 2.0
-
+---
+name: Kythe
+description: Kythe is a language-agnostic ecosystem for building tools that work with code, developed at Google to create semantic indices and cross-references for large, multi-language codebases. It provides a...
+license: Apache License 2.0
+metadata:
+  topic: kythe
+  category: developer-tools
+  source_url: https://kythe.io/docs/kythe-overview.html
+  github: kythe/kythe
+  version: "Continuous development"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -167,13 +171,3 @@ kythe xrefs --graphstore=/tmp/gs --signature="java.lang.String#length()"
 - [Kythe Schema Documentation](https://kythe.io/docs/schema/) (accessed 2026-02-20)
 - [Kythe Getting Started](https://kythe.io/getting-started) (accessed 2026-02-20)
 - [GitHub API - kythe/kythe metadata](https://api.github.com/repos/kythe/kythe) (accessed 2026-02-20)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-20 |
-| Version at Verification | Continuous development (no formal releases) |
-| Next Review Recommended | 2026-05-20 |
