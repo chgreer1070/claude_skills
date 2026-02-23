@@ -63,6 +63,7 @@ research/
 │   └── sourcesyncai.md               # Managed RAG platform with auto-syncing connectors and hybrid search
 ├── data-infrastructure/               # Real-time data platforms for analytics
 │   ├── cocoindex.md                   # Ultra-performant AI data transformation framework with Rust core, incremental processing, and dataflow model (Apache 2.0)
+│   ├── motherduck.md                  # Serverless cloud DuckDB warehouse with Dual Execution and native MCP integration (36K+ stars)
 │   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
 ├── documentation-tools/                # Architecture documentation and living docs
 │   └── living-architecture.md         # Operational flow architecture extraction with Rivière schema (79 stars)
@@ -87,6 +88,7 @@ research/
 │   ├── niteni.md                      # AI-powered code review for GitLab CI pipelines
 │   ├── orbstack.md                    # Fast Docker Desktop and Linux VM alternative for macOS
 │   ├── paperdraw.md                   # Browser-based distributed systems simulator with chaos injection (Flutter web)
+│   ├── piebald.md                     # Cross-platform agentic AI desktop client with parallel agents, session persistence, OAuth subscriptions (Free + Pro)
 │   ├── repomix.md                     # Pack codebase into AI-friendly formats (21K+ stars)
 │   ├── traycer.md                     # Spec-driven AI development orchestrator (commercial SaaS)
 │   ├── vert.md                        # WebAssembly-based file converter (13K+ stars)
@@ -545,6 +547,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [niteni.md](./developer-tools/niteni.md)               | Niteni - AI-powered code review for GitLab CI using Gemini with inline diff comments and severity classification                     | 2026-02-15   |
 | [orbstack.md](./developer-tools/orbstack.md)           | Fast, lightweight Docker Desktop and Linux VM alternative for macOS with 2-second startup and dynamic memory                         | 2026-01-31   |
 | [paperdraw.md](./developer-tools/paperdraw.md)         | PaperDraw - browser-based distributed systems simulator with 20+ backend components, chaos injection, and real-time metrics (Flutter web) | 2026-02-23   |
+| [piebald.md](./developer-tools/piebald.md)             | Piebald - cross-platform agentic AI desktop client with parallel subagents, persistent sessions, OAuth AI subscriptions, and HTTP traffic inspector (Free + Pro) | 2026-02-23   |
 | [repomix.md](./developer-tools/repomix.md)             | Pack codebase into single AI-friendly file with token counting, Tree-sitter compression, MCP server, and Claude Code plugins         | 2026-01-31   |
 | [traycer.md](./developer-tools/traycer.md)             | Traycer - spec-driven AI development orchestrator with multi-model ensemble, plan-execute-verify loop, and 6 agent handoffs          | 2026-02-15   |
 | [vert.md](./developer-tools/vert.md)                   | VERT - WebAssembly-based file converter for 250+ formats with client-side processing and self-hostable video daemon (13K+ stars)     | 2026-02-08   |
@@ -646,6 +649,12 @@ Developer productivity tools and workflow automation for software engineering wi
 - Real-time per-node metrics (latency, throughput, error rates, cache-hit ratios) in simulation
 - Failure-first architecture thinking: discover failure modes before writing code
 - LLM gateway and vector database as first-class system design components
+- Cross-platform agentic AI desktop with native Windows support (no WSL), OAuth AI subscriptions, and persistent sessions (Piebald)
+- Profile-based MCP tool isolation: named profiles with specific tool subsets switchable per chat
+- Reboot-persistent tool approval gates: agentic loop state preserved across machine reboots
+- Multi-provider OAuth bridging: consumer subscriptions (Claude Max, ChatGPT Plus, Google AI) without API keys
+- HTTP wire-level traffic inspection for debugging LLM request/response cycles and SSE streams
+- AgentSkills.io skill loading in GUI context: first-class compatibility with agentskills.io format
 - Biome: single-binary Rust toolchain (format + lint + import organize) replacing ESLint + Prettier
 - 97% Prettier formatting compatibility with ~35× speed advantage
 - 450+ lint rules from ESLint, typescript-eslint, and other sources with safe-fix support
@@ -727,12 +736,15 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 
 Real-time data platforms and analytics infrastructure for powering AI applications and agentic workflows.
 
-| Document                                         | Description                                                                                                  | Last Updated |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------ |
-| [tinybird.md](./data-infrastructure/tinybird.md) | Managed ClickHouse platform for real-time analytics APIs with native MCP server and analytics agents support | 2026-01-31   |
+| Document                                                 | Description                                                                                                  | Last Updated |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------ |
+| [motherduck.md](./data-infrastructure/motherduck.md)     | Serverless cloud DuckDB warehouse with Dual Execution engine and native MCP integration for AI agents        | 2026-02-23   |
+| [tinybird.md](./data-infrastructure/tinybird.md)         | Managed ClickHouse platform for real-time analytics APIs with native MCP server and analytics agents support | 2026-01-31   |
 
 **Key Topics**:
 
+- Serverless cloud DuckDB with Dual Execution (local + cloud hybrid query routing)
+- Native MCP server integration for AI agents and Claude Code
 - Managed ClickHouse with zero maintenance overhead
 - SQL-to-API instant endpoint generation
 - Incremental materialized views for 100x query speedup
