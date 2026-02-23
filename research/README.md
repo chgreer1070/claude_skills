@@ -27,6 +27,7 @@ research/
 ├── api-frameworks/                    # High-performance API frameworks for backend services
 │   ├── fastapi.md                     # Modern Python web framework with Pydantic (95K+ stars)
 │   ├── motia.md                       # Unified backend framework replacing APIs/queues/workflows/AI agents with one Step primitive (15K+ stars)
+│   ├── pocketbase.md                  # Open source Go backend in 1 file with SQLite, auth, file storage, and admin dashboard (56.3K stars)
 │   └── tornado.md                     # Python web framework and async networking library (22K+ stars)
 ├── async-libraries/                   # Python async I/O libraries and concurrency frameworks
 │   ├── anyio.md                       # Backend-agnostic async concurrency library (426M downloads/month)
@@ -116,7 +117,9 @@ research/
 │   ├── softaworks-agent-toolkit.md    # 43 skills, 6 agents, 7 slash commands for Claude Code (621 stars)
 │   └── vercel-labs-skills.md          # Universal skill installer for 40+ AI coding agents (6.3K stars)
 ├── prompt-engineering/                # Prompt optimization and testing platforms
-│   └── google-ai-studio.md            # Google AI Studio — browser-based Gemini IDE with 20+ models, function calling, grounding, and OpenAI-compatible API
+│   ├── google-ai-studio.md            # Google AI Studio — browser-based Gemini IDE with 20+ models, function calling, grounding, and OpenAI-compatible API
+│   ├── prompt-engine.md               # SaaS prompt generator converting plain-language to professional-grade prompts in <15s ($19/month)
+│   └── system-prompts-ai-tools.md     # Leaked system prompts and model configs for 30+ AI tools including Claude Code, Cursor, Windsurf, Devin AI (117.9K stars)
 └── task-management/                   # AI-powered task management for development
     └── claude-task-master.md          # Task management system for AI-driven development (25K+ stars)
 ```
@@ -449,6 +452,7 @@ High-performance API frameworks for building backend services, tool endpoints, a
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------ |
 | [fastapi.md](./api-frameworks/fastapi.md)  | Modern Python web framework with Pydantic validation, automatic OpenAPI docs, async support (95K+ stars)  | 2026-02-05   |
 | [motia.md](./api-frameworks/motia.md)      | Motia - unified backend framework replacing APIs, queues, workflows, and AI agents with one Step primitive (15K+ stars) | 2026-02-23   |
+| [pocketbase.md](./api-frameworks/pocketbase.md) | PocketBase - open source Go backend in 1 file with embedded SQLite, realtime subscriptions, auth, file storage, and admin dashboard (56.3K stars) | 2026-02-23   |
 | [tornado.md](./api-frameworks/tornado.md)  | Python web framework and async networking library for WebSockets and long-polling (22K+ stars, 95M+ downloads/month) | 2026-02-05   |
 
 **Key Topics**:
@@ -479,6 +483,16 @@ High-performance API frameworks for building backend services, tool endpoints, a
 - Visual Workbench debugger with flow diagrams, traces, and state inspection
 - AGENTS.md bundled in scaffolded projects for AI coding tool context
 - Core runtime rewritten in Rust for performance
+- Single-binary Go backend with zero external runtime dependencies (PocketBase)
+- Embedded SQLite with realtime SSE subscriptions for live collection updates
+- Built-in auth (email/password, OAuth2, token-based) with configurable access rules
+- Auto-generated REST CRUD endpoints for every collection with filter, sort, expand support
+- Admin dashboard UI bundled in binary at `/_/` for data, user, and settings management
+- Migration-as-code via JS files in `pb_migrations/` committed to VCS
+- Go framework embedding mode: extend with custom routes, middleware, and event hooks
+- CGO-free static binary build (`CGO_ENABLED=0 go build`) for portable distribution
+- S3-compatible file storage backend for production scale-out
+- JS SDK (Browser/Node/React Native) and Dart SDK for client-side interaction
 
 ---
 
@@ -1000,6 +1014,7 @@ Interactive prompt development platforms and tools for iterating on LLM prompts,
 | -------- | ----------- | ------------ |
 | [google-ai-studio.md](./prompt-engineering/google-ai-studio.md) | Google AI Studio — free browser-based IDE for Gemini API with 20+ models, function calling, Google Search grounding, sandboxed code execution, and OpenAI-compatible endpoint | 2026-02-23 |
 | [prompt-engine.md](./prompt-engineering/prompt-engine.md) | Prompt Engine — SaaS prompt generator and optimizer that converts plain-language descriptions into professional-grade prompts in < 15 seconds; includes library/tagging for reuse ($19/month) | 2026-02-23 |
+| [system-prompts-ai-tools.md](./prompt-engineering/system-prompts-ai-tools.md) | x1xhlol/system-prompts-and-models-of-ai-tools — 30,000+ lines of leaked system prompts and model configs for 30+ AI tools including Claude Code, Cursor, Windsurf, Devin AI, Copilot, v0, Replit (117.9K stars, GPL-3.0) | 2026-02-23 |
 
 **Key Topics**:
 
@@ -1020,6 +1035,13 @@ Interactive prompt development platforms and tools for iterating on LLM prompts,
 - Ephemeral token scoping for secure multi-user deployments
 - Token counting API for pre-request cost estimation
 - Tiered rate limits (Free → Tier 1 → Tier 2 → Tier 3) with dashboard visibility
+- Comprehensive collection of 30,000+ lines of leaked/reverse-engineered AI system prompts
+- Coverage of 30+ tools: Claude Code, Cursor, Windsurf, Devin AI, GitHub Copilot, v0, Replit, Lovable, Manus, Perplexity, and more
+- Internal tool definitions (JSON function-call schemas) for production AI agents
+- Model configuration details (model selection, temperature, context window) where disclosed
+- Real-world examples of tool use protocols, safety constraints, and task decomposition strategies
+- Community-maintained with active updates (last push: 2026-02-17; 117.9K stars, 30.6K forks)
+- DeepWiki integration for AI-powered cross-collection search
 
 ---
 
