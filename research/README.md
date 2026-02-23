@@ -113,6 +113,7 @@ research/
 │   ├── mcpskills-cli.md               # MCP-to-skill converter via Streamable HTTP discovery
 │   ├── skill-seekers.md               # Documentation-to-skill automation tool
 │   ├── skillkit.md                    # Universal package manager for AI agent skills (32 agents)
+│   ├── skrills.md                     # Rust skills support engine: validates, syncs, and analyzes skills across Claude Code, Codex CLI, and Copilot CLI (52 stars)
 │   ├── softaworks-agent-toolkit.md    # 43 skills, 6 agents, 7 slash commands for Claude Code (621 stars)
 │   └── vercel-labs-skills.md          # Universal skill installer for 40+ AI coding agents (6.3K stars)
 ├── prompt-engineering/                # Prompt optimization and testing platforms
@@ -260,6 +261,7 @@ Tools and services that automate the creation of AI skills from documentation, c
 | [mcpskills-cli.md](./skill-generation-tools/mcpskills-cli.md)       | mcpskills-cli - MCP-to-skill converter generating SKILL.md and polyglot call scripts from Streamable HTTP servers | 2026-02-15   |
 | [skill-seekers.md](./skill-generation-tools/skill-seekers.md)       | Skill Seekers - converts docs, GitHub repos, and PDFs into Claude/Gemini/OpenAI skills                          | 2026-01-26   |
 | [skillkit.md](./skill-generation-tools/skillkit.md)                  | SkillKit - universal package manager for AI agent skills with 15K+ skills, 32 agent support, and cross-format translation | 2026-02-08   |
+| [skrills.md](./skill-generation-tools/skrills.md)                    | Skrills - Rust skills support engine validating and syncing skills across Claude Code, Codex CLI, and Copilot CLI with 40+ MCP tools (52 stars) | 2026-02-23   |
 | [softaworks-agent-toolkit.md](./skill-generation-tools/softaworks-agent-toolkit.md) | Softaworks Agent Toolkit - 43 skills, 6 agents, 7 slash commands for Claude Code with multi-platform support (621 stars) | 2026-02-20   |
 | [vercel-labs-skills.md](./skill-generation-tools/vercel-labs-skills.md) | Vercel Labs Skills - universal CLI for installing skills to 40+ AI coding agents with symlink-first design (6.3K stars) | 2026-02-20   |
 
@@ -291,6 +293,13 @@ Tools and services that automate the creation of AI skills from documentation, c
 - Hook-based automation (auto code review on session stop, 5 Whys verification)
 - Instructive vs descriptive prompt writing patterns for skill authoring
 - State machine governance for TDD and process-driven skill workflows
+- Multi-CLI validation tiers (permissive Claude vs strict Codex/Copilot frontmatter rules)
+- Bidirectional skill sync with file-hash protection against overwriting manual edits
+- Token analysis with per-skill counting and reduction suggestions
+- MCP server exposing 40+ tools for validation, sync, and project-aware skill generation
+- Dependency resolution with cycle detection and semantic versioning constraints
+- Session mining for usage-based skill recommendations
+- `AgentAdapter` trait pattern for pluggable per-CLI sync adapters
 - Multi-platform skill toolkit with 43 skills across 10 categories (AI, Meta, Docs, Design, Dev, Planning)
 - Agent Skills format (agentskills.io) for cross-tool compatibility
 - Specialized agent roles (security-hardener, researcher, git-master, ai-architect)
