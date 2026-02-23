@@ -596,6 +596,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 
 | Document                                     | Description                                                                                       | Last Updated |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------ |
+| [cline.md](./coding-agents/cline.md)         | Cline - open-source autonomous coding agent (VS Code + CLI) with human-in-the-loop approvals, multi-provider LLM support, and enterprise governance (Apache-2.0) | 2026-02-23   |
 | [openhands.md](./coding-agents/openhands.md) | OpenHands - open platform for cloud coding agents with 77.6% SWE-bench score, SDK, CLI, and cloud | 2026-01-26   |
 | [pilot.md](./coding-agents/pilot.md)         | Pilot - autonomous development pipeline wrapping Claude Code CLI with ticket-to-PR automation (BSL 1.1) | 2026-02-19   |
 
@@ -615,6 +616,11 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 - Epic decomposition with Haiku pre-planning before heavy-model execution
 - GitHub/Linear/Jira/Asana ticket ingestion
 - BSL 1.1 licensing with Apache 2.0 conversion after 4 years
+- Human-in-the-loop approval gates for every agent action
+- Plan & Act mode separation for safer task execution
+- Multi-provider LLM support with bring-your-own-key model
+- MCP extensibility with custom tools and data sources
+- VS Code extension + CLI for headless/CI-CD workflows
 
 ---
 
