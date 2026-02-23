@@ -1,12 +1,15 @@
-# copier-astral - Python Project Template with Astral Toolchain
-
-**Research Date**: January 31, 2026
-**Source URL**: <https://ritwiktiwari.github.io/copier-astral/>
-**GitHub Repository**: <https://github.com/ritwiktiwari/copier-astral>
-**Documentation**: <https://ritwiktiwari.github.io/copier-astral/>
-**Version at Research**: v1.1
-**License**: MIT
-
+---
+name: copier-astral - Python Project Template with Astral Toolchain
+description: copier-astral is an opinionated Copier template for bootstrapping Python projects using Astral's modern toolchain. It provides batteries-included project scaffolding with linting (ruff), type...
+license: MIT
+metadata:
+  topic: copier-astral
+  category: developer-tools
+  source_url: https://ritwiktiwari.github.io/copier-astral/
+  github: ritwiktiwari/copier-astral
+  version: "v1.1"
+  verified: "2026-01-31"
+  next_review: "2026-04-30"
 ---
 
 ## Overview
@@ -323,22 +326,3 @@ copier-astral demonstrates the modern Python tooling stack that Claude Code-rela
 | [python-project-template](https://github.com/rochacbruno/python-project-template) | Alternative Copier template without Astral tooling |
 | [cruft](https://github.com/cruft/cruft) | Cookiecutter with update capability (similar to Copier) |
 | [hatch](https://hatch.pypa.io/) | Python project manager used for multi-version testing |
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-01-31 |
-| Version at Verification | v1.1 |
-| GitHub Stars at Verification | 6 |
-| Next Review Recommended | 2026-04-30 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes
-- Check for new template options added
-- Review pyproject.toml for tooling version updates
-- Track Astral toolchain releases (uv, ruff, ty)
-- Watch for breaking changes in Copier template syntax

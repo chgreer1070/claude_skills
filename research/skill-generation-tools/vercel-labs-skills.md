@@ -1,11 +1,15 @@
-# Vercel Labs Skills
-
-**Research Date**: 2026-02-20
-**Source URL**: <https://github.com/vercel-labs/skills>
-**GitHub Repository**: <https://github.com/vercel-labs/skills>
-**Version at Research**: v1.4.0
-**License**: MIT
-
+---
+name: Vercel Labs Skills
+description: Vercel Labs Skills is an open-source CLI tool (`npx skills`) that enables developers to install, manage, and distribute reusable instruction sets (skills) across 40+ AI coding agents. It standardizes...
+license: MIT
+metadata:
+  topic: vercel-labs-skills
+  category: skill-generation-tools
+  source_url: https://github.com/vercel-labs/skills
+  github: vercel-labs/skills
+  version: "v1.4.0"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -271,13 +275,3 @@ Describe the scenarios where this skill should be used.
 - [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills) (accessed 2026-02-20)
 - [Vercel Agent Skills Repository](https://github.com/vercel-labs/agent-skills) (accessed 2026-02-20)
 - [npm Package](https://www.npmjs.com/package/skills) (accessed 2026-02-20)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-20 |
-| Version at Verification | v1.4.0 |
-| Next Review Recommended | 2026-05-20 |

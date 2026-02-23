@@ -1,11 +1,15 @@
-# LocalAI
-
-**Research Date**: 2026-02-22
-**Source URL**: <https://localai.io>
-**GitHub Repository**: <https://github.com/mudler/LocalAI>
-**Version at Research**: v3.12.1
-**License**: MIT
-
+---
+name: LocalAI
+description: LocalAI is a free, open-source, self-hosted alternative to OpenAI, Anthropic, and other cloud AI providers, implemented in Go and designed to run on consumer-grade hardware without requiring a GPU....
+license: MIT
+metadata:
+  topic: localai
+  category: llm-infrastructure
+  source_url: https://localai.io
+  github: mudler/LocalAI
+  version: "v3.12.1"
+  verified: "2026-02-22"
+  next_review: "2026-05-22"
 ---
 
 ## Overview
@@ -276,23 +280,3 @@ print(transcript.text)
 | v3.10.0 Release Notes | <https://github.com/mudler/LocalAI/releases/tag/v3.10.0> | 2026-02-22 |
 
 **Research Method**: Data gathered from GitHub API (stars, forks, issues, contributors, release metadata), official documentation site (localai.io), and GitHub README. Statistics verified via direct API calls on 2026-02-22.
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-22 |
-| Version at Verification | v3.12.1 |
-| Next Review Recommended | 2026-05-22 |
-
-**Review Triggers**:
-
-- Major version release (v4.x)
-- New API compatibility targets (e.g., Google Gemini API)
-- Significant new backend additions (new model families)
-- GitHub stars milestone (50K)
-- Breaking changes to backend architecture or YAML configuration format
-- New MCP capabilities affecting agentic integration patterns
-- LocalAGI or LocalRecall reaching stable v1.0

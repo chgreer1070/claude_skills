@@ -186,7 +186,7 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py --no-color {path}
 | File Type | Required Fields   | Key Optional Fields                                          |
 | --------- | ----------------- | ------------------------------------------------------------ |
 | Skills    | None              | name, description, model, allowed-tools, user-invocable      |
-| Agents    | name, description | model, tools, disallowedTools, permissionMode, skills, hooks |
+| Agents    | name, description | model, tools, disallowedTools, permissionMode, maxTurns, skills, mcpServers, hooks, memory, background, isolation |
 | Commands  | description       | argument-hint, allowed-tools, model, context, agent          |
 
 ---

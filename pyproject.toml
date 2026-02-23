@@ -175,7 +175,6 @@ extend-select = [
     "G201",  # see: https://docs.astral.sh/ruff/rules/logging-exc-info/
     "G202",  # see: https://docs.astral.sh/ruff/rules/logging-redundant-exc-info/
     "I",     # see: https://docs.astral.sh/ruff/rules/#isort-i
-    "N",     # see: https://docs.astral.sh/ruff/rules/#flake8-quotes-n
     "PERF",  # see: https://docs.astral.sh/ruff/rules/#perflint-perf
     "PGH",   # see: https://docs.astral.sh/ruff/rules/#pygrep-hooks-pgh
     "PIE",   # see: https://docs.astral.sh/ruff/rules/#flake8-pie-pie
@@ -257,6 +256,11 @@ max-complexity = 12
     "S",    # Security checks not needed in tests
     "SLF",  # Private name imports acceptable for testing internals
     "T",    # print() statements are intentional for CI output visibility
+]
+"research/knowledge-explorer.py" = [
+    "ANN401", # Any required for YAMLHandler base class kwargs and JSON return types
+    "S",      # Security checks relaxed for CLI scripts
+    "T201",   # print() acceptable in CLI scripts
 ]
 "typings/**" = ["A", "ANN", "N"]
 

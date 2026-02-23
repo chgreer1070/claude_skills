@@ -1,16 +1,15 @@
-# RA.Aid
-
-| Field         | Value                                               |
-| ------------- | --------------------------------------------------- |
-| Research Date | 2026-01-31                                          |
-| Primary URL   | <https://ra-aid.ai/>                                |
-| Documentation | <https://docs.ra-aid.ai>                            |
-| GitHub        | <https://github.com/ai-christianson/RA.Aid>         |
-| PyPI          | <https://pypi.org/project/ra-aid/>                  |
-| Version       | v0.30.2 (released 2025-05-07)                       |
-| License       | Apache-2.0                                          |
-| Discord       | <https://discord.gg/f6wYbzHYxV>                     |
-
+---
+name: RA.Aid
+description: RA.Aid (pronounced "raid") is a standalone autonomous software development assistant built on LangGraph's agent-based task execution framework. It implements a three-stage architecture (Research,...
+license: Apache-2.0
+metadata:
+  topic: ra-aid
+  category: agent-frameworks
+  source_url: https://ra-aid.ai/
+  github: ai-christianson/RA.Aid
+  version: "v0.30.2"
+  verified: "2026-01-31"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -307,26 +306,3 @@ ra-aid --server --server-host 127.0.0.1 --server-port 3000
 | Contributing Guide           | <https://docs.ra-aid.ai/contributing>                     | 2026-01-31 |
 
 **Research Method**: Information gathered from official GitHub repository README (via GitHub API), PyPI package metadata, PyPI download statistics API, and official website metadata. Statistics verified via direct API calls on research date.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                              |
-| ------------------ | ---------------------------------- |
-| Version Documented | v0.30.2                            |
-| Release Date       | 2025-05-07                         |
-| GitHub Stars       | 2,204 (as of 2026-01-31)           |
-| Monthly Downloads  | 933 (as of 2026-01-31)             |
-| Next Review Date   | 2026-05-01                         |
-
-**Review Triggers**:
-
-- Major version release (v1.x)
-- Significant star growth (5K, 10K milestones)
-- New stage architecture (additional stages beyond R-P-I)
-- Production-ready server/web interface release
-- New provider integrations of note
-- Breaking changes to CLI or configuration
-- Aider integration changes or removal
-- New execution modes

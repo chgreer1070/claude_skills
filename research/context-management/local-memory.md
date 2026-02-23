@@ -1,13 +1,14 @@
-# Local Memory - Persistent Memory Infrastructure for AI Agents
-
-**Research Date**: 2026-02-07
-**Website**: <https://www.localmemory.co/>
-**NPM**: <https://www.npmjs.com/package/local-memory-mcp>
-**GitHub (releases)**: <https://github.com/danieleugenewilliams/local-memory-releases>
-**Version**: 1.4.0
-**License**: Commercial (see <https://localmemory.co/terms>)
-**Platforms**: macOS (Intel/ARM64), Linux x64, Windows x64
-
+---
+name: Local Memory - Persistent Memory Infrastructure for AI Agents
+description: Local Memory is an AI-powered persistent memory system that provides MCP, REST API, and CLI interfaces for storing, retrieving, and analyzing memories across AI agent sessions. It ships as a single...
+license: Commercial (see <https://localmemory.co/terms>)
+metadata:
+  topic: local-memory
+  category: context-management
+  source_url: https://github.com/local-memory
+  version: "1.4.0"
+  verified: "2026-02-07"
+  next_review: "2026-05-07"
 ---
 
 ## Overview
@@ -325,23 +326,3 @@ curl "http://localhost:3002/api/v1/health"
 7. **NPM README** - `npm view local-memory-mcp readme` (accessed 2026-02-07, version shown as 1.3.3)
 8. **NPM Download Statistics** - <https://api.npmjs.org/downloads/> endpoints (accessed 2026-02-07)
 9. **Website Structured Data (JSON-LD)** - Extracted from HTML `<script type="application/ld+json">` at localmemory.co (accessed 2026-02-07, shows softwareVersion "v1.3.0" and dateModified "2025-11-13", lagging behind current NPM version 1.4.0)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Version Documented | 1.4.0 |
-| GitHub Stars (releases repo) | 5 |
-| Monthly NPM Downloads | 785 |
-| Research Date | 2026-02-07 |
-| Next Review | 2026-05-07 |
-
-### Update Triggers
-
-- Major version release (2.x)
-- Open-sourcing of the main Go repository
-- Significant new MCP tool additions
-- License model changes
-- Substantial growth in adoption metrics

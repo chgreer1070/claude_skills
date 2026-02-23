@@ -1,11 +1,15 @@
-# Claude Skillz
-
-**Research Date**: 2026-02-20
-**Source URL**: <https://github.com/NTCoding/claude-skillz>
-**GitHub Repository**: <https://github.com/NTCoding/claude-skillz>
-**Version at Research**: 1.2.0
-**License**: None (Public repository)
-
+---
+name: Claude Skillz
+description: Claude Skillz is a comprehensive repository of reusable skills, composable system prompts, and Claude Code plugins for AI-assisted software development. It provides a launcher utility for rapid...
+license: None (Public repository)
+metadata:
+  topic: claude-skillz
+  category: skill-generation-tools
+  source_url: https://github.com/NTCoding/claude-skillz
+  github: NTCoding/claude-skillz
+  version: "1.2.0"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -321,13 +325,3 @@ Launcher pre-processes and embeds at launch time.
 - [TDD Process Skill Example](https://raw.githubusercontent.com/NTCoding/claude-skillz/main/tdd-process/SKILL.md) (accessed 2026-02-20)
 - [Automatic Code Review Plugin](https://raw.githubusercontent.com/NTCoding/claude-skillz/main/automatic-code-review/README.md) (accessed 2026-02-20)
 - [Marketplace Metadata](https://raw.githubusercontent.com/NTCoding/claude-skillz/main/.claude-plugin/marketplace.json) (accessed 2026-02-20)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-|-------|-------|
-| Last Verified | 2026-02-20 |
-| Version at Verification | 1.2.0 |
-| Next Review Recommended | 2026-05-20 |

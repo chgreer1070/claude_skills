@@ -1,16 +1,15 @@
-# Trio
-
-| Field         | Value                                                      |
-| ------------- | ---------------------------------------------------------- |
-| Research Date | 2026-02-04                                                 |
-| Primary URL   | <https://trio.readthedocs.io>                              |
-| GitHub        | <https://github.com/python-trio/trio>                      |
-| PyPI          | <https://pypi.org/project/trio/>                           |
-| Version       | v0.32.0 (released 2025-10-31)                              |
-| License       | MIT OR Apache-2.0                                          |
-| Chat          | <https://gitter.im/python-trio/general>                    |
-| Forum         | <https://trio.discourse.group>                             |
-
+---
+name: Trio
+description: Trio is a Python library for async concurrency and I/O that introduced the "structured concurrency" paradigm to the Python ecosystem. Unlike asyncio, Trio guarantees that tasks run to completion...
+license: MIT OR Apache-2.0
+metadata:
+  topic: trio
+  category: async-libraries
+  source_url: https://trio.readthedocs.io
+  github: python-trio/trio
+  version: "v0.32.0"
+  verified: "2026-02-04"
+  next_review: "2026-05-04"
 ---
 
 ## Overview
@@ -352,24 +351,3 @@ trio.run(main)
 | PyPI Stats                      | <https://pypistats.org/packages/trio>                                                       | 2026-02-04 |
 
 **Research Method**: Information gathered from GitHub API (repository metadata, releases, contributors), PyPI API (package info, download statistics), official documentation at trio.readthedocs.io, and README.rst from the repository.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | v0.32.0                             |
-| Release Date       | 2025-10-31                          |
-| GitHub Stars       | 7,143 (as of 2026-02-04)            |
-| Monthly Downloads  | ~218M (as of 2026-02-04)            |
-| Next Review Date   | 2026-05-04                          |
-
-**Review Triggers**:
-
-- Major version release (v1.0 or significant milestone)
-- New structured concurrency features
-- Breaking API changes
-- Significant ecosystem growth (httpx, anyio adoption changes)
-- Python version support changes
-- New async patterns or primitives added

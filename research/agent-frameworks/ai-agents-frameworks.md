@@ -1,11 +1,15 @@
-# AI Agents Frameworks - Comparative Learning Repository
-
-**Research Date**: 2026-01-31
-**Source URL**: <https://github.com/martimfasantos/ai-agents-frameworks>
-**GitHub Repository**: <https://github.com/martimfasantos/ai-agents-frameworks>
-**Version at Research**: Main branch (pushed 2026-01-24)
-**License**: Not specified (no LICENSE file)
-
+---
+name: AI Agents Frameworks - Comparative Learning Repository
+description: AI Agents Frameworks is a hands-on learning repository that provides practical implementations and comprehensive benchmarks comparing 10 state-of-the-art AI agent frameworks. The repository enables...
+license: Not specified (no LICENSE file)
+metadata:
+  topic: ai-agents-frameworks
+  category: agent-frameworks
+  source_url: https://github.com/martimfasantos/ai-agents-frameworks
+  github: martimfasantos/ai-agents-frameworks
+  version: "Main branch"
+  verified: "2026-01-31"
+  next_review: "2026-04-30"
 ---
 
 ## Overview
@@ -300,23 +304,3 @@ streamlit run agent-ui.py
 - OpenAI Agents SDK: <https://openai.github.io/openai-agents-python/>
 - Pydantic-AI: <https://ai.pydantic.dev/>
 - smolagents: <https://huggingface.co/docs/smolagents/en/index>
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                 |
-| ---------------------------- | --------------------- |
-| Last Verified                | 2026-01-31            |
-| Last Push at Verification    | 2026-01-24            |
-| GitHub Stars at Verification | 354                   |
-| Forks at Verification        | 43                    |
-| Next Review Recommended      | 2026-04-30 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases and commits for new framework additions
-- Check for updated benchmark results
-- Review issues for methodology changes
-- Track star growth indicating community adoption
-- Watch for new framework integrations (Claude SDK, etc.)

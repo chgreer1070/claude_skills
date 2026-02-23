@@ -1,16 +1,15 @@
-# Claude Night Market
-
-| Field         | Value                                                      |
-| ------------- | ---------------------------------------------------------- |
-| Research Date | 2026-01-31                                                 |
-| Primary URL   | <https://github.com/athola/claude-night-market>            |
-| Homepage      | <https://athola.github.io/claude-night-market>             |
-| GitHub        | <https://github.com/athola/claude-night-market>            |
-| Installation  | `/plugin marketplace add athola/claude-night-market`       |
-| Version       | 1.3.7                                                      |
-| License       | MIT                                                        |
-| Author        | [@athola](https://github.com/athola)                       |
-
+---
+name: Claude Night Market
+description: Claude Night Market is a comprehensive Claude Code plugin marketplace providing 16 plugins with 126 skills, 114 commands, and 41 agents for software engineering workflows. The plugins are organized...
+license: MIT
+metadata:
+  topic: claude-night-market
+  category: skill-generation-tools
+  source_url: https://github.com/athola/claude-night-market
+  github: athola/claude-night-market
+  version: "1.3.7"
+  verified: "2026-01-31"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -239,26 +238,3 @@ plugins/
 | Homepage                  | <https://athola.github.io/claude-night-market>                             | 2026-01-31 |
 
 **Research Method**: Information gathered from GitHub repository README, GitHub API for repository metadata (stars, forks, license, dates), marketplace.json for plugin details, and capabilities reference for skill/command/agent counts. Statistics verified via direct API calls on 2026-01-31.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | 1.3.7                               |
-| Last Pushed        | 2026-01-31                          |
-| GitHub Stars       | 158 (as of 2026-01-31)              |
-| Total Plugins      | 16 (as of 2026-01-31)               |
-| Total Skills       | 126 (as of 2026-01-31)              |
-| Next Review Date   | 2026-05-01                          |
-
-**Review Triggers**:
-
-- GitHub stars milestone (250, 500, 1K)
-- Major version bump (2.x.x release)
-- New plugin layer additions
-- Cross-session state API changes
-- War-room framework updates
-- New LLM delegation targets added
-- Significant skill additions (20+ new skills)

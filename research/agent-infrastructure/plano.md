@@ -1,12 +1,15 @@
-# Plano - AI-Native Proxy and Data Plane for Agentic Apps
-
-**Research Date**: January 26, 2026
-**Source URL**: <https://planoai.dev>
-**GitHub Repository**: <https://github.com/katanemo/plano>
-**Documentation**: <https://docs.planoai.dev>
-**Version at Research**: v0.4.3
-**License**: Apache-2.0
-
+---
+name: Plano - AI-Native Proxy and Data Plane for Agentic Apps
+description: Plano is an AI-native proxy server and data plane that offloads infrastructure concerns from agentic applications. Built on Envoy by its core contributors, Plano provides unified orchestration, model...
+license: Apache-2.0
+metadata:
+  topic: plano
+  category: agent-infrastructure
+  source_url: https://planoai.dev
+  github: katanemo/plano
+  version: "v0.4.3"
+  verified: "2026-01-26"
+  next_review: "2026-04-26"
 ---
 
 ## Overview
@@ -235,22 +238,3 @@ Plano's use of a purpose-built 4B parameter routing model demonstrates that spec
 5. **Orchestration Guide**: <https://docs.planoai.dev/guides/orchestration.html>
 6. **Filter Chains Documentation**: <https://docs.planoai.dev/concepts/filter_chain.html>
 7. **Research Publications**: <https://planoai.dev/research>
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                 |
-| ---------------------------- | --------------------- |
-| Last Verified                | 2026-01-26            |
-| Version at Verification      | v0.4.3                |
-| GitHub Stars at Verification | 4,872                 |
-| Next Review Recommended      | 2026-04-26 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes
-- Check PyPI for planoai package updates
-- Review changelog for breaking API changes
-- Track star growth as adoption indicator
-- Watch for new Plano-Orchestrator model versions

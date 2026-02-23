@@ -1,13 +1,15 @@
-# MCPJam Inspector - Local Development and Testing Tool for MCP Servers
-
-**Research Date**: January 26, 2026
-**Source URL**: <https://mcpjam.com>
-**Documentation**: <https://docs.mcpjam.com>
-**GitHub Repository**: <https://github.com/MCPJam/inspector>
-**npm Package**: <https://www.npmjs.com/package/@mcpjam/inspector>
-**Version at Research**: v1.5.0
-**License**: Apache-2.0
-
+---
+name: MCPJam Inspector - Local Development and Testing Tool for MCP Servers
+description: MCPJam Inspector is a comprehensive local development and testing tool for MCP servers, ChatGPT apps, and MCP Apps (ext-apps/SEP-1865). It provides a full widget emulator for ChatGPT and Claude app...
+license: Apache-2.0
+metadata:
+  topic: mcpjam
+  category: mcp-ecosystem
+  source_url: https://mcpjam.com
+  github: MCPJam/inspector
+  version: "v1.1.6"
+  verified: "2026-01-26"
+  next_review: "2026-04-26"
 ---
 
 ## Overview
@@ -299,24 +301,3 @@ MCPJam fills a testing and development tooling gap:
 11. **MCP Protocol Specification**: <https://modelcontextprotocol.io/> (accessed 2026-01-26)
 12. **ChatGPT Apps SDK**: <https://developers.openai.com/apps-sdk/> (accessed 2026-01-26)
 13. **MCP Apps SEP-1865**: <https://github.com/modelcontextprotocol/modelcontextprotocol/pull/1865> (accessed 2026-01-26)
-
----
-
-## Freshness Tracking
-
-| Field                        | Value                 |
-| ---------------------------- | --------------------- |
-| Last Verified                | 2026-01-26            |
-| Version at Verification      | v1.5.0                |
-| GitHub Stars at Verification | 1,598                 |
-| CLI Version at Verification  | v1.1.6                |
-| Next Review Recommended      | 2026-04-26 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version changes
-- Check npm for new versions of @mcpjam/inspector and @mcpjam/cli
-- Track SEP-1865 (MCP Apps) specification evolution
-- Review changelog for new LLM provider support
-- Monitor for new OAuth protocol version support
-- Track ChatGPT Apps SDK changes that may affect widget emulation

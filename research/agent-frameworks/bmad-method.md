@@ -1,15 +1,14 @@
-# BMAD-METHOD
-
-| Field         | Value                                                       |
-| ------------- | ----------------------------------------------------------- |
-| Research Date | 2026-02-01                                                  |
-| Primary URL   | <https://github.com/bmad-code-org/BMAD-METHOD>              |
-| Documentation | <http://docs.bmad-method.org>                               |
-| NPM Package   | <https://www.npmjs.com/package/bmad-method>                 |
-| Version       | 6.0.0-Beta.4                                                |
-| License       | MIT                                                         |
-| Discord       | <https://discord.gg/gk8jAdXWmj>                             |
-
+---
+name: BMAD-METHOD
+description: BMAD-METHOD (Breakthrough Method of Agile AI-Driven Development) is an AI-driven agile development framework providing 21 specialized agents, 50+ guided workflows, and scale-adaptive intelligence...
+license: MIT
+metadata:
+  topic: bmad-method
+  category: agent-frameworks
+  source_url: https://github.com/bmad-code-org/BMAD-METHOD
+  version: "6.0.0-Beta.4"
+  verified: "2026-02-01"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -293,24 +292,3 @@ npx bmad-method install
 | GitHub Discussions        | <https://github.com/bmad-code-org/BMAD-METHOD/discussions>  | 2026-02-01 |
 
 **Research Method**: Information gathered from GitHub repository README, GitHub API (repository metadata, directory structure, package.json), and official documentation links. Statistics verified via direct GitHub API calls on 2026-02-01.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | 6.0.0-Beta.4                        |
-| Last Commit        | 2026-02-01                          |
-| GitHub Stars       | 33,347 (as of 2026-02-01)           |
-| Contributors       | 100+ (as of 2026-02-01)             |
-| Next Review Date   | 2026-05-01                          |
-
-**Review Triggers**:
-
-- Version 6.0.0 stable release (exit beta)
-- GitHub stars milestone (40K, 50K)
-- New module releases
-- Breaking changes to agent/workflow format
-- Community marketplace launch
-- New IDE integrations

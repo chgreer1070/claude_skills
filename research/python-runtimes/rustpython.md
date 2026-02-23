@@ -1,16 +1,15 @@
-# RustPython
-
-| Field         | Value                                                              |
-| ------------- | ------------------------------------------------------------------ |
-| Research Date | 2026-02-05                                                         |
-| Primary URL   | <https://rustpython.github.io/>                                    |
-| GitHub        | <https://github.com/RustPython/RustPython>                         |
-| Crates.io     | <https://crates.io/crates/rustpython>                              |
-| Docs.rs       | <https://docs.rs/rustpython/>                                      |
-| Version       | 0.4.0 (Rust Edition 2024, requires Rust 1.93.0+)                   |
-| License       | MIT                                                                |
-| Discord       | <https://discord.gg/vru8NypEhv>                                    |
-
+---
+name: RustPython
+description: RustPython is a Python 3 interpreter written entirely in Rust. It provides CPython 3.14.0+ compatibility and can run as a standalone interpreter, be compiled to WebAssembly for browser execution, or...
+license: MIT
+metadata:
+  topic: rustpython
+  category: python-runtimes
+  source_url: https://rustpython.github.io/
+  github: RustPython/RustPython
+  version: "0.4.0"
+  verified: "2026-02-05"
+  next_review: "2026-05-05"
 ---
 
 ## Overview
@@ -355,26 +354,3 @@ result = compute(1000000)
 | EuroPython 2018 Talk        | <https://www.youtube.com/watch?v=YMmio0JHy_Y>                      | 2026-02-05 |
 
 **Research Method**: Information gathered from official GitHub repository README, architecture documentation, WASM documentation, Cargo.toml workspace configuration, and GitHub API for statistics. All statistics verified via direct API calls on 2026-02-05.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                               |
-| ------------------ | ----------------------------------- |
-| Version Documented | 0.4.0                               |
-| Rust Edition       | 2024                                |
-| Min Rust Version   | 1.93.0                              |
-| GitHub Stars       | 21,752 (as of 2026-02-05)           |
-| Contributors       | 360+ (as of 2026-02-05)             |
-| Next Review Date   | 2026-05-05                          |
-
-**Review Triggers**:
-
-- Major version release (0.5.0, 1.0.0)
-- JIT compiler exits experimental status
-- Significant CPython compatibility milestone (e.g., 3.15 support)
-- GitHub stars milestone (25K, 30K)
-- Production-ready announcement
-- Notable new production users
-- Breaking changes to embedding API

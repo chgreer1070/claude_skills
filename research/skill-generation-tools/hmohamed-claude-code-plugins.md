@@ -1,15 +1,15 @@
-# hmohamed01/claude-code-plugins
-
-| Field         | Value                                                        |
-| ------------- | ------------------------------------------------------------ |
-| Research Date | 2026-01-31                                                   |
-| Primary URL   | <https://github.com/hmohamed01/claude-code-plugins>          |
-| GitHub        | <https://github.com/hmohamed01/claude-code-plugins>          |
-| Installation  | `claude plugin marketplace add hmohamed01/claude-code-plugins` |
-| Version       | swift-developer@0.3.0, rust-developer@0.2.0                  |
-| License       | MIT                                                          |
-| Author        | [@hmohamed01](https://github.com/hmohamed01)                 |
-
+---
+name: hmohamed01/claude-code-plugins
+description: A collection of Claude Code plugins providing autonomous development agents for Swift and Rust programming languages. The repository implements a monorepo structure with independent plugins for...
+license: MIT
+metadata:
+  topic: hmohamed-claude-code-plugins
+  category: skill-generation-tools
+  source_url: https://github.com/hmohamed01/claude-code-plugins
+  github: hmohamed01/claude-code-plugins
+  version: "swift-developer@0.3.0, rust-developer@0.2.0"
+  verified: "2026-01-31"
+  next_review: "2026-05-01"
 ---
 
 ## Overview
@@ -290,24 +290,3 @@ claude plugin marketplace add hmohamed01/claude-code-plugins
 | CLAUDE.md                     | <https://github.com/hmohamed01/claude-code-plugins/blob/main/CLAUDE.md>      | 2026-01-31 |
 
 **Research Method**: Information gathered from GitHub repository README files, GitHub API for repository metadata (stars, forks, dates, contributors), and raw file fetches for marketplace.json and CLAUDE.md. Statistics verified via direct API calls on 2026-01-31.
-
----
-
-## Freshness Tracking
-
-| Field              | Value                                        |
-| ------------------ | -------------------------------------------- |
-| Version Documented | swift-developer@0.3.0, rust-developer@0.2.0  |
-| Last Pushed        | 2026-01-13                                   |
-| GitHub Stars       | 4 (as of 2026-01-31)                         |
-| Plugin Count       | 2 (as of 2026-01-31)                         |
-| Next Review Date   | 2026-05-01                                   |
-
-**Review Triggers**:
-
-- New plugins added to marketplace
-- Major version bumps (swift-developer@1.0, rust-developer@1.0)
-- GitHub stars milestone (25, 50, 100)
-- Significant new language features documented (Swift 7, Rust 2024 edition)
-- Additional language plugins added (Go, Python, TypeScript)
-- Changes to Claude Code plugin architecture

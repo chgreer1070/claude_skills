@@ -1,12 +1,15 @@
-# Mimir MCP - Git-Backed AI Memory System
-
-**Research Date**: 2026-02-04
-**Source URL**: <https://github.com/tejzpr/mimir-mcp>
-**GitHub Repository**: <https://github.com/tejzpr/mimir-mcp>
-**Docker Hub**: <https://hub.docker.com/r/tejzpr/mimir-mcp>
-**Version at Research**: Latest (no tagged releases)
-**License**: MPL-2.0 (Mozilla Public License 2.0)
-
+---
+name: Mimir MCP - Git-Backed AI Memory System
+description: Mimir is a Model Context Protocol (MCP) server that provides persistent, git-versioned memory storage for LLM applications. It combines Git's version control with graph-based memory associations,...
+license: MPL-2.0 (Mozilla Public License 2.0)
+metadata:
+  topic: mimir-mcp
+  category: mcp-ecosystem
+  source_url: https://github.com/tejzpr/mimir-mcp
+  github: tejzpr/mimir-mcp
+  version: "Latest"
+  verified: "2026-02-04"
+  next_review: "2026-05-04"
 ---
 
 ## Overview
@@ -334,22 +337,3 @@ The repository includes sample prompts for AI assistants:
 4. **Sample MCP Prompt**: <https://raw.githubusercontent.com/tejzpr/mimir-mcp/main/SAMPLE_MCP_PROMPT.md> (accessed 2026-02-04)
 5. **Sample Cursor Rule**: <https://raw.githubusercontent.com/tejzpr/mimir-mcp/main/SAMPLE_CURSOR_RULE.md> (accessed 2026-02-04)
 6. **GitHub API Repository Data**: <https://api.github.com/repos/tejzpr/mimir-mcp> (accessed 2026-02-04)
-
----
-
-## Freshness Tracking
-
-| Field | Value |
-| ----- | ----- |
-| Last Verified | 2026-02-04 |
-| Version at Verification | Latest (no tagged releases) |
-| GitHub Stars at Verification | 1 |
-| Next Review Recommended | 2026-05-04 (3 months) |
-
-**Change Detection Indicators**:
-
-- Monitor GitHub releases for version tags
-- Check Docker Hub for image updates
-- Watch for star growth indicating adoption
-- Review for production readiness indicators
-- Check for additional MCP tool additions

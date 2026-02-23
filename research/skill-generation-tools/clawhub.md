@@ -1,11 +1,14 @@
-# ClawHub
-
-**Research Date**: 2026-02-23
-**Source URL**: <https://www.clawhub.ai/skills>
-**GitHub Repository**: <https://github.com/openclaw/clawhub>
-**Version at Research**: CLI v1.x (npm `clawhub`)
-**License**: MIT
-
+---
+name: ClawHub
+description: ClawHub is described as "a fast skill registry for agents, with vector search." The platform appears to be a web-based registry for discovering and potentially sharing AI agent skills, utilizing...
+license: Unknown
+metadata:
+  topic: clawhub
+  category: skill-generation-tools
+  source_url: https://www.clawhub.ai/skills
+  version: "Unknown"
+  verified: "2026-02-20"
+  next_review: "2026-05-20"
 ---
 
 ## Overview
@@ -224,3 +227,6 @@ metadata:
 - GitHub repository star count becomes significant
 - New skill format features (SOUL.md, nix plugins) stabilise
 - Integration between Claude Code and OpenClaw ecosystems emerges
+- [ClawHub Skills Website](https://www.clawhub.ai/skills) (accessed 2026-02-20)
+- [ClawHub Homepage](https://www.clawhub.ai) (accessed 2026-02-20)
+- Site meta description: "ClawHub — a fast skill registry for agents, with vector search." (accessed 2026-02-20)

@@ -130,7 +130,7 @@ TRAINING DATA CONFLICT: Training data instructs adding `rich>=13.0.0` explicitly
 
 FACT: `typer>=0.12.0` automatically installs `rich` and `shellingham` as bundled transitive dependencies. Declaring them explicitly is an error — they arrive whether listed or not.
 
-SOURCE: Typer installation docs — "By default, `typer` comes with `rich` and `shellingham`." https://typer.tiangolo.com/#installation (accessed 2026-02-22)
+SOURCE: Typer installation docs — "By default, `typer` comes with `rich` and `shellingham`." <https://typer.tiangolo.com/#installation> (accessed 2026-02-22)
 
 WRONG — exact erroneous output this rule blocks:
 
