@@ -27,7 +27,7 @@ research/
 ├── api-frameworks/                    # High-performance API frameworks for backend services
 │   ├── fastapi.md                     # Modern Python web framework with Pydantic (95K+ stars)
 │   ├── motia.md                       # Unified backend framework replacing APIs/queues/workflows/AI agents with one Step primitive (15K+ stars)
-│   ├── pocketbase.md                  # Open source Go backend in 1 file with SQLite, auth, file storage, and admin dashboard (56.3K stars)
+│   ├── pocketbase.md                  # Open-source Go backend in 1 file: SQLite, realtime, auth, files, admin dashboard (56K+ stars)
 │   └── tornado.md                     # Python web framework and async networking library (22K+ stars)
 ├── async-libraries/                   # Python async I/O libraries and concurrency frameworks
 │   ├── anyio.md                       # Backend-agnostic async concurrency library (426M downloads/month)
@@ -45,7 +45,8 @@ research/
 ├── ai-observability/                  # AI/LLM observability and debugging platforms
 │   └── logfire.md                     # Pydantic Logfire - full-stack AI observability with MCP (4K+ stars)
 ├── code-auditing/                     # Code security and quality auditing tools
-│   └── hound.md                       # Autonomous AI security auditor with knowledge graphs
+│   ├── hound.md                       # Autonomous AI security auditor with knowledge graphs
+│   └── snyk-cli-cpp-scans.md          # Snyk CLI hash-based open-source vulnerability scanning for C/C++ unmanaged dependencies
 ├── ai-design-tools/                   # AI-powered visual creation and design platforms
 │   ├── hedra.md                       # AI video/image/audio creation platform
 │   └── jimeng.md                      # ByteDance SeedDance 2.0 AI video/image generation with cinematic camera control
@@ -53,7 +54,8 @@ research/
 │   └── the-unwind-ai.md              # AI builder newsletter with 95K+ star open-source companion repo
 ├── coding-agents/                     # Autonomous AI coding agent platforms
 │   ├── openhands.md                   # Open platform for cloud coding agents (67K+ stars)
-│   └── pilot.md                       # Autonomous development pipeline wrapping Claude Code CLI (BSL 1.1)
+│   ├── pilot.md                       # Autonomous development pipeline wrapping Claude Code CLI (BSL 1.1)
+│   └── tembo.md                       # Cloud AI coding agent orchestration (Claude Code, Codex, Cursor, Amp, OpenCode)
 ├── context-management/                # Memory, context window, and RAG tools
 │   ├── claude-mem.md                  # Persistent memory compression for Claude Code (15K+ stars)
 │   ├── local-memory.md               # Persistent memory infrastructure for AI agents (MCP + REST + CLI)
@@ -104,6 +106,7 @@ research/
 │   ├── compound-engineering-plugin.md # Every Inc's Plan/Work/Review/Compound workflow plugin
 │   ├── github-patterns.md             # Patterns from GitHub research agent implementations
 │   ├── orchestrator-agent-creation-guide.md  # OpenCode orchestrator agent guide
+│   ├── google-adk-context-engineering.md  # Google ADK context engineering: tiered storage, compiled views, scoped multi-agent handoffs (17.9K stars)
 │   ├── tinyclaw.md                    # Multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs
 │   └── ollama-subagents-web-search-claude-code.md  # Ollama native subagents and web search for Claude Code (163K+ stars)
 ├── skill-generation-tools/            # Tools that create AI skills/prompts
@@ -114,6 +117,8 @@ research/
 │   ├── mcpskills-cli.md               # MCP-to-skill converter via Streamable HTTP discovery
 │   ├── skill-seekers.md               # Documentation-to-skill automation tool
 │   ├── skillkit.md                    # Universal package manager for AI agent skills (32 agents)
+│   ├── skillsmp.md                    # Open marketplace for 66,500+ AI agent skills (Claude Code, Codex CLI, ChatGPT; MIT)
+│   ├── skrills.md                     # Rust skills support engine: validates, syncs, and analyzes skills across Claude Code, Codex CLI, and Copilot CLI (52 stars)
 │   ├── softaworks-agent-toolkit.md    # 43 skills, 6 agents, 7 slash commands for Claude Code (621 stars)
 │   └── vercel-labs-skills.md          # Universal skill installer for 40+ AI coding agents (6.3K stars)
 ├── prompt-engineering/                # Prompt optimization and testing platforms
@@ -141,6 +146,7 @@ Research on multi-agent architectures, orchestration patterns, and research work
 | [github-patterns.md](./research-agent-patterns/github-patterns.md)                                     | Patterns from 40+ repositories including Chief of Staff model, 12-agent academic pipelines, Pydantic AI research loops | 2025-12-09   |
 | [orchestrator-agent-creation-guide.md](./research-agent-patterns/orchestrator-agent-creation-guide.md) | Comprehensive guide for creating orchestrator agents in OpenCode - routing, chaining, parallel delegation patterns     | 2026-01-26   |
 | [tinyclaw.md](./research-agent-patterns/tinyclaw.md)                                                   | TinyClaw - multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs and file-based queue (2.1K stars)    | 2026-02-18   |
+| [google-adk-context-engineering.md](./research-agent-patterns/google-adk-context-engineering.md)     | Google ADK context engineering: tiered storage model, compiler-style processor pipeline, scoped multi-agent handoffs (17.9K stars) | 2026-02-23   |
 | [ollama-subagents-web-search-claude-code.md](./research-agent-patterns/ollama-subagents-web-search-claude-code.md) | Ollama v0.16.2 native subagents and web search for Claude Code with Anthropic API compatibility (163K+ stars) | 2026-02-19   |
 
 **Key Topics**:
@@ -160,6 +166,7 @@ Research on multi-agent architectures, orchestration patterns, and research work
 - Git worktree integration for parallel development
 - Claude Code plugin architecture patterns
 - Supervisor-worker AI agent orchestration via tmux terminals
+- Context engineering: tiered storage, compiled views, and processor pipelines for production agents
 - Cron-based polling with one-action-per-cycle discipline
 - Context clearing between phases for clean context windows
 - State-file-driven workflow progression (not memory-based)
@@ -263,6 +270,8 @@ Tools and services that automate the creation of AI skills from documentation, c
 | [mcpskills-cli.md](./skill-generation-tools/mcpskills-cli.md)       | mcpskills-cli - MCP-to-skill converter generating SKILL.md and polyglot call scripts from Streamable HTTP servers | 2026-02-15   |
 | [skill-seekers.md](./skill-generation-tools/skill-seekers.md)       | Skill Seekers - converts docs, GitHub repos, and PDFs into Claude/Gemini/OpenAI skills                          | 2026-01-26   |
 | [skillkit.md](./skill-generation-tools/skillkit.md)                  | SkillKit - universal package manager for AI agent skills with 15K+ skills, 32 agent support, and cross-format translation | 2026-02-08   |
+| [skillsmp.md](./skill-generation-tools/skillsmp.md)                   | SkillsMP - open marketplace for 66,500+ AI agent skills (Claude Code, Codex CLI, ChatGPT); REST API, MCP server, SKILL.md standard (MIT) | 2026-02-23   |
+| [skrills.md](./skill-generation-tools/skrills.md)                    | Skrills - Rust skills support engine validating and syncing skills across Claude Code, Codex CLI, and Copilot CLI with 40+ MCP tools (52 stars) | 2026-02-23   |
 | [softaworks-agent-toolkit.md](./skill-generation-tools/softaworks-agent-toolkit.md) | Softaworks Agent Toolkit - 43 skills, 6 agents, 7 slash commands for Claude Code with multi-platform support (621 stars) | 2026-02-20   |
 | [vercel-labs-skills.md](./skill-generation-tools/vercel-labs-skills.md) | Vercel Labs Skills - universal CLI for installing skills to 40+ AI coding agents with symlink-first design (6.3K stars) | 2026-02-20   |
 
@@ -294,6 +303,13 @@ Tools and services that automate the creation of AI skills from documentation, c
 - Hook-based automation (auto code review on session stop, 5 Whys verification)
 - Instructive vs descriptive prompt writing patterns for skill authoring
 - State machine governance for TDD and process-driven skill workflows
+- Multi-CLI validation tiers (permissive Claude vs strict Codex/Copilot frontmatter rules)
+- Bidirectional skill sync with file-hash protection against overwriting manual edits
+- Token analysis with per-skill counting and reduction suggestions
+- MCP server exposing 40+ tools for validation, sync, and project-aware skill generation
+- Dependency resolution with cycle detection and semantic versioning constraints
+- Session mining for usage-based skill recommendations
+- `AgentAdapter` trait pattern for pluggable per-CLI sync adapters
 - Multi-platform skill toolkit with 43 skills across 10 categories (AI, Meta, Docs, Design, Dev, Planning)
 - Agent Skills format (agentskills.io) for cross-tool compatibility
 - Specialized agent roles (security-hardener, researcher, git-master, ai-architect)
@@ -322,6 +338,7 @@ Tools and frameworks for autonomous code security auditing and vulnerability det
 | Document                             | Description                                                                                           | Last Updated |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------ |
 | [hound.md](./code-auditing/hound.md) | Autonomous AI security auditor using knowledge graphs, belief systems, and hypothesis-driven analysis | 2026-01-26   |
+| [snyk-cli-cpp-scans.md](./code-auditing/snyk-cli-cpp-scans.md) | Snyk CLI hash-based open-source vulnerability scanning for C/C++ unmanaged dependencies via `--unmanaged` flag | 2026-02-23   |
 
 **Key Topics**:
 
@@ -332,6 +349,9 @@ Tools and frameworks for autonomous code security auditing and vulnerability det
 - Interactive steering via chatbot UI
 - Session persistence and recovery
 - Professional report generation with PoC integration
+- Hash-based dependency fingerprinting for packageless C/C++ projects
+- Confidence-scored dependency identification from source code
+- CVE mapping for vendored open-source libraries
 
 ---
 
@@ -452,7 +472,7 @@ High-performance API frameworks for building backend services, tool endpoints, a
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------ |
 | [fastapi.md](./api-frameworks/fastapi.md)  | Modern Python web framework with Pydantic validation, automatic OpenAPI docs, async support (95K+ stars)  | 2026-02-05   |
 | [motia.md](./api-frameworks/motia.md)      | Motia - unified backend framework replacing APIs, queues, workflows, and AI agents with one Step primitive (15K+ stars) | 2026-02-23   |
-| [pocketbase.md](./api-frameworks/pocketbase.md) | PocketBase - open source Go backend in 1 file with embedded SQLite, realtime subscriptions, auth, file storage, and admin dashboard (56.3K stars) | 2026-02-23   |
+| [pocketbase.md](./api-frameworks/pocketbase.md) | PocketBase - open-source Go backend in 1 file: embedded SQLite, realtime subscriptions, auth (password/OTP/OAuth2/MFA), file storage, admin dashboard (56K+ stars) | 2026-02-23   |
 | [tornado.md](./api-frameworks/tornado.md)  | Python web framework and async networking library for WebSockets and long-polling (22K+ stars, 95M+ downloads/month) | 2026-02-05   |
 
 **Key Topics**:
@@ -483,16 +503,15 @@ High-performance API frameworks for building backend services, tool endpoints, a
 - Visual Workbench debugger with flow diagrams, traces, and state inspection
 - AGENTS.md bundled in scaffolded projects for AI coding tool context
 - Core runtime rewritten in Rust for performance
-- Single-binary Go backend with zero external runtime dependencies (PocketBase)
-- Embedded SQLite with realtime SSE subscriptions for live collection updates
-- Built-in auth (email/password, OAuth2, token-based) with configurable access rules
-- Auto-generated REST CRUD endpoints for every collection with filter, sort, expand support
-- Admin dashboard UI bundled in binary at `/_/` for data, user, and settings management
-- Migration-as-code via JS files in `pb_migrations/` committed to VCS
-- Go framework embedding mode: extend with custom routes, middleware, and event hooks
-- CGO-free static binary build (`CGO_ENABLED=0 go build`) for portable distribution
-- S3-compatible file storage backend for production scale-out
-- JS SDK (Browser/Node/React Native) and Dart SDK for client-side interaction
+- Single-binary Go backend (no Docker, no runtime) with embedded SQLite, auth, files, realtime, and admin UI
+- SSE-based realtime subscriptions on any collection without external broker (no Redis/Pusher)
+- 3 collection types: Base (app data), View (read-only SQL SELECT), Auth (users with built-in auth fields)
+- Declarative access control via filter rule DSL (`@request.auth.id`, `&&`/`||`, nested relation traversal)
+- Stateless JWT auth (no server-side sessions); password, OTP, OAuth2 (30+ providers), MFA
+- File field type with local disk or S3 backend; single-call storage config switch
+- Go hook system (`app.On*()`) for lifecycle event interception without forking core
+- JS VM plugin (Goja) for extending PocketBase with JavaScript without recompiling
+- `CGO_ENABLED=0 go build` produces statically linked binary for any target platform
 
 ---
 
@@ -669,6 +688,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 | [cline.md](./coding-agents/cline.md)         | Cline - open-source autonomous coding agent (VS Code + CLI) with human-in-the-loop approvals, multi-provider LLM support, and enterprise governance (Apache-2.0) | 2026-02-23   |
 | [openhands.md](./coding-agents/openhands.md) | OpenHands - open platform for cloud coding agents with 77.6% SWE-bench score, SDK, CLI, and cloud | 2026-01-26   |
 | [pilot.md](./coding-agents/pilot.md)         | Pilot - autonomous development pipeline wrapping Claude Code CLI with ticket-to-PR automation (BSL 1.1) | 2026-02-19   |
+| [tembo.md](./coding-agents/tembo.md)         | Tembo - cloud AI coding agent orchestration platform (Claude Code, Codex, Cursor, Amp, OpenCode) with multi-repo PRs, Sentry/Linear/Jira/Slack integrations, and event-driven automations | 2026-02-23   |
 
 **Key Topics**:
 
@@ -691,6 +711,10 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 - Multi-provider LLM support with bring-your-own-key model
 - MCP extensibility with custom tools and data sources
 - VS Code extension + CLI for headless/CI-CD workflows
+- Cloud-hosted agent orchestration with event-driven automations
+- Multi-repository PR generation in a single task
+- Agent-agnostic backend (Claude Code, Codex, Cursor, Amp, OpenCode)
+- Sentry integration for automatic error-to-PR workflows
 
 ---
 
@@ -1013,6 +1037,7 @@ Interactive prompt development platforms and tools for iterating on LLM prompts,
 | Document | Description | Last Updated |
 | -------- | ----------- | ------------ |
 | [google-ai-studio.md](./prompt-engineering/google-ai-studio.md) | Google AI Studio — free browser-based IDE for Gemini API with 20+ models, function calling, Google Search grounding, sandboxed code execution, and OpenAI-compatible endpoint | 2026-02-23 |
+| [nano-banana-pro-prompting.md](./prompt-engineering/nano-banana-pro-prompting.md) | Nano-Banana Pro Prompting Guide — 10-category strategy guide for Google's `gemini-3-pro-image-preview` Thinking image model covering text rendering, character consistency, Search grounding, in-painting, 2D↔3D translation, 4K output, visual reasoning, storyboarding, and structural layout control | 2026-02-23 |
 | [prompt-engine.md](./prompt-engineering/prompt-engine.md) | Prompt Engine — SaaS prompt generator and optimizer that converts plain-language descriptions into professional-grade prompts in < 15 seconds; includes library/tagging for reuse ($19/month) | 2026-02-23 |
 | [system-prompts-ai-tools.md](./prompt-engineering/system-prompts-ai-tools.md) | x1xhlol/system-prompts-and-models-of-ai-tools — 30,000+ lines of leaked system prompts and model configs for 30+ AI tools including Claude Code, Cursor, Windsurf, Devin AI, Copilot, v0, Replit (117.9K stars, GPL-3.0) | 2026-02-23 |
 

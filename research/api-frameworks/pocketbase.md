@@ -10,7 +10,7 @@
 
 ## Overview
 
-PocketBase is an open-source Go backend packaged as a single portable executable. It bundles an embedded SQLite database with realtime subscriptions, built-in authentication and file management, an admin dashboard UI, and a REST-ish API — all in one binary that launches with a single command. It can also be used as a Go framework/toolkit to embed into custom applications and extend with Go or JavaScript hooks.
+PocketBase is an open-source Go backend that ships as a single self-contained executable, bundling an embedded SQLite database with realtime subscriptions, built-in auth management (password, OTP, OAuth2, MFA), file storage, and a superuser dashboard UI — all exposed via a REST-ish API. It can be used as a zero-config standalone app or as a Go library to add custom routes, hooks, and business logic while keeping a single portable binary as the output.
 
 ---
 
@@ -18,11 +18,12 @@ PocketBase is an open-source Go backend packaged as a single portable executable
 
 | Problem | Solution |
 |---------|----------|
-| Backend setup for small-to-medium projects requires assembling many services (database, auth, storage, API) | Ships a single ~30MB binary with all core backend components pre-integrated and ready to run |
-| Running separate database, auth, and storage servers increases infrastructure cost and complexity | Embeds SQLite (with realtime capabilities) plus file storage and user management inside one process |
-| Building an admin UI for data and user management takes significant time | Provides a built-in superuser dashboard at `/_/` for full CRUD, collection management, and user administration |
-| Extending a backend to fit custom business logic requires framework-specific knowledge | Supports JavaScript VM hooks and Go embedding so logic can be added without rewriting the core |
-| Scaling from prototype to production backend is often a rewrite | Portable single-file design works for local dev and can run on any Linux/macOS/Windows target with no runtime dependencies |
+| Setting up a backend requires wiring together a web framework, database, auth system, file storage, and admin UI | Single executable includes all of these; run `./pocketbase serve` and the full backend is live |
+| Auth systems require significant custom code for OAuth2, OTP, MFA, and email verification | Built-in auth collections with configurable password, OTP, OAuth2 (30+ providers), and MFA support |
+| Prototypes and hobby projects are abandoned due to backend complexity | Sub-5-minute setup from download to working API with dashboard |
+| Realtime features require external brokers (Redis, Pusher, WebSocket servers) | Built-in SSE-based realtime subscriptions on any collection out of the box |
+| File uploads need separate S3 configuration and storage logic | Built-in file field type; storage switches between local disk and S3 via config |
+| Database schema management is manual and error-prone | Collections and fields managed via dashboard UI or Go/JS migration files that can be committed to git |
 
 ---
 
@@ -31,11 +32,12 @@ PocketBase is an open-source Go backend packaged as a single portable executable
 | Metric | Value | Date Gathered |
 |--------|-------|---------------|
 | GitHub Stars | 56,299 | 2026-02-23 |
-| Forks | 3,141 | 2026-02-23 |
-| Latest Release | v0.36.5 | 2026-02-21 |
-| Language | Go | 2026-02-23 |
-| Open Issues | 21 | 2026-02-23 |
-| Created | 2022-07-05 | 2026-02-23 |
+| GitHub Forks | 3,141 | 2026-02-23 |
+| Latest Release | v0.36.5 | 2026-02-23 |
+| Release Date | 2026-02-21 | 2026-02-23 |
+| Primary Language | Go | 2026-02-23 |
+| Repository Created | 2022-07-05 | 2026-02-23 |
+| Official SDKs | JavaScript, Dart | 2026-02-23 |
 
 ---
 
@@ -43,43 +45,48 @@ PocketBase is an open-source Go backend packaged as a single portable executable
 
 ### Embedded Database
 
-- SQLite-based persistent storage with zero external database dependencies
-- Realtime subscriptions via SSE (Server-Sent Events) for live collection data updates
-- Supports migrations via JS migration files (`pb_migrations/`) that can be committed to version control
-- Collection-level schema management through the admin UI or API
+- SQLite via `modernc.org/sqlite` (pure Go, no CGO required)
+- 3 collection types: **Base** (application data), **View** (read-only SQL SELECT), **Auth** (users with auth fields)
+- 15+ field types: bool, number, text, email, URL, editor, date, autodate, select, file, relation, JSON, geopoint, password, number
+- Declarative filter rules per collection (`@request.auth.id`, `&&`, `||`, nesting)
+- Realtime SSE subscriptions on any collection with automatic event broadcasting
+- Incremental schema migrations stored as JS/Go files committable to git
 
 ### Authentication
 
-- Built-in user (record) auth with email/password, username/password, and OAuth2 providers
-- Superuser accounts for admin dashboard access
-- Token-based auth with configurable expiry
-- Record-level access rules and field-level visibility controls
+- **Email/password** with configurable identity field (default email, any unique field)
+- **OTP** (one-time password via email code) with auto-verify-on-success option
+- **OAuth2** via 30+ providers (Google, GitHub, Microsoft, GitLab, etc.) — single-call popup flow
+- **Multi-factor authentication** (MFA) — combine any two auth methods
+- Stateless JWT tokens; no server-side session storage; "logout" = discard token client-side
+- Multiple Auth collections with independent fields and rules (users, managers, clients, etc.)
+- Role-based and ownership-based access via filter rule expressions
 
 ### File Storage
 
-- Local file storage by default; S3-compatible backend configurable for production
-- Built-in image resizing and thumbnail generation
-- File fields on collections with size and type constraints
+- File field type stores filenames in SQLite; file content on local disk or S3
+- Single or multiple file uploads per field; set modifiers to append/prepend/remove files
+- Thumbnails and image processing configurable per file field
 
 ### Admin Dashboard
 
-- Full-featured web UI at `/_/` for managing collections, records, users, settings, and logs
-- No separate admin app needed; served by the same binary
-- Log viewer for API request history and debugging
+- Superuser dashboard at `/_/` for managing collections, records, auth, logs, and settings
+- Schema changes in the dashboard auto-generate JS migration files
+- Superuser accounts managed via `./pocketbase superuser` CLI subcommands
 
 ### REST-ish API
 
-- Auto-generated CRUD endpoints for every collection
-- Filter, sort, and expand relations via query params
-- Real-time collection subscriptions via `/api/realtime`
-- SDK clients for JavaScript/Node.js/React Native and Dart/Flutter
+- CRUD endpoints auto-generated for every collection
+- Filter, sort, expand (relations), and fields projection query parameters
+- Standard routes: `http://127.0.0.1:8090/api/`
+- Static file serving from `pb_public/` directory
 
 ### Go Framework Mode
 
-- Import as a standard Go library package (`github.com/pocketbase/pocketbase`)
-- Attach custom routes, middleware, and event hooks via the `OnServe` event
-- Statically compile into a single binary with `CGO_ENABLED=0 go build`
-- JS VM plugin enabled by default in prebuilt executable for scripting hooks
+- Import `github.com/pocketbase/pocketbase` as a library to add custom routes, middleware, and hooks
+- Hook system (`app.OnServe()`, `app.OnRecordCreate()`, etc.) for lifecycle event interception
+- JS VM plugin (enabled by default in prebuilt binary) for extending with JavaScript without recompilation
+- Single `CGO_ENABLED=0 go build` produces a statically linked binary for any target
 
 ---
 
@@ -88,44 +95,37 @@ PocketBase is an open-source Go backend packaged as a single portable executable
 ### Deployment Modes
 
 ```text
-Standalone executable (prebuilt binary)
-  ↓
-./pocketbase serve
-  ↓
-Listens on :8090
-  ├── /          → serves pb_public/ static files (if present)
-  ├── /_/        → admin dashboard (superuser auth required)
-  └── /api/      → REST-ish API (record CRUD, auth, files, realtime)
+Standalone mode (prebuilt binary):
+  Download → extract → ./pocketbase serve
+  → localhost:8090/api/      (REST API)
+  → localhost:8090/_/        (Admin dashboard)
+  → localhost:8090/          (Static files from pb_public/)
 
-Data persisted in:
-  pb_data/       → SQLite DB, uploaded files, logs
-  pb_migrations/ → JS migration scripts (commit to VCS)
+Go framework mode:
+  go mod init myapp && go mod tidy
+  → import pocketbase, add hooks/routes
+  → CGO_ENABLED=0 go build → single binary
 ```
 
-### Go Embedding Pattern
+### Data Directories
 
-```go
-app := pocketbase.New()
-app.OnServe().BindFunc(func(se *core.ServeEvent) error {
-    se.Router.GET("/hello", func(re *core.RequestEvent) error {
-        return re.String(200, "Hello world!")
-    })
-    return se.Next()
-})
-app.Start()
-```
+| Directory | Purpose |
+|-----------|---------|
+| `pb_data/` | Application data, SQLite DB, uploaded files (gitignore) |
+| `pb_migrations/` | JS/Go migration files with schema changes (commit to git) |
+| `pb_public/` | Static files served at root URL |
 
-### Realtime Subscription Flow
+### Stack
 
-```text
-Client connects to /api/realtime (SSE)
-  ↓
-Subscribes to collection events (create/update/delete)
-  ↓
-Server pushes JSON event payloads on data changes
-  ↓
-Client JS SDK dispatches events to subscribed callbacks
-```
+| Component | Technology |
+|-----------|------------|
+| Language | Go 1.23+ |
+| Database | SQLite (modernc.org/sqlite, pure Go) |
+| Realtime | SSE (Server-Sent Events) |
+| Auth tokens | JWT (stateless) |
+| File storage | Local disk or S3 |
+| JS extensibility | Goja JS VM |
+| Admin UI | Embedded SvelteKit SPA |
 
 ---
 
@@ -133,42 +133,60 @@ Client JS SDK dispatches events to subscribed callbacks
 
 ```bash
 # Download prebuilt binary (Linux amd64)
-wget https://github.com/pocketbase/pocketbase/releases/latest/download/pocketbase_linux_amd64.zip
-unzip pocketbase_linux_amd64.zip
+wget https://github.com/pocketbase/pocketbase/releases/download/v0.36.5/pocketbase_0.36.5_linux_amd64.zip
+unzip pocketbase_0.36.5_linux_amd64.zip
 
-# Start the server (creates pb_data/ and pb_migrations/ alongside executable)
+# Start server (auto-opens browser for first superuser setup)
 ./pocketbase serve
 
-# Visit http://127.0.0.1:8090/_/ to set up the first superuser
+# Self-update
+./pocketbase update
 ```
 
-```go
-// Embed as Go library
-import "github.com/pocketbase/pocketbase"
-
-app := pocketbase.New()
-// attach hooks, routes, etc.
-if err := app.Start(); err != nil {
-    log.Fatal(err)
-}
-```
+### JavaScript SDK Usage
 
 ```javascript
-// JavaScript SDK (browser / Node.js)
 import PocketBase from 'pocketbase';
-
 const pb = new PocketBase('http://127.0.0.1:8090');
 
 // Authenticate
-await pb.collection('users').authWithPassword('user@example.com', 'password');
+const authData = await pb.collection('users').authWithPassword('user@example.com', 'password');
 
-// List records
-const records = await pb.collection('posts').getFullList({ sort: '-created' });
+// CRUD
+const record = await pb.collection('posts').create({ title: 'Hello', content: 'World' });
+const list = await pb.collection('posts').getList(1, 20, { filter: 'author = "abc123"' });
 
 // Realtime subscription
 pb.collection('posts').subscribe('*', (e) => {
     console.log(e.action, e.record);
 });
+```
+
+### Go Framework Extension
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/pocketbase/pocketbase"
+    "github.com/pocketbase/pocketbase/core"
+)
+
+func main() {
+    app := pocketbase.New()
+
+    app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+        se.Router.GET("/hello", func(re *core.RequestEvent) error {
+            return re.String(200, "Hello world!")
+        })
+        return se.Next()
+    })
+
+    if err := app.Start(); err != nil {
+        log.Fatal(err)
+    }
+}
 ```
 
 ---
@@ -177,42 +195,51 @@ pb.collection('posts').subscribe('*', (e) => {
 
 ### Applications
 
-- **Rapid backend for agent-tooling prototypes**: Claude Code can scaffold new tools that need user auth, data persistence, and a REST API without configuring separate services — spin up PocketBase in seconds
-- **Local AI workflow state storage**: Store agent session state, task history, and metadata in a lightweight local SQLite-backed API accessible from any language via HTTP
-- **MCP server backend**: Use PocketBase as the data layer for custom MCP servers, providing record storage, auth, and realtime events with minimal overhead
-- **Plugin marketplace data layer**: PocketBase's collection API and realtime subscriptions could back a local marketplace registry or skills catalog with live updates
+- **Rapid backend for skill prototypes**: PocketBase provides an instant backend for any skill or agent that needs persistent data, user auth, or file storage — no cloud account or database setup required.
+- **Agent state persistence**: Use PocketBase collections as a lightweight external state store for multi-session agent workflows, replacing ad-hoc file-based or SQLite-from-scratch approaches.
+- **Tool backend for MCP servers**: PocketBase's REST API and realtime subscriptions make it a natural backend for MCP servers that need persistent records and push notifications to connected clients.
+- **Local BaaS for development**: Replaces Firebase/Supabase for local-first development; single binary spun up in CI for integration tests without external dependencies.
 
 ### Patterns Worth Adopting
 
-- **Single-binary distribution**: PocketBase's zero-dependency single-executable model is a compelling pattern for distributing tools — relevant to how Claude Code plugins could bundle lightweight backends
-- **Migration-as-code**: Storing schema migrations as JS files in `pb_migrations/` (committed to VCS) is a clean approach to database schema versioning for AI workflow tooling
-- **Embedded admin UI**: Shipping an admin dashboard within the same binary eliminates the need for separate front-end tooling, which could be replicated in Claude Code plugin tooling
+1. **Single-binary distribution**: PocketBase's zero-dependency `CGO_ENABLED=0` build producing a static binary is a pattern for distributing agent tools without runtime requirements.
+2. **Migration files as code**: Storing schema changes as committable JS migration files enables reproducible database state — applicable to any tool that manages structured data.
+3. **Filter rule DSL**: PocketBase's `@request.auth.id`, `&&`/`||`, nested relation traversal rule syntax is a clean pattern for declarative access control without custom middleware code.
+4. **Hook-based extensibility**: The `app.On*()` hook pattern for intercepting lifecycle events (create, update, delete) without forking the core — directly applicable to plugin architectures.
+5. **Realtime without extra infrastructure**: SSE-based subscriptions baked into the core (no Redis, no Pusher) demonstrate that realtime can be a zero-dependency first-class feature.
 
 ### Integration Opportunities
 
-- **Claude Code session storage**: Pair PocketBase with a Claude Code session hook to persist agent task history, outputs, and metadata locally for post-session review
-- **Realtime skill event bus**: Use PocketBase's SSE realtime API as a lightweight pub/sub bus for multi-agent workflows where agents need to observe each other's state changes
-- **Auth layer for local MCP tools**: PocketBase's built-in auth with token management could secure locally-run MCP servers that expose sensitive capabilities
+1. **PocketBase as skill session store**: A `sessions` collection in PocketBase could replace the current `sessions/` directory pattern for tracking multi-session agent context with query support.
+2. **MCP server backed by PocketBase**: Build an MCP server that exposes PocketBase CRUD operations as tools, giving Claude Code agents structured persistent storage via the Tool use interface.
+3. **Research entry tracking**: Use PocketBase to store, query, and track research entries by category/date/freshness — enabling `--validate` and `--rerun` mode queries without scanning the filesystem.
+4. **Webhook hooks for agent triggers**: PocketBase's `OnRecord*` hooks can fire webhooks that trigger agent tasks (e.g., new research entry created → trigger `--validate` workflow).
 
 ### Competitive Analysis
 
-| Tool | Approach | Trade-off vs PocketBase |
-|------|----------|------------------------|
-| Supabase | Managed cloud PostgreSQL + Auth + Storage | Full-featured but requires cloud account; no single-binary deployment |
-| Firebase | Google cloud BaaS with Firestore | Proprietary lock-in; no self-hosted option |
-| Appwrite | Open-source BaaS with Docker compose | Multi-container setup; heavier operational footprint |
-| Directus | Open-source headless CMS/API | More configuration overhead; targets larger data models |
-| PocketBase | Single Go binary, SQLite, self-hosted | Pre-1.0, not production-critical; SQLite limits horizontal scale |
+| Tool | Comparison |
+|------|------------|
+| Supabase | Hosted PostgreSQL BaaS; PocketBase is lighter, self-hosted, no Docker required |
+| Firebase | Google-hosted; PocketBase is open source, runs offline, no vendor lock-in |
+| Appwrite | Docker-based multi-service; PocketBase is a single binary |
+| Directus | CMS-focused, requires Node.js; PocketBase is Go, self-contained |
 
 ---
 
 ## References
 
-- [PocketBase Documentation](https://pocketbase.io/docs) (accessed 2026-02-23)
-- [pocketbase/pocketbase GitHub Repository](https://github.com/pocketbase/pocketbase) (accessed 2026-02-23)
-- [PocketBase JavaScript SDK — pocketbase/js-sdk](https://github.com/pocketbase/js-sdk) (accessed 2026-02-23)
-- [PocketBase Dart SDK — pocketbase/dart-sdk](https://github.com/pocketbase/dart-sdk) (accessed 2026-02-23)
-- [PocketBase Changelog](https://github.com/pocketbase/pocketbase/blob/master/CHANGELOG.md) (accessed 2026-02-23)
+| Source | URL | Accessed |
+|--------|-----|----------|
+| Official Website | <https://pocketbase.io> | 2026-02-23 |
+| GitHub Repository | <https://github.com/pocketbase/pocketbase> | 2026-02-23 |
+| Documentation | <https://pocketbase.io/docs> | 2026-02-23 |
+| Collections Docs | <https://pocketbase.io/docs/collections> | 2026-02-23 |
+| Authentication Docs | <https://pocketbase.io/docs/authentication> | 2026-02-23 |
+| JavaScript SDK | <https://github.com/pocketbase/js-sdk> | 2026-02-23 |
+| Dart SDK | <https://github.com/pocketbase/dart-sdk> | 2026-02-23 |
+| Releases Page | <https://github.com/pocketbase/pocketbase/releases> | 2026-02-23 |
+
+**Research Method**: Information gathered from official website, GitHub repository README, GitHub API (stars, forks, language, creation date), official documentation (collections, authentication), and latest release page.
 
 ---
 
@@ -222,4 +249,13 @@ pb.collection('posts').subscribe('*', (e) => {
 |-------|-------|
 | Last Verified | 2026-02-23 |
 | Version at Verification | v0.36.5 |
+| GitHub Stars | 56,299 (as of 2026-02-23) |
 | Next Review Recommended | 2026-05-23 |
+
+**Review Triggers**:
+
+- v1.0 stable release (currently pre-1.0 with active development)
+- Major auth or collection API breaking changes
+- GitHub stars milestone (60K, 70K)
+- New official SDK language support
+- S3-compatible storage provider changes

@@ -11,9 +11,9 @@ polished merge request description following the template standards.
 
 from __future__ import annotations
 
-from io import TextIOWrapper
 import json
 import sys
+from io import TextIOWrapper
 from pathlib import Path
 from typing import Annotated, Any
 

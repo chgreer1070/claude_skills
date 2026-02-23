@@ -173,14 +173,14 @@ class AgentFrontmatter(BaseModel):
     name: str = Field(max_length=64, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")
     description: str
     tools: str | None = None
-    disallowedTools: str | None = None  # noqa: N815
+    disallowedTools: str | None = None
     model: Literal["sonnet", "opus", "haiku", "inherit"] | None = None
-    permissionMode: (  # noqa: N815
+    permissionMode: (
         Literal["default", "acceptEdits", "dontAsk", "bypassPermissions", "plan"] | None
     ) = None
-    maxTurns: int | None = None  # noqa: N815
+    maxTurns: int | None = None
     skills: str | None = None
-    mcpServers: list[Any] | dict[str, Any] | None = None  # noqa: N815
+    mcpServers: list[Any] | dict[str, Any] | None = None
     hooks: dict[str, Any] | None = None
     memory: Literal["user", "project", "local"] | None = None
     background: bool | None = None

@@ -130,7 +130,7 @@ Source: `__init__.py` line 58: `envvar=["motherduck_token", "MOTHERDUCK_TOKEN"]`
 
 Supports `env` section in `mcpServers` config. `MCP_DB_PATH` in `env` works reliably. Claude Code issue #1254 reports that env vars from `env` section were not always passed in earlier versions — verify on current Claude Code version.
 
-Source: https://github.com/anthropics/claude-code/issues/1254 (referenced in web search, 2026-02-22)
+Source: <https://github.com/anthropics/claude-code/issues/1254> (referenced in web search, 2026-02-22)
 
 ### Claude Desktop
 
@@ -162,4 +162,4 @@ Both support `env` section alongside `args`. `MCP_DB_PATH` in `env` is the corre
 - `src/mcp_server_motherduck/__init__.py` read via `gh api repos/motherduckdb/mcp-server-motherduck/contents/...` (2026-02-22)
 - `src/mcp_server_motherduck/database.py` read via `gh api` (2026-02-22)
 - `README.md` read via `gh api` (2026-02-22)
-- https://github.com/motherduckdb/mcp-server-motherduck (official repository, accessed 2026-02-22)
+- <https://github.com/motherduckdb/mcp-server-motherduck> (official repository, accessed 2026-02-22)

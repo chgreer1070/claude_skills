@@ -4,7 +4,7 @@
 
 Professional development workflow extensions for Claude Code. Make Claude more thorough, accurate, and productive across Python, shell, Perl, CI/CD, and AI tooling.
 
-**What's Here**: 20 plugins ranging from comprehensive development frameworks (15+ commands, specialized agents, extensive reference docs) to focused knowledge clip-ins (single-skill convention guides). Whether you need a complete Python TDD workflow or just want Claude to write proper commit messages, there's a plugin for that.
+**What's Here**: 25 plugins ranging from comprehensive development frameworks (15+ commands, specialized agents, extensive reference docs) to focused knowledge clip-ins (single-skill convention guides). Whether you need a complete Python TDD workflow or just want Claude to write proper commit messages, there's a plugin for that.
 
 ## Quick Start
 
@@ -32,6 +32,10 @@ These are comprehensive frameworks with multiple skills, commands, and specializ
 | [clang-format](./plugins/clang-format)               | Configure clang-format to match your existing C/C++ code style by analyzing patterns and showing impact before changes |
 | [holistic-linting](./plugins/holistic-linting)       | Automatic code quality enforcement - Claude won't say "done" until code passes all configured linters with root-cause fixing |
 | [summarizer](./plugins/summarizer)                   | Faithful information summarization with anti-hallucination methodology, structured output templates, and autonomous agents |
+| [agentskill-kaizen](./plugins/agentskill-kaizen)     | Analyze Claude Code session transcripts to find inefficiencies, anti-patterns, and repeated mistakes with DuckDB process-mining and live sentiment dashboard |
+| [dasel](./plugins/dasel)                             | Query, transform, and convert structured data files (JSON, YAML, TOML, XML, CSV) using dasel v3 with enterprise XML support and exploration agents |
+| [development-harness](./plugins/development-harness) | Language-agnostic development process harness implementing the SAM 7-stage pipeline with planning, verification, and testing methodology |
+| [the-rewrite-room](./plugins/the-rewrite-room)       | Documentation workflow router — routes tasks like drift audits, doc sync, prompt optimization, and summarization to canonical workflows with validation |
 
 ### 📦 Lightweight Knowledge Clip-Ins
 
@@ -68,6 +72,7 @@ These are focused plugins that teach Claude specific conventions or tools withou
 | [verification-gate](./plugins/verification-gate) | Forces Claude to investigate before acting, preventing correct diagnosis with wrong implementation |
 | [hallucination-detector](./plugins/hallucination-detector) | Blocks task completion when Claude speculates or makes ungrounded claims, forcing evidence-first rewrites |
 | [brainstorming-skill](./plugins/brainstorming-skill) | Significantly improves brainstorming with 30+ research-validated prompt patterns across 14 categories |
+| [orchestrator-discipline](./plugins/orchestrator-discipline) | Prevents orchestrator context window bloat via PreToolUse hooks — blocks file reads without edits, diagnostic commands that should be delegated |
 
 ## Why Use These Plugins?
 
@@ -79,13 +84,17 @@ Claude Code plugins extend Claude's capabilities in specific domains. This colle
 - **plugin-creator**: 6 agents for systematic plugin development workflows
 - **holistic-linting**: Automatic quality enforcement with root-cause analysis
 - **summarizer**: Anti-hallucination summarization with structured templates
+- **agentskill-kaizen**: Session transcript analysis with DuckDB, process mining, and live sentiment dashboard
+- **dasel**: Unified structured data querying across JSON, YAML, TOML, XML, CSV with exploration agents
+- **development-harness**: Language-agnostic SAM 7-stage pipeline for planning, execution, and verification
+- **the-rewrite-room**: Documentation workflow router with drift audits, prompt optimization, and validation
 
 **Lightweight Knowledge Clip-Ins** - Focused plugins that teach specific conventions or tools:
 - Modern commit formats (conventional-commits, commitlint)
 - LLM integration patterns (litellm, llamafile, fastmcp-creator)
 - Directory standards (xdg-base-directory)
 - Code formatting (clang-format)
-- Behavior improvements (verification-gate, hallucination-detector, brainstorming-skill)
+- Behavior improvements (verification-gate, hallucination-detector, brainstorming-skill, orchestrator-discipline)
 
 Once installed, plugins work automatically - Claude knows when to use them based on your project context. Instead of generic responses, Claude will:
 
@@ -144,6 +153,18 @@ plugins/plugin-name/
 
 **[brainstorming-skill](./plugins/brainstorming-skill)** - Improves idea generation with 30+ research-validated prompt patterns (role-based perspectives, constraint exploration, analogical thinking, inversion techniques). Structured techniques generate more ideas with reasoning while working within your actual constraints.
 
+### For Process Improvement & Documentation
+
+**[agentskill-kaizen](./plugins/agentskill-kaizen)** - Analyze Claude Code session transcripts to find inefficiencies, anti-patterns, and repeated mistakes. Uses DuckDB process-mining and pattern detection across ten dimensions (tool misuse, repeated errors, user frustration, delegation gaps). Includes a live sentiment dashboard and generates hook scripts, skill patches, and CLAUDE.md updates as draft proposals.
+
+**[the-rewrite-room](./plugins/the-rewrite-room)** - Documentation workflow router that automatically selects the right canonical workflow for your task. Handles drift audits, documentation sync, prompt optimization, summarization, and formatting validation. Includes a scoring-based router, validation harness, and structured output contracts.
+
+**[development-harness](./plugins/development-harness)** - Language-agnostic development process harness implementing the Stateless Agent Methodology (SAM) 7-stage pipeline. Provides orchestration, workflows for discovery through final verification, and a Voltron-style language plugin composition model.
+
+### For Data & Configuration
+
+**[dasel](./plugins/dasel)** - Gives Claude a single consistent tool for querying, modifying, and converting structured data files (JSON, YAML, TOML, XML, CSV, HCL, INI) using dasel v3. Includes enterprise XML patterns for Spring, Maven, Hibernate, and Tomcat files exceeding 2MB. Three specialized agents handle exploration, query construction, and multi-file analysis.
+
 ### For Plugin & Tool Developers
 
 **[plugin-creator](./plugins/plugin-creator)** - Complete toolkit with 14 skills and 6 specialized agents for creating, refactoring, and validating Claude Code plugins. Includes systematic refactoring workflows, frontmatter validation, internal link checking, and automated quality enforcement.
@@ -186,6 +207,13 @@ Quick overview:
 5. Test locally before submitting PR
 6. Submit pull request with description
 
+## Workshops
+
+The `workshops/` directory contains hands-on workshop materials for teaching AI-assisted development in specific domains:
+
+- **[Embedded Engineers (Claude)](./workshops/ai-agents-skills-for-embedded-engineers-claude.md)** - 1-hour workshop covering skills, agents, and orchestration for firmware development with MISRA-C, FreeRTOS, and Zigbee patterns
+- **[Embedded Engineers (Cursor)](./workshops/ai-agents-skills-for-embedded-engineers-cursor.md)** - Equivalent workshop adapted for Cursor with custom agents and embedded skills
+
 ## Requirements
 
 - Claude Code v2.0 or later
@@ -200,6 +228,6 @@ MIT License - see individual plugins for specifics.
 **Marketplace Name**: `jamie-bitflight-skills`
 **Owner**: Jamie BitFlight (<jamie@bitflight.io>)
 **Version**: 2.0.0
-**Plugin Count**: 20 plugins (8 full-featured systems, 12 lightweight clip-ins)
+**Plugin Count**: 25 plugins (12 full-featured systems, 13 lightweight clip-ins)
 
-This marketplace provides professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Includes comprehensive frameworks for Python 3.11+, Bash 5.1+, and Perl 5.30+ development with TDD workflows, specialized agents, and automated quality enforcement. Also covers GitLab CI/CD automation, commit message standards, LLM integration patterns, MCP server creation, and Claude behavior improvements for hallucination prevention and systematic problem-solving.
+This marketplace provides professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Includes comprehensive frameworks for Python 3.11+, Bash 5.1+, and Perl 5.30+ development with TDD workflows, specialized agents, and automated quality enforcement. Also covers GitLab CI/CD automation, commit message standards, LLM integration patterns, MCP server creation, session transcript analysis, structured data querying, documentation workflow routing, and Claude behavior improvements for hallucination prevention and systematic problem-solving.

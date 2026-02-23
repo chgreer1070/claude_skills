@@ -38,7 +38,7 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:  # pragma: no cover
     sys.path.insert(0, str(_SCRIPT_DIR))
 
-from task_format import (  # noqa: E402
+from task_format import (
     VALID_STATUSES,
     has_yaml_frontmatter,
     normalize_status,

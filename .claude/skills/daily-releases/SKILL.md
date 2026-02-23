@@ -1,8 +1,8 @@
 ---
-description: 'Create GitHub Releases with AI-analyzed changelogs for every calendar day with commits on origin/main. Uses the same analyze → AI-categorize → format pipeline as /create-merge-request-changelog for rich, structured output. Idempotent: skips days that are already up to date, updates releases where new commits have been added. Automatically invoked when command is run; accepts optional --start-date, --end-date, --branch, --dry-run arguments.'
+name: daily-releases
+description: "Create GitHub Releases with AI-analyzed changelogs for every calendar day with commits on origin/main. Uses the same analyze → AI-categorize → format pipeline as /create-merge-request-changelog for rich, structured output. Idempotent: skips days that are already up to date, updates releases where new commits have been added. Automatically invoked when command is run; accepts optional --start-date, --end-date, --branch, --dry-run arguments."
 argument-hint: '[--start-date YYYY-MM-DD] [--end-date YYYY-MM-DD] [--branch BRANCH] [--dry-run]'
 ---
-
 # Daily Releases
 
 Create GitHub Releases with AI-categorized changelogs for every day that had commits. Uses the same pipeline as `/create-merge-request-changelog` — real AI analysis, not template substitution.
