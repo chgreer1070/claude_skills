@@ -103,6 +103,7 @@ research/
 │   ├── compound-engineering-plugin.md # Every Inc's Plan/Work/Review/Compound workflow plugin
 │   ├── github-patterns.md             # Patterns from GitHub research agent implementations
 │   ├── orchestrator-agent-creation-guide.md  # OpenCode orchestrator agent guide
+│   ├── google-adk-context-engineering.md  # Google ADK context engineering: tiered storage, compiled views, scoped multi-agent handoffs (17.9K stars)
 │   ├── tinyclaw.md                    # Multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs
 │   └── ollama-subagents-web-search-claude-code.md  # Ollama native subagents and web search for Claude Code (163K+ stars)
 ├── skill-generation-tools/            # Tools that create AI skills/prompts
@@ -138,6 +139,7 @@ Research on multi-agent architectures, orchestration patterns, and research work
 | [github-patterns.md](./research-agent-patterns/github-patterns.md)                                     | Patterns from 40+ repositories including Chief of Staff model, 12-agent academic pipelines, Pydantic AI research loops | 2025-12-09   |
 | [orchestrator-agent-creation-guide.md](./research-agent-patterns/orchestrator-agent-creation-guide.md) | Comprehensive guide for creating orchestrator agents in OpenCode - routing, chaining, parallel delegation patterns     | 2026-01-26   |
 | [tinyclaw.md](./research-agent-patterns/tinyclaw.md)                                                   | TinyClaw - multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs and file-based queue (2.1K stars)    | 2026-02-18   |
+| [google-adk-context-engineering.md](./research-agent-patterns/google-adk-context-engineering.md)     | Google ADK context engineering: tiered storage model, compiler-style processor pipeline, scoped multi-agent handoffs (17.9K stars) | 2026-02-23   |
 | [ollama-subagents-web-search-claude-code.md](./research-agent-patterns/ollama-subagents-web-search-claude-code.md) | Ollama v0.16.2 native subagents and web search for Claude Code with Anthropic API compatibility (163K+ stars) | 2026-02-19   |
 
 **Key Topics**:
@@ -157,6 +159,7 @@ Research on multi-agent architectures, orchestration patterns, and research work
 - Git worktree integration for parallel development
 - Claude Code plugin architecture patterns
 - Supervisor-worker AI agent orchestration via tmux terminals
+- Context engineering: tiered storage, compiled views, and processor pipelines for production agents
 - Cron-based polling with one-action-per-cycle discipline
 - Context clearing between phases for clean context windows
 - State-file-driven workflow progression (not memory-based)
