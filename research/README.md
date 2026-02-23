@@ -22,6 +22,7 @@ research/
 │   ├── kernel-sh.md                   # Browsers-as-a-service: isolated VM-per-browser Chrome, MCP server, 5.8x faster than Browserbase (670 stars)
 │   ├── plano.md                       # AI-native proxy and data plane for multi-agent orchestration
 │   ├── tinyfish.md                    # Serverless web agent API: 1,000 parallel ops, AgentQL MCP, all-in pricing at $0.04/op (148 stars)
+│   ├── picoclaw.md                    # Go AI assistant — <10MB RAM, 6 channels, runs on $10 RISC-V hardware, 18K stars
 │   └── zeroclaw.md                    # Rust AI assistant infrastructure — sub-5MB RAM, 28+ providers, trait-driven (14.9K stars)
 ├── api-frameworks/                    # High-performance API frameworks for backend services
 │   ├── fastapi.md                     # Modern Python web framework with Pydantic (95K+ stars)
@@ -389,6 +390,7 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 | [kernel-sh.md](./agent-infrastructure/kernel-sh.md) | Kernel - browsers-as-a-service API with isolated VM-per-browser Chrome, 72h sessions, Playwright CDP passthrough, MCP server, and Browser Pools ($22M, 670 stars) | 2026-02-22   |
 | [plano.md](./agent-infrastructure/plano.md)       | AI-native proxy and data plane built on Envoy - handles orchestration, model routing, observability, guardrails | 2026-01-26   |
 | [tinyfish.md](./agent-infrastructure/tinyfish.md) | TinyFish - serverless web agent API for 1,000 parallel agentic ops, AgentQL MCP server, all-in pricing at $0.04/op (148 stars) | 2026-02-23   |
+| [picoclaw.md](./agent-infrastructure/picoclaw.md) | PicoClaw - Go AI assistant by Sipeed, <10MB RAM, <1s startup, 6 messaging channels, runs on $10 RISC-V hardware, AI-bootstrapped (18.1K stars) | 2026-02-23   |
 | [zeroclaw.md](./agent-infrastructure/zeroclaw.md) | Rust autonomous AI assistant — sub-5MB RAM, 28+ AI providers, 15+ channels, trait-driven swappable subsystems (14.9K stars) | 2026-02-19   |
 
 **Key Topics**:
