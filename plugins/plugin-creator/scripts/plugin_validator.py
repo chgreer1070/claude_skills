@@ -1036,10 +1036,44 @@ class NamespaceReferenceValidator:
                     return candidate
         return None
 
+    @staticmethod
+    def _resolve_to_directory(path: Path) -> Path | None:
+        """Resolve path to directory, following symlinks and Git pointer files (Windows).
+
+        On Windows, Git may store symlinks as regular files whose content is the
+        target path. This allows validation to work cross-platform.
+
+        Args:
+            path: Path that may be a directory, symlink, or pointer file
+
+        Returns:
+            Resolved directory path, or None if resolution fails
+        """
+        if path.is_dir():
+            return path.resolve()
+        if path.is_symlink():
+            resolved = path.resolve()
+            return resolved if resolved.is_dir() else None
+        if path.is_file():
+            # Git symlink on Windows: file contains target path as text
+            try:
+                content = path.read_text(encoding="utf-8").strip()
+            except OSError:
+                return None
+            if not content or "\n" in content:
+                return None
+            try:
+                target = (path.parent / content).resolve()
+                return target if target.is_dir() else None
+            except (OSError, RuntimeError):
+                return None
+        return None
+
     def _resolve_skill_reference(self, plugins_root: Path, plugin: str, name: str) -> bool:
         """Check if a skill reference resolves to an existing file.
 
-        Checks direct path and nested (category) paths.
+        Checks direct path and nested (category) paths. Resolves symlinks and
+        Git pointer files (Windows) before existence checks.
 
         Args:
             plugins_root: Path to the ``plugins/`` directory
@@ -1050,6 +1084,12 @@ class NamespaceReferenceValidator:
             True if the skill SKILL.md exists at any valid location
         """
         # Direct: plugins/{plugin}/skills/{name}/SKILL.md
+        skill_dir = plugins_root / plugin / "skills" / name
+        resolved_dir = self._resolve_to_directory(skill_dir)
+        if resolved_dir is not None and (resolved_dir / "SKILL.md").is_file():
+            return True
+
+        # Also check direct path (real symlinks resolve via resolve())
         direct = plugins_root / plugin / "skills" / name / "SKILL.md"
         if direct.is_file():
             return True
@@ -1058,9 +1098,13 @@ class NamespaceReferenceValidator:
         nested_pattern = plugins_root / plugin / "skills"
         if nested_pattern.is_dir():
             for category_dir in nested_pattern.iterdir():
-                if category_dir.is_dir():
-                    nested = category_dir / name / "SKILL.md"
+                resolved_cat = self._resolve_to_directory(category_dir)
+                if resolved_cat is not None:
+                    nested = resolved_cat / name / "SKILL.md"
                     if nested.is_file():
+                        return True
+                    # Pointer/symlink: category_dir may resolve to skill dir itself
+                    if category_dir.name == name and (resolved_cat / "SKILL.md").is_file():
                         return True
 
         return False

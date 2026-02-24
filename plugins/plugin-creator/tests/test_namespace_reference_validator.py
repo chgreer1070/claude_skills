@@ -133,6 +133,35 @@ class TestValidReferences:
         assert result.passed is True
         assert len(result.errors) == 0
 
+    def test_skill_resolves_via_git_pointer_file(self, tmp_path: Path) -> None:
+        """Test Skill(command:) resolves when skill dir is a Git pointer file (Windows).
+
+        Tests: _resolve_to_directory handles symlink-as-file (Git on Windows)
+        How: Create plugin with pointer file containing target path, validate
+        Why: Cross-platform validation; Linux uses symlinks, Windows uses pointer files
+        """
+        plugins_root = _make_plugins_root(tmp_path)
+
+        # Create the actual skill in another plugin
+        real_plugin = _make_plugin_dir(plugins_root, "real-plugin")
+        _make_skill(real_plugin, "shared-skill")
+
+        # Create wrapper plugin with pointer file (Git symlink on Windows)
+        wrapper_plugin = _make_plugin_dir(plugins_root, "wrapper-plugin")
+        skills_dir = wrapper_plugin / "skills"
+        skills_dir.mkdir(parents=True)
+        pointer_file = skills_dir / "shared-skill"
+        pointer_file.write_text("../../real-plugin/skills/shared-skill")
+
+        body = 'Load Skill(command: "wrapper-plugin:shared-skill").\n'
+        source_skill = _make_skill_md_with_body(plugins_root, "source-plugin", body)
+
+        validator = NamespaceReferenceValidator()
+        result = validator.validate(source_skill)
+
+        assert result.passed is True
+        assert len(result.errors) == 0
+
     def test_can_fix_returns_false(self) -> None:
         """Test can_fix() returns False for NamespaceReferenceValidator.
 
