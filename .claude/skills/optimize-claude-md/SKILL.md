@@ -207,7 +207,7 @@ Write optimized content ONLY after user confirms. Do not auto-apply.
 
 ## Iterative Mode for Large Targets
 
-For files exceeding `TOKEN_WARNING_THRESHOLD` (4400 tokens, as defined in `plugins/plugin-creator/scripts/plugin_validator.py`) or plugin directories, offer iterative optimization:
+For files exceeding `TOKEN_WARNING_THRESHOLD` (defined in `plugins/plugin-creator/scripts/plugin_validator.py`) or plugin directories, offer iterative optimization:
 
 **Pass 1: Structural Changes**
 
@@ -252,7 +252,7 @@ When target is a **plugin directory**:
 - **File not found**: Report exact path checked, ask user to confirm
 - **Binary or non-markdown file**: Skip with explanation
 - **Already optimal**: Acknowledge effectiveness, suggest only minor refinements per agent constraint
-- **Large file (>4400 tokens)**: Offer iterative mode with multi-pass optimization
+- **Large file (exceeds `TOKEN_WARNING_THRESHOLD`)**: Offer iterative mode with multi-pass optimization
 - **Agent returns BLOCKED**: Present blocking reason to user with specific questions
 - **Independent verification finds regression**: Report regression, offer to revise or keep original
 - **Token count increases**: Report reason (added examples, motivations, or structure), verify completeness score improved to justify expansion
