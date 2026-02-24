@@ -24,7 +24,7 @@ Where `<path>` is one of:
 ## Process
 
 <user_provided_target>$ARGUMENTS</user_provided_target>
-<PWD>!`pwd`</PWD>
+<PWD> !`pwd` </PWD>
 
 ### Phase 1: Validate Target
 
