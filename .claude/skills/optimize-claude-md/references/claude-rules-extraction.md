@@ -176,15 +176,13 @@ When a candidate section is identified:
 
 ## Replacement stub format
 
-Replace the extracted section in CLAUDE.md with:
+Replace the entire extracted section (heading + content) in CLAUDE.md with a single bullet reference:
 
 ```markdown
-## <Original Heading>
-
-> Extracted to [`.claude/rules/<filename>.md`](.claude/rules/<filename>.md) — applies when working with `<primary glob>`.
+- <Topic label>: `.claude/rules/<filename>.md`
 ```
 
-Keep the heading so the section is still discoverable by heading scan. The stub is one line. Do not preserve any of the original rule content in CLAUDE.md.
+No heading. No "extracted to". No glob annotation. No blockquote. Just a plain bullet pointing to the file. Claude loading a fresh session has no context about what was previously there — the only useful information is where the rules live now.
 
 ---
 
@@ -193,7 +191,7 @@ Keep the heading so the section is still discoverable by heading scan. The stub 
 After performing extraction, the CoVe post-check MUST include these additional questions:
 
 1. **Content integrity**: Does the new rules file contain all rules from the original section verbatim?
-2. **Stub accuracy**: Does the CLAUDE.md stub reference the correct filename and glob?
+2. **Reference accuracy**: Does the CLAUDE.md bullet point to the correct rules file path?
 3. **Scope correctness**: Does the `paths` glob actually match the files the rules apply to?
 4. **No universal rules extracted**: Were any rules that apply to all files accidentally moved to the rules file?
 5. **CLAUDE.md coherence**: Does CLAUDE.md still read coherently after the extraction?
