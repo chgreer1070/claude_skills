@@ -11,7 +11,7 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 
 ## P0 - Must Have
 
-_(Empty)_
+- [Reduce session-start context load via rules path-scoping and disable-model-invocation](backlog/p0-reduce-session-start-context-load-via-rules-path-scoping-and.md)
 
 ## P1 - Should Have
 

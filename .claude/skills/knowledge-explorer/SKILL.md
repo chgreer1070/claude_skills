@@ -222,6 +222,68 @@ uv run research/knowledge-explorer.py update-append agno
 
 </example>
 
+### generate-descriptions
+
+Generate or repair frontmatter `description` fields for KB entries that are missing, empty, truncated, or auto-generated from prose.
+
+**When to run:** User asks to "fix descriptions", "generate descriptions", or "repair KB descriptions", or the `add` command warns about an empty description.
+
+**Orchestrator workflow:**
+
+```bash
+# Step 1 — get only the entries that need fixing (JSON array)
+uv run research/knowledge-explorer.py list-candidates
+```
+
+Output is a JSON array of entries that fail the bad-description heuristics. Empty array means nothing to do. Each object contains `topic`, `file_path`, `name`, `category`, `tags`, `current_description`, `body_excerpt`.
+
+```bash
+# Step 2 — spawn one Haiku subagent per entry in parallel
+# Pass each entry object + the description rules below to the agent.
+# The agent generates the description and writes it directly:
+uv run research/knowledge-explorer.py set-description <topic> "<description>"
+# Exit 0 = success (silent). Exit 1 = topic not found. Exit 2 = invalid description.
+```
+
+The orchestrator only hears back from an agent on non-zero exit. Generated descriptions never route through the orchestrator.
+
+**`--all` flag:** include every entry regardless of current description quality.
+
+```bash
+uv run research/knowledge-explorer.py list-candidates --all
+```
+
+**Description rules (pass verbatim to each subagent):**
+- Single line, no newlines
+- No colons (`:`) — rephrase around them
+- Max 1024 characters
+- Front-load what the KB covers, then when an agent should load it
+- Include specific trigger keywords (tool name, alternatives, use cases)
+- Format: `{what it covers}. Use when {trigger scenarios}.`
+- Output ONLY the description string — no quotes, no YAML, no explanation
+
+<example>
+
+Subagent receives:
+
+```json
+{
+  "topic": "dasel",
+  "name": "dasel",
+  "category": "developer-tools",
+  "tags": ["cli", "json", "yaml", "toml", "csv", "xml"],
+  "body_excerpt": "Dasel (Data Selection) is a command-line tool and Go library..."
+}
+```
+
+Subagent generates and writes:
+
+```bash
+uv run research/knowledge-explorer.py set-description dasel "Dasel CLI and Go library for reading and writing JSON, YAML, TOML, CSV, and XML via a unified selector syntax. Use when querying or transforming structured config files, scripting data pipelines, or replacing jq/yq with a single multi-format tool."
+```
+
+</example>
+
 ### migrate
 
 Migrate old-format entries to skill-spec frontmatter in-place across the entire KB.
@@ -287,7 +349,7 @@ All errors render as a Rich panel on stderr. Use `--verbose` to include full tra
 
 ## Source reference
 
-Script: `research/knowledge-explorer.py` (2020 lines, verified 2026-02-22)
+Script: `research/knowledge-explorer.py` (1911 lines, verified 2026-02-24)
 
 Key line ranges:
 - Constants and valid categories: lines 46-88

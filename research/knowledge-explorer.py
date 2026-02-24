@@ -19,14 +19,13 @@ share a single Typer entry point.
 from __future__ import annotations
 
 import contextlib
+import json
 
 from dotenv import load_dotenv
 
 load_dotenv()
 import os
 import re
-import shutil
-import subprocess
 import sys
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
@@ -1902,251 +1901,125 @@ def migrate(
 
 
 # ---------------------------------------------------------------------------
-# generate-descriptions command
+# list-candidates command
 # ---------------------------------------------------------------------------
 
-_FALLBACK_DESCRIPTION_PATTERN: re.Pattern[str] = re.compile(
-    r"^Research entry for .+\. Use when working with .+ or related tools\.$"
+_BAD_DESCRIPTION_PREFIX_RE: re.Pattern[str] = re.compile(
+    r"^(Research on|Notes on|Information about|Overview of)\s", re.IGNORECASE
 )
-
-_GENERATE_PROMPT_TEMPLATE = """\
-Write a single-line frontmatter description for a knowledge base entry about "{name}" in the "{category}" category.
-
-Rules:
-- Single line, no newlines
-- No colons (:) -- rephrase around them
-- Max 1024 characters
-- Front-load what the KB covers, then when an agent should load it
-- Include specific trigger keywords (tool name, alternatives, use cases)
-- Format: "{{what it covers}}. Use when {{trigger scenarios}}."
-
-Tags: {tags}
-
-Entry body (first 2000 chars):
-{body}
-
-Output ONLY the description string. No quotes, no YAML, no explanation."""
+_BODY_EXCERPT_MAX_LEN: int = 2000
 
 
 def _is_bad_description(entry: KBEntry) -> bool:
-    """Return True when the entry's description should be regenerated.
-
-    Heuristics:
-    - Empty or missing description.
-    - Description ends with '...' (truncated auto-generated text).
-    - Description matches the fallback pattern used during inline-header migration.
-    - Description is identical to or a leading substring of the first body paragraph.
+    """Return True if entry description matches any bad-description heuristic.
 
     Args:
         entry: Entry to evaluate.
 
     Returns:
-        True if the description is absent or low-quality.
+        True if description is considered bad quality.
     """
     desc = entry.description.strip()
     if not desc:
         return True
     if desc.endswith("..."):
         return True
-    if _FALLBACK_DESCRIPTION_PATTERN.match(desc):
+    if _BAD_DESCRIPTION_PREFIX_RE.match(desc):
         return True
+    # Check if description equals or is a leading substring of first body paragraph
     first_para = _extract_first_paragraph(entry.body)
-    return bool(first_para and (desc == first_para or first_para.startswith(desc)))
+    return bool(first_para and first_para.startswith(desc))
 
 
-def _require_claude() -> str:
-    """Return the claude binary path or raise ExternalCommandError.
-
-    Returns:
-        Path to claude binary.
-
-    Raises:
-        ExternalCommandError: If claude is not found on PATH.
-    """
-    path = shutil.which("claude")
-    if path is None:
-        raise ExternalCommandError(command="claude", hint="Install Claude Code CLI: https://claude.ai/code")
-    return path
-
-
-def _call_claude_for_description(entry: KBEntry, claude_path: str) -> str:
-    """Call the claude CLI to generate a description for the entry.
-
-    Args:
-        entry: KB entry to generate a description for.
-        claude_path: Absolute path to the claude binary.
-
-    Returns:
-        Generated description string (stripped, unquoted).
-
-    Raises:
-        ExternalCommandError: If the claude CLI returns a non-zero exit code.
-        ValueError: If the generated description fails validation.
-    """
-    tags_str = ",".join(entry.tags) if entry.tags else "(none)"
-    body_excerpt = entry.body[:2000]
-    prompt = _GENERATE_PROMPT_TEMPLATE.format(
-        name=entry.name, category=entry.category, tags=tags_str, body=body_excerpt
-    )
-    # Unset CLAUDECODE so that the nested claude invocation is not blocked by
-    # the nested-session guard that Claude Code sets when it launches.
-    # On Windows, Claude Code requires CLAUDE_CODE_GIT_BASH_PATH. We probe common
-    # Scoop and system locations so the subprocess can start regardless of whether
-    # the parent session had the variable set.
-    bash_candidates: list[str] = [
-        r"C:\Users\{}\scoop\apps\git\current\usr\bin\bash.exe".format(os.environ.get("USERNAME", "")),
-        r"C:\Program Files\Git\usr\bin\bash.exe",
-        r"C:\Program Files (x86)\Git\usr\bin\bash.exe",
-    ]
-    clean_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
-    if not clean_env.get("CLAUDE_CODE_GIT_BASH_PATH"):
-        for candidate in bash_candidates:
-            if Path(candidate).is_file():
-                clean_env["CLAUDE_CODE_GIT_BASH_PATH"] = candidate
-                break
-    try:
-        result = subprocess.run(
-            [claude_path, "--print", "--model", "claude-haiku-4-5-20251001", "-p", prompt],
-            capture_output=True,
-            text=True,
-            check=True,
-            env=clean_env,
-        )
-    except subprocess.CalledProcessError as exc:
-        raise ExternalCommandError(
-            command="claude --print", hint="Check claude CLI authentication and model availability.", stderr=exc.stderr
-        ) from exc
-
-    raw = result.stdout.strip()
-    # Strip surrounding quotes the model may have added
-    if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
-        raw = raw[1:-1].strip()
-
-    if "\n" in raw:
-        raise ValueError(f"Generated description contains newlines: {raw!r}")
-    if len(raw) > _DESCRIPTION_MAX_LEN:
-        raise ValueError(f"Generated description is {len(raw)} chars; max is {_DESCRIPTION_MAX_LEN}.")
-    if not raw:
-        raise ValueError("Generated description is empty.")
-
-    return raw
-
-
-def _collect_candidates(topic: str | None, all_entries: bool, verbose: bool) -> list[KBEntry]:
-    """Resolve the list of KB entries to process for description generation.
-
-    Args:
-        topic: When provided, restrict to the single entry with this slug.
-        all_entries: When True, include entries with good descriptions too.
-        verbose: Pass through to error display.
-
-    Returns:
-        List of KBEntry objects to process.
-
-    Raises:
-        typer.Exit: On topic-not-found or parse errors.
-    """
-    if topic is not None:
-        path = find_entry_by_topic(topic, KB_ROOT)
-        if path is None:
-            all_known = build_tree(KB_ROOT)
-            suggestions = _find_suggestions(topic, [e.topic for e in all_known])
-            _show_error(str(TopicNotFoundError(topic=topic, suggestions=suggestions)))
-            raise typer.Exit(code=1)
-        try:
-            return [parse_entry(path)]
-        except KBError as exc:
-            _show_error(str(exc), verbose=verbose, exc=exc)
-            raise typer.Exit(code=1) from exc
-
-    candidates = build_tree(KB_ROOT)
-    if not all_entries:
-        candidates = [e for e in candidates if _is_bad_description(e)]
-    return candidates
-
-
-def _process_one_entry(entry: KBEntry, claude_path: str, dry_run: bool, verbose: bool) -> bool:
-    """Generate and optionally write a description for a single KB entry.
-
-    Args:
-        entry: Entry to update.
-        claude_path: Path to the claude CLI binary.
-        dry_run: When True, print but do not write.
-        verbose: Pass through to error display.
-
-    Returns:
-        True when the entry was processed successfully, False on failure.
-    """
-    rel = entry.file_path.relative_to(KB_ROOT)
-    try:
-        with console.status(f"Generating description for [cyan]{entry.topic}[/cyan]..."):
-            description = _call_claude_for_description(entry, claude_path)
-    except (ExternalCommandError, ValueError) as exc:
-        _show_error(f"Failed to generate description for '{entry.topic}': {exc}", verbose=verbose, exc=exc)
-        return False
-
-    if dry_run:
-        console.print(
-            f"[yellow]DRY-RUN[/yellow] [cyan]{entry.topic}[/cyan] ({len(description)} chars)\n  {description}"
-        )
-        return True
-
-    entry.description = description
-    target = migrate_entry(entry) if not entry.has_frontmatter else entry
-    write_entry(target, entry.file_path)
-    console.print(f"[green]OK[/green] {rel} \u2014 {len(description)} chars")
-    return True
-
-
-@app.command("generate-descriptions")
-def generate_descriptions(
-    all_entries: Annotated[bool, typer.Option("--all", help="Regenerate all descriptions, not just bad ones.")] = False,
-    dry_run: Annotated[bool, typer.Option("--dry-run", help="Print generated descriptions without writing.")] = False,
-    topic: Annotated[
-        str | None, typer.Option("--topic", help="Regenerate description for a single topic only.")
-    ] = None,
+@app.command("list-candidates")
+def list_candidates(
+    all_entries: Annotated[
+        bool, typer.Option("--all", help="Include every entry regardless of description quality.")
+    ] = False,
 ) -> None:
-    """Generate skill-compatible descriptions for KB entries using the Claude CLI.
+    """Scan all KB entries and output JSON array of description candidates.
 
-    Scans for entries whose descriptions are missing, empty, truncated, or were
-    auto-generated from body prose. Calls the claude CLI subprocess (claude haiku)
-    to produce a proper single-line description following the write-frontmatter-description
-    rules: no colons, max 1024 chars, front-loaded trigger keywords.
+    Without --all, applies bad-description heuristics to identify entries
+    whose descriptions need improvement. With --all, includes every entry.
 
     Args:
-        all_entries: When True, regenerate descriptions for every entry regardless of
-            current quality.
-        dry_run: When True, print generated descriptions but do not write files.
-        topic: When provided, process only the entry with this topic slug.
+        all_entries: Skip heuristics and include every entry.
+    """
+    entries = build_tree(KB_ROOT)
+    repo_root = KB_ROOT.parent
+
+    candidates: list[dict[str, object]] = []
+    for entry in entries:
+        if not all_entries and not _is_bad_description(entry):
+            continue
+        try:
+            rel_path = str(entry.file_path.relative_to(repo_root))
+        except ValueError:
+            rel_path = str(entry.file_path)
+        candidates.append({
+            "topic": entry.topic,
+            "file_path": rel_path,
+            "name": entry.name,
+            "category": entry.category,
+            "tags": entry.tags,
+            "current_description": entry.description,
+            "body_excerpt": entry.body[:_BODY_EXCERPT_MAX_LEN],
+        })
+
+    sys.stdout.write(json.dumps(candidates, indent=2, ensure_ascii=False))
+    sys.stdout.write("\n")
+
+
+# ---------------------------------------------------------------------------
+# set-description command
+# ---------------------------------------------------------------------------
+
+
+@app.command("set-description")
+def set_description(
+    topic: Annotated[str, typer.Argument(help="Kebab-case topic slug.")],
+    description: Annotated[str, typer.Argument(help="New description text.")],
+) -> None:
+    """Find entry by topic slug and set its description field.
+
+    Validates the description, then writes the entry atomically.
+    Exits with code 1 if topic not found, code 2 on validation failure.
+
+    Args:
+        topic: Kebab-case topic slug to locate.
+        description: New description to apply.
     """
     verbose = _verbose_state["verbose"]
 
+    # Validate description before doing any I/O
+    if not description.strip():
+        err_console.print("Error: description must not be empty.")
+        raise typer.Exit(code=2)
+    if "\n" in description:
+        err_console.print("Error: description must not contain newlines.")
+        raise typer.Exit(code=2)
+    if len(description) > _DESCRIPTION_MAX_LEN:
+        err_console.print(f"Error: description is {len(description)} chars; max is {_DESCRIPTION_MAX_LEN}.")
+        raise typer.Exit(code=2)
+
     try:
-        claude_path = _require_claude()
-    except ExternalCommandError as exc:
-        _show_error(str(exc))
+        path = find_entry_by_topic(topic, KB_ROOT)
+        if path is None:
+            entries = build_tree(KB_ROOT)
+            all_topics = [e.topic for e in entries]
+            suggestions = _find_suggestions(topic, all_topics)
+            raise TopicNotFoundError(topic=topic, suggestions=suggestions)
+
+        entry = parse_entry(path)
+        if not entry.has_frontmatter:
+            entry = migrate_entry(entry)
+
+        entry.description = description
+        write_entry(entry, path)
+
+    except KBError as exc:
+        _show_error(str(exc), verbose=verbose, exc=exc)
         raise typer.Exit(code=1) from exc
-
-    candidates = _collect_candidates(topic, all_entries, verbose)
-
-    if not candidates:
-        console.print("[green]All descriptions are already good. Nothing to do.[/green]")
-        return
-
-    noun = "entry" if len(candidates) == 1 else "entries"
-    console.print(f"[dim]Found {len(candidates)} {noun} to process.[/dim]")
-
-    results = [_process_one_entry(entry, claude_path, dry_run, verbose) for entry in candidates]
-    ok_count = sum(results)
-    fail_count = len(results) - ok_count
-
-    summary_parts = [f"Processed: [green]{ok_count}[/green]"]
-    if fail_count:
-        summary_parts.append(f"Failed: [red]{fail_count}[/red]")
-    console.print("\n" + "  ".join(summary_parts))
-
-    if fail_count:
-        raise typer.Exit(code=1)
 
 
 # ---------------------------------------------------------------------------
