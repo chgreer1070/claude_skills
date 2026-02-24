@@ -1,12 +1,12 @@
 ---
 name: dasel-reference
-description: Complete dasel v3 query syntax reference — selectors, functions, conditionals, variables, spread operator, type casting, and format-specific patterns for JSON, YAML, TOML, XML, CSV, HCL, INI
+description: Use when querying, modifying, or converting JSON, YAML, TOML, XML, CSV, HCL, or INI with dasel v3. Complete reference for selectors, functions, conditionals, variables, spread operator, type casting, and format-specific patterns.
 ---
 # dasel v3 Syntax Reference
 
 Single-binary CLI for querying, modifying, and converting structured data. Replaces `jq` + `yq` + `xmllint` with one unified query syntax across all formats.
 
-Current stable version: **v3.2.2**
+Stable version at writing (date: 2026-02-23): **v3.2.3**
 
 ## Supported Formats
 
@@ -139,7 +139,7 @@ cat data.json | dasel -i json '$active = users.filter(active == true); $active.m
 ## Conditionals
 
 ```bash
-dasel -i json -f input.json 'if(count > 5) { "many" } else { "few" }'
+echo '{"count": 7}' | dasel -i json 'if(count > 5) { "many" } else { "few" }'
 ```
 
 ## v3 Breaking Changes from v2
@@ -165,3 +165,4 @@ dasel -i json -f input.json 'if(count > 5) { "many" } else { "few" }'
 5. **CHANGELOG**: <https://raw.githubusercontent.com/TomWright/dasel/master/CHANGELOG.md> (fetched 2026-02-19)
 6. **Releases**: <https://github.com/TomWright/dasel/releases> (fetched 2026-02-19)
 7. **Source code analysis**: `execution/func.go`, `internal/cli/query.go`, `internal/cli/run.go`, `internal/cli/config.go`, `execution/execute_binary.go`, `execution/execute_unary.go` (analyzed 2026-02-19)
+8. **Fact-check**: [FACT_CHECK_REPORT.md](./FACT_CHECK_REPORT.md) (2026-02-23)

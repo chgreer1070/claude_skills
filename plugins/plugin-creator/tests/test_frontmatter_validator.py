@@ -459,12 +459,15 @@ description: "{long_desc}"
         Why: Ensure validator handles international characters
         """
         skill_md = tmp_path / "SKILL.md"
-        skill_md.write_text("""---
+        skill_md.write_text(
+            """---
 description: "Test skill with emoji 🚀 and unicode café"
 ---
 
 # Content
-""")
+""",
+            encoding="utf-8",
+        )
 
         validator = FrontmatterValidator()
         result = validator.validate(skill_md)

@@ -144,7 +144,7 @@ cat config.toml | dasel -i toml --root 'settings.max_connections = 100'
 ```bash
 # Access inline table values
 # Given: point = { x = 1, y = 2 }
-dasel -f data.toml 'point.x'
+cat data.toml | dasel -i toml 'point.x'
 ```
 
 ## XML Patterns

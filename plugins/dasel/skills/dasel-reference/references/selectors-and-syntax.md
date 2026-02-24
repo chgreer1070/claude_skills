@@ -136,8 +136,8 @@ doSomething([1, 2, 3]...)
 echo '{"count": 7}' | dasel -i json 'if(count > 5) { "many" } else { "few" }'
 # Output: "many"
 
-# Selector-based branches
-dasel -i json -f input.json '.foo.if(bar == "baz") { bong } else { qux }'
+# Selector-based branches (pipe input; v3 has no -f flag)
+cat input.json | dasel -i json '.foo.if(bar == "baz") { bong } else { qux }'
 
 # Nested conditional
 echo '{"score": 85}' | dasel -i json 'if(score >= 90) { "A" } else { if(score >= 80) { "B" } else { "C" } }'

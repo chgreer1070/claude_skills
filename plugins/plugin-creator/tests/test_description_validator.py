@@ -375,10 +375,13 @@ class TestSpecialCharacters:
     def test_unicode_in_description(self, tmp_path: Path) -> None:
         """Test descriptions with Unicode characters."""
         skill_md = tmp_path / "SKILL.md"
-        skill_md.write_text("""---
+        skill_md.write_text(
+            """---
 description: "Use this skill when testing Unicode café ☕"
 ---
-""")
+""",
+            encoding="utf-8",
+        )
 
         validator = DescriptionValidator()
         result = validator.validate(skill_md)

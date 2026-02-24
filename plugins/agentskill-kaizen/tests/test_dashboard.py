@@ -108,11 +108,9 @@ sys.modules["panel.widgets"] = _pn_widgets
 sys.modules["panel.template"] = _pn_template
 
 # Add mcp/ to sys.path so ``import dashboard`` resolves
-_MCP_DIR = str(Path(__file__).resolve().parent.parent / "mcp")
-if _MCP_DIR not in sys.path:
-    sys.path.insert(0, _MCP_DIR)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "mcp"))
 
-import dashboard  # noqa: E402
+import dashboard
 
 # ---------------------------------------------------------------------------
 # Fixtures

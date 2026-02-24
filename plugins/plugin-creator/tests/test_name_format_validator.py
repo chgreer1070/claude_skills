@@ -27,16 +27,18 @@ class TestNameFormatValidatorBasic:
         """Test NameFormatValidator can be instantiated."""
         validator = NameFormatValidator()
         assert validator is not None
-        assert validator.can_fix() is False
+        assert validator.can_fix() is True
 
-    def test_fix_raises_not_implemented(self, tmp_path: Path) -> None:
-        """Test fix() raises NotImplementedError.
+    def test_fix_normalizes_uppercase_name(self, tmp_path: Path) -> None:
+        """Test fix() normalizes uppercase name in frontmatter.
 
-        Tests: NameFormatValidator is not auto-fixable
-        How: Call fix() method, expect NotImplementedError
-        Why: Name changes require human decision-making
+        Tests: NameFormatValidator auto-fixes SK001 (uppercase)
+        How: Create skill with name: Test-Skill, run fix(), verify name is test-skill
+        Why: Name format is auto-fixable on case-sensitive filesystems
         """
-        skill_md = tmp_path / "SKILL.md"
+        skill_dir = tmp_path / "Test-Skill"
+        skill_dir.mkdir()
+        skill_md = skill_dir / "SKILL.md"
         skill_md.write_text("""---
 name: Test-Skill
 description: Test skill
@@ -44,8 +46,12 @@ description: Test skill
 """)
 
         validator = NameFormatValidator()
-        with pytest.raises(NotImplementedError):
-            validator.fix(skill_md)
+        fixes = validator.fix(skill_md)
+        assert len(fixes) >= 1
+        assert "Normalized name" in fixes[0]
+
+        content = skill_md.read_text()
+        assert "name: test-skill" in content or 'name: "test-skill"' in content
 
 
 class TestValidNames:

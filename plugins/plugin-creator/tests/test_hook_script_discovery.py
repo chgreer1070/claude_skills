@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from git import Repo
 
 # Add parent directory to path to import plugin_validator
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
@@ -130,16 +131,18 @@ class TestValidateCommandScriptReferences:
         assert "HK004" in hk_codes
 
     def test_non_executable_script_hk005(self, tmp_path: Path) -> None:
-        """Test that a non-executable script produces HK005 warning.
+        """Test that a script without execute bit in Git produces HK005 warning.
 
-        Tests: Non-executable script detection
-        How: Create file without execute permission, reference it, validate
-        Why: Verify HK005 is reported for non-executable scripts
+        Tests: Git-tracked execute bit detection (cross-platform)
+        How: Create file in Git repo without execute bit (100644), validate
+        Why: Ensures Windows and Linux get same validation; plugins that pass
+             on Windows will pass on Linux
         """
         script = tmp_path / "hook.sh"
         script.write_text("#!/bin/bash\necho ok\n")
-        # Ensure no execute permission
-        script.chmod(stat.S_IRUSR | stat.S_IWUSR)
+        repo = Repo.init(tmp_path)
+        repo.index.add(["hook.sh"])
+        repo.index.write()
 
         validator = HookValidator()
         errors: list = []
@@ -212,7 +215,7 @@ class TestHookScriptReferencesInHooksDict:
 
         validator = HookValidator()
         errors: list = []
-        validator._validate_hook_script_references_in_hooks_dict(hooks_dict, tmp_path, errors)
+        validator.validate_hook_script_references_in_hooks_dict(hooks_dict, tmp_path, errors)
 
         hk_codes = [e.code for e in errors]
         assert "HK004" not in hk_codes
@@ -229,7 +232,7 @@ class TestHookScriptReferencesInHooksDict:
 
         validator = HookValidator()
         errors: list = []
-        validator._validate_hook_script_references_in_hooks_dict(hooks_dict, tmp_path, errors)
+        validator.validate_hook_script_references_in_hooks_dict(hooks_dict, tmp_path, errors)
 
         hk_codes = [e.code for e in errors]
         assert "HK004" in hk_codes
@@ -245,7 +248,7 @@ class TestHookScriptReferencesInHooksDict:
 
         validator = HookValidator()
         errors: list = []
-        validator._validate_hook_script_references_in_hooks_dict(hooks_dict, tmp_path, errors)
+        validator.validate_hook_script_references_in_hooks_dict(hooks_dict, tmp_path, errors)
 
         assert len(errors) == 0
 

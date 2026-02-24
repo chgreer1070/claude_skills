@@ -20,10 +20,14 @@ When this skill is activated, immediately begin processing without asking the us
 
 ## Process
 
+Requires `GITHUB_TOKEN` for release status checks (list) and publishing.
+
+**Working directory:** Run all commands from the repository root. Paths below assume cwd is the repo root.
+
 ### Step 1: List days to process
 
 ```bash
-uv run scripts/list_daily_ranges.py [--branch BRANCH] [--start-date ...] [--end-date ...]
+uv run .claude/skills/daily-releases/scripts/list_daily_ranges.py [--branch BRANCH] [--start-date ...] [--end-date ...] [-R OWNER/REPO]
 ```
 
 This outputs a JSON array. Each entry has:
@@ -51,11 +55,11 @@ Work through days chronologically. For each day:
 #### 2a. Extract git data
 
 ```bash
-uv run ../create-merge-request-changelog/scripts/analyze_git_changes.py \
-  <base_ref> <head_ref> /tmp/daily-releases/<date>/
+uv run .claude/skills/create-merge-request-changelog/scripts/analyze_git_changes.py \
+  <base_ref> <head_ref> ./daily-releases/<date>/
 ```
 
-This writes to `/tmp/daily-releases/<date>/`:
+This writes to `./daily-releases/<date>/`:
 
 - `commits_oneline.txt` — one-line commit list
 - `commits_detailed.txt` — full commit messages with metadata
@@ -70,7 +74,7 @@ This writes to `/tmp/daily-releases/<date>/`:
 Read the extracted data and apply the primary analysis prompt from:
 
 ```text
-../create-merge-request-changelog/references/analysis_prompts.md
+.claude/skills/create-merge-request-changelog/references/analysis_prompts.md
 ```
 
 Use the **Primary Analysis Prompt** section with the day's data substituted in:
@@ -88,25 +92,25 @@ Also generate a title using the **Title Generation Prompt**:
 Daily Release - <date>
 ```
 
-Save the complete analysis JSON to `/tmp/daily-releases/<date>/analysis.json`.
+Save the complete analysis JSON to `./daily-releases/<date>/analysis.json`.
 
 #### 2c. Format into release notes
 
 ```bash
-uv run ../create-merge-request-changelog/scripts/format_mr_description.py \
-  /tmp/daily-releases/<date>/analysis.json \
+uv run .claude/skills/create-merge-request-changelog/scripts/format_mr_description.py \
+  ./daily-releases/<date>/analysis.json \
   --no-preview \
-  --output /tmp/daily-releases/<date>/description.md
+  --output ./daily-releases/<date>/description.md
 ```
 
 #### 2d. Publish the release
 
 ```bash
-uv run scripts/publish_daily_release.py \
+uv run .claude/skills/daily-releases/scripts/publish_daily_release.py \
   --date <date> \
   --tag <tag> \
   --head-ref <head_ref> \
-  --notes-file /tmp/daily-releases/<date>/description.md
+  --notes-file ./daily-releases/<date>/description.md
 ```
 
 Add `--keep-existing-tag=false` if updating a release that already has the correct tag commit.
@@ -129,3 +133,5 @@ Processed N days:
 - [../create-merge-request-changelog/scripts/analyze_git_changes.py](../create-merge-request-changelog/scripts/analyze_git_changes.py) — extract git data per day
 - [../create-merge-request-changelog/references/analysis_prompts.md](../create-merge-request-changelog/references/analysis_prompts.md) — AI analysis prompts
 - [../create-merge-request-changelog/scripts/format_mr_description.py](../create-merge-request-changelog/scripts/format_mr_description.py) — render AI analysis to markdown
+
+Reference paths above are relative to this skill directory; CLI commands use repo-root paths.

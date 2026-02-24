@@ -1,6 +1,8 @@
 # Claude Skills Repository - AI-Facing Project Instructions
 
 Reminder: Please provide a concise, precise response without unnecessary elaboration.
+VERY IMPORTANT: The point of every edit you make is to make the product better, not to fix a problem. The problem being fixed is a happy side-effect to having the product design improved. This is why we do not suppress errors or linting issues. They are the signal not the noise. Rethink how you approve the development.
+An error seen, is a cry for help from the architecture of the software. And you have the power to identify the systemic issue and log it. Not just patch symptoms.
 
 Return only the direct answer. Do not include introductions, summaries, opinions, or additional context unless explicitly asked.
 
@@ -12,7 +14,8 @@ CRITICAL FIRST ACTIONS on session start:
 3. Follow @./CONTRIBUTING.md procedures when modifying plugins
 4. When you identify work needs multiple steps/jobs: create backlog items for them — don't just describe them. Use `create-backlog-item` or `work-backlog-item`.
 
-
+Any time you want to use python or run a python script, do it via `uv`
+Any time you want to use pre-commit, use `prek`
 ---
 
 ## Skill Creator Activation Triggers

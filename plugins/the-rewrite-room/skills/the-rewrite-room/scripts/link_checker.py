@@ -8,12 +8,14 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 from rich.console import Console
 from rich.table import Table
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 app = typer.Typer(name="link-checker", help="Validate markdown cross-references resolve to real files")
 console = Console()
@@ -24,7 +26,11 @@ RELATIVE_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\((\.\.?/[^)]+)\)")
 
 
 def _extract_links(content: str) -> list[tuple[int, str, str]]:
-    """Extract (line_number, link_text, link_path) from markdown content."""
+    """Extract (line_number, link_text, link_path) from markdown content.
+
+    Returns:
+        List of (line_number, link_text, link_path) tuples.
+    """
     links = []
     for line_num, line in enumerate(content.splitlines(), start=1):
         for match in RELATIVE_LINK_PATTERN.finditer(line):
@@ -38,7 +44,11 @@ def _extract_links(content: str) -> list[tuple[int, str, str]]:
 
 
 def _check_file(filepath: Path) -> list[tuple[int, str, str]]:
-    """Check all relative links in a single file. Returns list of (line, text, broken_path)."""
+    """Check all relative links in a single file.
+
+    Returns:
+        List of (line, text, broken_path) for broken links.
+    """
     broken = []
     content = filepath.read_text(encoding="utf-8")
     links = _extract_links(content)

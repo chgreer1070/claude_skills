@@ -15,6 +15,9 @@ sessions/.archived/
 .coverage*
 # Code review reports
 .claude/smells/
+# Daily releases pipeline working directory (root only; not .claude/skills/daily-releases/)
+/daily-releases/
+
 # Agent research artifacts (intermediate analysis files)
 **/analysis-*.md
 **/comparative-analysis-*.md

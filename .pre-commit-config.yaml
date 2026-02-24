@@ -28,10 +28,23 @@ repos:
         always_run: true
         entry: uv run --with conventional-pre-commit conventional-pre-commit --strict --force-scope
 
+  # Repair destroyed symlinks (Windows: core.symlinks false → plain files)
+  - repo: local
+    hooks:
+      - id: repair-symlinks
+        name: Repair destroyed Git symlinks
+        entry: uv run -q scripts/repair_symlinks.py
+        language: system
+        stages: [pre-commit]
+        pass_filenames: false
+
   # Standard pre-commit hooks for general file maintenance
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      - id: destroyed-symlinks
+        name: Detect destroyed symlinks
+        description: fails if symlinks were converted to plain files (run after repair-symlinks)
       - id: trailing-whitespace
         exclude: \.lock$
       - id: end-of-file-fixer
@@ -45,8 +58,10 @@ repos:
       - id: check-case-conflict
       - id: check-merge-conflict
       - id: check-symlinks
+        exclude: 'plugins/uv/skills/uv$|plugins/development-harness/skills/implementation-manager/.*|.*/references/accessing_online_resources\.md$'
       - id: mixed-line-ending
         args: ["--fix=lf"]
+        exclude: '\.claude-plugin/.*\.json$|plugins/.*/\.claude-plugin/plugin\.json$'
       - id: check-executables-have-shebangs
       - id: check-shebang-scripts-are-executable
 
@@ -88,11 +103,6 @@ repos:
         types: [json]
         exclude: \.lock$
 
-  - repo: https://github.com/DetachHead/basedpyright-prek-mirror
-    rev: 1.34.0
-    hooks:
-      - id: basedpyright
-
   # Shell formatting
   - repo: https://github.com/pecigonzalo/pre-commit-shfmt
     rev: v2.2.0
@@ -131,10 +141,11 @@ repos:
 
       - id: ty
         name: ty check
-        entry: uv run -q --frozen --with ty ty check .
+        entry: uv run -q --frozen --with ty ty check
         language: system
         types: [python]
-        pass_filenames: false  # Must run full check so [tool.ty.src] exclude applies to symlinks
+        pass_filenames: true
+        exclude: 'plugins/development-harness/skills/implementation-manager/.*|plugins/uv/skills/uv/.*'
 
       - id: enable-rerere
         name: Enable git rerere (auto-replay conflict resolutions)

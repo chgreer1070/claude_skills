@@ -1,0 +1,2 @@
+# Force LF for JSON (pre-commit mixed-line-ending uses --fix=lf)
+*.json text eol=lf

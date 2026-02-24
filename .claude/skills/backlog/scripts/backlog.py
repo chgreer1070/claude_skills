@@ -6,6 +6,7 @@
 #   "typer>=0.21.0",
 #   "python-frontmatter>=1.1.0",
 #   "ruamel.yaml>=0.18.0",
+#   "python-dotenv>=1.0.0",
 # ]
 # ///
 """Backlog CLI — single interface for BACKLOG.md and GitHub Issues.
@@ -36,13 +37,15 @@ import os
 import re
 import sys
 from datetime import UTC, datetime
-
-# Ensure UTF-8 output on Windows (cp1252 default cannot encode emoji/spinner chars).
-# reconfigure() is available on Python 3.7+ when stdout is a TextIOWrapper.
 from io import TextIOWrapper
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Ensure UTF-8 output on Windows (cp1252 default cannot encode emoji/spinner chars).
 if isinstance(sys.stdout, TextIOWrapper):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if isinstance(sys.stderr, TextIOWrapper):
@@ -50,7 +53,6 @@ if isinstance(sys.stderr, TextIOWrapper):
 
 import typer
 from github import Auth, Github, GithubException
-from github.Repository import Repository
 from rich import box
 from rich.console import Console
 from rich.measure import Measurement
@@ -58,13 +60,14 @@ from rich.table import Table
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent.parent.parent.parent
-# Add plugin-creator scripts for shared frontmatter_utils (before importing it)
-_plugin_scripts = _REPO_ROOT / "plugins" / "plugin-creator" / "scripts"
-if (_plugin_scripts / "frontmatter_utils.py").exists() and str(_plugin_scripts) not in sys.path:
-    sys.path.insert(0, str(_plugin_scripts))
+sys.path.insert(0, str(_REPO_ROOT / "plugins" / "plugin-creator" / "scripts"))
 
 import frontmatter
+
 from frontmatter_utils import dump_frontmatter, loads_frontmatter
+
+if TYPE_CHECKING:
+    from github.Repository import Repository
 
 BACKLOG_PATH = _REPO_ROOT / ".claude" / "BACKLOG.md"
 BACKLOG_DIR = _REPO_ROOT / ".claude" / "backlog"
@@ -91,7 +94,11 @@ _console = Console()
 
 
 def _get_table_width(table: Table) -> int:
-    """Get natural width of a Rich table for correct display."""
+    """Get natural width of a Rich table for correct display.
+
+    Returns:
+        Natural width in characters as integer.
+    """
     temp_console = Console(width=9999)
     measurement = Measurement.get(temp_console, temp_console.options, table)
     return int(measurement.maximum)
@@ -120,7 +127,11 @@ def _infer_type(description: str, title: str) -> str:
 
 
 def _title_to_slug(title: str, max_len: int = 60) -> str:
-    """Convert item title to filename slug."""
+    """Convert item title to filename slug.
+
+    Returns:
+        Slug string suitable for filenames.
+    """
     # Strip strikethrough and status suffixes
     t = re.sub(r"^~~(.+)~~\s*(RESOLVED|COMPLETED)?\s*$", r"\1", title.strip())
     t = t.lower()
@@ -132,7 +143,11 @@ def _title_to_slug(title: str, max_len: int = 60) -> str:
 
 
 def _is_index_format(path: Path) -> bool:
-    """Check if BACKLOG.md uses index format (links to per-item files)."""
+    """Check if BACKLOG.md uses index format (links to per-item files).
+
+    Returns:
+        True if index format, False otherwise.
+    """
     if not path.exists():
         return False
     text = path.read_text(encoding="utf-8")
@@ -140,7 +155,11 @@ def _is_index_format(path: Path) -> bool:
 
 
 def parse_backlog(path: Path) -> list[dict]:
-    """Parse BACKLOG.md into items — supports both monolithic and index format."""
+    """Parse BACKLOG.md into items — supports both monolithic and index format.
+
+    Returns:
+        List of item dicts with _section, _title, and field keys.
+    """
     if _is_index_format(path):
         return _parse_backlog_index(path)
     return _parse_backlog_monolithic(path)
@@ -161,7 +180,11 @@ def _flush_parsed_item(
 
 
 def _apply_field_to_item(current_item: dict, key: str, val: str, current_field_value: list[str]) -> list[str]:
-    """Apply a field match to current_item. Returns new current_field_value."""
+    """Apply a field match to current_item.
+
+    Returns:
+        New current_field_value list.
+    """
     key_lower = key.lower()
     if key_lower == "issue":
         current_item["_issue"] = val
@@ -177,7 +200,11 @@ def _apply_field_to_item(current_item: dict, key: str, val: str, current_field_v
 
 
 def _parse_backlog_lines(lines: list[str], section_re: re.Pattern[str], skip_strikethrough: bool) -> list[dict]:
-    """Parse backlog lines into items. Shared by monolithic and migrate parsers."""
+    """Parse backlog lines into items. Shared by monolithic and migrate parsers.
+
+    Returns:
+        List of item dicts parsed from lines.
+    """
     items: list[dict] = []
     current_section: str | None = None
     current_item: dict | None = None
@@ -220,20 +247,32 @@ def _parse_backlog_lines(lines: list[str], section_re: re.Pattern[str], skip_str
 
 
 def _parse_backlog_monolithic(path: Path) -> list[dict]:
-    """Parse monolithic BACKLOG.md into items with section, title, and fields."""
+    """Parse monolithic BACKLOG.md into items with section, title, and fields.
+
+    Returns:
+        List of item dicts.
+    """
     lines = path.read_text(encoding="utf-8").splitlines()
     return _parse_backlog_lines(lines, SECTION_RE, skip_strikethrough=True)
 
 
 def _resolve_index_link_path(rel_path: str, backlog_path: Path) -> Path:
-    """Resolve rel_path from index link to absolute filepath. Supports backlog/ and .claude/backlog/."""
+    """Resolve rel_path from index link to absolute filepath. Supports backlog/ and .claude/backlog/.
+
+    Returns:
+        Resolved absolute Path.
+    """
     if rel_path.startswith(".claude/backlog/"):
         return (_REPO_ROOT / rel_path).resolve()
     return (backlog_path.parent / rel_path).resolve()
 
 
 def _parse_backlog_index(path: Path) -> list[dict]:
-    """Parse index-format BACKLOG.md and load items from per-item files."""
+    """Parse index-format BACKLOG.md and load items from per-item files.
+
+    Returns:
+        List of item dicts loaded from per-item files.
+    """
     text = path.read_text(encoding="utf-8")
     items: list[dict] = []
     link_re = re.compile(r"^-\s+\[([^\]]+)\]\(([^)]+)\)\s*(#\d+)?\s*$")
@@ -265,7 +304,11 @@ def _parse_backlog_index(path: Path) -> list[dict]:
 
 
 def _parse_item_file(text: str, path: Path) -> dict:
-    """Parse a single per-item backlog file (frontmatter + body). Handles both flat and research-style metadata block."""
+    """Parse a single per-item backlog file (frontmatter + body). Handles both flat and research-style metadata block.
+
+    Returns:
+        Item dict with _title, _raw_body, and field keys.
+    """
     item: dict = {}
     if not text.startswith("---"):
         return {"_raw_body": text}
@@ -300,13 +343,21 @@ def _parse_item_file(text: str, path: Path) -> dict:
 
 
 def parse_backlog_migrate(path: Path) -> list[dict]:
-    """Parse BACKLOG.md for migration — includes Completed section."""
+    """Parse BACKLOG.md for migration — includes Completed section.
+
+    Returns:
+        List of item dicts including Completed section.
+    """
     lines = path.read_text(encoding="utf-8").splitlines()
     return _parse_backlog_lines(lines, SECTION_RE_MIGRATE, skip_strikethrough=False)
 
 
 def find_item(items: list[dict], selector: str) -> dict | None:
-    """Find item by title substring or #N."""
+    """Find item by title substring or #N.
+
+    Returns:
+        Matching item dict or None.
+    """
     selector = selector.strip()
     if selector.startswith("#"):
         num = selector.lstrip("#").strip()
@@ -328,7 +379,11 @@ def items_needing_issues(items: list[dict]) -> list[dict]:
 
 
 def build_issue_body(item: dict) -> str:
-    """Build GitHub issue body from backlog item fields."""
+    """Build GitHub issue body from backlog item fields.
+
+    Returns:
+        Markdown-formatted issue body string.
+    """
     title = item.get("_title", "")
     desc = item.get("**Description**", "")
     source = item.get("**Source**", "Not specified")
@@ -361,7 +416,11 @@ As a **developer**, I want **{first_sent}** so that **backlog items are tracked 
 
 
 def create_issue_for_item(repo: Repository, item: dict, dry_run: bool = False) -> int | None:
-    """Create GitHub issue for backlog item. Returns issue number or None."""
+    """Create GitHub issue for backlog item.
+
+    Returns:
+        Issue number if created, None otherwise.
+    """
     title = item.get("_title", "")
     if not title:
         return None
@@ -389,7 +448,11 @@ def create_issue_for_item(repo: Repository, item: dict, dry_run: bool = False) -
 
 
 def _create_issue_and_update_content(item: dict, content: str, repo: str) -> tuple[str, bool]:
-    """Create GitHub issue for item and update content with issue link. Returns (content, modified)."""
+    """Create GitHub issue for item and update content with issue link.
+
+    Returns:
+        Tuple of (updated_content, modified_flag).
+    """
     try:
         repository = _get_github(repo)
         issue_num = create_issue_for_item(repository, item, dry_run=False)
@@ -414,7 +477,11 @@ def _create_issue_and_update_content(item: dict, content: str, repo: str) -> tup
 
 
 def insert_issue_into_content(content: str, item: dict, issue_num: int) -> str:
-    """Insert **Issue**: #N line into BACKLOG.md content for given item."""
+    """Insert **Issue**: #N line into BACKLOG.md content for given item.
+
+    Returns:
+        Updated content string with issue line inserted.
+    """
     new_line = f"**Issue**: #{issue_num}"
     if new_line in item.get("_raw_body", ""):
         return content
@@ -457,13 +524,21 @@ def _update_item_metadata(filepath: Path, updates: dict[str, Any]) -> None:
 
 
 def _index_link_line(title: str, rel_path: str, issue: str | None) -> str:
-    """Build index link line. rel_path canonical: backlog/{filename}."""
+    """Build index link line. rel_path canonical: backlog/{filename}.
+
+    Returns:
+        Markdown link line string.
+    """
     suffix = f" {issue}" if issue else ""
     return f"- [{title}]({rel_path}){suffix}"
 
 
 def _add_index_link(content: str, section_heading: str, link_line: str) -> str:
-    """Add link to section. Replaces _(Empty)_ if present."""
+    """Add link to section. Replaces _(Empty)_ if present.
+
+    Returns:
+        Updated content string.
+    """
     section_pos = content.find(section_heading)
     if section_pos == -1:
         return content
@@ -478,7 +553,11 @@ def _add_index_link(content: str, section_heading: str, link_line: str) -> str:
 
 
 def _remove_index_link(content: str, link_line: str) -> str:
-    """Remove the matching link line from content."""
+    """Remove the matching link line from content.
+
+    Returns:
+        Content string with link removed.
+    """
     lines = content.splitlines()
     out: list[str] = []
     for line in lines:
@@ -489,13 +568,21 @@ def _remove_index_link(content: str, link_line: str) -> str:
 
 
 def _move_index_link(content: str, link_line: str, _from_section: str, to_section: str) -> str:
-    """Remove link from content, add to to_section."""
+    """Remove link from content, add to to_section.
+
+    Returns:
+        Updated content string.
+    """
     content = _remove_index_link(content, link_line)
     return _add_index_link(content, to_section, link_line)
 
 
 def _replace_link_with_issue_url(content: str, link_line: str, title: str, issue_num: int, repo: str) -> str:
-    """Replace local file link with GitHub issue URL. Used when --cleanup removes local file."""
+    """Replace local file link with GitHub issue URL. Used when --cleanup removes local file.
+
+    Returns:
+        Updated content string.
+    """
     new_line = f"- [{title}](https://github.com/{repo}/issues/{issue_num})"
     lines = content.splitlines()
     out = []
@@ -508,7 +595,11 @@ def _replace_link_with_issue_url(content: str, link_line: str, title: str, issue
 
 
 def _find_index_link_line(content: str, item: dict) -> str | None:
-    """Find the index link line for this item. Returns the full line or None."""
+    """Find the index link line for this item.
+
+    Returns:
+        Full line string or None if not found.
+    """
     title = item.get("_title", "")
     file_path = item.get("_file_path", "")
     issue = item.get("_issue", "")
@@ -693,7 +784,11 @@ def add(
 
 
 def _fetch_item_status(item: dict, repo: str) -> str:
-    """Fetch status label from GitHub issue for an item."""
+    """Fetch status label from GitHub issue for an item.
+
+    Returns:
+        Status label string or empty string.
+    """
     if not item.get("_issue"):
         return ""
     try:
@@ -821,7 +916,11 @@ def sync(
 
 
 def _close_item_index(item: dict, plan: str, today: str) -> bool:
-    """Apply close to item in index format. Returns False if already closed."""
+    """Apply close to item in index format.
+
+    Returns:
+        True if closed, False if already closed.
+    """
     filepath_str = item.get("_file_path")
     if not filepath_str:
         typer.echo("ERROR: Item has no file path (index format)", err=True)
@@ -843,7 +942,11 @@ def _close_item_index(item: dict, plan: str, today: str) -> bool:
 
 
 def _close_item_monolithic(item: dict, plan: str, today: str) -> bool:
-    """Apply close to item in monolithic format. Returns False if already closed."""
+    """Apply close to item in monolithic format.
+
+    Returns:
+        True if closed, False if already closed.
+    """
     content = BACKLOG_PATH.read_text(encoding="utf-8")
     raw = item.get("_raw_body", "")
     if "**Status**: DONE" in raw or "**Completed**:" in raw:
@@ -942,7 +1045,11 @@ def close(
 
 
 def _resolve_item_index(item: dict, reason: str, today: str) -> bool:
-    """Apply resolve to item in index format. Returns False if already resolved."""
+    """Apply resolve to item in index format.
+
+    Returns:
+        True if resolved, False if already resolved.
+    """
     filepath_str = item.get("_file_path")
     if not filepath_str:
         typer.echo("ERROR: Item has no file path (index format)", err=True)
@@ -962,7 +1069,11 @@ def _resolve_item_index(item: dict, reason: str, today: str) -> bool:
 
 
 def _resolve_item_monolithic(item: dict, reason: str, today: str) -> bool:
-    """Apply resolve to item in monolithic format. Returns False if already resolved."""
+    """Apply resolve to item in monolithic format.
+
+    Returns:
+        True if resolved, False if already resolved.
+    """
     content = BACKLOG_PATH.read_text(encoding="utf-8")
     raw = item.get("_raw_body", "")
     if "**Resolved**:" in raw:
@@ -1045,7 +1156,11 @@ def _build_backlog_frontmatter(
     plan: str = "",
     groomed: str = "",
 ) -> str:
-    """Build research-style frontmatter with metadata block."""
+    """Build research-style frontmatter with metadata block.
+
+    Returns:
+        YAML frontmatter string.
+    """
     meta: dict[str, str] = {
         "topic": _title_to_slug(name),
         "source": source[:200] if source else "Not specified",
@@ -1066,27 +1181,34 @@ def _build_backlog_frontmatter(
     return dump_frontmatter(post)
 
 
+_FIELD_TO_INDEX: dict[str, int] = {
+    "description": 0,
+    "suggested location": 1,
+    "research first": 2,
+    "decision needed": 3,
+    "files": 4,
+    "required work": 5,
+}
+
+
 def _apply_field_to_result(key_lower: str, val: str) -> tuple[str, str, str, str, str, str]:
-    """Return (desc, suggested, research, decision, files_val, required_work) with val applied to the matching key."""
-    match key_lower:
-        case "description":
-            return (val, "", "", "", "", "")
-        case "suggested location":
-            return ("", val, "", "", "", "")
-        case "research first":
-            return ("", "", val, "", "", "")
-        case "decision needed":
-            return ("", "", "", val, "", "")
-        case "files":
-            return ("", "", "", "", val, "")
-        case "required work":
-            return ("", "", "", "", "", val)
-        case _:
-            return ("", "", "", "", "", "")
+    """Return (desc, suggested, research, decision, files_val, required_work) with val applied to the matching key.
+
+    Returns:
+        Tuple of (desc, suggested, research, decision, files_val, required_work).
+    """
+    result: list[str] = ["", "", "", "", "", ""]
+    if key_lower in _FIELD_TO_INDEX:
+        result[_FIELD_TO_INDEX[key_lower]] = val
+    return (result[0], result[1], result[2], result[3], result[4], result[5])
 
 
 def _extract_body_field_pairs(body: str) -> list[tuple[str, str]]:
-    """Extract (key, value) pairs from body until first ## heading. Stops at ## Groomed or ## ."""
+    """Extract (key, value) pairs from body until first ## heading. Stops at ## Groomed or ## .
+
+    Returns:
+        List of (key, value) tuples.
+    """
     field_re = re.compile(r"^\*\*([^*]+)\*\*:\s*(.*)$", re.DOTALL)
     pairs: list[tuple[str, str]] = []
     current_key = ""
@@ -1112,13 +1234,21 @@ def _extract_body_field_pairs(body: str) -> list[tuple[str, str]]:
 def _merge_field_into_result(
     key: str, val: str, desc: str, suggested: str, research: str, decision: str, files_val: str, required_work: str
 ) -> tuple[str, str, str, str, str, str]:
-    """Merge one field (key, val) into result tuple. Returns updated (desc, suggested, research, decision, files_val, required_work)."""
+    """Merge one field (key, val) into result tuple.
+
+    Returns:
+        Updated (desc, suggested, research, decision, files_val, required_work).
+    """
     d, s, r, dec, f, req = _apply_field_to_result(key.lower(), val)
     return (d or desc, s or suggested, r or research, dec or decision, f or files_val, req or required_work)
 
 
 def _parse_body_extra_fields(body: str) -> tuple[str, str, str, str, str, str]:
-    """Extract Description, Suggested location, Research first, Decision needed, Files, Required work from body."""
+    """Extract Description, Suggested location, Research first, Decision needed, Files, Required work from body.
+
+    Returns:
+        Tuple of (desc, suggested, research, decision, files_val, required_work).
+    """
     desc, suggested, research, decision, files_val, required_work = "", "", "", "", "", ""
     for key, val in _extract_body_field_pairs(body):
         desc, suggested, research, decision, files_val, required_work = _merge_field_into_result(
@@ -1128,7 +1258,11 @@ def _parse_body_extra_fields(body: str) -> tuple[str, str, str, str, str, str]:
 
 
 def _extract_groomed_section(body: str) -> str:
-    """Extract full ## Groomed (date) ... section from body."""
+    """Extract full ## Groomed (date) ... section from body.
+
+    Returns:
+        Groomed section text or empty string.
+    """
     m = re.search(r"(## Groomed\s*\([^)]*\)\s*\n[\s\S]*?)(?=\n## |\Z)", body)
     return m.group(1).rstrip() if m else ""
 
@@ -1136,7 +1270,11 @@ def _extract_groomed_section(body: str) -> str:
 def _build_body_extra_only(
     suggested: str, research: str, decision: str, files_val: str, required_work: str, groomed_section: str
 ) -> str:
-    """Build body with only extra fields (no duplication) and ## Groomed if present."""
+    """Build body with only extra fields (no duplication) and ## Groomed if present.
+
+    Returns:
+        Body string with extra fields and groomed section.
+    """
     parts: list[str] = []
     if suggested:
         parts.append(f"**Suggested location**: {suggested}")
@@ -1154,7 +1292,11 @@ def _build_body_extra_only(
 
 
 def _append_or_replace_section(body: str, section_name: str, content: str) -> str:
-    """Append or replace a section in body. section_name: Fact-Check, RT-ICA, or groomed subsection (Reproducibility, Priority, etc.)."""
+    """Append or replace a section in body. section_name: Fact-Check, RT-ICA, or groomed subsection (Reproducibility, Priority, etc.).
+
+    Returns:
+        Updated body string.
+    """
     content = content.strip()
     if not content:
         return body
@@ -1276,7 +1418,11 @@ def _sync_groomed_to_github_issue(
 def _resolve_groomed_content(
     section: str | None, content: str | None, groomed_content: str | None, groomed_file: str | None
 ) -> tuple[str, str | None]:
-    """Resolve groomed content from section/content, groomed_content, groomed_file, or stdin."""
+    """Resolve groomed content from section/content, groomed_content, groomed_file, or stdin.
+
+    Returns:
+        Tuple of (content_string, section_name_or_None).
+    """
     if section is not None and content is not None:
         return content, section
     if groomed_content is not None:
@@ -1342,7 +1488,11 @@ def _apply_status_in_progress(item: dict, repo: str) -> None:
 
 
 def _apply_plan_to_content(item: dict, content: str, plan: str) -> tuple[str, bool]:
-    """Apply plan update to content. Returns (new_content, modified)."""
+    """Apply plan update to content.
+
+    Returns:
+        Tuple of (new_content, modified_flag).
+    """
     if _is_index_format(BACKLOG_PATH):
         filepath_str = item.get("_file_path")
         if filepath_str:
@@ -1448,7 +1598,11 @@ def groom(
 
 
 def _item_priority_for_migrate(item: dict) -> str:
-    """Derive priority for migration (P0, P1, P2, Ideas, Completed)."""
+    """Derive priority for migration (P0, P1, P2, Ideas, Completed).
+
+    Returns:
+        Priority string.
+    """
     section = item.get("_section") or ""
     title = item.get("_title", "")
     if section == "Completed":
@@ -1465,7 +1619,11 @@ def _item_priority_for_migrate(item: dict) -> str:
 
 
 def _item_status_for_migrate(item: dict) -> str:
-    """Derive status from item content."""
+    """Derive status from item content.
+
+    Returns:
+        Status string (open, done, resolved).
+    """
     if item.get("_skip"):
         raw = item.get("_raw_body", "")
         if "**Resolved**:" in raw:
@@ -1476,7 +1634,11 @@ def _item_status_for_migrate(item: dict) -> str:
 
 
 def _build_migrate_item_content(item: dict, priority: str, slug: str) -> str:
-    """Build file content for one migrated backlog item."""
+    """Build file content for one migrated backlog item.
+
+    Returns:
+        Full file content string.
+    """
     title = item.get("_title", "")
     source = item.get("**Source**", "Not specified")
     added = item.get("**Added**", _today())
@@ -1502,7 +1664,11 @@ def _build_migrate_item_content(item: dict, priority: str, slug: str) -> str:
 
 
 def _process_migrate_items(items: list, dry_run: bool) -> tuple[dict[str, list[tuple[str, str, str]]], int]:
-    """Process items into per-item files and by_section index entries. Returns (by_section, count)."""
+    """Process items into per-item files and by_section index entries.
+
+    Returns:
+        Tuple of (by_section dict, item count).
+    """
     section_order = ["P0", "P1", "P2", "Ideas", "completed"]
     by_section: dict[str, list[tuple[str, str, str]]] = {s: [] for s in section_order}
     seen_slugs: dict[str, int] = {}
@@ -1533,7 +1699,11 @@ def _process_migrate_items(items: list, dry_run: bool) -> tuple[dict[str, list[t
 
 
 def _build_migrate_index_content(by_section: dict[str, list[tuple[str, str, str]]]) -> str:
-    """Build index markdown content from by_section."""
+    """Build index markdown content from by_section.
+
+    Returns:
+        Index markdown content string.
+    """
     section_order = ["P0", "P1", "P2", "Ideas", "completed"]
     section_headings = {
         "P0": "## P0 - Must Have",
@@ -1605,7 +1775,11 @@ def migrate(dry_run: Annotated[bool, typer.Option("--dry-run")] = False) -> None
 
 
 def _extract_normalize_metadata(fm: dict, meta: dict) -> dict[str, str]:
-    """Extract normalized metadata from frontmatter and metadata dicts."""
+    """Extract normalized metadata from frontmatter and metadata dicts.
+
+    Returns:
+        Normalized metadata dict.
+    """
     return {
         "name": str(fm.get("name") or fm.get("title") or "").strip(),
         "description": str(fm.get("description") or "").strip(),
@@ -1621,7 +1795,11 @@ def _extract_normalize_metadata(fm: dict, meta: dict) -> dict[str, str]:
 
 
 def _build_normalized_content(filepath: Path) -> str | None:
-    """Build normalized content for one file. Returns None if skip."""
+    """Build normalized content for one file.
+
+    Returns:
+        Normalized content string or None if skip.
+    """
     try:
         text = filepath.read_text(encoding="utf-8")
     except OSError as e:
@@ -1662,7 +1840,11 @@ def _build_normalized_content(filepath: Path) -> str | None:
 
 
 def _normalize_item_file(filepath: Path, dry_run: bool) -> bool:
-    """Normalize one backlog item file. Returns True if updated, False if skipped."""
+    """Normalize one backlog item file.
+
+    Returns:
+        True if updated, False if skipped.
+    """
     content = _build_normalized_content(filepath)
     if content is None:
         return False
@@ -1687,7 +1869,11 @@ def normalize(dry_run: Annotated[bool, typer.Option("--dry-run")] = False) -> No
 
 
 def _validate_index_links(path: Path) -> list[str]:
-    """Validate all index links resolve to existing files. Returns list of broken rel_paths."""
+    """Validate all index links resolve to existing files.
+
+    Returns:
+        List of broken rel_paths.
+    """
     if not _is_index_format(path):
         return []
     text = path.read_text(encoding="utf-8")

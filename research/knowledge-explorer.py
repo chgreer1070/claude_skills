@@ -5,6 +5,8 @@
 #     "typer>=0.21.0",
 #     "ruamel.yaml>=0.18.0",
 #     "python-frontmatter>=1.1.0",
+#     "PyGithub>=2.1.1",
+#     "python-dotenv>=1.0.0",
 # ]
 # ///
 """Knowledge base explorer for research/ directory.
@@ -16,9 +18,11 @@ share a single Typer entry point.
 
 from __future__ import annotations
 
-import base64
 import contextlib
-import json
+
+from dotenv import load_dotenv
+
+load_dotenv()
 import os
 import re
 import shutil
@@ -34,6 +38,7 @@ from urllib.parse import urlparse
 import frontmatter
 import typer
 from frontmatter.default_handlers import YAMLHandler
+from github import Auth, Github, GithubException
 from rich.console import Console
 from rich.measure import Measurement
 from rich.panel import Panel
@@ -84,8 +89,6 @@ VALID_CATEGORIES: frozenset[str] = frozenset({
     "skill-generation-tools",
     "task-management",
 })
-
-_GH_PATH: str | None = shutil.which("gh")
 
 console = Console()
 err_console = Console(stderr=True)
@@ -308,40 +311,12 @@ class GitHubMetadata:
 # ---------------------------------------------------------------------------
 
 
-def _require_gh() -> str:
-    """Return the gh binary path or raise ExternalCommandError.
-
-    Returns:
-        Path to gh binary.
-
-    Raises:
-        ExternalCommandError: If gh is not found on PATH.
-    """
-    if _GH_PATH is None:
-        raise ExternalCommandError(command="gh", hint="Install gh CLI: https://cli.github.com/")
-    return _GH_PATH
-
-
-def _gh_api(endpoint: str) -> Any:
-    """Call gh api and return parsed JSON.
-
-    Args:
-        endpoint: API endpoint path (e.g. 'repos/owner/repo').
-
-    Returns:
-        Parsed JSON response.
-
-    Raises:
-        ExternalCommandError: If gh returns non-zero exit code.
-    """
-    gh = _require_gh()
-    try:
-        result = subprocess.run([gh, "api", endpoint], capture_output=True, text=True, check=True)
-    except subprocess.CalledProcessError as exc:
-        raise ExternalCommandError(
-            command=f"gh api {endpoint}", hint="Ensure you are authenticated: gh auth login", stderr=exc.stderr
-        ) from exc
-    return json.loads(result.stdout)
+def _get_github() -> Github:
+    """Return authenticated Github client. Raises ExternalCommandError if GITHUB_TOKEN not set."""
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        raise ExternalCommandError(command="GITHUB_TOKEN", hint="Set GITHUB_TOKEN or run: gh auth login")
+    return Github(auth=Auth.Token(token))
 
 
 def fetch_github_metadata(repo_slug: str) -> GitHubMetadata:
@@ -354,54 +329,57 @@ def fetch_github_metadata(repo_slug: str) -> GitHubMetadata:
         GitHubMetadata populated from GitHub API.
 
     Raises:
-        ExternalCommandError: If any gh API call fails.
+        ExternalCommandError: If GITHUB_TOKEN not set or API call fails.
     """
-    repo_data = _gh_api(f"repos/{repo_slug}")
+    gh = _get_github()
+    try:
+        repo = gh.get_repo(repo_slug)
+    except Exception as exc:
+        raise ExternalCommandError(
+            command=f"get_repo({repo_slug})", hint="Ensure you are authenticated: gh auth login", stderr=str(exc)
+        ) from exc
 
-    # Fetch latest release tag (404 = no releases)
     latest_tag: str | None = None
     try:
-        release_data = _gh_api(f"repos/{repo_slug}/releases/latest")
-        latest_tag = release_data.get("tag_name")
-    except ExternalCommandError as exc:
-        if "404" not in exc.stderr:
-            raise
+        release = repo.get_latest_release()
+        latest_tag = release.tag_name
+    except GithubException:
         latest_tag = None
 
-    # Check for docs/ or doc/ directory
-    contents = _gh_api(f"repos/{repo_slug}/contents")
+    root_contents = repo.get_contents("")
+    items = list(root_contents) if isinstance(root_contents, list) else [root_contents]
     has_docs_dir = False
     docs_dirname: str | None = None
-    for item in contents:
-        if item.get("type") == "dir" and item.get("name") in {"docs", "doc"}:
+    for item in items:
+        if item.type == "dir" and item.name in {"docs", "doc"}:
             has_docs_dir = True
-            docs_dirname = item["name"]
+            docs_dirname = item.name
             break
 
     docs_files: list[str] = []
     if has_docs_dir and docs_dirname:
         try:
-            docs_contents = _gh_api(f"repos/{repo_slug}/contents/{docs_dirname}")
-            docs_files = [item["path"] for item in docs_contents if isinstance(item, dict)]
-        except ExternalCommandError:
+            docs_contents = repo.get_contents(docs_dirname)
+            docs_items = list(docs_contents) if isinstance(docs_contents, list) else [docs_contents]
+            docs_files = [item.path for item in docs_items]
+        except GithubException:
             docs_files = []
 
-    # Parse license
-    license_info = repo_data.get("license") or {}
+    license_info = repo.raw_data.get("license") or {}
     license_spdx: str | None = license_info.get("spdx_id") if license_info else None
     if license_spdx in {"NOASSERTION", ""}:
         license_spdx = None
 
     return GitHubMetadata(
         slug=repo_slug,
-        name=repo_data.get("name", repo_slug.rsplit("/", maxsplit=1)[-1]),
-        description=repo_data.get("description") or "",
+        name=repo.name or repo_slug.rsplit("/", maxsplit=1)[-1],
+        description=repo.description or "",
         license=license_spdx,
         latest_tag=latest_tag,
-        default_branch=repo_data.get("default_branch", "main"),
+        default_branch=repo.default_branch or "main",
         has_docs_dir=has_docs_dir,
         docs_files=docs_files,
-        topics=repo_data.get("topics") or [],
+        topics=repo.get_topics(),
     )
 
 
@@ -1557,6 +1535,68 @@ def show_template() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _resolve_fetch_category(meta: GitHubMetadata, category: str | None) -> str:
+    """Resolve category: explicit > inferred from topics > prompt user.
+
+    Returns:
+        Resolved category string from VALID_CATEGORIES.
+    """
+    if category is not None:
+        return category
+    inferred = _infer_category(meta)
+    if inferred is not None:
+        console.print(f"[dim]Category inferred from GitHub topics:[/dim] [cyan]{inferred}[/cyan]")
+        return inferred
+    valid_sorted = sorted(VALID_CATEGORIES)
+    console.print(
+        f"[yellow]No matching category found in GitHub topics.[/yellow]\nValid categories: {', '.join(valid_sorted)}"
+    )
+    while True:
+        chosen = typer.prompt("Enter category")
+        if chosen in VALID_CATEGORIES:
+            return chosen
+        console.print(f"[red]'{chosen}' is not a valid category.[/red] Choose from: {', '.join(valid_sorted)}")
+
+
+def _fetch_readme_text(repo_slug: str) -> str:
+    """Fetch README content from GitHub. Returns placeholder on failure.
+
+    Returns:
+        README content as string, or placeholder if not available.
+    """
+    try:
+        gh = _get_github()
+        gh_repo = gh.get_repo(repo_slug)
+        readme = gh_repo.get_readme()
+        return readme.decoded_content.decode("utf-8")
+    except (ExternalCommandError, GithubException):
+        return "<!-- README not available -->"
+
+
+def _assemble_fetch_draft(repo_slug: str, meta: GitHubMetadata, category: str, readme_text: str) -> str:
+    """Build draft entry and return serialized frontmatter content.
+
+    Returns:
+        Serialized frontmatter string with body and metadata.
+    """
+    entry = build_draft(repo_slug, meta, category)
+    body_parts = [
+        f"# {entry.name}",
+        "",
+        f"> {meta.description}",
+        "",
+        "<!-- DRAFT: Review category and tags, then run: ./knowledge-explorer.py add <this-file> -->",
+        "",
+        readme_text,
+    ]
+    if meta.has_docs_dir and meta.docs_files:
+        doc_lines = "\n".join(meta.docs_files)
+        body_parts.extend(["", "<!-- docs/ files found (fetch manually if needed):", doc_lines, "-->"])
+    entry.body = "\n".join(body_parts)
+    post = entry_to_post(entry)
+    return frontmatter.dumps(post, handler=_handler)
+
+
 @app.command("fetch-github")
 def fetch_github(
     repo: Annotated[str, typer.Argument(help="owner/repo slug")],
@@ -1579,57 +1619,9 @@ def fetch_github(
         with console.status(f"Fetching metadata for [cyan]{repo}[/cyan]..."):
             meta = fetch_github_metadata(repo)
 
-        # Resolve category: explicit > inferred from topics > prompt user
-        resolved_category: str
-        if category is not None:
-            resolved_category = category
-        else:
-            inferred = _infer_category(meta)
-            if inferred is not None:
-                resolved_category = inferred
-                console.print(f"[dim]Category inferred from GitHub topics:[/dim] [cyan]{resolved_category}[/cyan]")
-            else:
-                valid_sorted = sorted(VALID_CATEGORIES)
-                console.print(
-                    "[yellow]No matching category found in GitHub topics.[/yellow]\n"
-                    f"Valid categories: {', '.join(valid_sorted)}"
-                )
-                while True:
-                    chosen = typer.prompt("Enter category")
-                    if chosen in VALID_CATEGORIES:
-                        resolved_category = chosen
-                        break
-                    console.print(
-                        f"[red]'{chosen}' is not a valid category.[/red] Choose from: {', '.join(valid_sorted)}"
-                    )
-
-        # Fetch README text
-        readme_text = ""
-        try:
-            _require_gh()
-            readme_data = _gh_api(f"repos/{repo}/readme")
-            readme_text = base64.b64decode(readme_data["content"]).decode("utf-8")
-        except (ExternalCommandError, KeyError):
-            readme_text = "<!-- README not available -->"
-
-        entry = build_draft(repo, meta, resolved_category)
-
-        body_parts = [
-            f"# {entry.name}",
-            "",
-            f"> {meta.description}",
-            "",
-            "<!-- DRAFT: Review category and tags, then run: ./knowledge-explorer.py add <this-file> -->",
-            "",
-            readme_text,
-        ]
-        if meta.has_docs_dir and meta.docs_files:
-            doc_lines = "\n".join(meta.docs_files)
-            body_parts.extend(["", "<!-- docs/ files found (fetch manually if needed):", doc_lines, "-->"])
-        entry.body = "\n".join(body_parts)
-
-        post = entry_to_post(entry)
-        draft_content = frontmatter.dumps(post, handler=_handler)
+        resolved_category = _resolve_fetch_category(meta, category)
+        readme_text = _fetch_readme_text(repo)
+        draft_content = _assemble_fetch_draft(repo, meta, resolved_category, readme_text)
 
         if output is not None:
             tmp = output.with_suffix(".tmp")

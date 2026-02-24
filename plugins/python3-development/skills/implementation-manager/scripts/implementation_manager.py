@@ -27,18 +27,19 @@ import sys
 from dataclasses import dataclass, field
 from enum import IntEnum, StrEnum
 from pathlib import Path
-from typing import Annotated, Any, TypedDict
+from typing import TYPE_CHECKING, Annotated, TypedDict
 
 import typer
 from rich.console import Console
 
 # task_format.py is a sibling module in the same scripts/ directory.
 # Ensure the script directory is on sys.path for direct execution.
-_SCRIPT_DIR = Path(__file__).resolve().parent
-if str(_SCRIPT_DIR) not in sys.path:  # pragma: no cover
-    sys.path.insert(0, str(_SCRIPT_DIR))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from task_format import VALID_STATUSES, has_yaml_frontmatter, normalize_status, parse_yaml_frontmatter
+
+if TYPE_CHECKING:
+    import datetime
 
 app = typer.Typer(
     name="implementation-manager", help="Query and manage feature implementation task status.", no_args_is_help=True
@@ -311,7 +312,7 @@ def _parse_yaml_status(raw_status: str) -> TaskStatus:
     return TaskStatus.NOT_STARTED
 
 
-def _coerce_timestamp(value: Any) -> str | None:
+def _coerce_timestamp(value: str | datetime.datetime | None) -> str | None:
     """Coerce a YAML timestamp value to an ISO 8601 string or None.
 
     PyYAML automatically parses ISO 8601 timestamps into datetime objects.
@@ -328,7 +329,7 @@ def _coerce_timestamp(value: Any) -> str | None:
     return str(value)
 
 
-def _parse_yaml_dependencies(raw_deps: Any) -> list[str]:
+def _parse_yaml_dependencies(raw_deps: list[str] | str | None) -> list[str]:
     """Parse dependencies from YAML frontmatter value.
 
     Handles both list format (``[T1, T2]``) and string format (``"T1, T2"``).

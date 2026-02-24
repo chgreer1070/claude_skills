@@ -1,28 +1,46 @@
 #!/usr/bin/env -S uv --quiet run --active --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["typer>=0.21.0"]
+# dependencies = [
+#   "typer>=0.21.0",
+#   "GitPython>=3.1.45",
+#   "PyGithub>=2.1.1",
+#   "python-dotenv>=1.0.0",
+# ]
 # ///
 """List daily commit ranges for the daily releases pipeline.
 
 Outputs a JSON array of days with base_ref/head_ref pairs, suitable for
 driving analyze_git_changes.py and publish_daily_release.py.
+
+Uses GitPython and PyGithub — no subprocess / shell-out to git or gh.
 """
 
 from __future__ import annotations
 
 import json
+
+from dotenv import load_dotenv
+
+load_dotenv()
+import os
 import re
-import subprocess
 from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime
-from typing import Annotated
+from pathlib import Path
+from typing import TYPE_CHECKING, Annotated
 
 import typer
+from git import Repo
+from git.exc import BadName, InvalidGitRepositoryError, NoSuchPathError
+from github import Auth, Github, GithubException
 from rich.console import Console
 
+if TYPE_CHECKING:
+    from github.Repository import Repository
+
 EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
-REPO = "Jamie-BitFlight/claude_skills"
+DEFAULT_REPO = "Jamie-BitFlight/claude_skills"
 _MIN_PARENT_PARTS = 2
 
 # Must match GENERATOR_VERSION in publish_daily_release.py.
@@ -37,89 +55,108 @@ console = Console()
 err_console = Console(stderr=True)
 
 
-class ListRangesError(Exception):
-    """Error listing daily ranges."""
+class AppExit(typer.Exit):
+    """Exit with user-friendly error message to stderr."""
+
+    def __init__(self, code: int = 1, message: str | None = None) -> None:
+        """Print message to stderr and exit with code."""
+        if message is not None:
+            err_console.print(f"[red]{message}[/red]")
+        super().__init__(code=code)
 
 
-def run_git(args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
-    """Run a git command."""
+def get_git_repo() -> Repo:
+    """Return GitPython Repo for the current directory.
+
+    Raises:
+        AppExit: If not a git repository.
+    """
     try:
-        return subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8", check=check)
-    except subprocess.CalledProcessError as e:
-        msg = f"Git command failed: {' '.join(args)}\n{e.stderr}"
-        raise ListRangesError(msg) from e
+        return Repo(Path.cwd(), search_parent_directories=True)
+    except (InvalidGitRepositoryError, NoSuchPathError) as e:
+        raise AppExit(code=1, message=f"Not a git repository: {e}") from e
 
 
-def run_gh(args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
-    """Run a gh command against the configured repo."""
+def get_github_repo(gh: Github, repo_slug: str) -> Repository:
+    """Return PyGithub Repository object.
+
+    Raises:
+        AppExit: If repo cannot be accessed.
+    """
     try:
-        return subprocess.run(["gh", *args, "-R", REPO], capture_output=True, text=True, encoding="utf-8", check=check)
-    except subprocess.CalledProcessError as e:
-        msg = f"gh command failed: {' '.join(args)}\n{e.stderr}"
-        raise ListRangesError(msg) from e
+        return gh.get_repo(repo_slug)
+    except GithubException as e:
+        raise AppExit(code=1, message=f"Cannot access repo '{repo_slug}': {e}") from e
 
 
-def get_release_generator_version(tag: str) -> str | None:
+def get_release_generator_version(gh_repo: Repository, tag: str) -> str | None:
     """Return the generator version embedded in an existing release body, or None.
 
     Returns None if the release does not exist, the body is missing, or the
     marker comment is not present.
     """
-    result = run_gh(["release", "view", tag, "--json", "body"], check=False)
-    if result.returncode != 0:
-        return None
     try:
-        body = json.loads(result.stdout).get("body", "")
-    except (json.JSONDecodeError, AttributeError):
+        release = gh_repo.get_release(tag)
+    except GithubException:
         return None
+    body = release.body or ""
     match = _MARKER_RE.search(body)
     return match.group(1) if match else None
 
 
-def get_parent(commit_hash: str) -> str:
-    """Get parent commit hash, or empty-tree SHA for root commits."""
-    result = run_git(["rev-list", "--parents", "-n", "1", commit_hash], check=False)
-    if result.returncode != 0:
+def get_parent(repo: Repo, commit_hash: str) -> str:
+    """Get parent commit hash, or empty-tree SHA for root commits.
+
+    Returns:
+        Parent commit hexsha, or EMPTY_TREE_SHA for root commits.
+    """
+    try:
+        commit = repo.commit(commit_hash)
+    except (BadName, ValueError):
         return EMPTY_TREE_SHA
-    parts = result.stdout.strip().split()
-    # parts[0] = commit, parts[1] = parent (if exists)
-    if len(parts) < _MIN_PARENT_PARTS:
+    if not commit.parents:
         return EMPTY_TREE_SHA
-    return parts[1]
+    return commit.parents[0].hexsha
 
 
-def tag_exists(tag: str) -> bool:
-    """Check if a git tag exists locally."""
-    result = run_git(["rev-parse", "--verify", f"refs/tags/{tag}"], check=False)
-    return result.returncode == 0
+def tag_exists(repo: Repo, tag: str) -> bool:
+    """Check if a git tag exists locally.
+
+    Returns:
+        True if tag exists, False otherwise.
+    """
+    try:
+        repo.rev_parse(f"refs/tags/{tag}")
+    except BadName:
+        return False
+    else:
+        return True
 
 
-def get_tag_commit(tag: str) -> str | None:
-    """Get the commit hash a tag points to (dereferenced to commit)."""
-    result = run_git(["rev-list", "-n", "1", tag], check=False)
-    if result.returncode == 0:
-        return result.stdout.strip()
-    return None
+def get_tag_commit(repo: Repo, tag: str) -> str | None:
+    """Get the commit hash a tag points to (dereferenced to commit).
+
+    Returns:
+        Commit hexsha, or None if tag does not exist.
+    """
+    try:
+        return repo.rev_parse(tag).hexsha
+    except BadName:
+        return None
 
 
-def get_commits_by_day(branch: str) -> dict[str, list[str]]:
+def get_commits_by_day(repo: Repo, branch: str) -> dict[str, list[str]]:
     """Get commits grouped by UTC date, oldest-first within each day.
 
-    Returns dict mapping YYYY-MM-DD to [oldest_hash, ..., newest_hash].
+    Returns:
+        Dict mapping YYYY-MM-DD to [oldest_hash, ..., newest_hash].
     """
-    fmt = "%H %cd"
-    result = run_git(["log", branch, f"--format={fmt}", "--date=format:%Y-%m-%d", "--no-merges"], check=True)
-
-    # git log is reverse-chronological; collect then reverse per-day
     days: dict[str, list[str]] = {}
-    for raw_line in result.stdout.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        commit_hash, day = line.split(" ", 1)
-        days.setdefault(day, []).append(commit_hash)
+    for commit in repo.iter_commits(branch, no_merges=True):
+        day = commit.committed_datetime.astimezone(UTC).strftime("%Y-%m-%d")
+        days.setdefault(day, []).append(commit.hexsha)
 
-    # Each day's list is newest-first from git log; reverse to oldest-first
+    # iter_commits is newest-first; reverse each day to oldest-first
     return {day: list(reversed(commits)) for day, commits in days.items()}
 
 
@@ -136,20 +173,20 @@ class DayRange:
     needs_update: bool
 
 
-def _check_day_release_status(tag: str, newest_commit: str) -> tuple[bool, bool]:
+def _check_day_release_status(repo: Repo, gh_repo: Repository, tag: str, newest_commit: str) -> tuple[bool, bool]:
     """Return ``(release_exists, needs_update)`` for the given tag and commit.
 
     Checks whether the tag exists, whether its commit has changed, and whether
     the release was generated by an older version of the generator.
     """
-    exists = tag_exists(tag)
+    exists = tag_exists(repo, tag)
     if not exists:
         return False, False
-    current_tag_commit = get_tag_commit(tag)
+    current_tag_commit = get_tag_commit(repo, tag)
     commit_changed = current_tag_commit != newest_commit
     if commit_changed:
         return True, True
-    version_outdated = get_release_generator_version(tag) != GENERATOR_VERSION
+    version_outdated = get_release_generator_version(gh_repo, tag) != GENERATOR_VERSION
     return True, version_outdated
 
 
@@ -159,6 +196,7 @@ def main(
     start_date: Annotated[str | None, typer.Option(help="Only process days on or after YYYY-MM-DD")] = None,
     end_date: Annotated[str | None, typer.Option(help="Only process days on or before YYYY-MM-DD")] = None,
     include_existing: Annotated[bool, typer.Option(help="Include days that already have up-to-date releases")] = False,
+    repo_slug: Annotated[str, typer.Option("--repo", "-R", help="GitHub repo OWNER/REPO")] = DEFAULT_REPO,
 ) -> None:
     """List daily commit ranges for release processing.
 
@@ -169,14 +207,16 @@ def main(
         start = date.fromisoformat(start_date) if start_date else None
         end = date.fromisoformat(end_date) if end_date else datetime.now(tz=UTC).date()
     except ValueError as e:
-        err_console.print(f"[red]Invalid date: {e}[/red]")
-        raise typer.Exit(1) from e
+        raise AppExit(code=1, message=f"Invalid date: {e}") from e
 
-    try:
-        commits_by_day = get_commits_by_day(branch)
-    except ListRangesError as e:
-        err_console.print(f"[red]{e}[/red]")
-        raise typer.Exit(1) from e
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        raise AppExit(code=1, message="GITHUB_TOKEN environment variable not set")
+
+    repo = get_git_repo()
+    gh = Github(auth=Auth.Token(token))
+    gh_repo = get_github_repo(gh, repo_slug)
+    commits_by_day = get_commits_by_day(repo, branch)
 
     results: list[dict] = []
 
@@ -193,12 +233,12 @@ def main(
 
         commits = commits_by_day[day_str]
         tag = f"v{day_str.replace('-', '.')}"
-        exists, needs_update = _check_day_release_status(tag, commits[-1])
+        exists, needs_update = _check_day_release_status(repo, gh_repo, tag, commits[-1])
 
         entry = DayRange(
             date=day_str,
             tag=tag,
-            base_ref=get_parent(commits[0]),
+            base_ref=get_parent(repo, commits[0]),
             head_ref=commits[-1],
             commit_count=len(commits),
             release_exists=exists,
@@ -211,10 +251,5 @@ def main(
     print(json.dumps(results, indent=2))
 
 
-def entry_point() -> None:
-    """Entry point for CLI."""
-    app()
-
-
 if __name__ == "__main__":
-    entry_point()
+    app()

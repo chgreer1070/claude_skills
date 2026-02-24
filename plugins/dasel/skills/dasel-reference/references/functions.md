@@ -19,7 +19,7 @@ echo '[1,2,3,4,5]' | dasel -i json 'filter($this > 3)'
 # Output: [4, 5]
 
 # Combined predicates
-dasel -f data.json 'users.filter(age >= 18 && active == true)'
+cat data.json | dasel -i json 'users.filter(age >= 18 && active == true)'
 ```
 
 **Returns**: Array of elements where predicate is true.
@@ -41,7 +41,7 @@ echo '[1,2,3]' | dasel -i json 'map($this * 2)'
 # Output: [2, 4, 6]
 
 # Map to object construction
-dasel -f data.json 'users.map({ name, email })'
+cat data.json | dasel -i json 'users.map({ name, email })'
 ```
 
 **Returns**: Array of transformed values.
@@ -77,16 +77,16 @@ Recursively search through entire document tree for nodes matching a predicate. 
 
 ```bash
 # Find all objects with a "name" key
-dasel -f data.json 'search(has("name"))'
+cat data.json | dasel -i json 'search(has("name"))'
 
 # Find nodes where value equals 42
-dasel -f data.json 'search($this == 42)'
+cat data.json | dasel -i json 'search($this == 42)'
 
 # Combined predicate search
-dasel -f data.json 'search(has("id") && has("name"))'
+cat data.json | dasel -i json 'search(has("id") && has("name"))'
 
 # Search with type check
-dasel -f data.json 'search(typeOf($this) == "string")'
+cat data.json | dasel -i json 'search(typeOf($this) == "string")'
 ```
 
 **Returns**: Array of all matching nodes found at any depth.
@@ -106,7 +106,7 @@ echo '{"foo": "bar"}' | dasel -i json 'has("missing")'
 # Output: false
 
 # Use in filter predicate
-dasel -f data.json 'items.filter(has("metadata"))'
+cat data.json | dasel -i json 'items.filter(has("metadata"))'
 
 # Check array index exists
 echo '[1,2,3]' | dasel -i json 'has(5)'
@@ -131,7 +131,7 @@ echo '"hello world"' | dasel -i json 'len($this)'
 # Output: 11
 
 # Nested array length
-dasel -f data.json 'len(users)'
+cat data.json | dasel -i json 'len(users)'
 
 # Use in expressions
 echo '[1,2,3]' | dasel -i json '[len($this)-1]'
@@ -156,7 +156,7 @@ echo '["hello","world"]' | dasel -i json 'join(" ")'
 # Output: "hello world"
 
 # Join after map
-dasel -f data.json 'users.map(name).join(", ")'
+cat data.json | dasel -i json 'users.map(name).join(", ")'
 ```
 
 **Returns**: String.
@@ -177,7 +177,7 @@ echo '[{"val":10},{"val":20},{"val":30}]' | dasel -i json 'map(val).sum($this)'
 # Output: 60
 
 # Sum after filter
-dasel -f data.json 'orders.filter(status == "paid").map(total).sum($this)'
+cat data.json | dasel -i json 'orders.filter(status == "paid").map(total).sum($this)'
 ```
 
 **Returns**: Number (int or float depending on input).
@@ -194,10 +194,10 @@ echo '{"a": 1, "b": 2, "c": 3}' | dasel -i json 'keys($this)'
 # Output: ["a", "b", "c"]
 
 # Keys of nested object
-dasel -f config.yaml 'keys(database)'
+cat config.yaml | dasel -i yaml 'keys(database)'
 
 # Use keys in further queries
-dasel -f data.json 'len(keys($this))'
+cat data.json | dasel -i json 'len(keys($this))'
 ```
 
 **Returns**: Array of strings.
@@ -218,7 +218,7 @@ echo '["a","b","c"]' | dasel -i json 'reverse($this)'
 # Output: ["c", "b", "a"]
 
 # Reverse after sort/filter
-dasel -f data.json 'reverse(users.filter(active == true))'
+cat data.json | dasel -i json 'reverse(users.filter(active == true))'
 ```
 
 **Returns**: Array in reversed order.
@@ -245,7 +245,7 @@ echo 'true' | dasel -i json 'typeOf($this)'
 # Output: "bool"
 
 # Use in search/filter
-dasel -f data.json 'search(typeOf($this) == "array")'
+cat data.json | dasel -i json 'search(typeOf($this) == "array")'
 ```
 
 **Returns**: String describing the type.

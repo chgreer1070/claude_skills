@@ -116,7 +116,7 @@ description: Test skill for determinism
 
 {text}
 """
-            skill_path.write_text(skill_content)
+            skill_path.write_text(skill_content, encoding="utf-8")
 
             # Run validation multiple times
             results = [validator.validate(skill_path) for _ in range(5)]
@@ -161,18 +161,22 @@ description: Test skill for determinism
             # Create two skills with same body but different frontmatter
             skill1_path = Path(tmpdir) / "skill1" / "SKILL.md"
             skill1_path.parent.mkdir()
-            skill1_path.write_text(f"""---
+            skill1_path.write_text(
+                f"""---
 description: "Short description"
 ---
 
 {body}
-""")
+""",
+                encoding="utf-8",
+            )
 
             skill2_path = Path(tmpdir) / "skill2" / "SKILL.md"
             skill2_path.parent.mkdir()
             # Much longer frontmatter description
             long_desc = frontmatter_desc * 10
-            skill2_path.write_text(f"""---
+            skill2_path.write_text(
+                f"""---
 description: "{long_desc}"
 tools: Read, Write, Grep, Edit, Bash
 model: sonnet
@@ -180,7 +184,9 @@ hooks: session-start
 ---
 
 {body}
-""")
+""",
+                encoding="utf-8",
+            )
 
             # Validate both
             result1 = validator.validate(skill1_path)
@@ -414,12 +420,15 @@ description: Test encoding consistency
         """
 
         skill_md = tmp_path / "SKILL.md"
-        skill_md.write_text(f"""---
+        skill_md.write_text(
+            f"""---
 description: Test Unicode handling
 ---
 
 {unicode_text}
-""")
+""",
+            encoding="utf-8",
+        )
 
         # Should handle Unicode without errors
         result = validator.validate(skill_md)

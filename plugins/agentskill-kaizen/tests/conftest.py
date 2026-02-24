@@ -74,7 +74,7 @@ _MCP_DIR = str(Path(__file__).resolve().parent.parent / "mcp")
 if _MCP_DIR not in sys.path:
     sys.path.insert(0, _MCP_DIR)
 
-import server as kaizen_server  # noqa: E402
+import server as kaizen_server
 
 __all__ = ["kaizen_server"]
 
