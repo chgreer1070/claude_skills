@@ -44,9 +44,7 @@ def _load_yaml(path: Path) -> dict:
 def _load_routing_rules() -> dict:
     """Load routing-rules.yaml from registry."""
     if not ROUTING_RULES_PATH.exists():
-        err_console.print(
-            f"[red]ERROR[/red] routing-rules.yaml not found at {ROUTING_RULES_PATH}"
-        )
+        err_console.print(f"[red]ERROR[/red] routing-rules.yaml not found at {ROUTING_RULES_PATH}")
         raise typer.Exit(1)
     return _load_yaml(ROUTING_RULES_PATH)
 
@@ -54,19 +52,13 @@ def _load_routing_rules() -> dict:
 def _load_workflows() -> dict:
     """Load workflows.yaml from registry."""
     if not WORKFLOWS_PATH.exists():
-        err_console.print(
-            f"[red]ERROR[/red] workflows.yaml not found at {WORKFLOWS_PATH}"
-        )
+        err_console.print(f"[red]ERROR[/red] workflows.yaml not found at {WORKFLOWS_PATH}")
         raise typer.Exit(1)
     return _load_yaml(WORKFLOWS_PATH)
 
 
 def _score_workflow(
-    description: str,
-    workflow_id: str,
-    signals: dict,
-    source_type: str | None,
-    artifact: str | None,
+    description: str, workflow_id: str, signals: dict, source_type: str | None, artifact: str | None
 ) -> float:
     """Score a workflow by keyword matches, source_type, and artifact signals."""
     description_lower = description.lower()
@@ -101,16 +93,10 @@ def _get_chain(workflow_id: str, rules: dict) -> list[str]:
 def classify(
     description: Annotated[str, typer.Argument(help="Task description to classify")],
     source_type: Annotated[
-        str | None,
-        typer.Option(
-            "--source-type", help="Source type: file, url, image, diff, git-diff"
-        ),
+        str | None, typer.Option("--source-type", help="Source type: file, url, image, diff, git-diff")
     ] = None,
     artifact: Annotated[
-        str | None,
-        typer.Option(
-            "--artifact", help="Artifact target: README.md, CLAUDE.md, SKILL.md, docs"
-        ),
+        str | None, typer.Option("--artifact", help="Artifact target: README.md, CLAUDE.md, SKILL.md, docs")
     ] = None,
 ) -> None:
     """Classify a task description and select the appropriate workflow."""
@@ -119,9 +105,7 @@ def classify(
 
     scores: dict[str, float] = {}
     for workflow_id, signals in intent_signals.items():
-        scores[workflow_id] = _score_workflow(
-            description, workflow_id, signals, source_type, artifact
-        )
+        scores[workflow_id] = _score_workflow(description, workflow_id, signals, source_type, artifact)
 
     if not any(s > 0 for s in scores.values()):
         console.print(
@@ -152,9 +136,7 @@ def classify(
     for rule in hybrid_rules:
         conflict = rule.get("conflict", [])
         if top_id in conflict and len(ranked) > 1 and ranked[1][0] in conflict:
-            console.print(
-                f"\n[yellow]Disambiguation hint:[/yellow] {rule.get('resolution', '')}"
-            )
+            console.print(f"\n[yellow]Disambiguation hint:[/yellow] {rule.get('resolution', '')}")
 
 
 @app.command(name="list")
@@ -163,9 +145,7 @@ def list_workflows() -> None:
     workflows_data = _load_workflows()
     workflows = workflows_data.get("workflows", [])
 
-    table = Table(
-        title="Registered Workflows", show_header=True, header_style="bold cyan"
-    )
+    table = Table(title="Registered Workflows", show_header=True, header_style="bold cyan")
     table.add_column("ID", style="bold", min_width=22)
     table.add_column("Name", min_width=24)
     table.add_column("Canonical", min_width=32)

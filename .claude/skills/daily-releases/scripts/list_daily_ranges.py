@@ -31,9 +31,7 @@ GENERATOR_VERSION = "1.0"
 _MARKER_RE = re.compile(r"<!-- created-by-release-generator: v([\d.]+) -->")
 
 app = typer.Typer(
-    name="list_daily_ranges",
-    help="List daily commit ranges for release pipeline processing",
-    add_completion=False,
+    name="list_daily_ranges", help="List daily commit ranges for release pipeline processing", add_completion=False
 )
 console = Console()
 err_console = Console(stderr=True)
@@ -46,13 +44,7 @@ class ListRangesError(Exception):
 def run_git(args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
     """Run a git command."""
     try:
-        return subprocess.run(
-            ["git", *args],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            check=check,
-        )
+        return subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8", check=check)
     except subprocess.CalledProcessError as e:
         msg = f"Git command failed: {' '.join(args)}\n{e.stderr}"
         raise ListRangesError(msg) from e
@@ -61,13 +53,7 @@ def run_git(args: list[str], check: bool = True) -> subprocess.CompletedProcess[
 def run_gh(args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
     """Run a gh command against the configured repo."""
     try:
-        return subprocess.run(
-            ["gh", *args, "-R", REPO],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            check=check,
-        )
+        return subprocess.run(["gh", *args, "-R", REPO], capture_output=True, text=True, encoding="utf-8", check=check)
     except subprocess.CalledProcessError as e:
         msg = f"gh command failed: {' '.join(args)}\n{e.stderr}"
         raise ListRangesError(msg) from e
@@ -122,10 +108,7 @@ def get_commits_by_day(branch: str) -> dict[str, list[str]]:
     Returns dict mapping YYYY-MM-DD to [oldest_hash, ..., newest_hash].
     """
     fmt = "%H %cd"
-    result = run_git(
-        ["log", branch, f"--format={fmt}", "--date=format:%Y-%m-%d", "--no-merges"],
-        check=True,
-    )
+    result = run_git(["log", branch, f"--format={fmt}", "--date=format:%Y-%m-%d", "--no-merges"], check=True)
 
     # git log is reverse-chronological; collect then reverse per-day
     days: dict[str, list[str]] = {}
@@ -172,18 +155,10 @@ def _check_day_release_status(tag: str, newest_commit: str) -> tuple[bool, bool]
 
 @app.command()
 def main(
-    branch: Annotated[
-        str, typer.Option(help="Git branch to read commits from")
-    ] = "origin/main",
-    start_date: Annotated[
-        str | None, typer.Option(help="Only process days on or after YYYY-MM-DD")
-    ] = None,
-    end_date: Annotated[
-        str | None, typer.Option(help="Only process days on or before YYYY-MM-DD")
-    ] = None,
-    include_existing: Annotated[
-        bool, typer.Option(help="Include days that already have up-to-date releases")
-    ] = False,
+    branch: Annotated[str, typer.Option(help="Git branch to read commits from")] = "origin/main",
+    start_date: Annotated[str | None, typer.Option(help="Only process days on or after YYYY-MM-DD")] = None,
+    end_date: Annotated[str | None, typer.Option(help="Only process days on or before YYYY-MM-DD")] = None,
+    include_existing: Annotated[bool, typer.Option(help="Include days that already have up-to-date releases")] = False,
 ) -> None:
     """List daily commit ranges for release processing.
 

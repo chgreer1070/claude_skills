@@ -42,18 +42,13 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
-sys.path.insert(
-    0,
-    str(Path(__file__).parent.parent / "skills" / "implementation_manager" / "scripts"),
-)
+sys.path.insert(0, str(Path(__file__).parent.parent / "skills" / "implementation_manager" / "scripts"))
 
 from implementation_manager import Task, parse_task_file
 from task_format import has_yaml_frontmatter
 
 app = typer.Typer(
-    name="split_task_file",
-    help="Split multi-task file into one-task-per-file directory",
-    no_args_is_help=True,
+    name="split_task_file", help="Split multi-task file into one-task-per-file directory", no_args_is_help=True
 )
 console = Console()
 
@@ -135,9 +130,7 @@ def _parse_legacy_bodies(content: str, tasks: list[Task]) -> list[TaskWithBody]:
             body_start += 1
 
         # Section ends at next task header or end of file
-        section_end = (
-            header_indices[idx + 1] if idx + 1 < len(header_indices) else len(lines)
-        )
+        section_end = header_indices[idx + 1] if idx + 1 < len(header_indices) else len(lines)
 
         task_ranges.append((body_start, section_end))
 
@@ -331,10 +324,7 @@ def write_task_file(task: Task, output_path: Path, body: str = "") -> None:
         deps_str = ", ".join(f'"{d}"' for d in task.dependencies)
         frontmatter_lines.append(f"dependencies: [{deps_str}]")
 
-    frontmatter_lines.extend((
-        f"priority: {task.priority.value}",
-        f"complexity: {task.complexity.lower()}",
-    ))
+    frontmatter_lines.extend((f"priority: {task.priority.value}", f"complexity: {task.complexity.lower()}"))
 
     if task.started:
         frontmatter_lines.append(f'started: "{task.started}"')
@@ -358,24 +348,14 @@ def main(
     input_file: Annotated[
         Path,
         typer.Argument(
-            help="Path to multi-task markdown file",
-            exists=True,
-            file_okay=True,
-            dir_okay=False,
-            resolve_path=True,
+            help="Path to multi-task markdown file", exists=True, file_okay=True, dir_okay=False, resolve_path=True
         ),
     ],
     output_dir: Annotated[
-        Path | None,
-        typer.Argument(
-            help="Output directory for task files (default: {input-stem}/tasks/)"
-        ),
+        Path | None, typer.Argument(help="Output directory for task files (default: {input-stem}/tasks/)")
     ] = None,
     force: Annotated[
-        bool,
-        typer.Option(
-            "--force", "-f", help="Overwrite existing task files without prompting"
-        ),
+        bool, typer.Option("--force", "-f", help="Overwrite existing task files without prompting")
     ] = False,
 ) -> None:
     """Split multi-task file into one-task-per-file directory.
@@ -398,9 +378,7 @@ def main(
         console.print("[yellow]:warning: No tasks found in input file[/yellow]")
         raise typer.Exit(0)
 
-    console.print(
-        f"[green]:white_check_mark: Found {len(tasks_with_body)} tasks[/green]"
-    )
+    console.print(f"[green]:white_check_mark: Found {len(tasks_with_body)} tasks[/green]")
 
     # Determine output directory
     if output_dir is None:
@@ -416,8 +394,7 @@ def main(
         existing_files = list(output_dir.glob("*.md"))
         if existing_files:
             console.print(
-                f"[yellow]:warning: Directory {output_dir} already contains "
-                f"{len(existing_files)} .md files[/yellow]"
+                f"[yellow]:warning: Directory {output_dir} already contains {len(existing_files)} .md files[/yellow]"
             )
             overwrite = typer.confirm("Overwrite existing files?")
             if not overwrite:
@@ -425,9 +402,7 @@ def main(
                 raise typer.Exit(1)
 
     # Write each task to individual file
-    console.print(
-        f"[blue]:writing_hand: Writing {len(tasks_with_body)} task files...[/blue]"
-    )
+    console.print(f"[blue]:writing_hand: Writing {len(tasks_with_body)} task files...[/blue]")
 
     for twb in tasks_with_body:
         filename = generate_task_filename(twb.task)
@@ -436,10 +411,7 @@ def main(
         write_task_file(twb.task, output_path, body=twb.body)
         console.print(f"  [green]:white_check_mark: {filename}[/green]")
 
-    console.print(
-        f"\n[green]:tada: Successfully split {len(tasks_with_body)} tasks "
-        f"into {output_dir}[/green]"
-    )
+    console.print(f"\n[green]:tada: Successfully split {len(tasks_with_body)} tasks into {output_dir}[/green]")
     console.print(
         f"\n[blue]Next steps:[/blue]\n"
         f"  1. Review generated files in {output_dir}\n"

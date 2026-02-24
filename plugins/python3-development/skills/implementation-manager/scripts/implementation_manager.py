@@ -38,17 +38,10 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:  # pragma: no cover
     sys.path.insert(0, str(_SCRIPT_DIR))
 
-from task_format import (
-    VALID_STATUSES,
-    has_yaml_frontmatter,
-    normalize_status,
-    parse_yaml_frontmatter,
-)
+from task_format import VALID_STATUSES, has_yaml_frontmatter, normalize_status, parse_yaml_frontmatter
 
 app = typer.Typer(
-    name="implementation-manager",
-    help="Query and manage feature implementation task status.",
-    no_args_is_help=True,
+    name="implementation-manager", help="Query and manage feature implementation task status.", no_args_is_help=True
 )
 console = Console()
 
@@ -400,11 +393,7 @@ def parse_task_from_frontmatter(content: str) -> Task:
             agent = None
 
     raw_priority = frontmatter.get("priority")
-    priority = (
-        TaskPriority(int(raw_priority))
-        if raw_priority is not None
-        else TaskPriority.MEDIUM
-    )
+    priority = TaskPriority(int(raw_priority)) if raw_priority is not None else TaskPriority.MEDIUM
 
     raw_complexity = frontmatter.get("complexity", "medium")
     complexity = str(raw_complexity).capitalize()
@@ -650,9 +639,7 @@ def parse_task_content(content: str) -> list[Task]:
         if header_match:
             if current_task:
                 tasks.append(_create_task_from_dict(current_task))
-            current_task = _create_empty_task_data(
-                header_match.group(1), header_match.group(2).strip()
-            )
+            current_task = _create_empty_task_data(header_match.group(1), header_match.group(2).strip())
         elif current_task:
             _parse_line(line, current_task)
 
@@ -777,11 +764,7 @@ def _has_task_content(directory: Path) -> bool:
     if list(directory.glob("tasks-*.md")):
         return True
     for child in directory.iterdir():
-        if (
-            child.is_dir()
-            and child.name.startswith("tasks-")
-            and list(child.glob("*.md"))
-        ):
+        if child.is_dir() and child.name.startswith("tasks-") and list(child.glob("*.md")):
             return True
     return False
 
@@ -880,9 +863,7 @@ def find_task_files(project_path: Path) -> list[Feature]:
         match = file_pattern.match(file_path.name)
         if match:
             slug = match.group(2)
-            features.append(
-                Feature(slug=slug, task_file=file_path.name, path=file_path)
-            )
+            features.append(Feature(slug=slug, task_file=file_path.name, path=file_path))
 
     # Pattern for task directories: tasks-feature-name/
     dir_pattern = re.compile(r"tasks-(.+)$")
@@ -944,10 +925,7 @@ def get_ready_tasks(tasks: list[Task]) -> list[Task]:
             continue
 
         # Check if all dependencies are complete
-        deps_satisfied = all(
-            status_by_id.get(dep_id) == TaskStatus.COMPLETE
-            for dep_id in task.dependencies
-        )
+        deps_satisfied = all(status_by_id.get(dep_id) == TaskStatus.COMPLETE for dep_id in task.dependencies)
 
         if deps_satisfied:
             ready.append(task)
@@ -963,17 +941,11 @@ def get_ready_tasks(tasks: list[Task]) -> list[Task]:
 ProjectPath = Annotated[
     Path,
     typer.Argument(
-        help="Path to the project root directory.",
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        resolve_path=True,
+        help="Path to the project root directory.", exists=True, file_okay=False, dir_okay=True, resolve_path=True
     ),
 ]
 
-FeatureSlug = Annotated[
-    str, typer.Argument(help="Feature slug (e.g., 'prepare-host') or partial match.")
-]
+FeatureSlug = Annotated[str, typer.Argument(help="Feature slug (e.g., 'prepare-host') or partial match.")]
 
 
 @app.command(name="list-features")
@@ -1097,9 +1069,7 @@ def validate(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
         # Validate status is a recognized value
         normalized = normalize_status(task.status.value)
         if normalized not in VALID_STATUSES:
-            warnings.append(
-                f"Task {task.id} has non-standard status: {task.status.value}"
-            )
+            warnings.append(f"Task {task.id} has non-standard status: {task.status.value}")
 
         # Priority validation happens at parse time via TaskPriority enum constructor
 
@@ -1118,12 +1088,7 @@ def validate(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
             errors.append(f"Duplicate task ID: {task_id}")
         seen.add(task_id)
 
-    output = {
-        "valid": len(errors) == 0,
-        "errors": errors,
-        "warnings": warnings,
-        "task_count": len(tasks),
-    }
+    output = {"valid": len(errors) == 0, "errors": errors, "warnings": warnings, "task_count": len(tasks)}
 
     console.print(json.dumps(output, indent=2))
 

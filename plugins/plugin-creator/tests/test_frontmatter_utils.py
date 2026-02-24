@@ -99,11 +99,7 @@ class TestConvenienceAPI:
 
     def test_dumps_frontmatter_to_file(self, tmp_path: Path) -> None:
         """Write frontmatter post to a file."""
-        from frontmatter_utils import (
-            dumps_frontmatter,
-            load_frontmatter,
-            loads_frontmatter,
-        )
+        from frontmatter_utils import dumps_frontmatter, load_frontmatter, loads_frontmatter
 
         text = "---\nname: my-skill\n---\n\n# Body\n"
         post = loads_frontmatter(text)
@@ -120,9 +116,7 @@ class TestConvenienceAPI:
         from frontmatter_utils import load_frontmatter, update_field
 
         md_file = tmp_path / "test.md"
-        md_file.write_text(
-            "---\nname: old-name\ndescription: Keep this\n---\n\n# Body\n"
-        )
+        md_file.write_text("---\nname: old-name\ndescription: Keep this\n---\n\n# Body\n")
 
         update_field(md_file, "name", "new-name")
 

@@ -1,7 +1,7 @@
 # SDLC Layer Separation Architecture — Plugin Candidates
 
-**Generated**: 2026-02-23  
-**Source**: Full read of all plugins under `plugins/` (CLAUDE.md, plugin.json, SKILL.md, agents, references, workflows)  
+**Generated**: 2026-02-23
+**Source**: Full read of all plugins under `plugins/` (CLAUDE.md, plugin.json, SKILL.md, agents, references, workflows)
 **Plan Context**: Layer 0 (SDLC-Agnostic), Layer 1 (Language-Specific), Layer 2 (Stack/Goal-Specific), ARL Meta-Layer
 
 ---

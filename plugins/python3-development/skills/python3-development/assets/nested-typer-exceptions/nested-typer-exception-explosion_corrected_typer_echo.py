@@ -117,8 +117,7 @@ def load_json_file(file_path: Path) -> dict:
         return parse_json_string(contents, str(file_path))
     except json.JSONDecodeError as e:
         raise AppExit(
-            code=1,
-            message=f"Invalid JSON in {file_path!s} at line {e.lineno}, column {e.colno}: {e.msg}",
+            code=1, message=f"Invalid JSON in {file_path!s} at line {e.lineno}, column {e.colno}: {e.msg}"
         ) from e
 
 
@@ -166,11 +165,7 @@ def process_config(file_path: Path) -> dict:
 
 # LAYER 7: CLI entry point
 @app.command()
-def main(
-    config_file: Annotated[
-        Path | None, typer.Argument(help="Path to JSON configuration file")
-    ] = None,
-) -> None:
+def main(config_file: Annotated[Path | None, typer.Argument(help="Path to JSON configuration file")] = None) -> None:
     """Load and process a JSON configuration file.
 
     This demonstrates the ANTI-PATTERN of exception chain explosion.

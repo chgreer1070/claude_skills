@@ -45,9 +45,7 @@ VERSION_PARTS_EXPECTED = 3
 
 # Patterns for parsing release notes
 BREAKING_PATTERN = re.compile(r"#+\s*breaking\s*changes?", re.IGNORECASE)
-FEATURE_PATTERN = re.compile(
-    r"#+\s*(enhancements?|new\s*features?|features?)", re.IGNORECASE
-)
+FEATURE_PATTERN = re.compile(r"#+\s*(enhancements?|new\s*features?|features?)", re.IGNORECASE)
 PREVIEW_PATTERN = re.compile(r"#+\s*preview\s*features?", re.IGNORECASE)
 DEPRECATION_PATTERN = re.compile(r"#+\s*deprecations?", re.IGNORECASE)
 BUGFIX_PATTERN = re.compile(r"#+\s*(bug\s*fix|fix)", re.IGNORECASE)
@@ -57,9 +55,7 @@ UV_CMD_PATTERN = re.compile(r"`(uv\s+[\w\s-]+)`")
 ENV_VAR_PATTERN = re.compile(r"`(UV_[\w]+)`")
 
 # SKILL.md section pattern
-VERSION_SECTION_PATTERN = re.compile(
-    r"(^## Version Information\s*\n)(.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL
-)
+VERSION_SECTION_PATTERN = re.compile(r"(^## Version Information\s*\n)(.*?)(?=^## |\Z)", re.MULTILINE | re.DOTALL)
 
 
 class SyncError(Exception):
@@ -144,9 +140,7 @@ def check_cooldown(working_dir: Path, force: bool) -> bool:
     return True
 
 
-def update_lock_file(
-    working_dir: Path, status: str, last_version: str = "", releases_processed: int = 0
-) -> None:
+def update_lock_file(working_dir: Path, status: str, last_version: str = "", releases_processed: int = 0) -> None:
     """Update lock file with sync metadata.
 
     Args:
@@ -191,9 +185,7 @@ def fetch_releases(since_version: str | None = None) -> list[dict[str, str]]:
         with httpx.Client(timeout=30.0) as client:
             while True:
                 url = f"{GITHUB_API_BASE}?per_page={MAX_RELEASES_PER_PAGE}&page={page}"
-                response = client.get(
-                    url, headers={"Accept": "application/vnd.github+json"}
-                )
+                response = client.get(url, headers={"Accept": "application/vnd.github+json"})
                 response.raise_for_status()
                 releases = response.json()
 
@@ -211,9 +203,7 @@ def fetch_releases(since_version: str | None = None) -> list[dict[str, str]]:
                         "url": r.get("html_url", ""),
                     }
 
-                    if since_version and parse_version(tag) <= parse_version(
-                        since_version
-                    ):
+                    if since_version and parse_version(tag) <= parse_version(since_version):
                         # We've reached releases older than our baseline
                         all_releases.append(release_info)
                         return all_releases
@@ -337,12 +327,7 @@ def get_current_skill_version(skill_file: Path) -> str | None:
 
 def _collect_release_data(
     releases: list[dict[str, str]],
-) -> tuple[
-    list[tuple[str, str]],
-    list[tuple[str, str]],
-    list[tuple[str, str]],
-    list[tuple[str, str]],
-]:
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]], list[tuple[str, str]], list[tuple[str, str]]]:
     """Collect categorized data across all releases.
 
     Returns:
@@ -361,9 +346,7 @@ def _collect_release_data(
         feature_highlights.extend((ver, item) for item in cats["features"][:3])
 
         stabilized.extend(
-            (ver, item)
-            for item in cats["preview"]
-            if "stable" in item.lower() or "stabilize" in item.lower()
+            (ver, item) for item in cats["preview"] if "stable" in item.lower() or "stabilize" in item.lower()
         )
 
         deprecations.extend((ver, item) for item in cats["deprecations"])
@@ -374,10 +357,7 @@ def _collect_release_data(
 def _format_breaking_changes(releases: list[dict[str, str]], lines: list[str]) -> None:
     """Append breaking changes section from the latest major release."""
     major_releases = [
-        r
-        for r in releases
-        if r["version"].endswith(".0")
-        and len(r["version"].split(".")) == VERSION_PARTS_EXPECTED
+        r for r in releases if r["version"].endswith(".0") and len(r["version"].split(".")) == VERSION_PARTS_EXPECTED
     ]
 
     if not major_releases:
@@ -387,16 +367,12 @@ def _format_breaking_changes(releases: list[dict[str, str]], lines: list[str]) -
     major_cats = categorize_release(latest_major["body"])
 
     if major_cats["breaking"]:
-        lines.append(
-            f"### {latest_major['version']} Breaking Changes ({latest_major['date']})\n"
-        )
+        lines.append(f"### {latest_major['version']} Breaking Changes ({latest_major['date']})\n")
         lines.extend(f"- {item}" for item in major_cats["breaking"])
         lines.append("")
 
 
-def build_version_section(
-    releases: list[dict[str, str]], current_doc_version: str | None
-) -> str:
+def build_version_section(releases: list[dict[str, str]], current_doc_version: str | None) -> str:
     """Build the Version Information section content.
 
     Produces version-annotated entries so the AI using this skill can
@@ -427,11 +403,7 @@ def build_version_section(
 
     # Key features added (since the baseline)
     baseline = current_doc_version or "0.0.0"
-    new_features = [
-        (ver, item)
-        for ver, item in feature_highlights
-        if parse_version(ver) > parse_version(baseline)
-    ]
+    new_features = [(ver, item) for ver, item in feature_highlights if parse_version(ver) > parse_version(baseline)]
 
     if new_features:
         lines.append(f"### Key Features Added Since {baseline}\n")
@@ -469,13 +441,9 @@ def update_skill_file(skill_file: Path, version_content: str) -> None:
     content = skill_file.read_text(encoding="utf-8")
 
     if VERSION_SECTION_PATTERN.search(content):
-        new_content = VERSION_SECTION_PATTERN.sub(
-            f"## Version Information\n\n{version_content}", content
-        )
+        new_content = VERSION_SECTION_PATTERN.sub(f"## Version Information\n\n{version_content}", content)
     else:
-        new_content = (
-            content.rstrip() + f"\n\n## Version Information\n\n{version_content}\n"
-        )
+        new_content = content.rstrip() + f"\n\n## Version Information\n\n{version_content}\n"
 
     skill_file.write_text(new_content, encoding="utf-8")
 
@@ -520,22 +488,14 @@ def main(
             resolve_path=True,
         ),
     ] = None,
-    force: Annotated[
-        bool, typer.Option("--force", help="Bypass cooldown period")
-    ] = False,
+    force: Annotated[bool, typer.Option("--force", help="Bypass cooldown period")] = False,
     since: Annotated[
         str | None,
         typer.Option(
-            "--since",
-            help="Only fetch releases newer than this version (default: auto-detect from SKILL.md)",
+            "--since", help="Only fetch releases newer than this version (default: auto-detect from SKILL.md)"
         ),
     ] = None,
-    dry_run: Annotated[
-        bool,
-        typer.Option(
-            "--dry-run", help="Show what would change without modifying files"
-        ),
-    ] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Show what would change without modifying files")] = False,
 ) -> None:
     """Sync uv release information from GitHub into the skill documentation.
 
@@ -561,56 +521,32 @@ def main(
 
     try:
         # Fetch releases
-        console.print(
-            Panel(
-                f"Querying GitHub API: {GITHUB_API_BASE}",
-                title="Fetch Releases",
-                border_style="blue",
-            )
-        )
+        console.print(Panel(f"Querying GitHub API: {GITHUB_API_BASE}", title="Fetch Releases", border_style="blue"))
         releases = fetch_releases(since_version=baseline)
 
         if not releases:
             console.print("[yellow]No new releases found[/yellow]")
-            update_lock_file(
-                resolved_dir,
-                status="success",
-                last_version=baseline or "",
-                releases_processed=0,
-            )
+            update_lock_file(resolved_dir, status="success", last_version=baseline or "", releases_processed=0)
             raise typer.Exit(code=0)
 
         # Filter to only newer releases
         if baseline:
-            new_releases = [
-                r
-                for r in releases
-                if parse_version(r["version"]) > parse_version(baseline)
-            ]
+            new_releases = [r for r in releases if parse_version(r["version"]) > parse_version(baseline)]
         else:
             new_releases = releases
 
         console.print(
-            f"Found [cyan]{len(releases)}[/cyan] total releases, "
-            f"[green]{len(new_releases)}[/green] newer than baseline"
+            f"Found [cyan]{len(releases)}[/cyan] total releases, [green]{len(new_releases)}[/green] newer than baseline"
         )
 
         # Display summary
         display_release_summary(releases)
 
         if dry_run:
-            console.print(
-                Panel(
-                    "Dry run mode - no files modified",
-                    title="Dry Run",
-                    border_style="yellow",
-                )
-            )
+            console.print(Panel("Dry run mode - no files modified", title="Dry Run", border_style="yellow"))
             # Still build the content to show what would change
             version_content = build_version_section(new_releases, baseline)
-            console.print(
-                "\n[bold]Would write to Version Information section:[/bold]\n"
-            )
+            console.print("\n[bold]Would write to Version Information section:[/bold]\n")
             console.print(version_content)
             raise typer.Exit(code=0)
 
@@ -631,10 +567,7 @@ def main(
         )
 
         update_lock_file(
-            resolved_dir,
-            status="success",
-            last_version=latest_version,
-            releases_processed=len(new_releases),
+            resolved_dir, status="success", last_version=latest_version, releases_processed=len(new_releases)
         )
 
     except SyncError as e:

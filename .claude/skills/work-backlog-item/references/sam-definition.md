@@ -12,7 +12,7 @@ The **canonical SAM specification** lives in the [bitflight-devops/stateless-age
 
 ## Core Principles
 
-(Canonical spec: https://github.com/bitflight-devops/stateless-agent-methodology — stateless-software-engineering-framework.md Part 2.)
+(Canonical spec: <https://github.com/bitflight-devops/stateless-agent-methodology> — stateless-software-engineering-framework.md Part 2.)
 
 - **Stateless agents** — Each agent gets fresh context with exactly what it needs. Eliminates context pressure and accumulated errors.
 - **Externalized memory** — All state lives in artifact files, not in conversation. Survives session resets, enables verification.
@@ -31,7 +31,7 @@ The **canonical SAM specification** lives in the [bitflight-devops/stateless-age
 
 ## Pipeline Stages
 
-(Canonical spec: https://github.com/bitflight-devops/stateless-agent-methodology — stateless-software-engineering-framework.md Part 2.2 and Part 3.)
+(Canonical spec: <https://github.com/bitflight-devops/stateless-agent-methodology> — stateless-software-engineering-framework.md Part 2.2 and Part 3.)
 
 | Stage | Name | Input | Output | Agent |
 |-------|------|-------|--------|-------|
@@ -94,7 +94,7 @@ Each artifact type uses the token pattern `ARTIFACT:{TYPE}({SCOPE_OR_ID})`. Stor
 
 ### Canonical SAM (external repo)
 
-Canonical spec: **https://github.com/bitflight-devops/stateless-agent-methodology**. Key documents: `stateless-agent-methodology.md`, `stateless-software-engineering-framework.md`, `README.md`, `docs/guides/sam-harness.md`.
+Canonical spec: **<https://github.com/bitflight-devops/stateless-agent-methodology>**. Key documents: `stateless-agent-methodology.md`, `stateless-software-engineering-framework.md`, `README.md`, `docs/guides/sam-harness.md`.
 
 **Fetch via gh (when repo is not cloned locally):** Requires `gh` and auth (`gh auth status`). Example:
 

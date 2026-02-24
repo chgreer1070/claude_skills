@@ -101,18 +101,20 @@ omit = ["tests/*", "*/tests/*", "**/test_*.py"]
 source = ["**/scripts"]
 
 [tool.ty.environment]
+# Order matters: real task_format.py (python3-development) must precede symlinked copy (development-harness)
 extra-paths = [
     "./.claude/skills/create-merge-request-changelog/scripts",
+    "./.claude/skills/gh/scripts",
     "./.claude/skills/research-curator/scripts",
     "./plugins/agentskill-kaizen/mcp",
+    "./plugins/python3-development/skills/implementation-manager/scripts",
+    "./plugins/python3-development/scripts",
     "./plugins/development-harness/skills/implementation-manager/scripts",
     "./plugins/fastmcp-creator/skills/fastmcp-creator/scripts",
     "./plugins/gitlab-skill/skills/gitlab-skill/scripts",
     "./plugins/holistic-linting/skills/holistic-linting/scripts",
     "./plugins/plugin-creator/scripts",
     "./plugins/plugin-creator/skills/skill-creator/scripts",
-    "./plugins/python3-development/scripts",
-    "./plugins/python3-development/skills/implementation-manager/scripts",
     "./plugins/python3-development/skills/mkdocs/scripts",
     "./plugins/python3-development/skills/uv/scripts",
     "./plugins/summarizer/scripts",
@@ -139,10 +141,25 @@ unresolved-attribute = "ignore"
 [tool.ty.rules]
 
 [tool.ty.src]
+# Exclude git symlinks (mode 120000) - on Windows without symlink support, these are
+# regular files whose content is the target path; linters parse that as Python and fail.
+# All 8 repo symlinks: 2 .py in implementation-manager, 5 .md (accessing_online_resources),
+# 1 dir (plugins/uv/skills/uv). Only the .py and dir need exclusion for Python linting.
+exclude = [
+    "plugins/uv/skills/uv",
+    "plugins/development-harness/skills/implementation-manager",
+]
 include = ["**/*.py"]
 
 [tool.ruff]
+# Exclude git symlinks - Windows reads target path as file content; linters fail.
+# See [tool.ty.src] exclude for full list. Add new symlinked .py paths here.
+extend-exclude = [
+    "plugins/uv/skills/uv",
+    "plugins/development-harness/skills/implementation-manager",
+]
 fix = true
+line-length = 120
 src = [".github", ".gitlab", "plugins", "scripts", "tests", "typings"]
 target-version = "py311"
 unsafe-fixes = true
@@ -274,8 +291,29 @@ convention = "google"
 "requests".msg = "Use httpx instead. httpx has built-in type annotations and is the project standard."
 
 [tool.basedpyright]
-extraPaths = ["**/plugins", "**/scripts", "**/tests"]
-ignore = ["**/typings", "**/tests", "plugins/agentskill-kaizen"]
+# Order matters: paths with real task_format.py must precede symlinked copies (e.g. development-harness)
+extraPaths = [
+    "plugins/python3-development/skills/implementation-manager/scripts",
+    "plugins/python3-development/scripts",
+    ".claude/skills/create-merge-request-changelog/scripts",
+    ".claude/skills/gh/scripts",
+    ".claude/skills/research-curator/scripts",
+    "plugins/fastmcp-creator/skills/fastmcp-creator/scripts",
+    "plugins/gitlab-skill/skills/gitlab-skill/scripts",
+    "plugins/holistic-linting/skills/holistic-linting/scripts",
+    "plugins/plugin-creator/scripts",
+    "plugins/plugin-creator/skills/skill-creator/scripts",
+    "plugins/python3-development/skills/mkdocs/scripts",
+    "plugins/python3-development/skills/uv/scripts",
+    "plugins/summarizer/scripts",
+]
+ignore = [
+    "**/typings",
+    "**/tests",
+    "plugins/agentskill-kaizen",
+    "plugins/uv/skills/uv",
+    "plugins/development-harness/skills/implementation-manager",
+]
 include = ["**/plugins", "**/scripts"]
 pythonVersion = "3.11"
 reportImplicitRelativeImport = false

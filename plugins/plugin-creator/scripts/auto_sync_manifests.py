@@ -104,9 +104,7 @@ def run_git_command(args: list[str]) -> str:
         msg = "git executable not found in PATH"
         raise FileNotFoundError(msg)
 
-    result = subprocess.run(
-        [_GIT_PATH, *args], capture_output=True, text=True, check=False
-    )
+    result = subprocess.run([_GIT_PATH, *args], capture_output=True, text=True, check=False)
     if result.returncode != 0 and result.stderr:
         sys.stderr.write(f"git {' '.join(args)}: {result.stderr.strip()}\n")
     return result.stdout.strip()
@@ -179,11 +177,7 @@ def parse_plugin_path(filepath: str) -> PluginPathInfo | None:
         return None
 
     plugin_name = parts[1]
-    result: PluginPathInfo = {
-        "plugin": plugin_name,
-        "component_type": None,
-        "component_path": None,
-    }
+    result: PluginPathInfo = {"plugin": plugin_name, "component_type": None, "component_path": None}
 
     # Check if this is a component file
     if len(parts) >= _MIN_COMPONENT_PATH_PARTS:
@@ -229,9 +223,7 @@ def bump_version(current: str, bump_type: Literal["major", "minor", "patch"]) ->
     try:
         major, minor, patch = map(int, current.split("."))
     except (ValueError, AttributeError):
-        sys.stderr.write(
-            f"Warning: malformed version '{current}', defaulting to 0.1.0\n"
-        )
+        sys.stderr.write(f"Warning: malformed version '{current}', defaulting to 0.1.0\n")
         return "0.1.0"
 
     match bump_type:
@@ -259,9 +251,7 @@ def _parse_version_tuple(version_str: str) -> tuple[int, int, int] | None:
     return (major, minor, patch)
 
 
-def _extract_version_from_json(
-    data: object, key_path: list[str]
-) -> tuple[int, int, int] | None:
+def _extract_version_from_json(data: object, key_path: list[str]) -> tuple[int, int, int] | None:
     """Traverse a JSON object by key path and parse the version string found.
 
     Args:
@@ -299,12 +289,7 @@ def _read_head_json(filepath: str | Path) -> object | None:
     if _GIT_PATH is None:
         return None
 
-    result = subprocess.run(
-        [_GIT_PATH, "show", f"HEAD:{filepath}"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    result = subprocess.run([_GIT_PATH, "show", f"HEAD:{filepath}"], capture_output=True, text=True, check=False)
     if result.returncode != 0:
         return None
 
@@ -393,9 +378,7 @@ def _format_json(data: object) -> str:
     content = json.dumps(data, indent=2) + "\n"
     if not _NPX_PATH:
         return content
-    with tempfile.NamedTemporaryFile(
-        encoding="utf-8", mode="w", suffix=".json", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".json", delete=False) as f:
         f.write(content)
         tmp_path = f.name
     try:
@@ -405,18 +388,14 @@ def _format_json(data: object) -> str:
         cmd.append(tmp_path)
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
         if result.returncode != 0:
-            sys.stderr.write(
-                f"Warning: prettier formatting failed: {result.stderr.strip()}\n"
-            )
+            sys.stderr.write(f"Warning: prettier formatting failed: {result.stderr.strip()}\n")
             return content
         return Path(tmp_path).read_text(encoding="utf-8")
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 
 
-def _update_component_arrays(
-    data: dict[str, list[str] | str], changes: ComponentChanges
-) -> bool:
+def _update_component_arrays(data: dict[str, list[str] | str], changes: ComponentChanges) -> bool:
     """Update component arrays in plugin.json.
 
     Args:
@@ -534,8 +513,7 @@ def update_plugin_json(plugin_name: str, changes: ComponentChanges) -> tuple[boo
 
 
 def _update_marketplace_plugins(
-    data: dict[str, dict[str, str] | list[dict[str, str]]],
-    plugin_changes: MarketplaceChanges,
+    data: dict[str, dict[str, str] | list[dict[str, str]]], plugin_changes: MarketplaceChanges
 ) -> bool:
     """Add and remove plugins in the marketplace data structure.
 
@@ -632,9 +610,7 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
     return False
 
 
-def _process_file_changes(
-    status: dict[str, list[str]],
-) -> tuple[dict[str, ComponentChanges], MarketplaceChanges]:
+def _process_file_changes(status: dict[str, list[str]]) -> tuple[dict[str, ComponentChanges], MarketplaceChanges]:
     """Process changed files and categorize them.
 
     Args:
@@ -647,11 +623,7 @@ def _process_file_changes(
         lambda: {"added": [], "deleted": [], "modified": []}
     )
 
-    marketplace_changes: MarketplaceChanges = {
-        "added": set(),
-        "deleted": set(),
-        "modified": [],
-    }
+    marketplace_changes: MarketplaceChanges = {"added": set(), "deleted": set(), "modified": []}
 
     # Parse all changed files
     for operation in ["added", "deleted", "modified"]:
@@ -680,17 +652,11 @@ def _process_file_changes(
 
                 match operation:
                     case "added":
-                        plugin_component_changes[plugin_name]["added"].append(
-                            component_change
-                        )
+                        plugin_component_changes[plugin_name]["added"].append(component_change)
                     case "deleted":
-                        plugin_component_changes[plugin_name]["deleted"].append(
-                            component_change
-                        )
+                        plugin_component_changes[plugin_name]["deleted"].append(component_change)
                     case "modified":
-                        plugin_component_changes[plugin_name]["modified"].append(
-                            component_change
-                        )
+                        plugin_component_changes[plugin_name]["modified"].append(component_change)
             # Non-component file changed inside plugin dir — still
             # triggers a patch version bump.  plugin.json is excluded
             # because it is already handled above for marketplace
@@ -712,13 +678,9 @@ def _git_stage_file(filepath: str) -> None:
     """
     if not _GIT_PATH:
         return
-    result = subprocess.run(
-        [_GIT_PATH, "add", filepath], capture_output=True, text=True, check=False
-    )
+    result = subprocess.run([_GIT_PATH, "add", filepath], capture_output=True, text=True, check=False)
     if result.returncode != 0:
-        sys.stderr.write(
-            f"Warning: git add {filepath} failed: {result.stderr.strip()}\n"
-        )
+        sys.stderr.write(f"Warning: git add {filepath} failed: {result.stderr.strip()}\n")
 
 
 def _discover_skills(plugin_dir: Path) -> list[str]:
@@ -879,9 +841,7 @@ def _discover_invocable_skills(plugin_dir: Path) -> list[str]:
         for nested in sorted(item.iterdir()):
             if nested.is_dir() and not nested.name.startswith("."):
                 nested_skill_md = nested / "SKILL.md"
-                if nested_skill_md.is_file() and _is_skill_user_invocable(
-                    nested_skill_md
-                ):
+                if nested_skill_md.is_file() and _is_skill_user_invocable(nested_skill_md):
                     found.append(f"./skills/{item.name}/{nested.name}")
 
     return found
@@ -904,9 +864,7 @@ def _normalize_skill_ref(ref: str) -> str:
     return ref
 
 
-def _reconcile_one_plugin(
-    plugin_name: str, plugins_root: Path, *, dry_run: bool
-) -> bool:
+def _reconcile_one_plugin(plugin_name: str, plugins_root: Path, *, dry_run: bool) -> bool:
     """Reconcile a single plugin's plugin.json against its directory contents.
 
     Args:
@@ -937,19 +895,13 @@ def _reconcile_one_plugin(
     has_drift = False
 
     # Reconcile skills
-    has_drift |= _reconcile_component_array(
-        data, "skills", disk_skills, plugin_name, dry_run=dry_run
-    )
+    has_drift |= _reconcile_component_array(data, "skills", disk_skills, plugin_name, dry_run=dry_run)
 
     # Reconcile agents
-    has_drift |= _reconcile_component_array(
-        data, "agents", disk_agents, plugin_name, dry_run=dry_run
-    )
+    has_drift |= _reconcile_component_array(data, "agents", disk_agents, plugin_name, dry_run=dry_run)
 
     # Reconcile commands (includes user-invocable skills)
-    has_drift |= _reconcile_component_array(
-        data, "commands", disk_commands_full, plugin_name, dry_run=dry_run
-    )
+    has_drift |= _reconcile_component_array(data, "commands", disk_commands_full, plugin_name, dry_run=dry_run)
 
     if has_drift and not dry_run:
         current_version = cast("str", data.get("version", "0.0.0"))
@@ -976,9 +928,7 @@ def _refs_match(ref_a: str, ref_b: str, *, normalize: bool) -> bool:
     return ref_a == ref_b
 
 
-def _find_missing_items(
-    disk_items: list[str], registered: list[str], *, normalize: bool
-) -> list[str]:
+def _find_missing_items(disk_items: list[str], registered: list[str], *, normalize: bool) -> list[str]:
     """Find items on disk that are not registered in the manifest.
 
     Args:
@@ -989,16 +939,10 @@ def _find_missing_items(
     Returns:
         List of disk items with no matching registered entry
     """
-    return [
-        item
-        for item in disk_items
-        if not any(_refs_match(reg, item, normalize=normalize) for reg in registered)
-    ]
+    return [item for item in disk_items if not any(_refs_match(reg, item, normalize=normalize) for reg in registered)]
 
 
-def _find_stale_items(
-    registered: list[str], disk_items: list[str], *, normalize: bool
-) -> list[str]:
+def _find_stale_items(registered: list[str], disk_items: list[str], *, normalize: bool) -> list[str]:
     """Find registered items not present in the discovery list.
 
     Discovery functions are the sole authority on what belongs in each
@@ -1012,11 +956,7 @@ def _find_stale_items(
     Returns:
         List of registered items with no matching discovered entry
     """
-    return [
-        reg
-        for reg in registered
-        if not any(_refs_match(reg, item, normalize=normalize) for item in disk_items)
-    ]
+    return [reg for reg in registered if not any(_refs_match(reg, item, normalize=normalize) for item in disk_items)]
 
 
 def _apply_drift_changes(
@@ -1064,12 +1004,7 @@ def _apply_drift_changes(
 
 
 def _reconcile_component_array(
-    data: dict[str, list[str] | str],
-    field_name: str,
-    disk_items: list[str],
-    plugin_name: str,
-    *,
-    dry_run: bool,
+    data: dict[str, list[str] | str], field_name: str, disk_items: list[str], plugin_name: str, *, dry_run: bool
 ) -> bool:
     """Reconcile a component array (skills/agents/commands) against disk.
 
@@ -1084,18 +1019,14 @@ def _reconcile_component_array(
         True if drift was detected
     """
     raw = data.get(field_name, [])
-    registered = (
-        list(raw) if isinstance(raw, list) else [raw] if isinstance(raw, str) else []
-    )
+    registered = list(raw) if isinstance(raw, list) else [raw] if isinstance(raw, str) else []
     normalize = field_name == "skills"
 
     missing = _find_missing_items(disk_items, registered, normalize=normalize)
     stale = _find_stale_items(registered, disk_items, normalize=normalize)
 
     if missing or stale:
-        _apply_drift_changes(
-            data, field_name, missing, stale, plugin_name, dry_run=dry_run
-        )
+        _apply_drift_changes(data, field_name, missing, stale, plugin_name, dry_run=dry_run)
         return True
 
     return False
@@ -1211,9 +1142,7 @@ def reconcile(*, dry_run: bool) -> int:
     return 0
 
 
-def _report_plugin_update(
-    plugin_name: str, new_version: str, changes: ComponentChanges
-) -> None:
+def _report_plugin_update(plugin_name: str, new_version: str, changes: ComponentChanges) -> None:
     """Print a summary of component changes for a plugin update.
 
     Args:
@@ -1256,11 +1185,7 @@ def _precommit_sync() -> int:
             _report_plugin_update(plugin_name, new_version, changes)
 
     # Update marketplace.json
-    if (
-        marketplace_changes["added"]
-        or marketplace_changes["deleted"]
-        or marketplace_changes["modified"]
-    ):
+    if marketplace_changes["added"] or marketplace_changes["deleted"] or marketplace_changes["modified"]:
         marketplace_updated = update_marketplace_json(marketplace_changes)
 
         if marketplace_updated:
@@ -1275,9 +1200,7 @@ def _precommit_sync() -> int:
             if marketplace_changes["added"]:
                 print(f"   - Added plugins: {', '.join(marketplace_changes['added'])}")
             if marketplace_changes["deleted"]:
-                print(
-                    f"   - Removed plugins: {', '.join(marketplace_changes['deleted'])}"
-                )
+                print(f"   - Removed plugins: {', '.join(marketplace_changes['deleted'])}")
 
     if not plugins_updated and not marketplace_updated:
         print("Info: No manifest updates needed")
@@ -1291,18 +1214,12 @@ def main() -> int:
     Returns:
         Exit code (0 for success)
     """
-    parser = argparse.ArgumentParser(
-        description="Sync plugin and marketplace manifests."
+    parser = argparse.ArgumentParser(description="Sync plugin and marketplace manifests.")
+    parser.add_argument(
+        "--reconcile", action="store_true", help="Full directory scan to fix drift between filesystem and manifests"
     )
     parser.add_argument(
-        "--reconcile",
-        action="store_true",
-        help="Full directory scan to fix drift between filesystem and manifests",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Report drift without modifying files (requires --reconcile)",
+        "--dry-run", action="store_true", help="Report drift without modifying files (requires --reconcile)"
     )
     args = parser.parse_args()
 

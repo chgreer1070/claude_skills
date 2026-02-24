@@ -32,12 +32,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from task_format import (
-    has_yaml_frontmatter,
-    normalize_status,
-    parse_yaml_frontmatter,
-    update_yaml_field,
-)
+from task_format import has_yaml_frontmatter, normalize_status, parse_yaml_frontmatter, update_yaml_field
 
 # Alphanumeric task ID pattern: "1", "1.1", "T1", "P0-T01", etc.
 _TASK_ID_RE = r"[A-Za-z0-9]+(?:[-.][\dA-Za-z]+)*"
@@ -114,9 +109,7 @@ def extract_task_info_from_prompt(prompt: str) -> tuple[Path | None, str | None]
 
     # Look for /start-task invocation pattern in the prompt
     # Pattern: /start-task <path> --task <id>
-    match = re.search(
-        rf"/start-task\s+([^\s]+\.md)(?:\s+--task\s+({_TASK_ID_RE}))?", prompt
-    )
+    match = re.search(rf"/start-task\s+([^\s]+\.md)(?:\s+--task\s+({_TASK_ID_RE}))?", prompt)
     if match:
         task_file = Path(match.group(1))
         task_id = match.group(2)
@@ -154,9 +147,7 @@ def read_task_context(cwd: Path, session_id: str) -> tuple[Path | None, str | No
         return None, None
 
     try:
-        context_data: dict[str, str] = json.loads(
-            context_file.read_text(encoding="utf-8")
-        )
+        context_data: dict[str, str] = json.loads(context_file.read_text(encoding="utf-8"))
         task_file = context_data.get("task_file_path")
         task_id = context_data.get("task_id")
         if task_file and task_id:
@@ -167,9 +158,7 @@ def read_task_context(cwd: Path, session_id: str) -> tuple[Path | None, str | No
     return None, None
 
 
-def write_task_context(
-    cwd: Path, session_id: str, task_file_path: Path, task_id: str
-) -> None:
+def write_task_context(cwd: Path, session_id: str, task_file_path: Path, task_id: str) -> None:
     """Write task info to context file.
 
     Args:
@@ -277,18 +266,10 @@ def find_task_section(content: str, task_id: str) -> tuple[int, int] | None:
     return None
 
 
-_LEGACY_INSERT_AFTER_FIELDS: tuple[str, ...] = (
-    "Status",
-    "Dependencies",
-    "Priority",
-    "Complexity",
-    "Agent",
-)
+_LEGACY_INSERT_AFTER_FIELDS: tuple[str, ...] = ("Status", "Dependencies", "Priority", "Complexity", "Agent")
 
 
-def _update_legacy_timestamp(
-    lines: list[str], start_idx: int, end_idx: int, field_name: str, timestamp: str
-) -> str:
+def _update_legacy_timestamp(lines: list[str], start_idx: int, end_idx: int, field_name: str, timestamp: str) -> str:
     """Add or update a timestamp field in a legacy markdown task section.
 
     Args:
@@ -322,9 +303,7 @@ def _update_legacy_timestamp(
     return "\n".join(lines[:start_idx] + task_lines + lines[end_idx:])
 
 
-def add_timestamp_to_task(
-    content: str, task_id: str, field_name: str, timestamp: str
-) -> str:
+def add_timestamp_to_task(content: str, task_id: str, field_name: str, timestamp: str) -> str:
     """Add or update a timestamp field in a task section.
 
     For YAML frontmatter files, uses ``update_yaml_field`` to set the field in
@@ -486,9 +465,7 @@ def handle_subagent_stop(hook_input: dict[str, Any]) -> None:
 
     # Resolve path relative to cwd
     cwd = Path(hook_input.get("cwd", "."))
-    full_path = (
-        cwd / task_file_path if not task_file_path.is_absolute() else task_file_path
-    )
+    full_path = cwd / task_file_path if not task_file_path.is_absolute() else task_file_path
 
     resolved = _resolve_task_file(full_path, task_id)
     if resolved is None:
@@ -502,9 +479,7 @@ def handle_subagent_stop(hook_input: dict[str, Any]) -> None:
         # Update status to COMPLETE (normalize_status handles YAML normalization)
         updated_content = update_task_status(content, task_id, "\u2705 COMPLETE")
         # Add Completed timestamp
-        updated_content = add_timestamp_to_task(
-            updated_content, task_id, "Completed", timestamp
-        )
+        updated_content = add_timestamp_to_task(updated_content, task_id, "Completed", timestamp)
         resolved_path.write_text(updated_content, encoding="utf-8")
     except ValueError as e:
         print(str(e), file=sys.stderr)
@@ -538,9 +513,7 @@ def handle_activity_update(hook_input: dict[str, Any]) -> None:
         sys.exit(0)
 
     # Resolve path relative to cwd
-    full_path = (
-        cwd / task_file_path if not task_file_path.is_absolute() else task_file_path
-    )
+    full_path = cwd / task_file_path if not task_file_path.is_absolute() else task_file_path
 
     resolved = _resolve_task_file(full_path, task_id)
     if resolved is None:
@@ -551,9 +524,7 @@ def handle_activity_update(hook_input: dict[str, Any]) -> None:
     timestamp = get_iso_timestamp()
 
     try:
-        updated_content = add_timestamp_to_task(
-            content, task_id, "LastActivity", timestamp
-        )
+        updated_content = add_timestamp_to_task(content, task_id, "LastActivity", timestamp)
         resolved_path.write_text(updated_content, encoding="utf-8")
     except ValueError:
         # Task section not found, exit silently

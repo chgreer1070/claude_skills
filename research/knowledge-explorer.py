@@ -318,9 +318,7 @@ def _require_gh() -> str:
         ExternalCommandError: If gh is not found on PATH.
     """
     if _GH_PATH is None:
-        raise ExternalCommandError(
-            command="gh", hint="Install gh CLI: https://cli.github.com/"
-        )
+        raise ExternalCommandError(command="gh", hint="Install gh CLI: https://cli.github.com/")
     return _GH_PATH
 
 
@@ -338,14 +336,10 @@ def _gh_api(endpoint: str) -> Any:
     """
     gh = _require_gh()
     try:
-        result = subprocess.run(
-            [gh, "api", endpoint], capture_output=True, text=True, check=True
-        )
+        result = subprocess.run([gh, "api", endpoint], capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as exc:
         raise ExternalCommandError(
-            command=f"gh api {endpoint}",
-            hint="Ensure you are authenticated: gh auth login",
-            stderr=exc.stderr,
+            command=f"gh api {endpoint}", hint="Ensure you are authenticated: gh auth login", stderr=exc.stderr
         ) from exc
     return json.loads(result.stdout)
 
@@ -388,9 +382,7 @@ def fetch_github_metadata(repo_slug: str) -> GitHubMetadata:
     if has_docs_dir and docs_dirname:
         try:
             docs_contents = _gh_api(f"repos/{repo_slug}/contents/{docs_dirname}")
-            docs_files = [
-                item["path"] for item in docs_contents if isinstance(item, dict)
-            ]
+            docs_files = [item["path"] for item in docs_contents if isinstance(item, dict)]
         except ExternalCommandError:
             docs_files = []
 
@@ -456,15 +448,10 @@ def _build_readme_row(entry: KBEntry) -> str:
     summary = _extract_first_paragraph(entry.body) or entry.name
     if len(summary) > _README_SUMMARY_MAX_LEN:
         summary = summary[: _README_SUMMARY_MAX_LEN - 1] + "\u2026"
-    return (
-        f"| [{entry.topic}.md](./{entry.category}/{entry.topic}.md)"
-        f" | {summary} | {today_iso} |"
-    )
+    return f"| [{entry.topic}.md](./{entry.category}/{entry.topic}.md) | {summary} | {today_iso} |"
 
 
-def _update_existing_section(
-    text: str, new_row: str, entry: KBEntry, section_start: int
-) -> str:
+def _update_existing_section(text: str, new_row: str, entry: KBEntry, section_start: int) -> str:
     """Update a README table row inside an existing category section.
 
     Args:
@@ -482,9 +469,7 @@ def _update_existing_section(
     table_header_pat = re.compile(r"\| Document \|.*\n\|[-| ]+\|", re.IGNORECASE)
     table_match = table_header_pat.search(text, section_start)
     if not table_match:
-        raise ReadmeUpdateError(
-            detail=f"No table found in section for '{entry.category}'"
-        )
+        raise ReadmeUpdateError(detail=f"No table found in section for '{entry.category}'")
 
     table_end = table_match.end()
     row_pattern = re.compile(r"\n(\|[^\n]+\|)")
@@ -544,9 +529,7 @@ def _append_new_section(text: str, new_row: str, entry: KBEntry) -> str:
     planned_pat = re.compile(r"^## Planned", re.MULTILINE)
     planned_match = planned_pat.search(text)
     if planned_match:
-        return (
-            text[: planned_match.start()] + new_section + text[planned_match.start() :]
-        )
+        return text[: planned_match.start()] + new_section + text[planned_match.start() :]
     return text.rstrip() + new_section
 
 
@@ -567,9 +550,7 @@ def update_readme(kb_root: Path, entry: KBEntry) -> None:
     text = readme_path.read_text(encoding="utf-8")
     new_row = _build_readme_row(entry)
 
-    location_pattern = re.compile(
-        rf"\*\*Location\*\*:.*\[.*{re.escape(entry.category)}.*\]", re.IGNORECASE
-    )
+    location_pattern = re.compile(rf"\*\*Location\*\*:.*\[.*{re.escape(entry.category)}.*\]", re.IGNORECASE)
     section_match = location_pattern.search(text)
 
     if section_match:
@@ -615,8 +596,7 @@ def detect_format(text: str) -> Literal["frontmatter", "inline-header"]:
         if bold_field or table_field:
             return "inline-header"
     raise ParseError(
-        path=Path("<text>"),
-        detail="Cannot determine format: not frontmatter and no inline-header fields found.",
+        path=Path("<text>"), detail="Cannot determine format: not frontmatter and no inline-header fields found."
     )
 
 
@@ -657,8 +637,7 @@ def _parse_research_date(value: str) -> date:
     except ValueError:
         pass
     raise ParseError(
-        path=Path("<date>"),
-        detail=f"Cannot parse date: '{value}'. Expected YYYY-MM-DD or 'Month DD, YYYY'.",
+        path=Path("<date>"), detail=f"Cannot parse date: '{value}'. Expected YYYY-MM-DD or 'Month DD, YYYY'."
     )
 
 
@@ -681,9 +660,7 @@ def _extract_github_slug(url: str) -> str | None:
     return None
 
 
-def _merge_freshness_fields(
-    fields: dict[str, str], freshness_block: str, table_pattern: re.Pattern[str]
-) -> None:
+def _merge_freshness_fields(fields: dict[str, str], freshness_block: str, table_pattern: re.Pattern[str]) -> None:
     """Extract freshness table values and merge into fields dict.
 
     Args:
@@ -768,18 +745,11 @@ def strip_inline_header_and_freshness(text: str) -> tuple[dict[str, str], str]:
 
     body_lines = lines[header_end_line:]
     freshness_start = next(
-        (
-            i
-            for i, line in enumerate(body_lines)
-            if re.match(r"^## Freshness", line, re.IGNORECASE)
-        ),
-        None,
+        (i for i, line in enumerate(body_lines) if re.match(r"^## Freshness", line, re.IGNORECASE)), None
     )
 
     if freshness_start is not None:
-        _merge_freshness_fields(
-            fields, "".join(body_lines[freshness_start:]), table_pattern
-        )
+        _merge_freshness_fields(fields, "".join(body_lines[freshness_start:]), table_pattern)
         body_text = _trim_body_section(body_lines[:freshness_start])
     else:
         body_text = "".join(body_lines).strip()
@@ -803,11 +773,7 @@ def _extract_optional_inline_fields(
     source_url_raw = fields.get("Source URL") or fields.get("Primary URL") or ""
     source_url = source_url_raw.strip().strip("<>") or f"https://github.com/{stem}"
 
-    github_raw = (
-        (fields.get("GitHub Repository") or fields.get("GitHub") or "")
-        .strip()
-        .strip("<>")
-    )
+    github_raw = (fields.get("GitHub Repository") or fields.get("GitHub") or "").strip().strip("<>")
     github: str | None = _extract_github_slug(github_raw) if github_raw else None
 
     version_raw = (
@@ -816,11 +782,7 @@ def _extract_optional_inline_fields(
         or fields.get("Version")
         or fields.get("Version Documented")
     )
-    version: str | None = (
-        re.sub(r"\s*\(.*\)\s*$", "", version_raw).strip() or None
-        if version_raw
-        else None
-    )
+    version: str | None = re.sub(r"\s*\(.*\)\s*$", "", version_raw).strip() or None if version_raw else None
 
     license_raw = fields.get("License")
     lic: str | None = license_raw.strip() if license_raw else None
@@ -828,9 +790,7 @@ def _extract_optional_inline_fields(
     return source_url, github, version, lic
 
 
-def _parse_inline_dates(
-    fields: dict[str, str], path: Path, verified_raw: str
-) -> tuple[date, date]:
+def _parse_inline_dates(fields: dict[str, str], path: Path, verified_raw: str) -> tuple[date, date]:
     """Parse verified and next_review dates from inline-header fields dict.
 
     Args:
@@ -849,9 +809,7 @@ def _parse_inline_dates(
     except ParseError as exc:
         raise ParseError(path=path, detail=str(exc)) from exc
 
-    next_review_raw = (
-        fields.get("Next Review Recommended") or fields.get("Next Review Date") or ""
-    )
+    next_review_raw = fields.get("Next Review Recommended") or fields.get("Next Review Date") or ""
     if next_review_raw:
         try:
             next_review = _parse_research_date(next_review_raw)
@@ -884,29 +842,18 @@ def parse_inline_header_entry(text: str, path: Path) -> KBEntry:
     heading_match = re.search(r"^#\s+(.+)", text, re.MULTILINE)
     name = heading_match.group(1).strip() if heading_match else topic
 
-    verified_raw = (
-        fields.get("Research Date")
-        or fields.get("Last Verified")
-        or fields.get("Version Documented")
-        or ""
-    )
+    verified_raw = fields.get("Research Date") or fields.get("Last Verified") or fields.get("Version Documented") or ""
     if not verified_raw:
-        raise ParseError(
-            path=path, detail="Cannot find Research Date or Last Verified field."
-        )
+        raise ParseError(path=path, detail="Cannot find Research Date or Last Verified field.")
 
     verified, next_review = _parse_inline_dates(fields, path, verified_raw)
-    source_url, github, version, lic = _extract_optional_inline_fields(
-        fields, path.stem
-    )
+    source_url, github, version, lic = _extract_optional_inline_fields(fields, path.stem)
 
     first_para = _extract_first_paragraph(body)
     if first_para:
         description = first_para[:_DESCRIPTION_MAX_LEN]
     else:
-        description = (
-            f"Research entry for {name}. Use when working with {name} or related tools."
-        )
+        description = f"Research entry for {name}. Use when working with {name} or related tools."
 
     return KBEntry(
         topic=topic,
@@ -977,36 +924,18 @@ def _from_skill_spec_meta(top: Any, path: Path) -> KBEntry:
     """
     inner: dict[str, Any] = top["metadata"]
     required_top = [f for f in ("name",) if f not in top]
-    required_inner = [
-        f
-        for f in ("topic", "category", "source_url", "verified", "next_review")
-        if f not in inner
-    ]
+    required_inner = [f for f in ("topic", "category", "source_url", "verified", "next_review") if f not in inner]
     missing = required_top + required_inner
     if missing:
-        raise FrontmatterValidationError(
-            path=path, missing_fields=missing, invalid_fields=[]
-        )
+        raise FrontmatterValidationError(path=path, missing_fields=missing, invalid_fields=[])
 
-    license_val: str | None = (
-        str(top["license"]) if top.get("license") is not None else None
-    )
-    github_val: str | None = (
-        str(inner["github"]) if inner.get("github") is not None else None
-    )
-    version_val: str | None = (
-        str(inner["version"]) if inner.get("version") is not None else None
-    )
+    license_val: str | None = str(top["license"]) if top.get("license") is not None else None
+    github_val: str | None = str(inner["github"]) if inner.get("github") is not None else None
+    version_val: str | None = str(inner["version"]) if inner.get("version") is not None else None
 
-    layer_val: str | None = (
-        str(inner["layer"]) if inner.get("layer") is not None else None
-    )
-    language_val: str | None = (
-        str(inner["language"]) if inner.get("language") is not None else None
-    )
-    stack_val: str | None = (
-        str(inner["stack"]) if inner.get("stack") is not None else None
-    )
+    layer_val: str | None = str(inner["layer"]) if inner.get("layer") is not None else None
+    language_val: str | None = str(inner["language"]) if inner.get("language") is not None else None
+    stack_val: str | None = str(inner["stack"]) if inner.get("stack") is not None else None
 
     return KBEntry(
         topic=str(inner["topic"]),
@@ -1043,35 +972,17 @@ def _from_flat_meta(meta: Any, path: Path) -> KBEntry:
         FrontmatterValidationError: If required fields are missing.
         ParseError: If date fields cannot be parsed.
     """
-    missing = [
-        f
-        for f in ("topic", "name", "category", "source_url", "verified", "next_review")
-        if f not in meta
-    ]
+    missing = [f for f in ("topic", "name", "category", "source_url", "verified", "next_review") if f not in meta]
     if missing:
-        raise FrontmatterValidationError(
-            path=path, missing_fields=missing, invalid_fields=[]
-        )
+        raise FrontmatterValidationError(path=path, missing_fields=missing, invalid_fields=[])
 
-    github_val: str | None = (
-        str(meta["github"]) if meta.get("github") is not None else None
-    )
-    version_val: str | None = (
-        str(meta["version"]) if meta.get("version") is not None else None
-    )
-    license_val: str | None = (
-        str(meta["license"]) if meta.get("license") is not None else None
-    )
+    github_val: str | None = str(meta["github"]) if meta.get("github") is not None else None
+    version_val: str | None = str(meta["version"]) if meta.get("version") is not None else None
+    license_val: str | None = str(meta["license"]) if meta.get("license") is not None else None
 
-    layer_val: str | None = (
-        str(meta["layer"]) if meta.get("layer") is not None else None
-    )
-    language_val: str | None = (
-        str(meta["language"]) if meta.get("language") is not None else None
-    )
-    stack_val: str | None = (
-        str(meta["stack"]) if meta.get("stack") is not None else None
-    )
+    layer_val: str | None = str(meta["layer"]) if meta.get("layer") is not None else None
+    language_val: str | None = str(meta["language"]) if meta.get("language") is not None else None
+    stack_val: str | None = str(meta["stack"]) if meta.get("stack") is not None else None
 
     return KBEntry(
         topic=str(meta["topic"]),
@@ -1119,11 +1030,7 @@ def parse_frontmatter_entry(text: str, path: Path) -> KBEntry:
         raise ParseError(path=path, detail=f"YAML parse error: {exc}") from exc
 
     top = post.metadata
-    entry = (
-        _from_skill_spec_meta(top, path)
-        if isinstance(top.get("metadata"), dict)
-        else _from_flat_meta(top, path)
-    )
+    entry = _from_skill_spec_meta(top, path) if isinstance(top.get("metadata"), dict) else _from_flat_meta(top, path)
     entry.body = post.content
     return entry
 
@@ -1166,11 +1073,7 @@ def _iter_kb_files(kb_root: Path) -> list[Path]:
     for category_dir in sorted(kb_root.iterdir()):
         if not category_dir.is_dir() or category_dir.name.startswith("."):
             continue
-        result.extend(
-            md_file
-            for md_file in sorted(category_dir.glob("*.md"))
-            if md_file not in excluded
-        )
+        result.extend(md_file for md_file in sorted(category_dir.glob("*.md")) if md_file not in excluded)
     return result
 
 
@@ -1269,10 +1172,7 @@ def build_draft(repo_slug: str, meta: GitHubMetadata, category: str) -> KBEntry:
     if raw_desc:
         description = raw_desc[:desc_max]
     else:
-        description = (
-            f"Research entry for {meta.name}. "
-            f"Use when working with {meta.name} or related tools."
-        )
+        description = f"Research entry for {meta.name}. Use when working with {meta.name} or related tools."
 
     return KBEntry(
         topic=topic_slug,
@@ -1421,9 +1321,7 @@ def _find_suggestions(topic: str, all_topics: list[str]) -> list[str]:
     Returns:
         Up to 3 suggestions with distance <= 2.
     """
-    candidates = [
-        t for t in all_topics if _levenshtein(topic, t) <= _LEVENSHTEIN_MAX_DISTANCE
-    ]
+    candidates = [t for t in all_topics if _levenshtein(topic, t) <= _LEVENSHTEIN_MAX_DISTANCE]
     return sorted(candidates, key=lambda t: _levenshtein(topic, t))[:_MAX_SUGGESTIONS]
 
 
@@ -1463,9 +1361,7 @@ def _extract_first_paragraph(body: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _show_error(
-    message: str, *, verbose: bool = False, exc: BaseException | None = None
-) -> None:
+def _show_error(message: str, *, verbose: bool = False, exc: BaseException | None = None) -> None:
     """Display an error panel on stderr.
 
     Args:
@@ -1498,14 +1394,8 @@ def _auto_description(entry: KBEntry) -> tuple[str, str | None]:
         desc = first_para[:_DESCRIPTION_MAX_LEN]
         warn = "description not set; auto-generated from body first paragraph."
     else:
-        desc = (
-            f"Research entry for {entry.name}. "
-            f"Use when working with {entry.name} or related tools."
-        )
-        warn = (
-            "description not set; using auto-generated fallback. "
-            "Consider adding a description."
-        )
+        desc = f"Research entry for {entry.name}. Use when working with {entry.name} or related tools."
+        warn = "description not set; using auto-generated fallback. Consider adding a description."
     return desc, warn
 
 
@@ -1528,14 +1418,9 @@ def _validate_add_entry(entry: KBEntry) -> str | None:
             "no leading/trailing/consecutive hyphens."
         )
     if entry.category not in VALID_CATEGORIES:
-        return (
-            f"Invalid category '{entry.category}'.\n"
-            f"Valid categories: {', '.join(sorted(VALID_CATEGORIES))}"
-        )
+        return f"Invalid category '{entry.category}'.\nValid categories: {', '.join(sorted(VALID_CATEGORIES))}"
     missing = [
-        f
-        for f in ("topic", "name", "category", "source_url", "verified", "next_review")
-        if not getattr(entry, f, None)
+        f for f in ("topic", "name", "category", "source_url", "verified", "next_review") if not getattr(entry, f, None)
     ]
     if missing:
         return f"Missing required fields: {', '.join(missing)}"
@@ -1553,10 +1438,7 @@ def _validate_add_entry(entry: KBEntry) -> str | None:
 # ---------------------------------------------------------------------------
 
 app = typer.Typer(
-    name="knowledge-explorer",
-    help="Manage the research/ knowledge base.",
-    no_args_is_help=False,
-    add_completion=False,
+    name="knowledge-explorer", help="Manage the research/ knowledge base.", no_args_is_help=False, add_completion=False
 )
 
 _verbose_state: dict[str, bool] = {"verbose": False}
@@ -1565,9 +1447,7 @@ _verbose_state: dict[str, bool] = {"verbose": False}
 @app.callback(invoke_without_command=True)
 def main_callback(
     ctx: typer.Context,
-    verbose: Annotated[
-        bool, typer.Option("--verbose", "-v", help="Show tracebacks on error.")
-    ] = False,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show tracebacks on error.")] = False,
 ) -> None:
     """Knowledge base explorer. Run without a subcommand to list entries.
 
@@ -1587,10 +1467,7 @@ def main_callback(
 
 @app.command("list")
 def list_kb(
-    layer: Annotated[
-        str | None,
-        typer.Option("--layer", "-l", help="Filter by SDLC layer (0, 1, or 2)"),
-    ] = None,
+    layer: Annotated[str | None, typer.Option("--layer", "-l", help="Filter by SDLC layer (0, 1, or 2)")] = None,
 ) -> None:
     """Show a tree view of all knowledge base entries.
 
@@ -1614,10 +1491,7 @@ def list_kb(
     for cat in sorted(by_category):
         cat_entries = sorted(by_category[cat], key=lambda e: e.file_path.name)
         overdue_count = sum(1 for e in cat_entries if e.is_overdue)
-        cat_label = (
-            f"[cyan]{cat}/[/cyan]"
-            f"  [dim]({len(cat_entries)} entries, {overdue_count} overdue)[/dim]"
-        )
+        cat_label = f"[cyan]{cat}/[/cyan]  [dim]({len(cat_entries)} entries, {overdue_count} overdue)[/dim]"
         cat_branch = tree.add(cat_label)
         for entry in cat_entries:
             version_str = entry.version or "no version"
@@ -1635,14 +1509,7 @@ def list_kb(
     temp_con = Console(width=9999)
     measurement = Measurement.get(temp_con, temp_con.options, tree)
     tree_width = int(measurement.maximum)
-    console.print(
-        tree,
-        crop=False,
-        overflow="ignore",
-        no_wrap=True,
-        soft_wrap=True,
-        width=max(tree_width, 80),
-    )
+    console.print(tree, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True, width=max(tree_width, 80))
 
 
 # ---------------------------------------------------------------------------
@@ -1673,8 +1540,8 @@ def show_template() -> None:
         f'  next_review: "{next_review.isoformat()}"\n'
         '  tags: "tag1,tag2"\n'
         '  # layer: "0" | "1" | "2"  # SDLC layer (optional)\n'
-        '  # language: python | typescript | ...  # optional\n'
-        '  # stack: fastapi | tornado | ...  # optional\n'
+        "  # language: python | typescript | ...  # optional\n"
+        "  # stack: fastapi | tornado | ...  # optional\n"
         "---\n"
         "\n"
         "# Display Name\n"
@@ -1693,12 +1560,8 @@ def show_template() -> None:
 @app.command("fetch-github")
 def fetch_github(
     repo: Annotated[str, typer.Argument(help="owner/repo slug")],
-    output: Annotated[
-        Path | None, typer.Option("--output", "-o", help="Write draft to file")
-    ] = None,
-    category: Annotated[
-        str | None, typer.Option("--category", "-c", help="Override inferred category")
-    ] = None,
+    output: Annotated[Path | None, typer.Option("--output", "-o", help="Write draft to file")] = None,
+    category: Annotated[str | None, typer.Option("--category", "-c", help="Override inferred category")] = None,
 ) -> None:
     """Fetch README and docs/ from GitHub and output a draft entry.
 
@@ -1710,10 +1573,7 @@ def fetch_github(
     verbose = _verbose_state["verbose"]
     try:
         if category is not None and category not in VALID_CATEGORIES:
-            _show_error(
-                f"Invalid category '{category}'.\n"
-                f"Valid categories: {', '.join(sorted(VALID_CATEGORIES))}"
-            )
+            _show_error(f"Invalid category '{category}'.\nValid categories: {', '.join(sorted(VALID_CATEGORIES))}")
             raise typer.Exit(code=2)
 
         with console.status(f"Fetching metadata for [cyan]{repo}[/cyan]..."):
@@ -1727,9 +1587,7 @@ def fetch_github(
             inferred = _infer_category(meta)
             if inferred is not None:
                 resolved_category = inferred
-                console.print(
-                    f"[dim]Category inferred from GitHub topics:[/dim] [cyan]{resolved_category}[/cyan]"
-                )
+                console.print(f"[dim]Category inferred from GitHub topics:[/dim] [cyan]{resolved_category}[/cyan]")
             else:
                 valid_sorted = sorted(VALID_CATEGORIES)
                 console.print(
@@ -1742,8 +1600,7 @@ def fetch_github(
                         resolved_category = chosen
                         break
                     console.print(
-                        f"[red]'{chosen}' is not a valid category.[/red] "
-                        f"Choose from: {', '.join(valid_sorted)}"
+                        f"[red]'{chosen}' is not a valid category.[/red] Choose from: {', '.join(valid_sorted)}"
                     )
 
         # Fetch README text
@@ -1768,12 +1625,7 @@ def fetch_github(
         ]
         if meta.has_docs_dir and meta.docs_files:
             doc_lines = "\n".join(meta.docs_files)
-            body_parts.extend([
-                "",
-                "<!-- docs/ files found (fetch manually if needed):",
-                doc_lines,
-                "-->",
-            ])
+            body_parts.extend(["", "<!-- docs/ files found (fetch manually if needed):", doc_lines, "-->"])
         entry.body = "\n".join(body_parts)
 
         post = entry_to_post(entry)
@@ -1798,9 +1650,7 @@ def fetch_github(
 
 
 @app.command("update-append")
-def update_append(
-    topic: Annotated[str, typer.Argument(help="kebab-case topic slug")],
-) -> None:
+def update_append(topic: Annotated[str, typer.Argument(help="kebab-case topic slug")]) -> None:
     """Find entry by topic, open editor for update content, append section.
 
     Args:
@@ -1854,10 +1704,7 @@ def update_append(
 
 @app.command("add")
 def add(
-    file: Annotated[
-        Path | None,
-        typer.Argument(help="Entry file with frontmatter; omit to read stdin"),
-    ] = None,
+    file: Annotated[Path | None, typer.Argument(help="Entry file with frontmatter; omit to read stdin")] = None,
 ) -> None:
     """Read a frontmatter entry and add it to the knowledge base.
 
@@ -1868,9 +1715,7 @@ def add(
     """
     verbose = _verbose_state["verbose"]
     try:
-        text = (
-            file.read_text(encoding="utf-8") if file is not None else sys.stdin.read()
-        )
+        text = file.read_text(encoding="utf-8") if file is not None else sys.stdin.read()
 
         # Pre-write validation
         if _detect_format_safe(text) != "frontmatter":
@@ -1901,11 +1746,7 @@ def add(
         if target_path.exists():
             existing = parse_entry(target_path)
             if existing.topic != entry.topic:
-                raise TopicConflictError(
-                    target_path=target_path,
-                    existing_topic=existing.topic,
-                    new_topic=entry.topic,
-                )
+                raise TopicConflictError(target_path=target_path, existing_topic=existing.topic, new_topic=entry.topic)
 
         # Ensure category directory exists
         if not KB_ROOT.exists():
@@ -1933,9 +1774,7 @@ def add(
 # ---------------------------------------------------------------------------
 
 
-def _migrate_frontmatter_path(
-    path: Path, text: str, dry_run: bool, result: MigrationResult
-) -> None:
+def _migrate_frontmatter_path(path: Path, text: str, dry_run: bool, result: MigrationResult) -> None:
     """Migrate a single frontmatter file from old flat format to skill-spec.
 
     Skips files already in new format. Appends to result in-place.
@@ -1969,21 +1808,14 @@ def _migrate_frontmatter_path(
     migrated = migrate_entry(entry)
     rel = path.relative_to(KB_ROOT)
     if dry_run:
-        console.print(
-            f"[yellow]Would upgrade[/yellow] {rel} "
-            f"[dim](flat frontmatter -> skill-spec)[/dim]"
-        )
+        console.print(f"[yellow]Would upgrade[/yellow] {rel} [dim](flat frontmatter -> skill-spec)[/dim]")
     else:
         write_entry(migrated, path)
-        console.print(
-            f"[green]Upgraded[/green] {rel} [dim](flat frontmatter -> skill-spec)[/dim]"
-        )
+        console.print(f"[green]Upgraded[/green] {rel} [dim](flat frontmatter -> skill-spec)[/dim]")
     result.migrated.append(path)
 
 
-def _migrate_inline_path(
-    path: Path, text: str, dry_run: bool, result: MigrationResult
-) -> None:
+def _migrate_inline_path(path: Path, text: str, dry_run: bool, result: MigrationResult) -> None:
     """Migrate a single inline-header file to skill-spec frontmatter.
 
     Appends to result in-place.
@@ -2007,15 +1839,10 @@ def _migrate_inline_path(
     migrated = migrate_entry(entry)
     rel = path.relative_to(KB_ROOT)
     if dry_run:
-        console.print(
-            f"[yellow]Would migrate[/yellow] {rel} "
-            f"[dim](inline-header -> skill-spec)[/dim]"
-        )
+        console.print(f"[yellow]Would migrate[/yellow] {rel} [dim](inline-header -> skill-spec)[/dim]")
     else:
         write_entry(migrated, path)
-        console.print(
-            f"[green]Migrated[/green] {rel} [dim](inline-header -> skill-spec)[/dim]"
-        )
+        console.print(f"[green]Migrated[/green] {rel} [dim](inline-header -> skill-spec)[/dim]")
     result.migrated.append(path)
 
 
@@ -2036,12 +1863,8 @@ def _is_new_skill_format(meta: dict[str, Any]) -> bool:
 
 @app.command("migrate")
 def migrate(
-    all_entries: Annotated[
-        bool, typer.Option("--all", help="Migrate all entries (default behaviour)")
-    ] = True,
-    dry_run: Annotated[
-        bool, typer.Option("--dry-run", help="Show what would change without writing")
-    ] = False,
+    all_entries: Annotated[bool, typer.Option("--all", help="Migrate all entries (default behaviour)")] = True,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Show what would change without writing")] = False,
 ) -> None:
     """Migrate entries to skill-spec compatible frontmatter format in-place.
 
@@ -2083,9 +1906,7 @@ def migrate(
     )
     if result.failed:
         for fail_path, reason in result.failed:
-            console.print(
-                f"  [red]FAILED[/red] {fail_path.relative_to(KB_ROOT)}: {reason}"
-            )
+            console.print(f"  [red]FAILED[/red] {fail_path.relative_to(KB_ROOT)}: {reason}")
 
 
 # ---------------------------------------------------------------------------
@@ -2152,9 +1973,7 @@ def _require_claude() -> str:
     """
     path = shutil.which("claude")
     if path is None:
-        raise ExternalCommandError(
-            command="claude", hint="Install Claude Code CLI: https://claude.ai/code"
-        )
+        raise ExternalCommandError(command="claude", hint="Install Claude Code CLI: https://claude.ai/code")
     return path
 
 
@@ -2183,9 +2002,7 @@ def _call_claude_for_description(entry: KBEntry, claude_path: str) -> str:
     # Scoop and system locations so the subprocess can start regardless of whether
     # the parent session had the variable set.
     bash_candidates: list[str] = [
-        r"C:\Users\{}\scoop\apps\git\current\usr\bin\bash.exe".format(
-            os.environ.get("USERNAME", "")
-        ),
+        r"C:\Users\{}\scoop\apps\git\current\usr\bin\bash.exe".format(os.environ.get("USERNAME", "")),
         r"C:\Program Files\Git\usr\bin\bash.exe",
         r"C:\Program Files (x86)\Git\usr\bin\bash.exe",
     ]
@@ -2197,14 +2014,7 @@ def _call_claude_for_description(entry: KBEntry, claude_path: str) -> str:
                 break
     try:
         result = subprocess.run(
-            [
-                claude_path,
-                "--print",
-                "--model",
-                "claude-haiku-4-5-20251001",
-                "-p",
-                prompt,
-            ],
+            [claude_path, "--print", "--model", "claude-haiku-4-5-20251001", "-p", prompt],
             capture_output=True,
             text=True,
             check=True,
@@ -2212,33 +2022,25 @@ def _call_claude_for_description(entry: KBEntry, claude_path: str) -> str:
         )
     except subprocess.CalledProcessError as exc:
         raise ExternalCommandError(
-            command="claude --print",
-            hint="Check claude CLI authentication and model availability.",
-            stderr=exc.stderr,
+            command="claude --print", hint="Check claude CLI authentication and model availability.", stderr=exc.stderr
         ) from exc
 
     raw = result.stdout.strip()
     # Strip surrounding quotes the model may have added
-    if (raw.startswith('"') and raw.endswith('"')) or (
-        raw.startswith("'") and raw.endswith("'")
-    ):
+    if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
         raw = raw[1:-1].strip()
 
     if "\n" in raw:
         raise ValueError(f"Generated description contains newlines: {raw!r}")
     if len(raw) > _DESCRIPTION_MAX_LEN:
-        raise ValueError(
-            f"Generated description is {len(raw)} chars; max is {_DESCRIPTION_MAX_LEN}."
-        )
+        raise ValueError(f"Generated description is {len(raw)} chars; max is {_DESCRIPTION_MAX_LEN}.")
     if not raw:
         raise ValueError("Generated description is empty.")
 
     return raw
 
 
-def _collect_candidates(
-    topic: str | None, all_entries: bool, verbose: bool
-) -> list[KBEntry]:
+def _collect_candidates(topic: str | None, all_entries: bool, verbose: bool) -> list[KBEntry]:
     """Resolve the list of KB entries to process for description generation.
 
     Args:
@@ -2271,9 +2073,7 @@ def _collect_candidates(
     return candidates
 
 
-def _process_one_entry(
-    entry: KBEntry, claude_path: str, dry_run: bool, verbose: bool
-) -> bool:
+def _process_one_entry(entry: KBEntry, claude_path: str, dry_run: bool, verbose: bool) -> bool:
     """Generate and optionally write a description for a single KB entry.
 
     Args:
@@ -2287,22 +2087,15 @@ def _process_one_entry(
     """
     rel = entry.file_path.relative_to(KB_ROOT)
     try:
-        with console.status(
-            f"Generating description for [cyan]{entry.topic}[/cyan]..."
-        ):
+        with console.status(f"Generating description for [cyan]{entry.topic}[/cyan]..."):
             description = _call_claude_for_description(entry, claude_path)
     except (ExternalCommandError, ValueError) as exc:
-        _show_error(
-            f"Failed to generate description for '{entry.topic}': {exc}",
-            verbose=verbose,
-            exc=exc,
-        )
+        _show_error(f"Failed to generate description for '{entry.topic}': {exc}", verbose=verbose, exc=exc)
         return False
 
     if dry_run:
         console.print(
-            f"[yellow]DRY-RUN[/yellow] [cyan]{entry.topic}[/cyan] "
-            f"({len(description)} chars)\n  {description}"
+            f"[yellow]DRY-RUN[/yellow] [cyan]{entry.topic}[/cyan] ({len(description)} chars)\n  {description}"
         )
         return True
 
@@ -2315,17 +2108,10 @@ def _process_one_entry(
 
 @app.command("generate-descriptions")
 def generate_descriptions(
-    all_entries: Annotated[
-        bool,
-        typer.Option("--all", help="Regenerate all descriptions, not just bad ones."),
-    ] = False,
-    dry_run: Annotated[
-        bool,
-        typer.Option("--dry-run", help="Print generated descriptions without writing."),
-    ] = False,
+    all_entries: Annotated[bool, typer.Option("--all", help="Regenerate all descriptions, not just bad ones.")] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Print generated descriptions without writing.")] = False,
     topic: Annotated[
-        str | None,
-        typer.Option("--topic", help="Regenerate description for a single topic only."),
+        str | None, typer.Option("--topic", help="Regenerate description for a single topic only.")
     ] = None,
 ) -> None:
     """Generate skill-compatible descriptions for KB entries using the Claude CLI.
@@ -2352,17 +2138,13 @@ def generate_descriptions(
     candidates = _collect_candidates(topic, all_entries, verbose)
 
     if not candidates:
-        console.print(
-            "[green]All descriptions are already good. Nothing to do.[/green]"
-        )
+        console.print("[green]All descriptions are already good. Nothing to do.[/green]")
         return
 
     noun = "entry" if len(candidates) == 1 else "entries"
     console.print(f"[dim]Found {len(candidates)} {noun} to process.[/dim]")
 
-    results = [
-        _process_one_entry(entry, claude_path, dry_run, verbose) for entry in candidates
-    ]
+    results = [_process_one_entry(entry, claude_path, dry_run, verbose) for entry in candidates]
     ok_count = sum(results)
     fail_count = len(results) - ok_count
 

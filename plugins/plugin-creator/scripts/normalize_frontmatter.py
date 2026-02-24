@@ -169,9 +169,7 @@ def _unified_diff(original: str, normalized: str, label: str) -> str:
     """
     orig_lines = original.splitlines(keepends=True)
     new_lines = normalized.splitlines(keepends=True)
-    diff = difflib.unified_diff(
-        orig_lines, new_lines, fromfile=f"a/{label}", tofile=f"b/{label}", n=3
-    )
+    diff = difflib.unified_diff(orig_lines, new_lines, fromfile=f"a/{label}", tofile=f"b/{label}", n=3)
     return "".join(diff)
 
 
@@ -196,9 +194,7 @@ def _get_table_width(table: Table) -> int:
 
 @app.command()
 def main(
-    dry_run: Annotated[
-        bool, typer.Option("--dry-run", help="Report changes without writing files.")
-    ] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Report changes without writing files.")] = False,
     root: Annotated[
         Path,
         typer.Option(
@@ -222,9 +218,7 @@ def main(
         root: Repository root directory.
     """
     mode_label = "[yellow]DRY RUN[/yellow]" if dry_run else "[green]LIVE[/green]"
-    console.print(
-        f"\n:magnifying_glass: Normalizing frontmatter quoting ({mode_label})\n"
-    )
+    console.print(f"\n:magnifying_glass: Normalizing frontmatter quoting ({mode_label})\n")
 
     files = discover_files(root)
     if not files:
@@ -251,9 +245,7 @@ def main(
         diff_text = _unified_diff(original, normalized, str(rel))
         console.print(f":white_check_mark: [bold]{rel}[/bold]")
         if diff_text:
-            panel = Panel(
-                diff_text, title=f"diff {rel}", border_style="blue", expand=False
-            )
+            panel = Panel(diff_text, title=f"diff {rel}", border_style="blue", expand=False)
             console.print(panel)
 
         if not dry_run:
@@ -263,18 +255,11 @@ def main(
 
     # ---------- Summary table ----------
     console.print()
-    table = Table(
-        title=":bar_chart: Normalization Summary",
-        box=box.MINIMAL_DOUBLE_HEAD,
-        title_style="bold cyan",
-    )
+    table = Table(title=":bar_chart: Normalization Summary", box=box.MINIMAL_DOUBLE_HEAD, title_style="bold cyan")
     table.add_column("Category", style="bold", no_wrap=True)
     table.add_column("Count", justify="right", no_wrap=True)
     table.add_row("Files inspected", str(len(files)))
-    table.add_row(
-        "[green]Modified[/green]" if not dry_run else "[yellow]Would modify[/yellow]",
-        str(len(modified)),
-    )
+    table.add_row("[green]Modified[/green]" if not dry_run else "[yellow]Would modify[/yellow]", str(len(modified)))
     table.add_row("Unchanged", str(len(unchanged)))
     table.add_row("Skipped (parse errors)", str(len(skipped)))
 
@@ -282,17 +267,11 @@ def main(
     console.print(table, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
 
     if dry_run and modified:
-        console.print(
-            f"\n[yellow]Dry-run complete — {len(modified)} file(s) would be modified.[/yellow]"
-        )
+        console.print(f"\n[yellow]Dry-run complete — {len(modified)} file(s) would be modified.[/yellow]")
     elif modified:
-        console.print(
-            f"\n[green]:white_check_mark: Done — {len(modified)} file(s) normalized.[/green]"
-        )
+        console.print(f"\n[green]:white_check_mark: Done — {len(modified)} file(s) normalized.[/green]")
     else:
-        console.print(
-            "\n[green]:white_check_mark: All files already normalized.[/green]"
-        )
+        console.print("\n[green]:white_check_mark: All files already normalized.[/green]")
 
 
 if __name__ == "__main__":

@@ -91,9 +91,7 @@ class SkillFrontmatter(BaseModel):
     context: Literal["fork"] | None = None
     agent: str | None = None
     user_invocable: bool | None = Field(None, alias="user-invocable")
-    disable_model_invocation: bool | None = Field(
-        None, alias="disable-model-invocation"
-    )
+    disable_model_invocation: bool | None = Field(None, alias="disable-model-invocation")
     hooks: dict[str, Any] | None = None
 
     @field_validator("skills", "allowed_tools", mode="before")
@@ -175,9 +173,7 @@ class AgentFrontmatter(BaseModel):
     tools: str | None = None
     disallowedTools: str | None = None
     model: Literal["sonnet", "opus", "haiku", "inherit"] | None = None
-    permissionMode: (
-        Literal["default", "acceptEdits", "dontAsk", "bypassPermissions", "plan"] | None
-    ) = None
+    permissionMode: Literal["default", "acceptEdits", "dontAsk", "bypassPermissions", "plan"] | None = None
     maxTurns: int | None = None
     skills: str | None = None
     mcpServers: list[Any] | dict[str, Any] | None = None
@@ -219,9 +215,7 @@ class AgentFrontmatter(BaseModel):
 #: Maps file-type string values to their Pydantic model class.
 #: To add a new file type: append one entry here and create its model class above.
 #: No other code changes required.
-_MODEL_REGISTRY: dict[
-    str, type[SkillFrontmatter | CommandFrontmatter | AgentFrontmatter]
-] = {
+_MODEL_REGISTRY: dict[str, type[SkillFrontmatter | CommandFrontmatter | AgentFrontmatter]] = {
     "skill": SkillFrontmatter,
     "command": CommandFrontmatter,
     "agent": AgentFrontmatter,
@@ -277,9 +271,7 @@ def get_frontmatter_model(
     return _MODEL_REGISTRY.get(str(file_type_value))
 
 
-def fix_skill_name_field(
-    normalized_dict: dict[str, Any], file_path: Path, fixes: list[str]
-) -> dict[str, Any]:
+def fix_skill_name_field(normalized_dict: dict[str, Any], file_path: Path, fixes: list[str]) -> dict[str, Any]:
     """Add or correct the 'name' field to match the skill's parent directory name.
 
     The 'name' field must equal the directory name containing SKILL.md.
@@ -305,9 +297,7 @@ def fix_skill_name_field(
         return {"name": dir_name, **normalized_dict}
 
     if current_name != dir_name:
-        fixes.append(
-            f"Corrected 'name' field from '{current_name}' to '{dir_name}' to match directory name"
-        )
+        fixes.append(f"Corrected 'name' field from '{current_name}' to '{dir_name}' to match directory name")
         normalized_dict["name"] = dir_name
 
     return normalized_dict

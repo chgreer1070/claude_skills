@@ -176,9 +176,7 @@ class TestInvalidNamesHyphens:
             ("test--", "test--"),  # Multiple trailing hyphens
         ],
     )
-    def test_hyphen_placement_detection(
-        self, tmp_path: Path, invalid_name: str, yaml_repr: str
-    ) -> None:
+    def test_hyphen_placement_detection(self, tmp_path: Path, invalid_name: str, yaml_repr: str) -> None:
         """Test error when name has invalid hyphen placement (SK003).
 
         Tests: Names with leading/trailing/consecutive hyphens

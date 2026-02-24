@@ -71,9 +71,7 @@ def setup_logging() -> Path:
         level=logging.DEBUG,
         format="%(message)s",
         handlers=[
-            RichHandler(
-                console=console, rich_tracebacks=True, tracebacks_show_locals=True
-            ),
+            RichHandler(console=console, rich_tracebacks=True, tracebacks_show_locals=True),
             logging.FileHandler(log_file, mode="a", encoding="utf-8"),
         ],
     )
@@ -125,9 +123,7 @@ class ProcessingResult(Generic[T]):
 
 # CLI application setup
 app = typer.Typer(
-    name="cli-demo",
-    help="Demonstration of modern Python CLI patterns with Typer and Rich",
-    rich_markup_mode="rich",
+    name="cli-demo", help="Demonstration of modern Python CLI patterns with Typer and Rich", rich_markup_mode="rich"
 )
 
 # Subcommand groups
@@ -201,11 +197,7 @@ def display_results(results: list[dict[str, Any]]) -> None:
     table.add_column("Size", justify="right", style="yellow")
 
     for result in results:
-        status = (
-            "[green]:white_check_mark:[/green]"
-            if result["success"]
-            else "[red]:cross_mark:[/red]"
-        )
+        status = "[green]:white_check_mark:[/green]" if result["success"] else "[red]:cross_mark:[/red]"
         table.add_row(result["filename"], status, str(result["size"]))
 
     console.print(table)
@@ -216,11 +208,7 @@ def show_progress_demo() -> None:
 
     Demonstrates Rich progress bars with spinner and text updates.
     """
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
         task = progress.add_task("Processing files...", total=None)
         time.sleep(2)  # Simulate work
         progress.update(task, description="[green]Complete!")
@@ -257,16 +245,10 @@ class GenericProcessor:
         Returns:
             Processing result dictionary with type, file path, and size
         """
-        return {
-            "type": self.processor_type,
-            "file": str(file),
-            "size": file.stat().st_size,
-        }
+        return {"type": self.processor_type, "file": str(file), "size": file.stat().st_size}
 
 
-def create_processor(
-    processor_type: str, config: dict[str, Any] | None = None
-) -> Processor:
+def create_processor(processor_type: str, config: dict[str, Any] | None = None) -> Processor:
     """Factory function for processors.
 
     Args:
@@ -285,9 +267,7 @@ def create_processor(
         case _ if processor_type in valid_types:
             return GenericProcessor(processor_type, config or {})
         case _:
-            msg = (
-                f"Unknown processor type: {processor_type}. Valid types: {valid_types}"
-            )
+            msg = f"Unknown processor type: {processor_type}. Valid types: {valid_types}"
             raise ValueError(msg)
 
 
@@ -321,13 +301,9 @@ async def process_files_async(
                 # Simulate async processing
                 await asyncio.sleep(0.1)
                 data = {"file": str(file), "size": size}
-                return ProcessingResult(
-                    success=True, data=data, error=None, duration=0.1
-                )
+                return ProcessingResult(success=True, data=data, error=None, duration=0.1)
             except OSError as e:
-                return ProcessingResult(
-                    success=False, data=None, error=str(e), duration=0.0
-                )
+                return ProcessingResult(success=False, data=None, error=str(e), duration=0.0)
 
     tasks = list(starmap(process_single, files))
 
@@ -339,9 +315,7 @@ async def process_files_async(
 @app.command()
 def hello(
     name: Annotated[str, typer.Option("--name", "-n", help="Your name")] = "World",
-    verbose: Annotated[
-        bool, typer.Option("--verbose", "-v", help="Verbose output")
-    ] = False,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Verbose output")] = False,
 ) -> None:
     """Say hello with style.
 
@@ -349,15 +323,11 @@ def hello(
     - logger.debug/info: Operational/diagnostic messages
     - console.print: User-facing UI output
     """
-    logger.info(
-        "Hello command invoked", extra={"user_name": name, "verbose_mode": verbose}
-    )
+    logger.info("Hello command invoked", extra={"user_name": name, "verbose_mode": verbose})
 
     if verbose:
         logger.debug("Verbose mode enabled")
-        console.print(
-            f"[bold blue]Greeting:[/bold blue] Preparing to say hello to {name}"
-        )
+        console.print(f"[bold blue]Greeting:[/bold blue] Preparing to say hello to {name}")
 
     console.print(f"[bold green]Hello, {name}![/bold green] :wave:")
     logger.info("Hello command completed successfully")
@@ -407,18 +377,10 @@ def demo_progress() -> None:
 
 @process_app.command("files")
 def process_files_command(
-    directory: Annotated[
-        Path, typer.Option("--dir", "-d", help="Directory to process")
-    ] = Path(),
-    pattern: Annotated[
-        str, typer.Option("--pattern", "-p", help="File pattern to match")
-    ] = "*.py",
-    format_type: Annotated[
-        OutputFormat, typer.Option("--format", "-f", help="Output format")
-    ] = OutputFormat.JSON,
-    verbose: Annotated[
-        bool, typer.Option("--verbose", "-v", help="Verbose output")
-    ] = False,
+    directory: Annotated[Path, typer.Option("--dir", "-d", help="Directory to process")] = Path(),
+    pattern: Annotated[str, typer.Option("--pattern", "-p", help="File pattern to match")] = "*.py",
+    format_type: Annotated[OutputFormat, typer.Option("--format", "-f", help="Output format")] = OutputFormat.JSON,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Verbose output")] = False,
 ) -> None:
     """Process files matching pattern.
 
@@ -428,24 +390,15 @@ def process_files_command(
     - Success/failure tracking
     """
     logger.info(
-        "Starting file processing",
-        extra={
-            "directory": str(directory),
-            "pattern": pattern,
-            "format": format_type.value,
-        },
+        "Starting file processing", extra={"directory": str(directory), "pattern": pattern, "format": format_type.value}
     )
 
     try:
         files = list(directory.glob(pattern))
-        logger.info(
-            f"Found {len(files)} files matching pattern", extra={"count": len(files)}
-        )
+        logger.info(f"Found {len(files)} files matching pattern", extra={"count": len(files)})
 
         if verbose:
-            console.print(
-                f"[bold blue]Found {len(files)} files matching pattern:[/bold blue] {pattern}"
-            )
+            console.print(f"[bold blue]Found {len(files)} files matching pattern:[/bold blue] {pattern}")
 
         processor = create_processor(format_type.value)
         results = []
@@ -454,30 +407,18 @@ def process_files_command(
             try:
                 logger.debug(f"Processing file: {file.name}")
                 result = processor.process(file)
-                results.append({
-                    "filename": file.name,
-                    "success": True,
-                    "size": result["size"],
-                })
-                console.print(
-                    f"[bold green]:white_check_mark:[/bold green] Processed {file.name}"
-                )
+                results.append({"filename": file.name, "success": True, "size": result["size"]})
+                console.print(f"[bold green]:white_check_mark:[/bold green] Processed {file.name}")
             except OSError as e:
-                logger.exception(
-                    f"Failed to process {file.name}", extra={"file": str(file)}
-                )
+                logger.exception(f"Failed to process {file.name}", extra={"file": str(file)})
                 results.append({"filename": file.name, "success": False, "size": 0})
-                console.print(
-                    f"[bold red]:cross_mark:[/bold red] Failed {file.name}: {e}"
-                )
+                console.print(f"[bold red]:cross_mark:[/bold red] Failed {file.name}: {e}")
 
         if results:
             console.print()
             display_results(results)
 
-        logger.info(
-            "File processing completed", extra={"total_processed": len(results)}
-        )
+        logger.info("File processing completed", extra={"total_processed": len(results)})
 
     except OSError as e:
         logger.exception("File processing failed")
@@ -486,37 +427,25 @@ def process_files_command(
 
 @process_app.command("async")
 def async_process_command(
-    directory: Annotated[
-        Path, typer.Option("--dir", "-d", help="Directory to process")
-    ] = Path(),
+    directory: Annotated[Path, typer.Option("--dir", "-d", help="Directory to process")] = Path(),
     workers: Annotated[int, typer.Option("--workers", "-w", help="Max workers")] = 4,
 ) -> None:
     """Process files asynchronously.
 
     Demonstrates logging in async contexts with concurrent operations.
     """
-    logger.info(
-        "Starting async file processing",
-        extra={"directory": str(directory), "workers": workers},
-    )
+    logger.info("Starting async file processing", extra={"directory": str(directory), "workers": workers})
 
     if not (files := list(directory.glob("*.py"))[:5]):  # Limit for demo
-        logger.warning(
-            "No Python files found in directory", extra={"directory": str(directory)}
-        )
+        logger.warning("No Python files found in directory", extra={"directory": str(directory)})
         console.print("[yellow]No Python files found in directory[/yellow]")
         return
 
     # Gather file stats before async processing (avoids blocking I/O in async context)
     files_with_stats = [(f, f.stat().st_size) for f in files]
 
-    logger.info(
-        f"Processing {len(files_with_stats)} files asynchronously",
-        extra={"file_count": len(files_with_stats)},
-    )
-    console.print(
-        f"[bold blue]Processing {len(files_with_stats)} files with {workers} workers...[/bold blue]"
-    )
+    logger.info(f"Processing {len(files_with_stats)} files asynchronously", extra={"file_count": len(files_with_stats)})
+    console.print(f"[bold blue]Processing {len(files_with_stats)} files with {workers} workers...[/bold blue]")
 
     with Progress(console=console) as progress:
         task = progress.add_task("Processing files...", total=len(files_with_stats))
@@ -529,19 +458,14 @@ def async_process_command(
                 if result.success and result.data:
                     success_count += 1
                     logger.debug(f"Async processing succeeded: {result.data['file']}")
-                    console.print(
-                        f"[green]:white_check_mark:[/green] {result.data['file']}"
-                    )
+                    console.print(f"[green]:white_check_mark:[/green] {result.data['file']}")
                 else:
                     error_count += 1
                     logger.error(f"Async processing failed: {result.error}")
                     console.print(f"[red]:cross_mark:[/red] Error: {result.error}")
                 progress.advance(task)
 
-            logger.info(
-                "Async processing completed",
-                extra={"success": success_count, "errors": error_count},
-            )
+            logger.info("Async processing completed", extra={"success": success_count, "errors": error_count})
 
         asyncio.run(run_processing())
 
@@ -551,58 +475,23 @@ def advanced_example(
     *,
     # Input/Output Options
     input_file: Annotated[
-        Path | None,
-        typer.Option(
-            "--input",
-            "-i",
-            help="Input file path",
-            rich_help_panel="Input/Output Options",
-        ),
+        Path | None, typer.Option("--input", "-i", help="Input file path", rich_help_panel="Input/Output Options")
     ] = None,
     output_dir: Annotated[
-        Path,
-        typer.Option(
-            "--output",
-            "-o",
-            help="Output directory",
-            rich_help_panel="Input/Output Options",
-        ),
+        Path, typer.Option("--output", "-o", help="Output directory", rich_help_panel="Input/Output Options")
     ] = Path(),
     # Processing Options
     workers: Annotated[
-        int,
-        typer.Option(
-            "--workers",
-            "-w",
-            help="Number of worker threads",
-            rich_help_panel="Processing Options",
-        ),
+        int, typer.Option("--workers", "-w", help="Number of worker threads", rich_help_panel="Processing Options")
     ] = 4,
     timeout: Annotated[
-        int,
-        typer.Option(
-            "--timeout",
-            "-t",
-            help="Operation timeout in seconds",
-            rich_help_panel="Processing Options",
-        ),
+        int, typer.Option("--timeout", "-t", help="Operation timeout in seconds", rich_help_panel="Processing Options")
     ] = 300,
     # Debug Options
     verbose: Annotated[
-        bool,
-        typer.Option(
-            "--verbose",
-            "-v",
-            help="Enable verbose output",
-            rich_help_panel="Debug Options",
-        ),
+        bool, typer.Option("--verbose", "-v", help="Enable verbose output", rich_help_panel="Debug Options")
     ] = False,
-    debug: Annotated[
-        bool,
-        typer.Option(
-            "--debug", help="Enable debug mode", rich_help_panel="Debug Options"
-        ),
-    ] = False,
+    debug: Annotated[bool, typer.Option("--debug", help="Enable debug mode", rich_help_panel="Debug Options")] = False,
 ) -> None:
     """Advanced command demonstrating help panels and complex options."""
     config_panel = Panel(

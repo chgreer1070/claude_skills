@@ -41,17 +41,22 @@ STATUS_MAP: dict[str, str] = {
 
 TASK_ID_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z]?\d+(\.\d+)?$")
 
-VALID_STATUSES: frozenset[str] = frozenset({
-    "not-started",
-    "in-progress",
-    "complete",
-    "blocked",
-})
+VALID_STATUSES: frozenset[str] = frozenset({"not-started", "in-progress", "complete", "blocked"})
 
 VALID_COMPLEXITIES: frozenset[str] = frozenset({"low", "medium", "high"})
 
 _FRONTMATTER_DELIMITER = "---\n"
 
+__all__ = [
+    "STATUS_MAP",
+    "TASK_ID_PATTERN",
+    "VALID_COMPLEXITIES",
+    "VALID_STATUSES",
+    "has_yaml_frontmatter",
+    "normalize_status",
+    "parse_yaml_frontmatter",
+    "update_yaml_field",
+]
 
 # =============================================================================
 # Frontmatter Detection and Parsing
@@ -105,9 +110,7 @@ def parse_yaml_frontmatter(content: str) -> tuple[dict[str, Any], str]:
     """
     parts = content.split("---\n", 2)
     if len(parts) < 3:  # noqa: PLR2004
-        msg = (
-            "Invalid frontmatter format: expected opening and closing '---' delimiters"
-        )
+        msg = "Invalid frontmatter format: expected opening and closing '---' delimiters"
         raise ValueError(msg)
 
     # parts[0] should be empty (content before first ---)

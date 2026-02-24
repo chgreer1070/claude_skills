@@ -148,15 +148,7 @@ def _slug_to_project_name(slug: str) -> str:
         back to the original ``slug`` when no identifiable prefix is found.
     """
     parts = [p for p in slug.split("-") if p]
-    location_tokens = {
-        "repos",
-        "Desktop",
-        "Documents",
-        "Projects",
-        "src",
-        "code",
-        "work",
-    }
+    location_tokens = {"repos", "Desktop", "Documents", "Projects", "src", "code", "work"}
     idx = 0
     if idx < len(parts) and parts[idx] == "home":
         idx += 1
@@ -215,9 +207,7 @@ def _open_db() -> duckdb.DuckDBPyConnection:
     return con
 
 
-def _fetch_count(
-    con: duckdb.DuckDBPyConnection, sql: str, params: list | None = None
-) -> int:
+def _fetch_count(con: duckdb.DuckDBPyConnection, sql: str, params: list | None = None) -> int:
     """Execute a COUNT query and return the integer result.
 
     Args:
@@ -380,12 +370,8 @@ def _get_table_width(table: Table) -> int:
 
 @app.command("index")
 def cmd_index(
-    rebuild: Annotated[
-        bool, typer.Option("--rebuild", help="Drop and rebuild from scratch.")
-    ] = False,
-    project: Annotated[
-        str, typer.Option("--project", "-p", help="Filter by project name substring.")
-    ] = "",
+    rebuild: Annotated[bool, typer.Option("--rebuild", help="Drop and rebuild from scratch.")] = False,
+    project: Annotated[str, typer.Option("--project", "-p", help="Filter by project name substring.")] = "",
 ) -> None:
     """Build or update the DuckDB session index from ~/.claude/projects/.
 
@@ -402,9 +388,7 @@ def cmd_index(
         con.execute("DELETE FROM sessions")
         stderr.print("[yellow]Index cleared — rebuilding...[/yellow]")
 
-    files = sorted(
-        PROJECTS_DIR.glob("*/*.jsonl"), key=lambda f: f.stat().st_mtime, reverse=True
-    )
+    files = sorted(PROJECTS_DIR.glob("*/*.jsonl"), key=lambda f: f.stat().st_mtime, reverse=True)
     if project:
         files = [f for f in files if project.lower() in f.parent.name.lower()]
 
@@ -432,23 +416,15 @@ def _ensure_indexed(con: duckdb.DuckDBPyConnection) -> None:
     """
     if _fetch_count(con, "SELECT COUNT(*) FROM sessions") == 0:
         stderr.print("[yellow]Index is empty — building now...[/yellow]")
-        for f in sorted(
-            PROJECTS_DIR.glob("*/*.jsonl"),
-            key=lambda f: f.stat().st_mtime,
-            reverse=True,
-        ):
+        for f in sorted(PROJECTS_DIR.glob("*/*.jsonl"), key=lambda f: f.stat().st_mtime, reverse=True):
             _index_file(con, f)
 
 
 @app.command("list")
 def cmd_list(
     limit: Annotated[int, typer.Option("--limit", "-n")] = 20,
-    project: Annotated[
-        str, typer.Option("--project", "-p", help="Filter by project name substring.")
-    ] = "",
-    rebuild: Annotated[
-        bool, typer.Option("--rebuild", help="Re-index before listing.")
-    ] = False,
+    project: Annotated[str, typer.Option("--project", "-p", help="Filter by project name substring.")] = "",
+    rebuild: Annotated[bool, typer.Option("--rebuild", help="Re-index before listing.")] = False,
 ) -> None:
     """List recent sessions with metadata. Runs index if DB is empty.
 
@@ -483,9 +459,7 @@ def cmd_list(
         stdout.print("[yellow]No sessions found. Run 'index' first.[/yellow]")
         return
 
-    table = Table(
-        title="Recent Sessions", show_lines=False, box=box.MINIMAL_DOUBLE_HEAD
-    )
+    table = Table(title="Recent Sessions", show_lines=False, box=box.MINIMAL_DOUBLE_HEAD)
     table.add_column("Session ID", style="cyan", no_wrap=True)
     table.add_column("Project", style="green", no_wrap=True)
     table.add_column("Last Active", style="dim", no_wrap=True)
@@ -511,19 +485,14 @@ def cmd_list(
     table.width = _get_table_width(table)
     stdout.print(table, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
     stdout.print(
-        "\n[dim]Use 'messages <session-id>' for verbatim user messages, "
-        "'search <text>' to search raw files.[/dim]"
+        "\n[dim]Use 'messages <session-id>' for verbatim user messages, 'search <text>' to search raw files.[/dim]"
     )
 
 
 @app.command("messages")
 def cmd_messages(
-    session_id: Annotated[
-        str, typer.Argument(help="Session ID prefix or 'last' for most recent.")
-    ],
-    raw: Annotated[
-        bool, typer.Option("--raw", help="Output plain text, no formatting.")
-    ] = False,
+    session_id: Annotated[str, typer.Argument(help="Session ID prefix or 'last' for most recent.")],
+    raw: Annotated[bool, typer.Option("--raw", help="Output plain text, no formatting.")] = False,
 ) -> None:
     """Print verbatim user messages for a session.
 
@@ -539,9 +508,7 @@ def cmd_messages(
     con = _open_db()
 
     if session_id == "last":
-        row = con.execute(
-            "SELECT session_id FROM sessions ORDER BY last_ts DESC LIMIT 1"
-        ).fetchone()
+        row = con.execute("SELECT session_id FROM sessions ORDER BY last_ts DESC LIMIT 1").fetchone()
         if not row:
             stderr.print("[red]No sessions indexed. Run 'index' first.[/red]")
             raise typer.Exit(1)
@@ -558,9 +525,7 @@ def cmd_messages(
     ).fetchall()
 
     if not rows:
-        stderr.print(
-            f"[yellow]No messages in index for '{session_id}' — check 'list' for valid IDs.[/yellow]"
-        )
+        stderr.print(f"[yellow]No messages in index for '{session_id}' — check 'list' for valid IDs.[/yellow]")
         raise typer.Exit(1)
 
     if raw:
@@ -570,9 +535,7 @@ def cmd_messages(
             print(content)
             print()
     else:
-        stdout.print(
-            f"\n[bold]User Messages — {session_id}[/bold] ({len(rows)} messages)\n"
-        )
+        stdout.print(f"\n[bold]User Messages — {session_id}[/bold] ({len(rows)} messages)\n")
         for idx, ts, content in rows:
             date_str = ts[:19].replace("T", " ") if ts else "?"
             stdout.print(f"[dim]── [{idx + 1}] {date_str} ──[/dim]")
@@ -604,15 +567,11 @@ def _highlight_excerpt(pattern: re.Pattern, content: str, context_chars: int) ->
     excerpt = content[start:end]
     prefix = "…" if start > 0 else ""
     suffix = "…" if end < len(content) else ""
-    highlighted = pattern.sub(
-        lambda m: f"[bold yellow]{m.group()}[/bold yellow]", excerpt
-    )
+    highlighted = pattern.sub(lambda m: f"[bold yellow]{m.group()}[/bold yellow]", excerpt)
     return f"{prefix}{highlighted}{suffix}"
 
 
-def _search_file(
-    path: Path, pattern: re.Pattern, limit: int, hits: list[tuple[str, str, str, str]]
-) -> None:
+def _search_file(path: Path, pattern: re.Pattern, limit: int, hits: list[tuple[str, str, str, str]]) -> None:
     """Search one JSONL file for pattern matches, appending results to ``hits``.
 
     Silently skips the file on ``OSError``. Stops appending once ``hits``
@@ -638,24 +597,15 @@ def _search_file(
         if not content or _is_noise(content):
             continue
         if pattern.search(content):
-            hits.append((
-                str(path),
-                rec.get("sessionId", path.stem),
-                rec.get("timestamp", ""),
-                content,
-            ))
+            hits.append((str(path), rec.get("sessionId", path.stem), rec.get("timestamp", ""), content))
 
 
 @app.command("search")
 def cmd_search(
-    query: Annotated[
-        str, typer.Argument(help="Text to search for (case-insensitive).")
-    ],
+    query: Annotated[str, typer.Argument(help="Text to search for (case-insensitive).")],
     limit: Annotated[int, typer.Option("--limit", "-n")] = 20,
     project: Annotated[str, typer.Option("--project", "-p")] = "",
-    context_chars: Annotated[
-        int, typer.Option("--context", "-c", help="Chars of context around match.")
-    ] = 200,
+    context_chars: Annotated[int, typer.Option("--context", "-c", help="Chars of context around match.")] = 200,
 ) -> None:
     """Search raw JSONL files for text. Returns verbatim matching user messages.
 
@@ -669,9 +619,7 @@ def cmd_search(
             match in the output.
     """
     pattern = re.compile(re.escape(query), re.IGNORECASE)
-    files = sorted(
-        PROJECTS_DIR.glob("*/*.jsonl"), key=lambda f: f.stat().st_mtime, reverse=True
-    )
+    files = sorted(PROJECTS_DIR.glob("*/*.jsonl"), key=lambda f: f.stat().st_mtime, reverse=True)
     if project:
         files = [f for f in files if project.lower() in f.parent.name.lower()]
 
@@ -686,9 +634,7 @@ def cmd_search(
         return
 
     plural = "es" if len(hits) != 1 else ""
-    stdout.print(
-        f"\n[bold]Search results for '{query}'[/bold] ({len(hits)} match{plural})\n"
-    )
+    stdout.print(f"\n[bold]Search results for '{query}'[/bold] ({len(hits)} match{plural})\n")
     for path_str, sid, ts, content in hits:
         date_str = ts[:16].replace("T", " ") if ts else "?"
         proj = _slug_to_project_name(Path(path_str).parent.name)
@@ -698,9 +644,7 @@ def cmd_search(
 
 
 @app.command("show")
-def cmd_show(
-    session_id: Annotated[str, typer.Argument(help="Session ID prefix or 'last'.")],
-) -> None:
+def cmd_show(session_id: Annotated[str, typer.Argument(help="Session ID prefix or 'last'.")]) -> None:
     """Show cached summary for a session, or print metadata for manual summarization.
 
     Args:
@@ -714,9 +658,7 @@ def cmd_show(
     con = _open_db()
 
     if session_id == "last":
-        row = con.execute(
-            "SELECT session_id FROM sessions ORDER BY last_ts DESC LIMIT 1"
-        ).fetchone()
+        row = con.execute("SELECT session_id FROM sessions ORDER BY last_ts DESC LIMIT 1").fetchone()
         if not row:
             stderr.print("[red]No sessions indexed.[/red]")
             raise typer.Exit(1)
@@ -733,9 +675,7 @@ def cmd_show(
     ).fetchone()
 
     if not row:
-        stderr.print(
-            f"[red]Session '{session_id}' not found in index. Run 'list' first.[/red]"
-        )
+        stderr.print(f"[red]Session '{session_id}' not found in index. Run 'list' first.[/red]")
         raise typer.Exit(1)
 
     sid, file_path, proj, first_ts, last_ts, umsg, aturns, kb, has_sum = row
@@ -746,9 +686,7 @@ def cmd_show(
         stdout.print(summary_path.read_text())
         return
 
-    date_range = (
-        f"{first_ts[:19] if first_ts else '?'} → {last_ts[:19] if last_ts else '?'}"
-    )
+    date_range = f"{first_ts[:19] if first_ts else '?'} → {last_ts[:19] if last_ts else '?'}"
     summary_status = f"Cached at {summary_path}" if has_sum else "Not yet generated"
     stdout.print(f"""
 [bold]Session: {sid}[/bold]
@@ -767,9 +705,7 @@ Summary:       {summary_status}
 
 @app.command("mark-summarized")
 def cmd_mark_summarized(
-    session_id: Annotated[
-        str, typer.Argument(help="Session ID to mark as having a cached summary.")
-    ],
+    session_id: Annotated[str, typer.Argument(help="Session ID to mark as having a cached summary.")],
 ) -> None:
     """Mark a session as having a cached summary in the index.
 
@@ -777,14 +713,9 @@ def cmd_mark_summarized(
         session_id: Full or prefix session ID to match against the index.
     """
     con = _open_db()
-    con.execute(
-        "UPDATE sessions SET has_summary = TRUE WHERE session_id LIKE ?",
-        [f"{session_id}%"],
-    )
+    con.execute("UPDATE sessions SET has_summary = TRUE WHERE session_id LIKE ?", [f"{session_id}%"])
     count = _fetch_count(
-        con,
-        "SELECT COUNT(*) FROM sessions WHERE session_id LIKE ? AND has_summary = TRUE",
-        [f"{session_id}%"],
+        con, "SELECT COUNT(*) FROM sessions WHERE session_id LIKE ? AND has_summary = TRUE", [f"{session_id}%"]
     )
     stdout.print(f"Marked {count} session(s) as summarized.")
 

@@ -31,9 +31,7 @@ from rich.measure import Measurement
 from rich.table import Table
 
 console = Console()
-app = typer.Typer(
-    help="Validate Python shebang compliance using 4-rule decision system"
-)
+app = typer.Typer(help="Validate Python shebang compliance using 4-rule decision system")
 
 
 # Valid shebang patterns
@@ -130,9 +128,7 @@ def extract_imports(content: str) -> set[str]:
         tree = ast.parse(content)
     except SyntaxError:
         # If syntax error, do basic regex extraction as fallback
-        import_pattern = re.compile(
-            r"^\s*(?:from\s+(\S+)|import\s+(\S+))", re.MULTILINE
-        )
+        import_pattern = re.compile(r"^\s*(?:from\s+(\S+)|import\s+(\S+))", re.MULTILINE)
         for match in import_pattern.finditer(content):
             module = match.group(1) or match.group(2)
             if module:
@@ -166,15 +162,11 @@ def extract_pep723_dependencies(content: str) -> tuple[bool, set[str]]:
     # Normalize line endings to handle Windows CRLF
     normalized_content = content.replace("\r\n", "\n")
 
-    pep723_match = re.search(
-        r"# /// script\n(.*?)\n# ///", normalized_content, re.DOTALL
-    )
+    pep723_match = re.search(r"# /// script\n(.*?)\n# ///", normalized_content, re.DOTALL)
     if not pep723_match:
         return False, set()
 
-    deps_match = re.search(
-        r"dependencies\s*=\s*\[(.*?)\]", pep723_match.group(1), re.DOTALL
-    )
+    deps_match = re.search(r"dependencies\s*=\s*\[(.*?)\]", pep723_match.group(1), re.DOTALL)
     if not deps_match:
         return True, set()
 
@@ -258,9 +250,7 @@ def is_executable(file_path: Path) -> bool:
     return os.access(file_path, os.X_OK)
 
 
-def evaluate_rule_1(
-    is_exec: bool, has_external_deps: bool, uses_stdlib_only: bool
-) -> RuleEvaluation:
+def evaluate_rule_1(is_exec: bool, has_external_deps: bool, uses_stdlib_only: bool) -> RuleEvaluation:
     """Evaluate Rule 1: Python shebang for stdlib-only executable scripts.
 
     Pattern: #!/usr/bin/env python3
@@ -281,9 +271,7 @@ def evaluate_rule_1(
     is_applicable = all(conditions)
 
     if is_applicable:
-        reason = (
-            "File is executable, has no external dependencies, and uses only stdlib"
-        )
+        reason = "File is executable, has no external dependencies, and uses only stdlib"
     else:
         unmet = []
         if not is_exec:
@@ -294,12 +282,7 @@ def evaluate_rule_1(
             unmet.append("uses non-stdlib modules")
         reason = f"Does not meet conditions: {', '.join(unmet)}"
 
-    return RuleEvaluation(
-        rule_number=1,
-        conditions_met=conditions,
-        is_applicable=is_applicable,
-        reason=reason,
-    )
+    return RuleEvaluation(rule_number=1, conditions_met=conditions, is_applicable=is_applicable, reason=reason)
 
 
 def evaluate_rule_2(is_exec: bool, is_in_package: bool) -> RuleEvaluation:
@@ -330,12 +313,7 @@ def evaluate_rule_2(is_exec: bool, is_in_package: bool) -> RuleEvaluation:
             unmet.append("not part of a package")
         reason = f"Does not meet conditions: {', '.join(unmet)}"
 
-    return RuleEvaluation(
-        rule_number=2,
-        conditions_met=conditions,
-        is_applicable=is_applicable,
-        reason=reason,
-    )
+    return RuleEvaluation(rule_number=2, conditions_met=conditions, is_applicable=is_applicable, reason=reason)
 
 
 def evaluate_rule_3(is_exec: bool, has_external_deps: bool) -> RuleEvaluation:
@@ -366,12 +344,7 @@ def evaluate_rule_3(is_exec: bool, has_external_deps: bool) -> RuleEvaluation:
             unmet.append("no external dependencies")
         reason = f"Does not meet conditions: {', '.join(unmet)}"
 
-    return RuleEvaluation(
-        rule_number=3,
-        conditions_met=conditions,
-        is_applicable=is_applicable,
-        reason=reason,
-    )
+    return RuleEvaluation(rule_number=3, conditions_met=conditions, is_applicable=is_applicable, reason=reason)
 
 
 def evaluate_rule_4(is_exec: bool) -> RuleEvaluation:
@@ -390,23 +363,12 @@ def evaluate_rule_4(is_exec: bool) -> RuleEvaluation:
     conditions = [not is_exec]
     is_applicable = all(conditions)
 
-    reason = (
-        "File is not executable (library/module)"
-        if is_applicable
-        else "File is executable"
-    )
+    reason = "File is not executable (library/module)" if is_applicable else "File is executable"
 
-    return RuleEvaluation(
-        rule_number=4,
-        conditions_met=conditions,
-        is_applicable=is_applicable,
-        reason=reason,
-    )
+    return RuleEvaluation(rule_number=4, conditions_met=conditions, is_applicable=is_applicable, reason=reason)
 
 
-def determine_applicable_rule(
-    file_path: Path, content: str
-) -> tuple[int, str, list[RuleEvaluation]]:
+def determine_applicable_rule(file_path: Path, content: str) -> tuple[int, str, list[RuleEvaluation]]:
     """Determine which shebang rule applies to a file.
 
     Args:
@@ -502,17 +464,13 @@ def diagnose_uv_shebang(shebang: str) -> list[str]:
         quiet_pos = shebang.index("--quiet")
         run_pos = shebang.index(" run ")
         if quiet_pos > run_pos:
-            diagnostics.append(
-                "Flag ordering error: --quiet is a global flag and must come BEFORE 'run'"
-            )
+            diagnostics.append("Flag ordering error: --quiet is a global flag and must come BEFORE 'run'")
 
     if "--active" in shebang and " run " in shebang:
         active_pos = shebang.index("--active")
         run_pos = shebang.index(" run ")
         if active_pos < run_pos:
-            diagnostics.append(
-                "Flag ordering error: --active is a subcommand flag and must come AFTER 'run'"
-            )
+            diagnostics.append("Flag ordering error: --active is a subcommand flag and must come AFTER 'run'")
 
     # Explain the pattern
     if diagnostics:
@@ -526,9 +484,7 @@ def diagnose_uv_shebang(shebang: str) -> list[str]:
     return diagnostics
 
 
-def _analyze_content(
-    file_path: Path, content: str
-) -> tuple[str, set[str], set[str], set[str], bool]:
+def _analyze_content(file_path: Path, content: str) -> tuple[str, set[str], set[str], set[str], bool]:
     """Analyze a Python file's content for shebang/deps/import metadata.
 
     Args:
@@ -556,13 +512,7 @@ def _analyze_content(
     if "rich" in external_imports and "typer" in pep723_deps:
         external_imports.discard("rich")
 
-    return (
-        current_shebang,
-        pep723_deps,
-        stdlib_imports,
-        external_imports,
-        is_executable(file_path),
-    )
+    return (current_shebang, pep723_deps, stdlib_imports, external_imports, is_executable(file_path))
 
 
 def validate_file(file_path: Path) -> ValidationResult:
@@ -591,9 +541,7 @@ def validate_file(file_path: Path) -> ValidationResult:
         )
 
     content = file_path.read_text(encoding="utf-8")
-    (current_shebang, pep723_deps, stdlib_imports, external_imports, is_exec) = (
-        _analyze_content(file_path, content)
-    )
+    (current_shebang, pep723_deps, stdlib_imports, external_imports, is_exec) = _analyze_content(file_path, content)
     external_package_count = len(external_imports)
 
     # Determine applicable rule
@@ -608,9 +556,7 @@ def validate_file(file_path: Path) -> ValidationResult:
     # Gather errors
     errors: list[str] = []
     if not is_correct:
-        errors.append(
-            f"Incorrect shebang: expected '{expected_shebang}', got '{current_shebang}'"
-        )
+        errors.append(f"Incorrect shebang: expected '{expected_shebang}', got '{current_shebang}'")
 
         # Add detailed diagnostics for UV shebangs
         if rule_number == RULE_UV_SCRIPT and UV_SHEBANG_PATTERN.match(current_shebang):
@@ -619,9 +565,7 @@ def validate_file(file_path: Path) -> ValidationResult:
 
     # Check execute bit alignment with rule
     if rule_number in EXECUTABLE_RULES and not is_exec:
-        errors.append(
-            f"Rule {rule_number} requires execute bit, but file is not executable"
-        )
+        errors.append(f"Rule {rule_number} requires execute bit, but file is not executable")
     elif rule_number == RULE_NO_SHEBANG and is_exec:
         errors.append("Rule 4 (no shebang) applies, but file has execute bit set")
 
@@ -652,24 +596,10 @@ def format_validation_output(result: ValidationResult) -> str:
     """
     output: list[str] = [f"1. Current shebang: {result.current_shebang}"]
 
-    deps_list = (
-        ", ".join(sorted(result.pep723_dependencies))
-        if result.pep723_dependencies
-        else "none"
-    )
-    evidence = (
-        f" (imports: {', '.join(sorted(result.external_imports))})"
-        if result.external_imports
-        else ""
-    )
-    stdlib_list = (
-        ", ".join(sorted(result.stdlib_imports)) if result.stdlib_imports else "none"
-    )
-    external_list = (
-        ", ".join(sorted(result.external_imports))
-        if result.external_imports
-        else "none"
-    )
+    deps_list = ", ".join(sorted(result.pep723_dependencies)) if result.pep723_dependencies else "none"
+    evidence = f" (imports: {', '.join(sorted(result.external_imports))})" if result.external_imports else ""
+    stdlib_list = ", ".join(sorted(result.stdlib_imports)) if result.stdlib_imports else "none"
+    external_list = ", ".join(sorted(result.external_imports)) if result.external_imports else "none"
 
     output.extend([
         f"2. PEP 723 metadata dependencies: {deps_list}",
@@ -681,8 +611,7 @@ def format_validation_output(result: ValidationResult) -> str:
     ])
     for eval_result in result.rule_evaluations:
         conditions_str = " ".join(
-            f"(condition {i + 1} {'MET' if cond else 'NOT MET'})"
-            for i, cond in enumerate(eval_result.conditions_met)
+            f"(condition {i + 1} {'MET' if cond else 'NOT MET'})" for i, cond in enumerate(eval_result.conditions_met)
         )
         output.append(f"   Rule {eval_result.rule_number}: {conditions_str}")
 
@@ -726,9 +655,7 @@ def auto_fix_file(file_path: Path, result: ValidationResult) -> bool:
         content_no_shebang = "\n".join(lines)
 
         # Remove existing PEP 723 block (if present)
-        content_no_pep723 = re.sub(
-            r"# /// script\n.*?\n# ///\n?", "", content_no_shebang, flags=re.DOTALL
-        )
+        content_no_pep723 = re.sub(r"# /// script\n.*?\n# ///\n?", "", content_no_shebang, flags=re.DOTALL)
         content_no_pep723 = re.sub(r"\n{3,}", "\n\n", content_no_pep723)
         remaining_lines = content_no_pep723.split("\n")
 
@@ -785,17 +712,11 @@ def check(
     script_path: Annotated[
         Path,
         typer.Argument(
-            help="Path to Python script to validate",
-            exists=True,
-            file_okay=True,
-            dir_okay=False,
-            readable=True,
+            help="Path to Python script to validate", exists=True, file_okay=True, dir_okay=False, readable=True
         ),
     ],
     fix: Annotated[bool, typer.Option("--fix", "-f", help="Auto-fix issues")] = False,
-    verbose: Annotated[
-        bool, typer.Option("--verbose", "-v", help="Show detailed output")
-    ] = False,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show detailed output")] = False,
 ) -> None:
     """Validate Python shebang compliance using 4-rule decision system.
 
@@ -829,9 +750,7 @@ def check(
     # Summary
     if result.is_correct:
         console.print("\n[green]:white_check_mark: CORRECT[/green]")
-        console.print(
-            f"Rule {result.applicable_rule} applies: {result.applicable_reason}"
-        )
+        console.print(f"Rule {result.applicable_rule} applies: {result.applicable_reason}")
         if result.expected_shebang != "none":
             console.print(f"Shebang: {result.expected_shebang}")
         raise typer.Exit(0)
@@ -852,33 +771,21 @@ def batch(
     directory: Annotated[
         Path,
         typer.Argument(
-            help="Directory to scan for Python scripts",
-            exists=True,
-            file_okay=False,
-            dir_okay=True,
-            readable=True,
+            help="Directory to scan for Python scripts", exists=True, file_okay=False, dir_okay=True, readable=True
         ),
     ],
-    pattern: Annotated[
-        str, typer.Option("--pattern", "-p", help="Glob pattern for files")
-    ] = "*.py",
-    fix: Annotated[
-        bool, typer.Option("--fix", "-f", help="Auto-fix issues in all files")
-    ] = False,
+    pattern: Annotated[str, typer.Option("--pattern", "-p", help="Glob pattern for files")] = "*.py",
+    fix: Annotated[bool, typer.Option("--fix", "-f", help="Auto-fix issues in all files")] = False,
 ) -> None:
     """Validate all Python scripts in a directory."""
     # Find all Python files
     files = list(directory.glob(pattern))
     if not files:
-        console.print(
-            f"[yellow]No files matching pattern '{pattern}' in {directory}[/yellow]"
-        )
+        console.print(f"[yellow]No files matching pattern '{pattern}' in {directory}[/yellow]")
         raise typer.Exit(0)
 
     # Create results table
-    table = Table(
-        title=f"Shebang Validation Results for {directory}", box=box.MINIMAL_DOUBLE_HEAD
-    )
+    table = Table(title=f"Shebang Validation Results for {directory}", box=box.MINIMAL_DOUBLE_HEAD)
     table.add_column("File", style="cyan", no_wrap=True)
     table.add_column("Rule", justify="center")
     table.add_column("Expected Shebang", style="yellow")
@@ -898,11 +805,7 @@ def batch(
                 fixed_files += 1
                 result = validate_file(file_path)
 
-            status = (
-                "[green]:white_check_mark:[/green]"
-                if result.is_correct
-                else "[red]:cross_mark:[/red]"
-            )
+            status = "[green]:white_check_mark:[/green]" if result.is_correct else "[red]:cross_mark:[/red]"
 
             expected = (
                 result.expected_shebang[:MAX_SHEBANG_PREVIEW] + "..."

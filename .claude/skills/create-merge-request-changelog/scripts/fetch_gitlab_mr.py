@@ -22,11 +22,7 @@ from rich.table import Table
 
 _DESCRIPTION_PREVIEW_MAX_LENGTH = 200  # Max characters for MR description preview
 
-app = typer.Typer(
-    name="fetch_gitlab_mr",
-    help="Fetch GitLab merge request metadata and changes",
-    add_completion=False,
-)
+app = typer.Typer(name="fetch_gitlab_mr", help="Fetch GitLab merge request metadata and changes", add_completion=False)
 console = Console()
 
 
@@ -34,9 +30,7 @@ class GitLabFetchError(Exception):
     """Custom exception for GitLab fetch errors."""
 
 
-def run_glab_command(
-    args: list[str], check: bool = True
-) -> subprocess.CompletedProcess[str]:
+def run_glab_command(args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
     """Run a glab CLI command and return the result.
 
     Args:
@@ -50,9 +44,7 @@ def run_glab_command(
         GitLabFetchError: If command fails and check=True
     """
     try:
-        return subprocess.run(
-            ["glab", *args], capture_output=True, text=True, check=check
-        )
+        return subprocess.run(["glab", *args], capture_output=True, text=True, check=check)
     except FileNotFoundError as e:
         msg = "glab CLI not found. Install it from https://gitlab.com/gitlab-org/cli"
         raise GitLabFetchError(msg) from e
@@ -85,10 +77,7 @@ def extract_mr_id(mr_identifier: str) -> str:
     if id_match:
         return id_match.group(1)
 
-    msg = (
-        f"Could not extract MR ID from '{mr_identifier}'. "
-        "Provide ID as number (123), !123, or full URL."
-    )
+    msg = f"Could not extract MR ID from '{mr_identifier}'. Provide ID as number (123), !123, or full URL."
     raise GitLabFetchError(msg)
 
 
@@ -144,11 +133,7 @@ def fetch_mr_commits(mr_id: str) -> list[dict[str, str]]:
 
     # Transform commit data to simpler format
     return [
-        {
-            "sha": commit.get("sha", ""),
-            "title": commit.get("title", ""),
-            "author": commit.get("author_name", ""),
-        }
+        {"sha": commit.get("sha", ""), "title": commit.get("title", ""), "author": commit.get("author_name", "")}
         for commit in commits_data
     ]
 
@@ -185,9 +170,7 @@ def parse_labels(labels_list: list[str] | None) -> list[str]:
     return [label.strip() for label in labels_list if label and label.strip()]
 
 
-def create_mr_summary(
-    mr_data: dict[str, Any], commits: list[dict[str, str]]
-) -> dict[str, Any]:
+def create_mr_summary(mr_data: dict[str, Any], commits: list[dict[str, str]]) -> dict[str, Any]:
     """Create structured MR summary from raw data.
 
     Args:
@@ -231,9 +214,7 @@ def create_summary_table(mr_summary: dict[str, Any]) -> Table:
         Rich Table object
     """
     table = Table(
-        title=f":merge: Merge Request !{mr_summary['iid']}",
-        box=box.MINIMAL_DOUBLE_HEAD,
-        title_style="bold blue",
+        title=f":merge: Merge Request !{mr_summary['iid']}", box=box.MINIMAL_DOUBLE_HEAD, title_style="bold blue"
     )
 
     table.add_column("Field", style="cyan", no_wrap=True)
@@ -260,25 +241,12 @@ def create_summary_table(mr_summary: dict[str, Any]) -> Table:
 
 @app.command()
 def fetch(
-    mr_identifier: Annotated[
-        str,
-        typer.Argument(
-            help="MR ID, URL, or !ID (e.g., '123', '!123', or full GitLab URL)"
-        ),
-    ],
+    mr_identifier: Annotated[str, typer.Argument(help="MR ID, URL, or !ID (e.g., '123', '!123', or full GitLab URL)")],
     output_file: Annotated[
-        Path,
-        typer.Option(
-            "--output",
-            "-o",
-            help="Output file for JSON data",
-            file_okay=True,
-            dir_okay=False,
-        ),
+        Path, typer.Option("--output", "-o", help="Output file for JSON data", file_okay=True, dir_okay=False)
     ] = Path("mr_data.json"),
     include_diff: Annotated[
-        bool,
-        typer.Option("--include-diff/--no-diff", help="Include unified diff in output"),
+        bool, typer.Option("--include-diff/--no-diff", help="Include unified diff in output")
     ] = True,
 ) -> None:
     """Fetch GitLab merge request metadata and changes.
@@ -288,9 +256,7 @@ def fetch(
     """
     try:
         with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
         ) as progress:
             # Extract MR ID
             task = progress.add_task("Parsing MR identifier...", total=None)
@@ -305,9 +271,7 @@ def fetch(
             # Fetch commits
             progress.update(task, description="Fetching commit list...")
             commits = fetch_mr_commits(mr_id)
-            progress.update(
-                task, description=f":white_check_mark: Fetched {len(commits)} commits"
-            )
+            progress.update(task, description=f":white_check_mark: Fetched {len(commits)} commits")
 
             # Create summary
             progress.update(task, description="Creating summary...")
@@ -324,9 +288,7 @@ def fetch(
             # Write output
             progress.update(task, description="Writing output file...")
             output_file.parent.mkdir(parents=True, exist_ok=True)
-            output_file.write_text(
-                json.dumps(mr_summary, indent=2, ensure_ascii=False) + "\n"
-            )
+            output_file.write_text(json.dumps(mr_summary, indent=2, ensure_ascii=False) + "\n")
             progress.update(task, description=":white_check_mark: Output written")
 
             progress.remove_task(task)
@@ -347,25 +309,15 @@ def fetch(
 
         # Show description preview if present
         if mr_summary["description"]:
-            description_preview = mr_summary["description"][
-                :_DESCRIPTION_PREVIEW_MAX_LENGTH
-            ]
+            description_preview = mr_summary["description"][:_DESCRIPTION_PREVIEW_MAX_LENGTH]
             if len(mr_summary["description"]) > _DESCRIPTION_PREVIEW_MAX_LENGTH:
                 description_preview += "..."
 
             console.print()
-            console.print(
-                Panel(
-                    description_preview,
-                    title=":page_facing_up: Description Preview",
-                    border_style="blue",
-                )
-            )
+            console.print(Panel(description_preview, title=":page_facing_up: Description Preview", border_style="blue"))
 
     except GitLabFetchError as e:
-        console.print(
-            Panel.fit(f"[red]{e}[/red]", title=":cross_mark: Error", border_style="red")
-        )
+        console.print(Panel.fit(f"[red]{e}[/red]", title=":cross_mark: Error", border_style="red"))
         raise typer.Exit(code=1) from e
     except KeyboardInterrupt:
         console.print("\n[yellow]Operation cancelled by user[/yellow]")

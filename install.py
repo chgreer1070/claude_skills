@@ -30,11 +30,7 @@ from rich.table import Table
 console = Console()
 error_console = Console(stderr=True, style="bold red")
 
-app = typer.Typer(
-    name="install",
-    help="Install Claude Code plugins from this repository",
-    rich_markup_mode="rich",
-)
+app = typer.Typer(name="install", help="Install Claude Code plugins from this repository", rich_markup_mode="rich")
 
 
 class InstallStatus(StrEnum):
@@ -111,9 +107,7 @@ class PluginInstaller:
             raise ValueError(msg)
 
         return sorted([
-            d
-            for d in self.plugins_dir.iterdir()
-            if d.is_dir() and (d / ".claude-plugin" / "plugin.json").exists()
+            d for d in self.plugins_dir.iterdir() if d.is_dir() and (d / ".claude-plugin" / "plugin.json").exists()
         ])
 
     def load_plugin_config(self, plugin_dir: Path) -> PluginConfig | None:
@@ -160,9 +154,7 @@ class PluginInstaller:
         except (OSError, RuntimeError):
             return False
 
-    def create_symlink(
-        self, source: Path, target_dir: Path, target_name: str, dry_run: bool = False
-    ) -> InstallResult:
+    def create_symlink(self, source: Path, target_dir: Path, target_name: str, dry_run: bool = False) -> InstallResult:
         """Create a symlink for a component.
 
         Args:
@@ -177,9 +169,7 @@ class PluginInstaller:
         target = target_dir / target_name
 
         if self.is_correctly_symlinked(source, target):
-            return InstallResult(
-                InstallStatus.ALREADY_INSTALLED, "Already correctly symlinked"
-            )
+            return InstallResult(InstallStatus.ALREADY_INSTALLED, "Already correctly symlinked")
 
         if dry_run:
             return InstallResult(InstallStatus.NEWLY_INSTALLED, "Would install")
@@ -189,30 +179,22 @@ class PluginInstaller:
             try:
                 target.unlink()
             except OSError as e:
-                return InstallResult(
-                    InstallStatus.ERROR, f"Failed to remove existing link: {e}"
-                )
+                return InstallResult(InstallStatus.ERROR, f"Failed to remove existing link: {e}")
 
         # Create target directory if needed
         try:
             target_dir.mkdir(parents=True, exist_ok=True)
         except OSError as e:
-            return InstallResult(
-                InstallStatus.ERROR, f"Failed to create target directory: {e}"
-            )
+            return InstallResult(InstallStatus.ERROR, f"Failed to create target directory: {e}")
 
         # Create symlink
         try:
             target.symlink_to(source)
-            return InstallResult(
-                InstallStatus.NEWLY_INSTALLED, "Successfully installed"
-            )
+            return InstallResult(InstallStatus.NEWLY_INSTALLED, "Successfully installed")
         except OSError as e:
             return InstallResult(InstallStatus.ERROR, f"Failed to create symlink: {e}")
 
-    def install_plugin(
-        self, plugin_dir: Path, dry_run: bool = False
-    ) -> dict[str, InstallResult]:
+    def install_plugin(self, plugin_dir: Path, dry_run: bool = False) -> dict[str, InstallResult]:
         """Install all components from a plugin.
 
         Args:
@@ -226,9 +208,7 @@ class PluginInstaller:
 
         config = self.load_plugin_config(plugin_dir)
         if config is None:
-            results[plugin_dir.name] = InstallResult(
-                InstallStatus.ERROR, "Failed to load plugin.json"
-            )
+            results[plugin_dir.name] = InstallResult(InstallStatus.ERROR, "Failed to load plugin.json")
             return results
 
         # Install skills
@@ -236,9 +216,7 @@ class PluginInstaller:
             skill_dir = plugin_dir / skill_path.lstrip("./")
             if skill_dir.exists():
                 skill_name = skill_dir.name
-                result = self.create_symlink(
-                    skill_dir, self.skills_dir, skill_name, dry_run
-                )
+                result = self.create_symlink(skill_dir, self.skills_dir, skill_name, dry_run)
                 results[f"skill:{skill_name}"] = result
 
         # Install commands (symlink individual .md files)
@@ -246,9 +224,7 @@ class PluginInstaller:
             cmd_dir = plugin_dir / cmd_path.lstrip("./")
             if cmd_dir.exists() and cmd_dir.is_dir():
                 for cmd_file in cmd_dir.glob("*.md"):
-                    result = self.create_symlink(
-                        cmd_file, self.commands_dir, cmd_file.name, dry_run
-                    )
+                    result = self.create_symlink(cmd_file, self.commands_dir, cmd_file.name, dry_run)
                     results[f"command:{cmd_file.stem}"] = result
 
         # Install agents (symlink individual .md files)
@@ -256,9 +232,7 @@ class PluginInstaller:
             agent_dir = plugin_dir / agent_path.lstrip("./")
             if agent_dir.exists() and agent_dir.is_dir():
                 for agent_file in agent_dir.glob("*.md"):
-                    result = self.create_symlink(
-                        agent_file, self.agents_dir, agent_file.name, dry_run
-                    )
+                    result = self.create_symlink(agent_file, self.agents_dir, agent_file.name, dry_run)
                     results[f"agent:{agent_file.stem}"] = result
 
         return results
@@ -335,19 +309,13 @@ def main(
     repo_path: Annotated[
         Path,
         typer.Option(
-            "--repo",
-            "-r",
-            help="Repository root path (default: script directory)",
-            rich_help_panel="Configuration",
+            "--repo", "-r", help="Repository root path (default: script directory)", rich_help_panel="Configuration"
         ),
     ] = Path(__file__).parent,
     dry_run: Annotated[
         bool,
         typer.Option(
-            "--dry-run",
-            "-n",
-            help="Show what would be done without making changes",
-            rich_help_panel="Options",
+            "--dry-run", "-n", help="Show what would be done without making changes", rich_help_panel="Options"
         ),
     ] = False,
 ) -> None:
@@ -370,12 +338,7 @@ def main(
         console.print()
 
         if dry_run:
-            console.print(
-                Panel(
-                    "[yellow]DRY RUN MODE - No changes will be made[/yellow]",
-                    border_style="yellow",
-                )
-            )
+            console.print(Panel("[yellow]DRY RUN MODE - No changes will be made[/yellow]", border_style="yellow"))
             console.print()
 
         # Install each plugin
@@ -388,12 +351,7 @@ def main(
         display_results(all_results)
 
         # Exit with error code if any installations failed
-        error_count = sum(
-            1
-            for comp in all_results.values()
-            for r in comp.values()
-            if r.status == InstallStatus.ERROR
-        )
+        error_count = sum(1 for comp in all_results.values() for r in comp.values() if r.status == InstallStatus.ERROR)
         if error_count > 0:
             _exit_with_errors()
 

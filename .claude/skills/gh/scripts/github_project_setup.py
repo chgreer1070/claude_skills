@@ -45,78 +45,25 @@ DEFAULT_REPO = "Jamie-BitFlight/claude_skills"
 # Standard label taxonomy
 LABELS: list[dict[str, str]] = [
     # Priority
-    {
-        "name": "priority:p0",
-        "color": "D73A4A",
-        "description": "Critical — blocks work or production",
-    },
-    {
-        "name": "priority:p1",
-        "color": "E99695",
-        "description": "High — should be done next",
-    },
-    {
-        "name": "priority:p2",
-        "color": "F9D0C4",
-        "description": "Medium — do when P0/P1 are clear",
-    },
-    {
-        "name": "priority:idea",
-        "color": "BFD4F2",
-        "description": "Unscoped — future consideration",
-    },
+    {"name": "priority:p0", "color": "D73A4A", "description": "Critical — blocks work or production"},
+    {"name": "priority:p1", "color": "E99695", "description": "High — should be done next"},
+    {"name": "priority:p2", "color": "F9D0C4", "description": "Medium — do when P0/P1 are clear"},
+    {"name": "priority:idea", "color": "BFD4F2", "description": "Unscoped — future consideration"},
     # Type
-    {
-        "name": "type:feature",
-        "color": "0E8A16",
-        "description": "New capability or skill",
-    },
+    {"name": "type:feature", "color": "0E8A16", "description": "New capability or skill"},
     {"name": "type:bug", "color": "B60205", "description": "Something is broken"},
-    {
-        "name": "type:refactor",
-        "color": "5319E7",
-        "description": "Internal improvement, no behavior change",
-    },
+    {"name": "type:refactor", "color": "5319E7", "description": "Internal improvement, no behavior change"},
     {"name": "type:docs", "color": "0075CA", "description": "Documentation only"},
-    {
-        "name": "type:chore",
-        "color": "EDEDED",
-        "description": "Maintenance, tooling, CI",
-    },
+    {"name": "type:chore", "color": "EDEDED", "description": "Maintenance, tooling, CI"},
     # Status
-    {
-        "name": "status:in-progress",
-        "color": "1D76DB",
-        "description": "Actively being worked on",
-    },
-    {
-        "name": "status:done",
-        "color": "0E8A16",
-        "description": "Work complete, milestone closing",
-    },
-    {
-        "name": "status:blocked",
-        "color": "B60205",
-        "description": "Waiting on external dependency",
-    },
-    {
-        "name": "status:needs-grooming",
-        "color": "FEF2C0",
-        "description": "Captured but not yet groomed",
-    },
-    {
-        "name": "status:needs-review",
-        "color": "D876E3",
-        "description": "Implementation done, needs review",
-    },
+    {"name": "status:in-progress", "color": "1D76DB", "description": "Actively being worked on"},
+    {"name": "status:done", "color": "0E8A16", "description": "Work complete, milestone closing"},
+    {"name": "status:blocked", "color": "B60205", "description": "Waiting on external dependency"},
+    {"name": "status:needs-grooming", "color": "FEF2C0", "description": "Captured but not yet groomed"},
+    {"name": "status:needs-review", "color": "D876E3", "description": "Implementation done, needs review"},
 ]
 
-PRIORITY_LABEL_MAP = {
-    "P0": "priority:p0",
-    "P1": "priority:p1",
-    "P2": "priority:p2",
-    "IDEAS": "priority:idea",
-}
+PRIORITY_LABEL_MAP = {"P0": "priority:p0", "P1": "priority:p1", "P2": "priority:p2", "IDEAS": "priority:idea"}
 
 
 def get_github() -> Github:
@@ -153,18 +100,14 @@ def labels(
         name = spec["name"]
         if name in existing:
             if force:
-                existing[name].edit(
-                    name=name, color=spec["color"], description=spec["description"]
-                )
+                existing[name].edit(name=name, color=spec["color"], description=spec["description"])
                 typer.echo(f"  updated: {name}")
                 updated += 1
             else:
                 typer.echo(f"  exists:  {name}  (--force to update)")
                 skipped += 1
         else:
-            repository.create_label(
-                name=name, color=spec["color"], description=spec["description"]
-            )
+            repository.create_label(name=name, color=spec["color"], description=spec["description"])
             typer.echo(f"  created: {name}")
             created += 1
 
@@ -176,9 +119,7 @@ def milestone_create(
     title: Annotated[str, typer.Option("--title")],
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
     description: Annotated[str, typer.Option("--description")] = "",
-    due: Annotated[
-        str | None, typer.Option("--due", help="Due date YYYY-MM-DD")
-    ] = None,
+    due: Annotated[str | None, typer.Option("--due", help="Due date YYYY-MM-DD")] = None,
 ) -> None:
     """Create a milestone."""
     gh = get_github()
@@ -196,9 +137,7 @@ def milestone_create(
 
 
 @milestone_app.command("list")
-def milestone_list(
-    repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
-) -> None:
+def milestone_list(repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO) -> None:
     """List all open milestones."""
     gh = get_github()
     repository = get_repo(gh, repo)
@@ -210,8 +149,7 @@ def milestone_list(
     for m in milestones:
         due = m.due_on.strftime("%Y-%m-%d") if m.due_on else "no due date"
         typer.echo(
-            f"  #{m.number:3d}  [{m.state}]  {m.title}  "
-            f"({m.open_issues} open, {m.closed_issues} closed)  due: {due}"
+            f"  #{m.number:3d}  [{m.state}]  {m.title}  ({m.open_issues} open, {m.closed_issues} closed)  due: {due}"
         )
 
 
@@ -237,10 +175,7 @@ def milestone_start(
         raise typer.Exit(1) from exc
 
     if milestone.state == "closed":
-        typer.echo(
-            f"ERROR: Milestone #{number} '{milestone.title}' is already closed.",
-            err=True,
-        )
+        typer.echo(f"ERROR: Milestone #{number} '{milestone.title}' is already closed.", err=True)
         raise typer.Exit(1)
 
     if milestone.open_issues == 0:
@@ -256,17 +191,13 @@ def milestone_start(
 
     for issue in open_issues:
         label_names = [lbl.name for lbl in issue.labels]
-        typer.echo(
-            f"  #{issue.number:4d}  {issue.title[:60]:<60}  [{', '.join(label_names)}]"
-        )
+        typer.echo(f"  #{issue.number:4d}  {issue.title[:60]:<60}  [{', '.join(label_names)}]")
 
     if dry_run:
         typer.echo("\n[dry-run] No changes made.")
         return
 
-    in_progress_label = _ensure_label(
-        repository, "status:in-progress", "1D76DB", "Actively being worked on"
-    )
+    in_progress_label = _ensure_label(repository, "status:in-progress", "1D76DB", "Actively being worked on")
     succeeded, skipped, failed = _transition_issues(open_issues, in_progress_label)
 
     typer.echo(
@@ -304,10 +235,7 @@ def milestone_close(
         raise typer.Exit(1) from exc
 
     if milestone.state == "closed":
-        typer.echo(
-            f"ERROR: Milestone #{number} '{milestone.title}' is already closed.",
-            err=True,
-        )
+        typer.echo(f"ERROR: Milestone #{number} '{milestone.title}' is already closed.", err=True)
         raise typer.Exit(1)
 
     open_issues = list(repository.get_issues(milestone=milestone, state="open"))
@@ -321,9 +249,7 @@ def milestone_close(
         typer.echo("Open issues (will be transitioned to status:done):")
         for issue in open_issues:
             label_names = [lbl.name for lbl in issue.labels]
-            typer.echo(
-                f"  #{issue.number:4d}  {issue.title[:60]:<60}  [{', '.join(label_names)}]"
-            )
+            typer.echo(f"  #{issue.number:4d}  {issue.title[:60]:<60}  [{', '.join(label_names)}]")
         typer.echo()
 
     if dry_run:
@@ -332,29 +258,20 @@ def milestone_close(
 
     succeeded = skipped = failed = 0
     if open_issues:
-        done_label = _ensure_label(
-            repository, "status:done", "0E8A16", "Work complete, milestone closing"
-        )
+        done_label = _ensure_label(repository, "status:done", "0E8A16", "Work complete, milestone closing")
         succeeded, skipped, failed = _transition_to_done(open_issues, done_label)
 
     # Close the milestone
     milestone.edit(state="closed")
     typer.echo(f"\nMilestone #{milestone.number} '{milestone.title}' closed.")
     if open_issues:
-        typer.echo(
-            f"  {succeeded} transitioned to status:done, "
-            f"{skipped} already done, {failed} failed."
-        )
-    typer.echo(
-        f"  {len(closed_issues)}/{total} issues were closed before milestone close."
-    )
+        typer.echo(f"  {succeeded} transitioned to status:done, {skipped} already done, {failed} failed.")
+    typer.echo(f"  {len(closed_issues)}/{total} issues were closed before milestone close.")
     if failed:
         raise typer.Exit(1)
 
 
-def _transition_to_done(
-    open_issues: list[Any], done_label: Any
-) -> tuple[int, int, int]:
+def _transition_to_done(open_issues: list[Any], done_label: Any) -> tuple[int, int, int]:
     """Apply status:done label to each open issue.
 
     Returns:
@@ -370,11 +287,7 @@ def _transition_to_done(
             skipped += 1
             continue
         try:
-            new_label_names = [
-                lbl.name
-                for lbl in issue.labels
-                if lbl.name not in status_labels_to_remove
-            ]
+            new_label_names = [lbl.name for lbl in issue.labels if lbl.name not in status_labels_to_remove]
             new_label_names.append(done_label.name)
             issue.edit(labels=new_label_names)
             typer.echo(f"  #{issue.number}  {issue.title[:60]}  → status:done")
@@ -395,9 +308,7 @@ def _ensure_label(repository: Any, name: str, color: str, description: str) -> A
         return label
 
 
-def _transition_issues(
-    open_issues: list[Any], in_progress_label: Any
-) -> tuple[int, int, int]:
+def _transition_issues(open_issues: list[Any], in_progress_label: Any) -> tuple[int, int, int]:
     """Apply label transition to each issue; return (succeeded, skipped, failed)."""
     succeeded = failed = skipped = 0
     typer.echo()
@@ -408,9 +319,7 @@ def _transition_issues(
             skipped += 1
             continue
         try:
-            new_label_names = [
-                lbl.name for lbl in issue.labels if lbl.name != "status:needs-grooming"
-            ]
+            new_label_names = [lbl.name for lbl in issue.labels if lbl.name != "status:needs-grooming"]
             new_label_names.append(in_progress_label.name)
             issue.edit(labels=new_label_names)
             typer.echo(f"  #{issue.number}  {issue.title[:60]}  → status:in-progress")
@@ -456,16 +365,9 @@ def issue_create(
         try:
             milestone_obj = repository.get_milestone(milestone_number)
         except GithubException:
-            typer.echo(
-                f"  WARNING: milestone #{milestone_number} not found — skipping",
-                err=True,
-            )
+            typer.echo(f"  WARNING: milestone #{milestone_number} not found — skipping", err=True)
 
-    create_kwargs: dict[str, Any] = {
-        "title": title,
-        "body": body or "",
-        "labels": label_objects,
-    }
+    create_kwargs: dict[str, Any] = {"title": title, "body": body or "", "labels": label_objects}
     if milestone_obj is not None:
         create_kwargs["milestone"] = milestone_obj
 
@@ -486,9 +388,7 @@ def issue_list(
 
     kwargs: dict = {"state": state}
     if priority:
-        label_name = PRIORITY_LABEL_MAP.get(
-            priority.upper(), f"priority:{priority.lower()}"
-        )
+        label_name = PRIORITY_LABEL_MAP.get(priority.upper(), f"priority:{priority.lower()}")
         try:
             kwargs["labels"] = [repository.get_label(label_name)]
         except GithubException:
@@ -501,17 +401,13 @@ def issue_list(
     for issue in issues:
         milestone_title = issue.milestone.title if issue.milestone else "—"
         label_names = ", ".join(lbl.name for lbl in issue.labels)
-        typer.echo(
-            f"  #{issue.number:4d}  {issue.title[:55]:<55}  [{label_names}]  {milestone_title}"
-        )
+        typer.echo(f"  #{issue.number:4d}  {issue.title[:55]:<55}  [{label_names}]  {milestone_title}")
 
 
 @app.command()
 def setup(
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
-    project_title: Annotated[
-        str, typer.Option("--project-title")
-    ] = "claude_skills Backlog",
+    project_title: Annotated[str, typer.Option("--project-title")] = "claude_skills Backlog",
 ) -> None:
     """Full project setup: create label taxonomy and report next steps."""
     typer.echo(f"Setting up GitHub project for {repo}...")
@@ -524,9 +420,7 @@ def setup(
     created = skipped = 0
     for spec in LABELS:
         if spec["name"] not in existing:
-            repository.create_label(
-                name=spec["name"], color=spec["color"], description=spec["description"]
-            )
+            repository.create_label(name=spec["name"], color=spec["color"], description=spec["description"])
             typer.echo(f"   created: {spec['name']}")
             created += 1
         else:
@@ -535,14 +429,10 @@ def setup(
     typer.echo(f"   Labels: {created} created, {skipped} already existed")
 
     typer.echo(f"\n2. Project '{project_title}' — create via gh CLI:")
-    typer.echo(
-        f'   gh project create --owner {repo.split("/")[0]} --title "{project_title}"'
-    )
+    typer.echo(f'   gh project create --owner {repo.split("/")[0]} --title "{project_title}"')
     typer.echo("\nNote: GitHub Projects V2 requires project OAuth scope.")
     typer.echo("      Use gh project commands or the GraphQL API for project creation.")
-    typer.echo(
-        "      See .claude/skills/gh/references/projects-v2.md for field setup commands."
-    )
+    typer.echo("      See .claude/skills/gh/references/projects-v2.md for field setup commands.")
 
 
 if __name__ == "__main__":

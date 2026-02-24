@@ -24,9 +24,7 @@ from typing import Annotated, Any
 import typer
 from github import Auth, Github, GithubException
 
-app = typer.Typer(
-    help="Remove experiment-created GitHub resources between test iterations"
-)
+app = typer.Typer(help="Remove experiment-created GitHub resources between test iterations")
 
 EXPERIMENT_LABELS = [
     "priority:p0",
@@ -64,9 +62,7 @@ def get_gh(repo_slug: str) -> tuple[Github, Any]:
 
 @app.command()
 def list_resources(
-    repo: Annotated[
-        str, typer.Option("--repo", help="owner/repo")
-    ] = "Jamie-BitFlight/claude_skills",
+    repo: Annotated[str, typer.Option("--repo", help="owner/repo")] = "Jamie-BitFlight/claude_skills",
 ) -> None:
     """List experiment-created resources that would be removed."""
     _, repository = get_gh(repo)
@@ -91,9 +87,7 @@ def list_resources(
             typer.echo(f"  #{issue.number} [{issue.state}] {issue.title}")
 
 
-def _close_issues(
-    repository: Any, existing_labels: dict[str, Any], prefix: str, dry_run: bool
-) -> int:
+def _close_issues(repository: Any, existing_labels: dict[str, Any], prefix: str, dry_run: bool) -> int:
     """Close open issues that carry any experiment label. Returns count closed."""
     closed = 0
     for label_name in EXPERIMENT_LABELS:
@@ -134,12 +128,8 @@ def _close_milestones(repository: Any, prefix: str, dry_run: bool) -> int:
 
 @app.command()
 def run(
-    repo: Annotated[
-        str, typer.Option("--repo", help="owner/repo")
-    ] = "Jamie-BitFlight/claude_skills",
-    dry_run: Annotated[
-        bool, typer.Option("--dry-run", help="Print actions without executing")
-    ] = False,
+    repo: Annotated[str, typer.Option("--repo", help="owner/repo")] = "Jamie-BitFlight/claude_skills",
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Print actions without executing")] = False,
 ) -> None:
     """Remove experiment-created labels, milestones, and issues."""
     _, repository = get_gh(repo)

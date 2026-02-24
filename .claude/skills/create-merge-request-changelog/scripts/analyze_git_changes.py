@@ -27,9 +27,7 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-_MIN_NUMSTAT_FIELDS = (
-    2  # Minimum fields in git diff --numstat output (added, deleted, filename)
-)
+_MIN_NUMSTAT_FIELDS = 2  # Minimum fields in git diff --numstat output (added, deleted, filename)
 
 
 def get_rendered_width(renderable: RenderableType) -> int:
@@ -50,9 +48,7 @@ def get_rendered_width(renderable: RenderableType) -> int:
 
 
 app = typer.Typer(
-    name="analyze_git_changes",
-    help="Extract commits, diffs, and statistics from git changes",
-    add_completion=False,
+    name="analyze_git_changes", help="Extract commits, diffs, and statistics from git changes", add_completion=False
 )
 console = Console(highlight=False)
 
@@ -61,9 +57,7 @@ class GitAnalysisError(Exception):
     """Custom exception for git analysis errors."""
 
 
-def run_git_command(
-    args: list[str], check: bool = True
-) -> subprocess.CompletedProcess[str]:
+def run_git_command(args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
     """Run a git command and return the result.
 
     Args:
@@ -77,13 +71,7 @@ def run_git_command(
         GitAnalysisError: If command fails and check=True
     """
     try:
-        return subprocess.run(
-            ["git", *args],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            check=check,
-        )
+        return subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8", check=check)
     except subprocess.CalledProcessError as e:
         msg = f"Git command failed: {e.stderr.strip()}"
         raise GitAnalysisError(msg) from e
@@ -152,12 +140,7 @@ def extract_commits_oneline(merge_base: str, head_ref: str, output_file: Path) -
         head_ref: Head reference
         output_file: Output file path
     """
-    result = run_git_command([
-        "log",
-        "--oneline",
-        "--no-merges",
-        f"{merge_base}..{head_ref}",
-    ])
+    result = run_git_command(["log", "--oneline", "--no-merges", f"{merge_base}..{head_ref}"])
     output_file.write_text(result.stdout, encoding="utf-8")
 
 
@@ -188,12 +171,7 @@ def count_commits(merge_base: str, head_ref: str) -> int:
     Returns:
         Number of commits
     """
-    result = run_git_command([
-        "rev-list",
-        "--count",
-        "--no-merges",
-        f"{merge_base}..{head_ref}",
-    ])
+    result = run_git_command(["rev-list", "--count", "--no-merges", f"{merge_base}..{head_ref}"])
     return int(result.stdout.strip())
 
 
@@ -278,11 +256,7 @@ def calculate_statistics(merge_base: str, head_ref: str) -> dict[str, int]:
             if deleted != "-":
                 lines_deleted += int(deleted)
 
-    return {
-        "lines_added": lines_added,
-        "lines_deleted": lines_deleted,
-        "files_changed": files_changed,
-    }
+    return {"lines_added": lines_added, "lines_deleted": lines_deleted, "files_changed": files_changed}
 
 
 def create_summary_json(
@@ -368,13 +342,7 @@ Output Files:
 
 
 def create_summary_table(
-    current_branch: str,
-    base_ref: str,
-    head_ref: str,
-    merge_base: str,
-    commit_count: int,
-    *,
-    stats: dict[str, int],
+    current_branch: str, base_ref: str, head_ref: str, merge_base: str, commit_count: int, *, stats: dict[str, int]
 ) -> Table:
     """Create a Rich table for summary display.
 
@@ -389,11 +357,7 @@ def create_summary_table(
     Returns:
         Rich Table object
     """
-    table = Table(
-        title=":bar_chart: Git Change Analysis Summary",
-        box=box.MINIMAL_DOUBLE_HEAD,
-        title_style="bold blue",
-    )
+    table = Table(title=":bar_chart: Git Change Analysis Summary", box=box.MINIMAL_DOUBLE_HEAD, title_style="bold blue")
 
     table.add_column("Metric", style="cyan", no_wrap=True)
     table.add_column("Value", style="green")
@@ -430,9 +394,7 @@ def _display_results(
     console.print(success_panel)
     console.print()
 
-    summary_table = create_summary_table(
-        current_branch, base_ref, head_ref, merge_base, commit_count, stats=stats
-    )
+    summary_table = create_summary_table(current_branch, base_ref, head_ref, merge_base, commit_count, stats=stats)
     summary_table.width = get_rendered_width(summary_table)
     console.print(summary_table, crop=False, overflow="ignore")
 
@@ -440,24 +402,13 @@ def _display_results(
 @app.command()
 def analyze(
     base_ref: Annotated[
-        str,
-        typer.Argument(
-            help="Base git reference to compare from (e.g., 'main', 'develop')"
-        ),
+        str, typer.Argument(help="Base git reference to compare from (e.g., 'main', 'develop')")
     ] = "main",
     head_ref: Annotated[
-        str,
-        typer.Argument(
-            help="Head git reference to compare to (e.g., 'HEAD', 'feature-branch')"
-        ),
+        str, typer.Argument(help="Head git reference to compare to (e.g., 'HEAD', 'feature-branch')")
     ] = "HEAD",
     output_dir: Annotated[
-        Path,
-        typer.Argument(
-            help="Directory to write analysis output files",
-            file_okay=False,
-            dir_okay=True,
-        ),
+        Path, typer.Argument(help="Directory to write analysis output files", file_okay=False, dir_okay=True)
     ] = Path(),
 ) -> None:
     """Analyze git changes and extract commits, diffs, and statistics.
@@ -469,16 +420,12 @@ def analyze(
     """
     try:
         with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
         ) as progress:
             # Verify git repository
             task = progress.add_task("Verifying git repository...", total=None)
             verify_git_repository()
-            progress.update(
-                task, description=":white_check_mark: Git repository verified"
-            )
+            progress.update(task, description=":white_check_mark: Git repository verified")
 
             # Find merge base
             progress.update(task, description="Finding merge base...")
@@ -488,46 +435,32 @@ def analyze(
             # Get current branch
             progress.update(task, description="Getting current branch...")
             current_branch = get_current_branch()
-            progress.update(
-                task, description=":white_check_mark: Current branch identified"
-            )
+            progress.update(task, description=":white_check_mark: Current branch identified")
 
             # Create output directory
             progress.update(task, description="Creating output directory...")
             output_dir.mkdir(parents=True, exist_ok=True)
-            progress.update(
-                task, description=":white_check_mark: Output directory ready"
-            )
+            progress.update(task, description=":white_check_mark: Output directory ready")
 
             # Extract commits
             progress.update(task, description="Extracting commit history...")
-            extract_commits_oneline(
-                merge_base, head_ref, output_dir / "commits_oneline.txt"
-            )
-            extract_commits_detailed(
-                merge_base, head_ref, output_dir / "commits_detailed.txt"
-            )
+            extract_commits_oneline(merge_base, head_ref, output_dir / "commits_oneline.txt")
+            extract_commits_detailed(merge_base, head_ref, output_dir / "commits_detailed.txt")
             commit_count = count_commits(merge_base, head_ref)
-            progress.update(
-                task, description=f":white_check_mark: Extracted {commit_count} commits"
-            )
+            progress.update(task, description=f":white_check_mark: Extracted {commit_count} commits")
 
             # Extract diffs
             progress.update(task, description="Extracting diffs...")
             extract_diff(merge_base, head_ref, output_dir / "changes.diff")
             extract_diff_stat(merge_base, head_ref, output_dir / "changes_stat.txt")
-            extract_changed_files(
-                merge_base, head_ref, output_dir / "changed_files.txt"
-            )
+            extract_changed_files(merge_base, head_ref, output_dir / "changed_files.txt")
             extract_numstat(merge_base, head_ref, output_dir / "changes_numstat.txt")
             progress.update(task, description=":white_check_mark: Diffs extracted")
 
             # Calculate statistics
             progress.update(task, description="Calculating statistics...")
             stats = calculate_statistics(merge_base, head_ref)
-            progress.update(
-                task, description=":white_check_mark: Statistics calculated"
-            )
+            progress.update(task, description=":white_check_mark: Statistics calculated")
 
             # Create summaries
             progress.update(task, description="Creating summaries...")
@@ -554,21 +487,10 @@ def analyze(
             progress.remove_task(task)
 
         # Display summary
-        _display_results(
-            console,
-            output_dir,
-            current_branch,
-            base_ref,
-            head_ref,
-            merge_base,
-            commit_count,
-            stats,
-        )
+        _display_results(console, output_dir, current_branch, base_ref, head_ref, merge_base, commit_count, stats)
 
     except GitAnalysisError as e:
-        err_panel = Panel.fit(
-            f"[red]{e}[/red]", title=":cross_mark: Error", border_style="red"
-        )
+        err_panel = Panel.fit(f"[red]{e}[/red]", title=":cross_mark: Error", border_style="red")
         console.width = get_rendered_width(err_panel)
         console.print(err_panel)
         raise typer.Exit(code=1) from e

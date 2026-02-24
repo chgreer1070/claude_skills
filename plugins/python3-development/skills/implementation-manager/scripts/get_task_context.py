@@ -17,36 +17,21 @@ def get_available_features() -> dict[str, Any]:
         Dictionary containing features array, count, and optional message.
     """
     if not Path("plan").exists():
-        return {
-            "features": [],
-            "count": 0,
-            "message": "Not in a project with task files (no plan/ directory)",
-        }
+        return {"features": [], "count": 0, "message": "Not in a project with task files (no plan/ directory)"}
 
     try:
         # Run implementation_manager.py list-features
         script_path = Path(__file__).parent / "implementation_manager.py"
         result = subprocess.run(
-            [sys.executable, str(script_path), "list-features", "."],
-            capture_output=True,
-            text=True,
-            check=False,
+            [sys.executable, str(script_path), "list-features", "."], capture_output=True, text=True, check=False
         )
 
         if result.returncode == 0:
             parsed: dict[str, Any] = json.loads(result.stdout)
         else:
-            return {
-                "features": [],
-                "count": 0,
-                "message": f"Failed to list features: {result.stderr}",
-            }
+            return {"features": [], "count": 0, "message": f"Failed to list features: {result.stderr}"}
     except (OSError, json.JSONDecodeError, ValueError) as e:
-        return {
-            "features": [],
-            "count": 0,
-            "message": f"Error running implementation_manager.py: {e}",
-        }
+        return {"features": [], "count": 0, "message": f"Error running implementation_manager.py: {e}"}
     else:
         return parsed
 

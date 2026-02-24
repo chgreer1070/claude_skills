@@ -26,9 +26,7 @@ def run_glab(*args: str) -> str | None:
         return None
 
     try:
-        result = subprocess.run(
-            [glab_path, *args], capture_output=True, text=True, check=False
-        )
+        result = subprocess.run([glab_path, *args], capture_output=True, text=True, check=False)
         return result.stdout.strip() if result.returncode == 0 else None
     except FileNotFoundError:
         return None

@@ -1,7 +1,7 @@
 # SDLC Layer Separation Architecture — Skill Candidates
 
-**Generated**: 2026-02-23  
-**Source**: Full read of all skills under `.claude/skills/` and their `references/` subdirectories  
+**Generated**: 2026-02-23
+**Source**: Full read of all skills under `.claude/skills/` and their `references/` subdirectories
 **Plan Context**: Layer 0 (SDLC-Agnostic), Layer 1 (Language-Specific), Layer 2 (Stack/Goal-Specific), ARL Meta-Layer
 
 ---

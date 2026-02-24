@@ -1,7 +1,7 @@
 # SDLC Layer 0 Integration Suggestions
 
-**Generated**: 2026-02-23  
-**Plan Context**: SDLC Layer Separation Architecture — Layer 0 (SDLC-Agnostic)  
+**Generated**: 2026-02-23
+**Plan Context**: SDLC Layer Separation Architecture — Layer 0 (SDLC-Agnostic)
 **Source**: Full read of all Layer 0 items from `sdlc-layer-candidates-master.md`
 
 ---

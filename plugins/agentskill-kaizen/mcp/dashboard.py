@@ -108,12 +108,8 @@ def _load_sentiment_data(csv_path: Path) -> pd.DataFrame | None:
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
     for col in ("compound", "positive", "negative", "neutral"):
         df[col] = pd.to_numeric(df[col], errors="coerce")
-    df["message_index"] = pd.to_numeric(df["message_index"], errors="coerce").astype(
-        "Int64"
-    )
-    df["message_length"] = pd.to_numeric(df["message_length"], errors="coerce").astype(
-        "Int64"
-    )
+    df["message_index"] = pd.to_numeric(df["message_index"], errors="coerce").astype("Int64")
+    df["message_length"] = pd.to_numeric(df["message_length"], errors="coerce").astype("Int64")
 
     # Drop rows where critical columns are NaN
     df = df.dropna(subset=["compound", "session_id"])
@@ -256,17 +252,11 @@ def _build_distribution(df: pd.DataFrame) -> pn.pane.HoloViews:
     median_val = float(df["compound"].median())
 
     mean_line = hv.VLine(mean_val).opts(color="red", line_dash="dashed", line_width=2)
-    median_line = hv.VLine(median_val).opts(
-        color="orange", line_dash="dotted", line_width=2
-    )
+    median_line = hv.VLine(median_val).opts(color="orange", line_dash="dotted", line_width=2)
 
     # Labels for the lines
-    mean_label = hv.Text(
-        mean_val, 0, f"Mean: {mean_val:.3f}", halign="left", fontsize=9
-    ).opts(color="red")
-    median_label = hv.Text(
-        median_val, 0, f"Median: {median_val:.3f}", halign="right", fontsize=9
-    ).opts(color="orange")
+    mean_label = hv.Text(mean_val, 0, f"Mean: {mean_val:.3f}", halign="left", fontsize=9).opts(color="red")
+    median_label = hv.Text(median_val, 0, f"Median: {median_val:.3f}", halign="right", fontsize=9).opts(color="orange")
 
     overlay = hist * mean_line * median_line * mean_label * median_label
     return pn.pane.HoloViews(overlay, sizing_mode="stretch_width")
@@ -288,18 +278,14 @@ def _build_hotspots(df: pd.DataFrame) -> pn.pane.Markdown | pn.widgets.Tabulator
     """
     hotspots = (
         df
-        .loc[
-            df["compound"] < _HOTSPOT_THRESHOLD,
-            ["session_id", "timestamp", "compound", "message_preview"],
-        ]
+        .loc[df["compound"] < _HOTSPOT_THRESHOLD, ["session_id", "timestamp", "compound", "message_preview"]]
         .sort_values("compound", ascending=True)
         .reset_index(drop=True)
     )
 
     if hotspots.empty:
         return pn.pane.Markdown(
-            "**No hot spots found.** All messages have compound scores "
-            f">= {_HOTSPOT_THRESHOLD}.",
+            f"**No hot spots found.** All messages have compound scores >= {_HOTSPOT_THRESHOLD}.",
             sizing_mode="stretch_width",
         )
 
@@ -384,8 +370,7 @@ def _create_app(csv_path: Path) -> pn.template.FastListTemplate:
     # shell is delivered to the browser immediately without blocking on CSV I/O
     # and chart rendering.
     dashboard_container = pn.Column(
-        pn.pane.Markdown("Loading…", sizing_mode="stretch_width"),
-        sizing_mode="stretch_width",
+        pn.pane.Markdown("Loading…", sizing_mode="stretch_width"), sizing_mode="stretch_width"
     )
 
     def _refresh() -> None:
@@ -578,9 +563,7 @@ def start_dashboard(csv_path: Path | None = None) -> threading.Thread | None:
 
     with _state_lock:
         if _dashboard_port is not None:
-            logger.info(
-                "Dashboard already running on http://localhost:%d/", _dashboard_port
-            )
+            logger.info("Dashboard already running on http://localhost:%d/", _dashboard_port)
             return None
 
     resolved_path = (csv_path or Path("~/.claude/kaizen/sentiment.csv")).expanduser()

@@ -56,8 +56,7 @@ _ComponentChangesDict = dict[str, list[dict[str, str]]]
 _MarketplaceChangesDict = dict[str, Any]
 
 _requires_prettier = pytest.mark.skipif(
-    shutil.which("npx") is None,
-    reason="npx not available — prettier tests require Node.js tooling",
+    shutil.which("npx") is None, reason="npx not available — prettier tests require Node.js tooling"
 )
 
 
@@ -95,18 +94,14 @@ def _changes_with_modified_skill() -> _ComponentChangesDict:
     return {
         "added": [],
         "deleted": [],
-        "modified": [
-            {"component_type": "skill", "component_path": "skills/my-skill/SKILL.md"}
-        ],
+        "modified": [{"component_type": "skill", "component_path": "skills/my-skill/SKILL.md"}],
     }
 
 
 def _changes_with_added_skill() -> _ComponentChangesDict:
     """Return component changes with a single added skill."""
     return {
-        "added": [
-            {"component_type": "skill", "component_path": "skills/new-skill/SKILL.md"}
-        ],
+        "added": [{"component_type": "skill", "component_path": "skills/new-skill/SKILL.md"}],
         "deleted": [],
         "modified": [],
     }
@@ -136,11 +131,7 @@ class TestJsonFormattingConflict:
         Why: This vertical expansion is the root cause of the prettier conflict
         """
         # Arrange
-        data = {
-            "name": "test-plugin",
-            "version": "1.0.0",
-            "skills": ["./skills/test-skill/"],
-        }
+        data = {"name": "test-plugin", "version": "1.0.0", "skills": ["./skills/test-skill/"]}
 
         # Act
         output = json.dumps(data, indent=2) + "\n"
@@ -156,20 +147,12 @@ class TestJsonFormattingConflict:
         Why: Demonstrates the exact formatting difference that causes stash conflicts
         """
         # Arrange
-        data = {
-            "name": "test-plugin",
-            "version": "1.0.0",
-            "skills": ["./skills/test-skill/"],
-        }
+        data = {"name": "test-plugin", "version": "1.0.0", "skills": ["./skills/test-skill/"]}
         json_dump_output = json.dumps(data, indent=2) + "\n"
 
         # The format prettier produces for the same data
         prettier_output = (
-            "{\n"
-            '  "name": "test-plugin",\n'
-            '  "version": "1.0.0",\n'
-            '  "skills": ["./skills/test-skill/"]\n'
-            "}\n"
+            '{\n  "name": "test-plugin",\n  "version": "1.0.0",\n  "skills": ["./skills/test-skill/"]\n}\n'
         )
 
         # Act & Assert -- the two formats differ
@@ -177,9 +160,7 @@ class TestJsonFormattingConflict:
         # But they parse to the same data
         assert json.loads(json_dump_output) == json.loads(prettier_output)
 
-    def test_update_plugin_json_writes_prettier_compatible_format(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_update_plugin_json_writes_prettier_compatible_format(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify update_plugin_json writes prettier-compatible JSON format.
 
         Tests: File output format after update_plugin_json
@@ -193,13 +174,7 @@ class TestJsonFormattingConflict:
 
         plugin_name = "test-plugin"
         plugin_json = _make_plugin_json(
-            tmp_path,
-            plugin_name,
-            {
-                "name": "test-plugin",
-                "version": "1.0.0",
-                "skills": ["./skills/existing-skill/"],
-            },
+            tmp_path, plugin_name, {"name": "test-plugin", "version": "1.0.0", "skills": ["./skills/existing-skill/"]}
         )
 
         changes = _changes_with_modified_skill()
@@ -219,9 +194,7 @@ class TestJsonFormattingConflict:
         assert data["version"] == "1.0.1"
         assert data["skills"] == ["./skills/existing-skill/"]
 
-    def test_update_marketplace_json_writes_prettier_compatible_format(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_update_marketplace_json_writes_prettier_compatible_format(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify update_marketplace_json writes prettier-compatible JSON format.
 
         Tests: marketplace.json output format after update
@@ -236,9 +209,7 @@ class TestJsonFormattingConflict:
             tmp_path,
             {
                 "metadata": {"version": "1.0.0"},
-                "plugins": [
-                    {"name": "existing-plugin", "source": "./plugins/existing-plugin"}
-                ],
+                "plugins": [{"name": "existing-plugin", "source": "./plugins/existing-plugin"}],
             },
         )
 
@@ -311,11 +282,7 @@ class TestIdempotency:
         monkeypatch.chdir(tmp_path)
 
         plugin_name = "test-plugin"
-        original_data = {
-            "name": "test-plugin",
-            "version": "1.0.0",
-            "skills": ["./skills/existing/"],
-        }
+        original_data = {"name": "test-plugin", "version": "1.0.0", "skills": ["./skills/existing/"]}
         original_content = json.dumps(original_data, indent=2) + "\n"
         plugin_json = _make_plugin_json(tmp_path, plugin_name, original_data)
 
@@ -337,9 +304,7 @@ class TestIdempotency:
         assert version_1 == version_2
         assert content_after_run1 == content_after_run2
 
-    def test_update_plugin_json_no_double_bump_on_retry(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_update_plugin_json_no_double_bump_on_retry(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify version does NOT double-bump when update runs twice.
 
         Tests: Idempotent version bumping via version comparison guard
@@ -351,19 +316,13 @@ class TestIdempotency:
         monkeypatch.chdir(tmp_path)
 
         plugin_name = "test-plugin"
-        original_data = {
-            "name": "test-plugin",
-            "version": "1.0.0",
-            "skills": ["./skills/existing/"],
-        }
+        original_data = {"name": "test-plugin", "version": "1.0.0", "skills": ["./skills/existing/"]}
         _make_plugin_json(tmp_path, plugin_name, original_data)
 
         changes = _changes_with_modified_skill()
 
         # Simulate HEAD having the original version
-        monkeypatch.setattr(
-            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
-        )
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: dict(original_data))
 
         # Act -- Run 1: HEAD version == file version, hook updates it
         updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
@@ -377,9 +336,7 @@ class TestIdempotency:
         assert updated_2 is False
         assert version_2 == "1.0.1"
 
-    def test_update_marketplace_json_no_double_bump_on_retry(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_update_marketplace_json_no_double_bump_on_retry(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify marketplace version does NOT double-bump on retry.
 
         Tests: Idempotent version bumping for marketplace.json via version guard
@@ -402,9 +359,7 @@ class TestIdempotency:
         }
 
         # Simulate HEAD having the original version
-        monkeypatch.setattr(
-            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
-        )
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: dict(original_data))
 
         # Act -- Run 1: HEAD version == file version
         updated_1 = auto_sync.update_marketplace_json(plugin_changes)
@@ -460,9 +415,7 @@ class TestVersionComparisonGuard:
     If the working version is strictly greater, the bump is skipped.
     """
 
-    def test_update_plugin_json_skips_when_version_already_bumped(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_update_plugin_json_skips_when_version_already_bumped(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify update_plugin_json skips when file version > HEAD version.
 
         Tests: Version guard in update_plugin_json
@@ -492,9 +445,7 @@ class TestVersionComparisonGuard:
         # File was NOT modified
         assert json.loads(plugin_json.read_text(encoding="utf-8"))["version"] == "1.5.0"
 
-    def test_update_marketplace_json_skips_when_version_already_bumped(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_update_marketplace_json_skips_when_version_already_bumped(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify update_marketplace_json skips when version already > HEAD.
 
         Tests: Version guard in update_marketplace_json
@@ -504,23 +455,13 @@ class TestVersionComparisonGuard:
         # Arrange
         monkeypatch.chdir(tmp_path)
 
-        data = {
-            "metadata": {"version": "2.1.0"},
-            "plugins": [{"name": "p1", "source": "./plugins/p1"}],
-        }
+        data = {"metadata": {"version": "2.1.0"}, "plugins": [{"name": "p1", "source": "./plugins/p1"}]}
         marketplace_json = _make_marketplace_json(tmp_path, data)
 
-        head_data = {
-            "metadata": {"version": "2.0.0"},
-            "plugins": [{"name": "p1", "source": "./plugins/p1"}],
-        }
+        head_data = {"metadata": {"version": "2.0.0"}, "plugins": [{"name": "p1", "source": "./plugins/p1"}]}
         monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: dict(head_data))
 
-        plugin_changes: _MarketplaceChangesDict = {
-            "added": {"new-plugin"},
-            "deleted": set(),
-            "modified": [],
-        }
+        plugin_changes: _MarketplaceChangesDict = {"added": {"new-plugin"}, "deleted": set(), "modified": []}
 
         # Act
         updated = auto_sync.update_marketplace_json(plugin_changes)
@@ -530,9 +471,7 @@ class TestVersionComparisonGuard:
         loaded = json.loads(marketplace_json.read_text(encoding="utf-8"))
         assert loaded["metadata"]["version"] == "2.1.0"
 
-    def test_guard_returns_current_version_not_zero(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_guard_returns_current_version_not_zero(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify the guard returns the actual current version, not "0.0.0".
 
         Tests: Return value fidelity of the version guard
@@ -558,9 +497,7 @@ class TestVersionComparisonGuard:
         assert updated is False
         assert version == "3.2.1"
 
-    def test_guard_allows_bump_when_version_equals_head(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_guard_allows_bump_when_version_equals_head(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify update proceeds when file version == HEAD version.
 
         Tests: Guard pass-through when no prior bump
@@ -585,9 +522,7 @@ class TestVersionComparisonGuard:
         assert updated is True
         assert version == "1.0.1"
 
-    def test_guard_allows_bump_when_file_not_in_head(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_guard_allows_bump_when_file_not_in_head(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify update proceeds when HEAD has no version of the file.
 
         Tests: Guard pass-through for new files
@@ -635,9 +570,7 @@ class TestRetryScenario:
     creating a conflict.
     """
 
-    def test_retry_scenario_guard_prevents_double_bump(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_retry_scenario_guard_prevents_double_bump(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Simulate the retry: first run bumps, second run is blocked by guard.
 
         Tests: Complete retry flow
@@ -648,19 +581,13 @@ class TestRetryScenario:
         monkeypatch.chdir(tmp_path)
 
         plugin_name = "my-plugin"
-        original_data = {
-            "name": "my-plugin",
-            "version": "1.0.0",
-            "skills": ["./skills/existing/"],
-        }
+        original_data = {"name": "my-plugin", "version": "1.0.0", "skills": ["./skills/existing/"]}
         plugin_json = _make_plugin_json(tmp_path, plugin_name, original_data)
 
         changes = _changes_with_modified_skill()
 
         # Simulate HEAD having the original version
-        monkeypatch.setattr(
-            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
-        )
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: dict(original_data))
 
         # --- Run 1: HEAD version == file version, hook modifies it ---
         updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
@@ -688,11 +615,7 @@ class TestRetryScenario:
              skips appending to marketplace_changes["modified"]
         """
         # Arrange -- simulate what main() does
-        marketplace_changes: _MarketplaceChangesDict = {
-            "added": set(),
-            "deleted": set(),
-            "modified": [],
-        }
+        marketplace_changes: _MarketplaceChangesDict = {"added": set(), "deleted": set(), "modified": []}
 
         # Run 1 result: hook updated plugin
         updated_run1 = True
@@ -712,9 +635,7 @@ class TestRetryScenario:
         assert len(marketplace_changes["modified"]) == 1
         assert marketplace_changes["modified"][0] == ("my-plugin", "1.0.1")
 
-    def test_full_retry_with_prettier_no_conflict(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_full_retry_with_prettier_no_conflict(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify the hook writes prettier-compatible format, eliminating stash conflicts.
 
         Tests: End-to-end conflict elimination
@@ -727,19 +648,13 @@ class TestRetryScenario:
         monkeypatch.chdir(tmp_path)
 
         plugin_name = "my-plugin"
-        original_data = {
-            "name": "my-plugin",
-            "version": "1.0.0",
-            "skills": ["./skills/existing/"],
-        }
+        original_data = {"name": "my-plugin", "version": "1.0.0", "skills": ["./skills/existing/"]}
         plugin_json = _make_plugin_json(tmp_path, plugin_name, original_data)
 
         changes = _changes_with_modified_skill()
 
         # Simulate HEAD having the original version
-        monkeypatch.setattr(
-            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
-        )
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: dict(original_data))
 
         # --- Run 1: hook writes prettier-compatible format ---
         updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
@@ -787,9 +702,7 @@ class TestParsePluginPath:
         How: Pass plugins/foo/.claude-plugin/plugin.json
         Why: Plugin.json is detected as a plugin-level change, not a component
         """
-        result = auto_sync.parse_plugin_path(
-            "plugins/my-plugin/.claude-plugin/plugin.json"
-        )
+        result = auto_sync.parse_plugin_path("plugins/my-plugin/.claude-plugin/plugin.json")
         assert result is not None
         assert result["plugin"] == "my-plugin"
 
@@ -800,9 +713,7 @@ class TestParsePluginPath:
         How: Pass a skills/name/SKILL.md path
         Why: Ensure skills are detected as component_type "skill"
         """
-        result = auto_sync.parse_plugin_path(
-            "plugins/my-plugin/skills/my-skill/SKILL.md"
-        )
+        result = auto_sync.parse_plugin_path("plugins/my-plugin/skills/my-skill/SKILL.md")
         assert result is not None
         assert result["plugin"] == "my-plugin"
         assert result["component_type"] == "skill"
@@ -865,9 +776,7 @@ class TestProcessFileChanges:
         }
 
         # Act
-        component_changes, _marketplace_changes = auto_sync._process_file_changes(
-            status
-        )
+        component_changes, _marketplace_changes = auto_sync._process_file_changes(status)
 
         # Assert
         assert "my-plugin" in component_changes
@@ -928,9 +837,7 @@ class TestUpdateComponentArrays:
         # Arrange
         data: dict[str, list[str] | str] = {"name": "test"}
         changes: _ComponentChangesDict = {
-            "added": [
-                {"component_type": "skill", "component_path": "skills/new/SKILL.md"}
-            ],
+            "added": [{"component_type": "skill", "component_path": "skills/new/SKILL.md"}],
             "deleted": [],
             "modified": [],
         }
@@ -951,17 +858,9 @@ class TestUpdateComponentArrays:
         Why: Ensure idempotent component addition
         """
         # Arrange
-        data: dict[str, list[str] | str] = {
-            "name": "test",
-            "skills": ["./skills/existing/SKILL.md"],
-        }
+        data: dict[str, list[str] | str] = {"name": "test", "skills": ["./skills/existing/SKILL.md"]}
         changes: _ComponentChangesDict = {
-            "added": [
-                {
-                    "component_type": "skill",
-                    "component_path": "skills/existing/SKILL.md",
-                }
-            ],
+            "added": [{"component_type": "skill", "component_path": "skills/existing/SKILL.md"}],
             "deleted": [],
             "modified": [],
         }
@@ -989,9 +888,7 @@ class TestUpdateComponentArrays:
         }
         changes: _ComponentChangesDict = {
             "added": [],
-            "deleted": [
-                {"component_type": "skill", "component_path": "skills/old/SKILL.md"}
-            ],
+            "deleted": [{"component_type": "skill", "component_path": "skills/old/SKILL.md"}],
             "modified": [],
         }
 
@@ -1009,9 +906,7 @@ class TestUpdateComponentArrays:
 class TestUpdatePluginJsonFileNotFound:
     """Test update_plugin_json when plugin.json does not exist."""
 
-    def test_returns_false_when_plugin_json_missing(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_returns_false_when_plugin_json_missing(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify update_plugin_json returns (False, "0.0.0") for missing file.
 
         Tests: update_plugin_json with non-existent plugin.json
@@ -1129,11 +1024,7 @@ class TestExtractVersionFromJson:
         Why: marketplace.json stores version under metadata.version
         """
         data: dict[str, object] = {"metadata": {"version": "2.0.1"}}
-        assert auto_sync._extract_version_from_json(data, ["metadata", "version"]) == (
-            2,
-            0,
-            1,
-        )
+        assert auto_sync._extract_version_from_json(data, ["metadata", "version"]) == (2, 0, 1)
 
     def test_missing_key_returns_none(self) -> None:
         """Verify _extract_version_from_json returns None for missing key.
@@ -1153,9 +1044,7 @@ class TestExtractVersionFromJson:
         Why: Cannot traverse into a string value
         """
         data: dict[str, object] = {"metadata": "not-a-dict"}
-        assert (
-            auto_sync._extract_version_from_json(data, ["metadata", "version"]) is None
-        )
+        assert auto_sync._extract_version_from_json(data, ["metadata", "version"]) is None
 
     def test_non_string_version_returns_none(self) -> None:
         """Verify _extract_version_from_json returns None when version is not a string.
@@ -1174,10 +1063,7 @@ class TestExtractVersionFromJson:
         How: Pass a list instead of dict
         Why: JSON root must be traversable as dict
         """
-        assert (
-            auto_sync._extract_version_from_json(["not", "a", "dict"], ["version"])
-            is None
-        )
+        assert auto_sync._extract_version_from_json(["not", "a", "dict"], ["version"]) is None
 
 
 # ============================================================================
@@ -1188,9 +1074,7 @@ class TestExtractVersionFromJson:
 class TestVersionAlreadyBumped:
     """Test the _version_already_bumped helper for version comparison logic."""
 
-    def test_returns_true_when_current_greater(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_returns_true_when_current_greater(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify _version_already_bumped returns True when file version > HEAD.
 
         Tests: _version_already_bumped positive detection
@@ -1201,15 +1085,11 @@ class TestVersionAlreadyBumped:
         plugin_json = tmp_path / "plugin.json"
         plugin_json.write_text(json.dumps({"version": "1.1.0"}))
 
-        monkeypatch.setattr(
-            auto_sync, "_read_head_json", lambda _fp: {"version": "1.0.0"}
-        )
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: {"version": "1.0.0"})
 
         assert auto_sync._version_already_bumped(str(plugin_json), ["version"]) is True
 
-    def test_returns_false_when_versions_equal(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_returns_false_when_versions_equal(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify _version_already_bumped returns False when versions match.
 
         Tests: _version_already_bumped equal versions
@@ -1220,15 +1100,11 @@ class TestVersionAlreadyBumped:
         plugin_json = tmp_path / "plugin.json"
         plugin_json.write_text(json.dumps({"version": "1.0.0"}))
 
-        monkeypatch.setattr(
-            auto_sync, "_read_head_json", lambda _fp: {"version": "1.0.0"}
-        )
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: {"version": "1.0.0"})
 
         assert auto_sync._version_already_bumped(str(plugin_json), ["version"]) is False
 
-    def test_returns_false_when_head_none(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_returns_false_when_head_none(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify _version_already_bumped returns False when file not in HEAD.
 
         Tests: _version_already_bumped new file
@@ -1250,14 +1126,9 @@ class TestVersionAlreadyBumped:
         How: Pass non-existent path with valid HEAD data
         Why: Graceful handling when file is deleted
         """
-        monkeypatch.setattr(
-            auto_sync, "_read_head_json", lambda _fp: {"version": "1.0.0"}
-        )
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: {"version": "1.0.0"})
 
-        assert (
-            auto_sync._version_already_bumped("/nonexistent/plugin.json", ["version"])
-            is False
-        )
+        assert auto_sync._version_already_bumped("/nonexistent/plugin.json", ["version"]) is False
 
     def test_nested_key_path(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify _version_already_bumped works with nested key paths.
@@ -1270,16 +1141,9 @@ class TestVersionAlreadyBumped:
         marketplace_json = tmp_path / "marketplace.json"
         marketplace_json.write_text(json.dumps({"metadata": {"version": "2.1.0"}}))
 
-        monkeypatch.setattr(
-            auto_sync, "_read_head_json", lambda _fp: {"metadata": {"version": "2.0.0"}}
-        )
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: {"metadata": {"version": "2.0.0"}})
 
-        assert (
-            auto_sync._version_already_bumped(
-                str(marketplace_json), ["metadata", "version"]
-            )
-            is True
-        )
+        assert auto_sync._version_already_bumped(str(marketplace_json), ["metadata", "version"]) is True
 
 
 # ============================================================================
@@ -1340,11 +1204,7 @@ class TestFormatJson:
         Why: The idempotency check relies on this difference to distinguish
              initial file content (json.dumps) from hook-written content (_format_json)
         """
-        data = {
-            "name": "test-plugin",
-            "version": "1.0.0",
-            "skills": ["./skills/existing/"],
-        }
+        data = {"name": "test-plugin", "version": "1.0.0", "skills": ["./skills/existing/"]}
         format_json_output = auto_sync._format_json(data)
         json_dumps_output = json.dumps(data, indent=2) + "\n"
         assert format_json_output != json_dumps_output
@@ -1363,9 +1223,7 @@ class TestFormatJson:
         assert parsed == data
         assert result.endswith("\n")
 
-    def test_format_json_fallback_uses_json_dumps_format(
-        self, monkeypatch: Any
-    ) -> None:
+    def test_format_json_fallback_uses_json_dumps_format(self, monkeypatch: Any) -> None:
         """Verify fallback path produces json.dumps(indent=2) output exactly.
 
         Tests: Format equivalence in fallback mode
@@ -1393,9 +1251,7 @@ class TestIdempotentWrites:
     check provides a secondary safety net.
     """
 
-    def test_update_plugin_json_is_noop_on_second_run(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_update_plugin_json_is_noop_on_second_run(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify second run is blocked by version comparison guard.
 
         Tests: Version guard prevents double-bump for plugin.json
@@ -1405,19 +1261,13 @@ class TestIdempotentWrites:
         monkeypatch.chdir(tmp_path)
 
         plugin_name = "test-plugin"
-        original_data = {
-            "name": "test-plugin",
-            "version": "1.0.0",
-            "skills": ["./skills/existing/"],
-        }
+        original_data = {"name": "test-plugin", "version": "1.0.0", "skills": ["./skills/existing/"]}
         _make_plugin_json(tmp_path, plugin_name, original_data)
 
         changes = _changes_with_modified_skill()
 
         # Simulate HEAD having the original version
-        monkeypatch.setattr(
-            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
-        )
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: dict(original_data))
 
         # Run 1: should update (1.0.0 == HEAD 1.0.0, so bump proceeds)
         updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
@@ -1429,9 +1279,7 @@ class TestIdempotentWrites:
         assert updated_2 is False
         assert version_2 == "1.0.1"
 
-    def test_update_marketplace_json_is_noop_on_second_run(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_update_marketplace_json_is_noop_on_second_run(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify second run is blocked by version comparison guard.
 
         Tests: Version guard prevents double-bump for marketplace.json
@@ -1453,9 +1301,7 @@ class TestIdempotentWrites:
         }
 
         # Simulate HEAD having the original version
-        monkeypatch.setattr(
-            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
-        )
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: dict(original_data))
 
         # Run 1: should update
         updated_1 = auto_sync.update_marketplace_json(plugin_changes)
@@ -1470,9 +1316,7 @@ class TestIdempotentWrites:
         final_data = json.loads(marketplace_json.read_text(encoding="utf-8"))
         assert final_data["metadata"]["version"] == "1.0.1"
 
-    def test_update_plugin_json_version_stays_at_single_bump(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_update_plugin_json_version_stays_at_single_bump(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify version guard prevents multiple bumps across retries.
 
         Tests: Multiple consecutive runs with version guard
@@ -1488,9 +1332,7 @@ class TestIdempotentWrites:
         changes = _changes_with_modified_skill()
 
         # Simulate HEAD having the original version
-        monkeypatch.setattr(
-            auto_sync, "_read_head_json", lambda _fp: dict(original_data)
-        )
+        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: dict(original_data))
 
         # Run 1: bumps to 1.0.1
         auto_sync.update_plugin_json(plugin_name, changes)
@@ -1524,21 +1366,14 @@ class TestNonComponentFileTracking:
         How: Pass status with a modified script path
         Why: Scripts are non-component files that should still trigger a version bump
         """
-        status: dict[str, list[str]] = {
-            "added": [],
-            "deleted": [],
-            "modified": ["plugins/foo/scripts/bar.py"],
-        }
+        status: dict[str, list[str]] = {"added": [], "deleted": [], "modified": ["plugins/foo/scripts/bar.py"]}
 
         component_changes, _ = auto_sync._process_file_changes(status)
 
         assert "foo" in component_changes
         assert len(component_changes["foo"]["modified"]) == 1
         assert component_changes["foo"]["modified"][0]["component_type"] == "other"
-        assert (
-            component_changes["foo"]["modified"][0]["component_path"]
-            == "scripts/bar.py"
-        )
+        assert component_changes["foo"]["modified"][0]["component_path"] == "scripts/bar.py"
 
     def test_test_file_modification_recorded(self) -> None:
         """Verify modifying a test file inside a plugin triggers tracking.
@@ -1547,21 +1382,14 @@ class TestNonComponentFileTracking:
         How: Pass status with a modified test path
         Why: Test files are non-component files that should trigger a version bump
         """
-        status: dict[str, list[str]] = {
-            "added": [],
-            "deleted": [],
-            "modified": ["plugins/foo/tests/test_bar.py"],
-        }
+        status: dict[str, list[str]] = {"added": [], "deleted": [], "modified": ["plugins/foo/tests/test_bar.py"]}
 
         component_changes, _ = auto_sync._process_file_changes(status)
 
         assert "foo" in component_changes
         assert len(component_changes["foo"]["modified"]) == 1
         assert component_changes["foo"]["modified"][0]["component_type"] == "other"
-        assert (
-            component_changes["foo"]["modified"][0]["component_path"]
-            == "tests/test_bar.py"
-        )
+        assert component_changes["foo"]["modified"][0]["component_path"] == "tests/test_bar.py"
 
     def test_claude_md_modification_recorded(self) -> None:
         """Verify modifying CLAUDE.md inside a plugin triggers tracking.
@@ -1570,11 +1398,7 @@ class TestNonComponentFileTracking:
         How: Pass status with a modified CLAUDE.md path
         Why: CLAUDE.md is a non-component file that should trigger a version bump
         """
-        status: dict[str, list[str]] = {
-            "added": [],
-            "deleted": [],
-            "modified": ["plugins/foo/CLAUDE.md"],
-        }
+        status: dict[str, list[str]] = {"added": [], "deleted": [], "modified": ["plugins/foo/CLAUDE.md"]}
 
         component_changes, _ = auto_sync._process_file_changes(status)
 
@@ -1590,11 +1414,7 @@ class TestNonComponentFileTracking:
         How: Pass status with a modified README.md path
         Why: README.md is a non-component file that should trigger a version bump
         """
-        status: dict[str, list[str]] = {
-            "added": [],
-            "deleted": [],
-            "modified": ["plugins/foo/README.md"],
-        }
+        status: dict[str, list[str]] = {"added": [], "deleted": [], "modified": ["plugins/foo/README.md"]}
 
         component_changes, _ = auto_sync._process_file_changes(status)
 
@@ -1629,11 +1449,7 @@ class TestNonComponentFileTracking:
         How: Pass status with an added script path
         Why: Added non-component files should also trigger a patch bump
         """
-        status: dict[str, list[str]] = {
-            "added": ["plugins/foo/scripts/new_script.py"],
-            "deleted": [],
-            "modified": [],
-        }
+        status: dict[str, list[str]] = {"added": ["plugins/foo/scripts/new_script.py"], "deleted": [], "modified": []}
 
         component_changes, _ = auto_sync._process_file_changes(status)
 
@@ -1648,11 +1464,7 @@ class TestNonComponentFileTracking:
         How: Pass status with a deleted test path
         Why: Deleted non-component files should also trigger a patch bump
         """
-        status: dict[str, list[str]] = {
-            "added": [],
-            "deleted": ["plugins/foo/tests/old_test.py"],
-            "modified": [],
-        }
+        status: dict[str, list[str]] = {"added": [], "deleted": ["plugins/foo/tests/old_test.py"], "modified": []}
 
         component_changes, _ = auto_sync._process_file_changes(status)
 
@@ -1660,9 +1472,7 @@ class TestNonComponentFileTracking:
         assert len(component_changes["foo"]["modified"]) == 1
         assert component_changes["foo"]["modified"][0]["component_type"] == "other"
 
-    def test_non_component_change_triggers_patch_bump(
-        self, tmp_path: Path, monkeypatch: Any
-    ) -> None:
+    def test_non_component_change_triggers_patch_bump(self, tmp_path: Path, monkeypatch: Any) -> None:
         """Verify non-component changes result in a patch version bump.
 
         Tests: End-to-end flow from _process_file_changes through update_plugin_json
@@ -1675,17 +1485,11 @@ class TestNonComponentFileTracking:
         original_data = {"name": "foo", "version": "1.0.0", "skills": []}
         _make_plugin_json(tmp_path, plugin_name, original_data)
 
-        status: dict[str, list[str]] = {
-            "added": [],
-            "deleted": [],
-            "modified": ["plugins/foo/scripts/helper.py"],
-        }
+        status: dict[str, list[str]] = {"added": [], "deleted": [], "modified": ["plugins/foo/scripts/helper.py"]}
 
         component_changes, _ = auto_sync._process_file_changes(status)
 
-        updated, new_version = auto_sync.update_plugin_json(
-            plugin_name, component_changes[plugin_name]
-        )
+        updated, new_version = auto_sync.update_plugin_json(plugin_name, component_changes[plugin_name])
 
         assert updated is True
         assert new_version == "1.0.1"
@@ -1715,9 +1519,7 @@ class TestDiscoverSkills:
 
         assert result == ["./skills/my-skill"]
 
-    def test_scripts_in_skill_dir_not_discovered_as_skills(
-        self, tmp_path: Path
-    ) -> None:
+    def test_scripts_in_skill_dir_not_discovered_as_skills(self, tmp_path: Path) -> None:
         """Python scripts inside a skill's scripts/ dir must NOT appear as skills.
 
         Tests: Bug fix — scripts were incorrectly added to the skills array
@@ -1813,9 +1615,7 @@ class TestFindStaleItemsScripts:
         assert "./skills/my-skill/scripts/evaluate.py" in stale
         assert "./skills/my-skill" not in stale
 
-    def test_disk_existence_does_not_protect_undiscovered_entries(
-        self, tmp_path: Path
-    ) -> None:
+    def test_disk_existence_does_not_protect_undiscovered_entries(self, tmp_path: Path) -> None:
         """Files existing on disk are stale if not in the discovery list.
 
         Tests: Discovery is sole authority — filesystem existence is irrelevant

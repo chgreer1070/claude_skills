@@ -232,12 +232,7 @@ class TestExternalLinkFiltering:
 
     @pytest.mark.parametrize(
         "external_link",
-        [
-            "https://example.com",
-            "http://example.com",
-            "ftp://example.com",
-            "https://docs.python.org/3/",
-        ],
+        ["https://example.com", "http://example.com", "ftp://example.com", "https://docs.python.org/3/"],
     )
     def test_external_links_ignored(self, tmp_path: Path, external_link: str) -> None:
         """Test external links are not validated.

@@ -20,18 +20,10 @@ from typing import Annotated, TypedDict
 import typer
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeElapsedColumn,
-)
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
-app = typer.Typer(
-    help="Process research files for integration opportunities", no_args_is_help=True
-)
+app = typer.Typer(help="Process research files for integration opportunities", no_args_is_help=True)
 console = Console()
 error_console = Console(stderr=True, style="bold red")
 
@@ -56,9 +48,7 @@ class ProcessResult(TypedDict, total=False):
     cross_refs: int
 
 
-def find_research_files(
-    category: str | None = None, single_file: Path | None = None
-) -> list[Path]:
+def find_research_files(category: str | None = None, single_file: Path | None = None) -> list[Path]:
     """Find all research markdown files to process.
 
     Args:
@@ -75,9 +65,7 @@ def find_research_files(
     research_dir = repo_root / "research"
 
     if not research_dir.exists():
-        error_console.print(
-            f"[red]Error: Research directory not found: {research_dir}[/red]"
-        )
+        error_console.print(f"[red]Error: Research directory not found: {research_dir}[/red]")
         raise typer.Exit(1)
 
     if single_file:
@@ -126,9 +114,7 @@ def count_section_items(content: str, section_marker: str) -> int:
         if in_section:
             if line.startswith(("###", "##")):
                 break
-            if line.strip().startswith("- ") or (
-                line.strip().startswith("|") and "|" in line[1:]
-            ):
+            if line.strip().startswith("- ") or (line.strip().startswith("|") and "|" in line[1:]):
                 count += 1
 
     # Subtract header row from tables
@@ -160,9 +146,7 @@ def analyze_output(file_path: Path) -> dict[str, int]:
     }
 
 
-def process_file(
-    file_path: Path, force: bool = False, dry_run: bool = False
-) -> ProcessResult:
+def process_file(file_path: Path, force: bool = False, dry_run: bool = False) -> ProcessResult:
     """Process a single research file with the research-context-agent.
 
     Args:
@@ -176,36 +160,22 @@ def process_file(
     content = file_path.read_text(encoding="utf-8")
     if "## Integration Opportunities" in content and not force:
         return ProcessResult(
-            status="skipped",
-            reason="already_processed",
-            enhancements=0,
-            skills=0,
-            mcps=0,
-            cross_refs=0,
+            status="skipped", reason="already_processed", enhancements=0, skills=0, mcps=0, cross_refs=0
         )
 
     if dry_run:
-        return ProcessResult(
-            status="would_process", enhancements=0, skills=0, mcps=0, cross_refs=0
-        )
+        return ProcessResult(status="would_process", enhancements=0, skills=0, mcps=0, cross_refs=0)
 
     # TODO: Invoke the research-context-agent via Task tool
     # For now, this is a placeholder that would need to be connected
     # to Claude Code's Task system
 
-    error_console.print(
-        f"[yellow]Warning: Agent invocation not yet implemented. "
-        f"Would process: {file_path}[/yellow]"
-    )
+    error_console.print(f"[yellow]Warning: Agent invocation not yet implemented. Would process: {file_path}[/yellow]")
 
-    return ProcessResult(
-        status="not_implemented", enhancements=0, skills=0, mcps=0, cross_refs=0
-    )
+    return ProcessResult(status="not_implemented", enhancements=0, skills=0, mcps=0, cross_refs=0)
 
 
-def _run_processing(
-    files: list[Path], force: bool, dry_run: bool
-) -> list[ProcessResult]:
+def _run_processing(files: list[Path], force: bool, dry_run: bool) -> list[ProcessResult]:
     """Run processing loop with a rich progress bar.
 
     Args:
@@ -237,9 +207,7 @@ def _run_processing(
     return results
 
 
-def _build_results_table(
-    results: list[ProcessResult],
-) -> tuple[Table, int, int, int, int, int, int, int]:
+def _build_results_table(results: list[ProcessResult]) -> tuple[Table, int, int, int, int, int, int, int]:
     """Build the per-file results table and accumulate totals.
 
     Args:
@@ -249,9 +217,7 @@ def _build_results_table(
         Tuple of (table, processed_count, skipped_count, failed_count,
         total_enhancements, total_skills, total_mcps, total_cross_refs).
     """
-    table = Table(
-        title="Processing Summary", show_header=True, header_style="bold magenta"
-    )
+    table = Table(title="Processing Summary", show_header=True, header_style="bold magenta")
     table.add_column("File", style="cyan", no_wrap=False)
     table.add_column("Status", style="green")
     table.add_column("Enhancements", justify="right")
@@ -343,24 +309,14 @@ def _build_summary_panel(
 @app.command()
 def main(
     category: Annotated[
-        str | None,
-        typer.Option("--category", "-c", help="Process only files in this category"),
+        str | None, typer.Option("--category", "-c", help="Process only files in this category")
     ] = None,
-    file: Annotated[
-        Path | None, typer.Option("--file", "-f", help="Process a single file")
-    ] = None,
+    file: Annotated[Path | None, typer.Option("--file", "-f", help="Process a single file")] = None,
     force: Annotated[
-        bool,
-        typer.Option(
-            "--force",
-            help="Force reprocess files with existing Integration Opportunities",
-        ),
+        bool, typer.Option("--force", help="Force reprocess files with existing Integration Opportunities")
     ] = False,
     dry_run: Annotated[
-        bool,
-        typer.Option(
-            "--dry-run", help="Show what would be processed without making changes"
-        ),
+        bool, typer.Option("--dry-run", help="Show what would be processed without making changes")
     ] = False,
 ) -> None:
     """Batch process research files to add Integration Opportunities sections.
@@ -386,10 +342,7 @@ def main(
         ./process-research-integration.py --dry-run
     """
     console.print(
-        Panel.fit(
-            "[bold blue]Research Integration Opportunities - Batch Processor[/bold blue]",
-            border_style="blue",
-        )
+        Panel.fit("[bold blue]Research Integration Opportunities - Batch Processor[/bold blue]", border_style="blue")
     )
     console.print()
 
@@ -408,23 +361,15 @@ def main(
     results = _run_processing(files, force, dry_run)
 
     console.print()
-    table, processed, skipped, failed, enhancements, skills, mcps, cross_refs = (
-        _build_results_table(results)
-    )
+    table, processed, skipped, failed, enhancements, skills, mcps, cross_refs = _build_results_table(results)
 
     console.print(table)
     console.print()
-    console.print(
-        _build_summary_panel(
-            processed, skipped, failed, enhancements, skills, mcps, cross_refs
-        )
-    )
+    console.print(_build_summary_panel(processed, skipped, failed, enhancements, skills, mcps, cross_refs))
 
     if dry_run:
         console.print()
-        console.print(
-            "[yellow]This was a dry run. Use without --dry-run to process files.[/yellow]"
-        )
+        console.print("[yellow]This was a dry run. Use without --dry-run to process files.[/yellow]")
 
     if failed > 0:
         raise typer.Exit(1)

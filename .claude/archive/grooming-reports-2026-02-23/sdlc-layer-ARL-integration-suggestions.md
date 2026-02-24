@@ -1,7 +1,7 @@
 # SDLC Layer Separation Architecture — ARL Integration Suggestions
 
-**Generated**: 2026-02-23  
-**Plan**: ARL = Observe → Identify → Probe → Accumulate → Improve  
+**Generated**: 2026-02-23
+**Plan**: ARL = Observe → Identify → Probe → Accumulate → Improve
 **Source**: Full read of all ARL items from sdlc-layer-candidates-master.md
 
 ---

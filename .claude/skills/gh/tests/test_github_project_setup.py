@@ -207,9 +207,7 @@ class TestMilestoneCreate:
             patch("github_project_setup.get_repo", return_value=mock_repo),
             patch("github_project_setup.Github"),
         ):
-            result = runner.invoke(
-                app, ["milestone", "create", "--title", "test-milestone"]
-            )
+            result = runner.invoke(app, ["milestone", "create", "--title", "test-milestone"])
 
         assert result.exit_code == 0, result.output
         mock_repo.create_milestone.assert_called_once_with(title="test-milestone")
@@ -226,9 +224,7 @@ class TestMilestoneCreate:
             patch("github_project_setup.get_repo", return_value=mock_repo),
             patch("github_project_setup.Github"),
         ):
-            result = runner.invoke(
-                app, ["milestone", "create", "--title", "sprint", "--due", "2026-03-31"]
-            )
+            result = runner.invoke(app, ["milestone", "create", "--title", "sprint", "--due", "2026-03-31"])
 
         assert result.exit_code == 0, result.output
         call_kwargs = mock_repo.create_milestone.call_args[1]
@@ -247,15 +243,7 @@ class TestMilestoneCreate:
             patch("github_project_setup.Github"),
         ):
             result = runner.invoke(
-                app,
-                [
-                    "milestone",
-                    "create",
-                    "--title",
-                    "release",
-                    "--description",
-                    "Release milestone",
-                ],
+                app, ["milestone", "create", "--title", "release", "--description", "Release milestone"]
             )
 
         assert result.exit_code == 0, result.output
@@ -322,9 +310,7 @@ class TestIssueCreate:
             patch("github_project_setup.get_repo", return_value=mock_repo),
             patch("github_project_setup.Github"),
         ):
-            result = runner.invoke(
-                app, ["issue", "create", "--title", "fix: bug", "--milestone", "1"]
-            )
+            result = runner.invoke(app, ["issue", "create", "--title", "fix: bug", "--milestone", "1"])
 
         assert result.exit_code == 0, result.output
         call_kwargs = mock_repo.create_issue.call_args[1]
@@ -357,15 +343,7 @@ class TestIssueCreate:
             patch("github_project_setup.Github"),
         ):
             result = runner.invoke(
-                app,
-                [
-                    "issue",
-                    "create",
-                    "--title",
-                    "test",
-                    "--priority-label",
-                    "priority:p99-nonexistent",
-                ],
+                app, ["issue", "create", "--title", "test", "--priority-label", "priority:p99-nonexistent"]
             )
 
         assert result.exit_code == 0, result.output
@@ -386,16 +364,10 @@ class TestMilestoneStart:
         """Return (mock_repo, milestone) with issues attached."""
         if issues is None:
             issues = [
-                _make_issue(
-                    10, "First issue", ["priority:p1", "status:needs-grooming"]
-                ),
-                _make_issue(
-                    11, "Second issue", ["priority:p2", "status:needs-grooming"]
-                ),
+                _make_issue(10, "First issue", ["priority:p1", "status:needs-grooming"]),
+                _make_issue(11, "Second issue", ["priority:p2", "status:needs-grooming"]),
             ]
-        milestone = _make_milestone(
-            1, "v1.0", state=milestone_state, open_issues=len(issues)
-        )
+        milestone = _make_milestone(1, "v1.0", state=milestone_state, open_issues=len(issues))
         mock_repo = MagicMock()
         mock_repo.get_milestone.return_value = milestone
         mock_repo.get_issues.return_value = issues
@@ -425,9 +397,7 @@ class TestMilestoneStart:
 
     def test_skips_already_in_progress_issues(self) -> None:
         """Issues already labeled status:in-progress are skipped, not double-edited."""
-        issues = [
-            _make_issue(20, "already done", ["priority:p1", "status:in-progress"])
-        ]
+        issues = [_make_issue(20, "already done", ["priority:p1", "status:in-progress"])]
         mock_repo, _ = self._setup_repo(issues=issues)
 
         with (
@@ -556,13 +526,7 @@ class TestMilestoneStart:
 
     def test_preserves_non_status_labels(self) -> None:
         """priority:p1 label is preserved; only status:needs-grooming is removed."""
-        issues = [
-            _make_issue(
-                60,
-                "preserve labels",
-                ["priority:p1", "type:feature", "status:needs-grooming"],
-            )
-        ]
+        issues = [_make_issue(60, "preserve labels", ["priority:p1", "type:feature", "status:needs-grooming"])]
         mock_repo, _ = self._setup_repo(issues=issues)
 
         with (

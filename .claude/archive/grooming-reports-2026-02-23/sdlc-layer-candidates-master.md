@@ -1,7 +1,7 @@
 # SDLC Layer Separation Architecture — Master Candidate List
 
-**Generated**: 2026-02-23  
-**Source**: Full read of plugins/, .claude/skills/, .claude/agents/ by 3 parallel sub-agents  
+**Generated**: 2026-02-23
+**Source**: Full read of plugins/, .claude/skills/, .claude/agents/ by 3 parallel sub-agents
 **Purpose**: Comprehensive review list for user to add specific items to the plan
 
 ---

@@ -89,9 +89,7 @@ CleanupAction = Literal["delete", "archive", "extract"]
 
 # Initialize Typer app and Rich console
 app = typer.Typer(
-    name="find-temp-documentation",
-    help="Find and manage temporary documentation files",
-    add_completion=False,
+    name="find-temp-documentation", help="Find and manage temporary documentation files", add_completion=False
 )
 console = Console()
 
@@ -157,12 +155,7 @@ class TempDoc:
             if isinstance(created_value, date):
                 created_date = created_value
             elif isinstance(created_value, str):
-                created_date = (
-                    datetime
-                    .strptime(created_value, "%Y-%m-%d")
-                    .replace(tzinfo=UTC)
-                    .date()
-                )
+                created_date = datetime.strptime(created_value, "%Y-%m-%d").replace(tzinfo=UTC).date()
             else:
                 return None
 
@@ -214,14 +207,7 @@ class TempDoc:
             errors.append("Field 'temporary' must be True")
 
         # Check type is valid
-        valid_types: list[DocType] = [
-            "bugs",
-            "investigation",
-            "checklist",
-            "findings",
-            "summary",
-            "report",
-        ]
+        valid_types: list[DocType] = ["bugs", "investigation", "checklist", "findings", "summary", "report"]
         if self.type not in valid_types:
             errors.append(f"Field 'type' must be one of: {', '.join(valid_types)}")
 
@@ -244,17 +230,10 @@ class TempDoc:
         # Check cleanup_action is valid
         valid_actions: list[CleanupAction] = ["delete", "archive", "extract"]
         if self.cleanup_action not in valid_actions:
-            errors.append(
-                f"Field 'cleanup_action' must be one of: {', '.join(valid_actions)}"
-            )
+            errors.append(f"Field 'cleanup_action' must be one of: {', '.join(valid_actions)}")
 
         # Check status is valid
-        valid_statuses: list[StatusType] = [
-            "active",
-            "for-review",
-            "completed",
-            "archived",
-        ]
+        valid_statuses: list[StatusType] = ["active", "for-review", "completed", "archived"]
         if self.status not in valid_statuses:
             errors.append(f"Field 'status' must be one of: {', '.join(valid_statuses)}")
 
@@ -307,9 +286,7 @@ def _find_temp_doc_files(root: Path, recursive: bool = True) -> list[Path]:
     else:
         # Use glob for non-recursive search
         for pattern in TEMP_DOC_PATTERNS:
-            matches.extend(
-                file_path for file_path in root.glob(pattern) if file_path.is_file()
-            )
+            matches.extend(file_path for file_path in root.glob(pattern) if file_path.is_file())
 
     return sorted(set(matches))
 
@@ -379,18 +356,12 @@ def _print_summary_yaml(docs: list[TempDoc], path: Path) -> None:
         console.print("  by_task:")
         for task, count in sorted(task_counts.items()):
             # Truncate long task names
-            task_display = (
-                task[:TASK_NAME_TRUNCATE_LENGTH] + "..."
-                if len(task) > TASK_NAME_TRUNCATE_LENGTH
-                else task
-            )
+            task_display = task[:TASK_NAME_TRUNCATE_LENGTH] + "..." if len(task) > TASK_NAME_TRUNCATE_LENGTH else task
             console.print(f"    {task_display}: {count}")
 
 
 def _print_full_list_yaml(
-    docs: list[TempDoc],
-    path: Path,
-    group_by: Literal["type", "status", "task", "agent"] | None = None,
+    docs: list[TempDoc], path: Path, group_by: Literal["type", "status", "task", "agent"] | None = None
 ) -> None:
     """Print full YAML list with index numbers.
 
@@ -434,9 +405,7 @@ def _print_doc_yaml(doc: TempDoc, index: int, path: Path, indent: int = 2) -> No
         indent: Number of spaces to indent
     """
     prefix = " " * indent
-    relative_path = (
-        doc.path.relative_to(path) if doc.path.is_relative_to(path) else doc.path
-    )
+    relative_path = doc.path.relative_to(path) if doc.path.is_relative_to(path) else doc.path
 
     # Extract first line of content as description
     content_lines = doc.content.strip().split("\n")
@@ -530,12 +499,9 @@ def scan(
             resolve_path=True,
         ),
     ] = None,
-    summary: Annotated[
-        bool, typer.Option("--summary", help="Show summary only (minimal tokens)")
-    ] = False,
+    summary: Annotated[bool, typer.Option("--summary", help="Show summary only (minimal tokens)")] = False,
     group_by: Annotated[
-        Literal["type", "status", "task", "agent"] | None,
-        typer.Option("--group-by", help="Group documents by field"),
+        Literal["type", "status", "task", "agent"] | None, typer.Option("--group-by", help="Group documents by field")
     ] = None,
 ) -> None:
     """Scan temporary documentation with progressive disclosure.
@@ -581,12 +547,7 @@ def find(
         ),
     ] = None,
     recursive: Annotated[
-        bool,
-        typer.Option(
-            "--recursive/--no-recursive",
-            "-r/-R",
-            help="Search subdirectories recursively",
-        ),
+        bool, typer.Option("--recursive/--no-recursive", "-r/-R", help="Search subdirectories recursively")
     ] = True,
 ) -> None:
     """Find all temporary documentation files (legacy command).
@@ -600,18 +561,14 @@ def find(
     if path is None:
         path = Path.cwd()
 
-    console.print(
-        "[yellow]Note: 'find' command is deprecated. Use 'scan' for YAML output.[/]\n"
-    )
+    console.print("[yellow]Note: 'find' command is deprecated. Use 'scan' for YAML output.[/]\n")
     console.print(f"[cyan]Searching for temporary documentation in:[/] {path}\n")
 
     # Find candidate files
     files = _find_temp_doc_files(path, recursive)
 
     if not files:
-        console.print(
-            "[yellow]No files matching temporary documentation patterns found.[/]"
-        )
+        console.print("[yellow]No files matching temporary documentation patterns found.[/]")
         return
 
     # Parse files
@@ -620,36 +577,21 @@ def find(
     # Display results
     console.print(f"[green]Found {len(files)} candidate files:[/]")
     console.print(f"  [cyan]✓[/] {len(temp_docs)} valid temporary docs")
-    console.print(
-        f"  [yellow]✗[/] {len(invalid_files)} files without valid frontmatter\n"
-    )
+    console.print(f"  [yellow]✗[/] {len(invalid_files)} files without valid frontmatter\n")
 
     if temp_docs:
         console.print("[bold]Valid Temporary Documentation:[/]")
         for doc in temp_docs:
-            relative_path = (
-                doc.path.relative_to(path)
-                if doc.path.is_relative_to(path)
-                else doc.path
+            relative_path = doc.path.relative_to(path) if doc.path.is_relative_to(path) else doc.path
+            status_color = {"active": "yellow", "for-review": "cyan", "completed": "green", "archived": "blue"}.get(
+                doc.status, "white"
             )
-            status_color = {
-                "active": "yellow",
-                "for-review": "cyan",
-                "completed": "green",
-                "archived": "blue",
-            }.get(doc.status, "white")
-            console.print(
-                f"  [{status_color}]{doc.status:10s}[/] {relative_path} ({doc.type})"
-            )
+            console.print(f"  [{status_color}]{doc.status:10s}[/] {relative_path} ({doc.type})")
 
     if invalid_files:
         console.print("\n[bold]Files Without Valid Frontmatter:[/]")
         for file_path in invalid_files:
-            relative_path = (
-                file_path.relative_to(path)
-                if file_path.is_relative_to(path)
-                else file_path
-            )
+            relative_path = file_path.relative_to(path) if file_path.is_relative_to(path) else file_path
             console.print(f"  [dim]{relative_path}[/]")
 
 
@@ -657,20 +599,10 @@ def find(
 def list_docs(
     path: Annotated[
         Path | None,
-        typer.Argument(
-            help="Root directory to search",
-            exists=True,
-            file_okay=False,
-            dir_okay=True,
-            resolve_path=True,
-        ),
+        typer.Argument(help="Root directory to search", exists=True, file_okay=False, dir_okay=True, resolve_path=True),
     ] = None,
-    status: Annotated[
-        StatusType | None, typer.Option("--status", "-s", help="Filter by status")
-    ] = None,
-    doc_type: Annotated[
-        DocType | None, typer.Option("--type", "-t", help="Filter by document type")
-    ] = None,
+    status: Annotated[StatusType | None, typer.Option("--status", "-s", help="Filter by status")] = None,
+    doc_type: Annotated[DocType | None, typer.Option("--type", "-t", help="Filter by document type")] = None,
 ) -> None:
     """List temporary docs with details in a table format.
 
@@ -698,9 +630,7 @@ def list_docs(
     # Create table using Rich best practices
     # Reference: https://github.com/textualize/rich
     table = Table(
-        title=f"Temporary Documentation ({len(temp_docs)} files)",
-        box=box.MINIMAL_DOUBLE_HEAD,
-        title_style="bold blue",
+        title=f"Temporary Documentation ({len(temp_docs)} files)", box=box.MINIMAL_DOUBLE_HEAD, title_style="bold blue"
     )
 
     # Add columns with styling
@@ -713,19 +643,8 @@ def list_docs(
 
     # Add rows
     for doc in temp_docs:
-        relative_path = (
-            str(doc.path.relative_to(path))
-            if doc.path.is_relative_to(path)
-            else str(doc.path)
-        )
-        table.add_row(
-            doc.status,
-            doc.type,
-            relative_path,
-            str(doc.created),
-            doc.agent,
-            doc.cleanup_action,
-        )
+        relative_path = str(doc.path.relative_to(path)) if doc.path.is_relative_to(path) else str(doc.path)
+        table.add_row(doc.status, doc.type, relative_path, str(doc.created), doc.agent, doc.cleanup_action)
 
     # Set table width to natural size to prevent wrapping
     table_width = _get_table_width(table)
@@ -735,53 +654,31 @@ def list_docs(
     console.print(table, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
 
 
-def _check_invalid_frontmatter(
-    invalid_files: list[Path], path: Path, violations: list[str]
-) -> None:
+def _check_invalid_frontmatter(invalid_files: list[Path], path: Path, violations: list[str]) -> None:
     """Check for files without valid frontmatter and add to violations."""
     if invalid_files:
-        violations.append(
-            f"[red]✗[/] {len(invalid_files)} files missing valid frontmatter"
-        )
+        violations.append(f"[red]✗[/] {len(invalid_files)} files missing valid frontmatter")
         for file_path in invalid_files:
-            relative_path = (
-                file_path.relative_to(path)
-                if file_path.is_relative_to(path)
-                else file_path
-            )
+            relative_path = file_path.relative_to(path) if file_path.is_relative_to(path) else file_path
             violations.append(f"    {relative_path}")
 
 
-def _check_completed_docs(
-    temp_docs: list[TempDoc], path: Path, warnings: list[str]
-) -> None:
+def _check_completed_docs(temp_docs: list[TempDoc], path: Path, warnings: list[str]) -> None:
     """Check for completed docs that need cleanup and add to warnings."""
     completed_docs = [doc for doc in temp_docs if doc.status == "completed"]
     if completed_docs:
-        warnings.append(
-            f"[yellow]![/] {len(completed_docs)} completed docs need cleanup"
-        )
+        warnings.append(f"[yellow]![/] {len(completed_docs)} completed docs need cleanup")
         for doc in completed_docs:
-            relative_path = (
-                doc.path.relative_to(path)
-                if doc.path.is_relative_to(path)
-                else doc.path
-            )
+            relative_path = doc.path.relative_to(path) if doc.path.is_relative_to(path) else doc.path
             warnings.append(f"    {relative_path} (action: {doc.cleanup_action})")
 
 
-def _check_invalid_fields(
-    temp_docs: list[TempDoc], path: Path, violations: list[str]
-) -> None:
+def _check_invalid_fields(temp_docs: list[TempDoc], path: Path, violations: list[str]) -> None:
     """Check for invalid field values and add to violations."""
     for doc in temp_docs:
         is_valid, errors = doc.is_valid()
         if not is_valid:
-            relative_path = (
-                doc.path.relative_to(path)
-                if doc.path.is_relative_to(path)
-                else doc.path
-            )
+            relative_path = doc.path.relative_to(path) if doc.path.is_relative_to(path) else doc.path
             violations.append(f"[red]✗[/] Invalid fields in {relative_path}")
             violations.extend(f"    {error}" for error in errors)
 
@@ -803,13 +700,7 @@ def _print_frontmatter_only(doc: TempDoc) -> None:
 def _print_full_doc_details(doc: TempDoc, is_valid: bool, errors: list[str]) -> None:
     """Print full document details including frontmatter, validation, and content summary."""
     # Display frontmatter details
-    console.print(
-        Panel(
-            f"[bold]{doc.path.name}[/]",
-            subtitle=f"Type: {doc.type}",
-            border_style="cyan",
-        )
-    )
+    console.print(Panel(f"[bold]{doc.path.name}[/]", subtitle=f"Type: {doc.type}", border_style="cyan"))
     console.print()
 
     # Create details table
@@ -858,13 +749,7 @@ def _print_full_doc_details(doc: TempDoc, is_valid: bool, errors: list[str]) -> 
 def audit(
     path: Annotated[
         Path | None,
-        typer.Argument(
-            help="Root directory to audit",
-            exists=True,
-            file_okay=False,
-            dir_okay=True,
-            resolve_path=True,
-        ),
+        typer.Argument(help="Root directory to audit", exists=True, file_okay=False, dir_okay=True, resolve_path=True),
     ] = None,
 ) -> None:
     """Audit temporary docs for violations.
@@ -878,9 +763,7 @@ def audit(
     if path is None:
         path = Path.cwd()
 
-    console.print(
-        Panel("[bold cyan]Auditing Temporary Documentation[/]", border_style="cyan")
-    )
+    console.print(Panel("[bold cyan]Auditing Temporary Documentation[/]", border_style="cyan"))
     console.print()
 
     # Find and parse files
@@ -899,9 +782,7 @@ def audit(
     # Display results
     if not violations and not warnings:
         console.print("[green]✓ No violations found! All temporary docs are valid.[/]")
-        console.print(
-            f"\n[dim]Found {len(temp_docs)} active temporary documentation files.[/]"
-        )
+        console.print(f"\n[dim]Found {len(temp_docs)} active temporary documentation files.[/]")
     else:
         if violations:
             console.print("[bold red]Violations:[/]\n")
@@ -922,24 +803,13 @@ def audit(
 
 @app.command()
 def show(
-    identifier: Annotated[
-        str | None, typer.Argument(help="Document name or path")
-    ] = None,
-    index: Annotated[
-        int | None, typer.Option("--index", help="Document index (0-based)")
-    ] = None,
-    frontmatter: Annotated[
-        bool, typer.Option("--frontmatter", help="Show frontmatter only")
-    ] = False,
+    identifier: Annotated[str | None, typer.Argument(help="Document name or path")] = None,
+    index: Annotated[int | None, typer.Option("--index", help="Document index (0-based)")] = None,
+    frontmatter: Annotated[bool, typer.Option("--frontmatter", help="Show frontmatter only")] = False,
     path: Annotated[
         Path | None,
         typer.Option(
-            "--path",
-            help="Root directory to search",
-            exists=True,
-            file_okay=False,
-            dir_okay=True,
-            resolve_path=True,
+            "--path", help="Root directory to search", exists=True, file_okay=False, dir_okay=True, resolve_path=True
         ),
     ] = None,
 ) -> None:
@@ -998,14 +868,9 @@ def cleanup(
             resolve_path=True,
         ),
     ] = None,
-    task_file: Annotated[
-        str | None, typer.Option("--task-file", help="Clean only this task's docs")
-    ] = None,
+    task_file: Annotated[str | None, typer.Option("--task-file", help="Clean only this task's docs")] = None,
     dry_run: Annotated[
-        bool,
-        typer.Option(
-            "--dry-run/--no-dry-run", help="Show what would be moved without moving"
-        ),
+        bool, typer.Option("--dry-run/--no-dry-run", help="Show what would be moved without moving")
     ] = True,
 ) -> None:
     """Move non-active temporary docs to .wastepaper/ folder.
@@ -1027,11 +892,7 @@ def cleanup(
     temp_docs, _ = _load_temp_docs(files)
 
     # Filter for cleanup candidates: completed, for-review, or archived
-    cleanup_docs = [
-        doc
-        for doc in temp_docs
-        if doc.status in {"completed", "for-review", "archived"}
-    ]
+    cleanup_docs = [doc for doc in temp_docs if doc.status in {"completed", "for-review", "archived"}]
 
     # Filter by task if specified
     if task_file:
@@ -1047,12 +908,7 @@ def cleanup(
     # Create .wastepaper/ directory
     wastepaper_dir = path / ".wastepaper"
 
-    console.print(
-        Panel(
-            f"[bold]Found {len(cleanup_docs)} temporary documents to move[/]",
-            border_style="yellow",
-        )
-    )
+    console.print(Panel(f"[bold]Found {len(cleanup_docs)} temporary documents to move[/]", border_style="yellow"))
     console.print()
 
     mode = "[yellow]DRY RUN[/]" if dry_run else "[red]EXECUTING[/]"
@@ -1061,9 +917,7 @@ def cleanup(
     moved_count = 0
 
     for doc in cleanup_docs:
-        relative_path = (
-            doc.path.relative_to(path) if doc.path.is_relative_to(path) else doc.path
-        )
+        relative_path = doc.path.relative_to(path) if doc.path.is_relative_to(path) else doc.path
 
         console.print(f"[bold cyan]File:[/] {relative_path}")
         console.print(f"[dim]Status:[/] {doc.status}")
@@ -1100,21 +954,12 @@ def cleanup(
 @app.command()
 def state(
     identifier: Annotated[str, typer.Argument(help="Document name or path")],
-    new_status: Annotated[
-        StatusType | None, typer.Argument(help="New status value")
-    ] = None,
-    index: Annotated[
-        int | None, typer.Option("--index", help="Use index instead of name/path")
-    ] = None,
+    new_status: Annotated[StatusType | None, typer.Argument(help="New status value")] = None,
+    index: Annotated[int | None, typer.Option("--index", help="Use index instead of name/path")] = None,
     path: Annotated[
         Path | None,
         typer.Option(
-            "--path",
-            help="Root directory to search",
-            exists=True,
-            file_okay=False,
-            dir_okay=True,
-            resolve_path=True,
+            "--path", help="Root directory to search", exists=True, file_okay=False, dir_okay=True, resolve_path=True
         ),
     ] = None,
 ) -> None:

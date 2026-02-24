@@ -70,33 +70,11 @@ FILE_CATEGORIES: dict[str, list[str]] = {
         ".ml",
         ".fs",
     ],
-    "config": [
-        ".json",
-        ".yaml",
-        ".yml",
-        ".toml",
-        ".ini",
-        ".cfg",
-        ".conf",
-        ".env",
-        ".properties",
-        ".xml",
-        ".plist",
-    ],
+    "config": [".json", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".env", ".properties", ".xml", ".plist"],
     "data": [".csv", ".tsv", ".parquet", ".arrow", ".ndjson", ".jsonl"],
     "documentation": [".md", ".rst", ".txt", ".adoc", ".org", ".tex", ".rtf"],
     "markup": [".html", ".htm", ".xhtml", ".svg"],
-    "image": [
-        ".png",
-        ".jpg",
-        ".jpeg",
-        ".gif",
-        ".webp",
-        ".bmp",
-        ".ico",
-        ".tiff",
-        ".tif",
-    ],
+    "image": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".tiff", ".tif"],
     "binary": [
         ".pdf",
         ".doc",
@@ -170,26 +148,15 @@ def count_metrics(file_path: Path) -> dict[str, Any]:
     try:
         content = file_path.read_text(encoding="utf-8", errors="replace")
     except OSError as e:
-        return {
-            "word_count": None,
-            "line_count": None,
-            "char_count": None,
-            "error": str(e),
-        }
+        return {"word_count": None, "line_count": None, "char_count": None, "error": str(e)}
 
     lines = content.splitlines()
     words = content.split()
 
-    return {
-        "word_count": len(words),
-        "line_count": len(lines),
-        "char_count": len(content),
-    }
+    return {"word_count": len(words), "line_count": len(lines), "char_count": len(content)}
 
 
-def extract_excerpt(
-    file_path: Path, head_lines: int = 20, tail_lines: int = 10
-) -> dict[str, Any]:
+def extract_excerpt(file_path: Path, head_lines: int = 20, tail_lines: int = 10) -> dict[str, Any]:
     """Extract head and tail excerpts from a text file.
 
     Returns:
@@ -232,9 +199,7 @@ def summarization_strategy(word_count: int | None) -> str:
     return "large"
 
 
-def get_file_metrics(
-    file_path: Path, excerpt_lines: int = 20, tail_lines: int = 10
-) -> dict[str, Any]:
+def get_file_metrics(file_path: Path, excerpt_lines: int = 20, tail_lines: int = 10) -> dict[str, Any]:
     """Get comprehensive file metrics for summarization planning.
 
     Args:
@@ -273,9 +238,7 @@ def get_file_metrics(
         result["strategy"] = summarization_strategy(metrics.get("word_count"))
 
         if excerpt_lines > 0:
-            excerpt = extract_excerpt(
-                file_path, head_lines=excerpt_lines, tail_lines=tail_lines
-            )
+            excerpt = extract_excerpt(file_path, head_lines=excerpt_lines, tail_lines=tail_lines)
             result["excerpt"] = excerpt
     else:
         result["word_count"] = None
@@ -319,30 +282,16 @@ def format_human_readable(metrics: dict[str, Any]) -> str:
 
 def main() -> None:
     """Entry point."""
-    parser = argparse.ArgumentParser(
-        description="File metrics for summarization strategy selection"
-    )
+    parser = argparse.ArgumentParser(description="File metrics for summarization strategy selection")
     parser.add_argument("file_path", type=Path, help="Path to the file to analyze")
     parser.add_argument(
-        "--excerpt-lines",
-        type=int,
-        default=20,
-        help="Number of head lines to include in excerpt (default: 20)",
+        "--excerpt-lines", type=int, default=20, help="Number of head lines to include in excerpt (default: 20)"
     )
     parser.add_argument(
-        "--tail-lines",
-        type=int,
-        default=10,
-        help="Number of tail lines to include in excerpt (default: 10)",
+        "--tail-lines", type=int, default=10, help="Number of tail lines to include in excerpt (default: 10)"
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON instead of human-readable text",
-    )
-    parser.add_argument(
-        "--no-excerpt", action="store_true", help="Skip excerpt extraction"
-    )
+    parser.add_argument("--json", action="store_true", help="Output as JSON instead of human-readable text")
+    parser.add_argument("--no-excerpt", action="store_true", help="Skip excerpt extraction")
 
     args = parser.parse_args()
 
@@ -352,9 +301,7 @@ def main() -> None:
         parser.error("--tail-lines must be >= 0")
 
     excerpt_lines = 0 if args.no_excerpt else args.excerpt_lines
-    metrics = get_file_metrics(
-        args.file_path, excerpt_lines=excerpt_lines, tail_lines=args.tail_lines
-    )
+    metrics = get_file_metrics(args.file_path, excerpt_lines=excerpt_lines, tail_lines=args.tail_lines)
 
     if args.json:
         print(json.dumps(metrics, indent=2, default=str))

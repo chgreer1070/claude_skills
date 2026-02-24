@@ -45,9 +45,7 @@ class TestDetectCategory:
             (".gitignore", "unknown"),
         ],
     )
-    def test_extension_categories(
-        self, filename: str, expected: str, tmp_path: Path
-    ) -> None:
+    def test_extension_categories(self, filename: str, expected: str, tmp_path: Path) -> None:
         result = file_metrics.detect_category(tmp_path / filename)
         assert result == expected
 
@@ -235,9 +233,7 @@ class TestGetFileMetrics:
         assert "File not found" in result["error"]
 
     def test_tail_lines_parameter(self, multiline_file: Path) -> None:
-        result = file_metrics.get_file_metrics(
-            multiline_file, excerpt_lines=5, tail_lines=3
-        )
+        result = file_metrics.get_file_metrics(multiline_file, excerpt_lines=5, tail_lines=3)
         assert isinstance(result, dict)
         assert result.get("excerpt") is not None
         excerpt = result["excerpt"]
@@ -304,11 +300,7 @@ class TestCLIIntegration:
 
     def _run(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, self.SCRIPT, *args],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=10,
+            [sys.executable, self.SCRIPT, *args], check=False, capture_output=True, text=True, timeout=10
         )
 
     def test_json_output_parses(self, text_file: Path) -> None:
@@ -356,9 +348,7 @@ class TestCLIIntegration:
         assert "error" in data
         assert data["error"] is not None
 
-    def test_error_json_has_consistent_schema(
-        self, tmp_path: Path, text_file: Path
-    ) -> None:
+    def test_error_json_has_consistent_schema(self, tmp_path: Path, text_file: Path) -> None:
         success_result = self._run(str(text_file), "--json")
         error_result = self._run(str(tmp_path / "missing"), "--json")
         success_data = json.loads(success_result.stdout)

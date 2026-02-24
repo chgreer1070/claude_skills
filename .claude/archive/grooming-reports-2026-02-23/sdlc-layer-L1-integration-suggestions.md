@@ -1,8 +1,8 @@
 # SDLC Layer 1 Integration Suggestions
 
-**Generated**: 2026-02-23  
-**Plan**: SDLC Layer Separation Architecture  
-**Layer 1 Scope**: Language manifest schema, abstract roles, quality gates, project detection, language standards  
+**Generated**: 2026-02-23
+**Plan**: SDLC Layer Separation Architecture
+**Layer 1 Scope**: Language manifest schema, abstract roles, quality gates, project detection, language standards
 **Source**: Full read of all Layer 1 items from sdlc-layer-candidates-master.md
 
 ---

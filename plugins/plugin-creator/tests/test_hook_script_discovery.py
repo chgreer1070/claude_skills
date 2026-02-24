@@ -26,13 +26,7 @@ class TestIsFilePathReference:
     """Test HookValidator._is_file_path_reference static method."""
 
     @pytest.mark.parametrize(
-        "command",
-        [
-            "./script.sh",
-            "../scripts/hook.py",
-            "/usr/bin/hook",
-            "${CLAUDE_PLUGIN_ROOT}/scripts/hook.sh",
-        ],
+        "command", ["./script.sh", "../scripts/hook.py", "/usr/bin/hook", "${CLAUDE_PLUGIN_ROOT}/scripts/hook.sh"]
     )
     def test_file_paths_return_true(self, command: str) -> None:
         """Test that paths starting with ./, ../, /, or ${CLAUDE_PLUGIN_ROOT}/ return True.
@@ -43,9 +37,7 @@ class TestIsFilePathReference:
         """
         assert HookValidator._is_file_path_reference(command) is True
 
-    @pytest.mark.parametrize(
-        "command", ["echo hello", "python3 -m pytest", "npm run test", "git status"]
-    )
+    @pytest.mark.parametrize("command", ["echo hello", "python3 -m pytest", "npm run test", "git status"])
     def test_shell_commands_return_false(self, command: str) -> None:
         """Test that bare shell commands return False.
 
@@ -194,9 +186,7 @@ class TestValidateCommandScriptReferences:
 
         validator = HookValidator()
         errors: list = []
-        entries = [
-            {"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hook.sh"}
-        ]
+        entries = [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/scripts/hook.sh"}]
         validator._validate_command_script_references(entries, hooks_dir, errors)
 
         hk_codes = [e.code for e in errors]
@@ -218,15 +208,11 @@ class TestHookScriptReferencesInHooksDict:
         script.write_text("#!/bin/bash\necho ok\n")
         script.chmod(script.stat().st_mode | stat.S_IEXEC)
 
-        hooks_dict = {
-            "PreToolUse": [{"hooks": [{"type": "command", "command": "./hook.sh"}]}]
-        }
+        hooks_dict = {"PreToolUse": [{"hooks": [{"type": "command", "command": "./hook.sh"}]}]}
 
         validator = HookValidator()
         errors: list = []
-        validator._validate_hook_script_references_in_hooks_dict(
-            hooks_dict, tmp_path, errors
-        )
+        validator._validate_hook_script_references_in_hooks_dict(hooks_dict, tmp_path, errors)
 
         hk_codes = [e.code for e in errors]
         assert "HK004" not in hk_codes
@@ -239,17 +225,11 @@ class TestHookScriptReferencesInHooksDict:
         How: Build hooks dict referencing non-existent script, validate
         Why: Verify HK004 is reported for missing scripts in full dict structure
         """
-        hooks_dict = {
-            "PostToolUse": [
-                {"hooks": [{"type": "command", "command": "./missing-script.sh"}]}
-            ]
-        }
+        hooks_dict = {"PostToolUse": [{"hooks": [{"type": "command", "command": "./missing-script.sh"}]}]}
 
         validator = HookValidator()
         errors: list = []
-        validator._validate_hook_script_references_in_hooks_dict(
-            hooks_dict, tmp_path, errors
-        )
+        validator._validate_hook_script_references_in_hooks_dict(hooks_dict, tmp_path, errors)
 
         hk_codes = [e.code for e in errors]
         assert "HK004" in hk_codes
@@ -261,17 +241,11 @@ class TestHookScriptReferencesInHooksDict:
         How: Build hooks dict with prompt type entry, validate
         Why: Verify only command-type hooks are checked for file paths
         """
-        hooks_dict = {
-            "PreToolUse": [
-                {"hooks": [{"type": "prompt", "prompt": "Check tool usage"}]}
-            ]
-        }
+        hooks_dict = {"PreToolUse": [{"hooks": [{"type": "prompt", "prompt": "Check tool usage"}]}]}
 
         validator = HookValidator()
         errors: list = []
-        validator._validate_hook_script_references_in_hooks_dict(
-            hooks_dict, tmp_path, errors
-        )
+        validator._validate_hook_script_references_in_hooks_dict(hooks_dict, tmp_path, errors)
 
         assert len(errors) == 0
 

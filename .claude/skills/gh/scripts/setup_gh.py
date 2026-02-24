@@ -61,9 +61,7 @@ console = Console()
 error_console = Console(stderr=True, style="bold red")
 
 app = typer.Typer(
-    name="setup_gh",
-    help="Install or update the GitHub CLI (gh) from GitHub Releases.",
-    rich_markup_mode="rich",
+    name="setup_gh", help="Install or update the GitHub CLI (gh) from GitHub Releases.", rich_markup_mode="rich"
 )
 
 
@@ -155,11 +153,7 @@ def find_install_dir() -> Path:
     Returns:
         Path to a writable directory on PATH.
     """
-    preferred = [
-        Path.home() / ".local" / "bin",
-        Path("/usr/local/bin"),
-        Path("/usr/bin"),
-    ]
+    preferred = [Path.home() / ".local" / "bin", Path("/usr/local/bin"), Path("/usr/bin")]
 
     path_dirs = [Path(p) for p in os.environ.get("PATH", "").split(os.pathsep) if p]
 
@@ -246,9 +240,7 @@ def fetch_latest_release(timeout: float = 30.0) -> tuple[str, list[ReleaseAsset]
     with httpx.Client(timeout=timeout) as client:
         if use_auth:
             console.print(":key: Using GITHUB_TOKEN for authenticated request")
-            response = client.get(
-                GITHUB_API_URL, headers=_build_headers(authenticated=True)
-            )
+            response = client.get(GITHUB_API_URL, headers=_build_headers(authenticated=True))
             if _is_auth_failure(response.status_code):
                 console.print(
                     ":warning: [yellow]Authenticated request failed "
@@ -257,15 +249,10 @@ def fetch_latest_release(timeout: float = 30.0) -> tuple[str, list[ReleaseAsset]
                 use_auth = False
 
         if not use_auth:
-            response = client.get(
-                GITHUB_API_URL, headers=_build_headers(authenticated=False)
-            )
+            response = client.get(GITHUB_API_URL, headers=_build_headers(authenticated=False))
 
         if response.status_code != HTTP_OK:
-            msg = (
-                f"GitHub API returned status {response.status_code}: "
-                f"{response.text[:200]}"
-            )
+            msg = f"GitHub API returned status {response.status_code}: {response.text[:200]}"
             raise GitHubAPIError(msg)
 
         data = response.json()
@@ -276,20 +263,14 @@ def fetch_latest_release(timeout: float = 30.0) -> tuple[str, list[ReleaseAsset]
         raise GitHubAPIError(msg)
 
     assets: list[ReleaseAsset] = [
-        ReleaseAsset(
-            name=raw.get("name", ""),
-            url=raw.get("browser_download_url", ""),
-            size=raw.get("size", 0),
-        )
+        ReleaseAsset(name=raw.get("name", ""), url=raw.get("browser_download_url", ""), size=raw.get("size", 0))
         for raw in data.get("assets", [])
     ]
 
     return tag_name, assets
 
 
-def find_asset(
-    assets: list[ReleaseAsset], os_key: str, arch: str
-) -> ReleaseAsset | None:
+def find_asset(assets: list[ReleaseAsset], os_key: str, arch: str) -> ReleaseAsset | None:
     """Find the matching archive asset for the given platform.
 
     Args:
@@ -304,9 +285,7 @@ def find_asset(
 
     for asset in assets:
         # Match pattern: gh_{version}_{os}_{arch}.{format}
-        if asset.name.startswith("gh_") and asset.name.endswith(
-            f"_{os_key}_{arch}.{fmt}"
-        ):
+        if asset.name.startswith("gh_") and asset.name.endswith(f"_{os_key}_{arch}.{fmt}"):
             return asset
     return None
 
@@ -329,9 +308,7 @@ def find_checksums_asset(assets: list[ReleaseAsset]) -> ReleaseAsset | None:
 # ---------------------------------------------------------------------------
 # Checksum handling
 # ---------------------------------------------------------------------------
-def fetch_checksums(
-    checksums_asset: ReleaseAsset, timeout: float = 30.0
-) -> dict[str, str]:
+def fetch_checksums(checksums_asset: ReleaseAsset, timeout: float = 30.0) -> dict[str, str]:
     """Download and parse the checksums file.
 
     Args:
@@ -349,16 +326,12 @@ def fetch_checksums(
 
     with httpx.Client(timeout=timeout, follow_redirects=True) as client:
         if use_auth:
-            response = client.get(
-                checksums_asset.url, headers=_build_headers(authenticated=True)
-            )
+            response = client.get(checksums_asset.url, headers=_build_headers(authenticated=True))
             if _is_auth_failure(response.status_code):
                 use_auth = False
 
         if not use_auth:
-            response = client.get(
-                checksums_asset.url, headers=_build_headers(authenticated=False)
-            )
+            response = client.get(checksums_asset.url, headers=_build_headers(authenticated=False))
 
         response.raise_for_status()
 
@@ -399,13 +372,7 @@ def get_installed_version() -> str | None:
         return None
 
     try:
-        result = subprocess.run(
-            [gh_path, "--version"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+        result = subprocess.run([gh_path, "--version"], check=False, capture_output=True, text=True, timeout=5)
     except (subprocess.SubprocessError, FileNotFoundError, OSError):
         return None
 
@@ -421,9 +388,7 @@ def get_installed_version() -> str | None:
 # ---------------------------------------------------------------------------
 # Download and verification
 # ---------------------------------------------------------------------------
-def _stream_to_file(
-    client: httpx.Client, url: str, dest: Path, *, authenticated: bool
-) -> bool:
+def _stream_to_file(client: httpx.Client, url: str, dest: Path, *, authenticated: bool) -> bool:
     """Stream an HTTP response body to a file.
 
     Args:
@@ -438,9 +403,7 @@ def _stream_to_file(
     Raises:
         httpx.HTTPStatusError: On non-2xx responses other than auth failures.
     """
-    with client.stream(
-        "GET", url, headers=_build_headers(authenticated=authenticated)
-    ) as response:
+    with client.stream("GET", url, headers=_build_headers(authenticated=authenticated)) as response:
         if authenticated and _is_auth_failure(response.status_code):
             return False
         response.raise_for_status()
@@ -579,14 +542,8 @@ def suggest_path_update(install_dir: Path) -> None:
     if check_path(install_dir):
         return
 
-    console.print(
-        f"\n:warning: [yellow]{install_dir} is not in your PATH.[/yellow]\n"
-        "  Add it to your shell profile:"
-    )
-    console.print(
-        f'  [dim]export PATH="{install_dir}:$PATH"[/dim]'
-        "  (add to ~/.bashrc or ~/.zshrc)"
-    )
+    console.print(f"\n:warning: [yellow]{install_dir} is not in your PATH.[/yellow]\n  Add it to your shell profile:")
+    console.print(f'  [dim]export PATH="{install_dir}:$PATH"[/dim]  (add to ~/.bashrc or ~/.zshrc)')
 
 
 # ---------------------------------------------------------------------------
@@ -618,9 +575,7 @@ def resolve_release(os_key: str, arch: str) -> tuple[str, ReleaseAsset, str | No
 
     asset = find_asset(assets, os_key, arch)
     if asset is None:
-        error_console.print(
-            f":cross_mark: No binary found for {os_key}_{arch} in release {tag}"
-        )
+        error_console.print(f":cross_mark: No binary found for {os_key}_{arch} in release {tag}")
         raise typer.Exit(code=1)
 
     # Fetch checksums for SHA256 verification
@@ -633,23 +588,15 @@ def resolve_release(os_key: str, arch: str) -> tuple[str, ReleaseAsset, str | No
             if expected_sha256:
                 console.print(":lock: SHA256 checksum available for verification")
             else:
-                console.print(
-                    f":warning: [yellow]No checksum found for {asset.name}[/yellow]"
-                )
+                console.print(f":warning: [yellow]No checksum found for {asset.name}[/yellow]")
         except httpx.HTTPError as exc:
-            console.print(
-                f":warning: [yellow]Could not fetch checksums: {exc}[/yellow]"
-            )
+            console.print(f":warning: [yellow]Could not fetch checksums: {exc}[/yellow]")
 
     return latest_version, asset, expected_sha256
 
 
 def download_and_install(
-    asset: ReleaseAsset,
-    expected_sha256: str | None,
-    install_dir: Path,
-    os_key: str,
-    latest_version: str,
+    asset: ReleaseAsset, expected_sha256: str | None, install_dir: Path, os_key: str, latest_version: str
 ) -> Path:
     """Download, verify, extract, and install the gh binary.
 
@@ -674,9 +621,7 @@ def download_and_install(
         archive_path = tmp_dir / asset.name
 
         # Download
-        console.print(
-            f":arrow_down: Downloading {asset.name} ({asset.size:,} bytes)..."
-        )
+        console.print(f":arrow_down: Downloading {asset.name} ({asset.size:,} bytes)...")
         try:
             download_file(asset.url, archive_path)
         except (httpx.HTTPStatusError, httpx.HTTPError) as exc:
@@ -693,10 +638,7 @@ def download_and_install(
                 raise typer.Exit(code=1) from exc
             console.print(":white_check_mark: SHA256 verified")
         else:
-            console.print(
-                ":warning: [yellow]Skipping SHA256 verification "
-                "(no checksum available)[/yellow]"
-            )
+            console.print(":warning: [yellow]Skipping SHA256 verification (no checksum available)[/yellow]")
 
         # Extract
         console.print(":open_file_folder: Extracting binary...")
@@ -714,10 +656,7 @@ def download_and_install(
     if os_key != "windows":
         make_executable(install_path)
 
-    console.print(
-        f":white_check_mark: [green]gh v{latest_version} installed "
-        f"to {install_path}[/green]"
-    )
+    console.print(f":white_check_mark: [green]gh v{latest_version} installed to {install_path}[/green]")
     return install_path
 
 
@@ -726,20 +665,10 @@ def download_and_install(
 # ---------------------------------------------------------------------------
 @app.command()
 def main(
-    force: Annotated[
-        bool,
-        typer.Option("--force", help="Reinstall even if already at latest version"),
-    ] = False,
-    dry_run: Annotated[
-        bool,
-        typer.Option("--dry-run", help="Show what would happen without installing"),
-    ] = False,
+    force: Annotated[bool, typer.Option("--force", help="Reinstall even if already at latest version")] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Show what would happen without installing")] = False,
     bin_dir: Annotated[
-        Path | None,
-        typer.Option(
-            "--bin-dir",
-            help="Override install directory (default: auto-detect from PATH)",
-        ),
+        Path | None, typer.Option("--bin-dir", help="Override install directory (default: auto-detect from PATH)")
     ] = None,
 ) -> None:
     """Install or update the GitHub CLI (gh) from GitHub Releases.
@@ -777,9 +706,7 @@ def main(
         raise typer.Exit(code=1) from exc
 
     platform_label = f"{os_key}/{arch}"
-    console.print(
-        f":magnifying_glass_tilted_left: Detected platform: [cyan]{platform_label}[/cyan]"
-    )
+    console.print(f":magnifying_glass_tilted_left: Detected platform: [cyan]{platform_label}[/cyan]")
 
     # 3. Resolve install directory
     install_dir = bin_dir if bin_dir is not None else find_install_dir()
@@ -789,9 +716,7 @@ def main(
     latest_version, asset, expected_sha256 = resolve_release(os_key, arch)
 
     # 5. Check if update is needed
-    needs_update = installed_version is None or parse_version(
-        installed_version
-    ) < parse_version(latest_version)
+    needs_update = installed_version is None or parse_version(installed_version) < parse_version(latest_version)
 
     if not needs_update and not force:
         console.print(":white_check_mark: [green]gh is already up to date[/green]")
@@ -814,26 +739,18 @@ def main(
         console.print(f"  In PATH:     {'yes' if in_path else 'no'}")
         raise typer.Exit(code=0)
 
-    install_path = download_and_install(
-        asset, expected_sha256, install_dir, os_key, latest_version
-    )
+    install_path = download_and_install(asset, expected_sha256, install_dir, os_key, latest_version)
     suggest_path_update(install_dir)
 
     # Verify installation
     console.print("\n:test_tube: Verifying installation...")
     try:
         result = subprocess.run(
-            [str(install_path), "--version"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=5,
+            [str(install_path), "--version"], check=False, capture_output=True, text=True, timeout=5
         )
         console.print(f"  {result.stdout.strip()}")
     except (subprocess.SubprocessError, OSError) as exc:
-        error_console.print(
-            f":warning: [yellow]Could not verify installation: {exc}[/yellow]"
-        )
+        error_console.print(f":warning: [yellow]Could not verify installation: {exc}[/yellow]")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 # SDLC Layer Separation Architecture — Agent Candidates
 
-**Source**: Full read of all 15 agents in `.claude/agents/`  
-**Plan Context**: Layer 0 (SDLC-Agnostic), Layer 1 (Language-Specific), Layer 2 (Stack/Goal-Specific), ARL Meta-Layer  
+**Source**: Full read of all 15 agents in `.claude/agents/`
+**Plan Context**: Layer 0 (SDLC-Agnostic), Layer 1 (Language-Specific), Layer 2 (Stack/Goal-Specific), ARL Meta-Layer
 **Generated**: 2026-02-23
 
 ---

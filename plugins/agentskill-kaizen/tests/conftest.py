@@ -92,10 +92,7 @@ if _real_fastmcp_exc is not None:
 
 def _make_assistant_tool_use(tool_name: str) -> dict[str, Any]:
     """Build a minimal assistant record containing a single tool_use block."""
-    return {
-        "type": "assistant",
-        "message": {"content": [{"type": "tool_use", "name": tool_name, "input": {}}]},
-    }
+    return {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": tool_name, "input": {}}]}}
 
 
 def _make_user_message(text: str, *, timestamp: str = "") -> dict[str, Any]:
@@ -106,9 +103,7 @@ def _make_user_message(text: str, *, timestamp: str = "") -> dict[str, Any]:
     return record
 
 
-def _make_user_message_blocks(
-    blocks: list[dict[str, str]], *, timestamp: str = ""
-) -> dict[str, Any]:
+def _make_user_message_blocks(blocks: list[dict[str, str]], *, timestamp: str = "") -> dict[str, Any]:
     """Build a user record with list-of-blocks content."""
     record: dict[str, Any] = {"type": "user", "message": {"content": blocks}}
     if timestamp:
@@ -141,11 +136,7 @@ def single_session_jsonl(jsonl_dir: Path) -> Path:
         Path to the directory containing the JSONL file.
     """
     jsonl_dir.mkdir(parents=True, exist_ok=True)
-    records = [
-        _make_assistant_tool_use("Read"),
-        _make_assistant_tool_use("Grep"),
-        _make_assistant_tool_use("Write"),
-    ]
+    records = [_make_assistant_tool_use("Read"), _make_assistant_tool_use("Grep"), _make_assistant_tool_use("Write")]
     session_file = jsonl_dir / "session-abc.jsonl"
     session_file.write_text("\n".join(json.dumps(r) for r in records), encoding="utf-8")
     return jsonl_dir
@@ -190,9 +181,7 @@ def frustration_jsonl(jsonl_dir: Path) -> Path:
         _make_user_message("no, that's wrong", timestamp="2026-01-01T00:00:00Z"),
         _make_user_message("looks good to me", timestamp="2026-01-01T00:01:00Z"),
         _make_user_message("wait, hold on a second", timestamp="2026-01-01T00:02:00Z"),
-        _make_user_message(
-            "why did you do that again?", timestamp="2026-01-01T00:03:00Z"
-        ),
+        _make_user_message("why did you do that again?", timestamp="2026-01-01T00:03:00Z"),
         # toolUseResult records should be skipped
         {
             "type": "user",

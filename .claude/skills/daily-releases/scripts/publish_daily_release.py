@@ -39,13 +39,7 @@ class PublishError(Exception):
 def run_git(args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
     """Run a git command."""
     try:
-        return subprocess.run(
-            ["git", *args],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            check=check,
-        )
+        return subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8", check=check)
     except subprocess.CalledProcessError as e:
         msg = f"Git command failed: {' '.join(args)}\n{e.stderr}"
         raise PublishError(msg) from e
@@ -54,9 +48,7 @@ def run_git(args: list[str], check: bool = True) -> subprocess.CompletedProcess[
 def run_gh(args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
     """Run a gh CLI command."""
     try:
-        return subprocess.run(
-            ["gh", *args], capture_output=True, text=True, encoding="utf-8", check=check
-        )
+        return subprocess.run(["gh", *args], capture_output=True, text=True, encoding="utf-8", check=check)
     except subprocess.CalledProcessError as e:
         msg = f"gh command failed: {' '.join(args)}\n{e.stderr}"
         raise PublishError(msg) from e
@@ -84,17 +76,11 @@ def get_next_revision_tag(base_tag: str) -> str:
 
 @app.command()
 def main(
-    release_date: Annotated[
-        str, typer.Option("--date", help="Date in YYYY-MM-DD format")
-    ],
+    release_date: Annotated[str, typer.Option("--date", help="Date in YYYY-MM-DD format")],
     tag: Annotated[str, typer.Option(help="Git tag name (e.g., v2026.02.21)")],
     head_ref: Annotated[str, typer.Option(help="Commit hash the tag should point to")],
-    notes_file: Annotated[
-        Path, typer.Option(help="Path to rendered markdown release notes")
-    ],
-    dry_run: Annotated[
-        bool, typer.Option(help="Print what would happen without making changes")
-    ] = False,
+    notes_file: Annotated[Path, typer.Option(help="Path to rendered markdown release notes")],
+    dry_run: Annotated[bool, typer.Option(help="Print what would happen without making changes")] = False,
     keep_existing_tag: Annotated[
         bool, typer.Option(help="If tag exists, rename it to -r2 instead of moving it")
     ] = True,
@@ -110,9 +96,7 @@ def main(
         raise typer.Exit(1)
 
     title = f"Daily Release - {release_date}"
-    notes_content = (
-        notes_file.read_text(encoding="utf-8").rstrip() + f"\n\n{GENERATOR_MARKER}\n"
-    )
+    notes_content = notes_file.read_text(encoding="utf-8").rstrip() + f"\n\n{GENERATOR_MARKER}\n"
 
     if dry_run:
         console.print("[dim]DRY RUN - would publish:[/dim]")
@@ -126,11 +110,7 @@ def main(
 
         if tag_exists(tag) and keep_existing_tag:
             old_commit_result = run_git(["rev-list", "-n", "1", tag], check=False)
-            old_commit = (
-                old_commit_result.stdout.strip()
-                if old_commit_result.returncode == 0
-                else None
-            )
+            old_commit = old_commit_result.stdout.strip() if old_commit_result.returncode == 0 else None
 
             if old_commit and old_commit != head_ref:
                 # Rename existing tag to revision suffix
@@ -147,26 +127,10 @@ def main(
         console.print(f"[green]Tagged {head_ref[:12]} as {tag}[/green]")
 
         if existing_release:
-            run_gh([
-                "release",
-                "edit",
-                tag,
-                "--title",
-                title,
-                "--notes-file",
-                str(notes_file),
-            ])
+            run_gh(["release", "edit", tag, "--title", title, "--notes-file", str(notes_file)])
             console.print(f"[green]Updated release {tag}[/green]")
         else:
-            run_gh([
-                "release",
-                "create",
-                tag,
-                "--title",
-                title,
-                "--notes-file",
-                str(notes_file),
-            ])
+            run_gh(["release", "create", tag, "--title", title, "--notes-file", str(notes_file)])
             console.print(f"[green]Created release {tag}[/green]")
 
     except PublishError as e:

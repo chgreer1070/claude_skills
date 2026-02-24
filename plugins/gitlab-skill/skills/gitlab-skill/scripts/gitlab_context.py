@@ -107,17 +107,12 @@ def _resolve_token() -> str | None:
     Returns:
         Token string, or None if no token found.
     """
-    if token := os.environ.get("GITLAB_TOKEN") or os.environ.get(
-        "GITLAB_PRIVATE_TOKEN"
-    ):
+    if token := os.environ.get("GITLAB_TOKEN") or os.environ.get("GITLAB_PRIVATE_TOKEN"):
         return token
 
     try:
         result = subprocess.run(
-            ["glab", "config", "get", "token", "-h", get_gitlab_host()],
-            capture_output=True,
-            text=True,
-            check=True,
+            ["glab", "config", "get", "token", "-h", get_gitlab_host()], capture_output=True, text=True, check=True
         )
         return result.stdout.strip() or None
     except (subprocess.CalledProcessError, FileNotFoundError):

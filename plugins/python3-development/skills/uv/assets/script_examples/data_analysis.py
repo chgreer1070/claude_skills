@@ -59,11 +59,7 @@ def analyze_data(csv_path: str) -> None:
 
     for col in df.select_dtypes(include=["number"]).columns:
         table.add_row(
-            col,
-            f"{df[col].mean():.2f}",
-            f"{df[col].std():.2f}",
-            f"{df[col].min():.2f}",
-            f"{df[col].max():.2f}",
+            col, f"{df[col].mean():.2f}", f"{df[col].std():.2f}", f"{df[col].min():.2f}", f"{df[col].max():.2f}"
         )
 
     console.print(table)

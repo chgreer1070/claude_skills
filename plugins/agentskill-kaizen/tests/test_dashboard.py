@@ -219,9 +219,7 @@ class TestHealthHandler:
         csv_file = tmp_path / "sentiment.csv"
         csv_file.write_text("header\nrow1\n", encoding="utf-8")
         start_time = time.monotonic() - 10.0
-        handler = self._make_handler(
-            port=49152, start_time=start_time, csv_path=csv_file, csv_rows=42
-        )
+        handler = self._make_handler(port=49152, start_time=start_time, csv_path=csv_file, csv_rows=42)
 
         # Act
         handler.get()
@@ -238,15 +236,7 @@ class TestHealthHandler:
         assert body["uptime_seconds"] > 0
 
         # Verify all 7 fields are present
-        expected_fields = {
-            "status",
-            "port",
-            "pid",
-            "csv_path",
-            "csv_exists",
-            "csv_rows",
-            "uptime_seconds",
-        }
+        expected_fields = {"status", "port", "pid", "csv_path", "csv_exists", "csv_rows", "uptime_seconds"}
         assert set(body.keys()) == expected_fields
 
     def test_health_handler_get_csv_missing(self, tmp_path: Path) -> None:
@@ -258,9 +248,7 @@ class TestHealthHandler:
         """
         # Arrange
         missing_csv = tmp_path / "nonexistent.csv"
-        handler = self._make_handler(
-            port=49152, start_time=time.monotonic(), csv_path=missing_csv, csv_rows=None
-        )
+        handler = self._make_handler(port=49152, start_time=time.monotonic(), csv_path=missing_csv, csv_rows=None)
 
         # Act
         handler.get()
@@ -280,9 +268,7 @@ class TestHealthHandler:
         """
         # Arrange
         past_time = time.monotonic() - 5.0
-        handler = self._make_handler(
-            port=8080, start_time=past_time, csv_path=None, csv_rows=None
-        )
+        handler = self._make_handler(port=8080, start_time=past_time, csv_path=None, csv_rows=None)
 
         # Act
         handler.get()
@@ -398,9 +384,7 @@ class TestStartDashboard:
 
     @patch.object(dashboard.threading.Thread, "start")
     @patch.object(dashboard, "_allocate_port", return_value=55555)
-    def test_start_dashboard_called_twice(
-        self, mock_allocate: MagicMock, mock_thread_start: MagicMock
-    ) -> None:
+    def test_start_dashboard_called_twice(self, mock_allocate: MagicMock, mock_thread_start: MagicMock) -> None:
         """Second call to start_dashboard() returns None, no new thread started.
 
         Tests: Within-process guard prevents duplicate dashboard instances.
@@ -420,9 +404,7 @@ class TestStartDashboard:
         mock_allocate.assert_called_once()
 
     @patch.object(dashboard, "_allocate_port", side_effect=OSError("bind failed"))
-    def test_start_dashboard_port_allocation_failure(
-        self, mock_allocate: MagicMock
-    ) -> None:
+    def test_start_dashboard_port_allocation_failure(self, mock_allocate: MagicMock) -> None:
         """start_dashboard() returns None on OSError from _allocate_port().
 
         Tests: Port allocation failure is handled gracefully.
@@ -536,9 +518,7 @@ class TestStateLock:
 
     @patch.object(dashboard.threading.Thread, "start")
     @patch.object(dashboard, "_allocate_port", return_value=44444)
-    def test_start_dashboard_guard_acquires_lock(
-        self, mock_allocate: MagicMock, mock_thread_start: MagicMock
-    ) -> None:
+    def test_start_dashboard_guard_acquires_lock(self, mock_allocate: MagicMock, mock_thread_start: MagicMock) -> None:
         """start_dashboard() acquires _state_lock for the within-process guard check.
 
         Tests: Guard-path lock acquisition in start_dashboard().
@@ -564,9 +544,7 @@ class TestStateLock:
 
     @patch.object(dashboard.threading.Thread, "start")
     @patch.object(dashboard, "_allocate_port", return_value=55566)
-    def test_start_dashboard_write_acquires_lock(
-        self, mock_allocate: MagicMock, mock_thread_start: MagicMock
-    ) -> None:
+    def test_start_dashboard_write_acquires_lock(self, mock_allocate: MagicMock, mock_thread_start: MagicMock) -> None:
         """start_dashboard() acquires _state_lock when writing the four state variables.
 
         Tests: State write block in start_dashboard() holds the lock.
@@ -608,10 +586,7 @@ class TestStateLock:
         handler._headers = {}
         handler._body = ""
         handler.initialize(
-            get_port=lambda: 7777,
-            get_start_time=lambda: None,
-            get_csv_path=lambda: csv_file,
-            get_csv_rows=lambda: 1,
+            get_port=lambda: 7777, get_start_time=lambda: None, get_csv_path=lambda: csv_file, get_csv_rows=lambda: 1
         )
 
         mock_lock = MagicMock()
@@ -701,9 +676,7 @@ class TestStateLock:
 
         # Call _register_periodic to register _refresh via add_periodic_callback
         register_periodic_fn()
-        assert _pn_state.add_periodic_callback.called, (
-            "pn.state.add_periodic_callback was not called"
-        )
+        assert _pn_state.add_periodic_callback.called, "pn.state.add_periodic_callback was not called"
         refresh_fn = _pn_state.add_periodic_callback.call_args[0][0]
 
         # _initial_load() already called _refresh() once, which set state["last_mtime"]

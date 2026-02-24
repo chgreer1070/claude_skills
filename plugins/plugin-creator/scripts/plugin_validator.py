@@ -44,16 +44,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from io import StringIO
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Annotated,
-    Any,
-    ClassVar,
-    Literal,
-    NoReturn,
-    Protocol,
-    cast,
-)
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, NoReturn, Protocol, cast
 
 import typer
 from pydantic import ValidationError
@@ -177,7 +168,9 @@ def _fix_unquoted_colons(frontmatter_text: str) -> tuple[str, list[str], list[st
 
 
 # Error code base URL for documentation links
-ERROR_CODE_BASE_URL = "https://github.com/jamie-bitflight/claude_skills/blob/main/plugins/plugin-creator/docs/ERROR_CODES.md"
+ERROR_CODE_BASE_URL = (
+    "https://github.com/jamie-bitflight/claude_skills/blob/main/plugins/plugin-creator/docs/ERROR_CODES.md"
+)
 
 # Token-based complexity thresholds (body content, frontmatter excluded)
 TOKEN_WARNING_THRESHOLD = 4400
@@ -388,11 +381,7 @@ class ValidationIssue:
         Returns:
             Formatted string with severity icon, code, field, message, and optional docs URL
         """
-        severity_icon = {
-            "error": ":cross_mark:",
-            "warning": ":warning:",
-            "info": ":information:",
-        }[self.severity]
+        severity_icon = {"error": ":cross_mark:", "warning": ":warning:", "info": ":information:"}[self.severity]
 
         location = f":{self.line}" if self.line else ""
         suggestion_line = f"\n    → {self.suggestion}" if self.suggestion else ""
@@ -553,9 +542,7 @@ class ProgressiveDisclosureValidator:
         skill_file = path / "SKILL.md"
         if not skill_file.exists():
             # Not a skill directory - skip validation
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Check each progressive disclosure directory
         for dir_name in self.DISCLOSURE_DIRS:
@@ -580,9 +567,7 @@ class ProgressiveDisclosureValidator:
                 # (only report missing directories)
 
         # Always pass - info messages don't fail validation
-        return ValidationResult(
-            passed=True, errors=errors, warnings=warnings, info=info
-        )
+        return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
     def can_fix(self) -> bool:
         """Check if validator supports auto-fixing.
@@ -669,12 +654,7 @@ class InternalLinkValidator:
         """
         # Strip fenced code blocks first (handles nested fences via greedy
         # backreference matching: a 4-backtick fence won't close on 3 backticks)
-        stripped = re.sub(
-            InternalLinkValidator.CODE_FENCE_PATTERN,
-            "",
-            content,
-            flags=re.MULTILINE | re.DOTALL,
-        )
+        stripped = re.sub(InternalLinkValidator.CODE_FENCE_PATTERN, "", content, flags=re.MULTILINE | re.DOTALL)
         # Strip inline code spans
         return re.sub(InternalLinkValidator.INLINE_CODE_PATTERN, "", stripped)
 
@@ -694,9 +674,7 @@ class InternalLinkValidator:
         # Only validate SKILL.md files
         if path.name != "SKILL.md":
             # Not a skill file - skip validation
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Read file
         try:
@@ -711,9 +689,7 @@ class InternalLinkValidator:
                     docs_url=generate_docs_url(FM002),
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Strip fenced code blocks and inline code spans before scanning for
         # links.  Code examples often contain bracket-paren patterns (e.g.
@@ -769,9 +745,7 @@ class InternalLinkValidator:
 
         # Pass if no errors (warnings don't fail validation)
         passed = len(errors) == 0
-        return ValidationResult(
-            passed=passed, errors=errors, warnings=warnings, info=info
-        )
+        return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
 
     def can_fix(self) -> bool:
         """Check if validator supports auto-fixing.
@@ -914,24 +888,18 @@ class NamespaceReferenceValidator:
                     docs_url=generate_docs_url(NR001),
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Only check the body (after frontmatter)
         body = self._extract_body(content)
         if not body:
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Find the plugins root directory
         plugins_root = self._find_plugins_root(path)
         if plugins_root is None:
             # Not inside a plugins directory structure -- skip validation
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Collect all references: (pattern_label, plugin, name, ref_type)
         references = self._extract_references(body)
@@ -998,9 +966,7 @@ class NamespaceReferenceValidator:
                 )
 
         passed = len(errors) == 0
-        return ValidationResult(
-            passed=passed, errors=errors, warnings=warnings, info=info
-        )
+        return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
 
     def can_fix(self) -> bool:
         """Check if validator supports auto-fixing.
@@ -1070,9 +1036,7 @@ class NamespaceReferenceValidator:
                     return candidate
         return None
 
-    def _resolve_skill_reference(
-        self, plugins_root: Path, plugin: str, name: str
-    ) -> bool:
+    def _resolve_skill_reference(self, plugins_root: Path, plugin: str, name: str) -> bool:
         """Check if a skill reference resolves to an existing file.
 
         Checks direct path and nested (category) paths.
@@ -1101,9 +1065,7 @@ class NamespaceReferenceValidator:
 
         return False
 
-    def _resolve_agent_reference(
-        self, plugins_root: Path, plugin: str, name: str
-    ) -> bool:
+    def _resolve_agent_reference(self, plugins_root: Path, plugin: str, name: str) -> bool:
         """Check if an agent reference resolves to an existing file.
 
         Args:
@@ -1117,9 +1079,7 @@ class NamespaceReferenceValidator:
         agent_path = plugins_root / plugin / "agents" / f"{name}.md"
         return agent_path.is_file()
 
-    def _resolve_command_reference(
-        self, plugins_root: Path, plugin: str, name: str
-    ) -> bool:
+    def _resolve_command_reference(self, plugins_root: Path, plugin: str, name: str) -> bool:
         """Check if a command/slash-command reference resolves to an existing file.
 
         Slash command references can resolve to skills or commands.
@@ -1154,12 +1114,7 @@ class NamespaceReferenceValidator:
             Body with URLs, fenced code blocks, and inline code spans removed
         """
         # Strip fenced code blocks (``` or ~~~ delimited)
-        stripped = re.sub(
-            r"^(`{3,}|~{3,})[^\n]*\n.*?\n\1\s*$",
-            "",
-            body,
-            flags=re.MULTILINE | re.DOTALL,
-        )
+        stripped = re.sub(r"^(`{3,}|~{3,})[^\n]*\n.*?\n\1\s*$", "", body, flags=re.MULTILINE | re.DOTALL)
         # Strip inline code spans
         stripped = re.sub(r"(`+)(?!`)(.+?)(?<!`)\1(?!`)", "", stripped)
         # Strip URLs (http:// and https:// through end of URL)
@@ -1231,19 +1186,13 @@ def _validate_skill_directory_name(skill_dir_name: str) -> list[tuple[str, str]]
         Empty list if the name is valid.
     """
     if not skill_dir_name:
-        return [
-            (
-                "Skill directory name cannot be empty",
-                "Provide a non-empty directory name",
-            )
-        ]
+        return [("Skill directory name cannot be empty", "Provide a non-empty directory name")]
 
     results: list[tuple[str, str]] = []
 
     if len(skill_dir_name) > MAX_SKILL_NAME_LENGTH:
         results.append((
-            f"Directory name exceeds maximum length of {MAX_SKILL_NAME_LENGTH} characters "
-            f"(got {len(skill_dir_name)})",
+            f"Directory name exceeds maximum length of {MAX_SKILL_NAME_LENGTH} characters (got {len(skill_dir_name)})",
             f"Shorten directory name to {MAX_SKILL_NAME_LENGTH} characters or less",
         ))
 
@@ -1252,9 +1201,7 @@ def _validate_skill_directory_name(skill_dir_name: str) -> list[tuple[str, str]]
         if re.search(r"[A-Z]", skill_dir_name):
             violations.append("contains uppercase letters")
         if re.search(r"[^a-z0-9-]", skill_dir_name):
-            violations.append(
-                "contains invalid characters (only lowercase, digits, hyphens allowed)"
-            )
+            violations.append("contains invalid characters (only lowercase, digits, hyphens allowed)")
         if skill_dir_name.startswith("-"):
             violations.append("starts with hyphen")
         if skill_dir_name.endswith("-"):
@@ -1264,10 +1211,7 @@ def _validate_skill_directory_name(skill_dir_name: str) -> list[tuple[str, str]]
         if "_" in skill_dir_name:
             violations.append("contains underscores (use hyphens instead)")
         violation_msg = "; ".join(violations) if violations else "invalid format"
-        results.append((
-            f"Directory name {violation_msg}",
-            "Use lowercase-hyphen-case (e.g., 'my-skill-name')",
-        ))
+        results.append((f"Directory name {violation_msg}", "Use lowercase-hyphen-case (e.g., 'my-skill-name')"))
 
     return results
 
@@ -1325,9 +1269,7 @@ class FrontmatterValidator:
                     docs_url=generate_docs_url(FM002),
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Extract frontmatter
         frontmatter_text, _start_line, _end_line = self._extract_frontmatter(content)
@@ -1342,9 +1284,7 @@ class FrontmatterValidator:
                     suggestion="File must start with '---' delimiter",
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Detect file type
         file_type = FileType.detect_file_type(path)
@@ -1377,9 +1317,7 @@ class FrontmatterValidator:
                     docs_url=generate_docs_url(FM002),
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         if not isinstance(data, dict):
             errors.append(
@@ -1391,16 +1329,12 @@ class FrontmatterValidator:
                     docs_url=generate_docs_url(FM002),
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Select Pydantic model based on file type
         model_class = self._get_model_class(file_type)
         if not model_class:
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Validate with Pydantic
         try:
@@ -1532,14 +1466,11 @@ class FrontmatterValidator:
                         field="name",
                         severity="warning",
                         message=(
-                            f"'name' field value '{skill_name_in_fm}' does not match "
-                            f"directory name '{skill_dir_name}'"
+                            f"'name' field value '{skill_name_in_fm}' does not match directory name '{skill_dir_name}'"
                         ),
                         code=FM010,
                         docs_url=generate_docs_url(FM010),
-                        suggestion=(
-                            f"Set name: {skill_dir_name} to match the directory name"
-                        ),
+                        suggestion=(f"Set name: {skill_dir_name} to match the directory name"),
                     )
                 )
 
@@ -1553,9 +1484,7 @@ class FrontmatterValidator:
             )
 
         passed = len(errors) == 0
-        return ValidationResult(
-            passed=passed, errors=errors, warnings=warnings, info=info
-        )
+        return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
 
     def can_fix(self) -> bool:
         """Check if validator supports auto-fixing.
@@ -1634,10 +1563,7 @@ class FrontmatterValidator:
                 ValidationIssue(
                     field=field_name,
                     severity="info",
-                    message=(
-                        f"Auto-fixed: unquoted value containing colon was quoted"
-                        f" in field '{field_name}'"
-                    ),
+                    message=(f"Auto-fixed: unquoted value containing colon was quoted in field '{field_name}'"),
                     code=FM009,
                     docs_url=generate_docs_url(FM009),
                 )
@@ -1697,9 +1623,7 @@ class FrontmatterValidator:
 
         try:
             validated = model_class.model_validate(original_data)
-            normalized_dict = validated.model_dump(
-                by_alias=True, exclude_none=True, mode="python"
-            )
+            normalized_dict = validated.model_dump(by_alias=True, exclude_none=True, mode="python")
         except ValidationError:
             # Validation failed after YAML parse — still apply colon fixes if any
             if colon_fixes:
@@ -1719,15 +1643,9 @@ class FrontmatterValidator:
         # Convert any list-valued tool/skill extra fields to comma-separated strings
         tool_fields = {"tools", "disallowedTools", "allowed-tools", "skills"}
         for field_name in tool_fields:
-            if field_name in normalized_dict and isinstance(
-                normalized_dict[field_name], list
-            ):
-                normalized_dict[field_name] = ", ".join(
-                    str(x) for x in normalized_dict[field_name]
-                )
-                fixes.append(
-                    f"Converted {field_name} from YAML array to comma-separated string"
-                )
+            if field_name in normalized_dict and isinstance(normalized_dict[field_name], list):
+                normalized_dict[field_name] = ", ".join(str(x) for x in normalized_dict[field_name])
+                fixes.append(f"Converted {field_name} from YAML array to comma-separated string")
 
         # Compare to detect changes
         for key, value in normalized_dict.items():
@@ -1736,14 +1654,8 @@ class FrontmatterValidator:
                 continue
             if key in original_data and original_data[key] != value:
                 if isinstance(original_data[key], list) and isinstance(value, str):
-                    fixes.append(
-                        f"Converted {key} from YAML array to comma-separated string"
-                    )
-                elif (
-                    isinstance(original_data[key], str)
-                    and "\n" in original_data[key]
-                    and "\n" not in str(value)
-                ):
+                    fixes.append(f"Converted {key} from YAML array to comma-separated string")
+                elif isinstance(original_data[key], str) and "\n" in original_data[key] and "\n" not in str(value):
                     fixes.append(f"Normalized {key} to single line")
 
         # Check for multiline indicators
@@ -1803,39 +1715,29 @@ class NameFormatValidator:
                     docs_url=generate_docs_url(FM002),
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Extract frontmatter
         frontmatter_text, _start_line, _end_line = extract_frontmatter(content)
         if frontmatter_text is None:
             # No frontmatter - skip validation
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Parse YAML
         try:
             data = _safe_load_yaml(frontmatter_text)
         except YAMLError:
             # Invalid YAML - not our concern (FrontmatterValidator handles this)
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         if not isinstance(data, dict):
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Extract name field
         name = data.get("name")
         if name is None or not isinstance(name, str):
             # No name field or not a string - skip validation
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Empty name string is invalid — `not name` is True for "" after isinstance check
         if not name:
@@ -1849,16 +1751,12 @@ class NameFormatValidator:
                     suggestion="Provide a non-empty name using lowercase letters, numbers, and hyphens",
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         self._check_name_format(name, errors)
 
         passed = len(errors) == 0
-        return ValidationResult(
-            passed=passed, errors=errors, warnings=warnings, info=info
-        )
+        return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
 
     def _check_name_format(self, name: str, errors: list[ValidationIssue]) -> None:
         """Append format errors for a non-empty name string.
@@ -1967,8 +1865,7 @@ class NameFormatValidator:
             Never returns (always raises)
         """
         raise NotImplementedError(
-            "Name format validation cannot be auto-fixed. "
-            "Renaming requires human decision on correct name."
+            "Name format validation cannot be auto-fixed. Renaming requires human decision on correct name."
         )
 
 
@@ -2028,51 +1925,36 @@ class DescriptionValidator:
                     docs_url=generate_docs_url(FM002),
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Extract frontmatter
         frontmatter_text, _start_line, _end_line = extract_frontmatter(content)
         if frontmatter_text is None:
             # No frontmatter - skip validation
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Parse YAML
         try:
             data = _safe_load_yaml(frontmatter_text)
         except YAMLError:
             # Invalid YAML - not our concern (FrontmatterValidator handles this)
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         if not isinstance(data, dict):
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Extract description field
         description = data.get("description")
         if description is None:
             # No description field - skip validation (pass with no warnings)
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         if not isinstance(description, str):
             # Description is not a string - skip validation
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Check minimum length — SKILL and AGENT files only (not COMMAND)
-        if (
-            self.file_type in {FileType.SKILL, FileType.AGENT}
-            and len(description) < MIN_DESCRIPTION_LENGTH
-        ):
+        if self.file_type in {FileType.SKILL, FileType.AGENT} and len(description) < MIN_DESCRIPTION_LENGTH:
             warnings.append(
                 ValidationIssue(
                     field="description",
@@ -2087,9 +1969,7 @@ class DescriptionValidator:
         # Check for trigger phrases (case-insensitive) — SKILL files only
         if self.file_type == FileType.SKILL:
             description_lower = description.lower()
-            has_trigger = any(
-                phrase in description_lower for phrase in REQUIRED_TRIGGER_PHRASES
-            )
+            has_trigger = any(phrase in description_lower for phrase in REQUIRED_TRIGGER_PHRASES)
 
             if not has_trigger:
                 warnings.append(
@@ -2105,9 +1985,7 @@ class DescriptionValidator:
 
         # Pass if no errors (warnings don't fail validation)
         passed = len(errors) == 0
-        return ValidationResult(
-            passed=passed, errors=errors, warnings=warnings, info=info
-        )
+        return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
 
     def can_fix(self) -> bool:
         """Check if validator supports auto-fixing.
@@ -2130,8 +2008,7 @@ class DescriptionValidator:
             Never returns (always raises)
         """
         raise NotImplementedError(
-            "Description validation cannot be auto-fixed. "
-            "Writing quality descriptions requires human judgment."
+            "Description validation cannot be auto-fixed. Writing quality descriptions requires human judgment."
         )
 
 
@@ -2169,9 +2046,7 @@ class ComplexityValidator:
         # Only validate SKILL.md files
         if path.name != "SKILL.md":
             # Not a skill file - skip validation
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Read file
         try:
@@ -2186,9 +2061,7 @@ class ComplexityValidator:
                     docs_url=generate_docs_url(FM002),
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Split frontmatter and body
         frontmatter_text, _start_line, _end_line = extract_frontmatter(content)
@@ -2207,9 +2080,7 @@ class ComplexityValidator:
         body_tokens = self._count_tokens(body, errors, warnings, info)
         if body_tokens is None:
             # Token counting failed - errors list already populated
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Check against thresholds
         if body_tokens > TOKEN_ERROR_THRESHOLD:
@@ -2239,9 +2110,7 @@ class ComplexityValidator:
 
         # Pass if no errors (warnings don't fail validation)
         passed = len(errors) == 0
-        return ValidationResult(
-            passed=passed, errors=errors, warnings=warnings, info=info
-        )
+        return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
 
     def can_fix(self) -> bool:
         """Check if validator supports auto-fixing.
@@ -2269,11 +2138,7 @@ class ComplexityValidator:
         )
 
     def _count_tokens(
-        self,
-        text: str,
-        errors: list[ValidationIssue],
-        warnings: list[ValidationIssue],
-        info: list[ValidationIssue],
+        self, text: str, errors: list[ValidationIssue], warnings: list[ValidationIssue], info: list[ValidationIssue]
     ) -> int | None:
         """Count tokens in text using tiktoken (lazy-loaded).
 
@@ -2361,9 +2226,7 @@ class MarkdownTokenCounter:
                     docs_url=generate_docs_url(FM002),
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Split frontmatter and body
         frontmatter_text, _start_line, _end_line = extract_frontmatter(content)
@@ -2377,9 +2240,7 @@ class MarkdownTokenCounter:
         # Count tokens
         total_tokens = self._count_tokens(content)
         body_tokens = self._count_tokens(body)
-        frontmatter_tokens = (
-            total_tokens - body_tokens if total_tokens and body_tokens else 0
-        )
+        frontmatter_tokens = total_tokens - body_tokens if total_tokens and body_tokens else 0
 
         if total_tokens is None:
             errors.append(
@@ -2392,25 +2253,18 @@ class MarkdownTokenCounter:
                     suggestion="Install tiktoken: pip install tiktoken>=0.8.0",
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         info.append(
             ValidationIssue(
                 field="token-count",
                 severity="info",
-                message=(
-                    f"Total: {total_tokens} tokens "
-                    f"(frontmatter: {frontmatter_tokens}, body: {body_tokens})"
-                ),
+                message=(f"Total: {total_tokens} tokens (frontmatter: {frontmatter_tokens}, body: {body_tokens})"),
                 code="TC001",
             )
         )
 
-        return ValidationResult(
-            passed=True, errors=errors, warnings=warnings, info=info
-        )
+        return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
     def count_file_tokens(self, path: Path, *, body_only: bool = False) -> int | None:
         """Count tokens in a file for programmatic use.
@@ -2503,11 +2357,7 @@ def _get_git_remote_url(repo_dir: Path) -> str | None:
 
     try:
         result = subprocess.run(
-            [git_path, "remote", "get-url", "origin"],
-            capture_output=True,
-            text=True,
-            cwd=str(repo_dir),
-            check=True,
+            [git_path, "remote", "get-url", "origin"], capture_output=True, text=True, cwd=str(repo_dir), check=True
         )
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
@@ -2530,12 +2380,7 @@ def _get_git_author() -> dict[str, str] | None:
         return None
 
     try:
-        name_result = subprocess.run(
-            [git_path, "config", "user.name"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        name_result = subprocess.run([git_path, "config", "user.name"], capture_output=True, text=True, check=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
 
@@ -2544,12 +2389,7 @@ def _get_git_author() -> dict[str, str] | None:
         return None
 
     try:
-        email_result = subprocess.run(
-            [git_path, "config", "user.email"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        email_result = subprocess.run([git_path, "config", "user.email"], capture_output=True, text=True, check=False)
     except (subprocess.CalledProcessError, FileNotFoundError):
         return {"name": name}
 
@@ -2590,9 +2430,7 @@ def _generate_plugin_metadata(plugin_dir: Path) -> dict[str, Any]:
     return metadata
 
 
-def _find_actual_capabilities(
-    plugin_dir: Path,
-) -> tuple[set[Path], set[Path], set[Path]]:
+def _find_actual_capabilities(plugin_dir: Path) -> tuple[set[Path], set[Path], set[Path]]:
     """Find all actual capability files in a plugin directory.
 
     Args:
@@ -2609,33 +2447,25 @@ def _find_actual_capabilities(
     skills_dir = plugin_dir / "skills"
     if skills_dir.is_dir():
         actual_skills = {
-            d.relative_to(plugin_dir)
-            for d in skills_dir.glob("*/")
-            if d.is_dir() and (d / "SKILL.md").exists()
+            d.relative_to(plugin_dir) for d in skills_dir.glob("*/") if d.is_dir() and (d / "SKILL.md").exists()
         }
 
     agents_dir = plugin_dir / "agents"
     if agents_dir.is_dir():
         actual_agents = {
-            f.relative_to(plugin_dir)
-            for f in agents_dir.glob("*.md")
-            if f.name not in {"CLAUDE.md", "README.md"}
+            f.relative_to(plugin_dir) for f in agents_dir.glob("*.md") if f.name not in {"CLAUDE.md", "README.md"}
         }
 
     commands_dir = plugin_dir / "commands"
     if commands_dir.is_dir():
         actual_commands = {
-            f.relative_to(plugin_dir)
-            for f in commands_dir.glob("*.md")
-            if f.name not in {"CLAUDE.md", "README.md"}
+            f.relative_to(plugin_dir) for f in commands_dir.glob("*.md") if f.name not in {"CLAUDE.md", "README.md"}
         }
 
     return actual_skills, actual_agents, actual_commands
 
 
-def _parse_registered_paths(
-    plugin_config: dict[str, Any], plugin_dir: Path, field: str
-) -> set[Path]:
+def _parse_registered_paths(plugin_config: dict[str, Any], plugin_dir: Path, field: str) -> set[Path]:
     """Parse registered capability paths from a plugin.json field.
 
     Args:
@@ -2657,9 +2487,7 @@ def _parse_registered_paths(
         value_path = plugin_dir / value.lstrip("./")
         if value_path.is_dir():
             registered.update(
-                f.relative_to(plugin_dir)
-                for f in value_path.glob("*.md")
-                if f.name not in {"CLAUDE.md", "README.md"}
+                f.relative_to(plugin_dir) for f in value_path.glob("*.md") if f.name not in {"CLAUDE.md", "README.md"}
             )
         else:
             registered.add(Path(value.lstrip("./")))
@@ -2694,15 +2522,11 @@ class PluginRegistrationValidator:
 
         plugin_dir = self._find_plugin_dir(path)
         if plugin_dir is None:
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         plugin_json_path = plugin_dir / ".claude-plugin" / "plugin.json"
         if not plugin_json_path.exists():
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         try:
             with plugin_json_path.open() as f:
@@ -2718,19 +2542,13 @@ class PluginRegistrationValidator:
                     suggestion="Fix JSON syntax errors",
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Registration checks
-        actual_skills, actual_agents, actual_commands = _find_actual_capabilities(
-            plugin_dir
-        )
+        actual_skills, actual_agents, actual_commands = _find_actual_capabilities(plugin_dir)
         registered_skills = _parse_registered_paths(plugin_config, plugin_dir, "skills")
         registered_agents = _parse_registered_paths(plugin_config, plugin_dir, "agents")
-        registered_commands = _parse_registered_paths(
-            plugin_config, plugin_dir, "commands"
-        )
+        registered_commands = _parse_registered_paths(plugin_config, plugin_dir, "commands")
 
         warnings.extend(
             ValidationIssue(
@@ -2810,15 +2628,9 @@ class PluginRegistrationValidator:
         # Metadata checks (informational)
         git_metadata = _generate_plugin_metadata(plugin_dir)
         if git_metadata:
-            missing = [
-                k
-                for k in ("repository", "homepage", "author")
-                if k not in plugin_config and k in git_metadata
-            ]
+            missing = [k for k in ("repository", "homepage", "author") if k not in plugin_config and k in git_metadata]
             if missing:
-                suggestion_json = json.dumps(
-                    {k: git_metadata[k] for k in missing}, indent=2
-                )
+                suggestion_json = json.dumps({k: git_metadata[k] for k in missing}, indent=2)
                 info.append(
                     ValidationIssue(
                         field="plugin.json",
@@ -2849,9 +2661,7 @@ class PluginRegistrationValidator:
                     )
                 )
 
-        return ValidationResult(
-            passed=len(errors) == 0, errors=errors, warnings=warnings, info=info
-        )
+        return ValidationResult(passed=len(errors) == 0, errors=errors, warnings=warnings, info=info)
 
     def can_fix(self) -> bool:
         """Check if validator supports auto-fixing.
@@ -2870,9 +2680,7 @@ class PluginRegistrationValidator:
         Raises:
             NotImplementedError: Registration issues require manual fixes.
         """
-        raise NotImplementedError(
-            "Plugin registration issues require manual edits to plugin.json."
-        )
+        raise NotImplementedError("Plugin registration issues require manual edits to plugin.json.")
 
     def _find_plugin_dir(self, path: Path) -> Path | None:
         """Find the plugin directory containing .claude-plugin/plugin.json.
@@ -2922,9 +2730,7 @@ class PluginStructureValidator:
         plugin_dir = self._find_plugin_directory(path)
         if plugin_dir is None:
             # Not a plugin directory - skip validation
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Skip claude plugin validate when running inside a Claude Code session
         # (nested CLI invocations are blocked by Anthropic safety measure).
@@ -2938,9 +2744,7 @@ class PluginStructureValidator:
                     docs_url=generate_docs_url(PL001),
                 )
             )
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Check if claude CLI is available and get full path
         claude_path = self._get_claude_path()
@@ -2956,9 +2760,7 @@ class PluginStructureValidator:
                     suggestion="Install Claude Code to enable plugin validation",
                 )
             )
-            return ValidationResult(
-                passed=True, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         # Run claude plugin validate
         try:
@@ -2973,9 +2775,7 @@ class PluginStructureValidator:
             # Parse output for errors
             if result.returncode != 0:
                 # Validation failed - parse errors from output
-                self._parse_claude_errors(
-                    result.stdout, result.stderr, errors, warnings, info
-                )
+                self._parse_claude_errors(result.stdout, result.stderr, errors, warnings, info)
 
         except subprocess.TimeoutExpired:
             errors.append(
@@ -3013,9 +2813,7 @@ class PluginStructureValidator:
 
         # Pass if no errors (warnings/info don't fail validation)
         passed = len(errors) == 0
-        return ValidationResult(
-            passed=passed, errors=errors, warnings=warnings, info=info
-        )
+        return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
 
     def can_fix(self) -> bool:
         """Check if validator supports auto-fixing.
@@ -3142,8 +2940,7 @@ class PluginStructureValidator:
             if not stripped_line or stripped_line.startswith("#"):
                 continue
             if any(
-                keyword in stripped_line.lower()
-                for keyword in ["error", "missing", "invalid", "required", "not found"]
+                keyword in stripped_line.lower() for keyword in ["error", "missing", "invalid", "required", "not found"]
             ):
                 return stripped_line[:200]  # Truncate long messages
 
@@ -3286,9 +3083,7 @@ class HookValidator:
                     docs_url=generate_docs_url(HK001),
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         try:
             data = json.loads(content)
@@ -3303,9 +3098,7 @@ class HookValidator:
                     suggestion="Fix JSON syntax errors in hooks.json",
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Check top-level structure
         if not isinstance(data, dict) or "hooks" not in data:
@@ -3319,9 +3112,7 @@ class HookValidator:
                     suggestion='hooks.json must have structure: {"hooks": {...}}',
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         hooks_obj = data["hooks"]
         if not isinstance(hooks_obj, dict):
@@ -3334,9 +3125,7 @@ class HookValidator:
                     docs_url=generate_docs_url(HK001),
                 )
             )
-            return ValidationResult(
-                passed=False, errors=errors, warnings=warnings, info=info
-            )
+            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Validate each event type
         for event_type, hook_groups in hooks_obj.items():
@@ -3373,21 +3162,13 @@ class HookValidator:
         # Validate that file-path command references actually exist and are executable.
         # HK004/HK005 issues are appended directly to the combined errors list so that
         # missing-script warnings surface in the same result as structural errors.
-        self._validate_hook_script_references_in_hooks_dict(
-            hooks_obj, path.parent, errors
-        )
+        self._validate_hook_script_references_in_hooks_dict(hooks_obj, path.parent, errors)
 
         passed = len(errors) == 0
-        return ValidationResult(
-            passed=passed, errors=errors, warnings=warnings, info=info
-        )
+        return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
 
     def _validate_hook_group(
-        self,
-        group: object,
-        event_type: str,
-        group_idx: int,
-        errors: list[ValidationIssue],
+        self, group: object, event_type: str, group_idx: int, errors: list[ValidationIssue]
     ) -> None:
         """Validate a single hook group within an event type.
 
@@ -3428,12 +3209,7 @@ class HookValidator:
             self._validate_hook_entry(entry, event_type, group_idx, entry_idx, errors)
 
     def _validate_hook_entry(
-        self,
-        entry: object,
-        event_type: str,
-        group_idx: int,
-        entry_idx: int,
-        errors: list[ValidationIssue],
+        self, entry: object, event_type: str, group_idx: int, entry_idx: int, errors: list[ValidationIssue]
     ) -> None:
         """Validate a single hook entry.
 
@@ -3511,9 +3287,7 @@ class HookValidator:
         Returns:
             True if command is a file path reference, False otherwise.
         """
-        return bool(command) and (
-            command.startswith(("./", "../", "/", "${CLAUDE_PLUGIN_ROOT}/"))
-        )
+        return bool(command) and (command.startswith(("./", "../", "/", "${CLAUDE_PLUGIN_ROOT}/")))
 
     @staticmethod
     def _find_plugin_root(base_dir: Path) -> Path:
@@ -3535,10 +3309,7 @@ class HookValidator:
         return base_dir
 
     def _validate_command_script_references(
-        self,
-        hook_entries: list[dict[str, Any]],
-        base_dir: Path,
-        errors: list[ValidationIssue],
+        self, hook_entries: list[dict[str, Any]], base_dir: Path, errors: list[ValidationIssue]
     ) -> None:
         """Check that file-path ``command`` values in hook entries actually exist.
 
@@ -3567,15 +3338,11 @@ class HookValidator:
                 continue
 
             command = entry.get("command", "")
-            if not isinstance(command, str) or not self._is_file_path_reference(
-                command
-            ):
+            if not isinstance(command, str) or not self._is_file_path_reference(command):
                 continue
 
             # Substitute ${CLAUDE_PLUGIN_ROOT} with the detected plugin root
-            resolved_command = command.replace(
-                "${CLAUDE_PLUGIN_ROOT}", str(plugin_root)
-            )
+            resolved_command = command.replace("${CLAUDE_PLUGIN_ROOT}", str(plugin_root))
 
             resolved_path = Path(resolved_command)
             if not resolved_path.is_absolute():
@@ -3626,9 +3393,7 @@ class HookValidator:
                     continue
                 for entry in group.get("hooks", []):
                     if isinstance(entry, dict):
-                        self._validate_command_script_references(
-                            [entry], base_dir, errors
-                        )
+                        self._validate_command_script_references([entry], base_dir, errors)
 
 
 # ============================================================================
@@ -3696,18 +3461,13 @@ def validate_with_claude(plugin_dir: Path) -> tuple[bool, str]:
             check=False,  # Handle non-zero exit code ourselves
         )
     except subprocess.TimeoutExpired:
-        return (
-            False,
-            f"Claude plugin validation timed out after {CLAUDE_TIMEOUT} seconds",
-        )
+        return (False, f"Claude plugin validation timed out after {CLAUDE_TIMEOUT} seconds")
     except (FileNotFoundError, OSError) as e:
         # FileNotFoundError: Claude CLI not found (should be caught by shutil.which)
         # OSError: Other subprocess errors (permission denied, etc.)
         is_not_found = isinstance(e, FileNotFoundError)
         message = (
-            "Claude CLI not found in PATH (skipped)"
-            if is_not_found
-            else f"Failed to run claude plugin validate: {e}"
+            "Claude CLI not found in PATH (skipped)" if is_not_found else f"Failed to run claude plugin validate: {e}"
         )
         # Not found is a skip (success), other OS errors are failures
         return is_not_found, message
@@ -3756,9 +3516,7 @@ def get_staged_files() -> list[Path]:
 
         # Parse output into Path objects
         # Filter out empty lines
-        return [
-            Path(line.strip()) for line in result.stdout.splitlines() if line.strip()
-        ]
+        return [Path(line.strip()) for line in result.stdout.splitlines() if line.strip()]
 
     except subprocess.TimeoutExpired:
         # Git diff shouldn't take this long - something is wrong
@@ -3784,13 +3542,7 @@ class Reporter(Protocol):
     plain text for CI, summary).
     """
 
-    def report(
-        self,
-        file_results: FileResults,
-        verbose: bool = False,
-        *,
-        show_progress: bool = False,
-    ) -> None:
+    def report(self, file_results: FileResults, verbose: bool = False, *, show_progress: bool = False) -> None:
         """Display validation results grouped by file.
 
         Args:
@@ -3801,9 +3553,7 @@ class Reporter(Protocol):
         """
         ...
 
-    def summarize(
-        self, total_files: int, passed: int, failed: int, warnings: int
-    ) -> None:
+    def summarize(self, total_files: int, passed: int, failed: int, warnings: int) -> None:
         """Display summary statistics.
 
         Args:
@@ -3830,9 +3580,7 @@ class ConsoleReporter:
     Architecture lines 239-252
     """
 
-    def __init__(
-        self, console: Console | None = None, *, no_color: bool = False
-    ) -> None:
+    def __init__(self, console: Console | None = None, *, no_color: bool = False) -> None:
         """Initialize console reporter.
 
         Args:
@@ -3878,11 +3626,7 @@ class ConsoleReporter:
         Args:
             issue: The validation issue to display
         """
-        severity_icons = {
-            "error": ":cross_mark:",
-            "warning": ":warning:",
-            "info": ":information:",
-        }
+        severity_icons = {"error": ":cross_mark:", "warning": ":warning:", "info": ":information:"}
         severity_colors = {"error": "red", "warning": "yellow", "info": "blue"}
 
         icon = severity_icons.get(issue.severity, "")
@@ -3891,33 +3635,20 @@ class ConsoleReporter:
 
         # Main message line -- may contain long paths or messages
         self.console.print(
-            f"    {icon} [{color}][{issue.code}][/{color}] "
-            f"{issue.field}{location}: {issue.message}",
+            f"    {icon} [{color}][{issue.code}][/{color}] {issue.field}{location}: {issue.message}",
             crop=False,
             overflow="ignore",
         )
 
         # Suggestion line -- may contain long commands or paths
         if issue.suggestion:
-            self.console.print(
-                f"      [dim]→[/dim] {issue.suggestion}", crop=False, overflow="ignore"
-            )
+            self.console.print(f"      [dim]→[/dim] {issue.suggestion}", crop=False, overflow="ignore")
 
         # Docs URL line -- must never wrap
         if issue.docs_url:
-            self.console.print(
-                f"      [dim]→[/dim] [link]{issue.docs_url}[/link]",
-                crop=False,
-                overflow="ignore",
-            )
+            self.console.print(f"      [dim]→[/dim] [link]{issue.docs_url}[/link]", crop=False, overflow="ignore")
 
-    def report(
-        self,
-        file_results: FileResults,
-        verbose: bool = False,
-        *,
-        show_progress: bool = False,
-    ) -> None:
+    def report(self, file_results: FileResults, verbose: bool = False, *, show_progress: bool = False) -> None:
         """Display validation results with Rich formatting, grouped by file.
 
         Args:
@@ -3942,17 +3673,13 @@ class ConsoleReporter:
                 # File passed all validators with no issues
                 if show_progress:
                     self.console.print(
-                        f":white_check_mark: [green]{file_path}[/green] - PASSED",
-                        crop=False,
-                        overflow="ignore",
+                        f":white_check_mark: [green]{file_path}[/green] - PASSED", crop=False, overflow="ignore"
                     )
                 continue
 
             # File has issues - show file header once, then per-validator results
             # File paths may be long -- prevent wrapping
-            self.console.print(
-                f"\n[bold]{file_path}[/bold]", crop=False, overflow="ignore"
-            )
+            self.console.print(f"\n[bold]{file_path}[/bold]", crop=False, overflow="ignore")
 
             for validator_name, result in validator_results:
                 issues_to_show = [*result.errors, *result.warnings]
@@ -3963,26 +3690,18 @@ class ConsoleReporter:
                     # This validator passed — only show if progress requested
                     if show_progress:
                         self.console.print(
-                            f"  :white_check_mark: [dim]{validator_name}:[/dim] PASSED",
-                            crop=False,
-                            overflow="ignore",
+                            f"  :white_check_mark: [dim]{validator_name}:[/dim] PASSED", crop=False, overflow="ignore"
                         )
                     continue
 
                 # Show validator name as sub-header
                 status_icon = ":cross_mark:" if not result.passed else ":warning:"
-                self.console.print(
-                    f"  {status_icon} [dim]{validator_name}:[/dim]",
-                    crop=False,
-                    overflow="ignore",
-                )
+                self.console.print(f"  {status_icon} [dim]{validator_name}:[/dim]", crop=False, overflow="ignore")
 
                 for issue in issues_to_show:
                     self._print_issue(issue)
 
-    def summarize(
-        self, total_files: int, passed: int, failed: int, warnings: int
-    ) -> None:
+    def summarize(self, total_files: int, passed: int, failed: int, warnings: int) -> None:
         """Display summary statistics with Rich formatting.
 
         Args:
@@ -4019,14 +3738,10 @@ class ConsoleReporter:
 
         # Display in panel -- set console width to panel's natural width
         # to prevent Panel from wrapping at 80 chars in non-TTY environments
-        panel = Panel(
-            summary, title="Validation Summary", border_style=status_color, expand=False
-        )
+        panel = Panel(summary, title="Validation Summary", border_style=status_color, expand=False)
         panel_width = self._get_rendered_width(panel)
         self.console.width = panel_width
-        self.console.print(
-            panel, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True
-        )
+        self.console.print(panel, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
 
 
 # ============================================================================
@@ -4066,13 +3781,7 @@ class CIReporter:
         if issue.docs_url:
             print(f"      → {issue.docs_url}")
 
-    def report(
-        self,
-        file_results: FileResults,
-        verbose: bool = False,
-        *,
-        show_progress: bool = False,
-    ) -> None:
+    def report(self, file_results: FileResults, verbose: bool = False, *, show_progress: bool = False) -> None:
         """Display validation results in plain text, grouped by file.
 
         Args:
@@ -4119,9 +3828,7 @@ class CIReporter:
                 for issue in issues_to_show:
                     self._print_issue(issue)
 
-    def summarize(
-        self, total_files: int, passed: int, failed: int, warnings: int
-    ) -> None:
+    def summarize(self, total_files: int, passed: int, failed: int, warnings: int) -> None:
         """Display summary statistics in plain text.
 
         Args:
@@ -4158,13 +3865,7 @@ class SummaryReporter:
     Architecture lines 239-252
     """
 
-    def report(
-        self,
-        file_results: FileResults,
-        verbose: bool = False,
-        *,
-        show_progress: bool = False,
-    ) -> None:
+    def report(self, file_results: FileResults, verbose: bool = False, *, show_progress: bool = False) -> None:
         """Display nothing (summary-only reporter).
 
         Args:
@@ -4175,9 +3876,7 @@ class SummaryReporter:
         """
         # Summary reporter only shows final summary, not per-file results
 
-    def summarize(
-        self, total_files: int, passed: int, failed: int, warnings: int
-    ) -> None:
+    def summarize(self, total_files: int, passed: int, failed: int, warnings: int) -> None:
         """Display single-line summary.
 
         Args:
@@ -4219,18 +3918,11 @@ def _load_ignore_patterns() -> list[str]:
     Returns:
         List of glob patterns to match against file paths.
     """
-    candidates = [
-        Path.cwd() / ".pluginvalidatorignore",
-        Path.cwd() / ".claude" / ".pluginvalidatorignore",
-    ]
+    candidates = [Path.cwd() / ".pluginvalidatorignore", Path.cwd() / ".claude" / ".pluginvalidatorignore"]
     for candidate in candidates:
         if candidate.is_file():
             lines = candidate.read_text(encoding="utf-8").splitlines()
-            return [
-                line.strip()
-                for line in lines
-                if line.strip() and not line.strip().startswith("#")
-            ]
+            return [line.strip() for line in lines if line.strip() and not line.strip().startswith("#")]
     return []
 
 
@@ -4390,21 +4082,14 @@ def _validate_single_path(  # noqa: PLR0912, C901
         # Name and description validators only make sense when frontmatter
         # is present (they read parsed frontmatter data).
         if fm_req == _FrontmatterRequirement.REQUIRED or _file_has_frontmatter(path):
-            validators.extend([
-                NameFormatValidator(),
-                DescriptionValidator(file_type=file_type),
-            ])
+            validators.extend([NameFormatValidator(), DescriptionValidator(file_type=file_type)])
 
         # Namespace reference validation for all capability files
         validators.append(NamespaceReferenceValidator())
 
         # Skill-specific validators
         if file_type == FileType.SKILL:
-            validators.extend([
-                ComplexityValidator(),
-                InternalLinkValidator(),
-                ProgressiveDisclosureValidator(),
-            ])
+            validators.extend([ComplexityValidator(), InternalLinkValidator(), ProgressiveDisclosureValidator()])
 
     elif file_type == FileType.PLUGIN:
         # Plugin directories: validate structure
@@ -4428,8 +4113,7 @@ def _validate_single_path(  # noqa: PLR0912, C901
         # Unknown type
         typer.echo(f"Error: Cannot determine file type for: {path}", err=True)
         typer.echo(
-            "Expected: SKILL.md, agent .md, command .md, hooks.json, plugin directory, or markdown file",
-            err=True,
+            "Expected: SKILL.md, agent .md, command .md, hooks.json, plugin directory, or markdown file", err=True
         )
         raise typer.Exit(2) from None
 
@@ -4541,45 +4225,22 @@ def _show_help_and_exit(ctx: typer.Context, code: int = 0) -> NoReturn:
 def main(  # noqa: PLR0912, PLR0915, C901
     ctx: typer.Context,
     paths: Annotated[
-        list[Path] | None,
-        typer.Argument(
-            help="Paths to plugin, skill, agent, or command files to validate"
-        ),
+        list[Path] | None, typer.Argument(help="Paths to plugin, skill, agent, or command files to validate")
     ] = None,
-    check: Annotated[
-        bool, typer.Option("--check", help="Validate only, don't auto-fix")
-    ] = False,
-    fix: Annotated[
-        bool, typer.Option("--fix", help="Auto-fix issues where possible")
-    ] = False,
+    check: Annotated[bool, typer.Option("--check", help="Validate only, don't auto-fix")] = False,
+    fix: Annotated[bool, typer.Option("--fix", help="Auto-fix issues where possible")] = False,
     verbose: Annotated[
-        bool,
-        typer.Option(
-            "--verbose",
-            "-v",
-            help="Show detailed validation output including info messages",
-        ),
+        bool, typer.Option("--verbose", "-v", help="Show detailed validation output including info messages")
     ] = False,
-    no_color: Annotated[
-        bool,
-        typer.Option("--no-color", help="Disable color output for CI environments"),
-    ] = False,
+    no_color: Annotated[bool, typer.Option("--no-color", help="Disable color output for CI environments")] = False,
     tokens_only: Annotated[
-        bool,
-        typer.Option(
-            "--tokens-only",
-            help="Output only the integer token count (for programmatic use)",
-        ),
+        bool, typer.Option("--tokens-only", help="Output only the integer token count (for programmatic use)")
     ] = False,
     show_progress: Annotated[
-        bool,
-        typer.Option(
-            "--show-progress", help="Show per-file PASSED/FAILED status for all files"
-        ),
+        bool, typer.Option("--show-progress", help="Show per-file PASSED/FAILED status for all files")
     ] = False,
     show_summary: Annotated[
-        bool,
-        typer.Option("--show-summary", help="Show validation summary panel at the end"),
+        bool, typer.Option("--show-summary", help="Show validation summary panel at the end")
     ] = False,
     filter_glob: Annotated[
         str | None,
@@ -4670,9 +4331,7 @@ def main(  # noqa: PLR0912, PLR0915, C901
     try:
         # Validate mutual exclusion of --filter and --filter-type
         if filter_glob is not None and filter_type is not None:
-            typer.echo(
-                "Error: --filter and --filter-type are mutually exclusive", err=True
-            )
+            typer.echo("Error: --filter and --filter-type are mutually exclusive", err=True)
             raise typer.Exit(2) from None
 
         # Resolve --filter-type to a glob pattern
@@ -4721,9 +4380,7 @@ def main(  # noqa: PLR0912, PLR0915, C901
             if ignore_patterns and _is_ignored(path, ignore_patterns):
                 continue
 
-            file_results = _validate_single_path(
-                path, check=check, fix=fix, verbose=verbose
-            )
+            file_results = _validate_single_path(path, check=check, fix=fix, verbose=verbose)
             # Merge results — extend existing entries if same path appears twice
             for file_path, validator_results in file_results.items():
                 if file_path in all_results:
@@ -4740,14 +4397,8 @@ def main(  # noqa: PLR0912, PLR0915, C901
 
         # Calculate summary statistics — per unique file, not per validator
         total_files = len(all_results)
-        passed = sum(
-            1 for vr_list in all_results.values() if all(r.passed for _, r in vr_list)
-        )
-        failed = sum(
-            1
-            for vr_list in all_results.values()
-            if any(not r.passed for _, r in vr_list)
-        )
+        passed = sum(1 for vr_list in all_results.values() if all(r.passed for _, r in vr_list))
+        failed = sum(1 for vr_list in all_results.values() if any(not r.passed for _, r in vr_list))
         warnings = sum(
             1
             for vr_list in all_results.values()
@@ -4769,11 +4420,7 @@ def main(  # noqa: PLR0912, PLR0915, C901
 
 
 # Create Typer app
-app = typer.Typer(
-    name="plugin-validator",
-    help="Validate Claude Code plugins and skills",
-    add_completion=False,
-)
+app = typer.Typer(name="plugin-validator", help="Validate Claude Code plugins and skills", add_completion=False)
 app.command()(main)
 
 

@@ -22,11 +22,23 @@ Orchestrate backlog grooming: parse arguments, assess information completeness v
 
 Read `.claude/BACKLOG.md`. Identify target items based on argument type above.
 
-### Step 2: Extract Item Details
+### Step 2: Validity Check (Pre-Groom Gate)
+
+Before fact-checking or grooming, verify each item is still valid work:
+
+1. **Is the job still valid?** — Scope, priority, or context may have changed. Ask or infer: does this item still belong in the backlog?
+2. **Can the problem be replicated?** — If the item describes a bug or fix, confirm the issue still exists. If it cannot be reproduced, consider resolving or closing.
+3. **Is this local file stale?** — If the item has a GitHub issue (`metadata.issue` or index link `#N`), fetch the issue state via `gh issue view N --json state` (use `-R Jamie-BitFlight/claude_skills` if in a proxy environment). If the issue is **closed**, the local file is a stale remnant of work already done. Do **not** groom. Instead:
+   - Recommend: `backlog close "{title}" --plan <path> --checklist-pass --cleanup` (if completed) or `backlog resolve "{title}" --reason "..." --cleanup` (if obsolete)
+   - Skip grooming for that item; move to the next
+
+If any check fails, skip grooming for that item and report. Only proceed to Step 3 for items that pass.
+
+### Step 3: Extract Item Details
 
 For each target item, extract: title, description, research-first questions (if present), source, suggested location.
 
-### Step 3: Fact-Check Item Claims
+### Step 4: Fact-Check Item Claims
 
 Invoke the `fact-check` skill on each target item to verify factual claims against primary sources **before** running RT-ICA or spawning groomer agents. This prevents unverified or refuted assertions from entering the planning context.
 
@@ -49,11 +61,11 @@ Citations:           [{VERIFIED claims cite their primary sources}]
 
 **Multiple items** — invoke `fact-check` for each item sequentially (respect the wave-of-5 concurrency limit inside `fact-check` itself). Do not batch items into a single `fact-check` call.
 
-Pass the fact-check summary forward to Step 4.
+Pass the fact-check summary forward to Step 5.
 
-### Step 4: RT-ICA Assessment Per Item
+### Step 5: RT-ICA Assessment Per Item
 
-Perform Reverse Thinking — Information Completeness Assessment using both the item details **and** the fact-check verdicts from Step 3. This directs the groomer's discovery toward filling gaps rather than broad search.
+Perform Reverse Thinking — Information Completeness Assessment using both the item details **and** the fact-check verdicts from Step 4. This directs the groomer's discovery toward filling gaps rather than broad search.
 
 For each item, produce:
 
@@ -67,17 +79,17 @@ Decision: {APPROVED|BLOCKED}
 Missing: {list of missing inputs, or "None"}
 ```
 
-- **AVAILABLE**: Explicitly stated in item description or research questions AND fact-check verdict is VERIFIED or not applicable
+- **AVAILABLE**: Explicitly stated in item description or research questions AND fact-check verdict (Step 4) is VERIFIED or not applicable
 - **DERIVABLE**: Safely inferable from codebase context (state basis); fact-check verdict is INCONCLUSIVE
 - **MISSING**: Not present, not safely inferable — OR fact-check verdict is REFUTED (the stated condition is false and the correct state is unknown)
 
-REFUTED claims from Step 3 MUST be listed as MISSING conditions. A REFUTED claim is not a valid basis for any AVAILABLE or DERIVABLE status.
+REFUTED claims from Step 4 MUST be listed as MISSING conditions. A REFUTED claim is not a valid basis for any AVAILABLE or DERIVABLE status.
 
 Pass the RT-ICA summary and fact-check summary to the groomer alongside item details.
 
 **ARL human-probing integration:** When RT-ICA returns BLOCKED or MISSING conditions, the context manifest can include `invisible_knowledge_prompts` — questions to ask the human before planning (e.g., "What went wrong in the past?", "What references are essential?"). See [.claude/docs/sdlc-layers/arl-human-probing-design.md](../docs/sdlc-layers/arl-human-probing-design.md).
 
-### Step 5: Spawn Groomer Agents
+### Step 6: Spawn Groomer Agents
 
 **Single item** — invoke `@backlog-item-groomer` directly, passing item details, RT-ICA summary, and fact-check summary.
 
@@ -91,22 +103,40 @@ Task(
 )
 ```
 
-### Step 6: Write Groomed Content to Item Files
+### Step 7: Write Groomed Content to Item Files
 
-For each item, the groomer agent returns groomed content in the standard template format. Write it into the per-item file:
+For each item, write groomed content into the per-item file via the backlog script. Prefer incremental updates so sections (Fact-Check, RT-ICA, groomed subsections) are appended as they become available. GitHub is canonical: when the item has an issue, the backlog script syncs groomed content to the GitHub issue body.
 
-1. **Write groomed content to a temp file** (e.g., `.claude/backlog/.groomed-{slug}.md` or system temp)
-2. **Invoke backlog script**:
-   ```text
-   backlog groom "{item title}" --groomed-file {temp_path}
-   ```
-   Or, if piping from agent output:
-   ```text
-   {groomed_content} | backlog groom "{item title}"
-   ```
-3. **Delete temp file** after successful write (if used)
+**Preferred: incremental section updates**
 
-The backlog script updates `.claude/backlog/{priority}-{slug}.md` with a `## Groomed (YYYY-MM-DD)` section and sets `groomed` in frontmatter.
+After each step, call the backlog script with `--section` and `--content`:
+
+```text
+# After Step 3 (fact-check)
+backlog groom "{item title}" --section "Fact-Check" --content "{fact-check summary}"
+
+# After Step 4 (RT-ICA)
+backlog groom "{item title}" --section "RT-ICA" --content "{rt-ica summary}"
+
+# After Step 5 (groomer output) — full groomed body or subsections
+backlog groom "{item title}" --section "Reproducibility" --content "{reproducibility section}"
+# ... or for full groomed body:
+backlog groom "{item title}" --groomed-content "{full groomed body}"
+```
+
+**Alternative: full content**
+
+```text
+backlog groom "{item title}" --groomed-content "{full groomed body}"
+# Or from file:
+backlog groom "{item title}" --groomed-file {path}
+# Or from stdin:
+backlog groom "{item title}" < {groomed_file}
+```
+
+**Valid section names** — top-level: `Fact-Check`, `RT-ICA`. Groomed subsections: `Reproducibility`, `Priority`, `Impact`, `Scope`, `Output / Evidence`, `Dependencies`, `Research`, `Skills`, `Agents`, `Prior Work`, `Files`, `Decision`.
+
+The backlog script updates `.claude/backlog/{priority}-{slug}.md` with merged sections, sets `groomed` in frontmatter, and syncs to the GitHub issue when the item has one.
 
 **Bulk grooming (multiple items)** — when grooming 2+ items, optionally persist a session summary to `.claude/grooming-sessions/{YYYY-MM-DD}.md`:
 
@@ -146,9 +176,11 @@ Per-item groomed content lives in each item file; this session file holds only m
 
 ## Completion Criteria
 
+- Validity check (job still valid, problem reproducible, local file not stale) before grooming
 - Fact-check run for each item before RT-ICA (training data not used as evidence)
 - Fact-check verdicts passed into RT-ICA conditions (REFUTED → MISSING)
 - RT-ICA summary included for each item
 - Groomer agent(s) received RT-ICA context and fact-check verdicts
-- Groomed content written to each item file via `backlog groom` or `backlog update --groomed`
+- Groomed content written via `backlog groom` (prefer `--section`/`--content` incremental updates; `--groomed-content` or stdin for full body)
+- When item has GitHub issue, groomed content synced to issue body
 - Bulk session summary optionally saved to `.claude/grooming-sessions/{date}.md` when grooming multiple items

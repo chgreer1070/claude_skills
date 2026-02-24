@@ -15,9 +15,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-app = typer.Typer(
-    name="link-checker", help="Validate markdown cross-references resolve to real files"
-)
+app = typer.Typer(name="link-checker", help="Validate markdown cross-references resolve to real files")
 console = Console()
 err_console = Console(stderr=True)
 
@@ -73,9 +71,7 @@ def check(file: Annotated[Path, typer.Argument(help="Markdown file to check")]) 
 
 
 @app.command(name="check-dir")
-def check_dir(
-    directory: Annotated[Path, typer.Argument(help="Directory to scan for .md files")],
-) -> None:
+def check_dir(directory: Annotated[Path, typer.Argument(help="Directory to scan for .md files")]) -> None:
     """Check all .md files in a directory for broken relative links."""
     if not directory.is_dir():
         err_console.print(f"[red]ERROR[/red] Not a directory: {directory}")
@@ -93,14 +89,10 @@ def check_dir(
             all_broken.append((md_file, line_num, text, path))
 
     if not all_broken:
-        console.print(
-            f"[green]PASS[/green] {len(md_files)} file(s) checked — all links resolve"
-        )
+        console.print(f"[green]PASS[/green] {len(md_files)} file(s) checked — all links resolve")
         raise typer.Exit(0)
 
-    table = Table(
-        title=f"Broken Links in {directory}", show_header=True, header_style="bold red"
-    )
+    table = Table(title=f"Broken Links in {directory}", show_header=True, header_style="bold red")
     table.add_column("File", min_width=40)
     table.add_column("Line", justify="right", min_width=6)
     table.add_column("Link Text", min_width=20)
@@ -110,9 +102,7 @@ def check_dir(
         table.add_row(str(md_file.relative_to(directory)), str(line_num), text, path)
 
     console.print(table)
-    console.print(
-        f"\n[red]FAIL[/red] {len(all_broken)} broken link(s) across {len(md_files)} file(s)"
-    )
+    console.print(f"\n[red]FAIL[/red] {len(all_broken)} broken link(s) across {len(md_files)} file(s)")
     raise typer.Exit(1)
 
 

@@ -73,10 +73,7 @@ class MCPConnection(ABC):
         return self
 
     async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None:
         """Clean up MCP server connection resources."""
         if self._stack:
@@ -97,11 +94,7 @@ class MCPConnection(ABC):
             raise RuntimeError("No active session. Use async with context.")
         response = await self.session.list_tools()
         return [
-            {
-                "name": tool.name,
-                "description": tool.description,
-                "input_schema": tool.inputSchema,
-            }
+            {"name": tool.name, "description": tool.description, "input_schema": tool.inputSchema}
             for tool in response.tools
         ]
 
@@ -139,12 +132,7 @@ def _raise_unexpected_context_result(result: object) -> None:
 class MCPConnectionStdio(MCPConnection):
     """MCP connection using standard input/output."""
 
-    def __init__(
-        self,
-        command: str,
-        args: list[str] | None = None,
-        env: dict[str, str] | None = None,
-    ) -> None:
+    def __init__(self, command: str, args: list[str] | None = None, env: dict[str, str] | None = None) -> None:
         """Initialize stdio connection.
 
         Args:
@@ -165,11 +153,7 @@ class MCPConnectionStdio(MCPConnection):
         """
         return cast(
             "AbstractAsyncContextManager[Any]",
-            stdio_client(
-                StdioServerParameters(
-                    command=self.command, args=self.args, env=self.env
-                )
-            ),
+            stdio_client(StdioServerParameters(command=self.command, args=self.args, env=self.env)),
         )
 
 
@@ -193,10 +177,7 @@ class MCPConnectionSSE(MCPConnection):
         Returns:
             Async context manager for SSE transport.
         """
-        return cast(
-            "AbstractAsyncContextManager[Any]",
-            sse_client(url=self.url, headers=self.headers),
-        )
+        return cast("AbstractAsyncContextManager[Any]", sse_client(url=self.url, headers=self.headers))
 
 
 class MCPConnectionHTTP(MCPConnection):
@@ -219,10 +200,7 @@ class MCPConnectionHTTP(MCPConnection):
         Returns:
             Async context manager for HTTP transport.
         """
-        return cast(
-            "AbstractAsyncContextManager[Any]",
-            streamablehttp_client(url=self.url, headers=self.headers),
-        )
+        return cast("AbstractAsyncContextManager[Any]", streamablehttp_client(url=self.url, headers=self.headers))
 
 
 def create_connection(
@@ -267,6 +245,4 @@ def create_connection(
             raise ValueError("URL is required for http transport")
         return MCPConnectionHTTP(url=url, headers=headers)
 
-    raise ValueError(
-        f"Unsupported transport type: {transport}. Use 'stdio', 'sse', or 'http'"
-    )
+    raise ValueError(f"Unsupported transport type: {transport}. Use 'stdio', 'sse', or 'http'")

@@ -261,9 +261,7 @@ def _parse_metadata_line(line: str, task: TaskData) -> bool:
     return True
 
 
-def _finalize_task(
-    task: TaskData, body_lines: list[str], tasks: list[TaskData]
-) -> None:
+def _finalize_task(task: TaskData, body_lines: list[str], tasks: list[TaskData]) -> None:
     """Assign accumulated body lines to a task and append it to the task list.
 
     Args:
@@ -299,9 +297,7 @@ def parse_markdown_tasks(content: str) -> list[TaskData]:
                 _finalize_task(current_task, current_body_lines, tasks)
 
             # Start new task
-            current_task = TaskData(
-                task_id=header_match.group(1), title=header_match.group(2).strip()
-            )
+            current_task = TaskData(task_id=header_match.group(1), title=header_match.group(2).strip())
             current_body_lines = []
             in_body = False
             continue
@@ -329,9 +325,7 @@ def parse_markdown_tasks(content: str) -> list[TaskData]:
 # =============================================================================
 
 
-def migrate_file(
-    file_path: Path, *, dry_run: bool = False, validate: bool = False
-) -> tuple[int, int]:
+def migrate_file(file_path: Path, *, dry_run: bool = False, validate: bool = False) -> tuple[int, int]:
     """Migrate a single task file to YAML frontmatter format.
 
     Args:
@@ -347,9 +341,7 @@ def migrate_file(
 
     # Check if already in YAML format
     if content.strip().startswith("---\n"):
-        console.print(
-            f"[yellow]Skipping {file_path.name}: Already in YAML format[/yellow]"
-        )
+        console.print(f"[yellow]Skipping {file_path.name}: Already in YAML format[/yellow]")
         return 0, 0
 
     # Parse tasks from markdown
@@ -383,9 +375,7 @@ def migrate_file(
     # Write new content
     if errors == 0:
         # Backup original
-        backup_path = file_path.with_suffix(
-            f".md.backup.{datetime.now(tz=UTC):%Y%m%d%H%M%S}"
-        )
+        backup_path = file_path.with_suffix(f".md.backup.{datetime.now(tz=UTC):%Y%m%d%H%M%S}")
         backup_path.write_text(content, encoding="utf-8")
         console.print(f"[dim]Backup created: {backup_path.name}[/dim]")
 
@@ -402,24 +392,15 @@ def migrate_file(
 
 
 FilePath = Annotated[
-    Path,
-    typer.Argument(
-        help="Path to task file or directory containing task files.",
-        exists=True,
-        resolve_path=True,
-    ),
+    Path, typer.Argument(help="Path to task file or directory containing task files.", exists=True, resolve_path=True)
 ]
 
 
 @app.command()
 def migrate(
     path: FilePath,
-    dry_run: Annotated[
-        bool, typer.Option("--dry-run", help="Show changes without writing files.")
-    ] = False,
-    validate: Annotated[
-        bool, typer.Option("--validate", help="Validate migrated files against schema.")
-    ] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Show changes without writing files.")] = False,
+    validate: Annotated[bool, typer.Option("--validate", help="Validate migrated files against schema.")] = False,
 ) -> None:
     """Migrate task file(s) from markdown to YAML frontmatter format.
 
@@ -456,9 +437,7 @@ def migrate(
 
     for file_path in files_to_migrate:
         console.print(f"\n[bold]Migrating: {file_path.name}[/bold]")
-        tasks_migrated, errors = migrate_file(
-            file_path, dry_run=dry_run, validate=validate
-        )
+        tasks_migrated, errors = migrate_file(file_path, dry_run=dry_run, validate=validate)
         total_tasks += tasks_migrated
         total_errors += errors
 
@@ -469,9 +448,7 @@ def migrate(
     table.add_column("Value", style="green")
     table.add_row("Files processed", str(len(files_to_migrate)))
     table.add_row("Tasks migrated", str(total_tasks))
-    table.add_row(
-        "Errors", str(total_errors), style="red" if total_errors > 0 else "green"
-    )
+    table.add_row("Errors", str(total_errors), style="red" if total_errors > 0 else "green")
 
     console.print(table)
 
@@ -482,9 +459,7 @@ def migrate(
     if dry_run:
         console.print("\n[yellow]Dry run completed - no files modified[/yellow]")
     else:
-        console.print(
-            "\n[green]:white_check_mark: Migration completed successfully[/green]"
-        )
+        console.print("\n[green]:white_check_mark: Migration completed successfully[/green]")
 
 
 if __name__ == "__main__":

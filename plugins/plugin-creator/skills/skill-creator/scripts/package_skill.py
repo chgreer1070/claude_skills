@@ -50,19 +50,14 @@ def validate_inputs(skill_path: str, output_dir: str | None) -> tuple[bool, str 
         try:
             output_path = Path(output_dir).resolve()
             if output_path.exists() and not output_path.is_dir():
-                return (
-                    False,
-                    f"Output path exists but is not a directory: {output_path}",
-                )
+                return (False, f"Output path exists but is not a directory: {output_path}")
         except (ValueError, OSError) as e:
             return False, f"Invalid output directory: {e}"
 
     return True, None
 
 
-def package_skill(
-    skill_path: str | Path, output_dir: str | Path | None = None
-) -> Path | None:
+def package_skill(skill_path: str | Path, output_dir: str | Path | None = None) -> Path | None:
     """Package a skill folder into a .skill file.
 
     Args:
@@ -143,9 +138,7 @@ def main() -> None:
         0: Skill packaged successfully
     """
     if len(sys.argv) < MIN_ARGC:
-        print(
-            "Usage: python utils/package_skill.py <path/to/skill-folder> [output-directory]"
-        )
+        print("Usage: python utils/package_skill.py <path/to/skill-folder> [output-directory]")
         print("\nExample:")
         print("  python utils/package_skill.py skills/public/my-skill")
         print("  python utils/package_skill.py skills/public/my-skill ./dist")

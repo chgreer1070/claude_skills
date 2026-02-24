@@ -75,30 +75,10 @@ _DASHBOARD_ANNOTATIONS: dict[str, bool] = {
 # ---------------------------------------------------------------------------
 
 _FRUSTRATION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    (
-        "correction",
-        re.compile(
-            r"\b(?:no[,.]?\s|don'?t|wrong|incorrect|stop|undo|revert)\b", re.IGNORECASE
-        ),
-    ),
-    (
-        "denial",
-        re.compile(
-            r"\b(?:that'?s not|i didn'?t|never|absolutely not)\b", re.IGNORECASE
-        ),
-    ),
-    (
-        "interrupt",
-        re.compile(
-            r"\b(?:wait|hold on|cancel|abort|forget it|nevermind)\b", re.IGNORECASE
-        ),
-    ),
-    (
-        "frustration",
-        re.compile(
-            r"\b(?:why did you|you keep|again\?|still wrong|broken)\b", re.IGNORECASE
-        ),
-    ),
+    ("correction", re.compile(r"\b(?:no[,.]?\s|don'?t|wrong|incorrect|stop|undo|revert)\b", re.IGNORECASE)),
+    ("denial", re.compile(r"\b(?:that'?s not|i didn'?t|never|absolutely not)\b", re.IGNORECASE)),
+    ("interrupt", re.compile(r"\b(?:wait|hold on|cancel|abort|forget it|nevermind)\b", re.IGNORECASE)),
+    ("frustration", re.compile(r"\b(?:why did you|you keep|again\?|still wrong|broken)\b", re.IGNORECASE)),
 ]
 
 mcp = FastMCP("kaizen-analysis", mask_error_details=False)
@@ -120,9 +100,7 @@ def _read_jsonl(file_path: str) -> list[dict[str, Any]]:
     """
     records: list[dict[str, Any]] = []
     with pathlib.Path(file_path).open(encoding="utf-8") as fh:
-        records.extend(
-            json.loads(stripped) for line in fh if (stripped := line.strip())
-        )
+        records.extend(json.loads(stripped) for line in fh if (stripped := line.strip()))
     return records
 
 
@@ -201,17 +179,13 @@ def _build_event_log(sequences: dict[str, list[str]]) -> pd.DataFrame:
             rows.append({
                 "case:concept:name": session_id,
                 "concept:name": tool_name,
-                "time:timestamp": pd.Timestamp("2026-01-01")
-                + pd.Timedelta(seconds=idx),
+                "time:timestamp": pd.Timestamp("2026-01-01") + pd.Timedelta(seconds=idx),
             })
     df = pd.DataFrame(rows)
     if df.empty:
         return df
     return pm4py.format_dataframe(
-        df,
-        case_id="case:concept:name",
-        activity_key="concept:name",
-        timestamp_key="time:timestamp",
+        df, case_id="case:concept:name", activity_key="concept:name", timestamp_key="time:timestamp"
     )
 
 
@@ -272,10 +246,7 @@ def _extract_tool_sequences_impl(glob_path: str) -> dict[str, list[str]]:
 
 
 def _resolve_sequences(
-    glob_path: str,
-    sequences: dict[str, list[str]] | None,
-    *,
-    target_name: str = "target",
+    glob_path: str, sequences: dict[str, list[str]] | None, *, target_name: str = "target"
 ) -> dict[str, list[str]]:
     """Resolve tool sequences from either a glob path or pre-extracted data.
 
@@ -329,10 +300,7 @@ async def extract_tool_sequences(glob_path: str) -> dict[str, list[str]]:
 # https://github.com/PrefectHQ/fastmcp/issues/3238 is resolved.
 @mcp.tool(annotations=_READONLY_ANNOTATIONS)
 async def discover_process_model(
-    glob_path: str = "",
-    sequences: dict[str, list[str]] | None = None,
-    *,
-    context: Context,
+    glob_path: str = "", sequences: dict[str, list[str]] | None = None, *, context: Context
 ) -> str:
     """Discover a process model using PM4Py Heuristic Miner.
 
@@ -354,9 +322,7 @@ async def discover_process_model(
         ToolError: If inputs are missing or the event log is empty.
     """
     await context.info("Resolving tool sequences...")
-    resolved = await asyncio.to_thread(
-        _resolve_sequences, glob_path, sequences, target_name="target"
-    )
+    resolved = await asyncio.to_thread(_resolve_sequences, glob_path, sequences, target_name="target")
 
     await context.info("Building event log from sequences...")
     event_log = _build_event_log(resolved)
@@ -402,16 +368,11 @@ async def check_conformance(
         ToolError: If required inputs are missing or sequences are empty.
     """
     await context.info("Resolving target sequences...")
-    resolved_target = await asyncio.to_thread(
-        _resolve_sequences, glob_path, sequences, target_name="target"
-    )
+    resolved_target = await asyncio.to_thread(_resolve_sequences, glob_path, sequences, target_name="target")
 
     await context.info("Resolving reference sequences...")
     resolved_ref = await asyncio.to_thread(
-        _resolve_sequences,
-        reference_glob_path,
-        reference_sequences,
-        target_name="reference",
+        _resolve_sequences, reference_glob_path, reference_sequences, target_name="reference"
     )
 
     await context.info("Building reference model (Heuristic Miner -> Petri Net)...")
@@ -422,9 +383,7 @@ async def check_conformance(
         result: tuple[Any, Any, Any] = pm4py.convert_to_petri_net(heu_net)
         return result
 
-    net, initial_marking, final_marking = await asyncio.to_thread(
-        _build_reference_model, resolved_ref
-    )
+    net, initial_marking, final_marking = await asyncio.to_thread(_build_reference_model, resolved_ref)
 
     await context.info("Running token-based replay on target sessions...")
 
@@ -435,17 +394,13 @@ async def check_conformance(
         )
         return result
 
-    replay_results: list[dict[str, Any]] = await asyncio.to_thread(
-        _run_replay, resolved_target
-    )
+    replay_results: list[dict[str, Any]] = await asyncio.to_thread(_run_replay, resolved_target)
 
     session_ids = list(resolved_target.keys())
     output: list[dict[str, Any]] = []
     for idx, diag in enumerate(replay_results):
         entry: dict[str, Any] = {
-            "session_id": session_ids[idx]
-            if idx < len(session_ids)
-            else f"trace_{idx}",
+            "session_id": session_ids[idx] if idx < len(session_ids) else f"trace_{idx}",
             "trace_is_fit": diag.get("trace_is_fit", False),
             "trace_fitness": diag.get("trace_fitness", 0.0),
             "missing_tokens": diag.get("missing_tokens", 0),
@@ -461,9 +416,7 @@ async def check_conformance(
 # https://github.com/PrefectHQ/fastmcp/issues/3238 is resolved.
 @mcp.tool(annotations=_READONLY_ANNOTATIONS)
 async def find_frequent_patterns(
-    glob_path: str = "",
-    sequences: dict[str, list[str]] | None = None,
-    min_support: int = _DEFAULT_MIN_SUPPORT,
+    glob_path: str = "", sequences: dict[str, list[str]] | None = None, min_support: int = _DEFAULT_MIN_SUPPORT
 ) -> list[dict[str, Any]]:
     """Find frequent sequential patterns in tool-call sequences using PrefixSpan.
 
@@ -482,13 +435,9 @@ async def find_frequent_patterns(
     Raises:
         ToolError: If neither glob_path nor sequences is provided.
     """
-    resolved = await asyncio.to_thread(
-        _resolve_sequences, glob_path, sequences, target_name="target"
-    )
+    resolved = await asyncio.to_thread(_resolve_sequences, glob_path, sequences, target_name="target")
 
-    def _mine_patterns(
-        seqs: dict[str, list[str]], min_sup: int
-    ) -> list[dict[str, Any]]:
+    def _mine_patterns(seqs: dict[str, list[str]], min_sup: int) -> list[dict[str, Any]]:
         db = list(seqs.values())
         ps = PrefixSpan(db)
         ps.minlen = 2
@@ -499,9 +448,7 @@ async def find_frequent_patterns(
             msg = "PrefixSpan.frequent is not callable"
             raise TypeError(msg)
         frequent: list[tuple[int, list[str]]] = frequent_method(min_sup)
-        results: list[dict[str, Any]] = [
-            {"support": count, "pattern": pattern} for count, pattern in frequent
-        ]
+        results: list[dict[str, Any]] = [{"support": count, "pattern": pattern} for count, pattern in frequent]
         results.sort(key=operator.itemgetter("support"), reverse=True)
         return results
 
@@ -599,9 +546,7 @@ async def cluster_sessions(
             there are no sessions to cluster.
     """
     await context.info("Resolving tool sequences...")
-    resolved = await asyncio.to_thread(
-        _resolve_sequences, glob_path, sequences, target_name="target"
-    )
+    resolved = await asyncio.to_thread(_resolve_sequences, glob_path, sequences, target_name="target")
 
     session_ids = list(resolved.keys())
     docs = [" ".join(tools) for tools in resolved.values()]
@@ -610,16 +555,12 @@ async def cluster_sessions(
     if effective_clusters < 1:
         raise ToolError("Need at least 1 session to cluster")
 
-    await context.info(
-        f"Clustering {len(docs)} sessions into {effective_clusters} clusters..."
-    )
+    await context.info(f"Clustering {len(docs)} sessions into {effective_clusters} clusters...")
 
     def _run_clustering(documents: list[str], k: int) -> list[int]:
         vectorizer = CountVectorizer()
         feature_matrix = vectorizer.fit_transform(documents)
-        km = KMeans(
-            n_clusters=k, random_state=_KMEANS_RANDOM_STATE, n_init=_KMEANS_N_INIT
-        )
+        km = KMeans(n_clusters=k, random_state=_KMEANS_RANDOM_STATE, n_init=_KMEANS_N_INIT)
         return list(km.fit_predict(feature_matrix))
 
     labels = await asyncio.to_thread(_run_clustering, docs, effective_clusters)
@@ -635,9 +576,7 @@ async def cluster_sessions(
         tool_counts: Counter[str] = Counter()
         for i in member_indices:
             tool_counts.update(resolved[session_ids[i]])
-        cluster_profiles[cid] = [
-            t for t, _ in tool_counts.most_common(_TOP_TOOLS_PER_CLUSTER)
-        ]
+        cluster_profiles[cid] = [t for t, _ in tool_counts.most_common(_TOP_TOOLS_PER_CLUSTER)]
 
     return {"clusters": clusters, "cluster_profiles": cluster_profiles}
 
@@ -660,10 +599,7 @@ def open_dashboard() -> dict[str, str | bool]:
 
     url = get_dashboard_url()
     if url is None:
-        raise ToolError(
-            "Dashboard is not running. "
-            "The MCP server may have failed to start the dashboard thread."
-        )
+        raise ToolError("Dashboard is not running. The MCP server may have failed to start the dashboard thread.")
 
     return {
         "url": url,

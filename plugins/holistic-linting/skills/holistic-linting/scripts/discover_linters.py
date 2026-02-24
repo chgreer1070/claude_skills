@@ -67,27 +67,14 @@ def check_git_hooks() -> bool:
     try:
         # Check if we're in a git repository
         # S607: git must use PATH lookup for cross-platform portability (Linux/macOS/Windows install paths differ)
-        subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
-            capture_output=True,
-            check=True,
-            timeout=5,
-        )
+        subprocess.run(["git", "rev-parse", "--git-dir"], capture_output=True, check=True, timeout=5)
 
         # Check for pre-commit hook
         # S607: git must use PATH lookup for cross-platform portability (Linux/macOS/Windows install paths differ)
         result = subprocess.run(
-            ["git", "config", "--get", "core.hooksPath"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=5,
+            ["git", "config", "--get", "core.hooksPath"], check=False, capture_output=True, text=True, timeout=5
         )
-        hooks_path = (
-            Path(result.stdout.strip())
-            if result.returncode == 0
-            else Path(".git/hooks")
-        )
+        hooks_path = Path(result.stdout.strip()) if result.returncode == 0 else Path(".git/hooks")
 
         pre_commit_hook = hooks_path / "pre-commit"
         return pre_commit_hook.exists() and pre_commit_hook.stat().st_size > 0
@@ -127,24 +114,12 @@ def detect_pre_commit_tool(project_root: Path) -> str | None:
 # Hook ID to LinterConfig mapping
 _HOOK_CONFIGS: dict[str, LinterConfig] = {
     "ruff": LinterConfig(name="ruff check", patterns=["*.py"], is_linter=True),
-    "ruff-format": LinterConfig(
-        name="ruff format", patterns=["*.py"], is_formatter=True
-    ),
-    "prettier": LinterConfig(
-        name="prettier", patterns=["*.{ts,tsx,js,jsx,json,md}"], is_formatter=True
-    ),
-    "eslint": LinterConfig(
-        name="eslint", patterns=["*.{ts,tsx,js,jsx}"], is_linter=True
-    ),
-    "markdownlint": LinterConfig(
-        name="markdownlint", patterns=["*.{md,markdown}"], is_linter=True
-    ),
-    "shellcheck": LinterConfig(
-        name="shellcheck", patterns=["*.{sh,bash,zsh,fish}"], is_linter=True
-    ),
-    "shfmt": LinterConfig(
-        name="shfmt", patterns=["*.{sh,bash,zsh,fish}"], is_formatter=True
-    ),
+    "ruff-format": LinterConfig(name="ruff format", patterns=["*.py"], is_formatter=True),
+    "prettier": LinterConfig(name="prettier", patterns=["*.{ts,tsx,js,jsx,json,md}"], is_formatter=True),
+    "eslint": LinterConfig(name="eslint", patterns=["*.{ts,tsx,js,jsx}"], is_linter=True),
+    "markdownlint": LinterConfig(name="markdownlint", patterns=["*.{md,markdown}"], is_linter=True),
+    "shellcheck": LinterConfig(name="shellcheck", patterns=["*.{sh,bash,zsh,fish}"], is_linter=True),
+    "shfmt": LinterConfig(name="shfmt", patterns=["*.{sh,bash,zsh,fish}"], is_formatter=True),
 }
 
 
@@ -183,9 +158,7 @@ def scan_pre_commit_config(config_file: Path) -> list[LinterConfig]:
                     linters.append(linter_config)
 
     except (OSError, YAMLError, KeyError, TypeError) as e:
-        console.print(
-            f"[yellow]Warning: Failed to parse .pre-commit-config.yaml: {e}[/yellow]"
-        )
+        console.print(f"[yellow]Warning: Failed to parse .pre-commit-config.yaml: {e}[/yellow]")
 
     return linters
 
@@ -202,9 +175,7 @@ def scan_pyproject_toml(config_file: Path) -> list[LinterConfig]:
     linters: list[LinterConfig] = []
 
     try:
-        config: dict[str, Any] = tomlkit.parse(
-            config_file.read_text(encoding="utf-8")
-        ).unwrap()
+        config: dict[str, Any] = tomlkit.parse(config_file.read_text(encoding="utf-8")).unwrap()
 
         # Check for ruff
         if "tool" in config and "ruff" in config["tool"]:
@@ -215,15 +186,11 @@ def scan_pyproject_toml(config_file: Path) -> list[LinterConfig]:
 
         # Check for pyright
         if "tool" in config and "pyright" in config["tool"]:
-            linters.append(
-                LinterConfig(name="pyright", patterns=["*.py"], is_linter=True)
-            )
+            linters.append(LinterConfig(name="pyright", patterns=["*.py"], is_linter=True))
 
         # Check for bandit
         if "tool" in config and "bandit" in config["tool"]:
-            linters.append(
-                LinterConfig(name="bandit", patterns=["*.py"], is_linter=True)
-            )
+            linters.append(LinterConfig(name="bandit", patterns=["*.py"], is_linter=True))
 
     except (OSError, TOMLParseError, KeyError, TypeError) as e:
         console.print(f"[yellow]Warning: Failed to parse pyproject.toml: {e}[/yellow]")
@@ -250,29 +217,15 @@ def scan_package_json(config_file: Path) -> list[LinterConfig]:
 
         # Check for prettier
         if "prettier" in dev_deps:
-            linters.append(
-                LinterConfig(
-                    name="prettier",
-                    patterns=["*.{ts,tsx,js,jsx,json,md}"],
-                    is_formatter=True,
-                )
-            )
+            linters.append(LinterConfig(name="prettier", patterns=["*.{ts,tsx,js,jsx,json,md}"], is_formatter=True))
 
         # Check for eslint
         if "eslint" in dev_deps or any("eslint" in dep for dep in dev_deps):
-            linters.append(
-                LinterConfig(
-                    name="eslint", patterns=["*.{ts,tsx,js,jsx}"], is_linter=True
-                )
-            )
+            linters.append(LinterConfig(name="eslint", patterns=["*.{ts,tsx,js,jsx}"], is_linter=True))
 
         # Check for markdownlint
         if any("markdownlint" in dep for dep in dev_deps):
-            linters.append(
-                LinterConfig(
-                    name="markdownlint", patterns=["*.{md,markdown}"], is_linter=True
-                )
-            )
+            linters.append(LinterConfig(name="markdownlint", patterns=["*.{md,markdown}"], is_linter=True))
 
     except (OSError, json.JSONDecodeError, KeyError, TypeError) as e:
         console.print(f"[yellow]Warning: Failed to parse package.json: {e}[/yellow]")
@@ -292,47 +245,19 @@ def scan_config_files(project_root: Path) -> list[LinterConfig]:
     linters: list[LinterConfig] = []
 
     # Check for ESLint config
-    eslint_configs = [
-        ".eslintrc",
-        ".eslintrc.js",
-        ".eslintrc.json",
-        ".eslintrc.yml",
-        ".eslintrc.yaml",
-    ]
+    eslint_configs = [".eslintrc", ".eslintrc.js", ".eslintrc.json", ".eslintrc.yml", ".eslintrc.yaml"]
     if any((project_root / config).exists() for config in eslint_configs):
-        linters.append(
-            LinterConfig(name="eslint", patterns=["*.{ts,tsx,js,jsx}"], is_linter=True)
-        )
+        linters.append(LinterConfig(name="eslint", patterns=["*.{ts,tsx,js,jsx}"], is_linter=True))
 
     # Check for Prettier config
-    prettier_configs = [
-        ".prettierrc",
-        ".prettierrc.js",
-        ".prettierrc.json",
-        ".prettierrc.yml",
-        ".prettierrc.yaml",
-    ]
+    prettier_configs = [".prettierrc", ".prettierrc.js", ".prettierrc.json", ".prettierrc.yml", ".prettierrc.yaml"]
     if any((project_root / config).exists() for config in prettier_configs):
-        linters.append(
-            LinterConfig(
-                name="prettier",
-                patterns=["*.{ts,tsx,js,jsx,json,md}"],
-                is_formatter=True,
-            )
-        )
+        linters.append(LinterConfig(name="prettier", patterns=["*.{ts,tsx,js,jsx,json,md}"], is_formatter=True))
 
     # Check for markdownlint config
-    markdownlint_configs = [
-        ".markdownlint.json",
-        ".markdownlint.yaml",
-        ".markdownlintrc",
-    ]
+    markdownlint_configs = [".markdownlint.json", ".markdownlint.yaml", ".markdownlintrc"]
     if any((project_root / config).exists() for config in markdownlint_configs):
-        linters.append(
-            LinterConfig(
-                name="markdownlint", patterns=["*.{md,markdown}"], is_linter=True
-            )
-        )
+        linters.append(LinterConfig(name="markdownlint", patterns=["*.{md,markdown}"], is_linter=True))
 
     return linters
 
@@ -444,35 +369,22 @@ def update_claude_md(output_file: Path, linters_section: str, force: bool) -> bo
         # Check for existing LINTERS section
         if re.search(r"^## LINTERS\b", existing_content, re.MULTILINE):
             if not force:
-                error_console.print(
-                    ":cross_mark: [red]LINTERS section already exists in CLAUDE.md[/red]"
-                )
+                error_console.print(":cross_mark: [red]LINTERS section already exists in CLAUDE.md[/red]")
 
                 # Extract and show existing section
-                match = re.search(
-                    r"(^## LINTERS\b.*?)(?=^## |\Z)",
-                    existing_content,
-                    re.MULTILINE | re.DOTALL,
-                )
+                match = re.search(r"(^## LINTERS\b.*?)(?=^## |\Z)", existing_content, re.MULTILINE | re.DOTALL)
                 if match:
                     existing_section = match.group(1).strip()
                     console.print("\n[yellow]Existing LINTERS section:[/yellow]")
                     console.print(Panel(existing_section, border_style="yellow"))
 
-                error_console.print(
-                    "\n[yellow]To overwrite the existing section, use:[/yellow] --force"
-                )
+                error_console.print("\n[yellow]To overwrite the existing section, use:[/yellow] --force")
                 return False
 
             # Remove existing LINTERS section
-            console.print(
-                ":warning: [yellow]Replacing existing LINTERS section[/yellow]"
-            )
+            console.print(":warning: [yellow]Replacing existing LINTERS section[/yellow]")
             existing_content = re.sub(
-                r"^## LINTERS\b.*?(?=^## |\Z)",
-                "",
-                existing_content,
-                flags=re.MULTILINE | re.DOTALL,
+                r"^## LINTERS\b.*?(?=^## |\Z)", "", existing_content, flags=re.MULTILINE | re.DOTALL
             )
             # Clean up any excessive blank lines
             existing_content = re.sub(r"\n{3,}", "\n\n", existing_content)
@@ -499,13 +411,8 @@ app = typer.Typer(
 
 @app.command()
 def main(
-    output: Annotated[
-        Path, typer.Option(help="Output file path (default: ./CLAUDE.md)")
-    ] = Path("CLAUDE.md"),
-    force: Annotated[
-        bool,
-        typer.Option("--force", help="Overwrite existing LINTERS section if present"),
-    ] = False,
+    output: Annotated[Path, typer.Option(help="Output file path (default: ./CLAUDE.md)")] = Path("CLAUDE.md"),
+    force: Annotated[bool, typer.Option("--force", help="Overwrite existing LINTERS section if present")] = False,
 ) -> None:
     """Discover project linters and generate LINTERS section for CLAUDE.md.
 
@@ -532,11 +439,7 @@ def main(
     table.add_column("Category", style="cyan")
     table.add_column("Tools", style="green")
 
-    hooks_status = (
-        ":white_check_mark: enabled"
-        if linters.git_hooks_enabled
-        else ":cross_mark: disabled"
-    )
+    hooks_status = ":white_check_mark: enabled" if linters.git_hooks_enabled else ":cross_mark: disabled"
     table.add_row("Git Pre-commit Hooks", hooks_status)
 
     if linters.pre_commit_tool:
@@ -554,9 +457,7 @@ def main(
     console.print()
 
     if not linters.formatters and not linters.linters:
-        error_console.print(
-            ":cross_mark: [yellow]No linters discovered in project configuration[/yellow]"
-        )
+        error_console.print(":cross_mark: [yellow]No linters discovered in project configuration[/yellow]")
         error_console.print(
             "\n[dim]Looked for: .pre-commit-config.yaml, pyproject.toml, package.json, "
             ".eslintrc*, .prettierrc*, .markdownlint*[/dim]"
@@ -576,9 +477,7 @@ def main(
         if not success:
             raise typer.Exit(code=1)
 
-        console.print(
-            f":white_check_mark: [green]LINTERS section written to:[/green] {output}"
-        )
+        console.print(f":white_check_mark: [green]LINTERS section written to:[/green] {output}")
     except OSError as e:
         error_console.print(f":cross_mark: [red]Failed to write CLAUDE.md:[/red] {e}")
         raise typer.Exit(code=1) from e

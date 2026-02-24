@@ -221,25 +221,17 @@ def validate_skill_name(skill_name: str) -> tuple[bool, str | None]:
         return False, "Skill name cannot be empty"
 
     if len(skill_name) > MAX_SKILL_NAME_LENGTH:
-        return (
-            False,
-            f"Skill name too long ({len(skill_name)} chars, max {MAX_SKILL_NAME_LENGTH})",
-        )
+        return (False, f"Skill name too long ({len(skill_name)} chars, max {MAX_SKILL_NAME_LENGTH})")
 
     # Pattern: lowercase letters, digits, hyphens; cannot start/end with hyphen
     pattern = r"^[a-z0-9]+(-[a-z0-9]+)*$"
     if not re.match(pattern, skill_name):
-        return (
-            False,
-            "Skill name must be lowercase hyphen-case (e.g., 'my-skill-name')",
-        )
+        return (False, "Skill name must be lowercase hyphen-case (e.g., 'my-skill-name')")
 
     return True, None
 
 
-def create_resource_file(
-    parent_dir: Path, subdir: str, filename: str, content: str, executable: bool = False
-) -> None:
+def create_resource_file(parent_dir: Path, subdir: str, filename: str, content: str, executable: bool = False) -> None:
     """Create a resource file in a subdirectory.
 
     Args:
@@ -292,9 +284,7 @@ def init_skill(skill_name: str, path: str) -> Path | None:
 
     # Create SKILL.md from template
     skill_title = title_case_skill_name(skill_name)
-    skill_content = SKILL_TEMPLATE.format(
-        skill_name=skill_name, skill_title=skill_title
-    )
+    skill_content = SKILL_TEMPLATE.format(skill_name=skill_name, skill_title=skill_title)
 
     skill_md_path = skill_dir / "SKILL.md"
     try:
@@ -307,18 +297,11 @@ def init_skill(skill_name: str, path: str) -> Path | None:
     # Create resource directories with example files
     try:
         create_resource_file(
-            skill_dir,
-            "scripts",
-            "example.py",
-            EXAMPLE_SCRIPT.format(skill_name=skill_name),
-            executable=True,
+            skill_dir, "scripts", "example.py", EXAMPLE_SCRIPT.format(skill_name=skill_name), executable=True
         )
 
         create_resource_file(
-            skill_dir,
-            "references",
-            "api_reference.md",
-            EXAMPLE_REFERENCE.format(skill_title=skill_title),
+            skill_dir, "references", "api_reference.md", EXAMPLE_REFERENCE.format(skill_title=skill_title)
         )
 
         create_resource_file(skill_dir, "assets", "example_asset.txt", EXAMPLE_ASSET)
@@ -330,9 +313,7 @@ def init_skill(skill_name: str, path: str) -> Path | None:
     logger.info("\nSkill '%s' initialized successfully at %s", skill_name, skill_dir)
     print("\nNext steps:")
     print("1. Edit SKILL.md to complete the TODO items and update the description")
-    print(
-        "2. Customize or delete the example files in scripts/, references/, and assets/"
-    )
+    print("2. Customize or delete the example files in scripts/, references/, and assets/")
     print("3. Run the validator when ready to check the skill structure")
 
     return skill_dir

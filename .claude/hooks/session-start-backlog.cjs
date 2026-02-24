@@ -6,8 +6,10 @@
 
 const output = {
   additionalContext: `<backlog-context>
-Backlog workflow: use /work-backlog-item to browse, plan, and track items.
-GitHub integration: /work-backlog-item setup-github (first-time setup of labels, milestone, project).
+When you identify work needs multiple steps/jobs: create backlog items — don't just describe them.
+- Create: create-backlog-item (or backlog add)
+- Match/browse: work-backlog-item
+- GitHub setup: work-backlog-item setup-github (first-time)
 Reference: .claude/skills/work-backlog-item/SKILL.md
 </backlog-context>`,
 };

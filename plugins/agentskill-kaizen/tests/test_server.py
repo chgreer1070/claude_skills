@@ -106,10 +106,7 @@ class TestExtractToolsFromRecords:
 
     def test_skips_non_assistant_records(self) -> None:
         """Non-assistant records are ignored."""
-        records = [
-            {"type": "user", "message": {"content": "hello"}},
-            {"type": "system", "message": {"content": []}},
-        ]
+        records = [{"type": "user", "message": {"content": "hello"}}, {"type": "system", "message": {"content": []}}]
 
         result = kaizen_server._extract_tools_from_records(records)
 
@@ -117,12 +114,7 @@ class TestExtractToolsFromRecords:
 
     def test_returns_empty_for_no_tool_calls(self) -> None:
         """Assistant records without tool_use blocks yield empty list."""
-        records = [
-            {
-                "type": "assistant",
-                "message": {"content": [{"type": "text", "text": "thinking..."}]},
-            }
-        ]
+        records = [{"type": "assistant", "message": {"content": [{"type": "text", "text": "thinking..."}]}}]
 
         result = kaizen_server._extract_tools_from_records(records)
 
@@ -162,18 +154,9 @@ class TestExtractToolsFromRecords:
     def test_preserves_tool_call_order(self) -> None:
         """Tool calls are returned in the order they appear."""
         records = [
-            {
-                "type": "assistant",
-                "message": {"content": [{"type": "tool_use", "name": "A"}]},
-            },
-            {
-                "type": "assistant",
-                "message": {"content": [{"type": "tool_use", "name": "B"}]},
-            },
-            {
-                "type": "assistant",
-                "message": {"content": [{"type": "tool_use", "name": "C"}]},
-            },
+            {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "A"}]}},
+            {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "B"}]}},
+            {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "C"}]}},
         ]
 
         result = kaizen_server._extract_tools_from_records(records)
@@ -238,9 +221,7 @@ class TestResolveGlob:
 class TestBuildEventLog:
     """Tests for _build_event_log -- PM4Py DataFrame construction."""
 
-    def test_builds_dataframe_from_sequences(
-        self, sample_sequences: dict[str, list[str]]
-    ) -> None:
+    def test_builds_dataframe_from_sequences(self, sample_sequences: dict[str, list[str]]) -> None:
         """Produces DataFrame with expected columns and row count."""
         df = kaizen_server._build_event_log(sample_sequences)
 
@@ -259,9 +240,7 @@ class TestBuildEventLog:
         assert isinstance(df, pd.DataFrame)
         assert df.empty
 
-    def test_preserves_session_ids(
-        self, sample_sequences: dict[str, list[str]]
-    ) -> None:
+    def test_preserves_session_ids(self, sample_sequences: dict[str, list[str]]) -> None:
         """Session IDs appear in the case:concept:name column."""
         df = kaizen_server._build_event_log(sample_sequences)
 
@@ -347,9 +326,7 @@ class TestExtractUserText:
 class TestExtractToolSequencesImpl:
     """Tests for _extract_tool_sequences_impl -- glob-based extraction."""
 
-    def test_extracts_sequences_from_single_file(
-        self, single_session_jsonl: Path
-    ) -> None:
+    def test_extracts_sequences_from_single_file(self, single_session_jsonl: Path) -> None:
         """Single JSONL file produces one session entry."""
         glob_path = str(single_session_jsonl / "*.jsonl")
 
@@ -359,9 +336,7 @@ class TestExtractToolSequencesImpl:
         assert "session-abc" in result
         assert result["session-abc"] == ["Read", "Grep", "Write"]
 
-    def test_extracts_sequences_from_multiple_files(
-        self, multi_session_jsonl: Path
-    ) -> None:
+    def test_extracts_sequences_from_multiple_files(self, multi_session_jsonl: Path) -> None:
         """Multiple JSONL files produce multiple session entries."""
         glob_path = str(multi_session_jsonl / "*.jsonl")
 
@@ -399,9 +374,7 @@ class TestExtractToolSequencesImpl:
 class TestResolveSequences:
     """Tests for _resolve_sequences -- sequence resolution from glob or dict."""
 
-    def test_returns_provided_sequences(
-        self, sample_sequences: dict[str, list[str]]
-    ) -> None:
+    def test_returns_provided_sequences(self, sample_sequences: dict[str, list[str]]) -> None:
         """Pre-extracted sequences are returned directly."""
         result = kaizen_server._resolve_sequences("", sample_sequences)
 
@@ -430,9 +403,7 @@ class TestResolveSequences:
         assert len(result) == 1
         assert "session-abc" in result
 
-    def test_raises_when_glob_finds_no_tool_sequences(
-        self, empty_jsonl_dir: Path
-    ) -> None:
+    def test_raises_when_glob_finds_no_tool_sequences(self, empty_jsonl_dir: Path) -> None:
         """Glob resolving to no tool sequences raises ToolError."""
         from fastmcp.exceptions import ToolError
 
@@ -491,23 +462,17 @@ class TestDiscoverProcessModel:
         self, sample_sequences: dict[str, list[str]], mock_context: AsyncMock
     ) -> None:
         """Heuristic miner returns a string representation."""
-        result = await kaizen_server.discover_process_model(
-            "", sample_sequences, context=mock_context
-        )
+        result = await kaizen_server.discover_process_model("", sample_sequences, context=mock_context)
 
         assert isinstance(result, str)
         assert len(result) > 0
 
     @pytest.mark.asyncio
-    async def test_discovers_model_from_glob(
-        self, multi_session_jsonl: Path, mock_context: AsyncMock
-    ) -> None:
+    async def test_discovers_model_from_glob(self, multi_session_jsonl: Path, mock_context: AsyncMock) -> None:
         """Tool works when given glob_path instead of sequences."""
         glob_path = str(multi_session_jsonl / "*.jsonl")
 
-        result = await kaizen_server.discover_process_model(
-            glob_path, context=mock_context
-        )
+        result = await kaizen_server.discover_process_model(glob_path, context=mock_context)
 
         assert isinstance(result, str)
         assert len(result) > 0
@@ -543,9 +508,7 @@ class TestCheckConformance:
     ) -> None:
         """Conformance checking returns per-trace diagnostics."""
         result = await kaizen_server.check_conformance(
-            sequences=sample_sequences,
-            reference_sequences=sample_sequences,
-            context=mock_context,
+            sequences=sample_sequences, reference_sequences=sample_sequences, context=mock_context
         )
 
         assert isinstance(result, list)
@@ -565,9 +528,7 @@ class TestCheckConformance:
     ) -> None:
         """Sessions checked against themselves should be fit."""
         result = await kaizen_server.check_conformance(
-            sequences=sample_sequences,
-            reference_sequences=sample_sequences,
-            context=mock_context,
+            sequences=sample_sequences, reference_sequences=sample_sequences, context=mock_context
         )
 
         fit_count = sum(1 for entry in result if entry["trace_is_fit"])
@@ -583,9 +544,7 @@ class TestCheckConformance:
 
         with pytest.raises(ToolError):
             await kaizen_server.check_conformance(
-                sequences=None,
-                reference_sequences=sample_sequences,
-                context=mock_context,
+                sequences=None, reference_sequences=sample_sequences, context=mock_context
             )
 
     @pytest.mark.asyncio
@@ -597,15 +556,11 @@ class TestCheckConformance:
 
         with pytest.raises(ToolError):
             await kaizen_server.check_conformance(
-                sequences=sample_sequences,
-                reference_sequences=None,
-                context=mock_context,
+                sequences=sample_sequences, reference_sequences=None, context=mock_context
             )
 
     @pytest.mark.asyncio
-    async def test_works_with_glob_paths(
-        self, multi_session_jsonl: Path, mock_context: AsyncMock
-    ) -> None:
+    async def test_works_with_glob_paths(self, multi_session_jsonl: Path, mock_context: AsyncMock) -> None:
         """Conformance tool works with glob paths for both inputs."""
         glob_path = str(multi_session_jsonl / "*.jsonl")
 
@@ -626,13 +581,9 @@ class TestFindFrequentPatterns:
     """Tests for the find_frequent_patterns async MCP tool."""
 
     @pytest.mark.asyncio
-    async def test_finds_patterns_from_sequences(
-        self, sample_sequences: dict[str, list[str]]
-    ) -> None:
+    async def test_finds_patterns_from_sequences(self, sample_sequences: dict[str, list[str]]) -> None:
         """PrefixSpan finds frequent patterns from pre-extracted sequences."""
-        result = await kaizen_server.find_frequent_patterns(
-            sequences=sample_sequences, min_support=2
-        )
+        result = await kaizen_server.find_frequent_patterns(sequences=sample_sequences, min_support=2)
 
         assert isinstance(result, list)
         for entry in result:
@@ -643,29 +594,19 @@ class TestFindFrequentPatterns:
             assert entry["support"] >= 2
 
     @pytest.mark.asyncio
-    async def test_patterns_sorted_by_support_descending(
-        self, sample_sequences: dict[str, list[str]]
-    ) -> None:
+    async def test_patterns_sorted_by_support_descending(self, sample_sequences: dict[str, list[str]]) -> None:
         """Results are sorted by support count in descending order."""
-        result = await kaizen_server.find_frequent_patterns(
-            sequences=sample_sequences, min_support=2
-        )
+        result = await kaizen_server.find_frequent_patterns(sequences=sample_sequences, min_support=2)
 
         if len(result) > 1:
             supports = [e["support"] for e in result]
             assert supports == sorted(supports, reverse=True)
 
     @pytest.mark.asyncio
-    async def test_min_support_filters_results(
-        self, sample_sequences: dict[str, list[str]]
-    ) -> None:
+    async def test_min_support_filters_results(self, sample_sequences: dict[str, list[str]]) -> None:
         """Higher min_support reduces the number of frequent patterns."""
-        low = await kaizen_server.find_frequent_patterns(
-            sequences=sample_sequences, min_support=1
-        )
-        high = await kaizen_server.find_frequent_patterns(
-            sequences=sample_sequences, min_support=3
-        )
+        low = await kaizen_server.find_frequent_patterns(sequences=sample_sequences, min_support=1)
+        high = await kaizen_server.find_frequent_patterns(sequences=sample_sequences, min_support=3)
 
         assert len(high) <= len(low)
 
@@ -682,9 +623,7 @@ class TestFindFrequentPatterns:
         """Finds patterns from JSONL files via glob path."""
         glob_path = str(multi_session_jsonl / "*.jsonl")
 
-        result = await kaizen_server.find_frequent_patterns(
-            glob_path=glob_path, min_support=2
-        )
+        result = await kaizen_server.find_frequent_patterns(glob_path=glob_path, min_support=2)
 
         assert isinstance(result, list)
 
@@ -698,9 +637,7 @@ class TestDetectFrustrationSignals:
     """Tests for the detect_frustration_signals async MCP tool."""
 
     @pytest.mark.asyncio
-    async def test_detects_known_frustration_signals(
-        self, frustration_jsonl: Path
-    ) -> None:
+    async def test_detects_known_frustration_signals(self, frustration_jsonl: Path) -> None:
         """Known frustration patterns are detected in user messages."""
         glob_path = str(frustration_jsonl / "*.jsonl")
 
@@ -718,9 +655,7 @@ class TestDetectFrustrationSignals:
         assert "frustration" in signal_types
 
     @pytest.mark.asyncio
-    async def test_skips_tool_use_result_messages(
-        self, frustration_jsonl: Path
-    ) -> None:
+    async def test_skips_tool_use_result_messages(self, frustration_jsonl: Path) -> None:
         """Messages with toolUseResult are not scanned."""
         glob_path = str(frustration_jsonl / "*.jsonl")
 
@@ -732,9 +667,7 @@ class TestDetectFrustrationSignals:
         assert "2026-01-01T00:04:00Z" not in session_timestamps
 
     @pytest.mark.asyncio
-    async def test_skips_non_frustration_messages(
-        self, frustration_jsonl: Path
-    ) -> None:
+    async def test_skips_non_frustration_messages(self, frustration_jsonl: Path) -> None:
         """Neutral messages like 'looks good to me' produce no signal."""
         glob_path = str(frustration_jsonl / "*.jsonl")
 
@@ -756,13 +689,7 @@ class TestDetectFrustrationSignals:
     async def test_truncates_long_messages(self, tmp_path: Path) -> None:
         """Messages longer than _MESSAGE_TRUNCATION_LIMIT are truncated."""
         long_text = "no " + "x" * 300
-        records = [
-            {
-                "type": "user",
-                "message": {"content": long_text},
-                "timestamp": "2026-01-01T00:00:00Z",
-            }
-        ]
+        records = [{"type": "user", "message": {"content": long_text}, "timestamp": "2026-01-01T00:00:00Z"}]
         fpath = tmp_path / "long-msg.jsonl"
         fpath.write_text(json.dumps(records[0]), encoding="utf-8")
 
@@ -818,12 +745,7 @@ class TestDetectFrustrationSignals:
         result = await kaizen_server.detect_frustration_signals(glob_path)
 
         for entry in result:
-            assert set(entry.keys()) == {
-                "session_id",
-                "timestamp",
-                "signal_type",
-                "message_text",
-            }
+            assert set(entry.keys()) == {"session_id", "timestamp", "signal_type", "message_text"}
 
 
 # ===================================================================
@@ -839,9 +761,7 @@ class TestClusterSessions:
         self, sample_sequences: dict[str, list[str]], mock_context: AsyncMock
     ) -> None:
         """KMeans clustering returns clusters and profiles."""
-        result = await kaizen_server.cluster_sessions(
-            sequences=sample_sequences, n_clusters=2, context=mock_context
-        )
+        result = await kaizen_server.cluster_sessions(sequences=sample_sequences, n_clusters=2, context=mock_context)
 
         assert "clusters" in result
         assert "cluster_profiles" in result
@@ -859,9 +779,7 @@ class TestClusterSessions:
         self, single_sequence: dict[str, list[str]], mock_context: AsyncMock
     ) -> None:
         """n_clusters is capped to number of sessions."""
-        result = await kaizen_server.cluster_sessions(
-            sequences=single_sequence, n_clusters=10, context=mock_context
-        )
+        result = await kaizen_server.cluster_sessions(sequences=single_sequence, n_clusters=10, context=mock_context)
 
         # With 1 session, effective clusters = min(10, 1) = 1
         assert len(result["clusters"]) == 1
@@ -871,9 +789,7 @@ class TestClusterSessions:
         self, sample_sequences: dict[str, list[str]], mock_context: AsyncMock
     ) -> None:
         """Cluster profiles list the most common tools."""
-        result = await kaizen_server.cluster_sessions(
-            sequences=sample_sequences, n_clusters=2, context=mock_context
-        )
+        result = await kaizen_server.cluster_sessions(sequences=sample_sequences, n_clusters=2, context=mock_context)
 
         for profile in result["cluster_profiles"].values():
             assert isinstance(profile, list)
@@ -885,20 +801,14 @@ class TestClusterSessions:
         from fastmcp.exceptions import ToolError
 
         with pytest.raises(ToolError):
-            await kaizen_server.cluster_sessions(
-                glob_path="", sequences=None, context=mock_context
-            )
+            await kaizen_server.cluster_sessions(glob_path="", sequences=None, context=mock_context)
 
     @pytest.mark.asyncio
-    async def test_works_with_glob_path(
-        self, multi_session_jsonl: Path, mock_context: AsyncMock
-    ) -> None:
+    async def test_works_with_glob_path(self, multi_session_jsonl: Path, mock_context: AsyncMock) -> None:
         """Clustering works from JSONL files via glob path."""
         glob_path = str(multi_session_jsonl / "*.jsonl")
 
-        result = await kaizen_server.cluster_sessions(
-            glob_path=glob_path, n_clusters=2, context=mock_context
-        )
+        result = await kaizen_server.cluster_sessions(glob_path=glob_path, n_clusters=2, context=mock_context)
 
         assert "clusters" in result
         assert len(result["clusters"]) == 2
@@ -908,9 +818,7 @@ class TestClusterSessions:
         self, sample_sequences: dict[str, list[str]], mock_context: AsyncMock
     ) -> None:
         """Cluster keys are string representations of cluster IDs."""
-        result = await kaizen_server.cluster_sessions(
-            sequences=sample_sequences, n_clusters=2, context=mock_context
-        )
+        result = await kaizen_server.cluster_sessions(sequences=sample_sequences, n_clusters=2, context=mock_context)
 
         for key in result["clusters"]:
             assert isinstance(key, str)
@@ -960,9 +868,7 @@ class TestFrustrationPatterns:
                 matched_type = signal_type
                 break
 
-        assert matched_type == expected_type, (
-            f"Expected '{expected_type}' for text '{text}', got '{matched_type}'"
-        )
+        assert matched_type == expected_type, f"Expected '{expected_type}' for text '{text}', got '{matched_type}'"
 
     @pytest.mark.parametrize(
         "text",
@@ -977,9 +883,7 @@ class TestFrustrationPatterns:
     def test_pattern_does_not_match_positive_text(self, text: str) -> None:
         """Positive/neutral text does not trigger frustration patterns."""
         for _, pattern in kaizen_server._FRUSTRATION_PATTERNS:
-            assert not pattern.search(text), (
-                f"Text '{text}' should not match any frustration pattern"
-            )
+            assert not pattern.search(text), f"Text '{text}' should not match any frustration pattern"
 
 
 # ===================================================================
@@ -1054,8 +958,5 @@ class TestOpenDashboard:
 
         from fastmcp.exceptions import ToolError
 
-        with (
-            patch("dashboard.get_dashboard_url", return_value=None),
-            pytest.raises(ToolError, match="not running"),
-        ):
+        with patch("dashboard.get_dashboard_url", return_value=None), pytest.raises(ToolError, match="not running"):
             kaizen_server.open_dashboard()

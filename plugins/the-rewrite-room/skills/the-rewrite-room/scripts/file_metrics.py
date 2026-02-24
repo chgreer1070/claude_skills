@@ -16,10 +16,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-app = typer.Typer(
-    name="file-metrics",
-    help="Token counting and file size analysis for documentation files",
-)
+app = typer.Typer(name="file-metrics", help="Token counting and file size analysis for documentation files")
 console = Console()
 err_console = Console(stderr=True)
 
@@ -38,20 +35,13 @@ def _measure_file(filepath: Path) -> dict[str, int | str]:
     lines = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
     chars = len(content)
     tokens = _estimate_tokens(content)
-    return {
-        "path": str(filepath),
-        "lines": lines,
-        "chars": chars,
-        "estimated_tokens": tokens,
-    }
+    return {"path": str(filepath), "lines": lines, "chars": chars, "estimated_tokens": tokens}
 
 
 @app.command()
 def count(
     file: Annotated[Path, typer.Argument(help="File to measure")],
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Output metrics as JSON")
-    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output metrics as JSON")] = False,
 ) -> None:
     """Estimate token count and report size metrics for a single file."""
     if not file.exists():
@@ -73,12 +63,8 @@ def count(
 @app.command()
 def scan(
     directory: Annotated[Path, typer.Argument(help="Directory to scan for .md files")],
-    top: Annotated[
-        int, typer.Option("--top", help="Show top N files by token count")
-    ] = 20,
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Output metrics as JSON")
-    ] = False,
+    top: Annotated[int, typer.Option("--top", help="Show top N files by token count")] = 20,
+    json_output: Annotated[bool, typer.Option("--json", help="Output metrics as JSON")] = False,
 ) -> None:
     """Scan all .md files in a directory and report metrics sorted by estimated token count."""
     if not directory.is_dir():
@@ -97,9 +83,7 @@ def scan(
         typer.echo(json.dumps(all_metrics))
         return
 
-    table = Table(
-        title=f"File Metrics — {directory}", show_header=True, header_style="bold cyan"
-    )
+    table = Table(title=f"File Metrics — {directory}", show_header=True, header_style="bold cyan")
     table.add_column("File", min_width=50)
     table.add_column("Lines", justify="right", min_width=8)
     table.add_column("Chars", justify="right", min_width=10)
@@ -112,19 +96,12 @@ def scan(
             if directory in Path(str(m["path"])).parents
             else Path(str(m["path"]))
         )
-        table.add_row(
-            str(rel_path),
-            f"{m['lines']:,}",
-            f"{m['chars']:,}",
-            f"{m['estimated_tokens']:,}",
-        )
+        table.add_row(str(rel_path), f"{m['lines']:,}", f"{m['chars']:,}", f"{m['estimated_tokens']:,}")
 
     console.print(table)
 
     total_tokens = sum(int(m["estimated_tokens"]) for m in all_metrics)
-    console.print(
-        f"\n[bold]Total:[/bold] {len(md_files)} files, ~{total_tokens:,} estimated tokens"
-    )
+    console.print(f"\n[bold]Total:[/bold] {len(md_files)} files, ~{total_tokens:,} estimated tokens")
     if len(all_metrics) > top:
         console.print(f"[dim](showing top {top} of {len(all_metrics)} files)[/dim]")
 

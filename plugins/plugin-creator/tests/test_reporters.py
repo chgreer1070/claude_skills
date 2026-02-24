@@ -21,13 +21,7 @@ from pathlib import Path
 # Add parent directory to path to import plugin_validator
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from plugin_validator import (
-    CIReporter,
-    ConsoleReporter,
-    SummaryReporter,
-    ValidationIssue,
-    ValidationResult,
-)
+from plugin_validator import CIReporter, ConsoleReporter, SummaryReporter, ValidationIssue, ValidationResult
 
 
 def _make_passing_result() -> ValidationResult:
@@ -60,12 +54,7 @@ def _make_warning_result() -> ValidationResult:
         passed=True,
         errors=[],
         warnings=[
-            ValidationIssue(
-                field="tools",
-                severity="warning",
-                message="Tools should be comma-separated",
-                code="FM004",
-            )
+            ValidationIssue(field="tools", severity="warning", message="Tools should be comma-separated", code="FM004")
         ],
         info=[],
     )
@@ -120,9 +109,7 @@ class TestConsoleReporter:
         console = Console(file=buf, color_system=None, width=200)
         reporter = ConsoleReporter(console=console)
 
-        file_results = {
-            Path("/tmp/test/SKILL.md"): [("frontmatter", _make_passing_result())]
-        }
+        file_results = {Path("/tmp/test/SKILL.md"): [("frontmatter", _make_passing_result())]}
         reporter.report(file_results, show_progress=True)
 
         output = buf.getvalue()
@@ -141,9 +128,7 @@ class TestConsoleReporter:
         console = Console(file=buf, color_system=None, width=200)
         reporter = ConsoleReporter(console=console)
 
-        file_results = {
-            Path("/tmp/test/SKILL.md"): [("frontmatter", _make_failing_result())]
-        }
+        file_results = {Path("/tmp/test/SKILL.md"): [("frontmatter", _make_failing_result())]}
         reporter.report(file_results)
 
         output = buf.getvalue()
@@ -163,9 +148,7 @@ class TestConsoleReporter:
         console = Console(file=buf, color_system=None, width=200)
         reporter = ConsoleReporter(console=console)
 
-        file_results = {
-            Path("/tmp/test/SKILL.md"): [("frontmatter", _make_warning_result())]
-        }
+        file_results = {Path("/tmp/test/SKILL.md"): [("frontmatter", _make_warning_result())]}
         reporter.report(file_results)
 
         output = buf.getvalue()
@@ -210,9 +193,7 @@ class TestCIReporter:
         Why: Verify plain text PASSED format (no ANSI codes)
         """
         reporter = CIReporter()
-        file_results = {
-            Path("/tmp/test/SKILL.md"): [("frontmatter", _make_passing_result())]
-        }
+        file_results = {Path("/tmp/test/SKILL.md"): [("frontmatter", _make_passing_result())]}
 
         buf = StringIO()
         with contextlib.redirect_stdout(buf):
@@ -230,9 +211,7 @@ class TestCIReporter:
         Why: Verify error format uses plain text markers
         """
         reporter = CIReporter()
-        file_results = {
-            Path("/tmp/test/SKILL.md"): [("frontmatter", _make_failing_result())]
-        }
+        file_results = {Path("/tmp/test/SKILL.md"): [("frontmatter", _make_failing_result())]}
 
         buf = StringIO()
         with contextlib.redirect_stdout(buf):
@@ -250,9 +229,7 @@ class TestCIReporter:
         Why: Verify warning prefix format
         """
         reporter = CIReporter()
-        file_results = {
-            Path("/tmp/test/SKILL.md"): [("frontmatter", _make_warning_result())]
-        }
+        file_results = {Path("/tmp/test/SKILL.md"): [("frontmatter", _make_warning_result())]}
 
         buf = StringIO()
         with contextlib.redirect_stdout(buf):
@@ -386,9 +363,7 @@ class TestReportCountsUniqueFiles:
             reporter.summarize(total_files=total_files, passed=1, failed=0, warnings=0)
 
         output = buf.getvalue()
-        assert "Total files: 1" in output, (
-            f"Expected 'Total files: 1' but got: {output!r}"
-        )
+        assert "Total files: 1" in output, f"Expected 'Total files: 1' but got: {output!r}"
 
     def test_two_files_each_with_multiple_validators_shows_total_files_2(self) -> None:
         """Test summarize shows Total files: 2 when two files each have 3 validators.
@@ -420,9 +395,7 @@ class TestReportCountsUniqueFiles:
             reporter.summarize(total_files=total_files, passed=2, failed=0, warnings=0)
 
         output = buf.getvalue()
-        assert "Total files: 2" in output, (
-            f"Expected 'Total files: 2' but got: {output!r}"
-        )
+        assert "Total files: 2" in output, f"Expected 'Total files: 2' but got: {output!r}"
 
     def test_ci_reporter_labels_validator_names_in_output(self) -> None:
         """Test CIReporter shows validator class name as sub-header per validator result.
@@ -446,6 +419,4 @@ class TestReportCountsUniqueFiles:
 
         output = buf.getvalue()
         # DescriptionValidator should appear as a sub-header since it has issues
-        assert "DescriptionValidator" in output, (
-            f"Expected 'DescriptionValidator' in output but got: {output!r}"
-        )
+        assert "DescriptionValidator" in output, f"Expected 'DescriptionValidator' in output but got: {output!r}"

@@ -55,9 +55,7 @@ console = Console()
 error_console = Console(stderr=True, style="bold red")
 
 app = typer.Typer(
-    name="install_dasel",
-    help="Install or update the dasel binary from GitHub Releases.",
-    rich_markup_mode="rich",
+    name="install_dasel", help="Install or update the dasel binary from GitHub Releases.", rich_markup_mode="rich"
 )
 
 
@@ -174,9 +172,7 @@ def fetch_latest_release(timeout: float = 30.0) -> tuple[str, list[ReleaseAsset]
         httpx.HTTPError: On network-level failures.
     """
     with httpx.Client(timeout=timeout) as client:
-        response = client.get(
-            GITHUB_API_URL, headers={"Accept": "application/vnd.github+json"}
-        )
+        response = client.get(GITHUB_API_URL, headers={"Accept": "application/vnd.github+json"})
         if response.status_code != HTTP_OK:
             msg = f"GitHub API returned status {response.status_code}: {response.text[:200]}"
             raise GitHubAPIError(msg)
@@ -201,9 +197,7 @@ def fetch_latest_release(timeout: float = 30.0) -> tuple[str, list[ReleaseAsset]
     return tag_name, assets
 
 
-def find_asset(
-    assets: list[ReleaseAsset], os_key: str, arch: str
-) -> ReleaseAsset | None:
+def find_asset(assets: list[ReleaseAsset], os_key: str, arch: str) -> ReleaseAsset | None:
     """Find the matching binary asset for the given platform.
 
     Args:
@@ -214,11 +208,7 @@ def find_asset(
     Returns:
         Matching ReleaseAsset, or None if no match found.
     """
-    target_name = (
-        f"dasel_{os_key}_{arch}.exe"
-        if os_key == "windows"
-        else f"dasel_{os_key}_{arch}"
-    )
+    target_name = f"dasel_{os_key}_{arch}.exe" if os_key == "windows" else f"dasel_{os_key}_{arch}"
 
     for asset in assets:
         if asset.name == target_name:
@@ -256,13 +246,7 @@ def get_installed_version(binary_path: Path) -> str | None:
     if not binary_path.exists():
         return None
     try:
-        result = subprocess.run(
-            [str(binary_path), "--version"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
+        result = subprocess.run([str(binary_path), "--version"], check=False, capture_output=True, text=True, timeout=5)
     except (subprocess.SubprocessError, FileNotFoundError, OSError):
         return None
     else:
@@ -293,10 +277,7 @@ def download_binary(url: str, dest: Path, timeout: float = 120.0) -> None:
         httpx.HTTPStatusError: On non-2xx responses.
         httpx.HTTPError: On network-level failures.
     """
-    with (
-        httpx.Client(timeout=timeout, follow_redirects=True) as client,
-        client.stream("GET", url) as response,
-    ):
+    with httpx.Client(timeout=timeout, follow_redirects=True) as client, client.stream("GET", url) as response:
         response.raise_for_status()
         with dest.open("wb") as f:
             for chunk in response.iter_bytes(chunk_size=DOWNLOAD_CHUNK_SIZE):
@@ -360,18 +341,11 @@ def suggest_path_update(install_dir: Path, os_key: str) -> None:
     if check_path(install_dir):
         return
 
-    console.print(
-        f"\n:warning: [yellow]{install_dir} is not in your PATH.[/yellow]\n"
-        "  Add it to your shell profile:"
-    )
+    console.print(f"\n:warning: [yellow]{install_dir} is not in your PATH.[/yellow]\n  Add it to your shell profile:")
     if os_key == "windows":
-        console.print(
-            f'  [dim]$env:PATH += ";{install_dir}"[/dim]  (PowerShell, temporary)'
-        )
+        console.print(f'  [dim]$env:PATH += ";{install_dir}"[/dim]  (PowerShell, temporary)')
     else:
-        console.print(
-            f'  [dim]export PATH="{install_dir}:$PATH"[/dim]  (add to ~/.bashrc or ~/.zshrc)'
-        )
+        console.print(f'  [dim]export PATH="{install_dir}:$PATH"[/dim]  (add to ~/.bashrc or ~/.zshrc)')
 
 
 # ---------------------------------------------------------------------------
@@ -402,9 +376,7 @@ def resolve_release(os_key: str, arch: str) -> tuple[str, ReleaseAsset, str]:
 
     asset = find_asset(assets, os_key, arch)
     if asset is None:
-        error_console.print(
-            f":cross_mark: No binary found for {os_key}_{arch} in release {tag}"
-        )
+        error_console.print(f":cross_mark: No binary found for {os_key}_{arch} in release {tag}")
         raise typer.Exit(code=1)
 
     expected_sha256 = asset.digest.removeprefix("sha256:")
@@ -416,11 +388,7 @@ def resolve_release(os_key: str, arch: str) -> tuple[str, ReleaseAsset, str]:
 
 
 def print_dry_run_summary(
-    asset: ReleaseAsset,
-    expected_sha256: str,
-    install_dir: Path,
-    install_path: Path,
-    os_key: str,
+    asset: ReleaseAsset, expected_sha256: str, install_dir: Path, install_path: Path, os_key: str
 ) -> None:
     """Print what would happen during a real install.
 
@@ -445,12 +413,7 @@ def print_dry_run_summary(
 
 
 def download_and_install(
-    asset: ReleaseAsset,
-    expected_sha256: str,
-    install_dir: Path,
-    install_path: Path,
-    os_key: str,
-    latest_version: str,
+    asset: ReleaseAsset, expected_sha256: str, install_dir: Path, install_path: Path, os_key: str, latest_version: str
 ) -> None:
     """Download, verify, and install the dasel binary.
 
@@ -498,9 +461,7 @@ def download_and_install(
     if os_key != "windows":
         make_executable(install_path)
 
-    console.print(
-        f":white_check_mark: [green]dasel v{latest_version} installed to {install_path}[/green]"
-    )
+    console.print(f":white_check_mark: [green]dasel v{latest_version} installed to {install_path}[/green]")
 
 
 # ---------------------------------------------------------------------------
@@ -508,19 +469,12 @@ def download_and_install(
 # ---------------------------------------------------------------------------
 @app.command()
 def main(
-    force: Annotated[
-        bool,
-        typer.Option("--force", help="Reinstall even if already at latest version"),
-    ] = False,
-    dry_run: Annotated[
-        bool,
-        typer.Option("--dry-run", help="Show what would happen without installing"),
-    ] = False,
+    force: Annotated[bool, typer.Option("--force", help="Reinstall even if already at latest version")] = False,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Show what would happen without installing")] = False,
     bin_dir: Annotated[
         Path | None,
         typer.Option(
-            "--bin-dir",
-            help="Override install directory (default: ~/.local/bin or %%LOCALAPPDATA%%\\Programs\\dasel)",
+            "--bin-dir", help="Override install directory (default: ~/.local/bin or %%LOCALAPPDATA%%\\Programs\\dasel)"
         ),
     ] = None,
 ) -> None:
@@ -547,9 +501,7 @@ def main(
 
     wsl2 = os_key == "linux" and is_wsl2()
     platform_label = f"{os_key}/{arch}" + (" (WSL2)" if wsl2 else "")
-    console.print(
-        f":magnifying_glass_tilted_left: Detected platform: [cyan]{platform_label}[/cyan]"
-    )
+    console.print(f":magnifying_glass_tilted_left: Detected platform: [cyan]{platform_label}[/cyan]")
 
     # 2. Resolve install directory and binary path
     install_dir = bin_dir if bin_dir is not None else default_install_dir(os_key)
@@ -561,15 +513,11 @@ def main(
     # 4. Check installed version
     installed_version = get_installed_version(install_path)
     if installed_version:
-        console.print(
-            f":floppy_disk: Installed version: [yellow]v{installed_version}[/yellow]"
-        )
+        console.print(f":floppy_disk: Installed version: [yellow]v{installed_version}[/yellow]")
     else:
         console.print(":floppy_disk: dasel is not currently installed")
 
-    needs_update = installed_version is None or parse_version(
-        installed_version
-    ) < parse_version(latest_version)
+    needs_update = installed_version is None or parse_version(installed_version) < parse_version(latest_version)
 
     if not needs_update and not force:
         console.print(":white_check_mark: [green]dasel is already up to date[/green]")
@@ -583,9 +531,7 @@ def main(
         print_dry_run_summary(asset, expected_sha256, install_dir, install_path, os_key)
         raise typer.Exit(code=0)
 
-    download_and_install(
-        asset, expected_sha256, install_dir, install_path, os_key, latest_version
-    )
+    download_and_install(asset, expected_sha256, install_dir, install_path, os_key, latest_version)
     suggest_path_update(install_dir, os_key)
 
 

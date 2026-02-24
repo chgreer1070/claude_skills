@@ -62,9 +62,7 @@ def _get_table_width(table: Table) -> int:
 
 
 app = typer.Typer(
-    name="create-plugin",
-    help="Create a new Claude Code plugin with validated structure",
-    rich_markup_mode="rich",
+    name="create-plugin", help="Create a new Claude Code plugin with validated structure", rich_markup_mode="rich"
 )
 
 
@@ -115,10 +113,7 @@ def validate_plugin_name(name: str) -> tuple[bool, str]:
         return False, f"Name exceeds {MAX_NAME_LENGTH} characters (got {len(name)})"
 
     if not re.match(r"^[a-z][a-z0-9-]*$", name):
-        return (
-            False,
-            "Name must be lowercase, start with letter, contain only letters/numbers/hyphens",
-        )
+        return (False, "Name must be lowercase, start with letter, contain only letters/numbers/hyphens")
 
     return True, "Valid"
 
@@ -129,11 +124,7 @@ def create_plugin_json(spec: PluginSpec) -> dict[str, Any]:
     Returns:
         Dictionary representing the plugin.json manifest content.
     """
-    manifest: dict[str, Any] = {
-        "name": spec.name,
-        "version": spec.version,
-        "description": spec.description,
-    }
+    manifest: dict[str, Any] = {"name": spec.name, "version": spec.version, "description": spec.description}
 
     if spec.author_name:
         author: dict[str, str] = {"name": spec.author_name}
@@ -229,11 +220,7 @@ def create_hooks_template() -> dict[str, Any]:
                 {
                     "matcher": "Write|Edit",
                     "hooks": [
-                        {
-                            "type": "command",
-                            "command": "echo 'File modified: $CLAUDE_PROJECT_DIR'",
-                            "timeout": 10,
-                        }
+                        {"type": "command", "command": "echo 'File modified: $CLAUDE_PROJECT_DIR'", "timeout": 10}
                     ],
                 }
             ]
@@ -275,27 +262,19 @@ def validate_yaml_frontmatter(path: Path) -> ValidationResult:
         # Find closing delimiter
         end_idx = content.find("---", 3)
         if end_idx == -1:
-            return ValidationResult(
-                path, False, "Missing closing frontmatter delimiter"
-            )
+            return ValidationResult(path, False, "Missing closing frontmatter delimiter")
 
         # Basic YAML validation - check for multiline indicators (forbidden)
         frontmatter = content[3:end_idx]
         if ">-" in frontmatter or "|-" in frontmatter or ">|" in frontmatter:
-            return ValidationResult(
-                path,
-                False,
-                "Contains YAML multiline indicators (>- or |-) which break parsing",
-            )
+            return ValidationResult(path, False, "Contains YAML multiline indicators (>- or |-) which break parsing")
 
         return ValidationResult(path, True, "Valid frontmatter structure")
     except (OSError, UnicodeDecodeError) as e:
         return ValidationResult(path, False, f"Error reading file: {e}")
 
 
-def validate_directory_structure(
-    plugin_dir: Path, spec: PluginSpec
-) -> list[ValidationResult]:
+def validate_directory_structure(plugin_dir: Path, spec: PluginSpec) -> list[ValidationResult]:
     """Validate the created plugin structure.
 
     Returns:
@@ -325,9 +304,7 @@ def validate_directory_structure(
     return results
 
 
-def create_plugin(
-    base_dir: Path, spec: PluginSpec
-) -> tuple[Path, list[ValidationResult]]:
+def create_plugin(base_dir: Path, spec: PluginSpec) -> tuple[Path, list[ValidationResult]]:
     """Create plugin directory structure and files.
 
     Returns:
@@ -388,11 +365,7 @@ def display_results(plugin_dir: Path, results: list[ValidationResult]) -> bool:
 
     all_valid = True
     for result in results:
-        rel_path = (
-            result.path.relative_to(plugin_dir)
-            if result.path.is_relative_to(plugin_dir)
-            else result.path
-        )
+        rel_path = result.path.relative_to(plugin_dir) if result.path.is_relative_to(plugin_dir) else result.path
         status = "[green]✓ PASS[/green]" if result.valid else "[red]✗ FAIL[/red]"
         table.add_row(str(rel_path), status, result.message)
         if not result.valid:
@@ -408,24 +381,15 @@ def display_results(plugin_dir: Path, results: list[ValidationResult]) -> bool:
 def create(
     name: Annotated[str, typer.Argument(help="Plugin name (kebab-case)")],
     *,
-    description: Annotated[
-        str, typer.Option("--description", "-d", help="Plugin description")
-    ] = "",
-    skills: Annotated[
-        list[str] | None, typer.Option("--skill", "-s", help="Skill names to create")
-    ] = None,
-    agents: Annotated[
-        list[str] | None, typer.Option("--agent", "-a", help="Agent names to create")
-    ] = None,
-    hooks: Annotated[
-        bool, typer.Option("--hooks", help="Include hooks template")
-    ] = False,
+    description: Annotated[str, typer.Option("--description", "-d", help="Plugin description")] = "",
+    skills: Annotated[list[str] | None, typer.Option("--skill", "-s", help="Skill names to create")] = None,
+    agents: Annotated[list[str] | None, typer.Option("--agent", "-a", help="Agent names to create")] = None,
+    hooks: Annotated[bool, typer.Option("--hooks", help="Include hooks template")] = False,
     author: Annotated[str, typer.Option("--author", help="Author name")] = "",
     email: Annotated[str, typer.Option("--email", help="Author email")] = "",
-    output_dir: Annotated[
-        Path,
-        typer.Option("--output", "-o", help="Output directory (default: ./plugins)"),
-    ] = Path("./plugins"),
+    output_dir: Annotated[Path, typer.Option("--output", "-o", help="Output directory (default: ./plugins)")] = Path(
+        "./plugins"
+    ),
 ) -> None:
     """Create a new Claude Code plugin with validated structure.
 
@@ -508,9 +472,7 @@ def create(
 
 
 @app.command()
-def validate(
-    plugin_dir: Annotated[Path, typer.Argument(help="Path to plugin directory")],
-) -> None:
+def validate(plugin_dir: Annotated[Path, typer.Argument(help="Path to plugin directory")]) -> None:
     """Validate an existing plugin directory structure.
 
     Checks:
@@ -525,9 +487,7 @@ def validate(
 
     manifest_path = plugin_dir / ".claude-plugin" / "plugin.json"
     if not manifest_path.exists():
-        error_console.print(
-            "[red]Not a valid plugin:[/red] missing .claude-plugin/plugin.json"
-        )
+        error_console.print("[red]Not a valid plugin:[/red] missing .claude-plugin/plugin.json")
         raise typer.Exit(1)
 
     # Load manifest to get components
@@ -570,18 +530,12 @@ def validate(
     if all_valid:
         console.print()
         console.print(
-            Panel("[green]All validations passed![/green]", border_style="green"),
-            crop=False,
-            overflow="ignore",
+            Panel("[green]All validations passed![/green]", border_style="green"), crop=False, overflow="ignore"
         )
     else:
         console.print()
         console.print(
-            Panel(
-                "[red]Validation failed - see issues above[/red]", border_style="red"
-            ),
-            crop=False,
-            overflow="ignore",
+            Panel("[red]Validation failed - see issues above[/red]", border_style="red"), crop=False, overflow="ignore"
         )
         raise typer.Exit(1)
 

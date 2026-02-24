@@ -32,14 +32,7 @@ from typing import TYPE_CHECKING, Annotated
 import typer
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import (
-    BarColumn,
-    MofNCompleteColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeElapsedColumn,
-)
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 if TYPE_CHECKING:
@@ -261,15 +254,7 @@ def _extract_project(path: Path) -> tuple[str, str]:
     # Skip "home" and the next segment (username, always a single word
     # without embedded hyphens since it was a single path component).
     # Then skip known single-word location tokens before the project name.
-    location_tokens = {
-        "repos",
-        "Desktop",
-        "Documents",
-        "Projects",
-        "src",
-        "code",
-        "work",
-    }
+    location_tokens = {"repos", "Desktop", "Documents", "Projects", "src", "code", "work"}
 
     idx = 0
     if idx < len(non_empty) and non_empty[idx] == "home":
@@ -311,9 +296,7 @@ def _score_messages(
         List of ScoredMessage sorted by (session_id, timestamp).
     """
     results: list[ScoredMessage] = []
-    task = progress.add_task(
-        ":magnifying_glass_tilted_left: Scoring messages", total=len(files)
-    )
+    task = progress.add_task(":magnifying_glass_tilted_left: Scoring messages", total=len(files))
 
     for path in files:
         project_path, project_name = _extract_project(path)
@@ -474,9 +457,7 @@ def _write_duckdb(results: list[ScoredMessage], db_path: Path) -> None:
         import warnings
 
         warnings.warn(
-            "duckdb is not installed — skipping database write. "
-            "Install with: pip install duckdb",
-            stacklevel=2,
+            "duckdb is not installed — skipping database write. Install with: pip install duckdb", stacklevel=2
         )
         return
 
@@ -522,9 +503,7 @@ def _print_summary(stats: SessionStats, stderr: Console) -> None:
         f"[bold]Min compound:[/bold]     {min(scores):.4f}",
         f"[bold]Max compound:[/bold]     {max(scores):.4f}",
     ]
-    panel = Panel(
-        "\n".join(lines), title=":bar_chart: Sentiment Summary", border_style="cyan"
-    )
+    panel = Panel("\n".join(lines), title=":bar_chart: Sentiment Summary", border_style="cyan")
     stderr.print(panel)
 
 
@@ -546,10 +525,7 @@ def score(
     glob_pattern: Annotated[
         str,
         typer.Option(
-            "--glob-pattern",
-            "-g",
-            help="Glob pattern matching JSONL session files.",
-            rich_help_panel="Input Options",
+            "--glob-pattern", "-g", help="Glob pattern matching JSONL session files.", rich_help_panel="Input Options"
         ),
     ] = _DEFAULT_GLOB,
     output: Annotated[
@@ -564,28 +540,17 @@ def score(
     min_length: Annotated[
         int,
         typer.Option(
-            "--min-length",
-            "-m",
-            help="Minimum message character length to score.",
-            rich_help_panel="Filter Options",
+            "--min-length", "-m", help="Minimum message character length to score.", rich_help_panel="Filter Options"
         ),
     ] = 10,
     session_filter: Annotated[
         str | None,
         typer.Option(
-            "--session-filter",
-            "-s",
-            help="Restrict scoring to a single session ID.",
-            rich_help_panel="Filter Options",
+            "--session-filter", "-s", help="Restrict scoring to a single session ID.", rich_help_panel="Filter Options"
         ),
     ] = None,
     db: Annotated[
-        Path,
-        typer.Option(
-            "--db",
-            help="Path to DuckDB database file.",
-            rich_help_panel="Output Options",
-        ),
+        Path, typer.Option("--db", help="Path to DuckDB database file.", rich_help_panel="Output Options")
     ] = Path(_DEFAULT_DB),
     scope: Annotated[
         ScopeTarget | None,
@@ -640,11 +605,7 @@ def score(
         console=stderr,
     ) as progress:
         results = _score_messages(
-            files,
-            min_length=min_length,
-            session_filter=session_filter,
-            analyzer=analyzer,
-            progress=progress,
+            files, min_length=min_length, session_filter=session_filter, analyzer=analyzer, progress=progress
         )
 
     # Compute summary stats
@@ -656,9 +617,7 @@ def score(
     _write_duckdb(results, db.expanduser())
     if scope is not None:
         scope_path = _resolve_scope_path(scope)
-        stderr.print(
-            f"[dim]Lesson scope:[/dim] [cyan]{scope.value}[/cyan] → {scope_path}"
-        )
+        stderr.print(f"[dim]Lesson scope:[/dim] [cyan]{scope.value}[/cyan] → {scope_path}")
     _print_summary(stats, stderr)
 
 
@@ -686,27 +645,15 @@ def main(argv: list[str] | None = None) -> int:
         return exc.code if isinstance(exc.code, int) else 1
     except FileNotFoundError as exc:
         stderr = Console(stderr=True)
-        stderr.print(
-            Panel(
-                f"File not found: {exc}", title=":cross_mark: Error", border_style="red"
-            )
-        )
+        stderr.print(Panel(f"File not found: {exc}", title=":cross_mark: Error", border_style="red"))
         return 2
     except PermissionError as exc:
         stderr = Console(stderr=True)
-        stderr.print(
-            Panel(
-                f"Permission denied: {exc}",
-                title=":cross_mark: Error",
-                border_style="red",
-            )
-        )
+        stderr.print(Panel(f"Permission denied: {exc}", title=":cross_mark: Error", border_style="red"))
         return 2
     except OSError as exc:
         stderr = Console(stderr=True)
-        stderr.print(
-            Panel(f"I/O error: {exc}", title=":cross_mark: Error", border_style="red")
-        )
+        stderr.print(Panel(f"I/O error: {exc}", title=":cross_mark: Error", border_style="red"))
         return 1
     return 0
 

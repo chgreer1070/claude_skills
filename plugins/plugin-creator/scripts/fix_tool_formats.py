@@ -42,21 +42,14 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 console = Console()
-app = typer.Typer(
-    help="Fix invalid tool format patterns in Claude Code frontmatter",
-    no_args_is_help=False,
-)
+app = typer.Typer(help="Fix invalid tool format patterns in Claude Code frontmatter", no_args_is_help=False)
 
 
 class FrontmatterProcessor:
     """Process YAML frontmatter in markdown files."""
 
-    YAML_LIST_PATTERN = re.compile(
-        r"^((?:tools|allowed-tools|disallowedTools):)\s*\n((?:  - .+\n)+)", re.MULTILINE
-    )
-    JSON_ARRAY_PATTERN = re.compile(
-        r"^((?:tools|allowed-tools|disallowedTools):)\s*\[([^\]]+)\]", re.MULTILINE
-    )
+    YAML_LIST_PATTERN = re.compile(r"^((?:tools|allowed-tools|disallowedTools):)\s*\n((?:  - .+\n)+)", re.MULTILINE)
+    JSON_ARRAY_PATTERN = re.compile(r"^((?:tools|allowed-tools|disallowedTools):)\s*\[([^\]]+)\]", re.MULTILINE)
 
     def __init__(self) -> None:
         """Initialize the FrontmatterProcessor."""
@@ -162,11 +155,7 @@ class FileScanner:
         ]
 
         if scan_home:
-            patterns.extend([
-                home / "**/agents/*.md",
-                home / "**/commands/*.md",
-                home / "**/skills/*/SKILL.md",
-            ])
+            patterns.extend([home / "**/agents/*.md", home / "**/commands/*.md", home / "**/skills/*/SKILL.md"])
 
         files: set[Path] = set()
         for pattern in patterns:
@@ -174,9 +163,7 @@ class FileScanner:
                 if self._should_skip(filepath):
                     continue
                 # Only include files in .claude directories or repos if scanning repos
-                if ".claude" in filepath.parts or (
-                    scan_home and "repos" in filepath.parts
-                ):
+                if ".claude" in filepath.parts or (scan_home and "repos" in filepath.parts):
                     files.add(filepath)
 
         return sorted(files)
@@ -234,11 +221,7 @@ def process_files_batch(
     skipped_files: list[Path] = []
     error_files: list[tuple[Path, str]] = []
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
         process_task = progress.add_task("Processing files...", total=len(files))
 
         for filepath in files:
@@ -301,24 +284,16 @@ def display_summary(
             console.print(f"  {filepath}: {error}")
 
     if dry_run and fixed_files:
-        console.print(
-            "\n:information: This was a dry run. Rerun without --dry-run to apply changes."
-        )
+        console.print("\n:information: This was a dry run. Rerun without --dry-run to apply changes.")
 
 
 @app.command()
 def main(
     scan_home: Annotated[
-        bool,
-        typer.Option(
-            "--scan-repos/--no-scan-repos", help="Include ~/repos/** paths in scan"
-        ),
+        bool, typer.Option("--scan-repos/--no-scan-repos", help="Include ~/repos/** paths in scan")
     ] = False,
     dry_run: Annotated[
-        bool,
-        typer.Option(
-            "--dry-run", help="Show what would be changed without modifying files"
-        ),
+        bool, typer.Option("--dry-run", help="Show what would be changed without modifying files")
     ] = False,
 ) -> None:
     """Scan and fix invalid tool format patterns in Claude Code frontmatter.
@@ -327,18 +302,12 @@ def main(
         scan_home: Include ~/repos/** paths in scan
         dry_run: Show changes without modifying files
     """
-    console.print(
-        ":magnifying_glass_tilted_right: Scanning for markdown files with invalid tool formats...\n"
-    )
+    console.print(":magnifying_glass_tilted_right: Scanning for markdown files with invalid tool formats...\n")
 
     scanner = FileScanner()
     processor = FrontmatterProcessor()
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
         scan_task = progress.add_task("Finding files...", total=None)
         files = scanner.find_files(scan_home=scan_home)
         progress.update(scan_task, completed=True)
@@ -349,9 +318,7 @@ def main(
         console.print(":warning: No files found to process")
         return
 
-    fixed_files, skipped_files, error_files = process_files_batch(
-        files, processor, dry_run
-    )
+    fixed_files, skipped_files, error_files = process_files_batch(files, processor, dry_run)
     display_summary(fixed_files, skipped_files, error_files, len(files), dry_run)
 
 

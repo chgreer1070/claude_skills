@@ -41,22 +41,11 @@ REQUIRED_SECTIONS = [
 ]
 
 # Alternative accepted spellings for section headings
-SECTION_ALIASES: dict[str, list[str]] = {
-    "Installation & Usage": ["Installation and Usage"]
-}
+SECTION_ALIASES: dict[str, list[str]] = {"Installation & Usage": ["Installation and Usage"]}
 
-REQUIRED_HEADER_FIELDS = [
-    "Research Date",
-    "Source URL",
-    "Version at Research",
-    "License",
-]
+REQUIRED_HEADER_FIELDS = ["Research Date", "Source URL", "Version at Research", "License"]
 
-FRESHNESS_REQUIRED_FIELDS = [
-    "Last Verified",
-    "Version at Verification",
-    "Next Review Recommended",
-]
+FRESHNESS_REQUIRED_FIELDS = ["Last Verified", "Version at Verification", "Next Review Recommended"]
 
 # Alternative field names accepted in Freshness Tracking
 FRESHNESS_ALIASES: dict[str, list[str]] = {
@@ -65,9 +54,7 @@ FRESHNESS_ALIASES: dict[str, list[str]] = {
 }
 
 URL_PATTERN = re.compile(r"https?://[^\s>)\]]+")
-ACCESS_DATE_PATTERN = re.compile(
-    r"(?:accessed\s+\d{4}-\d{2}-\d{2}|\(\d{4}-\d{2}-\d{2}\))"
-)
+ACCESS_DATE_PATTERN = re.compile(r"(?:accessed\s+\d{4}-\d{2}-\d{2}|\(\d{4}-\d{2}-\d{2}\))")
 DATE_PATTERN = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
 
 
@@ -83,11 +70,7 @@ def _parse_sections(lines: list[str]) -> dict[str, tuple[int, int]]:
             heading_positions.append((heading, i + 1))
 
     for idx, (heading, start) in enumerate(heading_positions):
-        end = (
-            heading_positions[idx + 1][1] - 1
-            if idx + 1 < len(heading_positions)
-            else len(lines)
-        )
+        end = heading_positions[idx + 1][1] - 1 if idx + 1 < len(heading_positions) else len(lines)
         sections[heading] = (start, end)
 
     return sections
@@ -155,9 +138,7 @@ def _check_header_fields(header_lines: list[str]) -> list[Issue]:
     return issues
 
 
-def _check_empty_sections(
-    lines: list[str], sections: dict[str, tuple[int, int]]
-) -> list[Issue]:
+def _check_empty_sections(lines: list[str], sections: dict[str, tuple[int, int]]) -> list[Issue]:
     """Check for sections that exist but have no content."""
     issues: list[Issue] = []
     for heading, (start, end) in sections.items():
@@ -172,9 +153,7 @@ def _check_empty_sections(
     return issues
 
 
-def _check_access_dates(
-    lines: list[str], sections: dict[str, tuple[int, int]]
-) -> list[Issue]:
+def _check_access_dates(lines: list[str], sections: dict[str, tuple[int, int]]) -> list[Issue]:
     """Check that URLs in References section have access dates."""
     issues: list[Issue] = []
 
@@ -198,9 +177,7 @@ def _check_access_dates(
     return issues
 
 
-def _check_freshness_tracking(
-    lines: list[str], sections: dict[str, tuple[int, int]]
-) -> list[Issue]:
+def _check_freshness_tracking(lines: list[str], sections: dict[str, tuple[int, int]]) -> list[Issue]:
     """Check that Freshness Tracking section has required fields."""
     issues: list[Issue] = []
 
@@ -226,9 +203,7 @@ def _check_freshness_tracking(
     return issues
 
 
-def _check_statistics_currency(
-    lines: list[str], sections: dict[str, tuple[int, int]], today: date
-) -> list[Issue]:
+def _check_statistics_currency(lines: list[str], sections: dict[str, tuple[int, int]], today: date) -> list[Issue]:
     """Check for stale dates in Key Statistics section."""
     issues: list[Issue] = []
     cutoff = today - timedelta(days=180)
@@ -314,9 +289,7 @@ _VERBOSE_OPT = typer.Option(False, "--verbose", help="Show per-file detail")
 
 
 @app.command()
-def main(
-    path: Path = _PATH_ARG, output_json: bool = _JSON_OPT, verbose: bool = _VERBOSE_OPT
-) -> None:
+def main(path: Path = _PATH_ARG, output_json: bool = _JSON_OPT, verbose: bool = _VERBOSE_OPT) -> None:
     """Validate research entries against quality standards."""
     research_root = path if path.is_dir() else path.parent
     today = datetime.now(tz=UTC).date()
@@ -325,18 +298,7 @@ def main(
     if not files:
         if output_json:
             print(
-                json.dumps(
-                    {
-                        "summary": {
-                            "total": 0,
-                            "passed": 0,
-                            "errors": 0,
-                            "warnings": 0,
-                        },
-                        "entries": [],
-                    },
-                    indent=2,
-                )
+                json.dumps({"summary": {"total": 0, "passed": 0, "errors": 0, "warnings": 0}, "entries": []}, indent=2)
             )
         else:
             print("No research files found.")
@@ -346,21 +308,12 @@ def main(
 
     total = len(entries)
     passed = sum(1 for e in entries if e["status"] == "pass")
-    total_errors = sum(
-        1 for e in entries for i in e["issues"] if i["severity"] == "error"
-    )
-    total_warnings = sum(
-        1 for e in entries for i in e["issues"] if i["severity"] == "warning"
-    )
+    total_errors = sum(1 for e in entries for i in e["issues"] if i["severity"] == "error")
+    total_warnings = sum(1 for e in entries for i in e["issues"] if i["severity"] == "warning")
 
     if output_json:
         result = {
-            "summary": {
-                "total": total,
-                "passed": passed,
-                "errors": total_errors,
-                "warnings": total_warnings,
-            },
+            "summary": {"total": total, "passed": passed, "errors": total_errors, "warnings": total_warnings},
             "entries": entries,
         }
         print(json.dumps(result, indent=2))
@@ -369,9 +322,7 @@ def main(
         print(f"Research Validation: {total} entries scanned")
         print(f"  \u2713 {passed} passed")
         if failed > 0:
-            print(
-                f"  \u2717 {failed} failed ({total_errors} errors, {total_warnings} warnings)"
-            )
+            print(f"  \u2717 {failed} failed ({total_errors} errors, {total_warnings} warnings)")
         else:
             print(f"  {total_warnings} warnings")
 
