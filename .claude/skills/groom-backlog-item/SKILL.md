@@ -87,7 +87,7 @@ REFUTED claims from Step 4 MUST be listed as MISSING conditions. A REFUTED claim
 
 Pass the RT-ICA summary and fact-check summary to the groomer alongside item details.
 
-**ARL human-probing integration:** When RT-ICA returns BLOCKED or MISSING conditions, the context manifest can include `invisible_knowledge_prompts` — questions to ask the human before planning (e.g., "What went wrong in the past?", "What references are essential?"). See [.claude/docs/sdlc-layers/arl-human-probing-design.md](../docs/sdlc-layers/arl-human-probing-design.md).
+**ARL human-probing integration:** When RT-ICA returns BLOCKED or MISSING conditions, the context manifest can include `invisible_knowledge_prompts` — questions to ask the human before planning (e.g., "What went wrong in the past?", "What references are essential?"). See [.claude/docs/sdlc-layers/arl-human-probing-design.md](../../docs/sdlc-layers/arl-human-probing-design.md).
 
 ### Step 6: Spawn Groomer Agents
 

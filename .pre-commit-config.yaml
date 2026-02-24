@@ -134,7 +134,7 @@ repos:
         entry: uv run -q --frozen --with ty ty check .
         language: system
         types: [python]
-        pass_filenames: true
+        pass_filenames: false  # Must run full check so [tool.ty.src] exclude applies to symlinks
 
       - id: enable-rerere
         name: Enable git rerere (auto-replay conflict resolutions)

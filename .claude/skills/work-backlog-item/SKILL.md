@@ -6,7 +6,7 @@ user-invocable: true
 ---
 # Work Backlog Item
 
-Bridge a backlog item into the SAM planning pipeline via `/python3-development:add-new-feature` (default). Optional `--language` and `--stack` select Layer 1/2 profiles — see [.claude/docs/sdlc-layers/](../docs/sdlc-layers/).
+Bridge a backlog item into the SAM planning pipeline via `/python3-development:add-new-feature` (default). Optional `--language` and `--stack` select Layer 1/2 profiles — see [.claude/docs/sdlc-layers/](../../docs/sdlc-layers/).
 
 **SAM** — Stateless Agent Methodology. See [sam-definition.md](./references/sam-definition.md) for what SAM is and how to embody it. SAM lives in `../stateless-agent-methodology/` (or `bitflight-devops/stateless-agent-methodology` on GitHub).
 Primary source of truth is **GitHub Issues** (labels + milestone = canonical status); `.claude/BACKLOG.md` is the local scratchpad and is kept in sync.
@@ -27,7 +27,7 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 | `setup-github` | — | Initialize labels, project, first milestone |
 | (any other) | — | `$ARGUMENTS` treated as title substring → planning |
 
-**Optional flags** (when `$0` is title substring or `--auto`): `--language <lang>` selects language plugin (default: python); `--stack <profile>` selects stack profile (e.g., python-fastapi, python-cli). See [.claude/docs/sdlc-layers/](../docs/sdlc-layers/).
+**Optional flags** (when `$0` is title substring or `--auto`): `--language <lang>` selects language plugin (default: python); `--stack <profile>` selects stack profile (e.g., python-fastapi, python-cli). See [.claude/docs/sdlc-layers/](../../docs/sdlc-layers/).
 
 ```text
 /work-backlog-item                                    # interactive browser
@@ -230,7 +230,7 @@ Before composing the feature request, verify the groomed content (from item file
 
 **If BLOCKED:**
 
-When RT-ICA blocks, optionally offer ARL human-probing questions (e.g., "What went wrong in the past?", "What references are essential?") to capture invisible knowledge. Add answers to `.claude/domain-knowledge/` with staleness tracking. See [.claude/docs/sdlc-layers/arl-human-probing-design.md](../docs/sdlc-layers/arl-human-probing-design.md).
+When RT-ICA blocks, optionally offer ARL human-probing questions (e.g., "What went wrong in the past?", "What references are essential?") to capture invisible knowledge. Add answers to `.claude/domain-knowledge/` with staleness tracking. See [.claude/docs/sdlc-layers/arl-human-probing-design.md](../../docs/sdlc-layers/arl-human-probing-design.md).
 
 Present a structured summary to the user:
 
