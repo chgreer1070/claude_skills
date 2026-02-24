@@ -34,6 +34,18 @@ Identify which principles are violated or underutilized. Use file-type-specific 
 <file_type_strategies>
 **CLAUDE.md:** Front-load identity and constraints; use Mermaid flowcharts for decision logic; compress verbose sections using TRIGGER->PROCEDURE->OUTPUT format; minimize content and run the plugin validator after writing to check token complexity; check for behavioral instructions that could be hooks.
 
+Additionally, run the **Rules Extraction Phase** for CLAUDE.md targets:
+
+1. Read `.claude/skills/optimize-claude-md/references/claude-rules-extraction.md` for the full extraction spec before proceeding.
+2. Scan every section for extraction candidates using both detection signals (content language AND heading signals) defined in the reference.
+3. Apply the disqualifying check — skip sections whose content is universally applicable despite a scoped heading.
+4. For each confirmed candidate: derive `paths` glob and filename per the reference conventions.
+5. Write the `.claude/rules/<filename>.md` file with correct `paths` frontmatter and full extracted content.
+6. Replace the extracted section in CLAUDE.md with the compact stub format from the reference.
+7. Steps 5 and 6 are ATOMIC — write both files before reporting.
+8. Show a unified diff of all changed files after extraction.
+9. CoVe post-check MUST include the 5 extraction-specific verification questions from the reference.
+
 **SKILL.md:** Evaluate against 8 completeness categories using audit-skill-completeness; verify progressive disclosure structure; check description <1024 chars with trigger keywords; verify no YAML multiline indicators; validate token count <4000 (warn) or <6400 (critical).
 
 **Agent definition:** Verify required frontmatter (name, description); check description contains trigger keywords; verify skills field references exist; ensure model selection appropriate for task complexity; check for behavioral instructions that could be structural.

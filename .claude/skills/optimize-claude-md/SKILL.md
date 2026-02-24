@@ -81,7 +81,7 @@ CONSTRAINTS:
 - For SKILL.md: evaluate against 8 completeness categories, keep description <1024 chars, no YAML multiline indicators
 - For agent files: preserve required frontmatter fields (name, description)
 - For CLAUDE.md: front-load critical instructions, use decision flow diagrams for complex logic
-- For CLAUDE.md: read `./references/claude-rules-extraction.md` before analyzing; perform rules extraction phase after optimization analysis, before CoVe
+- For CLAUDE.md: read `.claude/skills/optimize-claude-md/references/claude-rules-extraction.md` before analyzing; perform rules extraction phase after optimization analysis, before CoVe
 - Signal DONE when optimization complete, BLOCKED when missing required inputs
 
 OUTPUT STRUCTURE:
