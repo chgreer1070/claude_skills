@@ -3,11 +3,6 @@ name = "claude_skills"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "bandit[toml]>=1.8.6",
-    "gitpython>=3.1.45",
-    "pyright>=1.1.404",
-    "ruff>=0.12.10",
-    "typer>=0.21.1",
 ]
 
 [dependency-groups]
@@ -19,6 +14,7 @@ dev = [
     "duckdb>=1.4.4",
     "fastmcp==3.0.0rc2",
     "generate-changelog>=0.16.0",
+    "gitpython>=3.1.45",
     "hatch-vcs>=0.5.0",
     "httpx>=0.28.1",
     "hypothesis>=6.0.0",
@@ -32,6 +28,7 @@ dev = [
     "pydantic>=2.12.3",
     "pygithub>=2.1.1",
     "pypfmt>=0.1.0",
+    "pyright>=1.1.404",
     "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.2.1",
     "pytest-mock>=3.12",
@@ -41,6 +38,7 @@ dev = [
     "python-frontmatter>=1.1.0",
     "python-semantic-release>=10.4.1",
     "ruamel.yaml>=0.18.0",
+    "ruff>=0.12.10",
     "scikit-learn>=1.0",
     "tiktoken>=0.12.0",
     "toml-sort>=0.24.3",
@@ -119,13 +117,19 @@ extra-paths = [
     "./plugins/python3-development/skills/uv/scripts",
     "./plugins/summarizer/scripts",
 ]
-root = ["./plugins"]
+root = ["./"]
 
 [[tool.ty.overrides]]
 include = ["plugins/agentskill-kaizen/**"]
 
 [tool.ty.overrides.rules]
 call-non-callable = "warn" # prefixspan has incomplete type stubs
+
+[[tool.ty.overrides]]
+include = ["plugins/plugin-creator/scripts/frontmatter_utils.py"]
+
+[tool.ty.overrides.rules]
+invalid-method-override = "ignore" # YAMLHandler base uses dict[str, object]/Any; we use FrontmatterValue
 
 [[tool.ty.overrides]]
 include = ["**/test_*.py", "**/conftest.py", "**/tests/**", "tests/**"]
@@ -160,7 +164,7 @@ extend-exclude = [
 ]
 fix = true
 line-length = 120
-src = [".github", ".gitlab", "plugins", "scripts", "tests", "typings"]
+src = ["**/scripts", ".github", ".gitlab", "plugins", "tests", "typings"]
 target-version = "py311"
 unsafe-fixes = true
 
@@ -219,6 +223,7 @@ extend-select = [
 ignore = [
     "DOC501",  # Raised exception {id} missing from docstring
     "DOC502",  # Raised exception is not explicitly raised
+    "E402",    # Module level import not at top of file
     "E501",    # Line too long ({width} > {limit})
     "EXE003",  # Shebang should contain python, pytest, or uv run (doesn't handle global arguments)
     "PLR0913",
@@ -251,16 +256,6 @@ max-complexity = 12
 "**/assets/nested-typer-exceptions/*.py" = ["ANN", "DOC"]
 # Lazy imports for optional dependency detection (hatchling may not be installed)
 "**/assets/version.py" = ["PLC0415"]
-"**/scripts/**" = [
-    "ANN401",  # Any type annotations acceptable in script arguments
-    "DOC",     # Docstring content requirements relaxed for scripts
-    "E402",    # PEP 723 scripts require sys.path manipulation before importing co-located library modules
-    "PLC0415", # Local imports acceptable in scripts for lazy loading
-    "PLR0911", # Too many return statements acceptable in script logic
-    "S",       # Security checks relaxed for CLI scripts (subprocess, partial paths)
-    "T201",    # print() statements are intentional for CI output visibility
-    "TC",      # Type-checking imports kept at runtime for Typer annotation resolution
-]
 "**/tests/**" = [
     "ANN",  # Type annotations optional for test fixtures/methods
     "D",    # Docstring requirements relaxed for tests
@@ -290,35 +285,10 @@ convention = "google"
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "requests".msg = "Use httpx instead. httpx has built-in type annotations and is the project standard."
 
+[tool.mypy]
+# Project uses ty (basedpyright) for type checking. Exclude all to avoid mypy extension errors.
+exclude = [".*"]
+
 [tool.basedpyright]
-# Order matters: paths with real task_format.py must precede symlinked copies (e.g. development-harness)
-extraPaths = [
-    "plugins/python3-development/skills/implementation-manager/scripts",
-    "plugins/python3-development/scripts",
-    ".claude/skills/create-merge-request-changelog/scripts",
-    ".claude/skills/gh/scripts",
-    ".claude/skills/research-curator/scripts",
-    "plugins/fastmcp-creator/skills/fastmcp-creator/scripts",
-    "plugins/gitlab-skill/skills/gitlab-skill/scripts",
-    "plugins/holistic-linting/skills/holistic-linting/scripts",
-    "plugins/plugin-creator/scripts",
-    "plugins/plugin-creator/skills/skill-creator/scripts",
-    "plugins/python3-development/skills/mkdocs/scripts",
-    "plugins/python3-development/skills/uv/scripts",
-    "plugins/summarizer/scripts",
-]
-ignore = [
-    "**/typings",
-    "**/tests",
-    "plugins/agentskill-kaizen",
-    "plugins/uv/skills/uv",
-    "plugins/development-harness/skills/implementation-manager",
-]
-include = ["**/plugins", "**/scripts"]
-pythonVersion = "3.11"
-reportImplicitRelativeImport = false
-reportMissingImports = false
-reportMissingTypeStubs = false
-reportPrivateImportUsage = false
-reportUnnecessaryTypeIgnoreComment = "error"
-typeCheckingMode = "basic"
+# Disabled: project uses ty for type checking. Config kept so IDE uses project settings, not defaults.
+typeCheckingMode = "off"

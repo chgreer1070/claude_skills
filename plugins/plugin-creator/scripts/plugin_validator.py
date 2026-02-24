@@ -7,6 +7,7 @@
 #     "ruamel.yaml>=0.18.0",
 #     "python-frontmatter>=1.1.0",
 #     "pydantic>=2.0.0",
+#     "gitpython>=3.1.45",
 # ]
 # ///
 """Plugin validator for Claude Code plugins.
@@ -44,14 +45,21 @@ from dataclasses import dataclass
 from enum import StrEnum
 from io import StringIO
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, NoReturn, Protocol, cast
+from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, NoReturn, Protocol, TypeAlias, cast
+
+# YAML/JSON at the edge: dict, list, or JSON-serializable scalars. More specific than Any.
+YamlValue: TypeAlias = dict[str, "YamlValue"] | list["YamlValue"] | str | int | float | bool | None
 
 import typer
+from git import Repo
+from git.exc import InvalidGitRepositoryError, NoSuchPathError
+from git.index.fun import entry_key
 from pydantic import ValidationError
+from rich.console import Console, ConsoleRenderable, RichCast
+from rich.measure import Measurement
+from rich.panel import Panel
 from ruamel.yaml import YAML, YAMLError
-
-if TYPE_CHECKING:
-    from rich.console import Console, ConsoleRenderable, RichCast
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
 # Enable import of sibling library modules (frontmatter_core, frontmatter_utils).
 # PEP 723 scripts run in an isolated venv; sys.path insertion exposes co-located
@@ -59,6 +67,8 @@ if TYPE_CHECKING:
 _SCRIPTS_DIR = str(Path(__file__).parent)
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
+
+import tiktoken
 
 from frontmatter_core import (
     MAX_SKILL_NAME_LENGTH,
@@ -72,16 +82,19 @@ from frontmatter_core import (
 )
 from frontmatter_utils import RuamelYAMLHandler
 
+if TYPE_CHECKING:
+    from pydantic_core import ErrorDetails
+
 # Module-level ruamel.yaml safe-mode instance (replaces yaml.safe_load)
 _yaml_safe = YAML(typ="safe")
 
 # Round-trip YAML instance (via shared handler) for dumping with format preservation
 _rt_handler = RuamelYAMLHandler()
-_rt_yaml = _rt_handler._yaml  # noqa: SLF001
+_rt_yaml = _rt_handler.yaml
 _rt_yaml.width = 10000  # prevent line wrapping
 
 
-def _safe_load_yaml(text: str) -> Any:
+def _safe_load_yaml(text: str) -> YamlValue:
     """Parse a YAML string using ruamel.yaml safe loader.
 
     Args:
@@ -98,7 +111,7 @@ def _safe_load_yaml(text: str) -> Any:
     return _yaml_safe.load(text)
 
 
-def _dump_yaml(data: dict[str, Any]) -> str:
+def _dump_yaml(data: dict[str, YamlValue]) -> str:
     """Serialize a dict to YAML using the round-trip handler.
 
     Preserves key insertion order. Values containing ': ' are wrapped in
@@ -110,9 +123,7 @@ def _dump_yaml(data: dict[str, Any]) -> str:
     Returns:
         YAML string (may include trailing newline).
     """
-    from ruamel.yaml.scalarstring import DoubleQuotedScalarString
-
-    prepared: dict[str, Any] = {}
+    prepared: dict[str, YamlValue] = {}
     for key, value in data.items():
         if isinstance(value, str) and ": " in value:
             prepared[key] = DoubleQuotedScalarString(value)
@@ -172,6 +183,10 @@ ERROR_CODE_BASE_URL = (
     "https://github.com/jamie-bitflight/claude_skills/blob/main/plugins/plugin-creator/docs/ERROR_CODES.md"
 )
 
+# Official plugin.json schema (plugin manifest)
+PLUGIN_MANIFEST_SCHEMA_URL = "https://code.claude.com/docs/en/plugins-reference.md#plugin-manifest-schema"
+SKILL_FRONTMATTER_SCHEMA_URL = "https://code.claude.com/docs/en/skills.md#frontmatter-reference"
+
 # Token-based complexity thresholds (body content, frontmatter excluded)
 TOKEN_WARNING_THRESHOLD = 4400
 TOKEN_ERROR_THRESHOLD = 8800
@@ -202,6 +217,18 @@ MIN_DESCRIPTION_LENGTH = 20
 NAME_PATTERN = r"^[a-z0-9]+(-[a-z0-9]+)*$"
 
 
+def _normalize_skill_name(name: str) -> str:
+    """Normalize name to schema format: lowercase, hyphens only, no leading/trailing/consecutive hyphens.
+
+    Returns:
+        Normalized name string.
+    """
+    s = name.lower().replace("_", "-")
+    while "--" in s:
+        s = s.replace("--", "-")
+    return s.strip("-")
+
+
 # Trigger phrase requirements (Architecture line 357)
 REQUIRED_TRIGGER_PHRASES = [
     "use when",
@@ -221,68 +248,118 @@ REQUIRED_TRIGGER_PHRASES = [
 # ERROR CODE CONSTANTS (Architecture lines 836-887)
 # ============================================================================
 
-# Frontmatter Errors (FM001-FM010)
-FM001 = "FM001"  # Missing required field (name, description)
-FM002 = "FM002"  # Invalid YAML syntax
-FM003 = "FM003"  # Frontmatter not closed with `---`
-FM004 = "FM004"  # Forbidden multiline indicator (`>-`, `|-`)
-FM005 = "FM005"  # Field type mismatch (expected string/bool)
-FM006 = "FM006"  # Invalid field value (model not in enum)
-FM007 = "FM007"  # Tools field is YAML array (not CSV string)
-FM008 = "FM008"  # Skills field is YAML array (not CSV string)
-FM009 = "FM009"  # Unquoted description with colons
-FM010 = "FM010"  # Name pattern invalid (not lowercase-hyphens)
 
-# Skill Errors (SK001-SK007)
-SK001 = "SK001"  # Name contains uppercase characters
-SK002 = "SK002"  # Name contains underscores (use hyphens)
-SK003 = "SK003"  # Name has leading/trailing/consecutive hyphens
-SK004 = "SK004"  # Description too short (minimum 20 characters)
-SK005 = "SK005"  # Description missing trigger phrases
-SK006 = "SK006"  # Token count exceeds TOKEN_WARNING_THRESHOLD (larger than Anthropic's official skills)
-SK007 = "SK007"  # Token count exceeds TOKEN_ERROR_THRESHOLD (must split)
+class ErrorCode(StrEnum):
+    """Validation error codes. Use as type hint for code parameters."""
 
-# Link Errors (LK001-LK002)
-LK001 = "LK001"  # Broken internal link (file does not exist)
-LK002 = "LK002"  # Link missing `./` prefix (not relative path)
+    # Frontmatter (FM001-FM010)
+    FM001 = "FM001"  # Missing required field (name, description)
+    FM002 = "FM002"  # Invalid YAML syntax
+    FM003 = "FM003"  # Frontmatter not closed with `---`
+    FM004 = "FM004"  # Forbidden multiline indicator (`>-`, `|-`)
+    FM005 = "FM005"  # Field type mismatch (expected string/bool)
+    FM006 = "FM006"  # Invalid field value (model not in enum)
+    FM007 = "FM007"  # Tools field is YAML array (not CSV string)
+    FM008 = "FM008"  # Skills field is YAML array (not CSV string)
+    FM009 = "FM009"  # Unquoted description with colons
+    FM010 = "FM010"  # Name pattern invalid (not lowercase-hyphens)
 
-# Progressive Disclosure Errors (PD001-PD003)
-PD001 = "PD001"  # No `references/` directory found
-PD002 = "PD002"  # No `examples/` directory found
-PD003 = "PD003"  # No `scripts/` directory found
+    # Skill (SK001-SK008)
+    SK001 = "SK001"  # Name contains uppercase characters
+    SK002 = "SK002"  # Name contains underscores (use hyphens)
+    SK003 = "SK003"  # Name has leading/trailing/consecutive hyphens
+    SK004 = "SK004"  # Description too short (minimum 20 characters)
+    SK005 = "SK005"  # Description missing trigger phrases
+    SK006 = "SK006"  # Token count exceeds TOKEN_WARNING_THRESHOLD
+    SK007 = "SK007"  # Token count exceeds TOKEN_ERROR_THRESHOLD (must split)
+    SK008 = "SK008"  # Skill directory name violates naming convention
 
-# Plugin Errors (PL001-PL005)
-PL001 = "PL001"  # Missing `plugin.json` file
-PL002 = "PL002"  # Invalid JSON syntax in `plugin.json`
-PL003 = "PL003"  # Missing required field `name` in plugin.json
-PL004 = "PL004"  # Component path does not start with `./`
-PL005 = "PL005"  # Referenced component file does not exist
+    # Link (LK001-LK002)
+    LK001 = "LK001"  # Broken internal link (file does not exist)
+    LK002 = "LK002"  # Link missing `./` prefix (not relative path)
 
-# Command Errors (CM001)
-CM001 = "CM001"  # Command-specific validation (reserved)
+    # Progressive Disclosure (PD001-PD003)
+    PD001 = "PD001"  # No `references/` directory found
+    PD002 = "PD002"  # No `examples/` directory found
+    PD003 = "PD003"  # No `scripts/` directory found
 
-# Hook Errors (HK001-HK005)
-HK001 = "HK001"  # Invalid hooks.json structure
-HK002 = "HK002"  # Invalid event type in hooks.json
-HK003 = "HK003"  # Invalid hook entry structure
-HK004 = "HK004"  # Hook script referenced but not found
-HK005 = "HK005"  # Hook script exists but is not executable
+    # Plugin (PL001-PL005)
+    PL001 = "PL001"  # Missing `plugin.json` file
+    PL002 = "PL002"  # Invalid JSON syntax in `plugin.json`
+    PL003 = "PL003"  # Missing required field `name` in plugin.json
+    PL004 = "PL004"  # Component path does not start with `./`
+    PL005 = "PL005"  # Referenced component file does not exist
 
-# Namespace Reference Errors (NR001-NR002)
-NR001 = "NR001"  # Namespace reference target does not exist
-NR002 = "NR002"  # Namespace reference points outside plugin directory
+    # Command (CM001)
+    CM001 = "CM001"  # Command-specific validation (reserved)
 
-# Plugin Registration Errors (PR001-PR004)
-PR001 = "PR001"  # Capability exists but not explicitly registered in plugin.json
-PR002 = "PR002"  # Registered capability path does not exist
-PR003 = "PR003"  # Plugin metadata fields (repository, homepage, author) not populated
-PR004 = "PR004"  # Plugin metadata repository URL mismatches git remote URL
+    # Hook (HK001-HK005)
+    HK001 = "HK001"  # Invalid hooks.json structure
+    HK002 = "HK002"  # Invalid event type in hooks.json
+    HK003 = "HK003"  # Invalid hook entry structure
+    HK004 = "HK004"  # Hook script referenced but not found
+    HK005 = "HK005"  # Hook script exists but is not executable
 
-# Skill Directory Errors (SK008)
-SK008 = "SK008"  # Skill directory name violates naming convention
+    # Namespace Reference (NR001-NR002)
+    NR001 = "NR001"  # Namespace reference target does not exist
+    NR002 = "NR002"  # Namespace reference points outside plugin directory
+
+    # Token Count (TC001)
+    TC001 = "TC001"  # Token count info (total, frontmatter, body)
+
+    # Plugin Registration (PR001-PR004)
+    PR001 = "PR001"  # Capability exists but not explicitly registered in plugin.json
+    PR002 = "PR002"  # Registered capability path does not exist
+    PR003 = "PR003"  # Plugin metadata fields (repository, homepage, author) not populated
+    PR004 = "PR004"  # Plugin metadata repository URL mismatches git remote URL
+
+
+# Aliases for backward compatibility and concise usage
+FM001, FM002, FM003, FM004, FM005, FM006, FM007, FM008, FM009, FM010 = (
+    ErrorCode.FM001,
+    ErrorCode.FM002,
+    ErrorCode.FM003,
+    ErrorCode.FM004,
+    ErrorCode.FM005,
+    ErrorCode.FM006,
+    ErrorCode.FM007,
+    ErrorCode.FM008,
+    ErrorCode.FM009,
+    ErrorCode.FM010,
+)
+SK001, SK002, SK003, SK004, SK005, SK006, SK007, SK008 = (
+    ErrorCode.SK001,
+    ErrorCode.SK002,
+    ErrorCode.SK003,
+    ErrorCode.SK004,
+    ErrorCode.SK005,
+    ErrorCode.SK006,
+    ErrorCode.SK007,
+    ErrorCode.SK008,
+)
+LK001, LK002 = ErrorCode.LK001, ErrorCode.LK002
+PD001, PD002, PD003 = ErrorCode.PD001, ErrorCode.PD002, ErrorCode.PD003
+PL001, PL002, PL003, PL004, PL005 = (
+    ErrorCode.PL001,
+    ErrorCode.PL002,
+    ErrorCode.PL003,
+    ErrorCode.PL004,
+    ErrorCode.PL005,
+)
+CM001 = ErrorCode.CM001
+HK001, HK002, HK003, HK004, HK005 = (
+    ErrorCode.HK001,
+    ErrorCode.HK002,
+    ErrorCode.HK003,
+    ErrorCode.HK004,
+    ErrorCode.HK005,
+)
+NR001, NR002 = ErrorCode.NR001, ErrorCode.NR002
+PR001, PR002, PR003, PR004 = (ErrorCode.PR001, ErrorCode.PR002, ErrorCode.PR003, ErrorCode.PR004)
 
 # Claude CLI timeout
 CLAUDE_TIMEOUT = 3  # seconds
+GIT_MODE_EXECUTABLE = 0o100755  # Git mode for executable files (100755)
 
 # Filenames exempt from frontmatter requirement (case-sensitive)
 FRONTMATTER_EXEMPT_FILENAMES: frozenset[str] = frozenset({
@@ -342,25 +419,26 @@ class FileType(StrEnum):
             FileType enum value based on path structure
         """
         if path.name == "SKILL.md":
-            return FileType.SKILL
-        if path.name == "plugin.json" or (path / ".claude-plugin/plugin.json").exists():
-            return FileType.PLUGIN
-        if "agents" in path.parts:
-            return FileType.AGENT
-        if "commands" in path.parts:
-            return FileType.COMMAND
-        if path.name == "hooks.json":
-            return FileType.HOOK_CONFIG
-        # JavaScript/CJS hook scripts inside a hooks/ directory
-        if "hooks" in path.parts and path.suffix in {".js", ".cjs"}:
-            return FileType.HOOK_SCRIPT
-        if path.name == "CLAUDE.md":
-            return FileType.CLAUDE_MD
-        if "references" in path.parts and path.suffix == ".md":
-            return FileType.REFERENCE
-        if path.suffix == ".md":
-            return FileType.MARKDOWN
-        return FileType.UNKNOWN
+            result = FileType.SKILL
+        elif path.name == "plugin.json" or (path / ".claude-plugin/plugin.json").exists():
+            result = FileType.PLUGIN
+        elif "agents" in path.parts:
+            result = FileType.AGENT
+        elif "commands" in path.parts:
+            result = FileType.COMMAND
+        elif path.name == "hooks.json":
+            result = FileType.HOOK_CONFIG
+        elif "hooks" in path.parts and path.suffix in {".js", ".cjs"}:
+            result = FileType.HOOK_SCRIPT
+        elif path.name == "CLAUDE.md":
+            result = FileType.CLAUDE_MD
+        elif "references" in path.parts and path.suffix == ".md":
+            result = FileType.REFERENCE
+        elif path.suffix == ".md":
+            result = FileType.MARKDOWN
+        else:
+            result = FileType.UNKNOWN
+        return result
 
 
 @dataclass(frozen=True)
@@ -370,7 +448,7 @@ class ValidationIssue:
     field: str
     severity: Literal["error", "warning", "info"]
     message: str
-    code: str
+    code: ErrorCode
     line: int | None = None
     suggestion: str | None = None
     docs_url: str | None = None
@@ -490,19 +568,163 @@ class Validator(Protocol):
 # ============================================================================
 
 
-def generate_docs_url(error_code: str) -> str:
+def generate_docs_url(error_code: ErrorCode) -> str:
     """Generate documentation URL for error code.
 
     Args:
-        error_code: Error code like "FM001", "SK006", etc.
+        error_code: Error code (ErrorCode enum or string like "FM001", "SK006").
 
     Returns:
         Full URL to error code documentation with anchor
     """
-    return f"{ERROR_CODE_BASE_URL}#{error_code.lower()}"
+    return f"{ERROR_CODE_BASE_URL}#{str(error_code).lower()}"
 
 
 # extract_frontmatter imported from frontmatter_core
+
+
+def _get_pydantic_ctx_val(error: ErrorDetails, key: str, default: str = "") -> str:
+    """Extract a string value from Pydantic error ctx dict.
+
+    Returns:
+        The ctx value as string, or default if not found.
+    """
+    ctx = error.get("ctx")
+    if isinstance(ctx, dict):
+        val = ctx.get(key)
+        return str(val) if val is not None else default
+    return default
+
+
+def _pydantic_error_to_validation_issue(error: ErrorDetails) -> ValidationIssue:
+    """Convert a single Pydantic ValidationError item to a ValidationIssue.
+
+    Args:
+        error: Pydantic ErrorDetails from ValidationError.errors().
+
+    Returns:
+        ValidationIssue with appropriate code and suggestion.
+    """
+    loc = error.get("loc", ())
+    field = ".".join(str(x) for x in (loc if isinstance(loc, (list, tuple)) else (loc,)))
+    msg = str(error.get("msg", ""))
+    code = FM005
+    suggestion: str | None = None
+
+    if "Field required" in msg:
+        code = FM001
+        msg = f"Missing required field: {field}"
+    elif "String should match pattern" in msg:
+        code = FM010
+        msg = "Must use lowercase letters, numbers, and hyphens only"
+        suggestion = "Use format: lowercase-with-hyphens"
+    elif "String should have at most" in msg:
+        max_len = _get_pydantic_ctx_val(error, "max_length", "unknown")
+        msg = f"Exceeds maximum length of {max_len} characters"
+        suggestion = f"Shorten to {max_len} characters or less"
+    elif "Input should be" in msg and "literal" in msg.lower():
+        code = FM006
+        valid_values = _get_pydantic_ctx_val(error, "expected")
+        msg = f"Invalid value. Must be one of: {valid_values}"
+    elif isinstance(error.get("input"), list):
+        if "tools" in field.lower():
+            code = FM007
+            msg = "Tools field is YAML array (should be comma-separated string)"
+        elif "skills" in field.lower():
+            code = FM008
+            msg = "Skills field is YAML array (should be comma-separated string)"
+        suggestion = "Use format: 'tool1, tool2, tool3'"
+    elif "colon" in msg.lower():
+        code = FM009
+        suggestion = "Quote the description or remove colons"
+
+    return ValidationIssue(
+        field=field, severity="error", message=msg, code=code, docs_url=generate_docs_url(code), suggestion=suggestion
+    )
+
+
+def _check_list_valued_tool_fields(data: dict[str, YamlValue], errors: list[ValidationIssue]) -> None:
+    """Append errors for list-valued tools/skills fields that Pydantic may not catch.
+
+    Args:
+        data: Parsed frontmatter dict.
+        errors: Mutable list to append ValidationIssue objects to.
+    """
+    for field_name, field_val in data.items():
+        if not isinstance(field_val, list):
+            continue
+        if field_name in {"tools", "disallowedTools", "allowed-tools"}:
+            errors.append(
+                ValidationIssue(
+                    field=field_name,
+                    severity="error",
+                    message="Tools field is YAML array (should be comma-separated string)",
+                    code=FM007,
+                    docs_url=generate_docs_url(FM007),
+                    suggestion="Use format: 'tool1, tool2, tool3'",
+                )
+            )
+        elif field_name == "skills":
+            errors.append(
+                ValidationIssue(
+                    field=field_name,
+                    severity="error",
+                    message="Skills field is YAML array (should be comma-separated string)",
+                    code=FM008,
+                    docs_url=generate_docs_url(FM008),
+                    suggestion="Use format: 'skill1, skill2, skill3'",
+                )
+            )
+
+
+def _check_skill_name_and_directory(
+    data: dict[str, YamlValue],
+    path: Path,
+    file_type: FileType,
+    errors: list[ValidationIssue],
+    warnings: list[ValidationIssue],
+) -> None:
+    """Validate skill name field and directory name for SKILL.md files.
+
+    Args:
+        data: Parsed frontmatter dict.
+        path: Path to SKILL.md file.
+        file_type: Detected file type.
+        errors: Mutable list to append errors to.
+        warnings: Mutable list to append warnings to.
+    """
+    if file_type != FileType.SKILL or path.name != "SKILL.md":
+        return
+
+    skill_name_in_fm = data.get("name")
+    skill_dir_name = path.parent.name
+
+    if path.parent.parent.name == "skills":
+        dir_name_issues = _validate_skill_directory_name(skill_dir_name)
+        for issue_msg, issue_suggestion in dir_name_issues:
+            errors.append(
+                ValidationIssue(
+                    field="directory",
+                    severity="error",
+                    message=issue_msg,
+                    code=SK008,
+                    docs_url=generate_docs_url(SK008),
+                    suggestion=issue_suggestion,
+                )
+            )
+
+    if skill_name_in_fm and skill_name_in_fm != skill_dir_name:
+        warnings.append(
+            ValidationIssue(
+                field="name",
+                severity="warning",
+                message=(f"'name' field value '{skill_name_in_fm}' does not match directory name '{skill_dir_name}'"),
+                code=FM010,
+                docs_url=generate_docs_url(FM010),
+                suggestion=(f"Set name: {skill_dir_name} to match the directory name"),
+            )
+        )
+
 
 # ============================================================================
 # PROGRESSIVE DISCLOSURE VALIDATOR
@@ -594,7 +816,7 @@ class ProgressiveDisclosureValidator:
             "Creating directories requires human decisions about content organization."
         )
 
-    def _get_error_code(self, dir_name: str) -> str:
+    def _get_error_code(self, dir_name: str) -> ErrorCode:
         """Get error code for missing directory.
 
         Args:
@@ -1049,25 +1271,25 @@ class NamespaceReferenceValidator:
         Returns:
             Resolved directory path, or None if resolution fails
         """
+        result: Path | None = None
         if path.is_dir():
-            return path.resolve()
-        if path.is_symlink():
+            result = path.resolve()
+        elif path.is_symlink():
             resolved = path.resolve()
-            return resolved if resolved.is_dir() else None
-        if path.is_file():
-            # Git symlink on Windows: file contains target path as text
+            result = resolved if resolved.is_dir() else None
+        elif path.is_file():
             try:
                 content = path.read_text(encoding="utf-8").strip()
             except OSError:
-                return None
-            if not content or "\n" in content:
-                return None
-            try:
-                target = (path.parent / content).resolve()
-                return target if target.is_dir() else None
-            except (OSError, RuntimeError):
-                return None
-        return None
+                pass
+            else:
+                if content and "\n" not in content:
+                    try:
+                        target = (path.parent / content).resolve()
+                        result = target if target.is_dir() else None
+                    except (OSError, RuntimeError):
+                        pass
+        return result
 
     def _resolve_skill_reference(self, plugins_root: Path, plugin: str, name: str) -> bool:
         """Check if a skill reference resolves to an existing file.
@@ -1283,7 +1505,7 @@ class FrontmatterValidator:
         """
         self._pending_fm009_info: list[ValidationIssue] = []
 
-    def validate(self, path: Path) -> ValidationResult:  # noqa: PLR0914, PLR0912, PLR0915, C901
+    def validate(self, path: Path) -> ValidationResult:
         """Validate frontmatter in file.
 
         Args:
@@ -1402,130 +1624,18 @@ class FrontmatterValidator:
                 )
 
         except ValidationError as e:
-            # Convert Pydantic errors to ValidationIssue
-            for error in e.errors():
-                field = ".".join(str(x) for x in error["loc"])
-                msg = error["msg"]
-                code = FM005  # Default to type mismatch
-                suggestion = None  # Initialize before conditional assignment
+            errors.extend(_pydantic_error_to_validation_issue(err) for err in e.errors())
 
-                # Determine specific error code
-                if "Field required" in msg:
-                    code = FM001
-                    msg = f"Missing required field: {field}"
-                elif "String should match pattern" in msg:
-                    code = FM010
-                    msg = "Must use lowercase letters, numbers, and hyphens only"
-                    suggestion = "Use format: lowercase-with-hyphens"
-                elif "String should have at most" in msg:
-                    code = FM005
-                    max_len = error.get("ctx", {}).get("max_length", "unknown")
-                    msg = f"Exceeds maximum length of {max_len} characters"
-                    suggestion = f"Shorten to {max_len} characters or less"
-                elif "Input should be" in msg and "literal" in msg.lower():
-                    code = FM006
-                    valid_values = error.get("ctx", {}).get("expected", "")
-                    msg = f"Invalid value. Must be one of: {valid_values}"
-                    suggestion = None
-                elif isinstance(error.get("input"), list):
-                    # Tools or skills field is YAML array
-                    if "tools" in field.lower():
-                        code = FM007
-                        msg = "Tools field is YAML array (should be comma-separated string)"
-                    elif "skills" in field.lower():
-                        code = FM008
-                        msg = "Skills field is YAML array (should be comma-separated string)"
-                    suggestion = "Use format: 'tool1, tool2, tool3'"
-                elif "colon" in msg.lower():
-                    code = FM009
-                    suggestion = "Quote the description or remove colons"
-                else:
-                    code = FM005
-                    suggestion = None
-
-                errors.append(
-                    ValidationIssue(
-                        field=field,
-                        severity="error",
-                        message=msg,
-                        code=code,
-                        docs_url=generate_docs_url(code),
-                        suggestion=suggestion,
-                    )
-                )
-
-        # Check for list-valued tool/skill fields that were not caught by Pydantic
-        # (e.g. 'tools' is an extra field in SkillFrontmatter but may still be a list)
         if isinstance(data, dict):
-            for field_name, field_val in data.items():
-                if isinstance(field_val, list):
-                    if field_name in {"tools", "disallowedTools", "allowed-tools"}:
-                        errors.append(
-                            ValidationIssue(
-                                field=field_name,
-                                severity="error",
-                                message="Tools field is YAML array (should be comma-separated string)",
-                                code=FM007,
-                                docs_url=generate_docs_url(FM007),
-                                suggestion="Use format: 'tool1, tool2, tool3'",
-                            )
-                        )
-                    elif field_name == "skills":
-                        errors.append(
-                            ValidationIssue(
-                                field=field_name,
-                                severity="error",
-                                message="Skills field is YAML array (should be comma-separated string)",
-                                code=FM008,
-                                docs_url=generate_docs_url(FM008),
-                                suggestion="Use format: 'skill1, skill2, skill3'",
-                            )
-                        )
-
-        # Check that 'name' field matches directory name for SKILL.md files
-        if file_type == FileType.SKILL and path.name == "SKILL.md":
-            skill_name_in_fm = data.get("name") if isinstance(data, dict) else None
-            skill_dir_name = path.parent.name
-
-            # Validate directory name format only when inside a proper plugin structure
-            # (i.e., <plugin>/skills/<skill-name>/SKILL.md). Avoids false positives
-            # for SKILL.md files in ad-hoc or test directories.
-            if path.parent.parent.name == "skills":
-                dir_name_issues = _validate_skill_directory_name(skill_dir_name)
-                for issue_msg, issue_suggestion in dir_name_issues:
-                    errors.append(
-                        ValidationIssue(
-                            field="directory",
-                            severity="error",
-                            message=issue_msg,
-                            code=SK008,
-                            docs_url=generate_docs_url(SK008),
-                            suggestion=issue_suggestion,
-                        )
-                    )
-
-            if skill_name_in_fm and skill_name_in_fm != skill_dir_name:
-                warnings.append(
-                    ValidationIssue(
-                        field="name",
-                        severity="warning",
-                        message=(
-                            f"'name' field value '{skill_name_in_fm}' does not match directory name '{skill_dir_name}'"
-                        ),
-                        code=FM010,
-                        docs_url=generate_docs_url(FM010),
-                        suggestion=(f"Set name: {skill_dir_name} to match the directory name"),
-                    )
-                )
+            _check_list_valued_tool_fields(data, errors)
+            _check_skill_name_and_directory(data, path, file_type, errors, warnings)
 
         # Validate hook script file-path references declared in frontmatter ``hooks:`` field.
         # The ``hooks:`` field in SKILL.md / agent / command frontmatter uses the same
         # structure as the root ``"hooks"`` key in hooks.json.
         if isinstance(data, dict) and isinstance(data.get("hooks"), dict):
             hook_validator = HookValidator()
-            hook_validator._validate_hook_script_references_in_hooks_dict(  # noqa: SLF001
-                data["hooks"], path.parent, errors
-            )
+            hook_validator.validate_hook_script_references_in_hooks_dict(data["hooks"], path.parent, errors)
 
         passed = len(errors) == 0
         return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
@@ -1613,9 +1723,100 @@ class FrontmatterValidator:
                 )
             )
 
-    def _apply_fixes(  # noqa: PLR0912, PLR0914, C901
-        self, content: str, file_type: FileType, file_path: Path | None = None
-    ) -> tuple[str, list[str]]:
+    def _parse_frontmatter_with_colon_fix(
+        self, frontmatter_text: str
+    ) -> tuple[str, dict[str, YamlValue] | None, list[str]]:
+        """Parse frontmatter, applying unquoted-colon fix if YAML parse fails.
+
+        Returns:
+            Tuple of (frontmatter_text, parsed_data, colon_fix_descriptions).
+            parsed_data is None if parse failed even after colon fix.
+        """
+        colon_fixes: list[str] = []
+        try:
+            original_data = _safe_load_yaml(frontmatter_text)
+        except YAMLError:
+            fixed_fm, colon_fixes, colon_fields = _fix_unquoted_colons(frontmatter_text)
+            if colon_fixes:
+                self._queue_fm009_info(colon_fields)
+                try:
+                    original_data = _safe_load_yaml(fixed_fm)
+                except YAMLError:
+                    pass
+                else:
+                    return fixed_fm, cast("dict[str, YamlValue]", original_data), colon_fixes
+            return frontmatter_text, None, colon_fixes
+        else:
+            return frontmatter_text, cast("dict[str, YamlValue]", original_data), colon_fixes
+
+    def _normalize_tool_fields_and_detect_changes(
+        self,
+        normalized_dict: dict[str, YamlValue],
+        original_data: dict[str, YamlValue],
+        frontmatter_text: str,
+        colon_fixes: list[str],
+        file_type: FileType,
+        file_path: Path | None,
+    ) -> tuple[dict[str, YamlValue], list[str]]:
+        """Normalize tool/skills fields and detect other changes.
+
+        Returns:
+            Tuple of (dict to dump, combined list of fix descriptions).
+            The dict may be a new instance when fix_skill_name_field adds a name.
+        """
+        fixes = list(colon_fixes)
+        if file_type == FileType.SKILL and file_path is not None:
+            normalized_dict = fix_skill_name_field(normalized_dict, file_path, fixes)
+        tool_fields = {"tools", "disallowedTools", "allowed-tools", "skills"}
+        for field_name in tool_fields:
+            val = normalized_dict.get(field_name)
+            if isinstance(val, list):
+                normalized_dict[field_name] = ", ".join(str(x) for x in val)
+                fixes.append(f"Converted {field_name} from YAML array to comma-separated string")
+        for key, value in normalized_dict.items():
+            if key in tool_fields:
+                continue
+            orig_val = original_data.get(key)
+            if orig_val is not None and orig_val != value:
+                if isinstance(orig_val, list) and isinstance(value, str):
+                    fixes.append(f"Converted {key} from YAML array to comma-separated string")
+                elif isinstance(orig_val, str) and "\n" in orig_val and "\n" not in str(value):
+                    fixes.append(f"Normalized {key} to single line")
+        if re.search(r":\s*[|>][-+]?", frontmatter_text):
+            fixes.append("Removed YAML multiline indicators")
+        return normalized_dict, fixes
+
+    def _compute_normalized_fixes(
+        self,
+        original_data: dict[str, YamlValue],
+        frontmatter_text: str,
+        body: str,
+        file_type: FileType,
+        file_path: Path | None,
+        colon_fixes: list[str],
+    ) -> tuple[str, list[str]] | None:
+        """Compute normalized frontmatter and list of fixes.
+
+        Returns:
+            Tuple of (fixed_content, fixes_list) or None if validation fails.
+        """
+        model_class = self._get_model_class(file_type)
+        if model_class is None:
+            return None
+        try:
+            validated = model_class.model_validate(original_data)
+            normalized_dict = validated.model_dump(by_alias=True, exclude_none=True, mode="python")
+        except ValidationError:
+            return (f"---\n{frontmatter_text}\n---\n{body}", colon_fixes) if colon_fixes else None
+
+        normalized_dict, fixes = self._normalize_tool_fields_and_detect_changes(
+            normalized_dict, original_data, frontmatter_text, colon_fixes, file_type, file_path
+        )
+        if not fixes:
+            return None
+        return f"---\n{_dump_yaml(normalized_dict)}---\n{body}", fixes
+
+    def _apply_fixes(self, content: str, file_type: FileType, file_path: Path | None = None) -> tuple[str, list[str]]:
         """Apply auto-fixes to content.
 
         Args:
@@ -1627,93 +1828,25 @@ class FrontmatterValidator:
             Tuple of (fixed_content, list_of_fixes_applied)
 
         """
+        result_content = content
+        result_fixes: list[str] = []
+
         frontmatter_text, _, _ = self._extract_frontmatter(content)
-        if frontmatter_text is None:
-            return content, []
+        end_match = re.search(r"\n---\s*\n", content[3:]) if frontmatter_text is not None else None
+        if frontmatter_text is None or end_match is None:
+            return result_content, result_fixes
 
-        # Find body content
-        end_match = re.search(r"\n---\s*\n", content[3:])
-        if not end_match:
-            return content, []
         body = content[end_match.end() + 3 :]
+        frontmatter_text, original_data, colon_fixes = self._parse_frontmatter_with_colon_fix(frontmatter_text)
 
-        # Parse YAML — if parse fails, attempt to fix unquoted colons first
-        colon_fixes: list[str] = []
-        try:
-            original_data = _safe_load_yaml(frontmatter_text)
-        except YAMLError:
-            fixed_fm, colon_fixes, colon_fields = _fix_unquoted_colons(frontmatter_text)
-            if not colon_fixes:
-                return content, []
-            # Queue FM009 info issues so the subsequent validate() call can surface
-            # them in --verbose output, making the silent auto-repair visible.
-            self._queue_fm009_info(colon_fields)
-            try:
-                original_data = _safe_load_yaml(fixed_fm)
-                # Rebuild full content with fixed frontmatter so downstream
-                # regeneration uses the corrected values.
-                content = f"---\n{fixed_fm}\n---\n{body}"
-                frontmatter_text = fixed_fm
-            except YAMLError:
-                return content, []
+        if isinstance(original_data, dict):
+            computed = self._compute_normalized_fixes(
+                original_data, frontmatter_text, body, file_type, file_path, colon_fixes
+            )
+            if computed is not None:
+                result_content, result_fixes = computed
 
-        if not isinstance(original_data, dict):
-            return content, []
-
-        # Validate and normalize
-        model_class = self._get_model_class(file_type)
-        if not model_class:
-            return content, []
-
-        try:
-            validated = model_class.model_validate(original_data)
-            normalized_dict = validated.model_dump(by_alias=True, exclude_none=True, mode="python")
-        except ValidationError:
-            # Validation failed after YAML parse — still apply colon fixes if any
-            if colon_fixes:
-                return content, colon_fixes
-            return content, []
-
-        # Track fixes — carry over any colon fixes already applied
-        fixes = list(colon_fixes)
-
-        # Restore 'name' field for skills and ensure it matches the directory name.
-        # The Claude Code bug (2026-01-29) that caused plugin skills with a 'name' field
-        # to not appear as slash commands has been resolved. Skills should now include the
-        # 'name' field whose value matches the parent directory name.
-        if file_type == FileType.SKILL and file_path is not None:
-            normalized_dict = fix_skill_name_field(normalized_dict, file_path, fixes)
-
-        # Convert any list-valued tool/skill extra fields to comma-separated strings
-        tool_fields = {"tools", "disallowedTools", "allowed-tools", "skills"}
-        for field_name in tool_fields:
-            if field_name in normalized_dict and isinstance(normalized_dict[field_name], list):
-                normalized_dict[field_name] = ", ".join(str(x) for x in normalized_dict[field_name])
-                fixes.append(f"Converted {field_name} from YAML array to comma-separated string")
-
-        # Compare to detect changes
-        for key, value in normalized_dict.items():
-            if key in tool_fields:
-                # Already handled above
-                continue
-            if key in original_data and original_data[key] != value:
-                if isinstance(original_data[key], list) and isinstance(value, str):
-                    fixes.append(f"Converted {key} from YAML array to comma-separated string")
-                elif isinstance(original_data[key], str) and "\n" in original_data[key] and "\n" not in str(value):
-                    fixes.append(f"Normalized {key} to single line")
-
-        # Check for multiline indicators
-        has_multiline_indicators = bool(re.search(r":\s*[|>][-+]?", frontmatter_text))
-        if has_multiline_indicators:
-            fixes.append("Removed YAML multiline indicators")
-
-        if not fixes:
-            return content, []
-
-        # Regenerate frontmatter with ruamel.yaml (preserves order, quotes colons)
-        new_frontmatter = _dump_yaml(normalized_dict)
-
-        return f"---\n{new_frontmatter}---\n{body}", fixes
+        return result_content, result_fixes
 
 
 # ============================================================================
@@ -1745,8 +1878,9 @@ class NameFormatValidator:
         errors: list[ValidationIssue] = []
         warnings: list[ValidationIssue] = []
         info: list[ValidationIssue] = []
+        result: ValidationResult | None = None
+        frontmatter_text: str | None = None
 
-        # Read file
         try:
             content = path.read_text(encoding="utf-8")
         except OSError as e:
@@ -1759,48 +1893,44 @@ class NameFormatValidator:
                     docs_url=generate_docs_url(FM002),
                 )
             )
-            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
+            result = ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
-        # Extract frontmatter
-        frontmatter_text, _start_line, _end_line = extract_frontmatter(content)
-        if frontmatter_text is None:
-            # No frontmatter - skip validation
-            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
+        if result is None:
+            frontmatter_text, _start_line, _end_line = extract_frontmatter(content)
+            if frontmatter_text is None:
+                result = ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
-        # Parse YAML
-        try:
-            data = _safe_load_yaml(frontmatter_text)
-        except YAMLError:
-            # Invalid YAML - not our concern (FrontmatterValidator handles this)
-            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
+        if result is None and frontmatter_text is not None:
+            try:
+                data = _safe_load_yaml(frontmatter_text)
+            except YAMLError:
+                result = ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
+            else:
+                if not isinstance(data, dict):
+                    result = ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
+                else:
+                    name = data.get("name")
+                    if name is None or not isinstance(name, str):
+                        result = ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
+                    elif not name:
+                        errors.append(
+                            ValidationIssue(
+                                field="name",
+                                severity="error",
+                                message="Name field is empty",
+                                code=SK003,
+                                docs_url=generate_docs_url(SK003),
+                                suggestion=f"Provide a non-empty name using lowercase letters, numbers, and hyphens. Schema: {SKILL_FRONTMATTER_SCHEMA_URL}",
+                            )
+                        )
+                        result = ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
+                    else:
+                        self._check_name_format(name, errors)
+                        result = ValidationResult(passed=len(errors) == 0, errors=errors, warnings=warnings, info=info)
 
-        if not isinstance(data, dict):
-            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
-
-        # Extract name field
-        name = data.get("name")
-        if name is None or not isinstance(name, str):
-            # No name field or not a string - skip validation
-            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
-
-        # Empty name string is invalid — `not name` is True for "" after isinstance check
-        if not name:
-            errors.append(
-                ValidationIssue(
-                    field="name",
-                    severity="error",
-                    message="Name field is empty",
-                    code=SK003,
-                    docs_url=generate_docs_url(SK003),
-                    suggestion="Provide a non-empty name using lowercase letters, numbers, and hyphens",
-                )
-            )
-            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
-
-        self._check_name_format(name, errors)
-
-        passed = len(errors) == 0
-        return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
+        return (
+            result if result is not None else ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
+        )
 
     def _check_name_format(self, name: str, errors: list[ValidationIssue]) -> None:
         """Append format errors for a non-empty name string.
@@ -1818,7 +1948,7 @@ class NameFormatValidator:
                     message="Name contains uppercase characters",
                     code=SK001,
                     docs_url=generate_docs_url(SK001),
-                    suggestion="Use lowercase only (e.g., 'test-skill' not 'Test-Skill')",
+                    suggestion=f"Use lowercase only (e.g., 'test-skill' not 'Test-Skill'). Schema: {SKILL_FRONTMATTER_SCHEMA_URL}",
                 )
             )
 
@@ -1831,7 +1961,7 @@ class NameFormatValidator:
                     message="Name contains underscores (use hyphens instead)",
                     code=SK002,
                     docs_url=generate_docs_url(SK002),
-                    suggestion=f"Replace underscores with hyphens: '{name.replace('_', '-')}'",
+                    suggestion=f"Replace underscores with hyphens: '{name.replace('_', '-')}'. Schema: {SKILL_FRONTMATTER_SCHEMA_URL}",
                 )
             )
 
@@ -1844,7 +1974,7 @@ class NameFormatValidator:
                     message="Name has leading hyphen",
                     code=SK003,
                     docs_url=generate_docs_url(SK003),
-                    suggestion=f"Remove leading hyphen: '{name.lstrip('-')}'",
+                    suggestion=f"Remove leading hyphen: '{name.lstrip('-')}'. Schema: {SKILL_FRONTMATTER_SCHEMA_URL}",
                 )
             )
 
@@ -1857,7 +1987,7 @@ class NameFormatValidator:
                     message="Name has trailing hyphen",
                     code=SK003,
                     docs_url=generate_docs_url(SK003),
-                    suggestion=f"Remove trailing hyphen: '{name.rstrip('-')}'",
+                    suggestion=f"Remove trailing hyphen: '{name.rstrip('-')}'. Schema: {SKILL_FRONTMATTER_SCHEMA_URL}",
                 )
             )
 
@@ -1870,7 +2000,7 @@ class NameFormatValidator:
                     message="Name has consecutive hyphens",
                     code=SK003,
                     docs_url=generate_docs_url(SK003),
-                    suggestion="Use single hyphens only (e.g., 'test-skill' not 'test--skill')",
+                    suggestion=f"Use single hyphens only (e.g., 'test-skill' not 'test--skill'). Schema: {SKILL_FRONTMATTER_SCHEMA_URL}",
                 )
             )
 
@@ -1884,7 +2014,7 @@ class NameFormatValidator:
                     message="Name format invalid",
                     code=SK003,
                     docs_url=generate_docs_url(SK003),
-                    suggestion="Use lowercase letters, numbers, and hyphens only (e.g., 'my-skill-name')",
+                    suggestion=f"Use lowercase letters, numbers, and hyphens only (e.g., 'my-skill-name'). Schema: {SKILL_FRONTMATTER_SCHEMA_URL}",
                 )
             )
 
@@ -1892,25 +2022,88 @@ class NameFormatValidator:
         """Check if validator supports auto-fixing.
 
         Returns:
-            False (name changes require human decision on correct name)
+            True (name format is auto-fixable on case-sensitive filesystems)
         """
-        return False
+        return True
 
     def fix(self, path: Path) -> list[str]:
-        """Auto-fix name format issues (not supported).
+        """Auto-fix name format issues (uppercase, underscores, hyphens).
+
+        Normalizes the frontmatter name field and, for SKILL.md in a skill
+        directory, renames the directory to match. Uses a two-step rename on
+        case-insensitive filesystems so Test-Skill -> test-skill works.
 
         Args:
             path: Path to file to fix
 
-        Raises:
-            NotImplementedError: Name format issues cannot be auto-fixed
+        Returns:
+            List of fix descriptions, or empty if nothing was fixed
+        """
+        fixes = self._try_fix_name_format(path)
+        return fixes if fixes is not None else []
+
+    def _read_name_and_frontmatter(self, path: Path) -> tuple[str, dict[str, YamlValue], str] | None:
+        """Read file, parse frontmatter, extract name.
 
         Returns:
-            Never returns (always raises)
+            Tuple of (content, data, name) or None if any step fails.
         """
-        raise NotImplementedError(
-            "Name format validation cannot be auto-fixed. Renaming requires human decision on correct name."
-        )
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError:
+            return None
+        fm_text, _start, _end = extract_frontmatter(content)
+        if fm_text is None:
+            return None
+        try:
+            data = _safe_load_yaml(fm_text)
+        except YAMLError:
+            return None
+        if not isinstance(data, dict):
+            return None
+        name = data.get("name")
+        if not isinstance(name, str) or not name:
+            return None
+        return content, data, name
+
+    def _try_fix_name_format(self, path: Path) -> list[str] | None:
+        """Attempt to fix name format.
+
+        Returns:
+            List of fix descriptions if fixes were applied, None otherwise.
+        """
+        parsed = self._read_name_and_frontmatter(path)
+        if parsed is None:
+            return None
+        content, data, name = parsed
+
+        fixed_name = _normalize_skill_name(name)
+        if not fixed_name or fixed_name == name or not re.match(NAME_PATTERN, fixed_name):
+            return None
+
+        data["name"] = fixed_name
+        end_match = re.search(r"\n---\s*\n", content[3:])
+        body = content[end_match.end() + 3 :] if end_match else ""
+        new_content = f"---\n{_dump_yaml(data)}{body}"
+        try:
+            path.write_text(new_content, encoding="utf-8")
+        except OSError:
+            return None
+
+        fixes = [f"Normalized name from '{name}' to '{fixed_name}'"]
+        # Rename skill directory to match (two-step on case-insensitive filesystems)
+        if path.name == "SKILL.md" and path.parent.name != fixed_name:
+            skill_dir = path.parent
+            parent_dir = skill_dir.parent
+            try:
+                temp_name = f"{skill_dir.name}.fmtemp"
+                skill_dir.rename(parent_dir / temp_name)
+                (parent_dir / temp_name).rename(parent_dir / fixed_name)
+                fixes.append(f"Renamed directory to '{fixed_name}'")
+            except OSError:
+                pass  # Directory rename best-effort; frontmatter fix already applied
+
+        return fixes
 
 
 # ============================================================================
@@ -1949,14 +2142,11 @@ class DescriptionValidator:
         Returns:
             ValidationResult with warnings for description quality issues
 
-        Note:
-            Multiple early returns are necessary to handle various skip conditions gracefully.
         """
         errors: list[ValidationIssue] = []
         warnings: list[ValidationIssue] = []
         info: list[ValidationIssue] = []
 
-        # Read file
         try:
             content = path.read_text(encoding="utf-8")
         except OSError as e:
@@ -1971,33 +2161,27 @@ class DescriptionValidator:
             )
             return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
-        # Extract frontmatter
         frontmatter_text, _start_line, _end_line = extract_frontmatter(content)
         if frontmatter_text is None:
-            # No frontmatter - skip validation
             return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
-        # Parse YAML
         try:
             data = _safe_load_yaml(frontmatter_text)
         except YAMLError:
-            # Invalid YAML - not our concern (FrontmatterValidator handles this)
             return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
         if not isinstance(data, dict):
             return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
-        # Extract description field
         description = data.get("description")
-        if description is None:
-            # No description field - skip validation (pass with no warnings)
+        if description is None or not isinstance(description, str):
             return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
-        if not isinstance(description, str):
-            # Description is not a string - skip validation
-            return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
+        self._check_description_quality(description, warnings)
+        return ValidationResult(passed=len(errors) == 0, errors=errors, warnings=warnings, info=info)
 
-        # Check minimum length — SKILL and AGENT files only (not COMMAND)
+    def _check_description_quality(self, description: str, warnings: list[ValidationIssue]) -> None:
+        """Append warnings for description length and trigger phrases."""
         if self.file_type in {FileType.SKILL, FileType.AGENT} and len(description) < MIN_DESCRIPTION_LENGTH:
             warnings.append(
                 ValidationIssue(
@@ -2009,13 +2193,9 @@ class DescriptionValidator:
                     suggestion="Run /plugin-creator:write-frontmatter-description to generate an optimized description with proper length and trigger phrases",
                 )
             )
-
-        # Check for trigger phrases (case-insensitive) — SKILL files only
         if self.file_type == FileType.SKILL:
             description_lower = description.lower()
-            has_trigger = any(phrase in description_lower for phrase in REQUIRED_TRIGGER_PHRASES)
-
-            if not has_trigger:
+            if not any(phrase in description_lower for phrase in REQUIRED_TRIGGER_PHRASES):
                 warnings.append(
                     ValidationIssue(
                         field="description",
@@ -2026,10 +2206,6 @@ class DescriptionValidator:
                         suggestion=f"Required trigger phrases: {', '.join(REQUIRED_TRIGGER_PHRASES)}. Run /plugin-creator:write-frontmatter-description to generate a compliant description",
                     )
                 )
-
-        # Pass if no errors (warnings don't fail validation)
-        passed = len(errors) == 0
-        return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
 
     def can_fix(self) -> bool:
         """Check if validator supports auto-fixing.
@@ -2120,11 +2296,8 @@ class ComplexityValidator:
             # No frontmatter - entire file is body
             body = content
 
-        # Count tokens using tiktoken (lazy-loaded for performance)
+        # Count tokens using tiktoken
         body_tokens = self._count_tokens(body, errors, warnings, info)
-        if body_tokens is None:
-            # Token counting failed - errors list already populated
-            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
 
         # Check against thresholds
         if body_tokens > TOKEN_ERROR_THRESHOLD:
@@ -2183,51 +2356,20 @@ class ComplexityValidator:
 
     def _count_tokens(
         self, text: str, errors: list[ValidationIssue], warnings: list[ValidationIssue], info: list[ValidationIssue]
-    ) -> int | None:
-        """Count tokens in text using tiktoken (lazy-loaded).
+    ) -> int:
+        """Count tokens in text using tiktoken.
 
         Args:
             text: Text content to count tokens in
-            errors: List to append errors to if token counting fails
+            errors: List to append errors to (unused; tiktoken fails at import if unavailable)
             warnings: Warnings list (unused but required for signature consistency)
             info: Info list (unused but required for signature consistency)
 
         Returns:
-            Token count, or None if tiktoken unavailable or counting failed
+            Token count.
         """
-        # Lazy-load tiktoken for performance (only imported when validation runs)
-        try:
-            import tiktoken
-        except ImportError as e:
-            errors.append(
-                ValidationIssue(
-                    field="(dependencies)",
-                    severity="error",
-                    message=f"tiktoken library not available: {e}",
-                    code=FM002,
-                    docs_url=generate_docs_url(FM002),
-                    suggestion="Install tiktoken: pip install tiktoken>=0.8.0",
-                )
-            )
-            return None
-
-        # Count tokens using cl100k_base (GPT-4/Claude compatible)
-        try:
-            encoding = tiktoken.get_encoding("cl100k_base")
-            return len(encoding.encode(text))
-        except (ValueError, KeyError) as e:
-            # ValueError: Invalid encoding name
-            # KeyError: Encoding data not found
-            errors.append(
-                ValidationIssue(
-                    field="(token-counting)",
-                    severity="error",
-                    message=f"Token counting failed: {e}",
-                    code=FM002,
-                    docs_url=generate_docs_url(FM002),
-                )
-            )
-            return None
+        encoding = tiktoken.get_encoding("cl100k_base")
+        return len(encoding.encode(text))
 
 
 # ============================================================================
@@ -2284,27 +2426,14 @@ class MarkdownTokenCounter:
         # Count tokens
         total_tokens = self._count_tokens(content)
         body_tokens = self._count_tokens(body)
-        frontmatter_tokens = total_tokens - body_tokens if total_tokens and body_tokens else 0
-
-        if total_tokens is None:
-            errors.append(
-                ValidationIssue(
-                    field="(token-counting)",
-                    severity="error",
-                    message="tiktoken library not available for token counting",
-                    code=FM002,
-                    docs_url=generate_docs_url(FM002),
-                    suggestion="Install tiktoken: pip install tiktoken>=0.8.0",
-                )
-            )
-            return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
+        frontmatter_tokens = total_tokens - body_tokens
 
         info.append(
             ValidationIssue(
                 field="token-count",
                 severity="info",
                 message=(f"Total: {total_tokens} tokens (frontmatter: {frontmatter_tokens}, body: {body_tokens})"),
-                code="TC001",
+                code=ErrorCode.TC001,
             )
         )
 
@@ -2360,30 +2489,70 @@ class MarkdownTokenCounter:
         raise NotImplementedError("Token counting is read-only, no fixes to apply.")
 
     @staticmethod
-    def _count_tokens(text: str) -> int | None:
+    def _count_tokens(text: str) -> int:
         """Count tokens in text using tiktoken.
 
         Args:
             text: Text content to count tokens in
 
         Returns:
-            Token count, or None if tiktoken unavailable
+            Token count.
         """
-        try:
-            import tiktoken
-        except ImportError:
-            return None
-
-        try:
-            encoding = tiktoken.get_encoding("cl100k_base")
-            return len(encoding.encode(text))
-        except (ValueError, KeyError):
-            return None
+        encoding = tiktoken.get_encoding("cl100k_base")
+        return len(encoding.encode(text))
 
 
 # ============================================================================
 # PLUGIN REGISTRATION VALIDATOR
 # ============================================================================
+
+
+def _git_file_has_execute_bit(file_path: Path) -> bool | None:  # noqa: PLR0911
+    """Check if a file has the execute bit in Git's index or HEAD.
+
+    Uses Git's tracked mode (100755 = executable, 100644 = not) so validation
+    is consistent across platforms. On Windows, os.access(X_OK) is unreliable;
+    checking Git ensures plugins that pass on Windows will also pass on Linux.
+
+    Uses GitPython (project dependency) for consistency with other scripts.
+
+    Args:
+        file_path: Absolute path to the file.
+
+    Returns:
+        True if executable in Git, False if not, None if not in a Git repo or
+        file is untracked.
+    """
+    if not file_path.exists():
+        return None
+
+    try:
+        repo = Repo(file_path.resolve().parent, search_parent_directories=True)
+    except (InvalidGitRepositoryError, NoSuchPathError):
+        return None
+
+    if repo.working_tree_dir is None:
+        return None
+
+    working_dir = Path(repo.working_tree_dir)
+    try:
+        rel = file_path.resolve().relative_to(working_dir)
+    except ValueError:
+        return None
+
+    rel_str = str(rel).replace("\\", "/")
+
+    # Prefer index (staged/unstaged); fall back to HEAD
+    entry = repo.index.entries.get(entry_key(rel_str, 0))
+    if entry is not None:
+        return entry.mode == GIT_MODE_EXECUTABLE
+
+    try:
+        blob = repo.head.commit.tree[rel_str]
+    except KeyError:
+        return None
+    else:
+        return blob.mode == GIT_MODE_EXECUTABLE
 
 
 def _get_git_remote_url(repo_dir: Path) -> str | None:
@@ -2444,7 +2613,7 @@ def _get_git_author() -> dict[str, str] | None:
     return author
 
 
-def _generate_plugin_metadata(plugin_dir: Path) -> dict[str, Any]:
+def _generate_plugin_metadata(plugin_dir: Path) -> dict[str, YamlValue]:
     """Generate plugin.json metadata from git and file structure.
 
     Args:
@@ -2454,7 +2623,7 @@ def _generate_plugin_metadata(plugin_dir: Path) -> dict[str, Any]:
         Dict with repository, homepage, and author fields populated from git.
         Empty dict if git is unavailable or not in a repo.
     """
-    metadata: dict[str, Any] = {}
+    metadata: dict[str, YamlValue] = {}
 
     current = plugin_dir
     while current != current.parent:
@@ -2509,7 +2678,7 @@ def _find_actual_capabilities(plugin_dir: Path) -> tuple[set[Path], set[Path], s
     return actual_skills, actual_agents, actual_commands
 
 
-def _parse_registered_paths(plugin_config: dict[str, Any], plugin_dir: Path, field: str) -> set[Path]:
+def _parse_registered_paths(plugin_config: dict[str, YamlValue], plugin_dir: Path, field: str) -> set[Path]:
     """Parse registered capability paths from a plugin.json field.
 
     Args:
@@ -2776,6 +2945,24 @@ class PluginStructureValidator:
             # Not a plugin directory - skip validation
             return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
 
+        # Validate plugin.json JSON syntax locally before delegating to claude CLI.
+        # Catches encoding/line-ending issues that may cause claude to fail inconsistently.
+        plugin_json_path = plugin_dir / ".claude-plugin" / "plugin.json"
+        if plugin_json_path.exists():
+            json_error = self._validate_plugin_json_syntax(plugin_json_path)
+            if json_error is not None:
+                errors.append(
+                    ValidationIssue(
+                        field="plugin.json",
+                        severity="error",
+                        message=json_error,
+                        code=PL002,
+                        docs_url=generate_docs_url(PL002),
+                        suggestion=f"plugin.json must be valid JSON. Schema: {PLUGIN_MANIFEST_SCHEMA_URL}",
+                    )
+                )
+                return ValidationResult(passed=False, errors=errors, warnings=warnings, info=info)
+
         # Skip claude plugin validate when running inside a Claude Code session
         # (nested CLI invocations are blocked by Anthropic safety measure).
         if _should_skip_claude_validate():
@@ -2912,6 +3099,25 @@ class PluginStructureValidator:
 
         return None
 
+    def _validate_plugin_json_syntax(self, plugin_json_path: Path) -> str | None:
+        """Validate plugin.json is parseable JSON. Catches syntax/encoding issues.
+
+        Args:
+            plugin_json_path: Path to plugin.json file.
+
+        Returns:
+            None if valid; otherwise human-readable error message string.
+        """
+        try:
+            with Path(plugin_json_path).open(encoding="utf-8") as f:
+                json.load(f)
+        except json.JSONDecodeError as e:
+            return f"Invalid JSON syntax in plugin.json: {e}"
+        except OSError as e:
+            return f"Cannot read plugin.json: {e}"
+        else:
+            return None
+
     def _parse_claude_errors(
         self,
         stdout: str,
@@ -2977,31 +3183,24 @@ class PluginStructureValidator:
         Returns:
             Human-readable error message
         """
-        # Extract first line containing relevant error text
         lines = output.split("\n")
         for text_line in lines:
             stripped_line = text_line.strip()
-            if not stripped_line or stripped_line.startswith("#"):
-                continue
-            if any(
-                keyword in stripped_line.lower() for keyword in ["error", "missing", "invalid", "required", "not found"]
+            if (
+                stripped_line
+                and not stripped_line.startswith("#")
+                and any(kw in stripped_line.lower() for kw in ["error", "missing", "invalid", "required", "not found"])
             ):
-                return stripped_line[:200]  # Truncate long messages
+                return stripped_line[:200]
 
-        # Fallback to generic messages
-        match code:
-            case "PL001":
-                return "Missing plugin.json file in .claude-plugin/ directory"
-            case "PL002":
-                return "Invalid JSON syntax in plugin.json"
-            case "PL003":
-                return "Missing required field 'name' in plugin.json"
-            case "PL004":
-                return "Component path does not start with './'"
-            case "PL005":
-                return "Referenced component file does not exist"
-            case _:
-                return "Plugin structure validation failed"
+        fallbacks: dict[str, str] = {
+            "PL001": "Missing plugin.json file in .claude-plugin/ directory",
+            "PL002": "Invalid JSON syntax in plugin.json",
+            "PL003": "Missing required field 'name' in plugin.json",
+            "PL004": "Component path does not start with './'",
+            "PL005": "Referenced component file does not exist",
+        }
+        return fallbacks.get(str(code), "Plugin structure validation failed")
 
     def _get_error_suggestion(self, code: str) -> str:
         """Get suggestion for fixing error.
@@ -3206,7 +3405,7 @@ class HookValidator:
         # Validate that file-path command references actually exist and are executable.
         # HK004/HK005 issues are appended directly to the combined errors list so that
         # missing-script warnings surface in the same result as structural errors.
-        self._validate_hook_script_references_in_hooks_dict(hooks_obj, path.parent, errors)
+        self.validate_hook_script_references_in_hooks_dict(hooks_obj, path.parent, errors)
 
         passed = len(errors) == 0
         return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
@@ -3234,7 +3433,7 @@ class HookValidator:
             )
             return
 
-        group_dict = cast("dict[str, Any]", group)
+        group_dict = cast("dict[str, YamlValue]", group)
 
         if "hooks" not in group_dict or not isinstance(group_dict["hooks"], list):
             errors.append(
@@ -3278,7 +3477,7 @@ class HookValidator:
             )
             return
 
-        entry_dict = cast("dict[str, Any]", entry)
+        entry_dict = cast("dict[str, YamlValue]", entry)
         hook_type = entry_dict.get("type")
         if hook_type not in self.VALID_HOOK_TYPES:
             errors.append(
@@ -3353,7 +3552,7 @@ class HookValidator:
         return base_dir
 
     def _validate_command_script_references(
-        self, hook_entries: list[dict[str, Any]], base_dir: Path, errors: list[ValidationIssue]
+        self, hook_entries: list[dict[str, YamlValue]], base_dir: Path, errors: list[ValidationIssue]
     ) -> None:
         """Check that file-path ``command`` values in hook entries actually exist.
 
@@ -3403,20 +3602,37 @@ class HookValidator:
                         suggestion=f"Create the script at {resolved_path} or fix the path",
                     )
                 )
-            elif not os.access(resolved_path, os.X_OK):
-                errors.append(
-                    ValidationIssue(
-                        field="command",
-                        severity="warning",
-                        message=f"Hook script is not executable: {command}",
-                        code=HK005,
-                        docs_url=generate_docs_url(HK005),
-                        suggestion=f"Run: chmod +x {resolved_path}",
+            else:
+                # Use Git's tracked mode when available for cross-platform consistency.
+                # On Windows, os.access(X_OK) is unreliable; Git check ensures plugins
+                # that pass on Windows will also pass on Linux.
+                git_exec = _git_file_has_execute_bit(resolved_path)
+                if git_exec is False:
+                    errors.append(
+                        ValidationIssue(
+                            field="command",
+                            severity="warning",
+                            message=f"Hook script is not executable in Git: {command}",
+                            code=HK005,
+                            docs_url=generate_docs_url(HK005),
+                            suggestion=f"Run: git update-index --chmod=+x {resolved_path}",
+                        )
                     )
-                )
+                elif git_exec is None and not os.access(resolved_path, os.X_OK):
+                    # Fallback when not in Git: os.access works on Unix only
+                    errors.append(
+                        ValidationIssue(
+                            field="command",
+                            severity="warning",
+                            message=f"Hook script is not executable: {command}",
+                            code=HK005,
+                            docs_url=generate_docs_url(HK005),
+                            suggestion=f"Run: chmod +x {resolved_path}",
+                        )
+                    )
 
-    def _validate_hook_script_references_in_hooks_dict(
-        self, hooks_dict: dict[str, Any], base_dir: Path, errors: list[ValidationIssue]
+    def validate_hook_script_references_in_hooks_dict(
+        self, hooks_dict: dict[str, YamlValue], base_dir: Path, errors: list[ValidationIssue]
     ) -> None:
         """Validate command file-path references in a hooks configuration dict.
 
@@ -3637,10 +3853,7 @@ class ConsoleReporter:
         if console is not None:
             self.console = console
         else:
-            # Lazy import Rich to avoid startup cost when not needed
-            from rich.console import Console as _Console
-
-            self.console = _Console(force_terminal=not no_color, no_color=no_color)
+            self.console = Console(force_terminal=not no_color, no_color=no_color)
         self.no_color = no_color
 
     @staticmethod
@@ -3657,10 +3870,7 @@ class ConsoleReporter:
         Returns:
             The maximum rendered width in characters.
         """
-        from rich.console import Console as _Console
-        from rich.measure import Measurement
-
-        temp_console = _Console(width=999999)
+        temp_console = Console(width=999999)
         measurement = Measurement.get(temp_console, temp_console.options, renderable)
         return int(measurement.maximum)
 
@@ -3754,8 +3964,6 @@ class ConsoleReporter:
             failed: Number of files where any validator failed
             warnings: Number of files with warnings (all passed but with issues)
         """
-        from rich.panel import Panel
-
         # Determine overall status
         if failed == 0:
             status_icon = ":white_check_mark:"
@@ -4079,9 +4287,51 @@ def _file_has_frontmatter(path: Path) -> bool:
 # ============================================================================
 
 
-def _validate_single_path(  # noqa: PLR0912, C901
-    path: Path, *, check: bool, fix: bool, verbose: bool
-) -> FileResults:
+def _get_validators_for_path(path: Path) -> list[Validator]:
+    """Return validators to run for the given path based on file type.
+
+    Args:
+        path: Path to validate.
+
+    Returns:
+        List of validator instances.
+
+    Raises:
+        typer.Exit: If path type is unknown.
+    """
+    file_type = FileType.detect_file_type(path)
+    validators: list[Validator] = []
+
+    if file_type in {FileType.SKILL, FileType.AGENT, FileType.COMMAND}:
+        fm_req = _frontmatter_requirement(path)
+        if fm_req == _FrontmatterRequirement.EXEMPT:
+            return []
+        if fm_req == _FrontmatterRequirement.REQUIRED or _file_has_frontmatter(path):
+            validators.append(FrontmatterValidator())
+        if fm_req == _FrontmatterRequirement.REQUIRED or _file_has_frontmatter(path):
+            validators.extend([NameFormatValidator(), DescriptionValidator(file_type=file_type)])
+        validators.append(NamespaceReferenceValidator())
+        if file_type == FileType.SKILL:
+            validators.extend([ComplexityValidator(), InternalLinkValidator(), ProgressiveDisclosureValidator()])
+    elif file_type == FileType.PLUGIN:
+        validators.append(PluginStructureValidator())
+    elif file_type == FileType.HOOK_CONFIG:
+        validators.append(HookValidator())
+    elif file_type == FileType.HOOK_SCRIPT:
+        pass
+    elif file_type in {FileType.CLAUDE_MD, FileType.REFERENCE, FileType.MARKDOWN}:
+        validators.append(MarkdownTokenCounter())
+    else:
+        typer.echo(f"Error: Cannot determine file type for: {path}", err=True)
+        typer.echo(
+            "Expected: SKILL.md, agent .md, command .md, hooks.json, plugin directory, or markdown file", err=True
+        )
+        raise typer.Exit(2) from None
+
+    return validators
+
+
+def _validate_single_path(path: Path, *, check: bool, fix: bool, verbose: bool) -> FileResults:
     """Validate a single path and return results grouped by file.
 
     Args:
@@ -4096,70 +4346,14 @@ def _validate_single_path(  # noqa: PLR0912, C901
     Raises:
         typer.Exit: If path doesn't exist or file type is unknown.
 
-    Note:
-        Complexity warnings suppressed (PLR0912, C901) for validation entry point.
-        Branching complexity is inherent to file type detection and workflow routing.
     """
     if not path.exists():
         typer.echo(f"Error: Path does not exist: {path}", err=True)
         raise typer.Exit(2) from None
 
-    # Detect file type
-    file_type = FileType.detect_file_type(path)
-
-    # Initialize validators based on file type
-    validators: list[Validator] = []
-
-    if file_type in {FileType.SKILL, FileType.AGENT, FileType.COMMAND}:
-        # Determine frontmatter requirement for this path
-        fm_req = _frontmatter_requirement(path)
-
-        if fm_req == _FrontmatterRequirement.EXEMPT:
-            # Exempt files skip all capability validation entirely
-            return {path: []}
-
-        # Add FrontmatterValidator only when frontmatter is required or
-        # when it is optional AND the file already contains frontmatter.
-        if fm_req == _FrontmatterRequirement.REQUIRED or _file_has_frontmatter(path):
-            validators.append(FrontmatterValidator())
-
-        # Name and description validators only make sense when frontmatter
-        # is present (they read parsed frontmatter data).
-        if fm_req == _FrontmatterRequirement.REQUIRED or _file_has_frontmatter(path):
-            validators.extend([NameFormatValidator(), DescriptionValidator(file_type=file_type)])
-
-        # Namespace reference validation for all capability files
-        validators.append(NamespaceReferenceValidator())
-
-        # Skill-specific validators
-        if file_type == FileType.SKILL:
-            validators.extend([ComplexityValidator(), InternalLinkValidator(), ProgressiveDisclosureValidator()])
-
-    elif file_type == FileType.PLUGIN:
-        # Plugin directories: validate structure
-        validators.append(PluginStructureValidator())
-
-    elif file_type == FileType.HOOK_CONFIG:
-        # hooks.json: validate structure, event types, hook entries
-        validators.append(HookValidator())
-
-    elif file_type == FileType.HOOK_SCRIPT:
-        # Hook scripts (.js/.cjs in hooks/) are validated by language-specific linters
-        # (biome, eslint) rather than this validator. No content checks are applied;
-        # the file is accepted without error so it does not produce an UNKNOWN warning.
-        pass
-
-    elif file_type in {FileType.CLAUDE_MD, FileType.REFERENCE, FileType.MARKDOWN}:
-        # General markdown files: token counting only (no skill-specific validators)
-        validators.append(MarkdownTokenCounter())
-
-    else:
-        # Unknown type
-        typer.echo(f"Error: Cannot determine file type for: {path}", err=True)
-        typer.echo(
-            "Expected: SKILL.md, agent .md, command .md, hooks.json, plugin directory, or markdown file", err=True
-        )
-        raise typer.Exit(2) from None
+    validators = _get_validators_for_path(path)
+    if not validators:
+        return {path: []}
 
     # Run validation — group results by file path with validator class names
     validator_results: list[tuple[str, ValidationResult]] = []
@@ -4252,6 +4446,67 @@ def _discover_validatable_paths(directory: Path) -> list[Path]:
     return sorted(discovered)
 
 
+def _resolve_filter_and_expand_paths(
+    paths: list[Path], filter_glob: str | None, filter_type: str | None
+) -> tuple[list[Path], bool]:
+    """Resolve filter options and expand directory paths.
+
+    Validates mutual exclusion of --filter and --filter-type, resolves
+    filter_type to glob pattern, and expands directories.
+
+    Returns:
+        Tuple of (expanded_paths, is_batch).
+
+    Raises:
+        typer.Exit: On invalid filter options.
+    """
+    if filter_glob is not None and filter_type is not None:
+        typer.echo("Error: --filter and --filter-type are mutually exclusive", err=True)
+        raise typer.Exit(2) from None
+
+    resolved_glob: str | None = filter_glob
+    if filter_type is not None:
+        if filter_type not in FILTER_TYPE_MAP:
+            valid = ", ".join(FILTER_TYPE_MAP)
+            typer.echo(f"Error: --filter-type must be one of: {valid}", err=True)
+            raise typer.Exit(2) from None
+        resolved_glob = FILTER_TYPE_MAP[filter_type]
+
+    expanded_paths: list[Path] = []
+    is_batch = False
+    for path in paths:
+        if resolved_glob is not None and path.is_dir():
+            matched = sorted(path.glob(resolved_glob))
+            expanded_paths.extend(matched)
+            is_batch = True
+        elif resolved_glob is None and path.is_dir():
+            if (path / ".claude-plugin/plugin.json").exists():
+                expanded_paths.append(path)
+            else:
+                expanded_paths.extend(_discover_validatable_paths(path))
+                is_batch = True
+        else:
+            expanded_paths.append(path)
+    return expanded_paths, is_batch
+
+
+def _compute_summary(all_results: FileResults) -> tuple[int, int, int, int]:
+    """Compute validation summary statistics from file results.
+
+    Returns:
+        Tuple of (total_files, passed, failed, warnings).
+    """
+    total_files = len(all_results)
+    passed = sum(1 for vr_list in all_results.values() if all(r.passed for _, r in vr_list))
+    failed = sum(1 for vr_list in all_results.values() if any(not r.passed for _, r in vr_list))
+    warnings = sum(
+        1
+        for vr_list in all_results.values()
+        if all(r.passed for _, r in vr_list) and any(r.warnings for _, r in vr_list)
+    )
+    return total_files, passed, failed, warnings
+
+
 def _show_help_and_exit(ctx: typer.Context, code: int = 0) -> NoReturn:
     """Print the help text for the current command and exit.
 
@@ -4266,7 +4521,7 @@ def _show_help_and_exit(ctx: typer.Context, code: int = 0) -> NoReturn:
     raise typer.Exit(code) from None
 
 
-def main(  # noqa: PLR0912, PLR0915, C901
+def main(
     ctx: typer.Context,
     paths: Annotated[
         list[Path] | None, typer.Argument(help="Paths to plugin, skill, agent, or command files to validate")
@@ -4373,41 +4628,8 @@ def main(  # noqa: PLR0912, PLR0915, C901
         _show_help_and_exit(ctx, code=2)
 
     try:
-        # Validate mutual exclusion of --filter and --filter-type
-        if filter_glob is not None and filter_type is not None:
-            typer.echo("Error: --filter and --filter-type are mutually exclusive", err=True)
-            raise typer.Exit(2) from None
+        expanded_paths, is_batch = _resolve_filter_and_expand_paths(paths, filter_glob, filter_type)
 
-        # Resolve --filter-type to a glob pattern
-        resolved_glob: str | None = filter_glob
-        if filter_type is not None:
-            if filter_type not in FILTER_TYPE_MAP:
-                valid = ", ".join(FILTER_TYPE_MAP)
-                typer.echo(f"Error: --filter-type must be one of: {valid}", err=True)
-                raise typer.Exit(2) from None
-            resolved_glob = FILTER_TYPE_MAP[filter_type]
-
-        # Expand directory paths using resolved_glob when provided
-        expanded_paths: list[Path] = []
-        is_batch = False
-        for path in paths:
-            if resolved_glob is not None and path.is_dir():
-                # Path.glob() handles ** patterns natively
-                matched = sorted(path.glob(resolved_glob))
-                expanded_paths.extend(matched)
-                is_batch = True
-            elif resolved_glob is None and path.is_dir():
-                # Bare directory without --filter/--filter-type:
-                # If it's already a plugin dir, pass through as-is
-                if (path / ".claude-plugin/plugin.json").exists():
-                    expanded_paths.append(path)
-                else:
-                    expanded_paths.extend(_discover_validatable_paths(path))
-                    is_batch = True
-            else:
-                expanded_paths.append(path)
-
-        # Handle --tokens-only mode early (bypasses all other flags)
         if tokens_only:
             _handle_tokens_only(expanded_paths, batch=is_batch)
 
@@ -4415,41 +4637,22 @@ def main(  # noqa: PLR0912, PLR0915, C901
             typer.echo("Error: Cannot use both --check and --fix flags", err=True)
             raise typer.Exit(2) from None
 
-        # Load ignore patterns once before processing paths
         ignore_patterns = _load_ignore_patterns()
-
         all_results: FileResults = {}
         for path in expanded_paths:
-            # Skip paths matching .pluginvalidatorignore patterns
             if ignore_patterns and _is_ignored(path, ignore_patterns):
                 continue
-
             file_results = _validate_single_path(path, check=check, fix=fix, verbose=verbose)
-            # Merge results — extend existing entries if same path appears twice
             for file_path, validator_results in file_results.items():
                 if file_path in all_results:
                     all_results[file_path].extend(validator_results)
                 else:
                     all_results[file_path] = list(validator_results)
 
-        # Select reporter based on --no-color flag
-        reporter: Reporter
-        reporter = CIReporter() if no_color else ConsoleReporter(no_color=no_color)
-
-        # Report results
+        reporter: Reporter = CIReporter() if no_color else ConsoleReporter(no_color=no_color)
         reporter.report(all_results, verbose=verbose, show_progress=show_progress)
 
-        # Calculate summary statistics — per unique file, not per validator
-        total_files = len(all_results)
-        passed = sum(1 for vr_list in all_results.values() if all(r.passed for _, r in vr_list))
-        failed = sum(1 for vr_list in all_results.values() if any(not r.passed for _, r in vr_list))
-        warnings = sum(
-            1
-            for vr_list in all_results.values()
-            if all(r.passed for _, r in vr_list) and any(r.warnings for _, r in vr_list)
-        )
-
-        # Display summary only when requested
+        total_files, passed, failed, warnings = _compute_summary(all_results)
         if show_summary:
             reporter.summarize(total_files, passed, failed, warnings)
 

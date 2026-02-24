@@ -16,7 +16,7 @@ Public API:
 from __future__ import annotations
 
 from io import StringIO
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, TypeAlias, TypedDict, Unpack
 
 import frontmatter
 from frontmatter.default_handlers import YAMLHandler
@@ -24,6 +24,15 @@ from ruamel.yaml import YAML
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+# Recursive type for YAML/JSON-serializable frontmatter values. More specific than Any.
+FrontmatterValue: TypeAlias = dict[str, "FrontmatterValue"] | list["FrontmatterValue"] | str | int | float | bool | None
+
+
+class _YAMLHandlerKwargs(TypedDict, total=False):
+    """Kwargs for YAMLHandler API compatibility. Base class may pass Loader; we ignore all."""
+
+    Loader: type
 
 
 class RuamelYAMLHandler(YAMLHandler):
@@ -45,7 +54,12 @@ class RuamelYAMLHandler(YAMLHandler):
         # block scalars which break downstream validators expecting single-line strings.
         self._yaml.width = 2147483647
 
-    def load(self, fm: str, **kwargs: object) -> Any:
+    @property
+    def yaml(self) -> YAML:
+        """Round-trip YAML instance for load/dump. Public for plugin_validator._dump_yaml."""
+        return self._yaml
+
+    def load(self, fm: str, **kwargs: Unpack[_YAMLHandlerKwargs]) -> FrontmatterValue:
         """Parse YAML frontmatter string using ruamel.yaml round-trip loader.
 
         Args:
@@ -57,7 +71,7 @@ class RuamelYAMLHandler(YAMLHandler):
         """
         return self._yaml.load(fm)
 
-    def export(self, metadata: dict[str, object], **kwargs: object) -> str:
+    def export(self, metadata: dict[str, FrontmatterValue], **kwargs: Unpack[_YAMLHandlerKwargs]) -> str:
         """Serialize metadata dict to YAML string using ruamel.yaml.
 
         Args:
@@ -121,7 +135,7 @@ def dumps_frontmatter(post: frontmatter.Post, path: str | Path) -> None:
     frontmatter.dump(post, str(path), handler=_handler)
 
 
-def update_field(path: str | Path, key: str, value: Any) -> None:
+def update_field(path: str | Path, key: str, value: FrontmatterValue) -> None:
     """Load a file, update one key, and write back.
 
     Args:
