@@ -187,7 +187,7 @@ Expected: Agent reads fidelity-rules.md BEFORE delegating (verify in transcript)
 
 ---
 
-### T4: Output Contract Validation (Automated Gate)
+### T4: Output Contract Validation (Automated Gate) ✅
 
 **What to add**: A `SubagentStop` hook that validates STATUS block format on every rewrite-room agent stop.
 

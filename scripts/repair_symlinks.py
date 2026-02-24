@@ -26,13 +26,10 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from git import Repo
 from git.exc import InvalidGitRepositoryError, NoSuchPathError
-
-if TYPE_CHECKING:
-    from git.objects import Blob
+from git.objects import Blob
 
 GIT_MODE_SYMLINK = 0o120000  # 40960 decimal; GitPython tree items use this
 
@@ -45,7 +42,7 @@ def _ensure_core_symlinks(repo: Repo) -> bool:
     """
     try:
         cfg = repo.config_reader()
-        val = cfg.get_value("core", "symlinks")
+        val = cfg.get_value("core", "symlinks", True)
         if val in {"true", True}:
             return True
     except (OSError, KeyError):
@@ -73,6 +70,8 @@ def _find_destroyed_symlinks(repo: Repo, repo_root: Path) -> list[Path]:
     destroyed: list[Path] = []
     head_tree = repo.head.commit.tree
     for item in head_tree.traverse():
+        if not isinstance(item, Blob):
+            continue
         if item.mode != GIT_MODE_SYMLINK:
             continue
         path = repo_root / item.path
@@ -102,6 +101,8 @@ def _repair_one(repo: Repo, path: Path, repo_root: Path) -> bool:
     try:
         blob = repo.head.commit.tree / rel_str
     except KeyError:
+        return False
+    if not isinstance(blob, Blob):
         return False
     target = _get_symlink_target_from_blob(repo, blob)
     path.unlink()
