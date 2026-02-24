@@ -1,0 +1,13 @@
+---
+paths:
+  - "**/*.py"
+---
+
+# YAML and TOML Libraries
+
+This repository uses `ruamel.yaml` for all YAML operations and `tomlkit` for TOML read-write operations.
+
+- Use `ruamel.yaml` for YAML — never `pyyaml` (`import yaml`)
+- Use `tomlkit` for TOML read-write operations
+- `tomllib` (stdlib) is acceptable for read-only TOML in stdlib-only contexts
+- For frontmatter parsing/writing, use the shared module: `from frontmatter_utils import load_frontmatter, dump_frontmatter`
