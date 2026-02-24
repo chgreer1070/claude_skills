@@ -371,6 +371,52 @@ FRONTMATTER_EXEMPT_FILENAMES: frozenset[str] = frozenset({
 })
 
 
+def _git_bash_path() -> str | None:
+    """Resolve path to bash.exe for CLAUDE_CODE_GIT_BASH_PATH.
+
+    Claude Code on Windows requires git-bash. Tries:
+    1. shutil.which("git-bash") — if found, use sibling bin/bash.exe
+    2. On Windows: LOCALAPPDATA/Programs/Git — check git-bash.exe exists, use bin/bash.exe
+
+    If resolved, sets os.environ["CLAUDE_CODE_GIT_BASH_PATH"] and returns the path.
+
+    Returns:
+        Resolved path to bash.exe, or None if not found
+    """
+    # Already set
+    existing = os.environ.get("CLAUDE_CODE_GIT_BASH_PATH", "").strip()
+    if existing and Path(existing).is_file():
+        return existing
+
+    # Try PATH for git-bash only (not generic bash — claude requires Git Bash)
+    found = shutil.which("git-bash")
+    if found:
+        path = Path(found).resolve()
+        if path.is_file() and path.name.lower() == "git-bash.exe":
+            bash_exe = path.parent / "bin" / "bash.exe"
+            if bash_exe.is_file():
+                resolved = str(bash_exe.resolve())
+                os.environ["CLAUDE_CODE_GIT_BASH_PATH"] = resolved
+                return resolved
+            # Shims may point elsewhere; if path is git-bash.exe, try parent/bin
+            # Already tried above; fall through to Windows fallback if no bin/bash
+
+    # Windows fallback: AppData\Local\Programs\Git\git-bash.exe
+    if sys.platform == "win32":
+        localappdata = os.environ.get("LOCALAPPDATA", "").strip()
+        if localappdata:
+            base = Path(localappdata) / "Programs" / "Git"
+            git_bash_exe = base / "git-bash.exe"
+            if git_bash_exe.is_file():
+                bash_exe = base / "bin" / "bash.exe"
+                if bash_exe.is_file():
+                    resolved = str(bash_exe.resolve())
+                    os.environ["CLAUDE_CODE_GIT_BASH_PATH"] = resolved
+                    return resolved
+
+    return None
+
+
 def _should_skip_claude_validate() -> bool:
     """Detect if running in a context where claude CLI validation should be skipped.
 
@@ -2992,6 +3038,9 @@ class PluginStructureValidator:
                 )
             )
             return ValidationResult(passed=True, errors=errors, warnings=warnings, info=info)
+
+        # On Windows, ensure CLAUDE_CODE_GIT_BASH_PATH is set if git-bash can be found
+        _git_bash_path()
 
         # Run claude plugin validate
         try:
