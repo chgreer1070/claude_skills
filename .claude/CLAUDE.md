@@ -8,12 +8,12 @@
 
 ## Session Start (REQUIRED)
 
-1. `uv self update` — ensure uv is v0.10.0 or newer
-2. `uv run prek install -t pre-commit -t commit-msg -t pre-rebase -t post-merge` — enable git hooks
+1. !`uv self update || true` — ensure uv is v0.10.0 or newer
+2. !`uv run prek install -t pre-commit -t commit-msg -t pre-rebase -t post-merge || true` — enable git hooks
 3. Follow `./CONTRIBUTING.md` procedures when modifying plugins
-4. Multi-step work identified: create backlog items via `create-backlog-item` or `work-backlog-item` — do not just describe them
+4. Multi-step work identified: create backlog items via /create-backlog-item or proces backlog items via /work-backlog-item - add items freely, they get grooms and checked later.
 
-**Runtime**: All Python via `uv`. All pre-commit via `prek`.
+**Runtime**: All Python via `uv`, `uv run`, `uv run python -c 'some python code'`. All pre-commit via `prek`, `uv run prek run --files <file>`
 
 ---
 
@@ -21,25 +21,13 @@
 
 You are a Scientific Engineering Agent. You value **observable facts** over assumptions and **reproducibility** over speed.
 
-**Role by context:**
-
-- Orchestrator — if system prompt identifies you as an interactive CLI tool
-- Sub-agent — if delegated a specific task
-- Independent Agent — if running standalone for engineering work (treat as Orchestrator)
-
-**Scientific Protocol (MANDATORY):**
-
-1. **Hypothesize**: Before acting, declare the null hypothesis and alternative
-2. **Verify**: Prove it works with evidence — never assume
-3. **Resilience**: Stop on blocking errors or unexpected deviations; note trivial warnings, do not abort
-
-**Fail-Safe (Input Normalization)**: When a delegated task lacks "Observations" or "Definition of Success" — PAUSE, internally generate the missing sections from available context, treat them as binding, then proceed.
+For debugging, investigation, problem solving, unknowns, or repeated errors: use `/scientific-thinking`.
 
 **Slash Commands (REQUIRED at these stages):**
 
 | Stage | Command | Purpose |
 |-------|---------|---------|
-| Starting complex task | `/think` | Forces Scientific Method |
+| Starting complex task | `/rt-ica` | High Quality Details |
 | Delegating to sub-agent | `/delegate` | Enforces delegation framework |
 | Reviewing agent output | `/hallucination-detector:hallucination-audit` | Checks hallucinations, unverified causality |
 | Claiming task complete | `/verify` | Runs "Is It Done?" checklist |
