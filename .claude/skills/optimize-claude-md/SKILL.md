@@ -23,9 +23,16 @@ Where `<path>` is one of:
 
 ## Process
 
+<user_provided_target>$ARGUMENTS</user_provided_target>
+<PWD>!`pwd`</PWD>
+
 ### Phase 1: Validate Target
 
-Read the file or directory at `$ARGUMENTS`. Verify existence. Determine scope (single file, skill directory, or plugin directory).
+If `<user_provided_target>` is empty, ask the user for a target path before proceeding.
+
+If `<user_provided_target>` is not an absolute path, prepend the value of `<PWD>` to produce the absolute path. Use that absolute path for all subsequent operations.
+
+Verify the resolved absolute path exists. Determine scope (single file, skill directory, or plugin directory).
 
 ### Phase 2: Measure Baseline
 
