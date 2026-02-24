@@ -3,6 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "typer>=0.21.0",
+#     "gitpython>=3.1.45",
 # ]
 # ///
 """Install linting-root-cause-resolver agent to user or project scope.
@@ -15,11 +16,11 @@ overwrites of modified agent files.
 from __future__ import annotations
 
 import hashlib
-import subprocess
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
+import git
 import typer
 from rich import box
 from rich.console import Console
@@ -42,19 +43,12 @@ def get_git_root() -> Path | None:
 
     Returns:
         Path to git root directory, or None if not in a git repository
-
-    Raises:
-        subprocess.CalledProcessError: If git command fails unexpectedly
     """
     try:
-        # S607: git must use PATH lookup for cross-platform portability (Linux/macOS/Windows install paths differ)
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, check=True, timeout=5
-        )
-        return Path(result.stdout.strip())
-    except subprocess.CalledProcessError:
-        return None
-    except FileNotFoundError:
+        repo = git.Repo(search_parent_directories=True)
+        git_root = repo.git.rev_parse("--show-toplevel")
+        return Path(git_root)
+    except git.InvalidGitRepositoryError:
         return None
 
 

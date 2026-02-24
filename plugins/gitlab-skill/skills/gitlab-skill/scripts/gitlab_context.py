@@ -20,16 +20,16 @@ from __future__ import annotations
 
 import os
 import re
-import subprocess
 import sys
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import git
+import gitlab as gitlab_module
+
 if TYPE_CHECKING:
-    import git
-    import gitlab as gitlab_module
     from gitlab.v4.objects import Project
 
 _SECONDS_PER_MINUTE = 60
@@ -45,8 +45,6 @@ def _get_repo() -> object:
     Returns:
         GitPython Repo object for the current repository.
     """
-    import git
-
     return git.Repo(Path.cwd(), search_parent_directories=True)
 
 
@@ -97,26 +95,16 @@ def _get_current_branch() -> str:
 
 
 def _resolve_token() -> str | None:
-    """Resolve GitLab API token from environment or glab CLI config.
+    """Resolve GitLab API token from environment variables.
 
     Checks in order:
     1. GITLAB_TOKEN environment variable
     2. GITLAB_PRIVATE_TOKEN environment variable
-    3. glab CLI config for the detected host
 
     Returns:
-        Token string, or None if no token found.
+        Token string, or None if neither variable is set.
     """
-    if token := os.environ.get("GITLAB_TOKEN") or os.environ.get("GITLAB_PRIVATE_TOKEN"):
-        return token
-
-    try:
-        result = subprocess.run(
-            ["glab", "config", "get", "token", "-h", get_gitlab_host()], capture_output=True, text=True, check=True
-        )
-        return result.stdout.strip() or None
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
+    return os.environ.get("GITLAB_TOKEN") or os.environ.get("GITLAB_PRIVATE_TOKEN") or None
 
 
 def get_gitlab_client() -> gitlab_module.Gitlab:
@@ -128,14 +116,12 @@ def get_gitlab_client() -> gitlab_module.Gitlab:
     Raises:
         RuntimeError: If no authentication token is available.
     """
-    import gitlab
-
     token = _resolve_token()
     if not token:
-        msg = "No GitLab token found. Set GITLAB_TOKEN or configure glab."
+        msg = "No GitLab token found. Set GITLAB_TOKEN env var."
         raise RuntimeError(msg)
 
-    return gitlab.Gitlab(f"https://{get_gitlab_host()}", private_token=token)
+    return gitlab_module.Gitlab(f"https://{get_gitlab_host()}", private_token=token)
 
 
 def _get_project(gl: gitlab_module.Gitlab) -> Project:

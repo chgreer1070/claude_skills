@@ -5,6 +5,7 @@
 #     "typer>=0.21.0",
 #     "tomlkit>=0.13.0",
 #     "ruamel.yaml>=0.18.0",
+#     "gitpython>=3.1.45",
 # ]
 # ///
 """Discover project linters and generate LINTERS section for CLAUDE.md.
@@ -17,11 +18,11 @@ from __future__ import annotations
 
 import json
 import re
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Any
 
+import git
 import tomlkit
 import typer
 from rich.console import Console
@@ -60,26 +61,16 @@ def check_git_hooks() -> bool:
 
     Returns:
         True if hooks are installed and enabled
-
-    Raises:
-        subprocess.CalledProcessError: If git command fails unexpectedly
     """
     try:
-        # Check if we're in a git repository
-        # S607: git must use PATH lookup for cross-platform portability (Linux/macOS/Windows install paths differ)
-        subprocess.run(["git", "rev-parse", "--git-dir"], capture_output=True, check=True, timeout=5)
-
-        # Check for pre-commit hook
-        # S607: git must use PATH lookup for cross-platform portability (Linux/macOS/Windows install paths differ)
-        result = subprocess.run(
-            ["git", "config", "--get", "core.hooksPath"], check=False, capture_output=True, text=True, timeout=5
-        )
-        hooks_path = Path(result.stdout.strip()) if result.returncode == 0 else Path(".git/hooks")
+        repo = git.Repo(search_parent_directories=True)
+        hooks_path_str = repo.config_reader().get_value("core", "hooksPath", None)
+        hooks_path = Path(str(hooks_path_str)) if hooks_path_str is not None else Path(repo.git_dir) / "hooks"
 
         pre_commit_hook = hooks_path / "pre-commit"
         return pre_commit_hook.exists() and pre_commit_hook.stat().st_size > 0
 
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except git.InvalidGitRepositoryError:
         return False
 
 

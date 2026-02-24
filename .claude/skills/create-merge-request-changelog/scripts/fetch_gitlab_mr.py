@@ -1,5 +1,9 @@
-#!/usr/bin/env python3
-"""GitLab merge request fetcher - extracts MR metadata and changes via glab CLI.
+#!/usr/bin/env -S uv --quiet run --active --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["typer>=0.21.0", "python-gitlab>=4.0.0", "gitpython>=3.1.0"]
+# ///
+"""GitLab merge request fetcher - extracts MR metadata and changes via python-gitlab.
 
 This script fetches merge request details from GitLab including metadata,
 commits, and diffs, outputting structured JSON for further processing.
@@ -8,17 +12,26 @@ commits, and diffs, outputting structured JSON for further processing.
 from __future__ import annotations
 
 import json
+import os
 import re
+import shutil
 import subprocess
+from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
+import git
+import gitlab
+import gitlab.exceptions
 import typer
 from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
+
+if TYPE_CHECKING:
+    from gitlab.v4.objects import ProjectMergeRequest
 
 _DESCRIPTION_PREVIEW_MAX_LENGTH = 200  # Max characters for MR description preview
 
@@ -30,37 +43,104 @@ class GitLabFetchError(Exception):
     """Custom exception for GitLab fetch errors."""
 
 
-def run_glab_command(args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
-    """Run a glab CLI command and return the result.
-
-    Args:
-        args: glab command arguments (without 'glab' prefix)
-        check: Whether to raise on non-zero exit code
+@lru_cache(maxsize=1)
+def _get_repo() -> git.Repo:
+    """Get the git repository for the current directory.
 
     Returns:
-        Completed process result
+        GitPython Repo object for the current repository.
+    """
+    return git.Repo(Path.cwd(), search_parent_directories=True)
+
+
+@lru_cache(maxsize=1)
+def _parse_git_origin() -> tuple[str, str]:
+    """Parse hostname and project path from git origin URL.
+
+    Returns:
+        Tuple of (hostname, project_path).
 
     Raises:
-        GitLabFetchError: If command fails and check=True
+        GitLabFetchError: If the origin URL cannot be parsed.
     """
+    repo = _get_repo()
+    url: str = repo.remotes.origin.url
+    if match := re.search(r"(?:@|://(?:[^@]+@)?)([^:/]+)[:/](.+?)(?:\.git)?$", url):
+        return match.group(1), match.group(2)
+    msg = f"Could not parse git origin URL: {url}"
+    raise GitLabFetchError(msg)
+
+
+def _get_gitlab_host() -> str:
+    """Get GitLab hostname from git remote origin.
+
+    Returns:
+        GitLab hostname (e.g. "gitlab.com").
+    """
+    return _parse_git_origin()[0]
+
+
+def _get_project_path() -> str:
+    """Get project path from git remote origin.
+
+    Returns:
+        Project path (e.g. "mygroup/myproject").
+    """
+    return _parse_git_origin()[1]
+
+
+def _resolve_token() -> str | None:
+    """Resolve GitLab API token from environment or glab CLI config.
+
+    Checks in order:
+    1. GITLAB_TOKEN environment variable
+    2. GITLAB_PRIVATE_TOKEN environment variable
+    3. glab CLI config for the detected host
+
+    Returns:
+        Token string, or None if no token found.
+    """
+    if token := os.environ.get("GITLAB_TOKEN") or os.environ.get("GITLAB_PRIVATE_TOKEN"):
+        return token
+
+    glab_path = shutil.which("glab")
+    if not glab_path:
+        return None
+
     try:
-        return subprocess.run(["glab", *args], capture_output=True, text=True, check=check)
-    except FileNotFoundError as e:
-        msg = "glab CLI not found. Install it from https://gitlab.com/gitlab-org/cli"
-        raise GitLabFetchError(msg) from e
-    except subprocess.CalledProcessError as e:
-        msg = f"glab command failed: {e.stderr.strip()}"
-        raise GitLabFetchError(msg) from e
+        result = subprocess.run(
+            [glab_path, "config", "get", "token", "-h", _get_gitlab_host()], capture_output=True, text=True, check=True
+        )
+        return result.stdout.strip() or None
+    except subprocess.CalledProcessError:
+        return None
 
 
-def extract_mr_id(mr_identifier: str) -> str:
-    """Extract MR ID from URL or direct ID.
+def get_gitlab_client() -> gitlab.Gitlab:
+    """Get authenticated GitLab client.
+
+    Returns:
+        Authenticated GitLab client instance.
+
+    Raises:
+        GitLabFetchError: If no authentication token is available.
+    """
+    token = _resolve_token()
+    if not token:
+        msg = "No GitLab token found. Set GITLAB_TOKEN or configure glab."
+        raise GitLabFetchError(msg)
+
+    return gitlab.Gitlab(f"https://{_get_gitlab_host()}", private_token=token)
+
+
+def extract_mr_id(mr_identifier: str) -> int:
+    """Extract MR IID from URL or direct ID.
 
     Args:
         mr_identifier: MR URL or ID (e.g., "123", "!123", "https://gitlab.com/org/project/-/merge_requests/123")
 
     Returns:
-        MR ID as string
+        MR IID as integer
 
     Raises:
         GitLabFetchError: If MR ID cannot be extracted
@@ -69,50 +149,50 @@ def extract_mr_id(mr_identifier: str) -> str:
     url_pattern = r"merge_requests/(\d+)"
     url_match = re.search(url_pattern, mr_identifier)
     if url_match:
-        return url_match.group(1)
+        return int(url_match.group(1))
 
     # Try direct ID pattern (with or without !)
     id_pattern = r"!?(\d+)"
     id_match = re.fullmatch(id_pattern, mr_identifier)
     if id_match:
-        return id_match.group(1)
+        return int(id_match.group(1))
 
     msg = f"Could not extract MR ID from '{mr_identifier}'. Provide ID as number (123), !123, or full URL."
     raise GitLabFetchError(msg)
 
 
-def fetch_mr_metadata(mr_id: str) -> dict[str, Any]:
-    """Fetch merge request metadata using glab CLI.
+def fetch_mr_metadata(mr_iid: int) -> ProjectMergeRequest:
+    """Fetch merge request object using python-gitlab.
 
     Args:
-        mr_id: MR ID
+        mr_iid: MR internal ID (project-scoped)
 
     Returns:
-        Dictionary containing MR metadata
+        GitLab MR object
 
     Raises:
         GitLabFetchError: If fetch fails
     """
-    result = run_glab_command(["mr", "view", mr_id, "--json"])
-
     try:
-        mr_data: dict[str, Any] = json.loads(result.stdout)
-    except json.JSONDecodeError as e:
-        msg = f"Invalid JSON response from glab: {e}"
+        gl = get_gitlab_client()
+        project = gl.projects.get(_get_project_path())
+        return project.mergerequests.get(mr_iid)
+    except gitlab.exceptions.GitlabGetError as e:
+        msg = f"MR !{mr_iid} not found: {e}"
+        raise GitLabFetchError(msg) from e
+    except gitlab.exceptions.GitlabAuthenticationError as e:
+        msg = f"Authentication failed: {e}"
+        raise GitLabFetchError(msg) from e
+    except gitlab.exceptions.GitlabError as e:
+        msg = f"GitLab API error fetching MR !{mr_iid}: {e}"
         raise GitLabFetchError(msg) from e
 
-    if not mr_data:
-        msg = f"No data returned for MR {mr_id}"
-        raise GitLabFetchError(msg)
 
-    return mr_data
-
-
-def fetch_mr_commits(mr_id: str) -> list[dict[str, str]]:
+def fetch_mr_commits(mr: ProjectMergeRequest) -> list[dict[str, str]]:
     """Fetch commit list for merge request.
 
     Args:
-        mr_id: MR ID
+        mr: GitLab MR object
 
     Returns:
         List of commit dictionaries with sha, title, and author
@@ -120,29 +200,22 @@ def fetch_mr_commits(mr_id: str) -> list[dict[str, str]]:
     Raises:
         GitLabFetchError: If fetch fails
     """
-    result = run_glab_command(["mr", "view", mr_id, "--json", "--jq", ".commits"])
-
     try:
-        commits_data = json.loads(result.stdout)
-    except json.JSONDecodeError as e:
-        msg = f"Invalid JSON response for commits: {e}"
+        commits = list(mr.commits())
+    except gitlab.exceptions.GitlabError as e:
+        msg = f"GitLab API error fetching commits for MR !{mr.iid}: {e}"
         raise GitLabFetchError(msg) from e
 
-    if not commits_data:
-        return []
-
-    # Transform commit data to simpler format
-    return [
-        {"sha": commit.get("sha", ""), "title": commit.get("title", ""), "author": commit.get("author_name", "")}
-        for commit in commits_data
-    ]
+    return [{"sha": commit.id, "title": commit.title, "author": commit.author_name} for commit in commits]
 
 
-def fetch_mr_changes(mr_id: str) -> str:
+def fetch_mr_changes(mr: ProjectMergeRequest) -> str:
     """Fetch unified diff for merge request.
 
+    Reconstructs a unified diff string from the MR changes endpoint.
+
     Args:
-        mr_id: MR ID
+        mr: GitLab MR object
 
     Returns:
         Unified diff as string
@@ -150,8 +223,37 @@ def fetch_mr_changes(mr_id: str) -> str:
     Raises:
         GitLabFetchError: If fetch fails
     """
-    result = run_glab_command(["mr", "diff", mr_id])
-    return result.stdout
+    try:
+        changes_data = mr.changes()
+    except gitlab.exceptions.GitlabError as e:
+        msg = f"GitLab API error fetching diff for MR !{mr.iid}: {e}"
+        raise GitLabFetchError(msg) from e
+
+    if not isinstance(changes_data, dict):
+        return ""
+
+    changes: list[dict[str, Any]] = cast("dict[str, Any]", changes_data).get("changes", [])
+    if not changes:
+        return ""
+
+    diff_parts: list[str] = []
+    for change in changes:
+        old_path = change.get("old_path", "")
+        new_path = change.get("new_path", "")
+        diff_text = change.get("diff", "")
+
+        if change.get("new_file"):
+            header = f"diff --git a/{old_path} b/{new_path}\nnew file mode {change.get('b_mode', '100644')}\n--- /dev/null\n+++ b/{new_path}\n"
+        elif change.get("deleted_file"):
+            header = f"diff --git a/{old_path} b/{new_path}\ndeleted file mode {change.get('a_mode', '100644')}\n--- a/{old_path}\n+++ /dev/null\n"
+        elif change.get("renamed_file"):
+            header = f"diff --git a/{old_path} b/{new_path}\nrename from {old_path}\nrename to {new_path}\n--- a/{old_path}\n+++ b/{new_path}\n"
+        else:
+            header = f"diff --git a/{old_path} b/{new_path}\n--- a/{old_path}\n+++ b/{new_path}\n"
+
+        diff_parts.append(header + diff_text)
+
+    return "\n".join(diff_parts)
 
 
 def parse_labels(labels_list: list[str] | None) -> list[str]:
@@ -170,37 +272,35 @@ def parse_labels(labels_list: list[str] | None) -> list[str]:
     return [label.strip() for label in labels_list if label and label.strip()]
 
 
-def create_mr_summary(mr_data: dict[str, Any], commits: list[dict[str, str]]) -> dict[str, Any]:
-    """Create structured MR summary from raw data.
+def create_mr_summary(mr: ProjectMergeRequest, commits: list[dict[str, str]]) -> dict[str, Any]:
+    """Create structured MR summary from python-gitlab MR object.
 
     Args:
-        mr_data: Raw MR metadata from glab
+        mr: GitLab MR object from python-gitlab
         commits: List of commits
 
     Returns:
         Structured MR summary dictionary
     """
+    author = mr.author if isinstance(mr.author, dict) else {}
     return {
-        "id": mr_data.get("number", ""),
-        "iid": mr_data.get("iid", ""),
-        "title": mr_data.get("title", ""),
-        "description": mr_data.get("description", ""),
-        "state": mr_data.get("state", ""),
-        "source_branch": mr_data.get("source_branch", ""),
-        "target_branch": mr_data.get("target_branch", ""),
-        "author": {
-            "username": mr_data.get("author", {}).get("username", ""),
-            "name": mr_data.get("author", {}).get("name", ""),
-        },
-        "web_url": mr_data.get("web_url", ""),
-        "labels": parse_labels(mr_data.get("labels")),
-        "created_at": mr_data.get("created_at", ""),
-        "updated_at": mr_data.get("updated_at", ""),
-        "merged_at": mr_data.get("merged_at"),
+        "id": mr.iid,
+        "iid": mr.iid,
+        "title": mr.title,
+        "description": mr.description or "",
+        "state": mr.state,
+        "source_branch": mr.source_branch,
+        "target_branch": mr.target_branch,
+        "author": {"username": author.get("username", ""), "name": author.get("name", "")},
+        "web_url": mr.web_url,
+        "labels": parse_labels(mr.labels),
+        "created_at": mr.created_at,
+        "updated_at": mr.updated_at,
+        "merged_at": getattr(mr, "merged_at", None),
         "commits": commits,
         "commit_count": len(commits),
-        "has_conflicts": mr_data.get("has_conflicts", False),
-        "work_in_progress": mr_data.get("work_in_progress", False),
+        "has_conflicts": getattr(mr, "has_conflicts", False),
+        "work_in_progress": getattr(mr, "work_in_progress", False),
     }
 
 
@@ -260,28 +360,28 @@ def fetch(
         ) as progress:
             # Extract MR ID
             task = progress.add_task("Parsing MR identifier...", total=None)
-            mr_id = extract_mr_id(mr_identifier)
-            progress.update(task, description=f":white_check_mark: MR ID: {mr_id}")
+            mr_iid = extract_mr_id(mr_identifier)
+            progress.update(task, description=f":white_check_mark: MR IID: {mr_iid}")
 
-            # Fetch MR metadata
+            # Fetch MR object
             progress.update(task, description="Fetching MR metadata...")
-            mr_data = fetch_mr_metadata(mr_id)
+            mr = fetch_mr_metadata(mr_iid)
             progress.update(task, description=":white_check_mark: Metadata fetched")
 
             # Fetch commits
             progress.update(task, description="Fetching commit list...")
-            commits = fetch_mr_commits(mr_id)
+            commits = fetch_mr_commits(mr)
             progress.update(task, description=f":white_check_mark: Fetched {len(commits)} commits")
 
             # Create summary
             progress.update(task, description="Creating summary...")
-            mr_summary = create_mr_summary(mr_data, commits)
+            mr_summary = create_mr_summary(mr, commits)
             progress.update(task, description=":white_check_mark: Summary created")
 
             # Fetch diff if requested
             if include_diff:
                 progress.update(task, description="Fetching unified diff...")
-                diff = fetch_mr_changes(mr_id)
+                diff = fetch_mr_changes(mr)
                 mr_summary["diff"] = diff
                 progress.update(task, description=":white_check_mark: Diff fetched")
 

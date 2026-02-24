@@ -88,6 +88,8 @@ _(Empty)_
 - [TEST: Resolve verification](backlog/p2-test-resolve-verification.md)
 
 - [conventional-commits: Fix SKILL.md frontmatter, broken links, and structure](backlog/p2-conventional-commits-fix-skillmd-frontmatter-broken-links-an.md)
+
+- [Fix pre-existing linting errors in gitlab_context.py](backlog/p2-fix-pre-existing-linting-errors-in-gitlabcontextpy.md)
 ## Ideas
 
 - [plugin-creator: Plugin Validation & Scaffolding MCP](backlog/ideas-plugin-creator-plugin-validation-scaffolding-mcp.md)

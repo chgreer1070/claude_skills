@@ -3,6 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "typer>=0.21.0",
+#     "gitpython>=3.1.45",
 # ]
 # ///
 """Git change analysis script - extracts commits, diffs, and statistics.
@@ -14,17 +15,17 @@ information including commits, diffs, and statistics to a specified directory.
 from __future__ import annotations
 
 import json
-import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
+import git
 import typer
 from rich import box
 from rich.console import Console, RenderableType
 from rich.measure import Measurement
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
 from rich.table import Table
 
 _MIN_NUMSTAT_FIELDS = 2  # Minimum fields in git diff --numstat output (added, deleted, filename)
@@ -53,46 +54,23 @@ app = typer.Typer(
 console = Console(highlight=False)
 
 
-class GitAnalysisError(Exception):
-    """Custom exception for git analysis errors."""
-
-
-def run_git_command(args: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
-    """Run a git command and return the result.
-
-    Args:
-        args: Git command arguments (without 'git' prefix)
-        check: Whether to raise on non-zero exit code
+def open_repo() -> git.Repo:
+    """Open the git repository for the current working directory.
 
     Returns:
-        Completed process result
+        GitPython Repo object
 
     Raises:
-        GitAnalysisError: If command fails and check=True
+        git.InvalidGitRepositoryError: If not inside a git repository
     """
-    try:
-        return subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8", check=check)
-    except subprocess.CalledProcessError as e:
-        msg = f"Git command failed: {e.stderr.strip()}"
-        raise GitAnalysisError(msg) from e
+    return git.Repo(Path.cwd(), search_parent_directories=True)
 
 
-def verify_git_repository() -> None:
-    """Verify that current directory is a git repository.
-
-    Raises:
-        GitAnalysisError: If not in a git repository
-    """
-    result = run_git_command(["rev-parse", "--git-dir"], check=False)
-    if result.returncode != 0:
-        msg = "Not a git repository"
-        raise GitAnalysisError(msg)
-
-
-def find_merge_base(base_ref: str, head_ref: str) -> str:
+def find_merge_base(repo: git.Repo, base_ref: str, head_ref: str) -> str:
     """Find the merge base between two git references.
 
     Args:
+        repo: GitPython Repo object
         base_ref: Base reference (e.g., 'main')
         head_ref: Head reference (e.g., 'HEAD')
 
@@ -100,147 +78,144 @@ def find_merge_base(base_ref: str, head_ref: str) -> str:
         Merge base commit hash
 
     Raises:
-        GitAnalysisError: If merge base cannot be found
+        git.GitCommandError: If merge base cannot be found
+        ValueError: If merge base result is empty
     """
-    result = run_git_command(["merge-base", base_ref, head_ref], check=False)
-    if result.returncode != 0:
+    bases = repo.merge_base(base_ref, head_ref)
+    if not bases:
         msg = f"Could not find merge base between {base_ref} and {head_ref}"
-        raise GitAnalysisError(msg)
-
-    merge_base = result.stdout.strip()
-    if not merge_base:
-        msg = "Merge base is empty"
-        raise GitAnalysisError(msg)
-
-    return merge_base
+        raise ValueError(msg)
+    return str(bases[0])
 
 
-def get_current_branch() -> str:
+def get_current_branch(repo: git.Repo) -> str:
     """Get the name of the current git branch.
+
+    Args:
+        repo: GitPython Repo object
 
     Returns:
         Current branch name
 
     Raises:
-        GitAnalysisError: If branch name cannot be determined
+        TypeError: If the repo is in detached HEAD state
     """
-    result = run_git_command(["rev-parse", "--abbrev-ref", "HEAD"])
-    branch = result.stdout.strip()
-    if not branch:
-        msg = "Could not determine current branch"
-        raise GitAnalysisError(msg)
-    return branch
+    return repo.active_branch.name
 
 
-def extract_commits_oneline(merge_base: str, head_ref: str, output_file: Path) -> None:
+def extract_commits_oneline(repo: git.Repo, merge_base: str, head_ref: str, output_file: Path) -> None:
     """Extract one-line commit list.
 
     Args:
+        repo: GitPython Repo object
         merge_base: Merge base commit hash
         head_ref: Head reference
         output_file: Output file path
     """
-    result = run_git_command(["log", "--oneline", "--no-merges", f"{merge_base}..{head_ref}"])
-    output_file.write_text(result.stdout, encoding="utf-8")
+    output = repo.git.log("--oneline", "--no-merges", f"{merge_base}..{head_ref}")
+    output_file.write_text(output + "\n" if output else "", encoding="utf-8")
 
 
-def extract_commits_detailed(merge_base: str, head_ref: str, output_file: Path) -> None:
+def extract_commits_detailed(repo: git.Repo, merge_base: str, head_ref: str, output_file: Path) -> None:
     """Extract detailed commit messages.
 
     Args:
+        repo: GitPython Repo object
         merge_base: Merge base commit hash
         head_ref: Head reference
         output_file: Output file path
     """
-    result = run_git_command([
-        "log",
-        "--format=%H%n%an%n%ae%n%at%n%s%n%b%n---COMMIT-SEPARATOR---",
-        "--no-merges",
-        f"{merge_base}..{head_ref}",
-    ])
-    output_file.write_text(result.stdout, encoding="utf-8")
+    output = repo.git.log(
+        "--format=%H%n%an%n%ae%n%at%n%s%n%b%n---COMMIT-SEPARATOR---", "--no-merges", f"{merge_base}..{head_ref}"
+    )
+    output_file.write_text(output + "\n" if output else "", encoding="utf-8")
 
 
-def count_commits(merge_base: str, head_ref: str) -> int:
+def count_commits(repo: git.Repo, merge_base: str, head_ref: str) -> int:
     """Count commits between merge base and head.
 
     Args:
+        repo: GitPython Repo object
         merge_base: Merge base commit hash
         head_ref: Head reference
 
     Returns:
         Number of commits
     """
-    result = run_git_command(["rev-list", "--count", "--no-merges", f"{merge_base}..{head_ref}"])
-    return int(result.stdout.strip())
+    output = repo.git.rev_list("--count", "--no-merges", f"{merge_base}..{head_ref}")
+    return int(output.strip())
 
 
-def extract_diff(merge_base: str, head_ref: str, output_file: Path) -> None:
+def extract_diff(repo: git.Repo, merge_base: str, head_ref: str, output_file: Path) -> None:
     """Extract unified diff of changes.
 
     Args:
+        repo: GitPython Repo object
         merge_base: Merge base commit hash
         head_ref: Head reference
         output_file: Output file path
     """
-    result = run_git_command(["diff", f"{merge_base}..{head_ref}"])
-    output_file.write_text(result.stdout, encoding="utf-8")
+    output = repo.git.diff(f"{merge_base}..{head_ref}")
+    output_file.write_text(output + "\n" if output else "", encoding="utf-8")
 
 
-def extract_diff_stat(merge_base: str, head_ref: str, output_file: Path) -> None:
+def extract_diff_stat(repo: git.Repo, merge_base: str, head_ref: str, output_file: Path) -> None:
     """Extract diff statistics.
 
     Args:
+        repo: GitPython Repo object
         merge_base: Merge base commit hash
         head_ref: Head reference
         output_file: Output file path
     """
-    result = run_git_command(["diff", "--stat", f"{merge_base}..{head_ref}"])
-    output_file.write_text(result.stdout, encoding="utf-8")
+    output = repo.git.diff("--stat", f"{merge_base}..{head_ref}")
+    output_file.write_text(output + "\n" if output else "", encoding="utf-8")
 
 
-def extract_changed_files(merge_base: str, head_ref: str, output_file: Path) -> None:
+def extract_changed_files(repo: git.Repo, merge_base: str, head_ref: str, output_file: Path) -> None:
     """Extract list of changed files with status.
 
     Args:
+        repo: GitPython Repo object
         merge_base: Merge base commit hash
         head_ref: Head reference
         output_file: Output file path
     """
-    result = run_git_command(["diff", "--name-status", f"{merge_base}..{head_ref}"])
-    output_file.write_text(result.stdout, encoding="utf-8")
+    output = repo.git.diff("--name-status", f"{merge_base}..{head_ref}")
+    output_file.write_text(output + "\n" if output else "", encoding="utf-8")
 
 
-def extract_numstat(merge_base: str, head_ref: str, output_file: Path) -> None:
+def extract_numstat(repo: git.Repo, merge_base: str, head_ref: str, output_file: Path) -> None:
     """Extract per-file line change statistics.
 
     Args:
+        repo: GitPython Repo object
         merge_base: Merge base commit hash
         head_ref: Head reference
         output_file: Output file path
     """
-    result = run_git_command(["diff", "--numstat", f"{merge_base}..{head_ref}"])
-    output_file.write_text(result.stdout, encoding="utf-8")
+    output = repo.git.diff("--numstat", f"{merge_base}..{head_ref}")
+    output_file.write_text(output + "\n" if output else "", encoding="utf-8")
 
 
-def calculate_statistics(merge_base: str, head_ref: str) -> dict[str, int]:
+def calculate_statistics(repo: git.Repo, merge_base: str, head_ref: str) -> dict[str, int]:
     """Calculate total lines added, deleted, and files changed.
 
     Args:
+        repo: GitPython Repo object
         merge_base: Merge base commit hash
         head_ref: Head reference
 
     Returns:
         Dictionary with lines_added, lines_deleted, files_changed
     """
-    # Get numstat output
-    result = run_git_command(["diff", "--numstat", f"{merge_base}..{head_ref}"])
+    output = repo.git.diff("--numstat", f"{merge_base}..{head_ref}")
 
     lines_added = 0
     lines_deleted = 0
     files_changed = 0
 
-    for line in result.stdout.strip().split("\n"):
+    for line in output.strip().split("\n"):
         if not line:
             continue
 
@@ -373,6 +348,75 @@ def create_summary_table(
     return table
 
 
+def _run_analysis(
+    repo: git.Repo, base_ref: str, head_ref: str, output_dir: Path, progress: Progress, task: TaskID
+) -> tuple[str, str, int, dict[str, int]]:
+    """Run all git analysis steps and return collected data.
+
+    Args:
+        repo: GitPython Repo object
+        base_ref: Base reference
+        head_ref: Head reference
+        output_dir: Directory to write output files
+        progress: Rich Progress instance
+        task: Task ID for progress updates
+
+    Returns:
+        Tuple of (current_branch, merge_base, commit_count, stats)
+    """
+    progress.update(task, description="Finding merge base...")
+    merge_base = find_merge_base(repo, base_ref, head_ref)
+    progress.update(task, description=":white_check_mark: Merge base found")
+
+    progress.update(task, description="Getting current branch...")
+    current_branch = get_current_branch(repo)
+    progress.update(task, description=":white_check_mark: Current branch identified")
+
+    progress.update(task, description="Creating output directory...")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    progress.update(task, description=":white_check_mark: Output directory ready")
+
+    progress.update(task, description="Extracting commit history...")
+    extract_commits_oneline(repo, merge_base, head_ref, output_dir / "commits_oneline.txt")
+    extract_commits_detailed(repo, merge_base, head_ref, output_dir / "commits_detailed.txt")
+    commit_count = count_commits(repo, merge_base, head_ref)
+    progress.update(task, description=f":white_check_mark: Extracted {commit_count} commits")
+
+    progress.update(task, description="Extracting diffs...")
+    extract_diff(repo, merge_base, head_ref, output_dir / "changes.diff")
+    extract_diff_stat(repo, merge_base, head_ref, output_dir / "changes_stat.txt")
+    extract_changed_files(repo, merge_base, head_ref, output_dir / "changed_files.txt")
+    extract_numstat(repo, merge_base, head_ref, output_dir / "changes_numstat.txt")
+    progress.update(task, description=":white_check_mark: Diffs extracted")
+
+    progress.update(task, description="Calculating statistics...")
+    stats = calculate_statistics(repo, merge_base, head_ref)
+    progress.update(task, description=":white_check_mark: Statistics calculated")
+
+    progress.update(task, description="Creating summaries...")
+    create_summary_json(
+        current_branch,
+        base_ref,
+        head_ref,
+        merge_base,
+        commit_count,
+        stats=stats,
+        output_file=output_dir / "summary.json",
+    )
+    create_summary_text(
+        current_branch,
+        base_ref,
+        head_ref,
+        merge_base,
+        commit_count,
+        stats=stats,
+        output_file=output_dir / "summary.txt",
+    )
+    progress.update(task, description=":white_check_mark: Summaries created")
+
+    return current_branch, merge_base, commit_count, stats
+
+
 def _display_results(
     console: Console,
     output_dir: Path,
@@ -422,74 +466,29 @@ def analyze(
         with Progress(
             SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console
         ) as progress:
-            # Verify git repository
             task = progress.add_task("Verifying git repository...", total=None)
-            verify_git_repository()
+            repo = open_repo()
             progress.update(task, description=":white_check_mark: Git repository verified")
-
-            # Find merge base
-            progress.update(task, description="Finding merge base...")
-            merge_base = find_merge_base(base_ref, head_ref)
-            progress.update(task, description=":white_check_mark: Merge base found")
-
-            # Get current branch
-            progress.update(task, description="Getting current branch...")
-            current_branch = get_current_branch()
-            progress.update(task, description=":white_check_mark: Current branch identified")
-
-            # Create output directory
-            progress.update(task, description="Creating output directory...")
-            output_dir.mkdir(parents=True, exist_ok=True)
-            progress.update(task, description=":white_check_mark: Output directory ready")
-
-            # Extract commits
-            progress.update(task, description="Extracting commit history...")
-            extract_commits_oneline(merge_base, head_ref, output_dir / "commits_oneline.txt")
-            extract_commits_detailed(merge_base, head_ref, output_dir / "commits_detailed.txt")
-            commit_count = count_commits(merge_base, head_ref)
-            progress.update(task, description=f":white_check_mark: Extracted {commit_count} commits")
-
-            # Extract diffs
-            progress.update(task, description="Extracting diffs...")
-            extract_diff(merge_base, head_ref, output_dir / "changes.diff")
-            extract_diff_stat(merge_base, head_ref, output_dir / "changes_stat.txt")
-            extract_changed_files(merge_base, head_ref, output_dir / "changed_files.txt")
-            extract_numstat(merge_base, head_ref, output_dir / "changes_numstat.txt")
-            progress.update(task, description=":white_check_mark: Diffs extracted")
-
-            # Calculate statistics
-            progress.update(task, description="Calculating statistics...")
-            stats = calculate_statistics(merge_base, head_ref)
-            progress.update(task, description=":white_check_mark: Statistics calculated")
-
-            # Create summaries
-            progress.update(task, description="Creating summaries...")
-            create_summary_json(
-                current_branch,
-                base_ref,
-                head_ref,
-                merge_base,
-                commit_count,
-                stats=stats,
-                output_file=output_dir / "summary.json",
+            current_branch, merge_base, commit_count, stats = _run_analysis(
+                repo, base_ref, head_ref, output_dir, progress, task
             )
-            create_summary_text(
-                current_branch,
-                base_ref,
-                head_ref,
-                merge_base,
-                commit_count,
-                stats=stats,
-                output_file=output_dir / "summary.txt",
-            )
-            progress.update(task, description=":white_check_mark: Summaries created")
-
             progress.remove_task(task)
 
-        # Display summary
         _display_results(console, output_dir, current_branch, base_ref, head_ref, merge_base, commit_count, stats)
 
-    except GitAnalysisError as e:
+    except git.InvalidGitRepositoryError as e:
+        err_panel = Panel.fit(f"[red]Not a git repository: {e}[/red]", title=":cross_mark: Error", border_style="red")
+        console.width = get_rendered_width(err_panel)
+        console.print(err_panel)
+        raise typer.Exit(code=1) from e
+    except git.GitCommandError as e:
+        err_panel = Panel.fit(
+            f"[red]{e.stderr.strip() if e.stderr else e}[/red]", title=":cross_mark: Error", border_style="red"
+        )
+        console.width = get_rendered_width(err_panel)
+        console.print(err_panel)
+        raise typer.Exit(code=1) from e
+    except ValueError as e:
         err_panel = Panel.fit(f"[red]{e}[/red]", title=":cross_mark: Error", border_style="red")
         console.width = get_rendered_width(err_panel)
         console.print(err_panel)
