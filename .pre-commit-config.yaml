@@ -37,6 +37,14 @@ repos:
         language: system
         stages: [pre-commit]
         pass_filenames: false
+      # Local check-symlinks: upstream uses os.path.exists() which returns False
+      # for valid symlinks on Windows. We use Path.resolve().exists() instead.
+      - id: check-symlinks
+        name: Check for broken symlinks
+        entry: uv run -q scripts/check_symlinks.py
+        language: system
+        stages: [pre-commit]
+        pass_filenames: true
 
   # Standard pre-commit hooks for general file maintenance
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -47,8 +55,6 @@ repos:
         description: fails if symlinks were converted to plain files (run after repair-symlinks)
       - id: trailing-whitespace
         exclude: \.lock$
-      - id: end-of-file-fixer
-        exclude: \.lock$
       - id: check-yaml
         args: [--unsafe] # Allow Python tags in mkdocs.yml
       - id: check-json
@@ -57,12 +63,6 @@ repos:
         args: ["--maxkb=10000"] # 10MB limit
       - id: check-case-conflict
       - id: check-merge-conflict
-      # Exclude symlinks that require Developer Mode/Admin on Windows. repair-symlinks
-      # runs first; when it cannot create symlinks (no privileges), these remain broken.
-      # See scripts/repair_symlinks.py. Exclude allows Linux/macOS and privileged
-      # Windows to pass; unprivileged Windows devs can run repair_symlinks.py manually.
-      - id: check-symlinks
-        exclude: 'plugins/uv/skills/uv$|plugins/development-harness/skills/implementation-manager/.*|.*/references/accessing_online_resources\.md$'
       - id: mixed-line-ending
         args: ["--fix=lf"]
       - id: check-executables-have-shebangs

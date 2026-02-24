@@ -1,14 +1,22 @@
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
 # requires-python = ">=3.11"
+# dependencies = ["gitpython>=3.1.45"]
 # ///
 """Repair destroyed Git symlinks on Windows.
 
 When core.symlinks is false, Git stores symlinks (mode 120000) as plain files
 whose content is the target path. This script:
 1. Sets core.symlinks true (repo-local)
-2. Finds mode 120000 files that are plain files on disk (destroyed)
-3. Removes each and runs git checkout to restore as real symlinks
+2. Finds mode 120000 paths in HEAD that are plain files on disk (destroyed)
+3. Removes each and creates real symlinks from HEAD blob content
+
+Uses HEAD (not index) so we find destroyed symlinks even when they have been
+staged — staging overwrites the index with 100644, so index-based detection
+would miss them. destroyed-symlinks compares HEAD to index; we must fix before
+that hook runs.
+
+Uses GitPython — no subprocess / shell-out to git.
 
 Requires Windows Developer Mode or Administrator for symlink creation.
 Run from repository root.
@@ -16,113 +24,131 @@ Run from repository root.
 
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
-from shutil import which
+from typing import TYPE_CHECKING
 
-GIT_MODE_SYMLINK = "120000"
-LSFILES_PARTS = 2
+from git import Repo
+from git.exc import InvalidGitRepositoryError, NoSuchPathError
 
+if TYPE_CHECKING:
+    from git.objects import Blob
 
-def run_git(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
-    """Run a git command and return the result.
-
-    Returns:
-        CompletedProcess from git. Exits if git not in PATH.
-    """
-    git_path = which("git")
-    if not git_path:
-        print("repair_symlinks: git not found in PATH", file=sys.stderr)
-        sys.exit(1)
-    return subprocess.run([git_path, *args], cwd=cwd, capture_output=True, text=True, check=False)
+GIT_MODE_SYMLINK = 0o120000  # 40960 decimal; GitPython tree items use this
 
 
-def _ensure_core_symlinks(repo_root: Path) -> bool:
-    """Set core.symlinks true. Return False on failure.
+def _ensure_core_symlinks(repo: Repo) -> bool:
+    """Set core.symlinks true.
 
     Returns:
-        True if core.symlinks is true, False on failure.
+        True if core.symlinks is now true, False on failure.
     """
-    result = run_git(["config", "core.symlinks"], repo_root)
-    current = result.stdout.strip() if result.returncode == 0 else ""
-    if current == "true":
-        return True
-    run_git(["config", "core.symlinks", "true"], repo_root)
-    if run_git(["config", "core.symlinks"], repo_root).stdout.strip() != "true":
+    try:
+        cfg = repo.config_reader()
+        val = cfg.get_value("core", "symlinks")
+        if val in {"true", True}:
+            return True
+    except (OSError, KeyError):
+        pass
+    try:
+        with repo.config_writer() as writer:
+            writer.set_value("core", "symlinks", "true")
+        val = repo.config_reader().get_value("core", "symlinks")
+    except (OSError, KeyError):
         print("repair_symlinks: failed to set core.symlinks true", file=sys.stderr)
         return False
-    return True
+    else:
+        return val in {"true", True}
 
 
-def _find_destroyed_symlinks(repo_root: Path) -> list[Path] | None:
-    """Find mode 120000 files that are plain files on disk (destroyed). None if ls-files failed.
+def _find_destroyed_symlinks(repo: Repo, repo_root: Path) -> list[Path]:
+    """Find mode 120000 paths in HEAD that are plain files on disk (destroyed).
+
+    Uses HEAD (not index) because staging overwrites the index with 100644, so
+    index-based detection would miss destroyed symlinks that have been staged.
 
     Returns:
-        List of destroyed symlink paths, or None if git ls-files failed.
+        List of paths that are symlinks in HEAD but plain files on disk.
     """
-    result = run_git(["ls-files", "-s"], repo_root)
-    if result.returncode != 0:
-        return None
-
     destroyed: list[Path] = []
-    for line in result.stdout.strip().splitlines():
-        if not line:
+    head_tree = repo.head.commit.tree
+    for item in head_tree.traverse():
+        if item.mode != GIT_MODE_SYMLINK:
             continue
-        parts = line.split("\t", 1)
-        if len(parts) != LSFILES_PARTS:
-            continue
-        mode, path_str = parts[0].split()[0], parts[1]
-        if mode != GIT_MODE_SYMLINK:
-            continue
-        path = repo_root / path_str
+        path = repo_root / item.path
         if path.exists() and not path.is_symlink():
             destroyed.append(path)
     return destroyed
 
 
-def _repair_one(path: Path, repo_root: Path) -> bool:
-    """Repair a single destroyed symlink. Return False on failure.
+def _get_symlink_target_from_blob(repo: Repo, blob: Blob) -> str:
+    """Read symlink target from blob content.
 
     Returns:
-        True if symlink was restored, False on failure.
+        The symlink target path as stored in the blob.
+    """
+    stream = repo.odb.stream(blob.binsha)
+    return stream.read().decode("utf-8", errors="replace").strip()
+
+
+def _repair_one(repo: Repo, path: Path, repo_root: Path) -> bool:
+    """Repair a single destroyed symlink.
+
+    Returns:
+        True on success, False on failure.
     """
     rel = path.relative_to(repo_root)
+    rel_str = str(rel).replace("\\", "/")
+    try:
+        blob = repo.head.commit.tree / rel_str
+    except KeyError:
+        return False
+    target = _get_symlink_target_from_blob(repo, blob)
     path.unlink()
-    result = run_git(["checkout", "--", str(rel)], repo_root)
-    if result.returncode == 0 and path.is_symlink():
-        return True
-    run_git(["checkout", "--", str(rel)], repo_root)
-    print(
-        f"repair_symlinks: could not create symlink for {rel} (enable Windows Developer Mode or run as Administrator)",
-        file=sys.stderr,
-    )
-    return False
+    try:
+        path.symlink_to(target)
+    except OSError:
+        print(
+            f"repair_symlinks: could not create symlink for {rel} "
+            "(enable Windows Developer Mode or run as Administrator)",
+            file=sys.stderr,
+        )
+        return False
+    if not path.is_symlink():
+        return False
+    # Stage the repaired symlink so index gets mode 120000; otherwise
+    # destroyed-symlinks still fails (HEAD 120000 vs index 100644).
+    repo.index.add([str(rel).replace("\\", "/")])
+    repo.index.write()
+    return True
 
 
 def main() -> int:
-    """Repair destroyed Git symlinks. Exit 0 on success, 1 on failure.
+    """Repair destroyed Git symlinks.
 
     Returns:
-        Exit code: 0 on success, 1 on failure.
+        0 on success, 1 on failure.
     """
     repo_root = Path.cwd()
     if not (repo_root / ".git").exists():
         print("repair_symlinks: not a git repository", file=sys.stderr)
         return 1
 
-    if not _ensure_core_symlinks(repo_root):
+    try:
+        repo = Repo(repo_root)
+    except (InvalidGitRepositoryError, NoSuchPathError):
+        print("repair_symlinks: not a git repository", file=sys.stderr)
         return 1
 
-    symlink_paths = _find_destroyed_symlinks(repo_root)
-    if symlink_paths is None:
-        print("repair_symlinks: git ls-files failed", file=sys.stderr)
+    if not _ensure_core_symlinks(repo):
         return 1
+
+    symlink_paths = _find_destroyed_symlinks(repo, repo_root)
     if not symlink_paths:
         return 0
 
     for path in symlink_paths:
-        if not _repair_one(path, repo_root):
+        if not _repair_one(repo, path, repo_root):
             return 1
     return 0
 

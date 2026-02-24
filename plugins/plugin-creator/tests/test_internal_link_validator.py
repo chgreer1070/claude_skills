@@ -164,6 +164,37 @@ See [ref1](./references/ref1.md) and [ref2](./references/ref2.md).
         assert result.passed is True
         assert len(result.errors) == 0
 
+    def test_destroyed_symlink_plain_file_passes(self, tmp_path: Path) -> None:
+        """Test link to plain file (destroyed symlink) passes on Windows.
+
+        When core.symlinks=false, Git stores symlinks as plain files whose
+        content is the target path. The file exists; validator should pass.
+
+        Tests: Unrepaired symlinks (plain files) pass validation
+        How: Create plain file at link target (no symlink), validate
+        Why: Users on Windows without Developer Mode get plain files
+        """
+        skill_dir = tmp_path / "test-skill"
+        skill_dir.mkdir()
+        refs_dir = skill_dir / "references"
+        refs_dir.mkdir()
+        # Plain file with path as content (simulates Git destroyed symlink)
+        (refs_dir / "linked.md").write_text("../../some/other/path.md")
+
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text("""---
+description: Test skill
+---
+
+See [linked](./references/linked.md).
+""")
+
+        validator = InternalLinkValidator()
+        result = validator.validate(skill_md)
+
+        assert result.passed is True
+        assert not any(issue.code == "LK001" for issue in result.errors)
+
 
 class TestMissingPrefixWarning:
     """Test warning for links without ./ prefix (LK002)."""

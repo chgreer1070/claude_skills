@@ -4559,6 +4559,8 @@ def _resolve_filter_and_expand_paths(
         elif resolved_glob is None and path.is_dir():
             if (path / ".claude-plugin/plugin.json").exists():
                 expanded_paths.append(path)
+                # Also validate SKILL.md files (InternalLinkValidator, etc.)
+                expanded_paths.extend(sorted(path.glob("**/skills/*/SKILL.md")))
             else:
                 expanded_paths.extend(_discover_validatable_paths(path))
                 is_batch = True
