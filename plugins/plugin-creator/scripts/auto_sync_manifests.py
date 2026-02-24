@@ -361,6 +361,14 @@ def _find_prettierrc() -> Path | None:
 _PRETTIERRC_PATH: Path | None = _find_prettierrc()
 
 
+def _write_json_lf(path: Path, content: str) -> None:
+    """Write string to path with LF line endings (cross-platform).
+
+    Uses write_bytes to avoid Windows CRLF conversion in text mode.
+    """
+    path.write_bytes(content.encode("utf-8"))
+
+
 def _format_json(data: object) -> str:
     """Serialize data to JSON, formatted by prettier if available.
 
@@ -378,7 +386,7 @@ def _format_json(data: object) -> str:
     content = json.dumps(data, indent=2) + "\n"
     if not _NPX_PATH:
         return content
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".json", delete=False) as f:
+    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".json", delete=False, newline="\n") as f:
         f.write(content)
         tmp_path = f.name
     try:
@@ -505,7 +513,7 @@ def update_plugin_json(plugin_name: str, changes: ComponentChanges) -> tuple[boo
         if new_content == existing_content:
             return False, current_version
 
-        plugin_json_path.write_text(new_content, encoding="utf-8")
+        _write_json_lf(plugin_json_path, new_content)
 
         return True, new_version
 
@@ -603,7 +611,7 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
         if new_content == existing_content:
             return False
 
-        marketplace_json_path.write_text(new_content, encoding="utf-8")
+        _write_json_lf(marketplace_json_path, new_content)
 
         return True
 
@@ -906,7 +914,7 @@ def _reconcile_one_plugin(plugin_name: str, plugins_root: Path, *, dry_run: bool
     if has_drift and not dry_run:
         current_version = cast("str", data.get("version", "0.0.0"))
         data["version"] = bump_version(current_version, "minor")
-        plugin_json_path.write_text(_format_json(data), encoding="utf-8")
+        _write_json_lf(plugin_json_path, _format_json(data))
         print(f"  Updated {plugin_name} -> {data['version']}")
 
     return has_drift
@@ -1087,7 +1095,7 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
         bump_type: Literal["major", "minor", "patch"] = "major" if stale else "minor"
         metadata["version"] = bump_version(current_version, bump_type)
         data["metadata"] = metadata
-        marketplace_path.write_text(_format_json(data), encoding="utf-8")
+        _write_json_lf(marketplace_path, _format_json(data))
         print(f"  Updated marketplace -> {metadata['version']}")
 
     return has_drift

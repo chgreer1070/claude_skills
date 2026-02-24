@@ -57,11 +57,14 @@ repos:
         args: ["--maxkb=10000"] # 10MB limit
       - id: check-case-conflict
       - id: check-merge-conflict
+      # Exclude symlinks that require Developer Mode/Admin on Windows. repair-symlinks
+      # runs first; when it cannot create symlinks (no privileges), these remain broken.
+      # See scripts/repair_symlinks.py. Exclude allows Linux/macOS and privileged
+      # Windows to pass; unprivileged Windows devs can run repair_symlinks.py manually.
       - id: check-symlinks
         exclude: 'plugins/uv/skills/uv$|plugins/development-harness/skills/implementation-manager/.*|.*/references/accessing_online_resources\.md$'
       - id: mixed-line-ending
         args: ["--fix=lf"]
-        exclude: '\.claude-plugin/.*\.json$|plugins/.*/\.claude-plugin/plugin\.json$'
       - id: check-executables-have-shebangs
       - id: check-shebang-scripts-are-executable
 

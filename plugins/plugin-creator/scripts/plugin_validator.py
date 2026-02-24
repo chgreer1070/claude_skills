@@ -3031,14 +3031,14 @@ class PluginStructureValidator:
                 )
             )
         except OSError as e:
-            # Other subprocess errors
-            errors.append(
+            # Subprocess failed to run (permissions, env, etc.) — skip, do not fail
+            info.append(
                 ValidationIssue(
-                    field="(plugin-validation)",
-                    severity="error",
-                    message=f"Failed to run claude plugin validate: {e}",
-                    code=PL002,
-                    docs_url=generate_docs_url(PL002),
+                    field="(plugin-structure)",
+                    severity="info",
+                    message=f"Claude CLI could not run; skipping plugin structure validation: {e}",
+                    code=PL001,
+                    docs_url=generate_docs_url(PL001),
                 )
             )
 
@@ -3118,6 +3118,16 @@ class PluginStructureValidator:
         else:
             return None
 
+    def _is_claude_startup_failure(self, output: str) -> bool:
+        """Return True if output indicates claude failed to start (env/runtime), not validation.
+
+        We must not fail validation when claude cannot run (e.g. git-bash not found on
+        Windows). Only fail when claude ran and reported plugin structure errors.
+        """
+        startup_patterns = (r"requires git-bash", r"CLAUDE_CODE_GIT_BASH_PATH", r"not in PATH")
+        combined = output.lower()
+        return any(re.search(p, combined, re.IGNORECASE) for p in startup_patterns)
+
     def _parse_claude_errors(
         self,
         stdout: str,
@@ -3137,6 +3147,21 @@ class PluginStructureValidator:
         """
         # Combine stdout and stderr for parsing
         output = stdout + "\n" + stderr
+
+        # If claude failed to start (env/runtime), skip — do not fail validation
+        if self._is_claude_startup_failure(output):
+            detail = (stdout.strip() + "\n" + stderr.strip())[:300] or "(no output)"
+            info.append(
+                ValidationIssue(
+                    field="(plugin-structure)",
+                    severity="info",
+                    message="Claude CLI could not start; skipping plugin structure validation",
+                    code=PL001,
+                    docs_url=generate_docs_url(PL001),
+                    suggestion=detail,
+                )
+            )
+            return
 
         # Map claude CLI error patterns to error codes
         error_patterns = {
@@ -3162,7 +3187,9 @@ class PluginStructureValidator:
                 )
 
         # If no specific error pattern matched but validation failed, add generic error
+        # Include actual CLI output for diagnosis (truncate to avoid huge messages)
         if not errors:
+            detail = (stdout.strip() + "\n" + stderr.strip())[:500] or "(no output)"
             errors.append(
                 ValidationIssue(
                     field="plugin.json",
@@ -3170,6 +3197,7 @@ class PluginStructureValidator:
                     message="Plugin validation failed (see claude CLI output for details)",
                     code=PL002,
                     docs_url=generate_docs_url(PL002),
+                    suggestion=f"Run 'claude plugin validate <plugin-dir>'. CLI output: {detail}",
                 )
             )
 

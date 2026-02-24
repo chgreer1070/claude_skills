@@ -249,6 +249,36 @@ class TestClaudeOutputParsing:
         assert result.passed is False
         assert len(result.errors) > 0
 
+    def test_startup_failure_skips_not_fails(self, mocker: MockerFixture, tmp_path: Path) -> None:
+        """Claude env/runtime startup failure must skip validation, not fail.
+
+        Tests: Git-bash / PATH / env errors are treated as skip
+        How: Mock claude output with git-bash message, validate
+        Why: Validator must only fail on plugin validation errors, not when claude cannot run
+        """
+        mocker.patch("shutil.which", return_value="/usr/local/bin/claude")
+        mocker.patch("plugin_validator._should_skip_claude_validate", return_value=False)
+
+        mock_run = mocker.patch("subprocess.run")
+        mock_run.return_value = mocker.Mock(
+            returncode=1,
+            stdout="",
+            stderr="Claude Code on Windows requires git-bash. If installed but not in PATH, set CLAUDE_CODE_GIT_BASH_PATH=C:\\Program Files\\Git\\bin\\bash.exe",
+        )
+
+        plugin_dir = tmp_path / "test-plugin"
+        plugin_dir.mkdir()
+        claude_plugin = plugin_dir / ".claude-plugin"
+        claude_plugin.mkdir()
+        (claude_plugin / "plugin.json").write_text('{"name": "test"}')
+
+        validator = PluginStructureValidator()
+        result = validator.validate(plugin_dir)
+
+        assert result.passed is True
+        assert len(result.errors) == 0
+        assert len(result.info) > 0
+
 
 class TestTimeoutHandling:
     """Test timeout error handling."""
