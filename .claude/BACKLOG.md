@@ -46,6 +46,9 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 
 - [backlog.py: unify issue body template and add missing structured fields](backlog/p1-backlogpy-unify-issue-body-template-and-add-missing-structur.md)
 
+- [Enhance skill-research-process for CLI tool skills](backlog/p1-enhance-skill-research-process-for-cli-tool-skills.md)
+
+- [Create ty skill for python3-development plugin](backlog/p1-create-ty-skill-for-python3-development-plugin.md)
 ## P2 - Could Have
 
 - [conventional-commits: Fix CHANGELOG references to nonexistent files](backlog/p2-conventional-commits-fix-changelog-references-to-nonexistent.md)
