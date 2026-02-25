@@ -8,5 +8,7 @@ metadata:
   priority: Ideas
   type: Feature
   status: open
+  issue: '#259'
 ---
+
 **Suggested location**: `plugins/the-rewrite-room/mcp/server.py`

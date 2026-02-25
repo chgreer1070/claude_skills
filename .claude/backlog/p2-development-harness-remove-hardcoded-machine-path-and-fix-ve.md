@@ -8,5 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#214'
 ---
+
 **Files**: `plugins/development-harness/` (SKILL.md and reference files)

@@ -8,7 +8,9 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#227'
 ---
+
 **Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (section 3.5 Execution Agent output)
 
 **Research first**: How do GSD checkpoints represent partial progress? How do CI/CD systems handle partial test passes? What state machine patterns exist?

@@ -267,7 +267,7 @@ agent: Explore
 
 | Agent             | Model    | Tools                      | Use Case                     |
 | ----------------- | -------- | -------------------------- | ---------------------------- |
-| `Explore`         | Haiku    | File/web/MCP (read-only)   | Fast codebase analysis       |
+| `Explore`         | Haiku    | File/web/MCP (read-only)   | Verbatim retrieval only — never analysis or reasoning (~50% hallucination rate on reasoning tasks) |
 | `Plan`            | Inherits | File/web/MCP (read-only)   | Research before planning     |
 | `general-purpose` | Inherits | File/web/MCP + Bash/system | Complex operations (default) |
 | Custom            | Custom   | Custom                     | Project-specific work        |

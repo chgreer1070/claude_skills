@@ -15,6 +15,7 @@ metadata:
   priority: P1
   type: Feature
   status: open
+  issue: '#206'
 ---
 
 **Suggested location**: New skill under `plugins/plugin-creator/skills/` or standalone plugin

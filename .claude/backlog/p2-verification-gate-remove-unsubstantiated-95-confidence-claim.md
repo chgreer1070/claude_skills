@@ -8,5 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#213'
 ---
+
 **Files**: `plugins/verification-gate/` (SKILL.md and reference files)

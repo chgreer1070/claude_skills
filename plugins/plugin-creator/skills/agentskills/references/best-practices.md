@@ -255,6 +255,7 @@ Choose one term and use it throughout:
 
 - Good: Always "API endpoint", always "field", always "extract"
 - Bad: Mix "API endpoint" / "URL" / "API route" / "path"
+- Bad: Mix "field" / "box" / "element" / "control"
 
 ---
 

@@ -8,7 +8,9 @@ metadata:
   priority: Ideas
   type: Feature
   status: open
+  issue: '#262'
 ---
+
 **Suggested location**: `plugins/dasel/mcp/server.py`
 
 **Research first**: Evaluate whether wrapping the dasel binary (subprocess) or reimplementing core operations in Python is better for MCP transport.

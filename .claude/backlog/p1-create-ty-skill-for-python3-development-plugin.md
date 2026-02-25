@@ -8,6 +8,7 @@ metadata:
   priority: P1
   type: Feature
   status: open
+  issue: '#210'
 ---
 
 **Research first**: Read .claude/worktrees/ty/docs/ for source material. Read plugins/python3-development/skills/uv/ for structural template. Read plugins/python3-development/agents/python-cli-architect.md line 280 for existing ty reference to preserve and expand.

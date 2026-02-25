@@ -8,5 +8,7 @@ metadata:
   priority: Ideas
   type: Feature
   status: open
+  issue: '#256'
 ---
+
 **Suggested location**: `plugins/holistic-linting/mcp/server.py`

@@ -19,6 +19,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#235'
 ---
 
 **Research first**: What clustering approaches work for short categorical sequences? Is cosine similarity on bag-of-words tool vectors meaningful for workflow comparison? What lightweight Python clustering libraries exist that don't pull in scipy?

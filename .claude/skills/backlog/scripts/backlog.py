@@ -412,8 +412,73 @@ def find_item(items: list[dict], selector: str) -> dict | None:
 
 
 def items_needing_issues(items: list[dict]) -> list[dict]:
-    """Return backlog items in P0/P1 that lack GitHub issues and are not skipped."""
-    return [it for it in items if it.get("_section") in {"P0", "P1"} and not it.get("_skip") and not it.get("_issue")]
+    """Return all backlog items that lack GitHub issues and are not skipped."""
+    return [
+        it
+        for it in items
+        if it.get("_section") in {"P0", "P1", "P2", "Ideas"} and not it.get("_skip") and not it.get("_issue")
+    ]
+
+
+def items_with_issues(items: list[dict]) -> list[dict]:
+    """Return backlog items that already have a GitHub issue and are not skipped.
+
+    Returns:
+        List of item dicts that have an issue reference.
+    """
+    return [
+        it
+        for it in items
+        if it.get("_section") in {"P0", "P1", "P2", "Ideas"} and not it.get("_skip") and it.get("_issue")
+    ]
+
+
+def _build_issue_body_from_file(item: dict) -> str | None:
+    """Build GitHub issue body from local per-item file content.
+
+    Reads the raw body from the item dict. Returns None if the body has no
+    groomed content (i.e. no '## Groomed' section).
+
+    Args:
+        item: Parsed backlog item dict with _raw_body and frontmatter fields.
+
+    Returns:
+        Issue body markdown string, or None if no groomed section present.
+    """
+    raw_body = item.get("_raw_body", "")
+    if "## Groomed" not in raw_body:
+        return None
+    # Build a complete body: standard header + full file body
+    title = item.get("_title", "")
+    desc = item.get("**Description**", "")
+    source = item.get("**Source**", "Not specified")
+    priority = item.get("**Priority**", "")
+    added = item.get("**Added**", "")
+    research = item.get("**Research first**", "")
+    first_sent = desc.split(".")[0].strip() if desc else title
+    if len(first_sent) > GITHUB_ISSUE_TITLE_TRUNCATE:
+        first_sent = first_sent[: GITHUB_ISSUE_TITLE_TRUNCATE - 3] + "..."
+    header = f"""## Story
+
+As a **developer**, I want **{first_sent}** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+{desc}
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: {source}
+- **Priority**: {priority}
+- **Added**: {added}
+- **Research questions**: {research or "None"}
+"""
+    return header + "\n" + raw_body.strip() + "\n"
 
 
 def build_issue_body(item: dict) -> str:
@@ -1112,21 +1177,19 @@ def list_items(
         _list_items_table(open_items, with_status, repo)
 
 
-@app.command()
-def sync(
-    repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
-    dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
-) -> None:
-    """Create GitHub issues for P0/P1 items missing them."""
-    if not BACKLOG_PATH.exists():
-        typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
-        raise typer.Exit(1)
-    items = parse_backlog(BACKLOG_PATH)
+def _sync_create_missing_issues(items: list[dict], repo: str, dry_run: bool) -> None:
+    """Pass 1 of sync: create GitHub issues for all items that lack them.
+
+    Args:
+        items: Parsed backlog items.
+        repo: GitHub repo slug.
+        dry_run: If True, print what would happen without executing.
+    """
     needed = items_needing_issues(items)
     if not needed:
-        typer.echo("No P0/P1 items need GitHub issues.")
+        typer.echo("No items need GitHub issues created.")
         return
-    typer.echo(f"Found {len(needed)} P0/P1 item(s) without GitHub issues:")
+    typer.echo(f"Found {len(needed)} item(s) without GitHub issues:")
     for it in needed:
         typer.echo(f"  - {it.get('_title', '')[:60]}")
     repository = _get_github(repo)
@@ -1158,74 +1221,56 @@ def sync(
         typer.echo(f"Updated {BACKLOG_PATH}")
 
 
+def _sync_push_groomed_content(items: list[dict], repo: str, dry_run: bool) -> None:
+    """Pass 2 of sync: push groomed content to existing GitHub issues.
+
+    Skips items with no '## Groomed' section in their body.
+
+    Args:
+        items: Parsed backlog items.
+        repo: GitHub repo slug.
+        dry_run: If True, print what would happen without executing.
+    """
+    groomed_items = [it for it in items_with_issues(items) if "## Groomed" in (it.get("_raw_body") or "")]
+    if not groomed_items:
+        typer.echo("No items with groomed content to push.")
+        return
+    typer.echo(f"Found {len(groomed_items)} item(s) with groomed content to push to GitHub:")
+    if dry_run:
+        for it in groomed_items:
+            issue_ref = it.get("_issue", "")
+            typer.echo(f"  [dry-run] Would update issue {issue_ref}: {it.get('_title', '')[:60]}")
+        return
+    repository = _get_github(repo)
+    for item in groomed_items:
+        issue_ref = item.get("_issue", "")
+        num_str = issue_ref.lstrip("#")
+        if not num_str.isdigit():
+            typer.echo(f"  WARNING: Skipping item with invalid issue ref '{issue_ref}'", err=True)
+            continue
+        body = _build_issue_body_from_file(item)
+        if body is None:
+            continue
+        try:
+            gh_issue = repository.get_issue(int(num_str))
+            gh_issue.edit(body=body)
+            typer.echo(f"  Updated issue #{num_str}: {item.get('_title', '')[:60]}")
+        except GithubException as e:
+            typer.echo(f"  WARNING: Could not update issue #{num_str}: {e}", err=True)
+
+
 @app.command()
-def pull(
-    selector: Annotated[str | None, typer.Argument(help="Optional: #N to pull one issue, or omit for all")] = None,
+def sync(
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
     dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
 ) -> None:
-    """Pull from GitHub issues to rebuild/refresh local cache files.
-
-    GitHub is the source of truth. This command fetches issue data and
-    updates local .claude/backlog/*.md files to match.
-
-    Usage:
-        backlog pull              # refresh all items that have GitHub issues
-        backlog pull '#42'        # refresh one specific issue
-        backlog pull --dry-run    # show what would be updated
-    """
-    BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
-    repository = _get_github(repo)
-
-    if selector and selector.startswith("#"):
-        # Pull a single issue
-        num = int(selector.lstrip("#"))
-        if dry_run:
-            typer.echo(f"[dry-run] Would pull issue #{num}")
-            return
-        # Find existing local file if any
-        items = parse_backlog(BACKLOG_PATH) if BACKLOG_PATH.exists() else []
-        existing = find_item(items, selector)
-        filepath = Path(existing["_file_path"]) if existing and existing.get("_file_path") else None
-        result = _pull_single_issue(repository, num, filepath)
-        if result:
-            typer.echo(f"Pulled #{num} → {result.name}")
-        return
-
-    # Pull all items with GitHub issues
+    """Create GitHub issues for all items missing them, and push groomed content to existing issues."""
     if not BACKLOG_PATH.exists():
         typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
         raise typer.Exit(1)
-
     items = parse_backlog(BACKLOG_PATH)
-    items_with_issues = [it for it in items if it.get("_issue") and not it.get("_skip")]
-    if not items_with_issues:
-        typer.echo("No items with GitHub issues to pull.")
-        return
-
-    typer.echo(f"Pulling {len(items_with_issues)} item(s) from GitHub...")
-    updated = 0
-    stale = 0
-    for item in items_with_issues:
-        issue_ref = item.get("_issue", "")
-        num = int(issue_ref.lstrip("#"))
-        filepath = Path(item["_file_path"]) if item.get("_file_path") else None
-        is_stale = _check_item_staleness(item, repo)
-        if not is_stale and not dry_run:
-            continue
-        stale += 1
-        if dry_run:
-            typer.echo(f"  [dry-run] Would pull {issue_ref}: {item.get('_title', '')[:50]}")
-            continue
-        result = _pull_single_issue(repository, num, filepath)
-        if result:
-            updated += 1
-            typer.echo(f"  Pulled {issue_ref} → {result.name}")
-
-    if dry_run:
-        typer.echo(f"\n{stale} item(s) would be updated.")
-    else:
-        typer.echo(f"\nPulled {updated}/{stale} stale item(s).")
+    _sync_create_missing_issues(items, repo, dry_run)
+    _sync_push_groomed_content(items, repo, dry_run)
 
 
 def _close_item_index(item: dict, plan: str, today: str) -> bool:
@@ -2289,6 +2334,269 @@ def fix_links(dry_run: Annotated[bool, typer.Option("--dry-run")] = False) -> No
         return
     BACKLOG_PATH.write_text(new_content, encoding="utf-8")
     typer.echo("Fixed index links.")
+
+
+def _fetch_github_issue_body(repo_obj: Repository, issue_num: int) -> str | None:
+    """Fetch GitHub issue body text.
+
+    Args:
+        repo_obj: PyGithub Repository object.
+        issue_num: Issue number (without '#').
+
+    Returns:
+        Issue body string, or None on error.
+    """
+    try:
+        return repo_obj.get_issue(issue_num).body or ""
+    except GithubException as e:
+        typer.echo(f"  WARNING: Could not fetch issue #{issue_num}: {e}", err=True)
+        return None
+
+
+def _extract_sections(text: str) -> dict[str, str]:
+    """Extract '## Section' content blocks from markdown text.
+
+    Args:
+        text: Markdown body text.
+
+    Returns:
+        Dict mapping section heading (e.g. '## Story') to its content (not including heading).
+    """
+    sections: dict[str, str] = {}
+    current_heading: str | None = None
+    current_lines: list[str] = []
+
+    for line in text.splitlines():
+        if line.startswith("## "):
+            if current_heading is not None:
+                sections[current_heading] = "\n".join(current_lines).strip()
+            current_heading = line.strip()
+            current_lines = []
+        elif current_heading is not None:
+            current_lines.append(line)
+
+    if current_heading is not None:
+        sections[current_heading] = "\n".join(current_lines).strip()
+
+    return sections
+
+
+def _reconstruct_body_from_sections(
+    local_sections: dict[str, str], github_sections: dict[str, str], result_sections: dict[str, str]
+) -> str:
+    """Reconstruct body from merged sections, preserving local order then appending GitHub-only sections.
+
+    Args:
+        local_sections: Original local section map (preserves order).
+        github_sections: GitHub section map (source of new sections).
+        result_sections: Merged result to render from.
+
+    Returns:
+        Reconstructed body string ending with newline.
+    """
+    seen: set[str] = set()
+    parts: list[str] = []
+    for heading in local_sections:
+        content = result_sections[heading]
+        parts.append(f"{heading}\n\n{content}" if content else heading)
+        seen.add(heading)
+    for heading in github_sections:
+        if heading not in seen:
+            content = result_sections[heading]
+            parts.append(f"{heading}\n\n{content}" if content else heading)
+    return "\n\n".join(parts) + "\n"
+
+
+def _merge_sections(local_body: str, github_body: str) -> tuple[str, bool]:
+    """Merge GitHub issue body into local body by section.
+
+    For each section in GitHub body:
+    - If the section exists locally, keep the longer version.
+    - If the section is only in GitHub, append it to the local body.
+
+    Args:
+        local_body: Current local file body content.
+        github_body: GitHub issue body content.
+
+    Returns:
+        Tuple of (merged_body, was_modified).
+    """
+    local_sections = _extract_sections(local_body)
+    github_sections = _extract_sections(github_body)
+
+    if not github_sections:
+        return local_body, False
+
+    modified = False
+    result_sections: dict[str, str] = dict(local_sections)
+
+    for heading, gh_content in github_sections.items():
+        if heading in local_sections:
+            if len(gh_content) > len(local_sections[heading]):
+                result_sections[heading] = gh_content
+                modified = True
+        else:
+            result_sections[heading] = gh_content
+            modified = True
+
+    if not modified:
+        return local_body, False
+
+    return _reconstruct_body_from_sections(local_sections, github_sections, result_sections), True
+
+
+def _pull_item_create_new(
+    item: dict, issue_num: int, issue_ref: str, title: str, github_body: str, dry_run: bool
+) -> bool:
+    """Create a new local file from a GitHub issue body.
+
+    Args:
+        item: Parsed backlog item dict.
+        issue_num: GitHub issue number.
+        issue_ref: Issue reference string (e.g. "#42").
+        title: Issue title.
+        github_body: Body text fetched from GitHub.
+        dry_run: If True, print what would happen without writing.
+
+    Returns:
+        True if created (or would create in dry-run).
+    """
+    slug = _title_to_slug(title)
+    priority = item.get("**Priority**", "P2")
+    filename = f"{priority.lower()}-{slug}.md"
+    filepath = BACKLOG_DIR / filename
+    BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
+    if dry_run:
+        typer.echo(f"  [dry-run] Would create {filename} from #{issue_num}: {title}")
+        return True
+    fm_str = _build_backlog_frontmatter(
+        title,
+        item.get("**Description**", ""),
+        item.get("**Source**", "Not specified"),
+        item.get("**Added**", _today()),
+        priority,
+        item.get("**Type**", "Feature"),
+        "open",
+        issue_ref,
+        item.get("**Plan**", ""),
+        "",
+    )
+    filepath.write_text(fm_str.rstrip() + "\n\n" + github_body, encoding="utf-8")
+    typer.echo(f"  Created #{issue_num} -> {filename}: {title}")
+    return True
+
+
+def _pull_item_update_existing(
+    item: dict, issue_num: int, title: str, filepath: Path, github_body: str, dry_run: bool, force: bool
+) -> bool:
+    """Update an existing local file with content from a GitHub issue body.
+
+    Args:
+        item: Parsed backlog item dict.
+        issue_num: GitHub issue number.
+        title: Issue title.
+        filepath: Path to the existing local file.
+        github_body: Body text fetched from GitHub.
+        dry_run: If True, print what would happen without writing.
+        force: If True, overwrite local content even if local is longer.
+
+    Returns:
+        True if updated (or would update in dry-run), False if no change needed.
+    """
+    local_body = item.get("_raw_body", "")
+
+    if force:
+        if dry_run:
+            typer.echo(f"  [dry-run] Would overwrite {filepath.name} from #{issue_num}: {title}")
+            return True
+        post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
+        post.content = github_body
+        filepath.write_text(dump_frontmatter(post), encoding="utf-8")
+        typer.echo(f"  Pulled #{issue_num} -> {filepath.name}: {title}")
+        return True
+
+    merged_body, modified = _merge_sections(local_body, github_body)
+    if not modified:
+        return False
+
+    if dry_run:
+        typer.echo(f"  [dry-run] Would merge #{issue_num} -> {filepath.name}: {title}")
+        return True
+
+    post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
+    post.content = merged_body
+    filepath.write_text(dump_frontmatter(post), encoding="utf-8")
+    typer.echo(f"  Pulled #{issue_num} -> {filepath.name}: {title}")
+    return True
+
+
+def _pull_item(item: dict, repo_obj: Repository, dry_run: bool, force: bool) -> bool:
+    """Pull GitHub issue body into local per-item file.
+
+    Args:
+        item: Parsed backlog item dict.
+        repo_obj: PyGithub Repository object.
+        dry_run: If True, print what would happen without writing.
+        force: If True, overwrite local content even if local is longer.
+
+    Returns:
+        True if pulled (or would pull in dry-run), False if skipped.
+    """
+    issue_ref = item.get("_issue", "")
+    num_str = issue_ref.lstrip("#")
+    if not num_str.isdigit():
+        return False
+
+    issue_num = int(num_str)
+    title = item.get("_title", "")
+    filepath_str = item.get("_file_path")
+
+    github_body = _fetch_github_issue_body(repo_obj, issue_num)
+    if github_body is None:
+        return False
+
+    if not filepath_str or not Path(filepath_str).exists():
+        return _pull_item_create_new(item, issue_num, issue_ref, title, github_body, dry_run)
+
+    return _pull_item_update_existing(item, issue_num, title, Path(filepath_str), github_body, dry_run, force)
+
+
+@app.command()
+def pull(
+    repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
+    dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
+    force: Annotated[
+        bool, typer.Option("--force", help="Overwrite local content even if local is newer/longer")
+    ] = False,
+) -> None:
+    """Pull issue body content from GitHub into local per-item files.
+
+    Merges by section — keeps longer version of each section.
+    Skips items with no issue number.
+    """
+    if not BACKLOG_PATH.exists():
+        typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
+        raise typer.Exit(1)
+
+    items = parse_backlog(BACKLOG_PATH)
+    candidates = [it for it in items if it.get("_issue") and not it.get("_skip")]
+
+    if not candidates:
+        typer.echo("No items with GitHub issue numbers found.")
+        return
+
+    typer.echo(f"Checking {len(candidates)} item(s) with GitHub issues...")
+    repository = _get_github(repo)
+    pulled = 0
+    for item in candidates:
+        if _pull_item(item, repository, dry_run, force):
+            pulled += 1
+
+    if pulled == 0:
+        typer.echo("Nothing to pull — local files are up to date.")
+    else:
+        suffix = " [dry-run]" if dry_run else ""
+        typer.echo(f"Pulled {pulled} item(s){suffix}.")
 
 
 if __name__ == "__main__":

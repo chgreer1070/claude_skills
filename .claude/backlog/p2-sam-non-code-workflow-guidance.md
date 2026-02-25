@@ -8,5 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#243'
 ---
+
 **Research first**: How do GSD and BMAD-METHOD handle non-code work? What artifact types exist beyond code?

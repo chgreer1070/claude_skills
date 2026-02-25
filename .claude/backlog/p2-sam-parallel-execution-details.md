@@ -8,7 +8,9 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#224'
 ---
+
 **Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (new section 2.4 or Appendix)
 
 **Research first**: How does GSD wave execution work in detail? How do task orchestrators (Temporal, Prefect) handle parallel dependencies? What conflict resolution patterns exist?

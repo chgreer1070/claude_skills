@@ -5,6 +5,8 @@ argument-hint: <plugin-name>
 model: inherit
 user-invocable: true
 ---
+> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
+
 # Review Plugin for Refactor Workflow
 
 You MUST assess a plugin and create comprehensive refactoring plans following this multi-phase workflow. After planning completes, the orchestrator can launch parallel agents to execute tasks.

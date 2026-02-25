@@ -91,36 +91,4 @@ For tasks with branching logic, guide Claude through decision points:
 
 ## Feedback Loops
 
-Use run-validate-fix loops to catch errors early. This pattern greatly improves output quality.
-
-**Non-code example (style guide compliance):**
-
-```markdown
-## Content review process
-
-1. Draft your content following the guidelines in STYLE_GUIDE.md
-2. Review against the checklist:
-   - Check terminology consistency
-   - Verify examples follow the standard format
-   - Confirm all required sections are present
-3. If issues found:
-   - Note each issue with specific section reference
-   - Revise the content
-   - Review the checklist again
-4. Only proceed when all requirements are met
-```
-
-**Code example (document editing):**
-
-```markdown
-## Document editing process
-
-1. Make edits to `word/document.xml`
-2. **Validate immediately**: `python scripts/validate.py unpacked_dir/`
-3. If validation fails:
-   - Review the error message
-   - Fix the issues
-   - Run validation again
-4. **Only proceed when validation passes**
-5. Rebuild: `python scripts/pack.py unpacked_dir/ output.docx`
-```
+Use run-validate-fix loops to catch errors early. For patterns and examples, see [best-practices.md](../../agentskills/references/best-practices.md#workflows-and-feedback-loops).

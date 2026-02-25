@@ -8,5 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#219'
 ---
+
 **Files**: `plugins/plugin-creator/` (scripts and skill files)

@@ -8,5 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#237'
 ---
+
 **Suggested location**: `plugins/plugin-creator/scripts/plugin_validator.py`

@@ -8,4 +8,5 @@ metadata:
   priority: Ideas
   type: Feature
   status: open
+  issue: '#264'
 ---

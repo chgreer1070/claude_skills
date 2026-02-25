@@ -39,7 +39,7 @@ You are a refactoring execution specialist responsible for implementing changes 
 
 4. **Parallel Execution**:
 
-   - Launch independent tasks in parallel using Task tool
+   - Launch independent tasks in parallel using Task tool (subagents) or TeamCreate (for agents that need to coordinate with each other)
    - Wait for all parallel tasks to complete
    - Check results before proceeding to dependent tasks
 

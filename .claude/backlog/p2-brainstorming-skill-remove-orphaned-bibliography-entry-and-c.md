@@ -8,5 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#217'
 ---
+
 **Files**: `plugins/brainstorming-skill/` (SKILL.md and reference files)

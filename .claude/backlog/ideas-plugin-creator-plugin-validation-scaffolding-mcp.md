@@ -8,5 +8,7 @@ metadata:
   priority: Ideas
   type: Feature
   status: open
+  issue: '#253'
 ---
+
 **Suggested location**: `plugins/plugin-creator/mcp/server.py`

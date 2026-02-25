@@ -9,7 +9,9 @@ metadata:
   type: Feature
   status: open
   groomed: '2026-02-23'
+  issue: '#211'
 ---
+
 **Files**: `plugins/conventional-commits/` (CHANGELOG and skill cross-references)
 
 ## Groomed (2026-02-23)

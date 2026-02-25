@@ -5,6 +5,8 @@ argument-hint: <plugin-slug or task-file-path>
 model: sonnet
 user-invocable: true
 ---
+> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
+
 # Implement Refactor
 
 This command continues from `/plugin-creator:assessor`. After planning completes, use this to execute the refactoring tasks.

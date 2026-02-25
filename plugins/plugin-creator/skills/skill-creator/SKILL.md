@@ -4,6 +4,8 @@ description: Guide for creating effective skills. This skill should be used when
 user-invocable: true
 license: Complete terms in LICENSE.txt
 ---
+> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
+
 # Skill Creator
 
 ## Current Skills Environment
@@ -238,7 +240,7 @@ agent: Explore  # or Plan, general-purpose, custom-agent-name
 
 | Agent             | Model    | Tools                      | Use Case                     |
 | ----------------- | -------- | -------------------------- | ---------------------------- |
-| `Explore`         | Haiku    | File/web/MCP (read-only)   | Fast codebase analysis       |
+| `Explore`         | Haiku    | File/web/MCP (read-only)   | Verbatim retrieval only — never analysis or reasoning (~50% hallucination rate on reasoning tasks) |
 | `Plan`            | Inherits | File/web/MCP (read-only)   | Research before planning     |
 | `general-purpose` | Inherits | File/web/MCP + Bash/system | Complex operations (default) |
 
@@ -547,7 +549,7 @@ When editing the (newly-generated or existing) skill, remember that the skill is
 Consult these helpful guides based on your skill's needs:
 
 - **Multi-step processes**: See references/workflows.md for sequential workflows and conditional logic
-- **Specific output formats or quality standards**: See references/output-patterns.md for template and example patterns
+- **Output formats, examples, anti-patterns, and quality standards**: See [agentskills best-practices](../agentskills/references/best-practices.md)
 
 These files contain established best practices for effective skill design.
 

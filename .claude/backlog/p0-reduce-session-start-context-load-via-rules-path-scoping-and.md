@@ -8,7 +8,7 @@ metadata:
   priority: P0
   type: Chore
   status: open
-  issue: '#270'
+  issue: '#198'
 ---
 
 **Research first**: Which .claude/rules/*.md files lack paths scoping? Which skills are candidates for disable-model-invocation? Can domain-router subagents with skills field replace always-on orchestrator skill loading? See .planning/research/context-optimization-research.md

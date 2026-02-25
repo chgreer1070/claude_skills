@@ -8,5 +8,7 @@ metadata:
   priority: P2
   type: Chore
   status: open
+  issue: '#249'
 ---
+
 **Suggested location**: `.claude/skills/evaluate-sdlc-layers/SKILL.md`; run against `.claude/docs/sdlc-layers/`

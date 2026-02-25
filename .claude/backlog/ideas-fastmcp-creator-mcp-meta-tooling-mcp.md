@@ -8,5 +8,7 @@ metadata:
   priority: Ideas
   type: Feature
   status: open
+  issue: '#260'
 ---
+
 **Suggested location**: `plugins/fastmcp-creator/mcp/server.py`

@@ -8,5 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#248'
 ---
+
 **Suggested location**: `.claude/skills/refresh-research/SKILL.md` and `knowledge-explorer.py`

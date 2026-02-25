@@ -4,6 +4,8 @@ description: Orchestrates specialized agents to create high-quality Claude Code 
 model: sonnet
 user-invocable: true
 ---
+> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
+
 # Claude Code Plugin Creator - Agentic Orchestration Workflow
 
 This skill orchestrates specialized agents through a comprehensive plugin creation workflow. The orchestrator (you) delegates to sub-agents for research, discovery, validation, and implementation - never performing these tasks directly.
@@ -26,6 +28,11 @@ This skill orchestrates specialized agents through a comprehensive plugin creati
 | Schema validation      | validation scripts    | Manually check fields     |
 | Quality review         | plugin-assessor agent | Review your own work      |
 | Documentation writing  | plugin-docs-writer    | Write README yourself     |
+
+**How to spawn agents:**
+
+- **Task tool** (`subagent_type=...`) — for focused, isolated work where only the result matters
+- **TeamCreate** — for multi-agent coordination where agents need to communicate with each other
 
 **Why delegation matters:**
 
@@ -1033,9 +1040,11 @@ VERDICT: [COMPLETE / NOT COMPLETE - reason]
 
 ## Quick Reference: Agent Delegation
 
+Use **Task tool** (`subagent_type=...`) for single-agent tasks. Use **TeamCreate** when agents need to coordinate directly with each other.
+
 | Phase    | Agent Type           | Purpose                                   |
 | -------- | -------------------- | ----------------------------------------- |
-| Research | `Explore`            | Code discovery, pattern analysis          |
+| Research | `Explore`            | File/keyword search, verbatim retrieval only — never analysis or reasoning |
 | Research | `general-purpose`    | Fetch and analyze official documentation  |
 | Design   | `Plan`               | Architecture decisions, content structure |
 | Validate | validation scripts   | Schema and structure validation           |

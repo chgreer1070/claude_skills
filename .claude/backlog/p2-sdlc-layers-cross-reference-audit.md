@@ -8,5 +8,7 @@ metadata:
   priority: P2
   type: Chore
   status: open
+  issue: '#250'
 ---
+
 **Suggested location**: `.claude/docs/sdlc-layers/` and `plugins/development-harness/docs/layer-2/`

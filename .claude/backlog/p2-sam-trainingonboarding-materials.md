@@ -8,5 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#242'
 ---
+
 **Research first**: What training materials exist for GSD, BMAD-METHOD? What makes effective agent methodology onboarding?

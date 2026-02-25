@@ -8,5 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#247'
 ---
+
 **Suggested location**: `.claude/skills/work-backlog-item/SKILL.md` and related scripts

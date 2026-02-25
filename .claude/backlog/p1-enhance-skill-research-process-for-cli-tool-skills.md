@@ -12,8 +12,6 @@ metadata:
   issue: '#197'
 ---
 
-**Research first**: Read .claude/plan/skill-research-process-assessment.md for full gap analysis. Should output spec be embedded in skill-research-process or in a separate output-template skill? How should local path detection work vs tool-name lookup?
-
 ## Fact-Check
 
 Claims checked: 5
@@ -115,3 +113,23 @@ The gaps are reproducible and currently present:
 5. **Flat layout absence** — References use subdirectory structure, not flat named files
 
 Evidence files: `.claude/skills/skill-research-process/SKILL.md` (line 4: argument-hint is tool-or-library-name), `agent-prompts.md` (lines 34-39: only web-based sources; lines 63-69: only category/index.md structure)
+
+## Story
+
+As a **developer**, I want **The skill-research-process skill has sound research orchestration but lacks o...** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+The skill-research-process skill has sound research orchestration but lacks output specification for producing complete CLI tool skills. Three gaps identified via assessment against the uv skill: (1) No local directory input — passing a path like .claude/worktrees/ty/docs/ is treated as a tool name, triggering web searches instead of reading local docs. (2) No CLI reference file templates — no structural anchor ensuring standard reference types (cli_reference.md, configuration.md, migration-guid
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Session observation
+- **Priority**: P1
+- **Added**: 2026-02-25
+- **Research questions**: None

@@ -8,5 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#216'
 ---
+
 **Files**: `plugins/prompt-optimization-claude-45/` (reference files)

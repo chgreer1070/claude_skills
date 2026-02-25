@@ -8,7 +8,7 @@ metadata:
   priority: P1
   type: Feature
   status: open
-  issue: '#273'
+  issue: '#202'
 ---
 
 **Suggested location**: [`sam-artifact-schemas/`](https://github.com/bitflight-devops/stateless-agent-methodology) (new directory with schema files)

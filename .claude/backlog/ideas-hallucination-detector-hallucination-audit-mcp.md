@@ -8,5 +8,7 @@ metadata:
   priority: Ideas
   type: Feature
   status: open
+  issue: '#254'
 ---
+
 **Suggested location**: `plugins/hallucination-detector/mcp/server.py` (reimplement core logic in Python) or `plugins/hallucination-detector/mcp/server.js` (wrap existing JS)

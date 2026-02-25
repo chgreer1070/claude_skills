@@ -5,6 +5,8 @@ argument-hint: <task-file-path>
 model: sonnet
 user-invocable: true
 ---
+> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
+
 # Complete Refactor Workflow
 
 You MUST perform a holistic review and validation of the completed plugin refactoring. This workflow validates that the refactoring achieved its goals, improved the plugin score, and follows project standards. If issues are found, follow-up task files are created for resolution.

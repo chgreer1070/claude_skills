@@ -8,7 +8,9 @@ metadata:
   priority: Ideas
   type: Feature
   status: open
+  issue: '#263'
 ---
+
 **Suggested location**: (optional) Where this should be implemented
 
 **Research first**: (for SAM items) Questions to answer via competitive analysis before implementing

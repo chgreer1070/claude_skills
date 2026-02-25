@@ -8,5 +8,7 @@ metadata:
   priority: Ideas
   type: Feature
   status: open
+  issue: '#255'
 ---
+
 **Suggested location**: `plugins/gitlab-skill/mcp/server.py`

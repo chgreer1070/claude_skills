@@ -8,7 +8,9 @@ metadata:
   priority: P2
   type: Feature
   status: open
+  issue: '#236'
 ---
+
 **Suggested location**: `.claude/skills/gh/scripts/github_project_setup.py` — add `project_app` Typer sub-app with `project update-status --project-number N --issue-number N --status "In Progress"` command
 
 **Research first**: Projects V2 GraphQL API — `updateProjectV2ItemFieldValue` mutation. Field ID discovery via `projectV2Fields` query. Reference: `.claude/skills/gh/references/projects-v2.md`.
