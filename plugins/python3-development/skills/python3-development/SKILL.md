@@ -353,17 +353,15 @@ The orchestrator delegates Python development tasks to specialized agents rather
 
 **The orchestrator delegates rather than implements**:
 
-| Task Type          | Delegation Target                |
-| ------------------ | -------------------------------- |
-| Python code        | `@python3-development:python-cli-architect`    |
-| Test creation      | `@python3-development:python-pytest-architect` |
-| Code review        | `@python3-development:python-code-reviewer`    |
-| Stdlib-only script | `/python3-development:stdlib-scripting` |
-| Architecture       | `@python3-development:python-cli-design-spec`  |
-| Task breakdown     | `@python3-development:swarm-task-planner`      |
-| Requirements       | `@spec-analyst`            |
+- Python code — Task is Implement with subagent_type="python3-development:python-cli-architect"
+- Test creation — Task is Write Tests with subagent_type="python3-development:python-pytest-architect"
+- Code review — Task is Review with subagent_type="python3-development:python-code-reviewer"
+- Stdlib-only script — activate `/python3-development:stdlib-scripting` (skill, not a Task subagent_type)
+- Architecture — Task is Architecture Design with subagent_type="python3-development:python-cli-design-spec"
+- Task breakdown — Task is Plan with subagent_type="python3-development:swarm-task-planner"
+- Requirements — Task is Requirements with subagent_type="spec-analyst"
 
-**Reason for delegation table**: Clear mapping prevents orchestrator from implementing when it should coordinate.
+**Reason**: Clear mapping prevents orchestrator from implementing when it should coordinate.
 
 ### Required Reading (MANDATORY)
 
@@ -389,22 +387,26 @@ Orchestrator workflow:
    "I have read the orchestration guide. Using FEATURE ADDITION workflow with agents:
     @python3-development:python-cli-architect → @python3-development:python-pytest-architect → @python3-development:python-code-reviewer"
 
-1. Delegate to @python3-development:python-cli-architect
-   "Create a CSV processing CLI with Typer+Rich progress bars.
-    Success: CLI accepts CSV file input, displays progress bar, outputs results.
-    Follow existing project structure and conventions."
+1. Task is Implement with subagent_type="python3-development:python-cli-architect"
+   Context to include in the prompt: Create a CSV processing CLI with Typer+Rich progress bars.
+     Success — CLI accepts CSV file input, displays progress bar, outputs results.
+     Follow existing project structure and conventions.
 
-2. Delegate to @python3-development:python-pytest-architect
-   "Create test suite for the CSV processor CLI.
-    Success: Tests cover all CLI commands, edge cases, and error paths. Coverage >80%."
+2. Task is Write Tests with subagent_type="python3-development:python-pytest-architect"
+   Context to include in the prompt: CSV processor implementation file paths.
+     Success — Tests cover all CLI commands, edge cases, and error paths. Coverage >80%.
 
-3. Instruct agent to run: /python3-development:shebangpython, /python3-development:modernpython
+3. Apply standards — run /python3-development:shebangpython and /python3-development:modernpython
 
-4. Delegate to @python3-development:python-code-reviewer (FOCUSED SCOPE: review only)
-   "Review CSV processor implementation for patterns and quality."
+4. Task is Review with subagent_type="python3-development:python-code-reviewer"
+   Context to include in the prompt: CSV processor implementation and test file paths (FOCUSED SCOPE — review only)
+   Output: Review findings
 
 5. Validate: Code quality checks per holistic-linting skill, then uv run pytest
 ```
+
+> **Critical**: `subagent_type` must be `"python3-development:python-cli-architect"` — NOT `"general-purpose"`.
+> Using `general-purpose` with pasted skill content bypasses the agent's specialized tooling and model configuration.
 
 **Notice**: Each delegation has FOCUSED SCOPE. The orchestrator read the guide FIRST and stated the workflow pattern BEFORE any Task tool usage.
 
@@ -828,14 +830,12 @@ These templates implement the patterns documented in [User Project Conventions](
 
 **Delegation Pattern**:
 
-| Instead of                             | Use this pattern                                                               |
-| -------------------------------------- | ------------------------------------------------------------------------------ |
-| **Delegating without reading guide**   | **ALWAYS read orchestration guide first, state workflow pattern**              |
-| Sending one massive task to agent      | Break into focused delegations with bounded scope                              |
-| Writing Python code directly           | Delegate to `@python3-development:python-cli-architect` with clear requirements              |
-| Skipping validation steps              | Complete workflow: implement → test → review → validate                        |
-| Pre-deciding technical implementations | Let agents determine HOW based on requirements                                 |
-| Implementing and testing in same step  | Chain agents: `@python3-development:python-cli-architect` → `@python3-development:python-pytest-architect` |
+- Delegating without reading guide — ALWAYS read orchestration guide first, state workflow pattern
+- Sending one massive task to agent — break into focused delegations with bounded scope
+- Writing Python code directly — Task is Implement with subagent_type="python3-development:python-cli-architect"
+- Skipping validation steps — complete workflow: implement → test → review → validate
+- Pre-deciding technical implementations — let agents determine HOW based on requirements
+- Implementing and testing in same step — chain: subagent_type="python3-development:python-cli-architect" then subagent_type="python3-development:python-pytest-architect"
 
 **Reason**: Orchestrators coordinate workflows. Agents have specialized expertise and focused tool access for implementation.
 

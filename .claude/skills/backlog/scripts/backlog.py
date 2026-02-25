@@ -877,7 +877,7 @@ def _add_item_index_format(
     body = "\n".join(body_parts) + "\n" if body_parts else ""
     filepath.write_text(fm_str.rstrip() + "\n\n" + body, encoding="utf-8")
     issue_num: int | None = None
-    if create_issue and priority in {"P0", "P1"}:
+    if create_issue:
         try:
             repository = _get_github(repo)
             item = {
@@ -960,7 +960,7 @@ def _add_item_monolithic_format(
     BACKLOG_PATH.write_text(content, encoding="utf-8")
     typer.echo(f"Backlog item created.\n  Title: {title}\n  Priority: {priority}\n  Section: {section_heading}")
 
-    if create_issue and priority in {"P0", "P1"}:
+    if create_issue:
         items = parse_backlog(BACKLOG_PATH)
         item = find_item(items, title)
         if item and not item.get("_issue"):

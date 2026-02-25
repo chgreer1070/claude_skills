@@ -138,9 +138,13 @@ Same approach as skill-lifecycle-audit dimension 7:
 
 ### Tier 3: Specialist Delegation (for specific issue types)
 
-- **Tool access ambiguity** → delegate to an agent that reads Claude Code documentation on tool inheritance and permission modes
-- **Cross-agent contract mismatch** → delegate to an agent that reads both agent prompts and evaluates input/output compatibility
-- **Prompt quality issues** → delegate to `@plugin-creator:subagent-refactorer` which specializes in agent prompt optimization
+```mermaid
+flowchart TD
+    Q{Issue type?}
+    Q -->|Tool access ambiguity| Docs["Task is Claude Code tool inheritance research<br>with subagent_type='context-gathering'<br>Context: agent file path, specific ambiguous tool reference<br>Output: .planning/audit/tool-access-finding.md —<br>confirmed behavior with documentation citations"]
+    Q -->|Cross-agent contract mismatch| Contract["Task is input/output contract evaluation<br>with subagent_type='context-gathering'<br>Context: delegating agent path, target agent path,<br>specific contract claim in prompt<br>Output: .planning/audit/contract-mismatch.md —<br>compatibility verdict with file:line evidence"]
+    Q -->|Prompt quality issues| Prompt["Task is agent prompt optimization<br>with subagent_type='plugin-creator:subagent-refactorer'<br>Context: agent file path, finding description,<br>audit dimension that detected the issue<br>Output: .planning/audit/improvements/{agent-name}-patch.md —<br>revised prompt with rationale"]
+```
 
 ---
 

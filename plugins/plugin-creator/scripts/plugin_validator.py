@@ -312,11 +312,12 @@ class ErrorCode(StrEnum):
     # Token Count (TC001)
     TC001 = "TC001"  # Token count info (total, frontmatter, body)
 
-    # Plugin Registration (PR001-PR004)
+    # Plugin Registration (PR001-PR005)
     PR001 = "PR001"  # Capability exists but not explicitly registered in plugin.json
     PR002 = "PR002"  # Registered capability path does not exist
     PR003 = "PR003"  # Plugin metadata fields (repository, homepage, author) not populated
     PR004 = "PR004"  # Plugin metadata repository URL mismatches git remote URL
+    PR005 = "PR005"  # Registered command path is a skill directory (contains SKILL.md)
 
 
 # Aliases for backward compatibility and concise usage
@@ -361,7 +362,13 @@ HK001, HK002, HK003, HK004, HK005 = (
 )
 NR001, NR002 = ErrorCode.NR001, ErrorCode.NR002
 SL001 = ErrorCode.SL001
-PR001, PR002, PR003, PR004 = (ErrorCode.PR001, ErrorCode.PR002, ErrorCode.PR003, ErrorCode.PR004)
+PR001, PR002, PR003, PR004, PR005 = (
+    ErrorCode.PR001,
+    ErrorCode.PR002,
+    ErrorCode.PR003,
+    ErrorCode.PR004,
+    ErrorCode.PR005,
+)
 
 # Claude CLI timeout
 CLAUDE_TIMEOUT = 3  # seconds
@@ -3146,6 +3153,22 @@ class PluginRegistrationValidator:
             )
             for ref in registered_commands
             if not (plugin_dir / ref).exists()
+        )
+
+        errors.extend(
+            ValidationIssue(
+                field="plugin.json",
+                severity="error",
+                message=(
+                    f"Registered command '{ref}' is a skill directory (contains SKILL.md). "
+                    f"Skill directories must not be listed under 'commands'."
+                ),
+                code=PR005,
+                docs_url=generate_docs_url(PR005),
+                suggestion=f"Move '{ref}' from the 'commands' array to the 'skills' array in plugin.json",
+            )
+            for ref in registered_commands
+            if (plugin_dir / ref).is_dir() and (plugin_dir / ref / "SKILL.md").exists()
         )
 
         # Metadata checks (informational)

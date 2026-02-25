@@ -100,6 +100,7 @@ Write audit artifacts to `.claude/audits/`:
 - Tool access ambiguity → delegate to agent that reads Claude Code tool inheritance docs
 - Cross-agent contract mismatch → delegate to agent that evaluates input/output compatibility
 - Prompt quality issues → delegate to `@plugin-creator:subagent-refactorer` for optimization
+  (Task tool: `subagent_type="plugin-creator:subagent-refactorer"`)
 
 ### 1. Capability vs Configuration Alignment
 

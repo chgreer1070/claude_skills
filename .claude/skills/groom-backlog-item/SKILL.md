@@ -32,6 +32,8 @@ Before fact-checking or grooming, verify each item is still valid work:
    - Recommend: `backlog close "{title}" --plan <path> --checklist-pass --cleanup` (if completed) or `backlog resolve "{title}" --reason "..." --cleanup` (if obsolete)
    - Skip grooming for that item; move to the next
 
+4. **Is this item already groomed today?** — Check the item file's `groomed` frontmatter field. If it matches today's date AND the item has all required sections (Fact-Check, RT-ICA, groomed subsections), skip Steps 4–6 entirely. Go directly to Step 7 and apply only the specific change requested by the user — do not re-derive, re-fact-check, or re-groom. Re-running the full pipeline on an already-groomed item produces duplicate content and wastes tokens.
+
 If any check fails, skip grooming for that item and report. Only proceed to Step 3 for items that pass.
 
 ### Step 3: Extract Item Details
@@ -119,7 +121,19 @@ The `backlog-item-groomer` agent discovers related skills, agents, prior work, a
 
 ### Step 7: Write Groomed Content to Item Files
 
-For each item, write groomed content into the per-item file via the backlog script. Prefer incremental updates so sections (Fact-Check, RT-ICA, groomed subsections) are appended as they become available. GitHub is canonical: when the item has an issue, the backlog script syncs groomed content to the GitHub issue body.
+For each item, write groomed content into the per-item file via the backlog script.
+
+**Before calling any backlog subcommand**: verify the signature with `--help` if you have not already used that subcommand in this session. `sync`, `update`, and `groom` accept different arguments — calling `sync` with a title argument will fail silently with a usage error. The safe pattern:
+
+```text
+# Verify before using an unfamiliar subcommand
+uv run .claude/skills/backlog/scripts/backlog.py <subcommand> --help
+
+# Then call with the correct signature
+uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --section "..." --content "..."
+```
+
+`sync` creates GitHub issues for items missing them — it takes no title argument. `update` and `groom` both accept a title selector as the first positional argument. Prefer incremental updates so sections (Fact-Check, RT-ICA, groomed subsections) are appended as they become available. GitHub is canonical: when the item has an issue, the backlog script syncs groomed content to the GitHub issue body.
 
 **Preferred: incremental section updates**
 

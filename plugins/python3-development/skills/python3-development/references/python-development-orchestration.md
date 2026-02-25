@@ -13,7 +13,7 @@ related_docs:
 
 # Python Development Orchestration Guide
 
-Comprehensive guide for orchestrating Python development tasks using specialized agents and commands. This guide provides detailed workflows and patterns for coordinating multiple agents to accomplish complex Python development goals.
+Comprehensive guide for orchestrating Python development tasks using specialized agents and commands.
 
 **Quick Reference**: For a concise overview and quick-start examples, see [SKILL.md](../SKILL.md).
 
@@ -21,21 +21,23 @@ Comprehensive guide for orchestrating Python development tasks using specialized
 
 ### Agents (bundled in this plugin)
 
-- **python-cli-architect**: Build modern CLI applications with Typer and Rich
-- **/python3-development:stdlib-scripting**: Create stdlib-only portable scripts (last resort for confirmed restricted environments)
-- **python-pytest-architect**: Design comprehensive test suites
-- **python-code-reviewer**: Review Python code for quality and standards
-- **python-cli-design-spec**: Design system architecture
-- **swarm-task-planner**: Break down tasks into implementation plans
+- **python-cli-architect** — Build modern CLI applications with Typer and Rich (DEFAULT for all Python code)
+- **python3-development:stdlib-scripting** — Create stdlib-only portable scripts (LAST RESORT for confirmed restricted environments only)
+- **python-pytest-architect** — Design comprehensive test suites
+- **python-code-reviewer** — Review Python code for quality and standards
+- **python-cli-design-spec** — Design system architecture
+- **swarm-task-planner** — Break down tasks into implementation plans
 
 ### Commands (in this skill: references/commands/)
 
-- **/python3-development:modernpython**: Apply Python 3.11+ best practices and modern patterns
-- **/python3-development:shebangpython**: Validate PEP 723 shebang compliance
+- **/python3-development:modernpython** — Apply Python 3.11+ best practices and modern patterns (reference guide, not automated tool)
+- **/python3-development:shebangpython** — Validate and correct PEP 723 shebang compliance (edits files directly)
 
-### External Skills
+- **/python3-development:uv** — Package management with uv (always use for Python dependency management)
 
-- **uv**: Package management with uv (always use for Python dependency management)
+## Delegation Rule
+
+**Context to include in the prompt** means: file paths, outcomes, and user requirements only. Do not pass file contents, summaries, or pre-gathered data — agents discover and read files themselves.
 
 ## Core Workflow Patterns
 
@@ -43,190 +45,140 @@ Comprehensive guide for orchestrating Python development tasks using specialized
 
 **When to use**: Building new features, fixing bugs with test coverage
 
-**Pattern**:
+Prose above the diagram carries detail that would clutter the nodes. Before delegating the Design step, verify whether the user has existing architecture docs — if yes, pass those paths instead of creating new architecture.
 
-```text
-# Note: "Context to pass" means file paths, outcomes, and user requirements only.
-# Do not pass file contents, summaries, or pre-gathered data.
-# Agents discover and read files themselves.
+Before the Implement step, check whether the deployment environment is restricted (no internet, no uv). If yes, use `python3-development:stdlib-scripting` instead of `python3-development:python-cli-architect`.
 
-1. Design → @python3-development:python-cli-design-spec
-   Context to pass: Feature requirements
-   Output: Architecture design, component interfaces
-
-2. Write Tests → @python3-development:python-pytest-architect
-   Context to pass: Architecture design, expected behavior
-   Output: Complete test suite (fails initially)
-
-3. Implement → @python3-development:python-cli-architect OR /python3-development:stdlib-scripting
-   Context to pass: Tests, architecture design
-   Output: Implementation that makes tests pass
-
-4. Review → @python3-development:python-code-reviewer
-   Context to pass: Implementation + tests
-   Output: Review feedback, improvement suggestions
-
-5. Validate
-   - Code quality checks (linting, formatting) performed and issues addressed per the holistic-linting skill
-   - Apply: /python3-development:modernpython to check modern patterns
-   - Run: uv run pytest
-   - Verify: CI compatibility by checking .gitlab-ci.yml or .github/workflows/
+```mermaid
+flowchart TD
+    S1["1. Design<br>subagent_type=python3-development:python-cli-design-spec<br>Context: user requirements, any existing codebase paths<br>Output: component interfaces, module layout, CLI command tree"]
+    S2["2. Write Tests<br>subagent_type=python3-development:python-pytest-architect<br>Context: architecture design file path<br>Output: tests/ directory with failing test suite"]
+    S3{"3. Implement<br>Default: python3-development:python-cli-architect<br>Restricted env only: python3-development:stdlib-scripting<br>Context: tests/ path, assets/python-cli-demo.py path<br>Output: implementation that makes all tests pass"}
+    S4["4. Review<br>subagent_type=python3-development:python-code-reviewer<br>Context: implementation file paths, tests/ path<br>Output: review findings with file:line references, improvement suggestions"]
+    S5["5. Validate<br>Run: /python3-development:shebangpython on each script<br>Run: Activate holistic-linting skill<br>Run: uv run pytest (verify >80% coverage)<br>Check: CI config for additional validators<br>Pass criteria: all tests green, linting clean, coverage threshold met"]
+    S1 -->|"Output: component interfaces, module layout, CLI command tree"| S2
+    S2 -->|"Output: tests/ with failing test suite"| S3
+    S3 -->|"Output: implementation making all tests pass"| S4
+    S4 -->|"Output: review findings, improvement list"| S5
 ```
 
 **Example**:
 
-```text
+<example>
 User: "Build a CLI tool to process CSV files with progress bars"
 
-Step 1: @python3-development:python-cli-design-spec
-  "Design architecture for CSV processing CLI with progress tracking"
-  → Architecture design with components
+1. Task is Design with subagent_type="python3-development:python-cli-design-spec"
+   Context to include in the prompt: Design architecture for CSV processing CLI with progress tracking
+   Output: Architecture design file with component list, module layout, CLI command tree
 
-Step 2: @python3-development:python-pytest-architect
-  "Create test suite for CSV processor based on this architecture"
-  → Test files in tests/
+2. Task is Write Tests with subagent_type="python3-development:python-pytest-architect"
+   Context to include in the prompt: Path to architecture design file from step 1
+   Output: tests/ directory with failing test files
 
-Step 3: @python3-development:python-cli-architect
-  "Implement CSV processor CLI with Typer+Rich. Tests are in tests/. Make all tests pass."
-  → Implementation in packages/
+3. Task is Implement with subagent_type="python3-development:python-cli-architect"
+   Context to include in the prompt: tests/ path; reference implementation at
+     plugins/python3-development/skills/python3-development/assets/python-cli-demo.py
+   Output: packages/ with implementation that makes all tests pass
 
-Step 4: @python3-development:python-code-reviewer
-  "Review this implementation against the architecture and test requirements"
-  → Review findings, suggested improvements
+4. Task is Review with subagent_type="python3-development:python-code-reviewer"
+   Context to include in the prompt: packages/ and tests/ file paths
+   Output: Review findings with file:line references and improvement list
 
-Step 5: Validate
-  → All tests pass, coverage >80%, linting clean
-```
+5. Validate
+   /python3-development:shebangpython packages/csv_processor.py
+   Activate holistic-linting skill on packages/ tests/
+   uv run pytest — verify all pass, coverage >80%
+</example>
 
 ### 2. Feature Addition Workflow
 
 **When to use**: Adding new functionality to existing codebase
 
-**Pattern**:
+Before delegating Requirements Gathering, read `git log --oneline -10` and pass the codebase path to the spec-analyst — do not summarize the codebase yourself.
 
-```text
-1. Requirements → User or @spec-analyst
-   Output: Clear requirements, acceptance criteria
-
-2. Architecture → @python3-development:python-cli-design-spec
-   Context to pass: Requirements, existing codebase structure
-   Output: Design that integrates with existing code
-
-3. Implementation Plan → @python3-development:swarm-task-planner
-   Context to pass: Architecture design
-   Output: Step-by-step implementation tasks
-
-4. Implement → @python3-development:python-cli-architect OR /python3-development:stdlib-scripting
-   Context to pass: Implementation plan, existing code patterns
-   Output: New feature implementation
-
-5. Testing → @python3-development:python-pytest-architect
-   Context to pass: Implementation, edge cases
-   Output: Tests for new feature + integration tests
-
-6. Review → @python3-development:python-code-reviewer
-   Context to pass: All changes (implementation + tests)
-   Output: Quality assessment, improvements
-
-7. Validate
-   - Check: No regressions in existing tests
-   - Verify: New feature has >80% coverage
-   - Code quality checks (linting, formatting) performed and issues addressed per the holistic-linting skill
-   - Apply: /python3-development:modernpython for consistency
+```mermaid
+flowchart TD
+    S1["1. Requirements Gathering<br>subagent_type=spec-analyst<br>Context: codebase path, user request verbatim<br>Output: requirements doc with acceptance criteria"]
+    S2["2. Architecture<br>subagent_type=python3-development:python-cli-design-spec<br>Context: requirements doc path, existing codebase path<br>Output: design showing integration points with existing code"]
+    S3["3. Implementation Planning<br>subagent_type=python3-development:swarm-task-planner<br>Context: architecture design path, existing test patterns path<br>Output: ordered task list with file targets and acceptance criteria per task"]
+    S4{"4. Implement<br>Default: python3-development:python-cli-architect<br>Restricted env only: python3-development:stdlib-scripting<br>Context: task list path, relevant existing file paths<br>Output: new feature implementation in packages/"}
+    S5["5. Testing<br>subagent_type=python3-development:python-pytest-architect<br>Context: new implementation paths, existing test patterns path<br>Output: tests for new feature + integration tests in tests/"]
+    S6["6. Review<br>subagent_type=python3-development:python-code-reviewer<br>Context: changed file paths, requirements doc path<br>Output: quality assessment against acceptance criteria, improvement list"]
+    S7["7. Validate<br>Run: uv run pytest (verify no regressions, >80% coverage)<br>Run: Activate holistic-linting skill<br>Run: /python3-development:modernpython on changed files<br>Pass criteria: all tests green, no regressions, linting clean"]
+    S1 -->|"Output: requirements doc, acceptance criteria"| S2
+    S2 -->|"Output: design with integration points"| S3
+    S3 -->|"Output: ordered task list with file targets"| S4
+    S4 -->|"Output: new feature implementation"| S5
+    S5 -->|"Output: tests for new feature + integration tests"| S6
+    S6 -->|"Output: quality assessment, improvement list"| S7
 ```
 
 ### 3. Code Review Workflow
 
 **When to use**: Before merging changes, during PR review
 
-**Pattern**:
+The shebangpython step applies only when Python scripts are present. Decision criterion: check whether any `.py` files with a shebang line (`#!/`) exist in the changed set.
 
-```text
-1. Self-Review → Apply /python3-development:modernpython
-   Check: Modern Python patterns used
-   Check: No legacy typing imports
-
-2. Standards Validation → Apply /python3-development:shebangpython (if scripts)
-   Check: PEP 723 compliance
-   Check: Correct shebang format
-
-3. Agent Review → @python3-development:python-code-reviewer
-   Context to pass: All changed files
-   Output: Comprehensive review findings
-
-4. Fix Issues → Appropriate agent
-   Context to pass: Review findings
-   Output: Corrections
-
-5. Re-validate
-   - Code quality checks (linting, formatting) performed and issues addressed per the holistic-linting skill
-   - Run: uv run pytest
-   - Verify: All review issues addressed
+```mermaid
+flowchart TD
+    S1["1. Self-Review<br>Run: /python3-development:modernpython on changed files<br>Check: no legacy typing imports (typing.List, typing.Dict, Optional)<br>Check: modern union syntax (X | Y not Union[X, Y])"]
+    S2{"2. Scripts present?<br>Criterion: any .py file has shebang (#!/) line"}
+    S2a["Run: /python3-development:shebangpython on each script<br>Pass criteria: PEP 723 compliance verified, shebang corrected if needed"]
+    S3["3. Agent Review<br>subagent_type=python3-development:python-code-reviewer<br>Context: changed file paths, PR description or task description<br>Output: review findings with file:line references, severity labels (critical/major/minor)"]
+    S4{"4. Issues found with severity critical or major?"}
+    S4a["Fix Issues<br>Implementation fixes: python3-development:python-cli-architect<br>Test fixes: python3-development:python-pytest-architect<br>Context: review findings doc path, file paths to fix"]
+    S5["5. Re-validate<br>Run: Activate holistic-linting skill<br>Run: uv run pytest<br>Pass criteria: all review issues addressed, tests green, linting clean"]
+    S1 --> S2
+    S2 -->|"Yes — scripts present"| S2a
+    S2 -->|"No scripts"| S3
+    S2a -->|"PEP 723 compliance verified"| S3
+    S3 -->|"Output: review findings with severity labels"| S4
+    S4 -->|"Yes — fix required"| S4a
+    S4 -->|"No critical/major issues"| S5
+    S4a -->|"Output: corrections applied"| S5
 ```
 
 ### 4. Refactoring Workflow
 
 **When to use**: Improving code structure without changing behavior
 
-**Pattern**:
+Decision criterion for "Tests exist?": run `uv run pytest --co -q` — if output lists test items and exit code is 0, tests exist. If exit code is non-zero or output is empty, tests are missing.
 
-```text
-1. Tests First → Verify existing test coverage
-   Check: Tests exist for code being refactored
-   Check: Tests pass before refactoring
-   If missing: @python3-development:python-pytest-architect creates tests
-
-2. Refactor → @python3-development:python-cli-architect or /python3-development:stdlib-scripting
-   Context to pass: Code to refactor + test suite
-   Constraint: Must not break existing tests
-   Output: Refactored code
-
-3. Validate → Tests still pass
-   Run: uv run pytest
-   Verify: Coverage maintained or improved
-
-4. Review → @python3-development:python-code-reviewer
-   Context to pass: Before/after comparison
-   Output: Verification refactoring improved quality
-
-5. Apply Standards
-   - Apply: /python3-development:modernpython for modern patterns
-   - Code quality checks (linting, formatting) performed and issues addressed per the holistic-linting skill
+```mermaid
+flowchart TD
+    S1{"Tests exist and pass?<br>Run: uv run pytest --co -q<br>Yes: test items listed, exit 0<br>No: empty output or exit non-zero"}
+    S1a["Write Tests First<br>subagent_type=python3-development:python-pytest-architect<br>Context: file paths to be refactored, current behavior description<br>Output: tests/ capturing current behavior (all must pass before refactoring)"]
+    S2["Refactor<br>subagent_type=python3-development:python-cli-architect<br>Context: file paths to refactor, tests/ path<br>Constraint: must not break existing tests — run uv run pytest after each change<br>Output: refactored implementation with same external behavior"]
+    S3["Validate<br>Run: uv run pytest (coverage must equal or exceed pre-refactor baseline)<br>Pass criteria: all tests green, coverage maintained or improved"]
+    S4["Review<br>subagent_type=python3-development:python-code-reviewer<br>Context: refactored file paths, tests/ path<br>Output: confirmation refactoring improved structure, no regressions introduced"]
+    S5["Apply Standards<br>Run: /python3-development:modernpython on refactored files<br>Run: Activate holistic-linting skill<br>Pass criteria: linting clean, modern patterns applied"]
+    S1 -->|"Tests missing"| S1a
+    S1a -->|"Output: passing test suite for current behavior"| S2
+    S1 -->|"Tests exist and pass"| S2
+    S2 -->|"Output: refactored code"| S3
+    S3 -->|"Coverage maintained"| S4
+    S4 -->|"Output: quality verification"| S5
 ```
 
 ### 5. Debugging Workflow
 
 **When to use**: Investigating and fixing bugs
 
-**Pattern**:
+The Reproduce Bug step requires the bug description verbatim and any error output or stack trace. Pass these as file paths or inline in the prompt — do not summarize.
 
-```text
-1. Reproduce → Write failing test
-   @python3-development:python-pytest-architect
-   Context to pass: Bug description, steps to reproduce
-   Output: Test that demonstrates bug
-
-2. Trace → Investigate root cause
-   Use: Debugging tools, logging
-   Identify: Specific code causing issue
-
-3. Fix → Appropriate agent
-   @python3-development:python-cli-architect or /python3-development:stdlib-scripting
-   Context to pass: Failing test + root cause
-   Output: Fix that makes test pass
-
-4. Test → Verify fix + no regressions
-   Run: Full test suite
-   Verify: Bug test now passes
-   Verify: No other tests broke
-
-5. Review → @python3-development:python-code-reviewer
-   Context to pass: Fix + test
-   Output: Verification fix is proper solution
-
-6. Validate
-   - Apply: /python3-development:modernpython
-   - Code quality checks (linting, formatting) performed and issues addressed per the holistic-linting skill
+```mermaid
+flowchart TD
+    S1["1. Reproduce Bug<br>subagent_type=python3-development:python-pytest-architect<br>Context: bug description verbatim, error output or stack trace, relevant file paths<br>Output: tests/test_<module>.py with failing test that isolates the bug"]
+    S2["2. Trace Root Cause<br>subagent_type=python3-development:python-code-reviewer<br>Context: failing test path, relevant source file paths<br>Output: root cause identification with file:line reference, not a fix — analysis only"]
+    S3{"3. Fix<br>Default: python3-development:python-cli-architect<br>Restricted env only: python3-development:stdlib-scripting<br>Context: root cause analysis path, failing test path, source file paths<br>Output: fix that makes the failing test pass"}
+    S4["4. Regression Check<br>Run: uv run pytest (full suite)<br>Pass criteria: bug test passes AND no previously passing tests now fail"]
+    S5["5. Review<br>subagent_type=python3-development:python-code-reviewer<br>Context: fixed file paths, test paths<br>Output: confirmation fix addresses root cause (not symptom), no new technical debt introduced"]
+    S6["6. Validate<br>Run: /python3-development:modernpython on fixed files<br>Run: Activate holistic-linting skill<br>Pass criteria: linting clean, modern patterns applied"]
+    S1 -->|"Output: failing test isolating the bug"| S2
+    S2 -->|"Output: root cause with file:line reference"| S3
+    S3 -->|"Output: fix making failing test pass"| S4
+    S4 -->|"All tests green"| S5
+    S5 -->|"Output: fix quality verification"| S6
 ```
 
 ## Agent Selection Guide
@@ -235,7 +187,7 @@ Step 5: Validate
 
 **Use when**:
 
-- **DEFAULT choice for scripts and CLI tools**
+- **DEFAULT choice for all Python scripts and CLI tools**
 - Building command-line applications with rich user interaction
 - Need progress bars, tables, colored output
 - User-facing CLI tools and automation scripts
@@ -253,10 +205,10 @@ Step 5: Validate
 
 **Complexity Advantage** (IMPORTANT):
 
-- ✅ **LESS development complexity** - Libraries handle the hard work (argument parsing, output formatting, validation)
-- ✅ **LESS code to write** - Typer CLI boilerplate and Rich formatting come built-in
-- ✅ **Better UX** - Professional output with minimal effort
-- ✅ **Just as portable** - PEP 723 + uv makes single-file scripts with dependencies work seamlessly
+- LESS development complexity — libraries handle argument parsing, output formatting, validation
+- LESS code to write — Typer CLI boilerplate and Rich formatting come built-in
+- Better UX — professional output with minimal effort
+- Just as portable — PEP 723 + uv makes single-file scripts with dependencies work seamlessly
 
 **This agent is EASIER to use than stdlib-only approaches. Choose this as the default unless portability restrictions exist.**
 
@@ -269,7 +221,7 @@ Step 5: Validate
 - "Create a script to scan git repositories and show status tree"
 - "Build a deployment verification tool with progress bars"
 
-### When to Use /python3-development:stdlib-scripting
+### When to Use python3-development:stdlib-scripting
 
 **LAST RESORT** — only for confirmed restricted environments. Ask user first if unclear.
 
@@ -287,20 +239,19 @@ Step 5: Validate
 - Stdlib only (argparse, pathlib, subprocess)
 - Defensive error handling
 - Cross-platform compatibility
-- Stdlib only (no PEP 723 needed - nothing to declare)
+- No PEP 723 needed — nothing to declare
 - Use PEP 723 ONLY if adding external dependencies later
 - Ask deployment environment questions before choosing this skill
 - This is the EXCEPTION, not the rule
-- Consider python-cli-architect first unless restrictions confirmed
 
 **Complexity Trade-off** (IMPORTANT):
 
-- ❌ **MORE development complexity** - Manual implementation of everything (argument parsing, output formatting, validation, error handling)
-- ❌ **MORE code to write** - Build from scratch what libraries provide tested
-- ❌ **Basic UX** - Limited formatting capabilities
-- ✅ **Maximum portability** - The ONLY reason to choose this: runs anywhere Python exists without network access
+- MORE development complexity — manual implementation of argument parsing, output formatting, validation, error handling
+- MORE code to write — build from scratch what libraries provide tested
+- Basic UX — limited formatting capabilities
+- Maximum portability — the ONLY reason to choose this: runs anywhere Python exists without network access
 
-**This skill is NOT simpler to use - it requires MORE work to build the same functionality. Choose it ONLY for portability, not for simplicity.**
+**This skill is NOT simpler to use — it requires MORE work to build the same functionality. Choose it ONLY for portability, not for simplicity.**
 
 **Note**: Only activate this skill if deployment environment restrictions are confirmed. With PEP 723 + uv, python-cli-architect is preferred for better UX. ASK: "Will this run without internet access or where uv cannot be installed?" See [PEP 723 Reference](./PEP723.md) for details on when to use inline script metadata.
 
@@ -319,7 +270,7 @@ Step 5: Validate
 - PEP 723 + uv handles dependencies (still single file)
 - Works in 99% of scenarios
 
-**Step 2: Only use /python3-development:stdlib-scripting if:**
+**Step 2: Only use python3-development:stdlib-scripting if:**
 
 - User explicitly states "stdlib only" requirement
 - OR deployment environment is confirmed restricted:
@@ -336,22 +287,22 @@ Step 5: Validate
 
 **Decision Tree**:
 
-```text
-Does the deployment environment have internet access?
-├─ YES → Use python-cli-architect (default)
-│         Single file + PEP 723 + uv = transparent dependencies
-│
-└─ NO → Is uv installable in the environment?
-        ├─ YES → Use python-cli-architect (default)
-        │         uv can cache dependencies for offline use
-        │
-        └─ NO → Use /python3-development:stdlib-scripting (last resort)
-                 Truly restricted environment requires stdlib-only
+```mermaid
+flowchart TD
+    Q1{"Deployment environment<br>has internet access?"}
+    Q2{"uv installable<br>in the environment?"}
+    A1["python-cli-architect (default)<br>Single file + PEP 723 + uv<br>transparent dependencies"]
+    A2["python-cli-architect (default)<br>uv can cache dependencies<br>for offline use"]
+    A3["python3-development:stdlib-scripting<br>(last resort)<br>Truly restricted environment"]
+    Q1 -->|"YES"| A1
+    Q1 -->|"NO"| Q2
+    Q2 -->|"YES"| A2
+    Q2 -->|"NO"| A3
 ```
 
-If answers indicate normal environment → python-cli-architect
+If answers indicate normal environment: python-cli-architect
 
-If answers indicate restrictions → /python3-development:stdlib-scripting
+If answers indicate restrictions: python3-development:stdlib-scripting
 
 **When in doubt**: Use python-cli-architect. PEP 723 + uv makes single-file scripts with dependencies just as portable as stdlib-only scripts for 99% of deployment scenarios.
 
@@ -448,9 +399,9 @@ If answers indicate restrictions → /python3-development:stdlib-scripting
 ```text
 /python3-development:shebangpython scripts/deploy.py
 → Analyzes imports to determine dependency type
-→ **Corrects shebang** to match script type (edits file if wrong)
-→ **Adds PEP 723 metadata** if external dependencies detected (edits file)
-→ **Removes PEP 723 metadata** if stdlib-only (edits file)
+→ Corrects shebang to match script type (edits file if wrong)
+→ Adds PEP 723 metadata if external dependencies detected (edits file)
+→ Removes PEP 723 metadata if stdlib-only (edits file)
 → Sets execute bit if needed
 → Provides detailed verification report
 ```
@@ -513,27 +464,27 @@ Use this as the reference implementation when creating CLI tools.
 User: "Build a CLI tool to validate YAML configurations"
 
 Orchestrator:
-1. @python3-development:python-cli-design-spec
-   "Design architecture for YAML validation CLI"
-   → Component design, validation rules
+1. Task is Architecture Design with subagent_type="python3-development:python-cli-design-spec"
+   Context to include in the prompt: Design architecture for YAML validation CLI
+   Output: Architecture file with component list, validation rules, module layout
 
-2. @python3-development:python-pytest-architect
-   "Create test suite for YAML validator"
-   → tests/test_validator.py with fixtures
+2. Task is Write Tests with subagent_type="python3-development:python-pytest-architect"
+   Context to include in the prompt: Architecture design file path from step 1
+   Output: tests/test_validator.py with fixtures (all tests fail initially)
 
-3. @python3-development:python-cli-architect
-   "Implement YAML validator CLI with Typer based on tests"
-   Reference: `${CLAUDE_PLUGIN_ROOT}/skills/python3-development/assets/python-cli-demo.py` for patterns
-   → packages/validator.py with Typer+Rich UI
+3. Task is Implement with subagent_type="python3-development:python-cli-architect"
+   Context to include in the prompt: tests/ file paths; reference at
+     plugins/python3-development/skills/python3-development/assets/python-cli-demo.py
+   Output: packages/validator.py with Typer+Rich UI — all tests pass
 
 4. Validation:
    /python3-development:shebangpython packages/validator.py
-   Activate holistic-linting skill for code quality checks on packages/validator.py tests/
-   uv run pytest
+   Activate holistic-linting skill on packages/validator.py tests/
+   uv run pytest — verify all pass, coverage >80%
 
-5. @python3-development:python-code-reviewer
-   "Review validator implementation"
-   → Quality check, improvements
+5. Task is Review with subagent_type="python3-development:python-code-reviewer"
+   Context to include in the prompt: packages/validator.py and tests/ file paths
+   Output: Quality check findings with file:line references
 
 6. Fix any issues and re-validate
 ```
@@ -544,25 +495,24 @@ Orchestrator:
 User: "Fix bug where CSV parser fails on empty rows"
 
 Orchestrator:
-1. @python3-development:python-pytest-architect
-   "Write test that reproduces CSV parser bug with empty rows"
-   → tests/test_csv_parser.py::test_empty_rows (failing)
+1. Task is Reproduce Bug with subagent_type="python3-development:python-pytest-architect"
+   Context to include in the prompt: CSV parser bug — fails on empty rows, write a reproducing test
+   Output: tests/test_csv_parser.py::test_empty_rows (failing test)
 
-2. @python3-development:python-cli-architect
-   "Fix CSV parser to handle empty rows, making test pass"
-   → packages/csv_parser.py updated
+2. Task is Fix with subagent_type="python3-development:python-cli-architect"
+   Context to include in the prompt: tests/test_csv_parser.py path, fix CSV parser to handle empty rows
+   Output: packages/csv_parser.py updated — test_empty_rows now passes
 
 3. Validation:
-   uv run pytest  # Verify bug test passes
-   uv run pytest  # Verify no regression
+   uv run pytest — verify bug test passes and no regression
 
-4. @python3-development:python-code-reviewer
-   "Review bug fix and test"
-   → Verify proper solution
+4. Task is Review with subagent_type="python3-development:python-code-reviewer"
+   Context to include in the prompt: packages/csv_parser.py and tests/test_csv_parser.py paths
+   Output: Verification fix addresses root cause, not symptom
 
 5. Apply standards:
    /python3-development:modernpython packages/csv_parser.py
-   Activate holistic-linting skill for code quality checks on packages/csv_parser.py tests/
+   Activate holistic-linting skill on packages/csv_parser.py tests/
 ```
 
 ## Anti-Patterns to Avoid
@@ -576,8 +526,8 @@ Orchestrator:
 ### Do: Delegate to appropriate agent
 
 ```text
-✅ @python3-development:python-cli-architect writes implementation
-✅ @python3-development:python-code-reviewer validates it
+✅ Task is Implement with subagent_type="python3-development:python-cli-architect" — writes implementation
+✅ Task is Review with subagent_type="python3-development:python-code-reviewer" — validates it
 ```
 
 ### Don't: Skip validation steps
@@ -594,8 +544,8 @@ Orchestrator:
 
 ### Don't: Mix agent contexts
 
-```cpp
-❌ Ask /python3-development:stdlib-scripting to build Typer CLI
+```text
+❌ Ask python3-development:stdlib-scripting to build Typer CLI
 ❌ Ask python-cli-architect to avoid all dependencies
 ```
 
@@ -603,7 +553,7 @@ Orchestrator:
 
 ```text
 ✅ python-cli-architect for user-facing CLI tools
-✅ /python3-development:stdlib-scripting for stdlib-only scripts
+✅ python3-development:stdlib-scripting for stdlib-only scripts
 ```
 
 ## Summary
@@ -611,10 +561,10 @@ Orchestrator:
 **Orchestration = Coordination, Not Implementation**
 
 1. Choose the right agent for the task
-2. Provide clear inputs and context
+2. Provide clear inputs (file paths, not file contents)
 3. Chain agents for complex workflows (architect → test → implement → review)
 4. Always validate with quality gates
 5. Use commands for standards checking
 6. Integrate with uv skill for package management
 
-**Success = Right agent + Clear inputs + Proper validation**
+**Success = Right agent + File paths as context + Validation gates passed**

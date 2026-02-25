@@ -40,7 +40,7 @@ claude --debug -p "trigger the anti-pattern" --allowedTools "Bash,Read"
 ## Template 2: Agent Prompt Refinement
 
 Input: Agent behavior finding (wrong tool selection, incomplete output, etc.).
-Output: Instruction set for @contextual-ai-documentation-optimizer or @subagent-refactorer.
+Output: Delegation step for the agent prompt specialist.
 
 ````markdown
 ## Agent Improvement: {agent_name}
@@ -49,28 +49,31 @@ Output: Instruction set for @contextual-ai-documentation-optimizer or @subagent-
 **Sessions affected:** {list}
 **Evidence:** {specific transcript excerpts}
 
-### Delegation Prompt for @subagent-refactorer
+### Delegation Step
 
-**Observations:**
+Task is agent prompt refinement with subagent_type="plugin-creator:subagent-refactorer"
+Context to include in the prompt: {file_path} (agent file), evidence excerpts from
+  {session_id_list} showing the observed anti-pattern
+Output: .planning/kaizen/improvements/{agent_name}-patch.md — revised agent prompt
+  with rationale for each change and a no-regression checklist
+
+**Observations to include in prompt:**
 - Agent {agent_name} located at {file_path}
 - Observed behavior: {what it does wrong}
 - Expected behavior: {what it should do}
 - Evidence from {N} sessions confirms this is a pattern, not an anomaly
 
-**Desired Outcome:**
+**Desired Outcome to include in prompt:**
 - Agent's system prompt prevents the observed anti-pattern
 - No regression in other agent behaviors
-- Changes are minimal and targeted
-
-**Constraint:**
-- Do not rewrite the entire agent — surgical fix only
+- Changes are minimal and targeted — surgical fix only
 - The agent decides HOW to implement the fix
 ````
 
 ## Template 3: Skill Patch
 
 Input: Knowledge gap or missing guidance in a skill.
-Output: Instruction set for @plugin-creator:skill-creator.
+Output: Delegation step for the skill creator specialist.
 
 ````markdown
 ## Skill Improvement: {skill_name}
@@ -79,19 +82,25 @@ Output: Instruction set for @plugin-creator:skill-creator.
 **Sessions affected:** {list}
 **Evidence:** Claude repeatedly {specific behavior} because skill lacks {specific guidance}
 
-### Delegation Prompt for /plugin-creator:skill-creator
+### Delegation Step
 
-**Observations:**
+Task is skill content improvement with subagent_type="plugin-creator:skill-creator"
+Context to include in the prompt: {skill_path} (skill directory), {source_material_paths}
+  (official docs or empirical data supporting the addition)
+Output: updated {skill_path}/SKILL.md — with the knowledge gap filled; addition
+  concise (under 50 lines added)
+
+**Observations to include in prompt:**
 - Skill at {skill_path}
 - Current content lacks: {specific missing information}
 - This causes: {observed negative outcome in N sessions}
 
-**Desired Outcome:**
+**Desired Outcome to include in prompt:**
 - Skill includes {specific information}
 - Claude no longer exhibits {problematic behavior} when skill is active
 - Addition is concise (under 50 lines added)
 
-**Source Material:**
+**Source Material to pass:**
 - {references to official docs, verified patterns, or empirical data}
 ````
 
@@ -148,9 +157,14 @@ Output: Proposal for new script or skill.
 - Single invocation replaces {N} manual steps
 - Saves ~{estimated token reduction} tokens per occurrence
 
-### Delegation Prompt
+### Delegation Step
 
-**For:** @python3-development:python-cli-architect (if script) or /plugin-creator:skill-creator (if skill)
+```mermaid
+flowchart TD
+    Q{What is being automated?}
+    Q -->|Repeatable CLI workflow| Script["Task is script automation<br>with subagent_type='python3-development:python-cli-architect'<br>Context: workflow description with evidence,<br>input/output spec, desired single-step replacement<br>Output: scripts/{name}.py — executable CLI script"]
+    Q -->|Reusable AI workflow guidance| Skill["Activate /plugin-creator:skill-creator<br>(skill invocation, not Task subagent)<br>Context: workflow description, source material<br>Output: new skill directory with SKILL.md"]
+```
 
 **Observations:**
 {workflow description with evidence}

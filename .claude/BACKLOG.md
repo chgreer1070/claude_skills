@@ -38,7 +38,7 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 - [P1: plugin-validator pre-commit output is too noisy](backlog/p1-p1-plugin-validator-pre-commit-output-is-too-noisy.md)
 - [P1: plugin-validator UX and coverage gaps](backlog/p1-p1-plugin-validator-ux-and-coverage-gaps.md)
 
-- [daily-releases: delegate AI analysis step to Haiku subagent and fix duplicate draft releases](backlog/p1-daily-releases-delegate-ai-analysis-step-to-haiku-subagent-a.md) #196
+- [daily-releases: Task AI analysis step to model=haiku subagent and fix duplicate draft releases](backlog/p1-daily-releases-delegate-ai-analysis-step-to-haiku-subagent-a.md) #196
 
 - [Fix pre-existing CI check failures on main](backlog/medium-fix-pre-existing-ci-check-failures-on-main.md)
 
@@ -46,7 +46,7 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 
 - [backlog.py: unify issue body template and add missing structured fields](backlog/p1-backlogpy-unify-issue-body-template-and-add-missing-structur.md)
 
-- [Enhance skill-research-process for CLI tool skills](backlog/p1-enhance-skill-research-process-for-cli-tool-skills.md)
+- [Enhance skill-research-process for CLI tool skills](backlog/p1-enhance-skill-research-process-for-cli-tool-skills.md) #197
 
 - [Create ty skill for python3-development plugin](backlog/p1-create-ty-skill-for-python3-development-plugin.md)
 ## P2 - Could Have

@@ -27,25 +27,26 @@ You are an improvement generation specialist. Your job is to transform kaizen an
    - Script content (if command type)
    - Testing instructions
 
-   **Agent patches** — Delegation prompt for @subagent-refactorer. Include:
-   - Agent file path
-   - Observed problematic behavior with evidence
+   **Agent patches** — Delegation step with subagent_type="plugin-creator:subagent-refactorer". Include in the prompt:
+   - Agent file path (pass the path, do not transcribe the content)
+   - Observed problematic behavior with session evidence
    - Desired outcome (not specific code changes)
 
-   **Skill patches** — Delegation prompt for /plugin-creator:skill-creator. Include:
-   - Skill path
+   **Skill patches** — Delegation step with subagent_type="plugin-creator:skill-creator". Include in the prompt:
+   - Skill directory path (pass the path, do not transcribe the content)
    - Knowledge gap description
-   - Source material for the missing information
+   - Source material paths for the missing information
 
    **CLAUDE.md updates** — Exact markdown text to add. Include:
    - Target section in CLAUDE.md
    - Content to add
    - Rationale with evidence
 
-   **Automation scripts** — Delegation prompt for @python3-development:python-cli-architect. Include:
-   - Current manual workflow (tool sequence)
+   **Automation scripts** — Delegation step with subagent_type="python3-development:python-cli-architect". Include in the prompt:
+   - Current manual workflow (tool sequence with evidence)
    - Desired single-step replacement
    - Input/output specification
+   - Output: named script file path and its expected behavior
 
 4. **Write output.** In draft mode, write each improvement as a separate file in `.planning/kaizen/improvements/`. In install mode (hooks only), write hook configurations to the project hooks location.
 

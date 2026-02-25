@@ -92,13 +92,27 @@ Do not modify the command or add additional flags.
 
 ### Test with All Target Models
 
-- **Haiku** (fast): Does the skill provide enough guidance?
+Skills act as additions to models, so effectiveness depends on the underlying model. Test with all models you plan to use.
+
+- **Haiku** (fast, economical): Does the skill provide enough guidance? Haiku may need more detail.
 - **Sonnet** (balanced): Is the skill clear and efficient?
-- **Opus** (powerful): Does the skill avoid over-explaining?
+- **Opus** (powerful reasoning): Does the skill avoid over-explaining? Opus may find verbose skills redundant.
+
+What works perfectly for Opus might need more detail for Haiku. If your skill will be used across multiple models, aim for instructions that work well with all of them.
 
 ---
 
 ## Skill Structure
+
+### Naming Conventions
+
+Use consistent naming patterns. **Gerund form** (verb + -ing) is the recommended style because it clearly describes the activity the skill provides.
+
+- Good (gerund): `processing-pdfs`, `analyzing-spreadsheets`, `managing-databases`, `testing-code`
+- Acceptable alternatives: noun phrases (`pdf-processing`) or action-oriented (`process-pdfs`)
+- Avoid: vague names (`helper`, `utils`, `tools`), overly generic names (`documents`, `data`), reserved words (`anthropic-helper`, `claude-tools`)
+
+Consistent naming makes it easier to reference skills in documentation, understand what a skill does at a glance, and maintain a cohesive skill library.
 
 ### Writing Effective Descriptions
 
@@ -358,6 +372,19 @@ Create evaluations BEFORE writing extensive documentation:
 6. Return to Claude A with specifics to refine
 7. Repeat the observe-refine-test cycle
 
+> Claude models understand the Skill format natively. You don't need a special "writing skills" skill. Simply ask Claude to create a Skill and it will generate properly structured SKILL.md content.
+
+### Observe How Claude Navigates Skills
+
+As you iterate, watch how Claude actually uses your skill in practice:
+
+- **Unexpected exploration paths**: Does Claude read files in an order you didn't expect? Your structure may not be intuitive.
+- **Missed connections**: Does Claude fail to follow references? Your links may need to be more explicit or prominent.
+- **Overreliance on certain sections**: If Claude repeatedly reads the same file, consider whether that content belongs in the main SKILL.md instead.
+- **Ignored content**: If Claude never accesses a bundled file, it might be unnecessary or poorly signaled.
+
+Iterate based on these observations. The `name` and `description` metadata are particularly critical — Claude uses them when deciding whether to trigger the skill at all.
+
 ---
 
 ## Advanced: Executable Code
@@ -416,6 +443,22 @@ Use fully qualified names: `ServerName:tool_name`
 ```markdown
 Use the BigQuery:bigquery_schema tool to retrieve table schemas.
 ```
+
+---
+
+---
+
+## Anti-Patterns to Avoid
+
+| Anti-pattern | Problem | Instead |
+|---|---|---|
+| Windows-style paths (`scripts\helper.py`) | Fails on Unix | Always use forward slashes: `scripts/helper.py` |
+| Too many options without a default | Confuses Claude | Provide one preferred approach with optional alternatives |
+| Assuming tools/packages are installed | Silent failures | List required packages; verify availability |
+| Vague descriptions ("Helps with documents") | Poor discovery | Specific with triggers: "Extracts text from PDFs. Use when…" |
+| Deeply nested references (SKILL → A → B → C) | Claude may partially read and miss info | Flat structure: SKILL links directly to each reference |
+| Date-conditional logic ("If before Aug 2025…") | Becomes wrong over time | Current method as default; legacy in labeled `<details>` section |
+| Mixed terminology ("endpoint" / "URL" / "route") | Claude infers equivalence incorrectly | One term per concept throughout |
 
 ---
 
