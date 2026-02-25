@@ -442,6 +442,114 @@ def _should_skip_claude_validate() -> bool:
 
 
 # ============================================================================
+# IGNORE CONFIG (per-plugin .claude-plugin/validator.json)
+# ============================================================================
+
+# Type alias: maps relative path prefix → set of suppressed error codes.
+IgnoreConfig: TypeAlias = dict[str, list[str]]
+
+
+def _load_ignore_config(plugin_root: Path) -> IgnoreConfig:
+    """Load per-plugin validator ignore config from .claude-plugin/validator.json.
+
+    Args:
+        plugin_root: Directory containing .claude-plugin/plugin.json.
+
+    Returns:
+        Mapping of relative path prefixes to lists of suppressed error codes.
+        Returns empty dict if config file does not exist or cannot be parsed.
+    """
+    config_path = plugin_root / ".claude-plugin" / "validator.json"
+    if not config_path.is_file():
+        return {}
+    try:
+        raw = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    ignore = raw.get("ignore", {})
+    if not isinstance(ignore, dict):
+        return {}
+    return {str(k): [str(c) for c in v] for k, v in ignore.items() if isinstance(v, list)}
+
+
+def _find_plugin_root(path: Path) -> Path | None:
+    """Walk up from path to find the nearest plugin root (directory with .claude-plugin/plugin.json).
+
+    Args:
+        path: File or directory path to start from.
+
+    Returns:
+        Plugin root directory, or None if not found.
+    """
+    candidate = path if path.is_dir() else path.parent
+    for directory in [candidate, *candidate.parents]:
+        if (directory / ".claude-plugin" / "plugin.json").exists():
+            return directory
+    return None
+
+
+def _is_suppressed(ignore_config: IgnoreConfig, file_path: Path, plugin_root: Path, code: str) -> bool:
+    """Check whether an issue code is suppressed for a given file path.
+
+    Matching is by prefix: a key of "skills/python3-development" suppresses the
+    code for any file whose path relative to the plugin root starts with that prefix.
+
+    Args:
+        ignore_config: Loaded ignore config mapping prefixes to suppressed codes.
+        file_path: Absolute path to the file being validated.
+        plugin_root: Plugin root directory (used to compute relative path).
+        code: Error code string (e.g. "SK006") to check.
+
+    Returns:
+        True if this code is suppressed for file_path, False otherwise.
+    """
+    if not ignore_config:
+        return False
+    try:
+        rel = file_path.relative_to(plugin_root)
+    except ValueError:
+        return False
+    rel_str = rel.as_posix()
+    for prefix, codes in ignore_config.items():
+        if (rel_str == prefix or rel_str.startswith(prefix.rstrip("/") + "/")) and code in codes:
+            return True
+    return False
+
+
+def _filter_result_by_ignore(
+    result: ValidationResult, file_path: Path, plugin_root: Path, ignore_config: IgnoreConfig
+) -> ValidationResult:
+    """Return a new ValidationResult with suppressed issues removed.
+
+    Suppressed issues are dropped entirely (not downgraded to info).
+    The passed flag is recomputed from the remaining errors.
+
+    Args:
+        result: Original validation result.
+        file_path: Path to the file that was validated.
+        plugin_root: Plugin root used for relative-path prefix matching.
+        ignore_config: Loaded ignore config.
+
+    Returns:
+        Filtered ValidationResult (same object if nothing was suppressed).
+    """
+    if not ignore_config:
+        return result
+
+    def keep(issue: ValidationIssue) -> bool:
+        return not _is_suppressed(ignore_config, file_path, plugin_root, str(issue.code))
+
+    errors = [i for i in result.errors if keep(i)]
+    warnings = [i for i in result.warnings if keep(i)]
+    info = [i for i in result.info if keep(i)]
+
+    if errors is result.errors and warnings is result.warnings and info is result.info:
+        return result
+
+    return ValidationResult(passed=len(errors) == 0, errors=errors, warnings=warnings, info=info)
+
+
+# ============================================================================
 # DATA MODELS (Architecture lines 136-480)
 # ============================================================================
 
@@ -4588,13 +4696,20 @@ def _validate_single_path(path: Path, *, check: bool, fix: bool, verbose: bool) 
     if not validators:
         return {path: []}
 
+    # Load per-plugin ignore config (once per plugin root)
+    plugin_root = _find_plugin_root(path)
+    ignore_config: IgnoreConfig = _load_ignore_config(plugin_root) if plugin_root is not None else {}
+
     # Run validation — group results by file path with validator class names
     validator_results: list[tuple[str, ValidationResult]] = []
     for validator in validators:
         result = validator.validate(path)
+        if plugin_root is not None:
+            result = _filter_result_by_ignore(result, path, plugin_root, ignore_config)
         validator_results.append((type(validator).__name__, result))
 
     # Apply fixes if requested and validator supports it
+    # Note: --fix still runs even for suppressed issues (ignore = suppress reporting, not fixing)
     if fix:
         fixes_applied: list[str] = []
         for validator in validators:
@@ -4610,6 +4725,8 @@ def _validate_single_path(path: Path, *, check: bool, fix: bool, verbose: bool) 
             validator_results = []
             for validator in validators:
                 result = validator.validate(path)
+                if plugin_root is not None:
+                    result = _filter_result_by_ignore(result, path, plugin_root, ignore_config)
                 validator_results.append((type(validator).__name__, result))
 
     return {path: validator_results}

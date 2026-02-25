@@ -1,0 +1,5 @@
+{
+  "ignore": {
+    "skills/xdg-base-directory": ["SK006"]
+  }
+}

@@ -90,7 +90,7 @@ flowchart TD
     Start([Construct path for sub-agent]) --> Q{Path starts with?}
     Q -->|./ relative| Use[Use as-is]
     Q -->|/home/ or /usr/| Abs[Convert to ../../relative/path]
-    Q -->|~/.claude/skills/| Sym[Convert to ~.claude/skills/]
+    Q -->|~/.claude/skills/| Sym[Convert to ~/.claude/skills/]
     Abs -->|Why| Reason1[Absolute paths are verbose and non-portable]
     Sym -->|Why| Reason2[Symlink paths trigger manual approval on every file op]
     Use --> Done([Sub-agent inherits same working directory])
@@ -298,6 +298,8 @@ Every factual claim in skill documentation requires a cited source. **Reason**: 
 - [ ] Every factual claim has cited source
 - [ ] URLs include access dates (YYYY-MM-DD)
 - [ ] Citations distinguish official docs, community practices, opinions
+- [ ] Skill derivations link to source skill repository
+- [ ] User preferences note conversation date and validation evidence
 - [ ] Experimental claims reference datasets or methodology
 
 ---
@@ -350,6 +352,10 @@ uv run prek run --files <file>
 ---
 
 - GitHub Actions CI Workflow Modification Protocol: `.claude/rules/ci-workflows.md`
+
+---
+
+- YAML and TOML Libraries: `.claude/rules/yaml-toml-libraries.md`
 
 ---
 

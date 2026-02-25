@@ -1,0 +1,10 @@
+{
+  "ignore": {
+    "skills/agent-creator": ["SK006"],
+    "skills/assessor": ["SK006"],
+    "skills/claude-plugins-reference-2026": ["SK006"],
+    "skills/claude-skills-overview-2026": ["SK006"],
+    "skills/plugin-creator": ["SK006"],
+    "skills/skill-creator": ["SK006"]
+  }
+}

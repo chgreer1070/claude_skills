@@ -1126,6 +1126,56 @@ untouched.
 
 ---
 
+## Suppressing Errors with validator.json
+
+Some skills are intentionally large reference documents where SK006 warnings would be noise rather than signal. The validator supports a per-plugin ignore config that suppresses specific error codes for specific paths.
+
+### Config File Location
+
+Place a `validator.json` file inside the plugin's `.claude-plugin/` directory alongside `plugin.json`:
+
+```text
+plugins/my-plugin/
+  .claude-plugin/
+    plugin.json
+    validator.json   ← ignore config
+  skills/
+    my-large-skill/
+      SKILL.md
+```
+
+### Config File Format
+
+The file contains an `ignore` object mapping relative path prefixes to arrays of error codes to suppress:
+
+```json
+{
+  "ignore": {
+    "skills/my-large-skill": ["SK006"],
+    "skills/another-large-skill": ["SK006", "SK007"],
+    "agents/my-agent": ["SK004"]
+  }
+}
+```
+
+### Path Matching Rules
+
+- Path keys are **relative to the plugin root** (e.g., `plugins/my-plugin/`).
+- Matching is by **prefix**: a key of `"skills/my-large-skill"` suppresses the listed codes for `skills/my-large-skill/SKILL.md` and any other file whose relative path starts with `skills/my-large-skill/`.
+- An exact match also works: `"skills/my-large-skill"` matches a file at exactly that path.
+
+### Suppression Behaviour
+
+- Suppressed issues are **completely omitted** from output — not downgraded to INFO.
+- `--fix` still auto-fixes issues even when they are suppressed (suppression controls reporting, not fixing).
+- Plugins without a `validator.json` are unaffected.
+
+### When to Use
+
+Use `validator.json` suppression for intentionally dense reference skills where the size is a deliberate design decision (e.g., comprehensive API references, orchestration guides). Do not use it to silence warnings on skills that genuinely need splitting.
+
+---
+
 ## See Also
 
 - [Plugin Validator Architecture](../planning/plugin-validator-architecture.md) - Technical specification
