@@ -90,7 +90,8 @@ def _section_content(lines: list[str], start: int, end: int) -> str:
     """Extract content between section heading and next heading/separator (0-indexed range).
 
     Returns:
-        Extracted section content as a string.
+        Stripped string of content lines joined by newlines, excluding heading
+        lines and ``---`` separators. Empty string when no content is present.
     """
     content_lines = []
     for line in lines[start:end]:
@@ -107,7 +108,8 @@ def _check_section_completeness(sections: dict[str, tuple[int, int]]) -> list[Is
     """Check that all required sections exist.
 
     Returns:
-        List of issues for missing required sections.
+        List of ``Issue`` dicts, one per missing required section. Empty list
+        when all required sections (including accepted aliases) are present.
     """
     issues: list[Issue] = []
     section_names = set(sections.keys())
@@ -131,7 +133,8 @@ def _check_header_fields(header_lines: list[str]) -> list[Issue]:
     """Check that required header fields exist.
 
     Returns:
-        List of issues for missing header fields.
+        List of ``Issue`` dicts, one per missing required header field. Empty
+        list when all required fields are found in the header block.
     """
     issues: list[Issue] = []
     header_text = "\n".join(header_lines)
@@ -154,7 +157,7 @@ def _check_empty_sections(lines: list[str], sections: dict[str, tuple[int, int]]
     """Check for sections that exist but have no content.
 
     Returns:
-        List of issues for empty sections.
+        List of ``Issue`` dicts, one per empty section.
     """
     issues: list[Issue] = []
     for heading, (start, end) in sections.items():
@@ -173,7 +176,7 @@ def _check_access_dates(lines: list[str], sections: dict[str, tuple[int, int]]) 
     """Check that URLs in References section have access dates.
 
     Returns:
-        List of issues for references missing access dates.
+        List of ``Issue`` dicts, one per reference missing access date.
     """
     issues: list[Issue] = []
 
@@ -201,7 +204,7 @@ def _check_freshness_tracking(lines: list[str], sections: dict[str, tuple[int, i
     """Check that Freshness Tracking section has required fields.
 
     Returns:
-        List of issues for missing freshness tracking fields.
+        List of ``Issue`` dicts, one per missing required field.
     """
     issues: list[Issue] = []
 
@@ -231,7 +234,7 @@ def _check_statistics_currency(lines: list[str], sections: dict[str, tuple[int, 
     """Check for stale dates in Key Statistics section.
 
     Returns:
-        List of issues for dates older than 6 months.
+        List of ``Issue`` dicts, one per stale date found.
     """
     issues: list[Issue] = []
     cutoff = today - timedelta(days=180)
@@ -265,7 +268,7 @@ def _check_url_format(lines: list[str]) -> list[Issue]:
     """Check for malformed URLs throughout the document.
 
     Returns:
-        List of issues for URLs missing http/https scheme.
+        List of ``Issue`` dicts, one per malformed URL.
     """
     issues: list[Issue] = []
     bare_url_pattern = re.compile(r"(?<!\()(?<!<)(?:www\.)\S+", re.IGNORECASE)
@@ -287,7 +290,7 @@ def validate_file(filepath: Path, research_root: Path, today: date) -> dict[str,
     """Validate a single research markdown file.
 
     Returns:
-        Validation result dict with file path, status, and issues list.
+        Dict with keys ``file``, ``status`` (pass/fail), and ``issues``.
     """
     relative = str(filepath.relative_to(research_root))
     text = filepath.read_text(encoding="utf-8")
@@ -315,7 +318,7 @@ def collect_files(path: Path) -> list[Path]:
     """Collect markdown files to validate, excluding README.md.
 
     Returns:
-        List of markdown file paths to validate.
+        Sorted list of markdown file paths.
     """
     if path.is_file():
         return [path] if path.suffix == ".md" and path.name != "README.md" else []

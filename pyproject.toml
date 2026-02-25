@@ -273,6 +273,8 @@ max-complexity = 12
     "SLF",  # Private name imports acceptable for testing internals
     "T",    # print() statements are intentional for CI output visibility
 ]
+# Lazy import for optional duckdb dependency in _write_duckdb
+"plugins/agentskill-kaizen/scripts/sentiment-score.py" = ["PLC0415"]
 "research/knowledge-explorer.py" = [
     "ANN401", # Any required for YAMLHandler base class kwargs and JSON return types
     "S",      # Security checks relaxed for CLI scripts

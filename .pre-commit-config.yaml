@@ -105,7 +105,7 @@ repos:
       - id: prettier
         name: Format JSON files
         types: [json]
-        exclude: \.lock$
+        exclude: \.lock$|\.claude-plugin/plugin.json$
 
   # Shell formatting
   - repo: https://github.com/pecigonzalo/pre-commit-shfmt
