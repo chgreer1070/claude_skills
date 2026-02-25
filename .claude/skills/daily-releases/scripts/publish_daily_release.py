@@ -50,6 +50,8 @@ DEFAULT_REPO = "Jamie-BitFlight/claude_skills"
 GENERATOR_VERSION = "1.0"
 GENERATOR_MARKER = f"<!-- created-by-release-generator: v{GENERATOR_VERSION} -->"
 
+HTTP_NOT_FOUND = 404
+
 
 class AppExit(typer.Exit):
     """Exit with user-friendly error message to stderr."""
@@ -163,9 +165,6 @@ def main(
     git_repo = get_git_repo()
     gh = Github(auth=Auth.Token(token))
     gh_repo = get_github_repo(gh, repo_slug)
-    existing_release = gh_release_exists(gh_repo, tag)
-    deleted_release_in_rename = False
-
     if tag_exists(git_repo, tag) and keep_existing_tag:
         old_tag_ref = git_repo.tags[tag]
         old_commit = old_tag_ref.commit.hexsha
@@ -173,10 +172,9 @@ def main(
         if old_commit != head_ref:
             # Delete release before deleting tag — otherwise the release becomes
             # orphaned (draft) and we'd create a duplicate when we recreate the tag.
-            if existing_release:
+            if gh_release_exists(gh_repo, tag):
                 release = gh_repo.get_release(tag)
                 release.delete_release()
-                deleted_release_in_rename = True
                 console.print(f"Deleted release for {tag} (will recreate after tag move)")
 
             # Rename existing tag to revision suffix
@@ -192,13 +190,19 @@ def main(
     git_repo.remotes.origin.push(tag, force=True)
     console.print(f"[green]Tagged {head_ref[:12]} as {tag}[/green]")
 
-    if existing_release and not deleted_release_in_rename:
-        release = gh_repo.get_release(tag)
-        release.update_release(name=title, message=notes_content)
+    # Re-query live release state after all tag operations to avoid stale snapshot.
+    # Handles concurrent runs and interrupted retries: update if release exists,
+    # create if not — idempotent regardless of which path ran previously.
+    try:
+        live_release = gh_repo.get_release(tag)
+        live_release.update_release(name=title, message=notes_content, draft=False)
         console.print(f"[green]Updated release {tag}[/green]")
-    else:
-        gh_repo.create_git_release(tag=tag, name=title, message=notes_content, draft=False)
-        console.print(f"[green]Created release {tag}[/green]")
+    except GithubException as e:
+        if e.status == HTTP_NOT_FOUND:
+            gh_repo.create_git_release(tag=tag, name=title, message=notes_content, draft=False)
+            console.print(f"[green]Created release {tag}[/green]")
+        else:
+            raise
 
 
 if __name__ == "__main__":

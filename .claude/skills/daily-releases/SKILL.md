@@ -69,30 +69,40 @@ This writes to `./daily-releases/<date>/`:
 - `changes_numstat.txt` — per-file line counts
 - `summary.json` — machine-readable stats
 
-#### 2b. AI analysis
+#### 2b. AI analysis (delegate to subagent — do NOT read git data files yourself)
 
-Read the extracted data and apply the primary analysis prompt from:
+Delegate analysis to a Haiku subagent via Task():
 
-```text
-.claude/skills/create-merge-request-changelog/references/analysis_prompts.md
+```python
+Task(
+  subagent_type="general-purpose",
+  model="claude-haiku-4-5-20251001",
+  prompt="""
+Read these files:
+- ./daily-releases/<date>/commits_detailed.txt
+- ./daily-releases/<date>/changes.diff  (if file exceeds 4000 chars, use changes_stat.txt instead)
+- ./daily-releases/<date>/changed_files.txt
+- ./daily-releases/<date>/summary.json
+
+Apply the Primary Analysis Prompt from:
+  .claude/skills/create-merge-request-changelog/references/analysis_prompts.md
+
+Substitute the file contents into the prompt template variables:
+- {commit_details} <- commits_detailed.txt
+- {changes_diff} <- changes.diff (or changes_stat.txt)
+- {changed_files} <- changed_files.txt
+- stats fields <- summary.json
+
+Write the complete structured JSON output to: ./daily-releases/<date>/analysis.json
+
+Report "analysis.json written" when done.
+"""
+)
 ```
 
-Use the **Primary Analysis Prompt** section with the day's data substituted in:
+Replace `<date>` with the actual date value for that iteration before emitting the Task() call.
 
-- `{commit_details}` → contents of `commits_detailed.txt`
-- `{changes_diff}` → contents of `changes.diff` (truncate to ~4000 chars if very large; use `changes_stat.txt` summary instead)
-- `{changed_files}` → contents of `changed_files.txt`
-- `{commit_count}`, `{files_changed}`, `{lines_added}`, `{lines_deleted}` → from `summary.json`
-
-Produce the structured JSON analysis output defined in the prompt's `<output_format>` section.
-
-Also generate a title using the **Title Generation Prompt**:
-
-```text
-Daily Release - <date>
-```
-
-Save the complete analysis JSON to `./daily-releases/<date>/analysis.json`.
+After the Task() returns, verify `./daily-releases/<date>/analysis.json` exists before proceeding to Step 2c. If missing, report the error and stop.
 
 #### 2c. Format into release notes
 

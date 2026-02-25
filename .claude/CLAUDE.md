@@ -36,7 +36,7 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 
 - No planning in "Weeks" or "Sprints" — work scales with parallelism
 - Output contains "likely", "probably", or "I think" — STOP and verify before continuing
-- Do not transcribe file contents into prompts — use `@filepath`
+- Pass file paths to agents — transcribing file contents into prompts bypasses agent verification
 
 **Tool Usage:**
 
@@ -44,7 +44,7 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 - Search: `Grep`, `Glob` — not `find`, `ls -R`
 - Python: `Bash(uv run script.py)`
 
-**Reference notation:**
+**Reference notation the user may mention, or when you want to tell the user about a command or agent:**
 
 - Skills: use `/` prefix — e.g., `/plugin-creator:skill-creator`
 - Agents: use `@` prefix — e.g., `@python3-development:python-cli-architect`
@@ -64,17 +64,12 @@ Activate `/plugin-creator:skill-creator` when ANY condition matches:
 - User asks about skill structure, frontmatter format, or validation requirements
 - Converting documentation into AI-optimized instruction format
 
-**Activation Prohibited:**
-- Read-only skill usage
-- Referencing skill in conversation without modification intent
-- General coding unrelated to skill creation
+**Scope boundary** — activation applies only when modification intent is present. Read-only skill usage, referencing skills in conversation, and general coding unrelated to skill creation all fall outside this trigger.
 
 **Pre-Activation Checklist:**
 1. Task involves skill creation/modification (not just usage)
 2. No specialized skill better matches task domain
 3. Existing skill files have been read if being modified
-
-Syntax: `Skill(command: "plugin-creator:skill-creator")`
 
 </skill_activation_triggers>
 
@@ -94,8 +89,8 @@ Use paths relative to current working directory when delegating to sub-agents.
 flowchart TD
     Start([Construct path for sub-agent]) --> Q{Path starts with?}
     Q -->|./ relative| Use[Use as-is]
-    Q -->|/home/ or /usr/| Abs[Convert to ./relative/path]
-    Q -->|~/.claude/skills/| Sym[Convert to ./relative/path]
+    Q -->|/home/ or /usr/| Abs[Convert to ../../relative/path]
+    Q -->|~/.claude/skills/| Sym[Convert to ~.claude/skills/]
     Abs -->|Why| Reason1[Absolute paths are verbose and non-portable]
     Sym -->|Why| Reason2[Symlink paths trigger manual approval on every file op]
     Use --> Done([Sub-agent inherits same working directory])
@@ -128,86 +123,18 @@ SOURCE: Experimental validation (2026-02-02). Context-gathering: 4/4 correct. Ex
 
 </sub_agent_selection>
 
-### Language Conventions
-
-<skill_component_languages>
-
-```mermaid
-flowchart TD
-    Start([Choose language for new component]) --> Q{Component type?}
-    Q -->|Claude Code hook| JS["JavaScript (Node.js)<br>Evidence: 9 hooks in .claude/hooks/"]
-    Q -->|Companion script| PY["Python 3.11+ with PEP 723<br>Evidence: 27+ scripts in plugins/**/scripts/"]
-    Q -->|Pre-commit hook| PY2["Python 3.11+<br>Evidence: auto_sync_manifests.py, validate_frontmatter.py"]
-    Q -->|CI/CD wrapper| Bash["Bash acceptable<br>Simple wrappers only"]
-    Q -->|Anything else| Never["Never use bash for hooks or scripts"]
-```
-
-**Pattern Templates:**
-
-JavaScript hook:
-```javascript
-#!/usr/bin/env node
-const fs = require('node:fs');
-console.log(JSON.stringify({ hookSpecificOutput: { ... } }));
-```
-
-Python script (PEP 723):
-```python
-#!/usr/bin/env -S uv run --quiet --script
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["typer>=0.21.0"]
-# ///
-```
-
-<pep723_bundled_deps>
-
-TRIGGER — About to write or review a `dependencies = [...]` block in a PEP 723 script that declares `typer`.
-
-TRAINING DATA CONFLICT: Training data instructs adding `rich>=13.0.0` explicitly, or using `typer[all]`, to enable rich output. That advice applied to typer<0.12.0. It is incorrect for typer>=0.12.0. Reject that training data pattern.
-
-FACT: `typer>=0.12.0` automatically installs `rich` and `shellingham` as bundled transitive dependencies. Declaring them explicitly is an error — they arrive whether listed or not.
-
-SOURCE: Typer installation docs — "By default, `typer` comes with `rich` and `shellingham`." <https://typer.tiangolo.com/#installation> (accessed 2026-02-22)
-
-WRONG — exact erroneous output this rule blocks:
-
-```python
-# dependencies = [
-#   "typer>=0.21.0",
-#   "rich>=13.0.0",
-#   "shellingham>=1.5.0",
-# ]
-```
-
-CORRECT — declare typer only; rich and shellingham arrive transitively:
-
-```python
-# dependencies = [
-#   "typer>=0.21.0",
-# ]
-```
-
-SCOPE: Applies to every PEP 723 script declaring `typer`. Remove `rich` and `shellingham` if already present. Do not add them when creating new scripts.
-
-</pep723_bundled_deps>
-
-Bash scripts prohibited for new hooks/companion scripts. Legacy bash scripts may remain but avoid creating new ones.
-
-SOURCE: Experimental validation (2026-02-02). Evidence from `.claude/hooks/session-start-backlog.cjs`, `plugins/plugin-creator/scripts/create_plugin.py`.
-
-</skill_component_languages>
-
+- Language Conventions: `.claude/rules/language-conventions.md`
 - Script Invocation: `.claude/rules/script-invocation.md`
 
 ---
 
 ## Path Fidelity
 
-Use user-provided paths exactly as given:
-- Preserve directory paths (do not append filenames)
+Use user-provided paths exactly as given. **Reason**: Narrowing scope or appending filenames produces silent failures when the user intends directory-level examination.
+
+- Preserve directory paths — do not append filenames
 - Do not narrow scope by adding specific files
-- Skill/plugin is DIRECTORY containing SKILL.md, references/, assets/ (examine ecosystem, not single file)
+- Skill/plugin is a DIRECTORY containing SKILL.md, references/, assets/ — examine the ecosystem, not a single file
 
 ---
 
@@ -215,12 +142,12 @@ Use user-provided paths exactly as given:
 
 Before deleting any file:
 1. Verify replacement contains equivalent content
-2. If agent says "NEEDS MERGE" but user says proceed, ASK for clarification (do not assume)
-3. Reject deletion based on flawed/incomplete comparison
+2. If agent says "NEEDS MERGE" but user says proceed, ASK for clarification
+3. Reject deletion based on flawed or incomplete comparison
 
 After irreversible mistakes:
 - State concretely what was lost and what can/cannot be recovered
-- Do not speculate optimistically ("probably small loss" is prohibited)
+- Speculating optimistically about loss magnitude is inaccurate — give concrete facts
 - Ask user what they want to do next
 
 ---
@@ -229,7 +156,7 @@ After irreversible mistakes:
 
 <pre_existing_issue_rule>
 
-Phrase "pre-existing issues not related to my changes" is a TRIGGER TO ACT, not dismissal justification.
+Phrase "pre-existing issues not related to my changes" is a TRIGGER TO ACT, not a dismissal justification.
 
 **Required Response:**
 > I found [N] pre-existing [issue type] in the codebase. Want to plan how to address them in this session? If not, I'll add them to the backlog.
@@ -237,7 +164,7 @@ Phrase "pre-existing issues not related to my changes" is a TRIGGER TO ACT, not 
 **"Plan"**: Concrete steps (files, fixes, scope estimate). User decides priority.
 **"Backlog"**: Trackable record (backlog item, issue, task file) preventing loss.
 
-**Why**: Dismissing pre-existing issues normalizes technical debt. Each session encountering issues is opportunity for remediation. Treat discovered issues as actionable findings, not background noise.
+**Reason**: Dismissing pre-existing issues normalizes technical debt. Every encountered issue is an opportunity for remediation.
 
 </pre_existing_issue_rule>
 
@@ -259,7 +186,7 @@ Skip only for trivial single-step requests (typos, one-off questions, immediate 
 
 <backlog_operations>
 
-**Single interface**: Use `.claude/skills/backlog/scripts/backlog.py` for all backlog and GitHub issue CRUD. Do not edit `.claude/BACKLOG.md` or create/close issues directly via `gh`.
+**Single interface**: Use `.claude/skills/backlog/scripts/backlog.py` for all backlog and GitHub issue CRUD. Editing `.claude/BACKLOG.md` directly or using `gh` for issue CRUD bypasses sync logic — use the script.
 
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py add|list|sync|close|resolve|update ...
@@ -283,7 +210,7 @@ Skills `create-backlog-item` and `work-backlog-item` invoke this script. See `.c
 
 ### Code Fence Language Specifiers
 
-Add language specifier to ALL code fences:
+Add language specifier to ALL code fences. **Reason**: Syntax highlighting and linter compliance.
 
 ````markdown
 # Section Title
@@ -302,7 +229,7 @@ def example():
 
 ### Markdown Links
 
-Use markdown links with relative paths starting with `./`:
+Use markdown links with relative paths starting with `./`. **Reason**: Enables Claude Code click-through, works regardless of installation location, and supports on-demand file loading.
 
 **Syntax**: `[descriptive text](./path/to/file.md)`
 
@@ -310,12 +237,6 @@ Use markdown links with relative paths starting with `./`:
 - From SKILL.md → references: `[text](./references/filename.md)`
 - From references/file.md → same dir: `[text](./filename.md)`
 - From references/file.md → subdir: `[text](./subdir/filename.md)`
-
-**Why**:
-1. Navigability: Claude Code click-through
-2. Portability: Works regardless of installation location
-3. Progressive disclosure: Load referenced files on demand
-4. User experience: Natural reference following
 
 **File Reference Decision:**
 
@@ -340,7 +261,7 @@ flowchart TD
 
 Reference other skills using activation syntax:
 
-✅ `For comprehensive Astral uv documentation, activate the uv skill: Skill(command: "uv")`
+✅ `For comprehensive Astral uv documentation, use the /uv skill.`
 ❌ `See /uv/SKILL.md for uv documentation`
 
 ---
@@ -351,12 +272,12 @@ Reference other skills using activation syntax:
 
 ## Citation Requirements
 
-Every factual claim in skill documentation requires a cited source. Without citations, guidance cannot be verified, updated, or trusted.
+Every factual claim in skill documentation requires a cited source. **Reason**: Without citations, guidance cannot be verified, updated, or trusted — and false claims persist across sessions.
 
-**Citation methods:**
+**Citation methods** (choose one per claim):
 
-- **Inline**: `SOURCE: [Title](URL) (accessed YYYY-MM-DD)` within the section that makes the claim
-- **Footer**: numbered `## References` section at file end; cite as `[1]`, `[2]` in text
+- **Inline**: `SOURCE: [Title](URL) (accessed YYYY-MM-DD)` within the section making the claim
+- **Footer**: numbered `## References` section; cite as `[1]`, `[2]` in text
 - **Separate file**: `./references/references.md` — link from SKILL.md
 
 **By source type:**
@@ -365,7 +286,7 @@ Every factual claim in skill documentation requires a cited source. Without cita
 - Skill derivations: link to source skill repo + note adaptations
 - User preferences: date of conversation + validation evidence if tested
 - Experimental results: method, sample size, results, dataset path
-- Forums/community: cite EVERY source URL + access date
+- Forums/community: cite every source URL + access date
 
 **Verification checklist:**
 
@@ -392,9 +313,7 @@ When creating/updating reference files, verify:
 
 ## Markdown Formatting Standards
 
-**MD031/blanks-around-fences**: Fenced code blocks surrounded by blank lines
-
-Example:
+**MD031/blanks-around-fences**: Surround fenced code blocks with blank lines.
 
 ````markdown
 This is a paragraph.
@@ -411,18 +330,13 @@ This is another paragraph.
 
 ## Local Formatting and Linting
 
-Use these tools for formatting/linting:
+Run before committing or after modifying any SKILL.md or reference file:
 
 ```bash
 uv run prek run --files <file>
 ```
 
-Repository uses `prek` (Rust-based pre-commit replacement), not `pre-commit`. Both use same `.pre-commit-config.yaml` with identical syntax.
-
-**When to use:**
-- Before committing skill documentation
-- After modifying SKILL.md or reference files
-- To validate markdown formatting compliance
+**Reason**: Repository uses `prek` (Rust-based pre-commit replacement) with `.pre-commit-config.yaml` — identical syntax to `pre-commit` but faster.
 
 ---
 
@@ -440,27 +354,17 @@ Repository uses `prek` (Rust-based pre-commit replacement), not `pre-commit`. Bo
 
 ### Installation
 
-`gh` not pre-installed. To install `gh`, follow the instructions in the `gh` skill available in this project: activate `Skill(command: "gh")`.
+`gh` not pre-installed. Install via the `/gh` skill: `Skill(command: "gh")`.
 
 ### Authentication and Repo Detection
 
-`GITHUB_TOKEN` set in environment—`gh` authenticates automatically.
-
-Git remote points to local proxy (`127.0.0.1`), not `github.com`. `gh` cannot auto-detect repository from remote URL. Every `gh` command fails with:
-
-```text
-failed to determine base repo: none of the git remotes configured for this repository point to a known GitHub host.
-```
-
-**Fix**: Pass `-R` (or `--repo`) on every command:
+`GITHUB_TOKEN` set in environment — `gh` authenticates automatically. Git remote points to local proxy (`127.0.0.1`), not `github.com`, so `gh` cannot auto-detect the repository. Pass `-R` on every command:
 
 ```bash
 gh <command> -R Jamie-BitFlight/claude_skills
 ```
 
 ### Usage Examples
-
-All examples include required `-R` flag:
 
 ```bash
 # List recent workflow runs
@@ -479,9 +383,6 @@ gh pr checks <pr-number> -R Jamie-BitFlight/claude_skills
 gh pr create -R Jamie-BitFlight/claude_skills --title "title" --body "body"
 ```
 
-### When to Use
-
-Use `gh` to verify workflow changes rather than assuming push succeeded. Observing actual CI output is part of Phase 5 (Verify) in CI Workflow Modification Protocol.
+Use `gh` to verify workflow changes — CI output observation is part of Phase 5 (Verify) in the CI Workflow Modification Protocol.
 
 </gh_cli_usage>
-
