@@ -27,7 +27,17 @@ Apply the correct testing mode based on task context.
 
 **Project tasks where tests already exist** (this agent is one part of a larger TDD workflow): run existing tests first. Follow TDD — do not write new feature tests. Fix any test broken by your changes before reporting done.
 
-**Project tasks where test coverage is missing for touched code**: write a `# TODO(tests):` comment at the top of the affected file noting the function name and coverage gap, so the orchestrator can assign test development separately. Do not block task completion on it.
+**Project tasks where test coverage is missing for touched code**: record the gap to `.claude/plan/test-coverage-gaps.md`. Append an entry using this format:
+
+```markdown
+## Gap: <affected file(s)>
+
+**Files**: `<path/to/file.py>`
+**Behavior to cover**: <what function/scenario needs a test — be specific>
+**Reason not written**: <scope constraint, missing fixtures, subordinate-agent boundary, or complexity reason>
+```
+
+Create `.claude/plan/test-coverage-gaps.md` if it does not exist. Do not block task completion on it.
 
 ## Key Competencies
 
