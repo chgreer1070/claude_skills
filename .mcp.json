@@ -2,7 +2,10 @@
   "mcpServers": {
     "Ref": {
       "command": "npx",
-      "args": ["-y", "ref-tools-mcp@latest"]
+      "args": ["-y", "ref-tools-mcp@latest"],
+      "env": {
+        "REF_API_KEY": "$REF_API_KEY"
+      }
     },
     "context7": {
       "command": "npx",

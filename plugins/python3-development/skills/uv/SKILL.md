@@ -24,6 +24,33 @@ Use this skill when:
 - Setting up Docker containers for Python applications
 - Troubleshooting dependency resolution or build failures
 
+## Migration Quick Reference
+
+If you're coming from another tool, here's the fast lookup:
+
+| Old Tool | Old Command | uv Equivalent |
+| -------- | ----------- | ------------- |
+| pip | `pip install X` | `uv add X` |
+| pip | `pip install -r requirements.txt` | `uv add -r requirements.txt` |
+| pip | `python -m pip install --upgrade X` | `uv add X` (updates pyproject.toml + lockfile) |
+| pip-tools | `pip-compile` | `uv pip compile` |
+| pip-tools | `pip-sync` | `uv pip sync` |
+| pipx | `pipx run ruff` | `uvx ruff` |
+| pipx | `pipx install ruff` | `uv tool install ruff` |
+| pipx | `pipx upgrade ruff` | `uv tool upgrade ruff` |
+| pyenv | `pyenv install 3.12` | `uv python install 3.12` |
+| pyenv | `pyenv local 3.12` | `uv python pin 3.12` |
+| pyenv | `pyenv global 3.12` | `uv python install 3.12 --default` |
+| poetry | `poetry add X` | `uv add X` |
+| poetry | `poetry add -D X` | `uv add --dev X` |
+| poetry | `poetry install` | `uv sync` |
+| poetry | `poetry run X` | `uv run X` |
+| poetry | `poetry shell` | N/A — use `uv run` instead |
+| virtualenv | `python -m venv .venv` | `uv venv` |
+| conda | `conda install X` | `uv add X` |
+
+For full step-by-step migration workflows, see [references/migration-guide.md](./references/migration-guide.md).
+
 ## Core Capabilities
 
 ### 1. Project Initialization and Management
@@ -674,33 +701,27 @@ chmod +x analyze.py
 ### Migrating from pip/requirements.txt
 
 ```bash
-# 1. Initialize project
 uv init --bare
-
-# 2. Import dependencies
 uv add -r requirements.txt
 uv add --dev -r requirements-dev.txt
-
-# 3. Remove old files
-rm requirements.txt requirements-dev.txt
-
-# 4. Use uv commands going forward
-uv sync  # Install dependencies
-uv add new-package  # Add new dependency
+uv sync
 ```
+
+For full workflow including hybrid approach and common issues, see [references/migration-guide.md](./references/migration-guide.md).
 
 ### Migrating from Poetry
 
 ```bash
-# Option 1: Automated migration
+# Option 1: Automated (recommended)
 uvx migrate-to-uv
 uvx migrate-to-uv --dry-run  # Preview first
 
-# Option 2: Manual conversion
-# - Convert [tool.poetry] to [project]
-# - Convert poetry.lock to uv.lock: uv lock
-# - Use uv commands instead of poetry commands
+# Option 2: Manual
+# poetry export -f requirements.txt --output requirements.txt
+# uv init && uv add -r requirements.txt
 ```
+
+For command mapping table and pyproject.toml conversion, see [references/migration-guide.md](./references/migration-guide.md).
 
 ### CI/CD Integration (GitHub Actions)
 
@@ -934,6 +955,8 @@ This skill includes comprehensive reference documentation:
 
 - `cli_reference.md` - Complete CLI commands and arguments reference
 - `configuration.md` - All configuration options and environment variables
+- `migration-guide.md` - Step-by-step migration from pip, poetry, pipx, pyenv, conda — command mapping tables and common issues
+- `quick-reference.md` - Command quick reference organized by subcommand with flags
 - `workflows.md` - Detailed workflow guides and examples
 - `troubleshooting.md` - Common issues and solutions
 
@@ -951,6 +974,25 @@ This skill includes comprehensive reference documentation:
 3. **Simplicity**: Single tool replaces multiple Python tools
 4. **Modern Standards**: PEP 723 scripts, standard pyproject.toml
 5. **Developer Experience**: Automatic Python installation, smart defaults
+
+## Usage Guidelines
+
+### Do
+
+- Use `uv run` instead of activating venv — it auto-syncs and is faster
+- Commit `uv.lock` — it ensures reproducible builds across machines and CI
+- Use `--locked` in CI/CD — fails fast if lockfile is out of sync
+- Use `--dev` flag for test/lint/type-check dependencies
+- Use `uvx` for one-off tool usage — no permanent installation needed
+- Use `uv add` not `uv pip install` for project dependencies — it updates pyproject.toml
+
+### Don't
+
+- Don't activate venv manually (`source .venv/bin/activate`) — use `uv run`
+- Don't use `pip install` alongside `uv add` in the same project — they don't share state
+- Don't skip committing `uv.lock` — without it, CI and teammates get different versions
+- Don't use `uv pip install` for project deps — it bypasses pyproject.toml and lockfile
+- Don't use `uv run` without `--frozen` or `--locked` in CI — let it fail explicitly if stale
 
 ## Version Information
 

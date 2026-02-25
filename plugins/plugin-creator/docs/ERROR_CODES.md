@@ -10,6 +10,7 @@ This document provides detailed explanations, examples, and fixes for all error 
 - [Progressive Disclosure (PD001-PD003)](#progressive-disclosure)
 - [Plugin Errors (PL001-PL005)](#plugin-errors)
 - [Namespace Reference Errors (NR001-NR002)](#namespace-reference-errors)
+- [Symlink Errors (SL001)](#symlink-errors)
 
 ---
 
@@ -1072,6 +1073,59 @@ Reserved for future use. Intended for cases where a namespace reference resolves
 
 ---
 
+## Symlink Errors
+
+### SL001
+
+**Severity**: Error
+**Auto-Fixable**: Yes
+**Category**: Symlink
+
+**Description**: Symlink target has trailing whitespace or newlines
+
+**When It Occurs**:
+A symlink inside the validated directory tree has a target path that ends with
+whitespace or newline characters (e.g. `os.readlink()` returns
+`'../../python3-development/skills/uv\n'`).
+
+This commonly happens when symlinks are created by scripts that pass
+newline-terminated strings to `os.symlink()` or shell redirects.  The extra
+whitespace causes `Path.resolve()` and `is_file()`/`is_dir()` to fail silently,
+producing false-positive NR001 errors in `NamespaceReferenceValidator`.
+
+**Example (Bad)**:
+
+```python
+# Symlink created with trailing newline
+os.symlink("../../python3-development/skills/uv\n", "plugins/my-plugin/skills/uv")
+# os.readlink() now returns '../../python3-development/skills/uv\n'
+# Path.resolve() appends '\n' to the resolved path -- file not found
+```
+
+**Fix** (Auto-Fixed):
+
+```bash
+# Run the validator with --fix to strip trailing whitespace and recreate the symlink
+uv run plugins/plugin-creator/scripts/plugin_validator.py --fix plugins/
+
+# Manual fix:
+python3 -c "
+import os
+p = 'plugins/my-plugin/skills/uv'
+t = os.readlink(p).rstrip()
+os.remove(p)
+os.symlink(t, p)
+"
+```
+
+**Safety**: The auto-fix only recreates symlinks whose cleaned target resolves
+to an existing path.  Symlinks whose cleaned target does not exist are left
+untouched.
+
+**Related Validators**: SymlinkTargetValidator
+
+---
+
 ## See Also
 
 - [Plugin Validator Architecture](../planning/plugin-validator-architecture.md) - Technical specification
@@ -1080,5 +1134,5 @@ Reserved for future use. Intended for cases where a namespace reference resolves
 
 ---
 
-**Last Updated**: 2026-02-12
+**Last Updated**: 2026-02-25
 **Plugin Validator Version**: 0.1.0 (planned)

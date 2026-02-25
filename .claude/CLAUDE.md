@@ -11,7 +11,7 @@
 1. !`uv self update || true` — ensure uv is v0.10.0 or newer
 2. !`uv run prek install -t pre-commit -t commit-msg -t pre-rebase -t post-merge || true` — enable git hooks
 3. Follow `./CONTRIBUTING.md` procedures when modifying plugins
-4. Multi-step work identified: create backlog items via /create-backlog-item or proces backlog items via /work-backlog-item - add items freely, they get grooms and checked later.
+4. Multi-step work identified: create backlog items via /create-backlog-item or process backlog items via /work-backlog-item — add items freely, they get groomed and checked later.
 
 **Runtime**: All Python via `uv`, `uv run`, `uv run python -c 'some python code'`. All pre-commit via `prek`, `uv run prek run --files <file>`
 
@@ -123,7 +123,12 @@ SOURCE: Experimental validation (2026-02-02). Context-gathering: 4/4 correct. Ex
 
 </sub_agent_selection>
 
+---
+
 - Language Conventions: `.claude/rules/language-conventions.md`
+
+---
+
 - Script Invocation: `.claude/rules/script-invocation.md`
 
 ---

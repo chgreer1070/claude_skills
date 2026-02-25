@@ -68,6 +68,8 @@ _SCRIPTS_DIR = str(Path(__file__).parent)
 if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 
+import contextlib
+
 import tiktoken
 
 from frontmatter_core import (
@@ -304,6 +306,9 @@ class ErrorCode(StrEnum):
     NR001 = "NR001"  # Namespace reference target does not exist
     NR002 = "NR002"  # Namespace reference points outside plugin directory
 
+    # Symlink (SL001)
+    SL001 = "SL001"  # Symlink target has trailing whitespace/newlines
+
     # Token Count (TC001)
     TC001 = "TC001"  # Token count info (total, frontmatter, body)
 
@@ -355,6 +360,7 @@ HK001, HK002, HK003, HK004, HK005 = (
     ErrorCode.HK005,
 )
 NR001, NR002 = ErrorCode.NR001, ErrorCode.NR002
+SL001 = ErrorCode.SL001
 PR001, PR002, PR003, PR004 = (ErrorCode.PR001, ErrorCode.PR002, ErrorCode.PR003, ErrorCode.PR004)
 
 # Claude CLI timeout
@@ -1476,6 +1482,156 @@ class NamespaceReferenceValidator:
             references.append((label, plugin, name, "command"))
 
         return references
+
+
+# ============================================================================
+# SYMLINK TARGET VALIDATOR
+# ============================================================================
+
+
+class SymlinkTargetValidator:
+    r"""Validates that symlinks within the validated path have clean target paths.
+
+    Detects symlinks whose targets contain trailing whitespace or newlines
+    (e.g. ``os.readlink()`` returns ``'../../python3-development/skills/uv\\n'``).
+    Such symlinks cause ``Path.resolve()`` and ``is_file()``/``is_dir()`` to
+    fail silently, producing false-positive errors in other validators.
+
+    When ``path`` is a file: checks whether the file itself is a symlink with
+    a dirty target.  When ``path`` is a directory: scans all symlinks found
+    recursively within the directory.
+
+    Auto-fix (SL001): strips trailing whitespace from the target, removes the
+    old symlink, and recreates it pointing to the clean target.  The fix is
+    only applied when the cleaned target resolves to an existing path.
+    """
+
+    def validate(self, path: Path) -> ValidationResult:
+        """Detect symlinks with trailing whitespace in their target paths.
+
+        Args:
+            path: Path to a file or directory to inspect for dirty symlinks.
+
+        Returns:
+            ValidationResult with errors for each dirty symlink found.
+        """
+        errors: list[ValidationIssue] = []
+        warnings: list[ValidationIssue] = []
+        info: list[ValidationIssue] = []
+
+        for symlink_path in self._iter_symlinks(path):
+            try:
+                raw_target = str(Path(symlink_path).readlink())
+            except OSError:
+                continue
+
+            if raw_target != raw_target.rstrip():
+                clean_target = raw_target.rstrip()
+                errors.append(
+                    ValidationIssue(
+                        field=str(symlink_path),
+                        severity="error",
+                        message=(
+                            f"Symlink target has trailing whitespace: "
+                            f"{symlink_path!s} -> {raw_target!r} "
+                            f"(should be {clean_target!r})"
+                        ),
+                        code=SL001,
+                        docs_url=generate_docs_url(SL001),
+                        suggestion=(
+                            "Run with --fix to strip trailing whitespace and recreate the symlink, "
+                            'or run: python3 -c "'
+                            f"import os; p='{symlink_path}'; t=os.readlink(p).rstrip(); "
+                            'os.remove(p); os.symlink(t, p)"'
+                        ),
+                    )
+                )
+
+        passed = len(errors) == 0
+        return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
+
+    def can_fix(self) -> bool:
+        """Check if validator supports auto-fixing.
+
+        Returns:
+            True (trailing whitespace in symlink targets can be stripped automatically)
+        """
+        return True
+
+    def fix(self, path: Path) -> list[str]:
+        """Strip trailing whitespace from symlink targets and recreate affected symlinks.
+
+        Only recreates symlinks whose cleaned target resolves to an existing path.
+        Symlinks whose cleaned target does not exist are left untouched and reported
+        as unfixable.
+
+        Args:
+            path: Path to a file or directory to scan for dirty symlinks.
+
+        Returns:
+            List of human-readable descriptions of fixes applied.
+        """
+        fixes: list[str] = []
+
+        for symlink_path in self._iter_symlinks(path):
+            try:
+                raw_target = str(Path(symlink_path).readlink())
+            except OSError:
+                continue
+
+            if raw_target == raw_target.rstrip():
+                continue  # Target is already clean
+
+            clean_target = raw_target.rstrip()
+
+            # Resolve the cleaned target to verify it exists before recreating
+            resolved = (symlink_path.parent / clean_target).resolve()
+            if not resolved.exists():
+                continue  # Cannot verify cleaned target — leave untouched
+
+            try:
+                Path(symlink_path).unlink()
+                Path(symlink_path).symlink_to(clean_target)
+                fixes.append(
+                    f"Fixed symlink {symlink_path}: stripped trailing whitespace from target "
+                    f"({raw_target!r} -> {clean_target!r})"
+                )
+            except OSError:
+                # Best-effort: if remove/symlink fails, leave the original in place
+                with contextlib.suppress(OSError):
+                    Path(symlink_path).symlink_to(raw_target)
+
+        return fixes
+
+    @staticmethod
+    def _iter_symlinks(path: Path) -> list[Path]:
+        """Yield all symlinks at or under *path*.
+
+        When *path* is itself a symlink, returns ``[path]``.
+        When *path* is a directory (real or symlink), returns all symlinks
+        found by ``os.walk`` (which does not follow symlinks by default).
+
+        Args:
+            path: Starting path to search for symlinks.
+
+        Returns:
+            List of symlink paths found.
+        """
+        symlinks: list[Path] = []
+
+        if path.is_symlink():
+            symlinks.append(path)
+            return symlinks
+
+        if path.is_dir():
+            for root, dirs, files in os.walk(path, followlinks=False):
+                root_path = Path(root)
+                for name in dirs + files:
+                    candidate = root_path / name
+                    if candidate.is_symlink():
+                        symlinks.append(candidate)
+
+        return symlinks
 
 
 # SkillFrontmatter, CommandFrontmatter, AgentFrontmatter imported from frontmatter_core
@@ -4377,12 +4533,12 @@ def _get_validators_for_path(path: Path) -> list[Validator]:
         typer.Exit: If path type is unknown.
     """
     file_type = FileType.detect_file_type(path)
-    validators: list[Validator] = []
+    validators: list[Validator] = [SymlinkTargetValidator()]
 
     if file_type in {FileType.SKILL, FileType.AGENT, FileType.COMMAND}:
         fm_req = _frontmatter_requirement(path)
         if fm_req == _FrontmatterRequirement.EXEMPT:
-            return []
+            return [SymlinkTargetValidator()]
         if fm_req == _FrontmatterRequirement.REQUIRED or _file_has_frontmatter(path):
             validators.append(FrontmatterValidator())
         if fm_req == _FrontmatterRequirement.REQUIRED or _file_has_frontmatter(path):
