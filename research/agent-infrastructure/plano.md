@@ -91,7 +91,7 @@ Plano is an AI-native proxy server and data plane that offloads infrastructure c
 
 ## Technical Architecture
 
-```text
+<eg>
                      User Request
                           │
                           ▼
@@ -114,7 +114,7 @@ Plano is an AI-native proxy server and data plane that offloads infrastructure c
     │ Agent A  │   │ Agent B  │   │ Agent C  │
     │ (HTTP)   │   │ (HTTP)   │   │ (HTTP)   │
     └──────────┘   └──────────┘   └──────────┘
-```
+</eg>
 
 **Inner Loop vs Outer Loop Design**:
 

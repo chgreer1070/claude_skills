@@ -117,7 +117,7 @@ Agno is a Python framework for building multi-agent systems that learn and impro
 
 ### Agent Abstraction Layers
 
-```text
+<eg>
 Workflows (complex orchestration)
     |
 Teams (multi-agent coordination)
@@ -125,7 +125,7 @@ Teams (multi-agent coordination)
 Agents (single agent with tools, knowledge, learning)
     |
 Models (40+ provider implementations)
-```
+</eg>
 
 ### Data Flow
 

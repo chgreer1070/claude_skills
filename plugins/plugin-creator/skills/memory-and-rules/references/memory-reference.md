@@ -121,9 +121,9 @@ Imports are NOT evaluated inside code spans or code blocks:
 ````markdown
 This is NOT imported: `@anthropic-ai/claude-code`
 
-```text
+<eg>
 This is NOT imported: @some/file.md
-```
+</eg>
 ````
 
 ### Approval Dialog
@@ -187,13 +187,13 @@ paths:
 
 ### Directory Structure
 
-```text
+<eg>
 ~/.claude/projects/<project>/memory/
 ├── MEMORY.md          # Index — first 200 lines in system prompt
 ├── debugging.md       # On-demand topic file
 ├── patterns.md        # On-demand topic file
 └── ...                # Any other topic files
-```
+</eg>
 
 ### MEMORY.md Constraints
 

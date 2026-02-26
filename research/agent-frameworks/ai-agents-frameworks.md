@@ -119,7 +119,7 @@ The `study-agents-differences/` directory provides:
 
 ### Benchmark Infrastructure
 
-```text
+<eg>
 study-agents-differences/
 ├── *_agent.py              # Framework-specific agent implementations
 ├── *_rag_api_agent.py      # RAG + API integrated variants
@@ -129,7 +129,7 @@ study-agents-differences/
 ├── knowledge_base/         # RAG vector store data
 ├── tests/                  # Benchmark output files
 └── agent-ui.py             # Streamlit comparison interface
-```
+</eg>
 
 ### Benchmark Command Pattern
 

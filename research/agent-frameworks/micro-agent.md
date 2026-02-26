@@ -87,7 +87,7 @@ Micro-Agent is a flexible, extensible Python agent framework designed to provide
 
 ## Technical Architecture
 
-```text
+<eg>
 Upstream Application
         |
         v
@@ -119,11 +119,11 @@ Upstream Application
     Record Persistence
     - JSON execution log -> visualization/
     - HTML report generated from JSON
-```
+</eg>
 
 The `app/` module hierarchy:
 
-```text
+<eg>
 app/
   agent/         # BaseAgent, ReActAgent, ToolCallAgent, MCPAgent, MetaApp agent
   llm.py         # AsyncOpenAI wrapper with TokenCounter and retry logic
@@ -133,7 +133,7 @@ app/
   config.py      # Singleton TOML config loader with per-model LLM settings
   tool/          # BaseTool + concrete tools: Bash, Cmd, Terminal, FileSaver, JsonSaver
   utils/         # Visualization HTML generator, record serializer
-```
+</eg>
 
 ---
 

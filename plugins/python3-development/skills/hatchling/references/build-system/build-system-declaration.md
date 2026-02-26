@@ -174,9 +174,9 @@ pip wheel --use-pep517 .
 
 When users encounter:
 
-```text
+<terminal_output>
 ERROR: pyproject.toml does not contain a [build-system] table
-```
+</terminal_output>
 
 Solution - Add minimal declaration:
 
@@ -190,9 +190,9 @@ build-backend = "hatchling.build"
 
 When users encounter:
 
-```text
+<terminal_output>
 ERROR: Could not import 'hatchling.build'
-```
+</terminal_output>
 
 Solution - Ensure hatchling is in requires:
 

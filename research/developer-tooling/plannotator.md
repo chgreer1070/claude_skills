@@ -108,7 +108,7 @@ Plannotator is an interactive plan review tool for AI coding agents that interce
 
 ### Monorepo Structure
 
-```text
+<eg>
 plannotator/
 ├── apps/
 │   ├── hook/                 # Claude Code plugin
@@ -126,11 +126,11 @@ plannotator/
 │   ├── editor/               # Plan review App.tsx
 │   └── review-editor/        # Code review UI
 └── .claude-plugin/           # Marketplace registration
-```
+</eg>
 
 ### Hook Flow
 
-```text
+<eg>
 Claude calls ExitPlanMode
         |
 PermissionRequest hook fires
@@ -143,7 +143,7 @@ User reviews plan, adds annotations
         |
 Approve -> stdout: {"hookSpecificOutput":{"decision":{"behavior":"allow"}}}
 Deny    -> stdout: {"hookSpecificOutput":{"decision":{"behavior":"deny","message":"..."}}}
-```
+</eg>
 
 ### Server API Endpoints
 
@@ -217,10 +217,10 @@ irm https://plannotator.ai/install.ps1 | iex
 
 ### Claude Code Plugin Installation
 
-```text
+<eg>
 /plugin marketplace add backnotprop/plannotator
 /plugin install plannotator@plannotator
-```
+</eg>
 
 Restart Claude Code after plugin install.
 
@@ -267,9 +267,9 @@ Add to `opencode.json`:
 
 ### Code Review Usage
 
-```text
+<eg>
 /plannotator-review
-```
+</eg>
 
 Opens diff viewer for unstaged git changes with annotation support.
 

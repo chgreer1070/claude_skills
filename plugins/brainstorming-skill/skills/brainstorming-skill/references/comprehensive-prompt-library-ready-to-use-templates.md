@@ -4,7 +4,7 @@
 
 **For Rapid Idea Generation (10-20 ideas in one session):**
 
-```text
+<eg>
 Perspective Multiplication Template:
 
 Generate 10 unique [type of idea] for [challenge] by considering these viewpoints:
@@ -15,11 +15,11 @@ Generate 10 unique [type of idea] for [challenge] by considering these viewpoint
 5. Your contrarian perspective (What unconventional idea would people dismiss?)
 
 Format: List each perspective's 2-3 ideas with brief explanation.
-```
+</eg>
 
 **For Quality/Deep Ideas (fewer but more refined):**
 
-```text
+<eg>
 Constraint + Reasoning Template:
 
 Generate 5 high-quality ideas for [challenge] given these constraints:
@@ -34,11 +34,11 @@ For EACH idea:
 - Implementation timeline
 
 This produces fewer ideas but 80% are actually feasible.
-```
+</eg>
 
 **For Strategic/Business Decisions:**
 
-```text
+<eg>
 Time Travel + Assumption Challenge Template:
 
 Imagine [business/product] in [future year]. Describe:
@@ -48,7 +48,7 @@ Imagine [business/product] in [future year]. Describe:
 4. How our assumptions need to shift
 
 Reverse-engineer: 5 strategic bets we need to make NOW based on this future.
-```
+</eg>
 
 ---
 

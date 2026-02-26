@@ -90,10 +90,10 @@ Claude Task Master (Taskmaster) is an AI-powered task management system designed
 
 Convert high-level requirements into structured development tasks:
 
-```text
+<eg>
 User: "Can you parse my PRD at scripts/prd.txt?"
 Task Master: [Generates hierarchical task structure with dependencies]
-```
+</eg>
 
 **Output Structure**:
 
@@ -105,28 +105,28 @@ Task Master: [Generates hierarchical task structure with dependencies]
 
 ### 2. Intelligent Task Sequencing
 
-```text
+<eg>
 User: "What's the next task I should work on?"
 Task Master: [Analyzes dependencies, returns highest-priority unblocked task]
-```
+</eg>
 
 ### 3. Task Expansion
 
 Break down complex tasks into implementation steps:
 
-```text
+<eg>
 User: "Can you help me expand task 4?"
 Task Master: [Generates subtasks with implementation details]
-```
+</eg>
 
 ### 4. Live Research
 
 Query current information with project context:
 
-```text
+<eg>
 User: "Research the latest best practices for JWT authentication with Node.js"
 Task Master: [Uses research model for live web search]
-```
+</eg>
 
 ### 5. Cross-Tag Task Movement
 
@@ -215,20 +215,20 @@ task-master show 1,3,5     # Show specific tasks
 
 ### Workflow Example
 
-```text
+<eg>
 1. Create PRD at .taskmaster/docs/prd.txt
 2. "Initialize taskmaster-ai in my project"
 3. "Can you parse my PRD?"
 4. "What's the next task I should work on?"
 5. "Can you help me implement task 3?"
 6. [Repeat until project complete]
-```
+</eg>
 
 ---
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Task Master System                           │
 └─────────────────────────────────────────────────────────────────┘
@@ -256,13 +256,13 @@ task-master show 1,3,5     # Show specific tasks
 │ - Task          │  │ - Context-aware │  │ - prd.txt        │
 │   decomposition │  │ - Multi-model   │  │ - rules/         │
 └─────────────────┘  └─────────────────┘  └─────────────────┘
-```
+</eg>
 
 ---
 
 ## Project Structure
 
-```text
+<eg>
 project/
 ├── .taskmaster/
 │   ├── config.json          # Project configuration
@@ -274,7 +274,7 @@ project/
 │       └── example_prd.txt  # PRD template
 ├── .cursor/mcp.json         # Cursor MCP config
 └── .vscode/mcp.json         # VS Code MCP config
-```
+</eg>
 
 ---
 

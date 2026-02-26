@@ -86,9 +86,9 @@ license = "MIT OR Apache-2.0"  # Becomes License-Expression in metadata
 
 This generates:
 
-```text
+<eg>
 License-Expression: MIT OR Apache-2.0
-```
+</eg>
 
 ## License-File Metadata
 

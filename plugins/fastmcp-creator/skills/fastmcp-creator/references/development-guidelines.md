@@ -87,7 +87,7 @@ RULE: The model must annotate all parameters and return values RULE: The model m
 
 DECISION_TREE:
 
-```text
+<eg>
 1. IF parameter needs validation THEN
    - Use Annotated[type, Field(...)]
    - Add constraints (ge, le, pattern, etc)
@@ -100,7 +100,7 @@ DECISION_TREE:
    - Return dict or Pydantic model
 5. ELSE IF return value is simple THEN
    - Return str, int, bool (discouraged for AI consumption)
-```
+</eg>
 
 CONSTRAINTS:
 
@@ -769,7 +769,7 @@ This keeps interactions efficient and contextual.
 
 DECISION_TREE: Transport Selection
 
-```text
+<eg>
 1. IF single-user desktop integration (Claude Desktop, Cursor) THEN
    - Use STDIO transport
    - Client launches server as subprocess
@@ -795,7 +795,7 @@ setup_http:
 production_deployment:
   Option A: fastmcp deploy server.py  # FastMCP Cloud
   Option B: uvicorn app:app --host 0.0.0.0 --port 8080  # Custom
-```
+</eg>
 
 CONSTRAINTS:
 

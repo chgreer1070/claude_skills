@@ -122,7 +122,7 @@ Guest users are created via `/api/auth/guest` with a server-side session. Regula
 
 ### Stack
 
-```text
+<eg>
 Frontend
   ├── Next.js 16 (App Router, React 19, Server Components, Server Actions)
   ├── React 19.0.1
@@ -165,11 +165,11 @@ Storage
 
 Testing
   └── Playwright e2e tests (auth, chat, model selector, API)
-```
+</eg>
 
 ### Database Schema
 
-```text
+<eg>
 User         id (uuid), email, password (bcrypt)
 Chat         id, createdAt, title, userId, visibility (public/private)
 Message_v2   id, chatId, role, parts (json), attachments (json), createdAt
@@ -177,7 +177,7 @@ Vote_v2      chatId + messageId (composite PK), isUpvoted
 Document     id + createdAt (composite PK), title, content, kind, userId
 Suggestion   id, documentId, documentCreatedAt, originalText, suggestedText, isResolved, userId
 Stream       id, chatId, createdAt
-```
+</eg>
 
 SOURCE: `lib/db/schema.ts` in repository (accessed 2026-02-26)
 
@@ -217,9 +217,9 @@ For non-Vercel deployment, set `AI_GATEWAY_API_KEY` in `.env.local` to authentic
 
 ### One-Click Vercel Deploy
 
-```text
+<eg>
 https://vercel.com/templates/next.js/chatbot
-```
+</eg>
 
 The Vercel template integration provisions Neon Postgres, Vercel Blob, and environment variables automatically.
 

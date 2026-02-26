@@ -128,23 +128,23 @@ RA.Aid (pronounced "raid") is a standalone autonomous software development assis
 
 ### Core Modules
 
-```text
+<eg>
 ra_aid/
 ├── console/     # Console output formatting, user interaction
 ├── proc/        # Interactive processing, workflow control
 ├── text/        # Text processing utilities
 └── tools/       # File operations, search, shell execution
-```
+</eg>
 
 ### Workflow
 
-```text
+<eg>
 User Input → Research Stage → Planning Stage → Implementation Stage → Output
                   ↓                  ↓                  ↓
             Analyze codebase   Break into steps   Execute with tools
             Gather context     Identify risks     Generate code
             Web research       Create plan        System operations
-```
+</eg>
 
 ### Tool Categories
 

@@ -68,11 +68,11 @@ PEP 503 normalizes package names by:
 - Converting to lowercase
 - Replacing runs of `[-_.]+` with a single underscore
 
-```text
+<eg>
 MyPackage      → mypackage
 my-package     → my_package
 My.Package.v1  → my_package_v1
-```
+</eg>
 
 Hatchling applies normalization for distribution metadata:
 
@@ -93,7 +93,7 @@ Distribution filename:
 
 Package directory on disk with non-standard casing:
 
-```text
+<eg>
 # Actual directory structure (created on macOS)
 MyPackage/
 ├── __init__.py
@@ -105,13 +105,13 @@ import MyPackage
 # On Linux - works
 # On macOS/Windows - works
 # But distribution name is: mypackage
-```
+</eg>
 
 When installed from PyPI, the package installs as lowercase:
 
-```text
+<eg>
 site-packages/mypackage/
-```
+</eg>
 
 But the import path expected might differ:
 
@@ -154,20 +154,20 @@ On case-insensitive systems, discovery is more permissive but normalizes names.
 
 Wheel filenames and metadata always use normalized (lowercase) names:
 
-```text
+<eg>
 Distribution: MyPackage (pyproject.toml)
 Wheel file: mypackage-1.0.0-py3-none-any.whl
 dist-info dir: mypackage-1.0.0.dist-info
-```
+</eg>
 
 ### Top-Level File
 
 The `top_level.txt` file in wheel metadata specifies importable names:
 
-```text
+<eg>
 # mypackage-1.0.0.dist-info/top_level.txt
 mypackage
-```
+</eg>
 
 This tells tools what can be imported - typically lowercase.
 
@@ -185,14 +185,14 @@ packages = ["src/mycompany/core"]
 
 Directory structure:
 
-```text
+<eg>
 src/mycompany/core/
 ├── __init__.py
 └── service.py
 
 # For namespace package support
 src/mycompany/__init__.py  # Empty or namespace config
-```
+</eg>
 
 Import path:
 
@@ -237,7 +237,7 @@ config_path = 'mypackage/config/settings.json'
 
 Problem: Package works on macOS, fails on Linux:
 
-```text
+<eg>
 # Current structure (created on macOS)
 MyPackage/
 ├── __init__.py
@@ -245,7 +245,7 @@ MyPackage/
 
 # Error on Linux
 ImportError: cannot import name MyPackage
-```
+</eg>
 
 Solution: Rename to lowercase:
 
@@ -301,9 +301,9 @@ This catches case-sensitivity issues during development before release.
    ```
 
 3. **Directory names**: Lowercase matching import path
-   ```text
+   <eg>
    src/mypackage/my_subpackage/
-   ```
+</eg>
 
 ### Testing Across Platforms
 
@@ -387,14 +387,14 @@ mycli = "mypackage.cli:main"  # Lowercase package name
 
 **Solution**: Verify all directory levels in namespace have proper `__init__.py`:
 
-```text
+<eg>
 src/
 ├── mycompany/           # Must have __init__.py
 │   ├── __init__.py
 │   └── core/            # Must have __init__.py
 │       ├── __init__.py
 │       └── service.py
-```
+</eg>
 
 ## See Also
 

@@ -12,7 +12,7 @@ ClangFormat describes a set of tools that are built on top of [LibFormat](https:
 
 **clang-format** is located in clang/tools/clang-format and can be used to format C/C++/Java/JavaScript/JSON/Objective-C/Protobuf/C# code.
 
-```text
+<eg>
 $ clang-format --help
 OVERVIEW: A tool to format C/C++/Java/JavaScript/JSON/Objective-C/Protobuf/C# code.
 
@@ -111,7 +111,7 @@ Generic Options:
   --help                         - Display available options (--help-hidden for more)
   --help-list                    - Display list of available options (--help-list-hidden for more)
   --version                      - Display the version of this program
-```
+</eg>
 
 When the desired code formatting style is different from the available options, the style can be customized using the `-style="{key: value, ...}"` option or by putting your style configuration in the `.clang-format` or `_clang-format` file in your project’s directory and using `clang-format -style=file`.
 
@@ -217,7 +217,7 @@ Get the latest Visual Studio Code extension from the [Visual Studio Marketplace]
 
 The script clang/tools/clang-format/git-clang-format can be used to format just the lines touched in git commits:
 
-```text
+<eg>
 % git clang-format -h
 usage: git clang-format [OPTIONS] [<commit>] [<commit>|--staged] [--] [<file>...]
 
@@ -262,14 +262,13 @@ optional arguments:
   --staged, --cached    format lines in the stage instead of the working dir
   --style STYLE         passed to clang-format
   -v, --verbose         print extra information
-
-```
+</eg>
 
 ## Script for patch reformatting [¶](https://clang.llvm.org/docs/ClangFormat.html#script-for-patch-reformatting "Link to this heading")
 
 The python script clang/tools/clang-format/clang-format-diff.py parses the output of a unified diff and reformats all contained lines with **clang-format**.
 
-```text
+<eg>
 usage: clang-format-diff.py [-h] [-i] [-p NUM] [-regex PATTERN] [-iregex PATTERN] [-sort-includes] [-v] [-style STYLE]
                             [-fallback-style FALLBACK_STYLE] [-binary BINARY]
 
@@ -298,8 +297,7 @@ optional arguments:
                         The name of the predefined style used as a fallback in case clang-format is invoked with-style=file, but can not
                         find the .clang-formatfile to use.
   -binary BINARY        location of binary to use for clang-format
-
-```
+</eg>
 
 To reformat all the lines in the latest Mercurial/ **hg** commit, do:
 

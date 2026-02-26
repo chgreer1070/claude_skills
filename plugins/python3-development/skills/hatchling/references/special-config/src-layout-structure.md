@@ -23,24 +23,24 @@ The src-layout is a project structure where Python packages are placed in a `src
 
 **Flat layout:**
 
-```text
+<eg>
 myproject/
 ├── mypackage/
 │   └── __init__.py
 ├── tests/
 └── pyproject.toml
-```
+</eg>
 
 **Src-layout:**
 
-```text
+<eg>
 myproject/
 ├── src/
 │   └── mypackage/
 │       └── __init__.py
 ├── tests/
 └── pyproject.toml
-```
+</eg>
 
 ## Basic Configuration
 
@@ -74,13 +74,13 @@ packages = ["src/mypackage"]
 
 ### Single Package
 
-```text
+<eg>
 src/
 └── mypackage/
     ├── __init__.py
     ├── module1.py
     └── module2.py
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -89,13 +89,13 @@ packages = ["src/mypackage"]
 
 ### Multiple Packages
 
-```text
+<eg>
 src/
 ├── package_a/
 │   └── __init__.py
 └── package_b/
     └── __init__.py
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -116,10 +116,10 @@ sources = ["src"]
 
 Hatchling auto-detects single module layouts:
 
-```text
+<eg>
 src/
 └── mymodule.py  # Single module, no package directory
-```
+</eg>
 
 ```toml
 [project]
@@ -139,7 +139,7 @@ include = ["src/mymodule.py"]
 
 ### Nested Packages
 
-```text
+<eg>
 src/
 └── company/
     ├── __init__.py
@@ -149,7 +149,7 @@ src/
         │   └── __init__.py
         └── api/
             └── __init__.py
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -158,7 +158,7 @@ packages = ["src/company"]
 
 ### Mixed Layout
 
-```text
+<eg>
 project/
 ├── src/           # Source code
 │   └── myapp/
@@ -167,7 +167,7 @@ project/
 │   └── runner.py
 └── data/          # Data files
     └── config.json
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -211,7 +211,7 @@ dev-mode-dirs = ["src"]  # Explicitly set development directories
 
 ### Test Structure
 
-```text
+<eg>
 project/
 ├── src/
 │   └── mypackage/
@@ -220,7 +220,7 @@ project/
 │   ├── __init__.py
 │   └── test_mypackage.py
 └── pyproject.toml
-```
+</eg>
 
 ### Test Configuration
 
@@ -282,22 +282,22 @@ support-legacy = true  # Creates PKG-INFO at root level
 
 **Before:**
 
-```text
+<eg>
 myproject/
 ├── mypackage/
 │   └── __init__.py
 └── pyproject.toml
-```
+</eg>
 
 **After:**
 
-```text
+<eg>
 myproject/
 ├── src/
 │   └── mypackage/
 │       └── __init__.py
 └── pyproject.toml
-```
+</eg>
 
 **Steps:**
 
@@ -332,12 +332,12 @@ packages = ["src/mypackage"]
 
 The wheel contains:
 
-```text
+<eg>
 mypackage/
 ├── __init__.py
 ├── module1.py
 └── module2.py
-```
+</eg>
 
 Note: The `src/` directory is not included in the wheel.
 
@@ -367,12 +367,12 @@ artifacts = [
 
 ### Namespace Packages with Src-Layout
 
-```text
+<eg>
 src/
 └── namespace/          # No __init__.py (PEP 420)
     └── subpackage/
         └── __init__.py
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -482,7 +482,7 @@ pythonpath = ["src"]
 
 Directory structure:
 
-```text
+<eg>
 awesome-package/
 ├── src/
 │   └── awesome_package/
@@ -495,7 +495,7 @@ awesome-package/
 ├── README.md
 ├── LICENSE
 └── pyproject.toml
-```
+</eg>
 
 ## References
 

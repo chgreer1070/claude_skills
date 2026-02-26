@@ -347,7 +347,7 @@ The most powerful Cursor pattern combines all three concepts:
 2. Agent can **delegate to subagents** for long research/analysis steps
 3. Agent uses other **skills** as supporting references (e.g., MISRA or debug tools)
 
-```text
+<eg>
 User runs /firmware-release
         |
         v
@@ -355,7 +355,7 @@ firmware-release skill instructions
   - delegate “build validation” to a subagent
   - delegate “test execution” to a subagent
   - keep the main Agent focused on decisions + summary
-```
+</eg>
 
 ### How orchestration works in practice
 
@@ -363,10 +363,10 @@ Cursor skills are **instructions**. Orchestration is done by the Agent following
 
 When you want isolation/parallelism, explicitly ask for delegation in the instructions or your prompt, e.g.:
 
-```text
+<eg>
 Delegate call-graph tracing and dependency mapping to a subagent.
 Return a short summary plus a list of files/entry points discovered.
-```
+</eg>
 
 ### Example: Firmware Release Orchestrator
 

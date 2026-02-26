@@ -62,7 +62,7 @@ Without httpx, you would need to:
 
 ## Decision Matrix
 
-```text
+<eg>
 ┌─────────────────────────────────┬──────────┬──────────┬─────────┐
 │ Requirement                     │ httpx    │ requests │ aiohttp │
 ├─────────────────────────────────┼──────────┼──────────┼─────────┤
@@ -77,7 +77,7 @@ Without httpx, you would need to:
 │ Auto-redirects by default       │ ✗        │ ✓        │ ✓       │
 │ Built-in server support         │ ✗        │ ✗        │ ✓       │
 └─────────────────────────────────┴──────────┴──────────┴─────────┘
-```
+</eg>
 
 @ Compiled from python-httpx.org, medium.com/featurepreneur
 

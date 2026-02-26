@@ -18,15 +18,15 @@ Dependencies in Python packaging are specified using standardized formats define
 
 A dependency specification in its simplest form:
 
-```text
+<eg>
 package-name
-```
+</eg>
 
 The full syntax supports multiple optional components:
 
-```text
+<eg>
 name [extras] ( version specifier ) ; environment marker @ URL
-```
+</eg>
 
 ### Components Explained
 
@@ -46,17 +46,17 @@ Optional features that add extra dependencies.
 
 **Syntax:**
 
-```text
+<eg>
 package-name[extra1,extra2]
-```
+</eg>
 
 **Examples:**
 
-```text
+<eg>
 requests[security]
 Django[postgres,redis]
 cryptography[dev,test]
-```
+</eg>
 
 **Definition:** Extras are defined in `pyproject.toml` under `[project.optional-dependencies]`:
 
@@ -79,10 +79,10 @@ Constraints on which versions of a package are acceptable.
 
 **Syntax:**
 
-```text
+<eg>
 package-name (>=1.0,<2.0)
 package-name>=1.0,!=1.5,<2.0
-```
+</eg>
 
 **Operators:**
 
@@ -98,11 +98,11 @@ package-name>=1.0,!=1.5,<2.0
 
 **Combining Specifiers:**
 
-```text
+<eg>
 requests>=2.20,<3.0        # At least 2.20, before 3.0
 Django>=3.2,!=4.0,<5.0    # At least 3.2, not 4.0, before 5.0
 numpy~=1.20               # Compatible with 1.20
-```
+</eg>
 
 **PEP 440 Version Specifiers**: See [core-metadata.md](./core-metadata.md) for detailed version scheme.
 
@@ -112,10 +112,10 @@ Conditional expressions that determine when a dependency applies.
 
 **Syntax:**
 
-```text
+<eg>
 package-name; python_version < "3.10"
 package-name; sys_platform == "win32"
-```
+</eg>
 
 **Available Variables:**
 
@@ -148,14 +148,14 @@ package-name; sys_platform == "win32"
 
 **Examples:**
 
-```text
+<eg>
 colorama; sys_platform == "win32"
 pywin32; sys_platform == "win32"
 pyobjc; sys_platform == "darwin"
 typing-extensions; python_version < "3.8"
 dataclasses; python_version < "3.7"
 greenlet!=0.4.17; platform_python_implementation == "CPython"
-```
+</eg>
 
 #### Direct URL References (Optional)
 
@@ -163,9 +163,9 @@ Specify a package from a URL instead of version constraint.
 
 **Syntax:**
 
-```text
+<eg>
 package @ URL
-```
+</eg>
 
 **Supported URL Schemes:**
 
@@ -176,55 +176,55 @@ package @ URL
 
 **Examples:**
 
-```text
+<eg>
 requests @ https://github.com/psf/requests/archive/v2.28.1.zip
 my-package @ file:///path/to/my-package.whl
 project @ git+https://github.com/user/project.git@main
-```
+</eg>
 
 **Hash Verification:**
 
-```text
+<eg>
 requests @ https://files.pythonhosted.org/packages/.../requests-2.28.1.tar.gz#sha256=abc123...
-```
+</eg>
 
 ### Complete Examples
 
 **Simple:**
 
-```text
+<eg>
 requests
-```
+</eg>
 
 **With version:**
 
-```text
+<eg>
 Django>=3.2,<5.0
-```
+</eg>
 
 **With extras:**
 
-```text
+<eg>
 SQLAlchemy[postgresql,asyncio]>=2.0
-```
+</eg>
 
 **With environment marker:**
 
-```text
+<eg>
 typing-extensions; python_version < "3.10"
-```
+</eg>
 
 **Complex:**
 
-```text
+<eg>
 cryptography[ssh]>=38.0.0; sys_platform != "win32" and python_version >= "3.7"
-```
+</eg>
 
 **URL-based:**
 
-```text
+<eg>
 my-package @ https://github.com/user/project/archive/main.zip
-```
+</eg>
 
 ## PEP 440 Version Specifiers
 
@@ -238,11 +238,11 @@ The `~=` operator specifies compatible versions.
 
 **Examples:**
 
-```text
+<eg>
 ~=1.4.5      # >=1.4.5, <1.5
 ~=1.4        # >=1.4, <2
 ~=2020.1.1   # >=2020.1.1, <2020.2
-```
+</eg>
 
 ### Pre-release and Post-release Handling
 
@@ -254,10 +254,10 @@ Pre-releases (alpha, beta, rc) are excluded by default unless:
 
 **Examples:**
 
-```text
+<eg>
 package>=1.0a1    # Accept pre-releases from 1.0a1 onward
 package>=1.0      # Exclude pre-releases (1.0a1, 1.0b2 rejected)
-```
+</eg>
 
 ## Dependency Groups (PEP 735)
 

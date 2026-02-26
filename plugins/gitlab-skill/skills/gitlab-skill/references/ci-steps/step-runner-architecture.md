@@ -12,7 +12,7 @@ Source: <https://gitlab.com/gitlab-org/step-runner/-/raw/main/proto/step.proto?r
 
 #### Message Structures
 
-```text
+<eg>
 Step                    - Single step invocation containing name, reference, env, inputs
 Step.Reference         - Multi-protocol step locator with url, path, version, registry
 StepResult             - Execution result with status, outputs, exports, exec details
@@ -20,24 +20,24 @@ SpecDefinition         - Spec and definition pair from step.yml files
 Definition             - Implementation via exec/steps/function types
 Spec                   - Interface contract defining inputs/outputs with types
 StepRunner service     - gRPC service for Run, Close, FollowLogs, Status operations
-```
+</eg>
 
 #### Value Type System
 
-```text
+<eg>
 ValueType enum:
 - string  (2)
 - number  (3)
 - boolean (4)
 - struct  (5)
 - array   (6)
-```
+</eg>
 
 Inputs support typed defaults. Outputs produce string-only values via key=value format written to STEP_RUNNER_OUTPUT.
 
 #### Step Reference Protocols
 
-```text
+<eg>
 StepReferenceProtocol enum:
 - local      (1) - Filesystem relative paths
 - git        (2) - Git repository URLs
@@ -47,20 +47,20 @@ StepReferenceProtocol enum:
 - dynamic    (6) - Runtime resolution
 - spec_def   (7) - Inline definitions
 - function   (8) - Built-in functions
-```
+</eg>
 
 ### Command Architecture
 
 Entry point hierarchy via Cobra commands:
 
-```text
+<eg>
 cmd/root.go           - Base command initialization
 cmd/ci/ci.go          - CI environment execution (STEPS variable)
 cmd/run/run.go        - Direct step execution
 cmd/serve/serve.go    - gRPC server mode
 cmd/proxy/proxy.go    - Proxy server for remote execution
 cmd/bootstrap/bootstrap.go - Bootstrap operations
-```
+</eg>
 
 Source: <https://gitlab.com/gitlab-org/step-runner/-/raw/main/cmd/ci/ci.go?ref_type=heads>
 
@@ -80,26 +80,26 @@ Core execution engine in `pkg/runner/`:
 
 #### Execution Components
 
-```text
+<eg>
 runner.go             - Base types: Params, input defaults
 executable_step.go    - Command execution via exec.CommandContext
 sequence_of_steps.go  - Sequential step composition
 lazily_loaded_step.go - Deferred step loading
 step_parser.go        - Step parsing and validation
-```
+</eg>
 
 #### Context Management
 
-```text
+<eg>
 global_context.go     - Job-level context with workdir, variables, stdout/stderr
 steps_context.go      - Step-level context with env, inputs, outputs
 environment.go        - Environment variable management with lexical scoping
 global_env.go         - CI/GITLAB/DOCKER variable extraction
-```
+</eg>
 
 #### Resource Loading
 
-```text
+<eg>
 step_resource_parser.go    - Protocol-based resource resolution
 file_system_step_resource.go - Local filesystem steps
 git_step_resource.go       - Git repository steps
@@ -107,7 +107,7 @@ dist_step_resource.go      - Bundled distribution steps
 dynamic_step_resource.go   - Runtime-resolved steps
 function_step_resource.go  - Built-in function steps
 fixed_step_resource.go     - Inline spec_def steps
-```
+</eg>
 
 Source: <https://gitlab.com/gitlab-org/step-runner/-/raw/main/pkg/runner/step_resource_parser.go?ref_type=heads>
 
@@ -115,12 +115,12 @@ Source: <https://gitlab.com/gitlab-org/step-runner/-/raw/main/pkg/runner/step_re
 
 Expression evaluation via `pkg/internal/expression/`:
 
-```text
+<eg>
 expression.go         - Core evaluation engine
 interpolation.go      - String interpolation with ${{ }} syntax
 interpolation_context.go - Context object for expression evaluation
 value_type.go         - Type system implementation
-```
+</eg>
 
 Expression syntax supports:
 
@@ -136,9 +136,9 @@ Source: <https://gitlab.com/gitlab-org/step-runner/-/raw/main/pkg/internal/expre
 
 DI container in `pkg/di/` manages component lifecycle:
 
-```text
+<eg>
 container.go - Service registration and resolution
-```
+</eg>
 
 Components registered:
 
@@ -189,10 +189,10 @@ For steps type:
 
 Built-in steps in `dist/steps/`:
 
-```text
+<eg>
 script/              - Script execution step
 step/oci/            - OCI image operations (build, fetch, promote)
-```
+</eg>
 
 OCI step architecture:
 
@@ -215,10 +215,10 @@ YAML schema validation in `schema/v1/`:
 
 Caching implementations in `pkg/cache/`:
 
-```text
+<eg>
 git/     - Git repository caching
 dist/    - Distribution step caching
-```
+</eg>
 
 ### Report Package
 
@@ -251,13 +251,13 @@ Access via `job` context in expressions.
 
 ### File System Conventions
 
-```text
+<eg>
 STEP_RUNNER_OUTPUT   - Output key=value pairs
 STEP_RUNNER_ENV      - Export key=value pairs
 CI_PROJECT_DIR       - Default working directory
 step.yml             - Step definition file
 step-results.json    - Execution results artifact
-```
+</eg>
 
 ## Design Principles
 

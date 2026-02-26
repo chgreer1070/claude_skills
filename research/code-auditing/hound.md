@@ -87,7 +87,7 @@ Hound is a language-agnostic AI auditor that autonomously builds and refines ada
 
 ## Technical Architecture
 
-```text
+<eg>
 User Input (Codebase Path)
          |
          v
@@ -135,7 +135,7 @@ User Input (Codebase Path)
 |   - PoC integration     |
 |   - Professional format |
 +-------------------------+
-```
+</eg>
 
 ### Senior/Junior Pattern
 

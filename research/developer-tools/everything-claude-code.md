@@ -88,7 +88,7 @@ Skills provide domain knowledge and workflow definitions. Coverage spans:
 
 ### Commands (31+ Slash Commands)
 
-```text
+<eg>
 /tdd            — Test-driven development workflow (RED → GREEN → REFACTOR)
 /plan           — Feature implementation planning with clarifying questions
 /e2e            — E2E test generation with Playwright
@@ -118,11 +118,11 @@ Skills provide domain knowledge and workflow definitions. Coverage spans:
 /test-coverage  — Test coverage analysis
 /update-docs    — Documentation sync with code
 /update-codemaps — Auto-generate codebase maps
-```
+</eg>
 
 ### Hooks Pipeline
 
-```text
+<eg>
 hooks/hooks.json — JSON config with PreToolUse, PostToolUse, Stop event handlers
 hooks/memory-persistence/
   session-start.js    — Load context from persistent storage at session start
@@ -130,19 +130,19 @@ hooks/memory-persistence/
   pre-compact.js      — Snapshot active state before auto-compaction
   suggest-compact.js  — Strategic compaction timing suggestions
   evaluate-session.js — Auto-extract patterns from completed sessions
-```
+</eg>
 
 ### Multi-Language Rules Architecture
 
 Rules are split into four directories, allowing selective installation:
 
-```text
+<eg>
 rules/
   common/           — Language-agnostic (coding-style, git-workflow, testing, security, patterns, agents, hooks)
   typescript/       — TypeScript/JavaScript specific
   python/           — Python specific
   golang/           — Go specific
-```
+</eg>
 
 Install via `./install.sh typescript python golang` (the installer script handles merge/overwrite detection).
 
@@ -189,7 +189,7 @@ Available at `github.com/marketplace/ecc-tools`. Free/Pro/Enterprise tiers. Prov
 
 ## Technical Architecture
 
-```text
+<eg>
 everything-claude-code/
 ├── .claude-plugin/       — Plugin and marketplace manifests
 │   ├── plugin.json         — Plugin metadata and component paths
@@ -225,7 +225,7 @@ everything-claude-code/
 ├── the-longform-guide.md  — Token optimization, memory, evals, parallelization
 ├── the-security-guide.md  — Security configuration guide
 └── the-openclaw-guide.md  — OpenCode integration guide
-```
+</eg>
 
 **Installation mechanism**: Claude Code v2.1+ auto-loads `hooks/hooks.json` from any installed plugin by convention. Explicitly declaring it in `plugin.json` causes a duplicate detection error — the repo enforces this via a regression test.
 

@@ -120,7 +120,7 @@ These four foundational rules apply across all capability areas:
 
 Nano-Banana Pro is accessed via the Gemini API as `gemini-3-pro-image-preview`. The model uses a "Thinking" pipeline that generates internal reasoning steps (interim thought images) before the final billable output. This multi-step inference enables physics reasoning and compositional planning that single-pass image models cannot perform.
 
-```text
+<eg>
 User Prompt + Reference Images (up to 14)
     │
     ▼
@@ -131,13 +131,13 @@ Final Image Generation (1K–4K, billed)
     │
     ▼
 Conversational Edit Loop (incremental deltas, not full regenerations)
-```
+</eg>
 
 Google Search grounding inserts a web retrieval step before the Thinking Stage when real-time data is needed:
 
-```text
+<eg>
 User Prompt → Google Search → Retrieved Data → Thinking Stage → Final Image
-```
+</eg>
 
 ---
 

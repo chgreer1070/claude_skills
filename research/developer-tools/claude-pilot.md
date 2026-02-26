@@ -116,7 +116,7 @@ Claude Pilot is a quality-enforcement layer for Claude Code CLI that makes AI-ge
 
 ## Technical Architecture
 
-```text
+<eg>
 Claude Pilot Architecture
 ├── pilot binary (~/.pilot/bin/pilot)   — main entry point (Cython-compiled)
 │   ├── Session management (parallel sessions, independent state)
@@ -167,7 +167,7 @@ Claude Pilot Architecture
     ├── basedpyright (Python, strict type checking)
     ├── vtsls (TypeScript/Vue)
     └── gopls (Go)
-```
+</eg>
 
 Installer (8-step, idempotent, rollback on failure):
 

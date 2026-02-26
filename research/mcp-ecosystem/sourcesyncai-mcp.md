@@ -88,7 +88,7 @@ SourceSync.ai MCP Server is a Model Context Protocol server that bridges AI mode
 
 ### MCP Tool Categories
 
-```text
+<eg>
 SourceSync.ai MCP Server (sourcesyncai-mcp v1.0.11)
 ├── Authentication (1 tool)
 │   └── validate_api_key
@@ -105,7 +105,7 @@ SourceSync.ai MCP Server (sourcesyncai-mcp v1.0.11)
 │   └── semantic_search / hybrid_search
 └── Connections (5 tools)
     └── create / list / get / update / revoke
-```
+</eg>
 
 ### Namespace Configuration (Pluggable Backends)
 

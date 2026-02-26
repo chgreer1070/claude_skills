@@ -29,10 +29,10 @@ We benchmarked these tools against three targets: Anthropic Docs, GitHub, and Py
 - **Data Retention**: Preserves code blocks, tables, and structure.
 - **Example Output**:
 
-  ```text
+  <eg>
   "├──yaml_optimizer.py # YAML anchor/alias optimization"
   (Visible: File tree, comments, code blocks)
-  ```
+</eg>
 
 ### 3. Ref (The "Reader")
 

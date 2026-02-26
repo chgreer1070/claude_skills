@@ -124,7 +124,7 @@ SOURCE: GitHub API `https://api.github.com/repos/maximhq/bifrost` (accessed 2026
 
 ### Module Structure
 
-```text
+<eg>
 bifrost/
 ├── npx/                  # NPX launcher script for easy installation
 ├── core/                 # Core Go library (go get github.com/maximhq/bifrost/core)
@@ -148,7 +148,7 @@ bifrost/
 │   └── telemetry/        # Prometheus/OpenTelemetry telemetry
 ├── docs/                 # Documentation source
 └── tests/                # Test suites
-```
+</eg>
 
 ### Configuration Model
 

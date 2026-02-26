@@ -677,7 +677,7 @@ For complex hook issues:
 
 Use `claude --debug` to see hook execution details:
 
-```text
+<eg>
 [DEBUG] Executing hooks for PostToolUse:Write
 [DEBUG] Getting matching hook commands for PostToolUse with query: Write
 [DEBUG] Found 1 hook matchers in settings
@@ -685,7 +685,7 @@ Use `claude --debug` to see hook execution details:
 [DEBUG] Found 1 hook commands to execute
 [DEBUG] Executing hook command: <Your command> with timeout 60000ms
 [DEBUG] Hook command completed with status 0: <Your stdout>
-```
+</eg>
 
 Progress messages appear in transcript mode (Ctrl-R) showing:
 

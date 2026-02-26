@@ -43,11 +43,11 @@ license-files = ["LICENSE*"]
 
 **Generated Core Metadata:**
 
-```text
+<eg>
 Metadata-Version: 2.4
 License-Expression: MIT OR Apache-2.0
 License-File: LICENSE
-```
+</eg>
 
 ### Metadata Version 2.3 and Earlier
 
@@ -60,10 +60,10 @@ license = "MIT"
 
 **Generated Core Metadata:**
 
-```text
+<eg>
 Metadata-Version: 2.3
 License: MIT  # Back-populated for compatibility
-```
+</eg>
 
 ### Version-Specific Field Handling
 
@@ -205,10 +205,10 @@ dev = [
 
 **Generated Metadata:**
 
-```text
+<eg>
 Requires-Dist: pytest>=7.0.0; python_version>='3.8' and extra == 'dev'
 Requires-Dist: pytest>=6.0.0; python_version<'3.8' and extra == 'dev'
-```
+</eg>
 
 ## Compatibility Configuration
 

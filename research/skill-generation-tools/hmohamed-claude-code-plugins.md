@@ -129,7 +129,7 @@ A collection of Claude Code plugins providing autonomous development agents for 
 
 ### Repository Structure
 
-```text
+<eg>
 claude-code-plugins/
 ├── .claude-plugin/
 │   └── marketplace.json     # Marketplace manifest (2 plugins)
@@ -153,7 +153,7 @@ claude-code-plugins/
 │       └── scripts/
 └── rust-developer/
     └── [same structure as swift-developer]
-```
+</eg>
 
 ### Plugin Architecture Pattern
 
@@ -202,19 +202,19 @@ claude plugin marketplace add hmohamed01/claude-code-plugins
 
 ### Swift Developer Usage
 
-```text
+<eg>
 /swift-developer:swift-developer create a SwiftUI settings screen with @Observable
 /swift-developer:swift-developer review my code for concurrency issues
 /swift-developer:swift-developer run tests on iPhone 15 simulator
-```
+</eg>
 
 ### Rust Developer Usage
 
-```text
+<eg>
 /rust-developer:rust-developer create a new async HTTP client library
 /rust-developer:rust-developer review my code for ownership issues
 /rust-developer:rust-developer run clippy and fix the warnings
-```
+</eg>
 
 ### Requirements
 

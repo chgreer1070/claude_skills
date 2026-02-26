@@ -152,12 +152,12 @@ mkdocs new docs/my-documentation
 
 **Created Structure:**
 
-```text
+<eg>
 PROJECT_DIRECTORY/
 ├── mkdocs.yml       # Main configuration file
 └── docs/
     └── index.md     # Homepage for documentation
-```
+</eg>
 
 ### mkdocs gh-deploy
 

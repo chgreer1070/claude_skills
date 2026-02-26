@@ -1109,11 +1109,11 @@ plugins:
 
 3. **Version Pinning**: Pin plugin versions in requirements.txt for reproducible builds:
 
-   ```text
+   <eg>
    mkdocstrings==0.24.0
    mkdocstrings-python==1.8.0
    mkdocs-gen-files==0.5.0
-   ```
+</eg>
 
 4. **Testing Plugins**: Test plugin configurations locally before deploying:
 

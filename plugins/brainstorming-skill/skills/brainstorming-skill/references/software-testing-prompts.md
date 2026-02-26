@@ -57,20 +57,20 @@ Frame prompts as concrete tasks:
 
 **Template:**
 
-```text
+<eg>
 Generate relevant test cases for the following requirement: [Add Requirement Details].
 For each test, include Name, Description, Steps, and Expected Result.
 Consider both typical use cases and edge cases.
-```
+</eg>
 
 **Example Usage:**
 
-```text
+<eg>
 Generate relevant test cases for a login feature with username and password fields.
 The system should validate credentials against the database and redirect to dashboard
 on success. For each test, include Name, Description, Steps, and Expected Result.
 Consider both typical use cases and edge cases.
-```
+</eg>
 
 **What This Covers:**
 
@@ -83,17 +83,17 @@ Consider both typical use cases and edge cases.
 
 **Template:**
 
-```text
+<eg>
 Write a use case and corresponding test cases for: [Describe User Journey].
 Include all possible paths and outcomes.
-```
+</eg>
 
 **Example Usage:**
 
-```text
+<eg>
 Write a use case and corresponding test cases for a user adding an item to the cart
 and purchasing it via credit card. Include all possible paths and outcomes.
-```
+</eg>
 
 **What This Covers:**
 
@@ -106,18 +106,18 @@ and purchasing it via credit card. Include all possible paths and outcomes.
 
 **Template:**
 
-```text
+<eg>
 Generate test data for [System Component] with the following fields: [List Fields].
 Include valid data, boundary values, and invalid inputs for comprehensive coverage.
-```
+</eg>
 
 **Example Usage:**
 
-```text
+<eg>
 Generate test data for a login form with the following fields: username (5-20 chars),
 password (8-20 chars), and captcha. Include valid data, boundary values, and invalid
 inputs for comprehensive coverage.
-```
+</eg>
 
 **What This Covers:**
 
@@ -134,19 +134,19 @@ inputs for comprehensive coverage.
 
 **Template:**
 
-```text
+<eg>
 What are some negative test cases for the following requirement: [Add Requirement Details]?
 How could this be tested with invalid or unexpected input? Include boundary violations,
 special characters, null values, and format mismatches.
-```
+</eg>
 
 **Example Usage:**
 
-```text
+<eg>
 What are some negative test cases for a user registration form requiring email validation?
 How could this be tested with invalid or unexpected input? Include boundary violations,
 special characters, null values, and format mismatches.
-```
+</eg>
 
 **What This Covers:**
 
@@ -160,10 +160,10 @@ special characters, null values, and format mismatches.
 
 **Template:**
 
-```text
+<eg>
 What error conditions and edge cases should be tested for [Module/Feature]?
 List potential failure points and corresponding test cases.
-```
+</eg>
 
 **What This Covers:**
 
@@ -181,19 +181,19 @@ List potential failure points and corresponding test cases.
 
 **Template:**
 
-```text
+<eg>
 Help me write a [Python/Java/JavaScript] script for a test case that covers
 [Add Functionality/Requirement Details]. Include setup, execution, and validation steps.
 Use [Specify Framework: Selenium/Playwright/Cypress/etc.].
-```
+</eg>
 
 **Example Usage:**
 
-```text
+<eg>
 Help me write a Python script for a test case that covers user login with valid credentials.
 Include setup (launching browser, navigating to login page), execution (entering credentials),
 and validation steps (verifying dashboard appears). Use Selenium with pytest.
-```
+</eg>
 
 **What This Covers:**
 
@@ -207,22 +207,22 @@ and validation steps (verifying dashboard appears). Use Selenium with pytest.
 
 **Template:**
 
-```text
+<eg>
 What is the correct syntax for [Specific Assertion/Action] in [Framework] using [Language]?
-```
+</eg>
 
 **Example Usage:**
 
-```text
+<eg>
 What is the correct syntax for verifying page title in Playwright using JavaScript?
-```
+</eg>
 
 **Template for Migration:**
 
-```text
+<eg>
 Can you convert this [Original Framework] test to [Target Framework]?
 [Insert Original Script]
-```
+</eg>
 
 **What This Covers:**
 
@@ -235,11 +235,11 @@ Can you convert this [Original Framework] test to [Target Framework]?
 
 **Template:**
 
-```text
+<eg>
 Analyze this automation error and suggest a fix: [Error Message/Stack Trace]
 The test uses [Framework] with [Language]. Here's the relevant code:
 [Insert Script/Code Section]
-```
+</eg>
 
 **What This Covers:**
 
@@ -256,19 +256,19 @@ The test uses [Framework] with [Language]. Here's the relevant code:
 
 **Template:**
 
-```text
+<eg>
 What are the risks associated with [Add Function/Module Details]?
 Analyze based on [Add Historical Data/Similar Features].
 Suggest targeted test cases for risk mitigation.
-```
+</eg>
 
 **Example Usage:**
 
-```text
+<eg>
 What are the risks associated with a payment processing module handling credit card transactions?
 Analyze based on PCI compliance requirements and previous fraud incidents in our system.
 Suggest targeted test cases for risk mitigation.
-```
+</eg>
 
 **What This Covers:**
 
@@ -282,11 +282,11 @@ Suggest targeted test cases for risk mitigation.
 
 **Template:**
 
-```text
+<eg>
 Identify the areas of the system that should be included in regression testing after
 changes are made to [Add Function/Module Details].
 List impacted components and corresponding test cases.
-```
+</eg>
 
 **What This Covers:**
 
@@ -299,19 +299,19 @@ List impacted components and corresponding test cases.
 
 **Template:**
 
-```text
+<eg>
 What performance tests are needed to test [Add Function/Module Details]?
 Include load, stress, scalability, and resource utilization tests.
 Provide threshold values based on industry standards and our expected user volume of [Number].
-```
+</eg>
 
 **Example Usage:**
 
-```text
+<eg>
 What performance tests are needed to test an API endpoint handling user authentication?
 Include load, stress, scalability, and resource utilization tests.
 Provide threshold values based on industry standards and our expected user volume of 100,000 concurrent users.
-```
+</eg>
 
 **What This Covers:**
 
@@ -330,13 +330,13 @@ Provide threshold values based on industry standards and our expected user volum
 
 **Template:**
 
-```text
+<eg>
 Help me create a test plan for [Release/Feature]. This is the release scope:
 [Add Requirements List]
 Timeline: [Add Timeframe]
 Available resources: [Describe Team/Tools]
 Known constraints: [Add Any Limitations]
-```
+</eg>
 
 **What This Covers:**
 
@@ -350,19 +350,19 @@ Known constraints: [Add Any Limitations]
 
 **Template:**
 
-```text
+<eg>
 My QA team has experience with [Tools/Frameworks]. Suggest the best test strategy
 for [Application Type/Domain] with [Specific Constraints].
 Include recommended tools, test types, and coverage approaches.
-```
+</eg>
 
 **Example Usage:**
 
-```text
+<eg>
 My QA team has experience with Selenium and Java. Suggest the best test strategy
 for an e-commerce website with microservices architecture and high concurrency requirements.
 Include recommended tools, test types, and coverage approaches.
-```
+</eg>
 
 **What This Covers:**
 
@@ -376,11 +376,11 @@ Include recommended tools, test types, and coverage approaches.
 
 **Template:**
 
-```text
+<eg>
 Guide me step-by-step to set up a CI/CD pipeline for [Application Framework: React/Django/etc.]
 with [VCS: GitHub/GitLab/etc.].
 Include test execution, artifact management, and deployment stages.
-```
+</eg>
 
 **What This Covers:**
 
@@ -398,11 +398,11 @@ Include test execution, artifact management, and deployment stages.
 
 **Template:**
 
-```text
+<eg>
 I have the following list of test cases: [Add List with brief descriptions].
 Can you help me prioritize them based on risk, business impact, and execution time?
 Consider our release timeline of [Add Timeframe].
-```
+</eg>
 
 **What This Covers:**
 
@@ -416,12 +416,12 @@ Consider our release timeline of [Add Timeframe].
 
 **Template:**
 
-```text
+<eg>
 Based on the following requirements: [List Requirements]
 and existing test cases: [List Test Cases]
 can you find gaps and areas where coverage is not adequate?
 Suggest additional tests to ensure comprehensive coverage.
-```
+</eg>
 
 **What This Covers:**
 
@@ -435,10 +435,10 @@ Suggest additional tests to ensure comprehensive coverage.
 
 **Template:**
 
-```text
+<eg>
 What test coverage areas should be prioritized for [Domain: e-commerce/healthcare/fintech/etc.]?
 Include functional, non-functional, compliance, and security test categories.
-```
+</eg>
 
 **What This Covers:**
 
@@ -456,21 +456,21 @@ Include functional, non-functional, compliance, and security test categories.
 
 **Template:**
 
-```text
+<eg>
 Create a detailed bug report for the following defect: [Bug Details].
 Include: bug ID, steps to reproduce (clear and numbered), expected vs. actual results,
 severity (Critical/High/Medium/Low), priority, environment details (OS/Browser/Version),
 and potential impact on users.
-```
+</eg>
 
 **Example Usage:**
 
-```text
+<eg>
 Create a detailed bug report for the following defect: Users cannot update their profile
 picture on the mobile app when using slower network connections.
 Include: bug ID, steps to reproduce (clear and numbered), expected vs. actual results,
 severity, priority, environment details (OS/Browser/Version), and potential impact on users.
-```
+</eg>
 
 **What This Covers:**
 
@@ -484,11 +484,11 @@ severity, priority, environment details (OS/Browser/Version), and potential impa
 
 **Template:**
 
-```text
+<eg>
 Generate a test execution summary for [Release/Sprint].
 Include: total tests executed, pass/fail rates, test coverage percentage,
 high-priority failures, risks identified, and recommendations for proceeding.
-```
+</eg>
 
 **What This Covers:**
 
@@ -506,21 +506,21 @@ high-priority failures, risks identified, and recommendations for proceeding.
 
 **Template:**
 
-```text
+<eg>
 Identify comprehensive edge cases for [Feature/Module].
 Consider: boundary values, null/empty conditions, maximum/minimum constraints,
 special characters, concurrent access, timeouts, and state transitions.
 For each edge case, describe the scenario and expected behavior.
-```
+</eg>
 
 **Example Usage:**
 
-```text
+<eg>
 Identify comprehensive edge cases for a shopping cart feature.
 Consider: boundary values (0 items, max cart size), null/empty conditions (empty cart operations),
 price calculations with discounts, concurrent updates, session timeouts, and inventory state changes.
 For each edge case, describe the scenario and expected behavior.
-```
+</eg>
 
 **What This Covers:**
 
@@ -535,10 +535,10 @@ For each edge case, describe the scenario and expected behavior.
 
 **Template:**
 
-```text
+<eg>
 Generate edge cases for [Specific Domain Operation: payment processing/user authentication/data import/etc.].
 Include scenarios that might occur in production but are difficult to test manually.
-```
+</eg>
 
 **What This Covers:**
 
@@ -614,42 +614,42 @@ When initial responses don't fully meet your needs:
 
 **Order Processing Flow:**
 
-```text
+<eg>
 Generate comprehensive test cases for an e-commerce order processing flow.
 The flow includes: item selection, cart management, checkout, payment processing,
 order confirmation, and inventory updates. Include positive paths, payment failures,
 inventory conflicts, and concurrent order scenarios.
-```
+</eg>
 
 ### Authentication and Authorization
 
 **User Login and Permission Validation:**
 
-```text
+<eg>
 What are the critical test cases for a user authentication system supporting
 multiple role-based access controls (Admin, Manager, User)? Include successful login,
 failed authentication, session management, permission boundaries, and concurrent session handling.
-```
+</eg>
 
 ### API and Integration Testing
 
 **REST API Validation:**
 
-```text
+<eg>
 Help me write Selenium/REST API test cases for validating a REST API endpoint.
 The endpoint is: [API Path], accepts [Method], requires authentication [Yes/No],
 and returns [Response Schema]. Include positive cases, error responses, and edge cases.
-```
+</eg>
 
 ### Data Migration and Import
 
 **Bulk Data Processing:**
 
-```text
+<eg>
 What test cases are needed for validating a data import process that handles CSV files
 with 1 million records? Include data validation, duplicate detection, error handling,
 performance under load, and rollback scenarios.
-```
+</eg>
 
 ---
 

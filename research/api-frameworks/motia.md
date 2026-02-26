@@ -106,22 +106,22 @@ Motia is a unified backend framework built around a single primitive called the 
 
 ### Step File Structure
 
-```text
+<eg>
 steps/
   *.step.ts    # TypeScript Steps (auto-discovered)
   *.step.js    # JavaScript Steps (auto-discovered)
   *_step.py    # Python Steps (auto-discovered)
-```
+</eg>
 
 ### Data Flow Between Steps
 
-```text
+<eg>
 HTTP POST /messages
   → SendMessage.step (http trigger)
       → enqueue({ topic: 'message.sent', data: {...} })
           → ProcessMessage.step (queue trigger, subscribes: ['message.sent'])
               → logger.info / state.set / enqueue(...)
-```
+</eg>
 
 ### Context Object (handler second argument)
 

@@ -115,7 +115,7 @@ repomix --remote user/repo --skill-generate
 
 Generated structure:
 
-```text
+<eg>
 .claude/skills/<skill-name>/
 ├── SKILL.md                 # Main metadata
 └── references/
@@ -123,7 +123,7 @@ Generated structure:
     ├── project-structure.md # Directory tree
     ├── files.md             # All file contents
     └── tech-stack.md        # Auto-detected stack
-```
+</eg>
 
 ### Additional Features
 
@@ -140,7 +140,7 @@ Generated structure:
 
 ## Technical Architecture
 
-```text
+<eg>
 User Input (Local Path / Remote URL / Stdin File List)
                         │
                         ▼
@@ -203,7 +203,7 @@ User Input (Local Path / Remote URL / Stdin File List)
 │  - Stdout (if --stdout)                                │
 │  - Skills directory (if --skill-generate)              │
 └───────────────────────────────────────────────────────┘
-```
+</eg>
 
 ---
 

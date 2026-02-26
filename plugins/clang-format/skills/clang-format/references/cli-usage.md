@@ -232,7 +232,7 @@ vendor/library.h
 
 The following rules use characters that are also special in Markdown (`#`, `**`, `!`, `/`), so they are listed in a code block to avoid ambiguity:
 
-```text
+<eg>
 Blank lines are skipped
 Leading/trailing spaces are trimmed
 # prefix indicates a comment
@@ -241,7 +241,7 @@ Patterns are relative to the .clang-format-ignore file location
 Absolute patterns start with /
 Bash globstar ** is supported
 ! prefix negates the pattern
-```
+</eg>
 
 ### Multiple .clang-format-ignore Files
 

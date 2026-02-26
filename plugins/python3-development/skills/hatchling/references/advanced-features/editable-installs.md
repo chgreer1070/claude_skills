@@ -80,10 +80,10 @@ class EditableHook(BuildHookInterface):
 
 Traditional editable installs (before PEP 660) used `.pth` files:
 
-```text
+<eg>
 site-packages/mypackage.pth
 Contents: /path/to/your/project/src
-```
+</eg>
 
 When Python starts, it reads `.pth` files and adds listed paths to `sys.path`.
 

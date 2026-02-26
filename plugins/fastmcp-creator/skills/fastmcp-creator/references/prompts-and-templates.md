@@ -88,9 +88,9 @@ AI IDE plugins (Claude Desktop, Cursor) can use prompt templates as one-click ac
 
 A prompt named `poetry` takes an argument `topic` and produces:
 
-```text
+<eg>
 "Write a creative poem about the following topic: {topic}"
-```
+</eg>
 
 Users can trigger this prompt through Claude Desktop's UI rather than typing the whole prompt each time.
 
@@ -192,14 +192,14 @@ Cursor, Cline, Windsurf, Roo, and other AI coding assistants craft specialized s
 
 **Typical structure:**
 
-```text
+<eg>
 Available tools:
 - tool_name_1: description
 - tool_name_2: description
 ...
 
 If needed, use these tools by responding with JSON commands as per MCP spec.
-```
+</eg>
 
 ### Tool Descriptions as Prompts
 

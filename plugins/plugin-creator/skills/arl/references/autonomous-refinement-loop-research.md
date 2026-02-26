@@ -127,9 +127,9 @@ The audit dimensions added in the lifecycle audit skills solve some of these —
 
 ### Existing Pipeline (Manual)
 
-```text
+<eg>
 /refactor-plugin → review → /implement-refactor → /ensure-complete → if follow-up tasks → /implement-refactor → repeat
-```
+</eg>
 
 Each step requires human invocation today. The research question is whether and under what conditions these human gates can be replaced with machine-verifiable conditions.
 

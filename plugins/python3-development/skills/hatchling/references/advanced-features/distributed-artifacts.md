@@ -37,7 +37,7 @@ Components:
 
 A wheel contains:
 
-```text
+<eg>
 mypackage-1.0.0-py3-none-any.whl
 ├── mypackage/                    # Your package
 │   ├── __init__.py
@@ -49,7 +49,7 @@ mypackage-1.0.0-py3-none-any.whl
 │   ├── RECORD
 │   ├── entry_points.txt
 │   └── top_level.txt
-```
+</eg>
 
 ### Configuring Wheel Artifacts
 
@@ -74,7 +74,7 @@ Configure what goes into wheels:
 
 Source distributions (sdists) include:
 
-```text
+<eg>
 mypackage-1.0.0.tar.gz
 ├── mypackage-1.0.0/
 │   ├── PKG-INFO              # Metadata copy
@@ -85,7 +85,7 @@ mypackage-1.0.0.tar.gz
 │   ├── tests/
 │   ├── docs/
 │   └── MANIFEST.in           # File inclusion rules
-```
+</eg>
 
 ### Configuring Source Distributions
 

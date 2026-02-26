@@ -96,7 +96,7 @@ Retio PageMap is a Python MCP server that compresses raw HTML pages (~100K token
 
 ## Technical Architecture
 
-```text
+<eg>
 URL
  |
  v
@@ -131,7 +131,7 @@ MCP Server (server.py):
   get_page_map(url)                           --> PageMap text
   execute_action(ref, action, value?)         --> action result
   get_page_state()                            --> {url, title}
-```
+</eg>
 
 Module layout within `src/pagemap/`:
 

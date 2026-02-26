@@ -118,7 +118,7 @@ associations:
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────────────────┐
 │                      MCP Client                              │
 │              (Cursor, Claude Desktop, etc.)                  │
@@ -164,11 +164,11 @@ associations:
                                       │    GitHub Remote        │
                                       │    (with PAT auth)      │
                                       └─────────────────────────┘
-```
+</eg>
 
 ### Directory Structure
 
-```text
+<eg>
 ~/.mimir/
 ├── configs/
 │   └── config.json              # User configuration
@@ -181,7 +181,7 @@ associations:
         ├── tags/
         │   └── meetings/        # Tag-based organization
         └── archive/             # Soft-deleted memories
-```
+</eg>
 
 ---
 

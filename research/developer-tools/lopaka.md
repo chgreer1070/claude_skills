@@ -132,10 +132,10 @@ Lopaka is built as a web application using modern frontend technologies:
 
 ### Cloud Usage (No Installation)
 
-```text
+<eg>
 Visit https://lopaka.app
 Start designing immediately with no registration
-```
+</eg>
 
 ### Local Installation - Docker
 
@@ -170,7 +170,7 @@ pnpm build
 
 ### Basic Workflow
 
-```text
+<eg>
 1. Select target platform (TFT_eSPI, U8g2, AdafruitGFX, etc.)
 2. Choose screen size or enter custom dimensions
 3. Use drawing tools to create graphics:
@@ -182,7 +182,7 @@ pnpm build
 5. Copy generated C/C++ code into Arduino/ESP32/STM32 project
 6. Include necessary graphics library headers
 7. Compile and flash to embedded device
-```
+</eg>
 
 ### Example Generated Code (TFT_eSPI)
 

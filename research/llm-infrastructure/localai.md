@@ -112,7 +112,7 @@ LocalAI is a free, open-source, self-hosted alternative to OpenAI, Anthropic, an
 
 LocalAI uses a plugin-style backend architecture where each modality (LLM, image, audio) is handled by a separate backend process. Starting from v3.2.0 (July 2025), all backends were migrated outside the main binary — the core binary is lightweight and downloads required backends on demand based on model type and hardware detection.
 
-```text
+<eg>
 Client Application
     │ (OpenAI-compatible REST API)
     ▼
@@ -127,7 +127,7 @@ LocalAI API Server (Go, port 8080)
     ├── Model Gallery             (models.localai.io)
     ├── MCP Integration           (external tool calling)
     └── P2P Layer (libp2p)        (distributed inference)
-```
+</eg>
 
 ### Configuration
 

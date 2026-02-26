@@ -104,18 +104,18 @@ Deterministic decision tree for consistent behavior:
 
 **Sequential Chaining** (dependencies exist):
 
-```text
+<eg>
 Agent A -> Agent B
-```
+</eg>
 
 - Pass OUTPUT of Agent A into PROMPT for Agent B
 - Example: `explorer` finds paths -> `dev` edits those specific paths
 
 **Parallel Execution** (independent tasks):
 
-```text
+<eg>
 Agent A & Agent B simultaneously
-```
+</eg>
 
 - Issue multiple `task` tool calls in single assistant message
 - Example: "Fix bug" & "Update docs" run concurrently
@@ -145,7 +145,7 @@ Agent A & Agent B simultaneously
 
 ## Technical Architecture
 
-```text
+<eg>
 User Request
      │
      ▼
@@ -176,7 +176,7 @@ User Request
 │ Questions   │                    │ @review &   │
 │ (up to 3)   │                    │ @writer     │
 └─────────────┘                    └─────────────┘
-```
+</eg>
 
 ### Execution Flow
 

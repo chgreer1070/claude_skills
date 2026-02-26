@@ -4,7 +4,7 @@ Document templates for stinkysnake workflow phases. Use these formats when creat
 
 ## Modernization Plan Template (Phase 3 Output)
 
-```text
+<eg>
 ## Modernization Plan
 
 ### Type System Changes
@@ -38,11 +38,11 @@ Document templates for stinkysnake workflow phases. Use these formats when creat
 - Files to modify: 12
 - New type definitions: 8
 - Breaking changes: 3 (internal only)
-```
+</eg>
 
 ## Plan Review Report Template (Phase 4 Output)
 
-```text
+<eg>
 ## Plan Review Report
 
 ### Summary
@@ -86,11 +86,11 @@ Document templates for stinkysnake workflow phases. Use these formats when creat
 1. Split httpx migration into separate PR
 2. Add compatibility shim for json.dumps
 3. Use ABC instead of Protocol for Handler
-```
+</eg>
 
 ## Revised Plan Template (Phase 5 Output)
 
-```text
+<eg>
 ## Modernization Plan (Revised)
 
 ### Changes from Review
@@ -113,11 +113,11 @@ Document templates for stinkysnake workflow phases. Use these formats when creat
 3. Generic containers (additive)
 4. Any elimination (may require caller updates)
 5. [DEFERRED] httpx migration
-```
+</eg>
 
 ## Documentation Update Plan Template (Phase 6 Output)
 
-```text
+<eg>
 ## Documentation Update Plan
 
 ### Files to Update
@@ -139,4 +139,4 @@ Document templates for stinkysnake workflow phases. Use these formats when creat
 
 - docs/types.md: Document TypeAliases
 - docs/migration.md: Breaking change guide
-```
+</eg>

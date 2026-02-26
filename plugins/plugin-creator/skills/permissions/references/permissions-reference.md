@@ -74,34 +74,34 @@ Patterns constraining command arguments are fragile. Example — `Bash(curl http
 
 **Absolute paths** (from filesystem root):
 
-```text
+<eg>
 Read(//Users/alice/secrets/**)
 Edit(//tmp/scratch.txt)
-```
+</eg>
 
 The double-slash `//` prefix indicates absolute path. A single `/` is relative to the settings file.
 
 **Home directory paths**:
 
-```text
+<eg>
 Read(~/Documents/*.pdf)
 Read(~/.zshrc)
-```
+</eg>
 
 **Settings-file-relative paths**:
 
-```text
+<eg>
 Edit(/src/**/*.ts)      # Relative to the settings file location
 Edit(/docs/**)           # NOT the filesystem /docs/
-```
+</eg>
 
 **Current-directory-relative paths**:
 
-```text
+<eg>
 Read(*.env)
 Read(src/**)
 Read(./config/*)
-```
+</eg>
 
 ### Glob Behavior
 
@@ -128,10 +128,10 @@ Use tool name without parentheses to allow all file operations:
 
 Currently supports domain-based matching:
 
-```text
+<eg>
 WebFetch(domain:example.com)
 WebFetch(domain:api.github.com)
-```
+</eg>
 
 ---
 
@@ -254,19 +254,19 @@ Deploy as `managed-settings.json`:
 
 ### Absolute Path Confusion
 
-```text
+<eg>
 Edit(/Users/alice/file)     # WRONG — relative to settings file
 Edit(//Users/alice/file)    # CORRECT — absolute path
-```
+</eg>
 
 Single `/` prefix means "relative to the settings file", not filesystem root.
 
 ### Bash Wildcard Without Space
 
-```text
+<eg>
 Bash(npm*)     # Matches: npm, npmrc, npm-audit — probably too broad
 Bash(npm *)    # Matches: npm install, npm run — correct word boundary
-```
+</eg>
 
 ### Deny Rule Placement
 

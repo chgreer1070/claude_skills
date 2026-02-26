@@ -107,7 +107,7 @@ SOURCE: [GitHub API](https://api.github.com/repos/D4Vinci/Scrapling) (accessed 2
 
 Scrapling is organized into four layers:
 
-```text
+<eg>
 CLI / MCP Server (scrapling.cli, scrapling.mcp)
         |
 Spider Framework (scrapling.spiders)
@@ -126,7 +126,7 @@ Parser Engine (scrapling.parser)
    - Selector / Selectors classes with adaptive tracking
    - orjson for serialization
    - w3lib for HTML entity handling
-```
+</eg>
 
 **Adaptive element tracking**: When `auto_save=True` is set on a CSS/XPath query, Scrapling stores the element's structural signature (tag, attributes, position, text fingerprint) in a local database. When `adaptive=True` is passed on a subsequent call, it uses a similarity scoring algorithm over stored signatures to relocate the element even if its selector no longer matches, surviving page redesigns.
 

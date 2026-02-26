@@ -196,7 +196,7 @@ cd hatch-myfeature
 
 ### 2. Create Project Structure
 
-```text
+<eg>
 hatch-myfeature/
 ├── pyproject.toml
 ├── README.md
@@ -207,7 +207,7 @@ hatch-myfeature/
 │       └── plugin.py         # Plugin implementation
 └── tests/
     └── test_plugin.py
-```
+</eg>
 
 ### 3. Define Plugin Class
 

@@ -113,7 +113,7 @@ Always included files:
 
 An sdist typically contains:
 
-```text
+<eg>
 my-package-0.1.0.tar.gz
 └── my-package-0.1.0/
     ├── src/
@@ -126,7 +126,7 @@ my-package-0.1.0.tar.gz
     ├── README.md
     ├── LICENSE
     └── PKG-INFO
-```
+</eg>
 
 ## Including Additional Files
 

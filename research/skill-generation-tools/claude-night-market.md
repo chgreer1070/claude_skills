@@ -131,7 +131,7 @@ npx skills add athola/claude-night-market/sanctum
 
 ### Directory Structure
 
-```text
+<eg>
 plugins/
   <plugin-name>/
     skills/
@@ -143,7 +143,7 @@ plugins/
       <agent-name>.md     # Agent configurations
     hooks/
       <hook-name>.md      # Behavioral hooks
-```
+</eg>
 
 ### Cross-Session State (Claude Code 2.1.16+)
 

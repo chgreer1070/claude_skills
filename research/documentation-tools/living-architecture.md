@@ -116,7 +116,7 @@ Standard component types model operational flow:
 
 Living Architecture uses NX monorepo with pnpm workspaces:
 
-```text
+<eg>
 packages/         - npm-publishable libraries
   riviere-schema              - Schema definitions and validation
   riviere-query               - Browser-safe query library
@@ -129,7 +129,7 @@ packages/         - npm-publishable libraries
 apps/             - Deployable applications (not published)
   eclair                      - Interactive visualizer
   docs                        - Documentation website
-```
+</eg>
 
 ### Rivière Schema
 

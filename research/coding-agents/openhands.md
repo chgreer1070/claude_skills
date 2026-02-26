@@ -134,7 +134,7 @@ Self-hosted deployment for VPC/Kubernetes environments.
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────────────────────┐
 │                     OpenHands Platform                           │
 └─────────────────────────────────────────────────────────────────┘
@@ -162,7 +162,7 @@ Self-hosted deployment for VPC/Kubernetes environments.
 │ - Any LLM       │  │ - REST API       │  │ - Integrations    │
 │ - Local exec    │  │ - Devin-like     │  │ - Scaling         │
 └─────────────────┘  └─────────────────┘  └─────────────────┘
-```
+</eg>
 
 ---
 

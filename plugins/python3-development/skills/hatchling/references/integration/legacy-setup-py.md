@@ -165,7 +165,7 @@ packages = ["src/mypackage"]
 
 Or for standard layout (no configuration needed):
 
-```text
+<eg>
 mypackage/
 ├── src/
 │   └── mypackage/
@@ -173,17 +173,17 @@ mypackage/
 │       └── module.py
 ├── pyproject.toml
 └── README.md
-```
+</eg>
 
 ### Step 6: Port File Inclusion (MANIFEST.in → pyproject.toml)
 
 **From MANIFEST.in**:
 
-```text
+<eg>
 include LICENSE
 include README.md
 recursive-include mypackage *.txt
-```
+</eg>
 
 **To pyproject.toml**:
 

@@ -79,7 +79,7 @@ The pattern must contain:
 
 Examples:
 
-```text
+<eg>
 Tag: v1.2.3
 Pattern: v(.*)
 Match: 1.2.3
@@ -91,7 +91,7 @@ Match: 1.2.3
 Tag: project-v1.2.3
 Pattern: project-v(?P<version>.*)
 Match: 1.2.3
-```
+</eg>
 
 #### fallback-version
 

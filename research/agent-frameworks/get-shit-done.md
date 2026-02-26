@@ -139,7 +139,7 @@ Three configurable profiles for quality vs cost tradeoffs:
 
 Every stage uses the same pattern: a thin orchestrator spawns specialized agents, collects results, and routes to the next step.
 
-```text
+<eg>
 ORCHESTRATOR (Main Context ~30-40%)
     |
     +-- Spawns --> RESEARCHER agents (parallel, fresh context)
@@ -153,7 +153,7 @@ ORCHESTRATOR (Main Context ~30-40%)
     +-- Spawns --> EXECUTOR agents (parallel waves, fresh 200k each)
     |
     +-- Spawns --> VERIFIER agent (goal confirmation)
-```
+</eg>
 
 The orchestrator never does heavy lifting. Work happens in fresh subagent contexts, keeping the main session fast and responsive.
 
@@ -171,12 +171,12 @@ Each executor gets a fresh 200k token context purely for implementation.
 
 Each task produces its own commit immediately after completion:
 
-```text
+<eg>
 abc123f docs(08-02): complete user registration plan
 def456g feat(08-02): add email confirmation flow
 hij789k feat(08-02): implement password hashing
 lmn012o feat(08-02): create registration endpoint
-```
+</eg>
 
 Benefits: git bisect locates failures, tasks are independently revertable, clear history for future Claude sessions.
 
@@ -207,9 +207,9 @@ npx get-shit-done-cc --all --global      # All runtimes
 
 ### Verify Installation
 
-```text
+<eg>
 /gsd:help
-```
+</eg>
 
 ### Update to Latest
 
@@ -227,7 +227,7 @@ Stopping to approve `date` and `git commit` 50 times defeats the purpose of auto
 
 ### Workflow Example
 
-```text
+<eg>
 # New project
 /gsd:new-project
 
@@ -240,14 +240,14 @@ Stopping to approve `date` and `git commit` 50 times defeats the purpose of auto
 # Complete milestone
 /gsd:complete-milestone
 /gsd:new-milestone        # Start next version
-```
+</eg>
 
 ### Brownfield Projects
 
-```text
+<eg>
 /gsd:map-codebase         # Analyze existing codebase first
 /gsd:new-project          # Then initialize with awareness
-```
+</eg>
 
 ---
 

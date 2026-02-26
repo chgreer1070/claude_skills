@@ -94,7 +94,7 @@ SourceSync.ai is a managed RAG (Retrieval-Augmented Generation) infrastructure p
 
 ### Data Flow
 
-```text
+<eg>
 ┌──────────────────────────────────────────────────────────────────┐
 │                    SourceSync.ai Platform                        │
 ├──────────────────────────────────────────────────────────────────┤
@@ -122,7 +122,7 @@ SourceSync.ai is a managed RAG (Retrieval-Augmented Generation) infrastructure p
 │  │ Custom app via API   │    │  - getDocuments      │            │
 │  └──────────────────────┘    └─────────────────────┘            │
 └──────────────────────────────────────────────────────────────────┘
-```
+</eg>
 
 ### Namespace Configuration Stack
 

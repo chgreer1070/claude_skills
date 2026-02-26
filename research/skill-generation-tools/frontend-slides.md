@@ -124,19 +124,19 @@ mkdir -p ~/.claude/skills/frontend-slides
 
 Activate in Claude Code:
 
-```text
+<eg>
 /frontend-slides
-```
+</eg>
 
 Example invocations:
 
-```text
+<eg>
 /frontend-slides Create a 10-slide pitch deck for a SaaS product with a professional dark theme
 
 /frontend-slides Convert my presentation.pptx to HTML using the Terminal Green preset
 
 /frontend-slides Enhance my existing slides.html with better animations
-```
+</eg>
 
 PowerPoint conversion requires `python-pptx` installed in the environment:
 

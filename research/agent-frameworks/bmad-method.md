@@ -113,7 +113,7 @@ For products, platforms, complex features:
 
 ### Project Structure
 
-```text
+<eg>
 BMAD-METHOD/
   src/
     bmm/                    # BMad Method module
@@ -129,7 +129,7 @@ BMAD-METHOD/
     cli/                    # npx bmad-method install
   docs/                     # Documentation (Astro/Starlight)
   website/                  # Marketing site
-```
+</eg>
 
 ### Agent Definition Format
 
@@ -185,15 +185,15 @@ npx bmad-method install
 
 ### Using AI Help
 
-```text
+<eg>
 /bmad-help
 /bmad-help How should I build a web app for my TShirt Business?
 /bmad-help I just finished the architecture, what's next?
-```
+</eg>
 
 ### Quick Flow Example
 
-```text
+<eg>
 # Step 1: Analyze and create tech spec
 /quick-spec
 
@@ -202,11 +202,11 @@ npx bmad-method install
 
 # Step 3: Code review
 /code-review
-```
+</eg>
 
 ### Full Method Example
 
-```text
+<eg>
 # Planning phase
 /product-brief
 /create-prd
@@ -220,7 +220,7 @@ npx bmad-method install
 /create-story
 /dev-story
 /code-review
-```
+</eg>
 
 ---
 

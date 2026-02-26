@@ -49,18 +49,18 @@ A task is ready when:
 - Status is `PENDING`
 - All tasks in `Dependencies` list are `COMPLETE`
 
-```text
+<eg>
 Parse task file for tasks where:
   status == "PENDING" AND
   for each dep in dependencies:
     dep.status == "COMPLETE"
-```
+</eg>
 
 ### Step 3: Execute Ready Tasks
 
 For each ready task, delegate to the specified agent:
 
-```text
+<eg>
 Task(agent="{task.agent}", prompt="Execute this firmware implementation task:
 
 Task: {task.title}
@@ -83,7 +83,7 @@ When complete, report:
 - Verification results
 
 Return DONE if successful, BLOCKED if issues found.")
-```
+</eg>
 
 ### Step 4: Update Task Status
 
@@ -105,7 +105,7 @@ Repeat steps 1-4 until:
 
 Execute tasks in dependency order, respecting complexity for parallelization:
 
-```text
+<eg>
 Phase 1: Infrastructure (no dependencies)
 - Header files
 - Type definitions
@@ -127,7 +127,7 @@ Phase 4: Testing (depends on Phase 3)
 - Unit tests
 - Integration tests
 - On-target verification
-```
+</eg>
 
 ---
 
@@ -169,7 +169,7 @@ west build 2>&1 | grep -i "warning:"
 
 After each task completion, report:
 
-```text
+<terminal_output>
 ================================================================================
                     IMPLEMENTATION PROGRESS
 ================================================================================
@@ -195,7 +195,7 @@ Next Tasks:
 Blockers (if any):
 - Task {N}: {blocker_description}
 ================================================================================
-```
+</terminal_output>
 
 ---
 
@@ -207,7 +207,7 @@ When all tasks show `COMPLETE`:
 2. Run all verification steps from task file
 3. Generate implementation summary
 
-```text
+<terminal_output>
 ================================================================================
                     IMPLEMENTATION COMPLETE
 ================================================================================
@@ -235,7 +235,7 @@ Next Steps:
 2. Review code changes
 3. Commit and create PR
 ================================================================================
-```
+</terminal_output>
 
 ---
 
@@ -247,14 +247,14 @@ When a task reports `BLOCKED`:
 2. Check if other tasks can proceed
 3. Report to user with options:
 
-```text
+<eg>
 Task {N} is BLOCKED: {blocker_description}
 
 Options:
 1. Resolve blocker and continue: /implement-embedded-feature {slug}
 2. Skip task and proceed: /implement-embedded-feature {slug} --skip {task_id}
 3. Abort implementation: Review plan and replan
-```
+</eg>
 
 ---
 

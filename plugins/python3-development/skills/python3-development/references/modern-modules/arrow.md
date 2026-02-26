@@ -399,7 +399,7 @@ Arrow objects carry additional overhead. For millions of cached datetime objects
 
 ## Quick Decision Guide
 
-```text
+<eg>
 START: Do you need datetime functionality?
   |
   ├─ Is performance critical? (>100k ops/sec)
@@ -416,7 +416,7 @@ START: Do you need datetime functionality?
   |
   └─ Building user-facing application with datetime logic?
       └─ YES → Use Arrow (cleaner code, better UX)
-```
+</eg>
 
 ## Common Gotchas and Solutions
 

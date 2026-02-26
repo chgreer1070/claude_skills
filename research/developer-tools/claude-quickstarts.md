@@ -111,7 +111,7 @@ Claude Quickstarts is the official Anthropic repository of deployable reference 
 
 ### Repository Structure
 
-```text
+<eg>
 claude-quickstarts/
 ├── CLAUDE.md                    # Claude Code dev guide (build cmds, code style per project)
 ├── pyproject.toml               # Root Python config
@@ -133,11 +133,11 @@ claude-quickstarts/
 │   └── Dockerfile               # Full Linux desktop image
 ├── customer-support-agent/      # Next.js + shadcn/ui + Amplify
 └── financial-data-analyst/      # Next.js + Recharts
-```
+</eg>
 
 ### Agent Loop Pattern (from `agents/agent.py`)
 
-```text
+<eg>
 User message
     → Claude API call (with tools + MCP tool list)
     → Response: text block OR tool_use block
@@ -145,27 +145,27 @@ User message
     → Append tool_result to message history
     → Loop until no more tool_use blocks
     → Return final text response
-```
+</eg>
 
 ### Autonomous Coding Two-Agent Pattern
 
-```text
+<eg>
 Session 1 (Initializer):
     app_spec.txt → generate feature_list.json (200 test cases) → git init → project scaffold
 
 Sessions 2+ (Coding Agent):
     Read feature_list.json → pick next incomplete feature → implement → run tests → mark passing → git commit
     (Each session: fresh context window; progress via feature_list.json + git history)
-```
+</eg>
 
 ### Computer Use Tool Version
 
-```text
+<eg>
 Beta tool: computer_use_20251124
 Actions: screenshot, click, type, scroll, key, zoom (new in 20251124)
 Editor: str_replace_based_edit_tool (replaces str_replace_editor)
 Ports: 5900/VNC, 8501/Streamlit, 6080/noVNC, 8080/web
-```
+</eg>
 
 ---
 

@@ -67,14 +67,14 @@ Includes system prompts and/or model configurations for: Augment Code, Claude Co
 
 ### Repository Structure
 
-```text
+<eg>
 system-prompts-and-models-of-ai-tools/
   {tool-name}/              # One directory per AI tool
     system-prompt.md        # Full system prompt content
     tools.md                # Internal tool definitions (if available)
     model-info.md           # Model configuration details (if available)
   README.md                 # Index with tool list and support information
-```
+</eg>
 
 ### Content Sourcing
 

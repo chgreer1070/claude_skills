@@ -244,7 +244,7 @@ if __name__ == "__main__":
 
 ### Anti-Pattern Output (220 lines)
 
-```text
+<eg>
 ╭───────────────────── Traceback (most recent call last) ──────────────────────╮
 │ ... json.loads() ...                                                         │
 │ ... 40 lines of traceback ...                                               │
@@ -262,13 +262,13 @@ ConfigError: Invalid JSON in broken.json at line 1, column 1: Expecting value
 The above exception was the direct cause of the following exception:
 
 [... 4 more layers of this ...]
-```
+</eg>
 
 ### Correct Pattern Output (1 line)
 
-```text
+<eg>
 Invalid JSON in broken.json at line 1, column 1: Expecting value
-```
+</eg>
 
 ## Rules for Exception Handling in Typer CLIs
 

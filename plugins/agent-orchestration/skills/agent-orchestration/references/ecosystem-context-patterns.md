@@ -27,12 +27,12 @@ The tool-list anti-pattern comes from slot-filling behavior triggered by the wor
 
 **Anti-pattern example (reductive, limiting):**
 
-```text
+<eg>
 AVAILABLE RESOURCES:
 - WebFetch tool
 - Read tool
 - Bash tool
-```
+</eg>
 
 **Problems with this pattern:**
 
@@ -54,14 +54,14 @@ This is the more subtle and dangerous anti-pattern. The orchestrator repeats inf
 
 **Parroting anti-pattern example:**
 
-```text
+<eg>
 ECOSYSTEM CONTEXT:
 - Full project context available — explore freely with all tools
 - Check <functions> list for MCP tools — prefer MCP specialists (Ref, context7, exa) over built-in alternatives
 - Check <available_skills> and activate relevant skills for domain expertise
 - Maximize parallel execution for independent tool calls
 - This Python project uses `uv` — use `uv run python` instead of `python3`
-```
+</eg>
 
 **Why each line is redundant:**
 
@@ -83,12 +83,12 @@ Information that exists nowhere the agent can see — session-specific or task-s
 
 **Correct pattern example:**
 
-```text
+<eg>
 ECOSYSTEM CONTEXT:
 - The `gh` CLI is pre-authenticated for GitHub operations (issues, PRs, API queries)
 - CI logs for PR #42 accessible via MCP GitHub tool
 - Recent linting reports in `.claude/reports/` show previously resolved issues
-```
+</eg>
 
 **Why this works:**
 
@@ -104,11 +104,11 @@ ECOSYSTEM CONTEXT:
 
 When CLI tools are pre-authenticated, explicitly state this — authentication state is session-specific:
 
-```text
+<eg>
 The `gh` CLI is pre-authenticated for GitHub operations
 The `glab` CLI is configured for GitLab access
 AWS CLI is configured with credentials for the staging account
-```
+</eg>
 
 **Why**: CLAUDE.md may document that `gh` is available, but it cannot know whether it is authenticated in the current session. This is genuinely new information.
 
@@ -116,11 +116,11 @@ AWS CLI is configured with credentials for the staging account
 
 State task-relevant resources that are specific to this delegation:
 
-```text
+<eg>
 CI logs for PR #42 accessible via MCP GitHub tool
 The staging deployment at staging.example.com is available for testing
 Database seed data is loaded at localhost:5432
-```
+</eg>
 
 **Why**: These facts vary per task and session. They are not discoverable from project files.
 
@@ -128,11 +128,11 @@ Database seed data is loaded at localhost:5432
 
 Point to locations that would require extra exploration to discover organically:
 
-```text
+<eg>
 Recent linting reports in `.claude/reports/` document previously resolved issues
 Package validation scripts in `./scripts/` — see README.md for usage
 Architecture decision records in `./docs/adr/`
-```
+</eg>
 
 **Why**: These locations may not be obvious from the directory structure. A hint saves investigation time. Do not list obvious locations (tests/, src/, etc.) that any agent would check first.
 
@@ -140,10 +140,10 @@ Architecture decision records in `./docs/adr/`
 
 When a specific MCP tool is particularly relevant to the task at hand, name it:
 
-```text
+<eg>
 Use `mcp-server-docker` for container operations — it has direct daemon access
 CI logs accessible via MCP GitHub tool (faster than `gh run view` for log content)
-```
+</eg>
 
 Do not name MCP tools generically ("MCP servers installed — check your functions list") — that is already in the tool descriptions. Name specific tools only when they are the best fit for a specific task.
 

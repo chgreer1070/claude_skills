@@ -97,13 +97,13 @@ SeedDance 2.0 is ByteDance's multimodal video generation model. Key architectura
 
 ## Installation & Usage
 
-```text
+<eg>
 No installation required - web-based platform
-```
+</eg>
 
 **Option A — Jimeng portal (full features, requires Chinese account):**
 
-```text
+<eg>
 1. Visit https://jimeng.jianying.com
 2. Sign in with a Chinese phone number
 3. Select AI Video or AI Image tool
@@ -111,11 +111,11 @@ No installation required - web-based platform
 5. Enter prompt using Subject → Action → Camera → Style → Constraints structure
 6. Set resolution (1080p), duration (8–12 s), aspect ratio
 7. Generate and download
-```
+</eg>
 
 **Option B — WaveSpeed (international, English UI, Stripe payment):**
 
-```text
+<eg>
 1. Visit https://wavespeed.ai
 2. Create account, add credits (~$0.50/generation)
 3. Select SeedDance 2.0 model
@@ -123,11 +123,11 @@ No installation required - web-based platform
 5. Upload image(s) — system tags them as @Image1, @Image2 automatically
 6. Enter prompt (leave @Image tags in place)
 7. Generate
-```
+</eg>
 
 **Prompt template for app demos:**
 
-```text
+<eg>
 [UI element] @Image1 [position], [what moves], [camera move], [lighting/style], [constraints]
 
 Example:
@@ -135,7 +135,7 @@ App interface @Image1 centered in frame, icons and UI cards gently floating and
 orbiting around the main screen, slow continuous dolly-in for the full 8 seconds,
 soft neon rim light and dark gradient background with subtle particle trails,
 no extra logos, keep brand colors exactly, no text overlays.
-```
+</eg>
 
 ---
 

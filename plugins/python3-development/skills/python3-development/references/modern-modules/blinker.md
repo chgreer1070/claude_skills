@@ -490,7 +490,7 @@ result = service.process(data)
 
 ### Decision Tree
 
-```text
+<eg>
 Need event notifications?
 ├─ Single process only?
 │  ├─ YES: Continue
@@ -512,7 +512,7 @@ Need event notifications?
 └─ Need weak reference cleanup?
    ├─ YES: Use Blinker ✓
    └─ NO: Simple callbacks OK
-```
+</eg>
 
 ## Installation
 

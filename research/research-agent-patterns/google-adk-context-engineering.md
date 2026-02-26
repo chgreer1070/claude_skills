@@ -119,7 +119,7 @@ When transferring control between agents, ADK actively reframes conversation con
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────────────────────┐
 │                      ADK Context Architecture                    │
 ├─────────────────────────────────────────────────────────────────┤
@@ -150,11 +150,11 @@ When transferring control between agents, ADK actively reframes conversation con
 │   │  Narrative casting prevents role misattribution          │   │
 │   └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
-```
+</eg>
 
 ### Session Event Lifecycle
 
-```text
+<eg>
 User Input → Event(role=user)
      │
      ▼
@@ -170,7 +170,7 @@ Tool Result → Event(type=tool_result)
 [Compaction threshold reached?]
      ├─ Yes → async LLM summary → Event(type=compaction) → prune raw events
      └─ No  → continue appending
-```
+</eg>
 
 ---
 

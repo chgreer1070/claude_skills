@@ -129,7 +129,7 @@ Source: @[docs/intro.rst, docs/basic-usage.rst]
 
 ## Decision Matrix
 
-```text
+<eg>
 ┌─────────────────────────────────────┬──────────────┬──────────────────┐
 │ Requirement                         │ Use bidict   │ Use Two Dicts    │
 ├─────────────────────────────────────┼──────────────┼──────────────────┤
@@ -142,7 +142,7 @@ Source: @[docs/intro.rst, docs/basic-usage.rst]
 │ Inverse lookups are rare            │              │ ✓                │
 │ Extreme memory constraints          │              │ ✓                │
 └─────────────────────────────────────┴──────────────┴──────────────────┘
-```
+</eg>
 
 ## Installation
 

@@ -82,15 +82,15 @@ dependencies = [
 
 This produces (on Unix):
 
-```text
+<eg>
 example @ file:///home/user/projects/example-project
-```
+</eg>
 
 On Windows:
 
-```text
+<eg>
 example @ file:///C:/Users/user/projects/example-project
-```
+</eg>
 
 ### real
 

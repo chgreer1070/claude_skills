@@ -87,7 +87,7 @@ Pilot is an autonomous development pipeline that ingests tickets from GitHub, Li
 
 Pilot is a Go binary structured as a layered daemon:
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────────────────┐
 │                          PILOT                              │
 ├──────────────┬──────────────────────────────────────────────┤
@@ -100,7 +100,7 @@ Pilot is a Go binary structured as a layered daemon:
 │ Alerts       │ Failure detection, cost monitoring           │
 │ Metrics      │ Token usage, execution analytics             │
 └──────────────┴──────────────────────────────────────────────┘
-```
+</eg>
 
 The execution flow when a GitHub issue is labeled `pilot`:
 

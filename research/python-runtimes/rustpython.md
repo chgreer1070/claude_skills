@@ -91,7 +91,7 @@ RustPython is a Python 3 interpreter written entirely in Rust. It provides CPyth
 
 ### Component Stack
 
-```text
+<eg>
 Python Source Code
        |
    ruff_python_parser (Lexer + Parser)
@@ -105,7 +105,7 @@ Python Source Code
    rustpython-vm (Stack-based VM execution)
        |
    Output / Side Effects
-```
+</eg>
 
 ### Crate Structure
 

@@ -41,7 +41,7 @@ This directory contains comprehensive reference documentation for Hatchling's pl
 
 ## Plugin Types at a Glance
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────────────┐
 │         Hatchling Plugin System Architecture             │
 ├─────────────────────────────────────────────────────────┤
@@ -63,7 +63,7 @@ This directory contains comprehensive reference documentation for Hatchling's pl
 │  └─────────────────────────────────────────────────┘   │
 │                                                          │
 └─────────────────────────────────────────────────────────┘
-```
+</eg>
 
 ## Common Tasks
 

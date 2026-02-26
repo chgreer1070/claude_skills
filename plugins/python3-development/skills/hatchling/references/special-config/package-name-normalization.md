@@ -19,14 +19,14 @@ Package names are normalized by:
 1. Converting to lowercase
 2. Replacing runs of `[-_.]` with a single hyphen `-`
 
-```text
+<eg>
 Examples:
 My-Package      → my-package
 my_package      → my-package
 My.Package      → my-package
 my__package     → my-package
 My-.-Package    → my-package
-```
+</eg>
 
 ## Configuration Options
 
@@ -81,15 +81,15 @@ name = "My.Package"
 
 Generates in PKG-INFO/METADATA:
 
-```text
+<eg>
 Name: My.Package
-```
+</eg>
 
 But the distribution name is normalized:
 
-```text
+<eg>
 my-package-1.0.0.tar.gz
-```
+</eg>
 
 ## Import Names vs Package Names
 
@@ -183,9 +183,9 @@ name = "_my_package_"   # Becomes: my-package
 
 Standard wheel naming convention:
 
-```text
+<eg>
 {distribution}-{version}(-{build_tag})?-{python_tag}-{abi_tag}-{platform_tag}.whl
-```
+</eg>
 
 With normalization:
 

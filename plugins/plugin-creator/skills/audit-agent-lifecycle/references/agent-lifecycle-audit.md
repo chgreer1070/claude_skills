@@ -36,7 +36,12 @@ For each agent, compare:
 
 For each skill reference in an agent prompt:
 
-- Is the skill reference namespace-qualified? (structural — defer to NamespaceReferenceValidator)
+- Is the skill reference resolvable? (structural — defer to NamespaceReferenceValidator)
+  - Intra-plugin references (skill in the same plugin as the agent): bare name works — `write-frontmatter-description`
+  - Cross-plugin references (skill in a different plugin): full namespace required — `plugin-creator:audit-skill-completeness`
+  - Both forms are valid for intra-plugin; bare name is the cleaner convention
+  - Do not flag bare names as errors when the referenced skill lives in the same plugin
+  - Verified 2026-02-26, session observation — January 2026 behavior required namespace everywhere, current behavior does not
 - Does the loaded skill actually provide the capability the agent expects from it?
 - Does the agent pass appropriate inputs to the skill?
 - Does the agent consume the skill's output format correctly?

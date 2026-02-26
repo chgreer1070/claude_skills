@@ -109,7 +109,7 @@ Traycer is a spec-driven development platform that serves as the workflow layer 
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌───────────────────────────────────────────────────────────────────┐
 │                    Traycer Platform                                 │
 │                                                                    │
@@ -155,7 +155,7 @@ Traycer is a spec-driven development platform that serves as the workflow layer 
 
 Workflow Loop:
   Plan ──> Execute (via coding agent) ──> Verify ──> Iterate
-```
+</eg>
 
 ### Multi-Model Ensemble Architecture
 

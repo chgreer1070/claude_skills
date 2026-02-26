@@ -233,13 +233,13 @@ Ideal for programmatic access, tooling integration.
 
 ### Text for Human-Readable Info
 
-```text
+<eg>
 Build Information
 =================
 Built: 2024-01-15 10:30:00 UTC
 Commit: abc123def456
 Machine: ubuntu-latest
-```
+</eg>
 
 Better for documentation, changelog-style information.
 

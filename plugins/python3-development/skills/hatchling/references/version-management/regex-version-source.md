@@ -54,9 +54,9 @@ VERSION: Final[str] = "1.2.3"  # Final annotations supported
 
 The default pattern in regex form:
 
-```text
-(?i)(?:__version__|version)\s*(?::\s*(?:str|Final\[str\]))?\s*=\s*['\"]v?(?P<version>[^'\"]+)['\"]
-```
+<eg>
+(?i)(?:__version__|version)\s*(?::\s*(?:str|Final\[str\]))?\s*=\s*['\"]v?[?P<version>[^'\"]+]('\")
+</eg>
 
 ## Custom Patterns
 
@@ -376,9 +376,9 @@ path = "non/existent/file.py"
 
 Error:
 
-```text
+<eg>
 Error: Version source path 'non/existent/file.py' does not exist
-```
+</eg>
 
 ## Best Practices
 

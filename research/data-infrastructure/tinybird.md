@@ -102,7 +102,7 @@ Tinybird is a real-time data platform that helps developers build data products 
 
 ## Technical Architecture
 
-```text
+<eg>
 Data Sources                    Tinybird Platform                      Consumers
 ─────────────────────────────────────────────────────────────────────────────────
 
@@ -133,7 +133,7 @@ Data Sources                    Tinybird Platform                      Consumers
                                  │   │  - Observability        │   │
                                  │   └─────────────────────────┘   │
                                  └─────────────────────────────────┘
-```
+</eg>
 
 ---
 

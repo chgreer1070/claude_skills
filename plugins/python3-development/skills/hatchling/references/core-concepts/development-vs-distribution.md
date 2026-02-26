@@ -72,14 +72,14 @@ An editable install (PEP 660) links to your source code without copying it.
 
 **How it works:**
 
-```text
+<eg>
 Python path:
   site-packages/myproject-1.0.0.dist-info/
     direct_url.json  → /home/user/projects/myproject
 
 Import:
   import myproject  → /home/user/projects/myproject/__init__.py
-```
+</eg>
 
 **Effect:** Changes to source are immediately visible.
 
@@ -98,7 +98,7 @@ pip install -e ".[dev,docs]"
 
 ### Editable Install Process
 
-```text
+<eg>
 1. pip discovers build backend (hatchling)
 2. hatchling builds editable wheel
 3. Wheel contains:
@@ -106,7 +106,7 @@ pip install -e ".[dev,docs]"
    - .pth files (add source to path)
 4. pip installs wheel
 5. Result: import finds source code
-```
+</eg>
 
 ### Benefits of Editable Installs
 
@@ -163,11 +163,11 @@ packages = ["src/myproject"]
 
 Creates editable wheel with:
 
-```text
+<eg>
 - `.pth` file pointing to src/
 - Metadata from pyproject.toml
 - No build steps (unless configured)
-```
+</eg>
 
 ## Distribution Builds (Production)
 

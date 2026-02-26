@@ -130,7 +130,7 @@ Ray is an AI compute engine for scaling Python and AI applications from a laptop
 
 ### Architectural Layers
 
-```text
+<eg>
 Ray AI Libraries (Data, Train, Tune, Serve, RLlib)
            |
     Ray Core API (Tasks, Actors, Objects)
@@ -138,7 +138,7 @@ Ray AI Libraries (Data, Train, Tune, Serve, RLlib)
     Ray Runtime (GCS, Raylet, Object Store)
            |
     Infrastructure (K8s, Cloud, Local)
-```
+</eg>
 
 ### Key Abstractions
 
@@ -150,7 +150,7 @@ Ray AI Libraries (Data, Train, Tune, Serve, RLlib)
 
 ### MCP Server Architecture (Ray Serve)
 
-```text
+<eg>
 Client Request -> Ray Serve Ingress -> Deployment Replicas
                        |
               MCP Protocol Handler
@@ -158,7 +158,7 @@ Client Request -> Ray Serve Ingress -> Deployment Replicas
             Tool Execution (Actors)
                        |
               Response Streaming
-```
+</eg>
 
 ---
 

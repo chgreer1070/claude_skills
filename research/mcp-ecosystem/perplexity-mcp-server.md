@@ -130,7 +130,7 @@ The official MCP server implementation from Perplexity AI provides AI assistants
 
 ### Component Structure
 
-```text
+<eg>
 ┌─────────────────────────────────────┐
 │    MCP Client (Claude Code, etc)   │
 └──────────────┬──────────────────────┘
@@ -159,7 +159,7 @@ The official MCP server implementation from Perplexity AI provides AI assistants
 │   - sonar-deep-research             │
 │   - sonar-reasoning-pro             │
 └─────────────────────────────────────┘
-```
+</eg>
 
 ### Technology Stack
 
@@ -173,19 +173,19 @@ The official MCP server implementation from Perplexity AI provides AI assistants
 ### Deployment Architectures
 
 **Local Desktop (stdio)**:
-```text
+<eg>
 Claude Code → npx @perplexity-ai/mcp-server → Perplexity API
-```
+</eg>
 
 **HTTP Server (cloud)**:
-```text
+<eg>
 Browser/Client → HTTP :8080/mcp → Express Server → Perplexity API
-```
+</eg>
 
 **Docker Container**:
-```text
+<eg>
 Docker Host → Container :8080 → Express Server → Perplexity API
-```
+</eg>
 
 ---
 
@@ -294,41 +294,41 @@ export PERPLEXITY_LOG_LEVEL=DEBUG
 
 Use `perplexity_search` for current information lookup:
 
-```text
+<eg>
 User: "Latest TypeScript 5.7 features"
 Assistant: [calls perplexity_search]
 Result: Ranked search results with metadata
-```
+</eg>
 
 ### Conversational Query
 
 Use `perplexity_ask` for general questions:
 
-```text
+<eg>
 User: "What are the performance implications of async generators?"
 Assistant: [calls perplexity_ask with sonar-pro]
 Result: Conversational answer with web sources
-```
+</eg>
 
 ### Deep Research
 
 Use `perplexity_research` for comprehensive analysis:
 
-```text
+<eg>
 User: "Compare Rust async runtimes: tokio, async-std, smol"
 Assistant: [calls perplexity_research with sonar-deep-research]
 Result: Detailed comparative report with citations
-```
+</eg>
 
 ### Advanced Reasoning
 
 Use `perplexity_reason` for complex problems:
 
-```text
+<eg>
 User: "Design a distributed caching strategy for microservices"
 Assistant: [calls perplexity_reason with sonar-reasoning-pro]
 Result: Analytical solution with reasoning (optional strip_thinking=true)
-```
+</eg>
 
 ---
 

@@ -472,7 +472,7 @@ exec:
 
 Directory structure for `./my-step`:
 
-```text
+<eg>
 ./my-step/
 ├── step.yml
 ├── script.sh
@@ -480,6 +480,6 @@ Directory structure for `./my-step`:
 │   └── helper.sh
 └── data/
     └── config.json
-```
+</eg>
 
 All files in directory available to step during execution via `${{step_dir}}`.

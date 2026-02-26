@@ -24,20 +24,20 @@ Starting with version 1.4.0, Hatchling automatically detects single module layou
 
 **Root level single module:**
 
-```text
+<eg>
 myproject/
 ├── mymodule.py
 └── pyproject.toml
-```
+</eg>
 
 **Src-layout single module:**
 
-```text
+<eg>
 myproject/
 ├── src/
 │   └── mymodule.py
 └── pyproject.toml
-```
+</eg>
 
 ## Basic Configuration
 
@@ -152,7 +152,7 @@ import awesome  # Import uses module filename
 
 ### With Additional Resources
 
-```text
+<eg>
 project/
 ├── src/
 │   └── mytool.py
@@ -161,7 +161,7 @@ project/
 ├── templates/
 │   └── default.html
 └── pyproject.toml
-```
+</eg>
 
 ```toml
 [project]
@@ -183,13 +183,13 @@ artifacts = [
 
 ### With Type Stubs
 
-```text
+<eg>
 project/
 ├── mymodule.py
 ├── mymodule.pyi  # Type stub file
 ├── py.typed      # PEP 561 marker
 └── pyproject.toml
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -202,13 +202,13 @@ include = [
 
 ### Multiple Single Modules
 
-```text
+<eg>
 project/
 ├── module1.py
 ├── module2.py
 ├── helper.py
 └── pyproject.toml
-```
+</eg>
 
 ```toml
 [project]
@@ -321,14 +321,14 @@ variable = "TOOL_VERSION"
 
 ### Test Structure
 
-```text
+<eg>
 project/
 ├── src/
 │   └── calculator.py
 ├── tests/
 │   └── test_calculator.py
 └── pyproject.toml
-```
+</eg>
 
 ```python
 # tests/test_calculator.py
@@ -387,21 +387,21 @@ Note: While Python supports Unicode identifiers, it's better to use ASCII for mo
 
 ### Before (Package Structure)
 
-```text
+<eg>
 mypackage/
 ├── mypackage/
 │   ├── __init__.py
 │   └── core.py
 └── pyproject.toml
-```
+</eg>
 
 ### After (Single Module)
 
-```text
+<eg>
 mypackage/
 ├── mypackage.py  # Consolidated module
 └── pyproject.toml
-```
+</eg>
 
 Consolidate code:
 
@@ -426,32 +426,32 @@ class MainClass:
 
 For a single module project:
 
-```text
+<eg>
 mymodule.py
 pyproject.toml
-```
+</eg>
 
 The wheel contains:
 
-```text
+<eg>
 mymodule.py
 mymodule-1.0.0.dist-info/
 ├── METADATA
 ├── WHEEL
 ├── top_level.txt
 └── RECORD
-```
+</eg>
 
 ### Installation Result
 
 After `pip install mymodule-1.0.0.whl`:
 
-```text
+<eg>
 site-packages/
 ├── mymodule.py
 └── mymodule-1.0.0.dist-info/
     └── ...
-```
+</eg>
 
 ## Best Practices
 
@@ -544,7 +544,7 @@ include = ["mymodule.py"]
 
 **Project structure:**
 
-```text
+<eg>
 math-tools/
 ├── src/
 │   └── mathtools.py
@@ -552,7 +552,7 @@ math-tools/
 │   └── test_mathtools.py
 ├── README.md
 └── pyproject.toml
-```
+</eg>
 
 **mathtools.py:**
 

@@ -116,9 +116,9 @@ LiteAgents is an npm-distributed AI development toolkit providing 11 specialized
 
 Lightweight session memory that learns from usage patterns, requiring no external dependencies:
 
-```text
+<eg>
 /stash → /friction → /remember
-```
+</eg>
 
 1. **`/stash`**: Snapshot session context to `.claude/stash/`. Captures decisions, findings, active work.
 2. **`/friction`**: Analyze session JSONL logs with 14 weighted signals. Classifies sessions as BAD/FRICTION/ROUGH/OK. Clusters failure patterns into antigen candidates. Bundled `friction.js` (2,168 lines) runs standalone or as CLI.
@@ -159,7 +159,7 @@ Interactive CLI installer supporting four AI coding tools with:
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌──────────────────────────────────────────────────────────────┐
 │                     liteagents (npm)                          │
 │                                                               │
@@ -198,7 +198,7 @@ Interactive CLI installer supporting four AI coding tools with:
 │  │                └── Lazy Discovery (frontmatter parsing)  │ │
 │  └─────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────┘
-```
+</eg>
 
 ### Tool-Specific Differences
 
@@ -212,7 +212,7 @@ Interactive CLI installer supporting four AI coding tools with:
 
 ### File Structure Per Tool (Claude)
 
-```text
+<eg>
 packages/claude/
 ├── agents/              # 11 agent markdown files
 │   ├── orchestrator.md
@@ -245,7 +245,7 @@ packages/claude/
 │   └── ... (12 total)
 ├── CLAUDE.md            # Reference document listing all resources
 └── variants.json        # Variant configuration
-```
+</eg>
 
 ---
 

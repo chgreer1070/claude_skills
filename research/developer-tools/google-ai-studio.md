@@ -105,7 +105,7 @@ Google AI Studio is a free, browser-based IDE and developer playground for build
 
 Google AI Studio is a single-page web application (Angular-based) backed by the `alkalimakersuite-pa.clients6.google.com` API. Under the hood it wraps the **Gemini API** (`generativelanguage.googleapis.com/v1beta/`), which is the same API developers use directly.
 
-```text
+<eg>
 Browser (AI Studio UI)
     │
     ▼
@@ -117,7 +117,7 @@ Gemini API (generativelanguage.googleapis.com/v1beta/)
     ├── /cachedContents                        (context caching CRUD)
     ├── /files                                 (file upload for multimodal)
     └── /v1beta/openai/                        (OpenAI-compatible endpoint)
-```
+</eg>
 
 Authentication uses API keys passed in the `x-goog-api-key` header (or `Authorization: Bearer` for OAuth). The free tier routes through Google's shared quota pool; the paid tier bills per token via Google Cloud billing accounts.
 

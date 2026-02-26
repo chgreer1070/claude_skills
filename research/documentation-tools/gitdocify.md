@@ -96,11 +96,11 @@ Note: GitDocify is a closed-source commercial product. No public GitHub reposito
 
 ### API Endpoints (observed)
 
-```text
+<eg>
 /api/github/install-url    # GitHub App installation
 /api/github/repositories   # List connected repos
 /api/github/link           # Link repo for generation
-```
+</eg>
 
 ### Workflow
 

@@ -16,10 +16,10 @@ When helping users configure licenses in Hatchling projects, reference this guid
 
 **Error Message:**
 
-```text
+<eg>
 ValueError: Error parsing field `project.license` - unknown license: [license-id]
 ValueError: Error parsing field `project.license` - invalid license expression: [expression]
-```
+</eg>
 
 ### Valid SPDX Expressions
 
@@ -41,13 +41,13 @@ license = "GPL-3.0-only WITH Classpath-Exception-2.0"
 
 ### Invalid Expressions
 
-```text
+<eg>
 # INVALID - will cause errors
 license = "Use-it-after-midnight"           # Not SPDX
 license = "Apache-2.0 OR 2-BSD-Clause"      # Typo in BSD
 license = "LicenseRef-License with spaces"  # Spaces in custom ID
 license = "LicenseRef-License_with_underscores"  # Underscores not allowed
-```
+</eg>
 
 ## Custom License Identifiers (PEP 639)
 
@@ -127,10 +127,10 @@ license-files = ["LICENSE*"]
 
 **Generated Metadata:**
 
-```text
+<eg>
 License-Expression: MIT OR Apache-2.0
 License-File: LICENSE
-```
+</eg>
 
 ### Version 2.3 and Earlier
 
@@ -141,10 +141,10 @@ license = "MIT"
 
 **Generated Metadata (back-populated):**
 
-```text
+<eg>
 License: MIT
 License-Expression: MIT  # Added for compatibility
-```
+</eg>
 
 ### Version 2.1-2.2
 

@@ -78,7 +78,7 @@ Jina Reader is an open-source API service that converts any URL or web search qu
 
 ## Technical Architecture
 
-```text
+<eg>
 User Request
     |
     +-- r.jina.ai/<url>
@@ -99,16 +99,16 @@ User Request
             +-- r.jina.ai applied to each URL in parallel
             |
             +-- Output: 5× {title, content, url}  (Markdown or JSON)
-```
+</eg>
 
 ### Streaming Chunk Model
 
-```text
+<eg>
 Reader:    chunk1 ──────> chunk2 ──────> chunk3 (most complete)
                  |               |              |
                  v               v              v
 LLM:       process(chunk1)  process(chunk2)  process(chunk3)
-```
+</eg>
 
 Each subsequent streaming chunk contains more complete content than the previous one; the final chunk is authoritative.
 

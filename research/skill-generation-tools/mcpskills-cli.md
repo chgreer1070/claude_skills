@@ -89,7 +89,7 @@ mcpskills-cli is a Python CLI tool that connects to MCP (Model Context Protocol)
 
 ### Project Structure
 
-```text
+<eg>
 mcpskills-cli/
 ├── src/mcpskills_cli/
 │   ├── cli.py            # CLI entry point (argparse)
@@ -106,11 +106,11 @@ mcpskills-cli/
 │       └── call_rust.rs.j2     # Rust call script
 └── docs/
     └── LOW_TOKEN_SKILLS.md     # Token optimization guidance
-```
+</eg>
 
 ### Generation Pipeline
 
-```text
+<eg>
 MCP Server (Streamable HTTP)
        │
        ├── fastmcp Client connects via StreamableHttpTransport
@@ -129,11 +129,11 @@ MCP Server (Streamable HTTP)
                ├── SKILL.md
                └── scripts/
                    └── call.<ext>
-```
+</eg>
 
 ### Generated Output Structure
 
-```text
+<eg>
 # Single skill mode (default)
 ~/.cursor/skills/<server-name>/
 ├── SKILL.md              # Documents all tools with parameters
@@ -149,7 +149,7 @@ MCP Server (Streamable HTTP)
 │   ├── SKILL.md
 │   └── scripts/call.<ext>
 └── ...
-```
+</eg>
 
 ### Key Dependencies
 

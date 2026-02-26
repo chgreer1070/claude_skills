@@ -14,10 +14,10 @@ When assisting users with wheel builds in Hatchling, reference this guide to hel
 
 ### Error Message (v1.19.0+)
 
-```text
+<eg>
 ValueError: At least one file selection option must be defined, see:
 https://hatch.pypa.io/latest/config/build/
-```
+</eg>
 
 ### Root Cause
 
@@ -38,7 +38,7 @@ packages = ["src/mypackage"]  # Explicit package directory
 
 **Directory Structures:**
 
-```text
+<eg>
 # Standard layout
 project/
 ├── pyproject.toml
@@ -53,7 +53,7 @@ project/
 ├── mypackage/
 │   ├── __init__.py
 │   └── module.py
-```
+</eg>
 
 ### 2. Include Option
 
@@ -92,42 +92,42 @@ Hatchling attempts to auto-detect in this order:
 
 1. **Single top-level package:**
 
-   ```text
+   <eg>
    project/
    ├── pyproject.toml
    ├── mypackage/
    │   └── __init__.py
-   ```
+</eg>
 
 2. **Src-layout:**
 
-   ```text
+   <eg>
    project/
    ├── pyproject.toml
    ├── src/
    │   └── mypackage/
    │       └── __init__.py
-   ```
+</eg>
 
 3. **Single module:**
-   ```text
+   <eg>
    project/
    ├── pyproject.toml
    ├── mymodule.py
-   ```
+</eg>
 
 ### When Heuristics Fail
 
 1. **Multiple packages without clear selection:**
 
-   ```text
+   <eg>
    project/
    ├── pyproject.toml
    ├── package1/
    │   └── __init__.py
    ├── package2/
    │   └── __init__.py
-   ```
+</eg>
 
    **Solution:**
 
@@ -138,12 +138,12 @@ Hatchling attempts to auto-detect in this order:
 
 2. **Non-standard directory names:**
 
-   ```text
+   <eg>
    project/
    ├── pyproject.toml
    ├── core_lib/  # Not matching project name
    │   └── __init__.py
-   ```
+</eg>
 
    **Solution:**
 
@@ -154,13 +154,13 @@ Hatchling attempts to auto-detect in this order:
 
 3. **Mixed content types:**
 
-   ```text
+   <eg>
    project/
    ├── pyproject.toml
    ├── lib.py
    ├── scripts/
    ├── data/
-   ```
+</eg>
 
    **Solution:**
 
@@ -391,7 +391,7 @@ force-include = {
 
 ## Error Resolution Flowchart
 
-```text
+<eg>
 Error: "At least one file selection option must be defined"
 │
 ├─> Do you have a standard layout?
@@ -412,7 +412,7 @@ Error: "At least one file selection option must be defined"
 │
 └─> Metadata-only package?
     └─> Yes: Set bypass-selection = true
-```
+</eg>
 
 ## Best Practices
 

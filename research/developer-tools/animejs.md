@@ -129,7 +129,7 @@ tl.add('.el1', { translateX: 250 })
 
 ## Technical Architecture
 
-```text
+<eg>
 Application Code
       |
       v
@@ -172,7 +172,7 @@ Application Code
       |
       v
 Animated DOM / Objects
-```
+</eg>
 
 ---
 

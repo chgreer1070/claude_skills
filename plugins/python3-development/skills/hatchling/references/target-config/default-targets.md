@@ -111,11 +111,11 @@ directory = "build-output"
 
 Default build creates these files:
 
-```text
+<eg>
 dist/
 ├── mypackage-1.0.0-py3-none-any.whl      # Wheel (always built by default)
 └── mypackage-1.0.0.tar.gz                # Source distribution (always built by default)
-```
+</eg>
 
 ## Controlling Default Behavior
 

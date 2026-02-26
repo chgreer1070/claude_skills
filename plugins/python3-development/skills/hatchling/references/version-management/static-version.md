@@ -113,21 +113,21 @@ Even with static versioning, the version is automatically included in built pack
 
 The version appears in the `METADATA` file:
 
-```text
+<eg>
 Metadata-Version: 2.3
 Name: my-package
 Version: 1.2.3
-```
+</eg>
 
 ### In Source Distributions
 
 The version is included in `PKG-INFO`:
 
-```text
+<eg>
 Metadata-Version: 2.3
 Name: my-package
 Version: 1.2.3
-```
+</eg>
 
 ## Combining with Version Build Hook
 

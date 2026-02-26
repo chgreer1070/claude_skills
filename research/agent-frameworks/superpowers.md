@@ -98,7 +98,7 @@ Superpowers is a complete software development workflow for AI coding agents, bu
 
 ## Core Workflow
 
-```text
+<eg>
 User Request
      |
      v
@@ -146,7 +146,7 @@ User Request
 |                     |      Options: merge/PR/keep/discard
 |                     |      Cleans up worktree
 +---------------------+
-```
+</eg>
 
 ---
 
@@ -154,7 +154,7 @@ User Request
 
 The flagship workflow dispatches fresh subagents per task with explicit context and two-stage review:
 
-```text
+<eg>
 Controller (Main Agent)
          |
          | Reads plan once, extracts all tasks, creates TodoWrite
@@ -191,7 +191,7 @@ Controller (Main Agent)
          | If pass: mark task complete, next task
          v
     [Next Task or Final Review]
-```
+</eg>
 
 **Key Design Decisions**:
 
@@ -221,15 +221,15 @@ Controller (Main Agent)
 
 ### Codex
 
-```text
+<eg>
 Fetch and follow instructions from https://raw.githubusercontent.com/obra/superpowers/refs/heads/main/.codex/INSTALL.md
-```
+</eg>
 
 ### OpenCode
 
-```text
+<eg>
 Fetch and follow instructions from https://raw.githubusercontent.com/obra/superpowers/refs/heads/main/.opencode/INSTALL.md
-```
+</eg>
 
 ---
 

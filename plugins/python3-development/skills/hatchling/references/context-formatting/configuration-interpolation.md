@@ -253,7 +253,7 @@ dependencies = [
 
 Project structure:
 
-```text
+<eg>
 monorepo/
 ├── shared/
 ├── services/
@@ -262,7 +262,7 @@ monorepo/
 │   └── service-b/
 │       └── pyproject.toml (this is {root})
 └── vendor/
-```
+</eg>
 
 ## Script and Command Interpolation
 

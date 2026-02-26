@@ -114,7 +114,7 @@ Tornado is a Python web framework and asynchronous networking library, originall
 
 ### Threading Model
 
-```text
+<eg>
 Main Thread (Event Loop)
       |
   IOLoop (asyncio-based)
@@ -127,11 +127,11 @@ Main Thread (Event Loop)
 Thread Pool Executor (for blocking operations)
       |
   └── run_in_executor() calls
-```
+</eg>
 
 ### Core Modules
 
-```text
+<eg>
 tornado
 ├── web.py          # RequestHandler, Application, routing
 ├── ioloop.py       # Event loop (wraps asyncio)
@@ -151,7 +151,7 @@ tornado
 ├── tcpserver.py    # Base TCP server
 ├── tcpclient.py    # Base TCP client
 └── wsgi.py         # Limited WSGI adapter
-```
+</eg>
 
 ### Platform Support
 

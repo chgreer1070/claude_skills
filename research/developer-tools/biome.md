@@ -105,7 +105,7 @@ Biome is built in Rust with an architecture inspired by `rust-analyzer`, providi
 
 ### v2 File Scanner
 
-```text
+<eg>
 biome check --write ./src
     ↓
 File Scanner (opt-in for project domain rules)
@@ -121,11 +121,11 @@ Type Inference Engine (project domain rules only)
 Type-aware lint rules → additional diagnostics
     ↓
 Write fixes + report summary
-```
+</eg>
 
 ### Configuration Hierarchy
 
-```text
+<eg>
 biome.json (project root)
     ↓ overridden by
 packages/pkg-a/biome.json (nested config, v2+)
@@ -133,7 +133,7 @@ packages/pkg-a/biome.json (nested config, v2+)
 CLI flags
     ↓ overridden by
 BIOME_* environment variables
-```
+</eg>
 
 ---
 

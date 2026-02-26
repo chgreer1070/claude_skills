@@ -76,7 +76,7 @@ Hatchling uses Git's glob pattern syntax (documented in `git help gitignore`). E
 
 ### Basic Patterns
 
-```text
+<eg>
 # Exact filename match
 LICENSE
 README.md
@@ -102,11 +102,11 @@ test_[0-9].py
 
 # Question mark (single character)
 file?.txt
-```
+</eg>
 
 ### Advanced Patterns
 
-```text
+<eg>
 # Match at start of path
 /root_file.txt
 
@@ -120,7 +120,7 @@ docs/*.md
 # Bracket expressions
 test_[abc].py
 test_[^abc].py
-```
+</eg>
 
 ### Pattern Precedence
 
@@ -143,7 +143,7 @@ Files matching exclude are removed even if they match include.
 
 ### Example 1: Standard Project Layout
 
-```text
+<eg>
 myproject/
 ├── pyproject.toml
 ├── README.md
@@ -157,7 +157,7 @@ myproject/
 │   └── test_module.py
 ├── .gitignore
 └── .git/
-```
+</eg>
 
 Configuration needed: **None**
 
@@ -321,12 +321,12 @@ Git pattern documentation is comprehensive and widely available.
 
 ### 4. Powerful Yet Readable
 
-```text
+<eg>
 # Complex: exclude tests except fixtures
 **/*.tmp          # All temp files
 tests/            # Entire tests directory
 !tests/fixtures/  # Except this subdirectory
-```
+</eg>
 
 Much more readable than alternatives.
 
@@ -352,7 +352,7 @@ With VCS awareness:
 
 ### Example: Build Artifact Leak
 
-```text
+<eg>
 myproject/
 ├── src/myproject/
 │   └── __init__.py
@@ -361,7 +361,7 @@ myproject/
 ├── dist/               # Distribution artifact (in .gitignore)
 │   └── myproject-0.1.0-py3-none-any.whl
 └── .gitignore
-```
+</eg>
 
 Without VCS awareness: accidentally includes build/dist in distributions. With VCS awareness: automatically excluded because .gitignore lists them.
 
@@ -441,10 +441,10 @@ local_config.ini
 
 Standard layouts work with VCS awareness out-of-box:
 
-```text
+<eg>
 src/package/              # Recommended
 package/                  # Acceptable
-```
+</eg>
 
 ### 3. Explicit When Non-Standard
 

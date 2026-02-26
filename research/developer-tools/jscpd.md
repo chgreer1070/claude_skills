@@ -123,7 +123,7 @@ jscpd is a copy/paste detector for programming source code supporting 150+ progr
 
 ## Technical Architecture
 
-```text
+<eg>
 Source Files
       |
       v
@@ -170,7 +170,7 @@ Source Files
       |
       v
 Reports + Exit Code (threshold-based)
-```
+</eg>
 
 ---
 

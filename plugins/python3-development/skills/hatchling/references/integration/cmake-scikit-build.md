@@ -27,7 +27,7 @@ Hatchling alone handles pure Python packages. For projects with compiled compone
 
 ### How It Works
 
-```text
+<eg>
 1. User runs: pip install -e .
    ↓
 2. pip calls hatchling's build_editable()
@@ -41,7 +41,7 @@ Hatchling alone handles pure Python packages. For projects with compiled compone
 6. Hatchling packages compiled .so/.pyd files into wheel
    ↓
 7. pip installs wheel (now with compiled binaries)
-```
+</eg>
 
 ### Why This Design
 
@@ -92,7 +92,7 @@ install(TARGETS myext DESTINATION myextension)
 
 ### Project Structure
 
-```text
+<eg>
 myextension/
 ├── CMakeLists.txt          # Build configuration
 ├── pyproject.toml          # Package metadata
@@ -102,7 +102,7 @@ myextension/
 └── myextension/
     ├── __init__.py         # Python package
     └── _ext.pyi            # Type hints (optional)
-```
+</eg>
 
 ---
 
@@ -349,9 +349,9 @@ pip install -e .
 
 ### Problem: CMake Not Found
 
-```text
+<terminal_output>
 ERROR: Could not find CMake
-```
+</terminal_output>
 
 **Solution**:
 
@@ -367,9 +367,9 @@ pip install cmake
 
 ### Problem: Python Development Headers Not Found
 
-```text
+<terminal_output>
 ERROR: Could not find Python development headers
-```
+</terminal_output>
 
 **Solution**:
 
@@ -386,9 +386,9 @@ python -m sysconfig
 
 ### Problem: ABI/Binary Incompatibility
 
-```text
+<eg>
 ImportError: cannot import name 'myext'
-```
+</eg>
 
 **Causes**:
 
@@ -407,9 +407,9 @@ pip install -e . --force-reinstall
 
 ### Problem: Module Not Found After Install
 
-```text
+<eg>
 ModuleNotFoundError: No module named 'myextension'
-```
+</eg>
 
 **Solution**: Verify installation worked:
 
@@ -423,7 +423,7 @@ python -c "import myextension; print(myextension.__file__)"
 
 ### Project Structure
 
-```text
+<eg>
 numerics/
 ├── CMakeLists.txt
 ├── pyproject.toml
@@ -432,7 +432,7 @@ numerics/
 └── numerics/
     ├── __init__.py
     └── _numerics.pyi
-```
+</eg>
 
 ### pyproject.toml
 

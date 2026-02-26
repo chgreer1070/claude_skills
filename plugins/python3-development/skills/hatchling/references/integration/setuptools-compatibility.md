@@ -69,7 +69,7 @@ Wheel format defined by [PEP 427](https://peps.python.org/pep-0427/) - format ag
 
 Hatchling sdists follow the standard format:
 
-```text
+<eg>
 mypackage-1.0.0.tar.gz
 └── mypackage-1.0.0/
     ├── pyproject.toml
@@ -79,7 +79,7 @@ mypackage-1.0.0.tar.gz
     └── src/mypackage/
         ├── __init__.py
         └── module.py
-```
+</eg>
 
 **Critical**: Each sdist contains `pyproject.toml` with build instructions. Frontends (pip) use this to build wheels.
 
@@ -122,14 +122,14 @@ pip install mypackage[dev,docs]
 
 Both builders generate standardized [Core Metadata](https://packaging.python.org/specifications/core-metadata/) in wheels:
 
-```text
+<eg>
 mypackage-1.0.0.dist-info/
 ├── WHEEL           # Wheel format metadata
 ├── METADATA        # Distribution metadata
 ├── RECORD          # File hashes
 ├── entry_points.txt
 └── top_level.txt
-```
+</eg>
 
 This metadata is **identical in format** regardless of builder choice.
 

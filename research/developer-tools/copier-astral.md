@@ -124,7 +124,7 @@ copier-astral is an opinionated Copier template for bootstrapping Python project
 
 ## Technical Architecture
 
-```text
+<eg>
 copier copy --trust gh:ritwiktiwari/copier-astral my-project
                     │
                     ▼
@@ -164,7 +164,7 @@ copier copy --trust gh:ritwiktiwari/copier-astral my-project
 │  ├── Makefile                                           │
 │  └── .pre-commit-config.yaml (if include_precommit)     │
 └─────────────────────────────────────────────────────────┘
-```
+</eg>
 
 ---
 
@@ -245,7 +245,7 @@ copier update --trust
 
 ## Generated Project Structure
 
-```text
+<eg>
 my-project/
 ├── src/
 │   └── my_project/
@@ -270,7 +270,7 @@ my-project/
 ├── Makefile                     # Dev commands
 ├── LICENSE
 └── README.md
-```
+</eg>
 
 ---
 

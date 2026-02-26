@@ -86,20 +86,20 @@ The platform abstracts technical complexity behind a user-friendly interface, ha
 
 ## Installation & Usage
 
-```text
+<eg>
 No installation required - web-based platform
-```
+</eg>
 
 Access via browser:
 
-```text
+<eg>
 1. Visit https://www.hedra.com
 2. Create account or sign in
 3. Select creation type (video, image, audio)
 4. Upload source materials or provide text prompts
 5. Configure parameters (character, voice, style)
 6. Generate and download output
-```
+</eg>
 
 ---
 

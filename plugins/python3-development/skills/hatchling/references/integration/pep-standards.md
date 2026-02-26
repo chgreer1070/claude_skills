@@ -194,13 +194,13 @@ Hatchling automatically includes license files:
 
 Standard SPDX identifiers are preferred:
 
-```text
+<eg>
 MIT
 Apache-2.0
 GPL-3.0-or-later
 (MIT OR Apache-2.0)
 MIT AND (Apache-2.0 OR GPL-2.0-only)
-```
+</eg>
 
 **Note**: Full SPDX expression support in metadata is still evolving.
 

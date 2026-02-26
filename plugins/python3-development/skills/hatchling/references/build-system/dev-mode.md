@@ -97,14 +97,14 @@ uv sync
 
 ### Flat Layout
 
-```text
+<eg>
 project/
 ├── pyproject.toml
 ├── mypackage/
 │   ├── __init__.py
 │   └── module.py
 └── tests/
-```
+</eg>
 
 Configuration:
 
@@ -115,7 +115,7 @@ dev-mode-dirs = ["."]
 
 ### Src Layout
 
-```text
+<eg>
 project/
 ├── pyproject.toml
 ├── src/
@@ -123,7 +123,7 @@ project/
 │       ├── __init__.py
 │       └── module.py
 └── tests/
-```
+</eg>
 
 Configuration:
 
@@ -138,7 +138,7 @@ dev-mode-dirs = ["src"]
 
 ### Monorepo Layout
 
-```text
+<eg>
 monorepo/
 ├── packages/
 │   ├── lib-a/
@@ -148,7 +148,7 @@ monorepo/
 │       ├── pyproject.toml
 │       └── src/
 └── apps/
-```
+</eg>
 
 In lib-b's pyproject.toml:
 
@@ -172,9 +172,9 @@ Default method - creates `.pth` file:
 
 Example `.pth` file in site-packages:
 
-```text
+<eg>
 /absolute/path/to/project/src
-```
+</eg>
 
 ### Import Hook Method
 

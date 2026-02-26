@@ -67,7 +67,7 @@ shiv solves the challenge of distributing Python applications with all their dep
 
 ## Decision Matrix
 
-```text
+<eg>
 ┌─────────────────────────┬──────────┬─────────────┬───────────┐
 │ Requirement             │ shiv     │ PyInstaller │ wheel     │
 ├─────────────────────────┼──────────┼─────────────┼───────────┤
@@ -80,8 +80,8 @@ shiv solves the challenge of distributing Python applications with all their dep
 │ C extension support     │ Limited* │ Full        │ Full      │
 └─────────────────────────┴──────────┴─────────────┴───────────┘
 
-* C extensions work but are platform-specific (not cross-compatible)
-```
+- C extensions work but are platform-specific (not cross-compatible)
+</eg>
 
 ## Python Version Compatibility
 

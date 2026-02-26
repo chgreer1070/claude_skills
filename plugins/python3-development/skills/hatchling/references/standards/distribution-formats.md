@@ -25,9 +25,9 @@ Wheels are ZIP archive files containing a pre-built package ready for installati
 
 ### Filename Convention
 
-```text
+<eg>
 {distribution}-{version}(-{build tag})?-{python}-{abi}-{platform}.whl
-```
+</eg>
 
 **Components:**
 
@@ -40,15 +40,15 @@ Wheels are ZIP archive files containing a pre-built package ready for installati
 
 ### Examples
 
-```text
+<eg>
 requests-2.28.1-py3-none-any.whl          # Pure Python, any platform
 numpy-1.24.0-cp311-cp311-win_amd64.whl    # CPython 3.11, Windows 64-bit
 cryptography-40.0.0-cp37-abi3-manylinux2014_x86_64.whl
-```
+</eg>
 
 ### Wheel Archive Structure
 
-```text
+<eg>
 example_package-1.0.0-py3-none-any.whl (ZIP archive)
 ├── example_package/
 │   ├── __init__.py
@@ -67,7 +67,7 @@ example_package-1.0.0-py3-none-any.whl (ZIP archive)
     ├── scripts/
     ├── data/
     └── headers/
-```
+</eg>
 
 ### Required Wheel Files
 
@@ -84,12 +84,12 @@ example_package-1.0.0-py3-none-any.whl (ZIP archive)
 - Wheel-specific metadata
 - Declares wheel version and compatibility information
 - Example:
-  ```text
+  <eg>
   Wheel-Version: 1.0
   Generator: hatchling
   Root-Is-Purelib: true
   Tag: py3-none-any
-  ```
+</eg>
 
 **RECORD**
 
@@ -97,12 +97,12 @@ example_package-1.0.0-py3-none-any.whl (ZIP archive)
 - Format: CSV with columns: path, hash algorithm, hash value
 - RECORD file itself has empty hash
 - Example:
-  ```text
+  <eg>
   example_package/__init__.py,sha256=xxx,150
   example_package-1.0.0.dist-info/METADATA,sha256=yyy,3000
   example_package-1.0.0.dist-info/WHEEL,sha256=zzz,100
   example_package-1.0.0.dist-info/RECORD,,
-  ```
+</eg>
 
 #### Optional Wheel Files
 
@@ -125,22 +125,22 @@ example_package-1.0.0-py3-none-any.whl (ZIP archive)
 - One line per top-level module/package provided by the wheel
 - Used for uninstall discovery
 - Example:
-  ```text
+  <eg>
   example_package
-  ```
+</eg>
 
 ### .data Directory
 
 The `.data` directory contains files that don't belong in `site-packages`:
 
-```text
+<eg>
 example_package-1.0.0.data/
 ├── purelib/              # Pure Python libraries (sitelib)
 ├── platlib/              # Platform-specific libraries
 ├── scripts/              # Executable scripts
 ├── data/                 # Arbitrary data files
 └── headers/              # C header files
-```
+</eg>
 
 ### Installation Process
 
@@ -160,9 +160,9 @@ Source distributions contain the source code and build information needed to bui
 
 ### Filename Convention
 
-```text
+<eg>
 {name}-{version}.tar.gz
-```
+</eg>
 
 **Components:**
 
@@ -172,15 +172,15 @@ Source distributions contain the source code and build information needed to bui
 
 ### Examples
 
-```text
+<eg>
 requests-2.28.1.tar.gz
 numpy-1.24.0.tar.gz
 cryptography-40.0.0.tar.gz
-```
+</eg>
 
 ### Sdist Archive Structure
 
-```text
+<eg>
 example_package-1.0.0.tar.gz (TAR archive, gzip compressed)
 └── example_package-1.0.0/
     ├── pyproject.toml
@@ -197,7 +197,7 @@ example_package-1.0.0.tar.gz (TAR archive, gzip compressed)
     │   └── index.rst
     └── build_scripts/ (optional)
         └── custom_builder.py
-```
+</eg>
 
 ### Required Sdist Files
 

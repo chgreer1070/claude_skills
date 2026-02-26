@@ -133,13 +133,13 @@ echo -e "sdist\nwheel" | xargs -I {} -P 2 hatch build -t {}
 
 ### Default Output Structure
 
-```text
+<eg>
 project/
 ├── dist/
 │   ├── my_package-1.0.0.tar.gz      # sdist
 │   ├── my_package-1.0.0-py3-none-any.whl  # wheel
 │   └── my_package                    # binary (if configured)
-```
+</eg>
 
 ### Custom Output Directories
 

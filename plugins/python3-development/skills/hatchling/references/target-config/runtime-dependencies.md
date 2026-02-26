@@ -315,9 +315,9 @@ hatch build -c
 
 ### Feature Not Found
 
-```text
+<terminal_output>
 ERROR: Feature 'nonexistent' not found in [project.optional-dependencies]
-```
+</terminal_output>
 
 Ensure the feature name exactly matches a key in `[project.optional-dependencies]`.
 

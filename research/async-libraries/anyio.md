@@ -120,7 +120,7 @@ AnyIO is a high-level asynchronous networking and concurrency library that provi
 
 ### Backend Abstraction
 
-```text
+<eg>
 Application Code
        |
        v
@@ -130,7 +130,7 @@ Application Code
    |       |
    v       v
 asyncio   Trio
-```
+</eg>
 
 ### Structured Concurrency Model
 
@@ -143,7 +143,7 @@ async with create_task_group() as tg:
 
 ### Cancel Scope Nesting
 
-```text
+<eg>
 CancelScope (outer, timeout=10s)
     |
     +-- CancelScope (inner, shielded=True)
@@ -151,11 +151,11 @@ CancelScope (outer, timeout=10s)
     |       +-- await critical_operation()  # Protected from outer timeout
     |
     +-- await normal_operation()  # Subject to 10s timeout
-```
+</eg>
 
 ### Memory Object Streams
 
-```text
+<eg>
 create_memory_object_stream(max_buffer_size=0)
          |
     +----+----+
@@ -164,7 +164,7 @@ create_memory_object_stream(max_buffer_size=0)
 SendStream  ReceiveStream
     |         |
     +-- clone() for multiple producers/consumers
-```
+</eg>
 
 ---
 

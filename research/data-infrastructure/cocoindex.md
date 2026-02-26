@@ -81,7 +81,7 @@ CocoIndex is an ultra-performant real-time data transformation framework for AI,
 
 ## Technical Architecture
 
-```text
+<eg>
 Data Sources          CocoIndex Dataflow Engine              Targets
 ────────────────────────────────────────────────────────────────────
 
@@ -102,7 +102,7 @@ Data Sources          CocoIndex Dataflow Engine              Targets
                                      │   (high performance)    │───▶│  Neo4j /    │
                                      └─────────────────────────┘    │ Graph DBs   │
                                                                      └─────────────┘
-```
+</eg>
 
 **Flow definition pattern**:
 

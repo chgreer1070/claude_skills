@@ -126,7 +126,7 @@ FastAPI is a modern, high-performance web framework for building APIs with Pytho
 
 ### Request Flow
 
-```text
+<eg>
 Client Request
       |
   Uvicorn (ASGI Server)
@@ -146,21 +146,21 @@ Client Request
   JSON Serialization
       |
 Client Response
-```
+</eg>
 
 ### Core Dependencies
 
-```text
+<eg>
 fastapi
 ├── starlette>=0.40.0    # ASGI framework (routing, middleware, WebSocket)
 ├── pydantic>=2.7.0      # Data validation and settings
 ├── typing-extensions    # Backported typing features
 └── annotated-doc        # Documentation extraction from Annotated types
-```
+</eg>
 
 ### Optional Dependencies (standard extra)
 
-```text
+<eg>
 fastapi[standard]
 ├── uvicorn[standard]    # ASGI server with uvloop
 ├── httpx                # Test client
@@ -169,7 +169,7 @@ fastapi[standard]
 ├── email-validator      # Email field validation
 ├── pydantic-settings    # Environment-based settings
 └── fastapi-cli          # Dev/prod server commands
-```
+</eg>
 
 ---
 

@@ -69,14 +69,14 @@ sources = ["src", "lib"]  # Removes these prefixes
 
 Standard Python project layout:
 
-```text
+<eg>
 project/
 ├── src/
 │   └── mypackage/
 │       ├── __init__.py
 │       └── module.py
 └── pyproject.toml
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -87,7 +87,7 @@ sources = ["src"]
 
 ### 2. Multiple Source Roots
 
-```text
+<eg>
 project/
 ├── src/
 │   └── core/
@@ -95,7 +95,7 @@ project/
 │   └── utils/
 └── vendor/
     └── third_party/
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel.sources]

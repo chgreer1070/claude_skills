@@ -55,9 +55,9 @@ When relaying quantitative information, the model MUST preserve exact numbers, c
 
 **Required behavior**: Preserve the original numbers. If compression is needed, state the numbers then add interpretation:
 
-```text
+<eg>
 7 of 10 items found (3 sources were inaccessible). The accessible sources cover the core API documentation.
-```
+</eg>
 
 ## Rule 4: Distinguish Absence from Nonexistence
 
@@ -81,22 +81,22 @@ When an orchestrator receives a summary from a sub-agent, it MUST NOT re-summari
 
 **Prohibited pattern** (the lossy chain):
 
-```text
+<eg>
 Agent researches 10 items → finds 7, can't access 3
 Agent reports: "7 items found with details, 3 items inaccessible"
 Orchestrator tells user: "Research complete, 7 items found, the rest don't exist"
                                                               ^^^ INFORMATION CORRUPTED
-```
+</eg>
 
 **Required pattern** (the relay):
 
-```text
+<eg>
 Agent researches 10 items → finds 7, can't access 3
 Agent reports: "7 items found with details, 3 items inaccessible"
 Agent writes results to file: ./research-results.md
 Orchestrator tells user: "Research complete. 7 items found, 3 sources were inaccessible.
                           Full results: ./research-results.md"
-```
+</eg>
 
 **Rules for orchestrators**:
 

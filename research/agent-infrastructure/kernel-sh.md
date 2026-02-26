@@ -104,7 +104,7 @@ Kernel is a browsers-as-a-service (BaaS) API platform that provisions cloud-base
 
 ## Technical Architecture
 
-```text
+<eg>
 Agent / Claude Code
        |
        v
@@ -121,7 +121,7 @@ Browser Session (VM)                                           MCP Server (SSE)
        v
 Playwright / Puppeteer (agent-side)
   connectOverCDP(cdp_ws_url)
-```
+</eg>
 
 Key design decisions:
 - One VM per browser session: strong isolation, no cross-session interference

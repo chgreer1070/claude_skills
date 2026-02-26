@@ -426,7 +426,7 @@ python -c "from hatch_build import CustomBuildHook; print('Hook loads')"
 
 **Project structure:**
 
-```text
+<eg>
 fast-math/
 ├── src/
 │   └── fast_math/
@@ -436,7 +436,7 @@ fast-math/
 ├── hatch_build.py
 ├── setup.py  # For Cython compilation
 └── pyproject.toml
-```
+</eg>
 
 **pyproject.toml:**
 

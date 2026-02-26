@@ -4136,7 +4136,7 @@ Coverage thresholds configured in `pyproject.toml` (95%+ for critical code like 
 
 **Tool Selection Decision Tree**:
 
-```text
+<eg>
 Need to...
 ├─ Manage packages? → uv
 ├─ Lint code? → ruff
@@ -4154,7 +4154,7 @@ Need to...
 ├─ Template projects? → copier
 ├─ Explore data? → datasette
 └─ Handle dates? → arrow
-```
+</eg>
 
 ---
 
@@ -4212,7 +4212,7 @@ Each variable name indicates:
 
 **Project Name**:
 
-```text
+<eg>
 Variable: {{project_name_from_directory_or_git_remote}}
 Sources (in priority order):
 1. git config --get remote.origin.url | sed 's/.*\///' | sed 's/\.git$//'
@@ -4220,11 +4220,11 @@ Sources (in priority order):
 3. User input
 Validation: Must be valid Python package name (lowercase, underscores, no hyphens)
 Example: my_awesome_package
-```
+</eg>
 
 **Project Version**:
 
-```text
+<eg>
 Variable: {{version_from_git_tag_or_default_0_1_0}}
 Sources (in priority order):
 1. git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//'
@@ -4232,76 +4232,76 @@ Sources (in priority order):
 3. User input
 Validation: Must follow semantic versioning (X.Y.Z)
 Example: 1.2.3
-```
+</eg>
 
 **Project Description**:
 
-```text
+<eg>
 Variable: {{project_description_from_user_or_readme}}
 Sources (in priority order):
 1. First line of README.md after title
 2. User input (REQUIRED if README.md missing)
 Validation: Single-line string, <200 characters
 Example: A modern Python CLI tool for processing CSV files
-```
+</eg>
 
 ### 18.3 Author Variables
 
 **Author Name**:
 
-```text
+<eg>
 Variable: {{author_name_from_git_config_user_name}}
 Source: git config --get user.name
 Fallback: User input (REQUIRED if git config missing)
 Validation: Non-empty string
 Example: Jane Developer
-```
+</eg>
 
 **Author Email**:
 
-```text
+<eg>
 Variable: {{author_email_from_git_config_user_email}}
 Source: git config --get user.email
 Fallback: User input (REQUIRED if git config missing)
 Validation: Valid email format
 Example: jane@example.com
-```
+</eg>
 
 ### 18.4 Repository Variables
 
 **Repository Namespace** (DEPRECATED):
 
-```text
+<eg>
 Variable: {{repository_namespace_from_git_remote}}
 Status: DEPRECATED - Use {{repository_homepage_url_from_git_remote}} instead
 Source: git config --get remote.origin.url | sed 's/.*[:/]\([^/]*\)\/[^/]*$/\1/'
 Example: myusername or myorg
 Legacy Use: Was used for GitHub-specific URL construction
 Reason: Hardcoded GitHub domain assumptions. New variables derive complete URLs from git remote.
-```
+</eg>
 
 **Project Name from Git Remote**:
 
-```text
+<eg>
 Variable: {{project_name_from_git_remote}}
 Source: git config --get remote.origin.url | sed 's/.*\///' | sed 's/\.git$//'
 Example: my-awesome-project
 Used in: URLs (preserves hyphens, unlike package name)
 Note: Still valid for project naming. For URL construction, use {{repository_homepage_url_from_git_remote}}.
-```
+</eg>
 
 **Repository URL**:
 
-```text
+<eg>
 Variable: {{repository_url_from_git_remote_get_url}}
 Source: git config --get remote.origin.url
 Validation: Must be valid git URL
 Example: https://github.com/myusername/my-project.git
-```
+</eg>
 
 **Repository Homepage URL**:
 
-```text
+<eg>
 Variable: {{repository_homepage_url_from_git_remote}}
 Source: Git remote URL converted to web/HTTPS format
 Bash Command:
@@ -4316,11 +4316,11 @@ Example:
   - Git remote: https://github.com/user/repo.git → https://github.com/user/repo
 Used In: [project.urls] Homepage = "{{repository_homepage_url_from_git_remote}}"
 Priority: Optional - only if project has a git remote configured
-```
+</eg>
 
 **Repository Issues URL**:
 
-```text
+<eg>
 Variable: {{repository_issues_url_from_git_remote}}
 Source: Repository homepage URL + platform-specific issues path
 Bash Command:
@@ -4338,23 +4338,23 @@ Example:
   - GitHub: https://github.com/user/repo → https://github.com/user/repo/issues
 Used In: [project.urls] Issues = "{{repository_issues_url_from_git_remote}}"
 Priority: Optional - only if project tracks issues in the repository
-```
+</eg>
 
 ### 18.5 CLI and Package Variables
 
 **CLI Command Name**:
 
-```text
+<eg>
 Variable: {{cli_command_name_from_user}}
 Source: User input (REQUIRED for CLI projects)
 Validation: Valid shell command name (lowercase, hyphens ok)
 Example: my-cli or myapp
 Used in: [project.scripts] entry point
-```
+</eg>
 
 **Package Name from Project Name**:
 
-```text
+<eg>
 Variable: {{package_name_from_project_name}}
 Source: Derived from project_name (replace hyphens with underscores)
 Bash Command:
@@ -4369,13 +4369,13 @@ Used in:
   - [project.scripts] command = "{{package_name_from_project_name}}.cli:main"
   - Import paths in code
 Priority: Mandatory - required for correct package structure
-```
+</eg>
 
 ### 18.6 Optional Metadata Variables
 
 **License Type**:
 
-```text
+<eg>
 Variable: {{license_type_from_user_or_default_MIT}}
 Sources (in priority order):
 1. Detected from LICENSE file
@@ -4383,20 +4383,20 @@ Sources (in priority order):
 3. User input
 Common values: MIT, Apache-2.0, GPL-3.0, BSD-3-Clause
 Example: MIT
-```
+</eg>
 
 **Project Keywords**:
 
-```text
+<eg>
 Variable: {{project_keywords_from_user}}
 Source: User input (optional)
 Format: Comma-separated quoted strings
 Example: "cli", "csv", "data-processing", "automation"
-```
+</eg>
 
 **Development Status**:
 
-```text
+<eg>
 Variable: {{dev_status_from_user}}
 Source: User input with default suggestions
 Common values:
@@ -4404,26 +4404,26 @@ Common values:
 - 4 - Beta
 - 5 - Production/Stable
 Example: 4 - Beta
-```
+</eg>
 
 **Intended Audience**:
 
-```text
+<eg>
 Variable: {{audience_from_user}}
 Source: User input with default suggestions
 Common values: Developers, System Administrators, End Users/Desktop
 Example: Developers
-```
+</eg>
 
 **Documentation URL**:
 
-```text
+<eg>
 Variable: {{documentation_url_from_user_or_readme}}
 Sources (in priority order):
 1. User input (if custom docs site)
 2. Derive from repository homepage + #readme: {{repository_homepage_url_from_git_remote}}#readme
 Example: https://my-project.readthedocs.io/ or https://gitlab.com/myorg/myproject#readme
-```
+</eg>
 
 ### 18.7 Variable Gathering Procedure
 
@@ -4561,14 +4561,14 @@ REQUIRED_PROMPTS when source unavailable:
 
 PROMPT_FORMAT:
 
-```text
+<eg>
 I need the following information to complete pyproject.toml:
 
 1. Project description (brief one-line summary): ___
 2. CLI command name (what users type to run it): ___
 3. Author name: ___ [detected: $NAME, press Enter to use]
 4. Author email: ___ [detected: $EMAIL, press Enter to use]
-```
+</eg>
 
 ### 19.6 Final Verification Rule
 
@@ -4600,16 +4600,16 @@ IF validation fails THEN:
 
 EXAMPLE_ERROR_REPORT:
 
-```text
+<eg>
 ❌ Validation failed: author_email
 
-Current value: "author@example.com"
+Current value: "<author@example.com>"
 Problem: Placeholder value detected
 Expected: Valid email address from git config or user input
 
 To fix, run: git config --get user.email
 Or provide your email address: ___
-```
+</eg>
 
 ---
 

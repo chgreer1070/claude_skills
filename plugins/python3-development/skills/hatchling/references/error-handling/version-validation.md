@@ -16,9 +16,9 @@ When guiding users through version management in Hatchling projects, reference t
 
 **Error Message:**
 
-```text
+<eg>
 ValueError: Invalid version: 'x.y.z'
-```
+</eg>
 
 **Common Invalid Formats:**
 

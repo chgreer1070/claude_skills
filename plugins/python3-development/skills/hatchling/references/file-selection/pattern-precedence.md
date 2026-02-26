@@ -17,7 +17,7 @@ From highest to lowest precedence:
 4. **include** / **only-include** - Overrides VCS patterns
 5. **VCS ignore files** (.gitignore/.hgignore) - Base behavior
 
-```text
+<eg>
 ┌─────────────────┐
 │  force-include  │  ← Highest Priority
 ├─────────────────┤
@@ -29,7 +29,7 @@ From highest to lowest precedence:
 ├─────────────────┤
 │   VCS ignore    │  ← Lowest Priority
 └─────────────────┘
-```
+</eg>
 
 ## How Precedence Works
 

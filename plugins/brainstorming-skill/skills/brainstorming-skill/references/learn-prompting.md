@@ -162,7 +162,7 @@ CoT only yields performance improvements when applied to models of approximately
 
 The standard CoT pattern follows this template:
 
-```text
+<eg>
 [Context and examples with explicit reasoning]
 
 Example format:
@@ -171,7 +171,7 @@ A: [Step 1]. [Step 2]. [Step 3]. Therefore, [Answer].
 
 Q: [New question to answer]
 A:
-```
+</eg>
 
 Key implementation details:
 
@@ -222,23 +222,23 @@ The simplicity and directness of "Let's think step by step" appears to be key to
 
 ### 4.3 Implementation Pattern
 
-```text
+<eg>
 [Original question]
 
 Let's think step by step.
-```
+</eg>
 
 This single addition often produces step-by-step reasoning without modification of the base prompt.
 
 For answer extraction, use a secondary prompt:
 
-```text
+<eg>
 [Original question]
 
 [Previously generated reasoning]
 
 Based on this reasoning, what is the final answer?
-```
+</eg>
 
 ### 4.4 Effectiveness Profile
 
@@ -370,11 +370,11 @@ Most effective prompts combine multiple techniques layered into a cohesive struc
 
 When the output requires a specific perspective, voice, or expertise level:
 
-```text
+<eg>
 Act as a [role].
 [Directive about the task].
 [Additional requirements].
-```
+</eg>
 
 This combination works because the role establishes context and vocabulary expectations before the directive is executed.
 
@@ -382,13 +382,13 @@ This combination works because the role establishes context and vocabulary expec
 
 Most effective for complex generation tasks (writing, analysis, content creation):
 
-```text
+<eg>
 [Background context and domain information]
 
 [Examples demonstrating expected approach and style]
 
 [Specific instruction for this task]
-```
+</eg>
 
 This layering ensures the model has domain understanding (context), knows the expected pattern (examples), then executes the specific task (instruction).
 
@@ -396,13 +396,13 @@ This layering ensures the model has domain understanding (context), knows the ex
 
 For reasoning tasks requiring domain expertise:
 
-```text
+<eg>
 Act as a [domain expert].
 
 Question: [Problem]
 
 Let's think through this step by step:
-```
+</eg>
 
 The domain expertise frames the reasoning approach and vocabulary level.
 

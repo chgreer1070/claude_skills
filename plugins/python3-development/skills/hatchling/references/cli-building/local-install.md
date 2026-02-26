@@ -278,7 +278,7 @@ pre-commit install
 
 ### Project Structure
 
-```text
+<eg>
 my-package/
 ├── src/
 │   └── mypackage/
@@ -289,7 +289,7 @@ my-package/
 ├── pyproject.toml
 ├── README.md
 └── requirements-dev.txt
-```
+</eg>
 
 ### Install with Requirements Files
 

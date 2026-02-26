@@ -367,13 +367,13 @@ When you override `exclude` in a target, global `exclude` doesn't apply.
 
 ## Configuration Precedence Summary
 
-```text
+<eg>
 Global [tool.hatch.build]
     ↓ (inherited unless overridden)
 Target [tool.hatch.build.targets.<TARGET>]
     ↓ (can be modified by)
 Hook [tool.hatch.build.targets.<TARGET>.hooks.<HOOK>]
-```
+</eg>
 
 Hooks can modify build data, but can't override TOML settings.
 

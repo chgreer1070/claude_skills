@@ -16,9 +16,9 @@ When assisting users with Hatchling builds, reference this guide to help them un
 
 **Error Message:**
 
-```text
+<eg>
 An error will now be raised if a force-included path does not exist
-```
+</eg>
 
 **Trigger Conditions:**
 
@@ -77,18 +77,18 @@ force-include = [
 
 **Error Scenario:**
 
-```text
+<eg>
 Fix the wheel build target for case insensitive file systems when the
 project metadata name does not match the directory name on disk
-```
+</eg>
 
 **Example Problem:**
 
-```text
+<eg>
 Project name: my-package
 Directory:    My_Package/
 Filesystem:   macOS (case-insensitive)
-```
+</eg>
 
 **Resolution:**
 
@@ -132,10 +132,10 @@ sources = {"" = "prefix/"}  # Add prefix to all paths
 
 **Fixed in v1.17.1:**
 
-```text
+<eg>
 Fix dev mode when the project has symlinks and file inclusion is
 defined with the packages or only-include options
-```
+</eg>
 
 **Best Practices:**
 
@@ -153,9 +153,9 @@ defined with the packages or only-include options
 
 **Fixed in v1.19.0:**
 
-```text
+<eg>
 Properly escape spaces for URI context formatting
-```
+</eg>
 
 **Problem Example:**
 

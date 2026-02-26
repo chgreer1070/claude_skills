@@ -18,44 +18,44 @@ Hatchling attempts to detect project structure in this order:
 
 1. **Single Package Directory**
 
-   ```text
+   <eg>
    project/
    ├── mypackage/
    │   └── __init__.py
    └── pyproject.toml
-   ```
+</eg>
 
 2. **Src-Layout**
 
-   ```text
+   <eg>
    project/
    ├── src/
    │   └── mypackage/
    │       └── __init__.py
    └── pyproject.toml
-   ```
+</eg>
 
 3. **Single Module**
-   ```text
+   <eg>
    project/
    ├── mymodule.py
    └── pyproject.toml
-   ```
+</eg>
 
 ### When Heuristics Fail
 
 **Error Message (v1.19.0+):**
 
-```text
+<eg>
 ValueError: At least one file selection option must be defined
-```
+</eg>
 
 **Improved Error (v1.22.0+):**
 
-```text
+<eg>
 Improve error message for when the default heuristics for wheel
 file inclusion fail
-```
+</eg>
 
 ### Common Failure Scenarios
 
@@ -63,14 +63,14 @@ file inclusion fail
 
 **Structure:**
 
-```text
+<eg>
 project/
 ├── package1/
 │   └── __init__.py
 ├── package2/
 │   └── __init__.py
 └── pyproject.toml
-```
+</eg>
 
 **Heuristic Failure:** Cannot determine which package to include
 
@@ -85,12 +85,12 @@ packages = ["package1", "package2"]
 
 **Structure:**
 
-```text
+<eg>
 project/
 ├── my_awesome_lib/  # Doesn't match project name
 │   └── __init__.py
 └── pyproject.toml  # name = "awesome-lib"
-```
+</eg>
 
 **Heuristic Failure:** Package directory doesn't match normalized name
 
@@ -105,14 +105,14 @@ packages = ["my_awesome_lib"]
 
 **Structure:**
 
-```text
+<eg>
 project/
 ├── lib.py
 ├── utils.py
 ├── scripts/
 ├── data/
 └── pyproject.toml
-```
+</eg>
 
 **Heuristic Failure:** No clear package structure
 
@@ -133,11 +133,11 @@ include = [
 
 **Problem (Fixed v1.19.0):**
 
-```text
+<eg>
 Project name: My-Package
 Directory: my_package/
 Filesystem: macOS (case-insensitive)
-```
+</eg>
 
 **Heuristic Confusion:** Name mismatch on case-insensitive systems
 
@@ -170,22 +170,22 @@ def normalize_name(name: str) -> str:
 
 **Structure:**
 
-```text
+<eg>
 project/
 ├── myapp.py  # Single module, matches project name
 └── pyproject.toml  # name = "myapp"
-```
+</eg>
 
 ### Failed Heuristic
 
 **Structure:**
 
-```text
+<eg>
 project/
 ├── app.py  # Doesn't match project name
 ├── utils.py  # Multiple modules
 └── pyproject.toml  # name = "myapp"
-```
+</eg>
 
 **Resolution:**
 
@@ -202,14 +202,14 @@ py-modules = ["app", "utils"]
 
 **Structure:**
 
-```text
+<eg>
 project/
 ├── src/
 │   └── company/  # No __init__.py (namespace package)
 │       └── project/
 │           └── __init__.py
 └── pyproject.toml
-```
+</eg>
 
 **Heuristic Failure:** Cannot detect namespace package structure
 
@@ -407,7 +407,7 @@ except ValueError as e:
 
 **Recommended: Src-Layout**
 
-```text
+<eg>
 project/
 ├── src/
 │   └── package_name/  # Matches project name
@@ -416,7 +416,7 @@ project/
 ├── tests/
 ├── docs/
 └── pyproject.toml
-```
+</eg>
 
 ### 2. Be Explicit When Non-Standard
 

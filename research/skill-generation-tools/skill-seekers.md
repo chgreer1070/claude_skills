@@ -89,7 +89,7 @@ Skill Seekers is an open-source Python tool that automatically converts document
 
 The tool splits GitHub repository analysis into three complementary streams:
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────────────────┐
 │                    GitHub Repository                         │
 └─────────────────────────────────────────────────────────────┘
@@ -105,7 +105,7 @@ The tool splits GitHub repository analysis into three complementary streams:
 │ - Configs       │ │ - API docs     │ │ - Common problems│
 │ - Architecture  │ │                 │ │                  │
 └─────────────────┘ └─────────────────┘ └─────────────────┘
-```
+</eg>
 
 **Analysis Depth Options**:
 
@@ -350,7 +350,7 @@ Natural language commands:
 
 ## Technical Architecture
 
-```text
+<eg>
 User Input (URL/GitHub/PDF)
          │
          ▼
@@ -400,7 +400,7 @@ User Input (URL/GitHub/PDF)
 │    Upload to Platform       │
 │  (Auto or Manual)           │
 └─────────────────────────────┘
-```
+</eg>
 
 ---
 

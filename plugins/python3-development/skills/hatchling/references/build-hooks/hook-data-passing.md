@@ -19,7 +19,7 @@ Hooks share data through the `build_data` dictionary:
 
 ## How It Works
 
-```text
+<eg>
 Hook A           Hook B
 initialize()  →  initialize()
    ↓               ↓
@@ -34,7 +34,7 @@ build_data    build_data
    ↓             ↓         ↓
 finalize()  finalize()  [final build_data]
    A             B
-```
+</eg>
 
 ## Example: Two-Hook Coordination
 

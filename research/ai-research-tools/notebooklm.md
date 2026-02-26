@@ -103,7 +103,7 @@ NotebookLM (Google NotebookLM; LM = "Language Model") is a research and note-tak
 
 ### Processing Flow
 
-```text
+<eg>
 User uploads sources (PDFs, Docs, Slides, URLs)
     |
 Gemini processes and indexes content
@@ -113,7 +113,7 @@ User interacts via Q&A, summary requests, or overview generation
 AI generates responses grounded in source material
     |
 Output: Text summaries, Audio Overviews, Video Overviews, Infographics
-```
+</eg>
 
 ### Source Grounding
 

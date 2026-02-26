@@ -234,7 +234,7 @@ const attachment = await client.issueAttachments.getAttachment({
 
 ## Technical Architecture
 
-```text
+<eg>
 Application Code
       |
       v
@@ -286,7 +286,7 @@ Application Code
       |
       v
 Jira REST API (Cloud/Server/Data Center)
-```
+</eg>
 
 ---
 

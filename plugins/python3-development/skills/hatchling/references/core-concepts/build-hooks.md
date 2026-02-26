@@ -253,7 +253,7 @@ class PlatformTagBuildHook(BuildHookInterface):
 
 ### Build Process with Hooks
 
-```text
+<eg>
 1. Load configuration (pyproject.toml)
 2. Discover hooks for this target
 3. FOR EACH VERSION:
@@ -261,7 +261,7 @@ class PlatformTagBuildHook(BuildHookInterface):
    b. Build wheel/sdist
    c. Call hook.finalize()
 4. Output built packages
-```
+</eg>
 
 ### Hook Execution Order
 

@@ -65,7 +65,7 @@ Snyk CLI provides open-source vulnerability scanning for C/C++ projects that do 
 
 ## Technical Architecture
 
-```text
+<eg>
 Local Filesystem (C/C++ source tree)
         |
         v
@@ -85,7 +85,7 @@ Local Filesystem (C/C++ source tree)
         | 6. Apply severity thresholds
         v
 [Output: JSON / console / Web UI snapshot]
-```
+</eg>
 
 **Confidence Scoring**: Calculated as the ratio of matched files to expected files for the candidate library release. A confidence of `1.000` means every expected source file was found in the scanned directory. Modifications to vendored source code reduce confidence and may result in misidentification.
 

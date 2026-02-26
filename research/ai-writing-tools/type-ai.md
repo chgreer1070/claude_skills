@@ -97,7 +97,7 @@ Type.ai is an AI-first document editor designed for long-form professional writi
 
 ### User Experience Flow
 
-```text
+<eg>
 User Input
     |
 Document Context Analysis
@@ -109,7 +109,7 @@ AI Model Selection (Speed/Power)
 Context-Aware Generation/Transformation
     |
 In-Place Document Update
-```
+</eg>
 
 ### Key Differentiator
 

@@ -134,18 +134,18 @@ All under `https://docs.revenera.com/installanywhere/Content/helplibrary/`:
 
 A built InstallAnywhere installer is a **self-extracting archive** containing:
 
-```text
+<eg>
 <installer>.exe / <installer>.bin
 ├── Native launcher stub (platform-specific)
 ├── Bundled JRE (optional, platform-specific)
 ├── install.xml (runtime descriptor)
 ├── Compressed payload (application files)
 └── LAX configuration templates
-```
+</eg>
 
 ### 4.2 Runtime Execution Sequence
 
-```text
+<eg>
 1. Native launcher self-extracts to temp dir (configurable via -tempdir)
 2. Locates JVM: bundled > LAX_VM param > system-installed (order configurable)
 3. Launches Java-based installer engine
@@ -153,17 +153,17 @@ A built InstallAnywhere installer is a **self-extracting archive** containing:
 5. Processes actions/panels/rules in sequence
 6. Creates LaunchAnywhere executables + .lax files
 7. Optionally generates response file (installer.properties)
-```
+</eg>
 
 ### 4.3 LaunchAnywhere Runtime (Post-Install)
 
-```text
+<eg>
 1. User runs LaunchAnywhere executable
 2. Reads companion .lax file for configuration
 3. Locates JVM per .lax settings
 4. Configures classpath, system properties, heap, env vars
 5. Launches the Java application
-```
+</eg>
 
 ---
 
@@ -199,14 +199,14 @@ A built InstallAnywhere installer is a **self-extracting archive** containing:
 
 **Method**: Fetch each page listed in Section 2.2 and extract structured content.
 
-```text
+<eg>
 For each page in Section 2.2:
   1. Fetch page content from docs.revenera.com
   2. Extract spec-relevant information (schemas, property names, value formats)
   3. Record in corresponding reference file under research/installer-tools/references/
   4. Update Collection Status in this file to "Collected" with date
   5. Note any linked pages not yet in our list -> add to Section 2.2
-```
+</eg>
 
 **Output**: One reference file per topic area:
 - `references/file-formats.md` -- All file format specifications
@@ -222,13 +222,13 @@ For each page in Section 2.2:
 
 **Method**: Search for community experiences with cross-platform InstallAnywhere usage.
 
-```text
+<eg>
 1. Search GitHub for "installanywhere extract" / "installanywhere linux" / ".lax file"
 2. Search Stack Overflow [installanywhere] tag for cross-platform Q&A
 3. Search Revenera Community forums for Linux installation topics
 4. Document any open-source tools that parse IA formats
 5. Record practical tips and gotchas
-```
+</eg>
 
 **Output**: `references/community-knowledge.md`
 
@@ -236,7 +236,7 @@ For each page in Section 2.2:
 
 **Method**: Given an actual Windows InstallAnywhere installer, reverse-engineer its structure.
 
-```text
+<eg>
 1. Attempt extraction with 7z, unzip, binwalk
 2. Document the actual archive structure found
 3. Locate and parse install.xml
@@ -244,7 +244,7 @@ For each page in Section 2.2:
 5. Map actions to Linux equivalents
 6. Test silent install with response file under Wine
 7. Test native Linux execution with extracted payload + Linux JVM
-```
+</eg>
 
 **Output**: `references/extraction-guide.md` and `references/action-mapping.md`
 
@@ -252,12 +252,12 @@ For each page in Section 2.2:
 
 **Method**: Combine all collected specs into an actionable installation procedure.
 
-```text
+<eg>
 1. Write step-by-step Linux installation procedure from Windows IA manifest
 2. Document all assumptions and platform-specific translations
 3. Create decision tree for handling each IA action type on Linux
 4. Validate procedure against actual installer
-```
+</eg>
 
 **Output**: `references/linux-installation-procedure.md`
 

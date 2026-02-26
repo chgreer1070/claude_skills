@@ -14,12 +14,12 @@ Hatchling supports flexible artifact placement through configuration and environ
 
 By default, all build artifacts are placed in the `dist/` directory:
 
-```text
+<eg>
 project/
 └── dist/
     ├── package-0.1.0.tar.gz      # sdist
     └── package-0.1.0-py3-none-any.whl  # wheel
-```
+</eg>
 
 ## Global Output Directory
 
@@ -68,7 +68,7 @@ directory = "build/binaries"
 
 Result structure:
 
-```text
+<eg>
 project/
 └── build/
     ├── source/
@@ -77,7 +77,7 @@ project/
     │   └── package-0.1.0-py3-none-any.whl
     └── binaries/
         └── package
-```
+</eg>
 
 ## Command-Line Output Control
 

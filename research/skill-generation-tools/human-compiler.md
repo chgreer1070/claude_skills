@@ -87,7 +87,7 @@ HumanCompiler is a Claude Code plugin that "compiles" a human into an installabl
 
 ## Technical Architecture
 
-```text
+<eg>
 Interview Input (human + MCP artifacts)
         │
         ▼
@@ -117,7 +117,7 @@ Interview Input (human + MCP artifacts)
   ├── skills/ask-<name>/SKILL.md
   ├── skills/<domain>-advice-<name>/SKILL.md
   └── CLAUDE.md
-```
+</eg>
 
 The orchestrator skill (`disable-model-invocation: true`) routes commands via `$ARGUMENTS` parsing and delegates interview phases to the `interviewer.md` sub-agent. Profile persistence is handled entirely through CLI invocations of `profile-manager-cli.ts` using `bun run`. The generator is a standalone TypeScript script that takes a profile YAML path and writes a complete plugin directory.
 

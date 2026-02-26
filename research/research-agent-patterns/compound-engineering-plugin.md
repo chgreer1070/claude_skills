@@ -52,13 +52,13 @@ The Compound Engineering Plugin is a Claude Code plugin marketplace featuring a 
 
 ## Core Workflow
 
-```text
+<eg>
 Plan  -->  Work  -->  Review  -->  Compound  -->  Repeat
  |          |           |              |
  v          v           v              v
 80%      20%         80%           Knowledge
 Planning  Execution  Review        Compounding
-```
+</eg>
 
 | Command                 | Purpose                                               |
 | ----------------------- | ----------------------------------------------------- |
@@ -180,7 +180,7 @@ The `/workflows:compound` command uses 7 parallel subagents:
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────────────────────────┐
 │                      Compound Engineering Plugin                      │
 ├─────────────────────────────────────────────────────────────────────┤
@@ -201,7 +201,7 @@ The `/workflows:compound` command uses 7 parallel subagents:
 │  Documentation Site (docs/)                                          │
 │  └── Static HTML/CSS/JS (LaunchKit-based, no build step)             │
 └─────────────────────────────────────────────────────────────────────┘
-```
+</eg>
 
 ### Multi-Platform Support
 

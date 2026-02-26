@@ -24,7 +24,7 @@ Hierarchical outline that mirrors the source document's structure. Preserves the
 
 ## Schema
 
-```text
+<eg>
 ## Outline
 
 - **[Top-level heading or component]**
@@ -43,11 +43,11 @@ Hierarchical outline that mirrors the source document's structure. Preserves the
 
 ---
 Source: [path or URL] | Confidence: [high|medium|low] | [access date]
-```
+</eg>
 
 ## Example
 
-```text
+<eg>
 ## Outline
 
 - **1. Getting Started** (lines 10-45)
@@ -76,7 +76,7 @@ Source: [path or URL] | Confidence: [high|medium|low] | [access date]
 
 ---
 Source: ./docs/deployment-guide.md | Confidence: high | Read 2026-02-06
-```
+</eg>
 
 ## Fidelity Constraints
 

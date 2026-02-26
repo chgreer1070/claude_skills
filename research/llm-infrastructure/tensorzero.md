@@ -114,7 +114,7 @@ Anthropic, AWS Bedrock, AWS SageMaker, Azure, DeepSeek, Fireworks, GCP Vertex AI
 
 ### Workspace Structure
 
-```text
+<eg>
 tensorzero/
 ├── tensorzero-core/          # Core gateway logic
 ├── gateway/                  # Gateway service
@@ -128,7 +128,7 @@ tensorzero/
     ├── tensorzero-types/     # Type definitions
     ├── tensorzero-auth/      # Authentication
     └── autopilot-*/          # Autopilot components
-```
+</eg>
 
 ### Data Flow
 

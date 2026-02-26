@@ -83,7 +83,7 @@ The Unwind AI is a free Beehiiv-hosted newsletter and open-source ecosystem targ
 
 The newsletter is a Remix-based (React, SSR) web application served via Beehiiv's infrastructure at `www.theunwindai.com`. Content is stored in Beehiiv's publication platform (publication ID: `84ac330c-894c-4f61-ac66-e747ce8b32eb`). The companion open-source project (`awesome-llm-apps`) is a flat Python repository where each subdirectory contains a self-contained runnable example. The two properties (newsletter + GitHub repo) are tightly coupled: newsletter articles link to specific repo examples, and new repo additions are announced via newsletter issues.
 
-```text
+<eg>
 The Unwind AI Ecosystem
 ├── Newsletter (www.theunwindai.com)
 │   ├── News digests (~2x/week): model releases, tool launches
@@ -97,7 +97,7 @@ The Unwind AI Ecosystem
     ├── X/Twitter @unwind_ai_
     ├── LinkedIn /company/unwind-ai
     └── Threads @unwind_ai
-```
+</eg>
 
 ---
 
@@ -117,11 +117,11 @@ pip install -r requirements.txt
 python ai_agent_tutorials/example_name/app.py
 ```
 
-```text
+<eg>
 Accessing via RSS: No public RSS feed detected (Beehiiv app is CSR/Remix-rendered)
 Archive URL: https://www.theunwindai.com/archive (renders post list via JavaScript)
 Individual posts: https://www.theunwindai.com/p/{slug}
-```
+</eg>
 
 ---
 

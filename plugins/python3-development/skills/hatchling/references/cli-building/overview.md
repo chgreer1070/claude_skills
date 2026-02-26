@@ -75,11 +75,11 @@ Each target can have its own configuration and versions.
 
 By default, build artifacts are placed in the `dist/` directory:
 
-```text
+<eg>
 dist/
 ├── my_package-0.1.0-py3-none-any.whl
 └── my_package-0.1.0.tar.gz
-```
+</eg>
 
 ## See Also
 

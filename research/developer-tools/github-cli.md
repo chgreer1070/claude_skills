@@ -153,7 +153,7 @@ GitHub CLI (gh) is the official command-line interface for GitHub, enabling deve
 
 **Authentication Flow**:
 
-```text
+<eg>
 gh command invoked
     ↓
 Check for GITHUB_TOKEN in environment
@@ -165,11 +165,11 @@ Prompt for authentication via gh auth login
 Store credentials securely (keyring on macOS/Windows, encrypted file on Linux)
     ↓
 Use credentials for API requests with automatic token refresh
-```
+</eg>
 
 **API Request Pattern**:
 
-```text
+<eg>
 gh api repos/cli/cli
     ↓
 Parse endpoint URL (REST or GraphQL)
@@ -185,11 +185,11 @@ Handle pagination if --paginate flag set
 Filter response with --jq if specified
     ↓
 Output JSON or formatted text
-```
+</eg>
 
 **Extension Discovery**:
 
-```text
+<eg>
 gh <extension-name>
     ↓
 Check for built-in command
@@ -201,7 +201,7 @@ Execute extension binary or script
 Extension can call gh commands recursively
     ↓
 Extension output returned to user
-```
+</eg>
 
 ### Repository Detection
 

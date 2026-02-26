@@ -83,7 +83,7 @@ Portless replaces numeric port numbers with stable, named `.localhost` URLs for 
 
 ## Technical Architecture
 
-```text
+<eg>
 Browser (myapp.localhost:1355)
         |
         v
@@ -99,7 +99,7 @@ portless proxy daemon (port 1355)
    v                    v
 :4123 (myapp)      :4567 (api.myapp)
   Next.js            Express
-```
+</eg>
 
 The proxy is implemented entirely with Node.js built-in `http`, `http2`, and `net` modules -- no external proxy libraries. Route registration uses JSON files per hostname in the state directory, with file-based locking for safe concurrent access. The daemon runs as a background process (daemonized via child process detach), storing its PID in the state directory.
 

@@ -24,7 +24,7 @@ Concise bulleted output for quick consumption. Each bullet is a self-contained f
 
 ## Schema
 
-```text
+<eg>
 ## Key Findings
 
 - [Finding 1] (source: [reference])
@@ -40,11 +40,11 @@ Concise bulleted output for quick consumption. Each bullet is a self-contained f
 
 ---
 Source: [path or URL] | Confidence: [high|medium|low] | [access date]
-```
+</eg>
 
 ## Example
 
-```text
+<eg>
 ## Key Findings
 
 - REST API uses JWT authentication with 24-hour token expiry (source: Section 3.2, lines 45-67)
@@ -61,8 +61,8 @@ Source: [path or URL] | Confidence: [high|medium|low] | [access date]
 - "Custom limits" referenced for enterprise tier but values not specified (source: Section 6.1)
 
 ---
-Source: https://example.com/docs/api | Confidence: high | Accessed 2026-02-06
-```
+Source: <https://example.com/docs/api> | Confidence: high | Accessed 2026-02-06
+</eg>
 
 ## Fidelity Constraints
 

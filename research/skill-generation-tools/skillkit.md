@@ -111,7 +111,7 @@ SkillKit is an open-source CLI package manager for AI coding agent skills. It ag
 
 ### Project Structure
 
-```text
+<eg>
 skillkit (monorepo)
 ├── packages/
 │   ├── core/           # Core library (translation, recommendation, memory, AI)
@@ -124,11 +124,11 @@ skillkit (monorepo)
 │   └── api/            # REST API server (@skillkit/api)
 ├── website/            # agenstskills.com (React SPA)
 └── docs/               # Documentation
-```
+</eg>
 
 ### Skill Translation Pipeline
 
-```text
+<eg>
 Input Skill (any format)
        │
        ├── Parse source format (SKILL.md, .mdc, Markdown, etc.)
@@ -141,11 +141,11 @@ Input Skill (any format)
        │   └── Agent-specific optimizations
        │
        └── Output to target agent format(s)
-```
+</eg>
 
 ### Runtime Discovery Architecture
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────┐
 │              skillkit serve (:3737)               │
 │                                                   │
@@ -162,7 +162,7 @@ Input Skill (any format)
 │  │   Aggregated from GitHub repositories      │   │
 │  └────────────────────────────────────────────┘   │
 └───────────────────────────────────────────────────┘
-```
+</eg>
 
 ### Key Dependencies
 

@@ -24,7 +24,7 @@ Metadata is stored in:
 
 The format follows RFC 822 email header conventions parsed by Python's standard `email.parser` module:
 
-```text
+<eg>
 Metadata-Version: 2.5
 Name: example-package
 Version: 1.0.0
@@ -37,7 +37,7 @@ Requires-Dist: requests>=2.20.0
 Requires-Dist: colorama; sys_platform=="win32"
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0; extra=="dev"
-```
+</eg>
 
 ## Required Fields
 

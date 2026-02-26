@@ -105,7 +105,7 @@ Teams are named groups of agents with a designated leader. Work passes between a
 
 **Team message flow:**
 
-```text
+<eg>
 User: "@dev fix the auth bug"
            │
            ▼
@@ -120,7 +120,7 @@ User: "@dev fix the auth bug"
            │
            ▼ (all branches resolved)
    Aggregate → user receives both responses
-```
+</eg>
 
 **Supported message patterns** (documented in `docs/MESSAGE-PATTERNS.md`):
 
@@ -134,12 +134,12 @@ Team context is auto-detected even when messaging an agent directly -- if the ag
 
 ### File-Based Queue System
 
-```text
+<eg>
 ~/.tinyclaw/queue/
 ├── incoming/     # new messages written atomically
 ├── processing/   # in-flight messages moved here
 └── outgoing/     # completed responses staged here
-```
+</eg>
 
 Properties:
 - **Atomic state transitions**: rename operations, not copies -- no partial reads
@@ -187,7 +187,7 @@ TinyClaw ships a `SOUL.md` template in each agent's workspace. This is a structu
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────────────────┐
 │                     Message Channels                         │
 │         (Discord, Telegram, WhatsApp, Heartbeat)            │
@@ -227,7 +227,7 @@ TinyClaw ships a `SOUL.md` template in each agent's workspace. This is a structu
 │              TUI Visualizer (team-visualizer.js)            │
 │              React/Ink -- monitors ~/.tinyclaw/events/      │
 └─────────────────────────────────────────────────────────────┘
-```
+</eg>
 
 ### Technology Stack
 
@@ -254,7 +254,7 @@ npm run visualize     # node dist/visualizer/team-visualizer.js
 
 ### Directory Structure
 
-```text
+<eg>
 tinyclaw/
 ├── .tinyclaw/            # Runtime data
 │   ├── settings.json     # All configuration (agents, teams, channels)
@@ -280,7 +280,7 @@ tinyclaw/
 ├── dist/                 # Compiled output
 ├── lib/                  # Runtime shell scripts
 └── scripts/              # Installation scripts
-```
+</eg>
 
 ---
 
@@ -343,7 +343,7 @@ tinyclaw send "@coder fix the auth bug"       # specific agent
 
 ### In-Chat Usage (Discord / Telegram / WhatsApp)
 
-```text
+<eg>
 @coder fix the authentication bug      → routes to coder agent
 @dev fix the auth bug                  → routes to dev team leader
 @writer document the API               → routes to writer agent
@@ -352,7 +352,7 @@ help me with this                      → routes to default agent
 /agent                                 → list available agents
 /team                                  → list available teams
 @coder /reset                          → reset coder's conversation
-```
+</eg>
 
 ### Team Configuration Example
 

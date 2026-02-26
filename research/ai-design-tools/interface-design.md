@@ -117,7 +117,7 @@ Ships as a Claude Code marketplace plugin with a `marketplace.json` and `plugin.
 
 ### Repository Structure
 
-```text
+<eg>
 .claude-plugin/
   marketplace.json       # Marketplace metadata (version, tags, author)
   plugin.json            # Plugin manifest (commands path, skills path)
@@ -138,7 +138,7 @@ reference/
     system-precision.md   # Example system for dashboard/admin interfaces
     system-warmth.md      # Example system for collaborative/consumer apps
 website/                  # Source for interface-design.dev
-```
+</eg>
 
 ### Plugin Execution Flow
 
@@ -184,7 +184,7 @@ cp -r .claude-plugin/* ~/.claude-plugin/
 
 ### First Session Workflow
 
-```text
+<eg>
 You: "Build a user dashboard with metrics cards"
 
 Claude (with interface-design):
@@ -203,11 +203,11 @@ Claude (with interface-design):
 
   [Builds UI]
   "Want me to save these patterns to .interface-design/system.md?"
-```
+</eg>
 
 ### Subsequent Session Workflow
 
-```text
+<eg>
 You: "Add a settings page"
 
 Claude:
@@ -216,7 +216,7 @@ Claude:
   Surfaces: established scale
   Spacing: 8px base
   [Builds matching settings page]
-```
+</eg>
 
 ### Audit Usage
 
@@ -226,14 +226,14 @@ Claude:
 
 Reports violations with file/line references:
 
-```text
+<eg>
 Audit Results: src/components/
 
 Violations:
   Button.tsx:12 - Height 38px (pattern: 36px)
   Card.tsx:8 - Shadow used (system: borders-only)
   Input.tsx:20 - Spacing 14px (grid: 4px, nearest: 12px or 16px)
-```
+</eg>
 
 ---
 

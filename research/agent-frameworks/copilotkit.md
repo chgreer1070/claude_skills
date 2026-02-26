@@ -95,7 +95,7 @@ CopilotKit is an open-source TypeScript/React framework for building AI copilots
 
 ### Three-Layer Stack
 
-```text
+<eg>
 Frontend Layer
   ├── React components (CopilotSidebar, CopilotPopup, CopilotChat)
   ├── Hooks (useCopilotReadable, useCopilotAction, useCopilotChat)
@@ -110,7 +110,7 @@ Backend Layer
   ├── CopilotRuntime (Express/Next.js middleware)
   ├── LLM adapters (OpenAI, Anthropic, Google, etc.)
   └── Agent framework integration (LangChain, CrewAI, etc.)
-```
+</eg>
 
 ### Data Flow
 

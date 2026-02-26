@@ -109,7 +109,7 @@ PyO3 provides Rust bindings for Python, enabling developers to write native Pyth
 
 ### Component Structure
 
-```text
+<eg>
 Python Code
     |
     v
@@ -142,7 +142,7 @@ Python Code
 +-------------------+
 | Python C API      |  <- CPython, PyPy, or GraalPy interpreter
 +-------------------+
-```
+</eg>
 
 ### Workspace Crates
 
@@ -157,7 +157,7 @@ Python Code
 
 ### Object Model
 
-```text
+<eg>
 Python Object Hierarchy:
                     Py<T>
                       |
@@ -170,7 +170,7 @@ Python Object Hierarchy:
         |
         v
    &T (PyRef/PyRefMut) - borrowed reference to #[pyclass] data
-```
+</eg>
 
 ### GIL and Thread Safety
 
@@ -218,13 +218,13 @@ python -c "import my_module; print(my_module.sum_as_string(5, 20))"
 
 ### Project Structure
 
-```text
+<eg>
 my_module/
 ├── Cargo.toml
 ├── pyproject.toml
 └── src/
     └── lib.rs
-```
+</eg>
 
 **Cargo.toml**:
 

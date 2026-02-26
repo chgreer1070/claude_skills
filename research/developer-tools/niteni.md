@@ -78,7 +78,7 @@ Niteni (Javanese: "to observe carefully, to pay close attention") is an AI-power
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────────────────────┐
 │                    GitLab CI Pipeline                            │
 │                   (merge_request_event)                          │
@@ -113,7 +113,7 @@ Data Flow:
                                                       v
                                     Post Inline Comments with Suggestions
                                     (after cleaning previous review comments)
-```
+</eg>
 
 ### Pipeline Stages
 
@@ -128,7 +128,7 @@ Data Flow:
 
 ### Project Structure
 
-```text
+<eg>
 niteni/
 ├── src/
 │   ├── types/
@@ -146,7 +146,7 @@ niteni/
 ├── .gitlab-ci.yml
 ├── tsconfig.json
 └── package.json
-```
+</eg>
 
 ---
 

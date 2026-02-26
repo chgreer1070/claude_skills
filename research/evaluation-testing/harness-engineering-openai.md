@@ -101,7 +101,7 @@ A first-person engineering account by Ryan Lopopolo (OpenAI Member of Technical 
 
 The harness engineering model operates on a single core principle: agents can only act on information available in context during a task run. The architecture is built around making relevant information discoverable, current, and structurally enforced.
 
-```text
+<eg>
 Repository Layout (System of Record)
 ├── AGENTS.md          (100 lines max, table of contents)
 ├── ARCHITECTURE.md    (domain and package layering map)
@@ -119,7 +119,7 @@ Repository Layout (System of Record)
 │   ├── RELIABILITY.md
 │   └── SECURITY.md
 └── [application code]
-```
+</eg>
 
 Agent task execution model:
 
@@ -145,7 +145,7 @@ This is an article documenting practices and principles, not an installable tool
 
 Keep AGENTS.md short (~100 lines) as a table of contents. Use it to point to deeper sources of truth. Never treat it as an encyclopedia.
 
-```text
+<eg>
 AGENTS.md structure:
 - Brief repository overview (what this is, who it's for)
 - Pointer to ARCHITECTURE.md
@@ -153,7 +153,7 @@ AGENTS.md structure:
 - Pointer to docs/exec-plans/active/
 - Pointer to relevant FRONTEND.md, RELIABILITY.md, etc.
 - Key invariants (3-5 non-negotiable rules)
-```
+</eg>
 
 ### Structured docs/ Directory
 
@@ -167,12 +167,12 @@ Treat the docs directory as an owned, versioned, linted artifact. Include:
 
 Write linter error messages as remediation instructions, not just error descriptions. When a lint rule fires, the error message should tell the agent exactly what to do.
 
-```text
+<eg>
 Instead of: "Error: missing boundary validation"
 Write:      "Error: Missing boundary validation at data ingress point. Add Zod schema
              parse() at the boundary per docs/design-docs/core-beliefs.md#data-safety.
              See docs/references/validation-patterns.md for canonical examples."
-```
+</eg>
 
 ### Progressive Disclosure Architecture
 

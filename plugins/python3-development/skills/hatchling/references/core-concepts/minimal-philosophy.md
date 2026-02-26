@@ -240,7 +240,7 @@ Requires either setup.py or extensive setup.cfg configuration. Defaults are less
 
 Hatchling works best with standard layouts:
 
-```text
+<eg>
 my-package/
 ├── src/
 │   └── my_package/
@@ -249,7 +249,7 @@ my-package/
 ├── tests/
 ├── README.md
 └── pyproject.toml
-```
+</eg>
 
 Avoids need for custom file selection.
 

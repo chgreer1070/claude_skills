@@ -26,7 +26,7 @@ This reference documents two comprehensive articles by Shushant Lakhyani on crea
 
 **Template Structure**:
 
-```text
+<eg>
 I am [mention the problem you're facing in detail with background context].
 Imagine I'm trying to create a new [product type, e.g., kitchen gadget, app, service].
 Generate a list of 10 innovative product ideas that solve common problems for
@@ -34,7 +34,7 @@ Generate a list of 10 innovative product ideas that solve common problems for
 Describe each idea briefly, including the problem it solves, how it functions,
 and why it would appeal to this audience.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Output Format**: 10 ideas with problem statements, functional descriptions, and audience appeal.
 
@@ -46,14 +46,14 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 I am [mention the problem you're facing in detail with background context].
 Help me brainstorm 15 unique content ideas for [social media platform, e.g., Instagram, TikTok, LinkedIn]
 aimed at [specific audience, e.g., young entrepreneurs, fitness enthusiasts, tech hobbyists].
 The ideas should include diverse formats like [videos, infographics, carousels, etc.],
 a one-liner description, and a suggested hook to grab attention.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Key Elements**: Format variety, attention-grabbing hooks, audience specificity.
 
@@ -67,14 +67,14 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 I am [mention the problem you're facing in detail with background context].
 I want to tell a compelling story about [topic, e.g., resilience, innovation, failure in startups].
 Generate 5 unique storytelling angles that would captivate an audience of
 [specific audience, e.g., aspiring entrepreneurs, high school students, self-improvement seekers].
 For each angle, outline a potential plot or main points, suggested tone, and an opening line.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Deliverables**: Multiple narrative angles, plot outlines, tonal suggestions, compelling opening lines.
 
@@ -86,13 +86,13 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 I am [mention the problem you're facing in detail with background context].
 Generate 10 creative marketing campaign ideas for [industry or business type, e.g., eco-friendly brands, SaaS products, handmade jewelry].
 Each idea should have a campaign theme, tagline, main objective, and at least three specific tactics or channels to use.
 Include a brief note on why this would appeal to the intended target audience.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Campaign Components**: Theme, tagline, objectives, channel strategies, audience rationale.
 
@@ -106,14 +106,14 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 I am [mention the problem you're facing in detail with background context].
 Help me create 5 unique and memorable characters for a [genre, e.g., mystery, fantasy, sci-fi] story.
 Each character should have a name, a brief background, a defining personality trait,
 a motivation, and a unique flaw.
 Additionally, provide one or two ideas for how each character's personality would influence the plot.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Character Elements**: Name, backstory, personality traits, motivations, flaws, plot impact.
 
@@ -125,13 +125,13 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 I am [mention the problem you're facing in detail with background context].
 I'm designing a [website, mobile app, packaging, etc.] for [brand or purpose, e.g., eco-friendly beauty products, educational platform for kids].
 Brainstorm and suggest 5 creative visual design concepts, including a color palette, suggested fonts, layout style, and key visual elements.
 Briefly explain how each design concept aligns with the brand or user experience goals.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Design Specifications**: Color palettes, typography, layout styles, visual elements, UX alignment.
 
@@ -145,13 +145,13 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 I am [mention the problem you're facing in detail with background context].
 I'm organizing a [type of event, e.g., workshop, webinar, conference] on [topic, e.g., digital marketing, wellness, artificial intelligence].
 Suggest 5 thematic ideas that would make the event engaging and memorable.
 For each theme, outline a title, a one-liner description, a few interactive activities, and potential speakers or experts that could add value.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Event Components**: Theme title, description, interactive activities, speaker recommendations.
 
@@ -165,7 +165,7 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 I am [mention the problem you're facing in detail with background context].
 I'm starting a brand in [industry, e.g., sustainable fashion, tech, personal finance coaching]
 and need help brainstorming a distinct brand identity.
@@ -173,7 +173,7 @@ Create 5 unique brand personas, each with a brand name, target demographic, core
 and two standout brand traits.
 Also, suggest how each brand persona might stand out from competitors in the market.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Brand Persona Elements**: Name, demographic, values, tone, differentiators, competitive positioning.
 
@@ -187,14 +187,14 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 I am [mention the problem you're facing in detail with background context].
 Suggest 10 innovative customer experience strategies for a [type of business, e.g., online retail store, subscription box service, SaaS product]
 that would surprise and delight customers.
 Each idea should include a brief description, the specific pain point it addresses,
 and an example of how it could be executed to create a memorable experience.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **CX Components**: Strategy description, pain point targeting, execution examples, emotional impact.
 
@@ -208,13 +208,13 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 I am [mention the problem you're facing in detail with background context].
 Generate 5 series ideas for a blog focused on [topic, e.g., personal growth, sustainable living, tech innovations].
 Each series should include a main theme, a catchy title, and a list of 3–5 blog post titles with one-sentence descriptions.
 The posts should be structured to encourage ongoing engagement with readers.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Series Architecture**: Overall theme, catchline, individual post concepts, engagement hooks.
 
@@ -244,14 +244,14 @@ LinkedIn content creation follows a professional-first, value-driven approach wi
 
 **Template Structure**:
 
-```text
+<eg>
 You are an expert content creator on LinkedIn.
 I am [mention the problem you're facing in detail with background context].
 Create a compelling LinkedIn post to promote my new [Product/Service].
 Highlight its key features, benefits, and how it can solve common problems faced by [Target Audience].
 Include a call-to-action for users to visit our website or contact us for more information.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Marketing Elements**: Feature highlights, benefit-to-problem mapping, CTA optimization.
 
@@ -265,14 +265,14 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 You are an expert content creator on LinkedIn.
 I am [mention the problem you're facing in detail with background context].
 Draft a detailed LinkedIn article about [Topic], including three key insights or tips
 that provide value to professionals in [Industry].
 Make sure the article is engaging, informative, and encourages readers to share their thoughts in the comments.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Article Structure**: 3+ key insights, industry-specific value, comment engagement hooks.
 
@@ -286,14 +286,14 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 You are an expert content creator on LinkedIn.
 I am [mention the problem you're facing in detail with background context].
 Write a concise script for a 30–60 second LinkedIn short video demonstrating how to use [Product/Service].
 Ensure the script is engaging, clearly explains the steps, and highlights the main benefits.
 Include a strong opening to capture attention and a closing that encourages viewers to learn more.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Video Elements**: Attention-opening hook, step-by-step clarity, benefit highlight, CTA closing.
 
@@ -307,7 +307,7 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 You are an expert content creator on LinkedIn.
 I am [mention the problem you're facing in detail with background context].
 Compose a LinkedIn post where I share a personal story about a challenge I faced in my career
@@ -315,7 +315,7 @@ and how I overcame it.
 Include the lessons learned and how they can be applied by others in [Industry].
 Keep the tone authentic and motivational.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Narrative Arc**: Challenge setup, resolution, transferable lessons, motivational tone.
 
@@ -329,7 +329,7 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 You are an expert content creator on LinkedIn.
 I am [mention the problem you're facing in detail with background context].
 Create a LinkedIn post analyzing the latest trends in [Industry].
@@ -337,7 +337,7 @@ Include data and statistics to support the analysis and explain how these trends
 professionals in the field.
 End with a question to encourage engagement and discussion.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Content Elements**: Trend identification, supporting data, impact assessment, discussion prompt.
 
@@ -351,14 +351,14 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 You are an expert content creator on LinkedIn.
 I am [mention the problem you're facing in detail with background context].
 Design a LinkedIn carousel post draft with 5 slides that educate followers about [Topic].
 Each slide should include a key point or tip, a brief explanation, and a relevant image or graphic.
 Ensure the content is informative and visually appealing.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Carousel Structure**: 5 progressive slides, key point + explanation + visual, educational progression.
 
@@ -372,14 +372,14 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 You are an expert content creator on LinkedIn.
 I am [mention the problem you're facing in detail with background context].
 Write a script for a 30–60 second LinkedIn short video compiling customer testimonials about [Product/Service].
 Include brief quotes from satisfied customers and highlight their positive experiences.
 Ensure the script flows smoothly and ends with a call-to-action.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Video Elements**: Customer quotes, experience highlights, narrative flow, CTA closing.
 
@@ -393,14 +393,14 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 You are an expert content creator on LinkedIn.
 I am [mention the problem you're facing in detail with background context].
 Create a LinkedIn post introducing a poll about [Topic].
 Write a brief introduction explaining why the topic is important and what people hope to learn from the poll.
 Include 3–4 response options and encourage followers to share their opinions and insights in the comments.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Poll Architecture**: Contextual introduction, 3-4 options, comment engagement prompt.
 
@@ -414,14 +414,14 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 You are an expert content creator on LinkedIn.
 I am [mention the problem you're facing in detail with background context].
 Draft a LinkedIn post summarizing key takeaways from a recent interview with an expert in [Industry].
 Here is the link to the interview: [Link], or here is the transcription of the interview:[add transcription].
 Highlight three main points discussed during the interview and explain their relevance to your followers.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Content Elements**: 3 main takeaways, expert credibility, relevance explanation, source citation.
 
@@ -435,14 +435,14 @@ I want you to [mention how you want the output in detail with examples].
 
 **Template Structure**:
 
-```text
+<eg>
 You are an expert content creator on LinkedIn.
 I am [mention the problem you're facing in detail with background context].
 Write a script for a 30–60 second LinkedIn short video featuring a motivational quote relevant to professionals in [Industry].
 Include a brief explanation of the quote's significance and how it can inspire viewers in their careers.
 End with a call-to-action encouraging viewers to share their favorite quotes in the comments.
 I want you to [mention how you want the output in detail with examples].
-```
+</eg>
 
 **Video Elements**: Relevant quote, significance explanation, career application, engagement CTA.
 

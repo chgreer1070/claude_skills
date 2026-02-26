@@ -220,12 +220,12 @@ plaintext = cipher_suite.decrypt(ciphertext)
 
 ECB mode encrypts each block independently, revealing patterns:
 
-```text
+<eg>
 Plaintext blocks:  [BLOCK_A] [BLOCK_A] [BLOCK_B]
 ECB ciphertext:    [0x12AB]  [0x12AB]  [0x34CD]  <- identical blocks leak information!
 
 CBC ciphertext:    [0x12AB]  [0x5F4E]  [0x7C91]  <- blocks are independent
-```
+</eg>
 
 This leaks information about the plaintext structure.
 

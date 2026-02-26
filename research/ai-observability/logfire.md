@@ -138,7 +138,7 @@ Pydantic Logfire is an AI-native observability platform built by the team behind
 
 ### Architectural Layers
 
-```text
+<eg>
 Application Code
        |
 Logfire SDK (logfire.configure() + instrument_*)
@@ -148,7 +148,7 @@ OpenTelemetry Exporters
 Logfire Backend (Cloud)
        |
 DataFusion SQL Engine -> MCP Server -> AI Agents
-```
+</eg>
 
 ### Data Model
 

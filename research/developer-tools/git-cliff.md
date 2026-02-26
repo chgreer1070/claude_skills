@@ -103,7 +103,7 @@ git-cliff is a highly customizable changelog generator that creates structured c
 
 ## Technical Architecture
 
-```text
+<eg>
 Git Repository
       │
       ▼
@@ -143,7 +143,7 @@ Git Repository
       │
       ▼
 CHANGELOG.md / stdout / JSON
-```
+</eg>
 
 ---
 

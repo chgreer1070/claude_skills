@@ -4,7 +4,7 @@ AI-facing reference. Apply patterns by matching test scenario to strategy. Each 
 
 ## Module Selection
 
-```text
+<eg>
 TRIGGER: Need to replace a method on an existing package
 USE: Test::MockModule
 
@@ -19,7 +19,7 @@ USE: Test::MockObject (handles these; Test::MockModule does not)
 
 TRIGGER: Need mock to expire at scope exit automatically
 USE: Test::MockModule (destructor restores original)
-```
+</eg>
 
 ## Test::MockModule Patterns
 
@@ -325,7 +325,7 @@ subtest 'first' => sub {
 
 ## Decision Tree
 
-```text
+<eg>
 Need to test code in isolation from a dependency?
 │
 ├─ Dependency is a real Perl package already loaded?
@@ -340,7 +340,7 @@ Need to test code in isolation from a dependency?
 │
 └─ Need call count / argument history without manual tracking?
     └─ YES → Test::MockObject (called(), next_call() built-in)
-```
+</eg>
 
 ## Related Reference
 

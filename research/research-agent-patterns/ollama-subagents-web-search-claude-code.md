@@ -89,7 +89,7 @@ Ollama v0.16.2 adds native subagent support and built-in web search to Claude Co
 
 ## Technical Architecture
 
-```text
+<eg>
 Claude Code CLI
     |
     | ANTHROPIC_BASE_URL=http://localhost:11434
@@ -105,7 +105,7 @@ Ollama Anthropic Compatibility Layer (v0.14.0+)
     |
     +--> Web Search API (https://ollama.com/api/web_search)
              Returns: [{title, url, content}, ...]
-```
+</eg>
 
 Subagent execution model: each subagent is an independent inference context. The orchestrator model (in Claude Code's primary session) spawns agents by issuing tool calls or natural language directives. Each subagent runs in isolation, preventing the orchestrator context from accumulating the subagent's working memory. Results are returned to the orchestrator as tool outputs.
 

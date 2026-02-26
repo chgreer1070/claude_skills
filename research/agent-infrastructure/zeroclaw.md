@@ -121,7 +121,7 @@ Multi-account encrypted auth profiles at rest:
 
 ### Subsystem Trait Hierarchy
 
-```text
+<eg>
 Runtime (Native / Docker)
     |
 Daemon / Gateway
@@ -133,7 +133,7 @@ Provider (AI Model) — Channel (Messaging) — Tool (Capabilities)
 Memory (SQLite / Postgres / Lucid / Markdown / None)
     |
 Tunnel (Cloudflare / Tailscale / ngrok / None)
-```
+</eg>
 
 ### Data Flow (Agent Message Handling)
 

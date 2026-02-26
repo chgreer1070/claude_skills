@@ -20,7 +20,7 @@ CONSTRAINTS:
 
 REQUIRED_STRUCTURE:
 
-```text
+<eg>
 {service}-mcp-server/
 ├── package.json
 ├── tsconfig.json
@@ -33,7 +33,7 @@ REQUIRED_STRUCTURE:
 │   ├── schemas/          # Zod validation schemas
 │   └── constants.ts      # Shared constants (API_URL, CHARACTER_LIMIT, etc.)
 └── dist/                 # Built JavaScript files (entry point: dist/index.js)
-```
+</eg>
 
 ## Key Imports
 

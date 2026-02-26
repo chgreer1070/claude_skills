@@ -99,7 +99,7 @@ This OpenAI engineering article (published 2026-02-04, authored by Celia Chen) d
 
 The Codex codebase is split into two main directories:
 
-```text
+<eg>
 openai/codex/
   codex-rs/          # Rust implementation
     app-server/      # App Server long-lived process
@@ -112,11 +112,11 @@ openai/codex/
     mcp-server/      # MCP server integration
   codex-cli/         # TypeScript CLI components
   sdk/               # TypeScript SDK
-```
+</eg>
 
 Agent execution flow:
 
-```text
+<eg>
 Client (VS Code / Desktop / Web / TUI)
     |
     | JSON-RPC over stdio (JSONL)
@@ -126,17 +126,17 @@ App Server Process
     ├── Codex message processor  (translates JSON-RPC ↔ Codex core events)
     ├── Thread manager        (one CodexCore session per thread)
     └── Core threads          (agent loop, tool execution, persistence)
-```
+</eg>
 
 For web sessions, stdio is tunneled:
 
-```text
+<eg>
 Browser (HTTP + SSE) → Codex Backend → Worker → Container (App Server binary over stdio)
-```
+</eg>
 
 The protocol uses `initialize` as a mandatory first message. Subsequent agent interactions follow this pattern:
 
-```text
+<eg>
 Client → thread/create
 Client → turn/submit (user input)
 Server → thread/started
@@ -151,7 +151,7 @@ Server → item/started (agent message)
 Server → item/*/delta (streaming)
 Server → item/completed (agent message)
 Server → turn/completed
-```
+</eg>
 
 ---
 

@@ -34,9 +34,9 @@ Custom slash commands allow you to define frequently-used prompts as Markdown fi
 
 ### Syntax
 
-```text
+<eg>
 /<command-name> [arguments]
-```
+</eg>
 
 #### Parameters
 
@@ -170,9 +170,9 @@ MCP servers can expose prompts as slash commands that become available in Claude
 
 MCP commands follow the pattern:
 
-```text
+<eg>
 /mcp__<server-name>__<prompt-name> [arguments]
-```
+</eg>
 
 ### Features
 
@@ -188,14 +188,14 @@ MCP commands are automatically available when:
 
 MCP prompts can accept arguments defined by the server:
 
-```text
+<eg>
 # Without arguments
 > /mcp__github__list_prs
 
 # With arguments
 > /mcp__github__pr_review 456
 > /mcp__jira__create_issue "Bug title" high
-```
+</eg>
 
 #### Naming conventions
 

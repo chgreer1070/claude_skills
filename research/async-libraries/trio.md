@@ -109,32 +109,32 @@ Trio is a Python library for async concurrency and I/O that introduced the "stru
 
 ### Checkpoint Rules
 
-```text
+<eg>
 1. Synchronous functions: NEVER checkpoints
 2. Trio async functions (no exception): ALWAYS checkpoints
 3. Trio async functions (exception): MAY be checkpoints
 4. Third-party async functions: UNKNOWN (treat as potential checkpoints)
-```
+</eg>
 
 ### Nursery Lifecycle
 
-```text
+<eg>
 async with trio.open_nursery() as nursery:
     nursery.start_soon(task1)    # Spawn task 1
     nursery.start_soon(task2)    # Spawn task 2
     # ... more spawning ...
 # <-- All tasks MUST complete before reaching here
 # <-- Exceptions from any task propagate here
-```
+</eg>
 
 ### Cancel Scope Nesting
 
-```text
+<eg>
 with trio.move_on_after(10):           # Outer: 10 second timeout
     with trio.fail_after(5):           # Inner: 5 second timeout
         await long_operation()         # Subject to 5-second limit
     await another_operation()          # Subject to 10-second limit
-```
+</eg>
 
 ### Dependencies
 

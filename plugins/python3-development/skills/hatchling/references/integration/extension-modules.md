@@ -30,7 +30,7 @@ Extension modules allow Python packages to include compiled code for performance
 
 ### How Extension Modules Work
 
-```text
+<eg>
 Python Code (mypackage/__init__.py)
     ↓ (imports)
 Extension Module (mypackage/_ext.cp39-win_amd64.pyd or .so)
@@ -38,17 +38,17 @@ Extension Module (mypackage/_ext.cp39-win_amd64.pyd or .so)
 Compiled Code (C++/Rust/etc.)
     ↓ (system calls)
 System Libraries (libc, etc.)
-```
+</eg>
 
 ### Module Location
 
-```text
+<eg>
 mypackage/
 ├── __init__.py           # Python code
 ├── _ext.cpython-39-darwin.so    # Compiled extension (macOS)
 ├── _ext.cpython-39-win_amd64.pyd # Compiled extension (Windows)
 └── _ext.cpython-39-x86_64-linux-gnu.so  # Compiled extension (Linux)
-```
+</eg>
 
 **Note**: Different `.so`/`.pyd` extensions needed for different platforms.
 
@@ -364,7 +364,7 @@ twine upload wheelhouse/*
 
 ### Wheel Naming
 
-```text
+<eg>
 mypackage-1.0.0-cp310-cp310-win_amd64.whl
                 └──┬───┘ └──────┬──────┘
                 Python 3.10    Windows 64-bit
@@ -372,7 +372,7 @@ mypackage-1.0.0-cp310-cp310-win_amd64.whl
 mypackage-1.0.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
                                 └─────────────────┬──────────────────┘
                                 glibc version & arch
-```
+</eg>
 
 ---
 
@@ -402,7 +402,7 @@ mypackage-1.0.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
 
 Must include source code + build instructions:
 
-```text
+<eg>
 mypackage-1.0.0.tar.gz
 └── mypackage-1.0.0/
     ├── CMakeLists.txt
@@ -411,7 +411,7 @@ mypackage-1.0.0.tar.gz
     │   └── myext.cpp
     └── mypackage/
         └── __init__.py
-```
+</eg>
 
 When user installs from sdist, build system is triggered:
 
@@ -431,10 +431,10 @@ mypackage-1.0.0-cp39-cp39-linux_x86_64.whl
 
 ### Universal Wheels (Pure Python Only)
 
-```text
+<eg>
 mypackage-1.0.0-py3-none-any.whl
 # works on all platforms if no compiled code
-```
+</eg>
 
 ---
 
@@ -442,9 +442,9 @@ mypackage-1.0.0-py3-none-any.whl
 
 ### Issue: Import Error After Install
 
-```text
+<eg>
 ImportError: cannot import name '_ext'
-```
+</eg>
 
 **Causes**:
 
@@ -468,9 +468,9 @@ python --version
 
 ### Issue: Compilation Errors
 
-```text
+<eg>
 error: command 'gcc' not found
-```
+</eg>
 
 **Solution**: Install compiler
 
@@ -487,9 +487,9 @@ xcode-select --install
 
 ### Issue: Segmentation Fault
 
-```text
+<eg>
 Segmentation fault (core dumped)
-```
+</eg>
 
 **Causes**:
 

@@ -90,19 +90,19 @@ Override with `teammateMode` in settings.json or `--teammate-mode` flag.
 
 Natural language to the lead. Specify count and models when needed:
 
-```text
+<eg>
 Create a team with 4 teammates to refactor these modules in parallel.
 Use Sonnet for each teammate.
-```
+</eg>
 
 ### Plan Approval for Teammates
 
 Require teammates to plan before implementing:
 
-```text
+<eg>
 Spawn an architect teammate to refactor the authentication module.
 Require plan approval before they make any changes.
-```
+</eg>
 
 The lead reviews and approves/rejects plans. Give the lead criteria: "only approve plans that include test coverage."
 
@@ -157,12 +157,12 @@ Press Shift+Tab to restrict lead to coordination-only tools: spawning, messaging
 
 Include task-specific details in spawn prompts (teammates do not inherit lead conversation):
 
-```text
+<eg>
 Spawn a security reviewer teammate with the prompt: "Review the authentication
 module at src/auth/ for security vulnerabilities. Focus on token handling,
 session management, and input validation. The app uses JWT tokens stored in
 httpOnly cookies. Report any issues with severity ratings."
-```
+</eg>
 
 ### Task Sizing
 
@@ -185,24 +185,24 @@ Check in on progress, redirect approaches that are not working, synthesize findi
 
 ### Parallel Code Review
 
-```text
+<eg>
 Create an agent team to review PR #142. Spawn three reviewers:
 - One focused on security implications
 - One checking performance impact
 - One validating test coverage
 Have them each review and report findings.
-```
+</eg>
 
 Each reviewer applies a different filter. Lead synthesizes findings.
 
 ### Competing Hypotheses Investigation
 
-```text
+<eg>
 Users report the app exits after one message instead of staying connected.
 Spawn 5 agent teammates to investigate different hypotheses. Have them talk to
 each other to try to disprove each other's theories, like a scientific
 debate. Update the findings doc with whatever consensus emerges.
-```
+</eg>
 
 Cross-challenge structure: each teammate actively tries to disprove others. Surviving theory is more likely correct.
 
@@ -220,17 +220,17 @@ Common structural pattern for team workflows:
 
 ### Shutdown
 
-```text
+<eg>
 Ask the researcher teammate to shut down
-```
+</eg>
 
 Teammate can approve (exits gracefully) or reject (with explanation).
 
 ### Cleanup
 
-```text
+<eg>
 Clean up the team
-```
+</eg>
 
 Lead checks for active teammates and fails if any still running. Always shut down teammates before cleanup. Only the lead should run cleanup.
 

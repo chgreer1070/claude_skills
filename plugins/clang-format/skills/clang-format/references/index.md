@@ -151,7 +151,7 @@ clang-format --dry-run --Werror src/*.cpp include/*.h
 
 Create `.clang-format-ignore`:
 
-```text
+<eg>
 # Ignore third-party code
 third_party/**
 external/**
@@ -159,7 +159,7 @@ external/**
 # Ignore generated files
 *.pb.cc
 *.pb.h
-```
+</eg>
 
 ## Editor Integration
 

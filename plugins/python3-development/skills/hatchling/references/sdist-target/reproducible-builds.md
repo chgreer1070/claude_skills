@@ -268,23 +268,23 @@ Never disable for releases or CI/CD builds.
 
 With `SOURCE_DATE_EPOCH` set, these are normalized:
 
-```text
+<eg>
 File timestamps:       Set to SOURCE_DATE_EPOCH
 Directory timestamps:  Set to SOURCE_DATE_EPOCH
 Tar header times:      Set to SOURCE_DATE_EPOCH
 File permissions:      Preserved as-is (not normalized)
 File ownership:        Not stored in tar (uses numeric UID/GID)
 Compression metadata:  Deterministic gzip
-```
+</eg>
 
 ### Not Normalized (and why)
 
-```text
+<eg>
 Source code content:   No changes (as expected)
 File permissions:      Preserved for correctness (executable bits matter)
 File ordering:         Sorted consistently
 Directory structure:   Preserved exactly
-```
+</eg>
 
 ## Troubleshooting Reproducibility
 

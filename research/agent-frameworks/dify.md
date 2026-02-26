@@ -128,7 +128,7 @@ development platforms available.
 
 ### Execution Architecture (v1.13.0)
 
-```text
+<eg>
 Client (Web / API)
       |
    API Process (Flask)
@@ -141,11 +141,11 @@ Non-streaming runs   Workflow + Advanced Chat streaming
                        Redis Pub/Sub (PUBSUB_REDIS_URL)
                              |
                        SSE stream → Client
-```
+</eg>
 
 ### Data Flow (RAG Application)
 
-```text
+<eg>
 User query
    → Dify API
    → Knowledge Retrieval node (embed query → vector search → rerank)
@@ -153,7 +153,7 @@ User query
    → LLM node (configured provider/model)
    → Response streamed back via Redis Pub/Sub
    → LLMOps log written to PostgreSQL
-```
+</eg>
 
 ---
 

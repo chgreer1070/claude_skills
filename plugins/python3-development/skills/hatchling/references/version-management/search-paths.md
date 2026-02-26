@@ -81,7 +81,7 @@ search-paths = [
 
 For projects with multiple packages:
 
-```text
+<eg>
 my-monorepo/
 ├── packages/
 │   ├── core/
@@ -91,7 +91,7 @@ my-monorepo/
 │   └── api/
 │       └── _version.py
 └── pyproject.toml
-```
+</eg>
 
 ```toml
 # Root pyproject.toml

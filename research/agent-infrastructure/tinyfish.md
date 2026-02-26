@@ -90,7 +90,7 @@ TinyFish is an enterprise serverless web agent API platform that enables AI agen
 
 ## Technical Architecture
 
-```text
+<eg>
 Claude Code / Agent
        |
        v
@@ -109,7 +109,7 @@ TinyFish Web Agent API  (https://agent.tinyfish.ai/v1)
 SSE Stream  (real-time event progress)
   data: { "type": "PROGRESS", ... }
   data: { "type": "COMPLETE", "status": "COMPLETED", "resultJson": {...} }
-```
+</eg>
 
 Key design decisions:
 

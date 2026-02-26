@@ -273,13 +273,13 @@ Tool inputs by tool name:
 
 ## Subagent Relationship Model
 
-```text
+<eg>
 Main session JSONL (orchestrator)
 └── Task tool_use (id: toolu_01X)
      └── tool_result → "agentId: abc1234"
           └── Subagent at: {session-uuid}/subagents/agent-abc1234.jsonl
                └── Records with isSidechain: true, agentId: abc1234
-```
+</eg>
 
 Async agent flow:
 

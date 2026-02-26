@@ -380,14 +380,14 @@ copier update -a .copier-answers.ci.yml
 
 **Minimal template structure:**
 
-```text
+<eg>
 my_template/
 ├── copier.yml              # Template configuration
 ├── .git/                   # Git repo (for versioning)
 ├── {{project_name}}/       # Templated folder name
 │   └── {{module_name}}.py.jinja  # Templated file
 └── {{_copier_conf.answers_file}}.jinja  # Answers file
-```
+</eg>
 
 **copier.yml** (question definitions):
 
@@ -505,11 +505,11 @@ use_docker:
 
 **File/folder structure:**
 
-```text
+<eg>
 template/
   {% if use_docker %}Dockerfile{% endif %}.jinja
   {% if use_docker %}docker-compose.yml{% endif %}.jinja
-```
+</eg>
 
 **Dynamic choices:**
 
@@ -700,7 +700,7 @@ Copier focuses on text file templating:
 
 ### Copier vs Cookiecutter Decision Tree
 
-```text
+<eg>
 Do you need to update projects after generation?
 ├─ YES → Use Copier
 │   └─ Need version-aware migrations?
@@ -712,7 +712,7 @@ Do you need to update projects after generation?
     ├─ Want larger template ecosystem? → Cookiecutter
     ├─ Need maximum stability? → Cookiecutter
     └─ Might need updates later? → Copier (easier to start with)
-```
+</eg>
 
 ## Best Practices
 

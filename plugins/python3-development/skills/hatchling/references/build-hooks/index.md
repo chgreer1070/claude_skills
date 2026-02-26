@@ -156,7 +156,7 @@ The Hatchling ecosystem includes specialized hooks for:
 
 ## Files in This Reference
 
-```text
+<eg>
 build-hooks/
 ├── index.md (this file)
 ├── configuration.md
@@ -169,7 +169,7 @@ build-hooks/
 ├── hook-dependencies.md
 ├── hook-data-passing.md
 └── environment-variables.md
-```
+</eg>
 
 ## Next Steps
 

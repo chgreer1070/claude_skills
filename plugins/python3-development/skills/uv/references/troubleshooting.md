@@ -219,11 +219,11 @@ uv add --prerelease allow package
 
 **Common Errors**:
 
-```text
+<eg>
 ModuleNotFoundError: No module named 'setuptools'
 ModuleNotFoundError: No module named 'distutils'
 ModuleNotFoundError: No module named 'Cython'
-```
+</eg>
 
 **Solutions**:
 
@@ -252,11 +252,11 @@ uv add package --only-binary package
 
 **Common Errors**:
 
-```text
+<eg>
 error: command 'gcc' failed
 fatal error: Python.h: No such file or directory
 error: openssl/ssl.h: No such file or directory
-```
+</eg>
 
 **Solutions**:
 

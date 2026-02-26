@@ -193,12 +193,12 @@ UV_CONSTRAINT = "constraints.txt"
 
 `constraints.txt`:
 
-```text
+<eg>
 cython==3.0.0
 numpy==1.24.3
 setuptools==68.0.0
 wheel==0.41.0
-```
+</eg>
 
 ## Container-Based Isolation
 

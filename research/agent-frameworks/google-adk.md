@@ -145,7 +145,7 @@ SOURCE: [pyproject.toml](https://github.com/google/adk-python/blob/main/pyprojec
 
 ### Agent Abstraction Layers
 
-```text
+<eg>
 Runner (invocation lifecycle management)
     |
 LlmAgent / WorkflowAgent / CustomAgent (agent logic)
@@ -155,7 +155,7 @@ Toolsets (FunctionTool, McpToolset, OpenAPIToolset, SkillToolset)
 LLM (google-genai SDK -> Gemini / compatible APIs)
     |
 Services (SessionService, MemoryService, ArtifactService)
-```
+</eg>
 
 ### Request Flow
 
@@ -171,7 +171,7 @@ Services (SessionService, MemoryService, ArtifactService)
 
 ### Multi-Agent Communication
 
-```text
+<eg>
 Coordinator (LlmAgent)
     |-- sub_agents: [SpecialistA, SpecialistB]
     |   LLM decides routing at runtime
@@ -180,7 +180,7 @@ Remote agent (via A2A protocol or agent-as-tool pattern)
     |   a2a-sdk for cross-network agent calls
     |
 MCP servers (via McpToolset + mcp protocol)
-```
+</eg>
 
 SOURCE: [pyproject.toml](https://github.com/google/adk-python/blob/main/pyproject.toml) (accessed 2026-02-26), [ADK Docs](https://google.github.io/adk-docs/) (accessed 2026-02-26)
 

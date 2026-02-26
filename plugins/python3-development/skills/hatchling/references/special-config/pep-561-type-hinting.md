@@ -60,26 +60,26 @@ include = [
 
 Guide users to place the `py.typed` file in their package directory as follows:
 
-```text
+<eg>
 my_package/
 ├── __init__.py
 ├── module.py
 ├── py.typed  # Empty marker file
 └── stubs/    # Optional stub files
     └── module.pyi
-```
+</eg>
 
 The `py.typed` file can be empty or contain configuration:
 
-```text
+<eg>
 # Empty file for full typing support
-```
+</eg>
 
 Or with partial typing:
 
-```text
+<eg>
 partial
-```
+</eg>
 
 ## Advanced Configuration
 
@@ -171,13 +171,13 @@ packages = ["src/typed_utils"]
 
 Directory structure:
 
-```text
+<eg>
 src/
 └── typed_utils/
     ├── __init__.py
     ├── py.typed
     └── utils.py  # Contains inline type hints
-```
+</eg>
 
 ### Package with Stub Files
 

@@ -112,7 +112,7 @@ Cline is an open-source autonomous coding agent that integrates directly into VS
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Cline Agent                              │
 └─────────────────────────────────────────────────────────────────┘
@@ -148,7 +148,7 @@ Cline is an open-source autonomous coding agent that integrates directly into VS
 │ - Bedrock    │ │ data    │ │                                    │
 │ - Local LLMs │ │ sources │ │                                    │
 └──────────────┘ └─────────┘ └──────────────────────────────────┘
-```
+</eg>
 
 **Key architectural decisions**:
 
@@ -185,13 +185,13 @@ cline --task "Add unit tests to src/utils.ts" --model claude-3-7-sonnet
 
 ### Configuration Example (.clinerules)
 
-```text
+<eg>
 # .clinerules
 - Always write tests for new functions
 - Use TypeScript strict mode
 - Follow project ESLint rules before committing
 - Ask before modifying package.json dependencies
-```
+</eg>
 
 ---
 

@@ -81,7 +81,7 @@ microgpt Playground is a browser-native interactive demo for building, training,
 
 ## Technical Architecture
 
-```text
+<eg>
 Input Text
     │
     ▼
@@ -106,7 +106,7 @@ Softmax → Cross-Entropy Loss (training) / Sampling (inference)
     │
     ▼
 Adam Optimizer Update (custom, scalar autograd)
-```
+</eg>
 
 All operations are implemented as scalar arithmetic using the `Value` autograd class; no tensor library is used.
 

@@ -180,13 +180,13 @@ SOURCE: [MCP Tool Design: From APIs to AI-First](https://useai.substack.com/p/mc
 
 ANNOTATION_SCHEMA:
 
-```text
+<eg>
 readOnlyHint: boolean    # true if tool does not modify environment
 destructiveHint: boolean # true if tool may perform destructive updates
 idempotentHint: boolean  # true if repeated calls with same args have no additional effect
 openWorldHint: boolean   # true if tool interacts with external entities
 title: string            # human-readable title for UI display
-```
+</eg>
 
 CONSTRAINTS:
 

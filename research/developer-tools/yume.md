@@ -109,7 +109,7 @@ Yume (Japanese: "dream") is a native desktop GUI wrapper around the Claude Code 
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌──────────────────────────────────────────────────────────────────┐
 │                     Yume Desktop Application                      │
 │                       (Tauri + Rust)                               │
@@ -165,7 +165,7 @@ Yume (Japanese: "dream") is a native desktop GUI wrapper around the Claude Code 
           │  - @mentions          │
           │  - /commands          │
           └───────────────────────┘
-```
+</eg>
 
 ### Key Architectural Decisions
 

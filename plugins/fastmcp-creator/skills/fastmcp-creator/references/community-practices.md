@@ -523,7 +523,7 @@ Use "planner" LLM that breaks requests into steps, and specialist MCP servers to
 
 **Architecture**:
 
-```text
+<eg>
 User Request
     ↓
 Planner LLM (GPT-4 / Claude)
@@ -535,7 +535,7 @@ Planner LLM (GPT-4 / Claude)
 Planner composes results
     ↓
 Response to User
-```
+</eg>
 
 ### Design for Composability
 

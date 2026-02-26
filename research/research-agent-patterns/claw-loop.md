@@ -103,7 +103,7 @@ The Claw Loop treats the following as expected operational events, not exception
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌──────────────────────────────────────────────────────────────────┐
 │                     The Claw Loop (v2.0)                         │
 │                                                                  │
@@ -157,11 +157,11 @@ The Claw Loop treats the following as expected operational events, not exception
 │  │              -> Phone / Messaging Channel                  │  │
 │  └────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────┘
-```
+</eg>
 
 ### Cron Cycle Flow
 
-```text
+<eg>
 Cron fires (every 3 min)
     │
     v
@@ -190,7 +190,7 @@ Send status update to phone
     │
     v
 Exit (wait for next cron fire)
-```
+</eg>
 
 ---
 
@@ -214,13 +214,13 @@ Exit (wait for next cron fire)
 
 ### tmux Socket Configuration
 
-```text
+<eg>
 Socket path: ${TMPDIR:-/tmp}/clawdbot-tmux-sockets/clawdbot.sock
-```
+</eg>
 
 ### BMAD Workflow Example
 
-```text
+<eg>
 1. Clawdbot sends: /bmad-bmm-create-story [story-id]
 2. Claude Code executes story creation (Opus 4.6)
 3. Clawdbot detects completion -> sends /clear
@@ -233,7 +233,7 @@ Socket path: ${TMPDIR:-/tmp}/clawdbot-tmux-sockets/clawdbot.sock
 10. Claude Code executes review (Opus 4.6)
 11. Clawdbot detects completion -> sends /clear
 12. Advance to next story in queue -> repeat from step 1
-```
+</eg>
 
 ---
 

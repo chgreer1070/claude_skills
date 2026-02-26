@@ -22,21 +22,21 @@ Ultra-concise single-paragraph summary for maximum brevity. Captures the essenti
 
 ## Schema
 
-```text
+<eg>
 **TL;DR**: [2-4 sentence summary capturing the single most important takeaway]
 
 ---
 Source: [path or URL] | Confidence: [high|medium|low] | [access date]
-```
+</eg>
 
 ## Example
 
-```text
+<eg>
 **TL;DR**: Python authentication module implementing JWT with automatic token refresh. Exports `AuthClient` class with retry logic (3 attempts on 401). Depends on httpx, jwt, and tenacity.
 
 ---
 Source: ./src/auth.py | Confidence: high | Read 2026-02-06
-```
+</eg>
 
 ## Fidelity Constraints
 

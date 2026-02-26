@@ -20,7 +20,7 @@ A wheel is a pre-built binary distribution format.
 
 **Structure:**
 
-```text
+<eg>
 myproject-1.0.0-py3-none-any.whl
 ├── myproject/
 │   ├── __init__.py
@@ -34,7 +34,7 @@ myproject-1.0.0-py3-none-any.whl
 │   └── top_level.txt
 └── myproject-1.0.0.data/
     └── (optional: data files)
-```
+</eg>
 
 **Format:**
 
@@ -56,7 +56,7 @@ A source distribution is a compressed archive of source code.
 
 **Structure:**
 
-```text
+<eg>
 myproject-1.0.0.tar.gz
 ├── myproject-1.0.0/
 │   ├── pyproject.toml
@@ -68,7 +68,7 @@ myproject-1.0.0.tar.gz
 │   ├── tests/
 │   │   └── test_module.py
 │   └── PKG-INFO
-```
+</eg>
 
 **Format:**
 
@@ -225,13 +225,13 @@ packages = ["src/myproject"]
 
 Result:
 
-```text
+<eg>
 myproject-1.0.0-py3-none-any.whl
 └── myproject/
     ├── __init__.py
     ├── module.py
     └── py.typed
-```
+</eg>
 
 ### Sdist
 
@@ -251,7 +251,7 @@ include = [
 
 Result:
 
-```text
+<eg>
 myproject-1.0.0.tar.gz
 └── myproject-1.0.0/
     ├── src/myproject/
@@ -260,7 +260,7 @@ myproject-1.0.0.tar.gz
     ├── README.md
     ├── LICENSE
     └── pyproject.toml
-```
+</eg>
 
 ## Platform-Specific Considerations
 
@@ -270,13 +270,13 @@ Works identically on all platforms.
 
 **Wheel naming:**
 
-```text
+<eg>
 myproject-1.0.0-py3-none-any.whl
               ^^         ^   ^
               |          |   └─ Platform: any
               |          └────── ABI: none
               └─────────────────── Python: 3.x
-```
+</eg>
 
 **Works everywhere:** Linux, macOS, Windows, etc.
 
@@ -286,12 +286,12 @@ C/C++ extensions must be compiled for each platform.
 
 **Wheel naming:**
 
-```text
+<eg>
 myproject-1.0.0-cp311-cp311-win_amd64.whl
               ^^^^^^^^^^^^^^   ^^^^^^^
               |                └── Platform: Windows 64-bit
               └───────────────────── Python: 3.11, ABI: 3.11
-```
+</eg>
 
 **Different wheels for:**
 
@@ -336,11 +336,11 @@ python -m build && twine upload dist/*
 
 After upload:
 
-```text
+<eg>
 myproject 1.0.0 - PyPI
 ├── myproject-1.0.0-py3-none-any.whl       (preferred)
 └── myproject-1.0.0.tar.gz                 (fallback)
-```
+</eg>
 
 User install:
 

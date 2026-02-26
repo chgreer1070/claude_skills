@@ -18,12 +18,12 @@ When helping users ensure build integrity and security, reference this document 
 
 Reproducible builds enable users to verify package integrity:
 
-```text
+<eg>
 1. I build the package from source
 2. I compare my build to the published wheel
 3. If they're identical, the wheel is legitimate
 4. If they differ, something is wrong
-```
+</eg>
 
 Without reproducibility, users must trust the publisher unconditionally.
 
@@ -76,12 +76,12 @@ Hatchling respects `.gitignore` by default:
 
 Hatchling orders files consistently in archives:
 
-```text
+<eg>
 TAR/ZIP archives always contain files in same order
 ├── a.py (always listed first)
 ├── b.py (always listed second)
 └── c.py (always listed third)
-```
+</eg>
 
 **Why this matters:** Different orderings would create different checksums.
 
@@ -89,13 +89,13 @@ TAR/ZIP archives always contain files in same order
 
 Package metadata is normalized:
 
-```text
+<eg>
 Before: Author     = "John Doe"
         Email      = "john@example.com"
 
 After:  Author-Email = "John Doe <john@example.com>"
         (normalized to PEP 621 format)
-```
+</eg>
 
 Same input always produces same output.
 
@@ -103,10 +103,10 @@ Same input always produces same output.
 
 In source distributions, timestamps are normalized:
 
-```text
+<eg>
 All files in sdist have timestamp: 1980-01-01 00:00:00 UTC
 (Not current build time)
-```
+</eg>
 
 **Effect:** Building at different times produces identical archives.
 
@@ -114,11 +114,11 @@ All files in sdist have timestamp: 1980-01-01 00:00:00 UTC
 
 Wheels are built deterministically:
 
-```text
+<eg>
 RECORD file contents always same
 dist-info/WHEEL metadata always same
 Byte order always same
-```
+</eg>
 
 ## Configuration for Reproducibility
 
@@ -443,13 +443,13 @@ hatch build          # Version changes (1.0.1.dev0)
 
 Some projects publish build results:
 
-```text
+<eg>
 Package: myproject-1.0.0-py3-none-any.whl
 Build by: CI/CD on GitHub
 SHA256: a1b2c3d4e5f6...
 Reproducible: Yes
 Verified by: 3 independent builds
-```
+</eg>
 
 ### Getting Recognized
 
@@ -516,10 +516,10 @@ Make checksums available:
 
 Standard layouts are more likely to be reproducible:
 
-```text
+<eg>
 src/myproject/      # Recommended
                     # Standard ordering, well-tested
-```
+</eg>
 
 ## Key Takeaways
 

@@ -40,7 +40,7 @@ This approach provides:
 
 Hatchling searches for `.gitignore` starting from the project root and moving up directory tree:
 
-```text
+<eg>
 project/
 ├── .gitignore          ← Checked first
 ├── src/
@@ -48,7 +48,7 @@ project/
 └── pyproject.toml
 
 ../../.gitignore        ← Checked if not found above
-```
+</eg>
 
 ### Git Pattern Syntax
 
@@ -103,12 +103,12 @@ Note: Negation only works for files not already excluded by previous patterns.
 
 Hatchling recognizes `.hgignore` in Mercurial projects:
 
-```text
+<eg>
 project/
 ├── .hgignore           ← Used by Hatchling
 ├── .hg/
 └── src/
-```
+</eg>
 
 ### Mercurial Pattern Limitations
 
@@ -255,7 +255,7 @@ exclude = [
 
 These files are **always included** regardless of VCS configuration or exclusion rules:
 
-```text
+<eg>
 /pyproject.toml       # Project configuration (always)
 /hatch.toml           # Hatch configuration (if present)
 /hatch_build.py       # Custom build script (if present)
@@ -263,7 +263,7 @@ These files are **always included** regardless of VCS configuration or exclusion
 /.hgignore            # Mercurial ignore rules (if present)
 <readme files>        # Files specified in [project] readme
 <license-files>       # Files specified in license-files glob patterns
-```
+</eg>
 
 These are essential for:
 
@@ -460,7 +460,7 @@ python -c "import glob; print(glob.glob('src/**/*.py', recursive=True))"
 
 Old approach (legacy setuptools):
 
-```text
+<eg>
 # MANIFEST.in
 include README.md
 include LICENSE
@@ -468,7 +468,7 @@ recursive-include src *.py
 recursive-include tests *.py
 exclude build
 exclude dist
-```
+</eg>
 
 Modern approach (Hatchling with VCS):
 

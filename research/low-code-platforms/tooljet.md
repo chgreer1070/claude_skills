@@ -118,7 +118,7 @@ Supported data sources include:
 
 ### Application Architecture
 
-```text
+<eg>
 User Interface (React + Drag-and-Drop Builder)
            |
     Application Layer (NestJS)
@@ -130,7 +130,7 @@ Data Sources   ToolJet DB
            |
     Deployment Layer
 (Docker/K8s/Cloud)
-```
+</eg>
 
 ### Data Flow
 

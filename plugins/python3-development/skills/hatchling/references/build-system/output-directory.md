@@ -19,14 +19,14 @@ This reference helps Claude configure where Hatchling places build artifacts (wh
 
 By default, Hatchling creates a `dist` directory:
 
-```text
+<eg>
 project/
 ├── pyproject.toml
 ├── src/
 └── dist/                        # Default output
     ├── mypackage-1.0.0-py3-none-any.whl
     └── mypackage-1.0.0.tar.gz
-```
+</eg>
 
 ## Configuration Methods
 

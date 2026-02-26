@@ -119,10 +119,10 @@ dev = [
 
 **Resolves to**:
 
-```text
+<eg>
 core @ /home/user/projects/monorepo/packages/core
 utils @ /home/user/projects/monorepo/packages/utils
-```
+</eg>
 
 ### Example 2: Environment-Aware Dependencies
 
@@ -191,10 +191,10 @@ test = "pytest {root}{/}tests"
 
 Expands to:
 
-```text
+<eg>
 - **Unix**: `find /project/src -name '*.py'`
 - **Windows**: `find C:\project\src -name '*.py'`
-```
+</eg>
 
 ## Hatchling Version Support
 
@@ -371,13 +371,13 @@ class MyHook(MetadataHookInterface):
 
 Guide users to use consistent patterns for monorepo layouts:
 
-```text
+<eg>
 monorepo/
 ├── core/
 ├── utils/
 └── app/
     └── pyproject.toml
-```
+</eg>
 
 Show users to apply consistent patterns:
 
@@ -462,7 +462,7 @@ When assisting users, reference these authoritative sources:
 
 ## File Structure
 
-```text
+<eg>
 context-formatting/
 ├── README.md                           # This file
 ├── global-fields.md                    # root, home, env fields
@@ -470,7 +470,7 @@ context-formatting/
 ├── optional-dependencies.md            # Using context formatting in extras
 ├── dynamic-configuration.md            # Metadata hooks and dynamic fields
 └── configuration-interpolation.md      # Advanced patterns and nesting
-```
+</eg>
 
 ## Information Sources
 

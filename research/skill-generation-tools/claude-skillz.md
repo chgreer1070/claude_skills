@@ -183,7 +183,7 @@ Do not proceed until all checks pass.
 
 Plugins use standard Claude Code plugin structure:
 
-```text
+<eg>
 plugin-name/
 ├── .claude-plugin/
 │   └── manifest.json
@@ -193,7 +193,7 @@ plugin-name/
 │   ├── hooks.json
 │   └── tools/        # Hook scripts
 └── README.md
-```
+</eg>
 
 Distributed via marketplace.json with plugin metadata (name, version, category, keywords).
 

@@ -94,7 +94,7 @@ PocketBase is an open-source Go backend that ships as a single self-contained ex
 
 ### Deployment Modes
 
-```text
+<eg>
 Standalone mode (prebuilt binary):
   Download → extract → ./pocketbase serve
   → localhost:8090/api/      (REST API)
@@ -105,7 +105,7 @@ Go framework mode:
   go mod init myapp && go mod tidy
   → import pocketbase, add hooks/routes
   → CGO_ENABLED=0 go build → single binary
-```
+</eg>
 
 ### Data Directories
 

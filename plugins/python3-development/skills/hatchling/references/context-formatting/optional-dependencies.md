@@ -186,13 +186,13 @@ integration = [
 
 This structure assumes:
 
-```text
+<eg>
 projects/
 ├── service-a/
 ├── service-b/
 └── main-project/
     └── pyproject.toml
-```
+</eg>
 
 ### Environment-Based Optional Dependencies
 
@@ -332,9 +332,9 @@ This allows:
 
 If a context field references a missing environment variable without a default, the build will fail:
 
-```text
+<eg>
 ConfigError: Environment variable 'ENTERPRISE_REPO_URL' not set and no default provided
-```
+</eg>
 
 **Solution**: Always provide defaults for optional environment variables:
 

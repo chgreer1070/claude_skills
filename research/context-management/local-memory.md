@@ -132,7 +132,7 @@ Note: The main source repository (`danieleugenewilliams/local-memory-golang`) is
 
 ### System Components
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────────────────┐
 │                     Local Memory Binary (Go)                │
 │                                                             │
@@ -158,28 +158,28 @@ Note: The main source repository (`danieleugenewilliams/local-memory-golang`) is
 │  │              (Embedded, local storage)               │   │
 │  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
-```
+</eg>
 
 ### Knowledge Evolution Pipeline
 
-```text
+<eg>
 L0 Observation    ->  reflect  ->  L1 Learning
 L1 Learning       ->  evolve   ->  L2 Pattern (if validated)
 L2 Pattern        ->  evolve   ->  L3 Schema (if generalized)
 Any Level         ->  evolve   ->  Decay (if invalidated)
 Contradiction     ->  resolve  ->  Updated knowledge + audit trail
-```
+</eg>
 
 ### Domain Cascade Resolution
 
-```text
+<eg>
 Explicit domain (in MCP args) > Agent config file detection > Config default
                                      |
                           ┌──────────┼──────────┐
                           v          v          v
                      CLAUDE.md   AGENTS.md   GEMINI.md
                      (HTML comment, Markdown header, or YAML frontmatter)
-```
+</eg>
 
 ---
 

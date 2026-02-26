@@ -88,7 +88,7 @@ Implements the MCP server using `@modelcontextprotocol/sdk` v1.8.0 with `StdioSe
 
 ## Technical Architecture
 
-```text
+<eg>
 AI Client (Claude Code / Cursor / VS Code)
      |
      | stdio (MCP protocol)
@@ -103,7 +103,7 @@ Browser MCP Chrome Extension
      | Chrome Extension APIs
      v
 User's Active Chrome Tab
-```
+</eg>
 
 The MCP server process (`src/index.ts`) registers all browser tools and starts both:
 

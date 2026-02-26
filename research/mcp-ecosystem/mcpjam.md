@@ -112,7 +112,7 @@ MCPJam Inspector is a comprehensive local development and testing tool for MCP s
 
 ## Technical Architecture
 
-```text
+<eg>
                     MCPJam Inspector
                           |
      +--------------------+--------------------+
@@ -133,7 +133,7 @@ MCPJam Inspector is a comprehensive local development and testing tool for MCP s
               |      |    |    |      |
            OpenAI Claude Gemini Ollama ...
            (GPT-5) (Sonnet)     (Local)
-```
+</eg>
 
 ### Deployment Options
 

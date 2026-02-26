@@ -105,7 +105,7 @@ Octocode is an MCP server and methodology platform that transforms AI code assis
 
 ### The RDD Adversarial Flow (GAN-Inspired)
 
-```text
+<eg>
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        RDD ADVERSARIAL FLOW                            │
 ├────────────────────────────────────────────────────────────────────────┤
@@ -137,7 +137,7 @@ Octocode is an MCP server and methodology platform that transforms AI code assis
 │       ▼                  ▼                                             │
 │   [code.ts]        [code+tests]                                        │
 └────────────────────────────────────────────────────────────────────────┘
-```
+</eg>
 
 ### Core Principles
 

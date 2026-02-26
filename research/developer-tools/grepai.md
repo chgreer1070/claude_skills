@@ -110,7 +110,7 @@ GrepAI is a CLI tool written in Go that provides semantic code search and call g
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌──────────────────────────────────────────────────────────────┐
 │                      grepai CLI (Go)                          │
 │                                                               │
@@ -152,11 +152,11 @@ External Dependencies:
   - OpenAI API (cloud embeddings, optional)
   - PostgreSQL + pgvector (optional backend)
   - Qdrant (optional backend)
-```
+</eg>
 
 ### Indexing Pipeline
 
-```text
+<eg>
 Source Files ──> .gitignore filter ──> Chunking (512 tokens, 50 overlap)
                                             │
                                             v
@@ -170,7 +170,7 @@ Source Files ──> .gitignore filter ──> Chunking (512 tokens, 50 overlap)
                                             v
                                     .grepai/index.gob (default)
                                     .grepai/symbols.gob (call graph)
-```
+</eg>
 
 ### Configuration File
 

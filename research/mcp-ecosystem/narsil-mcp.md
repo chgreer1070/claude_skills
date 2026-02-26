@@ -132,7 +132,7 @@ Narsil-MCP is a Rust-powered MCP (Model Context Protocol) server providing AI as
 
 ## Technical Architecture
 
-```text
+<eg>
 +-----------------------------------------------------------------+
 |                         MCP Server                               |
 |  +-----------------------------------------------------------+  |
@@ -164,7 +164,7 @@ Narsil-MCP is a Rust-powered MCP (Model Context Protocol) server providing AI as
 |  |           (ignore crate - respects .gitignore)             |  |
 |  +-----------------------------------------------------------+  |
 +-----------------------------------------------------------------+
-```
+</eg>
 
 **Key Implementation Details**:
 

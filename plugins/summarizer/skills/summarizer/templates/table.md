@@ -24,7 +24,7 @@ Tabular output for quick visual scanning of findings. Each row represents one fi
 
 ## Schema
 
-```text
+<eg>
 ## Summary
 
 [1-2 sentence BLUF summary]
@@ -38,11 +38,11 @@ Tabular output for quick visual scanning of findings. Each row represents one fi
 
 ---
 Source: [path or URL] | Confidence: [high|medium|low] | [access date]
-```
+</eg>
 
 ## Example
 
-```text
+<eg>
 ## Summary
 
 API configuration file defining 4 endpoints with JWT authentication and rate limiting.
@@ -51,13 +51,13 @@ API configuration file defining 4 endpoints with JWT authentication and rate lim
 |---|---------|--------|--------|--------|
 | 1 | Auth method | JWT with 24h expiry | Section 3.2, line 45 | Found |
 | 2 | Rate limit | 100 req/min per key | Section 5.1, line 112 | Found |
-| 3 | Base URL | https://api.example.com/v2 | Line 3 | Found |
+| 3 | Base URL | <https://api.example.com/v2> | Line 3 | Found |
 | 4 | WebSocket support | Not mentioned in source | N/A | Not Found |
 | 5 | Enterprise limits | "Custom limits" referenced, values unspecified | Section 6.1 | Uncertain |
 
 ---
 Source: ./config/api.yaml | Confidence: high | Read 2026-02-06
-```
+</eg>
 
 ## Fidelity Constraints
 

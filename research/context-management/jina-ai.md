@@ -79,7 +79,7 @@ Jina AI is a search foundation platform providing best-in-class multimodal and m
 
 ## Technical Architecture
 
-```text
+<eg>
 User Query
     |
     +-- Reader API  ──────────── r.jina.ai/<URL>  →  Clean Markdown
@@ -92,7 +92,7 @@ User Query
     |
     +-- DeepSearch  ─────────── Orchestrates: Reader + Embeddings + Rerankers
                                 Iterative multi-hop reasoning loop
-```
+</eg>
 
 ### API Surface
 

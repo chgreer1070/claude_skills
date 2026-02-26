@@ -883,7 +883,7 @@ theme:
 
 Structure:
 
-```text
+<eg>
 overrides/
 ├── .icons/                # Custom icons
 ├── assets/               # Custom assets
@@ -895,7 +895,7 @@ overrides/
 │   ├── footer.html
 │   └── ...
 └── main.html           # Main template override
-```
+</eg>
 
 ### Extra CSS and JavaScript
 

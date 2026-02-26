@@ -104,7 +104,7 @@ Claude Conductor is a Claude Code plugin that implements Context-Driven Developm
 
 ## Technical Architecture
 
-```text
+<eg>
 Claude Code Plugin Architecture
         │
         ▼
@@ -151,7 +151,7 @@ Claude Code Plugin Architecture
         │
         ▼
   conductor/ directory in user's project (managed artifacts)
-```
+</eg>
 
 **Key design decisions**:
 

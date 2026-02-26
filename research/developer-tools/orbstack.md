@@ -123,7 +123,7 @@ OrbStack is a fast, lightweight, and efficient Docker Desktop alternative for ma
 
 ## Technical Architecture
 
-```text
+<eg>
 macOS Host
     │
     ▼
@@ -160,7 +160,7 @@ macOS Integration
   - Finder file access
   - SSH agent forwarding
   - VPN compatibility
-```
+</eg>
 
 ---
 

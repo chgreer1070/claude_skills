@@ -111,7 +111,7 @@ SOURCE: [GitHub API repos/cachix/devenv](https://api.github.com/repos/cachix/dev
 
 devenv is implemented in Rust for the CLI binary, with the module system written in Nix. The evaluation pipeline works as follows:
 
-```text
+<eg>
 devenv.yaml          devenv.nix            Nix module system
     |                    |                        |
     v                    v                        v
@@ -135,7 +135,7 @@ Input pins  ------>  User config  ------>  Merged module options
                                Shell environment
                              (PATH, env vars, hooks)
                                activated via direnv
-```
+</eg>
 
 Key architectural decisions:
 

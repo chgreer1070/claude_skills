@@ -36,7 +36,7 @@ The `packages` option:
 
 Most common for modern Python projects:
 
-```text
+<eg>
 project/
 ├── src/
 │   └── mypackage/
@@ -44,7 +44,7 @@ project/
 │       └── module.py
 ├── tests/
 └── pyproject.toml
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -56,14 +56,14 @@ packages = ["src/mypackage"]
 
 Package at project root:
 
-```text
+<eg>
 project/
 ├── mypackage/
 │   ├── __init__.py
 │   └── module.py
 ├── tests/
 └── pyproject.toml
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -75,7 +75,7 @@ packages = ["mypackage"]
 
 Multiple packages in different locations:
 
-```text
+<eg>
 project/
 ├── src/
 │   ├── core/
@@ -83,7 +83,7 @@ project/
 ├── lib/
 │   └── helpers/
 └── pyproject.toml
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel]

@@ -123,7 +123,7 @@ visual-explainer is a Claude Code agent skill and collection of prompt templates
 
 ### Workflow
 
-```text
+<eg>
 SKILL.md (workflow + design principles)
     |
     v
@@ -140,7 +140,7 @@ templates/            <- agent reads the matching reference template
     |
     v
 ~/.agent/diagrams/filename.html -> opens in browser
-```
+</eg>
 
 ### Generation Strategy
 
@@ -190,7 +190,7 @@ git clone https://github.com/nicobailon/visual-explainer.git ~/.claude/skills/vi
 
 ### Prompt Templates
 
-```text
+<eg>
 # Generate any diagram
 /generate-web-diagram
 
@@ -208,15 +208,15 @@ git clone https://github.com/nicobailon/visual-explainer.git ~/.claude/skills/vi
 
 # Verify accuracy of a review page or plan doc
 /fact-check
-```
+</eg>
 
 ### Natural Language Activation
 
-```text
+<eg>
 draw a diagram of our authentication flow
 explain the system architecture visually
 compare these requirements against the implementation plan
-```
+</eg>
 
 The skill activates automatically when the agent would otherwise render a complex ASCII table.
 

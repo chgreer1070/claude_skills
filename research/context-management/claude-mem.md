@@ -61,11 +61,11 @@ Claude-Mem is a Claude Code plugin that automatically captures tool usage observ
 
 Token-efficient 3-layer workflow for context retrieval:
 
-```text
+<eg>
 Layer 1: search() -> Compact index (~50-100 tokens/result)
 Layer 2: timeline() -> Chronological context around observations
 Layer 3: get_observations() -> Full details ONLY for filtered IDs (~500-1000 tokens/result)
-```
+</eg>
 
 **Result**: ~10x token savings by filtering before fetching details.
 
@@ -108,7 +108,7 @@ Four MCP tools for intelligent memory search:
 
 ## Technical Architecture
 
-```text
+<eg>
 Claude Code Session
         |
         v
@@ -139,7 +139,7 @@ Claude Code Session
 |   get_observations|
 |   __IMPORTANT)    |
 +-------------------+
-```
+</eg>
 
 **Component Details**:
 

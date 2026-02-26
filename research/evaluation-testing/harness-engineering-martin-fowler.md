@@ -74,7 +74,7 @@ metadata:
 
 The harness engineering pattern comprises three layers, based on Böckeler's categorization of the OpenAI team's approach:
 
-```text
+<eg>
 +-----------------------------------------------------------+
 |                  AI Coding Agent (e.g., Codex)            |
 +-----------------------------------------------------------+
@@ -98,7 +98,7 @@ The harness engineering pattern comprises three layers, based on Böckeler's cat
           | identify gap --> |
           | agent writes fix |
           +------------------+
-```
+</eg>
 
 The harness is not a single tool but a system of deterministic checks (linters, structural tests) and LLM-based agents (context providers, garbage collectors) working together. Deterministic components provide reliable guardrails; LLM agents handle semantic checks and adaptive maintenance.
 
@@ -117,13 +117,13 @@ This is an article, not a software package. Key actionable patterns derived from
 
 **Harness improvement loop:**
 
-```text
+<eg>
 1. Observe agent mistake
 2. Identify what is missing: tools, guardrails, documentation
 3. Add the missing element to the harness (preferably via the agent itself)
 4. Verify the agent no longer makes that class of mistake
 5. Repeat
-```
+</eg>
 
 **Harness component checklist (derived from OpenAI case study):**
 

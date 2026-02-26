@@ -366,7 +366,7 @@ If answers indicate restrictions: python3-development:stdlib-scripting
 
 **Usage**:
 
-```text
+<eg>
 /python3-development:modernpython
 → Loads comprehensive reference guide
 → Provides Python 3.11+ pattern examples
@@ -374,15 +374,15 @@ If answers indicate restrictions: python3-development:stdlib-scripting
 → Shows legacy patterns to avoid
 → Shows modern alternatives to use
 → Framework-specific guides (Typer, Rich, pytest)
-```
+</eg>
 
 **With file path**:
 
-```text
+<eg>
 /python3-development:modernpython packages/mymodule.py
 → Loads guide for reference while working on specified file
 → Use guide to manually identify and refactor legacy patterns
-```
+</eg>
 
 ### /python3-development:shebangpython
 
@@ -396,7 +396,7 @@ If answers indicate restrictions: python3-development:stdlib-scripting
 
 **Pattern**:
 
-```text
+<eg>
 /python3-development:shebangpython scripts/deploy.py
 → Analyzes imports to determine dependency type
 → Corrects shebang to match script type (edits file if wrong)
@@ -404,7 +404,7 @@ If answers indicate restrictions: python3-development:stdlib-scripting
 → Removes PEP 723 metadata if stdlib-only (edits file)
 → Sets execute bit if needed
 → Provides detailed verification report
-```
+</eg>
 
 ## Integration with uv Skill
 
@@ -460,7 +460,7 @@ Use this as the reference implementation when creating CLI tools.
 
 ### Example: Building a CLI Tool
 
-```text
+<eg>
 User: "Build a CLI tool to validate YAML configurations"
 
 Orchestrator:
@@ -487,11 +487,11 @@ Orchestrator:
    Output: Quality check findings with file:line references
 
 6. Fix any issues and re-validate
-```
+</eg>
 
 ### Example: Fixing a Bug
 
-```text
+<eg>
 User: "Fix bug where CSV parser fails on empty rows"
 
 Orchestrator:
@@ -513,48 +513,48 @@ Orchestrator:
 5. Apply standards:
    /python3-development:modernpython packages/csv_parser.py
    Activate holistic-linting skill on packages/csv_parser.py tests/
-```
+</eg>
 
 ## Anti-Patterns to Avoid
 
 ### Don't: Write Python code as orchestrator
 
-```text
+<eg>
 ❌ Orchestrator writes implementation directly
-```
+</eg>
 
 ### Do: Delegate to appropriate agent
 
-```text
+<eg>
 ✅ Task is Implement with subagent_type="python3-development:python-cli-architect" — writes implementation
 ✅ Task is Review with subagent_type="python3-development:python-code-reviewer" — validates it
-```
+</eg>
 
 ### Don't: Skip validation steps
 
-```text
+<eg>
 ❌ Implement → Done (no tests, no review, no linting)
-```
+</eg>
 
 ### Do: Follow complete workflow
 
-```text
+<eg>
 ✅ Implement → Test → Review → Validate → Done
-```
+</eg>
 
 ### Don't: Mix agent contexts
 
-```text
+<eg>
 ❌ Ask python3-development:stdlib-scripting to build Typer CLI
 ❌ Ask python-cli-architect to avoid all dependencies
-```
+</eg>
 
 ### Do: Choose correct agent for context
 
-```text
+<eg>
 ✅ python-cli-architect for user-facing CLI tools
 ✅ python3-development:stdlib-scripting for stdlib-only scripts
-```
+</eg>
 
 ## Summary
 

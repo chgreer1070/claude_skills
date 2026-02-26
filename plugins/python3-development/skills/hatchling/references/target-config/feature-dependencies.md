@@ -316,9 +316,9 @@ require-runtime-features = ["database", "cache", "monitoring", "development"]
 
 ### Feature Not Found Error
 
-```text
+<terminal_output>
 ERROR: Feature 'nonexistent' not found
-```
+</terminal_output>
 
 Check:
 

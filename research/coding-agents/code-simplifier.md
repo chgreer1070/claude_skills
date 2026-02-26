@@ -89,14 +89,14 @@ The Code Simplifier is an official Anthropic Claude Code plugin that provides an
 
 ### Plugin Structure
 
-```text
+<eg>
 plugins/code-simplifier/
 ├── .claude-plugin/
 │   └── plugin.json      # Plugin metadata (name, version, author, description)
 ├── agents/
 │   └── code-simplifier.md  # Agent definition with YAML frontmatter + system prompt
 └── LICENSE              # Apache-2.0
-```
+</eg>
 
 ### Agent Definition Format
 

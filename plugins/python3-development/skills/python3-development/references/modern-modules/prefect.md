@@ -416,7 +416,7 @@ Orchestration in cloud, execution anywhere:
 
 ## Decision Matrix
 
-```text
+<eg>
 Use Prefect when:
 - You write Python workflows
 - You need dynamic task generation
@@ -442,7 +442,7 @@ Use simple cron/scripts when:
 - No retry logic needed
 - No monitoring required
 - Runs once per day or less
-```
+</eg>
 
 @[65]
 

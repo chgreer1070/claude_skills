@@ -147,9 +147,9 @@ PEP 625 standardizes the filename format for source distributions (sdists).
 
 ### Filename Format
 
-```text
+<eg>
 {name}-{version}.tar.gz
-```
+</eg>
 
 Where:
 
@@ -158,10 +158,10 @@ Where:
 
 ### Example
 
-```text
+<eg>
 my-package-1.0.0.tar.gz
 requests-2.28.1.tar.gz
-```
+</eg>
 
 ### Archive Structure
 
@@ -186,12 +186,12 @@ PEP 643 standardizes metadata storage in source distributions and introduces the
 
 Fields marked as `Dynamic` in the `PKG-INFO` indicate values that will be computed at wheel build time:
 
-```text
+<eg>
 Name: example
 Version: 1.0.0
 Dynamic: requires-dist
 Dynamic: description
-```
+</eg>
 
 This allows projects to:
 
@@ -272,9 +272,9 @@ PEP 440 defines the canonical versioning scheme for Python packages.
 
 ### Version Format
 
-```text
+<eg>
 [N!]N(.N)*[{a|b|rc}N][.postN][.devN]
-```
+</eg>
 
 Components:
 
@@ -286,7 +286,7 @@ Components:
 
 ### Examples
 
-```text
+<eg>
 1.0.0          # Final release
 1.0.0a1        # Alpha release
 1.0.0b2        # Beta release
@@ -294,7 +294,7 @@ Components:
 1.0.0.post1    # Post-release
 1.0.0.dev0     # Development release
 2!1.0.0        # Epoch reset to version 2
-```
+</eg>
 
 ### Hatchling Integration
 

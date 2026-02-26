@@ -36,7 +36,7 @@ You are an orchestrator. You coordinate work across specialized agents. Prefer d
 
 Delegate to `embedded-feature-researcher` to understand the feature request:
 
-```text
+<eg>
 Task(agent="embedded-feature-researcher", prompt="Research this embedded feature request and produce plan/feature-context-{slug}.md:
 
 Feature: $ARGUMENTS
@@ -54,7 +54,7 @@ Find similar patterns in the codebase using these searches:
 - State machines: pattern 'enum.*state|STATE_'
 
 Do NOT make implementation decisions. Surface questions for resolution.")
-```
+</eg>
 
 Output: `plan/feature-context-{slug}.md`
 
@@ -64,7 +64,7 @@ Output: `plan/feature-context-{slug}.md`
 
 Delegate to `embedded-codebase-analyzer` to trace code paths using AST tools:
 
-```text
+<eg>
 Task(agent="embedded-codebase-analyzer", prompt="Analyze the codebase for implementing this feature. Produce plan/codebase-analysis-{slug}.md.
 
 Feature context: plan/feature-context-{slug}.md
@@ -93,7 +93,7 @@ Perform these analyses:
 
 Use ctags, cscope, or clang AST tools where available.
 Output structured analysis to plan/codebase-analysis-{slug}.md")
-```
+</eg>
 
 Output: `plan/codebase-analysis-{slug}.md`
 
@@ -103,7 +103,7 @@ Output: `plan/codebase-analysis-{slug}.md`
 
 Delegate to `embedded-architect` to create the design specification:
 
-```text
+<eg>
 Task(agent="embedded-architect", prompt="Design architecture for this embedded feature. Produce plan/architect-{slug}.md.
 
 Inputs:
@@ -139,7 +139,7 @@ Design must include:
    - Error handling strategy
 
 Output to plan/architect-{slug}.md")
-```
+</eg>
 
 Output: `plan/architect-{slug}.md`
 
@@ -149,7 +149,7 @@ Output: `plan/architect-{slug}.md`
 
 Delegate to `embedded-task-planner` to create the implementation task file:
 
-```text
+<eg>
 Task(agent="embedded-task-planner", prompt="Decompose the architecture into implementation tasks. Produce plan/tasks-{slug}.md.
 
 Inputs:
@@ -191,7 +191,7 @@ Infrastructure tasks (types, headers) before implementation.
 Tests after implementation.
 
 Output to plan/tasks-{slug}.md")
-```
+</eg>
 
 Output: `plan/tasks-{slug}.md`
 
@@ -201,7 +201,7 @@ Output: `plan/tasks-{slug}.md`
 
 Before returning to user, validate the plan:
 
-```text
+<eg>
 Validate the generated plan files:
 
 1. Check plan/tasks-{slug}.md exists and has tasks
@@ -211,7 +211,7 @@ Validate the generated plan files:
 5. Verify acceptance criteria are testable
 
 If validation fails, report specific issues for resolution.
-```
+</eg>
 
 ---
 
@@ -219,7 +219,7 @@ If validation fails, report specific issues for resolution.
 
 When all phases complete, provide the user:
 
-```text
+<terminal_output>
 ================================================================================
                     EMBEDDED FEATURE PLAN READY
 ================================================================================
@@ -247,7 +247,7 @@ Next Steps:
 1. Review plan files and answer questions
 2. Run `/implement-embedded-feature {slug}` to begin implementation
 ================================================================================
-```
+</terminal_output>
 
 ---
 

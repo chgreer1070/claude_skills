@@ -93,7 +93,7 @@ VERT is an open-source file conversion utility that uses WebAssembly to convert 
 
 ### Frontend Stack
 
-```text
+<eg>
 ┌─────────────────────────────────────────────────────────┐
 │                    VERT Web Application                  │
 │                                                         │
@@ -133,11 +133,11 @@ VERT is an open-source file conversion utility that uses WebAssembly to convert 
 │  - GPU-accelerated video conversion                      │
 │  - License: GPL-3.0                                      │
 └──────────────────────────────────────────────────────────┘
-```
+</eg>
 
 ### Conversion Pipeline
 
-```text
+<eg>
 User drops file(s)
        │
        ├── Image? ──> ImageMagick WASM ──> Converted file (in-browser)
@@ -147,7 +147,7 @@ User drops file(s)
        ├── Document? ──> Pandoc WASM ──> Converted file (in-browser)
        │
        └── Video? ──> Upload to vertd ──> FFmpeg native ──> Download result
-```
+</eg>
 
 ### Key Dependencies
 
@@ -202,11 +202,11 @@ docker run -d --restart unless-stopped -p 3000:80 --name "vert" vert-sh/vert
 
 ### Self-Hosted Video Conversion
 
-```text
+<eg>
 1. Download vertd from https://github.com/VERT-sh/vertd/releases
 2. Run the vertd binary (HTTP server on port 24153 by default)
 3. In VERT settings, set Instance URL to http://localhost:24153
-```
+</eg>
 
 ---
 

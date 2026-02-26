@@ -239,7 +239,7 @@ results/
 
 ### ZUTH expects DUT to respond to these commands via serial
 
-```text
+<eg>
 # Command format: <CMD> [params]\r\n
 # Response format: <STATUS> [data]\r\n
 
@@ -276,7 +276,7 @@ RSP: OK COMMISSIONING
 
 CMD: FACTORY_RESET
 RSP: OK RESET
-```
+</eg>
 
 ### Implementing DUT Interface
 

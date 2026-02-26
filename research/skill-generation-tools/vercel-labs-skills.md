@@ -141,11 +141,11 @@ Vercel Labs Skills is an open-source CLI tool (`npx skills`) that enables develo
 
 ### Installation Workflow
 
-```text
+<eg>
 Source URL → Clone/Download → Discover Skills → Prompt Selection
 → Detect Agents → Choose Mode (symlink/copy) → Install to Paths
 → Track Installation Metadata
-```
+</eg>
 
 ### Agent Capability Detection
 

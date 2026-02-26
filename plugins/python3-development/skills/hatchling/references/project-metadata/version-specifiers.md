@@ -18,9 +18,9 @@ Version specifiers in PEP 440 define compatible versions for dependency resoluti
 
 PEP 440 defines this canonical version format:
 
-```text
+<eg>
 [N!]N(.N)*[{a|b|rc}N][.postN][.devN][+local]
-```
+</eg>
 
 ### Components
 
@@ -303,14 +303,14 @@ dependencies = [
 
 Given `requests` releases: `2.27.0`, `2.28.0`, `2.28.1`, `2.29.0`, `3.0.0a1`, `3.0.0`
 
-```text
+<eg>
 requests>=2.28.0        → 2.28.0, 2.28.1, 2.29.0, 3.0.0a1, 3.0.0
 requests>=2.28.0,<3.0   → 2.28.0, 2.28.1, 2.29.0
 requests~=2.28          → 2.28.0, 2.28.1, 2.29.0
 requests~=2.28.0        → 2.28.0, 2.28.1
 requests==2.28.0        → 2.28.0 only
 requests!=2.28.0        → 2.27.0, 2.28.1, 2.29.0, 3.0.0a1, 3.0.0
-```
+</eg>
 
 ## Related Configuration
 

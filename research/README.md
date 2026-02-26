@@ -8,7 +8,7 @@ This directory contains curated research on tools, repositories, and patterns re
 
 ## Directory Structure
 
-```text
+<eg>
 research/
 ├── README.md                          # This index file
 ├── agent-frameworks/                  # Agent SDKs and orchestration frameworks
@@ -131,7 +131,7 @@ research/
 │   └── system-prompts-ai-tools.md     # Leaked system prompts and model configs for 30+ AI tools including Claude Code, Cursor, Windsurf, Devin AI (117.9K stars)
 └── task-management/                   # AI-powered task management for development
     └── claude-task-master.md          # Task management system for AI-driven development (25K+ stars)
-```
+</eg>
 
 ---
 

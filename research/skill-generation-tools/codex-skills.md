@@ -107,7 +107,7 @@ codex-skills is a curated skill catalog for the OpenAI Codex CLI, providing drop
 
 ## Technical Architecture
 
-```text
+<eg>
 codex-skills/
   <skill-name>/
     SKILL.md            # YAML frontmatter (name, description) + Markdown workflow body
@@ -128,7 +128,7 @@ codex-skills/
   skills-meta.json      # Overrides for category/author/license per skill
   AGENTS.md             # Repo-scoped agent instructions
   LEDGER-PATTERN.md     # Documentation of the cross-session ledger pattern
-```
+</eg>
 
 Codex discovery mechanism:
 

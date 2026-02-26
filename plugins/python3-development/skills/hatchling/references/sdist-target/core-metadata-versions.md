@@ -268,7 +268,7 @@ Hatchling automatically:
 
 ### Metadata 2.1/2.2 (Minimal)
 
-```text
+<eg>
 Metadata-Version: 2.1
 Name: my-project
 Version: 1.0.0
@@ -277,11 +277,11 @@ Author: Name
 Author-Email: email@example.com
 License: MIT
 Requires-Python: >=3.6
-```
+</eg>
 
 ### Metadata 2.4 (Full PEP 639)
 
-```text
+<eg>
 Metadata-Version: 2.4
 Name: my-project
 Version: 1.0.0
@@ -292,7 +292,7 @@ License-Expression: MIT OR Apache-2.0
 License-File: LICENSE
 License-File: COPYING
 Requires-Python: >=3.6
-```
+</eg>
 
 ## Version Numbering
 

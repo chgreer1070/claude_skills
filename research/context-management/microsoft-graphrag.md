@@ -95,7 +95,7 @@ GraphRAG is a modular graph-based Retrieval-Augmented Generation (RAG) system de
 
 ### Pipeline Flow
 
-```text
+<eg>
 Load Documents
     |
 Chunk Documents
@@ -107,7 +107,7 @@ Chunk Documents
     +-- Embed Chunks
     |
     +-- Embed Entities
-```
+</eg>
 
 ### Knowledge Model
 

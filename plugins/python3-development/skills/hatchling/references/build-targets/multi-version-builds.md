@@ -395,12 +395,12 @@ versions = [
 
 Versions typically produce artifacts with the same base name:
 
-```text
+<eg>
 dist/
 ├── mypackage-1.0.0-py3-none-any.whl  # standard version
 ├── mypackage-1.0.0-py3-none-any.whl  # minimal version (overwrites!)
 └── mypackage-1.0.0-py3-none-any.whl  # full version (overwrites!)
-```
+</eg>
 
 ### Custom Naming
 
@@ -416,12 +416,12 @@ class VersionNameHook(BuildHookInterface):
 
 Results in:
 
-```text
+<eg>
 dist/
 ├── mypackage-1.0.0-py3-none-any.whl          # standard
 ├── mypackage-1.0.0-py3-none-any.minimal.whl  # minimal
 └── mypackage-1.0.0-py3-none-any.full.whl     # full
-```
+</eg>
 
 ## Testing Multiple Versions
 

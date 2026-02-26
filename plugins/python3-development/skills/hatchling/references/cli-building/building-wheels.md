@@ -145,7 +145,7 @@ Remap source paths to different locations in the wheel:
 
 A typical wheel contains:
 
-```text
+<eg>
 my_package-0.1.0-py3-none-any.whl
 ├── mypackage/
 │   ├── __init__.py
@@ -159,15 +159,15 @@ my_package-0.1.0-py3-none-any.whl
 └── mypackage.data/
     └── data/
         └── config.yaml
-```
+</eg>
 
 ## Wheel Naming Convention
 
 Wheels follow the naming pattern:
 
-```text
+<eg>
 {package}-{version}(-{build})?-{python}-{abi}-{platform}.whl
-```
+</eg>
 
 Example: `mypackage-1.0.0-py3-none-any.whl`
 

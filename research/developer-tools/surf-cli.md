@@ -118,7 +118,7 @@ SOURCE: [GitHub API repos/nicobailon/surf-cli](https://api.github.com/repos/nico
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌──────────────────────────────────────────────────────┐
 │  AI Agent (Claude Code, GPT, shell script, etc.)      │
 │  runs: surf click e5                                   │
@@ -146,7 +146,7 @@ SOURCE: [GitHub API repos/nicobailon/surf-cli](https://api.github.com/repos/nico
          │ Chrome DevTools Protocol (CDP)
          ▼
     Chrome / Brave / Edge / Arc / Helium
-```
+</eg>
 
 Communication path: CLI sends JSON commands over a Unix socket to the native host, which relays to the Chrome extension via Chrome Native Messaging. The extension executes actions via CDP and DOM APIs, returning JSON results. The native host also writes network capture logs to `/tmp/surf/` for async retrieval.
 

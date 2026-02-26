@@ -74,14 +74,14 @@ Prompt Engine is a closed-source, Next.js-based web application (evidenced by `/
 
 Prompt Engine is a web-only SaaS; no installation is required.
 
-```text
+<eg>
 1. Visit https://www.promptengine.cc
 2. Create an account (free trial or $19/month subscription)
 3. Describe your task in plain language in the Generate field
 4. Receive a professionally crafted prompt ready to paste into any LLM interface
 5. Optionally run the prompt through Optimize to further refine it
 6. Save high-performing prompts to the Organize library for future reuse
-```
+</eg>
 
 ---
 

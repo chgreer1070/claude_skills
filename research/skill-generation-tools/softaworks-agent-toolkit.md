@@ -116,14 +116,14 @@ Removes AI writing patterns from text to make content sound more natural and hum
 
 ### Skill Structure
 
-```text
+<eg>
 skills/
   <skill-name>/
     SKILL.md      # Agent-facing instructions (YAML frontmatter required)
     README.md     # User-facing documentation
     scripts/      # Helper automation scripts (optional)
     references/   # Supporting documentation (optional)
-```
+</eg>
 
 ### SKILL.md Format
 

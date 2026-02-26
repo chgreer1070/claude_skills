@@ -460,7 +460,7 @@ The model must state limitations and alternative approaches:
 
 The model must provide deterministic decision criteria:
 
-```text
+<eg>
 ┌─────────────────────────────────┬──────────────────┬───────────────────┐
 │ Scenario                        │ Use dotenv?      │ Alternative       │
 ├─────────────────────────────────┼──────────────────┼───────────────────┤
@@ -477,7 +477,7 @@ The model must provide deterministic decision criteria:
 │ Serverless functions            │ MAYBE            │ Cloud env vars    │
 │ Distributed systems             │ NO               │ Config service    │
 └─────────────────────────────────┴──────────────────┴───────────────────┘
-```
+</eg>
 
 ## File Format Reference
 

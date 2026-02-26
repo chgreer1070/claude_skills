@@ -346,7 +346,7 @@ version = importlib.metadata.version("package-name")
 
 Follow Python versioning standard:
 
-```text
+<eg>
 # Release versions
 1.0.0
 1.0.1
@@ -364,7 +364,7 @@ Follow Python versioning standard:
 
 # Post-releases
 1.0.0.post1
-```
+</eg>
 
 ### 4. Document Version Strategy
 

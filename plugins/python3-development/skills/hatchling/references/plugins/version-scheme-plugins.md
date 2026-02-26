@@ -124,7 +124,7 @@ Features:
 
 Examples:
 
-```text
+<eg>
 1.0.0 → 1.0.1 (valid)
 1.0.0 → 1.1.0 (valid)
 1.0.0 → 2.0.0 (valid)
@@ -132,7 +132,7 @@ Examples:
 1.0.0 → 0.9.0 (invalid - lower)
 1.0.0 → 1.0.0a1 (invalid - lower)
 1.0.0a1 → 1.0.0 (valid - final release)
-```
+</eg>
 
 ## Third-Party Version Schemes
 

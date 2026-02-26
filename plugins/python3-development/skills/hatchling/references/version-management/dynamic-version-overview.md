@@ -73,7 +73,7 @@ class VersionSourceInterface:
 
 ### Decision Tree
 
-```text
+<eg>
 Is your version in a Python file?
 ├─ Yes → Is it a simple string assignment?
 │  ├─ Yes → Use `regex` source
@@ -81,7 +81,7 @@ Is your version in a Python file?
 └─ No → Is it in environment/CI?
    ├─ Yes → Use `env` source
    └─ No → Consider third-party sources (vcs, nodejs, etc.)
-```
+</eg>
 
 ### Comparison Matrix
 

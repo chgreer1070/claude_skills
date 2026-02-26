@@ -115,7 +115,7 @@ Piebald is a closed-source, cross-platform desktop application for agentic AI co
 
 ## Technical Architecture
 
-```text
+<eg>
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                        Piebald Desktop Application                        │
 │                   (cross-platform; Electron or Tauri/framework TBD)       │
@@ -153,7 +153,7 @@ Piebald is a closed-source, cross-platform desktop application for agentic AI co
 │  │  - Configurable retention of traffic history                         │  │
 │  └──────────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────────────┘
-```
+</eg>
 
 ### Key Architectural Decisions
 
@@ -189,9 +189,9 @@ Available at <https://piebald.ai/downloads>:
 
 Piebald supports [agentskills.io](https://agentskills.io/home) compatible skills:
 
-```text
+<eg>
 Settings → Skills → Add Skill Directory
-```
+</eg>
 
 Load skill directories from the filesystem; skills augment the agent's capabilities for the duration of the session.
 
@@ -199,11 +199,11 @@ Load skill directories from the filesystem; skills augment the agent's capabilit
 
 Create a "Chatting" profile to avoid the model searching the codebase for simple questions:
 
-```text
+<eg>
 Settings → Profiles → New Profile → "Chatting"
   Tools: web_fetch, web_search only
   System prompt: "Answer technical questions concisely."
-```
+</eg>
 
 Switch profile per chat via the chat configuration panel.
 

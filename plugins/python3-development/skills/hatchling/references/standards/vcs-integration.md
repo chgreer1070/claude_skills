@@ -25,11 +25,11 @@ Many projects derive versions from Git tags following PEP 440 conventions.
 
 **Pattern Examples:**
 
-```text
+<eg>
 v1.0.0          # Prefixed with 'v'
 1.0.0           # Bare version
 release-1.0.0   # Custom prefix
-```
+</eg>
 
 ### Hatchling VCS Integration
 
@@ -154,10 +154,10 @@ Commits between tags are versioned as development releases:
 
 **Pattern:**
 
-```text
+<eg>
 1.0.0.dev5        # 5 commits after tag 1.0.0
 1.0.0.dev5+g1a2b3c4  # With commit hash suffix
-```
+</eg>
 
 **Rules (PEP 440):**
 
@@ -172,11 +172,11 @@ Local versions identify private builds:
 
 **Pattern:**
 
-```text
+<eg>
 1.0.0+debian.1    # Debian rebuild
 1.0.0+ubuntu.1    # Ubuntu rebuild
 1.0.0+local.3     # Local build
-```
+</eg>
 
 **Rules:**
 
@@ -191,7 +191,7 @@ Local versions identify private builds:
 
 Standard structure for version-controlled projects:
 
-```text
+<eg>
 project-name/
 ├── .git/
 ├── .gitignore
@@ -207,7 +207,7 @@ project-name/
 │   └── test_module.py
 └── docs/
     └── index.rst
-```
+</eg>
 
 ### VCS Metadata in Distributions
 
@@ -242,9 +242,9 @@ Version sources integrate as extensions to the build backend.
 
 Standardizes sdist naming:
 
-```text
+<eg>
 {name}-{version}.tar.gz
-```
+</eg>
 
 Both name and version come from VCS tags or configuration.
 

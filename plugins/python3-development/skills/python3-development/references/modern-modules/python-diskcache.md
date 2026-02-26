@@ -67,7 +67,7 @@ Without diskcache, you would need to:
 
 ## Decision Matrix
 
-```text
+<eg>
 ┌──────────────────────────────┬───────────┬─────────┬────────────────┬──────────┐
 │ Requirement                  │ diskcache │ Redis   │ lru_cache      │ shelve   │
 ├──────────────────────────────┼───────────┼─────────┼────────────────┼──────────┤
@@ -86,7 +86,7 @@ Without diskcache, you would need to:
 │ Typical latency (get)        │ 25 µs     │ 190 µs  │ 0.1 µs         │ 36 µs    │
 │ Pure Python                  │ ✓         │ ✗       │ ✓              │ ✓        │
 └──────────────────────────────┴───────────┴─────────┴────────────────┴──────────┘
-```
+</eg>
 
 @ Compiled from grantjenks.com/docs/diskcache, github.com/grantjenks/python-diskcache
 
@@ -545,7 +545,7 @@ value = index['key']
 
 ### Single Process Performance @ grantjenks.com/docs/diskcache/cache-benchmarks.html
 
-```text
+<eg>
 diskcache.Cache:
   get:    19.073 µs (median)
   set:   114.918 µs (median)
@@ -561,11 +561,11 @@ Comparison vs alternatives:
   shelve:   get 41µs, set 928µs, delete 702µs
   sqlitedict: get 513µs, set 697µs, delete 1717µs
   pickleDB: get 92µs, set 1020µs, delete 1020µs
-```
+</eg>
 
 ### Multi-Process Performance (8 processes) @ grantjenks.com/docs/diskcache/cache-benchmarks.html
 
-```text
+<eg>
 diskcache.Cache:
   get:    20.027 µs (median)
   set:   129.700 µs (median)
@@ -580,13 +580,13 @@ pylibmc.Client:
   get:    95.844 µs (median)
   set:    97.036 µs (median)
   delete: 94.891 µs (median)
-```
+</eg>
 
 **Key Insight:** diskcache is faster than network-based caches (Redis, Memcached) for single-machine workloads, especially for reads. @ grantjenks.com/docs/diskcache
 
 ### Django Cache Backend Performance @ grantjenks.com/docs/diskcache/djangocache-benchmarks.html
 
-```text
+<eg>
 diskcache DjangoCache:
   get:    55.075 µs (median)
   set:   303.984 µs (median)
@@ -604,7 +604,7 @@ filebased DjangoCache:
   set:    11.289 ms (median)
   delete: 432.014 µs (median)
   Total: 907.537s
-```
+</eg>
 
 **Key Insight:** diskcache is 1.8x faster than Redis and 9.2x faster than Django's file-based cache. @ grantjenks.com/docs/diskcache/djangocache-benchmarks.html
 

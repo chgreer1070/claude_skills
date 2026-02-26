@@ -104,7 +104,7 @@ SOURCE: GitHub API (stars, forks, issues, contributors, created date), npm downl
 
 ### Spec Format (Flat Element Map)
 
-```text
+<eg>
 Spec
   root: "card-1"                    -- entry point element ID
   elements:
@@ -118,11 +118,11 @@ Spec
       children: []
       visible: [{ "$state": "/form/active" }]   -- optional visibility
       watch: { "/form/tab": { action: "load" } } -- optional watchers
-```
+</eg>
 
 ### System Layers
 
-```text
+<eg>
 AI Layer
   └── LLM generates JSON spec constrained by catalog.prompt() system prompt
         |
@@ -144,11 +144,11 @@ Platform Layer
   ├── React Native (mobile via @json-render/react-native)
   ├── Remotion (video via @json-render/remotion)
   └── React PDF (documents via @json-render/react-pdf)
-```
+</eg>
 
 ### Package Dependency Graph
 
-```text
+<eg>
 @json-render/core           -- shared: schemas, catalog, prompt gen, SpecStream
     ^
     |--- @json-render/react          -- React renderer
@@ -162,11 +162,11 @@ Platform Layer
     |--- @json-render/xstate         -- StateStore adapter
 
 @json-render/shadcn         -- pre-built components (depends on @json-render/react)
-```
+</eg>
 
 ### Monorepo Structure
 
-```text
+<eg>
 vercel-labs/json-render/
   packages/          -- library packages (core, react, vue, shadcn, ...)
   apps/              -- documentation/playground web app
@@ -176,7 +176,7 @@ vercel-labs/json-render/
   opensrc/           -- source snapshots of key dependencies for agent reference
   turbo.json         -- Turborepo pipeline configuration
   pnpm-workspace.yaml
-```
+</eg>
 
 ---
 

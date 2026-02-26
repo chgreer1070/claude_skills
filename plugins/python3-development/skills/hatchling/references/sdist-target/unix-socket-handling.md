@@ -48,13 +48,13 @@ UNIX sockets have characteristics that make them unsuitable for tar archives:
 
 When Hatchling encounters UNIX socket files during sdist creation:
 
-```text
+<eg>
 Processing files for sdist...
 Skipping UNIX socket: /tmp/myapp.sock
 Skipping UNIX socket: /var/run/socket.sock
 ...
 SDist created successfully
-```
+</eg>
 
 The behavior:
 
@@ -147,14 +147,14 @@ If sockets exist in your source directory (development environment):
 
 You're running a development server that creates sockets:
 
-```text
+<eg>
 my-project/
 ├── src/
 ├── run/
 │   └── myapp.sock       ← Created by development server
 ├── pyproject.toml
 └── .gitignore
-```
+</eg>
 
 **Solution:**
 
@@ -191,11 +191,11 @@ rm -rf /tmp/myapp.sock
 
 If sockets appear in your package source (unusual):
 
-```text
+<eg>
 src/
 └── mypackage/
     └── some.sock        ← Should not be here
-```
+</eg>
 
 **Solution:** Remove from repository, add to `.gitignore`, and never commit.
 
@@ -267,9 +267,9 @@ If socket files somehow appear in the sdist:
 
 If you see socket errors during build:
 
-```text
+<eg>
 Warning: Encountered UNIX socket at /path/to/socket
-```
+</eg>
 
 This is **normal and expected**. The warning indicates:
 
@@ -309,7 +309,7 @@ If installing from sdist fails with socket-related errors:
 
 Organize directories to keep sockets separate:
 
-```text
+<eg>
 my-project/
 ├── src/
 │   └── mypackage/
@@ -320,7 +320,7 @@ my-project/
 │   └── .gitkeep
 └── tmp/                 # Temporary files
     └── .gitkeep
-```
+</eg>
 
 Contents of `.gitignore`:
 
@@ -337,10 +337,10 @@ var/
 
 Contents of `.gitkeep` (empty file to track directory):
 
-```text
+<eg>
 # .gitkeep keeps empty directories in git
 # Without it, git doesn't track empty directories
-```
+</eg>
 
 ### Development vs. Distribution
 

@@ -16,13 +16,13 @@ Namespace packages allow multiple separate distributions to contribute modules t
 
 No `__init__.py` file in the namespace directory:
 
-```text
+<eg>
 mycompany/             # No __init__.py here
 ├── package_a/
 │   └── __init__.py
 └── package_b/
     └── __init__.py
-```
+</eg>
 
 ### Legacy Namespace Packages
 
@@ -63,7 +63,7 @@ only-include = ["mycompany/subpackage"]
 
 #### Standard Namespace Layout
 
-```text
+<eg>
 project-root/
 ├── pyproject.toml
 ├── src/
@@ -71,7 +71,7 @@ project-root/
 │       └── subpackage/      # Your package
 │           ├── __init__.py
 │           └── module.py
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -80,14 +80,14 @@ packages = ["src/mycompany"]
 
 #### Flat Namespace Layout
 
-```text
+<eg>
 project-root/
 ├── pyproject.toml
 └── mycompany/              # Namespace (no __init__.py)
     └── subpackage/         # Your package
         ├── __init__.py
         └── module.py
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -133,14 +133,14 @@ import mycompany.utils  # From mycompany-utils
 
 ### Nested Namespaces
 
-```text
+<eg>
 src/
 └── company/                # First namespace level
     └── products/           # Second namespace level
         └── webapp/         # Actual package
             ├── __init__.py
             └── app.py
-```
+</eg>
 
 ```toml
 [project]
@@ -152,14 +152,14 @@ packages = ["src/company"]
 
 ### Mixed Regular and Namespace Packages
 
-```text
+<eg>
 src/
 ├── mycompany/              # Namespace (no __init__.py)
 │   └── shared/             # Sub-package
 │       └── __init__.py
 └── myapp/                  # Regular package
     └── __init__.py
-```
+</eg>
 
 ```toml
 [tool.hatch.build.targets.wheel]
@@ -405,7 +405,7 @@ include = [
 
 Directory structure:
 
-```text
+<eg>
 acme-explosives/
 ├── pyproject.toml
 ├── acme/                  # No __init__.py (namespace)
@@ -415,7 +415,7 @@ acme-explosives/
 │       └── tnt.py
 └── tests/
     └── test_explosives.py
-```
+</eg>
 
 ## References
 

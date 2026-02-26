@@ -123,7 +123,7 @@ __all__ = ["__version__"]  # Plus other exports
 
 **Directory Structure**:
 
-```text
+<eg>
 project_root/
 ├── packages/
 │   └── {package_name}/
@@ -135,7 +135,7 @@ project_root/
 │   └── hatch_build.py         # Custom build hook (if needed)
 ├── pyproject.toml
 └── README.md
-```
+</eg>
 
 **pyproject.toml Package Mapping** (STANDARD - 5/5 projects):
 

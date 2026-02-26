@@ -43,9 +43,9 @@ When you need to answer a question that would require reading many files (pollut
 
 **For one-off questions**: Prompt the agent to respond directly:
 
-```text
+<eg>
 "Research how authentication works in this codebase and respond with a summary of the flow"
-```
+</eg>
 
 The agent operates in its own context window and can read extensively without affecting your token budget.
 

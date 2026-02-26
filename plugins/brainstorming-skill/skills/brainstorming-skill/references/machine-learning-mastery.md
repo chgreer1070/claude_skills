@@ -63,7 +63,7 @@ Explicitly state limitations and boundaries. These constraints force creative pr
 
 Based on the article's examples, the optimal prompt structure combines all four elements:
 
-```text
+<eg>
 Act as a [ACTOR with specific expertise and experience].
 
 I need you to [REQUEST - the core task].
@@ -73,7 +73,7 @@ Here's the context: [CONTEXT - relevant background, preferences, interests].
 Constraints: [CONSTRAINTS - budget, time, resources, limitations].
 
 Please provide [NUMBER] detailed options/suggestions.
-```
+</eg>
 
 ---
 
@@ -81,7 +81,7 @@ Please provide [NUMBER] detailed options/suggestions.
 
 ### Prompt Structure
 
-```text
+<eg>
 Act as a professional travel agent with 15 years of experience planning international trips.
 
 I need you to plan a 2-week trip from Pakistan to Europe for a budget-conscious traveler.
@@ -102,7 +102,7 @@ Please provide 3 detailed itineraries with:
 - Recommended accommodations
 - Key activities and cultural experiences
 - Transportation logistics
-```
+</eg>
 
 ### Result Characteristics
 
@@ -124,7 +124,7 @@ The author emphasizes that ChatGPT may miss critical details (e.g., Schengen vis
 
 ### Prompt Structure
 
-```text
+<eg>
 Act as an expert chef with 10 years of experience planning intimate dinners.
 
 I need you to plan an Italian-style dinner for 5 people.
@@ -145,7 +145,7 @@ Please provide a complete menu including:
 - Dessert
 - Complete shopping list with quantities
 - Detailed timing guide
-```
+</eg>
 
 ### Result Characteristics
 
@@ -169,10 +169,10 @@ The article emphasizes that brainstorming is iterative. After the initial respon
 
 **Example**:
 
-```text
+<eg>
 "Based on the constraints, generate 3 different dinner menus that fit the 2-hour timeframe.
 Make each one distinct in cuisine style or preparation approach."
-```
+</eg>
 
 **Effect**: Multiple options allow you to compare approaches and select the most appealing direction before investing in detailed refinement.
 
@@ -182,13 +182,13 @@ Once you identify an appealing option, request elaboration and additional detail
 
 **Example**:
 
-```text
+<eg>
 "I like the Italian menu most. For the main course, please provide:
 - Detailed step-by-step instructions
 - Alternative pasta shapes and why each works
 - Wine pairing suggestions
 - How to prep components in parallel to save time"
-```
+</eg>
 
 **Effect**: Transforms a good outline into actionable, detailed guidance.
 
@@ -198,11 +198,11 @@ As you work through ideas, new constraints or preferences often emerge. Use foll
 
 **Example**:
 
-```text
+<eg>
 "One guest mentioned they're vegetarian. How would you modify the menu
 while keeping the Italian theme and 2-hour timeframe? Should I replace
 the main course or modify it? What about the appetizer?"
-```
+</eg>
 
 **Effect**: Enables dynamic constraint adjustment without starting from scratch.
 
@@ -212,10 +212,10 @@ Ask ChatGPT to explain its recommendations and provide alternatives for specific
 
 **Example**:
 
-```text
+<eg>
 "Why did you choose osso buco for the main course? What are 2-3 alternatives
 that still fit the timeframe and budget? What are the trade-offs between them?"
-```
+</eg>
 
 **Effect**: Develops deeper understanding of the reasoning and reveals creative alternatives you might not have considered.
 

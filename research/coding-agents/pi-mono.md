@@ -97,7 +97,7 @@ SOURCE: [coding-agent README](https://github.com/badlogic/pi-mono/tree/main/pack
 
 ## Technical Architecture
 
-```text
+<eg>
 pi-mono (TypeScript monorepo, npm workspaces)
 ├── packages/
 │   ├── ai/              @mariozechner/pi-ai
@@ -133,7 +133,7 @@ pi-mono (TypeScript monorepo, npm workspaces)
 ├── CI: GitHub Actions (.github/workflows/ci.yml)
 └── Releases: GitHub Actions bot, binaries for
     darwin-arm64, darwin-x64, linux-arm64, linux-x64, windows-x64
-```
+</eg>
 
 The coding agent reads `AGENTS.md` (or `CLAUDE.md`) from the global `~/.pi/agent/AGENTS.md`, parent directories of cwd, and current directory — the same context-file convention used by Claude Code. Settings cascade from global (`~/.pi/agent/settings.json`) to project (`.pi/settings.json`).
 
@@ -172,7 +172,7 @@ pi --offline
 
 ### Common session commands
 
-```text
+<eg>
 /model          - Switch models (or Ctrl+L)
 /resume         - Browse and continue past sessions
 /tree           - Navigate session tree, continue from any point
@@ -180,7 +180,7 @@ pi --offline
 /share          - Upload session as shareable GitHub gist HTML
 /skill:name     - Invoke an installed skill
 /settings       - TUI settings panel (thinking level, theme, etc.)
-```
+</eg>
 
 ### Write a TypeScript Extension
 

@@ -70,13 +70,13 @@ name = "myapp"
 
 Binary executables are built in the `app` subdirectory of the output directory:
 
-```text
+<eg>
 dist/
 └── app/
     ├── myapp         # Unix executable
     ├── myapp.exe     # Windows executable
     └── myapp-admin   # Additional script
-```
+</eg>
 
 ## Environment Variables
 

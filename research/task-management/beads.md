@@ -115,7 +115,7 @@ SOURCE: [GitHub API](https://api.github.com/repos/steveyegge/beads) (accessed 20
 
 Beads uses a two-layer architecture: a CLI layer and a Dolt database layer.
 
-```text
+<eg>
 CLI Layer (cmd/bd/)
   bd create, list, update, close, ready, show, dep, sync, ...
   All commands support --json for programmatic use
@@ -133,7 +133,7 @@ Dolt Database (.beads/dolt/)
 Remote (DoltHub, S3, GCS, filesystem)
   All collaborators share the same issue database
   Cell-level merge for conflict resolution
-```
+</eg>
 
 **Write path**: CLI command → Dolt write (immediate) → Dolt commit (automatic). Sync to remote is explicit via `bd dolt push`.
 
@@ -141,7 +141,7 @@ Remote (DoltHub, S3, GCS, filesystem)
 
 **File layout**:
 
-```text
+<eg>
 beads/
   cmd/bd/              # CLI commands (Cobra)
   internal/
@@ -152,7 +152,7 @@ beads/
   integrations/
     beads-mcp/         # MCP server (Python/PyPI)
   npm-package/         # @beads/bd npm wrapper
-```
+</eg>
 
 SOURCE: [ARCHITECTURE.md](https://github.com/steveyegge/beads/blob/main/docs/ARCHITECTURE.md) (accessed 2026-02-26)
 

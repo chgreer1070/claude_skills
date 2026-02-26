@@ -70,14 +70,14 @@ sources = { include = ["src", "tests"] }
 
 File structure:
 
-```text
+<eg>
 myproject/
 ├── src/
 │   └── mypackage/
 │       ├── __init__.py
 │       └── module.py
 └── pyproject.toml
-```
+</eg>
 
 Result in distribution: `mypackage/` at root level
 
@@ -93,7 +93,7 @@ sources = [
 
 File structure:
 
-```text
+<eg>
 project/
 ├── pkgs/
 │   ├── core/
@@ -103,7 +103,7 @@ project/
 │       ├── __init__.py
 │       └── helpers.py
 └── pyproject.toml
-```
+</eg>
 
 Distribution paths: `mycompany/core/`, `mycompany/utils/`
 

@@ -98,7 +98,7 @@ Docs MCP Server (branded as "Grounded Docs") is an open-source MCP server that s
 
 ## Technical Architecture
 
-```text
+<eg>
 Documentation Sources
          |
          v
@@ -156,7 +156,7 @@ Documentation Sources
 |  - Full-text search       |
 |  - RRF ranking            |
 +---------------------------+
-```
+</eg>
 
 ### Deployment Modes
 
