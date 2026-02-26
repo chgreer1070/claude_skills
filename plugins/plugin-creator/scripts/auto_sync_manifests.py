@@ -1094,24 +1094,29 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
     plugins_list = cast("list[dict[str, str]]", data.get("plugins", []))
     registered_names = {p["name"] for p in plugins_list}
 
-    # Discover plugins on disk
-    disk_plugins: set[str] = set()
+    # Discover plugins on disk — keyed by canonical name (from plugin.json),
+    # mapped to directory name (for the source field).
+    # Using canonical name for comparison avoids mismatches when the directory
+    # name differs from the "name" field in plugin.json (e.g. dir=the-rewrite-room,
+    # name=rwr).
+    disk_plugins: dict[str, str] = {}  # {canonical_name: dir_name}
     for d in sorted(plugins_root.iterdir()):
         if d.is_dir() and (d / ".claude-plugin" / "plugin.json").exists():
-            disk_plugins.add(d.name)
+            canonical = _read_plugin_name(d.name)
+            disk_plugins[canonical] = d.name
 
-    missing = disk_plugins - registered_names
-    stale = registered_names - disk_plugins
+    missing = set(disk_plugins.keys()) - registered_names
+    stale = registered_names - set(disk_plugins.keys())
     has_drift = bool(missing or stale)
 
     if missing:
         label = "Would add" if dry_run else "Adding"
-        for name in sorted(missing):
-            print(f"  {label} plugin to marketplace: {name}")
+        for canonical_name in sorted(missing):
+            print(f"  {label} plugin to marketplace: {canonical_name}")
         if not dry_run:
-            for name in sorted(missing):
-                canonical_name = _read_plugin_name(name)
-                plugins_list.append({"name": canonical_name, "source": f"./plugins/{name}"})
+            for canonical_name in sorted(missing):
+                dir_name = disk_plugins[canonical_name]
+                plugins_list.append({"name": canonical_name, "source": f"./plugins/{dir_name}"})
 
     if stale:
         label = "Would remove" if dry_run else "Removing"

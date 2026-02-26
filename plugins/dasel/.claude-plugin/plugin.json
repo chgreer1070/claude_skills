@@ -1,6 +1,6 @@
 {
   "name": "dasel",
-  "version": "1.63.1",
+  "version": "1.64.0",
   "description": "Query, transform, and convert structured data files (JSON, YAML, TOML, XML, CSV, HCL, INI) using dasel v3. Provides reference syntax, exploration workflows, transformation patterns, and cross-platform installation.",
   "author": {
     "name": "Jamie Nelson",
@@ -30,5 +30,16 @@
     "./skills/domains/enterprise-maven-pom",
     "./skills/domains/enterprise-hibernate-hbm",
     "./skills/domains/enterprise-tomcat-web"
+  ],
+  "commands": [
+    "./skills/dasel-reference",
+    "./skills/data-exploration",
+    "./skills/data-transformation",
+    "./skills/domains/enterprise-hibernate-hbm",
+    "./skills/domains/enterprise-installanywhere",
+    "./skills/domains/enterprise-maven-pom",
+    "./skills/domains/enterprise-spring-xml",
+    "./skills/domains/enterprise-tomcat-web",
+    "./skills/setup"
   ]
 }
