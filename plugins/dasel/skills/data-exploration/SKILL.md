@@ -1,6 +1,6 @@
 ---
 name: data-exploration
-description: Workflows and patterns for exploring unknown structured data files with dasel v3 — discover structure, list keys, find nested values, sample arrays, identify data types across JSON, YAML, TOML, XML, CSV, HCL, INI
+description: Use when exploring unknown structured data files with dasel v3 — discover schema, list keys, find nested values, sample arrays, identify data types across JSON, YAML, TOML, XML, CSV, HCL, INI formats
 ---
 # Data Exploration with Dasel v3
 

@@ -6,7 +6,7 @@ This document provides detailed explanations, examples, and fixes for all error 
 
 - [Frontmatter Errors (FM001-FM010)](#frontmatter-errors)
 - [Skill Errors (SK001-SK007)](#skill-errors)
-- [Link Errors (LK001-LK002)](#link-errors)
+- [Link Errors (LK001)](#link-errors)
 - [Progressive Disclosure (PD001-PD003)](#progressive-disclosure)
 - [Plugin Errors (PL001-PL005)](#plugin-errors)
 - [Namespace Reference Errors (NR001-NR002)](#namespace-reference-errors)
@@ -695,35 +695,6 @@ See [the reference guide](./references/existing-file.md) for details.
 ```
 
 **Why It Matters**: Broken links prevent users from accessing referenced documentation.
-
-**Related Validators**: InternalLinkValidator
-
----
-
-### LK002
-
-**Severity**: Warning
-**Auto-Fixable**: No
-**Category**: Links
-
-**Description**: Link missing `./` prefix (not relative path)
-
-**When It Occurs**:
-A markdown link to an internal file doesn't start with `./`.
-
-**Example (Bad)**:
-
-```markdown
-See [the reference guide](references/guide.md) for details.
-```
-
-**Fix**:
-
-```markdown
-See [the reference guide](./references/guide.md) for details.
-```
-
-**Why It Matters**: Links without `./` prefix are ambiguous and may not resolve correctly in all contexts.
 
 **Related Validators**: InternalLinkValidator
 

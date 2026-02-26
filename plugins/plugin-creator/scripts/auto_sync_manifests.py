@@ -520,10 +520,38 @@ def update_plugin_json(plugin_name: str, changes: ComponentChanges) -> tuple[boo
     return False, current_version
 
 
+def _read_plugin_name(plugin_dir_name: str) -> str:
+    """Read the canonical plugin name from plugin.json.
+
+    The ``"name"`` field in plugin.json is authoritative.  Falls back to the
+    directory name when plugin.json is absent or contains no ``"name"`` field.
+
+    Args:
+        plugin_dir_name: Directory name under ``plugins/`` (e.g. ``"the-rewrite-room"``).
+
+    Returns:
+        The plugin name as declared in plugin.json, or the directory name as fallback.
+    """
+    plugin_json_path = Path(f"plugins/{plugin_dir_name}/.claude-plugin/plugin.json")
+    if plugin_json_path.exists():
+        try:
+            with plugin_json_path.open(encoding="utf-8") as f:
+                data = json.load(f)
+            name = data.get("name")
+            if name and isinstance(name, str):
+                return name
+        except (OSError, json.JSONDecodeError):
+            pass
+    return plugin_dir_name
+
+
 def _update_marketplace_plugins(
     data: dict[str, dict[str, str] | list[dict[str, str]]], plugin_changes: MarketplaceChanges
 ) -> bool:
     """Add and remove plugins in the marketplace data structure.
+
+    The ``"name"`` field in each marketplace entry is derived from plugin.json
+    (authoritative), not from the directory name.
 
     Args:
         data: Marketplace JSON data dictionary (mutated in place).
@@ -534,22 +562,24 @@ def _update_marketplace_plugins(
     """
     modified = False
 
-    for plugin_name in plugin_changes["added"]:
-        plugin_entry = {"name": plugin_name, "source": f"./plugins/{plugin_name}"}
+    for plugin_dir_name in plugin_changes["added"]:
+        canonical_name = _read_plugin_name(plugin_dir_name)
+        plugin_entry = {"name": canonical_name, "source": f"./plugins/{plugin_dir_name}"}
 
         if "plugins" not in data:
             data["plugins"] = []
 
         plugins_list = cast("list[dict[str, str]]", data["plugins"])
 
-        if not any(p["name"] == plugin_name for p in plugins_list):
+        if not any(p["name"] == canonical_name for p in plugins_list):
             plugins_list.append(plugin_entry)
             modified = True
 
-    for plugin_name in plugin_changes["deleted"]:
+    for plugin_dir_name in plugin_changes["deleted"]:
         if "plugins" in data:
+            canonical_name = _read_plugin_name(plugin_dir_name)
             plugins_list = cast("list[dict[str, str]]", data["plugins"])
-            data["plugins"] = [p for p in plugins_list if p["name"] != plugin_name]
+            data["plugins"] = [p for p in plugins_list if p["name"] != canonical_name]
             modified = True
 
     return modified
@@ -1080,7 +1110,8 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
             print(f"  {label} plugin to marketplace: {name}")
         if not dry_run:
             for name in sorted(missing):
-                plugins_list.append({"name": name, "source": f"./plugins/{name}"})
+                canonical_name = _read_plugin_name(name)
+                plugins_list.append({"name": canonical_name, "source": f"./plugins/{name}"})
 
     if stale:
         label = "Would remove" if dry_run else "Removing"

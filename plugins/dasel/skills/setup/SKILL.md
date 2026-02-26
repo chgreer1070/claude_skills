@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Install, update, and troubleshoot dasel v3 binary — run the install script, verify installation, check version, diagnose PATH issues
+description: Use when installing, updating, or troubleshooting the dasel v3 binary — runs the install script, verifies installation, and diagnoses PATH and download issues
 allowed-tools: Bash, Read
 user-invocable: true
 ---

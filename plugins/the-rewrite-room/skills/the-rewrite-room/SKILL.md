@@ -1,5 +1,6 @@
 ---
-description: "Documentation and authoring workflow router — audit docs vs code drift, sync docs after code changes, optimize prompts and SKILL.md files for AI consumption, validate GLFM and Markdown, summarize files/URLs/images with fidelity enforcement. Routes each task to the right specialist agent automatically."
+name: the-rewrite-room
+description: Use when auditing docs vs code drift, syncing docs after changes, optimizing CLAUDE.md or SKILL.md for AI consumption, validating GLFM and Markdown, or summarizing files/URLs/images — routes each task to the correct specialist agent via /rwr:audit, /rwr:optimize, or /rwr:author
 allowed-tools: Read, Grep, Glob, Bash, Task, Write, Edit
 ---
 # The Rewrite Room

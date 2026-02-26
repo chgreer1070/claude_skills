@@ -1,6 +1,6 @@
 ---
 name: create-backlog-item
-description: "Create a new item in .claude/BACKLOG.md. No args: guided intake via AskUserQuestion. With 'quick {title}': inline capture from user description. With '--auto {title}': fully autonomous — derives all fields from research files and task context, skips all AskUserQuestion calls, logs decisions made. Writes item to correct priority section, updates frontmatter counts, offers GitHub Issue creation for P0/P1. Enforces required fields (title, priority, description) and duplicate detection before writing."
+description: "Use when capturing a new backlog item — appends to .claude/BACKLOG.md in the correct priority section. Three modes — guided intake (no args), quick entry (quick {title}), or fully autonomous (--auto {title}). Validates required fields, detects duplicates, updates frontmatter counts, and offers GitHub Issue creation for P0/P1 items."
 argument-hint: '[quick {title} | --auto {title} | <empty for guided intake>]'
 user-invocable: true
 ---
