@@ -266,6 +266,11 @@ jobs:
 
   # =============================================================================
   # File hygiene: trailing whitespace, line endings, etc.
+  # Runs via prek (same hooks as pre-commit) — single source of truth.
+  # Hooks run: trailing-whitespace, check-merge-conflict,
+  #   mixed-line-ending, check-added-large-files, check-case-conflict,
+  #   check-executables-have-shebangs, check-shebang-scripts-are-executable,
+  #   check-yaml, check-json, check-toml, check-symlinks, destroyed-symlinks
   # =============================================================================
   file-hygiene:
     name: Files / Hygiene checks
@@ -278,143 +283,18 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Check for trailing whitespace
-        run: |
-          ! git grep -lE '\s+$' -- ':!*.lock' ':!.venv/*' ':!node_modules/*' || {
-            echo "::error::Files with trailing whitespace found"
-            exit 1
-          }
-
-      - name: Check for missing final newline
-        run: |
-          files_missing_newline=""
-          while IFS= read -r -d '' file; do
-            if [ -f "$file" ] && [ ! -L "$file" ] && [ -s "$file" ] && [ "$(tail -c 1 "$file" | wc -l)" -eq 0 ]; then
-              files_missing_newline="$files_missing_newline $file"
-            fi
-          done < <(git ls-files -z -- ':!*.lock' ':!.venv/*' ':!node_modules/*' ':!*.png' ':!*.jpg' ':!*.gif' ':!*.ico')
-
-          if [ -n "$files_missing_newline" ]; then
-            echo "::error::Files missing final newline:$files_missing_newline"
-            exit 1
-          fi
-
-      - name: Check for merge conflict markers
-        run: |
-          # Only match unambiguous conflict markers (<<<<<<< and >>>>>>>).
-          # Excludes ======= which is valid RST heading underline syntax.
-          conflict_files=$(git grep -lE '^(<{7}|>{7})( |$)' -- ':!*.lock' ':!.venv/*' ':!node_modules/*' || true)
-          if [ -n "$conflict_files" ]; then
-            echo "::error::Files with merge conflict markers found:"
-            echo "$conflict_files"
-            exit 1
-          fi
-
-      - name: Check for mixed line endings
-        run: |
-          mixed=""
-          while IFS= read -r -d '' file; do
-            if [ -f "$file" ] && [ ! -L "$file" ] && [ -s "$file" ] && file "$file" | grep -q "text"; then
-              if grep -Pql '\r\n' "$file" 2>/dev/null; then
-                mixed="$mixed $file"
-              fi
-            fi
-          done < <(git ls-files -z -- ':!*.lock' ':!.venv/*' ':!node_modules/*' ':!*.png' ':!*.jpg' ':!*.gif' ':!*.ico')
-
-          if [ -n "$mixed" ]; then
-            echo "::error::Files with CRLF line endings (should be LF):$mixed"
-            exit 1
-          fi
-
-      - name: Check for broken symlinks
-        run: |
-          broken=""
-          while IFS= read -r -d '' file; do
-            if [ -L "$file" ] && [ ! -e "$file" ]; then
-              broken="$broken $file"
-            fi
-          done < <(git ls-files -z)
-
-          if [ -n "$broken" ]; then
-            echo "::error::Broken symlinks found:$broken"
-            exit 1
-          fi
-
-      - name: Check for large files
-        run: |
-          # 10MB limit, matching prek check-added-large-files --maxkb=10000
-          large_files=$(git ls-files -z | xargs -0 -I{} find {} -maxdepth 0 -size +10M 2>/dev/null || true)
-          if [ -n "$large_files" ]; then
-            echo "::error::Files exceeding 10MB limit:"
-            echo "$large_files"
-            exit 1
-          fi
-
-      - name: Check executables have shebangs
-        run: |
-          errors=""
-          while IFS= read -r -d '' file; do
-            if [ -x "$file" ] && [ -f "$file" ] && [ ! -L "$file" ] && [ -s "$file" ] && file "$file" | grep -q "text"; then
-              first_bytes=$(head -c 2 "$file")
-              if [ "$first_bytes" != "#!" ]; then
-                errors="$errors $file"
-              fi
-            fi
-          done < <(git ls-files -z -- ':!*.lock' ':!.venv/*' ':!node_modules/*')
-
-          if [ -n "$errors" ]; then
-            echo "::error::Executable files missing shebangs:$errors"
-            exit 1
-          fi
-
-      - name: Check shebang scripts are executable
-        run: |
-          errors=""
-          while IFS= read -r -d '' file; do
-            if [ -f "$file" ] && [ ! -L "$file" ] && [ -s "$file" ]; then
-              first_bytes=$(head -c 2 "$file")
-              if [ "$first_bytes" = "#!" ] && [ ! -x "$file" ]; then
-                errors="$errors $file"
-              fi
-            fi
-          done < <(git ls-files -z -- ':!*.lock' ':!.venv/*' ':!node_modules/*')
-
-          if [ -n "$errors" ]; then
-            echo "::error::Scripts with shebangs missing executable permission:$errors"
-            exit 1
-          fi
-
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
+          cache-python: true
 
-      - name: Check JSON syntax
+      - name: Run file hygiene hooks
         run: |
-          uv run python -c "
-          import json
-          import sys
-          from pathlib import Path
-
-          errors = []
-          for f in Path('.').rglob('*.json'):
-              if '.venv' in str(f) or 'node_modules' in str(f):
-                  continue
-              try:
-                  json.loads(f.read_text())
-              except json.JSONDecodeError as e:
-                  errors.append(f'{f}: {e}')
-
-          if errors:
-              for e in errors:
-                  print(f'::error::{e}')
-              sys.exit(1)
-          "
-
-      - name: Check for case conflicts
-        run: |
-          git ls-files | sort -f | uniq -di | while read -r file; do
-            echo "::error::Case conflict detected: $file"
-            exit 1
-          done
+          SKIP=sync-pre-commit-deps,conventional-pre-commit,repair-symlinks,biome-check,ruff,ruff-format,pypfmt,markdownlint-cli2,prettier,shell-fmt-go,shellcheck,auto-sync-manifests,plugin-validator,ty,enable-rerere \
+          uv run prek run --all-files
 
   # =============================================================================
   # Python: pytest test suite
