@@ -29,10 +29,15 @@ from __future__ import annotations
 
 import os
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 from github import Auth, Github, GithubException
+
+if TYPE_CHECKING:
+    from github.Issue import Issue
+    from github.Label import Label
+    from github.Repository import Repository
 
 app = typer.Typer(help="GitHub Project management automation via PyGithub")
 milestone_app = typer.Typer(help="Milestone operations")
@@ -75,8 +80,16 @@ def get_github() -> Github:
     return Github(auth=Auth.Token(token))
 
 
-def get_repo(gh: Github, repo_slug: str) -> Any:
-    """Return a Repository object, exit on failure."""
+def get_repo(gh: Github, repo_slug: str) -> Repository:
+    """Return a Repository object, exit on failure.
+
+    Args:
+        gh: Authenticated Github client.
+        repo_slug: Repository identifier in ``owner/repo`` format.
+
+    Returns:
+        Repository object for the given slug.
+    """
     try:
         return gh.get_repo(repo_slug)
     except GithubException as exc:
@@ -126,12 +139,14 @@ def milestone_create(
     repository = get_repo(gh, repo)
 
     due_dt = datetime.strptime(due, "%Y-%m-%d").replace(tzinfo=UTC) if due else None
-    create_kwargs: dict[str, object] = {"title": title}
-    if description:
-        create_kwargs["description"] = description
-    if due_dt is not None:
-        create_kwargs["due_on"] = due_dt
-    milestone = repository.create_milestone(**create_kwargs)
+    if due_dt is not None and description:
+        milestone = repository.create_milestone(title=title, description=description, due_on=due_dt)
+    elif due_dt is not None:
+        milestone = repository.create_milestone(title=title, due_on=due_dt)
+    elif description:
+        milestone = repository.create_milestone(title=title, description=description)
+    else:
+        milestone = repository.create_milestone(title=title)
     typer.echo(f"Created milestone #{milestone.number}: {milestone.title}")
     typer.echo(f"  URL: {milestone.html_url}")
 
@@ -262,7 +277,7 @@ def milestone_close(
         succeeded, skipped, failed = _transition_to_done(open_issues, done_label)
 
     # Close the milestone
-    milestone.edit(state="closed")
+    milestone.edit(title=milestone.title, state="closed")
     typer.echo(f"\nMilestone #{milestone.number} '{milestone.title}' closed.")
     if open_issues:
         typer.echo(f"  {succeeded} transitioned to status:done, {skipped} already done, {failed} failed.")
@@ -271,7 +286,7 @@ def milestone_close(
         raise typer.Exit(1)
 
 
-def _transition_to_done(open_issues: list[Any], done_label: Any) -> tuple[int, int, int]:
+def _transition_to_done(open_issues: list[Issue], done_label: Label) -> tuple[int, int, int]:
     """Apply status:done label to each open issue.
 
     Returns:
@@ -298,8 +313,18 @@ def _transition_to_done(open_issues: list[Any], done_label: Any) -> tuple[int, i
     return succeeded, skipped, failed
 
 
-def _ensure_label(repository: Any, name: str, color: str, description: str) -> Any:
-    """Return the label, creating it if it does not exist."""
+def _ensure_label(repository: Repository, name: str, color: str, description: str) -> Label:
+    """Return the label, creating it if it does not exist.
+
+    Args:
+        repository: GitHub repository object.
+        name: Label name to find or create.
+        color: Hex color code for the label (without ``#`` prefix).
+        description: Human-readable label description.
+
+    Returns:
+        The existing or newly created Label object.
+    """
     try:
         return repository.get_label(name)
     except GithubException:
@@ -308,8 +333,16 @@ def _ensure_label(repository: Any, name: str, color: str, description: str) -> A
         return label
 
 
-def _transition_issues(open_issues: list[Any], in_progress_label: Any) -> tuple[int, int, int]:
-    """Apply label transition to each issue; return (succeeded, skipped, failed)."""
+def _transition_issues(open_issues: list[Issue], in_progress_label: Label) -> tuple[int, int, int]:
+    """Apply label transition from ``status:needs-grooming`` to ``status:in-progress``.
+
+    Args:
+        open_issues: List of open Issue objects to transition.
+        in_progress_label: The ``status:in-progress`` Label to apply.
+
+    Returns:
+        Tuple of (succeeded, skipped, failed) counts.
+    """
     succeeded = failed = skipped = 0
     typer.echo()
     for issue in open_issues:
@@ -367,11 +400,10 @@ def issue_create(
         except GithubException:
             typer.echo(f"  WARNING: milestone #{milestone_number} not found — skipping", err=True)
 
-    create_kwargs: dict[str, Any] = {"title": title, "body": body or "", "labels": label_objects}
     if milestone_obj is not None:
-        create_kwargs["milestone"] = milestone_obj
-
-    issue = repository.create_issue(**create_kwargs)
+        issue = repository.create_issue(title=title, body=body or "", labels=label_objects, milestone=milestone_obj)
+    else:
+        issue = repository.create_issue(title=title, body=body or "", labels=label_objects)
     typer.echo(f"Created issue #{issue.number}: {issue.title}")
     typer.echo(f"  URL: {issue.html_url}")
 

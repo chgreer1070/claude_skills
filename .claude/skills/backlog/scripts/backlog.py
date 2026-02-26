@@ -1163,7 +1163,7 @@ def _build_backlog_frontmatter(
     """
     meta: dict[str, str] = {
         "topic": _title_to_slug(name),
-        "source": source[:200] if source else "Not specified",
+        "source": source or "Not specified",
         "added": added or _today(),
         "priority": priority,
         "type": type_val,
@@ -1176,7 +1176,7 @@ def _build_backlog_frontmatter(
     if groomed:
         meta["groomed"] = groomed
     post = frontmatter.Post(
-        "", name=name.replace('"', "'"), description=(description or "").replace('"', "'")[:500], metadata=meta
+        "", name=name.replace('"', "'"), description=(description or "").replace('"', "'"), metadata=meta
     )
     return dump_frontmatter(post)
 

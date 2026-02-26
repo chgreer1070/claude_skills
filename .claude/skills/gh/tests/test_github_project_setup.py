@@ -37,7 +37,7 @@ _spec.loader.exec_module(_gps)
 
 app = _gps.app
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 # ---------------------------------------------------------------------------

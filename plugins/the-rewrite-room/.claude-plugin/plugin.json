@@ -1,6 +1,6 @@
 {
   "name": "the-rewrite-room",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Documentation and authoring workflow router \u2014 audit docs vs code drift, sync docs after changes, optimize prompts and SKILL.md files, validate GLFM and Markdown formatting, summarize files/URLs/images with fidelity enforcement. Use when: docs are out of date, CLAUDE.md needs improving, SKILL.md needs optimizing, checking if documentation matches code, summarizing files or URLs.",
   "author": {
     "name": "Jamie BitFlight",
@@ -22,6 +22,6 @@
     "./agents/rewrite-room-optimizer.md",
     "./agents/rewrite-room-author.md"
   ],
-  "skills": [],
-  "commands": ["./commands/rwr/audit.md", "./commands/rwr/author.md", "./commands/rwr/optimize.md"]
+  "skills": ["./skills/the-rewrite-room"],
+  "commands": ["./skills/the-rewrite-room"]
 }

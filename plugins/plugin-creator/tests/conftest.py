@@ -56,10 +56,10 @@ def cli_runner() -> CliRunner:
     """Provide CliRunner configured for testing.
 
     Returns:
-        _PlainCliRunner with mix_stderr=False that strips ANSI escape codes
+        _PlainCliRunner that strips ANSI escape codes
         from captured output for environment-independent string assertions.
     """
-    return _PlainCliRunner(mix_stderr=False)
+    return _PlainCliRunner()
 
 
 @pytest.fixture
