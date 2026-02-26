@@ -43,6 +43,8 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 - [Fix pre-existing CI check failures on main](backlog/medium-fix-pre-existing-ci-check-failures-on-main.md)
 
 - [Backlog system redesign: GitHub Issues as source of truth with local cache](backlog/p1-backlog-system-redesign-github-issues-as-source-of-truth-wit.md)
+
+- [backlog.py: unify issue body template and add missing structured fields](backlog/p1-backlogpy-unify-issue-body-template-and-add-missing-structur.md)
 ## P2 - Could Have
 
 - [conventional-commits: Fix CHANGELOG references to nonexistent files](backlog/p2-conventional-commits-fix-changelog-references-to-nonexistent.md)

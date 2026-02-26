@@ -89,6 +89,22 @@ TYPE_TO_LABEL = {
     "chore": "type:chore",
 }
 
+ROLE_MAP = {
+    "Feature": "developer using Claude Code skills",
+    "Bug": "developer relying on this plugin",
+    "Refactor": "maintainer of the codebase",
+    "Docs": "developer reading the documentation",
+    "Chore": "maintainer of the project infrastructure",
+}
+
+BENEFIT_MAP = {
+    "Feature": "the tooling becomes more capable and complete",
+    "Bug": "the tool works correctly and reliably",
+    "Refactor": "the code is cleaner and more maintainable",
+    "Docs": "documentation is accurate and trustworthy",
+    "Chore": "the project infrastructure stays healthy",
+}
+
 app = typer.Typer(help="Backlog and GitHub Issue CRUD — single interface")
 _console = Console()
 
@@ -389,30 +405,35 @@ def build_issue_body(item: dict) -> str:
     source = item.get("**Source**", "Not specified")
     added = item.get("**Added**", "")
     priority = item.get("**Priority**", "")
+    item_type = item.get("**Type**", "Feature")
     research = item.get("**Research first**", "")
-    first_sent = desc.split(".")[0].strip() if desc else title
-    if len(first_sent) > GITHUB_ISSUE_TITLE_TRUNCATE:
-        first_sent = first_sent[: GITHUB_ISSUE_TITLE_TRUNCATE - 3] + "..."
-    return f"""## Story
+    files = item.get("**Files**", "")
+    suggested_location = item.get("**Suggested location**", "")
+    role = ROLE_MAP.get(item_type, "developer using Claude Code skills")
+    benefit = BENEFIT_MAP.get(item_type, "the product improves")
+    goal = title.rstrip(".")
 
-As a **developer**, I want **{first_sent}** so that **backlog items are tracked in GitHub**.
+    sections = [
+        f"## Story\n\nAs a **{role}**, I want to **{goal.lower()}** so that **{benefit}**.",
+        f"## Description\n\n{desc}",
+        "## Acceptance Criteria\n\n- [ ] Work matches description\n- [ ] Plan or implementation complete",
+    ]
 
-## Description
+    if files:
+        sections.append(f"## Files\n\n{files}")
 
-{desc}
+    if suggested_location:
+        sections.append(f"## Suggested Location\n\n{suggested_location}")
 
-## Acceptance Criteria
+    context_lines = [
+        f"- **Source**: {source}",
+        f"- **Priority**: {priority}",
+        f"- **Added**: {added}",
+        f"- **Research questions**: {research or 'None'}",
+    ]
+    sections.append("## Context\n\n" + "\n".join(context_lines))
 
-- [ ] Work matches description
-- [ ] Plan or implementation complete
-
-## Context
-
-- **Source**: {source}
-- **Priority**: {priority}
-- **Added**: {added}
-- **Research questions**: {research or "None"}
-"""
+    return "\n\n".join(sections) + "\n"
 
 
 def create_issue_for_item(repo: Repository, item: dict, dry_run: bool = False) -> int | None:
@@ -630,6 +651,8 @@ def _add_item_index_format(
     priority: str,
     type_: str,
     research_first: str,
+    files: str,
+    suggested_location: str,
     section_heading: str,
     create_issue: bool,
     repo: str,
@@ -646,7 +669,14 @@ def _add_item_index_format(
         filepath = BACKLOG_DIR / filename
     rel_path = f"backlog/{filename}"
     fm_str = _build_backlog_frontmatter(title, description, source, today, priority, type_, "open", "", "", "")
-    body = f"**Research first**: {research_first}\n" if research_first else ""
+    body_parts: list[str] = []
+    if research_first:
+        body_parts.append(f"**Research first**: {research_first}")
+    if files:
+        body_parts.append(f"**Files**: {files}")
+    if suggested_location:
+        body_parts.append(f"**Suggested location**: {suggested_location}")
+    body = "\n".join(body_parts) + "\n" if body_parts else ""
     filepath.write_text(fm_str.rstrip() + "\n\n" + body, encoding="utf-8")
     issue_num: int | None = None
     if create_issue and priority in {"P0", "P1"}:
@@ -660,6 +690,8 @@ def _add_item_index_format(
                 "**Priority**": priority,
                 "**Type**": type_,
                 "**Research first**": research_first,
+                "**Files**": files,
+                "**Suggested location**": suggested_location,
             }
             issue_num = create_issue_for_item(repository, item, dry_run=False)
             if issue_num:
@@ -757,6 +789,8 @@ def add(
     source: Annotated[str, typer.Option("--source")] = "Not specified",
     type_: Annotated[str, typer.Option("--type")] = "Feature",
     research_first: Annotated[str, typer.Option("--research-first")] = "",
+    files: Annotated[str, typer.Option("--files")] = "",
+    suggested_location: Annotated[str, typer.Option("--suggested-location")] = "",
     create_issue: Annotated[bool, typer.Option("--create-issue/--no-create-issue")] = True,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
@@ -775,7 +809,18 @@ def add(
     section_heading = section_map.get(priority, "## P1 - Should Have")
     if _is_index_format(BACKLOG_PATH):
         _add_item_index_format(
-            title, description, source, today, priority, type_, research_first, section_heading, create_issue, repo
+            title,
+            description,
+            source,
+            today,
+            priority,
+            type_,
+            research_first,
+            files,
+            suggested_location,
+            section_heading,
+            create_issue,
+            repo,
         )
     else:
         _add_item_monolithic_format(
