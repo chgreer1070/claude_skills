@@ -50,7 +50,10 @@ description: Test skill
         assert len(fixes) >= 1
         assert "Normalized name" in fixes[0]
 
-        content = skill_md.read_text()
+        # fix() renames the directory from Test-Skill to test-skill,
+        # so we must read from the new path
+        fixed_skill_md = tmp_path / "test-skill" / "SKILL.md"
+        content = fixed_skill_md.read_text()
         assert "name: test-skill" in content or 'name: "test-skill"' in content
 
 

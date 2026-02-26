@@ -181,11 +181,7 @@ def _build_timeline(df: pd.DataFrame) -> pn.pane.HoloViews:
     plot_df["preview"] = plot_df["message_preview"].str[:_PREVIEW_TRUNCATE]
 
     # Compute rolling mean on the sorted sequence
-    plot_df["rolling_mean"] = (
-        plot_df["compound"]
-        .rolling(window=_ROLLING_WINDOW, min_periods=1, center=True)
-        .mean()
-    )
+    plot_df["rolling_mean"] = plot_df["compound"].rolling(window=_ROLLING_WINDOW, min_periods=1, center=True).mean()
 
     # Background scatter — faded gray context dots, no colorbar, no legend
     scatter = plot_df.hvplot.scatter(
@@ -207,12 +203,7 @@ def _build_timeline(df: pd.DataFrame) -> pn.pane.HoloViews:
 
     # Trend line — rolling mean in steelblue, solid, no colorbar
     trend = plot_df.hvplot.line(
-        x="message_index",
-        y="rolling_mean",
-        color="steelblue",
-        line_width=2,
-        hover=False,
-        legend=False,
+        x="message_index", y="rolling_mean", color="steelblue", line_width=2, hover=False, legend=False
     )
 
     # Zero reference line — dashed red at y=0
@@ -238,9 +229,7 @@ def _build_heatmap(df: pd.DataFrame) -> pn.pane.HoloViews:
     # Shorten session IDs for display (last 8 chars), aggregate duplicates
     plot_df = df.copy()
     plot_df["session_short"] = plot_df["session_id"].str[-8:]
-    plot_df = plot_df.groupby(["session_short", "message_index"], as_index=False)[
-        "compound"
-    ].mean()
+    plot_df = plot_df.groupby(["session_short", "message_index"], as_index=False)["compound"].mean()
 
     heatmap = plot_df.hvplot.heatmap(
         x="message_index",

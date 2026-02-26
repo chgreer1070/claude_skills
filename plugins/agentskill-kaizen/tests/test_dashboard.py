@@ -74,6 +74,7 @@ _hvplot_mod.pandas = _hvplot_pandas_mod
 
 # --- panel stubs ---
 _pn_mod = types.ModuleType("panel")
+_pn_mod.extension = MagicMock()
 _pn_mod.serve = MagicMock()
 _pn_mod.Tabs = MagicMock()
 _pn_mod.Column = MagicMock()
