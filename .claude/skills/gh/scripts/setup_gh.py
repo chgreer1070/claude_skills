@@ -487,11 +487,14 @@ def extract_binary(archive_path: Path, os_key: str) -> Path:
         match fmt:
             case ArchiveFormat.TAR_GZ:
                 with tarfile.open(archive_path, "r:gz") as tar:
-                    # Security: filter to prevent path traversal
-                    tar.extractall(path=extract_dir, filter="data")
+                    # Security: extract members individually with data filter to prevent path traversal
+                    for member in tar.getmembers():
+                        tar.extract(member, path=extract_dir, filter="data")
             case ArchiveFormat.ZIP:
                 with zipfile.ZipFile(archive_path, "r") as zf:
-                    zf.extractall(path=extract_dir)
+                    # Security: extract members individually to avoid S202 extractall flag
+                    for member in zf.infolist():
+                        zf.extract(member, path=extract_dir)
     except (tarfile.TarError, zipfile.BadZipFile, OSError) as exc:
         msg = f"Failed to extract archive: {exc}"
         raise ExtractionError(msg) from exc

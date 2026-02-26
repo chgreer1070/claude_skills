@@ -441,19 +441,26 @@ def cmd_list(
 
     _ensure_indexed(con)
 
-    where = "WHERE project_name LIKE ?" if project else ""
-    params: list = [f"%{project}%"] if project else []
-    rows = con.execute(
-        f"""
-        SELECT session_id, project_name, last_ts, user_msg_count, assistant_turns,
-               file_size_kb, has_summary, file_path
-        FROM sessions
-        {where}
-        ORDER BY last_ts DESC
-        LIMIT ?
-    """,
-        [*params, limit],
-    ).fetchall()
+    if project:
+        query = """
+            SELECT session_id, project_name, last_ts, user_msg_count, assistant_turns,
+                   file_size_kb, has_summary, file_path
+            FROM sessions
+            WHERE project_name LIKE ?
+            ORDER BY last_ts DESC
+            LIMIT ?
+        """
+        params: list = [f"%{project}%", limit]
+    else:
+        query = """
+            SELECT session_id, project_name, last_ts, user_msg_count, assistant_turns,
+                   file_size_kb, has_summary, file_path
+            FROM sessions
+            ORDER BY last_ts DESC
+            LIMIT ?
+        """
+        params: list = [limit]
+    rows = con.execute(query, params).fetchall()
 
     if not rows:
         stdout.print("[yellow]No sessions found. Run 'index' first.[/yellow]")

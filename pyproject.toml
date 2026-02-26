@@ -3,6 +3,7 @@ name = "claude_skills"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
+    "pygithub>=2.8.1",
     "skill-seekers>=3.0.0",
 ]
 
@@ -37,6 +38,7 @@ dev = [
     "pytest>=8.4.1",
     "python-dotenv>=1.1.1",
     "python-frontmatter>=1.1.0",
+    "python-gitlab>=8.0.0",
     "ruamel.yaml>=0.18.0",
     "ruff>=0.12.10",
     "scikit-learn>=1.0",

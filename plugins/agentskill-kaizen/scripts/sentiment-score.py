@@ -25,6 +25,7 @@ import enum
 import json
 import statistics
 import sys
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
@@ -34,6 +35,11 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+try:
+    import duckdb
+except ImportError:
+    duckdb = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -451,11 +457,7 @@ def _write_duckdb(results: list[ScoredMessage], db_path: Path) -> None:
         results: Scored messages to persist.
         db_path: Path to the DuckDB file (created if missing).
     """
-    try:
-        import duckdb
-    except ImportError:
-        import warnings
-
+    if duckdb is None:
         warnings.warn(
             "duckdb is not installed — skipping database write. Install with: pip install duckdb", stacklevel=2
         )

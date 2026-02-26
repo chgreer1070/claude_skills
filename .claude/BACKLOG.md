@@ -26,7 +26,7 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 - [fastmcp-creator: Add citations for 1200+ lines of FastMCP 3.x API documentation](backlog/p1-fastmcp-creator-add-citations-for-1200-lines-of-fastmcp-3x-a.md)
 - [Consolidate validate_frontmatter.py into plugin_validator.py](backlog/p1-consolidate-validatefrontmatterpy-into-pluginvalidatorpy.md)
 - [Validate and verify orchestrator-discipline plugin hooks and processes](backlog/p1-validate-and-verify-orchestrator-discipline-plugin-hooks-and.md)
-- [SAM: Error Recovery / Rollback Procedures](backlog/p1-sam-error-recovery-rollback-procedures.md)
+- [SAM: Error Recovery / Rollback Procedures](backlog/p1-sam-error-recovery-rollback-procedures.md) #268
 - [SAM: Human Escalation Criteria](backlog/p1-sam-human-escalation-criteria.md)
 - [SAM: Timeout/Stall Detection](backlog/p1-sam-timeoutstall-detection.md)
 - [SAM: Artifact Schema Validation](backlog/p1-sam-artifact-schema-validation.md)
@@ -41,6 +41,11 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 - [daily-releases: delegate AI analysis step to Haiku subagent and fix duplicate draft releases](backlog/p1-daily-releases-delegate-ai-analysis-step-to-haiku-subagent-a.md) #196
 
 - [Fix pre-existing CI check failures on main](backlog/medium-fix-pre-existing-ci-check-failures-on-main.md)
+
+- [Backlog system redesign: GitHub Issues as source of truth with local cache](backlog/p1-backlog-system-redesign-github-issues-as-source-of-truth-wit.md)
+
+- [backlog.py: unify issue body template and add missing structured fields](backlog/p1-backlogpy-unify-issue-body-template-and-add-missing-structur.md)
+
 ## P2 - Could Have
 
 - [conventional-commits: Fix CHANGELOG references to nonexistent files](backlog/p2-conventional-commits-fix-changelog-references-to-nonexistent.md)
@@ -80,7 +85,7 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 - [SAM: Non-Code Workflow Guidance](backlog/p2-sam-non-code-workflow-guidance.md)
 - [Carbonyl Browser Integration for Claude Code](backlog/p2-carbonyl-browser-integration-for-claude-code.md) #195
 - [Validate is-fast for Web Content Extraction](backlog/p2-validate-is-fast-for-web-content-extraction.md)
-- [Validate agent-browser for Web Automation](backlog/p2-validate-agent-browser-for-web-automation.md)
+- [Validate agent-browser for Web Automation](backlog/p2-validate-agent-browser-for-web-automation.md) #269
 - [Validate carbonyl Terminal Browser](backlog/p2-validate-carbonyl-terminal-browser.md)
 - [work-backlog-item: Implement --language and --stack routing](backlog/p2-work-backlog-item-implement-language-and-stack-routing.md)
 - [refresh-research: Implement --layer filtering logic](backlog/p2-refresh-research-implement-layer-filtering-logic.md)

@@ -91,17 +91,31 @@ Pass the RT-ICA summary and fact-check summary to the groomer alongside item det
 
 ### Step 6: Spawn Groomer Agents
 
-**Single item** — invoke `@backlog-item-groomer` directly, passing item details, RT-ICA summary, and fact-check summary.
+**IMPORTANT**: You MUST use the `Task` tool with `subagent_type: "backlog-item-groomer"` for grooming. Do NOT groom inline — always delegate to the specialized agent.
 
-**Multiple items** — spawn parallel Task agents (max 5 concurrent; batch in waves if more):
+**Single item** — spawn one Task agent:
 
 ```text
 Task(
-  subagent_type: "general-purpose",
-  prompt: "Act as @backlog-item-groomer. Groom this item and output groomed content in the standard template format (see .claude/docs/backlog-item-groomed-schema.md). Output only the groomed body (no ## Groomed header).\n\nItem:\n{item details}\n\nRT-ICA Assessment:\n{rt-ica summary}\n\nFact-Check Verdicts:\n{fact-check summary}",
+  description: "Groom backlog item",
+  subagent_type: "backlog-item-groomer",
+  prompt: "Groom this backlog item. Output groomed content in the standard template format (see .claude/docs/backlog-item-groomed-schema.md). Output only the groomed body (no ## Groomed header).\n\nItem title: {item title}\nItem description: {item description}\nItem source: {item source}\nItem priority: {item priority}\nItem file path: {item file path}\n\nRT-ICA Assessment:\n{rt-ica summary}\n\nFact-Check Verdicts:\n{fact-check summary}\n\nAdditional context from conversation:\n{any relevant user messages or discussion context}",
   model: "haiku"
 )
 ```
+
+**Multiple items** — spawn parallel Task agents (max 5 concurrent; batch in waves if more). Each uses `subagent_type: "backlog-item-groomer"`:
+
+```text
+Task(
+  description: "Groom backlog item",
+  subagent_type: "backlog-item-groomer",
+  prompt: "Groom this backlog item. Output groomed content in the standard template format (see .claude/docs/backlog-item-groomed-schema.md). Output only the groomed body (no ## Groomed header).\n\nItem title: {item title}\nItem description: {item description}\nItem file path: {item file path}\n\nRT-ICA Assessment:\n{rt-ica summary}\n\nFact-Check Verdicts:\n{fact-check summary}",
+  model: "haiku"
+)
+```
+
+The `backlog-item-groomer` agent discovers related skills, agents, prior work, and dependency graphs. It performs its own research within the codebase. Pass it file paths (not file contents) so it can verify independently.
 
 ### Step 7: Write Groomed Content to Item Files
 
@@ -180,7 +194,8 @@ Per-item groomed content lives in each item file; this session file holds only m
 - Fact-check run for each item before RT-ICA (training data not used as evidence)
 - Fact-check verdicts passed into RT-ICA conditions (REFUTED → MISSING)
 - RT-ICA summary included for each item
-- Groomer agent(s) received RT-ICA context and fact-check verdicts
+- Groomer agent(s) spawned via `Task(subagent_type: "backlog-item-groomer")` — NOT groomed inline
+- Groomer agent(s) received RT-ICA context, fact-check verdicts, and file paths (not pasted content)
 - Groomed content written via `backlog groom` (prefer `--section`/`--content` incremental updates; `--groomed-content` or stdin for full body)
 - When item has GitHub issue, groomed content synced to issue body
 - Bulk session summary optionally saved to `.claude/grooming-sessions/{date}.md` when grooming multiple items

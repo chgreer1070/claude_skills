@@ -6,10 +6,6 @@
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "skills": [
-    "./skills/prompt-optimization-claude-45"
-  ],
-  "commands": [
-    "./skills/prompt-optimization-claude-45"
-  ]
+  "skills": ["./skills/prompt-optimization-claude-45"],
+  "commands": ["./skills/prompt-optimization-claude-45"]
 }

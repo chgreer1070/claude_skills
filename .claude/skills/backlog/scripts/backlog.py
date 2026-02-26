@@ -39,7 +39,7 @@ import sys
 from datetime import UTC, datetime
 from io import TextIOWrapper
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from dotenv import load_dotenv
 
@@ -67,6 +67,7 @@ import frontmatter
 from frontmatter_utils import dump_frontmatter, loads_frontmatter
 
 if TYPE_CHECKING:
+    from github.Issue import Issue
     from github.Repository import Repository
 
 BACKLOG_PATH = _REPO_ROOT / ".claude" / "BACKLOG.md"
@@ -87,6 +88,22 @@ TYPE_TO_LABEL = {
     "refactor": "type:refactor",
     "docs": "type:docs",
     "chore": "type:chore",
+}
+
+ROLE_MAP = {
+    "Feature": "developer using Claude Code skills",
+    "Bug": "developer relying on this plugin",
+    "Refactor": "maintainer of the codebase",
+    "Docs": "developer reading the documentation",
+    "Chore": "maintainer of the project infrastructure",
+}
+
+BENEFIT_MAP = {
+    "Feature": "the tooling becomes more capable and complete",
+    "Bug": "the tool works correctly and reliably",
+    "Refactor": "the code is cleaner and more maintainable",
+    "Docs": "documentation is accurate and trustworthy",
+    "Chore": "the project infrastructure stays healthy",
 }
 
 app = typer.Typer(help="Backlog and GitHub Issue CRUD — single interface")
@@ -111,6 +128,24 @@ def _get_github(repo: str) -> Repository:
         raise typer.Exit(1)
     gh = Github(auth=Auth.Token(token))
     return gh.get_repo(repo)
+
+
+def _try_get_github(repo: str) -> Repository | None:
+    """Try to get GitHub repo, return None if unavailable (no token, network error, etc.).
+
+    Use this for operations where local-only fallback is acceptable.
+
+    Returns:
+        Repository object or None if GitHub is unavailable.
+    """
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        return None
+    try:
+        gh = Github(auth=Auth.Token(token), timeout=10)
+        return gh.get_repo(repo)
+    except GithubException:
+        return None
 
 
 def _infer_type(description: str, title: str) -> str:
@@ -336,6 +371,9 @@ def _parse_item_file(text: str, path: Path) -> dict:
     groomed = meta.get("groomed") or fm.get("groomed")
     if groomed:
         item["_groomed"] = str(groomed)
+    last_synced = meta.get("last_synced") or fm.get("last_synced") or ""
+    if last_synced:
+        item["_last_synced"] = str(last_synced)
     item["_raw_body"] = body
     if "_groomed" not in item and "## Groomed" in body:
         item["_groomed"] = "true"
@@ -389,30 +427,35 @@ def build_issue_body(item: dict) -> str:
     source = item.get("**Source**", "Not specified")
     added = item.get("**Added**", "")
     priority = item.get("**Priority**", "")
+    item_type = item.get("**Type**", "Feature")
     research = item.get("**Research first**", "")
-    first_sent = desc.split(".")[0].strip() if desc else title
-    if len(first_sent) > GITHUB_ISSUE_TITLE_TRUNCATE:
-        first_sent = first_sent[: GITHUB_ISSUE_TITLE_TRUNCATE - 3] + "..."
-    return f"""## Story
+    files = item.get("**Files**", "")
+    suggested_location = item.get("**Suggested location**", "")
+    role = ROLE_MAP.get(item_type, "developer using Claude Code skills")
+    benefit = BENEFIT_MAP.get(item_type, "the product improves")
+    goal = title.rstrip(".")
 
-As a **developer**, I want **{first_sent}** so that **backlog items are tracked in GitHub**.
+    sections = [
+        f"## Story\n\nAs a **{role}**, I want to **{goal.lower()}** so that **{benefit}**.",
+        f"## Description\n\n{desc}",
+        "## Acceptance Criteria\n\n- [ ] Work matches description\n- [ ] Plan or implementation complete",
+    ]
 
-## Description
+    if files:
+        sections.append(f"## Files\n\n{files}")
 
-{desc}
+    if suggested_location:
+        sections.append(f"## Suggested Location\n\n{suggested_location}")
 
-## Acceptance Criteria
+    context_lines = [
+        f"- **Source**: {source}",
+        f"- **Priority**: {priority}",
+        f"- **Added**: {added}",
+        f"- **Research questions**: {research or 'None'}",
+    ]
+    sections.append("## Context\n\n" + "\n".join(context_lines))
 
-- [ ] Work matches description
-- [ ] Plan or implementation complete
-
-## Context
-
-- **Source**: {source}
-- **Priority**: {priority}
-- **Added**: {added}
-- **Research questions**: {research or "None"}
-"""
+    return "\n\n".join(sections) + "\n"
 
 
 def create_issue_for_item(repo: Repository, item: dict, dry_run: bool = False) -> int | None:
@@ -506,21 +549,197 @@ def _today() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%d")
 
 
-def _update_item_metadata(filepath: Path, updates: dict[str, Any]) -> None:
-    """Update per-item file frontmatter. Supports nested metadata.plan, metadata.issue, etc."""
+def _now_iso() -> str:
+    """Return current UTC time as ISO 8601 string for last_synced tracking."""
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _update_item_metadata(filepath: Path, updates: dict[str, Any], set_synced: bool = False) -> None:
+    """Update per-item file frontmatter. Supports nested metadata.plan, metadata.issue, etc.
+
+    When set_synced=True, also sets metadata.last_synced to current UTC time.
+    """
     post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
     meta = post.metadata or {}
     for key, value in updates.items():
         if key == "metadata" and isinstance(value, dict):
-            nested = meta.get("metadata")
-            if nested is None or not isinstance(nested, dict):
-                nested = {}
-            nested.update(value)
-            meta["metadata"] = nested
+            raw_nested = meta.get("metadata")
+            nested_dict: dict[str, Any] = (
+                cast("dict[str, Any]", dict(raw_nested.items())) if isinstance(raw_nested, dict) else {}
+            )
+            nested_dict.update(value)
+            if set_synced:
+                nested_dict["last_synced"] = _now_iso()
+            meta["metadata"] = nested_dict
         else:
             meta[key] = value
+    if set_synced and "metadata" not in updates:
+        raw_nested = meta.get("metadata")
+        nested_dict2: dict[str, Any] = (
+            cast("dict[str, Any]", dict(raw_nested.items())) if isinstance(raw_nested, dict) else {}
+        )
+        nested_dict2["last_synced"] = _now_iso()
+        meta["metadata"] = nested_dict2
     post.metadata = meta
     filepath.write_text(dump_frontmatter(post), encoding="utf-8")
+
+
+def _issue_to_local_fields(issue: Issue) -> dict[str, str]:
+    """Extract backlog-relevant fields from a PyGithub Issue object.
+
+    Returns:
+        Dict with title, description, priority, type, status, etc.
+    """
+    labels = [lbl.name for lbl in issue.labels]
+    priority = "P1"
+    for lbl in labels:
+        if lbl.startswith("priority:"):
+            priority = lbl.split(":")[1].upper()
+            break
+    item_type = "Feature"
+    for lbl in labels:
+        if lbl.startswith("type:"):
+            item_type = lbl.split(":")[1].capitalize()
+            break
+    status = "open"
+    if issue.state == "closed":
+        status = "done"
+    else:
+        for lbl in labels:
+            if lbl.startswith("status:"):
+                status = lbl.split(":")[1]
+                break
+    return {
+        "title": issue.title,
+        "body": issue.body or "",
+        "priority": priority,
+        "type": item_type,
+        "status": status,
+        "updated_at": issue.updated_at.strftime("%Y-%m-%dT%H:%M:%SZ") if issue.updated_at else "",
+        "milestone": issue.milestone.title if issue.milestone else "",
+    }
+
+
+def _pull_single_issue(repo_obj: Repository, issue_num: int, filepath: Path | None = None) -> Path | None:
+    """Fetch a GitHub issue and write/update the local cache file.
+
+    If filepath is None, derives it from the issue title and priority.
+
+    Returns:
+        Path to the local file, or None on failure.
+    """
+    try:
+        issue = repo_obj.get_issue(issue_num)
+    except GithubException as e:
+        typer.echo(f"  WARNING: Could not fetch issue #{issue_num}: {e}", err=True)
+        return None
+
+    fields = _issue_to_local_fields(issue)
+    # Strip conventional-commit prefix from title (e.g., "feat: Title" → "Title")
+    raw_title = fields["title"]
+    prefixed = re.match(r"^(feat|fix|refactor|docs|chore|perf|test|ci):\s*", raw_title)
+    clean_title = raw_title[prefixed.end() :] if prefixed else raw_title
+
+    if filepath is None:
+        slug = _title_to_slug(clean_title)
+        filename = f"{fields['priority'].lower()}-{slug}.md"
+        filepath = BACKLOG_DIR / filename
+
+    BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
+
+    if filepath.exists():
+        # Update existing file: overwrite description, body, metadata
+        _update_item_metadata(
+            filepath,
+            {
+                "name": clean_title,
+                "description": _extract_description_from_issue_body(fields["body"]),
+                "metadata": {
+                    "issue": f"#{issue_num}",
+                    "priority": fields["priority"],
+                    "type": fields["type"],
+                    "status": fields["status"],
+                    "last_synced": _now_iso(),
+                },
+            },
+        )
+        # Overwrite body sections from GitHub issue body
+        _overwrite_body_from_github(filepath, fields["body"])
+    else:
+        # Create new cache file from GitHub issue
+        fm_str = _build_backlog_frontmatter(
+            name=clean_title,
+            description=_extract_description_from_issue_body(fields["body"]),
+            source=f"GitHub Issue #{issue_num}",
+            added=_today(),
+            priority=fields["priority"],
+            type_val=fields["type"],
+            status=fields["status"],
+            issue=f"#{issue_num}",
+        )
+        filepath.write_text(fm_str.rstrip() + "\n\n" + fields["body"] + "\n", encoding="utf-8")
+        _update_item_metadata(filepath, {"metadata": {"last_synced": _now_iso()}})
+
+    return filepath
+
+
+def _extract_description_from_issue_body(body: str) -> str:
+    """Extract the Description section from a GitHub issue body.
+
+    Falls back to first 200 chars if no ## Description section found.
+
+    Returns:
+        Description text.
+    """
+    desc_match = re.search(r"## Description\s*\n\n(.*?)(?=\n## |\Z)", body, re.DOTALL)
+    if desc_match:
+        return desc_match.group(1).strip()[:500]
+    # Fallback: first non-empty paragraph
+    for line in body.splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and not stripped.startswith("-"):
+            return stripped[:500]
+    return body[:200].strip()
+
+
+def _overwrite_body_from_github(filepath: Path, issue_body: str) -> None:
+    """Replace the body of a local cache file with content from GitHub issue body.
+
+    Preserves frontmatter, replaces everything after it.
+    """
+    text = filepath.read_text(encoding="utf-8")
+    if not text.startswith("---"):
+        return
+    parts = text.split("---", 2)
+    if len(parts) < MIN_FRONTMATTER_PARTS:
+        return
+    # Keep frontmatter, replace body
+    new_content = "---" + parts[1] + "---\n\n" + issue_body.strip() + "\n"
+    filepath.write_text(new_content, encoding="utf-8")
+
+
+def _check_item_staleness(item: dict, repo: str) -> bool:
+    """Check if a local cache file is stale relative to its GitHub issue.
+
+    Returns:
+        True if the GitHub issue was updated after last_synced, False otherwise.
+    """
+    issue_ref = item.get("_issue", "")
+    if not issue_ref:
+        return False
+    last_synced = item.get("_last_synced", "")
+    if not last_synced:
+        # No sync timestamp = always stale if there's an issue
+        return True
+    try:
+        repo_obj = _get_github(repo)
+        num = int(issue_ref.lstrip("#"))
+        issue = repo_obj.get_issue(num)
+        gh_updated = issue.updated_at.strftime("%Y-%m-%dT%H:%M:%SZ") if issue.updated_at else ""
+    except (GithubException, typer.Exit):
+        return False
+    else:
+        return gh_updated > last_synced
 
 
 def _index_link_line(title: str, rel_path: str, issue: str | None) -> str:
@@ -630,6 +849,8 @@ def _add_item_index_format(
     priority: str,
     type_: str,
     research_first: str,
+    files: str,
+    suggested_location: str,
     section_heading: str,
     create_issue: bool,
     repo: str,
@@ -646,7 +867,14 @@ def _add_item_index_format(
         filepath = BACKLOG_DIR / filename
     rel_path = f"backlog/{filename}"
     fm_str = _build_backlog_frontmatter(title, description, source, today, priority, type_, "open", "", "", "")
-    body = f"**Research first**: {research_first}\n" if research_first else ""
+    body_parts: list[str] = []
+    if research_first:
+        body_parts.append(f"**Research first**: {research_first}")
+    if files:
+        body_parts.append(f"**Files**: {files}")
+    if suggested_location:
+        body_parts.append(f"**Suggested location**: {suggested_location}")
+    body = "\n".join(body_parts) + "\n" if body_parts else ""
     filepath.write_text(fm_str.rstrip() + "\n\n" + body, encoding="utf-8")
     issue_num: int | None = None
     if create_issue and priority in {"P0", "P1"}:
@@ -660,6 +888,8 @@ def _add_item_index_format(
                 "**Priority**": priority,
                 "**Type**": type_,
                 "**Research first**": research_first,
+                "**Files**": files,
+                "**Suggested location**": suggested_location,
             }
             issue_num = create_issue_for_item(repository, item, dry_run=False)
             if issue_num:
@@ -757,6 +987,8 @@ def add(
     source: Annotated[str, typer.Option("--source")] = "Not specified",
     type_: Annotated[str, typer.Option("--type")] = "Feature",
     research_first: Annotated[str, typer.Option("--research-first")] = "",
+    files: Annotated[str, typer.Option("--files")] = "",
+    suggested_location: Annotated[str, typer.Option("--suggested-location")] = "",
     create_issue: Annotated[bool, typer.Option("--create-issue/--no-create-issue")] = True,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
@@ -775,7 +1007,18 @@ def add(
     section_heading = section_map.get(priority, "## P1 - Should Have")
     if _is_index_format(BACKLOG_PATH):
         _add_item_index_format(
-            title, description, source, today, priority, type_, research_first, section_heading, create_issue, repo
+            title,
+            description,
+            source,
+            today,
+            priority,
+            type_,
+            research_first,
+            files,
+            suggested_location,
+            section_heading,
+            create_issue,
+            repo,
         )
     else:
         _add_item_monolithic_format(
@@ -913,6 +1156,76 @@ def sync(
     if modified:
         BACKLOG_PATH.write_text(content, encoding="utf-8")
         typer.echo(f"Updated {BACKLOG_PATH}")
+
+
+@app.command()
+def pull(
+    selector: Annotated[str | None, typer.Argument(help="Optional: #N to pull one issue, or omit for all")] = None,
+    repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
+    dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
+) -> None:
+    """Pull from GitHub issues to rebuild/refresh local cache files.
+
+    GitHub is the source of truth. This command fetches issue data and
+    updates local .claude/backlog/*.md files to match.
+
+    Usage:
+        backlog pull              # refresh all items that have GitHub issues
+        backlog pull '#42'        # refresh one specific issue
+        backlog pull --dry-run    # show what would be updated
+    """
+    BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
+    repository = _get_github(repo)
+
+    if selector and selector.startswith("#"):
+        # Pull a single issue
+        num = int(selector.lstrip("#"))
+        if dry_run:
+            typer.echo(f"[dry-run] Would pull issue #{num}")
+            return
+        # Find existing local file if any
+        items = parse_backlog(BACKLOG_PATH) if BACKLOG_PATH.exists() else []
+        existing = find_item(items, selector)
+        filepath = Path(existing["_file_path"]) if existing and existing.get("_file_path") else None
+        result = _pull_single_issue(repository, num, filepath)
+        if result:
+            typer.echo(f"Pulled #{num} → {result.name}")
+        return
+
+    # Pull all items with GitHub issues
+    if not BACKLOG_PATH.exists():
+        typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
+        raise typer.Exit(1)
+
+    items = parse_backlog(BACKLOG_PATH)
+    items_with_issues = [it for it in items if it.get("_issue") and not it.get("_skip")]
+    if not items_with_issues:
+        typer.echo("No items with GitHub issues to pull.")
+        return
+
+    typer.echo(f"Pulling {len(items_with_issues)} item(s) from GitHub...")
+    updated = 0
+    stale = 0
+    for item in items_with_issues:
+        issue_ref = item.get("_issue", "")
+        num = int(issue_ref.lstrip("#"))
+        filepath = Path(item["_file_path"]) if item.get("_file_path") else None
+        is_stale = _check_item_staleness(item, repo)
+        if not is_stale and not dry_run:
+            continue
+        stale += 1
+        if dry_run:
+            typer.echo(f"  [dry-run] Would pull {issue_ref}: {item.get('_title', '')[:50]}")
+            continue
+        result = _pull_single_issue(repository, num, filepath)
+        if result:
+            updated += 1
+            typer.echo(f"  Pulled {issue_ref} → {result.name}")
+
+    if dry_run:
+        typer.echo(f"\n{stale} item(s) would be updated.")
+    else:
+        typer.echo(f"\nPulled {updated}/{stale} stale item(s).")
 
 
 def _close_item_index(item: dict, plan: str, today: str) -> bool:
@@ -1163,7 +1476,7 @@ def _build_backlog_frontmatter(
     """
     meta: dict[str, str] = {
         "topic": _title_to_slug(name),
-        "source": source[:200] if source else "Not specified",
+        "source": source or "Not specified",
         "added": added or _today(),
         "priority": priority,
         "type": type_val,
@@ -1176,7 +1489,7 @@ def _build_backlog_frontmatter(
     if groomed:
         meta["groomed"] = groomed
     post = frontmatter.Post(
-        "", name=name.replace('"', "'"), description=(description or "").replace('"', "'")[:500], metadata=meta
+        "", name=name.replace('"', "'"), description=(description or "").replace('"', "'"), metadata=meta
     )
     return dump_frontmatter(post)
 
@@ -1433,40 +1746,88 @@ def _resolve_groomed_content(
 
 
 def _handle_update_groomed(item: dict, groomed_content_val: str, section_name: str | None, repo: str) -> None:
-    """Handle groomed content update: write to file, create issue if needed, sync to GitHub."""
+    """Handle groomed content update: GitHub-first, then cache locally.
+
+    Write order: (1) GitHub issue (canonical), (2) local file (cache).
+    If item has no issue, creates one for P0/P1 first.
+    Sets last_synced after successful GitHub write.
+    """
     filepath = Path(item["_file_path"])
+    issue_ref = item.get("_issue")
+
+    # Step 1: Ensure GitHub issue exists for P0/P1 items
+    if not issue_ref and not item.get("_skip") and item.get("_section") in {"P0", "P1", "P2", "Ideas"}:
+        issue_ref = _ensure_github_issue(item, filepath, repo)
+
+    # Step 2: Write to GitHub FIRST (canonical source of truth)
+    github_synced = False
+    if issue_ref:
+        github_synced = _write_groomed_to_github(issue_ref, groomed_content_val, section_name, repo)
+
+    # Step 3: Write to local file (cache)
     _write_groomed_to_item_file(filepath, groomed_content_val, section_name)
     typer.echo(f"Updated {filepath.name} with groomed content")
-    issue_ref = item.get("_issue")
-    if not issue_ref and not item.get("_skip") and item.get("_section") in {"P0", "P1", "P2", "Ideas"}:
-        try:
-            repository = _get_github(repo)
-            issue_num = create_issue_for_item(repository, item, dry_run=False)
-            if issue_num:
-                _update_item_metadata(filepath, {"metadata": {"issue": f"#{issue_num}"}})
-                index_content = BACKLOG_PATH.read_text(encoding="utf-8")
-                old_line = _find_index_link_line(index_content, item)
-                if old_line:
-                    new_line = _index_link_line(item.get("_title", ""), f"backlog/{filepath.name}", f"#{issue_num}")
-                    index_content = index_content.replace(old_line, new_line)
-                    index_content = re.sub(r"last-updated:\s*\S+", f"last-updated: {_today()}", index_content, count=1)
-                    BACKLOG_PATH.write_text(index_content, encoding="utf-8")
-                issue_ref = f"#{issue_num}"
-                typer.echo(f"  Created GitHub issue #{issue_num}")
-        except typer.Exit:
-            raise
-        except GithubException as e:
-            typer.echo(f"  WARNING: Could not create issue: {e}", err=True)
-    if issue_ref:
-        try:
-            repository = _get_github(repo)
-            num = issue_ref.lstrip("#")
-            _sync_groomed_to_github_issue(repository, int(num), groomed_content_val, section_name)
-            typer.echo(f"  Synced to GitHub issue #{num}")
-        except typer.Exit:
-            raise
-        except GithubException as e:
-            typer.echo(f"  WARNING: Could not sync to GitHub: {e}", err=True)
+
+    # Step 4: Set last_synced if GitHub write succeeded
+    if github_synced:
+        _update_item_metadata(filepath, {"metadata": {"last_synced": _now_iso()}})
+
+
+def _ensure_github_issue(item: dict, filepath: Path, repo: str) -> str | None:
+    """Create GitHub issue if item doesn't have one.
+
+    Uses _try_get_github for graceful fallback when GitHub is unavailable.
+
+    Returns:
+        Issue ref like '#42', or None if no issue was created.
+    """
+    repository = _try_get_github(repo)
+    if not repository:
+        typer.echo("  INFO: GitHub unavailable — working locally only")
+        return None
+    try:
+        issue_num = create_issue_for_item(repository, item, dry_run=False)
+    except typer.Exit:
+        raise
+    except GithubException as e:
+        typer.echo(f"  WARNING: Could not create issue: {e}", err=True)
+        return None
+    else:
+        if not issue_num:
+            return None
+        _update_item_metadata(filepath, {"metadata": {"issue": f"#{issue_num}"}}, set_synced=True)
+        index_content = BACKLOG_PATH.read_text(encoding="utf-8")
+        old_line = _find_index_link_line(index_content, item)
+        if old_line:
+            new_line = _index_link_line(item.get("_title", ""), f"backlog/{filepath.name}", f"#{issue_num}")
+            index_content = index_content.replace(old_line, new_line)
+            index_content = re.sub(r"last-updated:\s*\S+", f"last-updated: {_today()}", index_content, count=1)
+            BACKLOG_PATH.write_text(index_content, encoding="utf-8")
+        typer.echo(f"  Created GitHub issue #{issue_num}")
+        return f"#{issue_num}"
+
+
+def _write_groomed_to_github(issue_ref: str, content: str, section_name: str | None, repo: str) -> bool:
+    """Write groomed content to GitHub issue.
+
+    Gracefully falls back to local-only when GitHub is unavailable.
+
+    Returns:
+        True if content was synced to GitHub, False otherwise.
+    """
+    repository = _try_get_github(repo)
+    if not repository:
+        typer.echo(f"  INFO: GitHub unavailable — {issue_ref} will sync on next `backlog pull` or `backlog sync`")
+        return False
+    try:
+        num = int(issue_ref.lstrip("#"))
+        _sync_groomed_to_github_issue(repository, num, content, section_name)
+    except GithubException as e:
+        typer.echo(f"  WARNING: Could not sync to GitHub: {e}", err=True)
+        return False
+    else:
+        typer.echo(f"  Synced to GitHub issue {issue_ref}")
+        return True
 
 
 def _apply_status_in_progress(item: dict, repo: str) -> None:

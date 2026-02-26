@@ -135,9 +135,8 @@ def check_cooldown(working_dir: Path, force: bool) -> bool:
                 border_style="yellow",
             )
         )
-        return False
 
-    return True
+    return time_since >= cooldown
 
 
 def update_lock_file(working_dir: Path, status: str, last_version: str = "", releases_processed: int = 0) -> None:
@@ -235,7 +234,11 @@ SECTION_HEADERS: list[tuple[re.Pattern[str], str]] = [
 
 
 def _detect_section(stripped: str) -> str | None:
-    """Match a line against known section header patterns."""
+    """Match a line against known section header patterns.
+
+    Returns:
+        Section name if a pattern matches, None otherwise.
+    """
     for pattern, section_name in SECTION_HEADERS:
         if pattern.match(stripped):
             return section_name

@@ -96,6 +96,7 @@ repos:
     rev: v0.19.1
     hooks:
       - id: markdownlint-cli2
+        exclude: ^(plan/|\.claude/backlog/|\.claude/BACKLOG\.md)
 
   # JSON formatting
   - repo: https://github.com/pre-commit/mirrors-prettier

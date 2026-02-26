@@ -19,10 +19,14 @@ Usage:
 from __future__ import annotations
 
 import os
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 from github import Auth, Github, GithubException
+
+if TYPE_CHECKING:
+    from github.Label import Label
+    from github.Repository import Repository
 
 app = typer.Typer(help="Remove experiment-created GitHub resources between test iterations")
 
@@ -46,8 +50,15 @@ EXPERIMENT_MILESTONE_PREFIX = "v1.0"
 EXPERIMENT_PROJECT_TITLE = "claude_skills Backlog"
 
 
-def get_gh(repo_slug: str) -> tuple[Github, Any]:
-    """Authenticate and return (Github, Repository)."""
+def get_gh(repo_slug: str) -> tuple[Github, Repository]:
+    """Authenticate and return a Github client and Repository.
+
+    Args:
+        repo_slug: Repository identifier in ``owner/repo`` format.
+
+    Returns:
+        Tuple of authenticated Github client and Repository object.
+    """
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
         typer.echo("ERROR: GITHUB_TOKEN not set", err=True)
@@ -87,8 +98,18 @@ def list_resources(
             typer.echo(f"  #{issue.number} [{issue.state}] {issue.title}")
 
 
-def _close_issues(repository: Any, existing_labels: dict[str, Any], prefix: str, dry_run: bool) -> int:
-    """Close open issues that carry any experiment label. Returns count closed."""
+def _close_issues(repository: Repository, existing_labels: dict[str, Label], prefix: str, dry_run: bool) -> int:
+    """Close open issues that carry any experiment label.
+
+    Args:
+        repository: GitHub repository object.
+        existing_labels: Mapping of label name to Label object.
+        prefix: Log prefix for dry-run mode.
+        dry_run: If True, only print what would happen.
+
+    Returns:
+        Number of issues closed.
+    """
     closed = 0
     for label_name in EXPERIMENT_LABELS:
         if label_name not in existing_labels:
@@ -102,8 +123,17 @@ def _close_issues(repository: Any, existing_labels: dict[str, Any], prefix: str,
     return closed
 
 
-def _delete_labels(existing_labels: dict[str, Any], prefix: str, dry_run: bool) -> int:
-    """Delete experiment taxonomy labels. Returns count deleted."""
+def _delete_labels(existing_labels: dict[str, Label], prefix: str, dry_run: bool) -> int:
+    """Delete experiment taxonomy labels.
+
+    Args:
+        existing_labels: Mapping of label name to Label object.
+        prefix: Log prefix for dry-run mode.
+        dry_run: If True, only print what would happen.
+
+    Returns:
+        Number of labels deleted.
+    """
     deleted = 0
     for name, label_obj in existing_labels.items():
         if name in EXPERIMENT_LABELS:
@@ -114,8 +144,17 @@ def _delete_labels(existing_labels: dict[str, Any], prefix: str, dry_run: bool) 
     return deleted
 
 
-def _close_milestones(repository: Any, prefix: str, dry_run: bool) -> int:
-    """Close milestones with the experiment title prefix. Returns count closed."""
+def _close_milestones(repository: Repository, prefix: str, dry_run: bool) -> int:
+    """Close milestones with the experiment title prefix.
+
+    Args:
+        repository: GitHub repository object.
+        prefix: Log prefix for dry-run mode.
+        dry_run: If True, only print what would happen.
+
+    Returns:
+        Number of milestones closed.
+    """
     closed = 0
     for ms in repository.get_milestones(state="open"):
         if ms.title.startswith(EXPERIMENT_MILESTONE_PREFIX):

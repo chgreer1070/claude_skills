@@ -87,7 +87,11 @@ def _get_header_block(lines: list[str]) -> tuple[list[str], int]:
 
 
 def _section_content(lines: list[str], start: int, end: int) -> str:
-    """Extract content between section heading and next heading/separator (0-indexed range)."""
+    """Extract content between section heading and next heading/separator (0-indexed range).
+
+    Returns:
+        Extracted section content as a string.
+    """
     content_lines = []
     for line in lines[start:end]:
         stripped = line.strip()
@@ -100,7 +104,11 @@ def _section_content(lines: list[str], start: int, end: int) -> str:
 
 
 def _check_section_completeness(sections: dict[str, tuple[int, int]]) -> list[Issue]:
-    """Check that all required sections exist."""
+    """Check that all required sections exist.
+
+    Returns:
+        List of issues for missing required sections.
+    """
     issues: list[Issue] = []
     section_names = set(sections.keys())
 
@@ -120,7 +128,11 @@ def _check_section_completeness(sections: dict[str, tuple[int, int]]) -> list[Is
 
 
 def _check_header_fields(header_lines: list[str]) -> list[Issue]:
-    """Check that required header fields exist."""
+    """Check that required header fields exist.
+
+    Returns:
+        List of issues for missing header fields.
+    """
     issues: list[Issue] = []
     header_text = "\n".join(header_lines)
 
@@ -139,7 +151,11 @@ def _check_header_fields(header_lines: list[str]) -> list[Issue]:
 
 
 def _check_empty_sections(lines: list[str], sections: dict[str, tuple[int, int]]) -> list[Issue]:
-    """Check for sections that exist but have no content."""
+    """Check for sections that exist but have no content.
+
+    Returns:
+        List of issues for empty sections.
+    """
     issues: list[Issue] = []
     for heading, (start, end) in sections.items():
         content = _section_content(lines, start - 1, end)
@@ -154,7 +170,11 @@ def _check_empty_sections(lines: list[str], sections: dict[str, tuple[int, int]]
 
 
 def _check_access_dates(lines: list[str], sections: dict[str, tuple[int, int]]) -> list[Issue]:
-    """Check that URLs in References section have access dates."""
+    """Check that URLs in References section have access dates.
+
+    Returns:
+        List of issues for references missing access dates.
+    """
     issues: list[Issue] = []
 
     ref_section = sections.get("References")
@@ -178,7 +198,11 @@ def _check_access_dates(lines: list[str], sections: dict[str, tuple[int, int]]) 
 
 
 def _check_freshness_tracking(lines: list[str], sections: dict[str, tuple[int, int]]) -> list[Issue]:
-    """Check that Freshness Tracking section has required fields."""
+    """Check that Freshness Tracking section has required fields.
+
+    Returns:
+        List of issues for missing freshness tracking fields.
+    """
     issues: list[Issue] = []
 
     ft_section = sections.get("Freshness Tracking")
@@ -204,7 +228,11 @@ def _check_freshness_tracking(lines: list[str], sections: dict[str, tuple[int, i
 
 
 def _check_statistics_currency(lines: list[str], sections: dict[str, tuple[int, int]], today: date) -> list[Issue]:
-    """Check for stale dates in Key Statistics section."""
+    """Check for stale dates in Key Statistics section.
+
+    Returns:
+        List of issues for dates older than 6 months.
+    """
     issues: list[Issue] = []
     cutoff = today - timedelta(days=180)
 
@@ -234,7 +262,11 @@ def _check_statistics_currency(lines: list[str], sections: dict[str, tuple[int, 
 
 
 def _check_url_format(lines: list[str]) -> list[Issue]:
-    """Check for malformed URLs throughout the document."""
+    """Check for malformed URLs throughout the document.
+
+    Returns:
+        List of issues for URLs missing http/https scheme.
+    """
     issues: list[Issue] = []
     bare_url_pattern = re.compile(r"(?<!\()(?<!<)(?:www\.)\S+", re.IGNORECASE)
 
@@ -252,7 +284,11 @@ def _check_url_format(lines: list[str]) -> list[Issue]:
 
 
 def validate_file(filepath: Path, research_root: Path, today: date) -> dict[str, Any]:
-    """Validate a single research markdown file."""
+    """Validate a single research markdown file.
+
+    Returns:
+        Validation result dict with file path, status, and issues list.
+    """
     relative = str(filepath.relative_to(research_root))
     text = filepath.read_text(encoding="utf-8")
     lines = text.splitlines()
@@ -276,7 +312,11 @@ def validate_file(filepath: Path, research_root: Path, today: date) -> dict[str,
 
 
 def collect_files(path: Path) -> list[Path]:
-    """Collect markdown files to validate, excluding README.md."""
+    """Collect markdown files to validate, excluding README.md.
+
+    Returns:
+        List of markdown file paths to validate.
+    """
     if path.is_file():
         return [path] if path.suffix == ".md" and path.name != "README.md" else []
     files = sorted(path.rglob("*.md"))
