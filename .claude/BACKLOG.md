@@ -26,7 +26,7 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 - [fastmcp-creator: Add citations for 1200+ lines of FastMCP 3.x API documentation](backlog/p1-fastmcp-creator-add-citations-for-1200-lines-of-fastmcp-3x-a.md)
 - [Consolidate validate_frontmatter.py into plugin_validator.py](backlog/p1-consolidate-validatefrontmatterpy-into-pluginvalidatorpy.md)
 - [Validate and verify orchestrator-discipline plugin hooks and processes](backlog/p1-validate-and-verify-orchestrator-discipline-plugin-hooks-and.md)
-- [SAM: Error Recovery / Rollback Procedures](backlog/p1-sam-error-recovery-rollback-procedures.md)
+- [SAM: Error Recovery / Rollback Procedures](backlog/p1-sam-error-recovery-rollback-procedures.md) #268
 - [SAM: Human Escalation Criteria](backlog/p1-sam-human-escalation-criteria.md)
 - [SAM: Timeout/Stall Detection](backlog/p1-sam-timeoutstall-detection.md)
 - [SAM: Artifact Schema Validation](backlog/p1-sam-artifact-schema-validation.md)
@@ -45,6 +45,7 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 - [Backlog system redesign: GitHub Issues as source of truth with local cache](backlog/p1-backlog-system-redesign-github-issues-as-source-of-truth-wit.md)
 
 - [backlog.py: unify issue body template and add missing structured fields](backlog/p1-backlogpy-unify-issue-body-template-and-add-missing-structur.md)
+
 ## P2 - Could Have
 
 - [conventional-commits: Fix CHANGELOG references to nonexistent files](backlog/p2-conventional-commits-fix-changelog-references-to-nonexistent.md)
