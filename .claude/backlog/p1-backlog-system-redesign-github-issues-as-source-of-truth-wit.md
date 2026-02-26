@@ -10,3 +10,15 @@ metadata:
   status: open
 ---
 
+## Design Constraints
+
+### Authorization gate: preventing untrusted issue injection
+
+Agents must never auto-action issues from arbitrary contributors. The approved work queue requires an explicit gate:
+
+1. **Project board membership** (coarse gate) — only issues added to the GitHub Project are visible to `backlog.py pull`. Issues opened by external contributors exist in the repo tracker but are invisible to agents until a maintainer adds them to the project.
+2. **Label filter** (fine-grained) — within the project, only issues carrying an `agent:actionable` label (or equivalent) enter the agent's working set. This prevents half-triaged items from being picked up prematurely.
+3. **Author allowlist** (optional hardening) — `.claude/config.json` or `pyproject.toml` can list approved GitHub logins. `backlog.py pull` skips issues from authors not on the list even if they're in the project. Useful for repos with many collaborators.
+
+The combination means: random drive-by issues stay in the repo's issue tracker, never enter the agent's local cache, and never get worked. A maintainer explicitly approves work by adding the issue to the project board and labeling it.
+
