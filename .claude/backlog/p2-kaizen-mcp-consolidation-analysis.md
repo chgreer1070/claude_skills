@@ -7,7 +7,9 @@ description: 'The plugin currently runs two MCP servers (`kaizen-duckdb` via mcp
   rather than an MCP tool inside `server.py`? What would be gained or lost by moving
   scoring into the MCP server (always-on scoring, no manual invocation, lock ownership)?
   (3) Is there a clean boundary between "batch processing" (script) and "query/serve"
-  (MCP) that should be preserved?'
+  (MCP) that should be preserved?
+
+  **Decision needed**: Consolidate vs. keep separate, with rationale.'
 metadata:
   topic: kaizen-mcp-consolidation-analysis
   source: Design session 2026-02-20

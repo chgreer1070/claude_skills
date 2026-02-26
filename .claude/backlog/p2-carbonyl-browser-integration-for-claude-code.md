@@ -1,6 +1,14 @@
 ---
 name: Carbonyl Browser Integration for Claude Code
-description: Research whether carbonyl (terminal Chromium browser) can work with Claude Code for reliable web content extraction. Carbonyl renders pages in terminal but needs a TTY.
+description: "Research whether carbonyl (terminal Chromium browser) can work with
+  Claude Code for reliable web content extraction. Carbonyl renders pages in terminal
+  but needs a TTY.\n**Research areas**:\n- Can carbonyl run via tmux/screen/script
+  to provide a pseudo-TTY?\n- Could carbonyl be wrapped with a screenshot tool (e.g.,
+  termshot, asciinema) that passes images back to Claude?\n- What's the minimal TTY
+  setup needed for headless carbonyl operation?\n- Compare with is-fast, lynx, w3m
+  for text extraction capabilities\n**Context**: WebFetch is unreliable (summarizing
+  agents hallucinate), Playwright requires browser downloads that may be blocked.
+  Carbonyl is self-contained but needs TTY."
 metadata:
   topic: carbonyl-browser-integration-for-claude-code
   source: Session experimentation 2026-02-05

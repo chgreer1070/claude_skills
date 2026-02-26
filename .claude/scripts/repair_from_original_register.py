@@ -46,10 +46,11 @@ BENEFIT_MAP = {
     "Chore": "the project infrastructure stays healthy",
 }
 
-# Bold-key field prefix → dict key mapping
+# Bold-key field prefix → dict key mapping (single-line fields)
 _FIELD_MAP: dict[str, str] = {
     "**Source**:": "source",
     "**Added**:": "added",
+    "**Priority**:": "priority_field",
     "**Description**:": "description",
     "**Research first**:": "research_first",
     "**Suggested location**:": "suggested_location",
@@ -58,7 +59,12 @@ _FIELD_MAP: dict[str, str] = {
     "**Completed**:": "completed",
     "**Status**:": "status",
     "**Type**:": "type",
+    "**Issue**:": "issue_field",
 }
+
+# Fields whose values may span multiple lines (content continues until next
+# bold-key field or end of body).  The parser collects continuation lines.
+_MULTILINE_FIELDS: set[str] = {"**Description**:", "**Files**:", "**Status**:", "**Citations**:"}
 
 _yaml = YAML()
 _yaml.preserve_quotes = True
@@ -67,8 +73,12 @@ _yaml.preserve_quotes = True
 def parse_register() -> list[dict[str, str]]:
     """Parse the original backlog register into structured items.
 
+    Captures both extracted fields AND the full raw body text so that
+    non-standard content (sub-issues, validation steps, citations, etc.)
+    is never lost.
+
     Returns:
-        List of dicts with title, priority, and all field values
+        List of dicts with title, priority, full_body, and all field values
     """
     text = REGISTER_PATH.read_text(encoding="utf-8")
     items: list[dict[str, str]] = []
@@ -92,6 +102,7 @@ def parse_register() -> list[dict[str, str]]:
                 i += 1
 
             body = "\n".join(body_lines).strip()
+            item["full_body"] = body
             _extract_fields(body, item)
             items.append(item)
             continue
@@ -118,28 +129,95 @@ def _detect_priority(line: str, current: str) -> str:
     return current
 
 
+def _match_field_prefix(stripped: str) -> tuple[str | None, str | None]:
+    """Match a line against known bold-key field prefixes.
+
+    Args:
+        stripped: Stripped line text
+
+    Returns:
+        Tuple of (matched prefix, dict key) or (None, None)
+    """
+    for prefix, key in _FIELD_MAP.items():
+        if stripped.startswith(prefix):
+            return prefix, key
+    return None, None
+
+
+def _is_bold_key_line(line: str) -> bool:
+    """Check if a line starts with any recognized bold-key field prefix.
+
+    Args:
+        line: Stripped line text
+
+    Returns:
+        True if the line is a bold-key field header
+    """
+    return _match_field_prefix(line)[0] is not None
+
+
+def _collect_multiline_value(lines: list[str], start: int, first_value: str) -> tuple[str, int]:
+    """Collect a multi-line field value from consecutive lines.
+
+    Reads continuation lines until the next bold-key field or end of body.
+
+    Args:
+        lines: All body lines
+        start: Index of the first continuation line (after the field header)
+        first_value: Value text from the header line itself
+
+    Returns:
+        Tuple of (collected value string, next line index to process)
+    """
+    value_lines = [first_value] if first_value else []
+    i = start
+    while i < len(lines):
+        if _is_bold_key_line(lines[i].strip()):
+            break
+        if lines[i].strip():
+            value_lines.append(lines[i].rstrip())
+        elif value_lines:
+            value_lines.append("")
+        i += 1
+    return "\n".join(value_lines).strip(), i
+
+
 def _extract_fields(body: str, item: dict[str, str]) -> None:
-    """Extract bold-key fields from item body text.
+    """Extract bold-key fields from item body text, including multi-line values.
+
+    Multi-line fields (Description, Files, Status, Citations) collect
+    continuation lines until the next bold-key field or end of body.
 
     Args:
         body: Raw body text of the backlog item
         item: Dict to populate with extracted fields
     """
-    for raw_line in body.split("\n"):
-        stripped = raw_line.strip()
+    lines = body.split("\n")
+    i = 0
+    while i < len(lines):
+        stripped = lines[i].strip()
+        matched_prefix, matched_key = _match_field_prefix(stripped)
 
-        # Check Issue field separately (needs regex extraction)
-        if stripped.startswith("**Issue**:"):
-            issue_match = re.search(r"#(\d+)", stripped)
-            if issue_match:
-                item["issue_number"] = issue_match.group(1)
+        if not matched_prefix or not matched_key:
+            i += 1
             continue
 
-        # Check all other bold-key fields
-        for prefix, key in _FIELD_MAP.items():
-            if stripped.startswith(prefix):
-                item[key] = stripped.split(":", 1)[1].strip()
-                break
+        first_line_value = stripped.split(":", 1)[1].strip()
+
+        # Extract issue number from **Issue**: field
+        if matched_key == "issue_field":
+            issue_match = re.search(r"#(\d+)", first_line_value)
+            if issue_match:
+                item["issue_number"] = issue_match.group(1)
+            i += 1
+            continue
+
+        # For multi-line fields, collect continuation lines
+        if matched_prefix in _MULTILINE_FIELDS:
+            item[matched_key], i = _collect_multiline_value(lines, i + 1, first_line_value)
+        else:
+            item[matched_key] = first_line_value
+            i += 1
 
 
 def normalize_title(title: str) -> str:
@@ -238,11 +316,67 @@ def _read_groomed_content(path: Path) -> str:
     return ""
 
 
+def _extract_additional_content(item: dict[str, str]) -> str:
+    """Extract content from full_body not covered by extracted fields.
+
+    Removes lines that were already captured by _extract_fields (bold-key
+    metadata lines) and returns everything else — sub-issues, bullet lists,
+    numbered steps, citations, free-form paragraphs, etc.
+
+    Args:
+        item: Parsed item dict with full_body and extracted fields
+
+    Returns:
+        Additional content string, or empty if nothing extra
+    """
+    full_body = item.get("full_body", "")
+    if not full_body:
+        return ""
+
+    # Keys whose content we already include in structured sections
+    covered_prefixes = set(_FIELD_MAP.keys()) | {"**Issue**:"}
+
+    result_lines: list[str] = []
+    lines = full_body.split("\n")
+    i = 0
+    skip_continuation = False
+
+    while i < len(lines):
+        stripped = lines[i].strip()
+
+        # Check if this line starts a bold-key field we already extract
+        is_covered = any(stripped.startswith(p) for p in covered_prefixes)
+
+        if is_covered:
+            # Skip this line and its multi-line continuation
+            skip_continuation = stripped.startswith(tuple(_MULTILINE_FIELDS))
+            i += 1
+            if skip_continuation:
+                while i < len(lines) and not _is_bold_key_line(lines[i].strip()):
+                    i += 1
+                skip_continuation = False
+            continue
+
+        # Not a covered field — include this line
+        result_lines.append(lines[i].rstrip())
+        i += 1
+
+    content = "\n".join(result_lines).strip()
+
+    # Remove separator lines (---)
+    return re.sub(r"^---+\s*$", "", content, flags=re.MULTILINE).strip()
+
+
 def build_story_body(item: dict[str, str], groomed_content: str = "") -> str:
     """Build a proper story-format issue body from a register item.
 
+    Includes ALL content from the original register: structured fields
+    in their proper sections, plus any additional free-text content
+    (sub-issues, validation steps, citations, etc.) that doesn't fit
+    into a named field.
+
     Args:
-        item: Parsed item dict with full untruncated fields
+        item: Parsed item dict with full untruncated fields and full_body
         groomed_content: Optional groomed content from per-item file
 
     Returns:
@@ -261,6 +395,11 @@ def build_story_body(item: dict[str, str], groomed_content: str = "") -> str:
         f"## Description\n\n{description}",
     ]
 
+    # Additional content not captured by named fields
+    additional = _extract_additional_content(item)
+    if additional:
+        sections.append(f"## Details\n\n{additional}")
+
     if item.get("files"):
         sections.append(f"## Files\n\n{item['files']}")
 
@@ -273,6 +412,8 @@ def build_story_body(item: dict[str, str], groomed_content: str = "") -> str:
         f"- **Added**: {item.get('added', 'Unknown')}",
         f"- **Research questions**: {item.get('research_first', 'None')}",
     ]
+    if item.get("status"):
+        context_lines.append(f"- **Status**: {item['status']}")
     sections.append("## Context\n\n" + "\n".join(context_lines))
 
     if item.get("plan"):
@@ -376,7 +517,14 @@ def main() -> None:
         sys.exit(1)
 
     register_items = parse_register()
-    active_items = [i for i in register_items if i["priority"] != "Completed" and "completed" not in i]
+    active_items = [
+        i
+        for i in register_items
+        if i["priority"] != "Completed"
+        and "completed" not in i
+        and "~~" not in i["title"]
+        and not (i.get("status", "").upper().startswith(("DONE", "RESOLVED")))
+    ]
     print(f"Parsed {len(register_items)} items from register ({len(active_items)} active)")
 
     gh = Github(auth=Auth.Token(token))
