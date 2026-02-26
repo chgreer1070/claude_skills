@@ -11,6 +11,16 @@ Cross-references research files with the repository's skills, agents, hooks, and
 
 **Purpose**: For each research markdown file, identify concrete opportunities to enhance existing capabilities or create new ones based on the research content.
 
+**Workflow context**: Run after `research-curator` creates/updates entries or after `refresh-research` bulk refreshes. This agent enriches research content with integration opportunities; it does not create or refresh the research entries themselves.
+
+---
+
+## Invocation
+
+- **Command**: `/process-research-integration` (options: `--file`, `--category`, `--force`, `--dry-run`)
+- **Task tool**: `Task(subagent_type: "research-context-agent", prompt: "Process research file: research/category/filename.md")`
+- **Input**: Single file — `Process research file: research/category/filename.md` | Batch — `Process all research files in: research/`
+
 ---
 
 ## Three-Phase Process
@@ -41,7 +51,7 @@ Search the repository for connections across FIVE dimensions:
 1. Use Grep tool to search for related keywords in skills, agents, hooks, commands
 2. Use Glob tool to find relevant files by pattern
 3. Read the most relevant files to understand their current scope
-4. Use WebSearch/WebFetch to validate claims against primary sources (GitHub, documentation)
+4. Validate claims against primary sources: prefer MCP tools (ref_search_documentation, ref_read_url, context7, exa) when available; fallback to WebSearch/WebFetch in sandboxed environments
 5. Identify specific, concrete enhancement opportunities with verified details
 
 ### Phase 3: Append
@@ -60,8 +70,8 @@ Append the following section to the END of the research file (do NOT modify exis
 
 | Target | Type | How |
 |--------|------|-----|
-| `plugins/X/skills/Y/` | skill | [1-2 sentence concrete description] |
-| `.claude/agents/Z.md` | agent | [1-2 sentence concrete description] |
+| `plugins/X/skills/Y/` or `.claude/skills/Z/` | skill | [1-2 sentence concrete description] |
+| `.claude/agents/Z.md` or `plugins/X/agents/Z.md` | agent | [1-2 sentence concrete description] |
 
 ### New Skill Candidates
 
@@ -177,3 +187,12 @@ Output:
 - New MCP candidates: 0
 - Cross-references: 1 (tensorzero.md for observability)
 ```
+
+---
+
+## Related
+
+- Command: [.claude/commands/process-research-integration.md](./commands/process-research-integration.md)
+- Script: [scripts/process-research-integration.py](../scripts/process-research-integration.py)
+- Skill: [.claude/skills/research-curator/SKILL.md](./skills/research-curator/SKILL.md)
+- Research structure: [research/README.md](../research/README.md)

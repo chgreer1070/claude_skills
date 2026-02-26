@@ -3,6 +3,7 @@ name: backlog-item-groomer
 description: Produce groomed content for a backlog item — discovers related skills, agents, prior work, and dependency graph; performs RT-ICA assessment; outputs groomed item template for writing into .claude/backlog/{priority}-{slug}.md. Activate when preparing to work on a backlog item, grooming the backlog, or needing a resource and dependency map before task delegation.
 tools: Glob, Grep, Read
 model: haiku
+skills: rt-ica
 ---
 
 # Backlog Item Groomer Agent
@@ -40,12 +41,12 @@ NOTE: This step requires reasoning judgment. If the orchestrator has pre-compute
 
 ### Step 1 — Find Supporting Skills
 
-Search for skills relevant to the item topic.
+Search for skills relevant to the item topic (remember that skills are a directory of files not a single file, so to understand a skill you need to follow links and file references in the SKILL.md).
 
-```text
+<eg>
 Glob: .claude/skills/*/SKILL.md
 Glob: plugins/*/skills/*/SKILL.md
-```
+</eg>
 
 Read the first 50 lines of each match. Check description and frontmatter for relevance to item keywords.
 
@@ -53,10 +54,10 @@ Read the first 50 lines of each match. Check description and frontmatter for rel
 
 Search for agents with relevant capabilities.
 
-```text
+<eg>
 Glob: .claude/agents/*.md
 Glob: plugins/*/agents/*.md
-```
+</eg>
 
 Read the first 50 lines of each match. Match agent `description` field to item needs.
 
@@ -64,10 +65,10 @@ Read the first 50 lines of each match. Match agent `description` field to item n
 
 Search local files for references to the item's key terms.
 
-```text
+<eg>
 Grep pattern: {key terms from item title and description}
 Path: . (repository root)
-```
+</eg>
 
 Stop after 5 relevant matches per key term.
 

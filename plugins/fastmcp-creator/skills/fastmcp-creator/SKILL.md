@@ -49,6 +49,90 @@ EXCLUSIONS:
 
 TRIGGER: The model must follow this 4-phase workflow when building MCP servers
 
+### Phase 0: Requirements Intake
+
+RULE: Before any research or planning, gather requirements from the user using AskUserQuestion. ALL multi-choice questions MUST use the AskUserQuestion tool — never ask them as plain text.
+
+Use the decision tree below to determine which intake path to follow based on the user's intent.
+
+#### Step 0.1 — Intent and Language (AskUserQuestion, both together)
+
+Ask these two questions together in a single AskUserQuestion call:
+
+1. "What would you like to do?"
+   - New from scratch — build a brand new MCP server
+   - Extend existing — add tools or resources to an existing server
+   - Fix a bug — something isn't working as expected
+   - Just exploring — want to understand FastMCP capabilities
+
+2. "Which implementation language/framework?"
+   - Python (FastMCP 3.x)
+   - TypeScript/Node
+
+#### Step 0.2 — Branch on intent
+
+```mermaid
+flowchart TD
+    A{Intent from Step 0.1?}
+    A -->|New from scratch| New[New Server Path]
+    A -->|Extend existing| Extend[Extension Path]
+    A -->|Fix a bug| Bug[Bug Triage Path]
+    A -->|Just exploring| Explore[Skip to Phase 1 — no further intake needed]
+```
+
+---
+
+#### New Server Path
+
+**Step N1 — Domain (AskUserQuestion)**
+
+Ask: "What service or domain will this MCP server integrate with?"
+
+- REST API with auth
+- Local filesystem/data
+- CLI tool wrapper
+- Custom business logic
+
+**Step N2 — Problem statement (AskUserQuestion, open-ended as plain text question with no options list)**
+
+Ask: "We can do many things with MCP tooling — for example, file search and analysis, data transformation (CSV/JSON/YAML), structured file CRUD, or wrapping CLI tools. What problem do you want to solve?"
+
+**Step N3 — Follow-up clarification (AskUserQuestion)**
+
+Based on the answer to N2, ask clarifying questions to fill gaps. Always include:
+
+- "Are there any existing MCP servers, APIs, codebases, or examples you'd like to use as a reference or template?"
+
+Ask any additional questions needed to understand scope, constraints, and target users before proceeding.
+
+---
+
+#### Extension Path
+
+**Step E1 — What exists (AskUserQuestion)**
+
+Ask: "Which existing MCP server are you extending, and what tools or resources do you want to add?"
+
+Then ask any follow-up questions needed to understand the new capability's scope.
+
+Also ask: "Are there any examples or reference implementations for the new tools you want to add?"
+
+---
+
+#### Bug Triage Path
+
+Ask these three questions together in a single AskUserQuestion call:
+
+1. "What was observed? Describe what actually happened."
+2. "What were you doing when it occurred? Walk through the steps that led to it."
+3. "What was the expected outcome?" (skip if the user already stated this clearly)
+
+Then ask any follow-up questions to reproduce the issue before proceeding to Phase 1.
+
+---
+
+Only proceed to Phase 1 after intake is complete for the chosen path.
+
 ### Phase 1: Deep Research and Planning
 
 #### 1.1 Understand Agent-Centric Design Principles
