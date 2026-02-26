@@ -104,21 +104,6 @@ def get_release_generator_version(gh_repo: Repository, tag: str) -> str | None:
     return match.group(1) if match else None
 
 
-def get_parent(repo: Repo, commit_hash: str) -> str:
-    """Get parent commit hash, or empty-tree SHA for root commits.
-
-    Returns:
-        Parent commit hexsha, or EMPTY_TREE_SHA for root commits.
-    """
-    try:
-        commit = repo.commit(commit_hash)
-    except (BadName, ValueError):
-        return EMPTY_TREE_SHA
-    if not commit.parents:
-        return EMPTY_TREE_SHA
-    return commit.parents[0].hexsha
-
-
 def tag_exists(repo: Repo, tag: str) -> bool:
     """Check if a git tag exists locally.
 
@@ -145,8 +130,27 @@ def get_tag_commit(repo: Repo, tag: str) -> str | None:
         return None
 
 
-def get_commits_by_day(repo: Repo, branch: str) -> dict[str, list[str]]:
-    """Get commits grouped by UTC date, oldest-first within each day.
+def get_all_commits_by_day(repo: Repo, branch: str) -> dict[str, list[str]]:
+    """Get ALL commits (including merges) grouped by UTC date, oldest-first.
+
+    All returned commits are reachable from ``branch``, so they are
+    guaranteed to exist locally and have a common ancestor with any other
+    commit on the same branch.
+
+    Returns:
+        Dict mapping YYYY-MM-DD to [oldest_hash, ..., newest_hash].
+    """
+    days: dict[str, list[str]] = {}
+    for commit in repo.iter_commits(branch):
+        day = commit.committed_datetime.astimezone(UTC).strftime("%Y-%m-%d")
+        days.setdefault(day, []).append(commit.hexsha)
+
+    # iter_commits is newest-first; reverse each day to oldest-first
+    return {day: list(reversed(commits)) for day, commits in days.items()}
+
+
+def get_non_merge_commits_by_day(repo: Repo, branch: str) -> dict[str, list[str]]:
+    """Get non-merge commits grouped by UTC date, oldest-first.
 
     Returns:
         Dict mapping YYYY-MM-DD to [oldest_hash, ..., newest_hash].
@@ -158,6 +162,25 @@ def get_commits_by_day(repo: Repo, branch: str) -> dict[str, list[str]]:
 
     # iter_commits is newest-first; reverse each day to oldest-first
     return {day: list(reversed(commits)) for day, commits in days.items()}
+
+
+def get_day_base_ref(all_commits_by_day: dict[str, list[str]], day_str: str) -> str:
+    """Return the last commit on main strictly before ``day_str``.
+
+    Iterates sorted day keys and returns the last commit SHA of the most
+    recent day that precedes ``day_str``. All candidates come from the
+    branch timeline, so the returned SHA is guaranteed to be on-branch and
+    locally present.
+
+    Returns:
+        Commit SHA, or EMPTY_TREE_SHA if no commits precede ``day_str``.
+    """
+    base_ref = EMPTY_TREE_SHA
+    for day in sorted(all_commits_by_day):
+        if day >= day_str:
+            break
+        base_ref = all_commits_by_day[day][-1]  # last commit of that day
+    return base_ref
 
 
 @dataclass
@@ -190,6 +213,35 @@ def _check_day_release_status(repo: Repo, gh_repo: Repository, tag: str, newest_
     return True, version_outdated
 
 
+def _build_day_range(
+    day_str: str,
+    all_by_day: dict[str, list[str]],
+    non_merge_by_day: dict[str, list[str]],
+    repo: Repo,
+    gh_repo: Repository,
+) -> DayRange:
+    """Build a DayRange entry for a single calendar day.
+
+    Extracted to keep ``main()`` under the local-variable limit (PLR0914).
+
+    Returns:
+        Populated DayRange dataclass for ``day_str``.
+    """
+    non_merge_commits = non_merge_by_day[day_str]
+    head_ref = all_by_day.get(day_str, non_merge_commits)[-1]
+    tag = f"v{day_str.replace('-', '.')}"
+    exists, needs_update = _check_day_release_status(repo, gh_repo, tag, head_ref)
+    return DayRange(
+        date=day_str,
+        tag=tag,
+        base_ref=get_day_base_ref(all_by_day, day_str),
+        head_ref=head_ref,
+        commit_count=len(non_merge_commits),
+        release_exists=exists,
+        needs_update=needs_update,
+    )
+
+
 @app.command()
 def main(
     branch: Annotated[str, typer.Option(help="Git branch to read commits from")] = "origin/main",
@@ -216,11 +268,12 @@ def main(
     repo = get_git_repo()
     gh = Github(auth=Auth.Token(token))
     gh_repo = get_github_repo(gh, repo_slug)
-    commits_by_day = get_commits_by_day(repo, branch)
+    all_by_day = get_all_commits_by_day(repo, branch)
+    non_merge_by_day = get_non_merge_commits_by_day(repo, branch)
 
     results: list[dict] = []
 
-    for day_str in sorted(commits_by_day):
+    for day_str in sorted(non_merge_by_day):
         try:
             day = date.fromisoformat(day_str)
         except ValueError:
@@ -231,21 +284,9 @@ def main(
         if day > end:
             continue
 
-        commits = commits_by_day[day_str]
-        tag = f"v{day_str.replace('-', '.')}"
-        exists, needs_update = _check_day_release_status(repo, gh_repo, tag, commits[-1])
+        entry = _build_day_range(day_str, all_by_day, non_merge_by_day, repo, gh_repo)
 
-        entry = DayRange(
-            date=day_str,
-            tag=tag,
-            base_ref=get_parent(repo, commits[0]),
-            head_ref=commits[-1],
-            commit_count=len(commits),
-            release_exists=exists,
-            needs_update=needs_update,
-        )
-
-        if include_existing or not exists or needs_update:
+        if include_existing or not entry.release_exists or entry.needs_update:
             results.append(asdict(entry))
 
     print(json.dumps(results, indent=2))
