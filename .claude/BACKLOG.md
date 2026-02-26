@@ -41,6 +41,8 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 - [daily-releases: delegate AI analysis step to Haiku subagent and fix duplicate draft releases](backlog/p1-daily-releases-delegate-ai-analysis-step-to-haiku-subagent-a.md) #196
 
 - [Fix pre-existing CI check failures on main](backlog/medium-fix-pre-existing-ci-check-failures-on-main.md)
+
+- [Backlog system redesign: GitHub Issues as source of truth with local cache](backlog/p1-backlog-system-redesign-github-issues-as-source-of-truth-wit.md)
 ## P2 - Could Have
 
 - [conventional-commits: Fix CHANGELOG references to nonexistent files](backlog/p2-conventional-commits-fix-changelog-references-to-nonexistent.md)
