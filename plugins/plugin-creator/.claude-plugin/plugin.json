@@ -1,7 +1,7 @@
 {
   "name": "plugin-creator",
   "description": "Complete plugin development toolkit for creating, refactoring, and validating Claude Code plugins and agents. Use when creating new plugins/skills/agents, refactoring existing plugins/skills, validating frontmatter, or restructuring plugin components. Includes specialized agents for assessment, planning, execution, and validation workflows.",
-  "version": "5.9.0",
+  "version": "5.10.0",
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
@@ -40,7 +40,8 @@
     "./skills/hook-creator",
     "./skills/agent-plugin-ecosystem",
     "./skills/rt-ica",
-    "./skills/subagent-contract"
+    "./skills/subagent-contract",
+    "./skills/optimize-claude-md"
   ],
   "agents": [
     "./agents/agent-creator.md",
@@ -78,6 +79,8 @@
     "./skills/start-refactor-task",
     "./skills/write-frontmatter-description",
     "./skills/lint",
-    "./skills/hook-creator"
+    "./skills/hook-creator",
+    "./skills/optimize-claude-md",
+    "./skills/rt-ica"
   ]
 }

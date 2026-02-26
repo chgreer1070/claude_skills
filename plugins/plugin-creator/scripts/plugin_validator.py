@@ -276,8 +276,9 @@ class ErrorCode(StrEnum):
     SK007 = "SK007"  # Token count exceeds TOKEN_ERROR_THRESHOLD (must split)
     SK008 = "SK008"  # Skill directory name violates naming convention
 
-    # Link (LK001)
+    # Link (LK001-LK002)
     LK001 = "LK001"  # Broken internal link (file does not exist)
+    LK002 = "LK002"  # Link missing ./ prefix
 
     # Progressive Disclosure (PD001-PD003)
     PD001 = "PD001"  # No `references/` directory found
@@ -342,7 +343,7 @@ SK001, SK002, SK003, SK004, SK005, SK006, SK007, SK008 = (
     ErrorCode.SK007,
     ErrorCode.SK008,
 )
-LK001 = ErrorCode.LK001
+LK001, LK002 = ErrorCode.LK001, ErrorCode.LK002
 PD001, PD002, PD003 = ErrorCode.PD001, ErrorCode.PD002, ErrorCode.PD003
 PL001, PL002, PL003, PL004, PL005 = (
     ErrorCode.PL001,
@@ -971,11 +972,11 @@ class ProgressiveDisclosureValidator:
         Args:
             path: Path to directory to fix
 
-        Raises:
-            NotImplementedError: Progressive disclosure validation cannot be auto-fixed
-
         Returns:
             Never returns (always raises)
+
+        Raises:
+            NotImplementedError: Progressive disclosure validation cannot be auto-fixed
         """
         raise NotImplementedError(
             "Progressive disclosure validation cannot be auto-fixed. "
@@ -1010,7 +1011,8 @@ class ProgressiveDisclosureValidator:
 class InternalLinkValidator:
     """Validates internal markdown links in SKILL.md files.
 
-    Checks that relative links point to existing files (LK001).
+    Checks that relative links point to existing files (LK001) and that
+    relative links use the ./ prefix convention (LK002).
 
     Architecture lines 1188-1256, Task T8 lines 897-982
     """
@@ -1116,6 +1118,20 @@ class InternalLinkValidator:
                     )
                 )
 
+            # Warn if relative link is missing ./ prefix (LK002)
+            # Links starting with ../ are valid cross-directory references; skip them.
+            if not link_url_no_fragment.startswith(("./", "../")):
+                warnings.append(
+                    ValidationIssue(
+                        field="internal-links",
+                        severity="warning",
+                        message=f"Link missing ./ prefix: [{link_text}]({link_url})",
+                        code=LK002,
+                        docs_url=generate_docs_url(LK002),
+                        suggestion=f"Add ./ prefix: ./{link_url}",
+                    )
+                )
+
         # Pass if no errors (warnings don't fail validation)
         passed = len(errors) == 0
         return ValidationResult(passed=passed, errors=errors, warnings=warnings, info=info)
@@ -1134,11 +1150,11 @@ class InternalLinkValidator:
         Args:
             path: Path to file to fix
 
-        Raises:
-            NotImplementedError: Internal link validation cannot be auto-fixed
-
         Returns:
             Never returns (always raises)
+
+        Raises:
+            NotImplementedError: Internal link validation cannot be auto-fixed
         """
         raise NotImplementedError(
             "Internal link validation cannot be auto-fixed. "
@@ -1355,11 +1371,11 @@ class NamespaceReferenceValidator:
         Args:
             path: Path to file to fix
 
-        Raises:
-            NotImplementedError: Namespace reference validation cannot be auto-fixed
-
         Returns:
             Never returns (always raises)
+
+        Raises:
+            NotImplementedError: Namespace reference validation cannot be auto-fixed
         """
         raise NotImplementedError(
             "Namespace reference validation cannot be auto-fixed. "
@@ -2522,11 +2538,11 @@ class DescriptionValidator:
         Args:
             path: Path to file to fix
 
-        Raises:
-            NotImplementedError: Description quality cannot be auto-fixed
-
         Returns:
             Never returns (always raises)
+
+        Raises:
+            NotImplementedError: Description quality cannot be auto-fixed
         """
         raise NotImplementedError(
             "Description validation cannot be auto-fixed. Writing quality descriptions requires human judgment."
@@ -2644,11 +2660,11 @@ class ComplexityValidator:
         Args:
             path: Path to file to fix
 
-        Raises:
-            NotImplementedError: Complexity issues cannot be auto-fixed
-
         Returns:
             Never returns (always raises)
+
+        Raises:
+            NotImplementedError: Complexity issues cannot be auto-fixed
         """
         raise NotImplementedError(
             "Complexity validation cannot be auto-fixed. "
@@ -2781,11 +2797,11 @@ class MarkdownTokenCounter:
         Args:
             path: Path to file
 
-        Raises:
-            NotImplementedError: Token counting cannot be auto-fixed
-
         Returns:
             Never returns (always raises)
+
+        Raises:
+            NotImplementedError: Token counting cannot be auto-fixed
         """
         raise NotImplementedError("Token counting is read-only, no fixes to apply.")
 
@@ -3380,11 +3396,11 @@ class PluginStructureValidator:
         Args:
             path: Path to plugin directory to fix
 
-        Raises:
-            NotImplementedError: Plugin structure validation cannot be auto-fixed
-
         Returns:
             Never returns (always raises)
+
+        Raises:
+            NotImplementedError: Plugin structure validation cannot be auto-fixed
         """
         raise NotImplementedError(
             "Plugin structure validation cannot be auto-fixed. "
@@ -3630,11 +3646,11 @@ class HookValidator:
         Args:
             path: Path to hook file to fix
 
-        Raises:
-            NotImplementedError: Hook validation cannot be auto-fixed
-
         Returns:
             Never returns (always raises)
+
+        Raises:
+            NotImplementedError: Hook validation cannot be auto-fixed
         """
         raise NotImplementedError("Hook validation cannot be auto-fixed.")
 
