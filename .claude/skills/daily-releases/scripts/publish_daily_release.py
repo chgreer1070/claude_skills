@@ -3,18 +3,19 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #   "typer>=0.21.0",
-#   "GitPython>=3.1.45",
 #   "PyGithub>=2.1.1",
 #   "python-dotenv>=1.0.0",
 # ]
 # ///
 """Publish a daily GitHub release from a pre-rendered markdown file.
 
-Handles git tag creation/movement, pushing, and GitHub release creation or
-update. Designed to be called after analyze_git_changes + AI analysis +
+Handles git tag creation/movement and GitHub release creation or update.
+Designed to be called after analyze_git_changes + AI analysis +
 format_mr_description have produced the release notes markdown.
 
-Uses GitPython and PyGithub — no subprocess / shell-out to git or gh.
+Uses PyGithub exclusively — no local git operations or subprocess calls.
+Tag management is performed via the GitHub REST API, which works in proxy
+environments where ``git push`` to origin returns HTTP 403.
 """
 
 from __future__ import annotations
@@ -24,16 +25,15 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 import typer
-from git import Repo
-from git.exc import BadName, InvalidGitRepositoryError, NoSuchPathError
 from github import Auth, Github, GithubException
 from rich.console import Console
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from github.Repository import Repository
 
 app = typer.Typer(
@@ -63,18 +63,6 @@ class AppExit(typer.Exit):
         super().__init__(code=code)
 
 
-def get_git_repo() -> Repo:
-    """Return GitPython Repo for the current directory.
-
-    Raises:
-        AppExit: If not a git repository.
-    """
-    try:
-        return Repo(Path.cwd(), search_parent_directories=True)
-    except (InvalidGitRepositoryError, NoSuchPathError) as e:
-        raise AppExit(code=1, message=f"Not a git repository: {e}") from e
-
-
 def get_github_repo(gh: Github, repo_slug: str) -> Repository:
     """Return PyGithub Repository object.
 
@@ -87,18 +75,21 @@ def get_github_repo(gh: Github, repo_slug: str) -> Repository:
         raise AppExit(code=1, message=f"Cannot access repo '{repo_slug}': {e}") from e
 
 
-def tag_exists(repo: Repo, tag: str) -> bool:
-    """Check if a git tag exists locally.
+def gh_get_tag_sha(gh_repo: Repository, tag: str) -> str | None:
+    """Return the SHA the tag points to on GitHub, or None if the tag does not exist.
+
+    For lightweight tags (the only type this script creates) the SHA is the
+    commit SHA directly. Raises for errors other than 404.
 
     Returns:
-        True if tag exists, False otherwise.
+        Commit SHA string, or None.
     """
     try:
-        repo.rev_parse(f"refs/tags/{tag}")
-    except BadName:
-        return False
-    else:
-        return True
+        return gh_repo.get_git_ref(f"tags/{tag}").object.sha
+    except GithubException as e:
+        if e.status == HTTP_NOT_FOUND:
+            return None
+        raise
 
 
 def gh_release_exists(gh_repo: Repository, tag: str) -> bool:
@@ -115,14 +106,14 @@ def gh_release_exists(gh_repo: Repository, tag: str) -> bool:
         return True
 
 
-def get_next_revision_tag(repo: Repo, base_tag: str) -> str:
-    """Get the next available revision tag (e.g., v2026.02.21-r2).
+def gh_get_next_revision_tag(gh_repo: Repository, base_tag: str) -> str:
+    """Get the next available revision tag on GitHub (e.g., v2026.02.21-r2).
 
     Returns:
         Next available revision tag string.
     """
     revision = 2
-    while tag_exists(repo, f"{base_tag}-r{revision}"):
+    while gh_get_tag_sha(gh_repo, f"{base_tag}-r{revision}") is not None:
         revision += 1
     return f"{base_tag}-r{revision}"
 
@@ -141,9 +132,12 @@ def main(
 ) -> None:
     """Publish a daily GitHub release.
 
-    Creates or updates a git tag and GitHub release for the given date.
-    If the tag already exists, the old tag is renamed to a revision suffix
-    (vYYYY.MM.DD-r2) before the new tag is created at head_ref.
+    Creates or updates a GitHub tag and release for the given date.
+    If the tag already exists at a different commit, the old tag is renamed
+    to a revision suffix (vYYYY.MM.DD-r2) before the new tag is created.
+
+    All tag operations are performed via the GitHub REST API — no local git
+    push required.
     """
     if not notes_file.exists():
         raise AppExit(code=1, message=f"Notes file not found: {notes_file}")
@@ -162,32 +156,29 @@ def main(
     if not token:
         raise AppExit(code=1, message="GITHUB_TOKEN environment variable not set")
 
-    git_repo = get_git_repo()
     gh = Github(auth=Auth.Token(token))
     gh_repo = get_github_repo(gh, repo_slug)
-    if tag_exists(git_repo, tag) and keep_existing_tag:
-        old_tag_ref = git_repo.tags[tag]
-        old_commit = old_tag_ref.commit.hexsha
 
-        if old_commit != head_ref:
-            # Delete release before deleting tag — otherwise the release becomes
-            # orphaned (draft) and we'd create a duplicate when we recreate the tag.
-            if gh_release_exists(gh_repo, tag):
-                release = gh_repo.get_release(tag)
-                release.delete_release()
-                console.print(f"Deleted release for {tag} (will recreate after tag move)")
+    existing_sha = gh_get_tag_sha(gh_repo, tag)
+    if existing_sha is not None and keep_existing_tag and existing_sha != head_ref:
+        # Delete release before deleting tag — otherwise the release becomes
+        # orphaned (draft) and we'd create a duplicate when we recreate the tag.
+        if gh_release_exists(gh_repo, tag):
+            gh_repo.get_release(tag).delete_release()
+            console.print(f"Deleted release for {tag} (will recreate after tag move)")
 
-            # Rename existing tag to revision suffix
-            revision_tag = get_next_revision_tag(git_repo, tag)
-            console.print(f"Moving existing tag {tag} -> {revision_tag}")
-            git_repo.create_tag(revision_tag, ref=tag)
-            git_repo.remotes.origin.push(revision_tag)
-            git_repo.delete_tag(old_tag_ref)
-            git_repo.remotes.origin.push(refspec=f":refs/tags/{tag}")
+        # Rename existing tag to revision suffix, then delete the original.
+        revision_tag = gh_get_next_revision_tag(gh_repo, tag)
+        console.print(f"Moving existing tag {tag} -> {revision_tag}")
+        gh_repo.create_git_ref(f"refs/tags/{revision_tag}", existing_sha)
+        gh_repo.get_git_ref(f"tags/{tag}").delete()
+        existing_sha = None  # tag deleted; will be recreated below
 
-    # Create or move the tag to head_ref
-    git_repo.create_tag(tag, ref=head_ref, force=True)
-    git_repo.remotes.origin.push(tag, force=True)
+    # Create or update the tag via the GitHub API (no git push required).
+    if existing_sha is None:
+        gh_repo.create_git_ref(f"refs/tags/{tag}", head_ref)
+    else:
+        gh_repo.get_git_ref(f"tags/{tag}").edit(head_ref, force=True)
     console.print(f"[green]Tagged {head_ref[:12]} as {tag}[/green]")
 
     # Re-query live release state after all tag operations to avoid stale snapshot.
