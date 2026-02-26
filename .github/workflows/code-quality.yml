@@ -283,6 +283,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Fetch PR base for diff scope
+        if: github.event_name == 'pull_request'
+        run: git fetch origin ${{ github.base_ref }} --depth=1
+
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -292,9 +296,17 @@ jobs:
           cache-python: true
 
       - name: Run file hygiene hooks
+        env:
+          SKIP: sync-pre-commit-deps,conventional-pre-commit,repair-symlinks,biome-check,ruff,ruff-format,pypfmt,markdownlint-cli2,prettier,shell-fmt-go,shellcheck,auto-sync-manifests,plugin-validator,ty,enable-rerere
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.sha }}
+          GH_EVENT: ${{ github.event_name }}
         run: |
-          SKIP=sync-pre-commit-deps,conventional-pre-commit,repair-symlinks,biome-check,ruff,ruff-format,pypfmt,markdownlint-cli2,prettier,shell-fmt-go,shellcheck,auto-sync-manifests,plugin-validator,ty,enable-rerere \
-          uv run prek run --all-files
+          if [ "$GH_EVENT" = "pull_request" ]; then
+            uv run prek run --from-ref "$PR_BASE" --to-ref "$PR_HEAD"
+          else
+            uv run prek run --all-files
+          fi
 
   # =============================================================================
   # Python: pytest test suite
