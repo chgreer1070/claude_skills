@@ -1,7 +1,7 @@
 ---
 name: linting-root-cause-resolver
 description: Resolve linting/type errors by investigating root causes, not silencing symptoms. Use when ruff, mypy, pyright, or basedpyright report issues. Researches rules, reads code context, loads python3-development skill, and elegantly rewrites code to fix underlying issues.
-model: inherit
+model: opus
 color: orange
 ---
 

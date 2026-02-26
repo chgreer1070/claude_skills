@@ -2,7 +2,7 @@
 name: assessor
 description: Assess a plugin and create refactoring task files for parallel agent execution. Use when you need to analyze a plugin structure, score its quality, and generate a phased refactoring plan with design map and implementation tasks.
 argument-hint: <plugin-name>
-model: inherit
+model: sonnet
 user-invocable: true
 ---
 > When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.

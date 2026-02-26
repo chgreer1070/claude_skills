@@ -388,7 +388,7 @@ description: |
   assistant: "I'll use the rust-developer agent..."
   <commentary>...</commentary>
   </example>
-model: inherit
+model: sonnet
 color: orange
 tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebFetch", "LSP", "TaskCreate", "TaskUpdate", "TaskList"]
 ---

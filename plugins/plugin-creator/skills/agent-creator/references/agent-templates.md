@@ -962,7 +962,7 @@ NOTES:
 ---
 name: {{domain}}-expert
 description: '{{Domain}} specialist with expertise in {{specific_areas}}. Use when working with {{domain}} code, debugging {{domain}} issues, or implementing {{domain}} best practices. <examples><example>user: "{{example_user_request}}" assistant: "I will use the {{domain}}-expert agent for {{reason}}."</example></examples>'
-model: inherit
+model: sonnet
 color: {{color}}
 skills: {{domain_skill_if_exists}}
 ---

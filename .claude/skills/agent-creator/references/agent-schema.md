@@ -130,7 +130,7 @@ Does the task REQUIRE a specific model capability?
 ```yaml
 # Inherit - adapts to conversation context
 name: general-helper
-model: inherit
+model: sonnet
 description: Helps with various tasks matching conversation complexity
 
 # Explicit Haiku - always fast and cheap

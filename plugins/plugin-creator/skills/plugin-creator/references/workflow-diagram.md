@@ -54,12 +54,12 @@ flowchart TD
         T1C[Task 1c: Fetch Official Docs]
     end
 
-    T1A --> E1[Explore Agent]
-    T1B --> E2[Explore Agent]
+    T1A --> CG1[plugin-creator:plugin-assessor]
+    T1B --> CG2[plugin-creator:plugin-assessor]
     T1C --> GP[general-purpose Agent + mcp__Ref__ref_read_url]
 
-    E1 --> REPORT[Research Report]
-    E2 --> REPORT
+    CG1 --> REPORT[Research Report]
+    CG2 --> REPORT
     GP --> REPORT
 
     subgraph "Research Outputs"
@@ -191,8 +191,8 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph Research
-        R1[Explore Agent] --> R1T[Code discovery]
-        R2[Explore Agent] --> R2T[Domain knowledge]
+        R1[plugin-creator:plugin-assessor] --> R1T[Code discovery and domain research]
+        R2[Explore Agent] --> R2T[Verbatim file retrieval only]
         R3[general-purpose Agent] --> R3T[Official docs fetch via mcp__Ref__ref_read_url]
     end
 
@@ -219,8 +219,8 @@ flowchart LR
 ```mermaid
 flowchart TD
     subgraph "DELEGATE TO"
-        A1[Explore agent] --> A1T[Domain research]
-        A2[Explore agent] --> A2T[Code discovery]
+        A1[plugin-creator:plugin-assessor] --> A1T[Domain research and code discovery]
+        A2[Explore agent] --> A2T[Verbatim retrieval only<br>no reasoning tasks]
         A3[mcp__Ref__ref_read_url tool] --> A3T[Official docs]
         A4[Validation scripts] --> A4T[Schema checks]
         A5[plugin-assessor agent] --> A5T[Quality review]
@@ -245,8 +245,8 @@ flowchart TD
 flowchart TD
     F0[Phase 0 BLOCKED] --> F0R[Request missing info] --> F0A[Re-run RT-ICA]
 
-    F1[Phase 1 Incomplete] --> F1R[Spawn more Explore agents]
-    F1 --> F1B[Fetch more official docs]
+    F1[Phase 1 Incomplete] --> F1R[Spawn more plugin-creator:plugin-assessor agents]
+    F1 --> F1B[Fetch more official docs via general-purpose agent]
 
     F4[Phase 4 Validation Failures] --> F4A[Schema errors] --> F4AF[Fix plugin.json]
     F4 --> F4B[Frontmatter errors] --> F4BF[Fix SKILL.md]

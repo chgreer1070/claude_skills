@@ -1,14 +1,15 @@
 ---
 name: plugin-creator
-description: Orchestrates specialized agents to create high-quality Claude Code plugins. Delegates to researcher agents for domain knowledge, Explore agents for code discovery, validation agents for official docs verification, and review agents for quality checks. Use when creating new plugins or improving existing ones.
+description: Orchestrates specialized agents to create high-quality Claude Code plugins. Delegates to plugin-assessor agent for domain research and code discovery, general-purpose agents for official docs verification, validation scripts for schema checks, and review agents for quality assessment. Use when creating new plugins or improving existing ones.
 model: sonnet
 user-invocable: true
 ---
+
 > When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
 
-# Claude Code Plugin Creator - Agentic Orchestration Workflow
+# Claude Code Plugin Creator — Agentic Orchestration Workflow
 
-This skill orchestrates specialized agents through a comprehensive plugin creation workflow. The orchestrator (you) delegates to sub-agents for research, discovery, validation, and implementation - never performing these tasks directly.
+This skill orchestrates specialized agents through a comprehensive plugin creation workflow. The orchestrator (you) delegates to sub-agents for research, discovery, validation, and implementation — never performing these tasks directly.
 
 **Workflow Diagram**: See [workflow-diagram.md](./references/workflow-diagram.md) for mermaid flowcharts of the complete plugin creation flow.
 
@@ -18,21 +19,34 @@ This skill orchestrates specialized agents through a comprehensive plugin creati
 
 <orchestration_rules>
 
-**The orchestrator MUST delegate, not execute.**
+**The orchestrator delegates — it does not execute.**
 
-| Task Type              | Delegate To           | Never Do Directly         |
-| ---------------------- | --------------------- | ------------------------- |
-| Domain research        | Explore agent         | Read docs yourself        |
-| Code pattern discovery | Explore agent         | Grep/search yourself      |
-| Official docs fetch    | WebFetch or Explore   | Assume from training data |
-| Schema validation      | validation scripts    | Manually check fields     |
-| Quality review         | plugin-assessor agent | Review your own work      |
-| Documentation writing  | plugin-docs-writer    | Write README yourself     |
+```mermaid
+flowchart TD
+    Start([Task arrives]) --> Q1{User names a specific agent?}
+    Q1 -->|Yes — explicit instruction| Override["Use exactly the agent named<br>Explicit instruction overrides all routing tables"]
+    Q1 -->|No| Q2{Task type?}
+    Q2 -->|Domain research or reasoning| CG["plugin-assessor agent<br>subagent_type='plugin-creator:plugin-assessor'"]
+    Q2 -->|Verbatim file/keyword retrieval only| Explore["Explore agent — Haiku-based<br>⚠️ retrieval only, never reasoning"]
+    Q2 -->|Official docs fetch or analysis| GP["general-purpose agent<br>subagent_type='general-purpose'"]
+    Q2 -->|Schema validation| Scripts[Validation scripts]
+    Q2 -->|Quality review| Assessor["plugin-assessor agent"]
+    Q2 -->|Documentation writing| Docs["plugin-docs-writer agent"]
+    Override --> Done([Delegate])
+    CG --> Done
+    Explore --> Done
+    GP --> Done
+    Scripts --> Done
+    Assessor --> Done
+    Docs --> Done
+```
+
+**Explore agent constraint (hard rule from CLAUDE.md):** Explore uses Haiku internally. Validated failure rate ~50% for reasoning tasks (2026-02-02). Use Explore ONLY for verbatim retrieval — exact file contents, directory listings, keyword searches with no interpretation required. Any task requiring analysis, comparison, or judgment goes to plugin-creator:plugin-assessor or general-purpose.
 
 **How to spawn agents:**
 
 - **Task tool** (`subagent_type=...`) — for focused, isolated work where only the result matters
-- **TeamCreate** — for multi-agent coordination where agents need to communicate with each other
+- **TeamCreate** — for multi-agent coordination where agents need to communicate
 
 **Why delegation matters:**
 
@@ -102,9 +116,9 @@ Last Updated: {ISO timestamp}
 ```text
 # Spawn all four researchers in a single message:
 
-Task(agent="Explore", prompt="EXISTING PLUGINS: Search plugins/ and ~/.claude/skills/ for similar functionality...")
-Task(agent="Explore", prompt="CLAUDE CODE FEATURES: What plugin capabilities exist? Dynamic context, hooks, MCP, LSP...")
-Task(agent="Explore", prompt="ARCHITECTURE PATTERNS: How do well-structured plugins organize skills, agents, references...")
+Task(subagent_type="plugin-creator:plugin-assessor", prompt="EXISTING PLUGINS: Search plugins/ and ~/.claude/skills/ for similar functionality...")
+Task(subagent_type="plugin-creator:plugin-assessor", prompt="CLAUDE CODE FEATURES: What plugin capabilities exist? Dynamic context, hooks, MCP, LSP...")
+Task(subagent_type="plugin-creator:plugin-assessor", prompt="ARCHITECTURE PATTERNS: How do well-structured plugins organize skills, agents, references...")
 Task(agent="general-purpose", prompt="PITFALLS: Fetch official docs, identify common mistakes, schema gotchas...")
 ```
 
@@ -229,31 +243,34 @@ Date: {ISO timestamp}
 ```text
 # Launch all four simultaneously:
 
-Task(agent="Explore", prompt="
+Task(subagent_type="plugin-creator:plugin-assessor", prompt="
 RESEARCHER 1: EXISTING SOLUTIONS
 Search for plugins/skills similar to {plugin-name}:
 - plugins/ directory
 - ~/.claude/skills/
 - GitHub repos with Claude Code plugins
-REPORT: What exists, gaps to fill, patterns to follow/avoid")
+REPORT: What exists, gaps to fill, patterns to follow/avoid
+Write findings to .claude/plan/{plugin-name}/research-1-existing.md")
 
-Task(agent="Explore", prompt="
+Task(subagent_type="plugin-creator:plugin-assessor", prompt="
 RESEARCHER 2: CLAUDE CODE FEATURES
 What capabilities should this plugin use?
-- Dynamic context injection (!`command`)
+- Dynamic context injection (!command)
 - Subagent execution (context: fork)
 - Hooks (which events?)
 - MCP/LSP integration opportunities
-REPORT: Recommended features with rationale")
+REPORT: Recommended features with rationale
+Write findings to .claude/plan/{plugin-name}/research-2-features.md")
 
-Task(agent="Explore", prompt="
+Task(subagent_type="plugin-creator:plugin-assessor", prompt="
 RESEARCHER 3: ARCHITECTURE PATTERNS
 How do well-structured plugins organize?
 - Skill directory structure
 - Reference file patterns
 - Agent definitions
 - Hook configurations
-REPORT: Recommended structure based on similar plugins")
+REPORT: Recommended structure based on similar plugins
+Write findings to .claude/plan/{plugin-name}/research-3-architecture.md")
 
 Task(agent="general-purpose", prompt="
 RESEARCHER 4: PITFALLS & OFFICIAL DOCS
@@ -263,7 +280,8 @@ IDENTIFY:
 - Schema requirements (comma-separated strings NOT arrays)
 - Common mistakes
 - Deprecations or new features
-REPORT: Gotchas to avoid, schema requirements")
+REPORT: Gotchas to avoid, schema requirements
+Write findings to .claude/plan/{plugin-name}/research-4-pitfalls.md")
 ```
 
 **Merge all 4 reports into `research-FINDINGS.md` before proceeding to Design.**
@@ -451,7 +469,7 @@ git commit -m "task-{N}: {task name}"
 **Independent tasks** (no shared files): Execute in parallel
 
 ```text
-# Tasks 1, 2, 3 have no dependencies - spawn all:
+# Tasks 1, 2, 3 have no dependencies — spawn all:
 Task(prompt="EXECUTOR: task 1...")
 Task(prompt="EXECUTOR: task 2...")
 Task(prompt="EXECUTOR: task 3...")
@@ -469,30 +487,21 @@ uv run scripts/create_plugin.py create my-plugin -d "Description" -s my-skill -o
 
 The script self-validates created files.
 
-</implementation_phase>
+### 3e. Advanced Features
 
----
+See [Advanced Plugin Features Reference](./references/advanced-features.md) for:
 
-## Phase 3b: Advanced Features Reference
+- Dynamic context injection (`!`command`` syntax)
+- String substitutions (`$ARGUMENTS`, `${CLAUDE_SESSION_ID}`, `${CLAUDE_PLUGIN_ROOT}`)
+- Running skills in subagents (`context: fork`)
+- Visual output via bundled scripts
+- Hook configuration (all event types with examples)
+- MCP and LSP server integration
+- Plugin caching behavior and path rules
+- Skill invocation control (`disable-model-invocation`, `user-invocable`)
+- Extended thinking (`ultrathink`)
 
-The `create_plugin.py` script creates validated plugin structure:
-
-```bash
-# Create plugin with skill
-uv run scripts/create_plugin.py create my-plugin -d "Description" -s my-skill -o ./plugins
-
-# Create with multiple components
-uv run scripts/create_plugin.py create my-plugin \
-    -d "Multi-component plugin" \
-    -s skill1 -s skill2 \
-    -a agent1 \
-    --hooks \
-    -o ./plugins
-```
-
-The script self-validates all created files (CoVe pattern).
-
-### Option B: Manual Implementation
+### Manual Implementation Structure
 
 <implementation_structure>
 
@@ -519,7 +528,7 @@ my-plugin/
 
 1. `.claude-plugin/` contains ONLY `plugin.json`
 2. All components go at plugin root, NOT inside `.claude-plugin/`
-3. Commands in plugins are deprecated - use skills instead
+3. Commands in plugins are deprecated — use skills instead
 
 </implementation_structure>
 
@@ -582,291 +591,7 @@ allowed-tools: Read, Grep, Glob
 
 **Source**: <https://code.claude.com/docs/en/skills.md>
 
----
-
-## Phase 3b: Advanced Features Reference
-
-<advanced_features>
-
-This section documents powerful plugin capabilities the AI MUST consider when designing plugins. These features can transform a basic plugin into an exceptional one.
-
-### Dynamic Context Injection
-
-The '!`command`' syntax runs shell commands BEFORE skill content is sent to Claude. Output replaces the placeholder.
-
-See @${CLAUDE_PLUGIN_ROOT}/skills/claude-skills-overview-2026/resources/pr-summary-example.md
-
-**How it works:**
-
-1. Each `!`command`` executes immediately (before Claude sees anything)
-2. Output replaces the placeholder in skill content
-3. Claude receives fully-rendered prompt with actual data
-
-**Use cases:**
-
-- Inject git status, branch info, or PR details
-- Include current date/time or environment info
-- Fetch live API data for context
-- Run diagnostics before a task
-
-**Source**: <https://code.claude.com/docs/en/skills.md#inject-dynamic-context>
-
-### String Substitutions
-
-Skills support these variables:
-
-| Variable                | Description                                             |
-| ----------------------- | ------------------------------------------------------- |
-| `$ARGUMENTS`            | Text passed when invoking the skill                     |
-| `${CLAUDE_SESSION_ID}`  | Current session ID (for logging, correlating output)    |
-| `${CLAUDE_PLUGIN_ROOT}` | Absolute path to plugin directory (hooks, MCP, scripts) |
-
-**Example:**
-
-```yaml
----
-description: Log activity for this session
----
-
-Log the following to logs/${CLAUDE_SESSION_ID}.log:
-
-$ARGUMENTS
-```
-
-### Running Skills in Subagents
-
-Add `context: fork` to run a skill in an isolated subagent. The skill content becomes the subagent's prompt.
-
-```yaml
----
-description: Research a topic thoroughly
-context: fork
-agent: Explore
----
-
-Research $ARGUMENTS thoroughly:
-
-1. Find relevant files using Glob and Grep
-2. Read and analyze the code
-3. Summarize findings with specific file references
-```
-
-**When to use:**
-
-- Long-running research tasks
-- Tasks that need isolation from main conversation
-- Read-only exploration (use Explore agent)
-- Complex planning (use Plan agent)
-
-**Available agent types:**
-
-- `Explore` - Read-only tools for codebase exploration
-- `Plan` - Architecture and planning tasks
-- `general-purpose` - Full tool access
-
-**Source**: <https://code.claude.com/docs/en/skills.md#run-skills-in-a-subagent>
-
-### Visual Output - Bundled Scripts
-
-Skills can bundle scripts in ANY language to generate visual output (HTML files that open in browser).
-
-**Example: Codebase Visualizer**
-
-```text
-my-skill/
-├── SKILL.md
-└── scripts/
-    └── visualize.py
-```
-
-**SKILL.md:**
-
-```yaml
----
-description: Generate interactive tree visualization of codebase
-allowed-tools: Bash(python:*)
----
-
-# Codebase Visualizer
-
-Run the visualization script from project root:
-
-\`\`\`bash
-python ~/.claude/skills/codebase-visualizer/scripts/visualize.py .
-\`\`\`
-
-Creates codebase-map.html and opens it in browser.
-```
-
-**Pattern:** Script does heavy lifting, Claude orchestrates.
-
-**Use cases:**
-
-- Dependency graphs
-- Test coverage reports
-- API documentation
-- Database schema visualizations
-- Performance dashboards
-
-**Source**: <https://code.claude.com/docs/en/skills.md#generate-visual-output>
-
-### Hook Configuration
-
-Plugins can provide event handlers that respond to Claude Code events.
-
-**Hook types:**
-
-| Type      | Purpose                           |
-| --------- | --------------------------------- |
-| `command` | Execute shell commands or scripts |
-| `prompt`  | Evaluate a prompt with LLM        |
-| `agent`   | Run agentic verifier with tools   |
-
-**Available events:**
-
-| Event                | When                      | Has Matcher |
-| -------------------- | ------------------------- | ----------- |
-| `PreToolUse`         | Before tool executes      | Yes         |
-| `PostToolUse`        | After tool succeeds       | Yes         |
-| `PostToolUseFailure` | After tool fails          | Yes         |
-| `Stop`               | Claude finishes           | No          |
-| `UserPromptSubmit`   | User submits prompt       | No          |
-| `SessionStart`       | Session begins/resumes    | Yes         |
-| `SessionEnd`         | Session ends              | No          |
-| `SubagentStart`      | Subagent starts           | Yes         |
-| `SubagentStop`       | Subagent stops            | Yes         |
-| `Setup`              | Maintenance/init flags    | No          |
-| `PreCompact`         | Before context compaction | No          |
-
-**Example hooks/hooks.json:**
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh",
-            "timeout": 30
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-**IMPORTANT:** Always use `${CLAUDE_PLUGIN_ROOT}` for script paths - it resolves to the correct cached location.
-
-**Source**: <https://code.claude.com/docs/en/hooks.md>
-
-### MCP Server Integration
-
-Plugins can bundle MCP servers for external tool integration.
-
-**Location:** `.mcp.json` at plugin root or inline in plugin.json
-
-```json
-{
-  "mcpServers": {
-    "plugin-database": {
-      "command": "${CLAUDE_PLUGIN_ROOT}/servers/db-server",
-      "args": ["--config", "${CLAUDE_PLUGIN_ROOT}/config.json"],
-      "env": {
-        "DB_PATH": "${CLAUDE_PLUGIN_ROOT}/data"
-      }
-    }
-  }
-}
-```
-
-**Source**: <https://code.claude.com/docs/en/mcp.md>
-
-### LSP Server Integration
-
-Plugins can provide Language Server Protocol servers for code intelligence.
-
-**Location:** `.lsp.json` at plugin root
-
-```json
-{
-  "go": {
-    "command": "gopls",
-    "args": ["serve"],
-    "extensionToLanguage": {
-      ".go": "go"
-    }
-  }
-}
-```
-
-**LSP provides:**
-
-- Instant diagnostics (errors/warnings after each edit)
-- Code navigation (go to definition, find references)
-- Type information and documentation
-
-**Note:** Users must install the language server binary separately.
-
-**Source**: <https://code.claude.com/docs/en/plugins-reference.md#lsp-servers>
-
-### Plugin Caching Behavior
-
-**Critical knowledge for plugin developers:**
-
-Claude Code COPIES plugins to a cache directory rather than using them in-place.
-
-**Implications:**
-
-1. External files outside plugin directory are NOT copied
-2. Use symlinks if you need external dependencies (symlinks are followed during copy)
-3. `${CLAUDE_PLUGIN_ROOT}` always points to correct cached location
-
-**Source**: <https://code.claude.com/docs/en/plugins-reference.md#plugin-caching-and-file-resolution>
-
-### Path Behavior Rules
-
-**Custom paths SUPPLEMENT default directories, they don't REPLACE them.**
-
-```json
-{
-  "skills": ["./custom/skills/"]
-}
-```
-
-This adds custom skills IN ADDITION TO `skills/` directory.
-
-- All paths must be relative and start with `./`
-- Multiple paths can be arrays for flexibility
-- Same naming/namespacing rules apply
-
-### Skill Invocation Control
-
-Control who can invoke skills:
-
-| Frontmatter                      | User | Claude | Use Case                    |
-| -------------------------------- | ---- | ------ | --------------------------- |
-| (default)                        | Yes  | Yes    | Most skills                 |
-| `disable-model-invocation: true` | Yes  | No     | Workflows with side effects |
-| `user-invocable: false`          | No   | Yes    | Background knowledge only   |
-
-**Example - deploy skill only user can trigger:**
-
-```yaml
----
-description: Deploy application to production
-disable-model-invocation: true
----
-```
-
-### Extended Thinking
-
-Include "ultrathink" anywhere in skill content to enable extended thinking mode.
-
-</advanced_features>
+</implementation_phase>
 
 ---
 
@@ -1027,7 +752,7 @@ Honesty Check: [PASS/FAIL] - Evidence: all claims cite sources
 VERDICT: [COMPLETE / NOT COMPLETE - reason]
 ```
 
-**Only mark complete when:**
+**Mark complete only when:**
 
 1. All automated validation scripts pass
 2. plugin-assessor reports no critical issues
@@ -1042,14 +767,15 @@ VERDICT: [COMPLETE / NOT COMPLETE - reason]
 
 Use **Task tool** (`subagent_type=...`) for single-agent tasks. Use **TeamCreate** when agents need to coordinate directly with each other.
 
-| Phase    | Agent Type           | Purpose                                   |
-| -------- | -------------------- | ----------------------------------------- |
-| Research | `Explore`            | File/keyword search, verbatim retrieval only — never analysis or reasoning |
-| Research | `general-purpose`    | Fetch and analyze official documentation  |
-| Design   | `Plan`               | Architecture decisions, content structure |
-| Validate | validation scripts   | Schema and structure validation           |
-| Validate | `plugin-assessor`    | Quality assessment                        |
-| Document | `plugin-docs-writer` | README and documentation generation       |
+| Phase    | Agent Type                  | Purpose                                                                       |
+| -------- | --------------------------- | ----------------------------------------------------------------------------- |
+| Research | `plugin-creator:plugin-assessor` | Domain research, code pattern discovery, architecture analysis           |
+| Research | `Explore`                   | Verbatim file retrieval only — exact contents, directory listings, no reasoning |
+| Research | `general-purpose`           | Fetch and analyze official documentation                                      |
+| Design   | `Plan`                      | Architecture decisions, content structure                                     |
+| Validate | validation scripts          | Schema and structure validation                                               |
+| Validate | `plugin-assessor`           | Quality assessment                                                            |
+| Document | `plugin-docs-writer`        | README and documentation generation                                           |
 
 ---
 
@@ -1059,9 +785,9 @@ Use **Task tool** (`subagent_type=...`) for single-agent tasks. Use **TeamCreate
 | ----------------------------------- | ----------------------------------- |
 | `scripts/create_plugin.py create`   | Scaffold new plugin with validation |
 | `scripts/create_plugin.py validate` | Check existing plugin structure     |
-| `scripts/plugin_validator.py`   | Validate frontmatter against schema |
+| `scripts/plugin_validator.py`       | Validate frontmatter against schema |
 
-Scripts use PEP 723 inline metadata - dependencies install automatically via `uv run`.
+Scripts use PEP 723 inline metadata — dependencies install automatically via `uv run`.
 
 ---
 
@@ -1069,8 +795,8 @@ Scripts use PEP 723 inline metadata - dependencies install automatically via `uv
 
 Official Claude Code documentation (verified January 2026):
 
-- [Plugins Reference](https://code.claude.com/docs/en/plugins-reference) - Complete schema
-- [Skills Documentation](https://code.claude.com/docs/en/skills) - SKILL.md format
-- [Hooks Reference](https://code.claude.com/docs/en/hooks) - Hook configuration
-- [Plugin Marketplaces](https://code.claude.com/docs/en/plugin-marketplaces) - Distribution
-- [Documentation Index](https://code.claude.com/docs/llms.txt) - Check for new features
+- [Plugins Reference](https://code.claude.com/docs/en/plugins-reference) — Complete schema
+- [Skills Documentation](https://code.claude.com/docs/en/skills) — SKILL.md format
+- [Hooks Reference](https://code.claude.com/docs/en/hooks) — Hook configuration
+- [Plugin Marketplaces](https://code.claude.com/docs/en/plugin-marketplaces) — Distribution
+- [Documentation Index](https://code.claude.com/docs/llms.txt) — Check for new features

@@ -1,7 +1,7 @@
 ---
 name: c-systems-programmer
 description: C programming specialist for systems programming, embedded systems, memory management, and performance optimization. Use when writing/reviewing C code, debugging memory leaks, investigating segfaults, working with POSIX APIs, implementing pthreads, optimizing embedded systems, using GDB/Valgrind debuggers, developing kernel modules, or resolving pointer arithmetic issues.
-model: inherit
+model: sonnet
 color: cyan
 ---
 
