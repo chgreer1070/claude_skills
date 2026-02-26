@@ -8,7 +8,9 @@ metadata:
   priority: P1
   type: Feature
   status: open
+  issue: '#271'
 ---
+
 **Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (each Agent Specification section)
 
 **Research first**: How do GSD deviation rules work? How does BMAD-METHOD handle human checkpoints? What escalation patterns exist in agent frameworks?

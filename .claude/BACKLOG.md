@@ -85,7 +85,7 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 - [SAM: Non-Code Workflow Guidance](backlog/p2-sam-non-code-workflow-guidance.md)
 - [Carbonyl Browser Integration for Claude Code](backlog/p2-carbonyl-browser-integration-for-claude-code.md) #195
 - [Validate is-fast for Web Content Extraction](backlog/p2-validate-is-fast-for-web-content-extraction.md)
-- [Validate agent-browser for Web Automation](backlog/p2-validate-agent-browser-for-web-automation.md)
+- [Validate agent-browser for Web Automation](backlog/p2-validate-agent-browser-for-web-automation.md) #269
 - [Validate carbonyl Terminal Browser](backlog/p2-validate-carbonyl-terminal-browser.md)
 - [work-backlog-item: Implement --language and --stack routing](backlog/p2-work-backlog-item-implement-language-and-stack-routing.md)
 - [refresh-research: Implement --layer filtering logic](backlog/p2-refresh-research-implement-layer-filtering-logic.md)
