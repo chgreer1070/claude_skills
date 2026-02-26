@@ -192,7 +192,7 @@ Output:
 
 ## Related
 
-- Command: [.claude/commands/process-research-integration.md](./commands/process-research-integration.md)
-- Script: [scripts/process-research-integration.py](../scripts/process-research-integration.py)
-- Skill: [.claude/skills/research-curator/SKILL.md](./skills/research-curator/SKILL.md)
-- Research structure: [research/README.md](../research/README.md)
+- Command: [process-research-integration](../commands/process-research-integration.md)
+- Script: [process-research-integration.py](../../scripts/process-research-integration.py)
+- Skill: [research-curator](../skills/research-curator/SKILL.md)
+- Research structure: [research/README.md](../../research/README.md)
