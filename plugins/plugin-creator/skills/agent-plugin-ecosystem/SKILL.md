@@ -1,0 +1,86 @@
+---
+name: agent-plugin-ecosystem
+description: 'Ecosystem awareness for AI agent plugin systems — Claude Code, Cursor, agentskills.io standard, AAIF. Auto-loaded into agents writing skills, agents, or plugin manifests so output targets the correct schema and platform. Describes plugin.json schemas, SKILL.md portability constraints, cross-vendor differences, and self-update instructions when ecosystem changes occur.'
+user-invocable: false
+---
+
+# Agent Plugin Ecosystem
+
+This skill provides verified ecosystem facts for agents writing plugin manifests, skill files, and agent files. When loaded, use it to produce output that targets the correct schema and platform — and to avoid writing files that silently fail validation on a different vendor.
+
+## Plugin Bundle Systems
+
+Two production plugin bundle systems exist as of 2026-02-26. They share near-identical schemas.
+
+### Claude Code (Anthropic)
+
+- Manifest location: `.claude-plugin/plugin.json`
+- Required field: `name` (kebab-case only)
+- Component fields: `skills`, `agents`, `commands`, `hooks`, `mcpServers`, `lspServers`, `outputStyles`
+- `agents` must be an array of individual file paths — not a directory string
+- All paths relative, starting with `./`
+- Official docs: <https://code.claude.com/docs/en/plugins-reference.md>
+
+### Cursor (launched 2026-02-17)
+
+- Manifest location: `.cursor-plugin/plugin.json`
+- Same required fields and SemVer versioning as Claude Code
+- Component types: Rules (`.mdc` files), Skills (`SKILL.md`), Agents, Commands, Hooks, MCP Servers
+- Spec repo: <https://github.com/cursor/plugins>
+- Structurally parallel to Claude Code — intentional design
+
+**Key difference between the two:** Cursor has Rules (`.mdc` files); Claude Code does not. Otherwise the schemas are near-identical.
+
+## SKILL.md Portability Standard (agentskills.io)
+
+The `SKILL.md` format is a cross-vendor open standard. Confirmed adopters as of 2026-02-26: Claude Code, Cursor, VS Code Copilot (v1.109, January 2026), Gemini CLI, OpenAI Codex, LM-Kit.NET.
+
+Portable frontmatter fields (all vendors): `name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`
+
+Claude Code-only extensions (other vendors ignore these fields): `argument-hint`, `model`, `context`, `agent`, `user-invocable`, `disable-model-invocation`, `hooks`
+
+**Critical portability gap — `allowed-tools` delimiter:**
+
+- agentskills.io spec: space-delimited — `allowed-tools: Read Grep Glob`
+- Claude Code: comma-delimited — `allowed-tools: Read, Grep, Glob`
+
+A skill using space-delimited `allowed-tools` is cross-vendor portable. A skill using comma-delimited is Claude Code-specific. When writing a skill intended for multiple platforms, use the space-delimited form.
+
+Spec URL: <https://agentskills.io/specification>
+
+## Cross-Vendor Standardization Status
+
+The **Agentic AI Foundation (AAIF)** — launched December 2026 under the Linux Foundation — stewards MCP (tool connectivity) and AGENTS.md (project instructions). Founding members include Anthropic, OpenAI, Google, Microsoft, AWS, Bloomberg, and Cloudflare.
+
+AAIF does NOT yet steward a plugin bundle standard. Claude Code and Cursor schemas converged independently. The next likely venue for plugin bundle standardization is the MCP Dev Summit (April 2-3, 2026, NYC).
+
+No unified plugin bundle standard exists as of 2026-02-26. Write to the platform-specific schema for the target system. Write to agentskills.io portable fields when targeting multiple vendors.
+
+AAIF site: <https://aaif.io/>
+
+## Writing for the Correct Target
+
+```mermaid
+flowchart TD
+    Start([Writing a plugin file]) --> Q1{What platform?}
+    Q1 -->|Claude Code only| CC[Use .claude-plugin/plugin.json<br>agents field = array of file paths<br>name required kebab-case<br>comma-delimited allowed-tools]
+    Q1 -->|Cursor only| CU[Use .cursor-plugin/plugin.json<br>Same schema as Claude Code<br>Rules use .mdc files]
+    Q1 -->|Both or portable| Both[Use agentskills.io portable fields only<br>space-delimited allowed-tools<br>Avoid Claude Code-only frontmatter]
+    CC --> Val[Validate: claude plugin validate path]
+    CU --> Val2[Validate per Cursor spec]
+    Both --> Val3[Check against agentskills.io spec]
+```
+
+## Self-Update Protocol
+
+When making changes that affect ecosystem facts — new vendor adopters, schema changes, new fields, updated spec URLs — update this file and cite the source URL and access date inline.
+
+Reference URLs to monitor for changes:
+
+- <https://agentskills.io/specification>
+- <https://code.claude.com/docs/en/plugins-reference.md>
+- <https://cursor.com/docs/plugins/building>
+- <https://github.com/cursor/plugins>
+- <https://aaif.io/>
+
+SOURCE: Research conducted 2026-02-26. Cursor plugin launch date from <https://cursor.com/changelog> (2026-02-17). AAIF membership from <https://aaif.io/> (2026-02-26). agentskills.io adopter list from <https://agentskills.io/specification> (2026-02-26).
