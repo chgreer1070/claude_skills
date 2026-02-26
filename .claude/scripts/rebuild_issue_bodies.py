@@ -113,11 +113,12 @@ def build_story_body(item: dict[str, str]) -> str:
     Returns:
         Formatted issue body string
     """
-    description = item.get("description", "No description")
+    title = item.get("name", "No title")
+    description = item.get("description", title)
     item_type = item.get("type", "Feature")
     role = ROLE_MAP.get(item_type, "developer using Claude Code skills")
     benefit = BENEFIT_MAP.get(item_type, "the product improves")
-    goal = description.rstrip(".")
+    goal = title.rstrip(".")
 
     extra_fields = extract_extra_fields(item.get("extra_body", ""))
 

@@ -248,12 +248,13 @@ def build_story_body(item: dict[str, str], groomed_content: str = "") -> str:
     Returns:
         Formatted issue body string
     """
-    description = item.get("description", item.get("title", "No description"))
+    title = item.get("title", "No title")
+    description = item.get("description", title)
     item_type = item.get("type", "Feature")
     priority = item.get("priority", "Unknown")
     role = ROLE_MAP.get(item_type, "developer using Claude Code skills")
     benefit = BENEFIT_MAP.get(item_type, "the product improves")
-    goal = description.rstrip(".")
+    goal = title.rstrip(".")
 
     sections = [
         f"## Story\n\nAs a **{role}**, I want to **{goal.lower()}** so that **{benefit}**.",
