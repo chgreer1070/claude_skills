@@ -47,3 +47,4 @@ package-lock.json
 .worktrees/
 .claude/worktrees/
 .claude/agent-memory
+.claude/agents/tests/
