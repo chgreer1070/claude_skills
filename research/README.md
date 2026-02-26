@@ -49,7 +49,8 @@ research/
 │   └── snyk-cli-cpp-scans.md          # Snyk CLI hash-based open-source vulnerability scanning for C/C++ unmanaged dependencies
 ├── ai-design-tools/                   # AI-powered visual creation and design platforms
 │   ├── hedra.md                       # AI video/image/audio creation platform
-│   └── jimeng.md                      # ByteDance SeedDance 2.0 AI video/image generation with cinematic camera control
+│   ├── jimeng.md                      # ByteDance SeedDance 2.0 AI video/image generation with cinematic camera control
+│   └── ui-ux-pro-max-skill.md        # AI design skill for 16 coding assistants with BM25 search over 67 styles, 96 palettes, 57 font pairings (34.9K stars)
 ├── ai-research-tools/                 # AI research tools and newsletters
 │   └── the-unwind-ai.md              # AI builder newsletter with 95K+ star open-source companion repo
 ├── coding-agents/                     # Autonomous AI coding agent platforms
@@ -997,12 +998,13 @@ AI research newsletters, curated resource collections, and tools for staying cur
 
 **Location**: [./ai-design-tools/](./ai-design-tools/)
 
-AI-powered visual creation platforms for video, image, and audio content generation.
+AI-powered visual creation platforms and design intelligence tools for video, image, audio, and UI/UX content generation.
 
 | Document                                    | Description                                                                                                | Last Updated |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------ |
 | [hedra.md](./ai-design-tools/hedra.md)      | Hedra - AI-powered visual creation platform for video, image, and audio with character animation            | 2026-02-20   |
 | [jimeng.md](./ai-design-tools/jimeng.md)    | Jimeng AI (即梦AI) - ByteDance SeedDance 2.0 multimodal video/image generation with cinematic camera control | 2026-02-23   |
+| [ui-ux-pro-max-skill.md](./ai-design-tools/ui-ux-pro-max-skill.md) | UI UX Pro Max - AI design skill injecting 67 styles, 96 palettes, 57 font pairings into 16 coding assistants via BM25+regex search (34.9K stars) | 2026-02-26   |
 
 **Key Topics**:
 
@@ -1011,6 +1013,9 @@ AI-powered visual creation platforms for video, image, and audio content generat
 - SaaS-based creative AI platform for non-technical users
 - Commercial application of generative AI for marketing and content
 - Cinematic camera control in AI video generation (dolly-in, orbit, crane shot)
+- BM25+regex design database search for AI coding assistants
+- Multi-assistant skill distribution (16 platforms via single CLI installer)
+- Industry-specific design reasoning rules for domain-appropriate UI generation
 
 ---
 
