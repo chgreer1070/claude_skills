@@ -1,5 +1,5 @@
 ---
-last-updated: 2026-02-24
+last-updated: 2026-02-26
 format: index
 ---
 
@@ -39,6 +39,8 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 - [P1: plugin-validator UX and coverage gaps](backlog/p1-p1-plugin-validator-ux-and-coverage-gaps.md)
 
 - [daily-releases: delegate AI analysis step to Haiku subagent and fix duplicate draft releases](backlog/p1-daily-releases-delegate-ai-analysis-step-to-haiku-subagent-a.md) #196
+
+- [Fix pre-existing CI check failures on main](backlog/medium-fix-pre-existing-ci-check-failures-on-main.md)
 ## P2 - Could Have
 
 - [conventional-commits: Fix CHANGELOG references to nonexistent files](backlog/p2-conventional-commits-fix-changelog-references-to-nonexistent.md)
