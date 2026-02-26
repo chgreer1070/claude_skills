@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-# /// script
-# requires-python = ">=3.11"
-# dependencies = []
-# ///
 """Example helper script for mkdocs.
 
 This is a placeholder script that can be executed directly.

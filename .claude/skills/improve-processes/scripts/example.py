@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-# /// script
-# requires-python = ">=3.11"
-# dependencies = []
-# ///
 """Example helper script for improve-processes.
 
 This is a placeholder script that can be executed directly.
@@ -17,7 +13,7 @@ from __future__ import annotations
 
 
 def main() -> None:
-    """Execute the main script logic for improve-processes.
+    """Execute the main script logic.
 
     This is a placeholder implementation that should be replaced
     with actual functionality or removed if not needed.
