@@ -16,6 +16,7 @@ research/
 │   ├── copilotkit.md                  # React-first agentic frontend framework with bi-directional state sync and AG-UI protocol (28.9K stars)
 │   ├── liteagents.md                  # Multi-tool AI development toolkit with 11 agents and session memory
 │   ├── micro-agent.md                 # Lightweight Python ReAct agent framework with MCP multi-server support (MIT)
+│   ├── openfang.md                    # Rust Agent OS with autonomous Hands, 40 channel adapters, WASM sandbox, SKILL.md native (3.6K stars)
 │   └── superpowers.md                 # Agentic skills framework and dev methodology (40K+ stars)
 ├── agent-infrastructure/              # Infrastructure for agentic applications
 │   ├── fly-io.md                      # Cloud platform for running apps globally in Firecracker microVMs; Sprites for AI agent sandboxes, first-class MCP support (18 regions)
@@ -396,6 +397,7 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 | [get-shit-done.md](./agent-frameworks/get-shit-done.md)               | Meta-prompting, context engineering, and spec-driven development system with 11 agents for Claude Code, OpenCode, Gemini (10K+ stars)  | 2026-02-01   |
 | [liteagents.md](./agent-frameworks/liteagents.md)                     | Multi-tool AI development toolkit with 11 agents, 22 commands, Hot Memory pipeline, and session friction analysis for 4 AI coding tools | 2026-02-15   |
 | [micro-agent.md](./agent-frameworks/micro-agent.md)                   | Micro-Agent - lightweight Python 3.12 ReAct agent framework with MCP multi-server support, token budget enforcement, and execution visualization (MIT) | 2026-02-20   |
+| [openfang.md](./agent-frameworks/openfang.md)                         | OpenFang - Rust Agent OS with autonomous Hands, 40 channel adapters, WASM sandbox, 16-layer security, native SKILL.md support (Apache-2.0/MIT) | 2026-02-27   |
 | [superpowers.md](./agent-frameworks/superpowers.md)                   | Agentic skills framework with 14 skills for TDD, debugging, and subagent-driven development - works with Claude Code, Codex, OpenCode  | 2026-01-31   |
 
 **Key Topics**:
