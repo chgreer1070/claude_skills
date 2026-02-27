@@ -411,6 +411,42 @@ def find_item(items: list[dict], selector: str) -> dict | None:
     return matches[0] if len(matches) == 1 else (matches[0] if matches else None)
 
 
+_COMMIT_PREFIX_RE = re.compile(r"^(feat|fix|refactor|docs|chore|perf|test|ci):\s*", re.IGNORECASE)
+
+
+def _normalize_issue_title(title: str) -> str:
+    """Strip conventional-commit prefix and normalize for dedup comparison.
+
+    Returns:
+        Lowercased title with any ``feat:``/``fix:``/etc. prefix removed.
+
+    Examples:
+        >>> _normalize_issue_title("feat: SAM: Error Recovery")
+        'sam: error recovery'
+        >>> _normalize_issue_title("SAM: Error Recovery")
+        'sam: error recovery'
+    """
+    return _COMMIT_PREFIX_RE.sub("", title).strip().lower()
+
+
+def _fetch_open_issues_by_title(repo: Repository) -> dict[str, int]:
+    """Fetch all open issues and return ``{normalized_title: issue_number}`` map.
+
+    When duplicates exist, keeps the lowest issue number (the original).
+
+    Returns:
+        Dict mapping normalized title strings to their GitHub issue number.
+    """
+    title_to_num: dict[str, int] = {}
+    for issue in repo.get_issues(state="open"):
+        if issue.pull_request:
+            continue
+        key = _normalize_issue_title(issue.title)
+        if key not in title_to_num or issue.number < title_to_num[key]:
+            title_to_num[key] = issue.number
+    return title_to_num
+
+
 def items_needing_issues(items: list[dict]) -> list[dict]:
     """Return all backlog items that lack GitHub issues and are not skipped."""
     return [
@@ -702,8 +738,7 @@ def _pull_single_issue(repo_obj: Repository, issue_num: int, filepath: Path | No
     fields = _issue_to_local_fields(issue)
     # Strip conventional-commit prefix from title (e.g., "feat: Title" → "Title")
     raw_title = fields["title"]
-    prefixed = re.match(r"^(feat|fix|refactor|docs|chore|perf|test|ci):\s*", raw_title)
-    clean_title = raw_title[prefixed.end() :] if prefixed else raw_title
+    clean_title = _COMMIT_PREFIX_RE.sub("", raw_title).strip()
 
     if filepath is None:
         slug = _title_to_slug(clean_title)
@@ -1177,8 +1212,32 @@ def list_items(
         _list_items_table(open_items, with_status, repo)
 
 
+def _find_or_create_issue(
+    item: dict, existing_issues: dict[str, int], repository: Repository, dry_run: bool
+) -> int | None:
+    """Check for existing issue by title; create only if no match found.
+
+    Returns:
+        Issue number (existing or newly created), or None for dry-run creates.
+    """
+    title = item.get("_title", "")
+    normalized = _normalize_issue_title(title)
+    if normalized in existing_issues:
+        existing_num = existing_issues[normalized]
+        typer.echo(f"  Linked #{existing_num}: {title[:60]} (existing issue found)")
+        return existing_num
+    if dry_run:
+        typer.echo(f"  [dry-run] Would create: {title[:60]}")
+        return None
+    return create_issue_for_item(repository, item, dry_run=False)
+
+
 def _sync_create_missing_issues(items: list[dict], repo: str, dry_run: bool) -> None:
     """Pass 1 of sync: create GitHub issues for all items that lack them.
+
+    Before creating any issues, fetches all open issues from GitHub and checks
+    for title matches. If an existing open issue matches (after stripping
+    conventional-commit prefixes), links to it instead of creating a duplicate.
 
     Args:
         items: Parsed backlog items.
@@ -1193,32 +1252,53 @@ def _sync_create_missing_issues(items: list[dict], repo: str, dry_run: bool) -> 
     for it in needed:
         typer.echo(f"  - {it.get('_title', '')[:60]}")
     repository = _get_github(repo)
+
+    # Dedup: fetch existing open issues to prevent duplicate creation.
+    typer.echo("Fetching open issues for deduplication check...")
+    existing_issues = _fetch_open_issues_by_title(repository)
+    typer.echo(f"  Found {len(existing_issues)} existing open issues.")
+
     content = BACKLOG_PATH.read_text(encoding="utf-8")
     modified = False
-    if _is_index_format(BACKLOG_PATH):
-        for item in needed:
-            issue_num = create_issue_for_item(repository, item, dry_run=dry_run)
-            if issue_num and not dry_run:
-                filepath_str = item.get("_file_path")
-                if filepath_str:
-                    _update_item_metadata(Path(filepath_str), {"metadata": {"issue": f"#{issue_num}"}})
-                    old_line = _find_index_link_line(content, item)
-                    if old_line:
-                        title = item.get("_title", "")
-                        filename = Path(filepath_str).name
-                        rel_path = f"backlog/{filename}"
-                        new_line = _index_link_line(title, rel_path, f"#{issue_num}")
-                        content = content.replace(old_line, new_line)
-                        modified = True
-    else:
-        for item in needed:
-            issue_num = create_issue_for_item(repository, item, dry_run=dry_run)
-            if issue_num and not dry_run:
-                content = insert_issue_into_content(content, item, issue_num)
-                modified = True
+
+    for item in needed:
+        issue_num = _find_or_create_issue(item, existing_issues, repository, dry_run)
+        if not issue_num or dry_run:
+            continue
+        # Track newly created/linked issues to prevent intra-batch duplicates.
+        new_normalized = _normalize_issue_title(item.get("_title", ""))
+        if new_normalized not in existing_issues:
+            existing_issues[new_normalized] = issue_num
+        if _is_index_format(BACKLOG_PATH):
+            content, was_modified = _sync_update_index_item(content, item, issue_num)
+            modified = modified or was_modified
+        else:
+            content = insert_issue_into_content(content, item, issue_num)
+            modified = True
+
     if modified:
         BACKLOG_PATH.write_text(content, encoding="utf-8")
         typer.echo(f"Updated {BACKLOG_PATH}")
+
+
+def _sync_update_index_item(content: str, item: dict, issue_num: int) -> tuple[str, bool]:
+    """Update a single index-format item with its issue number.
+
+    Returns:
+        Tuple of (updated content, whether content was modified).
+    """
+    filepath_str = item.get("_file_path")
+    if not filepath_str:
+        return content, False
+    _update_item_metadata(Path(filepath_str), {"metadata": {"issue": f"#{issue_num}"}})
+    old_line = _find_index_link_line(content, item)
+    if not old_line:
+        return content, False
+    title = item.get("_title", "")
+    filename = Path(filepath_str).name
+    rel_path = f"backlog/{filename}"
+    new_line = _index_link_line(title, rel_path, f"#{issue_num}")
+    return content.replace(old_line, new_line), True
 
 
 def _sync_push_groomed_content(items: list[dict], repo: str, dry_run: bool) -> None:

@@ -16,11 +16,11 @@ Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/
 
 
 
-- [Fix pre-existing CI check failures on main](backlog/medium-fix-pre-existing-ci-check-failures-on-main.md)
+- [Fix pre-existing CI check failures on main](backlog/medium-fix-pre-existing-ci-check-failures-on-main.md) #281
 
-- [Backlog system redesign: GitHub Issues as source of truth with local cache](backlog/p1-backlog-system-redesign-github-issues-as-source-of-truth-wit.md)
+- [Backlog system redesign: GitHub Issues as source of truth with local cache](backlog/p1-backlog-system-redesign-github-issues-as-source-of-truth-wit.md) #282
 
-- [backlog.py: unify issue body template and add missing structured fields](backlog/p1-backlogpy-unify-issue-body-template-and-add-missing-structur.md)
+- [backlog.py: unify issue body template and add missing structured fields](backlog/p1-backlogpy-unify-issue-body-template-and-add-missing-structur.md) #283
 
 - [Enhance skill-research-process for CLI tool skills](backlog/p1-enhance-skill-research-process-for-cli-tool-skills.md) #197
 
