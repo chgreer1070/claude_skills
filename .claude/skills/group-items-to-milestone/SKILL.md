@@ -1,6 +1,6 @@
 ---
 name: group-items-to-milestone
-description: "Use when assigning backlog items to a GitHub milestone. Args: {milestone-number} [P0|P1|P2|title-filter]. Reads .claude/backlog/ per-item files, shows items with GitHub Issue status, lets user select which to assign. Creates missing GitHub Issues for selected P0/P1 items, assigns all to the milestone, updates Project V2 Status to Backlog. Use after create-milestone to populate a sprint or release."
+description: "Use when assigning backlog items to a GitHub milestone. Args: {milestone-number} [P0|P1|P2|title-filter]. Uses backlog list to load items, shows items with GitHub Issue status, lets user select which to assign. Creates missing GitHub Issues for selected P0/P1 items, assigns all to the milestone, updates Project V2 Status to Backlog. Use after create-milestone to populate a sprint or release."
 argument-hint: '{milestone-number} [P0|P1|P2|title-filter]'
 user-invocable: true
 ---
@@ -34,7 +34,7 @@ If milestone not found or closed, report and stop.
 
 ### Step 2: Load Backlog Items
 
-Scan `.claude/backlog/` per-item files. Parse all items from P0, P1, P2, and Ideas. Apply any filter.
+Run `uv run .claude/skills/backlog/scripts/backlog.py list --format json`. Filter items by section (P0, P1, P2, Ideas). Apply any title filter.
 
 For each item determine status:
 
@@ -77,7 +77,7 @@ uv run .claude/skills/gh/scripts/github_project_setup.py issue create \
   --milestone {number}
 ```
 
-Write `**Issue**: #{N}` back to the matching per-item file in `.claude/backlog/`.
+The backlog script automatically writes `issue: '#N'` back to the item's metadata.
 
 Skip issue creation for P2/Ideas items — assign by milestone number only if they already have an issue.
 

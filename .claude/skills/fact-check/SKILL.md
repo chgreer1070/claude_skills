@@ -59,9 +59,9 @@ Parse the input to extract discrete, falsifiable claims:
 ```mermaid
 flowchart TD
     Start([Parse input]) --> Q{Input type?}
-    Q -->|Backlog item title| ReadBacklog[Scan .claude/backlog/ per-item files, find matching item]
+    Q -->|Backlog item title| ReadBacklog[Run backlog list --format json, find matching item]
     Q -->|Plugin path| ScanFiles[Scan SKILL.md and references for factual claims]
-    Q -->|--all-unverified| FindAll[Find all UNVERIFIED items in .claude/backlog/ per-item files]
+    Q -->|--all-unverified| FindAll[Run backlog list --format json, filter UNVERIFIED items]
     ReadBacklog --> Extract[Extract falsifiable claims]
     ScanFiles --> Extract
     FindAll --> Extract

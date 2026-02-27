@@ -3,6 +3,8 @@
 **Groomed**: 2026-02-20
 **Source backlog item**: `.claude/BACKLOG.md` lines 23-28
 
+> **NOTE (2026-02-27)**: BACKLOG.md was removed. Backlog items now live in `.claude/backlog/` per-item files; GitHub Issues are the source of truth.
+
 ---
 
 ### Plugin Structure

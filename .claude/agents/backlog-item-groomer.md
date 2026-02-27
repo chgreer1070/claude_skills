@@ -74,7 +74,7 @@ Stop after 5 relevant matches per key term.
 
 ### Step 4 — Identify Dependencies
 
-Scan `.claude/backlog/` per-item files. Identify:
+Run `uv run .claude/skills/backlog/scripts/backlog.py list --format json`. Identify:
 
 - Items this one depends on (must be done first)
 - Items that depend on this one (will be unblocked)
