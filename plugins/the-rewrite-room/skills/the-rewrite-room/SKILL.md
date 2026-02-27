@@ -22,7 +22,7 @@ Routes documentation, authoring, and optimization tasks to the correct specialis
 | `/rwr:audit <task>` | rewrite-room-auditor | Docs vs code drift, doc sync after changes, freshness tracking |
 | `/rwr:optimize <file>` | rewrite-room-optimizer | CLAUDE.md, SKILL.md, agent .md improvement |
 | `/rwr:author <task>` | rewrite-room-author | User-facing docs, GLFM validation, summarization |
-| `/rwr:doc-to-skill <docs_path>` | rewrite-room-doc-converter | Convert user-facing docs directory into a Claude Code skill |
+| `/rwr:doc-to-skill <docs_path> <output_plugin> <output_skill>` | rewrite-room-doc-converter | Convert user-facing docs directory into a Claude Code skill |
 
 Each command loads the corresponding workflow file and follows its numbered steps.
 

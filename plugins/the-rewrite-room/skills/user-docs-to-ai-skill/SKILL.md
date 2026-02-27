@@ -2,6 +2,7 @@
 name: user-docs-to-ai-skill
 description: Converts user-facing documentation (how-to guides, tutorials, API references, examples) into Claude Code skill directories — SKILL.md with valid frontmatter plus thematically grouped references/*.md files. Use when given a docs directory to transform into an AI skill, when building expert-level Claude knowledge from library or tool documentation, or when the user asks to create a skill from existing docs. Produces output equivalent in quality to fastmcp-creator.
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit, Task
+argument-hint: "<docs_path> <output_plugin> <output_skill>"
 ---
 
 # User Docs to AI Skill
@@ -10,14 +11,13 @@ Converts human-readable documentation into a Claude Code skill directory. The ou
 
 ## Inputs
 
-- `source` — GitHub URL (e.g. `https://github.com/astral-sh/ty`) or local directory path containing documentation
-- `output_plugin` — name for the output plugin (e.g., `ty-skill`)
-- `output_skill` — (optional) name for the skill within the plugin; derived from project name when not provided
-- `net_new` — boolean; `true` = create from scratch, `false` = improve existing skill at output path
+- `$1` (`docs_path`) — GitHub URL (e.g. `https://github.com/astral-sh/ty`) or local directory path containing documentation
+- `$2` (`output_plugin`) — name for the output plugin (e.g., `ty-skill`)
+- `$3` (`output_skill`) — (optional) name for the skill within the plugin; derived from project name when not provided
 
 ## Output Contract
 
-Creates `plugins/{output_plugin}/skills/{output_skill}/` containing:
+Creates `plugins/$2/skills/$3/` containing:
 
 - `SKILL.md` — valid frontmatter + AI-facing workflow instructions + links to all reference files
 - `references/` — thematically grouped knowledge files, each linked from SKILL.md
@@ -139,7 +139,7 @@ Task: subagent_type="process-siren:process-siren"
 Context to include in the prompt:
   - The raw prose or atom text verbatim
   - What the workflow represents (1 sentence of context)
-  - Output file path: plugins/{output_plugin}/skills/{output_skill}/resources/workflows/{slug}.md
+  - Output file path: plugins/$2/skills/$3/resources/workflows/{slug}.md
 Output: resources/workflows/{slug}.md — validated Mermaid flowchart file
 ```
 
