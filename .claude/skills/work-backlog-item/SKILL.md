@@ -165,13 +165,13 @@ From the issue response build the working item:
 
 Then try to find a matching per-item file in `.claude/backlog/` by issue number (`metadata.issue`) or title. If found, use it to supplement any missing fields (e.g. `research_first`, `suggested_location`). If not found, continue without a local per-item file — the GitHub Issue is sufficient.
 
-Skip to Step 3 with the assembled item.
+Proceed to Step 2.7 (Set In-Progress Label) with the assembled item, then continue to Step 3.
 
 </issue_first_procedure>
 
 ### Step 1: Find the Backlog Item
 
-Scan `.claude/backlog/` per-item files. Search item titles (from frontmatter `name` field) for case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
+Run `uv run .claude/skills/backlog/scripts/backlog.py list --format json` and search the `title` field of each entry for a case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
 
 **AUTO_MODE with no title (`$1` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items whose H3 heading contains ~~strikethrough~~, or whose body contains a `**Completed**:` line or `**Status**: DONE`.
 
@@ -184,15 +184,15 @@ Record the priority section (P0, P1, P2, Ideas) the item belongs to.
 
 ### Step 2: Extract Item Fields
 
-From the matched item, extract these fields (all are `**bold-key**: value` format on separate lines):
+From the matched item's JSON output (via `backlog.py list --format json`), extract `title`, `plan`, `section` (priority), `issue`, `groomed`, and `file_path`. For detailed fields not in JSON (`description`, `source`, `added`, `research_first`, `suggested_location`), read the per-item file at `file_path`.
 
-- `title` — the H3 heading text (required)
-- `source` — `**Source**:` value (optional)
-- `added` — `**Added**:` value (optional)
-- `description` — `**Description**:` value (required)
-- `research_first` — `**Research first**:` value (optional)
-- `suggested_location` — `**Suggested location**:` value (optional)
-- `plan` — `**Plan**:` value (optional)
+- `title` — the `title` field from JSON (required)
+- `source` — not in JSON; read from per-item file frontmatter `metadata.source` if needed (optional)
+- `added` — not in JSON; read from per-item file frontmatter `metadata.added` if needed (optional)
+- `description` — not in JSON; read from per-item file frontmatter `description` (required)
+- `research_first` — not in JSON; read from per-item file body `**Research first**:` line (optional)
+- `suggested_location` — not in JSON; read from per-item file body `**Suggested location**:` line (optional)
+- `plan` — the `plan` field from JSON (optional)
 
 If the item already has a `**Plan**:` field, report:
 
@@ -201,6 +201,8 @@ This item already has a plan at {path}. Use /python3-development:implement-featu
 ```
 
 Then stop.
+
+After extracting fields, proceed to Step 2.5 (GitHub Issue Sync) before continuing to Step 3.
 
 ### Step 3: Auto-Groom (if needed)
 
@@ -536,16 +538,6 @@ If the item is in a milestone with other issues, also run `milestone start` for 
 uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
   --number {milestone_number} --repo Jamie-BitFlight/claude_skills
 ```
-
-### Step 9: Close — Use backlog script
-
-After verifying checklist (9a–9d) and acceptance criteria (9d) PASS, invoke the backlog script instead of writing to per-item files directly:
-
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py close "{title or #N}" --plan "{plan path}" --checklist-pass -R Jamie-BitFlight/claude_skills
-```
-
-The script updates the per-item file status and closes the GitHub issue.
 
 ### setup-github Command
 
