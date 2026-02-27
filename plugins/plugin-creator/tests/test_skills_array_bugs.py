@@ -900,3 +900,76 @@ class TestSK009ManualSkillSelectionInfo:
         assert len(sk009_issues) == 0, (
             f"SK009 was not suppressed by validator.json. Got {len(sk009_issues)} SK009 issue(s) after filtering."
         )
+
+    def test_sk009_message_enumerates_unlisted_disk_skills(self, tmp_path: Path) -> None:
+        """SK009 message must list disk skills absent from the explicit skills array.
+
+        Tests: PluginRegistrationValidator.validate SK009 unlisted-skills message
+        How:
+            1. Create a plugin with two disk skills: listed-skill (in the array) and
+               unlisted-skill (on disk but NOT in the array).
+            2. Run PluginRegistrationValidator.validate().
+            3. Assert the SK009 message contains the unlisted path but not the listed path.
+        Why:
+            Users and AI agents need to know exactly which skills are missing from the
+            explicit array so they can add them without guessing.
+        """
+        # Arrange
+        plugin_root = tmp_path / "mixed-plugin"
+        plugin_root.mkdir(parents=True)
+
+        for skill_name in ("listed-skill", "unlisted-skill"):
+            skill_dir = plugin_root / "skills" / skill_name
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "SKILL.md").write_text(
+                f"---\nname: {skill_name}\ndescription: {skill_name}\n---\n\n# {skill_name}\n", encoding="utf-8"
+            )
+
+        claude_plugin = plugin_root / ".claude-plugin"
+        claude_plugin.mkdir(parents=True)
+        # Only list one of the two skills in the explicit array.
+        manifest = {"name": "mixed-plugin", "version": "1.0.0", "skills": ["./skills/listed-skill"]}
+        (claude_plugin / "plugin.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+        validator = PluginRegistrationValidator()
+
+        # Act
+        result = validator.validate(plugin_root)
+
+        # Assert
+        sk009_issues = [i for i in result.info if str(i.code) == "SK009"]
+        assert len(sk009_issues) == 1, f"Expected exactly one SK009 issue, got {len(sk009_issues)}."
+        message = sk009_issues[0].message
+        assert "./skills/unlisted-skill" in message, (
+            f"SK009 message must name the unlisted skill './skills/unlisted-skill'. Got: '{message}'"
+        )
+        assert "listed-skill" not in message.replace("./skills/unlisted-skill", ""), (
+            "SK009 message must not mention the already-listed skill outside of the unlisted path."
+        )
+
+    def test_sk009_message_confirms_all_registered_when_no_unlisted_skills(self, tmp_path: Path) -> None:
+        """SK009 message must confirm full registration when all disk skills are listed.
+
+        Tests: PluginRegistrationValidator.validate SK009 all-registered message
+        How:
+            1. Create a plugin where every disk skill is present in the explicit array.
+            2. Run PluginRegistrationValidator.validate().
+            3. Assert the SK009 message says all skills are explicitly registered.
+        Why:
+            When a user has diligently kept the explicit array in sync with the disk,
+            the message should confirm that state rather than warn about missing entries.
+        """
+        # Arrange — reuse helper: one skill, listed in the explicit array.
+        plugin_root = self._make_plugin_with_explicit_skills(tmp_path, skills=["complete-skill"])
+        validator = PluginRegistrationValidator()
+
+        # Act
+        result = validator.validate(plugin_root)
+
+        # Assert
+        sk009_issues = [i for i in result.info if str(i.code) == "SK009"]
+        assert len(sk009_issues) == 1, f"Expected exactly one SK009 issue, got {len(sk009_issues)}."
+        message = sk009_issues[0].message
+        assert "all skills/ are explicitly registered" in message, (
+            f"SK009 message must confirm all skills are registered. Got: '{message}'"
+        )

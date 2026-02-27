@@ -40,27 +40,34 @@ Glob("plugins/*/agents/*.md")
 
 ### Phase 2 — Requirements Gathering
 
-Extract from user request:
-- **Purpose**: what task or workflow does this agent handle?
-- **Trigger keywords**: what phrases activate it?
-- **Tool access**: read-only or file-modifying?
-- **Model**: haiku (fast search), sonnet (most tasks), opus (complex reasoning)
-- **Skills**: does it need specialized knowledge?
-
-If ambiguous, ask before generating.
+```mermaid
+flowchart TD
+    Start(["User request received"]) --> E1["Extract purpose —<br>what task or workflow does this agent handle?"]
+    E1 --> E2["Extract trigger keywords —<br>what phrases activate it?"]
+    E2 --> E3["Extract tool access requirement —<br>read-only or file-modifying?"]
+    E3 --> E4["Extract model requirement —<br>haiku (fast search), sonnet (most tasks), opus (complex reasoning)"]
+    E4 --> E5["Extract skills requirement —<br>does it need specialized knowledge?"]
+    E5 --> Q1{"Are all 5 fields<br>unambiguously determined<br>from the user request?"}
+    Q1 -->|"Yes — all fields clear"| Done(["Requirements complete — proceed to Phase 3"])
+    Q1 -->|"No — one or more fields ambiguous"| Ask["Ask clarifying questions<br>for each ambiguous field"]
+    Ask --> Q2{"User response<br>resolves all ambiguities?"}
+    Q2 -->|"Yes"| Done
+    Q2 -->|"No — still ambiguous"| Ask
+```
 
 ### Phase 3 — Template Selection
 
 ```mermaid
 flowchart TD
-    Start([User request received]) --> Q1{Agent responds directly to user?}
-    Q1 -->|Yes — flexible output, independent| Standard[Standard agent\nNo subagent-contract needed]
-    Q1 -->|No — delegated by orchestrator| Q2{Strict DONE/BLOCKED signaling needed?}
-    Q2 -->|Yes| RoleBased[Role-based agent\nAdd skills: subagent-contract]
-    Q2 -->|No| Standard
-    Standard --> Q3{Similar agent exists in project?}
-    Q3 -->|Yes| Adapt[Adapt existing agent as template]
-    Q3 -->|No| Scratch[Build from scratch using schema]
+    Start(["User request received"]) --> Q1{"Agent responds directly to user?"}
+    Q1 -->|"Yes — flexible output, independent"| Standard["Standard agent<br>No subagent-contract needed"]
+    Q1 -->|"No — delegated by orchestrator"| Q2{"Strict DONE/BLOCKED signaling needed?"}
+    Q2 -->|"Yes"| RoleBased["Role-based agent<br>Add skills = subagent-contract"]
+    Q2 -->|"No"| Standard
+    Standard --> Q3{"Similar agent exists in project?"}
+    RoleBased --> Q3
+    Q3 -->|"Yes — adapt"| Done1(["Use existing agent as template — proceed to Phase 4"])
+    Q3 -->|"No — none found"| Done2(["Build from scratch using schema — proceed to Phase 4"])
 ```
 
 ### Phase 4 — Agent File Generation
@@ -107,17 +114,17 @@ You are a {specific role} with expertise in {domain}. Your purpose is to {primar
 ```mermaid
 flowchart TD
     Start([Where should agent be available?]) --> Q1{Scope?}
-    Q1 -->|Project-specific, team access| Project[".claude/agents/{name}.md\ngit-tracked"]
-    Q1 -->|Personal, reusable across projects| User["~/.claude/agents/{name}.md\nnot git-tracked"]
-    Q1 -->|Distributable plugin| Plugin["{plugin}/agents/{name}.md\n+ update plugin.json"]
+    Q1 -->|Project-specific, team access| Project[".claude/agents/{name}.md<br>git-tracked"]
+    Q1 -->|Personal, reusable across projects| User["~/.claude/agents/{name}.md<br>not git-tracked"]
+    Q1 -->|Distributable plugin| Plugin["{plugin}/agents/{name}.md<br>+ update plugin.json"]
     Project --> Validate[Run validator]
     User --> Validate
-    Plugin --> UpdateJSON[Read plugin.json\nAdd agent to agents array\nWrite updated plugin.json]
+    Plugin --> UpdateJSON["Read plugin.json<br>Add agent to agents array<br>Write updated plugin.json<br>(agents only — skills are auto-discovered)"]
     UpdateJSON --> Validate
     Validate --> Done([Report location and result])
 ```
 
-**Plugin.json update pattern** — add to agents array:
+**Plugin.json update pattern** — add agent to `agents` array (required for all agents):
 
 ```json
 {
@@ -128,21 +135,27 @@ flowchart TD
 }
 ```
 
+**Skills vs agents registration distinction:**
+
+- **Agents** always require explicit `agents` array entries — Claude Code does not auto-discover agents.
+- **Skills** in `skills/` are auto-discovered by Claude Code when no `skills` field exists in `plugin.json`. Do NOT add skill paths to `plugin.json` for skills under the standard `skills/` directory.
+
 ### Phase 6 — Validation
 
-Run after saving:
-
-```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py {agent-path}
+```mermaid
+flowchart TD
+    Start(["Agent file saved"]) --> V1["Run: uv run plugins/plugin-creator/scripts/plugin_validator.py {agent-path}"]
+    V1 --> Q1{"Exit code from<br>plugin_validator.py?"}
+    Q1 -->|"non-zero — errors reported"| Fix1["Fix all reported errors<br>in agent file"]
+    Fix1 --> V1
+    Q1 -->|"0 — plugin_validator.py clean"| Q2{"Is this agent<br>part of a plugin?"}
+    Q2 -->|"No — project or user scope"| Done(["Validation complete — report completion"])
+    Q2 -->|"Yes — plugin scope"| V2["Run: claude plugin validate {plugin-path}"]
+    V2 --> Q3{"Exit code from<br>claude plugin validate?"}
+    Q3 -->|"non-zero — errors reported"| Fix2["Fix all reported errors<br>in plugin structure"]
+    Fix2 --> V2
+    Q3 -->|"0 — plugin validate clean"| Done
 ```
-
-If plugin agent, also run:
-
-```bash
-claude plugin validate {plugin-path}
-```
-
-Fix any reported issues before reporting completion.
 
 </workflow>
 
@@ -161,11 +174,29 @@ Fix any reported issues before reporting completion.
 
 ## Edge Cases
 
-- **Vague request**: ask clarifying questions before generating
-- **Conflict with existing agent**: note the overlap, suggest different scope or name
-- **Complex requirements**: propose splitting into multiple focused agents
-- **First agent in plugin**: verify `agents/` directory exists before writing; create if needed
-- **User specifies model**: honor the request
+```mermaid
+flowchart TD
+    Start(["Edge case encountered"]) --> Q1{"Is the user request<br>specific enough to<br>determine all 5 requirements?"}
+    Q1 -->|"No — request is vague"| E1["Ask clarifying questions<br>before generating anything"]
+    E1 --> Done(["Resume Phase 2"])
+
+    Q1 -->|"Yes — request is clear"| Q2{"Does an agent with<br>overlapping purpose already<br>exist in the project?"}
+    Q2 -->|"Yes — conflict detected"| E2["Note the overlap explicitly<br>Suggest different scope or different name"]
+    E2 --> Done
+
+    Q2 -->|"No — no conflict"| Q3{"Do requirements describe<br>more than one distinct<br>responsibility?"}
+    Q3 -->|"Yes — complex requirements"| E3["Propose splitting into<br>multiple focused agents<br>one responsibility each"]
+    E3 --> Done
+
+    Q3 -->|"No — single responsibility"| Q4{"Is this the first agent<br>being added to the plugin?"}
+    Q4 -->|"Yes — first agent in plugin"| E4["Verify agents/ directory exists<br>Create directory if absent<br>then write agent file"]
+    E4 --> Done
+
+    Q4 -->|"No — agents/ already exists"| Q5{"Did the user explicitly<br>specify a model?"}
+    Q5 -->|"Yes — model specified"| E5["Honor the specified model<br>do not substitute"]
+    E5 --> Done
+    Q5 -->|"No — model not specified"| Done
+```
 
 ## Output Summary Format
 

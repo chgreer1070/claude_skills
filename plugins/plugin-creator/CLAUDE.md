@@ -128,6 +128,21 @@ Interactive scaffolding — prompts for name, description, author; creates `.cla
 
 ---
 
+### Create New Skill
+
+**Skills:** `/skill-creator` (primary), `/claude-skills-overview-2026` (reference)
+
+**Trigger phrases:** "Create a new skill", "Add a skill to {plugin}", "I need a skill for {task}", "Create a slash command for {workflow}", "Build a skill that does {X}"
+
+**Process:**
+1. Load `/plugin-creator:skill-creator` — provides the complete skill creation workflow and init script
+2. Load `/plugin-creator:claude-skills-overview-2026` — authoritative reference for frontmatter schema, invocation control, progressive disclosure
+3. Follow the 7-step process in `/skill-creator`: understand examples → plan resources → determine location → initialize (init_skill.py) → edit → package (if plugin) → iterate
+4. Scope determination: plugin → `plugins/{name}/skills/{skill-name}/` | project → `.claude/skills/{skill-name}/` | user → `~/.claude/skills/{skill-name}/`
+5. Validation — runs `plugin_validator.py` on skill directory; if plugin skill: also runs `claude plugin validate {plugin-path}`
+
+---
+
 ### Validate Plugin Components
 
 **Script:** `plugin_validator.py`

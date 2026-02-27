@@ -3029,6 +3029,24 @@ def _parse_registered_paths(plugin_config: dict[str, YamlValue], plugin_dir: Pat
     return registered
 
 
+def _sk009_message(unlisted: set[Path]) -> str:
+    """Build the SK009 info message based on unlisted disk skills.
+
+    Args:
+        unlisted: Skills present on disk but absent from the explicit skills array.
+
+    Returns:
+        Human-readable message describing the manual-selection state.
+    """
+    if unlisted:
+        paths = ", ".join(sorted(f"./{s}" for s in unlisted))
+        return (
+            "Plugin uses manual skill selection — new skills added to skills/ "
+            f"will not be auto-loaded. The following skills are present on disk but not listed: {paths}"
+        )
+    return "Plugin uses manual skill selection — all skills/ are explicitly registered."
+
+
 class PluginRegistrationValidator:
     """Validates capability registration against plugin.json.
 
@@ -3187,10 +3205,7 @@ class PluginRegistrationValidator:
                 ValidationIssue(
                     field="plugin.json",
                     severity="info",
-                    message=(
-                        "Plugin uses manual skill selection — new skills added to skills/ "
-                        "will not be auto-loaded. Add them to the skills array manually."
-                    ),
+                    message=_sk009_message(actual_skills - registered_skills),
                     code=SK009,
                     docs_url=generate_docs_url(SK009),
                     suggestion=(

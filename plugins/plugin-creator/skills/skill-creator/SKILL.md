@@ -684,7 +684,14 @@ If validation fails, the script will report the errors and exit without creating
 
 **Alternative: Bundle in Plugin Directly**
 
-Instead of creating standalone .skill files, you can include skills directly in a plugin's `skills/` directory and reference them in `plugin.json`. This is the recommended approach for plugin-bundled skills. See [claude-plugins-reference-2026](../claude-plugins-reference-2026/SKILL.md) for plugin creation documentation.
+Instead of creating standalone .skill files, place the skill directory under the plugin's `skills/` directory. Claude Code auto-discovers all skills under `skills/` — no `plugin.json` update is needed. This is the recommended approach for plugin-bundled skills.
+
+**Skills vs agents registration distinction:**
+
+- **Skills** in `skills/` are auto-discovered when no `skills` field is present in `plugin.json`. Do NOT add skill entries to `plugin.json` — the pre-commit hook (`auto_sync_manifests.py`) explicitly skips skills from explicit registration. Adding a `skills` field opts the plugin into manual allowlist mode (SK009 fires as an INFO reminder).
+- **Agents** always require explicit registration in the `agents` array in `plugin.json`. Claude Code does not auto-discover agents.
+
+See [claude-plugins-reference-2026](../claude-plugins-reference-2026/SKILL.md) for plugin creation documentation.
 
 ### Step 7: Iterate
 

@@ -87,6 +87,8 @@ When creating an agent in a plugin, update the plugin's `.claude-plugin/plugin.j
 
 **Important:** The `agents` field in plugin.json must be an array of individual file paths, not a directory string.
 
+**Skills vs agents registration distinction:** This explicit registration requirement applies to agents only. Skills placed under the plugin's `skills/` directory are auto-discovered by Claude Code — no `plugin.json` update is needed for skills. Adding a `skills` field to `plugin.json` opts the plugin into manual allowlist mode (SK009 fires as an INFO reminder).
+
 ## Creating Agents
 
 Use the `/plugin-creator:agent-creator` skill to create new agents interactively:
