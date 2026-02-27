@@ -130,7 +130,16 @@ plugins/holistic-linting/
 
 ### 3. Update plugin.json skills array
 
-After the skill split, update `skills` in plugin.json:
+> **NOTE (2026-02-27): This step is OBSOLETE.** The `skills` field described here is NOT
+> required and should NOT be added. Skills under `./skills/` are auto-discovered by Claude
+> Code when no `skills` field exists in `plugin.json` (Mode A — the correct default).
+> Adding an explicit `skills` array opts the plugin into manual allowlist mode (Mode B),
+> which causes SK009 INFO warnings for any unlisted disk skills. The correct post-split
+> state is a `plugin.json` with no `skills` field. Version bump and keyword/repository/license
+> metadata additions (section 2 above) remain valid — only the skills array instruction
+> is obsolete.
+
+~~After the skill split, update `skills` in plugin.json:~~
 
 ```json
 {
@@ -157,7 +166,7 @@ Task 2: Optimize post-linting-architecture-reviewer agent
   ├── No dependencies (can start immediately)
   └── Blocks: Task V1
 
-Task 3: Update plugin.json (metadata + skills array)
+Task 3: Update plugin.json (metadata only — skills array step is obsolete, see note above)
   ├── Depends on: Task 1 (needs new skill directories to exist)
   └── Blocks: Task V1
 

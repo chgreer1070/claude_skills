@@ -6,7 +6,7 @@
 
 **Architecture:** Single skill (`plugins/plugin-creator/skills/hooks-guide/`) with a navigation SKILL.md and per-topic reference files. Three already-fetched raw docs in `.claude/plan/plugin-creator-hooks/` are transformed into AI-facing reference content via `rwr:doc-to-skill`. A bash script orchestrates fetching and transforming platform docs. The existing `hook-creator` agent and `claude-hooks-reference-2026` umbrella are updated to include the new skill.
 
-**Tech Stack:** Bash (fetch script), `claude -p` CLI (rwr:doc-to-skill transform), Markdown (reference files), YAML (SKILL.md frontmatter), `uv run` (plugin validator)
+**Tech Stack:** Bash (fetch script), `CLAUDECODE= claude -p` CLI (rwr:doc-to-skill transform), Markdown (reference files), YAML (SKILL.md frontmatter), `uv run` (plugin validator)
 
 ---
 
@@ -588,10 +588,10 @@ The script must:
    a. curl the URL to a temp file in /tmp/hooks-fetch-<platform>.md
    b. If curl fails (non-zero exit or empty file): log "SKIP <platform>: fetch failed" and continue
    c. If file is < 500 bytes: log "SKIP <platform>: response too small (likely no hooks content)" and continue
-   d. Run: claude -p "You are running rwr:doc-to-skill. Convert the human-facing documentation
+   d. Run: `CLAUDECODE= claude -p "You are running rwr:doc-to-skill. Convert the human-facing documentation
       in the file at /tmp/hooks-fetch-<platform>.md into an AI-facing reference file at
       <output_path>. Rules: remove UX prose, preserve all code examples verbatim, add ToC,
-      use imperative headings, group by concept." 2>&1
+      use imperative headings, group by concept." 2>&1`
    e. If claude exits non-zero: log "FAIL <platform>: transform failed" and continue
    f. Log "OK <platform>: wrote <output_path>" on success
 

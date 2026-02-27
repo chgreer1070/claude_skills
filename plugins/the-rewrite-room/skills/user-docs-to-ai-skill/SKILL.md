@@ -10,9 +10,9 @@ Converts human-readable documentation into a Claude Code skill directory. The ou
 
 ## Inputs
 
-- `docs_path` — directory containing user-facing documentation (markdown, HTML, RST, plain text)
+- `source` — GitHub URL (e.g. `https://github.com/astral-sh/ty`) or local directory path containing documentation
 - `output_plugin` — name for the output plugin (e.g., `ty-skill`)
-- `output_skill` — name for the skill within the plugin (usually same as plugin without `-skill` suffix)
+- `output_skill` — (optional) name for the skill within the plugin; derived from project name when not provided
 - `net_new` — boolean; `true` = create from scratch, `false` = improve existing skill at output path
 
 ## Output Contract
@@ -26,8 +26,21 @@ Creates `plugins/{output_plugin}/skills/{output_skill}/` containing:
 
 ```mermaid
 flowchart TD
-    Start([Skill receives docs_path + output_plugin + output_skill]) --> Phase0[Phase 0 — Inventory]
-    Phase0 --> Inv[Glob all files in docs_path\nCount by type: .md .html .rst .txt\nIdentify top-level sections and index files]
+    Start([Skill receives source + output_plugin]) --> Phase0[Phase 0 — Input Resolution]
+    Phase0 --> Q_src{source type?}
+    Q_src -->|GitHub URL| Clone["git clone source .claude/worktrees/project-name/\nproject-name = last URL segment"]
+    Q_src -->|Local path| UseLocal[Use path as-is]
+    Clone --> SetRoot[Set docs_root = .claude/worktrees/project-name/]
+    UseLocal --> SetRoot
+    SetRoot --> Q_name{output_skill provided?}
+    Q_name -->|No| DeriveName[Derive output_skill from project-name]
+    Q_name -->|Yes| FindDocs
+    DeriveName --> FindDocs[Locate documentation within docs_root]
+    FindDocs --> Q_docs{docs/ directory exists?}
+    Q_docs -->|Yes| UseDocs[Set docs_path = docs_root/docs/]
+    Q_docs -->|No| ScanAll["Task: Explore agent\nGlob all .md files across docs_root\nReturn list of markdown and inline doc files"]
+    UseDocs --> Inv
+    ScanAll --> Inv[Glob all files in docs_path\nCount by type .md .html .rst .txt\nIdentify top-level sections and index files]
     Inv --> Phase1[Phase 1 — Extraction]
     Phase1 --> Extract[Apply extraction patterns per doc type\nSee extraction-patterns.md]
     Extract --> Phase15[Phase 1.5 — Workflow Identification]
@@ -52,9 +65,31 @@ flowchart TD
     Q2 -->|Yes| Done([Done — report output path and file inventory])
 ```
 
-## Phase 0 — Inventory
+## Phase 0 — Input Resolution and Inventory
 
 Run before any extraction. Do not skip.
+
+See [input-resolution.md](./references/input-resolution.md) for complete branching logic. Summary:
+
+### Step 0a — Resolve source to a local directory
+
+1. If `source` matches `https://github.com/*` — it is a GitHub URL:
+   - Derive `project-name` from the last path segment (e.g. `astral-sh/ty` → `ty`)
+   - Run `git clone <source> .claude/worktrees/<project-name>/` (path relative to project root)
+   - Set `docs_root = .claude/worktrees/<project-name>/`
+2. Otherwise — treat `source` as a local directory path and set `docs_root = source`
+
+### Step 0b — Derive output_skill if not provided
+
+If `output_skill` was not passed as input, derive it from `project-name` (the last URL segment or last path segment of the local path).
+
+### Step 0c — Locate documentation within docs_root
+
+1. Check whether `docs_root/docs/` exists
+2. If yes — set `docs_path = docs_root/docs/` and proceed
+3. If no — delegate to an Explore subagent: `Glob("**/*.md", docs_root)` plus check for inline docstrings; collect all markdown file paths; set `docs_path` to the list of discovered files
+
+### Step 0d — Inventory
 
 1. `Glob("**/*", docs_path)` — list all files
 2. Group by extension: `.md`, `.html`, `.rst`, `.txt`, other
@@ -164,6 +199,7 @@ If any item fails, fix it and re-run the checklist. Do not declare done with fai
 
 ## Reference Files
 
+- [input-resolution.md](./references/input-resolution.md) — resolving GitHub URLs and local paths to a local directory, deriving output_skill, and locating docs within the resolved root
 - [extraction-patterns.md](./references/extraction-patterns.md) — how to extract AI-usable knowledge from each doc type
 - [workflow-identification.md](./references/workflow-identification.md) — detecting workflow-shaped content, constructing process-siren delegation prompts, and responding to blocking conditions
 - [skill-structure-guide.md](./references/skill-structure-guide.md) — output skill directory structure, frontmatter rules, reference file format

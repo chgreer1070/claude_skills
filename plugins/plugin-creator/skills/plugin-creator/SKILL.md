@@ -337,7 +337,7 @@ Task(
   <task id='1' type='auto'>
     <name>Create plugin.json manifest</name>
     <files>.claude-plugin/plugin.json</files>
-    <action>Create manifest with name, version, description, skills array</action>
+    <action>Create manifest with name, version, description. Do NOT add a skills field — skills under ./skills/ are auto-discovered by Claude Code (Mode A). Add a skills field only when explicitly opting into manual allowlist mode (Mode B).</action>
     <verify>jq '.name' .claude-plugin/plugin.json returns plugin name</verify>
     <done>Valid plugin.json exists with all required fields</done>
   </task>
