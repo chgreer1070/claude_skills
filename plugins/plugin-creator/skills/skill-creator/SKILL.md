@@ -39,9 +39,14 @@ Skill(command: "plugin-creator:refactor-skill")
 
 **When to use skill-creator vs skill-refactor:**
 
-- **skill-creator:** Creating a new skill from requirements, examples, or user needs
-- **skill-refactor:** Splitting an existing skill that exceeds the warning threshold (run `plugin_validator.py` to check) or covers multiple domains
-- Both skills can be used together: create with skill-creator, refactor later with skill-refactor as needs evolve
+```mermaid
+flowchart TD
+    Start(["Skill task received"]) --> Q{"Is there an existing skill<br>to modify or split?"}
+    Q -->|"No — creating from scratch<br>or from requirements"| Creator["Use skill-creator<br>(this skill)"]
+    Q -->|"Yes — existing skill exceeds<br>warning threshold (SK006/SK007)<br>or covers multiple domains"| Refactor["Use skill-refactor<br>Skill(command: 'plugin-creator:refactor-skill')"]
+    Creator --> Together(["Both can combine — create with<br>skill-creator, refactor later<br>with skill-refactor as needs evolve"])
+    Refactor --> Together
+```
 
 ### What Skills Provide
 
@@ -256,33 +261,16 @@ agent: Explore  # or Plan, general-purpose, custom-agent-name
 
 Control who can invoke your skill:
 
-1. **Default behavior:** Both user and Claude can invoke
-
-   - User types `/skill-name`
-   - Claude loads automatically when relevant
-   - Description always in context, full skill loads on activation
-
-2. **Manual-only (disable auto-invoke):**
-
-   ```yaml
-   disable-model-invocation: true
-   ```
-
-   - Only user can invoke with `/skill-name`
-   - Claude cannot load it automatically
-   - Description NOT in Claude's context
-   - **Use for:** Workflows with side effects (`/deploy`, `/send-slack-message`)
-   - **Why:** You control timing, Claude won't deploy just because code looks ready
-
-3. **Background knowledge (hide from menu):**
-   ```yaml
-   user-invocable: false
-   ```
-   - Only Claude can invoke (automatically when relevant)
-   - Not shown in `/` autocomplete menu
-   - Description always in context, full skill loads when Claude activates it
-   - **Use for:** Background knowledge that isn't actionable as command (`/legacy-system-context`)
-   - **Why:** Claude should know this when relevant, but `/legacy-system-context` isn't a meaningful user action
+```mermaid
+flowchart TD
+    Start(["Choose invocation mode for skill"]) --> Q{"Who should be able<br>to invoke this skill?"}
+    Q -->|"Both user and Claude<br>(default behavior)"| Default["Default — no frontmatter flag needed<br>User types /skill-name<br>Claude loads automatically when relevant<br>Description always in context"]
+    Q -->|"User only — has side effects<br>such as deploy or send-slack-message"| Manual["Set disable-model-invocation: true<br>Only user can invoke with /skill-name<br>Claude cannot load automatically<br>Description NOT in Claude's context<br>Reason — you control timing;<br>Claude won't deploy just because code looks ready"]
+    Q -->|"Claude only — background knowledge<br>not a meaningful user action"| Background["Set user-invocable: false<br>Only Claude can invoke (automatically when relevant)<br>Not shown in / autocomplete menu<br>Description always in context<br>Full skill loads when Claude activates it<br>Example use — /legacy-system-context"]
+    Default --> Done(["Invocation mode configured"])
+    Manual --> Done
+    Background --> Done
+```
 
 **SOURCE:** [claude-skills-overview-2026](../claude-skills-overview-2026/SKILL.md) section on Invocation Control.
 
@@ -418,37 +406,21 @@ Claude reads REDLINING.md or OOXML.md only when the user needs those features.
 
 ## Skill Creation Process
 
-Skill creation involves these steps:
-
-1. Understand the skill with concrete examples
-2. Plan reusable skill contents (scripts, references, assets)
-3. Determine skill location and distribution strategy
-4. Initialize the skill (run init_skill.py or create directory manually)
-5. Edit the skill (implement resources and write SKILL.md)
-6. Package the skill (OPTIONAL - only if distributing via plugins)
-7. Iterate based on real usage
+```mermaid
+flowchart TD
+    S1["Step 1 — Understand the skill<br>with concrete examples"] --> S2
+    S2["Step 2 — Plan reusable skill contents<br>(scripts, references, assets)"] --> S3
+    S3["Step 3 — Determine skill location<br>and distribution strategy"] --> S4
+    S4["Step 4 — Initialize the skill<br>(run init_skill.py — MANDATORY)"] --> S5
+    S5["Step 5 — Edit the skill<br>(implement resources and write SKILL.md)"] --> S6Q
+    S6Q{"Distributing via plugin<br>marketplace?"}
+    S6Q -->|"Yes — plugin distribution"| S6["Step 6 — Package the skill<br>(validate then package)"]
+    S6Q -->|"No — project or user level<br>already in final location"| S7
+    S6 --> S7
+    S7["Step 7 — Iterate based on real usage"] --> Done(["Skill creation complete"])
+```
 
 Follow these steps in order, skipping only if there is a clear reason why they are not applicable.
-
-### Step 3: Determine Skill Location and Distribution Strategy
-
-Before creating a skill, decide where it will live. **If unclear, STOP and ask the user.**
-
-| Location                      | Purpose             | Distribution           | Use When                                                     |
-| ----------------------------- | ------------------- | ---------------------- | ------------------------------------------------------------ |
-| **Plugin** (bundled)          | `plugins/*/skills/` | Via plugin marketplace | Creating reusable skills for public/team distribution        |
-| **Project** (version control) | `.claude/skills/`   | Via git (team-shared)  | Project-specific skills shared with team via version control |
-| **User** (personal)           | `~/.claude/skills/` | Manual (personal use)  | Personal skills used across all your projects                |
-
-**Location priority when skills share same name:** managed/enterprise > user (~/.claude/skills/) > project (.claude/skills/). Plugin skills use `plugin-name:skill-name` namespace and don't conflict with other levels.
-
-**CRITICAL:** Packaging (step 6) is ONLY needed for plugin distribution. If creating skills in `.claude/skills/` or `~/.claude/skills/`, they are already in their final location - skip the packaging step entirely.
-
-**Automatic discovery:** Claude Code automatically discovers skills from nested `.claude/skills/` directories. For example, if editing `packages/frontend/`, Claude also looks in `packages/frontend/.claude/skills/`. This supports monorepo setups where packages have their own skills.
-
-**When location is unclear:** STOP and ask: "Where should this skill be created? (1) Plugin for marketplace distribution, (2) Project-level (.claude/skills/) for team sharing via git, or (3) User-level (~/.claude/skills/) for personal use?"
-
-**SOURCE:** [claude-skills-overview-2026](../claude-skills-overview-2026/SKILL.md) section on Directory Structure and Location Priority.
 
 ### Step 1: Understanding the Skill with Concrete Examples
 
@@ -490,6 +462,26 @@ Example: When building a `big-query` skill to handle queries like "How many user
 2. A `references/schema.md` file documenting the table schemas would be helpful to store in the skill
 
 To establish the skill's contents, analyze each concrete example to create a list of the reusable resources to include: scripts, references, and assets.
+
+### Step 3: Determine Skill Location and Distribution Strategy
+
+```mermaid
+flowchart TD
+    Start(["Determine where the skill will live"]) --> Q{"Is the target location<br>already known?"}
+    Q -->|"No — location is unclear"| Ask["STOP — ask the user:<br>'Where should this skill be created?<br>(1) Plugin for marketplace distribution,<br>(2) Project-level (.claude/skills/) for team sharing via git,<br>(3) User-level (~/.claude/skills/) for personal use?'"]
+    Ask --> Q2{"User has answered<br>location question"}
+    Q -->|"Yes — location known"| Q2
+    Q2 -->|"Plugin distribution<br>(public or team marketplace)"| Plugin["Location: plugins/*/skills/<br>Packaging step 6 IS required<br>Namespace: plugin-name:skill-name<br>(does not conflict with other levels)"]
+    Q2 -->|"Project-level<br>(team sharing via git)"| Project["Location: .claude/skills/<br>Skip packaging step 6 entirely<br>Already in final location"]
+    Q2 -->|"User-level<br>(personal use across projects)"| User["Location: ~/.claude/skills/<br>Skip packaging step 6 entirely<br>Already in final location"]
+    Plugin --> Priority["Location priority when skills share same name:<br>managed/enterprise > user > project<br>Plugin skills use plugin-name:skill-name namespace"]
+    Project --> Priority
+    User --> Priority
+    Priority --> Discovery["Note: Claude Code auto-discovers skills<br>from nested .claude/skills/ directories<br>(supports monorepo setups)"]
+    Discovery --> Done(["Location decided — proceed to Step 4"])
+```
+
+**SOURCE:** [claude-skills-overview-2026](../claude-skills-overview-2026/SKILL.md) section on Directory Structure and Location Priority.
 
 ### Step 4: Initializing the Skill
 
@@ -647,49 +639,25 @@ Write instructions for using the skill and its bundled resources.
 
 **SOURCE:** [claude-skills-overview-2026](../claude-skills-overview-2026/SKILL.md) sections on String Substitutions and Dynamic Context Injection.
 
-### Step 6: Packaging a Skill (OPTIONAL - Plugin Distribution Only)
+### Step 6: Packaging a Skill (OPTIONAL — Plugin Distribution Only)
 
-**IMPORTANT:** This step is ONLY required when distributing skills via plugins. Skip this step if:
-
-- Creating skills in `.claude/skills/` (project-level, shared via git)
-- Creating skills in `~/.claude/skills/` (user-level, personal use)
-- Skills are already in their final location
-
-**Only for plugin skills:**
-
-Once development of the skill is complete and you plan to distribute it via a plugin, package it into a distributable .skill file. The packaging process automatically validates the skill first to ensure it meets all requirements:
-
-```bash
-scripts/package_skill.py <path/to/skill-folder>
+```mermaid
+flowchart TD
+    Start(["Skill development complete<br>Enter Step 6"]) --> Q{"Distributing via<br>plugin marketplace?"}
+    Q -->|"No — skill is in .claude/skills/<br>or ~/.claude/skills/<br>already in final location"| Skip(["Skip Step 6 entirely<br>Proceed to Step 7"])
+    Q -->|"Yes — plugin distribution planned"| Q2{"Prefer standalone .skill file<br>or bundle directly in plugin?"}
+    Q2 -->|"Bundle directly in plugin<br>(recommended)"| Bundle["Place skill directory under<br>plugin's skills/ directory<br>Claude Code auto-discovers all skills under skills/<br>No plugin.json update needed"]
+    Q2 -->|"Standalone .skill file"| RunPkg["Run: scripts/package_skill.py path/to/skill-folder<br>Optional: scripts/package_skill.py path/to/skill-folder ./dist"]
+    RunPkg --> Validate["Script validates automatically:<br>YAML frontmatter format and fields<br>Skill naming conventions and directory structure<br>Description completeness and quality<br>File organization and resource references"]
+    Validate --> VQ{"Validation<br>exit code?"}
+    VQ -->|"0 — validation passed"| Package["Script packages the skill<br>Creates my-skill.skill (zip with .skill extension)<br>Includes all files with proper directory structure"]
+    VQ -->|"non-zero — validation failed<br>script reports errors and exits"| Fix["Fix reported validation errors<br>then run packaging command again"]
+    Fix --> RunPkg
+    Bundle --> SkillReg["Skills auto-discovered when no<br>skills field present in plugin.json<br>Do NOT add skill entries to plugin.json<br>(auto_sync_manifests.py skips skills;<br>adding skills field opts into manual allowlist mode —<br>SK009 fires as INFO reminder)"]
+    Package --> AgentReg["Agents always require explicit registration<br>in the agents array in plugin.json<br>Claude Code does not auto-discover agents"]
+    SkillReg --> Done(["Step 6 complete — proceed to Step 7"])
+    AgentReg --> Done
 ```
-
-Optional output directory specification:
-
-```bash
-scripts/package_skill.py <path/to/skill-folder> ./dist
-```
-
-The packaging script will:
-
-1. **Validate** the skill automatically, checking:
-
-   - YAML frontmatter format and fields
-   - Skill naming conventions and directory structure
-   - Description completeness and quality
-   - File organization and resource references
-
-2. **Package** the skill if validation passes, creating a .skill file named after the skill (e.g., `my-skill.skill`) that includes all files and maintains the proper directory structure for distribution. The .skill file is a zip file with a .skill extension.
-
-If validation fails, the script will report the errors and exit without creating a package. Fix any validation errors and run the packaging command again.
-
-**Alternative: Bundle in Plugin Directly**
-
-Instead of creating standalone .skill files, place the skill directory under the plugin's `skills/` directory. Claude Code auto-discovers all skills under `skills/` — no `plugin.json` update is needed. This is the recommended approach for plugin-bundled skills.
-
-**Skills vs agents registration distinction:**
-
-- **Skills** in `skills/` are auto-discovered when no `skills` field is present in `plugin.json`. Do NOT add skill entries to `plugin.json` — the pre-commit hook (`auto_sync_manifests.py`) explicitly skips skills from explicit registration. Adding a `skills` field opts the plugin into manual allowlist mode (SK009 fires as an INFO reminder).
-- **Agents** always require explicit registration in the `agents` array in `plugin.json`. Claude Code does not auto-discover agents.
 
 See [claude-plugins-reference-2026](../claude-plugins-reference-2026/SKILL.md) for plugin creation documentation.
 
@@ -697,9 +665,12 @@ See [claude-plugins-reference-2026](../claude-plugins-reference-2026/SKILL.md) f
 
 After testing the skill, users may request improvements. Often this happens right after using the skill, with fresh context of how the skill performed.
 
-**Iteration workflow:**
-
-1. Use the skill on real tasks
-2. Notice struggles or inefficiencies
-3. Identify how SKILL.md or bundled resources should be updated
-4. Implement changes and test again
+```mermaid
+flowchart TD
+    I1["Use the skill on real tasks"] --> I2
+    I2["Notice struggles or inefficiencies"] --> I3
+    I3["Identify how SKILL.md or bundled<br>resources should be updated"] --> I4
+    I4["Implement changes and test again"] --> IQ{"More improvements<br>identified?"}
+    IQ -->|"Yes — new struggles or<br>inefficiencies found"| I2
+    IQ -->|"No — skill meets needs"| Done(["Skill is stable"])
+```
