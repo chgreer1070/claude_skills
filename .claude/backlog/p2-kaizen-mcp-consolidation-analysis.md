@@ -17,7 +17,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
-  issue: '#221'
+  issue: '#104'
 ---
 
 **Suggested location**: `plugins/agentskill-kaizen/`

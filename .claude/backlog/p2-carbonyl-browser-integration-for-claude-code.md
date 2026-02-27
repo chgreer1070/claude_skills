@@ -17,7 +17,7 @@ metadata:
   type: Feature
   status: open
   groomed: '2026-02-24'
-  issue: '#195'
+  issue: '#126'
 ---
 
 ## Groomed (2026-02-24)

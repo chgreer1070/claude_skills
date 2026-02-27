@@ -11,5 +11,5 @@ metadata:
   priority: P2
   type: Feature
   status: open
-  issue: '#223'
+  issue: '#106'
 ---

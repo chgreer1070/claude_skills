@@ -8,7 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
-  issue: '#229'
+  issue: '#112'
 ---
 
 **Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (section 3.6 Forensic Review)

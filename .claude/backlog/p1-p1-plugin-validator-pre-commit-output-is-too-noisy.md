@@ -8,6 +8,6 @@ metadata:
   priority: completed
   type: Feature
   status: done
-  issue: '#208'
+  issue: '#130'
   plan: N/A
 ---

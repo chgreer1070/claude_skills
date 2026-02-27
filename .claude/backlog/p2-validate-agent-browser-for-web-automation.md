@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: open
   groomed: '2026-02-26'
-  issue: '#245'
+  issue: '#128'
 ---
 
 ## Fact-Check

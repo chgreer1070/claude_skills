@@ -8,7 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
-  issue: '#240'
+  issue: '#122'
 ---
 
 **Research first**: How does GSD integrate with external tools? What MCP servers exist for issue trackers? How do agent frameworks bridge to CI/CD?
