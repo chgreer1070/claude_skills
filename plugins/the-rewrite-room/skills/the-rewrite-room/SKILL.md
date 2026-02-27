@@ -22,6 +22,7 @@ Routes documentation, authoring, and optimization tasks to the correct specialis
 | `/rwr:audit <task>` | rewrite-room-auditor | Docs vs code drift, doc sync after changes, freshness tracking |
 | `/rwr:optimize <file>` | rewrite-room-optimizer | CLAUDE.md, SKILL.md, agent .md improvement |
 | `/rwr:author <task>` | rewrite-room-author | User-facing docs, GLFM validation, summarization |
+| `/rwr:doc-to-skill <docs_path>` | rewrite-room-doc-converter | Convert user-facing docs directory into a Claude Code skill |
 
 Each command loads the corresponding workflow file and follows its numbered steps.
 
@@ -33,6 +34,7 @@ flowchart TD
     Q -->|/rwr:audit| Audit[rewrite-room-auditor\nLoads: plugins/the-rewrite-room/the-rewrite-room/workflows/audit.md]
     Q -->|/rwr:optimize| Opt[rewrite-room-optimizer\nLoads: plugins/the-rewrite-room/the-rewrite-room/workflows/optimize.md]
     Q -->|/rwr:author| Auth[rewrite-room-author\nLoads: plugins/the-rewrite-room/the-rewrite-room/workflows/author.md]
+    Q -->|/rwr:doc-to-skill| DocSkill[rewrite-room-doc-converter<br>Loads: plugins/the-rewrite-room/skills/user-docs-to-ai-skill/SKILL.md]
     Audit --> A1[development-harness:doc-drift-auditor]
     Audit --> A2[development-harness:service-docs-maintainer]
     Audit --> A3[doc-freshness-guardian]
@@ -55,10 +57,33 @@ Workflow files contain numbered steps, conditional branching, explicit agent spa
 
 ## Adding New Workflows
 
-1. Create workflow file in `plugins/the-rewrite-room/the-rewrite-room/workflows/<name>.md`
-2. Create command file in the plugin commands directory referencing the workflow
-3. Add agent in `plugins/the-rewrite-room/agents/<name>.md` if a new routing agent is needed
-4. Register new agent path in `.claude-plugin/plugin.json` agents array
+Every rwr command requires four components. All four are mandatory — there are no exceptions. A command that exists in the table without a routing agent cannot be invoked.
+
+```mermaid
+flowchart TD
+    Start([Add new /rwr:name command]) --> S1["Step 1: Create the skill\nplugins/the-rewrite-room/skills/<name>/SKILL.md\nThe skill IS the workflow — it contains the numbered steps,\nbranching logic, and agent delegation instructions"]
+    S1 --> S2["Step 2: Create the routing agent\nplugins/the-rewrite-room/agents/rewrite-room-<name>.md\nThe agent is the router — it receives the command invocation,\nloads the skill, and delegates based on task type.\nFrontmatter: name, description, tools, model, color\nBody: role, task routing mermaid, output contract"]
+    S2 --> S3["Step 3: Add command row to Command Reference table\nCommand column: /rwr:name\nEntry Agent column: rewrite-room-<name> (the AGENT name — not the skill name)\nUse When column: one-line description"]
+    S3 --> S4["Step 4: Add branch to Workflow Index mermaid\nNew branch from Q node: /rwr:name -> rewrite-room-<name>\nNode label: agent name + what skill it loads"]
+    S4 --> V{"Verification checklist\n(all 4 must pass before done)"}
+    V -->|"❌ Any item fails"| Fix[Fix the missing item and re-verify]
+    Fix --> V
+    V -->|"✅ All pass"| Done([Command is complete])
+```
+
+**Verification checklist — all four required before the command is declared complete:**
+
+- [ ] Agent file exists at `plugins/the-rewrite-room/agents/rewrite-room-<name>.md`
+- [ ] Agent registered in `.claude-plugin/plugin.json` agents array as `"./agents/rewrite-room-<name>.md"`
+- [ ] Command row in Command Reference table — Entry Agent column contains the agent name (not the skill name)
+- [ ] Branch in Workflow Index mermaid points to the agent node (not the skill directory)
+
+**Skill vs agent — the distinction that prevents the missing-agent failure:**
+
+- The **skill** (`skills/<name>/SKILL.md`) contains the workflow: numbered steps, conditional logic, specialist agent delegation
+- The **routing agent** (`agents/rewrite-room-<name>.md`) is the entry point: it receives the `/rwr:name` invocation, loads the skill, and executes it
+- A skill alone cannot receive a command invocation — it must be loaded by an agent
+- `user-docs-to-ai-skill` is a skill name, not an agent name — it cannot appear in the Entry Agent column
 
 ## Source Components
 

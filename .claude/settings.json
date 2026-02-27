@@ -52,6 +52,7 @@
     ]
   },
   "enabledPlugins": {
-    "hallucination-detector@jamie-bitflight-skills": true
+    "hallucination-detector@jamie-bitflight-skills": true,
+    "superpowers-lab@superpowers-marketplace": true
   }
 }

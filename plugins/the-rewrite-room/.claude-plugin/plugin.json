@@ -1,7 +1,7 @@
 {
   "name": "rwr",
-  "version": "2.1.1",
-  "description": "Documentation and authoring workflow router \u2014 audit docs vs code drift, sync docs after changes, optimize prompts and SKILL.md files, validate GLFM and Markdown formatting, summarize files/URLs/images with fidelity enforcement. Use when: docs are out of date, CLAUDE.md needs improving, SKILL.md needs optimizing, checking if documentation matches code, summarizing files or URLs.",
+  "version": "2.2.0",
+  "description": "Documentation and authoring workflow router: audit docs vs code drift, sync docs after changes, optimize prompts and SKILL.md files, validate GLFM and Markdown formatting, summarize files/URLs/images with fidelity enforcement. Use when: docs are out of date, CLAUDE.md needs improving, SKILL.md needs optimizing, checking if documentation matches code, summarizing files or URLs.",
   "author": {
     "name": "Jamie BitFlight",
     "url": "https://github.com/Jamie-BitFlight/claude_skills"
@@ -20,8 +20,8 @@
   "agents": [
     "./agents/rewrite-room-auditor.md",
     "./agents/rewrite-room-optimizer.md",
-    "./agents/rewrite-room-author.md"
+    "./agents/rewrite-room-author.md",
+    "./agents/rewrite-room-doc-converter.md"
   ],
-  "skills": ["./skills/the-rewrite-room"],
-  "commands": ["./skills/the-rewrite-room"]
+  "skills": ["./skills/the-rewrite-room", "./skills/user-docs-to-ai-skill"]
 }
