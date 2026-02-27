@@ -11,6 +11,7 @@ metadata:
   issue: '#282'
   groomed: '2026-02-27'
   last_synced: '2026-02-27T12:14:59Z'
+  plan: plan/tasks-7-backlog-gh-first-phase1.md
 ---
 
 ## Design Constraints
