@@ -257,7 +257,8 @@ def _parse_item_file(text: str, path: Path) -> dict:
     item["**Added**"] = str(meta.get("added") or fm.get("added") or "")
     item["**Priority**"] = str(meta.get("priority") or fm.get("priority") or "")
     item["_issue"] = str(meta.get("issue") or fm.get("issue") or "")
-    item["**Plan**"] = str(meta.get("plan") or fm.get("plan") or "")
+    plan = str(meta.get("plan") or fm.get("plan") or "")
+    item["**Plan**"] = "" if plan.upper() == "N/A" else plan
     status = str(meta.get("status") or fm.get("status") or "").lower()
     if status in {"done", "resolved"}:
         item["_skip"] = True
@@ -1595,6 +1596,7 @@ def _extract_normalize_metadata(fm: dict, meta: dict) -> dict[str, str]:
     Returns:
         Normalized metadata dict.
     """
+    plan = str(meta.get("plan") or fm.get("plan") or "")
     return {
         "name": str(fm.get("name") or fm.get("title") or "").strip(),
         "description": str(fm.get("description") or "").strip(),
@@ -1604,7 +1606,7 @@ def _extract_normalize_metadata(fm: dict, meta: dict) -> dict[str, str]:
         "type_val": str(meta.get("type") or fm.get("type") or "Feature"),
         "status": str(meta.get("status") or fm.get("status") or "open"),
         "issue": str(meta.get("issue") or fm.get("issue") or ""),
-        "plan": str(meta.get("plan") or fm.get("plan") or ""),
+        "plan": "" if plan.upper() == "N/A" else plan,
         "groomed": str(meta.get("groomed") or fm.get("groomed") or ""),
     }
 

@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: done
   groomed: '2026-02-24'
-  plan: N/A
+  plan: ''
 ---
 
 ## Groomed (2026-02-24)
