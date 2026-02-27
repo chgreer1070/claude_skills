@@ -1,6 +1,6 @@
 # Backlog Item Groomed Schema
 
-**Purpose**: Define the structure of groomed content written into backlog item files. Grooming transforms items from vague ("this problem happens") to ready ("reproducible, impact known, desired outcome clear").
+**Purpose**: Define the structure of groomed content written into backlog item files. Grooming (backlog refinement) transforms items from vague ("this problem happens") to ready for planning — problem is clear, facts are verified, resources are mapped, effort is estimated, and blockers are surfaced. The agent does this autonomously: fact-checking claims, searching the codebase for related work, and identifying gaps. It does NOT produce architecture, task decomposition, or implementation plans — those happen in the SAM planning phase.
 
 **Location**: Groomed content lives in the **body** of `.claude/backlog/{priority}-{slug}.md`. Frontmatter uses the research-style `metadata:` block (aligned with `./research/` entries). Body has no duplication of frontmatter — only extra fields when present, plus `## Groomed` when groomed.
 
