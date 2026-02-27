@@ -331,6 +331,8 @@ Backlog item "{title}" is now planned.
 - To close when done: /work-backlog-item close {slug}
 ```
 
+**Do NOT close the GitHub Issue directly.** Include `Fixes #N` in commit messages and the PR body — the issue auto-closes when the PR merges. Only use `/work-backlog-item close` for post-merge verification and local bookkeeping. Never invoke `backlog.py close` before the PR has merged.
+
 ### Step 9: Verify and Close
 
 **Trigger:** `$0` is `close` or `resolve`.
@@ -450,9 +452,33 @@ Address these gaps before closing.
 
 Then stop.
 
-#### 9e: Invoke backlog close
+#### 9e: Check for open PR
 
-6. Invoke the backlog script (script updates per-item file and closes GitHub issue):
+6. If the item has a linked GitHub Issue (`#N`), check whether an open PR already references it:
+
+```bash
+gh pr list -R Jamie-BitFlight/claude_skills --search "Fixes #N" --state open --json number,title,url
+```
+
+- **Open PR found**: The PR body contains `Fixes #N` — the issue will auto-close on merge. Update only the local per-item file status (do NOT close the GitHub Issue):
+
+```bash
+uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --status in-progress -R Jamie-BitFlight/claude_skills
+```
+
+Report:
+
+```text
+Backlog item "{title}" verified. GitHub Issue #{N} will auto-close when PR #{pr_number} merges.
+```
+
+Then stop.
+
+- **No open PR / no linked issue**: proceed to 9f.
+
+#### 9f: Invoke backlog close
+
+7. Invoke the backlog script (script updates per-item file and closes GitHub issue):
 
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --plan "{plan file path}" --checklist-pass -R Jamie-BitFlight/claude_skills
@@ -464,7 +490,7 @@ If invoked as `close #N`, use `#N` as the selector:
 uv run .claude/skills/backlog/scripts/backlog.py close "#{N}" --plan "{plan file path}" --checklist-pass -R Jamie-BitFlight/claude_skills
 ```
 
-7. Report the script output to the user.
+8. Report the script output to the user.
 
 </step9_procedure>
 
