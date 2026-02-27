@@ -5,7 +5,5 @@
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
-  },
-  "skills": ["./skills/clang-format"],
-  "commands": ["./skills/clang-format"]
+  }
 }

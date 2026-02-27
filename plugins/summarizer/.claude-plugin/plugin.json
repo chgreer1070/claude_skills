@@ -8,21 +8,5 @@
   },
   "license": "MIT",
   "keywords": ["summarization", "fidelity", "anti-hallucination", "synthesis", "extractive"],
-  "skills": [
-    "./skills/agent-result-relay",
-    "./skills/file-summarization",
-    "./skills/image-summarization",
-    "./skills/multi-source-synthesis",
-    "./skills/summarizer",
-    "./skills/url-summarization"
-  ],
-  "agents": ["./agents/file-summarizer.md", "./agents/image-summarizer.md", "./agents/url-summarizer.md"],
-  "commands": [
-    "./skills/agent-result-relay",
-    "./skills/file-summarization",
-    "./skills/image-summarization",
-    "./skills/multi-source-synthesis",
-    "./skills/summarizer",
-    "./skills/url-summarization"
-  ]
+  "agents": ["./agents/file-summarizer.md", "./agents/image-summarizer.md", "./agents/url-summarizer.md"]
 }

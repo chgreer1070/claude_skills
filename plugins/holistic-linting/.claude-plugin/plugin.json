@@ -7,16 +7,5 @@
     "url": "https://github.com/bitflight-devops"
   },
   "keywords": ["linting", "code-quality", "ruff", "mypy", "bandit", "python", "formatting", "type-checking"],
-  "skills": [
-    "./skills/holistic-linting-orchestrator",
-    "./skills/holistic-linting-resolver",
-    "./skills/holistic-linting"
-  ],
-  "commands": [
-    "./commands/lint.md",
-    "./skills/holistic-linting",
-    "./skills/holistic-linting-orchestrator",
-    "./skills/holistic-linting-resolver"
-  ],
   "agents": ["./agents/linting-root-cause-resolver.md", "./agents/post-linting-architecture-reviewer.md"]
 }

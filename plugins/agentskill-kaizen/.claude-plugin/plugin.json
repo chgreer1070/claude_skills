@@ -16,16 +16,6 @@
     "agent-optimization"
   ],
   "agents": ["./agents/improvement-generator.md", "./agents/transcript-analyst.md"],
-  "commands": [
-    "./commands/analyze.md",
-    "./commands/explore.md",
-    "./commands/generate-hooks.md",
-    "./commands/report.md",
-    "./skills/kaizen-improvement",
-    "./skills/meta-inspector",
-    "./skills/transcript-analysis"
-  ],
-  "skills": ["./skills/kaizen-improvement", "./skills/transcript-analysis", "./skills/meta-inspector"],
   "mcpServers": {
     "kaizen-duckdb": {
       "command": "uvx",

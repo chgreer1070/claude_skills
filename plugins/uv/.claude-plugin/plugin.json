@@ -5,7 +5,5 @@
   "author": {
     "name": "Jamie Hoover",
     "url": "https://github.com/bitflight-devops"
-  },
-  "skills": ["./skills/uv"],
-  "commands": ["./skills/uv"]
+  }
 }

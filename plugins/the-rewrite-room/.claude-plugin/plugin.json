@@ -22,6 +22,5 @@
     "./agents/rewrite-room-optimizer.md",
     "./agents/rewrite-room-author.md",
     "./agents/rewrite-room-doc-converter.md"
-  ],
-  "skills": ["./skills/the-rewrite-room", "./skills/user-docs-to-ai-skill"]
+  ]
 }

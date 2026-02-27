@@ -5,7 +5,5 @@
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
-  },
-  "skills": ["./skills/xdg-base-directory"],
-  "commands": ["./skills/xdg-base-directory"]
+  }
 }

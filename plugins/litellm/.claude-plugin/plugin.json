@@ -5,7 +5,5 @@
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
-  },
-  "skills": ["./skills/litellm"],
-  "commands": ["./skills/litellm"]
+  }
 }

@@ -5,7 +5,5 @@
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
-  },
-  "skills": ["./skills/brainstorming-skill"],
-  "commands": ["./skills/brainstorming-skill"]
+  }
 }

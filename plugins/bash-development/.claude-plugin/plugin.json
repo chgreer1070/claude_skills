@@ -6,25 +6,5 @@
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "skills": [
-    "./skills/bash-51-features",
-    "./skills/bash-52-features",
-    "./skills/bash-53-features",
-    "./skills/bash-development",
-    "./skills/bash-lint",
-    "./skills/bash-logging",
-    "./skills/bash-portability",
-    "./skills/bash-testing"
-  ],
-  "agents": ["./agents/bash-script-developer.md", "./agents/bash-script-auditor.md"],
-  "commands": [
-    "./skills/bash-51-features",
-    "./skills/bash-52-features",
-    "./skills/bash-53-features",
-    "./skills/bash-development",
-    "./skills/bash-lint",
-    "./skills/bash-logging",
-    "./skills/bash-portability",
-    "./skills/bash-testing"
-  ]
+  "agents": ["./agents/bash-script-developer.md", "./agents/bash-script-auditor.md"]
 }

@@ -7,7 +7,5 @@
     "url": "https://github.com/bitflight-devops"
   },
   "keywords": ["mermaid", "process", "workflow", "diagram", "flowchart"],
-  "agents": ["./agents/process-siren.md"],
-  "skills": ["./skills/improve-processes"],
-  "commands": ["./skills/improve-processes"]
+  "agents": ["./agents/process-siren.md"]
 }

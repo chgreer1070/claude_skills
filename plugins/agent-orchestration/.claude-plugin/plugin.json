@@ -5,7 +5,5 @@
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
-  },
-  "skills": ["./skills/agent-orchestration", "./skills/how-to-delegate"],
-  "commands": ["./skills/agent-orchestration", "./skills/how-to-delegate"]
+  }
 }

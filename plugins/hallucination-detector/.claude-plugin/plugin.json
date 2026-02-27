@@ -6,6 +6,5 @@
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "commands": ["./commands/audit.md", "./commands/hallucination-audit.md"],
   "hooks": "./hooks.json"
 }

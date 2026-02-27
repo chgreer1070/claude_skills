@@ -6,24 +6,6 @@
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "skills": [
-    "./skills/development-harness",
-    "./skills/workflows/discovery",
-    "./skills/workflows/planning",
-    "./skills/workflows/context-integration",
-    "./skills/workflows/task-decomposition",
-    "./skills/workflows/execution",
-    "./skills/workflows/forensic-review",
-    "./skills/workflows/final-verification",
-    "./skills/clear-cove-task-design",
-    "./skills/generate-task",
-    "./skills/planner-rt-ica",
-    "./skills/validation-protocol",
-    "./skills/testing/comprehensive-test-review",
-    "./skills/testing/analyze-test-failures",
-    "./skills/testing/test-failure-mindset",
-    "./skills/implementation-manager"
-  ],
   "agents": [
     "./agents/swarm-task-planner.md",
     "./agents/plan-validator.md",
@@ -36,16 +18,5 @@
     "./agents/doc-drift-auditor.md",
     "./agents/ecosystem-researcher.md",
     "./agents/service-docs-maintainer.md"
-  ],
-  "commands": [
-    "./skills/clear-cove-task-design",
-    "./skills/development-harness",
-    "./skills/generate-task",
-    "./skills/testing/analyze-test-failures",
-    "./skills/testing/comprehensive-test-review",
-    "./skills/testing/test-failure-mindset",
-    "./skills/validation-protocol",
-    "./skills/workflows/discovery",
-    "./skills/workflows/planning"
   ]
 }

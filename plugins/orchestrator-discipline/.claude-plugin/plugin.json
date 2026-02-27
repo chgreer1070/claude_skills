@@ -6,7 +6,5 @@
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "skills": ["./skills/orchestrator-discipline"],
-  "hooks": "./hooks.json",
-  "commands": ["./skills/orchestrator-discipline"]
+  "hooks": "./hooks.json"
 }
