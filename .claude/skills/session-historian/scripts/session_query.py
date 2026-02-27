@@ -3,8 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "duckdb>=1.0.0",
-#     "typer>=0.21.0",
-#     "rich>=13.0.0",
+#     "typer>=0.21.0"
 # ]
 # ///
 """Session Historian — query and summarize Claude Code JSONL session transcripts.
