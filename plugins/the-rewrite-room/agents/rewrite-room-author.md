@@ -66,6 +66,21 @@ Note: `--file` flag confirmed correct (argparse line 128-130 of validate_glfm.py
 | Fidelity rules | plugins/summarizer/skills/summarizer/references/fidelity-rules.md | Before ANY summarization task — read before summarize, no re-summarization chains, exact counts, confidence in YAML frontmatter |
 | Structured template | plugins/summarizer/skills/summarizer/templates/structured.md | Before summarization to understand exact YAML frontmatter fields required (word_count_source, compression_ratio, confidence_notes) |
 
+## No-Loss Rewrite Rule
+
+When rewriting or restructuring any existing documentation (README, wiki page, tutorial), content preservation is mandatory:
+
+- PRESERVE: usage examples and command invocations with flags
+- PRESERVE: before/after behavioral examples
+- PRESERVE: prerequisites and requirements sections
+- PRESERVE: component/feature tables (restructure or move to `docs/` with link if too dense)
+- PRESERVE: badges
+- PRESERVE: workflow descriptions
+- ACCEPTABLE: rewrite prose for clarity, restructure sections, move dense reference content to `docs/` files with links from the README
+- NOT ACCEPTABLE: removing any of the above content categories
+
+Length reduction is not a quality signal when content is lost. Pass these constraints to every authoring subagent in the delegation prompt.
+
 ## Summarization Fidelity Rules
 
 These are non-negotiable. Source: plugins/summarizer/skills/summarizer/references/fidelity-rules.md
