@@ -1,17 +1,17 @@
 {
   "mcpServers": {
-    "Ref": {
+    "Ref-local": {
       "command": "npx",
       "args": ["-y", "ref-tools-mcp@latest"],
       "env": {
         "REF_API_KEY": "$REF_API_KEY"
       }
     },
-    "context7": {
+    "context7-local": {
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp", "--api-key", "$CONTEXT7_API_KEY"]
     },
-    "kernel": {
+    "kernel-local": {
       "command": "npx",
       "args": ["-y", "mcp-remote", "https://mcp.onkernel.com/mcp", "--header", "Authorization: Bearer $KERNEL_API_KEY"]
     }
