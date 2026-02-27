@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: done
   issue: '#92'
-  plan: N/A
+  plan: ''
 ---
 
 **Suggested location**: New skill under `plugins/plugin-creator/skills/` or standalone plugin

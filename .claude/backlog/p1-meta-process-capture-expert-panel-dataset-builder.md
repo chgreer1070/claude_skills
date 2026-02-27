@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: done
   issue: '#90'
-  plan: N/A
+  plan: ''
 ---
 
 **Suggested location**: New skill or methodology document — captures the meta-process, not the ARL content

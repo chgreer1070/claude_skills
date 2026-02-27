@@ -9,5 +9,5 @@ metadata:
   type: Feature
   status: done
   issue: '#93'
-  plan: N/A
+  plan: ''
 ---

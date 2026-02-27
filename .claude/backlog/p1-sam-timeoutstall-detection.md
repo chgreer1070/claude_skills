@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: done
   issue: '#87'
-  plan: N/A
+  plan: ''
 ---
 
 **Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (Orchestrator section 3.8)

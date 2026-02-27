@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: done
   issue: '#88'
-  plan: N/A
+  plan: ''
 ---
 
 **Suggested location**: [`sam-artifact-schemas/`](https://github.com/bitflight-devops/stateless-agent-methodology) (new directory with schema files)

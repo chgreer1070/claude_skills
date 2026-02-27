@@ -8,7 +8,7 @@ metadata:
   priority: completed
   type: Feature
   status: done
-  plan: N/A
+  plan: ''
 ---
 
 **Suggested location**: `plugins/orchestrator-discipline/`
