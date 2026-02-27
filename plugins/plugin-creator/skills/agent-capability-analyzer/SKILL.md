@@ -13,6 +13,43 @@ The dataset lives in a LevelDB store (`agent-map.db/` relative to `$CLAUDE_PROJE
 
 The canonical dataset location is `.claude/audits/agent-map.json`.
 
+## Invocation Mode
+
+Choose invocation mode before spawning any Tasks. The routing decision is based on how many agents are being checked.
+
+```mermaid
+flowchart TD
+    Start([Capability check requested]) --> Q1{How many agents?}
+    Q1 -->|1 agent| Single[Single-agent mode]
+    Q1 -->|2 or more agents| Multi[Multi-agent mode]
+
+    Single --> S1[Read ./resources/describe-your-capabilities.template.md]
+    S1 --> S2["Append to prompt:<br>'Return only the tagged content.<br>Do not run any commands.'"]
+    S2 --> S3["Spawn one Task with subagent_type='agent-id'<br>Template prompt — AGENT_ID_HERE substituted"]
+    S3 --> S4[Orchestrator receives XML-tagged text directly]
+    S4 --> S5{agent-map.json exists?}
+    S5 -->|Yes| S6["Read .claude/audits/agent-map.json<br>Extract description field for this agent"]
+    S5 -->|No| S7[Read description from agent frontmatter]
+    S6 --> S8[Run gap analysis inline — see Gap Analysis section]
+    S7 --> S8
+
+    Multi --> M1[Read ./resources/describe-your-capabilities.template.md]
+    M1 --> M2["Spawn all agent Tasks simultaneously<br>Template as-is — AGENT_ID_HERE substituted per agent"]
+    M2 --> M3{Agent has Bash access?}
+    M3 -->|Yes — agent runs update script| M4[Agent writes to LevelDB directly<br>Confirms 'Updated agent-map.db']
+    M3 -->|No — agent returns XML text| M5["Orchestrator writes via script:<br>node scripts/update-agent-map.mjs --name 'agent-id' --capabilities 'TEXT'"]
+    M4 --> M6[Wait for ALL Tasks to complete]
+    M5 --> M6
+    M6 --> M7["Dump to .claude/audits/agent-map.json<br>node scripts/update-agent-map.mjs dump --file .claude/audits/agent-map.json"]
+    M7 --> M8[Run gap analysis — see Gap Analysis section]
+```
+
+**Single-agent mode** — the orchestrator receives the XML-tagged response directly in the Task reply. Gap analysis runs inline: compare the `capabilities` text against the agent's `description` field, reading from `.claude/audits/agent-map.json` if it exists, otherwise from the agent's frontmatter. No script execution is required in this mode.
+
+**Multi-agent mode** — uses LevelDB via the scripts. The orchestrator waits for all Tasks to complete before dumping. Agents that lack Bash access return their XML text and the orchestrator writes it via `update-agent-map.mjs` directly. The final dump produces `.claude/audits/agent-map.json` as the analysis input.
+
+**Template usage** — `./resources/describe-your-capabilities.template.md` is used in both modes. In single-agent mode, append the instruction `Return only the tagged content. Do not run any commands.` to the end of the prompt. In multi-agent mode, use the template as-is with `AGENT_ID_HERE` substituted for each agent's id.
+
 ## Setup (First Time Only)
 
 The scripts require the `level` npm package. Verify `package.json` contains:

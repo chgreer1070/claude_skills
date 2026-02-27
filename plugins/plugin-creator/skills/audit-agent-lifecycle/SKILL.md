@@ -73,7 +73,90 @@ Execute 8 semantic audits across 3 depth tiers. See [Agent Lifecycle Audit Speci
 | 7. Scriptable Agent Patterns | 2 | Identify deterministic workflows replaceable by scripts | List of scriptable patterns with steps |
 | 8. Self-Referential Pattern Learning | 2 | Classify issues by pattern, re-scan with new patterns until convergence | Append to shared patterns.md |
 
-### Step 3: Report Generation
+### Step 3: Capability Drift Check
+
+Activate with `Skill(command: "plugin-creator:agent-capability-analyzer")`.
+
+This phase compares each agent's static frontmatter `description` against its self-reported capabilities to detect description drift. Misrouted agents and stale descriptions are audit findings.
+
+**Single-agent audit** (one agent being audited):
+
+1. Read `$CLAUDE_PLUGIN_ROOT/resources/describe-your-capabilities.template.md`
+2. Spawn one Task with `subagent_type="<agent-id>"`, using the template as the prompt (replace `AGENT_ID_HERE`)
+3. If the agent lacks Bash access, it returns capabilities as text — write it directly:
+
+```bash
+node $CLAUDE_PLUGIN_ROOT/scripts/update-agent-map.mjs --name "<agent-id>" --capabilities 'CAPABILITIES_TEXT'
+```
+
+4. Export the dataset:
+
+```bash
+node $CLAUDE_PLUGIN_ROOT/scripts/update-agent-map.mjs dump --file .claude/audits/agent-map.json
+```
+
+5. Perform inline gap analysis — compare `description` against `capabilities` in the exported JSON.
+
+**Full plugin audit** (all agents):
+
+1. Seed description fields from agent frontmatter:
+
+```bash
+node $CLAUDE_PLUGIN_ROOT/scripts/populate-agent-descriptions.mjs
+```
+
+2. Read `$CLAUDE_PLUGIN_ROOT/resources/describe-your-capabilities.template.md`
+3. Spawn all agents simultaneously via Task tool. Agents with Bash access write their own result to the DB. Collect text responses from agents without Bash access and write them via the update script.
+4. After all Tasks complete, export the dataset:
+
+```bash
+node $CLAUDE_PLUGIN_ROOT/scripts/update-agent-map.mjs dump --file .claude/audits/agent-map.json
+```
+
+5. Perform gap analysis across all agents in the exported JSON.
+
+#### Gap Analysis Categories
+
+For each agent, identify entries in three categories:
+
+- **Underclaimed** — in description, not in self-reported capabilities. Description may be aspirational or stale.
+- **Undocumented** — in self-reported capabilities, not in description. Causes misrouting because the orchestrator cannot see these capabilities.
+- **Scope violations** — self-reported capabilities outside the domain implied by the agent name and plugin context.
+
+#### Gap Analysis Output Format
+
+For each agent audited, produce a structured report:
+
+```text
+Agent: <agent-id>
+Description: <description field>
+Capabilities: <capabilities field>
+
+Underclaimed (in description, not in capabilities):
+- <item>
+
+Undocumented (in capabilities, not in description):
+- <item>
+
+Scope violations (outside expected domain):
+- <item>
+
+Verdict: ALIGNED | MINOR_DRIFT | SIGNIFICANT_DRIFT | SCOPE_VIOLATION
+```
+
+Use `ALIGNED` when all three lists are empty or contain only minor phrasing differences. Use `SIGNIFICANT_DRIFT` when Category 1 or 2 lists contain substantive functional differences. Use `SCOPE_VIOLATION` when Category 3 is non-empty.
+
+#### Escalation
+
+Agents with `SIGNIFICANT_DRIFT` or `SCOPE_VIOLATION` verdicts MUST be flagged as audit findings in the report. Pass these agents to `subagent-refactorer` for remediation:
+
+```text
+Task is fixing description drift with subagent_type="plugin-creator:subagent-refactorer"
+Context to include in the prompt: agents/<agent-name>.md (agent file), gap analysis report section for this agent
+Output: revised agent file at agents/<agent-name>.md with corrected frontmatter description and rationale for each change
+```
+
+### Step 4: Report Generation
 
 Write audit artifacts to `.claude/audits/`:
 
@@ -222,6 +305,7 @@ Same approach as skill-lifecycle-audit dimension 7:
 | Tool Access Sufficiency | {count} | Error: {n}, Warning: {n}, Info: {n} |
 | Dead Agent Detection | {count} | Info: {n} |
 | Scriptable Agent Patterns | {count} | Info: {n} |
+| Capability Drift Check | {count} | Error: {n}, Warning: {n} |
 
 ---
 
