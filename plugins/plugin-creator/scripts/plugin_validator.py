@@ -275,6 +275,7 @@ class ErrorCode(StrEnum):
     SK006 = "SK006"  # Token count exceeds TOKEN_WARNING_THRESHOLD
     SK007 = "SK007"  # Token count exceeds TOKEN_ERROR_THRESHOLD (must split)
     SK008 = "SK008"  # Skill directory name violates naming convention
+    SK009 = "SK009"  # Plugin uses manual skill selection (overrides auto-discovery)
 
     # Link (LK001-LK002)
     LK001 = "LK001"  # Broken internal link (file does not exist)
@@ -333,7 +334,7 @@ FM001, FM002, FM003, FM004, FM005, FM006, FM007, FM008, FM009, FM010 = (
     ErrorCode.FM009,
     ErrorCode.FM010,
 )
-SK001, SK002, SK003, SK004, SK005, SK006, SK007, SK008 = (
+SK001, SK002, SK003, SK004, SK005, SK006, SK007, SK008, SK009 = (
     ErrorCode.SK001,
     ErrorCode.SK002,
     ErrorCode.SK003,
@@ -342,6 +343,7 @@ SK001, SK002, SK003, SK004, SK005, SK006, SK007, SK008 = (
     ErrorCode.SK006,
     ErrorCode.SK007,
     ErrorCode.SK008,
+    ErrorCode.SK009,
 )
 LK001, LK002 = ErrorCode.LK001, ErrorCode.LK002
 PD001, PD002, PD003 = ErrorCode.PD001, ErrorCode.PD002, ErrorCode.PD003
@@ -3178,6 +3180,26 @@ class PluginRegistrationValidator:
             for ref in registered_commands
             if (plugin_dir / ref).is_dir() and (plugin_dir / ref / "SKILL.md").exists()
         )
+
+        # SK009 — manual skill selection mode (informational)
+        if "skills" in plugin_config:
+            info.append(
+                ValidationIssue(
+                    field="plugin.json",
+                    severity="info",
+                    message=(
+                        "Plugin uses manual skill selection — new skills added to skills/ "
+                        "will not be auto-loaded. Add them to the skills array manually."
+                    ),
+                    code=SK009,
+                    docs_url=generate_docs_url(SK009),
+                    suggestion=(
+                        "To switch to auto-discovery mode, remove the 'skills' field from "
+                        "plugin.json. Claude Code will discover all skills under ./skills/ "
+                        "automatically."
+                    ),
+                )
+            )
 
         # Metadata checks (informational)
         git_metadata = _generate_plugin_metadata(plugin_dir)

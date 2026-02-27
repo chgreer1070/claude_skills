@@ -941,8 +941,57 @@ def _normalize_skill_ref(ref: str) -> str:
     return ref
 
 
+def _reconcile_stale_only(
+    data: dict[str, list[str] | str], field_name: str, disk_items: list[str], plugin_name: str, *, dry_run: bool
+) -> bool:
+    """Remove stale entries from a component array without adding new ones.
+
+    Used in Mode B (explicit field present): the user manages the allowlist
+    manually.  New skills added to disk are NOT auto-included; only entries
+    that no longer exist on disk are removed to keep the manifest clean.
+
+    Args:
+        data: Plugin.json data dictionary (mutated in place unless dry_run)
+        field_name: Array field name (``skills``, ``agents``, ``commands``)
+        disk_items: All items discovered on disk (used to detect stale entries)
+        plugin_name: Plugin name for logging
+        dry_run: If True, only report
+
+    Returns:
+        True if any stale entries were found (or would be removed in dry_run)
+    """
+    raw = data.get(field_name, [])
+    registered = list(raw) if isinstance(raw, list) else [raw] if isinstance(raw, str) else []
+    if not registered:
+        return False
+
+    normalize = field_name == "skills"
+    stale = _find_stale_items(registered, disk_items, normalize=normalize)
+
+    if not stale:
+        return False
+
+    _apply_drift_changes(data, field_name, [], stale, plugin_name, dry_run=dry_run)
+    return True
+
+
 def _reconcile_one_plugin(plugin_name: str, plugins_root: Path, *, dry_run: bool) -> bool:
     """Reconcile a single plugin's plugin.json against its directory contents.
+
+    Two modes based on whether ``plugin.json`` has an explicit ``skills`` field:
+
+    **Mode A — Auto-discovery (no ``skills`` field)**
+        The ``skills/`` directory is auto-discovered by Claude Code.  Skills
+        reconciliation is skipped entirely — absent registration is correct, not
+        drift.  The same applies to the ``commands`` field for standard-path
+        invocable skills.
+
+    **Mode B — Manual selection (explicit ``skills`` field present)**
+        The explicit list acts as an allowlist.  New skills added to disk are
+        NOT auto-included; the user must add them manually.  Only entries that
+        no longer exist on disk are removed to keep the manifest clean.
+
+    The same Mode A / Mode B logic applies to the ``commands`` field.
 
     Args:
         plugin_name: Name of the plugin
@@ -966,26 +1015,30 @@ def _reconcile_one_plugin(plugin_name: str, plugins_root: Path, *, dry_run: bool
     disk_commands = _discover_commands(plugin_dir)
     invocable_skills = _discover_invocable_skills(plugin_dir)
 
-    # Standard-path skills (under ./skills/) are auto-discovered by Claude Code.
-    # Reconciling them against the skills or commands arrays treats absence of
-    # explicit registration as drift, which is incorrect.  Filter them out so
-    # that only non-standard-path skills are subject to reconciliation.
-    non_standard_skills = [s for s in disk_skills if not s.startswith("./skills/")]
-    non_standard_invocable = [s for s in invocable_skills if not s.startswith("./skills/")]
-
-    # Commands include only commands/ files and non-standard-path invocable skills
-    disk_commands_full = disk_commands + non_standard_invocable
+    # All invocable skills (both standard-path and non-standard) discovered on
+    # disk, combined with commands/ files, form the full commands authority set.
+    disk_commands_full = disk_commands + invocable_skills
 
     has_drift = False
 
-    # Reconcile skills (standard-path skills excluded — auto-discovered)
-    has_drift |= _reconcile_component_array(data, "skills", non_standard_skills, plugin_name, dry_run=dry_run)
+    # --- Skills reconciliation ---
+    if "skills" not in data:
+        # Mode A: auto-discovery is in effect — skip entirely, no drift to report.
+        pass
+    else:
+        # Mode B: explicit allowlist — only remove stale entries, never add new ones.
+        has_drift |= _reconcile_stale_only(data, "skills", disk_skills, plugin_name, dry_run=dry_run)
 
-    # Reconcile agents
+    # --- Agents reconciliation (agents always require explicit registration) ---
     has_drift |= _reconcile_component_array(data, "agents", disk_agents, plugin_name, dry_run=dry_run)
 
-    # Reconcile commands (standard-path invocable skills excluded — auto-discovered)
-    has_drift |= _reconcile_component_array(data, "commands", disk_commands_full, plugin_name, dry_run=dry_run)
+    # --- Commands reconciliation ---
+    if "commands" not in data:
+        # Mode A: auto-discovery is in effect — skip entirely, no drift to report.
+        pass
+    else:
+        # Mode B: explicit allowlist — only remove stale entries, never add new ones.
+        has_drift |= _reconcile_stale_only(data, "commands", disk_commands_full, plugin_name, dry_run=dry_run)
 
     if has_drift and not dry_run:
         current_version = cast("str", data.get("version", "0.0.0"))

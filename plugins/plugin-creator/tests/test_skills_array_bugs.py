@@ -61,7 +61,12 @@ else:
     raise ImportError(msg)
 
 sys.path.insert(0, str(_SCRIPT_DIR))
-from plugin_validator import PluginRegistrationValidator
+from plugin_validator import (
+    PluginRegistrationValidator,
+    _filter_result_by_ignore,
+    _find_plugin_root,
+    _load_ignore_config,
+)
 
 # ---------------------------------------------------------------------------
 # Shared fixture helpers
@@ -511,3 +516,387 @@ class TestPluginRegistrationValidatorDoesNotWarnAboutStandardPathSkills:
         # (No assertion that it fails — we just document that the warning fires.)
         all_issues = result.warnings + result.errors
         assert isinstance(all_issues, list)  # always true; documents the shape
+
+
+# ---------------------------------------------------------------------------
+# New behavior: Mode A (no skills field) — reconcile skips skills entirely
+# ---------------------------------------------------------------------------
+
+
+class TestReconcileModeASkipsSkillsReconciliation:
+    """Mode A: when plugin.json has no 'skills' field, reconcile must skip skills.
+
+    The 'skills/' directory is auto-discovered by Claude Code.  A plugin that
+    relies on auto-discovery has no 'skills' field in plugin.json.  Running
+    --reconcile on such a plugin must produce zero drift for skills and must
+    not add a 'skills' field.  This extends Bug 1 tests to the full Mode A
+    contract.
+    """
+
+    def test_reconcile_mode_a_no_skills_field_added(self, tmp_path: Path) -> None:
+        """Mode A plugin: reconcile must not add a skills field.
+
+        Tests: _reconcile_one_plugin with no 'skills' field in plugin.json
+        How:
+            1. Plugin has two standard-path skills; plugin.json has no 'skills' field.
+            2. Run _reconcile_one_plugin (dry_run=False).
+            3. Assert 'skills' field is still absent.
+        Why:
+            Mode A is the correct default.  Adding a 'skills' field would switch
+            the plugin into Mode B and override auto-discovery.
+        """
+        # Arrange
+        _plugin_root, plugin_json_path = _make_standard_plugin(tmp_path, skills=["skill-a", "skill-b"])
+        plugins_root = tmp_path / "plugins"
+        assert "skills" not in json.loads(plugin_json_path.read_text(encoding="utf-8"))
+
+        # Act
+        auto_sync._reconcile_one_plugin("demo-plugin", plugins_root, dry_run=False)
+
+        # Assert
+        result = json.loads(plugin_json_path.read_text(encoding="utf-8"))
+        assert "skills" not in result, (
+            "Mode A: reconcile added a 'skills' field to a plugin with no 'skills' field. "
+            "Standard-path skills are auto-discovered — the field must remain absent."
+        )
+
+    def test_reconcile_mode_a_no_drift_reported(self, tmp_path: Path) -> None:
+        """Mode A plugin: reconcile must report no drift (return False).
+
+        Tests: _reconcile_one_plugin return value for Mode A plugin
+        How:
+            1. Plugin has standard-path skills; plugin.json has no 'skills' field.
+            2. Run _reconcile_one_plugin (dry_run=True).
+            3. Assert return value is False.
+        Why:
+            Reporting drift for a correctly configured auto-discovery plugin would
+            cause false CI failures and unnecessary version bumps.
+        """
+        # Arrange
+        _plugin_root, _plugin_json_path = _make_standard_plugin(tmp_path, skills=["alpha"])
+        plugins_root = tmp_path / "plugins"
+
+        # Act
+        has_drift = auto_sync._reconcile_one_plugin("demo-plugin", plugins_root, dry_run=True)
+
+        # Assert
+        assert has_drift is False, (
+            "Mode A: reconcile reported drift for a plugin with no 'skills' field. "
+            "Auto-discovery plugins must not be flagged as drifting."
+        )
+
+    def test_reconcile_mode_a_no_commands_field_added(self, tmp_path: Path) -> None:
+        """Mode A plugin: reconcile must not add a commands field for invocable skills.
+
+        Tests: _reconcile_one_plugin commands handling for Mode A
+        How:
+            1. Plugin has a user-invocable skill at standard path; plugin.json
+               has no 'commands' field.
+            2. Run _reconcile_one_plugin (dry_run=False).
+            3. Assert 'commands' field is still absent.
+        Why:
+            Standard-path user-invocable skills appear as slash commands
+            automatically.  Adding them to 'commands' is unnecessary and
+            creates duplicate registrations.
+        """
+        # Arrange
+        _plugin_root, plugin_json_path = _make_standard_plugin(tmp_path, skills=["invocable-skill"])
+        plugins_root = tmp_path / "plugins"
+        assert "commands" not in json.loads(plugin_json_path.read_text(encoding="utf-8"))
+
+        # Act
+        auto_sync._reconcile_one_plugin("demo-plugin", plugins_root, dry_run=False)
+
+        # Assert
+        result = json.loads(plugin_json_path.read_text(encoding="utf-8"))
+        assert "commands" not in result, (
+            "Mode A: reconcile added a 'commands' field for a standard-path invocable skill. "
+            "Auto-discovered invocable skills must not be explicitly registered in commands."
+        )
+
+
+# ---------------------------------------------------------------------------
+# New behavior: Mode B (explicit skills field) — reconcile only removes stale
+# ---------------------------------------------------------------------------
+
+
+def _make_mode_b_plugin(tmp_path: Path, registered_skills: list[str], disk_skills: list[str]) -> tuple[Path, Path]:
+    """Create a Mode B plugin with an explicit skills array in plugin.json.
+
+    Args:
+        tmp_path: Pytest temporary directory.
+        registered_skills: Skill names listed in plugin.json 'skills' array.
+        disk_skills: Skill names that actually exist under skills/.
+
+    Returns:
+        Tuple of (plugin_root, plugin_json_path).
+    """
+    plugin_root = tmp_path / "plugins" / "mode-b-plugin"
+    plugin_root.mkdir(parents=True)
+
+    # Create on-disk skills
+    for skill_name in disk_skills:
+        skill_dir = plugin_root / "skills" / skill_name
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text(
+            f"---\nname: {skill_name}\ndescription: {skill_name} description\nuser-invocable: true\n---\n\n# {skill_name}\n",
+            encoding="utf-8",
+        )
+
+    # plugin.json with explicit skills array (Mode B)
+    plugin_json_dir = plugin_root / ".claude-plugin"
+    plugin_json_dir.mkdir(parents=True)
+    plugin_json_path = plugin_json_dir / "plugin.json"
+    manifest = {"name": "mode-b-plugin", "version": "1.0.0", "skills": [f"./skills/{s}" for s in registered_skills]}
+    plugin_json_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    return plugin_root, plugin_json_path
+
+
+class TestReconcileModeBOnlyRemovesDeletedSkills:
+    """Mode B: when plugin.json has an explicit 'skills' field, reconcile must
+    only remove entries for skills that no longer exist on disk.
+
+    New skills added to disk must NOT be auto-included.  The user manages the
+    allowlist manually.  Only stale entries (registered but deleted from disk)
+    must be cleaned up automatically.
+    """
+
+    def test_reconcile_mode_b_removes_stale_skill_entry(self, tmp_path: Path) -> None:
+        """Mode B: reconcile removes a registered skill that no longer exists on disk.
+
+        Tests: _reconcile_one_plugin with explicit skills field and a deleted skill
+        How:
+            1. plugin.json registers ['skill-a', 'skill-b'] in the skills array.
+            2. Only skill-a exists on disk (skill-b was deleted).
+            3. Run _reconcile_one_plugin (dry_run=False).
+            4. Assert skill-b is removed from the skills array.
+            5. Assert skill-a remains in the skills array.
+        Why:
+            Stale entries in the explicit list point to non-existent directories
+            and will cause PR002 validation errors.  Mode B cleanup must remove them.
+        """
+        # Arrange
+        _plugin_root, plugin_json_path = _make_mode_b_plugin(
+            tmp_path,
+            registered_skills=["skill-a", "skill-b"],
+            disk_skills=["skill-a"],  # skill-b deleted from disk
+        )
+        plugins_root = tmp_path / "plugins"
+
+        # Act
+        auto_sync._reconcile_one_plugin("mode-b-plugin", plugins_root, dry_run=False)
+
+        # Assert
+        result = json.loads(plugin_json_path.read_text(encoding="utf-8"))
+        skills = result.get("skills", [])
+        assert "./skills/skill-b" not in skills, (
+            "Mode B: reconcile did not remove the stale entry './skills/skill-b' "
+            "from the skills array.  Deleted skills must be cleaned up."
+        )
+        assert "./skills/skill-a" in skills, (
+            "Mode B: reconcile removed './skills/skill-a' which still exists on disk. "
+            "Only stale (deleted) skills must be removed."
+        )
+
+    def test_reconcile_mode_b_does_not_add_new_disk_skill(self, tmp_path: Path) -> None:
+        """Mode B: reconcile must not add a new disk skill to the explicit array.
+
+        Tests: _reconcile_one_plugin with explicit skills field and a new disk skill
+        How:
+            1. plugin.json registers ['registered-skill'] in the skills array.
+            2. Disk has both 'registered-skill' and 'new-skill' (new-skill not in array).
+            3. Run _reconcile_one_plugin (dry_run=False).
+            4. Assert 'new-skill' is NOT added to the skills array.
+            5. Assert 'registered-skill' remains in the array.
+        Why:
+            Mode B uses the explicit list as an allowlist.  New skills added to
+            disk must be added manually by the user — auto-adding them would
+            bypass the intent of the allowlist.
+        """
+        # Arrange
+        _plugin_root, plugin_json_path = _make_mode_b_plugin(
+            tmp_path,
+            registered_skills=["registered-skill"],
+            disk_skills=["registered-skill", "new-skill"],  # new-skill added to disk
+        )
+        plugins_root = tmp_path / "plugins"
+
+        # Act
+        auto_sync._reconcile_one_plugin("mode-b-plugin", plugins_root, dry_run=False)
+
+        # Assert
+        result = json.loads(plugin_json_path.read_text(encoding="utf-8"))
+        skills = result.get("skills", [])
+        assert "./skills/new-skill" not in skills, (
+            "Mode B: reconcile auto-added './skills/new-skill' to the skills array. "
+            "In manual selection mode, new disk skills must NOT be auto-added."
+        )
+        assert "./skills/registered-skill" in skills, (
+            "Mode B: reconcile removed './skills/registered-skill' which is still "
+            "registered and exists on disk.  It must be preserved."
+        )
+
+    def test_reconcile_mode_b_no_drift_when_no_stale_entries(self, tmp_path: Path) -> None:
+        """Mode B: reconcile reports no drift when all registered skills still exist.
+
+        Tests: _reconcile_one_plugin return value when no stale entries
+        How:
+            1. plugin.json registers ['skill-a'] and skill-a exists on disk.
+            2. A second skill 'skill-b' exists on disk but is not registered.
+            3. Run _reconcile_one_plugin (dry_run=True).
+            4. Assert return value is False.
+        Why:
+            A new disk skill that is not registered is not drift — the user
+            simply hasn't added it yet.  No drift must be reported for it.
+        """
+        # Arrange
+        _plugin_root, _plugin_json_path = _make_mode_b_plugin(
+            tmp_path,
+            registered_skills=["skill-a"],
+            disk_skills=["skill-a", "skill-b"],  # skill-b on disk but not registered
+        )
+        plugins_root = tmp_path / "plugins"
+
+        # Act
+        has_drift = auto_sync._reconcile_one_plugin("mode-b-plugin", plugins_root, dry_run=True)
+
+        # Assert
+        assert has_drift is False, (
+            "Mode B: reconcile reported drift when a new unregistered disk skill was present. "
+            "Unregistered disk skills must not be treated as drift in manual selection mode."
+        )
+
+
+# ---------------------------------------------------------------------------
+# SK009 — manual skill selection mode info rule
+# ---------------------------------------------------------------------------
+
+
+class TestSK009ManualSkillSelectionInfo:
+    """SK009 fires as INFO when plugin.json has an explicit 'skills' field.
+
+    This rule informs users that their plugin is in manual selection mode,
+    meaning new skills added to disk will not be auto-loaded.
+    """
+
+    def _make_plugin_with_explicit_skills(self, tmp_path: Path, skills: list[str]) -> Path:
+        """Create a plugin with an explicit skills array in plugin.json.
+
+        Args:
+            tmp_path: Pytest temp directory.
+            skills: Skill names to register in the explicit array.
+
+        Returns:
+            Plugin root directory.
+        """
+        plugin_root = tmp_path / "explicit-plugin"
+        plugin_root.mkdir(parents=True)
+
+        for skill_name in skills:
+            skill_dir = plugin_root / "skills" / skill_name
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "SKILL.md").write_text(
+                f"---\nname: {skill_name}\ndescription: {skill_name}\n---\n\n# {skill_name}\n", encoding="utf-8"
+            )
+
+        claude_plugin = plugin_root / ".claude-plugin"
+        claude_plugin.mkdir(parents=True)
+        manifest = {"name": "explicit-plugin", "version": "1.0.0", "skills": [f"./skills/{s}" for s in skills]}
+        (claude_plugin / "plugin.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+        return plugin_root
+
+    def test_sk009_fires_for_plugin_with_explicit_skills_field(self, tmp_path: Path) -> None:
+        """SK009 must fire as INFO when plugin.json has an explicit 'skills' field.
+
+        Tests: PluginRegistrationValidator.validate SK009 rule
+        How:
+            1. Create a plugin with an explicit 'skills' array in plugin.json.
+            2. Run PluginRegistrationValidator.validate().
+            3. Assert an INFO issue with code SK009 is present.
+        Why:
+            Users and AI agents should be informed that the plugin is in manual
+            selection mode so they know to add new skills manually.
+        """
+        # Arrange
+        plugin_root = self._make_plugin_with_explicit_skills(tmp_path, skills=["my-skill"])
+        validator = PluginRegistrationValidator()
+
+        # Act
+        result = validator.validate(plugin_root)
+
+        # Assert
+        sk009_issues = [i for i in result.info if str(i.code) == "SK009"]
+        assert len(sk009_issues) == 1, (
+            f"Expected exactly one SK009 info issue, got {len(sk009_issues)}. "
+            "SK009 must fire when plugin.json has an explicit 'skills' field."
+        )
+        assert sk009_issues[0].severity == "info", f"SK009 must have severity 'info', got '{sk009_issues[0].severity}'."
+        assert "manual skill selection" in sk009_issues[0].message.lower(), (
+            f"SK009 message should mention manual skill selection. Got: '{sk009_issues[0].message}'"
+        )
+
+    def test_sk009_does_not_fire_for_plugin_without_skills_field(self, tmp_path: Path) -> None:
+        """SK009 must NOT fire when plugin.json has no 'skills' field (Mode A).
+
+        Tests: PluginRegistrationValidator.validate SK009 negative case
+        How:
+            1. Create a plugin with NO 'skills' field in plugin.json (Mode A).
+            2. Run PluginRegistrationValidator.validate().
+            3. Assert no SK009 info issue is present.
+        Why:
+            Mode A (auto-discovery) is the default correct state.  SK009 is
+            only informational for plugins that have opted into manual selection.
+        """
+        # Arrange
+        plugin_root, _plugin_json_path = _make_standard_plugin(tmp_path, skills=["auto-skill"])
+        validator = PluginRegistrationValidator()
+
+        # Act
+        result = validator.validate(plugin_root)
+
+        # Assert
+        sk009_issues = [i for i in result.info if str(i.code) == "SK009"]
+        assert len(sk009_issues) == 0, (
+            f"SK009 must not fire for a plugin without an explicit 'skills' field. "
+            f"Got {len(sk009_issues)} SK009 issue(s)."
+        )
+
+    def test_sk009_can_be_suppressed_via_validator_json(self, tmp_path: Path) -> None:
+        """SK009 must be suppressible via .claude-plugin/validator.json.
+
+        Tests: suppression mechanism applied to SK009
+        How:
+            1. Create a plugin with an explicit 'skills' field (triggers SK009).
+            2. Create .claude-plugin/validator.json suppressing SK009 at plugin root.
+            3. Load the ignore config and apply the filter.
+            4. Assert no SK009 issue in the filtered result.
+        Why:
+            All validator rules must be suppressible via the standard mechanism.
+            Teams that explicitly want manual selection should be able to silence
+            the informational reminder.
+        """
+        # Arrange
+        plugin_root = self._make_plugin_with_explicit_skills(tmp_path, skills=["my-skill"])
+
+        # Write validator.json suppressing SK009 at the plugin root level
+        validator_json_path = plugin_root / ".claude-plugin" / "validator.json"
+        validator_json_path.write_text(json.dumps({"ignore": {".": ["SK009"]}}), encoding="utf-8")
+
+        validator = PluginRegistrationValidator()
+
+        # Act
+        result = validator.validate(plugin_root)
+
+        # Apply suppression filter (mirrors what validate_path does at the top level)
+        plugin_root_found = _find_plugin_root(plugin_root)
+        assert plugin_root_found is not None, "Plugin root must be found for suppression test"
+        ignore_config = _load_ignore_config(plugin_root_found)
+        filtered = _filter_result_by_ignore(result, plugin_root, plugin_root_found, ignore_config)
+
+        # Assert
+        sk009_issues = [i for i in filtered.info if str(i.code) == "SK009"]
+        assert len(sk009_issues) == 0, (
+            f"SK009 was not suppressed by validator.json. Got {len(sk009_issues)} SK009 issue(s) after filtering."
+        )
