@@ -226,8 +226,8 @@ MIT License - see individual plugins for specifics.
 ## Marketplace Info
 
 **Marketplace Name**: `jamie-bitflight-skills`
-**Owner**: Jamie BitFlight (<jamie@bitflight.io>)
-**Version**: 2.0.0
-**Plugin Count**: 25 plugins (12 full-featured systems, 13 lightweight clip-ins)
+**Owner**: Jamie Nelson (Jamie-BitFlight on github) <jamie@bitflight.io>
+**Version**: 4.0.8
+**Plugin Count**: 26 plugins
 
 This marketplace provides professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Includes comprehensive frameworks for Python 3.11+, Bash 5.1+, and Perl 5.30+ development with TDD workflows, specialized agents, and automated quality enforcement. Also covers GitLab CI/CD automation, commit message standards, LLM integration patterns, MCP server creation, session transcript analysis, structured data querying, documentation workflow routing, and Claude behavior improvements for hallucination prevention and systematic problem-solving.
