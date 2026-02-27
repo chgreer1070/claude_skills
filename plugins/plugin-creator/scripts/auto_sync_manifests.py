@@ -403,6 +403,51 @@ def _format_json(data: object) -> str:
         Path(tmp_path).unlink(missing_ok=True)
 
 
+def _is_standard_path_skill(field_name: str, comp_path: str) -> bool:
+    """Return True when the component is an auto-discovered standard-path skill.
+
+    The ``skills/`` directory at the plugin root is auto-discovered by Claude
+    Code; explicit ``skills`` array entries are unnecessary for directory paths
+    that start with ``skills/``.  File paths (ending in ``/SKILL.md``) are not
+    subject to this rule because they are explicit file references, not the
+    directory-level auto-discovery path.
+
+    Args:
+        field_name: The plugin.json array field being updated (``skills``, etc.)
+        comp_path: Component path relative to the plugin root (without ``./``).
+            Production pre-commit detection always emits directory form
+            (e.g. ``skills/my-skill``), never file form
+            (e.g. ``skills/my-skill/SKILL.md``).
+
+    Returns:
+        True if the component should be skipped for array registration.
+    """
+    return field_name == "skills" and comp_path.startswith("skills/") and not comp_path.endswith("/SKILL.md")
+
+
+def _remove_component_from_array(data: dict[str, list[str] | str], field_name: str, comp_path: str) -> bool:
+    """Remove a component path from a plugin.json array field.
+
+    Args:
+        data: Plugin.json data dictionary (mutated in place).
+        field_name: Array field name (``skills``, ``agents``, ``commands``).
+        comp_path: Component path relative to plugin root (without ``./``).
+
+    Returns:
+        True if an entry was removed.
+    """
+    if field_name not in data:
+        return False
+    field_value = data[field_name]
+    if not isinstance(field_value, list):
+        return False
+    relative_path = f"./{comp_path}"
+    if relative_path not in field_value:
+        return False
+    field_value.remove(relative_path)
+    return True
+
+
 def _update_component_arrays(data: dict[str, list[str] | str], changes: ComponentChanges) -> bool:
     """Update component arrays in plugin.json.
 
@@ -415,46 +460,40 @@ def _update_component_arrays(data: dict[str, list[str] | str], changes: Componen
     """
     modified = False
 
-    # Add new components
     for component in changes["added"]:
         comp_type = component["component_type"]
         comp_path = component["component_path"]
 
-        if comp_type in {"skill", "agent", "command"}:
-            field_name = f"{comp_type}s"
+        if comp_type not in {"skill", "agent", "command"}:
+            continue
 
-            if field_name not in data:
-                data[field_name] = []
+        field_name = f"{comp_type}s"
 
-            # Normalize path to start with ./
-            relative_path = f"./{comp_path}"
+        # Standard-path skills are auto-discovered; skip explicit registration.
+        if _is_standard_path_skill(field_name, comp_path):
+            continue
 
-            field_value = data[field_name]
-            if isinstance(field_value, list):
-                if relative_path not in field_value:
-                    field_value.append(relative_path)
-                    modified = True
-            elif isinstance(field_value, str):
-                # Convert string to array
-                data[field_name] = [field_value, relative_path]
+        relative_path = f"./{comp_path}"
+
+        if field_name not in data:
+            data[field_name] = []
+
+        field_value = data[field_name]
+        if isinstance(field_value, list):
+            if relative_path not in field_value:
+                field_value.append(relative_path)
                 modified = True
+        elif isinstance(field_value, str):
+            data[field_name] = [field_value, relative_path]
+            modified = True
 
-    # Remove deleted components
     for component in changes["deleted"]:
         comp_type = component["component_type"]
         comp_path = component["component_path"]
 
         if comp_type in {"skill", "agent", "command"}:
             field_name = f"{comp_type}s"
-
-            if field_name in data:
-                field_value = data[field_name]
-                if isinstance(field_value, list):
-                    relative_path = f"./{comp_path}"
-
-                    if relative_path in field_value:
-                        field_value.remove(relative_path)
-                        modified = True
+            modified |= _remove_component_from_array(data, field_name, comp_path)
 
     return modified
 
@@ -927,18 +966,25 @@ def _reconcile_one_plugin(plugin_name: str, plugins_root: Path, *, dry_run: bool
     disk_commands = _discover_commands(plugin_dir)
     invocable_skills = _discover_invocable_skills(plugin_dir)
 
-    # Commands include both commands/ files and user-invocable skills
-    disk_commands_full = disk_commands + invocable_skills
+    # Standard-path skills (under ./skills/) are auto-discovered by Claude Code.
+    # Reconciling them against the skills or commands arrays treats absence of
+    # explicit registration as drift, which is incorrect.  Filter them out so
+    # that only non-standard-path skills are subject to reconciliation.
+    non_standard_skills = [s for s in disk_skills if not s.startswith("./skills/")]
+    non_standard_invocable = [s for s in invocable_skills if not s.startswith("./skills/")]
+
+    # Commands include only commands/ files and non-standard-path invocable skills
+    disk_commands_full = disk_commands + non_standard_invocable
 
     has_drift = False
 
-    # Reconcile skills
-    has_drift |= _reconcile_component_array(data, "skills", disk_skills, plugin_name, dry_run=dry_run)
+    # Reconcile skills (standard-path skills excluded — auto-discovered)
+    has_drift |= _reconcile_component_array(data, "skills", non_standard_skills, plugin_name, dry_run=dry_run)
 
     # Reconcile agents
     has_drift |= _reconcile_component_array(data, "agents", disk_agents, plugin_name, dry_run=dry_run)
 
-    # Reconcile commands (includes user-invocable skills)
+    # Reconcile commands (standard-path invocable skills excluded — auto-discovered)
     has_drift |= _reconcile_component_array(data, "commands", disk_commands_full, plugin_name, dry_run=dry_run)
 
     if has_drift and not dry_run:

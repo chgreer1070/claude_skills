@@ -3080,6 +3080,13 @@ class PluginRegistrationValidator:
         registered_agents = _parse_registered_paths(plugin_config, plugin_dir, "agents")
         registered_commands = _parse_registered_paths(plugin_config, plugin_dir, "commands")
 
+        # When plugin.json has no ``skills`` field at all, the plugin relies
+        # entirely on Claude Code's auto-discovery of the ./skills/ directory.
+        # Standard-path skills (under ./skills/) are auto-discovered and need
+        # no explicit registration — suppress PR001 for them in this case.
+        # When an explicit ``skills`` array is present (even if empty), the
+        # plugin has opted into explicit registration and unregistered
+        # standard-path skills should still be flagged.
         warnings.extend(
             ValidationIssue(
                 field="plugin.json",
@@ -3090,6 +3097,7 @@ class PluginRegistrationValidator:
                 suggestion=f"Add './{orphan}' to the skills array in plugin.json",
             )
             for orphan in actual_skills - registered_skills
+            if "skills" in plugin_config or not str(orphan).startswith("skills/")
         )
 
         warnings.extend(

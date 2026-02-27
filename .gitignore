@@ -48,3 +48,6 @@ package-lock.json
 .claude/worktrees/
 .claude/agent-memory
 .claude/agents/tests/
+
+# LevelDB stores
+*.db/
