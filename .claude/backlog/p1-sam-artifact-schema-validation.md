@@ -5,10 +5,11 @@ metadata:
   topic: sam-artifact-schema-validation
   source: Gap analysis of SAM framework
   added: '2026-02-01'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#202'
+  plan: N/A
 ---
 
 **Suggested location**: [`sam-artifact-schemas/`](https://github.com/bitflight-devops/stateless-agent-methodology) (new directory with schema files)

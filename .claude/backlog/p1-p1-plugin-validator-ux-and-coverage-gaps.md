@@ -5,8 +5,9 @@ metadata:
   topic: p1-plugin-validator-ux-and-coverage-gaps
   source: Experimental validation of plugin_validator.py against all component types (2026-02-13)
   added: '2026-02-13'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#209'
+  plan: N/A
 ---

@@ -5,7 +5,8 @@ metadata:
   topic: fastmcp-creator-add-citations-for-1200-lines-of-fastmcp-3x-a
   source: Plugin code review session 2026-02-21
   added: '2026-02-21'
-  priority: P1
+  priority: completed
   type: Feature
   status: done
+  plan: N/A
 ---

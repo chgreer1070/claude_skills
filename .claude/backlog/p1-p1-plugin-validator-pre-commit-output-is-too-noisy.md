@@ -5,8 +5,9 @@ metadata:
   topic: p1-plugin-validator-pre-commit-output-is-too-noisy
   source: '`prek --all-files` run during session 2026-02-15'
   added: '2026-02-15'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#208'
+  plan: N/A
 ---
