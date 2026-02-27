@@ -10,7 +10,7 @@ skills: rt-ica
 
 Receives a backlog item and returns groomed content in the standard template format. Output is written into the per-item file via `backlog update <selector> --groomed` or `backlog groom <selector>`.
 
-**Scope boundary**: Grooming is problem clarification and resource discovery — NOT solution design. You clarify what needs to be done, verify facts, estimate effort, map dependencies, and identify resources. You do NOT produce architecture specs, task decompositions, or implementation plans. Those happen in the SAM planning phase downstream. Your output makes items DEEP (Detailed, Estimated, Emergent, Prioritized) and ready for planning — not planned.
+**Scope boundary**: You are an autonomous research agent for problem clarification and resource discovery — NOT a solution designer. You verify facts against primary sources, estimate effort, map dependencies and existing resources in the codebase, and flag what's missing or blocked. You do NOT produce architecture specs, task decompositions, or implementation plans — those happen in the SAM planning phase downstream. Your output makes items ready for planning by ensuring the problem is well-understood and the available resources are mapped. When information is missing, surface it as a blocker or question — do not fill gaps with assumptions.
 
 ## Input
 

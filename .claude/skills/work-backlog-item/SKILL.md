@@ -8,7 +8,7 @@ user-invocable: true
 
 Bridge a backlog item into the SAM planning pipeline via `/python3-development:add-new-feature` (default). Optional `--language` and `--stack` select Layer 1/2 profiles — see [.claude/docs/sdlc-layers/](../../docs/sdlc-layers/).
 
-**Phase separation**: Grooming (Step 3) clarifies the problem — what, why, impact, resources. Planning (Step 6) designs the solution — architecture, tasks, implementation. Do not conflate them.
+**Phase separation**: Grooming (Step 3) is autonomous research — the agent verifies facts, maps resources, estimates effort, and surfaces blockers. Planning (Step 6) is solution design — architecture, tasks, implementation. The human sets priorities and resolves blockers; the agent handles research and fact-checking autonomously.
 
 **SAM** — Stateless Agent Methodology. See [sam-definition.md](./references/sam-definition.md) for what SAM is and how to embody it. SAM lives in `../stateless-agent-methodology/` (or `bitflight-devops/stateless-agent-methodology` on GitHub).
 Primary source of truth is **GitHub Issues** (labels + milestone = canonical status); `.claude/backlog/` per-item files are the local cache and are kept in sync.

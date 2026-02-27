@@ -6,9 +6,9 @@ user-invocable: true
 ---
 # Groom Backlog Item
 
-Orchestrate backlog grooming (refinement): clarify, estimate, prioritize, and clean backlog items so they are ready for sprint planning — but do NOT design or architect solutions.
+Orchestrate autonomous backlog refinement: verify claims, clarify scope, estimate effort, map resources and dependencies, and clean stale items — making each item ready for the planning phase.
 
-**Scope boundary**: Grooming answers "what needs to be done, is the problem clear, and what resources exist?" It does NOT answer "how should it be built." Architecture, task decomposition, and implementation design happen in the SAM planning phase (`/work-backlog-item` Step 6). Grooming produces a DEEP item (Detailed, Estimated, Emergent, Prioritized) — not a plan.
+**Scope boundary**: Grooming answers "what needs to be done, is the problem clear, and what do we have to work with?" It does NOT answer "how should it be built." Architecture, task decomposition, and implementation design happen in the SAM planning phase (`/work-backlog-item` Step 6). Grooming produces a DEEP item (Detailed appropriately, Estimated, Emergent, Prioritized) — not a plan. The human provides direction and priorities; the agent does the research, fact-checking, and resource mapping autonomously.
 
 ## Arguments
 
