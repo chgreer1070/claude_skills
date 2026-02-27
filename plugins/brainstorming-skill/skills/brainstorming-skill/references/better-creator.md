@@ -474,11 +474,3 @@ From BetterCreator's approach:
 4. **Constraint-Based Creativity**: Specific constraints (SCAMPER operations, hat perspectives) unlock creative thinking
 5. **Context Matters**: Providing complete context to ChatGPT significantly improves output relevance
 
----
-
-## See Also
-
-- SCAMPER Method for content format innovation
-- Six Thinking Hats for stakeholder-inclusive decision making
-- Mind Mapping for visual content organization
-- SWOT Analysis for competitive positioning
