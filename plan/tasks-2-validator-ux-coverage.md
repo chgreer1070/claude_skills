@@ -2,7 +2,7 @@
 feature: plugin-validator UX and coverage gaps
 status: complete
 created: 2026-02-14
-source: .claude/BACKLOG.md (P1)
+source: .claude/backlog/p2-add-pr003pr004-test-coverage-to-plugin-registration-validato.md
 target-file: ./plugins/plugin-creator/scripts/plugin_validator.py
 test-dir: ./plugins/plugin-creator/tests/
 pre-existing-failures: 18

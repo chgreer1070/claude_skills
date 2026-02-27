@@ -4,7 +4,7 @@
 
 - **Generated**: 2026-02-23
 - **Input Type**: simple_description (backlog item)
-- **Source**: Plugin code review session 2026-02-21, BACKLOG.md
+- **Source**: Plugin code review session 2026-02-21, .claude/backlog/p2-conventional-commits-fix-changelog-references-to-nonexistent.md
 - **Status**: DISCOVERY_COMPLETE
 
 ---
