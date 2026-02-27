@@ -173,10 +173,10 @@ Proceed to Step 2.7 (Set In-Progress Label) with the assembled item, then contin
 
 Run `uv run .claude/skills/backlog/scripts/backlog.py list --format json` and search the `title` field of each entry for a case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
 
-**AUTO_MODE with no title (`$1` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items whose H3 heading contains ~~strikethrough~~, or whose body contains a `**Completed**:` line or `**Status**: DONE`.
+**AUTO_MODE with no title (`$1` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items with `status: done` or `status: resolved` in their JSON entry (these are filtered out by `backlog.py list` already).
 
 - **Zero matches (interactive mode):** report "No backlog item found matching: {title}" and offer to create one via `/create-backlog-item`.
-- **Zero matches (AUTO_MODE):** log `[AUTO] No item found — invoking create-backlog-item --auto {title}`, invoke `Skill(command: "create-backlog-item", args: "--auto {title}")`, then re-run Step 1.
+- **Zero matches (AUTO_MODE):** log `[AUTO] No item found — invoking create-backlog-item --auto {title}`, invoke `Skill(skill: "create-backlog-item", args: "--auto {title}")`, then re-run Step 1.
 - **Multiple matches (interactive mode):** list all matches and ask the user to pick one.
 - **Multiple matches (AUTO_MODE):** log `[AUTO] Multiple matches — picking first: {title}`, proceed with first match.
 
@@ -208,13 +208,13 @@ After extracting fields, proceed to Step 2.5 (GitHub Issue Sync) before continui
 
 <groom_check>
 
-1. **Check if item is groomed**: For index format, read the per-item file (from `file_path` in list JSON, or locate via `{priority}-{slug}.md` in `.claude/backlog/`). If the file has `groomed` in frontmatter or `## Groomed` section in body, the item is groomed — use that content.
+1. **Check if item is groomed**: Check the `groomed` field in the JSON output. If `true`, read the per-item file at `file_path` for the groomed content under `## Groomed`. Use that content.
 2. Search conversation context for a recent `groom-backlog-item` output matching this item.
 
 If no groomed content exists in the item file:
 
 ```text
-Skill(command: "groom-backlog-item", args: "{item title}")
+Skill(skill: "groom-backlog-item", args: "{item title}")
 ```
 
 The groom skill writes groomed content into the per-item file. Capture the groomed output (Reproducibility, Resources, Dependencies, Blockers, etc.) for use in the feature request.
@@ -295,7 +295,7 @@ Build the feature request string for `add-new-feature`. If `--stack` was specifi
 ### Step 6: Invoke SAM Planning
 
 ```text
-Skill(command: "python3-development:add-new-feature", args: "{composed feature request}")
+Skill(skill: "python3-development:add-new-feature", args: "{composed feature request}")
 ```
 
 This runs the full SAM workflow: discovery, codebase analysis, architecture spec, task decomposition, validation, context manifest.
