@@ -266,6 +266,8 @@ flowchart TD
 
 **Suggested integration**: Add to **Layer 0 process** — bridge from BACKLOG.md to SAM planning. Arguments: `#N`, `--auto`, `close`, `resolve`, `setup-github`. Stops if item has existing Plan or RT-ICA returns BLOCKED.
 
+> **NOTE (2026-02-27)**: BACKLOG.md was removed. Backlog items now live in `.claude/backlog/` per-item files; GitHub Issues are the source of truth.
+
 **Amendment**: Plan should document the workflow: find item → fact-check → RT-ICA → groom → SAM planning → BACKLOG.md update. GitHub Issue is canonical status when `**Issue**: #N` exists.
 
 ---

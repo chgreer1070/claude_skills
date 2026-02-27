@@ -22,7 +22,7 @@ After extracting item fields (Step 2), check for an existing linked issue:
    ```
 
    If yes, proceed to 2.5a.
-   If no, skip GitHub sync; BACKLOG.md remains the only record.
+   If no, skip GitHub sync; the per-item file remains the only local record.
 
 4. If not found AND priority is P2 or Ideas: do not prompt; skip GitHub sync silently.
 
@@ -36,7 +36,7 @@ Invoke the backlog script:
 uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --create-issue -R Jamie-BitFlight/claude_skills
 ```
 
-The script creates the issue and writes `**Issue**: #N` back to BACKLOG.md.
+The script creates the issue and writes `issue: '#N'` back to the per-item file frontmatter.
 
 ## Step 2.7: Set In-Progress Label
 
@@ -55,13 +55,13 @@ uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
 
 ## Step 9: Close — backlog script
 
-Invoke the backlog script (replaces direct BACKLOG write + gh issue close):
+Invoke the backlog script (updates per-item file + gh issue close):
 
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --plan "{plan path}" --checklist-pass -R Jamie-BitFlight/claude_skills
 ```
 
-The script writes the closing record to BACKLOG.md and closes the GitHub issue.
+The script updates the per-item file status and closes the GitHub issue.
 
 ## setup-github Command
 
@@ -141,7 +141,7 @@ Creating issue...
   Labels: priority:p1, type:bug, status:needs-grooming
 
 Created: #59 — https://github.com/Jamie-BitFlight/claude_skills/issues/59
-Updated BACKLOG.md: **Issue**: #59
+Updated per-item file: issue: '#59'
 
 Setting status:in-progress...
   ✓ Added status:in-progress, removed status:needs-grooming
@@ -151,7 +151,7 @@ Invoking /python3-development:add-new-feature...
 
 [SAM phases run]
 
-Updated BACKLOG.md with Plan: plan/tasks-3-clang-format-yaml.md
+Updated per-item file with Plan: plan/tasks-3-clang-format-yaml.md
 GitHub issue #59 — Plan added to issue body.
 
 Next steps:
@@ -186,13 +186,13 @@ GitHub setup complete.
 ## Field Mapping Reference
 
 ```text
-BACKLOG.md          →  GitHub Issue
-  Priority section  →  priority:* label
+.claude/backlog/    →  GitHub Issue
+  metadata.priority →  priority:* label
   Description       →  Issue body (story format)
-  Status            →  status:* label
-  Plan file         →  Issue body Notes
-  **Issue**: #N     ←  written back after creation
-  Completed         →  Issue closed
+  metadata.status   →  status:* label
+  metadata.plan     →  Issue body Notes
+  metadata.issue    ←  written back after creation
+  metadata.status   →  Issue closed
 ```
 
 See [issue-stories.md](.claude/skills/gh/references/issue-stories.md) for the full body template and lifecycle.

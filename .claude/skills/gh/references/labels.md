@@ -146,9 +146,9 @@ uv run .claude/skills/gh/scripts/github_project_setup.py labels \
 
 ---
 
-## BACKLOG.md Priority → Issue Label Mapping
+## Backlog Item Priority → Issue Label Mapping
 
-| BACKLOG.md section | Issue label |
+| Per-item file priority | Issue label |
 |--------------------|-------------|
 | P0 | `priority:p0` |
 | P1 | `priority:p1` |

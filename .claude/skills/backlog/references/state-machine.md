@@ -118,7 +118,7 @@ Precondition: Plan checklist is 100% complete
 Action:     metadata.status = done
              GitHub label: remove status:in-progress, add status:done
              GitHub issue closed
-             BACKLOG.md entry moved to Completed section
+             Per-item file status updated to done
 ```
 
 ### `in-progress` → `resolved`
@@ -129,7 +129,7 @@ Precondition: Explicit reason provided
 Action:     metadata.status = resolved
              GitHub label: remove status:in-progress, add status:resolved
              GitHub issue closed with resolution comment
-             BACKLOG.md entry moved to Completed section
+             Per-item file status updated to resolved
 ```
 
 ### Any state → `resolved`
@@ -149,7 +149,7 @@ Trigger:    /complete-milestone archives the milestone
 Precondition: Item status is done or resolved; milestone is being archived
 Action:     metadata.status = closed
              GitHub label: current label removed, add status:closed
-             Item moved to Completed section in BACKLOG.md if not already there
+             Per-item file status updated to closed
              Completion archive written to .claude/milestones/v{N}-completion.md
 ```
 

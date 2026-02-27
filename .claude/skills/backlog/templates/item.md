@@ -24,7 +24,7 @@ metadata:
 <!-- Required for P0. Recommended for P1. Each criterion must be a specific, verifiable condition. -->
 <!-- Examples:
   - Running `uv run backlog.py list --format json` outputs valid JSON
-  - File `.claude/BACKLOG.md` contains item in the P1 section
+  - File `.claude/backlog/p1-{slug}.md` exists with correct frontmatter
   - `gh issue view N --json state` returns `"state": "open"`
 -->
 - <!-- criterion 1 -->

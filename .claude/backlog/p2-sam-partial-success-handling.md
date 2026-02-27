@@ -8,7 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
-  issue: '#227'
+  issue: '#110'
 ---
 
 **Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (section 3.5 Execution Agent output)

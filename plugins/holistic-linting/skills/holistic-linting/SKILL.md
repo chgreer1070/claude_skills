@@ -378,7 +378,7 @@ When a linter run reveals issues in files the current agent did not modify, "pre
 - **Blocking** (linter exits nonzero, CI would fail, or current task verification cannot pass) → fix it now using the standard resolution workflow
 - **Non-blocking** (advisory warning, file unrelated to current task) → discover the repo's tracking system and record it
 
-**Discover the tracking system** (search in order): `BACKLOG.md`, `.claude/tasks/`, `TODO.md`, `.claude/BACKLOG.md`, `TODO`, `docs/TODO.md`, `.gsd/`, `sam.md`. If none exists, create `BACKLOG.md` at repo root.
+**Discover the tracking system** (search in order): `.claude/backlog/` per-item files, `.claude/tasks/`, `TODO.md`, `TODO`, `docs/TODO.md`, `.gsd/`, `sam.md`. If none exists, create a per-item file in `.claude/backlog/`.
 
 **Record each non-blocking issue** with: tool, rule code, file:line, exact linter message, discovery date.
 

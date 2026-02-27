@@ -10,6 +10,10 @@ Usage:
     uv run .claude/scripts/repair_from_original_register.py --dry-run
     uv run .claude/scripts/repair_from_original_register.py
 """
+# NOTE (2026-02-27): BACKLOG.md was removed. Backlog items now live in
+# .claude/backlog/ per-item files; GitHub Issues are the source of truth.
+# The reference above to "pre-migration BACKLOG.md" refers to the archived
+# register at .claude/original-backlog-register.md.
 
 from __future__ import annotations
 

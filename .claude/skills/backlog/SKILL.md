@@ -1,10 +1,10 @@
 ---
 name: backlog
-description: "Single interface for BACKLOG.md and GitHub Issues. All backlog CRUD goes through the backlog script — no direct edits. Use when create-backlog-item or work-backlog-item invoke it, or when syncing P0/P1 to GitHub."
+description: "Single interface for backlog items and GitHub Issues. GitHub Issues are the source of truth; .claude/backlog/ per-item files are the local cache. All backlog CRUD goes through the backlog script — no direct edits. Use when create-backlog-item or work-backlog-item invoke it, or when syncing P0/P1 to GitHub."
 ---
 # Backlog Script
 
-The backlog script is the **sole interface** for `.claude/BACKLOG.md` and GitHub Issues. Skills and agents invoke it; no direct Write/Grep edits to BACKLOG.md.
+The backlog script is the **sole interface** for backlog items and GitHub Issues. GitHub Issues are the source of truth; `.claude/backlog/` per-item files are the local cache. Skills and agents invoke it; no direct Write/Grep edits to per-item files.
 
 ## Invocation
 
@@ -16,7 +16,7 @@ uv run .claude/skills/backlog/scripts/backlog.py <subcommand> [options]
 
 | Subcommand | Purpose |
 |------------|---------|
-| `add` | Create item in BACKLOG; create GitHub issue if P0/P1 |
+| `add` | Create per-item file in .claude/backlog/; create GitHub issue if P0/P1 |
 | `list` | List items (for interactive browser) |
 | `sync` | Create issues for P0/P1 items missing them |
 | `close` | Mark DONE, close issue (requires `--checklist-pass`) |
@@ -70,6 +70,6 @@ backlog update "<title or #N>" [--plan <path>] [--status in-progress] [--create-
 
 ## Integration
 
-- **create-backlog-item** — invokes `backlog add` instead of writing BACKLOG.md
+- **create-backlog-item** — invokes `backlog add` to create per-item files in `.claude/backlog/`
 - **work-backlog-item** — invokes `backlog list`, `backlog close`, `backlog resolve`, `backlog update`
-- **GitHub Action** — invokes `backlog sync` on BACKLOG.md change
+- **GitHub Action** — invokes `backlog sync` on `.claude/backlog/` changes

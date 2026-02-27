@@ -35,7 +35,7 @@ As a **{role}**, I want **{goal}** so that **{benefit}**.
 
 ## Description
 
-{detailed description from BACKLOG.md item}
+{detailed description from backlog item}
 
 ## Acceptance Criteria
 
@@ -184,19 +184,19 @@ uv run .claude/skills/gh/scripts/github_project_setup.py issue create \
 
 ---
 
-## BACKLOG.md ↔ GitHub Issue Field Mapping
+## Backlog Item ↔ GitHub Issue Field Mapping
 
-| BACKLOG.md field | GitHub Issue field |
+| Per-item file field | GitHub Issue field |
 |---|----|
-| H3 heading | Issue title |
-| Priority section (P0/P1/P2) | `priority:*` label |
-| `**Description**:` | Issue body |
-| `**Status**:` | `status:*` label |
-| `**Plan**:` | Issue body Notes section |
-| `**Issue**: #N` | Issue number (written back by `work-backlog-item`) |
+| `name` frontmatter | Issue title |
+| `metadata.priority` frontmatter (P0/P1/P2) | `priority:*` label |
+| Item description body | Issue body |
+| `metadata.status` frontmatter | `status:*` label |
+| `metadata.plan` frontmatter | Issue body Notes section |
+| `metadata.issue` frontmatter | Issue number (written back by `work-backlog-item`) |
 | `last-completed` frontmatter | Issue closed date |
 
-When `work-backlog-item` creates a GitHub Issue, it writes the issue number back to the BACKLOG.md item as `**Issue**: #N`.
+When `work-backlog-item` creates a GitHub Issue, it writes the issue number back to the per-item file in `.claude/backlog/` as `metadata.issue: '#N'`.
 
 SOURCE: GitHub Issues documentation — <https://docs.github.com/en/issues/tracking-your-work-with-issues> (accessed 2026-02-21)
 SOURCE: GitHub CLI issue manual — <https://cli.github.com/manual/gh_issue> (accessed 2026-02-21)

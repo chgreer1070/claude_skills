@@ -2,6 +2,8 @@
 
 This diagram represents the complete user-facing workflow for the backlog and milestone management system in this repository. It covers all entry points (hook-triggered, direct invocation, interactive browser) and all argument modes for `/work-backlog-item`, the new path when no backlog item is found (offering to create one via `/create-backlog-item`), every decision branch across all six skills, the full milestone lifecycle (`/create-milestone` → `/group-items-to-milestone` → `/start-milestone` → `/complete-milestone`), all external system interactions (GitHub Issues, Projects V2, Milestones, SAM planning, grooming), and all terminal states (success, blocked, failure, stop conditions).
 
+> **NOTE (2026-02-27)**: BACKLOG.md was removed. Backlog items now live in `.claude/backlog/` per-item files; GitHub Issues are the source of truth.
+
 ```mermaid
 flowchart TD
     %% ─── HOOK-TRIGGERED ENTRY POINTS ───

@@ -17,7 +17,7 @@ Orchestrators delegate; agents implement. The orchestrator's context window is s
 
 ## Read Constraints
 
-**PERMITTED**: Task status, agent output artifacts, BACKLOG.md, plan files, skill/agent configs, files you will Edit/Write this turn.
+**PERMITTED**: Task status, agent output artifacts, backlog items (.claude/backlog/ per-item files), plan files, skill/agent configs, files you will Edit/Write this turn.
 
 **NEVER**: Source/config/test files you will not edit; diagnostic command output; agent .output files; TaskOutput block=false on running agent.
 

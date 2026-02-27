@@ -8,6 +8,7 @@ metadata:
   priority: P1
   type: Feature
   status: open
+  issue: '#282'
 ---
 
 ## Design Constraints
@@ -21,4 +22,3 @@ Agents must never auto-action issues from arbitrary contributors. The approved w
 3. **Author allowlist** (optional hardening) — `.claude/config.json` or `pyproject.toml` can list approved GitHub logins. `backlog.py pull` skips issues from authors not on the list even if they're in the project. Useful for repos with many collaborators.
 
 The combination means: random drive-by issues stay in the repo's issue tracker, never enter the agent's local cache, and never get worked. A maintainer explicitly approves work by adding the issue to the project board and labeling it.
-

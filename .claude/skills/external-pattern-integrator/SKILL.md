@@ -226,10 +226,9 @@ Update the tracking file with:
 
 ### Step 3.3: Add Deferred Items to Backlog
 
-If there are deferred enhancements, add them to `.claude/BACKLOG.md`:
+If there are deferred enhancements, create per-item files in `.claude/backlog/` via the backlog script:
 
-1. Read the current backlog file
-2. For each deferred enhancement, add an entry under the appropriate priority:
+1. For each deferred enhancement, invoke the backlog script with appropriate priority:
    - **P1 (Should Have)**: Patterns that would significantly improve workflows
    - **P2 (Could Have)**: Nice-to-have patterns or minor improvements
    - **Ideas**: Patterns worth exploring but unclear fit
@@ -246,8 +245,7 @@ Entry format:
 **Suggested location**: {path/to/file.md}
 ```
 
-3. Update the summary counts in the backlog
-4. Note in tracking document: "Deferred items added to `.claude/BACKLOG.md`"
+2. Note in tracking document: "Deferred items added to `.claude/backlog/` as per-item files"
 
 ### Step 3.4: Commit Changes
 
@@ -274,7 +272,7 @@ Sources:
 - [ ] Cross-file changes coordinated
 - [ ] External artifact recognition added for interoperability
 - [ ] All modified files pass linting
-- [ ] Deferred enhancements added to `.claude/BACKLOG.md` with priority
+- [ ] Deferred enhancements added as per-item files in `.claude/backlog/` with priority
 - [ ] Changes committed with source attribution
 
 ## Example Usage

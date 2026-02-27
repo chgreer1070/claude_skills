@@ -1,6 +1,6 @@
 ---
 name: work-backlog-item
-description: "Use when working, planning, or closing a backlog item. Bridges BACKLOG.md to the SAM planning pipeline with optional GitHub Issue/Project/Milestone tracking. No args: interactive browser. With '#N': load item directly from GitHub Issue #N (labels and milestone are canonical status). With title substring: auto-grooming, RT-ICA gate, GitHub issue sync, SAM planning, plan reference recorded. '--auto {title}': fully autonomous mode — no AskUserQuestion calls, derives missing data from research files, logs all decisions, skips interactive GitHub prompts; suitable for agent use without human in the loop. 'close {title}': verifies plan checklist 100% complete, closes GitHub issue, marks DONE. 'resolve {title}': marks item no longer applicable with reason. 'setup-github': initializes labels, creates project and first milestone. Optional '--language {python|typescript|...}' and '--stack {python-fastapi|python-cli|...}' select Layer 1/2 profile. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
+description: "Use when working, planning, or closing a backlog item. Bridges backlog items to the SAM planning pipeline with optional GitHub Issue/Project/Milestone tracking. No args: interactive browser. With '#N': load item directly from GitHub Issue #N (labels and milestone are canonical status). With title substring: auto-grooming, RT-ICA gate, GitHub issue sync, SAM planning, plan reference recorded. '--auto {title}': fully autonomous mode — no AskUserQuestion calls, derives missing data from research files, logs all decisions, skips interactive GitHub prompts; suitable for agent use without human in the loop. 'close {title}': verifies plan checklist 100% complete, closes GitHub issue, marks DONE. 'resolve {title}': marks item no longer applicable with reason. 'setup-github': initializes labels, creates project and first milestone. Optional '--language {python|typescript|...}' and '--stack {python-fastapi|python-cli|...}' select Layer 1/2 profile. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
 argument-hint: '[#N | --auto {title} | --language {lang} | --stack {stack} | item-title-substring | close {title} | resolve {title} | setup-github]'
 user-invocable: true
 ---
@@ -9,7 +9,7 @@ user-invocable: true
 Bridge a backlog item into the SAM planning pipeline via `/python3-development:add-new-feature` (default). Optional `--language` and `--stack` select Layer 1/2 profiles — see [.claude/docs/sdlc-layers/](../../docs/sdlc-layers/).
 
 **SAM** — Stateless Agent Methodology. See [sam-definition.md](./references/sam-definition.md) for what SAM is and how to embody it. SAM lives in `../stateless-agent-methodology/` (or `bitflight-devops/stateless-agent-methodology` on GitHub).
-Primary source of truth is **GitHub Issues** (labels + milestone = canonical status); `.claude/BACKLOG.md` is the local scratchpad and is kept in sync.
+Primary source of truth is **GitHub Issues** (labels + milestone = canonical status); `.claude/backlog/` per-item files are the local cache and are kept in sync.
 
 When invoked with no arguments, shows an interactive browser. When invoked with `#N` or a title substring, proceeds directly to the planning workflow.
 
@@ -48,7 +48,7 @@ When `$0` is `--auto`, the following substitutions apply at every interactive de
 
 | Normal behaviour | `--auto` substitution |
 |---|---|
-| No title given (`$1` is empty) | Scan BACKLOG.md P0 then P1 sections for the first item that has no `**Completed**:` line, no `**Status**: DONE`, and no ~~strikethrough~~ heading. Log `[AUTO] No title — auto-selected: {title}`, use that item's title as the working title and proceed. If no open P0/P1 item exists, log `[AUTO] STOP — no open P0/P1 items found` and stop. |
+| No title given (`$1` is empty) | Scan `.claude/backlog/` per-item files for P0 then P1 items that have status `needs-grooming` or `groomed` (not `done`, `resolved`, or `closed`). Log `[AUTO] No title — auto-selected: {title}`, use that item's title as the working title and proceed. If no open P0/P1 item exists, log `[AUTO] STOP — no open P0/P1 items found` and stop. |
 | Step 1b: issue not found | Log `[AUTO] STOP — Issue #N not found`, stop |
 | Step 1: zero matches → ask user to create | Auto-invoke `create-backlog-item --auto {title}`, log `[AUTO] No item found — invoking create-backlog-item --auto` |
 | Step 1: multiple matches → ask user to pick | Log `[AUTO] Multiple matches — picking first: {title}`, proceed with first match |
@@ -57,7 +57,7 @@ When `$0` is `--auto`, the following substitutions apply at every interactive de
 | RT-ICA BLOCKED | Log `[AUTO] STOP — RT-ICA BLOCKED: {missing inputs}`, stop (cannot resolve without human) |
 | Any other `AskUserQuestion` | Log `[AUTO] Decision: {chosen option} — reason: {evidence}`, proceed with logged choice |
 
-`--auto` does NOT change the behaviour of Steps 3–8 (grooming, RT-ICA evaluation, SAM planning, BACKLOG.md write) — those are already agent-executable without human input.
+`--auto` does NOT change the behaviour of Steps 3–8 (grooming, RT-ICA evaluation, SAM planning, backlog update) — those are already agent-executable without human input.
 
 ## Workflow
 
@@ -159,19 +159,19 @@ From the issue response build the working item:
 | `description` | issue `body` (full text) |
 | `source` | `"GitHub Issue #N"` |
 | `priority` | `priority:*` label → P0 / P1 / P2 / Ideas |
-| `status` | `status:*` label (canonical — do not read BACKLOG.md for status) |
+| `status` | `status:*` label (canonical — GitHub labels are authoritative for status) |
 | `milestone` | issue `milestone.title` |
 | `plan` | search `body` for `**Plan**:` line |
 
-Then try to find a matching item in `.claude/BACKLOG.md` by issue number (`**Issue**: #N`) or title. If found, use it to supplement any missing fields (e.g. `research_first`, `suggested_location`). If not found, continue without a BACKLOG.md record — the GitHub Issue is sufficient.
+Then try to find a matching per-item file in `.claude/backlog/` by issue number (`metadata.issue`) or title. If found, use it to supplement any missing fields (e.g. `research_first`, `suggested_location`). If not found, continue without a local per-item file — the GitHub Issue is sufficient.
 
-Skip to Step 3 with the assembled item.
+Proceed to Step 2.7 (Set In-Progress Label) with the assembled item, then continue to Step 3.
 
 </issue_first_procedure>
 
 ### Step 1: Find the Backlog Item
 
-Read `.claude/BACKLOG.md`. Search H3 headings (`### ...`) for case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
+Run `uv run .claude/skills/backlog/scripts/backlog.py list --format json` and search the `title` field of each entry for a case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
 
 **AUTO_MODE with no title (`$1` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items whose H3 heading contains ~~strikethrough~~, or whose body contains a `**Completed**:` line or `**Status**: DONE`.
 
@@ -184,15 +184,15 @@ Record the priority section (P0, P1, P2, Ideas) the item belongs to.
 
 ### Step 2: Extract Item Fields
 
-From the matched item, extract these fields (all are `**bold-key**: value` format on separate lines):
+From the matched item's JSON output (via `backlog.py list --format json`), extract `title`, `plan`, `section` (priority), `issue`, `groomed`, and `file_path`. For detailed fields not in JSON (`description`, `source`, `added`, `research_first`, `suggested_location`), read the per-item file at `file_path`.
 
-- `title` — the H3 heading text (required)
-- `source` — `**Source**:` value (optional)
-- `added` — `**Added**:` value (optional)
-- `description` — `**Description**:` value (required)
-- `research_first` — `**Research first**:` value (optional)
-- `suggested_location` — `**Suggested location**:` value (optional)
-- `plan` — `**Plan**:` value (optional)
+- `title` — the `title` field from JSON (required)
+- `source` — not in JSON; read from per-item file frontmatter `metadata.source` if needed (optional)
+- `added` — not in JSON; read from per-item file frontmatter `metadata.added` if needed (optional)
+- `description` — not in JSON; read from per-item file frontmatter `description` (required)
+- `research_first` — not in JSON; read from per-item file body `**Research first**:` line (optional)
+- `suggested_location` — not in JSON; read from per-item file body `**Suggested location**:` line (optional)
+- `plan` — the `plan` field from JSON (optional)
 
 If the item already has a `**Plan**:` field, report:
 
@@ -201,6 +201,8 @@ This item already has a plan at {path}. Use /python3-development:implement-featu
 ```
 
 Then stop.
+
+After extracting fields, proceed to Step 2.5 (GitHub Issue Sync) before continuing to Step 3.
 
 ### Step 3: Auto-Groom (if needed)
 
@@ -350,7 +352,7 @@ gh issue view {issue_number} -R Jamie-BitFlight/claude_skills \
 - If the issue is not found, report and stop.
 - Extract `title` from the issue response and use it as the working title.
 
-Otherwise, read `.claude/BACKLOG.md` and search H3 headings for case-insensitive match against `{title}`.
+Otherwise, scan `.claude/backlog/` per-item files and search item titles for case-insensitive match against `{title}`.
 
 - Zero matches: report "No backlog item found matching: {title}" and stop.
 - Multiple matches: list all matches and ask user to pick one.
@@ -413,7 +415,7 @@ Task(
 
 Backlog item title: {title}
 Description and acceptance criteria:
-{description text from BACKLOG.md}
+{description text from per-item file}
 
 Plan file: {plan file path}
 Plan checklist: {checked_tasks}/{total_tasks} — 100% complete.
@@ -448,7 +450,7 @@ Then stop.
 
 #### 9e: Invoke backlog close
 
-6. Invoke the backlog script (script writes to BACKLOG.md and closes GitHub issue):
+6. Invoke the backlog script (script updates per-item file and closes GitHub issue):
 
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --plan "{plan file path}" --checklist-pass -R Jamie-BitFlight/claude_skills
@@ -466,16 +468,16 @@ uv run .claude/skills/backlog/scripts/backlog.py close "#{N}" --plan "{plan file
 
 ## GitHub Integration
 
-BACKLOG.md is the local development scratchpad. GitHub Issues are the published, tracked view. They are linked — when you work a P0/P1 backlog item, a GitHub Issue can be created and kept in sync.
+`.claude/backlog/` per-item files are the local cache. GitHub Issues are the source of truth. They are linked — when you work a P0/P1 backlog item, a GitHub Issue is created and kept in sync.
 
 ```text
-BACKLOG.md          →  GitHub Issue
-  Priority section  →  priority:* label
+.claude/backlog/    →  GitHub Issue
+  metadata.priority →  priority:* label
   Description       →  Issue body (story format)
-  Status            →  status:* label
-  Plan file         →  Issue body Notes
-  **Issue**: #N     ←  written back after creation
-  Completed         →  Issue closed
+  metadata.status   →  status:* label
+  metadata.plan     →  Issue body Notes
+  metadata.issue    ←  written back after creation
+  metadata.status   →  Issue closed
 ```
 
 Full step-by-step commands and example sessions: [github-integration.md](./references/github-integration.md)
@@ -520,7 +522,7 @@ Invoke the backlog script:
 uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --create-issue -R Jamie-BitFlight/claude_skills
 ```
 
-The script creates the issue and writes `**Issue**: #N` back to BACKLOG.md.
+The script creates the issue and writes `issue: '#N'` back to the per-item file frontmatter.
 
 ### Step 2.7: Set In-Progress Label
 
@@ -536,16 +538,6 @@ If the item is in a milestone with other issues, also run `milestone start` for 
 uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
   --number {milestone_number} --repo Jamie-BitFlight/claude_skills
 ```
-
-### Step 9: Close — Use backlog script
-
-After verifying checklist (9a–9d) and acceptance criteria (9d) PASS, invoke the backlog script instead of writing to BACKLOG.md directly:
-
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py close "{title or #N}" --plan "{plan path}" --checklist-pass -R Jamie-BitFlight/claude_skills
-```
-
-The script writes the closing record to BACKLOG.md and closes the GitHub issue.
 
 ### setup-github Command
 
@@ -565,11 +557,11 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 - `#N` not found: report and list open issues with `gh issue list -R Jamie-BitFlight/claude_skills --state open`
 - `#N` already closed: warn and stop; offer `close` or `resolve` if needed
 - `close #N` / `resolve #N` — issue not found: report and stop
-- Item not found: list available items from BACKLOG.md with their priority sections
+- Item not found: list available items from `.claude/backlog/` per-item files with their priority sections
 - Multiple matches: present numbered list, ask user to choose
 - Grooming fails: proceed without grooming context, note the gap in the feature request
 - RT-ICA returns BLOCKED: present missing inputs, wait for user, do not invoke `add-new-feature`
-- `add-new-feature` fails: report the failure, do not update BACKLOG.md
+- `add-new-feature` fails: report the failure, do not update per-item file
 - Plan file not found after planning: search `plan/` directory broadly, ask user to confirm the path
 - Grooming reports directory does not exist: treat all items as ungroomed
 - `close` with no `**Plan**:` field: report and offer `resolve` as alternative
@@ -577,7 +569,7 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 - `close` with verification FAIL: report gaps, do not close
 - `close` on already-completed item: report closed date, do not re-close
 - `resolve` with no reason provided: block until user provides reason (reason is required evidence)
-- GitHub issue creation fails: report error, continue with BACKLOG.md-only workflow; do not block SAM planning
+- GitHub issue creation fails: report error, continue with per-item-file-only workflow; do not block SAM planning
 - `gh` not installed: run `uv run .claude/skills/gh/scripts/setup_gh.py` first
 - Label not found during issue create: `github_project_setup.py` creates it automatically
 - Milestone not found: skip milestone assignment; do not fail
@@ -595,7 +587,7 @@ Loading GitHub Issue #131...
   Milestone: v1.1 — Quality Gates
   State:     open
 
-Matched BACKLOG.md item for additional context: ✓
+Matched per-item file for additional context: ✓
 No groomed content in item file. Running groom-backlog-item first...
 
 [groomed content written to item file]
@@ -609,7 +601,7 @@ Invoking /python3-development:add-new-feature...
 
 [SAM phases run]
 
-Updated BACKLOG.md with Plan: plan/tasks-2-validator-ux-coverage.md
+Updated per-item file with Plan: plan/tasks-2-validator-ux-coverage.md
 
 Next steps:
 - To execute:      /python3-development:implement-feature validator-ux-coverage
@@ -632,7 +624,7 @@ Invoking /python3-development:add-new-feature...
 
 [SAM phases run]
 
-Updated BACKLOG.md with Plan: plan/tasks-2-error-recovery.md
+Updated per-item file with Plan: plan/tasks-2-error-recovery.md
 
 Next steps:
 - To execute:      /python3-development:implement-feature error-recovery
@@ -658,7 +650,7 @@ Evidence: Sub-issues 1-4 implemented in plugins/plugin-creator/scripts/plugin_va
 Backlog item "plugin-validator UX and coverage gaps" closed.
 - Checklist: 12/12 tasks complete
 - Acceptance criteria: PASS
-- Status written to BACKLOG.md
+- Status written to per-item file
 ```
 
 ### Closing a completed item (by issue number)
@@ -670,7 +662,7 @@ Fetching GitHub Issue #131...
   Title: plugin-validator UX and coverage gaps
   State: open
 
-Found BACKLOG.md match: "plugin-validator UX and coverage gaps" (P1)
+Found per-item file match: "plugin-validator UX and coverage gaps" (P1)
 Plan: plan/tasks-2-validator-ux-coverage.md
 Checklist: 12/12 tasks complete
 
@@ -682,7 +674,7 @@ Evidence: commit 4a2f1b3 — "fix(validator): report unique files, add hook vali
 Backlog item "plugin-validator UX and coverage gaps" closed.
 - Checklist: 12/12 tasks complete
 - Acceptance criteria: PASS
-- Status written to BACKLOG.md
+- Status written to per-item file
 - GitHub Issue #131 closed
 ```
 

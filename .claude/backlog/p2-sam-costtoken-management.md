@@ -8,7 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
-  issue: '#238'
+  issue: '#120'
 ---
 
 **Research first**: How do LLM cost management tools work (LangSmith, Helicone)? What budget enforcement patterns exist?

@@ -115,6 +115,8 @@ Fidelity rules (read before summarizing, extract before abstracting, preserve co
 
 Lint orchestration for orchestrators vs sub-agents. Orchestrators delegate to linting-root-cause-resolver; sub-agents run format → lint → resolve directly. Linter detection via config scan (pyproject.toml, .pre-commit-config.yaml, package.json, .clang-format, etc.). Rules knowledge base: Ruff (933 rules), MyPy, Bandit. Pre-existing issues protocol: blocking vs non-blocking, record to BACKLOG.md. Never suppress; never delete to fix.
 
+> **NOTE (2026-02-27)**: BACKLOG.md was removed. Backlog items now live in `.claude/backlog/` per-item files; GitHub Issues are the source of truth.
+
 ### Integration
 
 **Where**: Layer 2 toolchain config — "Linting Stack Profile"

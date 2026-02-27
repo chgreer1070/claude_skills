@@ -13,6 +13,8 @@
 - **Path**: `.claude/skills/work-backlog-item/SKILL.md`
 - **Proposed Layer**: L0
 - **Relevance**: Core bridge between BACKLOG.md and SAM planning pipeline; defines human touchpoints (interactive browser, AskUserQuestion), artifact conventions (Plan field, BACKLOG.md structure), and task format for feature requests.
+
+> **NOTE (2026-02-27)**: BACKLOG.md was removed. Backlog items now live in `.claude/backlog/` per-item files; GitHub Issues are the source of truth.
 - **Key content**: Step-by-step workflow (find item → groom → RT-ICA gate → compose feature request → invoke SAM → update BACKLOG with Plan reference); `--auto` mode for agent-only execution; close/resolve paths with checklist verification and acceptance-criteria agent spawn; GitHub Issue sync as optional integration.
 
 ### work-backlog-item/references/sam-definition.md

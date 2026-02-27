@@ -68,7 +68,7 @@ flowchart TD
 - Extensions: `.py`, `.toml`, `.yaml`, `.yml`, `.js`, `.ts`, `.jsx`, `.tsx`, `.json`, `.cfg`, `.ini`, `.env`, `.sh`, `.bash`, `.go`, `.rs`, `.rb`, `.java`, `.c`, `.cpp`, `.h`, `.hpp`
 - Test paths: directories named `test/`, `tests/`, `spec/`, `__tests__/`, or files matching `test_*.py`
 
-**Does NOT trigger on**: `.md`, `.txt`, plan files, BACKLOG.md, CLAUDE.md, skill definitions
+**Does NOT trigger on**: `.md`, `.txt`, plan files, backlog items, CLAUDE.md, skill definitions
 
 ### Diagnostic Command Gate
 

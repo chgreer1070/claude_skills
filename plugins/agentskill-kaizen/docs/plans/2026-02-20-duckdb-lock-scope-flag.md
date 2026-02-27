@@ -201,34 +201,21 @@ Then `/commit-staged`
 
 ## Task 4: Add BACKLOG todo for MCP consolidation analysis
 
-**Files:**
-- Modify: `.claude/BACKLOG.md` (repo root of `claude_skills`)
+**NOTE**: This plan was written when BACKLOG.md was the single-file backlog. The architecture has since changed: GitHub Issues are the source of truth, and `.claude/backlog/` per-item files are the local cache. Use `uv run .claude/skills/backlog/scripts/backlog.py add` instead of editing files directly.
 
 **Context:**
 The plugin runs two MCP servers: `kaizen-duckdb` (motherduck, SQL queries) and `kaizen-analysis` (custom server.py, PM4Py tools + dashboard). The question is whether `sentiment-score.py` as a standalone script should instead be an MCP tool in `server.py`, and whether the two servers can be consolidated. This needs investigation before any architectural change.
 
-**Step 1: Add a P2 BACKLOG entry**
-
-In `.claude/BACKLOG.md`, add the following entry to the `## P2 - Nice to Have` section:
-
-```markdown
-### kaizen: MCP consolidation analysis
-
-**Source**: Design session 2026-02-20
-**Added**: 2026-02-20
-**Description**: The plugin currently runs two MCP servers (`kaizen-duckdb` via mcp-server-motherduck, `kaizen-analysis` via server.py) plus a standalone CLI script (`sentiment-score.py`). Investigate: (1) What does each MCP server provide that the other cannot? Can they be merged into a single server? (2) Why is `sentiment-score.py` a standalone script rather than an MCP tool inside `server.py`? What would be gained or lost by moving scoring into the MCP server (always-on scoring, no manual invocation, lock ownership)? (3) Is there a clean boundary between "batch processing" (script) and "query/serve" (MCP) that should be preserved?
-**Decision needed**: Consolidate vs. keep separate, with rationale.
-**Suggested location**: `plugins/agentskill-kaizen/`
-```
-
-**Step 2: Update the frontmatter counts**
-
-In `.claude/BACKLOG.md` frontmatter, increment `p2-count` by 1.
-
-**Step 3: Commit**
+**Step 1: Add a P2 backlog item via the backlog script**
 
 ```bash
-git add .claude/BACKLOG.md
+uv run .claude/skills/backlog/scripts/backlog.py add --priority p2 --title "kaizen: MCP consolidation analysis" --description "The plugin currently runs two MCP servers..." -R Jamie-BitFlight/claude_skills
+```
+
+**Step 2: Commit**
+
+```bash
+git add .claude/backlog/
 ```
 
 Then `/commit-staged`
@@ -249,6 +236,6 @@ uv run --script plugins/agentskill-kaizen/scripts/sentiment-score.py score --hel
 # .gitignore exists
 cat plugins/agentskill-kaizen/.gitignore
 
-# BACKLOG has the new entry
-grep "MCP consolidation" .claude/BACKLOG.md
+# Backlog has the new entry
+uv run .claude/skills/backlog/scripts/backlog.py list | grep "MCP consolidation"
 ```

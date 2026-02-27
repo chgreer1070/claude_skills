@@ -9,10 +9,13 @@
 #   "python-dotenv>=1.0.0",
 # ]
 # ///
-"""Backlog CLI — single interface for BACKLOG.md and GitHub Issues.
+"""Backlog CLI — single interface for .claude/backlog/ per-item files and GitHub Issues.
 
 All backlog and issue operations go through this script. Skills invoke it;
-no direct edits to BACKLOG.md or GitHub.
+no direct edits to backlog files or GitHub.
+
+GitHub Issues are the source of truth. Local .claude/backlog/*.md files are
+a cache for agent consumption (avoiding GH API saturation during sessions).
 
 Usage:
     backlog add --title X --priority P1 --description D [--source S] [--type T] [--create-issue]
@@ -23,8 +26,7 @@ Usage:
     backlog update <selector> [--plan PATH] [--status in-progress] [--create-issue]
     backlog groom <selector> [--groomed-content "..." | --groomed-file PATH | --section X --content "..." | stdin]
     backlog normalize  # one-off: rewrite per-item files to research-style metadata, remove body duplication
-    backlog validate  # verify all index links resolve; exit 1 if any broken
-    backlog fix-links  # rewrite .claude/backlog/ → backlog/ for editor click-to-open
+    backlog pull [--dry-run] [--force]  # pull issue bodies from GitHub into local files
 
 Environment:
     GITHUB_TOKEN  Required for issue operations.
@@ -70,15 +72,11 @@ if TYPE_CHECKING:
     from github.Issue import Issue
     from github.Repository import Repository
 
-BACKLOG_PATH = _REPO_ROOT / ".claude" / "BACKLOG.md"
 BACKLOG_DIR = _REPO_ROOT / ".claude" / "backlog"
 DEFAULT_REPO = "Jamie-BitFlight/claude_skills"
 
 # Regex
-ITEM_HEADER_RE = re.compile(r"^###\s+(.+)$")
-FIELD_RE = re.compile(r"^\*\*([^*]+)\*\*:\s*(.*)$", re.DOTALL)
 SECTION_RE = re.compile(r"^##\s+(P0|P1|P2|Ideas)")
-SECTION_RE_MIGRATE = re.compile(r"^##\s+(P0|P1|P2|Ideas|Completed|Format Guide)")
 SKIP_STATUS = ("DONE", "RESOLVED", "COMPLETED")
 GITHUB_ISSUE_TITLE_TRUNCATE = 80
 MIN_FRONTMATTER_PARTS = 3
@@ -177,165 +175,60 @@ def _title_to_slug(title: str, max_len: int = 60) -> str:
     return t[:max_len] if len(t) > max_len else t
 
 
-def _is_index_format(path: Path) -> bool:
-    """Check if BACKLOG.md uses index format (links to per-item files).
+def _parse_backlog_from_directory() -> list[dict]:
+    """Parse backlog items directly from .claude/backlog/ per-item files.
 
-    Returns:
-        True if index format, False otherwise.
-    """
-    if not path.exists():
-        return False
-    text = path.read_text(encoding="utf-8")
-    return "format: index" in text[:500] or ("- [" in text and ("](.claude/backlog/" in text or "](backlog/" in text))
-
-
-def parse_backlog(path: Path) -> list[dict]:
-    """Parse BACKLOG.md into items — supports both monolithic and index format.
+    Scans the directory, reads frontmatter from each file, and derives the
+    priority section from the filename prefix. This is the primary parsing
+    path — BACKLOG.md is not required.
 
     Returns:
         List of item dicts with _section, _title, and field keys.
     """
-    if _is_index_format(path):
-        return _parse_backlog_index(path)
-    return _parse_backlog_monolithic(path)
-
-
-def _flush_parsed_item(
-    current_item: dict | None, current_body: list[str], current_field_value: list[str], items: list[dict], line_idx: int
-) -> None:
-    """Flush current item to items list, normalizing list values to strings."""
-    if current_item is None:
-        return
-    for k, v in list(current_item.items()):
-        if isinstance(v, list):
-            current_item[k] = "\n".join(v).strip()
-    current_item["_raw_body"] = "\n".join(current_body)
-    current_item["_line_end"] = line_idx + 1
-    items.append(current_item)
-
-
-def _apply_field_to_item(current_item: dict, key: str, val: str, current_field_value: list[str]) -> list[str]:
-    """Apply a field match to current_item.
-
-    Returns:
-        New current_field_value list.
-    """
-    key_lower = key.lower()
-    if key_lower == "issue":
-        current_item["_issue"] = val
+    if not BACKLOG_DIR.exists():
         return []
-    if (key_lower == "status" and val.upper().split()[0] in SKIP_STATUS) or key_lower in {"completed", "resolved"}:
-        current_item["_skip"] = True
-        return []
-    if key_lower in {"source", "added", "priority", "type", "description", "research first"}:
-        store_key = "**Research first**" if key_lower == "research first" else f"**{key}**"
-        current_item[store_key] = [val]
-        return current_item[store_key]
-    return []
-
-
-def _parse_backlog_lines(lines: list[str], section_re: re.Pattern[str], skip_strikethrough: bool) -> list[dict]:
-    """Parse backlog lines into items. Shared by monolithic and migrate parsers.
-
-    Returns:
-        List of item dicts parsed from lines.
-    """
+    prefix_to_section = {
+        "p0-": "P0",
+        "p1-": "P1",
+        "p2-": "P2",
+        "ideas-": "Ideas",
+        "completed-": "Completed",
+        "medium-": "P1",
+    }
     items: list[dict] = []
-    current_section: str | None = None
-    current_item: dict | None = None
-    current_body: list[str] = []
-    current_field_value: list[str] = []
-
-    for i, line in enumerate(lines):
-        section_m = section_re.match(line)
-        if section_m:
-            _flush_parsed_item(current_item, current_body, current_field_value, items, i)
-            current_section = section_m.group(1)
-            current_item, current_body, current_field_value = None, [], []
-            continue
-
-        item_m = ITEM_HEADER_RE.match(line)
-        if item_m:
-            _flush_parsed_item(current_item, current_body, current_field_value, items, i)
-            title = item_m.group(1).strip()
-            if skip_strikethrough and title.startswith("~~") and "~~" in title[2:]:
-                continue
-            current_item = {"_section": current_section or "", "_title": title, "_line_start": i + 1}
-            current_body = [line]
-            current_field_value = []
-            continue
-
-        field_m = FIELD_RE.match(line)
-        if field_m and current_item is not None:
-            key, val = field_m.group(1).strip(), field_m.group(2).strip()
-            current_field_value = _apply_field_to_item(current_item, key, val, current_field_value)
-            current_body.append(line)
-            continue
-
-        if current_item is not None and current_field_value:
-            if line.strip():
-                current_field_value.append(line.strip())
-            current_body.append(line)
-
-    _flush_parsed_item(current_item, current_body, current_field_value, items, len(lines))
-    return items
-
-
-def _parse_backlog_monolithic(path: Path) -> list[dict]:
-    """Parse monolithic BACKLOG.md into items with section, title, and fields.
-
-    Returns:
-        List of item dicts.
-    """
-    lines = path.read_text(encoding="utf-8").splitlines()
-    return _parse_backlog_lines(lines, SECTION_RE, skip_strikethrough=True)
-
-
-def _resolve_index_link_path(rel_path: str, backlog_path: Path) -> Path:
-    """Resolve rel_path from index link to absolute filepath. Supports backlog/ and .claude/backlog/.
-
-    Returns:
-        Resolved absolute Path.
-    """
-    if rel_path.startswith(".claude/backlog/"):
-        return (_REPO_ROOT / rel_path).resolve()
-    return (backlog_path.parent / rel_path).resolve()
-
-
-def _parse_backlog_index(path: Path) -> list[dict]:
-    """Parse index-format BACKLOG.md and load items from per-item files.
-
-    Returns:
-        List of item dicts loaded from per-item files.
-    """
-    text = path.read_text(encoding="utf-8")
-    items: list[dict] = []
-    link_re = re.compile(r"^-\s+\[([^\]]+)\]\(([^)]+)\)\s*(#\d+)?\s*$")
-    section_re = re.compile(r"^##\s+(P0|P1|P2|Ideas|Completed)")
-    current_section = ""
-    for line in text.splitlines():
-        sec_m = section_re.match(line)
-        if sec_m:
-            current_section = sec_m.group(1)
-            continue
-        link_m = link_re.match(line)
-        if link_m:
-            title, rel_path, issue_link = (link_m.group(1), link_m.group(2), link_m.group(3) or "")
-            if ".claude/backlog/" not in rel_path and "backlog/" not in rel_path:
-                continue
-            filepath = _resolve_index_link_path(rel_path, path)
-            if not filepath.exists():
-                typer.echo(f"WARNING: Index link target missing: {rel_path} (resolved to {filepath})", err=True)
-                continue
+    for filepath in sorted(BACKLOG_DIR.glob("*.md")):
+        name = filepath.stem
+        section = ""
+        for prefix, sec in prefix_to_section.items():
+            if name.startswith(prefix):
+                section = sec
+                break
+        try:
             item_text = filepath.read_text(encoding="utf-8")
-            item = _parse_item_file(item_text, filepath)
-            item["_section"] = current_section
-            item["_title"] = title
-            # Prefer index link issue, fallback to per-item file (parser merge for 1:1 cache)
-            item["_issue"] = (issue_link.strip() or item.get("_issue", "") or "").strip()
-            item["_file_path"] = str(filepath)
-            items.append(item)
+        except OSError:
+            continue
+        item = _parse_item_file(item_text, filepath)
+        # Filename-derived section; override with metadata if available
+        meta_priority = item.get("**Priority**", "")
+        if meta_priority and meta_priority.upper() in {"P0", "P1", "P2"}:
+            section = meta_priority.upper()
+        item["_section"] = section
+        if not item.get("_title"):
+            item["_title"] = name
+        item["_file_path"] = str(filepath)
+        if section == "Completed":
+            item["_skip"] = True
+        items.append(item)
     return items
+
+
+def parse_backlog() -> list[dict]:
+    """Parse backlog items from .claude/backlog/ per-item files.
+
+    Returns:
+        List of item dicts with _section, _title, and field keys.
+    """
+    return _parse_backlog_from_directory()
 
 
 def _parse_item_file(text: str, path: Path) -> dict:
@@ -380,16 +273,6 @@ def _parse_item_file(text: str, path: Path) -> dict:
     return item
 
 
-def parse_backlog_migrate(path: Path) -> list[dict]:
-    """Parse BACKLOG.md for migration — includes Completed section.
-
-    Returns:
-        List of item dicts including Completed section.
-    """
-    lines = path.read_text(encoding="utf-8").splitlines()
-    return _parse_backlog_lines(lines, SECTION_RE_MIGRATE, skip_strikethrough=False)
-
-
 def find_item(items: list[dict], selector: str) -> dict | None:
     """Find item by title substring or #N.
 
@@ -409,6 +292,42 @@ def find_item(items: list[dict], selector: str) -> dict | None:
     selector_lower = selector.lower()
     matches = [it for it in items if selector_lower in it.get("_title", "").lower()]
     return matches[0] if len(matches) == 1 else (matches[0] if matches else None)
+
+
+_COMMIT_PREFIX_RE = re.compile(r"^(feat|fix|refactor|docs|chore|perf|test|ci):\s*", re.IGNORECASE)
+
+
+def _normalize_issue_title(title: str) -> str:
+    """Strip conventional-commit prefix and normalize for dedup comparison.
+
+    Returns:
+        Lowercased title with any ``feat:``/``fix:``/etc. prefix removed.
+
+    Examples:
+        >>> _normalize_issue_title("feat: SAM: Error Recovery")
+        'sam: error recovery'
+        >>> _normalize_issue_title("SAM: Error Recovery")
+        'sam: error recovery'
+    """
+    return _COMMIT_PREFIX_RE.sub("", title).strip().lower()
+
+
+def _fetch_open_issues_by_title(repo: Repository) -> dict[str, int]:
+    """Fetch all open issues and return ``{normalized_title: issue_number}`` map.
+
+    When duplicates exist, keeps the lowest issue number (the original).
+
+    Returns:
+        Dict mapping normalized title strings to their GitHub issue number.
+    """
+    title_to_num: dict[str, int] = {}
+    for issue in repo.get_issues(state="open"):
+        if issue.pull_request:
+            continue
+        key = _normalize_issue_title(issue.title)
+        if key not in title_to_num or issue.number < title_to_num[key]:
+            title_to_num[key] = issue.number
+    return title_to_num
 
 
 def items_needing_issues(items: list[dict]) -> list[dict]:
@@ -555,59 +474,25 @@ def create_issue_for_item(repo: Repository, item: dict, dry_run: bool = False) -
     return issue.number
 
 
-def _create_issue_and_update_content(item: dict, content: str, repo: str) -> tuple[str, bool]:
-    """Create GitHub issue for item and update content with issue link.
+def _create_issue_and_update_item(item: dict, repo: str) -> int | None:
+    """Create GitHub issue for item and update per-item file metadata.
 
     Returns:
-        Tuple of (updated_content, modified_flag).
+        Issue number if created, None otherwise.
     """
     try:
         repository = _get_github(repo)
         issue_num = create_issue_for_item(repository, item, dry_run=False)
-        if not issue_num:
-            return content, False
-        if _is_index_format(BACKLOG_PATH):
-            filepath_str = item.get("_file_path")
-            if filepath_str:
-                _update_item_metadata(Path(filepath_str), {"metadata": {"issue": f"#{issue_num}"}})
-                old_line = _find_index_link_line(content, item)
-                if old_line:
-                    title = item.get("_title", "")
-                    filename = Path(filepath_str).name
-                    rel_path = f"backlog/{filename}"
-                    new_line = _index_link_line(title, rel_path, f"#{issue_num}")
-                    return content.replace(old_line, new_line), True
-            return content, False
-        return insert_issue_into_content(content, item, issue_num), True
     except GithubException as e:
         typer.echo(f"  WARNING: Issue creation failed: {e}", err=True)
-        return content, False
-
-
-def insert_issue_into_content(content: str, item: dict, issue_num: int) -> str:
-    """Insert **Issue**: #N line into BACKLOG.md content for given item.
-
-    Returns:
-        Updated content string with issue line inserted.
-    """
-    new_line = f"**Issue**: #{issue_num}"
-    if new_line in item.get("_raw_body", ""):
-        return content
-    lines = content.splitlines()
-    start = max(0, item.get("_line_start", 1) - 1)
-    for i in range(start, min(start + 25, len(lines))):
-        if i > start and (lines[i].startswith("###") or lines[i].startswith("## ")):
-            break
-        if re.match(r"^\*\*Priority\*\*:", lines[i]) or re.match(r"^\*\*Type\*\*:", lines[i]):
-            indent = "  " if lines[i].startswith("  ") else ""
-            lines.insert(i + 1, f"{indent}{new_line}")
-            return "\n".join(lines) + "\n"
-    for i in range(start, min(start + 15, len(lines))):
-        if re.match(r"^\*\*[^*]+\*\*:", lines[i]):
-            indent = "  " if lines[i].startswith("  ") else ""
-            lines.insert(i + 1, f"{indent}{new_line}")
-            return "\n".join(lines) + "\n"
-    return content
+        return None
+    else:
+        if not issue_num:
+            return None
+        filepath_str = item.get("_file_path")
+        if filepath_str:
+            _update_item_metadata(Path(filepath_str), {"metadata": {"issue": f"#{issue_num}"}})
+        return issue_num
 
 
 def _today() -> str:
@@ -702,8 +587,7 @@ def _pull_single_issue(repo_obj: Repository, issue_num: int, filepath: Path | No
     fields = _issue_to_local_fields(issue)
     # Strip conventional-commit prefix from title (e.g., "feat: Title" → "Title")
     raw_title = fields["title"]
-    prefixed = re.match(r"^(feat|fix|refactor|docs|chore|perf|test|ci):\s*", raw_title)
-    clean_title = raw_title[prefixed.end() :] if prefixed else raw_title
+    clean_title = _COMMIT_PREFIX_RE.sub("", raw_title).strip()
 
     if filepath is None:
         slug = _title_to_slug(clean_title)
@@ -807,102 +691,6 @@ def _check_item_staleness(item: dict, repo: str) -> bool:
         return gh_updated > last_synced
 
 
-def _index_link_line(title: str, rel_path: str, issue: str | None) -> str:
-    """Build index link line. rel_path canonical: backlog/{filename}.
-
-    Returns:
-        Markdown link line string.
-    """
-    suffix = f" {issue}" if issue else ""
-    return f"- [{title}]({rel_path}){suffix}"
-
-
-def _add_index_link(content: str, section_heading: str, link_line: str) -> str:
-    """Add link to section. Replaces _(Empty)_ if present.
-
-    Returns:
-        Updated content string.
-    """
-    section_pos = content.find(section_heading)
-    if section_pos == -1:
-        return content
-    next_section = content.find("\n## ", section_pos + 1)
-    section_content = content[section_pos:next_section] if next_section != -1 else content[section_pos:]
-    rest = content[next_section:] if next_section != -1 else ""
-    if "_(Empty)_" in section_content:
-        section_content = section_content.replace("_(Empty)_", link_line.strip(), 1)
-    else:
-        section_content = section_content.rstrip() + "\n\n" + link_line.strip()
-    return content[:section_pos] + section_content + rest
-
-
-def _remove_index_link(content: str, link_line: str) -> str:
-    """Remove the matching link line from content.
-
-    Returns:
-        Content string with link removed.
-    """
-    lines = content.splitlines()
-    out: list[str] = []
-    for line in lines:
-        if line.strip() == link_line.strip():
-            continue
-        out.append(line)
-    return "\n".join(out) + "\n"
-
-
-def _move_index_link(content: str, link_line: str, _from_section: str, to_section: str) -> str:
-    """Remove link from content, add to to_section.
-
-    Returns:
-        Updated content string.
-    """
-    content = _remove_index_link(content, link_line)
-    return _add_index_link(content, to_section, link_line)
-
-
-def _replace_link_with_issue_url(content: str, link_line: str, title: str, issue_num: int, repo: str) -> str:
-    """Replace local file link with GitHub issue URL. Used when --cleanup removes local file.
-
-    Returns:
-        Updated content string.
-    """
-    new_line = f"- [{title}](https://github.com/{repo}/issues/{issue_num})"
-    lines = content.splitlines()
-    out = []
-    for line in lines:
-        if line.strip() == link_line.strip():
-            out.append(new_line)
-        else:
-            out.append(line)
-    return "\n".join(out) + "\n"
-
-
-def _find_index_link_line(content: str, item: dict) -> str | None:
-    """Find the index link line for this item.
-
-    Returns:
-        Full line string or None if not found.
-    """
-    title = item.get("_title", "")
-    file_path = item.get("_file_path", "")
-    issue = item.get("_issue", "")
-    if not file_path:
-        return None
-    filename = Path(file_path).name
-    rel_path = f"backlog/{filename}"
-    expected = _index_link_line(title, rel_path, issue) if issue else _index_link_line(title, rel_path, None)
-    legacy_rel = f".claude/backlog/{filename}"
-    expected_legacy = _index_link_line(title, legacy_rel, issue) if issue else _index_link_line(title, legacy_rel, None)
-    for line in content.splitlines():
-        stripped = line.strip()
-        if stripped in {expected, expected_legacy}:
-            return line
-        if f"]({rel_path})" in line or f"]({legacy_rel})" in line:
-            return line
-    return None
-
-
 # --- Subcommands ---
 
 
@@ -920,7 +708,7 @@ def _add_item_index_format(
     create_issue: bool,
     repo: str,
 ) -> None:
-    """Add item when BACKLOG.md is in index format."""
+    """Add item: create per-item file in .claude/backlog/ and optionally a GitHub issue."""
     BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
     slug = _title_to_slug(title)
     filename = f"{priority.lower()}-{slug}.md"
@@ -930,7 +718,6 @@ def _add_item_index_format(
         idx += 1
         filename = f"{priority.lower()}-{slug}-{idx}.md"
         filepath = BACKLOG_DIR / filename
-    rel_path = f"backlog/{filename}"
     fm_str = _build_backlog_frontmatter(title, description, source, today, priority, type_, "open", "", "", "")
     body_parts: list[str] = []
     if research_first:
@@ -963,84 +750,9 @@ def _add_item_index_format(
             raise
         except GithubException as e:
             typer.echo(f"  WARNING: Issue creation failed: {e}", err=True)
-    link_line = _index_link_line(title, rel_path, f"#{issue_num}" if issue_num else None)
-    content = BACKLOG_PATH.read_text(encoding="utf-8")
-    content = _add_index_link(content, section_heading, link_line)
-    content = re.sub(r"last-updated:\s*\S+", f"last-updated: {today}", content, count=1)
-    BACKLOG_PATH.write_text(content, encoding="utf-8")
     typer.echo(f"Backlog item created.\n  Title: {title}\n  Priority: {priority}\n  File: {filepath.name}")
     if issue_num:
         typer.echo(f"  Issue: #{issue_num}")
-    typer.echo(f"Next steps: /groom-backlog-item {title}  /work-backlog-item {title}")
-
-
-def _add_item_monolithic_format(
-    title: str,
-    description: str,
-    source: str,
-    today: str,
-    priority: str,
-    type_: str,
-    research_first: str,
-    section_heading: str,
-    create_issue: bool,
-    repo: str,
-) -> None:
-    """Add item when BACKLOG.md is in monolithic format."""
-    block = f"""### {title}
-
-**Source**: {source}
-**Added**: {today}
-**Priority**: {priority}
-**Type**: {type_}
-**Description**: {description}
-"""
-    if research_first:
-        block += f"**Research first**: {research_first}\n"
-    block += "\n"
-
-    content = BACKLOG_PATH.read_text(encoding="utf-8")
-    section_pos = content.find(section_heading)
-    if section_pos == -1:
-        typer.echo(f"ERROR: Section {section_heading} not found", err=True)
-        raise typer.Exit(1)
-    next_section = content.find("\n## ", section_pos + 1)
-    section_content = content[section_pos:next_section] if next_section != -1 else content[section_pos:]
-    rest = content[next_section:] if next_section != -1 else ""
-    if "_(Empty)_" in section_content:
-        section_content = section_content.replace("_(Empty)_", block.strip(), 1)
-    else:
-        section_content = section_content.rstrip() + "\n\n" + block
-    content = content[:section_pos] + section_content + rest
-
-    count_key = {
-        "P0": "p0-count",
-        "P1": "p1-count",
-        "P2": "p2-count",
-        "Idea": "ideas-count",
-        "Ideas": "ideas-count",
-    }.get(priority, "p1-count")
-    content = re.sub(rf"({count_key}):\s*(\d+)", lambda m: f"{count_key}: {int(m.group(2)) + 1}", content, count=1)
-    content = re.sub(r"last-updated:\s*\S+", f"last-updated: {today}", content, count=1)
-    BACKLOG_PATH.write_text(content, encoding="utf-8")
-    typer.echo(f"Backlog item created.\n  Title: {title}\n  Priority: {priority}\n  Section: {section_heading}")
-
-    if create_issue:
-        items = parse_backlog(BACKLOG_PATH)
-        item = find_item(items, title)
-        if item and not item.get("_issue"):
-            try:
-                repository = _get_github(repo)
-                issue_num = create_issue_for_item(repository, item, dry_run=False)
-                if issue_num:
-                    content = BACKLOG_PATH.read_text(encoding="utf-8")
-                    content = insert_issue_into_content(content, item, issue_num)
-                    BACKLOG_PATH.write_text(content, encoding="utf-8")
-                    typer.echo(f"  Issue: #{issue_num}")
-            except typer.Exit:
-                raise
-            except GithubException as e:
-                typer.echo(f"  WARNING: Issue creation failed: {e}", err=True)
     typer.echo(f"Next steps: /groom-backlog-item {title}  /work-backlog-item {title}")
 
 
@@ -1057,38 +769,29 @@ def add(
     create_issue: Annotated[bool, typer.Option("--create-issue/--no-create-issue")] = True,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
-    """Add item to BACKLOG.md. Creates GitHub issue if P0/P1 and --create-issue."""
-    if not BACKLOG_PATH.exists():
-        typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
-        raise typer.Exit(1)
+    """Add item to backlog. Creates per-item file and optionally a GitHub issue."""
     today = _today()
-    section_map = {
+    section_heading = {
         "P0": "## P0 - Must Have",
         "P1": "## P1 - Should Have",
         "P2": "## P2 - Could Have",
         "Idea": "## Ideas",
         "Ideas": "## Ideas",
-    }
-    section_heading = section_map.get(priority, "## P1 - Should Have")
-    if _is_index_format(BACKLOG_PATH):
-        _add_item_index_format(
-            title,
-            description,
-            source,
-            today,
-            priority,
-            type_,
-            research_first,
-            files,
-            suggested_location,
-            section_heading,
-            create_issue,
-            repo,
-        )
-    else:
-        _add_item_monolithic_format(
-            title, description, source, today, priority, type_, research_first, section_heading, create_issue, repo
-        )
+    }.get(priority, "## P1 - Should Have")
+    _add_item_index_format(
+        title,
+        description,
+        source,
+        today,
+        priority,
+        type_,
+        research_first,
+        files,
+        suggested_location,
+        section_heading,
+        create_issue,
+        repo,
+    )
 
 
 def _fetch_item_status(item: dict, repo: str) -> str:
@@ -1166,10 +869,7 @@ def list_items(
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
     """List backlog items. Use for interactive browser."""
-    if not BACKLOG_PATH.exists():
-        typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
-        raise typer.Exit(1)
-    items = parse_backlog(BACKLOG_PATH)
+    items = parse_backlog()
     open_items = [it for it in items if not it.get("_skip") and it.get("_section")]
     if output_format == "json":
         _list_items_json(open_items, with_status, repo)
@@ -1177,8 +877,32 @@ def list_items(
         _list_items_table(open_items, with_status, repo)
 
 
+def _find_or_create_issue(
+    item: dict, existing_issues: dict[str, int], repository: Repository, dry_run: bool
+) -> int | None:
+    """Check for existing issue by title; create only if no match found.
+
+    Returns:
+        Issue number (existing or newly created), or None for dry-run creates.
+    """
+    title = item.get("_title", "")
+    normalized = _normalize_issue_title(title)
+    if normalized in existing_issues:
+        existing_num = existing_issues[normalized]
+        typer.echo(f"  Linked #{existing_num}: {title[:60]} (existing issue found)")
+        return existing_num
+    if dry_run:
+        typer.echo(f"  [dry-run] Would create: {title[:60]}")
+        return None
+    return create_issue_for_item(repository, item, dry_run=False)
+
+
 def _sync_create_missing_issues(items: list[dict], repo: str, dry_run: bool) -> None:
     """Pass 1 of sync: create GitHub issues for all items that lack them.
+
+    Before creating any issues, fetches all open issues from GitHub and checks
+    for title matches. If an existing open issue matches (after stripping
+    conventional-commit prefixes), links to it instead of creating a duplicate.
 
     Args:
         items: Parsed backlog items.
@@ -1193,32 +917,24 @@ def _sync_create_missing_issues(items: list[dict], repo: str, dry_run: bool) -> 
     for it in needed:
         typer.echo(f"  - {it.get('_title', '')[:60]}")
     repository = _get_github(repo)
-    content = BACKLOG_PATH.read_text(encoding="utf-8")
-    modified = False
-    if _is_index_format(BACKLOG_PATH):
-        for item in needed:
-            issue_num = create_issue_for_item(repository, item, dry_run=dry_run)
-            if issue_num and not dry_run:
-                filepath_str = item.get("_file_path")
-                if filepath_str:
-                    _update_item_metadata(Path(filepath_str), {"metadata": {"issue": f"#{issue_num}"}})
-                    old_line = _find_index_link_line(content, item)
-                    if old_line:
-                        title = item.get("_title", "")
-                        filename = Path(filepath_str).name
-                        rel_path = f"backlog/{filename}"
-                        new_line = _index_link_line(title, rel_path, f"#{issue_num}")
-                        content = content.replace(old_line, new_line)
-                        modified = True
-    else:
-        for item in needed:
-            issue_num = create_issue_for_item(repository, item, dry_run=dry_run)
-            if issue_num and not dry_run:
-                content = insert_issue_into_content(content, item, issue_num)
-                modified = True
-    if modified:
-        BACKLOG_PATH.write_text(content, encoding="utf-8")
-        typer.echo(f"Updated {BACKLOG_PATH}")
+
+    # Dedup: fetch existing open issues to prevent duplicate creation.
+    typer.echo("Fetching open issues for deduplication check...")
+    existing_issues = _fetch_open_issues_by_title(repository)
+    typer.echo(f"  Found {len(existing_issues)} existing open issues.")
+
+    for item in needed:
+        issue_num = _find_or_create_issue(item, existing_issues, repository, dry_run)
+        if not issue_num or dry_run:
+            continue
+        # Track newly created/linked issues to prevent intra-batch duplicates.
+        new_normalized = _normalize_issue_title(item.get("_title", ""))
+        if new_normalized not in existing_issues:
+            existing_issues[new_normalized] = issue_num
+        # Update per-item file metadata with issue number
+        filepath_str = item.get("_file_path")
+        if filepath_str:
+            _update_item_metadata(Path(filepath_str), {"metadata": {"issue": f"#{issue_num}"}})
 
 
 def _sync_push_groomed_content(items: list[dict], repo: str, dry_run: bool) -> None:
@@ -1265,68 +981,26 @@ def sync(
     dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
 ) -> None:
     """Create GitHub issues for all items missing them, and push groomed content to existing issues."""
-    if not BACKLOG_PATH.exists():
-        typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
-        raise typer.Exit(1)
-    items = parse_backlog(BACKLOG_PATH)
+    items = parse_backlog()
     _sync_create_missing_issues(items, repo, dry_run)
     _sync_push_groomed_content(items, repo, dry_run)
 
 
 def _close_item_index(item: dict, plan: str, today: str) -> bool:
-    """Apply close to item in index format.
+    """Apply close to item by updating per-item file metadata.
 
     Returns:
         True if closed, False if already closed.
     """
     filepath_str = item.get("_file_path")
     if not filepath_str:
-        typer.echo("ERROR: Item has no file path (index format)", err=True)
+        typer.echo("ERROR: Item has no file path", err=True)
         raise typer.Exit(1)
-    filepath = Path(filepath_str)
     raw = item.get("_raw_body", "")
     if "**Status**: DONE" in raw or "**Completed**:" in raw:
         typer.echo("Item already closed.")
         return False
-    _update_item_metadata(filepath, {"metadata": {"status": "done", "priority": "completed", "plan": plan}})
-    content = BACKLOG_PATH.read_text(encoding="utf-8")
-    link_line = _find_index_link_line(content, item)
-    if link_line:
-        content = _move_index_link(content, link_line, "", "## Completed")
-    content = re.sub(r"last-updated:\s*\S+", f"last-updated: {today}", content, count=1)
-    content = re.sub(r"last-completed:\s*\S+", f"last-completed: {today}", content, count=1)
-    BACKLOG_PATH.write_text(content, encoding="utf-8")
-    return True
-
-
-def _close_item_monolithic(item: dict, plan: str, today: str) -> bool:
-    """Apply close to item in monolithic format.
-
-    Returns:
-        True if closed, False if already closed.
-    """
-    content = BACKLOG_PATH.read_text(encoding="utf-8")
-    raw = item.get("_raw_body", "")
-    if "**Status**: DONE" in raw or "**Completed**:" in raw:
-        typer.echo("Item already closed.")
-        return False
-    new_suffix = f"\n\n**Completed**: {today}\n**Status**: DONE — verified by checklist + acceptance criteria\n**Plan**: {plan}\n"
-    lines = content.splitlines()
-    start = item.get("_line_start", 1) - 1
-    end = min(start + 50, len(lines))
-    for i in range(start + 1, min(start + 50, len(lines))):
-        if lines[i].startswith("###") or lines[i].startswith("## "):
-            end = i
-            break
-        end = i + 1
-    before = "\n".join(lines[:start])
-    block = "\n".join(lines[start:end])
-    after = "\n".join(lines[end:]) if end < len(lines) else ""
-    new_block = block.rstrip() + new_suffix
-    content = before + "\n" + new_block + ("\n" + after if after else "") + "\n"
-    content = re.sub(r"last-updated:\s*\S+", f"last-updated: {today}", content, count=1)
-    content = re.sub(r"last-completed:\s*\S+", f"last-completed: {today}", content, count=1)
-    BACKLOG_PATH.write_text(content, encoding="utf-8")
+    _update_item_metadata(Path(filepath_str), {"metadata": {"status": "done", "priority": "completed", "plan": plan}})
     return True
 
 
@@ -1344,19 +1018,11 @@ def _close_github_issue(issue_ref: str, plan: str, repo: str) -> None:
 
 
 def _close_cleanup(item: dict, issue_ref: str, repo: str) -> None:
-    """Remove local file and replace index link with issue URL."""
+    """Remove local per-item file after close (canonical state lives in GitHub)."""
     filepath_str = item.get("_file_path")
     if not filepath_str:
         return
     filepath = Path(filepath_str)
-    content = BACKLOG_PATH.read_text(encoding="utf-8")
-    link_line = _find_index_link_line(content, item)
-    if link_line:
-        content = _replace_link_with_issue_url(
-            content, link_line, item.get("_title", ""), int(issue_ref.lstrip("#")), repo
-        )
-        content = re.sub(r"last-updated:\s*\S+", f"last-updated: {_today()}", content, count=1)
-        BACKLOG_PATH.write_text(content, encoding="utf-8")
     if filepath.exists():
         filepath.unlink()
         typer.echo(f"  Removed local file {filepath.name} (canonical: GH #{issue_ref.lstrip('#')})")
@@ -1380,77 +1046,37 @@ def close(
     if not checklist_pass:
         typer.echo("ERROR: --checklist-pass required (skill must verify checklist first)", err=True)
         raise typer.Exit(1)
-    if not BACKLOG_PATH.exists():
-        typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
-        raise typer.Exit(1)
-    items = parse_backlog(BACKLOG_PATH)
+    items = parse_backlog()
     item = find_item(items, selector)
     if not item:
         typer.echo(f"ERROR: No item found for: {selector}", err=True)
         raise typer.Exit(1)
     today = _today()
-    if _is_index_format(BACKLOG_PATH):
-        if not _close_item_index(item, plan, today):
-            return
-    elif not _close_item_monolithic(item, plan, today):
+    if not _close_item_index(item, plan, today):
         return
     typer.echo(f'Backlog item "{item.get("_title")}" closed.')
     issue_ref = item.get("_issue")
     if issue_ref:
         _close_github_issue(issue_ref, plan, repo)
-    if cleanup and issue_ref and _is_index_format(BACKLOG_PATH):
+    if cleanup and issue_ref:
         _close_cleanup(item, issue_ref, repo)
 
 
 def _resolve_item_index(item: dict, reason: str, today: str) -> bool:
-    """Apply resolve to item in index format.
+    """Apply resolve to item by updating per-item file metadata.
 
     Returns:
         True if resolved, False if already resolved.
     """
     filepath_str = item.get("_file_path")
     if not filepath_str:
-        typer.echo("ERROR: Item has no file path (index format)", err=True)
+        typer.echo("ERROR: Item has no file path", err=True)
         raise typer.Exit(1)
     raw = item.get("_raw_body", "")
     if "**Resolved**:" in raw:
         typer.echo("Item already resolved.")
         return False
     _update_item_metadata(Path(filepath_str), {"metadata": {"status": "resolved"}})
-    content = BACKLOG_PATH.read_text(encoding="utf-8")
-    link_line = _find_index_link_line(content, item)
-    if link_line:
-        content = _move_index_link(content, link_line, "", "## Completed")
-    content = re.sub(r"last-updated:\s*\S+", f"last-updated: {today}", content, count=1)
-    BACKLOG_PATH.write_text(content, encoding="utf-8")
-    return True
-
-
-def _resolve_item_monolithic(item: dict, reason: str, today: str) -> bool:
-    """Apply resolve to item in monolithic format.
-
-    Returns:
-        True if resolved, False if already resolved.
-    """
-    content = BACKLOG_PATH.read_text(encoding="utf-8")
-    raw = item.get("_raw_body", "")
-    if "**Resolved**:" in raw:
-        typer.echo("Item already resolved.")
-        return False
-    lines = content.splitlines()
-    start = item.get("_line_start", 1) - 1
-    new_line = f"**Resolved**: {today} — {reason}"
-    for i in range(start, min(start + 30, len(lines))):
-        if i > start and (lines[i].startswith("###") or lines[i].startswith("## ")):
-            break
-        if re.match(r"^\*\*Description\*\*:", lines[i]):
-            lines.insert(i + 1, new_line)
-            break
-    else:
-        lines.insert(start + 1, new_line)
-    content = "\n".join(lines) + "\n"
-    content = re.sub(r"last-updated:\s*\S+", f"last-updated: {today}", content, count=1)
-    BACKLOG_PATH.write_text(content, encoding="utf-8")
     return True
 
 
@@ -1480,25 +1106,19 @@ def resolve(
     if not reason.strip():
         typer.echo("ERROR: --reason required", err=True)
         raise typer.Exit(1)
-    if not BACKLOG_PATH.exists():
-        typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
-        raise typer.Exit(1)
-    items = parse_backlog(BACKLOG_PATH)
+    items = parse_backlog()
     item = find_item(items, selector)
     if not item:
         typer.echo(f"ERROR: No item found for: {selector}", err=True)
         raise typer.Exit(1)
     today = _today()
-    if _is_index_format(BACKLOG_PATH):
-        if not _resolve_item_index(item, reason, today):
-            return
-    elif not _resolve_item_monolithic(item, reason, today):
+    if not _resolve_item_index(item, reason, today):
         return
     typer.echo(f'Backlog item "{item.get("_title")}" resolved.')
     issue_ref = item.get("_issue")
     if issue_ref:
         _resolve_github_issue(issue_ref, reason, repo)
-    if cleanup and issue_ref and _is_index_format(BACKLOG_PATH):
+    if cleanup and issue_ref:
         _close_cleanup(item, issue_ref, repo)
 
 
@@ -1841,13 +1461,6 @@ def _ensure_github_issue(item: dict, filepath: Path, repo: str) -> str | None:
         if not issue_num:
             return None
         _update_item_metadata(filepath, {"metadata": {"issue": f"#{issue_num}"}}, set_synced=True)
-        index_content = BACKLOG_PATH.read_text(encoding="utf-8")
-        old_line = _find_index_link_line(index_content, item)
-        if old_line:
-            new_line = _index_link_line(item.get("_title", ""), f"backlog/{filepath.name}", f"#{issue_num}")
-            index_content = index_content.replace(old_line, new_line)
-            index_content = re.sub(r"last-updated:\s*\S+", f"last-updated: {_today()}", index_content, count=1)
-            BACKLOG_PATH.write_text(index_content, encoding="utf-8")
         typer.echo(f"  Created GitHub issue #{issue_num}")
         return f"#{issue_num}"
 
@@ -1893,31 +1506,17 @@ def _apply_status_in_progress(item: dict, repo: str) -> None:
         typer.echo(f"  WARNING: Could not set status: {e}", err=True)
 
 
-def _apply_plan_to_content(item: dict, content: str, plan: str) -> tuple[str, bool]:
-    """Apply plan update to content.
+def _apply_plan_to_item(item: dict, plan: str) -> bool:
+    """Apply plan update to per-item file metadata.
 
     Returns:
-        Tuple of (new_content, modified_flag).
+        True if updated, False otherwise.
     """
-    if _is_index_format(BACKLOG_PATH):
-        filepath_str = item.get("_file_path")
-        if filepath_str:
-            _update_item_metadata(Path(filepath_str), {"metadata": {"plan": plan}})
-            return content, True
-        return content, False
-    raw = item.get("_raw_body", "")
-    if f"**Plan**: {plan}" in raw or "**Plan**: " in raw:
-        return content, False
-    lines = content.splitlines()
-    start = item.get("_line_start", 1) - 1
-    for i in range(start, min(start + 30, len(lines))):
-        if i > start and (lines[i].startswith("###") or lines[i].startswith("## ")):
-            break
-        if re.match(r"^\*\*Description\*\*:", lines[i]):
-            lines.insert(i + 1, f"**Plan**: {plan}")
-            return "\n".join(lines) + "\n", True
-    new_body = item.get("_raw_body", "") + f"\n**Plan**: {plan}\n"
-    return content.replace(item.get("_raw_body", ""), new_body), True
+    filepath_str = item.get("_file_path")
+    if filepath_str:
+        _update_item_metadata(Path(filepath_str), {"metadata": {"plan": plan}})
+        return True
+    return False
 
 
 @app.command()
@@ -1934,10 +1533,7 @@ def update(
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
     """Update item: add Plan, set status:in-progress, create issue, or write groomed content."""
-    if not BACKLOG_PATH.exists():
-        typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
-        raise typer.Exit(1)
-    items = parse_backlog(BACKLOG_PATH)
+    items = parse_backlog()
     item = find_item(items, selector)
     if not item:
         typer.echo(f"ERROR: No item found for: {selector}", err=True)
@@ -1945,9 +1541,6 @@ def update(
 
     has_groomed = groomed or groomed_file or groomed_content or (section and content)
     if has_groomed:
-        if not _is_index_format(BACKLOG_PATH):
-            typer.echo("ERROR: --groomed only works with index format (per-item files)", err=True)
-            raise typer.Exit(1)
         if not item.get("_file_path"):
             typer.echo("ERROR: Item has no file path", err=True)
             raise typer.Exit(1)
@@ -1958,24 +1551,17 @@ def update(
         _handle_update_groomed(item, groomed_content_val, section_name, repo)
         return
 
-    content = BACKLOG_PATH.read_text(encoding="utf-8")
-    modified = False
-
     if plan:
-        content, plan_modified = _apply_plan_to_content(item, content, plan)
-        modified = modified or plan_modified
+        _apply_plan_to_item(item, plan)
         typer.echo(f"  Plan: {plan}")
 
     if create_issue and not item.get("_issue") and item.get("_section") in {"P0", "P1"}:
-        content, issue_modified = _create_issue_and_update_content(item, content, repo)
-        modified = modified or issue_modified
+        issue_num = _create_issue_and_update_item(item, repo)
+        if issue_num:
+            typer.echo(f"  Issue: #{issue_num}")
 
     if status == "in-progress" and item.get("_issue"):
         _apply_status_in_progress(item, repo)
-
-    if modified:
-        BACKLOG_PATH.write_text(content, encoding="utf-8")
-        typer.echo("Updated BACKLOG.md")
 
 
 @app.command()
@@ -2001,183 +1587,6 @@ def groom(
         groomed=not has_input,
         repo=repo,
     )
-
-
-def _item_priority_for_migrate(item: dict) -> str:
-    """Derive priority for migration (P0, P1, P2, Ideas, Completed).
-
-    Returns:
-        Priority string.
-    """
-    section = item.get("_section") or ""
-    title = item.get("_title", "")
-    if section == "Completed":
-        return "completed"
-    if section == "Format Guide":
-        if title.startswith("P0:"):
-            return "P0"
-        if title.startswith("P1:"):
-            return "P1"
-        if title.startswith("P2:"):
-            return "P2"
-        return "Ideas"
-    return section
-
-
-def _item_status_for_migrate(item: dict) -> str:
-    """Derive status from item content.
-
-    Returns:
-        Status string (open, done, resolved).
-    """
-    if item.get("_skip"):
-        raw = item.get("_raw_body", "")
-        if "**Resolved**:" in raw:
-            return "resolved"
-        if "**Completed**:" in raw or "**Status**: DONE" in raw:
-            return "done"
-    return "open"
-
-
-def _build_migrate_item_content(item: dict, priority: str, slug: str) -> str:
-    """Build file content for one migrated backlog item.
-
-    Returns:
-        Full file content string.
-    """
-    title = item.get("_title", "")
-    source = item.get("**Source**", "Not specified")
-    added = item.get("**Added**", _today())
-    type_val = item.get("**Type**", "Feature")
-    issue = item.get("_issue", "")
-    plan = item.get("**Plan**", "")
-    status = _item_status_for_migrate(item)
-    frontmatter_lines = [
-        "---",
-        f'title: "{title.replace(chr(34), chr(39))}"',
-        f'source: "{str(source).replace(chr(34), chr(39))[:200]}"',
-        f'added: "{added}"',
-        f"priority: {priority}",
-        f"type: {type_val}",
-        f"status: {status}",
-    ]
-    if issue:
-        frontmatter_lines.append(f'issue: "{issue}"')
-    if plan:
-        frontmatter_lines.append(f'plan: "{plan}"')
-    frontmatter_lines.extend(("---", ""))
-    return "\n".join(frontmatter_lines) + "\n" + (item.get("_raw_body", ""))
-
-
-def _process_migrate_items(items: list, dry_run: bool) -> tuple[dict[str, list[tuple[str, str, str]]], int]:
-    """Process items into per-item files and by_section index entries.
-
-    Returns:
-        Tuple of (by_section dict, item count).
-    """
-    section_order = ["P0", "P1", "P2", "Ideas", "completed"]
-    by_section: dict[str, list[tuple[str, str, str]]] = {s: [] for s in section_order}
-    seen_slugs: dict[str, int] = {}
-    for item in items:
-        section = item.get("_section") or ""
-        if section not in {"P0", "P1", "P2", "Ideas", "Completed", "Format Guide"}:
-            continue
-        title = item.get("_title", "")
-        if not title or (title.startswith("~~") and "~~" in title[2:]):
-            continue
-        priority = _item_priority_for_migrate(item)
-        base_slug = _title_to_slug(title)
-        if base_slug in seen_slugs:
-            seen_slugs[base_slug] += 1
-            slug = f"{base_slug}-{seen_slugs[base_slug]}"
-        else:
-            seen_slugs[base_slug] = 0
-            slug = base_slug
-        filename = f"{priority.lower()}-{slug}.md"
-        filepath = BACKLOG_DIR / filename
-        content = _build_migrate_item_content(item, priority, slug)
-        if not dry_run:
-            filepath.write_text(content, encoding="utf-8")
-        rel_path = f"backlog/{filename}"
-        issue = item.get("_issue", "")
-        by_section[priority].append((title, rel_path, f" {issue}" if issue else ""))
-    return by_section, len(seen_slugs)
-
-
-def _build_migrate_index_content(by_section: dict[str, list[tuple[str, str, str]]]) -> str:
-    """Build index markdown content from by_section.
-
-    Returns:
-        Index markdown content string.
-    """
-    section_order = ["P0", "P1", "P2", "Ideas", "completed"]
-    section_headings = {
-        "P0": "## P0 - Must Have",
-        "P1": "## P1 - Should Have",
-        "P2": "## P2 - Could Have",
-        "Ideas": "## Ideas",
-        "completed": "## Completed",
-    }
-    index_lines = [
-        "---",
-        "last-updated: " + _today(),
-        "format: index",
-        "---",
-        "",
-        "# Backlog",
-        "",
-        "Tracked features, ideas, and deferred work. Each item lives in `.claude/backlog/`.",
-        "",
-        "---",
-        "",
-    ]
-    for sec in section_order:
-        entries = by_section.get(sec, [])
-        if not entries:
-            if sec == "P0":
-                index_lines.extend((section_headings[sec], "", "_(Empty)_", ""))
-            continue
-        index_lines.extend((section_headings[sec], ""))
-        for title, rel_path, issue_suffix in entries:
-            index_lines.append(f"- [{title}]({rel_path}){issue_suffix}")
-        index_lines.append("")
-    index_lines.extend((
-        "---",
-        "",
-        "## Format Guide",
-        "",
-        "See [.claude/docs/backlog-item-groomed-schema.md](.claude/docs/backlog-item-groomed-schema.md) for groomed item structure.",
-    ))
-    return "\n".join(index_lines)
-
-
-@app.command()
-def migrate(dry_run: Annotated[bool, typer.Option("--dry-run")] = False) -> None:
-    """Migrate monolithic BACKLOG.md to index + per-item files in .claude/backlog/."""
-    if not BACKLOG_PATH.exists():
-        typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
-        raise typer.Exit(1)
-    BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
-    items = parse_backlog_migrate(BACKLOG_PATH)
-    by_section, item_count = _process_migrate_items(items, dry_run)
-    index_content = _build_migrate_index_content(by_section)
-    if dry_run:
-        typer.echo(f"[dry-run] Would create {item_count} item files in {BACKLOG_DIR}")
-        typer.echo("[dry-run] Would write new BACKLOG.md index")
-        return
-    backup = BACKLOG_PATH.with_suffix(".md.bak")
-    backup.write_text(BACKLOG_PATH.read_text(encoding="utf-8"), encoding="utf-8")
-    BACKLOG_PATH.write_text(index_content, encoding="utf-8")
-    broken = _validate_index_links(BACKLOG_PATH)
-    if broken:
-        for rel in broken:
-            typer.echo(f"  Broken link: {rel}", err=True)
-        typer.echo("ERROR: Migrate produced broken links. Restoring backup.", err=True)
-        BACKLOG_PATH.write_text(backup.read_text(encoding="utf-8"), encoding="utf-8")
-        raise typer.Exit(1)
-    typer.echo(f"Migrated {item_count} items to {BACKLOG_DIR}")
-    typer.echo(f"Backup: {backup}")
-    typer.echo("Updated BACKLOG.md to index format")
 
 
 def _extract_normalize_metadata(fm: dict, meta: dict) -> dict[str, str]:
@@ -2272,68 +1681,6 @@ def normalize(dry_run: Annotated[bool, typer.Option("--dry-run")] = False) -> No
         return
     updated = sum(1 for f in files if _normalize_item_file(f, dry_run))
     typer.echo(f"Normalized {updated} item file(s)" + (" [dry-run]" if dry_run else ""))
-
-
-def _validate_index_links(path: Path) -> list[str]:
-    """Validate all index links resolve to existing files.
-
-    Returns:
-        List of broken rel_paths.
-    """
-    if not _is_index_format(path):
-        return []
-    text = path.read_text(encoding="utf-8")
-    link_re = re.compile(r"^-\s+\[([^\]]+)\]\(([^)]+)\)\s*(#\d+)?\s*$")
-    broken: list[str] = []
-    for line in text.splitlines():
-        link_m = link_re.match(line)
-        if link_m:
-            rel_path = link_m.group(2)
-            if ".claude/backlog/" not in rel_path and "backlog/" not in rel_path:
-                continue
-            filepath = _resolve_index_link_path(rel_path, path)
-            if not filepath.exists():
-                broken.append(rel_path)
-    return broken
-
-
-@app.command()
-def validate() -> None:
-    """Validate all index links resolve to existing files. Exit 1 if any broken."""
-    if not BACKLOG_PATH.exists():
-        typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
-        raise typer.Exit(1)
-    if not _is_index_format(BACKLOG_PATH):
-        typer.echo("Not index format — nothing to validate.")
-        return
-    broken = _validate_index_links(BACKLOG_PATH)
-    if broken:
-        for rel in broken:
-            typer.echo(f"  Broken link: {rel}", err=True)
-        typer.echo(f"ERROR: {len(broken)} broken link(s)", err=True)
-        raise typer.Exit(1)
-    typer.echo("All index links valid.")
-
-
-@app.command("fix-links")
-def fix_links(dry_run: Annotated[bool, typer.Option("--dry-run")] = False) -> None:
-    """Rewrite index links from .claude/backlog/ to backlog/ for editor click-to-open."""
-    if not BACKLOG_PATH.exists():
-        typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
-        raise typer.Exit(1)
-    if not _is_index_format(BACKLOG_PATH):
-        typer.echo("Not index format — nothing to fix.")
-        return
-    content = BACKLOG_PATH.read_text(encoding="utf-8")
-    new_content = content.replace("](.claude/backlog/", "](backlog/")
-    if new_content == content:
-        typer.echo("No links to fix.")
-        return
-    if dry_run:
-        typer.echo("[dry-run] Would rewrite .claude/backlog/ → backlog/ in index links")
-        return
-    BACKLOG_PATH.write_text(new_content, encoding="utf-8")
-    typer.echo("Fixed index links.")
 
 
 def _fetch_github_issue_body(repo_obj: Repository, issue_num: int) -> str | None:
@@ -2574,11 +1921,7 @@ def pull(
     Merges by section — keeps longer version of each section.
     Skips items with no issue number.
     """
-    if not BACKLOG_PATH.exists():
-        typer.echo(f"ERROR: {BACKLOG_PATH} not found", err=True)
-        raise typer.Exit(1)
-
-    items = parse_backlog(BACKLOG_PATH)
+    items = parse_backlog()
     candidates = [it for it in items if it.get("_issue") and not it.get("_skip")]
 
     if not candidates:

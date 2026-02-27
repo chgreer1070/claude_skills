@@ -59,9 +59,9 @@ Parse the input to extract discrete, falsifiable claims:
 ```mermaid
 flowchart TD
     Start([Parse input]) --> Q{Input type?}
-    Q -->|Backlog item title| ReadBacklog[Read .claude/BACKLOG.md, find matching item]
+    Q -->|Backlog item title| ReadBacklog[Run backlog list --format json, find matching item]
     Q -->|Plugin path| ScanFiles[Scan SKILL.md and references for factual claims]
-    Q -->|--all-unverified| FindAll[Find all UNVERIFIED items in BACKLOG.md]
+    Q -->|--all-unverified| FindAll[Run backlog list --format json, filter UNVERIFIED items]
     ReadBacklog --> Extract[Extract falsifiable claims]
     ScanFiles --> Extract
     FindAll --> Extract
@@ -179,16 +179,16 @@ After all waves complete:
 
 ## Backlog Updates
 
-{For each REFUTED or VERIFIED claim, the specific edit to make to BACKLOG.md}
+{For each REFUTED or VERIFIED claim, the specific edit to make to the per-item file}
 ```
 
 ---
 
 ## Post-Actions
 
-1. **Update backlog** — for VERIFIED/REFUTED claims, update the backlog item's Status field
-2. **Lint** — `uv run prek run --files .claude/BACKLOG.md`
-3. **Commit** — `git add .claude/BACKLOG.md && git commit -m "docs(backlog): fact-check {N} claims ({date})"`
+1. **Update backlog** — for VERIFIED/REFUTED claims, update the backlog item's Status field in the per-item file
+2. **Lint** — `uv run prek run --files .claude/backlog/`
+3. **Commit** — `git add .claude/backlog/ && git commit -m "docs(backlog): fact-check {N} claims ({date})"`
 4. **Push** — `git push -u origin HEAD`
 
 For INCONCLUSIVE claims, add a note to the backlog item describing what additional verification is needed.

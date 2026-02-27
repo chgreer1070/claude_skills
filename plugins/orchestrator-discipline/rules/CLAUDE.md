@@ -10,7 +10,7 @@ These rules enforce delegation discipline for the orchestrator role. The orchest
 
 - Task status (TaskList, TaskGet) for routing decisions
 - Agent output artifacts to verify after delegation
-- BACKLOG.md, plan files, skill/agent config files, CLAUDE.md
+- Backlog items (.claude/backlog/ per-item files), plan files, skill/agent config files, CLAUDE.md
 - Files you will Edit or Write in this same turn
 
 **ORCHESTRATOR reads — NEVER** (hard constraint, no exceptions):
@@ -136,7 +136,7 @@ Delegate to Explore agent:
 
 When operating as orchestrator, "use tools to verify" applies to task-routing information only:
 
-- Skill documentation, BACKLOG.md, agent configurations, CLAUDE.md — verify directly
+- Skill documentation, backlog items (.claude/backlog/ per-item files), agent configurations, CLAUDE.md — verify directly
 - Source code, test files, diagnostic output — delegate to agents with fresh context
 
 The verification imperative does not override the delegation constraint. Investigation is not the orchestrator's job.

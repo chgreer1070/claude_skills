@@ -8,7 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
-  issue: '#218'
+  issue: '#101'
 ---
 
 **Files**: `plugins/uv/` (README.md)

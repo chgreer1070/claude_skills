@@ -855,6 +855,8 @@ Total agents discovered: 57
 - Triggers: When a backlog item needs grooming before work begins; at backlog grooming sessions
 - Inputs: Backlog item text; BACKLOG.md; repo skill and agent files
 - Outputs: Context Manifest with RT-ICA summary, supporting skills table, related agents table, dependencies, blockers, suggested first steps
+
+> **NOTE (2026-02-27)**: BACKLOG.md was removed. Backlog items now live in `.claude/backlog/` per-item files; GitHub Issues are the source of truth.
 - Validators: RT-ICA assessment completeness; supporting evidence citations
 
 ---

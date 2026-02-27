@@ -8,7 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
-  issue: '#241'
+  issue: '#123'
 ---
 
 **Research first**: How do organizations adopt new methodologies incrementally? What migration patterns exist for process changes?

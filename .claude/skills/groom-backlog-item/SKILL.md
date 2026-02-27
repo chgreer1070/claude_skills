@@ -20,7 +20,7 @@ Orchestrate backlog grooming: parse arguments, assess information completeness v
 
 ### Step 1: Parse Arguments and Load Backlog
 
-Read `.claude/BACKLOG.md`. Identify target items based on argument type above.
+Run `uv run .claude/skills/backlog/scripts/backlog.py list --format json` and filter the results by argument type above.
 
 ### Step 2: Validity Check (Pre-Groom Gate)
 
@@ -34,7 +34,7 @@ Before fact-checking or grooming, verify each item is still valid work:
 
 4. **Is this item already groomed today?** — Check the item file's `groomed` frontmatter field. If it matches today's date AND the item has all required sections (Fact-Check, RT-ICA, groomed subsections), skip Steps 4–6 entirely. Go directly to Step 7 and apply only the specific change requested by the user — do not re-derive, re-fact-check, or re-groom. Re-running the full pipeline on an already-groomed item produces duplicate content and wastes tokens.
 
-If any check fails, skip grooming for that item and report. Only proceed to Step 3 for items that pass.
+If any of checks 1–3 fail, skip grooming for that item and report. For items that pass checks 1–3, proceed to Step 3. For items that pass checks 1–3 but match check 4 (already groomed today), skip directly to Step 7.
 
 ### Step 3: Extract Item Details
 
@@ -45,7 +45,7 @@ For each target item, extract: title, description, research-first questions (if 
 Invoke the `fact-check` skill on each target item to verify factual claims against primary sources **before** running RT-ICA or spawning groomer agents. This prevents unverified or refuted assertions from entering the planning context.
 
 ```text
-Skill(command: "fact-check", args: "{item title}")
+Skill(skill: "fact-check", args: "{item title}")
 ```
 
 The `fact-check` skill spawns `@fact-checker` agents that MUST retrieve evidence via `WebFetch`, `WebSearch`, or `gh`. Training data recall is not accepted as evidence.
@@ -56,8 +56,8 @@ After each run, collect the verdict summary:
 Fact-Check Summary: {item title}
 Claims checked: {N}
 VERIFIED: {N} | REFUTED: {N} | INCONCLUSIVE: {N}
-Refuted claims:      [{list of claim texts — each becomes a MISSING condition in Step 4}]
-Inconclusive claims: [{list of claim texts — flag as unverified DERIVABLE in Step 4}]
+Refuted claims:      [{list of claim texts — each becomes a MISSING condition in Step 5}]
+Inconclusive claims: [{list of claim texts — flag as unverified DERIVABLE in Step 5}]
 Citations:           [{VERIFIED claims cite their primary sources}]
 ```
 
@@ -140,13 +140,13 @@ uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --section "...
 After each step, call the backlog script with `--section` and `--content`:
 
 ```text
-# After Step 3 (fact-check)
+# After Step 4 (fact-check)
 backlog groom "{item title}" --section "Fact-Check" --content "{fact-check summary}"
 
-# After Step 4 (RT-ICA)
+# After Step 5 (RT-ICA)
 backlog groom "{item title}" --section "RT-ICA" --content "{rt-ica summary}"
 
-# After Step 5 (groomer output) — full groomed body or subsections
+# After Step 6 (groomer output) — full groomed body or subsections
 backlog groom "{item title}" --section "Reproducibility" --content "{reproducibility section}"
 # ... or for full groomed body:
 backlog groom "{item title}" --groomed-content "{full groomed body}"

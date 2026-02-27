@@ -27,7 +27,7 @@ Search for the tracking system in this priority order. Use the first one found:
 
 ```bash
 # Check common tracking file locations
-ls BACKLOG.md 2>/dev/null
+ls .claude/backlog/ 2>/dev/null
 ls .claude/tasks/ 2>/dev/null
 ls .planning/ 2>/dev/null
 ls TODO.md 2>/dev/null
@@ -38,18 +38,17 @@ ls docs/TODO.md 2>/dev/null
 Also check:
 
 - Any `*.backlog`, `*.todo`, or `*.tasks` files at repo root
-- `.claude/BACKLOG.md`
 - A `tasks/` or `planning/` directory at repo root
 - GSD planning directories (`.gsd/`, `gsd/`)
 - SAM task files (`sam.md`, `.sam/`)
 
-**If no tracking system exists**: Create `BACKLOG.md` at the repo root using the format below. Note in the resolution report that you created it.
+**If no tracking system exists**: Create a per-item file in `.claude/backlog/` using the format below. Note in the resolution report that you created it.
 
 ## Step 2 — Write the Work Item
 
 Record each pre-existing issue with enough detail for future triage. Use the format appropriate to the tracking system found.
 
-**For BACKLOG.md** (append each item):
+**For `.claude/backlog/` per-item files** (create one file per issue, named `{priority}-linting-{tool}-{rule}-{timestamp}.md`):
 
 ```markdown
 ## [LINTING] <tool>: <rule-code> in <file>:<line>
@@ -82,7 +81,7 @@ Found N pre-existing issues during linting run. Recorded to <tracking-system-pat
 
 | File | Tool | Rule | Impact | Tracking Entry |
 |------|------|------|--------|----------------|
-| file.py:42 | ruff | F401 | advisory | BACKLOG.md#section |
+| file.py:42 | ruff | F401 | advisory | .claude/backlog/p2-linting-ruff-f401-.... |
 ```
 
 If zero pre-existing issues were found, include:

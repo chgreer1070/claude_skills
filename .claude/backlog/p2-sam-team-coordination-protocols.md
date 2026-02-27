@@ -8,7 +8,7 @@ metadata:
   priority: P2
   type: Feature
   status: open
-  issue: '#239'
+  issue: '#121'
 ---
 
 **Research first**: How do collaborative editing systems handle concurrent users? What patterns exist in git-based workflows?
