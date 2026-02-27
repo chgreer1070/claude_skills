@@ -10,7 +10,7 @@ metadata:
   status: open
   issue: '#282'
   groomed: '2026-02-27'
-  last_synced: '2026-02-27T12:08:46Z'
+  last_synced: '2026-02-27T12:14:59Z'
 ---
 
 ## Design Constraints
@@ -24,6 +24,29 @@ Agents must never auto-action issues from arbitrary contributors. The approved w
 3. **Author allowlist** (optional hardening) — `.claude/config.json` or `pyproject.toml` can list approved GitHub logins. `backlog.py pull` skips issues from authors not on the list even if they're in the project. Useful for repos with many collaborators.
 
 The combination means: random drive-by issues stay in the repo's issue tracker, never enter the agent's local cache, and never get worked. A maintainer explicitly approves work by adding the issue to the project board and labeling it.
+
+### Cache-first reads: minimizing API pressure
+
+Local `.claude/backlog/*.md` files are the **fast read path** for agents. GitHub API is reserved for writes and explicit syncs. This avoids rate-limiting, network latency, and unnecessary API pressure from agents querying backlog state during sessions.
+
+**Cache hit (read local, skip GH API):**
+
+1. **Recent local write** — frontmatter `last_synced` is within a freshness window (e.g., 10 min) and action is read-only (`list`, `find_item`, reading item details for grooming/planning). The local file is authoritative for the current session.
+2. **Same branch, same session** — if the item was modified on the current git branch, local changes are the latest state. No reason to round-trip to GH.
+3. **Read-after-write** — immediately after `add`, `update`, or `groom` writes locally, the local file reflects the latest state. Subsequent reads within the session use it directly.
+4. **No issue number** — Ideas and un-synced items have no GH issue. Local is the only source.
+5. **`list` without `--with-status`** — default `list` reads only local files. Status label lookup (which requires GH API) is opt-in via `--with-status`.
+6. **Offline / no token** — `_try_get_github()` returns `None`. Fall back to local cache for all reads, warn once per session.
+
+**Cache miss (must hit GH API):**
+
+- `list --with-status` — needs label state from GH
+- `close` / `resolve` — mutates GH state
+- `pull` — explicit cache refresh from GH
+- `sync` / `push` — writes local state to GH
+- Fresh clone or new branch with no local files — must `pull` first
+
+**Design principle:** Agents working locally against `backlog.py list` and `backlog.py groom` should never trigger API calls as a side effect of reading. Network operations are explicit (`pull`, `push`, `sync`, `--with-status`).
 
 ## Fact-Check
 
