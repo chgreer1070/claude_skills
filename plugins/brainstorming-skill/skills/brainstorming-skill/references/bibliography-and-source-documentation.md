@@ -79,18 +79,3 @@
     - QA and testing-specific pattern adaptations
     - Edge case discovery methodologies
 
-14. **NotionAI & Various Prompt Marketplaces** (PromptBase, Gumroad)
-    - Practitioner-created prompts with reported success metrics
-    - Real-world usage data and effectiveness reports
-
----
-
-## Verification Note
-
-**Evidence Strength Assessment:**
-
-- **Strong (3+ independent sources)**: Perspective multiplication patterns, SCAMPER framework, constraint-based ideation, Six Thinking Hats, time travel scenarios, fill-in-the-blank templates
-- **Moderate (2 sources)**: Morphological matrix, analogical transfer, chain-of-thought reasoning, assumption challenge
-- **Emerging (1-2 sources but consistent language)**: Devil's advocate patterns, worst possible idea inversion, stakeholder perspective grids
-
-All 30+ patterns documented appear in at least one authoritative source with exact prompt wording. Most common patterns appear in 3-5+ independent sources, validating cross-domain applicability.

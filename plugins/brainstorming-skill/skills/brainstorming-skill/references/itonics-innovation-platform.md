@@ -580,14 +580,3 @@ All 79 prompts use bracketed placeholders to enable customization:
 
 5. **Stakeholder Inclusivity**: Several prompts explicitly introduce diverse perspectives (ages, cultures, roles, industries) to reduce groupthink and cognitive bias.
 
----
-
-## Related Brainstorming Frameworks
-
-While not documented in this source, these prompts align with established brainstorming methodologies:
-
-- **SCAMPER** (Substitute, Combine, Adapt, Modify, Put to another use, Eliminate, Reverse) - aspects appear in Categories 1, 4
-- **Blue Ocean Strategy** (Value innovation, uncontested market space) - aspects appear in Categories 1, 6
-- **Futures Thinking** (Scenario planning, weak signals, trends) - Categories 7 and 8
-- **Design Thinking** (Empathy, ideation, prototyping) - Categories 3, 5, 10
-- **Divergent Thinking** (Multiple solutions, perspective diversity) - Categories 4, 7

@@ -6,7 +6,7 @@ description: This skill should be used when users need to generate ideas, explor
 
 ## Overview
 
-This skill provides comprehensive, research-validated brainstorming patterns and prompt templates to help generate high-quality ideas across any domain. It contains 30+ documented patterns from 14 primary sources, organized into systematic categories with exact prompt wording, output format specifications, and proven success metrics.
+This skill provides comprehensive, research-validated brainstorming patterns and prompt templates to help generate high-quality ideas across any domain. It contains 30+ documented patterns from 13 primary sources, organized into systematic categories with exact prompt wording, output format specifications, and proven success metrics.
 
 ## When to Use This Skill
 

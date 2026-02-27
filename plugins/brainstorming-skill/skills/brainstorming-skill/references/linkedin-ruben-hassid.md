@@ -443,13 +443,3 @@ Rather than pure volume, Hassid emphasizes:
 
 **Confidence Level**: High for core methodology and scaling principles; Medium-High for specific prompt wording (framework structure verified, some variations based on documented examples).
 
----
-
-## Related Resources
-
-For deeper exploration of related methodologies:
-
-- **Prompt Engineering Fundamentals**: 26 Prompt Hacks for ChatGPT (science-backed techniques)
-- **Advanced Brainstorming**: Five Whys Technique, TRIZ (Theory of Inventive Problem Solving), Job-To-Be-Done Framework
-- **AI Integration**: System architecture for scaling content production across teams
-- **Platform-Specific**: LinkedIn-optimized hooks, carousel structures, engagement patterns
