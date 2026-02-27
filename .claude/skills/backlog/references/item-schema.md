@@ -11,7 +11,7 @@ SOURCE: Derived from comparative analysis of GSD repo patterns and claude_skills
 
 ```yaml
 ---
-name: string          # REQUIRED — full item title (matches BACKLOG.md heading)
+name: string          # REQUIRED — full item title (matches GitHub issue title)
 description: string   # REQUIRED — one-sentence summary of the problem or goal
 metadata:
   topic: string       # REQUIRED — slug derived from title (kebab-case, max 60 chars)
@@ -82,7 +82,7 @@ Sections appear in this order. All sections after Description are populated incr
 ```markdown
 **Acceptance Criteria**:
 - Running `command X` produces `output Y`
-- File `.claude/BACKLOG.md` contains the new item in the P1 section
+- File `.claude/backlog/p1-{slug}.md` exists with correct frontmatter
 - `gh issue view N --json state` returns `"state": "open"`
 ```
 
@@ -139,7 +139,7 @@ Missing: {list or "None"}
 ## Acceptance Criteria Verification
 
 [PASS] Running `command X` produces `output Y` — verified at src/main.py:42
-[FAIL] File `.claude/BACKLOG.md` contains item in P1 section — section not found
+[FAIL] File `.claude/backlog/p1-{slug}.md` exists with correct frontmatter — file not found
 [PASS] `gh issue view N --json state` returns "open" — confirmed via gh output
 
 Overall: FAIL (2/3 criteria met)
@@ -189,15 +189,11 @@ Written by `group-items-to-milestone` when item is assigned. Read by:
 - `work-backlog-item` to determine which milestone an item belongs to
 - `complete-milestone` to find all items in the milestone (via per-item file scan)
 
-### 2. BACKLOG.md body entry (human-readable index)
+### 2. GitHub Issue milestone field (published view)
 
-```markdown
-- [Item Title](backlog/p1-item-slug.md) **Milestone**: 5  #199
-```
-
-Written by `group-items-to-milestone` when updating the BACKLOG.md index entry. Read by:
-- `complete-milestone` straggler detection (scans for `**Milestone**: {N}` in body entries)
-- Humans browsing the backlog index
+The GitHub Issue's milestone field is the published view. Written by `group-items-to-milestone` when assigning the item. Read by:
+- `complete-milestone` straggler detection (queries GitHub API for milestone issues)
+- Humans browsing GitHub Issues
 
 ### Sync rule
 
@@ -205,26 +201,8 @@ Both locations MUST be updated together. `group-items-to-milestone` is the only 
 
 ---
 
-## BACKLOG.md Frontmatter Summary Block
+## Backlog Directory Structure
 
-The backlog script maintains a summary block at the top of `.claude/BACKLOG.md`:
-
-```yaml
----
-last-updated: YYYY-MM-DD
-format: index
-counts:
-  p0: integer
-  p1: integer
-  p2: integer
-  ideas: integer
-  completed: integer
-active-milestone: integer    # optional — current milestone number
-groomed: integer             # count of items with metadata.groomed set
-in-progress: integer         # count of items with status: in-progress
----
-```
-
-The `work-backlog-item progress` subcommand reads from this block to produce situational awareness output without re-parsing the full file.
+The backlog script reads per-item files from `.claude/backlog/`. Each file is named `{priority}-{slug}.md` (e.g., `p1-error-recovery.md`). The `work-backlog-item progress` subcommand scans this directory to produce situational awareness output.
 
 SOURCE: claude_skills_backlog_management_systematic_improvements_list.md, Cross-Cutting Improvements section 5 (2026-02-26).

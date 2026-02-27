@@ -9,7 +9,7 @@
 """GitHub Project Setup — multi-step project management automation.
 
 Orchestrates: label creation, milestone management, project setup, and
-BACKLOG.md issue import using the PyGithub native library.
+backlog item issue import using the PyGithub native library.
 
 Authentication: reads GITHUB_TOKEN from environment.
 No subprocess / shell-out to gh CLI.

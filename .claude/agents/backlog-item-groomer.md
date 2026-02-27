@@ -74,7 +74,7 @@ Stop after 5 relevant matches per key term.
 
 ### Step 4 — Identify Dependencies
 
-Read `.claude/BACKLOG.md`. Identify:
+Scan `.claude/backlog/` per-item files. Identify:
 
 - Items this one depends on (must be done first)
 - Items that depend on this one (will be unblocked)

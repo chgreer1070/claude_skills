@@ -285,7 +285,7 @@ The script delegates all GitHub operations to the authenticated `gh` CLI — no 
 - [labels.md](./references/labels.md) — Label taxonomy (priority, type, status), color codes, bulk setup
 - [milestones.md](./references/milestones.md) — Milestone CRUD via REST API, naming conventions
 - [projects-v2.md](./references/projects-v2.md) — GitHub Projects V2 commands, custom fields, GraphQL queries
-- [issue-stories.md](./references/issue-stories.md) — Issue as story format, body template, lifecycle, BACKLOG.md mapping
+- [issue-stories.md](./references/issue-stories.md) — Issue as story format, body template, lifecycle, backlog item field mapping
 
 ---
 

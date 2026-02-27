@@ -82,7 +82,7 @@ Overall: PASS (3/3 criteria met)
 Backlog item "plugin-validator UX and coverage gaps" closed.
 - Checklist: 12/12 tasks complete
 - Acceptance criteria: PASS (3/3)
-- Status written to BACKLOG.md
+- Status written to per-item file
 </eg>
 
 ## Resolving a no-longer-applicable item

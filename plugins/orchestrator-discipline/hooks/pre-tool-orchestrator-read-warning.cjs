@@ -30,7 +30,7 @@ function isSourceOrConfigFile(filePath) {
 /**
  * Returns true if the path resolves to a directory on disk.
  * Safe to call on non-existent paths — returns false on any error.
- * Note: .md files (e.g. BACKLOG.md) are excluded by isSourceOrConfigFile already;
+ * Note: .md files (e.g. backlog per-item files) are excluded by isSourceOrConfigFile already;
  * this function only fires for paths that already passed the directory check branch.
  *
  * @param {string} targetPath

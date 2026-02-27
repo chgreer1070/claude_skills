@@ -64,7 +64,7 @@ Each artifact type uses the token pattern `ARTIFACT:{TYPE}({SCOPE_OR_ID})`. Stor
 1. **Use the SAM pipeline for feature work**
    - Canonical flow: Follow the 7-stage pipeline in the framework document.
    - In claude_skills: Invoke `/development-harness` or `/python3-development:add-new-feature` for feature planning and implementation.
-   - Bridge backlog items: Invoke `/work-backlog-item` to bring BACKLOG.md items into SAM planning.
+   - Bridge backlog items: Invoke `/work-backlog-item` to bring backlog items into SAM planning.
 
 2. **Produce artifacts at every stage**
    - Use `ARTIFACT:{TYPE}({ID})` tokens in artifact headers; cross-reference predecessor/successor.
@@ -111,7 +111,7 @@ gh api repos/bitflight-devops/stateless-agent-methodology/contents/stateless-sof
 | **Default flow** | `plugins/development-harness/skills/development-harness/references/default-development-flow.md` | Default development flow |
 | **Artifact conventions** | `plugins/development-harness/skills/development-harness/references/artifact-conventions.md` | Artifact naming and structure |
 | **Human touchpoint model** | `plugins/development-harness/skills/development-harness/references/human-touchpoint-model.md` | Escalation and human gates |
-| **Work-backlog-item bridge** | `.claude/skills/work-backlog-item/SKILL.md` | Bridges BACKLOG.md items into SAM planning |
+| **Work-backlog-item bridge** | `.claude/skills/work-backlog-item/SKILL.md` | Bridges backlog items into SAM planning |
 
 ---
 

@@ -1,12 +1,12 @@
 ---
 name: group-items-to-milestone
-description: "Use when assigning BACKLOG.md items to a GitHub milestone. Args: {milestone-number} [P0|P1|P2|title-filter]. Reads BACKLOG.md, shows items with GitHub Issue status, lets user select which to assign. Creates missing GitHub Issues for selected P0/P1 items, assigns all to the milestone, updates Project V2 Status to Backlog. Use after create-milestone to populate a sprint or release."
+description: "Use when assigning backlog items to a GitHub milestone. Args: {milestone-number} [P0|P1|P2|title-filter]. Reads .claude/backlog/ per-item files, shows items with GitHub Issue status, lets user select which to assign. Creates missing GitHub Issues for selected P0/P1 items, assigns all to the milestone, updates Project V2 Status to Backlog. Use after create-milestone to populate a sprint or release."
 argument-hint: '{milestone-number} [P0|P1|P2|title-filter]'
 user-invocable: true
 ---
 # Group Items to Milestone
 
-Assign BACKLOG.md items to a GitHub milestone. Bridges BACKLOG.md → GitHub Issues → milestone assignment.
+Assign backlog items to a GitHub milestone. Bridges .claude/backlog/ per-item files → GitHub Issues → milestone assignment.
 
 API references: [milestones.md](../gh/references/milestones.md) | [issue-stories.md](../gh/references/issue-stories.md) | [projects-v2.md](../gh/references/projects-v2.md)
 
@@ -34,7 +34,7 @@ If milestone not found or closed, report and stop.
 
 ### Step 2: Load Backlog Items
 
-Read `.claude/BACKLOG.md`. Parse all H3 items from P0, P1, P2, and Ideas sections. Apply any filter.
+Scan `.claude/backlog/` per-item files. Parse all items from P0, P1, P2, and Ideas. Apply any filter.
 
 For each item determine status:
 
@@ -77,7 +77,7 @@ uv run .claude/skills/gh/scripts/github_project_setup.py issue create \
   --milestone {number}
 ```
 
-Write `**Issue**: #{N}` back to the matching item in `.claude/BACKLOG.md`.
+Write `**Issue**: #{N}` back to the matching per-item file in `.claude/backlog/`.
 
 Skip issue creation for P2/Ideas items — assign by milestone number only if they already have an issue.
 
@@ -104,7 +104,7 @@ Assigned {count} items:
   Issue #14: create-backlog-item skill (new issue created)
   Issue #5:  commitlint verify flag (already assigned — skipped)
 
-BACKLOG.md updated with {created_count} new issue numbers.
+Per-item files updated with {created_count} new issue numbers.
 
 Next step: /start-milestone {number}
 ```

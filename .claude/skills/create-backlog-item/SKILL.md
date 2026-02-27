@@ -1,12 +1,12 @@
 ---
 name: create-backlog-item
-description: "Use when capturing a new backlog item — appends to .claude/BACKLOG.md in the correct priority section. Three modes — guided intake (no args), quick entry (quick {title}), or fully autonomous (--auto {title}). Validates required fields, detects duplicates, updates frontmatter counts, and offers GitHub Issue creation for P0/P1 items."
+description: "Use when capturing a new backlog item — creates a per-item file in .claude/backlog/. Three modes — guided intake (no args), quick entry (quick {title}), or fully autonomous (--auto {title}). Validates required fields, detects duplicates, and offers GitHub Issue creation for P0/P1 items."
 argument-hint: '[quick {title} | --auto {title} | <empty for guided intake>]'
 user-invocable: true
 ---
 # Create Backlog Item
 
-Capture a new backlog item and append it to `.claude/BACKLOG.md` in the correct priority section.
+Capture a new backlog item and create a per-item file in `.claude/backlog/`.
 
 ## Arguments
 
@@ -33,7 +33,7 @@ Capture a new backlog item and append it to `.claude/BACKLOG.md` in the correct 
 Title = `$1` onward (all remaining words joined). Do not call `AskUserQuestion`. Instead:
 
 1. Search `research/` recursively for any file whose name or content matches the title (case-insensitive). Read the best match.
-2. Search `.claude/BACKLOG.md` for related items to understand existing priority patterns.
+2. Search `.claude/backlog/` per-item files for related items to understand existing priority patterns.
 3. Derive all fields from the research file, task description, and available context:
    - **Title**: from `$1` onward
    - **Priority**: infer from description urgency keywords (`critical`, `required`, `must` → P1; `nice to have`, `optional` → P2; default P1)
@@ -122,7 +122,7 @@ Required fields: `title`, `priority`, `description`.
 
 ### Step 3: Duplicate Detection
 
-Read `.claude/BACKLOG.md`. Search all H3 headings for case-insensitive overlap with `title`.
+Scan `.claude/backlog/` per-item files. Search item titles for case-insensitive overlap with `title`.
 
 If a match is found within edit distance ≤ 2 tokens (same first 3 words), report:
 
@@ -155,7 +155,7 @@ If research questions were embedded in the description (lines starting with `?` 
 **Research first**: {extracted questions}
 ```
 
-### Step 5: Write to BACKLOG.md via backlog script
+### Step 5: Create per-item file via backlog script
 
 Build the command. Base:
 
@@ -200,12 +200,11 @@ Next steps:
 - Missing required field: report field name, stop.
 - Duplicate detected and user says No: stop without writing.
 - backlog script fails: report error, stop.
-- GITHUB_TOKEN not set (for P0/P1 issue creation): script reports; item still written to BACKLOG.md.
+- GITHUB_TOKEN not set (for P0/P1 issue creation): script reports; per-item file still written to `.claude/backlog/`.
 
 ## Completion Criteria
 
 - backlog add invoked successfully
-- Item written to correct BACKLOG.md section (script handles)
-- Frontmatter counts updated (script handles)
-- GitHub Issue created and `**Issue**: #N` written back (P0/P1 only, if --create-issue; script handles)
+- Per-item file created in `.claude/backlog/` (script handles)
+- GitHub Issue created and `issue` field set in per-item frontmatter (P0/P1 only, if --create-issue; script handles)
 - Next-step commands shown to user

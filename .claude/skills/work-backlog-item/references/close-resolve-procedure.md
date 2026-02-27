@@ -19,7 +19,7 @@ gh issue view {issue_number} -R Jamie-BitFlight/claude_skills \
 - If the issue is not found, report and stop.
 - Extract `title` from the issue response and use it as the working title.
 
-Otherwise, read `.claude/BACKLOG.md` and search H3 headings for case-insensitive match against `{title}`.
+Otherwise, scan `.claude/backlog/` per-item files and search item titles for case-insensitive match against `{title}`.
 
 - Zero matches: report "No backlog item found matching: {title}" and stop.
 - Multiple matches: list all matches and ask user to pick one.
@@ -73,7 +73,7 @@ Then stop.
 
 ## 9d: Close path — typed acceptance-criteria verification
 
-4. Extract `**Acceptance Criteria**:` from the per-item file (`.claude/backlog/{priority}-{slug}.md`) or from the BACKLOG.md item body. The field format is a bullet list following the header:
+4. Extract `**Acceptance Criteria**:` from the per-item file (`.claude/backlog/{priority}-{slug}.md`) or from the backlog item body. The field format is a bullet list following the header:
 
    ```markdown
    **Acceptance Criteria**:
@@ -123,7 +123,7 @@ Then stop.
 
 ## 9e: Invoke backlog close
 
-8. Invoke the backlog script (script writes to BACKLOG.md and closes GitHub issue):
+8. Invoke the backlog script (script updates per-item file and closes GitHub issue):
 
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --plan "{plan file path}" --checklist-pass -R Jamie-BitFlight/claude_skills

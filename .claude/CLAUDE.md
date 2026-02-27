@@ -191,7 +191,7 @@ Skip only for trivial single-step requests (typos, one-off questions, immediate 
 
 <backlog_operations>
 
-**Single interface**: Use `.claude/skills/backlog/scripts/backlog.py` for all backlog and GitHub issue CRUD. Editing `.claude/BACKLOG.md` directly or using `gh` for issue CRUD bypasses sync logic — use the script.
+**Single interface**: Use `.claude/skills/backlog/scripts/backlog.py` for all backlog and GitHub issue CRUD. GitHub Issues are the source of truth; `.claude/backlog/` per-item files are the local cache. Editing per-item files directly or using `gh` for issue CRUD bypasses sync logic — use the script.
 
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py add|list|sync|close|resolve|update ...

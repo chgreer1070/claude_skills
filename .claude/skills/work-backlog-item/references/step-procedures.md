@@ -105,7 +105,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 1. Extract title from `$1`+ joined. Build slug: title lowercased, spaces → hyphens.
 
-2. Find the item in BACKLOG.md (same logic as Step 1). If not found, create a minimal item with the title.
+2. Find the item in `.claude/backlog/` per-item files (same logic as Step 1). If not found, create a minimal item with the title.
 
 3. Extract the item's description and acceptance criteria if available.
 
@@ -133,7 +133,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 **Trigger:** `$0` is `progress`.
 
-1. Read BACKLOG.md. Count items in each section (P0, P1, P2, Ideas, Completed). If BACKLOG.md has a frontmatter summary block, read counts from there instead of parsing the full file.
+1. Scan `.claude/backlog/` per-item files. Count items by priority (P0, P1, P2, Ideas) and status (done, resolved, closed).
 
 2. Query GitHub for the active milestone:
 
@@ -167,8 +167,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
    If no active milestone exists, omit the milestone section and show only Overall Backlog counts.
 
-   If BACKLOG.md has no frontmatter summary, parse section counts directly from the file and note:
-   `(counts parsed from file — add frontmatter summary for faster reads)`
+   If the backlog directory is empty, note: `(no backlog items found)`
 
 ---
 
@@ -178,7 +177,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 1. Extract title from `$1`+ joined. If `$1` starts with `#`, fetch title from GitHub Issue (same logic as Step 1b).
 
-2. Find the item in BACKLOG.md. Extract `**Plan**:` field. If absent:
+2. Find the item in `.claude/backlog/` per-item files. Extract `metadata.plan` field. If absent:
 
    <eg>
    No plan file recorded for "{title}".

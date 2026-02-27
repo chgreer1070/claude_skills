@@ -119,14 +119,14 @@ When the initial linter run reveals issues in files you did not touch, apply the
 **Discover the tracking system** (search in this order):
 
 ```bash
-ls BACKLOG.md 2>/dev/null || ls .claude/tasks/ 2>/dev/null || ls TODO.md 2>/dev/null
+ls .claude/backlog/ 2>/dev/null || ls .claude/tasks/ 2>/dev/null || ls TODO.md 2>/dev/null
 ```
 
-Check also: `.claude/BACKLOG.md`, `TODO`, `docs/TODO.md`, `.gsd/`, `gsd/`, `sam.md`, `.sam/`, `tasks/`, `planning/`.
+Check also: `TODO`, `docs/TODO.md`, `.gsd/`, `gsd/`, `sam.md`, `.sam/`, `tasks/`, `planning/`.
 
-If no tracking system exists: create `BACKLOG.md` at repo root and note this in the resolution report.
+If no tracking system exists: create a per-item file in `.claude/backlog/` and note this in the resolution report.
 
-**Record each non-blocking pre-existing issue** in the tracking system. For BACKLOG.md:
+**Record each non-blocking pre-existing issue** in the tracking system. For `.claude/backlog/` per-item files (create one file per issue):
 
 ```markdown
 ## [LINTING] <tool>: <rule-code> in <file>:<line>
@@ -195,7 +195,7 @@ Recorded to: <tracking-system-path>
 
 | File | Tool | Rule | Impact | Action Taken |
 |------|------|------|--------|--------------|
-| file.py:42 | ruff | F401 | advisory | Recorded to BACKLOG.md |
+| file.py:42 | ruff | F401 | advisory | Recorded to .claude/backlog/ per-item file |
 
 (Write "None detected" if zero pre-existing issues found.)
 

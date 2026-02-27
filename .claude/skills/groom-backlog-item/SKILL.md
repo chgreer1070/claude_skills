@@ -20,7 +20,7 @@ Orchestrate backlog grooming: parse arguments, assess information completeness v
 
 ### Step 1: Parse Arguments and Load Backlog
 
-Read `.claude/BACKLOG.md`. Identify target items based on argument type above.
+Scan `.claude/backlog/` per-item files. Identify target items based on argument type above.
 
 ### Step 2: Validity Check (Pre-Groom Gate)
 
