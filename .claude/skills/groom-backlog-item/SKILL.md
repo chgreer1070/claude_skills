@@ -6,7 +6,9 @@ user-invocable: true
 ---
 # Groom Backlog Item
 
-Orchestrate backlog grooming: parse arguments, assess information completeness via RT-ICA, spawn discovery agents, write groomed content into per-item files.
+Orchestrate backlog grooming (refinement): clarify, estimate, prioritize, and clean backlog items so they are ready for sprint planning — but do NOT design or architect solutions.
+
+**Scope boundary**: Grooming answers "what needs to be done, is the problem clear, and what resources exist?" It does NOT answer "how should it be built." Architecture, task decomposition, and implementation design happen in the SAM planning phase (`/work-backlog-item` Step 6). Grooming produces a DEEP item (Detailed, Estimated, Emergent, Prioritized) — not a plan.
 
 ## Arguments
 
