@@ -5,10 +5,11 @@ metadata:
   topic: sam-human-escalation-criteria
   source: Gap analysis of SAM framework
   added: '2026-02-01'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#200'
+  plan: N/A
 ---
 
 **Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (each Agent Specification section)

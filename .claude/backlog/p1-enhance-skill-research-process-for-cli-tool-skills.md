@@ -10,6 +10,7 @@ metadata:
   status: open
   groomed: '2026-02-25'
   issue: '#197'
+  plan: plan/tasks-6-enhance-skill-research-process.md
 ---
 
 ## Fact-Check

@@ -7,7 +7,7 @@ metadata:
   added: '2026-02-24'
   priority: P1
   type: Bug
-  status: open
+  status: resolved
   issue: '#196'
 ---
 

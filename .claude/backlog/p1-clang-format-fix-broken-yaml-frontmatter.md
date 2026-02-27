@@ -5,7 +5,8 @@ metadata:
   topic: clang-format-fix-broken-yaml-frontmatter
   source: Plugin code review session 2026-02-21
   added: '2026-02-21'
-  priority: P1
+  priority: completed
   type: Feature
   status: done
+  plan: N/A
 ---

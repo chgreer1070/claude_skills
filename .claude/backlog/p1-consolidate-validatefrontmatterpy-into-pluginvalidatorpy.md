@@ -5,8 +5,10 @@ metadata:
   topic: consolidate-validatefrontmatterpy-into-pluginvalidatorpy
   source: Frontmatter validation bug-fix session 2026-02-20
   added: '2026-02-20'
-  priority: P1
+  priority: completed
   type: Feature
   status: done
+  plan: N/A
 ---
+
 **Suggested location**: `plugins/plugin-creator/scripts/`

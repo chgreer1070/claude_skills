@@ -7,7 +7,7 @@ metadata:
   added: '2026-02-24'
   priority: P0
   type: Chore
-  status: open
+  status: resolved
   issue: '#198'
 ---
 

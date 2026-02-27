@@ -5,13 +5,12 @@ metadata:
   topic: gitlab-skill-remove-hardcoded-corporate-url
   source: Plugin code review session 2026-02-21
   added: '2026-02-21'
-  priority: P1
+  priority: completed
   type: Feature
   status: done
   groomed: '2026-02-24'
+  plan: N/A
 ---
-
-
 
 ## Groomed (2026-02-24)
 
