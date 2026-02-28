@@ -16,17 +16,28 @@ SOURCE: Session 2026-02-28 — `\s*` regex caused silent no-op when heading had 
 
 The backlog file has multiple structural scopes:
 
-```text
-## Fact-Check
-  ### Claim 1
-  ### Claim 2
-## RT-ICA Assessment
-  ### Conditions
-  ### Decision          <-- RT-ICA scope
-## Groomed (date)
-  ### Priority
-  ### Decision          <-- Groomed scope
-  ### Effort
+<!-- Converted from ASCII scope diagram: backlog file heading hierarchy with groomed_re scope boundary -->
+
+```mermaid
+flowchart TD
+    Root["backlog item file"] --> FC["## Fact-Check"]
+    Root --> RTA["## RT-ICA Assessment"]
+    Root --> GR["## Groomed (date)"]
+
+    FC --> FC1["### Claim 1"]
+    FC --> FC2["### Claim 2"]
+
+    RTA --> RTA_Cond["### Conditions"]
+    RTA --> RTA_Dec["### Decision -- RT-ICA scope"]
+
+    GR --> GR_Pri["### Priority"]
+    GR --> GR_Dec["### Decision -- Groomed scope"]
+    GR --> GR_Eff["### Effort"]
+
+    %% _append_or_replace_section is bounded by groomed_re -- only GR_Dec is reachable
+    GR_Dec -.-> Scope["_append_or_replace_section operates here only<br>via groomed_re boundary"]
+    %% RTA_Dec is structurally outside the groomed_re match range
+    RTA_Dec -.-> Outside["Outside groomed_re scope<br>invisible to _append_or_replace_section"]
 ```
 
 `_append_or_replace_section` operates within `## Groomed` only (via `groomed_re`). A `### Decision` under `## RT-ICA` is invisible to it. Updating one does not update the other.

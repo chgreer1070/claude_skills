@@ -20,7 +20,23 @@ user-invocable: true
 
 ## 2. The "WORKS" Check
 
-Choose A or B based on task type:
+<!-- Converted from prose branch instruction: "Choose A or B based on task type" -->
+
+```mermaid
+flowchart TD
+    Start(["Begin WORKS Check -- Section 2"]) --> Q{"Task type?"}
+    Q -->|"Executable code -- compiled, scripted, or CLI-run"| A1["Execution check<br>Terminal output showing successful run<br>(exit code 0 is NOT enough)"]
+    Q -->|"Static asset -- docs, configs, analysis"| B1["Accuracy check<br>Verified against source code or schema?"]
+    A1 --> A2["Real data check<br>Ran changed code path against real data<br>not just read the diff?"]
+    A2 --> A3["Regression check<br>Evidence that existing tests still pass?"]
+    A3 --> A4["Edge case check<br>Evidence of testing failure scenarios?"]
+    A4 --> AEvidence["Record code evidence<br>execution output, real data test,<br>test results, edge case result"]
+    B1 --> B2["Clarity check<br>Follows the established format?"]
+    B2 --> B3["Validity check<br>Links and references resolve?"]
+    B3 --> BEvidence["Record static evidence<br>accuracy check method,<br>format standard, link validation method"]
+    AEvidence --> Done(["WORKS Check complete -- proceed to Section 3"])
+    BEvidence --> Done
+```
 
 ### A. For Code (Executable)
 
