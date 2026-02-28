@@ -223,6 +223,10 @@ Skills `create-backlog-item` and `work-backlog-item` invoke this script. See `.c
 
 ---
 
+- SAM Feature Implementation Workflow: `.claude/rules/local-workflow.md`
+
+---
+
 - Content Optimization for Skills: `.claude/rules/skill-content-optimization.md`
 
 ---
