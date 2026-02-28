@@ -54,7 +54,7 @@ if isinstance(sys.stderr, TextIOWrapper):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 import typer
-from github import Auth, Github, GithubException
+from github import Auth, Github, GithubException, GithubObject
 from rich import box
 from rich.console import Console
 from rich.measure import Measurement
@@ -709,7 +709,12 @@ def _add_item_index_format(
     create_issue: bool,
     repo: str,
 ) -> None:
-    """Add item: create per-item file in .claude/backlog/ and optionally a GitHub issue."""
+    """Add item: create GitHub Issue first (GH-first), then write local cache file.
+
+    GH-first flow: try to create the GitHub Issue before writing the local file.
+    If GH succeeds, the local file includes the issue number from the start (single write).
+    If GH is unavailable (no token, network error), fall back to local-only with a warning.
+    """
     BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
     slug = _title_to_slug(title)
     filename = f"{priority.lower()}-{slug}.md"
@@ -719,7 +724,34 @@ def _add_item_index_format(
         idx += 1
         filename = f"{priority.lower()}-{slug}-{idx}.md"
         filepath = BACKLOG_DIR / filename
-    fm_str = _build_backlog_frontmatter(title, description, source, today, priority, type_, "open", "", "", "")
+
+    # GH-first: try to create GitHub Issue BEFORE writing local file
+    issue_num: int | None = None
+    if create_issue:
+        item = {
+            "_title": title,
+            "**Description**": description,
+            "**Source**": source,
+            "**Added**": today,
+            "**Priority**": priority,
+            "**Type**": type_,
+            "**Research first**": research_first,
+            "**Files**": files,
+            "**Suggested location**": suggested_location,
+        }
+        repository = _try_get_github(repo)
+        if repository is not None:
+            try:
+                issue_num = create_issue_for_item(repository, item, dry_run=False)
+            except GithubException as e:
+                typer.echo(f"  WARNING: Issue creation failed: {e}", err=True)
+        else:
+            typer.echo("  WARNING: GitHub unavailable — creating local-only item", err=True)
+
+    # Build frontmatter with issue number already included (single write)
+    issue_ref = f"#{issue_num}" if issue_num else ""
+    fm_str = _build_backlog_frontmatter(title, description, source, today, priority, type_, "open", issue_ref, "", "")
+
     body_parts: list[str] = []
     if research_first:
         body_parts.append(f"**Research first**: {research_first}")
@@ -728,29 +760,12 @@ def _add_item_index_format(
     if suggested_location:
         body_parts.append(f"**Suggested location**: {suggested_location}")
     body = "\n".join(body_parts) + "\n" if body_parts else ""
+
+    # Write local cache file (single write — no update needed)
     filepath.write_text(fm_str.rstrip() + "\n\n" + body, encoding="utf-8")
-    issue_num: int | None = None
-    if create_issue:
-        try:
-            repository = _get_github(repo)
-            item = {
-                "_title": title,
-                "**Description**": description,
-                "**Source**": source,
-                "**Added**": today,
-                "**Priority**": priority,
-                "**Type**": type_,
-                "**Research first**": research_first,
-                "**Files**": files,
-                "**Suggested location**": suggested_location,
-            }
-            issue_num = create_issue_for_item(repository, item, dry_run=False)
-            if issue_num:
-                _update_item_metadata(filepath, {"metadata": {"issue": f"#{issue_num}"}})
-        except typer.Exit:
-            raise
-        except GithubException as e:
-            typer.echo(f"  WARNING: Issue creation failed: {e}", err=True)
+    if issue_num:
+        _update_item_metadata(filepath, {}, set_synced=True)
+
     typer.echo(f"Backlog item created.\n  Title: {title}\n  Priority: {priority}\n  File: {filepath.name}")
     if issue_num:
         typer.echo(f"  Issue: #{issue_num}")
@@ -795,8 +810,41 @@ def add(
     )
 
 
+def _batch_fetch_statuses(items: list[dict], repo: str) -> dict[int, dict[str, str]]:
+    """Batch fetch status and milestone from GH for all items with issue numbers.
+
+    Single API call replaces N+1 per-item get_issue() calls.
+
+    Returns:
+        Dict mapping issue_number -> {"status": str, "milestone": str}
+    """
+    repo_obj = _try_get_github(repo)
+    if repo_obj is None:
+        return {}
+    try:
+        all_issues = {issue.number: issue for issue in repo_obj.get_issues(state="open") if issue.pull_request is None}
+    except GithubException:
+        return {}
+    result: dict[int, dict[str, str]] = {}
+    for item in items:
+        num_str = item.get("_issue", "").lstrip("#")
+        if not num_str.isdigit():
+            continue
+        num = int(num_str)
+        if num in all_issues:
+            gh_issue = all_issues[num]
+            status_labels = [lbl.name for lbl in gh_issue.labels if lbl.name.startswith("status:")]
+            result[num] = {
+                "status": status_labels[0] if status_labels else "",
+                "milestone": gh_issue.milestone.title if gh_issue.milestone else "",
+            }
+    return result
+
+
 def _fetch_item_status(item: dict, repo: str) -> str:
-    """Fetch status label from GitHub issue for an item.
+    """Fetch status label from GitHub issue for an item (single-item fallback).
+
+    Prefer _batch_fetch_statuses() for listing multiple items.
 
     Returns:
         Status label string or empty string.
@@ -815,6 +863,9 @@ def _fetch_item_status(item: dict, repo: str) -> str:
 
 def _list_items_json(open_items: list[dict], with_status: bool, repo: str) -> None:
     """Output backlog items as JSON."""
+    status_map: dict[int, dict[str, str]] = {}
+    if with_status:
+        status_map = _batch_fetch_statuses(open_items, repo)
     out = []
     for it in open_items:
         entry: dict[str, Any] = {
@@ -828,22 +879,20 @@ def _list_items_json(open_items: list[dict], with_status: bool, repo: str) -> No
         if it.get("_groomed"):
             entry["groomed"] = True
         if with_status and it.get("_issue"):
-            try:
-                repository = _get_github(repo)
-                num = it.get("_issue", "").lstrip("#")
-                issue = repository.get_issue(int(num))
-                status_labels = [label.name for label in issue.labels if label.name.startswith("status:")]
-                entry["status"] = status_labels[0] if status_labels else ""
-                entry["milestone"] = issue.milestone.title if issue.milestone else ""
-            except GithubException:
-                entry["status"] = ""
-                entry["milestone"] = ""
+            num_str = it.get("_issue", "").lstrip("#")
+            num = int(num_str) if num_str.isdigit() else 0
+            info = status_map.get(num, {"status": "", "milestone": ""})
+            entry["status"] = info["status"]
+            entry["milestone"] = info["milestone"]
         out.append(entry)
     typer.echo(json.dumps(out, indent=2))
 
 
 def _list_items_table(open_items: list[dict], with_status: bool, repo: str) -> None:
     """Output backlog items as Rich table."""
+    status_map: dict[int, dict[str, str]] = {}
+    if with_status:
+        status_map = _batch_fetch_statuses(open_items, repo)
     table = Table(title=":clipboard: Backlog Items", box=box.MINIMAL_DOUBLE_HEAD, title_style="bold blue")
     table.add_column("Section", style="cyan", no_wrap=True)
     table.add_column("Plan", justify="center", no_wrap=True)
@@ -857,19 +906,56 @@ def _list_items_table(open_items: list[dict], with_status: bool, repo: str) -> N
         title = (it.get("_title", "") or "")[:50]
         row: list[str] = [it.get("_section", ""), plan, title, issue]
         if with_status:
-            row.append(_fetch_item_status(it, repo))
+            num_str = it.get("_issue", "").lstrip("#")
+            num = int(num_str) if num_str.isdigit() else 0
+            info = status_map.get(num, {"status": "", "milestone": ""})
+            row.append(info["status"])
         table.add_row(*row)
     table.width = _get_table_width(table)
     _console.print(table, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
+
+
+def _refresh_local_cache_from_github(repo: str, label: str | None = None) -> None:
+    """Fetch open GitHub Issues and update local cache files.
+
+    This is the GH-first list path: queries GitHub for the current state,
+    writes/updates local cache files, then the caller reads from local cache.
+    """
+    repo_obj = _try_get_github(repo)
+    if repo_obj is None:
+        typer.echo("  WARNING: GitHub unavailable — listing from local cache only", err=True)
+        return
+
+    label_objs = []
+    if label:
+        try:
+            label_objs.append(repo_obj.get_label(label))
+        except GithubException:
+            typer.echo(f"  WARNING: label '{label}' not found — listing all issues", err=True)
+
+    issues = repo_obj.get_issues(state="open", labels=label_objs or GithubObject.NotSet)
+    count = 0
+    for issue in issues:
+        if issue.pull_request is not None:
+            continue
+        _pull_single_issue(repo_obj, issue.number)
+        count += 1
+    typer.echo(f"  Refreshed {count} issue(s) from GitHub into local cache.")
 
 
 @app.command("list")
 def list_items(
     output_format: Annotated[str, typer.Option("--format", "-f")] = "text",
     with_status: Annotated[bool, typer.Option("--with-status")] = False,
+    from_github: Annotated[
+        bool, typer.Option("--from-github", help="Query GitHub Issues and refresh local cache before listing")
+    ] = False,
+    label: Annotated[str | None, typer.Option("--label", help="Filter by GitHub label (e.g. 'priority:p1')")] = None,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
-    """List backlog items. Use for interactive browser."""
+    """List backlog items. Default reads local cache only. Use --from-github to refresh from GH first."""
+    if from_github:
+        _refresh_local_cache_from_github(repo, label)
     items = parse_backlog()
     open_items = [it for it in items if not it.get("_skip") and it.get("_section")]
     if output_format == "json":
@@ -1507,17 +1593,34 @@ def _apply_status_in_progress(item: dict, repo: str) -> None:
         typer.echo(f"  WARNING: Could not set status: {e}", err=True)
 
 
-def _apply_plan_to_item(item: dict, plan: str) -> bool:
-    """Apply plan update to per-item file metadata.
+def _apply_plan_to_item(item: dict, plan: str, repo: str = DEFAULT_REPO) -> bool:
+    """Apply plan update: write to GitHub Issue first (comment), then update local cache.
+
+    GH-first: posts a plan comment on the linked GitHub Issue before updating local.
+    If GH is unavailable, local update still succeeds.
 
     Returns:
         True if updated, False otherwise.
     """
     filepath_str = item.get("_file_path")
-    if filepath_str:
-        _update_item_metadata(Path(filepath_str), {"metadata": {"plan": plan}})
-        return True
-    return False
+    if not filepath_str:
+        return False
+    _update_item_metadata(Path(filepath_str), {"metadata": {"plan": plan}})
+
+    # GH-first: post plan reference as a comment on the linked issue
+    issue_ref = item.get("_issue", "")
+    if issue_ref:
+        repository = _try_get_github(repo)
+        if repository is not None:
+            try:
+                num = int(issue_ref.lstrip("#"))
+                gh_issue = repository.get_issue(num)
+                gh_issue.create_comment(f"**Plan**: {plan}")
+                typer.echo(f"  Plan comment posted to issue {issue_ref}")
+            except GithubException as e:
+                typer.echo(f"  WARNING: Could not post plan to issue {issue_ref}: {e}", err=True)
+
+    return True
 
 
 @app.command()
@@ -1553,7 +1656,7 @@ def update(
         return
 
     if plan:
-        _apply_plan_to_item(item, plan)
+        _apply_plan_to_item(item, plan, repo)
         typer.echo(f"  Plan: {plan}")
 
     if create_issue and not item.get("_issue") and item.get("_section") in {"P0", "P1"}:
@@ -1920,10 +2023,22 @@ def pull(
 ) -> None:
     """Pull issue body content from GitHub into local per-item files.
 
+    Also auto-migrates P0/P1 items that lack GitHub Issues by creating them.
     Merges by section — keeps longer version of each section.
-    Skips items with no issue number.
+    Skips items with no issue number (after migration).
     """
     items = parse_backlog()
+
+    # Auto-migration: create missing GitHub Issues for P0/P1 items
+    items_without_issues = [
+        it for it in items if it.get("_section") in {"P0", "P1"} and not it.get("_skip") and not it.get("_issue")
+    ]
+    if items_without_issues:
+        typer.echo(f"Auto-migrating {len(items_without_issues)} P0/P1 item(s) to GitHub Issues...")
+        _sync_create_missing_issues(items, repo, dry_run)
+        # Re-parse after migration to pick up updated issue numbers
+        items = parse_backlog()
+
     candidates = [it for it in items if it.get("_issue") and not it.get("_skip")]
 
     if not candidates:
