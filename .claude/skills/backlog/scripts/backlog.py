@@ -35,6 +35,7 @@ Environment:
 
 from __future__ import annotations
 
+import difflib
 import json
 import os
 import re
@@ -64,6 +65,8 @@ from rich.table import Table
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent.parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "plugins" / "plugin-creator" / "scripts"))
+
+import operator
 
 import frontmatter
 
@@ -345,6 +348,48 @@ def _normalize_issue_title(title: str) -> str:
         'sam: error recovery'
     """
     return _COMMIT_PREFIX_RE.sub("", title).strip().lower()
+
+
+FUZZY_DUPLICATE_THRESHOLD = 0.80
+
+
+def _find_fuzzy_duplicates(
+    title: str, items: list[dict], threshold: float = FUZZY_DUPLICATE_THRESHOLD
+) -> list[tuple[str, float, str]]:
+    """Find existing backlog items with titles similar to the given title.
+
+    Uses ``difflib.SequenceMatcher`` on normalized titles (conventional-commit
+    prefixes stripped, lowercased) to detect near-duplicates.
+
+    Args:
+        title: The new item title to check.
+        items: Existing backlog items from ``parse_backlog()``.
+        threshold: Similarity ratio (0.0-1.0) above which a match is reported.
+
+    Returns:
+        List of ``(existing_title, similarity_ratio, file_path)`` tuples sorted
+        by similarity descending. Empty list if no matches above threshold.
+    """
+    normalized_new = _normalize_issue_title(title)
+    if not normalized_new:
+        return []
+    matches: list[tuple[str, float, str]] = []
+    for item in items:
+        existing_title = item.get("_title", "")
+        if not existing_title:
+            continue
+        # Skip done/resolved items
+        if item.get("_skip"):
+            continue
+        normalized_existing = _normalize_issue_title(existing_title)
+        if not normalized_existing:
+            continue
+        ratio = difflib.SequenceMatcher(None, normalized_new, normalized_existing).ratio()
+        if ratio >= threshold:
+            filepath = item.get("_file_path", "")
+            matches.append((existing_title, ratio, filepath))
+    matches.sort(key=operator.itemgetter(1), reverse=True)
+    return matches
 
 
 def _fetch_open_issues_by_title(repo: Repository) -> dict[str, int]:
@@ -817,9 +862,21 @@ def add(
     files: Annotated[str, typer.Option("--files")] = "",
     suggested_location: Annotated[str, typer.Option("--suggested-location")] = "",
     create_issue: Annotated[bool, typer.Option("--create-issue/--no-create-issue")] = True,
+    force: Annotated[bool, typer.Option("--force", help="Skip fuzzy duplicate check")] = False,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
     """Add item to backlog. Creates per-item file and optionally a GitHub issue."""
+    if not force:
+        existing_items = parse_backlog()
+        duplicates = _find_fuzzy_duplicates(title, existing_items)
+        if duplicates:
+            typer.echo("WARNING: Similar backlog items found:", err=True)
+            for dup_title, ratio, dup_path in duplicates:
+                pct = int(ratio * 100)
+                file_label = Path(dup_path).name if dup_path else "unknown"
+                typer.echo(f'  - "{dup_title}" ({pct}% similar)  [{file_label}]', err=True)
+            typer.echo("\nUse --force to add anyway.", err=True)
+            raise typer.Exit(1)
     today = _today()
     section_heading = {
         "P0": "## P0 - Must Have",
@@ -1107,6 +1164,32 @@ def sync(
     _sync_push_groomed_content(items, repo, dry_run)
 
 
+def _check_open_prs_for_issue(issue_num: int, repo: str) -> list[dict[str, Any]]:
+    """Check for open pull requests that reference a given issue number.
+
+    Searches the repository for open PRs whose title or body contains ``#N``
+    (where N is the issue number). This catches PRs with ``Fixes #N``,
+    ``Closes #N``, or any other reference to the issue.
+
+    Args:
+        issue_num: The GitHub issue number to search for.
+        repo: Repository in ``owner/repo`` format.
+
+    Returns:
+        List of dicts with ``number``, ``title``, ``url`` for each matching PR.
+        Empty list if no open PRs found or GitHub is unavailable.
+    """
+    try:
+        gh = Github(auth=Auth.Token(os.environ.get("GITHUB_TOKEN", "")), timeout=10)
+        query = f"repo:{repo} is:pr is:open #{issue_num}"
+        results = gh.search_issues(query)
+        # Materialize the lazy PaginatedList inside try — iteration triggers the API call
+        prs = [{"number": pr.number, "title": pr.title, "url": pr.html_url} for pr in results]
+    except GithubException:
+        return []
+    return prs
+
+
 def _close_item_index(item: dict, plan: str, today: str) -> bool:
     """Apply close to item by updating per-item file metadata.
 
@@ -1161,6 +1244,7 @@ def close(
             help="Remove local file after close; index link becomes GH issue URL (like git delete merged branch)",
         ),
     ] = False,
+    force: Annotated[bool, typer.Option("--force", help="Close even if open PRs reference the issue")] = False,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
     """Mark item DONE and close GitHub issue. Requires --checklist-pass from skill."""
@@ -1172,11 +1256,22 @@ def close(
     if not item:
         typer.echo(f"ERROR: No item found for: {selector}", err=True)
         raise typer.Exit(1)
+    issue_ref = item.get("_issue")
+    if issue_ref and not force:
+        issue_num = int(issue_ref.lstrip("#"))
+        open_prs = _check_open_prs_for_issue(issue_num, repo)
+        if open_prs:
+            typer.echo(f"WARNING: Open PRs reference issue {issue_ref}:", err=True)
+            for pr in open_prs:
+                typer.echo(f"  - PR #{pr['number']}: {pr['title']}", err=True)
+                typer.echo(f"    {pr['url']}", err=True)
+            typer.echo(f"\nIssue {issue_ref} will auto-close when a PR merges with 'Fixes {issue_ref}'.", err=True)
+            typer.echo("Use --force to close anyway.", err=True)
+            raise typer.Exit(1)
     today = _today()
     if not _close_item_index(item, plan, today):
         return
     typer.echo(f'Backlog item "{item.get("_title")}" closed.')
-    issue_ref = item.get("_issue")
     if issue_ref:
         _close_github_issue(issue_ref, plan, repo)
     if cleanup and issue_ref:
@@ -1221,6 +1316,7 @@ def resolve(
     cleanup: Annotated[
         bool, typer.Option("--cleanup", help="Remove local file after resolve; index link becomes GH issue URL")
     ] = False,
+    force: Annotated[bool, typer.Option("--force", help="Resolve even if open PRs reference the issue")] = False,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
     """Mark item RESOLVED and close GitHub issue."""
@@ -1232,11 +1328,22 @@ def resolve(
     if not item:
         typer.echo(f"ERROR: No item found for: {selector}", err=True)
         raise typer.Exit(1)
+    issue_ref = item.get("_issue")
+    if issue_ref and not force:
+        issue_num = int(issue_ref.lstrip("#"))
+        open_prs = _check_open_prs_for_issue(issue_num, repo)
+        if open_prs:
+            typer.echo(f"WARNING: Open PRs reference issue {issue_ref}:", err=True)
+            for pr in open_prs:
+                typer.echo(f"  - PR #{pr['number']}: {pr['title']}", err=True)
+                typer.echo(f"    {pr['url']}", err=True)
+            typer.echo("\nResolving will close the issue and orphan these PRs.", err=True)
+            typer.echo("Use --force to resolve anyway.", err=True)
+            raise typer.Exit(1)
     today = _today()
     if not _resolve_item_index(item, reason, today):
         return
     typer.echo(f'Backlog item "{item.get("_title")}" resolved.')
-    issue_ref = item.get("_issue")
     if issue_ref:
         _resolve_github_issue(issue_ref, reason, repo)
     if cleanup and issue_ref:
