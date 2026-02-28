@@ -10,7 +10,7 @@ metadata:
   status: open
   issue: '#260'
   groomed: '2026-02-28'
-  last_synced: '2026-02-28T21:14:20Z'
+  last_synced: '2026-02-28T21:37:51Z'
 ---
 
 **Suggested location**: `plugins/fastmcp-creator/mcp/server.py`
