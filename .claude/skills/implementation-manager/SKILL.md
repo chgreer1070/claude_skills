@@ -3,13 +3,15 @@ name: implementation-manager
 description: Query and manage feature implementation task status. Provides CLI tools to list features, check task status, find ready tasks, and validate task files. Used by /implement-feature orchestrator to track progress. Automatically updates task timestamps via hooks on /start-task.
 user-invocable: false
 disable-model-invocation: false
+metadata:
+  source: python3-development plugin (local adaptation)
 ---
 # Implementation Manager
 
 ## Current Task Context
 
 **Available features (if in project with plan/ directory):**
-!`python3 -c "import os, subprocess, json; result = subprocess.run(['python3', 'plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py', 'list-features', '.'], capture_output=True, text=True) if os.path.exists('plan') else None; print(result.stdout if result and result.returncode == 0 else json.dumps({'features': [], 'count': 0, 'message': 'Not in a project with task files'}))" 2>/dev/null || echo '{"features": [], "count": 0, "message": "Not in a project with task files"}'`
+!`python3 -c "import os, subprocess, json; result = subprocess.run(['python3', './plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py', 'list-features', '.'], capture_output=True, text=True) if os.path.exists('plan') else None; print(result.stdout if result and result.returncode == 0 else json.dumps({'features': [], 'count': 0, 'message': 'Not in a project with task files'}))" 2>/dev/null || echo '{"features": [], "count": 0, "message": "Not in a project with task files"}'`
 
 **Active task context (if any):**
 !`python3 -c "import pathlib, json; context_dir = pathlib.Path('.claude/context'); files = list(context_dir.glob('active-task-*.json')) if context_dir.exists() else []; print(files[0].read_text() if files else 'No active task')" 2>/dev/null || echo "No active task"`
@@ -18,7 +20,7 @@ A skill for querying and managing feature implementation task files. Provides pr
 
 ## CLI Tool Usage
 
-The CLI tool is located at `scripts/implementation_manager.py` and provides JSON output for orchestrator consumption.
+The CLI tool is located at `./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` and provides JSON output for orchestrator consumption.
 
 ### Commands
 
@@ -27,7 +29,7 @@ The CLI tool is located at `scripts/implementation_manager.py` and provides JSON
 List all features with task files in the project's `plan/` directory:
 
 ```bash
-./scripts/implementation_manager.py list-features /path/to/project
+./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py list-features .
 ```
 
 **Output:**
@@ -38,7 +40,7 @@ List all features with task files in the project's `plan/` directory:
     {
       "slug": "prepare-host",
       "task_file": "tasks-1-prepare-host.md",
-      "path": "/path/to/project/plan/tasks-1-prepare-host.md"
+      "path": "./plan/tasks-1-prepare-host.md"
     }
   ],
   "count": 1
@@ -50,7 +52,7 @@ List all features with task files in the project's `plan/` directory:
 Get detailed status for a specific feature:
 
 ```bash
-./scripts/implementation_manager.py status /path/to/project prepare-host
+./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py status . prepare-host
 ```
 
 **Output:**
@@ -83,7 +85,7 @@ Get detailed status for a specific feature:
 List tasks ready for execution (dependencies satisfied):
 
 ```bash
-./scripts/implementation_manager.py ready-tasks /path/to/project prepare-host
+./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py ready-tasks . prepare-host
 ```
 
 **Output:**
@@ -107,7 +109,7 @@ List tasks ready for execution (dependencies satisfied):
 Validate task file frontmatter and structure:
 
 ```bash
-./scripts/implementation_manager.py validate /path/to/project prepare-host
+./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py validate . prepare-host
 ```
 
 **Output:**

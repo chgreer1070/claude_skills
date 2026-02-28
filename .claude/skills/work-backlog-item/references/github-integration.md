@@ -147,7 +147,7 @@ Setting status:in-progress...
   ✓ Added status:in-progress, removed status:needs-grooming
 
 Composing feature request...
-Invoking /python3-development:add-new-feature...
+Invoking /add-new-feature...
 
 [SAM phases run]
 
@@ -155,7 +155,7 @@ Updated per-item file with Plan: plan/tasks-3-clang-format-yaml.md
 GitHub issue #59 — Plan added to issue body.
 
 Next steps:
-- To execute:      /python3-development:implement-feature clang-format-yaml
+- To execute:      /implement-feature clang-format-yaml
 - To close when done: /work-backlog-item close clang-format
 ```
 

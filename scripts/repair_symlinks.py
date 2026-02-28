@@ -105,6 +105,10 @@ def _repair_one(repo: Repo, path: Path, repo_root: Path) -> bool:
     if not isinstance(blob, Blob):
         return False
     target = _get_symlink_target_from_blob(repo, blob)
+    if path.is_dir():
+        # Path was a symlink in HEAD but is now a directory on disk —
+        # intentionally replaced, not a destroyed symlink.
+        return True
     path.unlink()
     try:
         path.symlink_to(target)

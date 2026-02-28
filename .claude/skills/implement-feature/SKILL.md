@@ -7,10 +7,11 @@ hooks:
   SubagentStop:
   - hooks:
     - type: command
-      command: python3 "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/task_status_hook.py"
+      command: python3 "./plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py"
 version: 1.0.0
-last_updated: '2026-01-27'
-python_compatibility: 3.11+
+last_updated: '2026-02-28'
+metadata:
+  source: python3-development plugin (local adaptation)
 ---
 # Implement Feature (SAM Workflow Execution)
 
@@ -32,8 +33,8 @@ Rules:
 Example resolution:
 
 ```bash
-uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementation_manager.py" \
-  status "${CLAUDE_PROJECT_DIR}" "$ARGUMENTS"
+uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
+  status . "$ARGUMENTS"
 ```
 
 ---
@@ -43,15 +44,15 @@ uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementati
 1. Query status:
 
 ```bash
-uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementation_manager.py" \
-  status "${CLAUDE_PROJECT_DIR}" "$ARGUMENTS"
+uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
+  status . "$ARGUMENTS"
 ```
 
 2. If tasks remain, query ready tasks:
 
 ```bash
-uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementation_manager.py" \
-  ready-tasks "${CLAUDE_PROJECT_DIR}" "$ARGUMENTS"
+uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
+  ready-tasks . "$ARGUMENTS"
 ```
 
 3. For each ready task:
