@@ -10,6 +10,7 @@ metadata:
   status: open
   groomed: '2026-02-26'
   issue: '#128'
+  plan: plan/tasks-10-validate-agent-browser.md
 ---
 
 ## Fact-Check
