@@ -10,7 +10,7 @@ metadata:
   status: open
   issue: '#260'
   groomed: '2026-02-28'
-  last_synced: '2026-02-28T21:37:51Z'
+  last_synced: '2026-02-28T22:30:23Z'
 ---
 
 **Suggested location**: `plugins/fastmcp-creator/mcp/server.py`
@@ -63,14 +63,9 @@ metadata:
 5. **Target users identified** | Status: DERIVABLE | Implied: agents using Claude Code skills who build MCP servers. But existing tools (MCP Inspector CLI mode, mcptools) already serve this audience
 6. **Evaluation methodology is unique** | Status: INCONCLUSIVE | evaluation.py uses Claude-as-evaluator with QA pairs — differs from mcp-testing-framework's approach, but whether this justifies a new MCP tool is unresolved
 
-### Decision: BLOCKED
+### Decision: UNBLOCKED
 
-**Missing inputs**:
-1. **Differentiation from existing ecosystem**: What does this MCP provide that MCP Inspector + mcp-validator + mcp-testing-framework do not? The item needs to articulate a clear gap
-2. **User demand signal**: No evidence of users requesting this capability — it was generated from a backlog audit, not user feedback
-3. **Build vs integrate decision**: Should we wrap our local scripts, or instead integrate with existing tools (e.g., use MCP Inspector's CLI programmatically)?
-
-**Recommendation**: Before planning implementation, the item needs a revised scope that either (a) identifies a genuine gap not covered by existing tools, or (b) reframes as an "integration" item that connects existing ecosystem tools into the fastmcp-creator workflow rather than building a new MCP server from scratch
+Human chose Option 2 (2026-02-28): Reframe as integration, no API keys. See ### Decision under ## Groomed for full details.
 
 ## Groomed (2026-02-28)
 
@@ -137,22 +132,28 @@ Sources: [MCP Inspector docs](https://modelcontextprotocol.io/docs/tools/inspect
 
 ### Decision
 
-**RT-ICA: BLOCKED** — Item is not ready for planning.
+**RT-ICA: UNBLOCKED** — Human provided direction (2026-02-28).
 
-**Blockers**:
-1. **Ecosystem differentiation unclear**: MCP Inspector + mcp-validator + mcp-testing-framework + MCP Server Creator + mcp-cli collectively cover most proposed capabilities. Item does not articulate unique value beyond wrapping local scripts
-2. **No user demand signal**: Generated from backlog audit (2026-02-23), not user feedback
-3. **Build vs integrate decision unresolved**: Should we wrap local scripts or integrate with existing ecosystem tools?
+**Human decision**: Option 2 — Reframe as integration. Connect existing ecosystem MCP tools into the fastmcp-creator workflow. Do NOT build a new MCP server from scratch.
 
-**Questions for human**:
-- What problem would agents solve with this MCP that they cannot solve with MCP Inspector CLI + mcp-validator?
-- Is the Claude-as-evaluator approach in `evaluation.py` sufficiently unique to justify a new tool?
-- Should we integrate with existing tools instead of building a new server?
+**Constraint**: No API keys required. All integrated tools must work without external API keys or authentication.
 
-**Recommended path forward**:
-1. Clarify whether this addresses a real gap or duplicates existing tools
-2. Decide: build new MCP server vs. publish utility libraries vs. integrate existing tools
-3. If proceeding, narrow scope to the genuinely novel capability (Claude-as-evaluator QA testing)
+**Revised scope**: Instead of wrapping local scripts as a new MCP server, integrate existing no-auth-required tools into the fastmcp-creator skill workflow:
+- **MCP Inspector** (npx @modelcontextprotocol/inspector) — test connections, inspect tools/resources/prompts. No API key needed.
+- **mcp-validator** (Janix-ai) — protocol compliance testing. No API key needed.
+- **mcptools** (f/mcptools) — CLI for connection testing and server inspection. No API key needed.
+
+**Dropped from scope**:
+- `run_evaluation` tool (evaluation.py uses Claude API as evaluator — requires ANTHROPIC_API_KEY, violates no-API-key constraint)
+- Building a new FastMCP server at plugins/fastmcp-creator/mcp/server.py
+- `validate_mcp_config` as a standalone MCP tool (mcp-validator already covers this)
+
+**What remains**:
+1. Add integration steps to the /fastmcp-creator skill that invoke MCP Inspector and mcp-validator after server creation
+2. Add mcptools as a recommended dependency for agent-driven MCP server testing
+3. Document the ecosystem tools in the fastmcp-creator skill references
+
+**Next step**: Convert to a planning item via /work-backlog-item when ready to implement
 
 ### Effort
 

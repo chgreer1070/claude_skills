@@ -1404,7 +1404,7 @@ def _append_or_replace_section(body: str, section_name: str, content: str) -> st
     if section_lower in {"fact-check", "rt-ica"}:
         header = f"## {section_name.strip()}\n\n"
         section_re = re.compile(
-            rf"\n## {re.escape(section_name.strip())}\s*\n[\s\S]*?(?=\n## |\Z)", re.IGNORECASE | re.MULTILINE
+            rf"\n## {re.escape(section_name.strip())}[^\n]*\n[\s\S]*?(?=\n## |\Z)", re.IGNORECASE | re.MULTILINE
         )
         new_block = header + content + "\n"
         if section_re.search(body):
@@ -1416,7 +1416,7 @@ def _append_or_replace_section(body: str, section_name: str, content: str) -> st
     groomed_header = f"## Groomed ({today})"
     sub_header = f"### {section_name.strip()}\n\n"
     sub_re = re.compile(
-        rf"\n### {re.escape(section_name.strip())}\s*\n[\s\S]*?(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
+        rf"\n### {re.escape(section_name.strip())}[^\n]*\n[\s\S]*?(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
     )
     new_block = sub_header + content + "\n"
     groomed_re = re.compile(r"(## Groomed\s*\([^)]*\)\s*\n)([\s\S]*?)(?=\n## |\Z)", re.MULTILINE)
