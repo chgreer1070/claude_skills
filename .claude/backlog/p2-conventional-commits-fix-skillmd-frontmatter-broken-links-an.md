@@ -7,6 +7,25 @@ metadata:
   added: '2026-02-24'
   priority: P2
   type: Refactor
-  status: open
+  status: resolved
   issue: '#251'
+  groomed: '2026-02-28'
+  last_synced: '2026-02-28T05:35:43Z'
 ---
+
+## Fact-Check
+
+Fact-Check Summary: conventional-commits SKILL.md fixes
+Claims checked: 3
+
+VERIFIED (1):
+- File exists at plugins/conventional-commits/skills/conventional-commits/SKILL.md: Confirmed
+
+MISSING (2):
+- Specific frontmatter issues: Description says 'fix frontmatter' but groomer found frontmatter
+  syntactically valid. Specific violations not documented.
+- Specific broken links and structure issues: Description says 'fix broken links' and 'fix structure'
+  but does not enumerate which links or rules are violated.
+
+ACTION: Run 'uv run prek run --files plugins/conventional-commits/skills/conventional-commits/SKILL.md'
+to get actual linter output identifying specific violations.
