@@ -22,6 +22,7 @@ Routes documentation, authoring, and optimization tasks to the correct specialis
 | `/rwr:audit <task>` | rewrite-room-auditor | Docs vs code drift, doc sync after changes, freshness tracking |
 | `/rwr:optimize <file>` | rewrite-room-optimizer | CLAUDE.md, SKILL.md, agent .md improvement |
 | `/rwr:author <task>` | rewrite-room-author | User-facing docs, GLFM validation, summarization |
+| `/rwr:cite <source URL> [key points] [content type]` | rewrite-room-cite | Source-attributed content writing with hyperlinked citations from URLs |
 | `/rwr:doc-to-skill <docs_path> <output_plugin> <output_skill>` | rewrite-room-doc-converter | Convert user-facing docs directory into a Claude Code skill |
 
 Each command loads the corresponding workflow file and follows its numbered steps.
@@ -34,6 +35,7 @@ flowchart TD
     Q -->|/rwr:audit| Audit[rewrite-room-auditor\nLoads: plugins/the-rewrite-room/the-rewrite-room/workflows/audit.md]
     Q -->|/rwr:optimize| Opt[rewrite-room-optimizer\nLoads: plugins/the-rewrite-room/the-rewrite-room/workflows/optimize.md]
     Q -->|/rwr:author| Auth[rewrite-room-author\nLoads: plugins/the-rewrite-room/the-rewrite-room/workflows/author.md]
+    Q -->|/rwr:cite| Cite[rewrite-room-cite<br>Source-attributed content with citations]
     Q -->|/rwr:doc-to-skill| DocSkill[rewrite-room-doc-converter<br>Loads: plugins/the-rewrite-room/skills/user-docs-to-ai-skill/SKILL.md]
     Audit --> A1[development-harness:doc-drift-auditor]
     Audit --> A2[development-harness:service-docs-maintainer]
@@ -104,6 +106,10 @@ This plugin routes to these specialist agents and scripts (not copied — refere
 
 - `gitlab-docs-expert` — GitLab Wiki, MR descriptions, GitLab README authoring
 - `documentation-expert` — general README, tutorials, API docs, user-facing docs
+
+**Citation agent:**
+
+- `plugins/the-rewrite-room/agents/rewrite-room-cite.md` — source-attributed content writer with primary source verification and hyperlinked citations
 
 **Summarizer agents:**
 
