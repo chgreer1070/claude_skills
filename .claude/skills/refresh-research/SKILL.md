@@ -1,7 +1,7 @@
 ---
 name: refresh-research
-description: TRIGGER — /refresh-research invoked or bulk research update requested. Inventories ./research/ entries, detects stale entries by review date or age, runs RT-ICA pre-flight, spawns research-curator agents in waves of 5, collects per-wave results, updates README, produces summary report, lints and commits. All targeted entries re-verified with updated Freshness Tracking. Supports --all, --stale, --category, --dry-run flags.
-argument-hint: '[--all | --stale | --category <name> | --dry-run]'
+description: TRIGGER — /refresh-research invoked or bulk research update requested. Inventories ./research/ entries, detects stale entries by review date or age, runs RT-ICA pre-flight, spawns research-curator agents in waves of 5, collects per-wave results, updates README, produces summary report, lints and commits. All targeted entries re-verified with updated Freshness Tracking. Supports --all, --stale, --category, --layer, --dry-run flags.
+argument-hint: '[--all | --stale | --category <name> | --layer <0|1|2> | --dry-run]'
 user-invocable: true
 ---
 # Refresh Research
@@ -22,11 +22,15 @@ Orchestrate parallel research-curator agents to bulk-refresh research entries in
 
 ### Step 1: Inventory and Staleness Detection
 
-Glob `./research/**/*.md` (exclude README.md). For each entry, parse the Freshness Tracking section.
+Glob `./research/**/*.md` (exclude README.md). For each entry, parse:
+
+1. **YAML frontmatter** — extract `metadata.layer` value (string `"0"`, `"1"`, or `"2"`; `null` if absent).
+2. **Freshness Tracking section** — extract Last Verified and Next Review dates.
 
 ```mermaid
 flowchart TD
-    Start([Read entry]) --> HasFreshness{Freshness Tracking section present?}
+    Start([Read entry]) --> ParseFM[Parse YAML frontmatter<br>Extract metadata.layer]
+    ParseFM --> HasFreshness{Freshness Tracking section present?}
     HasFreshness -->|No| Stale1[STALE: no tracking]
     HasFreshness -->|Yes| PastDue{Next Review Recommended < today?}
     PastDue -->|Yes| Stale2[STALE: past review date]
@@ -35,17 +39,23 @@ flowchart TD
     TooOld -->|No| Fresh[FRESH: skip]
 ```
 
-Build inventory table: `| File | Category | Last Verified | Next Review | Stale? |`
+Build inventory table: `| File | Category | Layer | Last Verified | Next Review | Stale? |`
+
+The `Layer` column holds the `metadata.layer` value or `—` if absent.
 
 ### Step 2: Apply Scope Filter
 
-- `--all` — target all entries
-- `--stale` — target stale entries only
-- `--category <name>` — target entries where category matches
-- `--layer <0|1|2>` — target entries where metadata.layer matches
-- `--dry-run` — display target list and stop
+Apply filters sequentially. Filters combine with AND logic — each filter narrows the set from the previous step.
 
-If zero entries match: report and stop.
+1. **Base set**: Start with all inventoried entries.
+2. **Staleness filter** (default unless `--all`):
+   - `--all` — keep all entries (no staleness filter)
+   - `--stale` (default) — keep only entries marked STALE in Step 1
+3. **Category filter** (optional): `--category <name>` — keep only entries whose category directory matches `<name>`.
+4. **Layer filter** (optional): `--layer <0|1|2>` — keep only entries where `metadata.layer` equals the requested value. Entries without `layer` metadata (`—` in inventory) are excluded.
+5. **Dry-run check**: `--dry-run` — display the filtered target list and stop without spawning agents.
+
+If zero entries remain after all filters: report "No entries match the applied filters." and stop. When `--layer` was specified and zero entries match, additionally report: "No entries found for layer {N}. Entries need `metadata.layer` in their YAML frontmatter to be targeted by `--layer`."
 
 ### Step 3: RT-ICA Pre-Flight
 
@@ -98,7 +108,7 @@ After all waves complete, update `./research/README.md`:
 # Research Refresh Report
 
 **Date**: {YYYY-MM-DD}
-**Scope**: {--all | --stale | --category X}
+**Scope**: {--all | --stale | --category X | --layer N}
 **Total scanned**: {N} | **Targeted**: {M} | **Skipped (fresh)**: {K}
 
 ## Results
@@ -146,6 +156,7 @@ git push -u origin HEAD
 ## Error Handling
 
 - **No entries match filter** — report "All entries are fresh. Nothing to refresh." and stop
+- **No entries match `--layer` filter** — report "No entries found for layer {N}. Entries need `metadata.layer` in their YAML frontmatter to be targeted by `--layer`." and stop
 - **Agent failures** — continue remaining waves; include in summary Failures table
 - **Network issues mid-wave** — complete current wave, report partial results, suggest retry with `--stale`
 - **README update conflict** — re-read README and retry update once
