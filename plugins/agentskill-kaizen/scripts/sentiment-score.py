@@ -320,7 +320,7 @@ def _score_messages(
                     negative=scores["neg"],
                     neutral=scores["neu"],
                     message_length=len(text),
-                    message_preview=text[:100].replace("\n", " "),
+                    message_preview=text.replace("\n", " "),
                     project_path=project_path,
                     project_name=project_name,
                 )

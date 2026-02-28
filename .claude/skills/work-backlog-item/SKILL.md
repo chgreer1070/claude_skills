@@ -23,9 +23,11 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 |---|---|---|
 | (empty) | — | Interactive browser |
 | `#N` | — | Issue-first: load item from GitHub Issue #N |
+| bare number (e.g. `249`) | — | Issue-first: load item from GitHub Issue #249 |
+| GitHub issue URL | — | Issue-first: extract issue number from URL |
 | `--auto` | `$1`+ = title (or empty → auto-select first open P0/P1 item) | Autonomous — no `AskUserQuestion` calls |
-| `close` | `$1`+ = title or `#N` | Verify and close a completed item |
-| `resolve` | `$1`+ = title or `#N` | Mark no longer applicable (reason required) |
+| `close` | `$1`+ = title, `#N`, number, or URL | Verify and close a completed item |
+| `resolve` | `$1`+ = title, `#N`, number, or URL | Mark no longer applicable (reason required) |
 | `setup-github` | — | Initialize labels, project, first milestone |
 | (any other) | — | `$ARGUMENTS` treated as title substring → planning |
 
@@ -34,6 +36,8 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 ```text
 /work-backlog-item                                    # interactive browser
 /work-backlog-item #42                               # issue-first → planning
+/work-backlog-item 42                                # issue-first (bare number) → planning
+/work-backlog-item https://github.com/Jamie-BitFlight/claude_skills/issues/42  # URL → planning
 /work-backlog-item Error Recovery                    # direct match → planning
 /work-backlog-item --auto                            # autonomous → auto-select first open P0/P1
 /work-backlog-item --auto vercel skills npm package  # autonomous → planning
@@ -71,9 +75,11 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 |---|---|---|
 | (empty) | — | Step 0 — interactive browser |
 | `#N` (starts with `#`) | issue number | Step 1b — Issue-first path |
+| bare number (e.g. `249`) | issue number | Step 1b — Issue-first path |
+| GitHub issue URL | issue number from URL | Step 1b — Issue-first path |
 | `--auto` | `$1`+ joined (empty → auto-select first open P0/P1) | AUTO_MODE=true → Step 1 |
-| `close` | `$1`+ joined (title or `#N`) | Step 9 (close path) |
-| `resolve` | `$1`+ joined (title or `#N`) | Step 9 (resolve path) |
+| `close` | `$1`+ joined (title, `#N`, number, or URL) | Step 9 (close path) |
+| `resolve` | `$1`+ joined (title, `#N`, number, or URL) | Step 9 (resolve path) |
 | `setup-github` | — | setup-github command |
 | (any other) | `$ARGUMENTS` | Title substring → Step 1 (interactive mode) |
 
@@ -137,35 +143,35 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 
 **Routing:** If `$0` is `close` or `resolve`, extract `$1`+ as the title and jump directly to Step 9.
 
-### Step 1b: Issue-First Path (`#N`)
+### Step 1b: Issue-First Path (`#N`, bare number, or GitHub URL)
 
-**Trigger:** `$0` matches `#[0-9]+`.
+**Trigger:** `$0` matches `#[0-9]+`, is a bare number, or is a GitHub issue URL (`https://github.com/.../issues/N`).
 
 <issue_first_procedure>
 
-Extract the issue number `{issue_number}` from `$0`. Fetch the issue:
+Fetch the issue using the backlog script (accepts URLs, `#N`, and bare numbers):
 
 ```bash
-gh issue view {issue_number} -R Jamie-BitFlight/claude_skills \
-  --json number,title,state,body,labels,milestone
+uv run .claude/skills/backlog/scripts/backlog.py view "{$0}" --format json -R Jamie-BitFlight/claude_skills
 ```
 
-If the issue does not exist, report and stop.
-If the issue is already closed, warn: "Issue #{issue_number} is closed. Use `close` or `resolve` if needed." and stop.
+If the command fails (exit code non-zero), report and stop.
+Parse the JSON output. If `state` is `closed`, warn: "Issue #{number} is closed. Use `close` or `resolve` if needed." and stop.
 
-From the issue response build the working item:
+From the JSON response build the working item:
 
 | Field | Source |
 |---|---|
-| `title` | issue `title` |
-| `description` | issue `body` (full text) |
+| `title` | `title` |
+| `description` | `body` (full text) |
 | `source` | `"GitHub Issue #N"` |
-| `priority` | `priority:*` label → P0 / P1 / P2 / Ideas |
-| `status` | `status:*` label (canonical — GitHub labels are authoritative for status) |
-| `milestone` | issue `milestone.title` |
-| `plan` | search `body` for `**Plan**:` line |
+| `priority` | `priority` field (extracted from `priority:*` label) |
+| `status` | `status` field (extracted from `status:*` label — canonical) |
+| `milestone` | `milestone` |
+| `plan` | `plan` field, or search `body` for `**Plan**:` line |
+| `file_path` | `file_path` (local per-item file, if matched) |
 
-Then try to find a matching per-item file in `.claude/backlog/` by issue number (`metadata.issue`) or title. If found, use it to supplement any missing fields (e.g. `research_first`, `suggested_location`). If not found, continue without a local per-item file — the GitHub Issue is sufficient.
+The `view` command automatically merges local per-item data with live GitHub issue data. If `file_path` is present, the local file supplements any missing fields (e.g. `research_first`, `suggested_location`). If no local file exists, the GitHub Issue data is sufficient.
 
 Proceed to Step 2.7 (Set In-Progress Label) with the assembled item, then continue to Step 3.
 
@@ -341,24 +347,23 @@ Backlog item "{title}" is now planned.
 
 Extract the operation from `$0` and the argument from `$1`+:
 
-- `$0` = `close`: `$1`+ = title or `#N` → verify implementation and mark COMPLETED
-- `$0` = `resolve`: `$1`+ = title or `#N` → mark no longer applicable (no verification required)
+- `$0` = `close`: `$1`+ = title, `#N`, bare number, or URL → verify implementation and mark COMPLETED
+- `$0` = `resolve`: `$1`+ = title, `#N`, bare number, or URL → mark no longer applicable (no verification required)
 
 #### 9a: Find Item
 
-If `$1` starts with `#` (e.g., `close #42`), treat it as an issue number:
+Use the backlog script to find the item (accepts URLs, `#N`, bare numbers, and title substrings):
 
 ```bash
-gh issue view {issue_number} -R Jamie-BitFlight/claude_skills \
-  --json number,title,state,body,labels
+uv run .claude/skills/backlog/scripts/backlog.py view "{$1}" --format json -R Jamie-BitFlight/claude_skills
 ```
 
-- If the issue is not found, report and stop.
-- Extract `title` from the issue response and use it as the working title.
+- If the command fails (exit code non-zero), report and stop.
+- Extract `title` from the JSON response and use it as the working title.
 
-Otherwise, scan `.claude/backlog/` per-item files and search item titles for case-insensitive match against `{title}`.
+If the view command found a local file (`file_path` in JSON), use it. Otherwise scan `.claude/backlog/` per-item files for a title match.
 
-- Zero matches: report "No backlog item found matching: {title}" and stop.
+- Zero matches: report "No backlog item found matching: {$1}" and stop.
 - Multiple matches: list all matches and ask user to pick one.
 - Item already in `## Completed` section: report "Item already closed on {Completed date}" and stop.
 
@@ -538,7 +543,7 @@ This convention ensures issues are automatically closed on merge without manual 
 
 After Step 2, check for `**Issue**: #N` field in the matched item.
 
-- Found: verify issue state with `gh issue view {issue_number} -R Jamie-BitFlight/claude_skills --json number,title,state,labels`
+- Found: verify issue state with `uv run .claude/skills/backlog/scripts/backlog.py view "#{issue_number}" --format json -R Jamie-BitFlight/claude_skills`
 - Not found + P0/P1: offer to create a GitHub Issue (proceed to Step 2.5a)
 - Not found + P2/Ideas: skip silently
 
@@ -582,7 +587,7 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 
 ## Error Handling
 
-- `#N` not found: report and list open issues with `gh issue list -R Jamie-BitFlight/claude_skills --state open`
+- `#N` / URL / bare number not found: report and list available items with `uv run .claude/skills/backlog/scripts/backlog.py list -R Jamie-BitFlight/claude_skills`
 - `#N` already closed: warn and stop; offer `close` or `resolve` if needed
 - `close #N` / `resolve #N` — issue not found: report and stop
 - Item not found: list available items from `.claude/backlog/` per-item files with their priority sections
@@ -598,7 +603,7 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 - `close` on already-completed item: report closed date, do not re-close
 - `resolve` with no reason provided: block until user provides reason (reason is required evidence)
 - GitHub issue creation fails: report error, continue with per-item-file-only workflow; do not block SAM planning
-- `gh` not installed: run `uv run .claude/skills/gh/scripts/setup_gh.py` first
+- `GITHUB_TOKEN` not set: backlog.py reports error; local-only operations still work
 - Label not found during issue create: `github_project_setup.py` creates it automatically
 - Milestone not found: skip milestone assignment; do not fail
 

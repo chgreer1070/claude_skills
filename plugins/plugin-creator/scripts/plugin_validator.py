@@ -3531,7 +3531,7 @@ class PluginStructureValidator:
 
         # If claude failed to start (env/runtime), skip — do not fail validation
         if self._is_claude_startup_failure(output):
-            detail = (stdout.strip() + "\n" + stderr.strip())[:300] or "(no output)"
+            detail = (stdout.strip() + "\n" + stderr.strip()) or "(no output)"
             info.append(
                 ValidationIssue(
                     field="(plugin-structure)",
@@ -3570,7 +3570,7 @@ class PluginStructureValidator:
         # If no specific error pattern matched but validation failed, add generic error
         # Include actual CLI output for diagnosis (truncate to avoid huge messages)
         if not errors:
-            detail = (stdout.strip() + "\n" + stderr.strip())[:500] or "(no output)"
+            detail = (stdout.strip() + "\n" + stderr.strip()) or "(no output)"
             errors.append(
                 ValidationIssue(
                     field="plugin.json",
@@ -3600,7 +3600,7 @@ class PluginStructureValidator:
                 and not stripped_line.startswith("#")
                 and any(kw in stripped_line.lower() for kw in ["error", "missing", "invalid", "required", "not found"])
             ):
-                return stripped_line[:200]
+                return stripped_line
 
         fallbacks: dict[str, str] = {
             "PL001": "Missing plugin.json file in .claude-plugin/ directory",

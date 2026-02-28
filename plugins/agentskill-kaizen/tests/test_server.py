@@ -686,8 +686,8 @@ class TestDetectFrustrationSignals:
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_truncates_long_messages(self, tmp_path: Path) -> None:
-        """Messages longer than _MESSAGE_TRUNCATION_LIMIT are truncated."""
+    async def test_preserves_full_message_text(self, tmp_path: Path) -> None:
+        """Full message text is preserved without truncation."""
         long_text = "no " + "x" * 300
         records = [{"type": "user", "message": {"content": long_text}, "timestamp": "2026-01-01T00:00:00Z"}]
         fpath = tmp_path / "long-msg.jsonl"
@@ -697,7 +697,7 @@ class TestDetectFrustrationSignals:
         result = await kaizen_server.detect_frustration_signals(glob_path)
 
         assert len(result) == 1
-        assert len(result[0]["message_text"]) == kaizen_server._MESSAGE_TRUNCATION_LIMIT
+        assert result[0]["message_text"] == long_text
 
     @pytest.mark.asyncio
     async def test_one_signal_per_message(self, tmp_path: Path) -> None:

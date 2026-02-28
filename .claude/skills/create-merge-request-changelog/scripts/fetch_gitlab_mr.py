@@ -33,7 +33,6 @@ from rich.table import Table
 if TYPE_CHECKING:
     from gitlab.v4.objects import ProjectMergeRequest
 
-_DESCRIPTION_PREVIEW_MAX_LENGTH = 200  # Max characters for MR description preview
 
 app = typer.Typer(name="fetch_gitlab_mr", help="Fetch GitLab merge request metadata and changes", add_completion=False)
 console = Console()
@@ -407,14 +406,10 @@ def fetch(
         summary_table = create_summary_table(mr_summary)
         console.print(summary_table)
 
-        # Show description preview if present
+        # Show description if present
         if mr_summary["description"]:
-            description_preview = mr_summary["description"][:_DESCRIPTION_PREVIEW_MAX_LENGTH]
-            if len(mr_summary["description"]) > _DESCRIPTION_PREVIEW_MAX_LENGTH:
-                description_preview += "..."
-
             console.print()
-            console.print(Panel(description_preview, title=":page_facing_up: Description Preview", border_style="blue"))
+            console.print(Panel(mr_summary["description"], title=":page_facing_up: Description", border_style="blue"))
 
     except GitLabFetchError as e:
         console.print(Panel.fit(f"[red]{e}[/red]", title=":cross_mark: Error", border_style="red"))

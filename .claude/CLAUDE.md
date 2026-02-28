@@ -6,6 +6,22 @@
 
 **Repository**: Claude Code Marketplace Plugin with modular skills (specialized knowledge, workflows, tools).
 
+## No Invented Limits
+
+Never introduce hard-coded truncation or length limits on content that a consumer (human or agent) needs to read. Arbitrary limits (e.g., `[:500]`, `[:200]`, `MAX_LEN = 1024`) remove the consumer's ability to control what they read, leading to work done with incomplete information.
+
+**Rules:**
+
+- Output full content by default — let the caller decide how much to read
+- When pagination is needed, provide `--offset` / `--limit` parameters (like the `Read` tool) so the caller controls the window
+- If content must be shortened for a specific display context, always:
+  1. State that it is truncated
+  2. Report how many characters/lines remain
+  3. Provide a way to access the rest
+- To check state, you only need metadata. To action a task, you need the full content. Do not conflate these two needs.
+
+**This applies to:** CLI output, JSON fields, error messages, preview panels, descriptions, issue bodies — everything. No silent data loss.
+
 ## Session Start (REQUIRED)
 
 1. !`uv self update || true` — ensure uv is v0.10.0 or newer

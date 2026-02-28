@@ -52,13 +52,11 @@ from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 # ---------------------------------------------------------------------------
 
 KB_ROOT: Path = Path(__file__).parent.resolve()
-_README_SUMMARY_MAX_LEN: int = 120
 _LEVENSHTEIN_MAX_DISTANCE: int = 2
 _MAX_SUGGESTIONS: int = 3
 _MIN_GITHUB_PATH_PARTS: int = 2
 _DEFAULT_REVIEW_DAYS: int = 90
 _NAME_MAX_LEN: int = 64
-_DESCRIPTION_MAX_LEN: int = 1024
 
 VALID_CATEGORIES: frozenset[str] = frozenset({
     "agent-frameworks",
@@ -423,8 +421,6 @@ def _build_readme_row(entry: KBEntry) -> str:
     """
     today_iso = datetime.now(tz=UTC).date().isoformat()
     summary = _extract_first_paragraph(entry.body) or entry.name
-    if len(summary) > _README_SUMMARY_MAX_LEN:
-        summary = summary[: _README_SUMMARY_MAX_LEN - 1] + "\u2026"
     return f"| [{entry.topic}.md](./{entry.category}/{entry.topic}.md) | {summary} | {today_iso} |"
 
 
@@ -827,10 +823,7 @@ def parse_inline_header_entry(text: str, path: Path) -> KBEntry:
     source_url, github, version, lic = _extract_optional_inline_fields(fields, path.stem)
 
     first_para = _extract_first_paragraph(body)
-    if first_para:
-        description = first_para[:_DESCRIPTION_MAX_LEN]
-    else:
-        description = f"Research entry for {name}. Use when working with {name} or related tools."
+    description = first_para or f"Research entry for {name}. Use when working with {name} or related tools."
 
     return KBEntry(
         topic=topic,
@@ -1143,13 +1136,8 @@ def build_draft(repo_slug: str, meta: GitHubMetadata, category: str) -> KBEntry:
     topic_slug = re.sub(r"[^a-z0-9-]", "-", meta.name.lower()).strip("-")
     today = datetime.now(tz=UTC).date()
 
-    # Build description from GitHub repo description (max 1024 chars)
-    desc_max = 1024
     raw_desc = (meta.description or "").strip()
-    if raw_desc:
-        description = raw_desc[:desc_max]
-    else:
-        description = f"Research entry for {meta.name}. Use when working with {meta.name} or related tools."
+    description = raw_desc or f"Research entry for {meta.name}. Use when working with {meta.name} or related tools."
 
     return KBEntry(
         topic=topic_slug,
@@ -1368,7 +1356,7 @@ def _auto_description(entry: KBEntry) -> tuple[str, str | None]:
     """
     first_para = _extract_first_paragraph(entry.body)
     if first_para:
-        desc = first_para[:_DESCRIPTION_MAX_LEN]
+        desc = first_para
         warn = "description not set; auto-generated from body first paragraph."
     else:
         desc = f"Research entry for {entry.name}. Use when working with {entry.name} or related tools."
@@ -1401,12 +1389,6 @@ def _validate_add_entry(entry: KBEntry) -> str | None:
     ]
     if missing:
         return f"Missing required fields: {', '.join(missing)}"
-    if len(entry.description) > _DESCRIPTION_MAX_LEN:
-        return (
-            f"description is {len(entry.description)} chars; "
-            f"max is {_DESCRIPTION_MAX_LEN}.\n"
-            "Shorten the description field."
-        )
     return None
 
 
@@ -1907,7 +1889,6 @@ def migrate(
 _BAD_DESCRIPTION_PREFIX_RE: re.Pattern[str] = re.compile(
     r"^(Research on|Notes on|Information about|Overview of)\s", re.IGNORECASE
 )
-_BODY_EXCERPT_MAX_LEN: int = 2000
 
 
 def _is_bad_description(entry: KBEntry) -> bool:
@@ -1963,7 +1944,7 @@ def list_candidates(
             "category": entry.category,
             "tags": entry.tags,
             "current_description": entry.description,
-            "body_excerpt": entry.body[:_BODY_EXCERPT_MAX_LEN],
+            "body": entry.body,
         })
 
     sys.stdout.write(json.dumps(candidates, indent=2, ensure_ascii=False))
@@ -1998,10 +1979,6 @@ def set_description(
     if "\n" in description:
         err_console.print("Error: description must not contain newlines.")
         raise typer.Exit(code=2)
-    if len(description) > _DESCRIPTION_MAX_LEN:
-        err_console.print(f"Error: description is {len(description)} chars; max is {_DESCRIPTION_MAX_LEN}.")
-        raise typer.Exit(code=2)
-
     try:
         path = find_entry_by_topic(topic, KB_ROOT)
         if path is None:

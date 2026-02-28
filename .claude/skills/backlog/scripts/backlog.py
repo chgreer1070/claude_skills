@@ -20,6 +20,7 @@ a cache for agent consumption (avoiding GH API saturation during sessions).
 Usage:
     backlog add --title X --priority P1 --description D [--source S] [--type T] [--create-issue]
     backlog list [--format text|json]
+    backlog view <selector> [--format json]  # URL, #N, bare number, or title substring
     backlog sync [--dry-run]
     backlog close <selector> --plan PATH --checklist-pass [--cleanup]
     backlog resolve <selector> --reason "reason" [--cleanup]
@@ -78,6 +79,7 @@ DEFAULT_REPO = "Jamie-BitFlight/claude_skills"
 # Regex
 SECTION_RE = re.compile(r"^##\s+(P0|P1|P2|Ideas)")
 SKIP_STATUS = ("DONE", "RESOLVED", "COMPLETED")
+GITHUB_ISSUE_URL_RE = re.compile(r"https?://github\.com/([^/]+/[^/]+)/issues/(\d+)")
 GITHUB_ISSUE_TITLE_TRUNCATE = 80
 MIN_FRONTMATTER_PARTS = 3
 TYPE_TO_LABEL = {
@@ -274,21 +276,53 @@ def _parse_item_file(text: str, path: Path) -> dict:
     return item
 
 
+def _parse_issue_selector(selector: str) -> str | None:
+    """Extract issue number from selector (URL, #N, or bare number).
+
+    Supports:
+      - ``https://github.com/owner/repo/issues/123``
+      - ``#123``
+      - ``123`` (bare number)
+
+    Returns:
+        Issue number as string (e.g. ``"123"``) or None if not an issue ref.
+    """
+    selector = selector.strip()
+    # URL form: https://github.com/owner/repo/issues/123
+    url_match = GITHUB_ISSUE_URL_RE.search(selector)
+    if url_match:
+        return url_match.group(2)
+    # #N form
+    if selector.startswith("#"):
+        num = selector.lstrip("#").strip()
+        if num.isdigit():
+            return num
+    # Bare number form
+    if selector.isdigit():
+        return selector
+    return None
+
+
 def find_item(items: list[dict], selector: str) -> dict | None:
-    """Find item by title substring or #N.
+    """Find item by title substring, #N, bare number, or GitHub issue URL.
+
+    Supports:
+      - ``https://github.com/owner/repo/issues/123`` — extract issue number
+      - ``#123`` — match by issue number
+      - ``123`` — match by issue number (bare number)
+      - ``title substring`` — case-insensitive title match
 
     Returns:
         Matching item dict or None.
     """
     selector = selector.strip()
-    if selector.startswith("#"):
-        num = selector.lstrip("#").strip()
-        if num.isdigit():
-            for it in items:
-                issue_ref = it.get("_issue") or ""
-                if issue_ref.lstrip("#") == num:
-                    return it
-            return None
+    issue_num = _parse_issue_selector(selector)
+    if issue_num is not None:
+        for it in items:
+            issue_ref = it.get("_issue") or ""
+            if issue_ref.lstrip("#") == issue_num:
+                return it
+        return None
     # Title substring match (case-insensitive)
     selector_lower = selector.lower()
     matches = [it for it in items if selector_lower in it.get("_title", "").lower()]
@@ -636,20 +670,20 @@ def _pull_single_issue(repo_obj: Repository, issue_num: int, filepath: Path | No
 def _extract_description_from_issue_body(body: str) -> str:
     """Extract the Description section from a GitHub issue body.
 
-    Falls back to first 200 chars if no ## Description section found.
+    Falls back to first non-empty paragraph if no ## Description section found.
 
     Returns:
         Description text.
     """
     desc_match = re.search(r"## Description\s*\n\n(.*?)(?=\n## |\Z)", body, re.DOTALL)
     if desc_match:
-        return desc_match.group(1).strip()[:500]
+        return desc_match.group(1).strip()
     # Fallback: first non-empty paragraph
     for line in body.splitlines():
         stripped = line.strip()
         if stripped and not stripped.startswith("#") and not stripped.startswith("-"):
-            return stripped[:500]
-    return body[:200].strip()
+            return stripped
+    return body.strip()
 
 
 def _overwrite_body_from_github(filepath: Path, issue_body: str) -> None:
@@ -1117,7 +1151,7 @@ def _close_cleanup(item: dict, issue_ref: str, repo: str) -> None:
 
 @app.command()
 def close(
-    selector: Annotated[str, typer.Argument(help="Title substring or #N")],
+    selector: Annotated[str, typer.Argument(help="Title substring, #N, bare number, or GitHub issue URL")],
     plan: Annotated[str, typer.Option("--plan", "-p")],
     checklist_pass: Annotated[bool, typer.Option("--checklist-pass")] = False,
     cleanup: Annotated[
@@ -1182,7 +1216,7 @@ def _resolve_github_issue(issue_ref: str, reason: str, repo: str) -> None:
 
 @app.command()
 def resolve(
-    selector: Annotated[str, typer.Argument(help="Title substring or #N")],
+    selector: Annotated[str, typer.Argument(help="Title substring, #N, bare number, or GitHub issue URL")],
     reason: Annotated[str, typer.Option("--reason", "-r")],
     cleanup: Annotated[
         bool, typer.Option("--cleanup", help="Remove local file after resolve; index link becomes GH issue URL")
@@ -1625,7 +1659,7 @@ def _apply_plan_to_item(item: dict, plan: str, repo: str = DEFAULT_REPO) -> bool
 
 @app.command()
 def update(
-    selector: Annotated[str, typer.Argument(help="Title substring or #N")],
+    selector: Annotated[str, typer.Argument(help="Title substring, #N, bare number, or GitHub issue URL")],
     plan: Annotated[str | None, typer.Option("--plan", "-p")] = None,
     status: Annotated[str | None, typer.Option("--status")] = None,
     create_issue: Annotated[bool, typer.Option("--create-issue")] = False,
@@ -1668,9 +1702,160 @@ def update(
         _apply_status_in_progress(item, repo)
 
 
+def _view_result_from_local_item(item: dict) -> dict[str, Any]:
+    """Build view result dict from a local backlog item.
+
+    Returns:
+        Dict with title, priority, issue, plan, file_path, groomed, and
+        optionally description/source/added/status from the per-item file.
+    """
+    result: dict[str, Any] = {
+        "title": item.get("_title", ""),
+        "priority": item.get("_section", ""),
+        "issue": item.get("_issue", ""),
+        "plan": item.get("**Plan**", ""),
+        "file_path": item.get("_file_path", ""),
+        "groomed": bool(item.get("_groomed")),
+    }
+    fp = item.get("_file_path")
+    if fp and Path(fp).exists():
+        raw = Path(fp).read_text(encoding="utf-8")
+        post = loads_frontmatter(raw)
+        fm_raw = post.metadata if hasattr(post, "metadata") else (post[0] if isinstance(post, tuple) else {})
+        fm: dict = dict(fm_raw) if isinstance(fm_raw, dict) else {}
+        meta_raw = fm.get("metadata", {})
+        meta: dict = dict(meta_raw) if isinstance(meta_raw, dict) else {}
+        result["description"] = str(fm.get("description", ""))
+        result["source"] = str(meta.get("source", fm.get("source", "")))
+        result["added"] = str(meta.get("added", fm.get("added", "")))
+        result["status"] = str(meta.get("status", fm.get("status", "")))
+    return result
+
+
+def _view_enrich_from_github(result: dict[str, Any], issue_num: str, repo: str) -> bool:
+    """Enrich view result with live GitHub issue data.
+
+    Returns:
+        True if GitHub data was fetched, False if unavailable or errored.
+    """
+    gh_repo = _try_get_github(repo)
+    if gh_repo is None:
+        return False
+    try:
+        gh_issue = gh_repo.get_issue(int(issue_num))
+    except GithubException:
+        return False
+    result["number"] = gh_issue.number
+    result["title"] = gh_issue.title
+    result["state"] = gh_issue.state
+    result["body"] = gh_issue.body or ""
+    result["labels"] = [lb.name for lb in gh_issue.labels]
+    ms = gh_issue.milestone
+    result["milestone"] = ms.title if ms else ""
+    for lb in result["labels"]:
+        if lb.startswith("priority:"):
+            result["priority"] = lb.split(":", 1)[1].upper()
+        if lb.startswith("status:"):
+            result["status"] = lb.split(":", 1)[1]
+    return True
+
+
+def _view_print_text(result: dict[str, Any], *, offset: int = 0, limit: int = 0) -> None:
+    """Print view result in human-readable text format."""
+    typer.echo(f"Title:       {result.get('title', '')}")
+    # Issue line: prefer number over issue ref
+    issue_display = f"#{result['number']}" if result.get("number") else result.get("issue", "")
+    if issue_display:
+        typer.echo(f"Issue:       {issue_display}")
+    # Single-line fields
+    VIEW_FIELDS = [
+        ("state", "State:      "),
+        ("priority", "Priority:   "),
+        ("status", "Status:     "),
+        ("milestone", "Milestone:  "),
+        ("plan", "Plan:       "),
+        ("file_path", "Local file: "),
+    ]
+    for key, label in VIEW_FIELDS:
+        val = result.get(key)
+        if val:
+            typer.echo(f"{label} {val}")
+    if result.get("labels"):
+        typer.echo(f"Labels:      {', '.join(result['labels'])}")
+    if result.get("groomed"):
+        typer.echo("Groomed:     yes")
+    # Multi-line fields
+    _view_print_body_fields(result, offset=offset, limit=limit)
+
+
+def _view_print_body_fields(result: dict[str, Any], *, offset: int = 0, limit: int = 0) -> None:
+    """Print description and body fields for view output.
+
+    Args:
+        result: View result dict.
+        offset: Number of lines to skip from the start of the body.
+        limit: Maximum number of lines to show (0 = unlimited).
+    """
+    if result.get("description"):
+        typer.echo(f"\nDescription:\n  {result['description']}")
+    if result.get("body"):
+        body = result["body"]
+        lines = body.splitlines()
+        total = len(lines)
+        if offset > 0:
+            lines = lines[offset:]
+        if limit > 0:
+            lines = lines[:limit]
+        body = "\n".join(lines)
+        typer.echo(f"\nIssue Body ({total} lines total):\n  {body}")
+        remaining = total - offset - len(lines)
+        if remaining > 0:
+            typer.echo(f"\n  ... {remaining} more lines (use --offset / --limit to paginate)")
+
+
+@app.command()
+def view(
+    selector: Annotated[str, typer.Argument(help="Issue URL, #N, bare number, or title substring")],
+    output_format: Annotated[str, typer.Option("--format", "-f")] = "text",
+    offset: Annotated[int, typer.Option("--offset", help="Skip N lines from body start")] = 0,
+    limit: Annotated[int, typer.Option("--limit", help="Show at most N body lines (0=all)")] = 0,
+    repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
+) -> None:
+    """View a backlog item or GitHub issue by URL, #N, bare number, or title.
+
+    Accepts:
+      - https://github.com/owner/repo/issues/123
+      - #123
+      - 123
+      - title substring
+
+    When the selector is an issue reference (URL, #N, bare number), fetches
+    the issue directly from GitHub via PyGithub if no local item matches.
+    Use --offset and --limit to paginate long issue bodies.
+    """
+    items = parse_backlog()
+    item = find_item(items, selector)
+    issue_num = _parse_issue_selector(selector)
+
+    result: dict[str, Any] = _view_result_from_local_item(item) if item else {}
+
+    if issue_num:
+        if not _view_enrich_from_github(result, issue_num, repo) and not item:
+            typer.echo(f"ERROR: Issue #{issue_num} not found or GitHub unavailable", err=True)
+            raise typer.Exit(1)
+    elif not item:
+        typer.echo(f"ERROR: No item found matching: {selector}", err=True)
+        raise typer.Exit(1)
+
+    if output_format == "json":
+        typer.echo(json.dumps(result, indent=2, default=str))
+    else:
+        _view_print_text(result, offset=offset, limit=limit)
+
+
 @app.command()
 def groom(
-    selector: Annotated[str, typer.Argument(help="Title substring or #N")],
+    selector: Annotated[str, typer.Argument(help="Title substring, #N, bare number, or GitHub issue URL")],
     groomed_file: Annotated[str | None, typer.Option("--groomed-file")] = None,
     groomed_content: Annotated[str | None, typer.Option("--groomed-content")] = None,
     section: Annotated[str | None, typer.Option("--section")] = None,
