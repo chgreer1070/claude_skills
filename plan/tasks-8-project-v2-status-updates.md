@@ -40,7 +40,7 @@ so label transitions also update the kanban board.
 - [x] 9. Add `--dry-run` support to `project update-status`
 - [x] 10. Run linting (`uv run prek run --files`)
 - [x] 11. Test CLI help output and argument parsing
-- [ ] 12. Commit and push
+- [x] 12. Commit and push (PR #299)
 
 ## Acceptance Criteria
 
