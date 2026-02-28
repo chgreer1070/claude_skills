@@ -383,6 +383,10 @@ uv run prek run --files <file>
 
 ---
 
+- Silent Failure Prevention: `.claude/rules/silent-failure-prevention.md`
+
+---
+
 ## GitHub CLI (gh) Usage
 
 <gh_cli_usage>
