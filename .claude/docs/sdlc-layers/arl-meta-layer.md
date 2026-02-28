@@ -49,4 +49,4 @@ Flow experiments run in [sam-flow-experiments](https://github.com/Jamie-BitFligh
 
 ## Canonical Provenance
 
-[PROVENANCE.md](../../../stateless-agent-methodology/research/arl/PROVENANCE.md) — HOOTL, ARL, agentskill-kaizen; relationship triangle; author design intent.
+[PROVENANCE.md](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/research/arl/PROVENANCE.md) — HOOTL, ARL, agentskill-kaizen; relationship triangle; author design intent.

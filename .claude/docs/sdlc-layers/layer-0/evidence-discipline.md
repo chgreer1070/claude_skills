@@ -35,6 +35,6 @@ Use for: bugs, architecture, refactor, strange behavior. Not for trivial tasks.
 
 ## Sources
 
-- [fact-check SKILL.md](../../.claude/skills/fact-check/SKILL.md)
-- [find-cause SKILL.md](../../.claude/skills/find-cause/SKILL.md)
-- [scientific-thinking SKILL.md](../../.claude/skills/scientific-thinking/SKILL.md)
+- [fact-check SKILL.md](../../../skills/fact-check/SKILL.md)
+- [find-cause SKILL.md](../../../skills/find-cause/SKILL.md)
+- [scientific-thinking SKILL.md](../../../skills/scientific-thinking/SKILL.md)

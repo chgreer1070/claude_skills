@@ -52,4 +52,4 @@ When escalating, present:
 
 ## Source
 
-- [human-touchpoint-model.md](../../plugins/development-harness/skills/development-harness/references/human-touchpoint-model.md)
+- [human-touchpoint-model.md](../../../../plugins/development-harness/skills/development-harness/references/human-touchpoint-model.md)

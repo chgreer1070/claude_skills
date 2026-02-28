@@ -46,4 +46,4 @@ Functional requirements, non-functional requirements, interfaces, environment, d
 
 ## Source
 
-- [rt-ica SKILL.md](../../.claude/skills/rt-ica/SKILL.md)
+- [rt-ica SKILL.md](../../../skills/rt-ica/SKILL.md)

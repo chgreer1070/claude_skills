@@ -6,7 +6,7 @@ YAML frontmatter-based task file format for SAM workflows.
 
 ## Specification
 
-Full specification: [TASK_FILE_FORMAT.md](../../.claude/docs/TASK_FILE_FORMAT.md)
+Full specification: [TASK_FILE_FORMAT.md](../../TASK_FILE_FORMAT.md)
 
 ---
 
