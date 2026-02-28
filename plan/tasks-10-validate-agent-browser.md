@@ -30,7 +30,9 @@ accuracy-risk: low
 ---
 ```
 
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
+**Started**: 2026-02-28T00:00:00Z
+**Completed**: 2026-02-28T00:00:00Z
 **Dependencies**: None
 **Priority**: 1
 **Complexity**: Low
@@ -91,6 +93,20 @@ agent-browser install: {exit code and stdout summary}
 2. Confirm `~/.cache/ms-playwright/` directory listing is non-empty
 3. Confirm evidence block is written to this task section before marking complete
 
+### Evidence
+
+```text
+node: v22.22.0 (exit 0)
+npm: 10.9.4 (exit 0)
+agent-browser: 0.15.1 (exit 0)
+Playwright directories: chromium-1194, chromium_headless_shell-1194, ffmpeg-1011
+Chromium binary: /root/.cache/ms-playwright/chromium-1194/chrome-linux/chrome (exit 0)
+Kernel: 4.4.0 (exit 0)
+agent-browser install: exit 0 — "Chromium installed successfully" (installs Chromium only, not all browsers)
+```
+
+**All exit codes**: 0 across all 7 commands.
+
 ---
 
 ## Task 1.2: Core Workflow Validation
@@ -108,7 +124,8 @@ accuracy-risk: medium
 ---
 ```
 
-**Status**: NOT STARTED
+**Status**: 🔄 IN PROGRESS
+**Started**: 2026-02-28T00:00:00Z
 **Dependencies**: Task 1.1
 **Priority**: 1
 **Complexity**: Medium
