@@ -149,6 +149,10 @@ SOURCE: Experimental validation (2026-02-02). Context-gathering: 4/4 correct. Ex
 
 ---
 
+- Interactive Terminal Workarounds: `.claude/rules/interactive-terminal-workarounds.md`
+
+---
+
 ## Path Fidelity
 
 Use user-provided paths exactly as given. **Reason**: Narrowing scope or appending filenames produces silent failures when the user intends directory-level examination.
