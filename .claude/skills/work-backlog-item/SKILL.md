@@ -261,7 +261,51 @@ This item already has a plan at {path}. Use /implement-feature {path} to execute
 
 Then stop.
 
-After extracting fields, proceed to Step 2.5 (GitHub Issue Sync) before continuing to Step 3.
+After extracting fields, proceed to Step 2.3 (Already Implemented Check) before continuing.
+
+### Step 2.3: Already Implemented Check
+
+Before planning work, verify the described feature/fix hasn't already been implemented while the issue remained open. This catches stale open issues where someone completed the work but forgot to close the ticket.
+
+1. **Search for commits matching the item's topic** (use keywords from the title):
+
+   ```bash
+   git log --oneline --all -30 --grep="{keyword from title}"
+   ```
+
+2. **Search for merged PRs matching the topic**:
+
+   ```bash
+   gh pr list -R Jamie-BitFlight/claude_skills --search "{keyword}" --state merged --json number,title,url,mergedAt --limit 5
+   ```
+
+3. **Spot-check the codebase** — read the file(s) at the suggested location and verify whether the described behavior already exists.
+
+If evidence shows the work is already done:
+
+- **Comment evidence on the GitHub issue** (if one exists):
+
+  ```bash
+  gh issue comment N -R Jamie-BitFlight/claude_skills --body "This work was already completed via PR #{pr} / commit {sha}. Closing."
+  ```
+
+- **Close the GitHub issue**:
+
+  ```bash
+  gh issue close N -R Jamie-BitFlight/claude_skills --reason completed
+  ```
+
+- **Close the local backlog item**:
+
+  ```bash
+  uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --reason "Already implemented via PR #{pr} / commit {sha}" -R Jamie-BitFlight/claude_skills
+  ```
+
+- Report to the user and stop — no planning needed.
+
+In AUTO_MODE: log `[AUTO] Work already implemented — closing #{N} with evidence: {sha/PR}` and stop.
+
+If no evidence of prior implementation is found, proceed to Step 2.5 (GitHub Issue Sync).
 
 ### Step 3: Auto-Groom (if needed)
 
