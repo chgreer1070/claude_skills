@@ -33,7 +33,7 @@ Before executing ANY implementation action, complete ALL checkpoints in sequence
 
 **If NO:**
 
-```
+```text
 BLOCKED - Hypothesis not stated
 REQUIRED: State hypothesis explicitly before proceeding
 EXAMPLE: "Hypothesis: The issue affects [specific system/component]"
@@ -60,7 +60,7 @@ EXAMPLE: "Hypothesis: The issue affects [specific system/component]"
 
 **If NO:**
 
-```
+```text
 BLOCKED - Hypothesis not verified
 REQUIRED: Gather evidence before proceeding
 NEXT STEPS:
@@ -78,7 +78,7 @@ NEXT STEPS:
 
 **Alignment template:**
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │ HYPOTHESIS SYSTEM: [What system does my hypothesis     │
 │                     identify as the problem location?]  │
@@ -103,7 +103,7 @@ NEXT STEPS:
 
 **If MISALIGNED:**
 
-```
+```text
 ✗ BLOCKED - Hypothesis-action misalignment detected
 HYPOTHESIS targets: [system A]
 ACTION operates on: [system B]
@@ -146,7 +146,7 @@ REQUIRED: Either:
 
 **If pattern-matching detected:**
 
-```
+```text
 ⚠ PATTERN-MATCHING WARNING
 I am using training data patterns without project verification.
 
@@ -168,7 +168,7 @@ After completing ALL four checkpoints:
 
 Document verification trail:
 
-```
+```text
 VERIFICATION COMPLETE:
 ✓ Checkpoint 1: Hypothesis stated - [brief hypothesis]
 ✓ Checkpoint 2: Verified via [files/docs read]
@@ -182,7 +182,7 @@ EXECUTING: [action description]
 
 Report failure explicitly:
 
-```
+```text
 EXECUTION BLOCKED
 Failed checkpoint: [number and name]
 Reason: [specific failure reason]
@@ -382,7 +382,7 @@ The model must actively monitor for verification violations:
 
 **When warning signs detected:**
 
-```
+```text
 ⚠ VERIFICATION VIOLATION DETECTED
 I attempted to bypass verification checkpoint.
 HALTING and returning to Checkpoint [number].
@@ -394,4 +394,4 @@ This skill implements **defensive programming for LLM reasoning**. Just as compi
 
 **Key principle:** Speed without verification is not efficiency—it's error propagation. Taking time to verify prevents cascading failures, reduces debugging cycles, and builds user confidence.
 
-**Overhead justification:** 2-3 Read operations (50-100 tokens each) prevent wrong implementations requiring 20+ tool calls to debug and fix (4000+ tokens). Verification is a 5% cost for 95% reliability improvement.
+**Overhead justification:** 2-3 Read operations (50-100 tokens each) prevent wrong implementations requiring 20+ tool calls to debug and fix (4000+ tokens). The verification overhead is small relative to the cost of debugging misaligned actions.

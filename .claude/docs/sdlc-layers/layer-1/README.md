@@ -40,5 +40,5 @@ Layer 1 extends Layer 0 with language-specific steps, conventions, and tooling. 
 
 ## Sources
 
-- [language-manifest-schema.md](../../plugins/development-harness/skills/development-harness/references/language-manifest-schema.md)
-- [role-resolution-protocol.md](../../plugins/development-harness/skills/development-harness/references/role-resolution-protocol.md)
+- [language-manifest-schema.md](../../../../plugins/development-harness/skills/development-harness/references/language-manifest-schema.md)
+- [role-resolution-protocol.md](../../../../plugins/development-harness/skills/development-harness/references/role-resolution-protocol.md)

@@ -23,7 +23,7 @@ This document catalogs real-world examples of verification failures and demonstr
 
 **Checkpoint 3 would have blocked:**
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │ HYPOTHESIS SYSTEM: PEP 723 inline script metadata      │
 │                    (# /// script dependencies block)    │
@@ -72,7 +72,7 @@ Didn't verify configuration loading order. Pattern-matched "config not working" 
 
 **Checkpoint 2 requires evidence:**
 
-```
+```text
 BLOCKED - Hypothesis not verified
 REQUIRED: Gather evidence before proceeding
 NEXT STEPS:
@@ -120,7 +120,7 @@ Didn't verify which network layer the problem affects. Pattern-matched "network 
 
 **Checkpoint 1 requires specific system:**
 
-```
+```text
 BLOCKED - Hypothesis not stated
 REQUIRED: State hypothesis explicitly before proceeding
 EXAMPLE: "Hypothesis: The issue affects [specific system/component]"
@@ -131,7 +131,7 @@ EXAMPLE: "Hypothesis: The issue affects [specific system/component]"
 
 **Checkpoint 3 catches layer misalignment:**
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │ HYPOTHESIS SYSTEM: Container bridge network             │
 │                    (Docker networking layer)            │
@@ -173,7 +173,7 @@ Didn't verify which Python/pip executable is being used. Multiple Python install
 
 **Checkpoint 2 requires evidence:**
 
-```
+```text
 Evidence gathering required:
 1. which python  # Which Python is active?
 2. which pip     # Which pip is active?
@@ -183,7 +183,7 @@ Evidence gathering required:
 
 **Checkpoint 4 catches pattern-matching:**
 
-```
+```text
 ⚠ PATTERN-MATCHING WARNING
 I am using training data patterns without project verification.
 
@@ -225,7 +225,7 @@ Didn't distinguish between git repository state (committed), working tree state 
 
 **Checkpoint 2 demands evidence from correct context:**
 
-```
+```text
 Evidence gathering:
 1. git show HEAD:path/to/file.py  # What's in committed state?
 2. git diff --staged path/to/file.py  # What's in staged state?
@@ -265,7 +265,7 @@ Didn't verify at which layer the failure occurs. Pattern-matched "performance pr
 
 **Checkpoint 1 requires specific layer:**
 
-```
+```text
 ❌ Too vague: "Performance problem"
 ✓ Specific options to investigate:
 - "Application processing timeout (code layer)"
@@ -281,7 +281,7 @@ Evidence needed to choose:
 
 **Checkpoint 3 catches layer misalignment:**
 
-```
+```text
 If hypothesis = "Infrastructure timeout"
 And action = "Optimize application code"
 Then BLOCKED - different operational layers
@@ -319,7 +319,7 @@ Pattern-matched "test fails" → "fix test" without verifying if test expectatio
 
 **Checkpoint 2 requires evidence:**
 
-```
+```text
 Evidence gathering:
 1. Read test to understand WHAT it's testing
 2. Read code to understand current BEHAVIOR
@@ -334,7 +334,7 @@ Path C: "Specification changed" (update both)
 
 **Checkpoint 4 catches reflexive test-fixing:**
 
-```
+```text
 ⚠ PATTERN-MATCHING WARNING
 DETECTED: Immediate test modification without verification
 REQUIRED:
@@ -379,7 +379,7 @@ Test failures mean "code and test disagree" - must determine which is correct. N
 
 **Without gate:**
 
-```
+```text
 Observation → Pattern Recognition → Action
             ↓
         Explicit Reasoning (too slow, overridden)
@@ -387,7 +387,7 @@ Observation → Pattern Recognition → Action
 
 **With gate:**
 
-```
+```text
 Observation → Pattern Recognition --------┐
             ↓                              ↓
         Explicit Reasoning → Verification Gate → Action
@@ -467,4 +467,4 @@ This reference grows as new failure patterns are observed and analyzed.
 
 ---
 
-**Last Updated:** 2025-11-20 **Source:** Real-world verification failure analysis from transcript and historical incidents
+**Last Updated:** 2026-02-28 **Source:** Real-world verification failure analysis from transcript and historical incidents

@@ -41,4 +41,4 @@ All artifacts in `.planning/harness/`:
 
 ## Source
 
-- [artifact-conventions.md](../../plugins/development-harness/skills/development-harness/references/artifact-conventions.md)
+- [artifact-conventions.md](../../../../plugins/development-harness/skills/development-harness/references/artifact-conventions.md)

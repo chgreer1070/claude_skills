@@ -59,5 +59,5 @@ User Request → DISCOVERY → PLAN → PLAN (contextualized) → TASK(s) → EX
 
 ## Source
 
-- [sam-definition.md](../../.claude/skills/work-backlog-item/references/sam-definition.md)
-- [default-development-flow.md](../../plugins/development-harness/skills/development-harness/references/default-development-flow.md)
+- [sam-definition.md](../../../skills/work-backlog-item/references/sam-definition.md)
+- [default-development-flow.md](../../../../plugins/development-harness/skills/development-harness/references/default-development-flow.md)
