@@ -11,6 +11,7 @@ metadata:
   issue: '#236'
   groomed: '2026-02-28'
   last_synced: '2026-02-28T05:39:37Z'
+  plan: plan/tasks-8-project-v2-status-updates.md
 ---
 
 **Suggested location**: `.claude/skills/gh/scripts/github_project_setup.py` — add `project_app` Typer sub-app with `project update-status --project-number N --issue-number N --status "In Progress"` command

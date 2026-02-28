@@ -8,11 +8,11 @@
 # ///
 """GitHub Project Setup — multi-step project management automation.
 
-Orchestrates: label creation, milestone management, project setup, and
-backlog item issue import using the PyGithub native library.
+Orchestrates: label creation, milestone management, project setup,
+Projects V2 status updates, and backlog item issue import using the
+PyGithub native library. Projects V2 GraphQL mutations use the gh CLI.
 
 Authentication: reads GITHUB_TOKEN from environment.
-No subprocess / shell-out to gh CLI.
 
 Usage:
     github_project_setup.py setup    --repo OWNER/REPO [--project-title TITLE]
@@ -23,11 +23,15 @@ Usage:
     github_project_setup.py milestone close  --repo OWNER/REPO --number N [--dry-run]
     github_project_setup.py issue create     --repo OWNER/REPO --title TITLE [options]
     github_project_setup.py issue list       --repo OWNER/REPO [--priority p1] [--state open]
+    github_project_setup.py project update-status --project-number N --issue-number N --status STATUS
 """
 
 from __future__ import annotations
 
+import json
 import os
+import shutil
+import subprocess
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated
 
@@ -37,13 +41,16 @@ from github import Auth, Github, GithubException
 if TYPE_CHECKING:
     from github.Issue import Issue
     from github.Label import Label
+    from github.Milestone import Milestone
     from github.Repository import Repository
 
 app = typer.Typer(help="GitHub Project management automation via PyGithub")
 milestone_app = typer.Typer(help="Milestone operations")
 issue_app = typer.Typer(help="Issue operations")
+project_app = typer.Typer(help="GitHub Projects V2 operations")
 app.add_typer(milestone_app, name="milestone")
 app.add_typer(issue_app, name="issue")
+app.add_typer(project_app, name="project")
 
 DEFAULT_REPO = "Jamie-BitFlight/claude_skills"
 
@@ -69,6 +76,17 @@ LABELS: list[dict[str, str]] = [
 ]
 
 PRIORITY_LABEL_MAP = {"P0": "priority:p0", "P1": "priority:p1", "P2": "priority:p2", "IDEAS": "priority:idea"}
+
+VALID_STATUSES = ("Backlog", "Grooming", "In Progress", "In Review", "Done")
+
+# Label-to-status mapping for milestone transitions
+_LABEL_TO_PROJECT_STATUS = {
+    "status:in-progress": "In Progress",
+    "status:done": "Done",
+    "status:needs-grooming": "Grooming",
+    "status:needs-review": "In Review",
+    "status:blocked": "Backlog",
+}
 
 
 def get_github() -> Github:
@@ -173,25 +191,17 @@ def milestone_start(
     number: Annotated[int, typer.Option("--number", "-n", help="Milestone number")],
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
     dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
+    project_number: Annotated[int, typer.Option("--project-number", "-p", help="Projects V2 number")] = 0,
+    owner: Annotated[str, typer.Option("--owner", help="GitHub owner for Projects V2")] = "Jamie-BitFlight",
 ) -> None:
-    """Transition open milestone issues from status:needs-grooming to status:in-progress."""
+    """Transition open milestone issues from status:needs-grooming to status:in-progress.
+
+    When --project-number is set, also updates the Projects V2 Status field
+    to "In Progress" for each transitioned issue.
+    """
     gh = get_github()
     repository = get_repo(gh, repo)
-
-    try:
-        milestone = repository.get_milestone(number)
-    except GithubException as exc:
-        typer.echo(f"ERROR: Milestone #{number} not found.", err=True)
-        open_milestones = list(repository.get_milestones(state="open"))
-        if open_milestones:
-            typer.echo("Open milestones:", err=True)
-            for m in open_milestones:
-                typer.echo(f"  #{m.number}  {m.title}", err=True)
-        raise typer.Exit(1) from exc
-
-    if milestone.state == "closed":
-        typer.echo(f"ERROR: Milestone #{number} '{milestone.title}' is already closed.", err=True)
-        raise typer.Exit(1)
+    milestone = _get_open_milestone(repository, number)
 
     if milestone.open_issues == 0:
         typer.echo(
@@ -210,14 +220,27 @@ def milestone_start(
 
     if dry_run:
         typer.echo("\n[dry-run] No changes made.")
+        if project_number:
+            typer.echo("\nProjects V2 status updates (dry-run):")
+            _bulk_update_project_status(owner, project_number, open_issues, "In Progress", dry_run=True)
         return
 
     in_progress_label = _ensure_label(repository, "status:in-progress", "1D76DB", "Actively being worked on")
     succeeded, skipped, failed = _transition_issues(open_issues, in_progress_label)
 
+    # Update Projects V2 Status if project specified
+    v2_succeeded = v2_failed = 0
+    if project_number:
+        typer.echo("\nUpdating Projects V2 Status → In Progress:")
+        v2_succeeded, v2_failed = _bulk_update_project_status(owner, project_number, open_issues, "In Progress")
+
     typer.echo(
         f"\nMilestone #{milestone.number} '{milestone.title}' started.\n"
-        f"  {succeeded} transitioned, {skipped} already in-progress, {failed} failed.\n"
+        f"  {succeeded} transitioned, {skipped} already in-progress, {failed} failed."
+    )
+    if project_number:
+        typer.echo(f"  Projects V2: {v2_succeeded} updated, {v2_failed} failed.")
+    typer.echo(
         f"\nWork on individual items:\n"
         f"  /work-backlog-item {{title}}\n"
         f"\nTrack progress:\n"
@@ -233,25 +256,17 @@ def milestone_close(
     number: Annotated[int, typer.Option("--number", "-n", help="Milestone number")],
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
     dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
+    project_number: Annotated[int, typer.Option("--project-number", "-p", help="Projects V2 number")] = 0,
+    owner: Annotated[str, typer.Option("--owner", help="GitHub owner for Projects V2")] = "Jamie-BitFlight",
 ) -> None:
-    """Close a milestone: transition open issues to status:done and close the milestone."""
+    """Close a milestone: transition open issues to status:done and close the milestone.
+
+    When --project-number is set, also updates the Projects V2 Status field
+    to "Done" for each issue in the milestone (both open and already-closed).
+    """
     gh = get_github()
     repository = get_repo(gh, repo)
-
-    try:
-        milestone = repository.get_milestone(number)
-    except GithubException as exc:
-        typer.echo(f"ERROR: Milestone #{number} not found.", err=True)
-        open_milestones = list(repository.get_milestones(state="open"))
-        if open_milestones:
-            typer.echo("Open milestones:", err=True)
-            for m in open_milestones:
-                typer.echo(f"  #{m.number}  {m.title}", err=True)
-        raise typer.Exit(1) from exc
-
-    if milestone.state == "closed":
-        typer.echo(f"ERROR: Milestone #{number} '{milestone.title}' is already closed.", err=True)
-        raise typer.Exit(1)
+    milestone = _get_open_milestone(repository, number)
 
     open_issues = list(repository.get_issues(milestone=milestone, state="open"))
     closed_issues = list(repository.get_issues(milestone=milestone, state="closed"))
@@ -269,6 +284,10 @@ def milestone_close(
 
     if dry_run:
         typer.echo("[dry-run] No changes made.")
+        if project_number:
+            all_issues = open_issues + closed_issues
+            typer.echo("\nProjects V2 status updates (dry-run):")
+            _bulk_update_project_status(owner, project_number, all_issues, "Done", dry_run=True)
         return
 
     succeeded = skipped = failed = 0
@@ -282,6 +301,15 @@ def milestone_close(
     if open_issues:
         typer.echo(f"  {succeeded} transitioned to status:done, {skipped} already done, {failed} failed.")
     typer.echo(f"  {len(closed_issues)}/{total} issues were closed before milestone close.")
+
+    # Update Projects V2 Status for all issues in milestone
+    v2_succeeded = v2_failed = 0
+    if project_number:
+        all_issues = open_issues + closed_issues
+        typer.echo("\nUpdating Projects V2 Status → Done:")
+        v2_succeeded, v2_failed = _bulk_update_project_status(owner, project_number, all_issues, "Done")
+        typer.echo(f"  Projects V2: {v2_succeeded} updated, {v2_failed} failed.")
+
     if failed:
         raise typer.Exit(1)
 
@@ -311,6 +339,254 @@ def _transition_to_done(open_issues: list[Issue], done_label: Label) -> tuple[in
             typer.echo(f"  #{issue.number}  FAILED: {exc}", err=True)
             failed += 1
     return succeeded, skipped, failed
+
+
+def _get_open_milestone(repository: Repository, number: int) -> Milestone:
+    """Fetch a milestone and verify it is open.
+
+    Args:
+        repository: GitHub repository object.
+        number: Milestone number.
+
+    Returns:
+        The Milestone object.
+
+    Raises:
+        typer.Exit: If the milestone is not found or already closed.
+    """
+    try:
+        milestone = repository.get_milestone(number)
+    except GithubException as exc:
+        typer.echo(f"ERROR: Milestone #{number} not found.", err=True)
+        open_milestones = list(repository.get_milestones(state="open"))
+        if open_milestones:
+            typer.echo("Open milestones:", err=True)
+            for m in open_milestones:
+                typer.echo(f"  #{m.number}  {m.title}", err=True)
+        raise typer.Exit(1) from exc
+
+    if milestone.state == "closed":
+        typer.echo(f"ERROR: Milestone #{number} '{milestone.title}' is already closed.", err=True)
+        raise typer.Exit(1)
+
+    return milestone
+
+
+def _find_gh_cli() -> str:
+    """Locate the gh CLI binary.
+
+    Returns:
+        Path to gh binary.
+
+    Raises:
+        typer.Exit: If gh is not found on PATH.
+    """
+    gh_path = shutil.which("gh")
+    if not gh_path:
+        typer.echo("ERROR: gh CLI not found. Install via: uv run .claude/skills/gh/scripts/setup_gh.py", err=True)
+        raise typer.Exit(1)
+    return gh_path
+
+
+def _gh_graphql(query: str) -> dict:
+    """Execute a GraphQL query via the gh CLI.
+
+    Args:
+        query: GraphQL query string.
+
+    Returns:
+        Parsed JSON response from the GitHub GraphQL API.
+
+    Raises:
+        typer.Exit: If the gh CLI call fails.
+    """
+    gh_path = _find_gh_cli()
+    try:
+        result = subprocess.run(
+            [gh_path, "api", "graphql", "-f", f"query={query}"], capture_output=True, text=True, check=True
+        )
+    except subprocess.CalledProcessError as exc:
+        typer.echo(f"ERROR: GraphQL query failed: {exc.stderr or exc}", err=True)
+        raise typer.Exit(1) from exc
+    return json.loads(result.stdout)
+
+
+def _discover_project_fields(owner: str, project_number: int) -> tuple[str, str, dict[str, str]]:
+    """Discover project ID, Status field ID, and option IDs via GraphQL.
+
+    Args:
+        owner: GitHub user or organization login.
+        project_number: The project number (visible in the URL).
+
+    Returns:
+        Tuple of (project_id, status_field_id, option_map) where
+        option_map maps status name to option ID.
+
+    Raises:
+        typer.Exit: If project or Status field not found.
+    """
+    query = (
+        '{ user(login: "' + owner + '") { projectV2(number: ' + str(project_number) + ") { id fields(first: 30) {"
+        " nodes { ... on ProjectV2SingleSelectField {"
+        " id name options { id name } } } } } } }"
+    )
+    resp = _gh_graphql(query)
+
+    project = resp.get("data", {}).get("user", {}).get("projectV2")
+    if not project:
+        typer.echo(f"ERROR: Project #{project_number} not found for user '{owner}'.", err=True)
+        raise typer.Exit(1)
+
+    project_id = project["id"]
+    for field in project["fields"]["nodes"]:
+        if field.get("name") == "Status":
+            field_id = field["id"]
+            option_map = {opt["name"]: opt["id"] for opt in field["options"]}
+            return project_id, field_id, option_map
+
+    typer.echo(f"ERROR: No 'Status' field found in project #{project_number}.", err=True)
+    raise typer.Exit(1)
+
+
+def _find_project_item_id(project_id: str, issue_node_id: str) -> str:
+    """Find or create the project item for a given issue.
+
+    Adds the issue to the project if not already present. The
+    ``addProjectV2ItemById`` mutation is idempotent — it returns the
+    existing item if the issue is already on the board.
+
+    Args:
+        project_id: GraphQL node ID of the project.
+        issue_node_id: GraphQL node ID of the issue.
+
+    Returns:
+        The project item ID.
+
+    Raises:
+        typer.Exit: If the mutation fails to return an item ID.
+    """
+    query = (
+        "mutation { addProjectV2ItemById(input: {"
+        f'projectId: "{project_id}", contentId: "{issue_node_id}"'
+        "}) { item { id } } }"
+    )
+    resp = _gh_graphql(query)
+    item_id = resp.get("data", {}).get("addProjectV2ItemById", {}).get("item", {}).get("id")
+    if not item_id:
+        typer.echo("ERROR: Failed to add issue to project.", err=True)
+        raise typer.Exit(1)
+    return item_id
+
+
+def _set_project_field(project_id: str, item_id: str, field_id: str, option_id: str) -> None:
+    """Set a single-select field value on a project item.
+
+    Args:
+        project_id: GraphQL node ID of the project.
+        item_id: GraphQL node ID of the project item.
+        field_id: GraphQL node ID of the field.
+        option_id: GraphQL node ID of the option to set.
+    """
+    query = (
+        "mutation { updateProjectV2ItemFieldValue(input: {"
+        f'projectId: "{project_id}", itemId: "{item_id}", '
+        f'fieldId: "{field_id}", '
+        f'value: {{singleSelectOptionId: "{option_id}"}}'
+        "}) { projectV2Item { id } } }"
+    )
+    _gh_graphql(query)
+
+
+def _update_project_status(
+    owner: str, project_number: int, issue_node_id: str, status: str, *, dry_run: bool = False, issue_label: str = ""
+) -> bool:
+    """Update the Projects V2 Status field for a single issue.
+
+    This is the shared implementation used by both the ``project update-status``
+    command and the milestone start/close integration.
+
+    Args:
+        owner: GitHub user or organization login.
+        project_number: The project number.
+        issue_node_id: GraphQL node ID of the issue.
+        status: Target status value (must be in VALID_STATUSES).
+        dry_run: If True, report what would happen without mutating.
+        issue_label: Optional label for dry-run output (e.g. "#42 title").
+
+    Returns:
+        True if the update succeeded (or would succeed in dry-run).
+    """
+    if status not in VALID_STATUSES:
+        typer.echo(f"ERROR: Invalid status '{status}'. Valid values: {', '.join(VALID_STATUSES)}", err=True)
+        return False
+
+    project_id, field_id, option_map = _discover_project_fields(owner, project_number)
+
+    option_id = option_map.get(status)
+    if not option_id:
+        typer.echo(
+            f"ERROR: Status '{status}' not found in project options. Available: {', '.join(option_map)}", err=True
+        )
+        return False
+
+    if dry_run:
+        label = issue_label or issue_node_id
+        typer.echo(f"  [dry-run] Would set {label} → Status: {status}")
+        return True
+
+    item_id = _find_project_item_id(project_id, issue_node_id)
+    _set_project_field(project_id, item_id, field_id, option_id)
+
+    label = issue_label or issue_node_id
+    typer.echo(f"  {label} → Status: {status}")
+    return True
+
+
+def _bulk_update_project_status(
+    owner: str, project_number: int, issues: list[Issue], status: str, *, dry_run: bool = False
+) -> tuple[int, int]:
+    """Update Projects V2 Status for multiple issues.
+
+    Discovers project fields once and reuses for all issues.
+
+    Args:
+        owner: GitHub user or organization login.
+        project_number: The project number.
+        issues: List of PyGithub Issue objects.
+        status: Target status value.
+        dry_run: If True, report without mutating.
+
+    Returns:
+        Tuple of (succeeded, failed) counts.
+    """
+    if status not in VALID_STATUSES:
+        typer.echo(f"ERROR: Invalid status '{status}'. Valid values: {', '.join(VALID_STATUSES)}", err=True)
+        return 0, len(issues)
+
+    project_id, field_id, option_map = _discover_project_fields(owner, project_number)
+    option_id = option_map.get(status)
+    if not option_id:
+        typer.echo(
+            f"ERROR: Status '{status}' not found in project options. Available: {', '.join(option_map)}", err=True
+        )
+        return 0, len(issues)
+
+    succeeded = failed = 0
+    for issue in issues:
+        label = f"#{issue.number}  {issue.title[:50]}"
+        if dry_run:
+            typer.echo(f"  [dry-run] Would set {label} → Status: {status}")
+            succeeded += 1
+            continue
+        try:
+            item_id = _find_project_item_id(project_id, issue.node_id)
+            _set_project_field(project_id, item_id, field_id, option_id)
+            typer.echo(f"  {label} → Status: {status}")
+            succeeded += 1
+        except (typer.Exit, subprocess.CalledProcessError) as exc:
+            typer.echo(f"  {label} FAILED: {exc}", err=True)
+            failed += 1
+    return succeeded, failed
 
 
 def _ensure_label(repository: Repository, name: str, color: str, description: str) -> Label:
@@ -361,6 +637,53 @@ def _transition_issues(open_issues: list[Issue], in_progress_label: Label) -> tu
             typer.echo(f"  #{issue.number}  FAILED: {exc}", err=True)
             failed += 1
     return succeeded, skipped, failed
+
+
+@project_app.command("update-status")
+def project_update_status(
+    issue_number: Annotated[int, typer.Option("--issue-number", "-i", help="GitHub issue number")],
+    status: Annotated[str, typer.Option("--status", "-s", help="Target status value")],
+    project_number: Annotated[int, typer.Option("--project-number", "-p", help="Project number")] = 1,
+    owner: Annotated[str, typer.Option("--owner")] = "Jamie-BitFlight",
+    repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
+    dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
+) -> None:
+    """Set the Projects V2 Status field for a GitHub issue.
+
+    Discovers field IDs dynamically via GraphQL, then updates the Status
+    single-select field. The issue is added to the project if not already present.
+
+    Valid statuses: Backlog, Grooming, In Progress, In Review, Done
+    """
+    if status not in VALID_STATUSES:
+        typer.echo(f"ERROR: Invalid status '{status}'. Valid values: {', '.join(VALID_STATUSES)}", err=True)
+        raise typer.Exit(1)
+
+    gh = get_github()
+    repository = get_repo(gh, repo)
+
+    try:
+        issue = repository.get_issue(issue_number)
+    except GithubException as exc:
+        typer.echo(f"ERROR: Issue #{issue_number} not found: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    typer.echo(f"Issue #{issue.number}: {issue.title}")
+    typer.echo(f"  Project: {owner}/projects/{project_number}")
+    typer.echo(f"  Target status: {status}")
+
+    ok = _update_project_status(
+        owner=owner,
+        project_number=project_number,
+        issue_node_id=issue.raw_data["node_id"],
+        status=status,
+        dry_run=dry_run,
+        issue_label=f"#{issue.number}  {issue.title[:50]}",
+    )
+    if not ok:
+        raise typer.Exit(1)
+    if not dry_run:
+        typer.echo("  Done.")
 
 
 @issue_app.command("create")
