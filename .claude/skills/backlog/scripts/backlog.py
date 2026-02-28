@@ -1400,22 +1400,6 @@ def _append_or_replace_section(body: str, section_name: str, content: str) -> st
     if not content:
         return body
     today = _today()
-    groomed_subsections = (
-        "reproducibility",
-        "output / evidence",
-        "priority",
-        "impact",
-        "benefits",
-        "expected behavior",
-        "desired structure",
-        "acceptance criteria",
-        "human input",
-        "questions for human",
-        "resources",
-        "dependencies",
-        "blockers",
-        "effort",
-    )
     section_lower = section_name.strip().lower()
     if section_lower in {"fact-check", "rt-ica"}:
         header = f"## {section_name.strip()}\n\n"
@@ -1426,24 +1410,25 @@ def _append_or_replace_section(body: str, section_name: str, content: str) -> st
         if section_re.search(body):
             return section_re.sub(f"\n{new_block}", body)
         return body.rstrip() + "\n\n" + new_block
-    if section_lower in groomed_subsections:
-        groomed_header = f"## Groomed ({today})"
-        sub_header = f"### {section_name.strip()}\n\n"
-        sub_re = re.compile(
-            rf"\n### {re.escape(section_name.strip())}\s*\n[\s\S]*?(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
-        )
-        new_block = sub_header + content + "\n"
-        groomed_re = re.compile(r"(## Groomed\s*\([^)]*\)\s*\n)([\s\S]*?)(?=\n## |\Z)", re.MULTILINE)
-        match = groomed_re.search(body)
-        if match:
-            groomed_body = match.group(2)
-            if sub_re.search(groomed_body):
-                new_groomed_body = sub_re.sub(f"\n{new_block}", groomed_body)
-            else:
-                new_groomed_body = groomed_body.rstrip() + "\n\n" + new_block
-            return groomed_re.sub(match.group(1) + new_groomed_body + "\n", body, count=1)
-        return body.rstrip() + "\n\n" + groomed_header + "\n\n" + new_block
-    return body
+    # Treat known groomed subsections AND any unrecognized section name as a
+    # ### subsection under ## Groomed.  Previous code silently dropped unknown
+    # section names (returned body unchanged), violating "no silent data loss".
+    groomed_header = f"## Groomed ({today})"
+    sub_header = f"### {section_name.strip()}\n\n"
+    sub_re = re.compile(
+        rf"\n### {re.escape(section_name.strip())}\s*\n[\s\S]*?(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
+    )
+    new_block = sub_header + content + "\n"
+    groomed_re = re.compile(r"(## Groomed\s*\([^)]*\)\s*\n)([\s\S]*?)(?=\n## |\Z)", re.MULTILINE)
+    match = groomed_re.search(body)
+    if match:
+        groomed_body = match.group(2)
+        if sub_re.search(groomed_body):
+            new_groomed_body = sub_re.sub(f"\n{new_block}", groomed_body)
+        else:
+            new_groomed_body = groomed_body.rstrip() + "\n\n" + new_block
+        return groomed_re.sub(match.group(1) + new_groomed_body + "\n", body, count=1)
+    return body.rstrip() + "\n\n" + groomed_header + "\n\n" + new_block
 
 
 def _write_groomed_to_item_file(filepath: Path, groomed_content: str, section_name: str | None = None) -> None:
@@ -1492,14 +1477,18 @@ def _write_groomed_to_item_file(filepath: Path, groomed_content: str, section_na
 
 def _sync_groomed_to_github_issue(
     repo_obj: Repository, issue_num: int, groomed_content: str, section_name: str | None = None
-) -> None:
-    """Append or merge groomed content into GitHub issue body. GitHub is canonical."""
+) -> bool:
+    """Append or merge groomed content into GitHub issue body. GitHub is canonical.
+
+    Returns:
+        True if the issue body was actually updated, False otherwise.
+    """
     try:
         issue = repo_obj.get_issue(issue_num)
         body = issue.body or ""
         content = groomed_content.strip()
         if not content:
-            return
+            return False
         today = _today()
         if section_name and section_name.lower() not in {"groomed", ""}:
             new_body = _append_or_replace_section(body, section_name, content)
@@ -1508,10 +1497,13 @@ def _sync_groomed_to_github_issue(
             block = f"\n## Groomed ({today})\n\n{content}\n"
             new_body = groomed_re.sub(block, body) if groomed_re.search(body) else body.rstrip() + "\n\n" + block
         if new_body == body:
-            return
+            return False
         issue.edit(body=new_body)
     except GithubException as e:
         typer.echo(f"  WARNING: Could not sync to GitHub issue: {e}", err=True)
+        return False
+    else:
+        return True
 
 
 def _resolve_groomed_content(
@@ -1600,13 +1592,16 @@ def _write_groomed_to_github(issue_ref: str, content: str, section_name: str | N
         return False
     try:
         num = int(issue_ref.lstrip("#"))
-        _sync_groomed_to_github_issue(repository, num, content, section_name)
+        updated = _sync_groomed_to_github_issue(repository, num, content, section_name)
     except GithubException as e:
         typer.echo(f"  WARNING: Could not sync to GitHub: {e}", err=True)
         return False
     else:
-        typer.echo(f"  Synced to GitHub issue {issue_ref}")
-        return True
+        if updated:
+            typer.echo(f"  Synced to GitHub issue {issue_ref}")
+        else:
+            typer.echo(f"  No changes to sync to GitHub issue {issue_ref}")
+        return updated
 
 
 def _apply_status_in_progress(item: dict, repo: str) -> None:
