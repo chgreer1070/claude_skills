@@ -1,0 +1,3 @@
+[submodule "plugins/hallucination-detector"]
+	path = plugins/hallucination-detector
+	url = https://github.com/bitflight-devops/hallucination-detector.git
