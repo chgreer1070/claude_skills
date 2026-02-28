@@ -68,30 +68,33 @@ chmod 755 llamafile
 - GitHub Release: `https://github.com/mozilla-ai/llamafile/releases/download/0.9.3/llamafile-0.9.3`
 - SourceForge Mirror: `https://sourceforge.net/projects/llamafile.mirror/files/0.9.3/`
 
-### Download GGUF Model
+### Download a Model
 
-Llamafile requires GGUF format models. Download from Hugging Face:
+Llamafile supports two approaches: pre-packaged llamafile executables (model embedded) or separate GGUF model files.
+
+**Pre-packaged llamafile (easiest):**
 
 ```bash
-# Recommended: Gemma 3 3B (balanced speed/quality, ~2GB)
-curl -L -o gemma-3-3b.gguf \
-  https://huggingface.co/Mozilla/gemma-3-3b-it-gguf/resolve/main/gemma-3-3b-it-Q4_K_M.gguf
-
-# Alternative: Pre-packaged llamafile with embedded model
-curl -LO https://huggingface.co/Mozilla/llava-v1.5-7b-llamafile/resolve/main/llava-v1.5-7b-q4.llamafile
+# Download a llamafile with embedded model
+curl -LO https://huggingface.co/mozilla-ai/llava-v1.5-7b-llamafile/resolve/main/llava-v1.5-7b-q4.llamafile
 chmod +x llava-v1.5-7b-q4.llamafile
+./llava-v1.5-7b-q4.llamafile --server --nobrowser
 ```
 
-**Recommended models by use case:**
+**Separate GGUF model (use with `./llamafile --server -m model.gguf`):**
 
-| Model        | Size   | Use Case               | Download                                                                        |
-| ------------ | ------ | ---------------------- | ------------------------------------------------------------------------------- |
-| Gemma 3 3B   | ~2GB   | Balanced speed/quality | [Mozilla/gemma-3-3b-it-gguf](https://huggingface.co/Mozilla/gemma-3-3b-it-gguf) |
-| Qwen3-0.6B   | ~500MB | Fast, lower quality    | [Mozilla/Qwen3-0.6B-gguf](https://huggingface.co/Mozilla/Qwen3-0.6B-gguf)       |
-| Mistral 7B   | ~4GB   | Higher quality, slower | [Mozilla/Mistral-7B-gguf](https://huggingface.co/Mozilla/Mistral-7B-gguf)       |
-| Llama 3.1 8B | ~5GB   | Best quality, slowest  | [Mozilla/Llama-3.1-8B-gguf](https://huggingface.co/Mozilla/Llama-3.1-8B-gguf)   |
+Download GGUF files from HuggingFace model publishers, then load with the llamafile binary.
 
-**Quantization recommendation**: Use Q4_K_M quantized models for optimal balance of quality and performance.
+**Pre-packaged llamafile models from mozilla-ai:**
+
+| Model              | Size   | Use Case               | Download                                                                                                          |
+| ------------------ | ------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Qwen3-0.6B         | ~500MB | Fast, lower quality    | [mozilla-ai/Qwen3-0.6B-llamafile](https://huggingface.co/mozilla-ai/Qwen3-0.6B-llamafile)                         |
+| Mistral 7B v0.2    | ~4GB   | Balanced speed/quality | [mozilla-ai/Mistral-7B-Instruct-v0.2-llamafile](https://huggingface.co/mozilla-ai/Mistral-7B-Instruct-v0.2-llamafile) |
+| Llama 3.1 8B       | ~5GB   | Higher quality, slower | [mozilla-ai/Meta-Llama-3.1-8B-Instruct-llamafile](https://huggingface.co/mozilla-ai/Meta-Llama-3.1-8B-Instruct-llamafile) |
+| LLaVA v1.5 7B      | ~4GB   | Multimodal (text+image)| [mozilla-ai/llava-v1.5-7b-llamafile](https://huggingface.co/mozilla-ai/llava-v1.5-7b-llamafile)                     |
+
+These are self-contained executables — download, `chmod +x`, and run. No separate llamafile binary needed.
 
 ## Server Configuration
 
