@@ -1907,7 +1907,6 @@ def migrate(
 _BAD_DESCRIPTION_PREFIX_RE: re.Pattern[str] = re.compile(
     r"^(Research on|Notes on|Information about|Overview of)\s", re.IGNORECASE
 )
-_BODY_EXCERPT_MAX_LEN: int = 2000
 
 
 def _is_bad_description(entry: KBEntry) -> bool:
@@ -1963,7 +1962,7 @@ def list_candidates(
             "category": entry.category,
             "tags": entry.tags,
             "current_description": entry.description,
-            "body_excerpt": entry.body[:_BODY_EXCERPT_MAX_LEN],
+            "body": entry.body,
         })
 
     sys.stdout.write(json.dumps(candidates, indent=2, ensure_ascii=False))

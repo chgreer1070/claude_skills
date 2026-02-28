@@ -235,7 +235,7 @@ Generate or repair frontmatter `description` fields for KB entries that are miss
 uv run research/knowledge-explorer.py list-candidates
 ```
 
-Output is a JSON array of entries that fail the bad-description heuristics. Empty array means nothing to do. Each object contains `topic`, `file_path`, `name`, `category`, `tags`, `current_description`, `body_excerpt`.
+Output is a JSON array of entries that fail the bad-description heuristics. Empty array means nothing to do. Each object contains `topic`, `file_path`, `name`, `category`, `tags`, `current_description`, `body`.
 
 ```bash
 # Step 2 — spawn one Haiku subagent per entry in parallel
@@ -272,7 +272,7 @@ Subagent receives:
   "name": "dasel",
   "category": "developer-tools",
   "tags": ["cli", "json", "yaml", "toml", "csv", "xml"],
-  "body_excerpt": "Dasel (Data Selection) is a command-line tool and Go library..."
+  "body": "Dasel (Data Selection) is a command-line tool and Go library..."
 }
 ```
 
