@@ -25,12 +25,14 @@ Choose A or B based on task type:
 ### A. For Code (Executable)
 
 - [ ] **Execution:** Terminal output showing successful run? (Exit code 0 is NOT enough)
+- [ ] **Real data:** Ran the changed code path against real data, not just read the diff?
 - [ ] **Regression:** Evidence that existing tests still pass?
 - [ ] **Edge Cases:** Evidence of testing failure scenarios?
 
 ```text
 EVIDENCE:
 - Execution output: [paste actual output]
+- Real data test: [command run, input used, output observed]
 - Test results: [paste test output]
 - Edge case tested: [describe scenario and result]
 ```
@@ -85,6 +87,7 @@ EVIDENCE:
 
 - [ ] Did I verify the _full scope_?
 - [ ] Am I distinguishing between "should work" and "verified to work"?
+- [ ] **Destination check:** Did I read the target state after writing? (Tool output claiming success is not evidence — the state of the destination is.)
 - [ ] Can I answer YES to: "I have VALIDATED this output in its intended context"?
 
 ---
@@ -93,13 +96,14 @@ EVIDENCE:
 
 **If you cannot demonstrate it working in practice with evidence, it is NOT done.**
 
-| Claim           | Required Evidence                  |
-| --------------- | ---------------------------------- |
-| "Code works"    | Terminal output showing execution  |
-| "Tests pass"    | Actual test output, not assumption |
-| "Bug fixed"     | Before/after comparison            |
-| "Docs accurate" | Cross-reference with source        |
-| "Config valid"  | Validation command output          |
+| Claim           | Required Evidence                                        |
+| --------------- | -------------------------------------------------------- |
+| "Code works"    | Terminal output showing execution against real data      |
+| "Tests pass"    | Actual test output, not assumption                       |
+| "Bug fixed"     | Before/after comparison                                  |
+| "Data synced"   | Read the destination after writing — not the tool output |
+| "Docs accurate" | Cross-reference with source                              |
+| "Config valid"  | Validation command output                                |
 
 ---
 

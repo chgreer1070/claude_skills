@@ -1403,6 +1403,8 @@ def _append_or_replace_section(body: str, section_name: str, content: str) -> st
     section_lower = section_name.strip().lower()
     if section_lower in {"fact-check", "rt-ica"}:
         header = f"## {section_name.strip()}\n\n"
+        # [^\n]* absorbs trailing text like ": BLOCKED" on the heading line.
+        # Using \s* instead would silently fail on headings with suffixes.
         section_re = re.compile(
             rf"\n## {re.escape(section_name.strip())}[^\n]*\n[\s\S]*?(?=\n## |\Z)", re.IGNORECASE | re.MULTILINE
         )
@@ -1415,6 +1417,9 @@ def _append_or_replace_section(body: str, section_name: str, content: str) -> st
     # section names (returned body unchanged), violating "no silent data loss".
     groomed_header = f"## Groomed ({today})"
     sub_header = f"### {section_name.strip()}\n\n"
+    # [^\n]* absorbs trailing text like ": BLOCKED" on the heading line.
+    # Using \s* instead would silently fail on headings with suffixes.
+    # This regex only searches within groomed_body (scoped by groomed_re below).
     sub_re = re.compile(
         rf"\n### {re.escape(section_name.strip())}[^\n]*\n[\s\S]*?(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
     )
