@@ -156,7 +156,58 @@ uv run .claude/skills/backlog/scripts/backlog.py view "{$0}" --format json -R Ja
 ```
 
 If the command fails (exit code non-zero), report and stop.
-Parse the JSON output. If `state` is `closed`, warn: "Issue #{number} is closed. Use `close` or `resolve` if needed." and stop.
+Parse the JSON output. If `state` is `closed`, run the **Completed Issue Discovery** procedure (see below) and stop.
+
+#### Completed Issue Discovery
+
+When an issue is found to be already closed (state `closed`), gather evidence of how it was completed before closing the local backlog item:
+
+1. **Search for commits referencing the issue**:
+
+   ```bash
+   git log --oneline --all -20 --grep="#N"
+   ```
+
+2. **Search for merged PRs referencing the issue**:
+
+   ```bash
+   gh pr list -R Jamie-BitFlight/claude_skills --search "#N" --state merged --json number,title,url,mergedAt --limit 5
+   ```
+
+3. **Report findings**:
+
+   If commits or PRs are found:
+
+   ```text
+   Issue #{N} is already closed.
+
+   Evidence of completion:
+   - PR #{pr}: {title} (merged {date})
+     URL: {url}
+   - Commit {sha}: {message}
+
+   Closing local backlog item with evidence.
+   ```
+
+   Then invoke:
+
+   ```bash
+   uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --reason "Completed via PR #{pr} / commit {sha}" -R Jamie-BitFlight/claude_skills
+   ```
+
+   If no commits or PRs reference the issue:
+
+   ```text
+   Issue #{N} is already closed but no commits or PRs reference it.
+   The issue may have been closed manually or via external process.
+
+   Options:
+   - close: Close the local backlog item (with manual reason)
+   - resolve: Mark as no longer applicable
+   - reopen: If the work was not actually done, reopen the issue
+   ```
+
+   Use `AskUserQuestion` to ask which action to take. In AUTO_MODE, log `[AUTO] STOP — Issue #N closed, no commit/PR evidence found` and stop.
 
 From the JSON response build the working item:
 
@@ -588,7 +639,7 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 ## Error Handling
 
 - `#N` / URL / bare number not found: report and list available items with `uv run .claude/skills/backlog/scripts/backlog.py list -R Jamie-BitFlight/claude_skills`
-- `#N` already closed: warn and stop; offer `close` or `resolve` if needed
+- `#N` already closed: run Completed Issue Discovery (search commits/PRs for evidence, close local item with reference, or ask user)
 - `close #N` / `resolve #N` — issue not found: report and stop
 - Item not found: list available items from `.claude/backlog/` per-item files with their priority sections
 - Multiple matches: present numbered list, ask user to choose
