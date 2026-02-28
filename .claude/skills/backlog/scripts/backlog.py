@@ -670,20 +670,20 @@ def _pull_single_issue(repo_obj: Repository, issue_num: int, filepath: Path | No
 def _extract_description_from_issue_body(body: str) -> str:
     """Extract the Description section from a GitHub issue body.
 
-    Falls back to first 200 chars if no ## Description section found.
+    Falls back to first non-empty paragraph if no ## Description section found.
 
     Returns:
         Description text.
     """
     desc_match = re.search(r"## Description\s*\n\n(.*?)(?=\n## |\Z)", body, re.DOTALL)
     if desc_match:
-        return desc_match.group(1).strip()[:500]
+        return desc_match.group(1).strip()
     # Fallback: first non-empty paragraph
     for line in body.splitlines():
         stripped = line.strip()
         if stripped and not stripped.startswith("#") and not stripped.startswith("-"):
-            return stripped[:500]
-    return body[:200].strip()
+            return stripped
+    return body.strip()
 
 
 def _overwrite_body_from_github(filepath: Path, issue_body: str) -> None:

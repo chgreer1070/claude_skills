@@ -51,7 +51,6 @@ from sklearn.feature_extraction.text import CountVectorizer
 
 _DEFAULT_MIN_SUPPORT: int = 2
 _DEFAULT_N_CLUSTERS: int = 3
-_MESSAGE_TRUNCATION_LIMIT: int = 200
 _TOP_TOOLS_PER_CLUSTER: int = 5
 _KMEANS_RANDOM_STATE: int = 42
 _KMEANS_N_INIT: int = 10
@@ -504,7 +503,7 @@ async def detect_frustration_signals(glob_path: str) -> list[dict[str, str]]:
                             "session_id": session_id,
                             "timestamp": str(timestamp),
                             "signal_type": signal_type,
-                            "message_text": text[:_MESSAGE_TRUNCATION_LIMIT],
+                            "message_text": text,
                         })
                         break  # One signal per message
 

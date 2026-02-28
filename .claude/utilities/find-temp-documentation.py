@@ -77,8 +77,6 @@ EXCLUDE_DIRS = {".git", "node_modules", "__pycache__", "docs"}
 
 # Display limits for output formatting
 MAX_TASKS_TO_DISPLAY = 10  # Maximum number of tasks to show in summary
-TASK_NAME_TRUNCATE_LENGTH = 50  # Maximum length for task names before truncation
-DESCRIPTION_TRUNCATE_LENGTH = 80  # Maximum length for description preview
 CONTENT_PREVIEW_LINES = 5  # Number of content lines to show in preview
 
 # Type aliases for YAML frontmatter values
@@ -355,9 +353,7 @@ def _print_summary_yaml(docs: list[TempDoc], path: Path) -> None:
     if task_counts and len(task_counts) <= MAX_TASKS_TO_DISPLAY:
         console.print("  by_task:")
         for task, count in sorted(task_counts.items()):
-            # Truncate long task names
-            task_display = task[:TASK_NAME_TRUNCATE_LENGTH] + "..." if len(task) > TASK_NAME_TRUNCATE_LENGTH else task
-            console.print(f"    {task_display}: {count}")
+            console.print(f"    {task}: {count}")
 
 
 def _print_full_list_yaml(
@@ -410,11 +406,7 @@ def _print_doc_yaml(doc: TempDoc, index: int, path: Path, indent: int = 2) -> No
     # Extract first line of content as description
     content_lines = doc.content.strip().split("\n")
     first_line = content_lines[0] if content_lines else ""
-    description = (
-        first_line[:DESCRIPTION_TRUNCATE_LENGTH] + "..."
-        if len(first_line) > DESCRIPTION_TRUNCATE_LENGTH
-        else first_line
-    )
+    description = first_line
 
     console.print(f"{prefix}- index: {index}")
     console.print(f"{prefix}  name: {doc.path.stem}")

@@ -369,7 +369,7 @@ def migrate_file(file_path: Path, *, dry_run: bool = False, validate: bool = Fal
 
     if dry_run:
         console.print("\n[bold]Dry run - changes not written[/bold]")
-        console.print(Panel(new_content[:500] + "...", title="Preview"))
+        console.print(Panel(new_content, title="Preview"))
         return len(tasks), errors
 
     # Write new content

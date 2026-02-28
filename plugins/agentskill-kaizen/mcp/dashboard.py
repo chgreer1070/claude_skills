@@ -55,7 +55,6 @@ _HOTSPOT_THRESHOLD: float = -0.5
 _REFRESH_INTERVAL_MS: int = 5000
 _SCORE_MIN: float = -1.0
 _SCORE_MAX: float = 1.0
-_PREVIEW_TRUNCATE: int = 80
 _HISTOGRAM_BINS: int = 30
 
 # ---------------------------------------------------------------------------
@@ -178,7 +177,7 @@ def _build_timeline(df: pd.DataFrame) -> pn.pane.HoloViews:
     # Sort by message_index for correct temporal ordering and rolling window
     plot_df = df.copy()
     plot_df = plot_df.sort_values("message_index").reset_index(drop=True)
-    plot_df["preview"] = plot_df["message_preview"].str[:_PREVIEW_TRUNCATE]
+    plot_df["preview"] = plot_df["message_preview"]
 
     # Compute rolling mean on the sorted sequence
     plot_df["rolling_mean"] = plot_df["compound"].rolling(window=_ROLLING_WINDOW, min_periods=1, center=True).mean()

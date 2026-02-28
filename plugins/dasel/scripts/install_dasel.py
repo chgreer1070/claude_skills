@@ -174,7 +174,7 @@ def fetch_latest_release(timeout: float = 30.0) -> tuple[str, list[ReleaseAsset]
     with httpx.Client(timeout=timeout) as client:
         response = client.get(GITHUB_API_URL, headers={"Accept": "application/vnd.github+json"})
         if response.status_code != HTTP_OK:
-            msg = f"GitHub API returned status {response.status_code}: {response.text[:200]}"
+            msg = f"GitHub API returned status {response.status_code}: {response.text}"
             raise GitHubAPIError(msg)
 
         data = response.json()
