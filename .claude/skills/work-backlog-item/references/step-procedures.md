@@ -123,7 +123,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
    Quick plan created: plan/quick/{slug}.md
    Steps: {N} tasks
 
-   To execute: /python3-development:implement-feature plan/quick/{slug}.md
+   To execute: /implement-feature plan/quick/{slug}.md
    To close:   /work-backlog-item close {title}
    </eg>
 
@@ -205,7 +205,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
    Last completed:  {last_checked task text}
    Next to do:      {first_unchecked task text}
 
-   To continue: /python3-development:implement-feature {slug}
+   To continue: /implement-feature {slug}
    To close:    /work-backlog-item close {title}
    </eg>
 

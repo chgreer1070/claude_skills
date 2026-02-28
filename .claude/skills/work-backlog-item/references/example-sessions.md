@@ -14,7 +14,7 @@ plan/quick/gitlab-skill-remove-hardcoded-url.md created.
   Steps: 2 tasks
   Done when: URL replaced in plugins/gitlab-skill/skills/gitlab-skill/SKILL.md
 
-To execute: /python3-development:implement-feature plan/quick/gitlab-skill-remove-hardcoded-url.md
+To execute: /implement-feature plan/quick/gitlab-skill-remove-hardcoded-url.md
 To close:   /work-backlog-item close gitlab-skill: Remove hardcoded URL
 </eg>
 
@@ -53,7 +53,7 @@ Progress: 5/12 tasks (41%)
 Last completed:  Add retry logic to execute_task in executor.py
 Next to do:      Write unit tests for retry behaviour
 
-To continue: /python3-development:implement-feature error-recovery
+To continue: /implement-feature error-recovery
 To close:    /work-backlog-item close Error Recovery
 </eg>
 

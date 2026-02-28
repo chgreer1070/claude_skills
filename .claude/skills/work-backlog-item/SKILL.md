@@ -205,7 +205,7 @@ From the matched item's JSON output (via `backlog.py list --format json`), extra
 If the item already has a `**Plan**:` field, report:
 
 ```text
-This item already has a plan at {path}. Use /python3-development:implement-feature {path} to execute it.
+This item already has a plan at {path}. Use /implement-feature {path} to execute it.
 ```
 
 Then stop.
@@ -332,8 +332,8 @@ If the item has `**Issue**: #N`, record it in the plan file header comment and i
 Backlog item "{title}" is now planned.
 
 - Plan file: plan/tasks-{N}-{slug}.md (or plan/tasks-{N}-{slug}/ directory)
-- To execute:      /python3-development:implement-feature {slug}
-- To check status: /python3-development:implementation-manager status . {slug}
+- To execute:      /implement-feature {slug}
+- To check status: /implementation-manager status . {slug}
 - To close when done: /work-backlog-item close {slug}
 ```
 
@@ -637,7 +637,7 @@ Invoking /add-new-feature...
 Updated per-item file with Plan: plan/tasks-2-validator-ux-coverage.md
 
 Next steps:
-- To execute:      /python3-development:implement-feature validator-ux-coverage
+- To execute:      /implement-feature validator-ux-coverage
 - To close when done: /work-backlog-item close plugin-validator UX and coverage gaps
 ```
 
@@ -660,8 +660,8 @@ Invoking /add-new-feature...
 Updated per-item file with Plan: plan/tasks-2-error-recovery.md
 
 Next steps:
-- To execute:      /python3-development:implement-feature error-recovery
-- To check status: /python3-development:implementation-manager status . error-recovery
+- To execute:      /implement-feature error-recovery
+- To check status: /implementation-manager status . error-recovery
 - To close when done: /work-backlog-item close error-recovery
 ```
 
