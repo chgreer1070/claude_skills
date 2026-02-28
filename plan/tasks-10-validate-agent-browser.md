@@ -212,6 +212,117 @@ Evidence block written into this task section with per-step results. The evidenc
 3. Confirm `get text body` exit code is 0
 4. Confirm evidence block records exact commands, exit codes, and outputs
 
+### Evidence
+
+**Environment note**: Primary URL `https://code.claude.com/docs/en/skills` unreachable (timeout). Fallback `https://example.com` also unreachable (timeout — DNS `getaddrinfo EAI_AGAIN`). Used `file:///tmp/test-page.html` (local HTML test page with headings, links, buttons, input, lists) per error recovery procedure.
+
+**Browser binary note**: agent-browser 0.15.1 bundles playwright-core 1.58.2 which expects `chromium_headless_shell-1208`. Pre-installed version was `chromium_headless_shell-1194`. Resolved by creating symlink directory structure mapping 1208 paths to 1194 binaries. `npx agent-browser install` reported success but did not download the newer revision (CDN unreachable).
+
+**Step 3 — Core workflow:**
+
+```text
+Command: npx agent-browser open file:///tmp/test-page.html
+Exit: 0
+Stdout: ✓ Agent Browser Validation Page
+  file:///tmp/test-page.html
+Stderr: none
+
+Command: npx agent-browser wait --load networkidle
+Exit: 0
+Stdout: ✓ Done
+Stderr: none
+
+Command: npx agent-browser snapshot -i
+Exit: 0
+Stdout:
+- link "Section 1" [ref=e1]
+- link "Section 2" [ref=e2]
+- button "Click Me" [ref=e3]
+- textbox "Enter text here" [ref=e4]
+Stderr: none
+
+First element ref identified: @e1
+
+Command: npx agent-browser get text @e1
+Exit: 0
+Stdout: Section 1
+Stderr: none
+
+Command: npx agent-browser close
+Exit: 0
+Stdout: ✓ Browser closed
+Stderr: none
+```
+
+**Step 4 — CSS selector confirmation:**
+
+```text
+Command: npx agent-browser open file:///tmp/test-page.html
+Exit: 0
+Stdout: ✓ Agent Browser Validation Page
+  file:///tmp/test-page.html
+Stderr: none
+
+Command: npx agent-browser get text body
+Exit: 0
+Stdout (497 chars):
+Agent Browser Validation
+This page validates the agent-browser core workflow.
+
+  Section 1
+  Section 2
+
+
+  Section 1: Overview
+  The agent-browser tool provides programmatic web automation via CLI commands.
+  Click Me
+
+
+
+  Section 2: Details
+  Features include: open, snapshot, get text, screenshot, and close.
+
+    Open: Launches a browser and navigates to a URL
+    Snapshot: Captures accessibility tree
+    Get Text: Extracts text content from elements
+    Close: Shuts down the browser
+Stderr: none
+
+Command: npx agent-browser close
+Exit: 0
+Stdout: ✓ Browser closed
+Stderr: none
+```
+
+**Step 5 — Screenshot:**
+
+```text
+Command: npx agent-browser open file:///tmp/test-page.html
+Exit: 0
+Stdout: ✓ Agent Browser Validation Page
+  file:///tmp/test-page.html
+Stderr: none
+
+Command: npx agent-browser screenshot --full /tmp/agent-browser-validation.png
+Exit: 0
+Stdout: ✓ Screenshot saved to /tmp/agent-browser-validation.png
+Stderr: none
+
+Command: npx agent-browser close
+Exit: 0
+Stdout: ✓ Browser closed
+Stderr: none
+
+Verification: /tmp/agent-browser-validation.png exists, size 44759 bytes (non-zero)
+```
+
+**Acceptance criteria results:**
+
+1. Step 3 (open -> snapshot -i -> get text @e1 -> close): All exit 0 with non-empty output — PASS
+2. Step 4 (get text body): Exit 0, returned 497 chars of non-empty text — PASS
+3. Step 5 (screenshot): File exists at /tmp/agent-browser-validation.png, 44759 bytes — PASS
+4. Evidence block written to this task section — PASS
+
 ---
 
 ## Task 2.1: Fix get-text-body Syntax in Templates
