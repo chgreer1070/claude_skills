@@ -63,7 +63,7 @@ Each artifact type uses the token pattern `ARTIFACT:{TYPE}({SCOPE_OR_ID})`. Stor
 
 1. **Use the SAM pipeline for feature work**
    - Canonical flow: Follow the 7-stage pipeline in the framework document.
-   - In claude_skills: Invoke `/development-harness` or `/python3-development:add-new-feature` for feature planning and implementation.
+   - In claude_skills: Invoke `/development-harness` or `/add-new-feature` for feature planning and implementation.
    - Bridge backlog items: Invoke `/work-backlog-item` to bring backlog items into SAM planning.
 
 2. **Produce artifacts at every stage**

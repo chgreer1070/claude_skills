@@ -6,7 +6,7 @@ user-invocable: true
 ---
 # Work Backlog Item
 
-Bridge a backlog item into the SAM planning pipeline via `/python3-development:add-new-feature` (default). Optional `--language` and `--stack` select Layer 1/2 profiles — see [.claude/docs/sdlc-layers/](../../docs/sdlc-layers/).
+Bridge a backlog item into the SAM planning pipeline via `/add-new-feature` (default). Optional `--language` and `--stack` select Layer 1/2 profiles — see [.claude/docs/sdlc-layers/](../../docs/sdlc-layers/).
 
 **Phase separation**: Grooming (Step 3) is autonomous research — the agent verifies facts, maps resources, estimates effort, and surfaces blockers. Planning (Step 6) is solution design — architecture, tasks, implementation. The human sets priorities and resolves blockers; the agent handles research and fact-checking autonomously.
 
@@ -303,7 +303,7 @@ Build the feature request string for `add-new-feature`. If `--stack` was specifi
 ### Step 6: Invoke SAM Planning
 
 ```text
-Skill(skill: "python3-development:add-new-feature", args: "{composed feature request}")
+Skill(skill: "add-new-feature", args: "{composed feature request}")
 ```
 
 This runs the full SAM workflow: discovery, codebase analysis, architecture spec, task decomposition, validation, context manifest.
@@ -630,7 +630,7 @@ Setting status:in-progress on issue #131...
   ✓ status:needs-grooming → status:in-progress
 
 Composing feature request...
-Invoking /python3-development:add-new-feature...
+Invoking /add-new-feature...
 
 [SAM phases run]
 
@@ -653,7 +653,7 @@ No groomed content in item file. Running groom-backlog-item first...
 
 RT-ICA: APPROVED — all conditions available.
 Composing feature request...
-Invoking /python3-development:add-new-feature...
+Invoking /add-new-feature...
 
 [SAM phases run]
 

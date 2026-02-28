@@ -1,0 +1,48 @@
+# Task Plan: Complete ty Skill for python3-development Plugin
+
+**Backlog Item**: Create ty skill for python3-development plugin
+**GitHub Issue**: #210
+**Priority**: P1
+**Created**: 2026-02-28
+
+## Goal
+
+Complete the ty type checker skill at `plugins/python3-development/skills/ty/` by creating the 4 missing files specified in the original backlog item, aligning with the uv skill structure template.
+
+## Tasks
+
+- [x] Create `scripts/sync_ty_releases.py` — GitHub release sync script modeled on uv equivalent
+- [x] Create `references/migration-guide.md` — Migration from mypy/pyright to ty with command/config mapping
+- [x] Create `references/quick-reference.md` — Comprehensive command quick reference card
+- [x] Create `references/troubleshooting.md` — Common issues and solutions guide
+- [x] Update `SKILL.md` workflow diagram and reference file section with new file links
+- [x] Make sync script executable (prek validation fix)
+- [x] Run prek validation on all new and modified files
+- [x] Symlink `add-new-feature` skill to `.claude/skills/`
+- [x] Update work-backlog-item references from namespaced to non-namespaced skill names
+
+## Files Created
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `scripts/sync_ty_releases.py` | ~350 | GitHub release sync (astral-sh/ty), same architecture as uv sync script |
+| `references/migration-guide.md` | ~270 | mypy/pyright to ty migration: commands, config, error codes, suppression |
+| `references/quick-reference.md` | ~180 | All commands, flags, config patterns, env vars, exit codes |
+| `references/troubleshooting.md` | ~280 | Installation, imports, versions, rules, CI, editors, performance |
+
+## Files Modified
+
+| File | Change |
+|------|--------|
+| `SKILL.md` | Added 3 new reference entries + 3 workflow routes |
+| `.claude/skills/add-new-feature` | New symlink to python3-add-feature |
+| `.claude/skills/work-backlog-item/SKILL.md` | De-namespaced add-new-feature references |
+| `.claude/skills/work-backlog-item/references/sam-definition.md` | De-namespaced add-new-feature reference |
+| `.claude/skills/work-backlog-item/references/github-integration.md` | De-namespaced add-new-feature reference |
+
+## Acceptance Criteria
+
+- [x] All 4 missing files created at correct paths
+- [x] Structure aligns with uv skill template
+- [x] No regression in existing skill content
+- [x] Passes prek validation

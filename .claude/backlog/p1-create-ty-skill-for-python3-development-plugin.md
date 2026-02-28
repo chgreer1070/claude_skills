@@ -11,6 +11,7 @@ metadata:
   issue: '#210'
   groomed: '2026-02-28'
   last_synced: '2026-02-28T05:43:01Z'
+  plan: plan/tasks-2-complete-ty-skill.md
 ---
 
 **Research first**: Read .claude/worktrees/ty/docs/ for source material. Read plugins/python3-development/skills/uv/ for structural template. Read plugins/python3-development/agents/python-cli-architect.md line 280 for existing ty reference to preserve and expand.

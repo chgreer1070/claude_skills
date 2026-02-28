@@ -29,7 +29,7 @@ COVERS:
 
 DOES NOT COVER:
 
-- mypy or pyright configuration (different tools)
+- mypy or pyright configuration (different tools — see migration guide for switching)
 - Writing type annotations in Python source code
 - ty's internal type system theory (use the ty type system documentation for that)
 
@@ -45,6 +45,9 @@ flowchart TD
     Q1 -->|Install ty or add to editor| Install[Load installation.md]
     Q1 -->|Exclude files or configure file scope| Files[Load file-selection.md]
     Q1 -->|Python version errors or version targeting| PyVer[Load environment-and-modules.md<br>+ python-version-resolution workflow]
+    Q1 -->|Migrate from mypy or pyright| Mig[Load migration-guide.md]
+    Q1 -->|Something not working — errors or issues| Trouble[Load troubleshooting.md]
+    Q1 -->|Quick command lookup| Quick[Load quick-reference.md]
 ```
 
 ## Workflows
@@ -95,6 +98,27 @@ How ty discovers Python files, configuring `src.include` and `src.exclude` patte
 Load when the user asks which files ty checks or how to exclude specific paths.
 
 [file-selection.md](./references/file-selection.md)
+
+### Migration Guide
+
+Migration from mypy and pyright to ty. Command mapping, configuration translation, error code mapping (mypy codes to ty rule names), suppression comment conversion, behavioral differences, and automated baseline suppression with `--add-ignore`.
+Load when the user asks about switching from mypy or pyright to ty.
+
+[migration-guide.md](./references/migration-guide.md)
+
+### Quick Reference
+
+All ty commands, flags, output formats, exit codes, suppression comment syntax, and common configuration patterns in a single lookup card.
+Load for quick command lookup or when the user needs a concise reference.
+
+[quick-reference.md](./references/quick-reference.md)
+
+### Troubleshooting
+
+Common issues and solutions: ty not found, config not detected, unresolved imports, Python version mismatches, suppression comments not working, CI integration, editor LSP setup, and performance on large projects.
+Load when the user encounters errors or unexpected behavior with ty.
+
+[troubleshooting.md](./references/troubleshooting.md)
 
 ## Quick Reference
 
