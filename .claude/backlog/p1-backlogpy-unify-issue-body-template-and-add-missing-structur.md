@@ -7,6 +7,6 @@ metadata:
   added: '2026-02-26'
   priority: P1
   type: Refactor
-  status: open
+  status: resolved
   issue: '#283'
 ---
