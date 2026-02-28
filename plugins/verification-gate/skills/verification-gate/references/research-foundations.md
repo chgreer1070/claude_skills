@@ -231,7 +231,7 @@ This multi-layered approach combines:
 - Reduces debugging cycles (saves 3000-8000 tokens per avoided error)
 - Builds user confidence (reduces clarification exchanges)
 
-**Net result:** 5% overhead for 95% reliability improvement
+**Net result:** Small verification overhead relative to the cost of debugging misaligned actions
 
 ## Citations
 
@@ -249,4 +249,4 @@ This multi-layered approach combines:
 
 ---
 
-**Last Updated:** 2025-11-20 **Source:** Analysis of LLM reasoning failures and authoritative prompt engineering guidance
+**Last Updated:** 2026-02-28 **Source:** Analysis of LLM reasoning failures and authoritative prompt engineering guidance
