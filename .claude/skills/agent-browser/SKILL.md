@@ -6,6 +6,47 @@ allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*)
 
 # Browser Automation with agent-browser
 
+## Prerequisites
+
+agent-browser requires Node.js, npm, and Playwright browser binaries.
+
+### Check
+
+Run the following before using this skill:
+
+```bash
+node --version           # Must be present; v22.22.0+ confirmed
+npx agent-browser --version  # Must print a version string
+ls ~/.cache/ms-playwright/   # Must contain a Chromium directory
+```
+
+### Install Playwright browsers
+
+If the browser binary is missing, install it:
+
+```bash
+npx agent-browser install
+```
+
+This installs only the Chromium binary used by agent-browser.
+Do NOT use `npx playwright install` (installs Chromium + Firefox + WebKit — unnecessary for agent-browser).
+
+### System libraries (Linux headless)
+
+Headless Chromium on Linux requires standard rendering libraries
+(libgbm, libnss3, libatk, etc.). These are present in most CI
+and development environments. If `agent-browser open` exits with
+a missing `.so` error, see Error Recovery below.
+
+### Network
+
+The target URL must be reachable from the host. DNS and outbound
+HTTPS (port 443) must be available. Verify with:
+
+```bash
+curl -sSf https://example.com > /dev/null && echo "ok"
+```
+
 ## Core Workflow
 
 Every browser automation follows this pattern:
@@ -152,7 +193,7 @@ agent-browser state clean --older-than 7
 agent-browser open https://example.com/products
 agent-browser snapshot -i
 agent-browser get text @e5           # Get specific element text
-agent-browser get text body > page.txt  # Get all page text
+agent-browser get text body > page.txt # Get all page text (body is a CSS selector, not @ref)
 
 # JSON output for parsing
 agent-browser snapshot -i --json
@@ -386,6 +427,38 @@ Create `agent-browser.json` in the project root for persistent settings:
 
 Priority (lowest to highest): `~/.agent-browser/config.json` < `./agent-browser.json` < env vars < CLI flags. Use `--config <path>` or `AGENT_BROWSER_CONFIG` env var for a custom config file (exits with error if missing/invalid). All CLI options map to camelCase keys (e.g., `--executable-path` -> `"executablePath"`). Boolean flags accept `true`/`false` values (e.g., `--headed false` overrides config). Extensions from user and project configs are merged, not replaced.
 
+## Error Recovery
+
+### Missing Playwright browser binary
+
+Symptom: `browserType.launch: Executable doesn't exist at ...`
+
+Fix: `npx agent-browser install`
+
+### Missing system libraries (Linux)
+
+Symptom: `error while loading shared libraries: libgbm.so.1`
+
+Fix:
+
+```bash
+# Debian / Ubuntu
+apt-get install -y libgbm1 libnss3 libatk1.0-0 libatk-bridge2.0-0
+```
+
+If apt is unavailable, see the Playwright system dependencies page:
+<https://playwright.dev/docs/browsers#install-system-dependencies>
+
+### Network unreachable
+
+Symptom: `net::ERR_NAME_NOT_RESOLVED` or `net::ERR_CONNECTION_REFUSED`
+
+Fix: Verify DNS and outbound HTTPS from the host before using the skill.
+
+```bash
+curl -sSf https://example.com > /dev/null && echo "ok"
+```
+
 ## Deep-Dive Documentation
 
 | Reference | When to Use |
@@ -397,6 +470,21 @@ Priority (lowest to highest): `~/.agent-browser/config.json` < `./agent-browser.
 | [references/video-recording.md](references/video-recording.md) | Recording workflows for debugging and documentation |
 | [references/profiling.md](references/profiling.md) | Chrome DevTools profiling for performance analysis |
 | [references/proxy-support.md](references/proxy-support.md) | Proxy configuration, geo-testing, rotating proxies |
+
+## Validation Status
+
+| Feature | Status | Date | Environment |
+|---------|--------|------|-------------|
+| Core workflow (open/snapshot/get text/close) | Validated | 2026-02-28 | Linux 4.4.0, Chromium chromium-1194 |
+| CSS selector `get text body` | Validated | 2026-02-28 | Linux 4.4.0, Chromium chromium-1194 |
+| Screenshot capture | Validated | 2026-02-28 | Linux 4.4.0, Chromium chromium-1194 |
+| Parallel sessions | Not validated | — | — |
+| State persistence | Not validated | — | — |
+| Video recording | Not validated | — | — |
+| Proxy support | Not validated | — | — |
+| iOS simulator | Not validated | — | — |
+
+Validation environment: Node.js v22.22.0, agent-browser 0.15.1, Chromium chromium-1194, Linux 4.4.0.
 
 ## Ready-to-Use Templates
 

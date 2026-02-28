@@ -44,7 +44,7 @@ agent-browser snapshot -i >"$OUTPUT_DIR/page-structure.txt"
 echo "Saved: $OUTPUT_DIR/page-structure.txt"
 
 # Extract all text content
-agent-browser get text body >"$OUTPUT_DIR/page-text.txt"
+agent-browser get text body >"$OUTPUT_DIR/page-text.txt" # body = CSS selector for full page text
 echo "Saved: $OUTPUT_DIR/page-text.txt"
 
 # Save as PDF

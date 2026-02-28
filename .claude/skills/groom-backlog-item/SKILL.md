@@ -29,10 +29,73 @@ Run `uv run .claude/skills/backlog/scripts/backlog.py list --format json` and fi
 Before fact-checking or grooming, verify each item is still valid work:
 
 1. **Is the job still valid?** — Scope, priority, or context may have changed. Ask or infer: does this item still belong in the backlog?
-2. **Can the problem be replicated?** — If the item describes a bug or fix, confirm the issue still exists. If it cannot be reproduced, consider resolving or closing.
-3. **Is this local file stale?** — If the item has a GitHub issue (`metadata.issue` or index link `#N`), fetch the issue state via `uv run .claude/skills/backlog/scripts/backlog.py view "#{N}" --format json -R Jamie-BitFlight/claude_skills` and check the `state` field. If the issue is **closed**, the local file is a stale remnant of work already done. Do **not** groom. Instead:
-   - Recommend: `backlog close "{title}" --plan <path> --checklist-pass --cleanup` (if completed) or `backlog resolve "{title}" --reason "..." --cleanup` (if obsolete)
-   - Skip grooming for that item; move to the next
+2. **Is the work already done?** — Search for evidence that the feature was already implemented or the bug was already fixed, even if the issue is still open. Run the **Already Implemented Discovery** procedure:
+
+   a. **Search for commits matching the item's topic** (use keywords from the title):
+
+      ```bash
+      git log --oneline --all -30 --grep="{keyword from title}"
+      ```
+
+   b. **Search for merged PRs matching the topic**:
+
+      ```bash
+      gh pr list -R Jamie-BitFlight/claude_skills --search "{keyword}" --state merged --json number,title,url,mergedAt --limit 5
+      ```
+
+   c. **Check if the described feature/fix exists in the codebase** — read the files at the suggested location and verify whether the described behavior is already present.
+
+   If evidence shows the work is done:
+
+   - **Comment evidence on the GitHub issue** (if one exists):
+
+     ```bash
+     gh issue comment N -R Jamie-BitFlight/claude_skills --body "This work was already completed via PR #{pr} / commit {sha}. Closing."
+     ```
+
+   - **Close the GitHub issue**:
+
+     ```bash
+     gh issue close N -R Jamie-BitFlight/claude_skills --reason completed
+     ```
+
+   - **Close the local backlog item**:
+
+     ```bash
+     uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --reason "Already implemented via PR #{pr} / commit {sha}" -R Jamie-BitFlight/claude_skills
+     ```
+
+   - Report to the user and skip grooming for that item.
+
+   If no evidence is found, proceed — the work is still needed.
+3. **Is this local file stale?** — If the item has a GitHub issue (`metadata.issue` or index link `#N`), fetch the issue state via `uv run .claude/skills/backlog/scripts/backlog.py view "#{N}" --format json -R Jamie-BitFlight/claude_skills` and check the `state` field. If the issue is **closed**, the local file is a stale remnant of work already done. Do **not** groom. Instead, run the **Completed Issue Discovery** procedure:
+
+   a. **Search for commits referencing the issue**:
+
+      ```bash
+      git log --oneline --all -20 --grep="#N"
+      ```
+
+   b. **Search for merged PRs referencing the issue**:
+
+      ```bash
+      gh pr list -R Jamie-BitFlight/claude_skills --search "#N" --state merged --json number,title,url,mergedAt --limit 5
+      ```
+
+   c. **Comment evidence on the issue** (if not already present):
+
+      ```bash
+      gh issue comment N -R Jamie-BitFlight/claude_skills --body "Completed via PR #M / commit {sha}"
+      ```
+
+   d. **Close the local backlog item with evidence**:
+
+      ```bash
+      uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --reason "Completed via PR #{pr} / commit {sha}" -R Jamie-BitFlight/claude_skills
+      ```
+
+   If no commits or PRs reference the issue, report: "Issue #{N} is closed but no commit/PR evidence found. Recommend manual review." and skip grooming.
+   Skip grooming for that item; move to the next.
 
 4. **Is this item already groomed today?** — Check the item file's `groomed` frontmatter field. If it matches today's date AND the item has all required sections (Fact-Check, RT-ICA, groomed subsections), skip Steps 4–6 entirely. Go directly to Step 7 and apply only the specific change requested by the user — do not re-derive, re-fact-check, or re-groom. Re-running the full pipeline on an already-groomed item produces duplicate content and wastes tokens.
 

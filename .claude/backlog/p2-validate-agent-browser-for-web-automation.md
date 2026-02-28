@@ -5,11 +5,12 @@ metadata:
   topic: validate-agent-browser-for-web-automation
   source: Session experimentation 2026-02-05
   added: '2026-02-05'
-  priority: P2
+  priority: completed
   type: Feature
-  status: open
+  status: done
   groomed: '2026-02-26'
   issue: '#128'
+  plan: plan/tasks-10-validate-agent-browser.md
 ---
 
 ## Fact-Check

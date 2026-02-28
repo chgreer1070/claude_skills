@@ -156,7 +156,58 @@ uv run .claude/skills/backlog/scripts/backlog.py view "{$0}" --format json -R Ja
 ```
 
 If the command fails (exit code non-zero), report and stop.
-Parse the JSON output. If `state` is `closed`, warn: "Issue #{number} is closed. Use `close` or `resolve` if needed." and stop.
+Parse the JSON output. If `state` is `closed`, run the **Completed Issue Discovery** procedure (see below) and stop.
+
+#### Completed Issue Discovery
+
+When an issue is found to be already closed (state `closed`), gather evidence of how it was completed before closing the local backlog item:
+
+1. **Search for commits referencing the issue**:
+
+   ```bash
+   git log --oneline --all -20 --grep="#N"
+   ```
+
+2. **Search for merged PRs referencing the issue**:
+
+   ```bash
+   gh pr list -R Jamie-BitFlight/claude_skills --search "#N" --state merged --json number,title,url,mergedAt --limit 5
+   ```
+
+3. **Report findings**:
+
+   If commits or PRs are found:
+
+   ```text
+   Issue #{N} is already closed.
+
+   Evidence of completion:
+   - PR #{pr}: {title} (merged {date})
+     URL: {url}
+   - Commit {sha}: {message}
+
+   Closing local backlog item with evidence.
+   ```
+
+   Then invoke:
+
+   ```bash
+   uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --reason "Completed via PR #{pr} / commit {sha}" -R Jamie-BitFlight/claude_skills
+   ```
+
+   If no commits or PRs reference the issue:
+
+   ```text
+   Issue #{N} is already closed but no commits or PRs reference it.
+   The issue may have been closed manually or via external process.
+
+   Options:
+   - close: Close the local backlog item (with manual reason)
+   - resolve: Mark as no longer applicable
+   - reopen: If the work was not actually done, reopen the issue
+   ```
+
+   Use `AskUserQuestion` to ask which action to take. In AUTO_MODE, log `[AUTO] STOP — Issue #N closed, no commit/PR evidence found` and stop.
 
 From the JSON response build the working item:
 
@@ -210,7 +261,51 @@ This item already has a plan at {path}. Use /implement-feature {path} to execute
 
 Then stop.
 
-After extracting fields, proceed to Step 2.5 (GitHub Issue Sync) before continuing to Step 3.
+After extracting fields, proceed to Step 2.3 (Already Implemented Check) before continuing.
+
+### Step 2.3: Already Implemented Check
+
+Before planning work, verify the described feature/fix hasn't already been implemented while the issue remained open. This catches stale open issues where someone completed the work but forgot to close the ticket.
+
+1. **Search for commits matching the item's topic** (use keywords from the title):
+
+   ```bash
+   git log --oneline --all -30 --grep="{keyword from title}"
+   ```
+
+2. **Search for merged PRs matching the topic**:
+
+   ```bash
+   gh pr list -R Jamie-BitFlight/claude_skills --search "{keyword}" --state merged --json number,title,url,mergedAt --limit 5
+   ```
+
+3. **Spot-check the codebase** — read the file(s) at the suggested location and verify whether the described behavior already exists.
+
+If evidence shows the work is already done:
+
+- **Comment evidence on the GitHub issue** (if one exists):
+
+  ```bash
+  gh issue comment N -R Jamie-BitFlight/claude_skills --body "This work was already completed via PR #{pr} / commit {sha}. Closing."
+  ```
+
+- **Close the GitHub issue**:
+
+  ```bash
+  gh issue close N -R Jamie-BitFlight/claude_skills --reason completed
+  ```
+
+- **Close the local backlog item**:
+
+  ```bash
+  uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --reason "Already implemented via PR #{pr} / commit {sha}" -R Jamie-BitFlight/claude_skills
+  ```
+
+- Report to the user and stop — no planning needed.
+
+In AUTO_MODE: log `[AUTO] Work already implemented — closing #{N} with evidence: {sha/PR}` and stop.
+
+If no evidence of prior implementation is found, proceed to Step 2.5 (GitHub Issue Sync).
 
 ### Step 3: Auto-Groom (if needed)
 
@@ -588,7 +683,7 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 ## Error Handling
 
 - `#N` / URL / bare number not found: report and list available items with `uv run .claude/skills/backlog/scripts/backlog.py list -R Jamie-BitFlight/claude_skills`
-- `#N` already closed: warn and stop; offer `close` or `resolve` if needed
+- `#N` already closed: run Completed Issue Discovery (search commits/PRs for evidence, close local item with reference, or ask user)
 - `close #N` / `resolve #N` — issue not found: report and stop
 - Item not found: list available items from `.claude/backlog/` per-item files with their priority sections
 - Multiple matches: present numbered list, ask user to choose
