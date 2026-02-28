@@ -584,6 +584,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [vert.md](./developer-tools/vert.md)                   | VERT - WebAssembly-based file converter for 250+ formats with client-side processing and self-hostable video daemon (13K+ stars)     | 2026-02-08   |
 | [everything-claude-code.md](./developer-tools/everything-claude-code.md) | everything-claude-code — largest community Claude Code config repo (52K stars, 39 days old); v1.6.0 ships 13 agents, 48+ skills, 31+ commands, 978 tests, 102 AgentShield security rules; continuous learning v2 instinct system with `/evolve`; Cerebral Valley x Anthropic hackathon winner | 2026-02-26   |
 | [vercel-chatbot.md](./developer-tools/vercel-chatbot.md) | Vercel Chatbot — production-ready Next.js 16 chatbot template (v3.1.0) using AI SDK v6 with resumable streaming, Claude Haiku 4.5 as artifact model, ProseMirror/CodeMirror 6 artifact system, and `extractReasoningMiddleware` for chain-of-thought display (19.7K stars) | 2026-02-26   |
+| [voxcii.md](./developer-tools/voxcii.md)               | voxcii — terminal-based ASCII 3D model viewer (C++17) rendering OBJ/STL files with Z-buffer depth sorting, surface-normal shading mapped to 12-char ASCII ramp, interactive rotation/zoom, and ANSI color via ncurses (81 stars) | 2026-02-28   |
 | [yume.md](./developer-tools/yume.md)                   | Yume - native desktop GUI for Claude Code CLI with parallel agents, crash recovery, and multi-provider model support (Tauri + Rust)  | 2026-02-15   |
 
 **Key Topics**:
