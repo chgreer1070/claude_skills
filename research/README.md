@@ -90,6 +90,7 @@ research/
 │   ├── kythe.md                       # Google's language-agnostic code intelligence platform (2.1K stars)
 │   ├── lopaka.md                      # Graphics editor for embedded displays with C/C++ code generation (1.2K stars)
 │   ├── niteni.md                      # AI-powered code review for GitLab CI pipelines
+│   ├── off-grid-mobile.md             # Offline AI suite for iOS/Android with llama.cpp, Stable Diffusion, and Whisper (696 stars)
 │   ├── orbstack.md                    # Fast Docker Desktop and Linux VM alternative for macOS
 │   ├── paperdraw.md                   # Browser-based distributed systems simulator with chaos injection (Flutter web)
 │   ├── piebald.md                     # Cross-platform agentic AI desktop client with parallel agents, session persistence, OAuth subscriptions (Free + Pro)
@@ -570,6 +571,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [kythe.md](./developer-tools/kythe.md)                 | Kythe - Google's language-agnostic code intelligence platform with graph-based semantic indexing (2.1K stars)                          | 2026-02-20   |
 | [lopaka.md](./developer-tools/lopaka.md)               | Lopaka - web-based graphics editor for embedded displays with multi-library C/C++ code generation (1.2K stars)                        | 2026-02-20   |
 | [niteni.md](./developer-tools/niteni.md)               | Niteni - AI-powered code review for GitLab CI using Gemini with inline diff comments and severity classification                     | 2026-02-15   |
+| [off-grid-mobile.md](./developer-tools/off-grid-mobile.md) | Off Grid Mobile — privacy-first offline AI suite for iOS/Android running llama.cpp, Stable Diffusion, and Whisper on-device with SoC constraint enforcement and tool calling (696 stars) | 2026-02-28   |
 | [orbstack.md](./developer-tools/orbstack.md)           | Fast, lightweight Docker Desktop and Linux VM alternative for macOS with 2-second startup and dynamic memory                         | 2026-01-31   |
 | [paperdraw.md](./developer-tools/paperdraw.md)         | PaperDraw - browser-based distributed systems simulator with 20+ backend components, chaos injection, and real-time metrics (Flutter web) | 2026-02-23   |
 | [devenv.md](./developer-tools/devenv.md)               | devenv — Nix-backed declarative dev environment CLI (v1.11.2); typed modules for languages, services, tasks, git hooks; 30+ built-in service modules without Docker; sub-100ms activation; generates `.devcontainer.json` from same config (6.3K stars) | 2026-02-26   |
