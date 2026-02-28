@@ -59,7 +59,7 @@ Launch `context-refinement` to update the task file Context Manifest with discov
 If Phase 1 creates follow-up task files (expected naming: `plan/tasks-{N}-{slug}-followup-{k}.md`), run:
 
 ```text
-Skill(skill="python3-development:implement-feature", args="{followup_task_file_path}")
+Skill(skill="implement-feature", args="{followup_task_file_path}")
 ```
 
 Then re-run `complete-implementation` on the follow-up task file.

@@ -60,7 +60,7 @@ uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementati
 - Launch the agent with a prompt that invokes `start-task`:
 
 ```text
-Skill(skill="python3-development:start-task", args="{task_file_path} --task {task_id}")
+Skill(skill="start-task", args="{task_file_path} --task {task_id}")
 ```
 
 4. Repeat until no tasks remain ready.
@@ -72,5 +72,5 @@ Skill(skill="python3-development:start-task", args="{task_file_path} --task {tas
 When all tasks show `COMPLETE`, invoke:
 
 ```text
-Skill(skill="python3-development:complete-implementation", args="{task_file_path}")
+Skill(skill="complete-implementation", args="{task_file_path}")
 ```
