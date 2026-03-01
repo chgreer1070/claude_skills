@@ -59,7 +59,7 @@ flowchart TD
 For file-summarizer:
 
 ```text
-Task(
+Agent(
   subagent_type="summarizer:file-summarizer",
   prompt="Summarize this file.
 
@@ -71,7 +71,7 @@ format: <structured|bullets|tldr|json|table|outline — default structured>"
 For url-summarizer:
 
 ```text
-Task(
+Agent(
   subagent_type="summarizer:url-summarizer",
   prompt="Summarize this URL.
 
@@ -83,7 +83,7 @@ format: <format — default structured>"
 For image-summarizer:
 
 ```text
-Task(
+Agent(
   subagent_type="summarizer:image-summarizer",
   prompt="Describe this image.
 
@@ -95,7 +95,7 @@ format: <format — default structured>"
 For gitlab-docs-expert:
 
 ```text
-Task(
+Agent(
   subagent_type="gitlab-docs-expert",
   prompt="<task description>
 
@@ -107,7 +107,7 @@ Audience: <who will read this>"
 For documentation-expert:
 
 ```text
-Task(
+Agent(
   subagent_type="documentation-expert",
   prompt="<task description>
 

@@ -252,7 +252,7 @@ Orchestrator: "Let me check how the agent is progressing"
 **Correct**: Launch the agent, continue other work, receive the automatic completion notification.
 
 ```text
-Orchestrator: Task(agent="specialist", ..., run_in_background=true)
+Orchestrator: Agent(agent="specialist", ..., run_in_background=true)
   → Continues working on other tasks
   → Receives completion notification automatically
   → Reads the summary from the notification

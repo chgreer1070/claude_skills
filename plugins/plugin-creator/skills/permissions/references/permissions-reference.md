@@ -155,10 +155,10 @@ Control which subagents Claude can use:
 
 | Pattern | Matches |
 |---------|---------|
-| `Task(Explore)` | Built-in Explore agent |
-| `Task(Plan)` | Built-in Plan agent |
-| `Task(general-purpose)` | Built-in general-purpose agent |
-| `Task(my-custom-agent)` | Custom agent by name |
+| `Agent(Explore)` | Built-in Explore agent |
+| `Agent(Plan)` | Built-in Plan agent |
+| `Agent(general-purpose)` | Built-in general-purpose agent |
+| `Agent(my-custom-agent)` | Custom agent by name |
 
 ---
 

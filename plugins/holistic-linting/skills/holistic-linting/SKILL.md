@@ -171,8 +171,8 @@ npx markdownlint-cli2 --fix path/to/file.md
 **For Orchestrators**: Delegate immediately to linting-root-cause-resolver WITHOUT running linters yourself. See the [holistic-linting-orchestrator skill](../holistic-linting-orchestrator/SKILL.md) for complete delegation workflows.
 
 ```claude
-Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in file1.py")
-Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in file2.py")
+Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in file1.py")
+Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in file2.py")
 ```
 
 Do NOT run `ruff check` or `mypy` before delegating. The agent gathers its own linting data.
@@ -342,7 +342,7 @@ Orchestrator:
 1. [Implements authentication middleware in auth.py]
 2. [Implementation complete, now applying holistic-linting skill]
 3. [Delegates to linting agent WITHOUT running linters]
-4. Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in auth.py")
+4. Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in auth.py")
 5. [Agent formats with ruff format, runs ruff check + mypy]
 6. [Agent finds 3 ruff errors, 2 mypy type issues]
 7. [Agent resolves all 5 issues at root cause]

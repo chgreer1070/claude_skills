@@ -41,7 +41,7 @@ Scan plugin structure to identify all skills, agents, commands, and reference fi
 - Reference files loaded by skills
 - Data files (JSON, YAML, markdown tables) consumed by skills
 
-Extract all `Skill(command:)`, `Skill(skill=)`, `Task(command:)`, and `@agent` references to build outbound dependency graph.
+Extract all `Skill(command:)`, `Skill(skill=)`, `Agent(command:)`, and `@agent` references to build outbound dependency graph.
 
 ### Step 2: Analysis — Run Audit Dimensions
 

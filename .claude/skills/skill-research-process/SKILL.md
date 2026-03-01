@@ -81,8 +81,8 @@ See [Research Agent Prompt](./references/agent-prompts.md#research-agent) for te
 Launch all agents in a **single message** with multiple Task calls:
 
 ```text
-Task(subagent_type: "general-purpose", description: "Research Category A", run_in_background: true, ...)
-Task(subagent_type: "general-purpose", description: "Research Category B", run_in_background: true, ...)
+Agent(subagent_type: "general-purpose", description: "Research Category A", run_in_background: true, ...)
+Agent(subagent_type: "general-purpose", description: "Research Category B", run_in_background: true, ...)
 ```
 
 ### Quality Gate 2: Anti-Hallucination Checkpoint

@@ -319,7 +319,7 @@ REQUIRED_TRIGGER_PHRASES = [
 |---------|-------|---------|-------------|
 | Skill command | `Skill\(command:\s*"([^"]+):([^"]+)"` | `Skill(command: "plugin:skill")` | skill |
 | Skill skill | `Skill\(skill="([^"]+):([^"]+)"` | `Skill(skill="plugin:skill")` | skill |
-| Task agent | `Task\(agent[=:]\s*"([^"]+):([^"]+)"` | `Task(agent="plugin:agent")` | agent |
+| Task agent | `Task\(agent[=:]\s*"([^"]+):([^"]+)"` | `Agent(agent="plugin:agent")` | agent |
 | At-agent | `@([a-z0-9-]+):([a-z0-9-]+)` | `@plugin:agent` | agent |
 | Slash command | `(?<!\w)/([a-z0-9-]+):([a-z0-9-]+)` | `/plugin:skill` | command |
 

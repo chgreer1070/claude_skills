@@ -868,7 +868,7 @@ Force invocation using the Task tool:
 ```text
 Test my new agent explicitly:
 
-Task(
+Agent(
   agent="my-agent-name",
   prompt="Test task: Review this simple Python function for issues: def add(a, b): return a + b"
 )

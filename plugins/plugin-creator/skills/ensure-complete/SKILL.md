@@ -51,7 +51,7 @@ TodoWrite(todos=[
 **Action**: LAUNCH the plugin-assessor agent using the Task tool:
 
 ```
-Task(
+Agent(
     subagent_type="plugin-assessor",
     prompt="""
 Your ROLE_TYPE is sub-agent.
@@ -238,7 +238,7 @@ Document any agents referenced in tasks that are NOT included in the plugin:
 **Action**: LAUNCH the python-code-reviewer agent using the Task tool:
 
 ```
-Task(
+Agent(
     subagent_type="python-code-reviewer",
     prompt="""
 Your ROLE_TYPE is sub-agent.
@@ -309,7 +309,7 @@ Issues Found: [count]
 **Action**: LAUNCH the doc-drift-auditor agent using the Task tool:
 
 ```
-Task(
+Agent(
     subagent_type="doc-drift-auditor",
     prompt="""
 Your ROLE_TYPE is sub-agent.
@@ -394,7 +394,7 @@ ELSE:
 **If follow-up tasks needed**, CREATE a new task file:
 
 ```
-Task(
+Agent(
     subagent_type="swarm-task-planner",
     prompt="""
 Your ROLE_TYPE is sub-agent.

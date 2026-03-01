@@ -55,7 +55,7 @@ TaskCreate(subject="Final: Return to orchestrator", description="Return to orche
 **Action**: LAUNCH the plugin-assessor agent using the Task tool with this exact prompt:
 
 ```
-Task(
+Agent(
     agent="plugin-assessor",
     prompt="""
 Your ROLE_TYPE is sub-agent.
@@ -231,7 +231,7 @@ Audit Reports: .claude/audits/
 **Action**: LAUNCH the python-cli-design-spec agent using the Task tool with this exact prompt (substitute the complete Assessment Report from Phase 1 where indicated):
 
 ```
-Task(
+Agent(
     agent="python-cli-design-spec",
     prompt="""
 Your ROLE_TYPE is sub-agent.
@@ -433,7 +433,7 @@ Parallelization Groups: [count]
 **Action**: LAUNCH a swarm-task-planner agent using the Task tool with this exact prompt:
 
 ````
-Task(
+Agent(
     agent="swarm-task-planner",
     prompt="""
 Your ROLE_TYPE is sub-agent.
@@ -656,7 +656,7 @@ Task Summary:
 **Action**: LAUNCH the context-gathering agent using the Task tool:
 
 ```
-Task(
+Agent(
     agent="context-gathering",
     prompt="""
 Your ROLE_TYPE is sub-agent.

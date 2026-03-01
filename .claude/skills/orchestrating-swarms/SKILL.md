@@ -63,8 +63,8 @@ TaskCreate({ subject: "Review auth", description: "Review auth module", activeFo
 TaskCreate({ subject: "Review API", description: "Review API endpoints", activeForm: "Reviewing..." })
 
 // 3. Spawn teammates
-Task({ team_name: "my-team", name: "reviewer-1", subagent_type: "general-purpose", prompt: "Claim task #1, review it, send findings to team-lead.", run_in_background: true })
-Task({ team_name: "my-team", name: "reviewer-2", subagent_type: "general-purpose", prompt: "Claim task #2, review it, send findings to team-lead.", run_in_background: true })
+Agent({ team_name: "my-team", name: "reviewer-1", subagent_type: "general-purpose", prompt: "Claim task #1, review it, send findings to team-lead.", run_in_background: true })
+Agent({ team_name: "my-team", name: "reviewer-2", subagent_type: "general-purpose", prompt: "Claim task #2, review it, send findings to team-lead.", run_in_background: true })
 
 // 4. Collect results (messages arrive automatically)
 

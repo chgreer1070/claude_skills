@@ -513,7 +513,7 @@ Then stop.
 4. Spawn a verification agent:
 
 ```text
-Task(
+Agent(
   subagent_type: "general-purpose",
   prompt: "You are verifying whether a completed backlog item genuinely satisfies its stated goal.
 

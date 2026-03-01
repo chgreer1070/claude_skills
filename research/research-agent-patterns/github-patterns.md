@@ -215,7 +215,7 @@ ai-research-lead (Principal Investigator)
 ### Agent Invocation Pattern (Verbatim)
 
 ```
-Task(subagent_type="research-lead", prompt="[context + task]")
+Agent(subagent_type="research-lead", prompt="[context + task]")
 ```
 
 **When to include "ultrathink":**

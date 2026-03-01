@@ -494,21 +494,21 @@ After completing refactoring, produce:
 ## Example Invocations
 
 ```
-Task(
+Agent(
   agent="plugin-creator:refactor-skill",
   prompt="Refactor ./plugins/python3-development/skills/python3/SKILL.md into focused skills for testing, async, and packaging"
 )
 ```
 
 ```
-Task(
+Agent(
   agent="plugin-creator:refactor-skill",
   prompt="The fastmcp-creator skill is too large. Analyze it and propose how to split it into smaller skills"
 )
 ```
 
 ```
-Task(
+Agent(
   agent="plugin-creator:refactor-skill",
   prompt="Split the git-workflow skill by expertise level: basics, advanced, and team workflows"
 )

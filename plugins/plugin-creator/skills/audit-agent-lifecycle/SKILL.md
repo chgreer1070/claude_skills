@@ -50,11 +50,11 @@ Scan plugin structure to identify:
 - All agent files in `agents/` directory
 - Agent frontmatter configuration (tools, skills, model, disallowedTools, permissionMode)
 - Skill references in agent prompts (Skill(), /skill-name patterns)
-- Agent delegation patterns (Task(agent=), @agent-name references)
+- Agent delegation patterns (Agent(agent=), @agent-name references)
 - Tool usage keywords in prompt body
 
 Build dependency graph:
-- Agent → Agent (delegation via Task())
+- Agent → Agent (delegation via Agent())
 - Agent → Skill (loading via Skill() or skills field)
 - Agent → Tool (usage via tool keywords in prompt)
 
@@ -212,7 +212,7 @@ For each skill reference in agent prompts:
 
 ### 3. Inter-Agent Contract Alignment
 
-When agents delegate to other agents via Task():
+When agents delegate to other agents via Agent():
 - Does the delegating agent's prompt describe inputs matching what the target agent expects?
 - Does the delegating agent expect outputs in a format the target agent produces?
 - Are there assumptions about shared state (files, directories, environment variables) not explicitly communicated?
@@ -254,7 +254,7 @@ For each action the agent prompt describes:
 
 Identify agents that:
 - Are registered in plugin.json but never referenced by any skill, command, or other agent
-- Are referenced in skill documentation but not in any executable context (Skill(), Task(), @agent)
+- Are referenced in skill documentation but not in any executable context (Skill(), Agent(), @agent)
 - Have descriptions with trigger phrases that no workflow ever activates
 
 **Output:** List of potentially dead agents with evidence (no inbound references found).

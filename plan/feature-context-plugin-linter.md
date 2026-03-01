@@ -108,7 +108,7 @@ A single comprehensive static analysis tool that validates all Claude Code plugi
 1. Validator (Protocol) — interface definition
 2. ProgressiveDisclosureValidator — checks for references/examples/scripts dirs
 3. InternalLinkValidator — markdown link validity
-4. NamespaceReferenceValidator — cross-plugin references (Skill(), Task(), @agent, /command)
+4. NamespaceReferenceValidator — cross-plugin references (Skill(), Agent(), @agent, /command)
 5. FrontmatterValidator — Pydantic schema validation
 6. NameFormatValidator — name field pattern checking
 7. DescriptionValidator — description quality (length, trigger phrases)

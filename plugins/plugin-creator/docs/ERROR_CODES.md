@@ -997,7 +997,7 @@ The validator checks these reference patterns:
 
 - `Skill(command: "plugin:skill-name")`
 - `Skill(skill="plugin:skill-name")`
-- `Task(agent="plugin:agent-name")`
+- `Agent(agent="plugin:agent-name")`
 - `@plugin:agent-name` (prose agent references)
 - `/plugin:skill-name` (slash command references)
 

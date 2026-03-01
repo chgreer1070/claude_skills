@@ -288,7 +288,7 @@ AVAILABLE RESOURCES:
 **If all pass, invoke the Task tool:**
 
 ```text
-Task(
+Agent(
   agent="[agent type from Step 7]",
   prompt="[your constructed prompt from Step 9]"
 )

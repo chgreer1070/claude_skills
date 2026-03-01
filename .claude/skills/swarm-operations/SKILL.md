@@ -161,7 +161,7 @@ TeamDelete()
 ## Task Tool -- Spawn Teammates
 
 ```javascript
-Task({
+Agent({
   team_name: "my-project",        // Required -- which team to join
   name: "worker-1",               // Required -- teammate's name
   subagent_type: "general-purpose",

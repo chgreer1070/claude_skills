@@ -89,7 +89,7 @@ When the Teammate tool is available and 3+ sources require summarization, the mo
 3. **Spawn teammates** - One per source, using the appropriate agent type:
 
 ```text
-Task({
+Agent({
   team_name: "summarize-{task-id}",
   name: "source-1",
   subagent_type: "file-summarizer",  // or url-summarizer, image-summarizer

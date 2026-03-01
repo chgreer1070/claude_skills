@@ -95,14 +95,14 @@ To launch research agents in parallel, use a single message with multiple Task t
 ```text
 # In a single response, include multiple Task tool uses:
 
-Task(
+Agent(
   subagent_type: "general-purpose",
   description: "Research {Category A} for {skill-name}",
   run_in_background: true,
   prompt: "{Research agent prompt with Category A details}"
 )
 
-Task(
+Agent(
   subagent_type: "general-purpose",
   description: "Research {Category B} for {skill-name}",
   run_in_background: true,

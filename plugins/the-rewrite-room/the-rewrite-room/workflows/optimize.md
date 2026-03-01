@@ -42,7 +42,7 @@ Before spawning, read the agent's file:
 For contextual-ai-documentation-optimizer:
 
 ```text
-Task(
+Agent(
   subagent_type="plugin-creator:contextual-ai-documentation-optimizer",
   prompt="Optimize the following file for Claude comprehension:
 
@@ -56,7 +56,7 @@ Constraints: [any specific constraints from user]"
 For subagent-refactorer:
 
 ```text
-Task(
+Agent(
   subagent_type="plugin-creator:subagent-refactorer",
   prompt="Refactor this agent using Anthropic official best practices:
 

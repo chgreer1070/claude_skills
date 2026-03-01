@@ -366,7 +366,7 @@ Orchestrator must include all necessary context in the initial Task prompt. Inst
 
 ```mermaid
 flowchart TD
-    Task([Task type]) --> Q1{Domain?}
+    Agent([Task type]) --> Q1{Domain?}
     Q1 -->|Context gathering| CG[context-gathering agent\nPreserves orchestrator context window]
     Q1 -->|Python code| PY[python-cli-architect agent\nAll Python implementation]
     Q1 -->|Python tests| PT[python-pytest-architect agent]

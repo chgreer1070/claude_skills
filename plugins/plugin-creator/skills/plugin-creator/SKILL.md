@@ -116,10 +116,10 @@ Last Updated: {ISO timestamp}
 ```text
 # Spawn all four researchers in a single message:
 
-Task(subagent_type="plugin-creator:plugin-assessor", prompt="EXISTING PLUGINS: Search plugins/ and ~/.claude/skills/ for similar functionality...")
-Task(subagent_type="plugin-creator:plugin-assessor", prompt="CLAUDE CODE FEATURES: What plugin capabilities exist? Dynamic context, hooks, MCP, LSP...")
-Task(subagent_type="plugin-creator:plugin-assessor", prompt="ARCHITECTURE PATTERNS: How do well-structured plugins organize skills, agents, references...")
-Task(agent="general-purpose", prompt="PITFALLS: Fetch official docs, identify common mistakes, schema gotchas...")
+Agent(subagent_type="plugin-creator:plugin-assessor", prompt="EXISTING PLUGINS: Search plugins/ and ~/.claude/skills/ for similar functionality...")
+Agent(subagent_type="plugin-creator:plugin-assessor", prompt="CLAUDE CODE FEATURES: What plugin capabilities exist? Dynamic context, hooks, MCP, LSP...")
+Agent(subagent_type="plugin-creator:plugin-assessor", prompt="ARCHITECTURE PATTERNS: How do well-structured plugins organize skills, agents, references...")
+Agent(agent="general-purpose", prompt="PITFALLS: Fetch official docs, identify common mistakes, schema gotchas...")
 ```
 
 **All four run concurrently. Merge results into research-FINDINGS.md before planning.**
@@ -243,7 +243,7 @@ Date: {ISO timestamp}
 ```text
 # Launch all four simultaneously:
 
-Task(subagent_type="plugin-creator:plugin-assessor", prompt="
+Agent(subagent_type="plugin-creator:plugin-assessor", prompt="
 RESEARCHER 1: EXISTING SOLUTIONS
 Search for plugins/skills similar to {plugin-name}:
 - plugins/ directory
@@ -252,7 +252,7 @@ Search for plugins/skills similar to {plugin-name}:
 REPORT: What exists, gaps to fill, patterns to follow/avoid
 Write findings to .claude/plan/{plugin-name}/research-1-existing.md")
 
-Task(subagent_type="plugin-creator:plugin-assessor", prompt="
+Agent(subagent_type="plugin-creator:plugin-assessor", prompt="
 RESEARCHER 2: CLAUDE CODE FEATURES
 What capabilities should this plugin use?
 - Dynamic context injection (!command)
@@ -262,7 +262,7 @@ What capabilities should this plugin use?
 REPORT: Recommended features with rationale
 Write findings to .claude/plan/{plugin-name}/research-2-features.md")
 
-Task(subagent_type="plugin-creator:plugin-assessor", prompt="
+Agent(subagent_type="plugin-creator:plugin-assessor", prompt="
 RESEARCHER 3: ARCHITECTURE PATTERNS
 How do well-structured plugins organize?
 - Skill directory structure
@@ -272,7 +272,7 @@ How do well-structured plugins organize?
 REPORT: Recommended structure based on similar plugins
 Write findings to .claude/plan/{plugin-name}/research-3-architecture.md")
 
-Task(agent="general-purpose", prompt="
+Agent(agent="general-purpose", prompt="
 RESEARCHER 4: PITFALLS & OFFICIAL DOCS
 Fetch https://code.claude.com/docs/en/plugins-reference.md
 Fetch https://code.claude.com/docs/en/skills.md
@@ -324,7 +324,7 @@ Date: {ISO timestamp}
 **Delegate to Plan agent:**
 
 ```
-Task(
+Agent(
   agent="Plan",
   prompt="Design plugin: {plugin-name}
 
@@ -362,7 +362,7 @@ Task(
 **BEFORE execution, verify the plan achieves goals:**
 
 ```
-Task(
+Agent(
   agent="general-purpose",
   prompt="PLAN CHECKER: Verify this plan achieves the plugin goals.
 
@@ -421,7 +421,7 @@ Reviewer: {agent ID}
 For each `<task>` in the approved plan:
 
 ```
-Task(
+Agent(
   agent="general-purpose",
   prompt="EXECUTOR: Implement this single task.
 
@@ -470,9 +470,9 @@ git commit -m "task-{N}: {task name}"
 
 ```text
 # Tasks 1, 2, 3 have no dependencies — spawn all:
-Task(prompt="EXECUTOR: task 1...")
-Task(prompt="EXECUTOR: task 2...")
-Task(prompt="EXECUTOR: task 3...")
+Agent(prompt="EXECUTOR: task 1...")
+Agent(prompt="EXECUTOR: task 2...")
+Agent(prompt="EXECUTOR: task 3...")
 ```
 
 **Dependent tasks** (task 2 needs task 1's output): Execute sequentially
@@ -612,7 +612,7 @@ uv run scripts/plugin_validator.py batch ./plugins/my-plugin
 ### Layer 2: Official Docs Verification
 
 ```
-Task(
+Agent(
   agent="general-purpose",
   prompt="VERIFIER: Check plugin against official docs.
 
@@ -631,7 +631,7 @@ Task(
 ### Layer 3: Quality Assessment
 
 ```
-Task(
+Agent(
   agent="plugin-assessor",
   prompt="Assess ./plugins/my-plugin for marketplace readiness.
 
@@ -650,7 +650,7 @@ Task(
 **If any layer returns FAIL, spawn debugger:**
 
 ```
-Task(
+Agent(
   agent="general-purpose",
   prompt="DEBUGGER: Diagnose validation failure.
 
@@ -713,7 +713,7 @@ Fixes applied: {list}
 **Delegate to plugin-docs-writer agent:**
 
 ```
-Task(
+Agent(
   agent="plugin-docs-writer",
   prompt="Generate comprehensive documentation for the plugin at ./plugins/my-plugin.
 

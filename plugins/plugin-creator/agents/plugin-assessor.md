@@ -797,7 +797,7 @@ WHEN finished:
 
 ```
 
-Task(
+Agent(
 agent="plugin-assessor",
 prompt="Assess the plugin at ./python3-development for marketplace readiness"
 )
@@ -806,7 +806,7 @@ prompt="Assess the plugin at ./python3-development for marketplace readiness"
 
 ```
 
-Task(
+Agent(
 agent="plugin-assessor",
 prompt="Audit the gitlab-skill for orphaned documentation and suggest how to integrate them"
 )
@@ -815,7 +815,7 @@ prompt="Audit the gitlab-skill for orphaned documentation and suggest how to int
 
 ```
 
-Task(
+Agent(
 agent="plugin-assessor",
 prompt="Review ./my-plugin focusing on reference file organization and cross-linking"
 )

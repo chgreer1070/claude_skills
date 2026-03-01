@@ -561,7 +561,7 @@ def parse_task_with_frontmatter(task_section: str) -> Task:
     validate_task_frontmatter(frontmatter)
 
     # Convert to Task dataclass
-    return Task(
+    return Agent(
         id=frontmatter['task'],
         name=frontmatter['title'],
         status=TaskStatus(frontmatter['status'].upper().replace('-', '_')),

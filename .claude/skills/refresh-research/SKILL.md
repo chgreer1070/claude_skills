@@ -80,7 +80,7 @@ Split target entries into sequential waves of 5. Within each wave spawn agents i
 For each entry:
 
 ```text
-Task(subagent_type: "research-curator", prompt: "--rerun ./research/{category}/{name}.md", model: "sonnet")
+Agent(subagent_type: "research-curator", prompt: "--rerun ./research/{category}/{name}.md", model: "sonnet")
 ```
 
 After each wave, collect and log results:

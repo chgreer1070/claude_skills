@@ -125,16 +125,16 @@ Follow [gitignore specification](https://git-scm.com/docs/gitignore):
 
 #### Task (Subagents)
 
-- `Task(Explore)` — matches Explore subagent
-- `Task(Plan)` — matches Plan subagent
-- `Task(my-custom-agent)` — matches custom agent
+- `Agent(Explore)` — matches Explore subagent
+- `Agent(Plan)` — matches Plan subagent
+- `Agent(my-custom-agent)` — matches custom agent
 
 Deny specific agents:
 
 ```json
 {
   "permissions": {
-    "deny": ["Task(Explore)"]
+    "deny": ["Agent(Explore)"]
   }
 }
 ```
