@@ -58,6 +58,7 @@ research/
 ├── coding-agents/                     # Autonomous AI coding agent platforms
 │   ├── accomplish.md                  # Local-first AI desktop agent with MCP tools, 15 providers, permission-gated execution (9K+ stars)
 │   ├── cline.md                       # Open-source autonomous coding agent with human-in-the-loop approvals (Apache-2.0)
+│   ├── openai-codex-cli.md            # OpenAI Codex CLI — Rust-based coding agent with OS sandbox, MCP server/client, Starlark exec policy (62.5K stars)
 │   ├── openhands.md                   # Open platform for cloud coding agents (67K+ stars)
 │   ├── pilot.md                       # Autonomous development pipeline wrapping Claude Code CLI (BSL 1.1)
 │   └── tembo.md                       # Cloud AI coding agent orchestration (Claude Code, Codex, Cursor, Amp, OpenCode)
@@ -753,6 +754,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------ |
 | [accomplish.md](./coding-agents/accomplish.md) | Accomplish - local-first AI desktop agent (Electron + React) with MCP tools, 15 providers, permission-gated execution, CompletionEnforcer pattern (MIT) | 2026-02-27   |
 | [cline.md](./coding-agents/cline.md)         | Cline - open-source autonomous coding agent (VS Code + CLI) with human-in-the-loop approvals, multi-provider LLM support, and enterprise governance (Apache-2.0) | 2026-02-23   |
+| [openai-codex-cli.md](./coding-agents/openai-codex-cli.md) | OpenAI Codex CLI v0.106.0 — Rust-based coding agent with OS sandbox (Landlock/Seatbelt), dual MCP role (client+server), Starlark exec policy, AGENTS.md/Skills system, response_id bookmarking for conversation forking (62.5K stars, Apache-2.0) | 2026-03-01   |
 | [openhands.md](./coding-agents/openhands.md) | OpenHands - open platform for cloud coding agents with 77.6% SWE-bench score, SDK, CLI, and cloud | 2026-01-26   |
 | [pilot.md](./coding-agents/pilot.md)         | Pilot - autonomous development pipeline wrapping Claude Code CLI with ticket-to-PR automation (BSL 1.1) | 2026-02-19   |
 | [tembo.md](./coding-agents/tembo.md)         | Tembo - cloud AI coding agent orchestration platform (Claude Code, Codex, Cursor, Amp, OpenCode) with multi-repo PRs, Sentry/Linear/Jira/Slack integrations, and event-driven automations | 2026-02-23   |
