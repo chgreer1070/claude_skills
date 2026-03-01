@@ -15,6 +15,8 @@ This skill loads focused specialist components for comprehensive hooks coverage.
 
 - **hooks-patterns**: Recipes and working examples — plugin hooks, frontmatter hooks, prompt-based hooks, complete code examples in Python/Node.js. Use `Skill(skill: "plugin-creator:hooks-patterns")` for implementation patterns and examples.
 
+- **hooks-guide**: Step-by-step practical guide — how to write, configure, and debug Claude Code hook scripts end-to-end. Use `Skill(skill: "plugin-creator:hooks-guide")` for hands-on implementation walkthroughs.
+
 ## Usage
 
 **Full coverage**: `Skill(skill: "plugin-creator:claude-hooks-reference-2026")` loads all specialist skills.
@@ -28,6 +30,7 @@ This skill loads focused specialist components for comprehensive hooks coverage.
 | What events exist, how to configure hooks | `hooks-core-reference` |
 | What JSON goes in/out of hook scripts | `hooks-io-api` |
 | Plugin hooks, prompt hooks, code examples | `hooks-patterns` |
+| Step-by-step implementation walkthroughs | `hooks-guide` |
 
 ## Sources
 
