@@ -8,6 +8,7 @@ import pytest
 from backlog_core.models import BacklogItem, ViewItemResult
 from backlog_core.parsing import (
     _parse_frontmatter,
+    append_or_replace_section,
     build_backlog_frontmatter,
     build_issue_body,
     find_fuzzy_duplicates,
@@ -827,3 +828,28 @@ class TestViewResultFromLocalItem:
 
         # Should not raise even with empty file_path
         assert result.title == "No path item"
+
+
+# ---------------------------------------------------------------------------
+# append_or_replace_section — regex crash guard
+# ---------------------------------------------------------------------------
+
+
+class TestAppendOrReplaceSectionBackslash:
+    """Content containing regex backreference syntax must not crash re.sub."""
+
+    def test_append_or_replace_section_with_backslash_in_content(self) -> None:
+        body = "## Fact-Check\n\nOld content\n"
+        content_with_backslash = r"Score: \1 — verified"
+
+        result = append_or_replace_section(body, "Fact-Check", content_with_backslash)
+
+        assert r"\1" in result
+
+    def test_append_or_replace_section_subsection_with_backslash(self) -> None:
+        body = "## Groomed (2026-01-01)\n\n### Priority\n\nOld\n"
+        content = r"High \g<name> priority"
+
+        result = append_or_replace_section(body, "Priority", content)
+
+        assert r"\g<name>" in result

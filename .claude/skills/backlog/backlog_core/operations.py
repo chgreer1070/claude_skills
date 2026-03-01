@@ -211,7 +211,7 @@ def _write_groomed_to_item_file(
         groomed_section = f"## Groomed ({today_str})\n\n{groomed_content.strip()}"
         groomed_re = re.compile(r"\n## Groomed\s*\([^)]*\)\s*\n[\s\S]*?(?=\n## |\Z)", re.MULTILINE)
         if groomed_re.search(body):
-            new_body = groomed_re.sub(f"\n{groomed_section}\n", body)
+            new_body = groomed_re.sub(lambda _: f"\n{groomed_section}\n", body)
         else:
             new_body = body.rstrip() + "\n\n" + groomed_section + "\n"
     try:

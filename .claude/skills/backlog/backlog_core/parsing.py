@@ -649,7 +649,7 @@ def append_or_replace_section(body: str, section_name: str, content: str) -> str
         )
         new_block = header + content + "\n"
         if section_re.search(body):
-            return section_re.sub(f"\n{new_block}", body)
+            return section_re.sub(lambda _: f"\n{new_block}", body)
         return body.rstrip() + "\n\n" + new_block
     # Treat known groomed subsections AND any unrecognized section name as a
     # ### subsection under ## Groomed.  Previous code silently dropped unknown
@@ -668,10 +668,11 @@ def append_or_replace_section(body: str, section_name: str, content: str) -> str
     if match:
         groomed_body = match.group(2)
         if sub_re.search(groomed_body):
-            new_groomed_body = sub_re.sub(f"\n{new_block}", groomed_body)
+            new_groomed_body = sub_re.sub(lambda _: f"\n{new_block}", groomed_body)
         else:
             new_groomed_body = groomed_body.rstrip() + "\n\n" + new_block
-        return groomed_re.sub(match.group(1) + new_groomed_body + "\n", body, count=1)
+        captured = match.group(1) + new_groomed_body + "\n"
+        return groomed_re.sub(lambda _: captured, body, count=1)
     return body.rstrip() + "\n\n" + groomed_header + "\n\n" + new_block
 
 
