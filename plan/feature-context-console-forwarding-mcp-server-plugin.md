@@ -489,6 +489,37 @@ The plugin's unique contribution: exposing validated patterns (tmux transport, Z
 
 ---
 
+## Not in Scope (MVP)
+
+The following are explicitly excluded from v1. Items marked **v2** are planned for a future version; items marked **out** are outside the plugin's responsibility entirely.
+
+### Deferred to v2
+
+| Item | Rationale |
+|------|-----------|
+| Multi-session broadcast/coordination (fan-out/fan-in) | Adds fan-out error-aggregation complexity; orchestrators can loop `send_keys()` calls in v1 (Q1 resolution) |
+| dtach backend | tmux covers all dtach capabilities plus output capture; backend abstraction designed for future addition (Q2 resolution) |
+| Persistent health patrol (background polling thread) | MCP is request-response; background threads add state management complexity; on-demand `check_session_health()` sufficient for v1 (Q4 resolution) |
+| Structured agent output protocol (standardized JSON status lines) | Requires agent-side adoption; v1 provides raw transport, orchestrators parse output themselves |
+| Failure taxonomy classification | Useful for automated recovery routing but adds significant complexity; v1 returns raw status values |
+| Host registry / connection pooling configuration | Stateless URI-per-call model is sufficient for v1; asyncssh handles internal connection reuse (Q3 resolution) |
+
+### Out of Scope (not planned for any version)
+
+| Item | Rationale |
+|------|-----------|
+| Identity / sandbox lifecycle management | Plugin operates at the Session layer only; identity and sandbox management belong to the orchestrator (Prior Art Pattern 2: Gas Town three-layer lifecycle) |
+| Message protocols (POLECAT_DONE, MERGE_READY, etc.) | Plugin provides raw transport (`send_keys` + `capture_pane`); message protocols are the orchestrator's responsibility (Prior Art Pattern 2) |
+| Persistent work state ledger | Plugin is stateless; orchestrators that need persistent work tracking use their own storage (Prior Art Pattern 2: Gas Town uses Dolt SQL) |
+| pyproject.toml package structure | PEP 723 on entry point with local imports is sufficient; no distribution packaging needed (Q5 resolution) |
+| Task routing intelligence | The plugin provides observability data; routing decisions belong to the orchestrator (Gap 3 in Problem Space) |
+
+### In Scope — Cross-Platform Note
+
+**Windows support** is in scope. The tmux backend is Linux/macOS-only, but the SSH backend works cross-platform. Graceful degradation (Q6 resolution: Option B) ensures the server starts on Windows with SSH tools available even when tmux is absent. Windows-native terminal multiplexers (e.g., psmux) may be added as backends in future versions.
+
+---
+
 ## Next Steps
 
 After questions are resolved:
