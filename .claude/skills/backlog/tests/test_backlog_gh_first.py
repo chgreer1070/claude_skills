@@ -445,3 +445,358 @@ class TestGracefulDegradation:
 
         # Assert
         assert result.exit_code == 0
+
+
+# ─── T6: fuzzy duplicate detection ───
+
+
+class TestFuzzyDuplicateDetection:
+    """T6: Verify add command detects fuzzy duplicate titles.
+
+    Tests the _find_fuzzy_duplicates function and its integration into the
+    add command. Near-duplicate items are blocked unless --force is used.
+    """
+
+    def test_find_fuzzy_duplicates_exact_match(self) -> None:
+        """Verify exact title match returns 100% similarity.
+
+        Tests: _find_fuzzy_duplicates with identical titles.
+        How: Pass same title as existing item.
+        Why: Exact duplicates must always be caught.
+        """
+        items = [{"_title": "SAM: Error Recovery", "_file_path": "/tmp/p1-sam-error-recovery.md"}]
+        matches = _mod._find_fuzzy_duplicates("SAM: Error Recovery", items)
+        assert len(matches) == 1
+        assert matches[0][1] >= 1.0
+
+    def test_find_fuzzy_duplicates_similar_title(self) -> None:
+        """Verify similar titles are detected above threshold.
+
+        Tests: _find_fuzzy_duplicates with near-duplicate titles.
+        How: Use titles that differ by a few words but describe the same thing.
+        Why: Fuzzy matching must catch near-duplicates, not just exact matches.
+        """
+        items = [{"_title": "backlog.py add: implement duplicate detection", "_file_path": "/tmp/p1-test.md"}]
+        matches = _mod._find_fuzzy_duplicates("backlog.py add: implement fuzzy duplicate detection", items)
+        assert len(matches) == 1
+        assert matches[0][1] >= 0.80
+
+    def test_find_fuzzy_duplicates_different_title(self) -> None:
+        """Verify dissimilar titles are not flagged.
+
+        Tests: _find_fuzzy_duplicates with unrelated titles.
+        How: Use completely different titles.
+        Why: False positives would block legitimate new items.
+        """
+        items = [{"_title": "Validate carbonyl Terminal Browser", "_file_path": "/tmp/p2-test.md"}]
+        matches = _mod._find_fuzzy_duplicates("SAM: Error Recovery", items)
+        assert len(matches) == 0
+
+    def test_find_fuzzy_duplicates_skips_done_items(self) -> None:
+        """Verify done/resolved items are excluded from duplicate check.
+
+        Tests: _find_fuzzy_duplicates skip logic.
+        How: Mark existing item with _skip=True (done/resolved).
+        Why: Completed items should not block creating a new item with the same name.
+        """
+        items = [{"_title": "SAM: Error Recovery", "_file_path": "/tmp/test.md", "_skip": True}]
+        matches = _mod._find_fuzzy_duplicates("SAM: Error Recovery", items)
+        assert len(matches) == 0
+
+    def test_find_fuzzy_duplicates_strips_commit_prefix(self) -> None:
+        """Verify conventional-commit prefixes are stripped before comparison.
+
+        Tests: _find_fuzzy_duplicates normalization.
+        How: One title has 'feat:' prefix, other does not.
+        Why: Prefixes should not prevent duplicate detection.
+        """
+        items = [{"_title": "feat: SAM: Error Recovery", "_file_path": "/tmp/test.md"}]
+        matches = _mod._find_fuzzy_duplicates("SAM: Error Recovery", items)
+        assert len(matches) == 1
+        assert matches[0][1] >= 1.0
+
+    def test_add_blocks_on_duplicate(self, mocker: MockerFixture) -> None:
+        """Verify add command exits with error when fuzzy duplicate found.
+
+        Tests: add command duplicate detection integration.
+        How: Create existing item, then try to add one with a near-identical title.
+        Why: Duplicate items waste effort and cause confusion.
+        """
+        # Arrange
+        backlog_dir = _mod.BACKLOG_DIR
+        (backlog_dir / "p1-backlog-duplicate-detection.md").write_text(
+            "---\nname: backlog.py add implement duplicate detection\ndescription: Test\n"
+            "metadata:\n  priority: P1\n  status: open\n"
+            "  source: test\n  added: '2026-01-01'\n  type: Feature\n  topic: backlog-duplicate\n---\n",
+            encoding="utf-8",
+        )
+        mocker.patch.object(_mod, "_try_get_github", return_value=None)
+
+        # Act — title differs by one word but is >80% similar
+        result = runner.invoke(
+            app,
+            [
+                "add",
+                "--title",
+                "backlog.py add implement fuzzy duplicate detection",
+                "--priority",
+                "P1",
+                "--description",
+                "Similar item",
+            ],
+        )
+
+        # Assert
+        assert result.exit_code == 1
+        assert "Similar backlog items found" in result.output
+
+    def test_add_force_bypasses_duplicate_check(self, mocker: MockerFixture) -> None:
+        """Verify --force flag allows adding despite fuzzy duplicate.
+
+        Tests: add command --force flag.
+        How: Create existing item, add similar one with --force.
+        Why: Users must be able to override when they know items are distinct.
+        """
+        # Arrange
+        backlog_dir = _mod.BACKLOG_DIR
+        (backlog_dir / "p1-backlog-duplicate-force.md").write_text(
+            "---\nname: backlog.py add implement duplicate detection\ndescription: Test\n"
+            "metadata:\n  priority: P1\n  status: open\n"
+            "  source: test\n  added: '2026-01-01'\n  type: Feature\n  topic: backlog-duplicate-force\n---\n",
+            encoding="utf-8",
+        )
+        mocker.patch.object(_mod, "_try_get_github", return_value=None)
+
+        # Act
+        result = runner.invoke(
+            app,
+            [
+                "add",
+                "--title",
+                "backlog.py add implement fuzzy duplicate detection",
+                "--priority",
+                "P1",
+                "--description",
+                "Intentional similar item",
+                "--force",
+            ],
+        )
+
+        # Assert
+        assert result.exit_code == 0
+        assert "Backlog item created" in result.output
+
+    def test_add_no_duplicate_succeeds(self, mocker: MockerFixture) -> None:
+        """Verify add succeeds when no fuzzy duplicates exist.
+
+        Tests: add command happy path with duplicate check enabled.
+        How: Add item with no similar existing items.
+        Why: Duplicate check must not block unrelated items.
+        """
+        # Arrange
+        mocker.patch.object(_mod, "_try_get_github", return_value=None)
+
+        # Act
+        result = runner.invoke(
+            app, ["add", "--title", "Brand New Unique Item", "--priority", "P2", "--description", "Totally unique"]
+        )
+
+        # Assert
+        assert result.exit_code == 0
+        assert "Backlog item created" in result.output
+
+
+# ─── T7: open PR check before close/resolve ───
+
+
+class TestOpenPrCheckBeforeClose:
+    """T7: Verify close/resolve check for open PRs before closing issues.
+
+    Tests the _check_open_prs_for_issue function and its integration into
+    close and resolve commands. Open PRs block closing unless --force is used.
+    """
+
+    def test_close_blocked_by_open_pr(self, mocker: MockerFixture) -> None:
+        """Verify close exits with error when open PRs reference the issue.
+
+        Tests: close command PR check integration.
+        How: Mock _check_open_prs_for_issue to return a PR, attempt close.
+        Why: Premature close orphans in-flight PRs.
+        """
+        # Arrange
+        backlog_dir = _mod.BACKLOG_DIR
+        (backlog_dir / "p1-test-close-pr.md").write_text(
+            "---\nname: Test close PR check\ndescription: Test\nmetadata:\n  issue: '#50'\n  priority: P1\n"
+            "  status: open\n  source: test\n  added: '2026-01-01'\n  type: Feature\n  topic: test-close-pr\n---\n",
+            encoding="utf-8",
+        )
+        mocker.patch.object(
+            _mod,
+            "_check_open_prs_for_issue",
+            return_value=[{"number": 55, "title": "Fix: implement feature", "url": "https://github.com/test/55"}],
+        )
+
+        # Act
+        result = runner.invoke(
+            app, ["close", "Test close PR check", "--plan", "plan/test.md", "--checklist-pass", "-R", "test/repo"]
+        )
+
+        # Assert
+        assert result.exit_code == 1
+        assert "Open PRs reference issue #50" in result.output
+        assert "PR #55" in result.output
+        assert "--force to close anyway" in result.output
+
+    def test_close_force_bypasses_pr_check(self, mocker: MockerFixture) -> None:
+        """Verify --force allows close despite open PRs.
+
+        Tests: close command --force flag with PR check.
+        How: Mock open PR, close with --force.
+        Why: Users must be able to override when they know PRs are stale.
+        """
+        # Arrange
+        backlog_dir = _mod.BACKLOG_DIR
+        (backlog_dir / "p1-test-close-force.md").write_text(
+            "---\nname: Test close force\ndescription: Test\nmetadata:\n  issue: '#60'\n  priority: P1\n"
+            "  status: open\n  source: test\n  added: '2026-01-01'\n  type: Feature\n  topic: test-close-force\n---\n",
+            encoding="utf-8",
+        )
+        mocker.patch.object(
+            _mod,
+            "_check_open_prs_for_issue",
+            return_value=[{"number": 65, "title": "WIP: feature", "url": "https://github.com/test/65"}],
+        )
+        mocker.patch.object(_mod, "_close_github_issue")
+
+        # Act
+        result = runner.invoke(
+            app,
+            ["close", "Test close force", "--plan", "plan/test.md", "--checklist-pass", "--force", "-R", "test/repo"],
+        )
+
+        # Assert
+        assert result.exit_code == 0
+        assert "closed" in result.output.lower()
+
+    def test_close_no_open_prs_succeeds(self, mocker: MockerFixture) -> None:
+        """Verify close succeeds when no open PRs reference the issue.
+
+        Tests: close command happy path with PR check.
+        How: Mock _check_open_prs_for_issue returning empty list.
+        Why: PR check must not block close when no PRs exist.
+        """
+        # Arrange
+        backlog_dir = _mod.BACKLOG_DIR
+        (backlog_dir / "p1-test-close-ok.md").write_text(
+            "---\nname: Test close ok\ndescription: Test\nmetadata:\n  issue: '#70'\n  priority: P1\n"
+            "  status: open\n  source: test\n  added: '2026-01-01'\n  type: Feature\n  topic: test-close-ok\n---\n",
+            encoding="utf-8",
+        )
+        mocker.patch.object(_mod, "_check_open_prs_for_issue", return_value=[])
+        mocker.patch.object(_mod, "_close_github_issue")
+
+        # Act
+        result = runner.invoke(
+            app, ["close", "Test close ok", "--plan", "plan/test.md", "--checklist-pass", "-R", "test/repo"]
+        )
+
+        # Assert
+        assert result.exit_code == 0
+        assert "closed" in result.output.lower()
+
+    def test_close_no_issue_skips_pr_check(self, mocker: MockerFixture) -> None:
+        """Verify close skips PR check when item has no GitHub issue.
+
+        Tests: close command PR check skip for local-only items.
+        How: Create item without issue number, attempt close.
+        Why: Local-only items have no PRs to check.
+        """
+        # Arrange
+        backlog_dir = _mod.BACKLOG_DIR
+        (backlog_dir / "p1-test-close-no-issue.md").write_text(
+            "---\nname: Test close no issue\ndescription: Test\nmetadata:\n  priority: P1\n"
+            "  status: open\n  source: test\n  added: '2026-01-01'\n  type: Feature\n  topic: test-close-no-issue\n---\n",
+            encoding="utf-8",
+        )
+        mock_pr_check = mocker.patch.object(_mod, "_check_open_prs_for_issue")
+
+        # Act
+        result = runner.invoke(
+            app, ["close", "Test close no issue", "--plan", "plan/test.md", "--checklist-pass", "-R", "test/repo"]
+        )
+
+        # Assert
+        assert result.exit_code == 0
+        mock_pr_check.assert_not_called()
+
+    def test_resolve_blocked_by_open_pr(self, mocker: MockerFixture) -> None:
+        """Verify resolve exits with error when open PRs reference the issue.
+
+        Tests: resolve command PR check integration.
+        How: Mock _check_open_prs_for_issue to return a PR, attempt resolve.
+        Why: Resolving orphans in-flight PRs.
+        """
+        # Arrange
+        backlog_dir = _mod.BACKLOG_DIR
+        (backlog_dir / "p1-test-resolve-pr.md").write_text(
+            "---\nname: Test resolve PR check\ndescription: Test\nmetadata:\n  issue: '#80'\n  priority: P1\n"
+            "  status: open\n  source: test\n  added: '2026-01-01'\n  type: Feature\n  topic: test-resolve-pr\n---\n",
+            encoding="utf-8",
+        )
+        mocker.patch.object(
+            _mod,
+            "_check_open_prs_for_issue",
+            return_value=[{"number": 85, "title": "Fix: resolve feature", "url": "https://github.com/test/85"}],
+        )
+
+        # Act
+        result = runner.invoke(
+            app, ["resolve", "Test resolve PR check", "--reason", "No longer needed", "-R", "test/repo"]
+        )
+
+        # Assert
+        assert result.exit_code == 1
+        assert "Open PRs reference issue #80" in result.output
+        assert "PR #85" in result.output
+        assert "--force to resolve anyway" in result.output
+
+    def test_resolve_force_bypasses_pr_check(self, mocker: MockerFixture) -> None:
+        """Verify --force allows resolve despite open PRs.
+
+        Tests: resolve command --force flag with PR check.
+        How: Mock open PR, resolve with --force.
+        Why: Users must be able to override.
+        """
+        # Arrange
+        backlog_dir = _mod.BACKLOG_DIR
+        (backlog_dir / "p1-test-resolve-force.md").write_text(
+            "---\nname: Test resolve force\ndescription: Test\nmetadata:\n  issue: '#90'\n  priority: P1\n"
+            "  status: open\n  source: test\n  added: '2026-01-01'\n  type: Feature\n  topic: test-resolve-force\n---\n",
+            encoding="utf-8",
+        )
+        mocker.patch.object(
+            _mod,
+            "_check_open_prs_for_issue",
+            return_value=[{"number": 95, "title": "WIP", "url": "https://github.com/test/95"}],
+        )
+        mocker.patch.object(_mod, "_resolve_github_issue")
+
+        # Act
+        result = runner.invoke(
+            app, ["resolve", "Test resolve force", "--reason", "Stale", "--force", "-R", "test/repo"]
+        )
+
+        # Assert
+        assert result.exit_code == 0
+        assert "resolved" in result.output.lower()
+
+    def test_check_open_prs_offline_returns_empty(self) -> None:
+        """Verify _check_open_prs_for_issue returns empty list when offline.
+
+        Tests: PR check graceful degradation.
+        How: Call with no GITHUB_TOKEN set (empty string auth).
+        Why: Offline agents must not be blocked by PR check failures.
+        """
+        # The function catches all exceptions and returns []
+        result = _mod._check_open_prs_for_issue(999, "nonexistent/repo")
+        assert result == []

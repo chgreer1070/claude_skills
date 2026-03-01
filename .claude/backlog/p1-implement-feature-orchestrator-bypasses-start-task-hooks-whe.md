@@ -8,5 +8,5 @@ metadata:
   priority: P1
   type: Bug
   status: open
+  issue: '#315'
 ---
-
