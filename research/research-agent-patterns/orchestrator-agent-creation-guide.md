@@ -266,7 +266,7 @@ You **NEVER** execute tasks yourself. You **ALWAYS** delegate to subagents.
 
 ### Direct Applications
 
-1. **Orchestrator Pattern Translation**: The guide's patterns translate directly to Claude Code's Task tool delegation
+1. **Orchestrator Pattern Translation**: The guide's patterns translate directly to Claude Code's Agent tool delegation
 2. **Capability Map Design**: The agent registration pattern prevents hallucinated agent invention - applicable to Claude Code agent systems
 3. **Tool Permission Model**: Read-only + delegation mirrors Claude Code's permission system
 4. **Context First Pattern**: "explorer -> dev" chain is a proven pattern for Claude Code workflows
@@ -293,7 +293,7 @@ You **NEVER** execute tasks yourself. You **ALWAYS** delegate to subagents.
 | Aspect           | This Guide (OpenCode)  | Chief of Staff Pattern     | Pydantic AI Pattern  |
 | ---------------- | ---------------------- | -------------------------- | -------------------- |
 | State Management | Stateless routing      | File-based context sharing | Memory persistence   |
-| Delegation Tool  | `task` tool            | Claude Code Task tool      | Agent function calls |
+| Delegation Tool  | `task` tool            | Claude Code Agent tool      | Agent function calls |
 | Chaining         | Sequential/Parallel    | Phase-based workflow       | Iterative loops      |
 | Context Passing  | Self-contained prompts | Context files mandatory    | Deps injection       |
 | Agent Discovery  | Capability map         | Team structure             | Dynamic creation     |

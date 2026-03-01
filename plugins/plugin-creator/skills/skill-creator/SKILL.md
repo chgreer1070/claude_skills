@@ -234,7 +234,7 @@ Add `context: fork` to frontmatter when you want a skill to run in isolation wit
 
 - Skill contains only guidelines (e.g., "use these API conventions") without actionable task
 - Need access to conversation context or previous discussion
-- Need to delegate to other subagents (Task tool not available in forked contexts)
+- Need to delegate to other subagents (Agent tool not available in forked contexts)
 
 **Agent types:**
 
@@ -252,7 +252,7 @@ agent: Explore  # or Plan, general-purpose, custom-agent-name
 **Tool restrictions:**
 
 - Forked contexts have Read, Write, Edit, Grep, Glob, WebSearch, WebFetch, Bash, MCP tools
-- **Task tool is NOT available** - cannot delegate to other subagents
+- **Agent tool is NOT available** - cannot delegate to other subagents
 - For hierarchical delegation, parent must run in main context (no `context: fork`)
 
 **SOURCE:** [claude-skills-overview-2026](../claude-skills-overview-2026/SKILL.md) section on Context Fork Behavior.

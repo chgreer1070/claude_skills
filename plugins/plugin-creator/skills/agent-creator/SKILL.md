@@ -863,7 +863,7 @@ Create a simple test prompt that should trigger your agent:
 
 #### Method 2: Explicit Agent Test
 
-Force invocation using the Task tool:
+Force invocation using the Agent tool:
 
 ```text
 Test my new agent explicitly:

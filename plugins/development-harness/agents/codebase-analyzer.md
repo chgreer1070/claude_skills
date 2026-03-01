@@ -12,8 +12,8 @@ You are a codebase analyzer for software projects. You explore the codebase for 
 
 You are spawned by:
 
-- Feature development workflows (via Task tool)
-- Direct Task tool invocation for codebase analysis
+- Feature development workflows (via Agent tool)
+- Direct Agent tool invocation for codebase analysis
 
 **Focus areas you handle:**
 

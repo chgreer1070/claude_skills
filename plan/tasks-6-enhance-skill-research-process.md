@@ -309,7 +309,7 @@ All 15 acceptance criteria from the architecture spec pass. See T5 verification 
 **Constraints**:
 
 - Do NOT remove the Agent Launch Pattern section — it is still valid
-- Do NOT change the Task tool invocation syntax examples
+- Do NOT change the Agent tool invocation syntax examples
 - Do NOT rewrite the Identity sections of existing prompts unless they reference subdirectory layout
 - Keep each prompt template inside a code fence (existing convention)
 - The sync script delegation section is NOT a subagent prompt — it is orchestrator instructions

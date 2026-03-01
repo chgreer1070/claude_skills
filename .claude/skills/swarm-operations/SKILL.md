@@ -1,6 +1,6 @@
 ---
 name: swarm-operations
-description: API reference for Claude Code swarm tools -- TeamCreate, SendMessage, TeamDelete, and Task tool parameters. Use when looking up tool signatures, message schemas, shutdown sequences, error handling, or debugging swarm operations.
+description: API reference for Claude Code swarm tools -- TeamCreate, SendMessage, TeamDelete, and Agent tool parameters. Use when looking up tool signatures, message schemas, shutdown sequences, error handling, or debugging swarm operations.
 ---
 # Swarm Operations
 
@@ -16,7 +16,7 @@ flowchart TD
     Q1 -->|Create a team| TC[TeamCreate]
     Q1 -->|Send a message| SM[SendMessage]
     Q1 -->|Clean up team| TD[TeamDelete]
-    Q1 -->|Spawn an agent| Task[Task tool]
+    Q1 -->|Spawn an agent| Task[Agent tool]
     Q1 -->|Manage work items| TT[TaskCreate / TaskUpdate / TaskList / TaskGet]
 ```
 

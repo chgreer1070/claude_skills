@@ -127,7 +127,7 @@ Runs when the main Claude Code agent has finished responding. Does not run if th
 
 ### SubagentStop
 
-Runs when a Claude Code subagent (Task tool call) has finished responding.
+Runs when a Claude Code subagent (Agent tool call) has finished responding.
 
 ### PreCompact
 

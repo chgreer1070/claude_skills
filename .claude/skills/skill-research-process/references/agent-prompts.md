@@ -90,10 +90,10 @@ Research and document the **{CATEGORY NAME}** aspect of {TOOL/LIBRARY} for the {
 
 ## Agent Launch Pattern
 
-To launch research agents in parallel, use a single message with multiple Task tool calls:
+To launch research agents in parallel, use a single message with multiple Agent tool calls:
 
 ```text
-# In a single response, include multiple Task tool uses:
+# In a single response, include multiple Agent tool uses:
 
 Agent(
   subagent_type: "general-purpose",

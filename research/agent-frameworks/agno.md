@@ -281,7 +281,7 @@ The [cookbook](https://github.com/agno-agi/agno/tree/main/cookbook) provides hun
 | ------------------- | ------------------------------ | ------------------------------ |
 | Primary Use         | Multi-agent systems            | Developer workflow automation  |
 | Learning            | Built-in persistence           | Session-based (skills persist) |
-| Orchestration       | Teams, workflows, A2A          | Agent delegation, Task tool    |
+| Orchestration       | Teams, workflows, A2A          | Agent delegation, Agent tool    |
 | Tool Integration    | 100+ toolkits, MCP, A2A        | MCP, custom tools              |
 | Model Support       | 40+ providers                  | Claude models (Anthropic)      |
 | Runtime             | AgentOS (FastAPI)              | CLI + IDE integration          |

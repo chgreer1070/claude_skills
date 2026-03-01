@@ -12,7 +12,7 @@ Core concepts for Claude Code multi-agent orchestration.
 
 - **Agent** -- A Claude instance that can use tools. You are an agent. Subagents are agents you spawn. (N/A -- process)
 - **Team** -- A named group of agents working together. One leader, multiple teammates. (`~/.claude/teams/{name}/config.json`)
-- **Teammate** -- An agent that joined a team. Has a name, color, inbox. Spawned via Task with `team_name` + `name`. (Listed in team config)
+- **Teammate** -- An agent that joined a team. Has a name, color, inbox. Spawned via Agent with `team_name` + `name`. (Listed in team config)
 - **Leader** -- The agent that created the team. Receives teammate messages, approves plans/shutdowns. (First member in config)
 - **Task** -- A work item with subject, description, status, owner, and dependencies. (`~/.claude/tasks/{team}/N.json`)
 - **Inbox** -- JSON file where an agent receives messages from teammates. (`~/.claude/teams/{name}/inboxes/{agent}.json`)

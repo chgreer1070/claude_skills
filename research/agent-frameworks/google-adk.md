@@ -298,7 +298,7 @@ SOURCE: [GitHub README](https://github.com/google/adk-python/blob/main/README.md
 
 1. **MCP Protocol Patterns**: ADK's `McpToolset` class demonstrates production-grade patterns for connecting to MCP servers, managing session lifecycle, and handling MCP resource loading -- directly applicable to Claude Code MCP integrations.
 
-2. **Multi-Agent Orchestration Reference**: The `sub_agents` hierarchy with LLM-driven routing mirrors Claude Code's Task tool delegation model. ADK's coordinator/specialist decomposition patterns are directly reusable.
+2. **Multi-Agent Orchestration Reference**: The `sub_agents` hierarchy with LLM-driven routing mirrors Claude Code's Agent tool delegation model. ADK's coordinator/specialist decomposition patterns are directly reusable.
 
 3. **Tool Confirmation (HITL)**: ADK's per-tool confirmation flow provides a concrete reference implementation for guarding destructive operations in Claude Code workflows.
 
@@ -331,7 +331,7 @@ SOURCE: [GitHub README](https://github.com/google/adk-python/blob/main/README.md
 | Aspect               | Google ADK                              | Claude Code Skills                      |
 | -------------------- | --------------------------------------- | --------------------------------------- |
 | Primary Use          | General-purpose agent development       | Developer workflow automation via Claude|
-| Orchestration        | sub_agents hierarchy, A2A protocol      | Task tool delegation, agent threads     |
+| Orchestration        | sub_agents hierarchy, A2A protocol      | Agent tool delegation, agent threads     |
 | Tool Integration     | Functions, MCP, OpenAPI, built-ins      | MCP servers, Bash, native tools         |
 | Evaluation           | adk eval CLI + evalset JSON             | Pre-commit hooks, validation scripts    |
 | Session Storage      | SQLite, PostgreSQL, Spanner             | Session-scoped (skills provide memory)  |

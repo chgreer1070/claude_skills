@@ -216,7 +216,7 @@ When an agent loads this skill, it will:
 **How to trigger**:
 
 - Explicitly: `@delegate` or `Skill(command: "delegate")`
-- Automatically: When assigning work to a sub-agent, before invoking the Task tool, or when preparing prompts for specialized agents
+- Automatically: When assigning work to a sub-agent, before invoking the Agent tool, or when preparing prompts for specialized agents
 
 **What to expect**:
 
@@ -423,7 +423,7 @@ Claude automatically activates skills based on your request. Skills have trigger
 - **rt-ica**: "planning", "prerequisites", "spec", "PRD", "ticket", "RFC", "architecture design", "multi-step task"
 - **scientific-thinking**: "debugging", "strange behavior", "root cause", "architecture design", "complex refactoring", "investigation"
 - **verify**: "is it done", "task complete", "before commit", "completion", "finished"
-- **delegate**: "sub-agent", "Task tool", "delegation", "assign work"
+- **delegate**: "sub-agent", "Agent tool", "delegation", "assign work"
 - **audit**: "review output", "hallucination", "suspicious", "probably", "likely", "verify claims"
 - **claude-skills-overview-2026**: "skill format", "SKILL.md", "skill frontmatter", "skill best practices"
 - **claude-hooks-reference-2026**: "hook", "PreToolUse", "PostToolUse", "hook events"

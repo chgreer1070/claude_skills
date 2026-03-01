@@ -187,13 +187,13 @@ claude --model minimax-m2.5:cloud
 ### Applications
 
 - Subagent spawning pattern is directly applicable to the `research-curator` skill: spawn multiple worker agents to research resources in parallel rather than serially
-- The isolated-context-per-agent model mirrors how the Claude Agent SDK's Task tool works -- each delegated task runs in its own context
+- The isolated-context-per-agent model mirrors how the Claude Agent SDK's Agent tool works -- each delegated task runs in its own context
 - Built-in web search without MCP removes a significant configuration barrier for Claude Code workflows that need live data
 
 ### Patterns Worth Adopting
 
 - **Natural language subagent triggering**: Prompt phrasing like "spawn subagents to explore X, Y, and Z" reliably triggers parallel execution in models that support it -- useful for orchestrator prompts in this repo's skills
-- **Isolated context pattern**: Side research tasks should be delegated to subagents to prevent context pollution in the primary session -- validates the current pattern used by `research-curator` spawning worker agents via Task tool
+- **Isolated context pattern**: Side research tasks should be delegated to subagents to prevent context pollution in the primary session -- validates the current pattern used by `research-curator` spawning worker agents via Agent tool
 - **Web search as inline tool**: Integrating web search as a model tool call (not as a separate pipeline step) simplifies research workflows
 - **5-hour session management**: Long multi-agent coding sessions require session window planning; the 64K token minimum context threshold is a useful baseline for skill development
 

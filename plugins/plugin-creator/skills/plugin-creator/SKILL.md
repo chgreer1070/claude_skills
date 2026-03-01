@@ -45,7 +45,7 @@ flowchart TD
 
 **How to spawn agents:**
 
-- **Task tool** (`subagent_type=...`) — for focused, isolated work where only the result matters
+- **Agent tool** (`subagent_type=...`) — for focused, isolated work where only the result matters
 - **TeamCreate** — for multi-agent coordination where agents need to communicate
 
 **Why delegation matters:**
@@ -765,7 +765,7 @@ VERDICT: [COMPLETE / NOT COMPLETE - reason]
 
 ## Quick Reference: Agent Delegation
 
-Use **Task tool** (`subagent_type=...`) for single-agent tasks. Use **TeamCreate** when agents need to coordinate directly with each other.
+Use **Agent tool** (`subagent_type=...`) for single-agent tasks. Use **TeamCreate** when agents need to coordinate directly with each other.
 
 | Phase    | Agent Type                  | Purpose                                                                       |
 | -------- | --------------------------- | ----------------------------------------------------------------------------- |

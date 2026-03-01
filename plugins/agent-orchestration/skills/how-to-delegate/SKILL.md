@@ -1,13 +1,13 @@
 ---
 name: how-to-delegate
-description: Scientific delegation framework for orchestrators — provide observations and success criteria while preserving agent autonomy. Use when assigning work to sub-agents, before invoking the Task tool, or when preparing delegation prompts for specialist agents.
+description: Scientific delegation framework for orchestrators — provide observations and success criteria while preserving agent autonomy. Use when assigning work to sub-agents, before invoking the Agent tool, or when preparing delegation prompts for specialist agents.
 user-invocable: true
 ---
 # Delegation Preparation Worksheet
 
 **Workflow Reference**: See the [agent-orchestration skill](../agent-orchestration/SKILL.md) for the complete delegation flow, DONE/BLOCKED signaling protocol, and agent selection guide.
 
-**CRITICAL**: You are an orchestrator. Complete ALL steps before invoking the Task tool. Incomplete preparation causes failed delegations, wasted agent context, and poor outcomes.
+**CRITICAL**: You are an orchestrator. Complete ALL steps before invoking the Agent tool. Incomplete preparation causes failed delegations, wasted agent context, and poor outcomes.
 
 <user_instructions>$ARGUMENTS</user_instructions>
 
@@ -285,7 +285,7 @@ AVAILABLE RESOURCES:
 - [ ] No pre-gathered data included
 - [ ] Defines WHAT and WHY, not HOW
 
-**If all pass, invoke the Task tool:**
+**If all pass, invoke the Agent tool:**
 
 ```text
 Agent(

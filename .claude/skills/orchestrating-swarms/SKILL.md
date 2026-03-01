@@ -4,7 +4,7 @@ description: Master multi-agent orchestration using Claude Code's swarm system. 
 ---
 # Claude Code Swarm Orchestration
 
-Master multi-agent orchestration using Claude Code's TeamCreate, SendMessage, TeamDelete, and Task tools.
+Master multi-agent orchestration using Claude Code's TeamCreate, SendMessage, TeamDelete, and Agent tools.
 
 This skill is a facade that routes to 4 specialist skills. Load whichever you need.
 
@@ -28,7 +28,7 @@ How to create agents -- subagent vs teammate decision, built-in agent types (Exp
 
 `Skill(command: "swarm-operations")`
 
-Tool signatures and message schemas -- TeamCreate, SendMessage (direct, broadcast, shutdown, plan approval), TeamDelete, Task tool parameters. Error handling, graceful shutdown sequence, crashed teammate recovery, debugging.
+Tool signatures and message schemas -- TeamCreate, SendMessage (direct, broadcast, shutdown, plan approval), TeamDelete, Agent tool parameters. Error handling, graceful shutdown sequence, crashed teammate recovery, debugging.
 
 ### Patterns and Recipes
 

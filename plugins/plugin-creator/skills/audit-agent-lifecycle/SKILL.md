@@ -106,7 +106,7 @@ node $CLAUDE_PLUGIN_ROOT/scripts/populate-agent-descriptions.mjs
 ```
 
 2. Read `$CLAUDE_PLUGIN_ROOT/resources/describe-your-capabilities.template.md`
-3. Spawn all agents simultaneously via Task tool. Agents with Bash access write their own result to the DB. Collect text responses from agents without Bash access and write them via the update script.
+3. Spawn all agents simultaneously via Agent tool. Agents with Bash access write their own result to the DB. Collect text responses from agents without Bash access and write them via the update script.
 4. After all Tasks complete, export the dataset:
 
 ```bash
@@ -185,7 +185,7 @@ Write audit artifacts to `.claude/audits/`:
 - Tool access ambiguity → delegate to agent that reads Claude Code tool inheritance docs
 - Cross-agent contract mismatch → delegate to agent that evaluates input/output compatibility
 - Prompt quality issues → delegate to `@plugin-creator:subagent-refactorer` for optimization
-  (Task tool: `subagent_type="plugin-creator:subagent-refactorer"`)
+  (Agent tool: `subagent_type="plugin-creator:subagent-refactorer"`)
 
 ### 1. Capability vs Configuration Alignment
 

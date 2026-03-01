@@ -1,6 +1,6 @@
 ---
 name: permissions
-description: Configure Claude Code permissions — tool approval rules, permission modes, managed policies, and sandboxing. Use when setting up permission rules, configuring allow/deny/ask policies, debugging permission prompts, deploying managed settings for organizations, or controlling Bash/Read/Edit/WebFetch/MCP/Task tool access.
+description: Configure Claude Code permissions — tool approval rules, permission modes, managed policies, and sandboxing. Use when setting up permission rules, configuring allow/deny/ask policies, debugging permission prompts, deploying managed settings for organizations, or controlling Bash/Read/Edit/WebFetch/MCP/Agent tool access.
 user-invocable: true
 ---
 # Claude Code Permissions Reference

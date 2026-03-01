@@ -190,7 +190,7 @@ An agent is a specialized Claude instance optimized for a specific task. When Cl
 | Feature | Skill | Agent |
 |---------|-------|-------|
 | **Purpose** | Knowledge/workflows | Focused task execution |
-| **Invocation** | User `/skill` or auto-load | Claude delegates via Task tool |
+| **Invocation** | User `/skill` or auto-load | Claude delegates via Agent tool |
 | **Context** | Shared with conversation | Can run isolated |
 | **Tool access** | Inherits or restricted | Explicitly configured |
 | **Best for** | Reference material, guidelines | Code review, test generation, debugging |

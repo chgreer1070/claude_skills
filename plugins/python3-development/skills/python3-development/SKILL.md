@@ -273,9 +273,9 @@ For comprehensive type safety guidance including Generics, Protocols, TypedDict,
 
 ### STOP - MANDATORY PRE-DELEGATION PROTOCOL
 
-**Before using the Task tool for ANY Python development delegation, the orchestrator MUST complete this checklist. This is NOT optional. Skipping this protocol leads to agent context exhaustion, architectural mistakes, and failed delegations.**
+**Before using the Agent tool for ANY Python development delegation, the orchestrator MUST complete this checklist. This is NOT optional. Skipping this protocol leads to agent context exhaustion, architectural mistakes, and failed delegations.**
 
-#### Pre-Delegation Checklist (Complete ALL before Task tool)
+#### Pre-Delegation Checklist (Complete ALL before Agent tool)
 
 | Step | Action                        | Verification                                                                                              |
 | ---- | ----------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -304,7 +304,7 @@ Agents discover and verify file contents themselves as part of their Chain of Ve
 
 #### Enforcement
 
-The orchestrator must state which workflow pattern they are using before the first Task tool invocation:
+The orchestrator must state which workflow pattern they are using before the first Agent tool invocation:
 
 ```text
 "I have read the orchestration guide. Using [WORKFLOW PATTERN] with agents: [AGENT1] → [AGENT2] → [AGENT3]"
@@ -408,7 +408,7 @@ Orchestrator workflow:
 > **Critical**: `subagent_type` must be `"python3-development:python-cli-architect"` — NOT `"general-purpose"`.
 > Using `general-purpose` with pasted skill content bypasses the agent's specialized tooling and model configuration.
 
-**Notice**: Each delegation has FOCUSED SCOPE. The orchestrator read the guide FIRST and stated the workflow pattern BEFORE any Task tool usage.
+**Notice**: Each delegation has FOCUSED SCOPE. The orchestrator read the guide FIRST and stated the workflow pattern BEFORE any Agent tool usage.
 
 </section>
 

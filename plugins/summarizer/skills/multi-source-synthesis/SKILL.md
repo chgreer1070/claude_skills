@@ -239,7 +239,7 @@ When this skill is invoked after a team-based summarization (teammates instead o
 
 | Orchestration | Input to Synthesis |
 |---|---|
-| Subagents | Summary text returned directly from Task tool calls |
+| Subagents | Summary text returned directly from Agent tool calls |
 | Teammates | Findings delivered via Teammate inbox messages to the leader |
 
 ### Cross-Checking During Summarization

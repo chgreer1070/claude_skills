@@ -60,7 +60,7 @@ flowchart TB
     end
 
     subgraph AGENT_BOX["AGENT"]
-        A1["Delegated via<br/>Task tool"]
+        A1["Delegated via<br/>Agent tool"]
         A2["Runs in separate<br/>context window"]
         A3["Fully autonomous<br/>within scope"]
         A4["Returns results,<br/>signals DONE/BLOCKED"]

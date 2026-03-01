@@ -65,12 +65,12 @@ chmod +x ./scripts/process-research-integration.py
 
 **Processing workflow**:
 1. Find research files matching criteria (category/file/all)
-2. For each file, spawn research-context-agent via Task tool
+2. For each file, spawn research-context-agent via Agent tool
 3. Agent reads, analyzes, validates with WebSearch, appends Integration Opportunities
 4. Track and display results in formatted tables
 
 **Agent orchestration** (to be implemented):
-- Use Task tool to spawn research-context-agent instances
+- Use Agent tool to spawn research-context-agent instances
 - Pass file path as parameter
 - Sequential processing (one file at a time)
 - Collect results and generate summary

@@ -47,7 +47,7 @@ Analysis of the skill-research-process compared to repository best practices.
 
 ### 5. No Delegation Template Alignment
 
-**Issue**: CLAUDE.md says "When invoking the Task tool, follow the Delegation Template in the agent-orchestration skill." Current prompts don't follow this.
+**Issue**: CLAUDE.md says "When invoking the Agent tool, follow the Delegation Template in the agent-orchestration skill." Current prompts don't follow this.
 
 **Fix Required**: Update agent prompts to follow delegation template format.
 

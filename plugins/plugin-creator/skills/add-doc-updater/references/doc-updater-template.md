@@ -274,7 +274,7 @@ Execute sequentially (each gates the next):
 
 Validate AI agent discoverability:
 
-1. Spawn `general-purpose` agent via Task tool
+1. Spawn `general-purpose` agent via Agent tool
 2. Provide minimal prompt (WHAT only, no WHERE/HOW)
 3. Verify agent discovers and uses skill
 4. Verify agent accesses documentation successfully

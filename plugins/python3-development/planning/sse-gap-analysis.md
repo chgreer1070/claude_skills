@@ -52,7 +52,7 @@ The python3-development plugin shows **strong partial alignment** with the State
 **Current State in Plugin**:
 
 - Agents are defined with `model:`, `tools:`, `skills:` frontmatter
-- Sub-agents spawned via Task tool start with fresh context (no orchestrator conversation inherited)
+- Sub-agents spawned via Agent tool start with fresh context (no orchestrator conversation inherited)
 - File: `./plugins/python3-development/agents/context-gathering.md`: Agent receives task file path as input in a fresh context
 
 **Gap Status**: **ALIGNED**
@@ -61,7 +61,7 @@ The python3-development plugin shows **strong partial alignment** with the State
 
 - Sub-agents do NOT receive orchestrator conversation context
 - Sub-agents start fresh with only their prompt + tool access
-- Context isolation is enforced by the Task tool architecture itself
+- Context isolation is enforced by the Agent tool architecture itself
 
 **Minor Issues**:
 
@@ -373,7 +373,7 @@ The python3-development plugin shows **strong partial alignment** with the State
 
 | SSE Principle              | Plugin Status                                      | Gap Level | Priority |
 | -------------------------- | -------------------------------------------------- | --------- | -------- |
-| Stateless agents           | Task tool enforces fresh context                   | ALIGNED   | -        |
+| Stateless agents           | Agent tool enforces fresh context                   | ALIGNED   | -        |
 | Externalized memory        | Task files used, execution artifacts missing       | PARTIAL   | P1       |
 | Single responsibility      | Agents well-separated                              | ALIGNED   | -        |
 | Message passing            | Artifacts used, tokens not standardized            | PARTIAL   | P2       |
@@ -387,7 +387,7 @@ The python3-development plugin shows **strong partial alignment** with the State
 
 ## Conclusion
 
-The python3-development plugin has organically evolved toward many SSE principles, particularly in task design (CLEAR+CoVe), agent specialization, quality gates, and stateless agent architecture (Task tool enforces fresh context by default). The primary gaps are in:
+The python3-development plugin has organically evolved toward many SSE principles, particularly in task design (CLEAR+CoVe), agent specialization, quality gates, and stateless agent architecture (Agent tool enforces fresh context by default). The primary gaps are in:
 
 1. **Artifact persistence**: Execution and review results not captured as artifacts
 2. **Boundary enforcement**: Stage verification is optional rather than mandatory

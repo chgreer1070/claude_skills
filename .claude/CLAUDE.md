@@ -93,7 +93,7 @@ Activate `/plugin-creator:skill-creator` when ANY condition matches:
 
 ## Task Delegation Standards
 
-Follow Delegation Template in agent-orchestration:agent-orchestration skill when invoking Task tool.
+Follow Delegation Template in agent-orchestration:agent-orchestration skill when invoking Agent tool.
 
 ### Path Conventions
 

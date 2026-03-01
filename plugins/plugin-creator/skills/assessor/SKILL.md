@@ -52,7 +52,7 @@ TaskCreate(subject="Final: Return to orchestrator", description="Return to orche
 
 ### Tier 1: Structural Analysis
 
-**Action**: LAUNCH the plugin-assessor agent using the Task tool with this exact prompt:
+**Action**: LAUNCH the plugin-assessor agent using the Agent tool with this exact prompt:
 
 ```
 Agent(
@@ -228,7 +228,7 @@ Audit Reports: .claude/audits/
 
 **Objective**: Create a detailed refactoring design specification showing how each identified issue should be addressed.
 
-**Action**: LAUNCH the python-cli-design-spec agent using the Task tool with this exact prompt (substitute the complete Assessment Report from Phase 1 where indicated):
+**Action**: LAUNCH the python-cli-design-spec agent using the Agent tool with this exact prompt (substitute the complete Assessment Report from Phase 1 where indicated):
 
 ```
 Agent(
@@ -430,7 +430,7 @@ Parallelization Groups: [count]
 
 **Objective**: Generate detailed implementation tasks with dependencies, verification steps, and parallel execution opportunities.
 
-**Action**: LAUNCH a swarm-task-planner agent using the Task tool with this exact prompt:
+**Action**: LAUNCH a swarm-task-planner agent using the Agent tool with this exact prompt:
 
 ````
 Agent(
@@ -653,7 +653,7 @@ Task Summary:
 
 **Objective**: Gather comprehensive refactoring context before execution begins.
 
-**Action**: LAUNCH the context-gathering agent using the Task tool:
+**Action**: LAUNCH the context-gathering agent using the Agent tool:
 
 ```
 Agent(

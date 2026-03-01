@@ -119,7 +119,7 @@ ai-research-lead (Principal Investigator)
 ### Critical Communication Rules (Verbatim)
 
 1. **Agents are stateless** - Each invocation starts fresh, no memory of previous calls
-2. **Agents can't see chat history** - They only see what's in the Task tool prompt
+2. **Agents can't see chat history** - They only see what's in the Agent tool prompt
 3. **Agents can't directly invoke each other** - Must request Claude Code to do it
 
 **SOLUTION**: Request-based coordination with COMPLETE context:

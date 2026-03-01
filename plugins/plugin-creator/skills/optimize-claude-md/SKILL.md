@@ -51,7 +51,7 @@ Verify the resolved absolute path exists. Determine scope (single file, skill di
 
 ### Phase 3: Delegate to @contextual-ai-documentation-optimizer
 
-Spawn the optimization agent via Task tool with enhanced delegation template (see below). Pass file-type-specific context, baseline metrics, and constraints.
+Spawn the optimization agent via Agent tool with enhanced delegation template (see below). Pass file-type-specific context, baseline metrics, and constraints.
 
 <delegation_template>
 

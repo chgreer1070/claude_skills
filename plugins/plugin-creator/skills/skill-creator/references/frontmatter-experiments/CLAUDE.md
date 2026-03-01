@@ -167,7 +167,7 @@ When designing experiments, test against these invocation contexts. A frontmatte
 |---------|-------------|-------------|
 | **User-invoked inline** | User types `/skill-name` — skill runs in main conversation context | Type `/skill-name` directly |
 | **Auto-invoked by description** | Claude reads the description in `<available_skills>` and loads the skill without user action | Ask a question that matches the skill's description triggers |
-| **Agent-invoked via Task tool** | A subagent spawned by the Task tool loads the skill as part of its work | Spawn a Task agent whose prompt references or triggers the skill |
+| **Agent-invoked via Agent tool** | A subagent spawned by the Agent tool loads the skill as part of its work | Spawn a Task agent whose prompt references or triggers the skill |
 | **Preloaded into agent via `skills:` key** | Skill listed in an agent's frontmatter `skills:` field — full content injected at agent startup | Create an agent with `skills: skill-name` and spawn it |
 | **Forked context** | Skill has `context: fork` — runs in an isolated subagent with no conversation history | Add `context: fork` to the skill and invoke it |
 | **Forked + agent type** | Skill has `context: fork` and `agent: Explore/Plan/general-purpose` | Add both fields and invoke |

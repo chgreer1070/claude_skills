@@ -18,7 +18,7 @@ Cross-references research files with the repository's skills, agents, hooks, and
 ## Invocation
 
 - **Command**: `/process-research-integration` (options: `--file`, `--category`, `--force`, `--dry-run`)
-- **Task tool**: `Agent(subagent_type: "research-context-agent", prompt: "Process research file: research/category/filename.md")`
+- **Agent tool**: `Agent(subagent_type: "research-context-agent", prompt: "Process research file: research/category/filename.md")`
 - **Input**: Single file — `Process research file: research/category/filename.md` | Batch — `Process all research files in: research/`
 
 ---

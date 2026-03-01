@@ -88,7 +88,7 @@ flowchart TD
     Q1 -->|No| OK
 ```
 
-**Quantitative trigger**: 3 or more Read/Grep/Bash calls on source/config/test files without an intervening Edit, Write, or Task tool call.
+**Quantitative trigger**: 3 or more Read/Grep/Bash calls on source/config/test files without an intervening Edit, Write, or Agent tool call.
 
 **Rationalization phrases** (presence of these in orchestrator text is a warning sign):
 
