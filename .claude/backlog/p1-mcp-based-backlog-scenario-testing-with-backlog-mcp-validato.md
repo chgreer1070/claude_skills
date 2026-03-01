@@ -11,6 +11,7 @@ metadata:
   issue: '#328'
   groomed: '2026-03-01'
   last_synced: '2026-03-01T08:20:49Z'
+  plan: plan/tasks-12-backlog-mcp-scenarios.md
 ---
 
 ## Fact-Check
