@@ -296,13 +296,17 @@ class TestParseFrontmatter:
 
         assert fm.get("priority") == "P0"
 
-    def test_parse_frontmatter_nested_meta_produces_empty_meta_dict(self) -> None:
-        # Because _parse_frontmatter stringifies fm values, the nested metadata
-        # dict becomes a string and is not returned as a dict in meta.
-        # This is the documented limitation of the current implementation.
+    def test_parse_frontmatter_nested_meta_preserves_metadata(self) -> None:
+        # _parse_frontmatter now preserves nested metadata dicts instead of
+        # stringifying them. The metadata block is extracted and returned as meta.
         _fm, meta, _body = _parse_frontmatter(_NESTED_META_FRONTMATTER)
 
-        assert meta == {}
+        assert meta["source"] == "test-source"
+        assert meta["added"] == "2026-01-01"
+        assert meta["priority"] == "P1"
+        assert meta["type"] == "Feature"
+        assert meta["status"] == "open"
+        assert meta["topic"] == "my-test-item"
 
     def test_parse_frontmatter_no_metadata_block_gives_empty_meta(self) -> None:
         text = """\
