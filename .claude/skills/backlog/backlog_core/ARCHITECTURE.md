@@ -2,7 +2,7 @@
 
 ## Overview
 
-Extract all business logic from `.claude/skills/backlog/scripts/backlog.py` into a clean Python package at `.claude/skills/backlog/mcp/`. The package exposes the same functionality through two thin wrappers:
+Extract all business logic from `.claude/skills/backlog/scripts/backlog.py` into a clean Python package at `.claude/skills/backlog/backlog_core/`. The package exposes the same functionality through two thin wrappers:
 
 1. **CLI wrapper** (`backlog.py`) — Typer CLI, calls operations module
 2. **MCP server** (`server.py`) — FastMCP 3.x, calls operations module
@@ -43,18 +43,45 @@ backlog.py     ← imports from operations (thin CLI wrapper)
 Functions that previously used `typer.echo()` for status/progress messages must instead use an `Output` object (defined in models.py). Each function that needs to communicate status takes an optional `output: Output | None = None` parameter.
 
 ```python
-# In models.py
-@dataclass
-class Output:
-    messages: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
-    errors: list[str] = field(default_factory=list)
+# In models.py — ALL models use Pydantic BaseModel
+from pydantic import BaseModel, Field
+
+class BacklogItem(BaseModel):
+    """Parsed backlog item — replaces untyped dict."""
+    title: str = ""
+    description: str = ""
+    source: str = "Not specified"
+    added: str = ""
+    priority: str = ""
+    item_type: str = "Feature"
+    issue: str = ""
+    plan: str = ""
+    research_first: str = ""
+    files: str = ""
+    suggested_location: str = ""
+    section: str = ""
+    file_path: str = ""
+    skip: bool = False
+    groomed: str = ""
+    last_synced: str = ""
+    raw_body: str = ""
+
+class Output(BaseModel):
+    messages: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
 
     def info(self, msg: str) -> None: ...
     def warn(self, msg: str) -> None: ...
     def error(self, msg: str) -> None: ...
-    def to_dict(self) -> dict: ...
+
+# Also: IssueStatus, PullRequestRef, ViewItemResult, IssueLocalFields
 ```
+
+**CRITICAL**: No `Any` type anywhere. Use `BacklogItem` instead of `dict` for items.
+Use `IssueStatus` instead of `dict[str, str]` for status results.
+Use `PullRequestRef` instead of `dict[str, Any]` for PR references.
+Use `ViewItemResult` instead of `dict[str, Any]` for view results.
 
 Replace `typer.echo(msg)` → `output.info(msg)`
 Replace `typer.echo(msg, err=True)` → `output.warn(msg)`
@@ -81,10 +108,10 @@ Functions that previously raised `typer.Exit(1)` must instead raise one of:
 - Constants: `BACKLOG_DIR`, `DEFAULT_REPO`, `SECTION_RE`, `SKIP_STATUS`, `GITHUB_ISSUE_URL_RE`, `GITHUB_ISSUE_TITLE_TRUNCATE`, `MIN_FRONTMATTER_PARTS`, `TYPE_TO_LABEL`, `ROLE_MAP`, `BENEFIT_MAP`, `FUZZY_DUPLICATE_THRESHOLD`, `_COMMIT_PREFIX_RE`, `_FIELD_TO_INDEX`
 - Add new: `PRIORITY_SECTIONS` dict mapping priority strings to section headings (from the `add` command)
 - Exception classes: `BacklogError`, `ItemNotFoundError`, `DuplicateItemError`, `GitHubUnavailableError`, `ValidationError`
-- `Output` dataclass
+- Pydantic models: `BacklogItem`, `Output`, `IssueStatus`, `PullRequestRef`, `ViewItemResult`, `IssueLocalFields`
 
 **Exports** (public API):
-All constants, all exception classes, `Output`.
+All constants, all exception classes, all Pydantic models.
 
 **Imports from other modules**: None.
 
