@@ -107,7 +107,7 @@ _(Empty)_
 **Priority**: P1
 **Status**: DONE — Fixed both bugs in `hallucination-audit-stop.js`: (1) Removed dead backtick regex from `EVIDENCE_MARKERS` (was never matched since `stripLowSignalRegions` removes backtick spans before scanning); replaced with a `BACKTICK_RE` check against the original pre-strip text via new `rawText` param in `hasEvidenceNearby`. (2) Changed `because` loop from `lower.indexOf()` (first occurrence only) to a `while` loop scanning all occurrences — each unsuppressed `because` is now flagged independently.
 **Files**:
-- `plugins/hallucination-detector/scripts/hallucination-audit-stop.js`
+- `https://github.com/bitflight-devops/hallucination-detector` (standalone repo — `scripts/hallucination-audit-stop.js`)
 
 ### python3-development: Fix 3 malformed frontmatter files
 
@@ -727,7 +727,7 @@ Each plugin with scripts or external tooling should expose a universal MCP inter
 **Source**: MCP backlog audit 2026-02-23
 **Added**: 2026-02-23
 **Description**: Expose `hallucination-audit-stop.js` logic as an MCP tool. Currently only runs as a Stop hook — an MCP server would let any agent or workflow request on-demand hallucination scanning of arbitrary text. Tools: `audit_text`, `audit_file`.
-**Suggested location**: `plugins/hallucination-detector/mcp/server.py` (reimplement core logic in Python) or `plugins/hallucination-detector/mcp/server.js` (wrap existing JS)
+**Suggested location**: `https://github.com/bitflight-devops/hallucination-detector` (standalone repo — `mcp/server.py` or `mcp/server.js`)
 
 ### gitlab-skill: GitLab CI & GLFM Validation MCP
 
