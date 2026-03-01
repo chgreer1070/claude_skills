@@ -504,36 +504,280 @@ Report to orchestrator:
 
 ## Context Manifest
 
-### Key Files
+### How the Backlog Lifecycle Currently Works
 
-- `.claude/docs/backlog-lifecycle.draft.md` — Source draft (674 lines, 17 `[VERIFY]` annotations,
-  25-item Section 7 testing checklist)
-- `.claude/skills/backlog/scripts/backlog.py` — Live script to test against
-- `.github/workflows/backlog-sync.yml` — Workflow confirming T20, T21, T22 pre-resolved
-- `plan/feature-context-backlog-lifecycle-promotion.md` — Discovery: annotation catalog,
-  testing checklist catalog, cross-reference plan, risks
-- `plan/codebase/cross-references-backlog.md` — Codebase analysis: link conventions,
-  correct relative paths from each source location
-- `plan/architect-backlog-lifecycle-promotion.md` — Architecture spec: verification strategy
-  (Section 1), testing strategy (Section 2), rename strategy (Section 3), cross-reference
-  architecture (Section 4), content cleanup rules (Section 5), constraints (Section 6)
-- `.claude/docs/TASK_FILE_FORMAT.md` — Task file format reference
+The backlog ecosystem is a three-layer system where all backlog item operations are mediated through the `backlog.py` script. The architecture is described comprehensively in `.claude/docs/backlog-lifecycle.draft.md` — the document being promoted in this task.
 
-### Architecture Decisions
+**Layer 1: GitHub Issues (canonical source of truth)**
 
-- `backlog pull` subcommand status is an execution gate: check `pull --help` exit code first
-- Testing and verification share a single throwaway test item to minimize side effects
-- `project_workflow.draft.md` gets only the lifecycle link; its stale BACKLOG.md references
-  are out of scope
-- Plan artifacts (`plan/feature-context-*.md`, `plan/architect-*.md`) intentionally retain
-  old draft filename references — do not edit them
+GitHub Issues store the authoritative item status via labels. Status is encoded as `status:*` labels (exactly one per item at any time), and priority is encoded as `priority:*` labels (P0, P1, P2, or Ideas). When a local file and its linked issue disagree on status or priority, the GitHub issue wins — this is the ground truth.
 
-### Path Reference Table (from codebase analysis)
+**Layer 2: Local cache (.claude/backlog/*.md files)**
 
-| Source file | Path to `backlog-lifecycle.md` |
-|---|---|
-| `.claude/skills/*/SKILL.md` | `../../docs/backlog-lifecycle.md` |
-| `.claude/skills/backlog/references/*.md` | `../../../docs/backlog-lifecycle.md` |
-| `.claude/skills/backlog-tools-administrator/references/*.md` | `../../../docs/backlog-lifecycle.md` |
-| `.claude/project_workflow.draft.md` | `./docs/backlog-lifecycle.md` |
-| `.claude/docs/backlog-lifecycle.md` back-links | `../skills/{name}/SKILL.md` |
+Per-item markdown files exist in `.claude/backlog/` using the naming pattern `{priority}-{slug}.md` (e.g., `p1-fix-error-recovery.md`). These files contain YAML frontmatter with metadata (name, description, source, added date, priority, type, status, groomed date, issue number, milestone, plan path) and markdown body sections (Description, Acceptance Criteria, Research First, Suggested Location, Fact-Check, RT-ICA, Groomed sections). These files are written exclusively by the `backlog.py` script and serve as a cache for agent consumption to avoid GitHub API saturation during sessions. They are never edited directly by skills or agents — all reads and writes go through the script.
+
+**Layer 3: backlog.py script (sole interface)**
+
+The script at `./.claude/skills/backlog/scripts/backlog.py` is the ONLY interface for reading and writing backlog items. It handles:
+
+- Creating per-item files with correct frontmatter (via `backlog add`)
+- Creating and closing GitHub Issues (via `backlog add --create-issue`, `backlog sync`, `backlog close`, `backlog resolve`)
+- Syncing groomed content to issue bodies (via `backlog groom`)
+- Writing label transitions (via implicit operations during `add`, `sync`, `groom`, `update`, `close`, `resolve`)
+- Writing `metadata.issue` back to the local file frontmatter after issue creation
+- Pulling external GitHub state back to local files (via `backlog pull`)
+
+All skills that work with backlog items invoke this script: `/create-backlog-item` invokes `backlog add`, `/groom-backlog-item` invokes `backlog groom`, `/work-backlog-item` invokes `backlog list`, `backlog update`, `backlog close`, and `backlog resolve`. The GitHub Actions workflow at `.github/workflows/backlog-sync.yml` monitors `.claude/backlog/` file changes and automatically runs `backlog sync` when new P0/P1 items are committed.
+
+### Item State Machine and Transitions
+
+Items flow through 8 distinct states managed by the script:
+
+1. **State 1: Created (local only)** — `/create-backlog-item` collects fields and invokes `backlog add`, creating a per-item file with `status: needs-grooming`. For P0/P1 items, a GitHub Issue may be created immediately with `--create-issue`.
+
+2. **State 2: Synced to GitHub** — `backlog sync` scans `.claude/backlog/` for P0/P1 items without a `metadata.issue` field, creates a GitHub Issue for each, and writes `metadata.issue: '#N'` back to the file. The GitHub Action on `.claude/backlog/` changes automatically triggers this sync.
+
+3. **State 3: Groomed** — `/groom-backlog-item` orchestrates fact-checking and autonomously writes groomed sections via `backlog groom`. After all 7 required sections (Fact-Check, RT-ICA, Reproducibility, Dependencies, Skills, Agents, Prior Work) are present, `metadata.groomed` is set and the GitHub label transitions from `status:needs-grooming` to `status:groomed`.
+
+4. **State 4: In Milestone** — `/group-items-to-milestone` assigns the item to a GitHub milestone, writing `metadata.milestone: {N}` and updating the label to `status:in-milestone`.
+
+5. **State 5: In Progress** — `/work-backlog-item` after RT-ICA approval creates a SAM task file and invokes `backlog update` to set `metadata.plan: path/to/tasks-{N}-{slug}.md` and `status: in-progress`. The script updates the GitHub label accordingly.
+
+6. **State 6: Done (closed)** — `/work-backlog-item close` verifies the task checklist is 100% complete and acceptance criteria pass, then invokes `backlog close --checklist-pass` to set `metadata.status: done` and close the GitHub issue. The `--cleanup` flag (if it exists) deletes the local file; otherwise the file remains with `status: done`.
+
+7. **State 7: Resolved (won't-fix)** — Any skill or `/work-backlog-item resolve` invokes `backlog resolve` when an item is invalid, obsolete, or superseded. The script sets `metadata.status: resolved`, closes the GitHub issue with an optional resolution comment, and optionally deletes the local file with `--cleanup`.
+
+8. **State 8: Pulling from GitHub** — `backlog pull` (if it exists as a subcommand) syncs external GitHub changes back to local files. The draft indicates it should fetch current issue state and overwrite or merge local file bodies with current issue bodies, updating `metadata.status` to match GitHub label state.
+
+### Critical Architectural Constraints
+
+**Source of truth precedence**: When a local cache file and its GitHub issue disagree, the GitHub issue is authoritative. The script enforces this by always reading GitHub labels as the canonical status and merging or overwriting local content.
+
+**Label atomicity**: Status transitions must remove the old `status:*` label and add the new one in a single API call to prevent momentary states where two `status:*` labels exist. The draft claims this is atomic; Task 1 verifies this by reading the label code or observing label transitions.
+
+**Metadata write-back pattern**: When `backlog add --create-issue` or `backlog sync` creates a GitHub Issue, the script writes the new issue number back to `metadata.issue` in the local file frontmatter. This is a bidirectional write that links the two layers in a single operation.
+
+**Grooming completeness**: An item is considered "fully groomed" only when all 7 required sections are present AND `metadata.groomed` is set. Partial grooming (some sections present) is not considered groomed, and `/groom-backlog-item` resumes from the first missing section on re-run.
+
+**No direct edits policy**: Skills and agents never directly edit `.claude/backlog/*.md` files or invoke GitHub API (`gh issue edit`) directly. All mutations go through `backlog.py`. This ensures consistent metadata handling and prevents races between the script and manual edits.
+
+### What Gets Verified in This Task
+
+The draft document describes 8 states, transitions, and behaviors. Seventeen `[VERIFY]` annotations mark claims that require confirmation against live script behavior. The architect spec (Section 1) organizes these into categories:
+
+- **6 annotations resolvable by `--help` output**: Checking whether `backlog pull`, `--cleanup`, `--force`, and `--priority` flags exist in the script's help text.
+- **5 annotations resolvable by running test commands**: Creating a throwaway item, executing grooming and state transitions, and observing actual file changes and GitHub label updates.
+- **2 annotations resolvable by searching for related skills**: Looking for `/group-items-to-milestone` and `/complete-milestone` skills to understand milestone management.
+- **1 annotation pre-resolved**: GitHub Action trigger confirmed by reading `.github/workflows/backlog-sync.yml`.
+
+### Files Involved in This Task
+
+**Source file being promoted:**
+- `.claude/docs/backlog-lifecycle.draft.md` (674 lines) — contains 8 state descriptions, data architecture explanation, lifecycle flow diagram, label/priority mapping table, testing checklist with 25 items across 7 categories, and 17 `[VERIFY]` annotations
+
+**Script being tested:**
+- `.claude/skills/backlog/scripts/backlog.py` (100+ lines) — implements `add`, `list`, `sync`, `close`, `resolve`, `update`, `groom`, `normalize`, and possibly `pull` subcommands; uses `github.Github`, `typer`, `frontmatter`, and `ruamel.yaml` libraries
+
+**Skills receiving inbound links (Task 4):**
+- `.claude/skills/backlog/SKILL.md` — describes the script's subcommands and invocation
+- `.claude/skills/work-backlog-item/SKILL.md` — orchestrates item grooming and planning workflow
+- `.claude/skills/groom-backlog-item/SKILL.md` — manages fact-checking and grooming orchestration
+- `.claude/skills/create-backlog-item/SKILL.md` — creates new items with optional GitHub issues
+- `.claude/skills/backlog-tools-administrator/references/domain-registry.md` — lists all backlog-related skills and scripts
+
+**Reference files within backlog ecosystem (Task 4 outbound links):**
+- `.claude/skills/backlog/references/state-machine.md` — defines formal state transitions (read by architect spec)
+- `.claude/skills/backlog/references/item-schema.md` — documents per-item file frontmatter structure
+- `.claude/skills/backlog/scripts/backlog.py` — script that implements all operations
+
+**Workflow file (Task 1 pre-verification):**
+- `.github/workflows/backlog-sync.yml` — GitHub Action that triggers `backlog sync` on `.claude/backlog/` changes
+
+**Other files receiving inbound links:**
+- `.claude/agents/backlog-item-groomer.md` — agent spawned by `/groom-backlog-item` (may or may not exist)
+- `.claude/project_workflow.draft.md` — project-level workflow that references backlog (receives one lifecycle link)
+
+**Related planning artifacts (read-only, NOT to be edited):**
+- `plan/feature-context-backlog-lifecycle-promotion.md` — discovery analysis
+- `plan/codebase/cross-references-backlog.md` — codebase analysis with path conventions
+- `plan/architect-backlog-lifecycle-promotion.md` — architecture specification with verification strategy
+
+### Testing Strategy (Task 1)
+
+Task 1 executes the 25-item testing checklist from Section 7 of the draft. The items are organized into 7 categories:
+
+1. **Data Architecture (4 tests)**: Verifying `backlog add` behavior with/without `--create-issue`, `backlog sync` deduplication, and dry-run support.
+
+2. **State Transitions (5 tests)**: Checking whether `backlog groom` appends without overwriting, `metadata.groomed` is set only after all 7 sections, `backlog update` behavior, and enforcement of required flags like `--checklist-pass`.
+
+3. **Cleanup Behavior (4 tests)**: Testing whether `--cleanup` flag exists on `backlog close` and `backlog resolve`, and whether `/complete-milestone` deletes local files or sets `status: closed`.
+
+4. **Pull/Bidirectional Sync (3 tests)**: Verifying `backlog pull --dry-run` output, `metadata.status` updates, and preservation of `metadata.plan` and `metadata.groomed` fields.
+
+5. **Priority and Label Mapping (3 tests)**: Confirming P2/Ideas items never get GitHub issues, label transitions are atomic, and `--priority` flag exists for re-prioritization.
+
+6. **GitHub Action Integration (3 tests)**: Reading `.github/workflows/backlog-sync.yml` to confirm trigger definition and command execution.
+
+7. **Post-Merge Behavior (3 tests)**: Testing issue closure after PR merge and subsequent `backlog sync` behavior.
+
+The verification strategy (architect spec Section 1) orders tests to run `--help` commands first (which gate other tests), then creates a single throwaway test item (`lifecycle-verify-test`) for behavioral tests, and cleans it up before the task completes. Tests T20, T21, T22 (GitHub Action tests) are pre-confirmed by reading the workflow file. Test T23 (PR merge) is marked NOT TESTABLE because it requires an actual PR merge.
+
+### Path Conventions (Task 4 cross-referencing)
+
+When adding inbound and outbound markdown links, paths must be relative and use `./` prefix per CLAUDE.md standards:
+
+**From skill SKILL.md to `.claude/docs/`:**
+- Path: `../../docs/backlog-lifecycle.md` (from `.claude/skills/{name}/SKILL.md` up two levels to `.claude/`, then into `docs/`)
+
+**From skill reference files to `.claude/docs/`:**
+- Path: `../../../docs/backlog-lifecycle.md` (from `.claude/skills/{name}/references/*.md` up three levels to repository root, then into `.claude/docs/`)
+
+**From domain registry to `.claude/docs/`:**
+- Path: `../../../docs/backlog-lifecycle.md` (from `.claude/skills/backlog-tools-administrator/references/domain-registry.md`)
+
+**From project workflow to `.claude/docs/`:**
+- Path: `./docs/backlog-lifecycle.md` (from `.claude/project_workflow.draft.md` at `.claude/` level, down into `docs/`)
+
+**From lifecycle doc outbound to skills:**
+- Path: `./../skills/{name}/SKILL.md` or `./../skills/{name}/references/*.md` (from `.claude/docs/backlog-lifecycle.md`)
+
+**From lifecycle doc to workflow:**
+- Path: `./../../.github/workflows/backlog-sync.yml` (from `.claude/docs/` to repository root `.github/`)
+
+All paths must be verified to exist with the `Read` tool before adding links. The architect spec Section 4.2 provides an authoritative path reference table.
+
+### Content Cleanup Rules (Task 2)
+
+When Task 1 produces test results, Task 2 uses them to resolve `[VERIFY]` annotations. The architect spec Section 5 defines cleanup rules:
+
+- **Annotation verified true**: Remove the `[VERIFY]` marker, keep the sentence, add a citation if the claim is not obvious.
+- **Annotation verified false/different**: Remove the marker, correct the sentence to match observed behavior, add a NOTE block if the correction is non-obvious or surprising.
+- **Feature gap discovered**: Remove the marker, add a NOTE block stating "not implemented as of 2026-03-01" and describing the gap.
+- **Special case — `backlog pull` subcommand**: If Task 1 finds that `pull` does not exist, apply Section 5.4 treatment to Section 2 State 8 (add "(Planned)" to title and prepend NOTE), the data flow diagram (dashed PULL node), sync direction table (add "(planned)" suffix), and Section 7.4 tests T14-T16 (mark SKIPPED).
+
+The cleanup rules ensure that the final promoted document contains only verified, accurate claims or clearly marked future/planned features.
+
+### Renaming Strategy (Task 3)
+
+Task 3 renames the file from `backlog-lifecycle.draft.md` to `backlog-lifecycle.md` using `git mv` to preserve history. The DRAFT artifacts are then removed:
+
+- Line 1: HTML comment `<!-- DRAFT — 2026-02-27 — Pending verification against live script behavior -->` deleted.
+- Lines 4-6: The `**STATUS: DRAFT**` paragraph and surrounding blank lines deleted.
+- Lines 8-14: The SOURCE block backtick paths are converted to proper markdown links using the path conventions above.
+
+After the rename, any file in the codebase referencing the old `backlog-lifecycle.draft.md` path (excluding plan artifacts) must be updated to point to `backlog-lifecycle.md`. The `domain-registry.md` entry changes from `(draft)` to `(canonical)` status.
+
+### Cross-Reference Linking Strategy (Task 4)
+
+Task 4 establishes two-way markdown links:
+
+**Outbound links FROM `.claude/docs/backlog-lifecycle.md`:**
+- State machine reference file — linked in Section 2 intro or new Related References section
+- Item schema reference file — linked in Section 6 (Item File Structure)
+- `backlog.py` script — linked in Section 1 Layer 3 description
+- `/work-backlog-item` skill — linked in States 5, 6, 7 descriptions
+- `/groom-backlog-item` skill — linked in State 3 description
+- `/create-backlog-item` skill — linked in State 1 description
+- Project workflow draft — linked in Section 1 overview
+- GitHub Actions workflow — linked in Section 2 State 2 and Section 3 data flow
+
+**Inbound links TO `.claude/docs/backlog-lifecycle.md` FROM:**
+- `.claude/skills/backlog/SKILL.md` — added in References section or context note
+- `.claude/skills/work-backlog-item/SKILL.md` — added in GitHub Integration section or references
+- `.claude/skills/groom-backlog-item/SKILL.md` — added in Step 7 context or references
+- `.claude/skills/create-backlog-item/SKILL.md` — added in References section
+- `.claude/skills/backlog/references/state-machine.md` — "See Also" section after state diagram
+- `.claude/skills/backlog/references/item-schema.md` — "See Also" section after completeness states
+- `.claude/skills/backlog-tools-administrator/references/domain-registry.md` — lifecycle entry updated to markdown link
+- `.claude/agents/backlog-item-groomer.md` — added if file exists (verify with Glob first)
+- `.claude/project_workflow.draft.md` — added in Data Architecture section with note that file is a draft
+
+Each inbound link uses the standard pattern:
+```markdown
+**Lifecycle reference**: See [Backlog Lifecycle](../../docs/backlog-lifecycle.md) for the full item lifecycle, state transitions, and data architecture.
+```
+
+Links are surrounded with blank lines for MD031 compliance.
+
+### Linting and Validation (Task 5)
+
+After Tasks 3 and 4, all modified files must pass `uv run prek run --files <file>` with exit code 0. Files to lint:
+- `.claude/docs/backlog-lifecycle.md`
+- `.claude/skills/backlog/SKILL.md`
+- `.claude/skills/work-backlog-item/SKILL.md`
+- `.claude/skills/groom-backlog-item/SKILL.md`
+- `.claude/skills/create-backlog-item/SKILL.md`
+- `.claude/skills/backlog-tools-administrator/references/domain-registry.md`
+- `.claude/project_workflow.draft.md`
+- `.claude/agents/backlog-item-groomer.md` (if modified)
+- `.claude/skills/backlog/references/state-machine.md` (if modified)
+- `.claude/skills/backlog/references/item-schema.md` (if modified)
+
+Common linting issues to watch for: MD031 (blanks around code fences), MD040 (code fence language specifiers), MD009 (trailing spaces), and broken markdown links. All markdown links must resolve to existing files — verify by attempting to read each target path.
+
+### Key Implementation Details
+
+**Test item naming and cleanup (Task 1):**
+Create a single throwaway item with `uv run .claude/skills/backlog/scripts/backlog.py add --title "lifecycle-verify-test" --priority P1 --description "test" --create-issue`. After all behavioral tests complete, resolve this item with `backlog resolve "lifecycle-verify-test" --reason "Test item for lifecycle verification" --cleanup` before Task 1 completes. Verify deletion with `uv run .claude/skills/backlog/scripts/backlog.py list | grep -c "lifecycle-verify-test"` (should return 0).
+
+**GitHub token and repository reference (Task 1 commands):**
+`GITHUB_TOKEN` environment variable is required for any `backlog.py` command that touches GitHub. All `gh` commands must include `-R Jamie-BitFlight/claude_skills` because the git remote is a local proxy, not the live GitHub URL.
+
+**`backlog pull` subcommand gate (Task 1):**
+Run `uv run .claude/skills/backlog/scripts/backlog.py pull --help` first. If exit code is non-zero (command not found), tests T14-T16 (pull tests) are immediately marked SKIPPED, and Task 2 must apply the "planned behavior" treatment to State 8, the data flow diagram, and the sync direction table.
+
+**Deduplication of [VERIFY] annotations (Task 2):**
+17 annotations exist but only 14 are unique. Annotation #4 is a duplicate of #2, and #5 is a duplicate of #3. When resolving, each unique annotation is resolved once, and duplicate markers are removed from all affected locations in the text.
+
+### Documentation Dependencies
+
+- **Architect spec (read-only)**: `plan/architect-backlog-lifecycle-promotion.md` defines the exact verification strategy (Section 1), content cleanup rules (Section 5), file modification list (Section 2), and path conventions (Section 4). This is the authoritative guide for Tasks 1–5.
+- **Codebase analysis (read-only)**: `plan/codebase/cross-references-backlog.md` provides the path reference table and link conventions. Use this as the primary source for correct relative paths.
+- **Feature context (read-only)**: `plan/feature-context-backlog-lifecycle-promotion.md` contains the original discovery analysis and annotation catalog. Reference this if understanding the rationale for any annotation.
+
+### Error Prevention Checklist
+
+Before completing each task:
+
+**Task 1**: Verify that the throwaway test item is resolved and deleted (grep should return 0). Confirm all 25 test results are in `plan/testing-results-backlog-lifecycle.md`. Check whether `backlog pull` exists (this gates Task 2 decisions).
+
+**Task 2**: Run `grep -c "\[VERIFY\]" .claude/docs/backlog-lifecycle.draft.md` and confirm it returns 0. Verify all 25 Section 7 checklist items are marked `[x]` with result notes. Check that no content claims behaviors Task 1 testing disproved.
+
+**Task 3**: Confirm old file is gone (`ls .claude/docs/backlog-lifecycle.draft.md` should error). Run `grep -r "backlog-lifecycle.draft" .claude/ --exclude-dir=plan` and confirm zero results (plan artifacts are intentionally excluded). Verify DRAFT HTML comment and STATUS: DRAFT paragraph are removed from the promoted file.
+
+**Task 4**: For each inbound file, verify the lifecycle link was added using `grep -l "backlog-lifecycle.md"`. For the promoted file, count outbound links and verify they point to correct relative paths. Confirm no link points to the old `backlog-lifecycle.draft.md` filename.
+
+**Task 5**: Run `uv run prek run --files` on each modified file and confirm all exit codes are 0. Attempt to read each markdown link target to verify it exists. Confirm the promoted file has zero `[VERIFY]` markers and zero unchecked Section 7 checklist items.
+
+### Key Technical Reference
+
+**backlog.py command structure:**
+```bash
+uv run .claude/skills/backlog/scripts/backlog.py <subcommand> [options]
+```
+
+Subcommands visible in help/docstring: `add`, `list`, `view`, `sync`, `close`, `resolve`, `update`, `groom`, `normalize`, `pull`. Help flags: `--help` on subcommand shows options and descriptions.
+
+**Per-item file frontmatter structure:**
+```yaml
+---
+name: "Item title"
+description: "One-sentence summary"
+metadata:
+  topic: "kebab-case-slug"
+  source: "Trigger or discovery method"
+  added: YYYY-MM-DD
+  priority: P0|P1|P2|Ideas
+  type: Feature|Bug|Refactor|Docs|Chore
+  status: needs-grooming|groomed|blocked|in-milestone|in-progress|done|resolved|closed
+  groomed: YYYY-MM-DD (set only when all 7 sections present)
+  issue: '#N' (GitHub issue number, written back by script)
+  milestone: N (GitHub milestone number)
+  plan: path/to/tasks-{N}-{slug}.md
+---
+```
+
+**GitHub label format:**
+- Status labels: `status:needs-grooming`, `status:groomed`, `status:blocked`, `status:in-milestone`, `status:in-progress`, `status:done`, `status:resolved`, `status:closed` (exactly one per issue)
+- Priority labels: `priority:P0`, `priority:P1`, `priority:P2`, `priority:Ideas` (one per issue)
+- Type labels: `type:feature`, `type:bug`, `type:refactor`, `type:docs`, `type:chore` (one per issue)
