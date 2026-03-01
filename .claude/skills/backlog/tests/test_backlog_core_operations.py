@@ -781,3 +781,196 @@ class TestUpdateItemTitleAndDescription:
         update_item(selector="Desc GitHub Item", description="Local only description.")
 
         mock_try_gh.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# list_items — section / title / status filters
+# ---------------------------------------------------------------------------
+
+
+class TestListItemsFilterSection:
+    """list_items(section=...) filters items by priority section (case-insensitive)."""
+
+    def test_filter_section_p0_only(self, mocker: MockerFixture) -> None:
+        """section='P0' returns only P0 items.
+
+        Tests: section filter in list_items.
+        How: Mock parse_backlog with P0 and P1 items; call list_items(section='P0').
+        Why: Callers need to narrow output to a single priority bucket.
+        """
+        p0_item = BacklogItem(title="Critical Fix", section="P0", skip=False)
+        p1_item = BacklogItem(title="Nice Feature", section="P1", skip=False)
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[p0_item, p1_item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items(section="P0")
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 1
+        assert items[0]["title"] == "Critical Fix"
+
+    def test_filter_section_case_insensitive(self, mocker: MockerFixture) -> None:
+        """section='p1' (lowercase) matches items with section='P1'.
+
+        Tests: case-insensitive section matching.
+        How: Mock parse_backlog with a P1 item; pass section='p1'.
+        Why: Users should not need to remember exact casing.
+        """
+        p1_item = BacklogItem(title="Should-Have", section="P1", skip=False)
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[p1_item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items(section="p1")
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 1
+        assert items[0]["title"] == "Should-Have"
+
+    def test_filter_section_no_match_returns_empty(self, mocker: MockerFixture) -> None:
+        """section='Ideas' returns empty list when no Ideas items exist.
+
+        Tests: section filter with zero matches.
+        How: Mock parse_backlog with only P0 items; filter by 'Ideas'.
+        Why: Empty result is correct — not an error.
+        """
+        p0_item = BacklogItem(title="Urgent", section="P0", skip=False)
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[p0_item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items(section="Ideas")
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert items == []
+
+    def test_filter_section_none_returns_all(self, mocker: MockerFixture) -> None:
+        """section=None (default) returns all open items.
+
+        Tests: no section filter applied when section is None.
+        How: Mock parse_backlog with P0 and P2 items; call list_items() without section.
+        Why: Default behaviour must not change for existing callers.
+        """
+        p0_item = BacklogItem(title="Critical", section="P0", skip=False)
+        p2_item = BacklogItem(title="Nice to Have", section="P2", skip=False)
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[p0_item, p2_item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items()
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 2
+
+
+class TestListItemsFilterTitle:
+    """list_items(title=...) filters items by case-insensitive substring match."""
+
+    def test_filter_title_substring_match(self, mocker: MockerFixture) -> None:
+        """title='auth' matches 'Add authentication flow'.
+
+        Tests: title substring filter in list_items.
+        How: Mock parse_backlog with matching and non-matching items.
+        Why: Users search by keyword, not exact title.
+        """
+        auth_item = BacklogItem(title="Add authentication flow", section="P1", skip=False)
+        other_item = BacklogItem(title="Fix pagination bug", section="P1", skip=False)
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[auth_item, other_item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items(title="auth")
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 1
+        assert items[0]["title"] == "Add authentication flow"
+
+    def test_filter_title_case_insensitive(self, mocker: MockerFixture) -> None:
+        """title='AUTH' (uppercase) matches 'Add authentication flow'.
+
+        Tests: case-insensitive title filtering.
+        How: Pass uppercase substring; expect match on lowercase title.
+        Why: Users should not need exact case for filtering.
+        """
+        auth_item = BacklogItem(title="Add authentication flow", section="P1", skip=False)
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[auth_item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items(title="AUTH")
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 1
+
+    def test_filter_title_no_match_returns_empty(self, mocker: MockerFixture) -> None:
+        """title='xyz' with no matching items returns empty list.
+
+        Tests: title filter zero-match case.
+        How: Mock parse_backlog with items that do not contain 'xyz'.
+        Why: Empty result is correct — not an error.
+        """
+        item = BacklogItem(title="Add authentication", section="P1", skip=False)
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items(title="xyz")
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert items == []
+
+
+class TestListItemsFilterStatus:
+    """list_items(status=...) filters items by derived GitHub status."""
+
+    def test_filter_status_in_progress(self, mocker: MockerFixture) -> None:
+        """status='status:in-progress' returns only items with that GitHub status.
+
+        Tests: status filter via _item_derived_status.
+        How: Mock batch_fetch_statuses to return in-progress for issue #5; include
+             a second item with no issue (needs-grooming).
+        Why: Callers need to isolate active work items.
+        """
+        in_progress_item = BacklogItem(title="Active Work", section="P1", skip=False, issue="#5")
+        idle_item = BacklogItem(title="Unstarted", section="P1", skip=False)
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[in_progress_item, idle_item])
+        mocker.patch(
+            "backlog_core.operations.batch_fetch_statuses",
+            return_value={5: IssueStatus(status="status:in-progress", milestone="")},
+        )
+
+        result = list_items(status="status:in-progress")
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 1
+        assert items[0]["title"] == "Active Work"
+
+    def test_filter_status_needs_grooming_default(self, mocker: MockerFixture) -> None:
+        """Items without a GitHub issue default to 'needs-grooming' status.
+
+        Tests: default status for issueless items.
+        How: Item has no issue; filter by 'needs-grooming'.
+        Why: Items without issues must be discoverable as needing grooming.
+        """
+        no_issue_item = BacklogItem(title="Ungroomed Item", section="P2", skip=False)
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[no_issue_item])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items(status="needs-grooming")
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 1
+        assert items[0]["title"] == "Ungroomed Item"
+
+    def test_filter_status_excludes_non_matching(self, mocker: MockerFixture) -> None:
+        """status='needs-grooming' excludes items with a different GitHub status.
+
+        Tests: status filter exclusion.
+        How: Mock a P1 item with issue #9 and 'status:done' from GitHub.
+        Why: Filtering must exclude items that do not match the requested status.
+        """
+        done_item = BacklogItem(title="Done Task", section="P1", skip=False, issue="#9")
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[done_item])
+        mocker.patch(
+            "backlog_core.operations.batch_fetch_statuses",
+            return_value={9: IssueStatus(status="status:done", milestone="")},
+        )
+
+        result = list_items(status="needs-grooming")
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert items == []

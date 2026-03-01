@@ -56,11 +56,23 @@ def backlog_list(
     with_status: Annotated[bool, Field(description="Include GitHub issue status for each item")] = False,
     from_github: Annotated[bool, Field(description="Refresh local cache from GitHub Issues before listing")] = False,
     label: Annotated[str | None, Field(description="Filter by GitHub label (e.g. 'priority:p1', 'type:bug')")] = None,
+    section: Annotated[
+        str | None, Field(description="Filter by priority section: P0, P1, P2, or Ideas (case-insensitive)")
+    ] = None,
+    status: Annotated[
+        str | None, Field(description="Filter by status value e.g. 'needs-grooming', 'status:in-progress'")
+    ] = None,
+    title: Annotated[
+        str | None, Field(description="Filter items whose title contains this substring (case-insensitive)")
+    ] = None,
 ) -> dict:
     """List all open backlog items.
 
     Use from_github=true to refresh the local cache from GitHub before listing.
     Use label to filter items by a specific GitHub label.
+    Use section to filter by priority section (P0, P1, P2, Ideas).
+    Use status to filter by status value (e.g. needs-grooming, status:in-progress).
+    Use title to filter by title substring (case-insensitive).
 
     Returns:
         Dict with items list (each containing title, priority, issue, plan)
@@ -68,7 +80,15 @@ def backlog_list(
     """
     out = Output()
     try:
-        result = operations.list_items(with_status=with_status, from_github=from_github, label=label, output=out)
+        result = operations.list_items(
+            with_status=with_status,
+            from_github=from_github,
+            label=label,
+            section=section,
+            status=status,
+            title=title,
+            output=out,
+        )
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}

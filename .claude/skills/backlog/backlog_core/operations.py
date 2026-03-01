@@ -37,6 +37,7 @@ from .models import (
     BacklogError,
     BacklogItem,
     DuplicateItemError,
+    IssueStatus,
     ItemNotFoundError,
     Output,
     ValidationError,
@@ -780,14 +781,87 @@ def refresh_local_cache_from_github(
     return {"refreshed": count, **out.to_dict()}
 
 
+def _item_derived_status(item: BacklogItem, status_map: dict[int, IssueStatus]) -> str:
+    """Return the GitHub status string for an item, defaulting to 'needs-grooming'."""
+    num_str = item.issue.lstrip("#") if item.issue else ""
+    if num_str.isdigit():
+        info = status_map.get(int(num_str))
+        return info.status if info is not None else "needs-grooming"
+    return "needs-grooming"
+
+
+def _filter_open_items(
+    open_items: list[BacklogItem],
+    section: str | None,
+    title: str | None,
+    status: str | None,
+    status_map: dict[int, IssueStatus],
+) -> list[BacklogItem]:
+    """Apply section, title, and status filters to open_items.
+
+    Returns:
+        Filtered list of BacklogItem objects matching all supplied criteria.
+    """
+    if section:
+        section_upper = section.upper()
+        open_items = [it for it in open_items if it.section and it.section.upper() == section_upper]
+    if title:
+        title_lower = title.lower()
+        open_items = [it for it in open_items if title_lower in it.title.lower()]
+    if status:
+        open_items = [it for it in open_items if _item_derived_status(it, status_map) == status]
+    return open_items
+
+
+def _build_list_entry(
+    item: BacklogItem, with_status: bool, status_map: dict[int, IssueStatus]
+) -> dict[str, str | bool]:
+    """Build the result dict for a single backlog item.
+
+    Returns:
+        Dict with section, title, issue, plan, and optional file_path, groomed,
+        status, and milestone fields.
+    """
+    entry: dict[str, str | bool] = {
+        "section": item.section,
+        "title": item.title,
+        "issue": item.issue,
+        "plan": item.plan,
+    }
+    if item.file_path:
+        entry["file_path"] = item.file_path
+    if item.groomed:
+        entry["groomed"] = True
+    if with_status and item.issue:
+        num_str = item.issue.lstrip("#")
+        num = int(num_str) if num_str.isdigit() else 0
+        info = status_map.get(num)
+        entry["status"] = info.status if info is not None else ""
+        entry["milestone"] = info.milestone if info is not None else ""
+    return entry
+
+
 def list_items(
     with_status: bool = False,
     from_github: bool = False,
     label: str | None = None,
+    section: str | None = None,
+    status: str | None = None,
+    title: str | None = None,
     repo: str = DEFAULT_REPO,
     output: Output | None = None,
 ) -> dict[str, int | list[str] | list[dict[str, str | bool]]]:
     """List backlog items. Default reads local cache only. Use from_github=True to refresh first.
+
+    Args:
+        with_status: Include GitHub issue status for each item.
+        from_github: Refresh local cache from GitHub Issues before listing.
+        label: Filter by GitHub label (applied during refresh).
+        section: Filter by priority section — P0, P1, P2, or Ideas (case-insensitive).
+        status: Filter by status value e.g. 'needs-grooming', 'status:in-progress'.
+        title: Filter items whose title contains this substring (case-insensitive).
+        repo: GitHub repo in owner/repo format.
+        output: Optional Output collector.
 
     Returns:
         Dict with items list (each item a dict with section, title, issue, plan,
@@ -798,28 +872,9 @@ def list_items(
         refresh_local_cache_from_github(repo, label, output=out)
     items = parse_backlog()
     open_items = [it for it in items if not it.skip and it.section]
-
     status_map = batch_fetch_statuses(open_items, repo)
-
-    result_items: list[dict[str, str | bool]] = []
-    for it in open_items:
-        entry: dict[str, str | bool] = {"section": it.section, "title": it.title, "issue": it.issue, "plan": it.plan}
-        if it.file_path:
-            entry["file_path"] = it.file_path
-        if it.groomed:
-            entry["groomed"] = True
-        if with_status and it.issue:
-            num_str = it.issue.lstrip("#")
-            num = int(num_str) if num_str.isdigit() else 0
-            info = status_map.get(num)
-            if info is not None:
-                entry["status"] = info.status
-                entry["milestone"] = info.milestone
-            else:
-                entry["status"] = ""
-                entry["milestone"] = ""
-        result_items.append(entry)
-
+    open_items = _filter_open_items(open_items, section, title, status, status_map)
+    result_items = [_build_list_entry(it, with_status, status_map) for it in open_items]
     return {"items": result_items, "count": len(result_items), **out.to_dict()}
 
 
