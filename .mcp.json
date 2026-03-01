@@ -14,6 +14,11 @@
     "kernel-local": {
       "command": "npx",
       "args": ["-y", "mcp-remote", "https://mcp.onkernel.com/mcp", "--header", "Authorization: Bearer $KERNEL_API_KEY"]
+    },
+    "backlog": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "backlog_core.server"],
+      "cwd": ".claude/skills/backlog"
     }
   }
 }

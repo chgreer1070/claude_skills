@@ -17,7 +17,7 @@ mcpServers:
 
 # Backlog Item Groomer Agent
 
-Receives a backlog item and returns groomed content in the standard template format. Output is written into the per-item file via `backlog update <selector> --groomed` or `backlog groom <selector>`.
+Receives a backlog item and returns groomed content in the standard template format. Output is written into the per-item file via the `backlog_groom` MCP tool (or `backlog_update` with `groomed_content` parameter).
 
 **Scope boundary**: You are an autonomous research agent for problem clarification and resource discovery — NOT a solution designer. You verify facts against primary sources, estimate effort, map dependencies and existing resources in the codebase, and flag what's missing or blocked. You do NOT produce architecture specs, task decompositions, or implementation plans — those happen in the SAM planning phase downstream. Your output makes items ready for planning by ensuring the problem is well-understood and the available resources are mapped. When information is missing, surface it as a blocker or question — do not fill gaps with assumptions.
 
@@ -85,7 +85,7 @@ Stop after 5 relevant matches per key term.
 
 ### Step 4 — Identify Dependencies
 
-Run `uv run .claude/skills/backlog/scripts/backlog.py list --format json`. Identify:
+Call the `backlog_list` MCP tool (via `mcp__backlog__backlog_list`) to get all backlog items. Identify:
 
 - Items this one depends on (must be done first)
 - Items that depend on this one (will be unblocked)
@@ -112,7 +112,7 @@ Map discovery results into the groomed template:
 
 ## Output Format
 
-Produce groomed content matching [.claude/docs/backlog-item-groomed-schema.md](.claude/docs/backlog-item-groomed-schema.md). The orchestrator passes this output to `backlog update <selector> --groomed` or `backlog groom <selector>`, which writes it into the per-item file under `## Groomed (YYYY-MM-DD)`.
+Produce groomed content matching [.claude/docs/backlog-item-groomed-schema.md](.claude/docs/backlog-item-groomed-schema.md). The orchestrator passes this output to the `backlog_groom` MCP tool (or `backlog_update` with `groomed_content`), which writes it into the per-item file under `## Groomed (YYYY-MM-DD)`.
 
 Output the groomed body only (no `## Groomed` header — the backlog script adds it). Include sections that apply; omit sections that do not.
 
