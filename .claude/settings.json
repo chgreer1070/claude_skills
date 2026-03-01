@@ -15,38 +15,13 @@
     "deny": []
   },
   "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "startup|resume",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-rtica.cjs\""
-          },
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start-backlog.cjs\""
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop-backlog-reminder.cjs\""
-          }
-        ]
-      }
-    ],
     "Setup": [
       {
         "matcher": "init|maintenance",
         "hooks": [
           {
             "type": "command",
-            "command": "uv run prek install"
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/run-commands-try-all.cjs \"uv self update\" \"uv run prek install -t pre-commit -t commit-msg -t pre-rebase -t post-merge\""
           }
         ]
       }
@@ -54,7 +29,6 @@
   },
   "enabledPlugins": {
     "hallucination-detector@jamie-bitflight-skills": true,
-    "superpowers-lab@superpowers-marketplace": true,
-    "hookify@claude-plugins-official": true
+    "superpowers-lab@superpowers-marketplace": true
   }
 }
