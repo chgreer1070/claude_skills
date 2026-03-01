@@ -737,6 +737,10 @@ class TestUpdateItemTitleAndDescription:
         update_item(selector="No Issue Item", title="Still No Issue Item")
 
         mock_try_gh.assert_not_called()
+        item_files = list(fake_dir.glob("*.md"))
+        assert item_files, "No item file found"
+        text = item_files[0].read_text(encoding="utf-8")
+        assert "Still No Issue Item" in text
 
     def test_update_item_description_updates_local_file(self, mocker: MockerFixture) -> None:
         """update_item with description= updates the description field in the local file.

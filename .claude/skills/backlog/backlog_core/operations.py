@@ -1171,6 +1171,16 @@ def update_item(
     if not item:
         raise ItemNotFoundError(selector)
 
+    result: dict[str, str | int | bool | list[str]] = {"title": item.title}
+
+    if title:
+        _rename_item_title(item, title, repo, output=out)
+        result["renamed_to"] = title
+
+    if description is not None:
+        _update_item_description(item, description, output=out)
+        result["description_updated"] = True
+
     has_groomed = groomed or groomed_file or groomed_content or (section and content)
     if has_groomed:
         if not item.file_path:
@@ -1179,9 +1189,7 @@ def update_item(
         if not groomed_content_val.strip():
             raise ValidationError("No groomed content provided")
         _handle_update_groomed(item, groomed_content_val, section_name, repo, output=out)
-        return {"title": item.title, "groomed_updated": True, **out.to_dict()}
-
-    result: dict[str, str | int | bool | list[str]] = {"title": item.title}
+        return {**result, "groomed_updated": True, **out.to_dict()}
 
     if plan:
         _apply_plan_to_item(item, plan, repo, output=out)
@@ -1197,14 +1205,6 @@ def update_item(
     if status == "in-progress" and item.issue:
         apply_status_in_progress(item, repo, output=out)
         result["status"] = "in-progress"
-
-    if title:
-        _rename_item_title(item, title, repo, output=out)
-        result["renamed_to"] = title
-
-    if description is not None:
-        _update_item_description(item, description, output=out)
-        result["description_updated"] = True
 
     return {**result, **out.to_dict()}
 
