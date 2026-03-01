@@ -67,6 +67,7 @@ Each task in the plan file follows the format documented in [.claude/docs/TASK_F
 - `**Priority**`: 1-5 (1=critical)
 - `**Complexity**`: Low | Medium | High
 - `**Agent**`: Agent name to execute the task
+- `**Skills**`: List of skill names for the sub-agent to load (e.g., `["fastmcp-python-tests", "python3-development"]`)
 - `**Started**`: ISO timestamp (added by agent)
 - `**Completed**`: ISO timestamp (added by hook)
 - `**LastActivity**`: ISO timestamp (updated by hook)
@@ -116,6 +117,9 @@ hooks:
 
 3. For each ready task:
    Route to the agent named in the task's **Agent** field.
+   If the task's `skills` list (from ready-tasks JSON) is non-empty,
+   include skill-loading instructions in the delegation prompt:
+     For each skill, instruct the sub-agent to call Skill(skill="{skill-name}").
    Launch the agent with:
      Skill(skill="start-task", args="{task_file_path} --task {task_id}")
 
@@ -157,6 +161,7 @@ hooks:
 
 1. Read the task file and linked architecture spec.
 2. Select the target task (by `--task {id}` or first ready task).
+2a. Load skills from task metadata: read the `skills:` field from YAML frontmatter (or `**Skills**:` from legacy format). For each skill name, invoke `Skill(skill="{name}")`. If a skill fails to load, warn and continue with remaining skills. This is intentional redundancy with the orchestrator's skill-loading instructions, ensuring skills load even when the task is started manually or by an older orchestrator.
 3. Update task status to `IN PROGRESS` (or `in-progress` for YAML format).
 4. Add `**Started**: {ISO timestamp}`.
 5. Write active-task context file:
@@ -303,12 +308,17 @@ User
 /implement-feature
   │
   ├─ implementation_manager.py status    ──> JSON status
-  ├─ implementation_manager.py ready-tasks ──> JSON ready list
+  ├─ implementation_manager.py ready-tasks ──> JSON ready list (includes skills per task)
   │
   │  ┌── For each ready task ──────────────────────────────┐
   │  │                                                      │
+  │  │  Orchestrator reads task skills from ready-tasks JSON │
+  │  │  If skills non-empty: adds Skill() instructions to   │
+  │  │    delegation prompt ──> sub-agent loads skills       │
+  │  │                                                      │
   │  │  /start-task                                         │
   │  │    ├─ Set status: IN PROGRESS                        │
+  │  │    ├─ Load skills from task metadata (step 2a)       │
   │  │    ├─ Add Started timestamp                          │
   │  │    ├─ Write .claude/context/active-task-{sid}.json   │
   │  │    ├─ Implement acceptance criteria                  │

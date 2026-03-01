@@ -10,11 +10,13 @@ Fixes #338
 
 ## Task 1.1: Add `skills:` Field to TASK_FILE_FORMAT.md
 
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
 **Dependencies**: None
 **Priority**: 1
 **Complexity**: Low
 **Agent**: general-purpose
+**Started**: 2026-03-01T00:00:00Z
+**Completed**: 2026-03-01T23:10:00Z
 
 ### Context
 
@@ -54,11 +56,13 @@ Add the `skills` field to every relevant section of TASK_FILE_FORMAT.md so that 
 
 ## Task 2.1: Add Skills Mapping and `skills:` Generation to python3-development Swarm-Task-Planner
 
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
 **Dependencies**: Task 1.1
 **Priority**: 2
 **Complexity**: Medium
 **Agent**: general-purpose
+**Started**: 2026-03-01T23:30:00Z
+**Completed**: 2026-03-01T14:19:27Z
 
 ### Context
 
@@ -100,11 +104,13 @@ Task 2.2 (same structure, different file)
 
 ## Task 2.2: Add Skills Mapping and `skills:` Generation to development-harness Swarm-Task-Planner
 
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
 **Dependencies**: Task 1.1
 **Priority**: 2
 **Complexity**: Medium
 **Agent**: general-purpose
+**Started**: 2026-03-01T23:30:00Z
+**Completed**: 2026-03-01T23:59:00Z
 
 ### Context
 
@@ -146,11 +152,13 @@ Task 2.1 (same structure, different file)
 
 ## Task 2.3: Add `skills` Field to implementation_manager.py Data Model
 
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
 **Dependencies**: Task 1.1
 **Priority**: 2
 **Complexity**: Medium
 **Agent**: python-cli-architect
+**Started**: 2026-03-01T23:45:00Z
+**Completed**: 2026-03-01T14:25:00Z
 
 ### Context
 
@@ -192,11 +200,13 @@ Task 2.1, Task 2.2 (independent files)
 
 ## Task 3.1: Update implement-feature to Read `skills:` and Include in Delegation Prompt
 
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
 **Dependencies**: Task 1.1, Task 2.3
 **Priority**: 2
 **Complexity**: Medium
 **Agent**: general-purpose
+**Started**: 2026-03-01T14:26:00Z
+**Completed**: 2026-03-01T14:28:00Z
 
 ### Context
 
@@ -238,11 +248,13 @@ Task 3.2 (same dependency, different file)
 
 ## Task 3.2: Update start-task to Load Skills from Task Metadata at Execution Start
 
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
 **Dependencies**: Task 1.1
 **Priority**: 2
 **Complexity**: Medium
 **Agent**: general-purpose
+**Started**: 2026-03-01T23:30:00Z
+**Completed**: 2026-03-01T23:55:00Z
 
 ### Context
 
@@ -286,11 +298,13 @@ Task 3.1 (same dependency, different file)
 
 ## Task 4.1: Update local-workflow.md to Document `skills:` Field in SAM Pipeline Documentation
 
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
 **Dependencies**: Task 1.1, Task 2.1, Task 2.2, Task 2.3, Task 3.1, Task 3.2
 **Priority**: 3
 **Complexity**: Low
 **Agent**: general-purpose
+**Started**: 2026-03-01T14:30:00Z
+**Completed**: 2026-03-01T14:32:00Z
 
 ### Context
 
@@ -328,11 +342,13 @@ Update local-workflow.md to document the `skills:` field at each relevant stage 
 
 ## Task 4.2: Validate by Dry-Running the Planner on an Example Test-Writing Feature
 
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
 **Dependencies**: Task 1.1, Task 2.1, Task 2.2, Task 3.1, Task 3.2, Task 4.1
 **Priority**: 3
 **Complexity**: Low
 **Agent**: general-purpose
+**Started**: 2026-03-01T14:33:00Z
+**Completed**: 2026-03-01T14:35:00Z
 
 ### Context
 

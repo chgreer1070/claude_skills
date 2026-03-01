@@ -100,6 +100,7 @@ class Task:
         complexity: Task complexity (Low/Medium/High)
         started: ISO timestamp when task started
         completed: ISO timestamp when task completed
+        skills: Skills the sub-agent should load before executing this task
     """
 
     id: str
@@ -111,6 +112,7 @@ class Task:
     complexity: str = "Medium"
     started: str | None = None
     completed: str | None = None
+    skills: list[str] = field(default_factory=list)
 
     def to_dict(self) -> TaskDict:
         """Convert task to dictionary for JSON serialization.
@@ -128,6 +130,7 @@ class Task:
             complexity=self.complexity,
             started=self.started,
             completed=self.completed,
+            skills=self.skills,
         )
 
 
@@ -170,6 +173,7 @@ class TaskData(TypedDict):
     complexity: str
     started: str | None
     completed: str | None
+    skills: list[str]
 
 
 class TaskDict(TypedDict):
@@ -188,6 +192,7 @@ class TaskDict(TypedDict):
     complexity: str
     started: str | None
     completed: str | None
+    skills: list[str]
 
 
 # =============================================================================
@@ -349,6 +354,25 @@ def _parse_yaml_dependencies(raw_deps: list[str] | str | None) -> list[str]:
     return []
 
 
+def _parse_yaml_skills(raw_skills: list[str] | str | None) -> list[str]:
+    """Parse skills from YAML frontmatter value.
+
+    Handles list format (``[skill1, skill2]``) and comma-separated string format
+    (``"skill1, skill2"``). Missing or ``None`` values return an empty list.
+
+    Args:
+        raw_skills: Skills value from YAML frontmatter (may be list, str, or None).
+
+    Returns:
+        List of skill name strings, or empty list when field is absent.
+    """
+    if isinstance(raw_skills, list):
+        return [str(s) for s in raw_skills if s]
+    if isinstance(raw_skills, str) and raw_skills:
+        return [s.strip() for s in raw_skills.split(",") if s.strip()]
+    return []
+
+
 def parse_task_from_frontmatter(content: str) -> Task:
     """Parse a single task from YAML frontmatter content.
 
@@ -365,6 +389,7 @@ def parse_task_from_frontmatter(content: str) -> Task:
     - complexity -> complexity
     - started -> started
     - completed -> completed
+    - skills -> skills (optional; defaults to [])
 
     Args:
         content: File content with YAML frontmatter delimiters.
@@ -395,12 +420,11 @@ def parse_task_from_frontmatter(content: str) -> Task:
 
     raw_priority = frontmatter.get("priority")
     priority = TaskPriority(int(raw_priority)) if raw_priority is not None else TaskPriority.MEDIUM
-
-    raw_complexity = frontmatter.get("complexity", "medium")
-    complexity = str(raw_complexity).capitalize()
+    complexity = str(frontmatter.get("complexity", "medium")).capitalize()
 
     started = _coerce_timestamp(frontmatter.get("started"))
     completed = _coerce_timestamp(frontmatter.get("completed"))
+    skills = _parse_yaml_skills(frontmatter.get("skills"))
 
     return Task(
         id=task_id,
@@ -412,6 +436,7 @@ def parse_task_from_frontmatter(content: str) -> Task:
         complexity=complexity,
         started=started,
         completed=completed,
+        skills=skills,
     )
 
 
@@ -543,6 +568,22 @@ class CompletedParser(FieldParser):
         task_data["completed"] = match.group(1).strip()
 
 
+class SkillsParser(FieldParser):
+    """Parse **Skills** field (legacy markdown format)."""
+
+    pattern = re.compile(r"^\*\*Skills\*\*:\s*(.+)$")
+
+    def parse(self, match: re.Match[str], task_data: dict[str, object]) -> None:
+        """Parse skills field as comma-separated list and update task data.
+
+        Args:
+            match: Regex match object containing the captured skills value.
+            task_data: Mutable dictionary to update with skills list.
+        """
+        raw = match.group(1).strip()
+        task_data["skills"] = [s.strip() for s in raw.split(",") if s.strip()]
+
+
 # Registry of field parsers (OCP: add new parsers here without modifying core logic)
 FIELD_PARSERS: list[FieldParser] = [
     StatusParser(),
@@ -552,6 +593,7 @@ FIELD_PARSERS: list[FieldParser] = [
     ComplexityParser(),
     StartedParser(),
     CompletedParser(),
+    SkillsParser(),
 ]
 
 
@@ -580,6 +622,7 @@ def _create_empty_task_data(task_id: str, task_name: str) -> TaskData:
         complexity="Medium",
         started=None,
         completed=None,
+        skills=[],
     )
 
 
@@ -746,6 +789,7 @@ def _create_task_from_dict(task_data: TaskData) -> Task:
         complexity=task_data["complexity"],
         started=task_data["started"],
         completed=task_data["completed"],
+        skills=task_data["skills"],
     )
 
 
@@ -1028,7 +1072,7 @@ def ready_tasks(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
 
     output = {
         "feature": feature_slug,
-        "ready_tasks": [{"id": t.id, "name": t.name, "agent": t.agent} for t in ready],
+        "ready_tasks": [{"id": t.id, "name": t.name, "agent": t.agent, "skills": t.skills} for t in ready],
         "count": len(ready),
     }
 

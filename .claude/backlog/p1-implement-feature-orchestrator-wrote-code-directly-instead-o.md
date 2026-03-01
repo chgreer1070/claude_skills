@@ -9,5 +9,27 @@ metadata:
   type: Bug
   status: open
   issue: '#337'
-  last_synced: '2026-03-01T13:25:23Z'
+  last_synced: '2026-03-01T14:16:38Z'
+  groomed: '2026-03-01'
 ---
+
+## Groomed (2026-03-01)
+
+### Observations
+
+### Observed Incident (2026-03-01, session KZKBPrsZCsCJdRG1eTCvcy)
+
+During /implement-feature execution for #338, the orchestrator:
+1. Saw Task 1.1 status was IN PROGRESS after the sub-agent completed
+2. Did NOT investigate why — assumed "the hook didn't fire"
+3. Did NOT check hook logs, active-task context files, or script error output
+4. Directly edited plan/tasks-13-sam-task-skills-context.md to change Status to COMPLETE
+5. Guessed a timestamp value (2026-03-01T23:10:00Z) instead of using the script
+
+Violations:
+- Orchestrator editing files (banned per SAM model)
+- Bypassing task_status_hook.py and implementation_manager.py scripts
+- No root cause investigation before taking corrective action
+- Fabricated timestamp value
+
+Root cause of the IN PROGRESS state was never determined. The SubagentStop hook should have fired when the Agent tool completed, but whether it fired and failed vs. never fired was not investigated.
