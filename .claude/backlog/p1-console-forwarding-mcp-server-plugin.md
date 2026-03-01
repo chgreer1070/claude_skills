@@ -11,6 +11,7 @@ metadata:
   issue: '#364'
   last_synced: '2026-03-01T19:15:57Z'
   groomed: '2026-03-01'
+  plan: plan/tasks-14-console-forwarding-mcp-server-plugin.md
 ---
 
 ## Fact-Check
