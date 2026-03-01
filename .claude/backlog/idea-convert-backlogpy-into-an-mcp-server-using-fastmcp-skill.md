@@ -7,6 +7,6 @@ metadata:
   added: '2026-03-01'
   priority: Idea
   type: Feature
-  status: open
+  status: resolved
   issue: '#331'
 ---

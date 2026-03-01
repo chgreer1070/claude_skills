@@ -362,7 +362,9 @@ def _build_normalized_content(filepath: Path, output: Output | None = None) -> s
         return None
     try:
         post = loads_frontmatter(text)
-        fm: dict[str, str] = {k: str(v) for k, v in post.metadata.items()} if post.metadata else {}
+        fm: dict[str, object] = (
+            {k: (v if isinstance(v, dict) else str(v)) for k, v in post.metadata.items()} if post.metadata else {}
+        )
         body: str = post.content or ""
     except (ValueError, KeyError, TypeError):
         return None

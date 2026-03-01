@@ -183,7 +183,7 @@ def parse_issue_selector(selector: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def _fm_str(fm: dict[str, str], meta: dict[str, str], key: str, fm_key: str = "") -> str:
+def _fm_str(fm: dict[str, object], meta: dict[str, str], key: str, fm_key: str = "") -> str:
     """Resolve a string field from metadata dict with frontmatter fallback.
 
     Returns:
@@ -192,7 +192,7 @@ def _fm_str(fm: dict[str, str], meta: dict[str, str], key: str, fm_key: str = ""
     return str(meta.get(key) or fm.get(fm_key or key) or "")
 
 
-def _parse_frontmatter(text: str) -> tuple[dict[str, str], dict[str, str], str]:
+def _parse_frontmatter(text: str) -> tuple[dict[str, object], dict[str, str], str]:
     """Parse frontmatter and metadata from item text.
 
     Returns:
@@ -200,7 +200,9 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, str], dict[str, str], str]:
     """
     try:
         post = loads_frontmatter(text)
-        fm: dict[str, str] = {k: str(v) for k, v in post.metadata.items()} if post.metadata else {}
+        fm: dict[str, object] = (
+            {k: (v if isinstance(v, dict) else str(v)) for k, v in post.metadata.items()} if post.metadata else {}
+        )
         body: str = post.content or ""
     except (ValueError, KeyError, TypeError):
         parts = text.split("---", 2)
@@ -834,7 +836,7 @@ def view_result_from_local_item(item: BacklogItem) -> ViewItemResult:
 # ---------------------------------------------------------------------------
 
 
-def extract_normalize_metadata(fm: dict[str, str], meta: dict[str, str]) -> dict[str, str]:
+def extract_normalize_metadata(fm: dict[str, object], meta: dict[str, str]) -> dict[str, str]:
     """Extract normalized metadata from frontmatter and metadata dicts.
 
     Returns:
