@@ -147,6 +147,7 @@ Report:
 | `completed` | datetime | ISO 8601 timestamp when completed | `"2026-02-02T15:30:00Z"` |
 | `blocked-by` | array | External blockers (not task IDs) | `["API access", "Design approval"]` |
 | `parallelize-with` | array | Tasks that can run concurrently | `["T2", "T3"]` |
+| `skills` | array | Skills for the sub-agent to load | `["fastmcp-python-tests", "python3-development"]` |
 
 #### Status Values
 
@@ -340,6 +341,14 @@ uv run pytest tests/test_data_models.py -v
       },
       "default": [],
       "description": "Tasks that can run concurrently with this one"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Skills the sub-agent should load before executing this task"
     }
   }
 }
@@ -466,6 +475,7 @@ After splitting, update task content in individual files.
 **Dependencies**: None
 **Priority**: 1 (Foundational)
 **Complexity**: Medium
+**Skills**: fastmcp-python-tests, python3-development
 
 Implement core data structures...
 ```
@@ -483,6 +493,9 @@ agent: python-cli-architect
 dependencies: []
 priority: 1
 complexity: medium
+skills:
+  - fastmcp-python-tests
+  - python3-development
 ---
 
 ## Context
@@ -501,6 +514,7 @@ Implement core data structures...
 | `**Agent**: python-cli-architect` | `agent: python-cli-architect` | No change |
 | `**Started**: <timestamp>` | `started: <timestamp>` | No change |
 | `**Completed**: <timestamp>` | `completed: <timestamp>` | No change |
+| `**Skills**: skill1, skill2` | `skills: [skill1, skill2]` | Comma-separated to array |
 
 ### Status Value Mapping
 
@@ -628,6 +642,7 @@ started: ""  # OPTIONAL: ISO 8601 timestamp
 completed: ""  # OPTIONAL: ISO 8601 timestamp
 blocked-by: []  # OPTIONAL: External blockers
 parallelize-with: []  # OPTIONAL: Tasks that can run concurrently
+skills: []  # OPTIONAL: Skills for sub-agent to load
 ---
 
 ## Context

@@ -68,6 +68,16 @@ For monolithic files (multiple tasks), find the specific task section.
 2. Select the task:
    - If `--task` provided, use that ID
    - Else pick the first task where status is `not-started` (YAML) or `NOT STARTED` (markdown) and all dependencies are resolved
+
+2a. **Load task-level skills** (if present):
+   - Read the `skills:` field from the task's YAML frontmatter (an array of skill names).
+   - For legacy markdown format, parse the `**Skills**: skill1, skill2` line into a list by splitting on commas and trimming whitespace.
+   - If the field is absent or empty, skip this step (backward compatible with older task files).
+   - For each skill name in the list, invoke: `Skill(skill="{skill-name}")`
+   - If a skill fails to load (not found or errors), log a warning and continue with the remaining skills. Do not abort task execution due to a skill load failure.
+   - **Redundancy note**: The orchestrator (`/implement-feature`) may also include skill-loading instructions in the delegation prompt. This direct reading from task metadata is intentional redundancy -- it ensures skills are loaded even when `/start-task` is invoked manually or by an older orchestrator that does not pass skill-loading instructions. Loading a skill twice is a no-op.
+   - Task-level skills are **additive** to any skills already declared in the agent definition's frontmatter. They supplement, not replace, agent-level skills.
+
 3. Update the task status:
 
    **If YAML frontmatter format:**

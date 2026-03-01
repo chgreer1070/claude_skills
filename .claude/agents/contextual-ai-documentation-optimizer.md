@@ -1,0 +1,1 @@
+../../plugins/plugin-creator/agents/contextual-ai-documentation-optimizer.md

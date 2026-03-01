@@ -256,6 +256,7 @@ dependencies: []
 priority: [1-5 based on dependency depth]
 complexity: [low/medium/high based on scope, not time]
 accuracy-risk: [low/medium/high]
+skills: []
 parallelize-with: []
 reason: [Why parallelization is safe; avoid file conflicts]
 handoff: [What the worker must report back - summary, evidence, blockers]
@@ -324,6 +325,26 @@ Map task types to roles. Roles are resolved to concrete agents via the language 
 **NOTE**: Roles are resolved to concrete agents via the language manifest at execution time. For example, in a Python project `architect` may resolve to `python-cli-architect`, while in a TypeScript project it may resolve to `typescript-architect`. The planner assigns ROLES, not concrete agent names.
 
 If architecture spec specifies a concrete agent, use that. Otherwise assign the role from the table above, and note that the orchestrator resolves roles to agents using the active language manifest.
+
+## Skills Mapping Table
+
+Map task content to skills that the executing agent should load. Apply when task title, requirements, or expected outputs match the pattern. Multiple rows can match.
+
+| Pattern (in title, requirements, or outputs) | Skills |
+|-----------------------------------------------|--------|
+| pytest, test, tests, test coverage, integration tests, unit tests | `fastmcp-python-tests`, `python3-development` |
+| skill creation, SKILL.md, skill structure | `plugin-creator:skill-creator` |
+| documentation, docs, README, CONTRIBUTING | `development-harness:clear-cove-task-design` |
+| agent creation, agent prompt, agent definition | `plugin-creator:skill-creator` |
+| linting, type checking, ty, ruff | `python3-development` |
+| CLI, command-line, typer, click | `python3-development` |
+
+**Rules:**
+
+1. If the architecture spec explicitly lists skills for a task, use those (override auto-detection).
+2. If multiple patterns match, union all skills (deduplicated).
+3. If no pattern matches, set `skills: []` (empty list, not omitted).
+4. The table is extensible. Add new rows when new skill-task associations are identified.
 
 ## Parallelization and Conflict Avoidance
 
@@ -482,6 +503,12 @@ Add these validations:
 - For each Expected Output file path, count how many tasks list it
 - If count > 1 and tasks are not dependency-chained: MERGE required
 - If count > 1 and tasks are dependency-chained: WARNING (consider merging to reduce overhead)
+
+10. Skills field check (NEW)
+
+- Every task has `skills` in YAML frontmatter (may be empty list `[]`)
+- Skills values are valid skill activation names (string, optionally colon-separated `plugin:skill`)
+- If architecture spec prescribes skills for a task type, verify they are present
 
 ## Success Metrics
 
