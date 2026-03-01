@@ -219,6 +219,8 @@ uv run .claude/skills/backlog/scripts/backlog.py add|list|sync|close|resolve|upd
 
 Skills `create-backlog-item` and `work-backlog-item` invoke this script. See `.claude/skills/backlog/SKILL.md`.
 
+**Capability gap fallback**: If the script lacks the needed operation (missing subcommand, flag, or behavior), invoke `/backlog-tools-administrator` to close the gap. Do not bypass the script with direct `Write`/`Edit` on `.claude/backlog/*.md` files or direct `gh issue edit` commands.
+
 </backlog_operations>
 
 ---

@@ -3,6 +3,8 @@
 This diagram represents the complete user-facing workflow for the backlog and milestone management system in this repository. It covers all entry points (hook-triggered, direct invocation, interactive browser) and all argument modes for `/work-backlog-item`, the new path when no backlog item is found (offering to create one via `/create-backlog-item`), every decision branch across all six skills, the full milestone lifecycle (`/create-milestone` → `/group-items-to-milestone` → `/start-milestone` → `/complete-milestone`), all external system interactions (GitHub Issues, Projects V2, Milestones, SAM planning, grooming), and all terminal states (success, blocked, failure, stop conditions).
 
 > **NOTE (2026-02-27)**: BACKLOG.md was removed. Backlog items now live in `.claude/backlog/` per-item files; GitHub Issues are the source of truth.
+>
+> **NOTE (2026-03-01)**: Added `/backlog-tools-administrator` skill and workflow, `/groom-backlog-item` workflow, and Data Architecture section. Updated legend. Some references to BACKLOG.md in the main diagram are stale and will be updated in a future pass.
 
 ```mermaid
 flowchart TD
@@ -308,6 +310,87 @@ flowchart TD
     end
 ```
 
+## Backlog Tooling Administration
+
+When the backlog process hits a capability gap (a needed operation that `backlog.py` or the skills don't support), the `/backlog-tools-administrator` skill closes the gap instead of bypassing the script.
+
+```mermaid
+flowchart TD
+    Trigger(["Agent needs backlog operation<br>not supported by backlog.py"]) --> Classify{"Gap type?"}
+    Classify -->|"Script — missing<br>subcommand or flag"| Script["Delegate to<br>@python-cli-architect<br>Modify backlog.py<br>Run tests + linting"]
+    Classify -->|"Process — rule or<br>workflow is incomplete"| Process["Load /improve-processes<br>Apply triage protocol<br>Edit CLAUDE.md or SKILL.md"]
+    Classify -->|"Documentation —<br>skill/agent instructions<br>need update"| Docs["Delegate to<br>@contextual-ai-documentation-optimizer<br>Update skill or agent file"]
+    Classify -->|"Multiple categories"| Multi["Execute in order:<br>1. Script 2. Process 3. Docs"]
+    Script --> Validate["Validate fix:<br>tests pass, lint clean,<br>gap scenario handled"]
+    Process --> Validate
+    Docs --> Validate
+    Multi --> Validate
+    Validate --> Registry["Update domain registry<br>if new files created"]
+    Registry --> Done(["Report: GAP, TYPE,<br>FILES CHANGED, VALIDATION"])
+```
+
+**Domain**: 31 files across scripts, skills, agents, hooks, templates, references, tests, and rules. Full inventory in `.claude/skills/backlog-tools-administrator/references/domain-registry.md`.
+
+## Grooming Workflow (groom-backlog-item)
+
+The `/groom-backlog-item` skill refines backlog items before planning. It fact-checks claims, runs RT-ICA, and delegates to `@backlog-item-groomer` agents.
+
+```mermaid
+flowchart TD
+    Entry(["groom-backlog-item invoked<br>Args: title | section | all"]) --> Parse["Parse arguments<br>Load items via backlog list --format json"]
+    Parse --> Filter{"Argument type?"}
+    Filter -->|"Title substring"| Single["Match single item"]
+    Filter -->|"Section (P0/P1/P2/Ideas)"| Section["All items in section"]
+    Filter -->|"all"| All["All items across sections"]
+    Single --> Validity
+    Section --> Validity
+    All --> Validity
+
+    Validity["Step 2: Validity Check"]
+    Validity --> V1{"Job still valid?"}
+    V1 -->|"No"| Skip(["Skip — report invalid"])
+    V1 -->|"Yes"| V2{"Already implemented?<br>(git log, gh pr list,<br>codebase check)"}
+    V2 -->|"Yes — evidence found"| Close["Close item + issue<br>with evidence"]
+    Close --> Skip
+    V2 -->|"No"| V3{"Local file stale?<br>(issue closed but<br>file still open)"}
+    V3 -->|"Yes"| CloseStale["Close local file<br>with commit/PR evidence"]
+    CloseStale --> Skip
+    V3 -->|"No"| V4{"Already groomed today?"}
+    V4 -->|"Yes"| SkipToApply["Skip to Step 7<br>Apply specific changes only"]
+    V4 -->|"No"| FactCheck
+
+    FactCheck["Step 4: Fact-Check Claims<br>Spawn @fact-checker agents<br>WebFetch/WebSearch/gh only<br>No training data recall"]
+    FactCheck --> RTICA["Step 5: RT-ICA Assessment<br>Integrate fact-check verdicts<br>REFUTED → MISSING<br>INCONCLUSIVE → DERIVABLE"]
+    RTICA --> Groomer["Step 6: Spawn @backlog-item-groomer<br>subagent_type=backlog-item-groomer<br>Pass: file paths, RT-ICA, fact-check<br>Max 5 concurrent per wave"]
+    Groomer --> Write["Step 7: Write groomed content<br>backlog groom title --section X --content Y<br>Incremental updates per section<br>Syncs to GitHub Issue"]
+    Write --> Done(["Groomed — item ready for planning"])
+    SkipToApply --> Done
+```
+
+**Groomed sections**: Fact-Check, RT-ICA, Reproducibility, Priority, Impact, Scope, Output/Evidence, Dependencies, Research, Skills, Agents, Prior Work, Files, Decision.
+
+## Data Architecture
+
+```text
+GitHub Issues (SOURCE OF TRUTH)
+  |
+  |-- synced via backlog.py (add, sync, update, groom, close, resolve)
+  |
+  v
+.claude/backlog/*.md (LOCAL CACHE — per-item files)
+  |-- frontmatter: name, description, metadata (priority, source, added, status, issue, groomed)
+  |-- body: groomed sections (Fact-Check, RT-ICA, subsections)
+  |
+  |-- created by: /create-backlog-item -> backlog add
+  |-- groomed by: /groom-backlog-item -> backlog groom
+  |-- planned by: /work-backlog-item -> backlog update --plan
+  |-- closed by: /work-backlog-item close -> backlog close
+  |-- resolved by: /work-backlog-item resolve -> backlog resolve
+  |
+  '-- NEVER edited directly with Write/Edit tools
+      (invoke /backlog-tools-administrator when script lacks capability)
+```
+
 ## Legend
 
 | Symbol | Meaning |
@@ -320,9 +403,10 @@ flowchart TD
 | `STOP —` prefix on terminal nodes | Indicates skill halts execution at that node |
 | Arrow label | Condition or event that selects that edge |
 | SessionStart / Stop hooks | JavaScript `.cjs` files in `.claude/hooks/`; inject `additionalContext` into the session at boundaries |
-| SAM planning | `python3-development:add-new-feature` skill; runs the full Stateless Agent Methodology pipeline (discovery, analysis, architecture, task decomposition, validation) |
+| SAM planning | `add-new-feature` skill; runs the full Stateless Agent Methodology pipeline (discovery, analysis, architecture, task decomposition, validation) |
 | RT-ICA | Reverse-prerequisite, Inputs, Conditions, Availability gate; structured readiness check performed before invoking SAM planning; outputs APPROVED (with DERIVABLE assumptions) or BLOCKED (with missing input list) |
-| groom-backlog-item | Separate skill invoked inline in Step 3; produces a context manifest (Related Research, Skills, Agents, Prior Work, Dependencies, Blockers, Suggested First Steps) that feeds Steps 4 and 5 |
+| groom-backlog-item | Separate skill invoked inline in Step 3 of work-backlog-item; produces a context manifest (Related Research, Skills, Agents, Prior Work, Dependencies, Blockers, Suggested First Steps) that feeds Steps 4 and 5 |
+| backlog-tools-administrator | Meta-skill invoked when backlog tooling has a capability gap; classifies gap and delegates to appropriate specialist agent |
 | gh commands | All `gh` commands require `-R Jamie-BitFlight/claude_skills`; git remote points to a local proxy (`127.0.0.1`), not `github.com`, so auto-detection fails |
 | Project V2 | GitHub Projects V2; status transitions managed via GraphQL (Backlog on group, In Progress on start, Done on complete); see `gh/references/projects-v2.md` |
-| BACKLOG.md | Local markdown file at `.claude/BACKLOG.md`; source of truth for all items; YAML frontmatter tracks counts and dates |
+| Per-item files | Markdown files in `.claude/backlog/` with YAML frontmatter; local cache of GitHub Issues; all CRUD via `backlog.py` |
