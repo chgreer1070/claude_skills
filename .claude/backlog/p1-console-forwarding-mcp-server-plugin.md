@@ -9,5 +9,112 @@ metadata:
   type: Feature
   status: open
   issue: '#364'
-  last_synced: '2026-03-01T18:14:33Z'
+  last_synced: '2026-03-01T19:15:57Z'
+  groomed: '2026-03-01'
+  plan: plan/tasks-14-console-forwarding-mcp-server-plugin.md
 ---
+
+## Fact-Check
+
+**Date**: 2026-03-01
+**Claims checked**: 5
+**VERIFIED**: 3 | **PARTIALLY VERIFIED**: 2 | **REFUTED**: 0
+
+1. **dtach: minimal detach/reattach via Unix sockets** — VERIFIED
+   Sources: GitHub crigler/dtach, Linux Command Library man page, Void Linux docs (accessed 2026-03-01)
+
+2. **FastMCP: creates MCP server plugins for Claude Code** — VERIFIED
+   Sources: gofastmcp.com, gofastmcp.com/integrations/claude-code, PrefectHQ/fastmcp GitHub (accessed 2026-03-01)
+
+3. **asyncssh: asyncio-native SSH with reverse tunnels, SFTP, jump-host chaining** — VERIFIED
+   Sources: asyncssh.readthedocs.io, ronf/asyncssh GitHub, PyPI (accessed 2026-03-01)
+   Note: "pure-Python keys" claim REFUTED — current versions (2.0+) depend on PyCA/cryptography (C-based). Earlier versions had pure-Python crypto but were replaced for performance. Core capabilities (async, reverse tunnels, SFTP, jump-host) all confirmed.
+
+4. **libtmux: typed Python API with send_keys/capture_pane** — VERIFIED
+   Sources: libtmux.git-pull.com, tmux-python/libtmux source code (accessed 2026-03-01)
+   Note: Server class is NOT a dataclass (traditional class with mixins). Session, Window, Pane ARE @dataclasses.dataclass(). send_keys() on Pane and capture_pane() on Pane both confirmed in source.
+
+5. **gastown: multi-agent workspace manager with tmux** — VERIFIED (from research entry, 10.7K stars, uses tmux session transport)
+
+## RT-ICA
+
+**Goal**: Create a FastMCP plugin that enables Claude Code sessions to communicate with other sessions locally (tmux/dtach) and remotely (SSH), enabling monitoring, output capture, command sending, and coordination.
+
+**Decision**: APPROVED
+
+**Conditions**:
+1. FastMCP framework supports MCP server creation with Claude Code integration | AVAILABLE | Verified via gofastmcp.com/integrations/claude-code
+2. libtmux provides programmatic tmux control (send_keys, capture_pane) | AVAILABLE | Verified: Pane.send_keys(), Pane.capture_pane() in source
+3. asyncssh provides asyncio-native SSH for remote session access | AVAILABLE | Verified: reverse tunnels, SFTP, jump-host chaining confirmed
+4. dtach available as lightweight alternative to tmux for session detach | AVAILABLE | Verified: Unix socket-based, minimal binary
+5. Existing plugin pattern available for reference | AVAILABLE | agentskill-kaizen plugin has FastMCP MCP server (mcp/server.py) with plugin.json mcpServers declaration
+6. Research entries covering terminal multiplexing, SSH, multi-agent patterns | AVAILABLE | 11 research entries in research/ directory
+7. Plugin structure conventions (plugin.json, agents/, skills/, mcp/) | AVAILABLE | Observed in agentskill-kaizen, fastmcp-creator plugins
+8. tmux available in runtime environment | DERIVABLE | Assumed available on Linux — verify at runtime
+9. SSH key configuration for remote access | DERIVABLE | User-provided at runtime, not needed at build time
+
+**Assumptions to confirm**:
+- tmux is installed in target runtime environments
+- Users will provide SSH credentials/keys for remote sessions
+
+## Groomed (2026-03-01)
+
+### Expected Behavior
+
+A FastMCP server runs as a plugin, exposing tools that enable Claude Code sessions to:
+- Monitor and read output from other Claude Code sessions running locally in tmux/dtach or on remote hosts via SSH
+- Send commands and keystrokes to remote or local sessions
+- Query session metadata (status, pane dimensions, active window)
+- Coordinate work across multiple sessions by reading/writing shared state over SSH tunnels
+
+The server communicates via MCP standard tools; Claude Code clients load it via plugin.json mcpServers declaration.
+
+### Desired Structure
+
+plugins/console-forwarding/
+- .claude-plugin/plugin.json (mcpServers declaration)
+- mcp/server.py (FastMCP server with PEP 723 inline script metadata)
+- mcp/backends/tmux_backend.py (libtmux-based local session control)
+- mcp/backends/dtach_backend.py (dtach-based local detach/reattach)
+- mcp/backends/ssh_backend.py (asyncssh-based remote session access)
+- mcp/session_manager.py (abstraction over backends, session registry)
+- skills/console-forwarder/SKILL.md (user-facing skill)
+- tests/ (pytest tests for MCP tools)
+- README.md
+
+### Acceptance Criteria
+
+1. FastMCP server runs via uv run plugins/console-forwarding/mcp/server.py with no external daemon dependencies
+2. plugin.json declares the server; Claude Code can load it and call MCP tools immediately
+3. MCP tools expose: list_sessions, capture_pane, send_keys, get_session_info
+4. source parameter accepts tmux session names and SSH URIs (ssh://user@host/session)
+5. Local tmux/dtach sessions auto-discovered; remote sessions queried over SSH with key-based auth
+6. capture_pane and list_sessions are read-only; send_keys marked destructive hint
+7. No blocking I/O; all operations use asyncio with configurable timeouts
+8. Unit tests cover tmux pane capture, dtach socket communication, SSH key loading, remote command execution
+9. SKILL.md documents session naming conventions, SSH setup, troubleshooting
+
+### Resources
+
+- research/developer-tools/libtmux.md - typed Python API for tmux
+- research/developer-tools/dtach.md - minimal detach/reattach utility
+- research/async-libraries/asyncssh.md - async SSH client/server
+- research/developer-tools/using-tmux-with-claude-code.md - tmux workflow patterns
+- research/research-agent-patterns/gastown.md - multi-agent session coordination
+- research/developer-tools/tabz-browser-console-forwarder.md - console output forwarding pattern
+- plugins/agentskill-kaizen/mcp/server.py - FastMCP server implementation reference
+- plugins/agentskill-kaizen/.claude-plugin/plugin.json - plugin declaration pattern
+
+### Dependencies
+
+- fastmcp>=3.0.0 (MIT, PrefectHQ/fastmcp)
+- libtmux>=0.53.1 (MIT, zero runtime deps, requires tmux>=3.2a)
+- asyncssh>=2.22.0 (EPL-2.0/GPL-2.0, requires PyCA/cryptography)
+
+### Effort
+
+Medium - Three backends (tmux, dtach, SSH) with async I/O, session abstraction, MCP tool definitions, and test coverage. Libraries are mature; primary work in integration layer.
+
+### Priority
+
+9/10 - Enables cross-session monitoring and remote agent orchestration. Unblocks dashboards and multi-agent coordination.
