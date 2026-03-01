@@ -455,11 +455,7 @@ class TestVersionComparisonGuard:
         # Arrange
         monkeypatch.chdir(tmp_path)
 
-        data = {
-            "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-            "metadata": {"version": "2.1.0"},
-            "plugins": [{"name": "p1", "source": "./plugins/p1"}],
-        }
+        data = {"metadata": {"version": "2.1.0"}, "plugins": [{"name": "p1", "source": "./plugins/p1"}]}
         marketplace_json = _make_marketplace_json(tmp_path, data)
 
         head_data = {"metadata": {"version": "2.0.0"}, "plugins": [{"name": "p1", "source": "./plugins/p1"}]}
