@@ -32,6 +32,7 @@ research/
 │   └── tornado.md                     # Python web framework and async networking library (22K+ stars)
 ├── async-libraries/                   # Python async I/O libraries and concurrency frameworks
 │   ├── anyio.md                       # Backend-agnostic async concurrency library (426M downloads/month)
+│   ├── asyncssh.md                    # Asyncio-native SSH client/server — reverse tunnels, SFTP, jump hosts, pure-Python key management (1.7K stars)
 │   └── trio.md                        # Structured concurrency async library for Python (7K+ stars)
 ├── llm-infrastructure/                # LLM inference and serving infrastructure
 │   ├── localai.md                     # Free open-source local AI inference server, OpenAI-compatible API, no GPU required (43K+ stars)
@@ -57,6 +58,7 @@ research/
 ├── coding-agents/                     # Autonomous AI coding agent platforms
 │   ├── accomplish.md                  # Local-first AI desktop agent with MCP tools, 15 providers, permission-gated execution (9K+ stars)
 │   ├── cline.md                       # Open-source autonomous coding agent with human-in-the-loop approvals (Apache-2.0)
+│   ├── openai-codex-cli.md            # OpenAI Codex CLI — Rust-based coding agent with OS sandbox, MCP server/client, Starlark exec policy (62.5K stars)
 │   ├── openhands.md                   # Open platform for cloud coding agents (67K+ stars)
 │   ├── pilot.md                       # Autonomous development pipeline wrapping Claude Code CLI (BSL 1.1)
 │   └── tembo.md                       # Cloud AI coding agent orchestration (Claude Code, Codex, Cursor, Amp, OpenCode)
@@ -67,18 +69,21 @@ research/
 │   └── sourcesyncai.md               # Managed RAG platform with auto-syncing connectors and hybrid search
 ├── data-infrastructure/               # Real-time data platforms for analytics
 │   ├── cocoindex.md                   # Ultra-performant AI data transformation framework with Rust core, incremental processing, and dataflow model (Apache 2.0)
+│   ├── dolt.md                        # MySQL-compatible version-controlled SQL database — branch, merge, diff, clone via SQL (20.3K stars)
 │   ├── motherduck.md                  # Serverless cloud DuckDB warehouse with Dual Execution and native MCP integration (36K+ stars)
 │   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
 ├── documentation-tools/                # Architecture documentation and living docs
 │   └── living-architecture.md         # Operational flow architecture extraction with Rivière schema (79 stars)
 ├── developer-tools/                   # Developer productivity and workflow tools
 │   ├── biome.md                       # Rust-based web toolchain: formatter + linter + import organizer, 97% Prettier compat, ~35× faster (23.8K stars)
+│   ├── byobu.md                       # Enhanced terminal multiplexer wrapper for tmux/screen — F-key layer, 40+ status plugins, XDG config (1.5K stars)
 │   ├── animejs.md                     # Lightweight JavaScript animation engine (66K+ stars)
 │   ├── claude-conductor.md            # Context-Driven Development plugin for Claude Code (9 commands, skill ecosystem)
 │   ├── claude-openocd-spi-dump.md     # Claude Code plugin for SPI flash dumping via OpenOCD
 │   ├── claude-pilot.md                # Quality-enforcement layer for Claude Code with 15 hooks, TDD enforcement, /spec workflow, and persistent memory (1,390 stars)
 │   ├── claude-quickstarts.md          # Official Anthropic quickstart projects (14.7K stars)
 │   ├── copier-astral.md               # Python project template with Astral toolchain (uv, ruff, ty)
+│   ├── dtach.md                       # Minimal C detach/reattach tool — raw PTY via Unix sockets, scripted input injection (619 stars)
 │   ├── git-cliff.md                   # Customizable changelog generator from Git history
 │   ├── github-cli.md                  # Official GitHub CLI tool for PRs, issues, workflows (37.8K stars)
 │   ├── google-ai-studio.md            # Google AI Studio — browser-based IDE and playground for Gemini API (1M-token context, free tier)
@@ -86,6 +91,7 @@ research/
 │   ├── jina-reader.md                 # Jina Reader — URL-to-Markdown API via r.jina.ai prefix, full SPA/PDF support, Apache 2.0 (~9.8K stars)
 │   ├── jirajs.md                      # TypeScript Jira API client for Cloud, Server, and Data Center
 │   ├── jscpd.md                       # Copy/paste detector for 150+ languages (5K+ stars)
+│   ├── libtmux.md                     # Typed Python API for tmux — Server/Session/Window/Pane dataclasses, send_keys, capture_pane (1.1K stars)
 │   ├── loguru.md                      # Python logging made simple with zero config (23K+ stars)
 │   ├── kythe.md                       # Google's language-agnostic code intelligence platform (2.1K stars)
 │   ├── lopaka.md                      # Graphics editor for embedded displays with C/C++ code generation (1.2K stars)
@@ -94,8 +100,13 @@ research/
 │   ├── orbstack.md                    # Fast Docker Desktop and Linux VM alternative for macOS
 │   ├── paperdraw.md                   # Browser-based distributed systems simulator with chaos injection (Flutter web)
 │   ├── piebald.md                     # Cross-platform agentic AI desktop client with parallel agents, session persistence, OAuth subscriptions (Free + Pro)
+│   ├── psmux.md                       # Native Windows tmux replacement in Rust — 76 commands, .tmux.conf compat, ConPTY (269 stars)
+│   ├── shpool.md                      # Shell session pool daemon in Rust — raw PTY passthrough, VT100 reattach replay, autodaemon (1.7K stars)
 │   ├── repomix.md                     # Pack codebase into AI-friendly formats (21K+ stars)
+│   ├── tabz-browser-console-forwarder.md # Browser console to terminal forwarder for AI agent debugging (MIT)
 │   ├── traycer.md                     # Spec-driven AI development orchestrator (commercial SaaS)
+│   ├── tmuxp.md                      # Python tmux session manager — YAML/JSON workspace configs, plugin system, freeze/replay (4.4K stars)
+│   ├── using-tmux-with-claude-code.md # tmux + Claude Code workflow guide: copy-mode, capture, multi-pane orchestration
 │   ├── vert.md                        # WebAssembly-based file converter (13K+ stars)
 │   └── yume.md                        # Native desktop GUI for Claude Code CLI (Tauri + Rust)
 ├── evaluation-testing/                # Agent evaluation, testing, and harness engineering
@@ -113,6 +124,7 @@ research/
 ├── research-agent-patterns/           # Multi-agent architectures and orchestration
 │   ├── claw-loop.md                   # Autonomous development orchestration via tmux + cron
 │   ├── compound-engineering-plugin.md # Every Inc's Plan/Work/Review/Compound workflow plugin
+│   ├── gastown.md                     # Gas Town — multi-agent workspace manager with tmux transport, Dolt ledger, TOML formula DAGs (10.7K stars)
 │   ├── github-patterns.md             # Patterns from GitHub research agent implementations
 │   ├── orchestrator-agent-creation-guide.md  # OpenCode orchestrator agent guide
 │   ├── google-adk-context-engineering.md  # Google ADK context engineering: tiered storage, compiled views, scoped multi-agent handoffs (17.9K stars)
@@ -172,6 +184,7 @@ Research on multi-agent architectures, orchestration patterns, and research work
 | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [claw-loop.md](./research-agent-patterns/claw-loop.md)                                                 | The Claw Loop v2.0 - autonomous development orchestration via tmux + cron with supervisor-worker pattern               | 2026-02-15   |
 | [compound-engineering-plugin.md](./research-agent-patterns/compound-engineering-plugin.md)             | Every Inc's Claude Code plugin with 27 agents, 20 commands - Plan/Work/Review/Compound workflow (6.8K stars)           | 2026-01-31   |
+| [gastown.md](./research-agent-patterns/gastown.md)                                                     | Gas Town v0.9.0 — Steve Yegge's multi-agent workspace manager coordinating 20-50+ Claude Code sessions via tmux transport, Dolt SQL ledger, TOML formula DAGs, witness zombie detection, convoy tracking, and Bors-style merge queue (10.7K stars, MIT) | 2026-03-01   |
 | [github-patterns.md](./research-agent-patterns/github-patterns.md)                                     | Patterns from 40+ repositories including Chief of Staff model, 12-agent academic pipelines, Pydantic AI research loops | 2025-12-09   |
 | [orchestrator-agent-creation-guide.md](./research-agent-patterns/orchestrator-agent-creation-guide.md) | Comprehensive guide for creating orchestrator agents in OpenCode - routing, chaining, parallel delegation patterns     | 2026-01-26   |
 | [tinyclaw.md](./research-agent-patterns/tinyclaw.md)                                                   | TinyClaw - multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs and file-based queue (2.1K stars)    | 2026-02-18   |
@@ -554,6 +567,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | Document                                               | Description                                                                                                                  | Last Updated |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [biome.md](./developer-tools/biome.md)                 | Biome - Rust-based web toolchain with formatter (97% Prettier compat, ~35× faster), linter (450+ rules), import organizer, and v2 type-aware linting without TypeScript compiler (23.8K stars) | 2026-02-23   |
+| [byobu.md](./developer-tools/byobu.md)                 | Byobu v6.14 — enhanced terminal multiplexer wrapper for tmux/screen with unified F-key layer, 40+ status bar plugins, XDG config layering, and backend switching (1.5K stars) | 2026-03-01   |
 | [animejs.md](./developer-tools/animejs.md)             | Lightweight JavaScript animation engine with declarative API, timelines, staggering, and 30+ easing functions                        | 2026-01-31   |
 | [claude-conductor.md](./developer-tools/claude-conductor.md)       | Claude Conductor - Context-Driven Development plugin with 9 commands, skill ecosystem, pattern reference layer, and quality intelligence | 2026-02-17   |
 | [claude-openocd-spi-dump.md](./developer-tools/claude-openocd-spi-dump.md) | Claude Code plugin for SPI flash dumping via OpenOCD with RAM-resident code and MCU register maps for 6 chip families | 2026-02-20   |
@@ -567,6 +581,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [jina-reader.md](./developer-tools/jina-reader.md)     | Jina Reader - Apache 2.0 URL-to-Markdown API (`r.jina.ai` prefix), full SPA/PDF support via Puppeteer, web search grounding via `s.jina.ai` (~9.8K stars) | 2026-02-23   |
 | [jirajs.md](./developer-tools/jirajs.md)               | jira.js - TypeScript Jira API client for Cloud, Server, and Data Center with full REST API coverage                                   | 2026-02-20   |
 | [jscpd.md](./developer-tools/jscpd.md)                 | Copy/paste detector for 150+ programming languages using Rabin-Karp algorithm with CI/CD integration                                 | 2026-01-31   |
+| [libtmux.md](./developer-tools/libtmux.md)             | libtmux v0.53.1 — typed Python API for tmux with Server/Session/Window/Pane dataclasses, send_keys/capture_pane methods, QueryList ORM filtering, and pytest fixtures (1.1K stars, MIT) | 2026-03-01   |
 | [loguru.md](./developer-tools/loguru.md)               | Loguru - zero-config Python logging with rotation, structured output, exception catching, and contextvars support (23K+ stars)        | 2026-02-09   |
 | [kythe.md](./developer-tools/kythe.md)                 | Kythe - Google's language-agnostic code intelligence platform with graph-based semantic indexing (2.1K stars)                          | 2026-02-20   |
 | [lopaka.md](./developer-tools/lopaka.md)               | Lopaka - web-based graphics editor for embedded displays with multi-library C/C++ code generation (1.2K stars)                        | 2026-02-20   |
@@ -575,12 +590,18 @@ Developer productivity tools and workflow automation for software engineering wi
 | [orbstack.md](./developer-tools/orbstack.md)           | Fast, lightweight Docker Desktop and Linux VM alternative for macOS with 2-second startup and dynamic memory                         | 2026-01-31   |
 | [paperdraw.md](./developer-tools/paperdraw.md)         | PaperDraw - browser-based distributed systems simulator with 20+ backend components, chaos injection, and real-time metrics (Flutter web) | 2026-02-23   |
 | [devenv.md](./developer-tools/devenv.md)               | devenv — Nix-backed declarative dev environment CLI (v1.11.2); typed modules for languages, services, tasks, git hooks; 30+ built-in service modules without Docker; sub-100ms activation; generates `.devcontainer.json` from same config (6.3K stars) | 2026-02-26   |
+| [dtach.md](./developer-tools/dtach.md)                 | dtach — minimal C program emulating screen's detach feature; raw PTY passthrough via Unix-domain sockets, `-p` mode for scripted input injection, ~1,000 lines of C, GPL-2.0 (619 stars) | 2026-03-01   |
 | [portless.md](./developer-tools/portless.md)           | Portless — replaces numeric port numbers with stable named `.localhost` URLs for local dev servers; targets both humans and AI coding agents; zero external proxy deps, HTTP/2 + TLS, loop detection (2,569 stars) | 2026-02-26   |
 | [scrapling.md](./developer-tools/scrapling.md)         | Scrapling — adaptive Python web scraping framework with anti-bot bypass (Cloudflare Turnstile), auto-relocating element selectors, built-in MCP server for Claude agents, 784x faster than BeautifulSoup4 (15K+ stars) | 2026-02-26   |
 | [surf-cli.md](./developer-tools/surf-cli.md)           | surf-cli — zero-config CLI for AI agent Chrome control via extension + Unix socket bridge; 50+ commands covering navigation, page reading, screenshots, network capture, and keyless AI model querying | 2026-02-26   |
+| [tabz-browser-console-forwarder.md](./developer-tools/tabz-browser-console-forwarder.md) | Tabz — browser console to terminal forwarder; intercepts console.* methods, batches POSTs to backend, prefixes with [Browser:source:line], visible in tmux for AI agent debugging (MIT) | 2026-03-01   |
 | [piebald.md](./developer-tools/piebald.md)             | Piebald - cross-platform agentic AI desktop client with parallel subagents, persistent sessions, OAuth AI subscriptions, and HTTP traffic inspector (Free + Pro) | 2026-02-23   |
+| [psmux.md](./developer-tools/psmux.md)                 | psmux — native Windows tmux replacement in Rust (v0.4.7); 76 commands, `.tmux.conf` compat, ConPTY, drop-in `tmux` alias, plugin ecosystem (269 stars) | 2026-03-01   |
+| [shpool.md](./developer-tools/shpool.md)               | shpool — Rust shell session pool daemon (v0.9.3); raw PTY passthrough with VT100 reattach replay, autodaemonization, no multiplexing overhead (1.7K stars) | 2026-03-01   |
 | [repomix.md](./developer-tools/repomix.md)             | Pack codebase into single AI-friendly file with token counting, Tree-sitter compression, MCP server, and Claude Code plugins         | 2026-01-31   |
 | [traycer.md](./developer-tools/traycer.md)             | Traycer - spec-driven AI development orchestrator with multi-model ensemble, plan-execute-verify loop, and 6 agent handoffs          | 2026-02-15   |
+| [tmuxp.md](./developer-tools/tmuxp.md)                 | tmuxp v1.64.0 — Python tmux session manager with YAML/JSON workspace configs, plugin lifecycle hooks, freeze/replay, and headless-safe WorkspaceBuilder API (4.4K stars, MIT) | 2026-03-01   |
+| [using-tmux-with-claude-code.md](./developer-tools/using-tmux-with-claude-code.md) | Using tmux with Claude Code — practical guide for copy-mode scrollback, 10K-line buffer capture, control-key passthrough, and multi-pane agent orchestration (hboon.com, 2025-11-28) | 2026-03-01   |
 | [vert.md](./developer-tools/vert.md)                   | VERT - WebAssembly-based file converter for 250+ formats with client-side processing and self-hostable video daemon (13K+ stars)     | 2026-02-08   |
 | [everything-claude-code.md](./developer-tools/everything-claude-code.md) | everything-claude-code — largest community Claude Code config repo (52K stars, 39 days old); v1.6.0 ships 13 agents, 48+ skills, 31+ commands, 978 tests, 102 AgentShield security rules; continuous learning v2 instinct system with `/evolve`; Cerebral Valley x Anthropic hackathon winner | 2026-02-26   |
 | [vercel-chatbot.md](./developer-tools/vercel-chatbot.md) | Vercel Chatbot — production-ready Next.js 16 chatbot template (v3.1.0) using AI SDK v6 with resumable streaming, Claude Haiku 4.5 as artifact model, ProseMirror/CodeMirror 6 artifact system, and `extractReasoningMiddleware` for chain-of-thought display (19.7K stars) | 2026-02-26   |
@@ -733,6 +754,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------ |
 | [accomplish.md](./coding-agents/accomplish.md) | Accomplish - local-first AI desktop agent (Electron + React) with MCP tools, 15 providers, permission-gated execution, CompletionEnforcer pattern (MIT) | 2026-02-27   |
 | [cline.md](./coding-agents/cline.md)         | Cline - open-source autonomous coding agent (VS Code + CLI) with human-in-the-loop approvals, multi-provider LLM support, and enterprise governance (Apache-2.0) | 2026-02-23   |
+| [openai-codex-cli.md](./coding-agents/openai-codex-cli.md) | OpenAI Codex CLI v0.106.0 — Rust-based coding agent with OS sandbox (Landlock/Seatbelt), dual MCP role (client+server), Starlark exec policy, AGENTS.md/Skills system, response_id bookmarking for conversation forking (62.5K stars, Apache-2.0) | 2026-03-01   |
 | [openhands.md](./coding-agents/openhands.md) | OpenHands - open platform for cloud coding agents with 77.6% SWE-bench score, SDK, CLI, and cloud | 2026-01-26   |
 | [pilot.md](./coding-agents/pilot.md)         | Pilot - autonomous development pipeline wrapping Claude Code CLI with ticket-to-PR automation (BSL 1.1) | 2026-02-19   |
 | [tembo.md](./coding-agents/tembo.md)         | Tembo - cloud AI coding agent orchestration platform (Claude Code, Codex, Cursor, Amp, OpenCode) with multi-repo PRs, Sentry/Linear/Jira/Slack integrations, and event-driven automations | 2026-02-23   |
@@ -773,6 +795,7 @@ Real-time data platforms and analytics infrastructure for powering AI applicatio
 
 | Document                                                 | Description                                                                                                  | Last Updated |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------ |
+| [dolt.md](./data-infrastructure/dolt.md)                 | Dolt v1.83.0 — MySQL wire-protocol compatible version-controlled SQL database with Git semantics (branch, merge, diff, clone via SQL stored procedures), Prolly Tree O(d) diffs, and agentic memory via Beads (20.3K stars, Apache 2.0) | 2026-03-01   |
 | [motherduck.md](./data-infrastructure/motherduck.md)     | Serverless cloud DuckDB warehouse with Dual Execution engine and native MCP integration for AI agents        | 2026-02-23   |
 | [tinybird.md](./data-infrastructure/tinybird.md)         | Managed ClickHouse platform for real-time analytics APIs with native MCP server and analytics agents support | 2026-01-31   |
 
@@ -856,8 +879,9 @@ Python async I/O libraries and concurrency frameworks for building concurrent ap
 
 | Document                               | Description                                                                                                              | Last Updated |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------ |
-| [anyio.md](./async-libraries/anyio.md) | AnyIO - backend-agnostic async concurrency library providing unified API across asyncio and Trio (426M downloads/month)  | 2026-02-04   |
-| [trio.md](./async-libraries/trio.md)   | Trio - structured concurrency async library for Python with nurseries, cancel scopes (7K+ stars, 218M downloads/month)   | 2026-02-04   |
+| [anyio.md](./async-libraries/anyio.md)     | AnyIO - backend-agnostic async concurrency library providing unified API across asyncio and Trio (426M downloads/month)  | 2026-02-04   |
+| [asyncssh.md](./async-libraries/asyncssh.md) | asyncssh v2.22.0 — asyncio-native SSH client/server with reverse tunnels (`forward_remote_port`, `connect_reverse`), SFTP, jump-host chaining, and pure-Python key management (1.7K stars, EPL-2.0/GPL-2.0) | 2026-03-01   |
+| [trio.md](./async-libraries/trio.md)       | Trio - structured concurrency async library for Python with nurseries, cancel scopes (7K+ stars, 218M downloads/month)   | 2026-02-04   |
 
 **Key Topics**:
 
