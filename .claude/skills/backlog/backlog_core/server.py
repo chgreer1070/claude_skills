@@ -203,6 +203,16 @@ def backlog_update(
         str | None,
         Field(description="Content for the named section (use with section parameter for incremental updates)"),
     ] = None,
+    title: Annotated[
+        str | None,
+        Field(
+            description="New title for the item. Updates the local file name field and GitHub issue title if the item already has a linked issue."
+        ),
+    ] = None,
+    description: Annotated[
+        str | None,
+        Field(description="New description text for the item. Updates the local file only — no GitHub sync."),
+    ] = None,
 ) -> dict:
     """Update a backlog item: attach a plan, set status, create a GitHub issue, or write groomed content.
 
@@ -224,6 +234,8 @@ def backlog_update(
             groomed_content=groomed_content,
             section=section,
             content=content,
+            title=title,
+            description=description,
             output=out,
         )
         return {**result, **out.to_dict()}

@@ -140,6 +140,47 @@ def _create_issue_and_update_item(item: BacklogItem, repo: str, output: Output |
         return issue_num
 
 
+def _rename_item_title(item: BacklogItem, title: str, repo: str = DEFAULT_REPO, output: Output | None = None) -> bool:
+    """Update the name field in the per-item file. Syncs to GitHub issue title if linked.
+
+    Returns:
+        True if updated, False if no file path on item.
+    """
+    out = output or Output()
+    filepath_str = item.file_path
+    if not filepath_str:
+        return False
+    update_item_metadata(Path(filepath_str), {"name": title}, output=out)
+
+    issue_ref = item.issue
+    if issue_ref:
+        repository = try_get_github(repo)
+        if repository is not None:
+            try:
+                num = int(issue_ref.lstrip("#"))
+                gh_issue = repository.get_issue(num)
+                gh_issue.edit(title=title)
+                out.info(f"  GitHub issue {issue_ref} title updated to: {title}")
+            except GithubException as e:
+                out.warn(f"  WARNING: Could not update issue {issue_ref} title: {e}")
+
+    return True
+
+
+def _update_item_description(item: BacklogItem, description: str, output: Output | None = None) -> bool:
+    """Update the description field in the per-item file. Local-only, no GitHub sync.
+
+    Returns:
+        True if updated, False if no file path on item.
+    """
+    out = output or Output()
+    filepath_str = item.file_path
+    if not filepath_str:
+        return False
+    update_item_metadata(Path(filepath_str), {"description": description}, output=out)
+    return True
+
+
 def _apply_plan_to_item(item: BacklogItem, plan: str, repo: str = DEFAULT_REPO, output: Output | None = None) -> bool:
     """Apply plan update: write to GitHub Issue first (comment), then update local cache.
 
@@ -1114,6 +1155,8 @@ def update_item(
     section: str | None = None,
     content: str | None = None,
     groomed: bool = False,
+    title: str | None = None,
+    description: str | None = None,
     repo: str = DEFAULT_REPO,
     output: Output | None = None,
 ) -> dict[str, str | int | bool | list[str]]:
@@ -1154,6 +1197,14 @@ def update_item(
     if status == "in-progress" and item.issue:
         apply_status_in_progress(item, repo, output=out)
         result["status"] = "in-progress"
+
+    if title:
+        _rename_item_title(item, title, repo, output=out)
+        result["renamed_to"] = title
+
+    if description is not None:
+        _update_item_description(item, description, output=out)
+        result["description_updated"] = True
 
     return {**result, **out.to_dict()}
 

@@ -664,3 +664,116 @@ def test_list_items_section_derived_from_priority(
     items = cast("list[dict[str, str | bool]]", result["items"])
     assert len(items) == 1
     assert items[0]["section"] == expected_section
+
+
+# ---------------------------------------------------------------------------
+# update_item: title and description params
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateItemTitleAndDescription:
+    """update_item with title= and description= params updates local file fields."""
+
+    def test_update_item_title_renames_local_file(self, mocker: MockerFixture) -> None:
+        """update_item with title= updates the name field in the local file.
+
+        Tests: update_item title rename code path.
+        How: Write an item file; call update_item with title=; read back the file.
+        Why: The name field in frontmatter is how the item title is stored and
+             displayed — a rename that doesn't persist is data loss.
+        """
+        import backlog_core.models as models
+        from backlog_core.operations import update_item
+
+        fake_dir: Path = models.BACKLOG_DIR
+        _write_item(fake_dir, title="Old Title", topic="old-title")
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        result = update_item(selector="Old Title", title="New Title")
+
+        assert result.get("renamed_to") == "New Title"
+        files = list(fake_dir.glob("*.md"))
+        assert len(files) == 1
+        text = files[0].read_text(encoding="utf-8")
+        assert "New Title" in text
+
+    def test_update_item_title_updates_github_issue_when_linked(self, mocker: MockerFixture) -> None:
+        """update_item with title= calls GitHub issue edit when item has an issue.
+
+        Tests: update_item title rename with GitHub sync.
+        How: Write an item with issue='#42'; mock get_issue; call update_item with title=.
+        Why: Title rename must propagate to the linked GitHub issue when one exists.
+        """
+        import backlog_core.models as models
+        from backlog_core.operations import update_item
+
+        fake_dir: Path = models.BACKLOG_DIR
+        _write_item(fake_dir, title="Linked Item", topic="linked-item", issue="42")
+
+        mock_gh_issue = mocker.Mock()
+        mock_repo = mocker.Mock()
+        mock_repo.get_issue.return_value = mock_gh_issue
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+
+        update_item(selector="Linked Item", title="Renamed Item")
+
+        mock_repo.get_issue.assert_called_once_with(42)
+        mock_gh_issue.edit.assert_called_once_with(title="Renamed Item")
+
+    def test_update_item_title_no_github_when_no_issue(self, mocker: MockerFixture) -> None:
+        """update_item with title= does NOT call GitHub when item has no issue.
+
+        Tests: update_item title rename local-only code path.
+        How: Write an item with no issue field; verify try_get_github is not called.
+        Why: Items without issues are local-only; no GitHub side-effect should occur.
+        """
+        import backlog_core.models as models
+        from backlog_core.operations import update_item
+
+        fake_dir: Path = models.BACKLOG_DIR
+        _write_item(fake_dir, title="No Issue Item", topic="no-issue-item", issue="")
+        mock_try_gh = mocker.patch("backlog_core.operations.try_get_github")
+
+        update_item(selector="No Issue Item", title="Still No Issue Item")
+
+        mock_try_gh.assert_not_called()
+
+    def test_update_item_description_updates_local_file(self, mocker: MockerFixture) -> None:
+        """update_item with description= updates the description field in the local file.
+
+        Tests: update_item description update code path.
+        How: Write an item file; call update_item with description=; read back the file.
+        Why: Description is local-only metadata — changes must be persisted to the file.
+        """
+        import backlog_core.models as models
+        from backlog_core.operations import update_item
+
+        fake_dir: Path = models.BACKLOG_DIR
+        _write_item(fake_dir, title="Desc Item", topic="desc-item")
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        result = update_item(selector="Desc Item", description="Updated description text.")
+
+        assert result.get("description_updated") is True
+        files = list(fake_dir.glob("*.md"))
+        assert len(files) == 1
+        text = files[0].read_text(encoding="utf-8")
+        assert "Updated description text." in text
+
+    def test_update_item_description_no_github_call(self, mocker: MockerFixture) -> None:
+        """update_item with description= never calls GitHub.
+
+        Tests: update_item description local-only path.
+        How: Write an item with an issue; patch try_get_github; verify it is not called.
+        Why: Description is intentionally local-only per the spec (no GitHub sync).
+        """
+        import backlog_core.models as models
+        from backlog_core.operations import update_item
+
+        fake_dir: Path = models.BACKLOG_DIR
+        _write_item(fake_dir, title="Desc GitHub Item", topic="desc-gh-item", issue="99")
+        mock_try_gh = mocker.patch("backlog_core.operations.try_get_github")
+
+        update_item(selector="Desc GitHub Item", description="Local only description.")
+
+        mock_try_gh.assert_not_called()

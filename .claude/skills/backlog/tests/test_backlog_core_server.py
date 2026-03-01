@@ -392,6 +392,26 @@ async def test_backlog_update_passes_section_and_content():
     assert call_kwargs["content"] == "- [ ] Done"
 
 
+async def test_backlog_update_passes_title():
+    """backlog_update forwards title to operations.update_item."""
+    op_result = {"title": "Old", "renamed_to": "New Title"}
+    with patch("backlog_core.operations.update_item", return_value=op_result) as mock_update:
+        await _call("backlog_update", {"selector": "Old", "title": "New Title"})
+
+    call_kwargs = mock_update.call_args.kwargs
+    assert call_kwargs["title"] == "New Title"
+
+
+async def test_backlog_update_passes_description():
+    """backlog_update forwards description to operations.update_item."""
+    op_result = {"title": "Item", "description_updated": True}
+    with patch("backlog_core.operations.update_item", return_value=op_result) as mock_update:
+        await _call("backlog_update", {"selector": "Item", "description": "Updated description."})
+
+    call_kwargs = mock_update.call_args.kwargs
+    assert call_kwargs["description"] == "Updated description."
+
+
 async def test_backlog_update_backlog_error_returns_error_key():
     """backlog_update catches BacklogError."""
     with patch("backlog_core.operations.update_item", side_effect=BacklogError("item not found")):
