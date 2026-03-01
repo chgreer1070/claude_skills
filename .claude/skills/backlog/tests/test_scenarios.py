@@ -521,3 +521,108 @@ class TestLifecycles:
     """Full lifecycle tests: create→close, create→resolve+cleanup,
     stale discovery.
     """
+
+    async def test_create_groom_update_close(self, backlog_dir, mock_github):
+        """Lifecycle 1: create → groom → update plan → close.
+
+        Chains 4 MCP tool calls in sequence, verifying intermediate states.
+        """
+        # Step 1: Create item
+        mock_github["try_get_github"].return_value = MagicMock()
+        mock_github["create_issue_for_item"].return_value = 70
+
+        create_result = await _call(
+            "backlog_add",
+            {
+                "title": "Lifecycle Close Item",
+                "priority": "P1",
+                "description": "Full lifecycle test",
+                "source": "test",
+                "create_issue": True,
+                "force": True,
+            },
+        )
+        assert create_result["title"] == "Lifecycle Close Item"
+        assert create_result["issue_num"] == 70
+
+        # Step 2: Groom item
+        mock_github["sync_groomed_to_github_issue"].return_value = True
+
+        groom_result = await _call(
+            "backlog_groom", {"selector": "Lifecycle Close Item", "groomed_content": "## Groomed\n\nReady for work."}
+        )
+        assert groom_result["groomed_updated"] is True
+
+        # Step 3: Update with plan
+        update_result = await _call(
+            "backlog_update", {"selector": "Lifecycle Close Item", "plan": "plan/lifecycle-test.md"}
+        )
+        assert update_result["plan"] == "plan/lifecycle-test.md"
+
+        # Step 4: Close
+        mock_github["check_open_prs_for_issue"].return_value = []
+        mock_github["close_github_issue"].return_value = None
+
+        close_result = await _call(
+            "backlog_close",
+            {"selector": "Lifecycle Close Item", "plan": "plan/lifecycle-test.md", "checklist_pass": True},
+        )
+        assert close_result["closed"] is True
+        assert isinstance(close_result["messages"], list)
+
+    async def test_create_resolve_cleanup(self, backlog_dir, mock_github):
+        """Lifecycle 2: create with issue → resolve with cleanup → file removed.
+
+        Verifies item is created, then resolved with cleanup=True removing the file.
+        """
+        # Step 1: Create item with issue
+        mock_github["try_get_github"].return_value = MagicMock()
+        mock_github["create_issue_for_item"].return_value = 71
+
+        create_result = await _call(
+            "backlog_add",
+            {
+                "title": "Lifecycle Resolve Item",
+                "priority": "P1",
+                "description": "Will be resolved",
+                "source": "test",
+                "create_issue": True,
+                "force": True,
+            },
+        )
+        assert create_result["issue_num"] == 71
+        assert create_result["filepath"]  # non-empty path string
+        # Verify file exists: list files in backlog_dir matching the item slug
+        item_files = list(backlog_dir.glob("*resolve*"))
+        assert item_files, "Expected item file to exist after create"
+
+        # Step 2: Resolve with cleanup
+        mock_github["check_open_prs_for_issue"].return_value = []
+        mock_github["resolve_github_issue"].return_value = None
+        mock_github["get_github"].return_value = MagicMock()
+
+        resolve_result = await _call(
+            "backlog_resolve",
+            {"selector": "Lifecycle Resolve Item", "reason": "Superseded by other work", "cleanup": True},
+        )
+        assert resolve_result["resolved"] is True
+        remaining = list(backlog_dir.glob("*resolve*"))
+        assert not remaining, "File should be removed after resolve with cleanup"
+
+    async def test_stale_item_discovery(self, backlog_dir, mock_github, write_test_item):
+        """Lifecycle 3: item with issue #100, batch_fetch_statuses returns empty → stale signal.
+
+        Pre-creates item with issue, configures batch_fetch_statuses to return
+        empty dict (issue not in open issues), and verifies item appears in list
+        with empty status signaling staleness.
+        """
+        write_test_item("Stale Discovery Item", issue="#100")
+        mock_github["batch_fetch_statuses"].return_value = {}
+
+        result = await _call("backlog_list", {"with_status": True})
+
+        matching = [i for i in result["items"] if i.get("title") == "Stale Discovery Item"]
+        assert matching, "Expected 'Stale Discovery Item' in list results"
+        item = matching[0]
+        # Issue #100 is not in batch_fetch_statuses → status should be empty/absent
+        assert item.get("status", "") == "", f"Expected empty status for stale item, got {item.get('status')}"
