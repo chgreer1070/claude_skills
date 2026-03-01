@@ -378,16 +378,66 @@ Verify end-to-end correctness by reading the modified planner prompt and confirm
 
 ## Context Manifest
 
-| Resource | Path | Used By |
-|----------|------|---------|
-| Architecture Spec | `plan/architect-sam-task-skills-context.md` | All tasks |
-| Feature Context | `plan/feature-context-sam-task-skills-context.md` | All tasks |
-| Task File Format | `.claude/docs/TASK_FILE_FORMAT.md` | Task 1.1, Task 4.2 |
-| python3-dev Planner | `plugins/python3-development/agents/swarm-task-planner.md` | Task 2.1, Task 4.2 |
-| dev-harness Planner | `plugins/development-harness/agents/swarm-task-planner.md` | Task 2.2, Task 4.2 |
-| implement-feature Skill | `.claude/skills/implement-feature/SKILL.md` | Task 3.1, Task 4.2 |
-| start-task Skill | `.claude/skills/start-task/SKILL.md` | Task 3.2, Task 4.2 |
-| SAM Workflow Docs | `.claude/rules/local-workflow.md` | Task 4.1, Task 4.2 |
+### How the SAM Skills Propagation Pipeline Currently Works
+
+When a user invokes `/add-new-feature`, the orchestrator runs Phase 4 which delegates to the `swarm-task-planner` agent. This agent reads the architecture spec and generates task YAML frontmatter for each task. The current YAML template in the python3-development planner (lines 250-263 of `plugins/python3-development/agents/swarm-task-planner.md`) produces fields like `task`, `title`, `status`, `agent`, `dependencies`, `priority`, `complexity`, `accuracy-risk`, `parallelize-with`, `reason`, and `handoff`. The development-harness variant (lines 249-262) is identical except it uses `role:` instead of `agent:`. Neither planner generates a `skills:` field because the field does not exist in the schema and has no mapping table to drive population.
+
+Once the task file is written, the user invokes `/implement-feature`. This skill runs a progress loop: it queries `implementation_manager.py ready-tasks` which returns JSON containing `id`, `name`, and `agent` per ready task (line 1031 of `implementation_manager.py`). The `Task` dataclass (lines 89-113) has no `skills` field, so the ready-tasks output cannot include skills even if the task file contained them. The orchestrator then delegates each task to a sub-agent using `Skill(skill="start-task", args="{task_file_path} --task {task_id}")` (lines 58-65 of `implement-feature/SKILL.md`). No skill-loading instructions are included in the delegation prompt.
+
+Inside the sub-agent, `/start-task` reads the task file, selects the target task, updates status to `in-progress`, writes the active-task context file, and implements against acceptance criteria (lines 65-88 of `start-task/SKILL.md`). It never reads a `skills:` field from the task metadata and never invokes `Skill()` to load domain-specific context. The sub-agent operates only with skills declared in the agent definition file's frontmatter, which are static per agent type and do not vary per task.
+
+The task YAML schema at `.claude/docs/TASK_FILE_FORMAT.md` defines JSON schema properties (lines 264-345) for `task`, `title`, `status`, `agent`, `dependencies`, `priority`, `complexity`, `created`, `started`, `completed`, `blocked-by`, and `parallelize-with`. There is no `skills` property. The Optional Fields table (lines 138-149), the YAML template (lines 617-631), the Conversion Example (lines 456-491), and the Field Mapping table (lines 494-503) all lack any mention of skills.
+
+### What This Task Plan Changes
+
+This task plan closes the three broken links in the skills propagation chain identified in the feature context document:
+
+1. **Task 1.1** adds the `skills` field to the TASK_FILE_FORMAT.md schema (JSON schema, Optional Fields table, template, conversion example, field mapping).
+2. **Tasks 2.1 and 2.2** add a Skills Mapping Table to both swarm-task-planner agents so they auto-populate `skills:` during task generation, plus update the YAML template and add validation step 10 to Phase 5.
+3. **Task 3.1** updates `/implement-feature` to read `skills` from ready-tasks JSON output and include skill-loading instructions in the delegation prompt.
+4. **Task 3.2** updates `/start-task` to read `skills:` from task frontmatter and invoke `Skill()` for each (redundant safety for manual invocation or older orchestrators).
+5. **Task 4.1** updates `.claude/rules/local-workflow.md` to document skills propagation at every relevant stage.
+6. **Task 4.2** performs end-to-end dry-run validation by reading all modified files.
+
+The architecture spec also prescribes changes to `implementation_manager.py` (Section 5: add `skills` to `Task` dataclass, `TaskDict`, `to_dict()`, `parse_task_from_frontmatter()`, and ready-tasks output). Those data model changes are explicitly out of scope for this task plan. Tasks 3.1 and 3.2 assume the ready-tasks output will eventually include `skills` but their changes are written to be backward compatible (conditional on non-empty `skills`).
+
+### Files Directly Modified by Tasks
+
+| Path | Purpose |
+|------|---------|
+| `.claude/docs/TASK_FILE_FORMAT.md` | Task YAML schema definition. Task 1.1 adds `skills` to: JSON schema `properties` (after `parallelize-with`, lines 335-343), Optional Fields table (lines 138-149), YAML template (lines 617-631), Conversion Example (lines 456-491), Field Mapping table (lines 494-503). Task 4.2 reads for validation. |
+| `plugins/python3-development/agents/swarm-task-planner.md` | python3-development swarm-task-planner agent prompt. Task 2.1 adds: Skills Mapping Table section (after Agent Assignment Rules at line 325), `skills: []` to YAML template (between `accuracy-risk` and `parallelize-with` at lines 259-260), validation step 10 to Phase 5 (after step 9 at line 484). Task 4.2 reads for validation. |
+| `plugins/development-harness/agents/swarm-task-planner.md` | development-harness swarm-task-planner agent prompt. Task 2.2 mirrors Task 2.1 changes, preserving `role:` convention (line 254). Skills Mapping Table after Agent Assignment Rules (line 326), `skills: []` to template (between `accuracy-risk` and `parallelize-with` at lines 258-259), validation step 10 to Phase 5 (after step 9 at line 484). Task 4.2 reads for validation. |
+| `.claude/skills/implement-feature/SKILL.md` | SAM execution loop orchestrator skill. Task 3.1 updates step 3 (lines 58-65) to check for non-empty `skills` in ready-tasks output and add skill-loading instructions (`Skill(skill="{skill-name}")`) to the delegation prompt. Backward compatible: empty or missing `skills` produces no instructions. Task 4.2 reads for validation. |
+| `.claude/skills/start-task/SKILL.md` | Sub-agent task execution skill. Task 3.2 inserts step 2a between step 2 (Select task, line 69) and step 3 (Update status, line 72): read `skills:` from YAML frontmatter or `**Skills**:` from legacy format, invoke `Skill(skill="{name}")` for each, warn and continue on load failure. Task 4.2 reads for validation. |
+| `.claude/rules/local-workflow.md` | SAM workflow reference documentation. Task 4.1 adds: `**Skills**` to Key fields per task (line 72), skills reading note to Execution Loop (lines 117-120), step 2a to Phase 2a actions (lines 158-170), skills propagation line to Data Flow Diagram (lines 289-339). Task 4.2 reads for validation. |
+
+### Planning and Architecture References (Read-Only)
+
+| Path | Purpose |
+|------|---------|
+| `plan/architect-sam-task-skills-context.md` | Architecture spec defining all changes across 8 sections: schema changes, planner changes (keyword-to-skill mapping table with 6 pattern rows, template update, validation step), orchestrator changes (modified ready-tasks JSON shape, delegation prompt with skill-loading), start-task changes (step 2a, redundancy rationale), data model changes (out of scope), backward compatibility guarantees, file change summary, data flow diagram. Referenced by all tasks. |
+| `plan/feature-context-sam-task-skills-context.md` | Feature discovery document with evidence inventory. Documents the three broken links (no `skills:` in schema, `start-task` ignores fields, `implement-feature` lacks skill context). Lists current state with line-number references for every claim. Defines desired state and constraints (backward compatibility, schema consistency, dual-format support, no breaking changes to agent definitions). Open questions resolved by architecture spec. Referenced by all tasks for problem context. |
+
+### Data Model and Parsing Scripts (Not Modified by This Plan)
+
+| Path | Purpose |
+|------|---------|
+| `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` | CLI for task status queries. `Task` dataclass (lines 89-113) lacks `skills`. `TaskDict` (lines 175-190) and `TaskData` (lines 157-172) TypedDicts lack `skills`. `to_dict()` (lines 115-131) does not serialize `skills`. `parse_task_from_frontmatter()` (line 352) does not extract `skills`. `ready-tasks` output (line 1031) returns `id`, `name`, `agent` without `skills`. Architecture spec Section 5 prescribes adding `skills` to all of these; those changes are out of scope for this task plan but Tasks 3.1 and 3.2 reference the expected future output format. |
+| `plugins/python3-development/skills/implementation-manager/scripts/task_format.py` | Shared YAML frontmatter utilities. Field-agnostic functions (`has_yaml_frontmatter`, `normalize_status`, `parse_yaml_frontmatter`, `update_yaml_field`). No changes needed for `skills` field. |
+| `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` | Hook script for `SubagentStop` and `PostToolUse` events. Handles status and timestamps only. No `skills` relevance. No changes needed. |
+| `plugins/python3-development/scripts/split_task_file.py` | Splits monolithic task files into per-task files. Preserves all frontmatter fields generically. No changes needed. |
+| `plugins/python3-development/scripts/migrate_task_format.py` | Migrates legacy markdown to YAML frontmatter. Missing `skills` defaults to empty list. No changes needed. |
+| `plugins/python3-development/templates/sam-task-template.md` | Task YAML template for new task creation. Currently lacks `skills:` field. May need updating in a follow-up (not in this plan's scope). |
+
+### Workflow and Pipeline References (Read-Only Context)
+
+| Path | Purpose |
+|------|---------|
+| `.claude/skills/add-new-feature/SKILL.md` | Planning skill that invokes swarm-task-planner in Phase 4. Planner changes in Tasks 2.1/2.2 affect output generated during this phase. |
+| `.claude/skills/implementation-manager/SKILL.md` | Skill providing `status` and `ready-tasks` CLI commands consumed by `/implement-feature`. |
+| `.claude/skills/complete-implementation/SKILL.md` | Quality gates skill invoked after all tasks complete. Next step in pipeline after `/implement-feature`. Not modified by this plan. |
+| `plugins/python3-development/skills/implementation-manager/scripts/get_task_context.py` | Dynamic context injection for implementation-manager skill. Not modified. |
 
 ---
 
