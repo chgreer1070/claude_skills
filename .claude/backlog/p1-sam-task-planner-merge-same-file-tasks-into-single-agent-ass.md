@@ -11,7 +11,7 @@ metadata:
   issue: '#316'
   last_synced: '2026-03-01T00:33:40Z'
   groomed: '2026-03-01'
-  plan: plan/tasks-11-merge-same-file-tasks.md
+  plan: plan/tasks-11-merge-same-file-tasks
 ---
 
 ## Fact-Check

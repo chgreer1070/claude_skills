@@ -42,7 +42,7 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "skills" / "implementation_manager" / "scripts"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "skills" / "implementation-manager" / "scripts"))
 
 from implementation_manager import Task, parse_task_file
 from task_format import has_yaml_frontmatter
