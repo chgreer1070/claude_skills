@@ -50,61 +50,110 @@ For `--dry-run`, print the list and stop.
 
 ### Step 2: For each day that needs a release
 
-Work through days chronologically. For each day:
+Work through days chronologically. For each day, the pipeline collects data,
+buckets it by token budget, analyses each bucket with a Haiku subagent, synthesises
+the results, then formats and publishes. Days with few commits pass through a single
+bucket with no synthesis overhead.
 
-#### 2a. Extract git data
+#### 2a. Collect dataset
 
 ```bash
-uv run .claude/skills/create-merge-request-changelog/scripts/analyze_git_changes.py \
-  <base_ref> <head_ref> ./daily-releases/<date>/
+uv run .claude/skills/daily-releases/scripts/collect_day_dataset.py \
+  <base_ref> <head_ref> ./daily-releases/<date>/ [-R OWNER/REPO]
 ```
 
-This writes to `./daily-releases/<date>/`:
+Writes `./daily-releases/<date>/dataset/`:
 
-- `commits_oneline.txt` — one-line commit list
-- `commits_detailed.txt` — full commit messages with metadata
-- `changes.diff` — unified diff
-- `changes_stat.txt` — diffstat summary
-- `changed_files.txt` — file list with A/M/D status
-- `changes_numstat.txt` — per-file line counts
-- `summary.json` — machine-readable stats
+- `files.json` — changed source files with status and line counts
+- `commits.json` — commits with SHA, message, files touched
+- `issues.json` — GitHub issues/PRs referenced or closed (empty if no token)
+- `diffs/<sanitized_path>.diff` — per-file unified diff for each source file
 
-#### 2b. AI analysis (delegate to subagent — do NOT read git data files yourself)
+Source files: `*.py .js .cjs .mjs .ts .tsx .sh .md .json .yaml .yml`
+Excluded: `dist/ build/ node_modules/ vendor/ .venv/` and similar build outputs.
 
-Delegate analysis to a Haiku subagent via Agent():
+#### 2b. Create token-bounded buckets
+
+```bash
+uv run .claude/skills/daily-releases/scripts/bucket_day_data.py \
+  ./daily-releases/<date>/ [--token-limit 100000]
+```
+
+Token limit defaults to env var `DAILY_RELEASES_TOKEN_LIMIT` or `100000`.
+
+Groups source files by directory module, fills buckets greedily keeping each
+under the token limit (measured with tiktoken cl100k_base as a proxy).
+
+Writes `./daily-releases/<date>/buckets/bucket_NNN/`:
+
+- `manifest.json` — `{bucket_id, files, token_count, commit_shas}`
+- `content.txt` — file diffs followed by commit messages for this bucket
+
+Prints a summary listing bucket count and token sizes.
+
+#### 2c. Analyse each bucket (delegate — do NOT read bucket files yourself)
+
+For each `bucket_NNN/` directory found under `./daily-releases/<date>/buckets/`:
 
 ```python
 Agent(
   subagent_type="general-purpose",
   model="claude-haiku-4-5-20251001",
   prompt="""
-Read these files:
-- ./daily-releases/<date>/commits_detailed.txt
-- ./daily-releases/<date>/changes.diff  (if file exceeds 4000 chars, use changes_stat.txt instead)
-- ./daily-releases/<date>/changed_files.txt
-- ./daily-releases/<date>/summary.json
+Read: ./daily-releases/<date>/buckets/bucket_NNN/content.txt
 
-Apply the Primary Analysis Prompt from:
-  .claude/skills/create-merge-request-changelog/references/analysis_prompts.md
+Apply the Per-Bucket Analysis Prompt from:
+  .claude/skills/daily-releases/references/synthesis_prompt.md
 
-Substitute the file contents into the prompt template variables:
-- {commit_details} <- commits_detailed.txt
-- {changes_diff} <- changes.diff (or changes_stat.txt)
-- {changed_files} <- changed_files.txt
-- stats fields <- summary.json
+Write the structured JSON output to:
+  ./daily-releases/<date>/summaries/bucket_NNN.json
 
-Write the complete structured JSON output to: ./daily-releases/<date>/analysis.json
+Report "bucket_NNN.json written" when done.
+"""
+)
+```
+
+Replace `<date>` and `NNN` with actual values before emitting each Agent() call.
+Buckets may be processed in parallel — each writes to its own summary file.
+
+After all agents return, verify each `summaries/bucket_NNN.json` exists. Stop with
+an error if any is missing.
+
+#### 2d. Synthesise summaries into analysis.json
+
+**If exactly one bucket exists:** promote its JSON directly — copy
+`summaries/bucket_001.json` to `analysis.json`, adding a `statistics` block from
+`dataset/files.json` counts (commit_count, files_changed, lines_added,
+lines_deleted). No synthesis agent needed.
+
+**If two or more buckets exist:**
+
+```python
+Agent(
+  subagent_type="general-purpose",
+  model="claude-haiku-4-5-20251001",
+  prompt="""
+Apply the Day Synthesis Prompt from:
+  .claude/skills/daily-releases/references/synthesis_prompt.md
+
+Read all bucket summary files:
+  ./daily-releases/<date>/summaries/bucket_001.json
+  ./daily-releases/<date>/summaries/bucket_002.json
+  ... (list all that exist)
+
+Also read ./daily-releases/<date>/dataset/files.json for statistics counts.
+
+Write the merged analysis JSON to: ./daily-releases/<date>/analysis.json
 
 Report "analysis.json written" when done.
 """
 )
 ```
 
-Replace `<date>` with the actual date value for that iteration before emitting the Agent() call.
+After the agent returns, verify `./daily-releases/<date>/analysis.json` exists.
+Stop with an error if missing.
 
-After the Agent() returns, verify `./daily-releases/<date>/analysis.json` exists before proceeding to Step 2c. If missing, report the error and stop.
-
-#### 2c. Format into release notes
+#### 2e. Format into release notes
 
 ```bash
 uv run .claude/skills/create-merge-request-changelog/scripts/format_mr_description.py \
@@ -113,7 +162,7 @@ uv run .claude/skills/create-merge-request-changelog/scripts/format_mr_descripti
   --output ./daily-releases/<date>/description.md
 ```
 
-#### 2d. Publish the release
+#### 2f. Publish the release
 
 ```bash
 uv run .claude/skills/daily-releases/scripts/publish_daily_release.py \
@@ -123,7 +172,8 @@ uv run .claude/skills/daily-releases/scripts/publish_daily_release.py \
   --notes-file ./daily-releases/<date>/description.md
 ```
 
-Add `--keep-existing-tag=false` if updating a release that already has the correct tag commit.
+Add `--keep-existing-tag=false` if updating a release that already has the correct
+tag commit.
 
 ### Step 3: Report
 
@@ -139,9 +189,10 @@ Processed N days:
 ## Reference files
 
 - [./scripts/list_daily_ranges.py](./scripts/list_daily_ranges.py) — list days + commit ranges
+- [./scripts/collect_day_dataset.py](./scripts/collect_day_dataset.py) — per-file diff + commit + issues extraction into `dataset/`
+- [./scripts/bucket_day_data.py](./scripts/bucket_day_data.py) — token-bounded semantic bucketing into `buckets/`
 - [./scripts/publish_daily_release.py](./scripts/publish_daily_release.py) — create/update git tag + GitHub release
-- [../create-merge-request-changelog/scripts/analyze_git_changes.py](../create-merge-request-changelog/scripts/analyze_git_changes.py) — extract git data per day
-- [../create-merge-request-changelog/references/analysis_prompts.md](../create-merge-request-changelog/references/analysis_prompts.md) — AI analysis prompts
-- [../create-merge-request-changelog/scripts/format_mr_description.py](../create-merge-request-changelog/scripts/format_mr_description.py) — render AI analysis to markdown
+- [./references/synthesis_prompt.md](./references/synthesis_prompt.md) — per-bucket analysis prompt + day synthesis prompt
+- [../create-merge-request-changelog/scripts/format_mr_description.py](../create-merge-request-changelog/scripts/format_mr_description.py) — render analysis.json to markdown
 
 Reference paths above are relative to this skill directory; CLI commands use repo-root paths.

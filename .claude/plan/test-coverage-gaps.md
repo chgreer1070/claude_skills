@@ -14,6 +14,19 @@ file. Tests should verify:
 Adding tests is out of scope for this surgical fix task; creating a test suite for the entire
 validator from scratch exceeds the stated constraint of a surgical change only.
 
+## Gap: bucket_day_data.py — core bucketing logic
+
+**Files**: `.claude/skills/daily-releases/scripts/bucket_day_data.py`
+**Behavior to cover**:
+- `semantic_prefix()` with root-level file, 1-level path, 2-level path, and 3+-level path
+- `build_file_groups()` groups files by prefix, accumulates token counts, maps commit SHAs
+- `assign_buckets()` greedy fill: groups that fit stay in current bucket; overflow starts a new bucket; single group exceeding limit gets its own bucket
+- `load_file_entries()` filters `is_source=false` and `is_excluded=true` entries out
+- `load_commit_records()` returns correct `CommitRecord` instances
+- `build_content_text()` renders `=== File: ===` and `=== Commits ===` sections correctly
+- `count_tokens()` returns non-negative integer for arbitrary input strings
+**Reason not written**: No existing test suite for the daily-releases scripts directory. Creating a full test suite from scratch is out of scope for the initial implementation task.
+
 ## Gap: implementation_manager.py — skills field support
 
 **Files**: `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py`

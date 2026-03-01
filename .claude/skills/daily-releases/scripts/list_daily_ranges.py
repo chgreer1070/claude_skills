@@ -39,14 +39,16 @@ from rich.console import Console
 if TYPE_CHECKING:
     from github.Repository import Repository
 
-EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
-DEFAULT_REPO = "Jamie-BitFlight/claude_skills"
+EMPTY_TREE_SHA: str = os.environ.get("EMPTY_TREE_SHA") or "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+DEFAULT_REPO: str = os.environ.get("DEFAULT_REPO") or "Jamie-BitFlight/claude_skills"
 _MIN_PARENT_PARTS = 2
 
 # Must match GENERATOR_VERSION in publish_daily_release.py.
 # Bump both to force regeneration of all existing releases on next run.
-GENERATOR_VERSION = "1.0"
-_MARKER_RE = re.compile(r"<!-- created-by-release-generator: v([\d.]+) -->")
+GENERATOR_VERSION: str = os.environ.get("GENERATOR_VERSION") or "1.0"
+# GitHub's API returns the Markdown-escaped form "<\!--" instead of "<!--" for HTML
+# comments in release bodies.  Match both to avoid false-positive needs_update.
+_MARKER_RE = re.compile(r"<\\?!-- created-by-release-generator: v([\d.]+) -->")
 
 app = typer.Typer(
     name="list_daily_ranges", help="List daily commit ranges for release pipeline processing", add_completion=False
