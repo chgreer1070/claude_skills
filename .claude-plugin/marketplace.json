@@ -108,6 +108,13 @@
     {
       "name": "clang-format-configuration",
       "source": "./plugins/clang-format"
+    },
+    {
+      "name": "hallucination-detector",
+      "source": {
+        "source": "github",
+        "repo": "bitflight-devops/hallucination-detector"
+      }
     }
   ]
 }
