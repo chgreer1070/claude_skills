@@ -24,6 +24,7 @@ research/
 │   ├── plano.md                       # AI-native proxy and data plane for multi-agent orchestration
 │   ├── tinyfish.md                    # Serverless web agent API: 1,000 parallel ops, AgentQL MCP, all-in pricing at $0.04/op (148 stars)
 │   ├── picoclaw.md                    # Go AI assistant — <10MB RAM, 6 channels, runs on $10 RISC-V hardware, 18K stars
+│   ├── pinchtab.md                    # Browser control for AI agents — 12MB Go binary, HTTP API, a11y tree snapshots at 800 tokens/page (2.3K stars)
 │   └── zeroclaw.md                    # Rust AI assistant infrastructure — sub-5MB RAM, 28+ providers, trait-driven (14.9K stars)
 ├── api-frameworks/                    # High-performance API frameworks for backend services
 │   ├── fastapi.md                     # Modern Python web framework with Pydantic (95K+ stars)
@@ -464,6 +465,7 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 | [plano.md](./agent-infrastructure/plano.md)       | AI-native proxy and data plane built on Envoy - handles orchestration, model routing, observability, guardrails | 2026-01-26   |
 | [tinyfish.md](./agent-infrastructure/tinyfish.md) | TinyFish - serverless web agent API for 1,000 parallel agentic ops, AgentQL MCP server, all-in pricing at $0.04/op (148 stars) | 2026-02-23   |
 | [picoclaw.md](./agent-infrastructure/picoclaw.md) | PicoClaw - Go AI assistant by Sipeed, <10MB RAM, <1s startup, 6 messaging channels, runs on $10 RISC-V hardware, AI-bootstrapped (18.1K stars) | 2026-02-23   |
+| [pinchtab.md](./agent-infrastructure/pinchtab.md) | PinchTab — 12MB Go binary HTTP server for AI agent browser control via a11y tree snapshots (~800 tokens/page, 5-13x cheaper than screenshots), multi-instance Chrome orchestration with isolated profiles, stealth injection (2.3K stars, MIT) | 2026-03-01   |
 | [zeroclaw.md](./agent-infrastructure/zeroclaw.md) | Rust autonomous AI assistant — sub-5MB RAM, 28+ AI providers, 15+ channels, trait-driven swappable subsystems (14.9K stars) | 2026-02-19   |
 
 **Key Topics**:
@@ -502,6 +504,13 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 - AgentQL MCP server (`extract-web-data` tool) for Claude Code structured web data access
 - Stealth browser profiles and geo-targeted residential proxies included by default
 - Live data extraction from authenticated, form-gated, and JavaScript-heavy sites
+- Accessibility tree (a11y) snapshots as token-efficient page representation (~800 tokens vs 5,000-13,000 for screenshots)
+- Stable element ref caching (e0, e1...) avoiding redundant tree traversal on action calls
+- Multi-instance Chrome orchestration with per-instance isolated profiles and auth state
+- Stealth injection at CDP level: `navigator.webdriver` patching, Bezier mouse curves, keystroke timing simulation
+- Prescriptive agent system prompts reducing token use by 14x for repetitive browser tasks
+- Self-hosted 12MB Go binary with zero external dependencies; remote Chrome mode via `CDP_URL`
+- Lazy Chrome initialization: Chrome process starts on first HTTP request, not at instance creation
 
 ---
 
