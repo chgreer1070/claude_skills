@@ -1,24 +1,30 @@
 {
   "mcpServers": {
     "Ref-local": {
-      "command": "npx",
-      "args": ["-y", "ref-tools-mcp@latest"],
+      "command": "node",
+      "args": ["./scripts/npx-run.js", "-y", "ref-tools-mcp@latest"],
       "env": {
         "REF_API_KEY": "$REF_API_KEY"
       }
     },
     "context7-local": {
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp", "--api-key", "$CONTEXT7_API_KEY"]
+      "command": "node",
+      "args": ["./scripts/npx-run.js", "-y", "@upstash/context7-mcp", "--api-key", "$CONTEXT7_API_KEY"]
     },
     "kernel-local": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.onkernel.com/mcp", "--header", "Authorization: Bearer $KERNEL_API_KEY"]
+      "command": "node",
+      "args": [
+        "./scripts/npx-run.js",
+        "-y",
+        "mcp-remote",
+        "https://mcp.onkernel.com/mcp",
+        "--header",
+        "Authorization: Bearer $KERNEL_API_KEY"
+      ]
     },
     "backlog": {
       "command": "uv",
-      "args": ["run", "python", "-m", "backlog_core.server"],
-      "cwd": ".claude/skills/backlog"
+      "args": ["run", "python", "-m", "backlog_core.server"]
     }
   }
 }

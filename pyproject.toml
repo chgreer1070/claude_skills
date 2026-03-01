@@ -51,6 +51,9 @@ dev = [
     "vadersentiment>=3.3.2",
 ]
 
+[tool.uv.workspace]
+members = [".claude/skills/backlog"]
+
 [tool.pytest.ini_options]
 addopts = [
     "--cov=scripts",
