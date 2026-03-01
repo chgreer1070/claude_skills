@@ -537,3 +537,110 @@ After all cleanup:
 6. **`project_workflow.draft.md` stale references**: That file contains stale `BACKLOG.md` references. Adding a cross-reference to `backlog-lifecycle.md` is in scope. Fixing the stale `BACKLOG.md` references in that file is out of scope (separate task).
 
 7. **Test item cleanup**: The throwaway test item created during verification must be resolved (deleted or marked resolved) before the task is complete. Use `backlog resolve "lifecycle-verify-test" --reason "Throwaway test item for lifecycle verification"`.
+
+---
+
+## 7. Task Decomposition
+
+Five sequential tasks. Each produces a concrete artifact that the next task consumes.
+
+### Task 1: Execute Testing Checklist and Capture Results
+
+**Scope**: Run the 25-item testing checklist (Section 7 of the draft) and the 14 unique `[VERIFY]` annotation verifications. Follow the dependency-aware execution order defined in Sections 1.6 and 2.1 of this spec.
+
+**Execution**:
+
+- Phase 1: Run `--help` on `pull`, `close`, `resolve`, `update` subcommands (resolves VERIFY #1-6, #10; tests T10, T11, T19)
+- Phase 2: Create throwaway test item with `backlog add ... --create-issue`
+- Phase 3: Run behavioral tests using the test item (resolves VERIFY #8, #11, #12, #16; tests T1-T9, T12, T17-T18, T23-T25)
+- Phase 4: Run `backlog pull` tests (only if Phase 1 confirmed `pull` exists; tests T14-T16)
+- Phase 5: Read milestone skill files for VERIFY #13, #15
+- Phase 6: Clean up throwaway item via `backlog resolve "lifecycle-verify-test" --reason "..."`
+
+**Output**: A results file at `plan/verify-results-backlog-lifecycle.md` containing one row per annotation and test: annotation/test ID, command run, observed output, resolution (CONFIRMED / CORRECTED / NOT IMPLEMENTED / NOT TESTABLE).
+
+---
+
+### Task 2: Resolve All [VERIFY] Annotations Based on Test Results
+
+**Scope**: Edit `.claude/docs/backlog-lifecycle.draft.md` in-place (before rename) to resolve every annotation.
+
+**Input**: `plan/verify-results-backlog-lifecycle.md` from Task 1.
+
+**Execution**:
+
+- For each VERIFY annotation: apply the rule from Section 5.1 (confirmed true), 5.2 (corrected), 5.3 (gap revealed), or 5.4 (`pull` special case)
+- For each test in Section 7: change `- [ ]` to `- [x]` with a result note; mark SKIPPED where subcommand/flag is absent
+- Remove the HTML comment (line 1) and STATUS: DRAFT paragraph (lines 4-6)
+- Convert SOURCE backtick paths (lines 8-14) to markdown links per Section 3.4 of this spec
+
+**Output**: `.claude/docs/backlog-lifecycle.draft.md` with zero `[VERIFY]` annotations remaining, DRAFT header removed, SOURCE block converted to markdown links.
+
+---
+
+### Task 3: Rename File and Update Existing References
+
+**Scope**: Rename the file and update any existing references to the old `.draft.md` path.
+
+**Execution**:
+
+```bash
+git mv .claude/docs/backlog-lifecycle.draft.md .claude/docs/backlog-lifecycle.md
+```
+
+Then grep for any remaining references to `backlog-lifecycle.draft`:
+
+```bash
+uv run python -c "
+import subprocess, sys
+result = subprocess.run(['grep', '-r', 'backlog-lifecycle.draft', '.claude', 'plan'], capture_output=True, text=True)
+print(result.stdout)
+"
+```
+
+Update each found reference to use `backlog-lifecycle.md`.
+
+**Output**: `.claude/docs/backlog-lifecycle.md` exists; no files in the repo reference `backlog-lifecycle.draft.md` except historical plan artifacts (which are exempt per Section 3.3 of this spec).
+
+---
+
+### Task 4: Add Two-Way Cross-Reference Links in All Files
+
+**Scope**: Add markdown links as specified in Sections 4.1 and 4.2 of this spec.
+
+**Execution**:
+
+1. Add outbound links FROM `backlog-lifecycle.md` to each target in the table in Section 4.1 — convert existing backtick references to markdown links at the point where each skill/script is first mentioned
+2. Add inbound links TO `backlog-lifecycle.md` in each of the 7 source files listed in the Files to Modify table — use the `**Lifecycle reference**: See [Backlog Lifecycle](...)` pattern established by other skills
+3. Update `domain-registry.md` entry per Section 4.3
+
+**Output**: All 8 files modified; each contains exactly one navigable markdown link to/from the lifecycle doc (or more if multiple mentions exist).
+
+---
+
+### Task 5: Validate All Links and Run Linting
+
+**Scope**: Verify that every added link resolves to an existing file, then run the linter on all modified files.
+
+**Execution**:
+
+For each markdown link added in Task 4, use the `Read` tool to confirm the target file exists at the specified relative path.
+
+Then lint all modified files:
+
+```bash
+uv run prek run --files \
+  .claude/docs/backlog-lifecycle.md \
+  .claude/skills/backlog/SKILL.md \
+  .claude/skills/work-backlog-item/SKILL.md \
+  .claude/skills/groom-backlog-item/SKILL.md \
+  .claude/skills/create-backlog-item/SKILL.md \
+  .claude/skills/backlog/references/state-machine.md \
+  .claude/skills/backlog/references/item-schema.md \
+  .claude/skills/backlog-tools-administrator/references/domain-registry.md \
+  .claude/project_workflow.draft.md
+```
+
+Fix any linting errors before committing. Common issues: missing blank lines around code fences (MD031), missing language specifiers on code fences, broken relative paths.
+
+**Output**: All modified files pass `prek` with zero errors. All added links confirmed to resolve to existing files.
