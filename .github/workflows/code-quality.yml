@@ -285,7 +285,7 @@ jobs:
 
       - name: Fetch PR base for diff scope
         if: github.event_name == 'pull_request'
-        run: git fetch origin ${{ github.base_ref }} --depth=1
+        run: git fetch --depth=1 origin ${{ github.event.pull_request.base.sha }}
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v7

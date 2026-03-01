@@ -137,8 +137,8 @@ These require creating a throwaway item and observing behavior.
 
 | # | Annotation | File to Read | Resolution |
 |---|-----------|-------------|------------|
-| 13 | Exact command invoked by `/group-items-to-milestone` | Search for `group-items-to-milestone` skill via `Glob("**/group-items-to-milestone/SKILL.md")`. If skill does not exist, annotation resolves to "skill not yet implemented; command is undocumented." |
-| 15 | Whether `/complete-milestone` deletes local files or sets `status: closed` | Search for `complete-milestone` skill via `Glob("**/complete-milestone/SKILL.md")`. If skill does not exist, resolve from `state-machine.md` which states `done/resolved -> closed` is managed by `/complete-milestone`. Document as "behavior defined in state machine; implementation not verified." |
+| 13 | Exact command invoked by `/group-items-to-milestone` | `Glob("**/group-items-to-milestone/SKILL.md")` | If skill does not exist, annotation resolves to "skill not yet implemented; command is undocumented." |
+| 15 | Whether `/complete-milestone` deletes local files or sets `status: closed` | `Glob("**/complete-milestone/SKILL.md")`; if absent, read `state-machine.md` | If skill does not exist, resolve from `state-machine.md` which states `done/resolved -> closed` is managed by `/complete-milestone`. Document as "behavior defined in state machine; implementation not verified." |
 
 ### 1.4 Pre-Resolved (1 annotation)
 

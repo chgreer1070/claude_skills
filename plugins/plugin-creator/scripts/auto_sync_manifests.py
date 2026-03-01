@@ -43,7 +43,7 @@ if isinstance(sys.stderr, TextIOWrapper):
 
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast
 
 # Prettier formatting
 _NPX_PATH: str | None = shutil.which("npx")
@@ -584,9 +584,7 @@ def _read_plugin_name(plugin_dir_name: str) -> str:
     return plugin_dir_name
 
 
-def _update_marketplace_plugins(
-    data: dict[str, dict[str, str] | list[dict[str, str]]], plugin_changes: MarketplaceChanges
-) -> bool:
+def _update_marketplace_plugins(data: dict[str, Any], plugin_changes: MarketplaceChanges) -> bool:
     """Add and remove plugins in the marketplace data structure.
 
     The ``"name"`` field in each marketplace entry is derived from plugin.json
@@ -644,7 +642,7 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
         return False
 
     with marketplace_json_path.open(encoding="utf-8") as f:
-        data: dict[str, dict[str, str] | list[dict[str, str]]] = json.load(f)
+        data = json.load(f)
 
     metadata = cast("dict[str, str]", data.get("metadata", {}))
     current_version = metadata.get("version", "0.0.0")
@@ -1169,6 +1167,40 @@ def _reconcile_component_array(
     return False
 
 
+def _apply_marketplace_drift(
+    data: dict[str, Any],
+    plugins_list: list[dict[str, Any]],
+    missing: set[str],
+    stale: set[str],
+    disk_plugins: dict[str, str],
+    *,
+    dry_run: bool,
+) -> None:
+    """Print and apply missing/stale plugin changes to marketplace data in place.
+
+    Args:
+        data: Marketplace JSON data (mutated in place when not dry_run).
+        plugins_list: Current plugins list from data (mutated in place for additions).
+        missing: Plugin names present on disk but absent from marketplace.json.
+        stale: Plugin names in marketplace.json with no matching directory on disk.
+        disk_plugins: Map of {canonical_name: dir_name} for plugins found on disk.
+        dry_run: If True, only report changes without writing.
+    """
+    if missing:
+        label = "Would add" if dry_run else "Adding"
+        for name in sorted(missing):
+            print(f"  {label} plugin to marketplace: {name}")
+        if not dry_run:
+            plugins_list.extend({"name": name, "source": f"./plugins/{disk_plugins[name]}"} for name in sorted(missing))
+
+    if stale:
+        label = "Would remove" if dry_run else "Removing"
+        for name in sorted(stale):
+            print(f"  {label} stale plugin from marketplace: {name}")
+        if not dry_run:
+            data["plugins"] = [p for p in plugins_list if p["name"] not in stale]
+
+
 def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
     """Reconcile marketplace.json against plugins on disk.
 
@@ -1188,10 +1220,13 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
         return False
 
     with marketplace_path.open(encoding="utf-8") as f:
-        data: dict[str, dict[str, str] | list[dict[str, str]]] = json.load(f)
+        data = json.load(f)
 
-    plugins_list = cast("list[dict[str, str]]", data.get("plugins", []))
-    registered_names = {p["name"] for p in plugins_list}
+    plugins_list = cast("list[dict[str, Any]]", data.get("plugins", []))
+    # Only track locally-sourced plugins (relative path strings) in the stale check.
+    # Plugins with external sources (dict with "source": "github" etc.) are managed
+    # manually and must not be removed by reconciliation.
+    registered_names = {p["name"] for p in plugins_list if isinstance(p.get("source"), str)}
 
     # Discover plugins on disk — keyed by canonical name (from plugin.json),
     # mapped to directory name (for the source field).
@@ -1201,30 +1236,13 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
     disk_plugins: dict[str, str] = {}  # {canonical_name: dir_name}
     for d in sorted(plugins_root.iterdir()):
         if d.is_dir() and (d / ".claude-plugin" / "plugin.json").exists():
-            canonical = _read_plugin_name(d.name)
-            disk_plugins[canonical] = d.name
+            disk_plugins[_read_plugin_name(d.name)] = d.name
 
     missing = set(disk_plugins.keys()) - registered_names
     stale = registered_names - set(disk_plugins.keys())
-    has_drift = bool(missing or stale)
+    _apply_marketplace_drift(data, plugins_list, missing, stale, disk_plugins, dry_run=dry_run)
 
-    if missing:
-        label = "Would add" if dry_run else "Adding"
-        for canonical_name in sorted(missing):
-            print(f"  {label} plugin to marketplace: {canonical_name}")
-        if not dry_run:
-            for canonical_name in sorted(missing):
-                dir_name = disk_plugins[canonical_name]
-                plugins_list.append({"name": canonical_name, "source": f"./plugins/{dir_name}"})
-
-    if stale:
-        label = "Would remove" if dry_run else "Removing"
-        for name in sorted(stale):
-            print(f"  {label} stale plugin from marketplace: {name}")
-        if not dry_run:
-            data["plugins"] = [p for p in plugins_list if p["name"] not in stale]
-
-    if has_drift and not dry_run:
+    if (missing or stale) and not dry_run:
         metadata = cast("dict[str, str]", data.get("metadata", {}))
         current_version = metadata.get("version", "0.0.0")
         bump_type: Literal["major", "minor", "patch"] = "major" if stale else "minor"
@@ -1233,7 +1251,7 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
         _write_json_lf(marketplace_path, _format_json(data))
         print(f"  Updated marketplace -> {metadata['version']}")
 
-    return has_drift
+    return bool(missing or stale)
 
 
 def reconcile(*, dry_run: bool) -> int:

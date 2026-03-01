@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Covers modern Python toolchains, GitLab CI/CD automation, code quality enforcement, MCP server creation, and plugin/agent development patterns.",
-    "version": "5.0.6"
+    "version": "5.0.14"
   },
   "plugins": [
     {
@@ -108,6 +108,13 @@
     {
       "name": "clang-format-configuration",
       "source": "./plugins/clang-format"
+    },
+    {
+      "name": "hallucination-detector",
+      "source": {
+        "source": "github",
+        "repo": "bitflight-devops/hallucination-detector"
+      }
     }
   ]
 }
