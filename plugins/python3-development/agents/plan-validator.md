@@ -169,7 +169,7 @@ SOURCE: Cycle detection algorithm adapted from gsd-plan-checker.md
 **Red flags:**
 
 - Input doesn't exist and isn't created by earlier task
-- Two tasks write to same file without dependency
+- Two or more tasks write to same file without dependency chain — **BLOCKER**: These tasks must be merged into a single task by the planner. Separate sub-agents editing the same file cause edit conflicts (stale reads, failed exact-match replacements). Report as: "Tasks {IDs} all write to {file path} — merge into single task or add sequential dependencies."
 - Output not used by any later task (orphaned)
 
 ## Dimension 6: Artifact Wiring
@@ -464,6 +464,7 @@ issue:
 - Circular dependencies
 - Task references non-existent dependency
 - Scope exceeds 8 tasks per phase
+- Multiple tasks write to same file without dependency chain (edit conflict risk)
 
 **warning** - Should fix, execution may succeed
 
@@ -501,6 +502,12 @@ issues:
     severity: "blocker"
     description: "Error handling requirement has no covering task"
     fix_hint: "Add dedicated error handling task"
+
+  - task: null
+    dimension: "input_output_validity"
+    severity: "blocker"
+    description: "Tasks T2.1, T2.2, T2.3 all write to .claude/skills/agent-browser/SKILL.md without dependency chain"
+    fix_hint: "Merge into single task with combined requirements grouped by scope"
 ```
 
 SOURCE: Adapted from gsd-plan-checker.md (Issue Structure section)

@@ -32,7 +32,7 @@ Fixes #316
 ---
 task: T1
 title: "Update swarm-task-planner (python3-development) with same-file merging section, parallelization update, Phase 5 validation item, and success metric"
-status: not-started
+status: in-progress
 agent: service-docs-maintainer
 dependencies: []
 priority: 1
@@ -150,7 +150,8 @@ Add same-file task merging behavioral rules, update the parallelization section,
 ---
 task: T2
 title: "Update swarm-task-planner (development-harness) with same-file merging section, parallelization update, Phase 5 validation item, and success metric"
-status: not-started
+status: in-progress
+started: 2026-03-01T00:00:00Z
 agent: service-docs-maintainer
 dependencies: [T1]
 priority: 1
@@ -248,7 +249,8 @@ Add the same four components (same-file merging section, parallelization update,
 ---
 task: T3
 title: "Update plan-validator (python3-development) with upgraded Dimension 5 red flag, new issue example, and blocker severity item"
-status: not-started
+status: in-progress
+started: 2026-03-01T00:00:00Z
 agent: service-docs-maintainer
 dependencies: []
 priority: 1
@@ -339,7 +341,8 @@ Upgrade the Dimension 5 same-file red flag from a warning to a blocker with merg
 ---
 task: T4
 title: "Update plan-validator (development-harness) with upgraded Dimension 5 red flag, new issue example, and blocker severity item"
-status: not-started
+status: in-progress
+started: 2026-03-01T00:00:00Z
 agent: service-docs-maintainer
 dependencies: [T3]
 priority: 1
