@@ -64,6 +64,194 @@ This forces human intervention for multi-agent coordination. The console forward
 
 ---
 
+## Problem Space: Orchestrator Observability Gaps
+
+This section captures the concrete pain points experienced by an AI orchestrator (e.g., Claude Code running `/implement-feature`) when coordinating multiple agent sessions. These are first-person observations from the orchestrating agent's perspective — the primary consumer of this plugin's MCP tools.
+
+### Gap 1: Blind Spots Between Spawn and Return
+
+When an orchestrator spawns 3-4 agents in parallel (via tmux sessions or sub-agents), it has **zero visibility** into what they're doing until they return. The orchestrator cannot determine:
+
+- Whether agent #2 is stuck in a retry loop
+- Whether agent #3 found something that invalidates agent #1's work
+- Whether any agent is about to time out or has been idle for minutes
+
+**What the orchestrator needs from capture_pane / session monitoring:**
+
+| Signal | How Console Forwarding Solves It |
+|--------|--------------------------------|
+| **Heartbeat with current action** | `capture_pane(session="agent-3", lines=5)` — last few lines show what the agent is doing right now |
+| **Elapsed time awareness** | `check_session_health()` with inactivity detection — "no output for 5 minutes" signals a stuck agent |
+| **Progress estimation** | `capture_pane()` output parsed for task completion markers (e.g., "Task 3 of 7 complete") |
+
+### Gap 2: No Inter-Agent Communication During Execution
+
+Agents are currently fire-and-forget. If agent A discovers the architecture needs a different approach, there's no way to signal agent B (already implementing against the old assumption) to stop. Console forwarding enables:
+
+- **Broadcast channel**: `send_keys(session="agent-*", keys="LIFECYCLE:Shutdown\n")` — signal all agents to halt
+- **Dependency invalidation**: Orchestrator reads agent A's output via `capture_pane()`, detects a breaking change, then `send_keys()` to dependent agents with updated instructions
+- **Coordination protocol**: Agents can write structured status to their terminal (JSON lines), and the orchestrator reads it via `capture_pane()` — creating a poor-man's message bus over terminal output
+
+### Gap 3: Task Routing Lacks Runtime Intelligence
+
+The orchestrator routes tasks based on static metadata (`Agent: python-cli-architect`). It has no signal for:
+
+- **Complexity calibration**: Simple file renames vs. architectural refactors need different agents/models, but the task file says the same agent type
+- **Historical success rate**: "Last 5 times this agent handled `complexity: High` tasks, 2 came back BLOCKED" — this would change parallelization strategy
+- **Skill compatibility**: When a task lists `skills: ["fastmcp-python-tests", "python3-development"]`, the orchestrator doesn't know if those skills conflict or if a needed skill is missing
+
+**How console forwarding helps**: By monitoring agent output in real-time, the orchestrator can detect early signs of struggle (repeated errors, long pauses) and intervene — reassigning, providing hints, or splitting the task — rather than waiting for the agent to return BLOCKED.
+
+### Gap 4: Unstructured Agent Output
+
+When agents return, the orchestrator receives a blob of text. What it needs instead:
+
+```json
+{
+  "status": "COMPLETE",
+  "files_changed": ["src/server.py", "tests/test_server.py"],
+  "decisions_made": [
+    {"decision": "Used asyncio.Queue instead of threading", "reason": "consistency with existing transport"}
+  ],
+  "blockers_encountered": [],
+  "follow_up_needed": ["integration test with real MCP client"]
+}
+```
+
+**How console forwarding enables this**: Agents can be instructed to write structured status lines to their terminal. The orchestrator uses `capture_pane()` with grep/parsing to extract these structured updates without waiting for the agent to finish.
+
+### Gap 5: No Failure Recovery Beyond Retry
+
+When an agent fails or returns BLOCKED, the orchestrator's only options are "try again with more context" or "ask the user." What's needed:
+
+- **Failure taxonomy**: timeout vs. skill-missing vs. conflicting-instructions vs. genuinely-hard-problem — each has a different recovery path
+- **Partial work preservation**: If an agent completed 3 of 5 acceptance criteria before failing, the orchestrator should spawn a new agent for just criteria 4-5, not restart from scratch
+- **Cascading failure detection**: If task 2.1 fails and tasks 3.1, 3.2, 3.3 all depend on it, auto-hold those rather than discovering they're blocked one-by-one
+
+**How console forwarding enables this**: `capture_pane()` on a failed/stuck agent shows exactly where it stopped — which files it changed, which tests it ran, what error it hit. The orchestrator can make an informed decision about recovery without guessing.
+
+### Per-Task-Type Observability Needs
+
+| Task Type | What Orchestrator Needs to See in Agent Output | Why |
+|-----------|-----------------------------------------------|-----|
+| New file creation | Target path + what imports it | Verify integration after completion |
+| Refactor | Before/after function signatures | Dependent tasks can adapt |
+| Test writing | Which source files are under test | Prevent duplicate coverage |
+| Config/infra | Which environments affected | Test against correct env |
+| Bug fix | Reproduction steps + expected behavior | Verification agent knows what "fixed" means |
+
+### Summary: Console Forwarding as Orchestration Infrastructure
+
+The console forwarding MCP server is not just a tmux convenience tool — it is **orchestration infrastructure**. It bridges the gap between "spawn agent and wait" and "actively manage a fleet of agents." The core value proposition for an AI orchestrator:
+
+1. **Observability**: See what agents are doing without waiting for them to finish
+2. **Intervention**: Send commands to stuck/misdirected agents in real-time
+3. **Coordination**: Read structured output from agents to make routing decisions
+4. **Recovery**: Inspect failed agents to determine the right recovery strategy
+5. **Efficiency**: Detect problems early instead of discovering them after wasted work
+
+---
+
+## Prior Art: Orchestration Patterns from Research
+
+This section documents validated multi-agent orchestration patterns from [research/research-agent-patterns/](./../../research/research-agent-patterns/) and [research/developer-tools/](./../../research/developer-tools/) that directly inform the console forwarding plugin's design. Each pattern is cited with its source and describes how existing systems solve the problems this plugin addresses.
+
+### Pattern 1: Supervisor Polling via tmux (Claw Loop)
+
+**Source**: [research/research-agent-patterns/claw-loop.md](./../../research/research-agent-patterns/claw-loop.md) — v2.0, verified 2026-02-15
+
+A supervisory agent ("Clawdbot") polls a tmux session every 3 minutes via cron, detecting completion, stalls, crashes, context exhaustion, and rate limits. Core discipline: **one action per cycle** (state machine, no race conditions). The state file — not conversational memory — is the single source of truth.
+
+**Key concepts this plugin adopts:**
+
+| Claw Loop Concept | Console Forwarding Equivalent |
+|-------------------|-------------------------------|
+| `tmux capture-pane` to observe before acting (Principle 1) | `capture_pane()` MCP tool — same libtmux primitive exposed as a tool call |
+| One action per cycle (Principle 2) | Serialized `send_keys()` — callers send one command, observe result, then decide next action |
+| State file as source of truth (Principle 5) | Plugin is stateless; the orchestrator maintains its own state based on tool call results |
+| `/clear` between phases to reset context (Principle 3) | `send_keys(session, "/clear\n")` — orchestrator can trigger context resets remotely |
+| Crash = expected event, not exception (Principle 6) | `check_session_health()` returns `Zombie`/`Missing` as normal status values, not errors |
+| 3-minute polling latency | Plugin eliminates this gap — orchestrator can poll on-demand via `capture_pane()` at any frequency |
+
+**Design validation**: The Claw Loop proves that `capture_pane` + `send_keys` is sufficient infrastructure for autonomous multi-step orchestration. The plugin exposes these same primitives as MCP tools, removing the need for custom cron scripts.
+
+### Pattern 2: Fleet Management with Role Taxonomy (Gas Town)
+
+**Source**: [research/research-agent-patterns/gastown.md](./../../research/research-agent-patterns/gastown.md) — v0.9.0, 10,665 stars, verified 2026-03-01
+
+Gas Town coordinates 20-30+ Claude Code agents using tmux sessions, git worktrees, and a Dolt SQL database. Key architectural patterns:
+
+**ZFC (Zero-state-File Compliance) Principle**: tmux session existence IS the sole source of truth for agent liveness. No PID files, lock files, or on-disk state files. The Witness role cross-references:
+
+1. `IsRunning()` — `tmux has-session` check
+2. `IsAgentAlive()` — verifies Claude process inside the session (not just tmux shell)
+3. `IsHealthy()` — checks whether session produced output within `maxInactivity` period
+
+This three-layer check catches four distinct states: `SessionHealthy`, `SessionZombie` (tmux alive, Claude dead), `SessionHung` (Claude alive but no output), `SessionMissing`.
+
+**Key concepts this plugin adopts:**
+
+| Gas Town Concept | Console Forwarding Equivalent |
+|------------------|-------------------------------|
+| ZFC principle — session existence is truth | `check_session_health()` implements the same three-layer cross-reference |
+| Four health states (Healthy/Zombie/Hung/Missing) | `check_session_health()` returns the same status enum |
+| Witness patrol loop (continuous background monitoring) | Plugin provides on-demand checks (MCP request-response model); orchestrator implements its own polling if needed |
+| Nudge = `tmux send-keys`, serialized per session with 30s timeout | `send_keys()` MCP tool — same primitive, stateless per call |
+| Three-layer lifecycle: Identity (permanent) → Sandbox (persistent) → Session (ephemeral) | Plugin operates at the Session layer only; identity and sandbox management are out of scope |
+| Mail protocol (POLECAT_DONE, MERGE_READY, etc.) | Not adopted — plugin provides raw transport (`send_keys` + `capture_pane`); message protocols are the orchestrator's responsibility |
+| Dolt SQL persistent ledger for work state | Not adopted — plugin is stateless. Orchestrators that need persistent work tracking should use their own storage. |
+
+**Design validation**: Gas Town's 10,665-star production deployment at 20-30+ concurrent agents proves the `tmux send-keys` + session health cross-reference pattern scales. The plugin's `check_session_health()` implements Gas Town's three-layer detection as a single stateless MCP tool call.
+
+### Pattern 3: Peer-to-Peer Handoff via File Queue (TinyClaw)
+
+**Source**: [research/research-agent-patterns/tinyclaw.md](./../../research/research-agent-patterns/tinyclaw.md) — v0.0.5, 2,124 stars, verified 2026-02-18
+
+TinyClaw runs named agents 24/7 across Discord/Telegram/WhatsApp with no central orchestrator. Agents communicate peer-to-peer via `[@teammate: message]` bracket tags parsed from response text. File-based queue: `incoming/ → processing/ → outgoing/` with atomic rename as state transition.
+
+**Key concepts relevant (but not directly adopted):**
+
+| TinyClaw Concept | Relevance to Console Forwarding |
+|------------------|---------------------------------|
+| Per-agent workspace isolation (own `.claude/`, CLAUDE.md) | Validates that agents need separate tmux sessions (the sessions this plugin discovers and manages) |
+| tmux daemon for always-on persistence | Confirms tmux as the universal session transport for long-running agents |
+| Bracket-tag P2P handoff (no central orchestrator) | Alternative to the Claw Loop's centralized supervisor model. Console forwarding enables either pattern — orchestrator reads/writes via tools, or agents write status to their own terminal for peers to read |
+| File-based atomic queue (rename = state transition) | Not adopted — plugin uses tmux I/O, not filesystem queues. But an orchestrator could combine both: use `capture_pane()` for real-time monitoring and file queues for durable message passing |
+| Heartbeat system for proactive polling | Validates on-demand health check design — TinyClaw's heartbeat is the proactive equivalent of what `check_session_health()` provides on-demand |
+
+**Design validation**: TinyClaw proves that decentralized coordination (no central orchestrator) works when agents have isolated workspaces and a communication channel. Console forwarding provides that communication channel — `capture_pane()` reads agent status, `send_keys()` injects messages.
+
+### Pattern 4: Stateless Router-Not-Executor (Orchestrator Agent Guide)
+
+**Source**: [research/research-agent-patterns/orchestrator-agent-creation-guide.md](./../../research/research-agent-patterns/orchestrator-agent-creation-guide.md) — OpenCode pattern, verified 2026-01-26
+
+Defines the "Router, Not Executor" pattern: orchestrator analyzes intent, selects subagents, coordinates workflows. No execution tools — only routing and delegation. Capability map enforces delegation only to registered agents.
+
+**Relevance**: Console forwarding is orchestration infrastructure that the router-not-executor pattern needs. The orchestrator routes tasks to subagents, but currently has no way to observe their progress or intervene. Console forwarding's `capture_pane()` and `send_keys()` tools give the router runtime visibility without breaking the router-not-executor constraint — the orchestrator still doesn't execute tasks, it observes and directs.
+
+### Pattern 5: Context-Driven Development Lifecycle (Claude Conductor)
+
+**Source**: [research/developer-tools/claude-conductor.md](./../../research/developer-tools/claude-conductor.md) — v1.2.1, verified 2026-02-17
+
+Claude Conductor enforces a strict Context → Spec & Plan → Implement lifecycle with managed artifact generation. Relevant as a consumer pattern: Conductor's workflow phases could use console forwarding to monitor agent progress during the Implement phase.
+
+**Relevance**: Validates the "orchestrator as consumer" pattern — structured workflows (like SAM's `/implement-feature`) that spawn agents need runtime visibility into agent progress. Console forwarding is the infrastructure layer that enables this.
+
+### Cross-Pattern Synthesis: What This Plugin Provides That None of These Systems Have
+
+| Capability | Claw Loop | Gas Town | TinyClaw | Console Forwarding Plugin |
+|-----------|-----------|----------|----------|--------------------------|
+| tmux session control | Custom bash scripts | Go library (`internal/tmux/`) | Shell scripts | **MCP tools** callable by any Claude Code session |
+| Output capture | `tmux capture-pane` in cron script | Bead state from Dolt SQL | File queue reads | **`capture_pane()` with `lines` + `offset` pagination** |
+| Remote SSH sessions | Not supported | Not supported | Not supported (uses messaging platforms) | **asyncssh-based remote tmux operations** |
+| Health check | Clawdbot poll cycle | Witness patrol loop | Heartbeat daemon | **Single stateless MCP tool call** |
+| Session management | Manual tmux commands | `gt polecat spawn/nuke` CLI | `tinyclaw start/stop` CLI | **`create_session()` / `kill_session()` MCP tools** |
+| Integration model | Standalone cron job | Standalone Go binary | Standalone Node.js platform | **Claude Code plugin** — auto-loaded, no separate install |
+
+The plugin's unique contribution: exposing validated patterns (tmux transport, ZFC health detection, serialized send_keys) as **MCP tools within the Claude Code plugin ecosystem**, eliminating the need for standalone orchestration infrastructure.
+
+---
+
 ## Codebase Research
 
 ### Similar Patterns Found
@@ -276,16 +464,59 @@ This forces human intervention for multi-agent coordination. The console forward
 
 ## Goals (MVP — v1)
 
+### Core MCP Server
+
 1. Create a new plugin at `plugins/console-forwarding/` with a FastMCP MCP server that Claude Code can load via `plugin.json` `mcpServers` declaration
 2. Expose MCP tools for **local tmux** session discovery, output capture, keystroke injection, and session lifecycle using libtmux
 3. Expose MCP tools for **remote** session operations via asyncssh (same tool set, SSH URI parameter)
 4. Mark read-only tools with `readOnlyHint` and destructive tools (send_keys, kill) with `destructiveHint`
 5. Ensure all I/O is async (libtmux via `asyncio.to_thread()`, asyncssh natively)
 6. Gracefully degrade when tmux is not installed (SSH-only tools still available)
-7. Include pytest tests using libtmux's built-in test fixtures for isolated tmux testing
-8. Create a user-facing SKILL.md documenting session naming, SSH setup, and troubleshooting
 
-**Deferred to v2**: Health monitoring (gastown-style zombie/hung detection), multi-session broadcast/coordination, dtach backend
+### Orchestrator Observability (Primary Consumer: AI Orchestrators)
+
+7. `capture_pane` supports `lines` + `offset` pagination so orchestrators can poll agent output without reading entire scrollback
+8. `list_sessions` returns structured metadata (session name, pane count, last activity time, dimensions) enabling fleet-level monitoring
+9. `check_session_health` returns a status enum (`Healthy`, `Idle`, `Hung`, `Zombie`, `Missing`) using inactivity timeout + process liveness checks — enabling orchestrators to detect stuck agents without guessing
+10. `send_keys` supports targeted intervention: orchestrators can send recovery commands, lifecycle signals (`LIFECYCLE:Shutdown`), or updated instructions to specific sessions
+
+### Quality & Documentation
+
+11. Include pytest tests using libtmux's built-in test fixtures for isolated tmux testing
+12. Create a user-facing SKILL.md documenting session naming, SSH setup, troubleshooting, and orchestrator integration patterns (structured output conventions, polling strategies, intervention protocols)
+
+**Deferred to v2**: Multi-session broadcast/coordination (fan-out/fan-in), dtach backend, persistent health patrol (background polling thread), structured agent output protocol (standardized JSON status lines), failure taxonomy classification
+
+---
+
+## Not in Scope (MVP)
+
+The following are explicitly excluded from v1. Items marked **v2** are planned for a future version; items marked **out** are outside the plugin's responsibility entirely.
+
+### Deferred to v2
+
+| Item | Rationale |
+|------|-----------|
+| Multi-session broadcast/coordination (fan-out/fan-in) | Adds fan-out error-aggregation complexity; orchestrators can loop `send_keys()` calls in v1 (Q1 resolution) |
+| dtach backend | tmux covers all dtach capabilities plus output capture; backend abstraction designed for future addition (Q2 resolution) |
+| Persistent health patrol (background polling thread) | MCP is request-response; background threads add state management complexity; on-demand `check_session_health()` sufficient for v1 (Q4 resolution) |
+| Structured agent output protocol (standardized JSON status lines) | Requires agent-side adoption; v1 provides raw transport, orchestrators parse output themselves |
+| Failure taxonomy classification | Useful for automated recovery routing but adds significant complexity; v1 returns raw status values |
+| Host registry / connection pooling configuration | Stateless URI-per-call model is sufficient for v1; asyncssh handles internal connection reuse (Q3 resolution) |
+
+### Out of Scope (not planned for any version)
+
+| Item | Rationale |
+|------|-----------|
+| Identity / sandbox lifecycle management | Plugin operates at the Session layer only; identity and sandbox management belong to the orchestrator (Prior Art Pattern 2: Gas Town three-layer lifecycle) |
+| Message protocols (POLECAT_DONE, MERGE_READY, etc.) | Plugin provides raw transport (`send_keys` + `capture_pane`); message protocols are the orchestrator's responsibility (Prior Art Pattern 2) |
+| Persistent work state ledger | Plugin is stateless; orchestrators that need persistent work tracking use their own storage (Prior Art Pattern 2: Gas Town uses Dolt SQL) |
+| pyproject.toml package structure | PEP 723 on entry point with local imports is sufficient; no distribution packaging needed (Q5 resolution) |
+| Task routing intelligence | The plugin provides observability data; routing decisions belong to the orchestrator (Gap 3 in Problem Space) |
+
+### In Scope — Cross-Platform Note
+
+**Windows support** is in scope. The tmux backend is Linux/macOS-only, but the SSH backend works cross-platform. Graceful degradation (Q6 resolution: Option B) ensures the server starts on Windows with SSH tools available even when tmux is absent. Windows-native terminal multiplexers (e.g., psmux) may be added as backends in future versions.
 
 ---
 
