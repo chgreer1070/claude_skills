@@ -1,85 +1,54 @@
 ---
 name: hooks-guide
-description: [TODO: Complete and informative explanation of what the skill does and when to use it. Include WHEN to use this skill - specific scenarios, file types, or tasks that trigger it.]
+description: 'Cross-platform hooks reference for AI coding assistants — Claude Code, GitHub Copilot, Cursor, Windsurf, Amp. Covers hook authoring in Node.js CJS and Python, per-platform event schemas, inline-agent hooks and MCP in agent frontmatter, common JSON I/O, exit codes, best practices, and a fetch script to refresh docs from official sources. Use when writing, reviewing, or debugging hooks for any AI assistant.'
+allowed-tools: Read, Grep, Glob, Bash, Write, Edit
 ---
 
-# Hooks Guide
+## Route to Reference
 
-## Overview
+```mermaid
+flowchart TD
+    Start([What do you need?]) --> Q1{Which platform?}
+    Q1 -->|Claude Code| Q2{Inline agent hooks<br>hooks/mcpServers/skills/memory?}
+    Q1 -->|GitHub Copilot| Copilot["Read references/github-copilot.md"]
+    Q1 -->|Cursor, Windsurf, Amp<br>or coverage gaps| Coverage["Read references/platform-coverage.md"]
 
-[TODO: 1-2 sentences explaining what this skill enables]
+    Q2 -->|Yes — agent frontmatter| Agent["Read references/inline-agent-hooks.md"]
+    Q2 -->|No — project or global hooks| Q3{Which language?}
 
-## Structuring This Skill
+    Q3 -->|Node.js CJS| CJS["Read references/hooks-cjs.md"]
+    Q3 -->|Python| Py["Read references/hooks-python.md"]
+    Q3 -->|Not sure / both| Both["Read references/hooks-cjs.md<br>then references/hooks-python.md"]
 
-[TODO: Choose the structure that best fits this skill's purpose. Common patterns:
+    Agent --> CC["Also read references/claude-code.md<br>for full event schema"]
+    Q3 --> Schema["Cross-platform concepts:<br>references/common-schema.md"]
+    Copilot --> Schema
+    Coverage --> Schema
+```
 
-**1. Workflow-Based** (best for sequential processes)
-- Works well when there are clear step-by-step procedures
-- Example: DOCX skill with "Workflow Decision Tree" → "Reading" → "Creating" → "Editing"
-- Structure: ## Overview → ## Workflow Decision Tree → ## Step 1 → ## Step 2...
+## Reference Files
 
-**2. Task-Based** (best for tool collections)
-- Works well when the skill offers different operations/capabilities
-- Example: PDF skill with "Quick Start" → "Merge PDFs" → "Split PDFs" → "Extract Text"
-- Structure: ## Overview → ## Quick Start → ## Task Category 1 → ## Task Category 2...
+- [common-schema.md](./references/common-schema.md) — shared concepts, cross-platform comparison, JSON I/O, exit codes
+- [claude-code.md](./references/claude-code.md) — Claude Code hooks full reference (events, matchers, configuration)
+- [inline-agent-hooks.md](./references/inline-agent-hooks.md) — hooks, mcpServers, skills, and memory in agent frontmatter
+- [github-copilot.md](./references/github-copilot.md) — GitHub Copilot coding agent hooks
+- [hooks-cjs.md](./references/hooks-cjs.md) — Node.js CJS authoring guide and templates
+- [hooks-python.md](./references/hooks-python.md) — Python authoring guide and templates
+- [best-practices.md](./references/best-practices.md) — cross-platform conventions and anti-patterns
+- [platform-coverage.md](./references/platform-coverage.md) — known platforms, fetch URLs, coverage status
 
-**3. Reference/Guidelines** (best for standards or specifications)
-- Works well for brand guidelines, coding standards, or requirements
-- Example: Brand styling with "Brand Guidelines" → "Colors" → "Typography" → "Features"
-- Structure: ## Overview → ## Guidelines → ## Specifications → ## Usage...
+## Refresh Docs
 
-**4. Capabilities-Based** (best for integrated systems)
-- Works well when the skill provides multiple interrelated features
-- Example: Product Management with "Core Capabilities" → numbered capability list
-- Structure: ## Overview → ## Core Capabilities → ### 1. Feature → ### 2. Feature...
+Re-fetch all platform docs and re-run the rwr:doc-to-skill transform on each:
 
-Patterns can be mixed and matched as needed. Most skills combine patterns (e.g., start with task-based, add workflow for complex operations).
+```bash
+bash plugins/plugin-creator/skills/hooks-guide/scripts/fetch-and-transform-hooks-docs.sh
+```
 
-Delete this entire "Structuring This Skill" section when done - it's just guidance.]
+This updates reference files from official sources. Run when upstream docs change.
 
-## [TODO: Replace with the first main section based on chosen structure]
+## Sources
 
-[TODO: Add content here. See examples in existing skills:
-- Code samples for technical skills
-- Decision trees for complex workflows
-- Concrete examples with realistic user requests
-- References to scripts/templates/references as needed]
-
-## Resources
-
-This skill includes example resource directories that demonstrate how to organize different types of bundled resources:
-
-### scripts/
-Executable code (Python/Bash/etc.) that can be run directly to perform specific operations.
-
-**Examples from other skills:**
-- PDF skill: `fill_fillable_fields.py`, `extract_form_field_info.py` - utilities for PDF manipulation
-- DOCX skill: `document.py`, `utilities.py` - Python modules for document processing
-
-**Appropriate for:** Python scripts, shell scripts, or any executable code that performs automation, data processing, or specific operations.
-
-**Note:** Scripts may be executed without loading into context, but can still be read by Claude for patching or environment adjustments.
-
-### references/
-Documentation and reference material intended to be loaded into context to inform Claude's process and thinking.
-
-**Examples from other skills:**
-- Product management: `communication.md`, `context_building.md` - detailed workflow guides
-- BigQuery: API reference documentation and query examples
-- Finance: Schema documentation, company policies
-
-**Appropriate for:** In-depth documentation, API references, database schemas, comprehensive guides, or any detailed information that Claude should reference while working.
-
-### assets/
-Files not intended to be loaded into context, but rather used within the output Claude produces.
-
-**Examples from other skills:**
-- Brand styling: PowerPoint template files (.pptx), logo files
-- Frontend builder: HTML/React boilerplate project directories
-- Typography: Font files (.ttf, .woff2)
-
-**Appropriate for:** Templates, boilerplate code, document templates, images, icons, fonts, or any files meant to be copied or used in the final output.
-
----
-
-**Any unneeded directories can be deleted.** Not every skill requires all three types of resources.
+- Claude Code hooks: `https://docs.anthropic.com/en/docs/claude-code/hooks.md` (accessed 2026-02-27)
+- Claude Code agent frontmatter: `https://docs.anthropic.com/en/docs/claude-code/sub-agents.md` (accessed 2026-02-27)
+- GitHub Copilot coding agent: `https://docs.github.com/en/copilot/using-github-copilot/using-claude-as-your-copilot-llm` (accessed 2026-02-27)
