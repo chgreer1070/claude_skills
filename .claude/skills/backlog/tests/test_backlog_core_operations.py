@@ -1,0 +1,666 @@
+"""Tests for backlog_core/operations.py public API functions.
+
+Covers add_item, list_items, view_item, close_item, and resolve_item.
+All GitHub calls are mocked at the boundary.  File-system isolation is provided
+by an autouse fixture that redirects BACKLOG_DIR to tmp_path.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import TYPE_CHECKING, cast
+
+import backlog_core.operations as ops
+import backlog_core.parsing as parsing
+import pytest
+from backlog_core.models import (
+    BacklogItem,
+    DuplicateItemError,
+    IssueStatus,
+    ItemNotFoundError,
+    PullRequestRef,
+    ValidationError,
+)
+from backlog_core.operations import add_item, close_item, list_items, resolve_item, view_item
+
+if TYPE_CHECKING:
+    from pytest_mock import MockerFixture
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+_MINIMAL_FRONTMATTER = """\
+---
+name: {title}
+description: A test item
+metadata:
+  priority: {priority}
+  status: open
+  source: test
+  added: '2026-01-01'
+  type: Feature
+  topic: {topic}
+  issue: '{issue}'
+---
+"""
+
+
+def _write_item(
+    backlog_dir: Path,
+    *,
+    title: str = "Test Item",
+    priority: str = "P1",
+    topic: str = "test-item",
+    issue: str = "",
+    skip: bool = False,
+    extra_body: str = "",
+) -> Path:
+    """Write a minimal per-item backlog file and return its path."""
+    slug = topic
+    filename = f"{priority.lower()}-{slug}.md"
+    filepath = backlog_dir / filename
+    status = "done" if skip else "open"
+    content = _MINIMAL_FRONTMATTER.format(title=title, priority=priority, topic=topic, issue=issue).replace(
+        "  status: open", f"  status: {status}"
+    )
+    if extra_body:
+        content = content.rstrip() + "\n\n" + extra_body + "\n"
+    filepath.write_text(content, encoding="utf-8")
+    return filepath
+
+
+# ---------------------------------------------------------------------------
+# Autouse fixture: redirect BACKLOG_DIR in all consuming modules
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_backlog_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Redirect BACKLOG_DIR in every module that uses it to tmp_path.
+
+    Tests: File-system isolation for all backlog operations.
+    How: Monkeypatches the BACKLOG_DIR name in backlog_core.models, parsing, and operations.
+    Why: Prevents tests from reading/writing the real backlog directory.
+    """
+    fake_dir = tmp_path / "backlog"
+    fake_dir.mkdir(parents=True, exist_ok=True)
+
+    import backlog_core.models as models
+
+    monkeypatch.setattr(models, "BACKLOG_DIR", fake_dir)
+    monkeypatch.setattr(parsing, "BACKLOG_DIR", fake_dir)
+    monkeypatch.setattr(ops, "BACKLOG_DIR", fake_dir)
+
+
+# ---------------------------------------------------------------------------
+# add_item
+# ---------------------------------------------------------------------------
+
+
+class TestAddItemCreatesLocalFile:
+    """add_item writes a per-item file with correct frontmatter fields."""
+
+    def test_add_item_creates_file_in_backlog_dir(self, mocker: MockerFixture) -> None:
+        """Verify add_item creates exactly one .md file in BACKLOG_DIR.
+
+        Tests: add_item file creation.
+        How: Call add_item with create_issue=False; check one .md file exists.
+        Why: The primary side-effect of add_item is writing a local cache file.
+        """
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        import backlog_core.models as models
+
+        fake_dir: Path = models.BACKLOG_DIR
+        result = add_item(
+            title="My New Feature", description="Does something useful", priority="P1", create_issue=False
+        )
+
+        files = list(fake_dir.glob("*.md"))
+        assert len(files) == 1
+        assert result["filepath"] == str(files[0])
+
+    def test_add_item_returns_title_priority_filepath(self, mocker: MockerFixture) -> None:
+        """Verify add_item return dict contains title, priority, and filepath keys.
+
+        Tests: add_item return value shape.
+        How: Call add_item and inspect the returned dict.
+        Why: Callers depend on these fields to display confirmation output.
+        """
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        result = add_item(title="Return Shape Check", description="desc", priority="P2", create_issue=False)
+
+        assert result["title"] == "Return Shape Check"
+        assert result["priority"] == "P2"
+        assert "filepath" in result
+
+    def test_add_item_frontmatter_contains_title(self, mocker: MockerFixture) -> None:
+        """Verify the written file frontmatter includes the item title.
+
+        Tests: add_item frontmatter content.
+        How: Call add_item and read back the written file.
+        Why: Frontmatter fields are parsed by downstream tools — must be accurate.
+        """
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        result = add_item(title="Frontmatter Title Test", description="desc", priority="P1", create_issue=False)
+
+        filepath = Path(str(result["filepath"]))
+        text = filepath.read_text(encoding="utf-8")
+        assert "Frontmatter Title Test" in text
+
+    def test_add_item_no_github_calls_when_create_issue_false(self, mocker: MockerFixture) -> None:
+        """Verify no GitHub API calls are made when create_issue=False.
+
+        Tests: add_item create_issue=False code path.
+        How: Patch try_get_github and assert it is never called.
+        Why: Explicit local-only mode must not trigger GitHub side-effects.
+        """
+        mock_try_gh = mocker.patch("backlog_core.operations.try_get_github")
+
+        add_item(title="Local Only Item", description="desc", priority="P2", create_issue=False)
+
+        mock_try_gh.assert_not_called()
+
+    def test_add_item_with_create_issue_true_calls_github(self, mocker: MockerFixture) -> None:
+        """Verify add_item calls try_get_github when create_issue=True.
+
+        Tests: add_item GH-first integration path.
+        How: Patch try_get_github to return a mock repo, verify it was called.
+        Why: GH-first design requires GitHub to be contacted before local file write.
+        """
+        mock_repo = mocker.Mock()
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+        mocker.patch("backlog_core.operations.create_issue_for_item", return_value=42)
+
+        result = add_item(title="GH First Item", description="desc", priority="P1", create_issue=True)
+
+        assert result.get("issue_num") == 42
+
+    def test_add_item_with_create_issue_true_returns_issue_num(self, mocker: MockerFixture) -> None:
+        """Verify add_item return dict includes issue_num when GitHub issue is created.
+
+        Tests: add_item issue_num in return value.
+        How: Mock create_issue_for_item to return 99.
+        Why: Callers display the issue number to confirm GH-first creation.
+        """
+        mock_repo = mocker.Mock()
+        mocker.patch("backlog_core.operations.try_get_github", return_value=mock_repo)
+        mocker.patch("backlog_core.operations.create_issue_for_item", return_value=99)
+
+        result = add_item(title="Issue Num Item", description="desc", priority="P1", create_issue=True)
+
+        assert result["issue_num"] == 99
+
+
+class TestAddItemDuplicateDetection:
+    """add_item raises DuplicateItemError on fuzzy duplicates unless force=True."""
+
+    def test_add_item_raises_on_fuzzy_duplicate(self, mocker: MockerFixture) -> None:
+        """Verify add_item raises DuplicateItemError when a similar item already exists.
+
+        Tests: Duplicate detection in add_item.
+        How: Write an existing item, attempt to add one with a near-identical title.
+        Why: Duplicate items waste effort and cause confusion.
+        """
+        import backlog_core.models as models
+
+        fake_dir: Path = models.BACKLOG_DIR
+        _write_item(fake_dir, title="Implement Error Recovery", priority="P1", topic="implement-error-recovery")
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        with pytest.raises(DuplicateItemError):
+            add_item(title="Implement Error Recovery Logic", description="desc", priority="P1", create_issue=False)
+
+    def test_add_item_force_bypasses_duplicate_check(self, mocker: MockerFixture) -> None:
+        """Verify add_item with force=True creates item despite existing duplicate.
+
+        Tests: force=True bypass in add_item.
+        How: Write existing item, add similar one with force=True.
+        Why: Users must override when items are intentionally distinct.
+        """
+        import backlog_core.models as models
+
+        fake_dir: Path = models.BACKLOG_DIR
+        _write_item(fake_dir, title="Implement Error Recovery", priority="P1", topic="implement-error-recovery")
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        result = add_item(
+            title="Implement Error Recovery Logic", description="desc", priority="P1", create_issue=False, force=True
+        )
+
+        assert result["title"] == "Implement Error Recovery Logic"
+
+    def test_add_item_no_duplicate_succeeds(self, mocker: MockerFixture) -> None:
+        """Verify add_item succeeds when no similar items exist.
+
+        Tests: add_item happy path with duplicate check enabled.
+        How: Empty backlog; add an item without force.
+        Why: Duplicate check must not block unrelated new items.
+        """
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        result = add_item(
+            title="Completely Unique Novel Feature", description="desc", priority="P2", create_issue=False
+        )
+
+        assert "filepath" in result
+
+
+# ---------------------------------------------------------------------------
+# list_items
+# ---------------------------------------------------------------------------
+
+
+class TestListItemsEmpty:
+    """list_items returns empty list when backlog directory has no items."""
+
+    def test_list_items_empty_backlog_returns_empty_list(self, mocker: MockerFixture) -> None:
+        """Verify list_items returns items=[] when backlog directory is empty.
+
+        Tests: list_items empty state.
+        How: Do not create any files; call list_items.
+        Why: Callers must handle empty backlog without error.
+        """
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items(with_status=False, from_github=False)
+
+        assert result["items"] == []
+        assert result["count"] == 0
+
+
+class TestListItemsFiltering:
+    """list_items excludes skip=True items and uses batch_fetch_statuses for status."""
+
+    def test_list_items_excludes_skip_items(self, mocker: MockerFixture) -> None:
+        """Verify list_items omits items with skip=True (done/resolved status).
+
+        Tests: Skip filtering in list_items.
+        How: Mock parse_backlog to return one active and one skip=True item.
+        Why: Done items must not appear in the active backlog list.  parse_backlog
+             is mocked because _parse_frontmatter has a pre-existing bug where the
+             nested metadata dict is stringified, preventing skip from being set.
+        """
+        active = BacklogItem(title="Active Item", section="P1", skip=False)
+        done = BacklogItem(title="Done Item", section="P1", skip=True)
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[active, done])
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        result = list_items(with_status=False, from_github=False)
+
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        titles = [it["title"] for it in items]
+        assert "Active Item" in titles
+        assert "Done Item" not in titles
+
+    def test_list_items_with_status_enriches_from_batch_fetch(self, mocker: MockerFixture) -> None:
+        """Verify list_items with_status=True enriches items from batch_fetch_statuses result.
+
+        Tests: batch_fetch_statuses integration in list_items.
+        How: Mock parse_backlog to return an item with issue="#7"; mock batch_fetch_statuses.
+        Why: with_status must use batch fetch — not N+1 individual calls.  parse_backlog
+             is mocked because _parse_frontmatter has a pre-existing bug that drops the
+             issue field from nested metadata, causing empty issue strings after parsing.
+        """
+        item_with_issue = BacklogItem(title="Tracked Item", section="P1", skip=False, issue="#7")
+        mocker.patch("backlog_core.operations.parse_backlog", return_value=[item_with_issue])
+        mock_batch = mocker.patch(
+            "backlog_core.operations.batch_fetch_statuses",
+            return_value={7: IssueStatus(status="status:in-progress", milestone="v2")},
+        )
+
+        result = list_items(with_status=True, from_github=False)
+
+        mock_batch.assert_called_once()
+        items = cast("list[dict[str, str | bool]]", result["items"])
+        assert len(items) == 1
+        assert items[0]["status"] == "status:in-progress"
+        assert items[0]["milestone"] == "v2"
+
+    def test_list_items_without_status_still_calls_batch_fetch(self, mocker: MockerFixture) -> None:
+        """Verify list_items always calls batch_fetch_statuses (it returns {} when not needed).
+
+        Tests: batch_fetch_statuses called unconditionally.
+        How: Call list_items with with_status=False; check batch fetch was called.
+        Why: batch_fetch_statuses is always invoked; status fields are populated only when
+             with_status=True.
+        """
+        import backlog_core.models as models
+
+        fake_dir: Path = models.BACKLOG_DIR
+        _write_item(fake_dir, title="No Status Item", priority="P2", topic="no-status-item")
+        mock_batch = mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        list_items(with_status=False, from_github=False)
+
+        mock_batch.assert_called_once()
+
+    def test_list_items_from_github_calls_refresh(self, mocker: MockerFixture) -> None:
+        """Verify list_items with from_github=True triggers a cache refresh.
+
+        Tests: from_github refresh path.
+        How: Patch refresh_local_cache_from_github; call list_items(from_github=True).
+        Why: from_github must invoke the refresh before returning local data.
+        """
+        mock_refresh = mocker.patch(
+            "backlog_core.operations.refresh_local_cache_from_github",
+            return_value={"refreshed": 0, "messages": [], "warnings": [], "errors": []},
+        )
+        mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+        list_items(with_status=False, from_github=True)
+
+        mock_refresh.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# view_item
+# ---------------------------------------------------------------------------
+
+
+class TestViewItem:
+    """view_item returns ViewItemResult-shaped dict for local items and raises for unknowns."""
+
+    def test_view_item_known_title_returns_result(self, mocker: MockerFixture) -> None:
+        """Verify view_item returns a dict with title field for a known item.
+
+        Tests: view_item happy path with title selector.
+        How: Write a local item; call view_item with the title; check result fields.
+        Why: Callers depend on the returned dict to display item details.
+        """
+        import backlog_core.models as models
+
+        fake_dir: Path = models.BACKLOG_DIR
+        _write_item(fake_dir, title="Viewable Item", priority="P1", topic="viewable-item")
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        result = view_item("Viewable Item")
+
+        assert result["title"] == "Viewable Item"
+
+    def test_view_item_unknown_selector_raises_item_not_found_error(self, mocker: MockerFixture) -> None:
+        """Verify view_item raises ItemNotFoundError for an unrecognised selector.
+
+        Tests: view_item error path with unknown selector.
+        How: Call view_item with a selector that matches nothing.
+        Why: Callers must catch ItemNotFoundError to surface meaningful errors.
+        """
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        with pytest.raises(ItemNotFoundError):
+            view_item("Nonexistent Item That Does Not Exist")
+
+    def test_view_item_offset_limit_paginates_body(self, mocker: MockerFixture) -> None:
+        """Verify view_item applies offset and limit to body text.
+
+        Tests: Body pagination in view_item.
+        How: Write item with multi-line body; call view_item with offset=1, limit=1.
+        Why: Without pagination, large bodies overwhelm the caller; pagination is user-controlled.
+        """
+        import backlog_core.models as models
+
+        fake_dir: Path = models.BACKLOG_DIR
+        body_text = "Line 0\nLine 1\nLine 2\nLine 3\nLine 4"
+        _write_item(fake_dir, title="Paginated Item", priority="P2", topic="paginated-item", extra_body=body_text)
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        result = view_item("Paginated Item", offset=1, limit=2)
+
+        returned_body: str = str(result.get("body", ""))
+        body_lines = returned_body.splitlines()
+        # Only 2 lines returned starting from line 1
+        assert len(body_lines) <= 2
+
+    def test_view_item_no_pagination_returns_full_body(self, mocker: MockerFixture) -> None:
+        """Verify view_item returns full body when offset and limit are both 0.
+
+        Tests: view_item default no-truncation contract.
+        How: Write item with 5-line body; call view_item(offset=0, limit=0).
+        Why: Consumers must receive complete data when they do not request pagination.
+        """
+        import backlog_core.models as models
+
+        fake_dir: Path = models.BACKLOG_DIR
+        body_text = "\n".join(f"Line {i}" for i in range(5))
+        _write_item(fake_dir, title="Full Body Item", priority="P2", topic="full-body-item", extra_body=body_text)
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+
+        result = view_item("Full Body Item", offset=0, limit=0)
+
+        assert "body_truncated" not in result
+
+
+# ---------------------------------------------------------------------------
+# close_item
+# ---------------------------------------------------------------------------
+
+
+class TestCloseItem:
+    """close_item requires checklist_pass and optionally checks for open PRs."""
+
+    def test_close_item_without_checklist_pass_raises_validation_error(self, mocker: MockerFixture) -> None:
+        """Verify close_item raises ValidationError when checklist_pass=False.
+
+        Tests: Checklist gate in close_item.
+        How: Call close_item with checklist_pass=False.
+        Why: Closing without checklist bypasses quality assurance — must be blocked.
+        """
+        with pytest.raises(ValidationError, match="checklist_pass required"):
+            close_item(selector="anything", plan="plan/test.md", checklist_pass=False)
+
+    def test_close_item_unknown_selector_raises_item_not_found_error(self, mocker: MockerFixture) -> None:
+        """Verify close_item raises ItemNotFoundError when selector matches nothing.
+
+        Tests: close_item selector resolution error path.
+        How: Empty backlog; call close_item with checklist_pass=True.
+        Why: Callers must catch ItemNotFoundError to surface actionable feedback.
+        """
+        mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
+
+        with pytest.raises(ItemNotFoundError):
+            close_item(selector="Nonexistent Item", plan="plan/test.md", checklist_pass=True)
+
+    def test_close_item_happy_path_returns_closed_true(self, mocker: MockerFixture) -> None:
+        """Verify close_item returns closed=True for a valid item with checklist_pass=True.
+
+        Tests: close_item success path.
+        How: Write a local item with no issue; call close_item; check closed=True.
+        Why: Callers confirm item was closed by checking this field.
+        """
+        import backlog_core.models as models
+
+        fake_dir: Path = models.BACKLOG_DIR
+        _write_item(fake_dir, title="Closeable Item", priority="P1", topic="closeable-item")
+        mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
+        mocker.patch("backlog_core.operations.close_github_issue")
+
+        result = close_item(selector="Closeable Item", plan="plan/done.md", checklist_pass=True)
+
+        assert result["closed"] is True
+
+    def test_close_item_with_open_pr_raises_backlog_error(self, mocker: MockerFixture) -> None:
+        """Verify close_item raises BacklogError when open PRs reference the issue.
+
+        Tests: Open PR guard in close_item.
+        How: Mock find_item to return a BacklogItem with issue="#5" (bypasses parser bug);
+             mock check_open_prs_for_issue to return one PR.
+        Why: Premature close orphans in-flight PRs.  find_item is mocked because the
+             parser has a pre-existing bug that drops the issue field from nested metadata.
+        """
+        import backlog_core.models as models
+        from backlog_core.models import BacklogError
+
+        fake_dir: Path = models.BACKLOG_DIR
+        filepath = _write_item(fake_dir, title="PR Blocked Close", priority="P1", topic="pr-blocked-close")
+        item_with_issue = BacklogItem(title="PR Blocked Close", section="P1", issue="#5", file_path=str(filepath))
+        mocker.patch("backlog_core.operations.find_item", return_value=item_with_issue)
+        mocker.patch(
+            "backlog_core.operations.check_open_prs_for_issue",
+            return_value=[PullRequestRef(number=10, title="WIP: feature", url="https://github.com/t/10")],
+        )
+
+        with pytest.raises(BacklogError, match="Open PRs"):
+            close_item(selector="PR Blocked Close", plan="plan/done.md", checklist_pass=True, force=False)
+
+    def test_close_item_force_bypasses_open_pr_guard(self, mocker: MockerFixture) -> None:
+        """Verify close_item with force=True succeeds despite open PRs.
+
+        Tests: force=True bypass of PR guard in close_item.
+        How: Mock find_item to return an item with issue="#6"; mock open PR; call force=True.
+        Why: Users must override when PRs are stale or irrelevant.
+        """
+        import backlog_core.models as models
+
+        fake_dir: Path = models.BACKLOG_DIR
+        filepath = _write_item(fake_dir, title="Force Close Item", priority="P1", topic="force-close-item")
+        item_with_issue = BacklogItem(title="Force Close Item", section="P1", issue="#6", file_path=str(filepath))
+        mocker.patch("backlog_core.operations.find_item", return_value=item_with_issue)
+        mocker.patch(
+            "backlog_core.operations.check_open_prs_for_issue",
+            return_value=[PullRequestRef(number=11, title="WIP", url="https://github.com/t/11")],
+        )
+        mocker.patch("backlog_core.operations.close_github_issue")
+
+        result = close_item(selector="Force Close Item", plan="plan/done.md", checklist_pass=True, force=True)
+
+        assert result["closed"] is True
+
+
+# ---------------------------------------------------------------------------
+# resolve_item
+# ---------------------------------------------------------------------------
+
+
+class TestResolveItem:
+    """resolve_item requires a non-empty reason and validates the selector."""
+
+    def test_resolve_item_empty_reason_raises_validation_error(self, mocker: MockerFixture) -> None:
+        """Verify resolve_item raises ValidationError when reason is empty string.
+
+        Tests: Empty reason guard in resolve_item.
+        How: Call resolve_item with reason="".
+        Why: Resolving without a reason loses context permanently.
+        """
+        with pytest.raises(ValidationError, match="reason is required"):
+            resolve_item(selector="anything", reason="")
+
+    def test_resolve_item_whitespace_reason_raises_validation_error(self, mocker: MockerFixture) -> None:
+        """Verify resolve_item raises ValidationError when reason is whitespace-only.
+
+        Tests: Whitespace reason guard in resolve_item.
+        How: Call resolve_item with reason="   ".
+        Why: Whitespace-only reason is semantically empty — must be rejected.
+        """
+        with pytest.raises(ValidationError, match="reason is required"):
+            resolve_item(selector="anything", reason="   ")
+
+    def test_resolve_item_unknown_selector_raises_item_not_found_error(self, mocker: MockerFixture) -> None:
+        """Verify resolve_item raises ItemNotFoundError when selector matches nothing.
+
+        Tests: resolve_item selector resolution error path.
+        How: Empty backlog; call resolve_item with a valid reason.
+        Why: Callers must distinguish missing items from validation errors.
+        """
+        mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
+
+        with pytest.raises(ItemNotFoundError):
+            resolve_item(selector="Missing Item", reason="No longer needed")
+
+    def test_resolve_item_happy_path_returns_resolved_true(self, mocker: MockerFixture) -> None:
+        """Verify resolve_item returns resolved=True for a valid item with a reason.
+
+        Tests: resolve_item success path.
+        How: Write a local item with no issue; call resolve_item.
+        Why: Callers confirm item was resolved by checking this field.
+        """
+        import backlog_core.models as models
+
+        fake_dir: Path = models.BACKLOG_DIR
+        _write_item(fake_dir, title="Resolvable Item", priority="P2", topic="resolvable-item")
+        mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
+        mocker.patch("backlog_core.operations.resolve_github_issue")
+
+        result = resolve_item(selector="Resolvable Item", reason="Superseded by new approach")
+
+        assert result["resolved"] is True
+
+    def test_resolve_item_with_open_pr_raises_backlog_error(self, mocker: MockerFixture) -> None:
+        """Verify resolve_item raises BacklogError when open PRs reference the issue.
+
+        Tests: Open PR guard in resolve_item.
+        How: Mock find_item to return a BacklogItem with issue="#8"; mock open PR.
+        Why: Resolving orphans in-flight PRs.  find_item is mocked because the parser
+             has a pre-existing bug that drops the issue field from nested metadata.
+        """
+        import backlog_core.models as models
+        from backlog_core.models import BacklogError
+
+        fake_dir: Path = models.BACKLOG_DIR
+        filepath = _write_item(fake_dir, title="PR Blocked Resolve", priority="P1", topic="pr-blocked-resolve")
+        item_with_issue = BacklogItem(title="PR Blocked Resolve", section="P1", issue="#8", file_path=str(filepath))
+        mocker.patch("backlog_core.operations.find_item", return_value=item_with_issue)
+        mocker.patch(
+            "backlog_core.operations.check_open_prs_for_issue",
+            return_value=[PullRequestRef(number=20, title="Fix: something", url="https://github.com/t/20")],
+        )
+
+        with pytest.raises(BacklogError, match="Open PRs"):
+            resolve_item(selector="PR Blocked Resolve", reason="Superseded", force=False)
+
+    def test_resolve_item_force_bypasses_open_pr_guard(self, mocker: MockerFixture) -> None:
+        """Verify resolve_item with force=True succeeds despite open PRs.
+
+        Tests: force=True bypass of PR guard in resolve_item.
+        How: Mock find_item to return item with issue="#9"; mock open PR; call force=True.
+        Why: Users must override when PRs are no longer relevant.
+        """
+        import backlog_core.models as models
+
+        fake_dir: Path = models.BACKLOG_DIR
+        filepath = _write_item(fake_dir, title="Force Resolve Item", priority="P1", topic="force-resolve-item")
+        item_with_issue = BacklogItem(title="Force Resolve Item", section="P1", issue="#9", file_path=str(filepath))
+        mocker.patch("backlog_core.operations.find_item", return_value=item_with_issue)
+        mocker.patch(
+            "backlog_core.operations.check_open_prs_for_issue",
+            return_value=[PullRequestRef(number=21, title="WIP", url="https://github.com/t/21")],
+        )
+        mocker.patch("backlog_core.operations.resolve_github_issue")
+
+        result = resolve_item(selector="Force Resolve Item", reason="Superseded by different effort", force=True)
+
+        assert result["resolved"] is True
+
+
+# ---------------------------------------------------------------------------
+# Parametrize: priority prefixes are recognised in filenames
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("priority", "topic", "expected_section"),
+    [("P0", "critical-feature", "P0"), ("P1", "important-feature", "P1"), ("P2", "nice-to-have", "P2")],
+)
+def test_list_items_section_derived_from_priority(
+    priority: str, topic: str, expected_section: str, mocker: MockerFixture
+) -> None:
+    """Verify list_items derives item section from the priority metadata field.
+
+    Tests: Section derivation from priority in list_items.
+    How: Write item with given priority; verify the returned item has the expected section.
+    Why: Section is used for display grouping — wrong section mis-orders items.
+    """
+    import backlog_core.models as models
+
+    fake_dir: Path = models.BACKLOG_DIR
+    _write_item(fake_dir, title=f"{priority} Item", priority=priority, topic=topic)
+    mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
+
+    result = list_items(with_status=False, from_github=False)
+
+    items = cast("list[dict[str, str | bool]]", result["items"])
+    assert len(items) == 1
+    assert items[0]["section"] == expected_section

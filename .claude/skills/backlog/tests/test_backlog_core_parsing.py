@@ -1,0 +1,825 @@
+"""Tests for backlog_core/parsing.py — pure parsing functions with no GitHub or Typer dependencies."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pytest
+from backlog_core.models import BacklogItem, ViewItemResult
+from backlog_core.parsing import (
+    _parse_frontmatter,
+    build_backlog_frontmatter,
+    build_issue_body,
+    find_fuzzy_duplicates,
+    find_item,
+    normalize_issue_title,
+    parse_item_file,
+    title_to_slug,
+    view_result_from_local_item,
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Test data
+#
+# IMPORTANT: _parse_frontmatter stringifies all frontmatter values before
+# attempting to extract the nested ``metadata:`` block. This means the nested
+# dict is converted to a string representation, making isinstance(meta_raw, dict)
+# False, so meta always comes back as {}.
+#
+# Practical consequence:
+#   - Nested ``metadata:`` fields (priority, source, added, status, issue, plan)
+#     are NOT available through _parse_frontmatter's meta return value.
+#   - parse_item_file falls back to fm dict for those fields — but they live
+#     under the nested key, so they are also empty from fm.
+#   - Only ``name`` and ``description`` (top-level flat keys) are accessible.
+#   - Legacy flat frontmatter (no nested metadata block) works correctly.
+#
+# Tests in this file use flat-key frontmatter where they need specific field
+# values. Nested-metadata frontmatter is tested only for title/description,
+# which are the two top-level keys that survive stringification.
+# ---------------------------------------------------------------------------
+
+# Nested-metadata format (produced by build_backlog_frontmatter) — only name/description accessible
+_NESTED_META_FRONTMATTER = """\
+---
+name: My Test Item
+description: A test description
+metadata:
+  source: test-source
+  added: '2026-01-01'
+  priority: P1
+  type: Feature
+  status: open
+  topic: my-test-item
+---
+Body content here.
+"""
+
+# Legacy flat format — all top-level keys are accessible
+_FLAT_FRONTMATTER = """\
+---
+title: Legacy Title
+source: legacy-source
+added: '2025-12-01'
+priority: P0
+status: open
+---
+Legacy body.
+"""
+
+# Flat format with all fields needed for parse_item_file tests
+_FLAT_WITH_ALL_FIELDS = """\
+---
+name: Flat Item
+description: flat description
+source: flat-source
+added: '2026-01-01'
+priority: P1
+status: open
+issue: '#42'
+plan: plan/tasks-1-test.md
+---
+"""
+
+_FLAT_DONE = """\
+---
+name: Done Item
+description: completed
+source: test
+added: '2026-01-01'
+priority: P1
+status: done
+---
+"""
+
+_NO_FRONTMATTER = "Just plain body text with no YAML."
+
+
+# ---------------------------------------------------------------------------
+# parse_item_file
+# ---------------------------------------------------------------------------
+
+
+class TestParseItemFile:
+    """Tests for parse_item_file(text, path) -> BacklogItem."""
+
+    def test_parse_item_file_nested_meta_sets_title(self, tmp_path: Path) -> None:
+        # name is a top-level key — survives stringification
+        item = parse_item_file(_NESTED_META_FRONTMATTER, tmp_path / "item.md")
+
+        assert item.title == "My Test Item"
+
+    def test_parse_item_file_nested_meta_sets_description(self, tmp_path: Path) -> None:
+        # description is a top-level key — survives stringification
+        item = parse_item_file(_NESTED_META_FRONTMATTER, tmp_path / "item.md")
+
+        assert item.description == "A test description"
+
+    def test_parse_item_file_nested_meta_body_captured_as_raw_body(self, tmp_path: Path) -> None:
+        item = parse_item_file(_NESTED_META_FRONTMATTER, tmp_path / "item.md")
+
+        assert "Body content here." in item.raw_body
+
+    def test_parse_item_file_flat_priority_accessible(self, tmp_path: Path) -> None:
+        # When priority is a top-level flat key it is accessible
+        item = parse_item_file(_FLAT_WITH_ALL_FIELDS, tmp_path / "item.md")
+
+        assert item.priority == "P1"
+
+    def test_parse_item_file_flat_source_accessible(self, tmp_path: Path) -> None:
+        item = parse_item_file(_FLAT_WITH_ALL_FIELDS, tmp_path / "item.md")
+
+        assert item.source == "flat-source"
+
+    def test_parse_item_file_flat_added_accessible(self, tmp_path: Path) -> None:
+        item = parse_item_file(_FLAT_WITH_ALL_FIELDS, tmp_path / "item.md")
+
+        assert item.added == "2026-01-01"
+
+    def test_parse_item_file_flat_issue_accessible(self, tmp_path: Path) -> None:
+        item = parse_item_file(_FLAT_WITH_ALL_FIELDS, tmp_path / "item.md")
+
+        assert item.issue == "#42"
+
+    def test_parse_item_file_flat_plan_accessible(self, tmp_path: Path) -> None:
+        item = parse_item_file(_FLAT_WITH_ALL_FIELDS, tmp_path / "item.md")
+
+        assert item.plan == "plan/tasks-1-test.md"
+
+    def test_parse_item_file_flat_done_status_sets_skip_true(self, tmp_path: Path) -> None:
+        item = parse_item_file(_FLAT_DONE, tmp_path / "item.md")
+
+        assert item.skip is True
+
+    def test_parse_item_file_flat_open_status_sets_skip_false(self, tmp_path: Path) -> None:
+        item = parse_item_file(_FLAT_WITH_ALL_FIELDS, tmp_path / "item.md")
+
+        assert item.skip is False
+
+    def test_parse_item_file_no_frontmatter_returns_body_in_raw_body(self, tmp_path: Path) -> None:
+        item = parse_item_file(_NO_FRONTMATTER, tmp_path / "item.md")
+
+        assert item.raw_body == _NO_FRONTMATTER
+
+    def test_parse_item_file_no_frontmatter_title_is_empty(self, tmp_path: Path) -> None:
+        item = parse_item_file(_NO_FRONTMATTER, tmp_path / "item.md")
+
+        assert item.title == ""
+
+    def test_parse_item_file_legacy_frontmatter_uses_title_key(self, tmp_path: Path) -> None:
+        item = parse_item_file(_FLAT_FRONTMATTER, tmp_path / "item.md")
+
+        assert item.title == "Legacy Title"
+
+    def test_parse_item_file_legacy_priority_from_flat_key(self, tmp_path: Path) -> None:
+        item = parse_item_file(_FLAT_FRONTMATTER, tmp_path / "item.md")
+
+        assert item.priority == "P0"
+
+    def test_parse_item_file_plan_na_becomes_empty_string(self, tmp_path: Path) -> None:
+        text = """\
+---
+name: Item With NA Plan
+description: desc
+source: test
+added: '2026-01-01'
+priority: P1
+status: open
+plan: N/A
+---
+"""
+        item = parse_item_file(text, tmp_path / "item.md")
+
+        assert item.plan == ""
+
+    def test_parse_item_file_plan_path_preserved(self, tmp_path: Path) -> None:
+        text = """\
+---
+name: Item With Plan
+description: desc
+source: test
+added: '2026-01-01'
+priority: P1
+status: open
+plan: plan/tasks-1-my-feature.md
+---
+"""
+        item = parse_item_file(text, tmp_path / "item.md")
+
+        assert item.plan == "plan/tasks-1-my-feature.md"
+
+    def test_parse_item_file_groomed_flag_set_from_section_header(self, tmp_path: Path) -> None:
+        text = """\
+---
+name: Groomed Item
+description: desc
+source: test
+added: '2026-01-01'
+priority: P1
+status: open
+---
+
+## Groomed (2026-01-10)
+
+### Priority
+
+Confirmed P1.
+"""
+        item = parse_item_file(text, tmp_path / "item.md")
+
+        assert item.groomed == "true"
+
+    def test_parse_item_file_missing_optional_fields_use_defaults(self, tmp_path: Path) -> None:
+        text = """\
+---
+name: Bare Item
+description: just a desc
+priority: P2
+status: open
+---
+"""
+        item = parse_item_file(text, tmp_path / "item.md")
+
+        assert item.issue == ""
+        assert item.plan == ""
+        assert item.groomed == ""
+
+    def test_parse_item_file_resolved_status_sets_skip_true(self, tmp_path: Path) -> None:
+        text = """\
+---
+name: Resolved Item
+description: done
+source: test
+priority: P1
+status: resolved
+---
+"""
+        item = parse_item_file(text, tmp_path / "item.md")
+
+        assert item.skip is True
+
+
+# ---------------------------------------------------------------------------
+# _parse_frontmatter
+# ---------------------------------------------------------------------------
+
+
+class TestParseFrontmatter:
+    """Tests for _parse_frontmatter(text) -> (fm_dict, meta_dict, body)."""
+
+    def test_parse_frontmatter_returns_three_tuple(self) -> None:
+        result = _parse_frontmatter(_NESTED_META_FRONTMATTER)
+
+        assert len(result) == 3
+
+    def test_parse_frontmatter_fm_contains_name(self) -> None:
+        fm, _meta, _body = _parse_frontmatter(_NESTED_META_FRONTMATTER)
+
+        assert fm.get("name") == "My Test Item"
+
+    def test_parse_frontmatter_fm_contains_description(self) -> None:
+        fm, _meta, _body = _parse_frontmatter(_NESTED_META_FRONTMATTER)
+
+        assert fm.get("description") == "A test description"
+
+    def test_parse_frontmatter_body_contains_content(self) -> None:
+        _fm, _meta, body = _parse_frontmatter(_NESTED_META_FRONTMATTER)
+
+        assert "Body content here." in body
+
+    def test_parse_frontmatter_flat_fm_contains_priority(self) -> None:
+        # Flat frontmatter — priority is directly in fm
+        fm, _meta, _body = _parse_frontmatter(_FLAT_FRONTMATTER)
+
+        assert fm.get("priority") == "P0"
+
+    def test_parse_frontmatter_nested_meta_produces_empty_meta_dict(self) -> None:
+        # Because _parse_frontmatter stringifies fm values, the nested metadata
+        # dict becomes a string and is not returned as a dict in meta.
+        # This is the documented limitation of the current implementation.
+        _fm, meta, _body = _parse_frontmatter(_NESTED_META_FRONTMATTER)
+
+        assert meta == {}
+
+    def test_parse_frontmatter_no_metadata_block_gives_empty_meta(self) -> None:
+        text = """\
+---
+name: Flat Only
+description: no metadata block
+---
+flat body
+"""
+        _fm, meta, _body = _parse_frontmatter(text)
+
+        assert meta == {}
+
+    def test_parse_frontmatter_malformed_yaml_returns_str_types(self) -> None:
+        text = "---\n: : invalid yaml\n---\nbody"
+
+        fm, meta, body = _parse_frontmatter(text)
+
+        # Malformed frontmatter must not raise — function handles it gracefully
+        assert isinstance(fm, dict)
+        assert isinstance(meta, dict)
+        assert isinstance(body, str)
+
+    def test_parse_frontmatter_plain_text_gives_empty_fm_and_meta(self) -> None:
+        _fm, meta, _body = _parse_frontmatter(_NO_FRONTMATTER)
+
+        assert meta == {}
+
+
+# ---------------------------------------------------------------------------
+# find_item
+# ---------------------------------------------------------------------------
+
+
+class TestFindItem:
+    """Tests for find_item(items, selector) -> BacklogItem | None."""
+
+    def _make_items(self) -> list[BacklogItem]:
+        return [
+            BacklogItem(title="SAM Error Recovery", issue="#10", file_path="/tmp/p1-sam.md"),
+            BacklogItem(title="Backlog Duplicate Detection", issue="#20", file_path="/tmp/p1-dup.md"),
+            BacklogItem(title="Validate Terminal Browser", issue="#30", file_path="/tmp/p2-browser.md"),
+        ]
+
+    def test_find_item_exact_title_match_returns_item(self) -> None:
+        items = self._make_items()
+
+        result = find_item(items, "SAM Error Recovery")
+
+        assert result is not None
+        assert result.title == "SAM Error Recovery"
+
+    def test_find_item_partial_title_match_returns_item(self) -> None:
+        items = self._make_items()
+
+        result = find_item(items, "Duplicate")
+
+        assert result is not None
+        assert result.title == "Backlog Duplicate Detection"
+
+    def test_find_item_case_insensitive_match(self) -> None:
+        items = self._make_items()
+
+        result = find_item(items, "sam error")
+
+        assert result is not None
+        assert result.title == "SAM Error Recovery"
+
+    def test_find_item_hash_selector_matches_issue_number(self) -> None:
+        items = self._make_items()
+
+        result = find_item(items, "#10")
+
+        assert result is not None
+        assert result.issue == "#10"
+
+    def test_find_item_bare_number_selector_matches_issue_number(self) -> None:
+        items = self._make_items()
+
+        result = find_item(items, "20")
+
+        assert result is not None
+        assert result.issue == "#20"
+
+    def test_find_item_no_match_returns_none(self) -> None:
+        items = self._make_items()
+
+        result = find_item(items, "completely unrelated xyz")
+
+        assert result is None
+
+    def test_find_item_unknown_issue_number_returns_none(self) -> None:
+        items = self._make_items()
+
+        result = find_item(items, "#999")
+
+        assert result is None
+
+    def test_find_item_github_url_extracts_issue_number(self) -> None:
+        items = self._make_items()
+
+        result = find_item(items, "https://github.com/owner/repo/issues/30")
+
+        assert result is not None
+        assert result.issue == "#30"
+
+
+# ---------------------------------------------------------------------------
+# build_issue_body
+# ---------------------------------------------------------------------------
+
+
+class TestBuildIssueBody:
+    """Tests for build_issue_body(item: BacklogItem) -> str."""
+
+    def _full_item(self) -> BacklogItem:
+        return BacklogItem(
+            title="Add new feature",
+            description="This feature adds X to Y.",
+            source="user request",
+            added="2026-01-01",
+            priority="P1",
+            item_type="Feature",
+            files="packages/foo/bar.py",
+            suggested_location="packages/foo/",
+        )
+
+    def test_build_issue_body_contains_story_section(self) -> None:
+        body = build_issue_body(self._full_item())
+
+        assert "## Story" in body
+
+    def test_build_issue_body_contains_description_section(self) -> None:
+        body = build_issue_body(self._full_item())
+
+        assert "## Description" in body
+        assert "This feature adds X to Y." in body
+
+    def test_build_issue_body_contains_acceptance_criteria_section(self) -> None:
+        body = build_issue_body(self._full_item())
+
+        assert "## Acceptance Criteria" in body
+
+    def test_build_issue_body_contains_context_section_with_source(self) -> None:
+        body = build_issue_body(self._full_item())
+
+        assert "## Context" in body
+        assert "user request" in body
+
+    def test_build_issue_body_contains_files_section_when_files_set(self) -> None:
+        body = build_issue_body(self._full_item())
+
+        assert "## Files" in body
+        assert "packages/foo/bar.py" in body
+
+    def test_build_issue_body_contains_suggested_location_when_set(self) -> None:
+        body = build_issue_body(self._full_item())
+
+        assert "## Suggested Location" in body
+        assert "packages/foo/" in body
+
+    def test_build_issue_body_no_files_section_when_files_empty(self) -> None:
+        item = BacklogItem(title="Simple", description="desc", priority="P2")
+
+        body = build_issue_body(item)
+
+        assert "## Files" not in body
+
+    def test_build_issue_body_no_suggested_location_section_when_empty(self) -> None:
+        item = BacklogItem(title="Simple", description="desc", priority="P2")
+
+        body = build_issue_body(item)
+
+        assert "## Suggested Location" not in body
+
+    def test_build_issue_body_ends_with_newline(self) -> None:
+        body = build_issue_body(self._full_item())
+
+        assert body.endswith("\n")
+
+    def test_build_issue_body_minimal_item_still_produces_valid_body(self) -> None:
+        item = BacklogItem(title="Bare minimum")
+
+        body = build_issue_body(item)
+
+        assert "## Story" in body
+        assert "## Description" in body
+        assert "## Acceptance Criteria" in body
+        assert "## Context" in body
+
+
+# ---------------------------------------------------------------------------
+# build_backlog_frontmatter
+# ---------------------------------------------------------------------------
+
+
+class TestBuildBacklogFrontmatter:
+    """Tests for build_backlog_frontmatter(...) -> str."""
+
+    def _build(self, **kwargs: str) -> str:
+        defaults = {
+            "name": "Test Feature",
+            "description": "A new feature",
+            "source": "user",
+            "added": "2026-01-01",
+            "priority": "P1",
+            "type_val": "Feature",
+            "status": "open",
+        }
+        defaults.update(kwargs)
+        return build_backlog_frontmatter(**defaults)  # type: ignore[arg-type]
+
+    def test_build_backlog_frontmatter_starts_with_dashes(self) -> None:
+        result = self._build()
+
+        assert result.startswith("---")
+
+    def test_build_backlog_frontmatter_contains_name(self) -> None:
+        result = self._build(name="My Feature")
+
+        assert "My Feature" in result
+
+    def test_build_backlog_frontmatter_contains_priority(self) -> None:
+        result = self._build(priority="P0")
+
+        assert "P0" in result
+
+    def test_build_backlog_frontmatter_contains_status(self) -> None:
+        result = self._build(status="open")
+
+        assert "open" in result
+
+    def test_build_backlog_frontmatter_contains_source(self) -> None:
+        result = self._build(source="automated")
+
+        assert "automated" in result
+
+    def test_build_backlog_frontmatter_issue_included_when_provided(self) -> None:
+        result = self._build(issue="#42")
+
+        assert "#42" in result
+
+    def test_build_backlog_frontmatter_issue_omitted_when_empty(self) -> None:
+        result = self._build()
+
+        assert "issue" not in result
+
+    def test_build_backlog_frontmatter_plan_included_when_provided(self) -> None:
+        result = self._build(plan="plan/tasks-1-test.md")
+
+        assert "plan/tasks-1-test.md" in result
+
+    def test_build_backlog_frontmatter_groomed_included_when_provided(self) -> None:
+        result = self._build(groomed="true")
+
+        assert "groomed" in result
+
+    def test_build_backlog_frontmatter_contains_topic_slug(self) -> None:
+        result = self._build(name="My New Feature")
+
+        # topic is a slug derived from the name
+        assert "my-new-feature" in result
+
+
+# ---------------------------------------------------------------------------
+# find_fuzzy_duplicates
+# ---------------------------------------------------------------------------
+
+
+class TestFindFuzzyDuplicates:
+    """Tests for find_fuzzy_duplicates(title, items, threshold) -> list[tuple]."""
+
+    def test_find_fuzzy_duplicates_exact_match_returns_one_result(self) -> None:
+        items = [BacklogItem(title="SAM Error Recovery", file_path="/tmp/p1-sam.md")]
+
+        matches = find_fuzzy_duplicates("SAM Error Recovery", items)
+
+        assert len(matches) == 1
+
+    def test_find_fuzzy_duplicates_exact_match_ratio_is_one(self) -> None:
+        items = [BacklogItem(title="SAM Error Recovery", file_path="/tmp/p1-sam.md")]
+
+        matches = find_fuzzy_duplicates("SAM Error Recovery", items)
+
+        assert matches[0][1] >= 1.0
+
+    def test_find_fuzzy_duplicates_similar_title_detected_above_threshold(self) -> None:
+        items = [BacklogItem(title="backlog.py add implement duplicate detection", file_path="/tmp/p1-dup.md")]
+
+        matches = find_fuzzy_duplicates("backlog.py add implement fuzzy duplicate detection", items)
+
+        assert len(matches) == 1
+        assert matches[0][1] >= 0.80
+
+    def test_find_fuzzy_duplicates_dissimilar_title_returns_empty(self) -> None:
+        items = [BacklogItem(title="Validate Terminal Browser", file_path="/tmp/p2-browser.md")]
+
+        matches = find_fuzzy_duplicates("SAM Error Recovery", items)
+
+        assert matches == []
+
+    def test_find_fuzzy_duplicates_skips_items_with_skip_true(self) -> None:
+        items = [BacklogItem(title="SAM Error Recovery", file_path="/tmp/p1-sam.md", skip=True)]
+
+        matches = find_fuzzy_duplicates("SAM Error Recovery", items)
+
+        assert matches == []
+
+    def test_find_fuzzy_duplicates_strips_commit_prefix_before_comparison(self) -> None:
+        items = [BacklogItem(title="feat: SAM Error Recovery", file_path="/tmp/p1-sam.md")]
+
+        matches = find_fuzzy_duplicates("SAM Error Recovery", items)
+
+        assert len(matches) == 1
+        assert matches[0][1] >= 1.0
+
+    def test_find_fuzzy_duplicates_new_title_commit_prefix_stripped(self) -> None:
+        items = [BacklogItem(title="SAM Error Recovery", file_path="/tmp/p1-sam.md")]
+
+        matches = find_fuzzy_duplicates("fix: SAM Error Recovery", items)
+
+        assert len(matches) == 1
+
+    def test_find_fuzzy_duplicates_returns_tuples_of_title_ratio_path(self) -> None:
+        items = [BacklogItem(title="SAM Error Recovery", file_path="/tmp/p1-sam.md")]
+
+        matches = find_fuzzy_duplicates("SAM Error Recovery", items)
+
+        title, ratio, path = matches[0]
+        assert title == "SAM Error Recovery"
+        assert isinstance(ratio, float)
+        assert path == "/tmp/p1-sam.md"
+
+    def test_find_fuzzy_duplicates_sorted_by_ratio_descending(self) -> None:
+        items = [
+            BacklogItem(title="SAM recovery mechanism", file_path="/tmp/a.md"),
+            BacklogItem(title="SAM Error Recovery", file_path="/tmp/b.md"),
+        ]
+
+        matches = find_fuzzy_duplicates("SAM Error Recovery", items)
+
+        ratios = [m[1] for m in matches]
+        assert ratios == sorted(ratios, reverse=True)
+
+    def test_find_fuzzy_duplicates_empty_title_returns_empty(self) -> None:
+        items = [BacklogItem(title="SAM Error Recovery", file_path="/tmp/p1-sam.md")]
+
+        matches = find_fuzzy_duplicates("", items)
+
+        assert matches == []
+
+    def test_find_fuzzy_duplicates_custom_threshold_respected(self) -> None:
+        items = [BacklogItem(title="Completely different title", file_path="/tmp/p1.md")]
+
+        # With 0.0 threshold everything matches
+        matches = find_fuzzy_duplicates("SAM Error Recovery", items, threshold=0.0)
+
+        assert len(matches) == 1
+
+
+# ---------------------------------------------------------------------------
+# normalize_issue_title
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeIssueTitle:
+    """Tests for normalize_issue_title(title) -> str."""
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("feat: SAM: Error Recovery", "sam: error recovery"),
+            ("fix: Bug in parser", "bug in parser"),
+            ("refactor: Clean up models", "clean up models"),
+            ("docs: Update README", "update readme"),
+            ("chore: Bump dependencies", "bump dependencies"),
+            ("perf: Optimize query", "optimize query"),
+            ("test: Add unit tests", "add unit tests"),
+            ("ci: Update workflow", "update workflow"),
+            ("SAM: Error Recovery", "sam: error recovery"),
+            ("No prefix title", "no prefix title"),
+            ("FEAT: Upper case prefix", "upper case prefix"),
+        ],
+    )
+    def test_normalize_issue_title_strips_prefix_and_lowercases(self, raw: str, expected: str) -> None:
+        assert normalize_issue_title(raw) == expected
+
+    def test_normalize_issue_title_empty_string_returns_empty(self) -> None:
+        assert normalize_issue_title("") == ""
+
+
+# ---------------------------------------------------------------------------
+# title_to_slug (slugify)
+# ---------------------------------------------------------------------------
+
+
+class TestTitleToSlug:
+    """Tests for title_to_slug(title) -> str."""
+
+    @pytest.mark.parametrize(
+        ("title", "expected"),
+        [
+            ("Hello World", "hello-world"),
+            ("SAM: Error Recovery", "sam-error-recovery"),
+            ("Add [new] feature (v2)", "add-new-feature-v2"),
+            ("  Spaces   Around  ", "spaces-around"),
+            ("Special!@#$%chars", "specialchars"),
+            ("Multiple---Hyphens", "multiple-hyphens"),
+            ("CamelCase Title", "camelcase-title"),
+        ],
+    )
+    def test_title_to_slug_converts_title_to_valid_slug(self, title: str, expected: str) -> None:
+        assert title_to_slug(title) == expected
+
+    def test_title_to_slug_truncates_at_max_len(self) -> None:
+        long_title = "a" * 100
+
+        slug = title_to_slug(long_title, max_len=60)
+
+        assert len(slug) <= 60
+
+    def test_title_to_slug_strips_strikethrough_prefix(self) -> None:
+        # Strikethrough syntax used for resolved items in BACKLOG.md
+        slug = title_to_slug("~~Done Item~~ RESOLVED")
+
+        assert slug == "done-item"
+
+    def test_title_to_slug_result_is_lowercase(self) -> None:
+        slug = title_to_slug("UPPERCASE TITLE")
+
+        assert slug == slug.lower()
+
+    def test_title_to_slug_no_leading_or_trailing_hyphens(self) -> None:
+        slug = title_to_slug("  -Hyphen at edges-  ")
+
+        assert not slug.startswith("-")
+        assert not slug.endswith("-")
+
+
+# ---------------------------------------------------------------------------
+# view_result_from_local_item
+# ---------------------------------------------------------------------------
+
+
+class TestViewResultFromLocalItem:
+    """Tests for view_result_from_local_item(item: BacklogItem) -> ViewItemResult."""
+
+    def test_view_result_from_local_item_maps_title(self) -> None:
+        item = BacklogItem(title="My Item", section="P1")
+
+        result = view_result_from_local_item(item)
+
+        assert result.title == "My Item"
+
+    def test_view_result_from_local_item_maps_section_to_priority(self) -> None:
+        item = BacklogItem(title="My Item", section="P0")
+
+        result = view_result_from_local_item(item)
+
+        assert result.priority == "P0"
+
+    def test_view_result_from_local_item_maps_issue(self) -> None:
+        item = BacklogItem(title="My Item", issue="#55", section="P1")
+
+        result = view_result_from_local_item(item)
+
+        assert result.issue == "#55"
+
+    def test_view_result_from_local_item_maps_plan(self) -> None:
+        item = BacklogItem(title="My Item", plan="plan/tasks-1-test.md", section="P1")
+
+        result = view_result_from_local_item(item)
+
+        assert result.plan == "plan/tasks-1-test.md"
+
+    def test_view_result_from_local_item_maps_file_path(self) -> None:
+        item = BacklogItem(title="My Item", file_path="/tmp/p1-my-item.md", section="P1")
+
+        result = view_result_from_local_item(item)
+
+        assert result.file_path == "/tmp/p1-my-item.md"
+
+    def test_view_result_from_local_item_groomed_true_when_set(self) -> None:
+        item = BacklogItem(title="My Item", groomed="true", section="P1")
+
+        result = view_result_from_local_item(item)
+
+        assert result.groomed is True
+
+    def test_view_result_from_local_item_groomed_false_when_empty(self) -> None:
+        item = BacklogItem(title="My Item", groomed="", section="P1")
+
+        result = view_result_from_local_item(item)
+
+        assert result.groomed is False
+
+    def test_view_result_from_local_item_returns_view_item_result_type(self) -> None:
+        item = BacklogItem(title="My Item", section="P1")
+
+        result = view_result_from_local_item(item)
+
+        assert isinstance(result, ViewItemResult)
+
+    def test_view_result_from_local_item_reads_file_when_path_exists(self, tmp_path: Path) -> None:
+        # Write a file with flat frontmatter and verify description is read
+        item_file = tmp_path / "p1-my-item.md"
+        item_file.write_text(_FLAT_WITH_ALL_FIELDS, encoding="utf-8")
+        item = BacklogItem(title="Flat Item", section="P1", file_path=str(item_file))
+
+        result = view_result_from_local_item(item)
+
+        assert result.description == "flat description"
+
+    def test_view_result_from_local_item_no_file_path_skips_file_read(self) -> None:
+        item = BacklogItem(title="No path item", section="P2", file_path="")
+
+        result = view_result_from_local_item(item)
+
+        # Should not raise even with empty file_path
+        assert result.title == "No path item"

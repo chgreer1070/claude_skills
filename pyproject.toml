@@ -60,6 +60,7 @@ addopts = [
     "-n",
     "auto",
 ]
+asyncio_mode = "auto"
 markers = [
     "demos: marks tests as demonstration tests",
     "e2e: marks tests as end-to-end tests",
@@ -103,6 +104,7 @@ source = ["**/scripts"]
 [tool.ty.environment]
 # Order matters: real task_format.py (python3-development) must precede symlinked copy (development-harness)
 extra-paths = [
+    "./.claude/skills/backlog",
     "./.claude/skills/create-merge-request-changelog/scripts",
     "./.claude/skills/gh/scripts",
     "./.claude/skills/research-curator/scripts",
