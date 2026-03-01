@@ -4,6 +4,15 @@ description: Produce groomed content for a backlog item — discovers related sk
 tools: Glob, Grep, Read
 model: haiku
 skills: rt-ica
+mcpServers:
+  backlog-mcp:
+    command: uv
+    args:
+      - run
+      - python
+      - -m
+      - backlog_core.server
+    cwd: .claude/skills/backlog
 ---
 
 # Backlog Item Groomer Agent
