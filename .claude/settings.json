@@ -10,7 +10,7 @@
       "mcp__exa__*",
       "mcp__context7__*",
       "mcp__sequential-thinking__*",
-      "mcp__backlog-mcp__*"
+      "mcp__backlog__*"
     ],
     "deny": []
   },

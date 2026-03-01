@@ -6,7 +6,7 @@ Generated: 2026-03-01
 
 ## MCP Server
 
-- **Name**: `backlog-mcp`
+- **Name**: `backlog`
 - **Server file**: `.claude/skills/backlog/backlog_core/server.py`
 - **Transport**: STDIO (`mcp.run()`)
 - **Status**: Tests passing (55 tests), NOT yet registered in `.mcp.json`
@@ -341,7 +341,7 @@ Before updating any skill/agent files:
 ## Migration Order
 
 ```text
-1. Register backlog-mcp in .mcp.json
+1. Register backlog server in .mcp.json or agent frontmatter mcpServers
 2. Update .claude/CLAUDE.md policy section
 3. Update session hooks (session-start-backlog.cjs, stop-backlog-reminder.cjs)
 4. Update skill files (work-backlog-item → create-backlog-item → groom-backlog-item → group-items-to-milestone)

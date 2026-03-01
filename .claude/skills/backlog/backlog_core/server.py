@@ -10,7 +10,7 @@ from pydantic import Field
 from . import operations
 from .models import BacklogError, Output
 
-mcp = FastMCP("backlog-mcp")
+mcp = FastMCP("backlog")
 
 
 @mcp.tool()

@@ -602,8 +602,8 @@ async def test_all_ten_tools_are_registered():
 
 
 def test_mcp_server_name_is_backlog_mcp():
-    """The FastMCP instance is named 'backlog-mcp'."""
-    assert mcp.name == "backlog-mcp"
+    """The FastMCP instance is named 'backlog'."""
+    assert mcp.name == "backlog"
 
 
 # ---------------------------------------------------------------------------
