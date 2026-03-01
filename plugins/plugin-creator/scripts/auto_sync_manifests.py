@@ -43,7 +43,7 @@ if isinstance(sys.stderr, TextIOWrapper):
 
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast
 
 # Prettier formatting
 _NPX_PATH: str | None = shutil.which("npx")
@@ -55,6 +55,50 @@ _MIN_SKILL_PATH_PARTS = 4
 
 # Resolve git binary once at module load
 _GIT_PATH: str | None = shutil.which("git")
+
+# Marketplace JSON Schema
+MARKETPLACE_SCHEMA_URL = "https://anthropic.com/claude-code/marketplace.schema.json"
+_MARKETPLACE_REQUIRED_FIELDS = {"name", "owner", "metadata", "plugins"}
+
+
+def _ensure_marketplace_schema(data: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Ensure $schema is present and is the first key in the dict.
+
+    Args:
+        data: Parsed marketplace.json content.
+
+    Returns:
+        (updated_data, changed) — updated_data has $schema first; changed is
+        True if $schema was missing or had a different value.
+    """
+    changed = data.get("$schema") != MARKETPLACE_SCHEMA_URL
+    new_data: dict[str, Any] = {"$schema": MARKETPLACE_SCHEMA_URL}
+    new_data.update({k: v for k, v in data.items() if k != "$schema"})
+    return new_data, changed
+
+
+def _validate_marketplace_structure(data: dict[str, Any], path: Path) -> bool:
+    """Validate marketplace.json has required fields and correct types.
+
+    Args:
+        data: Parsed marketplace.json content.
+        path: File path (used in error messages).
+
+    Returns:
+        True if valid, False if validation errors were found.
+    """
+    missing = _MARKETPLACE_REQUIRED_FIELDS - set(data.keys())
+    if missing:
+        print(f"  ERROR: {path} missing required fields: {', '.join(sorted(missing))}")
+        return False
+    if not isinstance(data.get("plugins"), list):
+        print(f"  ERROR: {path} 'plugins' must be an array")
+        return False
+    metadata = data.get("metadata")
+    if not isinstance(metadata, dict):
+        print(f"  ERROR: {path} 'metadata' must be an object")
+        return False
+    return True
 
 
 class PluginPathInfo(TypedDict):
@@ -584,9 +628,7 @@ def _read_plugin_name(plugin_dir_name: str) -> str:
     return plugin_dir_name
 
 
-def _update_marketplace_plugins(
-    data: dict[str, dict[str, str] | list[dict[str, str]]], plugin_changes: MarketplaceChanges
-) -> bool:
+def _update_marketplace_plugins(data: dict[str, Any], plugin_changes: MarketplaceChanges) -> bool:
     """Add and remove plugins in the marketplace data structure.
 
     The ``"name"`` field in each marketplace entry is derived from plugin.json
@@ -644,14 +686,17 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
         return False
 
     with marketplace_json_path.open(encoding="utf-8") as f:
-        data: dict[str, dict[str, str] | list[dict[str, str]]] = json.load(f)
+        data, schema_added = _ensure_marketplace_schema(json.load(f))
+
+    if not _validate_marketplace_structure(data, marketplace_json_path):
+        return False
 
     metadata = cast("dict[str, str]", data.get("metadata", {}))
     current_version = metadata.get("version", "0.0.0")
 
     # Skip if the version was already bumped (e.g., user manually edited
     # marketplace.json in the same commit, or commit retry after hook failure).
-    if _version_already_bumped(str(marketplace_json_path), ["metadata", "version"]):
+    if not schema_added and _version_already_bumped(str(marketplace_json_path), ["metadata", "version"]):
         return False
     bump_type: Literal["major", "minor", "patch"] = "patch"
 
@@ -664,8 +709,8 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
     # Add and remove plugins
     modified = _update_marketplace_plugins(data, plugin_changes)
 
-    # Bump marketplace version if any changes
-    if modified or plugin_changes["modified"]:
+    # Bump marketplace version if any changes; also write if $schema was injected
+    if modified or plugin_changes["modified"] or schema_added:
         existing_content = marketplace_json_path.read_text(encoding="utf-8")
         new_version = bump_version(current_version, bump_type)
 
@@ -680,6 +725,8 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
         if new_content == existing_content:
             return False
 
+        if schema_added:
+            print(f"  Added $schema to {marketplace_json_path}")
         _write_json_lf(marketplace_json_path, new_content)
 
         return True
@@ -1169,6 +1216,40 @@ def _reconcile_component_array(
     return False
 
 
+def _apply_marketplace_drift(
+    data: dict[str, Any],
+    plugins_list: list[dict[str, Any]],
+    missing: set[str],
+    stale: set[str],
+    disk_plugins: dict[str, str],
+    *,
+    dry_run: bool,
+) -> None:
+    """Print and apply missing/stale plugin changes to marketplace data in place.
+
+    Args:
+        data: Marketplace JSON data (mutated in place when not dry_run).
+        plugins_list: Current plugins list from data (mutated in place for additions).
+        missing: Plugin names present on disk but absent from marketplace.json.
+        stale: Plugin names in marketplace.json with no matching directory on disk.
+        disk_plugins: Map of {canonical_name: dir_name} for plugins found on disk.
+        dry_run: If True, only report changes without writing.
+    """
+    if missing:
+        label = "Would add" if dry_run else "Adding"
+        for name in sorted(missing):
+            print(f"  {label} plugin to marketplace: {name}")
+        if not dry_run:
+            plugins_list.extend({"name": name, "source": f"./plugins/{disk_plugins[name]}"} for name in sorted(missing))
+
+    if stale:
+        label = "Would remove" if dry_run else "Removing"
+        for name in sorted(stale):
+            print(f"  {label} stale plugin from marketplace: {name}")
+        if not dry_run:
+            data["plugins"] = [p for p in plugins_list if p["name"] not in stale]
+
+
 def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
     """Reconcile marketplace.json against plugins on disk.
 
@@ -1188,9 +1269,12 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
         return False
 
     with marketplace_path.open(encoding="utf-8") as f:
-        data: dict[str, dict[str, str] | list[dict[str, str]]] = json.load(f)
+        data, schema_added = _ensure_marketplace_schema(json.load(f))
 
-    plugins_list = cast("list[dict[str, str]]", data.get("plugins", []))
+    if not _validate_marketplace_structure(data, marketplace_path):
+        return False
+
+    plugins_list = cast("list[dict[str, Any]]", data.get("plugins", []))
     # Only track locally-sourced plugins (relative path strings) in the stale check.
     # Plugins with external sources (dict with "source": "github" etc.) are managed
     # manually and must not be removed by reconciliation.
@@ -1204,30 +1288,15 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
     disk_plugins: dict[str, str] = {}  # {canonical_name: dir_name}
     for d in sorted(plugins_root.iterdir()):
         if d.is_dir() and (d / ".claude-plugin" / "plugin.json").exists():
-            canonical = _read_plugin_name(d.name)
-            disk_plugins[canonical] = d.name
+            disk_plugins[_read_plugin_name(d.name)] = d.name
 
     missing = set(disk_plugins.keys()) - registered_names
     stale = registered_names - set(disk_plugins.keys())
-    has_drift = bool(missing or stale)
+    _apply_marketplace_drift(data, plugins_list, missing, stale, disk_plugins, dry_run=dry_run)
 
-    if missing:
-        label = "Would add" if dry_run else "Adding"
-        for canonical_name in sorted(missing):
-            print(f"  {label} plugin to marketplace: {canonical_name}")
-        if not dry_run:
-            for canonical_name in sorted(missing):
-                dir_name = disk_plugins[canonical_name]
-                plugins_list.append({"name": canonical_name, "source": f"./plugins/{dir_name}"})
-
-    if stale:
-        label = "Would remove" if dry_run else "Removing"
-        for name in sorted(stale):
-            print(f"  {label} stale plugin from marketplace: {name}")
-        if not dry_run:
-            data["plugins"] = [p for p in plugins_list if p["name"] not in stale]
-
-    if has_drift and not dry_run:
+    if (missing or stale or schema_added) and not dry_run:
+        if schema_added:
+            print(f"  Added $schema to {marketplace_path}")
         metadata = cast("dict[str, str]", data.get("metadata", {}))
         current_version = metadata.get("version", "0.0.0")
         bump_type: Literal["major", "minor", "patch"] = "major" if stale else "minor"
@@ -1236,7 +1305,7 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
         _write_json_lf(marketplace_path, _format_json(data))
         print(f"  Updated marketplace -> {metadata['version']}")
 
-    return has_drift
+    return bool(missing or stale) or schema_added
 
 
 def reconcile(*, dry_run: bool) -> int:
