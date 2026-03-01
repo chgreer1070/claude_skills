@@ -548,10 +548,11 @@ Only runs when user types `/deploy-production`.
 - **[Agent Skills Open Standard](../agentskills/SKILL.md)** — The portable specification (agentskills.io). Use when creating skills for cross-agent compatibility. Covers the subset of frontmatter fields (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`) recognized by all 25+ compatible agents.
 - **[Claude Plugins Reference](../claude-plugins-reference-2026/SKILL.md)** — Plugin creation, distribution, and plugin.json schema.
 - **[Claude Hooks Reference](../claude-hooks-reference-2026/SKILL.md)** — Complete hook events, matchers, and configuration.
+- **[Claude Code Skills Official](./resources/claude-code-skills-official.md)** — Authoritative specification from code.claude.com: frontmatter fields, discovery rules, invocation control, budget limits, and bundled skills.
 
 ## Sources
 
-- **Primary**: [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills.md) (accessed 2026-02-17)
+- **Primary**: [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills.md) (accessed 2026-03-01) — full reference at [Claude Code Skills Official](./resources/claude-code-skills-official.md)
 - **Standards**: [Agent Skills Open Standard](https://agentskills.io) — see also the [agentskills skill](../agentskills/SKILL.md) for the full portable specification reference
 - **Examples**: [anthropics/skills](https://github.com/anthropics/skills)
 - **Blog**: [Anthropic Engineering Blog - Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)

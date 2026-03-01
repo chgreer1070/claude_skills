@@ -219,6 +219,7 @@ REFERENCES_IN_SKILL:
 - [Prompts and Templates](./references/prompts-and-templates.md) - Prompt system configuration
 - [Example Projects](./references/example-projects.md) - Real-world implementations
 - [Evaluation Guide](./references/evaluation-guide.md) - Testing server quality
+- [Claude Code MCP Integration](./references/claude-code-mcp-integration.md) - Deployment target: how Claude Code connects to your server
 
 #### 1.4 Exhaustively Study API Documentation
 
@@ -704,6 +705,10 @@ Real-world FastMCP implementations demonstrating best practices and patterns fro
 **[evaluation-guide.md](./references/evaluation-guide.md)**
 
 Complete guide for creating comprehensive evaluations to test whether LLMs can effectively use your MCP server to answer realistic, complex questions. Includes question guidelines, answer requirements, evaluation process, output format, examples, and verification process.
+
+**[claude-code-mcp-integration.md](./references/claude-code-mcp-integration.md)**
+
+How Claude Code discovers, configures, and connects to MCP servers — the deployment target for every server you build. Covers configuration methods (CLI, .mcp.json, agent frontmatter, plugins), scoping and precedence, transport selection, authentication (OAuth/API key), output limits, tool search, resources, prompts, server lifecycle, and a design checklist for server authors. Read this to prevent the #1 class of MCP bugs: "works in testing, fails in Claude Code."
 
 ## Standalone Operation
 

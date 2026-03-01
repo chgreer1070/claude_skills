@@ -545,6 +545,8 @@ Consult these helpful guides based on your skill's needs:
 
 These files contain established best practices for effective skill design.
 
+- **Official specification**: See [claude-code-skills-official.md](./references/claude-code-skills-official.md) for the authoritative source on frontmatter fields, discovery rules, invocation control, and budget limits
+
 #### Start with Reusable Skill Contents
 
 To begin implementation, start with the reusable resources identified above: `scripts/`, `references/`, and `assets/` files. Note that this step may require user input. For example, when implementing a `brand-guidelines` skill, the user may need to provide brand assets or templates to store in `assets/`, or documentation to store in `references/`.
@@ -585,7 +587,7 @@ Write the YAML frontmatter. All fields are optional, but `description` is strong
 - `disable-model-invocation`: Optional. Set to `true` to prevent Claude from automatically loading this skill. Use for workflows you want to trigger manually with `/name`. Default: `false`.
 - `hooks`: Optional. Hooks scoped to this skill's lifecycle. See hooks documentation for configuration format.
 
-**Complete field reference:** See [claude-skills-overview-2026 skill](../claude-skills-overview-2026/SKILL.md) for definitive schema documentation.
+**Complete field reference:** See [claude-skills-overview-2026 skill](../claude-skills-overview-2026/SKILL.md) for definitive schema documentation, or the [Claude Code Skills Official Reference](./references/claude-code-skills-official.md) for the authoritative source specification.
 
 ##### Body
 
