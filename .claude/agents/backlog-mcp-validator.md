@@ -2,7 +2,7 @@
 name: backlog-mcp-validator
 description: Validate the backlog FastMCP server against the CLI. Calls MCP tools natively via the agent-scoped backlog server and compares results against equivalent CLI output. Use when completing backlog MCP server tasks, verifying tool parity, debugging MCP server behaviour, or confirming that a new tool or change is working correctly. Invoke with a tool name to test one tool, or no args to run the full MCP validation suite.
 model: sonnet
-tools: Glob, Grep, WebFetch, WebSearch, TodoWrite, Skill, mcp__backlog__backlog_list, mcp__backlog__backlog_view, mcp__backlog__backlog_add, mcp__backlog__backlog_update, mcp__backlog__backlog_groom, mcp__backlog__backlog_close, mcp__backlog__backlog_resolve, mcp__backlog__backlog_sync, mcp__backlog__backlog_normalize, mcp__backlog__backlog_pull
+tools: TodoWrite, Skill, mcp__backlog__backlog_list, mcp__backlog__backlog_view, mcp__backlog__backlog_add, mcp__backlog__backlog_update, mcp__backlog__backlog_groom, mcp__backlog__backlog_close, mcp__backlog__backlog_resolve, mcp__backlog__backlog_sync, mcp__backlog__backlog_normalize, mcp__backlog__backlog_pull
 mcpServers:
   backlog:
     command: uv
