@@ -329,10 +329,89 @@ If architecture spec specifies a concrete agent, use that. Otherwise assign the 
 
 Parallel tasks must not collide on the same files unless a merge protocol is specified.
 
-If parallel tasks must touch the same file:
+If multiple candidate tasks would write to the same file:
 
-- Split by non-overlapping sections with explicit line/section ownership, OR
-- Create an integration task that performs the merge at a sync checkpoint
+- PREFERRED: Merge into a single task (see Same-File Task Merging below)
+- ALTERNATIVE: Chain with dependencies to serialize execution
+- LAST RESORT: Split by non-overlapping sections with explicit line/section ownership, and create an integration task at a sync checkpoint
+
+The merge approach is preferred because it avoids edit conflicts entirely, reduces agent launch overhead, and keeps the hook-based status tracking pipeline intact.
+
+## Same-File Task Merging
+
+The swarm-task-planner MUST, during Phase 3 (Task Decomposition), perform the following before writing tasks:
+
+1. **Detect overlap**: After decomposing the architecture spec into candidate tasks, build a mapping of `output file path -> list of candidate tasks`. Any output file path that appears in the Expected Outputs of more than one candidate task is a "shared file."
+
+2. **Merge decision**: For each shared file, merge all candidate tasks that write to that file into a single task. The merged task:
+   - Receives a single task ID (following the plan's ID scheme, not a compound ID).
+   - Has a title that reflects the combined scope (e.g., "Update SKILL.md: prerequisites, error recovery, and syntax annotations" rather than the narrowest sub-scope).
+   - Lists all dependencies from the constituent candidate tasks (union of dependency sets, deduplicated).
+   - Uses the highest `complexity` among the constituents.
+   - Uses the highest `accuracy-risk` among the constituents.
+   - Uses the agent/role appropriate for the merged task's file type and combined scope.
+
+3. **Merge requirements and acceptance criteria**: The merged task's body sections combine content from all constituent candidate tasks, organized by scope:
+   - **Requirements**: Combined numbered list, grouped by subsection headings that describe the scope of each group (e.g., `### SKILL.md content additions`, `### SKILL.md structural changes`).
+   - **Acceptance Criteria**: Combined numbered list, grouped by subsection headings matching the requirement groups. Each group's criteria trace to the requirements in the corresponding subsection.
+   - **Verification Steps**: Combined, deduplicated. If multiple constituents had the same verification command (e.g., `uv run prek run --files SKILL.md`), it appears once.
+   - **Expected Outputs**: Combined, deduplicated. The shared file appears once.
+   - **Constraints**: Combined, deduplicated.
+
+4. **Document the merge rationale**: Add a note at the top of the merged task's Context section explaining that this task was merged from multiple planned changes to avoid edit conflicts. List the scope areas (not IDs, since the sub-tasks were never created).
+
+**Exception — sequential dependency already exists**: If tasks sharing an output file are already chained by dependencies (Task A depends on Task B, both write file X), no merge is required. The dependency chain already serializes execution, preventing edit conflicts. However, the planner SHOULD note in the plan that merging would reduce agent launch overhead.
+
+**Exception — different agents required**: If the constituent tasks require different agent types (e.g., one requires `python-cli-architect` for code changes and another requires `service-docs-maintainer` for documentation), the planner should evaluate whether one agent can handle the combined scope. If not, chain the tasks with dependencies instead of merging.
+
+**Illustrative example** (showing structure, not prescriptive content):
+
+Before merging (three candidate tasks):
+
+```text
+Candidate Task A: "Add inline comment to SKILL.md line 155"
+  Expected Outputs: .claude/skills/agent-browser/SKILL.md
+  Agent: general-purpose
+
+Candidate Task B: "Add Prerequisites section to SKILL.md"
+  Expected Outputs: .claude/skills/agent-browser/SKILL.md
+  Agent: general-purpose
+
+Candidate Task C: "Add Error Recovery and Validation Status to SKILL.md"
+  Expected Outputs: .claude/skills/agent-browser/SKILL.md
+  Agent: general-purpose
+```
+
+After merging (one task):
+
+```text
+Task 2: "Update SKILL.md: prerequisites, error recovery, validation status, and syntax annotation"
+  Expected Outputs: .claude/skills/agent-browser/SKILL.md
+  Agent: general-purpose
+  Requirements:
+    ### Syntax annotation
+    1. Add inline comment to line 155 clarifying body is a CSS selector
+    ### Prerequisites section
+    2. Insert Prerequisites section before Core Workflow
+    3. Include Node.js version check, browser install, system libraries, network check
+    ### Error recovery section
+    4. Add Error Recovery section with three named failure modes
+    ### Validation status table
+    5. Add Validation Status table with actual version strings
+  Acceptance Criteria:
+    ### Syntax annotation
+    1. SKILL.md line 155 contains the clarifying comment
+    ### Prerequisites section
+    2. ## Prerequisites exists before ## Core Workflow
+    3. Section contains actual Node.js version
+    ### Error recovery and validation status
+    4. ## Error Recovery section exists with all three failure modes
+    5. ## Validation Status table has actual version strings
+    6. No placeholder text remains
+  Verification Steps:
+    1. Read relevant sections and confirm content
+    2. uv run prek run --files .claude/skills/agent-browser/SKILL.md exits 0
+```
 
 ## Working Process
 
@@ -398,6 +477,12 @@ Add these validations:
 - Every task has `role` field in YAML frontmatter with a valid role name
 - Role assignments match task types per Agent Assignment Rules table
 
+9. Same-file conflict check (NEW)
+
+- For each Expected Output file path, count how many tasks list it
+- If count > 1 and tasks are not dependency-chained: MERGE required
+- If count > 1 and tasks are dependency-chained: WARNING (consider merging to reduce overhead)
+
 ## Success Metrics
 
 A well-formed plan enables:
@@ -416,3 +501,4 @@ Verification Questions:
 - Can the worker prove done using verification steps?
 - Are medium/high accuracy tasks protected by CoVe Checks?
 - Do parallel tasks avoid file conflicts or define a merge protocol?
+- Do any two tasks share an Expected Output file path without being dependency-chained or merged?

@@ -41,6 +41,18 @@ Python script (PEP 723):
 
 Bash scripts prohibited for new hooks/companion scripts. Legacy bash scripts may remain but avoid creating new ones.
 
+## Python File and Directory Naming
+
+Use `snake_case` for Python file names and directories that contain Python scripts. **Reason**: A directory named with `snake_case` can be converted to a Python module (add `__init__.py`) without renaming. Hyphens in directory names break `import` statements and cause tooling issues when resolving module names from paths.
+
+**Rules:**
+
+- Python files: `task_format.py`, not `task-format.py`
+- Script subdirectories: `snake_case` when they may become Python modules
+- Skill directories: `kebab-case` (`implementation-manager/`) — enforced by agentskills.io spec and the plugin-validator `NameFormatValidator`
+
+**SCOPE**: Applies to all Python files under `plugins/**/scripts/`, `plugins/**/skills/*/scripts/`, and `.claude/hooks/`. Skill directories themselves follow the agentskills.io naming convention (lowercase, hyphens only).
+
 SOURCE: Experimental validation (2026-02-02). Evidence from `.claude/hooks/session-start-backlog.cjs`, `plugins/plugin-creator/scripts/create_plugin.py`.
 
 ---
