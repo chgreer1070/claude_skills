@@ -108,11 +108,24 @@ def extract_task_info_from_prompt(prompt: str) -> tuple[Path | None, str | None]
         return None, None
 
     # Look for /start-task invocation pattern in the prompt
-    # Pattern: /start-task <path> --task <id>
+    # Pattern 1: /start-task <path> --task <id>  (literal slash-command)
     match = re.search(rf"/start-task\s+([^\s]+\.md)(?:\s+--task\s+({_TASK_ID_RE}))?", prompt)
     if match:
         task_file = Path(match.group(1))
         task_id = match.group(2)
+        return task_file, task_id
+
+    # Pattern 2: Skill(skill="start-task", args="<path> --task <id>")
+    # The orchestrator invokes start-task via the Skill tool, not as a literal command.
+    skill_match = re.search(
+        rf'Skill\(\s*skill\s*=\s*["\']start-task["\']\s*,\s*args\s*=\s*["\']'
+        rf"([^\s\"']+\.md)(?:\s+--task\s+({_TASK_ID_RE}))?"
+        rf'["\']',
+        prompt,
+    )
+    if skill_match:
+        task_file = Path(skill_match.group(1))
+        task_id = skill_match.group(2)
         return task_file, task_id
 
     return None, None
@@ -441,6 +454,22 @@ def _resolve_task_file(full_path: Path, task_id: str) -> tuple[Path, str] | None
     return None
 
 
+def _fallback_to_context_file(hook_input: dict[str, Any]) -> tuple[Path | None, str | None]:
+    """Read task info from the active-task context file as a fallback.
+
+    When prompt parsing fails (e.g. Skill() syntax not matched), the context
+    file written by /start-task step 4 provides the task_file_path and task_id.
+
+    Returns:
+        Tuple of (task_file_path, task_id) or (None, None) if context file not found.
+    """
+    cwd = Path(hook_input.get("cwd", "."))
+    session_id = hook_input.get("session_id", "")
+    if session_id:
+        return read_task_context(cwd, session_id)
+    return None, None
+
+
 def handle_subagent_stop(hook_input: dict[str, Any]) -> None:
     """Handle SubagentStop event - mark task COMPLETE with timestamp.
 
@@ -458,6 +487,10 @@ def handle_subagent_stop(hook_input: dict[str, Any]) -> None:
         prompt = tool_input.get("prompt", "")
 
     task_file_path, task_id = extract_task_info_from_prompt(prompt)
+
+    # Fallback: read from context file written by /start-task step 4
+    if task_file_path is None or task_id is None:
+        task_file_path, task_id = _fallback_to_context_file(hook_input)
 
     if task_file_path is None or task_id is None:
         # Not a /start-task sub-agent, exit silently
