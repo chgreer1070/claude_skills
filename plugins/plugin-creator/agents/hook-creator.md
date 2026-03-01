@@ -40,6 +40,7 @@ flowchart TD
     Q1 -->|All sessions this user| User["User-level hook\n→ ~/.claude/settings.json hooks section\n→ Always active"]
     Q1 -->|This project only, shared| Project["Project hook\n→ .claude/settings.json hooks section\n→ Committed to git"]
     Q1 -->|This project only, local| Local["Local hook\n→ .claude/settings.local.json\n→ Gitignored"]
+    Q1 -->|Scoped to one agent lifecycle| InlineAgent["Inline agent frontmatter hooks<br>→ hooks field in agent .md file<br>→ Scoped to that agent lifecycle only<br>→ See inline-agent-hooks.md"]
     Plugin --> Q2{Script path}
     Q2 --> PScript["'$\{CLAUDE_PLUGIN_ROOT\}/hooks/hookname.cjs'"]
     User --> Q3{Script path}
@@ -70,6 +71,11 @@ flowchart TD
     Q1 -->|Auto-approve permissions| PermissionRequest["PermissionRequest\nAuto-approval policies"]
     Q1 -->|Session ends| SessionEnd["SessionEnd\nCleanup, persistence"]
     Q1 -->|One-time setup| Setup["Setup\nDependency install — requires --init flag"]
+    Q1 -->|Git worktree created| WorktreeCreate["WorktreeCreate\nFires when a git worktree is created"]
+    Q1 -->|Git worktree removed| WorktreeRemove["WorktreeRemove\nFires when a git worktree is removed"]
+    Q1 -->|Team agent goes idle| TeammateIdle["TeammateIdle\nFires when a team agent goes idle"]
+    Q1 -->|Task marked complete| TaskCompleted["TaskCompleted\nFires when a task is marked complete"]
+    Q1 -->|Settings changed| ConfigChange["ConfigChange\nFires when settings are changed"]
 ```
 
 </event_flowchart>
@@ -393,8 +399,10 @@ Expected output:
 
 ## Sources
 
-- [Hooks Reference](https://code.claude.com/docs/en/hooks.md) (accessed 2026-01-28)
-- [Hooks Guide](https://code.claude.com/docs/en/hooks-guide.md) (accessed 2026-01-28)
-- [Plugin Components Reference](https://code.claude.com/docs/en/plugins-reference.md#hooks) (accessed 2026-01-28)
+- [Hooks Reference](https://code.claude.com/docs/en/hooks.md) (accessed 2026-02-27)
+- [Hooks Guide](https://code.claude.com/docs/en/hooks-guide.md) (accessed 2026-02-27)
+- [Plugin Components Reference](https://code.claude.com/docs/en/plugins-reference.md#hooks) (accessed 2026-02-27)
+- [Inline agent hooks](https://code.claude.com/docs/en/sub-agents.md) (accessed 2026-02-27)
+- Cross-platform guide: plugin-creator:hooks-guide
 - Local references: `plugin-creator:hooks-core-reference`, `plugin-creator:hooks-io-api`, `plugin-creator:hooks-patterns`
 - Pattern evidence: `.claude/hooks/session-start-backlog.cjs` (Node.js hook pattern, lines 1-69)
