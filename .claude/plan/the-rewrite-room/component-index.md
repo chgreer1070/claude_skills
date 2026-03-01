@@ -225,7 +225,7 @@
 - **Type**: skill
 - **Verified Purpose**: Knowledge reference skill for optimizing CLAUDE.md files and Skills for Claude Code CLI using Anthropic's official prompt engineering best practices. Core principle: positive framing over prohibitions (models attend to key nouns; "NEVER use X" still activates "use X"). Provides: positive framing table (Instead of/Write), motivations, structure guidance, concrete examples, compression techniques, verification checklist, length targets by document type. Does NOT write files — provides principles loaded by callers.
 - **Triggers**: "reviewing, creating, or improving system prompts, CLAUDE.md configurations, or Skill files", "transforming negative instructions into positive patterns"
-- **Invocation**: Loaded into agent context via `skills: prompt-optimization-claude-45` frontmatter field OR `Skill(command: "prompt-optimization-claude-45:prompt-optimization-claude-45")`
+- **Invocation**: Loaded into agent context via `skills: prompt-optimization-claude-45` frontmatter field OR `Skill(skill: "prompt-optimization-claude-45:prompt-optimization-claude-45")`
 - **Inputs**: None — knowledge reference loaded into agent context
 - **Outputs**: Principles applied by the agent that loaded it
 - **Validated Inputs**: No model or tools in frontmatter. Used by `contextual-ai-documentation-optimizer` as `skills: prompt-optimization-claude-45`.
@@ -255,7 +255,7 @@
 - **Type**: skill
 - **Verified Purpose**: Router skill. Routes summarization requests to the correct methodology and enforces fidelity rules. Reads output format from user signal (structured/bullets/tldr/json/table/outline), loads corresponding template from `./templates/{format}.md`, dispatches to type-specific strategy (file → file-summarizer agent, URL → url-summarizer agent, image → image-summarizer agent, multi-source → multi-source-synthesis skill). Enforces anti-hallucination rules: read before summarizing, extract before abstracting, preserve counts, distinguish absence from nonexistence, prevent lossy re-summarization chains.
 - **Triggers**: "summarize", "tl;dr", "give me the highlights", "what's important in this", "break down this", "what does this code do", "explain this file", "describe this image", "read and summarize"
-- **Invocation**: Loaded as skill into caller context: `Skill(command: "summarizer:summarizer")`
+- **Invocation**: Loaded as skill into caller context: `Skill(skill: "summarizer:summarizer")`
 - **Inputs**: Source to summarize (file path, URL, or image path); optional format specifier
 - **Outputs**: Dispatches to appropriate agent/sub-skill; the agent produces the actual summary
 - **Validated Inputs**: No model or tools in frontmatter. Templates exist at `./templates/` (verified: structured.md, bullets.md exist)

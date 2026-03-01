@@ -24,7 +24,7 @@ Run the autonomous transcript analysis pipeline. Spawn the @transcript-analyst a
 
 2. **Create output directory.** Ensure `.planning/kaizen/` exists in the current project root.
 
-3. **Spawn @transcript-analyst agent.** Delegate the analysis via Task tool:
+3. **Spawn @transcript-analyst agent.** Delegate the analysis via Agent tool:
 
    ```text
    subagent_type: transcript-analyst

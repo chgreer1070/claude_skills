@@ -15,7 +15,7 @@ How to create agents -- subagent vs teammate, agent type catalog, backend select
 Use Task for **short-lived, focused work** that returns a result:
 
 ```javascript
-Task({
+Agent({
   subagent_type: "Explore",
   description: "Find auth files",
   prompt: "Find all authentication-related files in this codebase",
@@ -39,7 +39,7 @@ Use Task with `team_name` and `name` to **spawn persistent teammates**:
 TeamCreate({ team_name: "my-project" })
 
 // Then spawn a teammate into that team
-Task({
+Agent({
   team_name: "my-project",        // Required -- which team to join
   name: "security-reviewer",      // Required -- teammate's name
   subagent_type: "general-purpose",
@@ -81,7 +81,7 @@ These are always available without plugins.
 ### Bash
 
 ```javascript
-Task({
+Agent({
   subagent_type: "Bash",
   description: "Run git commands",
   prompt: "Check git status and show recent commits"
@@ -95,7 +95,7 @@ Task({
 ### Explore
 
 ```javascript
-Task({
+Agent({
   subagent_type: "Explore",
   description: "Find API endpoints",
   prompt: "Find all API endpoints in this codebase. Be very thorough.",
@@ -111,7 +111,7 @@ Task({
 ### Plan
 
 ```javascript
-Task({
+Agent({
   subagent_type: "Plan",
   description: "Design auth system",
   prompt: "Create an implementation plan for adding OAuth2 authentication"
@@ -125,7 +125,7 @@ Task({
 ### general-purpose
 
 ```javascript
-Task({
+Agent({
   subagent_type: "general-purpose",
   description: "Research and implement",
   prompt: "Research React Query best practices and implement caching for the user API"
@@ -139,7 +139,7 @@ Task({
 ### claude-code-guide
 
 ```javascript
-Task({
+Agent({
   subagent_type: "claude-code-guide",
   description: "Help with Claude Code",
   prompt: "How do I configure MCP servers?"
@@ -152,7 +152,7 @@ Task({
 ### statusline-setup
 
 ```javascript
-Task({
+Agent({
   subagent_type: "statusline-setup",
   description: "Configure status line",
   prompt: "Set up a status line showing git branch and node version"
@@ -173,21 +173,21 @@ From the `compound-engineering` plugin (examples):
 
 ```javascript
 // Security review
-Task({
+Agent({
   subagent_type: "compound-engineering:review:security-sentinel",
   description: "Security audit",
   prompt: "Audit this PR for security vulnerabilities"
 })
 
 // Performance review
-Task({
+Agent({
   subagent_type: "compound-engineering:review:performance-oracle",
   description: "Performance check",
   prompt: "Analyze this code for performance bottlenecks"
 })
 
 // Architecture review
-Task({
+Agent({
   subagent_type: "compound-engineering:review:architecture-strategist",
   description: "Architecture review",
   prompt: "Review the system architecture of the authentication module"
@@ -215,21 +215,21 @@ Task({
 
 ```javascript
 // Best practices research
-Task({
+Agent({
   subagent_type: "compound-engineering:research:best-practices-researcher",
   description: "Research auth best practices",
   prompt: "Research current best practices for JWT authentication"
 })
 
 // Framework documentation
-Task({
+Agent({
   subagent_type: "compound-engineering:research:framework-docs-researcher",
   description: "Research Active Storage",
   prompt: "Gather comprehensive documentation about Active Storage file uploads"
 })
 
 // Git history analysis
-Task({
+Agent({
   subagent_type: "compound-engineering:research:git-history-analyzer",
   description: "Analyze auth history",
   prompt: "Analyze the git history of the authentication module"
@@ -247,7 +247,7 @@ Task({
 ### Design Agents
 
 ```javascript
-Task({
+Agent({
   subagent_type: "compound-engineering:design:figma-design-sync",
   description: "Sync with Figma",
   prompt: "Compare implementation with Figma design at [URL]"
@@ -257,7 +257,7 @@ Task({
 ### Workflow Agents
 
 ```javascript
-Task({
+Agent({
   subagent_type: "compound-engineering:workflow:bug-reproduction-validator",
   description: "Validate bug",
   prompt: "Reproduce and validate this reported bug: [description]"
@@ -436,7 +436,7 @@ CLAUDE_CODE_PARENT_SESSION_ID="session-xyz"
 **Using in prompts:**
 
 ```javascript
-Task({
+Agent({
   team_name: "my-project",
   name: "worker",
   subagent_type: "general-purpose",
@@ -474,9 +474,9 @@ which it2
 
 ## Related Skills
 
-- Core concepts -- `Skill(command: "swarm-primitives")`
-- API reference -- `Skill(command: "swarm-operations")`
-- Patterns and recipes -- `Skill(command: "swarm-patterns")`
+- Core concepts -- `Skill(skill: "swarm-primitives")`
+- API reference -- `Skill(skill: "swarm-operations")`
+- Patterns and recipes -- `Skill(skill: "swarm-patterns")`
 
 ---
 

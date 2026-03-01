@@ -256,6 +256,7 @@ def parse_backlog_from_directory() -> list[BacklogItem]:
         "p0-": "P0",
         "p1-": "P1",
         "p2-": "P2",
+        "idea-": "Ideas",
         "ideas-": "Ideas",
         "completed-": "Completed",
         "medium-": "P1",

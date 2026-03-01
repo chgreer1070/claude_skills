@@ -276,7 +276,7 @@ The `writing-skills` skill treats skill creation as TDD for documentation:
 ### Direct Applications
 
 1. **Skill Structure Reference**: The 14 skills provide battle-tested examples of SKILL.md format, frontmatter conventions, and reference file organization
-2. **Subagent Coordination Patterns**: The subagent-driven-development workflow demonstrates effective Task tool usage with explicit prompts
+2. **Subagent Coordination Patterns**: The subagent-driven-development workflow demonstrates effective Agent tool usage with explicit prompts
 3. **Two-Stage Review Pattern**: Separating spec compliance from code quality review is adoptable for any multi-agent workflow
 4. **TDD for Documentation**: The `writing-skills` approach of testing skills with subagent pressure scenarios is applicable to skill creation in this repository
 

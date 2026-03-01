@@ -96,7 +96,7 @@
 - **Type**: skill
 - **Path**: `plugins/agent-orchestration/skills/how-to-delegate/SKILL.md`
 - **Proposed Layer**: L0
-- **Relevance**: 10-step delegation worksheet; pre-flight verification before Task tool.
+- **Relevance**: 10-step delegation worksheet; pre-flight verification before Agent tool.
 - **Key content**: Step 1 Load Framework; Step 2 Identify Task Type; Step 3 Gather Observations (no pre-gathering); Step 4 Define Success; Step 5 World-Building Context; Step 6 Available Resources; Step 7 Select Agent; Step 8 Pre-Flight Verification; Step 9 Construct Task Prompt; Step 10 Delegate.
 
 ### hallucination-detector

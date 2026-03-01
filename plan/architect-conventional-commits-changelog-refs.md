@@ -64,8 +64,8 @@ This is a documentation-only fix. No Python code, CLI commands, or architectural
 
 **Action**:
 - commitlint: Keep (exists)
-- pre-commit: Keep (exists; use activation syntax `Skill(command: "python3-development:pre-commit")` or equivalent)
-- git-commit-helper: Replace with `commit-staged` — `Skill(command: "commit-staged")` or document as commit-staged
+- pre-commit: Keep (exists; use activation syntax `Skill(skill: "python3-development:pre-commit")` or equivalent)
+- git-commit-helper: Replace with `commit-staged` — `Skill(skill: "commit-staged")` or document as commit-staged
 - semantic-release: Remove (no skill exists)
 
 ---

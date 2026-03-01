@@ -60,7 +60,7 @@ flowchart TB
     end
 
     subgraph AGENT_BOX["AGENT"]
-        A1["Delegated via<br/>Task tool"]
+        A1["Delegated via<br/>Agent tool"]
         A2["Runs in separate<br/>context window"]
         A3["Fully autonomous<br/>within scope"]
         A4["Returns results,<br/>signals DONE/BLOCKED"]
@@ -116,7 +116,7 @@ flowchart TD
 
 **Skill Characteristics:**
 
-- Loadable via `Skill(command: "name")` or `@skillname`
+- Loadable via `Skill(skill: "name")` or `@skillname`
 - Contains SKILL.md with frontmatter and instructions
 - Can include reference files for additional context
 - No autonomous execution - provides guidance only

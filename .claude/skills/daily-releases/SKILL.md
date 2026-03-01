@@ -71,10 +71,10 @@ This writes to `./daily-releases/<date>/`:
 
 #### 2b. AI analysis (delegate to subagent — do NOT read git data files yourself)
 
-Delegate analysis to a Haiku subagent via Task():
+Delegate analysis to a Haiku subagent via Agent():
 
 ```python
-Task(
+Agent(
   subagent_type="general-purpose",
   model="claude-haiku-4-5-20251001",
   prompt="""
@@ -100,9 +100,9 @@ Report "analysis.json written" when done.
 )
 ```
 
-Replace `<date>` with the actual date value for that iteration before emitting the Task() call.
+Replace `<date>` with the actual date value for that iteration before emitting the Agent() call.
 
-After the Task() returns, verify `./daily-releases/<date>/analysis.json` exists before proceeding to Step 2c. If missing, report the error and stop.
+After the Agent() returns, verify `./daily-releases/<date>/analysis.json` exists before proceeding to Step 2c. If missing, report the error and stop.
 
 #### 2c. Format into release notes
 

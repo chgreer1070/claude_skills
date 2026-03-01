@@ -380,7 +380,7 @@ After Stage 3 integration completes successfully:
    - Neither (→ skip Stage 4)
 
 2. If sync script is appropriate, invoke:
-   Skill(command: "plugin-creator:add-doc-updater", args: "./{skill-name}/")
+   Skill(skill: "plugin-creator:add-doc-updater", args: "./{skill-name}/")
 
 3. The /add-doc-updater skill handles its own 5-phase workflow including:
    - Variable collection (Phase 0)

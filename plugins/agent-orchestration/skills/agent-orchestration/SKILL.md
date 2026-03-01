@@ -40,7 +40,7 @@ flowchart TD
     Q1 --> R3[Enable comprehensive agent discovery]
     Q1 --> NEVER[NEVER pre-gather data agents will collect]
     Q1 --> NEVER2[NEVER prescribe HOW agents implement]
-    R1 & R2 & R3 --> Delegate([Delegate via Task tool])
+    R1 & R2 & R3 --> Delegate([Delegate via Agent tool])
     NEVER & NEVER2 --> Delegate
 ```
 
@@ -84,7 +84,7 @@ Before delegating any task, verify the delegation includes:
 
 ## Task Tool Invocation Rule
 
-**When invoking the Task tool, construct the `prompt` parameter using the Delegation Template below.**
+**When invoking the Agent tool, construct the `prompt` parameter using the Delegation Template below.**
 
 **Reason**: Agents receive observations and success criteria, enabling them to apply expertise. Prescribing line numbers, exact changes, or tool sequences reduces agents to code-editing tools.
 
@@ -366,7 +366,7 @@ Orchestrator must include all necessary context in the initial Task prompt. Inst
 
 ```mermaid
 flowchart TD
-    Task([Task type]) --> Q1{Domain?}
+    Agent([Task type]) --> Q1{Domain?}
     Q1 -->|Context gathering| CG[context-gathering agent\nPreserves orchestrator context window]
     Q1 -->|Python code| PY[python-cli-architect agent\nAll Python implementation]
     Q1 -->|Python tests| PT[python-pytest-architect agent]

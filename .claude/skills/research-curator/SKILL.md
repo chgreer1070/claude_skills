@@ -53,10 +53,10 @@ Trigger: `$ARGUMENTS` contains a URL with no flags.
 ### Workflow
 
 1. **Parse** -- extract the URL from `$ARGUMENTS`
-2. **Spawn agent** -- invoke `@research-curator` via Task tool with the URL
+2. **Spawn agent** -- invoke `@research-curator` via Agent tool with the URL
 
    ```text
-   Task tool parameters:
+   Agent tool parameters:
      agent: .claude/agents/research-curator.md
      prompt: "Research and create an entry for: {URL}"
    ```
@@ -105,7 +105,7 @@ flowchart TD
     Partial --> PostActions
 ```
 
-Each wave: spawn up to 5 `@research-curator` agents in parallel via Task tool. Wait for all agents in the current wave before spawning the next.
+Each wave: spawn up to 5 `@research-curator` agents in parallel via Agent tool. Wait for all agents in the current wave before spawning the next.
 
 ### Duplicate Detection
 
@@ -162,7 +162,7 @@ flowchart TD
 ### Single Entry Rerun
 
 1. Verify `./research/{category}/{name}.md` exists
-2. Spawn `@research-curator` via Task tool:
+2. Spawn `@research-curator` via Agent tool:
 
    ```text
    prompt: "--rerun ./research/{category}/{name}.md"

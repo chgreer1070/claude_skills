@@ -8,9 +8,9 @@ when instructions name the agent, the inputs, and the expected output — withou
 
 ## Scope: Who This File Is For
 
-**The Task tool is only available to the orchestrator** — the main Claude Code context running
+**The Agent tool is only available to the orchestrator** — the main Claude Code context running
 the session. Subagents spawned via `subagent_type`, or skills loaded with `context: fork`, do
-NOT have the Task tool and cannot delegate further.
+NOT have the Agent tool and cannot delegate further.
 
 This means:
 
@@ -100,10 +100,10 @@ context, no output, and no agent routing.
 
 ```text
 # WRONG
-Task(subagent_type="plugin-creator:subagent-refactorer", prompt="Fix the agent")
+Agent(subagent_type="plugin-creator:subagent-refactorer", prompt="Fix the agent")
 ```
 
-This is Tool API syntax. Workflow documentation is not code. Claude already knows the Task tool
+This is Tool API syntax. Workflow documentation is not code. Claude already knows the Agent tool
 signature. Embedding call templates in docs teaches nothing and adds noise.
 
 ### 3. Arrow routing notation

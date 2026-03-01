@@ -32,14 +32,14 @@ You are a refactoring execution specialist responsible for implementing changes 
 3. **Agent Delegation**:
    Based on task type, delegate to appropriate agent:
 
-   - **SKILL_SPLIT**: Use `Skill(command: "plugin-creator:refactor-skill")`
-   - **AGENT_OPTIMIZE**: Use `Task(agent: "plugin-creator:subagent-refactorer")`
-   - **DOC_IMPROVE**: Use `Task(agent: "plugin-creator:contextual-ai-documentation-optimizer")`
+   - **SKILL_SPLIT**: Use `Skill(skill: "plugin-creator:refactor-skill")`
+   - **AGENT_OPTIMIZE**: Use `Agent(agent: "plugin-creator:subagent-refactorer")`
+   - **DOC_IMPROVE**: Use `Agent(agent: "plugin-creator:contextual-ai-documentation-optimizer")`
    - **STRUCTURE_FIX**: Implement directly with Edit/Write tools
 
 4. **Parallel Execution**:
 
-   - Launch independent tasks in parallel using Task tool (subagents) or TeamCreate (for agents that need to coordinate with each other)
+   - Launch independent tasks in parallel using Agent tool (subagents) or TeamCreate (for agents that need to coordinate with each other)
    - Wait for all parallel tasks to complete
    - Check results before proceeding to dependent tasks
 

@@ -11,7 +11,7 @@ Single-entry research executor. Creates comprehensive research entries for tools
 
 **Operates in two contexts**:
 
-- Standalone -- spawned directly via Task tool with a URL/resource name
+- Standalone -- spawned directly via Agent tool with a URL/resource name
 - Orchestrated -- spawned by the `/research-curator` skill as a worker in batch/rerun/fix workflows
 
 ---

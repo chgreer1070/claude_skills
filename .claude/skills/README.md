@@ -36,7 +36,7 @@ This directory contains skills that extend Claude's capabilities with specialize
 
 **How to trigger**:
 
-- Explicitly: `@agent-creator` or `Skill(command: "agent-creator")`
+- Explicitly: `@agent-creator` or `Skill(skill: "agent-creator")`
 - Automatically: When you request creating, modifying, or reviewing agents, or when asking about agent structure and configuration
 
 **What to expect**:
@@ -114,7 +114,7 @@ When an agent loads this skill, it will:
 
 **How to trigger**:
 
-- Explicitly: `@rt-ica` or `Skill(command: "rt-ica")`
+- Explicitly: `@rt-ica` or `Skill(skill: "rt-ica")`
 - Automatically: When receiving specs, PRDs, tickets, RFCs, architecture designs, or any multi-step engineering task
 - Via SessionStart hook: Automatically reminded at session start in this repository
 
@@ -160,7 +160,7 @@ When an agent loads this skill, it will:
 
 **How to trigger**:
 
-- Explicitly: `@scientific-thinking` or `Skill(command: "scientific-thinking")`
+- Explicitly: `@scientific-thinking` or `Skill(skill: "scientific-thinking")`
 - Automatically: When debugging strange behavior, investigating root causes, designing architecture, performing complex refactoring, or when initial attempts have failed
 
 **What to expect**:
@@ -188,7 +188,7 @@ When an agent loads this skill, it will:
 
 **How to trigger**:
 
-- Explicitly: `@verify` or `Skill(command: "verify")`
+- Explicitly: `@verify` or `Skill(skill: "verify")`
 - Automatically: When about to claim task completion, before final commit, when user asks "is it done?", or when transitioning from implementation to reporting
 
 **What to expect**:
@@ -215,8 +215,8 @@ When an agent loads this skill, it will:
 
 **How to trigger**:
 
-- Explicitly: `@delegate` or `Skill(command: "delegate")`
-- Automatically: When assigning work to a sub-agent, before invoking the Task tool, or when preparing prompts for specialized agents
+- Explicitly: `@delegate` or `Skill(skill: "delegate")`
+- Automatically: When assigning work to a sub-agent, before invoking the Agent tool, or when preparing prompts for specialized agents
 
 **What to expect**:
 
@@ -364,7 +364,7 @@ These skills provide comprehensive reference documentation for Claude Code's cap
 
 **How to trigger**:
 
-- Explicitly: `@git-commit-helper` or `Skill(command: "git-commit-helper")`
+- Explicitly: `@git-commit-helper` or `Skill(skill: "git-commit-helper")`
 - Automatically: When you ask for help writing commit messages or reviewing staged changes
 
 **What to expect**:
@@ -407,12 +407,12 @@ These skills provide comprehensive reference documentation for Claude Code's cap
 
 ### Explicit Activation
 
-Use `@skill-name` or `Skill(command: "skill-name")` to explicitly activate a skill:
+Use `@skill-name` or `Skill(skill: "skill-name")` to explicitly activate a skill:
 
 ```
 @agent-creator
 @git-commit-helper
-Skill(command: "claude-skills-overview-2026")
+Skill(skill: "claude-skills-overview-2026")
 ```
 
 ### Automatic Activation
@@ -423,7 +423,7 @@ Claude automatically activates skills based on your request. Skills have trigger
 - **rt-ica**: "planning", "prerequisites", "spec", "PRD", "ticket", "RFC", "architecture design", "multi-step task"
 - **scientific-thinking**: "debugging", "strange behavior", "root cause", "architecture design", "complex refactoring", "investigation"
 - **verify**: "is it done", "task complete", "before commit", "completion", "finished"
-- **delegate**: "sub-agent", "Task tool", "delegation", "assign work"
+- **delegate**: "sub-agent", "Agent tool", "delegation", "assign work"
 - **audit**: "review output", "hallucination", "suspicious", "probably", "likely", "verify claims"
 - **claude-skills-overview-2026**: "skill format", "SKILL.md", "skill frontmatter", "skill best practices"
 - **claude-hooks-reference-2026**: "hook", "PreToolUse", "PostToolUse", "hook events"

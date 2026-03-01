@@ -34,7 +34,7 @@ equipped with procedural knowledge that no model can fully possess.
 **This skill is for creating NEW skills from scratch.** For refactoring EXISTING skills (splitting oversized skills, reorganizing multi-domain skills), use the skill-refactor skill:
 
 ```
-Skill(command: "plugin-creator:refactor-skill")
+Skill(skill: "plugin-creator:refactor-skill")
 ```
 
 **When to use skill-creator vs skill-refactor:**
@@ -43,7 +43,7 @@ Skill(command: "plugin-creator:refactor-skill")
 flowchart TD
     Start(["Skill task received"]) --> Q{"Is there an existing skill<br>to modify or split?"}
     Q -->|"No — creating from scratch<br>or from requirements"| Creator["Use skill-creator<br>(this skill)"]
-    Q -->|"Yes — existing skill exceeds<br>warning threshold (SK006/SK007)<br>or covers multiple domains"| Refactor["Use skill-refactor<br>Skill(command: 'plugin-creator:refactor-skill')"]
+    Q -->|"Yes — existing skill exceeds<br>warning threshold (SK006/SK007)<br>or covers multiple domains"| Refactor["Use skill-refactor<br>Skill(skill: 'plugin-creator:refactor-skill')"]
     Creator --> Together(["Both can combine — create with<br>skill-creator, refactor later<br>with skill-refactor as needs evolve"])
     Refactor --> Together
 ```
@@ -159,7 +159,7 @@ Every skill consists of a required SKILL.md file and optional bundled resources:
 skill-name/
 ├── SKILL.md (required)
 │   ├── YAML frontmatter metadata (required)
-│   │   └── name: (required — must match directory name; per agentskills.io spec)
+│   │   └── name: (recommended — if omitted, uses directory name; required per agentskills.io spec)
 │   │   └── description: (recommended)
 │   └── Markdown instructions (required)
 └── Bundled Resources (optional)
@@ -234,7 +234,7 @@ Add `context: fork` to frontmatter when you want a skill to run in isolation wit
 
 - Skill contains only guidelines (e.g., "use these API conventions") without actionable task
 - Need access to conversation context or previous discussion
-- Need to delegate to other subagents (Task tool not available in forked contexts)
+- Need to delegate to other subagents (Agent tool not available in forked contexts)
 
 **Agent types:**
 
@@ -252,7 +252,7 @@ agent: Explore  # or Plan, general-purpose, custom-agent-name
 **Tool restrictions:**
 
 - Forked contexts have Read, Write, Edit, Grep, Glob, WebSearch, WebFetch, Bash, MCP tools
-- **Task tool is NOT available** - cannot delegate to other subagents
+- **Agent tool is NOT available** - cannot delegate to other subagents
 - For hierarchical delegation, parent must run in main context (no `context: fork`)
 
 **SOURCE:** [claude-skills-overview-2026](../claude-skills-overview-2026/SKILL.md) section on Context Fork Behavior.
@@ -545,6 +545,8 @@ Consult these helpful guides based on your skill's needs:
 
 These files contain established best practices for effective skill design.
 
+- **Official specification**: See [claude-code-skills-official.md](./references/claude-code-skills-official.md) for the authoritative source on frontmatter fields, discovery rules, invocation control, and budget limits
+
 #### Start with Reusable Skill Contents
 
 To begin implementation, start with the reusable resources identified above: `scripts/`, `references/`, and `assets/` files. Note that this step may require user input. For example, when implementing a `brand-guidelines` skill, the user may need to provide brand assets or templates to store in `assets/`, or documentation to store in `references/`.
@@ -585,7 +587,7 @@ Write the YAML frontmatter. All fields are optional, but `description` is strong
 - `disable-model-invocation`: Optional. Set to `true` to prevent Claude from automatically loading this skill. Use for workflows you want to trigger manually with `/name`. Default: `false`.
 - `hooks`: Optional. Hooks scoped to this skill's lifecycle. See hooks documentation for configuration format.
 
-**Complete field reference:** See [claude-skills-overview-2026 skill](../claude-skills-overview-2026/SKILL.md) for definitive schema documentation.
+**Complete field reference:** See [claude-skills-overview-2026 skill](../claude-skills-overview-2026/SKILL.md) for definitive schema documentation, or the [Claude Code Skills Official Reference](./references/claude-code-skills-official.md) for the authoritative source specification.
 
 ##### Body
 
@@ -624,9 +626,8 @@ Write instructions for using the skill and its bundled resources.
 
    ```markdown
    ---
+   name: pr-summary
    description: Summarize GitHub pull request changes
-   # NOTE: Do NOT add 'name:' field for plugin skills (Claude Code bug)
-   # Skill name comes from directory name automatically
    ---
 
    Pull Request Data:

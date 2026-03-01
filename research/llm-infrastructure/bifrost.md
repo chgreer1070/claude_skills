@@ -296,7 +296,7 @@ import "github.com/maximhq/bifrost/core"
 
 2. **MCP Tool Orchestration Layer**: Use Bifrost as a centralized MCP gateway for Claude Code multi-agent workflows where agents need to share access to external tools with proper authentication.
 
-3. **Cost Governance for Agent Workflows**: Apply Bifrost's budget enforcement to control LLM spend across parallel Claude Code agent tasks spawned via the Task tool.
+3. **Cost Governance for Agent Workflows**: Apply Bifrost's budget enforcement to control LLM spend across parallel Claude Code agent tasks spawned via the Agent tool.
 
 4. **Observability Pipeline**: Route all LLM calls through Bifrost to collect unified Prometheus metrics and OpenTelemetry traces for Claude Code skill performance monitoring.
 

@@ -179,7 +179,7 @@ user-invocable: true
 
 ## Related Skills
 
-For {topic}, activate `Skill(command: "{plugin-name}:{related-skill-name}")`.
+For {topic}, activate `Skill(skill: "{plugin-name}:{related-skill-name}")`.
 
 ## {Main Sections}
 
@@ -203,7 +203,7 @@ Between new skills, use skill activation syntax:
 
 ```markdown
 For advanced {topic}, activate the {skill-name} skill:
-Skill(command: "{plugin-name}:{skill-name}")
+Skill(skill: "{plugin-name}:{skill-name}")
 ```
 
 Within same skill, use relative links:
@@ -277,13 +277,13 @@ This skill loads focused specialist components for comprehensive coverage:
 
 ## Specialist Skills
 
-- **{skill-1}**: {description} - `Skill(command: "{plugin-name}:{skill-1}")` for {use case}
-- **{skill-2}**: {description} - `Skill(command: "{plugin-name}:{skill-2}")` for {use case}
-- **{skill-3}**: {description} - `Skill(command: "{plugin-name}:{skill-3}")` for {use case}
+- **{skill-1}**: {description} - `Skill(skill: "{plugin-name}:{skill-1}")` for {use case}
+- **{skill-2}**: {description} - `Skill(skill: "{plugin-name}:{skill-2}")` for {use case}
+- **{skill-3}**: {description} - `Skill(skill: "{plugin-name}:{skill-3}")` for {use case}
 
 ## Usage
 
-**Full coverage**: `Skill(command: "{plugin-name}:{original-name}")` loads all specialist skills
+**Full coverage**: `Skill(skill: "{plugin-name}:{original-name}")` loads all specialist skills
 **Focused work**: Activate specific specialist skill for targeted context
 
 ## Quick Reference
@@ -293,7 +293,7 @@ This skill loads focused specialist components for comprehensive coverage:
 
 2. **Verify backwards compatibility**:
 
-   - Search for all references: `grep -r "Skill(command: \"{plugin-name}:{original-name}\")" .`
+   - Search for all references: `grep -r "Skill(skill: \"{plugin-name}:{original-name}\")" .`
    - Search for all slash command invocations: `grep -r "/{original-name}" .`
    - Confirm all existing references will continue to work
 
@@ -419,7 +419,7 @@ project-setup -> project-init
 5. Create circular dependencies
 6. Over-fragment (don't create skills too small to be independently useful — at least a few meaningful instructions)
 7. **DELETE the original skill** - it MUST become a facade/meta-skill that loads all new specialist skills
-8. **INTRODUCE breaking changes** - existing references to the original skill (e.g., `Skill(command: "python3-development:python3-development")` or `/python3-development`) MUST continue to work
+8. **INTRODUCE breaking changes** - existing references to the original skill (e.g., `Skill(skill: "python3-development:python3-development")` or `/python3-development`) MUST continue to work
 
 ### Minimum Viable Skill Size
 
@@ -494,21 +494,21 @@ After completing refactoring, produce:
 ## Example Invocations
 
 ```
-Task(
+Agent(
   agent="plugin-creator:refactor-skill",
   prompt="Refactor ./plugins/python3-development/skills/python3/SKILL.md into focused skills for testing, async, and packaging"
 )
 ```
 
 ```
-Task(
+Agent(
   agent="plugin-creator:refactor-skill",
   prompt="The fastmcp-creator skill is too large. Analyze it and propose how to split it into smaller skills"
 )
 ```
 
 ```
-Task(
+Agent(
   agent="plugin-creator:refactor-skill",
   prompt="Split the git-workflow skill by expertise level: basics, advanced, and team workflows"
 )

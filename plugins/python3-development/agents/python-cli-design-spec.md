@@ -249,7 +249,7 @@ Best for single-file tools with minimal dependencies:
 - Limited testability (tests must be external)
 - No separate configuration management
 
-**Reference**: Development agents should activate `Skill(command: "python3-development:shebangpython")` for PEP 723 compliance requirements
+**Reference**: Development agents should activate `Skill(skill: "python3-development:shebangpython")` for PEP 723 compliance requirements
 
 #### Strategy 2: Python Package
 

@@ -1104,13 +1104,13 @@ Before completing, verify:
 
 ### Example Invocations
 
-Show how to call the agent with Task():
+Show how to call the agent with Agent():
 
 ```markdown
 ## Example Invocations
 
 \`\`\`text
-Task(
+Agent(
   agent="my-agent",
   prompt="Specific task with context and requirements"
 )

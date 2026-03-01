@@ -1,6 +1,6 @@
 ---
 name: swarm-operations
-description: API reference for Claude Code swarm tools -- TeamCreate, SendMessage, TeamDelete, and Task tool parameters. Use when looking up tool signatures, message schemas, shutdown sequences, error handling, or debugging swarm operations.
+description: API reference for Claude Code swarm tools -- TeamCreate, SendMessage, TeamDelete, and Agent tool parameters. Use when looking up tool signatures, message schemas, shutdown sequences, error handling, or debugging swarm operations.
 ---
 # Swarm Operations
 
@@ -16,7 +16,7 @@ flowchart TD
     Q1 -->|Create a team| TC[TeamCreate]
     Q1 -->|Send a message| SM[SendMessage]
     Q1 -->|Clean up team| TD[TeamDelete]
-    Q1 -->|Spawn an agent| Task[Task tool]
+    Q1 -->|Spawn an agent| Task[Agent tool]
     Q1 -->|Manage work items| TT[TaskCreate / TaskUpdate / TaskList / TaskGet]
 ```
 
@@ -161,7 +161,7 @@ TeamDelete()
 ## Task Tool -- Spawn Teammates
 
 ```javascript
-Task({
+Agent({
   team_name: "my-project",        // Required -- which team to join
   name: "worker-1",               // Required -- teammate's name
   subagent_type: "general-purpose",
@@ -170,7 +170,7 @@ Task({
 })
 ```
 
-For spawning without team membership (subagents), see `Skill(command: "swarm-spawning")`.
+For spawning without team membership (subagents), see `Skill(skill: "swarm-spawning")`.
 
 ---
 
@@ -338,9 +338,9 @@ Read team config to see members:
 
 ## Related Skills
 
-- Core concepts -- `Skill(command: "swarm-primitives")`
-- Spawning agents -- `Skill(command: "swarm-spawning")`
-- Patterns and recipes -- `Skill(command: "swarm-patterns")`
+- Core concepts -- `Skill(skill: "swarm-primitives")`
+- Spawning agents -- `Skill(skill: "swarm-spawning")`
+- Patterns and recipes -- `Skill(skill: "swarm-patterns")`
 
 ---
 

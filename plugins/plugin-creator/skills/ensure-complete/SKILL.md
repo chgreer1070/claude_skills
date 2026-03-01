@@ -48,10 +48,10 @@ TodoWrite(todos=[
 
 **Objective**: Re-run plugin assessment to measure improvement from refactoring.
 
-**Action**: LAUNCH the plugin-assessor agent using the Task tool:
+**Action**: LAUNCH the plugin-assessor agent using the Agent tool:
 
 ```
-Task(
+Agent(
     subagent_type="plugin-assessor",
     prompt="""
 Your ROLE_TYPE is sub-agent.
@@ -235,10 +235,10 @@ Document any agents referenced in tasks that are NOT included in the plugin:
 
 **Objective**: Validate that refactored skills, agents, and documentation follow project standards.
 
-**Action**: LAUNCH the python-code-reviewer agent using the Task tool:
+**Action**: LAUNCH the python-code-reviewer agent using the Agent tool:
 
 ```
-Task(
+Agent(
     subagent_type="python-code-reviewer",
     prompt="""
 Your ROLE_TYPE is sub-agent.
@@ -306,10 +306,10 @@ Issues Found: [count]
 
 **Objective**: Check if plugin documentation has drifted from the refactored implementation.
 
-**Action**: LAUNCH the doc-drift-auditor agent using the Task tool:
+**Action**: LAUNCH the doc-drift-auditor agent using the Agent tool:
 
 ```
-Task(
+Agent(
     subagent_type="doc-drift-auditor",
     prompt="""
 Your ROLE_TYPE is sub-agent.
@@ -394,7 +394,7 @@ ELSE:
 **If follow-up tasks needed**, CREATE a new task file:
 
 ```
-Task(
+Agent(
     subagent_type="swarm-task-planner",
     prompt="""
 Your ROLE_TYPE is sub-agent.

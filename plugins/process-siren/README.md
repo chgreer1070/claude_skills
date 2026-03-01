@@ -76,7 +76,7 @@ You can also invoke `/improve-processes` directly to run this quality check on a
 
 ## When to Use Each Component
 
-**Use the process-siren agent** when you have a workflow, decision tree, or multi-step process in an AI-facing document and want it converted to a precise Mermaid diagram. Delegate to it via the Task tool or invoke it from the agent menu.
+**Use the process-siren agent** when you have a workflow, decision tree, or multi-step process in an AI-facing document and want it converted to a precise Mermaid diagram. Delegate to it via the Agent tool or invoke it from the agent menu.
 
 **Use the `/improve-processes` skill** when a process description is ambiguous or incomplete and you want to identify the gaps before converting. The process-siren agent loads this skill automatically, so you only need to invoke it directly if you want a quality audit without conversion.
 

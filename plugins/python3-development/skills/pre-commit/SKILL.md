@@ -82,13 +82,13 @@ Pre-commit supports multiple git hook stages matching git hook names directly:
 Activate the `commitlint` skill for commit message validation patterns:
 
 ```
-Skill(command: "commitlint:commitlint")
+Skill(skill: "commitlint:commitlint")
 ```
 
 Activate the `conventional-commits` skill for commit message format standards:
 
 ```
-Skill(command: "conventional-commits:conventional-commits")
+Skill(skill: "conventional-commits:conventional-commits")
 ```
 
 ## Installation
@@ -678,12 +678,12 @@ Activate related skills for comprehensive commit workflow:
 - **conventional-commits**: Commit message format standards
 
   ```
-  Skill(command: "conventional-commits:conventional-commits")
+  Skill(skill: "conventional-commits:conventional-commits")
   ```
 
 - **commitlint**: Commit message validation rules
   ```
-  Skill(command: "commitlint:commitlint")
+  Skill(skill: "commitlint:commitlint")
   ```
 
 ## References

@@ -196,6 +196,7 @@ def _parse_backlog_from_directory() -> list[dict]:
         "p0-": "P0",
         "p1-": "P1",
         "p2-": "P2",
+        "idea-": "Ideas",
         "ideas-": "Ideas",
         "completed-": "Completed",
         "medium-": "P1",
@@ -2071,7 +2072,7 @@ def normalize(dry_run: Annotated[bool, typer.Option("--dry-run")] = False) -> No
     if not BACKLOG_DIR.exists():
         typer.echo(f"ERROR: {BACKLOG_DIR} not found", err=True)
         raise typer.Exit(1)
-    pattern = re.compile(r"^(p0|p1|p2|ideas|completed)-[a-z0-9-]+\.md$", re.IGNORECASE)
+    pattern = re.compile(r"^(p0|p1|p2|idea|ideas|completed)-[a-z0-9-]+\.md$", re.IGNORECASE)
     files = sorted(f for f in BACKLOG_DIR.glob("*.md") if pattern.match(f.name))
     if not files:
         typer.echo("No backlog item files found")

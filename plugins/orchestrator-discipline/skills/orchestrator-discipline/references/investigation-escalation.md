@@ -88,7 +88,7 @@ flowchart TD
     Q1 -->|No| OK
 ```
 
-**Quantitative trigger**: 3 or more Read/Grep/Bash calls on source/config/test files without an intervening Edit, Write, or Task tool call.
+**Quantitative trigger**: 3 or more Read/Grep/Bash calls on source/config/test files without an intervening Edit, Write, or Agent tool call.
 
 **Rationalization phrases** (presence of these in orchestrator text is a warning sign):
 
@@ -252,7 +252,7 @@ Orchestrator: "Let me check how the agent is progressing"
 **Correct**: Launch the agent, continue other work, receive the automatic completion notification.
 
 ```text
-Orchestrator: Task(agent="specialist", ..., run_in_background=true)
+Orchestrator: Agent(agent="specialist", ..., run_in_background=true)
   → Continues working on other tasks
   → Receives completion notification automatically
   → Reads the summary from the notification

@@ -25,7 +25,7 @@ All linter-specific workflows share these common steps. Apply them in order befo
 Before implementing any fixes:
 
 ```claude
-Skill(command: "python3-development:python3-development")
+Skill(skill: "python3-development:python3-development")
 ```
 
 **Motivation**: Ensures fixes follow Python 3.11+ standards, modern typing patterns, and project conventions.

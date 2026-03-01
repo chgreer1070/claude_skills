@@ -1,15 +1,31 @@
 ---
 name: claude-skills-overview-2026
-description: Reference guide for Claude Code skills system (January 2026). Use when creating, modifying, or understanding skills, SKILL.md format, frontmatter fields, hooks, context fork, or skill best practices.
+description: Reference guide for Claude Code skills system (March 2026). Use when creating, modifying, or understanding skills, SKILL.md format, frontmatter fields, hooks, context fork, or skill best practices.
 user-invocable: true
 ---
-# Claude Code Skills System - Complete Reference (January 2026)
+# Claude Code Skills System - Complete Reference (March 2026)
 
 Skills extend what Claude can do. Create a `SKILL.md` file with instructions, and Claude adds it to its toolkit. Claude uses skills when relevant, or you can invoke one directly with `/skill-name`.
 
-**Skills and slash commands are now unified** - they are the same system. A file at `.claude/commands/review.md` and a skill at `.claude/skills/review/SKILL.md` both create `/review` and work identically. Skills are the recommended approach as they support additional features like supporting files and advanced frontmatter options.
+**Skills and slash commands are now unified** - they are the same system. A file at `.claude/commands/review.md` and a skill at `.claude/skills/review/SKILL.md` both create `/review` and work identically. If a skill and a command share the same name, the skill takes precedence. Skills are the recommended approach as they support additional features like supporting files and advanced frontmatter options.
 
 > **Portable skills?** This reference covers **Claude Code-specific** features (hooks, context fork, model selection, invocation control). If you need to create skills that work across Claude Code, Cursor, Gemini CLI, OpenAI Codex, VS Code, and 20+ other agents, see the [Agent Skills Open Standard](../agentskills/SKILL.md) skill instead — it covers the portable subset of the format defined at [agentskills.io](https://agentskills.io).
+
+---
+
+## Bundled Skills
+
+Bundled skills ship with Claude Code and are available in every session. Unlike built-in commands (which execute fixed logic), bundled skills are prompt-based: they give Claude a detailed playbook and let it orchestrate work using its tools (spawn parallel agents, read files, adapt to your codebase).
+
+- **`/simplify`**: Reviews recently changed files for code reuse, quality, and efficiency issues, then fixes them. Spawns three review agents in parallel (code reuse, code quality, efficiency), aggregates findings, and applies fixes. Pass optional text to focus: `/simplify focus on memory efficiency`.
+
+- **`/batch <instruction>`**: Orchestrates large-scale changes across a codebase in parallel. Researches the codebase, decomposes work into 5–30 independent units, presents a plan for approval. Once approved, spawns one background agent per unit in an isolated git worktree, each implementing its unit, running tests, and opening a pull request. Requires a git repository.
+
+- **`/debug [description]`**: Troubleshoots your current Claude Code session by reading the session debug log. Optionally describe the issue to focus the analysis.
+
+Claude Code also includes a bundled developer platform skill that activates automatically when your code imports the Anthropic SDK.
+
+**Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Bundled skills")
 
 ---
 
@@ -17,6 +33,7 @@ Skills extend what Claude can do. Create a `SKILL.md` file with instructions, an
 
 ```yaml
 ---
+name: my-skill
 description: What this Skill does and when to use it
 argument-hint: "[optional-arg]"
 allowed-tools: Read, Grep, Glob
@@ -60,7 +77,7 @@ The fields `name`, `description`, `license`, `compatibility`, `metadata`, and `a
 
 | Field                      | Required    | Type    | Max Length | Description                                                                                                                                           |
 | -------------------------- | ----------- | ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`                     | **Yes**     | string  | 64 chars   | Display name for the skill. Required per agentskills.io spec. Lowercase letters, numbers, and hyphens only. Must match directory name. |
+| `name`                     | Recommended | string  | 64 chars   | Display name for the skill. If omitted, uses directory name. Lowercase letters, numbers, hyphens only. Required per agentskills.io spec; optional in Claude Code. |
 | `description`              | Recommended | string  | 1024 chars | What the skill does and when to use it. Claude uses this to decide when to apply the skill. If omitted, uses the first paragraph of markdown content. |
 | `argument-hint`            | No          | string  | —          | Hint shown during autocomplete to indicate expected arguments. Example: `[issue-number]` or `[filename] [format]`.                                    |
 | `allowed-tools`            | No          | string  | —          | Tools Claude can use without asking permission when this skill is active (comma-separated). Example: `Read, Grep, Glob, Bash(npm run:*)`              |
@@ -283,7 +300,7 @@ When `context: fork` is set, the forked subagent has access to:
 - MCP tools (if configured)
 - Bash and other system tools (depending on agent type)
 
-**The Task tool is NOT available in forked contexts.** This means forked skills cannot delegate to other subagents. If you need hierarchical delegation (subagent delegates to another subagent), the parent must run in the main context (no `context: fork`), not in a forked context.
+**The Agent tool is NOT available in forked contexts.** This means forked skills cannot delegate to other subagents. If you need hierarchical delegation (subagent delegates to another subagent), the parent must run in the main context (no `context: fork`), not in a forked context.
 
 **Source**: Experimental verification on 2026-01-22. Official documentation at <https://code.claude.com/docs/en/skills.md> does not explicitly document this restriction.
 
@@ -548,10 +565,11 @@ Only runs when user types `/deploy-production`.
 - **[Agent Skills Open Standard](../agentskills/SKILL.md)** — The portable specification (agentskills.io). Use when creating skills for cross-agent compatibility. Covers the subset of frontmatter fields (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`) recognized by all 25+ compatible agents.
 - **[Claude Plugins Reference](../claude-plugins-reference-2026/SKILL.md)** — Plugin creation, distribution, and plugin.json schema.
 - **[Claude Hooks Reference](../claude-hooks-reference-2026/SKILL.md)** — Complete hook events, matchers, and configuration.
+- **[Claude Code Skills Official](./resources/claude-code-skills-official.md)** — Authoritative specification from code.claude.com: frontmatter fields, discovery rules, invocation control, budget limits, and bundled skills.
 
 ## Sources
 
-- **Primary**: [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills.md) (accessed 2026-02-17)
+- **Primary**: [Claude Code Skills Documentation](https://code.claude.com/docs/en/skills.md) (accessed 2026-03-01) — full reference at [Claude Code Skills Official](./resources/claude-code-skills-official.md)
 - **Standards**: [Agent Skills Open Standard](https://agentskills.io) — see also the [agentskills skill](../agentskills/SKILL.md) for the full portable specification reference
 - **Examples**: [anthropics/skills](https://github.com/anthropics/skills)
 - **Blog**: [Anthropic Engineering Blog - Agent Skills](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)

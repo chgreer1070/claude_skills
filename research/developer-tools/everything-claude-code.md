@@ -56,7 +56,7 @@ Everything Claude Code (ECC) is a complete, production-hardened Claude Code plug
 
 ### Agents (13 Specialized Sub-Agents)
 
-Each agent is a Markdown file with YAML frontmatter declaring name, description, tools, and model. Claude Code delegates to these agents via the Task tool.
+Each agent is a Markdown file with YAML frontmatter declaring name, description, tools, and model. Claude Code delegates to these agents via the Agent tool.
 
 - **planner.md** — Feature implementation planning; decomposes tasks into ordered steps
 - **architect.md** — System design decisions; evaluates trade-offs across architecture options

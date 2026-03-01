@@ -5,7 +5,7 @@ Pre-built prompts for delegating stinkysnake workflow phases to specialist agent
 ## Phase 4: Plan Review Agent
 
 <eg>
-Task(
+Agent(
   agent="python-code-reviewer",
   prompt="Review the modernization plan at .claude/plans/stinkysnake-plan.md
 
@@ -49,7 +49,7 @@ Create review report at .claude/reports/plan-review-{timestamp}.md with:
 ## Phase 8: Test Writing Agent
 
 <eg>
-Task(
+Agent(
   agent="python-pytest-architect",
   prompt="Write failing tests for the interfaces defined in the modernization plan.
 

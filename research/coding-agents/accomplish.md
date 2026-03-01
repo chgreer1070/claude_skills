@@ -162,7 +162,7 @@ const storage = createStorage();
 const taskManager = createTaskManager({ storage });
 
 // Start a task
-const task = await taskManager.startTask({
+const task = await taskManager.startAgent({
   prompt: 'Organize the Downloads folder by file type',
   provider: 'anthropic',
 });

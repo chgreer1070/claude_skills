@@ -280,7 +280,7 @@ ra-aid --server --server-host 127.0.0.1 --server-port 3000
 | Aspect              | RA.Aid                                  | Claude Code                           |
 | ------------------- | --------------------------------------- | ------------------------------------- |
 | Primary Use         | Autonomous software development         | Developer workflow automation         |
-| Architecture        | Three-stage (Research/Plan/Implement)   | Agent delegation, Task tool           |
+| Architecture        | Three-stage (Research/Plan/Implement)   | Agent delegation, Agent tool           |
 | Execution Model     | Sequential stage execution              | Tool-based, iterative                 |
 | Human Interaction   | HIL mode, chat mode, interruption       | Interactive by default                |
 | Code Editing        | Native + optional aider                 | Native Edit tool                      |

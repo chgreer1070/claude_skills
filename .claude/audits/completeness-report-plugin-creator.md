@@ -278,7 +278,7 @@ navigability gap. Minus 1.
    the skill below the warning threshold and follow the same pattern used for the workflow diagram.
 
 3. **Specify the `rt-ica` skill namespace** in Phase 0. Replace the bare "Invoke the `rt-ica` skill"
-   instruction with the activation syntax (e.g., `Skill(command: "rt-ica")` or the full namespace) so
+   instruction with the activation syntax (e.g., `Skill(skill: "rt-ica")` or the full namespace) so
    an orchestrator can invoke it without searching.
 
 4. **Replace inline schema tables with reference skill pointers**. Lines 526–584 duplicate content

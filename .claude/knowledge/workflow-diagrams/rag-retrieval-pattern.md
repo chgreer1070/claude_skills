@@ -196,7 +196,7 @@ sequenceDiagram
     SK-->>O: Partial match
 
     Note over O: 2. Load additional skill
-    O->>SK: Skill(command: "relevant-skill")
+    O->>SK: Skill(skill: "relevant-skill")
     SK-->>O: Skill loaded
 
     Note over O: 3. Check references

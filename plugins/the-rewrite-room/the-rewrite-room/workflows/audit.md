@@ -35,7 +35,7 @@ Construct prompt using exact input format the agent expects (from Step 2 read).
 For drift-audit:
 
 ```text
-Task(
+Agent(
   subagent_type="development-harness:doc-drift-auditor",
   prompt="<task description>
 
@@ -47,7 +47,7 @@ Project root: <path>"
 For documentation-sync:
 
 ```text
-Task(
+Agent(
   subagent_type="development-harness:service-docs-maintainer",
   prompt="<description of what code changed>
 
@@ -60,7 +60,7 @@ Note: service-docs-maintainer does NOT write a summary file — its output is re
 For freshness:
 
 ```text
-Task(
+Agent(
   subagent_type="doc-freshness-guardian",
   prompt="<task description>
 

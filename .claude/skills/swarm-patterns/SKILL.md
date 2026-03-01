@@ -17,7 +17,7 @@ Multiple specialists review code simultaneously:
 TeamCreate({ team_name: "code-review" })
 
 // 2. Spawn specialists in parallel (single message, multiple Task calls)
-Task({
+Agent({
   team_name: "code-review",
   name: "security",
   subagent_type: "compound-engineering:review:security-sentinel",
@@ -25,7 +25,7 @@ Task({
   run_in_background: true
 })
 
-Task({
+Agent({
   team_name: "code-review",
   name: "performance",
   subagent_type: "compound-engineering:review:performance-oracle",
@@ -33,7 +33,7 @@ Task({
   run_in_background: true
 })
 
-Task({
+Agent({
   team_name: "code-review",
   name: "simplicity",
   subagent_type: "compound-engineering:review:code-simplicity-reviewer",
@@ -74,7 +74,7 @@ TaskUpdate({ taskId: "4", addBlockedBy: ["3"] })
 TaskUpdate({ taskId: "5", addBlockedBy: ["4"] })
 
 // 2. Spawn workers that claim and complete tasks
-Task({
+Agent({
   team_name: "feature-pipeline",
   name: "researcher",
   subagent_type: "compound-engineering:research:best-practices-researcher",
@@ -82,7 +82,7 @@ Task({
   run_in_background: true
 })
 
-Task({
+Agent({
   team_name: "feature-pipeline",
   name: "implementer",
   subagent_type: "general-purpose",
@@ -113,7 +113,7 @@ TaskCreate({
 // ... repeat for each file
 
 // 2. Spawn worker swarm with self-organizing prompt
-Task({
+Agent({
   team_name: "file-review-swarm",
   name: "worker-1",
   subagent_type: "general-purpose",
@@ -130,7 +130,7 @@ Task({
   run_in_background: true
 })
 
-Task({
+Agent({
   team_name: "file-review-swarm",
   name: "worker-2",
   subagent_type: "general-purpose",
@@ -138,7 +138,7 @@ Task({
   run_in_background: true
 })
 
-Task({
+Agent({
   team_name: "file-review-swarm",
   name: "worker-3",
   subagent_type: "general-purpose",
@@ -157,14 +157,14 @@ Research first, then implement:
 
 ```javascript
 // 1. Research phase (synchronous, returns results)
-const research = await Task({
+const research = await Agent({
   subagent_type: "compound-engineering:research:best-practices-researcher",
   description: "Research caching patterns",
   prompt: "Research best practices for implementing caching in Rails APIs. Include cache invalidation strategies, Redis vs Memcached, cache key design."
 })
 
 // 2. Use research to guide implementation
-Task({
+Agent({
   subagent_type: "general-purpose",
   description: "Implement caching",
   prompt: `
@@ -188,7 +188,7 @@ Require plan approval before implementation:
 TeamCreate({ team_name: "careful-work" })
 
 // 2. Spawn architect with plan mode
-Task({
+Agent({
   team_name: "careful-work",
   name: "architect",
   subagent_type: "Plan",
@@ -248,7 +248,7 @@ TaskCreate({
 TaskUpdate({ taskId: "3", addBlockedBy: ["1", "2"] })
 
 // 3. Spawn workers for each task
-Task({
+Agent({
   team_name: "refactor-auth",
   name: "model-worker",
   subagent_type: "general-purpose",
@@ -256,7 +256,7 @@ Task({
   run_in_background: true
 })
 
-Task({
+Agent({
   team_name: "refactor-auth",
   name: "controller-worker",
   subagent_type: "general-purpose",
@@ -264,7 +264,7 @@ Task({
   run_in_background: true
 })
 
-Task({
+Agent({
   team_name: "refactor-auth",
   name: "spec-worker",
   subagent_type: "general-purpose",
@@ -284,7 +284,7 @@ Task({
 TeamCreate({ team_name: "pr-review-123", description: "Reviewing PR #123" })
 
 // === STEP 2: Spawn reviewers in parallel ===
-Task({
+Agent({
   team_name: "pr-review-123",
   name: "security",
   subagent_type: "compound-engineering:review:security-sentinel",
@@ -300,7 +300,7 @@ Task({
   run_in_background: true
 })
 
-Task({
+Agent({
   team_name: "pr-review-123",
   name: "perf",
   subagent_type: "compound-engineering:review:performance-oracle",
@@ -316,7 +316,7 @@ Task({
   run_in_background: true
 })
 
-Task({
+Agent({
   team_name: "pr-review-123",
   name: "arch",
   subagent_type: "compound-engineering:review:architecture-strategist",
@@ -366,7 +366,7 @@ TaskUpdate({ taskId: "4", addBlockedBy: ["3"] })
 TaskUpdate({ taskId: "5", addBlockedBy: ["4"] })
 
 // === SPAWN SPECIALIZED WORKERS ===
-Task({
+Agent({
   team_name: "feature-oauth",
   name: "researcher",
   subagent_type: "compound-engineering:research:best-practices-researcher",
@@ -374,7 +374,7 @@ Task({
   run_in_background: true
 })
 
-Task({
+Agent({
   team_name: "feature-oauth",
   name: "planner",
   subagent_type: "Plan",
@@ -382,7 +382,7 @@ Task({
   run_in_background: true
 })
 
-Task({
+Agent({
   team_name: "feature-oauth",
   name: "implementer",
   subagent_type: "general-purpose",
@@ -390,7 +390,7 @@ Task({
   run_in_background: true
 })
 
-Task({
+Agent({
   team_name: "feature-oauth",
   name: "tester",
   subagent_type: "general-purpose",
@@ -398,7 +398,7 @@ Task({
   run_in_background: true
 })
 
-Task({
+Agent({
   team_name: "feature-oauth",
   name: "reviewer",
   subagent_type: "compound-engineering:review:security-sentinel",
@@ -451,9 +451,9 @@ Replace YOUR_NAME with your actual agent name from $CLAUDE_CODE_AGENT_NAME.
 `
 
 // Spawn 3 workers
-Task({ team_name: "codebase-review", name: "worker-1", subagent_type: "general-purpose", prompt: swarmPrompt, run_in_background: true })
-Task({ team_name: "codebase-review", name: "worker-2", subagent_type: "general-purpose", prompt: swarmPrompt, run_in_background: true })
-Task({ team_name: "codebase-review", name: "worker-3", subagent_type: "general-purpose", prompt: swarmPrompt, run_in_background: true })
+Agent({ team_name: "codebase-review", name: "worker-1", subagent_type: "general-purpose", prompt: swarmPrompt, run_in_background: true })
+Agent({ team_name: "codebase-review", name: "worker-2", subagent_type: "general-purpose", prompt: swarmPrompt, run_in_background: true })
+Agent({ team_name: "codebase-review", name: "worker-3", subagent_type: "general-purpose", prompt: swarmPrompt, run_in_background: true })
 
 // Workers self-organize: race to claim tasks, naturally load-balance
 ```
@@ -536,14 +536,14 @@ Broadcast sends N messages for N teammates. Use SendMessage with a specific reci
 ### Spawn Subagent (No Team)
 
 ```javascript
-Task({ subagent_type: "Explore", description: "Find files", prompt: "..." })
+Agent({ subagent_type: "Explore", description: "Find files", prompt: "..." })
 ```
 
 ### Spawn Teammate (With Team)
 
 ```javascript
 TeamCreate({ team_name: "my-team" })
-Task({ team_name: "my-team", name: "worker", subagent_type: "general-purpose", prompt: "...", run_in_background: true })
+Agent({ team_name: "my-team", name: "worker", subagent_type: "general-purpose", prompt: "...", run_in_background: true })
 ```
 
 ### Message Teammate
@@ -572,9 +572,9 @@ TeamDelete()
 
 ## Related Skills
 
-- Core concepts -- `Skill(command: "swarm-primitives")`
-- Spawning agents -- `Skill(command: "swarm-spawning")`
-- API reference -- `Skill(command: "swarm-operations")`
+- Core concepts -- `Skill(skill: "swarm-primitives")`
+- Spawning agents -- `Skill(skill: "swarm-spawning")`
+- API reference -- `Skill(skill: "swarm-operations")`
 
 ---
 

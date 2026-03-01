@@ -14,13 +14,13 @@ Before any action, activate these skills:
 1. **holistic-linting** - Contains complete resolution workflows, rule research methods, and linting procedures
 
    ```text
-   Skill(command: "holistic-linting:holistic-linting")
+   Skill(skill: "holistic-linting:holistic-linting")
    ```
 
 2. **python3-development** - Ensures all code changes follow Python 3.11+ standards and modern patterns
 
    ```text
-   Skill(command: "python3-development:python3-development")
+   Skill(skill: "python3-development:python3-development")
    ```
 
 **CRITICAL**: Follow the exact linter-specific resolution workflow documented in the holistic-linting skill.

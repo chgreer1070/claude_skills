@@ -239,7 +239,7 @@ Trace for `/gsd:execute-phase 3`:
 1. **User types** `/gsd:execute-phase 3`
 2. **Claude loads** `commands/gsd/execute-phase.md` — reads the command file into context. The `@`-references cause Claude to also load `workflows/execute-phase.md` and `references/ui-brand.md` and the live project files.
 3. **Command body instructs Claude** (the orchestrator) to "Execute the execute-phase workflow end-to-end." The orchestrator IS Claude — it reads the workflow and follows it.
-4. **Workflow logic** (in `workflows/execute-phase.md`) tells the orchestrator to: discover plans, analyze dependency waves, then spawn subagents per plan using the Task tool.
+4. **Workflow logic** (in `workflows/execute-phase.md`) tells the orchestrator to: discover plans, analyze dependency waves, then spawn subagents per plan using the Agent tool.
 5. **For each plan**, orchestrator constructs a prompt using `@~/.claude/get-shit-done/workflows/execute-plan.md` as context and spawns:
    ```
    Task(subagent_type="gsd-executor", prompt=<constructed prompt>)
@@ -442,11 +442,11 @@ allowed-tools: ["Task"]
 ---
 ```
 
-Its body contains a SINGLE instruction: immediately invoke the `rust-developer` agent via the Task tool:
+Its body contains a SINGLE instruction: immediately invoke the `rust-developer` agent via the Agent tool:
 
 ```markdown
-**IMMEDIATELY invoke the agent using the Task tool:**
-Task tool parameters:
+**IMMEDIATELY invoke the agent using the Agent tool:**
+Agent tool parameters:
 - subagent_type: "rust-developer:rust-developer"
 - description: "Rust development assistance"
 - prompt: <the user's request from $ARGUMENTS>
@@ -456,7 +456,7 @@ Do not process the request yourself. Launch the agent and let it handle the task
 
 The command is a pure pass-through with zero logic. Its sole job is to translate the user invocation into a Task call with the correct `subagent_type`.
 
-The command does NOT have an `agent:` field in its frontmatter (unlike get-shit-done's plan-phase command). Instead, the body text explicitly instructs Claude to use the Task tool.
+The command does NOT have an `agent:` field in its frontmatter (unlike get-shit-done's plan-phase command). Instead, the body text explicitly instructs Claude to use the Agent tool.
 
 ### The Handoff Pattern (traced)
 
@@ -464,7 +464,7 @@ Trace for `/rust-developer "create a CLI tool"`:
 
 1. **User types** `/rust-developer "create a CLI tool"`
 2. **Claude loads** `commands/rust-developer.md`. The command body says: immediately call `Task(subagent_type="rust-developer:rust-developer", prompt="create a CLI tool")`.
-3. **Claude (orchestrator) spawns** the `rust-developer` agent via Task tool.
+3. **Claude (orchestrator) spawns** the `rust-developer` agent via Agent tool.
 4. **`rust-developer` agent** receives the task. It reads the agent body (which is its full operating manual). It decides which reference files to read based on the request:
    - Will reference `$CLAUDE_PLUGIN_ROOT/skills/rust-knowledge/references/cargo.md` for Cargo setup
    - Will `WebFetch` official Rust Book docs to verify patterns before implementing
@@ -571,7 +571,7 @@ There is no "auto-loaded skill" in either repo. The correct framing:
 **Command file** contains:
 - Invocation metadata (name, description, argument-hint, allowed-tools)
 - How to pass `$ARGUMENTS` to the agent
-- Whether to use direct `agent:` field or Task tool call in body
+- Whether to use direct `agent:` field or Agent tool call in body
 
 **Agent file** contains:
 - Full operating protocol (role, responsibilities, step-by-step execution flow)
@@ -655,6 +655,6 @@ Command → spawns Agent → Agent handles task end-to-end
 
 6. **`$CLAUDE_PLUGIN_ROOT`** is the runtime variable pointing to the installed plugin directory. Use it in agent bodies to construct absolute paths to reference files and scripts.
 
-7. **`agent:` frontmatter field in commands**: This field causes Claude to hand off to the named agent directly (without a Task tool call in the body). It is an alternative to having the body explicitly call `Task(subagent_type=...)`. Use either — both work.
+7. **`agent:` frontmatter field in commands**: This field causes Claude to hand off to the named agent directly (without a Agent tool call in the body). It is an alternative to having the body explicitly call `Task(subagent_type=...)`. Use either — both work.
 
 8. **Subagent type syntax**: `"plugin-name:agent-name"` — the plugin name prefix is required when spawning agents from a plugin context. Example: `rust-developer:rust-developer`.

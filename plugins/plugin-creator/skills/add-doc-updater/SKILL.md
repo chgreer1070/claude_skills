@@ -120,7 +120,7 @@ Invoke `/python3-development` skill to load Python development orchestration sta
 
 **Delegate to Python CLI architect**
 
-Use Task tool to delegate to `@python-cli-architect` agent:
+Use Agent tool to delegate to `@python-cli-architect` agent:
 - Prompt: The complete substituted template
 - Context: Target script path is `{target-path}/scripts/update-{LOCAL_DOC_DIR}-docs.py`
 - Requirements: All technical specifications from template (PEP 723, atomic operations, link transformation, cooldown logic)
@@ -135,7 +135,7 @@ Wait for implementation completion before proceeding to Phase 2.
 
 **Delegate to code reviewer**
 
-Use Task tool to delegate to `@python-code-reviewer` agent:
+Use Agent tool to delegate to `@python-code-reviewer` agent:
 - Target: Script created in Phase 1
 - Review criteria:
   - Correctness: Logic matches requirements
@@ -296,7 +296,7 @@ Ensure paths are relative to repository root. Add section header comment for cla
 
 **5c. Integration test**
 
-Use Task tool to spawn `general-purpose` agent with minimal WHAT-only prompt:
+Use Agent tool to spawn `general-purpose` agent with minimal WHAT-only prompt:
 
 ```text
 Use the {SKILL_NAME} skill to [accomplish task requiring documentation access].

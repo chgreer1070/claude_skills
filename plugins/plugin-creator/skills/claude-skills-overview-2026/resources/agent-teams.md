@@ -244,7 +244,7 @@ The orchestrator MUST account for these constraints when designing team workflow
 - **Task status lag**: Teammates sometimes fail to mark tasks completed, blocking dependent tasks. The lead should verify task completion rather than relying solely on status.
 - **Slow shutdown**: Teammates finish their current request before exiting. Factor this into cleanup timing.
 - **Single team per session**: Plan all parallel work into one team. Use subagents for secondary parallel tasks outside the team.
-- **No nesting**: Teammates cannot spawn their own teams. If a teammate needs parallel work, it uses subagents (Task tool).
+- **No nesting**: Teammates cannot spawn their own teams. If a teammate needs parallel work, it uses subagents (Agent tool).
 - **Fixed lead**: The session that creates the team remains lead for its lifetime. Design the lead's coordination role before spawning.
 - **Permissions at spawn**: All teammates start with lead's permission mode. Individual modes can be changed after spawning but not at spawn time.
 - **Split panes**: Require tmux or iTerm2. Not supported in VS Code terminal, Windows Terminal, or Ghostty.

@@ -32,7 +32,7 @@ Gate 3: Final validation (links work, quality standards met)
 1. Activate skill-creator for structure guidance:
 
    ```text
-   Skill(command: "plugin-creator:skill-creator")
+   Skill(skill: "plugin-creator:skill-creator")
    ```
 
 2. Read CLAUDE.md for verification requirements
@@ -81,8 +81,8 @@ See [Research Agent Prompt](./references/agent-prompts.md#research-agent) for te
 Launch all agents in a **single message** with multiple Task calls:
 
 ```text
-Task(subagent_type: "general-purpose", description: "Research Category A", run_in_background: true, ...)
-Task(subagent_type: "general-purpose", description: "Research Category B", run_in_background: true, ...)
+Agent(subagent_type: "general-purpose", description: "Research Category A", run_in_background: true, ...)
+Agent(subagent_type: "general-purpose", description: "Research Category B", run_in_background: true, ...)
 ```
 
 ### Quality Gate 2: Anti-Hallucination Checkpoint

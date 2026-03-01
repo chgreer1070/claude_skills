@@ -8,9 +8,9 @@ description: Guide for creating Claude Code plugin hooks — Node.js .cjs script
 
 Create hooks that integrate with the Claude Code event system. Hooks automate validation, enforcement, and context injection across the session lifecycle.
 
-For the complete hooks I/O API and JSON schemas, load: `Skill(command: "plugin-creator:hooks-io-api")`
-For working code examples and plugin hook configuration patterns, load: `Skill(command: "plugin-creator:hooks-patterns")`
-For all hook events, matchers, and environment variables, load: `Skill(command: "plugin-creator:hooks-core-reference")`
+For the complete hooks I/O API and JSON schemas, load: `Skill(skill: "plugin-creator:hooks-io-api")`
+For working code examples and plugin hook configuration patterns, load: `Skill(skill: "plugin-creator:hooks-patterns")`
+For all hook events, matchers, and environment variables, load: `Skill(skill: "plugin-creator:hooks-core-reference")`
 
 ---
 
@@ -433,7 +433,7 @@ Common issues:
 - `plugins/orchestrator-discipline/hooks.json` — verified plugin hooks.json format (lines 1-25, 2026-02-19)
 - `.claude/hooks/session-start-backlog.cjs` — verified Node.js hook pattern (lines 1-69, 2026-02-19)
 - `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` — verified stdin handling pattern (lines 28-85, 2026-02-19)
-- `Skill(command: "plugin-creator:hooks-core-reference")` — event reference, matchers, environment variables (accessed 2026-01-28)
-- `Skill(command: "plugin-creator:hooks-io-api")` — JSON input/output schemas (accessed 2026-01-28)
-- `Skill(command: "plugin-creator:hooks-patterns")` — prompt-based hooks, code examples (accessed 2026-01-28)
+- `Skill(skill: "plugin-creator:hooks-core-reference")` — event reference, matchers, environment variables (accessed 2026-01-28)
+- `Skill(skill: "plugin-creator:hooks-io-api")` — JSON input/output schemas (accessed 2026-01-28)
+- `Skill(skill: "plugin-creator:hooks-patterns")` — prompt-based hooks, code examples (accessed 2026-01-28)
 - Official hooks docs: <https://code.claude.com/docs/en/hooks.md> (accessed 2026-01-28)

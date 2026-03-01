@@ -251,7 +251,7 @@ disallowedTools: Write, Edit
 
 #### Restrict which subagents can be spawned
 
-When an agent runs as the main thread with `claude --agent`, it can spawn subagents using the Task tool. To restrict which subagent types it can spawn, use `Task(agent_type)` syntax in the `tools` field:
+When an agent runs as the main thread with `claude --agent`, it can spawn subagents using the Agent tool. To restrict which subagent types it can spawn, use `Task(agent_type)` syntax in the `tools` field:
 
 ```yaml  theme={null}
 ---

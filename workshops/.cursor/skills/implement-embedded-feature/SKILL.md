@@ -61,7 +61,7 @@ Parse task file for tasks where:
 For each ready task, delegate to the specified agent:
 
 <eg>
-Task(agent="{task.agent}", prompt="Execute this firmware implementation task:
+Agent(agent="{task.agent}", prompt="Execute this firmware implementation task:
 
 Task: {task.title}
 Description: {task.description}

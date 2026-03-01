@@ -83,7 +83,7 @@ Route each task to the appropriate specialized agent based on the **Agent** fiel
 For each ready task, READ the **Agent** field from the task and launch that agent:
 
 ```
-Task(
+Agent(
     subagent_type="{task.agent}",  # From task's **Agent** field
     description="Task {ID}: {Name}",
     prompt="/start-refactor-task {task_file_path} --task {task_id}"
@@ -96,12 +96,12 @@ Task(
 
 ```
 # Launch skill split tasks in parallel (no shared files)
-Task(
+Agent(
     subagent_type="plugin-creator:refactor-skill",
     description="Task 1: Split python3 core skill",
     prompt="/start-refactor-task .claude/plan/tasks-refactor-python3-development.md --task 1"
 )
-Task(
+Agent(
     subagent_type="subagent-refactorer",
     description="Task 2: Optimize python-cli-architect agent",
     prompt="/start-refactor-task .claude/plan/tasks-refactor-python3-development.md --task 2"

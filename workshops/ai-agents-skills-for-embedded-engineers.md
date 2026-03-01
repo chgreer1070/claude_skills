@@ -190,7 +190,7 @@ An agent is a specialized Claude instance optimized for a specific task. When Cl
 | Feature | Skill | Agent |
 |---------|-------|-------|
 | **Purpose** | Knowledge/workflows | Focused task execution |
-| **Invocation** | User `/skill` or auto-load | Claude delegates via Task tool |
+| **Invocation** | User `/skill` or auto-load | Claude delegates via Agent tool |
 | **Context** | Shared with conversation | Can run isolated |
 | **Tool access** | Inherits or restricted | Explicitly configured |
 | **Best for** | Reference material, guidelines | Code review, test generation, debugging |
@@ -381,10 +381,10 @@ Task: Research $ARGUMENTS
 ## Agent Delegation
 
 For step 1, delegate to researcher agent:
-Task(agent="Explore", prompt="Research $ARGUMENTS using web sources...")
+Agent(agent="Explore", prompt="Research $ARGUMENTS using web sources...")
 
 For step 3, delegate to presentation agent:
-Task(agent="general-purpose", prompt="Create slides based on findings...")
+Agent(agent="general-purpose", prompt="Create slides based on findings...")
 ```
 
 ### Key Orchestration Fields
@@ -428,7 +428,7 @@ You MUST delegate, not execute directly.
 
 Delegate to build-validator agent:
 
-Task(agent="build-validator", prompt="Validate firmware build for $ARGUMENTS:
+Agent(agent="build-validator", prompt="Validate firmware build for $ARGUMENTS:
 - Cross-compile for all target MCUs
 - Verify binary sizes within flash constraints
 - Check no undefined symbols
@@ -438,7 +438,7 @@ Task(agent="build-validator", prompt="Validate firmware build for $ARGUMENTS:
 
 Delegate to test-runner agent:
 
-Task(agent="test-runner", prompt="Execute firmware test suite:
+Agent(agent="test-runner", prompt="Execute firmware test suite:
 - Unit tests (host simulation)
 - Integration tests (hardware-in-loop if available)
 - Static analysis (MISRA compliance)
@@ -453,7 +453,7 @@ Bash(command="./scripts/package-release.sh $ARGUMENTS")
 
 Delegate to doc-generator agent:
 
-Task(agent="general-purpose", prompt="Generate release notes for $ARGUMENTS:
+Agent(agent="general-purpose", prompt="Generate release notes for $ARGUMENTS:
 - Parse git log since last tag
 - Categorize: features, fixes, breaking changes
 - Include binary checksums
@@ -504,7 +504,7 @@ Skill(skill="stack-analyzer", args="--max-depth 2048")
 
 ```markdown
 # GOOD - Orchestrator delegates
-Task(agent="test-runner", prompt="Run the test suite...")
+Agent(agent="test-runner", prompt="Run the test suite...")
 
 # BAD - Orchestrator does work directly
 Bash(command="pytest tests/")
@@ -1068,7 +1068,7 @@ skills: skill1, skill2
 | Pattern | Syntax | Use |
 |---------|--------|-----|
 | Skill calls skill | `Skill(skill="name", args="...")` | Chain workflows |
-| Skill delegates to agent | `Task(agent="name", prompt="...")` | Focused execution |
+| Skill delegates to agent | `Agent(agent="name", prompt="...")` | Focused execution |
 | Agent loads skills | `skills: skill1, skill2` in frontmatter | Domain knowledge |
 | Forked context | `context: fork` + `agent: type` | Isolated execution |
 
@@ -1076,7 +1076,7 @@ skills: skill1, skill2
 
 ```markdown
 # In skill instructions:
-Task(agent="firmware-reviewer", prompt="Review code for MISRA compliance...")
+Agent(agent="firmware-reviewer", prompt="Review code for MISRA compliance...")
 
 # Call another skill:
 Skill(skill="misra-review", args="./src/drivers/")

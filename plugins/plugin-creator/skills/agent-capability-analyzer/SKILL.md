@@ -80,7 +80,7 @@ Output: `Populated N agents, skipped M`
 
 Read `$CLAUDE_PLUGIN_ROOT/resources/describe-your-capabilities.template.md` — this is the exact prompt each agent receives.
 
-3. Spawn all known agents simultaneously via the Task tool. For each agent, use the template as the prompt (replacing `AGENT_ID_HERE` with the agent's id). Each agent runs the update script itself.
+3. Spawn all known agents simultaneously via the Agent tool. For each agent, use the template as the prompt (replacing `AGENT_ID_HERE` with the agent's id). Each agent runs the update script itself.
 
    Agents that lack Bash access return their capabilities as text. Collect those responses and write them directly from the orchestrator:
 

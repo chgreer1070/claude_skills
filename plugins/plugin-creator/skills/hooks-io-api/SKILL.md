@@ -5,7 +5,7 @@ user-invocable: true
 ---
 # Claude Code Hooks — I/O API Reference (January 2026)
 
-JSON schemas for hook stdin input and stdout output per event. For hook system fundamentals, activate `Skill(command: "plugin-creator:hooks-core-reference")`. For working examples, activate `Skill(command: "plugin-creator:hooks-patterns")`.
+JSON schemas for hook stdin input and stdout output per event. For hook system fundamentals, activate `Skill(skill: "plugin-creator:hooks-core-reference")`. For working examples, activate `Skill(skill: "plugin-creator:hooks-patterns")`.
 
 ---
 

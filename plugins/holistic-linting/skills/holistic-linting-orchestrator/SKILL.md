@@ -33,7 +33,7 @@ The orchestrator MUST follow this delegation-first workflow:
 Delegate linting resolution WITHOUT running any linting commands first:
 
 ```text
-Task(
+Agent(
   agent="holistic-linting:linting-root-cause-resolver",
   prompt="Format, lint, and resolve any issues in <file_path>"
 )
@@ -61,9 +61,9 @@ Task(
 Launch concurrent agents (one per file) WITHOUT pre-gathering linting data:
 
 ```text
-Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
-Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/api.py")
-Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in tests/test_auth.py")
+Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
+Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/api.py")
+Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in tests/test_auth.py")
 ```
 
 **Reason for concurrency**: Independent file resolutions proceed in parallel, reducing total time.
@@ -99,7 +99,7 @@ The task is NOT complete while UNRESOLVED items remain without a user decision. 
 After confirming zero UNRESOLVED items (or user decisions on each), delegate architectural review:
 
 ```text
-Task(
+Agent(
   agent="post-linting-architecture-reviewer",
   prompt="Review linting resolution for <file_path>"
 )
@@ -134,7 +134,7 @@ Read(".claude/reports/architectural-review-[timestamp].md")
 If architectural review identifies problems with resolution:
 
 ```text
-Task(
+Agent(
   agent="holistic-linting:linting-root-cause-resolver",
   prompt="Address issues found in architectural review: .claude/reports/architectural-review-[timestamp].md
 
@@ -151,7 +151,7 @@ Review report contains detailed context and proposed solutions."
 After re-resolution, delegate to reviewer again:
 
 ```text
-Task(
+Agent(
   agent="post-linting-architecture-reviewer",
   prompt="Review updated linting resolution for <file_path>"
 )
@@ -190,10 +190,10 @@ flowchart TD
 ```text
 # Wrong:
 Bash("ruff check src/auth.py")
-Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Fix these errors: [pasted errors]")
+Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Fix these errors: [pasted errors]")
 
 # Correct:
-Task(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
+Agent(agent="holistic-linting:linting-root-cause-resolver", prompt="Format, lint, and resolve any issues in src/auth.py")
 ```
 
 **Skipping the UNRESOLVED check** — allows incomplete resolutions to reach the architecture reviewer:

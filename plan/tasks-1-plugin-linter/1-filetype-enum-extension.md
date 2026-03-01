@@ -44,7 +44,7 @@ The plugin_validator.py (3045 lines) implements a protocol-based validation fram
 4. **ComplexityValidator** (lines 1939-2122): Uses tiktoken to count tokens, splits frontmatter vs body, no auto-fix
 5. **InternalLinkValidator** (lines 448-631): Regex extracts markdown links, checks file existence, ignores code blocks (lines 468-490), no auto-fix
 6. **ProgressiveDisclosureValidator** (lines 334-441): Checks for references/, examples/, scripts/ directories, INFO severity only, no auto-fix
-7. **NamespaceReferenceValidator** (lines 638-1023): Parses namespace-qualified references (Skill(), Task(), @agent, /command), resolves from settings.json, checks target file exists, no auto-fix
+7. **NamespaceReferenceValidator** (lines 638-1023): Parses namespace-qualified references (Skill(), Agent(), @agent, /command), resolves from settings.json, checks target file exists, no auto-fix
 8. **PluginStructureValidator** (lines 2125-2414): Validates plugin.json schema, runs `claude plugin validate` CLI if available (lines 2421-2500), no auto-fix
 
 **Known UX Bugs:**

@@ -52,10 +52,10 @@ TaskCreate(subject="Final: Return to orchestrator", description="Return to orche
 
 ### Tier 1: Structural Analysis
 
-**Action**: LAUNCH the plugin-assessor agent using the Task tool with this exact prompt:
+**Action**: LAUNCH the plugin-assessor agent using the Agent tool with this exact prompt:
 
 ```
-Task(
+Agent(
     agent="plugin-assessor",
     prompt="""
 Your ROLE_TYPE is sub-agent.
@@ -142,7 +142,7 @@ Each recommendation must include:
 After Tier 1 completes, invoke the skill lifecycle audit for semantic validation of skill interconnections:
 
 ```
-Skill(command: "plugin-creator:audit-skill-lifecycle", args: "$ARGUMENTS")
+Skill(skill: "plugin-creator:audit-skill-lifecycle", args: "$ARGUMENTS")
 ```
 
 This audit traces call chains, detects circular dependencies, finds instruction contradictions, identifies duplicated datasets, and discovers scriptable sequences across all skills in the plugin.
@@ -152,7 +152,7 @@ This audit traces call chains, detects circular dependencies, finds instruction 
 After Tier 2 completes, invoke the agent lifecycle audit for execution capability validation:
 
 ```
-Skill(command: "plugin-creator:audit-agent-lifecycle", args: "$ARGUMENTS")
+Skill(skill: "plugin-creator:audit-agent-lifecycle", args: "$ARGUMENTS")
 ```
 
 This audit validates agent capability-configuration alignment, skill loading correctness, inter-agent contracts, tool sufficiency, and identifies dead agents.
@@ -162,7 +162,7 @@ This audit validates agent capability-configuration alignment, skill loading cor
 For skills identified as marketplace candidates or quality improvement targets, optionally invoke the completeness audit per skill:
 
 ```
-Skill(command: "plugin-creator:audit-skill-completeness", args: "./plugins/$ARGUMENTS/skills/{skill-name}")
+Skill(skill: "plugin-creator:audit-skill-completeness", args: "./plugins/$ARGUMENTS/skills/{skill-name}")
 ```
 
 This evaluates individual skills against 8 quality categories derived from Anthropic's official skills repository.
@@ -228,10 +228,10 @@ Audit Reports: .claude/audits/
 
 **Objective**: Create a detailed refactoring design specification showing how each identified issue should be addressed.
 
-**Action**: LAUNCH the python-cli-design-spec agent using the Task tool with this exact prompt (substitute the complete Assessment Report from Phase 1 where indicated):
+**Action**: LAUNCH the python-cli-design-spec agent using the Agent tool with this exact prompt (substitute the complete Assessment Report from Phase 1 where indicated):
 
 ```
-Task(
+Agent(
     agent="python-cli-design-spec",
     prompt="""
 Your ROLE_TYPE is sub-agent.
@@ -430,10 +430,10 @@ Parallelization Groups: [count]
 
 **Objective**: Generate detailed implementation tasks with dependencies, verification steps, and parallel execution opportunities.
 
-**Action**: LAUNCH a swarm-task-planner agent using the Task tool with this exact prompt:
+**Action**: LAUNCH a swarm-task-planner agent using the Agent tool with this exact prompt:
 
 ````
-Task(
+Agent(
     agent="swarm-task-planner",
     prompt="""
 Your ROLE_TYPE is sub-agent.
@@ -653,10 +653,10 @@ Task Summary:
 
 **Objective**: Gather comprehensive refactoring context before execution begins.
 
-**Action**: LAUNCH the context-gathering agent using the Task tool:
+**Action**: LAUNCH the context-gathering agent using the Agent tool:
 
 ```
-Task(
+Agent(
     agent="context-gathering",
     prompt="""
 Your ROLE_TYPE is sub-agent.

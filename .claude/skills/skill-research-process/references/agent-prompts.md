@@ -52,7 +52,7 @@ You are a Technical Researcher responsible for documenting {CATEGORY NAME} of {T
 
 ## Pre-Task Requirements
 
-1. Activate skill-creator: `Skill(command: "plugin-creator:skill-creator")`
+1. Activate skill-creator: `Skill(skill: "plugin-creator:skill-creator")`
 2. Read the project's CLAUDE.md for local development guidelines
 
 ## Task Directive
@@ -90,19 +90,19 @@ Research and document the **{CATEGORY NAME}** aspect of {TOOL/LIBRARY} for the {
 
 ## Agent Launch Pattern
 
-To launch research agents in parallel, use a single message with multiple Task tool calls:
+To launch research agents in parallel, use a single message with multiple Agent tool calls:
 
 ```text
-# In a single response, include multiple Task tool uses:
+# In a single response, include multiple Agent tool uses:
 
-Task(
+Agent(
   subagent_type: "general-purpose",
   description: "Research {Category A} for {skill-name}",
   run_in_background: true,
   prompt: "{Research agent prompt with Category A details}"
 )
 
-Task(
+Agent(
   subagent_type: "general-purpose",
   description: "Research {Category B} for {skill-name}",
   run_in_background: true,

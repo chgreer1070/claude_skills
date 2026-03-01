@@ -426,7 +426,7 @@
 
 ## Claims Verified as Incorrect
 
-### Claim: "Sub-agents spawned via Task tool receive conversation context by default"
+### Claim: "Sub-agents spawned via Agent tool receive conversation context by default"
 
 **Status**: INCORRECT (verified by experiment 2026-01-29)
 
@@ -438,7 +438,7 @@
 
 **Status**: INCORRECT (verified by experiment 2026-01-29)
 
-**Evidence**: Same experiment proves context isolation IS enforced by the Task tool architecture itself. Sub-agents cannot access orchestrator conversation. The mechanism that enforces isolation is the Task tool's design - it does not pass conversation history to sub-agents.
+**Evidence**: Same experiment proves context isolation IS enforced by the Agent tool architecture itself. Sub-agents cannot access orchestrator conversation. The mechanism that enforces isolation is the Agent tool's design - it does not pass conversation history to sub-agents.
 
 **Impact**: Associated improvement opportunities removed from gap analysis.
 

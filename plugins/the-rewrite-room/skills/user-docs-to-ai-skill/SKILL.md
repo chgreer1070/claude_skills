@@ -132,7 +132,7 @@ Simple sequential prose ("first do X, then do Y") without branching is NOT workf
 
 ### Delegate Each Workflow to process-siren
 
-For each identified workflow-shaped atom cluster, delegate via Task tool:
+For each identified workflow-shaped atom cluster, delegate via Agent tool:
 
 ```text
 Task: subagent_type="process-siren:process-siren"

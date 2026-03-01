@@ -7,8 +7,8 @@ user-invocable: true
 
 Hooks execute custom commands or prompts in response to Claude Code events. Use for automation, validation, formatting, and security.
 
-For JSON input/output schemas, activate `Skill(command: "plugin-creator:hooks-io-api")`.
-For working examples and patterns, activate `Skill(command: "plugin-creator:hooks-patterns")`.
+For JSON input/output schemas, activate `Skill(skill: "plugin-creator:hooks-io-api")`.
+For working examples and patterns, activate `Skill(skill: "plugin-creator:hooks-patterns")`.
 
 ---
 
@@ -24,7 +24,7 @@ For working examples and patterns, activate `Skill(command: "plugin-creator:hook
 | `UserPromptSubmit`   | User submits prompt               | No              | Input validation        |
 | `Stop`               | Claude finishes response          | No              | Cleanup, final checks   |
 | `SubagentStart`      | When spawning a subagent          | No              | Subagent initialization |
-| `SubagentStop`       | Subagent (Task tool) completes    | No              | Result validation       |
+| `SubagentStop`       | Subagent (Agent tool) completes    | No              | Result validation       |
 | `PreCompact`         | Before context compaction         | Yes             | State backup            |
 | `Setup`              | Repository setup/maintenance      | Yes             | One-time operations     |
 | `SessionStart`       | Session begins or resumes         | Yes             | Environment setup       |
@@ -219,7 +219,7 @@ Runs immediately after a tool fails (returns an error). This complements PostToo
 
 ### SubagentStart Hook
 
-Runs when a Claude Code subagent (Task tool call) is spawned.
+Runs when a Claude Code subagent (Agent tool call) is spawned.
 
 **Use SubagentStart hooks for**:
 

@@ -411,7 +411,7 @@ echo 'feat(api): add new endpoint' | npx commitlint
 For comprehensive commitlint configuration guidance, activate the commitlint skill:
 
 ```text
-Skill(command: "commitlint:commitlint")
+Skill(skill: "commitlint:commitlint")
 ```
 
 ### Pre-commit Hooks
@@ -419,7 +419,7 @@ Skill(command: "commitlint:commitlint")
 Enforce commit message format with pre-commit hooks. For complete pre-commit setup guidance, activate the pre-commit skill:
 
 ```text
-Skill(command: "python3-development:pre-commit")
+Skill(skill: "python3-development:pre-commit")
 ```
 
 ### Changelog Generation
@@ -491,12 +491,12 @@ Refs: 676104e, a215868
 
 **Commit message validation and enforcement:**
 
-- `commitlint` - Configure and use commitlint for commit message validation. Activate: `Skill(command: "commitlint:commitlint")`
-- `pre-commit` - Set up pre-commit hooks for automated validation. Activate: `Skill(command: "python3-development:pre-commit")`
+- `commitlint` - Configure and use commitlint for commit message validation. Activate: `Skill(skill: "commitlint:commitlint")`
+- `pre-commit` - Set up pre-commit hooks for automated validation. Activate: `Skill(skill: "python3-development:pre-commit")`
 
 **Git workflow tools:**
 
-- `commit-staged` - Generate conventional commit messages from diffs. Activate: `Skill(command: "commit-staged")`
+- `commit-staged` - Generate conventional commit messages from diffs. Activate: `Skill(skill: "commit-staged")`
 
 ## References
 

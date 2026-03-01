@@ -1,12 +1,12 @@
 # Agent YAML Frontmatter Schema Reference
 
-Complete specification for Claude Code agent frontmatter fields (January 2026).
+Complete specification for Claude Code agent frontmatter fields (March 2026, v2.1.63+).
 
 ---
 
 ## Sources
 
-- [Create Custom Subagents](https://code.claude.com/docs/en/sub-agents.md) (accessed 2026-01-28)
+- [Create Custom Subagents](https://code.claude.com/docs/en/sub-agents.md) (accessed 2026-03-01)
 - [Agent Frontmatter Schema](https://code.claude.com/docs/en/agents.md) (accessed 2026-01-28)
 - [Tools Reference](https://code.claude.com/docs/en/tools.md) (accessed 2026-01-28)
 - [Skills Reference](https://code.claude.com/docs/en/skills.md) (accessed 2026-01-28)
@@ -173,9 +173,9 @@ tools: Read, Grep, Glob, Bash
 tools: Bash(git:*), Bash(npm:install)
 ```
 
-**Available Tools**: Read, Write, Edit, Bash, Grep, Glob, NotebookEdit, AskUserQuestion, WebSearch, Task, ToolSearch, Skill
+**Available Tools**: Read, Write, Edit, Bash, Grep, Glob, NotebookEdit, AskUserQuestion, WebSearch, Agent, ToolSearch, Skill
 
-**Note**: MCP tools from installed servers are also available and follow pattern `mcp__server-name__tool-name`
+**Note**: In v2.1.63, the Task tool was renamed to Agent. Old `Task(...)` references still work as aliases. MCP tools from installed servers are also available and follow pattern `mcp__server-name__tool-name`.
 
 **Pattern Matching Examples**:
 
@@ -192,6 +192,21 @@ tools: Bash(git:*)
 # Combine with other tools
 tools: Read, Grep, Bash(git:*), Bash(npm:install)
 ```
+
+**Agent Tool Restrictions** (for agents running as main thread with `claude --agent`):
+
+```yaml
+# Allow spawning only specific subagent types (allowlist)
+tools: Agent(worker, researcher), Read, Bash
+
+# Allow spawning any subagent (no restrictions)
+tools: Agent, Read, Bash
+
+# Omit Agent entirely to prevent spawning subagents
+tools: Read, Bash
+```
+
+Subagents cannot spawn other subagents, so `Agent(type)` has no effect in subagent definitions.
 
 ### disallowedTools
 
@@ -293,9 +308,47 @@ maxTurns: 10
 - **Default**: none
 - **Purpose**: MCP servers available to this subagent. Each entry is either a server name referencing an already-configured server or an inline definition with the server name as key and a full MCP server config as value.
 
+**Reference mode** — reference a server already configured in `.mcp.json`:
+
 ```yaml
 mcpServers:
   - slack
+  - database
+```
+
+**Inline mode** — define a server directly in the agent frontmatter:
+
+```yaml
+mcpServers:
+  backlog:
+    command: uv
+    args:
+      - run
+      - python
+      - -m
+      - backlog_core.server
+    cwd: .claude/skills/backlog
+```
+
+**Mixed mode** — combine references and inline definitions:
+
+```yaml
+mcpServers:
+  - slack
+  backlog:
+    command: uv
+    args:
+      - run
+      - python
+      - -m
+      - backlog_core.server
+    cwd: .claude/skills/backlog
+```
+
+When the agent lists MCP tools in its `tools` field, use the pattern `mcp__server-name__tool-name`:
+
+```yaml
+tools: Read, Grep, mcp__backlog__backlog_list, mcp__backlog__backlog_view
 ```
 
 ### memory

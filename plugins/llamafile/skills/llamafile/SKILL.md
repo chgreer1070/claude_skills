@@ -191,7 +191,7 @@ print(response.choices[0].message.content)
 **Related skill**: For comprehensive LiteLLM configuration, activate the litellm skill:
 
 ```
-Skill(command: "litellm:litellm")
+Skill(skill: "litellm:litellm")
 ```
 
 ### Using OpenAI Python SDK
@@ -447,7 +447,7 @@ LLAMAFILE_PATCH = 3
 
 - `litellm` - For unified LLM provider interface and routing
   ```
-  Skill(command: "litellm:litellm")
+  Skill(skill: "litellm:litellm")
   ```
 
 **External tools:**

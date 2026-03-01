@@ -208,7 +208,7 @@ agent = LlmAgent(
 ### Applications
 
 - **Context budget management**: The tiered storage / compiled view pattern directly applies to Claude Code agent design — separate what is stored from what the model sees each turn.
-- **Multi-agent handoff discipline**: The `include_contents` scoping and narrative casting principles apply to Claude Code Task tool delegation; sub-agents should receive minimal, purpose-built context, not full ancestor history.
+- **Multi-agent handoff discipline**: The `include_contents` scoping and narrative casting principles apply to Claude Code Agent tool delegation; sub-agents should receive minimal, purpose-built context, not full ancestor history.
 - **Artifact handle pattern**: Large files or tool outputs should be referenced by name and loaded on demand, not passed inline in every prompt. Directly applicable to skills that process large codebases or documents.
 - **Processor pipeline design**: LLM Flows' ordered processor model mirrors how Claude Code skills chain prompt-building steps; explicit ordering enables testability and cache-friendliness.
 
@@ -217,13 +217,13 @@ agent = LlmAgent(
 - **Static instructions for cache stability**: Keeping system prompts immutable across invocations (equivalent of `static_instruction`) maximizes prefix cache hits in Claude API calls.
 - **Proactive memory recall pre-processor**: Before invoking Claude, run a similarity search against prior session summaries and inject relevant snippets — analogous to our skill's context pre-loading patterns.
 - **Compaction strategy**: For long-running Claude Code sessions, periodically summarize older tool results and chat history into a compact summary event rather than appending indefinitely.
-- **Narrative casting on handoff**: When chaining agents via Task tool, reframe upstream agent outputs as context annotations (`[Context from previous agent]: ...`) rather than passing them as raw `assistant` role messages.
+- **Narrative casting on handoff**: When chaining agents via Agent tool, reframe upstream agent outputs as context annotations (`[Context from previous agent]: ...`) rather than passing them as raw `assistant` role messages.
 - **Scope by default**: New agent spawns in Claude Code should receive only the minimum context needed; additional context should require explicit tool calls or prompt arguments.
 
 ### Integration Opportunities
 
 - **Research-curator skill**: Apply the artifact handle pattern — store large research documents as artifacts and load on demand rather than embedding in the prompt.
-- **Orchestrating-swarms skill**: ADK's two interaction patterns (Agents as Tools vs. Agent Transfer) map directly to Claude Code's Task tool invocation vs. full agent handoff; document which to use when.
+- **Orchestrating-swarms skill**: ADK's two interaction patterns (Agents as Tools vs. Agent Transfer) map directly to Claude Code's Agent tool invocation vs. full agent handoff; document which to use when.
 - **Session historian skill**: Implement proactive recall by running similarity search on prior session summaries before generating responses.
 - **Context engineering guide**: Create a new skill or reference doc documenting Claude Code–specific context engineering patterns derived from ADK's architecture.
 
