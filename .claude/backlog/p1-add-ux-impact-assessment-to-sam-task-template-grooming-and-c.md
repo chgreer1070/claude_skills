@@ -11,6 +11,7 @@ metadata:
   issue: '#314'
   last_synced: '2026-03-01T23:00:47Z'
   groomed: '2026-03-01'
+  plan: plan/tasks-15-process-quality-discipline.md
 ---
 
 **Research first**: How do 6 Sigma DMAIC and 5 Whys map to AI agent pipeline gates? How do GSD/BMAD-METHOD classify issue types before choosing response depth? What granularity of issue taxonomy works without becoming overhead?
