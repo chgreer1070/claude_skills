@@ -58,7 +58,6 @@ _GIT_PATH: str | None = shutil.which("git")
 
 # Marketplace JSON Schema
 MARKETPLACE_SCHEMA_URL = "https://anthropic.com/claude-code/marketplace.schema.json"
-_MARKETPLACE_REQUIRED_FIELDS = {"metadata", "plugins"}
 
 
 def _ensure_marketplace_schema(data: dict[str, Any]) -> tuple[dict[str, Any], bool]:
@@ -75,30 +74,6 @@ def _ensure_marketplace_schema(data: dict[str, Any]) -> tuple[dict[str, Any], bo
     new_data: dict[str, Any] = {"$schema": MARKETPLACE_SCHEMA_URL}
     new_data.update({k: v for k, v in data.items() if k != "$schema"})
     return new_data, changed
-
-
-def _validate_marketplace_structure(data: dict[str, Any], path: Path) -> bool:
-    """Validate marketplace.json has required fields and correct types.
-
-    Args:
-        data: Parsed marketplace.json content.
-        path: File path (used in error messages).
-
-    Returns:
-        True if valid, False if validation errors were found.
-    """
-    missing = _MARKETPLACE_REQUIRED_FIELDS - set(data.keys())
-    if missing:
-        print(f"  ERROR: {path} missing required fields: {', '.join(sorted(missing))}")
-        return False
-    if not isinstance(data.get("plugins"), list):
-        print(f"  ERROR: {path} 'plugins' must be an array")
-        return False
-    metadata = data.get("metadata")
-    if not isinstance(metadata, dict):
-        print(f"  ERROR: {path} 'metadata' must be an object")
-        return False
-    return True
 
 
 class PluginPathInfo(TypedDict):
@@ -688,9 +663,6 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
     with marketplace_json_path.open(encoding="utf-8") as f:
         data, schema_added = _ensure_marketplace_schema(json.load(f))
 
-    if not _validate_marketplace_structure(data, marketplace_json_path):
-        return False
-
     metadata = cast("dict[str, str]", data.get("metadata", {}))
     current_version = metadata.get("version", "0.0.0")
 
@@ -1270,9 +1242,6 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
 
     with marketplace_path.open(encoding="utf-8") as f:
         data, schema_added = _ensure_marketplace_schema(json.load(f))
-
-    if not _validate_marketplace_structure(data, marketplace_path):
-        return False
 
     plugins_list = cast("list[dict[str, Any]]", data.get("plugins", []))
     # Only track locally-sourced plugins (relative path strings) in the stale check.
