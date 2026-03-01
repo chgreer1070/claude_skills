@@ -674,7 +674,7 @@
 
 The python3-development plugin at `./plugins/python3-development/` contains a single monolithic SKILL.md file spanning 1,318 lines that covers five distinct domains: orchestration/workflow patterns, type safety with mypy, CLI development with Typer/Rich, linting/quality workflows, and project structure standards. This monolithic design violates the recommended skill size guideline of 400 lines maximum per skill.
 
-When a user activates the skill via `@python3-development` or `Skill(command: "python3-development")`, Claude Code loads the entire 1,318-line SKILL.md into context. The skill's frontmatter (lines 1-7) defines 10 trigger conditions covering any Python-related work. The description field uses a `<hint>` XML tag to provide additional context about what the skill provides without triggering early activation.
+When a user activates the skill via `@python3-development` or `Skill(skill: "python3-development")`, Claude Code loads the entire 1,318-line SKILL.md into context. The skill's frontmatter (lines 1-7) defines 10 trigger conditions covering any Python-related work. The description field uses a `<hint>` XML tag to provide additional context about what the skill provides without triggering early activation.
 
 The skill distinguishes between orchestrator and sub-agent roles through `<section ROLE_TYPE="orchestrator">` tags at four locations:
 
@@ -858,7 +858,7 @@ Based on analysis of SKILL.md content and the design spec, the five new skills w
 
 | Plugin             | File                                  | Reference Type                                                              |
 | ------------------ | ------------------------------------- | --------------------------------------------------------------------------- |
-| holistic-linting   | SKILL.md                              | Activates skill via `Skill(command: "python3-development")` (lines 449-580) |
+| holistic-linting   | SKILL.md                              | Activates skill via `Skill(skill: "python3-development")` (lines 449-580) |
 | holistic-linting   | linting-root-cause-resolver.md        | Requires loading skill (line 20-22)                                         |
 | holistic-linting   | post-linting-architecture-reviewer.md | Standards checklist reference (line 41)                                     |
 | fastmcp-creator    | SKILL.md                              | RULE requiring activation before Python MCP projects (lines 182-199)        |

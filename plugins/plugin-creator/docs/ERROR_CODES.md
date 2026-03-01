@@ -995,7 +995,7 @@ A namespace-qualified reference in the file body points to a skill, agent, or co
 
 The validator checks these reference patterns:
 
-- `Skill(command: "plugin:skill-name")`
+- `Skill(skill: "plugin:skill-name")`
 - `Skill(skill="plugin:skill-name")`
 - `Agent(agent="plugin:agent-name")`
 - `@plugin:agent-name` (prose agent references)
@@ -1004,7 +1004,7 @@ The validator checks these reference patterns:
 **Example (Bad)**:
 
 ```markdown
-Activate the linting skill: Skill(command: "holistic-linting:nonexistent-skill")
+Activate the linting skill: Skill(skill: "holistic-linting:nonexistent-skill")
 ```
 
 **Fix**: Create the missing target file or correct the reference.

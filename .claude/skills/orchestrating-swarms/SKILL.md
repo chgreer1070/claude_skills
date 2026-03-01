@@ -14,25 +14,25 @@ This skill is a facade that routes to 4 specialist skills. Load whichever you ne
 
 ### Core Concepts
 
-`Skill(command: "swarm-primitives")`
+`Skill(skill: "swarm-primitives")`
 
 What teams, teammates, tasks, and inboxes are. File layouts, team config structure, lifecycle diagrams, message flow sequences.
 
 ### Spawning Agents
 
-`Skill(command: "swarm-spawning")`
+`Skill(skill: "swarm-spawning")`
 
 How to create agents -- subagent vs teammate decision, built-in agent types (Explore, Plan, general-purpose, Bash, etc.), plugin agent types, spawn backends (in-process, tmux, iterm2), environment variables.
 
 ### API Reference
 
-`Skill(command: "swarm-operations")`
+`Skill(skill: "swarm-operations")`
 
 Tool signatures and message schemas -- TeamCreate, SendMessage (direct, broadcast, shutdown, plan approval), TeamDelete, Agent tool parameters. Error handling, graceful shutdown sequence, crashed teammate recovery, debugging.
 
 ### Patterns and Recipes
 
-`Skill(command: "swarm-patterns")`
+`Skill(skill: "swarm-patterns")`
 
 6 orchestration patterns (parallel specialists, pipeline, swarm, research+implement, plan approval, coordinated refactoring), 3 complete workflows, best practices, quick reference.
 

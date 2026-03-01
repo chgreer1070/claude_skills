@@ -32,7 +32,7 @@ Gate 3: Final validation (links work, quality standards met)
 1. Activate skill-creator for structure guidance:
 
    ```text
-   Skill(command: "plugin-creator:skill-creator")
+   Skill(skill: "plugin-creator:skill-creator")
    ```
 
 2. Read CLAUDE.md for verification requirements

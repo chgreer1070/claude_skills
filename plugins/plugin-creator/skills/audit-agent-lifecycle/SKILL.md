@@ -75,7 +75,7 @@ Execute 8 semantic audits across 3 depth tiers. See [Agent Lifecycle Audit Speci
 
 ### Step 3: Capability Drift Check
 
-Activate with `Skill(command: "plugin-creator:agent-capability-analyzer")`.
+Activate with `Skill(skill: "plugin-creator:agent-capability-analyzer")`.
 
 This phase compares each agent's static frontmatter `description` against its self-reported capabilities to detect description drift. Misrouted agents and stale descriptions are audit findings.
 

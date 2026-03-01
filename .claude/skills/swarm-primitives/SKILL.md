@@ -17,7 +17,7 @@ Core concepts for Claude Code multi-agent orchestration.
 - **Task** -- A work item with subject, description, status, owner, and dependencies. (`~/.claude/tasks/{team}/N.json`)
 - **Inbox** -- JSON file where an agent receives messages from teammates. (`~/.claude/teams/{name}/inboxes/{agent}.json`)
 - **Message** -- A JSON object sent between agents. Can be text or structured (shutdown_request, idle_notification, etc). (Stored in inbox files)
-- **Backend** -- How teammates run. Auto-detected -- `in-process` (same Node.js, invisible), `tmux` (separate panes, visible), `iterm2` (split panes in iTerm2). See `Skill(command: "swarm-spawning")` for details.
+- **Backend** -- How teammates run. Auto-detected -- `in-process` (same Node.js, invisible), `tmux` (separate panes, visible), `iterm2` (split panes in iTerm2). See `Skill(skill: "swarm-spawning")` for details.
 
 ---
 
@@ -254,9 +254,9 @@ TaskUpdate({ taskId: "4", addBlockedBy: ["3"] })   // #4 waits for #3
 
 ## Related Skills
 
-- API reference -- `Skill(command: "swarm-operations")`
-- Spawning agents -- `Skill(command: "swarm-spawning")`
-- Patterns and recipes -- `Skill(command: "swarm-patterns")`
+- API reference -- `Skill(skill: "swarm-operations")`
+- Spawning agents -- `Skill(skill: "swarm-spawning")`
+- Patterns and recipes -- `Skill(skill: "swarm-patterns")`
 
 ---
 

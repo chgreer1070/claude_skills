@@ -142,7 +142,7 @@ Each recommendation must include:
 After Tier 1 completes, invoke the skill lifecycle audit for semantic validation of skill interconnections:
 
 ```
-Skill(command: "plugin-creator:audit-skill-lifecycle", args: "$ARGUMENTS")
+Skill(skill: "plugin-creator:audit-skill-lifecycle", args: "$ARGUMENTS")
 ```
 
 This audit traces call chains, detects circular dependencies, finds instruction contradictions, identifies duplicated datasets, and discovers scriptable sequences across all skills in the plugin.
@@ -152,7 +152,7 @@ This audit traces call chains, detects circular dependencies, finds instruction 
 After Tier 2 completes, invoke the agent lifecycle audit for execution capability validation:
 
 ```
-Skill(command: "plugin-creator:audit-agent-lifecycle", args: "$ARGUMENTS")
+Skill(skill: "plugin-creator:audit-agent-lifecycle", args: "$ARGUMENTS")
 ```
 
 This audit validates agent capability-configuration alignment, skill loading correctness, inter-agent contracts, tool sufficiency, and identifies dead agents.
@@ -162,7 +162,7 @@ This audit validates agent capability-configuration alignment, skill loading cor
 For skills identified as marketplace candidates or quality improvement targets, optionally invoke the completeness audit per skill:
 
 ```
-Skill(command: "plugin-creator:audit-skill-completeness", args: "./plugins/$ARGUMENTS/skills/{skill-name}")
+Skill(skill: "plugin-creator:audit-skill-completeness", args: "./plugins/$ARGUMENTS/skills/{skill-name}")
 ```
 
 This evaluates individual skills against 8 quality categories derived from Anthropic's official skills repository.

@@ -297,7 +297,7 @@ CONSTRAINT: The python3-development skill contains:
 ACTIVATION:
 
 ```claude
-Skill(command: "python3-development:python3-development")
+Skill(skill: "python3-development:python3-development")
 ```
 
 The model must defer to python3-development for general Python project structure.

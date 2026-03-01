@@ -430,7 +430,7 @@ This skill is automatically loaded when installed in `~/.claude/skills/holistic-
 To manually reference this skill in a session:
 
 ```text
-Activate the holistic-linting skill: Skill(command: "holistic-linting:holistic-linting")
+Activate the holistic-linting skill: Skill(skill: "holistic-linting:holistic-linting")
 ```
 
 ## Related Skills

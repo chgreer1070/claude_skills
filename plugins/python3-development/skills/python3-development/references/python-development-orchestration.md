@@ -232,7 +232,7 @@ flowchart TD
 - **Hard stdlib-only requirement**: Explicitly requested by user
 - **1% case**: Only when deployment environment truly restricts dependencies
 
-**Activation**: `Skill(command: "python3-development:stdlib-scripting")`
+**Activation**: `Skill(skill: "python3-development:stdlib-scripting")`
 
 **Characteristics**:
 

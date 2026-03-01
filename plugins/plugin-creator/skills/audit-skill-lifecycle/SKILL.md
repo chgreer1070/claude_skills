@@ -41,7 +41,7 @@ Scan plugin structure to identify all skills, agents, commands, and reference fi
 - Reference files loaded by skills
 - Data files (JSON, YAML, markdown tables) consumed by skills
 
-Extract all `Skill(command:)`, `Skill(skill=)`, `Agent(command:)`, and `@agent` references to build outbound dependency graph.
+Extract all `Skill(skill:)`, `Skill(skill=)`, `Agent(command:)`, and `@agent` references to build outbound dependency graph.
 
 ### Step 2: Analysis — Run Audit Dimensions
 
@@ -100,7 +100,7 @@ Returns bidirectional reference matrix per domain with one-directional reference
 
 ### 3. Circular Loading Detection
 
-Trace all `Skill(command:)` and `Skill(skill=)` references to build directed graph. Identify:
+Trace all `Skill(skill:)` and `Skill(skill=)` references to build directed graph. Identify:
 
 - Direct cycles: A loads B, B loads A
 - Indirect cycles: A loads B, B loads C, C loads A

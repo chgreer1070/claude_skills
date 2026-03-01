@@ -26,7 +26,7 @@ flowchart TD
     Q -->|File path| FileSumm[Agent: summarizer:file-summarizer\nPrerequisite: file greater than 5000 chars per fidelity rules]
     Q -->|URL| URLSumm[Agent: summarizer:url-summarizer]
     Q -->|Image/screenshot path| ImgSumm[Agent: summarizer:image-summarizer]
-    Q -->|Multiple mixed sources| Multi[Load summarizer skill — handles multi-source synthesis\nSkill(command: "summarizer:summarizer")]
+    Q -->|Multiple mixed sources| Multi[Load summarizer skill — handles multi-source synthesis\nSkill(skill: "summarizer:summarizer")]
 ```
 
 ### GLFM validation routing

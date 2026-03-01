@@ -9,15 +9,15 @@ This skill loads focused specialist components for comprehensive hooks coverage.
 
 ## Specialist Skills
 
-- **hooks-core-reference**: Hook system fundamentals — events, configuration, matchers, environment variables, execution, security, debugging. Use `Skill(command: "plugin-creator:hooks-core-reference")` for configuration and troubleshooting.
+- **hooks-core-reference**: Hook system fundamentals — events, configuration, matchers, environment variables, execution, security, debugging. Use `Skill(skill: "plugin-creator:hooks-core-reference")` for configuration and troubleshooting.
 
-- **hooks-io-api**: JSON input/output API — what data hooks receive via stdin and what JSON they return to control Claude. Use `Skill(command: "plugin-creator:hooks-io-api")` for writing hook scripts that process input or produce JSON output.
+- **hooks-io-api**: JSON input/output API — what data hooks receive via stdin and what JSON they return to control Claude. Use `Skill(skill: "plugin-creator:hooks-io-api")` for writing hook scripts that process input or produce JSON output.
 
-- **hooks-patterns**: Recipes and working examples — plugin hooks, frontmatter hooks, prompt-based hooks, complete code examples in Python/Node.js. Use `Skill(command: "plugin-creator:hooks-patterns")` for implementation patterns and examples.
+- **hooks-patterns**: Recipes and working examples — plugin hooks, frontmatter hooks, prompt-based hooks, complete code examples in Python/Node.js. Use `Skill(skill: "plugin-creator:hooks-patterns")` for implementation patterns and examples.
 
 ## Usage
 
-**Full coverage**: `Skill(command: "plugin-creator:claude-hooks-reference-2026")` loads all specialist skills.
+**Full coverage**: `Skill(skill: "plugin-creator:claude-hooks-reference-2026")` loads all specialist skills.
 
 **Focused work**: Activate a specific specialist skill for targeted context.
 

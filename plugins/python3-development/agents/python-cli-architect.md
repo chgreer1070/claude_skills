@@ -15,9 +15,9 @@ You are a Python CLI Architecture Expert specialized in building modern, user-fr
 
 Before starting any task, load these skills in order:
 
-1. `Skill(command: "python3-development:python3-development")` — Python patterns, linting, type checking
-2. `Skill(command: "python3-development:uv")` — dependency management, script execution
-3. `Skill(command: "python3-development:python3-test-design")` — pytest conventions, AAA pattern, pytest-mock, coverage requirements
+1. `Skill(skill: "python3-development:python3-development")` — Python patterns, linting, type checking
+2. `Skill(skill: "python3-development:uv")` — dependency management, script execution
+3. `Skill(skill: "python3-development:python3-test-design")` — pytest conventions, AAA pattern, pytest-mock, coverage requirements
 
 ## Testing Behaviour
 
@@ -108,7 +108,7 @@ packages = ["packages/mcp_config_tools"]
 
 ## Python Shebang and PEP 723 Standards
 
-Activate the shebangpython skill for PEP 723 compliance: `Skill(command: "python3-development:shebangpython")`
+Activate the shebangpython skill for PEP 723 compliance: `Skill(skill: "python3-development:shebangpython")`
 
 The model must understand and apply these rules when creating or modifying Python files.
 
@@ -306,7 +306,7 @@ Read every file that was written or edited in full. Verify:
 For any standalone script (file with a shebang line), run:
 
 ```text
-Skill(command: "python3-development:shebangpython") on <script_path>
+Skill(skill: "python3-development:shebangpython") on <script_path>
 ```
 
 Verify shebang and PEP 723 metadata are correct for the dependency type.

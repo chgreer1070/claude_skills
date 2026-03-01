@@ -49,7 +49,7 @@ Extract shared methodology as a "Common Resolution Steps" section (~40 lines), t
 - `holistic-linting-resolver` will reference the rules knowledge base through the main skill's established paths
 
 **Migration Notes**:
-- The main `holistic-linting` skill is referenced by both agents (linting-root-cause-resolver loads it via `Skill(command: "holistic-linting")`). After split, this agent should load `holistic-linting` (which loads resolver content or references it).
+- The main `holistic-linting` skill is referenced by both agents (linting-root-cause-resolver loads it via `Skill(skill: "holistic-linting")`). After split, this agent should load `holistic-linting` (which loads resolver content or references it).
 - The `<section ROLE_TYPE="orchestrator">` XML tag on line 49 already delineates the orchestrator content cleanly.
 - The `/lint` command (commands/lint.md) references the main skill workflow — no changes needed since the main skill remains the entry point.
 

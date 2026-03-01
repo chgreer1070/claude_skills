@@ -395,7 +395,7 @@ uv run prek run --files <file>
 
 ### Installation
 
-`gh` not pre-installed. Install via the `/gh` skill: `Skill(command: "gh")`.
+`gh` not pre-installed. Install via the `/gh` skill: `Skill(skill: "gh")`.
 
 ### Authentication and Repo Detection
 

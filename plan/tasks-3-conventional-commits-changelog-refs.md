@@ -56,7 +56,7 @@ T1 and T2 are independent edits to different files. No code paths or imports con
 
 **CHANGELOG edit pattern:** Use search_replace or direct edit. Replace line 27 text; remove or replace line 31. Preserve YAML/markdown structure.
 
-**SKILL.md edit pattern:** Locate the "## Related Skills" section (around lines 494-501). Update bullet list: change git-commit-helper → commit-staged; remove semantic-release; verify commitlint and pre-commit use correct activation syntax (e.g., `Skill(command: "commitlint:commitlint")`).
+**SKILL.md edit pattern:** Locate the "## Related Skills" section (around lines 494-501). Update bullet list: change git-commit-helper → commit-staged; remove semantic-release; verify commitlint and pre-commit use correct activation syntax (e.g., `Skill(skill: "commitlint:commitlint")`).
 
 ### Technical Reference Details
 
@@ -68,7 +68,7 @@ T1 and T2 are independent edits to different files. No code paths or imports con
 
 #### Skill Activation Syntax (from CLAUDE.md)
 
-Reference skills using activation syntax: `Skill(command: "plugin-name:skill-name")` or `Skill(command: "commit-staged")` for root-level skills.
+Reference skills using activation syntax: `Skill(skill: "plugin-name:skill-name")` or `Skill(skill: "commit-staged")` for root-level skills.
 
 #### Validation Commands
 
@@ -176,7 +176,7 @@ Update Related Skills to reference only existing skills with correct activation 
 
 1. Replace `git-commit-helper` with `commit-staged` (or equivalent activation syntax)
 2. Remove `semantic-release` reference (no skill exists)
-3. Keep `commitlint` and `pre-commit`; ensure activation syntax is correct (e.g., `Skill(command: "commitlint:commitlint")`, `Skill(command: "python3-development:pre-commit")`)
+3. Keep `commitlint` and `pre-commit`; ensure activation syntax is correct (e.g., `Skill(skill: "commitlint:commitlint")`, `Skill(skill: "python3-development:pre-commit")`)
 
 ### Constraints
 

@@ -52,7 +52,7 @@ You are a Technical Researcher responsible for documenting {CATEGORY NAME} of {T
 
 ## Pre-Task Requirements
 
-1. Activate skill-creator: `Skill(command: "plugin-creator:skill-creator")`
+1. Activate skill-creator: `Skill(skill: "plugin-creator:skill-creator")`
 2. Read the project's CLAUDE.md for local development guidelines
 
 ## Task Directive

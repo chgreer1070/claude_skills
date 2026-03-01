@@ -44,7 +44,7 @@ Your role as orchestrator — apply these throughout all 10 steps:
 **ACTION**: Activate the agent-orchestration skill NOW:
 
 ```text
-Skill(command: "agent-orchestration:agent-orchestration")
+Skill(skill: "agent-orchestration:agent-orchestration")
 ```
 
 Then load domain-specific skills based on task type:

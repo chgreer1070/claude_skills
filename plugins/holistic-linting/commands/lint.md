@@ -12,7 +12,7 @@ Activates the `/holistic-linting:holistic-linting` skill with optional path argu
 1. Load the holistic-linting skill:
 
 ```claude
-Skill(command: "holistic-linting:holistic-linting")
+Skill(skill: "holistic-linting:holistic-linting")
 ```
 
 2. Follow the skill's workflow for the provided paths: `$ARGUMENTS`

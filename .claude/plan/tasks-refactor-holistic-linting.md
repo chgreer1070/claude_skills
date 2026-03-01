@@ -288,16 +288,16 @@ The source SKILL.md (1221 lines) contains 4 distinct domains that will be split 
 | SKILL.md line 1074 | `./references/rules/bandit/index.md` | Markdown link to rules KB index |
 | SKILL.md line 1100 | `./scripts/` | Directory reference for bundled scripts |
 | SKILL.md line 1118 | `/.claude/commands/lint.md` | Absolute path to command (works from plugin context) |
-| SKILL.md lines 453, 593, 821 | `Skill(command: "python3-development")` | Skill activation in all 3 linter workflows |
-| linting-root-cause-resolver.md line 17 | `Skill(command: "holistic-linting")` | Agent loads main skill |
-| linting-root-cause-resolver.md line 22 | `Skill(command: "python3-development")` | Agent loads python skill |
+| SKILL.md lines 453, 593, 821 | `Skill(skill: "python3-development")` | Skill activation in all 3 linter workflows |
+| linting-root-cause-resolver.md line 17 | `Skill(skill: "holistic-linting")` | Agent loads main skill |
+| linting-root-cause-resolver.md line 22 | `Skill(skill: "python3-development")` | Agent loads python skill |
 | post-linting-architecture-reviewer.md line 29 | `.claude/reports/linting-investigation-*.md` | Resolution artifact path |
 | post-linting-architecture-reviewer.md line 30 | `.claude/reports/linting-resolution-*.md` | Resolution artifact path |
 | post-linting-architecture-reviewer.md line 31 | `.claude/artifacts/linting-artifacts-*.json` | Resolution artifact path |
 | lint.md line 62 | `Grep(pattern="^## LINTERS", path="CLAUDE.md")` | Command reads project linting config |
 | lint.md line 114 | `Task(subagent_type="linting-root-cause-resolver")` | Command delegates to agent |
 
-**After Split Impact**: The main `holistic-linting` skill remains the entry point. Agent references `Skill(command: "holistic-linting")` will continue to work as the router skill will reference or incorporate resolver content. No agent file changes needed for skill references.
+**After Split Impact**: The main `holistic-linting` skill remains the entry point. Agent references `Skill(skill: "holistic-linting")` will continue to work as the router skill will reference or incorporate resolver content. No agent file changes needed for skill references.
 
 ### External Dependencies
 
@@ -394,4 +394,4 @@ Extract common methodology once, then linter-specific sections reference it with
 - agent-orchestration skill: References holistic-linting workflows in delegation templates
 - verification-gate skill: May reference linting validation in completion gates
 
-These integration points use skill activation syntax (`Skill(command: "holistic-linting")`) which continues to work as the main skill name is unchanged.
+These integration points use skill activation syntax (`Skill(skill: "holistic-linting")`) which continues to work as the main skill name is unchanged.

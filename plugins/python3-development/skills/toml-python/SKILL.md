@@ -324,7 +324,7 @@ def validate_config(path: str) -> tuple[bool, str]:
 For config file locations following XDG specification, activate the xdg-base-directory skill:
 
 ```
-Skill(command: "xdg-base-directory:xdg-base-directory")
+Skill(skill: "xdg-base-directory:xdg-base-directory")
 ```
 
 **Standard config path pattern:**

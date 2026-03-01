@@ -79,7 +79,7 @@ C4Container
 
 **Appropriate Use Case**: This tool has <1000 lines of code and minimal dependencies (typer, tiktoken, pyyaml already in use)
 
-**Skill Reference**: Development agents should activate `Skill(command: "python3-development:shebangpython")` for PEP 723 compliance requirements
+**Skill Reference**: Development agents should activate `Skill(skill: "python3-development:shebangpython")` for PEP 723 compliance requirements
 
 ---
 

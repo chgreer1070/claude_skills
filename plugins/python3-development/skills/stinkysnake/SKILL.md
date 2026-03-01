@@ -83,13 +83,13 @@ This skill integrates with plugins in the same marketplace:
 
 ### holistic-linting Plugin
 
-**Activation**: `Skill(command: "holistic-linting:holistic-linting")`
+**Activation**: `Skill(skill: "holistic-linting:holistic-linting")`
 
 Provides: Linting rules knowledge base, `linting-root-cause-resolver` agent, automatic linter detection.
 
 ### pre-commit Plugin
 
-**Activation**: `Skill(command: "python3-development:pre-commit")`
+**Activation**: `Skill(skill: "python3-development:pre-commit")`
 
 Provides: Git hook automation for quality gates.
 
@@ -241,7 +241,7 @@ Plan how to apply modern Python features to eliminate type gaps and improve desi
 ### Step 3.1: Load modernpython Skill
 
 ```text
-Skill(command: "python3-development:modernpython")
+Skill(skill: "python3-development:modernpython")
 ```
 
 ### Step 3.2: Plan Type System Improvements
@@ -460,10 +460,10 @@ The complete workflow produces:
 ### Skill Activations
 
 ```text
-Skill(command: "holistic-linting:holistic-linting")     # Linting workflows
-Skill(command: "python3-development:pre-commit")       # Git hooks
-Skill(command: "python3-development:modernpython")     # Python 3.11+ patterns
-Skill(command: "python3-development:python3-development")  # Core patterns
+Skill(skill: "holistic-linting:holistic-linting")     # Linting workflows
+Skill(skill: "python3-development:pre-commit")       # Git hooks
+Skill(skill: "python3-development:modernpython")     # Python 3.11+ patterns
+Skill(skill: "python3-development:python3-development")  # Core patterns
 ```
 
 ### Agent Delegations

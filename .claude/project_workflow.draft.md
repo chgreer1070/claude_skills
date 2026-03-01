@@ -121,7 +121,7 @@ flowchart TD
     Step3["Step 3: Auto-Groom Check\n1. Grep .claude/grooming-reports/ for item title\n2. Check conversation context for\n   recent groom-backlog-item output"]
     Step3 --> GroomExists{"Grooming report\nfound?"}
     GroomExists -->|"Yes"| Step4
-    GroomExists -->|"No"| RunGroom["Invoke:\nSkill(command: 'groom-backlog-item', args: '{item title}')\nCaptures: Related Research, Skills, Agents,\nPrior Work, Dependencies, Blockers,\nSuggested First Steps"]
+    GroomExists -->|"No"| RunGroom["Invoke:\nSkill(skill: 'groom-backlog-item', args: '{item title}')\nCaptures: Related Research, Skills, Agents,\nPrior Work, Dependencies, Blockers,\nSuggested First Steps"]
     RunGroom --> GroomResult{"Grooming\nsuccessful?"}
     GroomResult -->|"Yes"| Step4
     GroomResult -->|"No"| Step4NoteGap["Proceed without grooming context\nNote gap in feature request body"]
@@ -143,7 +143,7 @@ flowchart TD
     Step5 --> Step6
 
     %% ─── STEP 6: SAM PLANNING ───
-    Step6["Step 6: Invoke SAM Planning\nSkill(command: 'python3-development:add-new-feature',\n      args: '{composed feature request}')\nRuns full SAM pipeline:\n  discovery → codebase analysis → architecture spec\n  → task decomposition → validation → context manifest"]
+    Step6["Step 6: Invoke SAM Planning\nSkill(skill: 'python3-development:add-new-feature',\n      args: '{composed feature request}')\nRuns full SAM pipeline:\n  discovery → codebase analysis → architecture spec\n  → task decomposition → validation → context manifest"]
     Step6 --> SAMResult{"add-new-feature\nresult?"}
     SAMResult -->|"Failure"| STOP_SAMFAIL(["STOP — Report failure\nDo not update BACKLOG.md"])
     SAMResult -->|"Success — plan file created"| Step7

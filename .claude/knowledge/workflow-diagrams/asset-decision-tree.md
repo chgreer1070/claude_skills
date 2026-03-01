@@ -116,7 +116,7 @@ flowchart TD
 
 **Skill Characteristics:**
 
-- Loadable via `Skill(command: "name")` or `@skillname`
+- Loadable via `Skill(skill: "name")` or `@skillname`
 - Contains SKILL.md with frontmatter and instructions
 - Can include reference files for additional context
 - No autonomous execution - provides guidance only

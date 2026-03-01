@@ -170,7 +170,7 @@ Agent({
 })
 ```
 
-For spawning without team membership (subagents), see `Skill(command: "swarm-spawning")`.
+For spawning without team membership (subagents), see `Skill(skill: "swarm-spawning")`.
 
 ---
 
@@ -338,9 +338,9 @@ Read team config to see members:
 
 ## Related Skills
 
-- Core concepts -- `Skill(command: "swarm-primitives")`
-- Spawning agents -- `Skill(command: "swarm-spawning")`
-- Patterns and recipes -- `Skill(command: "swarm-patterns")`
+- Core concepts -- `Skill(skill: "swarm-primitives")`
+- Spawning agents -- `Skill(skill: "swarm-spawning")`
+- Patterns and recipes -- `Skill(skill: "swarm-patterns")`
 
 ---
 

@@ -474,9 +474,9 @@ which it2
 
 ## Related Skills
 
-- Core concepts -- `Skill(command: "swarm-primitives")`
-- API reference -- `Skill(command: "swarm-operations")`
-- Patterns and recipes -- `Skill(command: "swarm-patterns")`
+- Core concepts -- `Skill(skill: "swarm-primitives")`
+- API reference -- `Skill(skill: "swarm-operations")`
+- Patterns and recipes -- `Skill(skill: "swarm-patterns")`
 
 ---
 

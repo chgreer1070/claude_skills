@@ -572,9 +572,9 @@ TeamDelete()
 
 ## Related Skills
 
-- Core concepts -- `Skill(command: "swarm-primitives")`
-- Spawning agents -- `Skill(command: "swarm-spawning")`
-- API reference -- `Skill(command: "swarm-operations")`
+- Core concepts -- `Skill(skill: "swarm-primitives")`
+- Spawning agents -- `Skill(skill: "swarm-spawning")`
+- API reference -- `Skill(skill: "swarm-operations")`
 
 ---
 

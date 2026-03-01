@@ -706,7 +706,7 @@ Post a closing validation summary comment on GitHub Issue #128 and close the iss
 - Task 1.1 evidence block (version strings)
 - Task 1.2 evidence block (pass/fail per step)
 - Tasks 2.1–2.3 completion status
-- `gh` CLI available (install via `/gh` skill if needed: `Skill(command: "gh")`)
+- `gh` CLI available (install via `/gh` skill if needed: `Skill(skill: "gh")`)
 
 ### Requirements
 

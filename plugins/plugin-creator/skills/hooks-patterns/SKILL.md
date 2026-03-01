@@ -5,13 +5,13 @@ user-invocable: true
 ---
 # Claude Code Hooks — Patterns & Examples (January 2026)
 
-Working examples and recipes for building hooks. For hook system fundamentals, activate `Skill(command: "plugin-creator:hooks-core-reference")`. For JSON I/O schemas, activate `Skill(command: "plugin-creator:hooks-io-api")`.
+Working examples and recipes for building hooks. For hook system fundamentals, activate `Skill(skill: "plugin-creator:hooks-core-reference")`. For JSON I/O schemas, activate `Skill(skill: "plugin-creator:hooks-io-api")`.
 
 ---
 
 ## Plugin Hooks
 
-Plugins can provide hooks that integrate with user and project hooks. For complete plugin documentation including plugin.json schema, directory structure, and component integration, see `Skill(command: "plugin-creator:claude-plugins-reference-2026")`.
+Plugins can provide hooks that integrate with user and project hooks. For complete plugin documentation including plugin.json schema, directory structure, and component integration, see `Skill(skill: "plugin-creator:claude-plugins-reference-2026")`.
 
 ### How Plugin Hooks Work
 
@@ -84,7 +84,7 @@ Or define inline:
 
 ## Hooks in Skills, Agents, and Slash Commands
 
-Hooks can be defined in frontmatter. These are scoped to the component's lifecycle. For complete skill documentation, see `Skill(command: "plugin-creator:claude-skills-overview-2026")`.
+Hooks can be defined in frontmatter. These are scoped to the component's lifecycle. For complete skill documentation, see `Skill(skill: "plugin-creator:claude-skills-overview-2026")`.
 
 **Supported events**: `PreToolUse`, `PostToolUse`, `Stop`
 
