@@ -64,6 +64,94 @@ This forces human intervention for multi-agent coordination. The console forward
 
 ---
 
+## Problem Space: Orchestrator Observability Gaps
+
+This section captures the concrete pain points experienced by an AI orchestrator (e.g., Claude Code running `/implement-feature`) when coordinating multiple agent sessions. These are first-person observations from the orchestrating agent's perspective — the primary consumer of this plugin's MCP tools.
+
+### Gap 1: Blind Spots Between Spawn and Return
+
+When an orchestrator spawns 3-4 agents in parallel (via tmux sessions or sub-agents), it has **zero visibility** into what they're doing until they return. The orchestrator cannot determine:
+
+- Whether agent #2 is stuck in a retry loop
+- Whether agent #3 found something that invalidates agent #1's work
+- Whether any agent is about to time out or has been idle for minutes
+
+**What the orchestrator needs from capture_pane / session monitoring:**
+
+| Signal | How Console Forwarding Solves It |
+|--------|--------------------------------|
+| **Heartbeat with current action** | `capture_pane(session="agent-3", lines=5)` — last few lines show what the agent is doing right now |
+| **Elapsed time awareness** | `check_session_health()` with inactivity detection — "no output for 5 minutes" signals a stuck agent |
+| **Progress estimation** | `capture_pane()` output parsed for task completion markers (e.g., "Task 3 of 7 complete") |
+
+### Gap 2: No Inter-Agent Communication During Execution
+
+Agents are currently fire-and-forget. If agent A discovers the architecture needs a different approach, there's no way to signal agent B (already implementing against the old assumption) to stop. Console forwarding enables:
+
+- **Broadcast channel**: `send_keys(session="agent-*", keys="LIFECYCLE:Shutdown\n")` — signal all agents to halt
+- **Dependency invalidation**: Orchestrator reads agent A's output via `capture_pane()`, detects a breaking change, then `send_keys()` to dependent agents with updated instructions
+- **Coordination protocol**: Agents can write structured status to their terminal (JSON lines), and the orchestrator reads it via `capture_pane()` — creating a poor-man's message bus over terminal output
+
+### Gap 3: Task Routing Lacks Runtime Intelligence
+
+The orchestrator routes tasks based on static metadata (`Agent: python-cli-architect`). It has no signal for:
+
+- **Complexity calibration**: Simple file renames vs. architectural refactors need different agents/models, but the task file says the same agent type
+- **Historical success rate**: "Last 5 times this agent handled `complexity: High` tasks, 2 came back BLOCKED" — this would change parallelization strategy
+- **Skill compatibility**: When a task lists `skills: ["fastmcp-python-tests", "python3-development"]`, the orchestrator doesn't know if those skills conflict or if a needed skill is missing
+
+**How console forwarding helps**: By monitoring agent output in real-time, the orchestrator can detect early signs of struggle (repeated errors, long pauses) and intervene — reassigning, providing hints, or splitting the task — rather than waiting for the agent to return BLOCKED.
+
+### Gap 4: Unstructured Agent Output
+
+When agents return, the orchestrator receives a blob of text. What it needs instead:
+
+```json
+{
+  "status": "COMPLETE",
+  "files_changed": ["src/server.py", "tests/test_server.py"],
+  "decisions_made": [
+    {"decision": "Used asyncio.Queue instead of threading", "reason": "consistency with existing transport"}
+  ],
+  "blockers_encountered": [],
+  "follow_up_needed": ["integration test with real MCP client"]
+}
+```
+
+**How console forwarding enables this**: Agents can be instructed to write structured status lines to their terminal. The orchestrator uses `capture_pane()` with grep/parsing to extract these structured updates without waiting for the agent to finish.
+
+### Gap 5: No Failure Recovery Beyond Retry
+
+When an agent fails or returns BLOCKED, the orchestrator's only options are "try again with more context" or "ask the user." What's needed:
+
+- **Failure taxonomy**: timeout vs. skill-missing vs. conflicting-instructions vs. genuinely-hard-problem — each has a different recovery path
+- **Partial work preservation**: If an agent completed 3 of 5 acceptance criteria before failing, the orchestrator should spawn a new agent for just criteria 4-5, not restart from scratch
+- **Cascading failure detection**: If task 2.1 fails and tasks 3.1, 3.2, 3.3 all depend on it, auto-hold those rather than discovering they're blocked one-by-one
+
+**How console forwarding enables this**: `capture_pane()` on a failed/stuck agent shows exactly where it stopped — which files it changed, which tests it ran, what error it hit. The orchestrator can make an informed decision about recovery without guessing.
+
+### Per-Task-Type Observability Needs
+
+| Task Type | What Orchestrator Needs to See in Agent Output | Why |
+|-----------|-----------------------------------------------|-----|
+| New file creation | Target path + what imports it | Verify integration after completion |
+| Refactor | Before/after function signatures | Dependent tasks can adapt |
+| Test writing | Which source files are under test | Prevent duplicate coverage |
+| Config/infra | Which environments affected | Test against correct env |
+| Bug fix | Reproduction steps + expected behavior | Verification agent knows what "fixed" means |
+
+### Summary: Console Forwarding as Orchestration Infrastructure
+
+The console forwarding MCP server is not just a tmux convenience tool — it is **orchestration infrastructure**. It bridges the gap between "spawn agent and wait" and "actively manage a fleet of agents." The core value proposition for an AI orchestrator:
+
+1. **Observability**: See what agents are doing without waiting for them to finish
+2. **Intervention**: Send commands to stuck/misdirected agents in real-time
+3. **Coordination**: Read structured output from agents to make routing decisions
+4. **Recovery**: Inspect failed agents to determine the right recovery strategy
+5. **Efficiency**: Detect problems early instead of discovering them after wasted work
+
+---
+
 ## Codebase Research
 
 ### Similar Patterns Found
@@ -276,16 +364,28 @@ This forces human intervention for multi-agent coordination. The console forward
 
 ## Goals (MVP — v1)
 
+### Core MCP Server
+
 1. Create a new plugin at `plugins/console-forwarding/` with a FastMCP MCP server that Claude Code can load via `plugin.json` `mcpServers` declaration
 2. Expose MCP tools for **local tmux** session discovery, output capture, keystroke injection, and session lifecycle using libtmux
 3. Expose MCP tools for **remote** session operations via asyncssh (same tool set, SSH URI parameter)
 4. Mark read-only tools with `readOnlyHint` and destructive tools (send_keys, kill) with `destructiveHint`
 5. Ensure all I/O is async (libtmux via `asyncio.to_thread()`, asyncssh natively)
 6. Gracefully degrade when tmux is not installed (SSH-only tools still available)
-7. Include pytest tests using libtmux's built-in test fixtures for isolated tmux testing
-8. Create a user-facing SKILL.md documenting session naming, SSH setup, and troubleshooting
 
-**Deferred to v2**: Health monitoring (gastown-style zombie/hung detection), multi-session broadcast/coordination, dtach backend
+### Orchestrator Observability (Primary Consumer: AI Orchestrators)
+
+7. `capture_pane` supports `lines` + `offset` pagination so orchestrators can poll agent output without reading entire scrollback
+8. `list_sessions` returns structured metadata (session name, pane count, last activity time, dimensions) enabling fleet-level monitoring
+9. `check_session_health` returns a status enum (`Healthy`, `Idle`, `Hung`, `Zombie`, `Missing`) using inactivity timeout + process liveness checks — enabling orchestrators to detect stuck agents without guessing
+10. `send_keys` supports targeted intervention: orchestrators can send recovery commands, lifecycle signals (`LIFECYCLE:Shutdown`), or updated instructions to specific sessions
+
+### Quality & Documentation
+
+11. Include pytest tests using libtmux's built-in test fixtures for isolated tmux testing
+12. Create a user-facing SKILL.md documenting session naming, SSH setup, troubleshooting, and orchestrator integration patterns (structured output conventions, polling strategies, intervention protocols)
+
+**Deferred to v2**: Multi-session broadcast/coordination (fan-out/fan-in), dtach backend, persistent health patrol (background polling thread), structured agent output protocol (standardized JSON status lines), failure taxonomy classification
 
 ---
 

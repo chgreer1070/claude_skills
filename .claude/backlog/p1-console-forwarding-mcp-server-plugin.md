@@ -59,15 +59,30 @@ metadata:
 
 ## Groomed (2026-03-01)
 
+### Problem Space: Orchestrator Observability
+
+AI orchestrators (e.g., Claude Code running `/implement-feature`) managing parallel agent sessions face five critical gaps:
+
+1. **Blind between spawn and return** — zero visibility into agent progress until completion; no heartbeat, no elapsed time, no progress estimation
+2. **No inter-agent communication** — agents are fire-and-forget; no way to signal dependent agents when assumptions change
+3. **No runtime routing intelligence** — task routing uses static metadata; no real-time signal for agent struggle, stuck loops, or early failure
+4. **Unstructured output** — agents return text blobs; orchestrators need structured status (files changed, decisions made, blockers hit)
+5. **No failure recovery** — only retry-from-scratch or ask-the-user; no partial work preservation, failure taxonomy, or cascading failure detection
+
+Console forwarding solves these by giving orchestrators real-time terminal access to agent sessions — enabling monitoring, intervention, and informed recovery decisions.
+
+Full analysis: [plan/feature-context-console-forwarding-mcp-server-plugin.md](./../../plan/feature-context-console-forwarding-mcp-server-plugin.md) § "Problem Space: Orchestrator Observability Gaps"
+
 ### Expected Behavior
 
 A FastMCP server runs as a plugin, exposing tools that enable Claude Code sessions to:
 - Monitor and read output from other Claude Code sessions running locally in tmux/dtach or on remote hosts via SSH
 - Send commands and keystrokes to remote or local sessions
 - Query session metadata (status, pane dimensions, active window)
+- Detect stuck/hung/zombie agent sessions via health checks
 - Coordinate work across multiple sessions by reading/writing shared state over SSH tunnels
 
-The server communicates via MCP standard tools; Claude Code clients load it via plugin.json mcpServers declaration.
+The server communicates via MCP standard tools; Claude Code clients load it via plugin.json mcpServers declaration. The primary consumer is AI orchestrators managing parallel agent fleets, not just human developers.
 
 ### Desired Structure
 
@@ -86,13 +101,15 @@ plugins/console-forwarding/
 
 1. FastMCP server runs via uv run plugins/console-forwarding/mcp/server.py with no external daemon dependencies
 2. plugin.json declares the server; Claude Code can load it and call MCP tools immediately
-3. MCP tools expose: list_sessions, capture_pane, send_keys, get_session_info
+3. MCP tools expose: list_sessions, capture_pane, send_keys, get_session_info, check_session_health
 4. source parameter accepts tmux session names and SSH URIs (ssh://user@host/session)
-5. Local tmux/dtach sessions auto-discovered; remote sessions queried over SSH with key-based auth
-6. capture_pane and list_sessions are read-only; send_keys marked destructive hint
-7. No blocking I/O; all operations use asyncio with configurable timeouts
-8. Unit tests cover tmux pane capture, dtach socket communication, SSH key loading, remote command execution
-9. SKILL.md documents session naming conventions, SSH setup, troubleshooting
+5. Local tmux sessions auto-discovered; remote sessions queried over SSH with key-based auth
+6. capture_pane supports `lines` + `offset` pagination for orchestrator polling patterns
+7. check_session_health returns status enum (Healthy, Idle, Hung, Zombie, Missing) using inactivity timeout + process liveness
+8. capture_pane and list_sessions are read-only; send_keys marked destructive hint
+9. No blocking I/O; all operations use asyncio with configurable timeouts
+10. Unit tests cover tmux pane capture, SSH key loading, remote command execution, health check states
+11. SKILL.md documents session naming conventions, SSH setup, troubleshooting, and orchestrator integration patterns
 
 ### Resources
 
