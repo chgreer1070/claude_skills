@@ -45,6 +45,13 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Literal, TypedDict, cast
 
+try:
+    import jsonschema as _jsonschema
+
+    _HAS_JSONSCHEMA = True
+except ImportError:
+    _HAS_JSONSCHEMA = False
+
 # Prettier formatting
 _NPX_PATH: str | None = shutil.which("npx")
 
@@ -57,7 +64,90 @@ _MIN_SKILL_PATH_PARTS = 4
 _GIT_PATH: str | None = shutil.which("git")
 
 # Marketplace JSON Schema
+# The URL is referenced in the $schema field of marketplace.json but the document
+# at that URL currently returns 404 (anthropics/claude-code#9686). The schema below
+# is derived empirically from the official Anthropic marketplace repos:
+#   https://github.com/anthropics/claude-code/blob/main/.claude-plugin/marketplace.json
+#   https://github.com/anthropics/claude-plugins-official/blob/main/.claude-plugin/marketplace.json
 MARKETPLACE_SCHEMA_URL = "https://anthropic.com/claude-code/marketplace.schema.json"
+
+_MARKETPLACE_SCHEMA: dict[str, Any] = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Claude Code Marketplace",
+    "description": "Schema for .claude-plugin/marketplace.json",
+    "type": "object",
+    "required": ["name", "plugins"],
+    "properties": {
+        "$schema": {"type": "string"},
+        "name": {"type": "string"},
+        "version": {"type": "string"},
+        "description": {"type": "string"},
+        "owner": {"type": "object", "properties": {"name": {"type": "string"}, "email": {"type": "string"}}},
+        # 'metadata' is used by some marketplaces (e.g. this repo) instead of
+        # top-level 'version'/'description'.
+        "metadata": {
+            "type": "object",
+            "properties": {"description": {"type": "string"}, "version": {"type": "string"}},
+        },
+        "plugins": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["name", "source"],
+                "properties": {
+                    "name": {"type": "string"},
+                    "description": {"type": "string"},
+                    "version": {"type": "string"},
+                    "author": {
+                        "type": "object",
+                        "properties": {"name": {"type": "string"}, "email": {"type": "string"}},
+                    },
+                    # source is either a relative path string or an object with
+                    # "source" discriminator ("url" | "github").
+                    "source": {
+                        "oneOf": [
+                            {"type": "string"},
+                            {
+                                "type": "object",
+                                "required": ["source"],
+                                "properties": {
+                                    "source": {"type": "string"},
+                                    "url": {"type": "string"},
+                                    "repo": {"type": "string"},
+                                    "sha": {"type": "string"},
+                                },
+                            },
+                        ]
+                    },
+                    "category": {"type": "string"},
+                    "homepage": {"type": "string"},
+                    "tags": {"type": "array", "items": {"type": "string"}},
+                    "strict": {"type": "boolean"},
+                    "lspServers": {"type": "object"},
+                },
+            },
+        },
+    },
+}
+
+
+def _validate_marketplace_schema(data: dict[str, Any], path: str) -> None:
+    """Validate marketplace data against the known schema structure.
+
+    Logs a warning on failure — does not raise, so the script continues even
+    if validation fails (the schema URL itself currently 404s on Anthropic's
+    servers, so we cannot assume it is authoritative).
+
+    Args:
+        data: Parsed marketplace.json content.
+        path: File path for error messages.
+    """
+    if not _HAS_JSONSCHEMA:
+        return
+    try:
+        _jsonschema.validate(data, _MARKETPLACE_SCHEMA)
+    except _jsonschema.ValidationError as exc:
+        print(f"Warning: {path} schema validation: {exc.message}")
 
 
 def _ensure_marketplace_schema(data: dict[str, Any]) -> tuple[dict[str, Any], bool]:
@@ -662,6 +752,7 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
 
     with marketplace_json_path.open(encoding="utf-8") as f:
         data, schema_added = _ensure_marketplace_schema(json.load(f))
+    _validate_marketplace_schema(data, str(marketplace_json_path))
 
     metadata = cast("dict[str, str]", data.get("metadata", {}))
     current_version = metadata.get("version", "0.0.0")
@@ -1242,6 +1333,7 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
 
     with marketplace_path.open(encoding="utf-8") as f:
         data, schema_added = _ensure_marketplace_schema(json.load(f))
+    _validate_marketplace_schema(data, str(marketplace_path))
 
     plugins_list = cast("list[dict[str, Any]]", data.get("plugins", []))
     # Only track locally-sourced plugins (relative path strings) in the stale check.
