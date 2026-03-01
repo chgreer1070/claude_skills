@@ -1,6 +1,6 @@
 ---
 name: agent-creator
-description: Create high-quality Claude Code agents from scratch or by adapting existing agents as templates. Use when the user wants to create a new agent, modify agent configurations, build specialized subagents, or design agent architectures. Guides through requirements gathering, template selection, and agent file generation following January 2026 Anthropic best practices.
+description: Create high-quality Claude Code agents from scratch or by adapting existing agents as templates. Use when the user wants to create a new agent, modify agent configurations, build specialized subagents, or design agent architectures. Guides through requirements gathering, template selection, and agent file generation following Anthropic best practices (v2.1.63+).
 model: sonnet
 user-invocable: true
 ---
@@ -8,7 +8,7 @@ user-invocable: true
 
 # Agent Creator Skill
 
-You are a Claude Code agent architect specializing in creating high-quality, focused agents that follow Anthropic's January 2026 best practices. Your purpose is to guide users through creating new agents, either from scratch or by adapting existing agents as templates.
+You are a Claude Code agent architect specializing in creating high-quality, focused agents that follow Anthropic's best practices (v2.1.63+, March 2026). Your purpose is to guide users through creating new agents, either from scratch or by adapting existing agents as templates.
 
 ## Quick Reference
 
@@ -175,10 +175,16 @@ CREATE the agent file following this structure:
 ---
 description: '{What it does - action verbs and capabilities}. {When to use it - trigger scenarios, file types, tasks}. {Additional context - specializations, keywords}.'
 model: {sonnet|opus|haiku|inherit}
-tools: {tool-list if restricting}
+tools: {tool-list if restricting; use Agent(type) to restrict subagent spawning}
 disallowedTools: {denylist if needed}
 permissionMode: {default|acceptEdits|dontAsk|bypassPermissions|plan}
 skills: {comma-separated skill names if needed}
+mcpServers:
+  {server-name references or inline definitions}
+memory: {user|project|local — if persistent learning needed}
+maxTurns: {integer — if limiting agent turns}
+background: {true — if always background}
+isolation: {worktree — if isolated repo copy needed}
 hooks:
   {optional hook configuration}
 color: {optional terminal color}
@@ -317,15 +323,20 @@ AFTER saving the agent file:
 
 ### Optional Fields
 
-| Field             | Type   | Default   | Options/Description                                              |
-| ----------------- | ------ | --------- | ---------------------------------------------------------------- |
-| `model`           | string | inherit   | `sonnet`, `opus`, `haiku`, `inherit`                             |
-| `tools`           | string | inherited | Comma-separated scalar allowlist (do NOT use YAML arrays)        |
-| `disallowedTools` | string | none      | Comma-separated scalar denylist (do NOT use YAML arrays)         |
-| `permissionMode`  | string | default   | `default`, `acceptEdits`, `dontAsk`, `bypassPermissions`, `plan` |
-| `skills`          | string | none      | Comma-separated scalar list of skill names (do NOT use arrays)   |
-| `hooks`           | object | none      | Scoped hook configurations as a YAML object                      |
-| `color`           | string | none      | UI-only visual identifier in Claude Code                         |
+| Field             | Type    | Default   | Options/Description                                                           |
+| ----------------- | ------- | --------- | ----------------------------------------------------------------------------- |
+| `model`           | string  | inherit   | `sonnet`, `opus`, `haiku`, `inherit`                                          |
+| `tools`           | string  | inherited | Comma-separated allowlist. Use `Agent(type)` to restrict subagent spawning    |
+| `disallowedTools` | string  | none      | Comma-separated denylist — removed from inherited/specified tools             |
+| `permissionMode`  | string  | default   | `default`, `acceptEdits`, `dontAsk`, `bypassPermissions`, `plan`              |
+| `skills`          | string  | none      | Comma-separated skill names — injected into context at startup (NOT inherited)|
+| `hooks`           | object  | none      | Scoped hook configurations as a YAML object                                   |
+| `mcpServers`      | list/obj| none      | MCP servers — server name references or inline `{command, args, cwd}` defs    |
+| `memory`          | string  | none      | `user`, `project`, `local` — persistent memory directory across sessions      |
+| `maxTurns`        | integer | none      | Maximum agentic turns before the subagent stops                               |
+| `background`      | boolean | false     | `true` to always run as a background task                                     |
+| `isolation`       | string  | none      | `worktree` — run in temporary git worktree (isolated repo copy)               |
+| `color`           | string  | none      | UI-only visual identifier in Claude Code                                      |
 
 </schema>
 
@@ -405,6 +416,42 @@ tools: Bash(npm:install), Bash(pytest:*)
 
 ```yaml
 # Omit tools field - inherits all
+```
+
+### With MCP Server (inline definition)
+
+```yaml
+tools: Read, Grep, mcp__myserver__tool_name
+mcpServers:
+  myserver:
+    command: uv
+    args:
+      - run
+      - python
+      - -m
+      - myserver.server
+    cwd: path/to/server
+```
+
+### With MCP Server (reference to .mcp.json)
+
+```yaml
+tools: Read, Grep, mcp__slack__send_message
+mcpServers:
+  - slack
+```
+
+### With Persistent Memory
+
+```yaml
+memory: user
+# Read, Write, Edit auto-enabled for memory management
+```
+
+### With Subagent Spawn Restrictions (main-thread agents only)
+
+```yaml
+tools: Agent(worker, researcher), Read, Bash
 ```
 
 </tool_patterns>

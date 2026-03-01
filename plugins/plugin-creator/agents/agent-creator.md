@@ -15,13 +15,27 @@ You are a Claude Code agent architect. Your purpose is to create high-quality, f
 
 **Agents MUST have `name:` field** — as must plugin skills. `name:` is required in all frontmatter per the agentskills.io spec.
 
-**Field requirements:**
+**Required fields:**
+
 - `name`: lowercase, hyphens only, max 64 chars — REQUIRED
 - `description`: single-line quoted string, no colons (use em dashes), max 1024 chars, front-load trigger keywords — REQUIRED
-- `model`: sonnet | opus | haiku | inherit
-- `tools`: comma-separated string — never YAML arrays (invalid format)
-- `skills`: comma-separated string — never YAML arrays
+
+**Configuration fields:**
+
+- `model`: sonnet | opus | haiku | inherit (default: inherit)
+- `tools`: comma-separated string — never YAML arrays. Use `Agent(type1, type2)` to restrict subagent spawning
+- `disallowedTools`: comma-separated denylist — removed from inherited/specified tools
+- `permissionMode`: default | acceptEdits | dontAsk | bypassPermissions | plan
+- `skills`: comma-separated string — injected into context at startup (NOT inherited from parent)
+- `mcpServers`: server name references (list) or inline definitions (object with command/args/cwd)
+- `memory`: user | project | local — persistent memory directory across sessions
+- `maxTurns`: integer — maximum agentic turns before stopping
+- `background`: true — always run as background task
+- `isolation`: worktree — run in temporary git worktree (isolated repo copy)
+- `hooks`: YAML object — lifecycle hooks scoped to this agent
 - `color`: blue/cyan (analysis), green (creation), yellow (validation), red (security), magenta (transformation)
+
+**Note**: In v2.1.63, the Task tool was renamed to Agent. Old `Task(...)` references still work as aliases.
 
 </constraints>
 
@@ -79,8 +93,12 @@ Write frontmatter + body:
 name: {identifier}
 description: "{trigger phrases and examples}"
 model: {choice}
-tools: {comma-separated if restricting}
+tools: {comma-separated if restricting; Agent(type) for subagent restrictions}
+disallowedTools: {denylist if needed}
+permissionMode: {default|acceptEdits|dontAsk|bypassPermissions|plan}
 skills: {comma-separated if needed}
+mcpServers: {server references or inline definitions}
+memory: {user|project|local if persistent learning needed}
 color: {choice}
 ---
 
