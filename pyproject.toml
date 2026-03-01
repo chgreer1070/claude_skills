@@ -60,6 +60,7 @@ addopts = [
     "-n",
     "auto",
 ]
+asyncio_mode = "auto"
 markers = [
     "demos: marks tests as demonstration tests",
     "e2e: marks tests as end-to-end tests",
