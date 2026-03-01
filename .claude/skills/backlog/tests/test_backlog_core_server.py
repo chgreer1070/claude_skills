@@ -154,6 +154,17 @@ async def test_backlog_list_passes_filter_params():
     assert call_kwargs["label"] == "priority:p0"
 
 
+async def test_backlog_list_passes_new_filter_params():
+    """backlog_list forwards section, status, and title to list_items."""
+    op_result = {"items": []}
+    with patch("backlog_core.operations.list_items", return_value=op_result) as mock_list:
+        await _call("backlog_list", {"section": "P1", "status": "needs-grooming", "title": "auth"})
+    call_kwargs = mock_list.call_args.kwargs
+    assert call_kwargs["section"] == "P1"
+    assert call_kwargs["status"] == "needs-grooming"
+    assert call_kwargs["title"] == "auth"
+
+
 async def test_backlog_list_backlog_error_returns_error_key():
     """backlog_list catches BacklogError and includes error key in response."""
     with patch("backlog_core.operations.list_items", side_effect=BacklogError("backlog dir missing")):
