@@ -2,7 +2,7 @@
 name: user-docs-to-ai-skill
 description: Converts user-facing documentation (how-to guides, tutorials, API references, examples) into Claude Code skill directories — SKILL.md with valid frontmatter plus thematically grouped references/*.md files. Use when given a docs directory to transform into an AI skill, when building expert-level Claude knowledge from library or tool documentation, or when the user asks to create a skill from existing docs. Produces output equivalent in quality to fastmcp-creator.
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit, Task
-argument-hint: "<docs_path> <output_plugin> <output_skill>"
+argument-hint: "<docs_path> <output_plugin> [output_skill]"
 ---
 
 # User Docs to AI Skill
@@ -50,11 +50,8 @@ flowchart TD
     Q0 -->|Yes — delegate each to process-siren| WfDelegate["Task: subagent_type='process-siren:process-siren'<br>Output: resources/workflows/{slug}.md"]
     WfDelegate --> Classify[Classify remaining atoms into themes\nEach theme becomes one reference file]
     Classify --> Phase2[Phase 2 — Structure]
-    Phase2 --> Q1{net_new?}
-    Q1 -->|true| Scaffold[Scaffold output directory\nplugins/output-plugin/skills/output-skill/\nplugins/output-plugin/.claude-plugin/plugin.json]
-    Q1 -->|false| Merge[Read existing skill\nIdentify gaps vs extracted knowledge\nPlan surgical additions only]
+    Phase2 --> Scaffold[Scaffold output directory\nplugins/$2/skills/$3/]
     Scaffold --> Write[Phase 3 — Write]
-    Merge --> Write
     Write --> RefFiles[Write references/*.md files\nOne file per theme — see skill-structure-guide.md]
     RefFiles --> SkillMD[Write SKILL.md\nFrontmatter + workflow + links to all reference files]
     SkillMD --> Phase4[Phase 4 — Verify]
