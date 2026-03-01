@@ -88,6 +88,7 @@ research/
 │   ├── jina-reader.md                 # Jina Reader — URL-to-Markdown API via r.jina.ai prefix, full SPA/PDF support, Apache 2.0 (~9.8K stars)
 │   ├── jirajs.md                      # TypeScript Jira API client for Cloud, Server, and Data Center
 │   ├── jscpd.md                       # Copy/paste detector for 150+ languages (5K+ stars)
+│   ├── libtmux.md                     # Typed Python API for tmux — Server/Session/Window/Pane dataclasses, send_keys, capture_pane (1.1K stars)
 │   ├── loguru.md                      # Python logging made simple with zero config (23K+ stars)
 │   ├── kythe.md                       # Google's language-agnostic code intelligence platform (2.1K stars)
 │   ├── lopaka.md                      # Graphics editor for embedded displays with C/C++ code generation (1.2K stars)
@@ -575,6 +576,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [jina-reader.md](./developer-tools/jina-reader.md)     | Jina Reader - Apache 2.0 URL-to-Markdown API (`r.jina.ai` prefix), full SPA/PDF support via Puppeteer, web search grounding via `s.jina.ai` (~9.8K stars) | 2026-02-23   |
 | [jirajs.md](./developer-tools/jirajs.md)               | jira.js - TypeScript Jira API client for Cloud, Server, and Data Center with full REST API coverage                                   | 2026-02-20   |
 | [jscpd.md](./developer-tools/jscpd.md)                 | Copy/paste detector for 150+ programming languages using Rabin-Karp algorithm with CI/CD integration                                 | 2026-01-31   |
+| [libtmux.md](./developer-tools/libtmux.md)             | libtmux v0.53.1 — typed Python API for tmux with Server/Session/Window/Pane dataclasses, send_keys/capture_pane methods, QueryList ORM filtering, and pytest fixtures (1.1K stars, MIT) | 2026-03-01   |
 | [loguru.md](./developer-tools/loguru.md)               | Loguru - zero-config Python logging with rotation, structured output, exception catching, and contextvars support (23K+ stars)        | 2026-02-09   |
 | [kythe.md](./developer-tools/kythe.md)                 | Kythe - Google's language-agnostic code intelligence platform with graph-based semantic indexing (2.1K stars)                          | 2026-02-20   |
 | [lopaka.md](./developer-tools/lopaka.md)               | Lopaka - web-based graphics editor for embedded displays with multi-library C/C++ code generation (1.2K stars)                        | 2026-02-20   |
