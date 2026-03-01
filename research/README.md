@@ -101,6 +101,7 @@ research/
 │   ├── repomix.md                     # Pack codebase into AI-friendly formats (21K+ stars)
 │   ├── tabz-browser-console-forwarder.md # Browser console to terminal forwarder for AI agent debugging (MIT)
 │   ├── traycer.md                     # Spec-driven AI development orchestrator (commercial SaaS)
+│   ├── tmuxp.md                      # Python tmux session manager — YAML/JSON workspace configs, plugin system, freeze/replay (4.4K stars)
 │   ├── using-tmux-with-claude-code.md # tmux + Claude Code workflow guide: copy-mode, capture, multi-pane orchestration
 │   ├── vert.md                        # WebAssembly-based file converter (13K+ stars)
 │   └── yume.md                        # Native desktop GUI for Claude Code CLI (Tauri + Rust)
@@ -592,6 +593,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [shpool.md](./developer-tools/shpool.md)               | shpool — Rust shell session pool daemon (v0.9.3); raw PTY passthrough with VT100 reattach replay, autodaemonization, no multiplexing overhead (1.7K stars) | 2026-03-01   |
 | [repomix.md](./developer-tools/repomix.md)             | Pack codebase into single AI-friendly file with token counting, Tree-sitter compression, MCP server, and Claude Code plugins         | 2026-01-31   |
 | [traycer.md](./developer-tools/traycer.md)             | Traycer - spec-driven AI development orchestrator with multi-model ensemble, plan-execute-verify loop, and 6 agent handoffs          | 2026-02-15   |
+| [tmuxp.md](./developer-tools/tmuxp.md)                 | tmuxp v1.64.0 — Python tmux session manager with YAML/JSON workspace configs, plugin lifecycle hooks, freeze/replay, and headless-safe WorkspaceBuilder API (4.4K stars, MIT) | 2026-03-01   |
 | [using-tmux-with-claude-code.md](./developer-tools/using-tmux-with-claude-code.md) | Using tmux with Claude Code — practical guide for copy-mode scrollback, 10K-line buffer capture, control-key passthrough, and multi-pane agent orchestration (hboon.com, 2025-11-28) | 2026-03-01   |
 | [vert.md](./developer-tools/vert.md)                   | VERT - WebAssembly-based file converter for 250+ formats with client-side processing and self-hostable video daemon (13K+ stars)     | 2026-02-08   |
 | [everything-claude-code.md](./developer-tools/everything-claude-code.md) | everything-claude-code — largest community Claude Code config repo (52K stars, 39 days old); v1.6.0 ships 13 agents, 48+ skills, 31+ commands, 978 tests, 102 AgentShield security rules; continuous learning v2 instinct system with `/evolve`; Cerebral Valley x Anthropic hackathon winner | 2026-02-26   |
