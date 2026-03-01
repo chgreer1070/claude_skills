@@ -1191,7 +1191,10 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
         data: dict[str, dict[str, str] | list[dict[str, str]]] = json.load(f)
 
     plugins_list = cast("list[dict[str, str]]", data.get("plugins", []))
-    registered_names = {p["name"] for p in plugins_list}
+    # Only track locally-sourced plugins (relative path strings) in the stale check.
+    # Plugins with external sources (dict with "source": "github" etc.) are managed
+    # manually and must not be removed by reconciliation.
+    registered_names = {p["name"] for p in plugins_list if isinstance(p.get("source"), str)}
 
     # Discover plugins on disk — keyed by canonical name (from plugin.json),
     # mapped to directory name (for the source field).
