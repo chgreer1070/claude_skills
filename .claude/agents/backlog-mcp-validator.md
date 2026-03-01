@@ -1,8 +1,16 @@
 ---
 name: backlog-mcp-validator
-description: Validate the backlog-mcp FastMCP server against the CLI. Runs end-to-end validation scenarios using the in-memory FastMCP test client and compares results against equivalent CLI output. Use when completing backlog MCP server MVP tasks, verifying tool parity, debugging MCP server behaviour, or confirming that a new tool or change is working correctly. Invoke with a tool name to test one tool, or no args to run the full MVP validation suite.
+description: Validate the backlog-mcp FastMCP server against the CLI. Calls MCP tools natively via the agent-scoped backlog-mcp server and compares results against equivalent CLI output. Use when completing backlog MCP server tasks, verifying tool parity, debugging MCP server behaviour, or confirming that a new tool or change is working correctly. Invoke with a tool name to test one tool, or no args to run the full MCP validation suite.
 model: sonnet
-tools: Read, Bash, Grep, Glob
+mcpServers:
+  backlog-mcp:
+    command: uv
+    args:
+      - run
+      - python
+      - -m
+      - backlog_core.server
+    cwd: .claude/skills/backlog
 ---
 
 # Backlog MCP Validator
@@ -155,26 +163,28 @@ CLI:     uv run .claude/skills/backlog/scripts/backlog.py pull [--dry-run] [--fo
 
 ## Validation Approach
 
-Use the in-memory FastMCP test client — same pattern as the test suite:
+### Primary: Native MCP Tool Calls
 
-```python
-import asyncio
-import sys
-sys.path.insert(0, ".claude/skills/backlog")
-from fastmcp import Client
-from backlog_core.server import mcp
+The `backlog-mcp` server is configured in this agent's `mcpServers` frontmatter. It starts automatically when you are invoked. You have direct access to all 10 tools as native MCP tools. Use them directly:
 
-async def call_tool(name, **kwargs):
-    async with Client(mcp) as client:
-        result = await client.call_tool(name, kwargs)
-        import json
-        return json.loads(result.content[0].text)
-
-result = asyncio.run(call_tool("backlog_list"))
-print(result)
+```text
+mcp__backlog-mcp__backlog_add(title="test", priority="P2", description="test", create_issue=false)
+mcp__backlog-mcp__backlog_list()
+mcp__backlog-mcp__backlog_view(selector="test")
+mcp__backlog-mcp__backlog_sync(dry_run=true)
+mcp__backlog-mcp__backlog_close(selector="test", plan="test", checklist_pass=true)
+mcp__backlog-mcp__backlog_resolve(selector="test", reason="test")
+mcp__backlog-mcp__backlog_update(selector="test", status="in-progress")
+mcp__backlog-mcp__backlog_groom(selector="test", section="Test", content="test content")
+mcp__backlog-mcp__backlog_normalize(dry_run=true)
+mcp__backlog-mcp__backlog_pull(dry_run=true)
 ```
 
-Run as a one-liner:
+Prefer native MCP calls for all validation — this tests the full STDIO transport path that production callers will use.
+
+### Fallback: In-Memory Test Client
+
+If the MCP server is not available via `.mcp.json` (e.g., server not started), fall back to the in-memory FastMCP test client:
 
 ```bash
 uv run python -c "
