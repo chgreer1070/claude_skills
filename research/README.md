@@ -79,6 +79,7 @@ research/
 │   ├── claude-pilot.md                # Quality-enforcement layer for Claude Code with 15 hooks, TDD enforcement, /spec workflow, and persistent memory (1,390 stars)
 │   ├── claude-quickstarts.md          # Official Anthropic quickstart projects (14.7K stars)
 │   ├── copier-astral.md               # Python project template with Astral toolchain (uv, ruff, ty)
+│   ├── dtach.md                       # Minimal C detach/reattach tool — raw PTY via Unix sockets, scripted input injection (619 stars)
 │   ├── git-cliff.md                   # Customizable changelog generator from Git history
 │   ├── github-cli.md                  # Official GitHub CLI tool for PRs, issues, workflows (37.8K stars)
 │   ├── google-ai-studio.md            # Google AI Studio — browser-based IDE and playground for Gemini API (1M-token context, free tier)
@@ -95,7 +96,9 @@ research/
 │   ├── paperdraw.md                   # Browser-based distributed systems simulator with chaos injection (Flutter web)
 │   ├── piebald.md                     # Cross-platform agentic AI desktop client with parallel agents, session persistence, OAuth subscriptions (Free + Pro)
 │   ├── repomix.md                     # Pack codebase into AI-friendly formats (21K+ stars)
+│   ├── tabz-browser-console-forwarder.md # Browser console to terminal forwarder for AI agent debugging (MIT)
 │   ├── traycer.md                     # Spec-driven AI development orchestrator (commercial SaaS)
+│   ├── using-tmux-with-claude-code.md # tmux + Claude Code workflow guide: copy-mode, capture, multi-pane orchestration
 │   ├── vert.md                        # WebAssembly-based file converter (13K+ stars)
 │   └── yume.md                        # Native desktop GUI for Claude Code CLI (Tauri + Rust)
 ├── evaluation-testing/                # Agent evaluation, testing, and harness engineering
@@ -575,12 +578,15 @@ Developer productivity tools and workflow automation for software engineering wi
 | [orbstack.md](./developer-tools/orbstack.md)           | Fast, lightweight Docker Desktop and Linux VM alternative for macOS with 2-second startup and dynamic memory                         | 2026-01-31   |
 | [paperdraw.md](./developer-tools/paperdraw.md)         | PaperDraw - browser-based distributed systems simulator with 20+ backend components, chaos injection, and real-time metrics (Flutter web) | 2026-02-23   |
 | [devenv.md](./developer-tools/devenv.md)               | devenv — Nix-backed declarative dev environment CLI (v1.11.2); typed modules for languages, services, tasks, git hooks; 30+ built-in service modules without Docker; sub-100ms activation; generates `.devcontainer.json` from same config (6.3K stars) | 2026-02-26   |
+| [dtach.md](./developer-tools/dtach.md)                 | dtach — minimal C program emulating screen's detach feature; raw PTY passthrough via Unix-domain sockets, `-p` mode for scripted input injection, ~1,000 lines of C, GPL-2.0 (619 stars) | 2026-03-01   |
 | [portless.md](./developer-tools/portless.md)           | Portless — replaces numeric port numbers with stable named `.localhost` URLs for local dev servers; targets both humans and AI coding agents; zero external proxy deps, HTTP/2 + TLS, loop detection (2,569 stars) | 2026-02-26   |
 | [scrapling.md](./developer-tools/scrapling.md)         | Scrapling — adaptive Python web scraping framework with anti-bot bypass (Cloudflare Turnstile), auto-relocating element selectors, built-in MCP server for Claude agents, 784x faster than BeautifulSoup4 (15K+ stars) | 2026-02-26   |
 | [surf-cli.md](./developer-tools/surf-cli.md)           | surf-cli — zero-config CLI for AI agent Chrome control via extension + Unix socket bridge; 50+ commands covering navigation, page reading, screenshots, network capture, and keyless AI model querying | 2026-02-26   |
+| [tabz-browser-console-forwarder.md](./developer-tools/tabz-browser-console-forwarder.md) | Tabz — browser console to terminal forwarder; intercepts console.* methods, batches POSTs to backend, prefixes with [Browser:source:line], visible in tmux for AI agent debugging (MIT) | 2026-03-01   |
 | [piebald.md](./developer-tools/piebald.md)             | Piebald - cross-platform agentic AI desktop client with parallel subagents, persistent sessions, OAuth AI subscriptions, and HTTP traffic inspector (Free + Pro) | 2026-02-23   |
 | [repomix.md](./developer-tools/repomix.md)             | Pack codebase into single AI-friendly file with token counting, Tree-sitter compression, MCP server, and Claude Code plugins         | 2026-01-31   |
 | [traycer.md](./developer-tools/traycer.md)             | Traycer - spec-driven AI development orchestrator with multi-model ensemble, plan-execute-verify loop, and 6 agent handoffs          | 2026-02-15   |
+| [using-tmux-with-claude-code.md](./developer-tools/using-tmux-with-claude-code.md) | Using tmux with Claude Code — practical guide for copy-mode scrollback, 10K-line buffer capture, control-key passthrough, and multi-pane agent orchestration (hboon.com, 2025-11-28) | 2026-03-01   |
 | [vert.md](./developer-tools/vert.md)                   | VERT - WebAssembly-based file converter for 250+ formats with client-side processing and self-hostable video daemon (13K+ stars)     | 2026-02-08   |
 | [everything-claude-code.md](./developer-tools/everything-claude-code.md) | everything-claude-code — largest community Claude Code config repo (52K stars, 39 days old); v1.6.0 ships 13 agents, 48+ skills, 31+ commands, 978 tests, 102 AgentShield security rules; continuous learning v2 instinct system with `/evolve`; Cerebral Valley x Anthropic hackathon winner | 2026-02-26   |
 | [vercel-chatbot.md](./developer-tools/vercel-chatbot.md) | Vercel Chatbot — production-ready Next.js 16 chatbot template (v3.1.0) using AI SDK v6 with resumable streaming, Claude Haiku 4.5 as artifact model, ProseMirror/CodeMirror 6 artifact system, and `extractReasoningMiddleware` for chain-of-thought display (19.7K stars) | 2026-02-26   |
