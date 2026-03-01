@@ -56,25 +56,6 @@ _MIN_SKILL_PATH_PARTS = 4
 # Resolve git binary once at module load
 _GIT_PATH: str | None = shutil.which("git")
 
-# Marketplace JSON Schema URL — injected as $schema key in marketplace.json files.
-MARKETPLACE_SCHEMA_URL = "https://anthropic.com/claude-code/marketplace.schema.json"
-
-
-def _ensure_marketplace_schema(data: dict[str, Any]) -> tuple[dict[str, Any], bool]:
-    """Ensure $schema is present and is the first key in the dict.
-
-    Args:
-        data: Parsed marketplace.json content.
-
-    Returns:
-        (updated_data, changed) — updated_data has $schema first; changed is
-        True if $schema was missing or had a different value.
-    """
-    changed = data.get("$schema") != MARKETPLACE_SCHEMA_URL
-    new_data: dict[str, Any] = {"$schema": MARKETPLACE_SCHEMA_URL}
-    new_data.update({k: v for k, v in data.items() if k != "$schema"})
-    return new_data, changed
-
 
 class PluginPathInfo(TypedDict):
     """Parsed plugin path information."""
@@ -661,14 +642,14 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
         return False
 
     with marketplace_json_path.open(encoding="utf-8") as f:
-        data, schema_added = _ensure_marketplace_schema(json.load(f))
+        data = json.load(f)
 
     metadata = cast("dict[str, str]", data.get("metadata", {}))
     current_version = metadata.get("version", "0.0.0")
 
     # Skip if the version was already bumped (e.g., user manually edited
     # marketplace.json in the same commit, or commit retry after hook failure).
-    if not schema_added and _version_already_bumped(str(marketplace_json_path), ["metadata", "version"]):
+    if _version_already_bumped(str(marketplace_json_path), ["metadata", "version"]):
         return False
     bump_type: Literal["major", "minor", "patch"] = "patch"
 
@@ -681,8 +662,8 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
     # Add and remove plugins
     modified = _update_marketplace_plugins(data, plugin_changes)
 
-    # Bump marketplace version if any changes; also write if $schema was injected
-    if modified or plugin_changes["modified"] or schema_added:
+    # Bump marketplace version if any changes
+    if modified or plugin_changes["modified"]:
         existing_content = marketplace_json_path.read_text(encoding="utf-8")
         new_version = bump_version(current_version, bump_type)
 
@@ -697,8 +678,6 @@ def update_marketplace_json(plugin_changes: MarketplaceChanges) -> bool:
         if new_content == existing_content:
             return False
 
-        if schema_added:
-            print(f"  Added $schema to {marketplace_json_path}")
         _write_json_lf(marketplace_json_path, new_content)
 
         return True
@@ -1241,7 +1220,7 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
         return False
 
     with marketplace_path.open(encoding="utf-8") as f:
-        data, schema_added = _ensure_marketplace_schema(json.load(f))
+        data = json.load(f)
 
     plugins_list = cast("list[dict[str, Any]]", data.get("plugins", []))
     # Only track locally-sourced plugins (relative path strings) in the stale check.
@@ -1263,9 +1242,7 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
     stale = registered_names - set(disk_plugins.keys())
     _apply_marketplace_drift(data, plugins_list, missing, stale, disk_plugins, dry_run=dry_run)
 
-    if (missing or stale or schema_added) and not dry_run:
-        if schema_added:
-            print(f"  Added $schema to {marketplace_path}")
+    if (missing or stale) and not dry_run:
         metadata = cast("dict[str, str]", data.get("metadata", {}))
         current_version = metadata.get("version", "0.0.0")
         bump_type: Literal["major", "minor", "patch"] = "major" if stale else "minor"
@@ -1274,7 +1251,7 @@ def _reconcile_marketplace(plugins_root: Path, *, dry_run: bool) -> bool:
         _write_json_lf(marketplace_path, _format_json(data))
         print(f"  Updated marketplace -> {metadata['version']}")
 
-    return bool(missing or stale) or schema_added
+    return bool(missing or stale)
 
 
 def reconcile(*, dry_run: bool) -> int:

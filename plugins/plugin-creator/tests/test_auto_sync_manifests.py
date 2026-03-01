@@ -456,7 +456,7 @@ class TestVersionComparisonGuard:
         monkeypatch.chdir(tmp_path)
 
         data = {
-            "$schema": auto_sync.MARKETPLACE_SCHEMA_URL,
+            "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
             "metadata": {"version": "2.1.0"},
             "plugins": [{"name": "p1", "source": "./plugins/p1"}],
         }
