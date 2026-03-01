@@ -73,6 +73,7 @@ research/
 │   └── living-architecture.md         # Operational flow architecture extraction with Rivière schema (79 stars)
 ├── developer-tools/                   # Developer productivity and workflow tools
 │   ├── biome.md                       # Rust-based web toolchain: formatter + linter + import organizer, 97% Prettier compat, ~35× faster (23.8K stars)
+│   ├── byobu.md                       # Enhanced terminal multiplexer wrapper for tmux/screen — F-key layer, 40+ status plugins, XDG config (1.5K stars)
 │   ├── animejs.md                     # Lightweight JavaScript animation engine (66K+ stars)
 │   ├── claude-conductor.md            # Context-Driven Development plugin for Claude Code (9 commands, skill ecosystem)
 │   ├── claude-openocd-spi-dump.md     # Claude Code plugin for SPI flash dumping via OpenOCD
@@ -559,6 +560,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | Document                                               | Description                                                                                                                  | Last Updated |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [biome.md](./developer-tools/biome.md)                 | Biome - Rust-based web toolchain with formatter (97% Prettier compat, ~35× faster), linter (450+ rules), import organizer, and v2 type-aware linting without TypeScript compiler (23.8K stars) | 2026-02-23   |
+| [byobu.md](./developer-tools/byobu.md)                 | Byobu v6.14 — enhanced terminal multiplexer wrapper for tmux/screen with unified F-key layer, 40+ status bar plugins, XDG config layering, and backend switching (1.5K stars) | 2026-03-01   |
 | [animejs.md](./developer-tools/animejs.md)             | Lightweight JavaScript animation engine with declarative API, timelines, staggering, and 30+ easing functions                        | 2026-01-31   |
 | [claude-conductor.md](./developer-tools/claude-conductor.md)       | Claude Conductor - Context-Driven Development plugin with 9 commands, skill ecosystem, pattern reference layer, and quality intelligence | 2026-02-17   |
 | [claude-openocd-spi-dump.md](./developer-tools/claude-openocd-spi-dump.md) | Claude Code plugin for SPI flash dumping via OpenOCD with RAM-resident code and MCU register maps for 6 chip families | 2026-02-20   |
