@@ -68,6 +68,7 @@ research/
 │   └── sourcesyncai.md               # Managed RAG platform with auto-syncing connectors and hybrid search
 ├── data-infrastructure/               # Real-time data platforms for analytics
 │   ├── cocoindex.md                   # Ultra-performant AI data transformation framework with Rust core, incremental processing, and dataflow model (Apache 2.0)
+│   ├── dolt.md                        # MySQL-compatible version-controlled SQL database — branch, merge, diff, clone via SQL (20.3K stars)
 │   ├── motherduck.md                  # Serverless cloud DuckDB warehouse with Dual Execution and native MCP integration (36K+ stars)
 │   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
 ├── documentation-tools/                # Architecture documentation and living docs
@@ -122,6 +123,7 @@ research/
 ├── research-agent-patterns/           # Multi-agent architectures and orchestration
 │   ├── claw-loop.md                   # Autonomous development orchestration via tmux + cron
 │   ├── compound-engineering-plugin.md # Every Inc's Plan/Work/Review/Compound workflow plugin
+│   ├── gastown.md                     # Gas Town — multi-agent workspace manager with tmux transport, Dolt ledger, TOML formula DAGs (10.7K stars)
 │   ├── github-patterns.md             # Patterns from GitHub research agent implementations
 │   ├── orchestrator-agent-creation-guide.md  # OpenCode orchestrator agent guide
 │   ├── google-adk-context-engineering.md  # Google ADK context engineering: tiered storage, compiled views, scoped multi-agent handoffs (17.9K stars)
@@ -181,6 +183,7 @@ Research on multi-agent architectures, orchestration patterns, and research work
 | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------------ |
 | [claw-loop.md](./research-agent-patterns/claw-loop.md)                                                 | The Claw Loop v2.0 - autonomous development orchestration via tmux + cron with supervisor-worker pattern               | 2026-02-15   |
 | [compound-engineering-plugin.md](./research-agent-patterns/compound-engineering-plugin.md)             | Every Inc's Claude Code plugin with 27 agents, 20 commands - Plan/Work/Review/Compound workflow (6.8K stars)           | 2026-01-31   |
+| [gastown.md](./research-agent-patterns/gastown.md)                                                     | Gas Town v0.9.0 — Steve Yegge's multi-agent workspace manager coordinating 20-50+ Claude Code sessions via tmux transport, Dolt SQL ledger, TOML formula DAGs, witness zombie detection, convoy tracking, and Bors-style merge queue (10.7K stars, MIT) | 2026-03-01   |
 | [github-patterns.md](./research-agent-patterns/github-patterns.md)                                     | Patterns from 40+ repositories including Chief of Staff model, 12-agent academic pipelines, Pydantic AI research loops | 2025-12-09   |
 | [orchestrator-agent-creation-guide.md](./research-agent-patterns/orchestrator-agent-creation-guide.md) | Comprehensive guide for creating orchestrator agents in OpenCode - routing, chaining, parallel delegation patterns     | 2026-01-26   |
 | [tinyclaw.md](./research-agent-patterns/tinyclaw.md)                                                   | TinyClaw - multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs and file-based queue (2.1K stars)    | 2026-02-18   |
@@ -790,6 +793,7 @@ Real-time data platforms and analytics infrastructure for powering AI applicatio
 
 | Document                                                 | Description                                                                                                  | Last Updated |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------ |
+| [dolt.md](./data-infrastructure/dolt.md)                 | Dolt v1.83.0 — MySQL wire-protocol compatible version-controlled SQL database with Git semantics (branch, merge, diff, clone via SQL stored procedures), Prolly Tree O(d) diffs, and agentic memory via Beads (20.3K stars, Apache 2.0) | 2026-03-01   |
 | [motherduck.md](./data-infrastructure/motherduck.md)     | Serverless cloud DuckDB warehouse with Dual Execution engine and native MCP integration for AI agents        | 2026-02-23   |
 | [tinybird.md](./data-infrastructure/tinybird.md)         | Managed ClickHouse platform for real-time analytics APIs with native MCP server and analytics agents support | 2026-01-31   |
 
