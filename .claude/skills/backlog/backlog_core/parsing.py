@@ -200,8 +200,8 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, str], dict[str, str], str]:
     """
     try:
         post = loads_frontmatter(text)
-        fm: dict[str, str] = dict(post.metadata) if post.metadata else {}  # ty: ignore[no-matching-overload]
-        body = str(post.content) if post.content else ""
+        fm: dict[str, str] = {k: str(v) for k, v in post.metadata.items()} if post.metadata else {}
+        body: str = post.content or ""
     except (ValueError, KeyError, TypeError):
         parts = text.split("---", 2)
         fm, body = {}, parts[2].strip() if len(parts) >= MIN_FRONTMATTER_PARTS else text

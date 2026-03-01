@@ -362,8 +362,8 @@ def _build_normalized_content(filepath: Path, output: Output | None = None) -> s
         return None
     try:
         post = loads_frontmatter(text)
-        fm: dict[str, str] = dict(post.metadata) if post.metadata else {}  # ty: ignore[no-matching-overload]
-        body = str(post.content) if post.content else ""
+        fm: dict[str, str] = {k: str(v) for k, v in post.metadata.items()} if post.metadata else {}
+        body: str = post.content or ""
     except (ValueError, KeyError, TypeError):
         return None
     meta_raw = fm.get("metadata")
@@ -525,11 +525,115 @@ def _pull_item(
 
 
 # ---------------------------------------------------------------------------
+# Public API: ADD  (private helpers)
+# ---------------------------------------------------------------------------
+
+
+def _check_for_duplicates(title: str, force: bool) -> None:
+    """Raise DuplicateItemError if a fuzzy duplicate exists and force is False.
+
+    Args:
+        title: Title of the new item.
+        force: When True, skip the check entirely.
+
+    Raises:
+        DuplicateItemError: If one or more similar titles are found.
+    """
+    if force:
+        return
+    existing_items = parse_backlog()
+    duplicates = find_fuzzy_duplicates(title, existing_items)
+    if not duplicates:
+        return
+    raise DuplicateItemError(duplicates)
+
+
+def _resolve_filepath(priority: str, slug: str) -> Path:
+    """Return a collision-free Path inside BACKLOG_DIR for (priority, slug).
+
+    Appends a numeric suffix when the base filename already exists.
+
+    Args:
+        priority: Item priority string (e.g. "high").
+        slug: URL-safe slug derived from the item title.
+
+    Returns:
+        A Path that does not yet exist on disk.
+    """
+    BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
+    base = f"{priority.lower()}-{slug}"
+    filepath = BACKLOG_DIR / f"{base}.md"
+    idx = 0
+    while filepath.exists():
+        idx += 1
+        filepath = BACKLOG_DIR / f"{base}-{idx}.md"
+    return filepath
+
+
+def _try_create_github_issue(item_data: BacklogItem, repo: str, out: Output) -> int | None:
+    """Attempt to create a GitHub issue for item_data; return issue number or None.
+
+    Args:
+        item_data: Populated BacklogItem (file_path may be empty at this stage).
+        repo: Repository slug (owner/name).
+        out: Output collector for warnings.
+
+    Returns:
+        Issue number on success, None when GitHub is unavailable or creation fails.
+    """
+    repository = try_get_github(repo)
+    if repository is None:
+        out.warn("  WARNING: GitHub unavailable — creating local-only item")
+        return None
+    try:
+        return create_issue_for_item(repository, item_data, dry_run=False, output=out)
+    except GithubException as e:
+        out.warn(f"  WARNING: Issue creation failed: {e}")
+        return None
+
+
+def _build_item_body(research_first: str, files: str, suggested_location: str) -> str:
+    """Build the markdown body appended below the frontmatter.
+
+    Args:
+        research_first: Optional research-first note.
+        files: Optional file references.
+        suggested_location: Optional suggested location note.
+
+    Returns:
+        Markdown string (empty when all inputs are empty).
+    """
+    parts: list[str] = []
+    if research_first:
+        parts.append(f"**Research first**: {research_first}")
+    if files:
+        parts.append(f"**Files**: {files}")
+    if suggested_location:
+        parts.append(f"**Suggested location**: {suggested_location}")
+    return "\n".join(parts) + "\n" if parts else ""
+
+
+def _write_local_item(filepath: Path, fm_str: str, body: str, issue_num: int | None, out: Output) -> None:
+    """Write the frontmatter + body to disk and mark synced when an issue exists.
+
+    Args:
+        filepath: Destination path (must not already exist).
+        fm_str: Rendered frontmatter block.
+        body: Markdown body section.
+        issue_num: GitHub issue number, or None for local-only items.
+        out: Output collector forwarded to update_item_metadata.
+    """
+    filepath.write_text(fm_str.rstrip() + "\n\n" + body, encoding="utf-8")
+    if issue_num:
+        update_item_metadata(filepath, {}, set_synced=True, output=out)
+
+
+# ---------------------------------------------------------------------------
 # Public API: ADD
 # ---------------------------------------------------------------------------
 
 
-def add_item(  # noqa: C901, PLR0912, PLR0914, PLR0915
+def add_item(
     title: str,
     description: str,
     priority: str,
@@ -550,29 +654,11 @@ def add_item(  # noqa: C901, PLR0912, PLR0914, PLR0915
     """
     out = output or Output()
 
-    # Duplicate check
-    if not force:
-        existing_items = parse_backlog()
-        duplicates = find_fuzzy_duplicates(title, existing_items)
-        if duplicates:
-            dup_details = []
-            for dup_title, ratio, dup_path in duplicates:
-                pct = int(ratio * 100)
-                file_label = Path(dup_path).name if dup_path else "unknown"
-                dup_details.append({"title": dup_title, "similarity_pct": pct, "file": file_label})
-            raise DuplicateItemError(dup_details)
+    _check_for_duplicates(title, force)
 
     today_str = today()
-
-    BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
     slug = title_to_slug(title)
-    filename = f"{priority.lower()}-{slug}.md"
-    filepath = BACKLOG_DIR / filename
-    idx = 0
-    while filepath.exists():
-        idx += 1
-        filename = f"{priority.lower()}-{slug}-{idx}.md"
-        filepath = BACKLOG_DIR / filename
+    filepath = _resolve_filepath(priority, slug)
 
     # GH-first: try to create GitHub Issue BEFORE writing local file
     issue_num: int | None = None
@@ -588,34 +674,15 @@ def add_item(  # noqa: C901, PLR0912, PLR0914, PLR0915
             files=files,
             suggested_location=suggested_location,
         )
-        repository = try_get_github(repo)
-        if repository is not None:
-            try:
-                issue_num = create_issue_for_item(repository, item_data, dry_run=False, output=out)
-            except GithubException as e:
-                out.warn(f"  WARNING: Issue creation failed: {e}")
-        else:
-            out.warn("  WARNING: GitHub unavailable — creating local-only item")
+        issue_num = _try_create_github_issue(item_data, repo, out)
 
     # Build frontmatter with issue number already included (single write)
     issue_ref = f"#{issue_num}" if issue_num else ""
     fm_str = build_backlog_frontmatter(
         title, description, source, today_str, priority, type_, "open", issue_ref, "", ""
     )
-
-    body_parts: list[str] = []
-    if research_first:
-        body_parts.append(f"**Research first**: {research_first}")
-    if files:
-        body_parts.append(f"**Files**: {files}")
-    if suggested_location:
-        body_parts.append(f"**Suggested location**: {suggested_location}")
-    body = "\n".join(body_parts) + "\n" if body_parts else ""
-
-    # Write local cache file (single write — no update needed)
-    filepath.write_text(fm_str.rstrip() + "\n\n" + body, encoding="utf-8")
-    if issue_num:
-        update_item_metadata(filepath, {}, set_synced=True, output=out)
+    body = _build_item_body(research_first, files, suggested_location)
+    _write_local_item(filepath, fm_str, body, issue_num, out)
 
     out.info(f"Backlog item created.\n  Title: {title}\n  Priority: {priority}\n  File: {filepath.name}")
     if issue_num:
