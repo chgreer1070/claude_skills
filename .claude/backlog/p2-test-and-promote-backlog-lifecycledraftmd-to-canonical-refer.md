@@ -11,6 +11,7 @@ metadata:
   issue: '#286'
   groomed: '2026-03-01'
   last_synced: '2026-03-01T00:54:47Z'
+  plan: plan/tasks-11-backlog-lifecycle-promotion.md
 ---
 
 ## Fact-Check
