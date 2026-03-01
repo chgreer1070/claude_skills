@@ -32,6 +32,7 @@ research/
 │   └── tornado.md                     # Python web framework and async networking library (22K+ stars)
 ├── async-libraries/                   # Python async I/O libraries and concurrency frameworks
 │   ├── anyio.md                       # Backend-agnostic async concurrency library (426M downloads/month)
+│   ├── asyncssh.md                    # Asyncio-native SSH client/server — reverse tunnels, SFTP, jump hosts, pure-Python key management (1.7K stars)
 │   └── trio.md                        # Structured concurrency async library for Python (7K+ stars)
 ├── llm-infrastructure/                # LLM inference and serving infrastructure
 │   ├── localai.md                     # Free open-source local AI inference server, OpenAI-compatible API, no GPU required (43K+ stars)
@@ -872,8 +873,9 @@ Python async I/O libraries and concurrency frameworks for building concurrent ap
 
 | Document                               | Description                                                                                                              | Last Updated |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------ |
-| [anyio.md](./async-libraries/anyio.md) | AnyIO - backend-agnostic async concurrency library providing unified API across asyncio and Trio (426M downloads/month)  | 2026-02-04   |
-| [trio.md](./async-libraries/trio.md)   | Trio - structured concurrency async library for Python with nurseries, cancel scopes (7K+ stars, 218M downloads/month)   | 2026-02-04   |
+| [anyio.md](./async-libraries/anyio.md)     | AnyIO - backend-agnostic async concurrency library providing unified API across asyncio and Trio (426M downloads/month)  | 2026-02-04   |
+| [asyncssh.md](./async-libraries/asyncssh.md) | asyncssh v2.22.0 — asyncio-native SSH client/server with reverse tunnels (`forward_remote_port`, `connect_reverse`), SFTP, jump-host chaining, and pure-Python key management (1.7K stars, EPL-2.0/GPL-2.0) | 2026-03-01   |
+| [trio.md](./async-libraries/trio.md)       | Trio - structured concurrency async library for Python with nurseries, cancel scopes (7K+ stars, 218M downloads/month)   | 2026-02-04   |
 
 **Key Topics**:
 
