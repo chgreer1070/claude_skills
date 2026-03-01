@@ -942,7 +942,7 @@ class TestOpenDashboard:
 
         assert result["url"] == test_url
         assert result["opened_browser"] is False
-        assert test_url in result["message"]
+        assert test_url in str(result["message"])
 
     def test_open_dashboard_when_not_running(self) -> None:
         """Raises ToolError when the dashboard is not running.

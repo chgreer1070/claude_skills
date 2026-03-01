@@ -21,7 +21,7 @@ from pathlib import Path
 # Add parent directory to path to import plugin_validator
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from plugin_validator import CIReporter, ConsoleReporter, SummaryReporter, ValidationIssue, ValidationResult
+from plugin_validator import CIReporter, ConsoleReporter, ErrorCode, SummaryReporter, ValidationIssue, ValidationResult
 
 
 def _make_passing_result() -> ValidationResult:
@@ -38,7 +38,7 @@ def _make_failing_result() -> ValidationResult:
                 field="description",
                 severity="error",
                 message="Missing required field",
-                code="FM001",
+                code=ErrorCode.FM001,
                 line=3,
                 suggestion="Add a description field",
             )
@@ -54,7 +54,9 @@ def _make_warning_result() -> ValidationResult:
         passed=True,
         errors=[],
         warnings=[
-            ValidationIssue(field="tools", severity="warning", message="Tools should be comma-separated", code="FM004")
+            ValidationIssue(
+                field="tools", severity="warning", message="Tools should be comma-separated", code=ErrorCode.FM004
+            )
         ],
         info=[],
     )

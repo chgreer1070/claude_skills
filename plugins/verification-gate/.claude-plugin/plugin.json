@@ -6,10 +6,6 @@
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "skills": [
-    "./skills/verification-gate"
-  ],
-  "commands": [
-    "./skills/verification-gate"
-  ]
+  "skills": ["./skills/verification-gate"],
+  "commands": ["./skills/verification-gate"]
 }
