@@ -2,6 +2,7 @@
 name: backlog-mcp-validator
 description: Validate the backlog-mcp FastMCP server against the CLI. Calls MCP tools natively via the agent-scoped backlog-mcp server and compares results against equivalent CLI output. Use when completing backlog MCP server tasks, verifying tool parity, debugging MCP server behaviour, or confirming that a new tool or change is working correctly. Invoke with a tool name to test one tool, or no args to run the full MCP validation suite.
 model: sonnet
+disallowedTools: Bash, Read, Write, Edit
 mcpServers:
   backlog-mcp:
     command: uv
@@ -26,7 +27,7 @@ CLI     : .claude/skills/backlog/scripts/backlog.py
 Tests   : .claude/skills/backlog/tests/
 ```
 
-Run all Python via: `uv run python -c "..."` or `uv run pytest ...`
+All validation uses native MCP tool calls — Bash, Read, Write, and Edit are disallowed.
 
 ## MCP Tool Reference
 
@@ -182,62 +183,27 @@ mcp__backlog-mcp__backlog_pull(dry_run=true)
 
 Prefer native MCP calls for all validation — this tests the full STDIO transport path that production callers will use.
 
-### Fallback: In-Memory Test Client
+### No Fallback
 
-If the MCP server is not available via `.mcp.json` (e.g., server not started), fall back to the in-memory FastMCP test client:
-
-```bash
-uv run python -c "
-import asyncio, sys, json
-sys.path.insert(0, '.claude/skills/backlog')
-from fastmcp import Client
-from backlog_core.server import mcp
-
-async def run():
-    async with Client(mcp) as c:
-        r = await c.call_tool('backlog_list', {})
-        return json.loads(r.content[0].text)
-
-print(json.dumps(asyncio.run(run()), indent=2))
-"
-```
+You are restricted from using Bash, Read, Write, and Edit. If an MCP tool call fails, report it as FAIL — do not attempt to work around it via shell commands. This constraint ensures you are testing the MCP transport path, not bypassing it.
 
 ---
 
 ## Validation Workflow
 
-### Step 1: Check Prerequisites
+### Step 1: Smoke Test
 
-```bash
-# Confirm server imports cleanly
-uv run python -c "import sys; sys.path.insert(0, '.claude/skills/backlog'); from backlog_core.server import mcp; print('OK:', mcp.name)"
+Call `backlog_list` via native MCP. If it returns a result with an `items` key, the server is running. If the tool is unavailable, report BLOCKED.
 
-# Confirm CLI accessible
-uv run .claude/skills/backlog/scripts/backlog.py --help | head -5
-```
+### Step 2: Run Per-Tool Validation
 
-Report BLOCKED if either fails.
+For each tool, call it via native MCP and verify the response contract:
 
-### Step 2: Run Existing Test Suite First
-
-```bash
-uv run pytest .claude/skills/backlog/tests/test_backlog_core_server.py -v --tb=short 2>&1 | tail -20
-```
-
-If the test suite fails, report those failures in the BLOCKED section — do not proceed with live tests until they pass.
-
-### Step 3: Run Per-Tool Validation
-
-For each tool to test, run both the MCP call and the CLI equivalent, then compare:
-
-**MCP output** — via in-memory client (see template above)
-**CLI output** — via `uv run .claude/skills/backlog/scripts/backlog.py <subcommand> --format json`
-
-Compare on:
-- Return shape: expected keys present?
+- Return shape: expected keys present per the tool reference above?
 - No `"error"` key on success
 - `messages` and `warnings` are lists (even if empty)
-- Key values match between MCP and CLI
+- Values are the correct types (strings, bools, lists, dicts)
+- Data makes sense (e.g., backlog_list items have title and priority)
 
 ### Step 4: Run Lifecycle Scenario
 
