@@ -420,9 +420,14 @@ class TestSyncAndPull:
         result = await _call("backlog_pull")
 
         mock_github["get_github"].assert_called()
+        assert isinstance(result["pulled"], int)
         assert isinstance(result["messages"], list)
         assert isinstance(result["warnings"], list)
         assert isinstance(result["errors"], list)
+        # If the merge detected changes, verify the local file was updated
+        if result["pulled"] > 0:
+            updated_text = (backlog_dir / "p1-pull-test-item.md").read_text(encoding="utf-8")
+            assert "Updated body from GitHub" in updated_text
 
 
 class TestNormalize:
@@ -446,14 +451,14 @@ class TestNormalize:
 
         result = await _call("backlog_normalize")
 
-        assert result["updated"] >= 0
+        assert isinstance(result["updated"], int)
         assert isinstance(result["messages"], list)
         assert isinstance(result["warnings"], list)
         assert isinstance(result["errors"], list)
-        if result["updated"] > 0:
-            assert non_canonical.exists()
-            file_text = non_canonical.read_text(encoding="utf-8")
-            assert "---" in file_text
+        # Verify normalization occurred — the flat-format file should be updated
+        assert non_canonical.exists()
+        file_text = non_canonical.read_text(encoding="utf-8")
+        assert "---" in file_text
 
 
 # ---------------------------------------------------------------------------
