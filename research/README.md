@@ -95,6 +95,7 @@ research/
 │   ├── orbstack.md                    # Fast Docker Desktop and Linux VM alternative for macOS
 │   ├── paperdraw.md                   # Browser-based distributed systems simulator with chaos injection (Flutter web)
 │   ├── piebald.md                     # Cross-platform agentic AI desktop client with parallel agents, session persistence, OAuth subscriptions (Free + Pro)
+│   ├── psmux.md                       # Native Windows tmux replacement in Rust — 76 commands, .tmux.conf compat, ConPTY (269 stars)
 │   ├── repomix.md                     # Pack codebase into AI-friendly formats (21K+ stars)
 │   ├── tabz-browser-console-forwarder.md # Browser console to terminal forwarder for AI agent debugging (MIT)
 │   ├── traycer.md                     # Spec-driven AI development orchestrator (commercial SaaS)
@@ -584,6 +585,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [surf-cli.md](./developer-tools/surf-cli.md)           | surf-cli — zero-config CLI for AI agent Chrome control via extension + Unix socket bridge; 50+ commands covering navigation, page reading, screenshots, network capture, and keyless AI model querying | 2026-02-26   |
 | [tabz-browser-console-forwarder.md](./developer-tools/tabz-browser-console-forwarder.md) | Tabz — browser console to terminal forwarder; intercepts console.* methods, batches POSTs to backend, prefixes with [Browser:source:line], visible in tmux for AI agent debugging (MIT) | 2026-03-01   |
 | [piebald.md](./developer-tools/piebald.md)             | Piebald - cross-platform agentic AI desktop client with parallel subagents, persistent sessions, OAuth AI subscriptions, and HTTP traffic inspector (Free + Pro) | 2026-02-23   |
+| [psmux.md](./developer-tools/psmux.md)                 | psmux — native Windows tmux replacement in Rust (v0.4.7); 76 commands, `.tmux.conf` compat, ConPTY, drop-in `tmux` alias, plugin ecosystem (269 stars) | 2026-03-01   |
 | [repomix.md](./developer-tools/repomix.md)             | Pack codebase into single AI-friendly file with token counting, Tree-sitter compression, MCP server, and Claude Code plugins         | 2026-01-31   |
 | [traycer.md](./developer-tools/traycer.md)             | Traycer - spec-driven AI development orchestrator with multi-model ensemble, plan-execute-verify loop, and 6 agent handoffs          | 2026-02-15   |
 | [using-tmux-with-claude-code.md](./developer-tools/using-tmux-with-claude-code.md) | Using tmux with Claude Code — practical guide for copy-mode scrollback, 10K-line buffer capture, control-key passthrough, and multi-pane agent orchestration (hboon.com, 2025-11-28) | 2026-03-01   |
