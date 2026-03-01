@@ -58,7 +58,7 @@ _GIT_PATH: str | None = shutil.which("git")
 
 # Marketplace JSON Schema
 MARKETPLACE_SCHEMA_URL = "https://anthropic.com/claude-code/marketplace.schema.json"
-_MARKETPLACE_REQUIRED_FIELDS = {"name", "owner", "metadata", "plugins"}
+_MARKETPLACE_REQUIRED_FIELDS = {"metadata", "plugins"}
 
 
 def _ensure_marketplace_schema(data: dict[str, Any]) -> tuple[dict[str, Any], bool]:
