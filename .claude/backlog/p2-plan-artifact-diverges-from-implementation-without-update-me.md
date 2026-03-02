@@ -11,6 +11,7 @@ metadata:
   issue: '#117'
   groomed: '2026-03-02'
   last_synced: '2026-03-02T02:58:14Z'
+  plan: plan/tasks-6-plan-artifact-lifecycle.md
 ---
 
 ## Fact-Check
