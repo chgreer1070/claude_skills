@@ -1,7 +1,8 @@
 ---
 task: T1
 title: Handle mixed plan-level YAML + fenced per-task YAML in parse_task_content
-status: pending
+status: closed
+resolution: "Resolved by converting plan/tasks-4-validate-orchestrator-discipline.md to directory format (T1-T4.md). The mixed-format file was the only instance; fixing the data eliminated the need for parser changes."
 parent_task: plan/tasks-15-fix-multi-yaml-fence/T6.md
 priority: 2
 complexity: medium
