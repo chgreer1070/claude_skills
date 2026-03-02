@@ -425,7 +425,8 @@ Return:
 ---
 task: T2
 title: Update local-workflow.md — add artifact lifecycle section
-status: not-started
+status: in-progress
+started: 2026-03-02T00:00:00Z
 agent: general-purpose
 dependencies: [T1]
 priority: 2
@@ -563,7 +564,8 @@ Return:
 ---
 task: T3
 title: Update start-task SKILL.md — add divergence recording step 5a
-status: not-started
+status: in-progress
+started: '2026-03-02T12:00:00Z'
 agent: general-purpose
 dependencies: [T1]
 priority: 2
@@ -838,7 +840,8 @@ Return:
 ---
 task: T5
 title: Update context-refinement.md — add plan artifact freshness check steps 5-8
-status: not-started
+status: in-progress
+started: 2026-03-02T00:00:00Z
 agent: general-purpose
 dependencies: [T1]
 priority: 2
