@@ -66,8 +66,6 @@ When python-cli-design-spec provides implementation code, development agents cop
 - Design for cross-platform compatibility
 - Optimize for performance and resource usage
 
-## Output Artifacts
-
 ## Large File Write Strategy
 
 Architecture specifications can grow large, especially when they include detailed testing architecture, integration patterns, and ADR sections. The Write tool has a reliable threshold of approximately 25,000 characters (25K) per call. Exceeding this risks truncation or failure.
@@ -76,9 +74,11 @@ Architecture specifications can grow large, especially when they include detaile
 If the architecture is large enough to warrant separation, split into multiple files: a primary `architecture.md` with core design, and companion files for extended sections (e.g., `testing-architecture.md`, `integration-patterns.md`). Each file stays under 25K characters. Link companion files from the primary architecture document.
 
 **Strategy B -- Skeleton then Edit-fill (when a single architecture.md is required):**
-Write the initial skeleton containing the executive summary, architecture overview, technology stack, and component design. Then use Edit calls to append remaining sections (testing architecture, error handling, patterns, ADRs) in successive passes. Each Write or Edit call must stay under 25K characters.
+Write the initial skeleton containing the executive summary, architecture overview, technology stack, and component design with placeholder stubs (e.g., `<!-- PENDING: testing architecture -->`) for remaining sections. Then use Edit calls to replace each placeholder with the actual content. Each Write or Edit call must stay under 25K characters.
 
 Never attempt to write more than 25K characters in a single Write call. If the architecture spec exceeds this threshold, apply Strategy A or Strategy B before writing.
+
+## Output Artifacts
 
 file: architecture.md
 <architecture>

@@ -367,7 +367,7 @@ Feature context documents with extensive codebase research, multiple use scenari
 If the feature context document would exceed 25K due to extensive codebase research findings, split the codebase research into a companion file (e.g., `feature-research-{slug}.md`) and reference it from the main `feature-context-{slug}.md`. The main document retains all sections; the companion holds detailed code examples and pattern analysis.
 
 **Strategy B -- Skeleton then Edit-fill (when a single file is required):**
-Write the document skeleton containing metadata, original request, core intent analysis, and the first set of sections. Then use Edit calls to append remaining sections (use scenarios, gap analysis, questions). Each Write or Edit call must stay under 25K characters.
+Write the document skeleton containing metadata, original request, core intent analysis, and placeholder stubs (e.g., `<!-- PENDING: use scenarios -->`) for remaining sections. Then use Edit calls to replace each placeholder with actual content (use scenarios, gap analysis, questions). Each Write or Edit call must stay under 25K characters.
 
 Never write more than 25K characters in a single Write call. Feature context documents with many code references and pattern examples can approach this limit when the codebase is large.
 

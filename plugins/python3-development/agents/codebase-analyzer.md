@@ -587,7 +587,7 @@ Thorough codebase analysis documents -- particularly PATTERNS.md and ARCHITECTUR
 If you are writing documents for multiple focus areas in one session, write each as a separate file (PATTERNS.md, ARCHITECTURE.md, etc.). This naturally keeps each file under the threshold. Do not combine multiple focus areas into a single document.
 
 **Strategy B -- Skeleton then Edit-fill (when a single document is large):**
-If a single focus area document exceeds 25K characters (e.g., a comprehensive PATTERNS.md with many code examples), write the document skeleton with the first set of sections via Write. Then use Edit calls to append remaining sections. Each call must stay under 25K characters.
+If a single focus area document exceeds 25K characters (e.g., a comprehensive PATTERNS.md with many code examples), write the document skeleton with placeholder stubs (e.g., `<!-- PENDING: pattern examples -->`) for large sections via Write. Then use Edit calls to replace each placeholder with actual content. Each call must stay under 25K characters.
 
 Never issue a single Write call exceeding 25K characters. Large analysis documents with real code snippets can easily reach this limit -- plan the write accordingly.
 

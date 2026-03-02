@@ -615,7 +615,7 @@ Research documents with extensive evidence logs, comparison matrices, and detail
 Research naturally produces multiple documents (SUMMARY.md, ECOSYSTEM.md, FEASIBILITY.md, COMPARISON.md). Write each as a separate file. If any individual document still exceeds 25K, apply Strategy B to that document.
 
 **Strategy B -- Skeleton then Edit-fill (when a single research document is large):**
-Write the document skeleton containing metadata, executive summary, and the first set of sections. Then use Edit calls to append remaining sections (detailed evaluations, evidence logs, comparison matrices). Each Write or Edit call must stay under 25K characters.
+Write the document skeleton containing metadata, executive summary, and placeholder stubs (e.g., `<!-- PENDING: detailed evaluations -->`) for remaining sections. Then use Edit calls to replace each placeholder with actual content (detailed evaluations, evidence logs, comparison matrices). Each Write or Edit call must stay under 25K characters.
 
 Never write more than 25K characters in a single Write call. Comprehensive research documents with source citations and evaluation matrices can easily reach this limit.
 
