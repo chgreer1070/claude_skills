@@ -330,8 +330,9 @@ These files contain `backlog.py` references but are explicitly excluded from thi
 
 ## Task 1: Update CLAUDE.md Backlog Operations policy
 
-**Status**: 🔄 IN PROGRESS
+**Status**: ✅ COMPLETE
 **Started**: 2026-03-02T00:00:00Z
+**Completed**: 2026-03-02T06:42:00Z
 **Dependencies**: None
 **Priority**: 1
 **Complexity**: Low
@@ -403,8 +404,9 @@ Two independent small fixes:
 
 ## Task 3: Migrate work-backlog-item SKILL.md (19 invocations)
 
-**Status**: 🔄 IN PROGRESS
+**Status**: ✅ COMPLETE
 **Started**: 2026-03-02T12:00:00Z
+**Completed**: 2026-03-02T06:47:00Z
 **Dependencies**: Task 1
 **Priority**: 1
 **Complexity**: High
@@ -481,7 +483,9 @@ Non-backlog `gh` commands in these files remain unchanged.
 
 ## Task 5: Migrate groom-backlog-item SKILL.md (6 invocations + --help removal)
 
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
+**Started**: 2026-03-02T12:00:00Z
+**Completed**: 2026-03-02T06:47:00Z
 **Dependencies**: Task 1
 **Priority**: 2
 **Complexity**: Medium
@@ -519,8 +523,9 @@ Replace 6 CLI invocations and apply two special changes:
 
 ## Task 6: Migrate create-backlog-item and group-items-to-milestone (2 invocations)
 
-**Status**: 🔄 IN PROGRESS
+**Status**: ✅ COMPLETE
 **Started**: 2026-03-02T00:00:00Z
+**Completed**: 2026-03-02T13:00:00Z
 **Dependencies**: Task 1
 **Priority**: 2
 **Complexity**: Low

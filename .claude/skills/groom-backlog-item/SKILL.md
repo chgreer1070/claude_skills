@@ -174,10 +174,10 @@ flowchart TD
 After classifying, write the classification to the backlog item:
 
 ```text
-backlog groom "{title}" --section "Issue Classification" --content "**Type**: {classification}
+mcp__backlog__backlog_groom(selector="{title}", section="Issue Classification", content="**Type**: {classification}
 **Rationale**: {1-2 sentence explanation}
 **Analysis Method**: {method}
-**Scenario Target**: {what scenario exposed this} -> {what should improve}"
+**Scenario Target**: {what scenario exposed this} -> {what should improve}")
 ```
 
 Set `scenario-target` at this step — it captures the specific scenario that exposed the problem and what should improve after the fix.
@@ -195,7 +195,7 @@ Skill(skill="find-cause", args="{description of the defect}")
 Capture the evidence chain output and write it to the item:
 
 ```text
-backlog groom "{title}" --section "Root-Cause Analysis" --content "**Method**: 5-whys
+mcp__backlog__backlog_groom(selector="{title}", section="Root-Cause Analysis", content="**Method**: 5-whys
 **Classification**: defect
 
 #### Evidence Chain
@@ -203,7 +203,7 @@ backlog groom "{title}" --section "Root-Cause Analysis" --content "**Method**: 5
 {evidence chain from /find-cause}
 
 **Root Cause**: {single actionable statement}
-**Scenario Target**: {what scenario exposed this} -> {what should improve}"
+**Scenario Target**: {what scenario exposed this} -> {what should improve}")
 ```
 
 **For `recurring-pattern` classification**: perform a frequency search to measure recurrence.
@@ -211,7 +211,7 @@ backlog groom "{title}" --section "Root-Cause Analysis" --content "**Method**: 5
 Call `mcp__backlog__backlog_list(status="resolved")` and filter the returned `items` list by keywords related to this defect class, count matches, and write the 6 Sigma measurement section:
 
 ```text
-backlog groom "{title}" --section "Root-Cause Analysis" --content "**Method**: 6-sigma
+mcp__backlog__backlog_groom(selector="{title}", section="Root-Cause Analysis", content="**Method**: 6-sigma
 **Classification**: recurring-pattern
 
 #### Measurement
@@ -228,7 +228,7 @@ backlog groom "{title}" --section "Root-Cause Analysis" --content "**Method**: 6
 #### Improvement
 
 - **Proposed guardrail**: {specific instruction, gate, or check to add}
-- **Verification**: {how to confirm the guardrail works}"
+- **Verification**: {how to confirm the guardrail works}")
 ```
 
 **Note**: If the human has already identified the recurrence pattern, skip the search and use the human's assessment.
@@ -346,7 +346,7 @@ Per-item groomed content lives in each item file; this session file holds only m
 - RT-ICA summary included for each item
 - Groomer agent(s) spawned via `Agent(subagent_type: "backlog-item-groomer")` — NOT groomed inline
 - Groomer agent(s) received RT-ICA context, fact-check verdicts, and file paths (not pasted content)
-- Groomed content written via `backlog groom` (prefer `--section`/`--content` incremental updates; `--groomed-content` or stdin for full body)
+- Groomed content written via `mcp__backlog__backlog_groom` (prefer `section`/`content` parameters for incremental updates; `groomed_content` for full body)
 - When item has GitHub issue, groomed content synced to issue body
 - Bulk session summary optionally saved to `.claude/grooming-sessions/{date}.md` when grooming multiple items
 - Issue classification assigned for each item (Step 6)

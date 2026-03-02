@@ -429,7 +429,7 @@ Backlog item "{title}" is now planned.
 - To close when done: /work-backlog-item close {slug}
 ```
 
-**Do NOT close the GitHub Issue directly.** Include `Fixes #N` in commit messages and the PR body — the issue auto-closes when the PR merges. Only use `/work-backlog-item close` for post-merge verification and local bookkeeping. Never invoke `mcp__backlog__backlog_close` before the PR has merged.
+**Do NOT close the GitHub Issue directly.** Include `Fixes #N` in commit messages and the PR body — the issue auto-closes when the PR merges. Only use `/work-backlog-item close` for post-merge verification and local bookkeeping. Never call `mcp__backlog__backlog_close` before the PR has merged.
 
 ### Step 9: Verify and Close
 
@@ -444,14 +444,10 @@ Extract the operation from `$0` and the argument from `$1`+:
 
 #### 9a: Find Item
 
-Use the backlog MCP tool to find the item (accepts URLs, `#N`, bare numbers, and title substrings):
+Call the `mcp__backlog__backlog_view` tool with `selector="{$1}"` (accepts URLs, `#N`, bare numbers, and title substrings).
 
-```text
-mcp__backlog__backlog_view(selector="{$1}")
-```
-
-- If the command fails (exit code non-zero), report and stop.
-- Extract `title` from the JSON response and use it as the working title.
+- If the returned dict contains an `error` key, report and stop.
+- Extract `title` from the returned dict and use it as the working title.
 
 If the view command found a local file (`file_path` in JSON), use it. Otherwise scan `.claude/backlog/` per-item files for a title match.
 
@@ -464,13 +460,8 @@ If the view command found a local file (`file_path` in JSON), use it. Otherwise 
 If operation is `resolve`:
 
 1. Use `AskUserQuestion` to ask: "Why is this item no longer applicable?" (free text)
-2. Invoke the backlog script:
-
-```text
-mcp__backlog__backlog_resolve(selector="{title or #N}", reason="{reason}")
-```
-
-3. Report the script output to the user.
+2. Call the `mcp__backlog__backlog_resolve` tool with `selector="{title or #N}"` and `reason="{reason}"`.
+3. Check the returned dict for an `error` key. Report the result to the user.
 
 Then stop.
 
@@ -559,9 +550,7 @@ git log --oneline -20 --grep="Fixes #N\|Closes #N"
 
 - **Open PR found**: The PR body contains `Fixes #N` — the issue will auto-close on merge. Update only the local per-item file status (do NOT close the GitHub Issue):
 
-```text
-mcp__backlog__backlog_update(selector="{title}", status="in-progress")
-```
+Call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `status="in-progress"`.
 
 Report:
 
@@ -575,19 +564,15 @@ Then stop.
 
 #### 9f: Invoke backlog close
 
-7. Invoke the backlog MCP tool (updates per-item file and closes GitHub issue):
+7. Call the `mcp__backlog__backlog_close` tool (updates per-item file and closes GitHub issue):
 
-```text
-mcp__backlog__backlog_close(selector="{title}", plan="{plan file path}", checklist_pass=true)
-```
+| Parameter | Value |
+|-----------|-------|
+| `selector` | `"{title}"` (or `"#{N}"` if invoked as `close #N`) |
+| `plan` | `"{plan file path}"` |
+| `checklist_pass` | `true` |
 
-If invoked as `close #N`, use `#N` as the selector:
-
-```text
-mcp__backlog__backlog_close(selector="#{N}", plan="{plan file path}", checklist_pass=true)
-```
-
-8. Report the script output to the user.
+8. Check the returned dict for an `error` key. Report the result to the user.
 
 </step9_procedure>
 
@@ -635,27 +620,19 @@ This convention ensures issues are automatically closed on merge without manual 
 
 After Step 2, check for `**Issue**: #N` field in the matched item.
 
-- Found: verify issue state with `mcp__backlog__backlog_view(selector="#{issue_number}")`
+- Found: verify issue state — call the `mcp__backlog__backlog_view` tool with `selector="#{issue_number}"`
 - Not found + P0/P1: offer to create a GitHub Issue (proceed to Step 2.5a)
 - Not found + P2/Ideas: skip silently
 
 ### Step 2.5a: Create GitHub Issue
 
-Invoke the backlog script:
+Call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `create_issue=true`.
 
-```text
-mcp__backlog__backlog_update(selector="{title}", create_issue=true)
-```
-
-The tool creates the issue and writes `issue: '#N'` back to the per-item file frontmatter.
+Check the returned dict for an `error` key. On success, the tool creates the issue and writes `issue: '#N'` back to the per-item file frontmatter.
 
 ### Step 2.7: Set In-Progress Label
 
-If the item has `**Issue**: #N`, invoke the backlog MCP tool:
-
-```text
-mcp__backlog__backlog_update(selector="{title}", status="in-progress")
-```
+If the item has `**Issue**: #N`, call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `status="in-progress"`.
 
 If the item is in a milestone with other issues, also run `milestone start` for the milestone:
 
@@ -666,10 +643,9 @@ uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
 
 ### setup-github Command
 
-**Trigger:** `$0` is `setup-github`. Initializes label taxonomy, first milestone, and GitHub Project (use backlog script where available).
+**Trigger:** `$0` is `setup-github`. Initializes label taxonomy, first milestone, and GitHub Project.
 
 ```bash
-# Use github_project_setup.py directly if needed
 uv run .claude/skills/gh/scripts/github_project_setup.py labels --repo Jamie-BitFlight/claude_skills
 uv run .claude/skills/gh/scripts/github_project_setup.py milestone create \
   --title "v1.0 — Skills Foundation" --due 2026-03-31 --repo Jamie-BitFlight/claude_skills
@@ -679,7 +655,7 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 
 ## Error Handling
 
-- `#N` / URL / bare number not found: report and list available items with `mcp__backlog__backlog_list()`
+- `#N` / URL / bare number not found: report and list available items — call the `mcp__backlog__backlog_list` tool
 - `#N` already closed: run Completed Issue Discovery (search commits/PRs for evidence, close local item with reference, or ask user)
 - `close #N` / `resolve #N` — issue not found: report and stop
 - Item not found: list available items from `.claude/backlog/` per-item files with their priority sections
@@ -695,7 +671,7 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 - `close` on already-completed item: report closed date, do not re-close
 - `resolve` with no reason provided: block until user provides reason (reason is required evidence)
 - GitHub issue creation fails: report error, continue with per-item-file-only workflow; do not block SAM planning
-- `GITHUB_TOKEN` not set: MCP server reports error; local-only operations still work
+- `GITHUB_TOKEN` not set: backlog MCP tools report an error; local-only operations still work
 - Label not found during issue create: `github_project_setup.py` creates it automatically
 - Milestone not found: skip milestone assignment; do not fail
 
