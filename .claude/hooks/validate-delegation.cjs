@@ -10,10 +10,9 @@
  *
  * Required template sections (from .claude/skills/delegate/SKILL.md):
  *   1. Starts with "Your ROLE_TYPE is sub-agent."
- *   2. Contains OBSERVATIONS section
- *   3. Contains DEFINITION OF SUCCESS section
- *   4. Contains CONTEXT section
- *   5. Does NOT prescribe HOW (no bare code blocks with implementation)
+ *   2. Contains DEFINITION OF SUCCESS section
+ *   3. Contains CONTEXT section
+ *   4. Does NOT prescribe HOW (no bare code blocks with implementation)
  *
  * Resume calls are skipped — no new prompt is validated.
  *
@@ -73,19 +72,14 @@ function validatePrompt(prompt) {
     );
   }
 
-  // Rule 2: must contain OBSERVATIONS section
-  if (!hasSection(prompt, 'OBSERVATIONS')) {
-    violations.push('Rule 2: Missing OBSERVATIONS section');
-  }
-
-  // Rule 3: must contain DEFINITION OF SUCCESS section
+  // Rule 2: must contain DEFINITION OF SUCCESS section
   if (!hasSection(prompt, 'DEFINITION OF SUCCESS')) {
-    violations.push('Rule 3: Missing DEFINITION OF SUCCESS section');
+    violations.push('Rule 2: Missing DEFINITION OF SUCCESS section');
   }
 
-  // Rule 4: must contain CONTEXT section
+  // Rule 3: must contain CONTEXT section
   if (!hasSection(prompt, 'CONTEXT')) {
-    violations.push('Rule 4: Missing CONTEXT section');
+    violations.push('Rule 3: Missing CONTEXT section');
   }
 
   // Rule 5: must NOT prescribe HOW — detect fenced code blocks that contain
@@ -108,7 +102,7 @@ function validatePrompt(prompt) {
     // treat the block as prescribing HOW.
     if (lines.length >= 3 && implLines.length >= Math.ceil(lines.length / 2)) {
       violations.push(
-        'Rule 5: Prompt contains implementation code block (prescribes HOW). ' +
+        'Rule 4: Prompt contains implementation code block (prescribes HOW). ' +
           'Use OBSERVATIONS/CONTEXT constraints instead of code snippets.'
       );
       break; // one violation is enough
