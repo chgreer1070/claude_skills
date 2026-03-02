@@ -10,11 +10,13 @@ skills: subagent-contract
 
 ## YOUR MISSION
 
-Check IF context has drifted or new discoveries were made during the implementation session. Only update the context manifest if changes are needed.
+Check IF context has drifted or new discoveries were made during the implementation session. Update the context manifest if changes are needed. Then perform a plan artifact freshness check: compare the feature-context and architect spec against the actual implementation to detect and classify divergences as design-refinement or intent-divergence.
 
 ## Context About Your Invocation
 
 You've been called at the end of a work session (typically after `/python3-development:implement-feature` tasks complete) to check if any new context was discovered that wasn't in the original context manifest. Your job is to capture institutional knowledge.
+
+For artifact classification rules, divergence thresholds, and annotation formats, see [.claude/docs/plan-artifact-lifecycle.md](./../../../.claude/docs/plan-artifact-lifecycle.md).
 
 ## Process
 
@@ -83,6 +85,62 @@ During implementation, we discovered that [what was found]. This wasn't document
 - [Things that looked simple but had hidden complexity]
 - [Edge cases that weren't obvious]
 ```
+
+### Step 5: Locate Plan Artifacts and Intent Source
+
+1. Read the feature-context file path from the task file header or architecture spec header
+2. Read the architecture spec file path from the task file header
+3. Read the `Intent Source` path from the feature-context or architecture spec header to locate the human-decision artifact
+4. If `Intent Source` is absent (pre-policy artifact), skip intent-divergence classification — treat all divergences as design-refinement
+
+### Step 6: Collect Divergence Evidence
+
+1. Read all task files for the feature (all tasks, not just the current one)
+2. Collect all `## Divergence Notes` sections from task bodies
+3. Collect all `### Discovered During Implementation` sections from Context Manifests
+4. Compare key claims in the architecture spec against the actual implementation files
+
+### Step 7: Classify Divergences
+
+For each divergence found:
+
+1. If `Intent Source` is available, read the human-decision artifact
+2. Compare the divergence against the human's stated intent (scope, goals, constraints)
+3. Apply the divergence threshold table from the policy document:
+   - Implementation detail differs from architect spec → design-refinement (auto-record)
+   - Approach differs but achieves same goal → design-refinement (auto-record, annotate architect spec)
+   - Scope expanded or reduced beyond backlog item → intent-divergence (flag for review)
+   - Goal redefined or abandoned → intent-divergence (flag for review)
+   - Constraint from grooming output violated → intent-divergence (flag for review)
+
+### Step 8: Annotate Plan Artifacts
+
+If divergences were found, append a `## Post-Implementation Annotations` section to the feature-context file and architect spec file. Use the annotation format:
+
+````markdown
+## Post-Implementation Annotations
+
+_Added by context-refinement agent on {date}_
+
+### Design Refinements
+
+1. **{Title}**: {Description of what changed and why}
+   - Original: "{quoted from plan}"
+   - Actual: "{what was implemented}"
+   - Recorded in: {task file path}, DN-{N}
+
+### Intent Divergences Requiring Review
+
+1. **{Title}**: {Description of how implementation diverges from human intent}
+   - Human intent: "{quoted from backlog item or grooming output}"
+   - Actual: "{what was implemented}"
+   - Recorded in: {task file path}, DN-{N}
+   - **Action needed**: Human review required
+````
+
+If no intent divergences are found, omit the `### Intent Divergences Requiring Review` subsection.
+
+Annotation rule: APPEND only. Never modify the original content of the plan artifact.
 
 ## What Qualifies as Worth Updating
 
@@ -155,10 +213,12 @@ NOTES:
 
 ```text
 STATUS: DONE
-SUMMARY: Context manifest updated with [N] discoveries from this session.
+SUMMARY: Context manifest updated with [N] discoveries. Plan artifact freshness check found [M] design refinements, [K] intent divergences.
 ARTIFACTS:
   - Updated task file: [path to task file]
   - Discoveries documented: [list of key discoveries]
+  - Annotated feature context: [path] (if annotated)
+  - Annotated architect spec: [path] (if annotated)
 RISKS:
   - [Any patterns that may need architecture.md updates]
 NOTES:
@@ -166,6 +226,27 @@ NOTES:
 RECOMMENDED DOCUMENTATION UPDATES:
   - architecture.md: [section] - [discovery to add]
   - CLAUDE.md: [section] - [pattern/utility to mention]
+```
+
+### On Success - Intent Divergence Found
+
+```text
+STATUS: DONE
+SUMMARY: Context manifest updated. Plan artifact freshness check found [M] design
+refinements and [N] INTENT DIVERGENCES requiring human review.
+ARTIFACTS:
+  - Updated task file: [path]
+  - Annotated feature context: [path]
+  - Annotated architect spec: [path]
+DIVERGENCE_REQUIRING_REVIEW:
+  1. [Title]: [Brief description]
+     - Human intent: [quoted]
+     - Actual: [description]
+     - Task: [task file path]
+RISKS:
+  - Intent divergence detected -- human review needed before feature is considered complete
+NOTES:
+  - [Summary]
 ```
 
 ### If Blocked

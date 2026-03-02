@@ -29,12 +29,12 @@ Converts a feature description into durable SAM artifacts.
 
 ### Artifacts Produced
 
-| Artifact | Path | Created By |
-|----------|------|------------|
-| Feature context | `plan/feature-context-{slug}.md` | `feature-researcher` agent |
-| Codebase analysis | `plan/codebase/{FOCUS}.md` | `codebase-analyzer` agent (optional) |
-| Architecture spec | `plan/architect-{slug}.md` | `python-cli-design-spec` agent |
-| Task plan | `plan/tasks-{N}-{slug}.md` | `swarm-task-planner` agent |
+| Artifact | Path | Created By | Artifact Type |
+|----------|------|------------|---------------|
+| Feature context | `plan/feature-context-{slug}.md` | `feature-researcher` agent | Generated |
+| Codebase analysis | `plan/codebase/{FOCUS}.md` | `codebase-analyzer` agent (optional) | Generated (snapshot) |
+| Architecture spec | `plan/architect-{slug}.md` | `python-cli-design-spec` agent | Generated |
+| Task plan | `plan/tasks-{N}-{slug}.md` | `swarm-task-planner` agent | Generated |
 
 ### Agent Delegation Sequence
 
@@ -85,6 +85,25 @@ Two organizational structures:
 ### Outcome
 
 The user receives the feature slug, task file path, and is told to run `/implement-feature`.
+
+---
+
+## Plan Artifact Lifecycle
+
+Plan artifacts fall into two categories based on their origin and mutability.
+
+- **Human-decision artifacts** (backlog items, grooming output, interview transcripts) capture the human's original intent and are immutable. Agents must never modify them.
+- **Generated artifacts** (feature context, architecture spec, task plan, codebase analysis) are produced by agents during planning phases. They are mutable but intent-bound: updates must stay within the intent established by the human-decision artifacts they serve.
+
+For the full taxonomy, classification rules, divergence thresholds, and annotation format, see
+[Plan Artifact Lifecycle Policy](./../docs/plan-artifact-lifecycle.md).
+
+| Artifact Type | Mutability Rule |
+|---------------|-----------------|
+| Human-decision | Immutable. No agent may edit, append to, or rewrite. |
+| Generated | Mutable but intent-bound. Annotations permitted; silent rewrites prohibited. |
+
+Divergence between plan artifacts and implementation is detected during Phase 6 of `/complete-implementation`, where the `context-refinement` agent performs a plan artifact freshness check. Design refinements are auto-recorded as annotations. Intent divergences are flagged for human review via `DIVERGENCE_REQUIRING_REVIEW` in the agent's output.
 
 ---
 
@@ -218,7 +237,7 @@ Phase 2: feature-verifier       -> Goal-backward feature verification
 Phase 3: integration-checker    -> Integration check
 Phase 4: doc-drift-auditor      -> Documentation drift audit (read-only)
 Phase 5: service-docs-maintainer -> Documentation update (if drift found)
-Phase 6: context-refinement     -> Update task file Context Manifest
+Phase 6: context-refinement     -> Update task file Context Manifest + plan artifact freshness check
 ```
 
 ### Agent File Locations
@@ -340,6 +359,8 @@ User
   ├─ doc-drift-auditor         ──> drift findings
   ├─ service-docs-maintainer   ──> doc updates (if drift)
   └─ context-refinement        ──> updated Context Manifest
+                                ──> plan artifact annotations (if divergence found)
+                                ──> DIVERGENCE_REQUIRING_REVIEW (if intent divergence)
   │
   ├─ [If follow-up tasks created]
   │    └─ Recurse: /implement-feature + /complete-implementation
