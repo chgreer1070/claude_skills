@@ -17,10 +17,10 @@ Generated: 2026-03-01
 | CLI Subcommand | MCP Tool | operations.py Function | Notes |
 |---|---|---|---|
 | `backlog add` | `backlog_add` | `add_item()` | `--create-issue` → `create_issue: bool` |
-| `backlog list` | `backlog_list` | `list_items()` | `--format json` → `format: "json"`, `--with-status` → `with_status: true` |
-| `backlog view` | `backlog_view` | `view_item()` | `--format json` → `format: "json"` |
+| `backlog list` | `backlog_list` | `list_items()` | `--format json` implicit (MCP returns dicts), `--with-status` → `with_status: true` |
+| `backlog view` | `backlog_view` | `view_item()` | `--format json` implicit (MCP returns dicts) |
 | `backlog sync` | `backlog_sync` | `sync_items()` | `--dry-run` → `dry_run: true` |
-| `backlog close` | `backlog_close` | `close_item()` | `--reason` → `reason`, `--plan`/`--checklist-pass` → `plan`/`checklist_pass`, `--cleanup` → `cleanup` |
+| `backlog close` | `backlog_close` | `close_item()` | `--plan`/`--checklist-pass` → `plan`/`checklist_pass`, `--cleanup` → `cleanup`. **Note**: CLI `close --reason` is semantically wrong — use `backlog_resolve` instead (ADR-8) |
 | `backlog resolve` | `backlog_resolve` | `resolve_item()` | `--reason` → `reason`, `--cleanup` → `cleanup` |
 | `backlog update` | `backlog_update` | `update_item()` | `--plan`/`--status`/`--create-issue`/`--section`/`--content` all map directly |
 | `backlog groom` | `backlog_groom` | `groom_item()` | `--section`/`--content` or `--groomed-content` → `section`/`content`/`groomed_content` |
@@ -131,18 +131,18 @@ These contain the actual `uv run backlog.py` commands that agents execute.
 
 | Line | CLI Command | MCP Replacement |
 |---|---|---|
-| 97 | `backlog.py list --format json --with-status` | `backlog_list(format="json", with_status=true)` |
-| 155 | `backlog.py view "{$0}" --format json` | `backlog_view(selector="{$0}", format="json")` |
-| 195 | `backlog.py close "{title}" --reason "..."` | `backlog_close(selector="{title}", reason="...")` |
-| 233 | `backlog.py list --format json` | `backlog_list(format="json")` |
-| 301 | `backlog.py close "{title}" --reason "..."` | `backlog_close(selector="{title}", reason="...")` |
+| 97 | `backlog.py list --format json --with-status` | `backlog_list(with_status=true)` (MCP returns dicts; no format param) |
+| 155 | `backlog.py view "{$0}" --format json` | `backlog_view(selector="{$0}")` |
+| 195 | `backlog.py close "{title}" --reason "..."` | `backlog_resolve(selector="{title}", reason="...")` (ADR-8: close+reason → resolve) |
+| 233 | `backlog.py list --format json` | `backlog_list()` |
+| 301 | `backlog.py close "{title}" --reason "..."` | `backlog_resolve(selector="{title}", reason="...")` (ADR-8: close+reason → resolve) |
 | 419 | `backlog.py update "{title}" --plan "..."` | `backlog_update(selector="{title}", plan="...")` |
-| 453 | `backlog.py view "{$1}" --format json` | `backlog_view(selector="{$1}", format="json")` |
+| 453 | `backlog.py view "{$1}" --format json` | `backlog_view(selector="{$1}")` |
 | 473 | `backlog.py resolve "{title or #N}" --reason "..."` | `backlog_resolve(selector="...", reason="...")` |
 | 566 | `backlog.py update "{title}" --status in-progress` | `backlog_update(selector="{title}", status="in-progress")` |
 | 584 | `backlog.py close "{title}" --plan "..." --checklist-pass` | `backlog_close(selector="{title}", plan="...", checklist_pass=true)` |
 | 590 | `backlog.py close "#{N}" --plan "..." --checklist-pass` | `backlog_close(selector="#{N}", plan="...", checklist_pass=true)` |
-| 641 | `backlog.py view "#{issue_number}" --format json` | `backlog_view(selector="#{N}", format="json")` |
+| 641 | `backlog.py view "#{issue_number}" --format json` | `backlog_view(selector="#{N}")` |
 | 650 | `backlog.py update "{title}" --create-issue` | `backlog_update(selector="{title}", create_issue=true)` |
 | 660 | `backlog.py update "{title}" --status in-progress` | `backlog_update(selector="{title}", status="in-progress")` |
 | 685 | `backlog.py list` | `backlog_list()` |
@@ -155,7 +155,7 @@ These contain the actual `uv run backlog.py` commands that agents execute.
 
 | Line | CLI Command | MCP Replacement |
 |---|---|---|
-| 12 | `backlog.py list --format json --with-status` | `backlog_list(format="json", with_status=true)` |
+| 12 | `backlog.py list --format json --with-status` | `backlog_list(with_status=true)` |
 | 117 | `backlog.py update "{title}" --plan "..."` | `backlog_update(selector="{title}", plan="...")` |
 
 ---
@@ -198,10 +198,10 @@ uv run .claude/skills/backlog/scripts/backlog.py add \
 
 | Line | CLI Command | MCP Replacement |
 |---|---|---|
-| 25 | `backlog.py list --format json` | `backlog_list(format="json")` |
-| 65 | `backlog.py close "{title}" --reason "..."` | `backlog_close(selector="{title}", reason="...")` |
-| 71 | `backlog.py view "#{N}" --format json` | `backlog_view(selector="#{N}", format="json")` |
-| 94 | `backlog.py close "{title}" --reason "..."` | `backlog_close(selector="{title}", reason="...")` |
+| 25 | `backlog.py list --format json` | `backlog_list()` |
+| 65 | `backlog.py close "{title}" --reason "..."` | `backlog_resolve(selector="{title}", reason="...")` (ADR-8: close+reason → resolve) |
+| 71 | `backlog.py view "#{N}" --format json` | `backlog_view(selector="#{N}")` |
+| 94 | `backlog.py close "{title}" --reason "..."` | `backlog_resolve(selector="{title}", reason="...")` (ADR-8: close+reason → resolve) |
 | 195 | `backlog.py <subcommand> --help` | N/A (discovery pattern — replace with tool list) |
 | 198 | `backlog.py update "{title}" --section "..." --content "..."` | `backlog_update(selector="{title}", section="...", content="...")` |
 
@@ -215,7 +215,7 @@ uv run .claude/skills/backlog/scripts/backlog.py add \
 uv run .claude/skills/backlog/scripts/backlog.py list --format json
 ```
 
-**MCP**: `backlog_list(format="json")`
+**MCP**: `backlog_list()`
 
 ---
 
@@ -237,7 +237,7 @@ uv run .claude/skills/backlog/scripts/backlog.py list --format json
 uv run .claude/skills/backlog/scripts/backlog.py list --format json
 ```
 
-**MCP**: `backlog_list(format="json")`
+**MCP**: `backlog_list()`
 
 ---
 

@@ -201,7 +201,7 @@ Phrase "pre-existing issues not related to my changes" is a TRIGGER TO ACT, not 
 When you identify that work will need multiple steps or jobs: create backlog items for them — don't just describe them.
 
 1. **Backlog**: Create via `create-backlog-item` or match via `work-backlog-item` before starting.
-2. **Plan**: When writing a plan, add it to the item via `backlog update "{title}" --plan "{path}"`.
+2. **Plan**: When writing a plan, add it to the item via `mcp__backlog__backlog_update(selector="{title}", plan="{path}")`.
 3. **Progress**: When completing actions, update the task/plan artifact (checklist, status) so progression is visible.
 
 Skip only for trivial single-step requests (typos, one-off questions, immediate one-action fixes).

@@ -263,7 +263,7 @@ The `backlog-item-groomer` agent discovers related skills, agents, prior work, a
 
 ### Step 9: Write Groomed Content to Item Files
 
-For each item, write groomed content into the per-item file via the backlog script.
+For each item, write groomed content into the per-item file via the backlog MCP tools.
 
 **MCP tool parameters are schema-enforced.** Unlike CLI subcommands, MCP tools reject invalid parameters
 with a structured error. There is no need to verify signatures before calling. If unsure which tool to

@@ -124,6 +124,8 @@ Parameters:
   groomed_content str|null  optional  Full groomed content (replaces groomed section)
   section         str|null  optional  Section name for incremental update
   content         str|null  optional  Content for named section
+  title           str|null  optional  Rename item title
+  description     str|null  optional  Update item description
 
 Returns: {title, changes, messages, warnings}
 CLI:     uv run .claude/skills/backlog/scripts/backlog.py update "<title>" [--plan P] [--status S]
