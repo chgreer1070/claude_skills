@@ -148,6 +148,9 @@ Report:
 | `blocked-by` | array | External blockers (not task IDs) | `["API access", "Design approval"]` |
 | `parallelize-with` | array | Tasks that can run concurrently | `["T2", "T3"]` |
 | `skills` | array | Skills for the sub-agent to load | `["fastmcp-python-tests", "python3-development"]` |
+| `issue-classification` | enum | `procedural`, `defect`, `recurring-pattern`, `missing-guardrail`, `unbounded-design` — analytical depth classification | `"defect"` |
+| `scenario-target` | string | `"{scenario that exposed the problem} -> {what should improve}"` | `"Hook did not fire -> fires regardless of invocation method"` |
+| `analysis-method` | enum | `none`, `5-whys`, `6-sigma`, `design-framing` — root-cause method applied during grooming. Default: `none` | `"5-whys"` |
 
 #### Status Values
 
@@ -349,6 +352,21 @@ uv run pytest tests/test_data_models.py -v
       },
       "default": [],
       "description": "Skills the sub-agent should load before executing this task"
+    },
+    "issue-classification": {
+      "type": "string",
+      "enum": ["procedural", "defect", "recurring-pattern", "missing-guardrail", "unbounded-design"],
+      "description": "Analytical depth classification for the issue this task addresses"
+    },
+    "scenario-target": {
+      "type": "string",
+      "description": "What scenario exposed this issue and what specifically should improve"
+    },
+    "analysis-method": {
+      "type": "string",
+      "enum": ["none", "5-whys", "6-sigma", "design-framing"],
+      "default": "none",
+      "description": "Root-cause analysis method applied during grooming"
     }
   }
 }
@@ -643,6 +661,9 @@ completed: ""  # OPTIONAL: ISO 8601 timestamp
 blocked-by: []  # OPTIONAL: External blockers
 parallelize-with: []  # OPTIONAL: Tasks that can run concurrently
 skills: []  # OPTIONAL: Skills for sub-agent to load
+# issue-classification: ""  # OPTIONAL: procedural | defect | recurring-pattern | missing-guardrail | unbounded-design
+# scenario-target: ""  # OPTIONAL: "{scenario} -> {improvement}"
+# analysis-method: none  # OPTIONAL: none | 5-whys | 6-sigma | design-framing
 ---
 
 ## Context
@@ -896,6 +917,8 @@ completed: 2026-02-02
 ## Appendix: Field Evolution
 
 ### Possible Future Fields
+
+> **Note**: The fields `issue-classification`, `scenario-target`, and `analysis-method` were defined in Issue #314 and are now part of the Optional Fields specification above.
 
 These fields may be added in future versions without breaking existing parsers:
 

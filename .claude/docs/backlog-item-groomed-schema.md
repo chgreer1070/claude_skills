@@ -65,6 +65,70 @@ Do **not** duplicate `name`, `description`, `source`, `added`, `priority`, `type
 | **Dependencies** | Items this depends on; items this unblocks | When applicable |
 | **Blockers** | Missing prerequisites; RT-ICA BLOCKED reason | When BLOCKED |
 | **Effort** | Small / Medium / High | When estimable |
+| **Issue Classification** | Classification type and rationale | When groomed after Issue #314 |
+| **Root-Cause Analysis** | Evidence chain from `/find-cause` or 6 Sigma measurement | When `issue-classification` is `defect` or `recurring-pattern` |
+
+### Issue Classification Section Format
+
+```markdown
+### Issue Classification
+
+**Type**: procedural | defect | recurring-pattern | missing-guardrail | unbounded-design
+**Rationale**: {1-2 sentence explanation of why this classification was chosen}
+**Analysis Method**: none | 5-whys | 6-sigma | design-framing
+**Scenario Target**: {what scenario exposed this} -> {what should improve}
+```
+
+### Root-Cause Analysis Section Format
+
+**5-whys variant** (for `defect` classification):
+
+```markdown
+### Root-Cause Analysis
+
+**Method**: 5-whys
+**Classification**: defect
+
+#### Evidence Chain
+
+1. CLAIM: {symptom observed}
+   EVIDENCE: {source}
+   VERIFIED: yes
+   DEPENDS ON: none (symptom)
+
+2. CLAIM: {why 1}
+   EVIDENCE: {source}
+   VERIFIED: yes
+   DEPENDS ON: 1
+
+**Root Cause**: {single actionable statement}
+**Scenario Target**: {what scenario exposed this} -> {what should improve}
+```
+
+**6-sigma variant** (for `recurring-pattern` classification):
+
+```markdown
+### Root-Cause Analysis
+
+**Method**: 6-sigma
+**Classification**: recurring-pattern
+
+#### Measurement
+
+- **Frequency**: {N occurrences in {time period or batch}}
+- **Common factors**: {what the occurrences share}
+- **Affected scope**: {what parts of the system are impacted}
+
+#### Analysis
+
+- **Root cause pattern**: {why this class of defect recurs}
+- **Missing guardrail**: {what gate or instruction should prevent this}
+
+#### Improvement
+
+- **Proposed guardrail**: {specific instruction, gate, or check to add}
+- **Verification**: {how to confirm the guardrail works}
+```
 
 ---
 
@@ -116,6 +180,13 @@ Plugin validator should report unique files, not validator invocations.
 
 1. Running validator on 1 file shows "Total files: 1"
 2. Summary counts unique files
+
+### Issue Classification
+
+**Type**: defect
+**Rationale**: Plugin validator double-counts files — traceable failure with identifiable cause chain.
+**Analysis Method**: 5-whys
+**Scenario Target**: Run validator on 1 file, see "Total files: 2" -> shows "Total files: 1"
 
 ### Resources
 

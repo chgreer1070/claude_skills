@@ -97,9 +97,9 @@ Before fact-checking or grooming, verify each item is still valid work:
    If no commits or PRs reference the issue, report: "Issue #{N} is closed but no commit/PR evidence found. Recommend manual review." and skip grooming.
    Skip grooming for that item; move to the next.
 
-4. **Is this item already groomed today?** — Check the item file's `groomed` frontmatter field. If it matches today's date AND the item has all required sections (Fact-Check, RT-ICA, groomed subsections), skip Steps 4–6 entirely. Go directly to Step 7 and apply only the specific change requested by the user — do not re-derive, re-fact-check, or re-groom. Re-running the full pipeline on an already-groomed item produces duplicate content and wastes tokens.
+4. **Is this item already groomed today?** — Check the item file's `groomed` frontmatter field. If it matches today's date AND the item has all required sections (Fact-Check, RT-ICA, groomed subsections), skip Steps 4–8 entirely. Go directly to Step 9 and apply only the specific change requested by the user — do not re-derive, re-fact-check, or re-groom. Re-running the full pipeline on an already-groomed item produces duplicate content and wastes tokens.
 
-If any of checks 1–3 fail, skip grooming for that item and report. For items that pass checks 1–3, proceed to Step 3. For items that pass checks 1–3 but match check 4 (already groomed today), skip directly to Step 7.
+If any of checks 1–3 fail, skip grooming for that item and report. For items that pass checks 1–3, proceed to Step 3. For items that pass checks 1–3 but match check 4 (already groomed today), skip directly to Step 9.
 
 ### Step 3: Extract Item Details
 
@@ -156,7 +156,92 @@ Pass the RT-ICA summary and fact-check summary to the groomer alongside item det
 
 **ARL human-probing integration:** When RT-ICA returns BLOCKED or MISSING conditions, the context manifest can include `invisible_knowledge_prompts` — questions to ask the human before planning (e.g., "What went wrong in the past?", "What references are essential?"). See [.claude/docs/sdlc-layers/arl-human-probing-design.md](../../docs/sdlc-layers/arl-human-probing-design.md).
 
-### Step 6: Spawn Groomer Agents
+### Step 6: Issue Classification
+
+Classify the issue type to determine analysis depth and verification criteria. This classification is done by the orchestrator (not the groomer agent) because it requires reasoning about the problem's nature.
+
+Apply the following decision flowchart to each item:
+
+```mermaid
+flowchart TD
+    Start(["Classify issue type"]) --> Q1{"Is this a typo/naming/<br>formatting/surface fix?"}
+    Q1 -->|"YES"| Procedural["procedural<br>Analysis method = none"]
+    Q1 -->|"NO"| Q2{"Has this same problem class<br>appeared 2+ times?"}
+    Q2 -->|"YES"| Recurring["recurring-pattern<br>Analysis method = 6-sigma"]
+    Q2 -->|"NO"| Q3{"Is there a traceable failure<br>with identifiable cause chain?"}
+    Q3 -->|"YES"| Defect["defect<br>Analysis method = 5-whys"]
+    Q3 -->|"NO"| Q4{"Did the system allow a bad outcome<br>that a gate should have prevented?"}
+    Q4 -->|"YES"| MissingGuardrail["missing-guardrail<br>Analysis method = none"]
+    Q4 -->|"NO"| UnboundedDesign["unbounded-design<br>Analysis method = design-framing"]
+```
+
+After classifying, write the classification to the backlog item:
+
+```text
+backlog groom "{title}" --section "Issue Classification" --content "**Type**: {classification}
+**Rationale**: {1-2 sentence explanation}
+**Analysis Method**: {method}
+**Scenario Target**: {what scenario exposed this} -> {what should improve}"
+```
+
+Set `scenario-target` at this step — it captures the specific scenario that exposed the problem and what should improve after the fix.
+
+### Step 7: Root-Cause Analysis (Conditional)
+
+This step only runs when `issue-classification` is `defect` or `recurring-pattern`. For `procedural`, `missing-guardrail`, and `unbounded-design`, skip this step entirely.
+
+**For `defect` classification**: invoke the `/find-cause` skill to build an evidence chain from symptom to root cause.
+
+```text
+Skill(skill="find-cause", args="{description of the defect}")
+```
+
+Capture the evidence chain output and write it to the item:
+
+```text
+backlog groom "{title}" --section "Root-Cause Analysis" --content "**Method**: 5-whys
+**Classification**: defect
+
+#### Evidence Chain
+
+{evidence chain from /find-cause}
+
+**Root Cause**: {single actionable statement}
+**Scenario Target**: {what scenario exposed this} -> {what should improve}"
+```
+
+**For `recurring-pattern` classification**: perform a frequency search to measure recurrence.
+
+```bash
+uv run .claude/skills/backlog/scripts/backlog.py list --format json --status resolved
+```
+
+Filter resolved items by keywords related to this defect class, count matches, and write the 6 Sigma measurement section:
+
+```text
+backlog groom "{title}" --section "Root-Cause Analysis" --content "**Method**: 6-sigma
+**Classification**: recurring-pattern
+
+#### Measurement
+
+- **Frequency**: {N occurrences in {time period or batch}}
+- **Common factors**: {what the occurrences share}
+- **Affected scope**: {what parts of the system are impacted}
+
+#### Analysis
+
+- **Root cause pattern**: {why this class of defect recurs}
+- **Missing guardrail**: {what gate or instruction should prevent this}
+
+#### Improvement
+
+- **Proposed guardrail**: {specific instruction, gate, or check to add}
+- **Verification**: {how to confirm the guardrail works}"
+```
+
+**Note**: If the human has already identified the recurrence pattern, skip the search and use the human's assessment.
+
+### Step 8: Spawn Groomer Agents
 
 **IMPORTANT**: You MUST use the `Task` tool with `subagent_type: "backlog-item-groomer"` for grooming. Do NOT groom inline — always delegate to the specialized agent.
 
@@ -166,7 +251,7 @@ Pass the RT-ICA summary and fact-check summary to the groomer alongside item det
 Agent(
   description: "Groom backlog item",
   subagent_type: "backlog-item-groomer",
-  prompt: "Groom this backlog item. Output groomed content in the standard template format (see .claude/docs/backlog-item-groomed-schema.md). Output only the groomed body (no ## Groomed header).\n\nItem title: {item title}\nItem description: {item description}\nItem source: {item source}\nItem priority: {item priority}\nItem file path: {item file path}\n\nRT-ICA Assessment:\n{rt-ica summary}\n\nFact-Check Verdicts:\n{fact-check summary}\n\nAdditional context from conversation:\n{any relevant user messages or discussion context}",
+  prompt: "Groom this backlog item. Output groomed content in the standard template format (see .claude/docs/backlog-item-groomed-schema.md). Output only the groomed body (no ## Groomed header). The groomer agent does NOT perform classification or root-cause analysis — it receives these as inputs and incorporates them into groomed output.\n\nItem title: {item title}\nItem description: {item description}\nItem source: {item source}\nItem priority: {item priority}\nItem file path: {item file path}\n\nRT-ICA Assessment:\n{rt-ica summary}\n\nFact-Check Verdicts:\n{fact-check summary}\n\nIssue Classification:\n{classification section from Step 6}\n\nRoot-Cause Analysis:\n{evidence chain from Step 7, or 'N/A - not applicable for this issue type'}\n\nAdditional context from conversation:\n{any relevant user messages or discussion context}",
   model: "haiku"
 )
 ```
@@ -177,14 +262,14 @@ Agent(
 Agent(
   description: "Groom backlog item",
   subagent_type: "backlog-item-groomer",
-  prompt: "Groom this backlog item. Output groomed content in the standard template format (see .claude/docs/backlog-item-groomed-schema.md). Output only the groomed body (no ## Groomed header).\n\nItem title: {item title}\nItem description: {item description}\nItem file path: {item file path}\n\nRT-ICA Assessment:\n{rt-ica summary}\n\nFact-Check Verdicts:\n{fact-check summary}",
+  prompt: "Groom this backlog item. Output groomed content in the standard template format (see .claude/docs/backlog-item-groomed-schema.md). Output only the groomed body (no ## Groomed header). The groomer agent does NOT perform classification or root-cause analysis — it receives these as inputs and incorporates them into groomed output.\n\nItem title: {item title}\nItem description: {item description}\nItem file path: {item file path}\n\nRT-ICA Assessment:\n{rt-ica summary}\n\nFact-Check Verdicts:\n{fact-check summary}\n\nIssue Classification:\n{classification section from Step 6}\n\nRoot-Cause Analysis:\n{evidence chain from Step 7, or 'N/A - not applicable for this issue type'}",
   model: "haiku"
 )
 ```
 
 The `backlog-item-groomer` agent discovers related skills, agents, prior work, and dependency graphs. It performs its own research within the codebase. Pass it file paths (not file contents) so it can verify independently.
 
-### Step 7: Write Groomed Content to Item Files
+### Step 9: Write Groomed Content to Item Files
 
 For each item, write groomed content into the per-item file via the backlog script.
 
@@ -211,7 +296,7 @@ backlog groom "{item title}" --section "Fact-Check" --content "{fact-check summa
 # After Step 5 (RT-ICA)
 backlog groom "{item title}" --section "RT-ICA" --content "{rt-ica summary}"
 
-# After Step 6 (groomer output) — full groomed body or subsections
+# After Step 8 (groomer output) — full groomed body or subsections
 backlog groom "{item title}" --section "Reproducibility" --content "{reproducibility section}"
 # ... or for full groomed body:
 backlog groom "{item title}" --groomed-content "{full groomed body}"
@@ -227,7 +312,7 @@ backlog groom "{item title}" --groomed-file {path}
 backlog groom "{item title}" < {groomed_file}
 ```
 
-**Valid section names** — top-level: `Fact-Check`, `RT-ICA`. Groomed subsections: `Reproducibility`, `Priority`, `Impact`, `Scope`, `Output / Evidence`, `Dependencies`, `Research`, `Skills`, `Agents`, `Prior Work`, `Files`, `Decision`.
+**Valid section names** — top-level: `Fact-Check`, `RT-ICA`. Groomed subsections: `Reproducibility`, `Priority`, `Impact`, `Scope`, `Output / Evidence`, `Dependencies`, `Research`, `Skills`, `Agents`, `Prior Work`, `Files`, `Decision`, `Issue Classification`, `Root-Cause Analysis`.
 
 The backlog script updates `.claude/backlog/{priority}-{slug}.md` with merged sections, sets `groomed` in frontmatter, and syncs to the GitHub issue when the item has one.
 
@@ -278,3 +363,6 @@ Per-item groomed content lives in each item file; this session file holds only m
 - Groomed content written via `backlog groom` (prefer `--section`/`--content` incremental updates; `--groomed-content` or stdin for full body)
 - When item has GitHub issue, groomed content synced to issue body
 - Bulk session summary optionally saved to `.claude/grooming-sessions/{date}.md` when grooming multiple items
+- Issue classification assigned for each item (Step 6)
+- Root-cause analysis performed for `defect` and `recurring-pattern` items (Step 7)
+- Classification and analysis passed to groomer agent as context (Step 8)

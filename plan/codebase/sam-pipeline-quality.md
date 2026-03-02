@@ -225,8 +225,10 @@ Skills use numbered `### Step N:` headings for workflow steps. Steps are execute
 ### Step 3: Extract Item Details
 ### Step 4: Fact-Check Item Claims
 ### Step 5: RT-ICA Assessment Per Item
-### Step 6: Spawn Groomer Agents
-### Step 7: Write Groomed Content to Item Files
+### Step 6: Issue Classification
+### Step 7: Root-Cause Analysis (Conditional)
+### Step 8: Spawn Groomer Agents
+### Step 9: Write Groomed Content to Item Files
 ```
 
 **Source:** `.claude/skills/groom-backlog-item/SKILL.md:23-187`
