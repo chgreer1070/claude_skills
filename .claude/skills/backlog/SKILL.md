@@ -31,7 +31,7 @@ Create a new backlog item and optionally a GitHub issue.
 | `create_issue` | `bool` | `True` | Create a GitHub issue for this item |
 | `force` | `bool` | `False` | Skip fuzzy duplicate check |
 
-Returns `{file_path, title, priority, issue?, messages, warnings}`.
+Returns `{filepath, filename, title, priority, issue_num?, messages, warnings}`.
 
 Note — `research_first` has no MCP equivalent. Embed research questions in `description`.
 
@@ -153,7 +153,7 @@ One-off maintenance operation.
 |-----------|------|---------|-------------|
 | `dry_run` | `bool` | `False` | Preview changes without modifying files |
 
-Returns `{normalized, messages, warnings}`.
+Returns `{updated, dry_run?, messages, warnings}`.
 
 ### `backlog_pull`
 
