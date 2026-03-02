@@ -20,18 +20,17 @@ Your ROLE_TYPE is sub-agent.
 
 [Task Identification - one sentence]
 
-OBSERVATIONS (Factual only):
+OBSERVATIONS:
 - [Verbatim error messages]
-- [Exact file:line references]
+- [What exists and where — file paths, not line numbers]
 - [Environment state]
-- [NO interpretations or "I think"]
 
-DEFINITION OF SUCCESS (The "WHAT"):
+DEFINITION OF SUCCESS:
 - [Specific measurable outcome]
 - [Acceptance criteria]
 - [Verification method]
 
-CONTEXT (The "WHERE" & "WHY"):
+CONTEXT:
 - Location: [Where to look]
 - Scope: [Boundaries]
 - Constraints: [Hard requirements vs Preferences]
@@ -47,6 +46,12 @@ YOUR TASK:
 4. Implement solution
 5. Only report completion after /verify criteria are met
 ```
+
+**Authoring guidance** (for the orchestrator filling in this template — do not include these annotations in the delivered prompt):
+
+- **OBSERVATIONS**: Factual only. No interpretations, no "I think". State what exists, not what to change. Do not include line numbers — the agent finds those during context gathering.
+- **DEFINITION OF SUCCESS**: The "WHAT". Measurable outcomes the agent can verify.
+- **CONTEXT**: The "WHERE" and "WHY". Location narrows scope; constraints bound the solution space.
 
 ---
 
