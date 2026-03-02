@@ -97,6 +97,20 @@ Dispatch based on `$0` (the first argument word) before executing any step:
    mcp__backlog__backlog_list(with_status=true)
    ```
 
+   **If this call fails with "No such tool available" or any tool-not-found error, STOP immediately and report:**
+
+   ```text
+   PROCESS ERROR — cannot proceed
+
+   Task requested:  Interactive backlog browser
+   Action taken:    mcp__backlog__backlog_list(with_status=true)
+   Error received:  [exact error text from the failed call]
+   Missing component: backlog MCP server (tools: mcp__backlog__backlog_list, mcp__backlog__backlog_view, etc.)
+   Required action: Ensure the backlog MCP server is running and registered in your Claude Code MCP configuration before invoking this skill.
+   ```
+
+   Do NOT fall back to reading `.claude/backlog/` files directly. Do NOT delegate to the Explore agent to parse local files. The local files are a cache — they may be stale, incomplete, or missing entries that exist only in GitHub. Presenting them as the authoritative list without stating the MCP failure misleads the user.
+
    Parse the JSON output. Each entry has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
 
 2. **Groomed** = item has `groomed: true` in JSON, or `## Groomed` section in its per-item file (`.claude/backlog/{priority}-{slug}.md`). Read the item file; if groomed sections present, use them.

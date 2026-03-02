@@ -21,7 +21,7 @@ The orchestrator's role:
 
 Structure delegation to enable agents to follow the scientific method:
 
-1. **Observation** — Provide factual observations, not interpretations
+1. **Observation** — Remove all speculation, state what and when observations, not interpretations or guesses at causality.
 2. **Hypothesis** — Let agent form their own hypothesis
 3. **Prediction** — Let agent make testable predictions
 4. **Experimentation** — Let agent design and execute tests
@@ -32,29 +32,42 @@ Structure delegation to enable agents to follow the scientific method:
 
 ## Orchestrator Role Boundaries
 
+
 ```mermaid
 flowchart TD
-    Start([Orchestrator receives task]) --> Q1{What does the orchestrator do?}
-    Q1 --> R1[Route context and observations to agents]
-    Q1 --> R2[Define measurable success criteria]
-    Q1 --> R3[Enable comprehensive agent discovery]
-    Q1 --> NEVER[NEVER pre-gather data agents will collect]
-    Q1 --> NEVER2[NEVER prescribe HOW agents implement]
-    R1 & R2 & R3 --> Delegate([Delegate via Agent tool])
-    NEVER & NEVER2 --> Delegate
+    Start(["Orchestrator receives task"]) --> Classify{"Does this action<br>gather data the agent<br>will collect itself?"}
+
+    Classify -->|"No — orchestrator action"| subDo
+    Classify -->|"Yes — pre-gathering"| subNo
+
+    subgraph subDo["DO — orchestrator responsibilities"]
+        R1["Route context and observations<br>already in scope to agents"]
+        R2["Define measurable success criteria<br>for what DONE looks like"]
+        R3["Enable comprehensive agent discovery<br>by providing world-building context"]
+    end
+
+    subgraph subNo["DO NOT — prohibited actions"]
+        N1["Pre-gather data agents<br>will collect themselves"]
+        N2["Prescribe HOW agents<br>should implement"]
+    end
+
+    subDo --> Delegate(["Delegate via Agent tool"])
+    subNo --> Rewrite(["Rewrite prompt to remove pre-gathering<br>or prescription before delegating"])
 ```
 
 ## Pre-Delegation Verification Checklist
 
 Before delegating any task, verify the delegation includes:
 
-**Observations without assumptions:**
+1. Observations without speculation on causality.
 
-- Raw error messages verbatim (not paraphrased)
-- Observed file:line references already in your context
-- Command outputs already received during your work
-- Factual language — "observed", "measured", "reported"
-- No "I think", "probably", "likely", "seems"
+Here are different examples of how you can share observations:
+- You can say 'When <action>, I observed <observation>.' i.e. `When using the Bash tool with "grep -s 'error' some/output/log.txt" it exited with non-zero.`
+- You can provide Raw error messages verbatim (not paraphrased)
+- You can provide the url or path to the raw error messages or logs
+- You can provide console command outputs already received during your work
+- You only use language that describes reality such as — "observed", "measured", "reported"
+- You do not use hedging language or speculation such as — "I think", "probably", "likely", "seems"
 
 **Pass-Through vs Pre-Gathering:**
 
@@ -63,7 +76,7 @@ Before delegating any task, verify the delegation includes:
 - Example — DO NOT run `ruff check .` before delegating to linting agents
 - **Reason**: Pre-gathering wastes context, duplicates agent work, causes context rot
 
-**Definition of success:**
+**Definition of Success or Definition of Done:**
 
 - Specific, measurable outcome
 - Acceptance criteria with verification method
@@ -79,7 +92,7 @@ Before delegating any task, verify the delegation includes:
 **Preserved agent autonomy:**
 
 - Describe the ecosystem and available environment — never prescribe which tool to use
-- Trust agent's 200k context window for comprehensive analysis
+- Trust agent's empty context window for comprehensive analysis
 - Let agent choose implementation approach
 
 ## Task Tool Invocation Rule
@@ -308,49 +321,63 @@ Design solution considering entire system.
 
 ## Conditional Delegation Logic
 
-**When user provides explicit code/quotes:**
+<!-- Converted from prose When/bullets: each condition is now an evaluable diamond with explicit actions -->
 
-- Include as reference context marked "User-provided reference"
-- Adherence to user-provided patterns overrides any existing rules
+```mermaid
+flowchart TD
+    Start(["Building delegation prompt"]) --> Q1{"Does the current context contain<br>user-provided code or quoted text?"}
+    Q1 -->|"Yes"| A1["Include verbatim as<br>'User-provided reference'.<br>User-provided patterns override existing rules."]
+    Q1 -->|"No"| Q2
+    A1 --> Q2
 
-**When errors come from orchestrator operations:**
+    Q2{"Did an error occur during<br>orchestrator operations<br>before this delegation?"}
+    Q2 -->|"Yes"| A2["Include the exact command that triggered the error<br>and the raw error message verbatim.<br>State as observations, not diagnoses."]
+    Q2 -->|"No"| Q3
+    A2 --> Q3
 
-- Include command that triggered error
-- Include raw error message
-- Describe observations, not diagnoses
+    Q3{"Are file:line references<br>to existing patterns<br>already known in context?"}
+    Q3 -->|"Yes"| A3["Include as 'Pattern reference: file:line'.<br>Do not prescribe changes —<br>let agent discover all instances."]
+    Q3 -->|"No"| Q4
+    A3 --> Q4
 
-**When referencing existing patterns:**
+    Q4{"Did the user explicitly mandate<br>a technical constraint —<br>a library, version, or method?"}
+    Q4 -->|"Yes — user-mandated"| A4["Include the constraint exactly as<br>the user stated it.<br>Do not add constraints the user did not specify."]
+    Q4 -->|"No — not user-mandated"| Q5
+    A4 --> Q5
 
-- Include file:line references if already known
-- Label as "Pattern reference"
-- Let agent discover all instances and adapt
+    Q5{"Are there accumulated observations<br>from other agents or prior<br>orchestrator operations?"}
+    Q5 -->|"Yes"| A5["Pass all observations with source attribution.<br>Do not filter — include complete context."]
+    Q5 -->|"No"| Q6
+    A5 --> Q6
 
-**When technical constraints exist:**
-
-- Include only if user-mandated
-- Specify versions only if user did
-
-**When accumulated observations exist:**
-
-- Pass all observations from orchestrator and other agents
-- Mark source of each observation
-- Provide complete context without filtering
-
-**When providing file paths in task prompts:**
-
-- Use `@filepath` to include file contents in prompt context
-- Use `@dirpath/` for directory listings only
-- `@filepath` syntax auto-includes CLAUDE.md from file's directory hierarchy
+    Q6{"Will the prompt reference<br>one or more file paths?"}
+    Q6 -->|"Yes — referencing a file"| A6["Use '@filepath' to include file contents.<br>Use '@dirpath/' for directory listings only.<br>'@filepath' auto-includes CLAUDE.md hierarchy."]
+    Q6 -->|"No — no file references needed"| Done
+    A6 --> Done(["Delegation prompt complete"])
+```
 
 ## Orchestrator Workflow Requirements
 
-Before delegating tasks, the orchestrator must:
+<!-- Converted from numbered list: added entry gate, evaluable conditions, and explicit terminal states -->
 
-1. **Identify ambiguity** in user requests and offer interpretations for clarification
-2. **Define success criteria** based on task interpretation
-3. **Offer definition-of-success to user** for approval or modification before proceeding
-4. **Include definition-of-success** in sub-agent Task prompts
-5. **Verify task completion** using `mcp__sequential_thinking__sequentialthinking` before marking complete
+```mermaid
+flowchart TD
+    Start(["Orchestrator receives user request"]) --> A["Identify every ambiguous term<br>in the user request"]
+    A --> Q1{"Does the request contain<br>ambiguous terms or multiple<br>valid interpretations?"}
+    Q1 -->|"Yes — ambiguity found"| Clarify["Offer interpretations to user<br>and ask which to proceed with"]
+    Clarify --> DefineSuccess
+    Q1 -->|"No — request is unambiguous"| DefineSuccess
+    DefineSuccess["Define success criteria —<br>specific measurable outcome,<br>acceptance criteria, verification method"]
+    DefineSuccess --> Q2{"Has the user confirmed<br>the definition of success?"}
+    Q2 -->|"No — not confirmed"| Offer["Present definition of success<br>to user for approval or modification"]
+    Offer --> Q2
+    Q2 -->|"Yes — confirmed"| Include["Include confirmed definition of success<br>in sub-agent Task prompt"]
+    Include --> Delegate(["Delegate task via Agent tool"])
+    Delegate --> Q3{"Did sub-agent report<br>all acceptance criteria met<br>with evidence?"}
+    Q3 -->|"No — criteria not met"| Follow["Follow up with agent<br>or re-delegate with clarification"]
+    Follow --> Q3
+    Q3 -->|"Yes — all criteria met with evidence"| Done(["Mark task complete"])
+```
 
 ### Sub-Agent Context Constraints
 
@@ -364,18 +391,20 @@ Orchestrator must include all necessary context in the initial Task prompt. Inst
 
 ## Specialized Agent Assignments
 
+<!-- Converted from flowchart: replaced \n in labels with <br>, made diamond question evaluable -->
+
 ```mermaid
 flowchart TD
-    Agent([Task type]) --> Q1{Domain?}
-    Q1 -->|Context gathering| CG[context-gathering agent\nPreserves orchestrator context window]
-    Q1 -->|Python code| PY[python-cli-architect agent\nAll Python implementation]
-    Q1 -->|Python tests| PT[python-pytest-architect agent]
-    Q1 -->|Python review| PR[python-code-reviewer agent]
-    Q1 -->|Bash scripts| BS[bash-script-developer agent]
-    Q1 -->|Bash review| BR[bash-script-auditor agent]
-    Q1 -->|User-facing docs| DD[documentation-expert agent\nNOT for LLM-facing docs]
-    Q1 -->|System architecture| SA[system-architect agent]
-    Q1 -->|Linting issues| LR[linting-root-cause-resolver agent]
+    Agent(["Task to delegate"]) --> Q1{"What is the primary<br>work domain of the task?"}
+    Q1 -->|"Context gathering —<br>research without implementation"| CG["context-gathering agent<br>Preserves orchestrator context window"]
+    Q1 -->|"Python code —<br>implementation or refactoring"| PY["python-cli-architect agent<br>All Python implementation"]
+    Q1 -->|"Python tests —<br>test authoring or fixing"| PT["python-pytest-architect agent"]
+    Q1 -->|"Python review —<br>audit or quality check"| PR["python-code-reviewer agent"]
+    Q1 -->|"Bash scripts —<br>shell scripting"| BS["bash-script-developer agent"]
+    Q1 -->|"Bash review —<br>shell script audit"| BR["bash-script-auditor agent"]
+    Q1 -->|"User-facing docs —<br>NOT for LLM-facing docs"| DD["documentation-expert agent"]
+    Q1 -->|"System architecture —<br>design decisions"| SA["system-architect agent"]
+    Q1 -->|"Linting issues —<br>root cause resolution"| LR["linting-root-cause-resolver agent"]
 ```
 
 **Critical Rule**: The orchestrator must task sub-agents with ALL code changes, including the smallest edits, and any context gathering or research.
@@ -384,27 +413,35 @@ flowchart TD
 
 ## Verification Questions for Orchestrators
 
-Before sending delegation, verify:
+<!-- Converted from prose checklist with embedded yes/no labels: each question is now an evaluable diamond -->
 
-1. **Am I enabling full discovery?**
-   - Described ecosystem and available environment → ENABLING
-   - Specified which tool to use → LIMITING (rewrite to describe ecosystem)
+```mermaid
+flowchart TD
+    Start(["Delegation prompt drafted"]) --> Q1{"Does the prompt describe the ecosystem<br>and available environment,<br>or does it name a specific tool to use?"}
+    Q1 -->|"Names specific tool — LIMITING"| Fix1["Rewrite — describe ecosystem<br>and available resources instead"]
+    Q1 -->|"Describes ecosystem — ENABLING"| Q2
+    Fix1 --> Q2
 
-2. **Am I stating facts or assumptions?**
-   - "Fails with error X" → FACT
-   - "Probably fails because..." → ASSUMPTION (rewrite as observations)
+    Q2{"Does the prompt use hedging language<br>— 'probably', 'likely', 'I think', 'seems'?"}
+    Q2 -->|"Yes — hedging language present — ASSUMPTION"| Fix2["Rewrite — replace assumptions<br>with observed facts: file:line,<br>exit code, exact error text"]
+    Q2 -->|"No — all statements are observations — FACT"| Q3
+    Fix2 --> Q3
 
-3. **Am I defining WHAT or prescribing HOW?**
-   - "Must successfully build the package" → WHAT
-   - "Run 'npm build' to build" → HOW (rewrite as success criteria)
+    Q3{"Does the prompt name a specific implementation<br>method, or does it state a success outcome?"}
+    Q3 -->|"Names implementation method — HOW"| Fix3["Rewrite — replace implementation<br>instruction with measurable success criteria"]
+    Q3 -->|"States measurable outcome — WHAT"| Q4
+    Fix3 --> Q4
 
-4. **Am I sharing observations or solutions?**
-   - "Line 42 contains 'import X'" → OBSERVATION
-   - "Change line 42 to 'import Y'" → SOLUTION (rewrite as problem statement)
+    Q4{"Does the prompt prescribe specific changes<br>to make, or report observed locations?"}
+    Q4 -->|"Prescribes changes — SOLUTION"| Fix4["Rewrite — state observed problem<br>location; let agent determine change"]
+    Q4 -->|"Reports observations — OBSERVATION"| Q5
+    Fix4 --> Q5
 
-5. **Am I trusting agent expertise?**
-   - "Investigate using available resources" → TRUST
-   - "Check this specific documentation" → DISTRUST (rewrite to list available docs)
+    Q5{"Does the prompt constrain agent<br>to specific docs, or make all<br>available resources visible?"}
+    Q5 -->|"Constrains to specific docs — DISTRUST"| Fix5["Rewrite — list available resources;<br>let agent select which to consult"]
+    Q5 -->|"Lists available resources — TRUST"| Send(["Send delegation"])
+    Fix5 --> Send
+```
 
 ## Pattern Expansion — From Single Instance to Systemic Fix
 
@@ -418,14 +455,20 @@ When user identifies a code smell, bug, or anti-pattern at a specific location, 
 
 **Reason**: Users point out single instances as examples. Treating them as systemic saves user effort and improves codebase quality comprehensively.
 
+<!-- Converted from flowchart: diamond now states the evaluable question about observable signal properties -->
+
 ```mermaid
 flowchart TD
-    Signal[User Signal] --> Q{Signal type?}
-    Q -->|Code smell at specific location| A1[Audit file/module for all instances]
-    Q -->|Missing error handling| A2[Audit all similar operations]
-    Q -->|Duplicated validation| A3[Find all validation logic instances]
-    Q -->|Inefficient loop pattern| A4[Search for all matching patterns]
-    Q -->|Missing type hint| A5[Audit all function signatures]
+    Signal(["User message received"]) --> Q{"Does the user message name<br>a specific code location<br>and did they say 'only this one'?"}
+    Q -->|"Yes — user explicitly scoped to one instance"| Single["Treat as single-instance fix —<br>do not expand scope"]
+    Q -->|"No — location named without explicit scope limit"| QType{"What category is the<br>named problem?"}
+    QType -->|"Code smell at a specific location"| A1["Delegate — audit entire file/module<br>for all instances of this pattern"]
+    QType -->|"Missing error handling on one operation"| A2["Delegate — audit all similar<br>operations in the codebase"]
+    QType -->|"Duplicated validation logic"| A3["Delegate — find and eliminate<br>all duplication instances systemically"]
+    QType -->|"Inefficient loop or iteration pattern"| A4["Delegate — search codebase<br>for all matching patterns"]
+    QType -->|"Missing type hint on one function"| A5["Delegate — audit all<br>function signatures in scope"]
+    Single --> Done(["Delegation scoped"])
+    A1 & A2 & A3 & A4 & A5 --> Done
 ```
 
 **Include symptom locations (observational):**
@@ -652,32 +695,30 @@ This formula:
 
 ## Final Verification Before Delegation
 
-Before delegating, verify the prompt:
+<!-- Converted from 4-item numbered list with sub-bullets: each check is now an evaluable diamond in sequence -->
 
-1. **Uses observational language:**
-   - Replace "I think" → "Observed: [fact]"
-   - Replace "probably" → "Command X produces Y"
-   - Replace "likely" → "Pattern seen at [locations]"
-   - Replace "seems" → "Measured behavior: [data]"
-   - Replace "should work" → "Success criteria: [outcome]"
+```mermaid
+flowchart TD
+    Start(["Delegation prompt drafted"]) --> C1{"Does the prompt contain<br>hedging language — 'I think',<br>'probably', 'likely', 'seems',<br>'should work'?"}
+    C1 -->|"Yes — hedging language present"| Fix1["Replace each hedging phrase:<br>'I think X' → 'Observed: X'<br>'probably Y' → 'Command Z produces Y'<br>'likely W' → 'Pattern seen at [locations]'<br>'should work' → 'Success criteria: [outcome]'"]
+    Fix1 --> C2
+    C1 -->|"No — language is observational"| C2
 
-2. **Includes empowering context:**
-   - Raw observations
-   - Success criteria
-   - Available resources/tools
-   - File locations
-   - User constraints only
+    C2{"Does the prompt include<br>all of: raw observations,<br>success criteria, available resources,<br>file locations, and user constraints only?"}
+    C2 -->|"No — one or more missing"| Fix2["Add the missing elements.<br>Remove any constraints not stated by the user."]
+    Fix2 --> C3
+    C2 -->|"Yes — all present"| C3
 
-3. **Preserves agent autonomy:**
-   - Describes ecosystem instead of prescribing tools
-   - Defines WHAT instead of HOW
-   - States problems instead of solutions
-   - Enables discovery instead of limiting scope
+    C3{"Does the prompt prescribe a tool,<br>name an implementation method,<br>state a solution, or narrow the agent's scope?"}
+    C3 -->|"Yes — prescription present"| Fix3["Rewrite the prescriptive parts:<br>Describe ecosystem instead of naming tool.<br>Define WHAT outcome instead of HOW to implement.<br>State the problem instead of the solution."]
+    Fix3 --> C4
+    C3 -->|"No — autonomy preserved"| C4
 
-4. **References documents efficiently:**
-   - Uses `@filepath` for detailed documents instead of transcribing
-   - Provides high-level context and success criteria in prompt
-   - Example: Reference `@.claude/smells/{report-name}.md` instead of copying file:line details
+    C4{"Does the prompt transcribe<br>file contents inline instead of<br>referencing the file path?"}
+    C4 -->|"Yes — contents transcribed inline"| Fix4["Replace inline content with '@filepath'<br>to include file contents via reference.<br>Use '@dirpath/' for directory listings only."]
+    Fix4 --> Send
+    C4 -->|"No — using path references"| Send(["Send delegation"])
+```
 
 ---
 
@@ -685,21 +726,28 @@ Before delegating, verify the prompt:
 
 Agent teams coordinate multiple Claude Code instances with inter-agent messaging and shared task lists. Use subagents when workers report back independently. Use agent teams when workers must share findings, challenge each other, and coordinate among themselves.
 
-### When Agent Teams Apply
+### When Agent Teams Apply vs When Subagents Suffice
 
-A workflow is a candidate for agent teams when ALL of these are true:
+<!-- Converted from two prose bullet lists: combined into a single decision flowchart with evaluable gates -->
 
-1. 3+ independent units of work (enough parallelism to justify coordination overhead)
-2. Units benefit from cross-communication (findings from one inform or challenge another)
-3. No shared file mutations (two teammates editing the same file leads to overwrites)
-4. Result is a synthesis, not a concatenation (value comes from combining or reconciling findings)
+```mermaid
+flowchart TD
+    Start(["Workflow with multiple units of work"]) --> Q1{"Are there 3 or more<br>independent units of work?"}
+    Q1 -->|"No — fewer than 3 units"| UseSubagents(["Use subagents —<br>coordination overhead not justified"])
+    Q1 -->|"Yes — 3 or more units"| Q2
 
-### When Subagents Suffice
+    Q2{"Do the units need to share findings<br>with each other during execution<br>— not just report back to orchestrator?"}
+    Q2 -->|"No — units are fully independent"| UseSubagents
+    Q2 -->|"Yes — findings from one inform or challenge another"| Q3
 
-- Work is sequential (each step depends on the previous)
-- Only 1-2 sources or targets
-- Units are fully independent with no cross-communication need
-- Result is just collecting N outputs with no synthesis step
+    Q3{"Will any two units<br>write to the same file?"}
+    Q3 -->|"Yes — shared file mutations"| UseSubagents
+    Q3 -->|"No — no shared file mutations"| Q4
+
+    Q4{"Is the final result a synthesis<br>or reconciliation of findings,<br>not just a collection?"}
+    Q4 -->|"No — result is concatenation only"| UseSubagents
+    Q4 -->|"Yes — value comes from combining findings"| UseTeams(["Use agent teams —<br>all four criteria satisfied"])
+```
 
 See [Agent Teams Documentation](./../../../plugin-creator/skills/claude-skills-overview-2026/resources/agent-teams.md) for complete criteria, architecture, and usage patterns.
 

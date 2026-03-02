@@ -25,8 +25,7 @@
           }
         ]
       }
-    ],
-    "PreToolUse": []
+    ]
   },
   "enabledPlugins": {
     "hallucination-detector@jamie-bitflight-skills": true,

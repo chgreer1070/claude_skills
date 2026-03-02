@@ -143,6 +143,30 @@ Agent(agent="general-purpose", prompt="PITFALLS: Fetch official docs, identify c
 
 ---
 
+## Plugin Runtime Mechanics
+
+**Read this before any plugin work begins.**
+
+A `CLAUDE.md` inside a plugin directory informs Claude when it is doing development work inside that plugin directory. It has zero effect on plugin users because Claude runs in the user's project directory, not the plugin source directory.
+
+```mermaid
+flowchart TD
+    Q{Where do I put this content?} --> A1{Who needs to see it?}
+    A1 -->|"Plugin users — enforce behavior,<br>deliver instructions, add tools"| Runtime["Put it in runtime-injected components"]
+    A1 -->|"Claude during development — understand design,<br>conventions, architecture"| Dev["Put it in CLAUDE.md<br>inside the plugin directory"]
+
+    Runtime --> R1["SKILL.md — loaded when skill is invoked<br>Instructions land in the user's session"]
+    Runtime --> R2["hooks.json — runs on session/tool events<br>Enforces rules without user action"]
+    Runtime --> R3["Agent definitions — loaded when agent is used<br>Delivers specialized instructions"]
+    Runtime --> R4["MCP servers — tools available throughout session"]
+
+    Dev --> D1["Loaded only when Claude is working in<br>the plugin directory during a development session<br>Invisible to plugin consumers"]
+```
+
+**The mistake this corrects:** Placing behavioral rules in `rules/CLAUDE.md` or `CLAUDE.md` inside a plugin directory does not enforce those rules on users. To enforce behavior on users, the content must be in SKILL.md or delivered via a hook.
+
+---
+
 ## Phase 0: RT-ICA Prerequisite Check
 
 <prerequisite_checkpoint>

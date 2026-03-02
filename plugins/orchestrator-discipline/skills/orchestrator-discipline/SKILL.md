@@ -17,7 +17,9 @@ Two hooks fire automatically on every tool call:
 
 **Diagnostic Command Gate** — fires on `Bash` calls matching diagnostic commands (`ty check`, `ruff check`, `mypy`, `pytest`, `eslint`, `cargo check`, etc.). Reminds the orchestrator to delegate the command to an Explore agent instead.
 
-Both hooks are **non-blocking** — they inject `additionalContext` to surface the decision, not prevent it. Legitimate reads (reading a file you are about to edit) proceed normally.
+**Bash Built-In Tool Enforcement Gate** — fires on `Bash` calls that should use built-in Claude Code tools (`Read`, `Grep`, `Glob`). **Blocking** — exits 2 to prevent the command and redirect to the correct tool. SOURCE: 28 violations in session e3280e97 (2026-03-02).
+
+The Source File Read Warning and Diagnostic Command Gate are **non-blocking** — they inject `additionalContext` to surface the decision, not prevent it. The Bash Built-In Tool Enforcement Gate is **blocking** — it exits 2 to structurally enforce the rule.
 
 ### 2. Rules (Behavioral Constraints)
 
@@ -26,6 +28,8 @@ The `rules/CLAUDE.md` file is loaded into every session and provides:
 - Read permission/prohibition lists with a falsifiable test
 - Delegation constraint definitions (no exemption categories)
 - Investigation escalation anti-pattern documentation
+- Tool use denial protocol (HARD STOP — no workarounds)
+- Bash built-in tool enforcement with kaizen evidence
 - Diagnostic command delegation patterns
 - Epistemic identity scoping for orchestrator role
 
@@ -69,6 +73,22 @@ flowchart TD
 - Test paths: directories named `test/`, `tests/`, `spec/`, `__tests__/`, or files matching `test_*.py`
 
 **Does NOT trigger on**: `.md`, `.txt`, plan files, backlog items, CLAUDE.md, skill definitions
+
+### Bash Built-In Tool Enforcement Gate
+
+**Triggers on**: `Bash` where command matches Bash-equivalent file operations:
+
+- `grep` at start of command (standalone, not pipeline)
+- `find ... -name` patterns
+- `ls` at start of command (not `ls -la`)
+- `cat file.ext` (file reads, not stdin)
+- `head -N`, `tail -N file.ext`, `sed -n 'N,Mp'`
+
+**Blocking**: YES — exits with code 2 to prevent the command and provide redirect message.
+
+**Does NOT trigger on**: Pipeline uses (`git log | grep`, `uv run | head`), `cat /dev/stdin`, `cat -`, `ls -la`
+
+SOURCE: 28 violations observed in session e3280e97 (2026-03-02); installed as structural enforcement.
 
 ### Diagnostic Command Gate
 
