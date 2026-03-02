@@ -5,6 +5,8 @@ raw/
 __pycache__
 .venv
 node_modules/
+# Runtime context files (created by /start-task, cleaned by SubagentStop hook)
+.claude/context/
 # cc-sessions runtime files
 sessions/sessions-state.json
 sessions/package.json
