@@ -3,6 +3,7 @@ name = "claude_skills"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
+    "backlog-core",
     "fastmcp>=3.0.2",
     "pygithub>=2.8.1",
     "skill-seekers>=3.0.0",
@@ -50,6 +51,9 @@ dev = [
     "uv-sort>=0.7.0",
     "vadersentiment>=3.3.2",
 ]
+
+[tool.uv.sources]
+backlog-core = { workspace = true }
 
 [tool.uv.workspace]
 members = [".claude/skills/backlog"]
