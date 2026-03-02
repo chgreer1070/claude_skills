@@ -361,8 +361,10 @@ flowchart TD
 
     FactCheck["Step 4: Fact-Check Claims<br>Spawn @fact-checker agents<br>WebFetch/WebSearch/gh only<br>No training data recall"]
     FactCheck --> RTICA["Step 5: RT-ICA Assessment<br>Integrate fact-check verdicts<br>REFUTED → MISSING<br>INCONCLUSIVE → DERIVABLE"]
-    RTICA --> Groomer["Step 6: Spawn @backlog-item-groomer<br>subagent_type=backlog-item-groomer<br>Pass: file paths, RT-ICA, fact-check<br>Max 5 concurrent per wave"]
-    Groomer --> Write["Step 7: Write groomed content<br>backlog groom title --section X --content Y<br>Incremental updates per section<br>Syncs to GitHub Issue"]
+    RTICA --> Classify["Step 6: Issue Classification<br>Classify issue type from 5-type taxonomy<br>Set analysis-method per classification"]
+    Classify --> RCA["Step 7: Root-Cause Analysis<br>Conditional on classification type<br>5-whys for defect, 6-sigma for recurring-pattern"]
+    RCA --> Groomer["Step 8: Spawn @backlog-item-groomer<br>subagent_type=backlog-item-groomer<br>Pass: file paths, RT-ICA, fact-check, classification<br>Max 5 concurrent per wave"]
+    Groomer --> Write["Step 9: Write groomed content<br>backlog groom title --section X --content Y<br>Incremental updates per section<br>Syncs to GitHub Issue"]
     Write --> Done(["Groomed — item ready for planning"])
     SkipToApply --> Done
 ```

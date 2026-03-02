@@ -60,7 +60,7 @@ stateDiagram-v2
 ### `needs-grooming` → `groomed`
 
 ```
-Trigger:    /groom-backlog-item completes Step 7 with all 7 sections present
+Trigger:    /groom-backlog-item completes Step 9 with all 7 sections present
 Precondition: RT-ICA Decision is APPROVED; all 7 canonical sections written
 Action:     backlog script sets metadata.groomed = today's date
              GitHub label: remove status:needs-grooming, add status:groomed
@@ -73,7 +73,7 @@ Trigger:    /groom-backlog-item Step 5 — RT-ICA Decision is BLOCKED
 Precondition: One or more MISSING conditions that cannot be resolved without user input
 Action:     RT-ICA section written to item file (Step 5b — must happen before blocker reported)
              GitHub label: remove status:needs-grooming, add status:blocked
-             Report BLOCKED items in Step 8 status table
+             Report BLOCKED items in completion output
 ```
 
 ### `blocked` → `needs-grooming`

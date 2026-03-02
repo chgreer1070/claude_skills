@@ -58,7 +58,7 @@ Missing: {list or "None"}
 
 ## Groomed
 
-<!-- Written by: backlog-item-groomer agent (spawned by groom-backlog-item Step 6) -->
+<!-- Written by: backlog-item-groomer agent (spawned by groom-backlog-item Step 8) -->
 
 ### Reproducibility
 

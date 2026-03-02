@@ -182,7 +182,48 @@ For each feature, test boundaries:
 - Does error surface to user (not silent)?
 - Is error message helpful (not stack trace)?
 
-## Step 7: Determine Overall Status
+## Step 7: Proportional Response Check
+
+Read the task file YAML frontmatter for `issue-classification`, `scenario-target`, and `analysis-method`.
+
+If `issue-classification` is absent: **SKIP** this step. Existing verification is sufficient.
+
+If present, apply the classification-specific check:
+
+```mermaid
+flowchart TD
+    Start(["Begin Proportional Response Check"]) --> Q1{"issue-classification<br>present in task metadata?"}
+    Q1 -->|"absent"| Skip["SKIP -- existing checks sufficient"]
+    Q1 -->|"present"| Q2{"Classification type?"}
+    Q2 -->|"procedural"| P["Sweep completeness<br>Codebase search returns zero<br>remaining instances of the pattern"]
+    Q2 -->|"defect"| D["Root cause addressed<br>Fix targets root cause from evidence chain<br>+ scenario in scenario-target succeeds"]
+    Q2 -->|"recurring-pattern"| R["Guardrail added<br>New gate/check exists AND<br>covers the defect CLASS not just instance"]
+    Q2 -->|"missing-guardrail"| M["Gate gap filled<br>Guardrail triggers in the<br>exposing scenario"]
+    Q2 -->|"unbounded-design"| U["Design implemented<br>Matches chosen direction +<br>trade-offs documented"]
+    P --> Result
+    D --> Result
+    R --> Result
+    M --> Result
+    U --> Result
+    Skip --> Done(["Proportional Check complete"])
+    Result["Record: VERIFIED / FAILED / SKIPPED"] --> Done
+```
+
+**Status output for this step:**
+
+- **VERIFIED**: Proportional check passed for the classification type
+- **FAILED**: Response did not match the issue type requirements
+- **SKIPPED**: No `issue-classification` present — existing checks apply
+
+```text
+EVIDENCE:
+- Issue Classification: [type or "not classified"]
+- Scenario Target: [scenario -> improvement, or "not specified"]
+- Proportional Check: [PASS/FAIL/N/A]
+- Check detail: [what was verified and result]
+```
+
+## Step 8: Determine Overall Status
 
 **Status: VERIFIED**
 
@@ -190,12 +231,14 @@ For each feature, test boundaries:
 - All artifacts pass all three levels
 - All key links connected
 - No blocking issues
+- Proportional response check is VERIFIED or SKIPPED
 
 **Status: GAPS_FOUND**
 
 - One or more truths FAILED
 - OR one or more artifacts MISSING/STUB
 - OR one or more key links broken
+- OR proportional response check is FAILED — include specific failure description
 
 </verification_process>
 
@@ -319,7 +362,15 @@ def on_complete(result):
 - [ ] All key links verified
 - [ ] Edge cases tested
 
-### Status Determination (Step 7)
+### Proportional Response (Step 7)
+
+- [ ] issue-classification read from task metadata
+- [ ] Proportional checks applied per classification type
+- [ ] Root-cause vs symptom fix verified (for defect type)
+- [ ] Guardrail added and pattern-scoped (for recurring-pattern type)
+- [ ] Results included in overall status determination
+
+### Status Determination (Step 8)
 
 - [ ] Overall status determined (VERIFIED or GAPS_FOUND)
 - [ ] Gaps structured with specific fixes if found

@@ -26,7 +26,7 @@ Launch `code-reviewer` with the task file path.
 
 ## Phase 2: Feature Verification (goal-backward)
 
-Launch `feature-verifier` with the task file path.
+Launch `feature-verifier` with the task file path. If the task file contains `issue-classification` metadata, include it in the agent prompt so the feature verifier can apply proportional verification checks.
 
 ---
 

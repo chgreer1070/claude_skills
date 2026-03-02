@@ -99,7 +99,40 @@ EVIDENCE:
 
 ---
 
-## 5. Honesty Check
+## 5. Proportional Response Check
+
+If the task has an `issue-classification` field in its metadata, verify the response matched the issue type. If no `issue-classification` is present, mark N/A and proceed.
+
+```mermaid
+flowchart TD
+    Start(["Begin Proportional Response Check"]) --> Q1{"issue-classification<br>present in task metadata?"}
+    Q1 -->|"absent"| Skip["SKIP -- existing WORKS/FIXED/Quality Gates apply"]
+    Q1 -->|"present"| Q2{"Classification type?"}
+    Q2 -->|"procedural"| P["Sweep completeness<br>Codebase search returns zero<br>remaining instances of the pattern"]
+    Q2 -->|"defect"| D["Root cause addressed<br>Fix targets root cause from evidence chain<br>+ scenario in scenario-target succeeds"]
+    Q2 -->|"recurring-pattern"| R["Guardrail added<br>New gate/check exists AND<br>covers the defect CLASS not just instance"]
+    Q2 -->|"missing-guardrail"| M["Gate gap filled<br>Guardrail triggers in the<br>exposing scenario"]
+    Q2 -->|"unbounded-design"| U["Design implemented<br>Matches chosen direction +<br>trade-offs documented"]
+    P --> Evidence
+    D --> Evidence
+    R --> Evidence
+    M --> Evidence
+    U --> Evidence
+    Skip --> Done(["Proportional Check complete"])
+    Evidence["Record proportional evidence"] --> Done
+```
+
+```text
+EVIDENCE:
+- Issue Classification: [type or "not classified"]
+- Scenario Target: [scenario -> improvement, or "not specified"]
+- Proportional Check: [PASS/FAIL/N/A]
+- Check detail: [what was verified and result]
+```
+
+---
+
+## 6. Honesty Check
 
 - [ ] Did I verify the _full scope_?
 - [ ] Am I distinguishing between "should work" and "verified to work"?
@@ -120,6 +153,8 @@ EVIDENCE:
 | "Data synced"   | Read the destination after writing — not the tool output |
 | "Docs accurate" | Cross-reference with source                              |
 | "Config valid"  | Validation command output                                |
+| "Root cause fixed" | Evidence chain from grooming + fix addresses root cause claim |
+| "Guardrail added"  | New gate/check exists and triggers in exposing scenario       |
 
 ---
 
@@ -130,6 +165,7 @@ VERIFICATION SUMMARY:
 Task Type: [FIX/FEATURE/REFACTOR/DOCS/INVESTIGATION]
 Works Check: [PASS/FAIL] - Evidence: ___
 Fixed Check: [PASS/FAIL/N/A] - Evidence: ___
+Proportional Check: [PASS/FAIL/N/A] - Evidence: ___
 Quality Gates: [PASS/FAIL] - Evidence: ___
 Honesty Check: [PASS/FAIL]
 
