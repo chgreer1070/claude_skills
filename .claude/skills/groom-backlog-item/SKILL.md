@@ -22,7 +22,7 @@ Orchestrate autonomous backlog refinement: verify claims, clarify scope, estimat
 
 ### Step 1: Parse Arguments and Load Backlog
 
-Run `uv run .claude/skills/backlog/scripts/backlog.py list --format json` and filter the results by argument type above.
+Invoke `mcp__backlog__backlog_list()` and filter the results by argument type above.
 
 ### Step 2: Validity Check (Pre-Groom Gate)
 
@@ -61,14 +61,14 @@ Before fact-checking or grooming, verify each item is still valid work:
 
    - **Close the local backlog item**:
 
-     ```bash
-     uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --reason "Already implemented via PR #{pr} / commit {sha}" -R Jamie-BitFlight/claude_skills
+     ```text
+     mcp__backlog__backlog_close(selector="{title}", reason="Already implemented via PR #{pr} / commit {sha}")
      ```
 
    - Report to the user and skip grooming for that item.
 
    If no evidence is found, proceed — the work is still needed.
-3. **Is this local file stale?** — If the item has a GitHub issue (`metadata.issue` or index link `#N`), fetch the issue state via `uv run .claude/skills/backlog/scripts/backlog.py view "#{N}" --format json -R Jamie-BitFlight/claude_skills` and check the `state` field. If the issue is **closed**, the local file is a stale remnant of work already done. Do **not** groom. Instead, run the **Completed Issue Discovery** procedure:
+3. **Is this local file stale?** — If the item has a GitHub issue (`metadata.issue` or index link `#N`), fetch the issue state via `mcp__backlog__backlog_view(selector="#{N}")` and check the `state` field. If the issue is **closed**, the local file is a stale remnant of work already done. Do **not** groom. Instead, run the **Completed Issue Discovery** procedure:
 
    a. **Search for commits referencing the issue**:
 
@@ -90,8 +90,8 @@ Before fact-checking or grooming, verify each item is still valid work:
 
    d. **Close the local backlog item with evidence**:
 
-      ```bash
-      uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --reason "Completed via PR #{pr} / commit {sha}" -R Jamie-BitFlight/claude_skills
+      ```text
+      mcp__backlog__backlog_close(selector="{title}", reason="Completed via PR #{pr} / commit {sha}")
       ```
 
    If no commits or PRs reference the issue, report: "Issue #{N} is closed but no commit/PR evidence found. Recommend manual review." and skip grooming.
@@ -212,8 +212,8 @@ backlog groom "{title}" --section "Root-Cause Analysis" --content "**Method**: 5
 
 **For `recurring-pattern` classification**: perform a frequency search to measure recurrence.
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py list --format json --status resolved
+```text
+mcp__backlog__backlog_list(status="resolved")
 ```
 
 Filter resolved items by keywords related to this defect class, count matches, and write the 6 Sigma measurement section:
@@ -276,14 +276,13 @@ For each item, write groomed content into the per-item file via the backlog scri
 **Before calling any backlog subcommand**: verify the signature with `--help` if you have not already used that subcommand in this session. `sync`, `update`, and `groom` accept different arguments — calling `sync` with a title argument will fail silently with a usage error. The safe pattern:
 
 ```text
-# Verify before using an unfamiliar subcommand
-uv run .claude/skills/backlog/scripts/backlog.py <subcommand> --help
+# Verify the available parameters for an unfamiliar tool by checking the MCP tool list or backlog skill reference
 
 # Then call with the correct signature
-uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --section "..." --content "..."
+mcp__backlog__backlog_update(selector="{title}", section="...", content="...")
 ```
 
-`sync` creates GitHub issues for items missing them — it takes no title argument. `update` and `groom` both accept a title selector as the first positional argument. Prefer incremental updates so sections (Fact-Check, RT-ICA, groomed subsections) are appended as they become available. GitHub is canonical: when the item has an issue, the backlog script syncs groomed content to the GitHub issue body.
+`mcp__backlog__backlog_sync` creates GitHub issues for items missing them — it takes no title argument. `mcp__backlog__backlog_update` and `mcp__backlog__backlog_groom` both accept a `selector` parameter. Prefer incremental updates so sections (Fact-Check, RT-ICA, groomed subsections) are appended as they become available. GitHub is canonical: when the item has an issue, the backlog MCP server syncs groomed content to the GitHub issue body.
 
 **Preferred: incremental section updates**
 

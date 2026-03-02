@@ -6,10 +6,10 @@ Detailed procedure content for Steps 0, Q, P, R, and the feature request templat
 
 ## Step 0: Interactive Browser
 
-1. Invoke the backlog script to list items with status:
+1. Invoke the backlog MCP tool to list items with status:
 
-   ```bash
-   uv run .claude/skills/backlog/scripts/backlog.py list --format json --with-status -R Jamie-BitFlight/claude_skills
+   ```text
+   mcp__backlog__backlog_list(with_status=true)
    ```
 
    Parse the JSON output. Each entry has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
@@ -113,8 +113,8 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 5. Invoke backlog script to record the plan:
 
-   ```bash
-   uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --plan "plan/quick/{slug}.md" -R Jamie-BitFlight/claude_skills
+   ```text
+   mcp__backlog__backlog_update(selector="{title}", plan="plan/quick/{slug}.md")
    ```
 
 6. Report:

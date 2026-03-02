@@ -91,10 +91,10 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 
 <step0_procedure>
 
-1. Invoke the backlog script to list items with status:
+1. Invoke the backlog MCP tool to list items with status:
 
-   ```bash
-   uv run .claude/skills/backlog/scripts/backlog.py list --format json --with-status -R Jamie-BitFlight/claude_skills
+   ```text
+   mcp__backlog__backlog_list(with_status=true)
    ```
 
    Parse the JSON output. Each entry has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
@@ -149,10 +149,10 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 
 <issue_first_procedure>
 
-Fetch the issue using the backlog script (accepts URLs, `#N`, and bare numbers):
+Fetch the issue using the backlog MCP tool (accepts URLs, `#N`, and bare numbers):
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py view "{$0}" --format json -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_view(selector="{$0}")
 ```
 
 If the command fails (exit code non-zero), report and stop.
@@ -171,7 +171,7 @@ When an issue is found to be already closed (state `closed`), gather evidence of
 2. **Search for merged PRs referencing the issue** (use backlog script):
 
    ```bash
-   uv run .claude/skills/backlog/scripts/backlog.py view "#{N}" --format json -R Jamie-BitFlight/claude_skills | jq '.body' | grep -i "Fixes #N\|Closes #N"
+   git log --oneline --all -20 --grep="Fixes #N\|Closes #N"
    ```
 
    Or via git history:
@@ -196,8 +196,8 @@ When an issue is found to be already closed (state `closed`), gather evidence of
 
    Then invoke:
 
-   ```bash
-   uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --reason "Completed via PR #{pr} / commit {sha}" -R Jamie-BitFlight/claude_skills
+   ```text
+   mcp__backlog__backlog_close(selector="{title}", reason="Completed via PR #{pr} / commit {sha}")
    ```
 
    If no commits or PRs reference the issue:
@@ -235,9 +235,9 @@ Proceed to Step 2.7 (Set In-Progress Label) with the assembled item, then contin
 
 ### Step 1: Find the Backlog Item
 
-Run `uv run .claude/skills/backlog/scripts/backlog.py list --format json` and search the `title` field of each entry for a case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
+Call `mcp__backlog__backlog_list()` and search the `title` field of each entry for a case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
 
-**AUTO_MODE with no title (`$1` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items with `status: done` or `status: resolved` in their JSON entry (these are filtered out by `backlog.py list` already).
+**AUTO_MODE with no title (`$1` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items with `status: done` or `status: resolved` in their JSON entry (these are filtered out by `backlog_list` already).
 
 - **Zero matches (interactive mode):** report "No backlog item found matching: {title}" and offer to create one via `/create-backlog-item`.
 - **Zero matches (AUTO_MODE):** log `[AUTO] No item found — invoking create-backlog-item --auto {title}`, invoke `Skill(skill: "create-backlog-item", args: "--auto {title}")`, then re-run Step 1.
@@ -248,7 +248,7 @@ Record the priority section (P0, P1, P2, Ideas) the item belongs to.
 
 ### Step 2: Extract Item Fields
 
-From the matched item's JSON output (via `backlog.py list --format json`), extract `title`, `plan`, `section` (priority), `issue`, `groomed`, and `file_path`. For detailed fields not in JSON (`description`, `source`, `added`, `research_first`, `suggested_location`), read the per-item file at `file_path`.
+From the matched item's JSON output (via `mcp__backlog__backlog_list()`), extract `title`, `plan`, `section` (priority), `issue`, `groomed`, and `file_path`. For detailed fields not in JSON (`description`, `source`, `added`, `research_first`, `suggested_location`), read the per-item file at `file_path`.
 
 - `title` — the `title` field from JSON (required)
 - `source` — not in JSON; read from per-item file frontmatter `metadata.source` if needed (optional)
@@ -288,16 +288,16 @@ Before planning work, verify the described feature/fix hasn't already been imple
 
 If evidence shows the work is already done:
 
-- **Close the backlog item and GitHub issue** (use backlog script):
+- **Close the backlog item and GitHub issue**:
 
-  ```bash
-  uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --reason "Already implemented via commit {sha}" -R Jamie-BitFlight/claude_skills
+  ```text
+  mcp__backlog__backlog_close(selector="{title}", reason="Already implemented via commit {sha}")
   ```
 
 - **Close the local backlog item**:
 
-  ```bash
-  uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --reason "Already implemented via PR #{pr} / commit {sha}" -R Jamie-BitFlight/claude_skills
+  ```text
+  mcp__backlog__backlog_close(selector="{title}", reason="Already implemented via PR #{pr} / commit {sha}")
   ```
 
 - Report to the user and stop — no planning needed.
@@ -412,10 +412,10 @@ Glob(pattern="plan/tasks-*-{slug}*")
 
 Where `{slug}` is the item title lowercased with spaces replaced by hyphens.
 
-Invoke the backlog script to add the Plan:
+Invoke the backlog MCP tool to add the Plan:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --plan "plan/tasks-{N}-{slug}.md" -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_update(selector="{title}", plan="plan/tasks-{N}-{slug}.md")
 ```
 
 If the item has `**Issue**: #N`, record it in the plan file header comment and include `Fixes #N` in any commit message produced during implementation.
@@ -431,7 +431,7 @@ Backlog item "{title}" is now planned.
 - To close when done: /work-backlog-item close {slug}
 ```
 
-**Do NOT close the GitHub Issue directly.** Include `Fixes #N` in commit messages and the PR body — the issue auto-closes when the PR merges. Only use `/work-backlog-item close` for post-merge verification and local bookkeeping. Never invoke `backlog.py close` before the PR has merged.
+**Do NOT close the GitHub Issue directly.** Include `Fixes #N` in commit messages and the PR body — the issue auto-closes when the PR merges. Only use `/work-backlog-item close` for post-merge verification and local bookkeeping. Never invoke `mcp__backlog__backlog_close` before the PR has merged.
 
 ### Step 9: Verify and Close
 
@@ -446,10 +446,10 @@ Extract the operation from `$0` and the argument from `$1`+:
 
 #### 9a: Find Item
 
-Use the backlog script to find the item (accepts URLs, `#N`, bare numbers, and title substrings):
+Use the backlog MCP tool to find the item (accepts URLs, `#N`, bare numbers, and title substrings):
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py view "{$1}" --format json -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_view(selector="{$1}")
 ```
 
 - If the command fails (exit code non-zero), report and stop.
@@ -468,8 +468,8 @@ If operation is `resolve`:
 1. Use `AskUserQuestion` to ask: "Why is this item no longer applicable?" (free text)
 2. Invoke the backlog script:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py resolve "{title or #N}" --reason "{reason}" -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_resolve(selector="{title or #N}", reason="{reason}")
 ```
 
 3. Report the script output to the user.
@@ -561,8 +561,8 @@ git log --oneline -20 --grep="Fixes #N\|Closes #N"
 
 - **Open PR found**: The PR body contains `Fixes #N` — the issue will auto-close on merge. Update only the local per-item file status (do NOT close the GitHub Issue):
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --status in-progress -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_update(selector="{title}", status="in-progress")
 ```
 
 Report:
@@ -577,16 +577,16 @@ Then stop.
 
 #### 9f: Invoke backlog close
 
-7. Invoke the backlog script (script updates per-item file and closes GitHub issue):
+7. Invoke the backlog MCP tool (updates per-item file and closes GitHub issue):
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --plan "{plan file path}" --checklist-pass -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_close(selector="{title}", plan="{plan file path}", checklist_pass=true)
 ```
 
 If invoked as `close #N`, use `#N` as the selector:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py close "#{N}" --plan "{plan file path}" --checklist-pass -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_close(selector="#{N}", plan="{plan file path}", checklist_pass=true)
 ```
 
 8. Report the script output to the user.
@@ -637,7 +637,7 @@ This convention ensures issues are automatically closed on merge without manual 
 
 After Step 2, check for `**Issue**: #N` field in the matched item.
 
-- Found: verify issue state with `uv run .claude/skills/backlog/scripts/backlog.py view "#{issue_number}" --format json -R Jamie-BitFlight/claude_skills`
+- Found: verify issue state with `mcp__backlog__backlog_view(selector="#{issue_number}")`
 - Not found + P0/P1: offer to create a GitHub Issue (proceed to Step 2.5a)
 - Not found + P2/Ideas: skip silently
 
@@ -645,18 +645,18 @@ After Step 2, check for `**Issue**: #N` field in the matched item.
 
 Invoke the backlog script:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --create-issue -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_update(selector="{title}", create_issue=true)
 ```
 
-The script creates the issue and writes `issue: '#N'` back to the per-item file frontmatter.
+The tool creates the issue and writes `issue: '#N'` back to the per-item file frontmatter.
 
 ### Step 2.7: Set In-Progress Label
 
-If the item has `**Issue**: #N`, invoke the backlog script:
+If the item has `**Issue**: #N`, invoke the backlog MCP tool:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --status in-progress -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_update(selector="{title}", status="in-progress")
 ```
 
 If the item is in a milestone with other issues, also run `milestone start` for the milestone:
@@ -671,10 +671,7 @@ uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
 **Trigger:** `$0` is `setup-github`. Initializes label taxonomy, first milestone, and GitHub Project (use backlog script where available).
 
 ```bash
-# Use backlog script for automation (preferred)
-uv run .claude/skills/backlog/scripts/backlog.py setup --repo Jamie-BitFlight/claude_skills
-
-# Or use github_project_setup.py directly if needed
+# Use github_project_setup.py directly if needed
 uv run .claude/skills/gh/scripts/github_project_setup.py labels --repo Jamie-BitFlight/claude_skills
 uv run .claude/skills/gh/scripts/github_project_setup.py milestone create \
   --title "v1.0 — Skills Foundation" --due 2026-03-31 --repo Jamie-BitFlight/claude_skills
@@ -684,7 +681,7 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 
 ## Error Handling
 
-- `#N` / URL / bare number not found: report and list available items with `uv run .claude/skills/backlog/scripts/backlog.py list -R Jamie-BitFlight/claude_skills`
+- `#N` / URL / bare number not found: report and list available items with `mcp__backlog__backlog_list()`
 - `#N` already closed: run Completed Issue Discovery (search commits/PRs for evidence, close local item with reference, or ask user)
 - `close #N` / `resolve #N` — issue not found: report and stop
 - Item not found: list available items from `.claude/backlog/` per-item files with their priority sections
@@ -700,7 +697,7 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 - `close` on already-completed item: report closed date, do not re-close
 - `resolve` with no reason provided: block until user provides reason (reason is required evidence)
 - GitHub issue creation fails: report error, continue with per-item-file-only workflow; do not block SAM planning
-- `GITHUB_TOKEN` not set: backlog.py reports error; local-only operations still work
+- `GITHUB_TOKEN` not set: MCP server reports error; local-only operations still work
 - Label not found during issue create: `github_project_setup.py` creates it automatically
 - Milestone not found: skip milestone assignment; do not fail
 

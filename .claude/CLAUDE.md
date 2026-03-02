@@ -211,15 +211,13 @@ Skip only for trivial single-step requests (typos, one-off questions, immediate 
 
 <backlog_operations>
 
-**Single interface**: Use `.claude/skills/backlog/scripts/backlog.py` for all backlog and GitHub issue CRUD. GitHub Issues are the source of truth; `.claude/backlog/` per-item files are the local cache. Editing per-item files directly or using `gh` for issue CRUD bypasses sync logic — use the script.
+**Single interface**: Use the `backlog` MCP server for all backlog and GitHub issue CRUD. The MCP server exposes 10 tools: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, `backlog_close`, `backlog_resolve`, `backlog_update`, `backlog_groom`, `backlog_normalize`, `backlog_pull`.
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py add|list|sync|close|resolve|update ...
-```
+**Fallback (CI/GitHub Actions only)**: The CLI (`uv run .claude/skills/backlog/scripts/backlog.py`) is retained for shell environments without an MCP client. GitHub Actions `backlog-sync.yml` stays CLI — no change required there.
 
-Skills `create-backlog-item` and `work-backlog-item` invoke this script. See `.claude/skills/backlog/SKILL.md`.
+Skills `create-backlog-item` and `work-backlog-item` use MCP tools. See `.claude/skills/backlog/SKILL.md`.
 
-**Capability gap fallback**: If the script lacks the needed operation (missing subcommand, flag, or behavior), invoke `/backlog-tools-administrator` to close the gap. Do not bypass the script with direct `Write`/`Edit` on `.claude/backlog/*.md` files or direct `gh issue edit` commands.
+**Capability gap fallback**: If an MCP tool lacks a needed operation, invoke `/backlog-tools-administrator` to extend both the CLI and MCP server simultaneously.
 
 </backlog_operations>
 

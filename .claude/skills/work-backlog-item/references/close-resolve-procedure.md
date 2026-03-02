@@ -32,8 +32,8 @@ If operation is `resolve`:
 1. Use `AskUserQuestion` to ask: "Why is this item no longer applicable?" (free text)
 2. Invoke the backlog script:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py resolve "{title or #N}" --reason "{reason}" -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_resolve(selector="{title or #N}", reason="{reason}")
 ```
 
 3. Report the script output to the user.
@@ -123,16 +123,16 @@ Then stop.
 
 ## 9e: Invoke backlog close
 
-8. Invoke the backlog script (script updates per-item file and closes GitHub issue):
+8. Invoke the backlog MCP tool (updates per-item file and closes GitHub issue):
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --plan "{plan file path}" --checklist-pass -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_close(selector="{title}", plan="{plan file path}", checklist_pass=true)
 ```
 
 If invoked as `close #N`, use `#N` as the selector:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py close "#{N}" --plan "{plan file path}" --checklist-pass -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_close(selector="#{N}", plan="{plan file path}", checklist_pass=true)
 ```
 
 9. Report the script output to the user.

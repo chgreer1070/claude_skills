@@ -34,7 +34,7 @@ If milestone not found or closed, report and stop.
 
 ### Step 2: Load Backlog Items
 
-Run `uv run .claude/skills/backlog/scripts/backlog.py list --format json`. Filter items by section (P0, P1, P2, Ideas). Apply any title filter.
+Invoke `mcp__backlog__backlog_list()`. Filter items by section (P0, P1, P2, Ideas). Apply any title filter.
 
 For each item determine status:
 

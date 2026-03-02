@@ -108,13 +108,13 @@ Output: "data validation"
 
 Search the backlog for an existing item matching these keywords:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py list --format json -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_list()
 ```
 
 Parse the JSON output. For each item, check if the derived title keywords appear (case-insensitive substring match) in the item's `title` field.
 
-**Error handling**: If `backlog.py list` fails, log the error, skip the search, and proceed to Step 3 as "no match found" for each follow-up. If the follow-up filename does not match the expected `tasks-{N}-{slug}-followup-{k}.md` pattern, log a warning and use the full filename (without directory prefix and `.md` extension) as the derived title.
+**Error handling**: If `mcp__backlog__backlog_list` fails, log the error, skip the search, and proceed to Step 3 as "no match found" for each follow-up. If the follow-up filename does not match the expected `tasks-{N}-{slug}-followup-{k}.md` pattern, log a warning and use the full filename (without directory prefix and `.md` extension) as the derived title.
 
 ### Step 3: Link or Create Backlog Item
 
@@ -122,8 +122,8 @@ Based on Step 2 result, for each follow-up file:
 
 **Match found** -- attach follow-up as plan to the existing backlog item:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py update "{matched_item_title}" --plan "{followup_file_path}" -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_update(selector="{matched_item_title}", plan="{followup_file_path}")
 ```
 
 **No match found** -- create a new backlog item, then attach the follow-up as plan:
@@ -134,14 +134,14 @@ Skill(skill: "create-backlog-item", args: "--auto {derived_title}")
 
 Then attach the follow-up file as the plan:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py update "{derived_title}" --plan "{followup_file_path}" -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_update(selector="{derived_title}", plan="{followup_file_path}")
 ```
 
 **Error handling**:
 
-- If `backlog.py update` exits code 1 after creation (title mismatch between what `create-backlog-item` produced and what `update` searched for): re-run `backlog.py list --format json`, find the most recently added item, and retry the `update` with its exact title. If the retry also fails, log the error and continue to the next follow-up file.
-- If `create-backlog-item --auto` logs `[AUTO] STOP -- duplicate detected`: treat this as "match found" -- run `backlog.py update` on the duplicate's title to attach the plan.
+- If `mcp__backlog__backlog_update` fails after creation (title mismatch between what `create-backlog-item` produced and what `update` searched for): re-invoke `mcp__backlog__backlog_list()`, find the most recently added item, and retry `mcp__backlog__backlog_update` with its exact title. If the retry also fails, log the error and continue to the next follow-up file.
+- If `create-backlog-item --auto` logs `[AUTO] STOP -- duplicate detected`: treat this as "match found" -- run `mcp__backlog__backlog_update` on the duplicate's title to attach the plan.
 
 ### Step 4: Recursion Gate
 

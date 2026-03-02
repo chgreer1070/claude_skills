@@ -32,18 +32,18 @@ After extracting item fields (Step 2), check for an existing linked issue:
 
 Invoke the backlog script:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --create-issue -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_update(selector="{title}", create_issue=true)
 ```
 
-The script creates the issue and writes `issue: '#N'` back to the per-item file frontmatter.
+The tool creates the issue and writes `issue: '#N'` back to the per-item file frontmatter.
 
 ## Step 2.7: Set In-Progress Label
 
-Invoke the backlog script:
+Invoke the backlog MCP tool:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py update "{title}" --status in-progress -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_update(selector="{title}", status="in-progress")
 ```
 
 If the item is in a milestone with other issues, also run `milestone start`:
@@ -57,8 +57,8 @@ uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
 
 Invoke the backlog script (updates per-item file + gh issue close):
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --plan "{plan path}" --checklist-pass -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_close(selector="{title}", plan="{plan path}", checklist_pass=true)
 ```
 
 The script updates the per-item file status and closes the GitHub issue.

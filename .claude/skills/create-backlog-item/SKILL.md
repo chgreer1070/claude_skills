@@ -159,14 +159,8 @@ If research questions were embedded in the description (lines starting with `?` 
 
 Build the command. Base:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py add \
-  --title "{title}" \
-  --priority "{priority}" \
-  --description "{description}" \
-  --source "{source}" \
-  --type "{type}" \
-  -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_add(title="{title}", priority="{priority}", description="{description}", source="{source}", type="{type}")
 ```
 
 - If research_first is non-empty: append `--research-first "{research_first}"`
