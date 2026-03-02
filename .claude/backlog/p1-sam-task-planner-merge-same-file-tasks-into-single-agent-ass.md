@@ -5,9 +5,9 @@ metadata:
   topic: sam-task-planner-merge-same-file-tasks-into-single-agent-ass
   source: 'Session observation — #128 validate-agent-browser Tasks 2.1-2.3 all edited SKILL.md'
   added: '2026-02-28'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#316'
   last_synced: '2026-03-01T00:33:40Z'
   groomed: '2026-03-01'
