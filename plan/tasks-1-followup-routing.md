@@ -453,7 +453,8 @@ Priority 1 (no dependencies, parallel):
 ---
 task: T1
 title: Replace Recursive Follow-up Handling section in complete-implementation/SKILL.md
-status: not-started
+status: in-progress
+started: 2026-03-02T12:00:00Z
 agent: general-purpose
 dependencies: []
 priority: 1
@@ -643,7 +644,8 @@ Return:
 ---
 task: T2
 title: Update Recursive Follow-up section and data flow diagram in local-workflow.md
-status: not-started
+status: in-progress
+started: 2026-03-02T12:00:00Z
 agent: general-purpose
 dependencies: []
 priority: 1
