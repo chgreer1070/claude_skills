@@ -9,7 +9,7 @@ Generated: 2026-03-01
 - **Name**: `backlog`
 - **Server file**: `.claude/skills/backlog/backlog_core/server.py`
 - **Transport**: STDIO (`mcp.run()`)
-- **Status**: Tests passing (55 tests), NOT yet registered in `.mcp.json`
+- **Status**: Tests passing (382 tests), registered in `.mcp.json` (lines 25-28)
 
 ## CLI → MCP Tool Mapping
 
@@ -68,11 +68,9 @@ uv run .claude/skills/backlog/scripts/backlog.py sync -R Jamie-BitFlight/claude_
 
 ---
 
-#### 4. `.claude/hooks/session-start-backlog.cjs`
+#### 4. `.claude/hooks/session-start-backlog.cjs` — FILE DOES NOT EXIST
 
-**Current**: Injects `backlog add` and `work-backlog-item` as context.
-
-**Action**: Update additionalContext to mention MCP tools.
+**Note**: This file does not exist in the repository. No action required.
 
 ---
 

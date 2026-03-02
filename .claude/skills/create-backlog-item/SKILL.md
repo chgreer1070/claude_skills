@@ -155,22 +155,29 @@ If research questions were embedded in the description (lines starting with `?` 
 **Research first**: {extracted questions}
 ```
 
-### Step 5: Create per-item file via backlog script
+### Step 5: Create per-item file via backlog MCP tool
 
-Build the command. Base:
+Call the `mcp__backlog__backlog_add` tool:
 
-```text
-mcp__backlog__backlog_add(title="{title}", priority="{priority}", description="{description}", source="{source}", type="{type}")
-```
+| Parameter | Value |
+|-----------|-------|
+| `title` | `"{title}"` |
+| `priority` | `"{priority}"` |
+| `description` | `"{description}"` |
+| `source` | `"{source}"` |
+| `type` | `"{type}"` |
+| `create_issue` | `true` if P0/P1 and user confirmed; `false` if P2/Ideas or user declined |
 
-- If research_first is non-empty: append `--research-first "{research_first}"`
+Check the returned dict for `error` key.
 
-**GitHub Issue creation:**
+**Note on `research_first`:** The `--research-first` CLI flag has no MCP equivalent. The `research_first` parameter does not exist on `backlog_add`. Embed research questions directly in the `description` parameter instead.
 
-- If priority is P0 or P1 and (guided/quick mode with user said Yes, or `--auto` with `--create-issue` passed): do NOT add `--no-create-issue` (script creates issue by default).
-- If priority is P2 or Idea: add `--no-create-issue`.
-- If priority is P0 or P1 and user said No (skip): add `--no-create-issue`.
-- If `$0` is `--auto` and user did not pass `--create-issue`: add `--no-create-issue`.
+**`create_issue` logic:**
+
+- P0 or P1 + (guided/quick mode with user said Yes, or `--auto` with `--create-issue` passed): `create_issue=true`
+- P2 or Idea: `create_issue=false`
+- P0 or P1 + user said No (skip): `create_issue=false`
+- `--auto` mode without `--create-issue` flag: `create_issue=false`
 
 ### Step 6: Confirm Write
 

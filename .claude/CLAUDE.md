@@ -212,13 +212,27 @@ Skip only for trivial single-step requests (typos, one-off questions, immediate 
 
 <backlog_operations>
 
-**Single interface**: Use the `backlog` MCP server for all backlog and GitHub issue CRUD. The MCP server exposes 10 tools: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, `backlog_close`, `backlog_resolve`, `backlog_update`, `backlog_groom`, `backlog_normalize`, `backlog_pull`.
+**Primary interface (MCP)**: Use `mcp__backlog__*` tools for all backlog and GitHub issue CRUD.
+GitHub Issues are the source of truth; `.claude/backlog/` per-item files are the local cache.
 
-**Fallback (CI/GitHub Actions only)**: The CLI (`uv run .claude/skills/backlog/scripts/backlog.py`) is retained for shell environments without an MCP client. GitHub Actions `backlog-sync.yml` stays CLI — no change required there.
+Available tools: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, `backlog_close`,
+`backlog_resolve`, `backlog_update`, `backlog_groom`, `backlog_normalize`, `backlog_pull`.
 
-Skills `create-backlog-item` and `work-backlog-item` use MCP tools. See `.claude/skills/backlog/SKILL.md`.
+All tools return a dict. Check for `error` key on failure. Success responses include `messages`
+and `warnings` lists.
 
-**Capability gap fallback**: If an MCP tool lacks a needed operation, invoke `/backlog-tools-administrator` to extend both the CLI and MCP server simultaneously.
+**CI fallback (CLI)**: GitHub Actions and environments without an MCP client use the CLI:
+
+```bash
+uv run .claude/skills/backlog/scripts/backlog.py add|list|sync|close|resolve|update ...
+```
+
+Do not edit `.claude/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic.
+
+Skills `/create-backlog-item` and `/work-backlog-item` invoke these tools. See `/backlog` skill.
+
+**Capability gap fallback**: If the MCP tools or CLI lack the needed operation, invoke
+`/backlog-tools-administrator` to close the gap.
 
 </backlog_operations>
 

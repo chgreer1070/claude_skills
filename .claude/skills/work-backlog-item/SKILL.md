@@ -91,11 +91,7 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 
 <step0_procedure>
 
-1. Invoke the backlog MCP tool to list items with status:
-
-   ```text
-   mcp__backlog__backlog_list(with_status=true)
-   ```
+1. Call the `mcp__backlog__backlog_list` tool with `with_status=true`.
 
    **If this call fails with "No such tool available" or any tool-not-found error, STOP immediately and report:**
 
@@ -111,7 +107,7 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 
    Do NOT fall back to reading `.claude/backlog/` files directly. Do NOT delegate to the Explore agent to parse local files. The local files are a cache — they may be stale, incomplete, or missing entries that exist only in GitHub. Presenting them as the authoritative list without stating the MCP failure misleads the user.
 
-   Parse the JSON output. Each entry has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
+   Parse the returned dict. Each entry in `items` has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
 
 2. **Groomed** = item has `groomed: true` in JSON, or `## Groomed` section in its per-item file (`.claude/backlog/{priority}-{slug}.md`). Read the item file; if groomed sections present, use them.
 
@@ -163,14 +159,12 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 
 <issue_first_procedure>
 
-Fetch the issue using the backlog MCP tool (accepts URLs, `#N`, and bare numbers):
+Fetch the issue using the `mcp__backlog__backlog_view` tool (accepts URLs, `#N`, and bare numbers):
 
-```text
-mcp__backlog__backlog_view(selector="{$0}")
-```
+Call the `mcp__backlog__backlog_view` tool with `selector="{$0}"`.
 
-If the command fails (exit code non-zero), report and stop.
-Parse the JSON output. If `state` is `closed`, run the **Completed Issue Discovery** procedure (see below) and stop.
+If the tool returns a dict with an `error` key, report and stop.
+Parse the returned dict. If `state` is `closed`, run the **Completed Issue Discovery** procedure (see below) and stop.
 
 #### Completed Issue Discovery
 
@@ -182,11 +176,9 @@ When an issue is found to be already closed (state `closed`), gather evidence of
    git log --oneline --all -20 --grep="#N"
    ```
 
-2. **Search for merged PRs referencing the issue** (use backlog script):
-
-   ```bash
-   git log --oneline --all -20 --grep="Fixes #N\|Closes #N"
-   ```
+2. **Search for merged PRs referencing the issue** — call the `mcp__backlog__backlog_view` tool with
+   `selector="#{N}"`, then check the `body` field of the returned dict for `"Fixes #N"` or
+   `"Closes #N"`.
 
    Or via git history:
    ```bash
@@ -208,11 +200,8 @@ When an issue is found to be already closed (state `closed`), gather evidence of
    Closing local backlog item with evidence.
    ```
 
-   Then invoke:
-
-   ```text
-   mcp__backlog__backlog_close(selector="{title}", reason="Completed via PR #{pr} / commit {sha}")
-   ```
+   Then call the `mcp__backlog__backlog_resolve` tool with `selector="{title}"` and
+   `reason="Completed via PR #{pr} / commit {sha}"`.
 
    If no commits or PRs reference the issue:
 
@@ -249,9 +238,9 @@ Proceed to Step 2.7 (Set In-Progress Label) with the assembled item, then contin
 
 ### Step 1: Find the Backlog Item
 
-Call `mcp__backlog__backlog_list()` and search the `title` field of each entry for a case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
+Call the `mcp__backlog__backlog_list` tool and search the `title` field of each entry in the returned dict for a case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
 
-**AUTO_MODE with no title (`$1` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items with `status: done` or `status: resolved` in their JSON entry (these are filtered out by `backlog_list` already).
+**AUTO_MODE with no title (`$1` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items with `status: done` or `status: resolved` in their entry (these are filtered out by `backlog_list` already).
 
 - **Zero matches (interactive mode):** report "No backlog item found matching: {title}" and offer to create one via `/create-backlog-item`.
 - **Zero matches (AUTO_MODE):** log `[AUTO] No item found — invoking create-backlog-item --auto {title}`, invoke `Skill(skill: "create-backlog-item", args: "--auto {title}")`, then re-run Step 1.
@@ -262,7 +251,7 @@ Record the priority section (P0, P1, P2, Ideas) the item belongs to.
 
 ### Step 2: Extract Item Fields
 
-From the matched item's JSON output (via `mcp__backlog__backlog_list()`), extract `title`, `plan`, `section` (priority), `issue`, `groomed`, and `file_path`. For detailed fields not in JSON (`description`, `source`, `added`, `research_first`, `suggested_location`), read the per-item file at `file_path`.
+From the matched item's entry in the `mcp__backlog__backlog_list` returned dict, extract `title`, `plan`, `section` (priority), `issue`, `groomed`, and `file_path`. For detailed fields not in the dict (`description`, `source`, `added`, `research_first`, `suggested_location`), read the per-item file at `file_path`.
 
 - `title` — the `title` field from JSON (required)
 - `source` — not in JSON; read from per-item file frontmatter `metadata.source` if needed (optional)
@@ -302,17 +291,11 @@ Before planning work, verify the described feature/fix hasn't already been imple
 
 If evidence shows the work is already done:
 
-- **Close the backlog item and GitHub issue**:
+- **Mark the item resolved** — call the `mcp__backlog__backlog_resolve` tool with
+  `selector="{title}"` and `reason="Already implemented via commit {sha}"`.
 
-  ```text
-  mcp__backlog__backlog_close(selector="{title}", reason="Already implemented via commit {sha}")
-  ```
-
-- **Close the local backlog item**:
-
-  ```text
-  mcp__backlog__backlog_close(selector="{title}", reason="Already implemented via PR #{pr} / commit {sha}")
-  ```
+- **If a PR is also found** — call the `mcp__backlog__backlog_resolve` tool with
+  `selector="{title}"` and `reason="Already implemented via PR #{pr} / commit {sha}"`.
 
 - Report to the user and stop — no planning needed.
 
@@ -426,11 +409,12 @@ Glob(pattern="plan/tasks-*-{slug}*")
 
 Where `{slug}` is the item title lowercased with spaces replaced by hyphens.
 
-Invoke the backlog MCP tool to add the Plan:
+Call the `mcp__backlog__backlog_update` tool to add the Plan:
 
-```text
-mcp__backlog__backlog_update(selector="{title}", plan="plan/tasks-{N}-{slug}.md")
-```
+| Parameter | Value |
+|-----------|-------|
+| `selector` | `"{title}"` |
+| `plan` | `"plan/tasks-{N}-{slug}.md"` |
 
 If the item has `**Issue**: #N`, record it in the plan file header comment and include `Fixes #N` in any commit message produced during implementation.
 

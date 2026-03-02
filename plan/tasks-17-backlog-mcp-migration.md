@@ -330,7 +330,8 @@ These files contain `backlog.py` references but are explicitly excluded from thi
 
 ## Task 1: Update CLAUDE.md Backlog Operations policy
 
-**Status**: NOT STARTED
+**Status**: 🔄 IN PROGRESS
+**Started**: 2026-03-02T00:00:00Z
 **Dependencies**: None
 **Priority**: 1
 **Complexity**: Low
@@ -363,7 +364,9 @@ Replace the `<backlog_operations>` section in `.claude/CLAUDE.md` (lines 210-224
 
 ## Task 2: Update cursor rules and migration map corrections
 
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
+**Started**: 2026-03-02T00:00:00Z
+**Completed**: 2026-03-02T00:00:00Z
 **Dependencies**: None
 **Priority**: 2
 **Complexity**: Low
@@ -400,7 +403,8 @@ Two independent small fixes:
 
 ## Task 3: Migrate work-backlog-item SKILL.md (19 invocations)
 
-**Status**: NOT STARTED
+**Status**: 🔄 IN PROGRESS
+**Started**: 2026-03-02T12:00:00Z
 **Dependencies**: Task 1
 **Priority**: 1
 **Complexity**: High
@@ -515,7 +519,8 @@ Replace 6 CLI invocations and apply two special changes:
 
 ## Task 6: Migrate create-backlog-item and group-items-to-milestone (2 invocations)
 
-**Status**: NOT STARTED
+**Status**: 🔄 IN PROGRESS
+**Started**: 2026-03-02T00:00:00Z
 **Dependencies**: Task 1
 **Priority**: 2
 **Complexity**: Low
