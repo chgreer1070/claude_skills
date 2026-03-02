@@ -8,11 +8,9 @@ user retries ``git commit``, prek reports::
 The conflict involves ``plugins/*/.claude-plugin/plugin.json`` files.
 
 Bug areas tested:
-1. JSON formatting conflict -- json.dump(indent=2) writes arrays vertically while prettier
-   collapses short arrays onto one line, producing different file content for the same data.
-2. Idempotency -- running the same update functions twice must produce identical output
+1. Idempotency -- running the same update functions twice must produce identical output
    without double-bumping versions.
-3. The version-comparison guard -- ``_version_already_bumped`` compares the working copy
+2. The version-comparison guard -- ``_version_already_bumped`` compares the working copy
    version against HEAD to skip bumping when a bump already occurred.
 
 Test isolation strategy:
@@ -26,12 +24,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import shutil
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-
-import pytest
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -54,11 +49,6 @@ else:
 # resolves them without needing the dynamic module's types at analysis time.
 _ComponentChangesDict = dict[str, list[dict[str, str]]]
 _MarketplaceChangesDict = dict[str, Any]
-
-_requires_prettier = pytest.mark.skipif(
-    shutil.which("npx") is None, reason="npx not available — prettier tests require Node.js tooling"
-)
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -105,134 +95,6 @@ def _changes_with_added_skill() -> _ComponentChangesDict:
         "deleted": [],
         "modified": [],
     }
-
-
-# ============================================================================
-# Area 1: JSON formatting conflict with prettier
-# ============================================================================
-
-
-class TestJsonFormattingConflict:
-    """Test that json.dump output differs from prettier-formatted JSON.
-
-    The pre-commit hook writes JSON with ``json.dump(data, f, indent=2)`` (line 305).
-    The prettier pre-commit hook also runs on JSON files, reformatting short arrays
-    onto a single line.  When both modify the same file in the same pre-commit pass,
-    the stash/restore cycle produces conflicts.
-
-    These tests verify the formatting mismatch exists and quantify it.
-    """
-
-    def test_json_dump_expands_short_arrays_vertically(self) -> None:
-        """Verify json.dump(indent=2) expands arrays with one element onto multiple lines.
-
-        Tests: JSON serialisation format
-        How: Serialize a dict with a single-element list and inspect the output
-        Why: This vertical expansion is the root cause of the prettier conflict
-        """
-        # Arrange
-        data = {"name": "test-plugin", "version": "1.0.0", "skills": ["./skills/test-skill/"]}
-
-        # Act
-        output = json.dumps(data, indent=2) + "\n"
-
-        # Assert -- json.dump writes the array across 3 lines
-        assert '"skills": [\n    "./skills/test-skill/"\n  ]' in output
-
-    def test_prettier_format_keeps_short_arrays_inline(self) -> None:
-        """Verify prettier-style format collapses short arrays onto one line.
-
-        Tests: Expected prettier output format
-        How: Construct the prettier-equivalent string and compare to json.dump
-        Why: Demonstrates the exact formatting difference that causes stash conflicts
-        """
-        # Arrange
-        data = {"name": "test-plugin", "version": "1.0.0", "skills": ["./skills/test-skill/"]}
-        json_dump_output = json.dumps(data, indent=2) + "\n"
-
-        # The format prettier produces for the same data
-        prettier_output = (
-            '{\n  "name": "test-plugin",\n  "version": "1.0.0",\n  "skills": ["./skills/test-skill/"]\n}\n'
-        )
-
-        # Act & Assert -- the two formats differ
-        assert json_dump_output != prettier_output
-        # But they parse to the same data
-        assert json.loads(json_dump_output) == json.loads(prettier_output)
-
-    def test_update_plugin_json_writes_prettier_compatible_format(self, tmp_path: Path, monkeypatch: Any) -> None:
-        """Verify update_plugin_json writes prettier-compatible JSON format.
-
-        Tests: File output format after update_plugin_json
-        How: Create plugin.json in prettier format, run update, check output stays
-             prettier-compatible (short arrays stay inline)
-        Why: Confirms the fix -- hook now writes the same format as prettier,
-             eliminating stash conflicts
-        """
-        # Arrange -- chdir so relative paths in the script resolve under tmp_path
-        monkeypatch.chdir(tmp_path)
-
-        plugin_name = "test-plugin"
-        plugin_json = _make_plugin_json(
-            tmp_path, plugin_name, {"name": "test-plugin", "version": "1.0.0", "skills": ["./skills/existing-skill/"]}
-        )
-
-        changes = _changes_with_modified_skill()
-
-        # Act
-        updated, _new_version = auto_sync.update_plugin_json(plugin_name, changes)
-
-        # Assert
-        assert updated is True
-        written_content = plugin_json.read_text(encoding="utf-8")
-
-        # The hook now writes prettier-compatible format: short arrays stay inline
-        assert '"skills": ["./skills/existing-skill/"]' in written_content
-
-        # Verify the data is still correct
-        data = json.loads(written_content)
-        assert data["version"] == "1.0.1"
-        assert data["skills"] == ["./skills/existing-skill/"]
-
-    def test_update_marketplace_json_writes_prettier_compatible_format(self, tmp_path: Path, monkeypatch: Any) -> None:
-        """Verify update_marketplace_json writes prettier-compatible JSON format.
-
-        Tests: marketplace.json output format after update
-        How: Create marketplace.json, run update with a modified plugin, check
-             output uses prettier-compatible formatting (short structures inline)
-        Why: Confirms the fix -- hook now writes the same format as prettier
-        """
-        # Arrange
-        monkeypatch.chdir(tmp_path)
-
-        _make_marketplace_json(
-            tmp_path,
-            {
-                "metadata": {"version": "1.0.0"},
-                "plugins": [{"name": "existing-plugin", "source": "./plugins/existing-plugin"}],
-            },
-        )
-
-        plugin_changes: _MarketplaceChangesDict = {
-            "added": set(),
-            "deleted": set(),
-            "modified": [("existing-plugin", "1.0.1")],
-        }
-
-        # Act
-        marketplace_json = tmp_path / ".claude-plugin" / "marketplace.json"
-        updated = auto_sync.update_marketplace_json(plugin_changes)
-
-        # Assert
-        assert updated is True
-        written = marketplace_json.read_text(encoding="utf-8")
-
-        # Prettier-compatible: short objects stay inline
-        assert '{ "version": "1.0.1" }' in written or '"version": "1.0.1"' in written
-
-        # Verify the data is still correct
-        data = json.loads(written)
-        assert data["metadata"]["version"] == "1.0.1"
 
 
 # ============================================================================
@@ -634,47 +496,6 @@ class TestRetryScenario:
         # Assert -- only run 1's version appears (run 2 was blocked)
         assert len(marketplace_changes["modified"]) == 1
         assert marketplace_changes["modified"][0] == ("my-plugin", "1.0.1")
-
-    def test_full_retry_with_prettier_no_conflict(self, tmp_path: Path, monkeypatch: Any) -> None:
-        """Verify the hook writes prettier-compatible format, eliminating stash conflicts.
-
-        Tests: End-to-end conflict elimination
-        How: Run 1 writes prettier-compatible format. Prettier has nothing to change.
-             Run 2 (retry) encounters the version guard. File remains stable.
-        Why: With prettier-compatible output, the hook and prettier produce identical
-             content, so prek stash/restore never encounters conflicting diffs.
-        """
-        # Arrange
-        monkeypatch.chdir(tmp_path)
-
-        plugin_name = "my-plugin"
-        original_data = {"name": "my-plugin", "version": "1.0.0", "skills": ["./skills/existing/"]}
-        plugin_json = _make_plugin_json(tmp_path, plugin_name, original_data)
-
-        changes = _changes_with_modified_skill()
-
-        # Simulate HEAD having the original version
-        monkeypatch.setattr(auto_sync, "_read_head_json", lambda _fp: dict(original_data))
-
-        # --- Run 1: hook writes prettier-compatible format ---
-        updated_1, version_1 = auto_sync.update_plugin_json(plugin_name, changes)
-        assert updated_1 is True
-        assert version_1 == "1.0.1"
-        hook_output = plugin_json.read_text(encoding="utf-8")
-
-        # Verify hook wrote prettier-compatible format (short arrays inline)
-        assert '"skills": ["./skills/existing/"]' in hook_output
-
-        # --- Run 2: version guard prevents re-processing ---
-        updated_2, version_2 = auto_sync.update_plugin_json(plugin_name, changes)
-
-        # Assert -- guard blocked re-processing
-        assert updated_2 is False
-        assert version_2 == "1.0.1"
-
-        # File content unchanged from run 1
-        final_content = plugin_json.read_text(encoding="utf-8")
-        assert final_content == hook_output
 
 
 # ============================================================================
@@ -1152,7 +973,7 @@ class TestVersionAlreadyBumped:
 
 
 class TestFormatJson:
-    """Test the _format_json formatter for prettier-compatible output."""
+    """Test the _format_json formatter."""
 
     def test_format_json_produces_valid_json(self) -> None:
         """Verify _format_json output parses as valid JSON.
@@ -1182,56 +1003,14 @@ class TestFormatJson:
         result = auto_sync._format_json(data)
         assert result.endswith("\n")
 
-    @_requires_prettier
-    def test_format_json_short_arrays_inline(self) -> None:
-        """Verify _format_json keeps short arrays inline (prettier behaviour).
+    def test_format_json_uses_two_space_indent(self) -> None:
+        """Verify _format_json uses json.dumps(indent=2) format exactly.
 
-        Tests: Prettier-compatible inline array formatting
-        How: Serialize data with a short array, check for inline format
-        Why: This is the key difference from json.dumps(indent=2)
+        Tests: Format matches json.dumps(indent=2) + newline
+        How: Compare output with expected json.dumps output
+        Why: _format_json is now a thin wrapper around json.dumps
         """
-        data = {"skills": ["./skills/test/"]}
-        result = auto_sync._format_json(data)
-        # prettier collapses short structures onto one line
-        assert '["./skills/test/"]' in result
-
-    @_requires_prettier
-    def test_format_json_differs_from_json_dumps(self) -> None:
-        """Verify _format_json output differs from json.dumps(indent=2).
-
-        Tests: Format divergence that enables idempotency detection
-        How: Compare _format_json output with json.dumps(indent=2) + newline
-        Why: The idempotency check relies on this difference to distinguish
-             initial file content (json.dumps) from hook-written content (_format_json)
-        """
-        data = {"name": "test-plugin", "version": "1.0.0", "skills": ["./skills/existing/"]}
-        format_json_output = auto_sync._format_json(data)
-        json_dumps_output = json.dumps(data, indent=2) + "\n"
-        assert format_json_output != json_dumps_output
-
-    def test_format_json_fallback_produces_valid_json(self, monkeypatch: Any) -> None:
-        """Verify _format_json returns valid JSON when npx is unavailable.
-
-        Tests: Fallback path when prettier is not installed
-        How: Set _NPX_PATH to None, verify output parses as valid JSON
-        Why: Ensures the hook works correctly on machines without Node.js
-        """
-        monkeypatch.setattr(auto_sync, "_NPX_PATH", None)
-        data = {"name": "test-plugin", "version": "1.0.0", "skills": ["./skills/a/"]}
-        result = auto_sync._format_json(data)
-        parsed = json.loads(result)
-        assert parsed == data
-        assert result.endswith("\n")
-
-    def test_format_json_fallback_uses_json_dumps_format(self, monkeypatch: Any) -> None:
-        """Verify fallback path produces json.dumps(indent=2) output exactly.
-
-        Tests: Format equivalence in fallback mode
-        How: Set _NPX_PATH to None, compare with json.dumps output
-        Why: When prettier unavailable, output should be standard json.dumps
-        """
-        monkeypatch.setattr(auto_sync, "_NPX_PATH", None)
-        data = {"name": "test"}
+        data = {"name": "test", "version": "1.0.0"}
         result = auto_sync._format_json(data)
         expected = json.dumps(data, indent=2) + "\n"
         assert result == expected

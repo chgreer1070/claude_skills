@@ -31,7 +31,6 @@ import json
 import shutil
 import subprocess
 import sys
-import tempfile
 from io import TextIOWrapper
 
 # Ensure UTF-8 output on Windows (cp1252 default cannot encode emoji/spinner chars).
@@ -44,9 +43,6 @@ if isinstance(sys.stderr, TextIOWrapper):
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Literal, TypedDict, cast
-
-# Prettier formatting
-_NPX_PATH: str | None = shutil.which("npx")
 
 # Git status parsing constants
 _MIN_PLUGIN_PATH_PARTS = 2
@@ -343,24 +339,6 @@ def _version_already_bumped(filepath: str | Path, version_key_path: list[str]) -
     return current_version > head_version
 
 
-def _find_prettierrc() -> Path | None:
-    """Locate ``.prettierrc`` by walking up from the current directory.
-
-    Returns:
-        Absolute path to ``.prettierrc`` if found, else None.
-    """
-    current = Path.cwd().resolve()
-    for parent in (current, *current.parents):
-        candidate = parent / ".prettierrc"
-        if candidate.is_file():
-            return candidate
-    return None
-
-
-# Resolve prettier config once at module load.
-_PRETTIERRC_PATH: Path | None = _find_prettierrc()
-
-
 def _write_json_lf(path: Path, content: str) -> None:
     """Write string to path with LF line endings (cross-platform).
 
@@ -370,37 +348,15 @@ def _write_json_lf(path: Path, content: str) -> None:
 
 
 def _format_json(data: object) -> str:
-    """Serialize data to JSON, formatted by prettier if available.
-
-    Writes ``json.dumps(indent=2)`` output.  If ``npx`` is available, runs
-    ``prettier --write`` to match the project's prettier configuration.
-    The ``--config`` flag is passed explicitly so that temp files outside
-    the repository still receive the project's formatting rules.
+    """Serialize data to JSON with 2-space indentation and trailing newline.
 
     Args:
         data: JSON-serialisable Python object.
 
     Returns:
-        A prettier-formatted JSON string with trailing newline.
+        A JSON string with trailing newline.
     """
-    content = json.dumps(data, indent=2) + "\n"
-    if not _NPX_PATH:
-        return content
-    with tempfile.NamedTemporaryFile(encoding="utf-8", mode="w", suffix=".json", delete=False, newline="\n") as f:
-        f.write(content)
-        tmp_path = f.name
-    try:
-        cmd = [_NPX_PATH, "prettier", "--write"]
-        if _PRETTIERRC_PATH:
-            cmd.extend(["--config", str(_PRETTIERRC_PATH)])
-        cmd.append(tmp_path)
-        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-        if result.returncode != 0:
-            sys.stderr.write(f"Warning: prettier formatting failed: {result.stderr.strip()}\n")
-            return content
-        return Path(tmp_path).read_text(encoding="utf-8")
-    finally:
-        Path(tmp_path).unlink(missing_ok=True)
+    return json.dumps(data, indent=2) + "\n"
 
 
 def _is_standard_path_skill(field_name: str, comp_path: str) -> bool:
