@@ -1191,8 +1191,8 @@ def _check_open_prs_for_issue(issue_num: int, repo: str) -> list[dict[str, Any]]
     return prs
 
 
-def _close_item_index(item: dict, plan: str, today: str) -> bool:
-    """Apply close to item by updating per-item file metadata.
+def _close_item_index(item: dict, reason: str, today: str) -> bool:
+    """Apply close (dismissal) to item by updating per-item file metadata. ADR-9.
 
     Returns:
         True if closed, False if already closed.
@@ -1202,22 +1202,27 @@ def _close_item_index(item: dict, plan: str, today: str) -> bool:
         typer.echo("ERROR: Item has no file path", err=True)
         raise typer.Exit(1)
     raw = item.get("_raw_body", "")
-    if "**Status**: DONE" in raw or "**Completed**:" in raw:
+    if any(marker in raw for marker in ("**Status**: CLOSED", "**Status**: DONE", "**Completed**:")):
         typer.echo("Item already closed.")
         return False
-    _update_item_metadata(Path(filepath_str), {"metadata": {"status": "done", "priority": "completed", "plan": plan}})
+    _update_item_metadata(Path(filepath_str), {"metadata": {"status": "closed", "close_reason": reason}})
     return True
 
 
-def _close_github_issue(issue_ref: str, plan: str, repo: str) -> None:
-    """Close GitHub issue with completion comment."""
+def _close_github_issue(issue_ref: str, reason: str, reference: str, comment: str, repo: str) -> None:
+    """Close GitHub issue as dismissed (not completed). ADR-9."""
     try:
         repository = _get_github(repo)
         num = issue_ref.lstrip("#")
         issue = repository.get_issue(int(num))
-        issue.create_comment(f"Completed. Checklist verified. Plan: {plan}")
+        parts = [f"**Closed** ({reason})."]
+        if reference:
+            parts.append(f"**Reference**: {reference}")
+        if comment:
+            parts.append(f"\n{comment}")
+        issue.create_comment(" ".join(parts))
         issue.edit(state="closed")
-        typer.echo(f"  GitHub issue #{num} closed.")
+        typer.echo(f"  GitHub issue #{num} closed ({reason}).")
     except GithubException as e:
         typer.echo(f"  WARNING: Could not close issue: {e}", err=True)
 
@@ -1236,8 +1241,11 @@ def _close_cleanup(item: dict, issue_ref: str, repo: str) -> None:
 @app.command()
 def close(
     selector: Annotated[str, typer.Argument(help="Title substring, #N, bare number, or GitHub issue URL")],
-    plan: Annotated[str, typer.Option("--plan", "-p")],
-    checklist_pass: Annotated[bool, typer.Option("--checklist-pass")] = False,
+    reason: Annotated[
+        str, typer.Option("--reason", "-r", help="One of: duplicate, out_of_scope, superseded, wontfix, blocked")
+    ],
+    reference: Annotated[str, typer.Option("--reference", help="Related item: #N, URL, or title")] = "",
+    comment: Annotated[str, typer.Option("--comment", help="Additional context")] = "",
     cleanup: Annotated[
         bool,
         typer.Option(
@@ -1248,9 +1256,11 @@ def close(
     force: Annotated[bool, typer.Option("--force", help="Close even if open PRs reference the issue")] = False,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
-    """Mark item DONE and close GitHub issue. Requires --checklist-pass from skill."""
-    if not checklist_pass:
-        typer.echo("ERROR: --checklist-pass required (skill must verify checklist first)", err=True)
+    """Dismiss item without completing it and close GitHub issue. ADR-9."""
+    valid_reasons = ("duplicate", "out_of_scope", "superseded", "wontfix", "blocked")
+    reason = reason.strip().lower()
+    if reason not in valid_reasons:
+        typer.echo(f"ERROR: Invalid reason: {reason!r}. Valid: {', '.join(valid_reasons)}", err=True)
         raise typer.Exit(1)
     items = parse_backlog()
     item = find_item(items, selector)
@@ -1270,17 +1280,17 @@ def close(
             typer.echo("Use --force to close anyway.", err=True)
             raise typer.Exit(1)
     today = _today()
-    if not _close_item_index(item, plan, today):
+    if not _close_item_index(item, reason, today):
         return
-    typer.echo(f'Backlog item "{item.get("_title")}" closed.')
+    typer.echo(f'Backlog item "{item.get("_title")}" closed ({reason}).')
     if issue_ref:
-        _close_github_issue(issue_ref, plan, repo)
+        _close_github_issue(issue_ref, reason, reference, comment, repo)
     if cleanup and issue_ref:
         _close_cleanup(item, issue_ref, repo)
 
 
-def _resolve_item_index(item: dict, reason: str, today: str) -> bool:
-    """Apply resolve to item by updating per-item file metadata.
+def _resolve_item_index(item: dict, summary: str, plan: str, today: str) -> bool:
+    """Apply resolve (completion) to item by updating per-item file metadata. ADR-9.
 
     Returns:
         True if resolved, False if already resolved.
@@ -1290,22 +1300,36 @@ def _resolve_item_index(item: dict, reason: str, today: str) -> bool:
         typer.echo("ERROR: Item has no file path", err=True)
         raise typer.Exit(1)
     raw = item.get("_raw_body", "")
-    if "**Resolved**:" in raw:
+    if any(marker in raw for marker in ("**Status**: DONE", "**Completed**:", "**Resolved**:")):
         typer.echo("Item already resolved.")
         return False
-    _update_item_metadata(Path(filepath_str), {"metadata": {"status": "resolved"}})
+    metadata: dict[str, str] = {"status": "done", "priority": "completed"}
+    if plan:
+        metadata["plan"] = plan
+    _update_item_metadata(Path(filepath_str), {"metadata": metadata})
     return True
 
 
-def _resolve_github_issue(issue_ref: str, reason: str, repo: str) -> None:
-    """Close GitHub issue with resolve comment."""
+def _resolve_github_issue(
+    issue_ref: str, summary: str, method: str, notes: str, follow_ups: str, findings: str, repo: str
+) -> None:
+    """Close GitHub issue as completed with structured evidence trail. ADR-9."""
     try:
         repository = _get_github(repo)
         num = issue_ref.lstrip("#")
         issue = repository.get_issue(int(num))
-        issue.create_comment(f"Resolved: {reason}")
+        body_parts = [f"## Resolved\n\n**Summary**: {summary}"]
+        if method:
+            body_parts.append(f"**Method**: {method}")
+        if notes:
+            body_parts.append(f"\n### Notes\n\n{notes}")
+        if follow_ups:
+            body_parts.append(f"\n### Follow-ups\n\n{follow_ups}")
+        if findings:
+            body_parts.append(f"\n### Findings\n\n{findings}")
+        issue.create_comment("\n".join(body_parts))
         issue.edit(state="closed")
-        typer.echo(f"  GitHub issue #{num} closed.")
+        typer.echo(f"  GitHub issue #{num} resolved.")
     except GithubException as e:
         typer.echo(f"  WARNING: Could not close issue: {e}", err=True)
 
@@ -1313,16 +1337,21 @@ def _resolve_github_issue(issue_ref: str, reason: str, repo: str) -> None:
 @app.command()
 def resolve(
     selector: Annotated[str, typer.Argument(help="Title substring, #N, bare number, or GitHub issue URL")],
-    reason: Annotated[str, typer.Option("--reason", "-r")],
+    summary: Annotated[str, typer.Option("--summary", "-s", help="What was done (required)")],
+    plan: Annotated[str, typer.Option("--plan", "-p", help="Plan path or completion reference")] = "",
+    method: Annotated[str, typer.Option("--method", help="How the work was done")] = "",
+    notes: Annotated[str, typer.Option("--notes", help="Problems found, surprises, comments")] = "",
+    follow_ups: Annotated[str, typer.Option("--follow-ups", help="Created follow-up tickets (comma-separated)")] = "",
+    findings: Annotated[str, typer.Option("--findings", help="Retrospective learnings")] = "",
     cleanup: Annotated[
         bool, typer.Option("--cleanup", help="Remove local file after resolve; index link becomes GH issue URL")
     ] = False,
     force: Annotated[bool, typer.Option("--force", help="Resolve even if open PRs reference the issue")] = False,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
-    """Mark item RESOLVED and close GitHub issue."""
-    if not reason.strip():
-        typer.echo("ERROR: --reason required", err=True)
+    """Mark item DONE (completed) and close GitHub issue with evidence trail. ADR-9."""
+    if not summary.strip():
+        typer.echo("ERROR: --summary required (what was done)", err=True)
         raise typer.Exit(1)
     items = parse_backlog()
     item = find_item(items, selector)
@@ -1342,11 +1371,11 @@ def resolve(
             typer.echo("Use --force to resolve anyway.", err=True)
             raise typer.Exit(1)
     today = _today()
-    if not _resolve_item_index(item, reason, today):
+    if not _resolve_item_index(item, summary, plan, today):
         return
     typer.echo(f'Backlog item "{item.get("_title")}" resolved.')
     if issue_ref:
-        _resolve_github_issue(issue_ref, reason, repo)
+        _resolve_github_issue(issue_ref, summary, method, notes, follow_ups, findings, repo)
     if cleanup and issue_ref:
         _close_cleanup(item, issue_ref, repo)
 

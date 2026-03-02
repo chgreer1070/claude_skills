@@ -109,30 +109,62 @@ def create_issue_for_item(
     return issue.number
 
 
-def close_github_issue(issue_ref: str, plan: str, repo: str = DEFAULT_REPO, output: Output | None = None) -> None:
-    """Close GitHub issue with completion comment."""
+def close_github_issue(
+    issue_ref: str,
+    reason: str,
+    *,
+    reference: str = "",
+    comment: str = "",
+    repo: str = DEFAULT_REPO,
+    output: Output | None = None,
+) -> None:
+    """Close GitHub issue as dismissed (not completed). ADR-9."""
     out = output or Output()
     try:
         repository = get_github(repo)
         num = issue_ref.lstrip("#")
         issue = repository.get_issue(int(num))
-        issue.create_comment(f"Completed. Checklist verified. Plan: {plan}")
+        parts = [f"**Closed** ({reason})."]
+        if reference:
+            parts.append(f"**Reference**: {reference}")
+        if comment:
+            parts.append(f"\n{comment}")
+        issue.create_comment(" ".join(parts))
         issue.edit(state="closed")
-        out.info(f"  GitHub issue #{num} closed.")
+        out.info(f"  GitHub issue #{num} closed ({reason}).")
     except GithubException as e:
         out.warn(f"  WARNING: Could not close issue: {e}")
 
 
-def resolve_github_issue(issue_ref: str, reason: str, repo: str = DEFAULT_REPO, output: Output | None = None) -> None:
-    """Close GitHub issue with resolve comment."""
+def resolve_github_issue(
+    issue_ref: str,
+    *,
+    summary: str,
+    method: str = "",
+    notes: str = "",
+    follow_ups: str = "",
+    findings: str = "",
+    repo: str = DEFAULT_REPO,
+    output: Output | None = None,
+) -> None:
+    """Close GitHub issue as completed with structured evidence trail. ADR-9."""
     out = output or Output()
     try:
         repository = get_github(repo)
         num = issue_ref.lstrip("#")
         issue = repository.get_issue(int(num))
-        issue.create_comment(f"Resolved: {reason}")
+        body_parts = [f"## Resolved\n\n**Summary**: {summary}"]
+        if method:
+            body_parts.append(f"**Method**: {method}")
+        if notes:
+            body_parts.append(f"\n### Notes\n\n{notes}")
+        if follow_ups:
+            body_parts.append(f"\n### Follow-ups\n\n{follow_ups}")
+        if findings:
+            body_parts.append(f"\n### Findings\n\n{findings}")
+        issue.create_comment("\n".join(body_parts))
         issue.edit(state="closed")
-        out.info(f"  GitHub issue #{num} closed.")
+        out.info(f"  GitHub issue #{num} resolved.")
     except GithubException as e:
         out.warn(f"  WARNING: Could not close issue: {e}")
 

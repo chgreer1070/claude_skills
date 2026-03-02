@@ -6,7 +6,7 @@ argument-hint: "<gap-description>"
 
 # Backlog Tools Administrator
 
-Close capability gaps in the backlog tooling ecosystem instead of bypassing the backlog script with direct file edits or `gh` commands.
+Close capability gaps in the backlog tooling ecosystem instead of bypassing the backlog tools (MCP or CLI) with direct file edits or `gh` commands.
 
 ## Arguments
 
@@ -56,7 +56,7 @@ Read the [domain registry](./references/domain-registry.md) to confirm the gap i
 
 ```mermaid
 flowchart TD
-    Q1{"Does the gap require<br>new or modified Python code<br>in backlog.py?"} -->|Yes| Script["SCRIPT gap"]
+    Q1{"Does the gap require<br>new or modified Python code<br>in the backlog tooling (MCP server or CLI)?"} -->|Yes| Script["SCRIPT gap"]
     Q1 -->|No| Q2{"Does the gap require<br>changing a rule, workflow step,<br>or state transition?"}
     Q2 -->|Yes| Process["PROCESS gap"]
     Q2 -->|No| Q3{"Does the gap require<br>updating skill instructions,<br>agent prompts, or references?"}
@@ -66,20 +66,28 @@ flowchart TD
 
 ### Step 3A: Script Fix
 
-For gaps requiring changes to `backlog.py` or related Python scripts.
+For gaps requiring changes to the backlog tooling (MCP server or CLI).
+
+**Extension architecture**: Both `server.py` and `backlog.py` are thin wrappers over `operations.py`. New capabilities must be added in dependency order:
+
+1. **Primary**: Extend `operations.py` with the new function — this is the single source of business logic.
+2. **Secondary (MCP)**: Add `@mcp.tool()` wrapper in `server.py` to expose the new operation as an MCP tool.
+3. **Secondary (CLI)**: Add a subcommand in `backlog.py` to expose the new operation via the CLI.
+
+Delegation:
 
 1. Task is implementing the script fix with `subagent_type="python3-development:python-cli-architect"`
-   Context to include in the prompt: `.claude/skills/backlog/scripts/backlog.py` (the script to modify), `.claude/skills/backlog/tests/test_backlog_gh_first.py` (existing tests), the gap description from Step 1, and `.claude/skills/backlog/references/item-schema.md` (frontmatter schema)
-   Output: modified `backlog.py` with new capability, passing tests, linting clean
+   Context to include in the prompt: `.claude/skills/backlog/backlog_core/operations.py` (primary business logic), `.claude/skills/backlog/backlog_core/server.py` (MCP tool definitions), `.claude/skills/backlog/scripts/backlog.py` (CLI wrapper), `.claude/skills/backlog/tests/test_backlog_gh_first.py` (existing tests), the gap description from Step 1, and `.claude/skills/backlog/references/item-schema.md` (frontmatter schema)
+   Output: modified `operations.py` with new function, `server.py` with `@mcp.tool()` wrapper, `backlog.py` with CLI subcommand, passing tests, linting clean
 
 2. After the agent completes, verify the fix:
 
    ```bash
-   uv run prek run --files .claude/skills/backlog/scripts/backlog.py
+   uv run prek run --files .claude/skills/backlog/backlog_core/operations.py .claude/skills/backlog/backlog_core/server.py .claude/skills/backlog/scripts/backlog.py
    uv run pytest .claude/skills/backlog/tests/
    ```
 
-3. Update the `backlog` skill SKILL.md to document the new subcommand or flag — proceed to Step 3C.
+3. Update the `backlog` skill SKILL.md to document the new MCP tool and CLI subcommand — proceed to Step 3C.
 
 ### Step 3B: Process Fix
 
@@ -119,9 +127,18 @@ When the gap spans multiple categories, execute steps in dependency order:
 
 Verify the gap is closed:
 
-1. **Script changes**: run `uv run pytest .claude/skills/backlog/tests/` and `uv run prek run --files <modified-files>`
-2. **Process changes**: confirm the new rule/workflow handles the original gap scenario without ambiguity
-3. **Documentation changes**: confirm the updated instructions would have prevented the original workaround
+1. **Script changes**:
+
+   ```bash
+   uv run prek run --files <modified-files>
+   uv run pytest .claude/skills/backlog/tests/
+   ```
+
+   For MCP tool additions: call the new `mcp__backlog__<tool_name>` tool with valid parameters and confirm the returned dict contains expected result keys (not an `error` key).
+
+2. **Process changes**: confirm the new rule/workflow handles the original gap scenario without ambiguity.
+
+3. **Documentation changes**: confirm the updated instructions would have prevented the original workaround.
 
 Report what changed:
 

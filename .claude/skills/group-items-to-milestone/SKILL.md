@@ -34,7 +34,7 @@ If milestone not found or closed, report and stop.
 
 ### Step 2: Load Backlog Items
 
-Invoke `mcp__backlog__backlog_list()`. Filter items by section (P0, P1, P2, Ideas). Apply any title filter.
+Call the `mcp__backlog__backlog_list` tool. Parse the returned dict — each entry in `items` has `title`, `priority`, `issue`, `plan`, `status`, `milestone`, `file_path`, `groomed`. Filter items by section (P0, P1, P2, Ideas). Apply any title filter.
 
 For each item determine status:
 

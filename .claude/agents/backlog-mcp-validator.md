@@ -56,6 +56,9 @@ Parameters:
   with_status   bool      optional  Include GitHub issue status  (default: false)
   from_github   bool      optional  Refresh cache from GitHub first  (default: false)
   label         str|null  optional  Filter by GitHub label  (default: null)
+  section       str|null  optional  Filter by section name  (default: null)
+  status        str|null  optional  Filter by status string (e.g. "resolved")  (default: null)
+  title         str|null  optional  Filter by title substring  (default: null)
 
 Returns: {items: [{title, priority, issue, plan}], messages, warnings}
 CLI:     uv run .claude/skills/backlog/scripts/backlog.py list --format json [--with-status]
@@ -121,6 +124,8 @@ Parameters:
   groomed_content str|null  optional  Full groomed content (replaces groomed section)
   section         str|null  optional  Section name for incremental update
   content         str|null  optional  Content for named section
+  title           str|null  optional  Rename item title
+  description     str|null  optional  Update item description
 
 Returns: {title, changes, messages, warnings}
 CLI:     uv run .claude/skills/backlog/scripts/backlog.py update "<title>" [--plan P] [--status S]

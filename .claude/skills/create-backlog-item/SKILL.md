@@ -149,28 +149,33 @@ Format today's date as `YYYY-MM-DD` (use system date).
 **Description**: {description}
 ```
 
-If research questions were embedded in the description (lines starting with `?` or `Research:`), extract them into a separate `**Research first**:` field:
+If research questions were embedded in the description (lines starting with `?` or `Research:`),
+keep them in the `description` — the `backlog_add` MCP tool has no `research_first` parameter.
+Prefix the questions with `Research first:` inside the description text so they remain visible.
 
-```text
-**Research first**: {extracted questions}
-```
+### Step 5: Create per-item file via backlog MCP tool
 
-### Step 5: Create per-item file via backlog script
+Call the `mcp__backlog__backlog_add` tool:
 
-Build the command. Base:
+| Parameter | Value |
+|-----------|-------|
+| `title` | `"{title}"` |
+| `priority` | `"{priority}"` |
+| `description` | `"{description}"` |
+| `source` | `"{source}"` |
+| `type` | `"{type}"` |
+| `create_issue` | `true` if P0/P1 and user confirmed; `false` if P2/Ideas or user declined |
 
-```text
-mcp__backlog__backlog_add(title="{title}", priority="{priority}", description="{description}", source="{source}", type="{type}")
-```
+Check the returned dict for `error` key.
 
-- If research_first is non-empty: append `--research-first "{research_first}"`
+**Note on `research_first`:** The `--research-first` CLI flag has no MCP equivalent. The `research_first` parameter does not exist on `backlog_add`. Embed research questions directly in the `description` parameter instead.
 
-**GitHub Issue creation:**
+**`create_issue` logic:**
 
-- If priority is P0 or P1 and (guided/quick mode with user said Yes, or `--auto` with `--create-issue` passed): do NOT add `--no-create-issue` (script creates issue by default).
-- If priority is P2 or Idea: add `--no-create-issue`.
-- If priority is P0 or P1 and user said No (skip): add `--no-create-issue`.
-- If `$0` is `--auto` and user did not pass `--create-issue`: add `--no-create-issue`.
+- P0 or P1 + (guided/quick mode with user said Yes, or `--auto` with `--create-issue` passed): `create_issue=true`
+- P2 or Idea: `create_issue=false`
+- P0 or P1 + user said No (skip): `create_issue=false`
+- `--auto` mode without `--create-issue` flag: `create_issue=false`
 
 ### Step 6: Confirm Write
 

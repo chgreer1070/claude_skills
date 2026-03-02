@@ -1,6 +1,6 @@
 ---
 name: work-backlog-item
-description: "Use when working, planning, or closing a backlog item. Bridges backlog items to the SAM planning pipeline with optional GitHub Issue/Project/Milestone tracking. No args: interactive browser. With '#N': load item directly from GitHub Issue #N (labels and milestone are canonical status). With title substring: auto-grooming, RT-ICA gate, GitHub issue sync, SAM planning, plan reference recorded. '--auto {title}': fully autonomous mode — no AskUserQuestion calls, derives missing data from research files, logs all decisions, skips interactive GitHub prompts; suitable for agent use without human in the loop. 'close {title}': verifies plan checklist 100% complete, closes GitHub issue, marks DONE. 'resolve {title}': marks item no longer applicable with reason. 'setup-github': initializes labels, creates project and first milestone. Optional '--language {python|typescript|...}' and '--stack {python-fastapi|python-cli|...}' select Layer 1/2 profile. STOPS if item has existing Plan field or RT-ICA returns BLOCKED."
+description: "Use when working, planning, or closing a backlog item. Bridges backlog items to SAM planning with GitHub Issue/Project/Milestone tracking. No args: interactive browser. '#N': load from GitHub Issue #N. Title substring: auto-grooming, RT-ICA gate, GitHub sync, SAM planning. '--auto {title}': autonomous mode — no AskUserQuestion, derives data from research files, logs decisions. 'close {title}': dismiss without completion — reason required (duplicate, out_of_scope, superseded, wontfix, blocked). ADR-9. 'resolve {title}': mark DONE with evidence trail — summary required. ADR-9. 'setup-github': init labels, project, milestone. '--language' and '--stack' select Layer 1/2 profile. STOPS if item has Plan field or RT-ICA returns BLOCKED."
 argument-hint: '[#N | --auto {title} | --language {lang} | --stack {stack} | item-title-substring | close {title} | resolve {title} | setup-github]'
 user-invocable: true
 ---
@@ -26,8 +26,8 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 | bare number (e.g. `249`) | — | Issue-first: load item from GitHub Issue #249 |
 | GitHub issue URL | — | Issue-first: extract issue number from URL |
 | `--auto` | `$1`+ = title (or empty → auto-select first open P0/P1 item) | Autonomous — no `AskUserQuestion` calls |
-| `close` | `$1`+ = title, `#N`, number, or URL | Verify and close a completed item |
-| `resolve` | `$1`+ = title, `#N`, number, or URL | Mark no longer applicable (reason required) |
+| `close` | `$1`+ = title, `#N`, number, or URL | Dismiss without completion (reason required). ADR-9 |
+| `resolve` | `$1`+ = title, `#N`, number, or URL | Mark DONE — completed with evidence (summary required). ADR-9 |
 | `setup-github` | — | Initialize labels, project, first milestone |
 | (any other) | — | `$ARGUMENTS` treated as title substring → planning |
 
@@ -41,10 +41,10 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 /work-backlog-item Error Recovery                    # direct match → planning
 /work-backlog-item --auto                            # autonomous → auto-select first open P0/P1
 /work-backlog-item --auto vercel skills npm package  # autonomous → planning
-/work-backlog-item close Error Recovery              # verify and close by title
-/work-backlog-item close #42                         # verify and close by issue number
-/work-backlog-item resolve commitlint                # mark no longer applicable
-/work-backlog-item resolve #17                       # mark no longer applicable by issue
+/work-backlog-item close Error Recovery              # dismiss (reason required)
+/work-backlog-item close #42                         # dismiss by issue number
+/work-backlog-item resolve Error Recovery            # mark completed with evidence
+/work-backlog-item resolve #42                       # mark completed by issue number
 /work-backlog-item --language python --stack python-fastapi Add auth  # Layer 2 stack profile
 ```
 
@@ -78,8 +78,8 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 | bare number (e.g. `249`) | issue number | Step 1b — Issue-first path |
 | GitHub issue URL | issue number from URL | Step 1b — Issue-first path |
 | `--auto` | `$1`+ joined (empty → auto-select first open P0/P1) | AUTO_MODE=true → Step 1 |
-| `close` | `$1`+ joined (title, `#N`, number, or URL) | Step 9 (close path) |
-| `resolve` | `$1`+ joined (title, `#N`, number, or URL) | Step 9 (resolve path) |
+| `close` | `$1`+ joined (title, `#N`, number, or URL) | Step 9 (close path — dismiss without completion) |
+| `resolve` | `$1`+ joined (title, `#N`, number, or URL) | Step 9 (resolve path — mark completed with evidence) |
 | `setup-github` | — | setup-github command |
 | (any other) | `$ARGUMENTS` | Title substring → Step 1 (interactive mode) |
 
@@ -91,11 +91,7 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 
 <step0_procedure>
 
-1. Invoke the backlog MCP tool to list items with status:
-
-   ```text
-   mcp__backlog__backlog_list(with_status=true)
-   ```
+1. Call the `mcp__backlog__backlog_list` tool with `with_status=true`.
 
    **If this call fails with "No such tool available" or any tool-not-found error, STOP immediately and report:**
 
@@ -111,7 +107,7 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 
    Do NOT fall back to reading `.claude/backlog/` files directly. Do NOT delegate to the Explore agent to parse local files. The local files are a cache — they may be stale, incomplete, or missing entries that exist only in GitHub. Presenting them as the authoritative list without stating the MCP failure misleads the user.
 
-   Parse the JSON output. Each entry has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
+   Parse the returned dict. Each entry in `items` has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
 
 2. **Groomed** = item has `groomed: true` in JSON, or `## Groomed` section in its per-item file (`.claude/backlog/{priority}-{slug}.md`). Read the item file; if groomed sections present, use them.
 
@@ -163,14 +159,12 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 
 <issue_first_procedure>
 
-Fetch the issue using the backlog MCP tool (accepts URLs, `#N`, and bare numbers):
+Fetch the issue using the `mcp__backlog__backlog_view` tool (accepts URLs, `#N`, and bare numbers):
 
-```text
-mcp__backlog__backlog_view(selector="{$0}")
-```
+Call the `mcp__backlog__backlog_view` tool with `selector="{$0}"`.
 
-If the command fails (exit code non-zero), report and stop.
-Parse the JSON output. If `state` is `closed`, run the **Completed Issue Discovery** procedure (see below) and stop.
+If the tool returns a dict with an `error` key, report and stop.
+Parse the returned dict. If `state` is `closed`, run the **Completed Issue Discovery** procedure (see below) and stop.
 
 #### Completed Issue Discovery
 
@@ -182,11 +176,9 @@ When an issue is found to be already closed (state `closed`), gather evidence of
    git log --oneline --all -20 --grep="#N"
    ```
 
-2. **Search for merged PRs referencing the issue** (use backlog script):
-
-   ```bash
-   git log --oneline --all -20 --grep="Fixes #N\|Closes #N"
-   ```
+2. **Search for merged PRs referencing the issue** — call the `mcp__backlog__backlog_view` tool with
+   `selector="#{N}"`, then check the `body` field of the returned dict for `"Fixes #N"` or
+   `"Closes #N"`.
 
    Or via git history:
    ```bash
@@ -208,11 +200,8 @@ When an issue is found to be already closed (state `closed`), gather evidence of
    Closing local backlog item with evidence.
    ```
 
-   Then invoke:
-
-   ```text
-   mcp__backlog__backlog_close(selector="{title}", reason="Completed via PR #{pr} / commit {sha}")
-   ```
+   Then call the `mcp__backlog__backlog_resolve` tool with `selector="{title}"` and
+   `summary="Completed via PR #{pr} / commit {sha}"`.
 
    If no commits or PRs reference the issue:
 
@@ -249,9 +238,9 @@ Proceed to Step 2.7 (Set In-Progress Label) with the assembled item, then contin
 
 ### Step 1: Find the Backlog Item
 
-Call `mcp__backlog__backlog_list()` and search the `title` field of each entry for a case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
+Call the `mcp__backlog__backlog_list` tool and search the `title` field of each entry in the returned dict for a case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
 
-**AUTO_MODE with no title (`$1` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items with `status: done` or `status: resolved` in their JSON entry (these are filtered out by `backlog_list` already).
+**AUTO_MODE with no title (`$1` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items with `status: done` or `status: resolved` in their entry (these are filtered out by `backlog_list` already).
 
 - **Zero matches (interactive mode):** report "No backlog item found matching: {title}" and offer to create one via `/create-backlog-item`.
 - **Zero matches (AUTO_MODE):** log `[AUTO] No item found — invoking create-backlog-item --auto {title}`, invoke `Skill(skill: "create-backlog-item", args: "--auto {title}")`, then re-run Step 1.
@@ -262,7 +251,7 @@ Record the priority section (P0, P1, P2, Ideas) the item belongs to.
 
 ### Step 2: Extract Item Fields
 
-From the matched item's JSON output (via `mcp__backlog__backlog_list()`), extract `title`, `plan`, `section` (priority), `issue`, `groomed`, and `file_path`. For detailed fields not in JSON (`description`, `source`, `added`, `research_first`, `suggested_location`), read the per-item file at `file_path`.
+From the matched item's entry in the `mcp__backlog__backlog_list` returned dict, extract `title`, `plan`, `section` (priority), `issue`, `groomed`, and `file_path`. For detailed fields not in the dict (`description`, `source`, `added`, `research_first`, `suggested_location`), read the per-item file at `file_path`.
 
 - `title` — the `title` field from JSON (required)
 - `source` — not in JSON; read from per-item file frontmatter `metadata.source` if needed (optional)
@@ -302,17 +291,11 @@ Before planning work, verify the described feature/fix hasn't already been imple
 
 If evidence shows the work is already done:
 
-- **Close the backlog item and GitHub issue**:
+- **Mark the item resolved** — call the `mcp__backlog__backlog_resolve` tool with
+  `selector="{title}"` and `summary="Already implemented via commit {sha}"`.
 
-  ```text
-  mcp__backlog__backlog_close(selector="{title}", reason="Already implemented via commit {sha}")
-  ```
-
-- **Close the local backlog item**:
-
-  ```text
-  mcp__backlog__backlog_close(selector="{title}", reason="Already implemented via PR #{pr} / commit {sha}")
-  ```
+- **If a PR is also found** — call the `mcp__backlog__backlog_resolve` tool with
+  `selector="{title}"` and `summary="Already implemented via PR #{pr} / commit {sha}"`.
 
 - Report to the user and stop — no planning needed.
 
@@ -426,11 +409,12 @@ Glob(pattern="plan/tasks-*-{slug}*")
 
 Where `{slug}` is the item title lowercased with spaces replaced by hyphens.
 
-Invoke the backlog MCP tool to add the Plan:
+Call the `mcp__backlog__backlog_update` tool to add the Plan:
 
-```text
-mcp__backlog__backlog_update(selector="{title}", plan="plan/tasks-{N}-{slug}.md")
-```
+| Parameter | Value |
+|-----------|-------|
+| `selector` | `"{title}"` |
+| `plan` | `"plan/tasks-{N}-{slug}.md"` |
 
 If the item has `**Issue**: #N`, record it in the plan file header comment and include `Fixes #N` in any commit message produced during implementation.
 
@@ -445,167 +429,16 @@ Backlog item "{title}" is now planned.
 - To close when done: /work-backlog-item close {slug}
 ```
 
-**Do NOT close the GitHub Issue directly.** Include `Fixes #N` in commit messages and the PR body — the issue auto-closes when the PR merges. Only use `/work-backlog-item close` for post-merge verification and local bookkeeping. Never invoke `mcp__backlog__backlog_close` before the PR has merged.
+**Do NOT close the GitHub Issue directly.** Include `Fixes #N` in commit messages and the PR body — the issue auto-closes when the PR merges. Only use `/work-backlog-item resolve` for post-merge verification and local bookkeeping. Use `/work-backlog-item close` only for dismissals (duplicate, out_of_scope, etc.). Never call `mcp__backlog__backlog_resolve` before the PR has merged.
 
-### Step 9: Verify and Close
+### Step 9: Close or Resolve (ADR-9)
 
 **Trigger:** `$0` is `close` or `resolve`.
 
-<step9_procedure>
+- `close` = dismiss without completion. Requires `reason` (duplicate, out_of_scope, superseded, wontfix, blocked). Optional `reference` and `comment`. Calls `mcp__backlog__backlog_close`.
+- `resolve` = mark DONE with evidence trail. Requires `summary`. Optional `plan`, `method`, `notes`, `follow_ups`, `findings`. Verifies checklist + acceptance criteria before resolving. Calls `mcp__backlog__backlog_resolve`.
 
-Extract the operation from `$0` and the argument from `$1`+:
-
-- `$0` = `close`: `$1`+ = title, `#N`, bare number, or URL → verify implementation and mark COMPLETED
-- `$0` = `resolve`: `$1`+ = title, `#N`, bare number, or URL → mark no longer applicable (no verification required)
-
-#### 9a: Find Item
-
-Use the backlog MCP tool to find the item (accepts URLs, `#N`, bare numbers, and title substrings):
-
-```text
-mcp__backlog__backlog_view(selector="{$1}")
-```
-
-- If the command fails (exit code non-zero), report and stop.
-- Extract `title` from the JSON response and use it as the working title.
-
-If the view command found a local file (`file_path` in JSON), use it. Otherwise scan `.claude/backlog/` per-item files for a title match.
-
-- Zero matches: report "No backlog item found matching: {$1}" and stop.
-- Multiple matches: list all matches and ask user to pick one.
-- Item already in `## Completed` section: report "Item already closed on {Completed date}" and stop.
-
-#### 9b: Resolve path (skip verification)
-
-If operation is `resolve`:
-
-1. Use `AskUserQuestion` to ask: "Why is this item no longer applicable?" (free text)
-2. Invoke the backlog script:
-
-```text
-mcp__backlog__backlog_resolve(selector="{title or #N}", reason="{reason}")
-```
-
-3. Report the script output to the user.
-
-Then stop.
-
-#### 9c: Close path — checklist verification
-
-If operation is `close`:
-
-1. Extract `**Plan**:` field from the matched item. If absent:
-
-```text
-No plan file recorded for "{title}". Cannot verify checklist.
-Either run /work-backlog-item {title} first to create a plan,
-or use /work-backlog-item resolve {title} if no plan was needed.
-```
-
-Then stop.
-
-2. Read the plan file. Count:
-   - `total_tasks` — lines matching `- \[ \]` or `- \[x\]`
-   - `checked_tasks` — lines matching `- \[x\]`
-
-3. If `checked_tasks < total_tasks`:
-
-```text
-Checklist incomplete: {checked_tasks}/{total_tasks} tasks done.
-
-Remaining:
-{list of unchecked task lines}
-
-Complete all tasks before closing this item.
-```
-
-Then stop.
-
-#### 9d: Close path — acceptance criteria verification
-
-4. Spawn a verification agent:
-
-```text
-Agent(
-  subagent_type: "general-purpose",
-  prompt: "You are verifying whether a completed backlog item genuinely satisfies its stated goal.
-
-Backlog item title: {title}
-Description and acceptance criteria:
-{description text from per-item file}
-
-Plan file: {plan file path}
-Plan checklist: {checked_tasks}/{total_tasks} — 100% complete.
-
-Your task:
-1. Read the plan file to understand what was implemented.
-2. Search git log for commits referencing this item (use: git log --oneline -20).
-3. Read 2-3 key changed files to verify the implementation exists.
-4. Assess: Does the implementation satisfy the stated goal? Is the product better for it?
-
-Return:
-- PASS or FAIL
-- One sentence of evidence (file:line or commit SHA)
-- Any gaps you found (if FAIL)"
-)
-```
-
-5. Collect agent verdict:
-   - **PASS**: proceed to 9e
-   - **FAIL**: report gaps, do not close:
-
-```text
-Verification FAILED for "{title}".
-
-Gaps found:
-{agent findings}
-
-Address these gaps before closing.
-```
-
-Then stop.
-
-#### 9e: Check for open PR
-
-6. If the item has a linked GitHub Issue (`#N`), check whether an open PR already references it (via git log):
-
-```bash
-git log --oneline -20 --grep="Fixes #N\|Closes #N"
-```
-
-- **Open PR found**: The PR body contains `Fixes #N` — the issue will auto-close on merge. Update only the local per-item file status (do NOT close the GitHub Issue):
-
-```text
-mcp__backlog__backlog_update(selector="{title}", status="in-progress")
-```
-
-Report:
-
-```text
-Backlog item "{title}" verified. GitHub Issue #{N} will auto-close when PR #{pr_number} merges.
-```
-
-Then stop.
-
-- **No open PR / no linked issue**: proceed to 9f.
-
-#### 9f: Invoke backlog close
-
-7. Invoke the backlog MCP tool (updates per-item file and closes GitHub issue):
-
-```text
-mcp__backlog__backlog_close(selector="{title}", plan="{plan file path}", checklist_pass=true)
-```
-
-If invoked as `close #N`, use `#N` as the selector:
-
-```text
-mcp__backlog__backlog_close(selector="#{N}", plan="{plan file path}", checklist_pass=true)
-```
-
-8. Report the script output to the user.
-
-</step9_procedure>
+Full step-by-step procedure (9a–9f): [close-resolve-procedure.md](./references/close-resolve-procedure.md)
 
 ## GitHub Integration
 
@@ -651,27 +484,19 @@ This convention ensures issues are automatically closed on merge without manual 
 
 After Step 2, check for `**Issue**: #N` field in the matched item.
 
-- Found: verify issue state with `mcp__backlog__backlog_view(selector="#{issue_number}")`
+- Found: verify issue state — call the `mcp__backlog__backlog_view` tool with `selector="#{issue_number}"`
 - Not found + P0/P1: offer to create a GitHub Issue (proceed to Step 2.5a)
 - Not found + P2/Ideas: skip silently
 
 ### Step 2.5a: Create GitHub Issue
 
-Invoke the backlog script:
+Call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `create_issue=true`.
 
-```text
-mcp__backlog__backlog_update(selector="{title}", create_issue=true)
-```
-
-The tool creates the issue and writes `issue: '#N'` back to the per-item file frontmatter.
+Check the returned dict for an `error` key. On success, the tool creates the issue and writes `issue: '#N'` back to the per-item file frontmatter.
 
 ### Step 2.7: Set In-Progress Label
 
-If the item has `**Issue**: #N`, invoke the backlog MCP tool:
-
-```text
-mcp__backlog__backlog_update(selector="{title}", status="in-progress")
-```
+If the item has `**Issue**: #N`, call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `status="in-progress"`.
 
 If the item is in a milestone with other issues, also run `milestone start` for the milestone:
 
@@ -682,10 +507,9 @@ uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
 
 ### setup-github Command
 
-**Trigger:** `$0` is `setup-github`. Initializes label taxonomy, first milestone, and GitHub Project (use backlog script where available).
+**Trigger:** `$0` is `setup-github`. Initializes label taxonomy, first milestone, and GitHub Project.
 
 ```bash
-# Use github_project_setup.py directly if needed
 uv run .claude/skills/gh/scripts/github_project_setup.py labels --repo Jamie-BitFlight/claude_skills
 uv run .claude/skills/gh/scripts/github_project_setup.py milestone create \
   --title "v1.0 — Skills Foundation" --due 2026-03-31 --repo Jamie-BitFlight/claude_skills
@@ -695,7 +519,7 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 
 ## Error Handling
 
-- `#N` / URL / bare number not found: report and list available items with `mcp__backlog__backlog_list()`
+- `#N` / URL / bare number not found: report and list available items — call the `mcp__backlog__backlog_list` tool
 - `#N` already closed: run Completed Issue Discovery (search commits/PRs for evidence, close local item with reference, or ask user)
 - `close #N` / `resolve #N` — issue not found: report and stop
 - Item not found: list available items from `.claude/backlog/` per-item files with their priority sections
@@ -705,13 +529,14 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 - `add-new-feature` fails: report the failure, do not update per-item file
 - Plan file not found after planning: search `plan/` directory broadly, ask user to confirm the path
 - Grooming reports directory does not exist: treat all items as ungroomed
-- `close` with no `**Plan**:` field: report and offer `resolve` as alternative
-- `close` with incomplete checklist: list remaining tasks, do not close
-- `close` with verification FAIL: report gaps, do not close
+- `close` with invalid reason: reject and show valid reasons (duplicate, out_of_scope, superseded, wontfix, blocked)
 - `close` on already-completed item: report closed date, do not re-close
-- `resolve` with no reason provided: block until user provides reason (reason is required evidence)
+- `resolve` with no `**Plan**:` field: skip checklist verification, proceed to summary collection
+- `resolve` with incomplete checklist: list remaining tasks, do not resolve (offer `close` as alternative)
+- `resolve` with verification FAIL: report gaps, do not resolve
+- `resolve` with no summary provided: block until user provides summary (summary is required evidence)
 - GitHub issue creation fails: report error, continue with per-item-file-only workflow; do not block SAM planning
-- `GITHUB_TOKEN` not set: MCP server reports error; local-only operations still work
+- `GITHUB_TOKEN` not set: backlog MCP tools report an error; local-only operations still work
 - Label not found during issue create: `github_project_setup.py` creates it automatically
 - Milestone not found: skip milestone assignment; do not fail
 
@@ -773,10 +598,10 @@ Next steps:
 - To close when done: /work-backlog-item close error-recovery
 ```
 
-### Closing a completed item (by title)
+### Resolving a completed item (by title)
 
 ```text
-> /work-backlog-item close validator UX
+> /work-backlog-item resolve validator UX
 
 Found: "plugin-validator UX and coverage gaps" (P1)
 Plan: plan/tasks-2-validator-ux-coverage.md
@@ -788,16 +613,20 @@ Verdict: PASS
 Evidence: Sub-issues 1-4 implemented in plugins/plugin-creator/scripts/plugin_validator.py
           commit 4a2f1b3 — "fix(validator): report unique files, add hook validation"
 
-Backlog item "plugin-validator UX and coverage gaps" closed.
+Summarize what was done:
+> Implemented all 4 sub-issues: unique file reporting, hook validation, coverage gaps filled.
+
+Backlog item "plugin-validator UX and coverage gaps" resolved.
+- Summary: Implemented all 4 sub-issues: unique file reporting, hook validation, coverage gaps filled.
 - Checklist: 12/12 tasks complete
 - Acceptance criteria: PASS
-- Status written to per-item file
+- GitHub Issue #131 closed with evidence trail
 ```
 
-### Closing a completed item (by issue number)
+### Resolving a completed item (by issue number)
 
 ```text
-> /work-backlog-item close #131
+> /work-backlog-item resolve #131
 
 Fetching GitHub Issue #131...
   Title: plugin-validator UX and coverage gaps
@@ -812,26 +641,30 @@ Spawning acceptance criteria verification agent...
 Verdict: PASS
 Evidence: commit 4a2f1b3 — "fix(validator): report unique files, add hook validation"
 
-Backlog item "plugin-validator UX and coverage gaps" closed.
-- Checklist: 12/12 tasks complete
-- Acceptance criteria: PASS
-- Status written to per-item file
-- GitHub Issue #131 closed
+Summarize what was done:
+> All validator sub-issues implemented and tested.
+
+Backlog item "plugin-validator UX and coverage gaps" resolved.
+- Summary: All validator sub-issues implemented and tested.
+- GitHub Issue #131 closed with evidence trail
 ```
 
-### Resolving a no-longer-applicable item
+### Closing (dismissing) an item
 
 ```text
-> /work-backlog-item resolve commitlint verify last flag
+> /work-backlog-item close commitlint verify last flag
 
 Found: "commitlint: Verify --last flag and exit codes against primary sources" (P1)
-Why is this item no longer applicable?
-> REFUTED by fact-check: --last flag is verified in commitlint source cli.ts. No fix needed.
+Why is this item being dismissed?
+> out_of_scope
+Any additional comment?
+> REFUTED by fact-check: --last flag verified against commitlint source cli.ts. No fix needed.
 
-Backlog item resolved.
-  Resolved: 2026-02-21
-  Status: RESOLVED — REFUTED by fact-check: --last flag verified against commitlint
-          source cli.ts and official docs. No fix needed.
+Backlog item closed.
+  Closed: 2026-02-21
+  Reason: out_of_scope
+  Comment: REFUTED by fact-check: --last flag verified against commitlint
+           source cli.ts and official docs. No fix needed.
 ```
 
 GitHub-specific example sessions (issue creation flow and setup-github): [github-integration.md](./references/github-integration.md)

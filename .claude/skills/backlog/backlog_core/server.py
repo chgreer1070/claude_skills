@@ -141,29 +141,40 @@ def backlog_sync(
 @mcp.tool()
 def backlog_close(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
-    plan: Annotated[str, Field(description="Plan path or completion summary for closing")],
-    checklist_pass: Annotated[
-        bool, Field(description="Confirm the completion checklist has been verified. Must be true to close.")
-    ] = False,
+    reason: Annotated[
+        str,
+        Field(
+            description="Why the item is being dismissed. One of: duplicate, out_of_scope, superseded, wontfix, blocked"
+        ),
+    ],
+    reference: Annotated[
+        str, Field(description="Related item reference: #N, URL, or title of the item this duplicates/is superseded by")
+    ] = "",
+    comment: Annotated[str, Field(description="Additional context about why this item is being closed")] = "",
     cleanup: Annotated[
         bool, Field(description="Remove local file after close; index link becomes GitHub issue URL")
     ] = False,
     force: Annotated[bool, Field(description="Close even if open PRs reference the issue")] = False,
 ) -> dict:
-    """Mark a backlog item as DONE and close its GitHub issue.
+    """Dismiss a backlog item without completing it and close its GitHub issue.
 
-    Requires checklist_pass=true (the caller must verify the completion
-    checklist before closing). Use force=true to close even when open PRs
-    reference the issue.
+    Use for items that are duplicates, out of scope, superseded, wontfix,
+    or permanently blocked. For completed work, use backlog_resolve instead.
 
     Returns:
-        Dict with closed item title, issue reference, and output
-        messages/warnings. On error, dict contains an error key.
+        Dict with closed item title, reason, and output messages/warnings.
+        On error, dict contains an error key.
     """
     out = Output()
     try:
         result = operations.close_item(
-            selector=selector, plan=plan, checklist_pass=checklist_pass, cleanup=cleanup, force=force, output=out
+            selector=selector,
+            reason=reason,
+            reference=reference,
+            comment=comment,
+            cleanup=cleanup,
+            force=force,
+            output=out,
         )
         return {**result, **out.to_dict()}
     except BacklogError as e:
@@ -173,26 +184,41 @@ def backlog_close(
 @mcp.tool()
 def backlog_resolve(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
-    reason: Annotated[
-        str, Field(description="Reason for resolving (e.g. 'duplicate of #42', 'no longer needed', 'out of scope')")
-    ],
+    summary: Annotated[str, Field(description="What was done — 1-2 sentence completion summary (required)")],
+    plan: Annotated[str | None, Field(description="Plan path or completion reference")] = None,
+    method: Annotated[str | None, Field(description="How the work was done — approach taken")] = None,
+    notes: Annotated[str | None, Field(description="Problems found, surprises, or other comments")] = None,
+    follow_ups: Annotated[str | None, Field(description="Created follow-up tickets (comma-separated refs)")] = None,
+    findings: Annotated[str | None, Field(description="Retrospective learnings from this work")] = None,
     cleanup: Annotated[
         bool, Field(description="Remove local file after resolve; index link becomes GitHub issue URL")
     ] = False,
     force: Annotated[bool, Field(description="Resolve even if open PRs reference the issue")] = False,
 ) -> dict:
-    """Mark a backlog item as RESOLVED and close its GitHub issue without completing it.
+    """Mark a backlog item as DONE (completed) and close its GitHub issue.
 
-    Use for items that are duplicates, no longer needed, or out of scope.
-    Use force=true to resolve even when open PRs reference the issue.
+    Creates a structured completion record as an audit/retrospective trail.
+    Only summary is required — for trivial items a one-liner suffices.
+    For dismissals (duplicate, out of scope, etc.), use backlog_close instead.
 
     Returns:
-        Dict with resolved item title, reason, issue reference, and output
-        messages/warnings. On error, dict contains an error key.
+        Dict with resolved item title, summary, and output messages/warnings.
+        On error, dict contains an error key.
     """
     out = Output()
     try:
-        result = operations.resolve_item(selector=selector, reason=reason, cleanup=cleanup, force=force, output=out)
+        result = operations.resolve_item(
+            selector=selector,
+            summary=summary,
+            plan=plan or "",
+            method=method or "",
+            notes=notes or "",
+            follow_ups=follow_ups or "",
+            findings=findings or "",
+            cleanup=cleanup,
+            force=force,
+            output=out,
+        )
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}

@@ -33,7 +33,9 @@ _COMMIT_PREFIX_RE = re.compile(r"^(feat|fix|refactor|docs|chore|perf|test|ci):\s
 # Scalar constants
 # ---------------------------------------------------------------------------
 
-SKIP_STATUS = ("DONE", "RESOLVED", "COMPLETED")
+SKIP_STATUS = ("DONE", "RESOLVED", "COMPLETED", "CLOSED")
+
+VALID_CLOSE_REASONS = ("duplicate", "out_of_scope", "superseded", "wontfix", "blocked")
 GITHUB_ISSUE_TITLE_TRUNCATE = 80
 MIN_FRONTMATTER_PARTS = 3
 FUZZY_DUPLICATE_THRESHOLD = 0.80

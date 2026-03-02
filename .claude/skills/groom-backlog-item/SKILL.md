@@ -22,7 +22,7 @@ Orchestrate autonomous backlog refinement: verify claims, clarify scope, estimat
 
 ### Step 1: Parse Arguments and Load Backlog
 
-Invoke `mcp__backlog__backlog_list()` and filter the results by argument type above.
+Call `mcp__backlog__backlog_list()` and filter the returned dict's `items` list by argument type above.
 
 ### Step 2: Validity Check (Pre-Groom Gate)
 
@@ -61,14 +61,12 @@ Before fact-checking or grooming, verify each item is still valid work:
 
    - **Close the local backlog item**:
 
-     ```text
-     mcp__backlog__backlog_close(selector="{title}", reason="Already implemented via PR #{pr} / commit {sha}")
-     ```
+     Call `mcp__backlog__backlog_resolve(selector="{title}", summary="Already implemented via PR #{pr} / commit {sha}")`.
 
    - Report to the user and skip grooming for that item.
 
    If no evidence is found, proceed — the work is still needed.
-3. **Is this local file stale?** — If the item has a GitHub issue (`metadata.issue` or index link `#N`), fetch the issue state via `mcp__backlog__backlog_view(selector="#{N}")` and check the `state` field. If the issue is **closed**, the local file is a stale remnant of work already done. Do **not** groom. Instead, run the **Completed Issue Discovery** procedure:
+3. **Is this local file stale?** — If the item has a GitHub issue (`metadata.issue` or index link `#N`), call `mcp__backlog__backlog_view(selector="#{N}")` and check the `state` field in the returned dict. If the issue is **closed**, the local file is a stale remnant of work already done. Do **not** groom. Instead, run the **Completed Issue Discovery** procedure:
 
    a. **Search for commits referencing the issue**:
 
@@ -90,9 +88,7 @@ Before fact-checking or grooming, verify each item is still valid work:
 
    d. **Close the local backlog item with evidence**:
 
-      ```text
-      mcp__backlog__backlog_close(selector="{title}", reason="Completed via PR #{pr} / commit {sha}")
-      ```
+      Call `mcp__backlog__backlog_resolve(selector="{title}", summary="Completed via PR #{pr} / commit {sha}")`.
 
    If no commits or PRs reference the issue, report: "Issue #{N} is closed but no commit/PR evidence found. Recommend manual review." and skip grooming.
    Skip grooming for that item; move to the next.
@@ -178,10 +174,10 @@ flowchart TD
 After classifying, write the classification to the backlog item:
 
 ```text
-backlog groom "{title}" --section "Issue Classification" --content "**Type**: {classification}
+mcp__backlog__backlog_groom(selector="{title}", section="Issue Classification", content="**Type**: {classification}
 **Rationale**: {1-2 sentence explanation}
 **Analysis Method**: {method}
-**Scenario Target**: {what scenario exposed this} -> {what should improve}"
+**Scenario Target**: {what scenario exposed this} -> {what should improve}")
 ```
 
 Set `scenario-target` at this step — it captures the specific scenario that exposed the problem and what should improve after the fix.
@@ -199,7 +195,7 @@ Skill(skill="find-cause", args="{description of the defect}")
 Capture the evidence chain output and write it to the item:
 
 ```text
-backlog groom "{title}" --section "Root-Cause Analysis" --content "**Method**: 5-whys
+mcp__backlog__backlog_groom(selector="{title}", section="Root-Cause Analysis", content="**Method**: 5-whys
 **Classification**: defect
 
 #### Evidence Chain
@@ -207,19 +203,15 @@ backlog groom "{title}" --section "Root-Cause Analysis" --content "**Method**: 5
 {evidence chain from /find-cause}
 
 **Root Cause**: {single actionable statement}
-**Scenario Target**: {what scenario exposed this} -> {what should improve}"
+**Scenario Target**: {what scenario exposed this} -> {what should improve}")
 ```
 
 **For `recurring-pattern` classification**: perform a frequency search to measure recurrence.
 
-```text
-mcp__backlog__backlog_list(status="resolved")
-```
-
-Filter resolved items by keywords related to this defect class, count matches, and write the 6 Sigma measurement section:
+Call `mcp__backlog__backlog_list(status="resolved")` and filter the returned `items` list by keywords related to this defect class, count matches, and write the 6 Sigma measurement section:
 
 ```text
-backlog groom "{title}" --section "Root-Cause Analysis" --content "**Method**: 6-sigma
+mcp__backlog__backlog_groom(selector="{title}", section="Root-Cause Analysis", content="**Method**: 6-sigma
 **Classification**: recurring-pattern
 
 #### Measurement
@@ -236,7 +228,7 @@ backlog groom "{title}" --section "Root-Cause Analysis" --content "**Method**: 6
 #### Improvement
 
 - **Proposed guardrail**: {specific instruction, gate, or check to add}
-- **Verification**: {how to confirm the guardrail works}"
+- **Verification**: {how to confirm the guardrail works}")
 ```
 
 **Note**: If the human has already identified the recurrence pattern, skip the search and use the human's assessment.
@@ -271,45 +263,43 @@ The `backlog-item-groomer` agent discovers related skills, agents, prior work, a
 
 ### Step 9: Write Groomed Content to Item Files
 
-For each item, write groomed content into the per-item file via the backlog script.
+For each item, write groomed content into the per-item file via the backlog MCP tools.
 
-**Before calling any backlog subcommand**: verify the signature with `--help` if you have not already used that subcommand in this session. `sync`, `update`, and `groom` accept different arguments — calling `sync` with a title argument will fail silently with a usage error. The safe pattern:
+**MCP tool parameters are schema-enforced.** Unlike CLI subcommands, MCP tools reject invalid parameters
+with a structured error. There is no need to verify signatures before calling. If unsure which tool to
+use, check the tool name and parameters:
 
-```text
-# Verify the available parameters for an unfamiliar tool by checking the MCP tool list or backlog skill reference
+- `mcp__backlog__backlog_update` — updates an existing item (selector required)
+- `mcp__backlog__backlog_groom` — writes groomed content (selector required)
+- `mcp__backlog__backlog_sync` — creates GitHub issues for items missing them and pushes groomed content (no selector — operates on entire backlog)
 
-# Then call with the correct signature
-mcp__backlog__backlog_update(selector="{title}", section="...", content="...")
-```
-
-`mcp__backlog__backlog_sync` creates GitHub issues for items missing them — it takes no title argument. `mcp__backlog__backlog_update` and `mcp__backlog__backlog_groom` both accept a `selector` parameter. Prefer incremental updates so sections (Fact-Check, RT-ICA, groomed subsections) are appended as they become available. GitHub is canonical: when the item has an issue, the backlog MCP server syncs groomed content to the GitHub issue body.
+Prefer incremental updates so sections (Fact-Check, RT-ICA, groomed subsections) are written as they become available. GitHub is canonical: when the item has an issue, the MCP tool syncs groomed content to the GitHub issue body.
 
 **Preferred: incremental section updates**
 
-After each step, call the backlog script with `--section` and `--content`:
+After each step, call `mcp__backlog__backlog_groom` with `section` and `content`:
 
 ```text
 # After Step 4 (fact-check)
-backlog groom "{item title}" --section "Fact-Check" --content "{fact-check summary}"
+mcp__backlog__backlog_groom(selector="{item title}", section="Fact-Check", content="{fact-check summary}")
 
 # After Step 5 (RT-ICA)
-backlog groom "{item title}" --section "RT-ICA" --content "{rt-ica summary}"
+mcp__backlog__backlog_groom(selector="{item title}", section="RT-ICA", content="{rt-ica summary}")
 
-# After Step 8 (groomer output) — full groomed body or subsections
-backlog groom "{item title}" --section "Reproducibility" --content "{reproducibility section}"
+# After Step 8 (groomer output) — subsection or full groomed body
+mcp__backlog__backlog_groom(selector="{item title}", section="Reproducibility", content="{reproducibility section}")
 # ... or for full groomed body:
-backlog groom "{item title}" --groomed-content "{full groomed body}"
+mcp__backlog__backlog_groom(selector="{item title}", groomed_content="{full groomed body}")
 ```
 
 **Alternative: full content**
 
 ```text
-backlog groom "{item title}" --groomed-content "{full groomed body}"
-# Or from file:
-backlog groom "{item title}" --groomed-file {path}
-# Or from stdin:
-backlog groom "{item title}" < {groomed_file}
+mcp__backlog__backlog_groom(selector="{item title}", groomed_content="{full groomed body}")
 ```
+
+Note — `--groomed-file {path}` and stdin pipe (`< {file}`) patterns have no MCP equivalent.
+Provide groomed content inline via the `groomed_content` parameter.
 
 **Valid section names** — top-level: `Fact-Check`, `RT-ICA`. Groomed subsections: `Reproducibility`, `Priority`, `Impact`, `Scope`, `Output / Evidence`, `Dependencies`, `Research`, `Skills`, `Agents`, `Prior Work`, `Files`, `Decision`, `Issue Classification`, `Root-Cause Analysis`.
 
@@ -359,7 +349,7 @@ Per-item groomed content lives in each item file; this session file holds only m
 - RT-ICA summary included for each item
 - Groomer agent(s) spawned via `Agent(subagent_type: "backlog-item-groomer")` — NOT groomed inline
 - Groomer agent(s) received RT-ICA context, fact-check verdicts, and file paths (not pasted content)
-- Groomed content written via `backlog groom` (prefer `--section`/`--content` incremental updates; `--groomed-content` or stdin for full body)
+- Groomed content written via `mcp__backlog__backlog_groom` (prefer `section`/`content` parameters for incremental updates; `groomed_content` for full body)
 - When item has GitHub issue, groomed content synced to issue body
 - Bulk session summary optionally saved to `.claude/grooming-sessions/{date}.md` when grooming multiple items
 - Issue classification assigned for each item (Step 6)
