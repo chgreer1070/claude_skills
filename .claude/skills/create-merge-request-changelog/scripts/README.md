@@ -44,7 +44,7 @@ Extracts commits, diffs, and statistics from git changes between two references.
 
 ### 2. `fetch_gitlab_mr.py`
 
-Fetches merge request metadata and changes from GitLab via `glab` CLI.
+Fetches merge request metadata and changes from GitLab via the python-gitlab API.
 
 **Features:**
 - Extract MR ID from URL or direct ID
@@ -54,8 +54,7 @@ Fetches merge request metadata and changes from GitLab via `glab` CLI.
 - Rich formatted output with tables
 
 **Requirements:**
-- `glab` CLI installed and authenticated
-- Install: <https://gitlab.com/gitlab-org/cli>
+- `GITLAB_TOKEN` or `GITLAB_PRIVATE_TOKEN` environment variable set
 
 **Usage:**
 ```bash
@@ -194,7 +193,7 @@ uv pip install typer rich
 
 Additional requirements:
 - **analyze_git_changes.py**: Git installed and repository context
-- **fetch_gitlab_mr.py**: `glab` CLI installed and authenticated
+- **fetch_gitlab_mr.py**: `GITLAB_TOKEN` or `GITLAB_PRIVATE_TOKEN` env var set
 - **format_mr_description.py**: Valid analysis JSON input
 
 ## Design Principles
@@ -255,8 +254,8 @@ cd /path/to/git/repo
 /path/to/analyze_git_changes.py --help
 /path/to/analyze_git_changes.py main HEAD /tmp/test-analysis
 
-# Test fetch_gitlab_mr.py (requires glab auth)
-glab auth status
+# Test fetch_gitlab_mr.py (requires GITLAB_TOKEN env var)
+export GITLAB_TOKEN=your-token-here
 /path/to/fetch_gitlab_mr.py 123 --output /tmp/test-mr.json
 
 # Test format_mr_description.py with sample data
