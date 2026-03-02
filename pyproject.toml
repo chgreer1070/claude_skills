@@ -263,6 +263,20 @@ max-complexity = 12
 "**/assets/nested-typer-exceptions/*.py" = ["ANN", "DOC"]
 # Lazy imports for optional dependency detection (hatchling may not be installed)
 "**/assets/version.py" = ["PLC0415"]
+# Test files that live in scripts/ directories (not tests/)
+"**/scripts/test_*.py" = [
+    "ANN",  # Type annotations optional for test fixtures/methods
+    "D",    # Docstring requirements relaxed for tests
+    "DOC",  # Docstring content requirements relaxed
+    "E501", # Line length relaxed for test data
+    "EXE",  # Shebang executable check skipped for PEP723 test files
+    "N",    # camelCase in test names acceptable when testing API fields
+    "PLC",  # Local imports acceptable in test helpers
+    "PLR",  # Testing private methods is valid test pattern
+    "S",    # Security checks not needed in tests (S101 assert is expected)
+    "SLF",  # Private name imports acceptable for testing internals
+    "T",    # print() statements are intentional for CI output visibility
+]
 "**/tests/**" = [
     "ANN",  # Type annotations optional for test fixtures/methods
     "D",    # Docstring requirements relaxed for tests
