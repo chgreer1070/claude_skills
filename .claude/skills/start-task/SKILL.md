@@ -95,4 +95,37 @@ mkdir -p .claude/context
 printf '%s' '{"task_file_path": "{task_file_path}", "task_id": "{task_id}"}' > ".claude/context/active-task-${CLAUDE_SESSION_ID}.json"
 ```
 
-5. Implement against the task acceptance criteria and run its verification steps.
+5. **Record divergence observations during implementation.**
+
+   While implementing, if you discover that the architect spec or feature-context
+   describes something that does not match what you are implementing, append a
+   divergence note to the task file under a `## Divergence Notes` section.
+
+   **When to record**: Record a divergence note when ALL of these hold:
+   - You are implementing something that differs from what the architect spec or
+     feature-context describes
+   - The difference is not a trivial implementation detail (e.g., different variable
+     name, different import path)
+   - The difference affects the observable behavior, structure, or scope of the feature
+
+   **Divergence note format**:
+
+````markdown
+## Divergence Notes
+
+### DN-1: {Brief title}
+
+- **Plan artifact**: plan/architect-{slug}.md, section "{section name}"
+- **Plan claim**: "{quoted text from plan artifact}"
+- **Actual implementation**: "{what was actually done and why}"
+- **Classification**: design-refinement | intent-divergence
+- **Recorded**: {ISO timestamp}
+````
+
+   After appending a note, update `divergence-notes: {count}` in YAML frontmatter
+   (or add `**Divergence Notes**: {count}` in legacy format).
+
+   For full artifact classification rules and divergence thresholds, see
+   [.claude/docs/plan-artifact-lifecycle.md](./../../docs/plan-artifact-lifecycle.md).
+
+6. Implement against the task acceptance criteria and run its verification steps.

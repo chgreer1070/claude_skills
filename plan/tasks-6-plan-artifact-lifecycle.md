@@ -573,6 +573,7 @@ complexity: low
 accuracy-risk: low
 parallelize-with: [T2, T5]
 reason: T2, T3, T5 write to different files with no overlap
+divergence-notes: 1
 handoff: >
   Report: exact location of new step 5a in SKILL.md (line numbers),
   linter pass/fail.
@@ -693,6 +694,16 @@ Return:
 - The line numbers of the inserted step 5a
 - The exact text of the link to the policy document as it appears in the file
 - Linter pass/fail
+
+## Divergence Notes
+
+### DN-1: Corrected relative link path to policy document
+
+- **Plan artifact**: plan/tasks-6-plan-artifact-lifecycle.md, section "Requirements"
+- **Plan claim**: "path from SKILL.md to docs is `./../docs/plan-artifact-lifecycle.md`"
+- **Actual implementation**: Used `./../../docs/plan-artifact-lifecycle.md` because SKILL.md is at `.claude/skills/start-task/SKILL.md` (3 levels deep from repo root), so `./../docs/` resolves to `.claude/skills/docs/` (wrong). `./../../docs/` resolves to `.claude/docs/` (correct). The constraint text itself said "verify this resolves correctly", confirming the intent was correctness over literal match.
+- **Classification**: design-refinement
+- **Recorded**: 2026-03-02T12:05:00Z
 
 ---
 
