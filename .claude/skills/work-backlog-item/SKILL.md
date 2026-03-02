@@ -168,10 +168,15 @@ When an issue is found to be already closed (state `closed`), gather evidence of
    git log --oneline --all -20 --grep="#N"
    ```
 
-2. **Search for merged PRs referencing the issue**:
+2. **Search for merged PRs referencing the issue** (use backlog script):
 
    ```bash
-   gh pr list -R Jamie-BitFlight/claude_skills --search "#N" --state merged --json number,title,url,mergedAt --limit 5
+   uv run .claude/skills/backlog/scripts/backlog.py view "#{N}" --format json -R Jamie-BitFlight/claude_skills | jq '.body' | grep -i "Fixes #N\|Closes #N"
+   ```
+
+   Or via git history:
+   ```bash
+   git log --oneline --all -20 --grep="Fixes #N\|Closes #N"
    ```
 
 3. **Report findings**:
@@ -273,26 +278,20 @@ Before planning work, verify the described feature/fix hasn't already been imple
    git log --oneline --all -30 --grep="{keyword from title}"
    ```
 
-2. **Search for merged PRs matching the topic**:
+2. **Search for merged PRs matching the topic** (via git log):
 
    ```bash
-   gh pr list -R Jamie-BitFlight/claude_skills --search "{keyword}" --state merged --json number,title,url,mergedAt --limit 5
+   git log --oneline --all -30 --grep="{keyword}"
    ```
 
 3. **Spot-check the codebase** — read the file(s) at the suggested location and verify whether the described behavior already exists.
 
 If evidence shows the work is already done:
 
-- **Comment evidence on the GitHub issue** (if one exists):
+- **Close the backlog item and GitHub issue** (use backlog script):
 
   ```bash
-  gh issue comment N -R Jamie-BitFlight/claude_skills --body "This work was already completed via PR #{pr} / commit {sha}. Closing."
-  ```
-
-- **Close the GitHub issue**:
-
-  ```bash
-  gh issue close N -R Jamie-BitFlight/claude_skills --reason completed
+  uv run .claude/skills/backlog/scripts/backlog.py close "{title}" --reason "Already implemented via commit {sha}" -R Jamie-BitFlight/claude_skills
   ```
 
 - **Close the local backlog item**:
@@ -554,10 +553,10 @@ Then stop.
 
 #### 9e: Check for open PR
 
-6. If the item has a linked GitHub Issue (`#N`), check whether an open PR already references it:
+6. If the item has a linked GitHub Issue (`#N`), check whether an open PR already references it (via git log):
 
 ```bash
-gh pr list -R Jamie-BitFlight/claude_skills --search "Fixes #N" --state open --json number,title,url
+git log --oneline -20 --grep="Fixes #N\|Closes #N"
 ```
 
 - **Open PR found**: The PR body contains `Fixes #N` — the issue will auto-close on merge. Update only the local per-item file status (do NOT close the GitHub Issue):
@@ -669,13 +668,16 @@ uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
 
 ### setup-github Command
 
-**Trigger:** `$0` is `setup-github`. Initializes label taxonomy, first milestone, and GitHub Project.
+**Trigger:** `$0` is `setup-github`. Initializes label taxonomy, first milestone, and GitHub Project (use backlog script where available).
 
 ```bash
+# Use backlog script for automation (preferred)
+uv run .claude/skills/backlog/scripts/backlog.py setup --repo Jamie-BitFlight/claude_skills
+
+# Or use github_project_setup.py directly if needed
 uv run .claude/skills/gh/scripts/github_project_setup.py labels --repo Jamie-BitFlight/claude_skills
-gh api repos/Jamie-BitFlight/claude_skills/milestones -X POST \
-  -f title="v1.0 — Skills Foundation" -f due_on="2026-03-31T00:00:00Z"
-gh project create --owner Jamie-BitFlight --title "claude_skills Backlog"
+uv run .claude/skills/gh/scripts/github_project_setup.py milestone create \
+  --title "v1.0 — Skills Foundation" --due 2026-03-31 --repo Jamie-BitFlight/claude_skills
 ```
 
 Full setup steps and expected output: [github-integration.md](./references/github-integration.md)
