@@ -473,7 +473,7 @@ Extracts git data between two references.
 
 ### fetch_gitlab_mr.py
 
-Fetches GitLab MR data using glab CLI.
+Fetches GitLab MR data using the python-gitlab API.
 
 **Usage:** `python scripts/fetch_gitlab_mr.py MR_ID [OPTIONS]`
 
@@ -510,7 +510,7 @@ Extracts git data between two references.
 
 ### fetch_gitlab_mr.py
 
-Fetches GitLab MR data using glab CLI.
+Fetches GitLab MR data using the python-gitlab API.
 
 **Usage:** `python scripts/fetch_gitlab_mr.py MR_ID [OPTIONS]`
 
@@ -535,7 +535,7 @@ Formats AI analysis into markdown MR description.
 ## Resources
 
 - **scripts/analyze_git_changes.py**: Python CLI to extract git data
-- **scripts/fetch_gitlab_mr.py**: Python CLI to fetch GitLab MR data via glab
+- **scripts/fetch_gitlab_mr.py**: Python CLI to fetch GitLab MR data via python-gitlab API
 - **scripts/format_mr_description.py**: Python CLI to format AI analysis into markdown
 - **scripts/README.md**: Comprehensive CLI documentation and examples
 - **references/analysis_prompts.md**: AI prompts for categorization and formatting

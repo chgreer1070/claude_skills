@@ -11,6 +11,7 @@ metadata:
   issue: '#252'
   groomed: '2026-02-28'
   last_synced: '2026-02-28T05:35:37Z'
+  plan: plan/tasks-18-replace-glab-subprocess-followup-1.md
 ---
 
 ## Fact-Check

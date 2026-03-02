@@ -14,8 +14,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import shutil
-import subprocess
 from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, cast
@@ -89,30 +87,16 @@ def _get_project_path() -> str:
 
 
 def _resolve_token() -> str | None:
-    """Resolve GitLab API token from environment or glab CLI config.
+    """Resolve GitLab API token from environment variables.
 
     Checks in order:
     1. GITLAB_TOKEN environment variable
     2. GITLAB_PRIVATE_TOKEN environment variable
-    3. glab CLI config for the detected host
 
     Returns:
         Token string, or None if no token found.
     """
-    if token := os.environ.get("GITLAB_TOKEN") or os.environ.get("GITLAB_PRIVATE_TOKEN"):
-        return token
-
-    glab_path = shutil.which("glab")
-    if not glab_path:
-        return None
-
-    try:
-        result = subprocess.run(
-            [glab_path, "config", "get", "token", "-h", _get_gitlab_host()], capture_output=True, text=True, check=True
-        )
-        return result.stdout.strip() or None
-    except subprocess.CalledProcessError:
-        return None
+    return os.environ.get("GITLAB_TOKEN") or os.environ.get("GITLAB_PRIVATE_TOKEN") or None
 
 
 def get_gitlab_client() -> gitlab.Gitlab:
@@ -126,7 +110,7 @@ def get_gitlab_client() -> gitlab.Gitlab:
     """
     token = _resolve_token()
     if not token:
-        msg = "No GitLab token found. Set GITLAB_TOKEN or configure glab."
+        msg = "No GitLab token found. Set GITLAB_TOKEN or GITLAB_PRIVATE_TOKEN env var."
         raise GitLabFetchError(msg)
 
     return gitlab.Gitlab(f"https://{_get_gitlab_host()}", private_token=token)
