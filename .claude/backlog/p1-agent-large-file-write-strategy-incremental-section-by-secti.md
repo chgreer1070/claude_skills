@@ -11,6 +11,7 @@ metadata:
   issue: '#367'
   last_synced: '2026-03-02T04:50:43Z'
   groomed: '2026-03-02'
+  plan: plan/tasks-19-large-file-write-strategy.md
 ---
 
 ## Fact-Check
