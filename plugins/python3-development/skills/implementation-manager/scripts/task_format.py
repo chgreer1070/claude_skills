@@ -52,6 +52,7 @@ __all__ = [
     "TASK_ID_PATTERN",
     "VALID_COMPLEXITIES",
     "VALID_STATUSES",
+    "detect_fenced_yaml",
     "has_yaml_frontmatter",
     "normalize_status",
     "parse_yaml_frontmatter",
@@ -90,6 +91,37 @@ def has_yaml_frontmatter(content: str) -> bool:
             return False
 
     return True
+
+
+_FENCED_YAML_PATTERN: re.Pattern[str] = re.compile(
+    r"^```(?!`)(?:yaml|yml)?\s*\n(---\n[\s\S]*?\n---)\n```\s*$", re.MULTILINE
+)
+
+
+def detect_fenced_yaml(content: str) -> str | None:
+    """Detect YAML frontmatter wrapped in fenced code blocks and strip the fences.
+
+    Args:
+        content: Raw file content to check.
+
+    Returns:
+        The content with fence markers stripped if fenced YAML was detected,
+        or None if no fenced YAML pattern was found.
+    """
+    stripped = content.lstrip()
+
+    # Fast pre-check: must start with a 3-backtick fence (not 4+)
+    # and the line after must begin with ---
+    if not re.match(r"```(?!`)(?:yaml|yml)?\s*\n", stripped):
+        return None
+    second_line_start = stripped.split("\n", 2)[1] if "\n" in stripped else ""
+    if not second_line_start.startswith("---"):
+        return None
+
+    result = _FENCED_YAML_PATTERN.sub(r"\1\n", stripped)
+    if result == stripped:
+        return None
+    return result
 
 
 def parse_yaml_frontmatter(content: str) -> tuple[dict[str, Any], str]:

@@ -171,6 +171,62 @@ Report:
 
 ---
 
+## Authorized Writers
+
+Only designated scripts should write or update task data files. Direct edits by agents or
+humans should be confined to the markdown body — never the YAML frontmatter — unless performing
+a deliberate manual migration.
+
+| Script | Purpose | Path |
+|--------|---------|------|
+| `implementation_manager.py` | Read-only status queries, ready-tasks, and task file parsing | `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` |
+| `task_status_hook.py` | Timestamp and status updates from hooks | `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` |
+| `split_task_file.py` | Splits monolithic task files into per-task files | `plugins/python3-development/scripts/split_task_file.py` |
+| `migrate_task_format.py` | Converts legacy markdown to YAML frontmatter | `plugins/python3-development/scripts/migrate_task_format.py` |
+
+Task data files MUST contain raw YAML frontmatter starting with `---`. Agents generating task
+files SHOULD produce content matching this format directly. When the generator is an LLM agent
+(e.g., `swarm-task-planner`), the agent's template MUST show raw frontmatter without code fence
+wrappers.
+
+### Anti-Pattern: Fenced YAML Frontmatter
+
+**Wrong** — wrapping frontmatter in a code fence causes parser failure:
+
+````markdown
+```yaml
+---
+task: T1
+title: Create Data Models
+status: not-started
+---
+```
+
+## Context
+
+Task body here.
+````
+
+**Correct** — raw frontmatter starting on the first line of the file:
+
+```text
+---
+task: T1
+title: Create Data Models
+status: not-started
+---
+
+## Context
+
+Task body here.
+```
+
+The `detect_fenced_yaml()` function in `task_format.py` auto-strips fences with a warning, but
+this is a fallback for human-edited files. Generators (agents, scripts) must produce correct
+output without relying on this recovery path.
+
+---
+
 ## Markdown Body Sections
 
 ### Recommended Sections

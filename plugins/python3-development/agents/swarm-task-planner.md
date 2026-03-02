@@ -211,13 +211,11 @@ Default behavior:
 TASK file template:
 
 ````markdown
-```yaml
 ---
 task: <task-id>
 title: <short title>
 status: not-started
 ---
-```
 
 ## Context
 ## Objective
@@ -247,7 +245,6 @@ Revision Protocol:
 Every task in the plan MUST use YAML frontmatter for metadata fields followed by CLEAR-ordered body sections:
 
 ````markdown
-```yaml
 ---
 task: [Task ID]
 title: [Descriptive Name]
@@ -262,7 +259,6 @@ parallelize-with: []
 reason: [Why parallelization is safe; avoid file conflicts]
 handoff: [What the worker must report back: summary, evidence, blockers]
 ---
-```
 
 ## Context
 [Only what the worker needs; reference specific files/sections]
