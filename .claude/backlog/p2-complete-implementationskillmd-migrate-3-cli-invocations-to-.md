@@ -10,4 +10,5 @@ metadata:
   status: open
   issue: '#397'
   last_synced: '2026-03-02T07:03:52Z'
+  plan: plan/tasks-20-backlog-mcp-migration-followup-1.md
 ---
