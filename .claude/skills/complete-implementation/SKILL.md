@@ -50,7 +50,25 @@ If drift exists or docs must be updated for the feature, launch `service-docs-ma
 
 ## Phase 6: Context Refinement
 
-Launch `context-refinement` to update the task file Context Manifest with discoveries from implementation (only if needed).
+Launch `context-refinement` to update the task file Context Manifest with discoveries from implementation AND perform a plan artifact freshness check against the feature-context and architect spec. The agent compares key claims in plan artifacts against the actual implementation and classifies findings as design-refinement or intent-divergence (see [.claude/docs/plan-artifact-lifecycle.md](./../../docs/plan-artifact-lifecycle.md)).
+
+---
+
+## Post-Phase-6: Surface Divergence Findings
+
+After Phase 6 completes, check the `context-refinement` agent output for a `DIVERGENCE_REQUIRING_REVIEW` block.
+
+If present, include in the final output to the human:
+
+```text
+Plan artifacts have intent divergences requiring your review.
+See: [annotated artifact paths from agent output]
+Divergences:
+  [list from DIVERGENCE_REQUIRING_REVIEW block]
+```
+
+This is informational, not blocking. The human reviews at their discretion.
+If absent, no additional output is needed — the feature proceeds normally.
 
 ---
 

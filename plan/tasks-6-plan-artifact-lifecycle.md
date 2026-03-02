@@ -713,7 +713,9 @@ Return:
 ---
 task: T4
 title: Update complete-implementation SKILL.md — expand Phase 6 description
-status: not-started
+status: complete
+started: 2026-03-02T00:00:00Z
+completed: 2026-03-02T00:00:00Z
 agent: general-purpose
 dependencies: [T5]
 priority: 3
