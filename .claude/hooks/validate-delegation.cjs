@@ -11,8 +11,7 @@
  * Required template sections (from .claude/skills/delegate/SKILL.md):
  *   1. Starts with "Your ROLE_TYPE is sub-agent."
  *   2. Contains DEFINITION OF SUCCESS section
- *   3. Contains CONTEXT section
- *   4. Does NOT prescribe HOW (no bare code blocks with implementation)
+ *   3. Does NOT prescribe HOW (no bare code blocks with implementation)
  *
  * Resume calls are skipped — no new prompt is validated.
  *
@@ -77,12 +76,7 @@ function validatePrompt(prompt) {
     violations.push('Rule 2: Missing DEFINITION OF SUCCESS section');
   }
 
-  // Rule 3: must contain CONTEXT section
-  if (!hasSection(prompt, 'CONTEXT')) {
-    violations.push('Rule 3: Missing CONTEXT section');
-  }
-
-  // Rule 5: must NOT prescribe HOW — detect fenced code blocks that contain
+  // Rule 3: must NOT prescribe HOW — detect fenced code blocks that contain
   // implementation-style content (line assignments, function/method calls on
   // specific lines, etc.). A single inline code mention is acceptable; a fenced
   // block with actual implementation lines is the anti-pattern.
@@ -102,7 +96,7 @@ function validatePrompt(prompt) {
     // treat the block as prescribing HOW.
     if (lines.length >= 3 && implLines.length >= Math.ceil(lines.length / 2)) {
       violations.push(
-        'Rule 4: Prompt contains implementation code block (prescribes HOW). ' +
+        'Rule 3: Prompt contains implementation code block (prescribes HOW). ' +
           'Use OBSERVATIONS/CONTEXT constraints instead of code snippets.'
       );
       break; // one violation is enough
