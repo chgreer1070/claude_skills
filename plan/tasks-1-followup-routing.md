@@ -447,6 +447,8 @@ Compared `plan/feature-context-followup-routing.md` and `plan/architect-followup
 - **Files to Modify undercount**: The architect spec lists 2 files. The implementation modified 3 (added plugin-level copy sync) plus an intro paragraph fix. The plugin sync is a standard post-edit step per plugin development rules.
 - **Feature-context unresolved questions**: Q1-Q5 still show `Resolution: _pending_` and Goals header still says "Pending Resolution." These were resolved by the architect spec's ADR-1 through ADR-5. The feature-context is a discovery-phase snapshot and is not expected to be back-updated with resolutions.
 - **Step 2 algorithm granularity**: The architect spec shows a 3-step compressed version; the implementation uses the 5-step detailed version from the context manifest. No functional difference.
+- **Gap #7 (follow-up file status on deferral)**: The feature-context raised whether deferred follow-up files should have a special status like "DEFERRED" or "BACKLOGGED." The implementation chose not to add a special status -- the follow-up file retains its original status and the routing step only logs the deferral reason. This was implicitly decided by omission in the ADRs and is consistent with the backlog item serving as the tracking mechanism rather than the file status.
+- **`last_updated` metadata sync gap** (still present): Local SKILL.md reads `last_updated: "2026-02-28"`, plugin copy reads `last_updated: "2026-03-02"`. The local copy was not bumped during this session. This is a minor housekeeping item.
 
 ---
 
