@@ -257,10 +257,14 @@ Phase 6: context-refinement     -> Update task file Context Manifest + plan arti
 
 ### Recursive Follow-up
 
-If Phase 1 (code review) creates follow-up task files (naming: `plan/tasks-{N}-{slug}-followup-{k}.md`), the workflow recurses:
+If Phase 1 (code review) creates follow-up task files (naming: `plan/tasks-{N}-{slug}-followup-{k}.md`), each follow-up is routed through a backlog-linking step before any recursion decision:
 
-1. Run `/implement-feature` on the follow-up task file
-2. Run `/complete-implementation` on the follow-up task file
+1. Follow-up files are detected from the code-reviewer's ARTIFACTS `Task files:` output. If the list is empty or absent, a confirmatory glob for `plan/tasks-*-{slug}-followup-*.md` is run as fallback.
+2. For each follow-up, a search title is derived from the filename (strip prefix/suffix, convert hyphens to spaces) and searched against existing backlog items via `backlog.py list --format json`.
+3. If a matching backlog item is found, the follow-up is attached as its plan via `backlog update --plan`.
+4. If no match is found, a new backlog item is created via `create-backlog-item --auto`, then the follow-up is attached via `backlog update --plan`.
+5. Recursion proceeds only when BOTH conditions are true: the follow-up file's feature slug matches the parent task file's slug (same session scope), AND the follow-up's `## Priority` section contains `High`.
+6. Otherwise, the follow-up is deferred to backlog with no recursion. The follow-up path, backlog item title, priority, and scope match result are logged.
 
 ---
 
@@ -362,8 +366,13 @@ User
                                 ──> plan artifact annotations (if divergence found)
                                 ──> DIVERGENCE_REQUIRING_REVIEW (if intent divergence)
   │
-  ├─ [If follow-up tasks created]
-  │    └─ Recurse: /implement-feature + /complete-implementation
+  ├─ [If follow-up task files created by code-reviewer]
+  │    ├─ Route each follow-up:
+  │    │    ├─ Search backlog by title keywords from filename
+  │    │    ├─ Match found: backlog update --plan {followup_path}
+  │    │    └─ No match: create-backlog-item --auto, then backlog update --plan
+  │    └─ Gate: same slug AND High priority -> Recurse: /implement-feature + /complete-implementation
+  │             otherwise -> Deferred to backlog (no recursion)
   │
   ▼
 Done
