@@ -21,9 +21,8 @@ Your ROLE_TYPE is sub-agent.
 [Task Identification - one sentence]
 
 OBSERVATIONS:
-- [Factual observations from your work or other agents]
+- [Factual observations already in your context]
 - [Verbatim error messages if applicable]
-- [Observed locations: file:line references if already known]
 - [Environment or system state if relevant]
 
 DEFINITION OF SUCCESS:
