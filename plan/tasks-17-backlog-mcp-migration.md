@@ -442,7 +442,8 @@ Reference the line-by-line replacement table in architecture spec section 2.1. E
 
 ## Task 4: Migrate work-backlog-item reference files (8 invocations)
 
-**Status**: NOT STARTED
+**Status**: 🔄 IN PROGRESS
+**Started**: 2026-03-02T14:00:00Z
 **Dependencies**: Task 3
 **Priority**: 2
 **Complexity**: Medium
@@ -560,7 +561,9 @@ Two simple migrations:
 
 ## Task 7: Rewrite backlog/SKILL.md documentation
 
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
+**Started**: 2026-03-02T14:00:00Z
+**Completed**: 2026-03-02T14:30:00Z
 **Dependencies**: Task 1, Task 3
 **Priority**: 2
 **Complexity**: High
@@ -599,7 +602,9 @@ Read `.claude/skills/backlog/backlog_core/server.py` for exact tool signatures a
 
 ## Task 8: Update agent files
 
-**Status**: NOT STARTED
+**Status**: ✅ COMPLETE
+**Started**: 2026-03-02T12:00:00Z
+**Completed**: 2026-03-02T12:30:00Z
 **Dependencies**: Task 3, Task 5
 **Priority**: 3
 **Complexity**: Low

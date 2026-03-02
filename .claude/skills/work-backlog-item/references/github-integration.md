@@ -30,21 +30,13 @@ After extracting item fields (Step 2), check for an existing linked issue:
 
 ## Step 2.5a: Create GitHub Issue
 
-Invoke the backlog script:
+Call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `create_issue=true`.
 
-```text
-mcp__backlog__backlog_update(selector="{title}", create_issue=true)
-```
-
-The tool creates the issue and writes `issue: '#N'` back to the per-item file frontmatter.
+The tool creates the issue and writes `issue: '#N'` back to the per-item file frontmatter. Check the returned dict for an `error` key.
 
 ## Step 2.7: Set In-Progress Label
 
-Invoke the backlog MCP tool:
-
-```text
-mcp__backlog__backlog_update(selector="{title}", status="in-progress")
-```
+Call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `status="in-progress"`. Check the returned dict for an `error` key.
 
 If the item is in a milestone with other issues, also run `milestone start`:
 
@@ -53,15 +45,11 @@ uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
   --number {milestone_number} --repo Jamie-BitFlight/claude_skills
 ```
 
-## Step 9: Close — backlog script
+## Step 9: Close — backlog tool
 
-Invoke the backlog script (updates per-item file + gh issue close):
+Call the `mcp__backlog__backlog_close` tool with `selector="{title}"`, `plan="{plan path}"`, and `checklist_pass=true`.
 
-```text
-mcp__backlog__backlog_close(selector="{title}", plan="{plan path}", checklist_pass=true)
-```
-
-The script updates the per-item file status and closes the GitHub issue.
+The tool updates the per-item file status and closes the GitHub issue. Check the returned dict for an `error` key.
 
 ## setup-github Command
 

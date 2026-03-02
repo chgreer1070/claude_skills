@@ -6,13 +6,9 @@ Detailed procedure content for Steps 0, Q, P, R, and the feature request templat
 
 ## Step 0: Interactive Browser
 
-1. Invoke the backlog MCP tool to list items with status:
+1. Call the `mcp__backlog__backlog_list` tool with `with_status=true`.
 
-   ```text
-   mcp__backlog__backlog_list(with_status=true)
-   ```
-
-   Parse the JSON output. Each entry has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
+   Parse the returned dict. Each entry in `items` has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
 
 2. **Groomed** = item has `groomed: true` in JSON, or `## Groomed` section in its per-item file (`.claude/backlog/{priority}-{slug}.md`). Read the item file; if groomed sections present, use them.
 
@@ -111,11 +107,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 4. Write the plan to `plan/quick/{slug}.md` with frontmatter `type: quick`, fields: `title`, `priority`, `issue`, `created`. Body sections: `## Task` (description), `## Steps` (1-3 checklist items derived from description), `## Done When` (acceptance_criteria if present, else goal from description).
 
-5. Invoke backlog script to record the plan:
-
-   ```text
-   mcp__backlog__backlog_update(selector="{title}", plan="plan/quick/{slug}.md")
-   ```
+5. Call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `plan="plan/quick/{slug}.md"` to record the plan.
 
 6. Report:
 
