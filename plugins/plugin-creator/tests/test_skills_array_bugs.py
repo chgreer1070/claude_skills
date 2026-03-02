@@ -1,8 +1,7 @@
-"""Failing tests that reproduce three bugs in plugin-creator validation/sync scripts.
+"""Regression tests for four bugs in plugin-creator validation/sync scripts (issue #335).
 
-Each test documents the DESIRED behaviour (what the code SHOULD do once fixed) and
-is written so it FAILS against the current buggy code.  When the bugs are fixed the
-tests will pass without modification.
+All four bugs are now fixed.  Each test documents the correct behaviour and passes
+against the current code.
 
 Bugs covered
 ------------

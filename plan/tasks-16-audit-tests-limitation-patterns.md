@@ -233,7 +233,7 @@ All three tasks have no mutual file conflicts. The full-suite regression check i
 ---
 task: "1"
 title: Update stale limitation comment block in test_backlog_core_parsing.py
-status: NOT STARTED
+status: COMPLETE
 agent: python3-development:python-pytest-architect
 skills:
   - python3-development:fastmcp-python-tests
@@ -317,7 +317,7 @@ why other tests in the file continue to use flat frontmatter.
 ---
 task: "2"
 title: Update four mock docstrings from bug-workaround justification to isolation-pattern justification in test_backlog_core_operations.py
-status: NOT STARTED
+status: COMPLETE
 agent: python3-development:python-pytest-architect
 skills:
   - python3-development:fastmcp-python-tests
@@ -422,7 +422,7 @@ reason for the mock, removing the now-false "pre-existing bug" justification.
 ---
 task: "3"
 title: Observe test state, apply xfail to failing tests, and update module docstring in test_skills_array_bugs.py
-status: NOT STARTED
+status: COMPLETE
 agent: python3-development:python-pytest-architect
 skills:
   - python3-development:fastmcp-python-tests

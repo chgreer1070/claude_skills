@@ -282,8 +282,8 @@ class TestListItemsFiltering:
         Tests: Skip filtering in list_items.
         How: Mock parse_backlog to return one active and one skip=True item.
         Why: Done items must not appear in the active backlog list.  parse_backlog
-             is mocked because _parse_frontmatter has a pre-existing bug where the
-             nested metadata dict is stringified, preventing skip from being set.
+             is mocked to inject a BacklogItem with a specific skip value directly,
+             isolating this test from parsing logic.
         """
         active = BacklogItem(title="Active Item", section="P1", skip=False)
         done = BacklogItem(title="Done Item", section="P1", skip=True)
@@ -303,8 +303,8 @@ class TestListItemsFiltering:
         Tests: batch_fetch_statuses integration in list_items.
         How: Mock parse_backlog to return an item with issue="#7"; mock batch_fetch_statuses.
         Why: with_status must use batch fetch — not N+1 individual calls.  parse_backlog
-             is mocked because _parse_frontmatter has a pre-existing bug that drops the
-             issue field from nested metadata, causing empty issue strings after parsing.
+             is mocked to inject a BacklogItem with a specific issue value directly,
+             isolating this test from parsing logic.
         """
         item_with_issue = BacklogItem(title="Tracked Item", section="P1", skip=False, issue="#7")
         mocker.patch("backlog_core.operations.parse_backlog", return_value=[item_with_issue])
@@ -488,8 +488,9 @@ class TestCloseItem:
         Tests: Open PR guard in close_item.
         How: Mock find_item to return a BacklogItem with issue="#5" (bypasses parser bug);
              mock check_open_prs_for_issue to return one PR.
-        Why: Premature close orphans in-flight PRs.  find_item is mocked because the
-             parser has a pre-existing bug that drops the issue field from nested metadata.
+        Why: Premature close orphans in-flight PRs.  find_item is mocked to inject
+             a BacklogItem with a specific issue value directly, isolating this test
+             from parsing logic.
         """
         import backlog_core.models as models
         from backlog_core.models import BacklogError
@@ -593,8 +594,9 @@ class TestResolveItem:
 
         Tests: Open PR guard in resolve_item.
         How: Mock find_item to return a BacklogItem with issue="#8"; mock open PR.
-        Why: Resolving orphans in-flight PRs.  find_item is mocked because the parser
-             has a pre-existing bug that drops the issue field from nested metadata.
+        Why: Resolving orphans in-flight PRs.  find_item is mocked to inject a
+             BacklogItem with a specific issue value directly, isolating this test
+             from parsing logic.
         """
         import backlog_core.models as models
         from backlog_core.models import BacklogError
