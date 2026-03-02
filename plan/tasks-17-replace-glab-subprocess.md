@@ -175,7 +175,8 @@ Note: `import shutil` and `import subprocess` are removed. All other imports rem
 ---
 task: "1"
 title: Implement env-var-only token resolution in fetch_gitlab_mr.py
-status: not-started
+status: in-progress
+started: 2026-03-02T00:00:00Z
 agent: python3-development:python-cli-architect
 dependencies: []
 priority: 1
@@ -306,7 +307,8 @@ Return:
 ---
 task: "2"
 title: Verify linting passes and commit with Fixes #368
-status: not-started
+status: in-progress
+started: 2026-03-02T01:00:00Z
 agent: python3-development:linting-root-cause-resolver
 dependencies: ["1"]
 priority: 2
