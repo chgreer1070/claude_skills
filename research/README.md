@@ -119,9 +119,13 @@ research/
 │   ├── docs-mcp-server.md             # Local documentation index (Grounded Docs)
 │   ├── mcpjam.md                      # Local inspector for MCP servers and apps
 │   ├── narsil-mcp.md                  # Comprehensive code intelligence MCP server
+│   ├── saga-mcp.md                    # Jira-like SQLite project tracker MCP — 31 tools, Projects>Epics>Tasks>Subtasks (11 stars)
+│   ├── ultra-mcp.md                   # Multi-model MCP server: OpenAI/Gemini/Azure/Grok through single interface with React dashboard (269 stars)
+│   └── openspec-mcp.md                # Spec-driven development MCP — 50+ tools, approval state machine, WebSocket dashboard on port 3000
 │   ├── octocode-mcp.md                # Research Driven Development platform
 │   ├── perplexity-mcp-server.md       # Perplexity AI real-time web search and reasoning MCP server
-│   └── retio-pagemap.md               # MCP server compressing HTML to 2-5K token structured maps
+│   ├── retio-pagemap.md               # MCP server compressing HTML to 2-5K token structured maps
+│   └── spec-workflow-mcp.md           # Spec-driven development workflow with approval gates and real-time dashboard (3.9K stars)
 ├── research-agent-patterns/           # Multi-agent architectures and orchestration
 │   ├── claw-loop.md                   # Autonomous development orchestration via tmux + cron
 │   ├── compound-engineering-plugin.md # Every Inc's Plan/Work/Review/Compound workflow plugin
@@ -247,6 +251,10 @@ MCP servers, tools, and integrations for extending AI assistant capabilities.
 | [perplexity-mcp-server.md](./mcp-ecosystem/perplexity-mcp-server.md) | Perplexity API Platform MCP server with real-time web search, deep research, and reasoning via 4 Sonar tools (2K stars) | 2026-02-20   |
 | [retio-pagemap.md](./mcp-ecosystem/retio-pagemap.md)     | Retio PageMap - MCP server compressing HTML pages to 2-5K token structured maps with 95.2% task success  | 2026-02-18   |
 | [sourcesyncai-mcp.md](./mcp-ecosystem/sourcesyncai-mcp.md) | SourceSync.ai MCP Server - 28-tool MCP bridge for AI-ready knowledge bases with multi-source ingestion, hybrid search, and auto-sync | 2026-02-23   |
+| [saga-mcp.md](./mcp-ecosystem/saga-mcp.md)                   | saga-mcp - SQLite-backed project tracker MCP (31 tools): Projects>Epics>Tasks>Subtasks, dependency auto-blocking, session diff, immutable activity log | 2026-03-02   |
+| [ultra-mcp.md](./mcp-ecosystem/ultra-mcp.md)                 | Ultra MCP - single MCP interface routing to OpenAI/Gemini/Azure/Grok with cost tracking, vector search, React dashboard, 25 tools as prompts (269 stars) | 2026-03-02   |
+| [openspec-mcp.md](./mcp-ecosystem/openspec-mcp.md)           | OpenSpec MCP - 50+ tool spec-driven workflow: approval state machine, threaded review, task tracking, Fastify+WebSocket dashboard on port 3000 | 2026-03-02   |
+| [spec-workflow-mcp.md](./mcp-ecosystem/spec-workflow-mcp.md) | Spec Workflow MCP - spec-driven development with Requirements→Design→Tasks approval gates, real-time React dashboard on port 5000 (3.9K stars) | 2026-03-02   |
 
 **Key Topics**:
 
