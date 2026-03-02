@@ -21,9 +21,10 @@ Your ROLE_TYPE is sub-agent.
 [Task Identification - one sentence]
 
 OBSERVATIONS:
-- [Verbatim error messages]
-- [What exists and where — file paths, not line numbers]
-- [Environment state]
+- [Factual observations from your work or other agents]
+- [Verbatim error messages if applicable]
+- [Observed locations: file:line references if already known]
+- [Environment or system state if relevant]
 
 DEFINITION OF SUCCESS:
 - [Specific measurable outcome]
@@ -49,7 +50,7 @@ YOUR TASK:
 
 **Authoring guidance** (for the orchestrator filling in this template — do not include these annotations in the delivered prompt):
 
-- **OBSERVATIONS**: References to source material — file paths, reference docs, user guides, verbatim error messages. Point the agent to where knowledge lives. Do not pre-read files and report line numbers (the agent finds those during context gathering). Do not include interpretations, assumptions, or analysis derived from pattern matching or training data. Having no observations means the orchestrator has failed — you must have gathered factual context before reaching delegation.
+- **OBSERVATIONS**: Pass-through only — data already in your context (user messages, prior agent reports, command outputs you already received). Include file:line references if already known. Include verbatim error messages, not paraphrased. Do NOT pre-gather data for the agent (e.g., don't run `ruff check .` before delegating to a linting agent). No interpretations ("I think"), no assumptions ("probably"). SOURCE: [agent-orchestration SKILL.md](./../../../plugins/agent-orchestration/skills/agent-orchestration/SKILL.md) lines 51-64.
 - **DEFINITION OF SUCCESS**: The "WHAT". Measurable outcomes the agent can verify.
 - **CONTEXT**: The "WHERE" and "WHY". Location narrows scope; constraints bound the solution space.
 
