@@ -20,18 +20,17 @@ Your ROLE_TYPE is sub-agent.
 
 [Task Identification - one sentence]
 
-OBSERVATIONS (Factual only):
-- [Verbatim error messages]
-- [Exact file:line references]
-- [Environment state]
-- [NO interpretations or "I think"]
+OBSERVATIONS:
+- [Factual observations already in your context]
+- [Verbatim error messages if applicable]
+- [Environment or system state if relevant]
 
-DEFINITION OF SUCCESS (The "WHAT"):
+DEFINITION OF SUCCESS:
 - [Specific measurable outcome]
 - [Acceptance criteria]
 - [Verification method]
 
-CONTEXT (The "WHERE" & "WHY"):
+CONTEXT:
 - Location: [Where to look]
 - Scope: [Boundaries]
 - Constraints: [Hard requirements vs Preferences]
@@ -47,6 +46,12 @@ YOUR TASK:
 4. Implement solution
 5. Only report completion after /verify criteria are met
 ```
+
+**Authoring guidance** (for the orchestrator filling in this template — do not include these annotations in the delivered prompt):
+
+- **OBSERVATIONS**: Pass-through only — data already in your context (user messages, prior agent reports, command outputs you already received). Include file:line references if already known. Include verbatim error messages, not paraphrased. Do NOT pre-gather data for the agent (e.g., don't run `ruff check .` before delegating to a linting agent). No interpretations ("I think"), no assumptions ("probably"). SOURCE: [agent-orchestration SKILL.md](./../../../plugins/agent-orchestration/skills/agent-orchestration/SKILL.md) — Pre-Delegation Verification Checklist section.
+- **DEFINITION OF SUCCESS**: The "WHAT". Measurable outcomes the agent can verify.
+- **CONTEXT**: The "WHERE" and "WHY". Location narrows scope; constraints bound the solution space.
 
 ---
 
