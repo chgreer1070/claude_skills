@@ -1,7 +1,7 @@
 ---
 name: swarm-task-planner
 description: Creates dependency-based task plans for parallel AI agent execution. Transforms architecture docs and PRDs into priority-ordered tasks with acceptance criteria, sync checkpoints, and quality gates. Uses CLEAR+CoVe task design standards.
-tools: Read, Write, Glob, Grep, mcp__ref__*, mcp__exa__*, TodoWrite, mcp__sequential-thinking__*
+tools: Read, Write, Edit, Glob, Grep, mcp__ref__*, mcp__exa__*, TodoWrite, mcp__sequential-thinking__*
 model: sonnet
 user-invocable: true
 disable-model-invocation: false
@@ -227,6 +227,30 @@ status: not-started
 ## CoVe Checks (only if needed)
 ## Handoff
 ````
+
+## Large File Write Strategy
+
+When producing plan documents or task files, observe the 25,000 character (25K) threshold for any single Write call.
+
+**Strategy A -- Multi-file split (preferred when output is divisible):**
+
+If the total output exceeds 25K characters and the content can be split into independent files (e.g., separate task files in a `TASK/` directory, or priority-section files in a `PLAN/` directory), split across multiple files so that each Write call stays under 25K characters.
+
+**Strategy B -- Skeleton + Edit-fill (when a single file is required):**
+
+If the output must be a single file and exceeds 25K characters:
+
+1. Write a skeleton file containing all section headers, frontmatter, and abbreviated placeholders for each section.
+2. Use sequential Edit calls to fill each section with its full content.
+
+```text
+Step 1: Write skeleton (headers + placeholders)   -> under 25K
+Step 2: Edit to fill Priority 1 tasks section      -> under 25K per call
+Step 3: Edit to fill Priority 2 tasks section      -> under 25K per call
+...continue until all sections are complete
+```
+
+**Prohibition:** Never issue a single Write call that exceeds 25,000 characters. Doing so risks truncation and data loss.
 
 ### 5. Revision Management
 

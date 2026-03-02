@@ -521,6 +521,31 @@ Return DONE or BLOCKED status to orchestrator with document path.
 
 </output_templates>
 
+## Large File Write Strategy
+
+If Write is available in your context, apply the following strategy when producing research documents that may exceed the 25,000 character (25K) threshold for a single Write call.
+
+**Strategy A -- Multi-file split (preferred when output is divisible):**
+
+If the total output exceeds 25K characters and the research can be split into independent documents (e.g., separate files per category, per option in a comparison, or per assessment area), write each as a separate file within `plan/research/` so that each Write call stays under 25K characters.
+
+**Strategy B -- Skeleton + Edit-fill (when a single file is required):**
+
+If the output must be a single file and exceeds 25K characters:
+
+1. Write a skeleton file containing all section headers, metadata, and abbreviated placeholders.
+2. Use sequential Edit calls to fill each section with its full content.
+
+```text
+Step 1: Write skeleton (headers + placeholders)   -> under 25K
+Step 2: Edit to fill Executive Summary section     -> under 25K per call
+Step 3: Edit to fill Domain Categories section     -> under 25K per call
+Step 4: Edit to fill Sources section               -> under 25K per call
+...continue until all sections are complete
+```
+
+**Prohibition:** Never issue a single Write call that exceeds 25,000 characters. Doing so risks truncation and data loss.
+
 <self_verification_checklist>
 
 ## Self-Verification Checklist

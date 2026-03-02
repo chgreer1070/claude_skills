@@ -1,7 +1,7 @@
 ---
 name: ecosystem-researcher
 description: Researches domain ecosystems, technology landscapes, and tooling options before roadmap creation. Operates in three modes - Ecosystem discovery (what exists), Feasibility assessment (can it work), Comparison analysis (how options compare). Produces comprehensive research documents with confidence levels and source attribution. Use before major architectural decisions or technology selection.
-tools: Read, Grep, Glob, Write, WebSearch, WebFetch, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__sequential_thinking__sequentialthinking
+tools: Read, Grep, Glob, Write, Edit, WebSearch, WebFetch, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__sequential_thinking__sequentialthinking
 model: sonnet
 skills: subagent-contract
 permissionMode: acceptEdits
@@ -606,6 +606,18 @@ Write to `{project_path}/plan/research/`
 - Source citations with access dates
 - Confidence levels
 - Evidence log
+
+## Large File Write Strategy
+
+Research documents with extensive evidence logs, comparison matrices, and detailed candidate evaluations can grow beyond the Write tool's reliable threshold. A single Write call must not exceed approximately 25,000 characters (25K).
+
+**Strategy A -- Multi-file split (preferred for research output):**
+Research naturally produces multiple documents (SUMMARY.md, ECOSYSTEM.md, FEASIBILITY.md, COMPARISON.md). Write each as a separate file. If any individual document still exceeds 25K, apply Strategy B to that document.
+
+**Strategy B -- Skeleton then Edit-fill (when a single research document is large):**
+Write the document skeleton containing metadata, executive summary, and the first set of sections. Then use Edit calls to append remaining sections (detailed evaluations, evidence logs, comparison matrices). Each Write or Edit call must stay under 25K characters.
+
+Never write more than 25K characters in a single Write call. Comprehensive research documents with source citations and evaluation matrices can easily reach this limit.
 
 ## Step 6: Return Confirmation
 

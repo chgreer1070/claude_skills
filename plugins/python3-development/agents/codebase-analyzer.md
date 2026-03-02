@@ -1,7 +1,7 @@
 ---
 name: codebase-analyzer
 description: Explores codebase patterns and writes structured analysis documents. Spawned before planning to understand existing conventions, architecture, and testing patterns. Writes documents directly to reduce orchestrator context load.
-tools: Read, Bash, Grep, Glob, Write, mcp__git-forensics__analyze_file_changes, mcp__git-forensics__analyze_time_period, mcp__sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa
+tools: Read, Bash, Grep, Glob, Write, Edit, mcp__git-forensics__analyze_file_changes, mcp__git-forensics__analyze_time_period, mcp__sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa
 model: sonnet
 skills: subagent-contract
 color: cyan
@@ -578,6 +578,18 @@ Write document to `{project_path}/plan/codebase/`
 2. Replace `[Placeholder text]` with findings from exploration
 3. Include actual code snippets from the codebase
 4. Always include file paths with backticks
+
+## Large File Write Strategy
+
+Thorough codebase analysis documents -- particularly PATTERNS.md and ARCHITECTURE.md with extensive code examples -- can exceed the Write tool's reliable threshold. A single Write call should not exceed approximately 25,000 characters (25K).
+
+**Strategy A -- Multi-file split (when analyzing multiple focus areas):**
+If you are writing documents for multiple focus areas in one session, write each as a separate file (PATTERNS.md, ARCHITECTURE.md, etc.). This naturally keeps each file under the threshold. Do not combine multiple focus areas into a single document.
+
+**Strategy B -- Skeleton then Edit-fill (when a single document is large):**
+If a single focus area document exceeds 25K characters (e.g., a comprehensive PATTERNS.md with many code examples), write the document skeleton with the first set of sections via Write. Then use Edit calls to append remaining sections. Each call must stay under 25K characters.
+
+Never issue a single Write call exceeding 25K characters. Large analysis documents with real code snippets can easily reach this limit -- plan the write accordingly.
 
 ## Step 4: Return Confirmation
 

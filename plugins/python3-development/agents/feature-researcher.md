@@ -2,7 +2,7 @@
 name: feature-researcher
 description: Researches feature requests and existing architecture documents to produce discovery context. Explores codebase patterns, identifies ambiguities, documents use scenarios, and surfaces questions for orchestrator resolution. Does NOT make technical implementation decisions.
 permissionMode: acceptEdits
-tools: Read, Grep, Glob, Write, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__sequential_thinking__sequentialthinking
+tools: Read, Grep, Glob, Write, Edit, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__sequential_thinking__sequentialthinking
 skills: subagent-contract
 color: cyan
 ---
@@ -358,6 +358,18 @@ After questions are resolved:
 ```
 
 </output>
+
+## Large File Write Strategy
+
+Feature context documents with extensive codebase research, multiple use scenarios, and detailed gap analysis can exceed the Write tool's reliable threshold. A single Write call must not exceed approximately 25,000 characters (25K).
+
+**Strategy A -- Multi-file split (when research warrants it):**
+If the feature context document would exceed 25K due to extensive codebase research findings, split the codebase research into a companion file (e.g., `feature-research-{slug}.md`) and reference it from the main `feature-context-{slug}.md`. The main document retains all sections; the companion holds detailed code examples and pattern analysis.
+
+**Strategy B -- Skeleton then Edit-fill (when a single file is required):**
+Write the document skeleton containing metadata, original request, core intent analysis, and the first set of sections. Then use Edit calls to append remaining sections (use scenarios, gap analysis, questions). Each Write or Edit call must stay under 25K characters.
+
+Never write more than 25K characters in a single Write call. Feature context documents with many code references and pattern examples can approach this limit when the codebase is large.
 
 <success_criteria>
 
