@@ -240,21 +240,63 @@ The data flow diagram (lines 294-349) should also be updated to reflect the rout
 
 ### Consumed Interfaces
 
-| Interface | Provider | Contract |
-|-----------|----------|----------|
-| ARTIFACTS output | `code-reviewer` agent | `Task files: {comma-separated paths}` in STATUS block ([code-reviewer.md](./../plugins/python3-development/agents/code-reviewer.md) lines 240-254) |
-| `backlog.py list --format json` | [backlog.py](./../.claude/skills/backlog/scripts/backlog.py) | JSON array of objects with `title`, `issue`, `plan`, `file_path` fields |
-| `backlog.py update --plan` | [backlog.py](./../.claude/skills/backlog/scripts/backlog.py) | Accepts title substring selector, sets `metadata.plan` in per-item frontmatter. Exit 1 if item not found. |
-| `create-backlog-item --auto` | [create-backlog-item SKILL.md](./../.claude/skills/create-backlog-item/SKILL.md) | Creates backlog item without interactive prompts. Derives priority from keywords. Exits on duplicate detection. |
-| Follow-up file `## Priority` | [code-reviewer.md](./../plugins/python3-development/agents/code-reviewer.md) lines 195-238 | Values: `High`, `Medium`, or `Low` in the `## Priority` section of the follow-up task file |
+<!-- Converted from markdown table: interfaces consumed by the follow-up routing component -->
+
+```mermaid
+flowchart LR
+    %% Each interface node receives output from its provider.
+    %% Annotation nodes (-.-> edges) carry the contract detail.
+
+    CodeReviewer["code-reviewer agent"]
+    ArtifactsOutput["ARTIFACTS output"]
+    CodeReviewer --> ArtifactsOutput
+    ArtifactsOutput -.-> ArtifactsOutputDesc["Task files: {comma-separated paths}<br>in STATUS block (code-reviewer.md lines 240-254)"]
+
+    BacklogPy1["backlog.py"]
+    BacklogList["backlog.py list --format json"]
+    BacklogPy1 --> BacklogList
+    BacklogList -.-> BacklogListDesc["JSON array of objects with title, issue, plan, file_path fields"]
+
+    BacklogPy2["backlog.py"]
+    BacklogUpdate["backlog.py update --plan"]
+    BacklogPy2 --> BacklogUpdate
+    BacklogUpdate -.-> BacklogUpdateDesc["Accepts title substring selector<br>Sets metadata.plan in per-item frontmatter<br>Exit 1 if item not found"]
+
+    CreateBacklogSkill["create-backlog-item SKILL.md"]
+    CreateBacklogAuto["create-backlog-item --auto"]
+    CreateBacklogSkill --> CreateBacklogAuto
+    CreateBacklogAuto -.-> CreateBacklogAutoDesc["Creates backlog item without interactive prompts<br>Derives priority from keywords<br>Exits on duplicate detection"]
+
+    CodeReviewer2["code-reviewer.md lines 195-238"]
+    PrioritySection["Follow-up file ## Priority section"]
+    CodeReviewer2 --> PrioritySection
+    PrioritySection -.-> PrioritySectionDesc["Values: High, Medium, or Low<br>in the ## Priority section of the follow-up task file"]
+```
 
 ### Produced Interfaces
 
-| Interface | Consumer | Contract |
-|-----------|----------|----------|
-| Backlog item with plan link | `/work-backlog-item` | Per-item file in `.claude/backlog/` with `metadata.plan` pointing to follow-up task file path |
-| Recursion invocation | `/implement-feature`, `/complete-implementation` | Same as current behavior — only triggered when routing gate passes |
-| Log output | Orchestrator context | `Follow-up {path} linked to backlog item "{title}" — {deferred&#124;recursing}` for each follow-up file |
+<!-- Converted from markdown table: interfaces produced by the follow-up routing component -->
+
+```mermaid
+flowchart LR
+    %% Each interface node delivers output to its consumer.
+    %% Annotation nodes (-.-> edges) carry the contract detail.
+
+    BacklogItemLink["Backlog item with plan link"]
+    WorkBacklogItem["/work-backlog-item"]
+    BacklogItemLink --> WorkBacklogItem
+    BacklogItemLink -.-> BacklogItemLinkDesc["Per-item file in .claude/backlog/<br>with metadata.plan pointing to follow-up task file path"]
+
+    RecursionInvocation["Recursion invocation"]
+    RecursionConsumers["/implement-feature + /complete-implementation"]
+    RecursionInvocation --> RecursionConsumers
+    RecursionInvocation -.-> RecursionInvocationDesc["Same as current behavior<br>Only triggered when routing gate passes"]
+
+    LogOutput["Log output"]
+    OrchestratorContext["Orchestrator context"]
+    LogOutput --> OrchestratorContext
+    LogOutput -.-> LogOutputDesc["Follow-up {path} linked to backlog item {title}<br>— deferred or recursing — for each follow-up file"]
+```
 
 ## Filename-to-Title Derivation
 
