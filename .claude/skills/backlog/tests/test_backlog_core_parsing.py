@@ -25,22 +25,10 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Test data
 #
-# IMPORTANT: _parse_frontmatter stringifies all frontmatter values before
-# attempting to extract the nested ``metadata:`` block. This means the nested
-# dict is converted to a string representation, making isinstance(meta_raw, dict)
-# False, so meta always comes back as {}.
-#
-# Practical consequence:
-#   - Nested ``metadata:`` fields (priority, source, added, status, issue, plan)
-#     are NOT available through _parse_frontmatter's meta return value.
-#   - parse_item_file falls back to fm dict for those fields — but they live
-#     under the nested key, so they are also empty from fm.
-#   - Only ``name`` and ``description`` (top-level flat keys) are accessible.
-#   - Legacy flat frontmatter (no nested metadata block) works correctly.
-#
-# Tests in this file use flat-key frontmatter where they need specific field
-# values. Nested-metadata frontmatter is tested only for title/description,
-# which are the two top-level keys that survive stringification.
+# NOTE: The nested-metadata stringification bug in _parse_frontmatter was
+# fixed in commit 0e0611f.  Tests below that use flat frontmatter were written
+# before the fix; their coverage of flat-key parsing paths remains valid and
+# intentional.
 # ---------------------------------------------------------------------------
 
 # Nested-metadata format (produced by build_backlog_frontmatter) — only name/description accessible
