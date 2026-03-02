@@ -75,18 +75,21 @@ def live_items(tmp_path_factory, monkeypatch_class):
     if token and ctx["issues"]:
         try:
             from github import Github, GithubException
-
-            g = Github(token)
-            repo = g.get_repo("Jamie-BitFlight/claude_skills")
-            for issue_num in ctx["issues"]:
-                try:
-                    issue = repo.get_issue(issue_num)
-                    if issue.state == "open":
-                        issue.edit(state="closed")
-                except GithubException:
-                    pass  # best-effort cleanup
-        except (ImportError, GithubException):
+        except ImportError:
             pass  # best-effort — don't fail teardown
+        else:
+            try:
+                g = Github(token)
+                repo = g.get_repo("Jamie-BitFlight/claude_skills")
+                for issue_num in ctx["issues"]:
+                    try:
+                        issue = repo.get_issue(issue_num)
+                        if issue.state == "open":
+                            issue.edit(state="closed")
+                    except GithubException:
+                        pass  # best-effort cleanup
+            except GithubException:
+                pass  # best-effort — don't fail teardown
 
 
 @pytest.fixture(scope="class")

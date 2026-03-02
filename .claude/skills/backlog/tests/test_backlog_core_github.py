@@ -9,7 +9,7 @@ All PyGithub boundary objects are mocked — no live API calls.
 from __future__ import annotations
 
 import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from backlog_core.github import (
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-def _make_mock_label(mocker: MockerFixture, name: str) -> object:
+def _make_mock_label(mocker: MockerFixture, name: str) -> Any:
     """Return a mock PyGithub Label with ``.name`` set."""
     lbl = mocker.Mock()
     lbl.name = name
@@ -49,7 +49,7 @@ def _make_mock_issue(
     milestone_title: str | None = None,
     updated_at: datetime.datetime | None = None,
     pull_request: object = None,
-) -> object:
+) -> Any:
     """Create a mock PyGithub Issue with configurable attributes.
 
     Args:
@@ -83,7 +83,7 @@ def _make_mock_issue(
     return issue
 
 
-def _make_mock_repo(mocker: MockerFixture) -> object:
+def _make_mock_repo(mocker: MockerFixture) -> Any:
     """Return a minimal mock PyGithub Repository."""
     repo = mocker.Mock()
     repo.get_label.return_value = mocker.Mock()
@@ -615,7 +615,7 @@ class TestIssueToLocalFields:
         """
         # Arrange
         issue = _make_mock_issue(mocker)
-        issue.body = None  # type: ignore[assignment]
+        issue.body = None
 
         # Act
         result = issue_to_local_fields(issue)

@@ -518,7 +518,7 @@ class TestBuildBacklogFrontmatter:
             "status": "open",
         }
         defaults.update(kwargs)
-        return build_backlog_frontmatter(**defaults)  # type: ignore[arg-type]
+        return build_backlog_frontmatter(**defaults)
 
     def test_build_backlog_frontmatter_starts_with_dashes(self) -> None:
         result = self._build()
