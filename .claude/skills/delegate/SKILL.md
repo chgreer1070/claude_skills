@@ -49,7 +49,7 @@ YOUR TASK:
 
 **Authoring guidance** (for the orchestrator filling in this template — do not include these annotations in the delivered prompt):
 
-- **OBSERVATIONS**: Pass-through only — data already in your context (user messages, prior agent reports, command outputs you already received). Include file:line references if already known. Include verbatim error messages, not paraphrased. Do NOT pre-gather data for the agent (e.g., don't run `ruff check .` before delegating to a linting agent). No interpretations ("I think"), no assumptions ("probably"). SOURCE: [agent-orchestration SKILL.md](./../../../plugins/agent-orchestration/skills/agent-orchestration/SKILL.md) lines 51-64.
+- **OBSERVATIONS**: Pass-through only — data already in your context (user messages, prior agent reports, command outputs you already received). Include file:line references if already known. Include verbatim error messages, not paraphrased. Do NOT pre-gather data for the agent (e.g., don't run `ruff check .` before delegating to a linting agent). No interpretations ("I think"), no assumptions ("probably"). SOURCE: [agent-orchestration SKILL.md](./../../../plugins/agent-orchestration/skills/agent-orchestration/SKILL.md) — Pre-Delegation Verification Checklist section.
 - **DEFINITION OF SUCCESS**: The "WHAT". Measurable outcomes the agent can verify.
 - **CONTEXT**: The "WHERE" and "WHY". Location narrows scope; constraints bound the solution space.
 
