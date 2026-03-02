@@ -11,6 +11,7 @@ metadata:
   issue: '#329'
   groomed: '2026-03-01'
   last_synced: '2026-03-01T07:20:54Z'
+  plan: plan/tasks-17-backlog-mcp-migration.md
 ---
 
 ## Story
