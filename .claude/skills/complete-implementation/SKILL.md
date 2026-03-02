@@ -10,7 +10,7 @@ metadata:
 ---
 # Complete Implementation (Quality Gates + Recursion)
 
-You MUST validate that the implemented feature meets its goals and quality gates. This workflow is recursive: if follow-up task files are created, re-run `implement-feature` on them and then re-run this skill.
+You MUST validate that the implemented feature meets its goals and quality gates. If follow-up task files are created, route them to backlog items first, then recurse only when the follow-up matches the current scope and priority (see Recursive Follow-up Handling section).
 
 <task_file>
 $ARGUMENTS
