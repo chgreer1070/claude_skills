@@ -11,4 +11,21 @@ metadata:
   issue: '#99'
 ---
 
-**Files**: `plugins/prompt-optimization-claude-45/` (reference files)
+## Story
+
+As a **developer using Claude Code skills**, I want to **prompt-optimization: fix unreachable reference files and raw jsx/mdx markup** so that **the tooling becomes more capable and complete**.
+
+## Description
+
+Two reference files are unreachable (not linked from SKILL.md or any other file). Contains raw Anthropic JSX/MDX markup that should be converted to standard markdown for compatibility with Claude Code's markdown rendering.
+
+## Files
+
+`plugins/prompt-optimization-claude-45/` (reference files)
+
+## Context
+
+- **Source**: Plugin code review session 2026-02-21
+- **Priority**: P2
+- **Added**: 2026-02-21
+- **Research questions**: None

@@ -14,6 +14,26 @@ metadata:
   plan: plan/tasks-17-replace-glab-subprocess.md
 ---
 
+## Story
+
+As a **developer using Claude Code skills**, I want to **fetch_gitlab_mr.py: replace subprocess glab call with python-gitlab library** so that **the tooling becomes more capable and complete**.
+
+## Description
+
+fetch_gitlab_mr.py shells out to the 'glab' binary (lines 105-114) to fetch MR data. The script already has PyGithub as a dependency and the codebase uses python-gitlab elsewhere. Subprocess call to glab: (1) requires glab binary on PATH, (2) bypasses token auth handled by libraries, (3) triggered S607 linting error that was patched with shutil.which instead of fixed architecturally. Fix: replace subprocess.run(['glab', ...]) with python-gitlab equivalent API call. This eliminates the binary dependency entirely.
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Not specified
+- **Priority**: P2
+- **Added**: 2026-03-01
+- **Research questions**: None
+
 ## Fact-Check
 
 **Date**: 2026-03-02

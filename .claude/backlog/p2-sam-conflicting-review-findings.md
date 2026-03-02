@@ -11,6 +11,21 @@ metadata:
   issue: '#112'
 ---
 
-**Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (section 3.6 Forensic Review)
+## Story
 
-**Research first**: How do code review systems handle conflicting reviewers? What adjudication patterns exist in multi-agent systems? How does GSD handle verification disagreements?
+As a **developer using Claude Code skills**, I want to **sam: conflicting review findings** so that **the tooling becomes more capable and complete**.
+
+## Description
+
+Define protocol when forensic review and self-verification disagree. Which takes precedence? How to adjudicate conflicts?
+
+## Suggested Location
+
+[`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (section 3.6 Forensic Review)
+
+## Context
+
+- **Source**: Gap analysis of SAM framework
+- **Priority**: P2
+- **Added**: 2026-02-01
+- **Research questions**: How do code review systems handle conflicting reviewers? What adjudication patterns exist in multi-agent systems? How does GSD handle verification disagreements?

@@ -11,4 +11,21 @@ metadata:
   issue: '#247'
 ---
 
-**Suggested location**: `.claude/skills/work-backlog-item/SKILL.md` and related scripts
+## Story
+
+As a **developer using Claude Code skills**, I want to **work-backlog-item: implement --language and --stack routing** so that **the tooling becomes more capable and complete**.
+
+## Description
+
+The `--language` and `--stack` arguments are documented in work-backlog-item but not yet implemented. When provided, they should route to the appropriate language manifest and stack profile for SAM planning. Success: invoking `/work-backlog-item --language python --stack fastapi {title}` loads Python + FastAPI context. Constraint: must integrate with existing language-manifest-schema and stack-profile-schema.
+
+## Suggested Location
+
+`.claude/skills/work-backlog-item/SKILL.md` and related scripts
+
+## Context
+
+- **Source**: Session observation — SDLC layer implementation (2026-02-23)
+- **Priority**: P2
+- **Added**: 2026-02-23
+- **Research questions**: None

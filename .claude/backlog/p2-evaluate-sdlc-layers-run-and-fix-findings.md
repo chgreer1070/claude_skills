@@ -11,4 +11,21 @@ metadata:
   issue: '#249'
 ---
 
-**Suggested location**: `.claude/skills/evaluate-sdlc-layers/SKILL.md`; run against `.claude/docs/sdlc-layers/`
+## Story
+
+As a **maintainer of the project infrastructure**, I want to **evaluate-sdlc-layers: run and fix findings** so that **the project infrastructure stays healthy**.
+
+## Description
+
+The evaluate-sdlc-layers skill exists with six checks (cross-refs, doc completeness, knowledge-explorer, research metadata, integration points, plan consistency). Run `/evaluate-sdlc-layers` and address any findings. Success: all checks pass with `--fix` applied where applicable.
+
+## Suggested Location
+
+`.claude/skills/evaluate-sdlc-layers/SKILL.md`; run against `.claude/docs/sdlc-layers/`
+
+## Context
+
+- **Source**: Session observation — SDLC layer implementation (2026-02-23)
+- **Priority**: P2
+- **Added**: 2026-02-23
+- **Research questions**: None

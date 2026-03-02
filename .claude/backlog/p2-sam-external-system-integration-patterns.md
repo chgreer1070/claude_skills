@@ -11,4 +11,17 @@ metadata:
   issue: '#122'
 ---
 
-**Research first**: How does GSD integrate with external tools? What MCP servers exist for issue trackers? How do agent frameworks bridge to CI/CD?
+## Story
+
+As a **developer using Claude Code skills**, I want to **sam: external system integration patterns** so that **the tooling becomes more capable and complete**.
+
+## Description
+
+Explore patterns for integrating with issue trackers (GitHub Issues, Jira), CI/CD pipelines, git hooks.
+
+## Context
+
+- **Source**: Gap analysis of SAM framework
+- **Priority**: P2
+- **Added**: 2026-02-01
+- **Research questions**: How does GSD integrate with external tools? What MCP servers exist for issue trackers? How do agent frameworks bridge to CI/CD?

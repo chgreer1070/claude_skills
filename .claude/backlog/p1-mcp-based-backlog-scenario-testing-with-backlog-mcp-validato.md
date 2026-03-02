@@ -14,6 +14,26 @@ metadata:
   plan: plan/tasks-12-backlog-mcp-scenarios.md
 ---
 
+## Story
+
+As a **developer**, I want **Build scenario-based integration tests for the backlog-mcp FastMCP server, or...** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+Build scenario-based integration tests for the backlog-mcp FastMCP server, organized by the skill/agent workflow that generates each call pattern. 20 scenarios covering create-backlog-item (1), work-backlog-item browse/plan/status/close/resolve (12), groom-backlog-item (4), group-items-to-milestone (1), backlog-item-groomer agent (1), sync+pull (2). Plus 4 error paths (close without checklist, view nonexistent, add duplicate, list empty) and 3 full lifecycle tests (create→close, create→resolve+cleanup, stale discovery). Tests use in-memory FastMCP Client through full operations layer (mocking only at github.py and filesystem boundary), verifying the exact response shapes that each skill reads from tool output. Design documented in session and migration map at .claude/skills/backlog/CLI_TO_MCP_MIGRATION.md.
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Session observation
+- **Priority**: P1
+- **Added**: 2026-03-01
+- **Research questions**: None
+
 ## Fact-Check
 
 **Date**: 2026-03-01 | **Claims checked**: 4

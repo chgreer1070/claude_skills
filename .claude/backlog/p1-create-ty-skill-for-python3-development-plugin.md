@@ -14,6 +14,26 @@ metadata:
   plan: plan/tasks-2-complete-ty-skill.md
 ---
 
+## Story
+
+As a **developer**, I want **New skill documenting Astral's ty type checker, to live at plugins/python3-de...** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+New skill documenting Astral's ty type checker, to live at plugins/python3-development/skills/ty/. Should be modeled on the uv skill structure (SKILL.md, references/cli_reference.md, references/configuration.md, references/migration-guide.md, references/quick-reference.md, references/troubleshooting.md, scripts/sync_ty_releases.py). Source docs are cloned at .claude/worktrees/ty/docs/. One reference already exists in python-cli-architect.md line 280 documenting ty as the primary type checker. Th
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Session observation
+- **Priority**: P1
+- **Added**: 2026-02-25
+- **Research questions**: None
+
 **Research first**: Read .claude/worktrees/ty/docs/ for source material. Read plugins/python3-development/skills/uv/ for structural template. Read plugins/python3-development/agents/python-cli-architect.md line 280 for existing ty reference to preserve and expand.
 
 ## Fact-Check

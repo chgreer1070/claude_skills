@@ -13,6 +13,33 @@ metadata:
   last_synced: '2026-02-28T05:33:17Z'
 ---
 
+## Story
+
+As a **developer**, I want **6 CI checks fail on main (and all PRs) due to pre-existing issues:
+
+1** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+6 CI checks fail on main (and all PRs) due to pre-existing issues:
+
+1. Python/Ruff: DOC201/ANN401/S202/PLR0911 in gh/, research-curator/, session-historian/, agentskill-kaizen/, plugin-creator/, uv/ scripts
+2. Python/ty: unresolved gitlab imports + mix_stderr arg removed in newer click (gh tests, plugin-creator conftest)
+3. Python/Tests: CliRunner mix_stderr (~30 ERRORs in plugin-creator) + panel.extension missing in agentskill-kaizen
+4. JSON/Prettier: plugins/agentskill-kaizen/.mcp.json and plu
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Not specified
+- **Priority**: medium
+- **Added**: 2026-02-26
+- **Research questions**: None
+
 ## Fact-Check
 
 Fact-Check Summary: Fix pre-existing CI check failures on main

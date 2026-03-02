@@ -13,6 +13,26 @@ metadata:
   plan: plan/tasks-6-enhance-skill-research-process.md
 ---
 
+## Story
+
+As a **developer**, I want **The skill-research-process skill has sound research orchestration but lacks o...** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+The skill-research-process skill has sound research orchestration but lacks output specification for producing complete CLI tool skills. Three gaps identified via assessment against the uv skill: (1) No local directory input — passing a path like .claude/worktrees/ty/docs/ is treated as a tool name, triggering web searches instead of reading local docs. (2) No CLI reference file templates — no structural anchor ensuring standard reference types (cli_reference.md, configuration.md, migration-guid
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Session observation
+- **Priority**: P1
+- **Added**: 2026-02-25
+- **Research questions**: None
+
 ## Fact-Check
 
 Claims checked: 5

@@ -14,6 +14,83 @@ metadata:
   plan: plan/tasks-15-process-quality-discipline.md
 ---
 
+## Story
+
+As a **developer**, I want **The SAM pipeline treats every issue the same way: plan it, implement it, veri...** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+The SAM pipeline treats every issue the same way: plan it, implement it, verify it works. But different issue types need fundamentally different treatment depths, and the pipeline never asks 'what scenario exposed this problem?' or 'what should we improve so this class of problem doesn't recur?'
+
+Both human and AI are users of this pipeline. Quality of life for both means: the right analytical tool is applied to the right problem type, the scenario that caused the issue is what gets improved (not just the symptom), and the response is proportional to the problem.
+
+## Issue Classification Taxonomy
+
+The pipeline needs to classify issues before choosing a response:
+
+1. **Procedural fix** (typo, spelling, naming inconsistency) — Fix the noted occurrence, search for similar patterns, update all references. No root-cause analysis needed. Bounded scope.
+2. **Defect with clear cause** (bug where the failure chain is traceable) — 5 Whys to find the root cause. Fix the cause, not just the symptom. Verify the scenario that exposed it.
+3. **Recurring defect pattern** (same class of bug keeps appearing) — 6 Sigma thinking: measure frequency, identify common factors, add guardrails/instructions to prevent the class. May need process change.
+4. **Missing guardrail** (the system allowed a bad outcome that should have been caught) — Improve the instruction or gate that should have prevented it. The scenario that exposed the problem IS the thing to improve.
+5. **Unbounded design problem** (no clear right answer, we need to choose what the outcome looks like) — Requires framing the decision space, selecting constraints, and designing the outcome. Cannot be reduced to a fix.
+
+## Root-Cause Analysis Integration
+
+### When to use 5 Whys
+- A specific failure occurred with a traceable chain
+- The symptom is clear but the cause isn't
+- Asking 'why did this happen?' repeatedly converges on an actionable root
+
+### When to use 6 Sigma thinking
+- The same class of defect has appeared 2+ times
+- Metrics exist or can be gathered (frequency, severity, affected scope)
+- The goal is reducing variation/recurrence, not just fixing one instance
+
+### When neither applies
+- Procedural fixes (type 1): just fix and sweep for siblings
+- Unbounded design (type 5): frame the problem space first, analysis comes after framing
+
+## Scenario-as-Target Principle
+
+Every issue filed from a session observation should answer: 'What scenario exposed this, and is that scenario the thing we improve?' Examples:
+- Issue: 'backlog.py duplicate detection is lexical-only' → Scenario: user created near-duplicate items. Target: improve the detection algorithm (symptom IS the cause).
+- Issue: 'abort-only flow in backlog add' → Scenario: user wanted to modify before committing. Target: the interaction design lacks confirmation/edit step (missing guardrail).
+- Issue: '#311/#312 had 9 quality problems post-implementation' → Scenario: completion gates didn't evaluate experiential quality. Target: the gate process itself (recurring pattern — 6 Sigma territory).
+
+## Changes Needed
+
+### SAM Task Template (TASK_FILE_FORMAT.md)
+- Add 'Issue Classification' field to task metadata (procedural | defect | recurring-pattern | missing-guardrail | unbounded-design)
+- Add 'Scenario Target' field: what scenario exposed this, what specifically should improve
+- Add 'Analysis Method' field: none | 5-whys | 6-sigma | design-framing
+
+### Grooming (groom-backlog-item/SKILL.md)
+- Classify the issue type before planning the response
+- For types 2-3: require root-cause analysis output before marking groomed
+- For type 4: identify the guardrail/instruction gap
+- For type 5: require problem-space framing before planning
+
+### Completion Gates (complete-implementation/SKILL.md, verify/SKILL.md)
+- Verify the response was proportional to the issue type
+- For types 2-4: verify the scenario that exposed the problem was addressed, not just the symptom
+- For type 3 (recurring): verify a guardrail or process change was added to prevent recurrence
+
+### Feature Verifier (feature-verifier.md)
+- Check: did we improve the thing that caused the issue, or did we only patch the output?
+- Check: for both human and AI consumers, is the quality of life improved for this scenario?
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Post-implementation critique of backlog #311/#312 + user refinement on process quality discipline — session 2026-03-01
+- **Priority**: P1
+- **Added**: 2026-03-01
+- **Research questions**: None
+
 **Research first**: How do 6 Sigma DMAIC and 5 Whys map to AI agent pipeline gates? How do GSD/BMAD-METHOD classify issue types before choosing response depth? What granularity of issue taxonomy works without becoming overhead?
 
 ## Fact-Check

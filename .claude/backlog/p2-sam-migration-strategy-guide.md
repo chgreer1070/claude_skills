@@ -11,4 +11,17 @@ metadata:
   issue: '#123'
 ---
 
-**Research first**: How do organizations adopt new methodologies incrementally? What migration patterns exist for process changes?
+## Story
+
+As a **developer using Claude Code skills**, I want to **sam: migration strategy guide** so that **the tooling becomes more capable and complete**.
+
+## Description
+
+Explore how to migrate existing projects to SAM. Incremental adoption? Parallel running? Artifact bootstrap?
+
+## Context
+
+- **Source**: Gap analysis of SAM framework
+- **Priority**: P2
+- **Added**: 2026-02-01
+- **Research questions**: How do organizations adopt new methodologies incrementally? What migration patterns exist for process changes?
