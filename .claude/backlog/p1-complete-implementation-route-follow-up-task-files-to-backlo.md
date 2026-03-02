@@ -11,7 +11,7 @@ metadata:
   issue: '#381'
   groomed: '2026-03-02'
   last_synced: '2026-03-02T04:11:53Z'
-  plan: plan/tasks-1-followup-routing.md
+  plan: plan/tasks-19-followup-routing-followup-1.md
 ---
 
 ## Fact-Check
