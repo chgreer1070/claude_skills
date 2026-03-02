@@ -238,6 +238,7 @@ Phase 3: integration-checker    -> Integration check
 Phase 4: doc-drift-auditor      -> Documentation drift audit (read-only)
 Phase 5: service-docs-maintainer -> Documentation update (if drift found)
 Phase 6: context-refinement     -> Update task file Context Manifest + plan artifact freshness check
+Final:   commit + push          -> Stage and commit all remaining modified files
 ```
 
 ### Agent File Locations
@@ -373,6 +374,10 @@ User
   │    │    └─ No match: create-backlog-item --auto, then backlog update --plan
   │    └─ Gate: same slug AND High priority -> Recurse: /implement-feature + /complete-implementation
   │             otherwise -> Deferred to backlog (no recursion)
+  │
+  ├─ [Final Step: Commit and push remaining changes]
+  │    └─ Stage modified files (task file, backlog items, plan annotations)
+  │       ──> single commit + push
   │
   ▼
 Done
