@@ -294,7 +294,8 @@ After all six tasks complete, verify:
 ---
 task: T1
 title: Create plan-artifact-lifecycle.md policy document
-status: not-started
+status: in-progress
+started: 2026-03-02T00:00:00Z
 agent: general-purpose
 dependencies: []
 priority: 1
@@ -1119,7 +1120,8 @@ Return:
 ---
 task: T6
 title: Update TASK_FILE_FORMAT.md — add divergence-notes optional field
-status: not-started
+status: in-progress
+started: 2026-03-02T12:00:00Z
 agent: general-purpose
 dependencies: []
 priority: 1

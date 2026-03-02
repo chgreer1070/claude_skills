@@ -151,6 +151,7 @@ Report:
 | `issue-classification` | enum | `procedural`, `defect`, `recurring-pattern`, `missing-guardrail`, `unbounded-design` — analytical depth classification | `"defect"` |
 | `scenario-target` | string | `"{scenario that exposed the problem} -> {what should improve}"` | `"Hook did not fire -> fires regardless of invocation method"` |
 | `analysis-method` | enum | `none`, `5-whys`, `6-sigma`, `design-framing` — root-cause method applied during grooming. Default: `none` | `"5-whys"` |
+| `divergence-notes` | integer | Count of divergence notes recorded during implementation. Default: `0` | `2` |
 
 #### Status Values
 
@@ -423,6 +424,12 @@ uv run pytest tests/test_data_models.py -v
       "enum": ["none", "5-whys", "6-sigma", "design-framing"],
       "default": "none",
       "description": "Root-cause analysis method applied during grooming"
+    },
+    "divergence-notes": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Count of divergence notes recorded during implementation"
     }
   }
 }
@@ -720,6 +727,7 @@ skills: []  # OPTIONAL: Skills for sub-agent to load
 # issue-classification: ""  # OPTIONAL: procedural | defect | recurring-pattern | missing-guardrail | unbounded-design
 # scenario-target: ""  # OPTIONAL: "{scenario} -> {improvement}"
 # analysis-method: none  # OPTIONAL: none | 5-whys | 6-sigma | design-framing
+# divergence-notes: 0   # OPTIONAL: integer count of ## Divergence Notes sections in body
 ---
 
 ## Context
