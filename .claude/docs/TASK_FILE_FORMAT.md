@@ -179,7 +179,7 @@ a deliberate manual migration.
 
 | Script | Purpose | Path |
 |--------|---------|------|
-| `implementation_manager.py` | Status field updates via `update_yaml_field` | `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` |
+| `implementation_manager.py` | Read-only status queries, ready-tasks, and task file parsing | `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` |
 | `task_status_hook.py` | Timestamp and status updates from hooks | `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` |
 | `split_task_file.py` | Splits monolithic task files into per-task files | `plugins/python3-development/scripts/split_task_file.py` |
 | `migrate_task_format.py` | Converts legacy markdown to YAML frontmatter | `plugins/python3-development/scripts/migrate_task_format.py` |
