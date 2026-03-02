@@ -51,9 +51,11 @@ Do **not** duplicate `name`, `description`, `source`, `added`, `priority`, `type
 
 | Rule | Requirement |
 |------|-------------|
+| **Problem space** | Describe what is broken, where it lives, and what is affected. Give the specialist enough context to reason about the full scope. |
+| **Desired outcome** | Describe what done looks and feels like — not the steps to get there. The specialist chooses how; the item defines what success is. |
+| **Verification signal** | State how the specialist will know they have reached the outcome as they work toward it. Acceptance criteria serve this purpose — observable checks, not implementation steps. |
+| **No HOW** | Do not prescribe the fix, implementation approach, or code to write. That belongs in the planning phase (`/add-new-feature`). Examples of broken behaviour are fine; proposed solutions are not. |
 | **No line numbers** | Reference files and function names only. Line numbers go stale as code changes. Use `path/to/file.py — FunctionName()` not `path/to/file.py:42`. |
-| **No HOW** | Describe the problem and expected behaviour. Do not prescribe the fix, implementation approach, or code to write. That belongs in the planning phase (`/add-new-feature`). |
-| **Examples OK** | Concrete examples of broken behaviour (commands run, error messages seen, observed vs expected output) are valuable. Examples illustrate the problem — they do not constrain the solution. |
 
 ---
 
