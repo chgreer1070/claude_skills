@@ -11,6 +11,7 @@ metadata:
   issue: '#335'
   last_synced: '2026-03-02T01:40:35Z'
   groomed: '2026-03-02'
+  plan: plan/tasks-16-audit-tests-limitation-patterns.md
 ---
 
 ## Fact-Check
