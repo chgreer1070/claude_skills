@@ -294,8 +294,9 @@ After all six tasks complete, verify:
 ---
 task: T1
 title: Create plan-artifact-lifecycle.md policy document
-status: in-progress
+status: complete
 started: 2026-03-02T00:00:00Z
+completed: 2026-03-02T00:00:00Z
 agent: general-purpose
 dependencies: []
 priority: 1
@@ -425,8 +426,9 @@ Return:
 ---
 task: T2
 title: Update local-workflow.md — add artifact lifecycle section
-status: in-progress
+status: complete
 started: 2026-03-02T00:00:00Z
+completed: 2026-03-02T00:00:00Z
 agent: general-purpose
 dependencies: [T1]
 priority: 2
@@ -564,8 +566,9 @@ Return:
 ---
 task: T3
 title: Update start-task SKILL.md — add divergence recording step 5a
-status: in-progress
+status: complete
 started: '2026-03-02T12:00:00Z'
+completed: 2026-03-02T00:00:00Z
 agent: general-purpose
 dependencies: [T1]
 priority: 2
@@ -853,8 +856,9 @@ Return:
 ---
 task: T5
 title: Update context-refinement.md — add plan artifact freshness check steps 5-8
-status: in-progress
+status: complete
 started: 2026-03-02T00:00:00Z
+completed: 2026-03-02T00:00:00Z
 agent: general-purpose
 dependencies: [T1]
 priority: 2
@@ -1136,8 +1140,9 @@ Return:
 ---
 task: T6
 title: Update TASK_FILE_FORMAT.md — add divergence-notes optional field
-status: in-progress
+status: complete
 started: 2026-03-02T12:00:00Z
+completed: 2026-03-02T00:00:00Z
 agent: general-purpose
 dependencies: []
 priority: 1
