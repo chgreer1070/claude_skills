@@ -36,7 +36,13 @@ from rich.console import Console
 # Ensure the script directory is on sys.path for direct execution.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from task_format import VALID_STATUSES, has_yaml_frontmatter, normalize_status, parse_yaml_frontmatter
+from task_format import (
+    VALID_STATUSES,
+    detect_fenced_yaml,
+    has_yaml_frontmatter,
+    normalize_status,
+    parse_yaml_frontmatter,
+)
 
 if TYPE_CHECKING:
     import datetime
@@ -642,12 +648,15 @@ def _parse_line(line: str, task_data: TaskData) -> None:
             return
 
 
-def parse_task_content(content: str) -> list[Task]:
+def parse_task_content(content: str, _depth: int = 0) -> list[Task]:
     """Parse task content and extract all tasks.
 
     Automatically detects format:
     - YAML frontmatter: Single task per file with ``---`` delimited metadata.
     - Legacy markdown: Multiple tasks with ``## Task X.Y: Title`` headers.
+
+    Also recovers fenced YAML content (YAML frontmatter wrapped in backtick
+    code fences) by stripping the fences and re-parsing.
 
     Follows SRP by delegating field parsing to FieldParser implementations
     for legacy format, and to parse_task_from_frontmatter for YAML format.
@@ -658,15 +667,33 @@ def parse_task_content(content: str) -> list[Task]:
     Returns:
         List of Task objects parsed from the content.
     """
+    # Internal recursion guard — not part of the public interface.
+    if _depth > 1:
+        sys.stderr.write("WARNING: max recursion depth exceeded in parse_task_content\n")
+        return []
+
     # YAML frontmatter path: file contains a single task with --- metadata
     if has_yaml_frontmatter(content):
         try:
             task = parse_task_from_frontmatter(content)
-        except (ValueError, TypeError):
-            # Fall through to legacy parsing if YAML parsing fails
-            pass
+        except (ValueError, TypeError) as exc:
+            sys.stderr.write(
+                f"WARNING: YAML frontmatter detected but parsing failed: {exc}. "
+                "Falling through to legacy markdown parsing.\n"
+            )
+            # fall through to legacy parsing
         else:
             return [task]
+    else:
+        # Check for YAML frontmatter wrapped in fenced code blocks
+        stripped = detect_fenced_yaml(content)
+        if stripped is not None:
+            sys.stderr.write(
+                "WARNING: Task file contains YAML frontmatter wrapped in code fences"
+                " (```yaml). Stripping fences and re-parsing. Fix the generator to"
+                " produce raw frontmatter starting with --- instead of fenced blocks.\n"
+            )
+            return parse_task_content(stripped, _depth=_depth + 1)
 
     # Legacy markdown path: multiple tasks with ## Task headers
     tasks: list[Task] = []
