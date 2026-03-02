@@ -392,3 +392,56 @@ Cross-file verification and cleanup after all migrations complete:
 - [ ] `uv run pytest .claude/skills/backlog/tests/ -q` shows 382 passed
 - [ ] `grep -rn "backlog_close.*reason" .claude/skills/ .claude/agents/` returns 0 matches
 - [ ] Git commit includes `Fixes #329`
+
+---
+
+## Context Manifest
+
+### Architecture Documents
+
+| Document | Path | Purpose |
+|----------|------|---------|
+| Architecture Spec | [architect-backlog-mcp-migration.md](./architect-backlog-mcp-migration.md) | 8 ADRs, file-by-file migration strategy, parameter mapping |
+| Feature Context | [feature-context-backlog-mcp-migration.md](./feature-context-backlog-mcp-migration.md) | Problem space, scope boundaries, 7 gaps identified |
+| Codebase Analysis | [codebase/backlog-mcp-migration-patterns.md](./codebase/backlog-mcp-migration-patterns.md) | Current CLI patterns, MCP tool signatures, skill instruction format |
+| Migration Map | [../.claude/skills/backlog/CLI_TO_MCP_MIGRATION.md](../.claude/skills/backlog/CLI_TO_MCP_MIGRATION.md) | Line-by-line CLI→MCP mapping for all files |
+
+### Key Source Files
+
+| File | Relevance |
+|------|-----------|
+| `.claude/skills/backlog/backlog_core/server.py` | MCP tool definitions — 10 `@mcp.tool()` decorators with parameter types |
+| `.claude/skills/backlog/scripts/backlog.py` | CLI script — thin wrapper over operations.py |
+| `.claude/skills/backlog/backlog_core/operations.py` | Shared backend — both CLI and MCP route here |
+| `.mcp.json` (lines 25-28) | MCP server registration (already done) |
+| `.claude/settings.json` (line 13) | MCP permissions: `mcp__backlog__*` allowed |
+
+### Migration Targets (Tier 1-3)
+
+| File | Task | Invocations |
+|------|------|-------------|
+| `.claude/CLAUDE.md` | Task 1 | 1 (policy section) |
+| `.cursor/rules/backlog-before-work.mdc` | Task 2 | 1 |
+| `.claude/skills/backlog/CLI_TO_MCP_MIGRATION.md` | Task 2 | stale claims |
+| `.claude/skills/work-backlog-item/SKILL.md` | Task 3 | 19 |
+| `.claude/skills/work-backlog-item/references/step-procedures.md` | Task 4 | 2 |
+| `.claude/skills/work-backlog-item/references/github-integration.md` | Task 4 | 3 |
+| `.claude/skills/work-backlog-item/references/close-resolve-procedure.md` | Task 4 | 3 |
+| `.claude/skills/groom-backlog-item/SKILL.md` | Task 5 | 6 |
+| `.claude/skills/create-backlog-item/SKILL.md` | Task 6 | 1 |
+| `.claude/skills/group-items-to-milestone/SKILL.md` | Task 6 | 1 |
+| `.claude/skills/backlog/SKILL.md` | Task 7 | rewrite |
+| `.claude/agents/backlog-item-groomer.md` | Task 8 | 1 |
+| `.claude/agents/backlog-mcp-validator.md` | Task 8 | doc gap |
+| `.claude/skills/backlog-tools-administrator/SKILL.md` | Task 9 | workflow update |
+
+### Critical ADRs
+
+- **ADR-1**: Prose instruction blocks with backtick tool names (see spec for format examples)
+- **ADR-2**: MCP-only for orchestrator skills; CLI for CI only
+- **ADR-8**: `close --reason` → `backlog_resolve` (4 locations: work-backlog-item lines 195/301, groom-backlog-item lines 65/94)
+
+### Validation Status
+
+- **Plan Validator**: READY (all 10 tasks validated, 13 files covered, 8 ADRs addressed)
+- **Warnings**: Task 9 dependency relaxation documented and fixed
