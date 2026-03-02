@@ -253,8 +253,8 @@ The data flow diagram (lines 294-349) should also be updated to reflect the rout
 | Interface | Consumer | Contract |
 |-----------|----------|----------|
 | Backlog item with plan link | `/work-backlog-item` | Per-item file in `.claude/backlog/` with `metadata.plan` pointing to follow-up task file path |
-| Recursion invocation | `/implement-feature`, `/complete-implementation` | Same as current behavior -- only triggered when routing gate passes |
-| Log output | Orchestrator context | `Follow-up {path} linked to backlog item "{title}" -- {deferred|recursing}` for each follow-up file |
+| Recursion invocation | `/implement-feature`, `/complete-implementation` | Same as current behavior — only triggered when routing gate passes |
+| Log output | Orchestrator context | `Follow-up {path} linked to backlog item "{title}" — {deferred&#124;recursing}` for each follow-up file |
 
 ## Filename-to-Title Derivation
 
