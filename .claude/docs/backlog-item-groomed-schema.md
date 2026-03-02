@@ -47,6 +47,16 @@ Do **not** duplicate `name`, `description`, `source`, `added`, `priority`, `type
 
 ---
 
+## Content Rules
+
+| Rule | Requirement |
+|------|-------------|
+| **No line numbers** | Reference files and function names only. Line numbers go stale as code changes. Use `path/to/file.py — FunctionName()` not `path/to/file.py:42`. |
+| **No HOW** | Describe the problem and expected behaviour. Do not prescribe the fix, implementation approach, or code to write. That belongs in the planning phase (`/add-new-feature`). |
+| **Examples OK** | Concrete examples of broken behaviour (commands run, error messages seen, observed vs expected output) are valuable. Examples illustrate the problem — they do not constrain the solution. |
+
+---
+
 ## Groomed Sections (Body, under ## Groomed)
 
 | Section | Purpose | Required |
