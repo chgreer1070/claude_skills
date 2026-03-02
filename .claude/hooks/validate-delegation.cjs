@@ -15,9 +15,6 @@
  *   4. Contains CONTEXT section
  *   5. Does NOT prescribe HOW (no bare code blocks with implementation)
  *
- * Excluded agent types (simple built-ins that do not need full delegation):
- *   explore, plan, claude-code-guide, statusline-setup
- *
  * Resume calls are skipped — no new prompt is validated.
  *
  * Skill pass-through prompts are skipped — prompts that primarily invoke
@@ -26,29 +23,6 @@
  */
 
 const fs = require('node:fs');
-
-/** Agent subagent_type values that do not require full delegation template. */
-const EXCLUDED_TYPES = new Set([
-  'explore',
-  'plan',
-  'claude-code-guide',
-  'statusline-setup',
-]);
-
-/**
- * Returns true if the subagent_type should be excluded from validation.
- * @param {string|undefined} subagentType
- * @returns {boolean}
- */
-function isExcludedType(subagentType) {
-  if (!subagentType) return false;
-  const normalized = subagentType.toLowerCase().trim();
-  // Exact match against excluded set
-  if (EXCLUDED_TYPES.has(normalized)) return true;
-  // Code-review agents: skip agents invoked from review contexts
-  if (normalized.includes('code-review')) return true;
-  return false;
-}
 
 /**
  * Returns true if the prompt is a skill pass-through — a routing prompt that
@@ -174,11 +148,6 @@ function main() {
 
   // Skip resume calls — no new prompt to validate
   if (toolInput.resume) {
-    process.exit(0);
-  }
-
-  // Skip excluded agent types
-  if (isExcludedType(subagentType)) {
     process.exit(0);
   }
 

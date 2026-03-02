@@ -49,7 +49,7 @@ YOUR TASK:
 
 **Authoring guidance** (for the orchestrator filling in this template — do not include these annotations in the delivered prompt):
 
-- **OBSERVATIONS**: Factual only. No interpretations, no "I think". State what exists, not what to change. Do not include line numbers — the agent finds those during context gathering.
+- **OBSERVATIONS**: References to source material — file paths, reference docs, user guides, verbatim error messages. Point the agent to where knowledge lives. Do not pre-read files and report line numbers (the agent finds those during context gathering). Do not include interpretations, assumptions, or analysis derived from pattern matching or training data. If you have no observations, you are not ready to delegate — gather context first.
 - **DEFINITION OF SUCCESS**: The "WHAT". Measurable outcomes the agent can verify.
 - **CONTEXT**: The "WHERE" and "WHY". Location narrows scope; constraints bound the solution space.
 
