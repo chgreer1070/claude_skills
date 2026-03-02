@@ -61,7 +61,7 @@ Before fact-checking or grooming, verify each item is still valid work:
 
    - **Close the local backlog item**:
 
-     Call `mcp__backlog__backlog_resolve(selector="{title}", reason="Already implemented via PR #{pr} / commit {sha}")`.
+     Call `mcp__backlog__backlog_resolve(selector="{title}", summary="Already implemented via PR #{pr} / commit {sha}")`.
 
    - Report to the user and skip grooming for that item.
 
@@ -88,7 +88,7 @@ Before fact-checking or grooming, verify each item is still valid work:
 
    d. **Close the local backlog item with evidence**:
 
-      Call `mcp__backlog__backlog_resolve(selector="{title}", reason="Completed via PR #{pr} / commit {sha}")`.
+      Call `mcp__backlog__backlog_resolve(selector="{title}", summary="Completed via PR #{pr} / commit {sha}")`.
 
    If no commits or PRs reference the issue, report: "Issue #{N} is closed but no commit/PR evidence found. Recommend manual review." and skip grooming.
    Skip grooming for that item; move to the next.
@@ -271,7 +271,7 @@ use, check the tool name and parameters:
 
 - `mcp__backlog__backlog_update` — updates an existing item (selector required)
 - `mcp__backlog__backlog_groom` — writes groomed content (selector required)
-- `mcp__backlog__backlog_sync` — syncs ALL items to GitHub (no selector — operates on entire backlog)
+- `mcp__backlog__backlog_sync` — creates GitHub issues for items missing them and pushes groomed content (no selector — operates on entire backlog)
 
 Prefer incremental updates so sections (Fact-Check, RT-ICA, groomed subsections) are written as they become available. GitHub is canonical: when the item has an issue, the MCP tool syncs groomed content to the GitHub issue body.
 
@@ -297,6 +297,9 @@ mcp__backlog__backlog_groom(selector="{item title}", groomed_content="{full groo
 ```text
 mcp__backlog__backlog_groom(selector="{item title}", groomed_content="{full groomed body}")
 ```
+
+Note — `--groomed-file {path}` and stdin pipe (`< {file}`) patterns have no MCP equivalent.
+Provide groomed content inline via the `groomed_content` parameter.
 
 **Valid section names** — top-level: `Fact-Check`, `RT-ICA`. Groomed subsections: `Reproducibility`, `Priority`, `Impact`, `Scope`, `Output / Evidence`, `Dependencies`, `Research`, `Skills`, `Agents`, `Prior Work`, `Files`, `Decision`, `Issue Classification`, `Root-Cause Analysis`.
 

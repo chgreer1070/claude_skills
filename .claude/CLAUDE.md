@@ -221,7 +221,8 @@ Available tools: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, 
 All tools return a dict. Check for `error` key on failure. Success responses include `messages`
 and `warnings` lists.
 
-**CI fallback (CLI)**: GitHub Actions and environments without an MCP client use the CLI:
+**CI fallback (CLI)**: GitHub Actions (`backlog-sync.yml`) and environments without an MCP client
+use the CLI:
 
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py add|list|sync|close|resolve|update ...
@@ -232,7 +233,7 @@ Do not edit `.claude/backlog/*.md` files directly or use `gh issue edit` — bot
 Skills `/create-backlog-item` and `/work-backlog-item` invoke these tools. See `/backlog` skill.
 
 **Capability gap fallback**: If the MCP tools or CLI lack the needed operation, invoke
-`/backlog-tools-administrator` to close the gap.
+`/backlog-tools-administrator` to extend both the CLI and MCP server simultaneously.
 
 </backlog_operations>
 

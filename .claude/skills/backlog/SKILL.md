@@ -50,6 +50,9 @@ List open backlog items with optional filters.
 
 Returns `{items: [{title, priority, issue, plan}], messages, warnings}`.
 
+Note — the CLI `--format text|json` flag has no MCP equivalent. MCP tools always return
+structured dicts (equivalent to JSON). Use `backlog_view` for detailed single-item output.
+
 ### `backlog_view`
 
 View a single backlog item in detail. Supports pagination for long bodies.
@@ -74,37 +77,43 @@ Returns `{created, pushed, messages, warnings}`.
 
 ### `backlog_close`
 
-Mark a backlog item DONE and close its GitHub issue. Requires `checklist_pass=True`.
+Dismiss a backlog item without completing it and close its GitHub issue. ADR-9.
 
-Use `backlog_resolve` instead when the item is a duplicate, out of scope, or no longer needed —
-those cases carry a `reason`, not a completion checklist.
+Use for duplicates, out-of-scope items, superseded items, wontfix, or permanently blocked.
+For completed work, use `backlog_resolve` instead.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `selector` | `str` | required | Title substring, `#N`, bare number, or GitHub issue URL |
-| `plan` | `str` | required | Plan path or completion summary |
-| `checklist_pass` | `bool` | `False` | Caller confirms completion checklist verified. Must be `True`. |
+| `reason` | `str` | required | One of: `duplicate`, `out_of_scope`, `superseded`, `wontfix`, `blocked` |
+| `reference` | `str` | `""` | Related item: `#N`, URL, or title of item this duplicates/is superseded by |
+| `comment` | `str` | `""` | Additional context about why this item is being closed |
 | `cleanup` | `bool` | `False` | Remove local file after close |
 | `force` | `bool` | `False` | Close even if open PRs reference the issue |
 
-Returns `{title, issue?, messages, warnings}`.
+Returns `{title, reason, closed, messages, warnings}`.
 
 ### `backlog_resolve`
 
-Mark a backlog item RESOLVED and close its GitHub issue without completing it.
+Mark a backlog item as DONE (completed) and close its GitHub issue with an evidence trail.
 
-Use for duplicates, out-of-scope items, or items already handled elsewhere.
-This is also the correct tool when a CLI `close --reason` call was intended — `backlog_close`
-does not accept a `reason` parameter.
+Creates a structured completion record (summary, method, notes, follow-ups, findings) as an
+audit/retrospective trail. Only `summary` is required — a one-liner suffices for trivial items.
+For dismissals (duplicate, out of scope, etc.), use `backlog_close` instead.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `selector` | `str` | required | Title substring, `#N`, bare number, or GitHub issue URL |
-| `reason` | `str` | required | Why the item is resolved (e.g. `"duplicate of #42"`) |
+| `summary` | `str` | required | What was done — 1-2 sentence completion summary |
+| `plan` | `str \| None` | `None` | Plan path or completion reference |
+| `method` | `str \| None` | `None` | How the work was done |
+| `notes` | `str \| None` | `None` | Problems found, surprises, or other comments |
+| `follow_ups` | `str \| None` | `None` | Created follow-up tickets (comma-separated refs) |
+| `findings` | `str \| None` | `None` | Retrospective learnings from this work |
 | `cleanup` | `bool` | `False` | Remove local file after resolve |
 | `force` | `bool` | `False` | Resolve even if open PRs reference the issue |
 
-Returns `{title, reason, issue?, messages, warnings}`.
+Returns `{title, summary, resolved, messages, warnings}`.
 
 ### `backlog_update`
 

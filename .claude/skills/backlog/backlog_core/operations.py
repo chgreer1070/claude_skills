@@ -34,6 +34,7 @@ from .models import (
     BACKLOG_DIR,
     DEFAULT_REPO,
     MIN_FRONTMATTER_PARTS,
+    VALID_CLOSE_REASONS,
     BacklogError,
     BacklogItem,
     DuplicateItemError,
@@ -1077,21 +1078,26 @@ def sync_items(
 
 def close_item(
     selector: str,
-    plan: str,
-    checklist_pass: bool = False,
+    reason: str,
+    reference: str = "",
+    comment: str = "",
     cleanup: bool = False,
     force: bool = False,
     repo: str = DEFAULT_REPO,
     output: Output | None = None,
 ) -> dict[str, str | bool | list[str]]:
-    """Mark item DONE and close GitHub issue. Requires checklist_pass=True.
+    """Dismiss an item without completion. Requires a categorized reason.
+
+    Use for duplicates, out-of-scope items, superseded items, wontfix, or
+    permanently blocked items. For completed work, use resolve_item() instead.
 
     Returns:
-        Dict with closed item title and status.
+        Dict with closed item title and reason.
     """
     out = output or Output()
-    if not checklist_pass:
-        raise ValidationError("checklist_pass required (skill must verify checklist first)")
+    reason = reason.strip().lower()
+    if reason not in VALID_CLOSE_REASONS:
+        raise ValidationError(f"Invalid close reason: {reason!r}. Valid reasons: {', '.join(VALID_CLOSE_REASONS)}")
     items = parse_backlog()
     item = find_item(items, selector)
     if not item:
@@ -1111,27 +1117,24 @@ def close_item(
 
     today()
 
-    # Close item in index
     filepath_str = item.file_path
     if not filepath_str:
         raise BacklogError("Item has no file path")
     raw = item.raw_body
-    already_closed = "**Status**: DONE" in raw or "**Completed**:" in raw
+    already_closed = any(marker in raw for marker in ("**Status**: CLOSED", "**Status**: DONE", "**Completed**:"))
     if already_closed:
         out.info("Item already closed.")
         return {"title": item.title, "already_closed": True, **out.to_dict()}
 
-    update_item_metadata(
-        Path(filepath_str), {"metadata": {"status": "done", "priority": "completed", "plan": plan}}, output=out
-    )
+    update_item_metadata(Path(filepath_str), {"metadata": {"status": "closed", "close_reason": reason}}, output=out)
 
-    out.info(f'Backlog item "{item.title}" closed.')
+    out.info(f'Backlog item "{item.title}" closed ({reason}).')
     if issue_ref:
-        close_github_issue(issue_ref, plan, repo, output=out)
+        close_github_issue(issue_ref, reason, reference=reference, comment=comment, repo=repo, output=out)
     if cleanup and issue_ref:
         _close_cleanup(item, issue_ref, repo, output=out)
 
-    return {"title": item.title, "closed": True, **out.to_dict()}
+    return {"title": item.title, "closed": True, "reason": reason, **out.to_dict()}
 
 
 # ---------------------------------------------------------------------------
@@ -1141,20 +1144,29 @@ def close_item(
 
 def resolve_item(
     selector: str,
-    reason: str,
+    summary: str,
+    plan: str = "",
+    method: str = "",
+    notes: str = "",
+    follow_ups: str = "",
+    findings: str = "",
     cleanup: bool = False,
     force: bool = False,
     repo: str = DEFAULT_REPO,
     output: Output | None = None,
 ) -> dict[str, str | bool | list[str]]:
-    """Mark item RESOLVED and close GitHub issue.
+    """Mark item DONE (completed) and close GitHub issue with evidence trail.
+
+    Use when the work IS done. Creates a structured completion record
+    (summary, method, notes, follow-ups, findings) as an audit trail.
+    For dismissals (duplicate, out of scope, etc.), use close_item() instead.
 
     Returns:
-        Dict with resolved item title and status.
+        Dict with resolved item title and summary.
     """
     out = output or Output()
-    if not reason.strip():
-        raise ValidationError("reason is required")
+    if not summary.strip():
+        raise ValidationError("summary is required (what was done)")
     items = parse_backlog()
     item = find_item(items, selector)
     if not item:
@@ -1174,25 +1186,36 @@ def resolve_item(
 
     today()
 
-    # Resolve item in index
     filepath_str = item.file_path
     if not filepath_str:
         raise BacklogError("Item has no file path")
     raw = item.raw_body
-    already_resolved = "**Resolved**:" in raw
-    if already_resolved:
+    already_done = any(marker in raw for marker in ("**Status**: DONE", "**Completed**:", "**Resolved**:"))
+    if already_done:
         out.info("Item already resolved.")
         return {"title": item.title, "already_resolved": True, **out.to_dict()}
 
-    update_item_metadata(Path(filepath_str), {"metadata": {"status": "resolved"}}, output=out)
+    metadata: dict[str, str] = {"status": "done", "priority": "completed"}
+    if plan:
+        metadata["plan"] = plan
+    update_item_metadata(Path(filepath_str), {"metadata": metadata}, output=out)
 
     out.info(f'Backlog item "{item.title}" resolved.')
     if issue_ref:
-        resolve_github_issue(issue_ref, reason, repo, output=out)
+        resolve_github_issue(
+            issue_ref,
+            summary=summary,
+            method=method,
+            notes=notes,
+            follow_ups=follow_ups,
+            findings=findings,
+            repo=repo,
+            output=out,
+        )
     if cleanup and issue_ref:
         _close_cleanup(item, issue_ref, repo, output=out)
 
-    return {"title": item.title, "resolved": True, **out.to_dict()}
+    return {"title": item.title, "resolved": True, "summary": summary, **out.to_dict()}
 
 
 # ---------------------------------------------------------------------------

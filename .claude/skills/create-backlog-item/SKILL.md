@@ -149,11 +149,9 @@ Format today's date as `YYYY-MM-DD` (use system date).
 **Description**: {description}
 ```
 
-If research questions were embedded in the description (lines starting with `?` or `Research:`), extract them into a separate `**Research first**:` field:
-
-```text
-**Research first**: {extracted questions}
-```
+If research questions were embedded in the description (lines starting with `?` or `Research:`),
+keep them in the `description` — the `backlog_add` MCP tool has no `research_first` parameter.
+Prefix the questions with `Research first:` inside the description text so they remain visible.
 
 ### Step 5: Create per-item file via backlog MCP tool
 
