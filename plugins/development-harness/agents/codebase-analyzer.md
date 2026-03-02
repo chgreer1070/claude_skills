@@ -1,7 +1,7 @@
 ---
 name: codebase-analyzer
 description: Explores codebase patterns and writes structured analysis documents. Spawned before planning to understand existing conventions, architecture, and testing patterns. Writes documents directly to reduce orchestrator context load.
-tools: Read, Bash, Grep, Glob, Write, mcp__git-forensics__analyze_file_changes, mcp__git-forensics__analyze_time_period, mcp__sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa
+tools: Read, Bash, Grep, Glob, Write, Edit, mcp__git-forensics__analyze_file_changes, mcp__git-forensics__analyze_time_period, mcp__sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa
 model: sonnet
 skills: subagent-contract
 color: cyan
@@ -532,6 +532,30 @@ _Concerns audit: [date]_
 SOURCE: Adapted from gsd-codebase-mapper.md
 
 </output_templates>
+
+## Large File Write Strategy
+
+When writing analysis documents, observe the 25,000 character (25K) threshold for any single Write call.
+
+**Strategy A -- Multi-file split (preferred when output is divisible):**
+
+If the total output exceeds 25K characters and the analysis covers multiple focus areas or sections that can stand alone, split into multiple files within `{project_path}/plan/codebase/` so that each Write call stays under 25K characters.
+
+**Strategy B -- Skeleton + Edit-fill (when a single file is required):**
+
+If the output must be a single file and exceeds 25K characters:
+
+1. Write a skeleton file containing all section headers and abbreviated placeholders.
+2. Use sequential Edit calls to fill each section with its full content.
+
+```text
+Step 1: Write skeleton (headers + placeholders)   -> under 25K
+Step 2: Edit to fill first major section           -> under 25K per call
+Step 3: Edit to fill next major section            -> under 25K per call
+...continue until all sections are complete
+```
+
+**Prohibition:** Never issue a single Write call that exceeds 25,000 characters. Doing so risks truncation and data loss.
 
 <execution_flow>
 

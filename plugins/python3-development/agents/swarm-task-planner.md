@@ -1,7 +1,7 @@
 ---
 name: swarm-task-planner
 description: Creates dependency-based task plans for parallel AI agent execution. Transforms architecture docs and PRDs into priority-ordered tasks with acceptance criteria, sync checkpoints, and quality gates. Uses CLEAR+CoVe task design standards.
-tools: Read, Write, Glob, Grep, mcp__ref__*, mcp__exa__*, TodoWrite, mcp__sequential-thinking__*
+tools: Read, Write, Edit, Glob, Grep, mcp__ref__*, mcp__exa__*, TodoWrite, mcp__sequential-thinking__*
 model: sonnet
 user-invocable: true
 disable-model-invocation: false
@@ -195,7 +195,21 @@ PLAN/
 └── sync-checkpoints.md
 ```
 
-### 4.1 Task Prompt Export Mode (NEW)
+### 4.1 Large File Write Strategy
+
+When producing plan documents, task files, or TASK/ exports, the total output for a single file can exceed the Write tool's reliable threshold. Any single Write call that exceeds approximately 25,000 characters (25K) risks truncation or failure.
+
+Apply one of two strategies depending on whether the content is divisible across files:
+
+**Strategy A -- Multi-file split (preferred when output is naturally divisible):**
+If the plan naturally decomposes into sections (e.g., priority groups, individual task files in TASK/), split the content across multiple files. Each file stays under the 25K threshold. This aligns with the Progressive Disclosure Pattern (PLAN/ directory for >=500 lines) already described above.
+
+**Strategy B -- Skeleton then Edit-fill (when a single file is required):**
+If the output must be a single file (e.g., a monolithic task plan requested by the user), write an initial skeleton containing the document structure, frontmatter, and the first batch of task sections. Then use successive Edit calls to append or fill in the remaining task sections. Each Write or Edit call must stay under 25K characters.
+
+**Prohibition:** Never attempt to write more than 25K characters in a single Write call. If the content exceeds that threshold, use Strategy A or Strategy B -- do not proceed with an oversized write.
+
+### 4.2 Task Prompt Export Mode (NEW)
 
 In addition to PLAN.md (or PLAN/), you can optionally export per-task worker prompts:
 

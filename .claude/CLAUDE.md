@@ -59,6 +59,7 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 - Files: `Read`, `Write`, `Edit` — not `cat`, `sed`, `echo >`
 - Search: `Grep`, `Glob` — not `find`, `ls -R`
 - Python: `Bash(uv run script.py)`
+- Large File Write Strategy: `.claude/rules/large-file-write-strategy.md`
 
 **Reference notation the user may mention, or when you want to tell the user about a command or agent:**
 

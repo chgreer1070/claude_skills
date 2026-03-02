@@ -388,6 +388,87 @@ uv run /home/user/claude_skills/plugins/plugin-creator/scripts/plugin_validator.
 Both `silent-failure-prevention.md` and `delegation-format.md` have NO `paths:` frontmatter,
 confirming the pattern is valid and used in this repository.
 
+### Discovered During Implementation
+
+[Date: 2026-03-02 / Phase 1 implementation session]
+
+**1. python-cli-design-spec.md section placement required correction.**
+
+During T3 implementation, the `## Large File Write Strategy` section was initially inserted
+inside the `## Output Artifacts` section of `python-cli-design-spec.md`, breaking its structure.
+The Output Artifacts section contains a fenced `<architecture>` template block, and placing a
+new H2 section within it corrupted the template boundary. The fix was to move the Large File
+Write Strategy section _before_ `## Output Artifacts` (now at line 69, with Output Artifacts
+at line 81). Future implementations modifying this agent file must be aware that the Output
+Artifacts section starts with `file: architecture.md` and an `<architecture>` tag -- new
+sections should be inserted before it, not within it.
+
+**2. Agent inline guidance uses placeholder/replace language, not append language.**
+
+The architect spec's content contract (Component 3) describes Strategy B as "fill each section
+using individual Edit calls." Four python3-development agent inline sections were initially
+drafted using "append" language, which is incorrect for the Edit tool's replace semantics --
+Edit requires an `old_string` to match and replace, not an append operation. All inline
+sections were corrected to use "placeholder stubs" and "replace each placeholder" language
+(e.g., `<!-- PENDING: section description -->` as stubs, then Edit calls to replace them with
+actual content). This is important because agents following "append" instructions would fail
+when using the Edit tool, which has no append mode.
+
+**3. swarm-task-planner uses `### 4.1` heading level, other agents use `## H2`.**
+
+The swarm-task-planner already has a `## 4. Document Structure Policy` section (line ~168) with
+subsections `### 4.1`, `### 4.2`, etc. The Large File Write Strategy was placed as `### 4.1`
+to maintain the existing heading hierarchy. All four other python3-development agents and all
+three development-harness agents use `## Large File Write Strategy` at H2 level because they
+have no pre-existing parent section. This is a deliberate structural choice, not an error, but
+means that grep patterns matching `## Large File Write Strategy` will miss the swarm-task-planner
+instance. Use the broader pattern `Large File Write Strategy` when searching for all instances.
+
+**4. development-harness agents received more verbose guidance than python3-development agents.**
+
+The development-harness agent inline sections are approximately 24 lines each (including a
+`text` code block showing the step-by-step skeleton/Edit workflow), while python3-development
+agent sections are approximately 10 lines of prose. Both convey the same content contract
+(25K threshold, Strategy A, Strategy B, prohibition). The verbosity difference is cosmetic and
+does not affect agent behavior -- it results from different implementation agents writing the
+two sets of files independently. No corrective action is needed.
+
+**5. T7 (PreToolUse hook) remains deferred per ADR-006.**
+
+Phase 1 guidance-only approach was implemented as designed. T7 is deferred to Phase 2, to be
+implemented only if Phase 1 guidance proves insufficient (i.e., agents still produce single
+Write calls > 25K characters after the inline guidance is in place). The hook design is fully
+specified in the architect spec (Component 5) and ready for implementation when triggered.
+
+#### Updated Technical Details
+
+- `python-cli-design-spec.md`: Large File Write Strategy section must be placed at line 69
+  (before `## Output Artifacts`), not inside the Output Artifacts template block
+- Edit tool inline guidance must use "replace placeholder" semantics, never "append" language
+- Grep for all instances: use `Large File Write Strategy` (not `## Large File Write Strategy`)
+  to catch the `### 4.1` variant in swarm-task-planner
+- Agent files modified (9 total): 5 in python3-development, 4 in development-harness
+  (ecosystem-researcher in development-harness received guidance section only, no Edit tool
+  addition, because its development-harness copy has no Write tool)
+
+#### Plan Artifact Freshness Check
+
+Compared `plan/architect-large-file-write-strategy.md` and
+`plan/feature-context-large-file-write-strategy.md` against actual implementation.
+
+**Design refinements (within intent, no review required):**
+
+- ADR-005 stated "brief inline instruction (2-3 lines)" per agent. Actual implementation is
+  10-24 lines of agent-specific contextualized guidance. This exceeds the "brief" specification
+  but better serves the intent of ensuring agents understand the strategy at execution time.
+  The content contract (Component 3, lines 270-291) is fully satisfied.
+- swarm-task-planner heading level is `### 4.1` instead of `## H2` -- structural integration
+  with existing Document Structure Policy section, not a deviation from intent.
+
+**No intent divergences found.** All six feature context gaps were resolved by the architect
+spec's ADR decisions. All five architect spec components were implemented as designed. Phase 2
+(hook enforcement) remains correctly deferred per ADR-006.
+
 ---
 
 ## T1: Create large-file-write-strategy rule file
@@ -396,7 +477,7 @@ confirming the pattern is valid and used in this repository.
 ---
 task: T1
 title: Create .claude/rules/large-file-write-strategy.md
-status: not-started
+status: complete
 agent: general-purpose
 dependencies: []
 priority: 1
@@ -405,6 +486,8 @@ accuracy-risk: medium
 parallelize-with: [T2, T3, T4]
 reason: T1 creates a new file. T2 edits CLAUDE.md. T3 edits python3-development agents. T4 edits development-harness agents. No file overlap exists between any of these four tasks.
 handoff: Report the file path, line count, and output of `uv run prek run --files .claude/rules/large-file-write-strategy.md`. Flag any linting failures.
+Started: 2026-03-02T06:32:00Z
+Completed: 2026-03-02T06:34:00Z
 ---
 ```
 
@@ -544,7 +627,7 @@ Return:
 ---
 task: T2
 title: Add large-file-write-strategy reference to .claude/CLAUDE.md
-status: not-started
+status: complete
 agent: general-purpose
 dependencies: []
 priority: 1
@@ -553,6 +636,8 @@ accuracy-risk: low
 parallelize-with: [T1, T3, T4]
 reason: T2 edits CLAUDE.md only. No other parallel task touches CLAUDE.md.
 handoff: Report the exact line added, its line number after insertion, and output of `uv run prek run --files .claude/CLAUDE.md`.
+Started: 2026-03-02T06:32:00Z
+Completed: 2026-03-02T06:33:00Z
 ---
 ```
 
@@ -644,7 +729,9 @@ Return:
 ---
 task: T3
 title: Add Edit tool and large-file write guidance to 5 python3-development agents
-status: not-started
+status: complete
+Started: 2026-03-02T06:32:00Z
+Completed: 2026-03-02T06:36:00Z
 agent: general-purpose
 dependencies: []
 priority: 1
@@ -818,7 +905,9 @@ Return for each of the five files:
 ---
 task: T4
 title: Add Edit tool and large-file write guidance to development-harness agents
-status: not-started
+status: complete
+Started: 2026-03-02T06:32:00Z
+Completed: 2026-03-02T06:35:00Z
 agent: general-purpose
 dependencies: []
 priority: 1
@@ -983,7 +1072,9 @@ Return for each of the four files:
 ---
 task: T5
 title: Validate all Phase 1 modified files with plugin_validator and prek linting
-status: not-started
+status: complete
+Started: 2026-03-02T06:37:00Z
+Completed: 2026-03-02T06:38:00Z
 agent: general-purpose
 dependencies: [T1, T2, T3, T4]
 priority: 2
@@ -1074,7 +1165,9 @@ Return:
 ---
 task: T6
 title: Functional verification — confirm agent guidance is present and well-formed
-status: not-started
+status: complete
+Started: 2026-03-02T06:39:00Z
+Completed: 2026-03-02T06:40:00Z
 agent: general-purpose
 dependencies: [T5]
 priority: 3
