@@ -26,6 +26,14 @@ flowchart TD
     Coverage --> Schema
 ```
 
+## Specialist Skills
+
+For deeper Claude Code coverage, these focused skills are available:
+
+- **hooks-core-reference** — Hook system fundamentals: events, configuration, matchers, environment variables, execution, security, debugging. Use `Skill(skill: "plugin-creator:hooks-core-reference")` for configuration and troubleshooting.
+- **hooks-io-api** — JSON input/output API: what data hooks receive via stdin and what JSON they return to control Claude. Use `Skill(skill: "plugin-creator:hooks-io-api")` for writing hook scripts that process input or produce JSON output.
+- **hooks-patterns** — Recipes and working examples: plugin hooks, frontmatter hooks, prompt-based hooks, complete code examples in Python/Node.js. Use `Skill(skill: "plugin-creator:hooks-patterns")` for implementation patterns and examples.
+
 ## Reference Files
 
 - [common-schema.md](./references/common-schema.md) — shared concepts, cross-platform comparison, JSON I/O, exit codes
