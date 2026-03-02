@@ -1,0 +1,975 @@
+---
+description: "Agent Large File Write Strategy — guidance rule, agent tool updates, and CLAUDE.md integration"
+version: "1.0"
+issue: "#367"
+priority: "P1"
+phase: "1"
+tasks:
+  - T1: Create large-file-write-strategy rule file
+  - T2: Add rule reference to CLAUDE.md
+  - T3: Update python3-development agent files (tool list + prompt)
+  - T4: Update development-harness agent files (tool list + prompt)
+  - T5: Validate all modified files
+  - T6: Functional verification
+  - T7: "[DEFERRED] Implement PreToolUse enforcement hook"
+task_exports:
+  enabled: false
+  directory: "TASK"
+---
+
+# Task Plan: Agent Large File Write Strategy
+
+**Issue**: #367
+**Priority**: P1
+**Phase**: 1 of 2 (Phase 2 hook enforcement is deferred — see T7)
+**Architecture spec**: `plan/architect-large-file-write-strategy.md`
+**Feature context**: `plan/feature-context-large-file-write-strategy.md`
+**Codebase analysis**: `plan/codebase/large-file-write-patterns.md`
+
+## Problem Summary
+
+Sub-agents writing large files (>30K characters) via single Write calls stall or timeout.
+Observed failure: 57,800-character Write in commit 8beddfb stalled the SAM planning phase.
+Fix: three-layer guidance system — rule file + agent tool updates + optional enforcement hook.
+
+## Phase 1 Dependency Graph
+
+```text
+Priority 1 (no dependencies — fully parallel):
+  T1  Create .claude/rules/large-file-write-strategy.md
+  T2  Add CLAUDE.md reference line
+  T3  Update 5 python3-development agent files
+  T4  Update 3 development-harness agent files
+
+Priority 2 (depends on T1 + T2 + T3 + T4):
+  T5  Validate all modified files
+
+Priority 3 (depends on T5):
+  T6  Functional verification
+
+Deferred (not part of this phase):
+  T7  PreToolUse enforcement hook
+```
+
+## SYNC CHECKPOINT 1: After T1 + T2 + T3 + T4
+
+- Quality gates:
+  - All four priority-1 tasks report COMPLETE
+  - No agent files left with Write but not Edit (python3-development)
+  - Rule file exists and passes `uv run prek run --files .claude/rules/large-file-write-strategy.md`
+  - CLAUDE.md bullet-link is syntactically correct markdown
+- Proceed to T5 only after all four complete.
+
+## SYNC CHECKPOINT 2: After T5
+
+- Quality gates:
+  - `uv run plugins/plugin-creator/scripts/plugin_validator.py` passes on every modified agent file
+  - `uv run prek run --files` passes on rule file and CLAUDE.md
+- Proceed to T6 only after T5 passes.
+
+---
+
+## T1: Create large-file-write-strategy rule file
+
+```yaml
+---
+task: T1
+title: Create .claude/rules/large-file-write-strategy.md
+status: not-started
+agent: general-purpose
+dependencies: []
+priority: 1
+complexity: medium
+accuracy-risk: medium
+parallelize-with: [T2, T3, T4]
+reason: T1 creates a new file. T2 edits CLAUDE.md. T3 edits python3-development agents. T4 edits development-harness agents. No file overlap exists between any of these four tasks.
+handoff: Report the file path, line count, and output of `uv run prek run --files .claude/rules/large-file-write-strategy.md`. Flag any linting failures.
+---
+```
+
+## Context
+
+This task creates the canonical guidance document for the large file write strategy. The rule
+file is the source of truth for the 25K character threshold and the two-strategy model. It is
+loaded by the orchestrator via a CLAUDE.md reference (added in T2). Sub-agents receive the
+guidance via delegation prompts; they do NOT auto-load this file via `paths:` globs (no
+`paths:` frontmatter should be present).
+
+Existing rule file examples to follow for structure and style:
+
+- `/home/user/claude_skills/.claude/rules/silent-failure-prevention.md` — imperative rules,
+  Wrong/Right code fence pattern
+- `/home/user/claude_skills/.claude/rules/delegation-format.md` — mermaid decision flowchart,
+  scoped rules
+
+## Objective
+
+Create `/home/user/claude_skills/.claude/rules/large-file-write-strategy.md` containing
+the complete canonical guidance for agents producing large file output, including the 25K
+threshold, the two-strategy model, a mermaid decision flowchart, Wrong/Right examples, and
+an explicit statement that this strategy does not truncate content.
+
+## Required Inputs
+
+- `plan/architect-large-file-write-strategy.md` — Section "Component 1: Guidance Rule File"
+  (lines 189-232): required sections, content constraints, and the content contract
+- `plan/architect-large-file-write-strategy.md` — Section "ADR-001" (threshold rationale)
+  and "ADR-002" (two-strategy model with selection flowchart)
+- `plan/architect-large-file-write-strategy.md` — Section "Relationship to Existing
+  Constraints: No Invented Limits" — must be reflected in the rule file
+- `.claude/rules/silent-failure-prevention.md` — structural reference for rule file format
+
+## Requirements
+
+1. File path: `/home/user/claude_skills/.claude/rules/large-file-write-strategy.md`
+2. No `paths:` frontmatter — this file is loaded via CLAUDE.md reference, not auto-loading.
+3. Title heading: `# Large File Write Strategy`
+4. Include a **Scope Statement** section: names the five target agents (swarm-task-planner,
+   python-cli-design-spec, codebase-analyzer, ecosystem-researcher, feature-researcher),
+   states the 25K character threshold, and clarifies that the threshold applies to any agent
+   producing documents that may exceed 25K characters.
+5. Include a **mermaid decision flowchart** showing: estimate output size → if < 25K: single
+   Write call → if >= 25K and splittable: Strategy A → if >= 25K and single file required:
+   Strategy B. Match the flowchart in `plan/architect-large-file-write-strategy.md` ADR-002.
+6. Include **Strategy A: Multi-File Split** section: when output can be split into multiple
+   files each < 25K characters. Reference the swarm-task-planner's existing 500-line
+   progressive disclosure policy as the canonical example of Strategy A already in use.
+7. Include **Strategy B: Skeleton + Edit-Fill** section with a numbered step-by-step procedure:
+   - Step 1: Plan document structure (sections, headers, approximate content per section)
+   - Step 2: Write the skeleton — YAML frontmatter, all section headers, placeholder stubs
+     (e.g., `<!-- PENDING: section description -->`) — as a single Write call targeting < 5K
+     characters
+   - Step 3: Fill each section with individual Edit calls replacing placeholders with content
+   - Step 4: Final verification read confirming all placeholders are replaced
+8. Include **Wrong / Right Examples** section using fenced code blocks with language specifiers:
+   - Wrong: single Write call with 40K characters
+   - Right: Write skeleton (~2K chars), then Edit calls filling each section (3–5K chars each)
+9. Include a section explicitly stating the relationship to the "No Invented Limits" rule:
+   this strategy does NOT truncate content — the full document is written incrementally
+   instead of atomically; the threshold governs write mechanics, not content completeness.
+10. Target under 200 lines total.
+11. Present-tense imperative voice throughout. No temporal language.
+12. All code fences must have language specifiers.
+13. Blank line before and after every fenced code block (MD031).
+
+## Constraints
+
+- Do NOT add `paths:` frontmatter — the file must not auto-load via file glob matching.
+- Do NOT truncate any of the required sections to stay under 200 lines — prioritize
+  completeness; 200 lines is a target, not a hard cap.
+- Do NOT use temporal language ("will", "would", "should eventually").
+- Do NOT use emojis.
+- Do NOT invent content beyond what is specified in the architect spec — content contract
+  sections (Requirement 5–9) must be satisfied using the architect spec as the source.
+
+## Expected Outputs
+
+- `/home/user/claude_skills/.claude/rules/large-file-write-strategy.md` (new file)
+
+## Acceptance Criteria
+
+1. File exists at `/home/user/claude_skills/.claude/rules/large-file-write-strategy.md`.
+2. File contains no `paths:` frontmatter block.
+3. File contains the H1 heading `# Large File Write Strategy`.
+4. File contains a Scope Statement naming all five agents and the 25K threshold.
+5. File contains a mermaid decision flowchart with all three outcome branches.
+6. File contains a Strategy A section referencing the swarm-task-planner 500-line policy.
+7. File contains a Strategy B section with all four numbered steps including placeholder syntax.
+8. File contains a Wrong/Right example section with fenced code blocks and language specifiers.
+9. File contains an explicit statement that the strategy does not truncate content and does
+   not conflict with the "No Invented Limits" rule.
+10. `uv run prek run --files /home/user/claude_skills/.claude/rules/large-file-write-strategy.md`
+    exits 0 with no errors.
+
+## Verification Steps
+
+1. `Read` the file to confirm all nine sections exist.
+2. Confirm the `---` frontmatter block (if present) does NOT contain a `paths:` key.
+3. Search for "25,000" or "25K" to confirm threshold is stated.
+4. Search for "No Invented Limits" or "truncat" to confirm the content-completeness statement exists.
+5. Run: `uv run prek run --files /home/user/claude_skills/.claude/rules/large-file-write-strategy.md`
+   and confirm exit code 0.
+
+## CoVe Checks
+
+- Key claims to verify:
+  - The `paths:` frontmatter causes auto-loading by Claude Code; omitting it prevents that.
+  - Existing rule files without `paths:` are confirmed to exist in this repo.
+- Verification questions:
+  1. Does `/home/user/claude_skills/.claude/rules/silent-failure-prevention.md` have a `paths:` key? (If not, that confirms files without `paths:` are valid and do not auto-load.)
+  2. Does `/home/user/claude_skills/.claude/rules/delegation-format.md` have a `paths:` key? (Same confirmation.)
+- Evidence to collect:
+  - `Read` the first 5 lines of both files above and confirm presence or absence of `paths:`.
+- Revision rule:
+  - If both files lack `paths:` frontmatter, the omission pattern is confirmed — proceed.
+  - If either file has `paths:` frontmatter for a global-scope rule, reconsider whether a
+    `paths:` glob targeting agent files would be preferable. Consult the architect spec
+    ADR-005 before deciding.
+
+## Handoff
+
+Return:
+
+- Absolute path to the created file
+- Line count of the created file
+- Output of `uv run prek run --files` (full stdout/stderr)
+- Confirmation that no `paths:` key is in the frontmatter
+
+---
+
+## T2: Add rule reference to CLAUDE.md
+
+```yaml
+---
+task: T2
+title: Add large-file-write-strategy reference to .claude/CLAUDE.md
+status: not-started
+agent: general-purpose
+dependencies: []
+priority: 1
+complexity: low
+accuracy-risk: low
+parallelize-with: [T1, T3, T4]
+reason: T2 edits CLAUDE.md only. No other parallel task touches CLAUDE.md.
+handoff: Report the exact line added, its line number after insertion, and output of `uv run prek run --files .claude/CLAUDE.md`.
+---
+```
+
+## Context
+
+CLAUDE.md has a "Tool Usage" block at lines 57–61. The "Reference notation" section starts at
+line 63. A new bullet-link reference to the large-file-write-strategy rule file must be
+inserted between the Tool Usage block and the Reference notation section, following the
+existing bullet-link pattern used throughout CLAUDE.md.
+
+The reference line format established by existing rule references in CLAUDE.md is:
+
+```markdown
+- Rule Name: `.claude/rules/rule-file.md`
+```
+
+The section separator `---` already exists after the Tool Usage block (line 69 in the current
+file). The insertion target is immediately after the Tool Usage bullet list and before the
+`---` separator at line 69.
+
+## Objective
+
+Insert one bullet-link line into `/home/user/claude_skills/.claude/CLAUDE.md` after the
+"Tool Usage" section so that the large-file-write-strategy rule is discoverable by the
+orchestrator at session start.
+
+## Required Inputs
+
+- `/home/user/claude_skills/.claude/CLAUDE.md` — read before editing; insertion target is
+  after the `Python: \`Bash(uv run script.py)\`` line (currently line 61) and before the
+  `---` section separator that follows the Tool Usage block
+- `plan/architect-large-file-write-strategy.md` — Section "Component 4: CLAUDE.md
+  Integration" (lines 296-310): exact content and placement specification
+
+## Requirements
+
+1. Read CLAUDE.md before editing to confirm current line numbers.
+2. Insert the following line after the `Python: \`Bash(uv run script.py)\`` line and
+   before the `---` separator that ends the Tool Usage block:
+
+   ```markdown
+   - Large File Write Strategy: `.claude/rules/large-file-write-strategy.md`
+   ```
+
+3. Preserve the existing blank line and `---` separator pattern — do not remove or add
+   extra blank lines beyond what is needed for consistent formatting.
+4. Do not modify any other content in CLAUDE.md.
+
+## Constraints
+
+- Edit only the Tool Usage section area — do not touch any other part of CLAUDE.md.
+- Do not add a `---` separator after the new line if one already exists immediately after.
+- The new line uses backtick-enclosed path (not a markdown link) to match the style of other
+  rule references in the same file.
+
+## Expected Outputs
+
+- `/home/user/claude_skills/.claude/CLAUDE.md` (modified — one line added)
+
+## Acceptance Criteria
+
+1. CLAUDE.md contains the line
+   `- Large File Write Strategy: \`.claude/rules/large-file-write-strategy.md\``
+2. The line appears in the Tool Usage section area, after the Python bullet and before the
+   next `---` separator.
+3. No other lines in CLAUDE.md were added, removed, or modified.
+4. `uv run prek run --files /home/user/claude_skills/.claude/CLAUDE.md` exits 0.
+
+## Verification Steps
+
+1. `Read` CLAUDE.md and confirm the new line is present at the expected location.
+2. Confirm no other content changed by reviewing surrounding lines.
+3. Run: `uv run prek run --files /home/user/claude_skills/.claude/CLAUDE.md`
+   and confirm exit code 0.
+
+## Handoff
+
+Return:
+
+- The exact line added (quoted)
+- The line number of the new line in the modified file
+- Output of `uv run prek run --files` (full stdout/stderr)
+
+---
+
+## T3: Update python3-development agent files (tool list + prompt)
+
+```yaml
+---
+task: T3
+title: Add Edit tool and large-file write guidance to 5 python3-development agents
+status: not-started
+agent: general-purpose
+dependencies: []
+priority: 1
+complexity: medium
+accuracy-risk: medium
+parallelize-with: [T1, T2, T4]
+reason: T3 modifies only files under plugins/python3-development/agents/. T4 modifies only files under plugins/development-harness/agents/. No file overlap.
+handoff: Report which files were modified, the exact tools: line before and after for each, confirmation that a Large File Write Strategy section was added to each agent body, and validator output for each file.
+---
+```
+
+## Context
+
+This task was merged from two planned changes to avoid edit conflicts: (1) adding Edit to the
+`tools:` frontmatter field, and (2) adding a Large File Write Strategy section to the agent
+body. Both changes target the same five files. Merging ensures a single agent executes both
+changes per file with no risk of concurrent edit conflicts.
+
+Five python3-development agent files need both changes:
+
+| Agent file | Current tools: value (frontmatter line 4 or 5) |
+|------------|------------------------------------------------|
+| `plugins/python3-development/agents/swarm-task-planner.md` | `Read, Write, Glob, Grep, mcp__ref__*, mcp__exa__*, TodoWrite, mcp__sequential-thinking__*` |
+| `plugins/python3-development/agents/python-cli-design-spec.md` | `Read, Write, Glob, Grep, mcp__ref__*, mcp__exa__*, TodoWrite, mcp__sequential-thinking__*` |
+| `plugins/python3-development/agents/codebase-analyzer.md` | `Read, Bash, Grep, Glob, Write, mcp__git-forensics__analyze_file_changes, mcp__git-forensics__analyze_time_period, mcp__sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa` |
+| `plugins/python3-development/agents/ecosystem-researcher-v1.1-rt-ica.md` | `Read, Grep, Glob, Write, WebSearch, WebFetch, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__sequential_thinking__sequentialthinking` |
+| `plugins/python3-development/agents/feature-researcher.md` | `Read, Grep, Glob, Write, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__sequential_thinking__sequentialthinking` |
+
+All five files are in `/home/user/claude_skills/plugins/python3-development/agents/`.
+
+The architect spec defines the content contract for the inline section
+(`plan/architect-large-file-write-strategy.md` Component 3, lines 270-291). The required
+inline content structure is:
+
+```text
+## Large File Write Strategy
+
+When producing output files that may exceed 25,000 characters:
+
+1. If the output can be split into multiple files (each < 25K chars): split it.
+2. If a single file is required: write a skeleton first (headers, frontmatter, section
+   stubs as a single Write call), then fill each section using individual Edit calls.
+
+Do not attempt to write more than 25,000 characters in a single Write call.
+```
+
+This is a content contract (required intent and structure), not a verbatim copy-paste template.
+Write natural prose following this structure, adapted to each agent's existing writing style.
+
+## Objective
+
+For each of the five python3-development agent files: (1) insert `Edit` after `Write` in
+the `tools:` frontmatter field, and (2) add a `## Large File Write Strategy` section in the
+agent body near the agent's existing output or document structure instructions.
+
+## Required Inputs
+
+- All five agent files listed in the Context table above — read each before editing
+- `plan/architect-large-file-write-strategy.md`:
+  - Component 2 (lines 237-264): tool list modification specification
+  - Component 3 (lines 269-291): agent prompt addition content contract and placement guidance
+- For swarm-task-planner specifically: the Document Structure Policy section exists near line
+  168 — place the new section adjacent to it
+
+## Requirements
+
+### tools: frontmatter update (all 5 files)
+
+1. Read each agent file before modifying it.
+2. In the `tools:` frontmatter field, insert `Edit` immediately after `Write` in the
+   comma-separated list.
+3. Preserve all other tools exactly as they appear — do not reorder or remove any tool.
+4. Apply to all five files.
+
+### Large File Write Strategy body section (all 5 files)
+
+5. Add a `## Large File Write Strategy` section to each agent's body (not frontmatter).
+6. Section content must convey: the 25K character threshold, Strategy A (multi-file split)
+   when output is splittable, Strategy B (skeleton + Edit-fill) when a single file is
+   required, and the prohibition on single Write calls > 25K characters.
+7. Placement per agent:
+   - `swarm-task-planner.md`: adjacent to the existing "Document Structure Policy" section
+     (currently near line 168 in the body)
+   - `python-cli-design-spec.md`: near the output artifact or output format section
+   - `codebase-analyzer.md`: near output/writing instructions
+   - `ecosystem-researcher-v1.1-rt-ica.md`: near output format instructions
+   - `feature-researcher.md`: near output format instructions
+8. The section must be preceded and followed by a blank line.
+9. All code fences within the section (if any) must have language specifiers.
+
+## Constraints
+
+- Do NOT modify the `description:`, `model:`, `skills:`, `color:`, or any other frontmatter
+  field except `tools:`.
+- Do NOT add `Edit` if it already appears in the `tools:` field — check first.
+- Do NOT modify the content or structure of any existing sections in the agent body.
+- Do NOT reorder the tools list beyond inserting `Edit` after `Write`.
+- Do NOT use emojis in the added section.
+
+## Expected Outputs
+
+Modified files (5 total):
+
+- `/home/user/claude_skills/plugins/python3-development/agents/swarm-task-planner.md`
+- `/home/user/claude_skills/plugins/python3-development/agents/python-cli-design-spec.md`
+- `/home/user/claude_skills/plugins/python3-development/agents/codebase-analyzer.md`
+- `/home/user/claude_skills/plugins/python3-development/agents/ecosystem-researcher-v1.1-rt-ica.md`
+- `/home/user/claude_skills/plugins/python3-development/agents/feature-researcher.md`
+
+## Acceptance Criteria
+
+### tools: frontmatter update
+
+1. `swarm-task-planner.md` tools: field contains `Write, Edit,` (Edit immediately after Write).
+2. `python-cli-design-spec.md` tools: field contains `Write, Edit,` (Edit immediately after Write).
+3. `codebase-analyzer.md` tools: field contains `Write, Edit,` or `Edit` inserted after `Write`
+   in its existing position in the list.
+4. `ecosystem-researcher-v1.1-rt-ica.md` tools: field contains `Write, Edit,` or `Edit`
+   inserted after `Write`.
+5. `feature-researcher.md` tools: field contains `Write, Edit,` or `Edit` inserted after
+   `Write`.
+
+### Large File Write Strategy body section
+
+6. Each of the five agent files contains a `## Large File Write Strategy` section in its body.
+7. Each section mentions the 25,000 character (25K) threshold.
+8. Each section mentions both Strategy A (split) and Strategy B (skeleton + Edit-fill).
+9. Each section states the prohibition on single Write calls > 25K characters.
+10. `uv run plugins/plugin-creator/scripts/plugin_validator.py` passes on each modified file
+    (no exit code 1 errors introduced by the edits).
+
+## Verification Steps
+
+1. For each file, `Read` the frontmatter and confirm `Edit` appears after `Write` in `tools:`.
+2. For each file, `Grep` for `## Large File Write Strategy` to confirm the section heading exists.
+3. For each file, `Grep` for `25,000` or `25K` to confirm the threshold is stated.
+4. Run validator on each file:
+   `uv run /home/user/claude_skills/plugins/plugin-creator/scripts/plugin_validator.py \
+   /home/user/claude_skills/plugins/python3-development/agents/swarm-task-planner.md`
+   (repeat for all five files) and confirm each exits without critical errors.
+
+## CoVe Checks
+
+- Key claims to verify:
+  - The current `tools:` value for each agent file is as listed in the Context table above.
+  - `Edit` is not already present in any of these five files' tools lists.
+- Verification questions:
+  1. Does `swarm-task-planner.md` frontmatter currently contain `Edit` in the `tools:` field?
+  2. Does `python-cli-design-spec.md` frontmatter currently contain `Edit` in the `tools:` field?
+  3. Do any of the remaining three agent files already contain `Edit` in `tools:`?
+- Evidence to collect:
+  - Read the first 10 lines of each agent file to extract the current `tools:` value.
+- Revision rule:
+  - If any file already contains `Edit` in `tools:`, skip the tools update for that file and
+    note it in the handoff. Apply only the body section addition.
+
+## Handoff
+
+Return for each of the five files:
+
+- File path
+- `tools:` line before and after modification (or "already contained Edit — skipped")
+- Confirmation that `## Large File Write Strategy` section was added with its location (line number)
+- Validator output (stdout summary)
+
+---
+
+## T4: Update development-harness agent files (tool list + prompt)
+
+```yaml
+---
+task: T4
+title: Add Edit tool and large-file write guidance to development-harness agents
+status: not-started
+agent: general-purpose
+dependencies: []
+priority: 1
+complexity: medium
+accuracy-risk: medium
+parallelize-with: [T1, T2, T3]
+reason: T4 modifies only files under plugins/development-harness/agents/. T3 modifies only files under plugins/python3-development/agents/. No file overlap.
+handoff: Report which files were modified, the exact tools: line before and after for each, confirmation that a Large File Write Strategy section was added to each agent body, and validator output for each file.
+---
+```
+
+## Context
+
+This task was merged from two planned changes to avoid edit conflicts: (1) adding Edit to
+`tools:` frontmatter, and (2) adding a Large File Write Strategy section to the agent body.
+Both changes target the same files.
+
+The development-harness plugin has these agents corresponding to the five target agents:
+
+| Agent | development-harness file | Has Write? | Needs Edit? |
+|-------|--------------------------|-----------|-------------|
+| swarm-task-planner | `plugins/development-harness/agents/swarm-task-planner.md` | Yes | Yes |
+| codebase-analyzer | `plugins/development-harness/agents/codebase-analyzer.md` | Yes | Yes |
+| feature-researcher | `plugins/development-harness/agents/feature-researcher.md` | Yes | Yes |
+| ecosystem-researcher | `plugins/development-harness/agents/ecosystem-researcher.md` | No (tools: Read, Grep, Glob, mcp__ref__*, ...) | No — no Write means no large-Write risk |
+| python-cli-design-spec | Does NOT exist in development-harness | N/A | N/A |
+
+Three files need both `Edit` added and a `## Large File Write Strategy` section:
+- `plugins/development-harness/agents/swarm-task-planner.md`
+- `plugins/development-harness/agents/codebase-analyzer.md`
+- `plugins/development-harness/agents/feature-researcher.md`
+
+One file (ecosystem-researcher) needs only the `## Large File Write Strategy` body section
+(no Write → no Edit needed, but guidance still applies when writing output if any is added in
+future). Check its tools at implementation time — if Write is absent, add only the guidance
+section. If Write is present, add Edit too.
+
+Current tools: values (read at plan creation time):
+- `swarm-task-planner.md`: `Read, Write, Glob, Grep, mcp__ref__*, mcp__exa__*, TodoWrite, mcp__sequential-thinking__*`
+- `codebase-analyzer.md`: `Read, Bash, Grep, Glob, Write, mcp__git-forensics__analyze_file_changes, mcp__git-forensics__analyze_time_period, mcp__sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa`
+- `feature-researcher.md`: `Read, Grep, Glob, Write, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__sequential_thinking__sequentialthinking`
+- `ecosystem-researcher.md`: `Read, Grep, Glob, mcp__ref__*, mcp__exa__*, mcp__context7__*, mcp__firecrawl__*` (no Write — no Edit needed)
+
+See architect spec Component 2 and Component 3 for modification details.
+
+## Objective
+
+For swarm-task-planner, codebase-analyzer, and feature-researcher in development-harness:
+insert `Edit` after `Write` in `tools:` frontmatter and add a `## Large File Write Strategy`
+section to the agent body. For ecosystem-researcher in development-harness: add only the
+`## Large File Write Strategy` section (no Write → no Edit addition needed).
+
+## Required Inputs
+
+- All four development-harness agent files listed in the Context table — read each before editing
+- `plan/architect-large-file-write-strategy.md`:
+  - Component 2 (lines 237-264): tool list modification specification
+  - Component 3 (lines 269-291): agent prompt addition content contract
+
+## Requirements
+
+### tools: frontmatter update (3 files: swarm-task-planner, codebase-analyzer, feature-researcher)
+
+1. Read each file before modifying it.
+2. In the `tools:` frontmatter field, insert `Edit` immediately after `Write` in the
+   comma-separated list.
+3. Preserve all other tools exactly as they appear — do not reorder or remove any tool.
+4. Do NOT add Edit to ecosystem-researcher (it does not have Write).
+
+### Large File Write Strategy body section (all 4 files)
+
+5. Add a `## Large File Write Strategy` section to each of the four agent bodies (not frontmatter).
+6. Section content must convey: the 25K character threshold, Strategy A (multi-file split)
+   when output is splittable, Strategy B (skeleton + Edit-fill) when a single file is
+   required, and the prohibition on single Write calls > 25K characters. For ecosystem-
+   researcher (no Write), frame the guidance as: "if Write is available in your context,
+   apply the following strategy."
+7. Section must be preceded and followed by a blank line.
+8. All code fences within the section (if any) must have language specifiers.
+
+## Constraints
+
+- Do NOT modify any frontmatter field other than `tools:` in the three files that need it.
+- Do NOT add `Edit` to ecosystem-researcher or to any file that already has Edit in tools:.
+- Do NOT modify content of any existing sections in the agent body.
+- Do NOT use emojis.
+
+## Expected Outputs
+
+Modified files (4 total):
+
+- `/home/user/claude_skills/plugins/development-harness/agents/swarm-task-planner.md`
+- `/home/user/claude_skills/plugins/development-harness/agents/codebase-analyzer.md`
+- `/home/user/claude_skills/plugins/development-harness/agents/feature-researcher.md`
+- `/home/user/claude_skills/plugins/development-harness/agents/ecosystem-researcher.md`
+
+## Acceptance Criteria
+
+### tools: frontmatter update
+
+1. `swarm-task-planner.md` (development-harness) tools: field contains `Edit` immediately
+   after `Write`.
+2. `codebase-analyzer.md` (development-harness) tools: field contains `Edit` immediately
+   after `Write`.
+3. `feature-researcher.md` (development-harness) tools: field contains `Edit` immediately
+   after `Write`.
+4. `ecosystem-researcher.md` (development-harness) tools: field does NOT contain `Edit`
+   (it has no Write to pair with).
+
+### Large File Write Strategy body section
+
+5. All four agent files contain a `## Large File Write Strategy` section in their body.
+6. Each section mentions the 25,000 character (25K) threshold.
+7. Each section mentions both Strategy A and Strategy B.
+8. `uv run plugins/plugin-creator/scripts/plugin_validator.py` passes on each modified file.
+
+## Verification Steps
+
+1. For swarm-task-planner, codebase-analyzer, feature-researcher: `Read` frontmatter and
+   confirm `Edit` appears after `Write` in `tools:`.
+2. For ecosystem-researcher: `Read` frontmatter and confirm `Edit` is absent.
+3. For all four files: `Grep` for `## Large File Write Strategy` to confirm section heading.
+4. Run validator on each file:
+   `uv run /home/user/claude_skills/plugins/plugin-creator/scripts/plugin_validator.py \
+   /home/user/claude_skills/plugins/development-harness/agents/swarm-task-planner.md`
+   (repeat for all four files).
+
+## CoVe Checks
+
+- Key claims to verify:
+  - ecosystem-researcher in development-harness does NOT have Write in its tools list.
+  - swarm-task-planner, codebase-analyzer, feature-researcher in development-harness DO
+    have Write in their tools lists.
+- Verification questions:
+  1. Does `plugins/development-harness/agents/ecosystem-researcher.md` tools: field contain
+     the string `Write`?
+  2. Does `plugins/development-harness/agents/swarm-task-planner.md` tools: field contain
+     the string `Write`?
+- Evidence to collect:
+  - Read the first 10 lines of each of the four development-harness agent files to extract
+    the `tools:` value.
+- Revision rule:
+  - If ecosystem-researcher has Write present (plan-time read may have been stale), add Edit
+    to it as well. Document the discrepancy in handoff.
+  - If any of the three expected Write-containing files lack Write, do NOT add Edit to that
+    file. Add only the guidance section. Document in handoff.
+
+## Handoff
+
+Return for each of the four files:
+
+- File path
+- `tools:` line before and after modification (or "no Edit added — Write absent")
+- Confirmation that `## Large File Write Strategy` section was added with location (line number)
+- Validator output (stdout summary)
+
+---
+
+## T5: Validate all modified files
+
+```yaml
+---
+task: T5
+title: Validate all Phase 1 modified files with plugin_validator and prek linting
+status: not-started
+agent: general-purpose
+dependencies: [T1, T2, T3, T4]
+priority: 2
+complexity: low
+accuracy-risk: low
+parallelize-with: []
+reason: T5 is a sequential gate — all four parallel tasks must complete before validation runs.
+handoff: Report validator and linting output for every file. List any errors with file path and error message. State PASS or FAIL with a clear list of any failures.
+---
+```
+
+## Context
+
+T5 is the integration gate for all Phase 1 changes. It runs linting and plugin validation
+on every file modified in T1–T4 and surfaces any issues introduced by those changes.
+
+Files to validate:
+
+| File | Validation command |
+|------|--------------------|
+| `.claude/rules/large-file-write-strategy.md` | `uv run prek run --files {path}` |
+| `.claude/CLAUDE.md` | `uv run prek run --files {path}` |
+| `plugins/python3-development/agents/swarm-task-planner.md` | `uv run prek run --files {path}` AND plugin_validator |
+| `plugins/python3-development/agents/python-cli-design-spec.md` | `uv run prek run --files {path}` AND plugin_validator |
+| `plugins/python3-development/agents/codebase-analyzer.md` | `uv run prek run --files {path}` AND plugin_validator |
+| `plugins/python3-development/agents/ecosystem-researcher-v1.1-rt-ica.md` | `uv run prek run --files {path}` AND plugin_validator |
+| `plugins/python3-development/agents/feature-researcher.md` | `uv run prek run --files {path}` AND plugin_validator |
+| `plugins/development-harness/agents/swarm-task-planner.md` | `uv run prek run --files {path}` AND plugin_validator |
+| `plugins/development-harness/agents/codebase-analyzer.md` | `uv run prek run --files {path}` AND plugin_validator |
+| `plugins/development-harness/agents/feature-researcher.md` | `uv run prek run --files {path}` AND plugin_validator |
+| `plugins/development-harness/agents/ecosystem-researcher.md` | `uv run prek run --files {path}` AND plugin_validator |
+
+## Objective
+
+Run `uv run prek run --files` and `uv run plugins/plugin-creator/scripts/plugin_validator.py`
+on every file modified in T1–T4 and confirm all exit code 0 with no critical errors.
+
+## Required Inputs
+
+- All files listed in the Context table above must exist (created or modified by T1–T4)
+- `/home/user/claude_skills/plugins/plugin-creator/scripts/plugin_validator.py` — validator script
+
+## Requirements
+
+1. Run `uv run prek run --files {absolute-path}` for every file in the table above.
+2. Run `uv run /home/user/claude_skills/plugins/plugin-creator/scripts/plugin_validator.py \
+   {absolute-path}` for every agent `.md` file in the table above.
+3. Collect stdout and stderr for every command.
+4. Identify any non-zero exit codes or lines containing `ERROR` or `CRITICAL` in validator output.
+5. If any validation fails, report the exact file, command, exit code, and relevant output lines.
+
+## Constraints
+
+- Do NOT fix failures found in T5 — report them and leave resolution for the orchestrator
+  to decide (re-run T3 or T4 with corrections, or create follow-up tasks).
+- Do NOT modify any files in T5 — this is a read-and-run-commands task only.
+
+## Expected Outputs
+
+- Validation report: stdout of every command run, organized by file
+- Overall verdict: PASS (all commands exit 0 with no critical errors) or FAIL (list of failures)
+
+## Acceptance Criteria
+
+1. All 11 `prek run --files` commands exit 0.
+2. All 9 `plugin_validator.py` commands exit 0 (or report only warnings, not critical errors).
+3. A validation report is produced listing each file, command, and result.
+
+## Verification Steps
+
+1. Run each `prek` command and record exit code and output.
+2. Run each `plugin_validator.py` command and record exit code and output.
+3. State overall PASS or FAIL.
+
+## Handoff
+
+Return:
+
+- Full validation report (file, command, exit code, output summary for each)
+- Overall PASS or FAIL verdict
+- If FAIL: list of files with failures and specific error messages
+
+---
+
+## T6: Functional verification
+
+```yaml
+---
+task: T6
+title: Functional verification — confirm agent guidance is present and well-formed
+status: not-started
+agent: general-purpose
+dependencies: [T5]
+priority: 3
+complexity: low
+accuracy-risk: low
+parallelize-with: []
+reason: Sequential — depends on T5 PASS verdict.
+handoff: Report the content of each ## Large File Write Strategy section found, the rule file section inventory, and the CLAUDE.md reference line. Declare VERIFIED or NEEDS-REVIEW with specifics.
+---
+```
+
+## Context
+
+T6 is a content audit, not a build test. It verifies that the guidance content is coherent,
+complete, and well-placed in each agent file. It also confirms the rule file contains all
+required sections per the architect spec interface contract.
+
+This task does NOT run live agent delegation. Live functional testing (delegating a large
+plan creation and observing behavior) is out of scope for this plan but is listed in the
+architect spec as a post-deployment validation step.
+
+## Objective
+
+Confirm that every `## Large File Write Strategy` section in every modified agent file is
+present, mentions the threshold and both strategies, and that the rule file contains all
+seven required sections defined in the architect spec Component 1 interface contract.
+
+## Required Inputs
+
+- All 9 modified agent files from T3 and T4
+- `/home/user/claude_skills/.claude/rules/large-file-write-strategy.md` (created in T1)
+- `/home/user/claude_skills/.claude/CLAUDE.md` (modified in T2)
+- `plan/architect-large-file-write-strategy.md` Section "Component 1: Guidance Rule File"
+  lines 198-232 — the interface contract listing required sections
+
+## Requirements
+
+1. Read the rule file and confirm all seven required sections are present:
+   - `# Large File Write Strategy` (title)
+   - Scope Statement (names agents + states 25K threshold)
+   - Mermaid decision flowchart
+   - Strategy A: Multi-File Split
+   - Strategy B: Skeleton + Edit-Fill (with numbered steps)
+   - Wrong / Right examples
+   - No Invented Limits relationship statement
+2. Read CLAUDE.md and confirm the rule reference line is present.
+3. For each of the nine agent files: confirm `## Large File Write Strategy` section exists
+   and contains the 25K threshold and both strategy names.
+4. Confirm swarm-task-planner (both plugins) has the section placed adjacent to or near
+   the existing Document Structure Policy section.
+
+## Constraints
+
+- Do NOT make edits in T6 — content audit only.
+- If a required section is missing, report it; do not invent content.
+
+## Expected Outputs
+
+- Content audit report listing each required item and PRESENT / MISSING status
+- Overall VERIFIED (all present) or NEEDS-REVIEW (items missing)
+
+## Acceptance Criteria
+
+1. Rule file contains all seven required sections (listed in Requirements item 1).
+2. CLAUDE.md contains the bullet-link reference to the rule file.
+3. All nine agent files contain `## Large File Write Strategy` with threshold and strategies.
+4. Content audit report produced with VERIFIED or NEEDS-REVIEW verdict.
+
+## Verification Steps
+
+1. `Read` `/home/user/claude_skills/.claude/rules/large-file-write-strategy.md` and inventory
+   sections present.
+2. `Grep` CLAUDE.md for `large-file-write-strategy` and confirm match.
+3. `Grep` each agent file for `## Large File Write Strategy`.
+4. For each agent file with the section: `Read` the section and confirm threshold and strategy
+   references are present.
+
+## Handoff
+
+Return:
+
+- Section inventory for the rule file (PRESENT / MISSING per required section)
+- CLAUDE.md reference line (quoted)
+- Per-agent: section heading found (Y/N) and whether threshold + strategies are mentioned
+- Overall verdict: VERIFIED or NEEDS-REVIEW with specifics
+
+---
+
+## T7: [DEFERRED] Implement PreToolUse enforcement hook
+
+```yaml
+---
+task: T7
+title: "[DEFERRED] Implement PreToolUse soft-warning hook for large Write calls"
+status: not-started
+agent: general-purpose
+dependencies: [T6]
+priority: 4
+complexity: medium
+accuracy-risk: high
+parallelize-with: []
+reason: Deferred per ADR-006. Implement only if Phase 1 functional validation shows agents ignoring guidance. No file conflicts with any other task.
+handoff: Report hook file path, hooks.json modification, output of `claude plugin validate plugins/orchestrator-discipline`, and result of a manual test triggering the hook with a >25K content string.
+---
+```
+
+## Context
+
+ADR-006 defers this task. Phase 1 (T1–T6) implements guidance-only enforcement. The hook
+is implemented only if Phase 1 functional validation (live agent delegation tests) shows
+that agents produce Write calls > 25K characters despite having the guidance in their prompts.
+
+The hook pattern to follow is `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs`:
+read stdin as JSON, extract field, check condition, emit `hookSpecificOutput.additionalContext`
+or empty `{}`, always exit 0.
+
+The complete hook behavior contract is in `plan/architect-large-file-write-strategy.md`
+Component 5 (lines 313-354). Read that section in full before implementing.
+
+**Trigger condition**: Implement this task only when the orchestrator explicitly instructs
+it after observing Phase 1 failures. Do not implement speculatively.
+
+## Objective
+
+Create `plugins/orchestrator-discipline/hooks/pre-tool-large-write-warning.cjs` — a
+Node.js CommonJS PreToolUse hook that reads stdin JSON, checks
+`tool_input.content.length`, and emits `additionalContext` warning when content exceeds
+25,000 characters. Then wire it into `plugins/orchestrator-discipline/hooks.json`.
+
+## Required Inputs
+
+- `plan/architect-large-file-write-strategy.md` Component 5 (lines 313-354) — full behavior
+  contract including input schema, threshold check, warning output format, and exit code spec
+- `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs` — reference
+  implementation to follow for structure
+- `plugins/orchestrator-discipline/hooks.json` — current hooks.json to extend
+- `.claude/rules/language-conventions.md` lines 13-15 — confirms hooks must be `.cjs`
+
+## Requirements
+
+1. Create `plugins/orchestrator-discipline/hooks/pre-tool-large-write-warning.cjs` as a
+   Node.js CommonJS (`.cjs`) script.
+2. Hook reads `tool_input` from stdin JSON.
+3. If `tool_input.content` is absent or `tool_input.content.length <= 25000`: emit `{}` and
+   exit 0 (no-op).
+4. If `tool_input.content.length > 25000`: emit the `hookSpecificOutput.additionalContext`
+   warning message as specified in Component 5 of the architect spec. Substitute actual
+   character count (`{N}`) in the message.
+5. Always exit with code 0 (soft warning — never deny the Write).
+6. Do NOT include `permissionDecision` in the output (omitting it allows the Write to proceed).
+7. Add an entry to `plugins/orchestrator-discipline/hooks.json` for a `Write` matcher
+   pointing to the new hook file using the path pattern from existing entries.
+
+## Constraints
+
+- Exit code must be 0 at all times — this is a soft warning, not a hard block.
+- Do NOT include `permissionDecision` in any output path.
+- File must be `.cjs` (CommonJS) — not `.js`, `.mjs`, or `.ts`.
+- Do NOT modify any other file in `plugins/orchestrator-discipline/`.
+
+## Expected Outputs
+
+- `/home/user/claude_skills/plugins/orchestrator-discipline/hooks/pre-tool-large-write-warning.cjs` (new file)
+- `/home/user/claude_skills/plugins/orchestrator-discipline/hooks.json` (modified — one new entry)
+
+## Acceptance Criteria
+
+1. Hook file exists at the specified path and is valid Node.js CommonJS.
+2. When invoked with stdin JSON where `content.length <= 25000`, hook outputs `{}` and exits 0.
+3. When invoked with stdin JSON where `content.length > 25000`, hook outputs JSON with
+   `hookSpecificOutput.additionalContext` containing the character count and remediation
+   instructions, and exits 0.
+4. `hooks.json` contains a `Write` matcher entry referencing the new hook file.
+5. `claude plugin validate plugins/orchestrator-discipline` passes (if the CLI is available).
+6. `uv run prek run --files plugins/orchestrator-discipline/hooks/pre-tool-large-write-warning.cjs`
+   exits 0.
+
+## Verification Steps
+
+1. Read the hook file and confirm it handles both cases (content <= 25K and > 25K).
+2. Manually test the no-op path:
+   `echo '{"tool_name":"Write","tool_input":{"file_path":"/tmp/x","content":"short"}}' | \
+   node /home/user/claude_skills/plugins/orchestrator-discipline/hooks/pre-tool-large-write-warning.cjs`
+   and confirm output is `{}` or valid empty JSON with exit 0.
+3. Manually test the warning path using Python to generate >25K content:
+   `python3 -c "import json,sys; print(json.dumps({'tool_name':'Write','tool_input':{'file_path':'/tmp/x','content':'x'*26000}}))" | \
+   node /home/user/claude_skills/plugins/orchestrator-discipline/hooks/pre-tool-large-write-warning.cjs`
+   and confirm output contains `additionalContext` and exit code 0.
+4. `Read` `hooks.json` and confirm the Write matcher entry exists.
+
+## CoVe Checks
+
+- Key claims to verify:
+  - The soft-warning hook output schema (no `permissionDecision`, `additionalContext` in
+    `hookSpecificOutput`) matches Claude Code's expected PreToolUse hook response format.
+  - The existing `pre-tool-orchestrator-read-warning.cjs` uses the same pattern
+    (`additionalContext` without `permissionDecision`).
+- Verification questions:
+  1. Does `pre-tool-orchestrator-read-warning.cjs` use `additionalContext` without
+     `permissionDecision` to produce a soft warning?
+  2. Does the hooks-guide reference doc confirm that omitting `permissionDecision` allows
+     the tool call to proceed?
+- Evidence to collect:
+  - `Read` `plugins/orchestrator-discipline/hooks/pre-tool-orchestrator-read-warning.cjs`
+    and extract the output JSON structure.
+  - `Read` `plugins/plugin-creator/skills/hooks-guide/references/claude-code.md` lines
+    686-708 for PreToolUse response schema.
+- Revision rule:
+  - If the reference hook uses a different pattern than described, align the new hook with
+    the reference implementation. Document the discrepancy in handoff.
+
+## Handoff
+
+Return:
+
+- Absolute paths of created/modified files
+- Manual test results for both code paths (short content and long content)
+- `claude plugin validate` output (if available)
+- Any schema discrepancies found during CoVe checks
