@@ -166,3 +166,15 @@ Log: `Follow-up {followup_path} linked to backlog item "{title}" -- deferred (pr
 Do not recurse. The follow-up is tracked in the backlog and can be picked up later via `/work-backlog-item`.
 
 **Error handling**: If the follow-up file has no `## Priority` section, default to `Medium` (defer). Log: `No priority found in {followup_path}, defaulting to Medium (deferred).`
+
+---
+
+## Final Step: Commit and Push Remaining Changes
+
+After all phases and follow-up routing are complete, check for uncommitted changes. Phases 1-6 and the Recursive Follow-up Handling steps modify files (task file context manifests, backlog item files, plan annotations). Commit any remaining modifications in a single commit and push to the current branch.
+
+```bash
+git status
+```
+
+If there are staged or unstaged changes: stage the modified files, commit with a message summarizing the quality gate results, and push. If the working tree is clean, skip this step.
