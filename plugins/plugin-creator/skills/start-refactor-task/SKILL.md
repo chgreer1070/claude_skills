@@ -173,7 +173,7 @@ Load these skills for guidance on proper formats:
 | claude-skills-overview-2026   | Skill SKILL.md format     |
 | claude-plugins-reference-2026 | Plugin structure          |
 |                               | Command format            |
-| claude-hooks-reference-2026   | Hooks format              |
+| hooks-guide                   | Hooks format              |
 | prompt-optimization-claude-45 | Agent prompt optimization |
 
 ### Research and Knowledge

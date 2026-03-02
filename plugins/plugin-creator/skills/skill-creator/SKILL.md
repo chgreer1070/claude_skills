@@ -312,7 +312,7 @@ hooks:
 - Exit 2: Blocking error (prevents tool, shows stderr)
 - Other: Non-blocking error
 
-**Complete documentation:** See [claude-hooks-reference-2026](../claude-hooks-reference-2026/SKILL.md) for all events, matchers, JSON output control, and examples.
+**Complete documentation:** Use `Skill(skill: "plugin-creator:hooks-guide")` for all events, matchers, JSON output control, and examples.
 
 **SOURCE:** [claude-skills-overview-2026](../claude-skills-overview-2026/SKILL.md) section on Hooks in Skills.
 

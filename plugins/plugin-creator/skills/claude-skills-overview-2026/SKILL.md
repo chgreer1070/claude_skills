@@ -238,7 +238,7 @@ Skills defined in `.claude/skills/` within directories added via `--add-dir` are
 
 ## Hooks in Skills
 
-Skills can define hooks in frontmatter to respond to events during the skill's lifecycle. See [./claude-hooks-reference-2026/SKILL.md](../claude-hooks-reference-2026/SKILL.md) for complete hook documentation.
+Skills can define hooks in frontmatter to respond to events during the skill's lifecycle. Use `Skill(skill: "plugin-creator:hooks-guide")` for complete hook documentation.
 
 ### Hook Events
 
@@ -265,7 +265,7 @@ hooks:
 - Exit 2: Blocking error (prevents tool, shows stderr)
 - Other: Non-blocking error
 
-For complete hook configuration including all events, matchers, JSON output control, and examples, see [./claude-hooks-reference-2026/SKILL.md](../claude-hooks-reference-2026/SKILL.md).
+For complete hook configuration including all events, matchers, JSON output control, and examples, use `Skill(skill: "plugin-creator:hooks-guide")`.
 
 ---
 
@@ -564,7 +564,7 @@ Only runs when user types `/deploy-production`.
 
 - **[Agent Skills Open Standard](../agentskills/SKILL.md)** — The portable specification (agentskills.io). Use when creating skills for cross-agent compatibility. Covers the subset of frontmatter fields (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`) recognized by all 25+ compatible agents.
 - **[Claude Plugins Reference](../claude-plugins-reference-2026/SKILL.md)** — Plugin creation, distribution, and plugin.json schema.
-- **[Claude Hooks Reference](../claude-hooks-reference-2026/SKILL.md)** — Complete hook events, matchers, and configuration.
+- **[Claude Hooks Reference](../hooks-guide/SKILL.md)** — Complete hook events, matchers, and configuration. Cross-platform coverage with Node.js CJS and Python guides.
 - **[Claude Code Skills Official](./resources/claude-code-skills-official.md)** — Authoritative specification from code.claude.com: frontmatter fields, discovery rules, invocation control, budget limits, and bundled skills.
 
 ## Sources

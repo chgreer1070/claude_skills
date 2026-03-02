@@ -95,7 +95,7 @@ uv run ./scripts/plugin_validator.py --verbose ./plugins/my-plugin
 | ------------------------------- | ---------------------------------------------------------------- |
 | `claude-skills-overview-2026`   | Complete reference for Claude Code skills system (January 2026)  |
 | `claude-plugins-reference-2026` | Complete reference for Claude Code plugins system (January 2026) |
-| `claude-hooks-reference-2026`   | Complete reference for Claude Code hooks system (January 2026)   |
+| `hooks-guide`                   | Cross-platform hooks reference — Claude Code, GitHub Copilot, Cursor, Windsurf, Amp |
 
 ### Refactoring Skills
 

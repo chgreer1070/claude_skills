@@ -67,7 +67,7 @@ flowchart TD
 | `/skill-creator` | Yes | Create skills from scratch or templates; handles scope and validation |
 | `/claude-skills-overview-2026` | Yes | Complete reference for Claude Code skills system (January 2026) |
 | `/claude-plugins-reference-2026` | Yes | Complete reference for Claude Code plugins system (January 2026) |
-| `/claude-hooks-reference-2026` | Yes | Complete reference for Claude Code hooks system (January 2026) |
+| `/hooks-guide` | Yes | Cross-platform hooks reference — Claude Code, GitHub Copilot, Cursor, Windsurf, Amp |
 | `/add-doc-updater` | Yes | Add doc sync pipeline to skills wrapping external documentation |
 | `/assessor` | Yes | Analyze plugin structure and create refactoring task files |
 | `/ensure-complete` | Yes | Validate refactoring completeness and create follow-up tasks |
@@ -387,7 +387,7 @@ Optimizes prompts, SKILL.md, and CLAUDE.md files for Claude comprehension. Used 
 
 ### plugin-assessor
 
-Analyzes plugins for structure, frontmatter, schema compliance, and quality. Comprehensive reference file audit (orphan detection); cross-reference validation; link graph analysis; frontmatter schema validation. Loads skills: `claude-skills-overview-2026`, `claude-plugins-reference-2026`, `claude-hooks-reference-2026`.
+Analyzes plugins for structure, frontmatter, schema compliance, and quality. Comprehensive reference file audit (orphan detection); cross-reference validation; link graph analysis; frontmatter schema validation. Loads skills: `claude-skills-overview-2026`, `claude-plugins-reference-2026`, `hooks-guide`.
 
 ---
 
@@ -470,7 +470,7 @@ LSP servers require separate binary installation — plugins configure the conne
 
 - **2.6.0** — Consolidated external agents: subagent-refactorer, contextual-ai-documentation-optimizer, plugin-assessor
 - **2.5.0** — Added skill-creator and write-frontmatter-description skills
-- **2.3.0** — Added claude-plugins-reference-2026 and claude-hooks-reference-2026 reference skills
+- **2.3.0** — Added claude-plugins-reference-2026 and hooks-guide reference skills
 - **2.2.0** — Added claude-skills-overview-2026 reference skill
 - **2.1.0** — Added agent-creator skill
 - **2.0.0** — Merged plugin-creator and plugin-refactor

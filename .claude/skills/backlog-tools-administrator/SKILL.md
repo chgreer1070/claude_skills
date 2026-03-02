@@ -104,7 +104,7 @@ For gaps requiring changes to rules, workflow steps, or state transitions.
 For gaps requiring changes to skill instructions, agent prompts, or reference files.
 
 1. Task is optimizing the affected documentation with `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`
-   Context to include in the prompt: the file to modify (skill SKILL.md, agent .md, or reference .md), the gap description from Step 1, and `plugins/plugin-creator/skills/claude-skills-overview-2026/SKILL.md` and `plugins/plugin-creator/skills/claude-hooks-reference-2026/SKILL.md` as structural references when modifying skills or hooks
+   Context to include in the prompt: the file to modify (skill SKILL.md, agent .md, or reference .md), the gap description from Step 1, and `plugins/plugin-creator/skills/claude-skills-overview-2026/SKILL.md` and `plugins/plugin-creator/skills/hooks-guide/SKILL.md` as structural references when modifying skills or hooks
    Output: updated file with the gap addressed, CoVe verification passing
 
 ### Step 3D: Multi-Category Fix

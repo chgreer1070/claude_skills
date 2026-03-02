@@ -290,7 +290,7 @@ hooks:
 - `SessionEnd` - At session end
 - `PreCompact` - Before conversation compaction
 
-For complete hook reference, see [Claude Hooks Reference](./../../skills/claude-hooks-reference-2026/SKILL.md)
+For complete hook reference, use `Skill(skill: "plugin-creator:hooks-guide")`
 
 ### maxTurns
 
@@ -578,4 +578,4 @@ SOURCE: [plugin_validator.py](./../../scripts/plugin_validator.py) lines 103-187
 
 - [Claude Skills Reference](./../../skills/claude-skills-overview-2026/SKILL.md) - Skills system overview
 - [Claude Plugins Reference](./../../skills/claude-plugins-reference-2026/SKILL.md) - Plugin integration
-- [Claude Hooks Reference](./../../skills/claude-hooks-reference-2026/SKILL.md) - Hook configuration
+- [Claude Hooks Reference](./../../skills/hooks-guide/SKILL.md) - Hook configuration and cross-platform guide

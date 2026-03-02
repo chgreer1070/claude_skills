@@ -13,7 +13,7 @@ This directory contains skills that extend Claude's capabilities with specialize
 | [verify](#verify)                                               | Workflow Tools     | Self-assessment checklist before task completion                 | Yes                   |
 | [delegate](#delegate)                                           | Workflow Tools     | Quick delegation template for sub-agent prompts                  | Yes                   |
 | [claude-skills-overview-2026](#claude-skills-overview-2026)     | Reference          | Skills and Slash Command system documentation                    | Yes                   |
-| [claude-hooks-reference-2026](#claude-hooks-reference-2026)     | Reference          | Hooks system documentation                                       | Yes                   |
+| [hooks-guide](#hooks-guide)                                     | Reference          | Cross-platform hooks reference (Claude Code, Copilot, Cursor)    | Yes                   |
 | [claude-plugins-reference-2026](#claude-plugins-reference-2026) | Reference          | Plugins system documentation                                     | Yes                   |
 | [git-commit-helper](#git-commit-helper)                         | Development Tools  | Generate conventional commit messages                            | Yes                   |
 
@@ -270,32 +270,29 @@ These skills provide comprehensive reference documentation for Claude Code's cap
 
 ---
 
-### claude-hooks-reference-2026
+### hooks-guide
 
-**What it does**: Complete reference guide for the Claude Code hooks system. Covers all hook events, matchers, exit codes, JSON output control, environment variables, and best practices.
+**What it does**: Cross-platform hooks reference for Claude Code, GitHub Copilot, Cursor, Windsurf, and Amp. Covers hook authoring in Node.js CJS and Python, per-platform event schemas, inline-agent hooks, common JSON I/O, exit codes, best practices, and a fetch script to refresh docs from official sources.
 
 **AI behavior when loaded**:
 
-- Provides comprehensive hook event reference (PreToolUse, PostToolUse, Stop, SessionStart, etc.)
-- Explains matcher syntax and patterns
-- Documents hook I/O including stdin JSON and exit codes
-- Clarifies JSON output control for advanced hook behavior
-- References environment variables available to hooks
-- Provides configuration location precedence rules
+- Routes to per-platform reference files via embedded flowchart
+- Provides Claude Code hook event reference (PreToolUse, PostToolUse, Stop, SessionStart, etc.)
+- Covers inline-agent hooks and MCP in agent frontmatter
+- Documents JSON I/O, exit codes, and matcher syntax
+- References Node.js CJS and Python authoring guides
+- Provides best practices and anti-patterns
 
 **How to trigger**:
 
-- Explicitly: `@claude-hooks-reference-2026`
+- Explicitly: `@hooks-guide`
 - Automatically: When creating hooks, understanding hook events, matchers, exit codes, JSON output control, environment variables, or hook best practices
 
 **What to expect**:
 
-- Complete hook events table with trigger conditions
-- Hook structure reference with all fields
-- Matcher syntax patterns and examples
-- Exit code behavior (0=success, 2=blocking, other=non-blocking)
-- JSON output schemas for PreToolUse and Stop/SubagentStop
-- Environment variable reference (CLAUDE_PROJECT_DIR, CLAUDE_PLUGIN_ROOT, etc.)
+- Routing flowchart to the right reference file
+- Per-platform coverage with language-specific guides
+- Specialist skills for deeper coverage: `hooks-core-reference`, `hooks-io-api`, `hooks-patterns`
 - Execution details (parallelization, deduplication, timeout)
 
 **Key sections**:
@@ -426,7 +423,7 @@ Claude automatically activates skills based on your request. Skills have trigger
 - **delegate**: "sub-agent", "Agent tool", "delegation", "assign work"
 - **audit**: "review output", "hallucination", "suspicious", "probably", "likely", "verify claims"
 - **claude-skills-overview-2026**: "skill format", "SKILL.md", "skill frontmatter", "skill best practices"
-- **claude-hooks-reference-2026**: "hook", "PreToolUse", "PostToolUse", "hook events"
+- **hooks-guide**: "hook", "PreToolUse", "PostToolUse", "hook events", "inline-agent hooks", "platform hooks"
 - **claude-plugins-reference-2026**: "plugin", "plugin.json", "marketplace", "bundle"
 - **git-commit-helper**: "commit message", "staged changes", "git diff"
 
@@ -447,7 +444,7 @@ When creating orchestrated agents with DONE/BLOCKED signaling, use agent-creator
 ```
 claude-plugins-reference-2026
   ├── references → claude-skills-overview-2026 (for bundled skills and commands)
-  └── references → claude-hooks-reference-2026 (for bundled hooks)
+  └── references → hooks-guide (for bundled hooks)
 ```
 
 When working with plugins, you may need the other reference skills to understand bundled components.
