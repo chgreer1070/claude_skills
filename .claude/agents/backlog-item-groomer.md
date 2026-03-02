@@ -100,11 +100,13 @@ Enumerate missing prerequisites:
 
 ### Step 6 — Populate Groomed Sections
 
-Map discovery results into the groomed template:
+Map discovery results into the groomed template. All sections must describe observable outcomes — not implementation steps, architecture decisions, or code design. Those belong in the SAM planning phase downstream.
 
-- **Reproducibility**, **Output / Evidence**: Derive from item description when it describes a bug or observable issue.
+- **Reproducibility**, **Output / Evidence**: Derive from item description when it describes a bug or observable issue. Steps to reproduce describe user actions — not code internals.
 - **Priority**, **Impact**, **Benefits**: Infer from item context and dependencies.
-- **Expected Behavior**, **Desired Structure**, **Acceptance Criteria**: Extract or infer from description; make concrete.
+- **Expected Behavior**: What the system does when working correctly, observable from outside. Do NOT describe how it is implemented.
+- **Desired Structure**: The target state we want — what can be observed or tested once done. Do NOT describe code architecture, class design, or module layout.
+- **Acceptance Criteria**: Concrete observable checks for "done". Each criterion must be verifiable by running a command, observing output, or checking a file — not by reading code. Do NOT include implementation steps here.
 - **Resources**: Populate from Steps 1–3 (skills, agents, prior work).
 - **Dependencies**, **Blockers**: From Steps 4–5.
 - **Human Input**, **Questions for Human**: When RT-ICA is BLOCKED, add prompts for missing info.

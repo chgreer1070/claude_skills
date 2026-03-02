@@ -37,7 +37,7 @@ Title = `$1` onward (all remaining words joined). Do not call `AskUserQuestion`.
 3. Derive all fields from the research file, task description, and available context:
    - **Title**: from `$1` onward
    - **Priority**: infer from description urgency keywords (`critical`, `required`, `must` → P1; `nice to have`, `optional` → P2; default P1)
-   - **Description**: summarize from research file overview + problem statement
+   - **Description**: summarize problem space and desired outcome from research file — do NOT include implementation steps, architecture ideas, or proposed solutions
    - **Source**: `"Agent task — auto-derived from research/{filename}"`
    - **Type**: infer from description (`install`, `integrate`, `add` → Feature; default Feature)
 4. Log every decision:
@@ -73,7 +73,7 @@ Question 2: "What priority?"
 Then ask:
 
 ```text
-Question 3: "Describe the item. Include: what the problem is, what success looks like, and any known constraints or research questions."
+Question 3: "Describe the item. Cover: (1) what the problem is and where it lives, (2) what success looks like when it's done, (3) how you'll know it's working. Do not describe the fix or implementation approach — those come later in planning."
   header: "Description"
 ```
 
