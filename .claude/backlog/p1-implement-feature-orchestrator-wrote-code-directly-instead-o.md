@@ -13,6 +13,26 @@ metadata:
   groomed: '2026-03-01'
 ---
 
+## Story
+
+As a **developer**, I want **During #328 (backlog MCP scenario testing), the /implement-feature orchestrat...** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+During #328 (backlog MCP scenario testing), the /implement-feature orchestrator wrote test files directly (test_scenarios.py, test_live_validation.py, conftest.py edits) instead of delegating each task to a sub-agent via /start-task. This violates the SAM execution model where the orchestrator should only: (1) query ready tasks, (2) delegate via Skill(skill='start-task', args=...), (3) loop until complete. Root cause investigation needed — was it context pressure (prior session ran out of context), skill instruction ambiguity, or agent selection failure? Related: #315 (implement-feature orchestrator bypasses start-task).
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: session observation during #328 implementation
+- **Priority**: P1
+- **Added**: 2026-03-01
+- **Research questions**: None
+
 ## Groomed (2026-03-01)
 
 ### Observations

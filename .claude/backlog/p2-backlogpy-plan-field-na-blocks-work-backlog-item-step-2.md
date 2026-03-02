@@ -13,6 +13,26 @@ metadata:
   last_synced: '2026-02-27T12:06:05Z'
 ---
 
+## Story
+
+As a **developer**, I want **When per-item files have plan: N/A (set on completed items), work-backlog-ite...** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+When per-item files have plan: N/A (set on completed items), work-backlog-item Step 2 treats it as a valid plan path and stops with 'This item already has a plan at N/A'. Currently all 22 items with plan: N/A are status: done so they're filtered out, but this is a latent bug. Fix: either strip N/A values during parsing in backlog.py, or add a guard in Step 2 to ignore non-path plan values.
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Workflow validation session 2026-02-27
+- **Priority**: P2
+- **Added**: 2026-02-27
+- **Research questions**: None
+
 ## Fact-Check
 
 **Date**: 2026-02-27

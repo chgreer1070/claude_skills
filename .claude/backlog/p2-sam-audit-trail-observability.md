@@ -11,6 +11,21 @@ metadata:
   issue: '#109'
 ---
 
-**Suggested location**: [`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (new Appendix I)
+## Story
 
-**Research first**: How do GSD and BMAD-METHOD handle logging? What observability patterns exist in agent frameworks? OpenTelemetry for LLM workflows?
+As a **developer using Claude Code skills**, I want to **sam: audit trail / observability** so that **the tooling becomes more capable and complete**.
+
+## Description
+
+Beyond artifacts, define logging/metrics/tracing guidance. How to diagnose pipeline issues? What telemetry to capture?
+
+## Suggested Location
+
+[`stateless-software-engineering-framework.md`](https://github.com/bitflight-devops/stateless-agent-methodology/blob/main/stateless-software-engineering-framework.md) (new Appendix I)
+
+## Context
+
+- **Source**: Gap analysis of SAM framework
+- **Priority**: P2
+- **Added**: 2026-02-01
+- **Research questions**: How do GSD and BMAD-METHOD handle logging? What observability patterns exist in agent frameworks? OpenTelemetry for LLM workflows?

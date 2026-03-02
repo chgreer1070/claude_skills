@@ -14,6 +14,26 @@ metadata:
   plan: plan/tasks-9-refresh-research-layer-filtering.md
 ---
 
+## Story
+
+As a **developer**, I want **The `--layer` flag is documented in refresh-research but filtering logic is n...** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+The `--layer` flag is documented in refresh-research but filtering logic is not implemented. When `--layer 0`, `--layer 1`, or `--layer 2` is passed, only research entries with matching layer metadata should be refreshed. Success: `/refresh-research --layer 1` processes only Layer 1 entries. Depends on research entries having `layer` metadata (already added).
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Session observation — SDLC layer implementation (2026-02-23)
+- **Priority**: P2
+- **Added**: 2026-02-23
+- **Research questions**: None
+
 **Suggested location**: `.claude/skills/refresh-research/SKILL.md` and `knowledge-explorer.py`
 
 ## Fact-Check

@@ -14,6 +14,26 @@ metadata:
   plan: plan/tasks-11-backlog-lifecycle-promotion.md
 ---
 
+## Story
+
+As a **developer**, I want **backlog-lifecycle** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+backlog-lifecycle.draft.md (675 lines) documents the full item lifecycle, data flow, and state transitions. Contains 15+ [VERIFY] annotations and a 7-item testing checklist. Needs: run the testing checklist against live script behavior, resolve all [VERIFY] annotations, then promote from .draft.md to canonical docs/ reference. Link from work-backlog-item and groom-backlog-item skills.
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Workflow validation session 2026-02-27
+- **Priority**: P2
+- **Added**: 2026-02-27
+- **Research questions**: None
+
 ## Fact-Check
 
 Claims checked: 3 | VERIFIED: 3 | REFUTED: 0 | INCONCLUSIVE: 0. File exists at .claude/docs/backlog-lifecycle.draft.md (674 lines). Contains 17 [VERIFY] annotations (confirmed via grep). Section 7 contains testing checklist with 7 subsections and ~20 individual test items. All claims verified against codebase (2026-03-01).

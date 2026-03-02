@@ -14,6 +14,26 @@ metadata:
   plan: plan/tasks-15-fix-multi-yaml-fence
 ---
 
+## Story
+
+As a **developer**, I want **Current task files use markdown with YAML frontmatter** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+Current task files use markdown with YAML frontmatter. Consider converting to pure YAML to leverage multi-document YAML notation (--- separators). Additionally, enforce that task data files are only written via scripts (backlog.py, implementation_manager.py, split_task_file.py, task_status_hook.py) — never manually edited by agents. The swarm-task-planner agent generated tasks with YAML inside fenced code blocks which the parser couldn't read, causing null agents and NOT_STARTED defaults. This suggests the generation pipeline needs format validation.
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Not specified
+- **Priority**: P2
+- **Added**: 2026-03-01
+- **Research questions**: None
+
 separators). Additionally, enforce that task data files are only written via scripts (backlog.py, implementation_manager.py, split_task_file.py, task_status_hook.py) — never manually edited by agents. The swarm-task-planner agent generated tasks with YAML inside fenced code blocks which the parser couldn't read, causing null agents and NOT_STARTED defaults. This suggests the generation pipeline needs format validation.
 metadata:
   topic: task-file-format-evaluate-pure-yaml-multi-document-notation-

@@ -1,12 +1,6 @@
 ---
 name: Validate carbonyl Terminal Browser
-description: "Test carbonyl on host with proper TTY and network access.\n**Validation
-  steps**:\n- Test basic: `npx -y carbonyl --no-sandbox https://example.com`\n- Test
-  with tmux: `tmux new-session -d -s carbonyl 'npx -y carbonyl --no-sandbox https://example.com'`\n-
-  Test screenshot capture: Can we grab terminal output as image?\n- Test text extraction:
-  Can we pipe output or capture rendered text?\n- Compare JS rendering quality with
-  other tools\n**Blocked on 2026-02-05**: Needs TTY (Inappropriate ioctl for device),
-  DNS also blocked\n\n---"
+description: "Test carbonyl on host with proper TTY and network access.\n**Validation steps**:\n- Test basic: `npx -y carbonyl --no-sandbox https://example.com`\n- Test with tmux: `tmux new-session -d -s carbonyl 'npx -y carbonyl --no-sandbox https://example.com'`\n- Test screenshot capture: Can we grab terminal output as image?\n- Test text extraction: Can we pipe output or capture rendered text?\n- Compare JS rendering quality with other tools\n**Blocked on 2026-02-05**: Needs TTY (Inappropriate ioctl for device), DNS also blocked\n\n---"
 metadata:
   topic: validate-carbonyl-terminal-browser
   source: Session experimentation 2026-02-05
@@ -18,6 +12,35 @@ metadata:
   groomed: '2026-02-28'
   last_synced: '2026-02-28T17:47:54Z'
 ---
+
+## Story
+
+As a **developer**, I want **Test carbonyl on host with proper TTY and network access** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+Test carbonyl on host with proper TTY and network access.
+**Validation steps**:
+- Test basic: `npx -y carbonyl --no-sandbox https://example.com`
+- Test with tmux: `tmux new-session -d -s carbonyl 'npx -y carbonyl --no-sandbox https://example.com'`
+- Test screenshot capture: Can we grab terminal output as image?
+- Test text extraction: Can we pipe output or capture rendered text?
+- Compare JS rendering quality with other tools
+**Blocked on 2026-02-05**: Needs TTY (Inappropriate ioctl for device), DNS also blocked
+
+---
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Session experimentation 2026-02-05
+- **Priority**: P2
+- **Added**: 2026-02-05
+- **Research questions**: None
 
 ## Fact-Check
 

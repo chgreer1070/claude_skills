@@ -11,4 +11,17 @@ metadata:
   issue: '#120'
 ---
 
-**Research first**: How do LLM cost management tools work (LangSmith, Helicone)? What budget enforcement patterns exist?
+## Story
+
+As a **developer using Claude Code skills**, I want to **sam: cost/token management** so that **the tooling becomes more capable and complete**.
+
+## Description
+
+Explore token budgets and cost controls per agent/stage. Track API costs. Set limits per task.
+
+## Context
+
+- **Source**: Gap analysis of SAM framework
+- **Priority**: P2
+- **Added**: 2026-02-01
+- **Research questions**: How do LLM cost management tools work (LangSmith, Helicone)? What budget enforcement patterns exist?

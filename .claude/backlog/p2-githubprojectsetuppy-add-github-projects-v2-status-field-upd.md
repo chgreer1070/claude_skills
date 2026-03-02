@@ -14,6 +14,26 @@ metadata:
   plan: plan/tasks-8-project-v2-status-updates.md
 ---
 
+## Story
+
+As a **developer**, I want **The `milestone start` and `milestone close` commands transition `status:*` la...** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+The `milestone start` and `milestone close` commands transition `status:*` labels on issues but do not update the GitHub Projects V2 `Status` field (the kanban column). These are separate systems — labels are on the issue, the V2 status is a project-level field. Add `project update-status` subcommand to `github_project_setup.py` that uses the GraphQL API to set the `Status` field on project items. This unlocks the full kanban board view in GitHub Projects.
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: PR #149 follow-up — start-milestone automation (2026-02-22)
+- **Priority**: P2
+- **Added**: 2026-02-22
+- **Research questions**: None
+
 **Suggested location**: `.claude/skills/gh/scripts/github_project_setup.py` — add `project_app` Typer sub-app with `project update-status --project-number N --issue-number N --status "In Progress"` command
 
 **Research first**: Projects V2 GraphQL API — `updateProjectV2ItemFieldValue` mutation. Field ID discovery via `projectV2Fields` query. Reference: `.claude/skills/gh/references/projects-v2.md`.

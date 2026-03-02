@@ -13,6 +13,26 @@ metadata:
   last_synced: '2026-02-26T04:18:20Z'
 ---
 
+## Story
+
+As a **developer**, I want **Phase 6 collected findings from 3 parallel review agents, then applied fixes ...** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+Phase 6 collected findings from 3 parallel review agents, then applied fixes one finding at a time. This resulted in SKILL.md being edited 3 separate times (description rewrite, SQL removal, MCP server name fix) when a single pass through the file would have applied all fixes together. The workflow should group all findings by file, then make one editing pass per file. Reduces Edit tool calls and context consumed by repeated reads.
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: agentskill-kaizen plugin build Phase 6 (2026-02-18)
+- **Priority**: P2
+- **Added**: 2026-02-18
+- **Research questions**: None
+
 ## RT-ICA
 
 **Goal**: Reduce Edit tool calls and context consumption by grouping Phase 6 validation fixes per-file instead of per-finding.

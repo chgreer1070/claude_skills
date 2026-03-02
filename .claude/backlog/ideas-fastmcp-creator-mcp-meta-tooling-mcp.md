@@ -13,6 +13,26 @@ metadata:
   last_synced: '2026-02-28T22:30:23Z'
 ---
 
+## Story
+
+As a **developer**, I want **Wrap `connections** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+Wrap `connections.py`, `evaluation.py`, and `get_environment.py` as MCP tools. An MCP server that helps build MCP servers — agents could test connections, run evaluations, and inspect environments. Tools: `test_mcp_connection`, `run_evaluation`, `get_mcp_environment`, `validate_mcp_config`.
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: MCP backlog audit 2026-02-23
+- **Priority**: Ideas
+- **Added**: 2026-02-23
+- **Research questions**: None
+
 **Suggested location**: `plugins/fastmcp-creator/mcp/server.py`
 
 ## Fact-Check
