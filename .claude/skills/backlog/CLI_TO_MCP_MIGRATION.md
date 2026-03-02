@@ -3,6 +3,7 @@
 Comprehensive inventory of every file referencing `backlog.py` CLI invocations, with the corresponding MCP tool that replaces each call.
 
 Generated: 2026-03-01
+**Migration completed: 2026-03-02 — Tiers 1-3 fully migrated (issue #329, 10 tasks)**
 
 ## MCP Server
 
@@ -32,7 +33,7 @@ Universal CLI flag `-R Jamie-BitFlight/claude_skills` → MCP param `repo: "Jami
 
 ## Files Requiring Changes
 
-### Tier 1 — Policy & Infrastructure (change first)
+### Tier 1 — Policy & Infrastructure (change first) — ✅ DONE
 
 These files define the "single interface" rule and wire up the CLI. Updating them sets the migration direction.
 
@@ -110,7 +111,7 @@ backlog update "{title}" --plan "{path}"
 
 ---
 
-### Tier 2 — Skill Files (highest impact, most invocations)
+### Tier 2 — Skill Files (highest impact, most invocations) — ✅ DONE
 
 These contain the actual `uv run backlog.py` commands that agents execute.
 
@@ -226,7 +227,7 @@ uv run .claude/skills/backlog/scripts/backlog.py list --format json
 
 ---
 
-### Tier 3 — Agent Files
+### Tier 3 — Agent Files — ✅ DONE
 
 #### 18. `.claude/agents/backlog-item-groomer.md` — Line 79
 
