@@ -1743,8 +1743,7 @@ def _write_groomed_to_github(issue_ref: str, content: str, section_name: str | N
             typer.echo(f"  Synced to GitHub issue {issue_ref}")
             try:
                 issue = repository.get_issue(num)
-                labels = [label.name for label in issue.labels]
-                if "status:needs-grooming" in labels:
+                if any(label.name == "status:needs-grooming" for label in issue.labels):
                     issue.remove_from_labels("status:needs-grooming")
             except GithubException as e:
                 typer.echo(f"  WARNING: Could not update grooming label: {e}", err=True)
