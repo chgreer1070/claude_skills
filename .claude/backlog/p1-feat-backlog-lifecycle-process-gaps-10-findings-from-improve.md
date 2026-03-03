@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: needs-grooming
   issue: '#398'
-  groomed: '2026-03-02'
+  groomed: '2026-03-03'
   last_synced: '2026-03-02T23:38:44Z'
 ---
 
@@ -33,68 +33,102 @@ Process audit of the full backlog item lifecycle (create → groom → discuss �
 - **Added**: 2026-03-02
 - **Research questions**: None
 
-## Groomed (2026-03-02)
+## Groomed (2026-03-03)
 
-### MCP Ecosystem Comparison — Additional Findings (2026-03-01)
+### Fact-Check
 
-Comparative review of four peer MCP project-tracking systems (spec-workflow-mcp 3.9K⭐, saga-mcp, ultra-mcp 269⭐, openspec-mcp) against our backlog MCP. Sources: research/mcp-ecosystem/{spec-workflow-mcp,saga-mcp,ultra-mcp,openspec-mcp}.md
+**Date**: 2026-03-03
+**Claims checked**: 5
 
-### F11 — MEDIUM: No MCP safety annotations on any tool
+| # | Claim | Verdict | Repository evidence |
+|---|---|---|---|
+| 1 | Audit report exists with Finding 1..10 headings | VERIFIED | `.claude/docs/process-audit-backlog-lifecycle-2026-03-02.md` |
+| 2 | Two HIGH findings are feasibility gate gap and implied handoffs | VERIFIED | Finding 1 (**Severity: High**), Finding 9 (**Severity: High**) in `.claude/docs/process-audit-backlog-lifecycle-2026-03-02.md` |
+| 3 | Five MEDIUM findings include F2/F4/F5/F6/F10 | VERIFIED | Findings 2, 4, 5, 6, 10 marked **Medium** in `.claude/docs/process-audit-backlog-lifecycle-2026-03-02.md` |
+| 4 | Three LOW findings claimed | INCONCLUSIVE | F7/F8 are **Low**; F3 is **Low-Medium** in `.claude/docs/process-audit-backlog-lifecycle-2026-03-02.md` |
+| 5 | Backlog MCP server lacks safety annotations and F11-F17 capabilities | VERIFIED | `.claude/skills/backlog/backlog_core/server.py` has 10 `@mcp.tool()` decorators without annotation args; no `backlog_session_diff`, `backlog_dashboard`, `backlog_batch_update`, `backlog_start`, `backlog_block`, `backlog_unblock` tools |
 
-Our 10 tools declare no `readOnly`, `idempotent`, or `destructive` annotations. saga-mcp annotates all 31 tools. Without annotations, MCP clients cannot gate destructive ops behind confirmation prompts or safely cache read-only calls.
+**Totals**: VERIFIED 4 | REFUTED 0 | INCONCLUSIVE 1
 
-**Fix**: Add `annotations=` to each `@mcp.tool()` call in `server.py`. `backlog_list` and `backlog_view` → `readOnly`; `backlog_close` and `backlog_resolve` → `destructive`. Zero new logic required.
+### RT-ICA
 
-### F12 — HIGH: No session resumption primitive
+**Goal**: Establish a complete, explicit, and autonomous backlog lifecycle process that closes identified process-control gaps before planning/execution.
 
-Agents rejoining a session after context compaction cannot ask "what changed in the backlog since I was last here." They must re-run `backlog_list` and infer state manually. saga-mcp's `tracker_session_diff(since: timestamp)` surfaces only items changed since a given ISO timestamp.
+| # | Condition | Status | Info needed |
+|---|---|---|---|
+| 1 | Canonical list of process gaps and evidence source is available | AVAILABLE | none |
+| 2 | Current backlog tooling/workflow lacks explicit gates/handoff mechanisms identified in findings | AVAILABLE | none |
+| 3 | Prioritized outcome definition for what should improve is present | DERIVABLE | explicit success signals across lifecycle stages |
+| 4 | Exact low-severity distribution from original claim is settled | DERIVABLE | decide whether Low-Medium counts as Low for reporting |
 
-**Fix**: Add `backlog_session_diff(since: str)` — query items whose backing file mtime (or `git log --since`) is newer than the provided timestamp. Returns same shape as `backlog_list`.
+**Decision**: APPROVED
+**Missing**: None
 
-### F13 — HIGH: No single-call backlog health overview
+### Priority
 
-Agents working on multi-task features repeatedly call `backlog_list`, count items per section, and identify items needing grooming. spec-workflow-mcp and openspec-mcp both have a dashboard/progress-summary tool. We have none.
+9/10 — High-leverage process-control work that affects all backlog throughput by adding explicit feasibility gating and autonomous handoff continuity.
 
-**Fix**: Add `backlog_dashboard()` returning: counts by section (P0/P1/P2/Ideas), counts by status, items with no GitHub issue, items with `needs-grooming` label, items modified in the last 7 days. One call replaces 3–5 agent round-trips per session.
+### Impact
 
-### F14 — MEDIUM: Named status-transition tools are missing
+- **Blocks**: reliable autonomous create→groom→work→plan→implement→close/resolve flow
+- **Bottlenecks**: ungated RT-ICA→planning transition; implied cross-skill handoffs requiring manual operator memory
+- **Risk if unchanged**: wasted planning cycles on infeasible items, stalled auto mode, inconsistent lifecycle execution
 
-`backlog_update(status="in-progress")` is a generic setter — agent intent is invisible in audit logs. openspec-mcp uses distinct named tools (`request_approval`, `approve_change`, `reject_change`) making every transition explicit and auditable.
+### Expected Behavior
 
-**Fix**: Add thin wrappers: `backlog_start(selector)`, `backlog_block(selector, reason)`, `backlog_unblock(selector)`. Each delegates to `backlog_update(status=...)` internally. Adds semantic clarity with zero new business logic.
+The backlog lifecycle should run end-to-end with explicit, auditable gates and transitions:
 
-### F15 — MEDIUM: No batch mutation support
+1. Feasibility gate exists after RT-ICA APPROVED and before SAM planning.
+2. Cross-skill handoffs are explicit and machine-followable (not implied in prose only).
+3. Groomed outputs are validated before persistence.
+4. Lifecycle documentation is canonical, referenced, and consistent across skills.
+5. Severity reporting is internally consistent (including Low vs Low-Medium handling policy).
 
-Updating status on multiple items (e.g., marking a wave of tasks complete after `/complete-implementation`) requires N sequential tool calls. saga-mcp's `task_batch_update` accepts an array. Our agents pay N round-trips where 1 would suffice.
+### Acceptance Criteria
 
-**Fix**: Add `backlog_batch_update(selectors: list[str], status: str | None, plan: str | None)`. Single call, same validation as `backlog_update`.
+1. Lifecycle includes an explicit feasibility decision gate between RT-ICA APPROVED and `add-new-feature` invocation.
+2. All identified handoffs in Finding 9 are represented as explicit next-step contract(s) in skill outputs and/or a canonical lifecycle state machine.
+3. `groom-backlog-item` includes a deterministic validation check for groomer output sections before write/sync.
+4. Ambiguous decision conditions (e.g., "is job valid") are replaced by observable checks and clear escalation paths.
+5. `work-backlog-item` step numbering/phase model is normalized for deterministic navigation.
+6. `.claude/docs/backlog-lifecycle.draft.md` is validated, promoted (or superseded), and referenced by relevant backlog lifecycle skills.
+7. A policy is documented for treating **Low-Medium** findings in severity totals to eliminate reporting ambiguity.
 
-### F16 — LOW: `backlog_update` exceeds the 4-parameter ergonomics threshold
+### Issue Classification
 
-ultra-mcp's design guidance: max 4 parameters per tool for predictable Claude Code integration. `backlog_update` has 9 parameters. Agents routinely pass incorrect combinations (e.g., `groomed_content` and `section` together).
+**Type**: missing-guardrail
+**Rationale**: The workflow allowed undesirable outcomes (autonomous flow breaks, no quality gate, no feasibility gate) that explicit process gates should have prevented.
+**Analysis Method**: none
+**Scenario Target**: Running backlog lifecycle end-to-end in auto mode reveals broken handoffs and ungated transitions -> lifecycle includes explicit, auditable gates and handoff rules.
 
-**Fix**: Document intended call patterns in the tool docstring. Add a validation guard that raises `ValidationError` when mutually exclusive params are combined. Long-term: split into focused tools with ≤4 params each.
+### Root-Cause Analysis
 
-### F17 — LOW: Tools not discoverable as MCP prompts
+N/A - not applicable for this issue type.
 
-ultra-mcp (v0.7.0) exposes all 25 tools also as prompts in Claude Code. Our server exposes only tools — no prompt picker discoverability.
+### Resources
 
-**Fix**: Register each tool as a corresponding MCP prompt in `server.py` via `@mcp.prompt()`. Lower priority — impacts human discoverability, not agent execution.
+| Type | Path | Relevance |
+|---|---|---|
+| Prior work | `.claude/docs/process-audit-backlog-lifecycle-2026-03-02.md` | Source audit with Findings 1-10 and severities |
+| Prior work | `.claude/docs/backlog-lifecycle.draft.md` | Draft canonical lifecycle doc referenced by Finding 10 |
+| Skill | `.claude/skills/improve-processes/SKILL.md` | Audit checklist/triage method source |
+| Skill | `.claude/skills/groom-backlog-item/SKILL.md` | RT-ICA + groomer flow and write pipeline |
+| Skill | `.claude/skills/work-backlog-item/SKILL.md` | RT-ICA gate, step structure, close/resolve routing |
+| Skill | `.claude/skills/create-backlog-item/SKILL.md` | auto-mode priority derivation behavior (Finding 7 context) |
+| Skill | `.claude/skills/fact-check/SKILL.md` | post-actions commit/push behavior (Finding 8 context) |
+| Skill | `.claude/skills/add-new-feature/SKILL.md` | downstream SAM planning entrypoint after lifecycle gates |
+| MCP server | `.claude/skills/backlog/backlog_core/server.py` | current tool surface; no safety annotations; missing F11-F17 tools |
+| Agent | `.claude/agents/backlog-item-groomer.md` | groomer output producer requiring validation guard |
 
-### Prioritised Implementation Order
+### Dependencies
 
-| Priority | Finding | Effort | Impact |
-|----------|---------|--------|--------|
-| P1 | F11 — MCP safety annotations | Low | High |
-| P1 | F12 — `backlog_session_diff` | Low | High |
-| P1 | F13 — `backlog_dashboard` | Medium | High |
-| P2 | F14 — Named status tools | Low | Medium |
-| P2 | F15 — `backlog_batch_update` | Medium | Medium |
-| P3 | F16 — Parameter count guard | Low | Low |
-| P3 | F17 — MCP prompts | Low | Low |
+- **Depends on**: alignment updates across `create-backlog-item`, `groom-backlog-item`, `work-backlog-item`, and lifecycle docs.
+- **Blocks**: reliable autonomous backlog orchestration and downstream planning efficiency.
 
-### What NOT to adopt from peers
+### Effort
 
-- SQLite as primary storage (saga-mcp, openspec-mcp): GitHub-as-source-of-truth is superior for cross-agent, cross-PR, cross-session durability.
-- Local web dashboard: adds process dependency incompatible with Claude Code's session model.
-- Atomising all `backlog_update` fields into micro-tools: named status tools (F14) are the right granularity.
+Medium-High — mostly workflow/spec and tool-contract changes across multiple backlog lifecycle artifacts with moderate validation overhead.
+
+### Decision
+
+Proceed with planning. RT-ICA APPROVED; treat severity-count ambiguity as a documentation/policy deliverable during implementation.
