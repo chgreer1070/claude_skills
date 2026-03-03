@@ -7,7 +7,7 @@ metadata:
   added: '2026-02-28'
   priority: P1
   type: Bug
-  status: open
+  status: groomed
   issue: '#315'
   last_synced: '2026-03-03T03:53:41Z'
   groomed: '2026-03-03'

@@ -1,0 +1,13 @@
+---
+name: Backlog state machine implementation — state_handler.py module for lifecycle transitions and backend sync
+description: "The backlog state machine (documented in .claude/skills/backlog/references/state-machine.md) defines 8 lifecycle states: needs-grooming, groomed, blocked, in-milestone, in-progress, done, resolved, closed. The implementation in backlog.py does not enforce this state machine. Observed gaps:\n\n1. `backlog groom` / `backlog update --groomed` only removes `status:needs-grooming` GitHub label — never adds `status:groomed`. Local frontmatter `status` field is never updated. Items land in a stateless void after grooming.\n\n2. `open` is used as a status value in ~30+ backlog items but does not exist in the state machine. It predates the state machine definition and has no defined transitions.\n\n3. `status:groomed`, `status:in-milestone`, `status:done`, `status:closed` labels are defined in state-machine.md but missing from labels.md (the label taxonomy). Only 4 of 8 labels exist: needs-grooming, in-progress, blocked, needs-review. `needs-review` is in labels.md but NOT in the state machine.\n\n4. No code path updates local frontmatter `status` during any transition — GitHub labels and local status are disconnected.\n\n5. Missing transition: `blocked → in-progress` — when a work-blocked item gets unblocked, no path exists back to in-progress without cycling through needs-grooming.\n\nWhat success looks like: A `state_handler.py` module/class that (a) validates transitions against the state machine DAG, (b) rejects invalid transitions with a clear error, (c) updates both the GitHub issue label AND the local frontmatter `status` field atomically, (d) is called by all backlog commands (groom, update, close, resolve, work) instead of each command managing labels ad-hoc. The pluggable backend pattern allows the same state machine to drive GitHub labels, local file status, or future backends (Jira, Linear, etc.).\n\nHow you'll know it's working: After grooming an item, `status: groomed` appears in local frontmatter AND `status:groomed` label is on the GitHub issue. After `/group-items-to-milestone`, status is `in-milestone` in both places. No item can have `status: open` — that value is migrated to the correct state machine state. All 8 GitHub labels from state-machine.md exist in the repo."
+metadata:
+  topic: backlog-state-machine-implementation-statehandlerpy-module-f
+  source: 'Session observation — state machine gap analysis during PR #418 rebase (2026-03-03)'
+  added: '2026-03-03'
+  priority: P1
+  type: Feature
+  status: open
+  issue: '#426'
+  last_synced: '2026-03-03T13:48:48Z'
+---
