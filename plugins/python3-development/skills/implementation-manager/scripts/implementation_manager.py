@@ -65,6 +65,8 @@ class TaskStatus(StrEnum):
     IN_PROGRESS = "IN PROGRESS"
     COMPLETE = "COMPLETE"
     BLOCKED = "BLOCKED"
+    DEFERRED = "DEFERRED"
+    SKIPPED = "SKIPPED"
 
 
 # Mapping from YAML frontmatter status values to TaskStatus enum members.
@@ -75,7 +77,13 @@ _YAML_STATUS_TO_ENUM: dict[str, TaskStatus] = {
     "in-progress": TaskStatus.IN_PROGRESS,
     "complete": TaskStatus.COMPLETE,
     "blocked": TaskStatus.BLOCKED,
+    "deferred": TaskStatus.DEFERRED,
+    "skipped": TaskStatus.SKIPPED,
+    "wont-fix": TaskStatus.SKIPPED,
 }
+
+# Statuses that count as terminal/done for completion gating and dependency satisfaction.
+_TERMINAL_STATUSES: frozenset[TaskStatus] = frozenset({TaskStatus.COMPLETE, TaskStatus.DEFERRED, TaskStatus.SKIPPED})
 
 
 class TaskPriority(IntEnum):
@@ -227,47 +235,22 @@ def parse_status(status_text: str) -> TaskStatus:
 
     status_lower = status_stripped.lower()
 
-    # Check for COMPLETE indicators
-    complete_patterns = [
-        "complete",
-        ":white_check_mark:",
-        ":heavy_check_mark:",
-        "\\u2705",  # Unicode checkmark
-        "\\u2714",  # Heavy checkmark
+    # Pattern table: (patterns, TaskStatus) — checked in priority order.
+    STATUS_PATTERNS: list[tuple[tuple[str, ...], TaskStatus]] = [
+        (("complete", ":white_check_mark:", ":heavy_check_mark:", "\\u2705", "\\u2714"), TaskStatus.COMPLETE),
+        (
+            ("in progress", "in_progress", ":arrows_counterclockwise:", ":repeat:", "\\ud83d\\udd04"),
+            TaskStatus.IN_PROGRESS,
+        ),
+        (("blocked", "blocking"), TaskStatus.BLOCKED),
+        (("deferred", "[deferred]"), TaskStatus.DEFERRED),
+        (("skipped", "[skipped]", "wontfix", "wont fix", "wont-fix"), TaskStatus.SKIPPED),
+        (("not started", "not_started", ":x:", ":cross_mark:", "\\u274c"), TaskStatus.NOT_STARTED),
     ]
-    for pattern in complete_patterns:
-        if pattern in status_lower:
-            return TaskStatus.COMPLETE
 
-    # Check for IN PROGRESS indicators
-    in_progress_patterns = [
-        "in progress",
-        "in_progress",
-        ":arrows_counterclockwise:",
-        ":repeat:",
-        "\\ud83d\\udd04",  # Unicode arrows
-    ]
-    for pattern in in_progress_patterns:
-        if pattern in status_lower:
-            return TaskStatus.IN_PROGRESS
-
-    # Check for BLOCKED indicators
-    blocked_patterns = ["blocked", "blocking"]
-    for pattern in blocked_patterns:
-        if pattern in status_lower:
-            return TaskStatus.BLOCKED
-
-    # Check for NOT STARTED indicators
-    not_started_patterns = [
-        "not started",
-        "not_started",
-        ":x:",
-        ":cross_mark:",
-        "\\u274c",  # Unicode cross
-    ]
-    for pattern in not_started_patterns:
-        if pattern in status_lower:
-            return TaskStatus.NOT_STARTED
+    for patterns, result_status in STATUS_PATTERNS:
+        if any(p in status_lower for p in patterns):
+            return result_status
 
     # Default to NOT_STARTED if unclear
     return TaskStatus.NOT_STARTED
@@ -379,6 +362,30 @@ def _parse_yaml_skills(raw_skills: list[str] | str | None) -> list[str]:
     return []
 
 
+def _status_from_title(title: str, current_status: TaskStatus) -> TaskStatus:
+    """Override status based on [DEFERRED] or [SKIPPED] markers in the task title.
+
+    When the YAML status is still ``not-started`` but the title carries an
+    explicit deferral/skip marker, infer the intended terminal status so that
+    completion gating treats the task as done.
+
+    Args:
+        title: Task title string from YAML frontmatter.
+        current_status: Status parsed from YAML ``status`` field.
+
+    Returns:
+        Overridden TaskStatus if a marker is found, otherwise ``current_status``.
+    """
+    if current_status != TaskStatus.NOT_STARTED:
+        return current_status
+    title_upper = title.upper()
+    if "[DEFERRED]" in title_upper:
+        return TaskStatus.DEFERRED
+    if "[SKIPPED]" in title_upper or "[WONTFIX]" in title_upper:
+        return TaskStatus.SKIPPED
+    return current_status
+
+
 def parse_task_from_frontmatter(content: str) -> Task:
     """Parse a single task from YAML frontmatter content.
 
@@ -416,7 +423,7 @@ def parse_task_from_frontmatter(content: str) -> Task:
 
     task_id = str(frontmatter["task"])
     title = str(frontmatter["title"])
-    status = _parse_yaml_status(str(frontmatter["status"]))
+    status = _status_from_title(title, _parse_yaml_status(str(frontmatter["status"])))
     dependencies = _parse_yaml_dependencies(frontmatter.get("dependencies"))
     agent = frontmatter.get("agent")
     if agent is not None:
@@ -978,7 +985,7 @@ def get_ready_tasks(tasks: list[Task]) -> list[Task]:
 
     A task is ready when:
     1. Status is NOT_STARTED
-    2. All dependencies are COMPLETE (or no dependencies)
+    2. All dependencies are terminal (COMPLETE, DEFERRED, or SKIPPED)
 
     Args:
         tasks: List of all tasks.
@@ -996,8 +1003,8 @@ def get_ready_tasks(tasks: list[Task]) -> list[Task]:
         if task.status != TaskStatus.NOT_STARTED:
             continue
 
-        # Check if all dependencies are complete
-        deps_satisfied = all(status_by_id.get(dep_id) == TaskStatus.COMPLETE for dep_id in task.dependencies)
+        # Check if all dependencies are terminal (complete, deferred, or skipped)
+        deps_satisfied = all(status_by_id.get(dep_id) in _TERMINAL_STATUSES for dep_id in task.dependencies)
 
         if deps_satisfied:
             ready.append(task)
@@ -1060,6 +1067,8 @@ def status(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
     in_progress = sum(1 for t in tasks if t.status == TaskStatus.IN_PROGRESS)
     not_started = sum(1 for t in tasks if t.status == TaskStatus.NOT_STARTED)
     blocked = sum(1 for t in tasks if t.status == TaskStatus.BLOCKED)
+    deferred = sum(1 for t in tasks if t.status == TaskStatus.DEFERRED)
+    skipped = sum(1 for t in tasks if t.status == TaskStatus.SKIPPED)
 
     output = {
         "feature": feature_slug,
@@ -1069,6 +1078,8 @@ def status(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
         "in_progress": in_progress,
         "not_started": not_started,
         "blocked": blocked,
+        "deferred": deferred,
+        "skipped": skipped,
         "ready_tasks": [{"id": t.id, "name": t.name, "agent": t.agent} for t in ready],
         "tasks": [t.to_dict() for t in tasks],
     }
