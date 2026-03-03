@@ -57,7 +57,7 @@ Conditions:
 2. Hook lifecycle expectations are documented | Status: AVAILABLE | Info needed: None
 3. Problem reproducibility evidence exists across incidents | Status: AVAILABLE | Info needed: None
 4. Recurrence class can be measured from backlog history | Status: AVAILABLE | Info needed: None
-5. Missing conditions that block grooming today | Status: DERIVABLE | Info needed: Additional runtime traces for future implementation verification
+5. Additional implementation-phase verification data | Status: DERIVABLE | Info needed: Additional runtime traces for future implementation verification
 
 Decision: APPROVED
 Missing: None
