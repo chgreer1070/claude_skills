@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Holistic Linting" width="800" />
+</p>
+
 # Holistic Linting
 
 Makes Claude automatically check and fix code quality issues before completing tasks.

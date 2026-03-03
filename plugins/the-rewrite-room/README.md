@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="The Rewrite Room" width="800" />
+</p>
+
 # the-rewrite-room
 
 Documentation and authoring workflow router: audit docs vs code drift, sync docs after

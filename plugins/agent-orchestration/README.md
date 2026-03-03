@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Agent Orchestration" width="800" />
+</p>
+
 # Agent Orchestration
 
 Makes Claude more thorough and systematic when handling complex, multi-step tasks.

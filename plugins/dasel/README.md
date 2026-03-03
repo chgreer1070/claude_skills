@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/hero.svg" alt="dasel — one tool for all structured data" width="800" />
+  <img src="./assets/hero.png" alt="dasel — one tool for all structured data" width="800" />
 </p>
 
 # dasel

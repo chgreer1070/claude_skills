@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Perl Development" width="800" />
+</p>
+
 # perl-development
 
 Comprehensive Perl 5.30+ development plugin with modular skills for scripting, CPAN ecosystem,

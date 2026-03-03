@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Bash Development" width="800" />
+</p>
+
 # bash-development
 
 Comprehensive Bash 5.1+ and POSIX shell development plugin with modular skills for scripting,

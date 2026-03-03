@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Python 3 Development" width="800" />
+</p>
+
 # Python 3 Development
 
 Modern Python 3.11+ development workflows with CLI apps, testing patterns, code quality tools, and TDD best practices.
