@@ -32,3 +32,13 @@ advising on configuration, scaling, observability, security, and deployment patt
 /twelve-factor-app "review this service's configuration handling against Factor III"
 /twelve-factor-app "explain Factor XII (admin processes) for a Kubernetes deployment"
 ```
+
+---
+
+> **The Ancient Woe**
+>
+> *The cursed, wandering theater troupe whose plays end in disaster in every new town because they rely on the local tavern's exact layout, the local baker's exact bread, and a local prompter who refused to travel!*
+
+> **The Bard's Decree**
+>
+> *"Behold the fifteen sacred laws of the traveling stage—twelve written by the ancients, and three new decrees forged for the modern era! Thy production must remain perfectly identical whether performed in the grand Kubernetes palace or the humble GitOps courtyard! Build thy cloud-native architecture so resiliently that no changing environment can tear thy masterpiece asunder!"*

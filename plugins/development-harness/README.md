@@ -57,3 +57,13 @@ stateless handoff between stages.
 The harness detects the project language, resolves specialist agents from the matching language
 plugin, and walks the request through all seven stages. Human escalation is triggered by ARL
 constraint analysis, not arbitrary checkpoints.
+
+---
+
+> **The Ancient Woe**
+>
+> *The mad cook who throws raw flour, unplucked chickens, and unlit coal into a single iron pot, praying to the heavens that a feast will somehow emerge.*
+
+> **The Bard's Decree**
+>
+> *"Order in the kitchen! First the recipe, then the gathering, then the fire, then the feast! We shall march strictly through the seven gates of preparation before a single dish is served!"*

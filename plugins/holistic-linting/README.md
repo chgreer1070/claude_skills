@@ -146,3 +146,13 @@ Claude: "Done! I've added authentication middleware. All linting checks pass."
 **Markdown**: markdownlint
 
 **Pre-commit hooks**: pre-commit, prek
+
+---
+
+> **The Ancient Woe**
+>
+> *The vanity and rage of a Duke who dons his finest velvet doublet, only to find a single, maddening loose thread upon the sleeve.*
+
+> **The Bard's Decree**
+>
+> *"Thou shalt not present this garment to me and declare it 'finished'! Seamstress, fetch thy shears! We leave the chamber only when the fabric is flawless!"*

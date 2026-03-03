@@ -87,3 +87,13 @@ After installing this plugin, Claude will know:
 ## Requirements
 
 - Claude Code v2.0+
+
+---
+
+> **The Ancient Woe**
+>
+> *The ship's navigator whose magic compass only works when within sight of the King's lighthouse, leaving the crew doomed and blind in the open, foggy seas.*
+
+> **The Bard's Decree**
+>
+> *"Give me a bottled star! A solitary light that requires no tether to the mainland, that we may divine our path even in the darkest, most isolated dungeon!"*

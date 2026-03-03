@@ -91,3 +91,13 @@ Result: Clean home directory, proper organization, respects your customizations.
 - Claude Code v2.0+
 - Works best for Linux/Unix development
 - Also covers cross-platform apps (macOS, Windows) when using platformdirs
+
+---
+
+> **The Ancient Woe**
+>
+> *The village hoarder who keeps his gold in the oven, his boots in the icebox, and his legal deeds buried under the pigsty.*
+
+> **The Bard's Decree**
+>
+> *"Banish this clutter! Gold to the vault, garments to the wardrobe, and meats to the larder! Let every belonging find its rightful, ancestral home by the laws of the realm!"*

@@ -161,3 +161,13 @@ Claude: chaosrouter_beans.xml contains 47 beans.
 
 - [dasel GitHub repository](https://github.com/TomWright/dasel)
 - [dasel v3 documentation](https://daseldocs.tomwright.me)
+
+---
+
+> **The Ancient Woe**
+>
+> *The frustrated merchant trying to broker a trade between a Frenchman, a Spaniard, and an Italian, wishing to the heavens for a single, universal tongue.*
+
+> **The Bard's Decree**
+>
+> *"I care not if thy ledgers are written in the runes of the North or the scrolls of the East! Speak one unified truth, that I may pluck the gold from the chaff without translating every cursed word!"*

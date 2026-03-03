@@ -90,3 +90,13 @@ This plugin is most useful when you're:
 
 - Claude Code v2.0+
 - Python 3.11+ (for your project - this plugin is just documentation)
+
+---
+
+> **The Ancient Woe**
+>
+> *The exhausted diplomat who must learn fifty different languages to speak to fifty different lords, when all he wishes to say is, "Please send us grain."*
+
+> **The Bard's Decree**
+>
+> *"Fetch me the Universal Translator! One silver trumpet that, when blown, sounds as French in Paris, Spanish in Madrid, and the very voice of the gods in Rome!"*

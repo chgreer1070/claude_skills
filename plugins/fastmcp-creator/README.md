@@ -124,3 +124,13 @@ After installing, ask Claude questions like:
 - "Make an MCP server that scrapes web pages"
 
 Claude will handle the research, implementation, validation, and testing automatically.
+
+---
+
+> **The Ancient Woe**
+>
+> *The isolationist kingdoms that refuse to trade because their wagon wheels are of different widths and their gold coins of different weights.*
+
+> **The Bard's Decree**
+>
+> *"Lay down the universal tracks! Build the grand bridges so that the oracle of the East may seamlessly converse with the libraries of the West, with no toll collector to halt them!"*

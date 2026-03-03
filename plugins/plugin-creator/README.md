@@ -536,3 +536,13 @@ Jamie Nelson (<https://github.com/bitflight-devops>)
 ## License
 
 MIT License (excluding skill-creator which retains Apache License 2.0)
+
+---
+
+> **The Ancient Woe**
+>
+> *The master craftsman who spends all day building tools to build other tools, never actually finishing the grand cathedral he was hired to construct.*
+
+> **The Bard's Decree**
+>
+> *"I need a forge that births other forges! A master mold to cast my iron servants, that I may finally rest whilst they hammer the steel into shape!"*

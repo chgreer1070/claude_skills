@@ -81,3 +81,13 @@ Result: Works correctly
 ## Requirements
 
 - Claude Code v2.0+
+
+---
+
+> **The Ancient Woe**
+>
+> *The overeager knight who charges boldly into battle swinging his broadsword, only to realize he left his armor by the campfire and is fighting his own squires.*
+
+> **The Bard's Decree**
+>
+> *"Halt thy steed! Before thou dost cross the drawbridge, look upon thy map! Ensure thy compass points true before thou dost plunge us all into the abyss!"*

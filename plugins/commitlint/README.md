@@ -63,3 +63,13 @@ You'll notice the difference when you:
 
 - Claude Code v2.0+
 - Project using commitlint (optional, but this plugin is most useful when commitlint is configured)
+
+---
+
+> **The Ancient Woe**
+>
+> *The unruly guardsman who shouts out the midnight passwords in riddles and jests, causing absolute bedlam and confusion at the city gates.*
+
+> **The Bard's Decree**
+>
+> *"Speak the watchword exactly as written, or suffer the stocks! We shall have no poetry at the gates—only the strict, unyielding truth of who passes and why!"*

@@ -45,3 +45,13 @@ fully structured Claude Code skill directories.
 /rwr:author "summarize plugins/summarizer/skills/summarizer/SKILL.md"
 /rwr:doc-to-skill "docs/my-library/"
 ```
+
+---
+
+> **The Ancient Woe**
+>
+> *The weeping royal archivist whose mountain of historical scrolls has been scattered to the four winds by a careless breeze through an open window.*
+
+> **The Bard's Decree**
+>
+> *"A place for every parchment, and every parchment in its place! Route the decrees to the scribes, the histories to the monks, and let order reign o'er this library of madness!"*
