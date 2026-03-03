@@ -30,6 +30,11 @@ STATUS_MAP: dict[str, str] = {
     "IN PROGRESS": "in-progress",
     "COMPLETE": "complete",
     "BLOCKED": "blocked",
+    "DEFERRED": "deferred",
+    "SKIPPED": "skipped",
+    "WONT FIX": "wont-fix",
+    "WONT-FIX": "wont-fix",
+    "WONTFIX": "wont-fix",
     # Emoji variations
     ":x:": "not-started",
     ":cross_mark:": "not-started",
@@ -41,7 +46,15 @@ STATUS_MAP: dict[str, str] = {
 
 TASK_ID_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z]?\d+(\.\d+)?$")
 
-VALID_STATUSES: frozenset[str] = frozenset({"not-started", "in-progress", "complete", "blocked"})
+VALID_STATUSES: frozenset[str] = frozenset({
+    "not-started",
+    "in-progress",
+    "complete",
+    "blocked",
+    "deferred",
+    "skipped",
+    "wont-fix",
+})
 
 VALID_COMPLEXITIES: frozenset[str] = frozenset({"low", "medium", "high"})
 
