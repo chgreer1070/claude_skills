@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.svg" alt="dasel — one tool for all structured data" width="800" />
+</p>
+
 # dasel
 
 Gives Claude the ability to query, modify, and convert structured data files — JSON, YAML, TOML,
