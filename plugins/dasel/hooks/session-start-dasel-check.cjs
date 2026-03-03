@@ -36,9 +36,11 @@ function checkDasel() {
   }
 }
 
-let input = '';
+let _input = '';
 process.stdin.setEncoding('utf8');
-process.stdin.on('data', (chunk) => { input += chunk; });
+process.stdin.on('data', (chunk) => {
+  _input += chunk;
+});
 process.stdin.on('end', () => {
   const result = checkDasel();
   process.stdout.write(

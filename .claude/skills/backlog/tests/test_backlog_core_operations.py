@@ -440,32 +440,32 @@ class TestViewItem:
 
 
 class TestCloseItem:
-    """close_item requires checklist_pass and optionally checks for open PRs."""
+    """close_item requires a valid categorized reason and optionally checks for open PRs."""
 
-    def test_close_item_without_checklist_pass_raises_validation_error(self, mocker: MockerFixture) -> None:
-        """Verify close_item raises ValidationError when checklist_pass=False.
+    def test_close_item_invalid_reason_raises_validation_error(self, mocker: MockerFixture) -> None:
+        """Verify close_item raises ValidationError when reason is not in VALID_CLOSE_REASONS.
 
-        Tests: Checklist gate in close_item.
-        How: Call close_item with checklist_pass=False.
-        Why: Closing without checklist bypasses quality assurance — must be blocked.
+        Tests: Reason validation gate in close_item.
+        How: Call close_item with an invalid reason string.
+        Why: Closing without a categorized reason loses context permanently.
         """
-        with pytest.raises(ValidationError, match="checklist_pass required"):
-            close_item(selector="anything", plan="plan/test.md", checklist_pass=False)
+        with pytest.raises(ValidationError, match="Invalid close reason"):
+            close_item(selector="anything", reason="not-a-valid-reason")
 
     def test_close_item_unknown_selector_raises_item_not_found_error(self, mocker: MockerFixture) -> None:
         """Verify close_item raises ItemNotFoundError when selector matches nothing.
 
         Tests: close_item selector resolution error path.
-        How: Empty backlog; call close_item with checklist_pass=True.
+        How: Empty backlog; call close_item with a valid reason.
         Why: Callers must catch ItemNotFoundError to surface actionable feedback.
         """
         mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
 
         with pytest.raises(ItemNotFoundError):
-            close_item(selector="Nonexistent Item", plan="plan/test.md", checklist_pass=True)
+            close_item(selector="Nonexistent Item", reason="superseded")
 
     def test_close_item_happy_path_returns_closed_true(self, mocker: MockerFixture) -> None:
-        """Verify close_item returns closed=True for a valid item with checklist_pass=True.
+        """Verify close_item returns closed=True for a valid item with a valid reason.
 
         Tests: close_item success path.
         How: Write a local item with no issue; call close_item; check closed=True.
@@ -478,7 +478,7 @@ class TestCloseItem:
         mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
         mocker.patch("backlog_core.operations.close_github_issue")
 
-        result = close_item(selector="Closeable Item", plan="plan/done.md", checklist_pass=True)
+        result = close_item(selector="Closeable Item", reason="superseded")
 
         assert result["closed"] is True
 
@@ -505,7 +505,7 @@ class TestCloseItem:
         )
 
         with pytest.raises(BacklogError, match="Open PRs"):
-            close_item(selector="PR Blocked Close", plan="plan/done.md", checklist_pass=True, force=False)
+            close_item(selector="PR Blocked Close", reason="superseded", force=False)
 
     def test_close_item_force_bypasses_open_pr_guard(self, mocker: MockerFixture) -> None:
         """Verify close_item with force=True succeeds despite open PRs.
@@ -526,7 +526,7 @@ class TestCloseItem:
         )
         mocker.patch("backlog_core.operations.close_github_issue")
 
-        result = close_item(selector="Force Close Item", plan="plan/done.md", checklist_pass=True, force=True)
+        result = close_item(selector="Force Close Item", reason="superseded", force=True)
 
         assert result["closed"] is True
 
@@ -537,39 +537,39 @@ class TestCloseItem:
 
 
 class TestResolveItem:
-    """resolve_item requires a non-empty reason and validates the selector."""
+    """resolve_item requires a non-empty summary and validates the selector."""
 
-    def test_resolve_item_empty_reason_raises_validation_error(self, mocker: MockerFixture) -> None:
-        """Verify resolve_item raises ValidationError when reason is empty string.
+    def test_resolve_item_empty_summary_raises_validation_error(self, mocker: MockerFixture) -> None:
+        """Verify resolve_item raises ValidationError when summary is empty string.
 
-        Tests: Empty reason guard in resolve_item.
-        How: Call resolve_item with reason="".
-        Why: Resolving without a reason loses context permanently.
+        Tests: Empty summary guard in resolve_item.
+        How: Call resolve_item with summary="".
+        Why: Resolving without a summary loses context permanently.
         """
-        with pytest.raises(ValidationError, match="reason is required"):
-            resolve_item(selector="anything", reason="")
+        with pytest.raises(ValidationError, match="summary is required"):
+            resolve_item(selector="anything", summary="")
 
-    def test_resolve_item_whitespace_reason_raises_validation_error(self, mocker: MockerFixture) -> None:
-        """Verify resolve_item raises ValidationError when reason is whitespace-only.
+    def test_resolve_item_whitespace_summary_raises_validation_error(self, mocker: MockerFixture) -> None:
+        """Verify resolve_item raises ValidationError when summary is whitespace-only.
 
-        Tests: Whitespace reason guard in resolve_item.
-        How: Call resolve_item with reason="   ".
-        Why: Whitespace-only reason is semantically empty — must be rejected.
+        Tests: Whitespace summary guard in resolve_item.
+        How: Call resolve_item with summary="   ".
+        Why: Whitespace-only summary is semantically empty — must be rejected.
         """
-        with pytest.raises(ValidationError, match="reason is required"):
-            resolve_item(selector="anything", reason="   ")
+        with pytest.raises(ValidationError, match="summary is required"):
+            resolve_item(selector="anything", summary="   ")
 
     def test_resolve_item_unknown_selector_raises_item_not_found_error(self, mocker: MockerFixture) -> None:
         """Verify resolve_item raises ItemNotFoundError when selector matches nothing.
 
         Tests: resolve_item selector resolution error path.
-        How: Empty backlog; call resolve_item with a valid reason.
+        How: Empty backlog; call resolve_item with a valid summary.
         Why: Callers must distinguish missing items from validation errors.
         """
         mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
 
         with pytest.raises(ItemNotFoundError):
-            resolve_item(selector="Missing Item", reason="No longer needed")
+            resolve_item(selector="Missing Item", summary="No longer needed")
 
     def test_resolve_item_happy_path_returns_resolved_true(self, mocker: MockerFixture) -> None:
         """Verify resolve_item returns resolved=True for a valid item with a reason.
@@ -585,7 +585,7 @@ class TestResolveItem:
         mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
         mocker.patch("backlog_core.operations.resolve_github_issue")
 
-        result = resolve_item(selector="Resolvable Item", reason="Superseded by new approach")
+        result = resolve_item(selector="Resolvable Item", summary="Superseded by new approach")
 
         assert result["resolved"] is True
 
@@ -611,7 +611,7 @@ class TestResolveItem:
         )
 
         with pytest.raises(BacklogError, match="Open PRs"):
-            resolve_item(selector="PR Blocked Resolve", reason="Superseded", force=False)
+            resolve_item(selector="PR Blocked Resolve", summary="Superseded", force=False)
 
     def test_resolve_item_force_bypasses_open_pr_guard(self, mocker: MockerFixture) -> None:
         """Verify resolve_item with force=True succeeds despite open PRs.
@@ -632,7 +632,7 @@ class TestResolveItem:
         )
         mocker.patch("backlog_core.operations.resolve_github_issue")
 
-        result = resolve_item(selector="Force Resolve Item", reason="Superseded by different effort", force=True)
+        result = resolve_item(selector="Force Resolve Item", summary="Superseded by different effort", force=True)
 
         assert result["resolved"] is True
 

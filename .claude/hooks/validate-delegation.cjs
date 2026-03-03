@@ -66,9 +66,7 @@ function validatePrompt(prompt) {
 
   // Rule 1: must start with the role declaration
   if (!prompt.trimStart().startsWith('Your ROLE_TYPE is sub-agent.')) {
-    violations.push(
-      'Rule 1: Prompt must start with "Your ROLE_TYPE is sub-agent."'
-    );
+    violations.push('Rule 1: Prompt must start with "Your ROLE_TYPE is sub-agent."');
   }
 
   // Rule 2: must contain DEFINITION OF SUCCESS section
@@ -85,10 +83,14 @@ function validatePrompt(prompt) {
   // that look like implementation code (assignments, function calls, imports),
   // flag it as prescribing HOW.
   const fencedBlockPattern = /```[^\n]*\n([\s\S]*?)```/g;
-  let fenceMatch;
-  const implementationLinePattern = /^\s*(const |let |var |import |export |function |class |return |if \(|for \(|\w+\s*=\s*|\w+\.\w+\()/m;
+  const implementationLinePattern =
+    /^\s*(const |let |var |import |export |function |class |return |if \(|for \(|\w+\s*=\s*|\w+\.\w+\()/m;
 
-  while ((fenceMatch = fencedBlockPattern.exec(prompt)) !== null) {
+  for (
+    let fenceMatch = fencedBlockPattern.exec(prompt);
+    fenceMatch !== null;
+    fenceMatch = fencedBlockPattern.exec(prompt)
+  ) {
     const blockBody = fenceMatch[1] ?? '';
     const lines = blockBody.split('\n').filter((l) => l.trim().length > 0);
     const implLines = lines.filter((l) => implementationLinePattern.test(l));
@@ -97,7 +99,7 @@ function validatePrompt(prompt) {
     if (lines.length >= 3 && implLines.length >= Math.ceil(lines.length / 2)) {
       violations.push(
         'Rule 3: Prompt contains implementation code block (prescribes HOW). ' +
-          'Use OBSERVATIONS/CONTEXT constraints instead of code snippets.'
+          'Use OBSERVATIONS/CONTEXT constraints instead of code snippets.',
       );
       break; // one violation is enough
     }
@@ -161,7 +163,7 @@ function main() {
 
   // Exit code 2 blocks the tool call and shows stderr as feedback to Claude
   process.stderr.write(
-    [
+    `${[
       '--- Delegation Template Validation Failed ---',
       '',
       `Agent type: ${subagentType || '(not specified)'}`,
@@ -197,7 +199,7 @@ function main() {
       '',
       'Fix the prompt and retry.',
       '--- End Validation ---',
-    ].join('\n') + '\n'
+    ].join('\n')}\n`,
   );
 
   process.exit(2);
