@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="GitLab CI/CD and Documentation" width="800" />
+</p>
+
 # GitLab CI/CD and Documentation
 
 Makes Claude better at GitLab work: writing pipelines, creating documentation, and testing locally.
@@ -82,3 +86,13 @@ Claude writes proper GLFM alert syntax that renders with styling and icons:
 ## Requirements
 
 - Claude Code v2.0+
+
+---
+
+> **The Ancient Woe**
+>
+> *The chaotic shipyard where three different foremen are building the same galleon backwards, with no master ledger to unite their labor or test the timber.*
+
+> **The Bard's Decree**
+>
+> *"Summon the Grand Overseer! We require a master scroll that maps the laying of every plank, testing the hull's strength with buckets of water before the vessel ever dares touch the unforgiving sea!"*

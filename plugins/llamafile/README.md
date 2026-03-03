@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Llamafile" width="800" />
+</p>
+
 # Llamafile
 
 Helps Claude set up and manage local AI models on your computer using Mozilla's llamafile.
@@ -83,3 +87,13 @@ After installing this plugin, Claude will know:
 ## Requirements
 
 - Claude Code v2.0+
+
+---
+
+> **The Ancient Woe**
+>
+> *The ship's navigator whose magic compass only works when within sight of the King's lighthouse, leaving the crew doomed and blind in the open, foggy seas.*
+
+> **The Bard's Decree**
+>
+> *"Give me a bottled star! A solitary light that requires no tether to the mainland, that we may divine our path even in the darkest, most isolated dungeon!"*

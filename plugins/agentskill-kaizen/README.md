@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="agentskill-kaizen" width="800" />
+</p>
+
 # agentskill-kaizen
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -260,3 +264,13 @@ plugins/agentskill-kaizen/
 ## License
 
 MIT
+
+---
+
+> **The Ancient Woe**
+>
+> *The stubborn general who loses the exact same battle in the exact same valley for three years running, learning nothing from the ghosts of his fallen cavalry.*
+
+> **The Bard's Decree**
+>
+> *"Summon the seers to read the ashes of our past follies! Let us divine our blunders from the ledger, that we cease stepping upon the exact same rake in the orchard!"*

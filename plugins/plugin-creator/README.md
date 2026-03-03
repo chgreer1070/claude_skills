@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Plugin Creator & Refactoring Toolkit" width="800" />
+</p>
+
 # Plugin Creator & Refactoring Toolkit
 
 Complete plugin development toolkit for creating, refactoring, and validating Claude Code plugins. Combines plugin creation, systematic refactoring workflows, and comprehensive validation tools.
@@ -532,3 +536,13 @@ Jamie Nelson (<https://github.com/bitflight-devops>)
 ## License
 
 MIT License (excluding skill-creator which retains Apache License 2.0)
+
+---
+
+> **The Ancient Woe**
+>
+> *The master craftsman who spends all day building tools to build other tools, never actually finishing the grand cathedral he was hired to construct.*
+
+> **The Bard's Decree**
+>
+> *"I need a forge that births other forges! A master mold to cast my iron servants, that I may finally rest whilst they hammer the steel into shape!"*

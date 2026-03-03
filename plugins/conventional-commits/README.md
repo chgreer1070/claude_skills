@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Conventional Commits" width="800" />
+</p>
+
 # Conventional Commits
 
 Helps Claude write properly formatted commit messages that follow industry standards.
@@ -101,3 +105,13 @@ This plugin works great alongside:
 - Tools like semantic-release or git-cliff for automated versioning
 - commitlint for commit message validation
 - Projects that use automated changelog generation
+
+---
+
+> **The Ancient Woe**
+>
+> *The lazy town chronicler who records a decade of wars, plagues, and coronations simply by writing, "Stuff did happen, 'twas rather loud."*
+
+> **The Bard's Decree**
+>
+> *"Write with purpose, thou idle knave! Tell me if 'tis a grand new law, a mended carriage, or a mundane chore, that history may know our exact deeds!"*

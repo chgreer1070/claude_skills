@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Brainstorming Skill" width="800" />
+</p>
+
 # Brainstorming Skill
 
 Makes Claude significantly better at generating ideas and creative solutions.
@@ -78,3 +82,13 @@ Each idea includes reasoning, cost estimate, and implementation time within your
 ## Requirements
 
 - Claude Code v2.0+
+
+---
+
+> **The Ancient Woe**
+>
+> *The wretched playwright, staring at a blank piece of parchment for three fortnights, waiting for a Muse that is currently passed out in a tavern.*
+
+> **The Bard's Decree**
+>
+> *"Strike the flint! Turn the world upside down! If the tragedy doth not write itself, look at it from the perspective of the jester, the king, and the beggar until the spark catches flame!"*

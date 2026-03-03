@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Python 3 Development" width="800" />
+</p>
+
 # Python 3 Development
 
 Modern Python 3.11+ development workflows with CLI apps, testing patterns, code quality tools, and TDD best practices.
@@ -247,3 +251,13 @@ The plugin includes extensive reference documentation:
 If interrupted mid-development and need to resume workflow work (command→skill migration, vendoring):
 
 - [Workflow Port Plan](./skills/python3-development/planning/python3-development-workflow-port-plan.md)
+
+---
+
+> **The Ancient Woe**
+>
+> *The agony of commissioning a grand stone castle, only to realize thy masons are using spoons instead of chisels, and nobody brought a parchment of the blueprints!*
+
+> **The Bard's Decree**
+>
+> *"Out, damned chaos! I demand a master architect who measures twice, cuts once, and builds upon a foundation of unyielding stone, lest the tempest blow our manor to the mud!"*

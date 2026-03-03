@@ -1,6 +1,6 @@
 {
   "name": "agentskill-kaizen",
-  "version": "0.6.79",
+  "version": "0.6.81",
   "description": "Analyze Claude Code agent session transcripts to identify inefficiencies, anti-patterns, repeated mistakes, missing tooling opportunities, and user frustration signals for continuous improvement",
   "author": {
     "name": "Jamie Nelson",
@@ -15,18 +15,30 @@
     "continuous-improvement",
     "agent-optimization"
   ],
-  "agents": ["./agents/improvement-generator.md", "./agents/transcript-analyst.md"],
+  "agents": [
+    "./agents/improvement-generator.md",
+    "./agents/transcript-analyst.md"
+  ],
   "mcpServers": {
     "kaizen-duckdb": {
       "command": "uvx",
-      "args": ["mcp-server-motherduck", "--db-path", "${CLAUDE_PLUGIN_ROOT}/data/kaizen.duckdb", "--read-only"],
+      "args": [
+        "mcp-server-motherduck",
+        "--db-path",
+        "${CLAUDE_PLUGIN_ROOT}/data/kaizen.duckdb",
+        "--read-only"
+      ],
       "env": {
         "HOME": "$USERPROFILE"
       }
     },
     "kaizen-analysis": {
       "command": "uv",
-      "args": ["run", "--script", "${CLAUDE_PLUGIN_ROOT}/mcp/server.py"]
+      "args": [
+        "run",
+        "--script",
+        "${CLAUDE_PLUGIN_ROOT}/mcp/server.py"
+      ]
     }
   }
 }

@@ -100,3 +100,13 @@ This plugin helps optimize:
 - Any instructions you write for Claude Code
 
 The result: Claude follows your instructions more consistently and produces better results.
+
+---
+
+> **The Ancient Woe**
+>
+> *The tyrannical tutor who only screams "NEVER DO THIS!" at his pupils, leaving them paralyzed by negative framing and confused as to what they should actually do!*
+
+> **The Bard's Decree**
+>
+> *"Cease thy negative framing, for it only summons the very demons thou wishest to banish! Speak not of what not to do, but illuminate the righteous path with concrete rules!"*

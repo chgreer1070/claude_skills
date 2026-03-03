@@ -1,3 +1,20 @@
+<p align="center">
+  <a href="#available-plugins"><img src="https://img.shields.io/badge/Claude_Code-Plugin_Marketplace-6B4FBB?style=for-the-badge&logo=anthropic&logoColor=white" alt="Claude Code Plugin Marketplace"></a>
+  <a href="#full-featured-development-systems"><img src="https://img.shields.io/badge/Plugins-26-blue?style=for-the-badge" alt="26 Plugins"></a>
+  <a href="#full-featured-development-systems"><img src="https://img.shields.io/badge/Agents-56-orange?style=for-the-badge" alt="56 Agents"></a>
+  <a href="#full-featured-development-systems"><img src="https://img.shields.io/badge/Skills-119-green?style=for-the-badge" alt="119 Skills"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Jamie-BitFlight/claude_skills/stargazers"><img src="https://img.shields.io/github/stars/Jamie-BitFlight/claude_skills?style=flat-square&logo=github" alt="GitHub stars"></a>
+  <a href="https://github.com/Jamie-BitFlight/claude_skills/commits/main"><img src="https://img.shields.io/github/last-commit/Jamie-BitFlight/claude_skills?style=flat-square" alt="GitHub last commit"></a>
+  <a href="https://github.com/Jamie-BitFlight/claude_skills/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Jamie-BitFlight/claude_skills?style=flat-square" alt="License"></a>
+  <a href="https://docs.astral.sh/uv/"><img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+"></a>
+  <a href="https://docs.astral.sh/uv/"><img src="https://img.shields.io/badge/uv-package_manager-DE5FE9?style=flat-square&logo=uv&logoColor=white" alt="uv"></a>
+  <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-enabled-6B4FBB?style=flat-square" alt="MCP enabled"></a>
+  <a href="https://www.conventionalcommits.org/"><img src="https://img.shields.io/badge/Conventional_Commits-1.0.0-FE5196?style=flat-square&logo=conventionalcommits&logoColor=white" alt="Conventional Commits"></a>
+</p>
+
 # Claude Skills Collection
 
 > AI reflects what's expressed, not what's true.
@@ -37,10 +54,10 @@ Comprehensive frameworks with multiple skills, commands, and specialized agents.
 
 | Plugin | What It Does |
 | --- | --- |
-| [python3-development](./plugins/python3-development) | Transform Claude into a Python 3.11+ expert with 15+ commands, TDD workflows, modern library selection (Typer, Rich, httpx), and SAM methodology for feature development |
+| [python3-development](./plugins/python3-development) | Transform Claude into a Python 3.11+ expert with 27 skills, 16 agents, 2 commands, TDD workflows, modern library selection (Typer, Rich, httpx), and SAM methodology for feature development |
 | [bash-development](./plugins/bash-development) | Write robust Bash 5.1+ scripts with modern patterns, error handling, POSIX portability, and specialized agents for development and auditing |
 | [perl-development](./plugins/perl-development) | Build production-quality Perl 5.30+ scripts with modern practices, CPAN ecosystem integration, comprehensive testing, and CLI architecture |
-| [plugin-creator](./plugins/plugin-creator) | Complete toolkit for creating, refactoring, and validating Claude Code plugins with 6 specialized agents and systematic workflows |
+| [plugin-creator](./plugins/plugin-creator) | Complete toolkit for creating, refactoring, and validating Claude Code plugins with 32 skills, 8 specialized agents, and systematic workflows |
 | [uv](./plugins/uv) | Expert guidance for Astral's uv — the fast Python package manager that replaces pip, poetry, pyenv, and virtualenv with modern lockfiles |
 | [clang-format](./plugins/clang-format) | Configure clang-format to match your existing C/C++ code style by analyzing patterns and showing impact before changes |
 | [holistic-linting](./plugins/holistic-linting) | Automatic code quality enforcement — Claude won't say "done" until code passes all configured linters with root-cause fixing |
@@ -49,6 +66,8 @@ Comprehensive frameworks with multiple skills, commands, and specialized agents.
 | [dasel](./plugins/dasel) | Query, transform, and convert structured data files (JSON, YAML, TOML, XML, CSV) using dasel v3 with enterprise XML support and exploration agents |
 | [development-harness](./plugins/development-harness) | Language-agnostic development process harness implementing the SAM 7-stage pipeline with planning, verification, and testing methodology |
 | [the-rewrite-room](./plugins/the-rewrite-room) | Documentation workflow router — routes tasks like drift audits, doc sync, prompt optimization, and summarization to canonical workflows with validation |
+| [process-siren](./plugins/process-siren) | Converts bullet steps, ASCII art, markdown tables, and prose workflows into Mermaid diagrams for AI-facing documents, with process quality methodology for improving ambiguous or incomplete processes before conversion |
+| [fastmcp-creator](./plugins/fastmcp-creator) | Build production-ready Model Context Protocol (MCP) servers with FastMCP 3.x framework and agent-centric design patterns |
 
 ### Lightweight Knowledge Clip-Ins
 
@@ -74,7 +93,6 @@ Focused plugins that teach Claude specific conventions or tools without heavy wo
 
 | Plugin | What It Does |
 | --- | --- |
-| [fastmcp-creator](./plugins/fastmcp-creator) | Build production-ready Model Context Protocol (MCP) servers with FastMCP framework and agent-centric design patterns |
 | [prompt-optimization-claude-45](./plugins/prompt-optimization-claude-45) | Optimize CLAUDE.md and skills using Anthropic's best practices — transforms negative rules into positive patterns |
 
 #### Better Claude Behavior
@@ -86,6 +104,12 @@ Focused plugins that teach Claude specific conventions or tools without heavy wo
 | [hallucination-detector](https://github.com/bitflight-devops/hallucination-detector) | Blocks task completion when Claude speculates or makes ungrounded claims, forcing evidence-first rewrites |
 | [brainstorming-skill](./plugins/brainstorming-skill) | Significantly improves brainstorming with 30+ research-validated prompt patterns across 14 categories |
 | [orchestrator-discipline](./plugins/orchestrator-discipline) | Prevents orchestrator context window bloat via PreToolUse hooks — blocks file reads without edits, diagnostic commands that should be delegated |
+
+#### Architecture
+
+| Plugin | What It Does |
+| --- | --- |
+| [twelve-factor-app](./plugins/twelve-factor-app) | Apply twelve-factor app methodology to your projects for portable, scalable, cloud-native architecture |
 
 ## How Plugins Work
 
@@ -133,7 +157,8 @@ claude --plugin-dir ./plugins/python3-development --plugin-dir ./plugins/holisti
 
 The `workshops/` directory contains hands-on workshop materials for teaching AI-assisted development in specific domains:
 
-- **[Embedded Engineers (Claude)](./workshops/ai-agents-skills-for-embedded-engineers-claude.md)** — 1-hour workshop covering skills, agents, and orchestration for firmware development with MISRA-C, FreeRTOS, and Zigbee patterns
+- **[Embedded Engineers (General)](./workshops/ai-agents-skills-for-embedded-engineers.md)** — 1-hour workshop covering skills, agents, and orchestration for firmware development with MISRA-C, FreeRTOS, and Zigbee patterns
+- **[Embedded Engineers (Claude)](./workshops/ai-agents-skills-for-embedded-engineers-claude.md)** — Claude Code-specific version with skills, agents, and orchestration
 - **[Embedded Engineers (Cursor)](./workshops/ai-agents-skills-for-embedded-engineers-cursor.md)** — Equivalent workshop adapted for Cursor with custom agents and embedded skills
 
 ## Troubleshooting

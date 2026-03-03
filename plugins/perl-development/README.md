@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Perl Development" width="800" />
+</p>
+
 # perl-development
 
 Comprehensive Perl 5.30+ development plugin with modular skills for scripting, CPAN ecosystem,
@@ -38,3 +42,13 @@ development, existing code auditing, and Perl CLI application architecture.
 /perl-development "write a script to parse CSV files and output summary statistics"
 /perl-development:perl-lint "review my Perl script for Perl::Critic violations"
 ```
+
+---
+
+> **The Ancient Woe**
+>
+> *Relying on the ancient, cryptic sorcerer at the edge of town whose spells are utterly incomprehensible, yet without him, the village wells run dry.*
+
+> **The Bard's Decree**
+>
+> *"Though thy incantations be written in the tongues of madness, bind them in strict laws! Let not thy chaotic magic summon a demon when I merely asked for a lit candle!"*

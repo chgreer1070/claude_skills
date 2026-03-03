@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="clang-format Configuration" width="800" />
+</p>
+
 # clang-format Configuration
 
 Helps Claude configure clang-format to match your existing code style instead of forcing a style on you.
@@ -102,3 +106,13 @@ This plugin bundles:
 
 - Claude Code v2.0+
 - clang-format installed (`apt install clang-format` / `brew install clang-format`)
+
+---
+
+> **The Ancient Woe**
+>
+> *The arrogant new scribe who arrives at the monastery and begins writing the holy texts in a completely different, erratic calligraphy, ruining the visual harmony of a tome that took three generations to pen.*
+
+> **The Bard's Decree**
+>
+> *"Mimic the ancient hands! Study the slant of the ink and the breadth of the margins! Thou shalt conform thy quill to the masters who came before thee, lest the tapestry be violently torn!"*

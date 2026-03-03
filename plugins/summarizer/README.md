@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="summarizer" width="800" />
+</p>
+
 # summarizer
 
 Faithful information summarization with fidelity preservation, structured output, and
@@ -41,3 +45,13 @@ orchestrators pass agent results between tasks.
 /summarizer:file-summarization "plugins/summarizer/skills/summarizer/SKILL.md"
 /summarizer:url-summarization "https://docs.anthropic.com/en/docs/claude-code/overview"
 ```
+
+---
+
+> **The Ancient Woe**
+>
+> *The windbag courtier who takes three hours to explain that the treasury is empty, embellishing the tale with mythical dragons that do not actually exist.*
+
+> **The Bard's Decree**
+>
+> *"Boil away the fat! Give me the marrow of the truth, unspiced by thy wandering imagination, that a King may know his kingdom in a single, solitary breath!"*

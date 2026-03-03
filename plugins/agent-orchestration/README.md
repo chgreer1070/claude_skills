@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Agent Orchestration" width="800" />
+</p>
+
 # Agent Orchestration
 
 Makes Claude more thorough and systematic when handling complex, multi-step tasks.
@@ -138,3 +142,13 @@ The plugin guides Claude to:
 - Think about scope systematically (one bug often indicates a pattern)
 
 This results in more complete, reliable solutions with less back-and-forth iteration.
+
+---
+
+> **The Ancient Woe**
+>
+> *The fool of a physician who applies leeches to thy forehead to cure a headache, entirely ignoring the rotting tooth that plagues thy jaw!*
+
+> **The Bard's Decree**
+>
+> *"Cease thy shallow remedies! Dig beneath the soil, find the poisoned root of this affliction, and cure the disease, not merely the cough!"*
