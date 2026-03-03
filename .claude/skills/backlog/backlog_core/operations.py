@@ -389,6 +389,21 @@ def _close_cleanup(item: BacklogItem, issue_ref: str, repo: str, output: Output 
         out.info(f"  Removed local file {filepath.name} (canonical: GH #{issue_ref.lstrip('#')})")
 
 
+def _pull_if_issue_selector(selector: str, repo: str, output: Output | None = None) -> None:
+    """Fetch a GitHub issue into the local cache when selector resolves to an issue number.
+
+    Calls pull_single_issue when parse_issue_selector returns a number. No-op otherwise.
+
+    Args:
+        selector: Backlog selector string (title, #N, bare number, or URL).
+        repo: GitHub repo in owner/repo format.
+        output: Optional Output collector.
+    """
+    issue_num = parse_issue_selector(selector)
+    if issue_num:
+        pull_single_issue(get_github(repo), int(issue_num), output=output)
+
+
 def _build_normalized_content(filepath: Path, output: Output | None = None) -> str | None:
     """Build normalized content for one file.
 
@@ -1101,6 +1116,10 @@ def close_item(
     items = parse_backlog()
     item = find_item(items, selector)
     if not item:
+        _pull_if_issue_selector(selector, repo, output=out)
+        items = parse_backlog()
+        item = find_item(items, selector)
+    if not item:
         raise ItemNotFoundError(selector)
     issue_ref = item.issue
     if issue_ref and not force:
@@ -1169,6 +1188,10 @@ def resolve_item(
         raise ValidationError("summary is required (what was done)")
     items = parse_backlog()
     item = find_item(items, selector)
+    if not item:
+        _pull_if_issue_selector(selector, repo, output=out)
+        items = parse_backlog()
+        item = find_item(items, selector)
     if not item:
         raise ItemNotFoundError(selector)
     issue_ref = item.issue
@@ -1247,6 +1270,10 @@ def update_item(
     items = parse_backlog()
     item = find_item(items, selector)
     if not item:
+        _pull_if_issue_selector(selector, repo, output=out)
+        items = parse_backlog()
+        item = find_item(items, selector)
+    if not item:
         raise ItemNotFoundError(selector)
 
     result: dict[str, str | int | bool | list[str]] = {"title": item.title}
@@ -1308,6 +1335,10 @@ def groom_item(
     """
     out = output or Output()
     has_input = groomed_file or groomed_content or (section and content)
+    items = parse_backlog()
+    item = find_item(items, selector)
+    if not item:
+        _pull_if_issue_selector(selector, repo, output=out)
     return update_item(
         selector=selector,
         plan=None,
