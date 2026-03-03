@@ -9,7 +9,7 @@
  *
  * Usage in .mcp.json:
  *   "command": "node",
- *   "args": ["./scripts/npx-run.js", "-y", "<package>", ...]
+ *   "args": ["./scripts/npx-run.cjs", "-y", "<package>", ...]
  */
 const { spawnSync } = require('node:child_process');
 const result = spawnSync('npx', process.argv.slice(2), {

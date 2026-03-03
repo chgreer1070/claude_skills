@@ -2,19 +2,25 @@
   "mcpServers": {
     "Ref-local": {
       "command": "node",
-      "args": ["./scripts/npx-run.js", "-y", "ref-tools-mcp@latest"],
+      "args": ["./scripts/npx-run.cjs", "-y", "ref-tools-mcp@latest"],
       "env": {
         "REF_API_KEY": "$REF_API_KEY"
       }
     },
     "context7-local": {
       "command": "node",
-      "args": ["./scripts/npx-run.js", "-y", "@upstash/context7-mcp", "--api-key", "$CONTEXT7_API_KEY"]
+      "args": [
+        "./scripts/npx-run.cjs",
+        "-y",
+        "@upstash/context7-mcp",
+        "--api-key",
+        "$CONTEXT7_API_KEY"
+      ]
     },
     "kernel-local": {
       "command": "node",
       "args": [
-        "./scripts/npx-run.js",
+        "./scripts/npx-run.cjs",
         "-y",
         "mcp-remote",
         "https://mcp.onkernel.com/mcp",
