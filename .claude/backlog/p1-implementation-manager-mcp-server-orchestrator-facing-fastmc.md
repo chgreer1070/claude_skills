@@ -1,82 +1,186 @@
 ---
 name: Implementation Manager MCP Server — orchestrator-facing FastMCP server wrapping SAM task file operations
-description: "Build a FastMCP server that exposes SAM task file operations as MCP tools for the orchestrator. Replaces manual CLI invocations, raw file edits, and JSON wrangling with atomic, validated tool calls.\n\n## Problem\nThe orchestrator currently manages SAM task files through a combination of:\n- CLI calls to implementation_manager.py (read-only, single-feature-scoped)\n- Manual Edit/Read tool calls on markdown/YAML task files (error-prone, no state machine)\n- Manual JSON writes for context files (3 separate operations that can partially fail)\n- Zero tracking of delegated subagent work (delegation black hole)\n\nThe SubagentStop hook regex bug (fixed in #337) is a symptom: the hook is the sole completion-marking mechanism because no explicit tool exists.\n\n## Proposed MCP Tools\n\n### Core Query Tools (replace CLI + Read gymnastics)\n- **task_dashboard** — Cross-feature overview: all features, task counts, blockers, in-progress items. Today queries are one-slug-at-a-time with no bird's-eye view.\n- **task_view** — Single task full detail: acceptance criteria, agent, skills, dependencies, timestamps, notes. Today requires Read of whole file + manual scanning.\n- **task_ready** — Ready tasks for a feature (deps satisfied, not started). Exists as CLI but requires uv run + JSON parse.\n- **task_dependency_graph** — Which tasks block which, as adjacency list or rendered text. Today mentally reconstructed from Dependencies fields.\n\n### Status Mutation Tools (replace manual Edit calls)\n- **task_transition** — Atomic status change with state machine validation (e.g. can't go COMPLETE→NOT STARTED). Today raw markdown/YAML edits with no enforcement.\n- **task_block** — Mark BLOCKED with a reason string, record who/what blocked it. Today edit status + manually add note, reason often lost.\n- **task_unblock** — Clear BLOCKED state, reset to NOT STARTED or IN PROGRESS. No tooling exists.\n- **task_add_note** — Append timestamped implementation note to a task. Context lost between sessions; notes in task file would persist.\n\n### Context & Session Tools (replace manual JSON wrangling)\n- **task_claim** — Set active task for session: writes context file, sets IN PROGRESS, adds Started timestamp — one call instead of three. Today 3 separate operations that can partially fail.\n- **task_release** — Inverse of claim: marks COMPLETE, adds Completed timestamp, deletes context file. Hook does this but fragile — explicit tool is reliable fallback.\n- **task_active** — What tasks are currently claimed across all sessions. Today get_task_context.py finds one file with no multi-session awareness.\n\n### Delegation Tracking (doesn't exist at all today)\n- **task_log_delegation** — Record: task X delegated to agent Y at time Z with session_id W. Zero tracking today — task disappears until hook fires or doesn't.\n- **task_log_result** — Record subagent outcome: success/failure, summary, files changed. Subagent returns text that vanishes at next compaction.\n- **task_active_agents** — Which tasks have live subagents right now. No way to know if a background agent is still running or died silently.\n\n### Workflow Intelligence\n- **task_next** — Recommend what to work on: considers dependencies, priority, complexity, what's in progress. Today run ready-tasks, mentally sort, check what's in flight — repetitive every loop.\n- **task_validate** — Structure/frontmatter validation (exists as CLI, needs MCP wrapping).\n- **task_create** — Add follow-up task to existing feature, auto-wired with dependencies. Today manually write markdown matching format.\n\n### Explicit exclusions\n- No subagent output tailing (Agent tool already returns results)\n- No task deletion (too destructive for autonomous use; use BLOCKED instead)\n- No auto-scheduling/prioritization (orchestrator logic, not data layer)\n\n## Implementation Notes\n- Build with FastMCP 2.x Python framework\n- Reuse existing task_format.py and implementation_manager.py as the data layer\n- State machine for task_transition: NOT_STARTED → IN_PROGRESS → COMPLETE, any → BLOCKED, BLOCKED → NOT_STARTED/IN_PROGRESS\n- All tools return structured JSON matching existing CLI output conventions\n- MCP server config goes in .claude/settings.json or plugin manifest"
+description: >-
+  The orchestrator has no atomic, validated tooling for managing SAM task files.
+  It currently reaches those files through read-only CLI calls, raw markdown/YAML
+  edits, multi-step JSON writes for session context, and zero tracking of
+  delegated subagent work. A FastMCP 3.x MCP server exposing these operations as
+  first-class tools would make orchestrator task management reliable, auditable,
+  and state-machine-enforced.
 metadata:
   topic: implementation-manager-mcp-server-orchestrator-facing-fastmc
   source: Session observation — manual hook fix (#337) revealed systematic tooling gap
   added: '2026-03-01'
+  groomed: '2026-03-03'
   priority: P1
   type: Feature
   status: open
   issue: '#365'
+  stack: fastmcp
+  language: python
 ---
 
-## Story
+## Groomed (2026-03-03)
 
-As a **developer using Claude Code skills**, I want to **implementation manager mcp server — orchestrator-facing fastmcp server wrapping sam task file operations** so that **the tooling becomes more capable and complete**.
+### Problem Space
 
-## Description
+The orchestrator interacts with SAM task files (plan/tasks-*.md) through four
+separate, fragile mechanisms today:
 
-Build a FastMCP server that exposes SAM task file operations as MCP tools for the orchestrator. Replaces manual CLI invocations, raw file edits, and JSON wrangling with atomic, validated tool calls.
+1. **CLI calls to `implementation_manager.py`** — read-only; scoped to one
+   feature at a time; requires `uv run` subprocess and JSON parsing by the
+   caller.
+2. **Raw Edit/Read tool calls on markdown/YAML files** — no state machine; an
+   invalid transition (e.g. `COMPLETE → NOT_STARTED`) is silently accepted; a
+   partial write leaves the file inconsistent.
+3. **Three-step manual JSON writes for session context** — `bash printf`,
+   `mkdir -p`, and file write must all succeed in sequence. A partial failure
+   leaves context files orphaned or missing.
+4. **No delegation tracking** — once a subagent is launched, the orchestrator
+   has no record of which task it owns, what agent was used, or whether it
+   completed. The `SubagentStop` hook (commit `872e38d3`, fix for #337) is the
+   only completion signal and it is regex-fragile.
 
-## Problem
-The orchestrator currently manages SAM task files through a combination of:
-- CLI calls to implementation_manager.py (read-only, single-feature-scoped)
-- Manual Edit/Read tool calls on markdown/YAML task files (error-prone, no state machine)
-- Manual JSON writes for context files (3 separate operations that can partially fail)
-- Zero tracking of delegated subagent work (delegation black hole)
+The gap is structural: all write operations on task files happen outside any
+validation layer, and the session-context and delegation surfaces do not exist
+as tool calls at all.
 
-The SubagentStop hook regex bug (fixed in #337) is a symptom: the hook is the sole completion-marking mechanism because no explicit tool exists.
+**Files and code involved:**
 
-## Proposed MCP Tools
+| Path | Role |
+|------|------|
+| `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` | Existing CLI data layer (1172 lines); read-only commands: `list-features`, `status`, `ready-tasks`, `validate` |
+| `plugins/python3-development/skills/implementation-manager/scripts/task_format.py` | Task parsing/serialisation utilities (311 lines) |
+| `plugins/python3-development/skills/implementation-manager/scripts/get_task_context.py` | Single-session context file reader |
+| `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` | `SubagentStop` hook; sole completion-marking mechanism |
+| `.claude/context/active-task-{session_id}.json` | Session context files; pattern already established |
+| `plugins/agentskill-kaizen/mcp/server.py` | Reference FastMCP 3.x server in this repo |
+| `.claude/skills/backlog/backlog_core/server.py` | Reference project-level FastMCP 3.x server in this repo |
+| `.claude/skills/start-task/SKILL.md` | Documents the 3-step manual bash `task_claim` equivalent |
+| `plugins/development-harness/` | Natural host plugin for the new server |
 
-### Core Query Tools (replace CLI + Read gymnastics)
-- **task_dashboard** — Cross-feature overview: all features, task counts, blockers, in-progress items. Today queries are one-slug-at-a-time with no bird's-eye view.
-- **task_view** — Single task full detail: acceptance criteria, agent, skills, dependencies, timestamps, notes. Today requires Read of whole file + manual scanning.
-- **task_ready** — Ready tasks for a feature (deps satisfied, not started). Exists as CLI but requires uv run + JSON parse.
-- **task_dependency_graph** — Which tasks block which, as adjacency list or rendered text. Today mentally reconstructed from Dependencies fields.
+**Verified facts (from fact-check):**
 
-### Status Mutation Tools (replace manual Edit calls)
-- **task_transition** — Atomic status change with state machine validation (e.g. can't go COMPLETE→NOT STARTED). Today raw markdown/YAML edits with no enforcement.
-- **task_block** — Mark BLOCKED with a reason string, record who/what blocked it. Today edit status + manually add note, reason often lost.
-- **task_unblock** — Clear BLOCKED state, reset to NOT STARTED or IN PROGRESS. No tooling exists.
-- **task_add_note** — Append timestamped implementation note to a task. Context lost between sessions; notes in task file would persist.
+- The project uses **FastMCP 3.x** (`fastmcp>=3.0.2` in `pyproject.toml`). The
+  original item description incorrectly said "FastMCP 2.x" — this is **refuted**.
+- No delegation-tracking code exists anywhere in the repository (grep confirms
+  no `task_log_delegation`, no delegation log files).
+- `.claude/settings.json` has an empty `mcpServers` object; MCP registration
+  mechanism is not yet established (inconclusive — to be resolved in planning).
+- `implementation_manager.py` CLI offers only read operations; all write paths
+  go through raw file edits today.
 
-### Context & Session Tools (replace manual JSON wrangling)
-- **task_claim** — Set active task for session: writes context file, sets IN PROGRESS, adds Started timestamp — one call instead of three. Today 3 separate operations that can partially fail.
-- **task_release** — Inverse of claim: marks COMPLETE, adds Completed timestamp, deletes context file. Hook does this but fragile — explicit tool is reliable fallback.
-- **task_active** — What tasks are currently claimed across all sessions. Today get_task_context.py finds one file with no multi-session awareness.
+### Priority
 
-### Delegation Tracking (doesn't exist at all today)
-- **task_log_delegation** — Record: task X delegated to agent Y at time Z with session_id W. Zero tracking today — task disappears until hook fires or doesn't.
-- **task_log_result** — Record subagent outcome: success/failure, summary, files changed. Subagent returns text that vanishes at next compaction.
-- **task_active_agents** — Which tasks have live subagents right now. No way to know if a background agent is still running or died silently.
+8/10 — The delegation black hole and context-file partial-failure are live
+reliability risks on every SAM feature cycle. The absence of state-machine
+enforcement means any session can silently corrupt task state. Fixing this
+unblocks reliable multi-session orchestration.
 
-### Workflow Intelligence
-- **task_next** — Recommend what to work on: considers dependencies, priority, complexity, what's in progress. Today run ready-tasks, mentally sort, check what's in flight — repetitive every loop.
-- **task_validate** — Structure/frontmatter validation (exists as CLI, needs MCP wrapping).
-- **task_create** — Add follow-up task to existing feature, auto-wired with dependencies. Today manually write markdown matching format.
+### Impact
 
-### Explicit exclusions
-- No subagent output tailing (Agent tool already returns results)
-- No task deletion (too destructive for autonomous use; use BLOCKED instead)
-- No auto-scheduling/prioritization (orchestrator logic, not data layer)
+- **Orchestrator reliability**: partial context writes and silent state
+  corruption affect every feature that uses the SAM workflow.
+- **Delegation visibility**: no record of live subagents means a crashed
+  subagent is indistinguishable from a running one until the next hook fires.
+- **Scalability**: as feature count grows, the lack of a cross-feature dashboard
+  query forces repeated CLI invocations that scale linearly with feature count.
 
-## Implementation Notes
-- Build with FastMCP 2.x Python framework
-- Reuse existing task_format.py and implementation_manager.py as the data layer
-- State machine for task_transition: NOT_STARTED → IN_PROGRESS → COMPLETE, any → BLOCKED, BLOCKED → NOT_STARTED/IN_PROGRESS
-- All tools return structured JSON matching existing CLI output conventions
-- MCP server config goes in .claude/settings.json or plugin manifest
+### Benefits
 
-## Acceptance Criteria
+- Atomic, validated writes eliminate partial-failure classes for context and
+  status operations.
+- State-machine enforcement makes invalid task transitions observable errors
+  rather than silent data corruption.
+- Delegation log surfaces agent lifecycle, enabling timeout detection and
+  result persistence across context compaction.
+- Cross-feature dashboard query replaces O(N) CLI calls with a single tool call.
 
-- [ ] Work matches description
-- [ ] Plan or implementation complete
+### Expected Behaviour
 
-## Context
+When the orchestrator needs to act on a SAM task file — start a task, mark it
+complete, block it, query readiness, or delegate to a subagent — it calls a
+single MCP tool. That tool validates the requested operation against the state
+machine, performs all required file operations atomically, and returns
+structured JSON. The orchestrator never touches markdown or JSON files directly.
 
-- **Source**: Session observation — manual hook fix (#337) revealed systematic tooling gap
-- **Priority**: P1
-- **Added**: 2026-03-01
-- **Research questions**: None
+**Tool surface (what must exist, not how it is built):**
+
+| Group | Tools |
+|-------|-------|
+| Query | `task_dashboard`, `task_view`, `task_ready`, `task_dependency_graph` |
+| Status mutation | `task_transition`, `task_block`, `task_unblock`, `task_add_note` |
+| Session context | `task_claim`, `task_release`, `task_active` |
+| Delegation tracking | `task_log_delegation`, `task_log_result`, `task_active_agents` |
+| Workflow | `task_next`, `task_validate`, `task_create` |
+
+State machine for `task_transition`:
+`NOT_STARTED → IN_PROGRESS → COMPLETE`, any state `→ BLOCKED`,
+`BLOCKED → NOT_STARTED | IN_PROGRESS`.
+
+**Out of scope:** subagent output tailing, task deletion, auto-scheduling.
+
+### Acceptance Criteria
+
+1. An MCP server binary/script is present and startable with no import errors.
+2. Calling `task_view` with a valid task ID returns the task's fields (status,
+   agent, acceptance criteria, timestamps) as structured JSON without requiring
+   the caller to parse markdown.
+3. Calling `task_transition` with an invalid transition (e.g. `COMPLETE →
+   NOT_STARTED`) returns an error; the file is unchanged.
+4. Calling `task_claim` once writes the context file at
+   `.claude/context/active-task-{session_id}.json`, sets the task to
+   `IN_PROGRESS`, and records a `Started` timestamp — in one call with no
+   partial-state risk.
+5. Calling `task_release` marks the task `COMPLETE`, adds a `Completed`
+   timestamp, and removes the context file.
+6. Calling `task_active` returns all currently claimed tasks across all sessions
+   (scans `.claude/context/`).
+7. Calling `task_log_delegation` writes a delegation record that persists across
+   session context compaction; `task_active_agents` returns it until
+   `task_log_result` closes it.
+8. `task_dashboard` returns a cross-feature summary (all features, task counts
+   by status, blockers) in a single call.
+9. All mutation tools are idempotent where possible (repeat call = same outcome,
+   no duplicate writes or errors on repeat).
+10. The server is reachable by the orchestrator; the registration mechanism
+    (settings.json or plugin manifest) is documented and verified working.
+
+### Issue Classification
+
+**Type**: unbounded-design
+**Rationale**: Greenfield MCP server — tool surface, delegation-log storage
+format, and registration mechanism are all open design choices with no prior
+failure to trace. Emerged from recognising a systematic tooling gap, not from a
+broken component.
+**Analysis Method**: design-framing
+**Scenario Target**: Orchestrator managing SAM task files manually via CLI +
+raw edits → Orchestrator uses atomic MCP tools with state-machine enforcement
+and delegation tracking
+
+### Resources
+
+| Type | Item |
+|------|------|
+| Reference server (FastMCP 3.x) | `plugins/agentskill-kaizen/mcp/server.py` |
+| Reference server (project-level) | `.claude/skills/backlog/backlog_core/server.py` |
+| Data layer | `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` |
+| Data layer | `plugins/python3-development/skills/implementation-manager/scripts/task_format.py` |
+| Session context reader | `plugins/python3-development/skills/implementation-manager/scripts/get_task_context.py` |
+| Hook reference | `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` |
+| Host plugin | `plugins/development-harness/` |
+| Related ideas item | `.claude/backlog/ideas-development-harness-task-status-mcp.md` (#257) |
+| Skill | `implementation-manager` (python3-development plugin) |
+| Framework | `fastmcp>=3.0.2` (pyproject.toml) |
+
+### Dependencies
+
+- **Depends on**: FastMCP 3.x available in project (`pyproject.toml` ✓)
+- **Unblocks**: reliable multi-session orchestration, delegation timeout
+  detection, cross-feature dashboard queries
+
+### Effort
+
+High — ~15 MCP tools, delegation log storage design, state machine
+implementation, registration mechanism, and multi-session context scanning are
+all net-new.
