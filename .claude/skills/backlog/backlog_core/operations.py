@@ -329,8 +329,7 @@ def _write_groomed_to_github(
                 issue = repository.get_issue(num)
                 labels = [label.name for label in issue.labels]
                 if "status:needs-grooming" in labels:
-                    ng = repository.get_label("status:needs-grooming")
-                    issue.remove_from_labels(ng)
+                    issue.remove_from_labels("status:needs-grooming")
             except GithubException as e:
                 out.warn(f"  WARNING: Could not update grooming label: {e}")
         else:
