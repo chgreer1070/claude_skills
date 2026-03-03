@@ -51,6 +51,72 @@ Before converting, verify the source process satisfies:
 - [ ] Teachable in 5 minutes — a novice can follow it cold
 - [ ] Auditable — execution can be traced and verified after the fact
 
+## Pre-Conversion Completeness Gate
+
+After reading the process-under-review and all linked or referencing files, evaluate this gate before any Mermaid conversion begins.
+
+**Question:** Are all branches, conditions, and terminal states derivable from what has been read — with no unbound unknowns?
+
+```mermaid
+flowchart TD
+    Read["Read process-under-review<br>and all linked/referencing files"] --> Inventory["Inventory all steps, conditions,<br>branches, and terminal states<br>found in the source material"]
+    Inventory --> Gate{"Are all branches, conditions,<br>and terminal states derivable<br>from the source — with no<br>unbound unknowns?"}
+    Gate -->|"Yes — all structure is derivable"| Triage["Proceed to Triage Protocol<br>then Mermaid conversion"]
+    Gate -->|"No — unknowns remain"| Coach["Enter coach-mode<br>Stop conversion entirely"]
+    Coach --> Report["Produce BLOCKED report<br>(see Coach-Mode Report Format below)"]
+    Report --> Done(["Return report to process author<br>Await answers before any conversion"])
+```
+
+### Why This Gate Exists
+
+Converting an incomplete process produces a diagram that looks authoritative but encodes ambiguity as if it were resolved. An AI agent reading that diagram will follow the false structure and behave incorrectly. Coach-mode surfaces the incompleteness instead of hiding it.
+
+### Coach-Mode Report Format
+
+When the gate returns NO, produce this report — do not produce any Mermaid:
+
+```text
+CONVERSION ASSESSMENT
+
+Goal:
+- [One sentence stating what the process is intended to accomplish]
+
+Source material read:
+- [List each file or section examined, with path or reference]
+
+What is known (derivable from source):
+- [Fact 1 — cite the source section]
+- [Fact 2 — cite the source section]
+- ...
+
+What is unknown or unbound:
+- [Missing branch] | Gap: [what is undefined] | Source: [which file/section is silent on this]
+- [Ambiguous condition] | Gap: [what observable fact is missing] | Source: [which file/section]
+- [Undefined terminal state] | Gap: [what success/failure looks like] | Source: [absent from all files]
+- [Step referencing undefined thing] | Gap: [the undefined reference] | Source: [where the reference appears]
+
+Questions the process author must answer before conversion can proceed:
+
+[Category — e.g., Branching Conditions]:
+- [Question 1] (needed because: [why this blocks a specific diagram node or edge])
+- [Question 2] (needed because: ...)
+
+[Category — e.g., Terminal States]:
+- [Question] (needed because: ...)
+
+Decision:
+- BLOCKED
+
+Conversion will proceed once all questions above are answered.
+```
+
+**Report field rules:**
+
+- "What is known" — list only facts directly readable or unambiguously derivable from the source files; cite the source for each
+- "What is unknown or unbound" — list only genuine gaps; do not list things that are merely implicit if the implication is unambiguous
+- "Questions" — one question per gap; ask only what is missing; do not ask about things already answered in the source
+- "BLOCKED" is the only valid verdict when the gate returns NO; there is no partial conversion
+
 ## Triage Protocol
 
 ```mermaid
