@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Plugin Creator & Refactoring Toolkit" width="800" />
+</p>
+
 # Plugin Creator & Refactoring Toolkit
 
 Complete plugin development toolkit for creating, refactoring, and validating Claude Code plugins. Combines plugin creation, systematic refactoring workflows, and comprehensive validation tools.

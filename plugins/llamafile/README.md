@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Llamafile" width="800" />
+</p>
+
 # Llamafile
 
 Helps Claude set up and manage local AI models on your computer using Mozilla's llamafile.

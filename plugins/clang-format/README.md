@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="clang-format Configuration" width="800" />
+</p>
+
 # clang-format Configuration
 
 Helps Claude configure clang-format to match your existing code style instead of forcing a style on you.

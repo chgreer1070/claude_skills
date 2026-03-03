@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="GitLab CI/CD and Documentation" width="800" />
+</p>
+
 # GitLab CI/CD and Documentation
 
 Makes Claude better at GitLab work: writing pipelines, creating documentation, and testing locally.

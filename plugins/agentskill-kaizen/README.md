@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="agentskill-kaizen" width="800" />
+</p>
+
 # agentskill-kaizen
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

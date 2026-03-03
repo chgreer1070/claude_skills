@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Verification Gate" width="800" />
+</p>
+
 # Verification Gate
 
 Makes Claude investigate before acting instead of jumping to solutions.

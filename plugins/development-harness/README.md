@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Development Harness" width="800" />
+</p>
+
 # development-harness
 
 Language-agnostic development process harness implementing the Stateless Agent Methodology

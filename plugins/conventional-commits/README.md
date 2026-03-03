@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Conventional Commits" width="800" />
+</p>
+
 # Conventional Commits
 
 Helps Claude write properly formatted commit messages that follow industry standards.

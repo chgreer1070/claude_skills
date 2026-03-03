@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Brainstorming Skill" width="800" />
+</p>
+
 # Brainstorming Skill
 
 Makes Claude significantly better at generating ideas and creative solutions.

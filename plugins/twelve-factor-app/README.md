@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="twelve-factor-app" width="800" />
+</p>
+
 # twelve-factor-app
 
 Reference guide for the Twelve-Factor App methodology — 15 principles (12 original plus 3

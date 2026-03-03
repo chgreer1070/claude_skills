@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="process-siren" width="800" />
+</p>
+
 # process-siren
 
 Converts bullet steps, ASCII art, markdown tables, and prose workflows into precise Mermaid diagrams for AI-facing documents.

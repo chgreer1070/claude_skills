@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="Commitlint" width="800" />
+</p>
+
 # Commitlint
 
 Helps Claude work with your commitlint configuration and generate valid commit messages.

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="uv - Astral's Python Package Manager Expert" width="800" />
+</p>
+
 # uv - Astral's Python Package Manager Expert
 
 Supercharge Claude with comprehensive knowledge of uv, the blazing-fast Python package and project manager that replaces pip, pip-tools, pipx, poetry, pyenv, and virtualenv.

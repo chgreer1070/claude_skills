@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="FastMCP Creator" width="800" />
+</p>
+
 # FastMCP Creator
 
 Build high-quality integrations that connect Claude to external services and APIs.

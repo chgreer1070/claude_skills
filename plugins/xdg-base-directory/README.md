@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="XDG Base Directory" width="800" />
+</p>
+
 # XDG Base Directory
 
 Makes Claude organize application files properly on Linux and Unix systems.

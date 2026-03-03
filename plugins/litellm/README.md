@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="LiteLLM" width="800" />
+</p>
+
 # LiteLLM
 
 Helps Claude write correct Python code when your project calls LLM APIs.

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/hero.png" alt="summarizer" width="800" />
+</p>
+
 # summarizer
 
 Faithful information summarization with fidelity preservation, structured output, and
