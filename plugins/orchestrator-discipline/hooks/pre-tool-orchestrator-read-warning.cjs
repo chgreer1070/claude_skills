@@ -83,9 +83,8 @@ process.stdin.on('end', () => {
     shouldWarn = isSourceOrConfigFile(targetPath);
   } else if (toolName === 'Grep') {
     targetPath = toolInput.path || '';
-    shouldWarn = isSourceOrConfigFile(targetPath)
-              || isDirectory(targetPath)
-              || looksLikeDirectory(targetPath);
+    shouldWarn =
+      isSourceOrConfigFile(targetPath) || isDirectory(targetPath) || looksLikeDirectory(targetPath);
   } else {
     process.stdout.write(JSON.stringify({}));
     process.exit(0);
