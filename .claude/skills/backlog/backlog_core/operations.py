@@ -325,6 +325,14 @@ def _write_groomed_to_github(
     else:
         if updated:
             out.info(f"  Synced to GitHub issue {issue_ref}")
+            try:
+                issue = repository.get_issue(num)
+                labels = [label.name for label in issue.labels]
+                if "status:needs-grooming" in labels:
+                    ng = repository.get_label("status:needs-grooming")
+                    issue.remove_from_labels(ng)
+            except GithubException as e:
+                out.warn(f"  WARNING: Could not update grooming label: {e}")
         else:
             out.info(f"  No changes to sync to GitHub issue {issue_ref}")
         return updated
