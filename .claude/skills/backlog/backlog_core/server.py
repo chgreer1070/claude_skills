@@ -5,23 +5,15 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastmcp import FastMCP
-from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from . import operations
-from .models import BacklogError, Output, ValidationError
+from .models import BacklogError, Output
 
 mcp = FastMCP("backlog")
 
-# ---------------------------------------------------------------------------
-# Shared ToolAnnotations singletons (F11)
-# ---------------------------------------------------------------------------
-_READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-_DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True)
-_WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False)
 
-
-@mcp.tool(annotations=_WRITE)
+@mcp.tool()
 def backlog_add(
     title: Annotated[str, Field(description="Item title")],
     priority: Annotated[str, Field(description="Priority level: P0, P1, P2, or Ideas")],
@@ -59,7 +51,7 @@ def backlog_add(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool()
 def backlog_list(
     with_status: Annotated[bool, Field(description="Include GitHub issue status for each item")] = False,
     from_github: Annotated[bool, Field(description="Refresh local cache from GitHub Issues before listing")] = False,
@@ -102,7 +94,7 @@ def backlog_list(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool(annotations=_READ_ONLY)
+@mcp.tool()
 def backlog_view(
     selector: Annotated[str, Field(description="Item selector: GitHub issue URL, #N, bare number, or title substring")],
     offset: Annotated[int, Field(ge=0, description="Skip N lines from body start (for pagination)")] = 0,
@@ -126,7 +118,7 @@ def backlog_view(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool(annotations=_WRITE)
+@mcp.tool()
 def backlog_sync(
     dry_run: Annotated[bool, Field(description="Preview what would be synced without making changes")] = False,
 ) -> dict:
@@ -146,7 +138,7 @@ def backlog_sync(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool(annotations=_DESTRUCTIVE)
+@mcp.tool()
 def backlog_close(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     reason: Annotated[
@@ -189,7 +181,7 @@ def backlog_close(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool(annotations=_DESTRUCTIVE)
+@mcp.tool()
 def backlog_resolve(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     summary: Annotated[str, Field(description="What was done — 1-2 sentence completion summary (required)")],
@@ -232,7 +224,7 @@ def backlog_resolve(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool(annotations=_WRITE)
+@mcp.tool()
 def backlog_update(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     plan: Annotated[str | None, Field(description="Path to a plan file to attach to the item")] = None,
@@ -270,16 +262,9 @@ def backlog_update(
 ) -> dict:
     """Update a backlog item: attach a plan, set status, create a GitHub issue, or write groomed content.
 
-    Intended call patterns (mutually exclusive for groomed content):
-    - Attach a plan: provide ``plan`` only.
-    - Set status: provide ``status`` only (e.g. 'in-progress', 'open', 'blocked').
-    - Full groomed content replacement: provide ``groomed_content`` only.
-    - Incremental section update: provide ``section`` + ``content`` together.
-    - Rename: provide ``title`` only.
-    - Update description: provide ``description`` only.
-
-    Combining ``groomed_content`` with ``section`` is invalid — use one approach
-    at a time.
+    For groomed content, either provide groomed_content (full replacement)
+    or section + content (incremental section update). Groomed content is
+    synced to the GitHub issue when the item has one.
 
     Returns:
         Dict with updated item title, applied changes, and output
@@ -287,13 +272,6 @@ def backlog_update(
     """
     out = Output()
     try:
-        if groomed_content is not None and section is not None:
-            raise ValidationError(
-                "groomed_content and section are mutually exclusive: "
-                "use groomed_content for full replacement or section+content for incremental update"
-            )
-        if section is not None and content is None:
-            raise ValidationError("section requires a content parameter for incremental update")
         result = operations.update_item(
             selector=selector,
             plan=plan,
@@ -311,7 +289,7 @@ def backlog_update(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool(annotations=_WRITE)
+@mcp.tool()
 def backlog_groom(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     groomed_content: Annotated[
@@ -345,7 +323,7 @@ def backlog_groom(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool(annotations=_WRITE)
+@mcp.tool()
 def backlog_normalize(
     dry_run: Annotated[bool, Field(description="Preview normalization changes without modifying files")] = False,
 ) -> dict:
@@ -366,7 +344,7 @@ def backlog_normalize(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool(annotations=_WRITE)
+@mcp.tool()
 def backlog_pull(
     dry_run: Annotated[bool, Field(description="Preview what would be pulled without modifying local files")] = False,
     force: Annotated[
@@ -389,256 +367,6 @@ def backlog_pull(
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
-
-
-# ---------------------------------------------------------------------------
-# New tools: F12 — Session Diff
-# ---------------------------------------------------------------------------
-
-
-@mcp.tool(annotations=_READ_ONLY)
-def backlog_session_diff(
-    since: Annotated[
-        str,
-        Field(
-            description="ISO 8601 timestamp (e.g. '2026-03-01T10:00:00Z'). Items with file mtime after this are returned."
-        ),
-    ],
-) -> dict:
-    """Return backlog items modified since a given ISO timestamp.
-
-    Use after context compaction to see what changed without re-running backlog_list.
-    Returns the same shape as backlog_list.
-
-    Returns:
-        Dict with items list, count, and output messages/warnings.
-        On error, dict contains an error key.
-    """
-    out = Output()
-    try:
-        result = operations.session_diff_items(since=since, output=out)
-        return {**result, **out.to_dict()}
-    except BacklogError as e:
-        return {"error": str(e), **out.to_dict()}
-
-
-# ---------------------------------------------------------------------------
-# New tools: F13 — Dashboard
-# ---------------------------------------------------------------------------
-
-
-@mcp.tool(annotations=_READ_ONLY)
-def backlog_dashboard() -> dict:
-    """Return a single-call backlog health overview.
-
-    Replaces 3-5 round-trips of backlog_list + manual counting.
-
-    Returns:
-        Dict with counts_by_section, total_open, items_without_issue,
-        items_needing_grooming, recently_modified (last 7 days), and
-        output messages/warnings. On error, dict contains an error key.
-    """
-    out = Output()
-    try:
-        result = operations.dashboard_items(output=out)
-        return {**result, **out.to_dict()}
-    except BacklogError as e:
-        return {"error": str(e), **out.to_dict()}
-
-
-# ---------------------------------------------------------------------------
-# New tools: F14 — Named status tools
-# ---------------------------------------------------------------------------
-
-
-@mcp.tool(annotations=_WRITE)
-def backlog_start(
-    selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
-) -> dict:
-    """Set a backlog item's status to 'in-progress'.
-
-    Provides explicit, auditable intent compared to backlog_update(status=...).
-
-    Returns:
-        Dict with item title, status, and output messages/warnings.
-        On error, dict contains an error key.
-    """
-    out = Output()
-    try:
-        result = operations.start_item(selector=selector, output=out)
-        return {**result, **out.to_dict()}
-    except BacklogError as e:
-        return {"error": str(e), **out.to_dict()}
-
-
-@mcp.tool(annotations=_WRITE)
-def backlog_block(
-    selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
-    reason: Annotated[str, Field(description="Why the item is blocked (required)")],
-) -> dict:
-    """Set a backlog item's status to 'blocked' with an explicit reason.
-
-    Returns:
-        Dict with item title, status, blocked_reason, and output messages/warnings.
-        On error, dict contains an error key.
-    """
-    out = Output()
-    try:
-        result = operations.block_item(selector=selector, reason=reason, output=out)
-        return {**result, **out.to_dict()}
-    except BacklogError as e:
-        return {"error": str(e), **out.to_dict()}
-
-
-@mcp.tool(annotations=_WRITE)
-def backlog_unblock(
-    selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
-) -> dict:
-    """Clear a block on a backlog item: sets status back to 'open'.
-
-    Returns:
-        Dict with item title, status, and output messages/warnings.
-        On error, dict contains an error key.
-    """
-    out = Output()
-    try:
-        result = operations.unblock_item(selector=selector, output=out)
-        return {**result, **out.to_dict()}
-    except BacklogError as e:
-        return {"error": str(e), **out.to_dict()}
-
-
-# ---------------------------------------------------------------------------
-# New tools: F15 — Batch update
-# ---------------------------------------------------------------------------
-
-
-@mcp.tool(annotations=_WRITE)
-def backlog_batch_update(
-    selectors: Annotated[list[str], Field(description="List of item selectors to update (title substrings, #N, URLs)")],
-    status: Annotated[
-        str | None, Field(description="Status to apply to all selected items (e.g. 'in-progress', 'open')")
-    ] = None,
-    plan: Annotated[str | None, Field(description="Plan path to attach to all selected items")] = None,
-) -> dict:
-    """Update multiple backlog items with the same status and/or plan in a single call.
-
-    Replaces N sequential backlog_update calls with one call.
-    Each item is processed independently; per-item errors are collected but do
-    not abort processing of remaining selectors.
-
-    Returns:
-        Dict with updated count, total count, per-item results list, and
-        output messages/warnings. On error, dict contains an error key.
-    """
-    out = Output()
-    try:
-        result = operations.batch_update_items(selectors=selectors, status=status, plan=plan, output=out)
-        return {**result, **out.to_dict()}
-    except BacklogError as e:
-        return {"error": str(e), **out.to_dict()}
-
-
-# ---------------------------------------------------------------------------
-# F17 — MCP Prompts (discoverability in Claude Code prompt picker)
-# ---------------------------------------------------------------------------
-
-
-@mcp.prompt()
-def backlog_add_prompt(
-    title: Annotated[str, Field(description="Item title")],
-    priority: Annotated[str, Field(description="Priority level: P0, P1, P2, or Ideas")],
-    description: Annotated[str, Field(description="Item description")],
-) -> str:
-    """Prompt to add a new backlog item.
-
-    Returns:
-        Prompt string for adding a backlog item.
-    """
-    return f"Add backlog item '{title}' at priority {priority}: {description}"
-
-
-@mcp.prompt()
-def backlog_list_prompt(
-    section: Annotated[str | None, Field(description="Filter by section: P0, P1, P2, Ideas")] = None,
-    status: Annotated[str | None, Field(description="Filter by status")] = None,
-) -> str:
-    """Prompt to list open backlog items.
-
-    Returns:
-        Prompt string for listing backlog items.
-    """
-    parts = ["List open backlog items"]
-    if section:
-        parts.append(f"in section {section}")
-    if status:
-        parts.append(f"with status {status}")
-    return " ".join(parts)
-
-
-@mcp.prompt()
-def backlog_dashboard_prompt() -> str:
-    """Prompt to get a backlog health overview.
-
-    Returns:
-        Prompt string for the dashboard overview.
-    """
-    return "Show me the backlog health dashboard with counts by section, items needing grooming, and recent changes."
-
-
-@mcp.prompt()
-def backlog_view_prompt(
-    selector: Annotated[str, Field(description="Item selector: #N, title substring, or GitHub issue URL")],
-) -> str:
-    """Prompt to view a single backlog item.
-
-    Returns:
-        Prompt string for viewing an item.
-    """
-    return f"Show the details for backlog item: {selector}"
-
-
-@mcp.prompt()
-def backlog_groom_prompt(selector: Annotated[str, Field(description="Item selector")]) -> str:
-    """Prompt to groom a backlog item.
-
-    Returns:
-        Prompt string for grooming an item.
-    """
-    return f"Groom backlog item {selector}: research it, add acceptance criteria, context, and implementation notes."
-
-
-@mcp.prompt()
-def backlog_start_prompt(selector: Annotated[str, Field(description="Item selector")]) -> str:
-    """Prompt to start work on a backlog item.
-
-    Returns:
-        Prompt string for starting an item.
-    """
-    return f"Start work on backlog item {selector}: set it to in-progress."
-
-
-@mcp.prompt()
-def backlog_resolve_prompt(
-    selector: Annotated[str, Field(description="Item selector")],
-    summary: Annotated[str, Field(description="What was done")] = "",
-) -> str:
-    """Prompt to mark a backlog item as resolved.
-
-    Returns:
-        Prompt string for resolving an item.
-    """
-    return f"Resolve backlog item {selector}" + (f": {summary}" if summary else ".")
-
-
-@mcp.prompt()
-def backlog_session_diff_prompt(since: Annotated[str, Field(description="ISO 8601 timestamp")]) -> str:
-    """Prompt to see what changed in the backlog since a timestamp.
-
-    Returns:
-        Prompt string for the session diff query.
-    """
-    return f"What backlog items changed since {since}?"
 
 
 if __name__ == "__main__":
