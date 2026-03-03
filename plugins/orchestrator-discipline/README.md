@@ -35,3 +35,13 @@ To review the rules manually:
 ```text
 /orchestrator-discipline
 ```
+
+---
+
+> **The Ancient Woe**
+>
+> *The mad king who demands to personally inspect every single scroll in the kingdom, bloating his mind with trivia he will not even edit, and bypassing his royal delegates for "small changes"!*
+
+> **The Bard's Decree**
+>
+> *"Delegate, thou obsessive sovereign! I place a ward upon thy tools: before thou dost open a source file, thou must prove thou intendst to alter it! Keep thy royal mind clear for grand strategy!"*
