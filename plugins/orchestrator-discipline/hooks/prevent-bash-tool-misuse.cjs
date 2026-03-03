@@ -35,49 +35,56 @@ const VIOLATIONS = [
     // Standalone grep at start of command — not as pipeline step
     pattern: /^\s*grep\b/,
     redirect: 'Grep',
-    message: 'Use the Grep tool instead of Bash grep. Reason: built-in tools handle encoding and permissions correctly.',
+    message:
+      'Use the Grep tool instead of Bash grep. Reason: built-in tools handle encoding and permissions correctly.',
     example: 'Grep(pattern="...", path="...")',
   },
   {
     // find with -name
     pattern: /\bfind\b\s+\S+\s+-name\b/,
     redirect: 'Glob',
-    message: 'Use the Glob tool instead of Bash find. Reason: built-in tools handle gitignore and permissions correctly.',
+    message:
+      'Use the Glob tool instead of Bash find. Reason: built-in tools handle gitignore and permissions correctly.',
     example: 'Glob(pattern="**/*.ts")',
   },
   {
     // ls at start of command (not in pipeline, not ls -la for human consumption)
     pattern: /^\s*ls\b(?!\s+-la\s*$)/,
     redirect: 'Glob',
-    message: 'Use the Glob tool instead of Bash ls. Reason: built-in tools handle encoding and permissions correctly.',
+    message:
+      'Use the Glob tool instead of Bash ls. Reason: built-in tools handle encoding and permissions correctly.',
     example: 'Glob(pattern="*", path="/some/dir")',
   },
   {
     // cat a file (not cat /dev/stdin, not cat | something)
-    pattern: /^\s*cat\s+[^\|]+\.\w+\s*$/,
+    pattern: /^\s*cat\s+[^|]+\.\w+\s*$/,
     redirect: 'Read',
-    message: 'Use the Read tool instead of Bash cat. Reason: built-in tools handle encoding, large files, and binary detection.',
+    message:
+      'Use the Read tool instead of Bash cat. Reason: built-in tools handle encoding, large files, and binary detection.',
     example: 'Read(file_path="/path/to/file")',
   },
   {
     // sed -n 'N,Mp' for reading a range — use Read with offset/limit
     pattern: /^\s*sed\s+-n\s+['"]?\d+,\d+p['"]?/,
     redirect: 'Read',
-    message: 'Use the Read tool with offset and limit instead of sed -n. Reason: Read handles encoding correctly and is more expressive.',
+    message:
+      'Use the Read tool with offset and limit instead of sed -n. Reason: Read handles encoding correctly and is more expressive.',
     example: 'Read(file_path="/path/to/file", offset=10, limit=20)',
   },
   {
     // head -N (reading first N lines)
     pattern: /^\s*head\s+-\d+/,
     redirect: 'Read',
-    message: 'Use the Read tool with limit instead of head. Reason: built-in tools handle encoding and large files correctly.',
+    message:
+      'Use the Read tool with limit instead of head. Reason: built-in tools handle encoding and large files correctly.',
     example: 'Read(file_path="/path/to/file", limit=20)',
   },
   {
     // tail -N (reading last N lines) — use Read with offset
     pattern: /^\s*tail\s+-\d+\s+\S+\.\w+\s*$/,
     redirect: 'Read',
-    message: 'Use the Read tool with offset instead of tail. Reason: built-in tools handle encoding and large files correctly.',
+    message:
+      'Use the Read tool with offset instead of tail. Reason: built-in tools handle encoding and large files correctly.',
     example: 'Read(file_path="/path/to/file", offset=-20)',
   },
 ];
@@ -87,15 +94,15 @@ const VIOLATIONS = [
  * These are pipeline contexts where the bash command is necessary.
  */
 const LEGITIMATE_PATTERNS = [
-  /git\s.*\|\s*grep/,          // git log | grep, git diff | grep
-  /\|\s*grep/,                  // any pipeline ... | grep
-  /grep.*\|\s/,                 // grep as pipeline source with another step
-  /uv run.*\|\s*(head|tail)/,   // uv run output piped to head/tail
-  /gh\s.*\|\s*(grep|head)/,     // gh CLI output piped
-  /npm\s.*\|\s*(grep|head)/,    // npm output piped
-  /cat\s+\/dev\/(stdin|null)/,  // cat /dev/stdin or /dev/null
-  /cat\s+-/,                    // cat - (stdin)
-  /ls\s+-la\s*$/,               // ls -la for human-readable directory listing
+  /git\s.*\|\s*grep/, // git log | grep, git diff | grep
+  /\|\s*grep/, // any pipeline ... | grep
+  /grep.*\|\s/, // grep as pipeline source with another step
+  /uv run.*\|\s*(head|tail)/, // uv run output piped to head/tail
+  /gh\s.*\|\s*(grep|head)/, // gh CLI output piped
+  /npm\s.*\|\s*(grep|head)/, // npm output piped
+  /cat\s+\/dev\/(stdin|null)/, // cat /dev/stdin or /dev/null
+  /cat\s+-/, // cat - (stdin)
+  /ls\s+-la\s*$/, // ls -la for human-readable directory listing
 ];
 
 function main() {
@@ -132,7 +139,7 @@ function main() {
   for (const v of VIOLATIONS) {
     if (v.pattern.test(cmd)) {
       process.stderr.write(
-        [
+        `${[
           '--- Bash Tool Misuse Prevented ---',
           '',
           `Command: ${cmd.trim()}`,
@@ -143,7 +150,7 @@ function main() {
           '',
           'Rule source: orchestrator-discipline plugin — Bash Built-In Tool Enforcement',
           '--- End ---',
-        ].join('\n') + '\n'
+        ].join('\n')}\n`,
       );
       process.exit(2);
     }

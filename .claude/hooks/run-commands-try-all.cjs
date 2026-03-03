@@ -54,7 +54,9 @@ function runCommand(cmd, index) {
 
 const commands = getCommands();
 if (commands.length === 0) {
-  process.stderr.write('run-commands-try-all: no commands (pass as argv or stdin {"commands": [...]})\n');
+  process.stderr.write(
+    'run-commands-try-all: no commands (pass as argv or stdin {"commands": [...]})\n',
+  );
   process.exit(0);
 }
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * populate-agent-descriptions.mjs
  *
@@ -9,9 +10,9 @@
  *   node populate-agent-descriptions.mjs
  */
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPTS_DIR = dirname(fileURLToPath(import.meta.url));
@@ -192,9 +193,7 @@ function resolveLatestVersion(pluginDir) {
   if (hasSemver) {
     // Filter to only semver entries, then pick highest
     const semverEntries = entries.filter((e) => semverRe.test(e));
-    return semverEntries.reduce((best, cur) =>
-      compareVersions(cur, best) > 0 ? cur : best,
-    );
+    return semverEntries.reduce((best, cur) => (compareVersions(cur, best) > 0 ? cur : best));
   }
 
   // Hash-based: pick by most recent mtime
@@ -271,46 +270,46 @@ function buildAgentList() {
   // ── User agents ─────────────────────────────────────────────────────────────
   /** @type {Array<{ key: string, file: string }>} */
   const userAgents = [
-    { key: 'c-systems-programmer',       file: 'c-systems-programmer.md' },
-    { key: 'code-refactorer-agent',       file: 'refactor-agent.md' },
-    { key: 'code-review',                 file: 'code-review.md' },
-    { key: 'comprehensive-researcher',    file: 'comprehensive-researcher.md' },
-    { key: 'context-gathering',           file: 'context-gathering.md' },
-    { key: 'context-refinement',          file: 'context-refinement.md' },
-    { key: 'doc-drift-auditor',           file: 'doc-drift-auditor.md' },
-    { key: 'doc-freshness-guardian',      file: 'doc-freshness-guardian.md' },
-    { key: 'documentation-expert',        file: 'documentation-expert.md' },
-    { key: 'embedded-dev-specialist',     file: 'embedded-dev-specialist.md' },
-    { key: 'github-project-manager',      file: 'github-project-manager.md' },
-    { key: 'gitlab-docs-expert',          file: 'gitlab-docs-expert.md' },
-    { key: 'gsd-codebase-mapper',         file: 'gsd-codebase-mapper.md' },
-    { key: 'gsd-debugger',                file: 'gsd-debugger.md' },
-    { key: 'gsd-executor',                file: 'gsd-executor.md' },
-    { key: 'gsd-integration-checker',     file: 'gsd-integration-checker.md' },
-    { key: 'gsd-phase-researcher',        file: 'gsd-phase-researcher.md' },
-    { key: 'gsd-plan-checker',            file: 'gsd-plan-checker.md' },
-    { key: 'gsd-planner',                 file: 'gsd-planner.md' },
-    { key: 'gsd-project-researcher',      file: 'gsd-project-researcher.md' },
-    { key: 'gsd-research-synthesizer',    file: 'gsd-research-synthesizer.md' },
-    { key: 'gsd-roadmapper',              file: 'gsd-roadmapper.md' },
-    { key: 'gsd-verifier',                file: 'gsd-verifier.md' },
+    { key: 'c-systems-programmer', file: 'c-systems-programmer.md' },
+    { key: 'code-refactorer-agent', file: 'refactor-agent.md' },
+    { key: 'code-review', file: 'code-review.md' },
+    { key: 'comprehensive-researcher', file: 'comprehensive-researcher.md' },
+    { key: 'context-gathering', file: 'context-gathering.md' },
+    { key: 'context-refinement', file: 'context-refinement.md' },
+    { key: 'doc-drift-auditor', file: 'doc-drift-auditor.md' },
+    { key: 'doc-freshness-guardian', file: 'doc-freshness-guardian.md' },
+    { key: 'documentation-expert', file: 'documentation-expert.md' },
+    { key: 'embedded-dev-specialist', file: 'embedded-dev-specialist.md' },
+    { key: 'github-project-manager', file: 'github-project-manager.md' },
+    { key: 'gitlab-docs-expert', file: 'gitlab-docs-expert.md' },
+    { key: 'gsd-codebase-mapper', file: 'gsd-codebase-mapper.md' },
+    { key: 'gsd-debugger', file: 'gsd-debugger.md' },
+    { key: 'gsd-executor', file: 'gsd-executor.md' },
+    { key: 'gsd-integration-checker', file: 'gsd-integration-checker.md' },
+    { key: 'gsd-phase-researcher', file: 'gsd-phase-researcher.md' },
+    { key: 'gsd-plan-checker', file: 'gsd-plan-checker.md' },
+    { key: 'gsd-planner', file: 'gsd-planner.md' },
+    { key: 'gsd-project-researcher', file: 'gsd-project-researcher.md' },
+    { key: 'gsd-research-synthesizer', file: 'gsd-research-synthesizer.md' },
+    { key: 'gsd-roadmapper', file: 'gsd-roadmapper.md' },
+    { key: 'gsd-verifier', file: 'gsd-verifier.md' },
     { key: 'live-api-integration-tester', file: 'live-api-integration-tester.md' },
-    { key: 'logging',                     file: 'logging.md' },
-    { key: 'metadata-vault-manager',      file: 'metadata-vault-manager.md' },
-    { key: 'qa-devops-lead',              file: 'qa-devops-lead.md' },
-    { key: 'service-documentation',       file: 'service-documentation.md' },
-    { key: 'spec-analyst',                file: 'spec-analyst.md' },
-    { key: 'spec-developer',              file: 'spec-developer.md' },
-    { key: 'spec-orchestrator',           file: 'spec-orchestrator.md' },
-    { key: 'spec-reviewer',               file: 'spec-reviewer.md' },
-    { key: 'spec-tester',                 file: 'spec-tester.md' },
-    { key: 'spec-validator',              file: 'spec-validator.md' },
-    { key: 'subagent-generator',          file: 'subagent-generator.md' },
-    { key: 'subagent-refactorer',         file: 'subagent-refactorer.md' },
-    { key: 'system-architect',            file: 'system-architect.md' },
-    { key: 'technical-researcher',        file: 'technical-researcher.md' },
-    { key: 'test-architect',              file: 'test-architect.md' },
-    { key: 'test-quality-auditor',        file: 'test-quality-auditor.md' },
+    { key: 'logging', file: 'logging.md' },
+    { key: 'metadata-vault-manager', file: 'metadata-vault-manager.md' },
+    { key: 'qa-devops-lead', file: 'qa-devops-lead.md' },
+    { key: 'service-documentation', file: 'service-documentation.md' },
+    { key: 'spec-analyst', file: 'spec-analyst.md' },
+    { key: 'spec-developer', file: 'spec-developer.md' },
+    { key: 'spec-orchestrator', file: 'spec-orchestrator.md' },
+    { key: 'spec-reviewer', file: 'spec-reviewer.md' },
+    { key: 'spec-tester', file: 'spec-tester.md' },
+    { key: 'spec-validator', file: 'spec-validator.md' },
+    { key: 'subagent-generator', file: 'subagent-generator.md' },
+    { key: 'subagent-refactorer', file: 'subagent-refactorer.md' },
+    { key: 'system-architect', file: 'system-architect.md' },
+    { key: 'technical-researcher', file: 'technical-researcher.md' },
+    { key: 'test-architect', file: 'test-architect.md' },
+    { key: 'test-quality-auditor', file: 'test-quality-auditor.md' },
     { key: 'trace-protocol-investigator', file: 'trace-protocol-investigator.md' },
   ];
 
@@ -321,20 +320,20 @@ function buildAgentList() {
   // ── Project agents (shadow user agents with same key) ───────────────────────
   /** @type {Array<{ key: string, file: string }>} */
   const projectAgents = [
-    { key: 'backlog-item-groomer',  file: 'backlog-item-groomer.md' },
-    { key: 'c-systems-programmer',  file: 'c-systems-programmer.md' },
-    { key: 'code-review',           file: 'code-review.md' },
-    { key: 'context-gathering',     file: 'context-gathering.md' },
-    { key: 'context-refinement',    file: 'context-refinement.md' },
-    { key: 'fact-checker',          file: 'fact-checker.md' },
-    { key: 'javascript-pro',        file: 'javascript-pro.md' },
-    { key: 'logging',               file: 'logging.md' },
-    { key: 'plugin-docs-writer',    file: 'plugin-docs-writer.md' },
-    { key: 'process-siren',         file: 'process-siren.md' },
+    { key: 'backlog-item-groomer', file: 'backlog-item-groomer.md' },
+    { key: 'c-systems-programmer', file: 'c-systems-programmer.md' },
+    { key: 'code-review', file: 'code-review.md' },
+    { key: 'context-gathering', file: 'context-gathering.md' },
+    { key: 'context-refinement', file: 'context-refinement.md' },
+    { key: 'fact-checker', file: 'fact-checker.md' },
+    { key: 'javascript-pro', file: 'javascript-pro.md' },
+    { key: 'logging', file: 'logging.md' },
+    { key: 'plugin-docs-writer', file: 'plugin-docs-writer.md' },
+    { key: 'process-siren', file: 'process-siren.md' },
     { key: 'research-context-agent', file: 'research-context-agent.md' },
-    { key: 'research-curator',      file: 'research-curator.md' },
-    { key: 'topic-specialist',      file: 'topic-specialist.md' },
-    { key: 'typescript-pro',        file: 'typescript-pro.md' },
+    { key: 'research-curator', file: 'research-curator.md' },
+    { key: 'topic-specialist', file: 'topic-specialist.md' },
+    { key: 'typescript-pro', file: 'typescript-pro.md' },
   ];
 
   for (const { key, file } of projectAgents) {
@@ -686,9 +685,7 @@ for (const { key, filePath } of agents) {
   const description = readDescription(filePath);
 
   if (description === null || description === '') {
-    process.stderr.write(
-      `WARN: Skipping "${key}" — no description found in ${filePath}\n`,
-    );
+    process.stderr.write(`WARN: Skipping "${key}" — no description found in ${filePath}\n`);
     skipped++;
     continue;
   }
@@ -698,9 +695,7 @@ for (const { key, filePath } of agents) {
     process.stdout.write(`OK  ${key}\n`);
     populated++;
   } catch (err) {
-    process.stderr.write(
-      `WARN: Skipping "${key}" — update-agent-map failed: ${err.message}\n`,
-    );
+    process.stderr.write(`WARN: Skipping "${key}" — update-agent-map failed: ${err.message}\n`);
     skipped++;
   }
 }

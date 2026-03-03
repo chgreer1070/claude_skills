@@ -98,8 +98,12 @@ async function runWrite(parsed) {
     // raw === undefined means key is absent — keep defaults
 
     const merged = {
-      capabilities: flags.has('capabilities') ? (flags.get('capabilities') ?? null) : existing.capabilities,
-      description: flags.has('description') ? (flags.get('description') ?? null) : existing.description,
+      capabilities: flags.has('capabilities')
+        ? (flags.get('capabilities') ?? null)
+        : existing.capabilities,
+      description: flags.has('description')
+        ? (flags.get('description') ?? null)
+        : existing.description,
     };
 
     await db.put(name, JSON.stringify(merged));
@@ -165,7 +169,7 @@ async function runDump(parsed) {
   const merged = { ...existingJson, ...dbEntries };
   const entryCount = Object.keys(dbEntries).length;
 
-  writeFileSync(resolvedPath, JSON.stringify(merged, null, 2) + '\n', 'utf8');
+  writeFileSync(resolvedPath, `${JSON.stringify(merged, null, 2)}\n`, 'utf8');
   process.stdout.write(`Dumped agent-map.db to ${resolvedPath} (${entryCount} entries)\n`);
 }
 
