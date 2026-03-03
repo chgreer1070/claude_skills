@@ -7,8 +7,13 @@ metadata:
   added: '2026-03-02'
   priority: p2
   type: enhancement
-  status: open
+  status: resolved
   issue: '#397'
   last_synced: '2026-03-02T07:03:52Z'
   plan: plan/tasks-20-backlog-mcp-migration-followup-1.md
 ---
+
+## Resolution
+
+- Verified current file state: `.claude/skills/complete-implementation/SKILL.md` lines 112, 126, and 138 now use `mcp__backlog__backlog_list()` and `mcp__backlog__backlog_update(...)`.
+- No remaining `uv run backlog.py` invocations exist in that skill file.
