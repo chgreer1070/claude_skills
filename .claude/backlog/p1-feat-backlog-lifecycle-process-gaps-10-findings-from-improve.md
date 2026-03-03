@@ -7,7 +7,7 @@ metadata:
   added: '2026-03-02'
   priority: P1
   type: Feature
-  status: needs-grooming
+  status: open
   issue: '#398'
   groomed: '2026-03-03'
   last_synced: '2026-03-02T23:38:44Z'
