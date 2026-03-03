@@ -5,14 +5,34 @@ metadata:
   topic: agent-large-file-write-strategy-incremental-section-by-secti
   source: Session observation
   added: '2026-03-01'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#367'
-  last_synced: '2026-03-02T04:50:43Z'
+  last_synced: '2026-03-03T03:53:35Z'
   groomed: '2026-03-02'
   plan: plan/tasks-19-large-file-write-strategy.md
 ---
+
+## Story
+
+As a **developer using Claude Code skills**, I want to **agent large file write strategy: incremental section-by-section writing** so that **the tooling becomes more capable and complete**.
+
+## Description
+
+Sub-agents writing large files (>30K chars) via single Write calls timeout or get stuck. Need a strategy where agents write the file structure/skeleton first, then fill in content section-by-section using Edit calls. Observed during task planner writing 57,800 char task plan that stalled. The pattern should be documented as agent guidance and possibly enforced via hooks or delegation instructions.
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Session observation
+- **Priority**: P1
+- **Added**: 2026-03-01
+- **Research questions**: None
 
 ## Fact-Check
 

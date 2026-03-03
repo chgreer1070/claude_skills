@@ -7,11 +7,31 @@ metadata:
   added: '2026-03-02'
   priority: P2
   type: Feature
-  status: open
+  status: needs-grooming
   issue: '#389'
-  last_synced: '2026-03-02T05:15:06Z'
-  groomed: '2026-03-03'
+  last_synced: '2026-03-03T03:53:34Z'
+  groomed: '2026-03-02'
 ---
+
+## Story
+
+As a **developer using Claude Code skills**, I want to **abstract github issues layer from backlog mcp server into pluggable backend** so that **the tooling becomes more capable and complete**.
+
+## Description
+
+The backlog MCP server (10 tools, 382+ tests) is tightly coupled to GitHub Issues as its issue-tracking backend. Every operation — add, list, sync, close, resolve, groom — assumes GitHub Issues API. This prevents using the backlog system with GitLab, Jira, databases, or alternative agent task systems like GSD (get-shit-done), Superpowers, or Beads. Success: a clean backend protocol/interface with 2+ working backends shipped (GitHub Issues as default + at least one alternative like Beads graph tracker or SQLite) proving the abstraction works. You know it works when the same 10 MCP tools produce equivalent behavior against a different backend with zero changes to skill workflows or MCP tool signatures. Research refs: research/agent-frameworks/get-shit-done.md, research/agent-frameworks/superpowers.md, research/task-management/beads.md.
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: User request
+- **Priority**: P2
+- **Added**: 2026-03-02
+- **Research questions**: None
 
 ## Fact-Check
 
@@ -51,7 +71,7 @@ metadata:
 **Missing as blockers**: None
 **Missing as deliverables**: Backend protocol design, SQLite schema, migration path, test strategy
 
-## Groomed (2026-03-03)
+## Groomed (2026-03-02)
 
 ### Issue Classification
 
@@ -70,13 +90,6 @@ metadata:
 - Bottleneck: Current GitHub coupling prevents adoption by teams using non-GitHub platforms; blocks GSD/Superpowers framework compatibility
 
 ### Scope
-
-- Define a backend protocol (types, error contracts, pagination, auth) that covers all 10 MCP tools without changing their signatures.
-- Extract the current GitHub implementation into a backend module implementing the protocol and a factory that selects backends by config/env.
-- Ship at least one alternative backend (Beads or SQLite) with parity for add/list/view/sync/close/resolve/update/groom/normalize/pull.
-- Build a cross-backend parity test harness that reuses existing 380 tests and adds backend-agnostic fixtures.
-- Document the protocol and how to add/enable backends; ensure skill workflows (/backlog, /work-backlog-item, /groom-backlog-item) need no changes.
-- Out of scope: architectural planning for future third backends beyond the first alternative; rewriting skill UIs.
 
 ### Benefits
 
@@ -107,14 +120,6 @@ Backend protocol exists and is documented. Two working implementations (GitHub I
 - **Depends on**: #329 (migrate backlog to MCP server) should be completed first so MCP layer is stable
 - **Blocks**: Any future backends (GitLab, Jira, Beads integration items)
 - **Related**: #282 (GitHub-first backlog redesign) and #255 (backlog MCP server conversion, resolved) provide architectural context
-
-### Output / Evidence
-
-- Protocol/interface doc covering all MCP tool operations with error and auth contracts.
-- GitHub backend extracted to protocol-compliant module; existing tests pass.
-- Alternative backend (Beads or SQLite) exercising the same tools via config/env switch.
-- Cross-backend parity tests/fixtures demonstrating identical behavior across backends.
-- Documentation showing backend selection and steps to add new backends; skill workflows remain unchanged.
 
 ### Research
 

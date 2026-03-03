@@ -5,13 +5,29 @@ metadata:
   topic: sam-artifact-schema-validation
   source: Gap analysis of SAM framework
   added: '2026-02-01'
-  priority: completed
+  priority: P1
   type: Feature
-  status: done
+  status: needs-grooming
   issue: '#88'
   plan: ''
+  last_synced: '2026-03-03T03:54:12Z'
 ---
 
-**Suggested location**: [`sam-artifact-schemas/`](https://github.com/bitflight-devops/stateless-agent-methodology) (new directory with schema files)
+## Story
 
-**Research first**: How do GSD artifacts (STATE.md, ROADMAP.md) enforce structure? What validation approaches exist in BMAD-METHOD? JSON Schema vs YAML validation vs custom parsers?
+As a **developer using Claude Code skills**, I want to **sam: artifact schema validation** so that **the tooling becomes more capable and complete**.
+
+## Description
+
+Define formal validation rules or JSON schemas for artifact formats. Currently only templates provided. Enable automated validation at stage boundaries.
+
+## Suggested Location
+
+[`sam-artifact-schemas/`](https://github.com/bitflight-devops/stateless-agent-methodology) (new directory with schema files)
+
+## Context
+
+- **Source**: Gap analysis of SAM framework
+- **Priority**: P1
+- **Added**: 2026-02-01
+- **Research questions**: How do GSD artifacts (STATE.md, ROADMAP.md) enforce structure? What validation approaches exist in BMAD-METHOD? JSON Schema vs YAML validation vs custom parsers?

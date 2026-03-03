@@ -7,8 +7,9 @@ metadata:
   added: '2026-02-20'
   priority: P2
   type: Feature
-  status: open
+  status: needs-grooming
   issue: '#104'
+  last_synced: '2026-03-03T03:54:05Z'
 ---
 
 ## Story

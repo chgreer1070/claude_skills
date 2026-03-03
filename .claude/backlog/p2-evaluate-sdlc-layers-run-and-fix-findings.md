@@ -6,9 +6,10 @@ metadata:
   source: Session observation — SDLC layer implementation (2026-02-23)
   added: '2026-02-23'
   priority: P2
-  type: Chore
-  status: open
+  type: Bug
+  status: needs-grooming
   issue: '#249'
+  last_synced: '2026-03-03T03:53:48Z'
 ---
 
 ## Story
