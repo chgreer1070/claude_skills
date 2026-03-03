@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -1493,3 +1494,203 @@ def pull_items(
         out.info(f"Pulled {pulled} item(s){suffix}.")
 
     return {"pulled": pulled, "dry_run": dry_run, **out.to_dict()}
+
+
+# ---------------------------------------------------------------------------
+# Public API: SESSION DIFF (F12)
+# ---------------------------------------------------------------------------
+
+
+def session_diff_items(
+    since: str, repo: str = DEFAULT_REPO, output: Output | None = None
+) -> dict[str, int | list[str] | list[dict[str, str | bool]]]:
+    """Return backlog items whose local file was modified after the given ISO timestamp.
+
+    Agents rejoining after context compaction can call this with the timestamp
+    of their last active session to see only what changed.
+
+    Args:
+        since: ISO 8601 timestamp (e.g. '2026-03-01T10:00:00Z'). Items with
+            file mtime newer than this are included.
+        repo: GitHub repo in owner/repo format (unused; kept for API symmetry).
+        output: Optional Output collector.
+
+    Returns:
+        Dict with items list (same shape as list_items), count, and output.
+    """
+    out = output or Output()
+    try:
+        since_dt = datetime.fromisoformat(since)
+        since_ts = since_dt.timestamp()
+    except (ValueError, AttributeError) as exc:
+        raise ValidationError(f"Invalid ISO timestamp: {since!r}") from exc
+
+    items = parse_backlog()
+    changed: list[BacklogItem] = []
+    for item in items:
+        if not item.file_path:
+            continue
+        try:
+            mtime = Path(item.file_path).stat().st_mtime
+        except OSError:
+            continue
+        if mtime > since_ts:
+            changed.append(item)
+
+    result_items = [_build_list_entry(it, False, {}) for it in changed]
+    return {"items": result_items, "count": len(result_items), **out.to_dict()}
+
+
+# ---------------------------------------------------------------------------
+# Public API: DASHBOARD (F13)
+# ---------------------------------------------------------------------------
+
+
+def dashboard_items(repo: str = DEFAULT_REPO, output: Output | None = None) -> dict[str, object]:
+    """Return a backlog health overview in a single call.
+
+    Replaces 3-5 round-trips of backlog_list + manual counting with one call.
+
+    Returns:
+        Dict containing:
+          - counts_by_section: {P0, P1, P2, Ideas} item counts
+          - items_without_issue: items with no linked GitHub issue
+          - items_needing_grooming: items whose local status is 'needs-grooming'
+            or that have never been groomed
+          - recently_modified: items whose file was modified in the last 7 days
+    """
+    out = output or Output()
+    items = parse_backlog()
+    open_items = [it for it in items if not it.skip and it.section]
+
+    seven_days_ago = datetime.now(UTC).timestamp() - 7 * 24 * 3600
+
+    counts_by_section: dict[str, int] = {"P0": 0, "P1": 0, "P2": 0, "Ideas": 0}
+    without_issue: list[dict[str, str]] = []
+    needing_grooming: list[dict[str, str]] = []
+    recently_modified: list[dict[str, str]] = []
+
+    for item in open_items:
+        sec = item.section if item.section in counts_by_section else "Ideas"
+        counts_by_section[sec] = counts_by_section.get(sec, 0) + 1
+
+        if not item.issue:
+            without_issue.append({"title": item.title, "section": item.section})
+
+        if not item.groomed:
+            needing_grooming.append({"title": item.title, "section": item.section, "issue": item.issue})
+
+        if item.file_path:
+            try:
+                mtime = Path(item.file_path).stat().st_mtime
+                if mtime > seven_days_ago:
+                    recently_modified.append({
+                        "title": item.title,
+                        "section": item.section,
+                        "issue": item.issue,
+                        "modified_at": datetime.fromtimestamp(mtime, tz=UTC).isoformat().replace("+00:00", "Z"),
+                    })
+            except OSError:
+                pass
+
+    return {
+        "counts_by_section": counts_by_section,
+        "total_open": len(open_items),
+        "items_without_issue": without_issue,
+        "items_needing_grooming": needing_grooming,
+        "recently_modified": recently_modified,
+        **out.to_dict(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Public API: NAMED STATUS TOOLS (F14)
+# ---------------------------------------------------------------------------
+
+
+def start_item(
+    selector: str, repo: str = DEFAULT_REPO, output: Output | None = None
+) -> dict[str, str | int | bool | list[str]]:
+    """Set a backlog item status to 'in-progress'. Thin wrapper around update_item.
+
+    Returns:
+        Dict with item title, status, and output messages.
+    """
+    return update_item(selector=selector, status="in-progress", repo=repo, output=output)
+
+
+def block_item(
+    selector: str, reason: str, repo: str = DEFAULT_REPO, output: Output | None = None
+) -> dict[str, str | int | bool | list[str]]:
+    """Set a backlog item status to 'blocked' with an explicit reason.
+
+    Returns:
+        Dict with item title, status, reason, and output messages.
+    """
+    out = output or Output()
+    result = update_item(selector=selector, status="blocked", repo=repo, output=out)
+    if "error" not in result:
+        items = parse_backlog()
+        item = find_item(items, selector)
+        if item and item.file_path:
+            update_item_metadata(Path(item.file_path), {"metadata": {"blocked_reason": reason}}, output=out)
+        result["blocked_reason"] = reason
+    return {**result, **out.to_dict()}
+
+
+def unblock_item(
+    selector: str, repo: str = DEFAULT_REPO, output: Output | None = None
+) -> dict[str, str | int | bool | list[str]]:
+    """Clear a block: set backlog item status back to 'open'. Thin wrapper around update_item.
+
+    Returns:
+        Dict with item title, status, and output messages.
+    """
+    return update_item(selector=selector, status="open", repo=repo, output=output)
+
+
+# ---------------------------------------------------------------------------
+# Public API: BATCH UPDATE (F15)
+# ---------------------------------------------------------------------------
+
+
+def batch_update_items(
+    selectors: list[str],
+    status: str | None = None,
+    plan: str | None = None,
+    repo: str = DEFAULT_REPO,
+    output: Output | None = None,
+) -> dict[str, int | list[str] | list[dict[str, str | bool]]]:
+    """Update multiple backlog items in a single call.
+
+    Applies the same status and/or plan to every item in the selectors list.
+    Uses the same validation as update_item.
+
+    Args:
+        selectors: List of item selectors (title substrings, #N, URLs).
+        status: Optional status to apply to all selected items.
+        plan: Optional plan path to apply to all selected items.
+        repo: GitHub repo in owner/repo format.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with updated count, per-item results list, and output messages.
+    """
+    out = output or Output()
+    if not selectors:
+        raise ValidationError("selectors must be a non-empty list")
+
+    results: list[dict[str, str | bool]] = []
+    updated = 0
+    for selector in selectors:
+        try:
+            item_result = update_item(selector=selector, status=status, plan=plan, repo=repo, output=out)
+            if "error" in item_result:
+                results.append({"selector": selector, "error": str(item_result["error"])})
+            else:
+                results.append({"selector": selector, "title": str(item_result.get("title", "")), "updated": True})
+                updated += 1
+        except BacklogError as e:
+            results.append({"selector": selector, "error": str(e)})
+
+    return {"updated": updated, "total": len(selectors), "results": results, **out.to_dict()}
