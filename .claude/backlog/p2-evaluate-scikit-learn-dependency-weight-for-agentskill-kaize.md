@@ -97,10 +97,3 @@ A documented decision exists on whether `cluster_sessions` should keep scikit-le
 | Files | `plugins/agentskill-kaizen/tests/test_server.py` |
 | Research | https://pypi.org/pypi/scikit-learn/json |
 | Research | https://pypi.org/pypi/pyclustering/json |
-
-### Issue Classification
-
-**Type**: unbounded-design
-**Rationale**: This is a framing and comparison problem (fitness-for-purpose under constraints), not a single traceable defect.
-**Analysis Method**: design-framing
-**Scenario Target**: Evaluate clustering approach and dependency weight for small-session workloads -> produce a bounded, evidence-backed direction
