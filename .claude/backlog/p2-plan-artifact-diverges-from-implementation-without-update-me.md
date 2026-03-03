@@ -7,10 +7,10 @@ metadata:
   added: '2026-02-18'
   priority: P2
   type: Feature
-  status: open
+  status: in-progress
   issue: '#117'
   groomed: '2026-03-02'
-  last_synced: '2026-03-02T02:58:14Z'
+  last_synced: '2026-03-03T03:53:55Z'
   plan: plan/tasks-6-plan-artifact-lifecycle.md
 ---
 

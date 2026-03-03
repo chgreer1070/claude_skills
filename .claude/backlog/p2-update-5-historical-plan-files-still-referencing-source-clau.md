@@ -5,9 +5,9 @@ metadata:
   topic: update-5-historical-plan-files-still-referencing-source-clau
   source: Workflow validation session 2026-02-27
   added: '2026-02-27'
-  priority: P2
+  priority: completed
   type: Documentation
-  status: in-progress
+  status: done
   issue: '#287'
   groomed: '2026-02-27'
   last_synced: '2026-02-27T12:04:55Z'

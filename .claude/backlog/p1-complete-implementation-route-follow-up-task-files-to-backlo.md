@@ -5,9 +5,9 @@ metadata:
   topic: complete-implementation-route-follow-up-task-files-to-backlo
   source: 'Observed during #368 implementation — follow-up for get_gitlab_context.py was orphaned until manually linked'
   added: '2026-03-02'
-  priority: P1
+  priority: completed
   type: Feature
-  status: in-progress
+  status: done
   issue: '#381'
   groomed: '2026-03-02'
   last_synced: '2026-03-02T04:11:53Z'
