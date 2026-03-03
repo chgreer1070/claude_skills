@@ -7,7 +7,16 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**/*.js", "**/*.ts", "**/*.jsx", "**/*.tsx", "!**/*.json"]
+    "includes": [
+      "**/*.js",
+      "**/*.ts",
+      "**/*.jsx",
+      "**/*.tsx",
+      "**/*.json",
+      "!**/.claude-plugin/plugin.json",
+      "!.claude-plugin/marketplace.json",
+      "!**/*.lock"
+    ]
   },
   "formatter": {
     "enabled": true,

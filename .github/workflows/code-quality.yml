@@ -16,7 +16,7 @@ permissions: {}
 
 jobs:
   # =============================================================================
-  # Python: Ruff linting and formatting
+  # Python: Ruff linting and formatting (via prek — single config source)
   # =============================================================================
   lint-python:
     name: Python / Ruff
@@ -29,15 +29,19 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Lint with Ruff
-        uses: astral-sh/ruff-action@v3
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
         with:
-          args: "check --output-format=github"
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
+          cache-python: true
+
+      - name: Lint with Ruff
+        run: uv run prek run ruff --all-files
 
       - name: Check formatting with Ruff
-        uses: astral-sh/ruff-action@v3
-        with:
-          args: "format --check --diff"
+        run: uv run prek run ruff-format --all-files
 
   # =============================================================================
   # Python: Type checking with basedpyright
@@ -94,10 +98,10 @@ jobs:
         run: uv run ty check .
 
   # =============================================================================
-  # JavaScript/TypeScript: Biome linting and formatting
+  # JavaScript/TypeScript/JSON: Biome linting and formatting (via prek)
   # =============================================================================
   lint-js:
-    name: JS/TS / Biome
+    name: JS/TS/JSON / Biome
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -107,16 +111,19 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Biome
-        uses: biomejs/setup-biome@v2
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
         with:
-          version: 2.3.13
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
+          cache-python: true
 
       - name: Run Biome
-        run: biome ci --error-on-warnings .
+        run: uv run prek run biome-check --all-files
 
   # =============================================================================
-  # Markdown: markdownlint
+  # Markdown: markdownlint (via prek)
   # =============================================================================
   lint-markdown:
     name: Markdown / markdownlint
@@ -129,17 +136,19 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
         with:
-          node-version: "22"
-          package-manager-cache: false
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
+          cache-python: true
 
       - name: Run markdownlint-cli2
-        run: npx markdownlint-cli2@0.19.1 "**/*.md" "#node_modules" "#.venv"
+        run: uv run prek run markdownlint-cli2 --all-files
 
   # =============================================================================
-  # Shell: shellcheck and shfmt
+  # Shell: shellcheck and shfmt (via prek)
   # =============================================================================
   lint-shell:
     name: Shell / shellcheck + shfmt
@@ -152,55 +161,19 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Find shell scripts
-        id: find-scripts
-        run: |
-          # Find .sh files and files with shell shebangs
-          scripts=$(find . -type f \( -name "*.sh" -o -name "*.bash" \) -not -path "./.venv/*" -not -path "./node_modules/*" 2>/dev/null || true)
-          shebang_scripts=$(grep -rlE "^#!.*/(ba)?sh" --include="*" . 2>/dev/null | grep -v ".venv" | grep -v "node_modules" || true)
-          all_scripts=$(echo -e "$scripts\n$shebang_scripts" | sort -u | grep -v "^$" || true)
-
-          if [ -z "$all_scripts" ]; then
-            echo "has_scripts=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_scripts=true" >> "$GITHUB_OUTPUT"
-            echo "scripts<<EOF" >> "$GITHUB_OUTPUT"
-            echo "$all_scripts" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: "**/uv.lock"
+          cache-python: true
 
       - name: Run shellcheck
-        if: steps.find-scripts.outputs.has_scripts == 'true'
-        run: |
-          echo "${{ steps.find-scripts.outputs.scripts }}" | xargs shellcheck -f gcc || true
+        run: uv run prek run shellcheck --all-files
 
       - name: Run shfmt
-        if: steps.find-scripts.outputs.has_scripts == 'true'
-        run: |
-          echo "${{ steps.find-scripts.outputs.scripts }}" | xargs shfmt -d -i 4 -ci || true
-
-  # =============================================================================
-  # JSON: Prettier formatting
-  # =============================================================================
-  lint-json:
-    name: JSON / Prettier
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-          package-manager-cache: false
-
-      - name: Check JSON formatting
-        run: npx prettier@3.5.3 --check "**/*.json" --ignore-path .gitignore
+        run: uv run prek run shell-fmt-go --all-files
 
   # =============================================================================
   # Local hooks: frontmatter validation (blocking)
@@ -210,7 +183,7 @@ jobs:
   # =============================================================================
 
   # =============================================================================
-  # Local hooks: plugin validation (plugin_validator.py)
+  # Local hooks: plugin validation (via prek)
   # Blocking since 2026-02-18 — all pre-existing errors resolved.
   # =============================================================================
   validate-plugins:
@@ -233,13 +206,10 @@ jobs:
           cache-python: true
 
       - name: Validate plugins
-        run: |
-          uv run plugins/plugin-creator/scripts/plugin_validator.py \
-            $(find plugins .claude -type f \( -name 'SKILL.md' -o -path '*/agents/*.md' -o -path '*/commands/*.md' -o -name 'plugin.json' \) \
-              -not -path './.venv/*' -not -path './node_modules/*' 2>/dev/null)
+        run: uv run prek run plugin-validator --all-files
 
   # =============================================================================
-  # Local hooks: manifest sync (auto_sync_manifests.py)
+  # Local hooks: manifest sync (via prek)
   # Blocking — drift was resolved 2026-02-18.
   # =============================================================================
   manifest-sync:
@@ -262,7 +232,7 @@ jobs:
           cache-python: true
 
       - name: Check manifest sync
-        run: uv run plugins/plugin-creator/scripts/auto_sync_manifests.py --reconcile --dry-run
+        run: uv run prek run auto-sync-manifests --all-files
 
   # =============================================================================
   # File hygiene: trailing whitespace, line endings, etc.
@@ -297,7 +267,7 @@ jobs:
 
       - name: Run file hygiene hooks
         env:
-          SKIP: sync-pre-commit-deps,conventional-pre-commit,repair-symlinks,biome-check,ruff,ruff-format,pypfmt,markdownlint-cli2,prettier,shell-fmt-go,shellcheck,auto-sync-manifests,plugin-validator,ty,enable-rerere
+          SKIP: sync-pre-commit-deps,conventional-pre-commit,repair-symlinks,biome-check,ruff,ruff-format,pypfmt,markdownlint-cli2,shell-fmt-go,shellcheck,auto-sync-manifests,plugin-validator,ty,enable-rerere
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.sha }}
           GH_EVENT: ${{ github.event_name }}
@@ -382,7 +352,6 @@ jobs:
       - lint-js
       - lint-markdown
       - lint-shell
-      - lint-json
       - validate-plugins
       - manifest-sync
       - file-hygiene
