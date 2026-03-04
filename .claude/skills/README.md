@@ -9,7 +9,7 @@ This directory contains skills that extend Claude's capabilities with specialize
 | [agent-creator](#agent-creator)                                 | Creation Tools     | Create and design Claude Code agents                             | Yes                   |
 | [subagent-contract](#subagent-contract)                         | Workflow Contracts | Enforce specialist agent behavior patterns                       | No (loaded by agents) |
 | [rt-ica](#rt-ica)                                               | Planning Tools     | Pre-planning checkpoint that blocks until prerequisites verified | Yes                   |
-| [scientific-thinking](#scientific-thinking)                     | Workflow Tools     | Hypothesis-driven reasoning for complex problems                 | Yes                   |
+| [scientific-method:scientific-thinking](#scientific-method-scientific-thinking) (plugin) | Workflow Tools     | Hypothesis-driven reasoning for complex problems                 | Yes                   |
 | [verify](#verify)                                               | Workflow Tools     | Self-assessment checklist before task completion                 | Yes                   |
 | [delegate](#delegate)                                           | Workflow Tools     | Quick delegation template for sub-agent prompts                  | Yes                   |
 | [claude-skills-overview-2026](#claude-skills-overview-2026)     | Reference          | Skills and Slash Command system documentation                    | Yes                   |
@@ -145,7 +145,11 @@ When an agent loads this skill, it will:
 
 ## Workflow Tools
 
-### scientific-thinking
+<a id="scientific-method-scientific-thinking"></a>
+
+### scientific-method:scientific-thinking
+
+> Migrated to plugin: /scientific-method:scientific-thinking
 
 **What it does**: Forces hypothesis-driven scientific reasoning for complex problems. Provides a structured framework for debugging, architecture design, and complex refactoring using the scientific method.
 
@@ -160,7 +164,7 @@ When an agent loads this skill, it will:
 
 **How to trigger**:
 
-- Explicitly: `@scientific-thinking` or `Skill(skill: "scientific-thinking")`
+- Explicitly: `@scientific-method:scientific-thinking` or `Skill(skill: "scientific-method:scientific-thinking")`
 - Automatically: When debugging strange behavior, investigating root causes, designing architecture, performing complex refactoring, or when initial attempts have failed
 
 **What to expect**:
@@ -418,7 +422,7 @@ Claude automatically activates skills based on your request. Skills have trigger
 
 - **agent-creator**: "create agent", "modify agent", "agent structure", "agent configuration"
 - **rt-ica**: "planning", "prerequisites", "spec", "PRD", "ticket", "RFC", "architecture design", "multi-step task"
-- **scientific-thinking**: "debugging", "strange behavior", "root cause", "architecture design", "complex refactoring", "investigation"
+- **scientific-method:scientific-thinking**: "debugging", "strange behavior", "root cause", "architecture design", "complex refactoring", "investigation"
 - **verify**: "is it done", "task complete", "before commit", "completion", "finished"
 - **delegate**: "sub-agent", "Agent tool", "delegation", "assign work"
 - **audit**: "review output", "hallucination", "suspicious", "probably", "likely", "verify claims"

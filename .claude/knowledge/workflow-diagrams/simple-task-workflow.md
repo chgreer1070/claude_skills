@@ -297,5 +297,5 @@ flowchart TD
 ## Navigation
 
 - **Previous:** [Multi-Agent Orchestration](./multi-agent-orchestration.md)
-- **Next:** [Investigation Workflow](./investigation-workflow.md)
+- **Next:** [Investigation Workflow](../../../plugins/scientific-method/shared/investigation-workflow.md)
 - **Back to:** [Index](./README.md)

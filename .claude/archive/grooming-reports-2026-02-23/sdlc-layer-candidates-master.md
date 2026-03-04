@@ -59,7 +59,7 @@
 | verify | `.claude/skills/verify/SKILL.md` | Completion checklist, WORKS/FIXED checks |
 | delegate | `.claude/skills/delegate/SKILL.md` | OBSERVATIONS, DEFINITION OF SUCCESS, CONTEXT, YOUR TASK |
 | cove-prompt-design | `.claude/skills/cove-prompt-design/SKILL.md` | Chain of Verification, verification questions |
-| scientific-thinking | `.claude/skills/scientific-thinking/SKILL.md` | Hypothesis → Prediction → Experiment → Conclusion |
+| scientific-thinking | `plugins/scientific-method/skills/scientific-thinking/SKILL.md` | Hypothesis → Prediction → Experiment → Conclusion |
 | commit-staged | `.claude/skills/commit-staged/SKILL.md` | Conventional commits, feat/fix/docs/scope |
 
 ### From Agents

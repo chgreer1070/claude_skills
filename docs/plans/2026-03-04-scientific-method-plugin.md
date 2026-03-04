@@ -1293,6 +1293,30 @@ git commit -m "fix(scientific-method): final validation fixes"
 
 ---
 
+## Task 16: Run plugin-lifecycle skill against completed plugin
+
+Now that all plugin files exist, run the full plugin-lifecycle workflow starting at the `existing` entry point to ensure the plugin passes all lifecycle phases (Debug → Optimize → Documentation → Verify).
+
+**Step 1: Run plugin-lifecycle**
+
+```text
+Skill(skill="plugin-creator:plugin-lifecycle", args="existing plugins/scientific-method")
+```
+
+This enters at Phase 1 (Assess) and routes through:
+
+- Phase 1 → Assess: runs plugin_validator.py, determines entry point
+- Phase 5 → Debug: fixes any validation errors
+- Phase 6 → Optimize: improves quality score to ≥ 80
+- Phase 6.5 → Documentation: generates plugins/scientific-method/README.md
+- Phase 7 → Verify: 4-layer validation gate (structural, runtime, token limits, cross-references)
+
+**Step 2: Confirm Definition of Done additions**
+
+The plugin is marketplace-ready only after Phase 7 Verify writes `.claude/plan/scientific-method/SUMMARY.md`.
+
+---
+
 ## Definition of Done
 
 - [ ] `plugins/scientific-method/` exists with all three skills, shared/ files, and retrospective-analyst agent
@@ -1302,3 +1326,6 @@ git commit -m "fix(scientific-method): final validation fixes"
 - [ ] `.claude/CLAUDE.md` references `/scientific-method:scientific-thinking`
 - [ ] `plugins/plugin-creator` skills reference updated skill name
 - [ ] All prek hooks pass on all modified files
+- [ ] `plugin-lifecycle existing plugins/scientific-method` completes Phase 7 with no errors
+- [ ] `plugins/scientific-method/README.md` exists and is non-empty
+- [ ] `.claude/plan/scientific-method/SUMMARY.md` written by plugin-lifecycle Phase 7
