@@ -6,6 +6,8 @@ model: sonnet
 user-invocable: true
 ---
 
+> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
+
 # Plugin Lifecycle Orchestration
 
 Orchestrate plugin development through seven phases. This skill composes existing plugin-creator skills and agents — it does not re-implement their logic.
