@@ -8,6 +8,11 @@ user-invocable: true
 
 > When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
 
+> [!IMPORTANT]
+> When provided a process map or Mermaid diagram, treat it as the authoritative procedure. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+> A Mermaid process diagram is an executable instruction set. Follow it exactly as written: respect sequence, conditions, loops, parallel paths, and terminal states. Do not improvise, reorder, or skip steps. If any node is ambiguous or missing required detail, pause and ask a clarifying question before continuing.
+> When interacting with a user, report before acting the interpreted path you will follow from the diagram, then execute.
+
 # Plugin Lifecycle Orchestration
 
 Orchestrate plugin development through seven phases. This skill composes existing plugin-creator skills and agents — it does not re-implement their logic.
@@ -38,51 +43,76 @@ These skills contain the answers to fundamental questions: what is a plugin, wha
 
 ## Workflow Overview
 
+The following diagram is the authoritative procedure for plugin lifecycle routing. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
-    Start(["/plugin-lifecycle $ARGUMENTS"]) --> Q1{First argument?}
-    Q1 -->|"new"| RTICA["Phase 0: RT-ICA Prerequisite Check"]
-    Q1 -->|"existing"| Assess["Phase 1: Assess"]
+    Start(["/plugin-lifecycle $ARGUMENTS"]) --> Q1{"First argument is?"}
+    Q1 -->|"new — create from scratch"| RTICA["Phase 0 — RT-ICA Prerequisite Check"]
+    Q1 -->|"existing — improve existing plugin"| Assess["Phase 1 — Assess"]
 
+    %% New path: RT-ICA gate
     RTICA --> RTICAGate{"RT-ICA decision?"}
-    RTICAGate -->|"BLOCKED — missing inputs"| RTICABlock["Request missing inputs<br>Do not proceed"]
-    RTICAGate -->|"APPROVED"| Discuss["Phase 0.5: Discussion"]
+    RTICAGate -->|"BLOCKED — one or more conditions MISSING"| RTICABlock(["STOP — present missing inputs to user<br>Do not proceed until resolved"])
+    RTICAGate -->|"APPROVED — all conditions available or derivable"| Discuss["Phase 0.5 — Discussion"]
 
-    Discuss --> Research["Phase 2: Research"]
+    %% New path: Discussion gate — file must exist before Research
+    Discuss --> DiscussGate{"File .claude/plan/NAME/discuss-CONTEXT.md<br>exists and is non-empty?"}
+    DiscussGate -->|"Yes — preferences captured"| Research["Phase 2 — Research"]
+    DiscussGate -->|"No — file absent or empty"| Discuss
 
-    Assess --> AssessGate{"Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Exit code?"}
-    AssessGate -->|"0 — no errors"| Optimize["Phase 6: Optimize"]
-    AssessGate -->|"non-zero — errors found"| Debug["Phase 5: Debug"]
+    %% Existing path: Assess then validator
+    Assess --> AssessFile{"File .claude/plan/NAME/assessment-REPORT.md<br>exists and is non-empty?"}
+    AssessFile -->|"No — assessor did not complete"| Assess
+    AssessFile -->|"Yes — assessment written"| AssessGate{"Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Exit code?"}
+    AssessGate -->|"0 — no validation errors"| Optimize["Phase 6 — Optimize"]
+    AssessGate -->|"non-zero — errors found"| Debug["Phase 5 — Debug"]
 
-    Research --> ResearchGate{"research-FINDINGS.md<br>exists in .claude/plan/NAME/?"}
-    ResearchGate -->|"Yes"| Design["Phase 3: Design"]
-    ResearchGate -->|"No — incomplete"| Research
+    %% New path: Research gate
+    Research --> ResearchGate{"File .claude/plan/NAME/research-FINDINGS.md<br>exists and is non-empty?"}
+    ResearchGate -->|"Yes — all 4 researcher outputs merged"| Design["Phase 3 — Design"]
+    ResearchGate -->|"No — merge incomplete or file absent"| Research
 
-    Design --> DesignGate{"design-PLAN.md exists<br>AND plan-checker PASS?"}
-    DesignGate -->|"Yes"| Create["Phase 4: Create"]
-    DesignGate -->|"No"| Design
+    %% New path: Design gate with iteration limit
+    Design --> DesignGate{"design-PLAN.md exists<br>AND plan-checker returns PASS?"}
+    DesignGate -->|"PASS — plan complete and verified"| Create["Phase 4 — Create"]
+    DesignGate -->|"FAIL — iteration count < 3"| Design
+    DesignGate -->|"FAIL — iteration count = 3 (limit reached)"| DesignEscalate(["STOP — escalate to user<br>Plan checker has failed 3 times"])
 
-    Create --> CreateGate{"All planned files<br>exist at specified paths?"}
-    CreateGate -->|"Yes"| Debug2["Phase 5: Debug"]
-    CreateGate -->|"No"| Create
+    %% New path: Create gate
+    Create --> CreateGate{"All files listed in design-PLAN.md<br>exist at their specified paths?"}
+    CreateGate -->|"Yes — all components created"| Debug
+    CreateGate -->|"No — one or more files missing"| Create
 
-    Debug --> DebugGate{"Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Exit code 0?"}
-    DebugGate -->|"Yes — 0 errors"| Optimize
+    %% Shared Debug phase (both paths converge here)
+    Debug --> DebugGate{"Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Exit code 0 AND 0 errors?<br>(warnings acceptable)"}
+    DebugGate -->|"Yes — 0 errors, validation passes"| Optimize
     DebugGate -->|"No — errors remain"| Debug
 
-    Debug2 --> DebugGate2{"Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Exit code 0?"}
-    DebugGate2 -->|"Yes — 0 errors"| Optimize2["Phase 6: Optimize"]
-    DebugGate2 -->|"No — errors remain"| Debug2
+    %% Optimize gate
+    Optimize --> OptGate{"Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Output contains 'Score:' line?"}
+    OptGate -->|"Score >= 80 — quality target met"| Docs["Phase 6.5 — Documentation"]
+    OptGate -->|"Score < 80 — quality below target"| Optimize
+    OptGate -->|"No score in output — user acceptance required"| OptUser{"User accepts current quality?"}
+    OptUser -->|"Yes — user accepts"| Docs
+    OptUser -->|"No — continue improving"| Optimize
 
-    Optimize --> Docs["Phase 6.5: Documentation"]
-    Optimize2 --> Docs
+    %% Documentation gate
+    Docs --> DocsGate{"File {plugin-path}/README.md<br>exists and is non-empty?"}
+    DocsGate -->|"Yes — documentation complete"| Verify["Phase 7 — Verify"]
+    DocsGate -->|"No — README.md absent or empty"| Docs
 
-    Docs --> Verify["Phase 7: Verify"]
-
-    Verify --> VerifyGate{"All 4 validation<br>layers pass?"}
-    VerifyGate -->|"Yes"| Done(["Done — marketplace ready"])
-    VerifyGate -->|"No — issues found"| DebugReturn["Return to Phase 5: Debug"]
-    DebugReturn --> Debug
+    %% Verify: 4 discrete layers
+    Verify --> VL1{"Layer 1 — Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Exit code 0?"}
+    VL1 -->|"Yes — structural validation passes"| VL2{"Layer 2 — Run: claude plugin validate PATH<br>Exit code 0?"}
+    VL1 -->|"No — structural errors found"| VerifyFail["Return to Phase 5 — Debug<br>with Layer 1 error details"]
+    VL2 -->|"Yes — runtime validation passes"| VL3{"Layer 3 — plugin_validator.py output<br>contains SK006 or SK007 for any skill?"}
+    VL2 -->|"No — runtime validation fails"| VerifyFail
+    VL3 -->|"No SK006/SK007 — all skills within token limits"| VL4{"Layer 4 — all internal links resolve,<br>all plugin.json skill paths exist,<br>all agent references point to existing files?"}
+    VL3 -->|"Yes — SK006 or SK007 present"| VerifyFail
+    VL4 -->|"Yes — cross-reference integrity confirmed"| Done(["Write .claude/plan/NAME/SUMMARY.md<br>Plugin is marketplace-ready"])
+    VL4 -->|"No — broken cross-references found"| VerifyFail
+    VerifyFail --> Debug
 ```
 
 ## Artifact System
@@ -135,13 +165,13 @@ Decision:
 - [APPROVED / BLOCKED]
 ```
 
-**Decision gate**:
+The following diagram is the authoritative procedure for Phase 0 RT-ICA decision gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
     Q{"RT-ICA decision?"}
-    Q -->|"APPROVED — all conditions available or derivable"| Next["Proceed to Phase 0.5: Discussion"]
-    Q -->|"BLOCKED — one or more conditions MISSING"| Block["Request missing inputs<br>Do not proceed to Discussion or Research"]
+    Q -->|"APPROVED — all 6 conditions available or derivable"| Next["Proceed to Phase 0.5 — Discussion"]
+    Q -->|"BLOCKED — one or more conditions MISSING"| Block(["STOP — present missing conditions to user<br>Do not proceed to Phase 0.5 or Phase 2<br>until all conditions are AVAILABLE or DERIVABLE"])
 ```
 
 ---
@@ -192,6 +222,16 @@ Date: {ISO timestamp}
 
 These preferences guide all subsequent research and planning phases.
 
+The following diagram is the authoritative procedure for Phase 0.5 discussion completion gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
+```mermaid
+flowchart TD
+    Q{"File .claude/plan/NAME/discuss-CONTEXT.md<br>exists and is non-empty?"}
+    Q -->|"Yes — user preferences captured and written"| Next["Proceed to Phase 2 — Research"]
+    Q -->|"No — file absent or empty"| Retry["Re-run Phase 0.5 discussion<br>Ask targeted questions again<br>Write preferences to discuss-CONTEXT.md"]
+    Retry --> Q
+```
+
 ---
 
 ## Phase 1: Assess (Existing Plugin Only)
@@ -202,13 +242,17 @@ These preferences guide all subsequent research and planning phases.
    Context to include in the prompt: plugin directory path from `$1`
    Output: `.claude/plan/{plugin-name}/assessment-REPORT.md` — assessment report with design map and task file
 
-**Decision gate**:
+The following diagram is the authoritative procedure for Phase 1 Assess decision gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
-    Q{"Run: uv run plugins/plugin-creator/scripts/plugin_validator.py $1<br>Exit code?"}
-    Q -->|"0 — no validation errors"| Skip["Skip to Phase 6: Optimize"]
-    Q -->|"non-zero — errors found"| Next["Proceed to Phase 5: Debug"]
+    %% Gate 1: assessor output must exist before validator can be meaningful
+    AssessFile{"File .claude/plan/NAME/assessment-REPORT.md<br>exists and is non-empty?"}
+    AssessFile -->|"No — assessor did not complete"| RetryAssess["Re-run assessor skill<br>with plugin directory path"]
+    RetryAssess --> AssessFile
+    AssessFile -->|"Yes — assessment written"| ValidatorGate{"Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Exit code?"}
+    ValidatorGate -->|"0 — no validation errors"| Skip["Proceed to Phase 6 — Optimize"]
+    ValidatorGate -->|"non-zero — errors found"| Next["Proceed to Phase 5 — Debug"]
 ```
 
 ---
@@ -266,13 +310,27 @@ Date: {ISO timestamp}
 - Recommended approach: {synthesis}
 ```
 
-**Decision gate**:
+The following diagram is the authoritative procedure for Phase 2 Research decision gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
-    Q{"File .claude/plan/NAME/research-FINDINGS.md<br>exists and is non-empty?"}
-    Q -->|"Yes"| Next["Proceed to Phase 3: Design"]
-    Q -->|"No"| Retry["Repeat Phase 2 research steps"]
+    %% All 4 individual research files must exist before merge is valid
+    R1{"File .claude/plan/NAME/research-1-existing.md<br>exists and is non-empty?"}
+    R1 -->|"No — researcher 1 (existing solutions) failed"| Retry1["Re-spawn researcher 1<br>with more specific prompt"]
+    Retry1 --> R1
+    R1 -->|"Yes"| R2{"File .claude/plan/NAME/research-2-features.md<br>exists and is non-empty?"}
+    R2 -->|"No — researcher 2 (Claude Code features) failed"| Retry2["Re-spawn researcher 2<br>with more specific prompt"]
+    Retry2 --> R2
+    R2 -->|"Yes"| R3{"File .claude/plan/NAME/research-3-architecture.md<br>exists and is non-empty?"}
+    R3 -->|"No — researcher 3 (architecture patterns) failed"| Retry3["Re-spawn researcher 3<br>with more specific prompt"]
+    Retry3 --> R3
+    R3 -->|"Yes"| R4{"File .claude/plan/NAME/research-4-pitfalls.md<br>exists and is non-empty?"}
+    R4 -->|"No — researcher 4 (pitfalls/docs) failed"| Retry4["Re-spawn researcher 4<br>with more specific prompt"]
+    Retry4 --> R4
+    R4 -->|"Yes — all 4 researcher outputs exist"| Merge{"File .claude/plan/NAME/research-FINDINGS.md<br>exists and is non-empty?"}
+    Merge -->|"Yes — merge complete"| Next["Proceed to Phase 3 — Design"]
+    Merge -->|"No — merge not yet written"| DoMerge["Consolidate all 4 research files<br>into research-FINDINGS.md"]
+    DoMerge --> Merge
 ```
 
 ---
@@ -294,13 +352,17 @@ flowchart TD
    Prompt: Verify this plan achieves the plugin goals. Check: (1) do tasks cover all required components? (2) are tasks truly atomic? (3) are `<verify>` commands testable? (4) are there gaps between tasks? (5) does sequence respect dependencies? Return PASS or FAIL with specific issues.
    Output: PASS verdict (proceed) or FAIL with feedback (return to step 2)
 
-**Decision gate**:
+The following diagram is the authoritative procedure for Phase 3 Design decision gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
-    Q{"design-PLAN.md exists<br>AND plan-checker returns PASS?"}
-    Q -->|"Yes — PASS"| Next["Proceed to Phase 4: Create"]
-    Q -->|"No — FAIL or missing"| Retry["Revise design-PLAN.md and re-check"]
+    %% Track iteration count to enforce the 3-attempt limit from Error Handling
+    IterCheck{"Current plan-checker iteration count<br>(track in STATE.md — how many FAIL verdicts so far)?"}
+    IterCheck -->|"Count = 3 — limit reached"| Escalate(["STOP — escalate to user<br>Plan checker has returned FAIL 3 times<br>Present FAIL feedback and await direction"])
+    IterCheck -->|"Count < 3 — iterations remain"| PlanCheck{"design-PLAN.md exists<br>AND plan-checker returns PASS?"}
+    PlanCheck -->|"PASS — plan complete and verified"| Next["Proceed to Phase 4 — Create"]
+    PlanCheck -->|"FAIL — plan incomplete or unverifiable"| Revise["Increment iteration count in STATE.md<br>Pass design-PLAN.md and FAIL feedback<br>to planner for revision"]
+    Revise --> IterCheck
 ```
 
 ---
@@ -325,13 +387,14 @@ For each component defined in `design-PLAN.md`, invoke the appropriate creator s
 
 Repeat for each planned component. Create `plugin.json` via `uv run plugins/plugin-creator/scripts/create_plugin.py` if it does not exist.
 
-**Decision gate**:
+The following diagram is the authoritative procedure for Phase 4 Create decision gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
-    Q{"All files listed in<br>design-PLAN.md exist<br>at their specified paths?"}
-    Q -->|"Yes"| Next["Proceed to Phase 5: Debug"]
-    Q -->|"No — missing files"| Retry["Create remaining components"]
+    Q{"All file paths listed in design-PLAN.md<br>exist on disk at their specified paths?"}
+    Q -->|"Yes — all components created"| Next["Proceed to Phase 5 — Debug"]
+    Q -->|"No — one or more planned files are absent"| Retry["Identify which planned files are missing<br>Create remaining components using the appropriate creator skill<br>Return to gate check"]
+    Retry --> Q
 ```
 
 ---
@@ -346,25 +409,30 @@ Debug fixes validation errors. Run the validator first to identify issues:
 uv run plugins/plugin-creator/scripts/plugin_validator.py <plugin-path>
 ```
 
-Route each error type to the correct fix:
+The following diagram is the authoritative procedure for Phase 5 Debug error routing and completion gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
-    Start(["Validator output"]) --> Q{Error type?}
-    Q -->|"SK006/SK007 — skill too large"| Split["Skill(skill='plugin-creator:refactor-skill')<br>Context = oversized SKILL.md path<br>Output = split skill files"]
-    Q -->|"Broken links"| Links["Direct Edit fix on the file<br>with the broken link"]
-    Q -->|"Frontmatter issues"| Lint["Skill(skill='plugin-creator:lint', args='--fix PATH')<br>Context = file path + validator output<br>Output = corrected frontmatter"]
-    Q -->|"Tool format issues"| Tools["Run: uv run plugins/plugin-creator/scripts/fix_tool_formats.py<br>Output = fixed tool format patterns"]
-    Q -->|"Other structural errors"| Manual["Fix directly based on<br>validator error message"]
-```
+    %% Entry: run validator to get current error list
+    RunValidator["Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Capture full output"] --> HasErrors{"Exit code 0<br>AND 0 errors in output?<br>(warnings are acceptable)"}
+    HasErrors -->|"Yes — 0 errors, validation passes"| Next["Proceed to Phase 6 — Optimize"]
+    HasErrors -->|"No — errors remain"| Q{"Error type in validator output?"}
 
-**Decision gate**:
+    %% Route each error type to its fix, then loop back to re-validate
+    Q -->|"SK007 — skill exceeds token limit (hard error)"| Split["Invoke: Skill(skill='plugin-creator:refactor-skill')<br>Context = oversized SKILL.md path<br>Output = split skill files at same plugin path"]
+    Q -->|"SK006 — skill approaching token limit (warning)"| Extract["Extract content to references/ directory<br>Update SKILL.md to reference extracted files<br>Output = reduced SKILL.md + new references/ file"]
+    Q -->|"Broken link error (LINK01 or similar)"| Links["Read the file containing the broken link<br>Verify the target path exists on disk<br>Fix with Edit tool — update or remove the broken reference"]
+    Q -->|"Frontmatter issues (FM-series errors)"| Lint["Invoke: Skill(skill='plugin-creator:lint', args='--fix PATH')<br>Context = file path + validator output<br>Output = corrected frontmatter in the file"]
+    Q -->|"Tool format issues (array instead of string)"| Tools["Run: uv run plugins/plugin-creator/scripts/fix_tool_formats.py PATH<br>Output = fixed comma-separated string in frontmatter"]
+    Q -->|"Other structural errors"| Manual["Read the validator error message<br>Identify the file and line referenced<br>Apply Edit fix directly to that file<br>Verify fix is consistent with plugin schema"]
 
-```mermaid
-flowchart TD
-    Q{"Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Exit code 0 AND 0 errors?<br>(warnings acceptable)"}
-    Q -->|"Yes"| Next["Proceed to Phase 6: Optimize"]
-    Q -->|"No"| Retry["Fix remaining errors and re-validate"]
+    %% All fix paths loop back to re-validate
+    Split --> RunValidator
+    Extract --> RunValidator
+    Links --> RunValidator
+    Lint --> RunValidator
+    Tools --> RunValidator
+    Manual --> RunValidator
 ```
 
 ---
@@ -387,7 +455,22 @@ Optimize improves quality — descriptions, progressive disclosure, agent prompt
    Context to include in the prompt: agent .md files needing improvement
    Output: optimized agent prompts using Anthropic best practices
 
-**Decision gate**: Assessment score meets target threshold (default 80/100) OR user accepts current quality. Proceed to Phase 6.5: Documentation.
+The following diagram is the authoritative procedure for Phase 6 Optimize completion gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
+```mermaid
+flowchart TD
+    %% Score line presence determines which branch to take
+    ScoreCheck{"Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Does output contain a 'Score:' line?"}
+    ScoreCheck -->|"Yes — score present in output"| ScoreVal{"Score value >= 80?"}
+    ScoreCheck -->|"No — validator produces no score"| UserAccept{"Ask user — accept current quality<br>and proceed to documentation?"}
+
+    ScoreVal -->|"Yes — score >= 80, quality target met"| Next["Proceed to Phase 6.5 — Documentation"]
+    ScoreVal -->|"No — score < 80, quality below target"| Retry["Identify lowest-scoring components<br>Re-run optimization steps targeting those components"]
+    Retry --> ScoreCheck
+
+    UserAccept -->|"Yes — user accepts current quality"| Next
+    UserAccept -->|"No — user wants more improvement"| Retry
+```
 
 ---
 
@@ -401,6 +484,16 @@ Generate comprehensive documentation for the plugin:
    Context to include in the prompt: plugin path, all SKILL.md files, agent files, plugin.json, assess-REPORT.md or design-PLAN.md (whichever is available)
    Prompt: Generate comprehensive documentation. Create: README.md with installation, usage, and examples; `docs/skills.md` if multiple skills exist; configuration guide if hooks or MCP servers are included. Ensure all features are documented, installation instructions are accurate, and examples are runnable.
    Output: `{plugin-path}/README.md` and any additional documentation files
+
+The following diagram is the authoritative procedure for Phase 6.5 Documentation completion gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
+```mermaid
+flowchart TD
+    Q{"File {plugin-path}/README.md<br>exists and is non-empty?"}
+    Q -->|"Yes — documentation generated"| Next["Proceed to Phase 7 — Verify"]
+    Q -->|"No — README.md absent or empty"| Retry["Re-run documentation task<br>with explicit instruction to create README.md<br>at {plugin-path}/README.md"]
+    Retry --> Q
+```
 
 ---
 
@@ -430,13 +523,32 @@ Run multi-layer validation:
 
 5. **Layer 4 — Cross-reference integrity**: Verify all internal links resolve, all skills referenced in plugin.json exist, all agent references in skills point to existing agent files.
 
-**Decision gate**:
+The following diagram is the authoritative procedure for Phase 7 Verify 4-layer validation gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
-    Q{"All 4 validation layers pass?"}
-    Q -->|"Yes — all pass"| Done["Write .claude/plan/NAME/SUMMARY.md<br>Plugin is marketplace-ready"]
-    Q -->|"No — any layer fails"| Return["Return to Phase 5: Debug<br>with specific failure details"]
+    %% Layer 1: structural validator
+    VL1{"Layer 1 — Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Exit code 0 AND 0 errors in output?"}
+    VL1 -->|"Yes — structural validation passes"| VL2{"Layer 2 — Run: claude plugin validate PATH<br>Exit code 0?"}
+    VL1 -->|"No — structural errors found"| Fail1["Capture Layer 1 error details<br>Proceed to Phase 5 — Debug with these errors"]
+
+    %% Layer 2: runtime validator
+    VL2 -->|"Yes — runtime validation passes"| VL3{"Layer 3 — Does plugin_validator.py output<br>contain SK006 or SK007 for any skill?"}
+    VL2 -->|"No — runtime validation fails"| Fail2["Capture Layer 2 error details<br>Check .claude-plugin/plugin.json exists<br>Check all paths start with ./<br>Proceed to Phase 5 — Debug with these errors"]
+
+    %% Layer 3: token complexity
+    VL3 -->|"No SK006/SK007 — all skills within token limits"| VL4{"Layer 4 — For every internal link in all SKILL.md and agent files:<br>does the target file exist on disk?<br>For every skill in plugin.json: does the SKILL.md exist?<br>For every agent reference in skills: does the agent .md exist?"}
+    VL3 -->|"Yes — SK006 or SK007 present"| Fail3["Identify which skills triggered SK006/SK007<br>Proceed to Phase 5 — Debug targeting those skills"]
+
+    %% Layer 4: cross-reference integrity — attempt inline fix before returning to Debug
+    VL4 -->|"Yes — all cross-references resolve"| Done(["Write .claude/plan/NAME/SUMMARY.md<br>Plugin is marketplace-ready"])
+    VL4 -->|"No — one or more broken cross-references"| Fail4["List each broken reference with file path and line<br>Fix with Edit tool directly<br>Re-run Layer 4 check"]
+    Fail4 --> VL4
+
+    %% Layers 1-3 failures route to Phase 5
+    Fail1 --> DebugReturn["Proceed to Phase 5 — Debug"]
+    Fail2 --> DebugReturn
+    Fail3 --> DebugReturn
 ```
 
 ---
@@ -468,160 +580,16 @@ flowchart TD
 
 ## Error Handling
 
-| Failure | Recovery |
-|---------|----------|
-| RT-ICA returns BLOCKED | Present missing inputs to user; do not proceed to Discussion or Research until resolved |
-| Discussion phase skipped (user provides no answers) | Use defaults: user-invocable=true, balanced verbosity, no tool restrictions; note assumptions in discuss-CONTEXT.md |
-| Researcher subagent returns empty output | Re-spawn that researcher with more specific prompt; do not proceed to Design with incomplete findings |
-| research-FINDINGS.md merge incomplete (one researcher missing) | Identify which research-N file is absent; re-run that researcher; do not proceed to Design until all 4 are present |
-| Plan checker returns FAIL | Return design-PLAN.md and FAIL feedback to planner; iterate up to 3 times before escalating to user |
-| plugin_validator.py not found | Verify path `plugins/plugin-creator/scripts/plugin_validator.py`; check git status; the script must exist before Debug phase can run |
-| SK007 error (skill exceeds token limit) | Run `/plugin-creator:refactor-skill` — this error requires splitting, not editing |
-| SK006 warning (skill approaching limit) | Extract content to `references/` directory; re-validate after extraction |
-| Broken link errors after Create phase | Read the file containing the link; verify the target path exists; fix with Edit tool directly |
-| claude plugin validate fails with path error | Confirm `.claude-plugin/plugin.json` exists at the plugin root; path must start with `./` |
-| Documentation phase produces no README.md | Re-run documentation task with explicit instruction to create README.md; verify file exists before proceeding |
-| Verify phase passes Layers 1–3 but fails Layer 4 | Read each broken cross-reference; fix with Edit tool; re-run Layer 4 check manually before returning to Phase 5 |
-| STATE.md absent (session resumed) | Read all artifact files in `.claude/plan/{plugin-name}/` to reconstruct current phase; create STATE.md from inferred state |
-| Validator output is ambiguous (warnings only, no errors) | Treat as passing — warnings do not block progression; note warnings in STATE.md for future optimization |
+See [error handling reference](./references/error-handling.md) for 14 failure modes and recovery procedures covering RT-ICA blocks, researcher failures, validator errors (SK006/SK007), broken links, missing documentation, and session recovery.
 
 ---
 
 ## Example Sessions
 
-### New plugin (full lifecycle)
+See [example sessions reference](./references/example-sessions.md) for two complete walkthroughs:
 
-```text
-> /plugin-lifecycle new git-workflow-helper
-
-Loading domain knowledge skills...
-  ✓ claude-plugins-reference-2026 loaded
-  ✓ claude-skills-overview-2026 loaded
-
-Phase 0: RT-ICA Prerequisite Check
-  Purpose clarity:     AVAILABLE — "git workflow helper" defined
-  Target users:        DERIVABLE — developers using Claude Code
-  Component selection: DERIVABLE — likely skills + hooks
-  Existing solutions:  MISSING — need to check plugins/
-  Source material:     AVAILABLE — git documentation exists
-  Verification method: DERIVABLE — validator scripts available
-
-  RT-ICA: BLOCKED
-  Missing: Existing solutions check (must search before designing to avoid duplication)
-
-Searching plugins/ and ~/.claude/skills/ for git workflow functionality...
-  Found: no similar plugin exists
-  RT-ICA: APPROVED
-
-Phase 0.5: Discussion
-  Activation triggers: Auto-load on git operations? [yes/no]
-  > yes — hook on PreToolUse:Bash for git commands
-  Tool restrictions: Read-only or full access?
-  > full access needed (creates commits)
-  Verbosity: terse or explanatory?
-  > terse — just the commands
-
-  Preferences saved to .claude/plan/git-workflow-helper/discuss-CONTEXT.md
-
-Phase 2: Research
-  Spawning 4 parallel researchers...
-    Researcher 1 (existing solutions) → research-1-existing.md ✓
-    Researcher 2 (Claude Code features) → research-2-features.md ✓
-    Researcher 3 (architecture patterns) → research-3-architecture.md ✓
-    Researcher 4 (pitfalls/official docs) → research-4-pitfalls.md ✓
-  Merging findings → research-FINDINGS.md ✓
-
-Phase 3: Design
-  RT-ICA on design inputs: APPROVED
-  Generating design plan...
-  Plan checker: PASS (3 tasks, all atomic, all verifiable)
-  Saved: .claude/plan/git-workflow-helper/design-PLAN.md
-
-Phase 4: Create
-  Creating skill: git-commit-helper/SKILL.md ✓
-  Creating hook: PreToolUse:Bash configuration ✓
-  Creating plugin.json ✓
-  All 3 planned files exist ✓
-
-Phase 5: Debug
-  Running validator...
-  Exit code: 0 — 0 errors, 1 warning (SK006 — skill approaching limit)
-  Warning noted in STATE.md for Phase 6 attention
-
-Phase 6: Optimize
-  Refactor-plugin: extracted 2 sections to references/ — SK006 resolved ✓
-  Documentation optimizer: improved 3 descriptions ✓
-  Agent prompt check: no agents in this plugin
-
-Phase 6.5: Documentation
-  Generating README.md...
-  README.md created with installation, usage, and 3 examples ✓
-
-Phase 7: Verify
-  Layer 1 (validator): 0 errors ✓
-  Layer 2 (claude plugin validate): PASS ✓
-  Layer 3 (token complexity): all skills within limits ✓
-  Layer 4 (cross-references): all links resolve ✓
-
-  Wrote .claude/plan/git-workflow-helper/SUMMARY.md
-  Plugin is marketplace-ready.
-```
-
-### Existing plugin with validation errors
-
-```text
-> /plugin-lifecycle existing plugins/my-data-tool
-
-Loading domain knowledge skills...
-  ✓ claude-plugins-reference-2026 loaded
-  ✓ claude-skills-overview-2026 loaded
-
-Phase 1: Assess
-  Running assessor...
-  Assessment saved: .claude/plan/my-data-tool/assessment-REPORT.md
-
-  Running validator: uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/my-data-tool
-  Exit code: 1
-
-  Errors found:
-    SK007: skills/main-skill/SKILL.md exceeds token limit (8,200 tokens)
-    LINK01: skills/main-skill/SKILL.md:45 → references/missing-file.md (file not found)
-    FM003: skills/helper-skill/SKILL.md — allowed-tools uses array format, not comma-separated string
-
-  → Proceeding to Phase 5: Debug
-
-Phase 5: Debug — Iteration 1
-  SK007 (skill too large):
-    Invoking refactor-skill for skills/main-skill/SKILL.md...
-    Split into main-skill/ (3,200 tokens) + references/advanced-usage.md ✓
-
-  LINK01 (broken link):
-    skills/main-skill/SKILL.md:45 references ./references/missing-file.md
-    File does not exist — removing stale link ✓
-
-  FM003 (array format):
-    Running fix_tool_formats.py on skills/helper-skill/SKILL.md...
-    Fixed: allowed-tools array → comma-separated string ✓
-
-  Re-validating...
-  Exit code: 0 — 0 errors ✓
-
-Phase 6: Optimize
-  Refactor-plugin: structure looks good — 2 minor description improvements ✓
-  Documentation optimizer: optimized main-skill description trigger keywords ✓
-  Agent optimizer: 1 agent prompt improved ✓
-
-Phase 6.5: Documentation
-  README.md exists — updating for new skill structure ✓
-
-Phase 7: Verify
-  Layer 1 (validator): 0 errors ✓
-  Layer 2 (claude plugin validate): PASS ✓
-  Layer 3 (token complexity): all within limits ✓
-  Layer 4 (cross-references): all links resolve ✓
-
-  Plugin is marketplace-ready.
-```
+- **New plugin (full lifecycle)** — RT-ICA BLOCKED → resolved, all 7 phases through marketplace-ready
+- **Existing plugin with validation errors** — 3 errors (SK007, broken link, format) fixed in Debug, verified in Phase 7
 
 ---
 
