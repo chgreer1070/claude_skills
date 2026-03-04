@@ -16,15 +16,5 @@
     "validation",
     "refactoring",
     "frontmatter"
-  ],
-  "agents": [
-    "./agents/agent-creator.md",
-    "./agents/hook-creator.md",
-    "./agents/refactor-planner.md",
-    "./agents/refactor-executor.md",
-    "./agents/refactor-validator.md",
-    "./agents/subagent-refactorer.md",
-    "./agents/contextual-ai-documentation-optimizer.md",
-    "./agents/plugin-assessor.md"
   ]
 }
