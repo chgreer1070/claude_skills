@@ -15,7 +15,7 @@ Lookup reference: which skill or agent handles each phase, and the exact invocat
 | 4: Create | `/plugin-creator:hook-creator` | `Skill(skill="plugin-creator:hook-creator")` |
 | 5: Debug | `/plugin-creator:lint` | `Skill(skill="plugin-creator:lint")` |
 | 5: Debug | `/plugin-creator:refactor-skill` | `Skill(skill="plugin-creator:refactor-skill")` |
-| 5: Debug | `fix_tool_formats.py` | `uv run plugins/plugin-creator/scripts/fix_tool_formats.py` |
+| 5: Debug | `/plugin-creator:lint` | `Skill(skill="plugin-creator:lint", args="--fix PATH")` |
 | 6: Optimize | `/plugin-creator:refactor-plugin` | `Skill(skill="plugin-creator:refactor-plugin")` |
 | 6: Optimize | `@contextual-ai-documentation-optimizer` | subagent_type="plugin-creator:contextual-ai-documentation-optimizer" |
 | 6: Optimize | `@subagent-refactorer` | subagent_type="plugin-creator:subagent-refactorer" |

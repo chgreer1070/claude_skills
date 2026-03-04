@@ -15,7 +15,7 @@ The plugin-creator plugin lacks a unified workflow skill that guides users throu
 
 **Goal**: Create a single `/plugin-creator:plugin-lifecycle` skill that defines ordered phases, names the correct skill/agent for each phase, specifies input/output artifacts per phase, includes decision gates, and handles the full lifecycle from blank canvas to marketplace-ready plugin.
 
-**Seven Phases**: Assess, Research, Design, Debug, Create, Optimize, Verify
+**Seven Phases**: Assess, Research, Design, Create, Debug, Optimize, Verify
 
 **Issue**: #427 | **Priority**: P1
 

@@ -64,7 +64,7 @@ flowchart TD
 | Skill | User-Invocable | Purpose |
 |-------|---------------|---------|
 | `/plugin-lifecycle` | Yes | Full plugin lifecycle orchestration — assess, research, design, create, debug, optimize, verify |
-| `/plugin-creator` | No | **DEPRECATED** — superseded by `/plugin-lifecycle` |
+| `/plugin-creator` | Yes | New-plugin creation workflow — complements `/plugin-lifecycle` for existing plugins |
 | `/agent-creator` | Yes | Create agents from scratch or templates; handles scope (project/user/plugin) |
 | `/skill-creator` | Yes | Create skills from scratch or templates; handles scope and validation |
 | `/claude-skills-overview-2026` | Yes | Complete reference for Claude Code skills system (January 2026) |

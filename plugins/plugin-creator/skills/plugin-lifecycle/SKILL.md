@@ -417,7 +417,7 @@ flowchart TD
     Q -->|"SK006 — skill approaching token limit (warning)"| Extract["Extract content to references/ directory<br>Update SKILL.md to reference extracted files<br>Output = reduced SKILL.md + new references/ file"]
     Q -->|"Broken link error (LINK01 or similar)"| Links["Read the file containing the broken link<br>Verify the target path exists on disk<br>Fix with Edit tool — update or remove the broken reference"]
     Q -->|"Frontmatter issues (FM-series errors)"| Lint["Invoke: Skill(skill='plugin-creator:lint', args='--fix PATH')<br>Context = file path + validator output<br>Output = corrected frontmatter in the file"]
-    Q -->|"Tool format issues (array instead of string)"| Tools["Run: uv run plugins/plugin-creator/scripts/fix_tool_formats.py PATH<br>Output = fixed comma-separated string in frontmatter"]
+    Q -->|"Tool format issues (array instead of string)"| Tools["Invoke: Skill(skill='plugin-creator:lint', args='--fix PATH')<br>Output = fixed comma-separated string in frontmatter"]
     Q -->|"Other structural errors"| Manual["Read the validator error message<br>Identify the file and line referenced<br>Apply Edit fix directly to that file<br>Verify fix is consistent with plugin schema"]
 
     %% All fix paths loop back to re-validate
