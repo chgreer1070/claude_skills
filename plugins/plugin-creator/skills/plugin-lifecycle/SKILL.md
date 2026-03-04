@@ -14,7 +14,7 @@ Orchestrate plugin development through seven phases. This skill composes existin
 
 **Arguments**: `$ARGUMENTS`
 
-- `new <concept>` — Create a plugin from scratch. Enters at Phase 2 (Research).
+- `new <concept>` — Create a plugin from scratch. Enters at Phase 0 (RT-ICA Prerequisite Check).
 - `existing <plugin-path>` — Improve an existing plugin. Enters at Phase 1 (Assess).
 
 ## Domain Knowledge Prerequisites
@@ -41,8 +41,14 @@ These skills contain the answers to fundamental questions: what is a plugin, wha
 ```mermaid
 flowchart TD
     Start(["/plugin-lifecycle $ARGUMENTS"]) --> Q1{First argument?}
-    Q1 -->|"new"| Research["Phase 2: Research"]
+    Q1 -->|"new"| RTICA["Phase 0: RT-ICA Prerequisite Check"]
     Q1 -->|"existing"| Assess["Phase 1: Assess"]
+
+    RTICA --> RTICAGate{"RT-ICA decision?"}
+    RTICAGate -->|"BLOCKED — missing inputs"| RTICABlock["Request missing inputs<br>Do not proceed"]
+    RTICAGate -->|"APPROVED"| Discuss["Phase 0.5: Discussion"]
+
+    Discuss --> Research["Phase 2: Research"]
 
     Assess --> AssessGate{"Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Exit code?"}
     AssessGate -->|"0 — no errors"| Optimize["Phase 6: Optimize"]
@@ -68,8 +74,10 @@ flowchart TD
     DebugGate2 -->|"Yes — 0 errors"| Optimize2["Phase 6: Optimize"]
     DebugGate2 -->|"No — errors remain"| Debug2
 
-    Optimize --> Verify["Phase 7: Verify"]
-    Optimize2 --> Verify
+    Optimize --> Docs["Phase 6.5: Documentation"]
+    Optimize2 --> Docs
+
+    Docs --> Verify["Phase 7: Verify"]
 
     Verify --> VerifyGate{"All 4 validation<br>layers pass?"}
     VerifyGate -->|"Yes"| Done(["Done — marketplace ready"])
@@ -85,6 +93,7 @@ All work artifacts are stored in `.claude/plan/{plugin-name}/`:
 .claude/plan/{plugin-name}/
 ├── PROJECT.md                # Vision and goals
 ├── STATE.md                  # Current phase, decisions, blockers
+├── discuss-CONTEXT.md        # Phase 0.5 output — user preferences (new path only)
 ├── research-FINDINGS.md      # Phase 2 output (new path only)
 ├── design-PLAN.md            # Phase 3 output (new path only)
 ├── assessment-REPORT.md      # Phase 1 output (existing path only)
@@ -93,6 +102,95 @@ All work artifacts are stored in `.claude/plan/{plugin-name}/`:
 ```
 
 Before starting any phase, read `STATE.md` if it exists to determine current progress. After completing each phase, update `STATE.md` with the phase completed and any decisions made.
+
+---
+
+## Phase 0: RT-ICA Prerequisite Check (New Plugin Only)
+
+**Entry condition**: User provides `new <concept>`.
+
+Before creating any plugin, verify all prerequisites are in place. Perform this RT-ICA assessment:
+
+```text
+RT-ICA SUMMARY
+
+Goal:
+- Create a Claude Code plugin for [purpose]
+
+Success Output:
+- Functional plugin that [specific outcome]
+
+Conditions (reverse prerequisites):
+1. Purpose clarity     | Requires: Clear problem statement   | Why: Determines plugin scope
+2. Target users        | Requires: Who will use this         | Why: Shapes UX decisions
+3. Component selection | Requires: Skills vs Agents vs Hooks | Why: Architecture
+4. Existing solutions  | Requires: Check for similar plugins | Why: Avoid duplication
+5. Source material     | Requires: Documentation/APIs to encode | Why: Content accuracy
+6. Verification method | Requires: How to test the plugin works | Why: Quality gate
+
+Verification:
+- [Check each condition: AVAILABLE / DERIVABLE / MISSING]
+
+Decision:
+- [APPROVED / BLOCKED]
+```
+
+**Decision gate**:
+
+```mermaid
+flowchart TD
+    Q{"RT-ICA decision?"}
+    Q -->|"APPROVED — all conditions available or derivable"| Next["Proceed to Phase 0.5: Discussion"]
+    Q -->|"BLOCKED — one or more conditions MISSING"| Block["Request missing inputs<br>Do not proceed to Discussion or Research"]
+```
+
+---
+
+## Phase 0.5: Discussion — Capture User Preferences (New Plugin Only)
+
+**Entry condition**: RT-ICA gate returned APPROVED.
+
+Before research, identify gray areas and capture user preferences to guide all subsequent phases.
+
+Ask targeted questions to eliminate ambiguity:
+
+**For skill-focused plugins:**
+
+- Activation triggers: When should Claude auto-load vs user-invoke?
+- Tool restrictions: Full access or limited tools?
+- Output format: Verbose explanations or terse instructions?
+- Reference structure: Inline content or progressive disclosure?
+
+**For agent-focused plugins:**
+
+- Delegation scope: What tasks should agents handle?
+- Return format: Summaries or detailed reports?
+- Error handling: Retry, escalate, or fail fast?
+
+**For hook-focused plugins:**
+
+- Trigger events: Which tool/session events matter?
+- Hook type: Command, prompt, or agent verification?
+- Timeout handling: Fail silently or block?
+
+Save preferences to `.claude/plan/{plugin-name}/discuss-CONTEXT.md`:
+
+```markdown
+# Plugin Discussion: {plugin-name}
+Date: {ISO timestamp}
+
+## Scope Decisions
+- {question}: {user preference}
+
+## UX Preferences
+- Invocation: {user-invoked | model-invoked | both}
+- Verbosity: {terse | balanced | verbose}
+
+## Technical Choices
+- {choice}: {preference with rationale}
+```
+
+These preferences guide all subsequent research and planning phases.
 
 ---
 
@@ -117,15 +215,56 @@ flowchart TD
 
 ## Phase 2: Research (New Plugin Only)
 
-**Entry condition**: User provides `new <concept>`.
+**Entry condition**: Discussion phase completed and discuss-CONTEXT.md written.
+
+Spawn all four researchers in a single message to run concurrently. Merge results into `research-FINDINGS.md` before proceeding to Design.
 
 1. Task is feature discovery with Skill(skill="plugin-creator:feature-discovery")
-   Context to include in the prompt: plugin concept from `$1` (everything after "new")
+   Context to include in the prompt: plugin concept from `$1` (everything after "new"), discuss-CONTEXT.md
    Output: `.claude/plan/{plugin-name}/feature-context-{slug}.md` — feature context document
 
-2. Task is ecosystem and pattern research with parallel research agents (inherited from `/plugin-creator:plugin-creator` Phase 1 pattern — 4-way parallel research covering ecosystem survey, Claude docs review, existing pattern analysis, reference implementations)
-   Context to include in the prompt: feature context from step 1, plugin concept description
-   Output: `.claude/plan/{plugin-name}/research-FINDINGS.md` — consolidated research findings
+2. Task is existing solutions research with subagent_type="plugin-creator:plugin-assessor"
+   Context to include in the prompt: plugin concept, feature context from step 1
+   Prompt for researcher: Search `plugins/` and `~/.claude/skills/` for similar functionality. Report what exists, gaps to fill, patterns to follow or avoid.
+   Output: `.claude/plan/{plugin-name}/research-1-existing.md`
+
+3. Task is Claude Code features research with subagent_type="plugin-creator:plugin-assessor"
+   Context to include in the prompt: plugin concept, feature context from step 1
+   Prompt for researcher: What capabilities should this plugin use — dynamic context injection (`!command`), subagent execution (`context: fork`), hooks (which events?), MCP/LSP integration opportunities? Report recommended features with rationale.
+   Output: `.claude/plan/{plugin-name}/research-2-features.md`
+
+4. Task is architecture patterns research with subagent_type="plugin-creator:plugin-assessor"
+   Context to include in the prompt: plugin concept, feature context from step 1
+   Prompt for researcher: How do well-structured plugins organize — skill directory structure, reference file patterns, agent definitions, hook configurations? Report recommended structure based on similar plugins.
+   Output: `.claude/plan/{plugin-name}/research-3-architecture.md`
+
+5. Task is pitfalls and official docs research with subagent_type="general-purpose"
+   Context to include in the prompt: plugin concept, feature context from step 1
+   Prompt for researcher: Fetch `https://code.claude.com/docs/en/plugins-reference.md` and `https://code.claude.com/docs/en/skills.md`. Identify schema requirements (comma-separated strings NOT arrays), common mistakes, deprecations or new features. Report gotchas to avoid.
+   Output: `.claude/plan/{plugin-name}/research-4-pitfalls.md`
+
+After all four researchers complete, consolidate into `research-FINDINGS.md`:
+
+```markdown
+# Research Findings: {plugin-name}
+Date: {ISO timestamp}
+
+## 1. Existing Solutions
+{Researcher 1 findings}
+
+## 2. Recommended Features
+{Researcher 2 findings}
+
+## 3. Architecture Patterns
+{Researcher 3 findings}
+
+## 4. Pitfalls & Requirements
+{Researcher 4 findings}
+
+## Synthesis
+- Key insights: {combined learnings}
+- Recommended approach: {synthesis}
+```
 
 **Decision gate**:
 
@@ -143,12 +282,17 @@ flowchart TD
 **Entry condition**: Research gate passed.
 
 1. Task is prerequisite check with Skill(skill="plugin-creator:rt-ica")
-   Context to include in the prompt: research-FINDINGS.md, plugin concept, user requirements
+   Context to include in the prompt: research-FINDINGS.md, plugin concept, user requirements from discuss-CONTEXT.md
    Output: APPROVED or BLOCKED verdict — if BLOCKED, resolve blockers before proceeding
 
-2. Task is design plan creation (inherited from `/plugin-creator:plugin-creator` Phase 2 pattern)
-   Context to include in the prompt: research-FINDINGS.md, rt-ica output, user discussion notes
-   Output: `.claude/plan/{plugin-name}/design-PLAN.md` — design plan with XML task specs defining every skill, agent, and hook to create
+2. Task is design plan creation with subagent_type="general-purpose"
+   Context to include in the prompt: research-FINDINGS.md, rt-ica output, discuss-CONTEXT.md
+   Output: `.claude/plan/{plugin-name}/design-PLAN.md` — design plan with XML task specs defining every skill, agent, and hook to create. Each task must have: single responsibility, testable `<verify>` command, clear `<done>` criteria.
+
+3. Task is plan verification with subagent_type="general-purpose"
+   Context to include in the prompt: design-PLAN.md, discuss-CONTEXT.md, research-FINDINGS.md key sections
+   Prompt: Verify this plan achieves the plugin goals. Check: (1) do tasks cover all required components? (2) are tasks truly atomic? (3) are `<verify>` commands testable? (4) are there gaps between tasks? (5) does sequence respect dependencies? Return PASS or FAIL with specific issues.
+   Output: PASS verdict (proceed) or FAIL with feedback (return to step 2)
 
 **Decision gate**:
 
@@ -243,13 +387,26 @@ Optimize improves quality — descriptions, progressive disclosure, agent prompt
    Context to include in the prompt: agent .md files needing improvement
    Output: optimized agent prompts using Anthropic best practices
 
-**Decision gate**: Assessment score meets target threshold (default 80/100) OR user accepts current quality. Proceed to Phase 7: Verify.
+**Decision gate**: Assessment score meets target threshold (default 80/100) OR user accepts current quality. Proceed to Phase 6.5: Documentation.
+
+---
+
+## Phase 6.5: Documentation (Both Paths)
+
+**Entry condition**: Optimize phase complete.
+
+Generate comprehensive documentation for the plugin:
+
+1. Task is plugin documentation generation with subagent_type="plugin-creator:plugin-assessor"
+   Context to include in the prompt: plugin path, all SKILL.md files, agent files, plugin.json, assess-REPORT.md or design-PLAN.md (whichever is available)
+   Prompt: Generate comprehensive documentation. Create: README.md with installation, usage, and examples; `docs/skills.md` if multiple skills exist; configuration guide if hooks or MCP servers are included. Ensure all features are documented, installation instructions are accurate, and examples are runnable.
+   Output: `{plugin-path}/README.md` and any additional documentation files
 
 ---
 
 ## Phase 7: Verify (Both Paths)
 
-**Entry condition**: Optimize gate passed.
+**Entry condition**: Documentation phase complete.
 
 Run multi-layer validation:
 
@@ -288,9 +445,11 @@ flowchart TD
 
 | Phase | Skill/Agent | Invocation |
 |-------|-------------|------------|
+| 0: RT-ICA | `rt-ica` skill (inline procedure) | Inline — see Phase 0 |
+| 0.5: Discussion | Direct — capture to discuss-CONTEXT.md | Inline — see Phase 0.5 |
 | 1: Assess | `/plugin-creator:assessor` | `Skill(skill="plugin-creator:assessor")` |
 | 2: Research | `/plugin-creator:feature-discovery` | `Skill(skill="plugin-creator:feature-discovery")` |
-| 2: Research | Parallel research agents | Inherited from plugin-creator Phase 1 |
+| 2: Research | 4-way parallel researchers | subagent_type="plugin-creator:plugin-assessor" x3 + "general-purpose" x1 |
 | 3: Design | `/plugin-creator:rt-ica` | `Skill(skill="plugin-creator:rt-ica")` |
 | 4: Create | `/plugin-creator:skill-creator` | `Skill(skill="plugin-creator:skill-creator")` |
 | 4: Create | `/plugin-creator:agent-creator` | `Skill(skill="plugin-creator:agent-creator")` |
@@ -301,8 +460,168 @@ flowchart TD
 | 6: Optimize | `/plugin-creator:refactor-plugin` | `Skill(skill="plugin-creator:refactor-plugin")` |
 | 6: Optimize | `@contextual-ai-documentation-optimizer` | subagent_type="plugin-creator:contextual-ai-documentation-optimizer" |
 | 6: Optimize | `@subagent-refactorer` | subagent_type="plugin-creator:subagent-refactorer" |
+| 6.5: Documentation | `@plugin-assessor` | subagent_type="plugin-creator:plugin-assessor" |
 | 7: Verify | `/plugin-creator:ensure-complete` | `Skill(skill="plugin-creator:ensure-complete")` |
 | 7: Verify | `plugin_validator.py` | `uv run plugins/plugin-creator/scripts/plugin_validator.py` |
+
+---
+
+## Error Handling
+
+| Failure | Recovery |
+|---------|----------|
+| RT-ICA returns BLOCKED | Present missing inputs to user; do not proceed to Discussion or Research until resolved |
+| Discussion phase skipped (user provides no answers) | Use defaults: user-invocable=true, balanced verbosity, no tool restrictions; note assumptions in discuss-CONTEXT.md |
+| Researcher subagent returns empty output | Re-spawn that researcher with more specific prompt; do not proceed to Design with incomplete findings |
+| research-FINDINGS.md merge incomplete (one researcher missing) | Identify which research-N file is absent; re-run that researcher; do not proceed to Design until all 4 are present |
+| Plan checker returns FAIL | Return design-PLAN.md and FAIL feedback to planner; iterate up to 3 times before escalating to user |
+| plugin_validator.py not found | Verify path `plugins/plugin-creator/scripts/plugin_validator.py`; check git status; the script must exist before Debug phase can run |
+| SK007 error (skill exceeds token limit) | Run `/plugin-creator:refactor-skill` — this error requires splitting, not editing |
+| SK006 warning (skill approaching limit) | Extract content to `references/` directory; re-validate after extraction |
+| Broken link errors after Create phase | Read the file containing the link; verify the target path exists; fix with Edit tool directly |
+| claude plugin validate fails with path error | Confirm `.claude-plugin/plugin.json` exists at the plugin root; path must start with `./` |
+| Documentation phase produces no README.md | Re-run documentation task with explicit instruction to create README.md; verify file exists before proceeding |
+| Verify phase passes Layers 1–3 but fails Layer 4 | Read each broken cross-reference; fix with Edit tool; re-run Layer 4 check manually before returning to Phase 5 |
+| STATE.md absent (session resumed) | Read all artifact files in `.claude/plan/{plugin-name}/` to reconstruct current phase; create STATE.md from inferred state |
+| Validator output is ambiguous (warnings only, no errors) | Treat as passing — warnings do not block progression; note warnings in STATE.md for future optimization |
+
+---
+
+## Example Sessions
+
+### New plugin (full lifecycle)
+
+```text
+> /plugin-lifecycle new git-workflow-helper
+
+Loading domain knowledge skills...
+  ✓ claude-plugins-reference-2026 loaded
+  ✓ claude-skills-overview-2026 loaded
+
+Phase 0: RT-ICA Prerequisite Check
+  Purpose clarity:     AVAILABLE — "git workflow helper" defined
+  Target users:        DERIVABLE — developers using Claude Code
+  Component selection: DERIVABLE — likely skills + hooks
+  Existing solutions:  MISSING — need to check plugins/
+  Source material:     AVAILABLE — git documentation exists
+  Verification method: DERIVABLE — validator scripts available
+
+  RT-ICA: BLOCKED
+  Missing: Existing solutions check (must search before designing to avoid duplication)
+
+Searching plugins/ and ~/.claude/skills/ for git workflow functionality...
+  Found: no similar plugin exists
+  RT-ICA: APPROVED
+
+Phase 0.5: Discussion
+  Activation triggers: Auto-load on git operations? [yes/no]
+  > yes — hook on PreToolUse:Bash for git commands
+  Tool restrictions: Read-only or full access?
+  > full access needed (creates commits)
+  Verbosity: terse or explanatory?
+  > terse — just the commands
+
+  Preferences saved to .claude/plan/git-workflow-helper/discuss-CONTEXT.md
+
+Phase 2: Research
+  Spawning 4 parallel researchers...
+    Researcher 1 (existing solutions) → research-1-existing.md ✓
+    Researcher 2 (Claude Code features) → research-2-features.md ✓
+    Researcher 3 (architecture patterns) → research-3-architecture.md ✓
+    Researcher 4 (pitfalls/official docs) → research-4-pitfalls.md ✓
+  Merging findings → research-FINDINGS.md ✓
+
+Phase 3: Design
+  RT-ICA on design inputs: APPROVED
+  Generating design plan...
+  Plan checker: PASS (3 tasks, all atomic, all verifiable)
+  Saved: .claude/plan/git-workflow-helper/design-PLAN.md
+
+Phase 4: Create
+  Creating skill: git-commit-helper/SKILL.md ✓
+  Creating hook: PreToolUse:Bash configuration ✓
+  Creating plugin.json ✓
+  All 3 planned files exist ✓
+
+Phase 5: Debug
+  Running validator...
+  Exit code: 0 — 0 errors, 1 warning (SK006 — skill approaching limit)
+  Warning noted in STATE.md for Phase 6 attention
+
+Phase 6: Optimize
+  Refactor-plugin: extracted 2 sections to references/ — SK006 resolved ✓
+  Documentation optimizer: improved 3 descriptions ✓
+  Agent prompt check: no agents in this plugin
+
+Phase 6.5: Documentation
+  Generating README.md...
+  README.md created with installation, usage, and 3 examples ✓
+
+Phase 7: Verify
+  Layer 1 (validator): 0 errors ✓
+  Layer 2 (claude plugin validate): PASS ✓
+  Layer 3 (token complexity): all skills within limits ✓
+  Layer 4 (cross-references): all links resolve ✓
+
+  Wrote .claude/plan/git-workflow-helper/SUMMARY.md
+  Plugin is marketplace-ready.
+```
+
+### Existing plugin with validation errors
+
+```text
+> /plugin-lifecycle existing plugins/my-data-tool
+
+Loading domain knowledge skills...
+  ✓ claude-plugins-reference-2026 loaded
+  ✓ claude-skills-overview-2026 loaded
+
+Phase 1: Assess
+  Running assessor...
+  Assessment saved: .claude/plan/my-data-tool/assessment-REPORT.md
+
+  Running validator: uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/my-data-tool
+  Exit code: 1
+
+  Errors found:
+    SK007: skills/main-skill/SKILL.md exceeds token limit (8,200 tokens)
+    LINK01: skills/main-skill/SKILL.md:45 → references/missing-file.md (file not found)
+    FM003: skills/helper-skill/SKILL.md — allowed-tools uses array format, not comma-separated string
+
+  → Proceeding to Phase 5: Debug
+
+Phase 5: Debug — Iteration 1
+  SK007 (skill too large):
+    Invoking refactor-skill for skills/main-skill/SKILL.md...
+    Split into main-skill/ (3,200 tokens) + references/advanced-usage.md ✓
+
+  LINK01 (broken link):
+    skills/main-skill/SKILL.md:45 references ./references/missing-file.md
+    File does not exist — removing stale link ✓
+
+  FM003 (array format):
+    Running fix_tool_formats.py on skills/helper-skill/SKILL.md...
+    Fixed: allowed-tools array → comma-separated string ✓
+
+  Re-validating...
+  Exit code: 0 — 0 errors ✓
+
+Phase 6: Optimize
+  Refactor-plugin: structure looks good — 2 minor description improvements ✓
+  Documentation optimizer: optimized main-skill description trigger keywords ✓
+  Agent optimizer: 1 agent prompt improved ✓
+
+Phase 6.5: Documentation
+  README.md exists — updating for new skill structure ✓
+
+Phase 7: Verify
+  Layer 1 (validator): 0 errors ✓
+  Layer 2 (claude plugin validate): PASS ✓
+  Layer 3 (token complexity): all within limits ✓
+  Layer 4 (cross-references): all links resolve ✓
+
+  Plugin is marketplace-ready.
+```
 
 ---
 
