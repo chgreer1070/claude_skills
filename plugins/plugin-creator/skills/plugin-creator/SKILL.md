@@ -1,9 +1,12 @@
 ---
 name: plugin-creator
-description: Orchestrates specialized agents to create high-quality Claude Code plugins. Delegates to plugin-assessor agent for domain research and code discovery, general-purpose agents for official docs verification, validation scripts for schema checks, and review agents for quality assessment. Use when creating new plugins or improving existing ones.
+description: "DEPRECATED — Use /plugin-creator:plugin-lifecycle instead. Legacy orchestration workflow for plugin creation. Superseded by plugin-lifecycle which covers the full lifecycle including assessment, debugging, and optimization."
 model: sonnet
-user-invocable: true
+user-invocable: false
 ---
+
+> **DEPRECATED**: This skill is superseded by `/plugin-creator:plugin-lifecycle`.
+> Use `/plugin-lifecycle new <concept>` for new plugins or `/plugin-lifecycle existing <path>` for existing plugins.
 
 > When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
 
