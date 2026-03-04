@@ -39,3 +39,35 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 - `_create_task_from_dict()` passes `skills` from `TaskData` to `Task`
 - `ready-tasks` CLI command JSON output includes `"skills": [...]` for each ready task
 **Reason not written**: No test suite exists for `implementation_manager.py`. Task 2.3 scope was limited to data model changes only; creating a full test suite from scratch exceeds the stated constraint.
+
+## Gap: state_manager.py integration with validators
+
+**Files**: `plugins/scientific-method/mcp/experiment-registry/state_manager.py`
+**Behavior to cover**:
+- `complete_step` returns `{"success": False, "validation_errors": [...]}` and does not mutate `state.artefacts` when any validator returns errors (pre-merge validation pattern)
+- `_compute_frozen_hashes` stores SHA-256 hash in `state.artefact_integrity[key]` as `ArtefactIntegrity` after merge
+- `_complete_iterate_step` derives `criteria_passed` from `rubric_scores.values()` (not from `artefacts["criteria_passed"]`) and stores `rubric_scores_iter{N}` as JSON in `state.artefacts`
+- iterate-specific validators (`validate_iteration_output`, `validate_rubric_scores`) are only called when `step_id == "iterate"` — not for other steps
+- `complete_step` returns `{"success": False, "blocked_on_human_input": True, ...}` when `human_input_required` and artefacts are missing
+- Experiment reaches `status="complete"` when `all(rubric_scores.values())` is True on the iterate step
+- Experiment reaches `status="inconclusive"` when `iteration_count >= max_iterations`
+
+**Reason not written**: T4 scope is integration wiring only. Test creation is assigned to T6 per the task plan.
+
+## Gap: server.py complete_step rubric_scores passthrough
+
+**Files**: `plugins/scientific-method/mcp/experiment-registry/server.py`
+**Behavior to cover**:
+- `complete_step` MCP tool accepts `rubric_scores: dict[str, bool] | None` and passes it through to `manager.complete_step`
+- MCP tool returns `{"success": False, "validation_errors": [...]}` when validation fails
+- MCP tool raises `ToolError` when `step_id` does not match current step
+**Reason not written**: T4 scope is integration wiring only. Test creation is assigned to T6 per the task plan.
+
+## Gap: registry_loader.py_apply_extension merge of new fields
+
+**Files**: `plugins/scientific-method/mcp/experiment-registry/registry_loader.py`
+**Behavior to cover**:
+- `_apply_extension` appends `ext.additional_validation_rules` to `step.validation_rules`
+- `_apply_extension` merges `ext.additional_frozen_artefacts` into `step.frozen_artefacts` with order-preserving deduplication (via `dict.fromkeys`)
+- Duplicate keys in `additional_frozen_artefacts` that already exist in `step.frozen_artefacts` are deduplicated (base key wins position)
+**Reason not written**: T4 scope is integration wiring only. Test creation is assigned to T6 per the task plan.

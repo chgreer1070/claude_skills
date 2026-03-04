@@ -1,0 +1,31 @@
+{
+  "name": "skill_evaluation_experiments",
+  "description": "Evaluating skill instruction changes. Extends core with skill file path conventions, SKILL.md-specific fixture rules, and pre/post comparison methodology.",
+  "extends": "experiment_core",
+  "step_extensions": {
+    "hypothesis": {
+      "checklist": [
+        "Hypothesis references a specific SKILL.md section or instruction",
+        "Current behaviour is documented with session evidence (not assumed)"
+      ]
+    },
+    "fixture": {
+      "checklist": [
+        "Fixture represents a realistic user request that would trigger the skill",
+        "Fixture does not reference the skill by name or hint at expected workflow"
+      ]
+    }
+  },
+  "rubric_templates": [
+    {
+      "name": "Skill activation",
+      "observable": "Agent loads and follows the skill when given the fixture",
+      "pass": "Skill is activated and its workflow steps are followed",
+      "fail": "Agent proceeds without loading the skill or ignores its instructions"
+    }
+  ],
+  "anti_patterns": [
+    "Including the skill name in the fixture (biases the agent to load it)",
+    "Testing skill changes without a baseline from the previous version"
+  ]
+}

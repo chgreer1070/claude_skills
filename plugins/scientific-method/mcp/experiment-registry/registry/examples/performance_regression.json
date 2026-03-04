@@ -1,0 +1,17 @@
+{
+  "name": "performance_regression",
+  "description": "Performance regression experiments. Extends core with baseline metrics, regression window, and hot path analysis.",
+  "extends": "experiment_core",
+  "step_extensions": {
+    "baseline": {
+      "additional_artefacts": ["baseline-metrics.md"],
+      "checklist": [
+        "Are baseline metrics captured before any change?",
+        "Is the regression window defined (commit range or date range)?",
+        "Is the hot path identified and profiled?"
+      ],
+      "human_input_required": true,
+      "human_input_description": "Baseline metrics require running the profiler against the current codebase. Provide the profiler output."
+    }
+  }
+}

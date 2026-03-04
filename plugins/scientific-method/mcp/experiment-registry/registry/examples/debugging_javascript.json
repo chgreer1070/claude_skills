@@ -1,0 +1,23 @@
+{
+  "name": "debugging_javascript",
+  "description": "Debugging experiments for JavaScript apps. Extends core with callstack, diff, and dependency graph observations.",
+  "extends": "experiment_core",
+  "step_extensions": {
+    "hypothesis": {
+      "additional_artefacts": ["callstack.md", "recent-diffs.md"],
+      "checklist": [
+        "Does the callstack show the failing frame?",
+        "Are recent diffs attached for files in the stack?",
+        "Is the dependency graph captured if a module boundary is crossed?"
+      ]
+    }
+  },
+  "rubric_templates": [
+    {
+      "name": "Identifies correct failing frame",
+      "observable": "Agent names the specific file and line in the callstack",
+      "pass": "Output references exact file:line of the failure",
+      "fail": "Output describes the error generally without identifying the frame"
+    }
+  ]
+}
