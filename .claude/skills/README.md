@@ -9,7 +9,7 @@ This directory contains skills that extend Claude's capabilities with specialize
 | [agent-creator](#agent-creator)                                 | Creation Tools     | Create and design Claude Code agents                             | Yes                   |
 | [subagent-contract](#subagent-contract)                         | Workflow Contracts | Enforce specialist agent behavior patterns                       | No (loaded by agents) |
 | [rt-ica](#rt-ica)                                               | Planning Tools     | Pre-planning checkpoint that blocks until prerequisites verified | Yes                   |
-| [scientific-method:scientific-thinking](#scientific-thinking) (plugin) | Workflow Tools     | Hypothesis-driven reasoning for complex problems                 | Yes                   |
+| [scientific-method:scientific-thinking](#scientific-method-scientific-thinking) (plugin) | Workflow Tools     | Hypothesis-driven reasoning for complex problems                 | Yes                   |
 | [verify](#verify)                                               | Workflow Tools     | Self-assessment checklist before task completion                 | Yes                   |
 | [delegate](#delegate)                                           | Workflow Tools     | Quick delegation template for sub-agent prompts                  | Yes                   |
 | [claude-skills-overview-2026](#claude-skills-overview-2026)     | Reference          | Skills and Slash Command system documentation                    | Yes                   |
@@ -145,7 +145,9 @@ When an agent loads this skill, it will:
 
 ## Workflow Tools
 
-### scientific-thinking
+<a id="scientific-method-scientific-thinking"></a>
+
+### scientific-method:scientific-thinking
 
 > Migrated to plugin: /scientific-method:scientific-thinking
 

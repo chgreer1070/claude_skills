@@ -176,14 +176,14 @@ flowchart TB
 
 **Coverage Details:**
 
-| Asset                | Type    | Function                                    |
-| -------------------- | ------- | ------------------------------------------- |
-| rt-ica               | Skill   | Block planning until prerequisites verified |
-| delegate             | Skill   | Quick WHERE-WHAT-WHY template               |
-| /how-to-delegate     | Command | Comprehensive delegation framework          |
-| /think               | Command | Step-back broader perspective               |
+| Asset                                  | Type    | Function                                    |
+| -------------------------------------- | ------- | ------------------------------------------- |
+| rt-ica                                 | Skill   | Block planning until prerequisites verified |
+| delegate                               | Skill   | Quick WHERE-WHAT-WHY template               |
+| /how-to-delegate                       | Command | Comprehensive delegation framework          |
+| /think                                 | Command | Step-back broader perspective               |
 | scientific-method:scientific-thinking  | Skill   | Hypothesis-driven approach                  |
-| /step-back           | Command | Wider view of task implications             |
+| /step-back                             | Command | Wider view of task implications             |
 | /scientific-method:scientific-thinking | Command | Activate scientific method                  |
 
 **Gap Analysis:** No automated complexity scoring or effort estimation.
@@ -334,52 +334,52 @@ flowchart TB
 ## Complete Asset-to-Stage Mapping
 
 ```text
-┌─────────────────────┬───────┬─────────┬──────────┬───────────┬──────────────┬────────┐
-│ Asset               │ Input │ Context │ Planning │ Execution │ Verification │ Output │
-├─────────────────────┼───────┼─────────┼──────────┼───────────┼──────────────┼────────┤
-│ SKILLS              │       │         │          │           │              │        │
-│ rt-ica              │       │    ●    │    ●     │           │              │        │
-│ delegate            │       │         │    ●     │           │              │        │
-│ verify              │       │         │          │           │      ●       │        │
-│ audit               │       │         │          │           │      ●       │        │
-│ scientific-method:scientific-thinking │       │         │    ●     │     ●     │              │        │
-│ agent-creator       │       │         │          │     ●     │              │        │
-│ subagent-contract   │       │         │          │     ●     │              │   ●    │
-│ git-commit-helper   │       │         │          │           │              │   ●    │
-│ *-reference-2026 x4 │       │    ●    │          │           │              │        │
-├─────────────────────┼───────┼─────────┼──────────┼───────────┼──────────────┼────────┤
-│ AGENTS              │       │         │          │           │              │        │
-│ context-gathering   │       │    ●    │          │     ●     │              │        │
-│ context-refinement  │       │    ●    │          │           │              │        │
-│ code-review         │       │         │          │           │      ●       │        │
-│ plugin-assessor     │       │         │          │           │      ●       │        │
-│ plugin-docs-writer  │       │         │          │     ●     │              │   ●    │
-│ skill-refactorer    │       │         │          │     ●     │              │        │
-│ doc-drift-auditor   │       │         │          │           │      ●       │        │
-│ context-optimizer   │       │         │          │     ●     │              │        │
-│ subagent-refactorer │       │         │          │     ●     │              │        │
-│ subagent-generator  │       │         │          │     ●     │              │        │
-│ logging             │       │         │          │           │              │   ●    │
-├─────────────────────┼───────┼─────────┼──────────┼───────────┼──────────────┼────────┤
-│ COMMANDS            │       │         │          │           │              │        │
-│ /sessions           │   ●   │         │          │           │              │        │
-│ /am-i-complete      │       │         │          │           │      ●       │        │
-│ /verify             │       │         │          │           │      ●       │        │
-│ /audit              │       │         │          │           │      ●       │        │
-│ /how-to-delegate    │       │         │    ●     │           │              │        │
-│ /think              │       │         │    ●     │           │              │        │
-│ /step-back          │       │         │    ●     │           │              │        │
-│ /how-confident      │       │         │          │           │      ●       │        │
-│ /rt-ica             │       │    ●    │    ●     │           │              │        │
-│ /delegate           │       │         │    ●     │           │              │        │
-│ /scientific-method:scientific-thinking│       │         │    ●     │           │              │        │
-├─────────────────────┼───────┼─────────┼──────────┼───────────┼──────────────┼────────┤
-│ HOOKS               │       │         │          │           │              │        │
-│ session-start-rtica │   ●   │         │          │           │              │        │
-├─────────────────────┼───────┼─────────┼──────────┼───────────┼──────────────┼────────┤
-│ COVERAGE SCORE      │  2/3  │   7/3   │   8/3    │    8/3    │     9/3      │  4/3   │
-│ STATUS              │  ⚠️   │   ✅    │    ✅    │    ✅     │     ✅       │  ⚠️   │
-└─────────────────────┴───────┴─────────┴──────────┴───────────┴──────────────┴────────┘
+┌────────────────────────────────────────┬───────┬─────────┬──────────┬───────────┬──────────────┬────────┐
+│ Asset                                  │ Input │ Context │ Planning │ Execution │ Verification │ Output │
+├────────────────────────────────────────┼───────┼─────────┼──────────┼───────────┼──────────────┼────────┤
+│ SKILLS                                 │       │         │          │           │              │        │
+│ rt-ica                                 │       │    ●    │    ●     │           │              │        │
+│ delegate                               │       │         │    ●     │           │              │        │
+│ verify                                 │       │         │          │           │      ●       │        │
+│ audit                                  │       │         │          │           │      ●       │        │
+│ scientific-method:scientific-thinking  │       │         │    ●     │     ●     │              │        │
+│ agent-creator                          │       │         │          │     ●     │              │        │
+│ subagent-contract                      │       │         │          │     ●     │              │   ●    │
+│ git-commit-helper                      │       │         │          │           │              │   ●    │
+│ *-reference-2026 x4                    │       │    ●    │          │           │              │        │
+├────────────────────────────────────────┼───────┼─────────┼──────────┼───────────┼──────────────┼────────┤
+│ AGENTS                                 │       │         │          │           │              │        │
+│ context-gathering                      │       │    ●    │          │     ●     │              │        │
+│ context-refinement                     │       │    ●    │          │           │              │        │
+│ code-review                            │       │         │          │           │      ●       │        │
+│ plugin-assessor                        │       │         │          │           │      ●       │        │
+│ plugin-docs-writer                     │       │         │          │     ●     │              │   ●    │
+│ skill-refactorer                       │       │         │          │     ●     │              │        │
+│ doc-drift-auditor                      │       │         │          │           │      ●       │        │
+│ context-optimizer                      │       │         │          │     ●     │              │        │
+│ subagent-refactorer                    │       │         │          │     ●     │              │        │
+│ subagent-generator                     │       │         │          │     ●     │              │        │
+│ logging                                │       │         │          │           │              │   ●    │
+├────────────────────────────────────────┼───────┼─────────┼──────────┼───────────┼──────────────┼────────┤
+│ COMMANDS                               │       │         │          │           │              │        │
+│ /sessions                              │   ●   │         │          │           │              │        │
+│ /am-i-complete                         │       │         │          │           │      ●       │        │
+│ /verify                                │       │         │          │           │      ●       │        │
+│ /audit                                 │       │         │          │           │      ●       │        │
+│ /how-to-delegate                       │       │         │    ●     │           │              │        │
+│ /think                                 │       │         │    ●     │           │              │        │
+│ /step-back                             │       │         │    ●     │           │              │        │
+│ /how-confident                         │       │         │          │           │      ●       │        │
+│ /rt-ica                                │       │    ●    │    ●     │           │              │        │
+│ /delegate                              │       │         │    ●     │           │              │        │
+│ /scientific-method:scientific-thinking │       │         │    ●     │           │              │        │
+├────────────────────────────────────────┼───────┼─────────┼──────────┼───────────┼──────────────┼────────┤
+│ HOOKS                                  │       │         │          │           │              │        │
+│ session-start-rtica                    │   ●   │         │          │           │              │        │
+├────────────────────────────────────────┼───────┼─────────┼──────────┼───────────┼──────────────┼────────┤
+│ COVERAGE SCORE                         │  2/3  │   7/3   │   8/3    │    8/3    │     9/3      │  4/3   │
+│ STATUS                                 │  ⚠️   │   ✅    │    ✅    │    ✅     │     ✅       │  ⚠️   │
+└────────────────────────────────────────┴───────┴─────────┴──────────┴───────────┴──────────────┴────────┘
 
 Legend: ● = Asset covers this stage
 Coverage threshold: ≥3 assets = ✅ COVERED, 1-2 assets = ⚠️ PARTIAL, 0 = ❌ GAP
