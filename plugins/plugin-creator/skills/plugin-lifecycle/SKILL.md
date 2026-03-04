@@ -17,7 +17,7 @@ user-invocable: true
 
 Orchestrate plugin development through seven phases. This skill composes existing plugin-creator skills and agents — it does not re-implement their logic.
 
-**Arguments**: `$ARGUMENTS`
+Arguments: `$ARGUMENTS`
 
 - `new <concept>` — Create a plugin from scratch. Enters at Phase 0 (RT-ICA Prerequisite Check).
 - `existing <plugin-path>` — Improve an existing plugin. Enters at Phase 1 (Assess).
@@ -26,12 +26,12 @@ Orchestrate plugin development through seven phases. This skill composes existin
 
 Load these skills at session start before executing any phase. Full skill descriptions and what each provides: [domain-knowledge-prerequisites.md](./references/domain-knowledge-prerequisites.md).
 
-**Required — load at session start:**
+Required — load at session start:
 
 1. `Skill(skill="plugin-creator:claude-plugins-reference-2026")` — plugin.json schema, component types, environment variables, installation scopes, path rules
 2. `Skill(skill="plugin-creator:claude-skills-overview-2026")` — SKILL.md format, all 14 frontmatter fields, YAML multiline bug, allowed-tools string format, context fork behavior
 
-**Required for phases involving hooks (Phase 4: Create, Phase 5: Debug):**
+Required for phases involving hooks (Phase 4: Create, Phase 5: Debug):
 
 3. `Skill(skill="plugin-creator:hooks-guide")` — 13 hook event types, exit codes, tool denial mechanisms, agent frontmatter fields
 
@@ -131,7 +131,7 @@ Before starting any phase, read `STATE.md` if it exists to determine current pro
 
 ## Phase 0: RT-ICA Prerequisite Check (New Plugin Only)
 
-**Entry condition**: User provides `new <concept>`.
+Entry condition: User provides `new <concept>`.
 
 Before creating any plugin, verify all prerequisites are in place. Perform this RT-ICA assessment:
 
@@ -172,26 +172,26 @@ flowchart TD
 
 ## Phase 0.5: Discussion — Capture User Preferences (New Plugin Only)
 
-**Entry condition**: RT-ICA gate returned APPROVED.
+Entry condition: RT-ICA gate returned APPROVED.
 
 Before research, identify gray areas and capture user preferences to guide all subsequent phases.
 
 Ask targeted questions to eliminate ambiguity:
 
-**For skill-focused plugins:**
+For skill-focused plugins:
 
 - Activation triggers: When should Claude auto-load vs user-invoke?
 - Tool restrictions: Full access or limited tools?
 - Output format: Verbose explanations or terse instructions?
 - Reference structure: Inline content or progressive disclosure?
 
-**For agent-focused plugins:**
+For agent-focused plugins:
 
 - Delegation scope: What tasks should agents handle?
 - Return format: Summaries or detailed reports?
 - Error handling: Retry, escalate, or fail fast?
 
-**For hook-focused plugins:**
+For hook-focused plugins:
 
 - Trigger events: Which tool/session events matter?
 - Hook type: Command, prompt, or agent verification?
@@ -230,7 +230,7 @@ flowchart TD
 
 ## Phase 1: Assess (Existing Plugin Only)
 
-**Entry condition**: User provides `existing <plugin-path>`.
+Entry condition: User provides `existing <plugin-path>`.
 
 1. Task is plugin assessment with Skill(skill="plugin-creator:assessor")
    Context to include in the prompt: plugin directory path from `$1`
@@ -253,7 +253,7 @@ flowchart TD
 
 ## Phase 2: Research (New Plugin Only)
 
-**Entry condition**: Discussion phase completed and discuss-CONTEXT.md written.
+Entry condition: Discussion phase completed and discuss-CONTEXT.md written.
 
 Spawn all four researchers in a single message to run concurrently. Merge results into `research-FINDINGS.md` before proceeding to Design.
 
@@ -331,7 +331,7 @@ flowchart TD
 
 ## Phase 3: Design (New Plugin Only)
 
-**Entry condition**: Research gate passed.
+Entry condition: Research gate passed.
 
 1. Task is prerequisite check with Skill(skill="plugin-creator:rt-ica")
    Context to include in the prompt: research-FINDINGS.md, plugin concept, user requirements from discuss-CONTEXT.md
@@ -363,7 +363,7 @@ flowchart TD
 
 ## Phase 4: Create (New Plugin Only)
 
-**Entry condition**: Design gate passed.
+Entry condition: Design gate passed.
 
 For each component defined in `design-PLAN.md`, invoke the appropriate creator skill:
 
@@ -395,7 +395,7 @@ flowchart TD
 
 ## Phase 5: Debug (Both Paths)
 
-**Entry condition**: Create gate passed (new path) OR Assess gate failed (existing path).
+Entry condition: Create gate passed (new path) OR Assess gate failed (existing path).
 
 Debug fixes validation errors. Run the validator first to identify issues:
 
@@ -433,7 +433,7 @@ flowchart TD
 
 ## Phase 6: Optimize (Both Paths)
 
-**Entry condition**: Debug gate passed OR Assess gate passed with no errors.
+Entry condition: Debug gate passed OR Assess gate passed with no errors.
 
 Optimize improves quality — descriptions, progressive disclosure, agent prompts, documentation. This phase is not about fixing errors (that is Debug) but about raising quality.
 
@@ -470,7 +470,7 @@ flowchart TD
 
 ## Phase 6.5: Documentation (Both Paths)
 
-**Entry condition**: Optimize phase complete.
+Entry condition: Optimize phase complete.
 
 Generate comprehensive documentation for the plugin:
 
@@ -493,7 +493,7 @@ flowchart TD
 
 ## Phase 7: Verify (Both Paths)
 
-**Entry condition**: Documentation phase complete.
+Entry condition: Documentation phase complete.
 
 Run multi-layer validation:
 
@@ -501,21 +501,21 @@ Run multi-layer validation:
    Context to include in the prompt: plugin path, task file (if applicable)
    Output: `.claude/plan/{plugin-name}/validation-REPORT.md`
 
-2. **Layer 1 — Structural validation**:
+2. Layer 1 — Structural validation:
 
    ```bash
    uv run plugins/plugin-creator/scripts/plugin_validator.py <plugin-path>
    ```
 
-3. **Layer 2 — Runtime validation**:
+3. Layer 2 — Runtime validation:
 
    ```bash
    claude plugin validate <plugin-path>
    ```
 
-4. **Layer 3 — Token complexity**: Check `plugin_validator.py` output for SK006/SK007 warnings on all skills.
+4. Layer 3 — Token complexity: Check `plugin_validator.py` output for SK006/SK007 warnings on all skills.
 
-5. **Layer 4 — Cross-reference integrity**: Verify all internal links resolve, all skills referenced in plugin.json exist, all agent references in skills point to existing agent files.
+5. Layer 4 — Cross-reference integrity: Verify all internal links resolve, all skills referenced in plugin.json exist, all agent references in skills point to existing agent files.
 
 The following diagram is the authoritative procedure for Phase 7 Verify 4-layer validation gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
