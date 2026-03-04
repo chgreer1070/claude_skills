@@ -1,14 +1,14 @@
 ---
 name: Google Stitch
-description: Google Stitch is an AI-powered design tool that generates UI elements and code for mobile and web applications. Launched at Google I/O 2025, Stitch uses Google's Gemini 2.5 models to create app...
+description: Google Stitch is an AI-powered design tool that generates UI elements and code for mobile and web applications. Launched at Google I/O 2025, Stitch uses Google's Gemini 2.5 models to create app frontends from text prompts or images, outputting HTML/CSS and React code.
 license: Proprietary (Google product)
 metadata:
   topic: google-stitch
   category: ai-design-tools
   source_url: https://stitch.withgoogle.com
-  version: "Beta"
-  verified: "2026-01-31"
-  next_review: "2026-05-01"
+  version: "Beta (Stitch 2.0 as of Dec 2025)"
+  verified: "2026-03-04"
+  next_review: "2026-06-04"
 ---
 
 ## Overview
@@ -31,13 +31,17 @@ Google Stitch is an AI-powered design tool that generates UI elements and code f
 
 ## Key Statistics
 
-| Metric               | Value                           | Date Gathered |
-| -------------------- | ------------------------------- | ------------- |
-| Public GitHub Repo   | Not available (closed source)   | 2026-01-31    |
-| Launch Date          | May 20, 2025 (Google I/O 2025)  | 2026-01-31    |
-| Hosting Platform     | Google Cloud (App Engine)       | 2026-01-31    |
-| AI Models Available  | Gemini 2.5 Pro, Gemini 2.5 Flash| 2026-01-31    |
-| Pricing              | Free (beta)                     | 2026-01-31    |
+| Metric                | Value                                      | Date Gathered |
+| --------------------- | ------------------------------------------ | ------------- |
+| Public GitHub Repo    | Not available (closed source)              | 2026-03-04    |
+| Launch Date           | May 20, 2025 (Google I/O 2025)             | 2026-03-04    |
+| Stitch 2.0 Release    | December 18, 2025                          | 2026-03-04    |
+| Enterprise Rollout    | February 2026 (SOC2, team collaboration)   | 2026-03-04    |
+| Hosting Platform      | Google Cloud (App Engine)                  | 2026-03-04    |
+| AI Models Available   | Gemini 2.5 Pro (experimental), Gemini 2.5 Flash (standard) | 2026-03-04 |
+| Code Output Formats   | HTML/CSS, React (free as of Dec 2025)      | 2026-03-04    |
+| Pricing               | Free (beta, generation limits apply)       | 2026-03-04    |
+| Origin                | Acquired from Galileo AI (2025)            | 2026-03-04    |
 
 Note: Google Stitch is a closed-source Google product. No public GitHub repository, npm package, or open-source components are available.
 
@@ -47,27 +51,44 @@ Note: Google Stitch is a closed-source Google product. No public GitHub reposito
 
 ### AI-Powered UI Generation
 
-- Text-to-UI: Describe desired interface in natural language
-- Image-to-UI: Upload reference images to generate similar designs
-- HTML/CSS output: Production-ready markup from AI generation
-- Model selection: Choose between Gemini 2.5 Pro (higher quality) or Gemini 2.5 Flash (faster)
+- Text-to-UI: Describe desired interface in natural language; Stitch generates full layout with components
+- Image-to-UI: Upload whiteboard sketches, screenshots, or wireframes to generate corresponding digital UI
+- Dual model modes: Standard Mode (Gemini 2.5 Flash, speed-optimized) and Experimental Mode (Gemini 2.5 Pro, higher fidelity)
+- Multi-variant generation: Explore multiple layout variations from a single prompt
+
+### Code Output
+
+- HTML/CSS export: Clean, standards-compliant markup ready for direct use
+- React code generation: Free React output added in Stitch 2.0 (December 2025)
+- Production-ready: Code follows modern web standards for maintainability and scalability
 
 ### Design Workflow Integration
 
-- Figma export: Direct export of generated designs to Figma
-- IDE compatibility: Expose code for refinement in development environments
-- Element fine-tuning: Adjust individual UI components after generation
+- Figma export: Single-click paste of entire interface into Figma with layout, components, and structure intact
+- Interactive chat refinement: Adjust specific elements via follow-up prompts without regenerating the full UI
+- Theme selectors: Change color palettes and visual style post-generation
 - Responsive design: Support for mobile and web layouts
+
+### Prototyping (added December 2025)
+
+- Multi-screen prototyping: Stitch 2.0 introduced full prototype creation, moving beyond static screen generation
+- Interactive flows: Link screens together for clickable prototype walkthrough
+
+### Enterprise Features (February 2026)
+
+- SOC2 compliance for enterprise data handling
+- Team collaboration features
+- API endpoints for custom integrations
 
 ### Input Methods
 
-- Text prompts: Describe UI requirements in natural language
-- Image prompts: Upload reference designs or mockups
-- Screenshot annotation (upcoming): Mark changes on captured screens
+- Text prompts: Natural language UI requirements
+- Image prompts: Reference designs, mockups, sketches
+- Interactive chat: Iterative refinement after initial generation
 
 ### Example Use Cases (from Google demos)
 
-- Mobile app UI for a bookworm/reading application
+- Mobile app UI for a reading/bookworm application
 - Web dashboard for beekeeping data visualization
 - Responsive layouts for various screen sizes
 
@@ -77,27 +98,33 @@ Note: Google Stitch is a closed-source Google product. No public GitHub reposito
 
 ### Stack Components (observed from production)
 
-| Component      | Technology                              |
-| -------------- | --------------------------------------- |
-| Frontend       | Angular SPA (appcompanion-root)         |
-| Backend        | Google App Engine (app-companion)       |
-| AI Models      | Gemini 2.5 Pro, Gemini 2.5 Flash        |
-| Authentication | Google Account OAuth                    |
-| Analytics      | Google Tag Manager (G-1CD1CPGEYF)       |
-| CDN            | Google Static (gstatic.com)             |
+| Component      | Technology                                            |
+| -------------- | ----------------------------------------------------- |
+| Frontend       | Angular SPA (appcompanion-root)                       |
+| Backend        | Google App Engine (app-companion)                     |
+| AI Models      | Gemini 2.5 Pro (Experimental Mode), Gemini 2.5 Flash (Standard Mode) |
+| Authentication | Google Account OAuth                                  |
+| Analytics      | Google Tag Manager (G-1CD1CPGEYF)                     |
+| CDN            | Google Static (gstatic.com)                           |
 
 ### Internal Codename
 
 - Project codename: "Nemo" (observed in production JavaScript)
 
+### Origin
+
+- Built on technology acquired from Galileo AI (founded 2022, acquired by Google in 2025)
+- Integrated into Google Labs ecosystem and powered by Gemini at acquisition
+
 ### Workflow
 
 1. User authenticates via Google Account
 2. User provides prompt (text description or image)
-3. User selects AI model (Gemini 2.5 Pro or Flash)
-4. Stitch generates UI preview and code
-5. User refines elements or adjusts prompt
+3. User selects AI model mode (Standard/Flash for speed, Experimental/Pro for fidelity)
+4. Stitch generates UI preview with HTML/CSS and React code
+5. User refines via chat, theme selectors, or variant generation
 6. User exports to Figma or copies code for IDE
+7. (Stitch 2.0+) Chain screens for multi-screen prototype flows
 
 ---
 
@@ -162,13 +189,13 @@ There is no command-line interface, API, or self-hosted option. The service oper
 
 ### Limitations for Claude Code
 
-1. **Closed Source**: No codebase or API to study implementation details.
+1. **Closed Source**: No codebase or API to study implementation details (though enterprise API endpoints were added in February 2026).
 
-2. **Web-Only**: Cannot be integrated as a CLI tool, library, or MCP server.
+2. **Web-Only (currently)**: No CLI or local tool; PWA with offline capability planned for Q2 2026.
 
 3. **Narrow Scope**: Focused on UI generation only; not a general coding assistant.
 
-4. **Google Account Required**: Authentication dependency limits automation.
+4. **Google Account Required**: Authentication dependency limits automation outside enterprise API tier.
 
 ### Integration Opportunities
 
@@ -200,9 +227,21 @@ Jules complements Stitch by handling backend/infrastructure while Stitch focuses
 
 | Source                        | URL                                                                                      | Accessed   |
 | ----------------------------- | ---------------------------------------------------------------------------------------- | ---------- |
-| Google Stitch Homepage        | <https://stitch.withgoogle.com>                                                          | 2026-01-31 |
-| TechCrunch Article            | <https://techcrunch.com/2025/05/20/google-launches-stitch-an-ai-powered-tool-to-help-design-apps/> | 2026-01-31 |
+| Google Stitch Homepage        | <https://stitch.withgoogle.com>                                                          | 2026-03-04 |
+| Google Developers Blog Launch | <https://developers.googleblog.com/stitch-a-new-way-to-design-uis/>                      | 2026-03-04 |
+| TechCrunch Launch Article     | <https://techcrunch.com/2025/05/20/google-launches-stitch-an-ai-powered-tool-to-help-design-apps/> | 2026-03-04 |
 | Stitch Web Manifest           | <https://stitch.withgoogle.com/_/Nemo/manifest.json>                                     | 2026-01-31 |
 | Twitter Account               | <https://twitter.com/stitchbygoogle>                                                     | 2026-01-31 |
+| Banani Review (features)      | <https://www.banani.co/blog/google-stitch-ai-review>                                     | 2026-03-04 |
 
-**Research Method**: Information gathered from official homepage meta tags, TechCrunch exclusive coverage from Google I/O 2025, and production JavaScript bundle analysis. The site is an Angular SPA requiring authentication for full access.
+**Research Method**: Information gathered from official Google Developers Blog announcement, TechCrunch exclusive coverage from Google I/O 2025, production homepage analysis, and third-party feature reviews. The site is an Angular SPA requiring authentication for full access. Stitch 2.0 details sourced from third-party review coverage of the December 18, 2025 update.
+
+---
+
+## Freshness Tracking
+
+| Field                   | Value                                      |
+| ----------------------- | ------------------------------------------ |
+| Last Verified           | 2026-03-04                                 |
+| Version at Verification | Beta (Stitch 2.0, released December 2025)  |
+| Next Review Recommended | 2026-06-04                                 |
