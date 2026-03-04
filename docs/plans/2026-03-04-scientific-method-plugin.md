@@ -1032,6 +1032,23 @@ git commit -m "feat(scientific-method): redirect .claude/skills/scientific-think
 
 ---
 
+## Resume Context (for new session)
+
+Tasks 1–11 are committed to branch `feature/scientific-method-plugin` in worktree
+`.worktrees/scientific-method-plugin`.
+
+**Important path note:** The worktree and the main repo share the same git index for the branch.
+Files under `plugins/plugin-creator/` and `.claude-plugin/marketplace.json` exist in both locations
+(same content via git). When running commands in Tasks 12–15:
+
+- Use the **worktree** as the working directory for all `git add` / `git commit` operations:
+  `cd /home/ubuntulinuxqa2/repos/claude_skills/.worktrees/scientific-method-plugin`
+- All file paths in the tasks below are relative to that worktree root.
+- The `plugins/plugin-creator/` files referenced in Task 12 exist at
+  `.worktrees/scientific-method-plugin/plugins/plugin-creator/` — edit them there.
+
+---
+
 ## Task 12: Update upstream references — active user-facing files
 
 Update these files to reference the new plugin skill names. These are active files that users and Claude sessions read.
