@@ -96,7 +96,7 @@
 
 ### scientific-thinking
 - **Type**: skill
-- **Path**: `.claude/skills/scientific-thinking/SKILL.md`
+- **Path**: `plugins/scientific-method/skills/scientific-thinking/SKILL.md`
 - **Proposed Layer**: L0
 - **Relevance**: Hypothesis-driven reasoning for complex problems; systematic investigation.
 - **Key content**: Observation (factual only) → Hypothesis (H₀, Hₐ) → Prediction → Experiment Plan (Tree-of-Thought) → Execution Control (confounds) → Execute and Record → Conclusion; when to use (bug, architecture, refactor, strange behavior); when NOT to use (trivial tasks).

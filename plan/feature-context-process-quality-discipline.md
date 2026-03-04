@@ -78,7 +78,7 @@ Without this feature, the pipeline normalizes shallow fixes for deep problems an
 
 #### Pattern 2: Scientific Thinking Hypothesis-Driven Method (`/scientific-thinking`)
 
-- **Location**: `.claude/skills/scientific-thinking/SKILL.md:1-80`
+- **Location**: `plugins/scientific-method/skills/scientific-thinking/SKILL.md:1-80`
 - **Relevance**: Provides hypothesis-driven reasoning (observation -> hypothesis -> prediction -> experiment -> analysis). Overlaps with root-cause analysis for type 2 defects but is broader (used for debugging, architecture, complex refactoring). The new feature's 5 Whys method is more structured and specific than scientific-thinking; they serve different purposes.
 - **Reusable**: The scientific-thinking skill could be referenced as a complementary tool for type 5 (unbounded design) issues where hypothesis formulation is needed.
 
