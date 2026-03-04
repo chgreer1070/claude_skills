@@ -9,6 +9,7 @@ This index tracks all plugin refactoring projects, linking to detailed task brea
 | Plugin              | Task File                                                                        | Status         | Score Before | Score After | Phase |
 | ------------------- | -------------------------------------------------------------------------------- | -------------- | ------------ | ----------- | ----- |
 | python3-development | [tasks-refactor-python3-development.md](./tasks-refactor-python3-development.md) | ❌ NOT STARTED | 62/100       | TBD         | 3     |
+| scientific-method   | [tasks-refactor-scientific-method.md](./tasks-refactor-scientific-method.md)     | ❌ NOT STARTED | 82/100       | TBD         | 3     |
 
 ---
 
