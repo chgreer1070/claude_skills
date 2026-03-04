@@ -10,7 +10,7 @@ Primary responsibilities: observation recording, evidence IDs, causality validat
 
 ## Shared References
 
-Load these references before producing any investigation output.
+Load these references before producing any investigation output. A [references index](./references/shared-references.md) is available for a quick map of all shared files.
 
 - [Unified Investigation Template](../../shared/investigation-template.md) — the 15-section output structure (sections 0–14)
 - [Evidence Rules](../../shared/evidence-rules.md) — evidence ID format, truncation disclosure, forbidden phrases

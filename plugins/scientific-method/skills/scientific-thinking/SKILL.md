@@ -11,7 +11,7 @@ predictions, experiment design, and evidence-based conclusions.
 
 ## Shared Resources
 
-Load these references at the start of any investigation:
+Load these references at the start of any investigation. A [references index](./references/shared-references.md) is available for a quick map of all shared files.
 
 - [Unified Investigation Template](../../shared/investigation-template.md) — output structure for
   all investigation work
