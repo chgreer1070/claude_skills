@@ -1,9 +1,0 @@
-{
-  "name": "evidence-first-debugging",
-  "description": "Forces debugging outputs to separate facts, evidence, actions, and hypotheses to prevent correlation-causation pollution. Use for any software debugging, incident response, flaky tests, performance regressions, or tool-driven troubleshooting where the agent might otherwise summarize or speculate.",
-  "version": "1.0.0",
-  "author": {
-    "name": "Jamie Nelson",
-    "url": "https://github.com/bitflight-devops"
-  }
-}
