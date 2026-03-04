@@ -111,7 +111,7 @@ If you have many skills, embed pointers in CLAUDE.md as a safeguard:
 
 ```markdown
 ## Skills Available
-- For debugging: use `/scientific-thinking` skill
+- For debugging: use `/scientific-method:scientific-thinking` skill
 - For delegation: use `/delegate` skill
 ```
 

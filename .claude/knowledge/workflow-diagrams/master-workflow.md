@@ -26,7 +26,7 @@ flowchart TB
         P2["delegate skill"]
         P3["/how-to-delegate"]
         P4["/think command"]
-        P5["scientific-thinking skill"]
+        P5["scientific-method:scientific-thinking skill"]
     end
 
     subgraph EXECUTION["4. EXECUTION ✅"]
@@ -155,7 +155,7 @@ flowchart TB
 
     subgraph DECOMPOSE["Decomposition"]
         D1["/think command<br/>Step-back reasoning"]
-        D2["scientific-thinking skill<br/>Hypothesis formation"]
+        D2["scientific-method:scientific-thinking skill<br/>Hypothesis formation"]
     end
 
     subgraph DELEGATE["Delegation Design"]
@@ -182,9 +182,9 @@ flowchart TB
 | delegate             | Skill   | Quick WHERE-WHAT-WHY template               |
 | /how-to-delegate     | Command | Comprehensive delegation framework          |
 | /think               | Command | Step-back broader perspective               |
-| scientific-thinking  | Skill   | Hypothesis-driven approach                  |
+| scientific-method:scientific-thinking  | Skill   | Hypothesis-driven approach                  |
 | /step-back           | Command | Wider view of task implications             |
-| /scientific-thinking | Command | Activate scientific method                  |
+| /scientific-method:scientific-thinking | Command | Activate scientific method                  |
 
 **Gap Analysis:** No automated complexity scoring or effort estimation.
 
@@ -342,7 +342,7 @@ flowchart TB
 │ delegate            │       │         │    ●     │           │              │        │
 │ verify              │       │         │          │           │      ●       │        │
 │ audit               │       │         │          │           │      ●       │        │
-│ scientific-thinking │       │         │    ●     │     ●     │              │        │
+│ scientific-method:scientific-thinking │       │         │    ●     │     ●     │              │        │
 │ agent-creator       │       │         │          │     ●     │              │        │
 │ subagent-contract   │       │         │          │     ●     │              │   ●    │
 │ git-commit-helper   │       │         │          │           │              │   ●    │
@@ -372,7 +372,7 @@ flowchart TB
 │ /how-confident      │       │         │          │           │      ●       │        │
 │ /rt-ica             │       │    ●    │    ●     │           │              │        │
 │ /delegate           │       │         │    ●     │           │              │        │
-│ /scientific-thinking│       │         │    ●     │           │              │        │
+│ /scientific-method:scientific-thinking│       │         │    ●     │           │              │        │
 ├─────────────────────┼───────┼─────────┼──────────┼───────────┼──────────────┼────────┤
 │ HOOKS               │       │         │          │           │              │        │
 │ session-start-rtica │   ●   │         │          │           │              │        │

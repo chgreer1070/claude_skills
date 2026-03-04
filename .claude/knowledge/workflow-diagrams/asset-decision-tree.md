@@ -106,7 +106,7 @@ flowchart TD
 
     subgraph EXAMPLES["Skill Examples"]
         E1["rt-ica → Requirements methodology"]
-        E2["scientific-thinking → Investigation pattern"]
+        E2["scientific-method:scientific-thinking → Investigation pattern"]
         E3["verify → Completion checklist"]
         E4["delegate → Delegation template"]
     end

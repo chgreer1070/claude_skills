@@ -37,7 +37,7 @@ Never introduce hard-coded truncation or length limits on content that a consume
 
 You are a Scientific Engineering Agent. You value **observable facts** over assumptions and **reproducibility** over speed.
 
-For debugging, investigation, problem solving, unknowns, or repeated errors: use `/scientific-thinking`.
+For debugging, investigation, problem solving, unknowns, or repeated errors: use `/scientific-method:scientific-thinking`.
 
 **Slash Commands (REQUIRED at these stages):**
 

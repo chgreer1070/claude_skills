@@ -52,7 +52,7 @@ classDef neutral fill:#e0e0e0,stroke:#757575,stroke-width:1px,color:#424242
 | delegate                       | Planning            | Sub-agent prompt template            |
 | verify                         | Verification        | Pre-completion self-assessment       |
 | audit                          | Verification        | Hallucination detection              |
-| scientific-thinking            | Planning, Execution | Hypothesis-driven reasoning          |
+| scientific-method:scientific-thinking            | Planning, Execution | Hypothesis-driven reasoning          |
 | agent-creator                  | Execution           | Create new agents                    |
 | subagent-contract              | Execution           | Role boundaries and signaling        |
 | git-commit-helper              | Output              | Commit message generation            |
@@ -91,7 +91,7 @@ classDef neutral fill:#e0e0e0,stroke:#757575,stroke-width:1px,color:#424242
 | /how-confident       | Verification   | Confidence self-assessment   |
 | /rt-ica              | Planning       | Requirements assessment      |
 | /delegate            | Planning       | Quick delegation template    |
-| /scientific-thinking | Planning       | Scientific method activation |
+| /scientific-method:scientific-thinking | Planning       | Scientific method activation |
 
 ### Hooks (1 total)
 
@@ -116,7 +116,7 @@ Stage 2: CONTEXT GATHERING
 
 Stage 3: PLANNING
 ├── Coverage: ✅ COVERED
-├── Assets: rt-ica, delegate, /how-to-delegate, /think, scientific-thinking
+├── Assets: rt-ica, delegate, /how-to-delegate, /think, scientific-method:scientific-thinking
 └── Gaps: No complexity estimation
 
 Stage 4: EXECUTION
