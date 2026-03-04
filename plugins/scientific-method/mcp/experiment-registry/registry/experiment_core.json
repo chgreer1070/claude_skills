@@ -7,6 +7,14 @@
       "name": "State hypothesis",
       "required_artefacts": ["hypothesis.md"],
       "validation": "contains HYPOTHESIS:, CURRENT BEHAVIOUR:, SUCCESS CRITERION:",
+      "validation_rules": [
+        { "type": "non_empty", "params": {} },
+        {
+          "type": "required_sections",
+          "params": { "sections": ["HYPOTHESIS:", "CURRENT BEHAVIOUR:", "SUCCESS CRITERION:"] }
+        }
+      ],
+      "frozen_artefacts": [],
       "checklist": [],
       "human_input_required": false
     },
@@ -15,6 +23,16 @@
       "name": "Build fixture",
       "required_artefacts": ["fixture.md"],
       "validation": "no embedded criteria or model answers",
+      "validation_rules": [
+        { "type": "non_empty", "params": {} },
+        {
+          "type": "no_forbidden_content",
+          "params": {
+            "patterns": ["EXPECTED:", "CORRECT ANSWER:", "SUCCESS CRITERION:", "RUBRIC:"]
+          }
+        }
+      ],
+      "frozen_artefacts": ["fixture.md"],
       "checklist": [
         "Contains only raw input the subject would receive in production",
         "Contains no criteria, hints, or expected outcomes",
@@ -27,6 +45,11 @@
       "name": "Write rubric",
       "required_artefacts": ["rubric.md"],
       "validation": "min 1 binary criterion, written before baseline",
+      "validation_rules": [
+        { "type": "non_empty", "params": {} },
+        { "type": "min_criteria_count", "params": { "min": 1 } }
+      ],
+      "frozen_artefacts": ["rubric.md"],
       "checklist": [
         "Each criterion is observable and binary (pass/fail)",
         "Written before baseline run",
@@ -39,6 +62,8 @@
       "name": "Run baseline",
       "required_artefacts": ["output-iter0.md", "log.md"],
       "validation": "log entry for iter0 exists",
+      "validation_rules": [{ "type": "non_empty", "params": {} }],
+      "frozen_artefacts": [],
       "checklist": [
         "Agent received only task prompt + fixture (not rubric)",
         "All criteria scored for iter0",
@@ -51,6 +76,11 @@
       "name": "Iterate",
       "required_artefacts": ["log.md"],
       "validation": "one change per iter, regressions recorded, all criteria pass in final iter",
+      "validation_rules": [
+        { "type": "non_empty", "params": {} },
+        { "type": "required_sections", "params": { "sections": ["## Iteration"] } }
+      ],
+      "frozen_artefacts": [],
       "checklist": [
         "Exactly one thing changed between runs",
         "Predicted effect written before applying change",

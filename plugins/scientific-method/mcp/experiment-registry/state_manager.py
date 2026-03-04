@@ -8,11 +8,20 @@ advancement, validation, and listing. State is persisted as JSON files under
 from __future__ import annotations
 
 import datetime
+import hashlib
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from models import ExperimentState, StepDefinition, StepExtension
+from models import ArtefactIntegrity, ExperimentState, StepDefinition, StepExtension
+from validators import (
+    validate_artefact_content,
+    validate_file_existence,
+    validate_freeze_integrity,
+    validate_iteration_output,
+    validate_rubric_scores,
+    validate_terminal_state,
+)
 
 if TYPE_CHECKING:
     from registry_loader import RegistryLoader
@@ -87,6 +96,125 @@ class StateManager:
             ISO 8601 formatted timestamp.
         """
         return datetime.datetime.now(datetime.UTC).isoformat()
+
+    def _experiment_dir(self, experiment_id: str) -> Path:
+        """Return the directory containing artefact files for *experiment_id*.
+
+        Args:
+            experiment_id: Unique experiment identifier.
+
+        Returns:
+            Directory path (parent of ``state.json``).
+        """
+        return self._state_path(experiment_id).parent
+
+    def _run_pre_merge_validation(
+        self,
+        state: ExperimentState,
+        step_id: str,
+        current_def: StepDefinition,
+        artefacts: dict[str, str],
+        rubric_scores: dict[str, bool] | None,
+        experiment_dir: Path,
+    ) -> list[dict[str, object]]:
+        """Run all pre-merge validators and return accumulated errors.
+
+        No state mutation occurs. Validators run in the order defined by the
+        architecture spec (terminal state, file existence, content, freeze
+        integrity, iteration output, rubric scores).
+
+        Args:
+            state: Current experiment state.
+            step_id: The step being completed.
+            current_def: The resolved step definition.
+            artefacts: Artefacts submitted for this step.
+            rubric_scores: Per-criterion scores (required for iterate step).
+            experiment_dir: Directory where artefact files reside.
+
+        Returns:
+            List of error dicts (empty means all validations passed).
+        """
+        errors: list[dict[str, object]] = []
+        errors += validate_terminal_state(state)
+        errors += validate_file_existence(artefacts, experiment_dir)
+        errors += validate_artefact_content(current_def, artefacts, experiment_dir)
+        errors += validate_freeze_integrity(state, experiment_dir)
+        if step_id == "iterate":
+            errors += validate_iteration_output(state, artefacts)
+            errors += validate_rubric_scores(rubric_scores, state, experiment_dir)
+        return errors
+
+    def _compute_frozen_hashes(
+        self,
+        state: ExperimentState,
+        step_id: str,
+        current_def: StepDefinition,
+        artefacts: dict[str, str],
+        experiment_dir: Path,
+    ) -> None:
+        """Compute and store SHA-256 hashes for artefacts frozen by this step.
+
+        Mutates ``state.artefact_integrity`` in place. Called after
+        ``state.artefacts.update(artefacts)`` but before step advancement.
+
+        Args:
+            state: Current experiment state (mutated in place).
+            step_id: The step that is completing (used as ``frozen_by_step``).
+            current_def: The resolved step definition.
+            artefacts: Artefacts submitted for this step.
+            experiment_dir: Directory where artefact files reside.
+        """
+        if not current_def.frozen_artefacts:
+            return
+        frozen_at = self._now_iso()
+        for key in current_def.frozen_artefacts:
+            raw_value = artefacts.get(key, key)
+            artefact_path = Path(raw_value) if Path(raw_value).is_absolute() else experiment_dir / raw_value
+            if artefact_path.is_file():
+                content_hash = hashlib.sha256(artefact_path.read_bytes()).hexdigest()
+                state.artefact_integrity[key] = ArtefactIntegrity(
+                    sha256=content_hash, frozen_at=frozen_at, frozen_by_step=step_id
+                )
+
+    def _complete_iterate_step(
+        self, state: ExperimentState, step_id: str, rubric_scores: dict[str, bool] | None
+    ) -> dict[str, object]:
+        """Handle all state transitions for the ``iterate`` step.
+
+        Increments iteration count, stores rubric scores as an audit trail,
+        derives ``criteria_passed`` from scores, and saves state.
+
+        Args:
+            state: Current experiment state (mutated in place).
+            step_id: Must be ``"iterate"``.
+            rubric_scores: Per-criterion pass/fail scores. ``None`` treated as
+                all-fail (validation should have already rejected this case).
+
+        Returns:
+            Response dict with ``success``, ``next_step``, and ``status``.
+        """
+        state.iteration_count += 1
+        state.artefacts[f"rubric_scores_iter{state.iteration_count}"] = json.dumps(rubric_scores or {})
+        criteria_passed = all(rubric_scores.values()) if rubric_scores else False
+
+        if criteria_passed:
+            state.status = "complete"
+            state.current_step = step_id
+            state.completed_steps.append(step_id)
+            state.last_updated = self._now_iso()
+            self._save(state)
+            return {"success": True, "next_step": None, "status": state.status}
+
+        if state.iteration_count >= state.max_iterations:
+            state.status = "inconclusive"
+            state.last_updated = self._now_iso()
+            self._save(state)
+            return {"success": True, "next_step": None, "status": state.status}
+
+        # Loop back — keep current_step as "iterate"
+        state.last_updated = self._now_iso()
+        self._save(state)
+        return {"success": True, "next_step": step_id, "status": state.status}
 
     # ------------------------------------------------------------------
     # Public API
@@ -170,23 +298,31 @@ class StateManager:
         )
         raise ValueError(msg)
 
-    def complete_step(self, experiment_id: str, step_id: str, artefacts: dict[str, str]) -> dict[str, object]:
+    def complete_step(
+        self, experiment_id: str, step_id: str, artefacts: dict[str, str], rubric_scores: dict[str, bool] | None = None
+    ) -> dict[str, object]:
         """Attempt to complete *step_id* for the given experiment.
 
         Validates that *step_id* matches the current step, checks required
-        artefacts are present, handles the special ``"iterate"`` step loop,
-        and advances (or terminates) the experiment.
+        artefacts are present, runs the full validation layer, handles the
+        special ``"iterate"`` step loop, and advances (or terminates) the
+        experiment.
 
         Args:
             experiment_id: The unique identifier of the experiment.
             step_id: The id of the step being completed.
             artefacts: Key-value pairs produced during this step.
+            rubric_scores: Per-criterion pass/fail scores required when
+                ``step_id`` is ``"iterate"``. Keys are criterion names,
+                values are booleans. The MCP derives ``criteria_passed``
+                from these scores — the caller no longer self-reports.
 
         Returns:
             A dict with at minimum a ``"success"`` key (``bool``). On
-            failure the dict contains ``"missing_artefacts"`` or
-            ``"blocked_on_human_input"`` fields.  On success it contains
-            ``"next_step"`` (``str | None``) and ``"status"`` (``str``).
+            failure the dict contains ``"missing_artefacts"``,
+            ``"blocked_on_human_input"``, or ``"validation_errors"`` fields.
+            On success it contains ``"next_step"`` (``str | None``) and
+            ``"status"`` (``str``).
 
         Raises:
             ValueError: If *step_id* does not match the current step.
@@ -225,38 +361,26 @@ class StateManager:
                 }
             return {"success": False, "missing_artefacts": missing}
 
+        experiment_dir = self._experiment_dir(experiment_id)
+
+        # Pre-merge validation — no state mutation occurs on any error
+        errors = self._run_pre_merge_validation(state, step_id, current_def, artefacts, rubric_scores, experiment_dir)
+        if errors:
+            return {"success": False, "validation_errors": errors}
+
         # Merge provided artefacts into state
         state.artefacts.update(artefacts)
 
-        # Determine step index for advancement
+        # Post-merge: compute SHA-256 hashes for artefacts frozen by this step
+        self._compute_frozen_hashes(state, step_id, current_def, artefacts, experiment_dir)
+
+        # Special handling for "iterate" step (loops or terminates)
+        if step_id == "iterate":
+            return self._complete_iterate_step(state, step_id, rubric_scores)
+
+        # Standard step: mark complete and advance to next step
         step_ids = [s.id for s in state.merged_steps]
         current_index = step_ids.index(step_id)
-
-        # Special handling for "iterate" step
-        if step_id == "iterate":
-            state.iteration_count += 1
-            criteria_passed = artefacts.get("criteria_passed", "").lower() == "true"
-
-            if criteria_passed:
-                state.status = "complete"
-                state.current_step = step_id
-                state.completed_steps.append(step_id)
-                state.last_updated = self._now_iso()
-                self._save(state)
-                return {"success": True, "next_step": None, "status": state.status}
-
-            if state.iteration_count >= state.max_iterations:
-                state.status = "inconclusive"
-                state.last_updated = self._now_iso()
-                self._save(state)
-                return {"success": True, "next_step": None, "status": state.status}
-
-            # Loop back — keep current_step as "iterate"
-            state.last_updated = self._now_iso()
-            self._save(state)
-            return {"success": True, "next_step": step_id, "status": state.status}
-
-        # Standard step: mark complete and advance
         state.completed_steps.append(step_id)
         next_index = current_index + 1
         if next_index < len(step_ids):

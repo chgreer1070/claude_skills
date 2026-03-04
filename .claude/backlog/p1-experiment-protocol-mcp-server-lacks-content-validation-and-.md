@@ -11,6 +11,7 @@ metadata:
   issue: '#431'
   last_synced: '2026-03-04T21:29:15Z'
   groomed: '2026-03-04'
+  plan: plan/tasks-2-experiment-protocol-validation.md
 ---
 
 ## Groomed (2026-03-04)

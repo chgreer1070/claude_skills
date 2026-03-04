@@ -48,7 +48,9 @@ No discussion during execution. Step through the MCP workflow autonomously.
 
 ```mermaid
 flowchart TD
-    GetStep["Call get_current_step(experiment_id)"] --> StepDetail[MCP returns step + checklist + required artefacts]
+    GetStep["Call get_current_step(experiment_id)"] --> TermCheck{status is complete<br>or inconclusive?}
+    TermCheck -->|Yes| Handoff[Experiment already done — see Retrospective Handoff]
+    TermCheck -->|No| StepDetail[MCP returns step + checklist + required artefacts]
     StepDetail --> Human{REQUIRES_HUMAN_INPUT flagged?}
     Human -->|Yes| Surface[Surface the question to the user and wait for answer]
     Surface --> Resubmit[Include answer in artefacts and resubmit]
@@ -57,9 +59,11 @@ flowchart TD
     Resubmit --> Complete
     Complete --> MCPResult{MCP response?}
     MCPResult -->|Missing artefacts| Fix[Produce the missing artefacts and resubmit]
+    MCPResult -->|Validation errors| FixV[Fix validation issues and resubmit]
     Fix --> Complete
+    FixV --> Complete
     MCPResult -->|Next step| GetStep
-    MCPResult -->|complete| Handoff[Experiment complete — see Retrospective Handoff]
+    MCPResult -->|complete| HandoffC[Experiment complete — see Retrospective Handoff]
     MCPResult -->|inconclusive| Report[Report iteration limit reached — summarise what changed]
 ```
 

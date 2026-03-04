@@ -89,6 +89,9 @@ class RegistryLoader:
         - ``checklist`` items are appended to the existing checklist.
         - ``human_input_required`` overrides the base value when not ``None``.
         - ``human_input_description`` overrides when non-empty.
+        - ``additional_validation_rules`` are appended to ``validation_rules``.
+        - ``additional_frozen_artefacts`` are appended to ``frozen_artefacts``
+          with deduplication (order-preserving).
 
         Args:
             step: The base step definition.
@@ -99,6 +102,11 @@ class RegistryLoader:
         """
         merged_artefacts = list(step.required_artefacts) + list(ext.additional_artefacts)
         merged_checklist = list(step.checklist) + list(ext.checklist)
+        merged_validation_rules = list(step.validation_rules) + list(ext.additional_validation_rules)
+        # Deduplicate frozen_artefacts while preserving insertion order
+        merged_frozen_artefacts = list(
+            dict.fromkeys(list(step.frozen_artefacts) + list(ext.additional_frozen_artefacts))
+        )
 
         human_input_required = step.human_input_required
         if ext.human_input_required is not None:
@@ -116,6 +124,8 @@ class RegistryLoader:
             checklist=merged_checklist,
             human_input_required=human_input_required,
             human_input_description=human_input_description,
+            validation_rules=merged_validation_rules,
+            frozen_artefacts=merged_frozen_artefacts,
         )
 
     # ------------------------------------------------------------------

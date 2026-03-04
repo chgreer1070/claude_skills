@@ -262,6 +262,18 @@ def complete_step(
         dict[str, str],
         Field(description="Key-value artefacts produced during this step. Keys must satisfy all required_artefacts."),
     ],
+    rubric_scores: Annotated[
+        dict[str, bool] | None,
+        Field(
+            default=None,
+            description=(
+                "Per-criterion pass/fail scores required when completing the 'iterate' step. "
+                "Keys are criterion names from the experiment's rubric; values are booleans. "
+                "The MCP derives criteria_passed from these scores — do not pass criteria_passed "
+                "in artefacts. Required for 'iterate'; ignored for all other steps."
+            ),
+        ),
+    ] = None,
     project_root: Annotated[
         str | None,
         Field(default=None, description="Project root directory. Defaults to the current working directory."),
@@ -269,19 +281,26 @@ def complete_step(
 ) -> dict[str, Any]:
     """Attempt to complete a step and advance the experiment to the next step.
 
-    Validates that all required artefacts are present, handles the 'iterate'
-    step loop, and advances or terminates the experiment accordingly.
+    Validates that all required artefacts are present, runs the full validation
+    layer (content checks, file existence, freeze integrity, iteration output,
+    rubric scoring), handles the 'iterate' step loop, and advances or terminates
+    the experiment accordingly.
 
     Args:
         experiment_id: Unique experiment identifier.
         step_id: Id of the step being completed.
         artefacts: Key-value pairs produced during this step.
+        rubric_scores: Per-criterion boolean scores required for the 'iterate'
+            step. Keys must match criterion names from the experiment's rubric.
+            The MCP computes criteria_passed from these — not from artefacts.
         project_root: Project root directory. Defaults to cwd.
 
     Returns:
         dict: Contains ``success`` (bool). On success: ``next_step`` (str or
-            None), ``status`` (str). On failure: ``missing_artefacts`` (list)
-            or ``blocked_on_human_input`` (bool) with ``description`` (str).
+            None), ``status`` (str). On failure: ``missing_artefacts`` (list),
+            ``blocked_on_human_input`` (bool) with ``description`` (str), or
+            ``validation_errors`` (list of error dicts with ``code`` and
+            ``message`` keys).
 
     Raises:
         ToolError: If *step_id* does not match the current step or the
@@ -289,7 +308,9 @@ def complete_step(
     """
     manager = _make_state_manager(project_root)
     try:
-        result = manager.complete_step(experiment_id=experiment_id, step_id=step_id, artefacts=artefacts)
+        result = manager.complete_step(
+            experiment_id=experiment_id, step_id=step_id, artefacts=artefacts, rubric_scores=rubric_scores
+        )
     except ValueError as exc:
         raise ToolError(str(exc)) from exc
 
