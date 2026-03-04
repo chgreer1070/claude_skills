@@ -1,12 +1,10 @@
 ---
 name: plugin-creator
-description: "DEPRECATED — Use /plugin-creator:plugin-lifecycle instead. Legacy orchestration workflow for plugin creation. Superseded by plugin-lifecycle which covers the full lifecycle including assessment, debugging, and optimization."
+description: "Orchestrate plugin creation through a comprehensive agentic workflow: prerequisite check, user discussion, parallel research, design with verification, atomic implementation, multi-layer validation, documentation, and final verification. Use when creating a new Claude Code plugin from scratch. For existing plugin improvement, use /plugin-creator:plugin-lifecycle instead."
+argument-hint: "<plugin-concept>"
 model: sonnet
-user-invocable: false
+user-invocable: true
 ---
-
-> **DEPRECATED**: This skill is superseded by `/plugin-creator:plugin-lifecycle`.
-> Use `/plugin-lifecycle new <concept>` for new plugins or `/plugin-lifecycle existing <path>` for existing plugins.
 
 > When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
 

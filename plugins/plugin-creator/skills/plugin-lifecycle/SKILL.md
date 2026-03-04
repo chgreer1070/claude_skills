@@ -1,6 +1,6 @@
 ---
 name: plugin-lifecycle
-description: Orchestrate the full plugin development lifecycle from blank canvas to marketplace-ready. Use when creating a new plugin, improving an existing plugin, fixing validation errors, or taking a plugin through assessment, research, design, creation, debugging, optimization, and verification. Replaces /plugin-creator:plugin-creator as the primary entry point.
+description: Orchestrate the full plugin development lifecycle from blank canvas to marketplace-ready. Use when creating a new plugin, improving an existing plugin, fixing validation errors, or taking a plugin through assessment, research, design, creation, debugging, optimization, and verification. Complements /plugin-creator:plugin-creator which provides the detailed new-plugin creation workflow with discussion capture, parallel research, and atomic implementation.
 argument-hint: <new|existing> <plugin-path-or-concept>
 model: sonnet
 user-invocable: true
