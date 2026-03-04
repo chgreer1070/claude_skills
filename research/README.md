@@ -196,6 +196,7 @@ Research on multi-agent architectures, orchestration patterns, and research work
 | [tinyclaw.md](./research-agent-patterns/tinyclaw.md)                                                   | TinyClaw - multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs and file-based queue (2.1K stars)    | 2026-02-18   |
 | [google-adk-context-engineering.md](./research-agent-patterns/google-adk-context-engineering.md)     | Google ADK context engineering: tiered storage model, compiler-style processor pipeline, scoped multi-agent handoffs (17.9K stars) | 2026-02-23   |
 | [ollama-subagents-web-search-claude-code.md](./research-agent-patterns/ollama-subagents-web-search-claude-code.md) | Ollama v0.16.2 native subagents and web search for Claude Code with Anthropic API compatibility (163K+ stars) | 2026-02-19   |
+| [ai-data-science-team.md](./research-agent-patterns/ai-data-science-team.md) | AI Data Science Team — LangGraph supervisor + 9 specialist agents (wrangling, cleaning, visualization, SQL, H2O ML, MLflow, EDA, feature engineering, loader) with sandboxed code execution and AI Pipeline Studio Streamlit app (5K+ stars, MIT) | 2026-03-04   |
 
 **Key Topics**:
 
@@ -536,6 +537,7 @@ High-performance API frameworks for building backend services, tool endpoints, a
 | [motia.md](./api-frameworks/motia.md)      | Motia - unified backend framework replacing APIs, queues, workflows, and AI agents with one Step primitive (15K+ stars) | 2026-02-23   |
 | [pocketbase.md](./api-frameworks/pocketbase.md) | PocketBase - open-source Go backend in 1 file: embedded SQLite, realtime subscriptions, auth (password/OTP/OAuth2/MFA), file storage, admin dashboard (56K+ stars) | 2026-02-23   |
 | [tornado.md](./api-frameworks/tornado.md)  | Python web framework and async networking library for WebSockets and long-polling (22K+ stars, 95M+ downloads/month) | 2026-02-05   |
+| [modelence.md](./api-frameworks/modelence.md) | Modelence - AI-native TypeScript/Node.js backend framework with MongoDB, auth, real-time stores, WebSockets, observability, cron, rate limiting, and managed cloud deploy (YC-backed, Apache 2.0) | 2026-03-04   |
 
 **Key Topics**:
 
@@ -626,6 +628,9 @@ Developer productivity tools and workflow automation for software engineering wi
 | [vercel-chatbot.md](./developer-tools/vercel-chatbot.md) | Vercel Chatbot — production-ready Next.js 16 chatbot template (v3.1.0) using AI SDK v6 with resumable streaming, Claude Haiku 4.5 as artifact model, ProseMirror/CodeMirror 6 artifact system, and `extractReasoningMiddleware` for chain-of-thought display (19.7K stars) | 2026-02-26   |
 | [voxcii.md](./developer-tools/voxcii.md)               | voxcii — terminal-based ASCII 3D model viewer (C++17) rendering OBJ/STL files with Z-buffer depth sorting, surface-normal shading mapped to 12-char ASCII ramp, interactive rotation/zoom, and ANSI color via ncurses (81 stars) | 2026-02-28   |
 | [yume.md](./developer-tools/yume.md)                   | Yume - native desktop GUI for Claude Code CLI with parallel agents, crash recovery, and multi-provider model support (Tauri + Rust)  | 2026-02-15   |
+| [claudebin.md](./developer-tools/claudebin.md)         | Claudebin - minimalistic tool for publishing and sharing Claude Code sessions via /claudebin:share; generates shareable URLs with syntax highlighting and full conversation threads (MIT) | 2026-03-04   |
+| [crawler-sh.md](./developer-tools/crawler-sh.md)       | Crawler.sh - local-first website crawler and SEO/AEO analysis CLI + desktop app; 16 automated SEO checks/page, Markdown extraction, NDJSON/JSON/Sitemap/CSV export, no account required (v0.2.3, proprietary) | 2026-03-04   |
+| [superset-sh.md](./developer-tools/superset-sh.md)     | Superset - macOS Electron app running 10+ parallel AI coding agents via Git worktrees; agent-agnostic (Claude Code, Codex CLI, Cursor, Gemini CLI, OpenCode); branch-isolated conflict-free execution (v1.0.5, Apache 2.0) | 2026-03-04   |
 
 **Key Topics**:
 
@@ -868,6 +873,7 @@ Memory systems, context window optimization tools, and RAG solutions for maintai
 | [jina-ai.md](./context-management/jina-ai.md)             | Jina AI - search foundation platform with Reader API (URL→Markdown), multimodal embeddings, rerankers, and DeepSearch (acquired by Elastic 2025) | 2026-02-23   |
 | [local-memory.md](./context-management/local-memory.md)   | Local Memory - persistent memory infrastructure with MCP, REST API, CLI, embedded Qdrant, and knowledge evolution (L0-L3)      | 2026-02-07   |
 | [sourcesyncai.md](./context-management/sourcesyncai.md)   | SourceSync.ai - managed RAG platform with 15+ auto-syncing connectors, hybrid search, BYOC storage, and MCP integration       | 2026-02-23   |
+| [straion.md](./context-management/straion.md)             | Straion - SaaS rules-management platform that dynamically injects relevant engineering standards into AI coding agents (Claude Code, Cursor, Copilot) at task time; validates agent plans against rules before code is written | 2026-03-04   |
 
 **Key Topics**:
 
@@ -1057,6 +1063,7 @@ AI-powered visual creation platforms and design intelligence tools for video, im
 | [hedra.md](./ai-design-tools/hedra.md)      | Hedra - AI-powered visual creation platform for video, image, and audio with character animation            | 2026-02-20   |
 | [jimeng.md](./ai-design-tools/jimeng.md)    | Jimeng AI (即梦AI) - ByteDance SeedDance 2.0 multimodal video/image generation with cinematic camera control | 2026-02-23   |
 | [ui-ux-pro-max-skill.md](./ai-design-tools/ui-ux-pro-max-skill.md) | UI UX Pro Max - AI design skill injecting 67 styles, 96 palettes, 57 font pairings into 16 coding assistants via BM25+regex search (34.9K stars) | 2026-02-26   |
+| [google-stitch.md](./ai-design-tools/google-stitch.md) | Google Stitch - AI-powered UI design tool generating app frontends (HTML/CSS, React) from text prompts or images using Gemini 2.5 models; launched Google I/O 2025 (proprietary) | 2026-03-04   |
 
 **Key Topics**:
 
@@ -1169,6 +1176,44 @@ Interactive prompt development platforms and tools for iterating on LLM prompts,
 - Real-world examples of tool use protocols, safety constraints, and task decomposition strategies
 - Community-maintained with active updates (last push: 2026-02-17; 117.9K stars, 30.6K forks)
 - DeepWiki integration for AI-powered cross-collection search
+
+---
+
+### 24. AI Writing Tools
+
+**Location**: [./ai-writing-tools/](./ai-writing-tools/)
+
+Automated content generation tools that produce changelogs, release notes, blog posts, and social content from development activity.
+
+| Document | Description | Last Updated |
+| -------- | ----------- | ------------ |
+| [notra.md](./ai-writing-tools/notra.md) | Notra - SaaS tool that auto-generates publish-ready changelogs, blog posts, and social updates by monitoring GitHub, Linear, and Slack activity; drafts content matching configured brand voice (proprietary SaaS) | 2026-03-04 |
+
+**Key Topics**:
+
+- Automated changelog and release note generation from merged PRs
+- Multi-source activity monitoring (GitHub, Linear, Slack)
+- Brand voice configuration for consistent content tone
+- Eliminating manual effort in writing release announcements
+
+---
+
+### 25. Low-Code Platforms
+
+**Location**: [./low-code-platforms/](./low-code-platforms/)
+
+No-code and low-code AI workflow builders for creating AI-powered applications and automations without programming.
+
+| Document | Description | Last Updated |
+| -------- | ----------- | ------------ |
+| [google-opal.md](./low-code-platforms/google-opal.md) | Google Opal - experimental no-code tool from Google Labs for building, sharing, and remixing AI-powered mini-apps via drag-and-drop workflow editor; supports agentic pipelines with memory, conditional routing, and interactive chat (Google Labs, proprietary) | 2026-03-04 |
+
+**Key Topics**:
+
+- Natural-language interface for workflow creation
+- Visual drag-and-drop agentic pipeline builder
+- Memory, conditional routing, and interactive chat in agent steps
+- Prototyping and productivity automation without code
 
 ---
 
