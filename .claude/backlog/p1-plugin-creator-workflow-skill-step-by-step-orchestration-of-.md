@@ -5,9 +5,9 @@ metadata:
   topic: plugin-creator-workflow-skill-step-by-step-orchestration-of-
   source: User request
   added: '2026-03-02'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#427'
   last_synced: '2026-03-03T14:07:09Z'
   groomed: '2026-03-03'
