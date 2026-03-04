@@ -1,6 +1,7 @@
 ---
 name: plugin-creator
-description: Orchestrates specialized agents to create high-quality Claude Code plugins. Delegates to plugin-assessor agent for domain research and code discovery, general-purpose agents for official docs verification, validation scripts for schema checks, and review agents for quality assessment. Use when creating new plugins or improving existing ones.
+description: "Orchestrate plugin creation through a comprehensive agentic workflow: prerequisite check, user discussion, parallel research, design with verification, atomic implementation, multi-layer validation, documentation, and final verification. Use when creating a new Claude Code plugin from scratch. For existing plugin improvement, use /plugin-creator:plugin-lifecycle instead."
+argument-hint: "<plugin-concept>"
 model: sonnet
 user-invocable: true
 ---

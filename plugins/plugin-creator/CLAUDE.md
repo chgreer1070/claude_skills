@@ -22,12 +22,13 @@ Activate when any condition matches:
 ```mermaid
 flowchart TD
     Start([User request]) --> Q1{Intent?}
-    Q1 -->|Create something| Q2{What?}
+    Q1 -->|"Create new plugin"| Lifecycle["/plugin-lifecycle new CONCEPT"]
+    Q1 -->|"Improve existing plugin"| LifecycleExist["/plugin-lifecycle existing PATH"]
+    Q1 -->|Create agent or skill| Q2{What?}
     Q1 -->|Validate| Q3{Scope?}
     Q1 -->|Refactor| Q4{What?}
     Q1 -->|Fix errors| Fix[Read plugin.json<br>Check common errors table<br>Run fix_tool_formats.py]
 
-    Q2 -->|Plugin| CreatePlugin["uv run scripts/create_plugin.py"]
     Q2 -->|Agent| CreateAgent["/agent-creator skill"]
     Q2 -->|Skill| CreateSkill["/skill-creator skill"]
     Q2 -->|Command| CreateCmd["Skills ARE commands<br>Create skill with user-invocable: true"]
@@ -62,7 +63,8 @@ flowchart TD
 
 | Skill | User-Invocable | Purpose |
 |-------|---------------|---------|
-| `/plugin-creator` | Yes | Orchestrates plugin creation by delegating to specialist agents |
+| `/plugin-lifecycle` | Yes | Full plugin lifecycle orchestration — assess, research, design, create, debug, optimize, verify |
+| `/plugin-creator` | Yes | New-plugin creation workflow — complements `/plugin-lifecycle` for existing plugins |
 | `/agent-creator` | Yes | Create agents from scratch or templates; handles scope (project/user/plugin) |
 | `/skill-creator` | Yes | Create skills from scratch or templates; handles scope and validation |
 | `/claude-skills-overview-2026` | Yes | Complete reference for Claude Code skills system (January 2026) |
