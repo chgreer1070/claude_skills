@@ -12,7 +12,7 @@ Visual documentation mapping repository assets (skills, agents, commands, hooks)
 | [Asset Decision Tree](./asset-decision-tree.md)             | Skill vs Command vs Agent vs Hook         | Choosing the right extension type        |
 | [Multi-Agent Orchestration](./multi-agent-orchestration.md) | Delegation and DONE/BLOCKED signaling     | Coordinating specialist agents           |
 | [Simple Task Workflow](./simple-task-workflow.md)           | Minimal path for straightforward tasks    | Quick implementations                    |
-| [Investigation Workflow](./investigation-workflow.md)       | Hypothesis-driven scientific method       | Debugging, research, root cause analysis |
+| [Investigation Workflow](../../../plugins/scientific-method/shared/investigation-workflow.md) | Hypothesis-driven scientific method       | Debugging, research, root cause analysis |
 | [RAG Retrieval Pattern](./rag-retrieval-pattern.md)         | Context augmentation flow                 | Knowledge retrieval tasks                |
 | [Gap Recommendations](./gap-recommendations.md)             | Specs for missing capabilities            | Planning improvements                    |
 
@@ -143,7 +143,7 @@ Stage 6: OUTPUT DELIVERY
 2. **Building an extension?** Use [Asset Decision Tree](./asset-decision-tree.md)
 3. **Delegating work?** Follow [Multi-Agent Orchestration](./multi-agent-orchestration.md)
 4. **Quick task?** Use [Simple Task Workflow](./simple-task-workflow.md)
-5. **Debugging/research?** Follow [Investigation Workflow](./investigation-workflow.md)
+5. **Debugging/research?** Follow [Investigation Workflow](../../../plugins/scientific-method/shared/investigation-workflow.md)
 6. **Need context?** Use [RAG Retrieval Pattern](./rag-retrieval-pattern.md)
 7. **Planning improvements?** See [Gap Recommendations](./gap-recommendations.md)
 

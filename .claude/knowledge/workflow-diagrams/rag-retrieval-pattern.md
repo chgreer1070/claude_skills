@@ -363,6 +363,6 @@ sequenceDiagram
 
 ## Navigation
 
-- **Previous:** [Investigation Workflow](./investigation-workflow.md)
+- **Previous:** [Investigation Workflow](../../../plugins/scientific-method/shared/investigation-workflow.md)
 - **Next:** [Gap Recommendations](./gap-recommendations.md)
 - **Back to:** [Index](./README.md)
