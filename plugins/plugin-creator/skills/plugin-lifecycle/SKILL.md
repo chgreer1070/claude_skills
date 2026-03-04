@@ -17,6 +17,25 @@ Orchestrate plugin development through seven phases. This skill composes existin
 - `new <concept>` — Create a plugin from scratch. Enters at Phase 2 (Research).
 - `existing <plugin-path>` — Improve an existing plugin. Enters at Phase 1 (Assess).
 
+## Domain Knowledge Prerequisites
+
+Before executing any phase, load these reference skills to ensure the agent has foundational plugin domain knowledge. Without these, the agent cannot make informed decisions about plugin structure, component design, or validation requirements.
+
+**Required — load at session start:**
+
+1. Skill(skill="plugin-creator:claude-plugins-reference-2026")
+   Provides: plugin definition, directory structure, plugin.json schema (all field types and constraints), component types (skills, agents, hooks, MCP servers, LSP servers, output styles), plugin caching mechanics, environment variables (`${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PROJECT_DIR}`), installation scopes (user, project, local, managed), marketplace configuration, path behavior rules, CLI commands
+
+2. Skill(skill="plugin-creator:claude-skills-overview-2026")
+   Provides: SKILL.md format, all 14 frontmatter fields (name, description, allowed-tools, model, context, agent, user-invocable, disable-model-invocation, hooks, argument-hint), YAML multiline bug (do not use `>-` or `|` in descriptions), skill tokenomics and progressive disclosure, string substitutions (`$ARGUMENTS`, `${CLAUDE_SESSION_ID}`), dynamic context injection (`!` backtick syntax), invocation control, tool assignment via allowed-tools (comma-separated string, not array), context fork behavior and tool restrictions
+
+**Required for phases involving hooks (Phase 4: Create, Phase 5: Debug):**
+
+3. Skill(skill="plugin-creator:hooks-guide")
+   Provides: hook event types (13 events), hook types (command, prompt, agent), hook authoring guides for Python and Node.js (CommonJS), exit codes for PreToolUse decision control, PermissionRequest hooks, tool denial mechanisms (disallowedTools, permission rules, hook-based denial), pre-approval mechanisms (allowed-tools, permissionMode, hook auto-allow), agent frontmatter fields (allowedTools, disallowedTools, mcpServers, permissionMode, background)
+
+These skills contain the answers to fundamental questions: what is a plugin, what are its capabilities, how are tools assigned/hidden/denied, how is the namespace defined, what environment variables exist, how are MCP servers configured, and what scripting languages to prefer. The lifecycle phases below orchestrate the workflow — the reference skills above provide the domain expertise.
+
 ## Workflow Overview
 
 ```mermaid
