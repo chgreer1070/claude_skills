@@ -24,22 +24,16 @@ Orchestrate plugin development through seven phases. This skill composes existin
 
 ## Domain Knowledge Prerequisites
 
-Before executing any phase, load these reference skills to ensure the agent has foundational plugin domain knowledge. Without these, the agent cannot make informed decisions about plugin structure, component design, or validation requirements.
+Load these skills at session start before executing any phase. Full skill descriptions and what each provides: [domain-knowledge-prerequisites.md](./references/domain-knowledge-prerequisites.md).
 
 **Required — load at session start:**
 
-1. Skill(skill="plugin-creator:claude-plugins-reference-2026")
-   Provides: plugin definition, directory structure, plugin.json schema (all field types and constraints), component types (skills, agents, hooks, MCP servers, LSP servers, output styles), plugin caching mechanics, environment variables (`${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PROJECT_DIR}`), installation scopes (user, project, local, managed), marketplace configuration, path behavior rules, CLI commands
-
-2. Skill(skill="plugin-creator:claude-skills-overview-2026")
-   Provides: SKILL.md format, all 14 frontmatter fields (name, description, allowed-tools, model, context, agent, user-invocable, disable-model-invocation, hooks, argument-hint), YAML multiline bug (do not use `>-` or `|` in descriptions), skill tokenomics and progressive disclosure, string substitutions (`$ARGUMENTS`, `${CLAUDE_SESSION_ID}`), dynamic context injection (`!` backtick syntax), invocation control, tool assignment via allowed-tools (comma-separated string, not array), context fork behavior and tool restrictions
+1. `Skill(skill="plugin-creator:claude-plugins-reference-2026")` — plugin.json schema, component types, environment variables, installation scopes, path rules
+2. `Skill(skill="plugin-creator:claude-skills-overview-2026")` — SKILL.md format, all 14 frontmatter fields, YAML multiline bug, allowed-tools string format, context fork behavior
 
 **Required for phases involving hooks (Phase 4: Create, Phase 5: Debug):**
 
-3. Skill(skill="plugin-creator:hooks-guide")
-   Provides: hook event types (13 events), hook types (command, prompt, agent), hook authoring guides for Python and Node.js (CommonJS), exit codes for PreToolUse decision control, PermissionRequest hooks, tool denial mechanisms (disallowedTools, permission rules, hook-based denial), pre-approval mechanisms (allowed-tools, permissionMode, hook auto-allow), agent frontmatter fields (allowedTools, disallowedTools, mcpServers, permissionMode, background)
-
-These skills contain the answers to fundamental questions: what is a plugin, what are its capabilities, how are tools assigned/hidden/denied, how is the namespace defined, what environment variables exist, how are MCP servers configured, and what scripting languages to prefer. The lifecycle phases below orchestrate the workflow — the reference skills above provide the domain expertise.
+3. `Skill(skill="plugin-creator:hooks-guide")` — 13 hook event types, exit codes, tool denial mechanisms, agent frontmatter fields
 
 ## Workflow Overview
 
@@ -555,41 +549,32 @@ flowchart TD
 
 ## Phase-to-Skill Mapping
 
-| Phase | Skill/Agent | Invocation |
-|-------|-------------|------------|
-| 0: RT-ICA | `rt-ica` skill (inline procedure) | Inline — see Phase 0 |
-| 0.5: Discussion | Direct — capture to discuss-CONTEXT.md | Inline — see Phase 0.5 |
-| 1: Assess | `/plugin-creator:assessor` | `Skill(skill="plugin-creator:assessor")` |
-| 2: Research | `/plugin-creator:feature-discovery` | `Skill(skill="plugin-creator:feature-discovery")` |
-| 2: Research | 4-way parallel researchers | subagent_type="plugin-creator:plugin-assessor" x3 + "general-purpose" x1 |
-| 3: Design | `/plugin-creator:rt-ica` | `Skill(skill="plugin-creator:rt-ica")` |
-| 4: Create | `/plugin-creator:skill-creator` | `Skill(skill="plugin-creator:skill-creator")` |
-| 4: Create | `/plugin-creator:agent-creator` | `Skill(skill="plugin-creator:agent-creator")` |
-| 4: Create | `/plugin-creator:hook-creator` | `Skill(skill="plugin-creator:hook-creator")` |
-| 5: Debug | `/plugin-creator:lint` | `Skill(skill="plugin-creator:lint")` |
-| 5: Debug | `/plugin-creator:refactor-skill` | `Skill(skill="plugin-creator:refactor-skill")` |
-| 5: Debug | `fix_tool_formats.py` | `uv run plugins/plugin-creator/scripts/fix_tool_formats.py` |
-| 6: Optimize | `/plugin-creator:refactor-plugin` | `Skill(skill="plugin-creator:refactor-plugin")` |
-| 6: Optimize | `@contextual-ai-documentation-optimizer` | subagent_type="plugin-creator:contextual-ai-documentation-optimizer" |
-| 6: Optimize | `@subagent-refactorer` | subagent_type="plugin-creator:subagent-refactorer" |
-| 6.5: Documentation | `@plugin-assessor` | subagent_type="plugin-creator:plugin-assessor" |
-| 7: Verify | `/plugin-creator:ensure-complete` | `Skill(skill="plugin-creator:ensure-complete")` |
-| 7: Verify | `plugin_validator.py` | `uv run plugins/plugin-creator/scripts/plugin_validator.py` |
+Full lookup table with exact invocation syntax for all 18 phase-skill pairings: [phase-skill-mapping.md](./references/phase-skill-mapping.md).
+
+Key invocations:
+- Phase 1: `Skill(skill="plugin-creator:assessor")`
+- Phase 2: `Skill(skill="plugin-creator:feature-discovery")` + 4-way parallel researchers via subagent_type
+- Phase 4: skill-creator, agent-creator, hook-creator (one Skill call per component type)
+- Phase 5: lint, refactor-skill (one Skill call per error type)
+- Phase 7: `Skill(skill="plugin-creator:ensure-complete")`
 
 ---
 
 ## Error Handling
 
-See [error handling reference](./references/error-handling.md) for 14 failure modes and recovery procedures covering RT-ICA blocks, researcher failures, validator errors (SK006/SK007), broken links, missing documentation, and session recovery.
+14 failure modes with recovery actions: [error-handling.md](./references/error-handling.md).
+
+Key rules:
+- SK007 (token limit exceeded) — run `/plugin-creator:refactor-skill`; editing alone is not sufficient
+- SK006 (approaching limit) — extract content to `references/` and re-validate
+- RT-ICA BLOCKED — do not proceed to Discussion or Research until all conditions resolve
+- STATE.md absent — read all `.claude/plan/{plugin-name}/` artifacts to reconstruct phase
 
 ---
 
 ## Example Sessions
 
-See [example sessions reference](./references/example-sessions.md) for two complete walkthroughs:
-
-- **New plugin (full lifecycle)** — RT-ICA BLOCKED → resolved, all 7 phases through marketplace-ready
-- **Existing plugin with validation errors** — 3 errors (SK007, broken link, format) fixed in Debug, verified in Phase 7
+Two complete walkthroughs (new plugin full lifecycle + existing plugin with validation errors): [example-sessions.md](./references/example-sessions.md).
 
 ---
 

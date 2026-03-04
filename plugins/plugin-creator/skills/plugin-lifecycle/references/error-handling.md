@@ -1,4 +1,6 @@
-# Error Handling
+# Plugin Lifecycle — Error Handling Reference
+
+Consult this table when a phase fails or produces unexpected output. Each row names the failure mode and its recovery action.
 
 | Failure | Recovery |
 |---------|----------|

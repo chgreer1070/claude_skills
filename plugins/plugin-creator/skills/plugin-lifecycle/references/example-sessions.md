@@ -1,6 +1,8 @@
-# Example Sessions
+# Plugin Lifecycle — Example Sessions
 
-## New plugin (full lifecycle)
+Consult these walkthroughs to understand expected phase output and decision flow for each lifecycle path.
+
+## New Plugin (Full Lifecycle)
 
 ```text
 > /plugin-lifecycle new git-workflow-helper
@@ -78,7 +80,7 @@ Phase 7: Verify
   Plugin is marketplace-ready.
 ```
 
-## Existing plugin with validation errors
+## Existing Plugin With Validation Errors
 
 ```text
 > /plugin-lifecycle existing plugins/my-data-tool
