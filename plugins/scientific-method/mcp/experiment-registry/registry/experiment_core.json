@@ -1,0 +1,73 @@
+{
+  "name": "experiment_core",
+  "description": "Universal controlled experiment protocol — hypothesis, fixture, rubric, baseline, iterate.",
+  "steps": [
+    {
+      "id": "hypothesis",
+      "name": "State hypothesis",
+      "required_artefacts": ["hypothesis.md"],
+      "validation": "contains HYPOTHESIS:, CURRENT BEHAVIOUR:, SUCCESS CRITERION:",
+      "checklist": [],
+      "human_input_required": false
+    },
+    {
+      "id": "fixture",
+      "name": "Build fixture",
+      "required_artefacts": ["fixture.md"],
+      "validation": "no embedded criteria or model answers",
+      "checklist": [
+        "Contains only raw input the subject would receive in production",
+        "Contains no criteria, hints, or expected outcomes",
+        "File is frozen — will not be edited after baseline"
+      ],
+      "human_input_required": false
+    },
+    {
+      "id": "rubric",
+      "name": "Write rubric",
+      "required_artefacts": ["rubric.md"],
+      "validation": "min 1 binary criterion, written before baseline",
+      "checklist": [
+        "Each criterion is observable and binary (pass/fail)",
+        "Written before baseline run",
+        "Rubric file is separate from fixture"
+      ],
+      "human_input_required": false
+    },
+    {
+      "id": "baseline",
+      "name": "Run baseline",
+      "required_artefacts": ["output-iter0.md", "log.md"],
+      "validation": "log entry for iter0 exists",
+      "checklist": [
+        "Agent received only task prompt + fixture (not rubric)",
+        "All criteria scored for iter0",
+        "Log entry complete"
+      ],
+      "human_input_required": false
+    },
+    {
+      "id": "iterate",
+      "name": "Iterate",
+      "required_artefacts": ["log.md"],
+      "validation": "one change per iter, regressions recorded, all criteria pass in final iter",
+      "checklist": [
+        "Exactly one thing changed between runs",
+        "Predicted effect written before applying change",
+        "Regressions recorded explicitly",
+        "All criteria pass in this iteration"
+      ],
+      "human_input_required": false
+    }
+  ],
+  "anti_patterns": [
+    "Embedding criteria in the fixture",
+    "Changing multiple things between runs",
+    "Writing rubric criteria after seeing output",
+    "Reporting only passing runs",
+    "Changing the task prompt between runs",
+    "Eyeballing output instead of scoring rubric criteria",
+    "Including model answers in the fixture"
+  ],
+  "rubric_templates": []
+}

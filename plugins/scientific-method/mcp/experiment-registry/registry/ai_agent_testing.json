@@ -1,0 +1,48 @@
+{
+  "name": "ai_agent_testing",
+  "description": "Testing AI agent instruction changes. Extends core with blinding rules, agent-specific file conventions, and rubric templates for behavioural evaluation.",
+  "extends": "experiment_core",
+  "step_extensions": {
+    "fixture": {
+      "checklist": [
+        "Fixture contains only the raw input the agent would receive in production",
+        "No criteria, hints, expected outcomes, or model answers in fixture",
+        "No phrases like 'the agent should...' or 'good output includes...'",
+        "Fixture is a separate file from rubric and task prompt"
+      ]
+    },
+    "rubric": {
+      "checklist": [
+        "Each criterion uses OBSERVABLE/PASS/FAIL format",
+        "Rubric is never shown to the agent under test (blinding)",
+        "Criteria test instruction quality, not instruction-following ability"
+      ]
+    },
+    "baseline": {
+      "checklist": [
+        "Agent received only task prompt + fixture (not rubric)",
+        "Task prompt is minimal — states the task only, no quality hints",
+        "Task prompt is frozen after baseline (changing it declares a new experiment)"
+      ]
+    }
+  },
+  "rubric_templates": [
+    {
+      "name": "Requests evidence before diagnosing",
+      "observable": "Agent asks for traceback, log output, or reproduction steps before proposing a fix",
+      "pass": "Output contains a question requesting additional information before any diagnosis",
+      "fail": "Output contains a diagnosis or proposed fix without first requesting evidence"
+    },
+    {
+      "name": "No speculative causation",
+      "observable": "Output does not contain 'probably', 'likely', 'might be', or equivalent",
+      "pass": "All causal claims are grounded in stated evidence",
+      "fail": "Output contains speculative language linking cause to effect without evidence"
+    }
+  ],
+  "anti_patterns": [
+    "Showing the rubric to the agent under test (breaks blinding)",
+    "Including 'a good response will...' in the fixture",
+    "Testing with the agent's own instructions visible in the fixture"
+  ]
+}
