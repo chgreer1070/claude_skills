@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: open
   issue: '#437'
-  last_synced: '2026-03-05T05:07:06Z'
+  last_synced: '2026-03-05T05:11:49Z'
   groomed: '2026-03-05'
 ---
 
@@ -31,20 +31,28 @@ metadata:
 
 ## RT-ICA
 
-**Goal**: Enable Claude to present 20+ items in a single interactive view where users can toggle, add, remove, and submit results as structured data in one round-trip.
+**Goal**: Enable Claude to present 20+ items in a single interactive view where users can toggle, add, remove, and submit results as structured data in one round-trip, with routing across desktop web, TUI, and phone contexts.
 
 **Conditions**:
 
-1. Claude Code's AskUserQuestion is insufficient for 20+ item interactive selection | **AVAILABLE** | Observed behavior; item description documents the problem with sufficient specificity
-2. Claude Code's Bash tool can launch external processes (TUI or web server) | **AVAILABLE** | Bash tool launches any shell command; a Python TUI or local HTTP server is launchable
-3. A Python TUI framework (e.g., Textual) supports checkbox trees and tree editing | **DERIVABLE** | Textual has documented Checkbox and Tree widget support; specific checkbox-tree pattern requires research validation
-4. A mechanism exists for returning structured JSON from the TUI/web UI back to Claude | **MISSING** | No research or design covers the IPC return path (stdout capture, temp file, local HTTP callback, etc.)
-5. CopilotKit or json-render could serve as the web UI layer for a browser-based variant | **DERIVABLE** | Both frameworks support interactive component rendering; neither is purpose-built for CLI-to-browser round-trip
-6. The solution integrates as a Claude Code skill/tool that can be invoked from any skill | **MISSING** | No integration contract defined (tool name, invocation API, return schema)
-7. Images and screenshots can be displayed as selectable option cards | **MISSING** | No research covers image display in terminal or browser within a Claude Code skill context
+1. Claude Code's AskUserQuestion is insufficient for 20+ item interactive selection | **AVAILABLE** | Observed behavior; item description and fact-check confirm the problem
+2. Claude Code's Bash tool can launch external processes (TUI or web server) | **AVAILABLE** | Bash tool launches any shell command
+3. A Python TUI framework (e.g., Textual) supports checkbox trees and tree editing | **DERIVABLE** | Textual has documented Checkbox and Tree widget support; specific checkbox-tree + IPC pattern requires validation
+4. A mechanism exists for returning structured JSON from TUI/web UI back to Claude | **MISSING** | No design covers the IPC return path. `cindy2000sh/claude-ntfy` (Shell, reply-from-phone) uses ntfy.sh subscribe loop — pattern worth studying, but Claude Code IPC contract undefined
+5. CopilotKit or json-render could serve as the web UI layer | **DERIVABLE** | Both frameworks support interactive component rendering; neither is purpose-built for CLI-to-browser round-trip; integration pattern requires design
+6. The solution integrates as a Claude Code skill/tool invocable from any skill | **MISSING** | No integration contract defined (tool name, invocation API, return schema)
+7. Images and screenshots can be displayed as selectable option cards | **DERIVABLE** | Web renderer can display images natively; ntfy.sh supports image attachments; terminal rendering requires research
+8. Phone notification backend (ntfy.sh or equivalent) is available and proven in Claude Code context | **AVAILABLE** | `cyanheads/ntfy-mcp-server` (MCP, 14 stars) and `cindy2000sh/claude-ntfy` (Shell, reply support) both exist and are active. Apprise provides unified API covering ntfy, Pushover, Slack, Teams SOURCE: GitHub API, 2026-03-05
+9. TUI + Web dual-mode co-existence pattern has prior art in Claude Code ecosystem | **AVAILABLE** | `uppinote20/clavis` (Rust, TUI+Web, Claude Code admin) and `FlorianBruniaux/ccboard` (TUI 9 tabs + Web) demonstrate the pattern SOURCE: GitHub API, 2026-03-05
+10. Routing layer context detection (desktop vs remote vs tmux) is feasible | **DERIVABLE** | Standard Unix env vars ($TMUX, $SSH_TTY, $DISPLAY) provide signal basis; heuristics have known edge cases; named profile override is the robust fallback. No existing tool provides this for Claude Code specifically
+11. Apprise can serve as unified connection layer backend for non-interactive channels | **DERIVABLE** | README confirms broad multi-service coverage (Telegram, Discord, Slack, SNS, Gotify, etc.); Python library API suitable for embedding; exact backend count and ntfy-specific URL scheme require validation
 
-**Decision**: APPROVED
-**Missing inputs for planning**: (4) structured result return path (IPC mechanism), (6) skill integration contract and API, (7) image display mechanism
+**Decision**: APPROVED — conditions 4 and 6 remain MISSING but are planning-phase design decisions, not blockers to starting architecture work. New research (conditions 8, 9, 11) upgrades phone adapter and TUI+Web pattern from MISSING to AVAILABLE/DERIVABLE, reducing architecture phase risk.
+
+**Missing inputs for planning** (unchanged + refined):
+- (4) IPC return path: how structured JSON flows from renderer back to Claude Code session
+- (6) Skill integration contract: tool name, invocation API, return schema, blocking behavior
+- (10) Context detection: heuristic vs named profile — edge case coverage needs empirical testing
 
 ## Groomed (2026-03-05)
 
@@ -396,3 +404,26 @@ The `hint` parameter lets Claude override when it has context the MCP server lac
 Alternative considered: inject endpoint registry into Claude's system prompt so Claude selects. Rejected (for now) because it couples routing logic into every skill prompt and makes the routing layer untestable independently.
 
 **Still needs**: Confirm MCP server is the right process boundary vs. a local Python CLI the skill calls directly. MCP server adds setup friction; CLI is simpler but loses the tool-call ergonomics.
+
+## Fact-Check
+
+**Claims checked**: 12
+**VERIFIED**: 7 | **REFUTED**: 0 | **INCONCLUSIVE**: 5
+
+| Claim | Verdict | Source |
+|-------|---------|--------|
+| No native Claude Code mechanism exists for scrollable, interactive checklist/tree views | VERIFIED | Claude Code tool inventory — no interactive TUI component exists SOURCE: Claude Code tool definitions, 2026-03-05 |
+| CopilotKit handles agent-driven UI rendering and user feedback loops | VERIFIED | `useCopilotAction` render pattern, bi-directional state sync SOURCE: research/agent-frameworks/copilotkit.md (accessed 2026-02-23) |
+| JSON Render handles dynamic form/tree generation from agent output | VERIFIED | Catalog+Zod schema system, `@json-render/shadcn` (39 components) SOURCE: research/agent-frameworks/json-render.md (accessed 2026-02-26) |
+| `cyanheads/ntfy-mcp-server` is an MCP server for the ntfy push notification service | VERIFIED | GitHub API: full_name=cyanheads/ntfy-mcp-server, desc="An MCP (Model Context Protocol) server designed to interact with the ntfy push notification service" SOURCE: api.github.com/repos/cyanheads/ntfy-mcp-server, 2026-03-05 |
+| `cindy2000sh/claude-ntfy` provides Claude Code phone push with phone-reply support | VERIFIED | GitHub API: desc="Phone push notifications for Claude Code. Self-hosted, no third-party services. Reply from your phone." language=Shell SOURCE: api.github.com/repos/cindy2000sh/claude-ntfy, 2026-03-05 |
+| `uppinote20/clavis` is a Claude Code TUI+Web admin tool built in Rust | VERIFIED | GitHub API: desc="clavis — Claude Code system administration tool. TUI + Web interface for managing plugins, MCP servers, hooks, skills, sessions, and settings.", language=Rust SOURCE: api.github.com/repos/uppinote20/clavis, 2026-03-05 |
+| Apprise supports many notification backends under one API | VERIFIED | README: "allows you to send a notification to almost all of the most popular notification services available to us today such as: Telegram, Discord, Slack, Amazon SNS, Gotify"; includes productivity, SMS, desktop, email, custom hooks categories SOURCE: raw.githubusercontent.com/caronc/apprise/master/README.md, 2026-03-05 |
+| AskUserQuestion is limited to 3-5 questions per screen | INCONCLUSIVE | The practical limitation is observed behavior; exact "3-5" number not documented in official Claude Code sources |
+| TUI frameworks (textual, rich, blessed) support checkbox trees with real-time agent communication | INCONCLUSIVE | Textual has documented Checkbox/Tree widget support; Rich is display-only; Blessed is JavaScript — bundle conflates mismatched tools; IPC pattern unspecified |
+| Apprise covers exactly "80+" backends | INCONCLUSIVE | README confirms broad multi-service coverage; exact count inaccessible via API (path error on plugin listing). Claim "80+" is plausible but unverified SOURCE: GitHub API rate-limited, 2026-03-05 |
+| `FlorianBruniaux/ccboard` is a Rust TUI+Web Claude Code monitoring tool | INCONCLUSIVE | Confirmed in prior session GitHub search (desc: "Monitor Claude Code sessions … TUI (9 tabs) + Web interface with live process tracking"); GitHub API rate-limited on direct repo fetch, 2026-03-05 |
+| ntfy.sh is a self-hosted push notification service with Android/iOS apps | INCONCLUSIVE | README partial content confirms push notification service; GitHub API rate-limited for full repo details. ntfy.sh website and docs confirm Android/iOS presence — but primary source not re-fetched this session SOURCE: prior session ntfy-readme fetch, 2026-03-05 |
+
+**Refuted claims**: None
+**Inconclusive items requiring follow-up**: Apprise "80+" exact count; ccboard Rust/TUI confirmation; ntfy.sh Android/iOS confirmation via primary source. None of these affect architecture decisions — all are "exists and is relevant" claims, not functional claims the design depends on.
