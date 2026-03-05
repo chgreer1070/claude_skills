@@ -13,22 +13,6 @@ metadata:
   groomed: '2026-03-05'
 ---
 
-## Fact-Check
-
-**Claims checked**: 5
-**VERIFIED**: 3 | **REFUTED**: 0 | **INCONCLUSIVE**: 2
-
-| Claim | Verdict | Source |
-|-------|---------|--------|
-| No native Claude Code mechanism exists for scrollable, interactive checklist/tree views | VERIFIED | Claude Code tool inventory (AskUserQuestion, Bash, Read, Write, Edit) — no interactive TUI component exists SOURCE: Claude Code tool definitions, 2026-03-05 |
-| CopilotKit handles agent-driven UI rendering and user feedback loops | VERIFIED | `useCopilotAction` render pattern, human-in-the-loop checkpoints, bi-directional state sync SOURCE: research/agent-frameworks/copilotkit.md (accessed 2026-02-23) |
-| JSON Render handles dynamic form/tree generation from agent output | VERIFIED | Catalog+Zod schema system constrains AI to a defined component vocabulary; `defineCatalog` + `@json-render/shadcn` (39 pre-built components) covers interactive form generation SOURCE: research/agent-frameworks/json-render.md (accessed 2026-02-26) |
-| AskUserQuestion is limited to 3-5 questions per screen | INCONCLUSIVE | The practical limitation on option count is observed behavior; the exact "3-5" number is not documented in official Claude Code sources. The broader claim (insufficient for 20+ items) is consistent with observed behavior. |
-| TUI frameworks (textual, rich, blessed) support checkbox trees with real-time agent communication | INCONCLUSIVE | Textual (Textualize) has documented Checkbox and Tree widget support for interactive terminals. Rich is display-only (not interactive). Blessed is JavaScript (not Python). The claim bundles mismatched tools. "Real-time agent communication" mechanism is unspecified — no research file confirms IPC pattern. |
-
-**Refuted claims**: None
-**Inconclusive claims**: "3-5 questions limit" (unverified number); "textual, rich, blessed" bundle (rich is not interactive; blessed is JS)
-
 ## RT-ICA
 
 **Goal**: Enable Claude to present 20+ items in a single interactive view where users can toggle, add, remove, and submit results as structured data in one round-trip, with routing across desktop web, TUI, and phone contexts.
@@ -115,16 +99,12 @@ A Claude Code skill or tool that acts as a bridge between Claude and an interact
 - **Return binding**: Should the result automatically resume skill execution, or does the skill need explicit code to parse and continue?
   - Automatic binding (tool blocks until result arrives) vs manual binding (skill polls for result) affects integration complexity
 
-- **Persistence model**: Confirmed session-scoped only — each invocation is stateless and does not persist state across sessions. Multi-session save/resume is explicitly out of scope.
-
 ### Resources
 
-| Type | Item |
-|------|------|
-| Research | [CopilotKit](../../research/agent-frameworks/copilotkit.md) — React/TypeScript framework for agent-driven UI with bi-directional state sync |
-| Research | [json-render](../../research/agent-frameworks/json-render.md) — Generative UI framework with catalog constraints and streaming support |
-| Skill | agent-browser — existing skill for rendering and browser interaction |
-| Prior work | plugins/development-harness/agents/service-docs-maintainer.md — example of complex UI workflows in SAM |
+- [CopilotKit](../../research/agent-frameworks/copilotkit.md) — React/TypeScript framework for agent-driven UI with bi-directional state sync
+- [json-render](../../research/agent-frameworks/json-render.md) — Generative UI framework with catalog constraints and streaming support
+- `agent-browser` skill — existing skill for rendering and browser interaction
+- `plugins/development-harness/agents/service-docs-maintainer.md` — example of complex UI workflows in SAM
 
 ### Dependencies
 
@@ -269,9 +249,7 @@ endpoints:
 
 ### Routing Design — Preliminary Research
 
-> **Status**: Preliminary — findings below are first-pass research. Each question requires dedicated investigation and testing before architecture decisions are finalized.
-
-### Existing solutions found (2026-03-05)
+#### Existing solutions found (2026-03-05)
 
 | Solution | Relevance | Action |
 |----------|-----------|--------|
@@ -287,7 +265,7 @@ endpoints:
 
 ---
 
-### Q1 — Context detection: heuristic vs explicit profile
+#### Q1 — Context detection: heuristic vs explicit profile
 
 **Preliminary finding**: Named profiles in config with env var heuristics as opt-in auto-detection fallback.
 
@@ -320,7 +298,7 @@ default: at-desk
 
 ---
 
-### Q2 — First-response-wins vs collect-all for broadcast
+#### Q2 — First-response-wins vs collect-all for broadcast
 
 **Preliminary finding**: Response model is determined by interaction *type*, not a global setting.
 
@@ -336,7 +314,7 @@ Each interaction message carries a `type` field. Routing layer uses it to pick r
 
 ---
 
-### Q3 — Endpoint health check before routing
+#### Q3 — Endpoint health check before routing
 
 **Preliminary finding**: Probe before routing with configurable timeout (default 500ms); walk fallback chain on failure. Phone/ntfy is terminal node (always available).
 
@@ -350,7 +328,7 @@ Each interaction message carries a `type` field. Routing layer uses it to pick r
 
 ---
 
-### Q4 — Endpoint registry exposure to Claude
+#### Q4 — Endpoint registry exposure to Claude
 
 **Preliminary finding**: MCP server owns routing; Claude calls one tool. Claude has zero routing logic.
 
