@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: open
   issue: '#437'
-  last_synced: '2026-03-05T04:47:21Z'
+  last_synced: '2026-03-05T04:50:40Z'
   groomed: '2026-03-05'
 ---
 
@@ -142,18 +142,15 @@ Medium — Proof of concept (TUI with Textual + stdout capture) is achievable in
 **Return binding model**: Background subagent pattern.
 
 The interactive UI runs as a background subagent (`Agent(run_in_background=True)`). The subagent:
-1. Launches the renderer backend (TUI, web, Slack, etc.) via the routing layer
-2. Blocks internally until the user submits (synchronous from the UI's perspective)
-3. Captures the structured result
-4. Returns the result to the orchestrator on completion
+1. Launches the renderer backend via the routing layer
+2. Blocks internally until the user submits
+3. Returns structured JSON result to the orchestrator on completion
 
-The orchestrating Claude instance is **free to continue other work** while the user interacts with the UI. When the subagent finishes (user submits), the orchestrator receives an automatic notification — no polling, no manual IPC.
+The orchestrating Claude instance is free to continue other work while the user interacts. Notification is automatic — no polling, no manual IPC.
 
 ---
 
 **Renderer architecture**: Pluggable backend with connection + routing layers.
-
-Three-layer model:
 
 ```
 Claude (orchestrator)
@@ -173,7 +170,7 @@ Claude (orchestrator)
            │
     ┌──────▼──────────────────────────────────┐
     │         Renderer Backends               │
-    │  TUI │ Web │ Slack │ Teams │ Phone/Push │
+    │  Web │ TUI │ Slack │ Teams │ Phone/Push │
     └─────────────────────────────────────────┘
 ```
 
@@ -190,35 +187,49 @@ Claude (orchestrator)
 | Push notification | - | - | ✓ | ✓ |
 | Async / non-blocking response | - | ✓ | ✓ | ✓ |
 
-TUI is the fastest integration path and covers the core feature set. Web covers everything and is the extension target. Slack/Teams/push adapters add async notification and approval flows for non-terminal contexts.
+**Image support**: Required in v1 (web renderer only). Screenshot/image display as selectable option cards.
 
-**Image support**: Required in v1. The web renderer must support image/screenshot display as selectable option cards. TUI image support (via sixel, kitty protocol, or iTerm2 inline images) is optional in v1 — terminal capability is not guaranteed.
+---
 
-**Remaining open questions for planning**:
-- Which renderer ships in v1 (TUI-only, web-only, or both)?
-- What is the routing selection mechanism (config file, environment variable, auto-detect)?
-- What is the connection layer's serialization format (JSON over stdio, HTTP/SSE, WebSocket)?
-- Slack/Teams adapters: v2 scope or designed into the connection contract from v1?
+**Implementation sequencing** (confirmed by user, 2026-03-05):
+
+1. **Architecture phase first** — the pluggable connection + routing layer requires dedicated planning cycles before any renderer work begins. The connection contract must be stable before web or any future adapter is built against it.
+2. **Web renderer (v1)** — implemented against the stable connection contract. Web-only; TUI deferred to v2.
+3. **Additional adapters (v2+)** — Slack, Teams, TUI, notify.io/push — each a new connection adapter only, no routing changes.
+
+The architecture phase is a hard prerequisite. Do not begin web renderer implementation until the connection contract is finalized.
+
+---
+
+**Remaining open questions for architecture phase**:
+- Routing selection mechanism — config file, env var, auto-detect from context, or explicit Claude parameter?
+- Connection layer serialization format — JSON over stdio, HTTP/SSE, or WebSocket?
+- Slack/Teams adapter contract — specify in v1 architecture even if implementation is v2?
+- Connection layer identity/session model — how does Claude correlate a submitted result to the originating request across async boundaries?
 
 ### Scope
 
-**In scope (v1)**:
-- Routing layer — selects renderer from config or context; defines the renderer contract/interface
-- Connection layer — transport abstraction (stdio, HTTP, WebSocket); serialization format (JSON)
-- TUI renderer — interactive checklists, fuzzy lookup, long list/file presentation, layout; runs in terminal via tmux PTY
-- Web renderer — everything TUI does plus image/screenshot option cards; runs as local HTTP server with WebSocket for push
-- Image support — screenshot/image display as selectable cards in web renderer; v1 requirement
-- Background subagent integration — Claude spawns as `Agent(run_in_background=True)`, returns structured JSON on submit
+**Phase 0 — Architecture (prerequisite, must complete before Phase 1)**:
+- Design the pluggable connection + routing layer
+- Define the renderer adapter contract/interface
+- Define the serialization format and session/correlation model
+- Specify the Slack/Teams connection contract (even if implementation is v2)
+- Output: architecture spec consumed by all subsequent phases
 
-**Designed-in but deferred (v2+)**:
-- Slack adapter — routing to Slack channel; blocks/reactions as interaction primitives; approval flow
-- MS Teams adapter — Teams webhook + Adaptive Cards as renderer
-- notify.io / phone push adapter — push notification + async response callback
-- Multi-session persistence — save/resume interaction state across Claude sessions
+**Phase 1 — v1 implementation (web renderer only)**:
+- Routing layer — selects renderer; enforces adapter contract
+- Connection layer — HTTP + WebSocket transport; JSON serialization
+- Web renderer — interactive checklists, fuzzy lookup, long list/file presentation, image/screenshot option cards
+- Background subagent integration — `Agent(run_in_background=True)`; structured JSON returned on submit
 
-**Out of scope**:
+**Phase 2 — v2 adapters (designed-in, not implemented in v1)**:
+- TUI renderer (terminal via tmux PTY) — checklist, fuzzy lookup, long file, layout
+- Slack adapter — channel routing, blocks/reactions, approval flow
+- MS Teams adapter — Teams webhook + Adaptive Cards
+- notify.io / push adapter — async notification + response callback
+
+**Out of scope (all phases)**:
 - Authentication / access control between Claude and renderer backends
-- Multi-user simultaneous interactions (single-user per session assumed)
-- Custom renderer plugin API for third-party backends (design-in only, not implemented)
-
-**Scope note**: The connection + routing layer must be designed with the Slack/Teams/push contract in mind from v1, even though those adapters ship in v2. Adding a new adapter should require only a new connection adapter implementation — not changes to the routing layer or Claude integration.
+- Multi-user simultaneous interactions (single-user per session)
+- Custom renderer plugin API for third parties (design-in only)
+- Multi-session persistence (save/resume state)
