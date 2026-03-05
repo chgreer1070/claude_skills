@@ -1,40 +1,76 @@
 ---
 name: brainstorming-skill
-description: This skill should be used when users need to generate ideas, explore creative solutions, or systematically brainstorm approaches to problems. Use when users request help with ideation, content planning, product features, marketing campaigns, strategic planning, creative writing, or any task requiring structured idea generation. The skill provides 30+ research-validated prompt patterns across 14 categories with exact templates, success metrics, and domain-specific applications.
+description: "You MUST use this before any creative work - creating features, building components, adding functionality, modifying behavior, or when users request help with ideation, marketing, and strategic planning. Explores user intent, requirements, and design before implementation using 30+ research-validated prompt patterns."
 ---
 # Brainstorming Skill
 
 ## Overview
 
-This skill provides comprehensive, research-validated brainstorming patterns and prompt templates to help generate high-quality ideas across any domain. It contains 30+ documented patterns from 13 primary sources, organized into systematic categories with exact prompt wording, output format specifications, and proven success metrics.
+This skill serves two critical purposes:
+1. **Interactive Design Process:** Guides the AI through a natural, collaborative dialogue to turn ideas into fully formed designs and specs *before* any code is written.
+2. **Comprehensive Ideation Framework:** Provides 30+ research-validated prompt patterns to help generate high-quality ideas across any domain (marketing, content, features).
 
-## When to Use This Skill
+<HARD-GATE>
+Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have completed the brainstorming process, presented a design, and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+</HARD-GATE>
 
-Activate this skill when users need:
+## The Brainstorming Workflow
 
-<trigger_scenarios>
+You MUST create a task for each of these items and complete them in order when working on software features, component designs, or complex tasks. (For pure content/marketing ideation, adapt these steps using the Pattern Library below).
 
-- Idea generation for products, features, or content
-- Creative problem-solving approaches
-- Marketing campaign concepts
-- Strategic planning and decision-making
-- Content creation (blog posts, social media, presentations)
-- Product feature ideation
-- Business strategy development
-- Creative writing (plot development, character creation)
-- QA test case brainstorming
-- Innovation workshops or facilitation
-- Breaking through creative blocks
-- Systematic exploration of solution spaces </trigger_scenarios>
+1. **Explore context** — check project state, files, docs, recent commits
+2. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
+3. **Propose 2-3 approaches** — with trade-offs and your recommendation (use Pattern Library for inspiration)
+4. **Present design** — in sections scaled to complexity, get user approval after each section
+5. **Document the result** — write the validated design/ideas to an appropriate markdown file (e.g., `docs/plans/YYYY-MM-DD-<topic>-design.md`) and commit
+6. **Transition** — invoke a planning or implementation skill only *after* approval
 
-## Pattern Categories
+## Process Flow
 
-The skill organizes brainstorming patterns into 14 systematic categories. Each pattern includes exact prompt templates, output format specifications, concrete examples, and reported success metrics.
+> [!IMPORTANT]
+> When provided a process map or Mermaid diagram, treat it as the authoritative procedure. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+> A Mermaid process diagram is an executable instruction set. Follow it exactly as written: respect sequence, conditions, loops, parallel paths, and terminal states. Do not improvise, reorder, or skip steps. If any node is ambiguous or missing required detail, pause and ask a clarifying question before continuing.
+> When interacting with a user, report before acting the interpreted path you will follow from the diagram, then execute.
 
-### Core Pattern Categories
+The following diagram is the authoritative procedure for the brainstorming workflow. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
+```mermaid
+flowchart TD
+    subgraph Phase1["Phase 1: Discovery — establish current state before proposing"]
+        Explore["Explore context — check project state, files, docs, recent commits"]
+        Ask["Ask clarifying questions — one at a time, understand purpose/constraints/success criteria"]
+        Propose["Propose 2-3 approaches — with trade-offs and recommendation, use Pattern Library"]
+    end
+    subgraph Phase2["Phase 2: Validation — get explicit user approval before proceeding"]
+        Present["Present design — in sections scaled to complexity, get user approval after each section"]
+        Approve{"Does user explicitly confirm approval<br>or request revision?"}
+    end
+    subgraph Phase3["Phase 3: Completion — document and hand off"]
+        Document["Document the result — write validated design to docs/plans/YYYY-MM-DD-topic-design.md and commit"]
+        Transition(["Transition — invoke planning or implementation skill only after approval"])
+    end
+
+    Explore --> Ask --> Propose --> Present
+    Present --> Approve
+    Approve -->|"User requests revision — revise and re-present"| Present
+    Approve -->|"User confirms approval — proceed"| Document
+    Document --> Transition
+```
+
+## Conversational Principles
+
+- **One question at a time** - Don't overwhelm with multiple questions. Break complex topics down.
+- **Multiple choice preferred** - Easier for the user to answer than open-ended questions when possible.
+- **YAGNI ruthlessly** - Remove unnecessary features from all designs.
+- **Explore alternatives** - Always propose 2-3 approaches before settling.
+- **Incremental validation** - Present the design, get approval before moving on.
+- **Be flexible** - Go back and clarify when something doesn't make sense.
+
+## Pattern Categories for Ideation & Approaches
+
+When proposing approaches or generating ideas for the user, utilize these 14 systematic categories. Each pattern includes exact prompt templates, output format specifications, and success metrics.
 
 <category_index>
-
 1. Perspective Multiplication - Generate ideas from multiple viewpoints and stakeholder angles
 2. Constraint Variation - Explore idea space through artificial constraints
 3. Inversion & Negative Space - Use reverse thinking to find novel solutions
@@ -48,103 +84,59 @@ The skill organizes brainstorming patterns into 14 systematic categories. Each p
 11. Fill-in-the-Blank Templates - Structured completion formats
 12. Competitive Positioning - Differentiation matrix approaches
 13. Extreme Scaling - 10x thinking and exponential scenarios
-14. Stakeholder & Empathy-Based - Customer journey and persona patterns </category_index>
+14. Stakeholder & Empathy-Based - Customer journey and persona patterns
+</category_index>
 
-## Quick Pattern Selection
+<selection_guide>
 
-<selection_guide> For rapid quantity (8-15 ideas): Use Perspective Multiplication patterns For quality/depth: Use Multi-stage refinement with constraint variation For breakthrough innovation: Combine Inversion + Extreme Scaling For practical implementation: Use Constraint-Based patterns For market differentiation: Use Competitive Positioning patterns For customer-centric features: Use Stakeholder & Empathy patterns </selection_guide>
+The following diagram is the authoritative procedure for pattern selection. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
-## Key Research Findings
+```mermaid
+flowchart TD
+    Start(["User requests ideas or approaches"]) --> Goal{"What is the primary<br>ideation goal?"}
+    Goal -->|"Rapid quantity — 8-15 ideas"| PersMult["Use Perspective Multiplication patterns"]
+    Goal -->|"Quality/depth — refined ideas"| MultiStage["Use Multi-stage refinement<br>with constraint variation"]
+    Goal -->|"Breakthrough innovation"| InversionExtreme["Combine Inversion + Extreme Scaling"]
+    Goal -->|"Practical implementation"| Constraint["Use Constraint-Based patterns"]
+    Goal -->|"Market differentiation"| Competitive["Use Competitive Positioning patterns"]
+    Goal -->|"Customer-centric features"| Stakeholder["Use Stakeholder and Empathy patterns"]
 
-<research_insights>
-
-- Constraint-based patterns generate 20-30% MORE ideas than open-ended prompts
-- Specifying output format (table/numbered list) improves quality without reducing quantity
-- Multiple perspective iteration (3-5 viewpoints) consistently outperforms single-perspective
-- Requiring reasoning visibility ("explain why") increases implementability by 40%
-- Successful patterns share: role definition, constraint specification, output format, reasoning requirements </research_insights>
-
-## Pattern Documentation
-
-Complete pattern documentation is organized in reference files:
-
-### Main Pattern Categories
-
-[Pattern Categories and Documentation](./references/pattern-categories-and-documentation.md) - All 14 categories with 30+ patterns, exact templates, examples, and success metrics (1,303 lines)
-
-### Domain Applications
-
-[Domain-Specific Applications](./references/domain-specific-applications-and-variations.md) - Marketing, Product Development, QA Testing, Business Strategy, Creative Writing patterns
-
-### Supporting Guides
-
-[Pattern Selection Guide](./references/pattern-selection-guide.md) - Decision framework for choosing appropriate patterns [Synthesis: What Makes Patterns Work](./references/synthesis-what-makes-these-patterns-work.md) - Common structural elements and effectiveness analysis [Comprehensive Prompt Library](./references/comprehensive-prompt-library-ready-to-use-templates.md) - Ready-to-use templates organized by use case [Executive Summary](./references/executive-summary.md) - High-level overview and key findings
-
-### Bibliographic Research
-
-Research from authoritative sources with verified prompt patterns:
-
-**Primary Pattern Sources:**
-
-- [ITONICS Innovation Platform](./references/itonics-innovation-platform.md) - 79 documented prompts across 8 categories
-- [Machine Learning Mastery](./references/machine-learning-mastery.md) - Actor-Request-Context-Constraints framework
-- [Medium: Shushant Lakhyani](./references/medium-shushant-lakhyani.md) - 10 creative + 10 LinkedIn content templates
-
-**Academic & Research Sources:**
-
-- [Vanderbilt Prompt Patterns](./references/vanderbilt-prompt-patterns.md) - 15 academic patterns with theoretical framework
-- [PromptHub Role Prompting Research](./references/prompthub-role-prompting.md) - Empirical validation and effectiveness data
-- [LearnPrompting.org](./references/learn-prompting.md) - Chain-of-Thought, Zero-Shot CoT, prompt structure
-
-**Practical Application Sources:**
-
-- [Better Creator](./references/better-creator.md) - 20 brainstorming techniques for content creators
-- [LinkedIn: Ruben Hassid](./references/linkedin-ruben-hassid.md) - 8 prompts → 625 ideas scaling methodology
-- [ClickUp Templates](./references/clickup-templates.md) - Product management, LinkedIn, competitor analysis prompts
-- [Software Testing Prompts](./references/software-testing-prompts.md) - QA-specific patterns and test case generation
-
-### Source Documentation
-
-[Bibliography and Source Documentation](./references/bibliography-and-source-documentation.md) - Complete citations with URLs [Verification Note](./references/verification-note.md) - Evidence strength assessment
-
-## Using This Skill
-
-<usage_workflow> Step 1: Identify the brainstorming goal (quantity, quality, innovation level, domain) Step 2: Consult Pattern Selection Guide to choose appropriate pattern category Step 3: Load relevant pattern documentation for exact templates Step 4: Apply pattern with user's specific context Step 5: If needed, combine patterns or iterate with constraint variation </usage_workflow>
-
-## Pattern Application Examples
-
-<example_simple> User: "Help me brainstorm marketing campaign ideas" Pattern: Perspective Multiplication (Pattern 1A: Role-Based Persona) Approach: Generate ideas from Customer Success Manager, Sales VP, and Product Manager perspectives Expected Output: 15 ideas with reasoning from each viewpoint </example_simple>
-
-<example_constraint> User: "Generate product features with $20k budget, 4-week timeline" Pattern: Constraint Variation (Pattern 2B: Resource Type Constraints) Approach: Use exact budget/time constraints to force creative solutions within reality Expected Output: 5 implementable features with resource breakdowns </example_constraint>
-
-<example_innovation> User: "Break through conventional thinking on user onboarding" Pattern: Inversion (Pattern 3A: Worst Possible Idea) + Analogical Transfer (Pattern 4A) Approach: First invert ("worst onboarding"), then apply cross-domain analogies (Netflix, hotel service) Expected Output: 3-5 genuinely novel approaches that competitors miss </example_innovation>
+    PersMult --> Apply(["Apply selected pattern from Pattern Library"])
+    MultiStage --> Apply
+    InversionExtreme --> Apply
+    Constraint --> Apply
+    Competitive --> Apply
+    Stakeholder --> Apply
+```
+</selection_guide>
 
 ## Output Format Optimization
 
-<format_guidance> Successful brainstorming patterns specify exact output formats:
-
+<format_guidance>
+Successful brainstorming patterns specify exact output formats:
 - "Numbered list" > "bullet points" (better for idea tracking)
 - "Table format: Idea | Reasoning | Implementation | Trade-offs" (forces completeness)
 - "For each idea, explain your reasoning" (increases quality 40%)
-- Specify word count ranges (200-400 words prevents both brevity and verbosity) </format_guidance>
+- Specify word count ranges (200-400 words prevents both brevity and verbosity)
+</format_guidance>
 
-## Skill Resources
+## Pattern Documentation References
 
-This skill contains:
+Complete pattern documentation is organized in reference files:
 
-- **references/** - Pattern documentation, research sources, domain guides
-- **scripts/** - (Optional: future automation for pattern selection, template generation)
-- **assets/** - (Optional: future workshop templates, ideation canvases)
-
-All pattern content is verified against original sources. No fabricated patterns or unverified claims.
+- [Pattern Categories and Documentation](./references/pattern-categories-and-documentation.md) - All 14 categories with 30+ patterns
+- [Domain-Specific Applications](./references/domain-specific-applications-and-variations.md) - Marketing, Product Development, QA Testing, Business Strategy
+- [Pattern Selection Guide](./references/pattern-selection-guide.md) - Decision framework for choosing appropriate patterns
+- [Synthesis: What Makes Patterns Work](./references/synthesis-what-makes-these-patterns-work.md)
+- [Comprehensive Prompt Library](./references/comprehensive-prompt-library-ready-to-use-templates.md) - Ready-to-use templates
+- [Executive Summary](./references/executive-summary.md)
+- [Bibliography and Source Documentation](./references/bibliography-and-source-documentation.md)
 
 ## Notes for Claude Instances
 
-<ai_instructions> When using this skill:
-
-- Always verify pattern category matches user's actual need
-- Provide exact prompt templates from reference files, not paraphrased versions
-- Cite source files when referencing specific patterns
-- Combine patterns when single pattern insufficient
-- Adjust templates to user's specific context while preserving structural elements
-- Use progressive disclosure: start with pattern overview, load detailed references as needed </ai_instructions>
+<ai_instructions>
+- Start by assessing if this is an implementation design task or a content/marketing ideation task.
+- ALWAYS enforce the `<HARD-GATE>`. Never jump to code without an approved design.
+- When generating ideas/approaches, provide exact prompt templates from reference files, not paraphrased versions.
+- Cite source files when referencing specific patterns.
+</ai_instructions>

@@ -52,7 +52,7 @@ Just install it - Claude will automatically use this knowledge when you ask it t
 You'll get the best results when you:
 
 - Specify which service you want to integrate (e.g., "build a Slack MCP server")
-- Mention whether you prefer Python or TypeScript
+- Mention whether you prefer Python (FastMCP v3, fully supported) or TypeScript (legacy reference only — not updated for v3)
 - Describe what workflows you need (e.g., "send messages and search channels")
 
 ## What You Can Build
@@ -85,16 +85,16 @@ The result is a production-ready integration you can actually use reliably.
 
 ## Supported Languages
 
-- **Python** with FastMCP framework (recommended)
-- **TypeScript/Node.js** with official MCP SDK
+- **Python** with FastMCP 3.x framework (primary — fully supported, all v3 patterns covered)
+- **TypeScript/Node.js** — legacy reference only; the included reference file is not updated for FastMCP v3 and covers v2-era patterns
 
-Both implementations include:
+Python implementations include:
 
-- Input validation (Pydantic for Python, Zod for TypeScript)
+- Input validation with Pydantic
 - Async/await patterns for I/O operations
 - Proper error handling and logging
 - Security best practices
-- Transport options (STDIO, HTTP, SSE)
+- Transport options (STDIO, HTTP); SSE is a client-compatibility option for connecting to legacy servers, not a v3 server transport
 
 ## What's Included
 
@@ -112,7 +112,7 @@ When Claude builds an MCP server using this plugin, you get:
 
 - Claude Code v2.0+
 - For Python servers: Python 3.11+
-- For TypeScript servers: Node.js 18+
+- For TypeScript servers: Node.js 18+ (legacy reference only — not updated for FastMCP v3)
 
 ## Learn More
 

@@ -5,23 +5,5 @@
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
-  },
-  "agents": [
-    "./agents/python-cli-architect.md",
-    "./agents/python-cli-design-spec.md",
-    "./agents/python-code-reviewer.md",
-    "./agents/python-pytest-architect.md",
-    "./agents/swarm-task-planner.md",
-    "./agents/feature-researcher.md",
-    "./agents/ecosystem-researcher.md",
-    "./agents/ecosystem-researcher-v1.1-rt-ica.md",
-    "./agents/codebase-analyzer.md",
-    "./agents/plan-validator.md",
-    "./agents/context-gathering.md",
-    "./agents/feature-verifier.md",
-    "./agents/integration-checker.md",
-    "./agents/doc-drift-auditor.md",
-    "./agents/context-refinement.md",
-    "./agents/code-reviewer.md"
-  ]
+  }
 }
