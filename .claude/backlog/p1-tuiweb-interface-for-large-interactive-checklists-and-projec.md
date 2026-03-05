@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: open
   issue: '#437'
-  last_synced: '2026-03-05T04:32:29Z'
+  last_synced: '2026-03-05T04:41:57Z'
   groomed: '2026-03-05'
 ---
 
@@ -136,3 +136,22 @@ Medium — Proof of concept (TUI with Textual + stdout capture) is achievable in
 **Rationale**: This is a capability gap with multiple valid implementation paths. No failure chain, no recurring defect, no missing guardrail. The problem is well-scoped but the solution space is open (TUI vs web vs hybrid).
 **Analysis Method**: design-framing
 **Scenario Target**: Claude needs to present 20+ item checklist/project tree for user selection → user completes interaction in one round-trip → structured result returned to Claude
+
+### Decision
+
+**Return binding model**: Background subagent pattern.
+
+The interactive UI runs as a background subagent (`Agent(run_in_background=True)`). The subagent:
+1. Launches the TUI or web UI
+2. Blocks internally until the user submits (synchronous from the UI's perspective)
+3. Captures the structured result
+4. Returns the result to the orchestrator on completion
+
+The orchestrating Claude instance is **free to continue other work** while the user interacts with the UI. When the subagent finishes (user submits), the orchestrator receives an automatic notification with the result — no polling, no manual IPC, no explicit wait.
+
+This means:
+- **IPC return path** (previously MISSING): resolved — subagent stdout/return value carries the structured JSON result back via the Agent tool's completion notification
+- **Skill integration contract**: The skill invocation is `Agent(subagent_type="interactive-select", prompt="...", run_in_background=True)` — orchestrator registers a callback pattern and continues
+- The TUI/web process lifecycle is entirely contained within the background subagent; no file-based IPC or HTTP callback needed at the Claude level
+
+**Remaining open questions**: TUI vs web preference; image support in v1.
