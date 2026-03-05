@@ -633,6 +633,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [claudebin.md](./developer-tools/claudebin.md)         | Claudebin - minimalistic tool for publishing and sharing Claude Code sessions via /claudebin:share; generates shareable URLs with syntax highlighting and full conversation threads (MIT) | 2026-03-04   |
 | [crawler-sh.md](./developer-tools/crawler-sh.md)       | Crawler.sh - local-first website crawler and SEO/AEO analysis CLI + desktop app; 16 automated SEO checks/page, Markdown extraction, NDJSON/JSON/Sitemap/CSV export, no account required (v0.2.3, proprietary) | 2026-03-04   |
 | [superset-sh.md](./developer-tools/superset-sh.md)     | Superset - macOS Electron app running 10+ parallel AI coding agents via Git worktrees; agent-agnostic (Claude Code, Codex CLI, Cursor, Gemini CLI, OpenCode); branch-isolated conflict-free execution (v1.0.5, Apache 2.0) | 2026-03-04   |
+| [capacitorjs.md](./developer-tools/capacitorjs.md)     | Capacitor v8.1.0 — cross-platform native runtime bridging web apps to iOS, Android, and PWA via WebView + native plugin layer; 37+ official plugins, source-artifact native projects, TypeScript async API (15.2K stars, MIT) | 2026-03-05   |
 
 **Key Topics**:
 
