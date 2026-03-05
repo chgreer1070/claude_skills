@@ -75,6 +75,8 @@ research/
 │   └── tinybird.md                    # Managed ClickHouse platform with MCP and analytics agents
 ├── documentation-tools/                # Architecture documentation and living docs
 │   └── living-architecture.md         # Operational flow architecture extraction with Rivière schema (79 stars)
+├── embedded-ui-libraries/              # Embedded graphics libraries for microcontrollers and MCUs
+│   └── lvgl.md                         # LVGL - Light and Versatile Graphics Library (22.8K+ stars)
 ├── developer-tools/                   # Developer productivity and workflow tools
 │   ├── biome.md                       # Rust-based web toolchain: formatter + linter + import organizer, 97% Prettier compat, ~35× faster (23.8K stars)
 │   ├── byobu.md                       # Enhanced terminal multiplexer wrapper for tmux/screen — F-key layer, 40+ status plugins, XDG config (1.5K stars)
