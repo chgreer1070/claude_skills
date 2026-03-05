@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: open
   issue: '#437'
-  last_synced: '2026-03-05T04:50:40Z'
+  last_synced: '2026-03-05T04:56:34Z'
   groomed: '2026-03-05'
 ---
 
@@ -233,3 +233,61 @@ The architecture phase is a hard prerequisite. Do not begin web renderer impleme
 - Multi-user simultaneous interactions (single-user per session)
 - Custom renderer plugin API for third parties (design-in only)
 - Multi-session persistence (save/resume state)
+
+### Routing Design
+
+**Routing model**: Multi-endpoint with broadcast and agency (confirmed 2026-03-05)
+
+The routing layer is NOT a single-selector. It supports:
+
+1. **Named endpoint registry** — config file + env var define available endpoints:
+   - `phone` — push notification → mobile response (notify.io or similar)
+   - `tmux` — TUI in a new tmux pane (detected from `$TMUX` env or explicit)
+   - `desktop` — local web renderer on a touch screen side panel
+   - Any future adapter registered by name
+
+2. **Default endpoint** — one endpoint designated as fallback when no context signal is present
+
+3. **Claude agency** — Claude receives the endpoint registry and selects the appropriate endpoint based on context signals:
+   - `$TMUX` set → prefer `tmux`
+   - Running on a remote/headless session → prefer `phone`
+   - Desktop context → prefer `desktop`
+   - Claude may also **broadcast** to multiple endpoints simultaneously when appropriate (e.g. both phone and desktop when urgency is high)
+
+4. **Explicit override** — caller can pass a specific endpoint name to force routing regardless of context
+
+**Config structure** (provisional):
+
+```yaml
+# ~/.claude/interaction.yaml  (or $CLAUDE_INTERACTION_CONFIG)
+default: desktop
+endpoints:
+  phone:
+    adapter: notify.io
+    token: ${NOTIFYIO_TOKEN}
+    target: ${NOTIFYIO_DEVICE_ID}
+  tmux:
+    adapter: tui
+    pane: new           # open new pane vs replace current
+    session: current    # attach to current tmux session
+  desktop:
+    adapter: web
+    port: 8742
+    bind: 127.0.0.1
+    open_browser: false  # side panel stays open persistently
+```
+
+**Presence use cases** (confirmed by user):
+
+| Context | Expected behavior |
+|---------|------------------|
+| Away from desk | Question arrives on phone; user responds from mobile |
+| tmux session | New pane opens with TUI; user responds in terminal |
+| At desktop | Web renderer on dedicated touch screen side panel |
+| Multiple active | Claude can broadcast; first response wins or all collected |
+
+**Open questions for architecture phase:**
+- How does Claude detect "desktop vs remote" context? Heuristic (`$DISPLAY`, `SSH_TTY`, etc.) or explicit profile flag?
+- "First response wins" vs "collect all responses" — which is default for broadcast?
+- Should endpoint health be checked before routing (e.g. is the web server running)?
+- How is the endpoint registry exposed to Claude — as a tool parameter, injected context, or auto-read from config?
