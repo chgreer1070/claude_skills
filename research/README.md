@@ -103,6 +103,7 @@ research/
 │   ├── orbstack.md                    # Fast Docker Desktop and Linux VM alternative for macOS
 │   ├── paperdraw.md                   # Browser-based distributed systems simulator with chaos injection (Flutter web)
 │   ├── piebald.md                     # Cross-platform agentic AI desktop client with parallel agents, session persistence, OAuth subscriptions (Free + Pro)
+│   ├── pixel-agents.md                # VS Code extension rendering Claude Code terminals as pixel-art characters in a virtual office (3K+ stars)
 │   ├── psmux.md                       # Native Windows tmux replacement in Rust — 76 commands, .tmux.conf compat, ConPTY (269 stars)
 │   ├── shpool.md                      # Shell session pool daemon in Rust — raw PTY passthrough, VT100 reattach replay, autodaemon (1.7K stars)
 │   ├── repomix.md                     # Pack codebase into AI-friendly formats (21K+ stars)
@@ -619,6 +620,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [surf-cli.md](./developer-tools/surf-cli.md)           | surf-cli — zero-config CLI for AI agent Chrome control via extension + Unix socket bridge; 50+ commands covering navigation, page reading, screenshots, network capture, and keyless AI model querying | 2026-02-26   |
 | [tabz-browser-console-forwarder.md](./developer-tools/tabz-browser-console-forwarder.md) | Tabz — browser console to terminal forwarder; intercepts console.* methods, batches POSTs to backend, prefixes with [Browser:source:line], visible in tmux for AI agent debugging (MIT) | 2026-03-01   |
 | [piebald.md](./developer-tools/piebald.md)             | Piebald - cross-platform agentic AI desktop client with parallel subagents, persistent sessions, OAuth AI subscriptions, and HTTP traffic inspector (Free + Pro) | 2026-02-23   |
+| [pixel-agents.md](./developer-tools/pixel-agents.md)   | Pixel Agents — VS Code extension (v1.0.2) rendering Claude Code terminals as animated pixel-art characters in a virtual office; parses JSONL transcripts, visualizes sub-agent hierarchies, React 19 + Canvas 2D with BFS pathfinding (3K+ stars, MIT) | 2026-03-05   |
 | [psmux.md](./developer-tools/psmux.md)                 | psmux — native Windows tmux replacement in Rust (v0.4.7); 76 commands, `.tmux.conf` compat, ConPTY, drop-in `tmux` alias, plugin ecosystem (269 stars) | 2026-03-01   |
 | [shpool.md](./developer-tools/shpool.md)               | shpool — Rust shell session pool daemon (v0.9.3); raw PTY passthrough with VT100 reattach replay, autodaemonization, no multiplexing overhead (1.7K stars) | 2026-03-01   |
 | [repomix.md](./developer-tools/repomix.md)             | Pack codebase into single AI-friendly file with token counting, Tree-sitter compression, MCP server, and Claude Code plugins         | 2026-01-31   |
