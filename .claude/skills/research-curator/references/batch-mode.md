@@ -18,23 +18,26 @@ Parse all tokens after `--batch` that match `https?://` as target URLs. Non-URL 
 
 ## Wave Spawning
 
+The following diagram is the authoritative procedure for batch wave spawning. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
-    Start([Parse URLs from --batch]) --> Count{How many URLs?}
-    Count -->|1-5| Wave1[Spawn all as Wave 1 — up to 5 parallel @research-curator agents]
-    Count -->|6-10| Split1[Wave 1: first 5 URLs<br>Wave 2: remaining URLs]
-    Count -->|11+| SplitN[Wave 1: URLs 1-5<br>Wave 2: URLs 6-10<br>Wave N: remaining]
-    Wave1 --> Collect[Collect results from all agents]
-    Split1 --> W1[Execute Wave 1]
-    W1 --> W1Done[Wait for Wave 1 completion]
-    W1Done --> W2[Execute Wave 2]
-    W2 --> Collect
-    SplitN --> WN[Execute waves sequentially, 5 agents per wave]
-    WN --> Collect
-    Collect --> Results{Any failures?}
-    Results -->|All succeeded| README[Update README with all new entries]
-    Results -->|Some failed| Partial[Update README with successful entries<br>Report failures to user]
-    README --> Finalize[Lint, commit, push]
+    Start(["Parse deduplicated URLs from --batch"]) --> Count{"How many URLs remain after duplicate check?"}
+    Count -->|"1 to 5 — fits in one wave"| Wave1["Spawn all URLs as Wave 1<br>up to 5 parallel @research-curator agents via Agent tool"]
+    Count -->|"6 to 10 — fits in two waves"| W1a["Spawn Wave 1 — first 5 URLs<br>up to 5 parallel @research-curator agents"]
+    Count -->|"11 or more — requires three or more waves"| WNa["Spawn Wave 1 — URLs 1 through 5<br>up to 5 parallel @research-curator agents"]
+    Wave1 --> Collect["Collect structured results from all agents<br>(status, file path, category, key findings)"]
+    W1a --> W1aDone["Wait for all Wave 1 agents to complete"]
+    W1aDone --> W2a["Spawn Wave 2 — remaining URLs<br>up to 5 parallel @research-curator agents"]
+    W2a --> Collect
+    WNa --> WNaDone["Wait for current wave to complete"]
+    WNaDone --> QMore{"More URLs remaining?"}
+    QMore -->|"Yes — advance to next batch of 5"| WNa
+    QMore -->|"No — all URLs processed"| Collect
+    Collect --> Results{"Did any agent return status: failed?"}
+    Results -->|"No — all succeeded"| README["Update ./research/README.md<br>add all new entries to category tables"]
+    Results -->|"Yes — one or more failed"| Partial["Update ./research/README.md<br>with successful entries only<br>Report each failure with reason to user"]
+    README --> Finalize(["Lint, commit, push — batch complete"])
     Partial --> Finalize
 ```
 
