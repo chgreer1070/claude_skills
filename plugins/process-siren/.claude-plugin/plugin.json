@@ -13,6 +13,10 @@
     "diagram",
     "flowchart"
   ],
+  "skills": [
+    "./skills/improve-processes/SKILL.md",
+    "./skills/woo-sailor/SKILL.md"
+  ],
   "agents": [
     "./agents/process-siren.md"
   ]
