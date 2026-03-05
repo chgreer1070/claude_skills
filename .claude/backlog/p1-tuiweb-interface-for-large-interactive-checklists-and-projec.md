@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: open
   issue: '#437'
-  last_synced: '2026-03-05T04:56:34Z'
+  last_synced: '2026-03-05T05:07:06Z'
   groomed: '2026-03-05'
 ---
 
@@ -291,3 +291,108 @@ endpoints:
 - "First response wins" vs "collect all responses" — which is default for broadcast?
 - Should endpoint health be checked before routing (e.g. is the web server running)?
 - How is the endpoint registry exposed to Claude — as a tool parameter, injected context, or auto-read from config?
+
+### Routing Design — Preliminary Research
+
+> **Status**: Preliminary — findings below are first-pass research. Each question requires dedicated investigation and testing before architecture decisions are finalized.
+
+### Existing solutions found (2026-03-05)
+
+| Solution | Relevance | Action |
+|----------|-----------|--------|
+| [ntfy.sh](https://ntfy.sh) | Self-hosted HTTP push, Android/iOS apps, WebSocket subscribe | **Use as phone adapter backend — do not build** |
+| [cyanheads/ntfy-mcp-server](https://github.com/cyanheads/ntfy-mcp-server) | MCP server wrapping ntfy.sh — Claude sends push natively | Evaluate as phone adapter implementation |
+| [cindy2000sh/claude-ntfy](https://github.com/cindy2000sh/claude-ntfy) | Claude Code + ntfy.sh with phone reply support | Reference implementation for phone round-trip |
+| [caronc/apprise](https://github.com/caronc/apprise) | Python lib, 80+ notification backends under one API | Use as connection layer backend — ntfy, Pushover, Slack, Teams, Gotify all covered |
+| [FlorianBruniaux/ccboard](https://github.com/FlorianBruniaux/ccboard) | Rust: TUI (9 tabs) + Web dual-mode for Claude Code monitoring | Study architecture pattern for TUI+Web co-existence |
+| [uppinote20/clavis](https://github.com/uppinote20/clavis) | Claude Code admin tool: TUI + Web interface | Second example of TUI+Web dual-mode pattern |
+| [ClawHub](https://clawhub.io) | Skill marketplace/registry (`clawhub install <skill>`) | Distribution channel for this plugin post-ship; not relevant to architecture |
+
+**Phone adapter recommendation**: Use Apprise as the connection layer backend. Apprise covers ntfy.sh, Pushover, Slack, Teams, Gotify in one interface. The `phone` adapter becomes an Apprise target URL (`ntfy://server/topic`, `pover://token@device`, etc.) — no custom HTTP code needed.
+
+---
+
+### Q1 — Context detection: heuristic vs explicit profile
+
+**Preliminary finding**: Named profiles in config with env var heuristics as opt-in auto-detection fallback.
+
+Standard Unix signals:
+
+| Signal | Infers |
+|--------|--------|
+| `$TMUX` set | tmux adapter |
+| `$SSH_TTY` set, no `$DISPLAY` | remote session → phone |
+| `$DISPLAY` or `$WAYLAND_DISPLAY` set | desktop context |
+| `CLAUDE_INTERACTION_PROFILE=<name>` | explicit override (highest priority) |
+
+Heuristics break in edge cases (X11 forwarding over SSH sets `$DISPLAY` while remote). Named profiles allow precise user control:
+
+```yaml
+profiles:
+  at-desk:
+    when: {display: true, tmux: false}
+    endpoint: desktop
+  in-tmux:
+    when: {tmux: true}
+    endpoint: tmux
+  away:
+    when: {ssh: true, display: false}
+    endpoint: phone
+default: at-desk
+```
+
+**Still needs**: Testing against real SSH+tmux+X11-forwarding combinations before finalizing signal priority order.
+
+---
+
+### Q2 — First-response-wins vs collect-all for broadcast
+
+**Preliminary finding**: Response model is determined by interaction *type*, not a global setting.
+
+| Type | Model | Rationale |
+|------|-------|-----------|
+| `ask` / `choose` | First-response-wins, cancel others | Two answers to same question are contradictory |
+| `approve` | First-response-wins + audit log | Safety-critical; log which device responded |
+| `notify` | Broadcast-all, no wait | FYI on all devices |
+
+Each interaction message carries a `type` field. Routing layer uses it to pick response model.
+
+**Still needs**: Cancellation protocol design — how does the routing layer signal other endpoints that a first-response was received and the interaction is closed?
+
+---
+
+### Q3 — Endpoint health check before routing
+
+**Preliminary finding**: Probe before routing with configurable timeout (default 500ms); walk fallback chain on failure. Phone/ntfy is terminal node (always available).
+
+| Adapter | Probe method | Fallback |
+|---------|-------------|---------|
+| `web` | HTTP GET `/health` on configured port | → phone |
+| `tmux` | `tmux has-session -t {session}` | → web |
+| `phone` (ntfy) | Fire-and-forget (always available) | — terminal node |
+
+**Still needs**: Config syntax for fallback chains; behavior when all probes fail (error vs. queue).
+
+---
+
+### Q4 — Endpoint registry exposure to Claude
+
+**Preliminary finding**: MCP server owns routing; Claude calls one tool. Claude has zero routing logic.
+
+```
+Claude  →  ask_user(question, type="ask", hint=None)
+              ↓
+        Interaction MCP Server
+        - reads ~/.claude/interaction.yaml
+        - evaluates profile conditions
+        - probes endpoint health
+        - routes (or broadcasts per type)
+        - blocks until response
+        - returns structured JSON to Claude
+```
+
+The `hint` parameter lets Claude override when it has context the MCP server lacks (e.g. "user said they're away" → `hint="phone"`).
+
+Alternative considered: inject endpoint registry into Claude's system prompt so Claude selects. Rejected (for now) because it couples routing logic into every skill prompt and makes the routing layer untestable independently.
+
+**Still needs**: Confirm MCP server is the right process boundary vs. a local Python CLI the skill calls directly. MCP server adds setup friction; CLI is simpler but loses the tool-call ergonomics.
