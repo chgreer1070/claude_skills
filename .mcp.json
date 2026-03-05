@@ -31,6 +31,10 @@
     "backlog": {
       "command": "uv",
       "args": ["run", "python", "-m", "backlog_core.server"]
+    },
+    "octocode": {
+      "command": "npx",
+      "args": ["-y", "octocode-mcp@latest"]
     }
   }
 }
