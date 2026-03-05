@@ -5,9 +5,8 @@ This hook script handles multiple hook events:
 - SubagentStop: Parse prompt for task info, set status to COMPLETE, add Completed timestamp
 - PostToolUse (Write|Edit|Bash): Update LastActivity timestamp using context file
 
-Supports two task file formats:
-- YAML frontmatter: Detected via ``---`` delimiters, updated with update_yaml_field()
-- Legacy markdown: ``**Status**: value`` lines updated via regex
+Task files use YAML frontmatter format (detected via ``---`` delimiters),
+updated with update_yaml_field().
 
 Context File Mechanism:
 - The /start-task command writes task context to .claude/context/active-task-{session_id}.json
@@ -279,118 +278,60 @@ def find_task_section(content: str, task_id: str) -> tuple[int, int] | None:
     return None
 
 
-_LEGACY_INSERT_AFTER_FIELDS: tuple[str, ...] = ("Status", "Dependencies", "Priority", "Complexity", "Agent")
-
-
-def _update_legacy_timestamp(lines: list[str], start_idx: int, end_idx: int, field_name: str, timestamp: str) -> str:
-    """Add or update a timestamp field in a legacy markdown task section.
-
-    Args:
-        lines: All lines of the file.
-        start_idx: Start line index of the task section.
-        end_idx: End line index of the task section (exclusive).
-        field_name: Bold-markdown field name (e.g., "Completed").
-        timestamp: ISO timestamp string.
-
-    Returns:
-        Reconstructed file content with the field added or updated.
-    """
-    task_lines = lines[start_idx:end_idx]
-    field_pattern = rf"^\*\*{field_name}\*\*:\s*"
-    new_field_line = f"**{field_name}**: {timestamp}"
-
-    # Check if field already exists
-    for i, line in enumerate(task_lines):
-        if re.match(field_pattern, line):
-            task_lines[i] = new_field_line
-            return "\n".join(lines[:start_idx] + task_lines + lines[end_idx:])
-
-    # Insert new field after a known metadata line, or after the header
-    insert_idx = 1
-    for i, line in enumerate(task_lines):
-        if any(re.match(rf"^\*\*{f}\*\*:", line) for f in _LEGACY_INSERT_AFTER_FIELDS):
-            insert_idx = i + 1
-            break
-
-    task_lines.insert(insert_idx, new_field_line)
-    return "\n".join(lines[:start_idx] + task_lines + lines[end_idx:])
-
-
 def add_timestamp_to_task(content: str, task_id: str, field_name: str, timestamp: str) -> str:
     """Add or update a timestamp field in a task section.
 
-    For YAML frontmatter files, uses ``update_yaml_field`` to set the field in
-    frontmatter.  For legacy markdown files, delegates to
-    ``_update_legacy_timestamp``.
+    Uses ``update_yaml_field`` to set the field in YAML frontmatter,
+    converting PascalCase field names (e.g., "LastActivity") to snake_case
+    YAML keys (e.g., "last_activity").
 
     Args:
         content: Full content of the task file.
         task_id: Task ID to update.
-        field_name: Field name (e.g., "started", "completed", "last_activity"
-            for YAML; "Started", "Completed", "LastActivity" for legacy).
+        field_name: PascalCase field name (e.g., "Started", "Completed",
+            "LastActivity").
         timestamp: ISO timestamp string.
 
     Returns:
         Updated content with timestamp field added/updated.
 
     Raises:
-        ValueError: If task section not found.
+        ValueError: If task section not found or file is not YAML frontmatter format.
     """
     # --- YAML frontmatter format ---
     if has_yaml_frontmatter(content):
         section = find_task_section(content, task_id)
         if section is None:
             raise ValueError(f"Task {task_id} not found in file")
-        yaml_field = _legacy_field_to_yaml(field_name)
+        field_map: dict[str, str] = {
+            "LastActivity": "last_activity",
+            "Started": "started",
+            "Completed": "completed",
+            "Status": "status",
+        }
+        yaml_field = field_map.get(field_name, field_name.lower())
         return update_yaml_field(content, yaml_field, timestamp)
 
-    # --- Legacy markdown format ---
-    section = find_task_section(content, task_id)
-    if section is None:
-        raise ValueError(f"Task {task_id} not found in file")
-
-    start_idx, end_idx = section
-    lines = content.split("\n")
-    return _update_legacy_timestamp(lines, start_idx, end_idx, field_name, timestamp)
-
-
-def _legacy_field_to_yaml(field_name: str) -> str:
-    """Convert a legacy PascalCase field name to a YAML snake_case field name.
-
-    Args:
-        field_name: Legacy field name (e.g., "LastActivity", "Completed").
-
-    Returns:
-        YAML field name (e.g., "last_activity", "completed").
-    """
-    field_map: dict[str, str] = {
-        "LastActivity": "last_activity",
-        "Started": "started",
-        "Completed": "completed",
-        "Status": "status",
-    }
-    return field_map.get(field_name, field_name.lower())
+    raise ValueError(f"Task {task_id} not found in file")
 
 
 def update_task_status(content: str, task_id: str, new_status: str) -> str:
-    r"""Update the status field in a task section.
+    """Update the status field in a task section.
 
-    For YAML frontmatter files, normalizes the status and uses
-    ``update_yaml_field``.  For legacy markdown files, uses regex-based line
-    replacement.
+    Normalizes the status value and uses ``update_yaml_field`` to write it
+    to the YAML frontmatter.
 
     Args:
         content: Full content of the task file.
         task_id: Task ID to update.
-        new_status: New status value. For YAML files this is normalized
-            (e.g., "complete"); for legacy files the raw value is written
-            (e.g., "\\u2705 COMPLETE").
+        new_status: New status value; normalized by ``normalize_status``
+            before writing (e.g., "complete").
 
     Returns:
         Updated content with status changed.
 
     Raises:
-        ValueError: If task section not found.
+        ValueError: If task section not found or file is not YAML frontmatter format.
     """
     # --- YAML frontmatter format ---
     if has_yaml_frontmatter(content):
@@ -400,25 +341,7 @@ def update_task_status(content: str, task_id: str, new_status: str) -> str:
         normalized = normalize_status(new_status)
         return update_yaml_field(content, "status", normalized)
 
-    # --- Legacy markdown format ---
-    section = find_task_section(content, task_id)
-    if section is None:
-        raise ValueError(f"Task {task_id} not found in file")
-
-    start_idx, end_idx = section
-    lines = content.split("\n")
-    task_lines = lines[start_idx:end_idx]
-
-    # Find and update status line
-    status_pattern = r"^\*\*Status\*\*:\s*.*$"
-    for i, line in enumerate(task_lines):
-        if re.match(status_pattern, line):
-            task_lines[i] = f"**Status**: {new_status}"
-            break
-
-    # Reconstruct content
-    result_lines = lines[:start_idx] + task_lines + lines[end_idx:]
-    return "\n".join(result_lines)
+    raise ValueError(f"Task {task_id} not found in file")
 
 
 def get_iso_timestamp() -> str:

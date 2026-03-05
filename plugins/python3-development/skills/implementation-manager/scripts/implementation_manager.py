@@ -4,12 +4,10 @@
 This CLI tool provides commands to query task files for feature implementations,
 returning JSON output for orchestrator consumption.
 
-Supports two task file formats:
-- **YAML frontmatter**: Individual ``.md`` files with ``---`` delimited metadata
-- **Legacy markdown**: Monolithic ``.md`` files with ``## Task X.Y:`` headers
+Supports YAML frontmatter task format: individual ``.md`` files with ``---``
+delimited metadata. Two organizational structures are supported:
 
-And two organizational structures:
-- **Single file**: All tasks in one ``tasks-*.md`` file
+- **Single file**: All tasks in one ``tasks-*.md`` file (file-level frontmatter)
 - **Directory**: One task per ``.md`` file in a ``tasks-*/`` directory
 
 Usage:
@@ -36,13 +34,7 @@ from rich.console import Console
 # Ensure the script directory is on sys.path for direct execution.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from task_format import (
-    VALID_STATUSES,
-    detect_fenced_yaml,
-    has_yaml_frontmatter,
-    normalize_status,
-    parse_yaml_frontmatter,
-)
+from task_format import VALID_STATUSES, has_yaml_frontmatter, normalize_status, parse_yaml_frontmatter
 
 if TYPE_CHECKING:
     import datetime
@@ -454,219 +446,15 @@ def parse_task_from_frontmatter(content: str) -> Task:
 
 
 # =============================================================================
-# Field Parsers (OCP: extend by adding new parsers, not modifying existing code)
+# Task Parsing
 # =============================================================================
 
 
-class FieldParser:
-    """Protocol for task field parsers (SRP: each parser handles one field)."""
-
-    pattern: re.Pattern[str]
-
-    def parse(self, match: re.Match[str], task_data: dict[str, object]) -> None:
-        """Parse matched field and update task_data."""
-        raise NotImplementedError
-
-
-class StatusParser(FieldParser):
-    """Parse **Status** field."""
-
-    pattern = re.compile(r"^\*\*Status\*\*:\s*(.+)$")
-
-    def parse(self, match: re.Match[str], task_data: dict[str, object]) -> None:
-        """Parse status field and update task data.
-
-        Args:
-            match: Regex match object containing the captured status value.
-            task_data: Mutable dictionary to update with parsed status.
-        """
-        task_data["status"] = parse_status(match.group(1))
-
-
-class DependenciesParser(FieldParser):
-    """Parse **Dependencies** field."""
-
-    pattern = re.compile(r"^\*\*Dependencies\*\*:\s*(.+)$")
-
-    def parse(self, match: re.Match[str], task_data: dict[str, object]) -> None:
-        """Parse dependencies field and update task data.
-
-        Args:
-            match: Regex match object containing the captured dependencies.
-            task_data: Mutable dictionary to update with parsed list.
-        """
-        task_data["dependencies"] = parse_dependencies(match.group(1))
-
-
-class AgentParser(FieldParser):
-    """Parse **Agent** field."""
-
-    pattern = re.compile(r"^\*\*Agent\*\*:\s*(.+)$")
-
-    def parse(self, match: re.Match[str], task_data: dict[str, object]) -> None:
-        """Parse agent field and update task data if valid.
-
-        Args:
-            match: Regex match object containing the captured agent name.
-            task_data: Mutable dictionary to update with agent value.
-
-        Note:
-            Agent values of 'none', 'n/a', or '-' are ignored.
-        """
-        agent_value = match.group(1).strip()
-        if agent_value.lower() not in {"none", "n/a", "-"}:
-            task_data["agent"] = agent_value
-
-
-class PriorityParser(FieldParser):
-    """Parse **Priority** field."""
-
-    pattern = re.compile(r"^\*\*Priority\*\*:\s*(\d+)")
-
-    def parse(self, match: re.Match[str], task_data: dict[str, object]) -> None:
-        """Parse priority field and convert to TaskPriority enum.
-
-        Args:
-            match: Regex match object containing the captured priority digit.
-            task_data: Mutable dictionary to update with TaskPriority.
-
-        Raises:
-            ValueError: If priority value is not a valid TaskPriority.
-        """
-        task_data["priority"] = TaskPriority(int(match.group(1)))
-
-
-class ComplexityParser(FieldParser):
-    """Parse **Complexity** field."""
-
-    pattern = re.compile(r"^\*\*Complexity\*\*:\s*(\w+)")
-
-    def parse(self, match: re.Match[str], task_data: dict[str, object]) -> None:
-        """Parse complexity field and update task data.
-
-        Args:
-            match: Regex match object containing the captured complexity word.
-            task_data: Mutable dictionary to update with complexity string.
-        """
-        task_data["complexity"] = match.group(1)
-
-
-class StartedParser(FieldParser):
-    """Parse **Started** field."""
-
-    pattern = re.compile(r"^\*\*Started\*\*:\s*(.+)$")
-
-    def parse(self, match: re.Match[str], task_data: dict[str, object]) -> None:
-        """Parse started timestamp and update task data.
-
-        Args:
-            match: Regex match object containing the captured timestamp.
-            task_data: Mutable dictionary to update with started value.
-        """
-        task_data["started"] = match.group(1).strip()
-
-
-class CompletedParser(FieldParser):
-    """Parse **Completed** field."""
-
-    pattern = re.compile(r"^\*\*Completed\*\*:\s*(.+)$")
-
-    def parse(self, match: re.Match[str], task_data: dict[str, object]) -> None:
-        """Parse completed timestamp and update task data.
-
-        Args:
-            match: Regex match object containing the captured timestamp.
-            task_data: Mutable dictionary to update with completed value.
-        """
-        task_data["completed"] = match.group(1).strip()
-
-
-class SkillsParser(FieldParser):
-    """Parse **Skills** field (legacy markdown format)."""
-
-    pattern = re.compile(r"^\*\*Skills\*\*:\s*(.+)$")
-
-    def parse(self, match: re.Match[str], task_data: dict[str, object]) -> None:
-        """Parse skills field as comma-separated list and update task data.
-
-        Args:
-            match: Regex match object containing the captured skills value.
-            task_data: Mutable dictionary to update with skills list.
-        """
-        raw = match.group(1).strip()
-        task_data["skills"] = [s.strip() for s in raw.split(",") if s.strip()]
-
-
-# Registry of field parsers (OCP: add new parsers here without modifying core logic)
-FIELD_PARSERS: list[FieldParser] = [
-    StatusParser(),
-    DependenciesParser(),
-    AgentParser(),
-    PriorityParser(),
-    ComplexityParser(),
-    StartedParser(),
-    CompletedParser(),
-    SkillsParser(),
-]
-
-
-# =============================================================================
-# Task Parsing (SRP: separated into focused functions)
-# =============================================================================
-
-
-def _create_empty_task_data(task_id: str, task_name: str) -> TaskData:
-    """Create a new task data dictionary with defaults.
-
-    Args:
-        task_id: Task identifier from header.
-        task_name: Task name from header.
-
-    Returns:
-        TaskData dictionary with all fields initialized to defaults.
-    """
-    return TaskData(
-        id=task_id,
-        name=task_name,
-        status=TaskStatus.NOT_STARTED,
-        dependencies=[],
-        agent=None,
-        priority=TaskPriority.CRITICAL,
-        complexity="Medium",
-        started=None,
-        completed=None,
-        skills=[],
-    )
-
-
-def _parse_line(line: str, task_data: TaskData) -> None:
-    """Parse a single line and update task_data if a field matches.
-
-    Iterates through registered FieldParsers and applies the first match.
-
-    Args:
-        line: Line of text to parse.
-        task_data: TaskData dictionary to update in-place.
-    """
-    for parser in FIELD_PARSERS:
-        match = parser.pattern.match(line)
-        if match:
-            parser.parse(match, task_data)  # type: ignore[arg-type]
-            return
-
-
-def parse_task_content(content: str, _depth: int = 0) -> list[Task]:
+def parse_task_content(content: str) -> list[Task]:
     """Parse task content and extract all tasks.
 
-    Automatically detects format:
-    - YAML frontmatter: Single task per file with ``---`` delimited metadata.
-    - Legacy markdown: Multiple tasks with ``## Task X.Y: Title`` headers.
-
-    Also recovers fenced YAML content (YAML frontmatter wrapped in backtick
-    code fences) by stripping the fences and re-parsing.
-
-    Follows SRP by delegating field parsing to FieldParser implementations
-    for legacy format, and to parse_task_from_frontmatter for YAML format.
+    Handles YAML frontmatter format: single task per file with ``---`` delimited
+    metadata. Returns an empty list if frontmatter is absent or parsing fails.
 
     Args:
         content: Raw text content of task file.
@@ -674,57 +462,14 @@ def parse_task_content(content: str, _depth: int = 0) -> list[Task]:
     Returns:
         List of Task objects parsed from the content.
     """
-    # Internal recursion guard — not part of the public interface.
-    if _depth > 1:
-        sys.stderr.write("WARNING: max recursion depth exceeded in parse_task_content\n")
-        return []
-
-    # YAML frontmatter path: file contains a single task with --- metadata
     if has_yaml_frontmatter(content):
         try:
             task = parse_task_from_frontmatter(content)
         except (ValueError, TypeError) as exc:
-            sys.stderr.write(
-                f"WARNING: YAML frontmatter detected but parsing failed: {exc}. "
-                "Falling through to legacy markdown parsing.\n"
-            )
-            # fall through to legacy parsing
-        else:
-            return [task]
-    else:
-        # Check for YAML frontmatter wrapped in fenced code blocks
-        stripped = detect_fenced_yaml(content)
-        if stripped is not None:
-            sys.stderr.write(
-                "WARNING: Task file contains YAML frontmatter wrapped in code fences"
-                " (```yaml). Stripping fences and re-parsing. Fix the generator to"
-                " produce raw frontmatter starting with --- instead of fenced blocks.\n"
-            )
-            return parse_task_content(stripped, _depth=_depth + 1)
-
-    # Legacy markdown path: multiple tasks with ## Task headers
-    tasks: list[Task] = []
-    # Widened regex to accept:
-    # - "## Task 1.1: Title" (original numeric)
-    # - "### Task T1: Title" (h3 with alphanumeric ID)
-    # - "## Task T15 - Title" (dash separator)
-    # - "## Task: T1 Title" (colon after Task)
-    task_header_pattern = re.compile(r"^#{2,3}\s+Task:?\s+([A-Za-z0-9.]+)[:\s-]+(.+)$")
-    current_task: TaskData | None = None
-
-    for line in content.split("\n"):
-        header_match = task_header_pattern.match(line)
-        if header_match:
-            if current_task:
-                tasks.append(_create_task_from_dict(current_task))
-            current_task = _create_empty_task_data(header_match.group(1), header_match.group(2).strip())
-        elif current_task:
-            _parse_line(line, current_task)
-
-    if current_task:
-        tasks.append(_create_task_from_dict(current_task))
-
-    return tasks
+            sys.stderr.write(f"WARNING: YAML frontmatter parsing failed: {exc}\n")
+            return []
+        return [task]
+    return []
 
 
 def parse_task_file(file_path: Path) -> list[Task]:
@@ -757,8 +502,7 @@ def _parse_task_directory(dir_path: Path) -> list[Task]:
     """Parse all task files in a directory.
 
     Each ``.md`` file in the directory is expected to contain a single task
-    with YAML frontmatter. Files without YAML frontmatter are attempted
-    with legacy parsing.
+    with YAML frontmatter. Files without YAML frontmatter are skipped.
 
     Tasks are sorted by ID using natural sort order (T1, T2, T10, not T1, T10, T2).
 

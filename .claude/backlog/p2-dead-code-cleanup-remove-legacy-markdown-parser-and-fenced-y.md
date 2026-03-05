@@ -11,6 +11,7 @@ metadata:
   issue: '#441'
   groomed: '2026-03-05'
   last_synced: '2026-03-05T21:03:04Z'
+  plan: plan/tasks-1-dead-code-cleanup-legacy-parser.md
 ---
 
 ## Fact-Check
