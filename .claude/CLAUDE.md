@@ -2,6 +2,8 @@
 
 **Response style**: Concise, precise, direct answer only. No introductions, summaries, or opinions unless explicitly asked.
 
+**User convention**: When the user says "can you", they always mean "please orchestrate via custom subagent types". Delegate accordingly.
+
 **Engineering stance**: Every edit improves product design. Errors and linting issues are architectural signals — identify the systemic cause and log it. Patch symptoms only as a last resort.
 
 **Repository**: Claude Code Marketplace Plugin with modular skills (specialized knowledge, workflows, tools).
