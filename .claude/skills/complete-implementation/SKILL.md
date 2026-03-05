@@ -161,9 +161,15 @@ Then re-run `complete-implementation` on the follow-up task file.
 
 **If EITHER condition is NOT met** -- defer to backlog:
 
-Log: `Follow-up {followup_path} linked to backlog item "{title}" -- deferred (priority: {priority}, scope: {same|different}).`
+Log the deferral and output this line to the user:
 
-Do not recurse. The follow-up is tracked in the backlog and can be picked up later via `/work-backlog-item`.
+```text
+Follow-up deferred — to resume: /work-backlog-item <title>
+```
+
+Where `<title>` is the backlog item title the follow-up was linked to in Step 3.
+
+Do not recurse. The follow-up is tracked in the backlog.
 
 **Error handling**: If the follow-up file has no `## Priority` section, default to `Medium` (defer). Log: `No priority found in {followup_path}, defaulting to Medium (deferred).`
 
@@ -177,4 +183,38 @@ After all phases and follow-up routing are complete, check for uncommitted chang
 git status
 ```
 
-If there are staged or unstaged changes: stage the modified files, commit with a message summarizing the quality gate results, and push. If the working tree is clean, skip this step.
+If there are staged or unstaged changes: stage the modified files and commit.
+
+**Issue number in commit message**: Before committing, check the backlog item for the current feature slug:
+
+```text
+mcp__backlog__backlog_list(title="{slug}")
+```
+
+Check the `issue` field on the matching item. If present and this commit resolves that issue, append `Fixes #NNN` to the commit message body (where NNN is the issue number). If no issue number is found, omit it.
+
+Push after committing. If the working tree is clean, skip this step.
+
+---
+
+## Final Handoff Output
+
+After the commit+push step, output this block to the user:
+
+```text
+Clear context and run:
+  /work-backlog-item <next-backlog-item-title>
+```
+
+Where `<next-backlog-item-title>` is determined by:
+
+```text
+mcp__backlog__backlog_list()
+```
+
+Find the highest-priority open item whose title contains the current feature slug. If one exists, use its exact title. If none exists, output:
+
+```text
+Clear context and run:
+  /work-backlog-item — nothing queued —
+```
