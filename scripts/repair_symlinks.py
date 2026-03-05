@@ -140,23 +140,26 @@ def _normalize_symlink_target(target: str, symlink_path: Path, repo_root: Path) 
     except ValueError:
         # Target prefix doesn't match the current repo root.  This happens
         # when a symlink was created on a different machine (different home
-        # directory, different checkout path).  Try to recover by walking the
-        # target's path parts and checking whether any suffix of the absolute
-        # path exists inside the repo root.
+        # directory, different checkout path).  Recover by finding the repo
+        # directory name in the absolute path and treating everything after
+        # it as a repo-relative path.
         #
-        # Example: target = /home/otheruser/repos/myrepo/plugins/foo
-        #          repo   = /home/user/myrepo
-        #          suffix = plugins/foo  → exists at repo_root / plugins/foo
+        # Example: target = /home/otheruser/repos/claude_skills/plugins/foo
+        #          repo   = /home/user/claude_skills  (name = "claude_skills")
+        #          After repo name: plugins/foo
+        #          Verify: repo_root / plugins/foo exists → rewrite
+        repo_name = repo_root_resolved.name
         parts = abs_target.parts
         found_suffix: str | None = None
-        # Start from index 1 (skip root "/") to progressively shorter suffixes.
-        for i in range(1, len(parts)):
-            candidate = Path(*parts[i:])
-            if (repo_root_resolved / candidate).exists():
-                found_suffix = str(candidate)
-                break
+        for i, part in enumerate(parts):
+            if part == repo_name and i + 1 < len(parts):
+                # Everything after the repo name directory is the in-repo path.
+                candidate = str(Path(*parts[i + 1 :]))
+                if (repo_root_resolved / candidate).exists():
+                    found_suffix = candidate
+                break  # Only match the first occurrence of the repo name.
         if found_suffix is None:
-            # No suffix matches anything in the repo — genuinely external.
+            # Repo name not found in path, or suffix doesn't exist — external.
             return normalised
         # Rewrite: the real target is repo_root / found_suffix.
         abs_target = repo_root_resolved / found_suffix
