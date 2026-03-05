@@ -4,6 +4,11 @@ description: Add resources to the research directory with comprehensive document
 argument-hint: '[url] [--batch url1 url2 ...] [--rerun category/name|all] [--validate category/name|all]'
 user-invocable: true
 ---
+> [!IMPORTANT]
+> When provided a process map or Mermaid diagram, treat it as the authoritative procedure. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+> A Mermaid process diagram is an executable instruction set. Follow it exactly as written: respect sequence, conditions, loops, parallel paths, and terminal states. Do not improvise, reorder, or skip steps. If any node is ambiguous or missing required detail, pause and ask a clarifying question before continuing.
+> When interacting with a user, report before acting the interpreted path you will follow from the diagram, then execute.
+
 # Research Curator -- Multi-Mode Orchestrator
 
 Orchestrate research entry creation, maintenance, and validation in `./research/`. Spawns `@research-curator` agents for content work; handles coordination, README updates, and post-actions.
@@ -14,15 +19,21 @@ Orchestrate research entry creation, maintenance, and validation in `./research/
 
 Parse `$ARGUMENTS` to select operating mode. Optional `--layer 0|1|2` filters discovery by SDLC layer when used with knowledge-explorer or refresh-research.
 
+The following diagram is the authoritative procedure for mode routing. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
-    Start(["Parse $ARGUMENTS"]) --> Q1{Contains --batch?}
-    Q1 -->|Yes| Batch[Batch Mode]
-    Q1 -->|No| Q2{Contains --rerun?}
-    Q2 -->|Yes| Rerun[Rerun Mode]
-    Q2 -->|No| Q3{Contains --validate?}
-    Q3 -->|Yes| Validate[Validate Mode]
-    Q3 -->|No| Default[Default Mode -- single URL]
+    Start(["Parse $ARGUMENTS"]) --> Q1{"Does $ARGUMENTS contain --batch?"}
+    Q1 -->|"Yes — batch flag present"| Q1Layer{"Does $ARGUMENTS also contain --layer 0, 1, or 2?"}
+    Q1 -->|"No — batch flag absent"| Q2{"Does $ARGUMENTS contain --rerun?"}
+    Q1Layer -->|"Yes — layer filter present"| BatchLayer(["Execute Batch Mode with layer filter applied"])
+    Q1Layer -->|"No — no layer filter"| Batch(["Execute Batch Mode"])
+    Q2 -->|"Yes — rerun flag present"| Q2Layer{"Does $ARGUMENTS also contain --layer 0, 1, or 2?"}
+    Q2 -->|"No — rerun flag absent"| Q3{"Does $ARGUMENTS contain --validate?"}
+    Q2Layer -->|"Yes — layer filter present"| RerunLayer(["Execute Rerun Mode with layer filter applied"])
+    Q2Layer -->|"No — no layer filter"| Rerun(["Execute Rerun Mode"])
+    Q3 -->|"Yes — validate flag present"| Validate(["Execute Validate Mode"])
+    Q3 -->|"No — no flags matched — $ARGUMENTS contains a URL only"| Default(["Execute Default Mode — single URL"])
 ```
 
 ---
@@ -88,20 +99,26 @@ Extract all tokens after `--batch` matching `https?://` as target URLs. Non-URL 
 
 ### Wave Spawning
 
+The following diagram is the authoritative procedure for batch wave spawning. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
-    Start([Parse URLs]) --> Count{How many URLs?}
-    Count -->|1-5| Wave1[Wave 1 -- spawn all in parallel]
-    Count -->|6-10| Split2[Wave 1 -- first 5<br>Wave 2 -- remaining]
-    Count -->|11+| SplitN[Waves of 5 sequential]
-    Wave1 --> Collect[Collect results]
-    Split2 --> SeqWaves[Execute waves sequentially]
-    SeqWaves --> Collect
-    SplitN --> SeqWaves
-    Collect --> Results{Any failures?}
-    Results -->|All succeeded| UpdateAll[Update README with all entries]
-    Results -->|Some failed| Partial[Update README with successful entries<br>Report failures to user]
-    UpdateAll --> PostActions[Post-actions]
+    Start(["Parse deduplicated URLs from --batch"]) --> Count{"How many URLs remain after duplicate check?"}
+    Count -->|"1 to 5 — fits in one wave"| Wave1["Spawn all URLs as Wave 1<br>up to 5 parallel @research-curator agents via Agent tool"]
+    Count -->|"6 to 10 — fits in two waves"| W1a["Spawn Wave 1 — first 5 URLs<br>up to 5 parallel @research-curator agents"]
+    Count -->|"11 or more — requires three or more waves"| WNa["Spawn Wave 1 — URLs 1 through 5<br>up to 5 parallel @research-curator agents"]
+    Wave1 --> Collect["Collect structured results from all agents<br>(status, file path, category, key findings)"]
+    W1a --> W1aDone["Wait for all Wave 1 agents to complete"]
+    W1aDone --> W2a["Spawn Wave 2 — remaining URLs<br>up to 5 parallel @research-curator agents"]
+    W2a --> Collect
+    WNa --> WNaDone["Wait for current wave to complete"]
+    WNaDone --> QMore{"More URLs remaining?"}
+    QMore -->|"Yes — advance to next batch of 5"| WNa
+    QMore -->|"No — all URLs processed"| Collect
+    Collect --> Results{"Did any agent return status: failed?"}
+    Results -->|"No — all succeeded"| UpdateAll["Update ./research/README.md<br>add all new entries to category tables"]
+    Results -->|"Yes — one or more failed"| Partial["Update ./research/README.md<br>with successful entries only<br>Report each failure with reason to user"]
+    UpdateAll --> PostActions(["Execute Post-Actions — lint, commit, push"])
     Partial --> PostActions
 ```
 
@@ -144,18 +161,20 @@ Re-research existing entries to refresh stale data.
 
 ### Target Parsing
 
+The following diagram is the authoritative procedure for rerun mode. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
-    Start([Parse --rerun target]) --> Q{Target value?}
-    Q -->|category/name| Single[Re-research single entry]
-    Q -->|all| All[Re-research all entries]
-    Single --> ReadFile[Read ./research/category/name.md]
-    ReadFile --> Spawn1[Spawn @research-curator with --rerun flag]
-    Spawn1 --> UpdateDate[Update README freshness date]
-    All --> FindAll[Glob ./research/**/*.md excluding README.md]
-    FindAll --> WaveSpawn[Spawn agents in waves of 5 with --rerun]
-    WaveSpawn --> UpdateDates[Update README freshness dates for all]
-    UpdateDate --> PostActions[Post-actions]
+    Start(["Parse --rerun argument value"]) --> Q{"What is the --rerun target value?"}
+    Q -->|"category/name — single entry path"| VerifyFile{"Does ./research/category/name.md exist?"}
+    Q -->|"all — re-research every entry"| FindAll["Glob ./research/**/*.md<br>excluding README.md — collect all entry paths"]
+    VerifyFile -->|"No — file not found"| Missing(["Report error: entry not found at path. Stop."])
+    VerifyFile -->|"Yes — file exists"| ReadFile["Read ./research/category/name.md<br>extract current content and metadata"]
+    ReadFile --> Spawn1["Spawn @research-curator via Agent tool<br>prompt: --rerun ./research/category/name.md"]
+    Spawn1 --> UpdateDate["Update ./research/README.md<br>refresh freshness date for this entry"]
+    FindAll --> WaveSpawn["Spawn @research-curator agents in waves of 5<br>each receives --rerun ./research/category/name.md<br>wait for each wave before spawning next"]
+    WaveSpawn --> UpdateDates["Update ./research/README.md<br>refresh freshness dates for all re-researched entries"]
+    UpdateDate --> PostActions(["Execute Post-Actions — lint, commit, push"])
     UpdateDates --> PostActions
 ```
 
@@ -192,21 +211,20 @@ Run structural validation and fix error-severity issues.
 
 ### Validation Workflow
 
+The following diagram is the authoritative procedure for validate mode. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
 ```mermaid
 flowchart TD
-    Start([Parse --validate target]) --> Q{Target value?}
-    Q -->|category/name| Single[Validate single entry]
-    Q -->|all| All[Validate all entries]
-    Single --> RunScript["Run ./scripts/validate_research.py --json ./research/category/name.md"]
-    All --> RunScriptAll["Run ./scripts/validate_research.py --json ./research/"]
-    RunScript --> ParseJSON[Parse JSON output]
+    Start(["Parse --validate argument value"]) --> Q{"What is the --validate target value?"}
+    Q -->|"category/name — single entry path"| RunScript["Run validate_research.py --json<br>on ./research/category/name.md"]
+    Q -->|"all — validate every entry"| RunScriptAll["Run validate_research.py --json<br>on ./research/ directory"]
+    RunScript --> ParseJSON["Parse JSON output from validator<br>extract issues by severity: error, warning, info"]
     RunScriptAll --> ParseJSON
-    ParseJSON --> HasErrors{Any error-severity issues?}
-    HasErrors -->|Yes| SpawnFix[Spawn @research-curator agents with --fix flag and issue details]
-    HasErrors -->|No| ReportClean[Report -- all entries passed]
-    SpawnFix --> ReportSummary[Report summary]
-    ReportClean --> PostActions[Post-actions if fixes applied]
-    ReportSummary --> PostActions
+    ParseJSON --> HasErrors{"Does parsed output contain<br>any error-severity issues?"}
+    HasErrors -->|"Yes — one or more errors found"| SpawnFix["Spawn @research-curator agents in waves of 5<br>each receives --fix flag and specific error details"]
+    HasErrors -->|"No — zero error-severity issues"| ReportClean(["Report: all entries passed validation.<br>Include any warnings and info items. Stop."])
+    SpawnFix --> ReportSummary["Report validation summary<br>(total scanned, passed, errors fixed, warnings noted)"]
+    ReportSummary --> PostActions(["Execute Post-Actions — lint, commit, push"])
 ```
 
 ### Script Invocation
