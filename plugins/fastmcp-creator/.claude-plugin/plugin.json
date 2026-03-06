@@ -1,7 +1,7 @@
 {
   "name": "fastmcp-creator",
-  "description": "Build FastMCP 3.x Python MCP servers — covers provider/transform architecture, component versioning, session state, authorization, evaluation creation, Pydantic validation, async patterns, STDIO and HTTP transports, background tasks, security patterns, client SDK usage, testing, deployment, and migration from FastMCP v2. TypeScript is a legacy reference only and is not updated for v3.",
-  "version": "3.0.0",
+  "description": "Build FastMCP 3.x Python MCP servers \u2014 covers provider/transform architecture, component versioning, session state, authorization, evaluation creation, Pydantic validation, async patterns, STDIO and HTTP transports, background tasks, security patterns, client SDK usage, testing, deployment, and migration from FastMCP v2. TypeScript is a legacy reference only and is not updated for v3.",
+  "version": "4.0.0",
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
@@ -9,7 +9,12 @@
   "mcpServers": {
     "fastmcp-reference": {
       "command": "uv",
-      "args": ["run", "fastmcp", "run", "plugins/fastmcp-creator/server/server.py:mcp"]
+      "args": [
+        "run",
+        "fastmcp",
+        "run",
+        "plugins/fastmcp-creator/server/server.py:mcp"
+      ]
     }
   }
 }
