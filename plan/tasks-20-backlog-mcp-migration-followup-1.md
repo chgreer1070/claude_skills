@@ -1,7 +1,7 @@
 ---
 tasks:
   - task: "Migrate complete-implementation/SKILL.md and local-workflow.md CLI invocations to MCP"
-    status: pending
+    status: complete
     parent_task: "plan/tasks-17-backlog-mcp-migration.md"
 ---
 
@@ -14,7 +14,7 @@ tasks:
 
 ## Status
 
-- [ ] Pending
+- [x] Complete
 
 ## Priority
 
