@@ -417,7 +417,13 @@ flowchart TD
     S6Q -->|"Yes — plugin distribution"| S6["Step 6 — Package the skill<br>(validate then package)"]
     S6Q -->|"No — project or user level<br>already in final location"| S7
     S6 --> S7
-    S7["Step 7 — Iterate based on real usage"] --> Done(["Skill creation complete"])
+    S7["Step 7 — Define test cases<br>(evals/evals.json)"] --> S8
+    S8["Step 8 — Run and evaluate<br>(A/B harness, grading, viewer)"] --> S9
+    S9["Step 9 — Improve the skill<br>(targeted fixes, re-run tests)"] --> S9Q
+    S9Q{"Improvements<br>sufficient?"}
+    S9Q -->|"No — regressions or failures"| S8
+    S9Q -->|"Yes"| S10
+    S10["Step 10 — Description optimization<br>(automated trigger tuning)"] --> Done(["Skill creation complete"])
 ```
 
 Follow these steps in order, skipping only if there is a clear reason why they are not applicable.
@@ -662,16 +668,25 @@ flowchart TD
 
 See [claude-plugins-reference-2026](../claude-plugins-reference-2026/SKILL.md) for plugin creation documentation.
 
-### Step 7: Iterate
+### Steps 7-10: Evaluate, Improve, and Optimize
 
-After testing the skill, users may request improvements. Often this happens right after using the skill, with fresh context of how the skill performed.
+After creating the skill, test it with real prompts, grade results with the A/B evaluation harness, iterate on failures, and optimize the description for triggering accuracy.
 
-```mermaid
-flowchart TD
-    I1["Use the skill on real tasks"] --> I2
-    I2["Notice struggles or inefficiencies"] --> I3
-    I3["Identify how SKILL.md or bundled<br>resources should be updated"] --> I4
-    I4["Implement changes and test again"] --> IQ{"More improvements<br>identified?"}
-    IQ -->|"Yes — new struggles or<br>inefficiencies found"| I2
-    IQ -->|"No — skill meets needs"| Done(["Skill is stable"])
-```
+**Read [references/evaluation-and-optimization.md](./references/evaluation-and-optimization.md)** for the complete workflow covering:
+
+- **Step 7** — Define test cases (`evals/evals.json`)
+- **Step 8** — Run A/B evaluation (parallel with-skill vs baseline runs, grading via `agents/grader.md`, viewer via `eval-viewer/generate_review.py`)
+- **Step 9** — Improve the skill (failure mode taxonomy, iteration loop, blind comparison via `agents/comparator.md` and `agents/analyzer.md`)
+- **Step 10** — Description optimization (automated trigger tuning via `scripts/run_loop.py` with train/test split)
+
+See [references/schemas.md](./references/schemas.md) for evals.json and grading.json formats.
+
+## Reference Files
+
+| Directory | Contents |
+|-----------|----------|
+| `agents/` | [grader.md](./agents/grader.md) (assertion grading), [comparator.md](./agents/comparator.md) (blind A/B), [analyzer.md](./agents/analyzer.md) (post-hoc analysis) |
+| `references/` | [schemas.md](./references/schemas.md) (JSON schemas), [evaluation-and-optimization.md](./references/evaluation-and-optimization.md) (Steps 7-10), [claude-code-skills-official.md](./references/claude-code-skills-official.md) (spec), [workflows.md](./references/workflows.md) (patterns) |
+| `eval-viewer/` | `viewer.html` (interactive eval viewer), `generate_review.py` (HTML generator) |
+| `assets/` | `eval_review.html` (trigger eval review template) |
+| `scripts/` | `init_skill.py`, `package_skill.py`, `quick_validate.py`, `run_eval.py`, `run_loop.py`, `improve_description.py`, `generate_report.py`, `aggregate_benchmark.py` |

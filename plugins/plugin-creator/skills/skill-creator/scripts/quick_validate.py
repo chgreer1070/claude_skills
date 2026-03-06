@@ -17,13 +17,14 @@ MAX_NAME_LENGTH = 64
 MAX_DESCRIPTION_LENGTH = 1024
 REQUIRED_ARGC = 2  # script name + skill-path
 
-# All properties allowed in SKILL.md frontmatter (January 2026 spec)
+# All properties allowed in SKILL.md frontmatter (March 2026 spec)
 _ALLOWED_PROPERTIES = {
     "name",
     "description",
     "license",
     "allowed-tools",
     "metadata",
+    "compatibility",
     "argument-hint",
     "model",
     "context",

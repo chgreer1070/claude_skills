@@ -137,6 +137,17 @@ include = ["plugins/agentskill-kaizen/**"]
 call-non-callable = "warn" # prefixspan has incomplete type stubs
 
 [[tool.ty.overrides]]
+# Upstream scripts from anthropics/skills — type narrowing on content blocks not supported by ty
+include = [
+    "**/skill-creator/scripts/improve_description.py",
+    "**/skill-creator/scripts/run_loop.py",
+]
+
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore" # MessageParam dict construction patterns
+unresolved-attribute = "ignore"  # block.thinking/block.text after block.type == "thinking" check
+
+[[tool.ty.overrides]]
 include = ["plugins/plugin-creator/scripts/frontmatter_utils.py"]
 
 [tool.ty.overrides.rules]
@@ -281,6 +292,70 @@ max-complexity = 12
     "SLF",  # Private name imports acceptable for testing internals
     "T",    # print() statements are intentional for CI output visibility
 ]
+"**/skill-creator/eval-viewer/generate_review.py" = [
+    "ANN",
+    "C901",
+    "D",
+    "DOC",
+    "PLR",
+    "S",
+    "T",
+]
+"**/skill-creator/scripts/aggregate_benchmark.py" = [
+    "ANN",
+    "C901",
+    "D",
+    "DOC",
+    "PLR",
+    "S",
+    "T",
+]
+"**/skill-creator/scripts/generate_report.py" = [
+    "A",
+    "ANN",
+    "C901",
+    "D",
+    "DOC",
+    "FURB",
+    "PLR",
+    "S",
+    "T",
+]
+"**/skill-creator/scripts/improve_description.py" = [
+    "ANN",
+    "C901",
+    "D",
+    "DOC",
+    "PLR",
+    "S",
+    "T",
+]
+# Upstream scripts from anthropics/skills — kept close to original for easy diffing
+"**/skill-creator/scripts/run_eval.py" = [
+    "ANN",
+    "BLE001",
+    "C901",
+    "D",
+    "DOC",
+    "F401",
+    "FURB",
+    "PLR",
+    "PLW",
+    "RUF",
+    "S",
+    "T",
+    "TRY",
+]
+"**/skill-creator/scripts/run_loop.py" = [
+    "ANN",
+    "C901",
+    "D",
+    "DOC",
+    "PLR",
+    "S",
+    "T",
+]
+"**/skill-creator/scripts/utils.py" = ["ANN", "D", "DOC"]
 "**/tests/**" = [
     "ANN",  # Type annotations optional for test fixtures/methods
     "D",    # Docstring requirements relaxed for tests
