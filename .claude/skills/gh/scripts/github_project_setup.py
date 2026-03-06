@@ -67,11 +67,16 @@ LABELS: list[dict[str, str]] = [
     {"name": "type:refactor", "color": "5319E7", "description": "Internal improvement, no behavior change"},
     {"name": "type:docs", "color": "0075CA", "description": "Documentation only"},
     {"name": "type:chore", "color": "EDEDED", "description": "Maintenance, tooling, CI"},
-    # Status
-    {"name": "status:in-progress", "color": "1D76DB", "description": "Actively being worked on"},
-    {"name": "status:done", "color": "0E8A16", "description": "Work complete, milestone closing"},
-    {"name": "status:blocked", "color": "B60205", "description": "Waiting on external dependency"},
+    # Status (all 8 state-machine states + legacy needs-review)
     {"name": "status:needs-grooming", "color": "FEF2C0", "description": "Captured but not yet groomed"},
+    {"name": "status:groomed", "color": "C2E0C6", "description": "Grooming complete, RT-ICA APPROVED"},
+    {"name": "status:blocked", "color": "B60205", "description": "RT-ICA BLOCKED or AC verification FAIL"},
+    {"name": "status:in-milestone", "color": "BFD4F2", "description": "Assigned to an active milestone"},
+    {"name": "status:in-progress", "color": "1D76DB", "description": "Actively being worked on"},
+    {"name": "status:done", "color": "0E8A16", "description": "Implementation complete, AC verified PASS"},
+    {"name": "status:resolved", "color": "6B737B", "description": "Closed without full implementation"},
+    {"name": "status:closed", "color": "EDEDED", "description": "Terminal — milestone archived"},
+    # Legacy label retained for backwards compatibility — not part of state machine
     {"name": "status:needs-review", "color": "D876E3", "description": "Implementation done, needs review"},
 ]
 
