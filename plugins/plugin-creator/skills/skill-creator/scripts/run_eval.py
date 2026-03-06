@@ -29,6 +29,10 @@ _CONTINUE = "continue"
 # Buffer read size for subprocess stdout
 _CHUNK_SIZE = 8192
 
+# Pre-built environment without CLAUDECODE to allow nesting claude -p
+# inside a Claude Code session. Built once to avoid copying os.environ per spawn.
+_CLEAN_ENV = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+
 
 def find_project_root() -> Path:
     """Find the project root by walking up from cwd looking for .claude/.
@@ -274,8 +278,9 @@ def run_single_query(
         # Remove CLAUDECODE env var to allow nesting claude -p inside a
         # Claude Code session. The guard is for interactive terminal conflicts;
         # programmatic subprocess usage is safe.
-        env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, cwd=project_root, env=env)
+        process = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, cwd=project_root, env=_CLEAN_ENV
+        )
         try:
             return _read_process_output(process, timeout, clean_name)
         finally:
@@ -283,8 +288,7 @@ def run_single_query(
                 process.kill()
                 process.wait()
     finally:
-        if command_file.exists():
-            command_file.unlink()
+        command_file.unlink(missing_ok=True)
 
 
 def run_eval(

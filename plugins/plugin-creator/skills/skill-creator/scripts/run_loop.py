@@ -295,8 +295,12 @@ def run_loop(
         train_set = eval_set
         test_set = []
 
+    # Pre-compute combined query list (train/test sets are stable across iterations)
+    all_queries = train_set + test_set
+
     client = anthropic.Anthropic()
     history: list[dict] = []
+    blinded_history: list[dict] = []
     exit_reason = "unknown"
 
     for iteration in range(1, max_iterations + 1):
@@ -305,8 +309,6 @@ def run_loop(
             print(f"Iteration {iteration}/{max_iterations}", file=sys.stderr)
             print(f"Description: {current_description}", file=sys.stderr)
             print(f"{'=' * _SEPARATOR_WIDTH}", file=sys.stderr)
-
-        all_queries = train_set + test_set
         t0 = time.time()
         all_results = run_eval(
             eval_set=all_queries,
@@ -325,7 +327,9 @@ def run_loop(
         train_summary = train_results["summary"]
         test_summary = test_results["summary"] if test_results else None
 
-        history.append(_build_history_entry(iteration, current_description, train_results, test_results))
+        entry = _build_history_entry(iteration, current_description, train_results, test_results)
+        history.append(entry)
+        blinded_history.append({k: v for k, v in entry.items() if not k.startswith("test_")})
 
         if live_report_path:
             _write_live_report(
@@ -353,7 +357,6 @@ def run_loop(
             print("\nImproving description...", file=sys.stderr)
 
         t0 = time.time()
-        blinded_history = [{k: v for k, v in h.items() if not k.startswith("test_")} for h in history]
         new_description = improve_description(
             client=client,
             skill_name=name,
@@ -429,8 +432,6 @@ def main() -> None:
         print(f"Error: No SKILL.md found at {skill_path}", file=sys.stderr)
         sys.exit(1)
 
-    name, _, _ = parse_skill_md(skill_path)
-
     # Set up live report path
     live_report_path: Path | None
     if args.report != "none":
@@ -484,11 +485,12 @@ def main() -> None:
 
     # Write final HTML report (without auto-refresh)
     if live_report_path:
-        live_report_path.write_text(generate_html(output, auto_refresh=False, skill_name=name))
+        final_html = generate_html(output, auto_refresh=False, skill_name=skill_path.name)
+        live_report_path.write_text(final_html)
         print(f"\nReport: {live_report_path}", file=sys.stderr)
 
-    if results_dir and live_report_path:
-        (results_dir / "report.html").write_text(generate_html(output, auto_refresh=False, skill_name=name))
+        if results_dir:
+            (results_dir / "report.html").write_text(final_html)
 
     if results_dir:
         print(f"Results saved to: {results_dir}", file=sys.stderr)

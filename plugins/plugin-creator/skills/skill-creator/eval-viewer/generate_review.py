@@ -231,33 +231,20 @@ def embed_file(path: Path) -> dict:
         except OSError:
             content = "(Error reading file)"
         return {"name": path.name, "type": "text", "content": content}
-    if ext in IMAGE_EXTENSIONS:
-        try:
-            raw = path.read_bytes()
-            b64 = base64.b64encode(raw).decode("ascii")
-        except OSError:
-            return {"name": path.name, "type": "error", "content": "(Error reading file)"}
-        return {"name": path.name, "type": "image", "mime": mime, "data_uri": f"data:{mime};base64,{b64}"}
-    if ext == ".pdf":
-        try:
-            raw = path.read_bytes()
-            b64 = base64.b64encode(raw).decode("ascii")
-        except OSError:
-            return {"name": path.name, "type": "error", "content": "(Error reading file)"}
-        return {"name": path.name, "type": "pdf", "data_uri": f"data:{mime};base64,{b64}"}
-    if ext == ".xlsx":
-        try:
-            raw = path.read_bytes()
-            b64 = base64.b64encode(raw).decode("ascii")
-        except OSError:
-            return {"name": path.name, "type": "error", "content": "(Error reading file)"}
-        return {"name": path.name, "type": "xlsx", "data_b64": b64}
-    # Binary / unknown — base64 download link
+
+    # All non-text types share the same read-and-encode pattern
     try:
-        raw = path.read_bytes()
-        b64 = base64.b64encode(raw).decode("ascii")
+        b64 = base64.b64encode(path.read_bytes()).decode("ascii")
     except OSError:
         return {"name": path.name, "type": "error", "content": "(Error reading file)"}
+
+    if ext in IMAGE_EXTENSIONS:
+        return {"name": path.name, "type": "image", "mime": mime, "data_uri": f"data:{mime};base64,{b64}"}
+    if ext == ".pdf":
+        return {"name": path.name, "type": "pdf", "data_uri": f"data:{mime};base64,{b64}"}
+    if ext == ".xlsx":
+        return {"name": path.name, "type": "xlsx", "data_b64": b64}
+    # Binary / unknown — base64 download link
     return {"name": path.name, "type": "binary", "mime": mime, "data_uri": f"data:{mime};base64,{b64}"}
 
 

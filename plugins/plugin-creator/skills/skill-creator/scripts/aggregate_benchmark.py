@@ -232,7 +232,7 @@ def load_run_results(benchmark_dir: Path) -> dict:
             if not config_dir.is_dir():
                 continue
             # Skip non-config directories (inputs, outputs, etc.)
-            if not list(config_dir.glob("run-*")):
+            if not next(config_dir.glob("run-*"), None):
                 continue
             _load_config_runs(config_dir, eval_id, results)
 
