@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: in-progress
   issue: '#364'
-  last_synced: '2026-03-06T05:50:55Z'
+  last_synced: '2026-03-06T21:54:27Z'
   groomed: '2026-03-01'
   plan: plan/tasks-14-console-forwarding-mcp-server-plugin.md
 ---

@@ -7,9 +7,9 @@ metadata:
   added: '2026-03-06'
   priority: P1
   type: Feature
-  status: needs-grooming
+  status: in-progress
   issue: '#473'
-  last_synced: '2026-03-06T17:32:37Z'
+  last_synced: '2026-03-06T21:54:10Z'
   groomed: '2026-03-06'
   plan: plan/tasks-1-mcp-prompts-elicitation.md
 ---
