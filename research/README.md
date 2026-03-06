@@ -790,6 +790,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 | [openhands.md](./coding-agents/openhands.md) | OpenHands - open platform for cloud coding agents with 77.6% SWE-bench score, SDK, CLI, and cloud | 2026-01-26   |
 | [pilot.md](./coding-agents/pilot.md)         | Pilot - autonomous development pipeline wrapping Claude Code CLI with ticket-to-PR automation (BSL 1.1) | 2026-02-19   |
 | [tembo.md](./coding-agents/tembo.md)         | Tembo - cloud AI coding agent orchestration platform (Claude Code, Codex, Cursor, Amp, OpenCode) with multi-repo PRs, Sentry/Linear/Jira/Slack integrations, and event-driven automations | 2026-02-23   |
+| [openai-symphony.md](./coding-agents/openai-symphony.md) | OpenAI Symphony — Elixir-based autonomous coding agent platform (Draft v1 spec) with 8-component architecture (Orchestrator, Workspace Manager, Agent Runner, etc.), issue-tracker-driven workflows, Codex stdio JSON-RPC protocol, and workspace sandboxing invariants (5.5K stars, Apache-2.0) | 2026-03-06   |
 
 **Key Topics**:
 
