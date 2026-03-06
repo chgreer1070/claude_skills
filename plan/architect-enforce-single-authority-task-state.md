@@ -311,28 +311,428 @@ fi
 
 ## Component Design: `get_ready_tasks()` Dual-Dispatch Guard
 
-<!-- PENDING: get_ready_tasks guard design -->
+### Purpose
+
+Defense-in-depth guard that prevents returning a task as ready if its current on-disk status is `IN_PROGRESS`. This is a second line of defense after `claim-task`. It closes the window where a task is claimed but the orchestrator queries `ready-tasks` again before the claim lands.
+
+### Current Logic (lines 727-756 of `implementation_manager.py`)
+
+```text
+for task in tasks:
+    if task.status != NOT_STARTED:
+        continue           <-- only skips if NOT_STARTED already written
+    if all dependencies terminal:
+        ready.append(task)
+```
+
+The guard `!= NOT_STARTED` already excludes `IN_PROGRESS`. The gap is temporal: between the `ready-tasks` query and the `claim-task` write, the status on disk is still `NOT_STARTED`. `get_ready_tasks()` reads the file once per invocation and returns a snapshot.
+
+### Design Decision: No Change Needed to `get_ready_tasks()` Filter Logic
+
+The filter `task.status != NOT_STARTED` already covers `IN_PROGRESS`. The dual-dispatch gap is not a logic bug in `get_ready_tasks()` — it is a timing gap between query and claim. Fixing it in `get_ready_tasks()` would require re-reading the file inside the function, which changes the contract (the function currently accepts a `list[Task]` already parsed from disk).
+
+The correct fix is in the orchestrator loop and in `claim-task`:
+
+1. The orchestrator calls `claim-task` before delegating.
+2. `claim-task` re-reads the file at the moment of claim — this is the freshest possible read.
+3. If `claim-task` returns `claimed: false`, the orchestrator skips that task.
+
+### Defense-in-Depth: Docstring Clarification
+
+The `get_ready_tasks()` docstring and its caller `ready_tasks` command shall be updated to clarify that the returned list represents a point-in-time snapshot and that callers must use `claim-task` before dispatching. This is a documentation change, not a logic change.
+
+**Updated docstring contract for `get_ready_tasks()`**:
+
+```text
+Returns tasks whose status is NOT_STARTED at the time of the snapshot.
+This list is advisory: status may change between this query and task dispatch.
+Callers MUST invoke claim-task before beginning task execution to atomically
+mark the task in-progress. If claim-task returns claimed=false, discard the
+task from the dispatch queue without error.
+```
+
+### Defense-in-Depth: `IN_PROGRESS` Inclusion in `status` Output
+
+The `status` CLI command output already includes `in_progress` count. No change needed. When an operator or orchestrator calls `status` and sees `in_progress > 0`, they know tasks are running. The `ready-tasks` output will not include those tasks because their on-disk status is already `in-progress` (written by a prior `claim-task` call).
+
+### What the Guard in `get_ready_tasks()` Does Not Need to Do
+
+- Re-read files from disk (the caller already provides parsed tasks)
+- Filter `IN_PROGRESS` differently (the existing `!= NOT_STARTED` check covers it)
+- Acquire file locks (not applicable in this architecture)
+
+### Summary
+
+No code change to `get_ready_tasks()` logic. The dual-dispatch gap is closed by `claim-task` in the calling path (`start-task` skill), not by modifying the query function. The function docstring is updated to document this contract explicitly.
 
 ---
 
 ## Component Design: `start-task` SKILL.md Replacement Instructions
 
-<!-- PENDING: start-task skill replacement instructions -->
+### What Changes
+
+Step 3 of the "Starting a Task" section in `.claude/skills/start-task/SKILL.md` currently instructs the agent to directly edit the YAML frontmatter. This is replaced by a `claim-task` CLI invocation. The agent no longer writes `status` or `started` with the `Edit` tool.
+
+The `--complete` path (agent writing `status: complete` and `completed:` when `--complete <id>` is provided) is unchanged. That path remains agent-direct-write because the hook overwrites it at SubagentStop anyway, and consolidating it into a `complete-task` CLI command is out of scope for this backlog item.
+
+### Current Step 3 Text (to be replaced)
+
+Current text in SKILL.md lines 81-89:
+
+```text
+3. Update the task status:
+
+   **If YAML frontmatter format:**
+   - Edit the `status:` field in frontmatter to `in-progress`
+   - Add `started: {ISO timestamp}` field to frontmatter
+
+   **If inline markdown format:**
+   - Set `**Status**: 🔄 IN PROGRESS`
+   - Add `**Started**: {ISO timestamp}`
+```
+
+### Replacement Text for Step 3
+
+The following text block replaces step 3 in its entirety. The inline markdown path is removed because the format is deprecated (TASK_FILE_FORMAT.md Phase 4 in-progress). Any remaining markdown-format tasks must be migrated before execution.
+
+```text
+3. Claim the task (prevents duplicate dispatch):
+
+   Run the claim-task command. This is the ONLY permitted way to mark a task in-progress.
+   Do NOT edit status or started fields directly with the Edit tool.
+
+   Resolve the implementation_manager.py script path:
+
+   ```bash
+   IMPL_MGR="plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py"
+   ```
+
+   Run claim-task:
+
+   ```bash
+   CLAIM_RESULT=$(uv run "$IMPL_MGR" claim-task "{task_file_path}" "{task_id}")
+   CLAIM_EXIT=$?
+   ```
+
+   Parse the result:
+
+   ```bash
+   echo "$CLAIM_RESULT"
+   ```
+
+   If exit code is non-zero (`CLAIM_EXIT != 0`):
+
+   - The task was already claimed by another agent, or is complete, or could not be found.
+   - Output the full JSON result for the orchestrator.
+   - STOP. Do not proceed with implementation. Do not write the context file.
+   - The orchestrator's hook will detect the stop and the task remains in its current state.
+
+   If exit code is 0 (`CLAIM_EXIT == 0`):
+
+   - The task is claimed. `status: in-progress` and `started:` are written on disk.
+   - Proceed to step 4 (write context file) and step 5 (implement).
+```
+
+### Rationale for Prose Format
+
+The replacement is written as prose instructions with embedded bash blocks rather than a pure bash script. The `start-task` skill is loaded by an LLM agent, not executed as a shell script. The agent reads the instructions and decides how to execute them. Prose is the correct format for agent-facing skill instructions.
+
+### Context File Step (Step 4) — No Change
+
+Step 4 (writing the active-task context file) is unchanged. It must still run after a successful claim:
+
+```bash
+mkdir -p .claude/context
+printf '%s' '{"task_file_path": "{task_file_path}", "task_id": "{task_id}"}' \
+  > ".claude/context/active-task-${CLAUDE_SESSION_ID}.json"
+```
+
+This file is required by the `PostToolUse` hook (`task_status_hook.py`) to write `last_activity` updates.
+
+### Abort Protocol When `claim-task` Returns Exit 1
+
+The agent must not silently continue. When claim fails:
+
+1. Print the JSON result from `claim-task` to stdout (so it appears in the orchestrator's sub-agent output).
+2. Do not create the context file.
+3. Do not call `Skill(skill="start-task", ...)` sub-steps.
+4. End the turn. The `SubagentStop` hook will fire, but since no context file exists, the hook will find no active task and will make no writes.
+
+This is the correct behavior: the task remains in its pre-claim state (either `not-started` or `in-progress` if another agent claimed it). The orchestrator can observe the abort via the sub-agent's output and log it.
+
+### Backward Compatibility with Inline Markdown Format
+
+The inline markdown task format is deprecated (TASK_FILE_FORMAT.md). The `start-task` skill no longer provides markdown-format write instructions for step 3. If a legacy markdown task file is encountered:
+
+- The agent should emit a warning: `Task {id} is in legacy markdown format. Run migrate_task_format.py before executing.`
+- The agent should not proceed with implementation.
+- This converts a silent data corruption risk into a visible error.
+
+The `claim-task` command also returns `reason: "parse-error"` for files that cannot be parsed as YAML frontmatter, which surfaces legacy format files to the caller.
 
 ---
 
 ## TASK_FILE_FORMAT.md Authorized Writers Table
 
-<!-- PENDING: authorized writers table design -->
+### Design
+
+The current table in `TASK_FILE_FORMAT.md` (lines 181-186) lists four scripts by name but does not specify which fields each script owns or what trigger fires the write. The replacement table adds per-field ownership, trigger, and guard columns.
+
+The table replaces the existing "Authorized Writers" section in `TASK_FILE_FORMAT.md`. The surrounding prose ("Only designated scripts should write or update task data files...") is retained and extended.
+
+### Replacement Table: Per-Field Ownership
+
+| Field | Authorized Writer | Trigger | Guard | Notes |
+|-------|-----------------|---------|-------|-------|
+| `status: not-started` | `swarm-task-planner` agent (file creation) | Task file generation | N/A — initial write only | Set once at file creation. Never written again by any component. |
+| `status: in-progress` | `implementation_manager.py claim-task` | `start-task` skill step 3 (agent invokes CLI) | Read-check-write: refuses if current status is not `not-started` | Agent must NOT write this field directly via Edit tool. |
+| `status: complete` | `task_status_hook.py` SubagentStop handler | Claude Code `SubagentStop` hook event | None — SubagentStop fires once per sub-agent | May also be written by `start-task` `--complete` path; hook overwrites with later timestamp. |
+| `status: blocked` | Human operator or `start-task` agent | Manual intervention or acceptance criteria failure | None | Agent may set this when blocked on external dependency. |
+| `started` | `implementation_manager.py claim-task` | Same as `status: in-progress` | Conditional: written only if field is absent. Existing value preserved on retry. | Preserving the original timestamp maintains accurate audit trail on agent retry. |
+| `completed` | `task_status_hook.py` SubagentStop handler | Claude Code `SubagentStop` hook event | None | Also writable by `start-task --complete` path; hook overwrites. |
+| `last_activity` | `task_status_hook.py` PostToolUse handler | Claude Code `PostToolUse` hook (Write, Edit, Bash tools) | Added guard: skip write if task status is `complete` | Prevents stale activity stamps on completed tasks (Gap 4). |
+| `divergence-notes` (count) | `start-task` skill (agent direct write via Edit) | Agent detects implementation divergence from architect spec | None | Appended integer count. Body content (`## Divergence Notes`) is also agent-written. |
+| `task`, `title`, `agent`, `dependencies`, `priority`, `complexity`, `created`, `skills`, `issue-classification`, `scenario-target`, `analysis-method` | `swarm-task-planner` agent (file creation) | Task file generation | N/A — set at creation | These fields describe task intent and scheduling. No lifecycle component writes them after creation. |
+
+### Replacement Prose (for "Authorized Writers" section)
+
+The following prose replaces the paragraph beginning "Only designated scripts should write or update task data files..." through the end of the Authorized Writers section. The anti-pattern sub-section that follows (about fenced YAML frontmatter) is unchanged.
+
+```text
+## Authorized Writers
+
+Task metadata fields are owned by specific components. Only the designated component for
+a field may write that field. No other component (including LLM agents acting via Edit
+tool calls) may write lifecycle fields (status, started, completed, last_activity) except
+through the designated path.
+
+This prevents the following observed failure modes:
+- Dual-dispatch (two agents claiming the same task)
+- Overwritten started timestamps on agent retry
+- last_activity updates written to completed tasks
+
+The table below lists every writeable field, its authorized writer, and the trigger that
+fires the write.
+
+[TABLE — see per-field ownership table above]
+
+### Field Ownership Rules
+
+1. status: in-progress and started are written ONLY by implementation_manager.py claim-task.
+   LLM agents in the start-task skill must invoke claim-task via uv run and check exit code.
+   Direct Edit of these fields by agents is an architectural violation.
+
+2. status: complete and completed are written ONLY by task_status_hook.py SubagentStop handler.
+   The start-task --complete path also writes these fields as a convenience, but the hook
+   always overwrites them at SubagentStop time. If both paths fire, the hook timestamp wins.
+
+3. last_activity is written ONLY by task_status_hook.py PostToolUse handler, and only when
+   the task status is not complete. Writing last_activity to a completed task is a no-op.
+
+4. divergence-notes (count) and the ## Divergence Notes body section are written ONLY by the
+   executing agent via the start-task skill. These are not lifecycle fields.
+
+5. All other fields (task, title, agent, dependencies, priority, complexity, created, skills,
+   and analytical metadata fields) are written ONCE at task file creation by swarm-task-planner.
+   No component modifies them after creation.
+
+### Scripts
+
+| Script | Role | Writes |
+|--------|------|--------|
+| implementation_manager.py | CLI for status queries AND claim-task | status: in-progress, started (via claim-task only) |
+| task_status_hook.py | Hook handler for Claude Code events | status: complete, completed, last_activity |
+| swarm-task-planner (agent) | Task file generator | All fields at creation |
+| split_task_file.py | Structural: splits monolithic task files into per-task files | Full frontmatter (preserved from source, not lifecycle transition) |
+| migrate_task_format.py | Structural: converts legacy markdown to YAML frontmatter | Full frontmatter (format migration, not lifecycle transition) |
+```
 
 ---
 
 ## Error Handling and Failure Modes
 
-<!-- PENDING: error handling design -->
+### claim-task: Task Not Found
+
+When `task_id` does not match any task in `task_file_path`:
+
+- Exit 1.
+- JSON output: `{"claimed": false, "reason": "task-not-found", "task_id": "...", "task_file": "..."}`.
+- stderr: `ERROR: Task {task_id} not found in {task_file_path}`.
+- Orchestrator action: log and skip. Do not retry. This is a configuration error (wrong task ID or wrong file).
+
+### claim-task: Parse Failure
+
+When the file cannot be parsed (missing frontmatter, malformed YAML, missing required fields):
+
+- Exit 1.
+- JSON output: `{"claimed": false, "reason": "parse-error", "error": "...", "task_file": "..."}`.
+- stderr: `ERROR: Could not parse task file: {error_detail}`.
+- Orchestrator action: log and skip. Flag file for manual inspection.
+
+### claim-task: Status Not `not-started`
+
+When the task exists but status is any value other than `not-started`:
+
+- Exit 1.
+- JSON output: `{"claimed": false, "reason": "already-{status}", "current_status": "...", "task_id": "...", "task_file": "..."}`.
+- stderr: `ERROR: Task {task_id} cannot be claimed: status is {current_status}`.
+- Orchestrator action:
+  - If `reason: already-in-progress`: another agent is working on this task. Skip without error. Orchestrator logs this as a concurrent claim event.
+  - If `reason: already-complete`: task is done. Skip. This indicates orchestrator state is stale — trigger a `status` refresh.
+  - If `reason: already-blocked`: task is externally blocked. Skip. Surface to operator.
+
+### claim-task: Write Failure
+
+If `path.write_text()` raises `OSError` (permissions, disk full):
+
+- Exit 1.
+- JSON output: `{"claimed": false, "reason": "write-error", "error": "...", "task_file": "..."}`.
+- The status field was NOT mutated (write failed). The file remains in its pre-claim state.
+- Orchestrator action: log as infrastructure error. Retry on next orchestrator loop iteration.
+
+### start-task: claim-task Returns Exit 1
+
+The start-task skill receives exit code 1 from claim-task. Protocol:
+
+1. Print `CLAIM_RESULT` JSON to agent stdout.
+2. Do not write the active-task context file.
+3. End the turn immediately.
+4. SubagentStop hook fires. No context file exists. Hook makes no writes.
+5. The task remains in its pre-claim state on disk.
+
+This is a graceful abort. No data is mutated. The orchestrator observes the abort via sub-agent output logs.
+
+### start-task: claim-task Binary Not Found
+
+If `uv run .../implementation_manager.py claim-task` fails because the script path is wrong or `uv` is unavailable:
+
+- The agent receives a non-zero exit code and a shell error message on stderr.
+- The agent must treat any non-zero exit from the claim-task invocation as a claim failure.
+- The agent must NOT fall back to direct Edit of `status` and `started` fields.
+- The agent must surface the error to the operator with the full shell output.
+
+### task_status_hook.py PostToolUse: `last_activity` on Completed Task (Gap 4 Fix)
+
+The `handle_activity_update()` function in `task_status_hook.py` must read the task status before writing `last_activity`. If status is `complete`, the write is skipped silently (no error, no output). This is a silent skip, not an error, because the hook fires on every tool call and the completed-task case is normal during session teardown.
+
+**Added guard (pseudocode)**:
+
+```text
+current_status = parse status field from task content
+if current_status == "complete":
+    return  # silent skip, no write
+proceed with last_activity timestamp write
+```
+
+This guard is added to the `handle_activity_update()` function in `task_status_hook.py`. It is the only change to `task_status_hook.py` required by this backlog item.
 
 ---
 
 ## Architectural Decisions (ADRs)
 
-<!-- PENDING: ADRs -->
+### ADR-001: claim-task as a CLI Command in implementation_manager.py, Not a Standalone Script
+
+**Status**: Accepted
+
+**Context**: The new claim authority could be a standalone script (`claim_task.py`) or a new command in the existing `implementation_manager.py`. The start-task skill currently invokes `implementation_manager.py` for `ready-tasks`. Adding `claim-task` to the same binary reduces the number of script paths an agent must know.
+
+**Decision**: Add `claim-task` as `@app.command(name="claim-task")` in `implementation_manager.py`.
+
+**Consequences**:
+- Positive: Single entry point for all task file operations from the skill layer.
+- Positive: Reuses existing Typer app, JSON output conventions, and `task_format.py` imports.
+- Positive: No new file to discover or maintain.
+- Negative: `implementation_manager.py` is documented as "read-only" in `TASK_FILE_FORMAT.md`. Adding a write command changes that contract. Mitigated by updating `TASK_FILE_FORMAT.md` to reflect the new role.
+
+**Alternatives Considered**:
+- Standalone `claim_task.py`: More discoverable by name but adds a new script path to maintain.
+- Add write logic to `task_status_hook.py`: That script is an event handler, not a CLI tool. Mixing roles would make it harder to test claim logic in isolation.
+
+---
+
+### ADR-002: Read-Check-Write Without OS File Locking
+
+**Status**: Accepted
+
+**Context**: True atomic claim would require `fcntl.flock` (POSIX) or `msvcrt.locking` (Windows). Neither is portable across the CI and developer environments this codebase targets. Additionally, LLM sub-agents do not hold persistent processes — they are single-turn invocations. The race window is the time between two `ready-tasks` queries before either agent reaches step 3 of `start-task`.
+
+**Decision**: Use a narrow read-check-write sequence without OS locking. The contract is documented: the window between read and write is a single Python function call with no blocking I/O in between.
+
+**Consequences**:
+- Positive: Cross-platform. No platform-specific locking code.
+- Positive: Sufficient for the observed failure mode (two orchestrator loop iterations before the first agent writes `in-progress`). The `claim-task` write now happens in milliseconds, before the orchestrator dispatches a second agent.
+- Negative: A true concurrent race (two agents calling `claim-task` simultaneously at the OS scheduler level) is still possible in theory. In practice, LLM agent invocations are not concurrent at the filesystem write level — they are serialized by the Claude Code orchestrator.
+- Mitigated by: The `claim-task` command returning `claimed: false` on the second call in any race, because the first write will have landed by the time the second agent reaches step 3.
+
+**Alternatives Considered**:
+- `portalocker` library: Adds a dependency. Not warranted for the observed failure mode.
+- Sentinel file (`T1.lock`): Adds filesystem clutter. Not needed given the race window analysis.
+
+---
+
+### ADR-003: `started` Field Is Preserved on Retry, Not Overwritten
+
+**Status**: Accepted
+
+**Context**: If a sub-agent crashes after `claim-task` succeeds but before completing the task, the orchestrator may re-dispatch. A second `claim-task` call would find status `in-progress` and return `claimed: false`. The operator must manually reset status to `not-started` before the task can be re-dispatched. During that reset, `started` is already present on disk.
+
+**Decision**: `claim-task` writes `started` only if the field is absent. If `started` already has a value, it is preserved. This ensures the original claim timestamp survives operator-driven resets.
+
+**Consequences**:
+- Positive: Audit trail accuracy. The `started` timestamp reflects the first claim attempt, not a retry.
+- Positive: Idempotent behavior: calling `claim-task` twice (if somehow possible) does not corrupt the timestamp.
+- Negative: Operator must be aware that `started` is not reset when they manually reset `status: not-started`. This is documented behavior, not a bug.
+
+---
+
+### ADR-004: `--complete` Path in `start-task` Is Unchanged
+
+**Status**: Accepted
+
+**Context**: The `--complete <task-id>` path in `start-task` has the agent write `status: complete` and `completed:` directly. The `SubagentStop` hook also writes these fields, with a later timestamp (hook fires after agent turn ends). The net result is that the hook timestamp always wins.
+
+**Decision**: Leave the `--complete` path as agent-direct-write. Do not add a `complete-task` CLI command in this iteration.
+
+**Consequences**:
+- Positive: Scope is contained. Only the `not-started → in-progress` transition (the one with the TOCTOU race) is fixed.
+- Positive: The dual-write for `completed` (Gap 1 from codebase analysis) has a deterministic outcome (hook wins). It is documented but not harmful.
+- Negative: The `completed` field is still written by two paths. Deferred to a future backlog item if audit accuracy for `completed` becomes a requirement.
+
+---
+
+### ADR-005: Legacy Markdown Format Tasks Cannot Be Claimed
+
+**Status**: Accepted
+
+**Context**: `claim-task` operates on YAML frontmatter only. The `task_format.py` utilities (`update_yaml_field`, `parse_yaml_frontmatter`) are YAML-only. The legacy markdown format (`**Status**: IN PROGRESS`) is deprecated (TASK_FILE_FORMAT.md Phase 4).
+
+**Decision**: `claim-task` returns `reason: parse-error` for markdown-format task files. The agent must surface this as an error and not proceed.
+
+**Consequences**:
+- Positive: Forces migration of legacy format before execution. Prevents silent corruption of markdown files.
+- Negative: Legacy tasks cannot be executed until migrated. This is acceptable given that `migrate_task_format.py` already exists for this purpose.
+- Mitigation: The `start-task` skill update includes explicit instructions to surface the legacy format error and stop.
+
+---
+
+## Implementation Constraints
+
+The following constraints apply to the development agent implementing this design:
+
+1. **No new runtime dependencies**: `claim-task` must be implementable using existing imports in `implementation_manager.py` (`task_format.py`, `typer`, `json`, `pathlib`, `datetime`).
+
+2. **JSON-only stdout**: `claim-task` must write only valid JSON to stdout. All human-readable messages go to stderr. This enables the skill to parse the output with `json.loads()` reliably.
+
+3. **No silent failures**: If the file write fails, the command must exit non-zero with an error JSON. It must not exit 0 with `claimed: true` unless the write succeeded.
+
+4. **YAML library**: Use `ruamel.yaml` via the existing `task_format.py` module. Do not import `yaml` (pyyaml) directly. Per repo convention in `.claude/rules/yaml-toml-libraries.md`.
+
+5. **`update_yaml_field()` reuse**: Do not write a new YAML mutation function. `update_yaml_field()` from `task_format.py` handles both replacement of existing fields and insertion of new fields. Use it for both `status` and `started` field writes.
+
+6. **Directory task file resolution**: For directory-based task files, the command must locate the specific `.md` file containing `task_id` before performing the read-check-write. The resolution uses `_parse_task_directory()` to find all tasks, then matches by `task.id`. The write target is the individual file, not the directory.
+
+7. **`task_status_hook.py` change scope**: Only `handle_activity_update()` in `task_status_hook.py` changes (Gap 4 guard). No other function in that file changes. The SubagentStop handler (`handle_subagent_stop`) is unchanged.
+
+8. **`start-task` SKILL.md change scope**: Only step 3 of the "Starting a Task" section changes. All other steps (parse arguments, detect task format, load skills, write context file, divergence notes, implementation) are unchanged.
+
+9. **`TASK_FILE_FORMAT.md` change scope**: The "Authorized Writers" section is replaced in full. All other sections are unchanged.
