@@ -152,7 +152,10 @@ def _init_github_client(repo_slug: str) -> Repository:
         err_console.print("[red]GITHUB_TOKEN environment variable not set[/red]")
         raise typer.Exit(code=1)
 
-    gh = Github(auth=Auth.Token(token))
+    base_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
+    verify_ssl_str = os.environ.get("GITHUB_SSL_VERIFY", "true").lower()
+    verify: bool = verify_ssl_str not in {"false", "0", "no"}
+    gh = Github(auth=Auth.Token(token), base_url=base_url, verify=verify)
     try:
         return gh.get_repo(repo_slug)
     except GithubException as exc:

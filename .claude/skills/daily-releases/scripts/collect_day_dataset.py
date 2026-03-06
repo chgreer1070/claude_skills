@@ -382,6 +382,22 @@ def collect_commit_records(repo: Repo, base_ref: str, head_ref: str) -> list[Com
 # ---------------------------------------------------------------------------
 
 
+def _make_github_client(token: str) -> Github:
+    """Create a Github client respecting proxy/SSL environment variables.
+
+    Reads:
+        GITHUB_API_URL: Custom API base URL (default: https://api.github.com).
+        GITHUB_SSL_VERIFY: Set to 'false', '0', or 'no' to disable SSL verification.
+
+    Returns:
+        Configured Github client instance.
+    """
+    base_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
+    verify_ssl_str = os.environ.get("GITHUB_SSL_VERIFY", "true").lower()
+    verify: bool = verify_ssl_str not in {"false", "0", "no"}
+    return Github(auth=Auth.Token(token), base_url=base_url, verify=verify)
+
+
 def get_github_repo(gh: Github, repo_slug: str) -> Repository:
     """Return a PyGithub Repository object.
 
@@ -445,7 +461,7 @@ def collect_issue_records(commit_records: list[CommitRecord], repo_slug: str) ->
         return []
 
     err_console.print(f"[dim]Fetching {len(issue_numbers)} referenced GitHub issues[/dim]")
-    gh = Github(auth=Auth.Token(token))
+    gh = _make_github_client(token)
     gh_repo = get_github_repo(gh, repo_slug)
 
     records: list[IssueRecord] = []
