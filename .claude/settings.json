@@ -16,16 +16,6 @@
     "deny": []
   },
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-notifications.cjs"
-          }
-        ]
-      }
-    ],
     "Setup": [
       {
         "matcher": "init|maintenance",
