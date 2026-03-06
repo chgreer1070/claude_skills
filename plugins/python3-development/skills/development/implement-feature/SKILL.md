@@ -9,7 +9,7 @@ hooks:
     - type: command
       command: python3 "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/task_status_hook.py"
 version: 1.0.0
-last_updated: '2026-01-27'
+last_updated: '2026-02-28'
 python_compatibility: 3.11+
 ---
 # Implement Feature (SAM Workflow Execution)
@@ -73,12 +73,25 @@ uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementati
 
 3. For each ready task:
 
-- Route to the agent named in the task's `**Agent**` field.
+- Route to the agent named in the task's `agent` field (or resolved from `role`).
+- Check the task's `skills` list from the ready-tasks JSON output.
+- If `skills` is non-empty, include skill-loading instructions in the delegation prompt:
+
+```text
+Before starting work, load these skills: {comma-separated skill names}.
+For each skill, call: Skill(skill="{skill-name}")
+```
+
+- If `skills` is empty or missing, do not add skill-loading instructions (backward compatible).
 - Launch the agent with a prompt that invokes `start-task`:
 
 ```text
 Skill(skill="start-task", args="{task_file_path} --task {task_id}")
 ```
+
+> **Note**: Task-level skills are additive to agent-level skills. If the agent definition
+> already declares skills via its frontmatter, task-level skills supplement them (they do not
+> replace agent-level skills). Loading the same skill twice is a no-op.
 
 4. Repeat until no tasks remain ready.
 
