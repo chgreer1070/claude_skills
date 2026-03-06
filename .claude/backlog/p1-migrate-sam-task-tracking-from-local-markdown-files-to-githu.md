@@ -11,6 +11,7 @@ metadata:
   issue: '#480'
   last_synced: '2026-03-06T21:54:09Z'
   groomed: '2026-03-06'
+  plan: plan/tasks-2-migrate-sam-task-github-subissues.md
 ---
 
 ## Story
