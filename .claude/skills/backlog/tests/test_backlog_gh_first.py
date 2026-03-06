@@ -800,3 +800,122 @@ class TestOpenPrCheckBeforeClose:
         # The function catches all exceptions and returns []
         result = _mod._check_open_prs_for_issue(999, "nonexistent/repo")
         assert result == []
+
+
+# ─── T_pull_selector: pull with selector argument ───
+
+
+class TestPullWithSelector:
+    """Verify pull command accepts an optional selector argument.
+
+    Tests the new selector parameter that routes to _pull_single_issue
+    for a single issue instead of bulk pull.
+    """
+
+    def test_pull_with_issue_number_selector(self, mocker: MockerFixture, tmp_path: Path) -> None:
+        """pull #321 routes to _pull_single_issue with the parsed issue number.
+
+        Tests: Issue number selector routing.
+        How: Mock _get_github and _pull_single_issue, invoke pull with #321.
+        Why: Users should be able to refresh a single issue without full bulk pull.
+        """
+        mock_repo = mocker.Mock()
+        mocker.patch.object(_mod, "_get_github", return_value=mock_repo)
+        expected_path = tmp_path / "p2-test.md"
+        mock_pull = mocker.patch.object(_mod, "_pull_single_issue", return_value=expected_path)
+
+        result = runner.invoke(app, ["pull", "#321", "-R", "test/repo"])
+
+        assert result.exit_code == 0
+        mock_pull.assert_called_once_with(mock_repo, 321)
+        assert "Pulled" in result.output
+
+    def test_pull_with_bare_number_selector(self, mocker: MockerFixture, tmp_path: Path) -> None:
+        """pull 42 (bare number) routes to _pull_single_issue.
+
+        Tests: Bare number selector routing.
+        How: Mock _get_github and _pull_single_issue, invoke pull with bare number.
+        Why: Bare numbers are a valid selector form for convenience.
+        """
+        mock_repo = mocker.Mock()
+        mocker.patch.object(_mod, "_get_github", return_value=mock_repo)
+        expected_path = tmp_path / "p1-test.md"
+        mock_pull = mocker.patch.object(_mod, "_pull_single_issue", return_value=expected_path)
+
+        result = runner.invoke(app, ["pull", "42", "-R", "test/repo"])
+
+        assert result.exit_code == 0
+        mock_pull.assert_called_once_with(mock_repo, 42)
+
+    def test_pull_with_title_selector_finds_item(self, mocker: MockerFixture, tmp_path: Path) -> None:
+        """pull 'some title' finds item by title, reads issue number, calls _pull_single_issue.
+
+        Tests: Title substring selector routing.
+        How: Create a local backlog file with _issue=#99, mock _pull_single_issue.
+        Why: Users may not know the issue number and prefer title-based selection.
+        """
+        backlog_dir = _mod.BACKLOG_DIR
+        (backlog_dir / "p2-some-title.md").write_text(
+            "---\nname: Some title item\ndescription: Test\nmetadata:\n  priority: P2\n  status: open\n"
+            "  source: test\n  added: '2026-01-01'\n  type: Bug\n  issue: '#99'\n---\n",
+            encoding="utf-8",
+        )
+        mock_repo = mocker.Mock()
+        mocker.patch.object(_mod, "_get_github", return_value=mock_repo)
+        expected_path = tmp_path / "p2-some-title.md"
+        mock_pull = mocker.patch.object(_mod, "_pull_single_issue", return_value=expected_path)
+
+        result = runner.invoke(app, ["pull", "some title", "-R", "test/repo"])
+
+        assert result.exit_code == 0
+        mock_pull.assert_called_once_with(mock_repo, 99)
+
+    def test_pull_title_selector_no_match_exits_nonzero(self, mocker: MockerFixture) -> None:
+        """pull with unmatched title selector exits with code 1 and prints error.
+
+        Tests: Not-found error handling.
+        How: Empty backlog dir, invoke pull with a title that matches nothing.
+        Why: Unmatched selectors must not silently succeed.
+        """
+        mocker.patch.object(_mod, "_get_github", return_value=mocker.Mock())
+
+        result = runner.invoke(app, ["pull", "nonexistent title", "-R", "test/repo"])
+
+        assert result.exit_code == 1
+        assert "No backlog item found" in result.output
+
+    def test_pull_title_selector_item_without_issue_exits_nonzero(self, mocker: MockerFixture) -> None:
+        """pull with title selector on item with no GitHub issue exits with code 1.
+
+        Tests: Missing issue number error handling.
+        How: Create backlog file without issue field, invoke pull with matching title.
+        Why: Cannot pull from GitHub without a linked issue number.
+        """
+        backlog_dir = _mod.BACKLOG_DIR
+        (backlog_dir / "p2-no-issue-item.md").write_text(
+            "---\nname: No issue item\ndescription: Test\nmetadata:\n  priority: P2\n  status: open\n"
+            "  source: test\n  added: '2026-01-01'\n  type: Bug\n---\n",
+            encoding="utf-8",
+        )
+        mocker.patch.object(_mod, "_get_github", return_value=mocker.Mock())
+
+        result = runner.invoke(app, ["pull", "no issue", "-R", "test/repo"])
+
+        assert result.exit_code == 1
+        assert "no linked GitHub issue" in result.output
+
+    def test_pull_no_selector_uses_bulk_path(self, mocker: MockerFixture) -> None:
+        """pull with no selector uses the existing bulk pull path (no _pull_single_issue call).
+
+        Tests: Backward-compatible bulk pull.
+        How: Mock _get_github and _pull_item, invoke pull without selector.
+        Why: No-arg pull must remain unchanged.
+        """
+        mocker.patch.object(_mod, "_get_github", return_value=mocker.Mock())
+        mocker.patch.object(_mod, "_pull_item", return_value=False)
+        mocker.patch.object(_mod, "_sync_create_missing_issues")
+        mock_single = mocker.patch.object(_mod, "_pull_single_issue")
+
+        runner.invoke(app, ["pull", "-R", "test/repo"])
+
+        mock_single.assert_not_called()

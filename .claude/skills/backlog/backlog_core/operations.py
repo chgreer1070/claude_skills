@@ -1456,6 +1456,45 @@ def pull_single_issue(
     return filepath
 
 
+def pull_by_selector(
+    selector: str, repo: str = DEFAULT_REPO, output: Output | None = None
+) -> dict[str, str | list[str] | None]:
+    """Pull a single GitHub issue into the local cache by selector.
+
+    Supports issue number selectors (#N, bare number, URL) and title substrings.
+    For issue number selectors, fetches directly from GitHub.
+    For title substrings, finds the local item, reads its issue number,
+    then fetches from GitHub.
+
+    Returns:
+        Dict with 'file_path' (local path written) and output messages/warnings.
+        Raises ItemNotFoundError if selector matches no item.
+        Raises BacklogError if matched item has no linked GitHub issue.
+    """
+    out = output or Output()
+    issue_num = parse_issue_selector(selector)
+    if issue_num:
+        filepath = pull_single_issue(get_github(repo), int(issue_num), output=out)
+        return {"file_path": str(filepath) if filepath else None, **out.to_dict()}
+
+    # Title substring: find item in local cache then pull by its issue number
+    items = parse_backlog()
+    item = find_item(items, selector)
+    if item is None:
+        raise ItemNotFoundError(selector)
+
+    issue_ref = item.issue or ""
+    if not issue_ref:
+        raise BacklogError(f"Item '{item.title}' has no linked GitHub issue. Use backlog_pull() for bulk pull.")
+
+    issue_num_str = parse_issue_selector(issue_ref)
+    if not issue_num_str:
+        raise BacklogError(f"Could not parse issue number from '{issue_ref}'")
+
+    filepath = pull_single_issue(get_github(repo), int(issue_num_str), output=out)
+    return {"file_path": str(filepath) if filepath else None, **out.to_dict()}
+
+
 def pull_items(
     repo: str = DEFAULT_REPO, dry_run: bool = False, force: bool = False, output: Output | None = None
 ) -> dict[str, int | bool | list[str]]:

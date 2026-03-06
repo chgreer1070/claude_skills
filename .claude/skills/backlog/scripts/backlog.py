@@ -2435,8 +2435,49 @@ def _pull_item(item: dict, repo_obj: Repository, dry_run: bool, force: bool) -> 
     return _pull_item_update_existing(item, issue_num, title, Path(filepath_str), github_body, dry_run, force)
 
 
+def _pull_single_by_selector(selector: str, repo: str) -> None:
+    """Resolve selector to a single GitHub issue and pull it into the local cache."""
+    repository = _get_github(repo)
+    issue_num_str = _parse_issue_selector(selector)
+    if issue_num_str:
+        result = _pull_single_issue(repository, int(issue_num_str))
+        if result:
+            typer.echo(f"Pulled issue into {result}.")
+        else:
+            typer.echo(f"Failed to pull issue #{issue_num_str}.", err=True)
+        return
+    # Title substring: find item and pull by its issue number
+    item = find_item(parse_backlog(), selector)
+    if item is None:
+        typer.echo(f"No backlog item found matching: {selector!r}", err=True)
+        raise typer.Exit(code=1)
+    issue_ref = item.get("_issue") or ""
+    if not issue_ref:
+        typer.echo(
+            f"Item '{item.get('_title', selector)}' has no linked GitHub issue. "
+            "Use 'backlog pull' (no selector) for bulk pull.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    issue_num_from_ref = _parse_issue_selector(issue_ref)
+    if not issue_num_from_ref:
+        typer.echo(f"Could not parse issue number from '{issue_ref}'.", err=True)
+        raise typer.Exit(code=1)
+    result = _pull_single_issue(repository, int(issue_num_from_ref))
+    if result:
+        typer.echo(f"Pulled issue into {result}.")
+    else:
+        typer.echo(f"Failed to pull issue {issue_ref}.", err=True)
+
+
 @app.command()
 def pull(
+    selector: Annotated[
+        str | None,
+        typer.Argument(
+            help="Optional selector to pull a single issue: #N, bare number, GitHub URL, or title substring. When omitted, pulls all issues."
+        ),
+    ] = None,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
     dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
     force: Annotated[
@@ -2445,10 +2486,17 @@ def pull(
 ) -> None:
     """Pull issue body content from GitHub into local per-item files.
 
+    When SELECTOR is provided, pulls a single issue by #N, bare number,
+    GitHub URL, or title substring. When omitted, pulls all issues.
+
     Also auto-migrates P0/P1 items that lack GitHub Issues by creating them.
     Merges by section — keeps longer version of each section.
     Skips items with no issue number (after migration).
     """
+    if selector is not None:
+        _pull_single_by_selector(selector, repo)
+        return
+
     items = parse_backlog()
 
     # Auto-migration: create missing GitHub Issues for P0/P1 items

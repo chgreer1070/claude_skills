@@ -346,6 +346,12 @@ def backlog_normalize(
 
 @mcp.tool()
 def backlog_pull(
+    selector: Annotated[
+        str | None,
+        Field(
+            description="Optional selector to pull a single issue: #N, bare number, GitHub URL, or title substring. When omitted, pulls all issues."
+        ),
+    ] = None,
     dry_run: Annotated[bool, Field(description="Preview what would be pulled without modifying local files")] = False,
     force: Annotated[
         bool, Field(description="Overwrite local content even if local version is newer or longer")
@@ -353,16 +359,22 @@ def backlog_pull(
 ) -> dict:
     """Pull issue body content from GitHub into local per-item files.
 
+    When selector is provided, pulls a single issue by #N, bare number,
+    GitHub URL, or title substring. When omitted, pulls all issues.
+
     Auto-migrates P0/P1 items lacking GitHub Issues by creating them.
     Merges by section, keeping the longer version of each section unless
     force=true. Use dry_run=true to preview changes.
 
     Returns:
-        Dict with count of pulled items and output messages/warnings.
-        On error, dict contains an error key.
+        Dict with count of pulled items (bulk) or file_path (single) and
+        output messages/warnings. On error, dict contains an error key.
     """
     out = Output()
     try:
+        if selector is not None:
+            result = operations.pull_by_selector(selector, output=out)
+            return {**result, **out.to_dict()}
         result = operations.pull_items(dry_run=dry_run, force=force, output=out)
         return {**result, **out.to_dict()}
     except BacklogError as e:
