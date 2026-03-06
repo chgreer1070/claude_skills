@@ -2,10 +2,14 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
+#   "daily-releases-lib",
 #   "typer>=0.21.0",
 #   "PyGithub>=2.1.1",
 #   "python-dotenv>=1.0.0",
 # ]
+#
+# [tool.uv.sources]
+# daily-releases-lib = { path = "daily_releases_lib", editable = true }
 # ///
 """Publish a daily GitHub release from a pre-rendered markdown file.
 
@@ -29,7 +33,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import typer
-from github import Auth, Github, GithubException
+from daily_releases_lib.github_utils import AppExit, get_github_repo, make_github_client
+from github import GithubException
 from rich.console import Console
 
 if TYPE_CHECKING:
@@ -50,44 +55,6 @@ GENERATOR_VERSION = "1.0"
 GENERATOR_MARKER = f"<!-- created-by-release-generator: v{GENERATOR_VERSION} -->"
 
 HTTP_NOT_FOUND = 404
-
-
-class AppExit(typer.Exit):
-    """Exit with user-friendly error message to stderr."""
-
-    def __init__(self, code: int = 1, message: str | None = None) -> None:
-        """Print message to stderr and exit with code."""
-        if message is not None:
-            err_console.print(f"[red]{message}[/red]")
-        super().__init__(code=code)
-
-
-def _make_github_client(token: str) -> Github:
-    """Create a Github client respecting proxy/SSL environment variables.
-
-    Reads:
-        GITHUB_API_URL: Custom API base URL (default: https://api.github.com).
-        GITHUB_SSL_VERIFY: Set to 'false', '0', or 'no' to disable SSL verification.
-
-    Returns:
-        Configured Github client instance.
-    """
-    base_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-    verify_ssl_str = os.environ.get("GITHUB_SSL_VERIFY", "true").lower()
-    verify: bool = verify_ssl_str not in {"false", "0", "no"}
-    return Github(auth=Auth.Token(token), base_url=base_url, verify=verify)
-
-
-def get_github_repo(gh: Github, repo_slug: str) -> Repository:
-    """Return PyGithub Repository object.
-
-    Raises:
-        AppExit: If repo cannot be accessed.
-    """
-    try:
-        return gh.get_repo(repo_slug)
-    except GithubException as e:
-        raise AppExit(code=1, message=f"Cannot access repo '{repo_slug}': {e}") from e
 
 
 def gh_get_tag_sha(gh_repo: Repository, tag: str) -> str | None:
@@ -171,7 +138,7 @@ def main(
     if not token:
         raise AppExit(code=1, message="GITHUB_TOKEN environment variable not set")
 
-    gh = _make_github_client(token)
+    gh = make_github_client(token)
     gh_repo = get_github_repo(gh, repo_slug)
 
     existing_sha = gh_get_tag_sha(gh_repo, tag)

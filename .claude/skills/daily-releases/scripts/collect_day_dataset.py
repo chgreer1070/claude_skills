@@ -2,11 +2,14 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
+#   "daily-releases-lib",
 #   "typer>=0.21.0",
-#   "GitPython>=3.1.45",
 #   "PyGithub>=2.1.1",
 #   "python-dotenv>=1.0.0",
 # ]
+#
+# [tool.uv.sources]
+# daily-releases-lib = { path = "daily_releases_lib", editable = true }
 # ///
 """Collect per-day dataset for the daily-releases chunked pipeline.
 
@@ -14,7 +17,7 @@ Extracts per-file diffs, commit metadata, and GitHub issues referenced in
 commits for a given base_ref..head_ref range, writing structured JSON and
 diff files into ``<output_dir>/dataset/``.
 
-Uses GitPython and PyGithub — no subprocess / shell-out to git or gh.
+Uses PyGithub and the GitHub REST API — no local git repository required.
 """
 
 from __future__ import annotations
@@ -33,14 +36,12 @@ load_dotenv()
 import os
 
 import typer
-from git import Repo
-from git.exc import InvalidGitRepositoryError, NoSuchPathError
-from github import Auth, Github, GithubException
+from daily_releases_lib.github_utils import AppExit, get_github_repo, make_github_client
+from github import GithubException
 from rich.console import Console
 
 if TYPE_CHECKING:
-    from git.diff import Diff
-    from git.objects.commit import Commit
+    from github.GitCommit import GitCommit
     from github.Repository import Repository
 
 # ---------------------------------------------------------------------------
@@ -94,29 +95,6 @@ err_console = Console(stderr=True)
 
 
 # ---------------------------------------------------------------------------
-# AppExit helper
-# ---------------------------------------------------------------------------
-
-
-class AppExit(typer.Exit):
-    """Exit with a user-friendly error message printed to stderr."""
-
-    exit_code: int
-
-    def __init__(self, code: int = 1, message: str | None = None) -> None:
-        """Initialise exit with optional message.
-
-        Args:
-            code: Process exit code (default 1).
-            message: Human-readable error message printed to stderr in red.
-        """
-        if message is not None:
-            err_console.print(f"[red]{message}[/red]")
-        self.exit_code = code
-        super().__init__(code=code)
-
-
-# ---------------------------------------------------------------------------
 # Data models
 # ---------------------------------------------------------------------------
 
@@ -126,7 +104,7 @@ class FileRecord:
     """Metadata for a single changed source file.
 
     Attributes:
-        path: Repository-relative file path (uses b_path for additions/modifications).
+        path: Repository-relative file path.
         status: Single-letter git status: A (added), M (modified), D (deleted), R (renamed).
         lines_added: Number of lines added in this file's diff.
         lines_deleted: Number of lines removed in this file's diff.
@@ -184,20 +162,8 @@ class IssueRecord:
 
 
 # ---------------------------------------------------------------------------
-# Git helpers
+# File record helpers
 # ---------------------------------------------------------------------------
-
-
-def get_git_repo() -> Repo:
-    """Return a GitPython Repo for the current working directory.
-
-    Raises:
-        AppExit: When the current directory is not inside a git repository.
-    """
-    try:
-        return Repo(Path.cwd(), search_parent_directories=True)
-    except (InvalidGitRepositoryError, NoSuchPathError) as exc:
-        raise AppExit(code=1, message=f"Not a git repository: {exc}") from exc
 
 
 def _sanitize_path(file_path: str) -> str:
@@ -215,213 +181,243 @@ def _sanitize_path(file_path: str) -> str:
     return file_path.replace("/", "_")
 
 
-def _diff_status(diff_item: Diff) -> str:
-    """Extract a single-letter status from a GitPython DiffItem.
+def _status_letter(github_status: str) -> str:
+    """Convert a GitHub file status string to a single-letter status code.
 
     Args:
-        diff_item: A single entry from a ``repo.commit().diff()`` result.
+        github_status: Status string from the GitHub API
+            (e.g. ``added``, ``modified``, ``deleted``, ``renamed``, ``copied``).
 
     Returns:
-        ``A`` (new file), ``D`` (deleted), ``R`` (renamed), or ``M`` (modified).
+        Single letter: ``A`` (added/copied), ``D`` (deleted), ``R`` (renamed),
+        or ``M`` (modified/anything else).
     """
-    if diff_item.new_file:
-        return "A"
-    if diff_item.deleted_file:
-        return "D"
-    if diff_item.renamed_file:
-        return "R"
-    return "M"
+    return {"added": "A", "deleted": "D", "renamed": "R", "copied": "A"}.get(github_status, "M")
 
 
-def _count_diff_lines(raw_diff: bytes) -> tuple[int, int]:
-    """Count added and deleted lines in a unified diff.
+def _count_patch_lines(patch: str | None) -> tuple[int, int]:
+    """Count added and deleted lines in a unified diff patch string.
 
     Args:
-        raw_diff: Raw unified diff bytes from GitPython.
+        patch: Unified diff text as returned by the GitHub API, or None.
 
     Returns:
         Tuple of ``(lines_added, lines_deleted)``.
     """
-    added = 0
-    deleted = 0
-    for line in raw_diff.splitlines():
-        decoded = line.decode("utf-8", errors="replace")
-        if decoded.startswith("+") and not decoded.startswith("+++"):
+    if not patch:
+        return 0, 0
+    added = deleted = 0
+    for line in patch.splitlines():
+        if line.startswith("+") and not line.startswith("+++"):
             added += 1
-        elif decoded.startswith("-") and not decoded.startswith("---"):
+        elif line.startswith("-") and not line.startswith("---"):
             deleted += 1
     return added, deleted
 
 
-def _write_diff_file(diffs_dir: Path, file_path: str, raw_diff: bytes) -> str:
-    """Write a raw diff to the diffs directory and return the relative path.
+def _write_patch_file(diffs_dir: Path, file_path: str, patch: str | None) -> str:
+    """Write a patch string to the diffs directory and return the relative path.
 
     Args:
         diffs_dir: Directory where individual diff files are stored.
         file_path: Repository-relative file path (used to derive the filename).
-        raw_diff: Raw unified diff bytes to write.
+        patch: Unified diff text to write, or None when no diff is available.
 
     Returns:
-        Relative path string of the form ``dataset/diffs/<name>.diff``.
+        Relative path string of the form ``dataset/diffs/<name>.diff``,
+        or empty string when ``patch`` is None.
     """
+    if patch is None:
+        return ""
     diff_filename = f"{_sanitize_path(file_path)}.diff"
-    (diffs_dir / diff_filename).write_bytes(raw_diff)
+    (diffs_dir / diff_filename).write_text(patch, encoding="utf-8")
     return f"dataset/diffs/{diff_filename}"
 
 
-def _build_file_record(item: Diff, diffs_dir: Path) -> FileRecord | None:
-    """Build a FileRecord for a single DiffItem, or return None to skip it.
+# ---------------------------------------------------------------------------
+# File record collection
+# ---------------------------------------------------------------------------
 
-    Skips items whose path cannot be resolved or whose extension is not in
-    SOURCE_EXTENSIONS.
+
+def _collect_initial_file_records(gh_repo: Repository, head_ref: str) -> list[FileRecord]:
+    """List all source files at head_ref via the recursive tree API.
+
+    Used when ``base_ref`` is the empty-tree SHA, meaning there are no prior
+    commits. All files are treated as added (status ``A``) with no diff content.
 
     Args:
-        item: A single entry from a GitPython diff index.
-        diffs_dir: Directory where per-file diffs are written.
+        gh_repo: Authenticated PyGithub Repository object.
+        head_ref: Commit SHA whose tree to examine.
 
     Returns:
-        Populated FileRecord, or None if the item should be skipped.
+        List of FileRecord instances with status ``A`` and empty ``diff_file``.
     """
-    raw_path: str | None = item.b_path or item.a_path
-    if raw_path is None:
-        return None
-    if Path(raw_path).suffix.lower() not in SOURCE_EXTENSIONS:
-        return None
+    tree = gh_repo.get_git_tree(head_ref, recursive=True)
+    records: list[FileRecord] = []
+    for item in tree.tree:
+        if item.type != "blob":
+            continue
+        path: str = item.path
+        if Path(path).suffix.lower() not in SOURCE_EXTENSIONS:
+            continue
+        is_excluded = any(path.startswith(prefix) for prefix in EXCLUDED_PREFIXES)
+        records.append(
+            FileRecord(
+                path=path,
+                status="A",
+                lines_added=0,
+                lines_deleted=0,
+                is_source=True,
+                is_excluded=is_excluded,
+                diff_file="",
+            )
+        )
+    err_console.print(f"[dim]  {len(records)} source files found in initial tree[/dim]")
+    return records
 
-    raw_diff: bytes = item.diff if isinstance(item.diff, bytes) else b""
-    lines_added, lines_deleted = _count_diff_lines(raw_diff)
-    is_excluded = any(raw_path.startswith(prefix) for prefix in EXCLUDED_PREFIXES)
-    diff_file_rel = "" if is_excluded else _write_diff_file(diffs_dir, raw_path, raw_diff)
 
-    return FileRecord(
-        path=raw_path,
-        status=_diff_status(item),
-        lines_added=lines_added,
-        lines_deleted=lines_deleted,
-        is_source=True,
-        is_excluded=is_excluded,
-        diff_file=diff_file_rel,
-    )
+def collect_file_records(gh_repo: Repository, base_ref: str, head_ref: str, diffs_dir: Path) -> list[FileRecord]:
+    """Extract per-file diff records for the commit range via GitHub API.
 
+    For the empty-tree base (first day of the repository), uses the recursive
+    tree API to list all files at ``head_ref`` and treats them as added. For
+    all other ranges, uses the GitHub compare REST API to get per-file diffs
+    with patch text.
 
-def collect_file_records(repo: Repo, base_ref: str, head_ref: str, diffs_dir: Path) -> list[FileRecord]:
-    """Extract per-file diff records for the given commit range.
-
-    Iterates ``repo.commit(base_ref).diff(repo.commit(head_ref))``, writes
-    per-file ``.diff`` files for non-excluded source files, and returns a
-    list of FileRecord instances.
+    The GitHub compare API supports ranges of up to 300 files. Files beyond
+    that limit are omitted from the comparison response.
 
     Args:
-        repo: Initialised GitPython Repo.
-        base_ref: Git commit SHA for the start of the range (exclusive).
-        head_ref: Git commit SHA for the end of the range (inclusive).
+        gh_repo: Authenticated PyGithub Repository object.
+        base_ref: Git commit SHA before the range (exclusive), or EMPTY_TREE_SHA.
+        head_ref: Git commit SHA at the end of the range (inclusive).
         diffs_dir: Directory path where individual diff files are written.
 
     Returns:
         List of FileRecord instances, one per changed file that matches
         SOURCE_EXTENSIONS.
     """
-    err_console.print(f"[dim]Extracting file diffs {base_ref[:8]}..{head_ref[:8]}[/dim]")
+    err_console.print(f"[dim]Extracting file diffs {base_ref[:8]}..{head_ref[:8]} via GitHub API[/dim]")
     diffs_dir.mkdir(parents=True, exist_ok=True)
 
     if base_ref == EMPTY_TREE_SHA:
-        diff_index = repo.tree(base_ref).diff(repo.commit(head_ref).tree)
-    else:
-        diff_index = repo.commit(base_ref).diff(repo.commit(head_ref))
-    records = [r for item in diff_index if (r := _build_file_record(item, diffs_dir)) is not None]
+        return _collect_initial_file_records(gh_repo, head_ref)
+
+    comparison = gh_repo.compare(base_ref, head_ref)
+    records: list[FileRecord] = []
+    for f in comparison.files:
+        path: str = f.filename
+        if Path(path).suffix.lower() not in SOURCE_EXTENSIONS:
+            continue
+        is_excluded = any(path.startswith(prefix) for prefix in EXCLUDED_PREFIXES)
+        patch: str | None = getattr(f, "patch", None)
+        diff_file = "" if is_excluded else _write_patch_file(diffs_dir, path, patch)
+        lines_added, lines_deleted = _count_patch_lines(patch)
+        records.append(
+            FileRecord(
+                path=path,
+                status=_status_letter(f.status),
+                lines_added=lines_added,
+                lines_deleted=lines_deleted,
+                is_source=True,
+                is_excluded=is_excluded,
+                diff_file=diff_file,
+            )
+        )
 
     err_console.print(f"[dim]  {len(records)} source files processed[/dim]")
     return records
 
 
-def collect_commit_records(repo: Repo, base_ref: str, head_ref: str) -> list[CommitRecord]:
-    """Collect commit metadata for the range base_ref..head_ref.
+# ---------------------------------------------------------------------------
+# Commit record collection
+# ---------------------------------------------------------------------------
+
+
+def _commit_record_from_gh(gh_repo: Repository, sha: str, commit_obj: GitCommit) -> CommitRecord:
+    """Build a CommitRecord from a PyGithub Commit object.
+
+    Fetches the full commit to retrieve ``files_touched``.  This is one extra
+    API call per commit; for a typical daily range of 10-50 commits the
+    overhead is acceptable.
 
     Args:
-        repo: Initialised GitPython Repo.
-        base_ref: Git commit SHA for the start of the range (exclusive).
-        head_ref: Git commit SHA for the end of the range (inclusive).
+        gh_repo: Authenticated PyGithub Repository object.
+        sha: Full commit SHA.
+        commit_obj: PyGithub ``GitCommit`` object (the ``.commit`` sub-object).
+
+    Returns:
+        Populated CommitRecord.
+    """
+    message: str = commit_obj.message or ""
+    lines = message.splitlines()
+    subject = lines[0] if lines else ""
+    body = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
+
+    author = commit_obj.author
+    author_name = (author.name or "") if author else ""
+    author_email = (author.email or "") if author else ""
+    author_str = f"{author_name} <{author_email}>"
+
+    committer = commit_obj.committer
+    if committer and committer.date:
+        date_str = committer.date.strftime("%Y-%m-%dT%H:%M:%SZ")
+    elif author and author.date:
+        date_str = author.date.strftime("%Y-%m-%dT%H:%M:%SZ")
+    else:
+        date_str = ""
+
+    # Fetch per-commit file list for files_touched attribution.
+    try:
+        full_commit = gh_repo.get_commit(sha)
+        files_touched: list[str] = sorted(f.filename for f in full_commit.files)
+    except GithubException:
+        files_touched = []
+
+    return CommitRecord(
+        sha=sha, subject=subject, body=body, author=author_str, date=date_str, files_touched=files_touched
+    )
+
+
+def collect_commit_records(gh_repo: Repository, base_ref: str, head_ref: str) -> list[CommitRecord]:
+    """Collect commit metadata for the range base_ref..head_ref via GitHub API.
+
+    For the empty-tree base (first day), fetches all commits reachable from
+    ``head_ref`` via ``get_commits()``. For all other ranges, uses the GitHub
+    compare REST API (up to 250 commits per comparison).
+
+    Each commit requires one additional API call to retrieve ``files_touched``.
+
+    Args:
+        gh_repo: Authenticated PyGithub Repository object.
+        base_ref: Git commit SHA before the range (exclusive), or EMPTY_TREE_SHA.
+        head_ref: Git commit SHA at the end of the range (inclusive).
 
     Returns:
         List of CommitRecord instances ordered oldest-first.
     """
-    err_console.print(f"[dim]Collecting commits {base_ref[:8]}..{head_ref[:8]}[/dim]")
+    err_console.print(f"[dim]Collecting commits {base_ref[:8]}..{head_ref[:8]} via GitHub API[/dim]")
 
     if base_ref == EMPTY_TREE_SHA:
-        commits: list[Commit] = list(repo.iter_commits(head_ref))
+        # First day: get all commits reachable from head_ref (newest-first from API)
+        raw_commits = list(gh_repo.get_commits(sha=head_ref))
+        raw_commits.reverse()  # oldest-first
     else:
-        commits: list[Commit] = list(repo.iter_commits(f"{base_ref}..{head_ref}"))
-    # iter_commits returns newest-first; reverse to oldest-first
-    commits.reverse()
+        # compare() returns commits oldest-first
+        comparison = gh_repo.compare(base_ref, head_ref)
+        raw_commits = list(comparison.commits)
 
-    records: list[CommitRecord] = []
-    for commit in commits:
-        raw_message = commit.message
-        message: str = raw_message if isinstance(raw_message, str) else ""
-        lines = message.splitlines()
-        subject = lines[0] if lines else ""
-        body = "\n".join(lines[1:]).strip() if len(lines) > 1 else ""
-
-        author_name: str = commit.author.name or ""
-        author_email: str = commit.author.email or ""
-        author_str = f"{author_name} <{author_email}>"
-
-        date_str = commit.committed_datetime.strftime("%Y-%m-%dT%H:%M:%SZ")
-        files_touched: list[str] = sorted(str(k) for k in commit.stats.files)
-
-        records.append(
-            CommitRecord(
-                sha=commit.hexsha,
-                subject=subject,
-                body=body,
-                author=author_str,
-                date=date_str,
-                files_touched=files_touched,
-            )
-        )
+    records: list[CommitRecord] = [
+        _commit_record_from_gh(gh_repo, gh_commit.sha, gh_commit.commit) for gh_commit in raw_commits
+    ]
 
     err_console.print(f"[dim]  {len(records)} commits collected[/dim]")
     return records
 
 
 # ---------------------------------------------------------------------------
-# GitHub helpers
+# GitHub issue helpers
 # ---------------------------------------------------------------------------
-
-
-def _make_github_client(token: str) -> Github:
-    """Create a Github client respecting proxy/SSL environment variables.
-
-    Reads:
-        GITHUB_API_URL: Custom API base URL (default: https://api.github.com).
-        GITHUB_SSL_VERIFY: Set to 'false', '0', or 'no' to disable SSL verification.
-
-    Returns:
-        Configured Github client instance.
-    """
-    base_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-    verify_ssl_str = os.environ.get("GITHUB_SSL_VERIFY", "true").lower()
-    verify: bool = verify_ssl_str not in {"false", "0", "no"}
-    return Github(auth=Auth.Token(token), base_url=base_url, verify=verify)
-
-
-def get_github_repo(gh: Github, repo_slug: str) -> Repository:
-    """Return a PyGithub Repository object.
-
-    Args:
-        gh: Authenticated Github client.
-        repo_slug: Repository slug in ``OWNER/REPO`` format.
-
-    Returns:
-        PyGithub Repository instance.
-
-    Raises:
-        AppExit: When the repository cannot be accessed.
-    """
-    try:
-        return gh.get_repo(repo_slug)
-    except GithubException as exc:
-        raise AppExit(code=1, message=f"Cannot access repo '{repo_slug}': {exc}") from exc
 
 
 def _extract_issue_numbers(commit_records: list[CommitRecord]) -> list[int]:
@@ -444,32 +440,22 @@ def _extract_issue_numbers(commit_records: list[CommitRecord]) -> list[int]:
     return sorted(seen)
 
 
-def collect_issue_records(commit_records: list[CommitRecord], repo_slug: str) -> list[IssueRecord]:
+def collect_issue_records(commit_records: list[CommitRecord], gh_repo: Repository) -> list[IssueRecord]:
     """Fetch GitHub issues/PRs referenced in commit messages.
-
-    If ``GITHUB_TOKEN`` is not set, prints a warning to stderr and returns an
-    empty list rather than failing.
 
     Args:
         commit_records: Commits to scan for issue references.
-        repo_slug: GitHub ``OWNER/REPO`` slug used to fetch issues.
+        gh_repo: Authenticated PyGithub Repository object.
 
     Returns:
         List of IssueRecord instances for each referenced issue number.
     """
-    token = os.environ.get("GITHUB_TOKEN")
-    if not token:
-        err_console.print("[yellow]Warning: GITHUB_TOKEN not set — skipping GitHub issue fetch[/yellow]")
-        return []
-
     issue_numbers = _extract_issue_numbers(commit_records)
     if not issue_numbers:
         err_console.print("[dim]No issue references found in commits[/dim]")
         return []
 
     err_console.print(f"[dim]Fetching {len(issue_numbers)} referenced GitHub issues[/dim]")
-    gh = _make_github_client(token)
-    gh_repo = get_github_repo(gh, repo_slug)
 
     records: list[IssueRecord] = []
     for number in issue_numbers:
@@ -575,20 +561,29 @@ def main(
     - ``issues.json``: GitHub issues referenced via closes/fixes/resolves #N
 
     Progress summaries are printed to stderr; no output is written to stdout.
+
+    Uses the GitHub REST API — no local git repository is required.
+    GITHUB_TOKEN must be set in the environment.
     """
     err_console.print(f"[bold]collect_day_dataset[/bold] {base_ref[:8]}..{head_ref[:8]} -> {output_dir}")
 
-    repo = get_git_repo()
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        raise AppExit(code=1, message="GITHUB_TOKEN environment variable not set")
+
+    gh = make_github_client(token)
+    gh_repo = get_github_repo(gh, repo_slug)
+
     diffs_dir = output_dir / "dataset" / "diffs"
 
     err_console.print("[dim]Step 1/3: file diffs[/dim]")
-    file_records = collect_file_records(repo, base_ref, head_ref, diffs_dir)
+    file_records = collect_file_records(gh_repo, base_ref, head_ref, diffs_dir)
 
     err_console.print("[dim]Step 2/3: commit metadata[/dim]")
-    commit_records = collect_commit_records(repo, base_ref, head_ref)
+    commit_records = collect_commit_records(gh_repo, base_ref, head_ref)
 
     err_console.print("[dim]Step 3/3: GitHub issues[/dim]")
-    issue_records = collect_issue_records(commit_records, repo_slug)
+    issue_records = collect_issue_records(commit_records, gh_repo)
 
     write_dataset(output_dir, file_records, commit_records, issue_records)
 
