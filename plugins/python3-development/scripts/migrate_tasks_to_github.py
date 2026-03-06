@@ -49,8 +49,8 @@ if TYPE_CHECKING:
 # backlog_core path setup — conditional import guard
 # ---------------------------------------------------------------------------
 
-# parents[0] = scripts/   parents[1] = python3-development/
-# parents[2] = plugins/   parents[3] = project root (claude_skills/)
+# _SCRIPT_DIR = scripts/  parents[0] = python3-development/
+# parents[1] = plugins/   parents[2] = project root (claude_skills/)
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parents[2]
 _BACKLOG_CORE = _PROJECT_ROOT / ".claude" / "skills" / "backlog" / "backlog_core"
