@@ -477,6 +477,17 @@ def handle_activity_update(hook_input: dict[str, Any]) -> None:
         sys.exit(0)
 
     resolved_path, content = resolved
+
+    # Guard: skip silently if task is already complete
+    if has_yaml_frontmatter(content):
+        try:
+            frontmatter, _ = parse_yaml_frontmatter(content)
+            current_status = normalize_status(str(frontmatter.get("status", "")))
+            if current_status == "complete":
+                return
+        except (ValueError, TypeError):
+            pass
+
     timestamp = get_iso_timestamp()
 
     try:

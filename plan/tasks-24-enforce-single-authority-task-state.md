@@ -23,7 +23,7 @@ tasks:
 
 task: "1.1"
 title: "Add claim-task command and update get_ready_tasks docstring in implementation_manager.py"
-status: not-started
+status: complete
 agent: python3-development:python-cli-architect
 dependencies: []
 priority: 1
@@ -35,6 +35,8 @@ parallelize-with: ["1.2"]
 reason: "Task 1.2 writes only task_status_hook.py; task 1.1 writes only implementation_manager.py. No file conflict."
 handoff: "Report: diff of implementation_manager.py showing new claim_task function and updated get_ready_tasks docstring; output of `uv run implementation_manager.py claim-task --help`; any blocking issues."
 
+started: "2026-03-06T05:50:30Z"
+completed: "2026-03-06T05:51:00Z"
 ---
 
 ## Context
@@ -170,7 +172,7 @@ Add `claim-task` as a new Typer command to `implementation_manager.py` and updat
 
 task: "1.2"
 title: "Add last_activity guard to task_status_hook.py handle_activity_update"
-status: not-started
+status: complete
 agent: python3-development:python-cli-architect
 dependencies: []
 priority: 1
@@ -182,6 +184,8 @@ parallelize-with: ["1.1"]
 reason: "Task 1.1 writes only implementation_manager.py; task 1.2 writes only task_status_hook.py. No file conflict."
 handoff: "Report: exact lines changed in task_status_hook.py; confirmation that handle_subagent_stop is unchanged; linting result."
 
+started: "2026-03-06T05:50:46Z"
+completed: "2026-03-06T05:51:00Z"
 ---
 
 ## Context
@@ -258,7 +262,7 @@ Add a status check in `handle_activity_update()` that skips writing `last_activi
 
 task: "2.1"
 title: "Replace step 3 in start-task SKILL.md with claim-task invocation"
-status: not-started
+status: complete
 agent: general-purpose
 dependencies: ["1.1"]
 priority: 2
@@ -269,6 +273,8 @@ parallelize-with: ["2.2"]
 reason: "Task 2.1 writes only .claude/skills/start-task/SKILL.md; task 2.2 writes only .claude/docs/TASK_FILE_FORMAT.md. No file conflict. Both depend on 1.1 being complete (claim-task must exist before the skill references it)."
 handoff: "Report: diff of SKILL.md showing step 3 replacement; confirmation that all other steps are unchanged; linting result."
 
+started: "2026-03-06T05:55:20Z"
+completed: "2026-03-06T05:55:20Z"
 ---
 
 ## Context
@@ -396,7 +402,7 @@ Replace the current step 3 in `.claude/skills/start-task/SKILL.md` with the `cla
 
 task: "2.2"
 title: "Replace Authorized Writers section in TASK_FILE_FORMAT.md"
-status: not-started
+status: complete
 agent: general-purpose
 dependencies: ["1.1"]
 priority: 2
@@ -407,6 +413,8 @@ parallelize-with: ["2.1"]
 reason: "Task 2.2 writes only .claude/docs/TASK_FILE_FORMAT.md; task 2.1 writes only .claude/skills/start-task/SKILL.md. No file conflict. Both depend on 1.1 being complete (claim-task must exist before it is documented as a writer)."
 handoff: "Report: confirmation that Authorized Writers section is replaced and all other sections unchanged; linting result."
 
+started: "2026-03-06T05:55:20Z"
+completed: "2026-03-06T05:55:20Z"
 ---
 
 ## Context
@@ -471,7 +479,7 @@ Replace the entire "Authorized Writers" section in `.claude/docs/TASK_FILE_FORMA
 
 task: "3.1"
 title: "Verification — smoke-test claim-task command end-to-end"
-status: not-started
+status: complete
 agent: python3-development:python-cli-architect
 dependencies: ["1.1", "1.2", "2.1", "2.2"]
 priority: 3
@@ -483,6 +491,8 @@ parallelize-with: []
 reason: "Terminal verification task; no parallelization."
 handoff: "Report: output of each verification command; pass/fail per acceptance criterion; any failures with exact error text."
 
+started: "2026-03-06T05:58:34Z"
+completed: "2026-03-06T05:58:34Z"
 ---
 
 ## Context

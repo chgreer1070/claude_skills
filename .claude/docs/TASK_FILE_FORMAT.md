@@ -174,16 +174,61 @@ Report:
 
 ## Authorized Writers
 
-Only designated scripts should write or update task data files. Direct edits by agents or
-humans should be confined to the markdown body — never the YAML frontmatter — unless performing
-a deliberate manual migration.
+Task metadata fields are owned by specific components. Only the designated component for
+a field may write that field. No other component (including LLM agents acting via Edit
+tool calls) may write lifecycle fields (`status`, `started`, `completed`, `last_activity`) except
+through the designated path.
 
-| Script | Purpose | Path |
-|--------|---------|------|
-| `implementation_manager.py` | Read-only status queries, ready-tasks, and task file parsing | `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` |
-| `task_status_hook.py` | Timestamp and status updates from hooks | `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` |
-| `split_task_file.py` | Splits monolithic task files into per-task files | `plugins/python3-development/scripts/split_task_file.py` |
-| `migrate_task_format.py` | Converts legacy markdown to YAML frontmatter | `plugins/python3-development/scripts/migrate_task_format.py` |
+This prevents the following observed failure modes:
+
+- Dual-dispatch (two agents claiming the same task)
+- Overwritten `started` timestamps on agent retry
+- `last_activity` updates written to completed tasks
+
+The table below lists every writeable field, its authorized writer, and the trigger that
+fires the write.
+
+| Field | Authorized Writer | Trigger | Guard | Notes |
+|-------|-----------------|---------|-------|-------|
+| `status: not-started` | `swarm-task-planner` agent (file creation) | Task file generation | N/A — initial write only | Set once at file creation. Never written again by any component. |
+| `status: in-progress` | `implementation_manager.py claim-task` | `start-task` skill step 3 (agent invokes CLI) | Read-check-write: refuses if current status is not `not-started` | Agent must NOT write this field directly via Edit tool. |
+| `status: complete` | `task_status_hook.py` SubagentStop handler | Claude Code `SubagentStop` hook event | None — SubagentStop fires once per sub-agent | May also be written by `start-task` `--complete` path; hook overwrites with later timestamp. |
+| `status: blocked` | Human operator or `start-task` agent | Manual intervention or acceptance criteria failure | None | Agent may set this when blocked on external dependency. |
+| `started` | `implementation_manager.py claim-task` | Same as `status: in-progress` | Conditional: written only if field is absent. Existing value preserved on retry. | Preserving the original timestamp maintains accurate audit trail on agent retry. |
+| `completed` | `task_status_hook.py` SubagentStop handler | Claude Code `SubagentStop` hook event | None | Also writable by `start-task --complete` path; hook overwrites. |
+| `last_activity` | `task_status_hook.py` PostToolUse handler | Claude Code `PostToolUse` hook (Write, Edit, Bash tools) | Added guard: skip write if task status is `complete` | Prevents stale activity stamps on completed tasks (Gap 4). |
+| `divergence-notes` (count) | `start-task` skill (agent direct write via Edit) | Agent detects implementation divergence from architect spec | None | Appended integer count. Body content (`## Divergence Notes`) is also agent-written. |
+| `task`, `title`, `agent`, `dependencies`, `priority`, `complexity`, `created`, `skills`, `issue-classification`, `scenario-target`, `analysis-method` | `swarm-task-planner` agent (file creation) | Task file generation | N/A — set at creation | These fields describe task intent and scheduling. No lifecycle component writes them after creation. |
+
+### Field Ownership Rules
+
+1. `status: in-progress` and `started` are written ONLY by `implementation_manager.py claim-task`.
+   LLM agents in the `start-task` skill must invoke `claim-task` via `uv run` and check exit code.
+   Direct Edit of these fields by agents is an architectural violation.
+
+2. `status: complete` and `completed` are written ONLY by `task_status_hook.py` SubagentStop handler.
+   The `start-task --complete` path also writes these fields as a convenience, but the hook
+   always overwrites them at SubagentStop time. If both paths fire, the hook timestamp wins.
+
+3. `last_activity` is written ONLY by `task_status_hook.py` PostToolUse handler, and only when
+   the task status is not `complete`. Writing `last_activity` to a completed task is a no-op.
+
+4. `divergence-notes` (count) and the `## Divergence Notes` body section are written ONLY by the
+   executing agent via the `start-task` skill. These are not lifecycle fields.
+
+5. All other fields (`task`, `title`, `agent`, `dependencies`, `priority`, `complexity`, `created`, `skills`,
+   and analytical metadata fields) are written ONCE at task file creation by `swarm-task-planner`.
+   No component modifies them after creation.
+
+### Scripts
+
+| Script | Role | Writes |
+|--------|------|--------|
+| `implementation_manager.py` | CLI for status queries AND `claim-task` | `status: in-progress`, `started` (via `claim-task` only) |
+| `task_status_hook.py` | Hook handler for Claude Code events | `status: complete`, `completed`, `last_activity` |
+| `swarm-task-planner` (agent) | Task file generator | All fields at creation |
+| `split_task_file.py` | Structural: splits monolithic task files into per-task files | Full frontmatter (preserved from source, not lifecycle transition) |
+| `migrate_task_format.py` | Structural: converts legacy markdown to YAML frontmatter | Full frontmatter (format migration, not lifecycle transition) |
 
 Task data files MUST contain raw YAML frontmatter starting with `---`. Agents generating task
 files SHOULD produce content matching this format directly. When the generator is an LLM agent

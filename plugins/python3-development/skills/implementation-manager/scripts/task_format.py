@@ -262,6 +262,10 @@ def normalize_status(old_status: str) -> str:
     """
     status_clean = old_status.strip()
 
+    # Fast path: already a valid normalized status (e.g. "in-progress", "not-started")
+    if status_clean in VALID_STATUSES:
+        return status_clean
+
     # Remove common Unicode emoji characters
     status_clean = (
         status_clean
