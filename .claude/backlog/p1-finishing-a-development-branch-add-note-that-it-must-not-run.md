@@ -9,7 +9,7 @@ metadata:
   type: Docs
   status: needs-grooming
   issue: '#430'
-  last_synced: '2026-03-06T05:50:51Z'
+  last_synced: '2026-03-06T21:54:23Z'
 ---
 
 ## Story

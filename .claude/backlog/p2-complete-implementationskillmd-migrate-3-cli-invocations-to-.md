@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: needs-grooming
   issue: '#397'
-  last_synced: '2026-03-06T05:50:53Z'
+  last_synced: '2026-03-06T21:54:25Z'
   plan: plan/tasks-20-backlog-mcp-migration-followup-1.md
 ---
 

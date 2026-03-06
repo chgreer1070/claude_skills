@@ -7,11 +7,55 @@ metadata:
   added: '2026-03-06'
   priority: P1
   type: Refactor
-  status: open
+  status: in-progress
   issue: '#480'
-  last_synced: '2026-03-06T06:42:03Z'
+  last_synced: '2026-03-06T21:54:09Z'
   groomed: '2026-03-06'
+  plan: plan/tasks-2-migrate-sam-task-github-subissues.md
 ---
+
+## Story
+
+As a **maintainer of the codebase**, I want to **migrate sam task tracking from local markdown files to github sub-issues via backlog mcp** so that **the code is cleaner and more maintainable**.
+
+## Description
+
+Currently the SAM workflow splits task tracking across two systems:
+- GitHub Issues (via backlog MCP) for stories/backlog items
+- Local `plan/tasks-*.md` files for task status, with `implementation_manager.py` and `task_status_hook.py` managing state
+
+**Proposed architecture:** Unify everything in GitHub Issues using sub-issues.
+- Stories = GitHub Issues (existing)
+- Tasks within a story = GitHub sub-issues of the story issue
+- Research artifacts = tracked as linked issues or issue comments
+- Backlog MCP = extended to handle sub-issue CRUD, status transitions, and readiness queries
+
+**What needs to change:**
+1. Extend backlog MCP server to support sub-issue creation, status query, and dependency-based readiness logic
+2. Replace `implementation_manager.py` task status queries with MCP calls to GitHub sub-issues
+3. Replace `task_status_hook.py` file edits with GitHub API calls (via MCP or CLI) on `PostToolUse`/`SubagentStop` events
+4. Add research artifact tracking (currently absent) as linked issues on the story
+5. Decide offline/network dependency tradeoff — current system works without GitHub; sub-issues require network on every status check
+
+**Benefits:**
+- Single source of truth — no drift between local files and GitHub state
+- Removes accidental complexity (local markdown task files existed because sub-issues weren't prioritized)
+- Better visibility for collaborators
+- Backlog MCP already does CRUD on issues — extending to sub-issues is natural
+
+**Key risk:** Hook scripts fire frequently (every Write/Edit/Bash in a task session); each hook becoming a GitHub API call adds latency and network dependency.
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Architecture discussion — session 2026-03-06
+- **Priority**: P1
+- **Added**: 2026-03-06
+- **Research questions**: None
 
 ## Fact-Check
 
