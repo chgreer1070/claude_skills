@@ -21,19 +21,18 @@ environments where ``git push`` to origin returns HTTP 403.
 from __future__ import annotations
 
 import os
+from pathlib import Path  # noqa: TC003
+from typing import TYPE_CHECKING, Annotated
 
 from dotenv import load_dotenv
 
 load_dotenv()
-from typing import TYPE_CHECKING, Annotated
 
 import typer
 from github import Auth, Github, GithubException
 from rich.console import Console
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from github.Repository import Repository
 
 app = typer.Typer(
