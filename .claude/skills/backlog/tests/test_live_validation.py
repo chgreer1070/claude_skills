@@ -208,11 +208,8 @@ class TestLiveLifecycle:
         assert isinstance(result["messages"], list)
 
     async def test_l10_close_full_lifecycle_end(self, live_items):
-        """L10: backlog_close with checklist_pass=True closes the item."""
-        result = await _call(
-            "backlog_close",
-            {"selector": live_items["item_title"], "plan": "plan/live-test-plan.md", "checklist_pass": True},
-        )
+        """L10: backlog_close with reason closes the item."""
+        result = await _call("backlog_close", {"selector": live_items["item_title"], "reason": "wontfix"})
 
         assert result["closed"] is True
         assert isinstance(result["messages"], list)
@@ -239,7 +236,7 @@ class TestLiveLifecycle:
         # Resolve it
         resolve_result = await _call(
             "backlog_resolve",
-            {"selector": f"{prefix} Live Resolve Item", "reason": "No longer needed — live test cleanup"},
+            {"selector": f"{prefix} Live Resolve Item", "summary": "No longer needed — live test cleanup"},
         )
 
         assert resolve_result["resolved"] is True

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Annotated
 
 from fastmcp import FastMCP
@@ -14,7 +15,7 @@ mcp = FastMCP("backlog")
 
 
 @mcp.tool()
-def backlog_add(
+async def backlog_add(
     title: Annotated[str, Field(description="Item title")],
     priority: Annotated[str, Field(description="Priority level: P0, P1, P2, or Ideas")],
     description: Annotated[str, Field(description="Item description")],
@@ -36,7 +37,8 @@ def backlog_add(
     """
     out = Output()
     try:
-        result = operations.add_item(
+        result = await asyncio.to_thread(
+            operations.add_item,
             title=title,
             priority=priority,
             description=description,
@@ -52,7 +54,7 @@ def backlog_add(
 
 
 @mcp.tool()
-def backlog_list(
+async def backlog_list(
     with_status: Annotated[bool, Field(description="Include GitHub issue status for each item")] = False,
     from_github: Annotated[bool, Field(description="Refresh local cache from GitHub Issues before listing")] = False,
     label: Annotated[str | None, Field(description="Filter by GitHub label (e.g. 'priority:p1', 'type:bug')")] = None,
@@ -80,7 +82,8 @@ def backlog_list(
     """
     out = Output()
     try:
-        result = operations.list_items(
+        result = await asyncio.to_thread(
+            operations.list_items,
             with_status=with_status,
             from_github=from_github,
             label=label,
@@ -95,7 +98,7 @@ def backlog_list(
 
 
 @mcp.tool()
-def backlog_view(
+async def backlog_view(
     selector: Annotated[str, Field(description="Item selector: GitHub issue URL, #N, bare number, or title substring")],
     offset: Annotated[int, Field(ge=0, description="Skip N lines from body start (for pagination)")] = 0,
     limit: Annotated[int, Field(ge=0, description="Show at most N body lines (0 = all, no truncation)")] = 0,
@@ -112,14 +115,16 @@ def backlog_view(
     """
     out = Output()
     try:
-        result = operations.view_item(selector=selector, offset=offset, limit=limit, output=out)
+        result = await asyncio.to_thread(
+            operations.view_item, selector=selector, offset=offset, limit=limit, output=out
+        )
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
 
 
 @mcp.tool()
-def backlog_sync(
+async def backlog_sync(
     dry_run: Annotated[bool, Field(description="Preview what would be synced without making changes")] = False,
 ) -> dict:
     """Sync backlog items with GitHub: create missing issues and push groomed content.
@@ -132,14 +137,14 @@ def backlog_sync(
     """
     out = Output()
     try:
-        result = operations.sync_items(dry_run=dry_run, output=out)
+        result = await asyncio.to_thread(operations.sync_items, dry_run=dry_run, output=out)
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
 
 
 @mcp.tool()
-def backlog_close(
+async def backlog_close(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     reason: Annotated[
         str,
@@ -167,7 +172,8 @@ def backlog_close(
     """
     out = Output()
     try:
-        result = operations.close_item(
+        result = await asyncio.to_thread(
+            operations.close_item,
             selector=selector,
             reason=reason,
             reference=reference,
@@ -182,7 +188,7 @@ def backlog_close(
 
 
 @mcp.tool()
-def backlog_resolve(
+async def backlog_resolve(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     summary: Annotated[str, Field(description="What was done — 1-2 sentence completion summary (required)")],
     plan: Annotated[str | None, Field(description="Plan path or completion reference")] = None,
@@ -207,7 +213,8 @@ def backlog_resolve(
     """
     out = Output()
     try:
-        result = operations.resolve_item(
+        result = await asyncio.to_thread(
+            operations.resolve_item,
             selector=selector,
             summary=summary,
             plan=plan or "",
@@ -225,7 +232,7 @@ def backlog_resolve(
 
 
 @mcp.tool()
-def backlog_update(
+async def backlog_update(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     plan: Annotated[str | None, Field(description="Path to a plan file to attach to the item")] = None,
     status: Annotated[
@@ -272,7 +279,8 @@ def backlog_update(
     """
     out = Output()
     try:
-        result = operations.update_item(
+        result = await asyncio.to_thread(
+            operations.update_item,
             selector=selector,
             plan=plan,
             status=status,
@@ -290,7 +298,7 @@ def backlog_update(
 
 
 @mcp.tool()
-def backlog_groom(
+async def backlog_groom(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     groomed_content: Annotated[
         str | None,
@@ -315,8 +323,13 @@ def backlog_groom(
     """
     out = Output()
     try:
-        result = operations.groom_item(
-            selector=selector, groomed_content=groomed_content, section=section, content=content, output=out
+        result = await asyncio.to_thread(
+            operations.groom_item,
+            selector=selector,
+            groomed_content=groomed_content,
+            section=section,
+            content=content,
+            output=out,
         )
         return {**result, **out.to_dict()}
     except BacklogError as e:
@@ -324,7 +337,7 @@ def backlog_groom(
 
 
 @mcp.tool()
-def backlog_normalize(
+async def backlog_normalize(
     dry_run: Annotated[bool, Field(description="Preview normalization changes without modifying files")] = False,
 ) -> dict:
     """Normalize all per-item files to research-style metadata format and remove body duplication.
@@ -338,14 +351,14 @@ def backlog_normalize(
     """
     out = Output()
     try:
-        result = operations.normalize_items(dry_run=dry_run, output=out)
+        result = await asyncio.to_thread(operations.normalize_items, dry_run=dry_run, output=out)
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
 
 
 @mcp.tool()
-def backlog_pull(
+async def backlog_pull(
     selector: Annotated[
         str | None,
         Field(
@@ -373,9 +386,9 @@ def backlog_pull(
     out = Output()
     try:
         if selector is not None:
-            result = operations.pull_by_selector(selector, output=out)
+            result = await asyncio.to_thread(operations.pull_by_selector, selector, output=out)
             return {**result, **out.to_dict()}
-        result = operations.pull_items(dry_run=dry_run, force=force, output=out)
+        result = await asyncio.to_thread(operations.pull_items, dry_run=dry_run, force=force, output=out)
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}

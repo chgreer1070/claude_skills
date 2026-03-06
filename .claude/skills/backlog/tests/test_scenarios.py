@@ -161,15 +161,13 @@ class TestWorkBacklogItem:
             assert isinstance(result.get("body_remaining_lines"), int)
             assert isinstance(result.get("body_total_lines"), int)
 
-    async def test_close_with_checklist_pass(self, backlog_dir, mock_github, write_test_item):
-        """Scenario 11: backlog_close closes an item when checklist_pass=True and no blocking PRs."""
+    async def test_close_with_reason(self, backlog_dir, mock_github, write_test_item):
+        """Scenario 11: backlog_close closes an item with a reason and no blocking PRs."""
         write_test_item("Close Test Item", issue="#42")
         mock_github["check_open_prs_for_issue"].return_value = []
         mock_github["close_github_issue"].return_value = None
 
-        result = await _call(
-            "backlog_close", {"selector": "Close Test Item", "plan": "plan/test-plan.md", "checklist_pass": True}
-        )
+        result = await _call("backlog_close", {"selector": "Close Test Item", "reason": "wontfix"})
 
         assert result["title"] == "Close Test Item"
         assert result["closed"] is True
@@ -219,13 +217,13 @@ class TestWorkBacklogItem:
         assert isinstance(result["warnings"], list)
         assert isinstance(result["errors"], list)
 
-    async def test_resolve_with_reason(self, backlog_dir, mock_github, write_test_item):
+    async def test_resolve_with_summary(self, backlog_dir, mock_github, write_test_item):
         """Scenario 12: backlog_resolve marks item resolved and calls resolve_github_issue."""
         write_test_item("Resolve Test Item", issue="#55")
         mock_github["check_open_prs_for_issue"].return_value = []
         mock_github["resolve_github_issue"].return_value = None
 
-        result = await _call("backlog_resolve", {"selector": "Resolve Test Item", "reason": "No longer needed"})
+        result = await _call("backlog_resolve", {"selector": "Resolve Test Item", "summary": "No longer needed"})
 
         assert result["title"] == "Resolve Test Item"
         assert result["resolved"] is True
@@ -242,7 +240,7 @@ class TestWorkBacklogItem:
         mock_github["get_github"].return_value = MagicMock()
 
         result = await _call(
-            "backlog_resolve", {"selector": "Cleanup Resolve Item", "reason": "Duplicate of #10", "cleanup": True}
+            "backlog_resolve", {"selector": "Cleanup Resolve Item", "summary": "Duplicate of #10", "cleanup": True}
         )
 
         assert result["resolved"] is True
@@ -471,16 +469,13 @@ class TestErrorPaths:
     add duplicate, list empty backlog.
     """
 
-    async def test_close_without_checklist_pass(self, backlog_dir, mock_github, write_test_item):
-        """Scenario 22: backlog_close returns error when checklist_pass=False."""
+    async def test_close_with_invalid_reason(self, backlog_dir, mock_github, write_test_item):
+        """Scenario 22: backlog_close returns error for an invalid reason value."""
         write_test_item("Error Close Test")
 
-        result = await _call(
-            "backlog_close", {"selector": "Error Close Test", "plan": "plan/test.md", "checklist_pass": False}
-        )
+        result = await _call("backlog_close", {"selector": "Error Close Test", "reason": "invalid_reason_value"})
 
         assert "error" in result
-        assert "checklist" in result["error"].lower()
         assert isinstance(result["messages"], list)
         assert isinstance(result["warnings"], list)
         assert isinstance(result["errors"], list)
@@ -568,10 +563,7 @@ class TestLifecycles:
         mock_github["check_open_prs_for_issue"].return_value = []
         mock_github["close_github_issue"].return_value = None
 
-        close_result = await _call(
-            "backlog_close",
-            {"selector": "Lifecycle Close Item", "plan": "plan/lifecycle-test.md", "checklist_pass": True},
-        )
+        close_result = await _call("backlog_close", {"selector": "Lifecycle Close Item", "reason": "wontfix"})
         assert close_result["closed"] is True
         assert isinstance(close_result["messages"], list)
 
@@ -608,7 +600,7 @@ class TestLifecycles:
 
         resolve_result = await _call(
             "backlog_resolve",
-            {"selector": "Lifecycle Resolve Item", "reason": "Superseded by other work", "cleanup": True},
+            {"selector": "Lifecycle Resolve Item", "summary": "Superseded by other work", "cleanup": True},
         )
         assert resolve_result["resolved"] is True
         remaining = list(backlog_dir.glob("*resolve*"))

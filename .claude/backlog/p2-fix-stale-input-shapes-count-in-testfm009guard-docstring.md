@@ -5,8 +5,8 @@ metadata:
   topic: fix-stale-input-shapes-count-in-testfm009guard-docstring
   source: Code review — tasks-28 followup analysis (2026-03-06)
   added: '2026-03-06'
-  priority: P2
+  priority: completed
   type: Docs
-  status: open
+  status: done
   plan: plan/tasks-29-multi-ecosystem-plugin-creator-followup-4.md
 ---

@@ -272,15 +272,14 @@ async def test_backlog_close_success_returns_closed_item():
     """backlog_close calls operations.close_item and merges result."""
     op_result = {"title": "Done Feature", "issue": "#7"}
     with patch("backlog_core.operations.close_item", return_value=op_result) as mock_close:
-        response = await _call(
-            "backlog_close", {"selector": "Done Feature", "plan": "plan/tasks-done.md", "checklist_pass": True}
-        )
+        response = await _call("backlog_close", {"selector": "Done Feature", "reason": "wontfix"})
 
     mock_close.assert_called_once()
     call_kwargs = mock_close.call_args.kwargs
     assert call_kwargs["selector"] == "Done Feature"
-    assert call_kwargs["plan"] == "plan/tasks-done.md"
-    assert call_kwargs["checklist_pass"] is True
+    assert call_kwargs["reason"] == "wontfix"
+    assert call_kwargs["reference"] == ""
+    assert call_kwargs["comment"] == ""
     assert call_kwargs["cleanup"] is False
     assert call_kwargs["force"] is False
     assert response["title"] == "Done Feature"
@@ -290,10 +289,7 @@ async def test_backlog_close_passes_cleanup_and_force():
     """backlog_close forwards cleanup and force flags."""
     op_result = {"title": "Item", "issue": "#5"}
     with patch("backlog_core.operations.close_item", return_value=op_result) as mock_close:
-        await _call(
-            "backlog_close",
-            {"selector": "Item", "plan": "complete", "checklist_pass": True, "cleanup": True, "force": True},
-        )
+        await _call("backlog_close", {"selector": "Item", "reason": "duplicate", "cleanup": True, "force": True})
 
     call_kwargs = mock_close.call_args.kwargs
     assert call_kwargs["cleanup"] is True
@@ -302,10 +298,10 @@ async def test_backlog_close_passes_cleanup_and_force():
 
 async def test_backlog_close_backlog_error_returns_error_key():
     """backlog_close catches BacklogError (e.g. item not found)."""
-    with patch("backlog_core.operations.close_item", side_effect=BacklogError("checklist not passed")):
-        response = await _call("backlog_close", {"selector": "Item", "plan": "summary", "checklist_pass": False})
+    with patch("backlog_core.operations.close_item", side_effect=BacklogError("item not found")):
+        response = await _call("backlog_close", {"selector": "Item", "reason": "wontfix"})
 
-    assert response["error"] == "checklist not passed"
+    assert response["error"] == "item not found"
 
 
 # ---------------------------------------------------------------------------
@@ -315,25 +311,25 @@ async def test_backlog_close_backlog_error_returns_error_key():
 
 async def test_backlog_resolve_success_returns_resolved_item():
     """backlog_resolve calls operations.resolve_item and merges result."""
-    op_result = {"title": "Old Feature", "reason": "duplicate of #10", "issue": "#3"}
+    op_result = {"title": "Old Feature", "summary": "duplicate of #10", "issue": "#3"}
     with patch("backlog_core.operations.resolve_item", return_value=op_result) as mock_resolve:
-        response = await _call("backlog_resolve", {"selector": "Old Feature", "reason": "duplicate of #10"})
+        response = await _call("backlog_resolve", {"selector": "Old Feature", "summary": "duplicate of #10"})
 
     mock_resolve.assert_called_once()
     call_kwargs = mock_resolve.call_args.kwargs
     assert call_kwargs["selector"] == "Old Feature"
-    assert call_kwargs["reason"] == "duplicate of #10"
+    assert call_kwargs["summary"] == "duplicate of #10"
     assert call_kwargs["cleanup"] is False
     assert call_kwargs["force"] is False
     assert response["title"] == "Old Feature"
-    assert response["reason"] == "duplicate of #10"
+    assert response["summary"] == "duplicate of #10"
 
 
 async def test_backlog_resolve_passes_cleanup_and_force():
     """backlog_resolve forwards cleanup and force to operations."""
-    op_result = {"title": "Item", "reason": "out of scope", "issue": ""}
+    op_result = {"title": "Item", "summary": "out of scope", "issue": ""}
     with patch("backlog_core.operations.resolve_item", return_value=op_result) as mock_resolve:
-        await _call("backlog_resolve", {"selector": "Item", "reason": "out of scope", "cleanup": True, "force": True})
+        await _call("backlog_resolve", {"selector": "Item", "summary": "out of scope", "cleanup": True, "force": True})
 
     call_kwargs = mock_resolve.call_args.kwargs
     assert call_kwargs["cleanup"] is True
@@ -343,7 +339,7 @@ async def test_backlog_resolve_passes_cleanup_and_force():
 async def test_backlog_resolve_backlog_error_returns_error_key():
     """backlog_resolve catches BacklogError when resolution fails."""
     with patch("backlog_core.operations.resolve_item", side_effect=BacklogError("open PRs exist")):
-        response = await _call("backlog_resolve", {"selector": "Item", "reason": "no longer needed"})
+        response = await _call("backlog_resolve", {"selector": "Item", "summary": "no longer needed"})
 
     assert response["error"] == "open PRs exist"
 
@@ -638,8 +634,8 @@ async def test_output_fields_always_present_on_success(tool_name, params, mock_t
         ("backlog_list", {}, "backlog_core.operations.list_items"),
         ("backlog_view", {"selector": "#1"}, "backlog_core.operations.view_item"),
         ("backlog_sync", {}, "backlog_core.operations.sync_items"),
-        ("backlog_close", {"selector": "X", "plan": "p"}, "backlog_core.operations.close_item"),
-        ("backlog_resolve", {"selector": "X", "reason": "r"}, "backlog_core.operations.resolve_item"),
+        ("backlog_close", {"selector": "X", "reason": "wontfix"}, "backlog_core.operations.close_item"),
+        ("backlog_resolve", {"selector": "X", "summary": "done"}, "backlog_core.operations.resolve_item"),
         ("backlog_update", {"selector": "X"}, "backlog_core.operations.update_item"),
         ("backlog_groom", {"selector": "X"}, "backlog_core.operations.groom_item"),
         ("backlog_normalize", {}, "backlog_core.operations.normalize_items"),
