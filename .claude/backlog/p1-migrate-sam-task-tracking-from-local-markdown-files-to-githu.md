@@ -9,7 +9,7 @@ metadata:
   type: Refactor
   status: open
   issue: '#480'
-  last_synced: '2026-03-06T06:26:42Z'
+  last_synced: '2026-03-06T06:32:34Z'
   groomed: '2026-03-06'
 ---
 
@@ -231,3 +231,13 @@ Rationale: Three distinct systems must change in coordination (query layer, hook
 - Phase 2: Replace `implementation_manager.py` query path with GitHub sub-issue queries (read path only)
 - Phase 3: Replace `task_status_hook.py` write path with GitHub API calls (or implement local+sync hybrid)
 - Phase 4: Update skill documentation and remove local task file format dependencies
+
+### Decision
+
+**Date**: 2026-03-06
+
+**1. Preview API risk**: ACCEPTED — build now using sub-issues REST API despite public preview status.
+
+**2. Offline/cache strategy**: Same as current backlog MCP — local files are the cache/interface layer. All GitHub state is mirrored to local files; hooks read/write local cache and sync to GitHub when available. No degraded-mode logic needed beyond what backlog MCP already implements.
+
+**3. Dependency model**: Under investigation. User direction: GitHub Projects v2 may offer relationship fields beyond parent-child. Fallback: named list in issue body referencing other issues by number. Sub-agent researching options — decision pending research output.
