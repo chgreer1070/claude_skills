@@ -545,6 +545,58 @@ async def test_backlog_pull_backlog_error_returns_error_key():
     assert response["error"] == "no GitHub token"
 
 
+async def test_backlog_pull_with_issue_number_selector_calls_pull_by_selector():
+    """backlog_pull(selector='#321') routes to operations.pull_by_selector."""
+    op_result = {"file_path": "/tmp/test.md"}
+    with patch("backlog_core.operations.pull_by_selector", return_value=op_result) as mock_pull:
+        response = await _call("backlog_pull", {"selector": "#321"})
+
+    mock_pull.assert_called_once()
+    assert response["file_path"] == "/tmp/test.md"
+
+
+async def test_backlog_pull_with_url_selector_calls_pull_by_selector():
+    """backlog_pull(selector='https://github.com/owner/repo/issues/42') routes to pull_by_selector."""
+    op_result = {"file_path": "/tmp/test.md"}
+    with patch("backlog_core.operations.pull_by_selector", return_value=op_result) as mock_pull:
+        response = await _call("backlog_pull", {"selector": "https://github.com/owner/repo/issues/42"})
+
+    mock_pull.assert_called_once()
+    assert response["file_path"] == "/tmp/test.md"
+
+
+async def test_backlog_pull_with_title_selector_calls_pull_by_selector():
+    """backlog_pull(selector='some title') routes to pull_by_selector."""
+    op_result = {"file_path": "/tmp/test.md"}
+    with patch("backlog_core.operations.pull_by_selector", return_value=op_result) as mock_pull:
+        response = await _call("backlog_pull", {"selector": "some title substring"})
+
+    mock_pull.assert_called_once()
+    assert response["file_path"] == "/tmp/test.md"
+
+
+async def test_backlog_pull_selector_error_returns_error_key():
+    """backlog_pull with selector propagates BacklogError."""
+    with patch("backlog_core.operations.pull_by_selector", side_effect=BacklogError("item not found")):
+        response = await _call("backlog_pull", {"selector": "#999"})
+
+    assert response["error"] == "item not found"
+
+
+async def test_backlog_pull_no_selector_uses_bulk_pull():
+    """backlog_pull without selector calls pull_items (bulk), not pull_by_selector."""
+    op_result = {"pulled": 3}
+    with (
+        patch("backlog_core.operations.pull_items", return_value=op_result) as mock_bulk,
+        patch("backlog_core.operations.pull_by_selector") as mock_single,
+    ):
+        response = await _call("backlog_pull", {})
+
+    mock_bulk.assert_called_once()
+    mock_single.assert_not_called()
+    assert response["pulled"] == 3
+
+
 # ---------------------------------------------------------------------------
 # Cross-cutting: output dict structure is always present
 # ---------------------------------------------------------------------------

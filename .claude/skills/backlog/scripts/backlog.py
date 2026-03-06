@@ -3,6 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #   "PyGithub>=2.1.1",
+#   "pydantic>=2.0.0",
 #   "typer>=0.21.0",
 #   "python-frontmatter>=1.1.0",
 #   "ruamel.yaml>=0.18.0",
@@ -66,11 +67,13 @@ from rich.table import Table
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent.parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "plugins" / "plugin-creator" / "scripts"))
-sys.path.insert(0, str(_SCRIPT_DIR))
+sys.path.insert(0, str(_SCRIPT_DIR.parent))  # expose backlog_core package
 
 import operator
 
 import frontmatter
+from backlog_core import operations as _backlog_operations
+from backlog_core.models import BacklogError as _BacklogError, ItemNotFoundError as _ItemNotFoundError
 
 from frontmatter_utils import dump_frontmatter, loads_frontmatter
 from state_handler import BacklogState, StateTransitionError, apply_github_transition
@@ -2435,8 +2438,36 @@ def _pull_item(item: dict, repo_obj: Repository, dry_run: bool, force: bool) -> 
     return _pull_item_update_existing(item, issue_num, title, Path(filepath_str), github_body, dry_run, force)
 
 
+def _pull_single_by_selector(selector: str, repo: str) -> None:
+    """Resolve selector to a single GitHub issue and pull it into the local cache."""
+    try:
+        result = _backlog_operations.pull_by_selector(selector, repo)
+    except _ItemNotFoundError:
+        typer.echo(f"No backlog item found matching: {selector!r}", err=True)
+        raise typer.Exit(code=1) from None
+    except _BacklogError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=1) from None
+
+    for msg in result.get("messages") or []:
+        typer.echo(msg)
+    for warn in result.get("warnings") or []:
+        typer.echo(f"Warning: {warn}", err=True)
+    file_path = result.get("file_path")
+    if file_path:
+        typer.echo(f"Pulled issue into {file_path}.")
+    else:
+        typer.echo(f"Failed to pull issue for {selector!r}.", err=True)
+
+
 @app.command()
 def pull(
+    selector: Annotated[
+        str | None,
+        typer.Argument(
+            help="Optional selector to pull a single issue: #N, bare number, GitHub URL, or title substring. When omitted, pulls all issues."
+        ),
+    ] = None,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
     dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
     force: Annotated[
@@ -2445,10 +2476,17 @@ def pull(
 ) -> None:
     """Pull issue body content from GitHub into local per-item files.
 
+    When SELECTOR is provided, pulls a single issue by #N, bare number,
+    GitHub URL, or title substring. When omitted, pulls all issues.
+
     Also auto-migrates P0/P1 items that lack GitHub Issues by creating them.
     Merges by section — keeps longer version of each section.
     Skips items with no issue number (after migration).
     """
+    if selector is not None:
+        _pull_single_by_selector(selector, repo)
+        return
+
     items = parse_backlog()
 
     # Auto-migration: create missing GitHub Issues for P0/P1 items
