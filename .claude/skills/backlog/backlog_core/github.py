@@ -21,12 +21,22 @@ from .models import (
     IssueStatus,
     Output,
     PullRequestRef,
+    SamTask,
     ViewItemResult,
 )
-from .parsing import append_or_replace_section, build_issue_body, infer_type, normalize_issue_title, today
+from .parsing import (
+    append_or_replace_section,
+    build_issue_body,
+    build_sam_task_body,
+    build_sam_task_issue_title,
+    infer_type,
+    normalize_issue_title,
+    parse_sam_task_metadata,
+    today,
+)
 
 if TYPE_CHECKING:
-    from github.Issue import Issue
+    from github.Issue import Issue, SubIssue
     from github.Repository import Repository
 
 
@@ -435,3 +445,137 @@ def fetch_github_issue_body(repo_obj: Repository, issue_num: int, output: Output
     except GithubException as e:
         out.warn(f"  WARNING: Could not fetch issue #{issue_num}: {e}")
         return None
+
+
+# ---------------------------------------------------------------------------
+# SAM task sub-issue operations
+# ---------------------------------------------------------------------------
+
+
+def create_task_issue(
+    repo: Repository,
+    parent_issue_number: int,
+    task: SamTask,
+    description: str = "",
+    acceptance_criteria: list[str] | None = None,
+    labels: list[str] | None = None,
+    output: Output | None = None,
+) -> Issue | None:
+    """Create a GitHub issue for a SAM task and link it as a sub-issue of the parent story.
+
+    The issue body uses ``build_sam_task_body()``: human-readable sections are
+    visible in the GitHub UI, machine-readable metadata is stored in an invisible
+    ``<!-- sam:task ... -->`` block for ``parse_sam_task_metadata()`` to read back.
+
+    Title format: ``[{feature}/{task_id}] {task_type}: {description}``
+
+    Args:
+        repo: PyGithub Repository object.
+        parent_issue_number: Issue number of the parent story (without ``#``).
+        task: ``SamTask`` with ``task_id``, ``feature``, ``task_type``, and other fields.
+        description: Short human-readable description of the task.
+        acceptance_criteria: Optional list of acceptance criteria strings.
+        labels: Optional list of label names to apply (e.g. ``["sam-task"]``).
+        output: Optional Output collector.
+
+    Returns:
+        The created PyGithub Issue object, or None on failure.
+
+    Note:
+        ``add_sub_issue()`` requires the Issue *object*, not ``.number`` or ``.id``.
+        This function always passes the object to avoid the ``.id``/``.number``
+        confusion documented in PyGithub's Issue.py docstring (line 588).
+    """
+    out = output or Output()
+    title = build_sam_task_issue_title(task, description)
+    body = build_sam_task_body(task, description, acceptance_criteria)
+    label_objs = []
+    for name in labels or []:
+        try:
+            label_objs.append(repo.get_label(name))
+        except GithubException:
+            out.warn(f"  WARNING: label '{name}' not found, skipping")
+    try:
+        task_issue = repo.create_issue(title=title, body=body, labels=label_objs)
+        out.info(f"  Created task issue #{task_issue.number}: {title[:70]}")
+    except GithubException as e:
+        out.warn(f"  WARNING: Could not create task issue: {e}")
+        return None
+    # Link as sub-issue — pass the Issue object, not .id or .number, to avoid
+    # the integer ID confusion documented in PyGithub Issue.py line 588.
+    try:
+        parent = repo.get_issue(parent_issue_number)
+        parent.add_sub_issue(task_issue)
+        out.info(f"  Linked #{task_issue.number} as sub-issue of #{parent_issue_number}")
+    except GithubException as e:
+        out.warn(f"  WARNING: Created issue #{task_issue.number} but could not link as sub-issue: {e}")
+    return task_issue
+
+
+def get_task_issues(repo: Repository, parent_issue_number: int, output: Output | None = None) -> list[SubIssue]:
+    """Return all sub-issues for a parent story issue, ordered by ``priority_position``.
+
+    Args:
+        repo: PyGithub Repository object.
+        parent_issue_number: Issue number of the parent story (without ``#``).
+        output: Optional Output collector.
+
+    Returns:
+        List of ``SubIssue`` objects (empty on failure or when none exist).
+    """
+    out = output or Output()
+    try:
+        parent = repo.get_issue(parent_issue_number)
+        return list(parent.get_sub_issues())
+    except GithubException as e:
+        out.warn(f"  WARNING: Could not fetch sub-issues for #{parent_issue_number}: {e}")
+        return []
+
+
+def update_task_status(repo: Repository, issue_number: int, new_status: str, output: Output | None = None) -> bool:
+    """Update the ``status`` field inside the ``<!-- sam:task ... -->`` block of a task issue body.
+
+    Reads the current body, patches the YAML block's ``status`` value, and writes
+    the updated body back. Returns ``False`` without writing if the body has no
+    ``<!-- sam:task ... -->`` block, or if the status is already the target value.
+
+    Args:
+        repo: PyGithub Repository object.
+        issue_number: Task issue number (without ``#``).
+        new_status: Target status string, e.g. ``"in-progress"`` or ``"complete"``.
+        output: Optional Output collector.
+
+    Returns:
+        ``True`` if the body was updated, ``False`` otherwise.
+    """
+    out = output or Output()
+    try:
+        issue = repo.get_issue(issue_number)
+        body = issue.body or ""
+    except GithubException as e:
+        out.warn(f"  WARNING: Could not fetch issue #{issue_number}: {e}")
+        return False
+    task_meta = parse_sam_task_metadata(body)
+    if task_meta is None:
+        out.warn(f"  WARNING: Issue #{issue_number} has no sam:task block — cannot update status")
+        return False
+    if task_meta.status == new_status:
+        return False
+    # Replace only the status line inside the invisible block.
+    updated_body = re.sub(
+        r"(<!--\s*sam:task\s*\n(?:.*\n)*?status:\s*)(\S+)",
+        lambda m: m.group(1) + new_status,
+        body,
+        count=1,
+        flags=re.DOTALL,
+    )
+    if updated_body == body:
+        out.warn(f"  WARNING: Issue #{issue_number}: sam:task block present but status line not found")
+        return False
+    try:
+        issue.edit(body=updated_body)
+    except GithubException as e:
+        out.warn(f"  WARNING: Could not update issue #{issue_number} body: {e}")
+        return False
+    out.info(f"  Updated #{issue_number} status: {task_meta.status} -> {new_status}")
+    return True
