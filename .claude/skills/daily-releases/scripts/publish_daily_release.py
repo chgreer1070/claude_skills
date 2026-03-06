@@ -62,19 +62,45 @@ class AppExit(typer.Exit):
         super().__init__(code=code)
 
 
+def _get_ssl_verify() -> bool | str:
+    """Determine SSL verification setting from environment variables.
+
+    Priority order:
+
+    1. ``GITHUB_SSL_VERIFY=false/0/no`` — disable verification entirely.
+    2. ``GITHUB_CA_BUNDLE`` — path to a custom CA bundle file.
+    3. ``REQUESTS_CA_BUNDLE`` — fallback CA bundle path (requests convention).
+    4. ``CURL_CA_BUNDLE`` — fallback CA bundle path (curl convention).
+    5. Default: ``True`` (use system CA store).
+
+    Returns:
+        False to disable SSL verification, a CA bundle path string, or True.
+    """
+    verify_str = os.environ.get("GITHUB_SSL_VERIFY", "true").lower()
+    if verify_str in {"false", "0", "no"}:
+        return False
+    for env_var in ("GITHUB_CA_BUNDLE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"):
+        bundle = os.environ.get(env_var)
+        if bundle:
+            return bundle
+    return True
+
+
 def _make_github_client(token: str) -> Github:
     """Create a Github client respecting proxy/SSL environment variables.
 
     Reads:
         GITHUB_API_URL: Custom API base URL (default: https://api.github.com).
         GITHUB_SSL_VERIFY: Set to 'false', '0', or 'no' to disable SSL verification.
+        GITHUB_CA_BUNDLE: Path to custom CA bundle file.
+        REQUESTS_CA_BUNDLE: Fallback CA bundle path (requests convention).
+        CURL_CA_BUNDLE: Fallback CA bundle path (curl convention).
 
     Returns:
         Configured Github client instance.
     """
     base_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-    verify_ssl_str = os.environ.get("GITHUB_SSL_VERIFY", "true").lower()
-    verify: bool = verify_ssl_str not in {"false", "0", "no"}
+    verify = _get_ssl_verify()
     return Github(auth=Auth.Token(token), base_url=base_url, verify=verify)
 
 

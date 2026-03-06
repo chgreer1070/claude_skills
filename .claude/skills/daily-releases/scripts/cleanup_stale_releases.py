@@ -132,6 +132,30 @@ def delete_tag_ref(gh_repo: Repository, tag: str, *, dry_run: bool) -> bool:
         return True
 
 
+def _get_ssl_verify() -> bool | str:
+    """Determine SSL verification setting from environment variables.
+
+    Priority order:
+
+    1. ``GITHUB_SSL_VERIFY=false/0/no`` — disable verification entirely.
+    2. ``GITHUB_CA_BUNDLE`` — path to a custom CA bundle file.
+    3. ``REQUESTS_CA_BUNDLE`` — fallback CA bundle path (requests convention).
+    4. ``CURL_CA_BUNDLE`` — fallback CA bundle path (curl convention).
+    5. Default: ``True`` (use system CA store).
+
+    Returns:
+        False to disable SSL verification, a CA bundle path string, or True.
+    """
+    verify_str = os.environ.get("GITHUB_SSL_VERIFY", "true").lower()
+    if verify_str in {"false", "0", "no"}:
+        return False
+    for env_var in ("GITHUB_CA_BUNDLE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"):
+        bundle = os.environ.get(env_var)
+        if bundle:
+            return bundle
+    return True
+
+
 def _init_github_client(repo_slug: str) -> Repository:
     """Initialize and return a PyGithub Repository object.
 
@@ -153,8 +177,7 @@ def _init_github_client(repo_slug: str) -> Repository:
         raise typer.Exit(code=1)
 
     base_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-    verify_ssl_str = os.environ.get("GITHUB_SSL_VERIFY", "true").lower()
-    verify: bool = verify_ssl_str not in {"false", "0", "no"}
+    verify = _get_ssl_verify()
     gh = Github(auth=Auth.Token(token), base_url=base_url, verify=verify)
     try:
         return gh.get_repo(repo_slug)
