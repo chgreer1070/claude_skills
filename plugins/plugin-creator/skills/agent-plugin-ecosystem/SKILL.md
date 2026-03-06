@@ -58,6 +58,66 @@ No unified plugin bundle standard exists as of 2026-02-26. Write to the platform
 
 AAIF site: <https://aaif.io/>
 
+## OpenCode SKILL.md Extensions
+
+OpenCode supports two mechanisms for attaching MCP servers to a skill. Both are specific to the OpenCode runtime — other vendors ignore these fields.
+
+### `mcp:` frontmatter field
+
+A skill can declare MCP servers directly in SKILL.md frontmatter under the `mcp:` key. Each entry names a server and provides its launch configuration.
+
+**stdio server (process-based):**
+
+```yaml
+---
+name: my-skill
+description: Does something
+mcp:
+  server-name:
+    command: npx
+    args: ["-y", "some-mcp-package"]
+    env:
+      KEY: value
+---
+```
+
+**HTTP server (SSE-based):**
+
+```yaml
+mcp:
+  server-name:
+    url: https://mcp.example.com/sse
+    headers:
+      Authorization: "Bearer token"
+```
+
+### `mcp.json` sidecar file
+
+An alternative to frontmatter: place an `mcp.json` file next to `SKILL.md` in the same directory.
+
+```json
+{ "mcpServers": { "server-name": { "command": "npx", "args": ["-y", "pkg"] } } }
+```
+
+**Precedence:** `mcp.json` takes precedence over frontmatter `mcp:` if both are present.
+
+### Lifecycle
+
+MCP servers declared via either mechanism use idle-timeout pooling:
+
+- Server starts on first tool call
+- Terminates after 5 minutes idle
+- Tears down on session end
+- Pool key: `sessionID:skillName:serverName`
+
+### Portability note
+
+The `mcp:` frontmatter key is an OpenCode extension. Claude Code and Cursor do not define this field — they ignore it. AmpCode compatibility with inline `mcp:` frontmatter is unverified. When writing skills targeting multiple platforms, the `mcp:` block is silently inert outside OpenCode.
+
+The `plugin_validator.py` FM009 guard treats `mcp:` as an ecosystem-owned key and skips rewriting its sub-keys (e.g., `command: npx -y server`) to avoid corrupting OpenCode skill definitions.
+
+SOURCE: oh-my-opencode source `/src/features/opencode-skill-loader/skill-mcp-config.ts`, <https://github.com/code-yeongyu/oh-my-opencode> (accessed 2026-03-06).
+
 ## Writing for the Correct Target
 
 ```mermaid

@@ -176,7 +176,7 @@ skill-name/
 - FM004: Removes multiline indicators (`>-`, `|-`)
 - FM007: Converts tools YAML array → CSV string
 - FM008: Converts skills YAML array → CSV string
-- FM009: Quotes descriptions with colons
+- FM009: Quotes descriptions with colons — `_fix_unquoted_colons()` imports `get_ecosystem_owned_keys()` from `ecosystem_registry.py` and skips rewriting lines inside ecosystem-owned top-level frontmatter blocks (e.g., `mcp:` from OpenCode)
 
 **Implementation highlights**:
 
@@ -866,6 +866,15 @@ def test_token_count_deterministic(text):
 - CIReporter for CI/CD (no ANSI codes)
 - SummaryReporter for quick status
 - Easy to add JSON reporter, HTML reporter, etc.
+
+---
+
+## Scripts Inventory
+
+| Script | Purpose |
+|--------|---------|
+| `plugin_validator.py` | Main validation CLI — frontmatter, links, complexity, plugin structure |
+| `ecosystem_registry.py` | stdlib-only module declaring frontmatter key ownership per ecosystem; `get_ecosystem_owned_keys()` is imported by `_fix_unquoted_colons()` to skip ecosystem-owned top-level blocks (e.g., `mcp:` from OpenCode) |
 
 ---
 

@@ -72,6 +72,7 @@ import contextlib
 
 import tiktoken
 
+from ecosystem_registry import get_ecosystem_owned_keys
 from frontmatter_core import (
     MAX_SKILL_NAME_LENGTH,
     RECOMMENDED_DESCRIPTION_LENGTH,
@@ -143,6 +144,15 @@ def _fix_unquoted_colons(frontmatter_text: str) -> tuple[str, list[str], list[st
     Detects lines of the form ``key: value: more`` where the unquoted colon
     causes a YAML parse error and wraps the value in double-quotes.
 
+    Lines that fall inside an ecosystem-owned top-level block (e.g. ``mcp:``)
+    are skipped — their sub-keys are meaningful YAML structure, not FM009
+    violations.  A state machine tracks which top-level key is active:
+
+    - Non-indented ``key:`` or ``key: scalar`` lines reset the active key.
+    - Indented lines belong to the current top-level key.
+    - When the active key is in ``get_ecosystem_owned_keys()``, the line is
+      passed through unchanged (including the top-level key line itself).
+
     Args:
         frontmatter_text: Raw YAML frontmatter (without ``---`` delimiters).
 
@@ -160,8 +170,26 @@ def _fix_unquoted_colons(frontmatter_text: str) -> tuple[str, list[str], list[st
     # Only matches simple single-line scalar values, not block scalars or already-quoted values
     unquoted_colon_re = re.compile(r'^(\s*([\w-]+):\s+)([^\'"\[\{|>].+:.*)$')
 
+    ecosystem_owned = get_ecosystem_owned_keys()
+    current_top_level_key: str | None = None
+
     for line in lines:
-        m = unquoted_colon_re.match(line.rstrip("\n"))
+        stripped = line.rstrip("\n")
+
+        # State machine: reset active key on each non-indented key line.
+        # A line is top-level when it has no leading whitespace and matches
+        # ``word:`` or ``word: value``.
+        if stripped and not stripped[0].isspace() and (tl_match := re.match(r"^([\w-]+)\s*:", stripped)):
+            current_top_level_key = tl_match.group(1)
+
+        # Skip FM009 rewrite for all lines inside ecosystem-owned blocks.
+        # This covers both the top-level key line (``mcp:`` / ``mcp: null``)
+        # and every indented sub-key beneath it, regardless of nesting depth.
+        if current_top_level_key in ecosystem_owned:
+            new_lines.append(line)
+            continue
+
+        m = unquoted_colon_re.match(stripped)
         if m:
             prefix = m.group(1)
             field_name = m.group(2)

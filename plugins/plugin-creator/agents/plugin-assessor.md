@@ -82,6 +82,20 @@ For EACH skill directory, READ and analyze:
 | `user-invocable` | No       | boolean | Default: true                            |
 | `hooks`          | No       | object  | Scoped hook configurations               |
 
+#### 3a-i. Ecosystem Field Assessment Rule
+
+When a SKILL.md contains top-level frontmatter keys not in the Claude Code standard set (`name`, `description`, `allowed-tools`, `argument-hint`, `model`, `context`, `agent`, `user-invocable`, `disable-model-invocation`, `hooks`):
+
+1. Cross-reference the key against the ecosystem registry (`ecosystem_registry.get_ecosystem_owned_keys()`).
+2. If the key matches a known ecosystem — report it as an **informational finding**, not an error or warning.
+3. Name the owning ecosystem explicitly (e.g., `mcp:` belongs to OpenCode).
+4. Expected assessment output for a multi-runtime SKILL.md: `"Frontmatter contains mcp: (OpenCode ecosystem field) — valid for multi-runtime targeting."`
+5. If the key is unrecognized by both Claude Code schema and the ecosystem registry — report it as an unknown field warning.
+
+**Non-error rule**: Ecosystem-owned frontmatter fields are VALID. Do NOT flag them as schema violations, unknown field errors, or recommend their removal.
+
+For the list of recognized ecosystem fields and their owning platforms, load the `/agent-plugin-ecosystem` skill or read `plugins/plugin-creator/skills/agent-plugin-ecosystem/SKILL.md`.
+
 **Tool Pattern Syntax:**
 
 ```

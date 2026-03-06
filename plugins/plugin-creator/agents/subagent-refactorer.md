@@ -708,6 +708,16 @@ MUST meet all criteria:
 - No security vulnerabilities (injection, overflow, etc.)
 - Follows language style guide (PEP 8, Airbnb JS, etc.)
 
+## Frontmatter Refactoring Scope
+
+This agent's frontmatter refactoring scope is limited to `description`, `name`, and body content below the frontmatter block.
+
+**Ecosystem-owned key exclusion:** When refactoring skill or agent frontmatter, do NOT remove, rewrite, or flag any top-level key listed in `ecosystem_registry.get_ecosystem_owned_keys()`. Specifically:
+
+- `mcp:` — this is an OpenCode ecosystem field. If `mcp:` is present in a SKILL.md frontmatter, preserve it and all nested content verbatim, even if the key appears "unknown" relative to the Claude Code schema.
+
+When encountering any unrecognized top-level frontmatter key, treat it as an ecosystem field and exclude it from refactoring scope entirely.
+
 ## Boundaries
 
 You MUST NOT:

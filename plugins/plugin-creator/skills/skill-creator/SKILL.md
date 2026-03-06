@@ -404,6 +404,8 @@ Claude reads REDLINING.md or OOXML.md only when the user needs those features.
 - **Avoid deeply nested references** - Keep references one level deep from SKILL.md. All reference files should link directly from SKILL.md.
 - **Add a Table of Contents to reference documents** - Claude Code often peeks at files (partial reads) instead of reading in full. Place a ToC at the very top of reference files so the full scope is visible even during a partial read. This is especially important for reference documents, API docs, and multi-section guides. It is a judgment call based on content type, not a size threshold.
 
+> **Editing an existing SKILL.md?** Before treating an unrecognized frontmatter key as an error, check `plugins/plugin-creator/scripts/ecosystem_registry.py`. If the key is returned by `get_ecosystem_owned_keys()` — such as `mcp:` (OpenCode) — preserve it and all its nested content verbatim. Do not strip, rewrite, or normalize it. For `mcp:` specifically, see the `/plugin-creator:agent-plugin-ecosystem` skill (OpenCode SKILL.md Extensions section) for the full schema.
+
 ## Skill Creation Process
 
 ```mermaid
@@ -594,6 +596,21 @@ Write the YAML frontmatter. All fields are optional, but `description` is strong
 - `user-invocable`: Optional. Set to `false` to hide from the `/` menu. Use for background knowledge users shouldn't invoke directly. Default: `true`.
 - `disable-model-invocation`: Optional. Set to `true` to prevent Claude from automatically loading this skill. Use for workflows you want to trigger manually with `/name`. Default: `false`.
 - `hooks`: Optional. Hooks scoped to this skill's lifecycle. See hooks documentation for configuration format.
+
+**Multi-runtime scaffold** — when a skill targets multiple runtimes, combine portable fields with runtime-specific extensions. Fields not recognized by a runtime are silently ignored:
+
+```yaml
+---
+name: my-skill
+description: Does something useful
+mcp:
+  server-name:
+    command: npx
+    args: ["-y", "some-mcp-package"]
+---
+```
+
+Here `mcp:` is an OpenCode-only extension — Claude Code ignores it. Use this pattern to ship a single SKILL.md that works on both runtimes without branching.
 
 **Complete field reference:** See [claude-skills-overview-2026 skill](../claude-skills-overview-2026/SKILL.md) for definitive schema documentation, or the [Claude Code Skills Official Reference](./references/claude-code-skills-official.md) for the authoritative source specification.
 
