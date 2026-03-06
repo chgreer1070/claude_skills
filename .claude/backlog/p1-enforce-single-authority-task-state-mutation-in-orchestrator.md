@@ -11,6 +11,7 @@ metadata:
   issue: '#451'
   last_synced: '2026-03-06T05:00:53Z'
   groomed: '2026-03-06'
+  plan: plan/tasks-24-enforce-single-authority-task-state.md
 ---
 
 ## Groomed (2026-03-06)
