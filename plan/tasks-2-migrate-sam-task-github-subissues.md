@@ -506,7 +506,7 @@ Return:
 ---
 task_id: "T3"
 title: "Add --github flag to implementation_manager.py"
-status: not-started
+status: complete
 agent: python3-development:python-cli-architect
 priority: 2
 complexity: High
@@ -639,10 +639,28 @@ Return:
 - Result of `uv run prek run --files` on the modified file
 - Whether backward-compat (no-flag) path produces identical output (confirm with a test run)
 
+## Divergence Notes
+
+### DN-1: SubIssue body access attribute and parents[N] index
+
+- **Plan artifact**: plan/tasks-2-migrate-sam-task-github-subissues.md, section "fetch_tasks_from_github() — requirement 6"
+- **Plan claim**: "For each sub-issue: access body via `si.body` (SubIssue inherits from Issue so `.body` is directly accessible)"
+- **Actual implementation**: `SubIssue` does NOT expose `.body` directly. The Context Manifest (line 27) and observed `get_task_issues` implementation confirm: callers must fetch body via `repo.get_issue(si.sub_issue.number).body`. Used `repo.get_issue(si.sub_issue.number).body or ""` in implementation.
+- **Classification**: design-refinement
+- **Recorded**: 2026-03-06T00:00:00Z
+
+### DN-2: parents[N] index is 5 not 6
+
+- **Plan artifact**: plan/tasks-2-migrate-sam-task-github-subissues.md, section "sys.path extension"
+- **Plan claim**: "parents[6]" resolves to repo root from `implementation_manager.py`
+- **Actual implementation**: Verified via `python3 -c` — `parents[5]` = `/home/user/claude_skills` (repo root), `parents[6]` = `/home/user`. Used `parents[5]` in implementation.
+- **Classification**: design-refinement
+- **Recorded**: 2026-03-06T00:00:00Z
+
 ---
 task_id: "T4"
 title: "Extend task_status_hook.py with GitHub completion sync"
-status: not-started
+status: complete
 agent: python3-development:python-cli-architect
 priority: 2
 complexity: Medium
@@ -904,7 +922,7 @@ Return:
 ---
 task_id: "T6"
 title: "Write unit tests for operations.py SAM task functions"
-status: not-started
+status: complete
 agent: python3-development:python-pytest-architect
 priority: 2
 complexity: Medium
@@ -1000,7 +1018,7 @@ Return:
 ---
 task_id: "T7"
 title: "Write unit tests for server.py SAM MCP tools"
-status: not-started
+status: complete
 agent: python3-development:python-pytest-architect
 priority: 2
 complexity: Low
@@ -1281,7 +1299,7 @@ Return:
 ---
 task_id: "T10"
 title: "Write migrate_tasks_to_github.py script and its tests"
-status: not-started
+status: complete
 agent: python3-development:python-cli-architect
 priority: 2
 complexity: Medium
