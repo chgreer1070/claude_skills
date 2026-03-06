@@ -11,15 +11,9 @@ full --fix CLI integration path, verifying that:
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
-
-# Add scripts directory to path so plugin_validator is importable as a module.
-# The PEP 723 header (# /// script ... ///) is a comment block that Python ignores;
-# the module is fully importable without the uv PEP 723 runner.
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 from plugin_validator import _fix_unquoted_colons
 

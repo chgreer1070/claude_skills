@@ -1,26 +1,20 @@
 """Tests for ecosystem_registry module.
 
 Tests the public API of ecosystem_registry.py:
-- get_ecosystem_owned_keys() return value and type
+- get_ecosystem_owned_skill_keys() return value and type
 - get_ecosystem_for_key() for owned, standard, and unknown keys
 - Immutability guarantee of returned frozenset
 """
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import pytest
 
-# Add scripts directory to path to import ecosystem_registry
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-
-from ecosystem_registry import get_ecosystem_for_key, get_ecosystem_owned_keys
+from ecosystem_registry import get_ecosystem_for_key, get_ecosystem_owned_skill_keys
 
 
 class TestGetEcosystemOwnedKeys:
-    """Tests for get_ecosystem_owned_keys() public function.
+    """Tests for get_ecosystem_owned_skill_keys() public function.
 
     Scope: Verifies return value contains the expected OpenCode key,
     return type is frozenset (immutable), and no Claude Code standard
@@ -31,7 +25,7 @@ class TestGetEcosystemOwnedKeys:
     """
 
     def test_contains_mcp(self) -> None:
-        """get_ecosystem_owned_keys() includes 'mcp'.
+        """get_ecosystem_owned_skill_keys() includes 'mcp'.
 
         Tests: OpenCode mcp field appears in owned-keys set
         How: Call function, check 'mcp' membership
@@ -40,13 +34,13 @@ class TestGetEcosystemOwnedKeys:
              rewrites on mcp: blocks.
         """
         # Arrange / Act
-        owned = get_ecosystem_owned_keys()
+        owned = get_ecosystem_owned_skill_keys()
 
         # Assert
         assert "mcp" in owned
 
     def test_returns_frozenset(self) -> None:
-        """get_ecosystem_owned_keys() returns a frozenset, not a plain set.
+        """get_ecosystem_owned_skill_keys() returns a frozenset, not a plain set.
 
         Tests: Return type is frozenset
         How: Call function, check isinstance
@@ -55,7 +49,7 @@ class TestGetEcosystemOwnedKeys:
              accidentally mutate the registry by calling .add() or .discard().
         """
         # Arrange / Act
-        owned = get_ecosystem_owned_keys()
+        owned = get_ecosystem_owned_skill_keys()
 
         # Assert
         assert isinstance(owned, frozenset)
@@ -69,7 +63,7 @@ class TestGetEcosystemOwnedKeys:
              frozenset enforces this at the language level.
         """
         # Arrange
-        owned = get_ecosystem_owned_keys()
+        owned = get_ecosystem_owned_skill_keys()
 
         # Act / Assert
         with pytest.raises(AttributeError):
@@ -79,13 +73,13 @@ class TestGetEcosystemOwnedKeys:
         """Claude Code's 'description' field is not in ecosystem-owned keys.
 
         Tests: Standard Claude Code fields are absent from the owned-keys set
-        How: Check 'description' is not a member of get_ecosystem_owned_keys()
+        How: Check 'description' is not a member of get_ecosystem_owned_skill_keys()
         Why: description is a Claude Code field; if it were marked as
              ecosystem-owned, FM009 fixes would silently stop applying to it,
              breaking validation for Claude Code-only skills.
         """
         # Arrange / Act
-        owned = get_ecosystem_owned_keys()
+        owned = get_ecosystem_owned_skill_keys()
 
         # Assert
         assert "description" not in owned

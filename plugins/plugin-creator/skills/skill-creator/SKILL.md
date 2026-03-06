@@ -326,83 +326,11 @@ Skills use a three-level loading system to manage context efficiently:
 
 #### Progressive Disclosure Patterns
 
-Keep SKILL.md body lean to minimize context bloat. Run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` to check token complexity — split into separate files when the validator warns. When splitting out content into other files, it is very important to reference them from SKILL.md and describe clearly when to read them, to ensure the reader of the skill knows they exist and when to use them.
+Keep SKILL.md lean. Run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` to check token complexity. Keep only core workflow and selection guidance in SKILL.md; move variant-specific details into reference files. Reference them from SKILL.md with clear descriptions of when to read each file.
 
-**Key principle:** When a skill supports multiple variations, frameworks, or options, keep only the core workflow and selection guidance in SKILL.md. Move variant-specific details (patterns, examples, configuration) into separate reference files.
+Three patterns: (1) high-level guide with pointers to FORMS.md, REFERENCE.md, etc.; (2) domain-split references (finance.md, sales.md per domain); (3) conditional details (basic inline, advanced via link). See [references/workflows.md](./references/workflows.md) for full examples of all three patterns.
 
-**Pattern 1: High-level guide with references**
-
-```markdown
-# PDF Processing
-
-## Quick start
-
-Extract text with pdfplumber:
-[code example]
-
-## Advanced features
-
-- **Form filling**: See [FORMS.md](FORMS.md) for complete guide
-- **API reference**: See [REFERENCE.md](REFERENCE.md) for all methods
-- **Examples**: See [EXAMPLES.md](EXAMPLES.md) for common patterns
-```
-
-Claude loads FORMS.md, REFERENCE.md, or EXAMPLES.md only when needed.
-
-**Pattern 2: Domain-specific organization**
-
-For Skills with multiple domains, organize content by domain to avoid loading irrelevant context:
-
-```
-bigquery-skill/
-├── SKILL.md (overview and navigation)
-└── reference/
-    ├── finance.md (revenue, billing metrics)
-    ├── sales.md (opportunities, pipeline)
-    ├── product.md (API usage, features)
-    └── marketing.md (campaigns, attribution)
-```
-
-When a user asks about sales metrics, Claude only reads sales.md.
-
-Similarly, for skills supporting multiple frameworks or variants, organize by variant:
-
-```
-cloud-deploy/
-├── SKILL.md (workflow + provider selection)
-└── references/
-    ├── aws.md (AWS deployment patterns)
-    ├── gcp.md (GCP deployment patterns)
-    └── azure.md (Azure deployment patterns)
-```
-
-When the user chooses AWS, Claude only reads aws.md.
-
-**Pattern 3: Conditional details**
-
-Show basic content, link to advanced content:
-
-```markdown
-# DOCX Processing
-
-## Creating documents
-
-Use docx-js for new documents. See [DOCX-JS.md](DOCX-JS.md).
-
-## Editing documents
-
-For simple edits, modify the XML directly.
-
-**For tracked changes**: See [REDLINING.md](REDLINING.md)
-**For OOXML details**: See [OOXML.md](OOXML.md)
-```
-
-Claude reads REDLINING.md or OOXML.md only when the user needs those features.
-
-**Important guidelines:**
-
-- **Avoid deeply nested references** - Keep references one level deep from SKILL.md. All reference files should link directly from SKILL.md.
-- **Add a Table of Contents to reference documents** - Claude Code often peeks at files (partial reads) instead of reading in full. Place a ToC at the very top of reference files so the full scope is visible even during a partial read. This is especially important for reference documents, API docs, and multi-section guides. It is a judgment call based on content type, not a size threshold.
+Rules: keep references one level deep from SKILL.md. NEVER add ToC, anchor links, or bold/italic for visual emphasis to reference files — see [references/ai-audience-writing-rules.md](./references/ai-audience-writing-rules.md).
 
 > **Editing an existing SKILL.md?** Before treating an unrecognized frontmatter key as an error, check `plugins/plugin-creator/scripts/ecosystem_registry.py`. If the key is returned by `get_ecosystem_owned_keys()` — such as `mcp:` (OpenCode) — preserve it and all its nested content verbatim. Do not strip, rewrite, or normalize it. For `mcp:` specifically, see the `/plugin-creator:agent-plugin-ecosystem` skill (OpenCode SKILL.md Extensions section) for the full schema.
 
@@ -574,6 +502,19 @@ Added scripts must be tested by actually running them to ensure there are no bug
 Any example files and directories not needed for the skill should be deleted. The initialization script creates example files in `scripts/`, `references/`, and `assets/` to demonstrate structure, but most skills won't need all of them.
 
 #### Update SKILL.md
+
+**HARD BLOCK — ORCHESTRATOR MUST NOT WRITE SKILL.MD BODY OR REFERENCE FILES**
+
+```mermaid
+flowchart TD
+    Q{"About to write SKILL.md body<br>or references/*.md?"}
+    Q -->|"Orchestrator"| BLOCK["STOP — PROHIBITED<br>Delegate to subagent_type=<br>'plugin-creator:contextual-ai-documentation-optimizer'<br>Pass: file path + intent + source material"]
+    Q -->|"contextual-ai-documentation-optimizer"| ALLOW["PROCEED"]
+    BLOCK --> Exempt{"Is any rationalization<br>an exception?"}
+    Exempt -->|"'simple enough to do myself'<br>'content is straightforward'<br>'I know what to write'<br>'task size is small'<br>'context is high, better quickly'<br>'just a reference file'"| No["NO — none of these are exceptions<br>Agents have fresh context per task.<br>Delegate regardless of perceived simplicity."]
+```
+
+Orchestrator role in Step 5: write YAML frontmatter only, pass file paths to the sub-agent, verify output after completion.
 
 **Writing Guidelines:** Always use imperative/infinitive form.
 

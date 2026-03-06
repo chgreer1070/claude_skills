@@ -23,6 +23,11 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
 
+# Add scripts directory to sys.path for direct imports in test modules
+_SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
 # Load the plugin-validator module (has hyphen in name, so use importlib)
 _VALIDATOR_PATH = Path(__file__).parent.parent / "scripts" / "plugin_validator.py"
 spec = importlib.util.spec_from_file_location("plugin_validator", _VALIDATOR_PATH)
