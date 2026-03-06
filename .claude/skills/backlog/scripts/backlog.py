@@ -3,6 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #   "PyGithub>=2.1.1",
+#   "pydantic>=2.0.0",
 #   "typer>=0.21.0",
 #   "python-frontmatter>=1.1.0",
 #   "ruamel.yaml>=0.18.0",
@@ -66,11 +67,13 @@ from rich.table import Table
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent.parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "plugins" / "plugin-creator" / "scripts"))
-sys.path.insert(0, str(_SCRIPT_DIR))
+sys.path.insert(0, str(_SCRIPT_DIR.parent))  # expose backlog_core package
 
 import operator
 
 import frontmatter
+from backlog_core import operations as _backlog_operations
+from backlog_core.models import BacklogError as _BacklogError, ItemNotFoundError as _ItemNotFoundError
 
 from frontmatter_utils import dump_frontmatter, loads_frontmatter
 from state_handler import BacklogState, StateTransitionError, apply_github_transition
@@ -2437,36 +2440,24 @@ def _pull_item(item: dict, repo_obj: Repository, dry_run: bool, force: bool) -> 
 
 def _pull_single_by_selector(selector: str, repo: str) -> None:
     """Resolve selector to a single GitHub issue and pull it into the local cache."""
-    issue_num_str = _parse_issue_selector(selector)
-    if issue_num_str:
-        result = _pull_single_issue(_get_github(repo), int(issue_num_str))
-        if result:
-            typer.echo(f"Pulled issue into {result}.")
-        else:
-            typer.echo(f"Failed to pull issue #{issue_num_str}.", err=True)
-        return
-    # Title substring: find item and pull by its issue number
-    item = find_item(parse_backlog(), selector)
-    if item is None:
+    try:
+        result = _backlog_operations.pull_by_selector(selector, repo)
+    except _ItemNotFoundError:
         typer.echo(f"No backlog item found matching: {selector!r}", err=True)
-        raise typer.Exit(code=1)
-    issue_ref = item.get("_issue") or ""
-    if not issue_ref:
-        typer.echo(
-            f"Item '{item.get('_title', selector)}' has no linked GitHub issue. "
-            "Use 'backlog pull' (no selector) for bulk pull.",
-            err=True,
-        )
-        raise typer.Exit(code=1)
-    issue_num_str = _parse_issue_selector(issue_ref)
-    if not issue_num_str:
-        typer.echo(f"Could not parse issue number from '{issue_ref}'.", err=True)
-        raise typer.Exit(code=1)
-    result = _pull_single_issue(_get_github(repo), int(issue_num_str))
-    if result:
-        typer.echo(f"Pulled issue into {result}.")
+        raise typer.Exit(code=1) from None
+    except _BacklogError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=1) from None
+
+    for msg in result.get("messages") or []:
+        typer.echo(msg)
+    for warn in result.get("warnings") or []:
+        typer.echo(f"Warning: {warn}", err=True)
+    file_path = result.get("file_path")
+    if file_path:
+        typer.echo(f"Pulled issue into {file_path}.")
     else:
-        typer.echo(f"Failed to pull issue {issue_ref}.", err=True)
+        typer.echo(f"Failed to pull issue for {selector!r}.", err=True)
 
 
 @app.command()
