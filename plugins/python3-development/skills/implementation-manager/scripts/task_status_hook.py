@@ -538,7 +538,7 @@ def handle_subagent_stop(hook_input: dict[str, Any]) -> None:
     if session_id:
         delete_task_context(cwd, session_id)
 
-    # Sync completion to GitHub (best-effort — never changes exit code)
+    # Step 5: sync_completion_to_github — best-effort, never changes exit code
     sync_completion_to_github(resolved_path, task_id, get_parent_issue_number(hook_input))
 
 

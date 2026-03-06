@@ -433,8 +433,8 @@ async def backlog_create_sam_task(
     task_type: Annotated[str, Field(description="Task category: research | implement | review | fix | docs")],
     agent: Annotated[str, Field(description="Agent name to execute this task")],
     priority: Annotated[int, Field(description="Priority 1-5 (1=highest)")] = 2,
-    skills: Annotated[list[str], Field(description="Skill names for the executing agent", default_factory=list)] = [],  # noqa: B006
-    dependencies: Annotated[list[str], Field(description="Task IDs this task depends on", default_factory=list)] = [],  # noqa: B006
+    skills: Annotated[list[str], Field(description="Skill names for the executing agent")] = [],  # noqa: B006
+    dependencies: Annotated[list[str], Field(description="Task IDs this task depends on")] = [],  # noqa: B006
     description: Annotated[str, Field(description="Human-readable description of the task")] = "",
     acceptance_criteria: Annotated[list[str] | None, Field(description="Acceptance criteria strings")] = None,
     labels: Annotated[list[str] | None, Field(description="GitHub label names to apply")] = None,

@@ -35,6 +35,12 @@ from rich.console import Console
 # Ensure the script directory is on sys.path for direct execution.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+# backlog_core is at <repo_root>/.claude/skills/backlog/backlog_core.
+# parents[5] from this script is the repo root (verified against actual filesystem).
+_BACKLOG_CORE = Path(__file__).resolve().parents[5] / ".claude" / "skills" / "backlog" / "backlog_core"
+if _BACKLOG_CORE.exists():
+    sys.path.insert(0, str(_BACKLOG_CORE.parent))
+
 from task_format import (
     VALID_STATUSES,
     has_yaml_frontmatter,
@@ -76,6 +82,17 @@ _YAML_STATUS_TO_ENUM: dict[str, TaskStatus] = {
     "deferred": TaskStatus.DEFERRED,
     "skipped": TaskStatus.SKIPPED,
     "wont-fix": TaskStatus.SKIPPED,
+}
+
+# Reverse mapping: TaskStatus -> canonical YAML frontmatter string.
+# Used when serialising Task objects back to JSON cache.
+_YAML_STATUS_TO_ENUM_REVERSE: dict[TaskStatus, str] = {
+    TaskStatus.NOT_STARTED: "not-started",
+    TaskStatus.IN_PROGRESS: "in-progress",
+    TaskStatus.COMPLETE: "complete",
+    TaskStatus.BLOCKED: "blocked",
+    TaskStatus.DEFERRED: "deferred",
+    TaskStatus.SKIPPED: "skipped",
 }
 
 # Statuses that count as terminal/done for completion gating and dependency satisfaction.
@@ -816,6 +833,146 @@ def get_ready_tasks(tasks: list[Task]) -> list[Task]:
 
 
 # =============================================================================
+# GitHub Task Fetching
+# =============================================================================
+
+
+def _load_tasks_from_cache(cache_path: Path) -> list[Task] | None:
+    """Read cached GitHub task data and return as Task objects.
+
+    Returns ``None`` when the cache file is absent or malformed (JSON decode
+    error or missing required keys). Per-entry errors are logged and skipped.
+
+    Args:
+        cache_path: Path to the JSON cache file written by ``fetch_tasks_from_github``.
+
+    Returns:
+        List of Task objects from cache, or ``None`` on read/parse failure.
+    """
+    if not cache_path.exists():
+        return None
+    try:
+        cache_data = json.loads(cache_path.read_text(encoding="utf-8"))
+        raw_tasks = cache_data.get("tasks", [])
+        cached: list[Task] = []
+        for raw in raw_tasks:
+            try:
+                task_status = _parse_yaml_status(str(raw.get("status", "not-started")))
+                raw_priority = raw.get("priority", 2)
+                task_priority = TaskPriority(int(raw_priority)) if raw_priority is not None else TaskPriority.MEDIUM
+                cached.append(
+                    Task(
+                        id=str(raw["task_id"]),
+                        name=str(raw.get("task_id", "")),
+                        status=task_status,
+                        dependencies=[str(d) for d in raw.get("dependencies", [])],
+                        agent=raw.get("agent") or None,
+                        priority=task_priority,
+                        complexity="Medium",
+                        started=None,
+                        completed=None,
+                        skills=[str(s) for s in raw.get("skills", [])],
+                    )
+                )
+            except (KeyError, ValueError, TypeError) as exc:
+                sys.stderr.write(f"WARNING: Skipping malformed cache task entry: {exc}\n")
+    except (json.JSONDecodeError, KeyError, OSError) as exc:
+        sys.stderr.write(f"WARNING: Cache file malformed or unreadable ({exc}). Cannot use cache.\n")
+        return None
+    else:
+        return cached
+
+
+def fetch_tasks_from_github(parent_issue_number: int, feature_slug: str, cache_path: Path) -> list[Task] | None:
+    """Fetch sub-issues from GitHub and return as Task objects for get_ready_tasks().
+
+    Imports backlog_core conditionally — only called when ``--github`` flag is set
+    and ``_BACKLOG_CORE`` exists. Falls back to reading ``cache_path`` when GitHub
+    is unavailable. Returns ``None`` when both GitHub and cache are unavailable.
+
+    Args:
+        parent_issue_number: GitHub issue number for the parent story.
+        feature_slug: Feature slug used as cache key.
+        cache_path: Path to the JSON cache file for offline fallback.
+
+    Returns:
+        List of Task objects built from GitHub sub-issues, or ``None`` when
+        GitHub is unavailable and no valid cache exists.
+    """
+    if not _BACKLOG_CORE.exists():
+        sys.stderr.write("WARNING: backlog_core not found — cannot fetch from GitHub. Falling back to local files.\n")
+        return None
+
+    import backlog_core.github as _gh  # noqa: PLC0415
+    import backlog_core.parsing as _parsing  # noqa: PLC0415
+
+    repo = _gh.try_get_github()
+    if repo is None:
+        # GitHub unavailable — try cache
+        cached = _load_tasks_from_cache(cache_path)
+        if cached is None:
+            sys.stderr.write("WARNING: GitHub unavailable and no cache found. Cannot fetch tasks.\n")
+        return cached
+
+    sub_issues = _gh.get_task_issues(repo, parent_issue_number)
+    tasks = []
+    for si in sub_issues:
+        try:
+            # SubIssue inherits from Issue — .body is directly accessible.
+            body = si.body or ""
+            sam = _parsing.parse_sam_task_metadata(body)
+            if sam is None:
+                continue
+            try:
+                task_priority = TaskPriority(int(sam.priority))
+            except (ValueError, TypeError):
+                task_priority = TaskPriority.MEDIUM
+            task_status = _parse_yaml_status(sam.status)
+            tasks.append(
+                Task(
+                    id=sam.task_id,
+                    name=sam.task_id,
+                    status=task_status,
+                    dependencies=list(sam.dependencies),
+                    agent=sam.agent or None,
+                    priority=task_priority,
+                    complexity="Medium",
+                    started=None,
+                    completed=None,
+                    skills=list(sam.skills),
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            sys.stderr.write(f"WARNING: Skipping sub-issue due to error: {exc}\n")
+
+    # Write cache for offline fallback
+    now_iso = datetime.now(tz=UTC).isoformat()
+    cache_payload = {
+        "feature_slug": feature_slug,
+        "parent_issue_number": parent_issue_number,
+        "synced_at": now_iso,
+        "tasks": [
+            {
+                "task_id": t.id,
+                "status": _YAML_STATUS_TO_ENUM_REVERSE.get(t.status, "not-started"),
+                "agent": t.agent,
+                "priority": t.priority.value,
+                "skills": t.skills,
+                "dependencies": t.dependencies,
+            }
+            for t in tasks
+        ],
+    }
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(json.dumps(cache_payload, indent=2), encoding="utf-8")
+    except OSError as exc:
+        sys.stderr.write(f"WARNING: Could not write cache file: {exc}\n")
+
+    return tasks
+
+
+# =============================================================================
 # CLI Commands
 # =============================================================================
 
@@ -845,24 +1002,44 @@ def list_features(project_path: ProjectPath) -> None:
 
 
 @app.command(name="status")
-def status(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
+def status(
+    project_path: ProjectPath,
+    feature_slug: FeatureSlug,
+    github: Annotated[bool, typer.Option("--github", help="Include GitHub sub-issue state in status output.")] = False,
+    parent_issue: Annotated[
+        int | None, typer.Option("--parent-issue", help="Parent story issue number (required with --github).")
+    ] = None,
+) -> None:
     """Get detailed status for a specific feature.
 
     Args:
         project_path: Path to the project root directory.
         feature_slug: Feature slug or partial match.
+        github: When True, query GitHub sub-issues instead of local task files.
+        parent_issue: Parent story GitHub issue number (required when ``--github`` is set).
     """
-    task_file = find_task_file_by_slug(project_path, feature_slug)
+    tasks: list[Task] | None = None
+    task_file: Path | None = None
 
-    if not task_file:
-        error_output = {
-            "error": f"No task file found for feature: {feature_slug}",
-            "available_features": [f.slug for f in find_task_files(project_path)],
-        }
-        console.print(json.dumps(error_output, indent=2))
-        raise typer.Exit(1)
+    if github and parent_issue is not None:
+        cache_path = project_path / ".claude" / "context" / f"sam-tasks-{feature_slug}.json"
+        tasks = fetch_tasks_from_github(parent_issue, feature_slug, cache_path)
+        if tasks is None:
+            sys.stderr.write(
+                f"WARNING: GitHub fetch failed for feature '{feature_slug}'. Falling back to local files.\n"
+            )
 
-    tasks = parse_task_file(task_file)
+    if tasks is None:
+        task_file = find_task_file_by_slug(project_path, feature_slug)
+        if not task_file:
+            error_output = {
+                "error": f"No task file found for feature: {feature_slug}",
+                "available_features": [f.slug for f in find_task_files(project_path)],
+            }
+            console.print(json.dumps(error_output, indent=2))
+            raise typer.Exit(1)
+        tasks = parse_task_file(task_file)
+
     ready = get_ready_tasks(tasks)
 
     # Calculate statistics
@@ -875,7 +1052,7 @@ def status(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
 
     output = {
         "feature": feature_slug,
-        "task_file": task_file.name,
+        "task_file": task_file.name if task_file is not None else f"github:{parent_issue}",
         "total_tasks": len(tasks),
         "completed": completed,
         "in_progress": in_progress,
@@ -891,24 +1068,48 @@ def status(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
 
 
 @app.command(name="ready-tasks")
-def ready_tasks(project_path: ProjectPath, feature_slug: FeatureSlug) -> None:
+def ready_tasks(
+    project_path: ProjectPath,
+    feature_slug: FeatureSlug,
+    github: Annotated[bool, typer.Option("--github", help="Query GitHub sub-issues instead of local files.")] = False,
+    parent_issue: Annotated[
+        int | None, typer.Option("--parent-issue", help="Parent story issue number (required with --github).")
+    ] = None,
+) -> None:
     """List tasks ready for execution (dependencies satisfied).
 
     Args:
         project_path: Path to the project root directory.
         feature_slug: Feature slug or partial match.
+        github: When True, query GitHub sub-issues instead of local task files.
+        parent_issue: Parent story GitHub issue number (required when ``--github`` is set).
     """
-    task_file = find_task_file_by_slug(project_path, feature_slug)
+    tasks: list[Task] | None = None
 
-    if not task_file:
-        error_output = {
-            "error": f"No task file found for feature: {feature_slug}",
-            "available_features": [f.slug for f in find_task_files(project_path)],
-        }
-        console.print(json.dumps(error_output, indent=2))
-        raise typer.Exit(1)
+    if github and parent_issue is not None:
+        cache_path = project_path / ".claude" / "context" / f"sam-tasks-{feature_slug}.json"
+        tasks = fetch_tasks_from_github(parent_issue, feature_slug, cache_path)
+        if tasks is None:
+            sys.stderr.write(
+                f"WARNING: GitHub fetch failed for feature '{feature_slug}'. Falling back to local files.\n"
+            )
 
-    tasks = parse_task_file(task_file)
+    if tasks is None:
+        task_file = find_task_file_by_slug(project_path, feature_slug)
+        if not task_file:
+            if github and parent_issue is not None:
+                # Both GitHub and local files are unavailable
+                error_output = {"error": "No task data available — GitHub unreachable and no cache found"}
+                console.print(json.dumps(error_output, indent=2))
+                raise typer.Exit(1)
+            error_output = {
+                "error": f"No task file found for feature: {feature_slug}",
+                "available_features": [f.slug for f in find_task_files(project_path)],
+            }
+            console.print(json.dumps(error_output, indent=2))
+            raise typer.Exit(1)
+        tasks = parse_task_file(task_file)
+
     ready = get_ready_tasks(tasks)
 
     output = {

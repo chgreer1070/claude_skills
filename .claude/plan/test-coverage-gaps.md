@@ -1,5 +1,15 @@
 # Test Coverage Gaps
 
+## Gap: implementation_manager.py — --github flag and fetch_tasks_from_github
+
+**Files**: `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py`
+**Behavior to cover**:
+- `fetch_tasks_from_github`: returns None when `_BACKLOG_CORE` absent; reads cache when GitHub offline; returns None when offline+cache absent; returns None when cache malformed; writes cache on successful GitHub fetch; converts SamTask to Task correctly
+- `_load_tasks_from_cache`: returns None when file absent; returns None on JSON decode error; skips malformed entries with warning; returns list of Tasks on success
+- `ready_tasks` with `--github`: falls back to local when GitHub returns None; emits error JSON + exit 1 when both GitHub and local absent; identical output when no flag
+- `status` with `--github`: falls back to local when GitHub returns None; task_file shows "github:N" when source is GitHub
+**Reason not written**: architecture spec (7.3) designates these tests for `tests/test_implementation_manager/test_github_flag.py` — scope boundary; no test fixtures for backlog_core mocking exist in this agent's context
+
 ## Gap: implementation_manager.py — claim-task command and helpers
 
 **Files**: `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py`, `plugins/python3-development/skills/implementation-manager/scripts/task_format.py`
@@ -74,6 +84,16 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 - MCP tool returns `{"success": False, "validation_errors": [...]}` when validation fails
 - MCP tool raises `ToolError` when `step_id` does not match current step
 **Reason not written**: T4 scope is integration wiring only. Test creation is assigned to T6 per the task plan.
+
+## Gap: task_status_hook.py — GitHub sync functions (T4)
+
+**Files**: `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py`
+**Behavior to cover**:
+- `get_parent_issue_number()`: returns int when `parent_issue_number` key present in context file; returns None when key absent; returns None when context file missing; returns None on JSON parse error
+- `sync_completion_to_github()`: no GitHub call when `github_issue` field absent from task YAML (warning to stderr); calls `update_task_status(repo, N, "complete")` with correct args on success; catches `GithubException` and exits cleanly (exit 0); catches `GitHubUnavailableError` and exits cleanly (exit 0); wraps entire body in `try/except Exception`
+- `handle_subagent_stop()` integration: `sync_completion_to_github` called after context file deletion; local YAML update is not rolled back on GitHub failure; exit 0 always
+- `handle_activity_update()`: never imports `backlog_core` or calls `update_task_status` from `backlog_core`
+**Reason not written**: Subordinate-agent boundary — test authoring for Phase 4 is assigned to a separate task (`tests/test_task_status_hook/test_github_sync.py`) per the architecture spec section 7.4. `backlog_core.github` mocking requires fixtures not available in this scope.
 
 ## Gap: registry_loader.py_apply_extension merge of new fields
 
