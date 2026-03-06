@@ -116,8 +116,18 @@ Trigger: `$ARGUMENTS` contains a URL with no flags.
 
 3. **Wait** for structured result (status, file path, category, key findings)
 4. **Apply relay rules** -- verify pre-relay checklist before proceeding
-5. **Update README** -- add new entry to the appropriate category table in `./research/README.md`
-6. **Post-actions** -- lint, commit, push (see [Post-Actions](#post-actions))
+5. **Spawn insight agent** (concurrent with step 6) -- if research status is not `failed`, immediately spawn `@research-insight-extractor`:
+
+   ```text
+   Agent tool parameters:
+     agent: .claude/agents/research-insight-extractor.md
+     prompt: "Extract improvements from {file-path-from-agent-result}"
+   ```
+
+   Do not wait for the insight agent before proceeding to step 6. It writes to `./research/insights/` and creates backlog items independently.
+
+6. **Update README** -- add new entry to the appropriate category table in `./research/README.md`
+7. **Post-actions** -- lint, commit, push (see [Post-Actions](#post-actions))
 
 ### Error Handling
 
@@ -160,8 +170,10 @@ flowchart TD
     QMore -->|"No — all URLs processed"| Collect
     Collect --> RelayCheck["Apply pre-relay quality checklist<br>to all collected agent results"]
     RelayCheck --> Results{"Did any agent return status: failed?"}
-    Results -->|"No — all succeeded"| UpdateAll["Update ./research/README.md<br>add all new entries to category tables"]
-    Results -->|"Yes — one or more failed"| Partial["Update ./research/README.md<br>with successful entries only<br>Relay each failure with exact reason to user"]
+    Results -->|"No — all succeeded"| SpawnInsights["Spawn @research-insight-extractor<br>for each successful entry (concurrent, up to 5)<br>prompt: 'Extract improvements from {file-path}'"]
+    Results -->|"Yes — one or more failed"| SpawnInsightsPartial["Spawn @research-insight-extractor<br>for each successful entry only (concurrent)<br>Relay each failure with exact reason to user"]
+    SpawnInsights --> UpdateAll["Update ./research/README.md<br>add all new entries to category tables<br>(concurrent with insight agents — do not wait)"]
+    SpawnInsightsPartial --> Partial["Update ./research/README.md<br>with successful entries only"]
     UpdateAll --> PostActions(["Execute Post-Actions — lint, commit, push"])
     Partial --> PostActions
 ```
@@ -220,8 +232,10 @@ flowchart TD
     FindAll --> WaveSpawn["Spawn @research-curator agents in waves of 5<br>each receives --rerun ./research/category/name.md<br>wait for each wave before spawning next"]
     WaveSpawn --> RelayCheck2["Apply pre-relay quality checklist<br>to all wave results"]
     RelayCheck2 --> UpdateDates["Update ./research/README.md<br>refresh freshness dates for all re-researched entries"]
-    UpdateDate --> PostActions(["Execute Post-Actions — lint, commit, push"])
-    UpdateDates --> PostActions
+    UpdateDate --> SpawnInsight1["Spawn @research-insight-extractor<br>prompt: 'Extract improvements from ./research/category/name.md'<br>(concurrent with post-actions)"]
+    SpawnInsight1 --> PostActions(["Execute Post-Actions — lint, commit, push"])
+    UpdateDates --> SpawnInsightsN["Spawn @research-insight-extractor for each updated entry<br>(concurrent, up to 5 — same pattern as batch mode)"]
+    SpawnInsightsN --> PostActions
 ```
 
 ### Single Entry Rerun
@@ -343,7 +357,7 @@ Shared by all modes. Execute after any mode completes successfully.
    uv run prek run --files ./research/README.md [new-or-modified-files]
    ```
 
-3. **Commit** -- stage and commit all research changes:
+3. **Commit** -- stage and commit all research and insight changes:
 
    ```bash
    git add ./research/
