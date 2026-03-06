@@ -841,3 +841,77 @@ class TestAppendOrReplaceSectionBackslash:
         result = append_or_replace_section(body, "Priority", content)
 
         assert r"\g<name>" in result
+
+
+# ---------------------------------------------------------------------------
+# SamTask parsing / building
+# ---------------------------------------------------------------------------
+
+from backlog_core.models import SamTask
+from backlog_core.parsing import build_sam_task_body, build_sam_task_issue_title, parse_sam_task_metadata
+
+_SAM_BODY = (
+    "## What\n\nAudit new uv CLI subcommands\n\n"
+    "## Acceptance Criteria\n\n- [ ] All documented\n\n"
+    "<!-- sam:task\n"
+    "task_id: T1\n"
+    "feature: uv-skill-update\n"
+    "type: research\n"
+    "status: not-started\n"
+    "agent: context-gathering\n"
+    "priority: 1\n"
+    "skills:\n"
+    "- uv\n"
+    "- python3-development\n"
+    "dependencies: []\n"
+    "-->\n"
+)
+
+
+class TestParseSamTaskMetadata:
+    def test_round_trip(self) -> None:
+        task = SamTask(
+            task_id="T1",
+            feature="uv-skill-update",
+            task_type="research",
+            status="not-started",
+            agent="context-gathering",
+            priority=1,
+            skills=["uv", "python3-development"],
+            dependencies=[],
+        )
+        body = build_sam_task_body(task, "Audit new uv CLI subcommands", ["All documented"])
+        parsed = parse_sam_task_metadata(body)
+
+        assert parsed is not None
+        assert parsed.task_id == task.task_id
+        assert parsed.feature == task.feature
+        assert parsed.task_type == task.task_type
+        assert parsed.status == task.status
+        assert parsed.agent == task.agent
+        assert parsed.priority == task.priority
+        assert parsed.skills == task.skills
+        assert parsed.dependencies == task.dependencies
+
+    def test_returns_none_when_no_block(self) -> None:
+        assert parse_sam_task_metadata("## What\n\nNo metadata here.\n") is None
+
+    def test_returns_none_on_malformed_yaml(self) -> None:
+        body = "<!-- sam:task\n: bad: [yaml\n-->\n"
+        assert parse_sam_task_metadata(body) is None
+
+    def test_returns_none_on_empty_body(self) -> None:
+        assert parse_sam_task_metadata("") is None
+
+    def test_parses_known_body(self) -> None:
+        parsed = parse_sam_task_metadata(_SAM_BODY)
+        assert parsed is not None
+        assert parsed.task_id == "T1"
+        assert parsed.skills == ["uv", "python3-development"]
+
+
+class TestBuildSamTaskIssueTitle:
+    def test_format(self) -> None:
+        task = SamTask(task_id="T2", feature="my-feat", task_type="implementation")
+        title = build_sam_task_issue_title(task, "Add the thing")
+        assert title == "[my-feat/T2] implementation: Add the thing"

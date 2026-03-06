@@ -526,7 +526,7 @@ def get_task_issues(repo: Repository, parent_issue_number: int, output: Output |
     out = output or Output()
     try:
         parent = repo.get_issue(parent_issue_number)
-        return list(parent.get_sub_issues())
+        return sorted(parent.get_sub_issues(), key=lambda si: si.priority_position)
     except GithubException as e:
         out.warn(f"  WARNING: Could not fetch sub-issues for #{parent_issue_number}: {e}")
         return []

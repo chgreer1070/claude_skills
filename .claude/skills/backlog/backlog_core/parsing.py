@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import frontmatter
-from ruamel.yaml import YAML
+from ruamel.yaml import YAML, YAMLError
 
 # ---------------------------------------------------------------------------
 # Set up import path for frontmatter_utils (lives in plugin-creator/scripts)
@@ -872,9 +872,6 @@ def extract_normalize_metadata(fm: dict[str, object], meta: dict[str, str]) -> d
 # Format: <!-- sam:task\n<YAML content>\n-->
 _SAM_TASK_RE = re.compile(r"<!--\s*sam:task\s*\n(.*?)\n-->", re.DOTALL)
 
-# Parses the [feature/task_id] prefix from issue titles.
-_SAM_TITLE_RE = re.compile(r"^\[([^/\]]+)/([^\]]+)\]\s+(\S+):\s*(.+)$")
-
 _YAML = YAML()
 _YAML.default_flow_style = False
 _YAML.preserve_quotes = True
@@ -897,7 +894,7 @@ def parse_sam_task_metadata(body: str) -> SamTask | None:
         return None
     try:
         data = _YAML.load(io.StringIO(m.group(1)))
-    except (ValueError, TypeError, KeyError):
+    except (ValueError, TypeError, KeyError, YAMLError):
         return None
     if not isinstance(data, dict):
         return None
