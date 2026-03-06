@@ -38,6 +38,7 @@ When user intent matches, load the reference file listed — do not rely on trai
 | Migrate from FastMCP v2 | Breaking changes, syntax fixes | [./references/migration.md](./references/migration.md) |
 | Add web UI to a server | Apps low-level HTML API | [./references/apps.md](./references/apps.md) |
 | Find real-world usage patterns | ProxyProvider, mount(), showcase | [./references/real-world-patterns.md](./references/real-world-patterns.md) |
+| Evaluate MCP server quality | Evaluation harness, QA pairs | [./references/evaluation-guide.md](./references/evaluation-guide.md) |
 
 ---
 
