@@ -319,6 +319,7 @@ Tools and services that automate the creation of AI skills from documentation, c
 
 | Document                                                            | Description                                                                                                    | Last Updated |
 | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------ |
+| [anthropics-skills.md](./skill-generation-tools/anthropics-skills.md) | Anthropic Agent Skills - official Anthropic skills repo with 17 skills in 3 plugins, A/B eval harness, description-driven triggering (84.9K stars) | 2026-03-06   |
 | [clawhub.md](./skill-generation-tools/clawhub.md)                    | ClawHub - public skill registry for OpenClaw/Clawdbot agents; vector search, semver versioning, MIT CLI (3,286+ skills) | 2026-02-23   |
 | [claude-code-templates.md](./skill-generation-tools/claude-code-templates.md) | Claude Code Templates - 100+ ready-to-use agents, commands, skills, MCPs, hooks, and settings for Claude Code; npx installer and aitmpl.com browser (21.8K stars) | 2026-03-03   |
 | [claude-skillz.md](./skill-generation-tools/claude-skillz.md)       | Claude Skillz - 18+ behavioral skills, 12 personas, 10 plugins, and Claude Launcher for rapid persona switching (238 stars) | 2026-02-20   |
