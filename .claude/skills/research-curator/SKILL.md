@@ -1,8 +1,7 @@
 ---
 name: research-curator
-description: Manage research entries in ./research/ — create, refresh, and validate. Use when asked to add a tool, "document this", "research this", or given a tool URL.
+description: 'Manage research entries in ./research/ — create, refresh, and validate. Use when asked to add a tool, "document this", "research this", "refresh this research", "validate research entries", or given a tool URL. Modes: default (single URL), --batch (multiple URLs in parallel), --rerun (refresh stale entries), --validate (structural check and auto-fix).'
 argument-hint: '[url] [--batch url1 url2 ...] [--rerun category/name|all] [--validate category/name|all]'
-user-invocable: true
 ---
 
 > [!IMPORTANT]
@@ -160,35 +159,7 @@ Extract all tokens after `--batch` matching `https?://` as target URLs. Non-URL 
 
 ### Wave Spawning
 
-The following diagram is the authoritative procedure for batch wave spawning. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
-
-```mermaid
-flowchart TD
-    Start(["Parse deduplicated URLs from --batch"]) --> Count{"How many URLs remain after duplicate check?"}
-    Count -->|"1 to 5 — fits in one wave"| Wave1["Spawn all URLs as Wave 1<br>up to 5 parallel @research-curator agents via Agent tool"]
-    Count -->|"6 to 10 — fits in two waves"| W1a["Spawn Wave 1 — first 5 URLs<br>up to 5 parallel @research-curator agents"]
-    Count -->|"11 or more — requires three or more waves"| WNa["Spawn Wave 1 — URLs 1 through 5<br>up to 5 parallel @research-curator agents"]
-    Wave1 --> Collect["Collect structured results from all agents<br>(status, file path, category, key findings)"]
-    W1a --> W1aDone["Wait for all Wave 1 agents to complete"]
-    W1aDone --> W2a["Spawn Wave 2 — remaining URLs<br>up to 5 parallel @research-curator agents"]
-    W2a --> Collect
-    WNa --> WNaDone["Wait for current wave to complete"]
-    WNaDone --> QMore{"More URLs remaining?"}
-    QMore -->|"Yes — advance to next batch of 5"| WNa
-    QMore -->|"No — all URLs processed"| Collect
-    Collect --> RelayCheck["Apply pre-relay quality checklist<br>to all collected agent results"]
-    RelayCheck --> Results{"Did any agent return status: failed?"}
-    Results -->|"No — all succeeded"| SpawnInsights["Spawn @research-insight-extractor<br>for each successful entry (concurrent, up to 5)<br>prompt: 'Extract improvements from {file-path}'"]
-    Results -->|"Yes — one or more failed"| SpawnInsightsPartial["Spawn @research-insight-extractor<br>for each successful entry only (concurrent)<br>Relay each failure with exact reason to user"]
-    SpawnInsights --> UpdateAll["Update ./research/README.md<br>add all new entries to category tables<br>(concurrent with insight agents)"]
-    SpawnInsightsPartial --> Partial["Update ./research/README.md<br>with successful entries only<br>(concurrent with insight agents)"]
-    UpdateAll --> WaitInsights["Wait for all insight agents to complete<br>Collect IMMEDIATE_ATTENTION items from each result"]
-    Partial --> WaitInsights
-    WaitInsights --> NotifyUser["If any IMMEDIATE_ATTENTION items exist:<br>report each to user with issue number and reason<br>Otherwise: report total backlog items created count"]
-    NotifyUser --> PostActions(["Execute Post-Actions — lint, commit, push"])
-```
-
-Each wave: spawn up to 5 `@research-curator` agents in parallel via Agent tool. Wait for all agents in the current wave before spawning the next.
+Spawn up to 5 `@research-curator` agents per wave via Agent tool. Wait for all agents in the current wave before spawning the next. After all waves complete, spawn `@research-insight-extractor` for each successful entry (concurrent, up to 5). See [Batch Mode reference](./references/batch-mode.md) for the complete wave spawning diagram.
 
 ### Duplicate Detection
 
@@ -313,10 +284,8 @@ flowchart TD
 ### Script Invocation
 
 ```bash
-./scripts/validate_research.py --json ./research/{target}
+uv run .claude/skills/research-curator/scripts/validate_research.py --json ./research/{target}
 ```
-
-The script is located at `.claude/skills/research-curator/scripts/validate_research.py` relative to the repo root. Invoke from the skill directory or use the full relative path.
 
 ### Fix Agent Delegation
 
@@ -475,5 +444,6 @@ YYYY-MM-DD
 - [Validation Rules](./references/validation-rules.md) -- checks and severity mapping for `--validate` mode
 - [Batch Mode](./references/batch-mode.md) -- wave spawning workflow for `--batch` mode
 - Agent: `@research-curator` at `.claude/agents/research-curator.md` -- single-entry research executor
+- Agent: `@research-insight-extractor` at `.claude/agents/research-insight-extractor.md` -- extracts backlog improvements from research entries
 
 SOURCE: Agent result relay rules and pre-relay checklist adapted from `plugins/summarizer/skills/agent-result-relay/SKILL.md` (accessed 2026-03-06).

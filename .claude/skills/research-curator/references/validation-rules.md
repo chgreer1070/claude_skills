@@ -8,7 +8,7 @@ Checks performed by `./scripts/validate_research.py` and severity mapping for th
 
 ### Error Severity (must fix)
 
-- **section_completeness**: All 10 required sections must exist — Header, Overview, Problem Addressed, Key Statistics, Key Features, Technical Architecture, Installation & Usage, Relevance to Claude Code Development, References, Freshness Tracking
+- **section_completeness**: All 9 required `##`-level sections must exist — Overview, Problem Addressed, Key Statistics, Key Features, Technical Architecture, Installation & Usage, Relevance to Claude Code Development, References, Freshness Tracking. Header fields (Research Date, Source URL, etc.) are checked separately via **header_fields**.
 - **header_fields**: Header block must contain Research Date, Source URL, Version at Research, License
 - **empty_sections**: Section heading exists but contains no content below it before the next heading
 
@@ -57,7 +57,8 @@ flowchart TD
     "total": "number of entries scanned",
     "passed": "entries with zero errors",
     "errors": "total error-severity issues",
-    "warnings": "total warning-severity issues"
+    "warnings": "total warning-severity issues",
+    "info": "total info-severity observations"
   },
   "entries": [
     {

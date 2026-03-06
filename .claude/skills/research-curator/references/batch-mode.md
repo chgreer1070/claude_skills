@@ -4,6 +4,12 @@ Processing multiple URLs in parallel via `--batch`.
 
 ---
 
+## Layer Filter
+
+When `--layer 0|1|2` is also present, apply the layer filter to scope category selection. Pass the layer value to each `@research-curator` agent as context so it classifies entries within the appropriate SDLC layer.
+
+---
+
 ## URL Parsing
 
 Extract URLs from the `--batch` argument. Input format:
@@ -34,11 +40,16 @@ flowchart TD
     WNaDone --> QMore{"More URLs remaining?"}
     QMore -->|"Yes — advance to next batch of 5"| WNa
     QMore -->|"No — all URLs processed"| Collect
-    Collect --> Results{"Did any agent return status: failed?"}
-    Results -->|"No — all succeeded"| README["Update ./research/README.md<br>add all new entries to category tables"]
-    Results -->|"Yes — one or more failed"| Partial["Update ./research/README.md<br>with successful entries only<br>Report each failure with reason to user"]
-    README --> Finalize(["Lint, commit, push — batch complete"])
-    Partial --> Finalize
+    Collect --> RelayCheck["Apply pre-relay quality checklist<br>to all collected agent results"]
+    RelayCheck --> Results{"Did any agent return status: failed?"}
+    Results -->|"No — all succeeded"| SpawnInsights["Spawn @research-insight-extractor<br>for each successful entry (concurrent, up to 5)<br>prompt: 'Extract improvements from {file-path}'"]
+    Results -->|"Yes — one or more failed"| SpawnInsightsPartial["Spawn @research-insight-extractor<br>for each successful entry only (concurrent)<br>Relay each failure with exact reason to user"]
+    SpawnInsights --> UpdateAll["Update ./research/README.md<br>add all new entries to category tables<br>(concurrent with insight agents)"]
+    SpawnInsightsPartial --> Partial["Update ./research/README.md<br>with successful entries only<br>(concurrent with insight agents)"]
+    UpdateAll --> WaitInsights["Wait for all insight agents to complete<br>Collect IMMEDIATE_ATTENTION items from each result"]
+    Partial --> WaitInsights
+    WaitInsights --> NotifyUser["If any IMMEDIATE_ATTENTION items exist:<br>report each to user with issue number and reason<br>Otherwise: report total backlog items created count"]
+    NotifyUser --> PostActions(["Execute Post-Actions — lint, commit, push"])
 ```
 
 **Wave size**: Maximum 5 concurrent @research-curator agents per wave.
