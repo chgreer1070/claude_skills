@@ -163,7 +163,17 @@ Spawn up to 5 `@research-curator` agents per wave via Agent tool. Wait for all a
 
 ### Duplicate Detection
 
-Before spawning, check if `./research/` already contains an entry for the URL's resource. If found, skip with info message suggesting `--rerun` instead.
+Before spawning, check if `./research/` already contains an entry for the URL's resource.
+If found:
+
+1. Read the entry's Freshness Tracking section.
+2. Compute days since Last Verified (integer: today minus Last Verified date).
+3. Emit: `Entry is N days old (last verified: YYYY-MM-DD, vX.Y.Z). Proceeding with refresh.`
+4. Pass `--rerun ./research/{category}/{name}.md` to the agent instead of skipping.
+
+If the Freshness Tracking section is absent or Last Verified is unreadable, emit:
+`Entry exists but freshness data unavailable. Proceeding with refresh.`
+and pass `--rerun ./research/{category}/{name}.md` to the agent.
 
 ### Progress Reporting
 
@@ -171,9 +181,9 @@ After each wave, relay exact counts and exact failure reasons from agent output:
 
 ```text
 Wave N complete: M/N succeeded
-  created -- category/resource-name.md
-  created -- category/resource-name.md
-  failed  -- https://url.com -- {exact reason from agent}
+  created    -- category/resource-name.md
+  refreshed  -- category/resource-name.md (was N days old)
+  failed     -- https://url.com -- {exact reason from agent}
 ```
 
 After all waves:
@@ -393,12 +403,15 @@ YYYY-MM-DD
 ## Batch Research Complete
 
 **Total**: X URLs processed
-**Succeeded**: Y entries created
-**Failed**: Z
+**Created**: Y new entries
+**Refreshed**: Z existing entries
+**Failed**: W
 
 ### Entries Created
 - ./research/{category}/{name}.md
-- ./research/{category}/{name}.md
+
+### Entries Refreshed
+- ./research/{category}/{name}.md (was N days old, last: YYYY-MM-DD, vX.Y.Z)
 
 ### Failures
 - {URL} -- {exact reason from agent output}

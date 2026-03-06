@@ -174,10 +174,20 @@ How the resource works internally. Include diagrams if helpful.
 | Next Review Recommended | YYYY-MM-DD |
 ````
 
+> **Note**: "Next Review Recommended" is a suggestion, not a gate. When a user or
+> orchestrator explicitly requests re-research for this entry — via `--rerun`, via
+> `--batch` URL resubmission, or via `--all` — the refresh proceeds regardless of this
+> date. This field provides context ("how stale is this?") and informs scheduling
+> decisions. It does not block operations.
+
 ---
 
 ## Freshness Schedule
 
-- **Next Review**: Set to 3 months from research date
+- **Next Review**: Set to 3 months from research date. This is a conservative baseline
+  appropriate for stable or slow-moving projects. High-activity repositories — those with
+  frequent major or minor releases, rapidly growing star or fork counts, or active breaking
+  API changes — benefit from shorter intervals (4–6 weeks). The agent setting this date
+  should calibrate to the observed activity level of the resource at time of research.
 - **Stale threshold**: 6 months without verification
 - **Review required**: Version change, significant star/fork growth, breaking API changes

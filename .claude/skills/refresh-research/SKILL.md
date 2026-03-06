@@ -32,14 +32,19 @@ flowchart TD
     Start([Read entry]) --> ParseFM[Parse YAML frontmatter<br>Extract metadata.layer]
     ParseFM --> HasFreshness{Freshness Tracking section present?}
     HasFreshness -->|No| Stale1[STALE: no tracking]
-    HasFreshness -->|Yes| PastDue{Next Review Recommended < today?}
+    HasFreshness -->|Yes| ComputeDays[Compute Days Old = today minus Last Verified]
+    ComputeDays --> PastDue{Next Review Recommended < today?}
     PastDue -->|Yes| Stale2[STALE: past review date]
     PastDue -->|No| TooOld{Last Verified > 6 months ago?}
     TooOld -->|Yes| Stale3[STALE: too old]
-    TooOld -->|No| Fresh[FRESH: skip]
+    TooOld -->|No| Fresh[FRESH: N days until next review]
 ```
 
-Build inventory table: `| File | Category | Layer | Last Verified | Next Review | Stale? |`
+Build inventory table:
+`| File | Category | Layer | Last Verified | Next Review | Days Old | Stale? |`
+
+The `Days Old` column holds an integer: today's date minus the Last Verified date in days.
+If Last Verified is absent or unparseable, render as `—`.
 
 The `Layer` column holds the `metadata.layer` value or `—` if absent.
 
@@ -56,6 +61,18 @@ Apply filters sequentially. Filters combine with AND logic — each filter narro
 5. **Dry-run check**: `--dry-run` — display the filtered target list and stop without spawning agents.
 
 If zero entries remain after all filters: report "No entries match the applied filters." and stop. When `--layer` was specified and zero entries match, additionally report: "No entries found for layer {N}. Entries need `metadata.layer` in their YAML frontmatter to be targeted by `--layer`."
+
+When the `--stale` filter excludes entries because they are FRESH, list each excluded entry
+before continuing to Step 3:
+
+```text
+Skipped (fresh):
+  ./research/{category}/{name}.md — N days until next review (last: YYYY-MM-DD, vX.Y.Z)
+  ./research/{category}/{name}.md — N days until next review (last: YYYY-MM-DD, vX.Y.Z)
+```
+
+This listing appears regardless of whether `--dry-run` is active. Under `--all` (no staleness
+filter), no entries are excluded by staleness, so this block does not appear.
 
 ### Step 3: RT-ICA Pre-Flight
 
@@ -109,15 +126,19 @@ After all waves complete, update `./research/README.md`:
 
 **Date**: {YYYY-MM-DD}
 **Scope**: {--all | --stale | --category X | --layer N}
-**Total scanned**: {N} | **Targeted**: {M} | **Skipped (fresh)**: {K}
+**Total scanned**: {N} | **Targeted**: {M} | **Skipped (fresh)**: {K} ({min}–{max} days until next review)
 
 ## Results
 
-| Outcome | Count |
-|---------|-------|
-| Updated | {N} |
-| Unchanged | {N} |
-| Failed | {N} |
+| Outcome | Count | Notes |
+|---------|-------|-------|
+| Updated | {N} | |
+| Unchanged | {N} | |
+| Failed | {N} | |
+| Skipped (fresh) | {K} | {min}–{max} days until next review |
+
+When K = 0, omit the Skipped (fresh) row. When K = 1, Notes column: `{N} days until next review`.
+When K = 0 in the header: `**Skipped (fresh)**: 0`. When K = 1: `**Skipped (fresh)**: 1 ({N} days until next review)`.
 
 ## Updates
 
