@@ -228,3 +228,36 @@ class IssueLocalFields(BaseModel):
     status: str = "open"
     updated_at: str = ""
     milestone: str = ""
+
+
+class SamTask(BaseModel):
+    """SAM task metadata stored in the ``<!-- sam:task ... -->`` block of a GitHub issue body.
+
+    Title format: ``[{feature}/{task_id}] {task_type}: {description}``
+    Body block:   invisible HTML comment containing YAML fields below.
+    """
+
+    task_id: str = ""
+    """Feature-scoped sequential ID, e.g. "T1", "T2"."""
+
+    feature: str = ""
+    """Feature slug, e.g. "uv-skill-update"."""
+
+    task_type: str = ""
+    """Execution category: "research" | "implement" | "review" | "fix" | "docs"."""
+
+    status: str = "not-started"
+    """Execution state: "not-started" | "in-progress" | "complete" | "blocked"."""
+
+    agent: str = ""
+    """Agent name to execute the task, e.g. "context-gathering"."""
+
+    priority: int = 2
+    """Execution priority 1-5 (1 = highest)."""
+
+    skills: list[str] = Field(default_factory=list)
+    """Skill names the executing agent should load."""
+
+    dependencies: list[str] = Field(default_factory=list)
+    """Feature-scoped task IDs this task depends on, e.g. ["T1", "T2"].
+    Cross-feature deps use GitHub issue numbers: ["#479"]."""

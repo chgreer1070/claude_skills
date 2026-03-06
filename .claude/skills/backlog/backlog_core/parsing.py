@@ -6,6 +6,7 @@ Extracted from ``backlog.py`` — pure functions with no GitHub or typer depende
 from __future__ import annotations
 
 import difflib
+import io
 import operator
 import re
 import sys
@@ -13,6 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import frontmatter
+from ruamel.yaml import YAML, YAMLError
 
 # ---------------------------------------------------------------------------
 # Set up import path for frontmatter_utils (lives in plugin-creator/scripts)
@@ -36,6 +38,7 @@ from .models import (
     MIN_FRONTMATTER_PARTS,
     ROLE_MAP,
     BacklogItem,
+    SamTask,
     ViewItemResult,
 )
 
@@ -49,6 +52,8 @@ __all__ = [
     "build_body_extra_only",
     "build_issue_body",
     "build_issue_body_from_file",
+    "build_sam_task_body",
+    "build_sam_task_issue_title",
     "dump_frontmatter",
     "extract_body_field_pairs",
     "extract_description_from_issue_body",
@@ -70,6 +75,7 @@ __all__ = [
     "parse_body_extra_fields",
     "parse_issue_selector",
     "parse_item_file",
+    "parse_sam_task_metadata",
     "reconstruct_body_from_sections",
     "title_to_slug",
     "today",
@@ -856,3 +862,107 @@ def extract_normalize_metadata(fm: dict[str, object], meta: dict[str, str]) -> d
         "plan": "" if plan.upper() == "N/A" else plan,
         "groomed": str(meta.get("groomed") or fm.get("groomed") or ""),
     }
+
+
+# ---------------------------------------------------------------------------
+# SAM task body format
+# ---------------------------------------------------------------------------
+
+# Matches the invisible HTML comment block that stores SAM task metadata.
+# Format: <!-- sam:task\n<YAML content>\n-->
+_SAM_TASK_RE = re.compile(r"<!--\s*sam:task\s*\n(.*?)\n-->", re.DOTALL)
+
+_YAML = YAML()
+_YAML.default_flow_style = False
+_YAML.preserve_quotes = True
+
+
+def parse_sam_task_metadata(body: str) -> SamTask | None:
+    """Extract SAM task metadata from the ``<!-- sam:task ... -->`` block in an issue body.
+
+    The block is invisible in GitHub's rendered Markdown. Returns ``None`` if
+    no block is found or the YAML is malformed.
+
+    Args:
+        body: GitHub issue body text.
+
+    Returns:
+        ``SamTask`` populated from the block, or ``None``.
+    """
+    m = _SAM_TASK_RE.search(body or "")
+    if not m:
+        return None
+    try:
+        data = _YAML.load(io.StringIO(m.group(1)))
+    except (ValueError, TypeError, KeyError, YAMLError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    skills_raw = data.get("skills", [])
+    deps_raw = data.get("dependencies", [])
+    return SamTask(
+        task_id=str(data.get("task_id", "")),
+        feature=str(data.get("feature", "")),
+        task_type=str(data.get("type", data.get("task_type", ""))),
+        status=str(data.get("status", "not-started")),
+        agent=str(data.get("agent", "")),
+        priority=int(data.get("priority", 2)),
+        skills=list(skills_raw) if isinstance(skills_raw, list) else [],
+        dependencies=list(deps_raw) if isinstance(deps_raw, list) else [],
+    )
+
+
+def build_sam_task_issue_title(task: SamTask, description: str) -> str:
+    """Build the GitHub issue title for a SAM task.
+
+    Format: ``[{feature}/{task_id}] {task_type}: {description}``
+
+    Args:
+        task: ``SamTask`` with ``feature``, ``task_id``, and ``task_type`` set.
+        description: Short human-readable description (the "what").
+
+    Returns:
+        Formatted issue title string.
+    """
+    return f"[{task.feature}/{task.task_id}] {task.task_type}: {description}"
+
+
+def build_sam_task_body(task: SamTask, description: str = "", acceptance_criteria: list[str] | None = None) -> str:
+    """Build a GitHub issue body for a SAM task.
+
+    The human-readable sections (What, Acceptance Criteria) are visible in
+    GitHub's UI. The ``<!-- sam:task ... -->`` block at the end is invisible
+    and stores machine-readable metadata for the backlog MCP to parse.
+
+    Args:
+        task: ``SamTask`` with all metadata fields populated.
+        description: Human-readable description of what the task does.
+        acceptance_criteria: Optional list of acceptance criteria strings.
+
+    Returns:
+        Markdown-formatted issue body string.
+    """
+    criteria = acceptance_criteria or ["Work matches description"]
+    criteria_lines = "\n".join(f"- [ ] {c}" for c in criteria)
+
+    buf = io.StringIO()
+    _YAML.dump(
+        {
+            "task_id": task.task_id,
+            "feature": task.feature,
+            "type": task.task_type,
+            "status": task.status,
+            "agent": task.agent,
+            "priority": task.priority,
+            "skills": list(task.skills),
+            "dependencies": list(task.dependencies),
+        },
+        buf,
+    )
+    yaml_block = buf.getvalue().rstrip("\n")
+
+    return (
+        f"## What\n\n{description or '(no description)'}\n\n"
+        f"## Acceptance Criteria\n\n{criteria_lines}\n\n"
+        f"<!-- sam:task\n{yaml_block}\n-->\n"
+    )

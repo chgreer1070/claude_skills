@@ -866,3 +866,138 @@ def test_create_issue_prefix_per_type(mocker: MockerFixture, item_type: str, exp
     # Assert
     call_kwargs = repo.create_issue.call_args.kwargs
     assert call_kwargs["title"].startswith(f"{expected_prefix}: ")
+
+
+# ---------------------------------------------------------------------------
+# SamTask GitHub operations
+# ---------------------------------------------------------------------------
+
+from backlog_core.github import create_task_issue, get_task_issues, update_task_status
+from backlog_core.models import SamTask
+from backlog_core.parsing import build_sam_task_body
+
+
+def _make_sam_task(**kwargs: object) -> SamTask:
+    defaults: dict[str, object] = {
+        "task_id": "T1",
+        "feature": "feat",
+        "task_type": "research",
+        "status": "not-started",
+        "agent": "context-gathering",
+        "priority": 1,
+        "skills": [],
+        "dependencies": [],
+    }
+    defaults.update(kwargs)
+    return SamTask(**defaults)  # type: ignore[arg-type]
+
+
+class TestCreateTaskIssue:
+    def test_creates_issue_and_links_as_sub_issue(self, mocker: MockerFixture) -> None:
+        repo = _make_mock_repo(mocker)
+        task = _make_sam_task()
+        mock_task_issue = mocker.Mock()
+        mock_task_issue.number = 42
+        repo.create_issue.return_value = mock_task_issue
+        mock_parent = mocker.Mock()
+        repo.get_issue.return_value = mock_parent
+
+        result = create_task_issue(repo, parent_issue_number=10, task=task, description="Do the thing")
+
+        assert result is mock_task_issue
+        repo.create_issue.assert_called_once()
+        mock_parent.add_sub_issue.assert_called_once_with(mock_task_issue)
+
+    def test_returns_none_on_create_failure(self, mocker: MockerFixture) -> None:
+        from github import GithubException
+
+        repo = _make_mock_repo(mocker)
+        repo.create_issue.side_effect = GithubException(422, "validation failed")
+        task = _make_sam_task()
+
+        result = create_task_issue(repo, parent_issue_number=10, task=task)
+
+        assert result is None
+
+    def test_still_returns_issue_if_sub_issue_link_fails(self, mocker: MockerFixture) -> None:
+        from github import GithubException
+
+        repo = _make_mock_repo(mocker)
+        task = _make_sam_task()
+        mock_task_issue = mocker.Mock()
+        mock_task_issue.number = 99
+        repo.create_issue.return_value = mock_task_issue
+        mock_parent = mocker.Mock()
+        mock_parent.add_sub_issue.side_effect = GithubException(404, "not found")
+        repo.get_issue.return_value = mock_parent
+
+        result = create_task_issue(repo, parent_issue_number=10, task=task)
+
+        assert result is mock_task_issue
+
+
+class TestGetTaskIssues:
+    def test_returns_sorted_by_priority_position(self, mocker: MockerFixture) -> None:
+        repo = _make_mock_repo(mocker)
+        si_a = mocker.Mock()
+        si_a.priority_position = 3
+        si_b = mocker.Mock()
+        si_b.priority_position = 1
+        si_c = mocker.Mock()
+        si_c.priority_position = 2
+        mock_parent = mocker.Mock()
+        mock_parent.get_sub_issues.return_value = [si_a, si_b, si_c]
+        repo.get_issue.return_value = mock_parent
+
+        result = get_task_issues(repo, parent_issue_number=5)
+
+        assert result == [si_b, si_c, si_a]
+
+    def test_returns_empty_on_github_error(self, mocker: MockerFixture) -> None:
+        from github import GithubException
+
+        repo = _make_mock_repo(mocker)
+        repo.get_issue.side_effect = GithubException(404, "not found")
+
+        result = get_task_issues(repo, parent_issue_number=5)
+
+        assert result == []
+
+
+class TestUpdateTaskStatus:
+    def test_updates_status_in_body(self, mocker: MockerFixture) -> None:
+        repo = _make_mock_repo(mocker)
+        task = _make_sam_task(status="not-started")
+        body = build_sam_task_body(task)
+        mock_issue = mocker.Mock()
+        mock_issue.body = body
+        repo.get_issue.return_value = mock_issue
+
+        changed = update_task_status(repo, issue_number=7, new_status="in-progress")
+
+        assert changed is True
+        mock_issue.edit.assert_called_once()
+        updated_body: str = mock_issue.edit.call_args.kwargs["body"]
+        assert "status: in-progress" in updated_body
+
+    def test_no_op_when_status_already_matches(self, mocker: MockerFixture) -> None:
+        repo = _make_mock_repo(mocker)
+        task = _make_sam_task(status="complete")
+        mock_issue = mocker.Mock()
+        mock_issue.body = build_sam_task_body(task)
+        repo.get_issue.return_value = mock_issue
+
+        changed = update_task_status(repo, issue_number=7, new_status="complete")
+
+        assert changed is False
+        mock_issue.edit.assert_not_called()
+
+    def test_returns_false_when_no_sam_block(self, mocker: MockerFixture) -> None:
+        repo = _make_mock_repo(mocker)
+        mock_issue = mocker.Mock()
+        mock_issue.body = "## What\n\nNo metadata.\n"
+        repo.get_issue.return_value = mock_issue
+
+        changed = update_task_status(repo, issue_number=7, new_status="complete")
+
+        assert changed is False
