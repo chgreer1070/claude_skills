@@ -28,7 +28,7 @@ class TestFM009Guard:
     """Tests for the FM009 state-machine guard in _fix_unquoted_colons().
 
     Scope: White-box unit tests that call _fix_unquoted_colons() directly,
-    verifying per-line behaviour for eight distinct input shapes.
+    verifying per-line behaviour for nine distinct input shapes.
 
     Strategy: AAA pattern; each case constructs a minimal frontmatter string,
     calls the function, and asserts on the returned (text, fixes, fields) tuple.
@@ -112,6 +112,13 @@ class TestFM009Guard:
                 True,
                 id="case8_mcp_scalar_null_fm009_fires_for_subsequent_fields",
             ),
+            pytest.param(
+                "mcp_scalar_null_orphaned_indent",
+                "mcp: null\n  orphaned-indent: Fix: colon\n",
+                None,
+                True,
+                id="case9_mcp_scalar_null_orphaned_indent_fm009_fires",
+            ),
         ],
     )
     def test_fm009_guard(
@@ -119,7 +126,7 @@ class TestFM009Guard:
     ) -> None:
         """FM009 state-machine guard produces correct per-case output.
 
-        Tests: _fix_unquoted_colons() state machine for 7 input shapes
+        Tests: _fix_unquoted_colons() state machine for nine parametrized input shapes, enumerated in the parametrize decorator above
         How: Call the function with a crafted frontmatter string; inspect the
              returned (fixed_text, fixes, fixed_fields) tuple to verify that
              mcp: sub-key lines are passed through unchanged and that Claude

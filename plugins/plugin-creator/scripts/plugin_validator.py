@@ -172,6 +172,7 @@ def _fix_unquoted_colons(frontmatter_text: str) -> tuple[str, list[str], list[st
 
     ecosystem_owned = get_ecosystem_owned_skill_keys()
     current_top_level_key: str | None = None
+    current_key_is_scalar = False
 
     for line in lines:
         stripped = line.rstrip("\n")
@@ -181,12 +182,22 @@ def _fix_unquoted_colons(frontmatter_text: str) -> tuple[str, list[str], list[st
         # ``word:`` or ``word: value``.
         if stripped and not stripped[0].isspace() and (tl_match := _TOP_LEVEL_KEY_RE.match(stripped)):
             current_top_level_key = tl_match.group(1)
+            # A scalar line has an inline value (e.g. ``mcp: null``).
+            # Scalars own no block children — subsequent indented lines do not
+            # belong to this key and must not inherit its ecosystem bypass.
+            current_key_is_scalar = bool(stripped[tl_match.end() :].strip())
 
         # Skip FM009 rewrite for all lines inside ecosystem-owned blocks.
         # This covers both the top-level key line (``mcp:`` / ``mcp: null``)
         # and every indented sub-key beneath it, regardless of nesting depth.
         if current_top_level_key in ecosystem_owned:
             new_lines.append(line)
+            if current_key_is_scalar:
+                # Scalar top-level lines are self-contained; they have no block
+                # children.  Reset so the next indented line is not treated as
+                # part of this ecosystem-owned key.
+                current_top_level_key = None
+                current_key_is_scalar = False
             continue
 
         m = unquoted_colon_re.match(stripped)
