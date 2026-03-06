@@ -1,24 +1,22 @@
 # Error Handling Reference
 
-- `#N` not found: report and list open issues with `gh issue list -R Jamie-BitFlight/claude_skills --state open`
-- `#N` already closed: warn and stop; offer `close` or `resolve` if needed
+- `#N` / URL / bare number not found: report and list available items — call the `mcp__backlog__backlog_list` tool
+- `#N` already closed: run Completed Issue Discovery (search commits/PRs for evidence, close local item with reference, or ask user)
 - `close #N` / `resolve #N` — issue not found: report and stop
 - Item not found: list available items from `.claude/backlog/` per-item files with their priority sections
 - Multiple matches: present numbered list, ask user to choose
 - Grooming fails: proceed without grooming context, note the gap in the feature request
-- RT-ICA returns BLOCKED: present missing inputs, wait for user, do not invoke `add-new-feature`, do not set `status:in-progress`
+- RT-ICA returns BLOCKED: present missing inputs, wait for user, do not invoke `add-new-feature`
 - `add-new-feature` fails: report the failure, do not update per-item file
 - Plan file not found after planning: search `plan/` directory broadly, ask user to confirm the path
 - Grooming reports directory does not exist: treat all items as ungroomed
-- `close` with no `**Plan**:` field: report and offer `resolve` as alternative
-- `close` with incomplete checklist: list remaining tasks, do not close
-- `close` with verification FAIL: report per-criterion gaps, do not close
+- `close` with invalid reason: reject and show valid reasons (duplicate, out_of_scope, superseded, wontfix, blocked)
 - `close` on already-completed item: report closed date, do not re-close
-- `resolve` with no reason provided: block until user provides reason (reason is required evidence)
+- `resolve` with no `**Plan**:` field: skip checklist verification, proceed to summary collection
+- `resolve` with incomplete checklist: list remaining tasks, do not resolve (offer `close` as alternative)
+- `resolve` with verification FAIL: report gaps, do not resolve
+- `resolve` with no summary provided: block until user provides summary (summary is required evidence)
 - GitHub issue creation fails: report error, continue with per-item-file-only workflow; do not block SAM planning
-- `gh` not installed: run `uv run .claude/skills/gh/scripts/setup_gh.py` first
+- `GITHUB_TOKEN` not set: backlog MCP tools report an error; local-only operations still work
 - Label not found during issue create: `github_project_setup.py` creates it automatically
 - Milestone not found: skip milestone assignment; do not fail
-- `resume` with no `**Plan**:` field: offer to create a plan with `/work-backlog-item {title}`
-- `progress` with no active milestone: show backlog counts only; note no milestone found
-- `--quick` plan write fails: report and stop; do not update per-item file

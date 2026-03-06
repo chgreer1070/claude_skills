@@ -111,6 +111,37 @@ The tool updates the per-item file status and closes the GitHub issue. Check the
 
 ---
 
+## Commit Messages and PR Body — `Fixes #N`
+
+When implementing a backlog item with a linked GitHub Issue (`**Issue**: #N`), **every commit and PR description MUST reference the issue** so GitHub auto-closes it on merge:
+
+- **Commit messages**: end the subject line with `(fixes #N)` or add a `Fixes #N` footer:
+
+  ```text
+  fix(perl-development): replace shell injection in run_command (fixes #80)
+  ```
+
+  or
+
+  ```text
+  fix(perl-development): replace shell injection in run_command
+
+  Fixes #80
+  ```
+
+- **PR description**: include at least one `Fixes #N` line. For multiple issues, list each on a separate line:
+
+  ```text
+  Fixes #80
+  Fixes #83
+  ```
+
+- Use `Fixes` (not `Closes`) for bugs and security issues; either works for feature work.
+
+This ensures issues are automatically closed on merge without manual intervention.
+
+---
+
 ## Example Sessions
 
 ### GitHub Issue Creation Flow

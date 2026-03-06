@@ -50,20 +50,7 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 
 ### --auto mode rules
 
-When `$0` is `--auto`, the following substitutions apply at every interactive decision point:
-
-| Normal behaviour | `--auto` substitution |
-|---|---|
-| No title given (`$1` is empty) | Scan `.claude/backlog/` per-item files for P0 then P1 items that have status `needs-grooming` or `groomed` (not `done`, `resolved`, or `closed`). Log `[AUTO] No title — auto-selected: {title}`, use that item's title as the working title and proceed. If no open P0/P1 item exists, log `[AUTO] STOP — no open P0/P1 items found` and stop. |
-| Step 1b: issue not found | Log `[AUTO] STOP — Issue #N not found`, stop |
-| Step 1: zero matches → ask user to create | Auto-invoke `create-backlog-item --auto {title}`, log `[AUTO] No item found — invoking create-backlog-item --auto` |
-| Step 1: multiple matches → ask user to pick | Log `[AUTO] Multiple matches — picking first: {title}`, proceed with first match |
-| Step 2.5: offer GitHub issue for P0/P1 | Log `[AUTO] Skipping GitHub issue offer`, continue without issue |
-| Step 2.5: ask milestone assignment | Log `[AUTO] Skipping milestone assignment`, skip |
-| RT-ICA BLOCKED | Log `[AUTO] STOP — RT-ICA BLOCKED: {missing inputs}`, stop (cannot resolve without human) |
-| Any other `AskUserQuestion` | Log `[AUTO] Decision: {chosen option} — reason: {evidence}`, proceed with logged choice |
-
-`--auto` does NOT change the behaviour of Steps 3–8 (grooming, RT-ICA evaluation, SAM planning, backlog update) — those are already agent-executable without human input.
+All interactive `AskUserQuestion` calls are replaced with evidence-derived decisions. Full substitution table: [auto-mode.md](./references/auto-mode.md)
 
 ## Workflow
 
@@ -89,67 +76,7 @@ Dispatch based on `$0` (the first argument word) before executing any step:
 
 **Trigger:** `$0` is empty (no arguments passed).
 
-<step0_procedure>
-
-1. Call the `mcp__backlog__backlog_list` tool with `with_status=true`.
-
-   **If this call fails with "No such tool available" or any tool-not-found error, STOP immediately and report:**
-
-   ```text
-   PROCESS ERROR — cannot proceed
-
-   Task requested:  Interactive backlog browser
-   Action taken:    mcp__backlog__backlog_list(with_status=true)
-   Error received:  [exact error text from the failed call]
-   Missing component: backlog MCP server (tools: mcp__backlog__backlog_list, mcp__backlog__backlog_view, etc.)
-   Required action: Ensure the backlog MCP server is running and registered in your Claude Code MCP configuration before invoking this skill.
-   ```
-
-   Do NOT fall back to reading `.claude/backlog/` files directly. Do NOT delegate to the Explore agent to parse local files. The local files are a cache — they may be stale, incomplete, or missing entries that exist only in GitHub. Presenting them as the authoritative list without stating the MCP failure misleads the user.
-
-   Parse the returned dict. Each entry in `items` has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
-
-2. **Groomed** = item has `groomed: true` in JSON, or `## Groomed` section in its per-item file (`.claude/backlog/{priority}-{slug}.md`). Read the item file; if groomed sections present, use them.
-
-3. Present a numbered list. Use these status indicators in user-visible output only:
-
-   ```text
-   Backlog Items:
-
-   P0
-     1. ✅ SAM: Error Recovery / Rollback Procedures       [#12  status:in-progress  v1.0]
-     2. 🔍 SAM: Regex False Positive Suppression           [#14  status:needs-grooming  v1.0]
-
-   P1
-     3. 📋 SAM: Validate Task File Schema                  [no issue]
-     4. 📋 SAM: Implement Feature Dry-Run Mode             [no issue]
-
-   P2
-     5. 🔍 SAM: Context Window Budget Tracking             [#18  status:needs-grooming  —]
-
-   Ideas
-     6. 📋 SAM: Multi-Repo Support                         [no issue]
-
-   Status: ✅ = planned/in-progress  🔍 = groomed/needs-grooming  📋 = not yet groomed
-
-   Options:
-     [number]   — Select item to work on
-     G [number] — Groom a specific item
-     G all      — Groom all ungroomed items
-     D [number] — Show full details for an item
-   ```
-
-4. Use `AskUserQuestion` to ask: "Which item would you like to work on next?"
-
-5. Handle the response:
-   - `[number]` — use that item's title as the working title and proceed to Step 1
-   - `G [number]` — invoke `Skill(skill="groom-backlog-item", args="{item title}")` then re-display the list
-   - `G all` — invoke `Skill(skill="groom-backlog-item", args="all")` then re-display the list
-   - `D [number]` — display the full item description, research_first field, and groomed content (if present in the item file under `## Groomed`), then re-display the list
-   - `C [number]` — proceed to Step 9 (close path) with that item's title
-   - `R [number]` — proceed to Step 9 (resolve path) with that item's title
-
-</step0_procedure>
+Full procedure (MCP error handling, display format, response handling): [step-procedures.md](./references/step-procedures.md#step-0-interactive-browser)
 
 **Routing:** If `$0` is `close` or `resolve`, extract `$1`+ as the title and jump directly to Step 9.
 
@@ -164,58 +91,7 @@ Fetch the issue using the `mcp__backlog__backlog_view` tool (accepts URLs, `#N`,
 Call the `mcp__backlog__backlog_view` tool with `selector="{$0}"`.
 
 If the tool returns a dict with an `error` key, report and stop.
-Parse the returned dict. If `state` is `closed`, run the **Completed Issue Discovery** procedure (see below) and stop.
-
-#### Completed Issue Discovery
-
-When an issue is found to be already closed (state `closed`), gather evidence of how it was completed before closing the local backlog item:
-
-1. **Search for commits referencing the issue**:
-
-   ```bash
-   git log --oneline --all -20 --grep="#N"
-   ```
-
-2. **Search for merged PRs referencing the issue** — call the `mcp__backlog__backlog_view` tool with
-   `selector="#{N}"`, then check the `body` field of the returned dict for `"Fixes #N"` or
-   `"Closes #N"`.
-
-   Or via git history:
-   ```bash
-   git log --oneline --all -20 --grep="Fixes #N\|Closes #N"
-   ```
-
-3. **Report findings**:
-
-   If commits or PRs are found:
-
-   ```text
-   Issue #{N} is already closed.
-
-   Evidence of completion:
-   - PR #{pr}: {title} (merged {date})
-     URL: {url}
-   - Commit {sha}: {message}
-
-   Closing local backlog item with evidence.
-   ```
-
-   Then call the `mcp__backlog__backlog_resolve` tool with `selector="{title}"` and
-   `summary="Completed via PR #{pr} / commit {sha}"`.
-
-   If no commits or PRs reference the issue:
-
-   ```text
-   Issue #{N} is already closed but no commits or PRs reference it.
-   The issue may have been closed manually or via external process.
-
-   Options:
-   - close: Close the local backlog item (with manual reason)
-   - resolve: Mark as no longer applicable
-   - reopen: If the work was not actually done, reopen the issue
-   ```
-
-   Use `AskUserQuestion` to ask which action to take. In AUTO_MODE, log `[AUTO] STOP — Issue #N closed, no commit/PR evidence found` and stop.
+Parse the returned dict. If `state` is `closed`, run the **Completed Issue Discovery** procedure and stop. Full procedure (git commands, report template, AUTO_MODE behavior): [step-procedures.md](./references/step-procedures.md#step-1b-completed-issue-discovery)
 
 From the JSON response build the working item:
 
@@ -273,35 +149,7 @@ After extracting fields, proceed to Step 2.3 (Already Implemented Check) before 
 
 ### Step 2.3: Already Implemented Check
 
-Before planning work, verify the described feature/fix hasn't already been implemented while the issue remained open. This catches stale open issues where someone completed the work but forgot to close the ticket.
-
-1. **Search for commits matching the item's topic** (use keywords from the title):
-
-   ```bash
-   git log --oneline --all -30 --grep="{keyword from title}"
-   ```
-
-2. **Search for merged PRs matching the topic** (via git log):
-
-   ```bash
-   git log --oneline --all -30 --grep="{keyword}"
-   ```
-
-3. **Spot-check the codebase** — read the file(s) at the suggested location and verify whether the described behavior already exists.
-
-If evidence shows the work is already done:
-
-- **Mark the item resolved** — call the `mcp__backlog__backlog_resolve` tool with
-  `selector="{title}"` and `summary="Already implemented via commit {sha}"`.
-
-- **If a PR is also found** — call the `mcp__backlog__backlog_resolve` tool with
-  `selector="{title}"` and `summary="Already implemented via PR #{pr} / commit {sha}"`.
-
-- Report to the user and stop — no planning needed.
-
-In AUTO_MODE: log `[AUTO] Work already implemented — closing #{N} with evidence: {sha/PR}` and stop.
-
-If no evidence of prior implementation is found, proceed to Step 2.5 (GitHub Issue Sync).
+Before planning, verify the feature/fix hasn't already been implemented (stale open issue). Full procedure (git commands, resolve calls, AUTO_MODE behavior): [step-procedures.md](./references/step-procedures.md#step-23-already-implemented-check)
 
 ### Step 3: Auto-Groom (if needed)
 
@@ -354,42 +202,9 @@ Proceed to Step 5. Carry DERIVABLE items forward as "Assumptions to confirm" in 
 
 ### Step 5: Compose Feature Request
 
-Build the feature request string for `add-new-feature`. If `--stack` was specified, append a "Stack profile" line to the feature request. If `--language` was specified and is not `python`, invoke the corresponding language plugin (e.g., `/typescript-development:add-new-feature` for `typescript`).
+Build the feature request string for `add-new-feature`. If `--stack` was specified, append a "Stack profile" line. If `--language` is not `python`, invoke the corresponding language plugin (e.g., `/typescript-development:add-new-feature`).
 
-```text
-## Backlog Item: {title}
-
-**Source**: {source}
-**Priority**: {priority section — P0/P1/P2/Ideas}
-**Added**: {added date}
-
-### Description
-
-{description text}
-
-### Research Questions
-
-{research_first text, or "None" if absent}
-
-### Suggested Location
-
-{suggested_location text, or "To be determined during architecture phase" if absent}
-
-### RT-ICA Assessment
-
-**Decision**: APPROVED
-**Goal**: {goal statement}
-**Verified conditions**: {list of AVAILABLE items}
-**Assumptions to confirm**: {list of DERIVABLE items, or "None"}
-
-### Grooming Context
-
-{full context manifest from Step 3, if available}
-
-### Stack Profile (optional)
-
-{stack profile name if --stack specified, e.g., python-fastapi}
-```
+Template: [step-procedures.md](./references/step-procedures.md#step-5-feature-request-template)
 
 ### Step 6: Invoke SAM Planning
 
@@ -442,43 +257,7 @@ Full step-by-step procedure (9a–9f): [close-resolve-procedure.md](./references
 
 ## GitHub Integration
 
-`.claude/backlog/` per-item files are the local cache. GitHub Issues are the source of truth. They are linked — when you work a P0/P1 backlog item, a GitHub Issue is created and kept in sync.
-
-```text
-.claude/backlog/    →  GitHub Issue
-  metadata.priority →  priority:* label
-  Description       →  Issue body (story format)
-  metadata.status   →  status:* label
-  metadata.plan     →  Issue body Notes
-  metadata.issue    ←  written back after creation
-  metadata.status   →  Issue closed
-```
-
-Full step-by-step commands and example sessions: [github-integration.md](./references/github-integration.md)
-
-### Commit Messages and PR Body — `Fixes #N`
-
-When implementing a backlog item that has a linked GitHub Issue (`**Issue**: #N`), **every commit and the PR description MUST reference the issue** so GitHub auto-closes it on merge:
-
-- **Commit messages**: end the subject line with `(fixes #N)` or add a `Fixes #N` footer in the body:
-  ```text
-  fix(perl-development): replace shell injection in run_command (fixes #80)
-  ```
-  or
-  ```text
-  fix(perl-development): replace shell injection in run_command
-
-  Fixes #80
-  ```
-- **PR description**: include at least one `Fixes #N` line in the PR body so GitHub links and auto-closes the issue when the PR is merged.
-- When a PR fixes **multiple issues**, list each on a separate line:
-  ```text
-  Fixes #80
-  Fixes #83
-  ```
-- Use `Fixes` (not `Closes`) for bugs and security issues; either works for feature work.
-
-This convention ensures issues are automatically closed on merge without manual intervention.
+`.claude/backlog/` per-item files are the local cache. GitHub Issues are the source of truth. See [github-integration.md](./references/github-integration.md) for step-by-step commands, commit message conventions (`Fixes #N`), and example sessions.
 
 ### Step 2.5: GitHub Issue Sync
 
@@ -519,155 +298,11 @@ Full setup steps and expected output: [github-integration.md](./references/githu
 
 ## Error Handling
 
-- `#N` / URL / bare number not found: report and list available items — call the `mcp__backlog__backlog_list` tool
-- `#N` already closed: run Completed Issue Discovery (search commits/PRs for evidence, close local item with reference, or ask user)
-- `close #N` / `resolve #N` — issue not found: report and stop
-- Item not found: list available items from `.claude/backlog/` per-item files with their priority sections
-- Multiple matches: present numbered list, ask user to choose
-- Grooming fails: proceed without grooming context, note the gap in the feature request
-- RT-ICA returns BLOCKED: present missing inputs, wait for user, do not invoke `add-new-feature`
-- `add-new-feature` fails: report the failure, do not update per-item file
-- Plan file not found after planning: search `plan/` directory broadly, ask user to confirm the path
-- Grooming reports directory does not exist: treat all items as ungroomed
-- `close` with invalid reason: reject and show valid reasons (duplicate, out_of_scope, superseded, wontfix, blocked)
-- `close` on already-completed item: report closed date, do not re-close
-- `resolve` with no `**Plan**:` field: skip checklist verification, proceed to summary collection
-- `resolve` with incomplete checklist: list remaining tasks, do not resolve (offer `close` as alternative)
-- `resolve` with verification FAIL: report gaps, do not resolve
-- `resolve` with no summary provided: block until user provides summary (summary is required evidence)
-- GitHub issue creation fails: report error, continue with per-item-file-only workflow; do not block SAM planning
-- `GITHUB_TOKEN` not set: backlog MCP tools report an error; local-only operations still work
-- Label not found during issue create: `github_project_setup.py` creates it automatically
-- Milestone not found: skip milestone assignment; do not fail
+See [error-handling.md](./references/error-handling.md) for all error conditions and handling instructions.
 
 ## Example Sessions
 
-### Issue-first planning (`#N`)
-
-```text
-> /work-backlog-item #131
-
-Loading GitHub Issue #131...
-  Title:     plugin-validator: UX and coverage gaps
-  Labels:    priority:p1, status:needs-grooming
-  Milestone: v1.1 — Quality Gates
-  State:     open
-
-Matched per-item file for additional context: ✓
-No groomed content in item file. Running groom-backlog-item first...
-
-[groomed content written to item file]
-
-RT-ICA: APPROVED — all conditions available.
-Setting status:in-progress on issue #131...
-  ✓ status:needs-grooming → status:in-progress
-
-Composing feature request...
-Invoking /add-new-feature...
-
-[SAM phases run]
-
-Updated per-item file with Plan: plan/tasks-2-validator-ux-coverage.md
-
-Next steps:
-- To execute:      /implement-feature validator-ux-coverage
-- To close when done: /work-backlog-item close plugin-validator UX and coverage gaps
-```
-
-### Planning (with title substring)
-
-```text
-> /work-backlog-item Error Recovery
-
-Found: "SAM: Error Recovery / Rollback Procedures" (P1)
-No groomed content in item file. Running groom-backlog-item first...
-
-[groomed content written to item file]
-
-RT-ICA: APPROVED — all conditions available.
-Composing feature request...
-Invoking /add-new-feature...
-
-[SAM phases run]
-
-Updated per-item file with Plan: plan/tasks-2-error-recovery.md
-
-Next steps:
-- To execute:      /implement-feature error-recovery
-- To check status: /implementation-manager status . error-recovery
-- To close when done: /work-backlog-item close error-recovery
-```
-
-### Resolving a completed item (by title)
-
-```text
-> /work-backlog-item resolve validator UX
-
-Found: "plugin-validator UX and coverage gaps" (P1)
-Plan: plan/tasks-2-validator-ux-coverage.md
-Checklist: 12/12 tasks complete
-
-Spawning acceptance criteria verification agent...
-
-Verdict: PASS
-Evidence: Sub-issues 1-4 implemented in plugins/plugin-creator/scripts/plugin_validator.py
-          commit 4a2f1b3 — "fix(validator): report unique files, add hook validation"
-
-Summarize what was done:
-> Implemented all 4 sub-issues: unique file reporting, hook validation, coverage gaps filled.
-
-Backlog item "plugin-validator UX and coverage gaps" resolved.
-- Summary: Implemented all 4 sub-issues: unique file reporting, hook validation, coverage gaps filled.
-- Checklist: 12/12 tasks complete
-- Acceptance criteria: PASS
-- GitHub Issue #131 closed with evidence trail
-```
-
-### Resolving a completed item (by issue number)
-
-```text
-> /work-backlog-item resolve #131
-
-Fetching GitHub Issue #131...
-  Title: plugin-validator UX and coverage gaps
-  State: open
-
-Found per-item file match: "plugin-validator UX and coverage gaps" (P1)
-Plan: plan/tasks-2-validator-ux-coverage.md
-Checklist: 12/12 tasks complete
-
-Spawning acceptance criteria verification agent...
-
-Verdict: PASS
-Evidence: commit 4a2f1b3 — "fix(validator): report unique files, add hook validation"
-
-Summarize what was done:
-> All validator sub-issues implemented and tested.
-
-Backlog item "plugin-validator UX and coverage gaps" resolved.
-- Summary: All validator sub-issues implemented and tested.
-- GitHub Issue #131 closed with evidence trail
-```
-
-### Closing (dismissing) an item
-
-```text
-> /work-backlog-item close commitlint verify last flag
-
-Found: "commitlint: Verify --last flag and exit codes against primary sources" (P1)
-Why is this item being dismissed?
-> out_of_scope
-Any additional comment?
-> REFUTED by fact-check: --last flag verified against commitlint source cli.ts. No fix needed.
-
-Backlog item closed.
-  Closed: 2026-02-21
-  Reason: out_of_scope
-  Comment: REFUTED by fact-check: --last flag verified against commitlint
-           source cli.ts and official docs. No fix needed.
-```
-
-GitHub-specific example sessions (issue creation flow and setup-github): [github-integration.md](./references/github-integration.md)
+See [example-sessions.md](./references/example-sessions.md) for complete examples. GitHub-specific sessions (issue creation, setup-github): [github-integration.md](./references/github-integration.md)
 
 ---
 

@@ -154,112 +154,37 @@ Pass the RT-ICA summary and fact-check summary to the groomer alongside item det
 
 ### Step 6: Issue Classification
 
-Classify the issue type to determine analysis depth and verification criteria. This classification is done by the orchestrator (not the groomer agent) because it requires reasoning about the problem's nature.
+Classify the issue type to determine analysis depth and verification criteria. Done by the orchestrator — requires reasoning about the problem's nature. See the flowchart and write template in [issue-classification.md](./references/issue-classification.md).
 
-Apply the following decision flowchart to each item:
+| Type | Analysis Method |
+|------|----------------|
+| `procedural` | none |
+| `recurring-pattern` | 6-sigma |
+| `defect` | 5-whys |
+| `missing-guardrail` | none |
+| `unbounded-design` | design-framing |
 
-```mermaid
-flowchart TD
-    Start(["Classify issue type"]) --> Q1{"Is this a typo/naming/<br>formatting/surface fix?"}
-    Q1 -->|"YES"| Procedural["procedural<br>Analysis method = none"]
-    Q1 -->|"NO"| Q2{"Has this same problem class<br>appeared 2+ times?"}
-    Q2 -->|"YES"| Recurring["recurring-pattern<br>Analysis method = 6-sigma"]
-    Q2 -->|"NO"| Q3{"Is there a traceable failure<br>with identifiable cause chain?"}
-    Q3 -->|"YES"| Defect["defect<br>Analysis method = 5-whys"]
-    Q3 -->|"NO"| Q4{"Did the system allow a bad outcome<br>that a gate should have prevented?"}
-    Q4 -->|"YES"| MissingGuardrail["missing-guardrail<br>Analysis method = none"]
-    Q4 -->|"NO"| UnboundedDesign["unbounded-design<br>Analysis method = design-framing"]
-```
-
-After classifying, write the classification to the backlog item:
-
-```text
-mcp__backlog__backlog_groom(selector="{title}", section="Issue Classification", content="**Type**: {classification}
-**Rationale**: {1-2 sentence explanation}
-**Analysis Method**: {method}
-**Scenario Target**: {what scenario exposed this} -> {what should improve}")
-```
-
-Set `scenario-target` at this step — it captures the specific scenario that exposed the problem and what should improve after the fix.
+Write classification to the item via `mcp__backlog__backlog_groom(selector, section="Issue Classification", content=...)`. Full template with `scenario-target` field: [issue-classification.md](./references/issue-classification.md).
 
 ### Step 7: Root-Cause Analysis (Conditional)
 
-This step only runs when `issue-classification` is `defect` or `recurring-pattern`. For `procedural`, `missing-guardrail`, and `unbounded-design`, skip this step entirely.
+**Only for `defect` or `recurring-pattern`**. Skip for `procedural`, `missing-guardrail`, and `unbounded-design`.
 
-**For `defect` classification**: invoke the `/find-cause` skill to build an evidence chain from symptom to root cause.
+- **defect**: invoke `Skill(skill="find-cause", args="{description}")` and write 5-whys evidence chain
+- **recurring-pattern**: search `mcp__backlog__backlog_list(status="resolved")` for recurrence frequency and write 6-sigma measurement
 
-```text
-Skill(skill="find-cause", args="{description of the defect}")
-```
-
-Capture the evidence chain output and write it to the item:
-
-```text
-mcp__backlog__backlog_groom(selector="{title}", section="Root-Cause Analysis", content="**Method**: 5-whys
-**Classification**: defect
-
-#### Evidence Chain
-
-{evidence chain from /find-cause}
-
-**Root Cause**: {single actionable statement}
-**Scenario Target**: {what scenario exposed this} -> {what should improve}")
-```
-
-**For `recurring-pattern` classification**: perform a frequency search to measure recurrence.
-
-Call `mcp__backlog__backlog_list(status="resolved")` and filter the returned `items` list by keywords related to this defect class, count matches, and write the 6 Sigma measurement section:
-
-```text
-mcp__backlog__backlog_groom(selector="{title}", section="Root-Cause Analysis", content="**Method**: 6-sigma
-**Classification**: recurring-pattern
-
-#### Measurement
-
-- **Frequency**: {N occurrences in {time period or batch}}
-- **Common factors**: {what the occurrences share}
-- **Affected scope**: {what parts of the system are impacted}
-
-#### Analysis
-
-- **Root cause pattern**: {why this class of defect recurs}
-- **Missing guardrail**: {what gate or instruction should prevent this}
-
-#### Improvement
-
-- **Proposed guardrail**: {specific instruction, gate, or check to add}
-- **Verification**: {how to confirm the guardrail works}")
-```
-
-**Note**: If the human has already identified the recurrence pattern, skip the search and use the human's assessment.
+Full procedures and write templates: [issue-classification.md](./references/issue-classification.md)
 
 ### Step 8: Spawn Groomer Agents
 
-**IMPORTANT**: You MUST use the `Task` tool with `subagent_type: "backlog-item-groomer"` for grooming. Do NOT groom inline — always delegate to the specialized agent.
+**IMPORTANT**: Use `Agent(subagent_type: "backlog-item-groomer")`. Do NOT groom inline — always delegate.
 
-**Single item** — spawn one Task agent:
+- **Single item**: spawn one agent
+- **Multiple items**: parallel agents (max 5 concurrent; batch in waves if more)
 
-```text
-Agent(
-  description: "Groom backlog item",
-  subagent_type: "backlog-item-groomer",
-  prompt: "Groom this backlog item. Output groomed content in the standard template format (see .claude/docs/backlog-item-groomed-schema.md). Output only the groomed body (no ## Groomed header). The groomer agent does NOT perform classification or root-cause analysis — it receives these as inputs and incorporates them into groomed output.\n\nSCOPE BOUNDARY — Problem space and outcomes only. Do NOT include implementation steps, architecture decisions, code design, or proposed solutions. Those belong in the SAM planning phase (add-new-feature / architect spec), which runs AFTER grooming. Groomed output describes: (1) what the problem is and where it lives, (2) what success looks like, (3) how the specialist will know they have reached it. Acceptance criteria must be observable checks — not implementation steps.\n\nItem title: {item title}\nItem description: {item description}\nItem source: {item source}\nItem priority: {item priority}\nItem file path: {item file path}\n\nRT-ICA Assessment:\n{rt-ica summary}\n\nFact-Check Verdicts:\n{fact-check summary}\n\nIssue Classification:\n{classification section from Step 6}\n\nRoot-Cause Analysis:\n{evidence chain from Step 7, or 'N/A - not applicable for this issue type'}\n\nAdditional context from conversation:\n{any relevant user messages or discussion context}",
-  model: "haiku"
-)
-```
+Full prompt templates: [groomer-agent.md](./references/groomer-agent.md)
 
-**Multiple items** — spawn parallel Task agents (max 5 concurrent; batch in waves if more). Each uses `subagent_type: "backlog-item-groomer"`:
-
-```text
-Agent(
-  description: "Groom backlog item",
-  subagent_type: "backlog-item-groomer",
-  prompt: "Groom this backlog item. Output groomed content in the standard template format (see .claude/docs/backlog-item-groomed-schema.md). Output only the groomed body (no ## Groomed header). The groomer agent does NOT perform classification or root-cause analysis — it receives these as inputs and incorporates them into groomed output.\n\nSCOPE BOUNDARY — Problem space and outcomes only. Do NOT include implementation steps, architecture decisions, code design, or proposed solutions. Those belong in the SAM planning phase (add-new-feature / architect spec), which runs AFTER grooming. Groomed output describes: (1) what the problem is and where it lives, (2) what success looks like, (3) how the specialist will know they have reached it. Acceptance criteria must be observable checks — not implementation steps.\n\nItem title: {item title}\nItem description: {item description}\nItem file path: {item file path}\n\nRT-ICA Assessment:\n{rt-ica summary}\n\nFact-Check Verdicts:\n{fact-check summary}\n\nIssue Classification:\n{classification section from Step 6}\n\nRoot-Cause Analysis:\n{evidence chain from Step 7, or 'N/A - not applicable for this issue type'}",
-  model: "haiku"
-)
-```
-
-The `backlog-item-groomer` agent discovers related skills, agents, prior work, and dependency graphs. It performs its own research within the codebase. Pass it file paths (not file contents) so it can verify independently.
+Pass RT-ICA context, fact-check verdicts, classification, RCA output, and file paths (not pasted content) to the groomer.
 
 ### Step 9: Write Groomed Content to Item Files
 

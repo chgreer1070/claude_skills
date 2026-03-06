@@ -33,6 +33,8 @@ Never introduce hard-coded truncation or length limits on content that a consume
 
 **Runtime**: All Python via `uv`, `uv run`, `uv run python -c 'some python code'`. All pre-commit via `prek`, `uv run prek run --files <file>`
 
+Run scripts using `uv run` — if `uv` is not available, see [.claude/rules/uv-run-fallback.md](./.claude/rules/uv-run-fallback.md).
+
 ---
 
 ## Identity & Role

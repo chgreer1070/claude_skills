@@ -4,6 +4,87 @@ Detailed procedure content for Steps 0, Q, P, R, and the feature request templat
 
 ---
 
+## Step 1b: Completed Issue Discovery
+
+When an issue is found to be already closed (`state: closed`), gather evidence before closing the local backlog item:
+
+1. **Search for commits referencing the issue**:
+
+   ```bash
+   git log --oneline --all -20 --grep="#N"
+   ```
+
+2. **Search for merged PRs via git history**:
+
+   ```bash
+   git log --oneline --all -20 --grep="Fixes #N\|Closes #N"
+   ```
+
+3. **Report findings**:
+
+   If commits or PRs are found:
+
+   ```text
+   Issue #{N} is already closed.
+
+   Evidence of completion:
+   - PR #{pr}: {title} (merged {date})
+     URL: {url}
+   - Commit {sha}: {message}
+
+   Closing local backlog item with evidence.
+   ```
+
+   Call the `mcp__backlog__backlog_resolve` tool with `selector="{title}"` and
+   `summary="Completed via PR #{pr} / commit {sha}"`.
+
+   If no commits or PRs reference the issue:
+
+   ```text
+   Issue #{N} is already closed but no commits or PRs reference it.
+   The issue may have been closed manually or via external process.
+
+   Options:
+   - close: Close the local backlog item (with manual reason)
+   - resolve: Mark as no longer applicable
+   - reopen: If the work was not actually done, reopen the issue
+   ```
+
+   Use `AskUserQuestion` to ask which action to take. In AUTO_MODE, log
+   `[AUTO] STOP — Issue #N closed, no commit/PR evidence found` and stop.
+
+---
+
+## Step 2.3: Already Implemented Check
+
+Before planning work, verify the described feature/fix hasn't already been implemented:
+
+1. **Search for commits matching the item's topic** (use keywords from the title):
+
+   ```bash
+   git log --oneline --all -30 --grep="{keyword from title}"
+   ```
+
+2. **Search for merged PRs matching the topic**:
+
+   ```bash
+   git log --oneline --all -30 --grep="{keyword}"
+   ```
+
+3. **Spot-check the codebase** — read the file(s) at the suggested location and verify whether the described behavior already exists.
+
+If evidence shows the work is already done:
+
+- Call the `mcp__backlog__backlog_resolve` tool with `selector="{title}"` and
+  `summary="Already implemented via PR #{pr} / commit {sha}"`.
+- Report to the user and stop — no planning needed.
+
+In AUTO_MODE: log `[AUTO] Work already implemented — closing #{N} with evidence: {sha/PR}` and stop.
+
+If no evidence, proceed to Step 2.5 (GitHub Issue Sync).
+
+---
+
 ## Step 0: Interactive Browser
 
 1. Call the `mcp__backlog__backlog_list` tool with `with_status=true`.
