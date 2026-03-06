@@ -2437,10 +2437,9 @@ def _pull_item(item: dict, repo_obj: Repository, dry_run: bool, force: bool) -> 
 
 def _pull_single_by_selector(selector: str, repo: str) -> None:
     """Resolve selector to a single GitHub issue and pull it into the local cache."""
-    repository = _get_github(repo)
     issue_num_str = _parse_issue_selector(selector)
     if issue_num_str:
-        result = _pull_single_issue(repository, int(issue_num_str))
+        result = _pull_single_issue(_get_github(repo), int(issue_num_str))
         if result:
             typer.echo(f"Pulled issue into {result}.")
         else:
@@ -2459,11 +2458,11 @@ def _pull_single_by_selector(selector: str, repo: str) -> None:
             err=True,
         )
         raise typer.Exit(code=1)
-    issue_num_from_ref = _parse_issue_selector(issue_ref)
-    if not issue_num_from_ref:
+    issue_num_str = _parse_issue_selector(issue_ref)
+    if not issue_num_str:
         typer.echo(f"Could not parse issue number from '{issue_ref}'.", err=True)
         raise typer.Exit(code=1)
-    result = _pull_single_issue(repository, int(issue_num_from_ref))
+    result = _pull_single_issue(_get_github(repo), int(issue_num_str))
     if result:
         typer.echo(f"Pulled issue into {result}.")
     else:

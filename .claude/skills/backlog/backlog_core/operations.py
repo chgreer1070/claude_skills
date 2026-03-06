@@ -1468,13 +1468,15 @@ def pull_by_selector(
 
     Returns:
         Dict with 'file_path' (local path written) and output messages/warnings.
-        Raises ItemNotFoundError if selector matches no item.
-        Raises BacklogError if matched item has no linked GitHub issue.
+
+    Raises:
+        ItemNotFoundError: If selector matches no item in the local cache.
+        BacklogError: If matched item has no linked GitHub issue.
     """
     out = output or Output()
-    issue_num = parse_issue_selector(selector)
-    if issue_num:
-        filepath = pull_single_issue(get_github(repo), int(issue_num), output=out)
+    issue_num_str = parse_issue_selector(selector)
+    if issue_num_str:
+        filepath = pull_single_issue(get_github(repo), int(issue_num_str), output=out)
         return {"file_path": str(filepath) if filepath else None, **out.to_dict()}
 
     # Title substring: find item in local cache then pull by its issue number
@@ -1483,7 +1485,7 @@ def pull_by_selector(
     if item is None:
         raise ItemNotFoundError(selector)
 
-    issue_ref = item.issue or ""
+    issue_ref = item.issue
     if not issue_ref:
         raise BacklogError(f"Item '{item.title}' has no linked GitHub issue. Use backlog_pull() for bulk pull.")
 
