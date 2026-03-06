@@ -796,7 +796,7 @@ Return:
 ---
 task_id: "T5"
 title: "Update implement-feature and start-task SKILL.md docs (both copies)"
-status: not-started
+status: complete
 agent: service-docs-maintainer
 priority: 2
 complexity: Low
@@ -1104,7 +1104,7 @@ Return:
 ---
 task_id: "T8"
 title: "Write unit tests for implementation_manager.py --github flag"
-status: not-started
+status: complete
 agent: python3-development:python-pytest-architect
 priority: 2
 complexity: Medium
@@ -1194,7 +1194,7 @@ Return:
 ---
 task_id: "T9"
 title: "Write tests for task_status_hook.py GitHub sync (unit + integration)"
-status: not-started
+status: complete
 agent: python3-development:python-pytest-architect
 priority: 2
 complexity: Medium
