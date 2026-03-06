@@ -1,5 +1,17 @@
 # Test Coverage Gaps
 
+## Gap: implementation_manager.py — claim-task command and helpers
+
+**Files**: `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py`, `plugins/python3-development/skills/implementation-manager/scripts/task_format.py`
+**Behavior to cover**:
+- `claim_task` command: success path (not-started → in-progress), already-in-progress rejection, task-not-found rejection, write-error path
+- `_try_claim_part`: single-frontmatter file (part starts with `---`), multi-frontmatter file (part without leading `---`), non-matching task ID
+- `_apply_claim_to_content`: single-frontmatter file, multi-frontmatter file, task-not-found returns None, preserves existing `started` field
+- `_find_task_section_in_file`: single-frontmatter file, multi-frontmatter file, task-not-found returns None
+- `_resolve_task_status`: parse-error path, task-not-found for multi-frontmatter
+- `normalize_status` in `task_format.py`: already-normalized inputs (in-progress, not-started) pass through without mapping to not-started
+**Reason not written**: Scope constraint — task T1.1 covers implementation only; test authoring is a separate task in the SAM plan.
+
 ## Gap: plugin_validator.py — PR005 command-is-skill-directory check
 
 **Files**: `plugins/plugin-creator/scripts/plugin_validator.py`

@@ -78,15 +78,46 @@ For monolithic files (multiple tasks), find the specific task section.
    - **Redundancy note**: The orchestrator (`/implement-feature`) may also include skill-loading instructions in the delegation prompt. This direct reading from task metadata is intentional redundancy -- it ensures skills are loaded even when `/start-task` is invoked manually or by an older orchestrator that does not pass skill-loading instructions. Loading a skill twice is a no-op.
    - Task-level skills are **additive** to any skills already declared in the agent definition's frontmatter. They supplement, not replace, agent-level skills.
 
-3. Update the task status:
+3. Claim the task (prevents duplicate dispatch):
 
-   **If YAML frontmatter format:**
-   - Edit the `status:` field in frontmatter to `in-progress`
-   - Add `started: {ISO timestamp}` field to frontmatter
+   Run the claim-task command. This is the ONLY permitted way to mark a task in-progress.
+   Do NOT edit status or started fields directly with the Edit tool.
 
-   **If inline markdown format:**
-   - Set `**Status**: 🔄 IN PROGRESS`
-   - Add `**Started**: {ISO timestamp}`
+   Resolve the implementation_manager.py script path:
+
+   ```bash
+   IMPL_MGR="plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py"
+   ```
+
+   Run claim-task:
+
+   ```bash
+   CLAIM_RESULT=$(uv run "$IMPL_MGR" claim-task "{task_file_path}" "{task_id}")
+   CLAIM_EXIT=$?
+   ```
+
+   Print the result:
+
+   ```bash
+   echo "$CLAIM_RESULT"
+   ```
+
+   If exit code is non-zero (`CLAIM_EXIT != 0`):
+
+   - The task was already claimed by another agent, or is complete, or could not be found.
+   - Output the full JSON result for the orchestrator.
+   - STOP. Do not proceed with implementation. Do not write the context file.
+   - The orchestrator's hook will detect the stop and the task remains in its current state.
+
+   If exit code is 0 (`CLAIM_EXIT == 0`):
+
+   - The task is claimed. `status: in-progress` and `started:` are written on disk.
+   - Proceed to step 4 (write context file) and step 5 (implement).
+
+   If the task file uses legacy inline markdown format (not YAML frontmatter):
+
+   - Emit a warning: `Task {id} is in legacy markdown format. Run migrate_task_format.py before executing.`
+   - STOP. Do not proceed with implementation.
 
 4. Write the active-task context file (required for hook-driven updates):
 
