@@ -143,6 +143,7 @@ research/
 │   ├── claude-code-templates.md       # 100+ Claude Code agents/commands/skills/MCPs/hooks via npx installer and aitmpl.com (21.8K stars)
 │   ├── claude-skillz.md               # 18+ behavioral skills, 12 personas, Claude Launcher utility
 │   ├── codex-skills.md                # 19-skill catalog for OpenAI Codex CLI with npx installer (116 stars)
+│   ├── everything-claude-code.md      # Comprehensive agent harness performance system: 65+ skills, 16 agents, 40+ commands, hooks, AgentShield security scanner (61.7K stars)
 │   ├── human-compiler.md              # Interview-to-agent plugin generator for Claude Code (MIT)
 │   ├── mcpskills-cli.md               # MCP-to-skill converter via Streamable HTTP discovery
 │   ├── skill-seekers.md               # Documentation-to-skill automation tool
@@ -324,6 +325,7 @@ Tools and services that automate the creation of AI skills from documentation, c
 | [claude-code-templates.md](./skill-generation-tools/claude-code-templates.md) | Claude Code Templates - 100+ ready-to-use agents, commands, skills, MCPs, hooks, and settings for Claude Code; npx installer and aitmpl.com browser (21.8K stars) | 2026-03-03   |
 | [claude-skillz.md](./skill-generation-tools/claude-skillz.md)       | Claude Skillz - 18+ behavioral skills, 12 personas, 10 plugins, and Claude Launcher for rapid persona switching (238 stars) | 2026-02-20   |
 | [codex-skills.md](./skill-generation-tools/codex-skills.md)         | codex-skills - 19-skill catalog for OpenAI Codex CLI with npx installer, global ledger pattern, and prompt-injection hardening (116 stars) | 2026-02-20   |
+| [everything-claude-code.md](./skill-generation-tools/everything-claude-code.md) | Everything Claude Code - comprehensive agent harness performance system: 65+ skills, 16 agents, 40+ commands, hooks, rules, and AgentShield security scanner for Claude Code, Codex, Cursor, OpenCode (61.7K stars) | 2026-03-06   |
 | [human-compiler.md](./skill-generation-tools/human-compiler.md)     | HumanCompiler - interview-to-agent plugin generator that replicates human decision-making via 8-phase structured interviews (MIT) | 2026-02-19   |
 | [mcpskills-cli.md](./skill-generation-tools/mcpskills-cli.md)       | mcpskills-cli - MCP-to-skill converter generating SKILL.md and polyglot call scripts from Streamable HTTP servers | 2026-02-15   |
 | [skill-seekers.md](./skill-generation-tools/skill-seekers.md)       | Skill Seekers - converts docs, GitHub repos, and PDFs into Claude/Gemini/OpenAI skills                          | 2026-01-26   |
