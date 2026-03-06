@@ -15,7 +15,7 @@ All imports are at module level.
 from __future__ import annotations
 
 import json
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from backlog_core.models import BacklogError, Output
@@ -32,6 +32,29 @@ def _make_output_dict(
 ) -> dict[str, list[str]]:
     """Build the Output.to_dict() structure returned by all operations."""
     return {"messages": messages or [], "warnings": warnings or [], "errors": errors or []}
+
+
+def _extract_log_messages(mock_log: AsyncMock, level: str | None = None) -> list[str]:
+    """Extract message strings from a mocked Context.log call list.
+
+    Args:
+        mock_log: The AsyncMock patching Context.log.
+        level: If provided, filter to only calls with this log level.
+
+    Returns:
+        List of message strings from the captured calls.
+    """
+    calls = mock_log.call_args_list
+    if level is not None:
+        calls = [c for c in calls if c.kwargs.get("level") == level]
+    messages: list[str] = []
+    for c in calls:
+        msg = c.kwargs.get("message")
+        if msg is None and c.args:
+            msg = c.args[0]
+        if msg is not None:
+            messages.append(msg)
+    return messages
 
 
 async def _call(tool_name: str, params: dict | None = None) -> dict:
@@ -739,3 +762,329 @@ async def test_backlog_sync_no_error_key_on_success():
         response = await _call("backlog_sync", {})
 
     assert "error" not in response
+
+
+# ---------------------------------------------------------------------------
+# ctx logging: backlog_sync
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_sync_ctx_info_start_message():
+    """backlog_sync emits ctx.info with start message before the operation."""
+    op_result = {"created": 2, "pushed": 1}
+    with (
+        patch("backlog_core.operations.sync_items", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_sync", {})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Starting backlog sync" in messages
+
+
+async def test_backlog_sync_ctx_info_start_message_dry_run():
+    """backlog_sync emits ctx.info with '(dry-run)' suffix when dry_run=True."""
+    op_result = {"created": 0, "pushed": 0}
+    with (
+        patch("backlog_core.operations.sync_items", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_sync", {"dry_run": True})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Starting backlog sync (dry-run)" in messages
+
+
+async def test_backlog_sync_ctx_info_completion_message():
+    """backlog_sync emits ctx.info with completion summary including counts."""
+    op_result = {"created": 3, "pushed": 5}
+    with (
+        patch("backlog_core.operations.sync_items", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_sync", {})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Sync complete: 3 issue(s) created, 5 item(s) pushed" in messages
+
+
+async def test_backlog_sync_ctx_warning_surfaces_output_warnings():
+    """backlog_sync surfaces each out.warnings entry via ctx.warning."""
+
+    def _sync_with_warnings(**kwargs):
+        kwargs["output"].warn("token expiring soon")
+        kwargs["output"].warn("rate limit near")
+        return {"created": 0, "pushed": 0}
+
+    with (
+        patch("backlog_core.operations.sync_items", side_effect=_sync_with_warnings),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_sync", {})
+
+    warning_messages = _extract_log_messages(mock_log, level="warning")
+    assert "token expiring soon" in warning_messages
+    assert "rate limit near" in warning_messages
+
+
+# ---------------------------------------------------------------------------
+# ctx logging: backlog_groom
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_groom_ctx_info_start_message():
+    """backlog_groom emits ctx.info with 'Grooming item: {selector}' before operation."""
+    op_result = {"title": "Auth Feature", "synced": True}
+    with (
+        patch("backlog_core.operations.groom_item", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_groom", {"selector": "#42"})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Grooming item: #42" in messages
+
+
+async def test_backlog_groom_ctx_info_completion_message():
+    """backlog_groom emits ctx.info with 'Groomed: {title}' after operation."""
+    op_result = {"title": "Auth Feature", "synced": True}
+    with (
+        patch("backlog_core.operations.groom_item", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_groom", {"selector": "#42"})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Groomed: Auth Feature" in messages
+
+
+async def test_backlog_groom_ctx_warning_surfaces_output_warnings():
+    """backlog_groom surfaces out.warnings via ctx.warning."""
+
+    def _groom_with_warnings(**kwargs):
+        kwargs["output"].warn("section missing")
+        return {"title": "Item", "synced": False}
+
+    with (
+        patch("backlog_core.operations.groom_item", side_effect=_groom_with_warnings),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_groom", {"selector": "Item"})
+
+    warning_messages = _extract_log_messages(mock_log, level="warning")
+    assert "section missing" in warning_messages
+
+
+# ---------------------------------------------------------------------------
+# ctx logging: backlog_normalize
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_normalize_ctx_info_start_message():
+    """backlog_normalize emits ctx.info with start message before operation."""
+    op_result = {"updated": 3}
+    with (
+        patch("backlog_core.operations.normalize_items", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_normalize", {})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Starting normalize" in messages
+
+
+async def test_backlog_normalize_ctx_info_start_message_dry_run():
+    """backlog_normalize emits ctx.info with '(dry-run)' suffix when dry_run=True."""
+    op_result = {"updated": 0}
+    with (
+        patch("backlog_core.operations.normalize_items", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_normalize", {"dry_run": True})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Starting normalize (dry-run)" in messages
+
+
+async def test_backlog_normalize_ctx_info_completion_message():
+    """backlog_normalize emits ctx.info with 'Normalized N file(s)' after operation."""
+    op_result = {"updated": 7}
+    with (
+        patch("backlog_core.operations.normalize_items", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_normalize", {})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Normalized 7 file(s)" in messages
+
+
+async def test_backlog_normalize_ctx_info_completion_message_dry_run():
+    """backlog_normalize completion message includes '(dry-run)' suffix."""
+    op_result = {"updated": 2}
+    with (
+        patch("backlog_core.operations.normalize_items", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_normalize", {"dry_run": True})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Normalized 2 file(s) (dry-run)" in messages
+
+
+async def test_backlog_normalize_ctx_warning_surfaces_output_warnings():
+    """backlog_normalize surfaces out.warnings via ctx.warning."""
+
+    def _normalize_with_warnings(**kwargs):
+        kwargs["output"].warn("malformed frontmatter in p1-old.md")
+        return {"updated": 1}
+
+    with (
+        patch("backlog_core.operations.normalize_items", side_effect=_normalize_with_warnings),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_normalize", {})
+
+    warning_messages = _extract_log_messages(mock_log, level="warning")
+    assert "malformed frontmatter in p1-old.md" in warning_messages
+
+
+# ---------------------------------------------------------------------------
+# ctx logging: backlog_pull (bulk)
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_pull_bulk_ctx_info_start_message():
+    """backlog_pull (bulk) emits ctx.info with start message before operation."""
+    op_result = {"pulled": 5}
+    with (
+        patch("backlog_core.operations.pull_items", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_pull", {})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Starting bulk pull from GitHub" in messages
+
+
+async def test_backlog_pull_bulk_ctx_info_start_message_dry_run():
+    """backlog_pull (bulk) emits ctx.info with '(dry-run)' suffix."""
+    op_result = {"pulled": 0}
+    with (
+        patch("backlog_core.operations.pull_items", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_pull", {"dry_run": True})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Starting bulk pull from GitHub (dry-run)" in messages
+
+
+async def test_backlog_pull_bulk_ctx_info_completion_message():
+    """backlog_pull (bulk) emits ctx.info with 'Pull complete: N item(s) pulled'."""
+    op_result = {"pulled": 8}
+    with (
+        patch("backlog_core.operations.pull_items", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_pull", {})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Pull complete: 8 item(s) pulled" in messages
+
+
+async def test_backlog_pull_bulk_ctx_warning_surfaces_output_warnings():
+    """backlog_pull (bulk) surfaces out.warnings via ctx.warning."""
+
+    def _pull_with_warnings(**kwargs):
+        kwargs["output"].warn("issue #99 has no body")
+        return {"pulled": 1}
+
+    with (
+        patch("backlog_core.operations.pull_items", side_effect=_pull_with_warnings),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_pull", {})
+
+    warning_messages = _extract_log_messages(mock_log, level="warning")
+    assert "issue #99 has no body" in warning_messages
+
+
+# ---------------------------------------------------------------------------
+# ctx logging: backlog_pull (single-item)
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_pull_single_ctx_info_start_message():
+    """backlog_pull (single) emits ctx.info with 'Pulling issue: {selector}'."""
+    op_result = {"file_path": "/tmp/p1-item.md"}
+    with (
+        patch("backlog_core.operations.pull_by_selector", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_pull", {"selector": "#321"})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Pulling issue: #321" in messages
+
+
+async def test_backlog_pull_single_ctx_info_completion_message():
+    """backlog_pull (single) emits ctx.info with 'Pulled: {file_path}' after operation."""
+    op_result = {"file_path": "/tmp/p1-my-item.md"}
+    with (
+        patch("backlog_core.operations.pull_by_selector", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_pull", {"selector": "#42"})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Pulled: /tmp/p1-my-item.md" in messages
+
+
+async def test_backlog_pull_single_ctx_info_nothing_pulled():
+    """backlog_pull (single) emits 'Nothing pulled' when file_path is absent."""
+    op_result = {"message": "already up to date"}
+    with (
+        patch("backlog_core.operations.pull_by_selector", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_pull", {"selector": "#42"})
+
+    messages = _extract_log_messages(mock_log)
+    assert "Nothing pulled" in messages
+
+
+async def test_backlog_pull_single_ctx_warning_surfaces_output_warnings():
+    """backlog_pull (single) surfaces out.warnings via ctx.warning."""
+
+    def _pull_with_warnings(selector, **kwargs):
+        kwargs["output"].warn("local file newer")
+        return {"file_path": "/tmp/p1-item.md"}
+
+    with (
+        patch("backlog_core.operations.pull_by_selector", side_effect=_pull_with_warnings),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_pull", {"selector": "#10"})
+
+    warning_messages = _extract_log_messages(mock_log, level="warning")
+    assert "local file newer" in warning_messages
+
+
+# ---------------------------------------------------------------------------
+# ctx logging: log levels are correct
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_sync_ctx_uses_info_level_for_start_and_completion():
+    """backlog_sync uses 'info' level for start and completion messages."""
+    op_result = {"created": 0, "pushed": 0}
+    with (
+        patch("backlog_core.operations.sync_items", return_value=op_result),
+        patch("fastmcp.server.context.Context.log", new_callable=AsyncMock) as mock_log,
+    ):
+        await _call("backlog_sync", {})
+
+    info_messages = _extract_log_messages(mock_log, level="info")
+    assert "Starting backlog sync" in info_messages
+    assert "Sync complete: 0 issue(s) created, 0 item(s) pushed" in info_messages

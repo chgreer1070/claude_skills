@@ -148,7 +148,7 @@ No parallel tasks — T2 depends on T1, T3 depends on T2. Sequential execution r
 ---
 task: T1
 title: Add ctx Context parameter and logging calls to 4 server.py tools
-status: not-started
+status: complete
 agent: python-cli-architect
 dependencies: []
 priority: 1
@@ -156,6 +156,9 @@ complexity: medium
 skills:
   - python3-development
 parallelize-with: []
+started: "2026-03-06T20:53:40Z"
+completed: "2026-03-06T21:05:00Z"
+divergence-notes: 1
 ---
 
 ## Context
@@ -305,12 +308,22 @@ Return:
 - Output of all 6 verification commands
 - Any discrepancies from architect spec encountered
 
+## Divergence Notes
+
+### DN-1: ctx parameter position — first instead of last
+
+- **Plan artifact**: plan/architect-context-logging-progress.md, section "Signature Changes"
+- **Plan claim**: "`ctx: Context` is appended after the existing parameters in each function"
+- **Actual implementation**: `ctx: Context` is placed as the FIRST parameter (before all defaulted parameters) because Python syntax forbids a non-default parameter after default parameters. The architect spec's placement (`ctx: Context` after `dry_run=False`, etc.) produces `invalid-syntax: Parameter without a default cannot follow a parameter with a default`. Since FastMCP auto-injects `ctx` and excludes it from the MCP schema, parameter position has no effect on callers or the MCP interface. Moving it first satisfies Python syntax while preserving identical runtime behavior.
+- **Classification**: design-refinement
+- **Recorded**: 2026-03-06T20:55:00Z
+
 ---
 
 ---
 task: T2
 title: Verify existing tests pass and add ctx-related test coverage
-status: not-started
+status: complete
 agent: python-cli-architect
 dependencies:
   - T1
@@ -418,7 +431,7 @@ Return:
 ---
 task: T3
 title: Validate completeness with grep checks
-status: not-started
+status: complete
 agent: python-cli-architect
 dependencies:
   - T2
@@ -427,6 +440,8 @@ complexity: low
 skills:
   - python3-development
 parallelize-with: []
+started: "2026-03-06T21:05:02Z"
+completed: "2026-03-06T21:08:15Z"
 ---
 
 ## Context

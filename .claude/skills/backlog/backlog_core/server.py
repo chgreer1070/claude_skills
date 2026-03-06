@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import Annotated
 
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 from pydantic import Field
 
 from . import operations
@@ -125,6 +125,7 @@ async def backlog_view(
 
 @mcp.tool()
 async def backlog_sync(
+    ctx: Context,
     dry_run: Annotated[bool, Field(description="Preview what would be synced without making changes")] = False,
 ) -> dict:
     """Sync backlog items with GitHub: create missing issues and push groomed content.
@@ -137,7 +138,13 @@ async def backlog_sync(
     """
     out = Output()
     try:
+        await ctx.info("Starting backlog sync" + (" (dry-run)" if dry_run else ""))
         result = await asyncio.to_thread(operations.sync_items, dry_run=dry_run, output=out)
+        for w in out.warnings:
+            await ctx.warning(w)
+        created = result.get("created", 0)
+        pushed = result.get("pushed", 0)
+        await ctx.info(f"Sync complete: {created} issue(s) created, {pushed} item(s) pushed")
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
@@ -299,6 +306,7 @@ async def backlog_update(
 
 @mcp.tool()
 async def backlog_groom(
+    ctx: Context,
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     groomed_content: Annotated[
         str | None,
@@ -323,6 +331,7 @@ async def backlog_groom(
     """
     out = Output()
     try:
+        await ctx.info(f"Grooming item: {selector}")
         result = await asyncio.to_thread(
             operations.groom_item,
             selector=selector,
@@ -331,6 +340,10 @@ async def backlog_groom(
             content=content,
             output=out,
         )
+        for w in out.warnings:
+            await ctx.warning(w)
+        title = result.get("title", selector)
+        await ctx.info(f"Groomed: {title}")
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
@@ -338,6 +351,7 @@ async def backlog_groom(
 
 @mcp.tool()
 async def backlog_normalize(
+    ctx: Context,
     dry_run: Annotated[bool, Field(description="Preview normalization changes without modifying files")] = False,
 ) -> dict:
     """Normalize all per-item files to research-style metadata format and remove body duplication.
@@ -351,7 +365,13 @@ async def backlog_normalize(
     """
     out = Output()
     try:
+        await ctx.info("Starting normalize" + (" (dry-run)" if dry_run else ""))
         result = await asyncio.to_thread(operations.normalize_items, dry_run=dry_run, output=out)
+        for w in out.warnings:
+            await ctx.warning(w)
+        updated = result.get("updated", 0)
+        suffix = " (dry-run)" if dry_run else ""
+        await ctx.info(f"Normalized {updated} file(s){suffix}")
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
@@ -359,6 +379,7 @@ async def backlog_normalize(
 
 @mcp.tool()
 async def backlog_pull(
+    ctx: Context,
     selector: Annotated[
         str | None,
         Field(
@@ -386,9 +407,19 @@ async def backlog_pull(
     out = Output()
     try:
         if selector is not None:
+            await ctx.info(f"Pulling issue: {selector}")
             result = await asyncio.to_thread(operations.pull_by_selector, selector, output=out)
+            for w in out.warnings:
+                await ctx.warning(w)
+            file_path = result.get("file_path")
+            await ctx.info(f"Pulled: {file_path}" if file_path else "Nothing pulled")
             return {**result, **out.to_dict()}
+        await ctx.info("Starting bulk pull from GitHub" + (" (dry-run)" if dry_run else ""))
         result = await asyncio.to_thread(operations.pull_items, dry_run=dry_run, force=force, output=out)
+        for w in out.warnings:
+            await ctx.warning(w)
+        pulled = result.get("pulled", 0)
+        await ctx.info(f"Pull complete: {pulled} item(s) pulled")
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
