@@ -233,7 +233,17 @@ Call the `mcp__backlog__backlog_update` tool to add the Plan:
 
 If the item has `**Issue**: #N`, record it in the plan file header comment and include `Fixes #N` in any commit message produced during implementation.
 
-### Step 8: Report Next Steps
+### Step 8: Simplify
+
+Run the simplify skill to review files changed during this session for reuse, quality, and efficiency:
+
+```text
+Skill(skill: "simplify")
+```
+
+This reviews any files modified during this session and fixes issues found.
+
+### Step 8.5: Report Next Steps
 
 ```text
 Backlog item "{title}" is now planned.
