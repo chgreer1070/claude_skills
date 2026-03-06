@@ -48,6 +48,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 DEFAULT_REPO: str = os.environ.get("DEFAULT_REPO") or "Jamie-BitFlight/claude_skills"
+EMPTY_TREE_SHA: str = os.environ.get("EMPTY_TREE_SHA") or "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 #: Source file extensions to include in the dataset.
 SOURCE_EXTENSIONS: frozenset[str] = frozenset({
@@ -323,7 +324,10 @@ def collect_file_records(repo: Repo, base_ref: str, head_ref: str, diffs_dir: Pa
     err_console.print(f"[dim]Extracting file diffs {base_ref[:8]}..{head_ref[:8]}[/dim]")
     diffs_dir.mkdir(parents=True, exist_ok=True)
 
-    diff_index = repo.commit(base_ref).diff(repo.commit(head_ref))
+    if base_ref == EMPTY_TREE_SHA:
+        diff_index = repo.tree(base_ref).diff(repo.commit(head_ref).tree)
+    else:
+        diff_index = repo.commit(base_ref).diff(repo.commit(head_ref))
     records = [r for item in diff_index if (r := _build_file_record(item, diffs_dir)) is not None]
 
     err_console.print(f"[dim]  {len(records)} source files processed[/dim]")
@@ -343,7 +347,10 @@ def collect_commit_records(repo: Repo, base_ref: str, head_ref: str) -> list[Com
     """
     err_console.print(f"[dim]Collecting commits {base_ref[:8]}..{head_ref[:8]}[/dim]")
 
-    commits: list[Commit] = list(repo.iter_commits(f"{base_ref}..{head_ref}"))
+    if base_ref == EMPTY_TREE_SHA:
+        commits: list[Commit] = list(repo.iter_commits(head_ref))
+    else:
+        commits: list[Commit] = list(repo.iter_commits(f"{base_ref}..{head_ref}"))
     # iter_commits returns newest-first; reverse to oldest-first
     commits.reverse()
 
@@ -380,6 +387,22 @@ def collect_commit_records(repo: Repo, base_ref: str, head_ref: str) -> list[Com
 # ---------------------------------------------------------------------------
 # GitHub helpers
 # ---------------------------------------------------------------------------
+
+
+def _make_github_client(token: str) -> Github:
+    """Create a Github client respecting proxy/SSL environment variables.
+
+    Reads:
+        GITHUB_API_URL: Custom API base URL (default: https://api.github.com).
+        GITHUB_SSL_VERIFY: Set to 'false', '0', or 'no' to disable SSL verification.
+
+    Returns:
+        Configured Github client instance.
+    """
+    base_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
+    verify_ssl_str = os.environ.get("GITHUB_SSL_VERIFY", "true").lower()
+    verify: bool = verify_ssl_str not in {"false", "0", "no"}
+    return Github(auth=Auth.Token(token), base_url=base_url, verify=verify)
 
 
 def get_github_repo(gh: Github, repo_slug: str) -> Repository:
@@ -445,7 +468,7 @@ def collect_issue_records(commit_records: list[CommitRecord], repo_slug: str) ->
         return []
 
     err_console.print(f"[dim]Fetching {len(issue_numbers)} referenced GitHub issues[/dim]")
-    gh = Github(auth=Auth.Token(token))
+    gh = _make_github_client(token)
     gh_repo = get_github_repo(gh, repo_slug)
 
     records: list[IssueRecord] = []
