@@ -382,7 +382,9 @@ Return:
 ---
 task_id: "T2"
 title: "Add SAM task MCP tools to server.py"
-status: not-started
+status: complete
+started: "2026-03-06T10:00:00+00:00"
+completed: "2026-03-06T10:30:00+00:00"
 agent: python3-development:python-cli-architect
 priority: 1
 complexity: Medium

@@ -33,6 +33,14 @@ from typing import Any
 
 from task_format import has_yaml_frontmatter, normalize_status, parse_yaml_frontmatter, update_yaml_field
 
+# Conditionally add backlog_core to sys.path for GitHub sync.
+# The hook script lives at:
+#   plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py
+# parents[5] resolves to the repo root (e.g. /home/user/claude_skills).
+_BACKLOG_CORE_HOOK = Path(__file__).resolve().parents[5] / ".claude" / "skills" / "backlog" / "backlog_core"
+if _BACKLOG_CORE_HOOK.exists():
+    sys.path.insert(0, str(_BACKLOG_CORE_HOOK.parent))
+
 # Alphanumeric task ID pattern: "1", "1.1", "T1", "P0-T01", etc.
 _TASK_ID_RE = r"[A-Za-z0-9]+(?:[-.][\dA-Za-z]+)*"
 
@@ -393,6 +401,90 @@ def _fallback_to_context_file(hook_input: dict[str, Any]) -> tuple[Path | None, 
     return None, None
 
 
+def get_parent_issue_number(hook_input: dict[str, Any]) -> int | None:
+    """Read parent_issue_number from the active-task context file.
+
+    Returns the integer issue number, or None if the field is absent or the
+    context file does not exist. Never raises — all failures return None.
+
+    Args:
+        hook_input: Parsed hook input from stdin.
+
+    Returns:
+        Parent issue number as int, or None if not found.
+    """
+    cwd = Path(hook_input.get("cwd", "."))
+    session_id = hook_input.get("session_id", "")
+    if not session_id:
+        return None
+    context_file = get_context_file_path(cwd, session_id)
+    if not context_file.exists():
+        return None
+    try:
+        data: dict[str, Any] = json.loads(context_file.read_text(encoding="utf-8"))
+        if "parent_issue_number" in data:
+            return int(data["parent_issue_number"])
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError):
+        pass
+    return None
+
+
+def sync_completion_to_github(task_file_path: Path, task_id: str, parent_issue_number: int | None) -> None:
+    """Sync task completion status to GitHub sub-issue.
+
+    Reads github_issue field from the task YAML frontmatter. If absent, logs
+    a warning to stderr and returns without making any GitHub API call.
+    Wraps all GitHub operations in try/except — failure logs a warning to stderr
+    and returns without raising. This function is always called after the local
+    write succeeds; GitHub failure does not affect hook exit code.
+
+    Args:
+        task_file_path: Resolved path to the task YAML file.
+        task_id: Task ID being completed.
+        parent_issue_number: Optional parent story issue number from context file.
+    """
+    try:
+        # Read github_issue from task YAML frontmatter
+        github_issue: int | None = None
+        if task_file_path.is_file():
+            try:
+                file_content = task_file_path.read_text(encoding="utf-8")
+                if has_yaml_frontmatter(file_content):
+                    frontmatter, _ = parse_yaml_frontmatter(file_content)
+                    raw = frontmatter.get("github_issue")
+                    if raw is not None:
+                        github_issue = int(raw)
+            except (ValueError, TypeError, OSError):
+                pass
+
+        if github_issue is None:
+            print(f"[hook] No github_issue field in {task_file_path} — skipping GitHub sync", file=sys.stderr)
+            return
+
+        if not _BACKLOG_CORE_HOOK.exists():
+            print("[hook] backlog_core not found — skipping GitHub sync", file=sys.stderr)
+            return
+
+        # Conditional import — only after path guard
+        import backlog_core.github as _bc_github  # noqa: PLC0415
+
+        try:
+            repo = _bc_github.get_github()
+        except Exception as e:  # noqa: BLE001
+            print(f"[hook] GitHub unavailable — skipping GitHub sync: {e}", file=sys.stderr)
+            return
+
+        try:
+            _bc_github.update_task_status(repo, github_issue, "complete")
+        except Exception as e:  # noqa: BLE001
+            print(f"[hook] GitHub sync update_task_status failed: {e}", file=sys.stderr)
+            return
+
+        print(f"[hook] Synced task {task_id} completion to GitHub issue #{github_issue}", file=sys.stderr)
+    except Exception as e:  # noqa: BLE001
+        print(f"[hook] GitHub sync failed: {e}", file=sys.stderr)
+
+
 def handle_subagent_stop(hook_input: dict[str, Any]) -> None:
     """Handle SubagentStop event - mark task COMPLETE with timestamp.
 
@@ -445,6 +537,9 @@ def handle_subagent_stop(hook_input: dict[str, Any]) -> None:
     session_id = hook_input.get("session_id", "")
     if session_id:
         delete_task_context(cwd, session_id)
+
+    # Sync completion to GitHub (best-effort — never changes exit code)
+    sync_completion_to_github(resolved_path, task_id, get_parent_issue_number(hook_input))
 
 
 def handle_activity_update(hook_input: dict[str, Any]) -> None:
