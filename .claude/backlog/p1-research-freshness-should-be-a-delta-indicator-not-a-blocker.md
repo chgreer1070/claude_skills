@@ -10,6 +10,7 @@ metadata:
   status: in-progress
   issue: '#444'
   last_synced: '2026-03-06T05:50:49Z'
+  plan: plan/tasks-24-research-freshness-delta.md
 ---
 
 ## Story
