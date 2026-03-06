@@ -1,105 +1,130 @@
 # Example Sessions
 
-## Quick mode (one-file fix)
+## Issue-first planning (`#N`)
 
-<eg>
-> /work-backlog-item --quick gitlab-skill: Remove hardcoded URL
+```text
+> /work-backlog-item #131
 
-Found: "gitlab-skill: Remove hardcoded URL" (P1)
-Quick mode — skipping grooming, RT-ICA, and SAM planning.
+Loading GitHub Issue #131...
+  Title:     plugin-validator: UX and coverage gaps
+  Labels:    priority:p1, status:needs-grooming
+  Milestone: v1.1 — Quality Gates
+  State:     open
 
-Composing quick plan...
+Matched per-item file for additional context: ✓
+No groomed content in item file. Running groom-backlog-item first...
 
-plan/quick/gitlab-skill-remove-hardcoded-url.md created.
-  Steps: 2 tasks
-  Done when: URL replaced in plugins/gitlab-skill/skills/gitlab-skill/SKILL.md
+[groomed content written to item file]
 
-To execute: /implement-feature plan/quick/gitlab-skill-remove-hardcoded-url.md
-To close:   /work-backlog-item close gitlab-skill: Remove hardcoded URL
-</eg>
+RT-ICA: APPROVED — all conditions available.
+Setting status:in-progress on issue #131...
+  ✓ status:needs-grooming → status:in-progress
 
-## Progress report
+Composing feature request...
+Invoking /add-new-feature...
 
-<eg>
-> /work-backlog-item progress
+[SAM phases run]
 
-Backlog Health — 2026-02-26
+Updated per-item file with Plan: plan/tasks-2-validator-ux-coverage.md
 
-Active Milestone: #5 v1.1 — Quality Gates
-  Closed:      8 items
-  Open:        5 items
-  Progress:    [########..] 61%
+Next steps:
+- To execute:      /implement-feature validator-ux-coverage
+- To close when done: /work-backlog-item close plugin-validator UX and coverage gaps
+```
 
-Overall Backlog:
-  P0:    1 items (1 in milestone)
-  P1:    22 items (8 in milestone, 5 groomed but unassigned)
-  P2:    40 items
-  Ideas: 12 items
+## Planning (with title substring)
 
-Next recommended action:
-  /work-backlog-item SAM: Error Recovery  — SAM: Error Recovery (P1, groomed, in active milestone)
-</eg>
+```text
+> /work-backlog-item Error Recovery
 
-## Resume a stopped implementation
+Found: "SAM: Error Recovery / Rollback Procedures" (P1)
+No groomed content in item file. Running groom-backlog-item first...
 
-<eg>
-> /work-backlog-item resume Error Recovery
+[groomed content written to item file]
 
-Resume: SAM: Error Recovery / Rollback Procedures
-Plan:   plan/tasks-2-error-recovery.md
+RT-ICA: APPROVED — all conditions available.
+Composing feature request...
+Invoking /add-new-feature...
 
-Progress: 5/12 tasks (41%)
+[SAM phases run]
 
-Last completed:  Add retry logic to execute_task in executor.py
-Next to do:      Write unit tests for retry behaviour
+Updated per-item file with Plan: plan/tasks-2-error-recovery.md
 
-To continue: /implement-feature error-recovery
-To close:    /work-backlog-item close Error Recovery
-</eg>
+Next steps:
+- To execute:      /implement-feature error-recovery
+- To check status: /implementation-manager status . error-recovery
+- To close when done: /work-backlog-item close error-recovery
+```
 
-## Closing a completed item (by title)
+## Resolving a completed item (by title)
 
-<eg>
-> /work-backlog-item close validator UX
+```text
+> /work-backlog-item resolve validator UX
 
 Found: "plugin-validator UX and coverage gaps" (P1)
 Plan: plan/tasks-2-validator-ux-coverage.md
 Checklist: 12/12 tasks complete
 
-Extracting acceptance criteria from item file...
-  Found 3 criteria.
+Spawning acceptance criteria verification agent...
+
+Verdict: PASS
+Evidence: Sub-issues 1-4 implemented in plugins/plugin-creator/scripts/plugin_validator.py
+          commit 4a2f1b3 — "fix(validator): report unique files, add hook validation"
+
+Summarize what was done:
+> Implemented all 4 sub-issues: unique file reporting, hook validation, coverage gaps filled.
+
+Backlog item "plugin-validator UX and coverage gaps" resolved.
+- Summary: Implemented all 4 sub-issues: unique file reporting, hook validation, coverage gaps filled.
+- Checklist: 12/12 tasks complete
+- Acceptance criteria: PASS
+- GitHub Issue #131 closed with evidence trail
+```
+
+## Resolving a completed item (by issue number)
+
+```text
+> /work-backlog-item resolve #131
+
+Fetching GitHub Issue #131...
+  Title: plugin-validator UX and coverage gaps
+  State: open
+
+Found per-item file match: "plugin-validator UX and coverage gaps" (P1)
+Plan: plan/tasks-2-validator-ux-coverage.md
+Checklist: 12/12 tasks complete
 
 Spawning acceptance criteria verification agent...
 
-Acceptance Criteria Verification:
+Verdict: PASS
+Evidence: commit 4a2f1b3 — "fix(validator): report unique files, add hook validation"
 
-  [PASS] plugin_validator.py reports unique file counts — verified at plugins/plugin-creator/scripts/plugin_validator.py:187
-  [PASS] hook validation included in report — verified at plugins/plugin-creator/scripts/plugin_validator.py:203
-  [PASS] test suite passes — confirmed via git log (commit 4a2f1b3)
+Summarize what was done:
+> All validator sub-issues implemented and tested.
 
-Overall: PASS (3/3 criteria met)
+Backlog item "plugin-validator UX and coverage gaps" resolved.
+- Summary: All validator sub-issues implemented and tested.
+- GitHub Issue #131 closed with evidence trail
+```
 
-Backlog item "plugin-validator UX and coverage gaps" closed.
-- Checklist: 12/12 tasks complete
-- Acceptance criteria: PASS (3/3)
-- Status written to per-item file
-</eg>
+## Closing (dismissing) an item
 
-## Resolving a no-longer-applicable item
-
-<eg>
-> /work-backlog-item resolve commitlint verify last flag
+```text
+> /work-backlog-item close commitlint verify last flag
 
 Found: "commitlint: Verify --last flag and exit codes against primary sources" (P1)
-Why is this item no longer applicable?
-> REFUTED by fact-check: --last flag is verified in commitlint source cli.ts. No fix needed.
+Why is this item being dismissed?
+> out_of_scope
+Any additional comment?
+> REFUTED by fact-check: --last flag verified against commitlint source cli.ts. No fix needed.
 
-Backlog item resolved.
-  Resolved: 2026-02-21
-  Status: RESOLVED — REFUTED by fact-check: --last flag verified against commitlint
-          source cli.ts and official docs. No fix needed.
-</eg>
+Backlog item closed.
+  Closed: 2026-02-21
+  Reason: out_of_scope
+  Comment: REFUTED by fact-check: --last flag verified against commitlint
+           source cli.ts and official docs. No fix needed.
+```
 
-## Issue-first workflow and setup-github examples
+## GitHub Issue creation flow and setup-github examples
 
-See [github-integration.md](./github-integration.md) for GitHub Issue creation flow and setup-github session examples.
+See [github-integration.md](./github-integration.md) for the GitHub Issue creation flow and setup-github session examples.

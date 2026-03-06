@@ -107,13 +107,13 @@ Record execution time and token usage for each run. Save to the eval directory a
 2. Aggregate all grading results using the benchmark script:
 
    ```bash
-   python scripts/aggregate_benchmark.py iteration-1/
+   uv run scripts/aggregate_benchmark.py iteration-1/
    ```
 
 3. Generate the eval viewer for the user to review:
 
    ```bash
-   python eval-viewer/generate_review.py --static iteration-1/eval-review.html iteration-1/
+   uv run eval-viewer/generate_review.py --static iteration-1/eval-review.html iteration-1/
    ```
 
    Open the HTML file so the user can see real examples before you attempt any improvements.
@@ -214,7 +214,7 @@ Tell the user: "This will take some time — I'll run the optimization loop in t
 Save the eval set to the workspace, then run in the background:
 
 ```bash
-python -m scripts.run_loop \
+uv run scripts/run_loop.py \
   --eval-set <path-to-trigger-eval.json> \
   --skill-path <path-to-skill> \
   --model <model-id-powering-this-session> \
