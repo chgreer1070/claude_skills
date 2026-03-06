@@ -2,10 +2,14 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
+#   "daily-releases-lib",
 #   "typer>=0.21.0",
 #   "PyGithub>=2.1.1",
 #   "python-dotenv>=1.0.0",
 # ]
+#
+# [tool.uv.sources]
+# daily-releases-lib = { path = "daily_releases_lib", editable = true }
 # ///
 """Collect per-day dataset for the daily-releases chunked pipeline.
 
@@ -32,7 +36,8 @@ load_dotenv()
 import os
 
 import typer
-from github import Auth, Github, GithubException
+from daily_releases_lib.github_utils import AppExit, get_github_repo, make_github_client
+from github import GithubException
 from rich.console import Console
 
 if TYPE_CHECKING:
@@ -87,29 +92,6 @@ app = typer.Typer(
 )
 console = Console()
 err_console = Console(stderr=True)
-
-
-# ---------------------------------------------------------------------------
-# AppExit helper
-# ---------------------------------------------------------------------------
-
-
-class AppExit(typer.Exit):
-    """Exit with a user-friendly error message printed to stderr."""
-
-    exit_code: int
-
-    def __init__(self, code: int = 1, message: str | None = None) -> None:
-        """Initialise exit with optional message.
-
-        Args:
-            code: Process exit code (default 1).
-            message: Human-readable error message printed to stderr in red.
-        """
-        if message is not None:
-            err_console.print(f"[red]{message}[/red]")
-        self.exit_code = code
-        super().__init__(code=code)
 
 
 # ---------------------------------------------------------------------------
@@ -177,72 +159,6 @@ class IssueRecord:
     title: str
     state: str
     url: str
-
-
-# ---------------------------------------------------------------------------
-# GitHub client helpers
-# ---------------------------------------------------------------------------
-
-
-def _get_ssl_verify() -> bool | str:
-    """Determine SSL verification setting from environment variables.
-
-    Priority order:
-
-    1. ``GITHUB_SSL_VERIFY=false/0/no`` — disable verification entirely.
-    2. ``GITHUB_CA_BUNDLE`` — path to a custom CA bundle file.
-    3. ``REQUESTS_CA_BUNDLE`` — fallback CA bundle path (requests convention).
-    4. ``CURL_CA_BUNDLE`` — fallback CA bundle path (curl convention).
-    5. Default: ``True`` (use system CA store).
-
-    Returns:
-        False to disable SSL verification, a CA bundle path string, or True.
-    """
-    verify_str = os.environ.get("GITHUB_SSL_VERIFY", "true").lower()
-    if verify_str in {"false", "0", "no"}:
-        return False
-    for env_var in ("GITHUB_CA_BUNDLE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"):
-        bundle = os.environ.get(env_var)
-        if bundle:
-            return bundle
-    return True
-
-
-def _make_github_client(token: str) -> Github:
-    """Create a Github client respecting proxy/SSL environment variables.
-
-    Reads:
-        GITHUB_API_URL: Custom API base URL (default: https://api.github.com).
-        GITHUB_SSL_VERIFY: Set to 'false', '0', or 'no' to disable SSL verification.
-        GITHUB_CA_BUNDLE: Path to custom CA bundle file.
-        REQUESTS_CA_BUNDLE: Fallback CA bundle path (requests convention).
-        CURL_CA_BUNDLE: Fallback CA bundle path (curl convention).
-
-    Returns:
-        Configured Github client instance.
-    """
-    base_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-    verify = _get_ssl_verify()
-    return Github(auth=Auth.Token(token), base_url=base_url, verify=verify)
-
-
-def get_github_repo(gh: Github, repo_slug: str) -> Repository:
-    """Return a PyGithub Repository object.
-
-    Args:
-        gh: Authenticated Github client.
-        repo_slug: Repository slug in ``OWNER/REPO`` format.
-
-    Returns:
-        PyGithub Repository instance.
-
-    Raises:
-        AppExit: When the repository cannot be accessed.
-    """
-    try:
-        return gh.get_repo(repo_slug)
-    except GithubException as exc:
-        raise AppExit(code=1, message=f"Cannot access repo '{repo_slug}': {exc}") from exc
 
 
 # ---------------------------------------------------------------------------
@@ -655,7 +571,7 @@ def main(
     if not token:
         raise AppExit(code=1, message="GITHUB_TOKEN environment variable not set")
 
-    gh = _make_github_client(token)
+    gh = make_github_client(token)
     gh_repo = get_github_repo(gh, repo_slug)
 
     diffs_dir = output_dir / "dataset" / "diffs"

@@ -2,10 +2,14 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
+#   "daily-releases-lib",
 #   "typer>=0.21.0",
 #   "PyGithub>=2.1.1",
 #   "python-dotenv>=1.0.0",
 # ]
+#
+# [tool.uv.sources]
+# daily-releases-lib = { path = "daily_releases_lib", editable = true }
 # ///
 """Delete stale GitHub releases and tags left by prior daily-release script runs.
 
@@ -33,7 +37,8 @@ load_dotenv()
 from typing import TYPE_CHECKING, Annotated
 
 import typer
-from github import Auth, Github, GithubException
+from daily_releases_lib.github_utils import make_github_client
+from github import GithubException
 from rich.console import Console
 from rich.table import Table
 
@@ -132,30 +137,6 @@ def delete_tag_ref(gh_repo: Repository, tag: str, *, dry_run: bool) -> bool:
         return True
 
 
-def _get_ssl_verify() -> bool | str:
-    """Determine SSL verification setting from environment variables.
-
-    Priority order:
-
-    1. ``GITHUB_SSL_VERIFY=false/0/no`` — disable verification entirely.
-    2. ``GITHUB_CA_BUNDLE`` — path to a custom CA bundle file.
-    3. ``REQUESTS_CA_BUNDLE`` — fallback CA bundle path (requests convention).
-    4. ``CURL_CA_BUNDLE`` — fallback CA bundle path (curl convention).
-    5. Default: ``True`` (use system CA store).
-
-    Returns:
-        False to disable SSL verification, a CA bundle path string, or True.
-    """
-    verify_str = os.environ.get("GITHUB_SSL_VERIFY", "true").lower()
-    if verify_str in {"false", "0", "no"}:
-        return False
-    for env_var in ("GITHUB_CA_BUNDLE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"):
-        bundle = os.environ.get(env_var)
-        if bundle:
-            return bundle
-    return True
-
-
 def _init_github_client(repo_slug: str) -> Repository:
     """Initialize and return a PyGithub Repository object.
 
@@ -176,9 +157,7 @@ def _init_github_client(repo_slug: str) -> Repository:
         err_console.print("[red]GITHUB_TOKEN environment variable not set[/red]")
         raise typer.Exit(code=1)
 
-    base_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-    verify = _get_ssl_verify()
-    gh = Github(auth=Auth.Token(token), base_url=base_url, verify=verify)
+    gh = make_github_client(token)
     try:
         return gh.get_repo(repo_slug)
     except GithubException as exc:

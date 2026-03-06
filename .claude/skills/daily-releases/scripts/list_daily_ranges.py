@@ -2,11 +2,14 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
+#   "daily-releases-lib",
 #   "typer>=0.21.0",
 #   "PyGithub>=2.1.1",
-#   "httpx>=0.27.0",
 #   "python-dotenv>=1.0.0",
 # ]
+#
+# [tool.uv.sources]
+# daily-releases-lib = { path = "daily_releases_lib", editable = true }
 # ///
 """List daily commit ranges for the daily releases pipeline.
 
@@ -30,9 +33,9 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Annotated
 
-import httpx as _httpx
 import typer
-from github import Auth, Github, GithubException
+from daily_releases_lib.github_utils import AppExit, get_github_repo, get_ssl_verify, graphql, make_github_client
+from github import GithubException
 from rich.console import Console
 
 if TYPE_CHECKING:
@@ -54,70 +57,6 @@ app = typer.Typer(
 )
 console = Console()
 err_console = Console(stderr=True)
-
-
-class AppExit(typer.Exit):
-    """Exit with user-friendly error message to stderr."""
-
-    def __init__(self, code: int = 1, message: str | None = None) -> None:
-        """Print message to stderr and exit with code."""
-        if message is not None:
-            err_console.print(f"[red]{message}[/red]")
-        super().__init__(code=code)
-
-
-def _get_ssl_verify() -> bool | str:
-    """Determine SSL verification setting from environment variables.
-
-    Priority order:
-
-    1. ``GITHUB_SSL_VERIFY=false/0/no`` — disable verification entirely.
-    2. ``GITHUB_CA_BUNDLE`` — path to a custom CA bundle file.
-    3. ``REQUESTS_CA_BUNDLE`` — fallback CA bundle path (requests convention).
-    4. ``CURL_CA_BUNDLE`` — fallback CA bundle path (curl convention).
-    5. Default: ``True`` (use system CA store).
-
-    Returns:
-        False to disable SSL verification, a CA bundle path string, or True.
-    """
-    verify_str = os.environ.get("GITHUB_SSL_VERIFY", "true").lower()
-    if verify_str in {"false", "0", "no"}:
-        return False
-    for env_var in ("GITHUB_CA_BUNDLE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE"):
-        bundle = os.environ.get(env_var)
-        if bundle:
-            return bundle
-    return True
-
-
-def _make_github_client(token: str) -> Github:
-    """Create a Github client respecting proxy/SSL environment variables.
-
-    Reads:
-        GITHUB_API_URL: Custom API base URL (default: https://api.github.com).
-        GITHUB_SSL_VERIFY: Set to 'false', '0', or 'no' to disable SSL verification.
-        GITHUB_CA_BUNDLE: Path to custom CA bundle file.
-        REQUESTS_CA_BUNDLE: Fallback CA bundle path (requests convention).
-        CURL_CA_BUNDLE: Fallback CA bundle path (curl convention).
-
-    Returns:
-        Configured Github client instance.
-    """
-    base_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-    verify = _get_ssl_verify()
-    return Github(auth=Auth.Token(token), base_url=base_url, verify=verify)
-
-
-def get_github_repo(gh: Github, repo_slug: str) -> Repository:
-    """Return PyGithub Repository object.
-
-    Raises:
-        AppExit: If repo cannot be accessed.
-    """
-    try:
-        return gh.get_repo(repo_slug)
-    except GithubException as e:
-        raise AppExit(code=1, message=f"Cannot access repo '{repo_slug}': {e}") from e
 
 
 def get_release_generator_version(gh_repo: Repository, tag: str) -> str | None:
@@ -197,38 +136,6 @@ query BranchHistory($owner: String!, $repo: String!, $qualifiedName: String!, $a
 """
 
 
-def _graphql(token: str, query: str, variables: dict, *, verify: bool | str, base_url: str) -> dict:
-    """Execute a GitHub GraphQL query and return the response data dict.
-
-    Args:
-        token: GitHub personal access token.
-        query: GraphQL query string.
-        variables: GraphQL variable bindings.
-        verify: SSL verification setting — False, True, or path to CA bundle.
-        base_url: GitHub API base URL (default https://api.github.com).
-
-    Returns:
-        Parsed ``data`` field from the GraphQL response.
-
-    Raises:
-        AppExit: On HTTP errors or GraphQL errors in the response.
-    """
-    graphql_url = base_url.rstrip("/") + "/graphql"
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    try:
-        resp = _httpx.post(
-            graphql_url, json={"query": query, "variables": variables}, headers=headers, verify=verify, timeout=30
-        )
-        resp.raise_for_status()
-    except _httpx.HTTPError as exc:
-        raise AppExit(code=1, message=f"GraphQL request failed: {exc}") from exc
-    payload = resp.json()
-    if errors := payload.get("errors"):
-        msg = errors[0].get("message", str(errors))
-        raise AppExit(code=1, message=f"GraphQL error: {msg}")
-    return payload["data"]
-
-
 def _branch_to_qualified_ref(branch: str) -> str:
     """Convert a local-style branch name to a GitHub qualified ref name.
 
@@ -277,7 +184,7 @@ def _fetch_all_commits_graphql(
     commits: list[dict] = []
     after: str | None = None
     while True:
-        data = _graphql(
+        data = graphql(
             token,
             _BRANCH_HISTORY_QUERY,
             {"owner": owner, "repo": repo_name, "qualifiedName": qualified_ref, "after": after},
@@ -440,10 +347,10 @@ def main(
     if not token:
         raise AppExit(code=1, message="GITHUB_TOKEN environment variable not set")
 
-    ssl_verify = _get_ssl_verify()
+    ssl_verify = get_ssl_verify()
     base_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
 
-    gh = _make_github_client(token)
+    gh = make_github_client(token)
     gh_repo = get_github_repo(gh, repo_slug)
 
     all_by_day, non_merge_by_day = get_commits_by_day(token, repo_slug, branch, verify=ssl_verify, base_url=base_url)
