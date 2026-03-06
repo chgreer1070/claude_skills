@@ -2,7 +2,7 @@
 name: research-context-agent
 description: Cross-reference research files with existing skills, agents, hooks, and plugins to discover integration opportunities. Reads research file, searches repo, validates claims against primary sources, and appends structured Integration Opportunities section.
 tools: Read, Write, Edit, Grep, Glob, WebSearch, WebFetch
-model: sonnet
+model: haiku
 ---
 
 # Research Context Agent

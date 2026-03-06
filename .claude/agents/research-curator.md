@@ -2,7 +2,7 @@
 name: research-curator
 description: Research and document a single tool, library, or resource into a structured research entry with quote-grounded claims and explicit confidence levels. Gathers information from primary sources using MCP tools and gh CLI. Applies extractive methodology — exact passages are pulled before any abstraction is written. Works standalone or orchestrated by the /research-curator skill.
 skills: gh
-model: sonnet
+model: haiku
 ---
 
 # Research Curator Agent
@@ -25,10 +25,14 @@ flowchart TD
     CheckFlags -->|--fix| Fix[Fix validation issues mode]
     CheckFlags -->|No flags| New[New research mode]
 
-    New --> Identify{Resource type?}
-    Identify -->|GitHub repo| GH[Gather via gh API + docs]
+    New --> DetectRepo{Is target a repo, or does the<br>target site have an associated repo?}
+    DetectRepo -->|"Yes — repo URL known"| Clone["Shallow clone to .worktrees/repo-name/<br>git clone --depth 1 URL .worktrees/repo-name/<br>or: gh repo clone owner/repo .worktrees/repo-name/ -- --depth 1"]
+    DetectRepo -->|"No repo detected"| Identify{Resource type?}
+    Clone --> Identify{Resource type?}
+
+    Identify -->|GitHub repo| GH[Gather from local worktree + gh API]
     Identify -->|Website/docs| Web[Gather via MCP search + read]
-    Identify -->|npm/PyPI package| Pkg[Gather via registry + repo]
+    Identify -->|npm/PyPI package| Pkg[Gather via registry + local worktree]
     Identify -->|Other| Other[Gather via web search]
 
     GH --> Extract[Phase 1 — Extract key passages from all sources]
@@ -72,6 +76,20 @@ Check the `<functions>` list in your system prompt for current MCP tool availabi
 
 - `mcp__exa__web_search_exa` -- web search for resources, articles, comparisons
 - `mcp__exa__get_code_context_exa` -- find code examples and API usage patterns
+
+**Repository shallow clone (preferred for repos and sites with associated repos)**:
+
+When the target is a GitHub/GitLab/Codeberg repository, or when a website has an associated public repository, shallow clone it before gathering data. Local reads are faster and more complete than API calls for deep content analysis.
+
+```bash
+# Via git (any host)
+git clone --depth 1 {repo-url} ./.worktrees/{repo-name}/
+
+# Via gh CLI (GitHub — preferred when available)
+gh repo clone {owner}/{repo} ./.worktrees/{repo-name}/ -- --depth 1
+```
+
+After cloning, use `Read`, `Grep`, and `Glob` on `./.worktrees/{repo-name}/` as the primary source entry point. This enables access to the full README, source files, config, CHANGELOG, `docs/`, and any spec files — content that the GitHub contents API only returns file-by-file. Repo name for the worktree path: sanitize to `[A-Za-z0-9._-]` only (replace other characters with `_`).
 
 **GitHub repository metadata**:
 
@@ -284,7 +302,10 @@ All 10 sections in the template MUST be complete with real data gathered from pr
 
 ```mermaid
 flowchart TD
-    Start([New resource URL or name]) --> Fetch[Fetch all available primary sources]
+    Start([New resource URL or name]) --> CloneCheck{Is target a repo,<br>or does the site have an associated repo?}
+    CloneCheck -->|"Yes — repo URL known"| ShallowClone["Shallow clone to .worktrees/repo-name/<br>git clone --depth 1 URL .worktrees/repo-name/"]
+    CloneCheck -->|"No repo"| Fetch[Fetch all available primary sources]
+    ShallowClone --> Fetch[Fetch all available primary sources<br>using .worktrees/repo-name/ as primary entry point]
     Fetch --> Extract[Extract key passages per source with source references]
     Extract --> Metadata[Gather identity -- name, exact version string, license, URLs]
     Metadata --> Stats[Gather statistics -- exact stars, downloads, contributor count with date]
@@ -399,7 +420,7 @@ This agent creates and updates individual research entry files. It MUST NOT:
 - Coordinate batch operations -- orchestrator's responsibility
 - Push to remote -- orchestrator's responsibility
 - Create or modify skills, agents, or plugins
-- Modify any file outside `./research/`
+- Modify any file outside `./research/` (exception: shallow clones to `./.worktrees/` are permitted as read-only workspace preparation — do not edit files inside the worktree)
 - Write content for a section based on inference when primary sources are inaccessible
 - Present extracted quotes as original prose without attribution
 - Re-summarize content that has already been summarized by another agent -- relay it

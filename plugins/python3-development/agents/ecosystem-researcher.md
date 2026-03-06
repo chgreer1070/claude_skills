@@ -4,7 +4,7 @@ description: Researches domain ecosystems and technology landscapes before roadm
 permissionMode: plan
 tools: Read, Grep, Glob, mcp__ref__*, mcp__exa__*, mcp__context7__*, mcp__firecrawl__*
 skills: subagent-contract
-model: sonnet
+model: haiku
 color: blue
 ---
 
