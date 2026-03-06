@@ -411,6 +411,10 @@ def parse_task_from_frontmatter(content: str) -> Task:
     """
     frontmatter, _body = parse_yaml_frontmatter(content)
 
+    # Normalize task_id -> task for backward compatibility
+    if "task_id" in frontmatter and "task" not in frontmatter:
+        frontmatter["task"] = frontmatter["task_id"]
+
     # Validate required fields
     missing = [f for f in ("task", "title", "status") if f not in frontmatter]
     if missing:
@@ -479,8 +483,9 @@ def parse_task_content(content: str) -> list[Task]:
         sys.stderr.write(f"WARNING: YAML frontmatter parsing failed: {exc}\n")
         return []
 
-    # Detect multi-task file: global manifest block has 'feature:' but not 'task:'/'status:'
-    if "feature" in frontmatter and "task" not in frontmatter and "status" not in frontmatter:
+    # Detect multi-task file: global manifest block has 'feature:' but not a task identifier.
+    # Support both 'task:' and 'task_id:' as task identifier fields.
+    if "feature" in frontmatter and "task" not in frontmatter and "task_id" not in frontmatter:
         return _parse_multi_task_body(body)
 
     # Single-task file: the leading frontmatter IS the task
@@ -508,7 +513,8 @@ def _parse_multi_task_body(body: str) -> list[Task]:
     """
     tasks: list[Task] = []
     for segment in re.split(r"\n---\n", body):
-        if "task:" not in segment or "status:" not in segment:
+        has_task_field = "task:" in segment or "task_id:" in segment
+        if not has_task_field or "status:" not in segment:
             continue
         try:
             task = parse_task_from_frontmatter(f"---\n{segment}\n---\n")

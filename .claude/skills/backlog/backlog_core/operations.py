@@ -7,6 +7,7 @@ parameter and returns ``{...result, **out.to_dict()}``.
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -20,13 +21,16 @@ from .github import (
     check_open_prs_for_issue,
     close_github_issue,
     create_issue_for_item,
+    create_task_issue,
     fetch_github_issue_body,
     fetch_open_issues_by_title,
     get_github,
+    get_task_issues,
     issue_to_local_fields,
     resolve_github_issue,
     sync_groomed_to_github_issue,
     try_get_github,
+    update_task_status,
     view_enrich_from_github,
 )
 from .models import (
@@ -38,9 +42,11 @@ from .models import (
     BacklogError,
     BacklogItem,
     DuplicateItemError,
+    GitHubUnavailableError,  # noqa: F401 — re-exported; raised by get_github() callers
     IssueStatus,
     ItemNotFoundError,
     Output,
+    SamTask,
     ValidationError,
     ViewItemResult,
 )
@@ -64,12 +70,14 @@ from .parsing import (
     parse_backlog,
     parse_body_extra_fields,
     parse_issue_selector,
+    parse_sam_task_metadata,
     title_to_slug,
     today,
     view_result_from_local_item,
 )
 
 if TYPE_CHECKING:
+    from github.Issue import SubIssue
     from github.Repository import Repository
 
 
@@ -1540,3 +1548,250 @@ def pull_items(
         out.info(f"Pulled {pulled} item(s){suffix}.")
 
     return {"pulled": pulled, "dry_run": dry_run, **out.to_dict()}
+
+
+# ---------------------------------------------------------------------------
+# Public API: SAM TASK OPERATIONS
+# ---------------------------------------------------------------------------
+
+
+def _write_sam_task_cache(tasks: list[dict[str, object]], parent_issue_number: int) -> None:
+    """Write SAM task list to ``~/.claude/context/sam-tasks-{feature_slug}.json``.
+
+    Skips silently when no feature slug can be derived from the task list.
+    """
+    feature_slug = _extract_feature_slug(tasks)
+    if not feature_slug:
+        return
+    cache_dir = Path.home() / ".claude" / "context"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / f"sam-tasks-{feature_slug}.json"
+    payload = {"tasks": tasks, "count": len(tasks), "parent_issue_number": parent_issue_number}
+    cache_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _sub_issues_to_task_dicts(sub_issues: list[SubIssue]) -> list[dict[str, object]]:
+    """Convert a list of PyGithub SubIssue objects to task dicts.
+
+    Each dict contains ``issue_number``, ``issue_url``, ``title`` plus all
+    ``SamTask`` fields parsed from the issue body's ``<!-- sam:task ... -->`` block.
+
+    Returns:
+        List of task dicts with GitHub issue fields and SAM metadata merged.
+    """
+    tasks: list[dict[str, object]] = []
+    for si in sub_issues:
+        body = si.body or ""
+        task_meta = parse_sam_task_metadata(body)
+        task_dict: dict[str, object] = {"issue_number": si.number, "issue_url": si.html_url, "title": si.title}
+        if task_meta is not None:
+            task_dict.update(task_meta.model_dump())
+        tasks.append(task_dict)
+    return tasks
+
+
+def create_sam_task(
+    parent_issue_number: int,
+    task_id: str,
+    feature: str,
+    task_type: str,
+    agent: str,
+    priority: int,
+    skills: list[str],
+    dependencies: list[str],
+    description: str,
+    acceptance_criteria: list[str] | None = None,
+    labels: list[str] | None = None,
+    output: Output | None = None,
+) -> dict[str, str | int | list[str]]:
+    """Create a GitHub issue for a SAM task and link it as a sub-issue of a parent story.
+
+    Constructs a ``SamTask`` from scalar parameters, creates the GitHub issue, and
+    links it as a sub-issue of the parent. Wraps ``github.create_task_issue()``.
+
+    Args:
+        parent_issue_number: Issue number of the parent story (without ``#``).
+        task_id: Feature-scoped sequential ID, e.g. ``"T1"``, ``"T2"``.
+        feature: Feature slug, e.g. ``"uv-skill-update"``.
+        task_type: Execution category: ``"research"`` | ``"implement"`` | ``"review"`` | ``"fix"`` | ``"docs"``.
+        agent: Agent name to execute the task.
+        priority: Execution priority 1-5 (1 = highest).
+        skills: Skill names the executing agent should load.
+        dependencies: Feature-scoped task IDs this task depends on (e.g. ``["T1", "T2"]``).
+        description: Short human-readable description of the task.
+        acceptance_criteria: Optional list of acceptance criteria strings.
+        labels: Optional list of label names to apply.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with ``issue_number``, ``title``, ``url``, and output messages.
+        Includes ``warnings`` from sub-issue linking when applicable.
+
+    Raises:
+        GitHubUnavailableError: If GITHUB_TOKEN is not set.
+    """
+    out = output or Output()
+    task = SamTask(
+        task_id=task_id,
+        feature=feature,
+        task_type=task_type,
+        agent=agent,
+        priority=priority,
+        skills=skills,
+        dependencies=dependencies,
+    )
+    repo = get_github()
+    issue = create_task_issue(repo, parent_issue_number, task, description, acceptance_criteria, labels, output=out)
+    if issue is None:
+        return {"issue_number": 0, "title": "", "url": "", **out.to_dict()}
+    return {"issue_number": issue.number, "title": issue.title, "url": issue.html_url, **out.to_dict()}
+
+
+def get_sam_tasks(
+    parent_issue_number: int, refresh_cache: bool = True, output: Output | None = None
+) -> dict[str, list[dict[str, object]] | int | list[str]]:
+    """Fetch all SAM task sub-issues for a parent story issue.
+
+    When GitHub is unavailable, falls back to the local cache file
+    ``~/.claude/context/sam-tasks-{feature_slug}.json``.
+
+    Args:
+        parent_issue_number: Issue number of the parent story (without ``#``).
+        refresh_cache: Write cache file after a successful GitHub fetch when ``True``.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with ``tasks`` (list of task dicts), ``count``, ``parent_issue_number``,
+        and output messages.
+    """
+    out = output or Output()
+    empty: dict[str, list[dict[str, object]] | int] = {
+        "tasks": [],
+        "count": 0,
+        "parent_issue_number": parent_issue_number,
+    }
+
+    repo = try_get_github()
+    if repo is None:
+        # Offline fallback: scan cache directory for any matching cache file
+        cache_dir = Path.home() / ".claude" / "context"
+        cache_files = list(cache_dir.glob("sam-tasks-*.json")) if cache_dir.exists() else []
+        # Try all cache files; find one that has the right parent_issue_number
+        for cache_file in cache_files:
+            try:
+                cached: dict[str, object] = json.loads(cache_file.read_text(encoding="utf-8"))
+                if cached.get("parent_issue_number") == parent_issue_number:
+                    out.warn(f"  WARNING: GitHub unavailable — returning cached tasks from {cache_file.name}")
+                    cached_tasks: list[dict[str, object]] = cached.get("tasks", [])  # type: ignore[assignment]
+                    return {
+                        "tasks": cached_tasks,
+                        "count": cached.get("count", len(cached_tasks)),
+                        "parent_issue_number": parent_issue_number,
+                        **out.to_dict(),
+                    }
+            except (json.JSONDecodeError, OSError):
+                continue
+        out.warn(f"  WARNING: GitHub unavailable and no cache found for parent #{parent_issue_number}")
+        return {**empty, **out.to_dict()}
+
+    sub_issues = get_task_issues(repo, parent_issue_number, output=out)
+    tasks = _sub_issues_to_task_dicts(sub_issues)
+    if refresh_cache and tasks:
+        _write_sam_task_cache(tasks, parent_issue_number)
+    return {"tasks": tasks, "count": len(tasks), "parent_issue_number": parent_issue_number, **out.to_dict()}
+
+
+def update_sam_task_status(
+    issue_number: int, new_status: str, output: Output | None = None
+) -> dict[str, bool | int | str | list[str]]:
+    """Update the status field in the ``<!-- sam:task ... -->`` block of a task issue body.
+
+    Wraps ``github.update_task_status()``. Returns without error when the status
+    is already the target value or no ``sam:task`` block is found.
+
+    Args:
+        issue_number: Task issue number (without ``#``).
+        new_status: Target status string, e.g. ``"in-progress"`` or ``"complete"``.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with ``updated`` (bool), ``issue_number``, ``new_status``, and output messages.
+
+    Raises:
+        GitHubUnavailableError: If GITHUB_TOKEN is not set.
+    """
+    out = output or Output()
+    repo = get_github()
+    updated = update_task_status(repo, issue_number, new_status, output=out)
+    return {"updated": updated, "issue_number": issue_number, "new_status": new_status, **out.to_dict()}
+
+
+_SAM_TERMINAL_STATUSES: frozenset[str] = frozenset({"complete", "closed", "done"})
+
+
+def _extract_feature_slug(tasks: list[dict[str, object]]) -> str:
+    """Return the first non-empty feature slug found in a list of task dicts."""
+    for t in tasks:
+        slug = t.get("feature", "")
+        if isinstance(slug, str) and slug:
+            return slug
+    return ""
+
+
+def _build_task_status_map(tasks: list[dict[str, object]]) -> dict[str, str]:
+    """Return a ``{task_id: status}`` mapping for feature-scoped task IDs."""
+    return {
+        str(tid): str(t.get("status", "not-started"))
+        for t in tasks
+        if isinstance((tid := t.get("task_id", "")), str) and tid
+    }
+
+
+def _is_sam_task_ready(task: dict[str, object], status_by_id: dict[str, str]) -> bool:
+    """Return True when a task is not-started and all feature-scoped deps are terminal."""
+    if str(task.get("status", "not-started")) != "not-started":
+        return False
+    deps_raw = task.get("dependencies", [])
+    for dep in list(deps_raw) if isinstance(deps_raw, list) else []:
+        dep_str = str(dep).strip()
+        if dep_str.startswith("#"):  # cross-feature ref — always satisfied
+            continue
+        if status_by_id.get(dep_str, "not-started") not in _SAM_TERMINAL_STATUSES:
+            return False
+    return True
+
+
+def get_ready_sam_tasks(
+    parent_issue_number: int, output: Output | None = None
+) -> dict[str, str | list[dict[str, object]] | int | list[str]]:
+    """Return SAM tasks that are ready to execute (not-started with all deps satisfied).
+
+    A task is ready when its status is ``"not-started"`` and all dependencies
+    have a terminal status (``"complete"``). Cross-feature ``#N`` dependencies
+    (GitHub issue references) are treated as always-satisfied.
+
+    Args:
+        parent_issue_number: Issue number of the parent story (without ``#``).
+        output: Optional Output collector.
+
+    Returns:
+        Dict with ``feature`` (slug), ``ready_tasks`` (list), ``count``, and output messages.
+        Each ready task dict contains: ``id``, ``name``, ``agent``, ``skills``, ``issue_number``.
+    """
+    out = output or Output()
+    tasks_result = get_sam_tasks(parent_issue_number, refresh_cache=True, output=out)
+    tasks: list[dict[str, object]] = tasks_result.get("tasks", [])  # type: ignore[assignment]
+    feature_slug = _extract_feature_slug(tasks)
+    status_by_id = _build_task_status_map(tasks)
+    ready: list[dict[str, object]] = [
+        {
+            "id": t.get("task_id", ""),
+            "name": t.get("title", ""),
+            "agent": t.get("agent", ""),
+            "skills": t.get("skills", []),
+            "issue_number": t.get("issue_number", 0),
+        }
+        for t in tasks
+        if _is_sam_task_ready(t, status_by_id)
+    ]
+    return {"feature": feature_slug, "ready_tasks": ready, "count": len(ready), **out.to_dict()}

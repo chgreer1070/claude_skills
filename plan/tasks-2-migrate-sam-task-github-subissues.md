@@ -247,7 +247,7 @@ These files must not be touched during Phases 2-5:
 ---
 task_id: "T1"
 title: "Add SAM task operations to operations.py"
-status: not-started
+status: complete
 agent: python3-development:python-cli-architect
 priority: 1
 complexity: Medium
@@ -258,6 +258,7 @@ skills:
 parallelize_with: []
 reason: "Foundational layer. No other task writes operations.py."
 handoff: "Summary of 4 functions added, line ranges, result of uv run prek run --files, any deviations from spec."
+completed: "2026-03-06T09:15:00+00:00"
 ---
 
 ## Context
