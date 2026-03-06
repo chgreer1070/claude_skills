@@ -93,6 +93,30 @@ A gap is **not actionable** when:
 
 **When in doubt about whether a gap is already covered**: read the local file. Do not assume coverage or absence.
 
+### Confidence Scoring
+
+Assign a confidence level to every actionable gap before writing the proposal.
+
+**High confidence** — ALL of the following are true:
+
+- The research entry names a concrete mechanism (not a philosophy or general approach)
+- Read/Grep of the local file confirms the mechanism is absent or materially weaker
+- The gap is described without needing any inference — it is directly observable in both files
+
+**Medium confidence** — at least one of:
+
+- The research entry describes the pattern clearly but the local file required interpretation to confirm absence
+- The pattern is present in spirit in the local system but the research entry's specific mechanism is absent
+- A single source confirms the gap but corroboration would be needed for certainty
+
+**Low confidence** — any of:
+
+- The gap is inferred rather than directly observed in the local file
+- The local system might already have equivalent behavior via a path not examined
+- The research entry's description of the pattern is itself vague or high-level
+
+Only **high confidence** gaps produce backlog items. Medium and low confidence gaps are recorded in the improvements file as "Deferred — confidence too low to backlog" with explicit reasoning.
+
 </gap_rules>
 
 ---
@@ -106,8 +130,9 @@ Each proposal in the output file follows this structure exactly:
 
 **Source pattern**: {exact quote or paraphrase from research entry, with section reference}
 **Local system**: {path to the local file this maps to}
+**Confidence**: High | Medium | Low
 **Impact**: High | Medium | Low
-**Suggested backlog priority**: P0 | P1 | P2 | Ideas
+**Backlog**: #{issue-number} created | Deferred — {reason}
 
 ### Current state
 
@@ -138,16 +163,27 @@ Impact definitions:
 
 ## Backlog Item Creation
 
-For every proposal with Impact = High or Medium that is not already tracked:
+Create a backlog item for **every high-confidence proposal that is not already tracked**, regardless of impact level. Priority is selected by the impact × confidence matrix:
 
-- Use `mcp__backlog__backlog_add` with:
-  - `title`: improvement title from the proposal
-  - `description`: current state + target state + measurable signal (full text from proposal)
-  - `priority`: map Impact to priority (High → P1, Medium → P2)
-  - `source`: `Research entry: ./research/{category}/{name}.md — pattern: {source pattern name}`
-  - `type`: `Feature` for new capability, `Refactor` for restructuring existing code
+| Confidence | Impact | Priority |
+|---|---|---|
+| High | High | P1 |
+| High | Medium | P1 |
+| High | Low | P2 |
+| Medium | any | defer — do not create backlog item |
+| Low | any | defer — do not create backlog item |
 
-Do not create backlog items for Low impact proposals — include them in the improvements file only.
+Use `mcp__backlog__backlog_add` with:
+
+- `title`: improvement title from the proposal
+- `description`: current state + target state + measurable signal (full text from proposal)
+- `priority`: from matrix above
+- `source`: `Research entry: ./research/{category}/{name}.md — pattern: {source pattern name}`
+- `type`: `Feature` for new capability, `Refactor` for restructuring existing code
+
+For medium and low confidence proposals: record in the improvements file as `Backlog: Deferred — confidence {level}: {brief reason}`. Do not create a backlog item.
+
+After creating all items, record the issue numbers in each proposal's `**Backlog**` field.
 
 ---
 
@@ -159,14 +195,15 @@ Where `resource-name` is the filename of the research entry without the `.md` ex
 
 File structure:
 
-```markdown
+````markdown
 # Improvement Proposals: {Resource Name}
 
 **Research entry**: ./research/{category}/{name}.md
 **Generated**: {YYYY-MM-DD}
 **Patterns assessed**: {N}
-**Actionable improvements found**: {N}
-**Backlog items created**: {N}
+**Backlog items created**: {N} (issues: #{N}, #{N}, ...)
+**Deferred (low confidence)**: {N}
+**Skipped (already covered or tracked)**: {N}
 
 ---
 
@@ -178,12 +215,20 @@ File structure:
 
 ---
 
+## Deferred Proposals (confidence too low to backlog)
+
+| Pattern | Confidence | Reason |
+|---|---|---|
+| {pattern name} | medium/low | {what would need to be verified to raise confidence} |
+
+---
+
 ## Skipped Patterns
 
 | Pattern | Reason skipped |
 |---|---|
 | {pattern name} | {already covered in {file} / too abstract / already in backlog as #{issue}} |
-```
+````
 
 ---
 
@@ -197,10 +242,16 @@ STATUS: complete | no_actionable_patterns | failed
 FILE: ./research/insights/{YYYY-MM-DD}-{resource-name}-improvements.md
 RESEARCH_ENTRY: ./research/{category}/{name}.md
 PATTERNS_ASSESSED: N
-IMPROVEMENTS_FOUND: N
 BACKLOG_ITEMS_CREATED: N (issue numbers: #N, #N, ...)
+DEFERRED_LOW_CONFIDENCE: N
 SKIPPED: N patterns — {brief reasons}
+
+IMMEDIATE_ATTENTION:
+- #{issue} {title} — {one sentence why this is worth acting on now}
+- #{issue} {title} — {one sentence why this is worth acting on now}
 ```
+
+`IMMEDIATE_ATTENTION` lists every backlog item that is **high confidence + High impact** (P1 priority). If none qualify, omit the section entirely.
 
 If the entry has no Relevance or Patterns section, return `STATUS: no_actionable_patterns` and stop — do not write a file.
 
