@@ -9,7 +9,7 @@ metadata:
   type: Refactor
   status: open
   issue: '#480'
-  last_synced: '2026-03-06T06:32:34Z'
+  last_synced: '2026-03-06T06:42:03Z'
   groomed: '2026-03-06'
 ---
 
@@ -241,3 +241,19 @@ Rationale: Three distinct systems must change in coordination (query layer, hook
 **2. Offline/cache strategy**: Same as current backlog MCP — local files are the cache/interface layer. All GitHub state is mirrored to local files; hooks read/write local cache and sync to GitHub when available. No degraded-mode logic needed beyond what backlog MCP already implements.
 
 **3. Dependency model**: Under investigation. User direction: GitHub Projects v2 may offer relationship fields beyond parent-child. Fallback: named list in issue body referencing other issues by number. Sub-agent researching options — decision pending research output.
+
+### Research
+
+Full comparison analysis written to `plan/research/comparison-github-task-dependency-options.md`.
+
+**Recommendation: Option B** — Sub-issues + issue body dep list.
+
+Key findings:
+- All 3 options require text-convention dep parsing; no option provides native GitHub dep enforcement
+- `get_ready_tasks()` is unchanged in all options — dep resolution is always local
+- Option B aligns with existing backlog MCP caching pattern
+- Option C (Projects v2) is GraphQL-only, complex, and overkill for this use case
+
+**Critical implementation guard**: Always pass the `Issue` object to `add_sub_issue()`, never `.id` or `.number` manually — both are integers, confusing them produces no type error.
+
+**Fallback**: If sub-issues unavailable on repo plan, use Option A (body text deps only). Logic is identical.
