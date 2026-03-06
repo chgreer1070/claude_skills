@@ -1,6 +1,6 @@
 ---
 name: TUI/Web interface for large interactive checklists and project tree editing
-description: "AskUserQuestion becomes impractical for 20+ options, which is insufficient when Claude needs to present large option sets to the user — e.g., filling in project templates with selective add/remove of components, displaying a project tree where the user can append or remove entries, or presenting screenshots and gathered images as selectable options for feedback.\n\nProblem: No mechanism exists for Claude to present a scrollable, interactive checklist or tree view where users can toggle items on/off, add custom entries, or browse visual options. Current workaround is multiple rounds of AskUserQuestion which is slow and loses context.\n\nSuccess looks like: Claude can present a project scaffold tree (or similar large structured list) in a TUI or web panel, the user can check/uncheck items, add new entries, remove unwanted ones, and submit the result back to Claude in a single interaction. Images/screenshots can be displayed as option cards.\n\nHow to verify: A skill or tool can render 20+ items in a single interactive view, user can modify the selection, and the result is returned to Claude as structured data.\n\nResearch first:\n? How does CopilotKit (research/agent-frameworks/copilotkit.md) handle agent-driven UI rendering and user feedback loops?\n? How does JSON Render (research/agent-frameworks/json-render.md) handle dynamic form/tree generation from agent output?\n? What TUI frameworks (textual, rich, blessed) support checkbox trees with real-time agent communication?"
+description: "AskUserQuestion is limited to 3-5 questions per screen, which is insufficient when Claude needs to present large option sets to the user — e.g., filling in project templates with selective add/remove of components, displaying a project tree where the user can append or remove entries, or presenting screenshots and gathered images as selectable options for feedback.\n\nProblem: No mechanism exists for Claude to present a scrollable, interactive checklist or tree view where users can toggle items on/off, add custom entries, or browse visual options. Current workaround is multiple rounds of AskUserQuestion which is slow and loses context.\n\nSuccess looks like: Claude can present a project scaffold tree (or similar large structured list) in a TUI or web panel, the user can check/uncheck items, add new entries, remove unwanted ones, and submit the result back to Claude in a single interaction. Images/screenshots can be displayed as option cards.\n\nHow to verify: A skill or tool can render 20+ items in a single interactive view, user can modify the selection, and the result is returned to Claude as structured data.\n\nResearch first:\n? How does CopilotKit (research/agent-frameworks/copilotkit.md) handle agent-driven UI rendering and user feedback loops?\n? How does JSON Render (research/agent-frameworks/json-render.md) handle dynamic form/tree generation from agent output?\n? What TUI frameworks (textual, rich, blessed) support checkbox trees with real-time agent communication?"
 metadata:
   topic: tuiweb-interface-for-large-interactive-checklists-and-projec
   source: User request
@@ -9,9 +9,56 @@ metadata:
   type: Feature
   status: open
   issue: '#437'
-  last_synced: '2026-03-05T05:11:49Z'
+  last_synced: '2026-03-06T05:50:49Z'
   groomed: '2026-03-05'
 ---
+
+## Story
+
+As a **developer**, I want **AskUserQuestion is limited to 3-5 questions per screen, which is insufficient...** so that **backlog items are tracked in GitHub**.
+
+## Description
+
+AskUserQuestion is limited to 3-5 questions per screen, which is insufficient when Claude needs to present large option sets to the user — e.g., filling in project templates with selective add/remove of components, displaying a project tree where the user can append or remove entries, or presenting screenshots and gathered images as selectable options for feedback.
+
+Problem: No mechanism exists for Claude to present a scrollable, interactive checklist or tree view where users can toggle items on/off, add custom entries, or browse visual options. Current workaround is multiple rounds of AskUserQuestion which is slow and loses context.
+
+Success looks like: Claude can present a project scaffold tree (or similar large structured list) in a TUI or web panel, the user can check/uncheck items, add new entries, remove unwanted ones, and submit the result back to Claude in a single interaction. Images/screenshots can be displayed as option cards.
+
+How to verify: A skill or tool can render 20+ items in a single interactive view, user can modify the selection, and the result is returned to Claude as structured data.
+
+Research first:
+? How does CopilotKit (research/agent-frameworks/copilotkit.md) handle agent-driven UI rendering and user feedback loops?
+? How does JSON Render (research/agent-frameworks/json-render.md) handle dynamic form/tree generation from agent output?
+? What TUI frameworks (textual, rich, blessed) support checkbox trees with real-time agent communication?
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: User request
+- **Priority**: P1
+- **Added**: 2026-03-05
+- **Research questions**: None
+
+## Fact-Check
+
+**Claims checked**: 5
+**VERIFIED**: 3 | **REFUTED**: 0 | **INCONCLUSIVE**: 2
+
+| Claim | Verdict | Source |
+|-------|---------|--------|
+| No native Claude Code mechanism exists for scrollable, interactive checklist/tree views | VERIFIED | Claude Code tool inventory (AskUserQuestion, Bash, Read, Write, Edit) — no interactive TUI component exists SOURCE: Claude Code tool definitions, 2026-03-05 |
+| CopilotKit handles agent-driven UI rendering and user feedback loops | VERIFIED | `useCopilotAction` render pattern, human-in-the-loop checkpoints, bi-directional state sync SOURCE: research/agent-frameworks/copilotkit.md (accessed 2026-02-23) |
+| JSON Render handles dynamic form/tree generation from agent output | VERIFIED | Catalog+Zod schema system constrains AI to a defined component vocabulary; `defineCatalog` + `@json-render/shadcn` (39 pre-built components) covers interactive form generation SOURCE: research/agent-frameworks/json-render.md (accessed 2026-02-26) |
+| AskUserQuestion is limited to 3-5 questions per screen | INCONCLUSIVE | The practical limitation on option count is observed behavior; the exact "3-5" number is not documented in official Claude Code sources. The broader claim (insufficient for 20+ items) is consistent with observed behavior. |
+| TUI frameworks (textual, rich, blessed) support checkbox trees with real-time agent communication | INCONCLUSIVE | Textual (Textualize) has documented Checkbox and Tree widget support for interactive terminals. Rich is display-only (not interactive). Blessed is JavaScript (not Python). The claim bundles mismatched tools. "Real-time agent communication" mechanism is unspecified — no research file confirms IPC pattern. |
+
+**Refuted claims**: None
+**Inconclusive claims**: "3-5 questions limit" (unverified number); "textual, rich, blessed" bundle (rich is not interactive; blessed is JS)
 
 ## RT-ICA
 
@@ -37,8 +84,6 @@ metadata:
 - (4) IPC return path: how structured JSON flows from renderer back to Claude Code session
 - (6) Skill integration contract: tool name, invocation API, return schema, blocking behavior
 - (10) Context detection: heuristic vs named profile — edge case coverage needs empirical testing
-
-These missing conditions are not blockers for readiness: high-level design, scoping, and backlog shaping can proceed while the concrete IPC mechanism, tool integration contract, and context-detection edge cases are resolved in a focused design spike during the architecture phase.
 
 ## Groomed (2026-03-05)
 
@@ -66,7 +111,7 @@ Claude can invoke an interactive UI component (TUI or web) from within a skill e
 - Renders 20+ items in a scrollable view
 - Allows user to toggle, add, remove, or reorder items
 - Returns structured result (JSON or Python dict) to Claude automatically
-- Blocks the calling skill at a logical waitpoint until the user submits (logically synchronous from the caller's perspective, even if the UI runs asynchronously internally)
+- Blocks skill execution until user submits result (synchronous interaction model)
 - Optionally displays images/screenshots as selectable cards alongside text options
 
 ### Desired Structure
@@ -99,12 +144,17 @@ A Claude Code skill or tool that acts as a bridge between Claude and an interact
 - **Return binding**: Should the result automatically resume skill execution, or does the skill need explicit code to parse and continue?
   - Automatic binding (tool blocks until result arrives) vs manual binding (skill polls for result) affects integration complexity
 
+- **Persistence model**: Should the UI support "save and resume later" (with serialized state), or is session-scoped interaction sufficient?
+  - Session-only is simpler; persistence enables multi-session workflows
+
 ### Resources
 
-- [CopilotKit](../../research/agent-frameworks/copilotkit.md) — React/TypeScript framework for agent-driven UI with bi-directional state sync
-- [json-render](../../research/agent-frameworks/json-render.md) — Generative UI framework with catalog constraints and streaming support
-- `agent-browser` skill — existing skill for rendering and browser interaction
-- `plugins/development-harness/agents/service-docs-maintainer.md` — example of complex UI workflows in SAM
+| Type | Item |
+|------|------|
+| Research | [CopilotKit](../../research/agent-frameworks/copilotkit.md) — React/TypeScript framework for agent-driven UI with bi-directional state sync |
+| Research | [json-render](../../research/agent-frameworks/json-render.md) — Generative UI framework with catalog constraints and streaming support |
+| Skill | agent-browser — existing skill for rendering and browser interaction |
+| Prior work | plugins/development-harness/agents/service-docs-maintainer.md — example of complex UI workflows in SAM |
 
 ### Dependencies
 
@@ -128,16 +178,40 @@ Medium — Proof of concept (TUI with Textual + stdout capture) is achievable in
 
 ### Decision
 
-**Required outcomes** — the interactive UI system MUST:
+**Return binding model**: Background subagent pattern.
 
-1. Allow Claude to initiate a large interactive selection/editing session (20+ items, nested project tree, images as options) without blocking Claude's ability to reason or work in parallel.
-2. Return a single, well-structured result payload capturing the user's final state: selected items, deselected items, added entries, removed entries, and any relevant metadata.
-3. Treat the rendering surface (TUI, web, chat surface, push notification) as a swappable detail behind a common interaction contract — different frontends require no changes to how Claude invokes the interaction.
-4. Ensure long-running or high-latency user interactions do not require busy-waiting or manual polling from Claude to learn when the user has finished.
+The interactive UI runs as a background subagent (`Agent(run_in_background=True)`). The subagent:
+1. Launches the renderer backend via the routing layer
+2. Blocks internally until the user submits
+3. Returns structured JSON result to the orchestrator on completion
 
-_Implementation mechanisms (agent patterns, transport layers, renderer architectures) are deferred to the SAM planning phase._
+The orchestrating Claude instance is free to continue other work while the user interacts. Notification is automatic — no polling, no manual IPC.
 
 ---
+
+**Renderer architecture**: Pluggable backend with connection + routing layers.
+
+```
+Claude (orchestrator)
+    │
+    └─ Interaction Agent (background subagent)
+           │
+    ┌──────▼──────────────────────────────────┐
+    │         Routing Layer                   │
+    │  selects renderer from config/context   │
+    └──────┬──────────────────────────────────┘
+           │
+    ┌──────▼──────────────────────────────────┐
+    │         Connection Layer                │
+    │  transport adapters (stdio, HTTP, WS,   │
+    │  Slack API, Teams webhook, notify.io)   │
+    └──────┬──────────────────────────────────┘
+           │
+    ┌──────▼──────────────────────────────────┐
+    │         Renderer Backends               │
+    │  Web │ TUI │ Slack │ Teams │ Phone/Push │
+    └─────────────────────────────────────────┘
+```
 
 **Renderer capability matrix** (confirmed by user, 2026-03-05):
 
@@ -146,13 +220,23 @@ _Implementation mechanisms (agent patterns, transport layers, renderer architect
 | Interactive checklist (toggle) | ✓ | ✓ | ✓ (blocks/reactions) | - |
 | Long list / fuzzy lookup | ✓ | ✓ | ~ (limited) | - |
 | Long file presentation | ✓ | ✓ | - | - |
-| Layout design | ✓ | ✓ | - | - |
+| Layout / layup design | ✓ | ✓ | - | - |
 | Image / screenshot cards | - | ✓ | ✓ | ✓ |
 | Inline add / remove entries | ✓ | ✓ | ~ | - |
 | Push notification | - | - | ✓ | ✓ |
 | Async / non-blocking response | - | ✓ | ✓ | ✓ |
 
 **Image support**: Required in v1 (web renderer only). Screenshot/image display as selectable option cards.
+
+---
+
+**Implementation sequencing** (confirmed by user, 2026-03-05):
+
+1. **Architecture phase first** — the pluggable connection + routing layer requires dedicated planning cycles before any renderer work begins. The connection contract must be stable before web or any future adapter is built against it.
+2. **Web renderer (v1)** — implemented against the stable connection contract. Web-only; TUI deferred to v2.
+3. **Additional adapters (v2+)** — Slack, Teams, TUI, notify.io/push — each a new connection adapter only, no routing changes.
+
+The architecture phase is a hard prerequisite. Do not begin web renderer implementation until the connection contract is finalized.
 
 ---
 
@@ -165,29 +249,29 @@ _Implementation mechanisms (agent patterns, transport layers, renderer architect
 ### Scope
 
 **Phase 0 — Architecture (prerequisite, must complete before Phase 1)**:
-- Define the common interaction contract — how Claude initiates a session, what data it passes, and what response schema it receives
-- Specify the renderer adapter interface so different frontends can be swapped without changing Claude-side code
-- Define serialization format and session/correlation model for matching responses to originating requests
-- Specify integration contracts for future chat/notification channels (even if implementation is v2)
+- Design the pluggable connection + routing layer
+- Define the renderer adapter contract/interface
+- Define the serialization format and session/correlation model
+- Specify the Slack/Teams connection contract (even if implementation is v2)
 - Output: architecture spec consumed by all subsequent phases
 
-**Phase 1 — v1 implementation (initial renderer)**:
-- Implement routing layer that selects a renderer and enforces the adapter contract
-- Implement a connection layer that supports interactive sessions and structured request/response payloads
-- Deliver an initial renderer targeting a browser-based UI for interactive checklists, fuzzy lookup, long list/file presentation, and image/screenshot option cards
-- Integrate so that user submissions return structured results to Claude in a single interaction
+**Phase 1 — v1 implementation (web renderer only)**:
+- Routing layer — selects renderer; enforces adapter contract
+- Connection layer — HTTP + WebSocket transport; JSON serialization
+- Web renderer — interactive checklists, fuzzy lookup, long list/file presentation, image/screenshot option cards
+- Background subagent integration — `Agent(run_in_background=True)`; structured JSON returned on submit
 
 **Phase 2 — v2 adapters (designed-in, not implemented in v1)**:
-- Provide a terminal-based renderer for checklist interaction, fuzzy lookup, and long file/tree browsing
-- Provide adapters for chat-based collaboration tools using the v1 integration contracts
-- Provide adapters for enterprise chat platforms using the v1 integration contracts
-- Provide adapters for push/notification-style channels that can deliver prompts and receive responses asynchronously
+- TUI renderer (terminal via tmux PTY) — checklist, fuzzy lookup, long file, layout
+- Slack adapter — channel routing, blocks/reactions, approval flow
+- MS Teams adapter — Teams webhook + Adaptive Cards
+- notify.io / push adapter — async notification + response callback
 
 **Out of scope (all phases)**:
-- Full authentication / access control system between Claude and renderer backends — however, all HTTP/WebSocket transports MUST default-bind to loopback/local interface only, and the Phase 0 architecture spec MUST include a threat model covering all renderer/control-surface exposure
+- Authentication / access control between Claude and renderer backends
 - Multi-user simultaneous interactions (single-user per session)
 - Custom renderer plugin API for third parties (design-in only)
-- Multi-session persistence (save/resume state across sessions)
+- Multi-session persistence (save/resume state)
 
 ### Routing Design
 
@@ -249,7 +333,9 @@ endpoints:
 
 ### Routing Design — Preliminary Research
 
-#### Existing solutions found (2026-03-05)
+> **Status**: Preliminary — findings below are first-pass research. Each question requires dedicated investigation and testing before architecture decisions are finalized.
+
+### Existing solutions found (2026-03-05)
 
 | Solution | Relevance | Action |
 |----------|-----------|--------|
@@ -265,7 +351,7 @@ endpoints:
 
 ---
 
-#### Q1 — Context detection: heuristic vs explicit profile
+### Q1 — Context detection: heuristic vs explicit profile
 
 **Preliminary finding**: Named profiles in config with env var heuristics as opt-in auto-detection fallback.
 
@@ -298,7 +384,7 @@ default: at-desk
 
 ---
 
-#### Q2 — First-response-wins vs collect-all for broadcast
+### Q2 — First-response-wins vs collect-all for broadcast
 
 **Preliminary finding**: Response model is determined by interaction *type*, not a global setting.
 
@@ -314,7 +400,7 @@ Each interaction message carries a `type` field. Routing layer uses it to pick r
 
 ---
 
-#### Q3 — Endpoint health check before routing
+### Q3 — Endpoint health check before routing
 
 **Preliminary finding**: Probe before routing with configurable timeout (default 500ms); walk fallback chain on failure. Phone/ntfy is terminal node (always available).
 
@@ -328,7 +414,7 @@ Each interaction message carries a `type` field. Routing layer uses it to pick r
 
 ---
 
-#### Q4 — Endpoint registry exposure to Claude
+### Q4 — Endpoint registry exposure to Claude
 
 **Preliminary finding**: MCP server owns routing; Claude calls one tool. Claude has zero routing logic.
 

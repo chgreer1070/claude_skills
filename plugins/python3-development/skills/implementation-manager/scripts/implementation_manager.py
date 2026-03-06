@@ -453,8 +453,12 @@ def parse_task_from_frontmatter(content: str) -> Task:
 def parse_task_content(content: str) -> list[Task]:
     """Parse task content and extract all tasks.
 
-    Handles YAML frontmatter format: single task per file with ``---`` delimited
-    metadata. Returns an empty list if frontmatter is absent or parsing fails.
+    Handles two YAML frontmatter formats:
+    - **Single-task**: One ``---`` frontmatter block with ``task:`` and ``status:`` fields.
+    - **Multi-task**: A global manifest block (has ``feature:``, lacks ``task:``/``status:``)
+      followed by embedded per-task frontmatter blocks in the body.
+
+    Returns an empty list if frontmatter is absent or parsing fails.
 
     Args:
         content: Raw text content of task file.
@@ -462,14 +466,53 @@ def parse_task_content(content: str) -> list[Task]:
     Returns:
         List of Task objects parsed from the content.
     """
-    if has_yaml_frontmatter(content):
+    if not has_yaml_frontmatter(content):
+        return []
+
+    try:
+        frontmatter, body = parse_yaml_frontmatter(content)
+    except (ValueError, TypeError) as exc:
+        sys.stderr.write(f"WARNING: YAML frontmatter parsing failed: {exc}\n")
+        return []
+
+    # Detect multi-task file: global manifest block has 'feature:' but not 'task:'/'status:'
+    if "feature" in frontmatter and "task" not in frontmatter and "status" not in frontmatter:
+        return _parse_multi_task_body(body)
+
+    # Single-task file: the leading frontmatter IS the task
+    try:
+        task = parse_task_from_frontmatter(content)
+    except (ValueError, TypeError) as exc:
+        sys.stderr.write(f"WARNING: YAML frontmatter parsing failed: {exc}\n")
+        return []
+    return [task]
+
+
+def _parse_multi_task_body(body: str) -> list[Task]:
+    r"""Parse embedded task blocks from body content after a global manifest.
+
+    Splits body on ``\\n---\\n`` boundaries to isolate each YAML block.
+    Only segments containing both ``task:`` and ``status:`` field markers
+    are parsed as tasks; all other segments (markdown prose, HTML comments)
+    are silently skipped.
+
+    Args:
+        body: Content after the global manifest's closing ``---`` delimiter.
+
+    Returns:
+        List of Task objects sorted by natural task ID order.
+    """
+    tasks: list[Task] = []
+    for segment in re.split(r"\n---\n", body):
+        if "task:" not in segment or "status:" not in segment:
+            continue
         try:
-            task = parse_task_from_frontmatter(content)
-        except (ValueError, TypeError) as exc:
-            sys.stderr.write(f"WARNING: YAML frontmatter parsing failed: {exc}\n")
-            return []
-        return [task]
-    return []
+            task = parse_task_from_frontmatter(f"---\n{segment}\n---\n")
+            tasks.append(task)
+        except (ValueError, TypeError):
+            continue
+    tasks.sort(key=_task_sort_key)
+    return tasks
 
 
 def parse_task_file(file_path: Path) -> list[Task]:

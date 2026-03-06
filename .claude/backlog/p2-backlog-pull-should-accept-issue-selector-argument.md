@@ -1,15 +1,15 @@
 ---
 name: backlog pull should accept issue selector argument
-description: "Bug: The `backlog_pull` MCP tool and `backlog.py pull` CLI command only support bulk pull of all issues. There is no way to pull a single issue by `#N`, title substring, or URL into the local cache.\n\n`backlog_pull(selector='#321')` is not supported — there's no `selector` parameter. Similarly `backlog.py pull #321` fails with `Got unexpected extra argument (#321)`.\n\nThe operations layer already has `pull_single_issue()` as a public function — it just isn't wired up to the MCP tool or CLI."
+description: "Bug: The `backlog_pull` MCP tool and `backlog.py pull` CLI command only support bulk pull of all issues. There is no way to pull a single issue by `#N`, title substring, or URL into the local cache.\n\n`backlog_pull(selector=\"#321\")` is not supported — there's no `selector` parameter. Similarly `backlog.py pull #321` fails with `Got unexpected extra argument (#321)`.\n\nThe operations layer already has `pull_single_issue()` as a public function — it just isn't wired up to the MCP tool or CLI."
 metadata:
   topic: backlog-pull-should-accept-issue-selector-argument
   source: 'GitHub Issue #324'
   added: '2026-03-03'
   priority: P2
   type: Bug
-  status: needs-grooming
+  status: in-progress
   issue: '#324'
-  last_synced: '2026-03-03T03:53:39Z'
+  last_synced: '2026-03-06T05:50:58Z'
 ---
 
 ## Story
