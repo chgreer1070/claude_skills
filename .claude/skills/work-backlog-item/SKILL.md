@@ -233,7 +233,17 @@ Call the `mcp__backlog__backlog_update` tool to add the Plan:
 
 If the item has `**Issue**: #N`, record it in the plan file header comment and include `Fixes #N` in any commit message produced during implementation.
 
-### Step 8: Report Next Steps
+### Step 8: Simplify
+
+Run the simplify skill to review files changed during this session for reuse, quality, and efficiency:
+
+```text
+Skill(skill: "simplify")
+```
+
+This reviews any files modified during this session and fixes issues found.
+
+### Step 8.5: Report Next Steps
 
 ```text
 Backlog item "{title}" is now planned.
@@ -245,16 +255,6 @@ Backlog item "{title}" is now planned.
 ```
 
 **Do NOT close the GitHub Issue directly.** Include `Fixes #N` in commit messages and the PR body — the issue auto-closes when the PR merges. Only use `/work-backlog-item resolve` for post-merge verification and local bookkeeping. Use `/work-backlog-item close` only for dismissals (duplicate, out_of_scope, etc.). Never call `mcp__backlog__backlog_resolve` before the PR has merged.
-
-### Step 8.5: Simplify
-
-After reporting next steps, run the simplify skill to review changed files for reuse, quality, and efficiency:
-
-```text
-Skill(skill: "simplify")
-```
-
-This reviews any files modified during this session and fixes issues found.
 
 ### Step 9: Close or Resolve (ADR-9)
 
