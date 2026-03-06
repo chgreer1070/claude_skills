@@ -81,7 +81,15 @@ For monolithic files (multiple tasks), find the specific task section.
 
 ```bash
 mkdir -p .claude/context
-printf '%s' '{"task_file_path": "{task_file_path}", "task_id": "{task_id}"}' > ".claude/context/active-task-${CLAUDE_SESSION_ID}.json"
+printf '%s' '{"task_file_path": "{task_file_path}", "task_id": "{task_id}", "parent_issue_number": N}' > ".claude/context/active-task-${CLAUDE_SESSION_ID}.json"
 ```
+
+Omit `parent_issue_number` if the story issue number is not known. The hook treats absence as
+`None` and skips GitHub sync.
+
+If `parent_issue_number` is known and `github_issue` field is set in the task YAML, call
+`backlog_core.github.update_task_status(repo, github_issue, "in-progress")` after the
+`claim-task` step to sync the in-progress status to GitHub. Failure is non-fatal — continue
+regardless.
 
 5. Implement against the task acceptance criteria and run its verification steps.
