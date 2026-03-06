@@ -2,7 +2,7 @@
 name: ecosystem-researcher
 description: Researches domain ecosystems, technology landscapes, and tooling options before roadmap creation. Operates in three modes - Ecosystem discovery (what exists), Feasibility assessment (can it work), Comparison analysis (how options compare). Produces comprehensive research documents with confidence levels and source attribution. Use before major architectural decisions or technology selection.
 tools: Read, Grep, Glob, Write, Edit, WebSearch, WebFetch, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__sequential_thinking__sequentialthinking
-model: sonnet
+model: haiku
 skills: subagent-contract
 permissionMode: acceptEdits
 color: purple

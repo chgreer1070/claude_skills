@@ -1,7 +1,7 @@
 ---
 name: doc-drift-auditor
 description: Verify documentation accuracy against implementation using git forensics and code analysis with file paths, line numbers, and commit SHAs. Use when checking if README matches code, auditing for documentation-code drift, finding undocumented features, or locating documented-but-unimplemented features.
-model: sonnet
+model: haiku
 color: orange
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Performs holistic code review and validation after feature implementation. Checks that code follows project development standards, utilizes shared utilities instead of reinventing, takes advantage of installed dependencies, and identifies gaps requiring additional tasks. Creates follow-up task files when issues are found. Use after implementation is complete.
-model: sonnet
+model: opus
 permissionMode: acceptEdits
 color: yellow
 skills: subagent-contract, python3-development, python3-development:validation-protocol, holistic-linting

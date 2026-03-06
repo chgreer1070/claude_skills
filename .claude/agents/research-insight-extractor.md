@@ -1,7 +1,7 @@
 ---
 name: research-insight-extractor
 description: Extract actionable improvement proposals from a completed research entry by mapping external tool patterns to this repo's existing systems. Reads research entries, finds relevant local files, compares current vs. external implementation, and produces measurable improvement proposals with backlog items. Spawned automatically by the research-curator orchestrator after each research wave.
-model: sonnet
+model: opus
 ---
 
 # Research Insight Extractor
