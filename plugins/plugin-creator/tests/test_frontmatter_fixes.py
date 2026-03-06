@@ -28,7 +28,7 @@ class TestFM009Guard:
     """Tests for the FM009 state-machine guard in _fix_unquoted_colons().
 
     Scope: White-box unit tests that call _fix_unquoted_colons() directly,
-    verifying per-line behaviour for seven distinct input shapes.
+    verifying per-line behaviour for eight distinct input shapes.
 
     Strategy: AAA pattern; each case constructs a minimal frontmatter string,
     calls the function, and asserts on the returned (text, fixes, fields) tuple.
@@ -104,6 +104,13 @@ class TestFM009Guard:
                 "    command: npx -y pkgA\n",
                 False,
                 id="case7_mcp_block_four_plus_indented_lines_all_skipped",
+            ),
+            pytest.param(
+                "mcp_scalar_null_followed_by_claude_field",
+                "mcp: null\nsome-other-key:\n  description: Fix: colon here\n",
+                None,
+                True,
+                id="case8_mcp_scalar_null_fm009_fires_for_subsequent_fields",
             ),
         ],
     )
