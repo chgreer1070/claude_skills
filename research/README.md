@@ -17,7 +17,10 @@ research/
 │   ├── liteagents.md                  # Multi-tool AI development toolkit with 11 agents and session memory
 │   ├── micro-agent.md                 # Lightweight Python ReAct agent framework with MCP multi-server support (MIT)
 │   ├── openfang.md                    # Rust Agent OS with autonomous Hands, 40 channel adapters, WASM sandbox, SKILL.md native (3.6K stars)
-│   └── superpowers.md                 # Agentic skills framework and dev methodology (40K+ stars)
+│   ├── superpowers.md                 # Agentic skills framework and dev methodology (40K+ stars)
+│   └── tersa.md                       # Next.js 15 + ReactFlow visual AI pipeline canvas; typed nodes wired via Vercel AI SDK Gateway (25+ providers); Tersa Agent creates workflows from natural language (927 stars)
+├── claude-code-plugins/               # Claude Code plugin ecosystems and configuration repositories
+│   └── claude-codex-settings.md      # Battle-tested Claude Code plugin ecosystem: 17 plugins, 9 MCP integrations, multi-LLM backend configs (Z.ai, Kimi K2, ccproxy) (452 stars)
 ├── agent-infrastructure/              # Infrastructure for agentic applications
 │   ├── fly-io.md                      # Cloud platform for running apps globally in Firecracker microVMs; Sprites for AI agent sandboxes, first-class MCP support (18 regions)
 │   ├── kernel-sh.md                   # Browsers-as-a-service: isolated VM-per-browser Chrome, MCP server, 5.8x faster than Browserbase (670 stars)
@@ -431,6 +434,7 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 | [micro-agent.md](./agent-frameworks/micro-agent.md)                   | Micro-Agent - lightweight Python 3.12 ReAct agent framework with MCP multi-server support, token budget enforcement, and execution visualization (MIT) | 2026-02-20   |
 | [openfang.md](./agent-frameworks/openfang.md)                         | OpenFang - Rust Agent OS with autonomous Hands, 40 channel adapters, WASM sandbox, 16-layer security, native SKILL.md support (Apache-2.0/MIT) | 2026-02-27   |
 | [superpowers.md](./agent-frameworks/superpowers.md)                   | Agentic skills framework with 14 skills for TDD, debugging, and subagent-driven development - works with Claude Code, Codex, OpenCode  | 2026-01-31   |
+| [tersa.md](./agent-frameworks/tersa.md)                               | vercel-labs/tersa — Next.js 15 + ReactFlow visual AI pipeline canvas; typed nodes wired via Vercel AI SDK Gateway (25+ providers); Tersa Agent creates workflows from natural language (927 stars) | 2026-03-06   |
 
 **Key Topics**:
 
@@ -1223,6 +1227,25 @@ No-code and low-code AI workflow builders for creating AI-powered applications a
 - Visual drag-and-drop agentic pipeline builder
 - Memory, conditional routing, and interactive chat in agent steps
 - Prototyping and productivity automation without code
+
+---
+
+### 26. Claude Code Plugins
+
+**Location**: [./claude-code-plugins/](./claude-code-plugins/)
+
+Curated Claude Code plugin ecosystems, configuration repositories, and multi-plugin setups for extending Claude Code with skills, MCP integrations, and multi-LLM backends.
+
+| Document | Description | Last Updated |
+| -------- | ----------- | ------------ |
+| [claude-codex-settings.md](./claude-code-plugins/claude-codex-settings.md) | fcakyon/claude-codex-settings — Battle-tested Claude Code plugin ecosystem: 17 plugins, 9 MCP integrations, multi-LLM backend configs (Z.ai, Kimi K2, ccproxy) (452 stars) | 2026-03-06 |
+
+**Key Topics**:
+
+- Multi-plugin Claude Code configuration ecosystems
+- MCP server integration patterns and config management
+- Multi-LLM backend routing (Z.ai, Kimi K2, ccproxy, OpenRouter)
+- Battle-tested plugin selection and curated skill sets
 
 ---
 
