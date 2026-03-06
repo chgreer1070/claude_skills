@@ -27,6 +27,7 @@ Usage:
     backlog update <selector> [--plan PATH] [--status in-progress] [--create-issue]
     backlog groom <selector> [--groomed-content "..." | --groomed-file PATH | --section X --content "..." | stdin]
     backlog normalize  # one-off: rewrite per-item files to research-style metadata, remove body duplication
+    backlog migrate-status [--dry-run]  # migrate items with 'open' status to valid state-machine states
     backlog pull [--dry-run] [--force]  # pull issue bodies from GitHub into local files
 
 Environment:
@@ -65,12 +66,14 @@ from rich.table import Table
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SCRIPT_DIR.parent.parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "plugins" / "plugin-creator" / "scripts"))
+sys.path.insert(0, str(_SCRIPT_DIR))
 
 import operator
 
 import frontmatter
 
 from frontmatter_utils import dump_frontmatter, loads_frontmatter
+from state_handler import BacklogState, StateTransitionError, apply_github_transition
 
 if TYPE_CHECKING:
     from github.Issue import Issue
@@ -1221,9 +1224,13 @@ def _close_github_issue(issue_ref: str, reason: str, reference: str, comment: st
         if comment:
             parts.append(f"\n{comment}")
         issue.create_comment(" ".join(parts))
+        current_status = next(
+            (lbl.name.removeprefix("status:") for lbl in issue.labels if lbl.name.startswith("status:")), None
+        )
+        apply_github_transition(repository, issue, current_status, BacklogState.CLOSED.value)
         issue.edit(state="closed")
         typer.echo(f"  GitHub issue #{num} closed ({reason}).")
-    except GithubException as e:
+    except (GithubException, StateTransitionError) as e:
         typer.echo(f"  WARNING: Could not close issue: {e}", err=True)
 
 
@@ -1328,9 +1335,13 @@ def _resolve_github_issue(
         if findings:
             body_parts.append(f"\n### Findings\n\n{findings}")
         issue.create_comment("\n".join(body_parts))
+        current_status = next(
+            (lbl.name.removeprefix("status:") for lbl in issue.labels if lbl.name.startswith("status:")), None
+        )
+        apply_github_transition(repository, issue, current_status, BacklogState.DONE.value)
         issue.edit(state="closed")
         typer.echo(f"  GitHub issue #{num} resolved.")
-    except GithubException as e:
+    except (GithubException, StateTransitionError) as e:
         typer.echo(f"  WARNING: Could not close issue: {e}", err=True)
 
 
@@ -1605,6 +1616,7 @@ def _write_groomed_to_item_file(filepath: Path, groomed_content: str, section_na
         if isinstance(meta_block, dict):
             updated = dict(meta_block)
             updated["groomed"] = today
+            updated["status"] = BacklogState.GROOMED.value
             post.metadata["metadata"] = updated
         else:
             post.metadata["groomed"] = today
@@ -1743,9 +1755,8 @@ def _write_groomed_to_github(issue_ref: str, content: str, section_name: str | N
             typer.echo(f"  Synced to GitHub issue {issue_ref}")
             try:
                 issue = repository.get_issue(num)
-                if any(label.name == "status:needs-grooming" for label in issue.labels):
-                    issue.remove_from_labels("status:needs-grooming")
-            except GithubException as e:
+                apply_github_transition(repository, issue, "needs-grooming", "groomed")
+            except (GithubException, StateTransitionError) as e:
                 typer.echo(f"  WARNING: Could not update grooming label: {e}", err=True)
         else:
             typer.echo(f"  No changes to sync to GitHub issue {issue_ref}")
@@ -1753,20 +1764,17 @@ def _write_groomed_to_github(issue_ref: str, content: str, section_name: str | N
 
 
 def _apply_status_in_progress(item: dict, repo: str) -> None:
-    """Set GitHub issue label to status:in-progress."""
+    """Set GitHub issue label to status:in-progress via state handler."""
     try:
         repository = _get_github(repo)
         num = item.get("_issue", "").lstrip("#")
         issue = repository.get_issue(int(num))
-        labels = [label.name for label in issue.labels]
-        if "status:in-progress" not in labels:
-            lbl = repository.get_label("status:in-progress")
-            issue.add_to_labels(lbl)
-            if "status:needs-grooming" in labels:
-                ng = repository.get_label("status:needs-grooming")
-                issue.remove_from_labels(ng)
+        current_status = next(
+            (lbl.name.removeprefix("status:") for lbl in issue.labels if lbl.name.startswith("status:")), None
+        )
+        apply_github_transition(repository, issue, current_status, BacklogState.IN_PROGRESS.value)
         typer.echo("  Status: in-progress")
-    except GithubException as e:
+    except (GithubException, StateTransitionError) as e:
         typer.echo(f"  WARNING: Could not set status: {e}", err=True)
 
 
@@ -2099,6 +2107,92 @@ def _normalize_item_file(filepath: Path, dry_run: bool) -> bool:
     if not dry_run:
         filepath.write_text(content, encoding="utf-8")
     return True
+
+
+def _infer_correct_status(filepath: Path) -> str:
+    """Infer the correct state-machine status for a backlog item whose local status is 'open'.
+
+    Decision rules (applied in priority order):
+    1. If metadata.status is already a valid state-machine value — return it unchanged.
+    2. If metadata.groomed is set (non-empty) — item has been groomed → 'groomed'.
+    3. Otherwise — item not yet groomed → 'needs-grooming'.
+
+    Returns:
+        A valid BacklogState value string.
+    """
+    valid_states = {s.value for s in BacklogState}
+    try:
+        text = filepath.read_text(encoding="utf-8")
+        post = loads_frontmatter(text)
+        fm = post.metadata or {}
+        meta_raw = fm.get("metadata", {})
+        meta: dict = dict(meta_raw) if isinstance(meta_raw, dict) else {}
+        status = str(meta.get("status") or fm.get("status") or "open").strip()
+        if status in valid_states:
+            return status
+        # 'open' or any other legacy value — derive from groomed field
+        groomed = str(meta.get("groomed") or fm.get("groomed") or "").strip()
+        if groomed:
+            return BacklogState.GROOMED.value
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return BacklogState.NEEDS_GROOMING.value
+
+
+@app.command(name="migrate-status")
+def migrate_status(
+    dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v")] = False,
+) -> None:
+    """Migrate local per-item files with status 'open' to valid state-machine states.
+
+    Rule: items with a groomed date → 'groomed'; items without → 'needs-grooming'.
+
+    Does not touch GitHub labels (run 'backlog sync' afterwards to sync labels).
+    Use --dry-run to preview changes without writing files.
+    """
+    if not BACKLOG_DIR.exists():
+        typer.echo(f"ERROR: {BACKLOG_DIR} not found", err=True)
+        raise typer.Exit(1)
+
+    valid_states = {s.value for s in BacklogState}
+    pattern = re.compile(r"^(p0|p1|p2|idea|ideas|completed)-[a-z0-9-]+\.md$", re.IGNORECASE)
+    files = sorted(f for f in BACKLOG_DIR.glob("*.md") if pattern.match(f.name))
+
+    migrated = skipped = already_valid = 0
+    for filepath in files:
+        try:
+            text = filepath.read_text(encoding="utf-8")
+            if not text.startswith("---"):
+                continue
+            post = loads_frontmatter(text)
+            fm = post.metadata or {}
+            meta_raw = fm.get("metadata", {})
+            meta: dict = dict(meta_raw) if isinstance(meta_raw, dict) else {}
+            current = str(meta.get("status") or fm.get("status") or "open").strip()
+            if current in valid_states:
+                already_valid += 1
+                if verbose:
+                    typer.echo(f"  {filepath.name}: already {current!r}")
+                continue
+            # 'open' or other unknown value — needs migration
+            new_status = _infer_correct_status(filepath)
+            if dry_run:
+                typer.echo(f"  [dry-run] {filepath.name}: {current!r} → {new_status!r}")
+            else:
+                _update_item_metadata(filepath, {"metadata": {"status": new_status}})
+                typer.echo(f"  {filepath.name}: {current!r} → {new_status!r}")
+            migrated += 1
+        except (OSError, ValueError, KeyError, TypeError) as e:
+            typer.echo(f"  Skip {filepath.name}: {e}", err=True)
+            skipped += 1
+
+    action = "Would migrate" if dry_run else "Migrated"
+    typer.echo(f"\n{action} {migrated} item(s) to valid states. Already valid: {already_valid}. Skipped: {skipped}.")
+    if dry_run and migrated:
+        typer.echo("Re-run without --dry-run to apply changes.")
+    if migrated and not dry_run:
+        typer.echo("Run 'backlog sync' to push updated labels to GitHub.")
 
 
 @app.command()

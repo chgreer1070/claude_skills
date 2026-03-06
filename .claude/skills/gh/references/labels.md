@@ -35,12 +35,22 @@ Three axes: **priority**, **type**, **status**.
 
 ### Status Labels
 
+All 8 lifecycle states from the backlog state machine (`.claude/skills/backlog/references/state-machine.md`) have corresponding labels.
+
 | Label | Color | Description |
 |-------|-------|-------------|
-| `status:in-progress` | `#1D76DB` | Actively being worked |
-| `status:blocked` | `#B60205` | Waiting on external dependency |
 | `status:needs-grooming` | `#FEF2C0` | Captured but not yet groomed |
-| `status:needs-review` | `#D876E3` | Implementation done, needs review |
+| `status:groomed` | `#C2E0C6` | Grooming complete, RT-ICA APPROVED |
+| `status:blocked` | `#B60205` | RT-ICA BLOCKED or AC verification FAIL |
+| `status:in-milestone` | `#BFD4F2` | Assigned to an active milestone |
+| `status:in-progress` | `#1D76DB` | Actively being worked |
+| `status:done` | `#0E8A16` | Implementation complete, AC verified PASS |
+| `status:resolved` | `#6B737B` | Closed without full implementation (obsolete/superseded) |
+| `status:closed` | `#EDEDED` | Terminal — milestone archived by complete-milestone |
+
+> Note: `status:needs-review` was previously in this taxonomy but is not part of the
+> state machine lifecycle. It has been retained in `github_project_setup.py` for
+> backwards compatibility but should not be applied by backlog commands.
 
 ---
 

@@ -159,7 +159,7 @@ This is the only transition into `closed`. No other skill sets this status.
 
 ## GitHub Label Taxonomy
 
-Labels correspond to states 1:1. The backlog script manages label transitions — do not set labels with `gh label` directly.
+Labels correspond to states 1:1. The backlog script manages label transitions — do not set labels with `gh label` directly. Use `state_handler.apply_github_transition()` for all label changes.
 
 ```
 status:needs-grooming   — item created, awaiting grooming
@@ -171,6 +171,12 @@ status:done             — implementation complete, AC verified
 status:resolved         — closed without full implementation
 status:closed           — terminal: milestone archived by complete-milestone
 ```
+
+### Reconciliation: `status:needs-review`
+
+`status:needs-review` exists in `labels.md` and `github_project_setup.py` but is **not** part of the 8-state lifecycle above. It has no defined entry or exit transitions in this document.
+
+**Decision**: Retained in the label taxonomy for backwards compatibility (PRs may use it for code review workflows), but backlog commands MUST NOT set it during state transitions. It is not a backlog lifecycle state. Do not add it to the state machine DAG.
 
 Priority labels (orthogonal to status):
 
