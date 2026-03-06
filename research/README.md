@@ -140,7 +140,8 @@ research/
 │   ├── orchestrator-agent-creation-guide.md  # OpenCode orchestrator agent guide
 │   ├── google-adk-context-engineering.md  # Google ADK context engineering: tiered storage, compiled views, scoped multi-agent handoffs (17.9K stars)
 │   ├── tinyclaw.md                    # Multi-agent multi-channel 24/7 AI assistant with peer-to-peer handoffs
-│   └── ollama-subagents-web-search-claude-code.md  # Ollama native subagents and web search for Claude Code (163K+ stars)
+│   ├── ollama-subagents-web-search-claude-code.md  # Ollama native subagents and web search for Claude Code (163K+ stars)
+│   └── oh-my-opencode.md              # code-yeongyu/oh-my-opencode — Production-scale Claude Code orchestration: Sisyphus/Atlas/Prometheus multi-agent architecture, category-based model routing, hash-anchored editing, demand-scoped MCP (37.5K stars in 4 months)
 ├── skill-generation-tools/            # Tools that create AI skills/prompts
 │   ├── clawhub.md                     # Skill registry for AI agents with vector search
 │   ├── claude-code-templates.md       # 100+ Claude Code agents/commands/skills/MCPs/hooks via npx installer and aitmpl.com (21.8K stars)
@@ -204,6 +205,7 @@ Research on multi-agent architectures, orchestration patterns, and research work
 | [google-adk-context-engineering.md](./research-agent-patterns/google-adk-context-engineering.md)     | Google ADK context engineering: tiered storage model, compiler-style processor pipeline, scoped multi-agent handoffs (17.9K stars) | 2026-02-23   |
 | [ollama-subagents-web-search-claude-code.md](./research-agent-patterns/ollama-subagents-web-search-claude-code.md) | Ollama v0.16.2 native subagents and web search for Claude Code with Anthropic API compatibility (163K+ stars) | 2026-02-19   |
 | [ai-data-science-team.md](./research-agent-patterns/ai-data-science-team.md) | AI Data Science Team — LangGraph supervisor + 9 specialist agents (wrangling, cleaning, visualization, SQL, H2O ML, MLflow, EDA, feature engineering, loader) with sandboxed code execution and AI Pipeline Studio Streamlit app (5K+ stars, MIT) | 2026-03-04   |
+| [oh-my-opencode.md](./research-agent-patterns/oh-my-opencode.md) | code-yeongyu/oh-my-opencode — Production-scale Claude Code orchestration: Sisyphus/Atlas/Prometheus multi-agent architecture, category-based model routing, hash-anchored editing, demand-scoped MCP (37.5K stars in 4 months) | 2026-03-06   |
 
 **Key Topics**:
 
