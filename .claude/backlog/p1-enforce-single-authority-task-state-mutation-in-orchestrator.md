@@ -9,5 +9,40 @@ metadata:
   type: Refactor
   status: open
   issue: '#451'
-  last_synced: '2026-03-06T02:59:34Z'
+  last_synced: '2026-03-06T05:00:53Z'
+  groomed: '2026-03-06'
 ---
+
+## Groomed (2026-03-06)
+
+## Groomed
+
+**Reproducibility**: Confirmed by source audit. Three independent write paths for task metadata:
+1. `start-task` SKILL.md step 3 — agent directly edits YAML frontmatter (`status: in-progress`, `started:` timestamp) via Edit calls
+2. `task_status_hook.py` SubagentStop — sets `status: complete`, `completed:` timestamp
+3. `task_status_hook.py` PostToolUse — sets `last_activity:` timestamp
+
+**Resources**:
+- `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` — hook script
+- `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` — CLI tool (read-only today)
+- `plugins/python3-development/skills/implementation-manager/scripts/task_format.py` — shared YAML utilities
+- `.claude/skills/start-task/SKILL.md` — instructs agent to directly edit task files
+- `.claude/docs/TASK_FILE_FORMAT.md` — Authorized Writers section partially documents ownership
+
+**Dependencies**: None external.
+
+**Blockers**: None.
+
+**Effort estimate**: Medium. Changes to implementation_manager.py (new claim-task command), start-task SKILL.md (use CLI instead of direct Edit), TASK_FILE_FORMAT.md (component ownership table), task_status_hook.py (no change needed for core, possibly tests).
+
+**RT-ICA**: APPROVED. All source files exist and confirm the problem. Dual-dispatch guard is missing — `get_ready_tasks()` returns NOT_STARTED tasks without checking for concurrent dispatch.
+
+**Field ownership map** (current):
+
+| Field | Current Writer | Target Writer |
+|-------|---------------|---------------|
+| status (→ in-progress) | start-task agent (direct Edit) | implementation_manager.py claim-task |
+| started | start-task agent (direct Edit) | implementation_manager.py claim-task |
+| status (→ complete) | task_status_hook.py SubagentStop | task_status_hook.py (unchanged) |
+| completed | task_status_hook.py SubagentStop | task_status_hook.py (unchanged) |
+| last_activity | task_status_hook.py PostToolUse | task_status_hook.py (unchanged) |
