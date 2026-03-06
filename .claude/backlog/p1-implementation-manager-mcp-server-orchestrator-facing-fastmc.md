@@ -64,11 +64,10 @@ The SubagentStop hook regex bug (fixed in #337) is a symptom: the hook is the so
 - No auto-scheduling/prioritization (orchestrator logic, not data layer)
 
 ## Implementation Notes
-- Build with FastMCP 2.x Python framework
+- Add tools to `.claude/skills/backlog/backlog_core/server.py` using FastMCP v3 (`@mcp.tool` — no parentheses). Installed version: FastMCP 3.1.0.
 - Reuse existing task_format.py and implementation_manager.py as the data layer
 - State machine for task_transition: NOT_STARTED → IN_PROGRESS → COMPLETE, any → BLOCKED, BLOCKED → NOT_STARTED/IN_PROGRESS
 - All tools return structured JSON matching existing CLI output conventions
-- MCP server config goes in .claude/settings.json or plugin manifest
 
 ## Acceptance Criteria
 
