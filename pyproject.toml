@@ -64,6 +64,7 @@ addopts = [
     "--strict-config",
     "--strict-markers",
     "--tb=short",
+    "--import-mode=importlib",
     "-n",
     "auto",
 ]
