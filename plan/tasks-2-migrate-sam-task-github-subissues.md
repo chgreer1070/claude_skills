@@ -24,7 +24,7 @@ Phase 1 is complete and must not be re-implemented or modified. The following fu
 **`github.py` lines 455-581** — three Phase 1 functions:
 
 - `create_task_issue(repo, parent_issue_number, task, description, acceptance_criteria, labels, output)` → `Issue | None`. Creates a GitHub issue with title `[{feature}/{task_id}] {task_type}: {description}` and body from `build_sam_task_body()`, then links it as a sub-issue via `parent.add_sub_issue(task_issue)`. Always passes the `Issue` object (not `.number` or `.id`) to avoid PyGitHub's `.id`/`.number` integer confusion documented at `Issue.py` line 588. On partial failure (issue created but sub-issue link fails), records a warning and still returns the `Issue` object.
-- `get_task_issues(repo, parent_issue_number, output)` → `list[SubIssue]`. Calls `parent.get_sub_issues()` sorted by `si.priority_position`. Returns `[]` on `GithubException` (warning recorded). `SubIssue` inherits from `Issue` — `.body` is NOT directly accessible on `SubIssue`; callers must fetch body via `repo.get_issue(si.sub_issue.number).body`.
+- `get_task_issues(repo, parent_issue_number, output)` → `list[SubIssue]`. Calls `parent.get_sub_issues()` sorted by `si.priority_position`. Returns `[]` on `GithubException` (warning recorded). `SubIssue` inherits from `Issue` — `.body` is NOT directly accessible on `SubIssue`; callers must fetch body via `repo.get_issue(si.sub_issue.number).body`. [CORRECTED: si.body IS directly accessible — see Discovered During Implementation section]
 - `update_task_status(repo, issue_number, new_status, output)` → `bool`. Reads issue body, parses the `<!-- sam:task -->` block via `parse_sam_task_metadata()`, patches only the `status:` line using `re.sub()` with `re.DOTALL`. Returns `False` (no write) when block is absent or status already matches. Returns `True` on successful write.
 
 **`models.py` lines 233-263** — `SamTask` Pydantic model:
@@ -214,7 +214,7 @@ No `sys.path.insert` for `task_format` because `task_status_hook.py` is called b
 }
 ```
 
-**`SubIssue` body access.** `get_task_issues()` returns `list[SubIssue]`. `SubIssue` inherits from `Issue` but `.body` cannot be relied on directly from the `SubIssue` object returned by `get_sub_issues()`. Use `repo.get_issue(si.sub_issue.number).body` to fetch the body. Verify the actual attribute by reading `github.py:515-532` and the installed PyGitHub source before writing the implementation.
+**`SubIssue` body access.** `get_task_issues()` returns `list[SubIssue]`. `SubIssue` inherits from `Issue` but `.body` cannot be relied on directly from the `SubIssue` object returned by `get_sub_issues()`. Use `repo.get_issue(si.sub_issue.number).body` to fetch the body. Verify the actual attribute by reading `github.py:515-532` and the installed PyGitHub source before writing the implementation. [CORRECTED: si.body IS directly accessible — see Discovered During Implementation section]
 
 **Dependency format.** `SamTask.dependencies` uses task ID strings within a feature (`"T1"`, `"T2"`) and `"#N"` for cross-feature GitHub issue refs. When converting to `Task.dependencies` for `get_ready_tasks()`, pass strings through as-is. Unknown dep IDs (including `"#479"` cross-feature refs) map to `None` in `status_by_id`, and `None not in _TERMINAL_STATUSES` is `True` — so cross-feature deps are treated as always-satisfied by the existing logic. No conversion is needed.
 

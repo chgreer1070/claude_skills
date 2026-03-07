@@ -34,6 +34,8 @@ High
 
 ## Description
 
+> **Resolution note**: The failure scenario below was investigated and disproved. See ## Resolution above.
+
 The task spec (Context Manifest, lines 217 and 356-372) explicitly documents:
 
 > `SubIssue` inherits from `Issue` but `.body` cannot be relied on directly from the `SubIssue` object returned by `get_sub_issues()`. Use `repo.get_issue(si.sub_issue.number).body` to fetch the body.
@@ -80,3 +82,85 @@ The correct fix is to call `repo.get_issue(si.sub_issue.number).body` (using the
 - Original review: `plan/tasks-2-migrate-sam-task-github-subissues.md` T1 CoVe checks (lines 356-372)
 - Related code: `.claude/skills/backlog/backlog_core/operations.py:1573`
 - Related code: `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py:919`
+
+---
+
+## Context Manifest
+
+_Added by context-refinement agent on 2026-03-07_
+
+This follow-up task required investigating the PyGitHub `SubIssue` API to determine whether
+`si.body` was safe to use directly, as both `operations.py` and `implementation_manager.py`
+did. The original spec (from the parent task's Context Manifest) claimed `si.body` could not
+be relied on and directed implementors to use `repo.get_issue(si.sub_issue.number).body`
+instead. That claim was incorrect on two counts.
+
+### Discovered During Implementation
+
+_Session Date: 2026-03-07_
+
+During implementation, we discovered that the original spec's guidance about PyGitHub's
+`SubIssue.body` was factually wrong. The spec said `SubIssue.body` could not be relied on
+directly from `get_sub_issues()` and advised using `repo.get_issue(si.sub_issue.number).body`
+as the correct alternative. Investigation of the actual PyGitHub source at
+`.venv/lib/python3.11/site-packages/github/Issue.py` revealed the opposite is true.
+
+**Key Discoveries:**
+
+1. **SubIssue class location**: `SubIssue` is not in a separate file. It is defined at line
+   822 of `Issue.py` as `class SubIssue(Issue)`. There is no `github/SubIssue.py`. Future
+   investigations into PyGitHub sub-issue behavior must look in `Issue.py`.
+
+2. **`si.body` is always safe**: `Issue.body` (inherited by `SubIssue`) calls
+   `self._completeIfNotSet(self._body)` (lines 196-198). This is PyGitHub's lazy-completion
+   mechanism: if `body` was not populated in the initial API response, PyGitHub
+   automatically issues an additional API call to fetch the full issue object. `si.body` can
+   never return `None` due to the API response being incomplete — it either succeeds or
+   raises an exception.
+
+3. **The spec's suggested alternative was incorrect**: The spec directed use of
+   `repo.get_issue(si.sub_issue.number).body`. `SubIssue` has no `sub_issue` attribute.
+   Its attributes beyond those inherited from `Issue` are only `parent_issue` and
+   `priority_position` (lines 822-861). The correct equivalent would have been
+   `repo.get_issue(si.number).body`, but this is redundant — it doubles API calls with no
+   reliability benefit over `si.body`.
+
+4. **Both files correct as-is**: `operations.py` and `implementation_manager.py` both used
+   `si.body` correctly from the start. The fix was documentation only — adding explanatory
+   comments citing the PyGitHub source to prevent future false-positive code reviews.
+
+#### Updated Technical Details
+
+- `SubIssue` class: `github/Issue.py` line 822, `class SubIssue(Issue)`
+- `SubIssue._useAttributes`: line 856, calls `super()._useAttributes(attributes)` — all
+  `Issue` fields including `body` are populated from the API response JSON
+- `Issue.body` lazy-completion: lines 196-198, `_completeIfNotSet(self._body)`
+- `get_sub_issues()`: lines 577-583, uses `PaginatedList(SubIssue, ...)` — each element
+  initialized with the full sub-issue API response
+
+#### Gotchas for Future Developers
+
+- Do not trust spec comments that claim PyGitHub attributes are unreliable without verifying
+  against the installed source. The lazy-completion pattern means attribute access is always
+  safe — the library handles partial responses transparently.
+- If you need to investigate `SubIssue`, look in `Issue.py`, not a separate file.
+- Adding `repo.get_issue(si.number).body` instead of `si.body` does NOT improve reliability;
+  it only doubles API calls.
+
+### Design Refinements
+
+The original spec claimed `si.body` was unreliable and directed use of
+`repo.get_issue(si.sub_issue.number).body`. Investigation showed:
+
+- Original (spec): `"SubIssue inherits from Issue but .body cannot be relied on directly
+  from the SubIssue object returned by get_sub_issues()"`
+- Actual: `si.body` is fully reliable due to PyGitHub's `_completeIfNotSet` lazy-completion
+  mechanism
+- Original (spec): `"Use repo.get_issue(si.sub_issue.number).body"` — incorrect; `SubIssue`
+  has no `sub_issue` attribute
+- Actual: The correct attribute to use would be `si.number`, but `si.body` already works and
+  is preferred
+
+Classification: **design-refinement** — the spec described incorrect PyGitHub behavior. The
+implementation (using `si.body`) was correct from the start. No intent divergence: the goal
+of reliably reading sub-issue bodies was achieved; only the spec's stated mechanism was wrong.
