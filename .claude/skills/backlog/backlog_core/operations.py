@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -1566,7 +1567,13 @@ def _write_sam_task_cache(tasks: list[dict[str, object]], parent_issue_number: i
     cache_dir = Path.home() / ".claude" / "context"
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = cache_dir / f"sam-tasks-{feature_slug}.json"
-    payload = {"tasks": tasks, "count": len(tasks), "parent_issue_number": parent_issue_number}
+    payload = {
+        "feature_slug": feature_slug,
+        "parent_issue_number": parent_issue_number,
+        "synced_at": datetime.now(UTC).isoformat(),
+        "tasks": tasks,
+        "count": len(tasks),
+    }
     cache_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 

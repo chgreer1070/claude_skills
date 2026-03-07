@@ -332,6 +332,8 @@ class TestGetSamTasks:
         assert cache_file.exists(), "Cache file was not written"
         cached = json.loads(cache_file.read_text(encoding="utf-8"))
         assert cached["parent_issue_number"] == 555
+        assert cached["feature_slug"] == "cache-feature"
+        assert "synced_at" in cached
         assert cached["count"] == 1
         assert len(cached["tasks"]) == 1
         # Result should also have the correct data
