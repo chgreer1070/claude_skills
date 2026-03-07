@@ -14,6 +14,7 @@ Cache I/O is isolated with monkeypatch on Path.home() to avoid writing to the re
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
@@ -332,6 +333,8 @@ class TestGetSamTasks:
         assert cache_file.exists(), "Cache file was not written"
         cached = json.loads(cache_file.read_text(encoding="utf-8"))
         assert cached["parent_issue_number"] == 555
+        assert cached["feature_slug"] == "cache-feature"
+        assert datetime.fromisoformat(cached["synced_at"]).tzinfo is not None
         assert cached["count"] == 1
         assert len(cached["tasks"]) == 1
         # Result should also have the correct data
