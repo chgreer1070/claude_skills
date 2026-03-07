@@ -1,3 +1,5 @@
+> Parent: [Mermaid Flowchart Syntax](../SKILL.md)
+
 # Subgraphs, Layout, Special Characters, Markdown Strings, and Comments
 
 Reference for Mermaid flowchart features covering graph direction, subgraph grouping and nesting, special character escaping, markdown-formatted labels, and comment syntax. These features control the visual layout and text rendering of flowchart diagrams.
@@ -245,6 +247,12 @@ The comment on line 2 is completely ignored. The flow syntax within the comment 
 - `A---xB` creates a cross edge (not a node named `xB`)
 
 To avoid this, add a space before the letter or capitalize it (e.g., `dev--- ops` or `dev---Ops`).
+
+## See Also
+
+- [Node Shapes](./node-shapes.md) — node shape syntaxes and the expanded shape catalog
+- [Edge Syntax](./edge-syntax.md) — link types, arrows, chaining, edge IDs, animations
+- [Styling and Configuration](./styling-and-config.md) — classDef, CSS classes, interactivity
 
 ## References
 

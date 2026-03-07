@@ -1,3 +1,5 @@
+> Parent: [Mermaid Flowchart Syntax](../SKILL.md)
+
 # Flowchart Styling, Interactivity, and Configuration
 
 Reference for Mermaid flowchart interaction bindings, node/link styling, class definitions, FontAwesome icon integration, and renderer configuration. Covers all syntax forms, security constraints, and CSS property patterns.
@@ -382,3 +384,9 @@ mermaid.flowchartConfig = {
 [2] [d3-shape Curves](https://d3js.org/d3-shape/curve) (accessed 2026-03-07) -- curve style enumeration source
 
 [3] [Font Awesome Official Documentation](https://fontawesome.com/start) (accessed 2026-03-07)
+
+## See Also
+
+- [Node Shapes](./node-shapes.md) — node shape syntaxes and the expanded shape catalog
+- [Edge Syntax](./edge-syntax.md) — link types, arrows, chaining, edge IDs, animations
+- [Subgraphs and Layout](./subgraphs-and-layout.md) — grouping, direction, special characters

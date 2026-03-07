@@ -1,3 +1,5 @@
+> Parent: [Mermaid Flowchart Syntax](../SKILL.md)
+
 # Mermaid Flowchart Edge Syntax
 
 Complete reference for links, edges, and arrows in Mermaid flowchart diagrams. Covers all link types (normal, dotted, thick, invisible), arrow heads (standard, circle, cross, multi-directional), text on links, link chaining, edge IDs, edge animations, classDef for edges, and the minimum link length table.
@@ -280,6 +282,12 @@ For dotted or thick links, the characters to add are equals signs or dots. The f
 | Thick with arrow  | `==>`  | `===>`  | `====>`  |
 | Dotted            | `-.-`  | `-..-`  | `-...-`  |
 | Dotted with arrow | `-.->` | `-..->` | `-...->` |
+
+## See Also
+
+- [Node Shapes](./node-shapes.md) — node shape syntaxes and the expanded shape catalog
+- [Subgraphs and Layout](./subgraphs-and-layout.md) — grouping, direction, special characters
+- [Styling and Configuration](./styling-and-config.md) — classDef, link styling, line curves, interactivity
 
 ## References
 

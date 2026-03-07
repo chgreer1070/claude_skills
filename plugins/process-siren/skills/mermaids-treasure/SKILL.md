@@ -80,9 +80,7 @@ flowchart TD
     Inter --> Construct
 ```
 
-## Workflows
-
-- [Flowchart Construction Decision Process](./resources/workflows/flowchart-construction.md)
+For the full 6-phase element selection process (direction, shape, edge, label, grouping, styling), see [Flowchart Construction Decision Process](./references/flowchart-construction.md).
 
 ## Reference Files
 
