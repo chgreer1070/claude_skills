@@ -166,8 +166,8 @@ def _parse_task_from_block(segment: str, file_path: Path, raw_content: str) -> T
     if not fm:
         return None
 
-    # Support both task: and task_id: keys.
-    task_id = str(fm.get("task") or fm.get("task_id") or "")
+    # COMPAT(issue=#497, remove_when="all task files migrated to task_id: field", added=2026-03-07)
+    task_id = str(fm.get("task") if "task" in fm else fm.get("task_id") or "")
     title = str(fm.get("title") or "")
     status = str(fm.get("status") or "not-started")
     if not task_id or not title:

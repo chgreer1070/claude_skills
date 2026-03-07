@@ -133,6 +133,12 @@ repos:
         pass_filenames: true
         files: ^(plugins|\.claude)/.*(SKILL\.md|CLAUDE\.md|agents/.*\.md|commands/.*\.md|plugin\.json|hooks\.json)$
 
+      - id: check-compat-annotations
+        name: Check COMPAT annotation completeness
+        entry: scripts/check_compat_annotations.py
+        language: python
+        types: [python]
+
       - id: ty
         name: ty check
         entry: uv run -q --frozen --with ty ty check
