@@ -1449,3 +1449,37 @@ Return:
 - Result of `uv run plugins/python3-development/scripts/migrate_tasks_to_github.py --help`
 - Result of `uv run pytest tests/test_migrate_tasks_to_github.py -v`
 - Result of `uv run prek run --files` on both new files
+
+### Discovered During Implementation
+
+_Session Date: 2026-03-07_
+
+During implementation, several discrepancies between the architect spec and the actual codebase were discovered and resolved. The most significant were the `parents[N]` index for `sys.path` insertion and the definitive behavior of `si.body` on `SubIssue` objects.
+
+**Key Discoveries:**
+
+1. **`parents[5]` not `parents[6]` for repo root**: The architect spec's T3 section stated `parents[6]` resolves to the repo root from `implementation_manager.py`. Running `python3 -c "from pathlib import Path; print(Path('plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py').resolve().parents[5])"` from the repo root confirmed `parents[5]` = `/home/user/claude_skills` (repo root) and `parents[6]` = `/home/user`. Both `implementation_manager.py` and `task_status_hook.py` were implemented using `parents[5]`. This is recorded in DN-2 of task T3.
+
+2. **`si.body` IS directly accessible on `SubIssue`**: The context manifest line 27 stated "`.body` is NOT directly accessible on `SubIssue`; callers must fetch body via `repo.get_issue(si.sub_issue.number).body`". DN-1 of task T3 also recorded this as the discovered behavior. However, the actual `operations.py` implementation (line 1584) uses `si.body` directly — and it works because `SubIssue` inherits from `Issue` in PyGitHub (as the original context manifest itself stated). The correct picture: `si.body` works directly. The note about `repo.get_issue(si.sub_issue.number).body` was a cautious alternative that turned out to be unnecessary. Future callers should use `si.body` directly, which is simpler.
+
+3. **`migrate_tasks_to_github.py` path resolution**: The script lives at `plugins/python3-development/scripts/migrate_tasks_to_github.py`. From there, `_SCRIPT_DIR.parents[0]` = `python3-development/`, `parents[1]` = `plugins/`, `parents[2]` = project root (`/home/user/claude_skills`). This was commented inline in the script. The architect spec had no explicit `parents[N]` claim for this script (it only specified the pattern for `implementation_manager.py` and `task_status_hook.py`), so this is new institutional knowledge.
+
+4. **`test_github_sync.py` requires manual `sys.path` insertion for import**: When running `uv run pytest` on tests that import `task_status_hook` or `implementation_manager`, the test file must manually add the `scripts/` directory to `sys.path` before importing (as seen in `test_github_flag.py`). The root `pyproject.toml` pytest configuration uses `testpaths = ["**/tests"]` but does not add the `scripts/` directory to the Python path automatically. Specifying `--rootdir` pointing at the implementation-manager directory was one documented workaround, but the more robust approach used in `test_github_flag.py` is a manual `sys.path.insert` at the top of the test file.
+
+5. **All 6 feature goals verified PASS**: The feature-verifier confirmed all 6 desired outcomes from `plan/feature-context-migrate-sam-task-github-subissues.md` were achieved. 53 tests pass across the new test files.
+
+6. **8 doc drift findings were pre-resolved**: The doc-drift-auditor found 8 documentation drift findings but all were resolved during implementation before Phase 5 (service-docs-maintainer) ran, so Phase 5 was a no-op.
+
+#### Updated Technical Details
+
+- `si.body` is directly accessible on `SubIssue` objects returned from `issue.get_sub_issues()` — no need for `repo.get_issue(si.sub_issue.number).body`
+- Both `implementation_manager.py` and `task_status_hook.py` use `parents[5]` (not `parents[6]`) to reach the repo root
+- `migrate_tasks_to_github.py` uses `parents[2]` to reach the repo root (different script depth)
+- Test files that import `implementation_manager` or `task_status_hook` must manually add `scripts/` to `sys.path` in the test module before importing
+
+#### Gotchas for Future Developers
+
+- When adding new scripts under `plugins/python3-development/scripts/`, the repo root is at `parents[2]` (3 directories up from the script file)
+- When adding new scripts under `plugins/python3-development/skills/implementation-manager/scripts/`, the repo root is at `parents[5]` (6 directories up)
+- Do not copy the `parents[N]` value from the context manifest or architect spec without verifying against the actual directory depth — the spec had the wrong value (6 instead of 5) for the `implementation-manager/scripts/` location
+- `si.body` works directly on `SubIssue` — the warning in the context manifest about needing `repo.get_issue()` was overly cautious and reflected an unverified claim from the original codebase analysis
