@@ -530,6 +530,43 @@ class TestCloseItem:
 
         assert result["closed"] is True
 
+    def test_close_item_github_only_falls_back_to_pull(self, mocker: MockerFixture) -> None:
+        """Verify close_item falls back to GitHub pull when no local cache file exists.
+
+        Tests: _pull_if_issue_selector fallback path in close_item.
+        How: Empty backlog; mock _pull_if_issue_selector to write a local cache file
+             as a side effect; call close_item with a #N selector.
+        Why: GitHub-only issues (never synced or deleted from cache) must be closeable
+             without a prior pull. Covers acceptance criteria from issue #323.
+        """
+        import backlog_core.models as models
+
+        fake_dir: Path = models.BACKLOG_DIR
+
+        def _write_cache_file(selector: str, repo: str, output: object = None) -> None:
+            _write_item(fake_dir, title="GitHub Only Issue", priority="P1", topic="github-only-issue", issue="#999")
+
+        mocker.patch("backlog_core.operations._pull_if_issue_selector", side_effect=_write_cache_file)
+        mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
+        mocker.patch("backlog_core.operations.close_github_issue")
+
+        result = close_item(selector="#999", reason="superseded")
+
+        assert result["closed"] is True
+        assert result["title"] == "GitHub Only Issue"
+
+    def test_close_item_github_only_still_raises_when_issue_absent_on_github(self, mocker: MockerFixture) -> None:
+        """Verify close_item raises ItemNotFoundError when issue does not exist on GitHub either.
+
+        Tests: Double-not-found path in close_item after fallback pull yields nothing.
+        How: Empty backlog; mock _pull_if_issue_selector as no-op (issue absent on GH).
+        Why: Fallback must not swallow the error — callers need ItemNotFoundError.
+        """
+        mocker.patch("backlog_core.operations._pull_if_issue_selector")  # no-op: writes nothing
+
+        with pytest.raises(ItemNotFoundError):
+            close_item(selector="#999", reason="superseded")
+
 
 # ---------------------------------------------------------------------------
 # resolve_item
@@ -635,6 +672,43 @@ class TestResolveItem:
         result = resolve_item(selector="Force Resolve Item", summary="Superseded by different effort", force=True)
 
         assert result["resolved"] is True
+
+    def test_resolve_item_github_only_falls_back_to_pull(self, mocker: MockerFixture) -> None:
+        """Verify resolve_item falls back to GitHub pull when no local cache file exists.
+
+        Tests: _pull_if_issue_selector fallback path in resolve_item.
+        How: Empty backlog; mock _pull_if_issue_selector to write a local cache file
+             as a side effect; call resolve_item with a #N selector.
+        Why: GitHub-only issues must be resolvable without a prior sync.
+             Covers acceptance criteria from issue #323.
+        """
+        import backlog_core.models as models
+
+        fake_dir: Path = models.BACKLOG_DIR
+
+        def _write_cache_file(selector: str, repo: str, output: object = None) -> None:
+            _write_item(fake_dir, title="GitHub Only Resolve", priority="P2", topic="github-only-resolve", issue="#999")
+
+        mocker.patch("backlog_core.operations._pull_if_issue_selector", side_effect=_write_cache_file)
+        mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
+        mocker.patch("backlog_core.operations.resolve_github_issue")
+
+        result = resolve_item(selector="#999", summary="Completed via GitHub-only fallback")
+
+        assert result["resolved"] is True
+        assert result["title"] == "GitHub Only Resolve"
+
+    def test_resolve_item_github_only_still_raises_when_issue_absent_on_github(self, mocker: MockerFixture) -> None:
+        """Verify resolve_item raises ItemNotFoundError when issue absent from GitHub too.
+
+        Tests: Double-not-found path in resolve_item after fallback pull yields nothing.
+        How: Empty backlog; mock _pull_if_issue_selector as no-op.
+        Why: Fallback must surface ItemNotFoundError, not return a silent no-op.
+        """
+        mocker.patch("backlog_core.operations._pull_if_issue_selector")  # no-op: writes nothing
+
+        with pytest.raises(ItemNotFoundError):
+            resolve_item(selector="#999", summary="Should not succeed")
 
 
 # ---------------------------------------------------------------------------
