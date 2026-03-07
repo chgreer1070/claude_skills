@@ -1,6 +1,6 @@
 # Step Procedures Reference
 
-Detailed procedure content for Steps 0, Q, P, R, and the feature request template.
+Detailed procedure content for Steps 0, 1b, 2.3, 5, Q, P, and R.
 
 ---
 
@@ -59,19 +59,14 @@ When an issue is found to be already closed (`state: closed`), gather evidence b
 
 Before planning work, verify the described feature/fix hasn't already been implemented:
 
-1. **Search for commits matching the item's topic** (use keywords from the title):
+1. **Search for commits and merged PRs matching the item's topic** (use keywords from the title):
 
    ```bash
    git log --oneline --all -30 --grep="{keyword from title}"
+   git log --oneline --all -30 --merges --grep="{keyword from title}"
    ```
 
-2. **Search for merged PRs matching the topic**:
-
-   ```bash
-   git log --oneline --all -30 --grep="{keyword}"
-   ```
-
-3. **Spot-check the codebase** — read the file(s) at the suggested location and verify whether the described behavior already exists.
+2. **Spot-check the codebase** — read the file(s) at the suggested location and verify whether the described behavior already exists.
 
 If evidence shows the work is already done:
 
