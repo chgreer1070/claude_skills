@@ -24,7 +24,7 @@ Phase 1 is complete and must not be re-implemented or modified. The following fu
 **`github.py` lines 455-581** — three Phase 1 functions:
 
 - `create_task_issue(repo, parent_issue_number, task, description, acceptance_criteria, labels, output)` → `Issue | None`. Creates a GitHub issue with title `[{feature}/{task_id}] {task_type}: {description}` and body from `build_sam_task_body()`, then links it as a sub-issue via `parent.add_sub_issue(task_issue)`. Always passes the `Issue` object (not `.number` or `.id`) to avoid PyGitHub's `.id`/`.number` integer confusion documented at `Issue.py` line 588. On partial failure (issue created but sub-issue link fails), records a warning and still returns the `Issue` object.
-- `get_task_issues(repo, parent_issue_number, output)` → `list[SubIssue]`. Calls `parent.get_sub_issues()` sorted by `si.priority_position`. Returns `[]` on `GithubException` (warning recorded). `SubIssue` inherits from `Issue` — `.body` is NOT directly accessible on `SubIssue`; callers must fetch body via `repo.get_issue(si.sub_issue.number).body`.
+- `get_task_issues(repo, parent_issue_number, output)` → `list[SubIssue]`. Calls `parent.get_sub_issues()` sorted by `si.priority_position`. Returns `[]` on `GithubException` (warning recorded). `SubIssue` inherits from `Issue` — `.body` is NOT directly accessible on `SubIssue`; callers must fetch body via `repo.get_issue(si.sub_issue.number).body`. [CORRECTED: si.body IS directly accessible — see Discovered During Implementation section]
 - `update_task_status(repo, issue_number, new_status, output)` → `bool`. Reads issue body, parses the `<!-- sam:task -->` block via `parse_sam_task_metadata()`, patches only the `status:` line using `re.sub()` with `re.DOTALL`. Returns `False` (no write) when block is absent or status already matches. Returns `True` on successful write.
 
 **`models.py` lines 233-263** — `SamTask` Pydantic model:
@@ -214,7 +214,7 @@ No `sys.path.insert` for `task_format` because `task_status_hook.py` is called b
 }
 ```
 
-**`SubIssue` body access.** `get_task_issues()` returns `list[SubIssue]`. `SubIssue` inherits from `Issue` but `.body` cannot be relied on directly from the `SubIssue` object returned by `get_sub_issues()`. Use `repo.get_issue(si.sub_issue.number).body` to fetch the body. Verify the actual attribute by reading `github.py:515-532` and the installed PyGitHub source before writing the implementation.
+**`SubIssue` body access.** `get_task_issues()` returns `list[SubIssue]`. `SubIssue` inherits from `Issue` but `.body` cannot be relied on directly from the `SubIssue` object returned by `get_sub_issues()`. Use `repo.get_issue(si.sub_issue.number).body` to fetch the body. Verify the actual attribute by reading `github.py:515-532` and the installed PyGitHub source before writing the implementation. [CORRECTED: si.body IS directly accessible — see Discovered During Implementation section]
 
 **Dependency format.** `SamTask.dependencies` uses task ID strings within a feature (`"T1"`, `"T2"`) and `"#N"` for cross-feature GitHub issue refs. When converting to `Task.dependencies` for `get_ready_tasks()`, pass strings through as-is. Unknown dep IDs (including `"#479"` cross-feature refs) map to `None` in `status_by_id`, and `None not in _TERMINAL_STATUSES` is `True` — so cross-feature deps are treated as always-satisfied by the existing logic. No conversion is needed.
 
@@ -247,7 +247,7 @@ These files must not be touched during Phases 2-5:
 ---
 task_id: "T1"
 title: "Add SAM task operations to operations.py"
-status: not-started
+status: complete
 agent: python3-development:python-cli-architect
 priority: 1
 complexity: Medium
@@ -258,6 +258,7 @@ skills:
 parallelize_with: []
 reason: "Foundational layer. No other task writes operations.py."
 handoff: "Summary of 4 functions added, line ranges, result of uv run prek run --files, any deviations from spec."
+completed: "2026-03-06T09:15:00+00:00"
 ---
 
 ## Context
@@ -381,7 +382,9 @@ Return:
 ---
 task_id: "T2"
 title: "Add SAM task MCP tools to server.py"
-status: not-started
+status: complete
+started: "2026-03-06T10:00:00+00:00"
+completed: "2026-03-06T10:30:00+00:00"
 agent: python3-development:python-cli-architect
 priority: 1
 complexity: Medium
@@ -503,7 +506,7 @@ Return:
 ---
 task_id: "T3"
 title: "Add --github flag to implementation_manager.py"
-status: not-started
+status: complete
 agent: python3-development:python-cli-architect
 priority: 2
 complexity: High
@@ -636,10 +639,28 @@ Return:
 - Result of `uv run prek run --files` on the modified file
 - Whether backward-compat (no-flag) path produces identical output (confirm with a test run)
 
+## Divergence Notes
+
+### DN-1: SubIssue body access attribute and parents[N] index
+
+- **Plan artifact**: plan/tasks-2-migrate-sam-task-github-subissues.md, section "fetch_tasks_from_github() — requirement 6"
+- **Plan claim**: "For each sub-issue: access body via `si.body` (SubIssue inherits from Issue so `.body` is directly accessible)"
+- **Actual implementation**: `SubIssue` does NOT expose `.body` directly. The Context Manifest (line 27) and observed `get_task_issues` implementation confirm: callers must fetch body via `repo.get_issue(si.sub_issue.number).body`. Used `repo.get_issue(si.sub_issue.number).body or ""` in implementation.
+- **Classification**: design-refinement
+- **Recorded**: 2026-03-06T00:00:00Z
+
+### DN-2: parents[N] index is 5 not 6
+
+- **Plan artifact**: plan/tasks-2-migrate-sam-task-github-subissues.md, section "sys.path extension"
+- **Plan claim**: "parents[6]" resolves to repo root from `implementation_manager.py`
+- **Actual implementation**: Verified via `python3 -c` — `parents[5]` = `/home/user/claude_skills` (repo root), `parents[6]` = `/home/user`. Used `parents[5]` in implementation.
+- **Classification**: design-refinement
+- **Recorded**: 2026-03-06T00:00:00Z
+
 ---
 task_id: "T4"
 title: "Extend task_status_hook.py with GitHub completion sync"
-status: not-started
+status: complete
 agent: python3-development:python-cli-architect
 priority: 2
 complexity: Medium
@@ -775,7 +796,7 @@ Return:
 ---
 task_id: "T5"
 title: "Update implement-feature and start-task SKILL.md docs (both copies)"
-status: not-started
+status: complete
 agent: service-docs-maintainer
 priority: 2
 complexity: Low
@@ -901,7 +922,7 @@ Return:
 ---
 task_id: "T6"
 title: "Write unit tests for operations.py SAM task functions"
-status: not-started
+status: complete
 agent: python3-development:python-pytest-architect
 priority: 2
 complexity: Medium
@@ -997,7 +1018,7 @@ Return:
 ---
 task_id: "T7"
 title: "Write unit tests for server.py SAM MCP tools"
-status: not-started
+status: complete
 agent: python3-development:python-pytest-architect
 priority: 2
 complexity: Low
@@ -1083,7 +1104,7 @@ Return:
 ---
 task_id: "T8"
 title: "Write unit tests for implementation_manager.py --github flag"
-status: not-started
+status: complete
 agent: python3-development:python-pytest-architect
 priority: 2
 complexity: Medium
@@ -1173,7 +1194,7 @@ Return:
 ---
 task_id: "T9"
 title: "Write tests for task_status_hook.py GitHub sync (unit + integration)"
-status: not-started
+status: complete
 agent: python3-development:python-pytest-architect
 priority: 2
 complexity: Medium
@@ -1278,7 +1299,7 @@ Return:
 ---
 task_id: "T10"
 title: "Write migrate_tasks_to_github.py script and its tests"
-status: not-started
+status: complete
 agent: python3-development:python-cli-architect
 priority: 2
 complexity: Medium
@@ -1428,3 +1449,37 @@ Return:
 - Result of `uv run plugins/python3-development/scripts/migrate_tasks_to_github.py --help`
 - Result of `uv run pytest tests/test_migrate_tasks_to_github.py -v`
 - Result of `uv run prek run --files` on both new files
+
+### Discovered During Implementation
+
+_Session Date: 2026-03-07_
+
+During implementation, several discrepancies between the architect spec and the actual codebase were discovered and resolved. The most significant were the `parents[N]` index for `sys.path` insertion and the definitive behavior of `si.body` on `SubIssue` objects.
+
+**Key Discoveries:**
+
+1. **`parents[5]` not `parents[6]` for repo root**: The architect spec's T3 section stated `parents[6]` resolves to the repo root from `implementation_manager.py`. Running `python3 -c "from pathlib import Path; print(Path('plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py').resolve().parents[5])"` from the repo root confirmed `parents[5]` = `/home/user/claude_skills` (repo root) and `parents[6]` = `/home/user`. Both `implementation_manager.py` and `task_status_hook.py` were implemented using `parents[5]`. This is recorded in DN-2 of task T3.
+
+2. **`si.body` IS directly accessible on `SubIssue`**: The context manifest line 27 stated "`.body` is NOT directly accessible on `SubIssue`; callers must fetch body via `repo.get_issue(si.sub_issue.number).body`". DN-1 of task T3 also recorded this as the discovered behavior. However, the actual `operations.py` implementation (line 1584) uses `si.body` directly — and it works because `SubIssue` inherits from `Issue` in PyGitHub (as the original context manifest itself stated). The correct picture: `si.body` works directly. The note about `repo.get_issue(si.sub_issue.number).body` was a cautious alternative that turned out to be unnecessary. Future callers should use `si.body` directly, which is simpler.
+
+3. **`migrate_tasks_to_github.py` path resolution**: The script lives at `plugins/python3-development/scripts/migrate_tasks_to_github.py`. From there, `_SCRIPT_DIR.parents[0]` = `python3-development/`, `parents[1]` = `plugins/`, `parents[2]` = project root (`/home/user/claude_skills`). This was commented inline in the script. The architect spec had no explicit `parents[N]` claim for this script (it only specified the pattern for `implementation_manager.py` and `task_status_hook.py`), so this is new institutional knowledge.
+
+4. **`test_github_sync.py` requires manual `sys.path` insertion for import**: When running `uv run pytest` on tests that import `task_status_hook` or `implementation_manager`, the test file must manually add the `scripts/` directory to `sys.path` before importing (as seen in `test_github_flag.py`). The root `pyproject.toml` pytest configuration uses `testpaths = ["**/tests"]` but does not add the `scripts/` directory to the Python path automatically. Specifying `--rootdir` pointing at the implementation-manager directory was one documented workaround, but the more robust approach used in `test_github_flag.py` is a manual `sys.path.insert` at the top of the test file.
+
+5. **All 6 feature goals verified PASS**: The feature-verifier confirmed all 6 desired outcomes from `plan/feature-context-migrate-sam-task-github-subissues.md` were achieved. 53 tests pass across the new test files.
+
+6. **8 doc drift findings were pre-resolved**: The doc-drift-auditor found 8 documentation drift findings but all were resolved during implementation before Phase 5 (service-docs-maintainer) ran, so Phase 5 was a no-op.
+
+#### Updated Technical Details
+
+- `si.body` is directly accessible on `SubIssue` objects returned from `issue.get_sub_issues()` — no need for `repo.get_issue(si.sub_issue.number).body`
+- Both `implementation_manager.py` and `task_status_hook.py` use `parents[5]` (not `parents[6]`) to reach the repo root
+- `migrate_tasks_to_github.py` uses `parents[2]` to reach the repo root (different script depth)
+- Test files that import `implementation_manager` or `task_status_hook` must manually add `scripts/` to `sys.path` in the test module before importing
+
+#### Gotchas for Future Developers
+
+- When adding new scripts under `plugins/python3-development/scripts/`, the repo root is at `parents[2]` (3 directories up from the script file)
+- When adding new scripts under `plugins/python3-development/skills/implementation-manager/scripts/`, the repo root is at `parents[5]` (6 directories up)
+- Do not copy the `parents[N]` value from the context manifest or architect spec without verifying against the actual directory depth — the spec had the wrong value (6 instead of 5) for the `implementation-manager/scripts/` location
+- `si.body` works directly on `SubIssue` — the warning in the context manifest about needing `repo.get_issue()` was overly cautious and reflected an unverified claim from the original codebase analysis

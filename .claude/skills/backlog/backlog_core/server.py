@@ -425,5 +425,114 @@ async def backlog_pull(
         return {"error": str(e), **out.to_dict()}
 
 
+@mcp.tool()
+async def backlog_create_sam_task(
+    parent_issue_number: Annotated[int, Field(description="Parent story issue number (without #)")],
+    task_id: Annotated[str, Field(description="Feature-scoped task ID, e.g. 'T1'")],
+    feature: Annotated[str, Field(description="Feature slug, e.g. 'my-feature'")],
+    task_type: Annotated[str, Field(description="Task category: research | implement | review | fix | docs")],
+    agent: Annotated[str, Field(description="Agent name to execute this task")],
+    priority: Annotated[int, Field(description="Priority 1-5 (1=highest)")] = 2,
+    skills: Annotated[list[str], Field(description="Skill names for the executing agent")] = [],  # noqa: B006
+    dependencies: Annotated[list[str], Field(description="Task IDs this task depends on")] = [],  # noqa: B006
+    description: Annotated[str, Field(description="Human-readable description of the task")] = "",
+    acceptance_criteria: Annotated[list[str] | None, Field(description="Acceptance criteria strings")] = None,
+    labels: Annotated[list[str] | None, Field(description="GitHub label names to apply")] = None,
+) -> dict:
+    """Create a GitHub sub-issue for a SAM task under a parent story issue.
+
+    Use to bootstrap GitHub visibility for a task when starting a new feature plan.
+
+    Returns:
+        Dict with issue_number, title, url, and output messages. On error, returns error key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(
+            operations.create_sam_task,
+            parent_issue_number=parent_issue_number,
+            task_id=task_id,
+            feature=feature,
+            task_type=task_type,
+            agent=agent,
+            priority=priority,
+            skills=skills,
+            dependencies=dependencies,
+            description=description,
+            acceptance_criteria=acceptance_criteria,
+            labels=labels,
+            output=out,
+        )
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool()
+async def backlog_get_sam_tasks(
+    parent_issue_number: Annotated[int, Field(description="Parent story issue number (without #)")],
+    refresh_cache: Annotated[bool, Field(description="Write updated cache after fetching")] = True,
+) -> dict:
+    """Return all SAM task sub-issues for a parent story issue.
+
+    Returns tasks list with SamTask fields plus issue_number and issue_url.
+    Falls back to local cache if GitHub is unavailable.
+    Use to inspect per-task status from the GitHub source of truth.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(
+            operations.get_sam_tasks, parent_issue_number=parent_issue_number, refresh_cache=refresh_cache, output=out
+        )
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool()
+async def backlog_update_sam_task_status(
+    issue_number: Annotated[int, Field(description="Task sub-issue number (without #)")],
+    new_status: Annotated[str, Field(description="Target status: not-started | in-progress | complete | blocked")],
+) -> dict:
+    """Update the status field in a SAM task sub-issue.
+
+    Patches the sam:task YAML block in the issue body. No-op if status already matches.
+
+    Returns:
+        Dict with updated (bool), issue_number, new_status, and output messages.
+        On error, returns error key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(
+            operations.update_sam_task_status, issue_number=issue_number, new_status=new_status, output=out
+        )
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool()
+async def backlog_get_ready_sam_tasks(
+    parent_issue_number: Annotated[int, Field(description="Parent story issue number (without #)")],
+) -> dict:
+    """Return SAM tasks ready for execution from GitHub sub-issues.
+
+    Fetches sub-issues, resolves dependency graph locally, returns tasks whose
+    status is not-started and all dependencies are terminal.
+    Output shape matches implementation_manager.py ready-tasks JSON:
+    feature, ready_tasks, count. Each ready_task includes id, name, agent, skills, issue_number.
+    Falls back to local cache if GitHub is unavailable.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(
+            operations.get_ready_sam_tasks, parent_issue_number=parent_issue_number, output=out
+        )
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
 if __name__ == "__main__":
     mcp.run()

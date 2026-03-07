@@ -789,3 +789,24 @@ These components must not be modified during Phases 2-5:
 - **Hook exit codes are contract**: `task_status_hook.py` exit 0 = success or advisory failure; exit 2 = hard error for agent visibility. GitHub sync failure is always exit 0.
 - **Two-copy skill constraint**: `.claude/skills/implement-feature/SKILL.md` and `plugins/python3-development/skills/development/implement-feature/SKILL.md` are separate files that must be updated identically. Same for `start-task`. There is no symlink or include mechanism.
 - **`backlog_core` path calculation**: The relative path from `implementation_manager.py` to `backlog_core` is `../../../../../.claude/skills/backlog/` (6 levels up from `scripts/`). The implementation agent must verify this path against the actual directory structure before writing the `sys.path.insert` call.
+
+## Post-Implementation Annotations
+
+_Added by context-refinement agent on 2026-03-07_
+
+### Design Refinements
+
+1. **`parents[5]` not `parents[6]` for `implementation_manager.py` and `task_status_hook.py`**: Section 3.3 specified `parents[6]` to reach repo root, and section 8.3 described "6 levels up from `scripts/`". The actual verified value is `parents[5]` (5 levels up). Path: `scripts/` → `implementation-manager/` → `skills/` → `python3-development/` → `plugins/` → repo root. Running `python3 -c "from pathlib import Path; print(Path('plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py').resolve().parents[5])"` from the repo root returns `/home/user/claude_skills`. Both `implementation_manager.py` and `task_status_hook.py` were implemented with `parents[5]`.
+   - Original: "`parents[6]`" / "6 levels up from `scripts/`"
+   - Actual: `parents[5]` — 5 levels up from the script file
+   - Recorded in: plan/tasks-2-migrate-sam-task-github-subissues.md, DN-2
+
+2. **`si.body` is directly accessible on `SubIssue`**: The context manifest stated "`.body` is NOT directly accessible on `SubIssue`; callers must fetch body via `repo.get_issue(si.sub_issue.number).body`". The module interaction diagram in section 4 also notes "each `SubIssue.body` -> `parse_sam_task_metadata()`". Implementation confirmed that `si.body` works directly because `SubIssue` inherits from `Issue` in PyGitHub. `operations.py` uses `si.body` directly (line 1584 of the helper `_sub_issues_to_task_dicts`). The `repo.get_issue()` roundtrip is unnecessary.
+   - Original: "callers must fetch body via `repo.get_issue(si.sub_issue.number).body`"
+   - Actual: `si.body` is directly accessible; `repo.get_issue()` roundtrip not needed
+   - Recorded in: plan/tasks-2-migrate-sam-task-github-subissues.md, DN-1
+
+3. **`migrate_tasks_to_github.py` uses `parents[2]` for repo root**: Section 6 did not specify the `parents[N]` index for the migration script. The script lives at `plugins/python3-development/scripts/migrate_tasks_to_github.py`, so repo root is at `parents[2]` (script → `scripts/` → `python3-development/` → `plugins/` → repo root = parents[2] from `__file__`). This differs from `implementation_manager.py`'s `parents[5]` because the scripts directory is shallower.
+   - Original: Not specified
+   - Actual: `_SCRIPT_DIR.parents[2]` resolves to project root for scripts in `plugins/python3-development/scripts/`
+   - Recorded in: plan/tasks-2-migrate-sam-task-github-subissues.md, Discovered During Implementation

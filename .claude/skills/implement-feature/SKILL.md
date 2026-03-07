@@ -50,9 +50,26 @@ uv run ./plugins/python3-development/skills/implementation-manager/scripts/imple
 
 2. If tasks remain, query ready tasks:
 
+If parent story issue number is known, prefer the MCP tool:
+
+```text
+backlog_get_ready_sam_tasks(parent_issue_number=N)
+Output shape: {"feature": "...", "ready_tasks": [...], "count": N}
+Falls back to local cache if GitHub unavailable.
+```
+
+If parent issue number is unknown (or MCP unavailable), use CLI fallback:
+
 ```bash
 uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
   ready-tasks . "$ARGUMENTS"
+```
+
+With GitHub flag (when parent issue is known):
+
+```bash
+uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
+  ready-tasks . "$ARGUMENTS" --github --parent-issue N
 ```
 
 3. For each ready task:
@@ -78,6 +95,12 @@ Skill(skill="start-task", args="{task_file_path} --task {task_id}")
 > replace agent-level skills). Loading the same skill twice is a no-op.
 
 4. Repeat until no tasks remain ready.
+
+> **Hook behavior on SubagentStop**: When a sub-agent finishes, `task_status_hook.py` marks
+> the task complete in the local task file. After marking the task complete locally, the hook
+> calls `backlog_core.github.update_task_status()` to sync the completion to the GitHub
+> sub-issue (if `github_issue` field is set in the task YAML). GitHub sync failure does not
+> affect the hook exit code.
 
 ---
 

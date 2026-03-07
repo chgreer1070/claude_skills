@@ -350,3 +350,24 @@ After questions are resolved:
 2. Finalize Goals section
 3. Proceed to RT-ICA assessment
 4. Then proceed to architecture design (`python-cli-design-spec` agent)
+
+## Post-Implementation Annotations
+
+_Added by context-refinement agent on 2026-03-07_
+
+### Design Refinements
+
+1. **All 6 desired outcomes verified PASS**: The feature-verifier confirmed all 6 goals from the `## Desired Outcome` section were achieved. 53 tests pass across the new test files (`test_operations_sam.py`, `test_server_sam.py`, `test_github_flag.py`, `test_migrate_tasks_to_github.py`, `test_github_sync.py`, `test_subagent_stop_integration.py`).
+   - Original: Goals stated as desired outcomes
+   - Actual: All 6 goals implemented and verified
+   - Recorded in: plan/tasks-2-migrate-sam-task-github-subissues.md, Discovered During Implementation
+
+2. **`si.body` is directly accessible on `SubIssue`**: The feature-context noted `get_task_issues()` returns `list[SubIssue]` and that body access may require `repo.get_issue()`. Implementation confirmed `si.body` works directly on `SubIssue` objects (which inherit from `Issue`). No roundtrip to `repo.get_issue()` is needed.
+   - Original: Context was ambiguous — mentioned both `SubIssue inherits from Issue` and a caution about `.body` access
+   - Actual: `si.body` is directly accessible; `operations.py` uses it at line 1584
+   - Recorded in: plan/tasks-2-migrate-sam-task-github-subissues.md, DN-1
+
+3. **`parents[N]` index differs from architect spec**: The architect spec stated `parents[6]` to reach repo root from `implementation_manager.py`/`task_status_hook.py`. Actual verified value is `parents[5]`. The feature context itself does not make this claim, but future developers referencing this context alongside the architect spec should use `parents[5]` for scripts in the `implementation-manager/scripts/` location.
+   - Original: Not stated in feature context (stated in architect spec)
+   - Actual: `parents[5]` verified correct for the `implementation-manager/scripts/` depth
+   - Recorded in: plan/tasks-2-migrate-sam-task-github-subissues.md, DN-2; plan/architect-migrate-sam-task-github-subissues.md, Post-Implementation Annotations

@@ -131,8 +131,16 @@ hooks:
      status . "{slug}"
 
 2. Query ready tasks:
-   uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
-     ready-tasks . "{slug}"
+   If parent story issue number is known, prefer the MCP tool:
+     backlog_get_ready_sam_tasks(parent_issue_number=N)
+     Output shape: {"feature": "...", "ready_tasks": [...], "count": N}
+     Falls back to local cache if GitHub unavailable.
+   If parent issue number is unknown (or MCP unavailable), use CLI fallback:
+     uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
+       ready-tasks . "{slug}"
+   With GitHub flag (when parent issue is known but MCP unavailable):
+     uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
+       ready-tasks . "{slug}" --github --parent-issue N
 
 3. For each ready task:
    Route to the agent named in the task's **Agent** field.
@@ -181,17 +189,18 @@ hooks:
 1. Read the task file and linked architecture spec.
 2. Select the target task (by `--task {id}` or first ready task).
 2a. Load skills from task metadata: read the `skills:` field from YAML frontmatter (or `**Skills**:` from legacy format). For each skill name, invoke `Skill(skill="{name}")`. If a skill fails to load, warn and continue with remaining skills. This is intentional redundancy with the orchestrator's skill-loading instructions, ensuring skills load even when the task is started manually or by an older orchestrator.
-3. Update task status to `IN PROGRESS` (or `in-progress` for YAML format).
-4. Add `**Started**: {ISO timestamp}`.
+3. Claim the task via `claim-task` command (prevents duplicate dispatch). This is the ONLY permitted way to mark a task in-progress — do NOT edit status or started fields directly. Run `implementation_manager.py claim-task {task_file_path} {task_id}`; stop if exit code is non-zero (task already claimed or not found).
+4. GitHub in-progress sync: if `parent_issue_number` is known and `github_issue` field is set in the task YAML, sync in-progress status to GitHub sub-issue (non-fatal on failure).
 5. Write active-task context file:
 
    ```text
    .claude/context/active-task-{CLAUDE_SESSION_ID}.json
    ```
 
-   Contents: `{"task_file_path": "...", "task_id": "..."}`
+   Contents: `{"task_file_path": "...", "task_id": "...", "parent_issue_number": N}` — omit `parent_issue_number` if story issue number is unknown; hook treats absence as `None` and skips GitHub sync.
 
-6. Implement against acceptance criteria and run verification steps.
+6. Divergence notes: if implementation deviates from the architect spec or feature-context in a way that affects observable behavior, append a `## Divergence Notes` section to the task file. See `.claude/skills/start-task/SKILL.md` for format.
+7. Implement against acceptance criteria and run verification steps.
 
 ### Completion Marking
 
@@ -212,7 +221,7 @@ Shared utilities: [plugins/python3-development/skills/implementation-manager/scr
 
 | Hook Event | Trigger Context | Action |
 |------------|----------------|--------|
-| `SubagentStop` | `/implement-feature` finishes a sub-agent | Parse prompt for `/start-task` invocation, extract task file path and task ID, set status to COMPLETE, add `Completed` timestamp, delete context file |
+| `SubagentStop` | `/implement-feature` finishes a sub-agent | Parse prompt for `/start-task` invocation, extract task file path and task ID, set status to COMPLETE, add `Completed` timestamp, delete context file, then call `sync_completion_to_github()` to sync completion to GitHub sub-issue (best-effort, exit 0 on failure) |
 | `PostToolUse` (Write\|Edit\|Bash) | `/start-task` during task execution | Read `.claude/context/active-task-{session_id}.json`, update `LastActivity` timestamp in the task section |
 
 ### Timestamp Responsibilities
