@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import re
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -1556,25 +1555,28 @@ def pull_items(
 # ---------------------------------------------------------------------------
 
 
-def _write_sam_task_cache(tasks: list[dict[str, object]], parent_issue_number: int) -> None:
+def _write_sam_task_cache(tasks: list[dict[str, object]], parent_issue_number: int) -> bool:
     """Write SAM task list to ``~/.claude/context/sam-tasks-{feature_slug}.json``.
 
-    Skips silently when no feature slug can be derived from the task list.
+    Returns:
+        True when the cache file was written, False when no feature slug
+        could be derived from the task list and the write was skipped.
     """
     feature_slug = _extract_feature_slug(tasks)
     if not feature_slug:
-        return
+        return False
     cache_dir = Path.home() / ".claude" / "context"
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = cache_dir / f"sam-tasks-{feature_slug}.json"
     payload = {
         "feature_slug": feature_slug,
         "parent_issue_number": parent_issue_number,
-        "synced_at": datetime.now(UTC).isoformat(),
-        "tasks": tasks,
+        "synced_at": now_iso(),
         "count": len(tasks),
+        "tasks": tasks,
     }
     cache_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return True
 
 
 def _sub_issues_to_task_dicts(sub_issues: list[SubIssue]) -> list[dict[str, object]]:
@@ -1717,8 +1719,8 @@ def get_sam_tasks(
 
     sub_issues = get_task_issues(repo, parent_issue_number, output=out)
     tasks = _sub_issues_to_task_dicts(sub_issues)
-    if refresh_cache and tasks:
-        _write_sam_task_cache(tasks, parent_issue_number)
+    if refresh_cache and tasks and not _write_sam_task_cache(tasks, parent_issue_number):
+        out.warn("  WARNING: Could not write SAM task cache — no feature slug found in tasks")
     return {"tasks": tasks, "count": len(tasks), "parent_issue_number": parent_issue_number, **out.to_dict()}
 
 
