@@ -4,7 +4,7 @@ description: Converts process descriptions, bullet steps, ASCII art, markdown ta
 model: sonnet
 tools: Read, Write, Edit, Grep, Glob, Bash, mcp__mcp-mermaid__validate_and_render_mermaid_diagram, mcp__mcp-mermaid__get_diagram_summary, mcp__mcp-mermaid__get_diagram_title, mcp__mcp-mermaid__list_tools
 permissionMode: acceptEdits
-skills: process-siren:improve-processes
+skills: process-siren:improve-processes, process-siren:mermaids-treasure
 mcpServers:
   mcp-mermaid:
     command: npx
