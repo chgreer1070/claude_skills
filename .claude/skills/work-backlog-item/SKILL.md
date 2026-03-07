@@ -1,7 +1,7 @@
 ---
 name: work-backlog-item
 description: "Use when working, planning, or closing a backlog item. Bridges backlog items to SAM planning with GitHub Issue/Project/Milestone tracking. No args: interactive browser. '#N': load from GitHub Issue #N. Title substring: auto-grooming, RT-ICA gate, GitHub sync, SAM planning. '--auto {title}': autonomous mode — no AskUserQuestion, derives data from research files, logs decisions. 'close {title}': dismiss without completion — reason required (duplicate, out_of_scope, superseded, wontfix, blocked). ADR-9. 'resolve {title}': mark DONE with evidence trail — summary required. ADR-9. 'setup-github': init labels, project, milestone. '--language' and '--stack' select Layer 1/2 profile. STOPS if item has Plan field or RT-ICA returns BLOCKED."
-argument-hint: '[#N | --auto {title} | --language {lang} | --stack {stack} | item-title-substring | close {title} | resolve {title} | setup-github]'
+argument-hint: '[#N | --auto {title} | --language {lang} | --stack {stack} | item-title-substring | close {title} | resolve {title} | setup-github | --quick {title} | progress | resume [{title}]]'
 user-invocable: true
 ---
 # Work Backlog Item
@@ -29,6 +29,9 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 | `close` | `$1`+ = title, `#N`, number, or URL | Dismiss without completion (reason required). ADR-9 |
 | `resolve` | `$1`+ = title, `#N`, number, or URL | Mark DONE — completed with evidence (summary required). ADR-9 |
 | `setup-github` | — | Initialize labels, project, first milestone |
+| `--quick` | `$1`+ = title | Skip grooming, RT-ICA, and SAM — quick one-file fix. Step Q |
+| `progress` | — | Backlog health and active milestone progress report. Step P |
+| `resume` | `$1`+ = title or `#N` (optional) | Resume status for an in-progress plan. Step R |
 | (any other) | — | `$ARGUMENTS` treated as title substring → planning |
 
 **Optional flags** (when `$0` is title substring or `--auto`): `--language <lang>` selects language plugin (default: python); `--stack <profile>` selects stack profile (e.g., python-fastapi, python-cli). See [.claude/docs/sdlc-layers/](../../docs/sdlc-layers/).
@@ -56,21 +59,9 @@ All interactive `AskUserQuestion` calls are replaced with evidence-derived decis
 
 ### Routing (evaluated first, before any step)
 
-Dispatch based on `$0` (the first argument word) before executing any step:
+Dispatch is determined by `$0` as listed in the Arguments table above. See each step below for the full procedure triggered by each mode.
 
-| `$0` value | Title source | Route |
-|---|---|---|
-| (empty) | — | Step 0 — interactive browser |
-| `#N` (starts with `#`) | issue number | Step 1b — Issue-first path |
-| bare number (e.g. `249`) | issue number | Step 1b — Issue-first path |
-| GitHub issue URL | issue number from URL | Step 1b — Issue-first path |
-| `--auto` | `$1`+ joined (empty → auto-select first open P0/P1) | AUTO_MODE=true → Step 1 |
-| `close` | `$1`+ joined (title, `#N`, number, or URL) | Step 9 (close path — dismiss without completion) |
-| `resolve` | `$1`+ joined (title, `#N`, number, or URL) | Step 9 (resolve path — mark completed with evidence) |
-| `setup-github` | — | setup-github command |
-| (any other) | `$ARGUMENTS` | Title substring → Step 1 (interactive mode) |
-
-**AUTO_MODE** — when set, all `AskUserQuestion` calls are replaced with evidence-derived decisions. See the `--auto mode rules` table in the Arguments section for each substitution.
+**AUTO_MODE** — when set, all `AskUserQuestion` calls are replaced with evidence-derived decisions. See [auto-mode.md](./references/auto-mode.md) for the substitution table.
 
 ### Step 0: Interactive Browser (no arguments only)
 
@@ -233,17 +224,7 @@ Call the `mcp__backlog__backlog_update` tool to add the Plan:
 
 If the item has `**Issue**: #N`, record it in the plan file header comment and include `Fixes #N` in any commit message produced during implementation.
 
-### Step 8: Simplify
-
-Run the simplify skill to review files changed during this session for reuse, quality, and efficiency:
-
-```text
-Skill(skill: "simplify")
-```
-
-This reviews any files modified during this session and fixes issues found.
-
-### Step 8.5: Report Next Steps
+### Step 8: Report Next Steps
 
 ```text
 Backlog item "{title}" is now planned.
@@ -271,40 +252,23 @@ Full step-by-step procedure (9a–9f): [close-resolve-procedure.md](./references
 
 ### Step 2.5: GitHub Issue Sync
 
-After Step 2, check for `**Issue**: #N` field in the matched item.
+After Step 2, check for `**Issue**: #N` in the matched item. Full procedure (gh commands, yes/no branching, issue creation): [github-integration.md](./references/github-integration.md#step-25-github-issue-sync)
 
-- Found: verify issue state — call the `mcp__backlog__backlog_view` tool with `selector="#{issue_number}"`
-- Not found + P0/P1: offer to create a GitHub Issue (proceed to Step 2.5a)
-- Not found + P2/Ideas: skip silently
+**Note:** On the Issue-first path (Step 1b), the `backlog_view` response already contains issue state — carry it forward without re-fetching.
 
 ### Step 2.5a: Create GitHub Issue
 
-Call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `create_issue=true`.
-
-Check the returned dict for an `error` key. On success, the tool creates the issue and writes `issue: '#N'` back to the per-item file frontmatter.
+Full procedure: [github-integration.md](./references/github-integration.md#step-25a-create-github-issue)
 
 ### Step 2.7: Set In-Progress Label
 
-If the item has `**Issue**: #N`, call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `status="in-progress"`.
+Full procedure: [github-integration.md](./references/github-integration.md#step-27-set-in-progress-label)
 
-If the item is in a milestone with other issues, also run `milestone start` for the milestone:
-
-```bash
-uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
-  --number {milestone_number} --repo Jamie-BitFlight/claude_skills
-```
+**Two-part step:** (a) Always run `mcp__backlog__backlog_update` with `status="in-progress"` for the current item. (b) Run `milestone start` only on explicit user intent to start the whole milestone — it bulk-transitions all open milestone issues, not just the current one.
 
 ### setup-github Command
 
-**Trigger:** `$0` is `setup-github`. Initializes label taxonomy, first milestone, and GitHub Project.
-
-```bash
-uv run .claude/skills/gh/scripts/github_project_setup.py labels --repo Jamie-BitFlight/claude_skills
-uv run .claude/skills/gh/scripts/github_project_setup.py milestone create \
-  --title "v1.0 — Skills Foundation" --due 2026-03-31 --repo Jamie-BitFlight/claude_skills
-```
-
-Full setup steps and expected output: [github-integration.md](./references/github-integration.md)
+**Trigger:** `$0` is `setup-github`. Full setup procedure and expected output: [github-integration.md](./references/github-integration.md#setup-github-command)
 
 ## Error Handling
 
