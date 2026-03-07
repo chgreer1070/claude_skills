@@ -5,9 +5,9 @@ metadata:
   topic: async240-forbids-pathlib-in-async-functions-need-async-safe-
   source: 'session observation during #328 implementation'
   added: '2026-03-01'
-  priority: P2
+  priority: completed
   type: Bug
-  status: needs-grooming
+  status: done
   issue: '#336'
   last_synced: '2026-03-06T23:04:23Z'
   groomed: '2026-03-06'
