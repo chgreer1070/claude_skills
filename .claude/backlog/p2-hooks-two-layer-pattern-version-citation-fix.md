@@ -9,4 +9,5 @@ metadata:
   type: Bug
   status: open
   plan: plan/tasks-2-hooks-two-layer-pattern-followup-1.md
+  issue: '#521'
 ---

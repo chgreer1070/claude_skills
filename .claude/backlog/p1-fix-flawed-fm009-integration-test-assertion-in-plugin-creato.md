@@ -9,4 +9,5 @@ metadata:
   type: Bug
   status: open
   plan: plan/tasks-25-multi-ecosystem-plugin-creator-followup-1.md
+  issue: '#516'
 ---

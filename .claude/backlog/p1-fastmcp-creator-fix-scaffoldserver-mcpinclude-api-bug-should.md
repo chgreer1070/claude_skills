@@ -9,4 +9,5 @@ metadata:
   type: Bug
   status: open
   plan: plan/tasks-22-fastmcp-creator-v3-overhaul-followup-1.md
+  issue: '#514'
 ---

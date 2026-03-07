@@ -9,4 +9,5 @@ metadata:
   type: Docs
   status: open
   plan: plan/tasks-23-fastmcp-creator-v3-overhaul-followup-2.md
+  issue: '#520'
 ---
