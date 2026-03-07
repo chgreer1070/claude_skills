@@ -5,9 +5,9 @@ metadata:
   topic: add-hookskill-two-layer-prompt-evaluation-recipe-to-hooks-pa
   source: 'Research entry: ./research/prompt-engineering/claude-code-prompt-improver.md -- pattern: hook-based architecture with two-layer evaluation'
   added: '2026-03-07'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#505'
   last_synced: '2026-03-07T07:58:25Z'
   groomed: '2026-03-07'
