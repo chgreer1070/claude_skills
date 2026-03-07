@@ -9,7 +9,7 @@ Measurable criteria for evaluating the AI-facing skill output produced by `user-
 3. [Common Failure Modes](#common-failure-modes)
 4. [Distinguishing Good from Mediocre](#distinguishing-good-from-mediocre)
 
-Checklist categories: Frontmatter — SKILL.md Structure — Reference Files — Links — Coverage — Workflow Identification
+Checklist categories: Frontmatter — SKILL.md Structure — Reference Files — Links — Coverage — Format Handling — Workflow Identification
 
 ---
 
@@ -56,6 +56,17 @@ Run all items. Mark each PASS or FAIL. Fix all FAILs before proceeding.
 - [ ] CV-2: CLI commands or API methods from source docs are in the output — none silently dropped
 - [ ] CV-3: Error conditions documented in source docs are captured in a reference file
 - [ ] CV-4: Configuration parameters from source docs appear with their types and defaults
+
+### Format Handling
+
+- [ ] FH-1: Non-markdown files (PDF, DOCX, PPTX, XLSX) are extracted using the MCP `file-reader` server or appropriate tool — not skipped
+- [ ] FH-2: AsciiDoc admonition blocks (NOTE, TIP, WARNING, IMPORTANT, CAUTION) are converted to `TYPE: constraint` atoms
+- [ ] FH-3: Jupyter notebook code cells are preserved verbatim as `TYPE: example` atoms
+- [ ] FH-4: reStructuredText directives are mapped to corresponding atom types (code-block → example, warning → constraint)
+- [ ] FH-5: HTML content is stripped of navigation, sidebars, and footers before extraction
+- [ ] FH-6: Man page SYNOPSIS and OPTIONS sections produce `TYPE: command` and `TYPE: parameter` atoms respectively
+- [ ] FH-7: Config file keys (TOML/YAML/JSON) with comments produce `TYPE: parameter` atoms with dot-notation paths
+- [ ] FH-8: Scanned-image PDFs are flagged with a warning when text extraction yields empty results
 
 ### Workflow Identification (Phase 1.5)
 
@@ -184,6 +195,18 @@ description: Use when working with ty — running type checks, configuring ty.to
 ```
 
 **Fix:** Rewrite description using the template in skill-structure-guide.md. Include explicit trigger scenarios.
+
+---
+
+### Failure Mode 8 — Skipped Non-Markdown Formats
+
+**Symptom:** Reference files only contain content from `.md` sources; PDF, DOCX, or other format files in the docs directory are ignored.
+
+**Detection:** Compare the list of source files in the inventory (Phase 0d) against the SOURCE fields in all extracted atoms. Any source file with zero atoms is suspicious.
+
+**Root cause:** Extraction Phase did not use the MCP `file-reader` server for binary formats or did not apply format-specific extraction patterns.
+
+**Fix:** Re-run Phase 1 for the skipped files using the appropriate extraction method from [extraction-patterns.md](./extraction-patterns.md) Format-Specific Extraction section.
 
 ---
 

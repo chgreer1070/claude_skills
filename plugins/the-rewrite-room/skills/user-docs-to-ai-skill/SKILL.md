@@ -1,13 +1,13 @@
 ---
 name: user-docs-to-ai-skill
-description: Converts user-facing documentation (how-to guides, tutorials, API references, examples) into Claude Code skill directories — SKILL.md with valid frontmatter plus thematically grouped references/*.md files. Use when given a docs directory to transform into an AI skill, when building expert-level Claude knowledge from library or tool documentation, or when the user asks to create a skill from existing docs. Produces output equivalent in quality to fastmcp-creator.
+description: Converts user-facing documentation (how-to guides, tutorials, API references, examples) in any format — Markdown, PDF, DOCX, PPTX, XLSX, AsciiDoc, RST, HTML, Jupyter notebooks, man pages, TOML/YAML/JSON configs, and plain text — into Claude Code skill directories with SKILL.md plus thematically grouped references/*.md files. Use when given a docs directory or mixed-format documentation to transform into an AI skill. Uses MCP file-reader server for binary formats.
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit, Task
 argument-hint: "<docs_path> <output_plugin> [output_skill]"
 ---
 
 # User Docs to AI Skill
 
-Converts human-readable documentation into a Claude Code skill directory. The output is consumed by Claude, not humans — every word must serve AI comprehension, not user readability.
+Converts human-readable documentation in any text or binary format into a Claude Code skill directory. Supports Markdown, PDF, DOCX, PPTX, XLSX, AsciiDoc, RST, HTML, Jupyter notebooks, man pages, config files, and plain text. Uses the MCP `file-reader` server for binary document formats. The output is consumed by Claude, not humans — every word must serve AI comprehension, not user readability.
 
 ## Inputs
 
@@ -40,7 +40,7 @@ flowchart TD
     Q_docs -->|Yes| UseDocs[Set docs_path = docs_root/docs/]
     Q_docs -->|No| ScanAll["Task: Explore agent\nGlob all .md files across docs_root\nReturn list of markdown and inline doc files"]
     UseDocs --> Inv
-    ScanAll --> Inv[Glob all files in docs_path\nCount by type .md .html .rst .txt\nIdentify top-level sections and index files]
+    ScanAll --> Inv[Glob all files in docs_path\nCount by format category — see input-resolution.md\nIdentify top-level sections and index files\nFlag MCP-dependent formats]
     Inv --> Phase1[Phase 1 — Extraction]
     Phase1 --> Extract[Apply extraction patterns per doc type\nSee extraction-patterns.md]
     Extract --> Phase15[Phase 1.5 — Workflow Identification]
@@ -89,16 +89,19 @@ If `output_skill` was not passed as input, derive it from `project-name` (the la
 ### Step 0d — Inventory
 
 1. `Glob("**/*", docs_path)` — list all files
-2. Group by extension: `.md`, `.html`, `.rst`, `.txt`, other
-3. Read the index file (`index.md`, `README.md`, `index.html`, or equivalent) to understand top-level structure
-4. List all section headings from the index — these hint at reference file themes
-5. Note total file count and estimated reading volume
+2. Group by format category (see [input-resolution.md](./references/input-resolution.md) File Format Categories table)
+3. Flag files requiring the MCP `file-reader` server (PDF, DOCX, PPTX, XLSX) — these need the `file-reader` MCP tool during extraction
+4. Read the index file (`index.md`, `README.md`, `index.html`, or equivalent) to understand top-level structure
+5. List all section headings from the index — these hint at reference file themes
+6. Note total file count and estimated reading volume
 
 Report the inventory before proceeding to Phase 1.
 
 ## Phase 1 — Extraction
 
 Apply extraction patterns from [extraction-patterns.md](./references/extraction-patterns.md).
+
+For non-markdown formats (PDF, DOCX, PPTX, XLSX, AsciiDoc, RST, HTML, Jupyter, man pages, config files), apply the format-specific extraction patterns from the Format-Specific Extraction section of [extraction-patterns.md](./references/extraction-patterns.md). Use the MCP `file-reader` server tools for binary formats that the Read tool cannot parse.
 
 Extraction produces a structured list of knowledge atoms:
 

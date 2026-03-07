@@ -8,7 +8,8 @@ Covers Phase 0 of `user-docs-to-ai-skill` — resolving the `source` input to a 
 2. [Project Name Derivation](#project-name-derivation)
 3. [output_skill Derivation](#output_skill-derivation)
 4. [Docs Discovery](#docs-discovery)
-5. [Anti-Patterns](#anti-patterns)
+5. [File Format Categories](#file-format-categories)
+6. [Anti-Patterns](#anti-patterns)
 
 ---
 
@@ -90,17 +91,13 @@ flowchart TD
     Q1 -->|Yes| UseDocs[docs_path = docs_root/docs/\nProceed to inventory]
     Q1 -->|No| Q2{docs_root/doc/ exists?}
     Q2 -->|Yes| UseDoc[docs_path = docs_root/doc/\nProceed to inventory]
-    Q2 -->|No| Scan["Delegate to Explore subagent:\nGlob all *.md files under docs_root\nReturn list of file paths"]
-    Scan --> Q3{Any .md files found?}
-    Q3 -->|Yes — include README.md| UseList[docs_path = list of discovered .md files\nProceed to inventory treating each as a source file]
-    Q3 -->|No markdown found| CheckRST["Glob *.rst files under docs_root"]
-    CheckRST --> Q4{Any .rst files found?}
-    Q4 -->|Yes| UseRST[docs_path = list of .rst files]
-    Q4 -->|No| Block([BLOCKED — no documentation found in docs_root\nReport what was searched])
+    Q2 -->|No| Scan["Delegate to general-purpose subagent:\nGlob all supported file types under docs_root\nExtensions: *.md *.rst *.adoc *.asciidoc\n*.html *.htm *.pdf *.docx *.doc *.ipynb\n*.txt *.pptx *.ppt *.xlsx *.xls *.csv\n*.toml *.yaml *.yml *.json\nReturn grouped list of file paths by format category"]
+    Scan --> Q3{Any supported files found?}
+    Q3 -->|Yes| UseList["docs_path = grouped list of discovered files\nGroup by format category (see File Format Categories)\nProceed to inventory treating each as a source file"]
+    Q3 -->|No| Block([BLOCKED — no documentation found in docs_root\nReport what was searched and extensions tried])
     UseDocs --> Inventory([Phase 0d — Inventory])
     UseDoc --> Inventory
     UseList --> Inventory
-    UseRST --> Inventory
 ```
 
 ### Explore Subagent Delegation
@@ -109,14 +106,43 @@ When no `docs/` or `doc/` directory exists, delegate discovery:
 
 ```text
 Task: subagent_type="general-purpose"
-Prompt: Glob all *.md and *.rst files under <docs_root>.
+Prompt: Glob all supported documentation file types under <docs_root>.
+        Extensions to search: *.md *.rst *.adoc *.asciidoc *.html *.htm
+        *.pdf *.docx *.doc *.ipynb *.txt *.pptx *.ppt *.xlsx *.xls *.csv
+        *.toml *.yaml *.yml *.json
         Also check for a README.md at docs_root root level.
-        Return the full list of file paths found.
+        Return file paths grouped by format category (Markdown, reStructuredText,
+        AsciiDoc, HTML, PDF, Word, Jupyter Notebook, Plain Text, PowerPoint,
+        Excel, CSV, Config).
         Do not read file contents — paths only.
-Output: flat list of file paths
+Output: grouped list of file paths by format category
 ```
 
 Use `general-purpose` (not `Explore`) because the Explore agent has a ~50% hallucination rate on pattern-matching tasks.
+
+---
+
+## File Format Categories
+
+Maps each supported file extension to a format category and the extraction method to use when reading content during Phase 0d inventory and later phases.
+
+| Extension | Category | Extraction Method |
+|-----------|----------|-------------------|
+| `.md` | Markdown | Read tool (direct) |
+| `.rst` | reStructuredText | Read tool (direct) |
+| `.adoc`, `.asciidoc` | AsciiDoc | Read tool (direct) |
+| `.html`, `.htm` | HTML | Read tool or WebFetch |
+| `.pdf` | PDF | Read tool (pages param) or MCP file-reader |
+| `.docx`, `.doc` | Word | MCP file-reader server |
+| `.ipynb` | Jupyter Notebook | Read tool (native support) |
+| `.txt` | Plain Text | Read tool (direct) |
+| `.pptx`, `.ppt` | PowerPoint | MCP file-reader server |
+| `.xlsx`, `.xls` | Excel | MCP file-reader server |
+| `.csv` | CSV/Data | Read tool (direct) |
+| `.toml`, `.yaml`, `.yml`, `.json` | Config | Read tool (direct) |
+| `.1`, `.3`, `.5`, `.7`, `.8` | Man Page | Bash: `man -l <file> \| col -b` |
+
+**Inventory grouping:** Phase 0d groups discovered files by the category column above. Report counts per category and flag any files requiring MCP file-reader server so the caller knows which tools must be available before extraction proceeds.
 
 ---
 
