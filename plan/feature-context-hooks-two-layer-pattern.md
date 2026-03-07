@@ -267,3 +267,36 @@ After questions are resolved:
 2. Finalize Goals section
 3. Proceed to RT-ICA assessment
 4. Then proceed to architecture/design for the exact diff against `hooks-patterns/SKILL.md`
+
+---
+
+## Post-Implementation Annotations
+
+_Added by context-refinement agent on 2026-03-07_
+
+### Design Refinements
+
+1. **Q1 resolved — insertion location**: New `###` subsection inside `## Code Examples`, immediately after the closing code fence of the existing Python UserPromptSubmit example at line 351 (option A).
+   - Original: "Resolution: _pending_"
+   - Actual: Option A — `### Python: UserPromptSubmit Conditional Skill Invocation (Two-Layer Pattern)` inserted at lines 353–427 of `plugins/plugin-creator/skills/hooks-patterns/SKILL.md`
+   - Recorded in: plan/tasks-1-hooks-two-layer-pattern.md, Discovered During Implementation
+
+2. **Q2 resolved — hook script completeness**: Abbreviated ~30-line version (option B). Actual line count 33 lines, within the 25-35 acceptable range specified in the architect spec.
+   - Original: "Resolution: _pending_"
+   - Actual: Option B — abbreviated functional version
+   - Recorded in: plan/tasks-1-hooks-two-layer-pattern.md, Discovered During Implementation
+
+3. **Q3 resolved — skill-side content**: Prose note only, no SKILL.md stub (option A). Implemented as a `**Skill contract:**` bold-prefixed paragraph after the configuration snippet.
+   - Original: "Resolution: _pending_"
+   - Actual: Option A — prose paragraph only
+   - Recorded in: plan/tasks-1-hooks-two-layer-pattern.md, Discovered During Implementation
+
+4. **Q4 resolved — bypass prefix handling**: Bypass prefixes (`*`, `/`, `#`) included directly in the hook script code (option A), with inline comments identifying each bypass reason.
+   - Original: "Resolution: _pending_"
+   - Actual: Option A — included in hook script
+   - Recorded in: plan/tasks-1-hooks-two-layer-pattern.md, Discovered During Implementation
+
+5. **Q5 resolved — plain stdout vs. JSON envelope**: JSON envelope only for `additionalContext` output (option B). Plain stdout not used in this recipe.
+   - Original: "Resolution: _pending_"
+   - Actual: Option B — JSON envelope (`hookSpecificOutput.hookEventName.additionalContext`) only
+   - Recorded in: plan/tasks-1-hooks-two-layer-pattern.md, Discovered During Implementation

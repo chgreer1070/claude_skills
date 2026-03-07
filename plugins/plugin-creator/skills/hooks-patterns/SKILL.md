@@ -350,6 +350,81 @@ print(context)
 sys.exit(0)
 ```
 
+### Python: UserPromptSubmit Conditional Skill Invocation (Two-Layer Pattern)
+
+The two-layer pattern separates evaluation from execution: the hook script wraps the prompt
+with lightweight evaluation instructions and emits them as `additionalContext`. Claude then
+evaluates the prompt inline — proceeding immediately for clear prompts, or invoking a skill
+only when the prompt is vague. This keeps skill-load overhead off the common (clear) path.
+
+> **Token overhead:** Clear prompts — ~189 tokens (evaluation wrapper only).
+> Vague prompts — 189 tokens + skill load. ~31% reduction vs. embedding evaluation
+> logic in the hook directly (prompt-improver v0.4.0, 2026-02-14).
+
+```python
+#!/usr/bin/env python3
+import json
+import sys
+
+input_data = json.load(sys.stdin)
+original_prompt = input_data.get("prompt", "")
+
+# bypass: strip * prefix and skip evaluation
+if original_prompt.startswith("*"):
+    print(original_prompt[1:].lstrip())
+    sys.exit(0)
+
+# bypass: slash commands and memorize pass through unchanged
+if original_prompt.startswith("/") or original_prompt.startswith("#"):
+    print(original_prompt)
+    sys.exit(0)
+
+# ~189 tokens; instructs Claude to evaluate clarity,
+#  invoke skill only when vague
+evaluation_context = (
+    f"Evaluate the following prompt for clarity and specificity.\n"
+    f"...\n"
+    f"PROCEED IMMEDIATELY if the prompt is clear and specific.\n"
+    f"If vague: use Skill(skill='your-plugin:your-skill') to clarify before proceeding.\n"
+    f"\nUser prompt: {original_prompt}"
+)
+
+output = {
+    "hookSpecificOutput": {
+        "hookEventName": "UserPromptSubmit",
+        "additionalContext": evaluation_context,
+    }
+}
+print(json.dumps(output))
+sys.exit(0)
+```
+
+Hook configuration (`hooks.json`):
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /path/to/your-hook.py"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Skill contract:** The skill invoked via `Skill(skill='your-plugin:your-skill')` must assume
+the hook has already evaluated the prompt for clarity. The skill must not re-evaluate whether
+the prompt is vague — that decision has already been made by the hook. The skill should
+proceed directly to its task (research, clarifying questions, enrichment, or any other
+domain-specific work). Re-evaluating clarity in the skill defeats the two-layer separation
+and doubles the token overhead for vague prompts.
+
 ### Python: PreToolUse Auto-Approval (JSON Output)
 
 ```python

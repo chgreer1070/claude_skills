@@ -24,6 +24,34 @@ task_exports:
 - Reference: `plugins/plugin-creator/skills/hooks-core-reference/SKILL.md`
 - Key constraint: addition must stay under SK006/SK007 token threshold; extract to reference file if needed
 
+### Discovered During Implementation
+
+_Session Date: 2026-03-07_
+
+During implementation, the CoVe verification step caught a version citation discrepancy that temporarily caused the inserted content to cite v0.5.1 instead of v0.4.0. The implementing agent initially read an intermediate value during document traversal that did not match the primary source. When Phase 2/3 verification re-queried `research/prompt-engineering/claude-code-prompt-improver.md:75-79` directly, v0.4.0 (2026-02-14) was confirmed as correct and the citation was corrected back. The final committed state matches the architect spec.
+
+This pattern — an intermediate value diverging from the primary source during multi-pass document reads — was not anticipated in the CoVe checks section of the task. Future similar tasks should treat the CoVe evidence-collection step as the single source of truth for version/number claims and not rely on values cached in working memory from earlier reads.
+
+**Key Discoveries:**
+
+1. **CoVe evidence collection prevents version drift**: The task's CoVe revision rule ("if any check fails, update the recipe content to match the primary source and note what changed") correctly caught the v0.4.0 → v0.5.1 error and triggered a revert. The rule worked as designed. No architectural change is needed, but the pattern is worth noting so future CoVe check sections in similar tasks include an explicit instruction to re-read the source file at citation time rather than using a recalled value.
+
+2. **Feature-context pending questions were resolved implicitly by architect spec**: The feature-context file (`plan/feature-context-hooks-two-layer-pattern.md`) leaves questions Q1–Q5 with `Resolution: _pending_` and the "Goals (Pending Resolution)" section unfinalized. In practice, the architect spec resolved all five questions (Q1→option A, Q2→option B abbreviated 30-line, Q3→prose note only, Q4→include in code, Q5→JSON envelope only) and implementation followed the architect spec. The feature-context was not updated to reflect these resolutions. This is expected workflow behavior — the architect spec is the authoritative implementation guide — but readers of the feature-context in isolation will see unresolved questions. See Post-Implementation Annotations on the feature-context for the resolved values.
+
+#### Updated Technical Details
+
+- Version confirmed: prompt-improver v0.4.0 (2026-02-14) — sourced from `research/prompt-engineering/claude-code-prompt-improver.md:75-79`
+- Resolved Q1: new `###` subsection inside `## Code Examples`, after line 351 (option A)
+- Resolved Q2: abbreviated ~30-line version (option B) — actual: 33 lines within the 25-35 range
+- Resolved Q3: prose note only, no SKILL.md stub (option A)
+- Resolved Q4: bypass prefixes included in hook script code (option A)
+- Resolved Q5: JSON envelope only for additionalContext (option B)
+
+#### Gotchas for Future Developers
+
+- When citing version numbers from research files in recipe content, re-read the source line at citation time — do not rely on a value recalled from an earlier read in the same session. The CoVe evidence-collection step exists precisely to prevent this drift.
+- The feature-context "Questions Requiring Resolution" section with `_pending_` resolutions is expected state for this artifact type — the architect spec is the resolution document, not an update to the feature-context itself.
+
 ---
 
 ## Priority 1 (Foundational)
@@ -35,7 +63,7 @@ task_exports:
 ```yaml
 task: T1
 title: "Write two-layer pattern recipe section into hooks-patterns/SKILL.md"
-status: not-started
+status: complete
 agent: plugin-creator:contextual-ai-documentation-optimizer
 dependencies: []
 priority: 1
@@ -182,7 +210,7 @@ Return:
 ```yaml
 task: T2
 title: "Validate insertion — linting, plugin validator, structural checks"
-status: not-started
+status: complete
 agent: plugin-creator:contextual-ai-documentation-optimizer
 dependencies: ["T1"]
 priority: 2
