@@ -59,17 +59,24 @@ All interactive `AskUserQuestion` calls are replaced with evidence-derived decis
 
 ### Routing (evaluated first, before any step)
 
-Dispatch is determined by `$0` as listed in the Arguments table above. Modes with procedures in reference files:
+Dispatch based on `$0` (the first argument word) before executing any step:
 
-| Mode | Procedure |
-|------|-----------|
-| `--quick {title}` | [step-procedures.md — Step Q](./references/step-procedures.md#step-q-quick-mode) |
-| `progress` | [step-procedures.md — Step P](./references/step-procedures.md#step-p-progress-report) |
-| `resume [{title}]` | [step-procedures.md — Step R](./references/step-procedures.md#step-r-resume-report) |
-| `close` / `resolve` | [close-resolve-procedure.md](./references/close-resolve-procedure.md) |
-| `setup-github` | [github-integration.md — setup-github](./references/github-integration.md#setup-github-command) |
+| `$0` value | Title source | Route |
+|---|---|---|
+| (empty) | — | Step 0 — interactive browser |
+| `#N` (starts with `#`) | issue number | Step 1b — Issue-first path |
+| bare number (e.g. `249`) | issue number | Step 1b — Issue-first path |
+| GitHub issue URL | issue number from URL | Step 1b — Issue-first path |
+| `--auto` | `$1`+ joined (empty → auto-select first open P0/P1) | AUTO_MODE=true → Step 1 |
+| `--quick` | `$1`+ joined | Step Q — [step-procedures.md](./references/step-procedures.md#step-q-quick-mode) |
+| `progress` | — | Step P — [step-procedures.md](./references/step-procedures.md#step-p-progress-report) |
+| `resume` | `$1`+ joined (optional title or `#N`) | Step R — [step-procedures.md](./references/step-procedures.md#step-r-resume-report) |
+| `close` | `$1`+ joined (title, `#N`, number, or URL) | Step 9 (close path — dismiss without completion) |
+| `resolve` | `$1`+ joined (title, `#N`, number, or URL) | Step 9 (resolve path — mark completed with evidence) |
+| `setup-github` | — | [github-integration.md](./references/github-integration.md#setup-github-command) |
+| (any other) | `$ARGUMENTS` | Title substring → Step 1 (interactive mode) |
 
-**AUTO_MODE** — when set, all `AskUserQuestion` calls are replaced with evidence-derived decisions. See [auto-mode.md](./references/auto-mode.md) for the substitution table.
+**AUTO_MODE** — set when `$0` is `--auto`. All `AskUserQuestion` calls are replaced with evidence-derived decisions. See [auto-mode.md](./references/auto-mode.md) for the substitution table.
 
 ### Step 0: Interactive Browser (no arguments only)
 
@@ -232,7 +239,17 @@ Call the `mcp__backlog__backlog_update` tool to add the Plan:
 
 If the item has `**Issue**: #N`, record it in the plan file header comment and include `Fixes #N` in any commit message produced during implementation.
 
-### Step 8: Report Next Steps
+### Step 8: Simplify
+
+Run the simplify skill to review files changed during this session for reuse, quality, and efficiency:
+
+```text
+Skill(skill: "simplify")
+```
+
+This reviews any files modified during this session and fixes issues found.
+
+### Step 8.5: Report Next Steps
 
 ```text
 Backlog item "{title}" is now planned.
