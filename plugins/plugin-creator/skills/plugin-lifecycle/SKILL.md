@@ -52,7 +52,8 @@ flowchart TD
 
     %% New path: Discussion gate — file must exist before Research
     Discuss --> DiscussGate{"File .claude/plan/NAME/discuss-CONTEXT.md<br>exists and is non-empty?"}
-    DiscussGate -->|"Yes — preferences captured"| Research["Phase 2 — Research"]
+    DiscussGate -->|"Yes — preferences captured"| Mission["Phase 0.6 — Draft Mission Statement"]
+    Mission --> Research["Phase 2 — Research"]
     DiscussGate -->|"No — file absent or empty"| Discuss
 
     %% Existing path: Assess then validator
@@ -124,6 +125,8 @@ All work artifacts are stored in `.claude/plan/{plugin-name}/`:
 ├── validation-REPORT.md      # Phase 7 output
 └── SUMMARY.md                # Completion record
 ```
+
+`{plugin-path}/mission.json` — Phase 0.6 output — plugin mission statement with `status: "draft"` (new path); created by `mission-statement` skill at the plugin root (not inside `.claude/plan/`).
 
 Before starting any phase, read `STATE.md` if it exists to determine current progress. After completing each phase, update `STATE.md` with the phase completed and any decisions made.
 
@@ -247,6 +250,30 @@ flowchart TD
     AssessFile -->|"Yes — assessment written"| ValidatorGate{"Run: uv run plugins/plugin-creator/scripts/plugin_validator.py PATH<br>Exit code?"}
     ValidatorGate -->|"0 — no validation errors"| Skip["Proceed to Phase 6 — Optimize"]
     ValidatorGate -->|"non-zero — errors found"| Next["Proceed to Phase 5 — Debug"]
+```
+
+---
+
+## Phase 0.6: Mission Statement Draft (New Plugin Only)
+
+Entry condition: Discussion phase completed and discuss-CONTEXT.md written.
+
+Before research begins, draft an initial mission statement for the plugin. This anchors all subsequent phases to the plugin's purpose and values and creates a backlog interview task for async human refinement.
+
+1. Task is mission statement drafting with Skill(skill="plugin-creator:mission-statement")
+   Context to include in the prompt: plugin concept from `$1`, path to discuss-CONTEXT.md
+   Output: `{plugin-path}/mission.json` with `status: "draft"` — a GitHub backlog interview task is created automatically by the skill
+
+The mission statement is never a blocker. Research and all subsequent phases proceed without waiting for the interview. The `[draft]` status on `mission.json` signals this is a hypothesis, not a decision.
+
+The following diagram is the authoritative procedure for Phase 0.6 completion gate.
+
+```mermaid
+flowchart TD
+    Q{"File {plugin-path}/mission.json<br>exists and status field is present?"}
+    Q -->|"Yes — draft mission written"| Next["Proceed to Phase 2 — Research"]
+    Q -->|"No — mission.json absent"| Retry["Re-run mission-statement skill<br>with plugin concept and discuss-CONTEXT.md path"]
+    Retry --> Q
 ```
 
 ---
