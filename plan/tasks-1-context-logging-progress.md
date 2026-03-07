@@ -132,6 +132,42 @@ T2 (test task) must verify:
 - **Test files**: Likely in `.claude/skills/backlog/backlog_core/tests/` (agent should search for existing test files)
 - **Reference**: `.claude/worktrees/fastmcp/docs/servers/context.mdx` (Context API, type-hint injection pattern, async semantics)
 
+### Discovered During Implementation
+
+_Session Date: 2026-03-06_
+
+During implementation, we discovered that Python syntax prevents placing `ctx: Context` as the final parameter when preceding parameters have defaults. The architect spec prescribed appending `ctx: Context` after all existing parameters (e.g., after `dry_run=False`), but Python forbids a non-default parameter following a default parameter. The implementing agent placed `ctx: Context` first in each signature instead. FastMCP auto-injects `ctx` regardless of position, so the runtime behavior and MCP schema are identical to what the spec intended.
+
+The test infrastructure discovery is also noteworthy: T2 used FastMCP's built-in `Client` test harness rather than `unittest.mock.AsyncMock`. The test file `tests/test_backlog_core_server.py` contains 21 new ctx-specific tests (covering all 4 tools: start log, completion log, dry-run variants, warning surfacing) using FastMCP's client pattern, not direct function calls with mocked ctx. This means the context manifest's note about "mock or test Context object" was technically correct in intent but the actual mechanism was the FastMCP Client — future test authors should search the test file for the client setup pattern before writing new ctx tests.
+
+Two pre-existing test files received minor parameter-name fixes for API drift unrelated to this feature: `test_live_validation.py` and `test_scenarios.py` had stale parameter names (`checklist_pass` → `reason`, `reason` → `summary`). These were fixed as part of T2 to restore a passing baseline, not as part of the ctx feature itself.
+
+**Key Discoveries:**
+
+1. **ctx parameter position constraint**: Python syntax requires `ctx: Context` (a non-default parameter) to appear BEFORE any defaulted parameters. The architect spec's placement (after `dry_run=False`, etc.) is syntactically invalid. Actual position: first parameter in each function. FastMCP injection is position-independent, so behavior is unchanged.
+
+2. **FastMCP Client test pattern**: The recommended test mechanism for ctx calls is FastMCP's `Client` harness, not `AsyncMock`. The test file `tests/test_backlog_core_server.py` demonstrates this pattern for all 4 tools. Use it as the reference for future ctx test additions.
+
+3. **Pre-existing test API drift**: `test_live_validation.py` and `test_scenarios.py` had stale parameter names (`checklist_pass`, `reason`) that were silently wrong before this session. Fixed in T2 as baseline restoration. Future test sessions should run the full suite before adding new tests to catch similar drift early.
+
+4. **report_progress omitted entirely**: The original feature request (and feature-context Goals section) specified `ctx.report_progress(i, total)` for batch operations. The architect spec determined this is not achievable without refactoring `operations.py` (item totals are computed inside operation helpers, not accessible from `server.py`). The implementation delivers only `ctx.info` start/completion logs and `ctx.warning` surfacing — no progress fractions. This is the resolved design-refinement documented in the architect spec's `report_progress Decision` section.
+
+5. **Documentation approach — prose over parameter tables**: SKILL.md and README.md describe progress behavior via prose paragraphs and inline `# Progress:` comments in code examples. The `ctx` parameter is framed as framework-injected, not caller-supplied, so it does not appear in parameter tables. Future doc authors should follow this convention: framework-injected parameters belong in a "How it works" prose section, not in the parameter reference table.
+
+#### Updated Technical Details
+
+- Correct `ctx: Context` position: FIRST parameter in each async function signature, before all defaulted parameters
+- FastMCP test pattern: use `from fastmcp import Client` and `async with Client(mcp) as client: result = await client.call_tool(...)` — ctx is auto-injected by the test client, no manual mock needed
+- `report_progress` is deferred to a future ticket requiring `operations.py` refactoring; the future insertion targets are documented in `plan/architect-context-logging-progress.md` under "report_progress Decision"
+- Pre-existing parameter drift in test files: `checklist_pass` → `reason`, `reason` → `summary` (fixed in T2 baseline pass)
+
+#### Gotchas for Future Developers
+
+- Never place `ctx: Context` after any defaulted parameter in a FastMCP tool signature — Python will raise `SyntaxError: parameter without a default cannot follow parameter with a default`. Always put it first.
+- FastMCP excludes `ctx` from the MCP schema regardless of its position — callers never supply it, position only matters for Python syntax.
+- Run the full test suite (`uv run pytest tests/ -k backlog -v`) before adding new ctx tests to catch pre-existing drift. The baseline was restored in T2 but future drift is possible.
+- `ctx.report_progress` requires item totals computed before iteration begins. For `backlog_sync`, `backlog_pull`, and `backlog_normalize`, totals are only known inside `operations.py` helpers. Server-layer progress fractions require either a progress-callback parameter in each operation helper or moving iteration into `server.py`.
+
 ---
 
 ## Dependency Graph

@@ -293,3 +293,41 @@ After questions are resolved:
 2. Finalize Goals section based on Q1 resolution (scope of operations.py changes)
 3. Proceed to RT-ICA assessment
 4. Then proceed to architecture design with `@python3-development:python-cli-design-spec`
+
+---
+
+## Post-Implementation Annotations
+
+_Added by context-refinement agent on 2026-03-06_
+
+### Design Refinements
+
+1. **Q1 resolved — ctx stays in server.py only (Option A)**: The architect spec chose Option A: `ctx` calls remain entirely within the 4 `server.py` tool wrappers. `operations.py` is unchanged. Log messages are phase-level only ("Starting backlog sync", "Sync complete: N issue(s) created, M item(s) pushed"). Per-item messages require future operations.py refactoring.
+   - Original: Q1 marked "Resolution: _pending_"
+   - Actual: Option A implemented; `operations.py` has zero ctx-related changes
+   - Recorded in: plan/architect-context-logging-progress.md, "report_progress Decision" section
+
+2. **Q2 resolved — backlog_groom gets ctx.info milestones only, no report_progress**: The feature request listed `backlog_groom` alongside batch tools. The architect spec and implementation treat it as single-item (no progress fraction). Only `ctx.info` start and completion logs are emitted.
+   - Original: Q2 marked "Resolution: _pending_"
+   - Actual: Option A implemented (ctx.info milestones only, no progress fraction)
+   - Recorded in: plan/tasks-1-context-logging-progress.md, T1 task spec
+
+3. **Q3 resolved — phase-level only (Option B)**: No per-item `ctx.info` messages. Each tool emits exactly one start log and one completion summary. For a 50-item sync, only 2 info messages are emitted (not 50).
+   - Original: Q3 marked "Resolution: _pending_"
+   - Actual: Option B implemented across all 4 tools
+   - Recorded in: plan/architect-context-logging-progress.md, per-tool ctx call specifications
+
+4. **Q4 resolved — both channels preserved (Option A)**: `ctx.warning` and `out.warnings` both carry the same warnings. Callers parsing the return dict `warnings` field are unaffected.
+   - Original: Q4 marked "Resolution: _pending_"
+   - Actual: Option A implemented; warning surfacing loop (`for w in out.warnings: await ctx.warning(w)`) added to all 4 tools
+   - Recorded in: plan/architect-context-logging-progress.md, "Warning Surfacing Contract" section
+
+5. **Q5 resolved — single-item backlog_pull gets ctx.info milestones only**: The single-item branch of `backlog_pull` (when selector is provided) gets `ctx.info("Pulling issue: {selector}")` start log and `ctx.info("Pulled: {file_path}")` completion log. No `report_progress` on either branch.
+   - Original: Q5 marked "Resolution: _pending_"
+   - Actual: Option A implemented (ctx.info for single-item path; ctx.info start+completion for bulk path with no report_progress on either)
+   - Recorded in: plan/architect-context-logging-progress.md, backlog_pull ctx call specification
+
+6. **ctx.report_progress not delivered — scope boundary from original request not achievable at server.py layer**: The original feature request (Goals section, item 4) specifies `ctx.report_progress(i, total)` for batch operations. The architect spec determined this requires operations.py refactoring and deferred it. The implementation contains zero `ctx.report_progress` calls. This is a scope reduction relative to the original request's Goals, resolved at architecture phase.
+   - Original: Goal 4 — "Emit `ctx.report_progress(i, total)` for batch operations where the total item count is known before iteration begins"
+   - Actual: Not implemented; deferred to future ticket targeting operations.py loop refactoring
+   - Recorded in: plan/architect-context-logging-progress.md, "report_progress Decision" section; plan/tasks-1-context-logging-progress.md, Discovered During Implementation

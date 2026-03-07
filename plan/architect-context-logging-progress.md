@@ -376,3 +376,26 @@ Those four loops are the insertion targets when per-item progress is added.
   injects automatically, parameter excluded from MCP schema
 - `ctx.info` / `ctx.warning`: context.mdx lines 133-138
 - `ctx.report_progress`: context.mdx lines 172-176 — `await ctx.report_progress(progress=N, total=M)`
+
+---
+
+## Post-Implementation Annotations
+
+_Added by context-refinement agent on 2026-03-06_
+
+### Design Refinements
+
+1. **ctx parameter position — first instead of last**: The "Signature Changes" section in this spec appends `ctx: Context` after all existing parameters (after defaulted parameters like `dry_run=False`). Python syntax forbids a non-default parameter after a default parameter, producing `SyntaxError: parameter without a default cannot follow parameter with a default`. The implementation places `ctx: Context` as the FIRST parameter in each function. FastMCP injection is position-independent — the MCP schema and runtime behavior are identical to what this spec intended.
+   - Original: "`ctx` is appended after the existing parameters in each function" (Signature Changes section); code examples show `ctx: Context` as the last parameter
+   - Actual: `ctx: Context` appears as the first parameter in all 4 tool signatures (server.py lines 128, 309, 354, 382)
+   - Recorded in: plan/tasks-1-context-logging-progress.md, DN-1
+
+2. **report_progress not implemented — by design**: The Implementation Checklist and Scope table indicate `backlog_sync`, `backlog_pull`, and `backlog_normalize` get progress reporting ("YES" in the Progress column). This spec's `report_progress Decision` section correctly explains why it cannot be done without refactoring `operations.py`. The implementation delivers only `ctx.info` start/completion logs — no `ctx.report_progress` calls exist in any of the 4 tool bodies. The Scope table's "YES" entries for Progress are aspirational; the actual deliverable is phase-level info logging only.
+   - Original: Scope table marks `backlog_sync`, `backlog_pull`, `backlog_normalize` as Progress = YES
+   - Actual: No `ctx.report_progress` calls in implementation; only `ctx.info` and `ctx.warning`
+   - Recorded in: plan/tasks-1-context-logging-progress.md, T1 implementation
+
+3. **Test pattern — FastMCP Client harness instead of AsyncMock**: The Context Manifest (task file) noted that tests "may need a mock or test Context object." The implementation used FastMCP's built-in `Client` test harness (`from fastmcp import Client`), which auto-injects ctx the same way the production framework does. No `AsyncMock` or manual ctx construction was needed.
+   - Original: Context Manifest describes "mock or test Context object" as the expected mechanism
+   - Actual: FastMCP `Client` harness used; 21 ctx-specific tests in `tests/test_backlog_core_server.py`
+   - Recorded in: plan/tasks-1-context-logging-progress.md, Discovered During Implementation

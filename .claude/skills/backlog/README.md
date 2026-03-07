@@ -164,6 +164,11 @@ Error:   {"error": "<message>", "messages": [...], "warnings": [...]}
 Success: {<result fields>,      "messages": [...], "warnings": [...]}
 ```
 
+The tools `backlog_sync`, `backlog_groom`, `backlog_normalize`, and `backlog_pull` emit
+progress messages via the MCP context during execution. You will see status messages at the
+start and end of operations and warning messages for any issues encountered. These messages
+appear in the MCP client's progress stream and do not affect the return value.
+
 ### `backlog_add` — Create an item
 
 ```python
@@ -209,6 +214,7 @@ mcp__backlog__backlog_view(
 ```python
 mcp__backlog__backlog_sync(dry_run=False)
 # Returns: {created, pushed, messages, warnings}
+# Progress: emits ctx.info() at start/end; ctx.warning() for each warning
 ```
 
 ### `backlog_close` — Dismiss an item
@@ -271,6 +277,7 @@ mcp__backlog__backlog_groom(
     content="None.",
 )
 # Returns: {title, synced, messages, warnings}
+# Progress: emits ctx.info() at start/end; ctx.warning() for each warning
 ```
 
 ### `backlog_normalize` — Normalize all files
@@ -278,16 +285,24 @@ mcp__backlog__backlog_groom(
 ```python
 mcp__backlog__backlog_normalize(dry_run=True)  # preview first
 # Returns: {updated, messages, warnings}
+# Progress: emits ctx.info() at start/end; ctx.warning() for each warning
 ```
 
 ### `backlog_pull` — Pull from GitHub
 
 ```python
+# Pull a single item by selector
+mcp__backlog__backlog_pull(selector="#142")
+# Returns: {file_path, messages, warnings}
+# Progress: emits ctx.info() with item name; ctx.warning() for each warning
+
+# Bulk pull all items
 mcp__backlog__backlog_pull(
     dry_run=False,
     force=False,   # overwrite local even if local is newer/longer
 )
 # Returns: {pulled, messages, warnings}
+# Progress: emits ctx.info() at start/end; ctx.warning() for each warning
 ```
 
 ## GitHub Integration

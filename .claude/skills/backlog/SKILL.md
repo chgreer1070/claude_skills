@@ -68,6 +68,7 @@ Returns `{title, priority, issue, plan, file_path, body, groomed, messages, warn
 ### `backlog_sync`
 
 Sync backlog items with GitHub — create missing issues and push groomed content.
+Emits progress messages via MCP context during execution.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -139,6 +140,7 @@ Returns `{title, changes, messages, warnings}`.
 ### `backlog_groom`
 
 Write groomed content into a backlog item and sync to its GitHub issue.
+Emits progress messages via MCP context during execution.
 
 Provide either `groomed_content` (full replacement) or `section` + `content` (incremental).
 
@@ -156,7 +158,7 @@ Note — `--groomed-file` and stdin pipe patterns have no MCP equivalent. Provid
 ### `backlog_normalize`
 
 Normalize all per-item files to research-style metadata format and remove body duplication.
-One-off maintenance operation.
+One-off maintenance operation. Emits progress messages via MCP context during execution.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -168,14 +170,15 @@ Returns `{updated, dry_run?, messages, warnings}`.
 
 Pull issue body content from GitHub into local per-item files. Auto-migrates P0/P1 items
 lacking GitHub Issues by creating them. Merges by section, keeping the longer version unless
-`force=True`.
+`force=True`. Emits progress messages via MCP context during execution.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
+| `selector` | `str \| None` | `None` | Pull a single item: title substring, `#N`, bare number, or GitHub issue URL |
 | `dry_run` | `bool` | `False` | Preview changes without modifying local files |
 | `force` | `bool` | `False` | Overwrite local content even if local version is newer or longer |
 
-Returns `{pulled, messages, warnings}`.
+Returns `{pulled, messages, warnings}` for bulk pull; `{file_path, messages, warnings}` for single-item pull.
 
 ## Return Value Contract
 
