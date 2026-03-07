@@ -918,7 +918,14 @@ def fetch_tasks_from_github(parent_issue_number: int, feature_slug: str, cache_p
     tasks = []
     for si in sub_issues:
         try:
-            # SubIssue inherits from Issue — .body is directly accessible.
+            # si.body is reliable: SubIssue extends Issue directly in PyGitHub
+            # (class SubIssue(Issue) in github/Issue.py). Issue.body calls
+            # _completeIfNotSet(self._body), which lazy-fetches the full issue
+            # body via the GitHub REST API on first access if not already
+            # populated. No roundtrip via repo.get_issue(si.number).body is
+            # needed — that would double the API calls unnecessarily.
+            # SOURCE: .venv/lib/python3.11/site-packages/github/Issue.py
+            # lines 822-861 and 196-198, verified 2026-03-07.
             body = si.body or ""
             sam = _parsing.parse_sam_task_metadata(body)
             if sam is None:

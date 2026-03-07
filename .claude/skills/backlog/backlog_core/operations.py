@@ -1578,6 +1578,20 @@ def _sub_issues_to_task_dicts(sub_issues: list[SubIssue]) -> list[dict[str, obje
 
     Returns:
         List of task dicts with GitHub issue fields and SAM metadata merged.
+
+    Note:
+        ``SubIssue`` extends ``Issue`` directly (``class SubIssue(Issue)`` in
+        ``github/Issue.py``). The ``body`` property is inherited from ``Issue``
+        and calls ``_completeIfNotSet(self._body)``, which lazy-fetches the full
+        issue via the GitHub REST API if the attribute was not populated in the
+        initial paginated response. Accessing ``si.body`` is therefore always
+        reliable — the PyGitHub lazy-completion mechanism ensures the value is
+        fetched on first access. A roundtrip via ``repo.get_issue(si.number).body``
+        is unnecessary and would double the number of API calls.
+
+        SOURCE: Verified against installed PyGitHub source at
+        ``.venv/lib/python3.11/site-packages/github/Issue.py`` (lines 822-861,
+        196-198) on 2026-03-07.
     """
     tasks: list[dict[str, object]] = []
     for si in sub_issues:
