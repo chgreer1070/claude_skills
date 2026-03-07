@@ -68,8 +68,32 @@ __all__ = [
     "has_yaml_frontmatter",
     "normalize_status",
     "parse_yaml_frontmatter",
+    "resolve_task_id",
     "update_yaml_field",
 ]
+
+# =============================================================================
+# Task Identity Resolution
+# =============================================================================
+
+
+# COMPAT(issue=#497, remove_when="all task files migrated to task_id: field", added=2026-03-07)
+def resolve_task_id(fm: dict[str, Any]) -> str | None:
+    """Resolve task identity field from YAML frontmatter.
+
+    Supports both canonical ``task_id:`` and deprecated ``task:`` field names.
+    The ``task:`` fallback exists for backward compatibility with task files
+    created before the task_id: standard was established (ADR-010).
+
+    Args:
+        fm: Parsed YAML frontmatter dict.
+
+    Returns:
+        Task ID string if found, None if neither field is present.
+    """
+    raw = fm.get("task") if "task" in fm else fm.get("task_id")
+    return str(raw) if raw is not None else None
+
 
 # =============================================================================
 # Frontmatter Detection and Parsing

@@ -27,11 +27,6 @@ BARE_TASK_GET_PATTERN = re.compile(
     r'(?!\s*if\s+"task"\s+in\s+fm\s+else\s+fm\.get\(["\']task_id["\']\))'
 )
 
-# Pattern to detect the full guarded form on the same line
-GUARDED_TASK_GET_PATTERN = re.compile(
-    r'fm\.get\(["\']task["\']\)\s*if\s+"task"\s+in\s+fm\s+else\s+fm\.get\(["\']task_id["\']\)'
-)
-
 
 def check_compat_annotation(line: str, file_path: str, line_number: int) -> str | None:
     """Validate a COMPAT annotation has all required fields.
@@ -87,10 +82,6 @@ def check_bare_task_get(line: str, file_path: str, line_number: int, *, in_docst
             has_code_match = True
             break
     if not has_code_match:
-        return None
-
-    # Skip lines that contain the full guarded pattern
-    if GUARDED_TASK_GET_PATTERN.search(line):
         return None
 
     if BARE_TASK_GET_PATTERN.search(line):

@@ -46,6 +46,7 @@ from task_format import (
     has_yaml_frontmatter,
     normalize_status,
     parse_yaml_frontmatter,
+    resolve_task_id,
     update_yaml_field,
 )
 
@@ -1232,9 +1233,7 @@ def _find_task_section_in_file(content: str, task_id: str) -> tuple[int, int] | 
             if has_yaml_frontmatter(candidate_content):
                 try:
                     fm, _ = parse_yaml_frontmatter(candidate_content)
-                    # COMPAT(issue=#497, remove_when="all task files migrated to task_id: field", added=2026-03-07)
-                    raw_task_id = fm.get("task") if "task" in fm else fm.get("task_id")
-                    if raw_task_id is not None and str(raw_task_id) == task_id:
+                    if resolve_task_id(fm) == task_id:
                         return (part_start, part_end)
                 except (ValueError, TypeError):
                     pass
@@ -1300,9 +1299,7 @@ def _try_claim_part(part: str, task_id: str, timestamp: str) -> str | None:
         fm, _ = parse_yaml_frontmatter(candidate)
     except (ValueError, TypeError):
         return None
-    # COMPAT(issue=#497, remove_when="all task files migrated to task_id: field", added=2026-03-07)
-    raw_task_id = fm.get("task") if "task" in fm else fm.get("task_id")
-    if raw_task_id is None or str(raw_task_id) != task_id:
+    if resolve_task_id(fm) != task_id:
         return None
     updated = update_yaml_field(candidate, "status", "in-progress")
     if fm.get("started") is None:

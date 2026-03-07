@@ -41,6 +41,8 @@ import typer
 from rich.console import Console
 from ruamel.yaml import YAML
 
+from task_format import resolve_task_id
+
 if TYPE_CHECKING:
     from github.Issue import Issue
     from github.Repository import Repository
@@ -54,6 +56,10 @@ if TYPE_CHECKING:
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parents[2]
 _BACKLOG_CORE = _PROJECT_ROOT / ".claude" / "skills" / "backlog" / "backlog_core"
+
+_TASK_FORMAT_DIR = _SCRIPT_DIR.parent / "skills" / "implementation-manager" / "scripts"
+if _TASK_FORMAT_DIR.exists():
+    sys.path.insert(0, str(_TASK_FORMAT_DIR))
 
 if _BACKLOG_CORE.exists():
     sys.path.insert(0, str(_BACKLOG_CORE.parent))
@@ -166,8 +172,7 @@ def _parse_task_from_block(segment: str, file_path: Path, raw_content: str) -> T
     if not fm:
         return None
 
-    # COMPAT(issue=#497, remove_when="all task files migrated to task_id: field", added=2026-03-07)
-    task_id = str(fm.get("task") if "task" in fm else fm.get("task_id") or "")
+    task_id = str(resolve_task_id(fm) or "")
     title = str(fm.get("title") or "")
     status = str(fm.get("status") or "not-started")
     if not task_id or not title:

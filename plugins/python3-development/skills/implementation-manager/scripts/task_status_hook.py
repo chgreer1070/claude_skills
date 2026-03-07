@@ -31,7 +31,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from task_format import has_yaml_frontmatter, normalize_status, parse_yaml_frontmatter, update_yaml_field
+from task_format import (
+    has_yaml_frontmatter,
+    normalize_status,
+    parse_yaml_frontmatter,
+    resolve_task_id,
+    update_yaml_field,
+)
 
 # Conditionally add backlog_core to sys.path for GitHub sync.
 # The hook script lives at:
@@ -230,7 +236,8 @@ def _find_yaml_task_file(directory: Path, task_id: str) -> Path | None:
             frontmatter, _ = parse_yaml_frontmatter(file_content)
         except (ValueError, TypeError):
             continue
-        if str(frontmatter.get("task", "")) == task_id:
+        # COMPAT(issue=#497, remove_when="all task files migrated to task_id: field", added=2026-03-07)
+        if (resolve_task_id(frontmatter) or "") == task_id:
             return md_file
     return None
 
@@ -255,7 +262,8 @@ def find_task_section(content: str, task_id: str) -> tuple[int, int] | None:
         except (ValueError, TypeError):
             return None
         # For individual task files the entire file IS the task
-        if str(frontmatter.get("task", "")) == task_id:
+        # COMPAT(issue=#497, remove_when="all task files migrated to task_id: field", added=2026-03-07)
+        if (resolve_task_id(frontmatter) or "") == task_id:
             lines = content.split("\n")
             return 0, len(lines)
         return None
