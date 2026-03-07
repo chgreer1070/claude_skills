@@ -359,18 +359,18 @@ max-complexity = 12
 ]
 "**/skill-creator/scripts/utils.py" = ["ANN", "D", "DOC"]
 "**/tests/**" = [
-    "ANN",   # Type annotations optional for test fixtures/methods
-    "ASYNC", # Blocking I/O (pathlib) in async test methods is acceptable at test scale
-    "D",     # Docstring requirements relaxed for tests
-    "DOC",   # Docstring content requirements relaxed
-    "E501",  # Line length relaxed for test data
-    "EXE",   # Shebang executable check skipped for PEP723 test files
-    "N",     # camelCase in test names acceptable when testing API fields
-    "PLC",   # Local imports acceptable in test helpers
-    "PLR",   # Testing private methods is valid test pattern
-    "S",     # Security checks not needed in tests
-    "SLF",   # Private name imports acceptable for testing internals
-    "T",     # print() statements are intentional for CI output visibility
+    "ANN",      # Type annotations optional for test fixtures/methods
+    "ASYNC240", # Blocking pathlib I/O in async test methods is acceptable at test scale
+    "D",        # Docstring requirements relaxed for tests
+    "DOC",      # Docstring content requirements relaxed
+    "E501",     # Line length relaxed for test data
+    "EXE",      # Shebang executable check skipped for PEP723 test files
+    "N",        # camelCase in test names acceptable when testing API fields
+    "PLC",      # Local imports acceptable in test helpers
+    "PLR",      # Testing private methods is valid test pattern
+    "S",        # Security checks not needed in tests
+    "SLF",      # Private name imports acceptable for testing internals
+    "T",        # print() statements are intentional for CI output visibility
 ]
 # Lazy import for optional duckdb dependency in _write_duckdb
 "plugins/agentskill-kaizen/scripts/sentiment-score.py" = ["PLC0415"]
