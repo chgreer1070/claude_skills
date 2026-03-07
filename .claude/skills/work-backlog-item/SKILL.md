@@ -59,7 +59,15 @@ All interactive `AskUserQuestion` calls are replaced with evidence-derived decis
 
 ### Routing (evaluated first, before any step)
 
-Dispatch is determined by `$0` as listed in the Arguments table above. See each step below for the full procedure triggered by each mode.
+Dispatch is determined by `$0` as listed in the Arguments table above. Modes with procedures in reference files:
+
+| Mode | Procedure |
+|------|-----------|
+| `--quick {title}` | [step-procedures.md — Step Q](./references/step-procedures.md#step-q-quick-mode) |
+| `progress` | [step-procedures.md — Step P](./references/step-procedures.md#step-p-progress-report) |
+| `resume [{title}]` | [step-procedures.md — Step R](./references/step-procedures.md#step-r-resume-report) |
+| `close` / `resolve` | [close-resolve-procedure.md](./references/close-resolve-procedure.md) |
+| `setup-github` | [github-integration.md — setup-github](./references/github-integration.md#setup-github-command) |
 
 **AUTO_MODE** — when set, all `AskUserQuestion` calls are replaced with evidence-derived decisions. See [auto-mode.md](./references/auto-mode.md) for the substitution table.
 

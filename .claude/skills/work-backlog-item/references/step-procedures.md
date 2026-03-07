@@ -66,7 +66,7 @@ Before planning work, verify the described feature/fix hasn't already been imple
    git log --oneline --all -30 --merges --grep="{keyword from title}"
    ```
 
-3. **Spot-check the codebase** — read the file(s) at the suggested location and verify whether the described behavior already exists.
+2. **Spot-check the codebase** — read the file(s) at the suggested location and verify whether the described behavior already exists.
 
 If evidence shows the work is already done:
 
