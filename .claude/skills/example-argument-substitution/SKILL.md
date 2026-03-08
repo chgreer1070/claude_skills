@@ -7,41 +7,67 @@ user-invocable: true
 
 # Argument Substitution Pattern — Example Skill
 
-Arguments are captured once at the top into named tags. All routing and logic below references the tags, not the raw substitution variables.
+## How to Use This Skill
 
-<action>$0</action>
-<target>$1</target>
-<all_args>$ARGUMENTS</all_args>
+**Read this file before running it.** Then run it twice:
+
+1. With 0 arguments: `/example-argument-substitution`
+2. With 10 arguments: `/example-argument-substitution CANARY_A CANARY_B CANARY_C CANARY_D CANARY_E CANARY_F CANARY_G CANARY_H CANARY_I CANARY_J`
+
+Compare what you see in each run against the capture block below to understand exactly what gets substituted and what stays empty.
 
 ---
 
-## How This Works
+## Capture Block
 
-When this skill is invoked as `/example-argument-substitution greet world --loud`:
+Arguments are captured once at the top into named XML tags. Everything below references the tags.
 
-- first word → `greet` → captured as `<action>greet</action>`
-- second word → `world` → captured as `<target>world</target>`
-- all words → `greet world --loud` → captured as `<all_args>greet world --loud</all_args>`
+<arg0>$0</arg0>
+<arg1>$1</arg1>
+<arg2>$2</arg2>
+<arg3>$3</arg3>
+<arg4>$4</arg4>
+<arg5>$5</arg5>
+<arg6>$6</arg6>
+<arg7>$7</arg7>
+<arg8>$8</arg8>
+<arg9>$9</arg9>
+<all_args>$ARGUMENTS</all_args>
+<arg_by_index_0>$ARGUMENTS[0]</arg_by_index_0>
+<arg_by_index_1>$ARGUMENTS[1]</arg_by_index_1>
+<arg_by_index_2>$ARGUMENTS[2]</arg_by_index_2>
 
-Everything below uses `<action>`, `<target>`, and `<all_args>` — never the raw positional variables again.
+---
+
+## What the Capture Block Shows
+
+When invoked with 10 CANARY arguments, each tag above receives one value:
+
+- `<arg0>` = first argument (same as `$ARGUMENTS[0]`)
+- `<arg1>` = second argument (same as `$ARGUMENTS[1]`)
+- `<arg2>` through `<arg9>` = subsequent arguments
+- `<all_args>` = all arguments as a single string
+- `<arg_by_index_N>` = bracket-index form — verify it matches `<argN>`
+
+When invoked with 0 arguments, all tags render empty.
 
 See [./references/argument-substitution-reference.md](./references/argument-substitution-reference.md)
-for the full variable syntax — that file is NOT subject to substitution.
+for the complete variable reference — that file is NOT subject to substitution.
 
 ---
 
-## Routing
+## Routing (uses `<arg0>` as action)
 
-Dispatch based on `<action>`:
+Dispatch based on `<arg0>`:
 
 ```mermaid
 flowchart TD
-    Start(["Read <action>"]) --> Q{action value?}
-    Q -->|"greet"| Greet["Say hello to <target>"]
-    Q -->|"farewell"| Farewell["Say goodbye to <target>"]
-    Q -->|"inspect"| Inspect["Show all_args: <all_args>"]
-    Q -->|"(empty)"| Help["Output: /example-argument-substitution greet|farewell|inspect [target]"]
-    Q -->|"(anything else)"| Unknown["Output: Unknown action '<action>'. Valid: greet, farewell, inspect"]
+    Start(["Read <arg0>"]) --> Q{arg0 value?}
+    Q -->|"greet"| Greet["Say hello to <arg1>"]
+    Q -->|"farewell"| Farewell["Say goodbye to <arg1>"]
+    Q -->|"inspect"| Inspect["Show all captured values"]
+    Q -->|"(empty)"| Help["Output usage line"]
+    Q -->|"(anything else)"| Unknown["Output: Unknown action. Valid: greet, farewell, inspect"]
 ```
 
 ---
@@ -50,54 +76,52 @@ flowchart TD
 
 ### greet
 
-**Trigger:** `<action>` is `greet`
+**Trigger:** `<arg0>` is `greet`
 
 Output:
 
 ```text
-Hello, <target>!
+Hello, <arg1>!
 (invoked as: <all_args>)
 ```
 
-If `<target>` is empty, substitute `world`.
+If `<arg1>` is empty, substitute `world`.
 
 ### farewell
 
-**Trigger:** `<action>` is `farewell`
+**Trigger:** `<arg0>` is `farewell`
 
 Output:
 
 ```text
-Goodbye, <target>. It was a pleasure.
+Goodbye, <arg1>. It was a pleasure.
 (invoked as: <all_args>)
 ```
 
-If `<target>` is empty, substitute `friend`.
+If `<arg1>` is empty, substitute `friend`.
 
 ### inspect
 
-**Trigger:** `<action>` is `inspect`
+**Trigger:** `<arg0>` is `inspect`
 
-Show all substituted values:
+Output all captured values:
 
 ```text
-action   = <action>
-target   = <target>
-all_args = <all_args>
+arg0              = <arg0>
+arg1              = <arg1>
+arg2              = <arg2>
+arg3              = <arg3>
+arg4              = <arg4>
+arg5              = <arg5>
+arg6              = <arg6>
+arg7              = <arg7>
+arg8              = <arg8>
+arg9              = <arg9>
+all_args          = <all_args>
+arg_by_index_0    = <arg_by_index_0>
+arg_by_index_1    = <arg_by_index_1>
+arg_by_index_2    = <arg_by_index_2>
 ```
-
-Useful for debugging — run `/example-argument-substitution inspect` to see what the skill received.
-
----
-
-## Example Invocations
-
-| Command | `<action>` | `<target>` | `<all_args>` |
-|---------|-----------|-----------|-------------|
-| `/example-argument-substitution greet Alice` | `greet` | `Alice` | `greet Alice` |
-| `/example-argument-substitution farewell Bob` | `farewell` | `Bob` | `farewell Bob` |
-| `/example-argument-substitution inspect` | `inspect` | _(empty)_ | `inspect` |
-| `/example-argument-substitution` | _(empty)_ | _(empty)_ | _(empty)_ |
 
 ---
 
@@ -116,26 +140,19 @@ Practical uses: inject git branch, current directory, environment state.
 
 ## Code Block Pitfall: Positional Variables
 
-ALL bare positional variable forms (first word, second word, all-args, brace forms) are substituted
-in SKILL.md at load time — including inside fenced code blocks, in single-quoted strings, and in
-awk field references. There is no safe way to write the literal syntax of substitution variables
-inside SKILL.md without them being consumed.
+ALL positional variable forms are substituted at load time — including inside fenced code blocks,
+single-quoted strings, awk field references, and brace forms. There is no safe escape in SKILL.md.
 
-The broken patterns and the exhaustive pitfall table (including backslash escaping, which does NOT
-work, and language-specific naming like Perl's program-name variable) are documented in the
-reference file only — that file is not subject to substitution and can show the literal syntax
-safely.
+The full pitfall table (backslash escaping, brace form, single-quoted awk — all false-safe) is in
+the reference file, which is NOT subject to substitution:
 
-See [./references/argument-substitution-reference.md](./references/argument-substitution-reference.md)
-for the full pitfall table.
+[./references/argument-substitution-reference.md](./references/argument-substitution-reference.md)
 
 ---
 
 ## Argument Substitution Documentation
 
-For full documentation of the substitution syntax and the pre-declaration pattern — including why
-reference files can document these literals safely — see
-[./references/argument-substitution-reference.md](./references/argument-substitution-reference.md).
+For full documentation of all substitution variables, the pre-declaration pattern, and verified
+pitfall evidence, see:
 
-That file is loaded separately and is NOT subject to substitution at skill-load time, making
-it the correct place to explain the syntax to other skill authors.
+[./references/argument-substitution-reference.md](./references/argument-substitution-reference.md)
