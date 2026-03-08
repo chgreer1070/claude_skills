@@ -18,6 +18,7 @@ Update `Last verified` when re-running fetch-and-transform-hooks-docs.sh.
 | Cursor | <https://docs.cursor.com/context/rules> | Pending first run | Rules system, not hooks |
 | Windsurf | <https://docs.windsurf.com/windsurf/memories> | Pending first run | Memories system, not hooks |
 | Amp | <https://ampcode.com/docs> | Pending first run | Unverified |
+| OpenCode | <https://opencode.ai/docs/plugins.md> | Pending first run | Plugin system with async JS/TS hook functions — not a hooks.json system; see agent-plugin-ecosystem references for full coverage |
 
 ## Adding a new platform
 

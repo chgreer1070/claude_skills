@@ -3,9 +3,12 @@ name: find-cause
 description: Wrap investigation requests with evidence-chain discipline. Use when the user asks to find out why something happens, look into something, research a root cause, debug an issue, or investigate unexpected behavior. Transforms vague investigation requests into reproducible-proof investigations. Invoke with /find-cause <description of what to investigate>.
 argument-hint: <what to investigate>
 ---
+
+<investigation_request>$ARGUMENTS</investigation_request>
+
 # Find Cause
 
-Rewrite the user's investigation request using the evidence-chain protocol below, then execute it. The user's original request is in `$ARGUMENTS`.
+Rewrite the user's investigation request using the evidence-chain protocol below, then execute it. The user's original request is in `<investigation_request/>`.
 
 ## Evidence-Chain Protocol
 
@@ -53,7 +56,7 @@ This matrix informs which verification paths are fastest in Step 1.5 and which a
 
 ### Step 1 — Disambiguate the question and define success criteria
 
-Read the user's request in `$ARGUMENTS`. Perform two tasks:
+Read the user's request in `<investigation_request/>`. Perform two tasks:
 
 #### A. Formulate distinct interpretations
 

@@ -4,13 +4,15 @@ description: "Administer the backlog tooling ecosystem when a capability gap is 
 argument-hint: "<gap-description>"
 ---
 
+<gap_description>$ARGUMENTS</gap_description>
+
 # Backlog Tools Administrator
 
 Close capability gaps in the backlog tooling ecosystem instead of bypassing the backlog tools (MCP or CLI) with direct file edits or `gh` commands.
 
 ## Arguments
 
-`$ARGUMENTS` — free-text description of the capability gap. Example: `backlog.py update has no --title or --description flag`.
+`<gap_description/>` — free-text description of the capability gap. Example: `backlog.py update has no --title or --description flag`.
 
 ## When This Skill Activates
 
@@ -28,7 +30,7 @@ All files listed in [./references/domain-registry.md](./references/domain-regist
 
 ```mermaid
 flowchart TD
-    Start(["Gap reported: $ARGUMENTS"]) --> S1["Step 1 — Identify the gap"]
+    Start(["Gap reported: <gap_description/>"]) --> S1["Step 1 — Identify the gap"]
     S1 --> S2{"Step 2 — Classify gap type"}
     S2 -->|"Script — backlog.py missing<br>subcommand, flag, or behavior"| Script["Step 3A — Script fix"]
     S2 -->|"Process — CLAUDE.md rule,<br>skill workflow, or state machine<br>is incomplete or ambiguous"| Process["Step 3B — Process fix"]

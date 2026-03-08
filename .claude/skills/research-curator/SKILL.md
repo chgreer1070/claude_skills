@@ -4,6 +4,8 @@ description: 'Manage research entries in ./research/ — create, refresh, and va
 argument-hint: '[url] [--batch url1 url2 ...] [--rerun category/name|all] [--validate category/name|all]'
 ---
 
+<mode_args>$ARGUMENTS</mode_args>
+
 > [!IMPORTANT]
 > When provided a process map or Mermaid diagram, treat it as the authoritative procedure. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 > A Mermaid process diagram is an executable instruction set. Follow it exactly as written: respect sequence, conditions, loops, parallel paths, and terminal states. Do not improvise, reorder, or skip steps. If any node is ambiguous or missing required detail, pause and ask a clarifying question before continuing.
@@ -17,23 +19,23 @@ Orchestrate research entry creation, maintenance, and validation in `./research/
 
 ## Mode Routing
 
-Parse `$ARGUMENTS` to select operating mode. Optional `--layer 0|1|2` filters discovery by SDLC layer when used with knowledge-explorer or refresh-research.
+Parse `<mode_args/>` to select operating mode. Optional `--layer 0|1|2` filters discovery by SDLC layer when used with knowledge-explorer or refresh-research.
 
 The following diagram is the authoritative procedure for mode routing. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
 ```mermaid
 flowchart TD
-    Start(["Parse $ARGUMENTS"]) --> Q1{"Does $ARGUMENTS contain --batch?"}
-    Q1 -->|"Yes — batch flag present"| Q1Layer{"Does $ARGUMENTS also contain --layer 0, 1, or 2?"}
-    Q1 -->|"No — batch flag absent"| Q2{"Does $ARGUMENTS contain --rerun?"}
+    Start(["Parse <mode_args/>"]) --> Q1{"Does <mode_args/> contain --batch?"}
+    Q1 -->|"Yes — batch flag present"| Q1Layer{"Does <mode_args/> also contain --layer 0, 1, or 2?"}
+    Q1 -->|"No — batch flag absent"| Q2{"Does <mode_args/> contain --rerun?"}
     Q1Layer -->|"Yes — layer filter present"| BatchLayer(["Execute Batch Mode with layer filter applied"])
     Q1Layer -->|"No — no layer filter"| Batch(["Execute Batch Mode"])
-    Q2 -->|"Yes — rerun flag present"| Q2Layer{"Does $ARGUMENTS also contain --layer 0, 1, or 2?"}
-    Q2 -->|"No — rerun flag absent"| Q3{"Does $ARGUMENTS contain --validate?"}
+    Q2 -->|"Yes — rerun flag present"| Q2Layer{"Does <mode_args/> also contain --layer 0, 1, or 2?"}
+    Q2 -->|"No — rerun flag absent"| Q3{"Does <mode_args/> contain --validate?"}
     Q2Layer -->|"Yes — layer filter present"| RerunLayer(["Execute Rerun Mode with layer filter applied"])
     Q2Layer -->|"No — no layer filter"| Rerun(["Execute Rerun Mode"])
     Q3 -->|"Yes — validate flag present"| Validate(["Execute Validate Mode"])
-    Q3 -->|"No — no flags matched — $ARGUMENTS contains a URL only"| Default(["Execute Default Mode — single URL"])
+    Q3 -->|"No — no flags matched — <mode_args/> contains a URL only"| Default(["Execute Default Mode — single URL"])
 ```
 
 ---
@@ -100,11 +102,11 @@ Before reporting results to the user after any mode completes, verify:
 
 ## Default Mode -- Single URL
 
-Trigger: `$ARGUMENTS` contains a URL with no flags.
+Trigger: `<mode_args/>` contains a URL with no flags.
 
 ### Workflow
 
-1. **Parse** -- extract the URL from `$ARGUMENTS`
+1. **Parse** -- extract the URL from `<mode_args/>`
 2. **Spawn agent** -- invoke `@research-curator` via Agent tool with the URL
 
    ```text
@@ -149,7 +151,7 @@ Trigger: `$ARGUMENTS` contains a URL with no flags.
 
 ## Batch Mode
 
-Trigger: `$ARGUMENTS` contains `--batch`.
+Trigger: `<mode_args/>` contains `--batch`.
 
 Full workflow defined in [Batch Mode reference](./references/batch-mode.md). Summary below.
 
@@ -202,7 +204,7 @@ README updated: Yes
 
 ## Rerun Mode
 
-Trigger: `$ARGUMENTS` contains `--rerun`.
+Trigger: `<mode_args/>` contains `--rerun`.
 
 Re-research existing entries to refresh stale data.
 
@@ -260,7 +262,7 @@ flowchart TD
 
 ## Validate Mode
 
-Trigger: `$ARGUMENTS` contains `--validate`.
+Trigger: `<mode_args/>` contains `--validate`.
 
 Run structural validation and fix error-severity issues.
 

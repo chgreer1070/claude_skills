@@ -4,13 +4,16 @@ description: Configure pyproject.toml and Python packaging for distribution. Use
 argument-hint: '[project-path]'
 user-invocable: true
 ---
+
+<project_path>$ARGUMENTS</project_path>
+
 # Python Packaging Configuration
 
 The model configures modern Python packaging using pyproject.toml and PEP standards.
 
 ## Arguments
 
-$ARGUMENTS
+<project_path/>
 
 ## Instructions
 

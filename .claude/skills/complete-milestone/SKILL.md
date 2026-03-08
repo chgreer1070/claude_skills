@@ -4,6 +4,9 @@ description: "Close a completed GitHub milestone. Args: {milestone-number}. Audi
 argument-hint: '{milestone-number}'
 user-invocable: true
 ---
+
+<milestone_number>$ARGUMENTS</milestone_number>
+
 # Complete Milestone
 
 Verify completion state, handle stragglers, close the milestone, and generate a summary.
@@ -12,7 +15,7 @@ API references: [milestones.md](../gh/references/milestones.md) | [projects-v2.m
 
 ## Arguments
 
-`$ARGUMENTS` — milestone number (required).
+`<milestone_number/>` — milestone number (required).
 
 ```text
 /complete-milestone 3

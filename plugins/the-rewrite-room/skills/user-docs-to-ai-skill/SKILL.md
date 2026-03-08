@@ -5,19 +5,23 @@ allowed-tools: Read, Grep, Glob, Bash, Write, Edit, Task
 argument-hint: "<docs_path> <output_plugin> [output_skill]"
 ---
 
+<docs_path>$1</docs_path>
+<output_plugin>$2</output_plugin>
+<output_skill>$3</output_skill>
+
 # User Docs to AI Skill
 
 Converts human-readable documentation in any text or binary format into a Claude Code skill directory. Supports Markdown, PDF, DOCX, PPTX, XLSX, AsciiDoc, RST, HTML, Jupyter notebooks, man pages, config files, and plain text. Uses the MCP `file-reader` server for binary document formats. The output is consumed by Claude, not humans — every word must serve AI comprehension, not user readability.
 
 ## Inputs
 
-- `$1` (`docs_path`) — GitHub URL (e.g. `https://github.com/astral-sh/ty`) or local directory path containing documentation
-- `$2` (`output_plugin`) — name for the output plugin (e.g., `ty-skill`)
-- `$3` (`output_skill`) — (optional) name for the skill within the plugin; derived from project name when not provided
+- `<docs_path/>` — GitHub URL (e.g. `https://github.com/astral-sh/ty`) or local directory path containing documentation
+- `<output_plugin/>` — name for the output plugin (e.g., `ty-skill`)
+- `<output_skill/>` — (optional) name for the skill within the plugin; derived from project name when not provided
 
 ## Output Contract
 
-Creates `plugins/$2/skills/$3/` containing:
+Creates `plugins/<output_plugin/>/skills/<output_skill/>/` containing:
 
 - `SKILL.md` — valid frontmatter + AI-facing workflow instructions + links to all reference files
 - `references/` — thematically grouped knowledge files, each linked from SKILL.md
@@ -50,7 +54,7 @@ flowchart TD
     Q0 -->|Yes — delegate each to process-siren| WfDelegate["Task: subagent_type='process-siren:process-siren'<br>Output: resources/workflows/{slug}.md"]
     WfDelegate --> Classify[Classify remaining atoms into themes\nEach theme becomes one reference file]
     Classify --> Phase2[Phase 2 — Structure]
-    Phase2 --> Scaffold[Scaffold output directory\nplugins/$2/skills/$3/]
+    Phase2 --> Scaffold[Scaffold output directory\nplugins/<output_plugin/>/skills/<output_skill/>/]
     Scaffold --> Write[Phase 3 — Write]
     Write --> RefFiles[Write references/*.md files\nOne file per theme — see skill-structure-guide.md]
     RefFiles --> SkillMD[Write SKILL.md\nFrontmatter + workflow + links to all reference files]
@@ -139,7 +143,7 @@ Task: subagent_type="process-siren:process-siren"
 Context to include in the prompt:
   - The raw prose or atom text verbatim
   - What the workflow represents (1 sentence of context)
-  - Output file path: plugins/$2/skills/$3/resources/workflows/{slug}.md
+  - Output file path: plugins/<output_plugin/>/skills/<output_skill/>/resources/workflows/{slug}.md
 Output: resources/workflows/{slug}.md — validated Mermaid flowchart file
 ```
 

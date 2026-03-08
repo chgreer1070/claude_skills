@@ -4,6 +4,9 @@ description: Groom backlog items — trigger /groom-backlog-item <title|section|
 argument-hint: <item-title-or-section-or-all>
 user-invocable: true
 ---
+
+<groom_scope>$ARGUMENTS</groom_scope>
+
 # Groom Backlog Item
 
 Orchestrate autonomous backlog refinement: verify claims, clarify scope, estimate effort, map resources and dependencies, and clean stale items — making each item ready for the planning phase.
@@ -12,7 +15,7 @@ Orchestrate autonomous backlog refinement: verify claims, clarify scope, estimat
 
 ## Arguments
 
-`$ARGUMENTS` accepts:
+`<groom_scope/>` accepts:
 
 - **Title substring** — e.g., `Error Recovery` — grooms matching item (case-insensitive)
 - **Section** — `P0`, `P1`, `P2`, or `Ideas` — grooms all items in that section

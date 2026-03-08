@@ -4,13 +4,16 @@ description: Validate Python shebangs and PEP 723 inline script metadata. Use wh
 argument-hint: '[file-paths...]'
 user-invocable: true
 ---
+
+<file_paths>$ARGUMENTS</file_paths>
+
 # Python Shebang Validation
 
 The model validates Python shebangs against dependency requirements and ensures correct PEP 723 inline script metadata.
 
 ## Arguments
 
-$ARGUMENTS
+<file_paths/>
 
 ## Instructions
 

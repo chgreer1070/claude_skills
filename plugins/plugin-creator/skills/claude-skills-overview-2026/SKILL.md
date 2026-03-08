@@ -23,6 +23,8 @@ Bundled skills ship with Claude Code and are available in every session. Unlike 
 
 - **`/debug [description]`**: Troubleshoots your current Claude Code session by reading the session debug log. Optionally describe the issue to focus the analysis.
 
+- **`/loop [interval] <prompt>`**: Schedules a recurring prompt at an interval. See [Scheduled Tasks Reference](./resources/scheduled-tasks.md).
+
 Claude Code also includes a bundled developer platform skill that activates automatically when your code imports the Anthropic SDK.
 
 **Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Bundled skills")
@@ -327,7 +329,7 @@ Agent teams coordinate multiple independent Claude Code instances with inter-age
 
 Use agent teams when 3+ workers need to share findings, challenge each other, and coordinate independently. Use subagents when workers report back without needing cross-communication.
 
-For complete agent teams reference including architecture, display modes, lifecycle management, and use case patterns, see [Agent Teams Reference](./resources/agent-teams.md). For implementation-level API details (TeammateTool operations, message formats, spawn backends), activate the `/orchestrating-swarms` skill.
+For complete agent teams reference including architecture, display modes, lifecycle management, use case patterns, and quality gate hooks (`TeammateIdle`, `TaskCompleted`), see [Agent Teams Reference](./resources/agent-teams.md). For implementation-level API details (TeammateTool operations, message formats, spawn backends), activate the `/orchestrating-swarms` skill.
 
 **Source**: [Agent Teams Documentation](https://code.claude.com/docs/en/agent-teams.md) (accessed 2026-02-06)
 
@@ -566,6 +568,9 @@ Only runs when user types `/deploy-production`.
 - **[Claude Plugins Reference](../claude-plugins-reference-2026/SKILL.md)** — Plugin creation, distribution, and plugin.json schema.
 - **[Claude Hooks Reference](../hooks-guide/SKILL.md)** — Complete hook events, matchers, and configuration. Cross-platform coverage with Node.js CJS and Python guides.
 - **[Claude Code Skills Official](./resources/claude-code-skills-official.md)** — Authoritative specification from code.claude.com: frontmatter fields, discovery rules, invocation control, budget limits, and bundled skills.
+- **[Scheduled Tasks Reference](./resources/scheduled-tasks.md)** — CronCreate, CronList, CronDelete, /loop syntax, cron expressions, plugin integration patterns.
+- **[Output Styles Reference](./resources/output-styles.md)** — Custom output styles, plugin.json outputStyles field, comparison with CLAUDE.md and skills.
+- **[Agent Teams Reference](./resources/agent-teams.md)** — TeammateIdle/TaskCompleted hooks, team architecture, display modes, lifecycle.
 
 ## Sources
 

@@ -4,7 +4,7 @@ Agent teams coordinate multiple Claude Code instances working as a team. One ses
 
 **Status**: Experimental. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` in settings.json or environment.
 
-**Source**: [Agent Teams Documentation](https://code.claude.com/docs/en/agent-teams.md) (accessed 2026-02-06)
+**Source**: [Agent Teams Documentation](https://code.claude.com/docs/en/agent-teams.md) (accessed 2026-03-07)
 
 ---
 
@@ -181,6 +181,59 @@ Check in on progress, redirect approaches that are not working, synthesize findi
 
 ---
 
+## Quality Gates via Hooks
+
+Two hook events enforce quality on teammate work:
+
+### TeammateIdle
+
+Fires when a teammate is about to go idle. Exit with code 2 to send feedback and keep the teammate working.
+
+Configure in project-level settings.json:
+
+```json
+{
+  "hooks": {
+    "TeammateIdle": [
+      {
+        "matcher": "worker",
+        "hooks": [
+          { "type": "command", "command": "./scripts/validate-teammate-work.sh" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Use for: enforcing coding standards before a teammate stops, running tests before marking work complete, validating output quality.
+
+### TaskCompleted
+
+Fires when a task is being marked complete. Exit with code 2 to prevent completion and send feedback.
+
+```json
+{
+  "hooks": {
+    "TaskCompleted": [
+      {
+        "hooks": [
+          { "type": "command", "command": "./scripts/verify-task.sh" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Use for: preventing tasks from being marked done without passing tests, enforcing acceptance criteria checks, requiring documentation before task closure.
+
+Both hooks support matchers to target specific teammate names or task types. Exit code 2 blocks the action and sends stderr back to the teammate as feedback.
+
+SOURCE: <https://code.claude.com/docs/en/agent-teams.md> (accessed 2026-03-07) and <https://code.claude.com/docs/en/sub-agents.md> (accessed 2026-03-07)
+
+---
+
 ## Use Case Patterns
 
 ### Parallel Code Review
@@ -248,6 +301,7 @@ The orchestrator MUST account for these constraints when designing team workflow
 - **Fixed lead**: The session that creates the team remains lead for its lifetime. Design the lead's coordination role before spawning.
 - **Permissions at spawn**: All teammates start with lead's permission mode. Individual modes can be changed after spawning but not at spawn time.
 - **Split panes**: Require tmux or iTerm2. Not supported in VS Code terminal, Windows Terminal, or Ghostty.
+- **Hook-enforced quality gates**: Use `TeammateIdle` and `TaskCompleted` hooks to prevent teammates from stopping or marking tasks done without passing quality checks. Exit code 2 sends feedback back to the teammate.
 
 ---
 
@@ -266,4 +320,4 @@ The orchestrator MUST account for these constraints when designing team workflow
 - `/orchestrating-swarms` — Implementation-level reference with TeammateTool API, spawn backends, message formats, and complete code examples. Use when building team workflows.
 - `/summarizer:multi-source-synthesis` — Working example of team coordination in practice. The summarizer plugin uses teammates for parallel source summarization with cross-checking, then synthesis by the leader.
 
-**Source**: [Agent Teams Documentation](https://code.claude.com/docs/en/agent-teams.md) (accessed 2026-02-06)
+**Source**: [Agent Teams Documentation](https://code.claude.com/docs/en/agent-teams.md) (accessed 2026-03-07)

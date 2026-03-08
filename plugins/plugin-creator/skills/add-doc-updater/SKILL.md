@@ -5,6 +5,9 @@ argument-hint: <target-plugin-or-skill-path>
 model: sonnet
 user-invocable: true
 ---
+
+<skill_path>$ARGUMENTS</skill_path>
+
 > When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
 
 # Add Documentation Updater
@@ -44,7 +47,7 @@ flowchart TD
 
 **Step 1: Validate target path**
 
-Read the path from `$ARGUMENTS`:
+Read the path from `<skill_path/>`:
 - Verify directory exists and contains SKILL.md
 - If path missing or invalid, use AskUserQuestion to request correct path
 

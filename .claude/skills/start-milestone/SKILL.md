@@ -4,6 +4,9 @@ description: "Begin active work on a GitHub milestone. Args: {milestone-number}.
 argument-hint: '{milestone-number}'
 user-invocable: true
 ---
+
+<milestone_number>$ARGUMENTS</milestone_number>
+
 # Start Milestone
 
 Transition a milestone from planning to active: bulk-update labels and Project board status.
@@ -12,7 +15,7 @@ API references: [milestones.md](../gh/references/milestones.md) | [projects-v2.m
 
 ## Arguments
 
-`$ARGUMENTS` — milestone number (required).
+`<milestone_number/>` — milestone number (required).
 
 ```text
 /start-milestone 3

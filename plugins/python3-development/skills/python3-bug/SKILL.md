@@ -4,13 +4,16 @@ description: Debug functional issues in Python code using specs, logs, and obser
 argument-hint: <problem-description>
 user-invocable: true
 ---
+
+<problem_description>$ARGUMENTS</problem_description>
+
 # Python Functional Bug Investigation
 
 The model investigates functional bugs using specifications, logs, and observed behavior to scope the problem before implementing fixes.
 
 ## Arguments
 
-$ARGUMENTS
+<problem_description/>
 
 ## Instructions
 

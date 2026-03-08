@@ -4,13 +4,16 @@ description: TRIGGER — /refresh-research invoked or bulk research update reque
 argument-hint: '[--all | --stale | --category <name> | --layer <0|1|2> | --dry-run]'
 user-invocable: true
 ---
+
+<scope_args>$ARGUMENTS</scope_args>
+
 # Refresh Research
 
 Orchestrate parallel research-curator agents to bulk-refresh research entries in `./research/`. Detects staleness, skips fresh entries, updates only what qualifies. Safe to run repeatedly.
 
 ## Arguments
 
-`$ARGUMENTS` controls scope:
+`<scope_args/>` controls scope:
 
 - `--all` — Refresh every entry regardless of staleness
 - `--stale` (default) — Refresh entries past their review date

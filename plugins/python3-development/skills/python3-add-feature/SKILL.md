@@ -4,13 +4,16 @@ description: Guided workflow for adding new features to Python projects. Use whe
 argument-hint: <feature-description>
 user-invocable: true
 ---
+
+<feature_description>$ARGUMENTS</feature_description>
+
 # Python Feature Addition Workflow
 
 The model guides feature development through discovery, planning, implementation, and verification phases.
 
 ## Arguments
 
-$ARGUMENTS
+<feature_description/>
 
 ## Instructions
 

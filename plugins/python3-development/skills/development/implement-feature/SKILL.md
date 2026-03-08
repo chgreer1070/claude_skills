@@ -26,14 +26,14 @@ $ARGUMENTS
 
 Rules:
 
-- If `$ARGUMENTS` ends with `.md`, treat it as the task file path.
+- If `<feature_input/>` ends with `.md`, treat it as the task file path.
 - Otherwise, treat it as a feature slug (or partial slug) and resolve via `implementation_manager.py`.
 
 Example resolution:
 
 ```bash
 uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementation_manager.py" \
-  status "${CLAUDE_PROJECT_DIR}" "$ARGUMENTS"
+  status "${CLAUDE_PROJECT_DIR}" "<feature_input/>"
 ```
 
 ---
@@ -44,7 +44,7 @@ uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementati
 
 ```bash
 uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementation_manager.py" \
-  status "${CLAUDE_PROJECT_DIR}" "$ARGUMENTS"
+  status "${CLAUDE_PROJECT_DIR}" "<feature_input/>"
 ```
 
 2. If tasks remain, query ready tasks:
@@ -61,14 +61,14 @@ If parent issue number is unknown (or MCP unavailable), use CLI fallback:
 
 ```bash
 uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementation_manager.py" \
-  ready-tasks "${CLAUDE_PROJECT_DIR}" "$ARGUMENTS"
+  ready-tasks "${CLAUDE_PROJECT_DIR}" "<feature_input/>"
 ```
 
 With GitHub flag (when parent issue is known):
 
 ```bash
 uv run "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/implementation_manager.py" \
-  ready-tasks "${CLAUDE_PROJECT_DIR}" "$ARGUMENTS" --github --parent-issue N
+  ready-tasks "${CLAUDE_PROJECT_DIR}" "<feature_input/>" --github --parent-issue N
 ```
 
 3. For each ready task:

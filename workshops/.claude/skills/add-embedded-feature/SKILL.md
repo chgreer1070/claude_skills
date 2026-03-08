@@ -39,7 +39,7 @@ Delegate to `embedded-feature-researcher` to understand the feature request:
 <eg>
 Agent(agent="embedded-feature-researcher", prompt="Research this embedded feature request and produce plan/feature-context-{slug}.md:
 
-Feature: $ARGUMENTS
+Feature: <feature_request/>
 
 Focus on:
 - WHO: Which tasks/ISRs/clusters will interact with this

@@ -4,13 +4,16 @@ description: Integrate patterns from external sources (URLs or files) into local
 argument-hint: <url-or-file> [url-or-file...]
 user-invocable: true
 ---
+
+<source_refs>$ARGUMENTS</source_refs>
+
 # External Pattern Integrator
 
 Systematically analyze external agent/skill definitions and integrate their strengths into local skills while maintaining workflow coherence.
 
 ## Arguments
 
-$ARGUMENTS
+<source_refs/>
 
 ## Workflow Overview
 
@@ -66,7 +69,7 @@ Create a tracking file at `.claude/external-pattern-integration-{date}.md`:
 
 ### Step 1.2: Fetch External Sources
 
-For each URL/file in $ARGUMENTS:
+For each URL/file in <source_refs/>:
 
 **If URL**: Use WebFetch or curl to download to `/tmp/external-pattern-{slug}.md`
 **If local file**: Read directly

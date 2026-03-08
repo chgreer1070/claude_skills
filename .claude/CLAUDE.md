@@ -57,6 +57,7 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 - No planning in "Weeks" or "Sprints" — work scales with parallelism
 - Output contains "likely", "probably", or "I think" — STOP and verify before continuing
 - Pass file paths to agents — transcribing file contents into prompts bypasses agent verification
+- Do NOT discover file paths on behalf of agents — the agent has full tool access and an empty context window; it finds what it needs itself. Pre-discovering paths wastes orchestrator context and duplicates agent work.
 
 **Tool Usage:**
 

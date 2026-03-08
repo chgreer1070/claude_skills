@@ -4,13 +4,16 @@ description: Apply modern Python 3.11+ best practices with proper types, DRY, SR
 argument-hint: '[file-paths-or-topic]'
 user-invocable: true
 ---
+
+<modernization_targets>$ARGUMENTS</modernization_targets>
+
 # Python Modernization Guide
 
 The model applies modern Python 3.11+ patterns when writing or reviewing Python code.
 
 ## Arguments
 
-$ARGUMENTS
+<modernization_targets/>
 
 ## Instructions
 

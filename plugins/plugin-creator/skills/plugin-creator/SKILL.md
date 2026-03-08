@@ -591,6 +591,8 @@ my-plugin/
 
 **Source**: <https://code.claude.com/docs/en/plugins-reference.md#plugin-manifest-schema>
 
+> The `settings` field (inline `{"agent": "agent-name"}`) activates a plugin agent as the main thread, applying its system prompt and tool restrictions as the default behavior. SOURCE: <https://code.claude.com/docs/en/plugins.md> (accessed 2026-03-07)
+
 ### SKILL.md Frontmatter
 
 ```yaml

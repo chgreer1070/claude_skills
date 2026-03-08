@@ -18,7 +18,7 @@ $ARGUMENTS
 
 Rules:
 
-- If `$ARGUMENTS` ends with `.md`, treat it as the task file path
+- If `<feature_input/>` ends with `.md`, treat it as the task file path
 - Otherwise, search for `plan/tasks-*{slug}*.md`
 
 ```bash

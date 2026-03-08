@@ -4,6 +4,9 @@ description: Run the plugin validator on a skill, agent, or plugin directory rts
 argument-hint: <path-to-skill-or-plugin>
 user-invocable: true
 ---
-!`${CLAUDE_PLUGIN_ROOT}/scripts/plugin_validator.py $ARGUMENTS`
+
+<lint_target>$ARGUMENTS</lint_target>
+
+!`${CLAUDE_PLUGIN_ROOT}/scripts/plugin_validator.py <lint_target/>`
 
 @${CLAUDE_PLUGIN_ROOT}/references/ERROR_CODES.md

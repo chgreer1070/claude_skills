@@ -4,6 +4,9 @@ description: Start a complete plugin refactoring workflow that analyzes plugin s
 argument-hint: <plugin-path>
 user-invocable: true
 ---
+
+<plugin_path>$ARGUMENTS</plugin_path>
+
 > When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
 
 # Plugin Refactoring Workflow
@@ -12,7 +15,7 @@ Start a comprehensive plugin refactoring workflow for the specified plugin.
 
 ## Arguments
 
-- `$ARGUMENTS`: Path to the plugin directory to refactor (e.g., `./plugins/python3-development`)
+- `<plugin_path/>`: Path to the plugin directory to refactor (e.g., `./plugins/python3-development`)
 
 ## Workflow Overview
 
@@ -48,7 +51,7 @@ Check that the path contains a valid plugin:
 Invoke the assessor skill to analyze the plugin:
 
 ```text
-Skill(skill="plugin-creator:assessor", args="$ARGUMENTS")
+Skill(skill="plugin-creator:assessor", args="<plugin_path/>")
 ```
 
 This generates:
@@ -66,7 +69,7 @@ After assessment completes, display:
                     REFACTORING PLAN READY FOR REVIEW
 ================================================================================
 
-Plugin: $ARGUMENTS
+Plugin: <plugin_path/>
 Assessment Score: [X/100]
 
 Plan Files Created:

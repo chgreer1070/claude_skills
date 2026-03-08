@@ -4,13 +4,16 @@ description: Comprehensive Python code review checking patterns, types, security
 argument-hint: <file-paths-or-module>
 user-invocable: true
 ---
+
+<review_targets>$ARGUMENTS</review_targets>
+
 # Python Code Review
 
 The model performs comprehensive code review across multiple quality dimensions.
 
 ## Arguments
 
-$ARGUMENTS
+<review_targets/>
 
 ## Instructions
 

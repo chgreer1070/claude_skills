@@ -6,6 +6,8 @@ model: sonnet
 user-invocable: true
 ---
 
+<invocation_args>$ARGUMENTS</invocation_args>
+
 # Mission Statement
 
 ## What It Is (and Isn't)
@@ -137,7 +139,7 @@ Status becomes `"active"` when it correctly predicts at least 3 known decisions.
 
 ## Standalone Invocation
 
-Arguments: `$ARGUMENTS`
+Arguments: `<invocation_args/>`
 
 - `<plugin-path>` — Draft mission for an existing plugin. Read plugin files, draft `mission.json`, create backlog interview item.
 - `<plugin-path> --interview` — Conduct the interview synchronously in this session. Ask Q1-Q5, update `mission.json` from answers, move to validation.

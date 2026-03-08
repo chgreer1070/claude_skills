@@ -295,3 +295,93 @@ disable-model-invocation: true
 ## Extended Thinking
 
 Include "ultrathink" anywhere in skill content to enable extended thinking mode.
+
+---
+
+## Scheduled Tasks in Plugins
+
+Plugins can use Claude Code's scheduled task system to enable periodic work within a session.
+
+**Tools available**: `CronCreate`, `CronList`, `CronDelete`
+**Bundled skill**: `/loop` — schedules a recurring prompt
+
+**When to use in plugin design**:
+
+```mermaid
+flowchart TD
+    Q{What scheduling need?} --> A1{Survives session restart?}
+    A1 -->|Yes| Durable["Recommend GitHub Actions or<br>Desktop scheduled tasks"]
+    A1 -->|No — session only| Q2{Pattern?}
+    Q2 -->|Poll for status| Loop["Instruct user: /loop 5m /your-skill-name"]
+    Q2 -->|One-time reminder| OneShot["Natural language: 'remind me at 3pm'<br>Uses CronCreate internally"]
+    Q2 -->|Programmatic schedule| CronCreate["Use CronCreate in skill instructions<br>5-field cron expression"]
+```
+
+**CronCreate usage in skill instructions**:
+
+```yaml
+---
+description: Monitor deployment and notify when complete
+---
+
+Schedule a monitoring task:
+
+Use CronCreate with expression `*/5 * * * *` and prompt
+"Check if the deployment at $ARGUMENTS has completed and report status."
+
+The task will fire every 5 minutes. Use CronDelete with the returned
+task ID to cancel when deployment completes.
+```
+
+**Limitations to document in plugin README**:
+- Tasks are session-scoped — lost when Claude Code exits
+- Max 50 tasks per session
+- No catch-up for missed fires
+- All times in local timezone
+
+**Source**: <https://code.claude.com/docs/en/scheduled-tasks.md> (accessed 2026-03-07)
+
+---
+
+## Output Styles in Plugins
+
+Plugins can ship custom output styles via the `outputStyles` field in `plugin.json`.
+
+**What output styles do**: Modify Claude Code's system prompt to change how Claude responds — tone, format, behavior. Active for the entire session once selected.
+
+**plugin.json field**:
+
+```json
+{
+  "name": "my-plugin",
+  "outputStyles": ["./output-styles/my-style.md"]
+}
+```
+
+**Output style file format** (place in `output-styles/` directory at plugin root):
+
+```markdown
+---
+name: My Plugin Style
+description: Focused mode for [plugin purpose]
+keep-coding-instructions: false
+---
+
+# Style Instructions
+
+[Custom system prompt additions here]
+```
+
+**Frontmatter fields**:
+
+| Field | Purpose | Default |
+|-------|---------|---------|
+| `name` | Display name in /output-style menu | File name |
+| `description` | Shown in /output-style UI | None |
+| `keep-coding-instructions` | Preserve coding-related system prompt sections | false |
+
+**When to ship an output style vs a skill**:
+- Output style: changes persistent behavior (tone, format, role persona)
+- Skill: task-specific workflow invoked on demand
+
+**Source**: <https://code.claude.com/docs/en/output-styles.md> (accessed 2026-03-07)

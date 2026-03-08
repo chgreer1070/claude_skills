@@ -27,14 +27,14 @@ $ARGUMENTS
 
 Rules:
 
-- If `$ARGUMENTS` ends with `.md`, treat it as the task file path.
+- If `<feature_input/>` ends with `.md`, treat it as the task file path.
 - Otherwise, treat it as a feature slug (or partial slug) and resolve via `implementation_manager.py`.
 
 Example resolution:
 
 ```bash
 uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
-  status . "$ARGUMENTS"
+  status . "<feature_input/>"
 ```
 
 ---
@@ -45,7 +45,7 @@ uv run ./plugins/python3-development/skills/implementation-manager/scripts/imple
 
 ```bash
 uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
-  status . "$ARGUMENTS"
+  status . "<feature_input/>"
 ```
 
 2. If tasks remain, query ready tasks:
@@ -62,14 +62,14 @@ If parent issue number is unknown (or MCP unavailable), use CLI fallback:
 
 ```bash
 uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
-  ready-tasks . "$ARGUMENTS"
+  ready-tasks . "<feature_input/>"
 ```
 
 With GitHub flag (when parent issue is known):
 
 ```bash
 uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
-  ready-tasks . "$ARGUMENTS" --github --parent-issue N
+  ready-tasks . "<feature_input/>" --github --parent-issue N
 ```
 
 3. For each ready task:

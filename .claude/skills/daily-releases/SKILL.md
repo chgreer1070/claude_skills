@@ -3,13 +3,16 @@ name: daily-releases
 description: "Create GitHub Releases with AI-analyzed changelogs for every calendar day with commits on origin/main. Uses the same analyze → AI-categorize → format pipeline as /create-merge-request-changelog for rich, structured output. Idempotent: skips days that are already up to date, updates releases where new commits have been added. Automatically invoked when command is run; accepts optional --start-date, --end-date, --branch, --dry-run arguments."
 argument-hint: '[--start-date YYYY-MM-DD] [--end-date YYYY-MM-DD] [--branch BRANCH] [--dry-run]'
 ---
+
+<release_args>$ARGUMENTS</release_args>
+
 # Daily Releases
 
 Create GitHub Releases with AI-categorized changelogs for every day that had commits. Uses the same pipeline as `/create-merge-request-changelog` — real AI analysis, not template substitution.
 
 ## Automatic Invocation
 
-When this skill is activated, immediately begin processing without asking the user. Parse any arguments from `$ARGUMENTS`:
+When this skill is activated, immediately begin processing without asking the user. Parse any arguments from `<release_args/>`:
 
 ```text
 --start-date YYYY-MM-DD   Only process days on or after this date

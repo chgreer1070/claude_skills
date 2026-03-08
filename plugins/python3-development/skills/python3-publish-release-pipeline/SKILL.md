@@ -4,13 +4,16 @@ description: Set up CI/CD pipeline for Python package publishing to PyPI. Use wh
 argument-hint: '[github|gitlab]'
 user-invocable: true
 ---
+
+<pipeline_target>$ARGUMENTS</pipeline_target>
+
 # Python Release Pipeline Configuration
 
 The model configures CI/CD pipelines for automated Python package publishing.
 
 ## Arguments
 
-$ARGUMENTS
+<pipeline_target/>
 
 If no argument provided, detect from repository (look for `.github/` or `.gitlab-ci.yml`).
 

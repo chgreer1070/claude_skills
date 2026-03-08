@@ -4,19 +4,23 @@ description: "Use when capturing a new backlog item — creates a per-item file 
 argument-hint: '[quick {title} | --auto {title} | <empty for guided intake>]'
 user-invocable: true
 ---
+
+<mode>$0</mode>
+<item_title>$1</item_title>
+
 # Create Backlog Item
 
 Capture a new backlog item and create a per-item file in `.claude/backlog/`.
 
 ## Arguments
 
-`$0` selects the operating mode:
+`<mode/>` selects the operating mode:
 
-| `$0` value | Mode | Remaining args |
+| `<mode/>` value | Mode | Remaining args |
 |---|---|---|
 | (empty) | Guided intake via `AskUserQuestion` | — |
-| `quick` | Fast entry — skip title question | `$1`+ = title |
-| `--auto` | Fully autonomous — no interactive prompts | `$1`+ = title |
+| `quick` | Fast entry — skip title question | `<item_title/>`+ = title |
+| `--auto` | Fully autonomous — no interactive prompts | `<item_title/>`+ = title |
 
 ```text
 /create-backlog-item                                   # guided intake
@@ -28,14 +32,14 @@ Capture a new backlog item and create a per-item file in `.claude/backlog/`.
 
 ### Step 1: Collect Item Fields
 
-**If `$0` is `--auto`:**
+**If `<mode/>` is `--auto`:**
 
-Title = `$1` onward (all remaining words joined). Do not call `AskUserQuestion`. Instead:
+Title = `<item_title/>` onward (all remaining words joined). Do not call `AskUserQuestion`. Instead:
 
 1. Search `research/` recursively for any file whose name or content matches the title (case-insensitive). Read the best match.
 2. Search `.claude/backlog/` per-item files for related items to understand existing priority patterns.
 3. Derive all fields from the research file, task description, and available context:
-   - **Title**: from `$1` onward
+   - **Title**: from `<item_title/>` onward
    - **Priority**: infer from description urgency keywords (`critical`, `required`, `must` → P1; `nice to have`, `optional` → P2; default P1)
    - **Description**: summarize problem space and desired outcome from research file — do NOT include implementation steps, architecture ideas, or proposed solutions
    - **Source**: `"Agent task — auto-derived from research/{filename}"`
@@ -43,7 +47,7 @@ Title = `$1` onward (all remaining words joined). Do not call `AskUserQuestion`.
 4. Log every decision:
 
 ```text
-[AUTO] Title: {title} — from $1 onward
+[AUTO] Title: {title} — from <item_title/> onward
 [AUTO] Priority: P1 — inferred from description (no urgency keywords found, defaulting P1)
 [AUTO] Description: derived from research/skill-generation-tools/vercel-labs-skills.md
 [AUTO] Source: Agent task — auto-derived from research/skill-generation-tools/vercel-labs-skills.md
@@ -52,7 +56,7 @@ Title = `$1` onward (all remaining words joined). Do not call `AskUserQuestion`.
 
 Proceed to Step 2 (validate). Skip Step 7 (GitHub issue) — auto mode does not create GitHub issues unless `--create-issue` is also passed.
 
-**If `$0` is empty (guided intake):**
+**If `<mode/>` is empty (guided intake):**
 
 Use `AskUserQuestion` with two questions:
 
@@ -103,9 +107,9 @@ Question 5: "What type of work is this?"
     - label: "Chore"
 ```
 
-**If `$0` is `quick`:**
+**If `<mode/>` is `quick`:**
 
-Title = `$1` onward. Ask only:
+Title = `<item_title/>` onward. Ask only:
 
 - Priority (Question 2 above)
 - Description (Question 3 above)

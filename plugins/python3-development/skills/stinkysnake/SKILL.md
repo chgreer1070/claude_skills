@@ -4,13 +4,16 @@ description: Progressive Python quality improvement with static analysis, type r
 argument-hint: '[file-paths-or-module]'
 user-invocable: true
 ---
+
+<file_paths>$ARGUMENTS</file_paths>
+
 # Python Quality Improvement System
 
 Systematic Python code quality improvement through static analysis, type refinement, modernization planning with review, and test-driven implementation.
 
 ## Arguments
 
-$ARGUMENTS
+<file_paths/>
 
 ## Workflow Overview
 

@@ -6,6 +6,10 @@ model: sonnet
 user-invocable: true
 ---
 
+<plugin_mode>$0</plugin_mode>
+<plugin_target>$1</plugin_target>
+<invocation_args>$ARGUMENTS</invocation_args>
+
 > When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
 
 > [!IMPORTANT]
@@ -17,7 +21,7 @@ user-invocable: true
 
 Orchestrate plugin development through seven phases. This skill composes existing plugin-creator skills and agents — it does not re-implement their logic.
 
-Arguments: `$ARGUMENTS`
+Arguments: `<invocation_args/>`
 
 - `new <concept>` — Create a plugin from scratch. Enters at Phase 0 (RT-ICA Prerequisite Check).
 - `existing <plugin-path>` — Improve an existing plugin. Enters at Phase 1 (Assess).
@@ -41,7 +45,7 @@ The following diagram is the authoritative procedure for plugin lifecycle routin
 
 ```mermaid
 flowchart TD
-    Start(["/plugin-lifecycle $ARGUMENTS"]) --> Q1{"First argument is?"}
+    Start(["/plugin-lifecycle <invocation_args/>"]) --> Q1{"First argument is?"}
     Q1 -->|"new — create from scratch"| RTICA["Phase 0 — RT-ICA Prerequisite Check"]
     Q1 -->|"existing — improve existing plugin"| Assess["Phase 1 — Assess"]
 
@@ -236,7 +240,7 @@ flowchart TD
 Entry condition: User provides `existing <plugin-path>`.
 
 1. Task is plugin assessment with Skill(skill="plugin-creator:assessor")
-   Context to include in the prompt: plugin directory path from `$1`
+   Context to include in the prompt: plugin directory path from `<plugin_target/>`
    Output: `.claude/plan/{plugin-name}/assessment-REPORT.md` — assessment report with design map and task file
 
 The following diagram is the authoritative procedure for Phase 1 Assess decision gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
@@ -261,7 +265,7 @@ Entry condition: Discussion phase completed and discuss-CONTEXT.md written.
 Before research begins, draft an initial mission statement for the plugin. This anchors all subsequent phases to the plugin's purpose and values and creates a backlog interview task for async human refinement.
 
 1. Task is mission statement drafting with Skill(skill="plugin-creator:mission-statement")
-   Context to include in the prompt: plugin concept from `$1`, path to discuss-CONTEXT.md
+   Context to include in the prompt: plugin concept from `<plugin_target/>`, path to discuss-CONTEXT.md
    Output: `{plugin-path}/mission.json` with `status: "draft"` — a GitHub backlog interview task is created automatically by the skill
 
 The mission statement is never a blocker. Research and all subsequent phases proceed without waiting for the interview. The `[draft]` status on `mission.json` signals this is a hypothesis, not a decision.
@@ -285,7 +289,7 @@ Entry condition: Discussion phase completed and discuss-CONTEXT.md written.
 Spawn all four researchers in a single message to run concurrently. Merge results into `research-FINDINGS.md` before proceeding to Design.
 
 1. Task is feature discovery with Skill(skill="plugin-creator:feature-discovery")
-   Context to include in the prompt: plugin concept from `$1` (everything after "new"), discuss-CONTEXT.md
+   Context to include in the prompt: plugin concept from `<plugin_target/>` (everything after "new"), discuss-CONTEXT.md
    Output: `.claude/plan/{plugin-name}/feature-context-{slug}.md` — feature context document
 
 2. Task is existing solutions research with subagent_type="plugin-creator:plugin-assessor"

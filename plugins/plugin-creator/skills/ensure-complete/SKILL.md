@@ -471,7 +471,7 @@ Follow-up Tasks Needed: [YES/NO]
                  REFACTORING COMPLETION WORKFLOW FINISHED
 ================================================================================
 
-Task File: $ARGUMENTS
+Task File: <task_file/>
 Plugin: {plugin_name}
 
 PHASE RESULTS:

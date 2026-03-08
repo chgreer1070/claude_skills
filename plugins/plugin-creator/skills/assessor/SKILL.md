@@ -60,15 +60,15 @@ Agent(
     prompt="""
 Your ROLE_TYPE is sub-agent.
 
-Assess the plugin at ./plugins/$ARGUMENTS for structural correctness, quality issues, and refactoring opportunities.
+Assess the plugin at ./plugins/<plugin_name/> for structural correctness, quality issues, and refactoring opportunities.
 
 <context>
 WHERE you are working:
-- Plugin root: ./plugins/$ARGUMENTS
-- Plugin manifest: ./plugins/$ARGUMENTS/.claude-plugin/plugin.json
-- Skills directory: ./plugins/$ARGUMENTS/skills/
-- Commands directory: ./plugins/$ARGUMENTS/commands/ (if exists)
-- Agents directory: ./plugins/$ARGUMENTS/agents/ (if exists)
+- Plugin root: ./plugins/<plugin_name/>
+- Plugin manifest: ./plugins/<plugin_name/>/.claude-plugin/plugin.json
+- Skills directory: ./plugins/<plugin_name/>/skills/
+- Commands directory: ./plugins/<plugin_name/>/commands/ (if exists)
+- Agents directory: ./plugins/<plugin_name/>/agents/ (if exists)
 
 WHAT already exists:
 - Reference skills for validation: claude-skills-overview-2026, claude-plugins-reference-2026, hooks-guide
@@ -129,7 +129,7 @@ Each recommendation must include:
 </output_specification>
 
 <available_resources>
-- Full read access to ./plugins/$ARGUMENTS/ directory
+- Full read access to ./plugins/<plugin_name/>/ directory
 - Reference skills loaded: claude-skills-overview-2026, claude-plugins-reference-2026
 - Plugin schema validation knowledge
 </available_resources>
@@ -142,7 +142,7 @@ Each recommendation must include:
 After Tier 1 completes, invoke the skill lifecycle audit for semantic validation of skill interconnections:
 
 ```
-Skill(skill: "plugin-creator:audit-skill-lifecycle", args: "$ARGUMENTS")
+Skill(skill: "plugin-creator:audit-skill-lifecycle", args: "<plugin_name/>")
 ```
 
 This audit traces call chains, detects circular dependencies, finds instruction contradictions, identifies duplicated datasets, and discovers scriptable sequences across all skills in the plugin.
@@ -152,7 +152,7 @@ This audit traces call chains, detects circular dependencies, finds instruction 
 After Tier 2 completes, invoke the agent lifecycle audit for execution capability validation:
 
 ```
-Skill(skill: "plugin-creator:audit-agent-lifecycle", args: "$ARGUMENTS")
+Skill(skill: "plugin-creator:audit-agent-lifecycle", args: "<plugin_name/>")
 ```
 
 This audit validates agent capability-configuration alignment, skill loading correctness, inter-agent contracts, tool sufficiency, and identifies dead agents.
@@ -162,7 +162,7 @@ This audit validates agent capability-configuration alignment, skill loading cor
 For skills identified as marketplace candidates or quality improvement targets, optionally invoke the completeness audit per skill:
 
 ```
-Skill(skill: "plugin-creator:audit-skill-completeness", args: "./plugins/$ARGUMENTS/skills/{skill-name}")
+Skill(skill: "plugin-creator:audit-skill-completeness", args: "./plugins/<plugin_name/>/skills/{skill-name}")
 ```
 
 This evaluates individual skills against 8 quality categories derived from Anthropic's official skills repository.
@@ -183,7 +183,7 @@ After all tiers complete, YOU MUST:
 ```
 === PHASE 1 COMPLETE: Plugin Assessed ===
 
-Plugin: $ARGUMENTS
+Plugin: <plugin_name/>
 Overall Score: [X/100]
 Marketplace Ready: [Yes / No / With Changes]
 Critical Issues: [count]
@@ -242,8 +242,8 @@ Your ROLE_TYPE is sub-agent.
 
 <context>
 WHERE you are designing:
-- Plugin root: ./plugins/$ARGUMENTS
-- Existing skill structure: ./plugins/$ARGUMENTS/skills/
+- Plugin root: ./plugins/<plugin_name/>
+- Existing skill structure: ./plugins/<plugin_name/>/skills/
 - Claude Code skill format reference: claude-skills-overview-2026
 
 WHAT patterns to follow:
@@ -266,7 +266,7 @@ MUST deliver:
 <exploration_steps>
 EXECUTE these steps in order:
 1. READ the assessment report to understand all issues
-2. READ ./plugins/$ARGUMENTS/skills/*/SKILL.md to understand current structure
+2. READ ./plugins/<plugin_name/>/skills/*/SKILL.md to understand current structure
 3. READ reference skills (claude-skills-overview-2026) to understand target format
 4. For skills needing split: ANALYZE content domains and propose partition plan
 5. For agents needing optimization: IDENTIFY specific improvements
@@ -671,7 +671,7 @@ Your ROLE_TYPE is sub-agent.
 
 <context>
 WHERE you are researching:
-- Plugin: ./plugins/$ARGUMENTS
+- Plugin: ./plugins/<plugin_name/>
 - Design spec: .claude/plan/refactor-design-{plugin-slug}.md
 - Task file: .claude/plan/tasks-refactor-{plugin-slug}.md
 
@@ -740,8 +740,8 @@ External Dependencies: [count or "none found"]
                     PLUGIN REFACTORING PLANNING COMPLETE
 ================================================================================
 
-Plugin: $ARGUMENTS
-Plugin Path: ./plugins/$ARGUMENTS
+Plugin: <plugin_name/>
+Plugin Path: ./plugins/<plugin_name/>
 
 DELIVERABLES:
 -------------

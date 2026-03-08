@@ -6,13 +6,16 @@ context: fork
 agent: python-cli-architect
 user-invocable: true
 ---
+
+<file_paths>$ARGUMENTS</file_paths>
+
 # Snake Polish - Implementation Phase
 
 Execute the implementation plan from `/python3-development:stinkysnake` Phase 9. Implement functions following the modernization plan, run tests iteratively until all pass.
 
 ## Arguments
 
-$ARGUMENTS
+<file_paths/>
 
 ## Prerequisites
 
@@ -42,7 +45,7 @@ ARTIFACTS TO LOAD:
 Run tests to confirm failing state:
 
 ```bash
-uv run pytest $ARGUMENTS -v --tb=short 2>&1 | head -100
+uv run pytest <file_paths/> -v --tb=short 2>&1 | head -100
 ```
 
 **Expected**: Tests fail because implementations don't exist yet.
@@ -151,10 +154,10 @@ After each implementation batch:
 
 ```bash
 # Run full test suite
-uv run pytest $ARGUMENTS -v --tb=short
+uv run pytest <file_paths/> -v --tb=short
 
 # If failures remain, focus on failing tests
-uv run pytest $ARGUMENTS -v --tb=long -x  # Stop on first failure
+uv run pytest <file_paths/> -v --tb=long -x  # Stop on first failure
 ```
 
 ### Step 7: Static Analysis Verification
@@ -163,13 +166,13 @@ Before completion, verify code quality:
 
 ```bash
 # Format check
-uv run ruff format --check $ARGUMENTS
+uv run ruff format --check <file_paths/>
 
 # Lint check
-uv run ruff check $ARGUMENTS
+uv run ruff check <file_paths/>
 
 # Type check
-uv run mypy $ARGUMENTS --strict
+uv run mypy <file_paths/> --strict
 ```
 
 Fix any issues that arise.
@@ -179,7 +182,7 @@ Fix any issues that arise.
 Confirm all tests pass:
 
 ```bash
-uv run pytest $ARGUMENTS -v --cov --cov-report=term-missing
+uv run pytest <file_paths/> -v --cov --cov-report=term-missing
 ```
 
 **Success Criteria**:

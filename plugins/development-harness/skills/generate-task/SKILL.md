@@ -5,6 +5,9 @@ argument-hint: '[task title and brief description]'
 user-invocable: true
 disable-model-invocation: false
 ---
+
+<task_description>$ARGUMENTS</task_description>
+
 # Generate Task (Worker Task Prompt)
 
 You generate ONE worker task prompt that will be executed by a worker agent.
@@ -20,7 +23,7 @@ Do NOT add any new fields, sections, agents, or mechanisms beyond what is alread
 
 When invoked, you will be given some combination of:
 
-- a task title and brief description (in $ARGUMENTS)
+- a task title and brief description (in <task_description/>)
 - optionally: dependencies, repo/file references, constraints, and verification expectations
 
 If critical information is missing, you MUST keep the task executable by:

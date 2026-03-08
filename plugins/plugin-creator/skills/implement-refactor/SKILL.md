@@ -15,11 +15,13 @@ This command continues from `/plugin-creator:assessor`. After planning completes
 $ARGUMENTS
 </refactor_input>
 
+<plugin_target>$1</plugin_target>
+
 ---
 
 ## Resolve Task File
 
-If `$1` is:
+If `<plugin_target/>` is:
 
 - A `.md` path: Use directly
 - A slug (e.g., `python3-development`): GLOB for `.claude/plan/tasks-refactor-{slug}.md`
