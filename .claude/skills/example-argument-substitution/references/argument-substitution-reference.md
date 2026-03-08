@@ -119,6 +119,42 @@ SCRIPT_NAME => basename($PROGRAM_NAME),   # $PROGRAM_NAME == $0, no substitution
 | Perl `$0` | YES | `$PROGRAM_NAME` via `use English` |
 | Perl `$1` capture | YES | Remove dollar: `$1` → show as `${1}` or describe in prose |
 
+---
+
+## Command Substitution
+
+`` !`command` `` syntax in SKILL.md body is **executed at load time** — the command runs and
+its stdout replaces the expression entirely. There is no safe escape for this in SKILL.md body.
+
+To document `` !`command` `` syntax for skill authors, put examples in a reference file (this
+file) — reference files are not subject to substitution or command execution.
+
+**Example** (safe here in the reference file):
+
+The session-start hook pattern uses:
+
+```text
+!`cat /path/to/context.md`
+```
+
+This executes `cat` at load time and injects the file contents into the skill prompt.
+
+---
+
+## Substitution Applies to Prose Too
+
+`$ARGUMENTS`, `$0`, `$1` are substituted everywhere in SKILL.md — not just in code blocks.
+Explanatory prose like "the value of `$0` is..." will have `$0` replaced with the actual
+argument. The pre-declaration XML tag pattern exists precisely because of this:
+
+```text
+<action>$0</action>   ← $0 gets substituted here once, into the tag value
+```
+
+Then prose references `<action>` (the tag), which is not substituted.
+
+---
+
 ### Testing Before Applying Broadly
 
 Before applying any new escape pattern to multiple files, test it using this skill:
