@@ -121,7 +121,7 @@ calculate_sum() {
 }
 
 validate_email() {
-    [[ "\$1" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$ ]]
+    [[ "${1}" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$ ]]
 }
 ```
 
@@ -236,9 +236,9 @@ Describe 'validate_email'
     "@nodomain.com"      failure
   End
 
-  Example "validates \$1"
-    When call validate_email "\$1"
-    The status should be "\$2"
+  Example "validates ${1}"
+    When call validate_email "${1}"
+    The status should be "${2}"
   End
 End
 ```

@@ -59,7 +59,7 @@ Declare variables with appropriate scope:
 ```perl
 # Script constants (use constant or Readonly)
 use constant {
-    SCRIPT_NAME    => basename(\$0),
+    SCRIPT_NAME    => basename($PROGRAM_NAME),  # use English; $PROGRAM_NAME == $0
     SCRIPT_VERSION => "1.0.0",
 };
 
@@ -286,7 +286,7 @@ use warnings;
 
 # Untaint validated data
 if ($input =~ /^(\w+)$/) {
-    my $clean = \$1;  # Now untainted
+    my $clean = $1;  # Now untainted — $1 holds the capture group
 }
 ```
 

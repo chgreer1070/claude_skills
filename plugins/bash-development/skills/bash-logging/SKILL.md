@@ -66,7 +66,7 @@ declare -A LOG_LEVELS=(
 )
 
 log() {
-    local level="\$1"
+    local level="${1}"
     shift
     local message="\$*"
 
@@ -158,7 +158,7 @@ section_end "build"
 
 ```bash
 group_start() {
-    local name="\$1"
+    local name="${1}"
     if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
         printf '::group::%s\n' "$name"
     else
@@ -187,7 +187,7 @@ group_end
 
 ```bash
 spinner() {
-    local pid="\$1"
+    local pid="${1}"
     local message="\${2:-Processing}"
     local delay=0.1
     local spinchars='|/-\'
@@ -207,8 +207,8 @@ spinner $! "Installing dependencies"
 
 # Progress bar
 progress_bar() {
-    local current="\$1"
-    local total="\$2"
+    local current="${1}"
+    local total="${2}"
     local width="\${3:-50}"
 
     local percent=$((current * 100 / total))
@@ -233,7 +233,7 @@ printf '\n'
 
 ```bash
 step_start() {
-    local step_name="\$1"
+    local step_name="${1}"
     printf '%b %s... ' "▶" "$step_name"
 }
 

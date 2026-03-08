@@ -133,7 +133,7 @@ basename=${ echo "${filename%.*}"; }
 extension=${ echo "${filename##*.}"; }
 
 # Output capture - use REPLY for clarity
-${| df -h / | tail -1 | awk '{print \$5}'; }
+${| df -h / | tail -1 | awk '{print $5}'; }
 disk_usage="${REPLY}"
 echo "Disk usage: ${disk_usage}"
 
