@@ -9,10 +9,33 @@ user-invocable: true
 
 ## How to Use This Skill
 
-**Read this file before running it.** Then run it twice:
+This skill is a **living test harness** for argument substitution behavior. Read it, run it, observe what happened, and extend it.
 
-1. With 0 arguments: `/example-argument-substitution`
-2. With 10 arguments: `/example-argument-substitution CANARY_A CANARY_B CANARY_C CANARY_D CANARY_E CANARY_F CANARY_G CANARY_H CANARY_I CANARY_J`
+**Step 1 — Read this file.** Do this before running. Note what you expect to see in each section.
+
+**Step 2 — Run with 0 arguments:** `/example-argument-substitution`
+
+**Step 3 — Run with 10 arguments:** `/example-argument-substitution CANARY_A CANARY_B CANARY_C CANARY_D CANARY_E CANARY_F CANARY_G CANARY_H CANARY_I CANARY_J`
+
+**Step 4 — Compare.** Each section states what it expects. Check whether output matches.
+
+---
+
+## How to Add a New Test
+
+When you have a hypothesis about substitution behavior — test it here before applying it anywhere else.
+
+1. **State your hypothesis** — write exactly what you expect to appear in the output
+2. **Add the pattern** — put it in a new section below with an `**Expected with 10 args:**` and `**Expected with 0 args:**` annotation
+3. **Run with 0 args** — `/example-argument-substitution`
+4. **Run with 10 CANARY args** — `/example-argument-substitution CANARY_A CANARY_B ...`
+5. **Observe** — does the rendered output match your hypothesis exactly?
+6. **Record the finding** — if the hypothesis was wrong, correct it. If it involves literal `$N` syntax, record the verified fact in `./references/argument-substitution-reference.md` (reference files are not substituted)
+7. **Only then** apply the pattern to other skills
+
+**Do not document any pattern as safe without completing all 7 steps.**
+
+---
 
 Compare each section below between the two runs. Some sections are *intentional* substitution — they should show values. Others are *unintentional* — they show what corruption looks like.
 
