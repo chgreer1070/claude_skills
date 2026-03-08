@@ -14,13 +14,13 @@ user-invocable: true
 1. With 0 arguments: `/example-argument-substitution`
 2. With 10 arguments: `/example-argument-substitution CANARY_A CANARY_B CANARY_C CANARY_D CANARY_E CANARY_F CANARY_G CANARY_H CANARY_I CANARY_J`
 
-Compare what you see in each run against the capture block below to understand exactly what gets substituted and what stays empty.
+Compare each section below between the two runs. Some sections are *intentional* substitution — they should show values. Others are *unintentional* — they show what corruption looks like.
 
 ---
 
-## Capture Block
+## Capture Block (intentional substitution — should show values)
 
-Arguments are captured once at the top into named XML tags. Everything below references the tags.
+All positional args captured into named XML tags. Everything else references these tags.
 
 <arg0>$0</arg0>
 <arg1>$1</arg1>
@@ -37,28 +37,96 @@ Arguments are captured once at the top into named XML tags. Everything below ref
 <arg_by_index_1>$ARGUMENTS[1]</arg_by_index_1>
 <arg_by_index_2>$ARGUMENTS[2]</arg_by_index_2>
 
----
-
-## What the Capture Block Shows
-
-When invoked with 10 CANARY arguments, each tag above receives one value:
-
-- `<arg0>` = first argument (same as `$ARGUMENTS[0]`)
-- `<arg1>` = second argument (same as `$ARGUMENTS[1]`)
-- `<arg2>` through `<arg9>` = subsequent arguments
-- `<all_args>` = all arguments as a single string
-- `<arg_by_index_N>` = bracket-index form — verify it matches `<argN>`
-
-When invoked with 0 arguments, all tags render empty.
-
-See [./references/argument-substitution-reference.md](./references/argument-substitution-reference.md)
-for the complete variable reference — that file is NOT subject to substitution.
+**Expected with 10 args:** each tag holds its CANARY value.
+**Expected with 0 args:** all tags empty.
 
 ---
 
-## Routing (uses `<arg0>` as action)
+## Intentional Substitution in Prose (should show values)
 
-Dispatch based on `<arg0>`:
+These are correct uses of substitution — injecting argument values directly into skill output.
+
+The skill was invoked with first argument: <arg0>
+The target is: <arg1>
+All arguments received: <all_args>
+
+A skill instruction that uses the value directly:
+
+> Process the file <arg1> using mode <arg0>.
+
+**Expected with 10 args:** prose shows CANARY_A, CANARY_B, full CANARY string.
+**Expected with 0 args:** blanks where the values would be — still correct for a 0-arg invocation.
+
+---
+
+## Intentional Substitution Combined with Command Substitution
+
+Command substitution runs at load time; argument substitution also runs at load time.
+Both happen before Claude reads the skill. This line combines both:
+
+!`echo "Loaded at $(date '+%Y-%m-%dT%H:%M:%S') — first arg is: $0"`
+
+**Expected with 10 args:** timestamp + `CANARY_A` on the same line.
+**Expected with 0 args:** timestamp + empty string after `first arg is:`.
+
+---
+
+## Unintentional Substitution — Code Examples (shows corruption)
+
+This section intentionally demonstrates what corruption looks like when you write
+shell code examples in SKILL.md body. The variables below are consumed at load time.
+
+A bash function you might want to document:
+
+```bash
+check_file() {
+    local path=$1
+    local mode=$2
+    [[ -f $1 ]] && chmod $2 $1
+}
+```
+
+**Expected with 10 args:** `$1` → CANARY_A, `$2` → CANARY_B — code is corrupted.
+**Expected with 0 args:** `$1` → empty, `$2` → empty — also corrupted, differently.
+
+Brace form is equally substituted:
+
+```bash
+process() {
+    echo "arg: ${1}, mode: ${2}"
+}
+```
+
+**Expected with 10 args:** `${1}` → CANARY_A, `${2}` → CANARY_B — brace form is NOT safe.
+**Expected with 0 args:** both render empty — still corrupted.
+
+Awk field references in single quotes are also substituted:
+
+```bash
+awk '{print $5, $1}' file.txt
+```
+
+**Expected with 10 args:** `$5` → CANARY_F, `$1` → CANARY_A — awk example is broken.
+**Expected with 0 args:** both disappear — single quotes provide no protection.
+
+---
+
+## The Correct Pattern — Pre-Declaration + Reference File
+
+**For prose and output strings:** use substitution directly (as shown in the Intentional sections above).
+
+**For code examples containing shell variables:** move them to a reference file.
+Reference files are NOT subject to substitution and can show literal `$1`, `${1}`, `$ARGUMENTS` syntax safely.
+
+The pre-declaration pattern for routing skills:
+
+1. Capture args into XML tags at the very top of SKILL.md (as in the Capture Block above)
+2. Use `<tagname>` throughout the rest of SKILL.md — never bare `$N` after the capture block
+3. Put all code examples with `$N` in `references/*.md`
+
+---
+
+## Routing (uses `<arg0>` as action — correct pattern)
 
 ```mermaid
 flowchart TD
@@ -125,34 +193,8 @@ arg_by_index_2    = <arg_by_index_2>
 
 ---
 
-## Command Substitution
+## Full Reference
 
-Skills also support command substitution via `!` followed by a backtick-wrapped shell command.
-The output is inlined into the skill content at load time.
-
-Live example — this ran when the skill loaded:
-
-!`echo "SKILL_LOADED_AT=$(date '+%Y-%m-%dT%H:%M:%S')"`
-
-Practical uses: inject git branch, current directory, environment state.
-
----
-
-## Code Block Pitfall: Positional Variables
-
-ALL positional variable forms are substituted at load time — including inside fenced code blocks,
-single-quoted strings, awk field references, and brace forms. There is no safe escape in SKILL.md.
-
-The full pitfall table (backslash escaping, brace form, single-quoted awk — all false-safe) is in
-the reference file, which is NOT subject to substitution:
-
-[./references/argument-substitution-reference.md](./references/argument-substitution-reference.md)
-
----
-
-## Argument Substitution Documentation
-
-For full documentation of all substitution variables, the pre-declaration pattern, and verified
-pitfall evidence, see:
+All substitution variables, pitfall table, and verified escape evidence:
 
 [./references/argument-substitution-reference.md](./references/argument-substitution-reference.md)
