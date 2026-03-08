@@ -1,13 +1,13 @@
 ---
 name: example-argument-substitution
-description: Example skill demonstrating the argument substitution pattern — capture $0/$1/$ARGUMENTS into named XML tags at the top, then reference the tags throughout.
+description: Example skill demonstrating the argument substitution pattern — capture the first word, second word, and all words into named XML tags at the top, then reference the tags throughout.
 argument-hint: "<action> [target] [--flag]"
 user-invocable: true
 ---
 
 # Argument Substitution Pattern — Example Skill
 
-Arguments are captured once at the top into named tags. All routing and logic below references the tags, not the raw `$` variables.
+Arguments are captured once at the top into named tags. All routing and logic below references the tags, not the raw substitution variables.
 
 <action>$0</action>
 <target>$1</target>
@@ -19,11 +19,14 @@ Arguments are captured once at the top into named tags. All routing and logic be
 
 When this skill is invoked as `/example-argument-substitution greet world --loud`:
 
-- `$0` → `greet` → captured as `<action>greet</action>`
-- `$1` → `world` → captured as `<target>world</target>`
-- `$ARGUMENTS` → `greet world --loud` → captured as `<all_args>greet world --loud</all_args>`
+- first word → `greet` → captured as `<action>greet</action>`
+- second word → `world` → captured as `<target>world</target>`
+- all words → `greet world --loud` → captured as `<all_args>greet world --loud</all_args>`
 
-Everything below uses `<action>`, `<target>`, and `<all_args>` — never `$0` or `$1` again.
+Everything below uses `<action>`, `<target>`, and `<all_args>` — never the raw positional variables again.
+
+See [./references/argument-substitution-reference.md](./references/argument-substitution-reference.md)
+for the full variable syntax — that file is NOT subject to substitution.
 
 ---
 
@@ -96,11 +99,43 @@ Useful for debugging — run `/example-argument-substitution inspect` to see wha
 | `/example-argument-substitution inspect` | `inspect` | _(empty)_ | `inspect` |
 | `/example-argument-substitution` | _(empty)_ | _(empty)_ | _(empty)_ |
 
+---
+
+## Command Substitution
+
+Skills also support command substitution via `!` followed by a backtick-wrapped shell command.
+The output is inlined into the skill content at load time.
+
+Live example — this ran when the skill loaded:
+
+!`echo "SKILL_LOADED_AT=$(date '+%Y-%m-%dT%H:%M:%S')"`
+
+Practical uses: inject git branch, current directory, environment state.
+
+---
+
+## Code Block Pitfall: Positional Variables
+
+ALL bare positional variable forms (first word, second word, all-args, brace forms) are substituted
+in SKILL.md at load time — including inside fenced code blocks, in single-quoted strings, and in
+awk field references. There is no safe way to write the literal syntax of substitution variables
+inside SKILL.md without them being consumed.
+
+The broken patterns and the exhaustive pitfall table (including backslash escaping, which does NOT
+work, and language-specific naming like Perl's program-name variable) are documented in the
+reference file only — that file is not subject to substitution and can show the literal syntax
+safely.
+
+See [./references/argument-substitution-reference.md](./references/argument-substitution-reference.md)
+for the full pitfall table.
+
+---
+
 ## Argument Substitution Documentation
 
-For full documentation of the substitution syntax (`$ARGUMENTS`, `$0`, `$1`, etc.) and the
-pre-declaration pattern — including why reference files can document these literals safely —
-see [./references/argument-substitution-reference.md](./references/argument-substitution-reference.md).
+For full documentation of the substitution syntax and the pre-declaration pattern — including why
+reference files can document these literals safely — see
+[./references/argument-substitution-reference.md](./references/argument-substitution-reference.md).
 
 That file is loaded separately and is NOT subject to substitution at skill-load time, making
 it the correct place to explain the syntax to other skill authors.
