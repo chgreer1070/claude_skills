@@ -638,6 +638,89 @@ class TestResolveItem:
 
 
 # ---------------------------------------------------------------------------
+# Parametrize: GitHub-only fallback for close_item and resolve_item (#323)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("op", "op_kwargs", "gh_mock", "result_key", "title", "priority", "topic"),
+    [
+        (
+            close_item,
+            {"selector": "#999", "reason": "superseded"},
+            "backlog_core.operations.close_github_issue",
+            "closed",
+            "GitHub Only Issue",
+            "P1",
+            "github-only-issue",
+        ),
+        (
+            resolve_item,
+            {"selector": "#999", "summary": "Completed via GitHub-only fallback"},
+            "backlog_core.operations.resolve_github_issue",
+            "resolved",
+            "GitHub Only Resolve",
+            "P2",
+            "github-only-resolve",
+        ),
+    ],
+)
+def test_github_only_falls_back_to_pull(
+    op: object,
+    op_kwargs: dict,
+    gh_mock: str,
+    result_key: str,
+    title: str,
+    priority: str,
+    topic: str,
+    mocker: MockerFixture,
+) -> None:
+    """Verify close_item and resolve_item fall back to GitHub pull when no local cache file exists.
+
+    Tests: _pull_if_issue_selector fallback path in close/resolve operations.
+    How: Empty backlog; mock _pull_if_issue_selector to write a local cache file
+         as a side effect; call the operation with a #N selector.
+    Why: GitHub-only issues (never synced or deleted from cache) must be closeable/resolvable
+         without a prior pull. Covers acceptance criteria from issue #323.
+    """
+    import backlog_core.models as models
+
+    fake_dir: Path = models.BACKLOG_DIR
+
+    def _write_cache_file(selector: str, repo: str, output: object = None) -> None:
+        _write_item(fake_dir, title=title, priority=priority, topic=topic, issue="#999")
+
+    mocker.patch("backlog_core.operations._pull_if_issue_selector", side_effect=_write_cache_file)
+    mocker.patch("backlog_core.operations.check_open_prs_for_issue", return_value=[])
+    mocker.patch(gh_mock)
+
+    result = op(**op_kwargs)
+
+    assert result[result_key] is True
+    assert result["title"] == title
+
+
+@pytest.mark.parametrize(
+    ("op", "kwargs"),
+    [
+        (close_item, {"selector": "#999", "reason": "superseded"}),
+        (resolve_item, {"selector": "#999", "summary": "Should not succeed"}),
+    ],
+)
+def test_github_only_raises_when_issue_absent(op: object, kwargs: dict, mocker: MockerFixture) -> None:
+    """Verify close_item and resolve_item raise ItemNotFoundError when issue is absent from both local cache and GitHub.
+
+    Tests: Double-not-found path after _pull_if_issue_selector fallback yields nothing.
+    How: Empty backlog; mock _pull_if_issue_selector as no-op (issue absent on GH too).
+    Why: Fallback must surface ItemNotFoundError — not swallow the error silently.
+    """
+    mocker.patch("backlog_core.operations._pull_if_issue_selector")  # no-op: writes nothing
+
+    with pytest.raises(ItemNotFoundError):
+        op(**kwargs)
+
+
+# ---------------------------------------------------------------------------
 # Parametrize: priority prefixes are recognised in filenames
 # ---------------------------------------------------------------------------
 
