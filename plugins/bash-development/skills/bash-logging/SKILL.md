@@ -66,9 +66,9 @@ declare -A LOG_LEVELS=(
 )
 
 log() {
-    local level="$1"
+    local level="\$1"
     shift
-    local message="$*"
+    local message="\$*"
 
     local current_level="${LOG_LEVELS[$LOG_LEVEL]:-1}"
     local msg_level="${LOG_LEVELS[$level]:-1}"
@@ -126,9 +126,9 @@ Create collapsible log sections in GitLab CI:
 
 ```bash
 section_start() {
-    local section_key="${1:-section}"
-    local section_header="${2:-$section_key}"
-    local collapsed="${3:-true}"
+    local section_key="\${1:-section}"
+    local section_header="\${2:-$section_key}"
+    local collapsed="\${3:-true}"
 
     if [[ -n "${GITLAB_CI:-}" ]]; then
         printf "\e[0Ksection_start:%s:%s[collapsed=%s]\r\e[0K%s\n" \
@@ -139,7 +139,7 @@ section_start() {
 }
 
 section_end() {
-    local section_key="${1:-section}"
+    local section_key="\${1:-section}"
 
     if [[ -n "${GITLAB_CI:-}" ]]; then
         printf "\e[0Ksection_end:%s:%s\r\e[0K" "$(date +%s)" "$section_key"
@@ -158,7 +158,7 @@ section_end "build"
 
 ```bash
 group_start() {
-    local name="$1"
+    local name="\$1"
     if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
         printf '::group::%s\n' "$name"
     else
@@ -187,8 +187,8 @@ group_end
 
 ```bash
 spinner() {
-    local pid="$1"
-    local message="${2:-Processing}"
+    local pid="\$1"
+    local message="\${2:-Processing}"
     local delay=0.1
     local spinchars='|/-\'
 
@@ -207,9 +207,9 @@ spinner $! "Installing dependencies"
 
 # Progress bar
 progress_bar() {
-    local current="$1"
-    local total="$2"
-    local width="${3:-50}"
+    local current="\$1"
+    local total="\$2"
+    local width="\${3:-50}"
 
     local percent=$((current * 100 / total))
     local filled=$((current * width / total))
@@ -233,7 +233,7 @@ printf '\n'
 
 ```bash
 step_start() {
-    local step_name="$1"
+    local step_name="\$1"
     printf '%b %s... ' "▶" "$step_name"
 }
 

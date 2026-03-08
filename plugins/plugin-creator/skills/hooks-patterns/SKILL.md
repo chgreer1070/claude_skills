@@ -149,10 +149,12 @@ LLM-evaluated decisions using a fast model (Haiku). Also known as "agent hooks" 
 ```json
 {
   "type": "prompt",
-  "prompt": "Evaluate if Claude should stop: $ARGUMENTS. Check if all tasks are complete.",
+  "prompt": "Evaluate if Claude should stop: <USER_ARGUMENTS>. Check if all tasks are complete.",
   "timeout": 30
 }
 ```
+
+> **Note:** `<USER_ARGUMENTS>` above represents the `` `$ARGUMENTS` `` placeholder — replace it with the literal token `$ARGUMENTS` in your actual hook configuration. The placeholder is used here because skill files undergo argument substitution at load time.
 
 Alternatively, use `"type": "agent"` for complex verification tasks that require tool access.
 
@@ -178,9 +180,9 @@ The LLM must respond with JSON:
 | `ok`     | boolean | `true` allows the action, `false` prevents it  |
 | `reason` | string  | Required when `ok` is `false`. Shown to Claude |
 
-### $ARGUMENTS Placeholder
+### The ARGUMENTS Placeholder
 
-Use `$ARGUMENTS` in prompt to include hook input JSON. If omitted, input is appended to the prompt.
+Use `` `$ARGUMENTS` `` in prompt to include hook input JSON. If omitted, input is appended to the prompt.
 
 ### Example: Intelligent Stop Hook
 
@@ -192,7 +194,7 @@ Use `$ARGUMENTS` in prompt to include hook input JSON. If omitted, input is appe
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "You are evaluating whether Claude should stop working. Context: $ARGUMENTS\n\nAnalyze the conversation and determine if:\n1. All user-requested tasks are complete\n2. Any errors need to be addressed\n3. Follow-up work is needed\n\nRespond with JSON: {\"ok\": true} to allow stopping, or {\"ok\": false, \"reason\": \"your explanation\"} to continue working.",
+            "prompt": "You are evaluating whether Claude should stop working. Context: <USER_ARGUMENTS>\n\nAnalyze the conversation and determine if:\n1. All user-requested tasks are complete\n2. Any errors need to be addressed\n3. Follow-up work is needed\n\nRespond with JSON: {\"ok\": true} to allow stopping, or {\"ok\": false, \"reason\": \"your explanation\"} to continue working.",
             "timeout": 30
           }
         ]
@@ -204,6 +206,8 @@ Use `$ARGUMENTS` in prompt to include hook input JSON. If omitted, input is appe
 
 ### Example: SubagentStop Validation
 
+> **Note:** `<USER_ARGUMENTS>` above represents the `` `$ARGUMENTS` `` placeholder — replace it with the literal token `$ARGUMENTS` in your actual hook configuration. The placeholder is used here because skill files undergo argument substitution at load time.
+
 ```json
 {
   "hooks": {
@@ -212,7 +216,7 @@ Use `$ARGUMENTS` in prompt to include hook input JSON. If omitted, input is appe
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Evaluate if this subagent should stop. Input: $ARGUMENTS\n\nCheck if:\n- The subagent completed its assigned task\n- Any errors occurred that need fixing\n- Additional context gathering is needed\n\nReturn: {\"ok\": true} to allow stopping, or {\"ok\": false, \"reason\": \"explanation\"} to continue."
+            "prompt": "Evaluate if this subagent should stop. Input: <USER_ARGUMENTS>\n\nCheck if:\n- The subagent completed its assigned task\n- Any errors occurred that need fixing\n- Additional context gathering is needed\n\nReturn: {\"ok\": true} to allow stopping, or {\"ok\": false, \"reason\": \"explanation\"} to continue."
           }
         ]
       }

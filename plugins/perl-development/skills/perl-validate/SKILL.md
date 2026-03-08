@@ -160,7 +160,7 @@ Run complete validation:
 #!/bin/bash
 # validate-perl.sh
 
-FILE="$1"
+FILE="\$1"
 ERRORS=0
 
 if [[ ! -f "$FILE" ]]; then

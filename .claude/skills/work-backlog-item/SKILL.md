@@ -4,6 +4,11 @@ description: "Use when working, planning, or closing a backlog item. Bridges bac
 argument-hint: '[#N | --auto {title} | --language {lang} | --stack {stack} | item-title-substring | close {title} | resolve {title} | setup-github | --quick {title} | progress | resume [{title}]]'
 user-invocable: true
 ---
+
+<mode>$0</mode>
+<item_ref>$1</item_ref>
+<invocation_args>$ARGUMENTS</invocation_args>
+
 # Work Backlog Item
 
 Bridge a backlog item into the SAM planning pipeline via `/add-new-feature` (default). Optional `--language` and `--stack` select Layer 1/2 profiles — see [.claude/docs/sdlc-layers/](../../docs/sdlc-layers/).
@@ -17,24 +22,24 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 
 ## Arguments
 
-`$0` selects the operating mode; remaining positional args (`$1`, `$2`, ...) form the title or parameter:
+`<mode/>` selects the operating mode; remaining positional args (`<item_ref/>`, `$2`, ...) form the title or parameter:
 
-| `$0` value | Remaining args | Mode |
+| `<mode/>` value | Remaining args | Mode |
 |---|---|---|
 | (empty) | — | Interactive browser |
 | `#N` | — | Issue-first: load item from GitHub Issue #N |
 | bare number (e.g. `249`) | — | Issue-first: load item from GitHub Issue #249 |
 | GitHub issue URL | — | Issue-first: extract issue number from URL |
-| `--auto` | `$1`+ = title (or empty → auto-select first open P0/P1 item) | Autonomous — no `AskUserQuestion` calls |
-| `close` | `$1`+ = title, `#N`, number, or URL | Dismiss without completion (reason required). ADR-9 |
-| `resolve` | `$1`+ = title, `#N`, number, or URL | Mark DONE — completed with evidence (summary required). ADR-9 |
+| `--auto` | `<item_ref/>`+ = title (or empty → auto-select first open P0/P1 item) | Autonomous — no `AskUserQuestion` calls |
+| `close` | `<item_ref/>`+ = title, `#N`, number, or URL | Dismiss without completion (reason required). ADR-9 |
+| `resolve` | `<item_ref/>`+ = title, `#N`, number, or URL | Mark DONE — completed with evidence (summary required). ADR-9 |
 | `setup-github` | — | Initialize labels, project, first milestone |
-| `--quick` | `$1`+ = title | Skip grooming, RT-ICA, and SAM — quick one-file fix. Step Q |
+| `--quick` | `<item_ref/>`+ = title | Skip grooming, RT-ICA, and SAM — quick one-file fix. Step Q |
 | `progress` | — | Backlog health and active milestone progress report. Step P |
-| `resume` | `$1`+ = title or `#N` (optional) | Resume status for an in-progress plan. Step R |
-| (any other) | — | `$ARGUMENTS` treated as title substring → planning |
+| `resume` | `<item_ref/>`+ = title or `#N` (optional) | Resume status for an in-progress plan. Step R |
+| (any other) | — | `<invocation_args/>` treated as title substring → planning |
 
-**Optional flags** (when `$0` is title substring or `--auto`): `--language <lang>` selects language plugin (default: python); `--stack <profile>` selects stack profile (e.g., python-fastapi, python-cli). See [.claude/docs/sdlc-layers/](../../docs/sdlc-layers/).
+**Optional flags** (when `<mode/>` is title substring or `--auto`): `--language <lang>` selects language plugin (default: python); `--stack <profile>` selects stack profile (e.g., python-fastapi, python-cli). See [.claude/docs/sdlc-layers/](../../docs/sdlc-layers/).
 
 ```text
 /work-backlog-item                                    # interactive browser
@@ -59,42 +64,42 @@ All interactive `AskUserQuestion` calls are replaced with evidence-derived decis
 
 ### Routing (evaluated first, before any step)
 
-Dispatch based on `$0` (the first argument word) before executing any step:
+Dispatch based on `<mode/>` (the first argument word) before executing any step:
 
-| `$0` value | Title source | Route |
+| `<mode/>` value | Title source | Route |
 |---|---|---|
 | (empty) | — | Step 0 — interactive browser |
 | `#N` (starts with `#`) | issue number | Step 1b — Issue-first path |
 | bare number (e.g. `249`) | issue number | Step 1b — Issue-first path |
 | GitHub issue URL | issue number from URL | Step 1b — Issue-first path |
-| `--auto` | `$1`+ joined (empty → auto-select first open P0/P1) | AUTO_MODE=true → Step 1 |
-| `--quick` | `$1`+ joined | Step Q — [step-procedures.md](./references/step-procedures.md#step-q-quick-mode) |
+| `--auto` | `<item_ref/>`+ joined (empty → auto-select first open P0/P1) | AUTO_MODE=true → Step 1 |
+| `--quick` | `<item_ref/>`+ joined | Step Q — [step-procedures.md](./references/step-procedures.md#step-q-quick-mode) |
 | `progress` | — | Step P — [step-procedures.md](./references/step-procedures.md#step-p-progress-report) |
-| `resume` | `$1`+ joined (optional title or `#N`) | Step R — [step-procedures.md](./references/step-procedures.md#step-r-resume-report) |
-| `close` | `$1`+ joined (title, `#N`, number, or URL) | Step 9 (close path — dismiss without completion) |
-| `resolve` | `$1`+ joined (title, `#N`, number, or URL) | Step 9 (resolve path — mark completed with evidence) |
+| `resume` | `<item_ref/>`+ joined (optional title or `#N`) | Step R — [step-procedures.md](./references/step-procedures.md#step-r-resume-report) |
+| `close` | `<item_ref/>`+ joined (title, `#N`, number, or URL) | Step 9 (close path — dismiss without completion) |
+| `resolve` | `<item_ref/>`+ joined (title, `#N`, number, or URL) | Step 9 (resolve path — mark completed with evidence) |
 | `setup-github` | — | [github-integration.md](./references/github-integration.md#setup-github-command) |
-| (any other) | `$ARGUMENTS` | Title substring → Step 1 (interactive mode) |
+| (any other) | `<invocation_args/>` | Title substring → Step 1 (interactive mode) |
 
 **AUTO_MODE** — set when `$0` is `--auto`. All `AskUserQuestion` calls are replaced with evidence-derived decisions. See [auto-mode.md](./references/auto-mode.md) for the substitution table.
 
 ### Step 0: Interactive Browser (no arguments only)
 
-**Trigger:** `$0` is empty (no arguments passed).
+**Trigger:** `<mode/>` is empty (no arguments passed).
 
 Full procedure (MCP error handling, display format, response handling): [step-procedures.md](./references/step-procedures.md#step-0-interactive-browser)
 
-**Routing:** If `$0` is `close` or `resolve`, extract `$1`+ as the title and jump directly to Step 9.
+**Routing:** If `<mode/>` is `close` or `resolve`, extract `<item_ref/>`+ as the title and jump directly to Step 9.
 
 ### Step 1b: Issue-First Path (`#N`, bare number, or GitHub URL)
 
-**Trigger:** `$0` matches `#[0-9]+`, is a bare number, or is a GitHub issue URL (`https://github.com/.../issues/N`).
+**Trigger:** `<mode/>` matches `#[0-9]+`, is a bare number, or is a GitHub issue URL (`https://github.com/.../issues/N`).
 
 <issue_first_procedure>
 
 Fetch the issue using the `mcp__backlog__backlog_view` tool (accepts URLs, `#N`, and bare numbers):
 
-Call the `mcp__backlog__backlog_view` tool with `selector="{$0}"`.
+Call the `mcp__backlog__backlog_view` tool with `selector="{<mode/>}"`.
 
 If the tool returns a dict with an `error` key, report and stop.
 Parse the returned dict. If `state` is `closed`, run the **Completed Issue Discovery** procedure and stop. Full procedure (git commands, report template, AUTO_MODE behavior): [step-procedures.md](./references/step-procedures.md#step-1b-completed-issue-discovery)
@@ -120,9 +125,9 @@ Proceed to Step 2.7 (Set In-Progress Label) with the assembled item, then contin
 
 ### Step 1: Find the Backlog Item
 
-Call the `mcp__backlog__backlog_list` tool and search the `title` field of each entry in the returned dict for a case-insensitive match against the title. Title = `$1`+ joined (args after the mode flag `$0`). In interactive mode, title = full `$ARGUMENTS`.
+Call the `mcp__backlog__backlog_list` tool and search the `title` field of each entry in the returned dict for a case-insensitive match against the title. Title = `<item_ref/>`+ joined (args after the mode flag `<mode/>`). In interactive mode, title = full `<invocation_args/>`.
 
-**AUTO_MODE with no title (`$1` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items with `status: done` or `status: resolved` in their entry (these are filtered out by `backlog_list` already).
+**AUTO_MODE with no title (`<item_ref/>` is empty):** apply the "No title given" substitution from the `--auto mode rules` table — scan P0 then P1 sections for the first open item, log and use its title. Skip items with `status: done` or `status: resolved` in their entry (these are filtered out by `backlog_list` already).
 
 - **Zero matches (interactive mode):** report "No backlog item found matching: {title}" and offer to create one via `/create-backlog-item`.
 - **Zero matches (AUTO_MODE):** log `[AUTO] No item found — invoking create-backlog-item --auto {title}`, invoke `Skill(skill: "create-backlog-item", args: "--auto {title}")`, then re-run Step 1.
@@ -264,7 +269,7 @@ Backlog item "{title}" is now planned.
 
 ### Step 9: Close or Resolve (ADR-9)
 
-**Trigger:** `$0` is `close` or `resolve`.
+**Trigger:** `<mode/>` is `close` or `resolve`.
 
 - `close` = dismiss without completion. Requires `reason` (duplicate, out_of_scope, superseded, wontfix, blocked). Optional `reference` and `comment`. Calls `mcp__backlog__backlog_close`.
 - `resolve` = mark DONE with evidence trail. Requires `summary`. Optional `plan`, `method`, `notes`, `follow_ups`, `findings`. Verifies checklist + acceptance criteria before resolving. Calls `mcp__backlog__backlog_resolve`.
@@ -293,7 +298,7 @@ Full procedure: [github-integration.md](./references/github-integration.md#step-
 
 ### setup-github Command
 
-**Trigger:** `$0` is `setup-github`. Full setup procedure and expected output: [github-integration.md](./references/github-integration.md#setup-github-command)
+**Trigger:** `<mode/>` is `setup-github`. Full setup procedure and expected output: [github-integration.md](./references/github-integration.md#setup-github-command)
 
 ## Error Handling
 

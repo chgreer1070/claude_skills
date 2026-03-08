@@ -181,7 +181,7 @@ Create `.perltidyrc` in project root:
 #!/bin/bash
 # lint-perl.sh
 
-FILE="$1"
+FILE="\$1"
 
 if [[ ! -f "$FILE" ]]; then
     echo "Usage: lint-perl.sh <file.pl>"
