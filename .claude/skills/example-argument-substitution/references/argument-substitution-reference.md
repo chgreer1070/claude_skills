@@ -75,27 +75,20 @@ command -v "\foo" >/dev/null 2>&1   ← broken: backslash kept, $1 substituted
 
 This was verified by live canary test. Do not use backslash escaping for this purpose.
 
-### What Works: Brace Form
+### What Does NOT Work: Brace Form
 
-`${1}` (with curly braces) is NOT substituted. Only bare `$N` (without braces) triggers
-substitution. Use brace form in all shell code examples:
+`${1}` (with curly braces) is **also substituted**. This is a common false assumption.
+Verified by live canary test: `basename(${0})` in SKILL.md rendered as `basename(CANARY_VALUE)`,
+not literally. Do not use brace form as an escape mechanism.
 
-```bash
-command_exists() {
-    command -v "${1}" >/dev/null 2>&1
-}
-```
+### What Does NOT Work: Single-Quoted Awk Programs
 
-### What Works: Single-Quoted Awk Programs
+Awk's `$5` field reference looks like it should be safe in single quotes, but it is **also
+substituted**. Verified by live canary test: `awk '{print $5}'` in SKILL.md rendered as
+`awk '{print }'` — the `$5` was consumed.
 
-Awk's `$5` is not a shell variable. Inside a single-quoted awk program it renders literally:
-
-```bash
-awk '{print $5}'   # $5 here is awk field, not shell — safe in SKILL.md
-```
-
-Double-quoted awk programs are subject to shell expansion and will also be subject to
-skill substitution — avoid them in SKILL.md code examples.
+Shell quoting context is irrelevant. The substitution engine operates on the raw file text
+before any shell or interpreter sees it.
 
 ### What Works: Language-Specific Alternatives
 
@@ -110,14 +103,17 @@ SCRIPT_NAME => basename($PROGRAM_NAME),   # $PROGRAM_NAME == $0, no substitution
 
 | Pattern in SKILL.md | Substituted? | Use instead |
 |---------------------|-------------|-------------|
-| `$1` | YES — corrupts example | `${1}` |
-| `\$1` | YES — backslash left behind | `${1}` |
-| `${1}` | No | ✓ safe |
-| `$ARGUMENTS` | YES — intended | ✓ use for capture |
-| `awk '{print $5}'` | No (single-quoted) | ✓ safe |
-| `awk "{print $5}"` | YES | Use single quotes |
+| `$1` | YES — corrupts example | Move example to reference file |
+| `\$1` | YES — backslash left behind | Move example to reference file |
+| `${1}` | YES — also substituted (false safe) | Move example to reference file |
+| `$ARGUMENTS` | YES — intended | ✓ use for capture in XML tag |
+| `awk '{print $5}'` | YES — single quotes ignored | Move example to reference file |
+| `awk "{print $5}"` | YES | Move example to reference file |
 | Perl `$0` | YES | `$PROGRAM_NAME` via `use English` |
-| Perl `$1` capture | YES | Remove dollar: `$1` → show as `${1}` or describe in prose |
+| Perl `$1` capture | YES | Move example to reference file or describe in prose |
+
+**Universal rule**: there is no safe escape for `$N` in SKILL.md. Put all examples containing
+`$N` in a reference file, which is NOT subject to substitution.
 
 ---
 
