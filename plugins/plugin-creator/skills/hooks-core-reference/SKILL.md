@@ -3,6 +3,7 @@ name: hooks-core-reference
 description: Hook system fundamentals — all events, configuration structure, matchers per event type, environment variables, execution behavior, security, and debugging. Use when creating hooks, understanding hook events, matchers, configuration locations, environment variables, or troubleshooting hook issues.
 user-invocable: true
 ---
+
 # Claude Code Hooks — Core Reference (January 2026)
 
 Hooks execute custom commands or prompts in response to Claude Code events. Use for automation, validation, formatting, and security.
@@ -24,11 +25,13 @@ For working examples and patterns, activate `Skill(skill: "plugin-creator:hooks-
 | `UserPromptSubmit`   | User submits prompt               | No              | Input validation        |
 | `Stop`               | Claude finishes response          | No              | Cleanup, final checks   |
 | `SubagentStart`      | When spawning a subagent          | No              | Subagent initialization |
-| `SubagentStop`       | Subagent (Agent tool) completes    | No              | Result validation       |
+| `SubagentStop`       | Subagent (Agent tool) completes   | No              | Result validation       |
 | `PreCompact`         | Before context compaction         | Yes             | State backup            |
 | `Setup`              | Repository setup/maintenance      | Yes             | One-time operations     |
 | `SessionStart`       | Session begins or resumes         | Yes             | Environment setup       |
 | `SessionEnd`         | Session ends                      | No              | Cleanup, persistence    |
+
+For a visual overview of the full event sequence, see the [hooks lifecycle diagram](../hooks-guide/references/hooks-lifecycle.svg).
 
 ---
 

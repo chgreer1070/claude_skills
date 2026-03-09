@@ -17,17 +17,6 @@
         "$CONTEXT7_API_KEY"
       ]
     },
-    "kernel-local": {
-      "command": "node",
-      "args": [
-        "./scripts/npx-run.cjs",
-        "-y",
-        "mcp-remote",
-        "https://mcp.onkernel.com/mcp",
-        "--header",
-        "Authorization: Bearer $KERNEL_API_KEY"
-      ]
-    },
     "backlog": {
       "command": "uv",
       "args": ["run", "python", "-m", "backlog_core.server"]
