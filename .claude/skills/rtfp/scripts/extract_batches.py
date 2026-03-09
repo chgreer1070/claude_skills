@@ -16,7 +16,7 @@ Each entry preserves its source session file path and original message index
 so it can be traced back to the full transcript.
 
 Splits into batch files of approximately TARGET_TOKENS tokens each (default
-100k tokens). Token counting uses tiktoken cl100k_base encoding.
+100k tokens). Token counting uses tiktoken p50k_base encoding (recommended approximation for Claude).
 
 Each batch file is a JSON object:
 {
@@ -51,7 +51,7 @@ from pathlib import Path
 
 import tiktoken
 
-_TIKTOKEN_ENCODING = "cl100k_base"
+_TIKTOKEN_ENCODING = "p50k_base"
 
 
 class _EncoderCache:
@@ -65,7 +65,7 @@ class _EncoderCache:
 
 
 def count_tokens(text: str) -> int:
-    """Count tokens using tiktoken cl100k_base encoding.
+    """Count tokens using tiktoken p50k_base encoding (Claude approximation).
 
     Returns:
         Number of tokens in the text.
