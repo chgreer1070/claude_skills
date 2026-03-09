@@ -5,14 +5,18 @@
 #   "tiktoken>=0.7.0",
 # ]
 # ///
-"""Extract and batch messages from a Claude Code session JSONL file.
+"""Extract and batch user-authored messages from a Claude Code session JSONL file.
 
-Reads all messages (user + assistant) from the given JSONL file,
-preserving original message indexes. Splits into batch files of
-approximately TARGET_TOKENS tokens each (default 100k tokens).
+Reads ONLY user-authored messages from the given JSONL file — no assistant
+messages, tool outputs, system messages, or developer messages. Batch files
+are for emotional-reply detection only; full transcript context is retrieved
+later during reconstruction.
 
-Token counting uses tiktoken cl100k_base encoding — a reasonable approximation
-for Claude context budget sizing (not the exact Claude tokenizer).
+Each entry preserves its source session file path and original message index
+so it can be traced back to the full transcript.
+
+Splits into batch files of approximately TARGET_TOKENS tokens each (default
+100k tokens). Token counting uses tiktoken cl100k_base encoding.
 
 Each batch file is a JSON object:
 {
@@ -23,7 +27,7 @@ Each batch file is a JSON object:
   "messages": [
     {
       "index": 0,
-      "type": "user" | "assistant",
+      "source_file": "/path/to/session.jsonl",
       "timestamp": "...",
       "content": "...",
       "token_count": N
@@ -104,40 +108,20 @@ def _is_noise(text: str) -> bool:
     return any(stripped.startswith(p) for p in _NOISE_PREFIXES)
 
 
-def _extract_assistant_text(message: dict) -> str:
-    """Extract readable text from an assistant message, including tool use summaries.
-
-    Returns:
-        Concatenated text content from the message, with tool use summarized inline.
-    """
-    content = message.get("content")
-    if content is None:
-        return ""
-    if isinstance(content, str):
-        return content
-    parts = []
-    for element in content:
-        if isinstance(element, dict):
-            if element.get("type") == "text":
-                text = element.get("text", "")
-                if text:
-                    parts.append(text)
-            elif element.get("type") == "tool_use":
-                name = element.get("name", "tool")
-                inp = element.get("input", {})
-                inp_str = json.dumps(inp)[:200] if inp else ""
-                parts.append(f"[{name}({inp_str})]")
-    return "\n".join(parts)
-
-
 def load_messages(session_path: Path) -> list[dict]:
-    """Load and parse all messages from a JSONL session file.
+    """Load user-authored messages only from a JSONL session file.
+
+    Excludes assistant messages, tool outputs, system messages, and developer
+    messages. Each entry preserves source_file and index for later trace-back
+    to the full transcript during reconstruction.
 
     Returns:
-        List of message dicts with keys: index, type, timestamp, content, token_count.
+        List of user message dicts with keys: index, source_file, timestamp,
+        content, token_count.
     """
     messages = []
     msg_index = 0
+    source_file = str(session_path)
 
     with session_path.open(encoding="utf-8", errors="replace") as fh:
         for line in fh:
@@ -151,29 +135,22 @@ def load_messages(session_path: Path) -> list[dict]:
             if not isinstance(rec, dict):
                 continue
 
-            msg_type = rec.get("type", "")
-            if msg_type not in {"user", "assistant"}:
+            # User messages only — assistant/tool/system entries are excluded
+            if rec.get("type") != "user":
                 continue
 
-            # Skip tool result lines (they're infrastructure, not conversation)
+            # Skip tool result lines (infrastructure, not user-authored)
             if "toolUseResult" in rec:
                 continue
 
-            ts = rec.get("timestamp", "")
-
-            if msg_type == "user":
-                content = _extract_text(rec.get("message", {}).get("content"))
-                if not content or _is_noise(content):
-                    continue
-            else:
-                content = _extract_assistant_text(rec.get("message", {}))
-                if not content:
-                    continue
+            content = _extract_text(rec.get("message", {}).get("content"))
+            if not content or _is_noise(content):
+                continue
 
             messages.append({
                 "index": msg_index,
-                "type": msg_type,
-                "timestamp": ts,
+                "source_file": source_file,
+                "timestamp": rec.get("timestamp", ""),
                 "content": content,
                 "token_count": count_tokens(content),
             })
@@ -232,7 +209,9 @@ def write_batch_files(session_path: Path, session_id: str, batches: list[list[di
         with out_path.open("w", encoding="utf-8") as fh:
             json.dump(payload, fh, ensure_ascii=False, indent=2)
         written.append(out_path)
-        print(f"  Batch {i}: {len(batch)} messages, {payload['total_tokens']:,} tokens → {out_path}", file=sys.stderr)
+        print(
+            f"  Batch {i}: {len(batch)} user messages, {payload['total_tokens']:,} tokens → {out_path}", file=sys.stderr
+        )
 
     return written
 
@@ -268,18 +247,10 @@ def main() -> None:
         print("No messages found in session file.", file=sys.stderr)
         sys.exit(1)
 
-    total_tokens = 0
-    user_count = 0
-    asst_count = 0
-    for m in messages:
-        total_tokens += m["token_count"]
-        if m["type"] == "user":
-            user_count += 1
-        else:
-            asst_count += 1
+    total_tokens = sum(m["token_count"] for m in messages)
     estimated_batches = max(1, (total_tokens + args.batch_tokens - 1) // args.batch_tokens)
 
-    print(f"Messages: {len(messages)} total ({user_count} user, {asst_count} assistant)", file=sys.stderr)
+    print(f"User messages: {len(messages)}", file=sys.stderr)
     print(f"Total tokens: {total_tokens:,} (tiktoken cl100k_base)", file=sys.stderr)
     print(f"Estimated batches at {args.batch_tokens:,} tokens each: {estimated_batches}", file=sys.stderr)
 
@@ -287,9 +258,7 @@ def main() -> None:
         result = {
             "session_path": str(session_path),
             "session_id": session_path.stem,
-            "message_count": len(messages),
-            "user_messages": user_count,
-            "assistant_messages": asst_count,
+            "user_message_count": len(messages),
             "total_tokens": total_tokens,
             "estimated_batches": estimated_batches,
         }
