@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: open
   issue: '#555'
-  last_synced: '2026-03-09T03:38:24Z'
+  last_synced: '2026-03-09T03:44:03Z'
   groomed: '2026-03-09'
 ---
 
@@ -81,3 +81,119 @@ metadata:
 **Analysis Method**: design-framing — define the minimal MVP boundary, identify the observable acceptance criteria for each stage, and defer aesthetic/scoring decisions to iteration.
 
 **No RCA required** (not a defect or recurring pattern).
+
+### Priority
+
+8/10 — Directly demonstrable value: produces a social-media-ready PNG from session history with no manual transcript review. Also validates DuckDB-as-query-layer architecture for Claude Code session data — a reusable pattern for future session analytics tools. Individual stage scripts are already working; the missing orchestration and DuckDB layers are well-bounded gaps.
+
+### Impact
+
+- Blocks: plugin migration to `plugins/rtfp/` directory — that step depends on the skills/scripts implementation being complete and validated first
+- Bottleneck: the missing end-to-end orchestrating skill is the integration gap — four independently working scripts cannot be invoked as a coherent workflow until it exists
+- DuckDB integration gap means the query layer specified in the design is unverified in production use; scripts currently use direct Python JSONL parsing, bypassing DuckDB entirely
+
+### Benefits
+
+- Surfaces instruction-following failures automatically — no manual session review required
+- Produces a social-media-ready PNG artifact from raw JSONL without any intermediate storage
+- Establishes DuckDB as the verified query layer for Claude Code session data, reusable in future session-analytics tools
+- Validates the skills-first-then-plugin development pattern: working scripts confirm correctness before plugin scaffolding
+
+### Expected Behavior
+
+When invoked, the skill lists available Claude Code sessions from the current project. The user selects one by number. The skill extracts user-only messages into temporary batch files (~100k tokens each), fans out one subagent per batch to detect emotional reactions, merges the flagged indexes, selects the single most emotional exchange, reconstructs the triggering assistant output from the full transcript, and renders a terminal-style PNG containing exactly three elements: task context, triggering assistant output, user emotional reply. No scoring, no taxonomy, no report — one image ready to share.
+
+### Desired Structure
+
+After this item is complete:
+
+- `plugins/rtfp/` directory exists and passes `plugin_validator.py` with no errors
+- `plugins/rtfp/skills/rtfp/SKILL.md` orchestrates the four-stage workflow end-to-end
+- Stage scripts (`extract_batches.py`, `detect_reactions.py`, `reconstruct_context.py`, `render_artifact.py`) are located under `plugins/rtfp/skills/rtfp/scripts/` and use DuckDB as the query layer for all JSONL reads
+- `list_sessions.py` enumerates sessions from `~/.claude/projects/` via DuckDB `read_ndjson()`
+- PNG output matches Claude Code terminal aesthetic (dark background, monospace font, claude.ai brand palette)
+- The skills/scripts layout at `.claude/skills/rtfp/` is superseded and its scripts migrated (not duplicated)
+
+### Reproducibility
+
+1. Ensure at least one Claude Code session JSONL exists: `ls ~/.claude/projects/*/\*.jsonl`
+2. Run `uv run .claude/skills/rtfp/scripts/list_sessions.py --json` — confirm a numbered session list is printed
+3. Run `uv run .claude/skills/rtfp/scripts/extract_batches.py <session_path> --out-dir /tmp/rtfp-batches-test` — confirm batch JSON files are written and paths printed
+4. Run `uv run .claude/skills/rtfp/scripts/detect_reactions.py <batch_file>` — confirm flagged indexes JSON is emitted
+5. Run `uv run .claude/skills/rtfp/scripts/reconstruct_context.py --flagged-file <flagged.json>` — confirm winner/runner-up JSON output
+6. Run `uv run .claude/skills/rtfp/scripts/render_artifact.py <reconstruct_output.json> --out /tmp/rtfp-out.png` — confirm PNG is written
+7. Open `/tmp/rtfp-out.png` — verify terminal aesthetic, three-element layout (task summary, assistant output, user reaction)
+8. Invoke the skill end-to-end: `Skill(skill="rtfp")` — confirm all four stages execute and a PNG path is returned without manual script invocation
+
+### Output / Evidence
+
+- `list_sessions.py --json` prints a JSON array of session objects with titles and paths
+- `extract_batches.py` writes `batch-0.json`, `batch-1.json`, etc. to the specified `--out-dir`; prints a JSON array of paths to stdout
+- `detect_reactions.py` writes `/tmp/rtfp-flagged-<batch_index>.json` and prints a plain list of flagged entries (one per line: `<index> | <first 200 chars>`)
+- `reconstruct_context.py` emits JSON to stdout with `winner` and `runner_up` keys; `winner.task_summary`, `winner.triggering_assistant_output`, `winner.user_reaction` are non-empty
+- `render_artifact.py` writes a PNG file to the specified path; file size is non-zero; image contains exactly three text blocks with dark background, monospace font
+- End-to-end: invoking `/rtfp` skill from a Claude Code session returns a PNG path without requiring any manual script execution
+- Gap (current): no script ties all four stages together; each must be invoked manually in sequence
+
+### Acceptance Criteria
+
+1. `uv run .claude/skills/rtfp/scripts/list_sessions.py --json` returns a JSON array with at least one session entry containing `path` and a human-readable title
+2. `uv run .claude/skills/rtfp/scripts/extract_batches.py <session_path> --out-dir /tmp/rtfp-test` writes batch files where every entry has `role: user` — no assistant, tool, system, or developer messages
+3. Each batch file entry includes `source_file` and `index` fields pointing back to the originating JSONL and original message position
+4. `uv run .claude/skills/rtfp/scripts/detect_reactions.py <batch_file>` writes a flagged indexes JSON file and prints a plain entry list; no crash on a batch with zero flagged messages
+5. `uv run .claude/skills/rtfp/scripts/reconstruct_context.py` emits a JSON object with `winner.task_summary`, `winner.triggering_assistant_output`, and `winner.user_reaction` — all non-empty strings
+6. `uv run .claude/skills/rtfp/scripts/render_artifact.py <input.json> --out /tmp/out.png` writes a PNG file that opens without error and contains three distinct text regions
+7. At least one script uses DuckDB `read_ndjson()` as the query layer for session JSONL reads (not direct Python file parsing)
+8. Invoking `/rtfp` skill in a Claude Code session runs all four stages and returns a PNG path without requiring the user to invoke any script directly
+9. `plugins/rtfp/` directory exists and passes `uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/rtfp/` with exit code 0 (post-migration criterion — depends on plugin-lifecycle completion)
+
+### Resources
+
+| Type | Item |
+|------|------|
+| Skill | /rtfp (`.claude/skills/rtfp/SKILL.md`) — existing orchestration skeleton; needs end-to-end wiring |
+| Script | `.claude/skills/rtfp/scripts/list_sessions.py` — session enumeration |
+| Script | `.claude/skills/rtfp/scripts/extract_batches.py` — Stage 1: user-only batching, p50k_base token counting |
+| Script | `.claude/skills/rtfp/scripts/detect_reactions.py` — Stage 2: heuristic emotional detection |
+| Script | `.claude/skills/rtfp/scripts/reconstruct_context.py` — Stage 3: context reconstruction (verify completeness) |
+| Script | `.claude/skills/rtfp/scripts/render_artifact.py` — Stage 4: terminal-style PNG rendering via Pillow |
+| Skill | /plugin-creator:plugin-lifecycle — plugin directory scaffolding and migration |
+| Agent | @plugin-creator:agent-creator — agent creation within new plugin |
+| Skill | /swarm-spawning — fan-out pattern for per-batch subagent dispatch (Stage 2) |
+| Prior work | DuckDB `read_ndjson()` — VERIFIED in fact-check (2026-03-09); not yet wired into any script |
+
+### Dependencies
+
+- Depends on: None (no open backlog items must complete before this can start; individual scripts are independently runnable today)
+- Blocks: Plugin migration to `plugins/rtfp/` via `/plugin-creator:plugin-lifecycle` — that step must wait until skills/scripts are complete and validated
+- Related: `/swarm-spawning` skill must be loadable for Stage 2 fan-out; no structural dependency, but it is referenced in SKILL.md workflow
+
+### Blockers
+
+- **End-to-end orchestrating skill**: No script or SKILL.md step ties all four stages together. The existing `SKILL.md` lists each step but leaves subagent fan-out and result merging to the orchestrator's interpretation. A callable entrypoint that runs stages 1-4 without user intervention is missing.
+- **DuckDB integration**: Spec requires DuckDB as the query layer for JSONL reads. All current scripts use direct Python file parsing. No script uses `duckdb.read_ndjson()` or any DuckDB API. This must be wired in before plugin migration.
+- **Plugin structure migration**: Currently implemented under `.claude/skills/rtfp/` as skills/scripts. Migration to `plugins/rtfp/` via `/plugin-creator:plugin-lifecycle` is planned but not started and is gated on the above two items being complete.
+- **PNG design fidelity**: `render_artifact.py` uses basic Pillow; no verified match to Claude Code terminal aesthetic (dark background, specific brand palette, monospace font selection). Design target is observable but unvalidated.
+
+### Decision
+
+**RT-ICA**: BLOCKED
+
+Four conditions are MISSING:
+
+1. End-to-end orchestrating skill tying stages 1-4 into a single invocable workflow
+2. DuckDB integration as the query layer for JSONL reads (spec requirement; no script uses it yet)
+3. Plugin structure migration from `.claude/skills/rtfp/` to `plugins/rtfp/` (gated on items 1 and 2)
+4. PNG design fidelity to Claude Code terminal aesthetic (unvalidated against target design)
+
+Item is APPROVED to begin implementation work on items 1 and 2 since all required information for those gaps is now fully specified. Plugin migration (item 3) remains gated on items 1 and 2 completing. PNG fidelity (item 4) can be addressed during Stage 4 work.
+
+**Implementation sequence**:
+1. Wire DuckDB `read_ndjson()` into `list_sessions.py` and `extract_batches.py`
+2. Write an end-to-end orchestration script or update `SKILL.md` with a callable entrypoint
+3. Validate PNG output against Claude Code terminal aesthetic; iterate on `render_artifact.py`
+4. Run `/plugin-creator:plugin-lifecycle` to migrate to `plugins/rtfp/`
+
+### Effort
+
+Medium — Four stage scripts exist and are individually functional. Remaining work is bounded: DuckDB wiring in two scripts, one orchestration entrypoint, PNG aesthetic iteration, and plugin migration via an existing lifecycle skill. No design ambiguity on the data schema or workflow stages. Plugin migration is procedural once the skills/scripts layer is complete.
