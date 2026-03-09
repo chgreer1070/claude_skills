@@ -4,8 +4,6 @@ description: Guide for creating effective skills. This skill should be used when
 user-invocable: true
 license: Complete terms in LICENSE.txt
 ---
-> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
-
 # Skill Creator
 
 ## Current Skills Environment
@@ -332,7 +330,7 @@ Three patterns: (1) high-level guide with pointers to FORMS.md, REFERENCE.md, et
 
 Rules: keep references one level deep from SKILL.md. NEVER add ToC, anchor links, or bold/italic for visual emphasis to reference files — see [references/ai-audience-writing-rules.md](./references/ai-audience-writing-rules.md).
 
-> **Editing an existing SKILL.md?** Before treating an unrecognized frontmatter key as an error, check `plugins/plugin-creator/scripts/ecosystem_registry.py`. If the key is returned by `get_ecosystem_owned_keys()` — such as `mcp:` (OpenCode) — preserve it and all its nested content verbatim. Do not strip, rewrite, or normalize it. For `mcp:` specifically, see the `/plugin-creator:agent-plugin-ecosystem` skill (OpenCode SKILL.md Extensions section) for the full schema.
+> **Editing an existing SKILL.md?** Before treating an unrecognized frontmatter key as an error, check `plugins/plugin-creator/scripts/ecosystem_registry.py`. If the key is returned by `get_ecosystem_owned_keys()` — such as `mcp:` (OpenCode) — preserve it and all its nested content verbatim. Do not strip, rewrite, or normalize it. For `mcp:` specifically, see the [agent-plugin-ecosystem](./references/agent-plugin-ecosystem.md) reference (OpenCode SKILL.md Extensions section) for the full schema.
 
 ## Skill Creation Process
 
@@ -502,17 +500,6 @@ Added scripts must be tested by actually running them to ensure there are no bug
 Any example files and directories not needed for the skill should be deleted. The initialization script creates example files in `scripts/`, `references/`, and `assets/` to demonstrate structure, but most skills won't need all of them.
 
 #### Update SKILL.md
-
-**HARD BLOCK — ORCHESTRATOR MUST NOT WRITE SKILL.MD BODY OR REFERENCE FILES**
-
-```mermaid
-flowchart TD
-    Q{"About to write SKILL.md body<br>or references/*.md?"}
-    Q -->|"Orchestrator"| BLOCK["STOP — PROHIBITED<br>Delegate to subagent_type=<br>'plugin-creator:contextual-ai-documentation-optimizer'<br>Pass: file path + intent + source material"]
-    Q -->|"contextual-ai-documentation-optimizer"| ALLOW["PROCEED"]
-    BLOCK --> Exempt{"Is any rationalization<br>an exception?"}
-    Exempt -->|"'simple enough to do myself'<br>'content is straightforward'<br>'I know what to write'<br>'task size is small'<br>'context is high, better quickly'<br>'just a reference file'"| No["NO — none of these are exceptions<br>Agents have fresh context per task.<br>Delegate regardless of perceived simplicity."]
-```
 
 Orchestrator role in Step 5: write YAML frontmatter only, pass file paths to the sub-agent, verify output after completion.
 

@@ -5,10 +5,5 @@
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
-  },
-  "agents": [
-    "./agents/perl-script-developer.md",
-    "./agents/perl-script-auditor.md",
-    "./agents/perl-cli-architect.md"
-  ]
+  }
 }

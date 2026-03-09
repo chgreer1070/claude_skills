@@ -13,10 +13,5 @@
     "anti-hallucination",
     "synthesis",
     "extractive"
-  ],
-  "agents": [
-    "./agents/file-summarizer.md",
-    "./agents/image-summarizer.md",
-    "./agents/url-summarizer.md"
   ]
 }

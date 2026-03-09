@@ -7,8 +7,6 @@ user-invocable: true
 
 <plugin_path>$ARGUMENTS</plugin_path>
 
-> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
-
 # Plugin Refactoring Workflow
 
 Start a comprehensive plugin refactoring workflow for the specified plugin.

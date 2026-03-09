@@ -15,9 +15,5 @@
     "python",
     "formatting",
     "type-checking"
-  ],
-  "agents": [
-    "./agents/linting-root-cause-resolver.md",
-    "./agents/post-linting-architecture-reviewer.md"
   ]
 }

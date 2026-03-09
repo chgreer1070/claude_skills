@@ -1,8 +1,4 @@
----
-name: agent-plugin-ecosystem
-description: 'Ecosystem awareness for AI agent plugin systems — Claude Code, Cursor, agentskills.io standard, AAIF. Auto-loaded into agents writing skills, agents, or plugin manifests so output targets the correct schema and platform. Describes plugin.json schemas, SKILL.md portability constraints, cross-vendor differences, and self-update instructions when ecosystem changes occur.'
-user-invocable: false
----
+<!-- Migrated from skills/agent-plugin-ecosystem/ — pure reference content -->
 
 # Agent Plugin Ecosystem
 

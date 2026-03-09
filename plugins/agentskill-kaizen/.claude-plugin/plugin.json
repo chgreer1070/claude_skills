@@ -1,6 +1,6 @@
 {
   "name": "agentskill-kaizen",
-  "version": "0.6.82",
+  "version": "0.6.83",
   "description": "Analyze Claude Code agent session transcripts to identify inefficiencies, anti-patterns, repeated mistakes, missing tooling opportunities, and user frustration signals for continuous improvement",
   "author": {
     "name": "Jamie Nelson",
@@ -14,10 +14,6 @@
     "anti-pattern-detection",
     "continuous-improvement",
     "agent-optimization"
-  ],
-  "agents": [
-    "./agents/improvement-generator.md",
-    "./agents/transcript-analyst.md"
   ],
   "mcpServers": {
     "kaizen-duckdb": {

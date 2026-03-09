@@ -5,9 +5,5 @@
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
-  },
-  "agents": [
-    "./agents/bash-script-developer.md",
-    "./agents/bash-script-auditor.md"
-  ]
+  }
 }

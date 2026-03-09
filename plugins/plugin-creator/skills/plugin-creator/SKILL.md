@@ -6,8 +6,6 @@ model: sonnet
 user-invocable: true
 ---
 
-> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
-
 # Claude Code Plugin Creator — Agentic Orchestration Workflow
 
 This skill orchestrates specialized agents through a comprehensive plugin creation workflow. The orchestrator (you) delegates to sub-agents for research, discovery, validation, and implementation — never performing these tasks directly.

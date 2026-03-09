@@ -3,8 +3,6 @@ name: write-frontmatter-description
 description: Write or rewrite frontmatter description fields for Claude Code skills and agents. Use when creating new skills/agents, description exceeds 1024 characters, description uses forbidden YAML multiline indicators (>-, |-), description contains colons that trigger quoting, description lacks trigger keywords, or when optimizing descriptions for AI tool selection. Ensures descriptions are single-line, complete, informative, front-loaded with critical information.
 user-invocable: true
 ---
-> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
-
 The model MUST write frontmatter descriptions following these rules.
 
 ## Formatting Rules

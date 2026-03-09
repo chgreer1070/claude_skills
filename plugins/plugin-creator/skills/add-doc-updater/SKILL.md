@@ -8,8 +8,6 @@ user-invocable: true
 
 <skill_path>$ARGUMENTS</skill_path>
 
-> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
-
 # Add Documentation Updater
 
 Orchestrate adding automated documentation updater to target Claude skills. Follow the proven pattern from gitlab-skill's sync_gitlab_docs.py.

@@ -5,8 +5,6 @@ argument-hint: <plugin-path>
 model: sonnet
 user-invocable: true
 ---
-> When editing files in `plugins/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md` — delegate to `subagent_type="plugin-creator:contextual-ai-documentation-optimizer"`.
-
 # Audit Agent Lifecycle
 
 ## Purpose

@@ -53,3 +53,4 @@ package-lock.json
 
 # LevelDB stores
 *.db/
+.claude/audits/

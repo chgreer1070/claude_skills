@@ -18,10 +18,5 @@
     "data-transformation",
     "format-conversion",
     "structured-data"
-  ],
-  "agents": [
-    "./agents/data-explorer.md",
-    "./agents/dasel-guide.md",
-    "./agents/data-analyst.md"
   ]
 }

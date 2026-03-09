@@ -94,7 +94,7 @@ When a SKILL.md contains top-level frontmatter keys not in the Claude Code stand
 
 **Non-error rule**: Ecosystem-owned frontmatter fields are VALID. Do NOT flag them as schema violations, unknown field errors, or recommend their removal.
 
-For the list of recognized ecosystem fields and their owning platforms, load the `/agent-plugin-ecosystem` skill or read `plugins/plugin-creator/skills/agent-plugin-ecosystem/SKILL.md`.
+For the list of recognized ecosystem fields and their owning platforms, read [agent-plugin-ecosystem](../skills/skill-creator/references/agent-plugin-ecosystem.md).
 
 **Tool Pattern Syntax:**
 

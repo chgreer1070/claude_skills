@@ -6,9 +6,6 @@
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "agents": [
-    "./agents/retrospective-analyst.md"
-  ],
   "mcp_servers": {
     "experiment-registry": {
       "command": "uv",
