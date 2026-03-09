@@ -103,3 +103,16 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 - `_apply_extension` merges `ext.additional_frozen_artefacts` into `step.frozen_artefacts` with order-preserving deduplication (via `dict.fromkeys`)
 - Duplicate keys in `additional_frozen_artefacts` that already exist in `step.frozen_artefacts` are deduplicated (base key wins position)
 **Reason not written**: T4 scope is integration wiring only. Test creation is assigned to T6 per the task plan.
+
+## Gap: render_artifact.py — RTFP terminal PNG renderer
+
+**Files**: `.claude/skills/rtfp/scripts/render_artifact.py`
+**Behavior to cover**:
+- `render()` produces a valid PNG file at the specified output path with correct dimensions
+- `wrap_text()` wraps long lines correctly based on font width measurement
+- `parse_args()` defaults: output path uses `tempfile.gettempdir()`, width=900, font-size=15
+- `main()` exits with code 1 when `task_summary` or `user_reaction` missing from input JSON
+- `main()` reads from `--input-file` when provided, falls back to stdin otherwise
+- `load_fonts()` falls back to default font when no system monospace font is found
+- `draw_chrome()` renders traffic-light dots and centered title text
+**Reason not written**: Standalone script in skills directory; user-scoped task was a surgical lint fix (2 lines changed), not a full rewrite. No existing test suite to extend.
