@@ -1,13 +1,18 @@
 #!/usr/bin/env -S uv --quiet run --active --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = []
+# dependencies = [
+#   "tiktoken>=0.7.0",
+# ]
 # ///
 """Extract and batch messages from a Claude Code session JSONL file.
 
 Reads all messages (user + assistant) from the given JSONL file,
 preserving original message indexes. Splits into batch files of
-approximately TARGET_CHARS characters each (default ~400k chars ≈ 100k tokens).
+approximately TARGET_TOKENS tokens each (default 100k tokens).
+
+Token counting uses tiktoken cl100k_base encoding — a reasonable approximation
+for Claude context budget sizing (not the exact Claude tokenizer).
 
 Each batch file is a JSON object:
 {
@@ -21,14 +26,14 @@ Each batch file is a JSON object:
       "type": "user" | "assistant",
       "timestamp": "...",
       "content": "...",
-      "char_count": N
+      "token_count": N
     },
     ...
   ]
 }
 
 Usage:
-    extract_batches.py <session_jsonl_path> [--out-dir /tmp/rtfp-batches] [--batch-chars 400000]
+    extract_batches.py <session_jsonl_path> [--out-dir /tmp/rtfp-batches] [--batch-tokens 100000]
     extract_batches.py <session_jsonl_path> --list-only
 """
 
@@ -39,6 +44,30 @@ import json
 import sys
 import tempfile
 from pathlib import Path
+
+import tiktoken
+
+_TIKTOKEN_ENCODING = "cl100k_base"
+
+
+class _EncoderCache:
+    enc: tiktoken.Encoding | None = None
+
+    @classmethod
+    def get(cls) -> tiktoken.Encoding:
+        if cls.enc is None:
+            cls.enc = tiktoken.get_encoding(_TIKTOKEN_ENCODING)
+        return cls.enc
+
+
+def count_tokens(text: str) -> int:
+    """Count tokens using tiktoken cl100k_base encoding.
+
+    Returns:
+        Number of tokens in the text.
+    """
+    return len(_EncoderCache.get().encode(text))
+
 
 _NOISE_PREFIXES = (
     "<local-command-caveat>",
@@ -105,7 +134,7 @@ def load_messages(session_path: Path) -> list[dict]:
     """Load and parse all messages from a JSONL session file.
 
     Returns:
-        List of message dicts with keys: index, type, timestamp, content, char_count.
+        List of message dicts with keys: index, type, timestamp, content, token_count.
     """
     messages = []
     msg_index = 0
@@ -146,32 +175,32 @@ def load_messages(session_path: Path) -> list[dict]:
                 "type": msg_type,
                 "timestamp": ts,
                 "content": content,
-                "char_count": len(content),
+                "token_count": count_tokens(content),
             })
             msg_index += 1
 
     return messages
 
 
-def split_into_batches(messages: list[dict], target_chars: int) -> list[list[dict]]:
-    """Split messages into batches not exceeding target_chars total.
+def split_into_batches(messages: list[dict], target_tokens: int) -> list[list[dict]]:
+    """Split messages into batches not exceeding target_tokens total.
 
     Returns:
         List of message batches, each batch being a list of message dicts.
     """
     batches: list[list[dict]] = []
     current_batch: list[dict] = []
-    current_chars = 0
+    current_tokens = 0
 
     for msg in messages:
-        chars = msg["char_count"]
+        tokens = msg["token_count"]
         # Start new batch if we'd exceed target and current batch is non-empty
-        if current_chars + chars > target_chars and current_batch:
+        if current_tokens + tokens > target_tokens and current_batch:
             batches.append(current_batch)
             current_batch = []
-            current_chars = 0
+            current_tokens = 0
         current_batch.append(msg)
-        current_chars += chars
+        current_tokens += tokens
 
     if current_batch:
         batches.append(current_batch)
@@ -196,14 +225,14 @@ def write_batch_files(session_path: Path, session_id: str, batches: list[list[di
             "batch_index": i,
             "total_batches": total,
             "message_count": len(batch),
-            "total_chars": sum(m["char_count"] for m in batch),
+            "total_tokens": sum(m["token_count"] for m in batch),
             "messages": batch,
         }
         out_path = out_dir / f"batch_{i:03d}.json"
         with out_path.open("w", encoding="utf-8") as fh:
             json.dump(payload, fh, ensure_ascii=False, indent=2)
         written.append(out_path)
-        print(f"  Batch {i}: {len(batch)} messages, {payload['total_chars']:,} chars → {out_path}", file=sys.stderr)
+        print(f"  Batch {i}: {len(batch)} messages, {payload['total_tokens']:,} tokens → {out_path}", file=sys.stderr)
 
     return written
 
@@ -217,10 +246,10 @@ def main() -> None:
     parser.add_argument("session_path", help="Path to session .jsonl file")
     parser.add_argument("--out-dir", default=_DEFAULT_OUT_DIR, help="Output directory for batch files")
     parser.add_argument(
-        "--batch-chars",
+        "--batch-tokens",
         type=int,
-        default=400_000,
-        help="Target chars per batch (~100k tokens at 4 chars/token). Default: 400000",
+        default=100_000,
+        help="Target tokens per batch (tiktoken cl100k_base). Default: 100000",
     )
     parser.add_argument(
         "--list-only", action="store_true", help="Print message count and estimated batches without writing files"
@@ -239,20 +268,20 @@ def main() -> None:
         print("No messages found in session file.", file=sys.stderr)
         sys.exit(1)
 
-    total_chars = 0
+    total_tokens = 0
     user_count = 0
     asst_count = 0
     for m in messages:
-        total_chars += m["char_count"]
+        total_tokens += m["token_count"]
         if m["type"] == "user":
             user_count += 1
         else:
             asst_count += 1
-    estimated_batches = max(1, (total_chars + args.batch_chars - 1) // args.batch_chars)
+    estimated_batches = max(1, (total_tokens + args.batch_tokens - 1) // args.batch_tokens)
 
     print(f"Messages: {len(messages)} total ({user_count} user, {asst_count} assistant)", file=sys.stderr)
-    print(f"Total chars: {total_chars:,} (~{total_chars // 4:,} tokens)", file=sys.stderr)
-    print(f"Estimated batches at {args.batch_chars:,} chars each: {estimated_batches}", file=sys.stderr)
+    print(f"Total tokens: {total_tokens:,} (tiktoken cl100k_base)", file=sys.stderr)
+    print(f"Estimated batches at {args.batch_tokens:,} tokens each: {estimated_batches}", file=sys.stderr)
 
     if args.list_only:
         result = {
@@ -261,13 +290,13 @@ def main() -> None:
             "message_count": len(messages),
             "user_messages": user_count,
             "assistant_messages": asst_count,
-            "total_chars": total_chars,
+            "total_tokens": total_tokens,
             "estimated_batches": estimated_batches,
         }
         print(json.dumps(result, indent=2))
         return
 
-    batches = split_into_batches(messages, args.batch_chars)
+    batches = split_into_batches(messages, args.batch_tokens)
     out_dir = Path(args.out_dir)
 
     print(f"\nWriting {len(batches)} batch file(s) to {out_dir}...", file=sys.stderr)
