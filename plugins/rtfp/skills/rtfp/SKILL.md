@@ -27,7 +27,7 @@ Output is exactly three things: what they were doing, what Claude said, how the 
 ### Step 1 — List Sessions
 
 ```bash
-uv run .claude/skills/rtfp/scripts/list_sessions.py --json
+uv run ./scripts/list_sessions.py --json
 ```
 
 Present the numbered list to the user. Ask which session to inspect. Wait for the user's selection (by number or session ID) before proceeding.
@@ -35,10 +35,11 @@ Present the numbered list to the user. Ask which session to inspect. Wait for th
 ### Step 2 — Extract Batches
 
 ```bash
-uv run .claude/skills/rtfp/scripts/extract_batches.py <session_jsonl_path> --out-dir /tmp/rtfp-batches-<sessionid>
+TMPDIR=$(python3 -c "import tempfile; print(tempfile.gettempdir())")
+uv run ./scripts/extract_batches.py <session_jsonl_path> --out-dir "$TMPDIR/rtfp-batches-<sessionid>"
 ```
 
-The script outputs a JSON array of batch file paths. Capture that list — each path is one batch to scan in Step 3.
+The script outputs a JSON object. Read the `batch_files` array from this object — each path in that array is one batch to scan in Step 3.
 
 ### Step 3 — Fan-Out Scan (one subagent per batch)
 
@@ -50,21 +51,25 @@ Scan all user messages for strong emotional reactions targeted at the assistant:
 frustration, disbelief, insults, argument, rage, or clearly negative emotional
 responses aimed at the AI's behavior.
 
+Determine the platform temp directory first:
+TMPDIR=$(python3 -c "import tempfile; print(tempfile.gettempdir())")
+
 Produce TWO outputs:
 
-1. Write a JSON file to /tmp/rtfp-flagged-<batch_index>.json with this format:
-   {"source_file": "<batch_file_path>", "flagged_indexes": [N, ...]}
+1. Write a JSON file to $TMPDIR/rtfp-flagged-<batch_index>.json with this format:
+   {"source_file": "<original_session_jsonl_path>", "flagged_indexes": [N, ...]}
+   Use the source_file field from the batch JSON header (the original session JSONL path, not the batch file path).
    Write an empty flagged_indexes array if no reactions are found.
 
 2. Print a plain list of flagged entries to your output:
-   each line: <message_index> | <first 200 chars of content>
+   each line: <message_index> | <full content> (no truncation)
 ```
 
 Wait for all subagents to finish before proceeding.
 
 ### Step 4 — Merge Flagged Indexes
 
-Read each `/tmp/rtfp-flagged-<batch_index>.json` file produced in Step 3. Merge all `flagged_indexes` arrays into a single working set keyed by source file. If no indexes were flagged across all batches, report that to the user and stop.
+Read each `$TMPDIR/rtfp-flagged-<batch_index>.json` file produced in Step 3 (where `TMPDIR` was determined via `python3 -c "import tempfile; print(tempfile.gettempdir())"`). Merge all `flagged_indexes` arrays into a single working set keyed by source file. If no indexes were flagged across all batches, report that to the user and stop.
 
 ### Step 5 — Pick the Winner (final subagent)
 
@@ -85,8 +90,10 @@ Flagged indexes: <merged_working_set_as_json>
    CORRECT:   "refactoring test fixtures"
    INCORRECT: "the assistant ignored the constraint about scoring"
    INCORRECT: "failure to follow the instruction to omit scoring"
-5. Identify the assistant message(s) immediately preceding the winning reaction.
-6. Write /tmp/rtfp-result.json with exactly these fields:
+5. Inspect nearby transcript entries and identify the assistant message(s) that triggered the winning reaction. Do not assume it is always the single immediately preceding message — look at the surrounding context window.
+6. Determine the platform temp directory:
+   TMPDIR=$(python3 -c "import tempfile; print(tempfile.gettempdir())")
+   Write $TMPDIR/rtfp-result.json with exactly these fields:
    {
      "task_summary": "<dry one-line activity description>",
      "triggering_assistant_output": "<triggering assistant output>",
@@ -94,12 +101,13 @@ Flagged indexes: <merged_working_set_as_json>
    }
 ```
 
-Wait for the subagent to finish. Verify `/tmp/rtfp-result.json` exists before proceeding.
+Wait for the subagent to finish. Verify `$TMPDIR/rtfp-result.json` exists before proceeding (use the same `TMPDIR` value).
 
 ### Step 6 — Render PNG
 
 ```bash
-uv run .claude/skills/rtfp/scripts/render_artifact.py --input-file /tmp/rtfp-result.json --output rtfp_artifact.png
+TMPDIR=$(python3 -c "import tempfile; print(tempfile.gettempdir())")
+uv run ./scripts/render_artifact.py --input-file "$TMPDIR/rtfp-result.json" --output rtfp_artifact.png
 ```
 
 The script produces a terminal-style dark PNG with:
