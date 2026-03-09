@@ -59,7 +59,7 @@ flowchart TD
 
 ## Component Inventory
 
-### Skills (13)
+### Skills (15)
 
 | Skill | User-Invocable | Purpose |
 |-------|---------------|---------|
@@ -78,6 +78,8 @@ flowchart TD
 | `/refactor-plugin` | Yes | Complete plugin refactoring workflow |
 | `/refactor-skill` | Yes | Split oversized skills into smaller focused skills |
 | `/start-refactor-task` | Yes | Execute individual refactoring tasks |
+| `/audit-agent-lifecycle` | Yes | Audit agent lifecycle patterns and write findings to `.claude/audits/patterns.md` |
+| `/agent-capability-analyzer` | Yes | Analyze agent capability gaps and generate improvement recommendations |
 
 ### Agents (6)
 
@@ -382,11 +384,11 @@ user-invocable: true
 
 ### subagent-refactorer
 
-Refactors Claude Code subagents using Anthropic prompt engineering best practices. Used for `AGENT_OPTIMIZE` task types. Researches current Anthropic documentation before refactoring; applies strategic XML tagging; optimizes for model selection. Requires `prompt-optimization-claude-45` skill from separate plugin.
+Refactors Claude Code subagents using Anthropic prompt engineering best practices. Used for `AGENT_OPTIMIZE` task types. Researches current Anthropic documentation before refactoring; applies strategic XML tagging; optimizes for model selection. Uses the `prompt-optimization` skill (now part of this plugin).
 
 ### contextual-ai-documentation-optimizer
 
-Optimizes prompts, SKILL.md, and CLAUDE.md files for Claude comprehension. Used for `DOC_IMPROVE` and `ORPHAN_RESOLVE` task types. Applies positive framing; uses concrete examples; front-loads critical instructions. Requires `prompt-optimization-claude-45` skill from separate plugin.
+Optimizes prompts, SKILL.md, and CLAUDE.md files for Claude comprehension. Used for `DOC_IMPROVE` and `ORPHAN_RESOLVE` task types. Applies positive framing; uses concrete examples; front-loads critical instructions. Uses the `prompt-optimization` skill (now part of this plugin).
 
 ### plugin-assessor
 
@@ -463,7 +465,7 @@ LSP servers require separate binary installation — plugins configure the conne
 
 ## Related Plugins
 
-- `prompt-optimization-claude-45` — required by `contextual-ai-documentation-optimizer` and `subagent-refactorer` agents
+- `prompt-optimization` — now a skill within this plugin; used by `contextual-ai-documentation-optimizer` and `subagent-refactorer` agents
 - `holistic-linting` — code quality and linting
 - `python3-development` — Python-specific development patterns
 

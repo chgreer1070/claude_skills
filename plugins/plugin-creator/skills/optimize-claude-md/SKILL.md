@@ -63,7 +63,7 @@ BASELINE COMPLETENESS SCORE: {X/24} (SKILL.md only)
 
 TASK:
 1. Run RT-ICA pre-check — verify file type, intent, audience, constraints
-2. Enable the prompt-optimization-claude-45 skill
+2. Enable the prompt-optimization skill
 3. Read the complete target file(s)
 4. Analyze against the 8 optimization principles:
    - Positive framing (replace prohibitions with directives)

@@ -7,7 +7,7 @@ Orchestrator: Claude (reads this workflow and executes steps)
 
 Before ANY optimization task, load the knowledge reference:
 
-Read `plugins/prompt-optimization-claude-45/skills/prompt-optimization-claude-45/SKILL.md`
+Read `plugins/plugin-creator/skills/prompt-optimization/SKILL.md`
 
 Key principle to carry forward: positive framing over prohibitions (models attend to key nouns — "NEVER use X" still activates "use X"). The optimizer will fix prohibition patterns.
 

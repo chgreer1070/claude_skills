@@ -1,5 +1,5 @@
 ---
-name: prompt-optimization-claude-45
+name: prompt-optimization
 description: Optimize CLAUDE.md files and Skills for Claude Code CLI. Use when reviewing, creating, or improving system prompts, CLAUDE.md configurations, or Skill files. Transforms negative instructions into positive patterns following Anthropic's official best practices.
 ---
 # Claude Code Prompt Optimization
@@ -349,9 +349,9 @@ After optimization, verify:
 
 When encountering unique names, tool references, or technical jargon (e.g., "WebFetch", "Exa", "Ref", "Context7"):
 
-1.  **NEVER Paraphrase**: Do not attempt to reword or summarize technical terms you haven't verified. Paraphrasing functional requirements can break tool calls or mislead the AI.
-2.  **Verify Official Definitions**: Search for the official documentation or definition within the context of the tool (e.g., Claude Code CLI).
-3.  **Use Precise Terminology**: Once verified, use the exact terminology found in the official source.
+1. **NEVER Paraphrase**: Do not attempt to reword or summarize technical terms you haven't verified. Paraphrasing functional requirements can break tool calls or mislead the AI.
+2. **Verify Official Definitions**: Search for the official documentation or definition within the context of the tool (e.g., Claude Code CLI).
+3. **Use Precise Terminology**: Once verified, use the exact terminology found in the official source.
 
 **Example:**
 

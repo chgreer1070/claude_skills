@@ -126,4 +126,4 @@ This plugin routes to these specialist agents and scripts (not copied — refere
 
 - `plugins/summarizer/skills/summarizer/references/fidelity-rules.md` — summarizer fidelity rules
 - `plugins/gitlab-skill/skills/gitlab-skill/references/glfm-syntax.md` — GLFM syntax reference
-- `plugins/prompt-optimization-claude-45/skills/prompt-optimization-claude-45/SKILL.md` — prompt optimization principles
+- `plugins/plugin-creator/skills/prompt-optimization/SKILL.md` — prompt optimization principles

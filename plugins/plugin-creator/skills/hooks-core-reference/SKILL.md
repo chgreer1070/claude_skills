@@ -31,7 +31,7 @@ For working examples and patterns, activate `Skill(skill: "plugin-creator:hooks-
 | `SessionStart`       | Session begins or resumes         | Yes             | Environment setup       |
 | `SessionEnd`         | Session ends                      | No              | Cleanup, persistence    |
 
-For a visual overview of the full event sequence, see the [hooks lifecycle diagram](../hooks-guide/references/hooks-lifecycle.svg).
+For a visual overview of the full event sequence, see the [hooks lifecycle diagram](../hooks-guide/references/hooks-lifecycle.png).
 
 ---
 

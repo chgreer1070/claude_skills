@@ -37,7 +37,7 @@ Before delegating, read the corresponding reference file to understand exact inp
 
 | Reference | Path | Read When |
 |-----------|------|-----------|
-| Prompt optimization principles | plugins/prompt-optimization-claude-45/skills/prompt-optimization-claude-45/SKILL.md | Before any optimization task — understand positive framing rules, length targets by doc type, compression techniques |
+| Prompt optimization principles | plugins/plugin-creator/skills/prompt-optimization/SKILL.md | Before any optimization task — understand positive framing rules, length targets by doc type, compression techniques |
 | contextual-ai-documentation-optimizer protocol | plugins/plugin-creator/agents/contextual-ai-documentation-optimizer.md | Before delegating — understand RT-ICA pre-check gate and that file path must be passed, never pre-summarized content |
 | subagent-refactorer protocol | plugins/plugin-creator/agents/subagent-refactorer.md | Before delegating agent refactor tasks |
 

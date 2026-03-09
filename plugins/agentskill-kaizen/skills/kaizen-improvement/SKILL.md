@@ -20,6 +20,8 @@ Five categories of output, each with a delegation template:
 
 For detailed templates and examples, see [Improvement Templates](./references/improvement-templates.md).
 
+For the Autonomous Refinement Loop (ARL) knowledge base — Layer 3 implementation details, prerequisites, and research synthesis — see [ARL Knowledge](../../references/arl.md).
+
 ## Workflow
 
 ```mermaid

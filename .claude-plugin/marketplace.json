@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Covers modern Python toolchains, GitLab CI/CD automation, code quality enforcement, MCP server creation, and plugin/agent development patterns.",
-    "version": "5.3.55"
+    "version": "6.0.0"
   },
   "plugins": [
     {
@@ -60,10 +60,6 @@
     {
       "name": "perl-development",
       "source": "./plugins/perl-development"
-    },
-    {
-      "name": "prompt-optimization-claude-45",
-      "source": "./plugins/prompt-optimization-claude-45"
     },
     {
       "name": "python3-development",

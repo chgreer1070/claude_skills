@@ -44,7 +44,7 @@ For deeper Claude Code coverage, these focused skills are available:
 - [hooks-python.md](./references/hooks-python.md) — Python authoring guide and templates
 - [best-practices.md](./references/best-practices.md) — cross-platform conventions and anti-patterns
 - [platform-coverage.md](./references/platform-coverage.md) — known platforms, fetch URLs, coverage status
-- [hooks-lifecycle.svg](./references/hooks-lifecycle.svg) — visual diagram of the full hook event sequence: SessionStart → agentic loop (PreToolUse → PermissionRequest → tool → PostToolUse → SubagentStart/Stop → TaskCompleted) → Stop → SessionEnd, plus async side events (Notification, ConfigChange, WorktreeCreate/Remove, InstructionsLoaded)
+- [hooks-lifecycle.png](./references/hooks-lifecycle.png) — visual diagram of the full hook event sequence
 
 ## Refresh Docs
 

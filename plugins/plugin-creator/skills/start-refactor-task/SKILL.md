@@ -99,7 +99,7 @@ Work through each acceptance criterion based on the issue type:
 
 1. READ the current agent file
 2. READ the design spec section for optimization
-3. LOAD reference skills: claude-skills-overview-2026, prompt-optimization-claude-45
+3. LOAD reference skills: claude-skills-overview-2026, prompt-optimization
 4. REWRITE description with trigger keywords
 5. IMPROVE instruction clarity
 6. REVIEW tool restrictions
@@ -172,7 +172,7 @@ Load these skills for guidance on proper formats:
 | claude-plugins-reference-2026 | Plugin structure          |
 |                               | Command format            |
 | hooks-guide                   | Hooks format              |
-| prompt-optimization-claude-45 | Agent prompt optimization |
+| prompt-optimization           | Agent prompt optimization |
 
 ### Research and Knowledge
 
