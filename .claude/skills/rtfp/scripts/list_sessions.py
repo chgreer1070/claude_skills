@@ -8,8 +8,12 @@
 Discovers JSONL session files under ~/.claude/projects/ and outputs
 session metadata as JSON to stdout. Progress/status goes to stderr.
 
+Output JSON fields per session: session_id, file_path, project_slug,
+last_ts, user_msg_count, title, modified_at, message_count.
+
 Usage:
     list_sessions.py [--project-dir DIR] [--limit N] [--list-only]
+    list_sessions.py --refresh-index [--project-dir DIR]
 """
 
 from __future__ import annotations
@@ -226,6 +230,11 @@ def main() -> None:
     )
     parser.add_argument("--limit", "-n", type=int, default=20, help="Max sessions to list (default: 20)")
     parser.add_argument("--list-only", action="store_true", help="Print JSON to stdout and exit")
+    parser.add_argument(
+        "--refresh-index",
+        action="store_true",
+        help="Re-scan all session files regardless of prior index state, ensuring recently created sessions appear",
+    )
     args = parser.parse_args()
 
     project_dir: str = args.project_dir if args.project_dir is not None else str(Path.cwd())
@@ -237,11 +246,15 @@ def main() -> None:
         print(json.dumps(result, indent=2))
         sys.exit(1)
 
+    if args.refresh_index:
+        print("Re-scanning all session files (--refresh-index)...", file=sys.stderr)
+
     print(f"Scanning sessions in: {session_dir}", file=sys.stderr)
     sessions = _list_sessions(session_dir, args.limit)
 
     result = {"sessions": sessions, "count": len(sessions)}
     print(json.dumps(result, indent=2))
+    print("Pass file_path to extract_batches.py to begin analysis.", file=sys.stderr)
 
 
 if __name__ == "__main__":

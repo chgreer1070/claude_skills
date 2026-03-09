@@ -12,8 +12,10 @@ messages, tool outputs, system messages, or developer messages. Batch files
 are for emotional-reply detection only; full transcript context is retrieved
 later during reconstruction.
 
-Each entry preserves its source session file path and original message index
-so it can be traced back to the full transcript.
+Each entry preserves its source session file path, the original JSONL line
+index (1-based line number in the source file, usable to locate the record
+in the full transcript), and a filtered_index (sequential position among
+user-authored messages after filtering).
 
 Splits into batch files of approximately TARGET_TOKENS tokens each (default
 100k tokens). Token counting uses tiktoken p50k_base encoding (recommended approximation for Claude).
@@ -26,7 +28,8 @@ Each batch file is a JSON object:
   "total_batches": N,
   "messages": [
     {
-      "index": 0,
+      "jsonl_line_index": 5,
+      "filtered_index": 0,
       "source_file": "/path/to/session.jsonl",
       "timestamp": "...",
       "content": "...",
@@ -116,15 +119,18 @@ def load_messages(session_path: Path) -> list[dict]:
     to the full transcript during reconstruction.
 
     Returns:
-        List of user message dicts with keys: index, source_file, timestamp,
-        content, token_count.
+        List of user message dicts with keys: jsonl_line_index, filtered_index,
+        source_file, timestamp, content, token_count.
+        jsonl_line_index is the 1-based line number in the source JSONL file,
+        usable to unambiguously locate the record in the full transcript.
+        filtered_index is the sequential position among accepted user messages.
     """
     messages = []
-    msg_index = 0
+    filtered_index = 0
     source_file = str(session_path)
 
     with session_path.open(encoding="utf-8", errors="replace") as fh:
-        for line in fh:
+        for jsonl_line_index, line in enumerate(fh, start=1):
             raw = line.strip()
             if not raw:
                 continue
@@ -148,13 +154,14 @@ def load_messages(session_path: Path) -> list[dict]:
                 continue
 
             messages.append({
-                "index": msg_index,
+                "jsonl_line_index": jsonl_line_index,
+                "filtered_index": filtered_index,
                 "source_file": source_file,
                 "timestamp": rec.get("timestamp", ""),
                 "content": content,
                 "token_count": count_tokens(content),
             })
-            msg_index += 1
+            filtered_index += 1
 
     return messages
 

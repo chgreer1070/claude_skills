@@ -61,7 +61,7 @@ Present the numbered list to the user. Ask which session to inspect. Wait for th
 uv run .claude/skills/rtfp/scripts/extract_batches.py <session_jsonl_path> --out-dir /tmp/rtfp-batches-<sessionid>
 ```
 
-The script outputs a JSON array of batch file paths. Capture that list — each path is one batch to scan in Step 3.
+The script outputs a JSON object with keys including `session_id`, `out_dir`, and `batch_files`. Read the `batch_files` array from this object — each path in that array is one batch to scan in Step 3.
 
 ### Step 3 — Fan-Out Scan (one subagent per batch)
 
@@ -98,8 +98,12 @@ You have a merged set of flagged message indexes from a Claude Code session tran
 Session JSONL file: <session_jsonl_path>
 Flagged indexes: <merged_working_set_as_json>
 
+The indexes in flagged_indexes are jsonl_line_index values — 1-based line numbers in the
+source JSONL file (line 1 = first line). Use these to locate records by counting lines
+from the top of the file, not by position among filtered messages.
+
 1. Read the full session JSONL file.
-2. Read every flagged user message at the given indexes.
+2. Read every flagged user message at the given jsonl_line_index positions (1-based line numbers).
 3. Choose the single most emotional, rage-filled response as the winner.
    Optionally identify one runner-up.
 4. Determine what the user was currently doing when the reaction occurred —

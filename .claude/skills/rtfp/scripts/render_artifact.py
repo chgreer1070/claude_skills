@@ -104,17 +104,21 @@ def _load_font(candidates: list[str], size: int) -> AnyFont:
         return ImageFont.load_default()
 
 
-def _resolve_candidates(search: list[str]) -> list[str]:
-    """Return a single-element list with the first existing path, or empty.
+def _sort_candidates(search: list[str]) -> list[str]:
+    """Return candidates sorted so existing paths come first, preserving relative order.
+
+    Existing paths are tried before non-existing ones, giving Pillow the best
+    chance to load a usable font before falling back to load_default().
 
     Args:
         search: Font file paths to check.
 
     Returns:
-        List with the winning path, or empty list.
+        Reordered list with existing paths first.
     """
-    winning = next((p for p in search if Path(p).exists()), None)
-    return [winning] if winning else []
+    existing = [p for p in search if Path(p).exists()]
+    missing = [p for p in search if not Path(p).exists()]
+    return existing + missing
 
 
 def load_fonts(base_size: int = 15) -> dict[str, AnyFont]:
@@ -126,8 +130,8 @@ def load_fonts(base_size: int = 15) -> dict[str, AnyFont]:
     Returns:
         Dict mapping variant names to loaded font objects.
     """
-    mono = _resolve_candidates(_MONO_CANDIDATES)
-    bold = _resolve_candidates(_BOLD_CANDIDATES)
+    mono = _sort_candidates(_MONO_CANDIDATES)
+    bold = _sort_candidates(_BOLD_CANDIDATES)
     return {
         "regular": _load_font(mono, base_size),
         "bold": _load_font(bold, base_size),
@@ -346,12 +350,17 @@ def render(
     text_width = width - 2 * PADDING - indent
 
     # Pre-wrap all sections
-    task_lines = wrap_text(task_summary, fonts["regular"], text_width)
-    asst_lines = wrap_text(assistant_output, fonts["regular"], text_width)
-    user_lines = wrap_text(user_reaction, fonts["bold"], text_width)
+    task_lines, asst_lines, user_lines = (
+        wrap_text(task_summary, fonts["regular"], text_width),
+        wrap_text(assistant_output, fonts["regular"], text_width),
+        wrap_text(user_reaction, fonts["bold"], text_width),
+    )
 
-    lh = _line_height(base_font_size)
-    label_h = base_font_size + LINE_SPACING + 4
+    # Derive line/label heights from actual loaded font sizes so that layout
+    # remains correct even when ImageFont.load_default() returns a font whose
+    # size differs from base_font_size (e.g. Pillow < 10 always returns size 10).
+    lh = _line_height(_font_size(fonts["regular"]))
+    label_h = _font_size(fonts["label"]) + LINE_SPACING + 4
 
     # Calculate total height
     height = (
