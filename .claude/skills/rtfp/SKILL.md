@@ -1,6 +1,7 @@
 ---
 name: rtfp
-description: 'Scan Claude Code session transcripts to find the strongest user reactions to assistant instruction-following failures, reconstruct the triggering assistant output, and render a shareable terminal-style PNG artifact. Use when you want to surface and share a moment where the assistant completely missed what was asked — captures what they were doing, what Claude said, and how the user reacted. Triggers on: "rtfp", "read the fucking prompt", "find my worst AI moment", "make a rage screenshot from this session".'
+description: "Scan Claude Code session transcripts to find the strongest user emotional reaction to an assistant instruction-following failure — frustration, rage, disbelief, insults — reconstruct the triggering context, and render a shareable terminal-style PNG artifact. Use when: 'rtfp', 'read the fucking prompt', 'find my worst AI moment', 'make a rage screenshot', 'session analysis', 'show me where Claude ignored me', 'share my frustration screenshot', 'find where the assistant failed me'. Outputs exactly three things: what the user was doing, what Claude said, how the user reacted. Fast mode available using heuristic pipeline (no subagents)."
+allowed-tools: "Read, Bash, Glob, Write"
 ---
 
 # RTFP — Read The Fucking Prompt
@@ -22,7 +23,29 @@ Output is exactly three things: what they were doing, what Claude said, how the 
 
 ---
 
-## Workflow
+## Fast Mode (Heuristic Pipeline — No Subagents)
+
+For quick results without LLM subagent delegation, use the heuristic scripts directly:
+
+```bash
+# Step 1: List sessions (same as default)
+uv run .claude/skills/rtfp/scripts/list_sessions.py --json
+
+# Step 2: Detect reactions heuristically (replaces Steps 3-4)
+uv run .claude/skills/rtfp/scripts/detect_reactions.py <session_jsonl_path>
+
+# Step 3: Reconstruct context and pick winner (replaces Step 5)
+uv run .claude/skills/rtfp/scripts/reconstruct_context.py <session_jsonl_path> --flagged-indexes <indexes>
+
+# Step 4: Render PNG (same as Step 6)
+uv run .claude/skills/rtfp/scripts/render_artifact.py --input-file /tmp/rtfp-result.json --output rtfp_artifact.png
+```
+
+Fast mode trades accuracy for speed — the heuristic detection may miss subtle reactions that the LLM scan catches. Use the default workflow below for best results.
+
+---
+
+## Workflow (Default — LLM-Based)
 
 ### Step 1 — List Sessions
 
@@ -88,9 +111,9 @@ Flagged indexes: <merged_working_set_as_json>
 5. Identify the assistant message(s) immediately preceding the winning reaction.
 6. Write /tmp/rtfp-result.json with exactly these fields:
    {
-     "task": "<dry one-line activity description>",
-     "assistant": "<triggering assistant output>",
-     "user": "<winning emotional user reply>"
+     "task_summary": "<dry one-line activity description>",
+     "triggering_assistant_output": "<triggering assistant output>",
+     "user_reaction": "<winning emotional user reply>"
    }
 ```
 
@@ -99,15 +122,15 @@ Wait for the subagent to finish. Verify `/tmp/rtfp-result.json` exists before pr
 ### Step 6 — Render PNG
 
 ```bash
-uv run .claude/skills/rtfp/scripts/render_artifact.py /tmp/rtfp-result.json --out rtfp_artifact.png
+uv run .claude/skills/rtfp/scripts/render_artifact.py --input-file /tmp/rtfp-result.json --output rtfp_artifact.png
 ```
 
 The script produces a terminal-style dark PNG with:
 
-- Title bar: "rtfp — Read The Fucking Prompt" with red/yellow/green dots
+- Title bar: "Claude Code" with red/yellow/green dots
 - `task:` + dry activity line
 - Divider
-- `claude:` + triggering assistant output (truncated to fit if needed)
+- `assistant:` + triggering assistant output (wrapped to fit)
 - Divider
 - `user:` + emotional user reply in vivid/bright color
 
@@ -117,7 +140,7 @@ Report the output PNG path to the user. Display the three fields as text in the 
 
 ```text
 task:      <dry activity line>
-claude:    <assistant excerpt>
+assistant: <assistant excerpt>
 user:      <emotional reply>
 
 PNG: rtfp_artifact.png
