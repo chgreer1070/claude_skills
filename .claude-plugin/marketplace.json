@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Professional development workflow extensions for Python engineers, DevOps practitioners, and AI agent developers. Covers modern Python toolchains, GitLab CI/CD automation, code quality enforcement, MCP server creation, and plugin/agent development patterns.",
-    "version": "5.3.28"
+    "version": "5.4.4"
   },
   "plugins": [
     {
@@ -119,6 +119,15 @@
     {
       "name": "scientific-method",
       "source": "./plugins/scientific-method"
+    },
+    {
+      "name": "rtfp",
+      "source": "./plugins/rtfp",
+      "description": "Read The Fucking Prompt \u2014 mines Claude Code session transcripts to surface the strongest user reactions to assistant instruction-following failures and renders the exchange as a terminal-style PNG",
+      "version": "0.1.0",
+      "author": {
+        "name": "Jamie-BitFlight"
+      }
     }
   ]
 }
