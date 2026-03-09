@@ -1,19 +1,17 @@
 # rtfp — Read The Fucking Prompt
 
-Mine your Claude Code session transcripts to find the single most enraging moment when Claude
-completely ignored your CLAUDE.md instructions. Render it as a shareable terminal-style PNG.
+Scans Claude Code session transcripts to find the strongest user reactions to instruction-following
+failures, reconstructs the assistant output that triggered them, and turns the best exchange into
+a shareable terminal-style artifact.
 
 ## Why This Exists
 
-If you use Claude Code seriously, you have a CLAUDE.md. You've written rules. You've been
-explicit. And at some point Claude has looked directly at those rules and done the opposite,
-and you've had a reaction.
+You gave Claude instructions. Clear ones. And at some point it ignored them, and you had a reaction.
 
-RTFP finds that moment. The one where you stopped being polite. It pulls the assistant output
-that caused it, the task you were working on, and your exact reply — and turns it into a
-dark-terminal screenshot you can share.
+RTFP finds that moment. It pulls the assistant output that caused it, the task you were working on,
+and your exact reply — and renders them as a shareable image.
 
-It doesn't analyze your session. It doesn't build a report. It finds one moment and renders it.
+It doesn't analyze your session. It doesn't build a report. It finds one exchange and renders it.
 
 ## Installation
 
