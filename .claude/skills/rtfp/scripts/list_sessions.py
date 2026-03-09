@@ -1,61 +1,29 @@
 #!/usr/bin/env -S uv --quiet run --active --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = [
-#     "duckdb>=1.0.0",
-# ]
+# dependencies = []
 # ///
 """List recent Claude Code sessions for the current project.
 
-Usage:
-    list_sessions.py [--limit N] [--project SLUG] [--json]
+Discovers JSONL session files under ~/.claude/projects/ and outputs
+session metadata as JSON to stdout. Progress/status goes to stderr.
 
-Outputs a numbered list of recent sessions. With --json, outputs machine-readable
-JSON with session_id, file_path, project_name, last_ts, user_msg_count fields.
+Usage:
+    list_sessions.py [--project-dir DIR] [--limit N] [--list-only]
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import operator
 import sys
 import urllib.parse
 from datetime import UTC, datetime
 from pathlib import Path
 
-import duckdb
-
 PROJECTS_DIR = Path("~/.claude/projects").expanduser()
-CACHE_DIR = Path("~/.claude/kaizen").expanduser()
-DB_PATH = CACHE_DIR / "session-index.duckdb"
-_SNIPPET_LEN = 60
-
-_DDL = """
-CREATE TABLE IF NOT EXISTS sessions (
-    session_id       TEXT NOT NULL,
-    file_path        TEXT NOT NULL,
-    project_slug     TEXT,
-    project_name     TEXT,
-    first_ts         TEXT,
-    last_ts          TEXT,
-    total_records    INTEGER,
-    user_msg_count   INTEGER,
-    assistant_turns  INTEGER,
-    file_size_kb     DOUBLE,
-    has_summary      BOOLEAN DEFAULT FALSE,
-    indexed_at       TEXT,
-    PRIMARY KEY (session_id, file_path)
-);
-CREATE TABLE IF NOT EXISTS user_messages (
-    session_id   TEXT NOT NULL,
-    file_path    TEXT NOT NULL,
-    msg_index    INTEGER NOT NULL,
-    timestamp    TEXT,
-    content      TEXT,
-    word_count   INTEGER,
-    PRIMARY KEY (session_id, msg_index)
-);
-"""
+_TITLE_MAX_LEN = 80
 
 _NOISE_PREFIXES = (
     "<local-command-caveat>",
@@ -68,11 +36,19 @@ _NOISE_PREFIXES = (
 
 
 def _extract_text(content: str | list | None) -> str:
+    """Extract plain text from a message content field.
+
+    Args:
+        content: Either a string, a list of content blocks, or None.
+
+    Returns:
+        The extracted text string.
+    """
     if content is None:
         return ""
     if isinstance(content, str):
         return content
-    parts = []
+    parts: list[str] = []
     for element in content:
         if isinstance(element, dict) and element.get("type") == "text":
             text = element.get("text")
@@ -82,42 +58,29 @@ def _extract_text(content: str | list | None) -> str:
 
 
 def _is_noise(text: str) -> bool:
+    """Check whether a message starts with a known noise prefix.
+
+    Args:
+        text: The message text to check.
+
+    Returns:
+        True if the text starts with a noise prefix.
+    """
     stripped = text.lstrip()
     return any(stripped.startswith(p) for p in _NOISE_PREFIXES)
 
 
-def _open_db() -> duckdb.DuckDBPyConnection:
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    con = duckdb.connect(str(DB_PATH))
-    con.execute(_DDL)
-    return con
+def _derive_title(path: Path) -> tuple[str, int]:
+    """Derive a session title from the first non-noise user message.
 
-
-def _parse_records(records: list[dict]) -> tuple[list[str], list[dict[str, str]], int]:
-    """Extract timestamps, user messages, and assistant turn count from records.
+    Args:
+        path: Path to the JSONL session file.
 
     Returns:
-        Tuple of (timestamps, user_msgs, assistant_turns).
+        Tuple of (title string truncated to 80 chars, total message count).
     """
-    timestamps: list[str] = []
-    user_msgs: list[dict[str, str]] = []
-    assistant_turns = 0
-    for rec in records:
-        ts = rec.get("timestamp", "")
-        if ts:
-            timestamps.append(ts)
-        msg_type = rec.get("type", "")
-        if msg_type == "user" and "toolUseResult" not in rec:
-            content = _extract_text(rec.get("message", {}).get("content"))
-            if content and not _is_noise(content):
-                user_msgs.append({"ts": ts, "content": content})
-        elif msg_type == "assistant":
-            assistant_turns += 1
-    return timestamps, user_msgs, assistant_turns
-
-
-def _index_file(con: duckdb.DuckDBPyConnection, path: Path) -> None:
-    records = []
+    message_count = 0
+    title = ""
     try:
         with path.open(encoding="utf-8", errors="replace") as fh:
             for line in fh:
@@ -126,163 +89,159 @@ def _index_file(con: duckdb.DuckDBPyConnection, path: Path) -> None:
                     continue
                 try:
                     rec = json.loads(raw)
-                    if isinstance(rec, dict):
-                        records.append(rec)
                 except json.JSONDecodeError:
                     continue
+                if not isinstance(rec, dict):
+                    continue
+                message_count += 1
+                if title:
+                    continue
+                if rec.get("type") != "user":
+                    continue
+                if "toolUseResult" in rec:
+                    continue
+                msg = rec.get("message")
+                if not isinstance(msg, dict):
+                    continue
+                content = _extract_text(msg.get("content"))
+                if not content or _is_noise(content):
+                    continue
+                snippet = content.replace("\n", " ").strip()
+                title = snippet[:_TITLE_MAX_LEN] if len(snippet) > _TITLE_MAX_LEN else snippet
     except OSError:
-        return
-
-    slug = path.parent.name
-    timestamps, user_msgs, assistant_turns = _parse_records(records)
-
-    sid = path.stem
-    first_ts = min(timestamps) if timestamps else ""
-    last_ts = max(timestamps) if timestamps else ""
-    now = datetime.now(UTC).isoformat()
-    has_summary = (CACHE_DIR / "session-summaries" / f"{sid}.md").exists()
-
-    try:
-        file_size_kb = path.stat().st_size / 1024
-    except OSError:
-        return
-    con.execute(
-        """
-        INSERT INTO sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (session_id, file_path) DO UPDATE SET
-            last_ts = excluded.last_ts,
-            total_records = excluded.total_records,
-            user_msg_count = excluded.user_msg_count,
-            assistant_turns = excluded.assistant_turns,
-            indexed_at = excluded.indexed_at
-        """,
-        [
-            sid,
-            str(path),
-            slug,
-            slug,
-            first_ts,
-            last_ts,
-            len(records),
-            len(user_msgs),
-            assistant_turns,
-            file_size_kb,
-            has_summary,
-            now,
-        ],
-    )
-
-    for i, msg in enumerate(user_msgs):
-        con.execute(
-            """
-            INSERT INTO user_messages VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT (session_id, msg_index) DO NOTHING
-            """,
-            [sid, str(path), i, msg["ts"], msg["content"], len(msg["content"].split())],
-        )
+        pass
+    return title, message_count
 
 
-def _current_project_slug() -> str | None:
-    """Derive the project slug for the current working directory.
+def _find_project_dir(project_dir: str) -> Path | None:
+    """Find the matching project session directory under ~/.claude/projects/.
+
+    Args:
+        project_dir: The project directory path to match.
 
     Returns:
-        The project slug string if found, or None if no matching project directory exists.
+        The matching project session directory, or None if not found.
     """
-    cwd = Path.cwd()
-    # Try URL-encoded form (Claude Code web / newer versions)
-    url_encoded = urllib.parse.quote(str(cwd), safe="")
-    url_path = PROJECTS_DIR / url_encoded
-    if url_path.exists():
-        return url_encoded
+    if not PROJECTS_DIR.exists():
+        return None
+
+    project_path = Path(project_dir).resolve()
+
+    # Try URL-encoded form (Claude Code newer versions)
+    url_encoded = urllib.parse.quote(str(project_path), safe="")
+    candidate = PROJECTS_DIR / url_encoded
+    if candidate.exists():
+        return candidate
+
     # Try hyphen-joined path form (older versions)
-    parts = Path(cwd).parts
+    parts = project_path.parts
     hyphen_slug = "-".join(p.lstrip("/") for p in parts if p and p != "/")
-    hyphen_path = PROJECTS_DIR / hyphen_slug
-    if hyphen_path.exists():
-        return hyphen_slug
-    # Try partial match on last path components
-    if PROJECTS_DIR.exists():
-        basename = Path(cwd).name
-        for d in PROJECTS_DIR.iterdir():
-            if d.is_dir() and d.name.endswith(basename):
-                return d.name
+    candidate = PROJECTS_DIR / hyphen_slug
+    if candidate.exists():
+        return candidate
+
+    # Try URL-decoded match on directory names
+    for d in PROJECTS_DIR.iterdir():
+        if not d.is_dir():
+            continue
+        try:
+            decoded = urllib.parse.unquote(d.name)
+        except ValueError:
+            continue
+        if Path(decoded) == project_path:
+            return d
+
     return None
 
 
+def _get_modified_at(path: Path) -> str:
+    """Get the ISO-format modification timestamp for a file.
+
+    Args:
+        path: Path to the file.
+
+    Returns:
+        ISO-formatted timestamp string, or empty string on error.
+    """
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        return ""
+    return datetime.fromtimestamp(mtime, tz=UTC).isoformat()
+
+
+def _list_sessions(session_dir: Path, limit: int) -> list[dict[str, str | int]]:
+    """Discover and list JSONL session files, most recently modified first.
+
+    Args:
+        session_dir: The project session directory containing JSONL files.
+        limit: Maximum number of sessions to return.
+
+    Returns:
+        List of session metadata dicts.
+    """
+    jsonl_files: list[tuple[float, Path]] = []
+    try:
+        for entry in session_dir.iterdir():
+            if entry.suffix == ".jsonl" and entry.is_file():
+                try:
+                    mtime = entry.stat().st_mtime
+                except OSError:
+                    continue
+                jsonl_files.append((mtime, entry))
+    except OSError:
+        return []
+
+    jsonl_files.sort(key=operator.itemgetter(0), reverse=True)
+    jsonl_files = jsonl_files[:limit]
+
+    sessions: list[dict[str, str | int]] = []
+    total = len(jsonl_files)
+    for i, (_mtime, path) in enumerate(jsonl_files, 1):
+        print(f"  Scanning session {i}/{total}: {path.stem[:8]}...", file=sys.stderr, end="\r")
+        title, message_count = _derive_title(path)
+        modified_at = _get_modified_at(path)
+        sessions.append({
+            "session_id": path.stem,
+            "file_path": str(path),
+            "title": title,
+            "modified_at": modified_at,
+            "message_count": message_count,
+        })
+
+    if total > 0:
+        # Clear the progress line
+        print(" " * 60, file=sys.stderr, end="\r")
+
+    return sessions
+
+
 def main() -> None:
-    """List recent Claude Code sessions, optionally filtered by project."""
-    parser = argparse.ArgumentParser(description="List recent Claude Code sessions")
-    parser.add_argument("--limit", "-n", type=int, default=20, help="Max sessions to show")
-    parser.add_argument("--project", "-p", default="", help="Filter by project slug substring")
-    parser.add_argument("--json", action="store_true", help="Output JSON array")
-    parser.add_argument("--all-projects", action="store_true", help="List from all projects, not just current")
+    """List recent Claude Code sessions for a project directory."""
+    parser = argparse.ArgumentParser(description="List recent Claude Code sessions for the current project")
+    parser.add_argument(
+        "--project-dir",
+        default=None,
+        help="Project directory to find sessions for (default: current working directory)",
+    )
+    parser.add_argument("--limit", "-n", type=int, default=20, help="Max sessions to list (default: 20)")
+    parser.add_argument("--list-only", action="store_true", help="Print JSON to stdout and exit")
     args = parser.parse_args()
 
-    con = _open_db()
+    project_dir: str = args.project_dir if args.project_dir is not None else str(Path.cwd())
+    session_dir = _find_project_dir(project_dir)
 
-    # Ensure index has data
-    count_row = con.execute("SELECT COUNT(*) FROM sessions").fetchone()
-    if count_row and count_row[0] == 0:
-        print("Building session index...", file=sys.stderr)
-        if PROJECTS_DIR.exists():
-            for f in sorted(PROJECTS_DIR.glob("*/*.jsonl"), key=lambda x: x.stat().st_mtime, reverse=True):
-                _index_file(con, f)
-
-    # Determine project filter
-    project_filter = args.project
-    if not project_filter and not args.all_projects:
-        slug = _current_project_slug()
-        if slug:
-            project_filter = slug
-
-    BASE_QUERY = (
-        "SELECT s.session_id, s.file_path, s.project_slug, s.last_ts, s.user_msg_count,"
-        "       s.assistant_turns,"
-        "       (SELECT u.content FROM user_messages u"
-        "        WHERE u.session_id = s.session_id"
-        "        ORDER BY u.msg_index LIMIT 1) AS first_msg"
-        " FROM sessions s"
-    )
-    if project_filter:
-        query = BASE_QUERY + " WHERE project_slug LIKE ? ORDER BY s.last_ts DESC LIMIT ?"
-        params: list[str | int] = [f"%{project_filter}%", args.limit]
-    else:
-        query = BASE_QUERY + " ORDER BY s.last_ts DESC LIMIT ?"
-        params = [args.limit]
-    rows = con.execute(query, params).fetchall()
-
-    if args.json:
-        result = [
-            {
-                "index": i + 1,
-                "session_id": sid,
-                "file_path": fp,
-                "project_slug": slug,
-                "last_ts": last_ts,
-                "user_msg_count": umsg,
-                "assistant_turns": aturns,
-            }
-            for i, (sid, fp, slug, last_ts, umsg, aturns, _first_msg) in enumerate(rows)
-        ]
+    if session_dir is None:
+        print(f"No session directory found for project: {project_dir}", file=sys.stderr)
+        result: dict[str, list | int] = {"sessions": [], "count": 0}
         print(json.dumps(result, indent=2))
-        return
-
-    if not rows:
-        print("No sessions found. Check ~/.claude/projects/ exists.", file=sys.stderr)
         sys.exit(1)
 
-    print(f"\nRecent sessions{' (project: ' + project_filter + ')' if project_filter else ''}:\n")
-    for i, (sid, _fp, _slug, last_ts, umsg, _aturns, first_msg) in enumerate(rows, 1):
-        date_str = (last_ts[:16].replace("T", " ")) if last_ts else "?"
-        snippet = ""
-        if first_msg:
-            snippet = first_msg[:_SNIPPET_LEN].replace("\n", " ")
-            if len(first_msg) > _SNIPPET_LEN:
-                snippet += "..."
-        print(f"  [{i:2d}] {sid[:8]}...  {date_str}  ({umsg} msgs)  {snippet}")
+    print(f"Scanning sessions in: {session_dir}", file=sys.stderr)
+    sessions = _list_sessions(session_dir, args.limit)
 
-    print(f"\nTotal: {len(rows)} session(s)\n")
-    print("Pass session_id to extract_batches.py to begin analysis.")
+    result = {"sessions": sessions, "count": len(sessions)}
+    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
