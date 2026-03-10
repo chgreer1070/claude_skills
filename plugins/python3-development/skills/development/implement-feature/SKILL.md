@@ -7,7 +7,7 @@ hooks:
   SubagentStop:
   - hooks:
     - type: command
-      command: python3 "${CLAUDE_PLUGIN_ROOT}/skills/implementation-manager/scripts/task_status_hook.py"
+      command: python3 "${CLAUDE_PLUGIN_ROOT:-"$CLAUDE_PROJECT_DIR"}/skills/implementation-manager/scripts/task_status_hook.py"
 version: 1.0.0
 last_updated: '2026-02-28'
 python_compatibility: 3.11+

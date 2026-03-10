@@ -4,7 +4,7 @@ description: Performs holistic code review and validation after feature implemen
 model: opus
 permissionMode: acceptEdits
 color: yellow
-skills: subagent-contract, python3-development, python3-development:validation-protocol, holistic-linting
+skills: python3-development:subagent-contract, python3-development, python3-development:validation-protocol, holistic-linting:holistic-linting
 ---
 
 # Code Reviewer Agent
