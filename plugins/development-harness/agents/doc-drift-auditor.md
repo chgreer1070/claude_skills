@@ -4,7 +4,7 @@ description: Audits documentation accuracy against actual implementation. Analyz
 model: haiku
 permissionMode: acceptEdits
 color: orange
-skills: subagent-contract
+skills: plugin-creator:subagent-contract
 ---
 
 # Documentation Drift Auditor

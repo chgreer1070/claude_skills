@@ -9,7 +9,7 @@ disable-model-invocation: false
 ## Current Task Context
 
 **Available features (if in project with plan/ directory):**
-!`python3 -c "import os, subprocess, json; result = subprocess.run(['python3', 'plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py', 'list-features', '.'], capture_output=True, text=True) if os.path.exists('plan') else None; print(result.stdout if result and result.returncode == 0 else json.dumps({'features': [], 'count': 0, 'message': 'Not in a project with task files'}))" 2>/dev/null || echo '{"features": [], "count": 0, "message": "Not in a project with task files"}'`
+!`python3 -c "import os, subprocess, json; result = subprocess.run(['python3', './plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py', 'list-features', '.'], capture_output=True, text=True) if os.path.exists('plan') else None; print(result.stdout if result and result.returncode == 0 else json.dumps({'features': [], 'count': 0, 'message': 'Not in a project with task files'}))" 2>/dev/null || echo '{"features": [], "count": 0, "message": "Not in a project with task files"}'`
 
 **Active task context (if any):**
 !`python3 -c "import pathlib, json; context_dir = pathlib.Path('.claude/context'); files = list(context_dir.glob('active-task-*.json')) if context_dir.exists() else []; print(files[0].read_text() if files else 'No active task')" 2>/dev/null || echo "No active task"`

@@ -3,7 +3,7 @@ name: ecosystem-researcher
 description: Researches domain ecosystems and technology landscapes before roadmap creation. Supports three modes — Ecosystem discovery, Feasibility assessment, and Comparison analysis. Use when exploring new domains, evaluating technology choices, or comparing implementation approaches. Requires MCP research servers (Ref, exa, context7, or firecrawl) — BLOCKs if none available.
 permissionMode: plan
 tools: Read, Grep, Glob, mcp__ref__*, mcp__exa__*, mcp__context7__*, mcp__firecrawl__*
-skills: subagent-contract
+skills: plugin-creator:subagent-contract
 model: haiku
 color: blue
 ---

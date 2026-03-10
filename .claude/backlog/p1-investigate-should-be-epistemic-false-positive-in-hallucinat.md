@@ -9,7 +9,8 @@ metadata:
   type: Bug
   status: open
   issue: '#558'
-  last_synced: '2026-03-10T06:55:32Z'
+  last_synced: '2026-03-10T15:32:37Z'
+  groomed: '2026-03-10'
 ---
 
 ## Story
@@ -50,3 +51,39 @@ Steps to investigate:
 2. Identify which code path in `findTriggerMatches` fired — EPISTEMIC_SUBJECT_SHOULD regex or fallback
 3. Run `findTriggerMatches` against the triggering sentence to confirm
 4. Assess whether it is a genuine false positive and tighten the pattern if so
+
+### Research
+
+## Research findings (session 2026-03-10)
+
+### What fabricated_source should detect
+
+Not citation fabrication (URLs, papers) — that requires network access. The real pattern is **appeal to community consensus**: Claude asserting something is "known", "common", or "expected" without having observed it in the session. Examples from transcripts:
+
+- "This is the known classifyHandoffIfNeeded bug" — naming a specific internal mechanism with false precision
+- "This is a known issue with X" — asserting community knowledge without evidence
+- "This is expected behavior" / "this is by design"
+
+The pattern: **confident, specific, unhedged assertion of community knowledge with no prior mention in the conversation**.
+
+### Why a regex phrase list is wrong
+
+The phrases vary too much to enumerate reliably. False-positive rate is high. The pattern is semantic, not lexical.
+
+### Correct detection architecture: "type": "agent" Stop hook
+
+- `"type": "prompt"` on Stop — Haiku gets the raw JSON including `transcript_path` but no tool access. Cannot read the file. Insufficient.
+- `"type": "agent"` on Stop — spawns a subagent with tool access. Can read `transcript_path`, extract last assistant message, evaluate semantically. This works.
+
+All existing `"type": "prompt"` hooks in ~/repos/ are on `SubagentStop` — not `Stop`. No existing example of a prompt hook receiving assistant message content.
+
+### Blocked on
+
+`"type": "agent"` Stop hook implementation. No blocker other than not being scoped yet.
+
+### Related work completed this session
+
+- `evaluative_design_claim` regex canary added to `findTriggerMatches` — catches exact tell phrases ("the cleanest fix", "the simplest solution", etc.)
+- `evaluative_design_claim: 0.4` added to `DEFAULT_WEIGHTS`
+- `categoryCounts` confirmed to be derived from `Object.keys(DEFAULT_WEIGHTS)` — parity is automatic, not manual
+- `fabricated_source` confirmed to have no detector implementation — it is a reserved slot only

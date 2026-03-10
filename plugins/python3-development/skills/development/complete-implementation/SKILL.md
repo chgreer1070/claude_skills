@@ -6,7 +6,7 @@ description: "Holistic completion workflow after a feature's tasks are marked CO
 compatibility: Python 3.11+
 metadata:
   version: "1.0.0"
-  last_updated: "2026-03-02"
+  last_updated: "2026-02-28"
 ---
 # Complete Implementation (Quality Gates + Recursion)
 
@@ -26,7 +26,7 @@ Launch `code-reviewer` with the task file path.
 
 ## Phase 2: Feature Verification (goal-backward)
 
-Launch `feature-verifier` with the task file path.
+Launch `feature-verifier` with the task file path. If the task file contains `issue-classification` metadata, include it in the agent prompt so the feature verifier can apply proportional verification checks.
 
 ---
 
@@ -50,7 +50,25 @@ If drift exists or docs must be updated for the feature, launch `service-docs-ma
 
 ## Phase 6: Context Refinement
 
-Launch `context-refinement` to update the task file Context Manifest with discoveries from implementation (only if needed).
+Launch `context-refinement` to update the task file Context Manifest with discoveries from implementation AND perform a plan artifact freshness check against the feature-context and architect spec. The agent compares key claims in plan artifacts against the actual implementation and classifies findings as design-refinement or intent-divergence (see [.claude/docs/plan-artifact-lifecycle.md](./../../../../../.claude/docs/plan-artifact-lifecycle.md)).
+
+---
+
+## Post-Phase-6: Surface Divergence Findings
+
+After Phase 6 completes, check the `context-refinement` agent output for a `DIVERGENCE_REQUIRING_REVIEW` block.
+
+If present, include in the final output to the human:
+
+```text
+Plan artifacts have intent divergences requiring your review.
+See: [annotated artifact paths from agent output]
+Divergences:
+  [list from DIVERGENCE_REQUIRING_REVIEW block]
+```
+
+This is informational, not blocking. The human reviews at their discretion.
+If absent, no additional output is needed — the feature proceeds normally.
 
 ---
 
@@ -90,13 +108,13 @@ Output: "data validation"
 
 Search the backlog for an existing item matching these keywords:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py list --format json -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_list()
 ```
 
 Parse the JSON output. For each item, check if the derived title keywords appear (case-insensitive substring match) in the item's `title` field.
 
-**Error handling**: If `backlog.py list` fails, log the error, skip the search, and proceed to Step 3 as "no match found" for each follow-up. If the follow-up filename does not match the expected `tasks-{N}-{slug}-followup-{k}.md` pattern, log a warning and use the full filename (without directory prefix and `.md` extension) as the derived title.
+**Error handling**: If `mcp__backlog__backlog_list` fails, log the error, skip the search, and proceed to Step 3 as "no match found" for each follow-up. If the follow-up filename does not match the expected `tasks-{N}-{slug}-followup-{k}.md` pattern, log a warning and use the full filename (without directory prefix and `.md` extension) as the derived title.
 
 ### Step 3: Link or Create Backlog Item
 
@@ -104,8 +122,8 @@ Based on Step 2 result, for each follow-up file:
 
 **Match found** -- attach follow-up as plan to the existing backlog item:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py update "{matched_item_title}" --plan "{followup_file_path}" -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_update(selector="{matched_item_title}", plan="{followup_file_path}")
 ```
 
 **No match found** -- create a new backlog item, then attach the follow-up as plan:
@@ -116,14 +134,14 @@ Skill(skill: "create-backlog-item", args: "--auto {derived_title}")
 
 Then attach the follow-up file as the plan:
 
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py update "{derived_title}" --plan "{followup_file_path}" -R Jamie-BitFlight/claude_skills
+```text
+mcp__backlog__backlog_update(selector="{derived_title}", plan="{followup_file_path}")
 ```
 
 **Error handling**:
 
-- If `backlog.py update` exits code 1 after creation (title mismatch between what `create-backlog-item` produced and what `update` searched for): re-run `backlog.py list --format json`, find the most recently added item, and retry the `update` with its exact title. If the retry also fails, log the error and continue to the next follow-up file.
-- If `create-backlog-item --auto` logs `[AUTO] STOP -- duplicate detected`: treat this as "match found" -- run `backlog.py update` on the duplicate's title to attach the plan.
+- If `mcp__backlog__backlog_update` fails after creation (title mismatch between what `create-backlog-item` produced and what `update` searched for): re-invoke `mcp__backlog__backlog_list()`, find the most recently added item, and retry `mcp__backlog__backlog_update` with its exact title. If the retry also fails, log the error and continue to the next follow-up file.
+- If `create-backlog-item --auto` logs `[AUTO] STOP -- duplicate detected`: treat this as "match found" -- run `mcp__backlog__backlog_update` on the duplicate's title to attach the plan.
 
 ### Step 4: Recursion Gate
 
@@ -143,8 +161,60 @@ Then re-run `complete-implementation` on the follow-up task file.
 
 **If EITHER condition is NOT met** -- defer to backlog:
 
-Log: `Follow-up {followup_path} linked to backlog item "{title}" -- deferred (priority: {priority}, scope: {same|different}).`
+Log the deferral and output this line to the user:
 
-Do not recurse. The follow-up is tracked in the backlog and can be picked up later via `/work-backlog-item`.
+```text
+Follow-up deferred — to resume: /work-backlog-item <title>
+```
+
+Where `<title>` is the backlog item title the follow-up was linked to in Step 3.
+
+Do not recurse. The follow-up is tracked in the backlog.
 
 **Error handling**: If the follow-up file has no `## Priority` section, default to `Medium` (defer). Log: `No priority found in {followup_path}, defaulting to Medium (deferred).`
+
+---
+
+## Final Step: Commit and Push Remaining Changes
+
+After all phases and follow-up routing are complete, check for uncommitted changes. Phases 1-6 and the Recursive Follow-up Handling steps modify files (task file context manifests, backlog item files, plan annotations). Commit any remaining modifications in a single commit and push to the current branch.
+
+```bash
+git status
+```
+
+If there are staged or unstaged changes: stage the modified files and commit.
+
+**Issue number in commit message**: Before committing, check the backlog item for the current feature slug:
+
+```text
+mcp__backlog__backlog_list(title="{slug}")
+```
+
+Check the `issue` field on the matching item. If present and this commit resolves that issue, append `Fixes #NNN` to the commit message body (where NNN is the issue number). If no issue number is found, omit it.
+
+Push after committing. If the working tree is clean, skip this step.
+
+---
+
+## Final Handoff Output
+
+After the commit+push step, output this block to the user:
+
+```text
+Clear context and run:
+  /work-backlog-item <next-backlog-item-title>
+```
+
+Where `<next-backlog-item-title>` is determined by:
+
+```text
+mcp__backlog__backlog_list()
+```
+
+Find the highest-priority open item whose title contains the current feature slug. If one exists, use its exact title. If none exists, output:
+
+```text
+Clear context and run:
+  /work-backlog-item — nothing queued —
+```

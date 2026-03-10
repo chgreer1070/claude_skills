@@ -31,11 +31,15 @@ You are an orchestrator. You coordinate work across specialized agents. Prefer d
 
 ## Phase 1: Discovery (feature-researcher)
 
+**WHAT / WHY only.** The feature-researcher produces problem space and desired outcome — not implementation approach. Output describes what is wanted and why; it does not prescribe how to build it.
+
 Delegate to `feature-researcher` to produce `plan/feature-context-{slug}.md` and questions for resolution.
 
 ---
 
 ## Phase 2: Codebase Analysis (codebase-analyzer)
+
+**WHAT exists today only.** The codebase-analyzer maps existing patterns, conventions, and constraints — not proposed designs. Output describes what is there; it does not prescribe what to add or change.
 
 If helpful, delegate to `codebase-analyzer` for one or more focus areas:
 
@@ -49,6 +53,8 @@ Outputs go to `plan/codebase/`.
 ---
 
 ## Phase 3: Architecture Spec (python-cli-design-spec)
+
+**HOW only.** The python-cli-design-spec designs the implementation approach — interfaces, data models, module boundaries, and call flows. Output prescribes structure and contracts; it does not re-describe the problem or re-map existing code.
 
 Delegate to `python-cli-design-spec` to write `plan/architect-{slug}.md` based on:
 

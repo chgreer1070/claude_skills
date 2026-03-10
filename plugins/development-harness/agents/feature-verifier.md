@@ -3,7 +3,7 @@ name: feature-verifier
 description: Goal-backward verification AFTER feature implementation. Starts from expected outcomes, works backwards to verify each was achieved. Tests the feature as a user would, not just that code exists. Returns VERIFIED or GAPS_FOUND with specific failures.
 tools: Read, Write, Edit, Bash, Grep, Glob, mcp__sequential_thinking__sequentialthinking, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa
 model: opus
-skills: subagent-contract, development-harness, development-harness:validation-protocol
+skills: plugin-creator:subagent-contract, development-harness, development-harness:validation-protocol
 color: green
 ---
 
