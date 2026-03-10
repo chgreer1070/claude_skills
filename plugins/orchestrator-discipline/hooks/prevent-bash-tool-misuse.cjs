@@ -103,6 +103,7 @@ const LEGITIMATE_PATTERNS = [
   /cat\s+\/dev\/(stdin|null)/, // cat /dev/stdin or /dev/null
   /cat\s+-/, // cat - (stdin)
   /ls\s+-la\s*$/, // ls -la for human-readable directory listing
+  /^\s*ls\b.*(\|\||&&|\|)/, // ls combined with &&, ||, or | — blocking the chain prevents legitimate commands after ls
 ];
 
 function main() {
