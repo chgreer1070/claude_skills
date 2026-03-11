@@ -3,16 +3,14 @@ name: implement-feature
 description: Execute a SAM task plan (plan/tasks-*.md) by looping ready tasks, delegating each to its specified agent, and relying on hooks to update task timestamps/status. Use when a task file exists and you need to run the implementation loop that picks up ready tasks and delegates them to agents.
 argument-hint: "<task-file-path or feature-slug>"
 user-invocable: true
-hooks:
-  SubagentStop:
-    - hooks:
-      - type: command
-        command: uv run --script "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/task_status_hook.py"
+
 version: 1.0.0
 last_updated: '2026-02-28'
 memory: project
 ---
+
 # Implement Feature (SAM Workflow Execution)
+
 As you review code, update your agent memory with patterns, conventions, and recurring issues you discover.
 
 This workflow continues from `add-new-feature`. It executes tasks from a SAM task file until complete (or blocked).
