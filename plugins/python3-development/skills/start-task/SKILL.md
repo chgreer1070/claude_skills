@@ -164,6 +164,6 @@ regardless.
    (or add `**Divergence Notes**: {count}` in legacy format).
 
    For full artifact classification rules and divergence thresholds, see
-   [.claude/docs/plan-artifact-lifecycle.md](./../../../../../.claude/docs/plan-artifact-lifecycle.md).
+   [.claude/docs/plan-artifact-lifecycle.md](./../../../../.claude/docs/plan-artifact-lifecycle.md).
 
 6. Implement against the task acceptance criteria and run its verification steps.

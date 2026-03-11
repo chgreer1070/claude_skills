@@ -50,7 +50,7 @@ If drift exists or docs must be updated for the feature, launch `service-docs-ma
 
 ## Phase 6: Context Refinement
 
-Launch `context-refinement` to update the task file Context Manifest with discoveries from implementation AND perform a plan artifact freshness check against the feature-context and architect spec. The agent compares key claims in plan artifacts against the actual implementation and classifies findings as design-refinement or intent-divergence (see [.claude/docs/plan-artifact-lifecycle.md](./../../../../../.claude/docs/plan-artifact-lifecycle.md)).
+Launch `context-refinement` to update the task file Context Manifest with discoveries from implementation AND perform a plan artifact freshness check against the feature-context and architect spec. The agent compares key claims in plan artifacts against the actual implementation and classifies findings as design-refinement or intent-divergence (see [.claude/docs/plan-artifact-lifecycle.md](./../../../../.claude/docs/plan-artifact-lifecycle.md)).
 
 ---
 
