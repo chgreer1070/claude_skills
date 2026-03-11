@@ -126,6 +126,17 @@ class ValidationError(BacklogError):
 # ---------------------------------------------------------------------------
 
 
+class Entry(BaseModel):
+    """A single timestamped content block within a backlog item section."""
+
+    id: str = ""
+    content: str = ""
+    struck: bool = False
+    struck_reason: str = ""
+    struck_at: str = ""
+    raw: str = ""
+
+
 class BacklogItem(BaseModel):
     """Parsed backlog item from a per-item file.
 
