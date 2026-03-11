@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from backlog_core.models import Entry
 
 
@@ -323,3 +324,40 @@ def test_diff_content_differs():
     diff = generate_diff(local=local, remote=remote)
     assert "- <div><sub>2026-03-10T08:00:00Z</sub>" in diff
     assert "+ <div><sub>2026-03-10T08:00:00Z</sub>" in diff
+
+
+# ---------------------------------------------------------------------------
+# Edge-case tests
+# ---------------------------------------------------------------------------
+
+
+def test_strike_entry_invalid_input():
+    with pytest.raises(ValueError, match="Cannot strike"):
+        strike_entry("not a valid entry block", "reason")
+
+
+def test_rewrite_replace_without_reason_raises():
+    with pytest.raises(ValueError, match="reason is required"):
+        rewrite_section(existing_body="some body", new_content="new", replace=True)
+
+
+def test_rewrite_overwrite_duplicate_suffixed_entry_id():
+    existing = (
+        "<div><sub>2026-03-10T08:00:00Z</sub>\n\nFirst.\n</div>\n\n"
+        "<div><sub>2026-03-10T08:00:00Z</sub>\n\nSecond.\n</div>"
+    )
+    result = rewrite_section(
+        existing_body=existing,
+        new_content="Replaced second.",
+        entry_id="2026-03-10T08:00:00Z-1",
+        added_date="2026-01-01",
+    )
+    entries = parse_entries(result)
+    assert len(entries) == 2
+    assert entries[0].content == "First."
+    assert entries[1].content == "Replaced second."
+
+
+def test_parse_entries_empty_string():
+    entries = parse_entries("")
+    assert entries == []
