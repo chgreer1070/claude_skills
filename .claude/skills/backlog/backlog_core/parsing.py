@@ -639,7 +639,7 @@ def append_or_replace_section(body: str, section_name: str, content: str) -> str
     # Using \s* instead would silently fail on headings with suffixes.
     # This regex only searches within groomed_body (scoped by groomed_re below).
     sub_re = re.compile(
-        rf"\n### {re.escape(section_name.strip())}[^\n]*\n[\s\S]*?(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
+        rf"\n?### {re.escape(section_name.strip())}[^\n]*\n[\s\S]*?(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
     )
     new_block = sub_header + content + "\n"
     groomed_re = re.compile(r"(## Groomed\s*\([^)]*\)\s*\n)([\s\S]*?)(?=\n## |\Z)", re.MULTILINE)
@@ -808,6 +808,9 @@ def view_result_from_local_item(item: BacklogItem) -> ViewItemResult:
         result.source = str(meta.get("source", fm.get("source", "")))
         result.added = str(meta.get("added", fm.get("added", "")))
         result.status = str(meta.get("status", fm.get("status", "")))
+        body_text = post.content if hasattr(post, "content") else ""
+        if body_text:
+            result.body = str(body_text)
     return result
 
 

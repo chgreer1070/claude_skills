@@ -998,13 +998,23 @@ def _build_sections_metadata(body: str, show: str | None, since: str | None) -> 
         if show is not None and sec_name.lower() != show.lower():
             continue
         entries = parse_entries(sec_body, show="all", since=since)
-        active = [e for e in entries if not e.struck]
-        struck = [e for e in entries if e.struck]
-        sections[sec_name] = {
-            "num_entries": len(active),
-            "num_struck": len(struck),
-            "entries": [{"id": e.id, "struck": e.struck, "content": e.content} for e in entries],
-        }
+        if sec_name in sections:
+            # Merge entries from duplicate section headers
+            existing = sections[sec_name]
+            all_entries = existing["entries"] + [
+                {"id": e.id, "struck": e.struck, "content": e.content} for e in entries
+            ]
+            active_count = sum(1 for e in all_entries if not e.get("struck"))
+            struck_count = sum(1 for e in all_entries if e.get("struck"))
+            sections[sec_name] = {"num_entries": active_count, "num_struck": struck_count, "entries": all_entries}
+        else:
+            active = [e for e in entries if not e.struck]
+            struck = [e for e in entries if e.struck]
+            sections[sec_name] = {
+                "num_entries": len(active),
+                "num_struck": len(struck),
+                "entries": [{"id": e.id, "struck": e.struck, "content": e.content} for e in entries],
+            }
     return sections
 
 
