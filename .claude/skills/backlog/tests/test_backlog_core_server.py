@@ -619,6 +619,73 @@ async def test_backlog_pull_no_selector_uses_bulk_pull():
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Signature checks: backlog_groom and backlog_view parameter contracts
+# ---------------------------------------------------------------------------
+
+
+def test_backlog_groom_no_groomed_content_param():
+    """backlog_groom should not accept groomed_content parameter."""
+    import inspect
+
+    from backlog_core.server import backlog_groom
+
+    sig = inspect.signature(backlog_groom)
+    assert "groomed_content" not in sig.parameters
+
+
+def test_backlog_groom_has_entry_id_param():
+    """backlog_groom should accept entry_id parameter."""
+    import inspect
+
+    from backlog_core.server import backlog_groom
+
+    sig = inspect.signature(backlog_groom)
+    assert "entry_id" in sig.parameters
+
+
+def test_backlog_strike_entry_tool_exists():
+    """backlog_strike_entry should be a registered MCP tool."""
+    from backlog_core.server import backlog_strike_entry
+
+    assert callable(backlog_strike_entry)
+
+
+def test_backlog_view_show_string_int_conversion():
+    """backlog_view should accept show parameter."""
+    import inspect
+
+    from backlog_core.server import backlog_view
+
+    sig = inspect.signature(backlog_view)
+    assert "show" in sig.parameters
+
+
+# ---------------------------------------------------------------------------
+# backlog_view show string-to-int conversion
+# ---------------------------------------------------------------------------
+
+
+async def test_backlog_view_show_numeric_string_converts_to_int():
+    """backlog_view converts show='2' (string) to int 2 before passing to view_item."""
+    op_result = {"title": "My Item", "body": "content"}
+    with patch("backlog_core.operations.view_item", return_value=op_result) as mock_view:
+        await _call("backlog_view", {"selector": "#1", "show": "2"})
+
+    call_kwargs = mock_view.call_args.kwargs
+    assert call_kwargs["show"] == 2, f"Expected int 2, got {call_kwargs['show']!r}"
+
+
+async def test_backlog_view_show_non_numeric_string_passed_as_str():
+    """backlog_view passes show='last' as a string (not converted to int)."""
+    op_result = {"title": "My Item", "body": "content"}
+    with patch("backlog_core.operations.view_item", return_value=op_result) as mock_view:
+        await _call("backlog_view", {"selector": "#1", "show": "last"})
+
+    call_kwargs = mock_view.call_args.kwargs
+    assert call_kwargs["show"] == "last", f"Expected str 'last', got {call_kwargs['show']!r}"
+
+
 @pytest.mark.parametrize(
     ("tool_name", "params", "mock_target", "mock_return"),
     [

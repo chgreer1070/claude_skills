@@ -123,8 +123,21 @@ async def backlog_view(
     """
     out = Output()
     try:
+        # MCP tool parameters are always strings; convert numeric show values to int.
+        parsed_show: str | int | None = show
+        if show is not None:
+            try:
+                parsed_show = int(show)
+            except ValueError:
+                parsed_show = show
         result = await asyncio.to_thread(
-            operations.view_item, selector=selector, offset=offset, limit=limit, show=show, since=since, output=out
+            operations.view_item,
+            selector=selector,
+            offset=offset,
+            limit=limit,
+            show=parsed_show,
+            since=since,
+            output=out,
         )
         return {**result, **out.to_dict()}
     except BacklogError as e:
