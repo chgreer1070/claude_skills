@@ -74,6 +74,7 @@ import operator
 
 import frontmatter
 from backlog_core import operations as _backlog_operations
+from backlog_core.entry_blocks import rewrite_section as _rewrite_section
 from backlog_core.models import BacklogError as _BacklogError, ItemNotFoundError as _ItemNotFoundError
 
 from frontmatter_utils import dump_frontmatter, loads_frontmatter
@@ -1562,11 +1563,19 @@ def _append_or_replace_section(body: str, section_name: str, content: str) -> st
     return body.rstrip() + "\n\n" + groomed_header + "\n\n" + new_block
 
 
-def _write_groomed_to_item_file(filepath: Path, groomed_content: str, section_name: str | None = None) -> None:
+def _write_groomed_to_item_file(
+    filepath: Path,
+    groomed_content: str,
+    section_name: str | None = None,
+    *,
+    entry_id: str | None = None,
+    replace_section: bool = False,
+) -> None:
     """Merge groomed content into per-item file.
 
     Updates frontmatter groomed date and body.
     If section_name is set, append/replace that section only (incremental).
+    When entry_id or replace_section is set, uses entry_blocks.rewrite_section().
     Else replace full ## Groomed.
     """
     text = filepath.read_text(encoding="utf-8")
@@ -1579,7 +1588,9 @@ def _write_groomed_to_item_file(filepath: Path, groomed_content: str, section_na
         raise typer.Exit(1)
     fm_text, body = parts[1].strip(), parts[2].strip()
     today = _today()
-    if section_name:
+    if section_name and (entry_id or replace_section):
+        new_body = _rewrite_section(body, groomed_content, entry_id=entry_id, replace=replace_section)
+    elif section_name:
         new_body = _append_or_replace_section(body, section_name, groomed_content)
     else:
         groomed_section = f"## Groomed ({today})\n\n{groomed_content.strip()}"
@@ -1655,7 +1666,16 @@ def _resolve_groomed_content(
     return sys.stdin.read(), None
 
 
-def _handle_update_groomed(item: dict, groomed_content_val: str, section_name: str | None, repo: str) -> None:
+def _handle_update_groomed(
+    item: dict,
+    groomed_content_val: str,
+    section_name: str | None,
+    repo: str,
+    *,
+    entry_id: str | None = None,
+    replace_section: bool = False,
+    reason: str | None = None,
+) -> None:
     """Handle groomed content update: GitHub-first, then cache locally.
 
     Write order: (1) GitHub issue (canonical), (2) local file (cache).
@@ -1675,7 +1695,9 @@ def _handle_update_groomed(item: dict, groomed_content_val: str, section_name: s
         github_synced = _write_groomed_to_github(issue_ref, groomed_content_val, section_name, repo)
 
     # Step 3: Write to local file (cache)
-    _write_groomed_to_item_file(filepath, groomed_content_val, section_name)
+    _write_groomed_to_item_file(
+        filepath, groomed_content_val, section_name, entry_id=entry_id, replace_section=replace_section
+    )
     typer.echo(f"Updated {filepath.name} with groomed content")
 
     # Step 4: Set last_synced if GitHub write succeeded
@@ -1793,9 +1815,13 @@ def update(
     status: Annotated[str | None, typer.Option("--status")] = None,
     create_issue: Annotated[bool, typer.Option("--create-issue")] = False,
     groomed_file: Annotated[str | None, typer.Option("--groomed-file")] = None,
-    groomed_content: Annotated[str | None, typer.Option("--groomed-content")] = None,
     section: Annotated[str | None, typer.Option("--section")] = None,
     content: Annotated[str | None, typer.Option("--content")] = None,
+    entry_id: Annotated[str | None, typer.Option("--entry-id", help="Replace a specific entry by ID")] = None,
+    replace_section: Annotated[
+        bool, typer.Option("--replace-section", help="Replace entire section instead of appending")
+    ] = False,
+    reason: Annotated[str | None, typer.Option("--reason", help="Reason for striking/replacing an entry")] = None,
     groomed: Annotated[bool, typer.Option("--groomed")] = False,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
@@ -1806,16 +1832,24 @@ def update(
         typer.echo(f"ERROR: No item found for: {selector}", err=True)
         raise typer.Exit(1)
 
-    has_groomed = groomed or groomed_file or groomed_content or (section and content)
+    has_groomed = groomed or groomed_file or (section and content)
     if has_groomed:
         if not item.get("_file_path"):
             typer.echo("ERROR: Item has no file path", err=True)
             raise typer.Exit(1)
-        groomed_content_val, section_name = _resolve_groomed_content(section, content, groomed_content, groomed_file)
+        groomed_content_val, section_name = _resolve_groomed_content(section, content, None, groomed_file)
         if not groomed_content_val.strip():
             typer.echo("ERROR: No groomed content provided", err=True)
             raise typer.Exit(1)
-        _handle_update_groomed(item, groomed_content_val, section_name, repo)
+        _handle_update_groomed(
+            item,
+            groomed_content_val,
+            section_name,
+            repo,
+            entry_id=entry_id,
+            replace_section=replace_section,
+            reason=reason,
+        )
         return
 
     if plan:
@@ -1948,6 +1982,8 @@ def view(
     output_format: Annotated[str, typer.Option("--format", "-f")] = "text",
     offset: Annotated[int, typer.Option("--offset", help="Skip N lines from body start")] = 0,
     limit: Annotated[int, typer.Option("--limit", help="Show at most N body lines (0=all)")] = 0,
+    show: Annotated[str | None, typer.Option("--show", help="Filter to a specific section name")] = None,
+    since: Annotated[str | None, typer.Option("--since", help="Show entries since ISO timestamp")] = None,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
     """View a backlog item or GitHub issue by URL, #N, bare number, or title.
@@ -1986,22 +2022,28 @@ def view(
 def groom(
     selector: Annotated[str, typer.Argument(help="Title substring, #N, bare number, or GitHub issue URL")],
     groomed_file: Annotated[str | None, typer.Option("--groomed-file")] = None,
-    groomed_content: Annotated[str | None, typer.Option("--groomed-content")] = None,
     section: Annotated[str | None, typer.Option("--section")] = None,
     content: Annotated[str | None, typer.Option("--content")] = None,
+    entry_id: Annotated[str | None, typer.Option("--entry-id", help="Replace a specific entry by ID")] = None,
+    replace_section: Annotated[
+        bool, typer.Option("--replace-section", help="Replace entire section instead of appending")
+    ] = False,
+    reason: Annotated[str | None, typer.Option("--reason", help="Reason for striking/replacing an entry")] = None,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
 ) -> None:
-    """Write groomed content into per-item file. Use --groomed-content, --groomed-file, --section/--content (incremental), or stdin. Syncs to GitHub issue when item has one."""
-    has_input = groomed_file or groomed_content or (section and content)
+    """Write groomed content into per-item file. Use --groomed-file, --section/--content (incremental), or stdin. Syncs to GitHub issue when item has one."""
+    has_input = groomed_file or (section and content)
     update(
         selector=selector,
         plan=None,
         status=None,
         create_issue=False,
         groomed_file=groomed_file,
-        groomed_content=groomed_content,
         section=section,
         content=content,
+        entry_id=entry_id,
+        replace_section=replace_section,
+        reason=reason,
         groomed=not has_input,
         repo=repo,
     )
@@ -2448,6 +2490,7 @@ def pull(
     force: Annotated[
         bool, typer.Option("--force", help="Overwrite local content even if local is newer/longer")
     ] = False,
+    diff: Annotated[bool, typer.Option("--diff", help="Show entry-level diff instead of merging")] = False,
 ) -> None:
     """Pull issue body content from GitHub into local per-item files.
 
@@ -2457,6 +2500,7 @@ def pull(
     Also auto-migrates P0/P1 items that lack GitHub Issues by creating them.
     Merges by section — keeps longer version of each section.
     Skips items with no issue number (after migration).
+    Use --diff to show an entry-level diff without merging.
     """
     if selector is not None:
         _pull_single_by_selector(selector, repo)
@@ -2492,6 +2536,27 @@ def pull(
     else:
         suffix = " [dry-run]" if dry_run else ""
         typer.echo(f"Pulled {pulled} item(s){suffix}.")
+
+
+@app.command(name="strike-entry")
+def strike_entry(
+    selector: Annotated[str, typer.Argument(help="Title substring, #N, bare number, or GitHub issue URL")],
+    section_name: Annotated[str, typer.Option("--section", help="Section containing the entry")],
+    entry_id: Annotated[str, typer.Option("--entry-id", help="ID of the entry to strike")],
+    reason: Annotated[str | None, typer.Option("--reason", help="Reason for striking")] = None,
+    repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
+) -> None:
+    """Strike (soft-delete) an entry in a section by wrapping it in a collapsed details block."""
+    result = _backlog_operations.strike_entry(
+        selector=selector, section=section_name, entry_id=entry_id, reason=reason or ""
+    )
+    if "error" in result:
+        typer.echo(f"ERROR: {result['error']}", err=True)
+        raise typer.Exit(1)
+    messages = result.get("messages", [])
+    if isinstance(messages, list):
+        for msg in messages:
+            typer.echo(msg)
 
 
 if __name__ == "__main__":

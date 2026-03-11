@@ -15,7 +15,12 @@ from typing import TYPE_CHECKING
 
 from github import GithubException, GithubObject
 
-from .entry_blocks import ENTRY_RE, rewrite_section as rewrite_section_entries, strike_entry as strike_entry_block
+from .entry_blocks import (
+    ENTRY_RE,
+    parse_entries,
+    rewrite_section as rewrite_section_entries,
+    strike_entry as strike_entry_block,
+)
 from .github import (
     apply_status_in_progress,
     batch_fetch_statuses,
@@ -967,12 +972,78 @@ def list_items(
 
 
 # ---------------------------------------------------------------------------
+# Public API: VIEW — helpers
+# ---------------------------------------------------------------------------
+
+
+def _build_sections_metadata(body: str, show: str | None, since: str | None) -> dict[str, dict]:
+    """Extract ``### ``-delimited sections from *body* into a metadata dict.
+
+    Args:
+        body: Full issue/item body text.
+        show: If set, include only the section whose name matches (case-insensitive).
+        since: If set, filter entries to those on or after this date.
+
+    Returns:
+        Mapping of section name to entry metadata.
+    """
+    section_re = re.compile(r"^### (.+?)$", re.MULTILINE)
+    section_headers = list(section_re.finditer(body))
+    sections: dict[str, dict] = {}
+    for i, hdr in enumerate(section_headers):
+        sec_name = hdr.group(1).strip()
+        start = hdr.end()
+        end = section_headers[i + 1].start() if i + 1 < len(section_headers) else len(body)
+        sec_body = body[start:end]
+        if show is not None and sec_name.lower() != show.lower():
+            continue
+        entries = parse_entries(sec_body, show="all", since=since)
+        active = [e for e in entries if not e.struck]
+        struck = [e for e in entries if e.struck]
+        sections[sec_name] = {
+            "num_entries": len(active),
+            "num_struck": len(struck),
+            "entries": [{"id": e.id, "struck": e.struck, "content": e.content} for e in entries],
+        }
+    return sections
+
+
+def _paginate_body(data: dict, body: str, offset: int, limit: int) -> None:
+    """Apply offset/limit pagination to the ``body`` field of *data* in-place.
+
+    Args:
+        data: Mutable result dict whose ``body`` key will be replaced.
+        body: Original (unpaginated) body text.
+        offset: Number of leading lines to skip.
+        limit: Maximum lines to keep (0 = unlimited).
+    """
+    lines = body.splitlines()
+    total = len(lines)
+    if offset > 0:
+        lines = lines[offset:]
+    if limit > 0:
+        lines = lines[:limit]
+    data["body"] = "\n".join(lines)
+    remaining = total - offset - len(lines)
+    if remaining > 0:
+        data["body_truncated"] = True
+        data["body_remaining_lines"] = remaining
+        data["body_total_lines"] = total
+
+
+# ---------------------------------------------------------------------------
 # Public API: VIEW
 # ---------------------------------------------------------------------------
 
 
 def view_item(
-    selector: str, repo: str = DEFAULT_REPO, offset: int = 0, limit: int = 0, output: Output | None = None
+    selector: str,
+    repo: str = DEFAULT_REPO,
+    offset: int = 0,
+    limit: int = 0,
+    show: str | None = None,
+    since: str | None = None,
+    output: Output | None = None,
 ) -> dict[str, str | int | bool | list[str] | None]:
     """View a backlog item or GitHub issue by URL, #N, bare number, or title.
 
@@ -981,14 +1052,15 @@ def view_item(
         repo: GitHub repo in owner/repo format.
         offset: Skip N lines from the start of the body.
         limit: Show at most N body lines (0 = all, no truncation).
+        show: If set, include only the named section (case-insensitive).
+        since: If set, filter entries to those on or after this date.
         output: Optional Output collector.
 
     Returns:
         Dict with item/issue details.
     """
     out = output or Output()
-    items = parse_backlog()
-    item = find_item(items, selector)
+    item = find_item(parse_backlog(), selector)
     issue_num = parse_issue_selector(selector)
 
     result: ViewItemResult = view_result_from_local_item(item) if item else ViewItemResult()
@@ -1000,21 +1072,13 @@ def view_item(
         raise ItemNotFoundError(selector)
 
     data = result.model_dump()
-    # Apply pagination to body field
+
     body = data.get("body", "")
+    if body:
+        data["sections"] = _build_sections_metadata(body, show, since)
+
     if body and (offset > 0 or limit > 0):
-        lines = body.splitlines()
-        total = len(lines)
-        if offset > 0:
-            lines = lines[offset:]
-        if limit > 0:
-            lines = lines[:limit]
-        data["body"] = "\n".join(lines)
-        remaining = total - offset - len(lines)
-        if remaining > 0:
-            data["body_truncated"] = True
-            data["body_remaining_lines"] = remaining
-            data["body_total_lines"] = total
+        _paginate_body(data, body, offset, limit)
 
     return {**data, **out.to_dict()}
 
@@ -1681,7 +1745,11 @@ def pull_by_selector(
 
 
 def pull_items(
-    repo: str = DEFAULT_REPO, dry_run: bool = False, force: bool = False, output: Output | None = None
+    repo: str = DEFAULT_REPO,
+    dry_run: bool = False,
+    force: bool = False,
+    diff: bool = False,
+    output: Output | None = None,
 ) -> dict[str, int | bool | list[str]]:
     """Pull issue body content from GitHub into local per-item files.
 
