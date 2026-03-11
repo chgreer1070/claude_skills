@@ -976,12 +976,31 @@ def list_items(
 # ---------------------------------------------------------------------------
 
 
-def _build_sections_metadata(body: str, show: str | None, since: str | None) -> dict[str, dict]:
+_ENTRY_FILTER_KEYWORDS: frozenset[str] = frozenset({"all", "struck", "last", "first"})
+
+
+def _merge_section_entries(existing: dict[str, object], new_entries: list[dict[str, str | bool]]) -> dict[str, object]:
+    """Merge *new_entries* into *existing* section metadata dict.
+
+    Returns:
+        Updated section metadata dict.
+    """
+    all_entries: list[dict[str, str | bool]] = list(existing["entries"]) + new_entries  # type: ignore[assignment]
+    active_count = sum(1 for e in all_entries if not e.get("struck"))
+    struck_count = sum(1 for e in all_entries if e.get("struck"))
+    return {"num_entries": active_count, "num_struck": struck_count, "entries": all_entries}
+
+
+def _build_sections_metadata(body: str, show: str | int | None, since: str | None) -> dict[str, dict]:
     """Extract ``### ``-delimited sections from *body* into a metadata dict.
 
     Args:
         body: Full issue/item body text.
-        show: If set, include only the section whose name matches (case-insensitive).
+        show: Controls both section and entry filtering.
+              A string not in ``{"all", "struck", "last", "first"}`` filters to
+              the named section (case-insensitive).  An int or one of those
+              keywords is forwarded to ``parse_entries`` for entry-level filtering.
+              ``None`` includes all sections with all entries.
         since: If set, filter entries to those on or after this date.
 
     Returns:
@@ -989,32 +1008,31 @@ def _build_sections_metadata(body: str, show: str | None, since: str | None) -> 
     """
     section_re = re.compile(r"^### (.+?)$", re.MULTILINE)
     section_headers = list(section_re.finditer(body))
+
+    # Determine whether show is a section-name filter or an entry-level filter.
+    section_name_filter: str | None = None
+    entry_show: str | int | None = "all"
+    if isinstance(show, str) and show not in _ENTRY_FILTER_KEYWORDS:
+        section_name_filter = show
+    elif show is not None:
+        entry_show = show
+
     sections: dict[str, dict] = {}
     for i, hdr in enumerate(section_headers):
         sec_name = hdr.group(1).strip()
         start = hdr.end()
         end = section_headers[i + 1].start() if i + 1 < len(section_headers) else len(body)
         sec_body = body[start:end]
-        if show is not None and sec_name.lower() != show.lower():
+        if section_name_filter is not None and sec_name.lower() != section_name_filter.lower():
             continue
-        entries = parse_entries(sec_body, show="all", since=since)
+        entries = parse_entries(sec_body, show=entry_show, since=since)
+        entry_dicts = [{"id": e.id, "struck": e.struck, "content": e.content} for e in entries]
         if sec_name in sections:
-            # Merge entries from duplicate section headers
-            existing = sections[sec_name]
-            all_entries = existing["entries"] + [
-                {"id": e.id, "struck": e.struck, "content": e.content} for e in entries
-            ]
-            active_count = sum(1 for e in all_entries if not e.get("struck"))
-            struck_count = sum(1 for e in all_entries if e.get("struck"))
-            sections[sec_name] = {"num_entries": active_count, "num_struck": struck_count, "entries": all_entries}
+            sections[sec_name] = _merge_section_entries(sections[sec_name], entry_dicts)
         else:
-            active = [e for e in entries if not e.struck]
-            struck = [e for e in entries if e.struck]
-            sections[sec_name] = {
-                "num_entries": len(active),
-                "num_struck": len(struck),
-                "entries": [{"id": e.id, "struck": e.struck, "content": e.content} for e in entries],
-            }
+            active_count = sum(1 for e in entries if not e.struck)
+            struck_count = sum(1 for e in entries if e.struck)
+            sections[sec_name] = {"num_entries": active_count, "num_struck": struck_count, "entries": entry_dicts}
     return sections
 
 
@@ -1051,10 +1069,10 @@ def view_item(
     repo: str = DEFAULT_REPO,
     offset: int = 0,
     limit: int = 0,
-    show: str | None = None,
+    show: str | int | None = None,
     since: str | None = None,
     output: Output | None = None,
-) -> dict[str, str | int | bool | list[str] | None]:
+) -> dict[str, str | int | bool | list[str] | dict | None]:
     """View a backlog item or GitHub issue by URL, #N, bare number, or title.
 
     Args:
@@ -1062,12 +1080,17 @@ def view_item(
         repo: GitHub repo in owner/repo format.
         offset: Skip N lines from the start of the body.
         limit: Show at most N body lines (0 = all, no truncation).
-        show: If set, include only the named section (case-insensitive).
+        show: Entry filter forwarded to parse_entries — "all", "last", "first",
+              "struck", positive int (first N active), negative int (last N active),
+              or a section name string (case-insensitive section filter).
+              MCP clients may send numeric values as strings; those are converted
+              to int automatically.
         since: If set, filter entries to those on or after this date.
         output: Optional Output collector.
 
     Returns:
-        Dict with item/issue details.
+        Dict with item/issue details, including a ``sections`` key when the
+        item body contains ``### ``-delimited section blocks.
     """
     out = output or Output()
     item = find_item(parse_backlog(), selector)
@@ -1081,11 +1104,19 @@ def view_item(
     elif not item:
         raise ItemNotFoundError(selector)
 
+    # MCP clients send numeric show values as strings; convert before forwarding.
+    parsed_show: str | int | None = show
+    if isinstance(show, str):
+        try:
+            parsed_show = int(show)
+        except ValueError:
+            parsed_show = show
+
     data = result.model_dump()
 
     body = data.get("body", "")
     if body:
-        data["sections"] = _build_sections_metadata(body, show, since)
+        data["sections"] = _build_sections_metadata(body, parsed_show, since)
 
     if body and (offset > 0 or limit > 0):
         _paginate_body(data, body, offset, limit)

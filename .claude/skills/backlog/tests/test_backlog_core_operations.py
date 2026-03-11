@@ -433,6 +433,30 @@ class TestViewItem:
 
         assert "body_truncated" not in result
 
+    def test_view_item_returns_section_entries(self, mocker: MockerFixture) -> None:
+        """view_item response includes sections dict with entry metadata.
+
+        Tests: _build_sections_metadata integration — sections populated from local item body.
+        How: add_item then groom_item twice into Decision section; call view_item.
+        Why: MCP clients need structured entry metadata, not raw body text.
+        """
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.view_enrich_from_github", return_value=False)
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        out = Output()
+        ops.add_item(title="View Test", priority="P1", description="Test", output=out, create_issue=False)
+        ops.groom_item(selector="View Test", section="Decision", content="Entry 1.", output=out)
+        ops.groom_item(selector="View Test", section="Decision", content="Entry 2.", output=out)
+        result = view_item(selector="View Test", output=out)
+
+        sections = result.get("sections", {})
+        assert isinstance(sections, dict), "sections must be a dict"
+        assert "Decision" in sections, f"Expected 'Decision' in sections, got: {list(sections.keys())}"
+        assert sections["Decision"]["num_entries"] == 2
+        assert len(sections["Decision"]["entries"]) == 2
+
 
 # ---------------------------------------------------------------------------
 # close_item

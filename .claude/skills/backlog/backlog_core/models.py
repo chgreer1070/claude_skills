@@ -227,6 +227,7 @@ class ViewItemResult(BaseModel):
     body: str = ""
     labels: list[str] = Field(default_factory=list)
     milestone: str = ""
+    sections: dict[str, dict[str, object]] = Field(default_factory=dict)
 
 
 class IssueLocalFields(BaseModel):
