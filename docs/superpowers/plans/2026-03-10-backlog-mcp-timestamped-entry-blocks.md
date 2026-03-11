@@ -1,6 +1,6 @@
 # Backlog MCP: Timestamped Entry Blocks — Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add timestamped, addressable entry blocks to backlog section content so every write is auditable, individually targetable, and never silently lost.
 
@@ -40,7 +40,7 @@ All paths relative to `.claude/skills/backlog/`.
 - Modify: `.claude/skills/backlog/backlog_core/models.py`
 - Test: `.claude/skills/backlog/tests/test_entry_blocks.py`
 
-- [ ] **Step 1: Write the Entry model test**
+- [x] **Step 1: Write the Entry model test**
 
 ```python
 # tests/test_entry_blocks.py
@@ -70,12 +70,12 @@ def test_entry_model_struck():
     assert e.struck_reason == "outdated"
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_entry_blocks.py::test_entry_model_defaults -v`
 Expected: FAIL — `Entry` not defined in models.py
 
-- [ ] **Step 3: Add Entry model to models.py**
+- [x] **Step 3: Add Entry model to models.py**
 
 Add to `backlog_core/models.py`:
 
@@ -91,12 +91,12 @@ class Entry(BaseModel):
     raw: str = ""
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_entry_blocks.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .claude/skills/backlog/backlog_core/models.py .claude/skills/backlog/tests/test_entry_blocks.py
@@ -111,7 +111,7 @@ git commit -m "feat(backlog): add Entry model for timestamped content blocks"
 - Create: `.claude/skills/backlog/backlog_core/entry_blocks.py`
 - Test: `.claude/skills/backlog/tests/test_entry_blocks.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_entry_blocks.py (append)
@@ -141,12 +141,12 @@ def test_wrap_entry_preserves_content_exactly():
     assert content in result
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_entry_blocks.py::test_wrap_entry_format -v`
 Expected: FAIL — `entry_blocks` module not found
 
-- [ ] **Step 3: Create entry_blocks.py with `wrap_entry()`**
+- [x] **Step 3: Create entry_blocks.py with `wrap_entry()`**
 
 ```python
 # backlog_core/entry_blocks.py
@@ -176,12 +176,12 @@ def wrap_entry_with_timestamp(content: str, timestamp: str) -> str:
     return f"<div><sub>{timestamp}</sub>\n\n{content}\n</div>"
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_entry_blocks.py -k wrap_entry -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .claude/skills/backlog/backlog_core/entry_blocks.py .claude/skills/backlog/tests/test_entry_blocks.py
@@ -196,7 +196,7 @@ git commit -m "feat(backlog): add wrap_entry() for timestamped content blocks"
 - Modify: `.claude/skills/backlog/backlog_core/entry_blocks.py`
 - Test: `.claude/skills/backlog/tests/test_entry_blocks.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 # tests/test_entry_blocks.py (append)
@@ -335,12 +335,12 @@ def test_parse_since_with_show_combined():
     assert entries[1].content == "C."
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_entry_blocks.py -k parse -v`
 Expected: FAIL — `parse_entries` not defined
 
-- [ ] **Step 3: Implement `parse_entries()`**
+- [x] **Step 3: Implement `parse_entries()`**
 
 Add to `backlog_core/entry_blocks.py`:
 
@@ -464,12 +464,12 @@ def parse_entries(
     return _apply_show_filter(raw_entries, show)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_entry_blocks.py -k parse -v`
 Expected: All PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .claude/skills/backlog/backlog_core/entry_blocks.py .claude/skills/backlog/tests/test_entry_blocks.py
@@ -484,7 +484,7 @@ git commit -m "feat(backlog): add parse_entries() with show/since filtering"
 - Modify: `.claude/skills/backlog/backlog_core/entry_blocks.py`
 - Test: `.claude/skills/backlog/tests/test_entry_blocks.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_entry_blocks.py (append)
@@ -514,12 +514,12 @@ def test_strike_entry_roundtrips_through_parser():
     assert "Original content." in entries[0].content
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_entry_blocks.py -k strike -v`
 Expected: FAIL — `strike_entry` not defined
 
-- [ ] **Step 3: Implement `strike_entry()`**
+- [x] **Step 3: Implement `strike_entry()`**
 
 Add to `backlog_core/entry_blocks.py`:
 
@@ -558,12 +558,12 @@ def strike_entry(entry_raw: str, reason: str) -> str:
     )
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_entry_blocks.py -k strike -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .claude/skills/backlog/backlog_core/entry_blocks.py .claude/skills/backlog/tests/test_entry_blocks.py
@@ -578,7 +578,7 @@ git commit -m "feat(backlog): add strike_entry() for non-destructive entry remov
 - Modify: `.claude/skills/backlog/backlog_core/entry_blocks.py`
 - Test: `.claude/skills/backlog/tests/test_entry_blocks.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 # tests/test_entry_blocks.py (append)
@@ -658,12 +658,12 @@ def test_rewrite_replace_section():
     assert len(struck) == 2
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_entry_blocks.py -k rewrite -v`
 Expected: FAIL
 
-- [ ] **Step 3: Implement `rewrite_section()`**
+- [x] **Step 3: Implement `rewrite_section()`**
 
 Add to `backlog_core/entry_blocks.py`:
 
@@ -789,12 +789,12 @@ def rewrite_section(
     return "\n\n".join(parts)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_entry_blocks.py -k rewrite -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .claude/skills/backlog/backlog_core/entry_blocks.py .claude/skills/backlog/tests/test_entry_blocks.py
@@ -809,7 +809,7 @@ git commit -m "feat(backlog): add rewrite_section() for append/overwrite/replace
 - Modify: `.claude/skills/backlog/backlog_core/entry_blocks.py`
 - Test: `.claude/skills/backlog/tests/test_entry_blocks.py`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 # tests/test_entry_blocks.py (append)
@@ -852,12 +852,12 @@ def test_diff_content_differs():
     assert "+ <div><sub>2026-03-10T08:00:00Z</sub>" in diff
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_entry_blocks.py -k diff -v`
 Expected: FAIL
 
-- [ ] **Step 3: Implement `generate_diff()`**
+- [x] **Step 3: Implement `generate_diff()`**
 
 Add to `backlog_core/entry_blocks.py`:
 
@@ -914,12 +914,12 @@ def generate_diff(local: str, remote: str) -> str:
     return "\n".join(lines)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_entry_blocks.py -k diff -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .claude/skills/backlog/backlog_core/entry_blocks.py .claude/skills/backlog/tests/test_entry_blocks.py
@@ -936,7 +936,7 @@ git commit -m "feat(backlog): add generate_diff() for entry-level comparison"
 - Modify: `.claude/skills/backlog/backlog_core/operations.py`
 - Test: `.claude/skills/backlog/tests/test_backlog_core_operations.py`
 
-- [ ] **Step 1: Write failing test for entry-based groom**
+- [x] **Step 1: Write failing test for entry-based groom**
 
 ```python
 # tests/test_backlog_core_operations.py (append)
@@ -964,12 +964,12 @@ def test_groom_item_appends_entry_block(tmp_backlog):
     assert "First decision made." in item.get("body", "")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_backlog_core_operations.py -k test_groom_item_appends_entry_block -v`
 Expected: FAIL — current groom_item writes raw content without entry blocks
 
-- [ ] **Step 3: Modify `groom_item()` in operations.py**
+- [x] **Step 3: Modify `groom_item()` in operations.py**
 
 In `operations.py`, find the section-write path in `groom_item()` and `update_item()`. Replace the direct section content write with a call to `rewrite_section()`:
 
@@ -1000,12 +1000,12 @@ new_body = rewrite_section(
 
 The agent implementing this task should read `operations.py` to find the exact code paths for section writing in both `groom_item()` and `update_item()`, then wire in `rewrite_section()`. The function signatures for both need the new parameters: `entry_id`, `replace_section`, `reason`. Note: `extract_sections()` in `parsing.py` returns a `dict[str, str]` keyed by the full heading (e.g., `"## Decision"`).
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_backlog_core_operations.py -k entry -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .claude/skills/backlog/backlog_core/operations.py .claude/skills/backlog/tests/test_backlog_core_operations.py
@@ -1020,7 +1020,7 @@ git commit -m "feat(backlog): wire entry blocks into groom_item and update_item"
 - Modify: `.claude/skills/backlog/backlog_core/operations.py`
 - Test: `.claude/skills/backlog/tests/test_backlog_core_operations.py`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```python
 from backlog_core.entry_blocks import parse_entries
@@ -1052,11 +1052,11 @@ def test_strike_entry_operation(tmp_backlog):
     assert "based on training data" in item.get("body", "")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Expected: FAIL — `strike_entry` not defined on operations
 
-- [ ] **Step 3: Implement `operations.strike_entry()`**
+- [x] **Step 3: Implement `operations.strike_entry()`**
 
 New function in `operations.py` with signature `strike_entry(selector, entry_id, reason, output, section=None)` that:
 1. Finds the item by selector
@@ -1068,9 +1068,9 @@ New function in `operations.py` with signature `strike_entry(selector, entry_id,
 7. Writes the file
 8. Syncs to GitHub if the item has an issue
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .claude/skills/backlog/backlog_core/operations.py .claude/skills/backlog/tests/test_backlog_core_operations.py
@@ -1086,7 +1086,7 @@ git commit -m "feat(backlog): add strike_entry operation"
 - Modify: `.claude/skills/backlog/backlog_core/models.py`
 - Test: `.claude/skills/backlog/tests/test_backlog_core_operations.py`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```python
 def test_view_item_returns_section_entries(tmp_backlog):
@@ -1102,15 +1102,15 @@ def test_view_item_returns_section_entries(tmp_backlog):
     assert len(sections["Decision"]["entries"]) == 2
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
-- [ ] **Step 3: Update `ViewItemResult` model and `view_item()` operation**
+- [x] **Step 3: Update `ViewItemResult` model and `view_item()` operation**
 
 Add sections metadata to `ViewItemResult` in models.py. Update `view_item()` in operations.py to parse entry blocks per section and populate the metadata. Change offset/limit to operate on entry count.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .claude/skills/backlog/backlog_core/models.py .claude/skills/backlog/backlog_core/operations.py .claude/skills/backlog/tests/test_backlog_core_operations.py
@@ -1125,7 +1125,7 @@ git commit -m "feat(backlog): entry-based pagination and section metadata in vie
 - Modify: `.claude/skills/backlog/backlog_core/operations.py`
 - Test: `.claude/skills/backlog/tests/test_backlog_core_operations.py`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```python
 def test_pull_dry_run_returns_entry_diff(tmp_backlog, mock_github):
@@ -1140,9 +1140,9 @@ def test_pull_dry_run_returns_entry_diff(tmp_backlog, mock_github):
 
 Note: The implementing agent will need to set up appropriate fixtures for this test.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
-- [ ] **Step 3: Update `pull_items()` and `pull_by_selector()` merge logic**
+- [x] **Step 3: Update `pull_items()` and `pull_by_selector()` merge logic**
 
 Replace the current "keep longer version" merge with entry-aware merge using `parse_entries()` and `generate_diff()`. Add `diff` parameter support.
 
@@ -1152,9 +1152,9 @@ Merge rules (from spec):
 - Both sides, both active → keep longer content
 - Both sides, both struck → keep later struck timestamp
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .claude/skills/backlog/backlog_core/operations.py .claude/skills/backlog/tests/test_backlog_core_operations.py
@@ -1169,7 +1169,7 @@ git commit -m "feat(backlog): entry-aware merge and diff output in pull_items"
 - Modify: `.claude/skills/backlog/backlog_core/server.py`
 - Test: `.claude/skills/backlog/tests/test_backlog_core_server.py`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```python
 def test_backlog_groom_no_groomed_content_param():
@@ -1205,9 +1205,9 @@ def test_backlog_view_show_string_int_conversion():
     assert "show" in sig.parameters
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
-- [ ] **Step 3: Update server.py**
+- [x] **Step 3: Update server.py**
 
 1. Remove `groomed_content` parameter from `backlog_update` and `backlog_groom`
 2. Add `entry_id`, `replace_section`, `reason` parameters to both
@@ -1258,12 +1258,12 @@ async def backlog_strike_entry(
         return {"error": str(e), **out.to_dict()}
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_backlog_core_server.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .claude/skills/backlog/backlog_core/server.py .claude/skills/backlog/tests/test_backlog_core_server.py
@@ -1277,7 +1277,7 @@ git commit -m "feat(backlog): update MCP tool signatures for entry blocks"
 **Files:**
 - Modify: `.claude/skills/backlog/scripts/backlog.py`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```bash
 cd .claude/skills/backlog && uv run python scripts/backlog.py groom --help
@@ -1285,7 +1285,7 @@ cd .claude/skills/backlog && uv run python scripts/backlog.py groom --help
 # Should NOT show --groomed-content option
 ```
 
-- [ ] **Step 2: Update CLI commands**
+- [x] **Step 2: Update CLI commands**
 
 1. `groom` command: remove `--groomed-content`, add `--entry-id`, `--replace-section`, `--reason`
 2. `update` command: remove `--groomed-content`, add `--entry-id`, `--replace-section`, `--reason`
@@ -1293,11 +1293,11 @@ cd .claude/skills/backlog && uv run python scripts/backlog.py groom --help
 4. `pull` command: add `--diff` flag
 5. Add new `strike-entry` command: `backlog.py strike-entry <selector> <entry-id> <reason>`
 
-- [ ] **Step 3: Verify CLI help output**
+- [x] **Step 3: Verify CLI help output**
 
 Run each updated command with `--help` to verify parameter changes.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add .claude/skills/backlog/scripts/backlog.py
@@ -1312,21 +1312,21 @@ git commit -m "feat(backlog): CLI parity for entry block operations"
 - Modify: `.claude/skills/backlog/tests/test_backlog_core_server.py`
 - Modify: `.claude/skills/backlog/tests/test_backlog_core_operations.py`
 
-- [ ] **Step 1: Run full test suite to find failures**
+- [x] **Step 1: Run full test suite to find failures**
 
 Run: `cd .claude/skills/backlog && uv run pytest -v`
 Identify all tests that fail due to removed `groomed_content` parameter or changed `offset`/`limit` behavior.
 
-- [ ] **Step 2: Update failing tests**
+- [x] **Step 2: Update failing tests**
 
 Replace `groomed_content=` calls with `section=` + `content=` equivalents. Update pagination tests to use entry-based counts.
 
-- [ ] **Step 3: Run full test suite**
+- [x] **Step 3: Run full test suite**
 
 Run: `cd .claude/skills/backlog && uv run pytest -v`
 Expected: All PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add .claude/skills/backlog/tests/
@@ -1340,7 +1340,7 @@ git commit -m "fix(backlog): update tests for entry block API changes"
 **Files:**
 - Create: `.claude/skills/backlog/tests/test_entry_blocks_integration.py`
 
-- [ ] **Step 1: Write integration test**
+- [x] **Step 1: Write integration test**
 
 ```python
 """Integration test: full entry block lifecycle.
@@ -1417,12 +1417,12 @@ def test_full_entry_lifecycle(tmp_backlog):
     assert "Updated second decision." in active_entries[0]["content"]
 ```
 
-- [ ] **Step 2: Run integration test**
+- [x] **Step 2: Run integration test**
 
 Run: `cd .claude/skills/backlog && uv run pytest tests/test_entry_blocks_integration.py -v`
 Expected: PASS
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add .claude/skills/backlog/tests/test_entry_blocks_integration.py
@@ -1433,21 +1433,21 @@ git commit -m "test(backlog): integration test for entry block lifecycle"
 
 ### Task 15: Final validation
 
-- [ ] **Step 1: Run full test suite**
+- [x] **Step 1: Run full test suite**
 
 Run: `cd .claude/skills/backlog && uv run pytest -v --tb=short`
 Expected: All PASS
 
-- [ ] **Step 2: Run linters**
+- [x] **Step 2: Run linters**
 
 Run: `cd .claude/skills/backlog && uv run ruff check backlog_core/ scripts/ tests/`
 Run: `cd .claude/skills/backlog && uv run ruff format --check backlog_core/ scripts/ tests/`
 
-- [ ] **Step 3: Verify MCP server starts**
+- [x] **Step 3: Verify MCP server starts**
 
 Run: `cd .claude/skills/backlog && uv run python -c "from backlog_core.server import mcp; print('Server OK')"`
 
-- [ ] **Step 4: Final commit if any cleanup needed**
+- [x] **Step 4: Final commit if any cleanup needed**
 
 ```bash
 git add -A .claude/skills/backlog/

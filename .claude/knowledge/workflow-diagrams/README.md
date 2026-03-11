@@ -6,15 +6,15 @@ Visual documentation mapping repository assets (skills, agents, commands, hooks)
 
 ## Quick Navigation
 
-| Diagram                                                     | Purpose                                   | Use When                                 |
-| ----------------------------------------------------------- | ----------------------------------------- | ---------------------------------------- |
-| [Master Workflow](./master-workflow.md)                     | Complete 6-stage overview with all assets | Understanding the full system            |
-| [Asset Decision Tree](./asset-decision-tree.md)             | Skill vs Command vs Agent vs Hook         | Choosing the right extension type        |
-| [Multi-Agent Orchestration](./multi-agent-orchestration.md) | Delegation and DONE/BLOCKED signaling     | Coordinating specialist agents           |
-| [Simple Task Workflow](./simple-task-workflow.md)           | Minimal path for straightforward tasks    | Quick implementations                    |
+| Diagram                                                                                       | Purpose                                   | Use When                                 |
+| --------------------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------------- |
+| [Master Workflow](./master-workflow.md)                                                       | Complete 6-stage overview with all assets | Understanding the full system            |
+| [Asset Decision Tree](./asset-decision-tree.md)                                               | Skill vs Command vs Agent vs Hook         | Choosing the right extension type        |
+| [Multi-Agent Orchestration](./multi-agent-orchestration.md)                                   | Delegation and DONE/BLOCKED signaling     | Coordinating specialist agents           |
+| [Simple Task Workflow](./simple-task-workflow.md)                                             | Minimal path for straightforward tasks    | Quick implementations                    |
 | [Investigation Workflow](../../../plugins/scientific-method/shared/investigation-workflow.md) | Hypothesis-driven scientific method       | Debugging, research, root cause analysis |
-| [RAG Retrieval Pattern](./rag-retrieval-pattern.md)         | Context augmentation flow                 | Knowledge retrieval tasks                |
-| [Gap Recommendations](./gap-recommendations.md)             | Specs for missing capabilities            | Planning improvements                    |
+| [RAG Retrieval Pattern](./rag-retrieval-pattern.md)                                           | Context augmentation flow                 | Knowledge retrieval tasks                |
+| [Gap Recommendations](./gap-recommendations.md)                                               | Specs for missing capabilities            | Planning improvements                    |
 
 ---
 
@@ -46,20 +46,20 @@ classDef neutral fill:#e0e0e0,stroke:#757575,stroke-width:1px,color:#424242
 
 ### Skills (12 total)
 
-| Skill                          | Stage Coverage      | Primary Purpose                      |
-| ------------------------------ | ------------------- | ------------------------------------ |
-| rt-ica                         | Input, Planning     | Pre-planning requirements checkpoint |
-| delegate                       | Planning            | Sub-agent prompt template            |
-| verify                         | Verification        | Pre-completion self-assessment       |
-| audit                          | Verification        | Hallucination detection              |
-| scientific-method:scientific-thinking            | Planning, Execution | Hypothesis-driven reasoning          |
-| agent-creator                  | Execution           | Create new agents                    |
-| subagent-contract              | Execution           | Role boundaries and signaling        |
-| git-commit-helper              | Output              | Commit message generation            |
-| claude-skills-overview-2026    | Context             | Skills system reference              |
-| claude-plugins-reference-2026  | Context             | Plugins system reference             |
-| claude-commands-reference-2026 | Context             | Commands system reference            |
-| claude-hooks-reference-2026    | Context             | Hooks system reference               |
+| Skill                                 | Stage Coverage      | Primary Purpose                      |
+| ------------------------------------- | ------------------- | ------------------------------------ |
+| rt-ica                                | Input, Planning     | Pre-planning requirements checkpoint |
+| delegate                              | Planning            | Sub-agent prompt template            |
+| verify                                | Verification        | Pre-completion self-assessment       |
+| audit                                 | Verification        | Hallucination detection              |
+| scientific-method:scientific-thinking | Planning, Execution | Hypothesis-driven reasoning          |
+| agent-creator                         | Execution           | Create new agents                    |
+| subagent-contract                     | Execution           | Role boundaries and signaling        |
+| git-commit-helper                     | Output              | Commit message generation            |
+| claude-skills-overview-2026           | Context             | Skills system reference              |
+| claude-plugins-reference-2026         | Context             | Plugins system reference             |
+| claude-commands-reference-2026        | Context             | Commands system reference            |
+| claude-hooks-reference-2026           | Context             | Hooks system reference               |
 
 ### Agents (11 total)
 
@@ -79,24 +79,24 @@ classDef neutral fill:#e0e0e0,stroke:#757575,stroke-width:1px,color:#424242
 
 ### Commands (11 total)
 
-| Command              | Stage Coverage | Primary Purpose              |
-| -------------------- | -------------- | ---------------------------- |
-| /am-i-complete       | Verification   | Completion readiness check   |
-| /verify              | Verification   | Self-assessment checklist    |
-| /audit               | Verification   | Hallucination detection      |
-| /how-to-delegate     | Planning       | Delegation guidance          |
-| /think               | Planning       | Step-back reasoning          |
-| /sessions            | Input          | Session management           |
-| /step-back           | Planning       | Broader perspective          |
-| /how-confident       | Verification   | Confidence self-assessment   |
-| /rt-ica              | Planning       | Requirements assessment      |
-| /delegate            | Planning       | Quick delegation template    |
+| Command                                | Stage Coverage | Primary Purpose              |
+| -------------------------------------- | -------------- | ---------------------------- |
+| /am-i-complete                         | Verification   | Completion readiness check   |
+| /verify                                | Verification   | Self-assessment checklist    |
+| /audit                                 | Verification   | Hallucination detection      |
+| /how-to-delegate                       | Planning       | Delegation guidance          |
+| /think                                 | Planning       | Step-back reasoning          |
+| /sessions                              | Input          | Session management           |
+| /step-back                             | Planning       | Broader perspective          |
+| /how-confident                         | Verification   | Confidence self-assessment   |
+| /plugin-creator:rt-ica                 | Planning       | Requirements assessment      |
+| /delegate                              | Planning       | Quick delegation template    |
 | /scientific-method:scientific-thinking | Planning       | Scientific method activation |
 
 ### Hooks (1 total)
 
-| Hook                   | Stage Coverage | Primary Purpose                      |
-| ---------------------- | -------------- | ------------------------------------ |
+| Hook                    | Stage Coverage | Primary Purpose                      |
+| ----------------------- | -------------- | ------------------------------------ |
 | session-start-rtica.cjs | Input          | Auto-trigger rt-ica on session start |
 
 ---
