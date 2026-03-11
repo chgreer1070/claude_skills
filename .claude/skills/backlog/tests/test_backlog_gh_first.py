@@ -637,9 +637,7 @@ class TestOpenPrCheckBeforeClose:
         )
 
         # Act
-        result = runner.invoke(
-            app, ["close", "Test close PR check", "--plan", "plan/test.md", "--checklist-pass", "-R", "test/repo"]
-        )
+        result = runner.invoke(app, ["close", "Test close PR check", "--reason", "duplicate", "-R", "test/repo"])
 
         # Assert
         assert result.exit_code == 1
@@ -670,8 +668,7 @@ class TestOpenPrCheckBeforeClose:
 
         # Act
         result = runner.invoke(
-            app,
-            ["close", "Test close force", "--plan", "plan/test.md", "--checklist-pass", "--force", "-R", "test/repo"],
+            app, ["close", "Test close force", "--reason", "duplicate", "--force", "-R", "test/repo"]
         )
 
         # Assert
@@ -696,9 +693,7 @@ class TestOpenPrCheckBeforeClose:
         mocker.patch.object(_mod, "_close_github_issue")
 
         # Act
-        result = runner.invoke(
-            app, ["close", "Test close ok", "--plan", "plan/test.md", "--checklist-pass", "-R", "test/repo"]
-        )
+        result = runner.invoke(app, ["close", "Test close ok", "--reason", "duplicate", "-R", "test/repo"])
 
         # Assert
         assert result.exit_code == 0
@@ -721,9 +716,7 @@ class TestOpenPrCheckBeforeClose:
         mock_pr_check = mocker.patch.object(_mod, "_check_open_prs_for_issue")
 
         # Act
-        result = runner.invoke(
-            app, ["close", "Test close no issue", "--plan", "plan/test.md", "--checklist-pass", "-R", "test/repo"]
-        )
+        result = runner.invoke(app, ["close", "Test close no issue", "--reason", "duplicate", "-R", "test/repo"])
 
         # Assert
         assert result.exit_code == 0
@@ -751,7 +744,7 @@ class TestOpenPrCheckBeforeClose:
 
         # Act
         result = runner.invoke(
-            app, ["resolve", "Test resolve PR check", "--reason", "No longer needed", "-R", "test/repo"]
+            app, ["resolve", "Test resolve PR check", "--summary", "No longer needed", "-R", "test/repo"]
         )
 
         # Assert
@@ -783,7 +776,7 @@ class TestOpenPrCheckBeforeClose:
 
         # Act
         result = runner.invoke(
-            app, ["resolve", "Test resolve force", "--reason", "Stale", "--force", "-R", "test/repo"]
+            app, ["resolve", "Test resolve force", "--summary", "Stale", "--force", "-R", "test/repo"]
         )
 
         # Assert
@@ -813,62 +806,62 @@ class TestPullWithSelector:
     """
 
     def test_pull_with_issue_number_selector(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        """pull #321 routes to _pull_single_issue with the parsed issue number.
+        """pull #321 routes to pull_by_selector with the selector string.
 
         Tests: Issue number selector routing.
-        How: Mock _get_github and _pull_single_issue, invoke pull with #321.
+        How: Mock _backlog_operations.pull_by_selector, invoke pull with #321.
         Why: Users should be able to refresh a single issue without full bulk pull.
         """
-        mock_repo = mocker.Mock()
-        mocker.patch.object(_mod, "_get_github", return_value=mock_repo)
         expected_path = tmp_path / "p2-test.md"
-        mock_pull = mocker.patch.object(_mod, "_pull_single_issue", return_value=expected_path)
+        mock_pull = mocker.patch.object(
+            _mod._backlog_operations,
+            "pull_by_selector",
+            return_value={"file_path": str(expected_path), "messages": [], "warnings": []},
+        )
 
         result = runner.invoke(app, ["pull", "#321", "-R", "test/repo"])
 
         assert result.exit_code == 0
-        mock_pull.assert_called_once_with(mock_repo, 321)
+        mock_pull.assert_called_once_with("#321", "test/repo")
         assert "Pulled" in result.output
 
     def test_pull_with_bare_number_selector(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        """pull 42 (bare number) routes to _pull_single_issue.
+        """pull 42 (bare number) routes to pull_by_selector.
 
         Tests: Bare number selector routing.
-        How: Mock _get_github and _pull_single_issue, invoke pull with bare number.
+        How: Mock _backlog_operations.pull_by_selector, invoke pull with bare number.
         Why: Bare numbers are a valid selector form for convenience.
         """
-        mock_repo = mocker.Mock()
-        mocker.patch.object(_mod, "_get_github", return_value=mock_repo)
         expected_path = tmp_path / "p1-test.md"
-        mock_pull = mocker.patch.object(_mod, "_pull_single_issue", return_value=expected_path)
+        mock_pull = mocker.patch.object(
+            _mod._backlog_operations,
+            "pull_by_selector",
+            return_value={"file_path": str(expected_path), "messages": [], "warnings": []},
+        )
 
         result = runner.invoke(app, ["pull", "42", "-R", "test/repo"])
 
         assert result.exit_code == 0
-        mock_pull.assert_called_once_with(mock_repo, 42)
+        mock_pull.assert_called_once_with("42", "test/repo")
 
     def test_pull_with_title_selector_finds_item(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        """pull 'some title' finds item by title, reads issue number, calls _pull_single_issue.
+        """pull 'some title' routes to pull_by_selector with the title string.
 
         Tests: Title substring selector routing.
-        How: Create a local backlog file with _issue=#99, mock _pull_single_issue.
+        How: Mock _backlog_operations.pull_by_selector, invoke pull with title substring.
         Why: Users may not know the issue number and prefer title-based selection.
         """
-        backlog_dir = _mod.BACKLOG_DIR
-        (backlog_dir / "p2-some-title.md").write_text(
-            "---\nname: Some title item\ndescription: Test\nmetadata:\n  priority: P2\n  status: open\n"
-            "  source: test\n  added: '2026-01-01'\n  type: Bug\n  issue: '#99'\n---\n",
-            encoding="utf-8",
-        )
-        mock_repo = mocker.Mock()
-        mocker.patch.object(_mod, "_get_github", return_value=mock_repo)
         expected_path = tmp_path / "p2-some-title.md"
-        mock_pull = mocker.patch.object(_mod, "_pull_single_issue", return_value=expected_path)
+        mock_pull = mocker.patch.object(
+            _mod._backlog_operations,
+            "pull_by_selector",
+            return_value={"file_path": str(expected_path), "messages": [], "warnings": []},
+        )
 
         result = runner.invoke(app, ["pull", "some title", "-R", "test/repo"])
 
         assert result.exit_code == 0
-        mock_pull.assert_called_once_with(mock_repo, 99)
+        mock_pull.assert_called_once_with("some title", "test/repo")
 
     def test_pull_title_selector_no_match_exits_nonzero(self, mocker: MockerFixture) -> None:
         """pull with unmatched title selector exits with code 1 and prints error.
@@ -888,21 +881,21 @@ class TestPullWithSelector:
         """pull with title selector on item with no GitHub issue exits with code 1.
 
         Tests: Missing issue number error handling.
-        How: Create backlog file without issue field, invoke pull with matching title.
+        How: Mock pull_by_selector to raise BacklogError for item without issue number.
         Why: Cannot pull from GitHub without a linked issue number.
         """
-        backlog_dir = _mod.BACKLOG_DIR
-        (backlog_dir / "p2-no-issue-item.md").write_text(
-            "---\nname: No issue item\ndescription: Test\nmetadata:\n  priority: P2\n  status: open\n"
-            "  source: test\n  added: '2026-01-01'\n  type: Bug\n---\n",
-            encoding="utf-8",
+        mocker.patch.object(
+            _mod._backlog_operations,
+            "pull_by_selector",
+            side_effect=_mod._BacklogError(
+                "Item 'No issue item' has no linked GitHub issue. Use backlog_pull() for bulk pull."
+            ),
         )
-        mocker.patch.object(_mod, "_get_github", return_value=mocker.Mock())
 
         result = runner.invoke(app, ["pull", "no issue", "-R", "test/repo"])
 
         assert result.exit_code == 1
-        assert "no linked GitHub issue" in result.output
+        assert "has no linked GitHub issue" in result.output
 
     def test_pull_no_selector_uses_bulk_path(self, mocker: MockerFixture) -> None:
         """pull with no selector uses the existing bulk pull path (no _pull_single_issue call).
