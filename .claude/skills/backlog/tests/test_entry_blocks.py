@@ -361,3 +361,31 @@ def test_rewrite_overwrite_duplicate_suffixed_entry_id():
 def test_parse_entries_empty_string():
     entries = parse_entries("")
     assert entries == []
+
+
+def test_parse_entries_invalid_show_raises():
+    body = "<div><sub>2026-03-10T08:00:00Z</sub>\n\nContent.\n</div>"
+    with pytest.raises(ValueError, match="Unrecognized show"):
+        parse_entries(body, show="bogus")
+
+
+def test_parse_since_with_deduplicated_suffixed_ids():
+    body = (
+        "<div><sub>2026-03-10T08:00:00Z</sub>\n\nFirst.\n</div>\n\n"
+        "<div><sub>2026-03-10T08:00:00Z</sub>\n\nSecond.\n</div>"
+    )
+    entries = parse_entries(body, since="2026-03-10T08:00:00Z")
+    assert len(entries) == 2
+    assert entries[0].content == "First."
+    assert entries[1].content == "Second."
+
+
+# ---------------------------------------------------------------------------
+# wrap_entry_with_timestamp()
+# ---------------------------------------------------------------------------
+from backlog_core.entry_blocks import wrap_entry_with_timestamp
+
+
+def test_wrap_entry_with_timestamp():
+    result = wrap_entry_with_timestamp("Some content.", "2026-01-15T00:00:00Z")
+    assert result == "<div><sub>2026-01-15T00:00:00Z</sub>\n\nSome content.\n</div>"

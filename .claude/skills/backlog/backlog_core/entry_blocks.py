@@ -96,7 +96,10 @@ def _apply_show_filter(raw_entries: list[Entry], show: str | int | None) -> list
         return active[:1] if active else []
     if isinstance(show, int):
         return active[:show] if show >= 0 else active[show:]
-    return raw_entries
+    if show is None:
+        return raw_entries
+    msg = f"Unrecognized show filter: {show!r}"
+    raise ValueError(msg)
 
 
 def parse_entries(
@@ -126,7 +129,7 @@ def parse_entries(
     _deduplicate_timestamps(raw_entries)
 
     if since:
-        raw_entries = [e for e in raw_entries if e.id >= since]
+        raw_entries = [e for e in raw_entries if (e.id.split("Z")[0] + "Z" if "Z" in e.id else e.id) >= since]
 
     return _apply_show_filter(raw_entries, show)
 
@@ -246,22 +249,14 @@ def rewrite_section(
     Raises:
         ValueError: If ``replace=True`` but ``reason`` is not provided.
     """
-    if replace and not reason:
-        msg = "reason is required when replace=True"
-        raise ValueError(msg)
-
     entries_raw = list(ENTRY_RE.finditer(existing_body))
     is_legacy = not entries_raw and bool(existing_body.strip())
 
     if replace:
-        return _rewrite_replace(
-            entries_raw,
-            is_legacy,
-            existing_body,
-            new_content,
-            reason,  # type: ignore[arg-type]
-            added_date,
-        )
+        if not reason:
+            msg = "reason is required when replace=True"
+            raise ValueError(msg)
+        return _rewrite_replace(entries_raw, is_legacy, existing_body, new_content, reason, added_date)
 
     if entry_id:
         return _rewrite_by_entry_id(entries_raw, is_legacy, existing_body, new_content, entry_id, added_date)
