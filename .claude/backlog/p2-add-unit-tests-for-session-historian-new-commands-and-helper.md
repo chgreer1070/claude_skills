@@ -9,4 +9,5 @@ metadata:
   type: Chore
   status: open
   plan: plan/tasks-34-session-historian-enhance-followup-1.md
+  issue: '#607'
 ---
