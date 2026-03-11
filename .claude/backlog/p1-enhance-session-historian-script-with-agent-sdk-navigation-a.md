@@ -11,6 +11,7 @@ metadata:
   issue: '#599'
   last_synced: '2026-03-11T15:52:05Z'
   groomed: '2026-03-11'
+  plan: plan/tasks-6-session-historian-enhance.md
 ---
 
 ## Fact-Check

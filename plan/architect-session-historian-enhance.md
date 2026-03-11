@@ -758,3 +758,41 @@ stdout.print(table, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
 
 The `tools` command is the only new command that renders a Rich table. `errors` and
 `irritation` use sectioned text output, not tables.
+
+---
+
+## Post-Implementation Annotations
+
+_Added by context-refinement agent on 2026-03-11_
+
+### Design Refinements
+
+1. **Extraction logic factored into private helpers instead of inline loops**: The spec described two-pass extraction logic embedded inline inside each command function (sections 4.3, 4.4, 4.5). The implementation extracted all extraction and aggregation into dedicated private helpers: `_build_tool_name_map`, `_collect_errors`, `_collect_tool_uses`, `_collect_tool_results`, `_aggregate_tool_stats`, `_collect_correction_phrases`, `_collect_stuck_loops`. Each command now orchestrates helpers rather than running raw loops.
+   - Original: "Iterate records from `_iter_records(path)`. For each record: Examine..." (inline loop in command)
+   - Actual: Private helpers encapsulate all record iteration; commands call helpers and dispatch to output
+   - Recorded in: `plan/tasks-6-session-historian-enhance.md`, Discovered During Implementation
+
+2. **Dataclass data models replaced by typed tuples**: Section 5.2 defined `ToolStats`, `ToolError`, `CorrectionSignal`, `StuckLoopSignal` dataclasses. The implementation uses plain typed tuples for all inter-function data transfer instead.
+   - Original: "`class ToolStats: name: str, total: int, successes: int, failures: int, unmatched: int`" (dataclass)
+   - Actual: `list[tuple[str, int, int, int, int]]` returned from `_aggregate_tool_stats`
+   - Recorded in: `plan/tasks-6-session-historian-enhance.md`, Discovered During Implementation
+
+3. **`hashlib.md5` uses `usedforsecurity=False`**: ADR-NEW-001 specified `hashlib.md5(...)` without this kwarg. The implementation adds `usedforsecurity=False` to suppress Python 3.9+ FIPS-mode warnings for non-security fingerprinting.
+   - Original: "`hashlib.md5(json.dumps(input, sort_keys=True).encode()).hexdigest()[:8]`"
+   - Actual: "`hashlib.md5(..., usedforsecurity=False).hexdigest()[:8]`"
+   - Recorded in: `plan/tasks-6-session-historian-enhance.md`, Discovered During Implementation
+
+4. **`cmd_errors` Rich output does not truncate error content**: Section 4.3 described Rich output as "truncated to ~200 chars with ellipsis if longer". The implementation outputs full error content without truncation, consistent with the repository "No Invented Limits" policy.
+   - Original: "`[error_content, truncated to ~200 chars with ellipsis if longer]`"
+   - Actual: Full error content displayed without truncation
+   - Recorded in: `plan/tasks-6-session-historian-enhance.md`, Discovered During Implementation
+
+5. **`_collect_stuck_loops` emits one signal per additional occurrence beyond threshold**: The spec said "emit a stuck-loop signal" when count reaches `_STUCK_LOOP_THRESHOLD` (implying once per episode). The implementation uses `count >= _STUCK_LOOP_THRESHOLD` so a loop of depth N > threshold produces N - threshold + 1 signals.
+   - Original: "When consecutive count reaches `_STUCK_LOOP_THRESHOLD`, emit a stuck-loop signal"
+   - Actual: Signal emitted at threshold AND for each additional occurrence beyond threshold
+   - Recorded in: `plan/tasks-6-session-historian-enhance.md`, Discovered During Implementation
+
+6. **`cmd_current_path` parameter variable name**: Spec defined `rich_flag` as the Python parameter name. Implementation uses `rich`. CLI behavior is identical — Typer binds to the `--rich` option string.
+   - Original: "`rich_flag: Annotated[bool, typer.Option(\"--rich\", ...)]`"
+   - Actual: "`rich: Annotated[bool, typer.Option(\"--rich\", ...)]`"
+   - Recorded in: `plan/tasks-6-session-historian-enhance.md`, Discovered During Implementation

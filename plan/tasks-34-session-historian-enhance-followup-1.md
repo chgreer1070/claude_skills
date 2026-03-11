@@ -1,0 +1,66 @@
+---
+tasks:
+  - task: "Add unit tests for session-historian new commands and helpers"
+    status: pending
+    parent_task: "plan/tasks-6-session-historian-enhance.md"
+---
+
+# Task: Add Unit Tests for Session Historian Enhancement
+
+## Parent Task
+
+- Original: `plan/tasks-6-session-historian-enhance.md`
+- Review Date: 2026-03-11
+
+## Status
+
+- [ ] Pending
+
+## Priority
+
+Medium
+
+## Description
+
+The session-historian enhancement added four new commands (`errors`, `tools`, `irritation`, `current-path`), a shared `_resolve_session` helper, and six new private helper functions. None of these have unit tests. The project standard requires 80% minimum coverage.
+
+The helper functions are pure data transforms well-suited to unit testing:
+
+- `_build_tool_name_map(records)` -- builds tool ID to name map
+- `_collect_errors(records, tool_name_map)` -- extracts tool errors
+- `_collect_tool_uses(records)` -- collects tool use entries
+- `_collect_tool_results(records)` -- builds result success/failure map
+- `_aggregate_tool_stats(tool_uses, matched_ids)` -- aggregates per-tool stats
+- `_collect_correction_phrases(records)` -- phrase matching
+- `_collect_stuck_loops(records)` -- stuck loop detection
+- `_resolve_session(con, session_id)` -- session ID resolution (requires DuckDB mock)
+
+## Acceptance Criteria
+
+- [ ] Test file exists at `tests/test_session_query.py` or `.claude/skills/session-historian/tests/test_session_query.py`
+- [ ] Tests cover `_build_tool_name_map` with empty records, assistant records with tool_use blocks, non-list content
+- [ ] Tests cover `_collect_errors` with zero errors, one error, unknown tool_use_id fallback
+- [ ] Tests cover `_collect_tool_uses` and `_collect_tool_results` with matched and unmatched tool IDs
+- [ ] Tests cover `_aggregate_tool_stats` sorting by total descending, unmatched count accuracy
+- [ ] Tests cover `_collect_correction_phrases` case-insensitivity, noise filtering, toolUseResult exclusion, break-on-first-match
+- [ ] Tests cover `_collect_stuck_loops` threshold behavior, identity key computation, consecutive vs non-consecutive runs
+- [ ] Tests cover `_resolve_session` with "last" alias, prefix matching, missing session, missing file
+- [ ] Tests cover `cmd_current_path` with and without `CLAUDE_SESSION_ID` env var
+- [ ] All tests pass: `uv run pytest <test_file>`
+- [ ] Coverage for new functions exceeds 80%
+
+## Files to Modify
+
+- `NEW: .claude/skills/session-historian/tests/test_session_query.py` -- create test file
+- `.claude/skills/session-historian/scripts/session_query.py` -- no modifications expected, but may need minor adjustments for testability
+
+## Verification Steps
+
+1. `uv run pytest .claude/skills/session-historian/tests/test_session_query.py -v`
+2. `uv run pytest .claude/skills/session-historian/tests/test_session_query.py --cov=.claude.skills.session-historian.scripts.session_query --cov-report=term-missing`
+3. Verify coverage > 80% for the new functions
+
+## References
+
+- Original review: `.claude/reports/code-review-session-historian-enhance-20260311.md`
+- Related code: `.claude/skills/session-historian/scripts/session_query.py`

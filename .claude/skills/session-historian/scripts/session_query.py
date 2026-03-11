@@ -18,7 +18,10 @@ Commands:
 
 from __future__ import annotations
 
+import hashlib
 import json
+import operator
+import os
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -30,6 +33,7 @@ import typer
 from rich import box
 from rich.console import Console
 from rich.measure import Measurement
+from rich.panel import Panel
 from rich.table import Table
 
 app = typer.Typer(
@@ -63,6 +67,21 @@ _NOISE_PREFIXES = (
     "<command-message>",
     "<system-reminder>",
 )
+
+_CORRECTION_PHRASES = (
+    "that's wrong",
+    "no,",
+    "stop",
+    "undo",
+    "revert",
+    "don't",
+    "not what i asked",
+    "wrong",
+    "incorrect",
+    "that's not",
+)
+
+_STUCK_LOOP_THRESHOLD: int = 3
 
 
 def _extract_text(content: str | list[str | dict] | None) -> str:
@@ -220,6 +239,49 @@ def _fetch_count(con: duckdb.DuckDBPyConnection, sql: str, params: list | None =
     """
     row = con.execute(sql, params or []).fetchone()
     return int(row[0]) if row else 0
+
+
+def _resolve_session(con: duckdb.DuckDBPyConnection, session_id: str) -> tuple[str, Path]:
+    """Resolve session ID (including 'last' alias) to (resolved_id, jsonl_path).
+
+    Handles the ``"last"`` alias by querying the most recently active session,
+    and supports prefix matching via ``LIKE`` for short session IDs.
+
+    Args:
+        con: An open DuckDB connection with the session schema initialised.
+        session_id: Full or prefix session ID, or the literal string ``"last"``
+            to select the most recently active session.
+
+    Returns:
+        A tuple of ``(resolved_session_id, Path(file_path))`` on success.
+
+    Raises:
+        typer.Exit: With exit code 1 when no sessions are indexed, the
+            session ID is not found, or the JSONL file is missing on disk.
+    """
+    if session_id == "last":
+        row = con.execute("SELECT session_id FROM sessions ORDER BY last_ts DESC LIMIT 1").fetchone()
+        if not row:
+            stderr.print("[red]No sessions indexed. Run 'index' first.[/red]")
+            raise typer.Exit(1)
+        session_id = row[0]
+
+    row = con.execute(
+        "SELECT session_id, file_path FROM sessions WHERE session_id LIKE ? ORDER BY last_ts DESC LIMIT 1",
+        [f"{session_id}%"],
+    ).fetchone()
+
+    if not row:
+        stderr.print(f"[red]Session '{session_id}' not found in index. Run 'list' to see valid IDs.[/red]")
+        raise typer.Exit(1)
+
+    resolved_id, file_path_str = row
+    path = Path(file_path_str)
+    if not path.exists():
+        stderr.print(f"[red]JSONL file not found on disk: {file_path_str}[/red]")
+        raise typer.Exit(1)
+
+    return resolved_id, path
 
 
 @dataclass
@@ -512,13 +574,7 @@ def cmd_messages(
             requested session ID has no messages in the index.
     """
     con = _open_db()
-
-    if session_id == "last":
-        row = con.execute("SELECT session_id FROM sessions ORDER BY last_ts DESC LIMIT 1").fetchone()
-        if not row:
-            stderr.print("[red]No sessions indexed. Run 'index' first.[/red]")
-            raise typer.Exit(1)
-        session_id = row[0]
+    session_id, _ = _resolve_session(con, session_id)
 
     rows = con.execute(
         """
@@ -662,13 +718,7 @@ def cmd_show(session_id: Annotated[str, typer.Argument(help="Session ID prefix o
             requested session ID is not found in the index.
     """
     con = _open_db()
-
-    if session_id == "last":
-        row = con.execute("SELECT session_id FROM sessions ORDER BY last_ts DESC LIMIT 1").fetchone()
-        if not row:
-            stderr.print("[red]No sessions indexed.[/red]")
-            raise typer.Exit(1)
-        session_id = row[0]
+    session_id, _ = _resolve_session(con, session_id)
 
     row = con.execute(
         """
@@ -692,13 +742,12 @@ def cmd_show(session_id: Annotated[str, typer.Argument(help="Session ID prefix o
         stdout.print(summary_path.read_text())
         return
 
-    date_range = f"{first_ts[:19] if first_ts else '?'} → {last_ts[:19] if last_ts else '?'}"
     summary_status = f"Cached at {summary_path}" if has_sum else "Not yet generated"
     stdout.print(f"""
 [bold]Session: {sid}[/bold]
 Project:       {proj}
 File:          {file_path}
-Date range:    {date_range}
+Date range:    {first_ts[:19] if first_ts else "?"} → {last_ts[:19] if last_ts else "?"}
 User messages: {umsg}
 Asst turns:    {aturns}
 File size:     {kb:.1f} KB
@@ -724,6 +773,451 @@ def cmd_mark_summarized(
         con, "SELECT COUNT(*) FROM sessions WHERE session_id LIKE ? AND has_summary = TRUE", [f"{session_id}%"]
     )
     stdout.print(f"Marked {count} session(s) as summarized.")
+
+
+def _build_tool_name_map(records: list[dict]) -> dict[str, str]:
+    """Build a mapping from tool-use ID to tool name from assistant records.
+
+    Args:
+        records: Parsed JSONL records from a session file.
+
+    Returns:
+        Dict mapping each ``tool_use`` block ``id`` to its ``name`` field.
+        Only assistant-role records with list-typed ``message.content`` are
+        considered.
+    """
+    tool_name_map: dict[str, str] = {}
+    for rec in records:
+        if rec.get("type") != "assistant":
+            continue
+        content = rec.get("message", {}).get("content", [])
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "tool_use":
+                block_id = block.get("id")
+                if isinstance(block_id, str):
+                    tool_name_map[block_id] = block.get("name", "unknown")
+    return tool_name_map
+
+
+def _collect_errors(records: list[dict], tool_name_map: dict[str, str]) -> list[tuple[str, str, str]]:
+    """Collect tool errors from user records.
+
+    Args:
+        records: Parsed JSONL records from a session file.
+        tool_name_map: Mapping from tool-use ID to tool name, as produced by
+            ``_build_tool_name_map``.
+
+    Returns:
+        List of ``(timestamp, tool_name, error_content)`` tuples, one per
+        ``tool_result`` block where ``is_error`` is ``True``.
+    """
+    errors: list[tuple[str, str, str]] = []
+    for rec in records:
+        if rec.get("type") != "user":
+            continue
+        content = rec.get("message", {}).get("content", [])
+        if not isinstance(content, list):
+            continue
+        ts = rec.get("timestamp", "")
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "tool_result" and block.get("is_error") is True:
+                tool_use_id = block.get("tool_use_id", "")
+                tool_name = tool_name_map.get(tool_use_id, "unknown")
+                error_content = _extract_text(block.get("content"))
+                errors.append((ts, tool_name, error_content))
+    return errors
+
+
+@app.command("errors")
+def cmd_errors(
+    session_id: Annotated[str, typer.Argument(help="Session ID prefix or 'last' for most recent.")] = "last",
+    raw: Annotated[bool, typer.Option("--raw", help="Output plain text, no formatting.")] = False,
+) -> None:
+    r"""List tool errors from a session with timestamps and tool names.
+
+    Performs a two-pass scan over the session JSONL: the first pass builds a
+    mapping from tool-use IDs to tool names (from assistant records); the
+    second pass extracts tool-result blocks where ``is_error`` is ``True``
+    (from user records) and resolves each error's tool name via the map.
+
+    Args:
+        session_id: Full or prefix session ID, or the literal string ``"last"``
+            to select the most recently active session.
+        raw: When ``True``, outputs tab-separated lines with no Rich markup.
+            Format: ``timestamp\\ttool_name\\terror_content_single_line``.
+
+    Raises:
+        typer.Exit: With exit code 1 when the session is not found.
+        typer.Exit: With exit code 0 when no tool errors exist in the session.
+    """
+    con = _open_db()
+    session_id, path = _resolve_session(con, session_id)
+    records = _iter_records(path)
+
+    tool_name_map = _build_tool_name_map(records)
+    errors = _collect_errors(records, tool_name_map)
+
+    if not errors:
+        stderr.print(f"No tool errors in session {session_id}")
+        raise typer.Exit(0)
+
+    if raw:
+        for ts, tool_name, content in errors:
+            date_str = ts[:19].replace("T", " ") if ts else "?"
+            single_line = content.replace("\n", " ")
+            print(f"{date_str}\t{tool_name}\t{single_line}")
+    else:
+        stdout.print(f"\n[bold]Tool Errors — {session_id}[/bold] ({len(errors)} error(s))\n")
+        for ts, tool_name, content in errors:
+            date_str = ts[:19].replace("T", " ") if ts else "?"
+            stdout.print(f"[dim]── {date_str}[/dim]  [red bold]{tool_name}[/red bold]")
+            stdout.print(f"[red]{content}[/red]")
+            stdout.print()
+
+
+def _collect_tool_uses(records: list[dict]) -> list[tuple[str, str]]:
+    """Collect tool-use entries from assistant records in encounter order.
+
+    Args:
+        records: Parsed JSONL records from a session file.
+
+    Returns:
+        List of ``(tool_use_id, tool_name)`` tuples, one per ``tool_use``
+        block found in assistant-role records, preserving encounter order.
+    """
+    tool_uses: list[tuple[str, str]] = []
+    for rec in records:
+        if rec.get("type") != "assistant":
+            continue
+        content = rec.get("message", {}).get("content", [])
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "tool_use":
+                block_id = block.get("id")
+                if isinstance(block_id, str):
+                    tool_uses.append((block_id, block.get("name", "unknown")))
+    return tool_uses
+
+
+def _collect_tool_results(records: list[dict]) -> dict[str, bool]:
+    """Build a map from tool-use ID to success/failure from user records.
+
+    Args:
+        records: Parsed JSONL records from a session file.
+
+    Returns:
+        Dict mapping each ``tool_use_id`` to ``True`` (success) or ``False``
+        (failure, i.e. ``is_error`` is ``True``).  Only user-role records
+        with list-typed ``message.content`` containing ``tool_result`` blocks
+        are considered.
+    """
+    matched: dict[str, bool] = {}
+    for rec in records:
+        if rec.get("type") != "user":
+            continue
+        content = rec.get("message", {}).get("content", [])
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "tool_result":
+                tool_use_id = block.get("tool_use_id")
+                if isinstance(tool_use_id, str):
+                    matched[tool_use_id] = block.get("is_error") is not True
+    return matched
+
+
+def _aggregate_tool_stats(
+    tool_uses: list[tuple[str, str]], matched_ids: dict[str, bool]
+) -> list[tuple[str, int, int, int, int]]:
+    """Aggregate per-tool-name stats from tool uses and their results.
+
+    Args:
+        tool_uses: Ordered list of ``(tool_use_id, tool_name)`` tuples.
+        matched_ids: Map from tool_use_id to success boolean, as produced by
+            ``_collect_tool_results``.
+
+    Returns:
+        List of ``(tool_name, total, successes, failures, unmatched)`` tuples,
+        sorted by total descending.
+    """
+    stats: dict[str, list[int]] = {}
+    for tool_id, tool_name in tool_uses:
+        if tool_name not in stats:
+            stats[tool_name] = [0, 0, 0, 0]
+        stats[tool_name][0] += 1
+        if tool_id in matched_ids:
+            if matched_ids[tool_id]:
+                stats[tool_name][1] += 1
+            else:
+                stats[tool_name][2] += 1
+        else:
+            stats[tool_name][3] += 1
+    rows: list[tuple[str, int, int, int, int]] = [
+        (name, counts[0], counts[1], counts[2], counts[3]) for name, counts in stats.items()
+    ]
+    return sorted(rows, key=operator.itemgetter(1), reverse=True)
+
+
+@app.command("tools")
+def cmd_tools(
+    session_id: Annotated[str, typer.Argument(help="Session ID prefix or 'last' for most recent.")] = "last",
+    raw: Annotated[bool, typer.Option("--raw", help="Output plain text, no formatting.")] = False,
+) -> None:
+    r"""List tools used in a session with call counts and success/failure breakdown.
+
+    Performs a two-pass scan over the session JSONL: the first pass collects
+    all ``tool_use`` blocks from assistant records; the second pass correlates
+    ``tool_result`` blocks from user records to classify each call as success
+    or failure.  Calls with no matching ``tool_result`` are counted as
+    unmatched (e.g. session interrupted before the tool returned).
+
+    Args:
+        session_id: Full or prefix session ID, or the literal string ``"last"``
+            to select the most recently active session.
+        raw: When ``True``, outputs a header line followed by tab-separated
+            data rows with no Rich markup.
+            Format: ``tool\\ttotal\\tsuccesses\\tfailures\\tunmatched``.
+
+    Raises:
+        typer.Exit: With exit code 1 when the session is not found.
+        typer.Exit: With exit code 0 when no tool calls are recorded.
+    """
+    con = _open_db()
+    session_id, path = _resolve_session(con, session_id)
+    records = _iter_records(path)
+
+    tool_uses = _collect_tool_uses(records)
+    if not tool_uses:
+        stderr.print(f"No tool calls recorded in session {session_id}")
+        raise typer.Exit(0)
+
+    sorted_tools = _aggregate_tool_stats(tool_uses, _collect_tool_results(records))
+
+    if raw:
+        print("tool\ttotal\tsuccesses\tfailures\tunmatched")
+        for tool_name, total, successes, failures, unmatched in sorted_tools:
+            print(f"{tool_name}\t{total}\t{successes}\t{failures}\t{unmatched}")
+    else:
+        table = Table(title=f"Tool Usage — {session_id}", show_lines=False, box=box.MINIMAL_DOUBLE_HEAD)
+        table.add_column("Tool Name", style="cyan", no_wrap=True)
+        table.add_column("Total Calls", justify="right")
+        table.add_column("Successes", justify="right", style="green")
+        table.add_column("Failures", justify="right", style="red")
+        table.add_column("Unmatched", justify="right", style="dim")
+        for tool_name, total, successes, failures, unmatched in sorted_tools:
+            table.add_row(str(tool_name), str(total), str(successes), str(failures), str(unmatched))
+        table.width = _get_table_width(table)
+        stdout.print(table, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
+
+
+def _collect_correction_phrases(records: list[dict]) -> list[tuple[str, str, str]]:
+    """Collect user messages that contain correction phrases.
+
+    Scans user-role records (excluding ``toolUseResult`` records) for phrases
+    from ``_CORRECTION_PHRASES``, case-insensitively.  Noise records are
+    skipped via ``_is_noise``.
+
+    Args:
+        records: Parsed JSONL records from a session file.
+
+    Returns:
+        List of ``(timestamp, matched_phrase, excerpt)`` tuples, one per
+        matching message (first 200 chars of the message text).
+    """
+    results: list[tuple[str, str, str]] = []
+    for rec in records:
+        if rec.get("type") != "user" or "toolUseResult" in rec:
+            continue
+        ts = rec.get("timestamp", "")
+        content = _extract_text(rec.get("message", {}).get("content"))
+        if not content or _is_noise(content):
+            continue
+        lower = content.lower()
+        for phrase in _CORRECTION_PHRASES:
+            if phrase in lower:
+                results.append((ts, phrase, content[:200]))
+                break  # one signal per message is enough
+    return results
+
+
+def _collect_stuck_loops(records: list[dict]) -> list[tuple[str, str, int, str]]:
+    """Detect stuck tool loops in assistant records.
+
+    A stuck loop is defined as ``_STUCK_LOOP_THRESHOLD`` or more consecutive
+    ``tool_use`` blocks with the same identity key.  The identity key is
+    ``"<name>:<md5_prefix>"`` where the MD5 is computed over the
+    ``sort_keys=True`` JSON serialisation of the block's ``input`` field.
+
+    Args:
+        records: Parsed JSONL records from a session file.
+
+    Returns:
+        List of ``(first_timestamp, tool_name, count, input_hash)`` tuples,
+        one entry emitted the moment a run reaches ``_STUCK_LOOP_THRESHOLD``
+        (and again each additional occurrence beyond the threshold).
+    """
+    signals: list[tuple[str, str, int, str]] = []
+    current_key: str = ""
+    current_count: int = 0
+    current_ts: str = ""
+    current_tool: str = ""
+    current_hash: str = ""
+
+    for rec in records:
+        if rec.get("type") != "assistant":
+            continue
+        ts = rec.get("timestamp", "")
+        content = rec.get("message", {}).get("content", [])
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict) or block.get("type") != "tool_use":
+                continue
+            name = block.get("name", "unknown")
+            input_hash = hashlib.md5(
+                json.dumps(block.get("input", {}), sort_keys=True).encode(), usedforsecurity=False
+            ).hexdigest()[:8]
+            identity = f"{name}:{input_hash}"
+            if identity == current_key:
+                current_count += 1
+                if current_count >= _STUCK_LOOP_THRESHOLD:
+                    signals.append((current_ts, current_tool, current_count, current_hash))
+            else:
+                current_key = identity
+                current_count = 1
+                current_ts = ts
+                current_tool = name
+                current_hash = input_hash
+
+    return signals
+
+
+@app.command("irritation")
+def cmd_irritation(
+    session_id: Annotated[str, typer.Argument(help="Session ID prefix or 'last' for most recent.")] = "last",
+    raw: Annotated[bool, typer.Option("--raw", help="Output plain text, no formatting.")] = False,
+) -> None:
+    r"""Detect user irritation signals in a session.
+
+    Reports two signal types:
+
+    1. **Correction phrases** — user messages that contain phrases from the
+       ``_CORRECTION_PHRASES`` list (e.g. "wrong", "stop", "undo"), detected
+       case-insensitively.
+
+    2. **Stuck tool loops** — sequences of ``_STUCK_LOOP_THRESHOLD`` or more
+       consecutive identical tool calls (same tool name and input hash) in
+       assistant records.
+
+    Args:
+        session_id: Full or prefix session ID, or the literal string ``"last"``
+            to select the most recently active session.
+        raw: When ``True``, outputs type-prefixed tab-separated lines with no
+            Rich markup.  Format:
+            ``phrase\\t<ts>\\t<phrase>\\t<excerpt>`` and
+            ``loop\\t<ts>\\t<tool>\\t<count>\\t<hash>``.
+
+    Raises:
+        typer.Exit: With exit code 1 when the session is not found.
+        typer.Exit: With exit code 0 when no irritation signals are detected.
+    """
+    con = _open_db()
+    session_id, path = _resolve_session(con, session_id)
+    records = _iter_records(path)
+
+    phrases = _collect_correction_phrases(records)
+    loops = _collect_stuck_loops(records)
+
+    if not phrases and not loops:
+        stderr.print(f"No irritation signals detected in session {session_id}")
+        raise typer.Exit(0)
+
+    if raw:
+        for ts, phrase, excerpt in phrases:
+            date_str = ts[:19].replace("T", " ") if ts else "?"
+            single_line = excerpt.replace("\n", " ")
+            print(f"phrase\t{date_str}\t{phrase}\t{single_line}")
+        for ts, tool_name, count, input_hash in loops:
+            date_str = ts[:19].replace("T", " ") if ts else "?"
+            print(f"loop\t{date_str}\t{tool_name}\t{count}\t{input_hash}")
+    else:
+        stdout.print(f"\n[bold]Irritation Signals — {session_id}[/bold]\n")
+        stdout.print(f"[bold]Correction Phrases ({len(phrases)} found)[/bold]")
+        if phrases:
+            for ts, phrase, excerpt in phrases:
+                date_str = ts[:19].replace("T", " ") if ts else "?"
+                stdout.print(f"[dim]── {date_str}[/dim]  [yellow bold]{phrase}[/yellow bold]")
+                stdout.print(f"[dim]{excerpt}[/dim]")
+                stdout.print()
+        else:
+            stdout.print("[dim]None[/dim]\n")
+
+        stdout.print(f"[bold]Stuck Tool Loops ({len(loops)} detected)[/bold]")
+        if loops:
+            for ts, tool_name, count, input_hash in loops:
+                date_str = ts[:19].replace("T", " ") if ts else "?"
+                stdout.print(
+                    f"[dim]── {date_str}[/dim]  [red bold]{tool_name}[/red bold]"
+                    f"  [dim]x{count}[/dim]  [dim]{input_hash}[/dim]"
+                )
+                stdout.print()
+        else:
+            stdout.print("[dim]None[/dim]\n")
+
+
+@app.command("current-path")
+def cmd_current_path(
+    rich: Annotated[bool, typer.Option("--rich", help="Display with Rich formatting.")] = False,
+) -> None:
+    """Print the JSONL file path for the current live session.
+
+    Reads ``CLAUDE_SESSION_ID`` from the environment and computes the expected
+    JSONL file path using the encoded current working directory.  Does not
+    open DuckDB — pure filesystem check.
+
+    Default output is a single raw line (machine-readable), suitable for
+    agent pipelines.  Pass ``--rich`` for a human-readable panel display.
+
+    Args:
+        rich: When ``True``, renders the path inside a Rich Panel with a green
+            border.  When ``False`` (default), prints only the absolute path
+            with no markup.
+
+    Raises:
+        typer.Exit: With exit code 1 when ``CLAUDE_SESSION_ID`` is not set or
+            the expected JSONL file does not exist.
+    """
+    session_id = os.environ.get("CLAUDE_SESSION_ID", "")
+    if not session_id:
+        stderr.print("[red]CLAUDE_SESSION_ID is not set[/red]")
+        raise typer.Exit(1)
+
+    encoded = str(Path.cwd()).replace("/", "-").lstrip("-")
+    path = PROJECTS_DIR / encoded / f"{session_id}.jsonl"
+
+    if path.exists():
+        if rich:
+            panel = Panel(str(path), title="Current Session Path", border_style="green")
+            stdout.print(panel)
+        else:
+            print(str(path))
+    else:
+        stderr.print("[red]Session file not found[/red]")
+        stderr.print(f"[dim]Session ID : {session_id}[/dim]")
+        stderr.print(f"[dim]Expected   : {path}[/dim]")
+        stderr.print(f"[dim]Projects   : {PROJECTS_DIR}[/dim]")
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

@@ -245,3 +245,20 @@ After questions are resolved:
 2. Finalize Goals section
 3. Proceed to RT-ICA assessment
 4. Then proceed to architecture design (`python-cli-design-spec` agent)
+
+---
+
+## Post-Implementation Annotations
+
+_Added by context-refinement agent on 2026-03-11_
+
+### Design Refinements
+
+1. **All gaps resolved by architect spec**: The five open questions in the Gap Analysis section were resolved during architecture design rather than needing user input. The resolutions: `is_error` field is at `record["message"]["content"][N]["is_error"]` (option A); phrase list was hard-coded in spec (option A); stuck-loop threshold is 3 with name+input-hash identity (option B); `current-path` defaults to raw (option A); all session-ID-accepting commands support `"last"` shorthand.
+   - Recorded in: `plan/tasks-6-session-historian-enhance.md`, Discovered During Implementation
+
+2. **Extraction helpers pattern emerged**: All four new commands follow a "command orchestrates helpers" pattern rather than embedding extraction logic inline. This is the established pattern for testability in this file and should be documented as convention for future command additions.
+   - Recorded in: `plan/tasks-6-session-historian-enhance.md`, Discovered During Implementation
+
+3. **No-truncation policy applies to error content**: The feature context was silent on whether error content should be truncated in display. The "No Invented Limits" repository policy resolved this — full content is shown in Rich output, consistent with all other display in the file.
+   - Recorded in: `plan/tasks-6-session-historian-enhance.md`, Discovered During Implementation
