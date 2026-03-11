@@ -17,6 +17,7 @@ from github import GithubException, GithubObject
 
 from .entry_blocks import (
     ENTRY_RE,
+    generate_diff,
     parse_entries,
     rewrite_section as rewrite_section_entries,
     strike_entry as strike_entry_block,
@@ -48,6 +49,7 @@ from .models import (
     BacklogError,
     BacklogItem,
     DuplicateItemError,
+    Entry,
     GitHubUnavailableError,  # noqa: F401 — re-exported; raised by get_github() callers
     IssueStatus,
     ItemNotFoundError,
@@ -65,6 +67,7 @@ from .parsing import (
     extract_description_from_issue_body,
     extract_groomed_section,
     extract_normalize_metadata,
+    extract_sections,
     find_fuzzy_duplicates,
     find_item,
     items_needing_issues,
@@ -77,6 +80,7 @@ from .parsing import (
     parse_body_extra_fields,
     parse_issue_selector,
     parse_sam_task_metadata,
+    reconstruct_body_from_sections,
     title_to_slug,
     today,
     view_result_from_local_item,
@@ -588,6 +592,64 @@ def _pull_item_create_new(
     return True
 
 
+def _pick_entry(local_e: Entry, remote_e: Entry) -> tuple[str, bool]:
+    """Pick the winning entry when both sides have the same ID.
+
+    Returns:
+        Tuple of (raw_entry_text, was_modified).
+    """
+    if local_e.raw == remote_e.raw:
+        return local_e.raw, False
+    if local_e.struck and not remote_e.struck:
+        return local_e.raw, True
+    if remote_e.struck and not local_e.struck:
+        return remote_e.raw, True
+    if local_e.struck and remote_e.struck:
+        local_ts = local_e.struck_at or ""
+        remote_ts = remote_e.struck_at or ""
+        winner = remote_e if remote_ts > local_ts else local_e
+        return winner.raw, remote_ts != local_ts
+    # Both active: keep longer content
+    winner = remote_e if len(remote_e.content) > len(local_e.content) else local_e
+    return winner.raw, remote_e.content != local_e.content
+
+
+def _merge_entry_bodies(local_content: str, remote_content: str) -> tuple[str, bool]:
+    """Merge two section bodies using entry-aware rules.
+
+    Merge rules:
+    - Entry only on one side: keep it.
+    - Both sides, one struck: keep struck version.
+    - Both sides, both active: keep longer content.
+    - Both sides, both struck: keep later struck timestamp.
+
+    Returns:
+        Tuple of (merged_content, was_modified).
+    """
+    local_entries = {e.id: e for e in parse_entries(local_content, show="all")}
+    remote_entries = {e.id: e for e in parse_entries(remote_content, show="all")}
+
+    all_ids = sorted(set(local_entries) | set(remote_entries))
+    result_parts: list[str] = []
+    modified = False
+
+    for eid in all_ids:
+        local_e = local_entries.get(eid)
+        remote_e = remote_entries.get(eid)
+
+        if local_e and remote_e:
+            raw, changed = _pick_entry(local_e, remote_e)
+            result_parts.append(raw)
+            modified = modified or changed
+        elif local_e:
+            result_parts.append(local_e.raw)
+        elif remote_e:
+            result_parts.append(remote_e.raw)
+            modified = True
+
+    return "\n\n".join(result_parts), modified
+
+
 def _pull_item_update_existing(
     item: BacklogItem,
     issue_num: int,
@@ -596,12 +658,14 @@ def _pull_item_update_existing(
     github_body: str,
     dry_run: bool,
     force: bool,
+    diff_mode: bool = False,
     output: Output | None = None,
-) -> bool:
+) -> tuple[bool, str]:
     """Update an existing local file with content from a GitHub issue body.
 
     Returns:
-        True if updated (or would update in dry-run), False if no change needed.
+        Tuple of (was_updated, diff_string). diff_string is non-empty only when
+        diff_mode is True and dry_run is True.
     """
     out = output or Output()
     local_body = item.raw_body
@@ -609,41 +673,71 @@ def _pull_item_update_existing(
     if force:
         if dry_run:
             out.info(f"  [dry-run] Would overwrite {filepath.name} from #{issue_num}: {title}")
-            return True
+            diff_str = generate_diff(local_body, github_body) if diff_mode else ""
+            return True, diff_str
         post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
         post.content = github_body
         filepath.write_text(dump_frontmatter(post), encoding="utf-8")
         out.info(f"  Pulled #{issue_num} -> {filepath.name}: {title}")
-        return True
+        return True, ""
 
-    merged_body, modified = merge_sections(local_body, github_body)
+    _merged_body, modified = merge_sections(local_body, github_body)
     if not modified:
-        return False
+        return False, ""
 
+    diff_str = ""
     if dry_run:
         out.info(f"  [dry-run] Would merge #{issue_num} -> {filepath.name}: {title}")
-        return True
+        if diff_mode:
+            diff_str = generate_diff(local_body, github_body)
+        return True, diff_str
 
+    # Apply entry-aware merge per section
+    local_sections = extract_sections(local_body)
+    github_sections = extract_sections(github_body)
+    result_sections: dict[str, str] = dict(local_sections)
+    entry_modified = False
+
+    for heading, gh_content in github_sections.items():
+        if heading in local_sections:
+            merged_content, section_changed = _merge_entry_bodies(local_sections[heading], gh_content)
+            if section_changed:
+                result_sections[heading] = merged_content
+                entry_modified = True
+        else:
+            result_sections[heading] = gh_content
+            entry_modified = True
+
+    if not entry_modified:
+        return False, ""
+
+    final_body = reconstruct_body_from_sections(local_sections, github_sections, result_sections)
     post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
-    post.content = merged_body
+    post.content = final_body
     filepath.write_text(dump_frontmatter(post), encoding="utf-8")
     out.info(f"  Pulled #{issue_num} -> {filepath.name}: {title}")
-    return True
+    return True, ""
 
 
 def _pull_item(
-    item: BacklogItem, repo_obj: Repository, dry_run: bool, force: bool, output: Output | None = None
-) -> bool:
+    item: BacklogItem,
+    repo_obj: Repository,
+    dry_run: bool,
+    force: bool,
+    diff_mode: bool = False,
+    output: Output | None = None,
+) -> tuple[bool, str]:
     """Pull GitHub issue body into local per-item file.
 
     Returns:
-        True if pulled (or would pull in dry-run), False if skipped.
+        Tuple of (was_pulled, diff_string). diff_string is non-empty only when
+        diff_mode is True and dry_run is True.
     """
     out = output or Output()
     issue_ref = item.issue
     num_str = issue_ref.lstrip("#")
     if not num_str.isdigit():
-        return False
+        return False, ""
 
     issue_num = int(num_str)
     title = item.title
@@ -651,13 +745,14 @@ def _pull_item(
 
     github_body = fetch_github_issue_body(repo_obj, issue_num, output=out)
     if github_body is None:
-        return False
+        return False, ""
 
     if not filepath_str or not Path(filepath_str).exists():
-        return _pull_item_create_new(item, issue_num, issue_ref, title, github_body, dry_run, output=out)
+        created = _pull_item_create_new(item, issue_num, issue_ref, title, github_body, dry_run, output=out)
+        return created, ""
 
     return _pull_item_update_existing(
-        item, issue_num, title, Path(filepath_str), github_body, dry_run, force, output=out
+        item, issue_num, title, Path(filepath_str), github_body, dry_run, force, diff_mode=diff_mode, output=out
     )
 
 
@@ -1791,7 +1886,7 @@ def pull_items(
     force: bool = False,
     diff: bool = False,
     output: Output | None = None,
-) -> dict[str, int | bool | list[str]]:
+) -> dict[str, int | bool | str | list[str]]:
     """Pull issue body content from GitHub into local per-item files.
 
     Also auto-migrates P0/P1 items that lack GitHub Issues by creating them.
@@ -1821,9 +1916,13 @@ def pull_items(
     out.info(f"Checking {len(candidates)} item(s) with GitHub issues...")
     repository = get_github(repo)
     pulled = 0
+    diff_parts: list[str] = []
     for item in candidates:
-        if _pull_item(item, repository, dry_run, force, output=out):
+        was_pulled, diff_str = _pull_item(item, repository, dry_run, force, diff_mode=diff, output=out)
+        if was_pulled:
             pulled += 1
+        if diff_str:
+            diff_parts.append(diff_str)
 
     if pulled == 0:
         out.info("Nothing to pull — local files are up to date.")
@@ -1831,7 +1930,10 @@ def pull_items(
         suffix = " [dry-run]" if dry_run else ""
         out.info(f"Pulled {pulled} item(s){suffix}.")
 
-    return {"pulled": pulled, "dry_run": dry_run, **out.to_dict()}
+    result: dict[str, int | bool | str | list[str]] = {"pulled": pulled, "dry_run": dry_run, **out.to_dict()}
+    if diff and diff_parts:
+        result["diff"] = "\n".join(diff_parts)
+    return result
 
 
 # ---------------------------------------------------------------------------

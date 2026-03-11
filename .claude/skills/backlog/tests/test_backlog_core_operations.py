@@ -1183,3 +1183,114 @@ class TestStrikeEntryOperation:
         out = Output()
         with pytest.raises(ValueError, match=r"Entry.*not found"):
             ops.strike_entry(selector="No Entry", entry_id="2099-01-01T00:00:00Z", reason="test", output=out)
+
+
+# ---------------------------------------------------------------------------
+# pull_items — entry-aware merge
+# ---------------------------------------------------------------------------
+
+
+class TestPullItemsEntryAwareMerge:
+    """pull_items uses entry-aware merge and supports diff output."""
+
+    def test_pull_dry_run_returns_entry_diff(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """pull with dry_run and diff=True returns entry-level diff string.
+
+        Tests: pull_items entry-aware merge with diff output.
+        How: Set up local item with one entry, mock GitHub with two entries, call pull_items.
+        Why: Validates that generate_diff is wired into the pull merge path.
+        """
+        from backlog_core.models import Output
+
+        backlog_dir = tmp_path / "backlog"
+
+        local_entry = "<div><sub>2026-01-01T00:00:00Z</sub>\n\nLocal content\n</div>"
+        _write_item(
+            backlog_dir,
+            title="Diff Item",
+            priority="P1",
+            topic="diff-item",
+            issue="#42",
+            extra_body=f"## Description\n\n{local_entry}",
+        )
+
+        remote_entry_1 = "<div><sub>2026-01-01T00:00:00Z</sub>\n\nLocal content\n</div>"
+        remote_entry_2 = "<div><sub>2026-02-01T00:00:00Z</sub>\n\nRemote new content\n</div>"
+        remote_body = f"## Description\n\n{remote_entry_1}\n\n{remote_entry_2}"
+
+        mocker.patch(
+            "backlog_core.operations.parse_backlog",
+            return_value=[
+                BacklogItem(
+                    title="Diff Item",
+                    section="P1",
+                    issue="#42",
+                    file_path=str(backlog_dir / "p1-diff-item.md"),
+                    raw_body=f"## Description\n\n{local_entry}",
+                )
+            ],
+        )
+        mocker.patch("backlog_core.operations.sync_create_missing_issues")
+        mock_repo = mocker.MagicMock()
+        mocker.patch("backlog_core.operations.get_github", return_value=mock_repo)
+        mocker.patch("backlog_core.operations.fetch_github_issue_body", return_value=remote_body)
+
+        out = Output()
+        result = ops.pull_items(dry_run=True, diff=True, output=out)
+
+        assert "diff" in result
+        assert isinstance(result["diff"], str)
+        assert "+" in result["diff"]  # new remote entry shows as addition
+
+    def test_pull_entry_aware_merge_keeps_struck(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """Entry-aware merge keeps struck entries over active ones.
+
+        Tests: Merge rule — both sides, one struck -> keep struck.
+        How: Local has struck entry, remote has active version, merge should keep struck.
+        Why: Struck entries represent deliberate user action and must be preserved.
+        """
+        from backlog_core.models import Output
+
+        backlog_dir = tmp_path / "backlog"
+
+        struck_entry = (
+            "<div><sub>2026-01-01T00:00:00Z</sub>\n"
+            "<details><summary>struck: 2026-01-15T00:00:00Z — outdated</summary>\n\n"
+            "Old content\n</details>\n</div>"
+        )
+        _write_item(
+            backlog_dir,
+            title="Struck Item",
+            priority="P1",
+            topic="struck-item",
+            issue="#43",
+            extra_body=f"## Description\n\n{struck_entry}",
+        )
+
+        active_entry = "<div><sub>2026-01-01T00:00:00Z</sub>\n\nOld content\n</div>"
+        remote_body = f"## Description\n\n{active_entry}"
+
+        filepath = backlog_dir / "p1-struck-item.md"
+        mocker.patch(
+            "backlog_core.operations.parse_backlog",
+            return_value=[
+                BacklogItem(
+                    title="Struck Item",
+                    section="P1",
+                    issue="#43",
+                    file_path=str(filepath),
+                    raw_body=f"## Description\n\n{struck_entry}",
+                )
+            ],
+        )
+        mocker.patch("backlog_core.operations.sync_create_missing_issues")
+        mock_repo = mocker.MagicMock()
+        mocker.patch("backlog_core.operations.get_github", return_value=mock_repo)
+        mocker.patch("backlog_core.operations.fetch_github_issue_body", return_value=remote_body)
+
+        out = Output()
+        ops.pull_items(dry_run=False, force=False, output=out)
+
+        body = filepath.read_text(encoding="utf-8")
+        assert "struck:" in body
+        assert "outdated" in body
