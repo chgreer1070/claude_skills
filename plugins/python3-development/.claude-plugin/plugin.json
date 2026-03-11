@@ -1,13 +1,13 @@
 {
   "name": "python3-development",
   "description": "Python 3.11+ development workflows including CLI apps with Typer/Rich, script writing, test development, code review, linting troubleshooting, and pyproject.toml configuration. Provides TDD patterns, modern type hints, PEP 723 metadata, and solutions for common Python errors.",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "author": {
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "agents": [
-    "./agents/semantic-code-search.md"
-  ],
-  "mcpServers": "./.mcp.json"
+  "mcpServers": {  "cocoindex-code": {
+    "command": "uvx",
+    "args": ["cocoindex-code==0.1.11"]
+  }}
 }
