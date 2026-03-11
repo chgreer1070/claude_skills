@@ -1059,3 +1059,103 @@ class TestListItemsFilterStatus:
 
         items = cast("list[dict[str, str | bool]]", result["items"])
         assert items == []
+
+
+# ---------------------------------------------------------------------------
+# Entry block integration: groom_item with section+content
+# ---------------------------------------------------------------------------
+
+
+class TestGroomItemEntryBlocks:
+    """Tests for entry block wrapping in groom_item."""
+
+    def test_groom_item_appends_entry_block(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """Grooming with section+content creates a timestamped entry block."""
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        backlog_dir = tmp_path / "backlog"
+        filepath = _write_item(backlog_dir, title="Test Entry Groom", priority="P1", topic="test-entry-groom")
+
+        out = Output()
+        result = ops.groom_item(
+            selector="Test Entry Groom", section="Decision", content="First decision made.", output=out
+        )
+        assert "error" not in result
+
+        # Read the file directly and check for entry block
+        body = filepath.read_text(encoding="utf-8")
+        assert "<div><sub>" in body
+        assert "First decision made." in body
+
+    def test_groom_item_appends_second_entry(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """Grooming twice appends a second entry block, preserving the first."""
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        backlog_dir = tmp_path / "backlog"
+        filepath = _write_item(backlog_dir, title="Multi Entry", priority="P1", topic="multi-entry")
+
+        out = Output()
+        ops.groom_item(selector="Multi Entry", section="Decision", content="First.", output=out)
+        ops.groom_item(selector="Multi Entry", section="Decision", content="Second.", output=out)
+
+        body = filepath.read_text(encoding="utf-8")
+        assert "First." in body
+        assert "Second." in body
+        # Should have two entry blocks
+        assert body.count("<div><sub>") >= 2
+
+
+# ---------------------------------------------------------------------------
+# Entry block integration: strike_entry operation
+# ---------------------------------------------------------------------------
+
+
+class TestStrikeEntryOperation:
+    """Tests for the strike_entry public API function."""
+
+    def test_strike_entry_operation(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """strike_entry wraps target entry in collapsed details."""
+        import re as re_mod
+
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        backlog_dir = tmp_path / "backlog"
+        filepath = _write_item(backlog_dir, title="Strike Test", priority="P1", topic="strike-test")
+
+        out = Output()
+        ops.groom_item(selector="Strike Test", section="Decision", content="Bad info.", output=out)
+
+        # Get the entry ID by reading the file directly
+        body = filepath.read_text(encoding="utf-8")
+        match = re_mod.search(r"<sub>([^<]+)</sub>", body)
+        assert match is not None
+        entry_id = match.group(1)
+
+        result = ops.strike_entry(
+            selector="Strike Test", entry_id=entry_id, reason="based on training data", output=out
+        )
+        assert "error" not in result
+        assert result["struck"] is True
+
+        body = filepath.read_text(encoding="utf-8")
+        assert "struck:" in body
+        assert "based on training data" in body
+
+    def test_strike_entry_not_found_raises(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        """strike_entry raises ValueError when entry_id doesn't exist."""
+        from backlog_core.models import Output
+
+        mocker.patch("backlog_core.operations.try_get_github", return_value=None)
+
+        backlog_dir = tmp_path / "backlog"
+        _write_item(backlog_dir, title="No Entry", priority="P1", topic="no-entry")
+
+        out = Output()
+        with pytest.raises(ValueError, match=r"Entry.*not found"):
+            ops.strike_entry(selector="No Entry", entry_id="2099-01-01T00:00:00Z", reason="test", output=out)

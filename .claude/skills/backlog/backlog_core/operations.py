@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from github import GithubException, GithubObject
 
+from .entry_blocks import ENTRY_RE, rewrite_section as rewrite_section_entries, strike_entry as strike_entry_block
 from .github import (
     apply_status_in_progress,
     batch_fetch_statuses,
@@ -239,13 +240,42 @@ def _resolve_groomed_content(
     return sys.stdin.read(), None
 
 
+def _extract_subsection_body(body: str, section_name: str) -> str:
+    """Extract the content of a ### subsection under ## Groomed.
+
+    Returns:
+        Subsection body text, or empty string if not found.
+    """
+    groomed_re = re.compile(r"## Groomed\s*\([^)]*\)\s*\n([\s\S]*?)(?=\n## |\Z)", re.MULTILINE)
+    groomed_match = groomed_re.search(body)
+    if not groomed_match:
+        return ""
+    groomed_body = groomed_match.group(1)
+    sub_re = re.compile(
+        rf"### {re.escape(section_name.strip())}[^\n]*\n([\s\S]*?)(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
+    )
+    sub_match = sub_re.search(groomed_body)
+    if not sub_match:
+        return ""
+    return sub_match.group(1).strip()
+
+
 def _write_groomed_to_item_file(
-    filepath: Path, groomed_content: str, section_name: str | None = None, output: Output | None = None
+    filepath: Path,
+    groomed_content: str,
+    section_name: str | None = None,
+    output: Output | None = None,
+    *,
+    entry_id: str | None = None,
+    replace_section: bool = False,
+    reason: str | None = None,
+    added_date: str = "0000-00-00",
 ) -> None:
     """Merge groomed content into per-item file.
 
     Updates frontmatter groomed date and body.
-    If section_name is set, append/replace that section only (incremental).
+    If section_name is set, wrap content in an entry block via rewrite_section
+    and append/replace that section only (incremental).
     Else replace full ## Groomed.
     """
     text = filepath.read_text(encoding="utf-8")
@@ -257,7 +287,16 @@ def _write_groomed_to_item_file(
     fm_text, body = parts[1].strip(), parts[2].strip()
     today_str = today()
     if section_name:
-        new_body = append_or_replace_section(body, section_name, groomed_content)
+        existing_section_body = _extract_subsection_body(body, section_name)
+        rewritten = rewrite_section_entries(
+            existing_body=existing_section_body,
+            new_content=groomed_content,
+            entry_id=entry_id,
+            replace=replace_section,
+            reason=reason,
+            added_date=added_date,
+        )
+        new_body = append_or_replace_section(body, section_name, rewritten)
     else:
         groomed_section = f"## Groomed ({today_str})\n\n{groomed_content.strip()}"
         groomed_re = re.compile(r"\n## Groomed\s*\([^)]*\)\s*\n[\s\S]*?(?=\n## |\Z)", re.MULTILINE)
@@ -345,7 +384,15 @@ def _write_groomed_to_github(
 
 
 def _handle_update_groomed(
-    item: BacklogItem, groomed_content_val: str, section_name: str | None, repo: str, output: Output | None = None
+    item: BacklogItem,
+    groomed_content_val: str,
+    section_name: str | None,
+    repo: str,
+    output: Output | None = None,
+    *,
+    entry_id: str | None = None,
+    replace_section: bool = False,
+    reason: str | None = None,
 ) -> None:
     """Handle groomed content update: GitHub-first, then cache locally.
 
@@ -357,6 +404,8 @@ def _handle_update_groomed(
     filepath = Path(item.file_path)
     issue_ref = item.issue
 
+    added_date = item.added if hasattr(item, "added") and item.added else "0000-00-00"
+
     # Step 1: Ensure GitHub issue exists for P0/P1 items
     if not issue_ref and not item.skip and item.section in {"P0", "P1", "P2", "Ideas"}:
         issue_ref = _ensure_github_issue(item, filepath, repo, output=out)
@@ -366,8 +415,17 @@ def _handle_update_groomed(
     if issue_ref:
         github_synced = _write_groomed_to_github(issue_ref, groomed_content_val, section_name, repo, output=out)
 
-    # Step 3: Write to local file (cache)
-    _write_groomed_to_item_file(filepath, groomed_content_val, section_name, output=out)
+    # Step 3: Write to local file (cache) with entry block wrapping
+    _write_groomed_to_item_file(
+        filepath,
+        groomed_content_val,
+        section_name,
+        output=out,
+        entry_id=entry_id,
+        replace_section=replace_section,
+        reason=reason,
+        added_date=added_date,
+    )
     out.info(f"Updated {filepath.name} with groomed content")
 
     # Step 4: Set last_synced if GitHub write succeeded
@@ -1274,6 +1332,10 @@ def update_item(
     description: str | None = None,
     repo: str = DEFAULT_REPO,
     output: Output | None = None,
+    *,
+    entry_id: str | None = None,
+    replace_section: bool = False,
+    reason: str | None = None,
 ) -> dict[str, str | int | bool | list[str]]:
     """Update item: add Plan, set status:in-progress, create issue, or write groomed content.
 
@@ -1307,7 +1369,16 @@ def update_item(
         groomed_content_val, section_name = _resolve_groomed_content(section, content, groomed_content, groomed_file)
         if not groomed_content_val.strip():
             raise ValidationError("No groomed content provided")
-        _handle_update_groomed(item, groomed_content_val, section_name, repo, output=out)
+        _handle_update_groomed(
+            item,
+            groomed_content_val,
+            section_name,
+            repo,
+            output=out,
+            entry_id=entry_id,
+            replace_section=replace_section,
+            reason=reason,
+        )
         return {**result, "groomed_updated": True, **out.to_dict()}
 
     if plan:
@@ -1341,6 +1412,10 @@ def groom_item(
     content: str | None = None,
     repo: str = DEFAULT_REPO,
     output: Output | None = None,
+    *,
+    entry_id: str | None = None,
+    replace_section: bool = False,
+    reason: str | None = None,
 ) -> dict[str, str | int | bool | list[str]]:
     """Write groomed content into per-item file. Delegates to update_item.
 
@@ -1365,7 +1440,107 @@ def groom_item(
         groomed=not has_input,
         repo=repo,
         output=out,
+        entry_id=entry_id,
+        replace_section=replace_section,
+        reason=reason,
     )
+
+
+# ---------------------------------------------------------------------------
+# Public API: STRIKE ENTRY
+# ---------------------------------------------------------------------------
+
+
+def _match_in_section(text: str, section: str, match: re.Match[str]) -> bool:
+    """Return True if *match* falls within the ``### {section}`` subsection."""
+    section_re = re.compile(
+        rf"### {re.escape(section.strip())}[^\n]*\n([\s\S]*?)(?=\n### |\n## |\Z)", re.IGNORECASE | re.MULTILINE
+    )
+    section_match = section_re.search(text)
+    if not section_match:
+        return False
+    return section_match.start(1) <= match.start() <= section_match.end(1)
+
+
+def _apply_strike(text: str, entry_id: str, reason: str, section: str | None) -> str:
+    """Find entry by *entry_id* in *text*, strike it, and return updated text.
+
+    Returns:
+        The updated text with the struck entry.
+
+    Raises:
+        ValueError: If entry_id is not found.
+    """
+    for match in ENTRY_RE.finditer(text):
+        if match.group(1) != entry_id:
+            continue
+        if section and not _match_in_section(text, section, match):
+            continue
+        struck = strike_entry_block(match.group(0), reason)
+        return text[: match.start()] + struck + text[match.end() :]
+    raise ValueError(f"Entry '{entry_id}' not found")
+
+
+def strike_entry(
+    selector: str, entry_id: str, reason: str, section: str | None = None, output: Output | None = None
+) -> dict[str, str | int | bool | list[str]]:
+    """Strike (retract) an entry block within a backlog item.
+
+    Finds the entry by ``entry_id`` across all sections (or within a specific
+    section if provided), wraps it in a collapsed ``<details>`` with the
+    reason, writes the file back, and syncs to GitHub if an issue exists.
+
+    Args:
+        selector: Item title, slug, or issue reference.
+        entry_id: Timestamp ID of the entry to strike.
+        reason: Human-readable reason for striking.
+        section: Optional section name to scope the search.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with strike results.
+
+    Raises:
+        ItemNotFoundError: If item cannot be found.
+        ValueError: If entry_id not found in the item body.
+    """
+    out = output or Output()
+    items = parse_backlog()
+    item = find_item(items, selector)
+    if not item:
+        raise ItemNotFoundError(selector)
+    if not item.file_path:
+        raise BacklogError("Item has no file path")
+
+    filepath = Path(item.file_path)
+    text = filepath.read_text(encoding="utf-8")
+
+    try:
+        text = _apply_strike(text, entry_id, reason, section)
+    except ValueError:
+        msg = f"Entry '{entry_id}' not found in item '{item.title}'"
+        if section:
+            msg += f" section '{section}'"
+        raise ValueError(msg) from None
+
+    filepath.write_text(text, encoding="utf-8")
+    out.info(f"Struck entry {entry_id} in {filepath.name}")
+
+    # Sync to GitHub if item has an issue
+    if item.issue:
+        repository = try_get_github(DEFAULT_REPO)
+        if repository:
+            try:
+                num = int(item.issue.lstrip("#"))
+                body = build_issue_body_from_file(item)
+                issue = repository.get_issue(num)
+                if body is not None:
+                    issue.edit(body=body)
+                out.info(f"  Synced strike to GitHub issue {item.issue}")
+            except GithubException as e:
+                out.warn(f"  WARNING: Could not sync to GitHub: {e}")
+
+    return {"title": item.title, "entry_id": entry_id, "struck": True, **out.to_dict()}
 
 
 # ---------------------------------------------------------------------------
@@ -1705,7 +1880,7 @@ def get_sam_tasks(
                 cached: dict[str, object] = json.loads(cache_file.read_text(encoding="utf-8"))
                 if cached.get("parent_issue_number") == parent_issue_number:
                     out.warn(f"  WARNING: GitHub unavailable — returning cached tasks from {cache_file.name}")
-                    cached_tasks: list[dict[str, object]] = cached.get("tasks", [])  # type: ignore[assignment]
+                    cached_tasks: list[dict[str, object]] = cached.get("tasks", [])
                     return {
                         "tasks": cached_tasks,
                         "count": cached.get("count", len(cached_tasks)),
@@ -1803,7 +1978,7 @@ def get_ready_sam_tasks(
     """
     out = output or Output()
     tasks_result = get_sam_tasks(parent_issue_number, refresh_cache=True, output=out)
-    tasks: list[dict[str, object]] = tasks_result.get("tasks", [])  # type: ignore[assignment]
+    tasks: list[dict[str, object]] = tasks_result.get("tasks", [])
     feature_slug = _extract_feature_slug(tasks)
     status_by_id = _build_task_status_map(tasks)
     ready: list[dict[str, object]] = [
