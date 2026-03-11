@@ -181,7 +181,8 @@ class TestLiveLifecycle:
             "backlog_groom",
             {
                 "selector": live_items["item_title"],
-                "groomed_content": "## Groomed\n\nLive test groomed content.\n\n### Reproducibility\n\nSteps here.",
+                "section": "Groomed",
+                "content": "Live test groomed content.\n\n### Reproducibility\n\nSteps here.",
             },
         )
 

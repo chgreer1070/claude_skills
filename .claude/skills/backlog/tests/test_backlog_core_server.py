@@ -384,7 +384,6 @@ async def test_backlog_update_success_with_plan():
     assert call_kwargs["plan"] == "plan/tasks-feature.md"
     assert call_kwargs["status"] is None
     assert call_kwargs["create_issue"] is False
-    assert call_kwargs["groomed_content"] is None
     assert call_kwargs["section"] is None
     assert call_kwargs["content"] is None
     assert response["title"] == "Feature"
@@ -401,14 +400,15 @@ async def test_backlog_update_passes_status_and_create_issue():
     assert call_kwargs["create_issue"] is True
 
 
-async def test_backlog_update_passes_groomed_content():
-    """backlog_update forwards groomed_content for full replacement."""
+async def test_backlog_update_passes_section_content():
+    """backlog_update forwards section and content for groomed update."""
     op_result = {"title": "Item", "changes": ["groomed"]}
     with patch("backlog_core.operations.update_item", return_value=op_result) as mock_update:
-        await _call("backlog_update", {"selector": "Item", "groomed_content": "## Section\nsome content"})
+        await _call("backlog_update", {"selector": "Item", "section": "Acceptance Criteria", "content": "some content"})
 
     call_kwargs = mock_update.call_args.kwargs
-    assert call_kwargs["groomed_content"] == "## Section\nsome content"
+    assert call_kwargs["section"] == "Acceptance Criteria"
+    assert call_kwargs["content"] == "some content"
 
 
 async def test_backlog_update_passes_section_and_content():
@@ -455,20 +455,19 @@ async def test_backlog_update_backlog_error_returns_error_key():
 # ---------------------------------------------------------------------------
 
 
-async def test_backlog_groom_success_with_full_content():
-    """backlog_groom calls operations.groom_item with groomed_content."""
+async def test_backlog_groom_success_with_section_content():
+    """backlog_groom calls operations.groom_item with section and content."""
     op_result = {"title": "Feature", "synced": True}
     with patch("backlog_core.operations.groom_item", return_value=op_result) as mock_groom:
         response = await _call(
-            "backlog_groom", {"selector": "Feature", "groomed_content": "## Acceptance Criteria\n- [ ] Pass tests"}
+            "backlog_groom", {"selector": "Feature", "section": "Acceptance Criteria", "content": "- [ ] Pass tests"}
         )
 
     mock_groom.assert_called_once()
     call_kwargs = mock_groom.call_args.kwargs
     assert call_kwargs["selector"] == "Feature"
-    assert call_kwargs["groomed_content"] == "## Acceptance Criteria\n- [ ] Pass tests"
-    assert call_kwargs["section"] is None
-    assert call_kwargs["content"] is None
+    assert call_kwargs["section"] == "Acceptance Criteria"
+    assert call_kwargs["content"] == "- [ ] Pass tests"
     assert response["title"] == "Feature"
     assert response["synced"] is True
 
@@ -482,7 +481,6 @@ async def test_backlog_groom_passes_section_and_content():
     call_kwargs = mock_groom.call_args.kwargs
     assert call_kwargs["section"] == "Background"
     assert call_kwargs["content"] == "Some background info"
-    assert call_kwargs["groomed_content"] is None
 
 
 async def test_backlog_groom_backlog_error_returns_error_key():
@@ -663,6 +661,11 @@ async def test_output_fields_always_present_on_success(tool_name, params, mock_t
         ("backlog_groom", {"selector": "X"}, "backlog_core.operations.groom_item"),
         ("backlog_normalize", {}, "backlog_core.operations.normalize_items"),
         ("backlog_pull", {}, "backlog_core.operations.pull_items"),
+        (
+            "backlog_strike_entry",
+            {"selector": "X", "entry_id": "2026-01-01T00:00:00Z", "reason": "test"},
+            "backlog_core.operations.strike_entry",
+        ),
     ],
 )
 async def test_output_fields_always_present_on_error(tool_name, params, mock_target):
@@ -682,8 +685,8 @@ async def test_output_fields_always_present_on_error(tool_name, params, mock_tar
 # ---------------------------------------------------------------------------
 
 
-async def test_all_ten_tools_are_registered():
-    """Verify all 10 expected tool names are registered in the MCP server."""
+async def test_all_tools_are_registered():
+    """Verify all expected tool names are registered in the MCP server."""
     expected = {
         "backlog_add",
         "backlog_list",
@@ -695,6 +698,7 @@ async def test_all_ten_tools_are_registered():
         "backlog_groom",
         "backlog_normalize",
         "backlog_pull",
+        "backlog_strike_entry",
     }
     async with Client(mcp) as client:
         tools = await client.list_tools()

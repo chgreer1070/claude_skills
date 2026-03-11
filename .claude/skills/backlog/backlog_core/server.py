@@ -102,21 +102,29 @@ async def backlog_view(
     selector: Annotated[str, Field(description="Item selector: GitHub issue URL, #N, bare number, or title substring")],
     offset: Annotated[int, Field(ge=0, description="Skip N lines from body start (for pagination)")] = 0,
     limit: Annotated[int, Field(ge=0, description="Show at most N body lines (0 = all, no truncation)")] = 0,
+    show: Annotated[
+        str | None,
+        Field(description="Entry filter: 'all', 'last', 'first', 'struck', or integer N (first N active entries)"),
+    ] = None,
+    since: Annotated[
+        str | None, Field(description="ISO date/datetime. Only entries at or after this timestamp are included.")
+    ] = None,
 ) -> dict:
     """View a single backlog item or GitHub issue in detail.
 
     Accepts a GitHub issue URL, #N, bare number, or title substring as selector.
     Use offset and limit to paginate long issue bodies.
+    Use show and since to filter entry blocks within sections.
 
     Returns:
-        Dict with title, priority, issue, plan, file_path, body, groomed
-        content, and output messages/warnings. On error, dict contains an
+        Dict with title, priority, issue, plan, file_path, body, sections
+        metadata, and output messages/warnings. On error, dict contains an
         error key.
     """
     out = Output()
     try:
         result = await asyncio.to_thread(
-            operations.view_item, selector=selector, offset=offset, limit=limit, output=out
+            operations.view_item, selector=selector, offset=offset, limit=limit, show=show, since=since, output=out
         )
         return {**result, **out.to_dict()}
     except BacklogError as e:
@@ -249,19 +257,11 @@ async def backlog_update(
     create_issue: Annotated[
         bool, Field(description="Create a GitHub issue for this item if it lacks one (P0/P1 items only)")
     ] = False,
-    groomed_content: Annotated[
-        str | None,
-        Field(
-            description="Groomed content to write into the item's per-item file. Replaces the entire groomed section."
-        ),
-    ] = None,
     section: Annotated[
-        str | None,
-        Field(description="Section name for incremental groomed content update (use with content parameter)"),
+        str | None, Field(description="Section name for groomed content update (use with content parameter)")
     ] = None,
     content: Annotated[
-        str | None,
-        Field(description="Content for the named section (use with section parameter for incremental updates)"),
+        str | None, Field(description="Content for the named section (use with section parameter)")
     ] = None,
     title: Annotated[
         str | None,
@@ -273,12 +273,22 @@ async def backlog_update(
         str | None,
         Field(description="New description text for the item. Updates the local file only — no GitHub sync."),
     ] = None,
+    entry_id: Annotated[
+        str | None, Field(description="Timestamp ID of an existing entry to replace within the section")
+    ] = None,
+    replace_section: Annotated[
+        bool, Field(description="Strike all existing entries in the section and append new content")
+    ] = False,
+    reason: Annotated[
+        str | None, Field(description="Reason for striking entries (required when replace_section=True)")
+    ] = None,
 ) -> dict:
     """Update a backlog item: attach a plan, set status, create a GitHub issue, or write groomed content.
 
-    For groomed content, either provide groomed_content (full replacement)
-    or section + content (incremental section update). Groomed content is
-    synced to the GitHub issue when the item has one.
+    For groomed content, provide section + content for section updates.
+    Use entry_id to replace a specific entry, or replace_section=True to
+    strike all entries and append new content. Groomed content is synced
+    to the GitHub issue when the item has one.
 
     Returns:
         Dict with updated item title, applied changes, and output
@@ -292,12 +302,14 @@ async def backlog_update(
             plan=plan,
             status=status,
             create_issue=create_issue,
-            groomed_content=groomed_content,
             section=section,
             content=content,
             title=title,
             description=description,
             output=out,
+            entry_id=entry_id,
+            replace_section=replace_section,
+            reason=reason,
         )
         return {**result, **out.to_dict()}
     except BacklogError as e:
@@ -308,22 +320,28 @@ async def backlog_update(
 async def backlog_groom(
     ctx: Context,
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
-    groomed_content: Annotated[
-        str | None,
-        Field(description="Full groomed content to write into the per-item file. Replaces the entire groomed section."),
-    ] = None,
     section: Annotated[
         str | None, Field(description="Section name for incremental update (use with content parameter)")
     ] = None,
     content: Annotated[
         str | None, Field(description="Content for the named section (use with section parameter)")
     ] = None,
+    entry_id: Annotated[
+        str | None, Field(description="Timestamp ID of an existing entry to replace within the section")
+    ] = None,
+    replace_section: Annotated[
+        bool, Field(description="Strike all existing entries in the section and append new content")
+    ] = False,
+    reason: Annotated[
+        str | None, Field(description="Reason for striking entries (required when replace_section=True)")
+    ] = None,
 ) -> dict:
     """Write groomed content into a backlog item's per-item file and sync to its GitHub issue.
 
-    Provide either groomed_content for full replacement, or section + content
-    for incremental section updates. When the item has a GitHub issue, the
-    groomed content is synced there automatically.
+    Provide section + content for section updates. Use entry_id to replace
+    a specific entry, or replace_section=True to strike all entries and
+    append new content. When the item has a GitHub issue, the groomed
+    content is synced there automatically.
 
     Returns:
         Dict with groomed item title, synced status, and output
@@ -335,10 +353,12 @@ async def backlog_groom(
         result = await asyncio.to_thread(
             operations.groom_item,
             selector=selector,
-            groomed_content=groomed_content,
             section=section,
             content=content,
             output=out,
+            entry_id=entry_id,
+            replace_section=replace_section,
+            reason=reason,
         )
         for w in out.warnings:
             await ctx.warning(w)
@@ -390,6 +410,7 @@ async def backlog_pull(
     force: Annotated[
         bool, Field(description="Overwrite local content even if local version is newer or longer")
     ] = False,
+    diff: Annotated[bool, Field(description="Include entry-level diff output showing local vs remote changes")] = False,
 ) -> dict:
     """Pull issue body content from GitHub into local per-item files.
 
@@ -397,8 +418,9 @@ async def backlog_pull(
     GitHub URL, or title substring. When omitted, pulls all issues.
 
     Auto-migrates P0/P1 items lacking GitHub Issues by creating them.
-    Merges by section, keeping the longer version of each section unless
-    force=true. Use dry_run=true to preview changes.
+    Merges by section using entry-aware merge (keeps longer entries,
+    preserves strikes). Use dry_run=true to preview changes.
+    Use diff=true to include entry-level diff output.
 
     Returns:
         Dict with count of pulled items (bulk) or file_path (single) and
@@ -415,7 +437,7 @@ async def backlog_pull(
             await ctx.info(f"Pulled: {file_path}" if file_path else "Nothing pulled")
             return {**result, **out.to_dict()}
         await ctx.info("Starting bulk pull from GitHub" + (" (dry-run)" if dry_run else ""))
-        result = await asyncio.to_thread(operations.pull_items, dry_run=dry_run, force=force, output=out)
+        result = await asyncio.to_thread(operations.pull_items, dry_run=dry_run, force=force, diff=diff, output=out)
         for w in out.warnings:
             await ctx.warning(w)
         pulled = result.get("pulled", 0)
@@ -528,6 +550,33 @@ async def backlog_get_ready_sam_tasks(
     try:
         result = await asyncio.to_thread(
             operations.get_ready_sam_tasks, parent_issue_number=parent_issue_number, output=out
+        )
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool()
+async def backlog_strike_entry(
+    selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
+    entry_id: Annotated[str, Field(description="Timestamp ID of the entry to strike")],
+    reason: Annotated[str, Field(description="Human-readable reason for striking the entry")],
+    section: Annotated[str | None, Field(description="Optional section name to scope the search within")] = None,
+) -> dict:
+    """Strike (retract) an entry block within a backlog item.
+
+    Wraps the entry in a collapsed details block with the reason,
+    preserving the original content for audit. Syncs to GitHub issue
+    if the item has one.
+
+    Returns:
+        Dict with strike results and output messages/warnings.
+        On error, dict contains an error key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(
+            operations.strike_entry, selector=selector, entry_id=entry_id, reason=reason, section=section, output=out
         )
         return {**result, **out.to_dict()}
     except BacklogError as e:

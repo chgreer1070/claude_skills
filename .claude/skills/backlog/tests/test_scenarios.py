@@ -259,14 +259,14 @@ class TestGroomBacklogItem:
     """Scenarios consumed by /groom-backlog-item skill."""
 
     async def test_groom_full_content(self, backlog_dir, mock_github, write_test_item):
-        """Scenario 14: backlog_groom with groomed_content syncs to GitHub and updates the file."""
+        """Scenario 14: backlog_groom with section/content syncs to GitHub and updates the file."""
         filepath = write_test_item("Groom Full Test", issue="#80")
         mock_github["try_get_github"].return_value = MagicMock()
         mock_github["sync_groomed_to_github_issue"].return_value = True
 
         result = await _call(
             "backlog_groom",
-            {"selector": "Groom Full Test", "groomed_content": "## Groomed\n\nThis is groomed content."},
+            {"selector": "Groom Full Test", "section": "Groomed", "content": "This is groomed content."},
         )
 
         assert result["groomed_updated"] is True
@@ -306,7 +306,7 @@ class TestGroomBacklogItem:
 
         result = await _call(
             "backlog_groom",
-            {"selector": "Groom Local Only Test", "groomed_content": "## Groomed\n\nLocal only groomed content."},
+            {"selector": "Groom Local Only Test", "section": "Groomed", "content": "Local only groomed content."},
         )
 
         assert result["groomed_updated"] is True
@@ -316,13 +316,13 @@ class TestGroomBacklogItem:
         assert isinstance(result["errors"], list)
 
     async def test_groom_via_update(self, backlog_dir, mock_github, write_test_item):
-        """Scenario 17: backlog_update with groomed_content param sets groomed content."""
+        """Scenario 17: backlog_update with section/content param sets groomed content."""
         write_test_item("Groom Via Update Test", issue="#82")
         mock_github["try_get_github"].return_value = MagicMock()
 
         result = await _call(
             "backlog_update",
-            {"selector": "Groom Via Update Test", "groomed_content": "## Groomed\n\nUpdated groomed content."},
+            {"selector": "Groom Via Update Test", "section": "Groomed", "content": "Updated groomed content."},
         )
 
         assert result["groomed_updated"] is True
@@ -549,7 +549,7 @@ class TestLifecycles:
         mock_github["sync_groomed_to_github_issue"].return_value = True
 
         groom_result = await _call(
-            "backlog_groom", {"selector": "Lifecycle Close Item", "groomed_content": "## Groomed\n\nReady for work."}
+            "backlog_groom", {"selector": "Lifecycle Close Item", "section": "Groomed", "content": "Ready for work."}
         )
         assert groom_result["groomed_updated"] is True
 
