@@ -44,6 +44,8 @@ All paths relative to `.claude/skills/backlog/`.
 
 ```python
 # tests/test_entry_blocks.py
+from __future__ import annotations
+
 from backlog_core.models import Entry
 
 
@@ -152,13 +154,26 @@ Expected: FAIL — `entry_blocks` module not found
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import re
+from datetime import UTC, datetime
+
+from .models import Entry
+
+
+def _utc_now_iso() -> str:
+    """Return current UTC time as ISO 8601 string."""
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def wrap_entry(content: str) -> str:
     """Wrap content in a timestamped entry block."""
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = _utc_now_iso()
     return f"<div><sub>{now}</sub>\n\n{content}\n</div>"
+
+
+def wrap_entry_with_timestamp(content: str, timestamp: str) -> str:
+    """Wrap content with a specific timestamp (for legacy migration and overwrites)."""
+    return f"<div><sub>{timestamp}</sub>\n\n{content}\n</div>"
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -330,9 +345,12 @@ Expected: FAIL — `parse_entries` not defined
 Add to `backlog_core/entry_blocks.py`:
 
 ```python
-import re
-from .models import Entry
-
+# NOTE: ENTRY_RE uses ``.*?`` with ``re.DOTALL``. This means entry content
+# MUST NOT contain literal ``</div>`` — the lazy match stops at the first
+# ``</div>`` it encounters. Nested ``<div>...</div>`` inside entry content
+# will break parsing. Content with literal ``</div>`` should be escaped
+# (e.g., ``&lt;/div&gt;``) before wrapping. The ``wrap_entry()`` function
+# does NOT perform this escaping automatically — callers are responsible.
 ENTRY_RE = re.compile(
     r"<div><sub>([^<]+)</sub>\s*(.*?)</div>",
     re.DOTALL,
@@ -341,6 +359,61 @@ STRUCK_RE = re.compile(
     r'<details><summary>struck:\s*(\S+)\s*—\s*(.*?)</summary>\s*(.*?)</details>',
     re.DOTALL,
 )
+
+
+def _parse_match_to_entry(m: re.Match[str]) -> Entry:
+    """Convert a regex match into an Entry object."""
+    ts = m.group(1)
+    inner = m.group(2).strip()
+    struck_match = STRUCK_RE.search(inner)
+    if struck_match:
+        return Entry(
+            id=ts,
+            content=struck_match.group(3).strip(),
+            struck=True,
+            struck_at=struck_match.group(1),
+            struck_reason=struck_match.group(2).strip(),
+            raw=m.group(0),
+        )
+    return Entry(id=ts, content=inner, raw=m.group(0))
+
+
+def _deduplicate_timestamps(entries: list[Entry]) -> None:
+    """Suffix duplicate timestamp IDs in-place with ``-0``, ``-1``, etc."""
+    seen: dict[str, int] = {}
+    has_dupes: set[str] = set()
+    for e in entries:
+        seen[e.id] = seen.get(e.id, 0) + 1
+        if seen[e.id] > 1:
+            has_dupes.add(e.id)
+
+    if has_dupes:
+        counters: dict[str, int] = {}
+        for e in entries:
+            if e.id in has_dupes:
+                idx = counters.get(e.id, 0)
+                counters[e.id] = idx + 1
+                e.id = f"{e.id}-{idx}"
+
+
+def _apply_show_filter(raw_entries: list[Entry], show: str | int | None) -> list[Entry]:
+    """Apply the ``show`` filter to parsed entries."""
+    active = [e for e in raw_entries if not e.struck]
+
+    if show == "all":
+        return raw_entries
+    if show == "struck":
+        return [e for e in raw_entries if e.struck]
+    if show == "last":
+        return active[-1:] if active else []
+    if show == "first":
+        return active[:1] if active else []
+    if isinstance(show, int):
+        return active[:show] if show >= 0 else active[show:]
+    if show is None:
+        return raw_entries
+    msg = f"Unrecognized show filter: {show!r}"
+    raise ValueError(msg)
 
 
 def parse_entries(
@@ -354,8 +427,11 @@ def parse_entries(
     Args:
         section_body: Raw section text to parse.
         show: Filter — "all", "last", "first", "struck", positive int (first N),
-              negative int (last N).
-        since: ISO date/datetime string. Only entries at or after this are included.
+              negative int (last N), or None (same as "all").
+        since: ISO date/datetime string (``YYYY-MM-DD`` or ``YYYY-MM-DDTHH:MM:SSZ``).
+               Only entries at or after this are included. Comparison is
+               lexicographic on consistent ``YYYY-MM-DDTHH:MM:SSZ`` format —
+               timezone offsets or fractional seconds would break ordering.
         added_date: Fallback date for legacy (unwrapped) content.
 
     Returns:
@@ -374,66 +450,18 @@ def parse_entries(
             raw=section_body,
         )]
 
-    # Parse each match into an Entry
-    raw_entries: list[Entry] = []
-    for m in matches:
-        ts = m.group(1)
-        inner = m.group(2).strip()
-        struck_match = STRUCK_RE.search(inner)
-        if struck_match:
-            raw_entries.append(Entry(
-                id=ts,
-                content=struck_match.group(3).strip(),
-                struck=True,
-                struck_at=struck_match.group(1),
-                struck_reason=struck_match.group(2).strip(),
-                raw=m.group(0),
-            ))
-        else:
-            raw_entries.append(Entry(
-                id=ts,
-                content=inner,
-                raw=m.group(0),
-            ))
+    raw_entries = [_parse_match_to_entry(m) for m in matches]
+    _deduplicate_timestamps(raw_entries)
 
-    # Handle duplicate timestamps — assign suffixes
-    seen: dict[str, int] = {}
-    has_dupes: set[str] = set()
-    for e in raw_entries:
-        seen[e.id] = seen.get(e.id, 0) + 1
-        if seen[e.id] > 1:
-            has_dupes.add(e.id)
-
-    if has_dupes:
-        counters: dict[str, int] = {}
-        for e in raw_entries:
-            if e.id in has_dupes:
-                idx = counters.get(e.id, 0)
-                counters[e.id] = idx + 1
-                e.id = f"{e.id}-{idx}"
-
-    # Apply since filter
+    # Apply since filter — strip dedup suffix before comparison so
+    # "2026-03-10T08:00:00Z-1" compares as "2026-03-10T08:00:00Z"
     if since:
-        raw_entries = [e for e in raw_entries if e.id >= since]
+        raw_entries = [
+            e for e in raw_entries
+            if (e.id.split("Z")[0] + "Z" if "Z" in e.id else e.id) >= since
+        ]
 
-    # Apply show filter
-    active = [e for e in raw_entries if not e.struck]
-
-    if show == "all":
-        return raw_entries
-    elif show == "struck":
-        return [e for e in raw_entries if e.struck]
-    elif show == "last":
-        return active[-1:] if active else []
-    elif show == "first":
-        return active[:1] if active else []
-    elif isinstance(show, int):
-        if show >= 0:
-            return active[:show]
-        else:
-            return active[show:]
-
-    return raw_entries
+    return _apply_show_filter(raw_entries, show)
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
@@ -505,8 +533,11 @@ def strike_entry(entry_raw: str, reason: str) -> str:
 
     Returns:
         The entry with content wrapped in <details><summary>struck: ...</summary>.
+
+    Raises:
+        ValueError: If ``entry_raw`` is not a valid entry block.
     """
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = _utc_now_iso()
     match = ENTRY_RE.search(entry_raw)
     if not match:
         msg = "Cannot strike: not a valid entry block"
@@ -637,6 +668,76 @@ Expected: FAIL
 Add to `backlog_core/entry_blocks.py`:
 
 ```python
+def _rewrite_replace(
+    entries_raw: list[re.Match[str]],
+    is_legacy: bool,
+    existing_body: str,
+    new_content: str | None,
+    reason: str,
+    added_date: str,
+) -> str:
+    """Handle the ``replace=True`` branch of rewrite_section."""
+    parts: list[str] = []
+    if is_legacy:
+        legacy_wrapped = wrap_entry_with_timestamp(existing_body.strip(), f"{added_date}T00:00:00Z")
+        parts.append(strike_entry(legacy_wrapped, reason))
+    else:
+        parts.extend(strike_entry(m.group(0), reason) for m in entries_raw)
+    if new_content:
+        parts.append(wrap_entry(new_content))
+    return "\n\n".join(parts)
+
+
+def _rewrite_by_entry_id(
+    entries_raw: list[re.Match[str]],
+    is_legacy: bool,
+    existing_body: str,
+    new_content: str | None,
+    entry_id: str,
+    added_date: str,
+) -> str:
+    """Handle the ``entry_id`` branch of rewrite_section.
+
+    Raises:
+        ValueError: If ``new_content`` is None (would silently delete the entry).
+    """
+    if not new_content:
+        msg = "new_content is required when entry_id is provided — use strike_entry() for deletion"
+        raise ValueError(msg)
+
+    result_parts: list[str] = []
+    if is_legacy:
+        legacy_ts = f"{added_date}T00:00:00Z"
+        if entry_id == legacy_ts:
+            result_parts.append(wrap_entry_with_timestamp(new_content, legacy_ts))
+        else:
+            result_parts.append(wrap_entry_with_timestamp(existing_body.strip(), legacy_ts))
+            result_parts.append(wrap_entry(new_content))
+    else:
+        seen_counts: dict[str, int] = {}
+        for m in entries_raw:
+            raw_ts = m.group(1)
+            seen_counts[raw_ts] = seen_counts.get(raw_ts, 0) + 1
+
+        has_dupes = {k for k, v in seen_counts.items() if v > 1}
+        counters: dict[str, int] = {}
+
+        for m in entries_raw:
+            raw_ts = m.group(1)
+            if raw_ts in has_dupes:
+                idx = counters.get(raw_ts, 0)
+                counters[raw_ts] = idx + 1
+                effective_id = f"{raw_ts}-{idx}"
+            else:
+                effective_id = raw_ts
+
+            if effective_id == entry_id:
+                result_parts.append(wrap_entry_with_timestamp(new_content, raw_ts))
+            else:
+                result_parts.append(m.group(0))
+    return "\n\n".join(result_parts)
+
+
 def rewrite_section(
     existing_body: str,
     new_content: str | None = None,
@@ -650,6 +751,7 @@ def rewrite_section(
     Args:
         existing_body: Current section body text.
         new_content: Content to write (append, overwrite, or replace).
+            Required when ``entry_id`` is set.
         entry_id: Target a specific entry for overwrite.
         replace: Strike all existing entries, append new_content.
         reason: Required when replace=True. Why entries are being struck.
@@ -657,66 +759,25 @@ def rewrite_section(
 
     Returns:
         Updated section body text.
-    """
-    if replace and not reason:
-        msg = "reason is required when replace=True"
-        raise ValueError(msg)
 
+    Raises:
+        ValueError: If ``replace=True`` but ``reason`` is not provided, or if
+            ``entry_id`` is set but ``new_content`` is None/empty.
+    """
     entries_raw = list(ENTRY_RE.finditer(existing_body))
-    is_legacy = not entries_raw and existing_body.strip()
+    is_legacy = not entries_raw and bool(existing_body.strip())
 
     if replace:
-        # Strike all existing entries, then append new
-        parts: list[str] = []
-        if is_legacy:
-            legacy_wrapped = wrap_entry_with_timestamp(existing_body.strip(), f"{added_date}T00:00:00Z")
-            parts.append(strike_entry(legacy_wrapped, reason))
-        else:
-            for m in entries_raw:
-                parts.append(strike_entry(m.group(0), reason))
-        if new_content:
-            parts.append(wrap_entry(new_content))
-        return "\n\n".join(parts)
+        if not reason:
+            msg = "reason is required when replace=True"
+            raise ValueError(msg)
+        return _rewrite_replace(entries_raw, is_legacy, existing_body, new_content, reason, added_date)
 
     if entry_id:
-        # Overwrite a specific entry
-        result_parts: list[str] = []
-        if is_legacy:
-            legacy_ts = f"{added_date}T00:00:00Z"
-            if entry_id == legacy_ts:
-                result_parts.append(wrap_entry(new_content) if new_content else "")
-            else:
-                result_parts.append(wrap_entry_with_timestamp(existing_body.strip(), legacy_ts))
-                if new_content:
-                    result_parts.append(wrap_entry(new_content))
-        else:
-            # Handle duplicate-suffixed IDs
-            seen_counts: dict[str, int] = {}
-            for m in entries_raw:
-                raw_ts = m.group(1)
-                seen_counts[raw_ts] = seen_counts.get(raw_ts, 0) + 1
-
-            has_dupes = {k for k, v in seen_counts.items() if v > 1}
-            counters: dict[str, int] = {}
-
-            for m in entries_raw:
-                raw_ts = m.group(1)
-                if raw_ts in has_dupes:
-                    idx = counters.get(raw_ts, 0)
-                    counters[raw_ts] = idx + 1
-                    effective_id = f"{raw_ts}-{idx}"
-                else:
-                    effective_id = raw_ts
-
-                if effective_id == entry_id:
-                    if new_content:
-                        result_parts.append(wrap_entry_with_timestamp(new_content, raw_ts))
-                else:
-                    result_parts.append(m.group(0))
-        return "\n\n".join(p for p in result_parts if p)
+        return _rewrite_by_entry_id(entries_raw, is_legacy, existing_body, new_content, entry_id, added_date)
 
     # Default: append
-    parts = []
+    parts: list[str] = []
     if is_legacy:
         parts.append(wrap_entry_with_timestamp(existing_body.strip(), f"{added_date}T00:00:00Z"))
     elif existing_body.strip():
@@ -726,11 +787,6 @@ def rewrite_section(
         parts.append(wrap_entry(new_content))
 
     return "\n\n".join(parts)
-
-
-def wrap_entry_with_timestamp(content: str, timestamp: str) -> str:
-    """Wrap content with a specific timestamp (for legacy migration and overwrites)."""
-    return f"<div><sub>{timestamp}</sub>\n\n{content}\n</div>"
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
@@ -820,7 +876,17 @@ def generate_diff(local: str, remote: str) -> str:
     local_entries = {e.id: e for e in parse_entries(local, show="all")}
     remote_entries = {e.id: e for e in parse_entries(remote, show="all")}
 
-    all_ids = sorted(set(local_entries) | set(remote_entries))
+    def _sort_key(eid: str) -> tuple[str, int]:
+        """Sort entry IDs chronologically, handling dedup suffixes numerically.
+
+        ``2026-03-10T08:00:00Z-10`` sorts after ``-2`` (numeric, not lexicographic).
+        """
+        if "-" in eid and eid.rsplit("-", 1)[-1].isdigit():
+            base, suffix = eid.rsplit("-", 1)
+            return (base, int(suffix))
+        return (eid, -1)
+
+    all_ids = sorted(set(local_entries) | set(remote_entries), key=_sort_key)
     lines: list[str] = []
 
     for eid in all_ids:
@@ -909,11 +975,16 @@ In `operations.py`, find the section-write path in `groom_item()` and `update_it
 
 ```python
 from .entry_blocks import rewrite_section
+from .parsing import extract_sections
 
 # In the section+content branch of groom_item / update_item:
+# Use extract_sections() (from parsing.py) which returns dict[str, str]
+# keyed by heading including "## " prefix.
 # OLD: write content directly into section
 # NEW:
-existing_section_body = extract_section_body(file_content, section)
+sections = extract_sections(file_content)
+section_key = f"## {section}"
+existing_section_body = sections.get(section_key, "")
 new_body = rewrite_section(
     existing_body=existing_section_body,
     new_content=content,
@@ -922,10 +993,12 @@ new_body = rewrite_section(
     reason=reason,
     added_date=item.added,
 )
-# Write new_body back into the section
+# Write new_body back into the file by replacing the section content.
+# The implementing agent should read operations.py to find the existing
+# section-write mechanism (file_content replacement pattern) and adapt it.
 ```
 
-The agent implementing this task should read `operations.py` to find the exact code paths for section writing in both `groom_item()` and `update_item()`, then wire in `rewrite_section()`. The function signatures for both need the new parameters: `entry_id`, `replace_section`, `reason`.
+The agent implementing this task should read `operations.py` to find the exact code paths for section writing in both `groom_item()` and `update_item()`, then wire in `rewrite_section()`. The function signatures for both need the new parameters: `entry_id`, `replace_section`, `reason`. Note: `extract_sections()` in `parsing.py` returns a `dict[str, str]` keyed by the full heading (e.g., `"## Decision"`).
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -950,14 +1023,26 @@ git commit -m "feat(backlog): wire entry blocks into groom_item and update_item"
 - [ ] **Step 1: Write failing test**
 
 ```python
+from backlog_core.entry_blocks import parse_entries
+
+
 def test_strike_entry_operation(tmp_backlog):
     """strike_entry wraps target entry in collapsed details."""
     out = Output()
     operations.add_item(title="Strike Test", priority="P1", description="Test", output=out, create_issue=False)
     operations.groom_item(selector="Strike Test", section="Decision", content="Bad info.", output=out)
+
+    # Dynamically determine the entry_id by viewing and parsing the section
+    item = operations.view_item(selector="Strike Test", output=out)
+    body = item.get("body", "")
+    entries = parse_entries(body)
+    assert len(entries) >= 1, "Expected at least one entry after groom"
+    entry_id = entries[-1].id  # Last entry is the one we just groomed
+
     result = operations.strike_entry(
         selector="Strike Test",
-        entry_id=<the entry id from the groom>,
+        entry_id=entry_id,
+        section="Decision",
         reason="based on training data",
         output=out,
     )
@@ -967,22 +1052,21 @@ def test_strike_entry_operation(tmp_backlog):
     assert "based on training data" in item.get("body", "")
 ```
 
-Note: The implementing agent should determine the entry_id dynamically by parsing the groomed content.
-
 - [ ] **Step 2: Run test to verify it fails**
 
 Expected: FAIL — `strike_entry` not defined on operations
 
 - [ ] **Step 3: Implement `operations.strike_entry()`**
 
-New function in `operations.py` that:
+New function in `operations.py` with signature `strike_entry(selector, entry_id, reason, output, section=None)` that:
 1. Finds the item by selector
 2. Reads the file content
-3. Parses entries to find the target `entry_id`
-4. Calls `entry_blocks.strike_entry()` on the matching raw entry
-5. Replaces the raw entry in the file content
-6. Writes the file
-7. Syncs to GitHub if the item has an issue
+3. If `section` is provided, scopes parsing to that section only (prevents ambiguity when duplicate timestamps exist across sections)
+4. Parses entries to find the target `entry_id`
+5. Calls `entry_blocks.strike_entry()` on the matching raw entry
+6. Replaces the raw entry in the file content
+7. Writes the file
+8. Syncs to GitHub if the item has an issue
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1106,6 +1190,19 @@ def test_backlog_strike_entry_tool_exists():
     """backlog_strike_entry should be a registered MCP tool."""
     from backlog_core.server import backlog_strike_entry
     assert callable(backlog_strike_entry)
+
+
+def test_backlog_view_show_string_int_conversion():
+    """backlog_view should convert show="2" (string) to int 2 for parse_entries."""
+    # MCP clients always send show as a string. The server/operations layer
+    # must convert numeric strings to int before passing to parse_entries().
+    # This test verifies the conversion path — without it, show="2" would
+    # fall through to the ValueError branch in _apply_show_filter().
+    import inspect
+    from backlog_core.server import backlog_view
+    sig = inspect.signature(backlog_view)
+    # show param should exist and accept str | None (MCP layer)
+    assert "show" in sig.parameters
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -1114,7 +1211,18 @@ def test_backlog_strike_entry_tool_exists():
 
 1. Remove `groomed_content` parameter from `backlog_update` and `backlog_groom`
 2. Add `entry_id`, `replace_section`, `reason` parameters to both
-3. Add `show`, `since` parameters to `backlog_view`
+3. Add `show`, `since` parameters to `backlog_view`. **Important**: MCP tool parameters are always strings. The `show` parameter is typed `str | None` in the server but `parse_entries()` accepts `str | int | None`. Add conversion logic in the server or operations layer before passing to `parse_entries()`:
+
+    ```python
+    # Convert show from string to int when it represents a number
+    parsed_show: str | int | None = show
+    if show is not None:
+        try:
+            parsed_show = int(show)
+        except ValueError:
+            parsed_show = show
+    ```
+
 4. Add `diff` parameter to `backlog_pull`
 5. Replace `offset`/`limit` in `backlog_view` to operate on entries
 6. Add new `backlog_strike_entry` tool:
@@ -1125,6 +1233,7 @@ async def backlog_strike_entry(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     entry_id: Annotated[str, Field(description="Entry ID (ISO timestamp from <sub> tag) to strike")],
     reason: Annotated[str, Field(description="Why this entry is being struck through")],
+    section: Annotated[str | None, Field(description="Optional section name to scope the strike — prevents ambiguity when duplicate timestamps exist across sections")] = None,
 ) -> dict:
     """Strike through an entry in a backlog item section. The entry content is preserved
     in a collapsed <details> block with the reason, but marked as struck and excluded
@@ -1141,6 +1250,7 @@ async def backlog_strike_entry(
             selector=selector,
             entry_id=entry_id,
             reason=reason,
+            section=section,
             output=out,
         )
         return {**result, **out.to_dict()}
@@ -1233,7 +1343,24 @@ git commit -m "fix(backlog): update tests for entry block API changes"
 - [ ] **Step 1: Write integration test**
 
 ```python
-"""Integration test: full entry block lifecycle."""
+"""Integration test: full entry block lifecycle.
+
+NOTE: This test depends on the ``sections`` dict structure returned by
+``view_item()`` after Task 9 updates ``ViewItemResult``. Expected shape:
+
+    result["sections"] = {
+        "Decision": {
+            "entries": [{"id": str, "content": str, "struck": bool, ...}, ...],
+            "num_entries": int,  # count of active (non-struck) entries
+            "num_struck": int,   # count of struck entries
+        },
+        ...
+    }
+
+If Task 9 defines a different structure, these assertions must be updated.
+"""
+from __future__ import annotations
+
 from backlog_core import operations
 from backlog_core.models import Output
 
@@ -1252,20 +1379,27 @@ def test_full_entry_lifecycle(tmp_backlog):
     # View — should show 2 entries
     result = operations.view_item(selector="Lifecycle Test", output=out)
     sections = result.get("sections", {})
-    assert sections["Decision"]["num_entries"] == 2
+    assert "Decision" in sections, f"Expected 'Decision' in sections, got: {list(sections.keys())}"
+    decision = sections["Decision"]
+    assert "entries" in decision, f"Expected 'entries' key in section dict, got: {list(decision.keys())}"
+    assert "num_entries" in decision, f"Expected 'num_entries' key in section dict, got: {list(decision.keys())}"
+    assert decision["num_entries"] == 2
 
     # Strike first entry
-    first_id = sections["Decision"]["entries"][0]["id"]
-    operations.strike_entry(selector="Lifecycle Test", entry_id=first_id, reason="superseded", output=out)
+    first_id = decision["entries"][0]["id"]
+    operations.strike_entry(
+        selector="Lifecycle Test", entry_id=first_id, section="Decision", reason="superseded", output=out,
+    )
 
     # View again — should show 1 active, 1 struck
     result = operations.view_item(selector="Lifecycle Test", output=out)
     sections = result.get("sections", {})
-    assert sections["Decision"]["num_entries"] == 1
-    assert sections["Decision"]["num_struck"] == 1
+    decision = sections["Decision"]
+    assert decision["num_entries"] == 1
+    assert decision.get("num_struck", 0) == 1
 
     # Overwrite second entry
-    second_id = sections["Decision"]["entries"][0]["id"]
+    second_id = decision["entries"][0]["id"]
     operations.groom_item(
         selector="Lifecycle Test",
         section="Decision",
@@ -1277,8 +1411,9 @@ def test_full_entry_lifecycle(tmp_backlog):
     # Final view
     result = operations.view_item(selector="Lifecycle Test", output=out)
     sections = result.get("sections", {})
-    assert sections["Decision"]["num_entries"] == 1
-    active_entries = [e for e in sections["Decision"]["entries"] if not e.get("struck")]
+    decision = sections["Decision"]
+    assert decision["num_entries"] == 1
+    active_entries = [e for e in decision["entries"] if not e.get("struck")]
     assert "Updated second decision." in active_entries[0]["content"]
 ```
 
