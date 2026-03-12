@@ -61,62 +61,7 @@ benchmark_substitution
 Execute commands and automatically store output in `REPLY`. Note: `REPLY` is local to the
 substitution — its value is restored after completion, so capture it immediately:
 
-```bash
-# Output goes to REPLY — capture it right away
-${| date +%Y-%m-%d; }
-today="${REPLY}"
-echo "Today is: ${today}"
-
-# Practical example: Multiple captures
-get_system_info() {
-    local os kernel host
-
-    ${| uname -s; }
-    os="${REPLY}"
-
-    ${| uname -r; }
-    kernel="${REPLY}"
-
-    ${| hostname; }
-    host="${REPLY}"
-
-    printf 'System: %s %s on %s\n' "${os}" "${kernel}" "${host}"
-}
-
-get_system_info
-
-# Example: Processing pipeline results
-process_data() {
-    local error_count warning_count
-
-    ${| grep "ERROR" logfile.txt | wc -l; }
-    error_count="${REPLY}"
-
-    ${| grep "WARNING" logfile.txt | wc -l; }
-    warning_count="${REPLY}"
-
-    printf 'Errors: %d, Warnings: %d\n' "${error_count}" "${warning_count}"
-}
-
-# Example: Conditional logic — capture REPLY before using it
-check_service() {
-    local service="${1}"
-    local status
-
-    ${| systemctl is-active "${service}" 2>/dev/null; }
-    status="${REPLY}"
-
-    if [[ "${status}" == "active" ]]; then
-        echo "Service ${service} is running"
-        return 0
-    else
-        echo "Service ${service} is not running"
-        return 1
-    fi
-}
-
-check_service "ssh"
-```
+[Code examples](./references/code-examples.md#check_service-function)
 
 **Benefits:**
 - Cleaner code without intermediate variables
@@ -146,50 +91,7 @@ result=$(cat file.txt | grep pattern | sort | uniq)
 Control the sorting order of filename and pathname expansion. The specifier is optionally
 prefixed with `+` (ascending, default) or `-` (descending):
 
-```bash
-# Set sort order for globbing (prefix + = ascending, - = descending)
-GLOBSORT="name"       # Sort by name (default, ascending)
-GLOBSORT="+name"      # Explicit ascending name sort
-GLOBSORT="-name"      # Descending name sort
-GLOBSORT="+size"      # Sort by file size (ascending)
-GLOBSORT="-size"      # Descending size sort
-GLOBSORT="+mtime"     # Sort by modification time (ascending)
-GLOBSORT="-mtime"     # Newest files last
-
-# Practical example: Process largest files first
-process_by_size() {
-    local dir="${1}"
-
-    GLOBSORT="-size"
-
-    for file in "${dir}"/*; do
-        [[ -f "${file}" ]] || continue
-
-        size=$(stat -f%z "${file}" 2>/dev/null || stat -c%s "${file}" 2>/dev/null)
-        printf 'Processing %s (%d bytes)\n' "${file}" "${size}"
-        # Process file...
-    done
-}
-
-process_by_size "/var/log"
-
-# Example: Process newest files first
-process_newest() {
-    local dir="${1}"
-    local -a files
-
-    GLOBSORT="-mtime"
-    files=("${dir}"/*)
-
-    echo "Processing files from newest to oldest:"
-    for file in "${files[@]}"; do
-        [[ -f "${file}" ]] || continue
-        echo "  ${file}"
-    done
-}
-
-process_newest "/tmp"
-```
+[Code examples](./references/code-examples.md#process_by_size-function)
 
 **Available sort specifiers:**
 - `name` — Alphabetical by filename
@@ -208,33 +110,7 @@ process_newest "/tmp"
 
 Store completions directly in a variable:
 
-```bash
-# NEW: Store completions in variable
-compgen -V completions -c ba
-
-echo "Commands starting with 'ba':"
-for cmd in "${completions[@]}"; do
-    echo "  ${cmd}"
-done
-
-# Practical example: Custom completion helper
-get_available_commands() {
-    local prefix="${1}"
-    local -a commands
-
-    compgen -V commands -c "${prefix}"
-
-    if [[ ${#commands[@]} -eq 0 ]]; then
-        echo "No commands found starting with '${prefix}'"
-        return 1
-    fi
-
-    printf 'Available commands (%d):\n' "${#commands[@]}"
-    printf '  - %s\n' "${commands[@]}"
-}
-
-get_available_commands "git"
-```
+[Code examples](./references/code-examples.md#get_available_commands-function)
 
 ### `read` with Readline Completion (`-E`)
 
@@ -278,36 +154,7 @@ configure_app() {
 
 Specify search path for sourced scripts:
 
-```bash
-# Traditional source
-source /opt/app/lib/utils.sh
-
-# NEW: Source with custom path
-source -p "/opt/app/lib:/usr/local/lib" utils.sh
-
-# Practical example: Library loader
-load_library() {
-    local lib_name="${1}"
-    local -a search_paths=(
-        "${HOME}/.local/lib"
-        "/usr/local/lib"
-        "/opt/lib"
-    )
-
-    local search_path
-    search_path=$(IFS=:; echo "${search_paths[*]}")
-
-    if source -p "${search_path}" "${lib_name}" 2>/dev/null; then
-        echo "Loaded library: ${lib_name}"
-        return 0
-    else
-        echo "Failed to load library: ${lib_name}" >&2
-        return 1
-    fi
-}
-
-load_library "common.sh"
-```
+[Code examples](./references/code-examples.md#load_library-function)
 
 ### `printf` Enhancements
 
@@ -344,42 +191,7 @@ Create associative arrays from key-value data. **Note:** The `kv` builtin existe
 confirmed in Bash 5.3; the exact interface shown below is illustrative — verify with
 `help kv` after loading:
 
-```bash
-# Enable kv builtin (if not already loaded)
-enable -f /usr/local/lib/bash/kv kv 2>/dev/null || true
-
-# Create associative array from key=value pairs
-declare -A config
-kv config <<EOF
-database_host=localhost
-database_port=5432
-database_name=myapp
-api_key=secret123
-debug_mode=true
-EOF
-
-# Access values
-echo "Database: ${config[database_host]}:${config[database_port]}"
-echo "Debug: ${config[debug_mode]}"
-
-# Practical example: Parse environment-style config
-load_env_config() {
-    local config_file="${1}"
-    declare -gA APP_CONFIG
-
-    while IFS='=' read -r key value; do
-        # Skip comments and empty lines
-        [[ "${key}" =~ ^[[:space:]]*# ]] && continue
-        [[ -z "${key}" ]] && continue
-
-        # Trim whitespace
-        key="${key#"${key%%[![:space:]]*}"}"
-        value="${value#"${value%%[![:space:]]*}"}"
-
-        APP_CONFIG["${key}"]="${value}"
-    done < "${config_file}"
-}
-```
+[Code examples](./references/code-examples.md#kv-builtin--load_env_config)
 
 ### `strptime` - Date Parsing
 
@@ -387,85 +199,13 @@ Parse textual dates into Unix timestamps. **Note:** The `strptime` builtin exist
 confirmed in Bash 5.3; the exact interface shown below is illustrative — verify with
 `help strptime` after loading:
 
-```bash
-# Enable strptime builtin
-enable -f /usr/local/lib/bash/strptime strptime 2>/dev/null || true
-
-# Parse date string to timestamp
-date_string="2025-07-15 14:30:00"
-timestamp=$(strptime "%Y-%m-%d %H:%M:%S" "${date_string}")
-
-echo "Timestamp: ${timestamp}"
-echo "Date: $(date -d "@${timestamp}" '+%Y-%m-%d %H:%M:%S')"
-
-# Practical example: Log timestamp parsing
-parse_log_timestamp() {
-    local log_line="${1}"
-    local timestamp_str date_format timestamp
-
-    # Extract timestamp from log line
-    timestamp_str="${log_line%% *}"
-
-    # Parse different date formats
-    if [[ "${timestamp_str}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
-        date_format="%Y-%m-%d"
-    elif [[ "${timestamp_str}" =~ ^[0-9]{2}/[0-9]{2}/[0-9]{4}$ ]]; then
-        date_format="%m/%d/%Y"
-    else
-        echo "Unknown date format" >&2
-        return 1
-    fi
-
-    timestamp=$(strptime "${date_format}" "${timestamp_str}")
-    echo "${timestamp}"
-}
-
-parse_log_timestamp "2025-07-15 Application started"
-```
+[Code examples](./references/code-examples.md#strptime--parse_log_timestamp)
 
 ### `fltexpr` - Floating-Point Calculations
 
 Perform floating-point arithmetic without external tools:
 
-```bash
-# Enable fltexpr builtin
-enable -f /usr/local/lib/bash/fltexpr fltexpr 2>/dev/null || true
-
-# Floating-point calculations
-result=$(fltexpr "3.14159 * 2.0")
-echo "Result: ${result}"
-
-# Practical example: Performance metrics
-calculate_average() {
-    local -a values=("$@")
-    local sum=0.0
-    local count=${#values[@]}
-
-    for value in "${values[@]}"; do
-        sum=$(fltexpr "${sum} + ${value}")
-    done
-
-    local average
-    average=$(fltexpr "${sum} / ${count}")
-    echo "${average}"
-}
-
-response_times=(0.123 0.456 0.234 0.567 0.321)
-avg=$(calculate_average "${response_times[@]}")
-echo "Average response time: ${avg}s"
-
-# Example: Calculate percentage
-calculate_percentage() {
-    local part="${1}"
-    local total="${2}"
-    local percentage
-
-    percentage=$(fltexpr "(${part} / ${total}) * 100.0")
-    printf '%.2f%%\n' "${percentage}"
-}
-
-calculate_percentage 75 200  # 37.50%
-```
+[Code examples](./references/code-examples.md#fltexpr--calculate_percentage)
 
 ## POSIX Mode Improvements
 
@@ -498,35 +238,7 @@ fi
 
 More detailed error messages:
 
-```bash
-# Regular expression compilation errors now include details
-pattern="[invalid"
-
-if [[ "test" =~ ${pattern} ]]; then
-    echo "Match"
-else
-    # Error message now explains what went wrong:
-    # bash: regex error: brackets ([ ]) not balanced
-    echo "No match" >&2
-fi
-
-# Practical example: Robust pattern validation
-validate_pattern() {
-    local pattern="${1}"
-    local test_string="test"
-
-    if [[ "${test_string}" =~ ${pattern} ]] 2>/dev/null; then
-        echo "Pattern is valid"
-        return 0
-    else
-        echo "Invalid regex pattern: ${pattern}" >&2
-        return 1
-    fi
-}
-
-validate_pattern "[a-z]+"  # Valid
-validate_pattern "[a-z"    # Invalid
-```
+[Code examples](./references/code-examples.md#validate_pattern-function)
 
 ## C Standard Conformance Improvements
 
