@@ -120,10 +120,10 @@ class TestAddItemCreatesLocalFile:
 
         files = list(fake_dir.glob("*.md"))
         assert len(files) == 1
-        assert result["filepath"] == str(files[0])
+        assert result["file_path"] == str(files[0])
 
-    def test_add_item_returns_title_priority_filepath(self, mocker: MockerFixture) -> None:
-        """Verify add_item return dict contains title, priority, and filepath keys.
+    def test_add_item_returns_title_priority_file_path(self, mocker: MockerFixture) -> None:
+        """Verify add_item return dict contains title, priority, and file_path keys.
 
         Tests: add_item return value shape.
         How: Call add_item and inspect the returned dict.
@@ -135,7 +135,7 @@ class TestAddItemCreatesLocalFile:
 
         assert result["title"] == "Return Shape Check"
         assert result["priority"] == "P2"
-        assert "filepath" in result
+        assert "file_path" in result
 
     def test_add_item_frontmatter_contains_title(self, mocker: MockerFixture) -> None:
         """Verify the written file frontmatter includes the item title.
@@ -148,7 +148,7 @@ class TestAddItemCreatesLocalFile:
 
         result = add_item(title="Frontmatter Title Test", description="desc", priority="P1", create_issue=False)
 
-        filepath = Path(str(result["filepath"]))
+        filepath = Path(str(result["file_path"]))
         text = filepath.read_text(encoding="utf-8")
         assert "Frontmatter Title Test" in text
 
@@ -247,7 +247,7 @@ class TestAddItemDuplicateDetection:
             title="Completely Unique Novel Feature", description="desc", priority="P2", create_issue=False
         )
 
-        assert "filepath" in result
+        assert "file_path" in result
 
 
 # ---------------------------------------------------------------------------
@@ -321,13 +321,15 @@ class TestListItemsFiltering:
         assert items[0]["status"] == "status:in-progress"
         assert items[0]["milestone"] == "v2"
 
-    def test_list_items_without_status_still_calls_batch_fetch(self, mocker: MockerFixture) -> None:
-        """Verify list_items always calls batch_fetch_statuses (it returns {} when not needed).
+    def test_list_items_without_status_skips_batch_fetch(self, mocker: MockerFixture) -> None:
+        """Verify list_items skips batch_fetch_statuses when with_status=False and no status filter.
 
-        Tests: batch_fetch_statuses called unconditionally.
-        How: Call list_items with with_status=False; check batch fetch was called.
-        Why: batch_fetch_statuses is always invoked; status fields are populated only when
-             with_status=True.
+        Tests: batch_fetch_statuses is not called when neither with_status nor status is set.
+        How: Call list_items with with_status=False and no status filter; assert batch fetch
+             was not called.
+        Why: batch_fetch_statuses is only invoked when results require GitHub status data
+             (with_status=True or status filter provided). Skipping it avoids unnecessary
+             network calls.
         """
         import backlog_core.models as models
 
@@ -337,7 +339,7 @@ class TestListItemsFiltering:
 
         list_items(with_status=False, from_github=False)
 
-        mock_batch.assert_called_once()
+        mock_batch.assert_not_called()
 
     def test_list_items_from_github_calls_refresh(self, mocker: MockerFixture) -> None:
         """Verify list_items with from_github=True triggers a cache refresh.
