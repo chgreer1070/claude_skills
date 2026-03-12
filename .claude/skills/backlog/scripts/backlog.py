@@ -42,10 +42,9 @@ import json
 import os
 import re
 import sys
-from datetime import UTC, datetime
 from io import TextIOWrapper
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any
 
 from dotenv import load_dotenv
 
@@ -75,7 +74,30 @@ import operator
 import frontmatter
 from backlog_core import operations as _backlog_operations
 from backlog_core.entry_blocks import rewrite_section as _rewrite_section
-from backlog_core.models import BacklogError as _BacklogError, ItemNotFoundError as _ItemNotFoundError
+from backlog_core.github import create_issue_for_item as _create_issue_for_item
+from backlog_core.models import (
+    BACKLOG_DIR,
+    COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
+    DEFAULT_REPO,
+    FIELD_TO_INDEX,
+    FUZZY_DUPLICATE_THRESHOLD,
+    GITHUB_ISSUE_URL_RE,
+    MIN_FRONTMATTER_PARTS,
+    BacklogError as _BacklogError,
+    BacklogItem,
+    ItemNotFoundError as _ItemNotFoundError,
+    Output as _Output,
+)
+from backlog_core.operations import update_item_metadata as _update_item_metadata
+from backlog_core.parsing import (
+    build_issue_body as _build_issue_body,
+    find_item as _find_item,
+    normalize_issue_title as _normalize_issue_title,
+    now_iso as _now_iso,
+    parse_item_file as _parse_item_file_core,
+    title_to_slug as _title_to_slug,
+    today as _today,
+)
 
 from frontmatter_utils import dump_frontmatter, loads_frontmatter
 from state_handler import BacklogState, StateTransitionError, apply_github_transition
@@ -83,39 +105,6 @@ from state_handler import BacklogState, StateTransitionError, apply_github_trans
 if TYPE_CHECKING:
     from github.Issue import Issue
     from github.Repository import Repository
-
-BACKLOG_DIR = _REPO_ROOT / ".claude" / "backlog"
-DEFAULT_REPO = "Jamie-BitFlight/claude_skills"
-
-# Regex
-SECTION_RE = re.compile(r"^##\s+(P0|P1|P2|Ideas)")
-SKIP_STATUS = ("DONE", "RESOLVED", "COMPLETED")
-GITHUB_ISSUE_URL_RE = re.compile(r"https?://github\.com/([^/]+/[^/]+)/issues/(\d+)")
-GITHUB_ISSUE_TITLE_TRUNCATE = 80
-MIN_FRONTMATTER_PARTS = 3
-TYPE_TO_LABEL = {
-    "feature": "type:feature",
-    "bug": "type:bug",
-    "refactor": "type:refactor",
-    "docs": "type:docs",
-    "chore": "type:chore",
-}
-
-ROLE_MAP = {
-    "Feature": "developer using Claude Code skills",
-    "Bug": "developer relying on this plugin",
-    "Refactor": "maintainer of the codebase",
-    "Docs": "developer reading the documentation",
-    "Chore": "maintainer of the project infrastructure",
-}
-
-BENEFIT_MAP = {
-    "Feature": "the tooling becomes more capable and complete",
-    "Bug": "the tool works correctly and reliably",
-    "Refactor": "the code is cleaner and more maintainable",
-    "Docs": "documentation is accurate and trustworthy",
-    "Chore": "the project infrastructure stays healthy",
-}
 
 app = typer.Typer(help="Backlog and GitHub Issue CRUD — single interface")
 _console = Console()
@@ -159,45 +148,94 @@ def _try_get_github(repo: str) -> Repository | None:
         return None
 
 
-def _infer_type(description: str, title: str) -> str:
-    text = f"{title} {description}".lower()
-    if any(w in text for w in ("fix", "bug", "broken", "vulnerability")):
-        return "type:bug"
-    if any(w in text for w in ("add", "create", "implement", "build")):
-        return "type:feature"
-    if any(w in text for w in ("refactor", "remove dead", "consolidate")):
-        return "type:refactor"
-    if any(w in text for w in ("document", "update readme", "docs")):
-        return "type:docs"
-    return "type:feature"
+def _dict_to_backlog_item_fields(d: dict) -> dict:
+    """Convert a CLI display dict back to BacklogItem field kwargs for model_validate.
 
+    This is the inverse of backlog_item_to_display_dict. Used when the CLI has a
+    list[dict] and needs to pass items to a core function that expects list[BacklogItem].
 
-def _title_to_slug(title: str, max_len: int = 60) -> str:
-    """Convert item title to filename slug.
+    Args:
+        d: CLI item dict with ``_title``, ``_section``, ``**Key**`` fields.
 
     Returns:
-        Slug string suitable for filenames.
+        Dict of BacklogItem field names and values suitable for BacklogItem.model_validate().
     """
-    # Strip strikethrough and status suffixes
-    t = re.sub(r"^~~(.+)~~\s*(RESOLVED|COMPLETED)?\s*$", r"\1", title.strip())
-    t = t.lower()
-    t = re.sub(r"[:\[\]\(\)]", " ", t)
-    t = re.sub(r"[^a-z0-9\s-]", "", t)
-    t = re.sub(r"\s+", "-", t)
-    t = re.sub(r"-+", "-", t).strip("-")
-    return t[:max_len] if len(t) > max_len else t
+    return {
+        "title": d.get("_title", ""),
+        "section": d.get("_section", ""),
+        "file_path": d.get("_file_path", ""),
+        "skip": bool(d.get("_skip")),
+        "issue": d.get("_issue", ""),
+        "raw_body": d.get("_raw_body", ""),
+        "description": d.get("**Description**", ""),
+        "source": d.get("**Source**", "Not specified"),
+        "added": d.get("**Added**", ""),
+        "priority": d.get("**Priority**", ""),
+        "plan": d.get("**Plan**", ""),
+        "item_type": d.get("**Type**", "Feature"),
+        "research_first": d.get("**Research first**", ""),
+        "files": d.get("**Files**", ""),
+        "suggested_location": d.get("**Suggested location**", ""),
+        "groomed": d.get("_groomed", ""),
+        "last_synced": d.get("_last_synced", ""),
+        "status": d.get("_status", ""),
+    }
+
+
+def backlog_item_to_display_dict(item: BacklogItem) -> dict:
+    """Convert a BacklogItem to the dict format the CLI's display and mutation code expects.
+
+    This is a LOCAL adapter helper in backlog.py (not in backlog_core/). It is explicitly
+    temporary per architecture spec Section 5.6 — exists to bridge the BacklogItem type
+    returned by backlog_core parsing functions and the dict-based CLI call sites.
+
+    Maps typed fields to underscore-prefixed keys and bold-star metadata keys used
+    throughout the CLI commands.
+
+    Args:
+        item: Parsed BacklogItem from backlog_core parsing functions.
+
+    Returns:
+        Dict with ``_title``, ``_section``, ``_file_path``, ``_skip``, ``_issue``,
+        ``_raw_body``, ``_groomed``, ``_last_synced`` and ``**Key**`` metadata keys.
+    """
+    d: dict = {
+        "_title": item.title,
+        "_section": item.section,
+        "_file_path": item.file_path,
+        "_skip": item.skip,
+        "_issue": item.issue,
+        "_raw_body": item.raw_body,
+        "**Description**": item.description,
+        "**Source**": item.source,
+        "**Added**": item.added,
+        "**Priority**": item.priority,
+        "**Plan**": item.plan,
+        "**Type**": item.item_type,
+        "**Research first**": item.research_first,
+        "**Files**": item.files,
+        "**Suggested location**": item.suggested_location,
+    }
+    if item.groomed:
+        d["_groomed"] = item.groomed
+    if item.last_synced:
+        d["_last_synced"] = item.last_synced
+    return d
 
 
 def _parse_backlog_from_directory() -> list[dict]:
     """Parse backlog items directly from .claude/backlog/ per-item files.
 
-    Scans the directory, reads frontmatter from each file, and derives the
-    priority section from the filename prefix. This is the primary parsing
-    path — BACKLOG.md is not required.
+    Uses the module-level BACKLOG_DIR so tests can redirect it via monkeypatch.
+    Mirrors the logic in backlog_core.parsing.parse_backlog_from_directory but
+    reads from the local BACKLOG_DIR name instead of the core's private binding.
 
     Returns:
         List of item dicts with _section, _title, and field keys.
     """
+    # Use module-level BACKLOG_DIR so tests can patch it via monkeypatch.setattr(_mod, "BACKLOG_DIR", ...)
+    # Do NOT call _parse_backlog_from_directory_core() — it reads backlog_core.models.BACKLOG_DIR
+    # which ignores the patched value.
     if not BACKLOG_DIR.exists():
         return []
     prefix_to_section = {
@@ -221,71 +259,47 @@ def _parse_backlog_from_directory() -> list[dict]:
             item_text = filepath.read_text(encoding="utf-8")
         except OSError:
             continue
-        item = _parse_item_file(item_text, filepath)
-        # Filename-derived section; override with metadata if available
-        meta_priority = item.get("**Priority**", "")
+        item = _parse_item_file_core(item_text, filepath)
+        meta_priority = item.priority
         if meta_priority and meta_priority.upper() in {"P0", "P1", "P2"}:
             section = meta_priority.upper()
-        item["_section"] = section
-        if not item.get("_title"):
-            item["_title"] = name
-        item["_file_path"] = str(filepath)
+        item.section = section
+        if not item.title:
+            item.title = name
+        item.file_path = str(filepath)
         if section == "Completed":
-            item["_skip"] = True
-        items.append(item)
+            item.skip = True
+        items.append(backlog_item_to_display_dict(item))
     return items
 
 
 def parse_backlog() -> list[dict]:
     """Parse backlog items from .claude/backlog/ per-item files.
 
+    Uses the module-level BACKLOG_DIR so tests can redirect it via monkeypatch.
+    Delegates directory iteration to _parse_backlog_from_directory() which
+    uses the patchable local BACKLOG_DIR name.
+
     Returns:
         List of item dicts with _section, _title, and field keys.
     """
+    # Use _parse_backlog_from_directory() — NOT _parse_backlog_core() — so that
+    # tests patching _mod.BACKLOG_DIR via monkeypatch.setattr take effect.
+    # _parse_backlog_core() reads backlog_core.models.BACKLOG_DIR directly and
+    # ignores any patches applied to the backlog.py module namespace.
     return _parse_backlog_from_directory()
 
 
 def _parse_item_file(text: str, path: Path) -> dict:
-    """Parse a single per-item backlog file (frontmatter + body). Handles both flat and research-style metadata block.
+    """Parse a single per-item backlog file (frontmatter + body).
+
+    Delegates to backlog_core.parsing.parse_item_file and converts the BacklogItem
+    to the dict format the CLI expects via backlog_item_to_display_dict.
 
     Returns:
         Item dict with _title, _raw_body, and field keys.
     """
-    item: dict = {}
-    if not text.startswith("---"):
-        return {"_raw_body": text}
-    try:
-        post = loads_frontmatter(text)
-        fm = post.metadata or {}
-        body = post.content or ""
-    except (ValueError, KeyError, TypeError):
-        parts = text.split("---", 2)
-        fm, body = {}, parts[2].strip() if len(parts) >= MIN_FRONTMATTER_PARTS else text
-    meta_raw = fm.get("metadata")
-    meta = dict(meta_raw) if isinstance(meta_raw, dict) else {}
-    # Research-style: name, description, metadata.*
-    # Flat (legacy): title, source, added, ...
-    item["_title"] = str(fm.get("name") or fm.get("title") or "")
-    item["**Description**"] = str(fm.get("description") or "")
-    item["**Source**"] = str(meta.get("source") or fm.get("source") or "")
-    item["**Added**"] = str(meta.get("added") or fm.get("added") or "")
-    item["**Priority**"] = str(meta.get("priority") or fm.get("priority") or "")
-    item["_issue"] = str(meta.get("issue") or fm.get("issue") or "")
-    plan = str(meta.get("plan") or fm.get("plan") or "")
-    item["**Plan**"] = "" if plan.upper() == "N/A" else plan
-    status = str(meta.get("status") or fm.get("status") or "").lower()
-    if status in {"done", "resolved"}:
-        item["_skip"] = True
-    groomed = meta.get("groomed") or fm.get("groomed")
-    if groomed:
-        item["_groomed"] = str(groomed)
-    last_synced = meta.get("last_synced") or fm.get("last_synced") or ""
-    if last_synced:
-        item["_last_synced"] = str(last_synced)
-    item["_raw_body"] = body
-    if "_groomed" not in item and "## Groomed" in body:
-        item["_groomed"] = "true"
-    return item
+    return backlog_item_to_display_dict(_parse_item_file_core(text, path))
 
 
 def _parse_issue_selector(selector: str) -> str | None:
@@ -318,6 +332,9 @@ def _parse_issue_selector(selector: str) -> str | None:
 def find_item(items: list[dict], selector: str) -> dict | None:
     """Find item by title substring, #N, bare number, or GitHub issue URL.
 
+    Converts dicts back to BacklogItem objects for the core find_item call, then
+    returns the original dict (preserving all CLI-only fields like _file_path).
+
     Supports:
       - ``https://github.com/owner/repo/issues/123`` — extract issue number
       - ``#123`` — match by issue number
@@ -327,39 +344,16 @@ def find_item(items: list[dict], selector: str) -> dict | None:
     Returns:
         Matching item dict or None.
     """
-    selector = selector.strip()
-    issue_num = _parse_issue_selector(selector)
-    if issue_num is not None:
-        for it in items:
-            issue_ref = it.get("_issue") or ""
-            if issue_ref.lstrip("#") == issue_num:
-                return it
+    core_items = [BacklogItem.model_validate(_dict_to_backlog_item_fields(d)) for d in items]
+    result = _find_item(core_items, selector)
+    if result is None:
         return None
-    # Title substring match (case-insensitive)
-    selector_lower = selector.lower()
-    matches = [it for it in items if selector_lower in it.get("_title", "").lower()]
-    return matches[0] if len(matches) == 1 else (matches[0] if matches else None)
-
-
-_COMMIT_PREFIX_RE = re.compile(r"^(feat|fix|refactor|docs|chore|perf|test|ci):\s*", re.IGNORECASE)
-
-
-def _normalize_issue_title(title: str) -> str:
-    """Strip conventional-commit prefix and normalize for dedup comparison.
-
-    Returns:
-        Lowercased title with any ``feat:``/``fix:``/etc. prefix removed.
-
-    Examples:
-        >>> _normalize_issue_title("feat: SAM: Error Recovery")
-        'sam: error recovery'
-        >>> _normalize_issue_title("SAM: Error Recovery")
-        'sam: error recovery'
-    """
-    return _COMMIT_PREFIX_RE.sub("", title).strip().lower()
-
-
-FUZZY_DUPLICATE_THRESHOLD = 0.80
+    # _find_item returns one of the core_items objects; find its index to return the original dict
+    for idx, core in enumerate(core_items):
+        if core is result:
+            return items[idx]
+    # Fallback: should not be reached but converts result if identity match failed
+    return backlog_item_to_display_dict(result)
 
 
 def _find_fuzzy_duplicates(
@@ -466,75 +460,32 @@ def _build_issue_body_from_file(item: dict) -> str | None:
 def build_issue_body(item: dict) -> str:
     """Build GitHub issue body from backlog item fields.
 
+    Converts the CLI item dict to BacklogItem and delegates to backlog_core.parsing.build_issue_body.
+
     Returns:
         Markdown-formatted issue body string.
     """
-    title = item.get("_title", "")
-    desc = item.get("**Description**", "")
-    source = item.get("**Source**", "Not specified")
-    added = item.get("**Added**", "")
-    priority = item.get("**Priority**", "")
-    item_type = item.get("**Type**", "Feature")
-    research = item.get("**Research first**", "")
-    files = item.get("**Files**", "")
-    suggested_location = item.get("**Suggested location**", "")
-    role = ROLE_MAP.get(item_type, "developer using Claude Code skills")
-    benefit = BENEFIT_MAP.get(item_type, "the product improves")
-    goal = title.rstrip(".")
-
-    sections = [
-        f"## Story\n\nAs a **{role}**, I want to **{goal.lower()}** so that **{benefit}**.",
-        f"## Description\n\n{desc}",
-        "## Acceptance Criteria\n\n- [ ] Work matches description\n- [ ] Plan or implementation complete",
-    ]
-
-    if files:
-        sections.append(f"## Files\n\n{files}")
-
-    if suggested_location:
-        sections.append(f"## Suggested Location\n\n{suggested_location}")
-
-    context_lines = [
-        f"- **Source**: {source}",
-        f"- **Priority**: {priority}",
-        f"- **Added**: {added}",
-        f"- **Research questions**: {research or 'None'}",
-    ]
-    sections.append("## Context\n\n" + "\n".join(context_lines))
-
-    return "\n\n".join(sections) + "\n"
+    return _build_issue_body(BacklogItem.model_validate(_dict_to_backlog_item_fields(item)))
 
 
 def create_issue_for_item(repo: Repository, item: dict, dry_run: bool = False) -> int | None:
     """Create GitHub issue for backlog item.
 
+    Converts the CLI item dict to BacklogItem and delegates to backlog_core.github.create_issue_for_item.
+    Captures output messages and warnings via an Output collector and prints them with typer.echo.
+
     Returns:
         Issue number if created, None otherwise.
     """
-    title = item.get("_title", "")
-    if not title:
-        return None
-    type_label = item.get("**Type**", "")
-    type_map = {"feature": "feat", "bug": "fix", "refactor": "refactor", "docs": "docs", "chore": "chore"}
-    prefix = type_map.get(type_label.lower(), "feat")
-    issue_title = f"{prefix}: {title}"
-    body = build_issue_body(item)
-    priority = item.get("**Priority**", "P1")
-    type_gh = TYPE_TO_LABEL.get(type_label.lower()) or _infer_type(item.get("**Description**", ""), title)
-    priority_gh = f"priority:{priority.lower()}"
-    if dry_run:
-        typer.echo(f"  [dry-run] Would create: {issue_title}")
-        return None
-    labels = ["status:needs-grooming", priority_gh, type_gh]
-    label_objs = []
-    for name in labels:
-        try:
-            label_objs.append(repo.get_label(name))
-        except GithubException:
-            typer.echo(f"  WARNING: label '{name}' not found", err=True)
-    issue = repo.create_issue(title=issue_title, body=body, labels=label_objs)
-    typer.echo(f"  Created #{issue.number}: {issue_title[:60]}...")
-    return issue.number
+    out = _Output()
+    result = _create_issue_for_item(
+        repo, BacklogItem.model_validate(_dict_to_backlog_item_fields(item)), dry_run=dry_run, output=out
+    )
+    for msg in out.messages:
+        typer.echo(msg)
+    for warn in out.warnings:
+        typer.echo(warn, err=True)
+    return result
 
 
 def _create_issue_and_update_item(item: dict, repo: str) -> int | None:
@@ -556,45 +507,6 @@ def _create_issue_and_update_item(item: dict, repo: str) -> int | None:
         if filepath_str:
             _update_item_metadata(Path(filepath_str), {"metadata": {"issue": f"#{issue_num}"}})
         return issue_num
-
-
-def _today() -> str:
-    return datetime.now(UTC).strftime("%Y-%m-%d")
-
-
-def _now_iso() -> str:
-    """Return current UTC time as ISO 8601 string for last_synced tracking."""
-    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def _update_item_metadata(filepath: Path, updates: dict[str, Any], set_synced: bool = False) -> None:
-    """Update per-item file frontmatter. Supports nested metadata.plan, metadata.issue, etc.
-
-    When set_synced=True, also sets metadata.last_synced to current UTC time.
-    """
-    post = loads_frontmatter(filepath.read_text(encoding="utf-8"))
-    meta = post.metadata or {}
-    for key, value in updates.items():
-        if key == "metadata" and isinstance(value, dict):
-            raw_nested = meta.get("metadata")
-            nested_dict: dict[str, Any] = (
-                cast("dict[str, Any]", dict(raw_nested.items())) if isinstance(raw_nested, dict) else {}
-            )
-            nested_dict.update(value)
-            if set_synced:
-                nested_dict["last_synced"] = _now_iso()
-            meta["metadata"] = nested_dict
-        else:
-            meta[key] = value
-    if set_synced and "metadata" not in updates:
-        raw_nested = meta.get("metadata")
-        nested_dict2: dict[str, Any] = (
-            cast("dict[str, Any]", dict(raw_nested.items())) if isinstance(raw_nested, dict) else {}
-        )
-        nested_dict2["last_synced"] = _now_iso()
-        meta["metadata"] = nested_dict2
-    post.metadata = meta
-    filepath.write_text(dump_frontmatter(post), encoding="utf-8")
 
 
 def _issue_to_local_fields(issue: Issue) -> dict[str, str]:
@@ -1407,16 +1319,6 @@ def _build_backlog_frontmatter(
     return dump_frontmatter(post)
 
 
-_FIELD_TO_INDEX: dict[str, int] = {
-    "description": 0,
-    "suggested location": 1,
-    "research first": 2,
-    "decision needed": 3,
-    "files": 4,
-    "required work": 5,
-}
-
-
 def _apply_field_to_result(key_lower: str, val: str) -> tuple[str, str, str, str, str, str]:
     """Return (desc, suggested, research, decision, files_val, required_work) with val applied to the matching key.
 
@@ -1424,8 +1326,8 @@ def _apply_field_to_result(key_lower: str, val: str) -> tuple[str, str, str, str
         Tuple of (desc, suggested, research, decision, files_val, required_work).
     """
     result: list[str] = ["", "", "", "", "", ""]
-    if key_lower in _FIELD_TO_INDEX:
-        result[_FIELD_TO_INDEX[key_lower]] = val
+    if key_lower in FIELD_TO_INDEX:
+        result[FIELD_TO_INDEX[key_lower]] = val
     return (result[0], result[1], result[2], result[3], result[4], result[5])
 
 

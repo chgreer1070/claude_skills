@@ -28,14 +28,15 @@ from frontmatter_utils import dump_frontmatter, loads_frontmatter
 # Imports from sibling models module
 # ---------------------------------------------------------------------------
 from .models import (
-    _COMMIT_PREFIX_RE,
-    _FIELD_TO_INDEX,
     BACKLOG_DIR,
     BENEFIT_MAP,
+    COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
+    FIELD_TO_INDEX as _FIELD_TO_INDEX,
     FUZZY_DUPLICATE_THRESHOLD,
     GITHUB_ISSUE_URL_RE,
     MIN_FRONTMATTER_PARTS,
     ROLE_MAP,
+    SKIP_STATUS,
     BacklogItem,
     SamTask,
     ViewItemResult,
@@ -241,7 +242,7 @@ def parse_item_file(text: str, path: Path) -> BacklogItem:
         priority=_fm_str(fm, meta, "priority"),
         issue=_fm_str(fm, meta, "issue"),
         plan="" if plan_raw.upper() == "N/A" else plan_raw,
-        skip=status_raw.lower() in {"done", "resolved"},
+        skip=status_raw.upper() in SKIP_STATUS,
         status=status_raw,
         groomed=groomed,
         last_synced=_fm_str(fm, meta, "last_synced"),
