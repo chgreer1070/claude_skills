@@ -2,6 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
+#     "anthropic>=0.80.0",
 #     "duckdb>=1.0.0",
 #     "typer>=0.21.0"
 # ]
@@ -28,6 +29,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
+import anthropic  # noqa: F401
 import duckdb
 import typer
 from rich import box
