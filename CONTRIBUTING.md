@@ -213,14 +213,14 @@ Validate skill and agent frontmatter:
 
 ```bash
 # Single file
-uvx skilllint@latest path/to/SKILL.md
+uvx skilllint@latest check path/to/SKILL.md
 
 # Entire directory
-uvx skilllint@latest plugins/your-plugin/
+uvx skilllint@latest check plugins/your-plugin/
 
 # Auto-fix issues (dry-run first)
-uvx skilllint@latest --check path/to/SKILL.md
-uvx skilllint@latest --fix path/to/SKILL.md
+uvx skilllint@latest check --check path/to/SKILL.md
+uvx skilllint@latest check --fix path/to/SKILL.md
 ```
 
 ### Linting

@@ -480,7 +480,7 @@ When creating agents for plugins, additional considerations apply:
 
 ```bash
 # Validate frontmatter
-uvx skilllint@latest ./agents/my-agent.md
+uvx skilllint@latest check ./agents/my-agent.md
 
 # Validate complete plugin
 claude plugin validate ./path/to/plugin
@@ -543,16 +543,16 @@ Use the validation script for comprehensive checks:
 
 ```bash
 # Validate single agent
-uvx skilllint@latest ./agents/my-agent.md
+uvx skilllint@latest check ./agents/my-agent.md
 
 # Auto-fix common issues (dry-run first)
-uvx skilllint@latest --check ./agents/my-agent.md
+uvx skilllint@latest check --check ./agents/my-agent.md
 
 # Batch validation
-uvx skilllint@latest ./agents/
+uvx skilllint@latest check ./agents/
 
 # Batch fix
-uvx skilllint@latest --fix ./agents/
+uvx skilllint@latest check --fix ./agents/
 ```
 
 **What the validator checks**:

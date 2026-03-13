@@ -199,7 +199,7 @@ Skill(skill="plugin-creator:claude-skills-overview-2026")  # Load format referen
 - Preserve content fidelity during splits (no information loss)
 - Maintain or improve frontmatter quality
 - Ensure all cross-references resolve
-- Keep token counts within thresholds (run `uvx skilllint@latest <skill-path>` after writing and follow its guidance on sizing)
+- Keep token counts within thresholds (run `uvx skilllint@latest check <skill-path>` after writing and follow its guidance on sizing)
 
 ---
 

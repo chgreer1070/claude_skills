@@ -521,7 +521,7 @@ repos:
     hooks:
       - id: skilllint
         name: Validate Plugin Components
-        entry: uvx skilllint@latest
+        entry: uvx skilllint@latest check
         language: system
         files: '^plugins/.*/.*\.(md|json)$'
         pass_filenames: false

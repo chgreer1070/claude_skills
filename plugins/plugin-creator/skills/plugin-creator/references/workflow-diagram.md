@@ -157,7 +157,7 @@ flowchart TD
 flowchart TD
     Start(["All tasks complete"]) --> L1L2["Run Layer 1 and Layer 2 in parallel"]
 
-    L1L2 --> L1["Layer 1 — Script validation (parallel):<br>uv run scripts/create_plugin.py validate ./plugins/{plugin-name}<br>uvx skilllint@latest ./plugins/{plugin-name}"]
+    L1L2 --> L1["Layer 1 — Script validation (parallel):<br>uv run scripts/create_plugin.py validate ./plugins/{plugin-name}<br>uvx skilllint@latest check ./plugins/{plugin-name}"]
 
     L1L2 --> L2["Layer 2 — Official docs verification:<br>subagent_type='general-purpose'<br>Fetch plugins-reference.md and skills.md;<br>compare plugin against schema requirements;<br>output PASS with all compliant, or FAIL with file:line violations"]
 
@@ -208,7 +208,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start(["Documentation complete"]) --> Check1{"Check 1 — Works Check:<br>Run: uvx skilllint@latest ./plugins/{plugin-name}<br>Exit code = 0?"}
+    Start(["Documentation complete"]) --> Check1{"Check 1 — Works Check:<br>Run: uvx skilllint@latest check ./plugins/{plugin-name}<br>Exit code = 0?"}
 
     Check1 -->|"Non-zero — validation failures remain"| Fix1["Return to Phase 4 —<br>re-run validation loop"]
 
@@ -324,7 +324,7 @@ SOURCE: Verified from plugin-creator agents directory
 
 | Script | Command | Output |
 |---|---|---|
-| `skilllint` | `uvx skilllint@latest {path}` | Exit code 0 = pass; non-zero = error codes with file:line |
+| `skilllint` | `uvx skilllint@latest check {path}` | Exit code 0 = pass; non-zero = error codes with file:line |
 | `create_plugin.py validate` | `uv run scripts/create_plugin.py validate {plugin-path}` | Pass/fail with structural issues |
 
 SOURCE: Verified from plugin-creator scripts directory

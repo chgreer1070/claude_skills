@@ -127,7 +127,7 @@ repos:
 
       - id: skilllint
         name: Validate and fix plugins, skills, agents, commands
-        entry: uvx skilllint@latest --fix
+        entry: uvx skilllint@latest check --fix
         language: system
         stages: [pre-commit]
         pass_filenames: true

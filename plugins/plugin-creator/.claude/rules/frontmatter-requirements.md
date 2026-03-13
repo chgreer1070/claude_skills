@@ -31,7 +31,7 @@ paths:
 Run after writing or editing any frontmatter file:
 
 ```bash
-uvx skilllint@latest --fix {path}
+uvx skilllint@latest check --fix {path}
 ```
 
 The validator auto-adds `name:` derived from the directory name when absent (plugin skills only).

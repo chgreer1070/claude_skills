@@ -1,13 +1,13 @@
 ---
-name: Replace plugin_validator.py with uvx skilllint@latest across all invocation sites
-description: 'The repository uses `uv run plugins/plugin-creator/scripts/plugin_validator.py` in ~46 files (~150+ occurrences) across pre-commit hooks, CI workflows, agent files, SKILL.md files, rules, and documentation. The `skilllint` CLI (`uvx skilllint@latest`) is the replacement and is already available on PyPI. All invocation sites need to be updated to use `uvx skilllint@latest` instead. A full audit of affected files has been written to `.claude/reports/skilllint-migration-audit.md`. Success looks like: `plugin_validator.py` is no longer referenced in any invocation context (pre-commit, CI, agent/skill instructions, rules, docs), all hooks and workflows use `uvx skilllint@latest`, and the pre-commit hook id is updated consistently across all files that reference it by id.'
+name: Replace plugin_validator.py with uvx skilllint@latest check across all invocation sites
+description: 'The repository uses `uv run plugins/plugin-creator/scripts/plugin_validator.py` in ~46 files (~150+ occurrences) across pre-commit hooks, CI workflows, agent files, SKILL.md files, rules, and documentation. The `skilllint` CLI (`uvx skilllint@latest check`) is the replacement and is already available on PyPI. All invocation sites need to be updated to use `uvx skilllint@latest check` instead. A full audit of affected files has been written to `.claude/reports/skilllint-migration-audit.md`. Success looks like: `plugin_validator.py` is no longer referenced in any invocation context (pre-commit, CI, agent/skill instructions, rules, docs), all hooks and workflows use `uvx skilllint@latest check`, and the pre-commit hook id is updated consistently across all files that reference it by id.'
 metadata:
   topic: replace-pluginvalidatorpy-with-uvx-skilllintlatest-across-al
   source: Session observation
   added: '2026-03-13'
-  priority: P0
+  priority: completed
   type: Refactor
-  status: open
+  status: done
   issue: '#684'
   last_synced: '2026-03-13T19:11:28Z'
   groomed: '2026-03-13'
@@ -20,7 +20,7 @@ metadata:
 
 Verified 2026-03-13 against codebase and PyPI:
 
-- `uvx skilllint@latest` available on PyPI: VERIFIED
+- `uvx skilllint@latest check` available on PyPI: VERIFIED
 - Audit file at `.claude/reports/skilllint-migration-audit.md`: VERIFIED
 - Scope claim of "~46 files / ~150+ occurrences" in original description: REFUTED — audit summary footer repeats this number but the per-category tables enumerate far more actionable sites; independent grep `grep -r "plugin_validator" . --include="*.md" --include="*.yaml" --include="*.yml" | wc -l` returns 1,988 occurrences across 395 files (historical/archive files included). Actionable (non-archive) files: ~46 files per the audit summary table, but each file contains multiple occurrences. The 395/1,988 figures include out-of-scope archive/plan/research files explicitly listed in the audit as out-of-scope.
 </div>
@@ -31,10 +31,10 @@ Verified 2026-03-13 against codebase and PyPI:
 
 Decision: APPROVED (pre-computed by orchestrator, 2026-03-13)
 
-Goal: Replace all `uv run plugins/plugin-creator/scripts/plugin_validator.py` invocations with `uvx skilllint@latest` across pre-commit hooks, CI workflows, agent files, skill files, rules, and documentation.
+Goal: Replace all `uv run plugins/plugin-creator/scripts/plugin_validator.py` invocations with `uvx skilllint@latest check` across pre-commit hooks, CI workflows, agent files, skill files, rules, and documentation.
 
 Conditions verified:
-- Replacement CLI (`uvx skilllint@latest`) available on PyPI: AVAILABLE — verified
+- Replacement CLI (`uvx skilllint@latest check`) available on PyPI: AVAILABLE — verified
 - Full audit of affected files exists: AVAILABLE — `.claude/reports/skilllint-migration-audit.md`
 - CLI flag/subcommand compatibility: DERIVABLE — audit notes pre-migration check (`uvx skilllint@latest --help`) is required before applying changes; flags listed in audit mapping table
 - Pre-commit hook id ripple: AVAILABLE — audit §Special Cases documents 4 additional files that reference `plugin-validator` by id
@@ -86,8 +86,8 @@ grep -r "plugin_validator" . \
 # Expected output: 0
 ```
 
-- `uv run prek run --all-files` completes without error, and the output shows `uvx skilllint@latest` in the hook command line, not `plugin_validator.py`
-- `.github/workflows/code-quality.yml` CI job passes using `uvx skilllint@latest`
+- `uv run prek run --all-files` completes without error, and the output shows `uvx skilllint@latest check` in the hook command line, not `plugin_validator.py`
+- `.github/workflows/code-quality.yml` CI job passes using `uvx skilllint@latest check`
 - Pre-commit hook id in `.pre-commit-config.yaml` and all referencing files agree on the same id (`skilllint`)
 
 ### Priority
@@ -111,14 +111,14 @@ grep -r "plugin_validator" . \
 
 After migration:
 
-- `.pre-commit-config.yaml` hook entry calls `uvx skilllint@latest --fix` with an id of `skilllint`
-- `.github/workflows/code-quality.yml` calls `uvx skilllint@latest` (or `prek run skilllint`) with the updated hook id in the SKIP list
-- All agent files (`agent-creator.md`, `hook-creator.md`, `plugin-assessor.md`, `refactor-validator.md`) reference `uvx skilllint@latest` in their validation steps
-- All SKILL.md files reference `uvx skilllint@latest`
-- All `.claude/rules/` files reference `uvx skilllint@latest`
-- `CONTRIBUTING.md` examples use `uvx skilllint@latest`
+- `.pre-commit-config.yaml` hook entry calls `uvx skilllint@latest check --fix` with an id of `skilllint`
+- `.github/workflows/code-quality.yml` calls `uvx skilllint@latest check` (or `prek run skilllint`) with the updated hook id in the SKIP list
+- All agent files (`agent-creator.md`, `hook-creator.md`, `plugin-assessor.md`, `refactor-validator.md`) reference `uvx skilllint@latest check` in their validation steps
+- All SKILL.md files reference `uvx skilllint@latest check`
+- All `.claude/rules/` files reference `uvx skilllint@latest check`
+- `CONTRIBUTING.md` examples use `uvx skilllint@latest check`
 - All reference files (`USAGE.md`, `ARCHITECTURE.md`, `ERROR_CODES.md`, etc.) reference `skilllint` as the tool name
-- `plugins/plugin-creator/skills/lint/SKILL.md` line 10 uses `` !`uvx skilllint@latest <lint_target/>` ``
+- `plugins/plugin-creator/skills/lint/SKILL.md` line 10 uses `` !`uvx skilllint@latest check <lint_target/>` ``
 
 ### Acceptance Criteria
 
@@ -141,7 +141,7 @@ After migration:
 
 ### Dependencies
 
-- Depends on: `uvx skilllint@latest` available in CI runner environment (verify with `uvx skilllint@latest --version` in a CI step before migration commit is merged)
+- Depends on: `uvx skilllint@latest check` available in CI runner environment (verify with `uvx skilllint@latest check --version` in a CI step before migration commit is merged)
 - Blocks: None (no other backlog items identified as waiting on this)
 
 ### Blockers

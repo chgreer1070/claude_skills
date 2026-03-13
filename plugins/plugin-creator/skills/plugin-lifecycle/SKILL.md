@@ -63,7 +63,7 @@ flowchart TD
     %% Existing path: Assess then validator
     Assess --> AssessFile{"File .claude/plan/NAME/assessment-REPORT.md<br>exists and is non-empty?"}
     AssessFile -->|"No — assessor did not complete"| Assess
-    AssessFile -->|"Yes — assessment written"| AssessGate{"Run: uvx skilllint@latest PATH<br>Exit code?"}
+    AssessFile -->|"Yes — assessment written"| AssessGate{"Run: uvx skilllint@latest check PATH<br>Exit code?"}
     AssessGate -->|"0 — no validation errors"| Optimize["Phase 6 — Optimize"]
     AssessGate -->|"non-zero — errors found"| Debug["Phase 5 — Debug"]
 
@@ -84,12 +84,12 @@ flowchart TD
     CreateGate -->|"No — one or more files missing"| Create
 
     %% Shared Debug phase (both paths converge here)
-    Debug --> DebugGate{"Run: uvx skilllint@latest PATH<br>Exit code 0 AND 0 errors?<br>(warnings acceptable)"}
+    Debug --> DebugGate{"Run: uvx skilllint@latest check PATH<br>Exit code 0 AND 0 errors?<br>(warnings acceptable)"}
     DebugGate -->|"Yes — 0 errors, validation passes"| Optimize
     DebugGate -->|"No — errors remain"| Debug
 
     %% Optimize gate
-    Optimize --> OptGate{"Run: uvx skilllint@latest PATH<br>Output contains 'Score:' line?"}
+    Optimize --> OptGate{"Run: uvx skilllint@latest check PATH<br>Output contains 'Score:' line?"}
     OptGate -->|"Score >= 80 — quality target met"| Docs["Phase 6.5 — Documentation"]
     OptGate -->|"Score < 80 — quality below target"| Optimize
     OptGate -->|"No score in output — user acceptance required"| OptUser{"User accepts current quality?"}
@@ -102,7 +102,7 @@ flowchart TD
     DocsGate -->|"No — README.md absent or empty"| Docs
 
     %% Verify: 4 discrete layers
-    Verify --> VL1{"Layer 1 — Run: uvx skilllint@latest PATH<br>Exit code 0?"}
+    Verify --> VL1{"Layer 1 — Run: uvx skilllint@latest check PATH<br>Exit code 0?"}
     VL1 -->|"Yes — structural validation passes"| VL2{"Layer 2 — Run: claude plugin validate PATH<br>Exit code 0?"}
     VL1 -->|"No — structural errors found"| VerifyFail["Return to Phase 5 — Debug<br>with Layer 1 error details"]
     VL2 -->|"Yes — runtime validation passes"| VL3{"Layer 3 — skilllint output<br>contains SK006 or SK007 for any skill?"}
@@ -251,7 +251,7 @@ flowchart TD
     AssessFile{"File .claude/plan/NAME/assessment-REPORT.md<br>exists and is non-empty?"}
     AssessFile -->|"No — assessor did not complete"| RetryAssess["Re-run assessor skill<br>with plugin directory path"]
     RetryAssess --> AssessFile
-    AssessFile -->|"Yes — assessment written"| ValidatorGate{"Run: uvx skilllint@latest PATH<br>Exit code?"}
+    AssessFile -->|"Yes — assessment written"| ValidatorGate{"Run: uvx skilllint@latest check PATH<br>Exit code?"}
     ValidatorGate -->|"0 — no validation errors"| Skip["Proceed to Phase 6 — Optimize"]
     ValidatorGate -->|"non-zero — errors found"| Next["Proceed to Phase 5 — Debug"]
 ```
@@ -431,7 +431,7 @@ Entry condition: Create gate passed (new path) OR Assess gate failed (existing p
 Debug fixes validation errors. Run the validator first to identify issues:
 
 ```bash
-uvx skilllint@latest <plugin-path>
+uvx skilllint@latest check <plugin-path>
 ```
 
 The following diagram is the authoritative procedure for Phase 5 Debug error routing and completion gate. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
@@ -439,7 +439,7 @@ The following diagram is the authoritative procedure for Phase 5 Debug error rou
 ```mermaid
 flowchart TD
     %% Entry: run validator to get current error list
-    RunValidator["Run: uvx skilllint@latest PATH<br>Capture full output"] --> HasErrors{"Exit code 0<br>AND 0 errors in output?<br>(warnings are acceptable)"}
+    RunValidator["Run: uvx skilllint@latest check PATH<br>Capture full output"] --> HasErrors{"Exit code 0<br>AND 0 errors in output?<br>(warnings are acceptable)"}
     HasErrors -->|"Yes — 0 errors, validation passes"| Next["Proceed to Phase 6 — Optimize"]
     HasErrors -->|"No — errors remain"| Q{"Error type in validator output?"}
 
@@ -485,7 +485,7 @@ The following diagram is the authoritative procedure for Phase 6 Optimize comple
 ```mermaid
 flowchart TD
     %% Score line presence determines which branch to take
-    ScoreCheck{"Run: uvx skilllint@latest PATH<br>Does output contain a 'Score:' line?"}
+    ScoreCheck{"Run: uvx skilllint@latest check PATH<br>Does output contain a 'Score:' line?"}
     ScoreCheck -->|"Yes — score present in output"| ScoreVal{"Score value >= 80?"}
     ScoreCheck -->|"No — validator produces no score"| UserAccept{"Ask user — accept current quality<br>and proceed to documentation?"}
 
@@ -535,7 +535,7 @@ Run multi-layer validation:
 2. Layer 1 — Structural validation:
 
    ```bash
-   uvx skilllint@latest <plugin-path>
+   uvx skilllint@latest check <plugin-path>
    ```
 
 3. Layer 2 — Runtime validation:
@@ -553,7 +553,7 @@ The following diagram is the authoritative procedure for Phase 7 Verify 4-layer 
 ```mermaid
 flowchart TD
     %% Layer 1: structural validator
-    VL1{"Layer 1 — Run: uvx skilllint@latest PATH<br>Exit code 0 AND 0 errors in output?"}
+    VL1{"Layer 1 — Run: uvx skilllint@latest check PATH<br>Exit code 0 AND 0 errors in output?"}
     VL1 -->|"Yes — structural validation passes"| VL2{"Layer 2 — Run: claude plugin validate PATH<br>Exit code 0?"}
     VL1 -->|"No — structural errors found"| Fail1["Capture Layer 1 error details<br>Proceed to Phase 5 — Debug with these errors"]
 

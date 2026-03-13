@@ -162,7 +162,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start(["Agent file saved"]) --> V1["Run: uvx skilllint@latest {agent-path}"]
+    Start(["Agent file saved"]) --> V1["Run: uvx skilllint@latest check {agent-path}"]
     V1 --> Q1{"Exit code from<br>skilllint?"}
     Q1 -->|"non-zero — errors reported"| Fix1["Fix all reported errors<br>in agent file"]
     Fix1 --> V1

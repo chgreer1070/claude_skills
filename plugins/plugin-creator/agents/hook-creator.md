@@ -295,7 +295,7 @@ For plugin hooks, write or update `hooks/hooks.json`:
 Run plugin validator after wiring:
 
 ```bash
-uvx skilllint@latest ./path/to/plugin
+uvx skilllint@latest check ./path/to/plugin
 ```
 
 Fix any reported issues before reporting completion.

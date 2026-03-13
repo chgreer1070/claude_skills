@@ -1,11 +1,11 @@
 ---
 feature: replace-pluginvalidatorpy-with-uvx-skilllint
-title: "Replace plugin_validator.py with uvx skilllint@latest across all invocation sites"
+title: "Replace plugin_validator.py with uvx skilllint@latest check across all invocation sites"
 github_issue: 684
 parent_issue_number: 684
 description: |
   Migrate all ~46 actionable files from `uv run plugins/plugin-creator/scripts/plugin_validator.py`
-  to `uvx skilllint@latest`. The audit is at `.claude/reports/skilllint-migration-audit.md`.
+  to `uvx skilllint@latest check`. The audit is at `.claude/reports/skilllint-migration-audit.md`.
 
   CLI surface verified 2026-03-13:
   - No subcommands (validate/batch/fix/fix-batch eliminated — use positional PATHS)
@@ -21,7 +21,7 @@ description: |
 context_manifest:
   audit_report: .claude/reports/skilllint-migration-audit.md
   old_invocation: "uv run plugins/plugin-creator/scripts/plugin_validator.py"
-  new_invocation: "uvx skilllint@latest"
+  new_invocation: "uvx skilllint@latest check"
   old_hook_id: plugin-validator
   new_hook_id: skilllint
   verified_cli: true
@@ -37,12 +37,12 @@ context_manifest:
 
 ## Description
 
-Update `.pre-commit-config.yaml` to use `uvx skilllint@latest` and change the hook id from `plugin-validator` to `skilllint`.
+Update `.pre-commit-config.yaml` to use `uvx skilllint@latest check` and change the hook id from `plugin-validator` to `skilllint`.
 
 ## Acceptance Criteria
 
 - [ ] `.pre-commit-config.yaml` line ~128: `- id: plugin-validator` → `- id: skilllint`
-- [ ] `.pre-commit-config.yaml` line ~130: `entry: uv run -q --no-sync plugins/plugin-creator/scripts/plugin_validator.py --fix` → `entry: uvx skilllint@latest --fix`
+- [ ] `.pre-commit-config.yaml` line ~130: `entry: uv run -q --no-sync plugins/plugin-creator/scripts/plugin_validator.py --fix` → `entry: uvx skilllint@latest check --fix`
 - [ ] Run `uv run prek run --all-files` and confirm no error about missing hook id
 
 ## Verification
@@ -68,7 +68,7 @@ grep "skilllint" .pre-commit-config.yaml
 
 Update `.github/workflows/code-quality.yml`:
 - Line ~180: Update comment from `plugin_validator.py` to `skilllint`
-- Line ~209: `run: uv run prek run plugin-validator --all-files` → use `uvx skilllint@latest` directly (since `--all-files` doesn't exist, use `uvx skilllint@latest plugins/` or keep prek with new hook id `skilllint`)
+- Line ~209: `run: uv run prek run plugin-validator --all-files` → use `uvx skilllint@latest check` directly (since `--all-files` doesn't exist, use `uvx skilllint@latest check plugins/` or keep prek with new hook id `skilllint`)
 - Line ~270: Update `SKIP: ...,plugin-validator,...` to `SKIP: ...,skilllint,...`
 
 **Note on line 209**: Since prek uses hook ids, if the hook id changed to `skilllint` in Task 1.1, then `uv run prek run skilllint --all-files` is the correct form. Verify the prek hook run syntax.
@@ -76,7 +76,7 @@ Update `.github/workflows/code-quality.yml`:
 ## Acceptance Criteria
 
 - [ ] No `plugin-validator` or `plugin_validator` references remain in `.github/workflows/code-quality.yml`
-- [ ] CI uses either `uvx skilllint@latest` directly or `uv run prek run skilllint --all-files`
+- [ ] CI uses either `uvx skilllint@latest check` directly or `uv run prek run skilllint --all-files`
 
 ## Verification
 
@@ -99,8 +99,8 @@ grep "plugin.validator\|plugin_validator" .github/workflows/code-quality.yml | w
 
 Update 3 files in `.claude/rules/`:
 
-1. `.claude/rules/delegation-format.md` line ~73: `Q{Run: uv run plugin_validator.py path<br>Exit code?}` → `Q{Run: uvx skilllint@latest path<br>Exit code?}`
-2. `.claude/rules/uv-run-fallback.md` line ~9: `uv run plugins/plugin-creator/scripts/plugin_validator.py <path>` → `uvx skilllint@latest <path>`
+1. `.claude/rules/delegation-format.md` line ~73: `Q{Run: uv run plugin_validator.py path<br>Exit code?}` → `Q{Run: uvx skilllint@latest check path<br>Exit code?}`
+2. `.claude/rules/uv-run-fallback.md` line ~9: `uv run plugins/plugin-creator/scripts/plugin_validator.py <path>` → `uvx skilllint@latest check <path>`
 3. `.claude/rules/language-conventions.md` line ~52: update `plugin-validator \`NameFormatValidator\`` → `skilllint \`NameFormatValidator\``
 
 ## Acceptance Criteria
@@ -129,18 +129,18 @@ grep -r "plugin_validator\|plugin-validator" .claude/rules/ | wc -l
 Update 4 invocations in `CONTRIBUTING.md` lines ~216–223.
 
 Old pattern: `uv run plugins/plugin-creator/scripts/plugin_validator.py <subcommand> <path>`
-New pattern: `uvx skilllint@latest <path>` (no subcommands — positional paths only)
+New pattern: `uvx skilllint@latest check <path>` (no subcommands — positional paths only)
 
 Note: `validate` and `fix` subcommands no longer exist. Map them:
-- `validate <path>` → `uvx skilllint@latest <path>` (default = validate)
-- `fix <path>` → `uvx skilllint@latest --fix <path>`
-- `fix <path> --dry-run` → `uvx skilllint@latest --check <path>` (check = no changes)
-- `batch <dir>` → `uvx skilllint@latest <dir>`
+- `validate <path>` → `uvx skilllint@latest check <path>` (default = validate)
+- `fix <path>` → `uvx skilllint@latest check --fix <path>`
+- `fix <path> --dry-run` → `uvx skilllint@latest check --check <path>` (check = no changes)
+- `batch <dir>` → `uvx skilllint@latest check <dir>`
 
 ## Acceptance Criteria
 
 - [ ] Zero `plugin_validator` references in `CONTRIBUTING.md`
-- [ ] All examples use correct `uvx skilllint@latest` CLI surface (no subcommands)
+- [ ] All examples use correct `uvx skilllint@latest check` CLI surface (no subcommands)
 
 ## Verification
 
@@ -178,7 +178,7 @@ Also update subcommand mapping per the verified CLI surface (no subcommands, pos
 ## Acceptance Criteria
 
 - [ ] Zero `plugin_validator` references in `plugins/plugin-creator/CLAUDE.md`
-- [ ] All invocations use correct `uvx skilllint@latest` CLI surface
+- [ ] All invocations use correct `uvx skilllint@latest check` CLI surface
 
 ## Verification
 
@@ -201,7 +201,7 @@ grep "plugin_validator\|plugin-validator" plugins/plugin-creator/CLAUDE.md | wc 
 
 Update `plugins/plugin-creator/scripts/CLAUDE.md`:
 - Line ~22: `### plugin_validator.py` section header → `### skilllint`
-- Lines ~30–45: Six `uv run plugins/plugin-creator/scripts/plugin_validator.py` invocations → `uvx skilllint@latest`
+- Lines ~30–45: Six `uv run plugins/plugin-creator/scripts/plugin_validator.py` invocations → `uvx skilllint@latest check`
 - Line ~116: Table row with `plugin-validator` and `plugin_validator.py` → update both
 
 ## Acceptance Criteria
@@ -265,12 +265,12 @@ Update 3 SKILL.md files:
 
 1. `plugins/plugin-creator/skills/lint/SKILL.md` line 10:
    - Old: `` !`${CLAUDE_PLUGIN_ROOT}/scripts/plugin_validator.py <lint_target/>` ``
-   - New: `` !`uvx skilllint@latest <lint_target/>` ``
+   - New: `` !`uvx skilllint@latest check <lint_target/>` ``
 
 2. `plugins/plugin-creator/skills/plugin-creator/SKILL.md` lines 66–561:
    - 8+ Mermaid flowchart nodes with `uv run plugins/plugin-creator/scripts/plugin_validator.py PATH`
    - Body references at lines 254, 547
-   - All → `uvx skilllint@latest PATH`
+   - All → `uvx skilllint@latest check PATH`
 
 3. `plugins/plugin-creator/skills/skill-creator/SKILL.md` line 327:
    - Replace invocation
@@ -314,9 +314,9 @@ Update 10 remaining SKILL.md files with single-to-few occurrences each:
 9. `plugins/plugin-creator/skills/plugin-lifecycle/references/phase-skill-mapping.md` line 24
 
 Note on subcommand mapping:
-- `plugin_validator.py validate <path>` → `uvx skilllint@latest <path>`
-- `plugin_validator.py fix <path>` → `uvx skilllint@latest --fix <path>`
-- `plugin_validator.py --check <file>` → `uvx skilllint@latest --check <file>`
+- `plugin_validator.py validate <path>` → `uvx skilllint@latest check <path>`
+- `plugin_validator.py fix <path>` → `uvx skilllint@latest check --fix <path>`
+- `plugin_validator.py --check <file>` → `uvx skilllint@latest check --check <file>`
 
 ## Acceptance Criteria
 
@@ -355,7 +355,7 @@ Two large reference files with many occurrences:
 
 Entirely a usage reference for `plugin_validator.py` with 30+ invocations across ~700 lines. Changes:
 - Update title/header from `plugin_validator.py` to `skilllint`
-- Replace all `uv run plugins/plugin-creator/scripts/plugin_validator.py` with `uvx skilllint@latest`
+- Replace all `uv run plugins/plugin-creator/scripts/plugin_validator.py` with `uvx skilllint@latest check`
 - Remove subcommand names (`validate`, `batch`, `fix`, `fix-batch`) — use positional args and flags instead
 - Update source citation on line 709 (link to PyPI: `https://pypi.org/project/skilllint`)
 - Update prek invocation on line 507: `pre-commit run plugin-validator --all-files` → `pre-commit run skilllint --all-files`
@@ -456,7 +456,7 @@ Update 9 remaining reference files:
 
 For `agent-schema.md`:
 - Line 13: Update link from `./../../scripts/plugin_validator.py` → `https://pypi.org/project/skilllint`
-- Lines 482–555: Six invocations → `uvx skilllint@latest`
+- Lines 482–555: Six invocations → `uvx skilllint@latest check`
 - Line 573: Update SOURCE citation → PyPI URL
 
 ## Acceptance Criteria
@@ -495,7 +495,7 @@ Update 4 files:
 
 Lines 49, 72–82, 130, 144–161, 160 (section title), 246, 413, 423, 449–461.
 - Update section title `### Frontmatter Validation (plugin_validator.py)` → `### Frontmatter Validation (skilllint)`
-- Replace all invocations with `uvx skilllint@latest`
+- Replace all invocations with `uvx skilllint@latest check`
 - Update tool name in prose descriptions
 
 ### `plugins/plugin-creator/scripts/README.md`
@@ -503,14 +503,14 @@ Lines 49, 72–82, 130, 144–161, 160 (section title), 246, 413, 423, 449–461
 Lines 132, 147–162, 156.
 - Update `## plugin_validator.py` section header → `## skilllint`
 - Replace all invocations
-- Fix path typo on line 156 (`uv run plugins/plugin_validator.py` → `uvx skilllint@latest`)
+- Fix path typo on line 156 (`uv run plugins/plugin_validator.py` → `uvx skilllint@latest check`)
 
 ### Example files
 
 - `plugins/plugin-creator/examples/agents/example-agent.md` lines 49, 52–53
 - `plugins/plugin-creator/examples/skills/example-skill/SKILL.md` line 46
 
-Note: In examples, `validate <path>` → `uvx skilllint@latest <path>` and `fix <path>` → `uvx skilllint@latest --fix <path>`.
+Note: In examples, `validate <path>` → `uvx skilllint@latest check <path>` and `fix <path>` → `uvx skilllint@latest check --fix <path>`.
 
 ## Acceptance Criteria
 
@@ -545,7 +545,7 @@ Run the complete verification suite to confirm zero actionable references remain
 
 - [ ] Zero actionable `plugin_validator` references (excluding archive/plan/research/backlog)
 - [ ] `uv run prek run --all-files` completes without errors
-- [ ] Pre-commit hook invocation shows `uvx skilllint@latest` in output
+- [ ] Pre-commit hook invocation shows `uvx skilllint@latest check` in output
 
 ## Verification
 
@@ -571,7 +571,7 @@ grep "id:" .pre-commit-config.yaml | grep -v "plugin.validator"
 After verification passes:
 ```bash
 git add -A
-git commit -m "refactor(migration): replace plugin_validator.py with uvx skilllint@latest
+git commit -m "refactor(migration): replace plugin_validator.py with uvx skilllint@latest check
 
 Migrated all ~46 actionable files from local script invocation to
 the published CLI package. No subcommand syntax (validate/batch/fix)

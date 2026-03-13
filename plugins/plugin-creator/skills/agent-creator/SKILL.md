@@ -269,13 +269,13 @@ C) **Plugin** - Part of a plugin (saved to plugin directory + update plugin.json
 
 1. SAVE agent to `.claude/agents/{agent-name}.md`
 2. VERIFY file created successfully
-3. RUN validation: `uvx skilllint@latest .claude/agents/{agent-name}.md`
+3. RUN validation: `uvx skilllint@latest check .claude/agents/{agent-name}.md`
 
 #### For User-Level Agents
 
 1. SAVE agent to `~/.claude/agents/{agent-name}.md`
 2. VERIFY file created successfully
-3. RUN validation: `uvx skilllint@latest ~/.claude/agents/{agent-name}.md`
+3. RUN validation: `uvx skilllint@latest check ~/.claude/agents/{agent-name}.md`
 
 #### For Plugin Agents
 
@@ -293,7 +293,7 @@ C) **Plugin** - Part of a plugin (saved to plugin directory + update plugin.json
    ```
 6. VALIDATE plugin.json syntax
 7. RUN plugin validation: `claude plugin validate {plugin-path}`
-8. RUN agent frontmatter validation: `uvx skilllint@latest {plugin-path}/agents/{agent-name}.md`
+8. RUN agent frontmatter validation: `uvx skilllint@latest check {plugin-path}/agents/{agent-name}.md`
 
 ### Phase 8: Post-Creation Validation
 

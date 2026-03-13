@@ -21,5 +21,5 @@ A description should be a complete and informative explanation of what the skill
 After writing, validate with `skilllint`
 
 ```sh
-uvx skilllint@latest [file]
+uvx skilllint@latest check [file]
 ```

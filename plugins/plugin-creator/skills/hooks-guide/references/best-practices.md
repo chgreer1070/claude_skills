@@ -498,7 +498,7 @@ echo '{"timestamp":1704614400000,"cwd":"/tmp","toolName":"bash","toolArgs":"{\"c
 After wiring to configuration, validate with the plugin validator (Claude Code plugins):
 
 ```bash
-uvx skilllint@latest ./path/to/plugin
+uvx skilllint@latest check ./path/to/plugin
 ```
 
 ---

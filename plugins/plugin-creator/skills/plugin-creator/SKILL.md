@@ -631,7 +631,7 @@ allowed-tools: Read, Grep, Glob
 ```bash
 # Run in parallel:
 uv run scripts/create_plugin.py validate ./plugins/my-plugin
-uvx skilllint@latest ./plugins/my-plugin
+uvx skilllint@latest check ./plugins/my-plugin
 ```
 
 ### Layer 2: Official Docs Verification
@@ -810,7 +810,7 @@ Use **Agent tool** (`subagent_type=...`) for single-agent tasks. Use **TeamCreat
 | ----------------------------------- | ----------------------------------- |
 | `scripts/create_plugin.py create`   | Scaffold new plugin with validation |
 | `scripts/create_plugin.py validate` | Check existing plugin structure     |
-| `uvx skilllint@latest`              | Validate frontmatter against schema |
+| `uvx skilllint@latest check`              | Validate frontmatter against schema |
 
 Scripts use PEP 723 inline metadata — dependencies install automatically via `uv run`.
 
