@@ -33,10 +33,10 @@ flowchart TD
     Q2 -->|Skill| CreateSkill["/skill-creator skill"]
     Q2 -->|Command| CreateCmd["Skills ARE commands<br>Create skill with user-invocable: true"]
 
-    Q3 -->|Frontmatter or single file| ValidFile["uv run scripts/plugin_validator.py {path}"]
-    Q3 -->|Complete plugin| ValidPlugin["plugin_validator.py {plugin-path}<br>then: claude plugin validate {path}"]
+    Q3 -->|Frontmatter or single file| ValidFile["uvx skilllint@latest {path}"]
+    Q3 -->|Complete plugin| ValidPlugin["uvx skilllint@latest {plugin-path}<br>then: claude plugin validate {path}"]
 
-    Q4 -->|Skill may be oversized| CheckSize["plugin_validator.py {path}<br>SK006 → /refactor-skill<br>SK007 → /refactor-skill (required)"]
+    Q4 -->|Skill may be oversized| CheckSize["uvx skilllint@latest {path}<br>SK006 → /refactor-skill<br>SK007 → /refactor-skill (required)"]
     Q4 -->|Full plugin| RefactorPlugin["/refactor-plugin skill<br>delegates to refactor-planner agent"]
 ```
 
@@ -97,7 +97,7 @@ flowchart TD
 | Script | Purpose |
 |--------|---------|
 | `create_plugin.py` | Interactive plugin scaffolding — creates `.claude-plugin/`, `plugin.json` |
-| `plugin_validator.py` | Comprehensive validation with token metrics (frontmatter, links, complexity) |
+| `plugin_validator.py` | Superseded — use `uvx skilllint@latest` for comprehensive validation with token metrics (frontmatter, links, complexity) |
 | `ecosystem_registry.py` | stdlib-only module declaring frontmatter key ownership per ecosystem; used by FM009 auto-fix to skip ecosystem-owned blocks |
 | `auto_sync_manifests.py` | Pre-commit hook — syncs plugin.json component arrays, bumps semver |
 | `fix_tool_formats.py` | Fix invalid tool format patterns in frontmatter across codebase |
@@ -129,7 +129,7 @@ Interactive scaffolding — prompts for name, description, author; creates `.cla
 3. Template selection — existing project agents, role archetypes, or from scratch
 4. Agent file creation — frontmatter with validated fields, body with workflow
 5. Scope determination (AskUserQuestion): project → `.claude/agents/{name}.md` | user → `~/.claude/agents/{name}.md` | plugin → `{plugin}/agents/{name}.md` + updates plugin.json
-6. Validation — runs `plugin_validator.py` on agent file; if plugin agent: also runs `claude plugin validate {plugin-path}`
+6. Validation — runs `uvx skilllint@latest` on agent file; if plugin agent: also runs `claude plugin validate {plugin-path}`
 
 ---
 
@@ -144,33 +144,33 @@ Interactive scaffolding — prompts for name, description, author; creates `.cla
 2. Load `/plugin-creator:claude-skills-overview-2026` — authoritative reference for frontmatter schema, invocation control, progressive disclosure
 3. Follow the 7-step process in `/skill-creator`: understand examples → plan resources → determine location → initialize (init_skill.py) → edit → package (if plugin) → iterate
 4. Scope determination: plugin → `plugins/{name}/skills/{skill-name}/` | project → `.claude/skills/{skill-name}/` | user → `~/.claude/skills/{skill-name}/`
-5. Validation — runs `plugin_validator.py` on skill directory; if plugin skill: also runs `claude plugin validate {plugin-path}`
+5. Validation — runs `uvx skilllint@latest` on skill directory; if plugin skill: also runs `claude plugin validate {plugin-path}`
 
 ---
 
 ### Validate Plugin Components
 
-**Script:** `plugin_validator.py`
+**CLI:** `skilllint`
 
 ```bash
 # Validate single file
-uv run plugins/plugin-creator/scripts/plugin_validator.py {path}
+uvx skilllint@latest {path}
 
 # Validate entire plugin directory
-uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/my-plugin
+uvx skilllint@latest plugins/my-plugin
 
 # Auto-fix issues
-uv run plugins/plugin-creator/scripts/plugin_validator.py --fix {path}
+uvx skilllint@latest --fix {path}
 
 # Validate only (no fixes)
-uv run plugins/plugin-creator/scripts/plugin_validator.py --check {path}
+uvx skilllint@latest --check {path}
 ```
 
 **What it validates:**
 
 - Frontmatter schema — YAML syntax, no forbidden multiline indicators (`>-`, `|-`), required fields, field types, tools/skills as comma-separated strings
 - Plugin structure — plugin.json schema compliance, component path references, version consistency
-- Skill complexity — token-based measurement; thresholds defined as `TOKEN_WARNING_THRESHOLD` (SK006) and `TOKEN_ERROR_THRESHOLD` (SK007) in `plugin_validator.py` — not as line counts
+- Skill complexity — token-based measurement; thresholds defined as `TOKEN_WARNING_THRESHOLD` (SK006) and `TOKEN_ERROR_THRESHOLD` (SK007) in `skilllint` — not as line counts
 - Internal links — markdown link validity, progressive disclosure structure
 
 **What it auto-fixes:**
@@ -178,7 +178,7 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py --check {path}
 - YAML arrays → comma-separated strings
 - Multiline descriptions → single-line strings
 - Unquoted colons in descriptions — adds quotes to prevent YAML parsing failures
-- Missing `name:` fields in plugin skills (auto-adds from directory name; required per agentskills.io spec)
+- Missing `name:` fields in plugin skills (skilllint auto-adds name: from directory name; required per agentskills.io spec)
 
 **Error Codes:** See [ERROR_CODES.md](./scripts/ERROR_CODES.md) for complete reference (23 codes across 9 validators)
 
@@ -279,7 +279,7 @@ Scans `~/.claude/agents/**/*.md`, `~/.claude/commands/**/*.md`, `~/.claude/skill
 
 ### Skill Size Limits
 
-Run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` after writing and follow its guidance. Thresholds defined as `TOKEN_WARNING_THRESHOLD` (SK006) and `TOKEN_ERROR_THRESHOLD` (SK007) in `plugin_validator.py` — not line counts. SK006 triggers `references/` extraction; SK007 requires skill splitting.
+Run `uvx skilllint@latest <skill-path>` after writing and follow its guidance. Thresholds defined as `TOKEN_WARNING_THRESHOLD` (SK006) and `TOKEN_ERROR_THRESHOLD` (SK007) in `skilllint` — not line counts. SK006 triggers `references/` extraction; SK007 requires skill splitting.
 
 - Frontmatter requirements: [`.claude/rules/frontmatter-requirements.md`](./.claude/rules/frontmatter-requirements.md)
 - Plugin.json requirements: [`.claude/rules/plugin-json.md`](./.claude/rules/plugin-json.md)
@@ -328,7 +328,7 @@ Claude Code copies plugins to a cache directory — not used in-place.
 
 ```bash
 # From anywhere in the repository:
-uv run plugins/plugin-creator/scripts/plugin_validator.py {path}
+uvx skilllint@latest {path}
 uv run plugins/plugin-creator/scripts/create_plugin.py
 
 # Script with path dependency:
@@ -374,7 +374,7 @@ user-invocable: true
 ---
 ```
 
-`plugin_validator.py` auto-adds `name:` from the directory name when absent. Per [agentskills.io specification](https://agentskills.io/specification), `name:` is required for portability.
+`skilllint` auto-adds `name:` from the directory name when absent. Per [agentskills.io specification](https://agentskills.io/specification), `name:` is required for portability.
 
 **Note on commands:** Skills and slash commands are unified — a skill with `user-invocable: true` creates a slash command. No separate command-creator is needed.
 
@@ -453,9 +453,9 @@ LSP servers require separate binary installation — plugins configure the conne
 
 ### Gap 1: Incomplete Validation Coverage
 
-- Frontmatter schema — validated via `plugin_validator.py`
+- Frontmatter schema — validated via `skilllint`
 - Plugin.json syntax — validated via `claude plugin validate`
-- Skill complexity — token-based via `plugin_validator.py`
+- Skill complexity — token-based via `skilllint`
 - Agent frontmatter — validated but agent-specific constraints not fully enforced
 - Cross-references between components — not validated (e.g., agent references non-existent skill)
 

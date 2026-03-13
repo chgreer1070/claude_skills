@@ -192,7 +192,7 @@ Each finding includes:
 
 - Does NOT fix issues (audit only)
 - Does NOT validate namespace references resolve to files (that's `NamespaceReferenceValidator`)
-- Does NOT validate frontmatter schema (that's `plugin_validator.py`)
+- Does NOT validate frontmatter schema (that's `skilllint`)
 - Does NOT optimize agent prompts (that's `@plugin-creator:subagent-refactorer`)
 - Does NOT assess plugin structure (that's `/plugin-creator:assessor`)
 

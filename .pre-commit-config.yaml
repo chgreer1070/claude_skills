@@ -125,9 +125,9 @@ repos:
         pass_filenames: false
         files: ^plugins/
 
-      - id: plugin-validator
+      - id: skilllint
         name: Validate and fix plugins, skills, agents, commands
-        entry: uv run -q --no-sync plugins/plugin-creator/scripts/plugin_validator.py --fix
+        entry: uvx skilllint@latest --fix
         language: system
         stages: [pre-commit]
         pass_filenames: true

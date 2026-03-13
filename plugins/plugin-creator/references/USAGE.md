@@ -1,6 +1,6 @@
-# Plugin Validator Usage Guide
+# skilllint Usage Guide
 
-Complete usage reference for `plugin_validator.py` - the comprehensive validation tool for Claude Code plugins.
+Complete usage reference for `skilllint` - the comprehensive validation tool for Claude Code plugins.
 
 ---
 
@@ -9,19 +9,19 @@ Complete usage reference for `plugin_validator.py` - the comprehensive validatio
 **Basic validation**:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py <path>
+uvx skilllint@latest <path>
 ```
 
 **Auto-fix issues**:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py --fix <path>
+uvx skilllint@latest --fix <path>
 ```
 
 **Validate only (no auto-fix)**:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py --check <path>
+uvx skilllint@latest --check <path>
 ```
 
 ---
@@ -31,7 +31,7 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py --check <path>
 ### Synopsis
 
 ```bash
-plugin_validator.py [OPTIONS] PATH
+skilllint [OPTIONS] PATH
 ```
 
 ### Arguments
@@ -88,7 +88,7 @@ plugin_validator.py [OPTIONS] PATH
 ### Example 1: Validate Single Skill
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
@@ -114,7 +114,7 @@ Validation: PASSED (0 errors, 1 warning, 2 info)
 ### Example 2: Validate Entire Plugin
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/my-plugin
+uvx skilllint@latest plugins/my-plugin
 ```
 
 **Output**:
@@ -138,7 +138,7 @@ Validation: PASSED (0 errors, 1 warning, 3 info)
 ### Example 3: Auto-Fix Frontmatter Issues
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py --fix \
+uvx skilllint@latest --fix \
   plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
@@ -166,7 +166,7 @@ Validation: PASSED (0 errors, 0 warnings, 0 info)
 
 ```bash
 # Check-only mode for CI pipeline
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   --check --no-color plugins/my-plugin
 
 # Exit code 0 = pass, 1 = fail
@@ -181,7 +181,7 @@ fi
 ### Example 5: Verbose Output for Debugging
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   --verbose plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
@@ -228,7 +228,7 @@ Validation: PASSED (0 errors, 1 warning, 2 info)
 ### Example 6: Validate Agent File
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   .claude/agents/my-agent.md
 ```
 
@@ -248,7 +248,7 @@ Validation: PASSED (0 errors, 1 warning)
 ### Example 7: Validate Command File
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   ~/.claude/commands/my-command.md
 ```
 
@@ -283,14 +283,14 @@ git add plugins/my-plugin/skills/my-skill/SKILL.md
 2. Validate changes:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   --check plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
 3. Fix issues if validation fails:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   --fix plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
@@ -319,14 +319,14 @@ touch plugins/my-plugin/skills/new-skill/SKILL.md
 3. Validate:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   plugins/my-plugin/skills/new-skill/SKILL.md
 ```
 
 4. Fix issues:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   --fix plugins/my-plugin/skills/new-skill/SKILL.md
 ```
 
@@ -343,7 +343,7 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py \
 6. Validate entire plugin:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   plugins/my-plugin
 ```
 
@@ -356,7 +356,7 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py \
 1. Check token count:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   --verbose plugins/my-plugin/skills/large-skill/SKILL.md
 ```
 
@@ -385,7 +385,7 @@ For detailed information, see [detailed guide](./references/detailed-section.md)
 5. Re-validate:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   --verbose plugins/my-plugin/skills/large-skill/SKILL.md
 ```
 
@@ -409,7 +409,7 @@ failed_plugins=()
 
 for plugin_dir in plugins/*/; do
   echo "Validating $plugin_dir..."
-  if ! uv run plugins/plugin-creator/scripts/plugin_validator.py \
+  if ! uvx skilllint@latest \
     --check --no-color "$plugin_dir"; then
     failed_plugins+=("$plugin_dir")
   fi
@@ -449,7 +449,7 @@ set -euo pipefail
 # Find all SKILL.md, agent, and command files
 find plugins -name "SKILL.md" -o -name "*.md" | while read -r file; do
   echo "Fixing $file..."
-  uv run plugins/plugin-creator/scripts/plugin_validator.py --fix "$file"
+  uvx skilllint@latest --fix "$file"
 done
 ```
 
@@ -485,9 +485,9 @@ Add to `.pre-commit-config.yaml`:
 repos:
   - repo: local
     hooks:
-      - id: plugin-validator
+      - id: skilllint
         name: Validate Plugin Components
-        entry: uv run plugins/plugin-creator/scripts/plugin_validator.py
+        entry: uvx skilllint@latest
         language: system
         files: '^plugins/.*/.*\.(md|json)$'
         pass_filenames: false
@@ -504,7 +504,7 @@ pip install pre-commit
 pre-commit install
 
 # Run manually
-pre-commit run plugin-validator --all-files
+pre-commit run skilllint --all-files
 ```
 
 ### CI/CD Pipeline Integration
@@ -528,7 +528,7 @@ jobs:
       - name: Validate plugins
         run: |
           for plugin in plugins/*/; do
-            uv run plugins/plugin-creator/scripts/plugin_validator.py \
+            uvx skilllint@latest \
               --check --no-color "$plugin"
           done
 ```
@@ -542,7 +542,7 @@ validate-plugins:
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.cargo/bin:$PATH"
     - for plugin in plugins/*/; do
-        uv run plugins/plugin-creator/scripts/plugin_validator.py \
+        uvx skilllint@latest \
           --check --no-color "$plugin";
       done
 ```
@@ -562,14 +562,14 @@ echo "Running pre-release validation..."
 # 1. Validate all plugins
 echo "✓ Validating plugins..."
 for plugin in plugins/*/; do
-  uv run plugins/plugin-creator/scripts/plugin_validator.py \
+  uvx skilllint@latest \
     --check --no-color "$plugin"
 done
 
 # 2. Check for oversized skills
 echo "✓ Checking skill complexity..."
 for skill in plugins/*/skills/*/SKILL.md; do
-  if ! uv run plugins/plugin-creator/scripts/plugin_validator.py \
+  if ! uvx skilllint@latest \
     --check --no-color "$skill" 2>&1 | grep -q "SK007"; then
     continue
   else
@@ -580,7 +580,7 @@ done
 
 # 3. Check for broken links
 echo "✓ Checking internal links..."
-# (plugin_validator.py handles this)
+# (skilllint handles this)
 
 # 4. Validate plugin.json files
 echo "✓ Validating plugin.json files..."
@@ -623,7 +623,7 @@ python3 -c "from ruamel.yaml import YAML; y = YAML(typ='safe'); y.load(open('SKI
 1. Check actual token count:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   --verbose plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
@@ -653,16 +653,16 @@ git diff
 3. Use `--check` mode first to preview issues:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   --check plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
 ### Issue: Validation passes but `claude plugin validate` fails
 
-**Symptom**: plugin_validator.py passes but `claude plugin validate` reports errors
+**Symptom**: `skilllint` passes but `claude plugin validate` reports errors
 
 **Cause**: Different validation scopes:
-- `plugin_validator.py` validates component files
+- `skilllint` validates component files
 - `claude plugin validate` validates plugin.json structure
 
 **Fix**:
@@ -670,7 +670,7 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py \
 
 ```bash
 # Component validation
-uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/my-plugin
+uvx skilllint@latest plugins/my-plugin
 
 # Structure validation
 claude plugin validate plugins/my-plugin
@@ -689,11 +689,11 @@ claude plugin validate plugins/my-plugin
 
 ```bash
 # Fast: validate single file
-uv run plugins/plugin-creator/scripts/plugin_validator.py \
+uvx skilllint@latest \
   plugins/my-plugin/skills/my-skill/SKILL.md
 
 # Slow: validate entire plugin
-uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/my-plugin
+uvx skilllint@latest plugins/my-plugin
 ```
 
 2. Use `--check` mode to skip auto-fix overhead
@@ -706,5 +706,5 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/my-plugin
 
 - [ERROR_CODES.md](./ERROR_CODES.md) - Complete error code reference
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Validator design and implementation
-- [plugin_validator.py](../scripts/plugin_validator.py) - Source code
+- [skilllint](https://pypi.org/project/skilllint) - Source code
 - [Claude Code Plugin Documentation](https://docs.claude.com/plugins) - Official plugin documentation

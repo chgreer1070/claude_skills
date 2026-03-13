@@ -19,7 +19,7 @@ Automatically maintains `plugin.json` and `marketplace.json` during pre-commit. 
 - Protects against double-bumping when commit fails and is retried
 - Only operates on staged changes (`git diff --cached`)
 
-### plugin_validator.py
+### skilllint
 
 Comprehensive validation tool for Claude Code plugins with token-based complexity measurement.
 
@@ -27,22 +27,22 @@ Comprehensive validation tool for Claude Code plugins with token-based complexit
 
 ```bash
 # Validate single file
-uv run plugins/plugin-creator/scripts/plugin_validator.py <path>
+uvx skilllint@latest <path>
 
 # Validate entire plugin
-uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/my-plugin
+uvx skilllint@latest plugins/my-plugin
 
 # Auto-fix issues
-uv run plugins/plugin-creator/scripts/plugin_validator.py --fix <path>
+uvx skilllint@latest --fix <path>
 
 # Validate only (no auto-fix)
-uv run plugins/plugin-creator/scripts/plugin_validator.py --check <path>
+uvx skilllint@latest --check <path>
 
 # Verbose output
-uv run plugins/plugin-creator/scripts/plugin_validator.py --verbose <path>
+uvx skilllint@latest --verbose <path>
 
 # CI mode (no color)
-uv run plugins/plugin-creator/scripts/plugin_validator.py --no-color <path>
+uvx skilllint@latest --no-color <path>
 ```
 
 **Validates:**
@@ -113,7 +113,7 @@ Scripts integrated into `.pre-commit-config.yaml`:
 | Hook ID                | Script                    | Trigger Pattern                                           | Purpose                                 |
 | ---------------------- | ------------------------- | --------------------------------------------------------- | --------------------------------------- |
 | `auto-sync-manifests`  | `auto_sync_manifests.py`  | `^plugins/`                                               | Auto-bump versions and update manifests |
-| `plugin-validator`     | `plugin_validator.py`     | `^plugins/.*(SKILL\.md\|agents/.*\.md\|commands/.*\.md\|plugin\.json)$` | Comprehensive plugin validation with token metrics |
+| `skilllint`            | `skilllint`               | `^plugins/.*(SKILL\.md\|agents/.*\.md\|commands/.*\.md\|plugin\.json)$` | Comprehensive plugin validation with token metrics |
 
 ## Execution Requirements
 

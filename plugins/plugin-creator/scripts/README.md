@@ -129,7 +129,7 @@ The script runs `claude plugin validate` internally before reporting success to 
 
 ---
 
-## plugin_validator.py
+## skilllint
 
 **Purpose**: Comprehensive validation tool for Claude Code plugins with token-based complexity measurement.
 
@@ -144,22 +144,22 @@ The script runs `claude plugin validate` internally before reporting success to 
 
 ```bash
 # Validate single file or directory
-uv run plugins/plugin-creator/scripts/plugin_validator.py {path}
+uvx skilllint@latest {path}
 
 # Validate entire plugin
-uv run plugins/plugin-creator/scripts/plugin_validator.py plugins/my-plugin
+uvx skilllint@latest plugins/my-plugin
 
 # Auto-fix issues
-uv run plugins/plugin-creator/scripts/plugin_validator.py --fix {path}
+uvx skilllint@latest --fix {path}
 
 # Validate only (no auto-fix)
-uv run plugins/plugin_validator.py --check {path}
+uvx skilllint@latest --check {path}
 
 # Verbose output with details
-uv run plugins/plugin-creator/scripts/plugin_validator.py --verbose {path}
+uvx skilllint@latest --verbose {path}
 
 # CI mode (no color)
-uv run plugins/plugin-creator/scripts/plugin_validator.py --no-color {path}
+uvx skilllint@latest --no-color {path}
 ```
 
 ### What It Validates

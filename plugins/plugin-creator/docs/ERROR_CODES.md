@@ -1,6 +1,6 @@
 # Plugin Validator Error Code Reference
 
-This document provides detailed explanations, examples, and fixes for all error codes emitted by the plugin-validator tool.
+This document provides detailed explanations, examples, and fixes for all error codes emitted by the skilllint tool.
 
 **Quick Navigation**:
 
@@ -619,7 +619,7 @@ description: "When reading or writing pyproject.toml files, this skill provides 
 **Description**: Token count exceeds TOKEN_WARNING_THRESHOLD (consider splitting)
 
 **When It Occurs**:
-The skill body (excluding frontmatter) exceeds `TOKEN_WARNING_THRESHOLD` defined in `plugin_validator.py`.
+The skill body (excluding frontmatter) exceeds `TOKEN_WARNING_THRESHOLD` defined in `skilllint`.
 
 **Example**: (Skill file exceeding warning threshold)
 
@@ -649,7 +649,7 @@ Split into:
 **Description**: Token count exceeds TOKEN_ERROR_THRESHOLD (must split)
 
 **When It Occurs**:
-The skill body exceeds `TOKEN_ERROR_THRESHOLD` defined in `plugin_validator.py`.
+The skill body exceeds `TOKEN_ERROR_THRESHOLD` defined in `skilllint`.
 
 **Example**: (Very large skill file with 7000 tokens)
 
@@ -1077,7 +1077,7 @@ os.symlink("../../python3-development/skills/uv\n", "plugins/my-plugin/skills/uv
 
 ```bash
 # Run the validator with --fix to strip trailing whitespace and recreate the symlink
-uv run plugins/plugin-creator/scripts/plugin_validator.py --fix plugins/
+uvx skilllint@latest --fix plugins/
 
 # Manual fix:
 python3 -c "

@@ -46,7 +46,7 @@ user-invocable: true
 
 **Discovered:** 2026-01-29 (Claude Code v2.1.23) — **Resolved:** 2026-02-20
 
-A bug caused plugin skills with an explicit `name:` field to not appear as slash commands. As a workaround, validators automatically removed `name:` from plugin skill frontmatter. That workaround has been reversed. The `plugin_validator.py` script now automatically **adds** the `name:` field when absent, deriving it from the directory name.
+A bug caused plugin skills with an explicit `name:` field to not appear as slash commands. As a workaround, validators automatically removed `name:` from plugin skill frontmatter. That workaround has been reversed. The `skilllint` CLI now automatically **adds** the `name:` field when absent, deriving it from the directory name.
 
 ## When to Use
 
@@ -69,17 +69,17 @@ Use this plugin when:
 uv run ./scripts/create_plugin.py
 
 # Validate frontmatter
-uv run ./scripts/plugin_validator.py validate ./skills/my-skill/SKILL.md
+uvx skilllint@latest ./skills/my-skill/SKILL.md
 
 # Auto-fix common frontmatter issues
-uv run ./scripts/plugin_validator.py fix ./skills/my-skill/SKILL.md
+uvx skilllint@latest --fix ./skills/my-skill/SKILL.md
 ```
 
 ### Refactoring Plugins
 
 ```bash
 # Check skill complexity via token metrics
-uv run ./scripts/plugin_validator.py --verbose ./plugins/my-plugin
+uvx skilllint@latest --verbose ./plugins/my-plugin
 ```
 
 ## Skills
@@ -127,7 +127,7 @@ uv run ./scripts/plugin_validator.py --verbose ./plugins/my-plugin
 
 | Script                        | Purpose                                       | Usage                                              |
 | ----------------------------- | --------------------------------------------- | -------------------------------------------------- |
-| `plugin_validator.py`     | Comprehensive schema validation with auto-fix | `uv run plugin_validator.py validate SKILL.md` |
+| `skilllint`               | Comprehensive schema validation with auto-fix | `uvx skilllint@latest SKILL.md`                |
 | `validate-task-file.sh`       | Validate refactoring task file format         | `./validate-task-file.sh tasks.md`                 |
 
 ### Utility Scripts
@@ -141,23 +141,23 @@ uv run ./scripts/plugin_validator.py --verbose ./plugins/my-plugin
 
 ```bash
 # Validate frontmatter (comprehensive)
-uv run ./scripts/plugin_validator.py validate ./skills/my-skill/SKILL.md
+uvx skilllint@latest ./skills/my-skill/SKILL.md
 
 # Validate all frontmatter in a directory
-uv run ./scripts/plugin_validator.py batch ./plugins/my-plugin
+uvx skilllint@latest ./plugins/my-plugin
 
 # Auto-fix frontmatter issues
-uv run ./scripts/plugin_validator.py fix ./skills/my-skill/SKILL.md --dry-run
-uv run ./scripts/plugin_validator.py fix ./skills/my-skill/SKILL.md
+uvx skilllint@latest --fix ./skills/my-skill/SKILL.md --dry-run
+uvx skilllint@latest --fix ./skills/my-skill/SKILL.md
 
-# Batch fix all frontmatter
-uv run ./scripts/plugin_validator.py fix-batch ./plugins/my-plugin
+# Batch fix entire plugin
+uvx skilllint@latest --fix ./plugins/my-plugin
 
 ```
 
 ## Validation Capabilities
 
-### Frontmatter Validation (`plugin_validator.py`)
+### Frontmatter Validation (skilllint)
 
 **Checks:**
 
@@ -243,7 +243,7 @@ uv run ./scripts/plugin_validator.py fix-batch ./plugins/my-plugin
 
 ### Skill Size Limits
 
-Complexity is measured by token count (via `plugin_validator.py`). Token thresholds replace line-count heuristics.
+Complexity is measured by token count (via `skilllint`). Token thresholds replace line-count heuristics.
 
 - **Warning**: TOKEN_WARNING_THRESHOLD tokens - consider splitting
 - **Critical**: TOKEN_ERROR_THRESHOLD tokens - must split
@@ -410,7 +410,7 @@ claude --plugin-dir ./plugins/plugin-creator
 uv run ./scripts/create_plugin.py
 
 # Validate the generated frontmatter
-uv run ./scripts/plugin_validator.py batch ./my-new-plugin
+uvx skilllint@latest ./my-new-plugin
 
 # Validate plugin manifest
 claude plugin validate ./my-new-plugin
@@ -420,7 +420,7 @@ claude plugin validate ./my-new-plugin
 
 ```bash
 # 1. Check skill complexity
-uv run ./scripts/plugin_validator.py --verbose ./plugins/python3-development
+uvx skilllint@latest --verbose ./plugins/python3-development
 
 # Output shows skills over token thresholds
 
@@ -446,19 +446,19 @@ Use @"plugin-creator:refactor-validator (agent)" to validate the python3-develop
 
 ```bash
 # Check a single file
-uv run ./scripts/plugin_validator.py validate ./skills/my-skill/SKILL.md
+uvx skilllint@latest ./skills/my-skill/SKILL.md
 
 # Validate all skills in a plugin
-uv run ./scripts/plugin_validator.py batch ./plugins/my-plugin
+uvx skilllint@latest ./plugins/my-plugin
 
 # Auto-fix issues (dry-run first)
-uv run ./scripts/plugin_validator.py fix ./skills/my-skill/SKILL.md --dry-run
+uvx skilllint@latest --fix ./skills/my-skill/SKILL.md --dry-run
 
 # Apply fixes
-uv run ./scripts/plugin_validator.py fix ./skills/my-skill/SKILL.md
+uvx skilllint@latest --fix ./skills/my-skill/SKILL.md
 
 # Batch fix entire plugin
-uv run ./scripts/plugin_validator.py fix-batch ./plugins/my-plugin
+uvx skilllint@latest --fix ./plugins/my-plugin
 ```
 
 ## Plugin Component Reference

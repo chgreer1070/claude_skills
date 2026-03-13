@@ -139,7 +139,7 @@ description: Generate descriptive commit messages by analyzing git diffs. Use wh
 
 ### Progressive Disclosure Patterns
 
-Keep SKILL.md body lean. Split content into separate files when the validator warns. Run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` after writing and follow its guidance on token-based sizing.
+Keep SKILL.md body lean. Split content into separate files when the validator warns. Run `uvx skilllint@latest <skill-path>` after writing and follow its guidance on token-based sizing.
 
 **Pattern 1 — High-level guide with references:**
 
@@ -470,7 +470,7 @@ Use the BigQuery:bigquery_schema tool to retrieve table schemas.
 - [ ] Description is specific and includes key terms
 - [ ] Description includes both what the skill does and when to use it
 - [ ] Description written in third person
-- [ ] SKILL.md body passes token-count validation (run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` and follow its sizing guidance)
+- [ ] SKILL.md body passes token-count validation (run `uvx skilllint@latest <skill-path>` and follow its sizing guidance)
 - [ ] Additional details in separate files (if needed)
 - [ ] Current patterns as default; legacy in clearly labeled section
 - [ ] Consistent terminology throughout

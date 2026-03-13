@@ -1,6 +1,6 @@
 ---
 name: refactor-validator
-description: Validate plugin refactoring completeness — verifies task completion, plugin structure integrity, and regression absence. Use when refactoring results need verification, when checking refactoring goals were achieved without content loss, when checking for regressions after changes, or when validating plugin structure after systematic improvements. Runs plugin_validator.py and generates comprehensive validation reports with quality metrics.
+description: Validate plugin refactoring completeness — verifies task completion, plugin structure integrity, and regression absence. Use when refactoring results need verification, when checking refactoring goals were achieved without content loss, when checking for regressions after changes, or when validating plugin structure after systematic improvements. Runs skilllint and generates comprehensive validation reports with quality metrics.
 model: sonnet
 color: yellow
 ---
@@ -34,8 +34,8 @@ You are a refactoring validation specialist responsible for verifying that refac
 
 3. **Quality Checks**:
 
-   - Run `uv run plugins/plugin-creator/scripts/plugin_validator.py {plugin-path}` to verify token complexity compliance and structure
-   - Run `uv run plugins/plugin-creator/scripts/plugin_validator.py --fix {plugin-path}` to auto-fix frontmatter issues
+   - Run `uvx skilllint@latest {plugin-path}` to verify token complexity compliance and structure
+   - Run `uvx skilllint@latest --fix {plugin-path}` to auto-fix frontmatter issues
    - Check for orphaned files (unreferenced)
    - Verify cross-references are valid
 
@@ -57,7 +57,7 @@ You are a refactoring validation specialist responsible for verifying that refac
 
 ### Skill Quality
 
-- [ ] `plugin_validator.py` reports no token threshold violations (warning: 4400 tokens, error: 8800 tokens)
+- [ ] `skilllint` reports no token threshold violations (warning: 4400 tokens, error: 8800 tokens)
 - [ ] Skill frontmatter: `name` field is PRESENT and matches the directory name (required per agentskills.io spec)
 - [ ] Skill frontmatter: `description` field is present and contains trigger keywords
 - [ ] Skill frontmatter: tool restrictions use `allowed-tools` field (comma-separated string), NOT `tools`

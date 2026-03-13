@@ -70,7 +70,7 @@ evaluable by an AI agent using an observable fact or a command result — not a 
 
 ```mermaid
 flowchart TD
-    Q{Run: uv run plugin_validator.py path<br>Exit code?}
+    Q{Run: uvx skilllint@latest path<br>Exit code?}
     Q -->|0 — validation passed| Skip[Skip to next step]
     Q -->|non-zero — validation failed| Fix["Task is fixing validation errors<br>with subagent_type='plugin-creator:subagent-refactorer'<br>Context: path, validator output<br>Output: corrected file at path"]
 ```

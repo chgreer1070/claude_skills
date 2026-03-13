@@ -162,11 +162,11 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start(["Agent file saved"]) --> V1["Run: uv run plugins/plugin-creator/scripts/plugin_validator.py {agent-path}"]
-    V1 --> Q1{"Exit code from<br>plugin_validator.py?"}
+    Start(["Agent file saved"]) --> V1["Run: uvx skilllint@latest {agent-path}"]
+    V1 --> Q1{"Exit code from<br>skilllint?"}
     Q1 -->|"non-zero — errors reported"| Fix1["Fix all reported errors<br>in agent file"]
     Fix1 --> V1
-    Q1 -->|"0 — plugin_validator.py clean"| Q2{"Is this agent<br>part of a plugin?"}
+    Q1 -->|"0 — skilllint clean"| Q2{"Is this agent<br>part of a plugin?"}
     Q2 -->|"No — project or user scope"| Done(["Validation complete — report completion"])
     Q2 -->|"Yes — plugin scope"| V2["Run: claude plugin validate {plugin-path}"]
     V2 --> Q3{"Exit code from<br>claude plugin validate?"}
@@ -186,7 +186,7 @@ flowchart TD
 - System prompt: clear role, numbered responsibilities, step-by-step workflow, output format
 - Model: haiku for simple reads, sonnet for most tasks, opus for complex reasoning
 - Tools: least-privilege — only what the agent needs
-- Validation: passes `plugin_validator.py` clean before reporting done
+- Validation: passes `skilllint` clean before reporting done
 
 </quality>
 

@@ -27,7 +27,7 @@ Before analyzing for a split, determine whether skill splitting is the appropria
 **Step 1 — Measure size and read the skill:**
 
 1. Run the plugin validator to get the token count and any error codes:
-   `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>`
+   `uvx skilllint@latest <skill-path>`
 2. Read the complete SKILL.md — every line, every section.
 
 **Step 2 — Determine the correct path:**
@@ -45,7 +45,7 @@ flowchart TD
 
 **SK006 vs SK007 threshold distinction:**
 
-The plugin validator defines two token thresholds (see `TOKEN_WARNING_THRESHOLD` and `TOKEN_ERROR_THRESHOLD` in `plugin_validator.py`):
+The plugin validator defines two token thresholds (see `TOKEN_WARNING_THRESHOLD` and `TOKEN_ERROR_THRESHOLD` in `skilllint`):
 
 - **SK006 (warning):** Token count exceeds warning threshold. First action is `references/` extraction. Only proceed to skill splitting if content covers genuinely independent domains with separate invocation triggers.
 - **SK007 (error):** Token count exceeds error threshold. Skill splitting is required — proceed directly to Phase 1.
@@ -234,7 +234,7 @@ For each new skill:
 - [ ] All internal links resolve
 - [ ] Reference files properly linked
 - [ ] Cross-references to related skills present
-- [ ] Token count within threshold (run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` and follow its guidance on sizing)
+- [ ] Token count within threshold (run `uvx skilllint@latest <skill-path>` and follow its guidance on sizing)
 
 #### 4c. No-Loss Verification
 
@@ -404,7 +404,7 @@ project-setup -> project-init
 1. Have a single, clear focus
 2. Be usable independently (or document dependencies)
 3. Have description with trigger keywords
-4. Pass token-count validation (run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` and follow its guidance on sizing)
+4. Pass token-count validation (run `uvx skilllint@latest <skill-path>` and follow its guidance on sizing)
 5. Use progressive disclosure (link to references)
 6. Cross-reference related skills appropriately
 

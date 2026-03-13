@@ -21,7 +21,7 @@ Execute in order. Report discovery summary before proceeding to Phase 2.
 
 **Phase 3 — Skills Analysis**: For each skill:
 - Validate frontmatter against schema from `claude-skills-overview-2026`
-- Run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` for token count; flag SK006/SK007
+- Run `uvx skilllint@latest <skill-path>` for token count; flag SK006/SK007
 - Audit reference files: inventory all `.md` files, extract links from SKILL.md, classify each unlinked file (New Content / Duplicate / Notes / Examples / Outdated). READ orphaned files completely before classifying.
 - Validate all links resolve to existing files; check bidirectional linking
 - If any skill exceeds 4000 tokens: load `plugin-creator:optimize` and use it to identify specific reduction and reorganization opportunities. Include these as RECOMMENDATION findings in the report.

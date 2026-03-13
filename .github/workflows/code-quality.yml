@@ -177,7 +177,7 @@ jobs:
 
   # =============================================================================
   # Local hooks: frontmatter validation (blocking)
-  # validate_frontmatter.py was consolidated into plugin_validator.py
+  # validate_frontmatter.py was consolidated into skilllint
   # (refactor: consolidate frontmatter validation into shared frontmatter_core module)
   # Frontmatter is now validated by the validate-plugins job below.
   # =============================================================================
@@ -206,7 +206,7 @@ jobs:
           cache-python: true
 
       - name: Validate plugins
-        run: uv run prek run plugin-validator --all-files
+        run: uv run prek run skilllint --all-files
 
   # =============================================================================
   # Local hooks: manifest sync (via prek)
@@ -267,7 +267,7 @@ jobs:
 
       - name: Run file hygiene hooks
         env:
-          SKIP: sync-pre-commit-deps,conventional-pre-commit,repair-symlinks,biome-check,ruff,ruff-format,pypfmt,markdownlint-cli2,shell-fmt-go,shellcheck,auto-sync-manifests,plugin-validator,ty,enable-rerere
+          SKIP: sync-pre-commit-deps,conventional-pre-commit,repair-symlinks,biome-check,ruff,ruff-format,pypfmt,markdownlint-cli2,shell-fmt-go,shellcheck,auto-sync-manifests,skilllint,ty,enable-rerere
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.sha }}
           GH_EVENT: ${{ github.event_name }}

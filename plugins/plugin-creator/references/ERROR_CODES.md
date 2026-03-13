@@ -1,6 +1,6 @@
 # Plugin Validator Error Codes
 
-Complete reference for all error codes emitted by `plugin_validator.py`.
+Complete reference for all error codes emitted by `skilllint`.
 
 **Total Error Codes**: 23 across 9 validator classes
 
@@ -436,7 +436,7 @@ description: "Use when analyzing log files to generate detailed reports"
 
 **Description**: Skill body content exceeds `TOKEN_WARNING_THRESHOLD`. Consider splitting into smaller, focused skills.
 
-**Threshold**: Defined in `plugin_validator.py` as `TOKEN_WARNING_THRESHOLD`
+**Threshold**: Defined in `skilllint` as `TOKEN_WARNING_THRESHOLD`
 
 **Recommendation**: Split skill using progressive disclosure:
 1. Keep high-level guidance in main SKILL.md
@@ -466,7 +466,7 @@ skill-name/
 
 **Description**: Skill body content exceeds `TOKEN_ERROR_THRESHOLD`. Skill MUST be split.
 
-**Threshold**: Defined in `plugin_validator.py` as `TOKEN_ERROR_THRESHOLD`
+**Threshold**: Defined in `skilllint` as `TOKEN_ERROR_THRESHOLD`
 
 **Reason**: Skills exceeding this threshold cause:
 - Slow Claude Code loading
@@ -781,7 +781,7 @@ python3 -m json.tool .claude-plugin/plugin.json
 **Usage**:
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py --fix <path>
+uvx skilllint@latest --fix <path>
 ```
 
 **Important**: Auto-fix modifies files in-place. Always commit or backup files before running auto-fix.
@@ -808,4 +808,4 @@ uv run plugins/plugin-creator/scripts/plugin_validator.py --fix <path>
 
 - [USAGE.md](./USAGE.md) - CLI usage and workflow examples
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Validator design and implementation
-- [plugin_validator.py](../scripts/plugin_validator.py) - Source code
+- [skilllint](https://pypi.org/project/skilllint) - Package and source code
