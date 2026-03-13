@@ -18,8 +18,8 @@ A description should be a complete and informative explanation of what the skill
 
 ## Validation
 
-After writing, validate with the validation script `plugin_validator.py`
+After writing, validate with `skilllint`
 
 ```sh
- plugin_validator.py [file]
+uvx skilllint@latest [file]
 ```

@@ -95,7 +95,7 @@ Skills use three-level loading to manage context efficiently:
 2. **Instructions** (<5000 tokens recommended): Full SKILL.md body loaded on activation
 3. **Resources** (as needed): Files in `scripts/`, `references/`, `assets/` loaded on demand
 
-**Keep SKILL.md body lean.** Move detailed reference material to separate files. Run `uv run plugins/plugin-creator/scripts/plugin_validator.py <skill-path>` after writing and follow its guidance on token-based sizing.
+**Keep SKILL.md body lean.** Move detailed reference material to separate files. Run `uvx skilllint@latest <skill-path>` after writing and follow its guidance on token-based sizing.
 
 ### Disclosure Patterns
 

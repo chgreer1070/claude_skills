@@ -1,12 +1,12 @@
-# Plugin Validator Architecture
+# skilllint Architecture
 
-Technical reference for the plugin_validator.py implementation, design patterns, and extension guide.
+Technical reference for the skilllint implementation, design patterns, and extension guide.
 
 ---
 
 ## Overview
 
-**File**: `plugins/plugin-creator/scripts/plugin_validator.py`
+**Package**: `skilllint` (PyPI: <https://pypi.org/project/skilllint>)
 **Lines**: 2534 lines total
 **Language**: Python 3.11+ with PEP 723 inline dependencies
 **Execution**: Standalone script using `uv` package manager
@@ -106,7 +106,7 @@ class ComplexityValidator:
             # WARNING: Consider splitting
 ```
 
-**Thresholds** (defined as constants in `plugin_validator.py`):
+**Thresholds** (defined as constants in `skilllint`):
 - **TOKEN_WARNING_THRESHOLD**: Consider splitting
 - **TOKEN_ERROR_THRESHOLD**: Must split
 
@@ -376,7 +376,7 @@ def validate(self, path: Path) -> ValidationResult:
 
 ```python
 app = typer.Typer(
-    name="plugin-validator",
+    name="skilllint",
     help="Validate Claude Code plugins, skills, agents, and commands",
     no_args_is_help=True,
 )
@@ -519,9 +519,9 @@ def get_staged_files() -> list[Path]:
 repos:
   - repo: local
     hooks:
-      - id: plugin-validator
+      - id: skilllint
         name: Validate Plugin Components
-        entry: uv run plugins/plugin-creator/scripts/plugin_validator.py
+        entry: uvx skilllint@latest
         language: system
         files: '^plugins/.*/.*\.(md|json)$'
         pass_filenames: false
@@ -873,7 +873,7 @@ def test_token_count_deterministic(text):
 
 | Script | Purpose |
 |--------|---------|
-| `plugin_validator.py` | Main validation CLI — frontmatter, links, complexity, plugin structure |
+| `skilllint` | Main validation CLI — frontmatter, links, complexity, plugin structure |
 | `ecosystem_registry.py` | stdlib-only module declaring frontmatter key ownership per ecosystem; `get_ecosystem_owned_keys()` is imported by `_fix_unquoted_colons()` to skip ecosystem-owned top-level blocks (e.g., `mcp:` from OpenCode) |
 
 ---
@@ -882,7 +882,7 @@ def test_token_count_deterministic(text):
 
 - [ERROR_CODES.md](./ERROR_CODES.md) - Complete error code reference
 - [USAGE.md](./USAGE.md) - CLI usage and workflow examples
-- [plugin_validator.py](../scripts/plugin_validator.py) - Source code
+- [skilllint](https://pypi.org/project/skilllint) - Source code
 - [PEP 723](https://peps.python.org/pep-0723/) - Inline script metadata
 - [Typer Documentation](https://typer.tiangolo.com/) - CLI framework
 - [tiktoken Documentation](https://github.com/openai/tiktoken) - Token counting

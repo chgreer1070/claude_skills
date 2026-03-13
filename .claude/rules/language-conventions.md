@@ -49,7 +49,7 @@ Use `snake_case` for Python file names and directories that contain Python scrip
 
 - Python files: `task_format.py`, not `task-format.py`
 - Script subdirectories: `snake_case` when they may become Python modules
-- Skill directories: `kebab-case` (`implementation-manager/`) — enforced by agentskills.io spec and the plugin-validator `NameFormatValidator`
+- Skill directories: `kebab-case` (`implementation-manager/`) — enforced by agentskills.io spec and the skilllint `NameFormatValidator`
 
 **SCOPE**: Applies to all Python files under `plugins/**/scripts/`, `plugins/**/skills/*/scripts/`, and `.claude/hooks/`. Skill directories themselves follow the agentskills.io naming convention (lowercase, hyphens only).
 

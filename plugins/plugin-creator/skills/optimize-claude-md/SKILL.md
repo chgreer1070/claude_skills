@@ -39,7 +39,7 @@ Verify the resolved absolute path exists. Determine scope (single file, skill di
 **For all files**:
 
 - Determine file type (CLAUDE.md, SKILL.md, agent definition, reference file)
-- Measure token count: `uv run plugins/plugin-creator/scripts/plugin_validator.py --check <file>`
+- Measure token count: `uvx skilllint@latest --check <file>`
 - Record baseline token count
 
 **For SKILL.md files only**:
@@ -207,7 +207,7 @@ Write optimized content ONLY after user confirms. Do not auto-apply.
 
 ## Iterative Mode for Large Targets
 
-For files exceeding `TOKEN_WARNING_THRESHOLD` (defined in `plugins/plugin-creator/scripts/plugin_validator.py`) or plugin directories, offer iterative optimization:
+For files exceeding `TOKEN_WARNING_THRESHOLD` (defined in `skilllint`) or plugin directories, offer iterative optimization:
 
 **Pass 1: Structural Changes**
 

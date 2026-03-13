@@ -110,7 +110,7 @@ MCP servers declared via either mechanism use idle-timeout pooling:
 
 The `mcp:` frontmatter key is an OpenCode extension. Claude Code and Cursor do not define this field — they ignore it. AmpCode compatibility with inline `mcp:` frontmatter is unverified. When writing skills targeting multiple platforms, the `mcp:` block is silently inert outside OpenCode.
 
-The `plugin_validator.py` FM009 guard treats `mcp:` as an ecosystem-owned key and skips rewriting its sub-keys (e.g., `command: npx -y server`) to avoid corrupting OpenCode skill definitions.
+The `skilllint` FM009 guard treats `mcp:` as an ecosystem-owned key and skips rewriting its sub-keys (e.g., `command: npx -y server`) to avoid corrupting OpenCode skill definitions.
 
 SOURCE: oh-my-opencode source `/src/features/opencode-skill-loader/skill-mcp-config.ts`, <https://github.com/code-yeongyu/oh-my-opencode> (accessed 2026-03-06).
 

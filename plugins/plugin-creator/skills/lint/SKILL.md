@@ -7,6 +7,6 @@ user-invocable: true
 
 <lint_target>$ARGUMENTS</lint_target>
 
-!`${CLAUDE_PLUGIN_ROOT}/scripts/plugin_validator.py <lint_target/>`
+!`uvx skilllint@latest <lint_target/>`
 
 @${CLAUDE_PLUGIN_ROOT}/references/ERROR_CODES.md

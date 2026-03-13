@@ -269,13 +269,13 @@ C) **Plugin** - Part of a plugin (saved to plugin directory + update plugin.json
 
 1. SAVE agent to `.claude/agents/{agent-name}.md`
 2. VERIFY file created successfully
-3. RUN validation: `uv run plugins/plugin-creator/scripts/plugin_validator.py validate .claude/agents/{agent-name}.md`
+3. RUN validation: `uvx skilllint@latest .claude/agents/{agent-name}.md`
 
 #### For User-Level Agents
 
 1. SAVE agent to `~/.claude/agents/{agent-name}.md`
 2. VERIFY file created successfully
-3. RUN validation: `uv run plugins/plugin-creator/scripts/plugin_validator.py validate ~/.claude/agents/{agent-name}.md`
+3. RUN validation: `uvx skilllint@latest ~/.claude/agents/{agent-name}.md`
 
 #### For Plugin Agents
 
@@ -293,13 +293,13 @@ C) **Plugin** - Part of a plugin (saved to plugin directory + update plugin.json
    ```
 6. VALIDATE plugin.json syntax
 7. RUN plugin validation: `claude plugin validate {plugin-path}`
-8. RUN agent frontmatter validation: `uv run plugins/plugin-creator/scripts/plugin_validator.py validate {plugin-path}/agents/{agent-name}.md`
+8. RUN agent frontmatter validation: `uvx skilllint@latest {plugin-path}/agents/{agent-name}.md`
 
 ### Phase 8: Post-Creation Validation
 
 AFTER saving the agent file:
 
-1. **Validate frontmatter** using plugin_validator.py script
+1. **Validate frontmatter** using skilllint
 2. **Validate plugin** if agent is part of a plugin (using `claude plugin validate`)
 3. **Check for validation errors** and fix if needed
 4. **Confirm success** to user with file location
@@ -877,7 +877,7 @@ After creating an agent, test it before production use.
 - [ ] If plugin agent: plugin.json updated with agent path
 - [ ] If plugin agent: `claude plugin validate` passed
 - [ ] YAML frontmatter parses correctly (no syntax errors)
-- [ ] Frontmatter validation passed (via plugin_validator.py)
+- [ ] Frontmatter validation passed (via skilllint)
 - [ ] Name follows constraints (lowercase, hyphens, max 64 chars)
 - [ ] Description includes trigger keywords
 - [ ] All referenced skills exist

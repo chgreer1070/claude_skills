@@ -250,7 +250,7 @@ Prioritized actionable fixes:
 
 - Does NOT fix issues (that's separate workflow)
 - Does NOT validate namespace references resolve to files (that's `NamespaceReferenceValidator` in pre-commit hook)
-- Does NOT validate frontmatter schema (that's `plugin_validator.py`)
+- Does NOT validate frontmatter schema (that's `skilllint`)
 - Does NOT replace `/plugin-creator:assessor` (which does structural assessment for refactoring planning)
 
 This audit answers: "Given that all files exist and all references resolve, does the resulting system actually work as a coherent whole?"

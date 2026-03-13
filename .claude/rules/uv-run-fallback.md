@@ -6,7 +6,7 @@ Run all project scripts via `uv run`:
 
 ```bash
 uv run scripts/some_script.py
-uv run plugins/plugin-creator/scripts/plugin_validator.py <path>
+uvx skilllint@latest <path>
 ```
 
 `uv` automatically creates or reuses the project virtual environment and installs all

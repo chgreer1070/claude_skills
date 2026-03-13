@@ -32,7 +32,7 @@ paths:
 ## Validate After Editing
 
 ```bash
-uv run plugins/plugin-creator/scripts/plugin_validator.py {plugin-path}
+uvx skilllint@latest {plugin-path}
 claude plugin validate {plugin-directory}
 ```
 
@@ -44,4 +44,4 @@ claude plugin validate {plugin-directory}
 | `name: Required` | Missing name field | Add `"name": "plugin-name"` |
 | Invalid JSON syntax | Malformed JSON | Validate with `python3 -m json.tool plugin.json` |
 
-**SOURCE:** Lines 75-91 of claude-plugins-reference-2026/SKILL.md; verified via `plugin_validator.py`
+**SOURCE:** Lines 75-91 of claude-plugins-reference-2026/SKILL.md; verified via `skilllint`
