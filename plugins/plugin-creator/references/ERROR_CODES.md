@@ -781,7 +781,7 @@ python3 -m json.tool .claude-plugin/plugin.json
 **Usage**:
 
 ```bash
-uvx skilllint@latest --fix <path>
+uvx skilllint@latest check --fix <path>
 ```
 
 **Important**: Auto-fix modifies files in-place. Always commit or backup files before running auto-fix.

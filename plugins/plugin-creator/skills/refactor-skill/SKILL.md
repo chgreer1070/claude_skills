@@ -27,7 +27,7 @@ Before analyzing for a split, determine whether skill splitting is the appropria
 **Step 1 — Measure size and read the skill:**
 
 1. Run the plugin validator to get the token count and any error codes:
-   `uvx skilllint@latest <skill-path>`
+   `uvx skilllint@latest check <skill-path>`
 2. Read the complete SKILL.md — every line, every section.
 
 **Step 2 — Determine the correct path:**
@@ -234,7 +234,7 @@ For each new skill:
 - [ ] All internal links resolve
 - [ ] Reference files properly linked
 - [ ] Cross-references to related skills present
-- [ ] Token count within threshold (run `uvx skilllint@latest <skill-path>` and follow its guidance on sizing)
+- [ ] Token count within threshold (run `uvx skilllint@latest check <skill-path>` and follow its guidance on sizing)
 
 #### 4c. No-Loss Verification
 
@@ -404,7 +404,7 @@ project-setup -> project-init
 1. Have a single, clear focus
 2. Be usable independently (or document dependencies)
 3. Have description with trigger keywords
-4. Pass token-count validation (run `uvx skilllint@latest <skill-path>` and follow its guidance on sizing)
+4. Pass token-count validation (run `uvx skilllint@latest check <skill-path>` and follow its guidance on sizing)
 5. Use progressive disclosure (link to references)
 6. Cross-reference related skills appropriately
 

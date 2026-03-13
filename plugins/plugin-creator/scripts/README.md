@@ -144,22 +144,22 @@ The script runs `claude plugin validate` internally before reporting success to 
 
 ```bash
 # Validate single file or directory
-uvx skilllint@latest {path}
+uvx skilllint@latest check {path}
 
 # Validate entire plugin
-uvx skilllint@latest plugins/my-plugin
+uvx skilllint@latest check plugins/my-plugin
 
 # Auto-fix issues
-uvx skilllint@latest --fix {path}
+uvx skilllint@latest check --fix {path}
 
 # Validate only (no auto-fix)
-uvx skilllint@latest --check {path}
+uvx skilllint@latest check --check {path}
 
 # Verbose output with details
-uvx skilllint@latest --verbose {path}
+uvx skilllint@latest check --verbose {path}
 
 # CI mode (no color)
-uvx skilllint@latest --no-color {path}
+uvx skilllint@latest check --no-color {path}
 ```
 
 ### What It Validates

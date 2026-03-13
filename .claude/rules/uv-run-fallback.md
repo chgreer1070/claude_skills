@@ -6,7 +6,7 @@ Run all project scripts via `uv run`:
 
 ```bash
 uv run scripts/some_script.py
-uvx skilllint@latest <path>
+uvx skilllint@latest check <path>
 ```
 
 `uv` automatically creates or reuses the project virtual environment and installs all

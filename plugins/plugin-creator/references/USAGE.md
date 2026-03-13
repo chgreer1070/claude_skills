@@ -9,19 +9,19 @@ Complete usage reference for `skilllint` - the comprehensive validation tool for
 **Basic validation**:
 
 ```bash
-uvx skilllint@latest <path>
+uvx skilllint@latest check <path>
 ```
 
 **Auto-fix issues**:
 
 ```bash
-uvx skilllint@latest --fix <path>
+uvx skilllint@latest check --fix <path>
 ```
 
 **Validate only (no auto-fix)**:
 
 ```bash
-uvx skilllint@latest --check <path>
+uvx skilllint@latest check --check <path>
 ```
 
 ---
@@ -88,7 +88,7 @@ skilllint [OPTIONS] PATH
 ### Example 1: Validate Single Skill
 
 ```bash
-uvx skilllint@latest \
+uvx skilllint@latest check \
   plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
@@ -114,7 +114,7 @@ Validation: PASSED (0 errors, 1 warning, 2 info)
 ### Example 2: Validate Entire Plugin
 
 ```bash
-uvx skilllint@latest plugins/my-plugin
+uvx skilllint@latest check plugins/my-plugin
 ```
 
 **Output**:
@@ -138,7 +138,7 @@ Validation: PASSED (0 errors, 1 warning, 3 info)
 ### Example 3: Auto-Fix Frontmatter Issues
 
 ```bash
-uvx skilllint@latest --fix \
+uvx skilllint@latest check --fix \
   plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
@@ -166,7 +166,7 @@ Validation: PASSED (0 errors, 0 warnings, 0 info)
 
 ```bash
 # Check-only mode for CI pipeline
-uvx skilllint@latest \
+uvx skilllint@latest check \
   --check --no-color plugins/my-plugin
 
 # Exit code 0 = pass, 1 = fail
@@ -181,7 +181,7 @@ fi
 ### Example 5: Verbose Output for Debugging
 
 ```bash
-uvx skilllint@latest \
+uvx skilllint@latest check \
   --verbose plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
@@ -228,7 +228,7 @@ Validation: PASSED (0 errors, 1 warning, 2 info)
 ### Example 6: Validate Agent File
 
 ```bash
-uvx skilllint@latest \
+uvx skilllint@latest check \
   .claude/agents/my-agent.md
 ```
 
@@ -248,7 +248,7 @@ Validation: PASSED (0 errors, 1 warning)
 ### Example 7: Validate Command File
 
 ```bash
-uvx skilllint@latest \
+uvx skilllint@latest check \
   ~/.claude/commands/my-command.md
 ```
 
@@ -283,14 +283,14 @@ git add plugins/my-plugin/skills/my-skill/SKILL.md
 2. Validate changes:
 
 ```bash
-uvx skilllint@latest \
+uvx skilllint@latest check \
   --check plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
 3. Fix issues if validation fails:
 
 ```bash
-uvx skilllint@latest \
+uvx skilllint@latest check \
   --fix plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
@@ -319,14 +319,14 @@ touch plugins/my-plugin/skills/new-skill/SKILL.md
 3. Validate:
 
 ```bash
-uvx skilllint@latest \
+uvx skilllint@latest check \
   plugins/my-plugin/skills/new-skill/SKILL.md
 ```
 
 4. Fix issues:
 
 ```bash
-uvx skilllint@latest \
+uvx skilllint@latest check \
   --fix plugins/my-plugin/skills/new-skill/SKILL.md
 ```
 
@@ -343,7 +343,7 @@ uvx skilllint@latest \
 6. Validate entire plugin:
 
 ```bash
-uvx skilllint@latest \
+uvx skilllint@latest check \
   plugins/my-plugin
 ```
 
@@ -356,7 +356,7 @@ uvx skilllint@latest \
 1. Check token count:
 
 ```bash
-uvx skilllint@latest \
+uvx skilllint@latest check \
   --verbose plugins/my-plugin/skills/large-skill/SKILL.md
 ```
 
@@ -385,7 +385,7 @@ For detailed information, see [detailed guide](./references/detailed-section.md)
 5. Re-validate:
 
 ```bash
-uvx skilllint@latest \
+uvx skilllint@latest check \
   --verbose plugins/my-plugin/skills/large-skill/SKILL.md
 ```
 
@@ -409,7 +409,7 @@ failed_plugins=()
 
 for plugin_dir in plugins/*/; do
   echo "Validating $plugin_dir..."
-  if ! uvx skilllint@latest \
+  if ! uvx skilllint@latest check \
     --check --no-color "$plugin_dir"; then
     failed_plugins+=("$plugin_dir")
   fi
@@ -449,7 +449,7 @@ set -euo pipefail
 # Find all SKILL.md, agent, and command files
 find plugins -name "SKILL.md" -o -name "*.md" | while read -r file; do
   echo "Fixing $file..."
-  uvx skilllint@latest --fix "$file"
+  uvx skilllint@latest check --fix "$file"
 done
 ```
 
@@ -487,7 +487,7 @@ repos:
     hooks:
       - id: skilllint
         name: Validate Plugin Components
-        entry: uvx skilllint@latest
+        entry: uvx skilllint@latest check
         language: system
         files: '^plugins/.*/.*\.(md|json)$'
         pass_filenames: false
@@ -528,7 +528,7 @@ jobs:
       - name: Validate plugins
         run: |
           for plugin in plugins/*/; do
-            uvx skilllint@latest \
+            uvx skilllint@latest check \
               --check --no-color "$plugin"
           done
 ```
@@ -542,7 +542,7 @@ validate-plugins:
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.cargo/bin:$PATH"
     - for plugin in plugins/*/; do
-        uvx skilllint@latest \
+        uvx skilllint@latest check \
           --check --no-color "$plugin";
       done
 ```
@@ -562,14 +562,14 @@ echo "Running pre-release validation..."
 # 1. Validate all plugins
 echo "✓ Validating plugins..."
 for plugin in plugins/*/; do
-  uvx skilllint@latest \
+  uvx skilllint@latest check \
     --check --no-color "$plugin"
 done
 
 # 2. Check for oversized skills
 echo "✓ Checking skill complexity..."
 for skill in plugins/*/skills/*/SKILL.md; do
-  if ! uvx skilllint@latest \
+  if ! uvx skilllint@latest check \
     --check --no-color "$skill" 2>&1 | grep -q "SK007"; then
     continue
   else
@@ -623,7 +623,7 @@ python3 -c "from ruamel.yaml import YAML; y = YAML(typ='safe'); y.load(open('SKI
 1. Check actual token count:
 
 ```bash
-uvx skilllint@latest \
+uvx skilllint@latest check \
   --verbose plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
@@ -653,7 +653,7 @@ git diff
 3. Use `--check` mode first to preview issues:
 
 ```bash
-uvx skilllint@latest \
+uvx skilllint@latest check \
   --check plugins/my-plugin/skills/my-skill/SKILL.md
 ```
 
@@ -670,7 +670,7 @@ uvx skilllint@latest \
 
 ```bash
 # Component validation
-uvx skilllint@latest plugins/my-plugin
+uvx skilllint@latest check plugins/my-plugin
 
 # Structure validation
 claude plugin validate plugins/my-plugin
@@ -689,11 +689,11 @@ claude plugin validate plugins/my-plugin
 
 ```bash
 # Fast: validate single file
-uvx skilllint@latest \
+uvx skilllint@latest check \
   plugins/my-plugin/skills/my-skill/SKILL.md
 
 # Slow: validate entire plugin
-uvx skilllint@latest plugins/my-plugin
+uvx skilllint@latest check plugins/my-plugin
 ```
 
 2. Use `--check` mode to skip auto-fix overhead

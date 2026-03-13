@@ -245,7 +245,7 @@ WHERE you are designing:
 - Claude Code skill format reference: claude-skills-overview-2026
 
 WHAT patterns to follow:
-- Skills should minimize token count via progressive disclosure (references/ extraction); run `uvx skilllint@latest <skill-path>` to verify
+- Skills should minimize token count via progressive disclosure (references/ extraction); run `uvx skilllint@latest check <skill-path>` to verify
 - Skills should cover single domain (not multi-domain)
 - Agent descriptions need trigger keywords for delegation matching
 - Frontmatter must follow Claude Code schema exactly

@@ -93,7 +93,7 @@ Phase 1: Assess
   Running assessor...
   Assessment saved: .claude/plan/my-data-tool/assessment-REPORT.md
 
-  Running validator: uvx skilllint@latest plugins/my-data-tool
+  Running validator: uvx skilllint@latest check plugins/my-data-tool
   Exit code: 1
 
   Errors found:

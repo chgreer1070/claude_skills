@@ -34,8 +34,8 @@ You are a refactoring validation specialist responsible for verifying that refac
 
 3. **Quality Checks**:
 
-   - Run `uvx skilllint@latest {plugin-path}` to verify token complexity compliance and structure
-   - Run `uvx skilllint@latest --fix {plugin-path}` to auto-fix frontmatter issues
+   - Run `uvx skilllint@latest check {plugin-path}` to verify token complexity compliance and structure
+   - Run `uvx skilllint@latest check --fix {plugin-path}` to auto-fix frontmatter issues
    - Check for orphaned files (unreferenced)
    - Verify cross-references are valid
 

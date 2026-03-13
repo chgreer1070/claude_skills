@@ -1077,7 +1077,7 @@ os.symlink("../../python3-development/skills/uv\n", "plugins/my-plugin/skills/uv
 
 ```bash
 # Run the validator with --fix to strip trailing whitespace and recreate the symlink
-uvx skilllint@latest --fix plugins/
+uvx skilllint@latest check --fix plugins/
 
 # Manual fix:
 python3 -c "

@@ -21,4 +21,4 @@ Lookup reference: which skill or agent handles each phase, and the exact invocat
 | 6: Optimize | `@subagent-refactorer` | subagent_type="plugin-creator:subagent-refactorer" |
 | 6.5: Documentation | `@plugin-assessor` | subagent_type="plugin-creator:plugin-assessor" |
 | 7: Verify | `/plugin-creator:ensure-complete` | `Skill(skill="plugin-creator:ensure-complete")` |
-| 7: Verify | `skilllint` | `uvx skilllint@latest` |
+| 7: Verify | `skilllint` | `uvx skilllint@latest check` |

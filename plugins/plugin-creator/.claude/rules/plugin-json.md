@@ -32,7 +32,7 @@ paths:
 ## Validate After Editing
 
 ```bash
-uvx skilllint@latest {plugin-path}
+uvx skilllint@latest check {plugin-path}
 claude plugin validate {plugin-directory}
 ```
 

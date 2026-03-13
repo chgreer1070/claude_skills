@@ -69,17 +69,17 @@ Use this plugin when:
 uv run ./scripts/create_plugin.py
 
 # Validate frontmatter
-uvx skilllint@latest ./skills/my-skill/SKILL.md
+uvx skilllint@latest check ./skills/my-skill/SKILL.md
 
 # Auto-fix common frontmatter issues
-uvx skilllint@latest --fix ./skills/my-skill/SKILL.md
+uvx skilllint@latest check --fix ./skills/my-skill/SKILL.md
 ```
 
 ### Refactoring Plugins
 
 ```bash
 # Check skill complexity via token metrics
-uvx skilllint@latest --verbose ./plugins/my-plugin
+uvx skilllint@latest check --verbose ./plugins/my-plugin
 ```
 
 ## Skills
@@ -127,7 +127,7 @@ uvx skilllint@latest --verbose ./plugins/my-plugin
 
 | Script                        | Purpose                                       | Usage                                              |
 | ----------------------------- | --------------------------------------------- | -------------------------------------------------- |
-| `skilllint`               | Comprehensive schema validation with auto-fix | `uvx skilllint@latest SKILL.md`                |
+| `skilllint`               | Comprehensive schema validation with auto-fix | `uvx skilllint@latest check SKILL.md`                |
 | `validate-task-file.sh`       | Validate refactoring task file format         | `./validate-task-file.sh tasks.md`                 |
 
 ### Utility Scripts
@@ -141,17 +141,17 @@ uvx skilllint@latest --verbose ./plugins/my-plugin
 
 ```bash
 # Validate frontmatter (comprehensive)
-uvx skilllint@latest ./skills/my-skill/SKILL.md
+uvx skilllint@latest check ./skills/my-skill/SKILL.md
 
 # Validate all frontmatter in a directory
-uvx skilllint@latest ./plugins/my-plugin
+uvx skilllint@latest check ./plugins/my-plugin
 
 # Auto-fix frontmatter issues
-uvx skilllint@latest --fix ./skills/my-skill/SKILL.md --dry-run
-uvx skilllint@latest --fix ./skills/my-skill/SKILL.md
+uvx skilllint@latest check --fix ./skills/my-skill/SKILL.md --dry-run
+uvx skilllint@latest check --fix ./skills/my-skill/SKILL.md
 
 # Batch fix entire plugin
-uvx skilllint@latest --fix ./plugins/my-plugin
+uvx skilllint@latest check --fix ./plugins/my-plugin
 
 ```
 
@@ -410,7 +410,7 @@ claude --plugin-dir ./plugins/plugin-creator
 uv run ./scripts/create_plugin.py
 
 # Validate the generated frontmatter
-uvx skilllint@latest ./my-new-plugin
+uvx skilllint@latest check ./my-new-plugin
 
 # Validate plugin manifest
 claude plugin validate ./my-new-plugin
@@ -420,7 +420,7 @@ claude plugin validate ./my-new-plugin
 
 ```bash
 # 1. Check skill complexity
-uvx skilllint@latest --verbose ./plugins/python3-development
+uvx skilllint@latest check --verbose ./plugins/python3-development
 
 # Output shows skills over token thresholds
 
@@ -446,19 +446,19 @@ Use @"plugin-creator:refactor-validator (agent)" to validate the python3-develop
 
 ```bash
 # Check a single file
-uvx skilllint@latest ./skills/my-skill/SKILL.md
+uvx skilllint@latest check ./skills/my-skill/SKILL.md
 
 # Validate all skills in a plugin
-uvx skilllint@latest ./plugins/my-plugin
+uvx skilllint@latest check ./plugins/my-plugin
 
 # Auto-fix issues (dry-run first)
-uvx skilllint@latest --fix ./skills/my-skill/SKILL.md --dry-run
+uvx skilllint@latest check --fix ./skills/my-skill/SKILL.md --dry-run
 
 # Apply fixes
-uvx skilllint@latest --fix ./skills/my-skill/SKILL.md
+uvx skilllint@latest check --fix ./skills/my-skill/SKILL.md
 
 # Batch fix entire plugin
-uvx skilllint@latest --fix ./plugins/my-plugin
+uvx skilllint@latest check --fix ./plugins/my-plugin
 ```
 
 ## Plugin Component Reference

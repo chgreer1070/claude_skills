@@ -27,22 +27,22 @@ Comprehensive validation tool for Claude Code plugins with token-based complexit
 
 ```bash
 # Validate single file
-uvx skilllint@latest <path>
+uvx skilllint@latest check <path>
 
 # Validate entire plugin
-uvx skilllint@latest plugins/my-plugin
+uvx skilllint@latest check plugins/my-plugin
 
 # Auto-fix issues
-uvx skilllint@latest --fix <path>
+uvx skilllint@latest check --fix <path>
 
 # Validate only (no auto-fix)
-uvx skilllint@latest --check <path>
+uvx skilllint@latest check --check <path>
 
 # Verbose output
-uvx skilllint@latest --verbose <path>
+uvx skilllint@latest check --verbose <path>
 
 # CI mode (no color)
-uvx skilllint@latest --no-color <path>
+uvx skilllint@latest check --no-color <path>
 ```
 
 **Validates:**

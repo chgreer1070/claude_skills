@@ -46,11 +46,11 @@ Validate your agent using:
 
 ```bash
 # Frontmatter validation
-uvx skilllint@latest ./path/to/agent.md
+uvx skilllint@latest check ./path/to/agent.md
 
 # Auto-fix common issues
-uvx skilllint@latest --fix ./path/to/agent.md --dry-run
-uvx skilllint@latest --fix ./path/to/agent.md
+uvx skilllint@latest check --fix ./path/to/agent.md --dry-run
+uvx skilllint@latest check --fix ./path/to/agent.md
 
 # Plugin validation (if agent is part of a plugin)
 claude plugin validate ./path/to/plugin/

@@ -39,7 +39,7 @@ Verify the resolved absolute path exists. Determine scope (single file, skill di
 **For all files**:
 
 - Determine file type (CLAUDE.md, SKILL.md, agent definition, reference file)
-- Measure token count: `uvx skilllint@latest --check <file>`
+- Measure token count: `uvx skilllint@latest check --check <file>`
 - Record baseline token count
 
 **For SKILL.md files only**:
