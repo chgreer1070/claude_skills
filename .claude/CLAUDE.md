@@ -58,6 +58,8 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 - Output contains "likely", "probably", or "I think" — STOP and verify before continuing
 - Pass file paths to agents — transcribing file contents into prompts bypasses agent verification
 - Do NOT discover file paths on behalf of agents — the agent has full tool access and an empty context window; it finds what it needs itself. Pre-discovering paths wastes orchestrator context and duplicates agent work.
+- **Never pre-read task files for agents** — if the agent will need to read a file, pass the file path, not a summary of what you found. Agents perform their own Chain of Verification against actual source. Pre-gathered summaries bypass verification, add stale data, and waste orchestrator context.
+- **Investigation requires hypothesis first** — when your first action on a new task is a Read/Grep/Bash investigation (not a planned delegation), load `/scientific-method:scientific-thinking` first. Investigation without hypothesis is debugging theater.
 
 **Tool Usage:**
 
@@ -71,6 +73,24 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 - Skills: use `/` prefix — e.g., `/plugin-creator:skill-creator`
 - Agents: use `@` prefix — e.g., `@python3-development:python-cli-architect`
 - No speculation as diagnosis — state what occurred and was observed; do not project causality
+
+**Tool Use Denial Protocol (HARD STOP):**
+
+When ANY tool use is denied by the user:
+
+1. STOP the current action sequence immediately
+2. State: "BLOCKED — [action] was denied. I cannot proceed without [what you need]."
+3. Do NOT invent alternative paths that achieve the same denied goal
+4. Do NOT retry with modified commands
+5. Ask the user what they want to do next
+
+Reason: Permission denial is a user boundary signal, not a technical obstacle to route around. Finding alternative paths to a denied action violates user trust.
+
+**Investigation Escalation Hard-Stop:**
+
+3+ Read/Grep/Bash calls on source files without an intervening Edit/Write or Task delegation is the trigger signal for investigation escalation.
+
+When triggered: STOP. Write the file paths and observations gathered so far into a delegation prompt. Do not read one more file. Delegate to a specialist agent.
 
 ---
 
