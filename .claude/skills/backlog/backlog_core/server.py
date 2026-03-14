@@ -451,7 +451,7 @@ async def backlog_pull(
     try:
         if selector is not None:
             await ctx.info(f"Pulling issue: {selector}")
-            result = await asyncio.to_thread(operations.pull_by_selector, selector, output=out)
+            result = await asyncio.to_thread(operations.pull_by_selector, selector, diff=diff, output=out)
             for w in out.warnings:
                 await ctx.warning(w)
             file_path = result.get("file_path")

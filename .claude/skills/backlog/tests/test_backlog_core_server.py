@@ -600,6 +600,33 @@ async def test_backlog_pull_selector_error_returns_error_key():
     assert response["error"] == "item not found"
 
 
+async def test_backlog_pull_single_diff_true_returns_diff_field():
+    """backlog_pull with diff=True on a single item returns non-empty 'diff' field."""
+    op_result = {"file_path": "/tmp/p1-item.md", "diff": "- old line\n+ new line\n"}
+    with patch("backlog_core.operations.pull_by_selector", return_value=op_result) as mock_pull:
+        response = await _call("backlog_pull", {"selector": "#42", "diff": True})
+
+    # Arrange: pull_by_selector called with diff=True
+    call_kwargs = mock_pull.call_args.kwargs
+    assert call_kwargs["diff"] is True
+    # Assert: diff key present and non-empty in response
+    assert "diff" in response
+    assert response["diff"] == "- old line\n+ new line\n"
+
+
+async def test_backlog_pull_single_diff_false_omits_diff_field():
+    """backlog_pull with diff=False (default) returns no 'diff' field."""
+    op_result = {"file_path": "/tmp/p1-item.md"}
+    with patch("backlog_core.operations.pull_by_selector", return_value=op_result) as mock_pull:
+        response = await _call("backlog_pull", {"selector": "#42"})
+
+    # Arrange: pull_by_selector called with diff=False (default)
+    call_kwargs = mock_pull.call_args.kwargs
+    assert call_kwargs.get("diff", False) is False
+    # Assert: no diff key in response
+    assert "diff" not in response
+
+
 async def test_backlog_pull_no_selector_uses_bulk_pull():
     """backlog_pull without selector calls pull_items (bulk), not pull_by_selector."""
     op_result = {"pulled": 3}

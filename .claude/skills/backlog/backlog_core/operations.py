@@ -1800,14 +1800,28 @@ def normalize_items(dry_run: bool = False, output: Output | None = None) -> dict
 
 
 def pull_single_issue(
-    repo_obj: Repository, issue_num: int, filepath: Path | None = None, output: Output | None = None
-) -> Path | None:
+    repo_obj: Repository,
+    issue_num: int,
+    filepath: Path | None = None,
+    output: Output | None = None,
+    diff_mode: bool = False,
+) -> dict[str, Path | str | list[str] | None]:
     """Fetch a GitHub issue and write/update the local cache file.
 
     If filepath is None, derives it from the issue title and priority.
 
+    Args:
+        repo_obj: PyGitHub Repository object.
+        issue_num: GitHub issue number to fetch.
+        filepath: Local path to write. If None, derived from issue title and priority.
+        output: Optional Output collector for messages and warnings.
+        diff_mode: When True, computes a unified diff of old vs new body content and
+            includes it in the return dict under the ``"diff"`` key.
+
     Returns:
-        Path to the local file, or None on failure.
+        Dict with ``"file_path"`` (Path or None on failure) and, when diff_mode is True
+        and the file already existed, ``"diff"`` (unified diff string, may be empty if
+        content was unchanged).
     """
     out = output or Output()
 
@@ -1815,7 +1829,7 @@ def pull_single_issue(
         issue = repo_obj.get_issue(issue_num)
     except GithubException as e:
         out.warn(f"  WARNING: Could not fetch issue #{issue_num}: {e}")
-        return None
+        return {"file_path": None, **out.to_dict()}
 
     fields = issue_to_local_fields(issue)
     # Strip conventional-commit prefix from title (e.g., "feat: Title" -> "Title")
@@ -1829,7 +1843,13 @@ def pull_single_issue(
 
     BACKLOG_DIR.mkdir(parents=True, exist_ok=True)
 
+    diff_str = ""
     if filepath.exists():
+        # Capture old body before update when diff is requested
+        if diff_mode:
+            old_text = filepath.read_text(encoding="utf-8")
+            parts = old_text.split("---", 2)
+            old_body = parts[2].strip() if len(parts) >= MIN_FRONTMATTER_PARTS else old_text
         # Update existing file: overwrite description, body, metadata
         update_item_metadata(
             filepath,
@@ -1848,6 +1868,8 @@ def pull_single_issue(
         )
         # Overwrite body sections from GitHub issue body
         _overwrite_body_from_github(filepath, fields.body)
+        if diff_mode:
+            diff_str = generate_diff(old_body, fields.body)
     else:
         # Create new cache file from GitHub issue
         fm_str = build_backlog_frontmatter(
@@ -1863,11 +1885,14 @@ def pull_single_issue(
         filepath.write_text(fm_str.rstrip() + "\n\n" + fields.body + "\n", encoding="utf-8")
         update_item_metadata(filepath, {"metadata": {"last_synced": now_iso()}}, output=out)
 
-    return filepath
+    result: dict[str, Path | str | list[str] | None] = {"file_path": filepath, **out.to_dict()}
+    if diff_mode:
+        result["diff"] = diff_str
+    return result
 
 
 def pull_by_selector(
-    selector: str, repo: str = DEFAULT_REPO, output: Output | None = None
+    selector: str, repo: str = DEFAULT_REPO, output: Output | None = None, diff: bool = False
 ) -> dict[str, str | list[str] | None]:
     """Pull a single GitHub issue into the local cache by selector.
 
@@ -1876,8 +1901,16 @@ def pull_by_selector(
     For title substrings, finds the local item, reads its issue number,
     then fetches from GitHub.
 
+    Args:
+        selector: Issue number, URL, or title substring.
+        repo: GitHub repository slug (owner/name).
+        output: Optional Output collector for messages and warnings.
+        diff: When True, computes a unified diff of old vs new body content and
+            includes it in the return dict under the ``"diff"`` key.
+
     Returns:
-        Dict with 'file_path' (local path written) and output messages/warnings.
+        Dict with 'file_path' (local path written), output messages/warnings, and
+        optionally 'diff' (unified diff string) when diff=True.
 
     Raises:
         ItemNotFoundError: If selector matches no item in the local cache.
@@ -1886,8 +1919,12 @@ def pull_by_selector(
     out = output or Output()
     issue_num_str = parse_issue_selector(selector)
     if issue_num_str:
-        filepath = pull_single_issue(get_github(repo), int(issue_num_str), output=out)
-        return {"file_path": str(filepath) if filepath else None, **out.to_dict()}
+        result = pull_single_issue(get_github(repo), int(issue_num_str), output=out, diff_mode=diff)
+        filepath = result.get("file_path")
+        ret: dict[str, str | list[str] | None] = {"file_path": str(filepath) if filepath else None, **out.to_dict()}
+        if diff and "diff" in result:
+            ret["diff"] = str(result["diff"])
+        return ret
 
     # Title substring: find item in local cache then pull by its issue number
     items = parse_backlog()
@@ -1903,8 +1940,12 @@ def pull_by_selector(
     if not issue_num_str:
         raise BacklogError(f"Could not parse issue number from '{issue_ref}'")
 
-    filepath = pull_single_issue(get_github(repo), int(issue_num_str), output=out)
-    return {"file_path": str(filepath) if filepath else None, **out.to_dict()}
+    result = pull_single_issue(get_github(repo), int(issue_num_str), output=out, diff_mode=diff)
+    filepath = result.get("file_path")
+    ret = {"file_path": str(filepath) if filepath else None, **out.to_dict()}
+    if diff and "diff" in result:
+        ret["diff"] = str(result["diff"])
+    return ret
 
 
 def pull_items(
