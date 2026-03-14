@@ -814,6 +814,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 | [tembo.md](./coding-agents/tembo.md)         | Tembo - cloud AI coding agent orchestration platform (Claude Code, Codex, Cursor, Amp, OpenCode) with multi-repo PRs, Sentry/Linear/Jira/Slack integrations, and event-driven automations | 2026-02-23   |
 | [openai-symphony.md](./coding-agents/openai-symphony.md) | OpenAI Symphony — Elixir-based autonomous coding agent platform (Draft v1 spec) with 8-component architecture (Orchestrator, Workspace Manager, Agent Runner, etc.), issue-tracker-driven workflows, Codex stdio JSON-RPC protocol, and workspace sandboxing invariants (5.5K stars, Apache-2.0) | 2026-03-06   |
 | [claude-replay.md](./coding-agents/claude-replay.md) | claude-replay — zero-dependency CLI to convert Claude Code, Cursor, and Codex transcripts into shareable HTML players; v0.4.0 web editor with 3-panel UI, automatic secret redaction, 60-70% native browser compression, 6 themes (500 stars, MIT) | 2026-03-13   |
+| [stakpak-agent.md](./coding-agents/stakpak-agent.md) | Stakpak Agent — Rust-based DevOps AI agent (11-crate workspace); secret substitution, mTLS MCP, Warden guardrails, autopilot cron scheduling, Slack/Discord/Telegram channels, Claude/GPT/Gemini support, ACP for Zed editor (872 stars, Apache-2.0) | 2026-03-13   |
 
 **Key Topics**:
 
