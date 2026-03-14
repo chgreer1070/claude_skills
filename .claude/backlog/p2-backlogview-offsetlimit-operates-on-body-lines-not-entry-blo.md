@@ -5,9 +5,9 @@ metadata:
   topic: backlogview-offsetlimit-operates-on-body-lines-not-entry-blo
   source: 'Spec gap discovered during #583 (Backlog MCP: Timestamped entry blocks) resolution — feature-researcher audit 2026-03-14'
   added: '2026-03-14'
-  priority: P2
+  priority: completed
   type: Bug
-  status: open
+  status: done
   issue: '#695'
   last_synced: '2026-03-14T04:50:39Z'
   groomed: '2026-03-14'

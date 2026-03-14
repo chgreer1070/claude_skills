@@ -9,7 +9,7 @@ metadata:
   type: Refactor
   status: in-progress
   issue: '#669'
-  last_synced: '2026-03-14T01:26:47Z'
+  last_synced: '2026-03-14T15:59:43Z'
   plan: plan/tasks-35-backlog-cli-dedup-followup-1.md
 ---
 
