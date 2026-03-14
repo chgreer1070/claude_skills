@@ -9,7 +9,7 @@ metadata:
   type: Refactor
   status: in-progress
   issue: '#612'
-  last_synced: '2026-03-12T12:47:30Z'
+  last_synced: '2026-03-14T01:26:48Z'
   groomed: '2026-03-12'
   plan: plan/tasks-1-add-status-field-to-backlogitem-model.md
 ---

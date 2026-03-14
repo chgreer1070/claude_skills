@@ -9,7 +9,7 @@ metadata:
   type: Bug
   status: needs-grooming
   issue: '#670'
-  last_synced: '2026-03-12T12:47:27Z'
+  last_synced: '2026-03-14T01:26:46Z'
   plan: plan/tasks-36-backlog-cli-dedup-followup-2.md
 ---
 

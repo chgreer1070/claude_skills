@@ -9,7 +9,7 @@ metadata:
   type: Feature
   status: in-progress
   issue: '#583'
-  last_synced: '2026-03-12T12:47:33Z'
+  last_synced: '2026-03-14T01:26:52Z'
   groomed: '2026-03-11'
   plan: docs/superpowers/plans/2026-03-10-backlog-mcp-timestamped-entry-blocks.md
 ---
