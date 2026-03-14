@@ -504,6 +504,7 @@ Infrastructure tools and platforms for deploying, orchestrating, and managing ag
 | [picoclaw.md](./agent-infrastructure/picoclaw.md) | PicoClaw - Go AI assistant by Sipeed, <10MB RAM, <1s startup, 6 messaging channels, runs on $10 RISC-V hardware, AI-bootstrapped (18.1K stars) | 2026-02-23   |
 | [pinchtab.md](./agent-infrastructure/pinchtab.md) | PinchTab — 12MB Go binary HTTP server for AI agent browser control via a11y tree snapshots (~800 tokens/page, 5-13x cheaper than screenshots), multi-instance Chrome orchestration with isolated profiles, stealth injection (2.3K stars, MIT) | 2026-03-01   |
 | [zeroclaw.md](./agent-infrastructure/zeroclaw.md) | Rust autonomous AI assistant — sub-5MB RAM, 28+ AI providers, 15+ channels, trait-driven swappable subsystems (14.9K stars) | 2026-02-19   |
+| [happycapy.md](./agent-infrastructure/happycapy.md) | HappyCapy — browser-based agent-native computer (Claude Code → Clawdbot → GUI); isolated sandbox execution, 170K+ pre-built skills via SkillsMP, multi-agent teams (Max tier), 150+ AI models; Free/Pro $20/Max $200 per month (launched 2026-02-11) | 2026-03-13   |
 
 **Key Topics**:
 
@@ -905,6 +906,7 @@ Memory systems, context window optimization tools, and RAG solutions for maintai
 | [local-memory.md](./context-management/local-memory.md)   | Local Memory - persistent memory infrastructure with MCP, REST API, CLI, embedded Qdrant, and knowledge evolution (L0-L3)      | 2026-02-07   |
 | [sourcesyncai.md](./context-management/sourcesyncai.md)   | SourceSync.ai - managed RAG platform with 15+ auto-syncing connectors, hybrid search, BYOC storage, and MCP integration       | 2026-02-23   |
 | [straion.md](./context-management/straion.md)             | Straion - SaaS rules-management platform that dynamically injects relevant engineering standards into AI coding agents (Claude Code, Cursor, Copilot) at task time; validates agent plans against rules before code is written | 2026-03-04   |
+| [unblocked.md](./context-management/unblocked.md)         | Unblocked — context engine augmenting AI coding agents with org knowledge (27+ integrations: GitHub, Slack, Confluence, Jira, Linear); 5-component retrieval, MCP server, 48% token reduction, 83% faster task completion; $29/user/mo Platform tier (SOC 2 Type II) | 2026-03-13   |
 
 **Key Topics**:
 
