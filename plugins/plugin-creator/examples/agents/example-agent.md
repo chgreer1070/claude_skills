@@ -49,7 +49,7 @@ Validate your agent using:
 uvx skilllint@latest check ./path/to/agent.md
 
 # Auto-fix common issues
-uvx skilllint@latest check --fix ./path/to/agent.md --dry-run
+uvx skilllint@latest check --check ./path/to/agent.md
 uvx skilllint@latest check --fix ./path/to/agent.md
 
 # Plugin validation (if agent is part of a plugin)

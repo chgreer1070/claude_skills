@@ -147,7 +147,7 @@ uvx skilllint@latest check ./skills/my-skill/SKILL.md
 uvx skilllint@latest check ./plugins/my-plugin
 
 # Auto-fix frontmatter issues
-uvx skilllint@latest check --fix ./skills/my-skill/SKILL.md --dry-run
+uvx skilllint@latest check --check ./skills/my-skill/SKILL.md
 uvx skilllint@latest check --fix ./skills/my-skill/SKILL.md
 
 # Batch fix entire plugin
@@ -451,8 +451,8 @@ uvx skilllint@latest check ./skills/my-skill/SKILL.md
 # Validate all skills in a plugin
 uvx skilllint@latest check ./plugins/my-plugin
 
-# Auto-fix issues (dry-run first)
-uvx skilllint@latest check --fix ./skills/my-skill/SKILL.md --dry-run
+# Validate only (no fixes)
+uvx skilllint@latest check --check ./skills/my-skill/SKILL.md
 
 # Apply fixes
 uvx skilllint@latest check --fix ./skills/my-skill/SKILL.md
