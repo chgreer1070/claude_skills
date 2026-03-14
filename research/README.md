@@ -661,6 +661,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [superset-sh.md](./developer-tools/superset-sh.md)     | Superset - macOS Electron app running 10+ parallel AI coding agents via Git worktrees; agent-agnostic (Claude Code, Codex CLI, Cursor, Gemini CLI, OpenCode); branch-isolated conflict-free execution (v1.0.5, Apache 2.0) | 2026-03-04   |
 | [capacitorjs.md](./developer-tools/capacitorjs.md)     | Capacitor v8.1.0 — cross-platform native runtime bridging web apps to iOS, Android, and PWA via WebView + native plugin layer; 37+ official plugins, source-artifact native projects, TypeScript async API (15.2K stars, MIT) | 2026-03-05   |
 | [ghost-desk.md](./developer-tools/ghost-desk.md)       | Ghost Desk — Windows AI overlay assistant invisible during screen shares/recordings via SetWindowDisplayAffinity API; Llama 3.3 70B chat, Llama 4 Scout vision, Deepgram Nova-3 transcription; 14-platform verification dashboard (free at launch, proprietary) | 2026-03-13   |
+| [scrapling-skill.md](./developer-tools/scrapling-skill.md) | Scrapling — Claude Code web scraping skill with 5-fetcher decision tree (Selector/Fetcher/FetcherSession/StealthyFetcher/DynamicFetcher), Cloudflare bypass via Camoufox, site pattern templates, cookie vault, bilingual EN/ZH (MIT) | 2026-03-13   |
 
 **Key Topics**:
 
