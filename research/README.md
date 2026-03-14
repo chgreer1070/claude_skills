@@ -136,7 +136,8 @@ research/
 │   ├── perplexity-mcp-server.md       # Perplexity AI real-time web search and reasoning MCP server
 │   ├── retio-pagemap.md               # MCP server compressing HTML to 2-5K token structured maps
 │   ├── spec-workflow-mcp.md           # Spec-driven development workflow with approval gates and real-time dashboard (3.9K stars)
-│   └── cocoindex-code.md             # Embedded MCP server for semantic code search via AST analysis and embeddings (Apache-2.0)
+│   ├── cocoindex-code.md             # Embedded MCP server for semantic code search via AST analysis and embeddings (Apache-2.0)
+│   └── mcpskills-cli.md              # CLI that converts MCP server tools into static AI agent skills to reduce token consumption
 ├── research-agent-patterns/           # Multi-agent architectures and orchestration
 │   ├── claw-loop.md                   # Autonomous development orchestration via tmux + cron
 │   ├── compound-engineering-plugin.md # Every Inc's Plan/Work/Review/Compound workflow plugin
@@ -276,6 +277,7 @@ MCP servers, tools, and integrations for extending AI assistant capabilities.
 | [openspec-mcp.md](./mcp-ecosystem/openspec-mcp.md)           | OpenSpec MCP - 50+ tool spec-driven workflow: approval state machine, threaded review, task tracking, Fastify+WebSocket dashboard on port 3000 | 2026-03-02   |
 | [spec-workflow-mcp.md](./mcp-ecosystem/spec-workflow-mcp.md) | Spec Workflow MCP - spec-driven development with Requirements→Design→Tasks approval gates, real-time React dashboard on port 5000 (3.9K stars) | 2026-03-02   |
 | [cocoindex-code.md](./mcp-ecosystem/cocoindex-code.md)       | CocoIndex Code — embedded MCP server for semantic code search via AST analysis and embeddings; zero-config, 30+ languages, ~70% token savings, incremental indexing (Apache-2.0) | 2026-03-10   |
+| [mcpskills-cli.md](./mcp-ecosystem/mcpskills-cli.md)         | mcpskills-cli — CLI converting MCP server tools to static SKILL.md files in bash/python/node/go/rust; credential storage, Jinja2 templates, single or per-tool output (14 stars) | 2026-03-13   |
 
 **Key Topics**:
 
