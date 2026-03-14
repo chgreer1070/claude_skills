@@ -15,6 +15,11 @@
   <a href="https://www.conventionalcommits.org/"><img src="https://img.shields.io/badge/Conventional_Commits-1.0.0-FE5196?style=flat-square&logo=conventionalcommits&logoColor=white" alt="Conventional Commits"></a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/bitflight-devops/skilllint"><img src="https://img.shields.io/badge/Plugins_validated_with-skilllint-22C55E?style=for-the-badge&logo=python&logoColor=white" alt="Plugins validated with skilllint"></a>
+  <a href="https://pypi.org/project/skilllint/"><img src="https://img.shields.io/pypi/v/skilllint?style=for-the-badge&label=skilllint&color=3775A9&logo=pypi&logoColor=white" alt="skilllint on PyPI"></a>
+</p>
+
 # Claude Skills Collection
 
 > AI reflects what's expressed, not what's true.
