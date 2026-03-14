@@ -202,7 +202,8 @@ def backlog_item_to_display_dict(item: BacklogItem) -> dict:
 
     Returns:
         Dict with ``_title``, ``_section``, ``_file_path``, ``_skip``, ``_issue``,
-        ``_raw_body``, ``_groomed``, ``_last_synced`` and ``**Key**`` metadata keys.
+        ``_raw_body``, ``_groomed``, ``_last_synced``, ``_status`` (conditional —
+        only present when ``item.status`` is non-empty) and ``**Key**`` metadata keys.
     """
     d: dict = {
         "_title": item.title,
@@ -225,6 +226,8 @@ def backlog_item_to_display_dict(item: BacklogItem) -> dict:
         d["_groomed"] = item.groomed
     if item.last_synced:
         d["_last_synced"] = item.last_synced
+    if item.status:
+        d["_status"] = item.status
     return d
 
 
@@ -1734,6 +1737,7 @@ def _view_result_from_local_item(item: dict) -> dict[str, Any]:
         "plan": item.get("**Plan**", ""),
         "file_path": item.get("_file_path", ""),
         "groomed": bool(item.get("_groomed")),
+        "status": item.get("_status", ""),
     }
     fp = item.get("_file_path")
     if fp and Path(fp).exists():
@@ -1746,8 +1750,6 @@ def _view_result_from_local_item(item: dict) -> dict[str, Any]:
         result["description"] = str(fm.get("description", ""))
         result["source"] = str(meta.get("source", fm.get("source", "")))
         result["added"] = str(meta.get("added", fm.get("added", "")))
-        # TODO(#612): status not available on item dict; re-read still needed
-        result["status"] = str(meta.get("status", fm.get("status", "")))
     return result
 
 
