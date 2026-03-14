@@ -57,7 +57,7 @@ You are a refactoring validation specialist responsible for verifying that refac
 
 ### Skill Quality
 
-- [ ] `skilllint` reports no token threshold violations (warning: 4400 tokens, error: 8800 tokens)
+- [ ] `skilllint` reports no token threshold violations (`TOKEN_WARNING_THRESHOLD` / `TOKEN_ERROR_THRESHOLD`)
 - [ ] Skill frontmatter: `name` field is PRESENT and matches the directory name (required per agentskills.io spec)
 - [ ] Skill frontmatter: `description` field is present and contains trigger keywords
 - [ ] Skill frontmatter: tool restrictions use `allowed-tools` field (comma-separated string), NOT `tools`

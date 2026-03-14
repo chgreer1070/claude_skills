@@ -7,7 +7,6 @@ Technical reference for the skilllint implementation, design patterns, and exten
 ## Overview
 
 **Package**: `skilllint` (PyPI: <https://pypi.org/project/skilllint>)
-**Lines**: 2534 lines total
 **Language**: Python 3.11+ with PEP 723 inline dependencies
 **Execution**: Standalone script using `uv` package manager
 
@@ -367,8 +366,6 @@ def validate(self, path: Path) -> ValidationResult:
 ---
 
 ## CLI Layer
-
-**Implementation**: Lines 2077-2534
 
 **Framework**: Typer (click-based CLI framework)
 

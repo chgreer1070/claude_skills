@@ -97,7 +97,7 @@ flowchart TD
 | Script | Purpose |
 |--------|---------|
 | `create_plugin.py` | Interactive plugin scaffolding — creates `.claude-plugin/`, `plugin.json` |
-| `plugin_validator.py` | Superseded — use `uvx skilllint@latest check` for comprehensive validation with token metrics (frontmatter, links, complexity) |
+| `plugin_validator.py` | Removed — replaced by `uvx skilllint@latest check` |
 | `ecosystem_registry.py` | stdlib-only module declaring frontmatter key ownership per ecosystem; used by FM009 auto-fix to skip ecosystem-owned blocks |
 | `auto_sync_manifests.py` | Pre-commit hook — syncs plugin.json component arrays, bumps semver |
 | `fix_tool_formats.py` | Fix invalid tool format patterns in frontmatter across codebase |
