@@ -203,8 +203,8 @@ mcp__backlog__backlog_list(
 ```python
 mcp__backlog__backlog_view(
     selector="#142",            # GitHub issue URL, #N, bare number, or title substring
-    offset=0,                   # skip N lines (pagination)
-    limit=0,                    # show at most N lines (0 = all)
+    offset=0,                   # skip N entry blocks (for pagination)
+    limit=0,                    # show at most N entry blocks (0 = all, no truncation)
 )
 # Returns: {title, priority, issue, plan, file_path, body, groomed, messages, warnings}
 ```

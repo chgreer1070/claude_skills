@@ -108,8 +108,8 @@ async def backlog_list(
 @mcp.tool()
 async def backlog_view(
     selector: Annotated[str, Field(description="Item selector: GitHub issue URL, #N, bare number, or title substring")],
-    offset: Annotated[int, Field(ge=0, description="Skip N lines from body start (for pagination)")] = 0,
-    limit: Annotated[int, Field(ge=0, description="Show at most N body lines (0 = all, no truncation)")] = 0,
+    offset: Annotated[int, Field(ge=0, description="Skip N entry blocks from body start (for pagination)")] = 0,
+    limit: Annotated[int, Field(ge=0, description="Show at most N entry blocks (0 = all, no truncation)")] = 0,
     show: Annotated[
         str | None,
         Field(description="Entry filter: 'all', 'last', 'first', 'struck', or integer N (first N active entries)"),

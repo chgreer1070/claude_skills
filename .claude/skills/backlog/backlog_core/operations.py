@@ -1159,24 +1159,44 @@ def _build_sections_metadata(body: str, show: str | int | None, since: str | Non
 def _paginate_body(data: dict, body: str, offset: int, limit: int) -> None:
     """Apply offset/limit pagination to the ``body`` field of *data* in-place.
 
+    Paginates by entry blocks when the body contains timestamped entry blocks
+    (``<div><sub>…</sub>…</div>``). Falls back to line-based pagination for
+    plain-text bodies that contain no entry blocks.
+
     Args:
         data: Mutable result dict whose ``body`` key will be replaced.
         body: Original (unpaginated) body text.
-        offset: Number of leading lines to skip.
-        limit: Maximum lines to keep (0 = unlimited).
+        offset: Number of leading entry blocks (or lines) to skip.
+        limit: Maximum entry blocks (or lines) to keep (0 = unlimited).
     """
-    lines = body.splitlines()
-    total = len(lines)
-    if offset > 0:
-        lines = lines[offset:]
-    if limit > 0:
-        lines = lines[:limit]
-    data["body"] = "\n".join(lines)
-    remaining = total - offset - len(lines)
-    if remaining > 0:
-        data["body_truncated"] = True
-        data["body_remaining_lines"] = remaining
-        data["body_total_lines"] = total
+    has_entry_blocks = bool(ENTRY_RE.search(body))
+    if has_entry_blocks:
+        # Entry-block aware pagination
+        entries = parse_entries(body, show="all")
+        total = len(entries)
+        sliced = entries[offset:] if offset > 0 else entries
+        if limit > 0:
+            sliced = sliced[:limit]
+        data["body"] = "\n\n".join(e.raw for e in sliced)
+        remaining = total - offset - len(sliced)
+        if remaining > 0:
+            data["body_truncated"] = True
+            data["body_remaining_entries"] = remaining
+            data["body_total_entries"] = total
+    else:
+        # Fallback: line-based pagination for plain-text bodies with no entry blocks
+        lines = body.splitlines()
+        total = len(lines)
+        if offset > 0:
+            lines = lines[offset:]
+        if limit > 0:
+            lines = lines[:limit]
+        data["body"] = "\n".join(lines)
+        remaining = total - offset - len(lines)
+        if remaining > 0:
+            data["body_truncated"] = True
+            data["body_remaining_lines"] = remaining
+            data["body_total_lines"] = total
 
 
 # ---------------------------------------------------------------------------
@@ -1198,8 +1218,10 @@ def view_item(
     Args:
         selector: Issue URL, #N, bare number, or title substring.
         repo: GitHub repo in owner/repo format.
-        offset: Skip N lines from the start of the body.
-        limit: Show at most N body lines (0 = all, no truncation).
+        offset: Skip N entry blocks from the start of the body (falls back to
+            line-based skipping for plain-text bodies with no entry blocks).
+        limit: Show at most N entry blocks (0 = all, no truncation); falls back
+            to line-based limit for plain-text bodies with no entry blocks.
         show: Entry filter forwarded to parse_entries — "all", "last", "first",
               "struck", positive int (first N active), negative int (last N active),
               or a section name string (case-insensitive section filter).
