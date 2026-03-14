@@ -167,8 +167,10 @@ research/
 │   ├── google-ai-studio.md            # Google AI Studio — browser-based Gemini IDE with 20+ models, function calling, grounding, and OpenAI-compatible API
 │   ├── prompt-engine.md               # SaaS prompt generator converting plain-language to professional-grade prompts in <15s ($19/month)
 │   └── system-prompts-ai-tools.md     # Leaked system prompts and model configs for 30+ AI tools including Claude Code, Cursor, Windsurf, Devin AI (117.9K stars)
-└── task-management/                   # AI-powered task management for development
-    └── claude-task-master.md          # Task management system for AI-driven development (25K+ stars)
+├── task-management/                   # AI-powered task management for development
+│   └── claude-task-master.md          # Task management system for AI-driven development (25K+ stars)
+└── serialization-libraries/           # High-performance serialization and validation libraries
+    └── msgspec.md                     # Zero-overhead JSON/MessagePack/YAML/TOML validation in C; 6-12x faster than Pydantic, 0.46 MiB (3.6K stars)
 </eg>
 
 ---
@@ -448,6 +450,7 @@ Agent SDKs, orchestration frameworks, and comparative studies of multi-agent arc
 | [superpowers.md](./agent-frameworks/superpowers.md)                   | Agentic skills framework with 14 skills for TDD, debugging, and subagent-driven development - works with Claude Code, Codex, OpenCode  | 2026-01-31   |
 | [tersa.md](./agent-frameworks/tersa.md)                               | vercel-labs/tersa — Next.js 15 + ReactFlow visual AI pipeline canvas; typed nodes wired via Vercel AI SDK Gateway (25+ providers); Tersa Agent creates workflows from natural language (927 stars) | 2026-03-06   |
 | [everything-claude-code.md](./agent-frameworks/everything-claude-code.md) | Everything Claude Code — comprehensive performance optimization system: 16 specialized agents, 65+ skills, hook-based automation, token optimization, 6-language support (50K+ stars, MIT) | 2026-03-10   |
+| [gstack.md](./agent-frameworks/gstack.md)                             | gstack — role-specific cognition switching for Claude Code with 8 specialized skills (CEO review, eng review, paranoid code review, shipping, browser QA), compiled Bun browser binary (~100-200ms commands), accessibility-based element selection (6K+ stars, MIT) | 2026-03-13   |
 
 **Key Topics**:
 
@@ -656,6 +659,7 @@ Developer productivity tools and workflow automation for software engineering wi
 | [crawler-sh.md](./developer-tools/crawler-sh.md)       | Crawler.sh - local-first website crawler and SEO/AEO analysis CLI + desktop app; 16 automated SEO checks/page, Markdown extraction, NDJSON/JSON/Sitemap/CSV export, no account required (v0.2.3, proprietary) | 2026-03-04   |
 | [superset-sh.md](./developer-tools/superset-sh.md)     | Superset - macOS Electron app running 10+ parallel AI coding agents via Git worktrees; agent-agnostic (Claude Code, Codex CLI, Cursor, Gemini CLI, OpenCode); branch-isolated conflict-free execution (v1.0.5, Apache 2.0) | 2026-03-04   |
 | [capacitorjs.md](./developer-tools/capacitorjs.md)     | Capacitor v8.1.0 — cross-platform native runtime bridging web apps to iOS, Android, and PWA via WebView + native plugin layer; 37+ official plugins, source-artifact native projects, TypeScript async API (15.2K stars, MIT) | 2026-03-05   |
+| [ghost-desk.md](./developer-tools/ghost-desk.md)       | Ghost Desk — Windows AI overlay assistant invisible during screen shares/recordings via SetWindowDisplayAffinity API; Llama 3.3 70B chat, Llama 4 Scout vision, Deepgram Nova-3 transcription; 14-platform verification dashboard (free at launch, proprietary) | 2026-03-13   |
 
 **Key Topics**:
 
@@ -808,6 +812,7 @@ Autonomous AI coding agent platforms and SDKs for building software development 
 | [pilot.md](./coding-agents/pilot.md)         | Pilot - autonomous development pipeline wrapping Claude Code CLI with ticket-to-PR automation (BSL 1.1) | 2026-02-19   |
 | [tembo.md](./coding-agents/tembo.md)         | Tembo - cloud AI coding agent orchestration platform (Claude Code, Codex, Cursor, Amp, OpenCode) with multi-repo PRs, Sentry/Linear/Jira/Slack integrations, and event-driven automations | 2026-02-23   |
 | [openai-symphony.md](./coding-agents/openai-symphony.md) | OpenAI Symphony — Elixir-based autonomous coding agent platform (Draft v1 spec) with 8-component architecture (Orchestrator, Workspace Manager, Agent Runner, etc.), issue-tracker-driven workflows, Codex stdio JSON-RPC protocol, and workspace sandboxing invariants (5.5K stars, Apache-2.0) | 2026-03-06   |
+| [claude-replay.md](./coding-agents/claude-replay.md) | claude-replay — zero-dependency CLI to convert Claude Code, Cursor, and Codex transcripts into shareable HTML players; v0.4.0 web editor with 3-panel UI, automatic secret redaction, 60-70% native browser compression, 6 themes (500 stars, MIT) | 2026-03-13   |
 
 **Key Topics**:
 
@@ -1263,6 +1268,23 @@ Curated Claude Code plugin ecosystems, configuration repositories, and multi-plu
 - Multi-LLM backend routing (Z.ai, Kimi K2, ccproxy, OpenRouter)
 - Battle-tested plugin selection and curated skill sets
 
+### 27. Serialization Libraries
+
+**Location**: [./serialization-libraries/](./serialization-libraries/)
+
+High-performance serialization, deserialization, and validation libraries for Python and other languages.
+
+| Document | Description | Last Updated |
+| -------- | ----------- | ------------ |
+| [msgspec.md](./serialization-libraries/msgspec.md) | msgspec — zero-overhead JSON/MessagePack/YAML/TOML serialization with schema validation in C; 6-12x faster than Pydantic, 14.66x smaller, zero-cost validation during decode, freethreaded Python 3.14 support (3.6K stars, BSD) | 2026-03-13 |
+
+**Key Topics**:
+
+- High-performance serialization with native C implementations
+- Zero-cost schema validation at decode time (vs post-decode validation)
+- Multi-format support: JSON, MessagePack, YAML, TOML
+- Memory-efficient struct types with optional GC disabling
+
 ---
 
 ## Planned Categories
@@ -1292,6 +1314,7 @@ The following categories are planned for future research:
 | `ai-design-tools/`      | AI-powered visual creation and design platforms    | **Done** |
 | `evaluation-testing/`   | Agent evaluation and testing tools                 | **Done** |
 | `llm-infrastructure/`   | LLM inference servers and multi-provider gateways  | **Done** |
+| `serialization-libraries/` | High-performance serialization and validation libraries | **Done** |
 
 ---
 
