@@ -104,17 +104,120 @@ If any of checks 1–3 fail, skip grooming for that item and report. For items t
 
 For each target item, extract: title, description, research-first questions (if present), source, suggested location.
 
-### Step 3.5: Impact Radius Analysis
+### Steps 4-8: Parallel Grooming Swarm
 
-**Purpose**: Before fact-checking or grooming, identify every system the item's scope touches. The planning phase uses this to create tasks for every affected component — not just the new code.
+Steps 4-8 run as a parallel swarm. Each concern gets its own agent. All agents write to the same backlog item via MCP `backlog_groom` (each writes to a different section — no clobbering). Agents broadcast findings to the team so others can react.
 
-Two phases: build a systems inventory, then run an impact checklist on each system.
+#### Team mode (preferred — when TeamCreate is available)
 
-#### Phase 1: Build the Affected Systems Inventory
+```text
+TeamCreate(team_name: "groom-{item-slug}")
+```
 
-Starting from the files and functions already identified in the groomed content (Files, Evidence, Description, suggested_location sections), identify all systems that interact with the thing this item changes. A "system" is any file that produces, consumes, documents, configures, tests, or instructs the use of the affected interface.
+Create tasks and spawn teammates for each concern:
 
-Create a TodoItem for each system found. Each TodoItem includes: file path, role (producer / consumer / documentation / configuration / CI / agent-instruction), and connection (why this file is affected).
+**Teammates to spawn** (all run in parallel, all write via MCP):
+
+1. **impact-analyst** — Build the affected systems inventory (Phase 1), then run the 5-question impact checklist on each system (Phase 2). Write results to `section="Impact Radius"`. Broadcast scope-expanding findings to the team.
+2. **fact-checker** — Verify item claims against primary sources. Write results to `section="Fact-Check"`. Broadcast REFUTED claims (these become MISSING conditions for rtica-assessor).
+3. **rtica-assessor** — Assess information completeness. Write results to `section="RT-ICA"`. When fact-checker broadcasts a REFUTED claim, mark that condition MISSING. When impact-analyst broadcasts new scope, add new conditions. Broadcast DERIVABLE conditions (fact-checker or impact-analyst may be able to resolve them).
+4. **classifier** — Classify issue type and run root-cause analysis if `defect` or `recurring-pattern`. Write to `section="Issue Classification"` and `section="Root-Cause Analysis"`.
+5. **groomer** — Produce groomed subsections (Reproducibility, Priority, Impact, Benefits, Expected Behavior, Acceptance Criteria, Files, Resources, Dependencies, Effort). Waits for impact-analyst, fact-checker, and rtica-assessor to complete first (task dependency). Write each subsection via `section="{name}"`.
+
+**Task dependencies:**
+
+```text
+TaskCreate(subject: "Impact Radius")           # no deps
+TaskCreate(subject: "Fact-Check")              # no deps
+TaskCreate(subject: "RT-ICA")                  # blocked by Impact Radius + Fact-Check
+TaskCreate(subject: "Issue Classification")    # no deps
+TaskCreate(subject: "Groomer")                 # blocked by RT-ICA + Issue Classification
+```
+
+**Teammate interaction flow:**
+
+```mermaid
+sequenceDiagram
+    participant L as Orchestrator
+    participant IA as impact-analyst
+    participant FC as fact-checker
+    participant RT as rtica-assessor
+    participant CL as classifier
+    participant GR as groomer
+
+    L->>IA: spawn (item details, Files, Evidence, suggested_location)
+    L->>FC: spawn (item claims to verify)
+    L->>RT: spawn (item details — waits for IA + FC)
+    L->>CL: spawn (item description)
+
+    IA->>IA: build systems inventory from groomed content
+    IA->>IA: expand via imports, docs, agents, config, CI
+    IA-->>FC: broadcast "SCOPE: found 12 systems, 2 CI workflows"
+    FC->>FC: adds CI claims to verification list
+
+    FC->>FC: verify claims against primary sources
+    FC-->>RT: broadcast "REFUTED: task_format.py multi-doc support"
+    RT->>RT: marks condition MISSING
+
+    IA->>IA: run 5-question checklist per system
+    IA->>IA: write Impact Radius section via MCP
+
+    FC->>FC: write Fact-Check section via MCP
+
+    RT->>RT: assess completeness using IA + FC results
+    RT-->>FC: broadcast "DERIVABLE: check ruamel.yaml multi-doc"
+    FC->>FC: researches, broadcasts result
+    RT->>RT: updates assessment
+    RT->>RT: write RT-ICA section via MCP
+
+    CL->>CL: classify + RCA if needed
+    CL->>CL: write Issue Classification section via MCP
+
+    Note over GR: unblocked after RT-ICA + Classification complete
+    GR->>GR: read all sections written by other teammates
+    GR->>GR: produce Reproducibility, Priority, Impact, etc.
+    GR->>GR: write each subsection via MCP
+
+    L->>L: all tasks complete — shutdown team
+```
+
+**Scope expansion handling:** When impact-analyst discovers systems not in the original groomed content, it broadcasts the finding. Other teammates adjust:
+- fact-checker adds new claims to verify
+- rtica-assessor adds new conditions
+- groomer incorporates new systems into its sections
+
+After all teammates complete, the orchestrator shuts down the team and proceeds to Step 9.
+
+#### No-team fallback (when TeamCreate is not available)
+
+Spawn agents sequentially, re-spawning when new information arrives:
+
+**Wave 1** (parallel — no dependencies between them):
+- Agent: impact-analyst — writes `section="Impact Radius"`
+- Agent: fact-checker — writes `section="Fact-Check"`
+- Agent: classifier — writes `section="Issue Classification"` and `section="Root-Cause Analysis"`
+
+**After Wave 1 completes**, read the Impact Radius and Fact-Check sections from the item. If impact-analyst found systems that change the scope of the fact-check, spawn a second fact-checker agent with the expanded scope.
+
+**Wave 2** (depends on Wave 1 results):
+- Agent: rtica-assessor — receives Impact Radius + Fact-Check results, writes `section="RT-ICA"`
+
+If RT-ICA returns BLOCKED, stop and present missing inputs to user. Do not proceed to Wave 3.
+
+**Wave 3** (depends on Wave 2):
+- Agent: groomer — receives all prior sections, writes groomed subsections
+
+**Re-spawn rule:** After each wave, read what was written to the item via MCP. If new scope was discovered (impact-analyst found systems not in the original description), check whether the existing sections need updating. If yes, spawn targeted agents to update specific sections before proceeding to the next wave.
+
+#### Impact Radius — what to find and why
+
+The impact-analyst teammate (or agent in no-team mode) performs two phases:
+
+**Phase 1: Build the Affected Systems Inventory**
+
+Starting from the files and functions in the groomed content (Files, Evidence, Description, suggested_location sections), identify all systems that interact with the thing this item changes. A "system" is any file that produces, consumes, documents, configures, tests, or instructs the use of the affected interface.
+
+Create a TodoItem for each system. Each TodoItem includes: file path, role (producer / consumer / documentation / configuration / CI / agent-instruction), and connection (why this file is affected).
 
 Start with the known systems from the groomed content:
 - Files listed in the **Files** section
@@ -129,11 +232,11 @@ Then expand by searching for:
 - CI workflows that test these modules
 - Test files that exercise these systems
 
-Exclude archived and generated content from the inventory: `plan/` artifacts, `docs/plans/`, `.claude/archive/`, `.claude/grooming-sessions/`, test fixtures. Backlog item files (`.claude/backlog/*.md`) are informational — they describe the problem, not the system.
+Exclude archived and generated content: `plan/` artifacts, `docs/plans/`, `.claude/archive/`, `.claude/grooming-sessions/`, test fixtures. Backlog item files (`.claude/backlog/*.md`) are informational — they describe the problem, not the system.
 
-#### Phase 2: Impact Checklist (per system)
+**Phase 2: Impact Checklist (per system)**
 
-For each TodoItem in the inventory, answer these five questions:
+For each TodoItem, answer these five questions:
 
 1. **Will this file break when the item ships?** — Does it depend on an interface, format, or behavior that the item changes? If yes: what specifically breaks.
 2. **Will this file become stale?** — Does it describe, document, or reference the current behavior? If yes: what section or claim becomes inaccurate.
@@ -143,9 +246,7 @@ For each TodoItem in the inventory, answer these five questions:
 
 Mark each TodoItem complete after answering. Any system with at least one "yes" answer goes into the Impact Radius output.
 
-#### Output format
-
-Write findings as an Impact Radius section:
+**Impact Radius output format:**
 
 ```markdown
 ## Impact Radius
@@ -182,62 +283,31 @@ Write findings as an Impact Radius section:
 
 If a category has no affected files, write `None identified.` — do not omit the category.
 
-**Carry forward**: Pass the Impact Radius section to Step 5 (RT-ICA) and Step 8 (groomer agent). Write it to the item file after Step 8 via `mcp__backlog__backlog_groom(selector="{title}", section="Impact Radius", content="{impact radius section}")`.
+#### Fact-Check — evidence rules
 
-### Step 4: Fact-Check Item Claims
+The fact-checker teammate (or agent) verifies item claims against primary sources. Training data recall is NOT evidence. Valid evidence: WebFetch output, WebSearch results, command output, repository source code, MCP tool output.
 
-Invoke the `fact-check` skill on each target item to verify factual claims against primary sources **before** running RT-ICA or spawning groomer agents. This prevents unverified or refuted assertions from entering the planning context.
+Output: `Fact-Check Summary` with claims checked, VERIFIED/REFUTED/INCONCLUSIVE counts, and citations.
 
-```text
-Skill(skill: "fact-check", args: "{item title}")
-```
+REFUTED claims become MISSING conditions in RT-ICA. INCONCLUSIVE claims become DERIVABLE.
 
-The `fact-check` skill spawns `@fact-checker` agents that MUST retrieve evidence via `WebFetch`, `WebSearch`, or `gh`. Training data recall is not accepted as evidence.
+#### RT-ICA — information completeness
 
-After each run, collect the verdict summary:
-
-```text
-Fact-Check Summary: {item title}
-Claims checked: {N}
-VERIFIED: {N} | REFUTED: {N} | INCONCLUSIVE: {N}
-Refuted claims:      [{list of claim texts — each becomes a MISSING condition in Step 5}]
-Inconclusive claims: [{list of claim texts — flag as unverified DERIVABLE in Step 5}]
-Citations:           [{VERIFIED claims cite their primary sources}]
-```
-
-**Multiple items** — invoke `fact-check` for each item sequentially (respect the wave-of-5 concurrency limit inside `fact-check` itself). Do not batch items into a single `fact-check` call.
-
-Pass the fact-check summary forward to Step 5.
-
-### Step 5: RT-ICA Assessment Per Item
-
-Perform Reverse Thinking — Information Completeness Assessment using both the item details **and** the fact-check verdicts from Step 4. This directs the groomer's discovery toward filling gaps rather than broad search.
-
-For each item, produce:
+The rtica-assessor produces:
 
 ```text
 RT-ICA: {item title}
-Goal: {one sentence — what completing this item achieves}
+Goal: {one sentence}
 Conditions:
 1. {condition} | Status: {AVAILABLE|DERIVABLE|MISSING} | Info needed: {what}
-...
 Decision: {APPROVED|BLOCKED}
-Missing: {list of missing inputs, or "None"}
 ```
 
-- **AVAILABLE**: Explicitly stated in item description or research questions AND fact-check verdict (Step 4) is VERIFIED or not applicable
-- **DERIVABLE**: Safely inferable from codebase context (state basis); fact-check verdict is INCONCLUSIVE
-- **MISSING**: Not present, not safely inferable — OR fact-check verdict is REFUTED (the stated condition is false and the correct state is unknown)
+**ARL human-probing integration:** When RT-ICA returns BLOCKED or MISSING conditions, optionally include `invisible_knowledge_prompts` — questions to ask the human before planning. See [.claude/docs/sdlc-layers/arl-human-probing-design.md](../../docs/sdlc-layers/arl-human-probing-design.md).
 
-REFUTED claims from Step 4 MUST be listed as MISSING conditions. A REFUTED claim is not a valid basis for any AVAILABLE or DERIVABLE status.
+#### Issue Classification
 
-Pass the RT-ICA summary, fact-check summary, and Impact Radius section to the groomer alongside item details.
-
-**ARL human-probing integration:** When RT-ICA returns BLOCKED or MISSING conditions, the context manifest can include `invisible_knowledge_prompts` — questions to ask the human before planning (e.g., "What went wrong in the past?", "What references are essential?"). See [.claude/docs/sdlc-layers/arl-human-probing-design.md](../../docs/sdlc-layers/arl-human-probing-design.md).
-
-### Step 6: Issue Classification
-
-Classify the issue type to determine analysis depth and verification criteria. Done by the orchestrator — requires reasoning about the problem's nature. See the flowchart and write template in [issue-classification.md](./references/issue-classification.md).
+Classify the issue type. See flowchart and write template in [issue-classification.md](./references/issue-classification.md).
 
 | Type | Analysis Method |
 |------|----------------|
@@ -247,27 +317,13 @@ Classify the issue type to determine analysis depth and verification criteria. D
 | `missing-guardrail` | none |
 | `unbounded-design` | design-framing |
 
-Write classification to the item via `mcp__backlog__backlog_groom(selector, section="Issue Classification", content=...)`. Full template with `scenario-target` field: [issue-classification.md](./references/issue-classification.md).
+Root-cause analysis runs only for `defect` or `recurring-pattern`. Full procedures: [issue-classification.md](./references/issue-classification.md).
 
-### Step 7: Root-Cause Analysis (Conditional)
+#### Groomer — subsection production
 
-**Only for `defect` or `recurring-pattern`**. Skip for `procedural`, `missing-guardrail`, and `unbounded-design`.
+The groomer teammate (or agent) produces: Reproducibility, Priority, Impact, Benefits, Expected Behavior, Acceptance Criteria, Files, Resources, Dependencies, Effort. Prompt templates: [groomer-agent.md](./references/groomer-agent.md).
 
-- **defect**: invoke `Skill(skill="find-cause", args="{description}")` and write 5-whys evidence chain
-- **recurring-pattern**: search `mcp__backlog__backlog_list(status="resolved")` for recurrence frequency and write 6-sigma measurement
-
-Full procedures and write templates: [issue-classification.md](./references/issue-classification.md)
-
-### Step 8: Spawn Groomer Agents
-
-**IMPORTANT**: Use `Agent(subagent_type: "backlog-item-groomer")`. Do NOT groom inline — always delegate.
-
-- **Single item**: spawn one agent
-- **Multiple items**: parallel agents (max 5 concurrent; batch in waves if more)
-
-Full prompt templates: [groomer-agent.md](./references/groomer-agent.md)
-
-Pass RT-ICA context, fact-check verdicts, classification, RCA output, Impact Radius section, and file paths (not pasted content) to the groomer.
+The groomer reads all sections written by prior teammates (Impact Radius, Fact-Check, RT-ICA, Issue Classification) from the item via MCP before producing its sections. This ensures the groomed content reflects the full findings.
 
 ### Step 9: Write Groomed Content to Item Files
 
@@ -352,16 +408,13 @@ Per-item groomed content lives in each item file; this session file holds only m
 ## Completion Criteria
 
 - Validity check (job still valid, problem reproducible, local file not stale) before grooming
-- Impact Radius analysis performed (Step 3.5): documents, upstream producers, downstream consumers, config/CI files identified
-- Impact Radius section written to item file via `mcp__backlog__backlog_groom(section="Impact Radius", content=...)`
-- Fact-check run for each item before RT-ICA (training data not used as evidence)
-- Fact-check verdicts passed into RT-ICA conditions (REFUTED → MISSING)
-- RT-ICA summary included for each item
-- Groomer agent(s) spawned via `Agent(subagent_type: "backlog-item-groomer")` — NOT groomed inline
-- Groomer agent(s) received RT-ICA context, fact-check verdicts, Impact Radius section, and file paths (not pasted content)
-- Groomed content written via `mcp__backlog__backlog_groom` (prefer `section`/`content` parameters for incremental updates; `groomed_content` for full body)
-- When item has GitHub issue, groomed content synced to issue body
+- All grooming concerns run as parallel swarm (team mode) or iterative waves (no-team fallback) — NOT sequential orchestrator steps
+- Impact Radius: systems inventory built from groomed content, 5-question checklist run per system, section written via MCP
+- Fact-Check: claims verified against primary sources (training data not used as evidence), section written via MCP
+- RT-ICA: information completeness assessed using Impact Radius + Fact-Check results, REFUTED → MISSING, section written via MCP
+- Issue Classification: assigned with RCA for `defect`/`recurring-pattern` types, section written via MCP
+- Groomer: subsections produced after all prior sections are available, each written via MCP
+- Scope expansion handled: when new systems or refuted claims change scope, affected agents re-run or adjust
+- When item has GitHub issue, all sections synced to issue body
+- Team shut down after all teammates complete (team mode) or all waves finish (fallback mode)
 - Bulk session summary optionally saved to `.claude/grooming-sessions/{date}.md` when grooming multiple items
-- Issue classification assigned for each item (Step 6)
-- Root-cause analysis performed for `defect` and `recurring-pattern` items (Step 7)
-- Classification and analysis passed to groomer agent as context (Step 8)
