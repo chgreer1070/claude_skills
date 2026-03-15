@@ -1,5 +1,11 @@
 # Test Coverage Gaps
 
+## Gap: sam_schema CLI new commands (T01)
+
+**Files**: `packages/sam_schema/sam_schema/cli.py`, `packages/sam_schema/sam_schema/core/query.py`
+**Behavior to cover**: `create`, `update`, `claim`, `validate` commands; `status --all` flag; `create_plan()`, `update_plan_fields()`, `_next_plan_number()`, `append_section()`, `create_plan_file()` functions
+**Reason not written**: T06 is the designated test task for new CLI commands and addressing. T01 is a Foundation task — tests are scoped to T06 per the dependency graph.
+
 ## Gap: implementation_manager.py — --github flag and fetch_tasks_from_github
 
 **Files**: `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py`
@@ -148,3 +154,9 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 - `sam_status`: success path returns `PlanStatus` dict with all fields; error path returns `{"error": ...}`
 - `__main__.py`: `mcp.run()` is called when script is run as `__main__`
 **Reason not written**: T9 scope is server implementation only. Test authoring for the MCP server is assigned to T10a per the task plan architecture spec.
+
+## Gap: sam_schema state/writer T07 lookup failure
+
+**Files**: `packages/sam_schema/sam_schema/writers/yaml_writer.py`, `packages/sam_schema/sam_schema/cli.py`
+**Behavior to cover**: `update_field(path, 'T07', ...)` and `sam state integrate-sam-schema/T07 complete` both raise "Task ID 'T07' not found" on the `tasks-3-integrate-sam-schema.md` plan file, even though `implementation_manager.py claim-task` succeeded on the same file using the deprecated regex writer. Test should verify that `update_field` and `sam state` can update status on a multi-document YAML-frontmatter plan where the task ID is `T07` (two-digit numeric suffix).
+**Reason not written**: Discovered during T07 execution; root cause requires investigation into the sam_schema reader's task ID parsing for two-digit suffixes. Outside T07 scope (T07 creates a migration script, does not fix sam_schema internals).

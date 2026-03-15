@@ -18,6 +18,17 @@ $ARGUMENTS
 
 ---
 
+## Resolve Plan Address
+
+Extract the plan address `P{N}` from the task file path:
+
+- `plan/tasks-3-integrate-sam-schema.md` → plan number `3` → address `P3`
+- Strip `plan/tasks-` prefix, take the leading integer N, format as `P{N}`
+
+Use `P{N}` in all `sam` CLI calls below.
+
+---
+
 ## Pre-Phase 1: TN Verification Check
 
 Before invoking Phase 1, check for a TN verification report produced by `tn-verification-gate` (which reads the T0 baseline written by `t0-baseline-capture`).
@@ -62,37 +73,49 @@ Fix the regressions, then re-run /complete-implementation.
 
 ## Phase 1: Code Review
 
-Launch `code-reviewer` with the task file path.
+Query plan status and pass `TaskAssignment` JSON to `code-reviewer`:
+
+```bash
+uv run sam status P{N} --format json
+```
+
+Launch `code-reviewer` with the `TaskAssignment` JSON output (not the raw file path).
 
 ---
 
 ## Phase 2: Feature Verification (goal-backward)
 
-Launch `feature-verifier` with the task file path. If the task file contains `issue-classification` metadata, include it in the agent prompt so the feature verifier can apply proportional verification checks.
+Read task data via sam CLI:
+
+```bash
+uv run sam read P{N}/T{M} --format json
+```
+
+Launch `feature-verifier` with the `TaskAssignment` JSON. If the `TaskAssignment` contains `issue-classification` metadata, include it in the agent prompt so the feature verifier can apply proportional verification checks.
 
 ---
 
 ## Phase 3: Integration Check
 
-Launch `integration-checker` with the task file path.
+Launch `integration-checker` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json`.
 
 ---
 
 ## Phase 4: Documentation Drift Audit
 
-Launch `doc-drift-auditor` with the task file path (audit-only).
+Launch `doc-drift-auditor` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json` (audit-only).
 
 ---
 
 ## Phase 5: Documentation Update (if drift found)
 
-If drift exists or docs must be updated for the feature, launch `service-docs-maintainer`.
+If drift exists or docs must be updated for the feature, launch `service-docs-maintainer` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json`.
 
 ---
 
 ## Phase 6: Context Refinement
 
-Launch `context-refinement` to update the task file Context Manifest with discoveries from implementation AND perform a plan artifact freshness check against the feature-context and architect spec. The agent compares key claims in plan artifacts against the actual implementation and classifies findings as design-refinement or intent-divergence (see [.claude/docs/plan-artifact-lifecycle.md](./../../../../.claude/docs/plan-artifact-lifecycle.md)).
+Launch `context-refinement` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json` to update the Context Manifest with discoveries from implementation AND perform a plan artifact freshness check against the feature-context and architect spec. The agent compares key claims in plan artifacts against the actual implementation and classifies findings as design-refinement or intent-divergence (see [.claude/docs/plan-artifact-lifecycle.md](./../../../../.claude/docs/plan-artifact-lifecycle.md)).
 
 ---
 

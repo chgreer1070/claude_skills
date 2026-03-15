@@ -594,3 +594,100 @@ def test_normalize_plan_slug_key_accepted_as_feature() -> None:
     task_dicts = [{"task": "T1", "title": "A task", "status": "not-started"}]
     result = normalize_plan(raw_meta, task_dicts, FormatType.GLOBAL_MANIFEST, pathlib.Path("/fake"))
     assert result.plan.feature == "my-feature"
+
+
+# ---------------------------------------------------------------------------
+# normalize_plan — acceptance_criteria list coercion
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_plan_acceptance_criteria_as_list_joined_with_newlines() -> None:
+    """acceptance-criteria YAML list is joined into a single string.
+
+    Tests: List -> str coercion for acceptance_criteria Plan field.
+    How: Pass plan_meta with 'acceptance-criteria' as a list; verify the
+         resulting Plan.acceptance_criteria is a newline-joined string.
+    Why: Some task files store acceptance-criteria as a YAML bullet list.
+         Plan.acceptance_criteria is str | None; passing a list raises
+         ValidationError without this coercion.
+    """
+    # Arrange
+    raw_meta: dict = {
+        "feature": "test-feature",
+        "acceptance-criteria": ["Criterion one", "Criterion two", "Criterion three"],
+    }
+
+    # Act
+    result = normalize_plan(raw_meta, [], FormatType.PURE_YAML, pathlib.Path("/fake/tasks-1-test-feature.md"))
+
+    # Assert
+    assert result.plan.acceptance_criteria == "Criterion one\nCriterion two\nCriterion three"
+
+
+def test_normalize_plan_acceptance_criteria_as_string_preserved() -> None:
+    """acceptance-criteria plain string is passed through unchanged.
+
+    Tests: No regression for string acceptance_criteria values.
+    How: Pass plan_meta with 'acceptance-criteria' as a plain string.
+    Why: Coercion must not corrupt existing string values.
+    """
+    # Arrange
+    raw_meta: dict = {"feature": "test-feature", "acceptance-criteria": "Single criterion as plain string."}
+
+    # Act
+    result = normalize_plan(raw_meta, [], FormatType.PURE_YAML, pathlib.Path("/fake/tasks-1-test-feature.md"))
+
+    # Assert
+    assert result.plan.acceptance_criteria == "Single criterion as plain string."
+
+
+def test_normalize_plan_acceptance_criteria_snake_case_list_coerced() -> None:
+    """acceptance_criteria (snake_case) list is joined with newlines.
+
+    Tests: Snake-case variant of acceptance_criteria coercion.
+    How: Pass 'acceptance_criteria' (underscore) as a list.
+    Why: Both kebab-case and snake_case keys must be handled.
+    """
+    # Arrange
+    raw_meta: dict = {"feature": "test-feature", "acceptance_criteria": ["Item A", "Item B"]}
+
+    # Act
+    result = normalize_plan(raw_meta, [], FormatType.PURE_YAML, pathlib.Path("/fake/tasks-1-test-feature.md"))
+
+    # Assert
+    assert result.plan.acceptance_criteria == "Item A\nItem B"
+
+
+def test_normalize_plan_acceptance_criteria_empty_list_becomes_none() -> None:
+    """Empty acceptance-criteria list is normalised to None.
+
+    Tests: Empty list -> None coercion for acceptance_criteria.
+    How: Pass plan_meta with 'acceptance-criteria' as an empty list.
+    Why: An empty list is semantically equivalent to no criteria and must not
+         result in an empty string being stored on the Plan model.
+    """
+    # Arrange
+    raw_meta: dict = {"feature": "test-feature", "acceptance-criteria": []}
+
+    # Act
+    result = normalize_plan(raw_meta, [], FormatType.PURE_YAML, pathlib.Path("/fake/tasks-1-test-feature.md"))
+
+    # Assert
+    assert result.plan.acceptance_criteria is None
+
+
+def test_normalize_plan_goal_as_list_coerced() -> None:
+    """goal YAML list is joined into a single string.
+
+    Tests: List -> str coercion for goal Plan field.
+    How: Pass plan_meta with 'goal' as a list.
+    Why: goal is str | None and can appear as a YAML list in task files.
+    """
+    # Arrange
+    raw_meta: dict = {"feature": "test-feature", "goal": ["Deliver X", "Deliver Y"]}
+
+    # Act
+    result = normalize_plan(raw_meta, [], FormatType.PURE_YAML, pathlib.Path("/fake/tasks-1-test-feature.md"))
+
+    # Assert
+    assert result.plan.goal == "Deliver X\nDeliver Y"

@@ -7,17 +7,186 @@ the YAML writer. This is the primary API consumed by the CLI and MCP server.
 
 from __future__ import annotations
 
+import io
+import re
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sam_schema.core.dependencies import DependencyGraph
-from sam_schema.core.models import Plan, PlanStatus, ReadResult, Task, TaskStatus
+from sam_schema.core.models import Plan, PlanStatus, ReadResult, Task, TaskAssignment, TaskStatus
 from sam_schema.readers.detect import read_plan
 from sam_schema.readers.normalize import normalize_plan
-from sam_schema.writers.yaml_writer import update_fields
+from sam_schema.writers.yaml_writer import (
+    LiteralScalarString,
+    _atomic_write,
+    _make_yaml,
+    append_section,
+    create_plan_file,
+    update_fields,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+# Matches the new P{NNN}-{slug}.yaml naming scheme to extract the numeric plan number.
+_P_NUMERIC_RE = re.compile(r"^P(\d+)-")
+
+
+def _next_plan_number(plan_dir: Path) -> int:
+    """Scan ``plan_dir`` for the highest existing plan number and return the next one.
+
+    Recognises both the new ``P{NNN}-{slug}`` naming scheme and the legacy
+    ``tasks-{N}-{slug}`` pattern so that numbering is monotonically increasing
+    across mixed directories.
+
+    Args:
+        plan_dir: Directory to search. Need not exist; returns 1 if absent.
+
+    Returns:
+        The next available plan number (highest found + 1, minimum 1).
+    """
+    if not plan_dir.exists():
+        return 1
+
+    highest = 0
+    legacy_re = re.compile(r"^tasks-(\d+)-")
+    for entry in plan_dir.iterdir():
+        name = entry.name
+        m = _P_NUMERIC_RE.match(name)
+        if m:
+            highest = max(highest, int(m.group(1)))
+            continue
+        m2 = legacy_re.match(name)
+        if m2:
+            highest = max(highest, int(m2.group(1)))
+    return highest + 1
+
+
+def create_plan(
+    slug: str,
+    goal: str,
+    tasks: list[dict[str, Any]],
+    plan_dir: Path,
+    context: str | None = None,
+    issue: int | None = None,
+) -> Plan:
+    """Create a new plan, assign the next plan number, validate tasks, and write to disk.
+
+    The output file is named ``{plan_dir}/P{NNN}-{slug}.yaml`` where ``NNN`` is
+    the next available three-digit-padded plan number.  If the serialized YAML
+    exceeds the single-file threshold it is written as a directory instead.
+
+    Each dict in ``tasks`` is validated against the ``Task`` Pydantic model
+    before the plan is written; invalid task dicts raise ``ValueError`` with the
+    Pydantic validation error details.
+
+    Args:
+        slug: Short identifier for the plan (e.g., ``"auth-system"``).
+        goal: Human-readable goal statement for the plan.
+        tasks: List of task dicts to include. Each dict must satisfy the ``Task``
+               model (required: ``task``/``id``, ``title``, ``status``, ``agent``,
+               ``dependencies``, ``priority``, ``complexity``).
+        plan_dir: Directory in which to create the plan file.
+        context: Optional plan-level context string (markdown prose).
+        issue: Optional GitHub issue number to associate with the plan.
+
+    Returns:
+        The created ``Plan`` model (with ``source_path`` set to the written path).
+
+    Raises:
+        ValueError: If any task dict is invalid per the ``Task`` model.
+        OSError: If the plan file cannot be written.
+    """
+    plan_number = _next_plan_number(plan_dir)
+    file_name = f"P{plan_number:03d}-{slug}.yaml"
+    output_path = plan_dir / file_name
+
+    validated_tasks: list[Task] = []
+    for i, raw_task in enumerate(tasks):
+        # Accept "task" key as the task id (YAML frontmatter convention)
+        normalized = {**raw_task, "id": raw_task["task"]} if "task" in raw_task and "id" not in raw_task else raw_task
+        try:
+            validated_tasks.append(Task.model_validate(normalized))
+        except Exception as exc:
+            msg = f"Task at index {i} failed validation: {exc}"
+            raise ValueError(msg) from exc
+
+    plan = Plan(
+        feature=slug,
+        goal=goal,
+        context=context,
+        issue=str(issue) if issue is not None else None,
+        tasks=validated_tasks,
+        source_path=output_path,
+    )
+    create_plan_file(output_path, plan)
+    return plan
+
+
+def update_plan_fields(
+    plan_path: Path,
+    task_id: str | None = None,
+    *,
+    set_fields: dict[str, str] | None = None,
+    context: str | None = None,
+    append_section_name: str | None = None,
+    section_content: str | None = None,
+) -> None:
+    """Update plan or task fields via a unified write operation.
+
+    Supports three non-exclusive operations that can be combined in one call:
+
+    1. ``set_fields`` — update arbitrary plan-level or task-level fields.
+    2. ``context`` — shorthand for setting the plan context field.
+    3. ``append_section_name`` + ``section_content`` — append a named markdown
+       section to a task's body.
+
+    Args:
+        plan_path: Path to the plan file or directory.
+        task_id: Task ID to target for task-level operations. ``None`` means
+                 plan-level operations only.
+        set_fields: Mapping of ``field=value`` strings to update. For
+                    task-level updates ``task_id`` must be provided.
+        context: If provided, sets the plan-level ``context`` field. Requires
+                 that ``plan_path`` points to a writable YAML file.
+        append_section_name: Section heading to append. Requires
+                             ``section_content`` and ``task_id``.
+        section_content: Body text for the appended section.
+
+    Raises:
+        ValueError: If ``append_section_name`` is given without ``task_id`` or
+                    ``section_content``.
+        FileNotFoundError: If ``plan_path`` does not exist.
+        KeyError: If ``task_id`` is not found in the plan.
+    """
+    if append_section_name is not None:
+        if task_id is None:
+            msg = "append_section_name requires task_id"
+            raise ValueError(msg)
+        if not section_content:
+            msg = "append_section_name requires section_content"
+            raise ValueError(msg)
+
+    file_path = _resolve_writable_path(plan_path, task_id or "")
+
+    if context is not None:
+        # Update the plan-level context field via direct load-modify-write.
+        # plan-level fields live in the top-level YAML document; update_fields
+        # operates on task sections and cannot update plan metadata.
+        y = _make_yaml()
+        raw = file_path.read_text(encoding="utf-8")
+        data: dict[str, Any] = y.load(raw)
+        data["context"] = LiteralScalarString(context) if "\n" in context else context
+        buf = io.StringIO()
+        y.dump(data, buf)
+        _atomic_write(file_path, buf.getvalue())
+
+    if set_fields and task_id is not None:
+        # Task-level field updates
+        update_fields(file_path, task_id, set_fields)  # type: ignore[arg-type]
+
+    if append_section_name is not None and task_id is not None and section_content:
+        append_section(file_path, task_id, append_section_name, section_content)
 
 
 def load_plan(plan_path: Path) -> ReadResult:
@@ -61,6 +230,66 @@ def get_task(plan_path: Path, task_id: str) -> Task:
             return task
     msg = f"Task '{task_id}' not found in plan '{plan_path}'"
     raise KeyError(msg)
+
+
+def get_task_assignment(plan_path: Path, task_id: str) -> TaskAssignment:
+    """Get a task combined with plan-level context as a ``TaskAssignment``.
+
+    Composes a ``TaskAssignment`` by loading the plan and embedding the
+    plan-level fields (goal, context, acceptance criteria) alongside the
+    requested task.  This gives agents everything they need in one call
+    per ADR-003.
+
+    Args:
+        plan_path: Path to the plan file or directory.
+        task_id: Task ID to retrieve (e.g., ``"T1"``).
+
+    Returns:
+        A ``TaskAssignment`` containing plan metadata and the nested ``Task``.
+
+    Raises:
+        FileNotFoundError: If ``plan_path`` does not exist.
+        KeyError: If no task with ``task_id`` is found in the plan.
+    """
+    result = load_plan(plan_path)
+    plan = result.plan
+
+    task: Task | None = None
+    for t in plan.tasks:
+        if t.id == task_id:
+            task = t
+            break
+    if task is None:
+        msg = f"Task '{task_id}' not found in plan '{plan_path}'"
+        raise KeyError(msg)
+
+    # Derive plan_number from source_path stem if available.
+    plan_number: str | None = None
+    plan_slug: str | None = None
+    if plan.source_path is not None:
+        stem = plan.source_path.stem  # e.g. "P001-auth-system" or "tasks-1-auth-system"
+        if stem.startswith("P") and "-" in stem:
+            parts = stem.split("-", 1)
+            plan_number = parts[0]
+            plan_slug = parts[1]
+        elif stem.startswith("tasks-"):
+            # Legacy naming: tasks-{N}-{slug}
+            parts = stem.split("-", 2)
+            MIN_PARTS_FOR_NUMBER = 2
+            MIN_PARTS_FOR_SLUG = 3
+            if len(parts) >= MIN_PARTS_FOR_NUMBER:
+                plan_number = parts[1]
+            if len(parts) >= MIN_PARTS_FOR_SLUG:
+                plan_slug = parts[2]
+
+    return TaskAssignment(
+        plan_number=plan_number,
+        plan_slug=plan_slug,
+        plan_goal=plan.goal,
+        plan_context=plan.context,
+        plan_acceptance_criteria=plan.acceptance_criteria,
+        task=task,
+    )
 
 
 def list_tasks(plan_path: Path) -> list[Task]:
@@ -237,14 +466,18 @@ def _resolve_writable_path(plan_path: Path, task_id: str) -> Path:
     raise KeyError(msg)
 
 
-# Re-export Plan for callers that only need the plan model
+# Re-export Plan and TaskAssignment for callers that only need the models
 __all__ = [
     "Plan",
+    "TaskAssignment",
     "claim_task",
+    "create_plan",
     "get_plan_status",
     "get_ready_tasks",
     "get_task",
+    "get_task_assignment",
     "list_tasks",
     "load_plan",
+    "update_plan_fields",
     "update_status",
 ]

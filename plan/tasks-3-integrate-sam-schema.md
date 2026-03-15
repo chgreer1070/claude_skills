@@ -371,7 +371,8 @@ When T12 or T13 are completed in python3-development, T14 must sync these copies
 ---
 task: T01
 title: "New sam CLI commands: create, update, claim, validate"
-status: not-started
+status: complete
+completed: 2026-03-15T12:00:00Z
 agent: python3-development:python-cli-architect
 dependencies: []
 priority: 1
@@ -381,6 +382,7 @@ skills: ["python3-development"]
 parallelize-with: [T02, T03, T04]
 reason: "T01 writes to cli.py and query.py; T02 writes to cli.py (read command) and models.py; T03 writes to addressing.py; T04 writes to TASK_FILE_FORMAT.md. T01 and T02 both touch cli.py -- MERGE RISK exists. However, T01 adds new commands (create/update/claim/validate functions) while T02 modifies the existing read command and adds a model to models.py. They touch different functions in cli.py, so parallel execution is safe if each agent appends rather than rewrites the file."
 handoff: "Report: files modified, test commands run, any schema decisions made"
+started: "2026-03-15T13:01:10Z"
 ---
 
 ## Context
@@ -488,7 +490,8 @@ Add `sam create`, `sam update`, `sam claim`, and `sam validate` CLI commands wit
 ---
 task: T02
 title: "Enhanced sam read: TaskAssignment composite response"
-status: not-started
+status: complete
+completed: 2026-03-15T12:00:00Z
 agent: python3-development:python-cli-architect
 dependencies: []
 priority: 1
@@ -498,6 +501,7 @@ skills: ["python3-development"]
 parallelize-with: [T01, T03, T04]
 reason: "T02 modifies the existing read command in cli.py and adds TaskAssignment model to models.py. T01 adds new commands to cli.py (different functions). Safe to parallelize -- different functions in same file."
 handoff: "Report: TaskAssignment model fields, sam read output sample, files modified"
+started: "2026-03-15T13:01:13Z"
 ---
 
 ## Context
@@ -568,7 +572,8 @@ Enhance `sam read P{N}/T{M}` to return a `TaskAssignment` response containing bo
 ---
 task: T03
 title: "Addressing module: P{NNN}-{slug} resolution with backward compatibility"
-status: not-started
+status: complete
+completed: 2026-03-15T12:00:00Z
 agent: python3-development:python-cli-architect
 dependencies: []
 priority: 1
@@ -578,6 +583,7 @@ skills: ["python3-development"]
 parallelize-with: [T01, T02, T04]
 reason: "T03 modifies addressing.py only. No overlap with T01 (cli.py, query.py, yaml_writer.py), T02 (models.py, cli.py read command, server.py), or T04 (TASK_FILE_FORMAT.md)."
 handoff: "Report: addressing patterns supported, backward compatibility verification, edge cases found"
+started: "2026-03-15T13:01:20Z"
 ---
 
 ## Context
@@ -647,7 +653,8 @@ Update `resolve_plan_address()` to resolve `P{NNN}-*` patterns as primary addres
 ---
 task: T04
 title: "TASK_FILE_FORMAT.md rewrite: sam CLI as canonical interface"
-status: not-started
+status: complete
+completed: 2026-03-15T12:00:00Z
 agent: contextual-ai-documentation-optimizer
 dependencies: []
 priority: 1
@@ -657,6 +664,7 @@ skills: ["development-harness:clear-cove-task-design"]
 parallelize-with: [T01, T02, T03]
 reason: "T04 writes only to .claude/docs/TASK_FILE_FORMAT.md. No file overlap with any other task."
 handoff: "Report: document structure, section count, any placeholder sections pending CLI completion"
+started: "2026-03-15T13:01:19Z"
 ---
 
 ## Context
@@ -720,7 +728,8 @@ Rewrite TASK_FILE_FORMAT.md to describe sam CLI as the canonical interface for a
 ---
 task: T05
 title: "MCP server extensions: sam_create, sam_update, sam_claim tools"
-status: not-started
+status: complete
+completed: 2026-03-15T14:00:00Z
 agent: python3-development:python-cli-architect
 dependencies: [T01, T02]
 priority: 2
@@ -730,6 +739,7 @@ skills: ["python3-development"]
 parallelize-with: [T06, T07]
 reason: "T05 modifies server.py only. T06 writes test files. T07 writes scripts/rename_plan_files.py. No file overlap."
 handoff: "Report: MCP tools added, test results"
+started: "2026-03-15T13:11:58Z"
 ---
 
 ## Context
@@ -782,7 +792,8 @@ Add `sam_create`, `sam_update`, `sam_claim` MCP tools to server.py, and update e
 ---
 task: T06
 title: "Test suite: CLI commands, addressing, writers, migration"
-status: not-started
+status: complete
+completed: 2026-03-15T14:00:00Z
 agent: python3-development:python-pytest-architect
 dependencies: [T01, T02, T03]
 priority: 2
@@ -792,6 +803,7 @@ skills: ["fastmcp-python-tests", "python3-development"]
 parallelize-with: [T05, T07]
 reason: "T06 writes test files in packages/sam_schema/tests/. No overlap with T05 (server.py) or T07 (scripts/rename_plan_files.py)."
 handoff: "Report: test count, coverage percentage, any failures or skipped tests"
+started: "2026-03-15T13:11:38Z"
 ---
 
 ## Context
@@ -866,7 +878,8 @@ Create comprehensive test suite for all new sam CLI commands, addressing module 
 ---
 task: T07
 title: "File renaming script: tasks-{N}-{slug} to P{NNN}-{slug}.yaml"
-status: not-started
+status: complete
+completed: 2026-03-15T14:00:00Z
 agent: python3-development:python-cli-architect
 dependencies: [T03]
 priority: 2
@@ -876,6 +889,7 @@ skills: ["python3-development"]
 parallelize-with: [T05, T06]
 reason: "T07 creates scripts/rename_plan_files.py (new file). No overlap with T05 (server.py) or T06 (test files)."
 handoff: "Report: dry-run output showing rename map, backlog update count, any files that could not be mapped"
+started: "2026-03-15T13:13:08Z"
 ---
 
 ## Context
@@ -950,7 +964,9 @@ Create `scripts/rename_plan_files.py` that renames all legacy plan files to P{NN
 ---
 task: T08
 title: "task_status_hook.py: remove dual-parser, unify on sam_schema"
-status: not-started
+status: complete
+started: "2026-03-15T13:01:10Z"
+completed: "2026-03-15T14:00:00Z"
 agent: python3-development:python-cli-architect
 dependencies: [T01]
 priority: 3
@@ -1036,7 +1052,8 @@ Remove the dual-parser branches and `task_format` import from task_status_hook.p
 ---
 task: T09
 title: "implementation_manager.py: remove local parsers, delegate to sam_schema"
-status: not-started
+status: complete
+completed: 2026-03-15T15:00:00Z
 agent: python3-development:python-cli-architect
 dependencies: [T01]
 priority: 3
@@ -1046,6 +1063,7 @@ skills: ["python3-development"]
 parallelize-with: [T08, T10, T11]
 reason: "T09 modifies implementation_manager.py only. No overlap with T08 (task_status_hook.py), T10 (start-task/SKILL.md), T11 (skill files)."
 handoff: "Report: functions removed, imports removed, test results"
+started: "2026-03-15T13:23:44Z"
 ---
 
 ## Context
@@ -1100,7 +1118,8 @@ Remove all local parser functions and `task_format` imports from implementation_
 ---
 task: T10
 title: "start-task skill: migrate to sam claim + sam read"
-status: not-started
+status: complete
+completed: 2026-03-15T15:00:00Z
 agent: contextual-ai-documentation-optimizer
 dependencies: [T01, T02]
 priority: 3
@@ -1110,6 +1129,7 @@ skills: ["development-harness:clear-cove-task-design"]
 parallelize-with: [T08, T09, T11]
 reason: "T10 modifies start-task/SKILL.md only. No overlap with T08 (hook script), T09 (implementation_manager.py), T11 (implement-feature + complete-implementation SKILL.md files)."
 handoff: "Report: commands replaced, Read tool instructions removed"
+started: "2026-03-15T13:23:59Z"
 ---
 
 ## Context
@@ -1160,7 +1180,8 @@ Update start-task SKILL.md to use `sam claim P{N}/T{M}` for task claiming and `s
 ---
 task: T11
 title: "implement-feature + complete-implementation skills: migrate to sam CLI"
-status: not-started
+status: complete
+completed: 2026-03-15T15:00:00Z
 agent: contextual-ai-documentation-optimizer
 dependencies: [T02]
 priority: 3
@@ -1170,6 +1191,7 @@ skills: ["development-harness:clear-cove-task-design"]
 parallelize-with: [T08, T09, T10]
 reason: "T11 modifies implement-feature/SKILL.md and complete-implementation/SKILL.md. No overlap with T08 (hook script), T09 (implementation_manager.py), T10 (start-task/SKILL.md)."
 handoff: "Report: commands replaced per skill, implementation_manager references removed"
+started: "2026-03-15T13:23:35Z"
 ---
 
 ## Context
@@ -1231,7 +1253,8 @@ Update implement-feature and complete-implementation SKILL.md files to use `sam 
 ---
 task: T12
 title: "swarm-task-planner agent: remove inline schema, use sam create"
-status: not-started
+status: complete
+completed: 2026-03-15T16:00:00Z
 agent: contextual-ai-documentation-optimizer
 dependencies: [T01]
 priority: 4
@@ -1241,6 +1264,7 @@ skills: ["development-harness:clear-cove-task-design"]
 parallelize-with: [T13]
 reason: "T12 modifies swarm-task-planner.md in python3-development only. T13 modifies context-gathering.md and context-refinement.md. No file overlap."
 handoff: "Report: lines removed (inline schema), sam create instruction added, TASK_FILE_FORMAT.md reference added"
+started: "2026-03-15T13:35:36Z"
 ---
 
 ## Context
@@ -1293,7 +1317,9 @@ Update swarm-task-planner agent prompt to generate YAML task content and pipe to
 ---
 task: T13
 title: "context-gathering + context-refinement agents: replace Read/Edit with sam update"
-status: not-started
+status: complete
+started: "2026-03-15T14:00:00Z"
+completed: "2026-03-15T14:30:00Z"
 agent: contextual-ai-documentation-optimizer
 dependencies: [T01]
 priority: 4
@@ -1367,7 +1393,8 @@ Update context-gathering and context-refinement agent prompts to use `sam read` 
 ---
 task: T14
 title: "development-harness sync + workshop copies + local-workflow.md update"
-status: not-started
+status: complete
+completed: 2026-03-15T17:00:00Z
 agent: contextual-ai-documentation-optimizer
 dependencies: [T12, T13]
 priority: 5
@@ -1377,6 +1404,7 @@ skills: ["development-harness:clear-cove-task-design"]
 parallelize-with: []
 reason: "T14 is the final sync task. Must wait for T12 and T13 to complete so the source agent files are finalized before copying."
 handoff: "Report: files synced (list), workshop files updated, local-workflow.md references updated, diff verification"
+started: "2026-03-15T13:42:11Z"
 ---
 
 ## Context

@@ -335,18 +335,39 @@ def normalize_plan(plan_meta: dict, task_dicts: list[dict], source_format: Forma
         plan_meta.get("acceptance-criteria-structured") or plan_meta.get("acceptance_criteria_structured") or []
     )
 
+    def _coerce_str(value: Any) -> str | None:  # noqa: ANN401
+        """Coerce a YAML value to ``str | None``.
+
+        YAML lists (e.g. ``acceptance-criteria`` written as a bullet list) are
+        joined with newlines so they satisfy ``str | None`` Plan fields.  Other
+        non-None values are converted via ``str()``.  Falsy values (empty string,
+        empty list) are normalised to ``None``.
+
+        Returns:
+            Coerced string, or ``None`` for absent/empty values.
+        """
+        if value is None:
+            return None
+        if isinstance(value, list):
+            joined = "\n".join(str(item) for item in value)
+            return joined or None
+        result = str(value)
+        return result or None
+
+    ac = plan_meta.get("acceptance-criteria") or plan_meta.get("acceptance_criteria")
+
     plan = Plan(
         feature=str(feature),
         version=str(plan_meta.get("version", "1.0")),
         description=str(plan_meta.get("description", "")),
-        goal=plan_meta.get("goal") or None,
-        context=plan_meta.get("context") or None,
-        acceptance_criteria=plan_meta.get("acceptance-criteria") or plan_meta.get("acceptance_criteria") or None,
+        goal=_coerce_str(plan_meta.get("goal")),
+        context=_coerce_str(plan_meta.get("context")),
+        acceptance_criteria=_coerce_str(ac),
         acceptance_criteria_structured=raw_structured,
         issue=plan_meta.get("issue") or None,
-        architecture=plan_meta.get("architecture") or None,
-        feature_context=plan_meta.get("feature-context") or plan_meta.get("feature_context") or None,
-        codebase_patterns=plan_meta.get("codebase-patterns") or plan_meta.get("codebase_patterns") or None,
+        architecture=_coerce_str(plan_meta.get("architecture")),
+        feature_context=_coerce_str(plan_meta.get("feature-context") or plan_meta.get("feature_context")),
+        codebase_patterns=_coerce_str(plan_meta.get("codebase-patterns") or plan_meta.get("codebase_patterns")),
         tasks=tasks,
         source_path=source_path,
         source_format=source_format.value,

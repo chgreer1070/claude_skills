@@ -131,8 +131,7 @@ hooks:
 
 ```text
 1. Query status:
-   uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
-     status . "{slug}"
+   uv run sam status P{N}
 
 2. Query ready tasks:
    If parent story issue number is known, prefer the MCP tool:
@@ -140,11 +139,9 @@ hooks:
      Output shape: {"feature": "...", "ready_tasks": [...], "count": N}
      Falls back to local cache if GitHub unavailable.
    If parent issue number is unknown (or MCP unavailable), use CLI fallback:
-     uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
-       ready-tasks . "{slug}"
+     uv run sam ready-tasks P{N}
    With GitHub flag (when parent issue is known but MCP unavailable):
-     uv run ./plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py \
-       ready-tasks . "{slug}" --github --parent-issue N
+     uv run sam ready-tasks P{N} --github --parent-issue N
 
 3. For each ready task:
    Route to the agent named in the task's **Agent** field.
@@ -176,7 +173,7 @@ A task is "ready" when:
 1. Status is `NOT STARTED`
 2. All dependency tasks have status `COMPLETE`
 
-Implemented in `get_ready_tasks()` in [plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py](./../../plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py).
+Readiness evaluation is performed by the `sam` CLI via `uv run sam ready-tasks P{N}` or the MCP tool `backlog_get_ready_sam_tasks`.
 
 ---
 
@@ -202,7 +199,7 @@ hooks:
 1. Read the task file and linked architecture spec.
 2. Select the target task (by `--task {id}` or first ready task).
 2a. Load skills from task metadata: read the `skills:` field from YAML frontmatter (or `**Skills**:` from legacy format). For each skill name, invoke `Skill(skill="{name}")`. If a skill fails to load, warn and continue with remaining skills. This is intentional redundancy with the orchestrator's skill-loading instructions, ensuring skills load even when the task is started manually or by an older orchestrator.
-3. Claim the task via `claim-task` command (prevents duplicate dispatch). This is the ONLY permitted way to mark a task in-progress — do NOT edit status or started fields directly. Run `implementation_manager.py claim-task {task_file_path} {task_id}`; stop if exit code is non-zero (task already claimed or not found).
+3. Claim the task via `claim-task` command (prevents duplicate dispatch). This is the ONLY permitted way to mark a task in-progress — do NOT edit status or started fields directly. Run `uv run sam claim P{N} {task_id}`; stop if exit code is non-zero (task already claimed or not found).
 4. GitHub in-progress sync: if `parent_issue_number` is known and `github_issue` field is set in the task YAML, sync in-progress status to GitHub sub-issue (non-fatal on failure).
 5. Write active-task context file:
 
@@ -293,26 +290,20 @@ If Phase 1 (code review) creates follow-up task files (naming: `plan/tasks-{N}-{
 
 ---
 
-## CLI Tool: implementation_manager.py
+## CLI Tool: sam
 
-Script: [plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py](./../../plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py)
+The `sam` CLI is the canonical interface for all SAM task file operations. Use `uv run sam <command>` to query and update plan state.
 
 ### Commands
 
 | Command | Usage | Output |
 |---------|-------|--------|
-| `list-features` | `uv run {script} list-features .` | JSON: `{features: [...], count: N}` |
-| `status` | `uv run {script} status . {slug}` | JSON: task counts, ready tasks, all tasks with details |
-| `ready-tasks` | `uv run {script} ready-tasks . {slug}` | JSON: `{ready_tasks: [...], count: N}` |
-| `validate` | `uv run {script} validate . {slug}` | JSON: `{valid: bool, errors: [...], warnings: [...]}` |
-
-### Plan Directory Discovery
-
-The CLI searches for task files using `discover_plan_directory()` which checks (in order):
-
-1. `plan/`, `.claude/plan/`, `plans/`, `docs/plan/`, `docs/plans/`
-2. Package-level: `*/plan/`, `packages/*/plan/`, `src/*/plan/`
-3. Recursive search (max depth 3) for any `plan/` or `plans/` directory
+| `list` | `uv run sam list` | JSON: `{features: [...], count: N}` |
+| `status` | `uv run sam status P{N}` | JSON: task counts, ready tasks, all tasks with details |
+| `ready-tasks` | `uv run sam ready-tasks P{N}` | JSON: `{ready_tasks: [...], count: N}` |
+| `read` | `uv run sam read P{N} --format json` | JSON: full plan with task fields and context |
+| `claim` | `uv run sam claim P{N} {task_id}` | Claims task in-progress; exits non-zero if already claimed |
+| `update` | `uv run sam update P{N} --context "..."` | Updates plan context field |
 
 ---
 
@@ -320,9 +311,9 @@ The CLI searches for task files using `discover_plan_directory()` which checks (
 
 | Script | Path | Purpose |
 |--------|------|---------|
-| `implementation_manager.py` | [plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py](./../../plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py) | CLI tool for task status queries |
+| `sam` CLI | `uv run sam` | Canonical interface for all task file I/O (status, ready-tasks, read, claim, update) |
 | `task_status_hook.py` | [plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py](./../../plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py) | Hook script for automatic status/timestamp updates |
-| `task_format.py` | [plugins/python3-development/skills/implementation-manager/scripts/task_format.py](./../../plugins/python3-development/skills/implementation-manager/scripts/task_format.py) | Shared YAML frontmatter utilities |
+| `task_format.py` | [plugins/python3-development/skills/implementation-manager/scripts/task_format.py](./../../plugins/python3-development/skills/implementation-manager/scripts/task_format.py) | Shared YAML frontmatter utilities (internal to sam_schema) |
 | `get_task_context.py` | [plugins/python3-development/skills/implementation-manager/scripts/get_task_context.py](./../../plugins/python3-development/skills/implementation-manager/scripts/get_task_context.py) | Dynamic context injection for implementation-manager skill |
 | `split_task_file.py` | [plugins/python3-development/scripts/split_task_file.py](./../../plugins/python3-development/scripts/split_task_file.py) | Split monolithic task files into individual files |
 | `migrate_task_format.py` | [plugins/python3-development/scripts/migrate_task_format.py](./../../plugins/python3-development/scripts/migrate_task_format.py) | Migrate legacy markdown to YAML frontmatter format |
@@ -355,8 +346,8 @@ User
   ▼
 /implement-feature
   │
-  ├─ implementation_manager.py status    ──> JSON status
-  ├─ implementation_manager.py ready-tasks ──> JSON ready list (includes skills per task)
+  ├─ sam status P{N}       ──> JSON status
+  ├─ sam ready-tasks P{N}  ──> JSON ready list (includes skills per task)
   │
   │  ┌── T0 runs first (Priority 1, no dependencies) ───────┐
   │  │  t0-baseline-capture                                  │

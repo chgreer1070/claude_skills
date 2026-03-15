@@ -7,6 +7,7 @@ How: Write real plan files to tmp_path, create a plan directory with
 Why: server.py has zero test coverage; the tools are the primary interface
      used by Claude Code agents to query and mutate SAM plans.
 """
+# T02: sam_read now returns TaskAssignment when task param is provided.
 
 from __future__ import annotations
 
@@ -94,27 +95,29 @@ def test_sam_read_existing_task_returns_task_fields(plan_dir: Path, plan_dir_str
     # Act
     result = sam_read(plan="P1", task="T1", plan_dir=plan_dir_str)
 
-    # Assert
+    # Assert — sam_read now returns TaskAssignment; task fields are under "task" key.
     assert "error" not in result
-    assert result["id"] == "T1"
-    assert result["status"] == "complete"
+    assert "task" in result
+    assert result["task"]["id"] == "T1"
+    assert result["task"]["status"] == "complete"
 
 
 def test_sam_read_returns_dict_with_all_required_fields(plan_dir: Path, plan_dir_str: str) -> None:
-    """sam_read result contains 'id', 'title', and 'status' keys.
+    """sam_read result contains nested task with 'id', 'title', and 'status' keys.
 
-    Tests: Return structure of sam_read.
-    How: Call sam_read for T2 and check key presence.
+    Tests: Return structure of sam_read TaskAssignment shape.
+    How: Call sam_read for T2 and check task key presence.
     Why: Agents rely on these keys being present to make routing decisions.
     """
     # Act
     result = sam_read(plan="P1", task="T2", plan_dir=plan_dir_str)
 
-    # Assert
+    # Assert — task fields are nested under "task" in the TaskAssignment shape.
     assert "error" not in result
-    assert "id" in result
-    assert "title" in result
-    assert "status" in result
+    assert "task" in result
+    assert "id" in result["task"]
+    assert "title" in result["task"]
+    assert "status" in result["task"]
 
 
 def test_sam_read_missing_task_returns_error_dict(plan_dir: Path, plan_dir_str: str) -> None:
@@ -436,3 +439,451 @@ def test_sam_status_has_cycles_true_for_cyclic_plan(tmp_path: Path) -> None:
     # Assert
     assert "error" not in result
     assert result["has_cycles"] is True
+
+
+# ---------------------------------------------------------------------------
+# sam_read — TaskAssignment (T02)
+# ---------------------------------------------------------------------------
+
+
+def test_sam_read_with_task_returns_task_assignment_shape(plan_dir_str: str) -> None:
+    """sam_read with task param returns dict with nested 'task' key (TaskAssignment)."""
+    # Act
+    result = sam_read(plan="P1", task="T1", plan_dir=plan_dir_str)
+
+    # Assert
+    assert "error" not in result
+    assert "task" in result
+    assert result["task"]["id"] == "T1"
+
+
+def test_sam_read_with_task_includes_plan_goal(tmp_path: Path) -> None:
+    """sam_read with task param surfaces plan_goal from the plan in TaskAssignment."""
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    tasks = [make_task("T1")]
+    plan = Plan(feature="goal-feature", version="1.0", goal="Ship the goal feature", tasks=tasks)
+    write_plan(plan, p_dir / "tasks-1-goal-feature.yaml", force_single=True)
+
+    # Act
+    result = sam_read(plan="P1", task="T1", plan_dir=str(p_dir))
+
+    # Assert
+    assert "error" not in result
+    assert result.get("plan-goal") == "Ship the goal feature"
+
+
+def test_sam_read_with_task_includes_plan_context(tmp_path: Path) -> None:
+    """sam_read with task param surfaces plan_context in TaskAssignment."""
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    tasks = [make_task("T1")]
+    plan = Plan(feature="ctx-feature", version="1.0", context="Shared context text here", tasks=tasks)
+    write_plan(plan, p_dir / "tasks-1-ctx-feature.yaml", force_single=True)
+
+    # Act
+    result = sam_read(plan="P1", task="T1", plan_dir=str(p_dir))
+
+    # Assert
+    assert "error" not in result
+    assert result.get("plan-context") == "Shared context text here"
+
+
+def test_sam_read_without_task_returns_plan_fields(plan_dir_str: str) -> None:
+    """sam_read without task param returns Plan fields with no TaskAssignment wrapper."""
+    # Act
+    result = sam_read(plan="P1", plan_dir=plan_dir_str)
+
+    # Assert
+    assert "error" not in result
+    assert "feature" in result
+    assert "task" not in result
+
+
+def test_sam_read_with_missing_task_returns_error(plan_dir_str: str) -> None:
+    """sam_read with a task ID not in the plan returns a dict with 'error' key."""
+    # Act
+    result = sam_read(plan="P1", task="T99", plan_dir=plan_dir_str)
+
+    # Assert
+    assert "error" in result
+    assert "T99" in result["error"]
+
+
+def test_sam_read_with_missing_plan_returns_error(tmp_path: Path) -> None:
+    """sam_read with a plan address not found returns a dict with 'error' key."""
+    # Arrange
+    empty_dir = tmp_path / "plan"
+    empty_dir.mkdir()
+
+    # Act
+    result = sam_read(plan="P99", task="T1", plan_dir=str(empty_dir))
+
+    # Assert
+    assert "error" in result
+
+
+# ---------------------------------------------------------------------------
+# sam_create
+# ---------------------------------------------------------------------------
+
+
+def test_sam_create_valid_tasks_yaml_returns_path_and_counts(tmp_path: Path) -> None:
+    """sam_create with valid tasks_yaml creates a plan file and returns metadata.
+
+    Tests: sam_create happy path.
+    How: Pass a minimal tasks_yaml string; verify returned dict has path, plan_number, task_count.
+    Why: sam_create is the MCP entry point for swarm-task-planner to persist new plans.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    tasks_yaml = (
+        "tasks:\n"
+        "  - task: T01\n"
+        "    title: First task\n"
+        "    status: not-started\n"
+        "    agent: test-agent\n"
+        "    dependencies: []\n"
+        "    priority: 1\n"
+        "    complexity: low\n"
+    )
+
+    # Act
+    from sam_schema.server import sam_create
+
+    result = sam_create(slug="test-create", goal="Test goal", tasks_yaml=tasks_yaml, plan_dir=str(p_dir))
+
+    # Assert
+    assert "error" not in result
+    assert "path" in result
+    assert result["task_count"] == 1
+    assert result["plan_number"] == 1
+
+
+def test_sam_create_file_is_readable_by_sam_read(tmp_path: Path) -> None:
+    """sam_create round-trip: created file is readable by sam_read.
+
+    Tests: AC4 round-trip (create then read produces identical data).
+    How: sam_create then sam_read the T01 task; compare title.
+    Why: Validates write→read consistency through the full pipeline.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    tasks_yaml = (
+        "tasks:\n"
+        "  - task: T01\n"
+        "    title: Round-trip task\n"
+        "    status: not-started\n"
+        "    agent: test-agent\n"
+        "    dependencies: []\n"
+        "    priority: 1\n"
+        "    complexity: low\n"
+    )
+    from sam_schema.server import sam_create
+
+    create_result = sam_create(slug="round-trip", goal="Round-trip goal", tasks_yaml=tasks_yaml, plan_dir=str(p_dir))
+    assert "error" not in create_result
+
+    # Act — read back the task through sam_read using plan_number from create result
+    plan_number = create_result["plan_number"]
+    read_result = sam_read(plan=f"P{plan_number}", task="T01", plan_dir=str(p_dir))
+
+    # Assert
+    assert "error" not in read_result
+    assert "task" in read_result
+    assert read_result["task"]["title"] == "Round-trip task"
+
+
+def test_sam_create_invalid_tasks_yaml_returns_error(tmp_path: Path) -> None:
+    """sam_create returns error dict when tasks_yaml lacks 'tasks' key.
+
+    Tests: sam_create input validation.
+    How: Pass YAML without 'tasks' key.
+    Why: MCP tools must never raise; all errors surface as dicts.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    from sam_schema.server import sam_create
+
+    # Act
+    result = sam_create(slug="bad", goal="Bad goal", tasks_yaml="not_tasks: []", plan_dir=str(p_dir))
+
+    # Assert
+    assert "error" in result
+
+
+def test_sam_create_assigns_incrementing_plan_numbers(tmp_path: Path) -> None:
+    """sam_create assigns monotonically increasing plan numbers.
+
+    Tests: sam_create plan number assignment.
+    How: Create two plans; second should have plan_number = 2.
+    Why: Correct numbering is required for address resolution to work.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    minimal_yaml = (
+        "tasks:\n"
+        "  - task: T01\n"
+        "    title: Task\n"
+        "    status: not-started\n"
+        "    agent: a\n"
+        "    dependencies: []\n"
+        "    priority: 1\n"
+        "    complexity: low\n"
+    )
+    from sam_schema.server import sam_create
+
+    # Act
+    r1 = sam_create(slug="first", goal="First", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
+    r2 = sam_create(slug="second", goal="Second", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
+
+    # Assert
+    assert "error" not in r1
+    assert "error" not in r2
+    assert r2["plan_number"] == r1["plan_number"] + 1
+
+
+# ---------------------------------------------------------------------------
+# sam_update
+# ---------------------------------------------------------------------------
+
+
+def test_sam_update_context_sets_plan_context(tmp_path: Path) -> None:
+    """sam_update with context param updates the plan-level context field.
+
+    Tests: AC6 — sam update sets context on plan.
+    How: Create a plan via sam_create, then sam_update its context; read back to verify.
+    Why: context-gathering agent uses this to persist shared context to the plan.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    minimal_yaml = (
+        "tasks:\n"
+        "  - task: T01\n"
+        "    title: Task\n"
+        "    status: not-started\n"
+        "    agent: a\n"
+        "    dependencies: []\n"
+        "    priority: 1\n"
+        "    complexity: low\n"
+    )
+    from sam_schema.server import sam_create, sam_update
+
+    create_result = sam_create(slug="update-ctx", goal="Goal", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
+    assert "error" not in create_result
+    plan_number = create_result["plan_number"]
+
+    # Act
+    update_result = sam_update(address=f"P{plan_number}", plan_dir=str(p_dir), context="Shared context narrative.")
+
+    # Assert
+    assert "error" not in update_result
+    assert update_result.get("updated") is True
+
+    # Verify via sam_read that context is persisted
+    read_result = sam_read(plan=f"P{plan_number}", task="T01", plan_dir=str(p_dir))
+    assert "error" not in read_result
+    assert read_result.get("plan-context") == "Shared context narrative."
+
+
+def test_sam_update_append_section_adds_to_task_body(tmp_path: Path) -> None:
+    """sam_update with append_section appends a markdown section to the task body.
+
+    Tests: sam_update append-section functionality.
+    How: Create plan, call sam_update with append_section + section_content; read file to verify.
+    Why: context-gathering agent appends Context Manifest via this path.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    minimal_yaml = (
+        "tasks:\n"
+        "  - task: T01\n"
+        "    title: Task\n"
+        "    status: not-started\n"
+        "    agent: a\n"
+        "    dependencies: []\n"
+        "    priority: 1\n"
+        "    complexity: low\n"
+    )
+    from sam_schema.server import sam_create, sam_update
+
+    create_result = sam_create(slug="append-sec", goal="Goal", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
+    assert "error" not in create_result
+    plan_number = create_result["plan_number"]
+    plan_path = create_result["path"]
+
+    # Act
+    update_result = sam_update(
+        address=f"P{plan_number}/T01",
+        plan_dir=str(p_dir),
+        append_section="Divergence Notes",
+        section_content="No divergence observed.",
+    )
+
+    # Assert
+    assert "error" not in update_result
+    assert update_result.get("updated") is True
+
+    # Verify by reading the raw file — the section should be appended to task body
+    from pathlib import Path as _Path
+
+    raw = _Path(plan_path).read_text(encoding="utf-8")
+    assert "Divergence Notes" in raw
+    assert "No divergence observed." in raw
+
+
+def test_sam_update_invalid_address_returns_error(tmp_path: Path) -> None:
+    """sam_update with non-existent plan address returns error dict.
+
+    Tests: sam_update error handling.
+    How: Update non-existent plan P99.
+    Why: MCP tools must never raise exceptions.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    from sam_schema.server import sam_update
+
+    # Act
+    result = sam_update(address="P99", plan_dir=str(p_dir), context="test")
+
+    # Assert
+    assert "error" in result
+
+
+# ---------------------------------------------------------------------------
+# sam_claim
+# ---------------------------------------------------------------------------
+
+
+def test_sam_claim_not_started_task_returns_claimed_true(tmp_path: Path) -> None:
+    """sam_claim transitions a not-started task to in-progress and returns claimed=true.
+
+    Tests: sam_claim happy path (AC per T05).
+    How: Create a plan with a not-started task; call sam_claim.
+    Why: start-task skill uses sam_claim as the sole task-claiming mechanism.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    minimal_yaml = (
+        "tasks:\n"
+        "  - task: T01\n"
+        "    title: Task\n"
+        "    status: not-started\n"
+        "    agent: a\n"
+        "    dependencies: []\n"
+        "    priority: 1\n"
+        "    complexity: low\n"
+    )
+    from sam_schema.server import sam_claim, sam_create
+
+    create_result = sam_create(slug="claim-test", goal="Goal", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
+    assert "error" not in create_result
+    plan_number = create_result["plan_number"]
+
+    # Act
+    result = sam_claim(plan=f"P{plan_number}", task="T01", plan_dir=str(p_dir))
+
+    # Assert
+    assert result.get("claimed") is True
+    assert result.get("task_id") == "T01"
+    assert "started" in result
+
+
+def test_sam_claim_already_claimed_returns_claimed_false(tmp_path: Path) -> None:
+    """sam_claim on an already in-progress task returns claimed=false (not an exception).
+
+    Tests: sam_claim double-claim guard.
+    How: Claim a task twice; second call returns claimed=false with error message.
+    Why: Prevents duplicate agent dispatch in the implement-feature loop.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    minimal_yaml = (
+        "tasks:\n"
+        "  - task: T01\n"
+        "    title: Task\n"
+        "    status: not-started\n"
+        "    agent: a\n"
+        "    dependencies: []\n"
+        "    priority: 1\n"
+        "    complexity: low\n"
+    )
+    from sam_schema.server import sam_claim, sam_create
+
+    create_result = sam_create(slug="double-claim", goal="Goal", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
+    assert "error" not in create_result
+    plan_number = create_result["plan_number"]
+
+    first = sam_claim(plan=f"P{plan_number}", task="T01", plan_dir=str(p_dir))
+    assert first.get("claimed") is True
+
+    # Act — second claim
+    second = sam_claim(plan=f"P{plan_number}", task="T01", plan_dir=str(p_dir))
+
+    # Assert
+    assert second.get("claimed") is False
+    assert "error" in second
+
+
+def test_sam_claim_missing_task_returns_claimed_false(tmp_path: Path) -> None:
+    """sam_claim with a non-existent task ID returns claimed=false.
+
+    Tests: sam_claim error handling for unknown task ID.
+    How: Call sam_claim for T99 which does not exist in the plan.
+    Why: MCP tools return error dicts, never raise exceptions.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    minimal_yaml = (
+        "tasks:\n"
+        "  - task: T01\n"
+        "    title: Task\n"
+        "    status: not-started\n"
+        "    agent: a\n"
+        "    dependencies: []\n"
+        "    priority: 1\n"
+        "    complexity: low\n"
+    )
+    from sam_schema.server import sam_claim, sam_create
+
+    create_result = sam_create(slug="missing-task", goal="Goal", tasks_yaml=minimal_yaml, plan_dir=str(p_dir))
+    assert "error" not in create_result
+    plan_number = create_result["plan_number"]
+
+    # Act
+    result = sam_claim(plan=f"P{plan_number}", task="T99", plan_dir=str(p_dir))
+
+    # Assert
+    assert result.get("claimed") is False
+    assert "error" in result
+
+
+def test_sam_claim_invalid_plan_returns_error(tmp_path: Path) -> None:
+    """sam_claim with non-existent plan address returns error dict.
+
+    Tests: sam_claim address resolution error path.
+    How: Call sam_claim on empty plan dir.
+    Why: Ensures clean error dict rather than exception propagation.
+    """
+    # Arrange
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+    from sam_schema.server import sam_claim
+
+    # Act
+    result = sam_claim(plan="P99", task="T01", plan_dir=str(p_dir))
+
+    # Assert — resolution failure hits the broad except block, not claimed=false
+    assert "error" in result

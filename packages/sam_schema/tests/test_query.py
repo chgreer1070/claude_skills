@@ -12,6 +12,7 @@ from sam_schema.core.query import (
     get_plan_status,
     get_ready_tasks,
     get_task,
+    get_task_assignment,
     list_tasks,
     load_plan,
     update_status,
@@ -587,3 +588,140 @@ def test_resolve_plan_address_slug_no_match_raises_addressing_error(plan_dir_wit
     # Act / Assert
     with pytest.raises(AddressingError):
         resolve_plan_address("nonexistent-slug", plan_dir_with_files)
+
+
+# ---------------------------------------------------------------------------
+# get_task_assignment
+# ---------------------------------------------------------------------------
+
+FIXTURES_DIR_Q = Path(__file__).parent / "fixtures"
+_PURE_YAML_SINGLE: Path = FIXTURES_DIR_Q / "pure_yaml_single.yaml"
+
+
+def test_get_task_assignment_returns_task_assignment_model(tmp_path: Path) -> None:
+    """get_task_assignment returns a TaskAssignment containing the requested task."""
+    # Arrange
+    from sam_schema.core.models import TaskAssignment
+
+    plan_file = tmp_path / "tasks-1-auth-system.yaml"
+    plan_file.write_text(_PURE_YAML_SINGLE.read_text(encoding="utf-8"), encoding="utf-8")
+
+    # Act
+    assignment = get_task_assignment(plan_file, "T1")
+
+    # Assert
+    assert isinstance(assignment, TaskAssignment)
+    assert assignment.task.id == "T1"
+    assert assignment.task.status == "complete"
+
+
+def test_get_task_assignment_includes_plan_level_goal_and_context(tmp_path: Path) -> None:
+    """get_task_assignment populates plan_goal and plan_context from the plan."""
+    # Arrange
+    plan_yaml = (
+        "feature: my-feature\n"
+        "goal: Build a great thing\n"
+        "context: Shared context paragraph here\n"
+        "acceptance-criteria: AC1 passes\n"
+        "tasks:\n"
+        "  - id: T1\n"
+        "    title: First task\n"
+        "    status: not-started\n"
+        "    dependencies: []\n"
+        "    priority: 1\n"
+        "    complexity: low\n"
+    )
+    plan_file = tmp_path / "tasks-1-my-feature.yaml"
+    plan_file.write_text(plan_yaml, encoding="utf-8")
+
+    # Act
+    assignment = get_task_assignment(plan_file, "T1")
+
+    # Assert
+    assert assignment.plan_goal == "Build a great thing"
+    assert assignment.plan_context == "Shared context paragraph here"
+    assert assignment.plan_acceptance_criteria == "AC1 passes"
+
+
+def test_get_task_assignment_derives_plan_number_from_legacy_stem(tmp_path: Path) -> None:
+    """get_task_assignment extracts plan_number from tasks-{N}-{slug} filename."""
+    # Arrange
+    plan_yaml = (
+        "feature: auth-system\n"
+        "tasks:\n"
+        "  - id: T1\n"
+        "    title: First task\n"
+        "    status: not-started\n"
+        "    dependencies: []\n"
+        "    priority: 1\n"
+        "    complexity: low\n"
+    )
+    plan_file = tmp_path / "tasks-3-auth-system.yaml"
+    plan_file.write_text(plan_yaml, encoding="utf-8")
+
+    # Act
+    assignment = get_task_assignment(plan_file, "T1")
+
+    # Assert
+    assert assignment.plan_number == "3"
+    assert assignment.plan_slug == "auth-system"
+
+
+def test_get_task_assignment_derives_plan_number_from_p_prefix_stem(tmp_path: Path) -> None:
+    """get_task_assignment extracts plan_number from P{NNN}-{slug} filename."""
+    # Arrange
+    plan_yaml = (
+        "feature: auth-system\n"
+        "tasks:\n"
+        "  - id: T1\n"
+        "    title: First task\n"
+        "    status: not-started\n"
+        "    dependencies: []\n"
+        "    priority: 1\n"
+        "    complexity: low\n"
+    )
+    plan_file = tmp_path / "P042-auth-system.yaml"
+    plan_file.write_text(plan_yaml, encoding="utf-8")
+
+    # Act
+    assignment = get_task_assignment(plan_file, "T1")
+
+    # Assert
+    assert assignment.plan_number == "P042"
+    assert assignment.plan_slug == "auth-system"
+
+
+def test_get_task_assignment_raises_key_error_for_missing_task(tmp_path: Path) -> None:
+    """get_task_assignment raises KeyError when task_id is not found in plan."""
+    # Arrange
+    plan_file = tmp_path / "tasks-1-auth-system.yaml"
+    plan_file.write_text(_PURE_YAML_SINGLE.read_text(encoding="utf-8"), encoding="utf-8")
+
+    # Act / Assert
+    with pytest.raises(KeyError, match="T99"):
+        get_task_assignment(plan_file, "T99")
+
+
+def test_get_task_assignment_raises_file_not_found_for_missing_plan(tmp_path: Path) -> None:
+    """get_task_assignment raises FileNotFoundError when plan file does not exist."""
+    # Arrange
+    missing = tmp_path / "no-such-plan.yaml"
+
+    # Act / Assert
+    with pytest.raises(FileNotFoundError):
+        get_task_assignment(missing, "T1")
+
+
+def test_get_task_assignment_plan_fields_none_when_not_set(tmp_path: Path) -> None:
+    """get_task_assignment returns None for plan fields absent from plan file."""
+    # Arrange — pure_yaml_single.yaml has no goal/context/acceptance-criteria at plan level
+    plan_file = tmp_path / "tasks-1-auth-system.yaml"
+    plan_file.write_text(_PURE_YAML_SINGLE.read_text(encoding="utf-8"), encoding="utf-8")
+
+    # Act
+    assignment = get_task_assignment(plan_file, "T1")
+
+    # Assert
+    assert assignment.plan_goal is None
+    assert assignment.plan_context is None
+    assert assignment.plan_acceptance_criteria is None

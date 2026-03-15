@@ -68,28 +68,42 @@ def test_help_shows_all_commands() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_read_returns_task_json_with_valid_address(plan_dir: Path) -> None:
-    """read P1/T1 --plan-dir <dir> returns JSON with task fields."""
+def test_read_returns_task_assignment_json_with_task_address(plan_dir: Path) -> None:
+    """read P1/T1 returns TaskAssignment JSON with plan context + nested task."""
     result = runner.invoke(app, ["read", "P1/T1", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 0
     data = json.loads(result.output)
-    assert data["id"] == "T1"
-    assert data["status"] == "complete"
+    # TaskAssignment wraps the task inside a "task" field.
+    assert "task" in data
+    assert data["task"]["id"] == "T1"
+    assert data["task"]["status"] == "complete"
+
+
+def test_read_task_assignment_includes_plan_fields(plan_dir: Path) -> None:
+    """read P1/T1 returns plan-level fields alongside the task."""
+    result = runner.invoke(app, ["read", "P1/T1", "--plan-dir", str(plan_dir)])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    # Plan-level fields are present at top level (may be None if not set in fixture).
+    assert "task" in data
+    # plan_number and plan_slug are derived from filename when source_path is set.
+    # They may be absent (excluded by exclude_none) if the fixture has no source_path stem.
 
 
 def test_read_uses_slug_address(plan_dir: Path) -> None:
-    """read Pauth-system/T2 resolves via slug match and returns task."""
+    """read Pauth-system/T2 resolves via slug match and returns TaskAssignment."""
     result = runner.invoke(app, ["read", "Pauth-system/T2", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 0
     data = json.loads(result.output)
-    assert data["id"] == "T2"
+    assert data["task"]["id"] == "T2"
 
 
 def test_read_with_yaml_format_option(plan_dir: Path) -> None:
-    """read --format yaml emits YAML output containing task id."""
+    """read --format yaml emits YAML output containing nested task id."""
     result = runner.invoke(app, ["read", "P1/T1", "--plan-dir", str(plan_dir), "--format", "yaml"])
     assert result.exit_code == 0
-    assert "id: T1" in result.output
+    # Task is nested under the 'task' key in the TaskAssignment YAML.
+    assert "T1" in result.output
 
 
 def test_read_with_rich_format_option(plan_dir: Path) -> None:
@@ -100,17 +114,20 @@ def test_read_with_rich_format_option(plan_dir: Path) -> None:
 
 
 def test_read_invalid_address_exits_with_code_1(plan_dir: Path) -> None:
-    """read with address missing task component exits 1 with error message."""
+    """read with completely invalid address exits 1 with error message."""
     result = runner.invoke(app, ["read", "INVALID", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 1
     assert "Error:" in result.output
 
 
-def test_read_plan_only_address_exits_with_code_1(plan_dir: Path) -> None:
-    """read P1 (no task part) exits 1 because task component is required."""
+def test_read_plan_only_address_returns_plan_json(plan_dir: Path) -> None:
+    """read P1 (no task part) returns Plan JSON — plan-level fields, no TaskAssignment wrapper."""
     result = runner.invoke(app, ["read", "P1", "--plan-dir", str(plan_dir)])
-    assert result.exit_code == 1
-    assert "Error:" in result.output
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    # Plan JSON has 'feature' at top level, no 'task' key.
+    assert "feature" in data
+    assert "task" not in data
 
 
 def test_read_nonexistent_plan_exits_with_code_1(plan_dir: Path) -> None:

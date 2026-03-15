@@ -417,6 +417,55 @@ class ReadResult(BaseModel):
     source_path: Path
 
 
+class TaskAssignment(BaseModel):
+    """Composite response returned by ``sam read P{N}/T{M}``.
+
+    Combines plan-level context (goal, shared context, acceptance criteria)
+    with the specific task details, so agents receive everything needed in a
+    single call without separate plan-level lookups.
+
+    Per ADR-003: all task dispatches return this shape when a task address is
+    provided. Plan-only reads (``sam read P{N}``) continue to return ``Plan``.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    # Plan-level context fields
+    plan_number: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("plan-number", "plan_number"),
+        serialization_alias="plan-number",
+        description="Plan identifier (e.g., 'P1', '719').",
+    )
+    plan_slug: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("plan-slug", "plan_slug"),
+        serialization_alias="plan-slug",
+        description="Plan slug derived from the feature name.",
+    )
+    plan_goal: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("plan-goal", "plan_goal"),
+        serialization_alias="plan-goal",
+        description="One-sentence goal statement for the plan.",
+    )
+    plan_context: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("plan-context", "plan_context"),
+        serialization_alias="plan-context",
+        description="Shared context narrative written by the context-gathering agent.",
+    )
+    plan_acceptance_criteria: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("plan-acceptance-criteria", "plan_acceptance_criteria"),
+        serialization_alias="plan-acceptance-criteria",
+        description="Plan-level acceptance criteria (free-form markdown string).",
+    )
+
+    # The task being assigned
+    task: Task = Field(description="The specific task to execute.")
+
+
 class PlanStatus(BaseModel):
     """Summary of plan execution progress.
 
@@ -442,3 +491,4 @@ from pathlib import Path as _Path
 Task.model_rebuild(_types_namespace={"datetime": _dt.datetime, "Path": _Path})
 Plan.model_rebuild(_types_namespace={"Path": _Path, "Task": Task, "AcceptanceCriterion": AcceptanceCriterion})
 ReadResult.model_rebuild(_types_namespace={"Path": _Path, "Plan": Plan, "SchemaGap": SchemaGap})
+TaskAssignment.model_rebuild(_types_namespace={"Task": Task})

@@ -23,14 +23,11 @@ This workflow continues from `add-new-feature`. It executes tasks from a SAM tas
 
 Rules:
 
-- If `<feature_input/>` ends with `.md`, treat it as the task file path.
-- Otherwise, treat it as a feature slug (or partial slug) and resolve via `implementation_manager.py`.
-
-Example resolution:
+- If `<feature_input/>` ends with `.md`, treat it as the task file path and extract the plan address `P{N}` from the filename (e.g., `plan/tasks-3-integrate-sam-schema.md` → `P3`).
+- Otherwise, treat it as a feature slug (or partial slug) and resolve plan address via `sam status`:
 
 ```bash
-uv run "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/implementation_manager.py" \
-  status . "<feature_input/>"
+uv run sam status "<feature_input/>"
 ```
 
 ---
@@ -40,8 +37,7 @@ uv run "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/implementation_
 1. Query status:
 
 ```bash
-uv run "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/implementation_manager.py" \
-  status . "<feature_input/>"
+uv run sam status P{N}
 ```
 
 2. If tasks remain, query ready tasks:
@@ -57,15 +53,7 @@ Falls back to local cache if GitHub unavailable.
 If parent issue number is unknown (or MCP unavailable), use CLI fallback:
 
 ```bash
-uv run "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/implementation_manager.py" \
-  ready-tasks . "<feature_input/>"
-```
-
-With GitHub flag (when parent issue is known):
-
-```bash
-uv run "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/implementation_manager.py" \
-  ready-tasks . "<feature_input/>" --github --parent-issue N
+uv run sam ready P{N} --format json
 ```
 
 3. For each ready task:

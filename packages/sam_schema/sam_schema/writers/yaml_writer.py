@@ -500,6 +500,106 @@ def update_field(file_path: Path, task_id: str, field: str, value: str | int | l
     _atomic_write(file_path, buf.getvalue())
 
 
+def create_plan_file(path: Path, plan: Plan) -> None:
+    """Write a new plan to ``path`` using an atomic write.
+
+    Delegates serialization to ``write_plan`` which selects single-file or
+    directory layout based on estimated line count. This function is the
+    canonical entry point for *creating* a new plan file; use ``write_plan``
+    when migrating or overwriting an existing plan.
+
+    Args:
+        path: Destination path for the plan. A ``.yaml`` extension is added
+              automatically if the path has no suffix.
+        plan: The ``Plan`` model to serialize.
+
+    Raises:
+        ValueError: If path traversal is detected.
+        OSError: If the write fails.
+    """
+    target = path if path.suffix else path.with_suffix(".yaml")
+    write_plan(plan, target, force_single=True)
+
+
+def append_section(path: Path, task_id: str, section_name: str, content: str) -> None:
+    """Append a named markdown section to a task's body content in a YAML file.
+
+    For multi-task files, the task's YAML document is located by ``task_id``
+    and the section is appended to the task's ``context-notes`` field (which
+    stores prose body content). For single-task files the same applies.
+
+    The section is appended in markdown heading format::
+
+        ## {section_name}
+
+        {content}
+
+    If the ``context-notes`` field is empty the section becomes its full value.
+    If it already has content the new section is appended with a blank-line
+    separator.
+
+    Args:
+        path: Path to the ``.yaml`` task file to modify.
+        task_id: ID of the task to append to (e.g., ``"T1"``).
+        section_name: Heading text for the new section (e.g., ``"Context Manifest"``).
+        content: Markdown body text for the section (no leading heading needed).
+
+    Raises:
+        FileNotFoundError: If ``path`` does not exist.
+        KeyError: If ``task_id`` is not found in the file.
+    """
+    if not path.exists():
+        msg = f"File not found: {path}"
+        raise FileNotFoundError(msg)
+
+    new_section = f"## {section_name}\n\n{content.rstrip()}\n"
+
+    y = _make_yaml()
+    raw_text = path.read_text(encoding="utf-8")
+
+    def _append_to_context_notes(target: dict[str, object]) -> None:
+        raw = target.get("context-notes") or target.get("context_notes") or ""
+        existing: str = str(raw) if not isinstance(raw, str) else raw
+        updated = existing.rstrip() + "\n\n" + new_section if existing.strip() else new_section
+        target["context-notes"] = LiteralScalarString(updated)
+        # Remove snake_case duplicate if present to avoid key collision
+        target.pop("context_notes", None)
+
+    if _is_yaml_frontmatter(raw_text):
+        open_delim, yaml_block, rest = _split_frontmatter(raw_text)
+        data = y.load(yaml_block)
+        entry_id = data.get("task") or data.get("id")
+        if str(entry_id) != task_id:
+            msg = f"Task ID '{task_id}' not found in {path}"
+            raise KeyError(msg)
+        _append_to_context_notes(data)
+        buf = io.StringIO()
+        y.dump(data, buf)
+        _atomic_write(path, open_delim + buf.getvalue() + rest)
+        return
+
+    data = y.load(raw_text)
+
+    if "tasks" in data and isinstance(data["tasks"], list):
+        for task_entry in data["tasks"]:
+            entry_id = task_entry.get("task") or task_entry.get("id")
+            if str(entry_id) == task_id:
+                _append_to_context_notes(task_entry)
+                break
+        else:
+            msg = f"Task ID '{task_id}' not found in {path}"
+            raise KeyError(msg)
+    elif data.get("task") == task_id or data.get("id") == task_id:
+        _append_to_context_notes(data)
+    else:
+        msg = f"Task ID '{task_id}' not found in {path}"
+        raise KeyError(msg)
+
+    buf = io.StringIO()
+    y.dump(data, buf)
+    _atomic_write(path, buf.getvalue())
+
+
 def update_fields(file_path: Path, task_id: str, fields: dict[str, str | int | list[str]]) -> None:
     """Update multiple fields in a YAML task file in a single read-modify-write cycle.
 

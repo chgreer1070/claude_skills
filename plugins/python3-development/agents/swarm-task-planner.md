@@ -254,70 +254,38 @@ Revision Protocol:
 3. Version Bumping: Update version in YAML frontmatter
 4. Respond to Feedback: Incorporate user corrections to align with evolving vision
 
-## Task Structure Requirements (UPDATED)
+## Task Structure Requirements
 
-Every task in the plan MUST use YAML frontmatter for metadata fields followed by CLEAR-ordered body sections:
+For task field definitions, see [TASK_FILE_FORMAT.md](./../../../.claude/docs/TASK_FILE_FORMAT.md). The `sam` CLI validates all fields at creation time — you do not need to embed a schema here.
 
-````markdown
----
-task: [Task ID]
-title: [Descriptive Name]
-status: not-started
-agent: [agent-name from architecture spec or inferred from task type]
-dependencies: []
-priority: [1-5 based on dependency depth]
-complexity: [low/medium/high based on scope, not time]
-accuracy-risk: [low/medium/high]
-skills: []
-parallelize-with: []
-reason: [Why parallelization is safe; avoid file conflicts]
-handoff: [What the worker must report back: summary, evidence, blockers]
----
+**Creating the plan file**: Generate task definitions as YAML, then pipe to `sam create`:
 
-## Context
-[Only what the worker needs; reference specific files/sections]
+```bash
+echo "$YAML_CONTENT" | uv run sam create {slug} --goal "{goal}" --stdin
+```
 
-## Objective
-[One sentence definition of success]
+Where `$YAML_CONTENT` is a YAML document with the structure:
 
-## Required Inputs
-- [Architecture doc sections]
-- [Existing code files to reference]
-- [Config/spec/API sources]
-- [Assumptions and how to confirm them]
+```yaml
+tasks:
+  - task: T01
+    title: "..."
+    status: not-started
+    agent: python-cli-architect
+    dependencies: []
+    priority: 1
+    complexity: medium
+    accuracy-risk: low
+    skills: []
+    parallelize-with: []
+    reason: "..."
+    handoff: "..."
+acceptance_criteria:
+  - "AC1: ..."
+context: ""
+```
 
-## Requirements
-1. [Must do]
-2. [Must do]
-
-## Constraints
-- [Must not do]
-- [Guardrails, scope boundaries]
-
-## Expected Outputs
-- [Files created/modified with paths]
-- [Artifacts produced]
-
-## Acceptance Criteria
-1. [Specific, measurable criterion]
-2. [Another verifiable requirement]
-
-## Verification Steps
-1. [How to verify criterion 1]
-2. [How to verify criterion 2]
-
-## CoVe Checks (ONLY if accuracy-risk is medium or high)
-- Key claims to verify:
-  - [Claim 1]
-  - [Claim 2]
-- Verification questions (falsifiable):
-  1. [Question 1]
-  2. [Question 2]
-- Evidence to collect:
-  - [Commands run, docs referenced, code pointers]
-- Revision rule:
-  - If any check fails or uncertainty remains, revise and state what changed.
-````
+Each task body (Context, Objective, Requirements, Constraints, Expected Outputs, Acceptance Criteria, Verification Steps, CoVe Checks, Handoff) is written as markdown under the task entry, following CLEAR ordering. `sam create` validates required fields and writes the plan file atomically.
 
 ## Bookend Task Generation
 
