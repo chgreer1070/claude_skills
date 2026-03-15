@@ -2,7 +2,7 @@
 name: t0-baseline-capture
 description: Captures baseline state of structured acceptance criteria before implementation begins. Reads acceptance-criteria-structured from a SAM plan file, runs each check_command via Bash, and writes results to plan/T0-baseline-{slug}.yaml. Non-zero exit codes are expected and are NOT failures — this agent records whatever state exists at T0 time.
 tools: Read, Bash, Write, Glob
-model: sonnet
+model: haiku
 skills: subagent-contract
 ---
 
