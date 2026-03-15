@@ -104,6 +104,86 @@ If any of checks 1–3 fail, skip grooming for that item and report. For items t
 
 For each target item, extract: title, description, research-first questions (if present), source, suggested location.
 
+### Step 3.5: Impact Radius Analysis
+
+**Purpose**: Before fact-checking or grooming, identify every system the item's scope touches. The planning phase uses this to create tasks for every affected component — not just the new code.
+
+Two phases: build a systems inventory, then run an impact checklist on each system.
+
+#### Phase 1: Build the Affected Systems Inventory
+
+Starting from the files and functions already identified in the groomed content (Files, Evidence, Description, suggested_location sections), identify all systems that interact with the thing this item changes. A "system" is any file that produces, consumes, documents, configures, tests, or instructs the use of the affected interface.
+
+Create a TodoItem for each system found. Each TodoItem includes: file path, role (producer / consumer / documentation / configuration / CI / agent-instruction), and connection (why this file is affected).
+
+Start with the known systems from the groomed content:
+- Files listed in the **Files** section
+- Functions cited in the **Output / Evidence** section
+- Path from **suggested_location**
+
+Then expand by searching for:
+- Files that import from or call into the known systems
+- Documentation that describes the current behavior of these systems
+- Agent or skill files that instruct the AI to use these systems
+- Configuration files that reference these modules
+- CI workflows that test these modules
+- Test files that exercise these systems
+
+Exclude archived and generated content from the inventory: `plan/` artifacts, `docs/plans/`, `.claude/archive/`, `.claude/grooming-sessions/`, test fixtures. Backlog item files (`.claude/backlog/*.md`) are informational — they describe the problem, not the system.
+
+#### Phase 2: Impact Checklist (per system)
+
+For each TodoItem in the inventory, answer these five questions:
+
+1. **Will this file break when the item ships?** — Does it depend on an interface, format, or behavior that the item changes? If yes: what specifically breaks.
+2. **Will this file become stale?** — Does it describe, document, or reference the current behavior? If yes: what section or claim becomes inaccurate.
+3. **Does this file need a code change?** — Import update, API migration, format change, dependency update. If yes: what change.
+4. **Does this file need a content update?** — Documentation rewrite, instruction update, example refresh. If yes: what section.
+5. **Is there a test that covers this file's interaction with the changed interface?** — If no: flag as needing a new test.
+
+Mark each TodoItem complete after answering. Any system with at least one "yes" answer goes into the Impact Radius output.
+
+#### Output format
+
+Write findings as an Impact Radius section:
+
+```markdown
+## Impact Radius
+
+### Code — Producers (write the changed interface)
+- `{path}::{function_name}` — {what it produces, what change is needed}
+
+### Code — Consumers (read the changed interface)
+- `{path}::{function_name}` — {what it consumes, what migration is needed}
+
+### Code — Other References
+- `{path}` — {import/constant/type reference, what change is needed}
+
+### Documentation (will become stale)
+- `{path}` — {what section becomes inaccurate}
+
+### Configuration / CI
+- `{path}` — {what change is needed}
+
+### Agent Instructions (instruct AI to use current interface)
+- `{path}` — {what instruction needs updating}
+
+### Systems Inventory
+{full list of TodoItems with roles and connections, for planner completeness verification}
+
+### Ecosystem Completeness Checklist
+- [ ] Every code producer updated or verified compatible
+- [ ] Every code consumer migrated to new interface
+- [ ] Every stale document updated
+- [ ] Every agent instruction updated
+- [ ] Old interface deprecated or removed (if replacing)
+- [ ] CI/config files updated and validated
+```
+
+If a category has no affected files, write `None identified.` — do not omit the category.
+
+**Carry forward**: Pass the Impact Radius section to Step 5 (RT-ICA) and Step 8 (groomer agent). Write it to the item file after Step 8 via `mcp__backlog__backlog_groom(selector="{title}", section="Impact Radius", content="{impact radius section}")`.
+
 ### Step 4: Fact-Check Item Claims
 
 Invoke the `fact-check` skill on each target item to verify factual claims against primary sources **before** running RT-ICA or spawning groomer agents. This prevents unverified or refuted assertions from entering the planning context.
@@ -151,7 +231,7 @@ Missing: {list of missing inputs, or "None"}
 
 REFUTED claims from Step 4 MUST be listed as MISSING conditions. A REFUTED claim is not a valid basis for any AVAILABLE or DERIVABLE status.
 
-Pass the RT-ICA summary and fact-check summary to the groomer alongside item details.
+Pass the RT-ICA summary, fact-check summary, and Impact Radius section to the groomer alongside item details.
 
 **ARL human-probing integration:** When RT-ICA returns BLOCKED or MISSING conditions, the context manifest can include `invisible_knowledge_prompts` — questions to ask the human before planning (e.g., "What went wrong in the past?", "What references are essential?"). See [.claude/docs/sdlc-layers/arl-human-probing-design.md](../../docs/sdlc-layers/arl-human-probing-design.md).
 
@@ -187,7 +267,7 @@ Full procedures and write templates: [issue-classification.md](./references/issu
 
 Full prompt templates: [groomer-agent.md](./references/groomer-agent.md)
 
-Pass RT-ICA context, fact-check verdicts, classification, RCA output, and file paths (not pasted content) to the groomer.
+Pass RT-ICA context, fact-check verdicts, classification, RCA output, Impact Radius section, and file paths (not pasted content) to the groomer.
 
 ### Step 9: Write Groomed Content to Item Files
 
@@ -229,7 +309,7 @@ mcp__backlog__backlog_groom(selector="{item title}", groomed_content="{full groo
 Note — `--groomed-file {path}` and stdin pipe (`< {file}`) patterns have no MCP equivalent.
 Provide groomed content inline via the `groomed_content` parameter.
 
-**Valid section names** — top-level: `Fact-Check`, `RT-ICA`. Groomed subsections: `Reproducibility`, `Priority`, `Impact`, `Scope`, `Output / Evidence`, `Dependencies`, `Research`, `Skills`, `Agents`, `Prior Work`, `Files`, `Decision`, `Issue Classification`, `Root-Cause Analysis`.
+**Valid section names** — top-level: `Fact-Check`, `RT-ICA`, `Impact Radius`. Groomed subsections: `Reproducibility`, `Priority`, `Impact`, `Scope`, `Output / Evidence`, `Dependencies`, `Research`, `Skills`, `Agents`, `Prior Work`, `Files`, `Decision`, `Issue Classification`, `Root-Cause Analysis`.
 
 The backlog script updates `.claude/backlog/{priority}-{slug}.md` with merged sections, sets `groomed` in frontmatter, and syncs to the GitHub issue when the item has one.
 
@@ -272,11 +352,13 @@ Per-item groomed content lives in each item file; this session file holds only m
 ## Completion Criteria
 
 - Validity check (job still valid, problem reproducible, local file not stale) before grooming
+- Impact Radius analysis performed (Step 3.5): documents, upstream producers, downstream consumers, config/CI files identified
+- Impact Radius section written to item file via `mcp__backlog__backlog_groom(section="Impact Radius", content=...)`
 - Fact-check run for each item before RT-ICA (training data not used as evidence)
 - Fact-check verdicts passed into RT-ICA conditions (REFUTED → MISSING)
 - RT-ICA summary included for each item
 - Groomer agent(s) spawned via `Agent(subagent_type: "backlog-item-groomer")` — NOT groomed inline
-- Groomer agent(s) received RT-ICA context, fact-check verdicts, and file paths (not pasted content)
+- Groomer agent(s) received RT-ICA context, fact-check verdicts, Impact Radius section, and file paths (not pasted content)
 - Groomed content written via `mcp__backlog__backlog_groom` (prefer `section`/`content` parameters for incremental updates; `groomed_content` for full body)
 - When item has GitHub issue, groomed content synced to issue body
 - Bulk session summary optionally saved to `.claude/grooming-sessions/{date}.md` when grooming multiple items

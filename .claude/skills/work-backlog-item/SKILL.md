@@ -215,6 +215,18 @@ Proceed to Step 5. Carry DERIVABLE items forward as "Assumptions to confirm" in 
 
 Build the feature request string for `add-new-feature`. If `--stack` was specified, append a "Stack profile" line. If `--language` is not `python`, invoke the corresponding language plugin (e.g., `/typescript-development:add-new-feature`).
 
+**Impact Radius requirement**: Before composing, read the `## Impact Radius` section from the groomed item file (populated by `groom-backlog-item` Step 3.5). Include it in the feature request so the planner creates tasks for every affected component.
+
+**Ecosystem Completeness Constraint**: The plan produced by `add-new-feature` MUST include tasks for every item listed in the Impact Radius, or explicitly document why an item is excluded. A feature is not complete when the core code works — it is complete when:
+
+- Every upstream producer of the changed interface is updated or verified compatible
+- Every downstream consumer is migrated to use the new interface
+- Every document listed as "will become stale" is updated
+- The old interface is deprecated or removed (if this item replaces something)
+- CI/config files listed in Impact Radius are updated and validated
+
+If the groomed item has no `## Impact Radius` section, trigger `groom-backlog-item` for that item before continuing (Step 3 already handles this for ungroomed items — this handles the case where grooming ran before Step 3.5 existed). Do not skip to Step 6 with a missing impact radius — the planner will produce an incomplete plan.
+
 Template: [step-procedures.md](./references/step-procedures.md#step-5-feature-request-template)
 
 ### Step 6: Invoke SAM Planning

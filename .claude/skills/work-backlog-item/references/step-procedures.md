@@ -162,6 +162,19 @@ Build this string for `add-new-feature`:
 
 {full context manifest from Step 3, if available}
 
+### Impact Radius
+
+{full content of the ## Impact Radius section from the groomed item file}
+
+**Planner constraint**: Create tasks for every item listed above, or document the exclusion reason inline. The plan is incomplete if any row in the Impact Radius is unaddressed.
+
+**Ecosystem Completeness Checklist** (must all be checked before the plan can be marked complete):
+- [ ] Every upstream producer updated or verified compatible
+- [ ] Every downstream consumer migrated to new interface
+- [ ] Every stale document updated
+- [ ] Old interface deprecated or removed (if replacing)
+- [ ] CI/config files updated and validated
+
 ### Stack Profile (optional)
 
 {stack profile name if --stack specified, e.g., python-fastapi}

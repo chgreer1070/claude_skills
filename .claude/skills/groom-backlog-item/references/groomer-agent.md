@@ -32,9 +32,12 @@ Issue Classification:
 Root-Cause Analysis:
 {evidence chain from Step 7, or 'N/A - not applicable for this issue type'}
 
+Impact Radius:
+{impact radius section from Step 3.5 — documents, upstream producers, downstream consumers, config/CI files, and Ecosystem Completeness Checklist}
+
 Additional context from conversation:
 {any relevant user messages or discussion context}",
-  model: "haiku"
+  model: "sonnet"
 )
 ```
 
@@ -64,8 +67,11 @@ Issue Classification:
 {classification section from Step 6}
 
 Root-Cause Analysis:
-{evidence chain from Step 7, or 'N/A - not applicable for this issue type'}",
-  model: "haiku"
+{evidence chain from Step 7, or 'N/A - not applicable for this issue type'}
+
+Impact Radius:
+{impact radius section from Step 3.5 — documents, upstream producers, downstream consumers, config/CI files, and Ecosystem Completeness Checklist}",
+  model: "sonnet"
 )
 ```
 
