@@ -11,12 +11,11 @@
       "command": "uv",
       "args": [
         "run",
-        "--directory",
-        "${CLAUDE_PROJECT_DIR}",
         "python",
         "-m",
         "sam_schema.server"
-      ]
+      ],
+      "cwd": "${CLAUDE_PROJECT_DIR}"
     },
     "cocoindex-code": {
       "command": "uvx",
