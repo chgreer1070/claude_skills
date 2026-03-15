@@ -5,9 +5,9 @@ metadata:
   topic: samschema-follow-up-fix-multi-doc-yaml-updates-ty-diagnostic
   source: 'Feature verification gaps — #715 complete-implementation Phase 2 (2026-03-15)'
   added: '2026-03-15'
-  priority: P1
+  priority: completed
   type: Bug
-  status: open
+  status: done
   issue: '#716'
   last_synced: '2026-03-15T03:47:07Z'
   plan: plan/tasks-3-unified-sam-task-schema-followup-1.md

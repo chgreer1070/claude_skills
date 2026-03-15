@@ -276,3 +276,117 @@ def test_read_legacy_plan_complexity_title_case_normalized_to_lower(tmp_path: pa
     f.write_text(content)
     _, task_dicts, _ = read_legacy_plan(f)
     assert task_dicts[0].get("complexity") == "medium"
+
+
+# ---------------------------------------------------------------------------
+# Prose subsection extraction — ### Acceptance Criteria, ### Problem, etc.
+# ---------------------------------------------------------------------------
+
+
+def test_read_legacy_plan_acceptance_criteria_section_populates_field(tmp_path: pathlib.Path) -> None:
+    """Verify ### Acceptance Criteria section is extracted into acceptance-criteria field.
+
+    Tests: Legacy reader prose subsection extraction.
+    How: Write task with inline markers + ### Acceptance Criteria subsection.
+    Why: Before the fix, prose subsections were silently discarded.
+    """
+    content = (
+        "## Task 1: A task with criteria\n\n"
+        "**Status**: NOT STARTED\n"
+        "**Agent**: test-agent\n"
+        "**Priority**: 1\n"
+        "\n"
+        "### Acceptance Criteria\n"
+        "\n"
+        "- Criterion A\n"
+        "- Criterion B\n"
+    )
+    f = tmp_path / "tasks.md"
+    f.write_text(content)
+    _, task_dicts, _ = read_legacy_plan(f)
+    ac = task_dicts[0].get("acceptance-criteria") or ""
+    assert "Criterion A" in ac, "Acceptance criteria content must be extracted from ### section"
+    assert "Criterion B" in ac
+
+
+def test_read_legacy_plan_problem_section_populates_description(tmp_path: pathlib.Path) -> None:
+    """Verify ### Problem section is mapped to the description field.
+
+    Tests: Legacy reader ### Problem → description mapping.
+    How: Write task with ### Problem subsection.
+    Why: Legacy plan files often use ### Problem instead of ### Context.
+    """
+    content = (
+        "## Task 1: A task with problem\n\n"
+        "**Status**: NOT STARTED\n"
+        "**Agent**: test-agent\n"
+        "\n"
+        "### Problem\n"
+        "\n"
+        "The widget rendering is broken.\n"
+    )
+    f = tmp_path / "tasks.md"
+    f.write_text(content)
+    _, task_dicts, _ = read_legacy_plan(f)
+    desc = task_dicts[0].get("description") or ""
+    assert "widget rendering is broken" in desc
+
+
+def test_read_legacy_plan_body_content_round_trip(tmp_path: pathlib.Path) -> None:
+    """Verify body content survives the read -> write round-trip for legacy format.
+
+    Tests: Legacy reader read -> YAML write round-trip with prose subsections.
+    How: Build a two-task legacy file with acceptance criteria, load through
+         load_plan, write to YAML, verify content in output.
+    Why: The fix must feed parsed prose content into the Task model fields
+         that the YAML writer serialises as literal block scalars.
+    """
+    from sam_schema.core.query import load_plan
+    from sam_schema.writers.yaml_writer import write_plan
+
+    content = (
+        "# Legacy Plan\n\n"
+        "## Task 1: Implement rate limiting\n\n"
+        "**Status**: NOT STARTED\n"
+        "**Agent**: python3-development:python-cli-architect\n"
+        "**Priority**: 1\n"
+        "**Complexity**: Medium\n"
+        "\n"
+        "### Problem\n"
+        "\n"
+        "API requests are not rate-limited.\n"
+        "\n"
+        "### Acceptance Criteria\n"
+        "\n"
+        "- Rate limit is enforced per user\n"
+        "- Requests over limit return HTTP 429\n"
+        "\n"
+        "## Task 2: Add tests\n\n"
+        "**Status**: NOT STARTED\n"
+        "**Agent**: python3-development:python-pytest-architect\n"
+        "**Priority**: 2\n"
+        "**Dependencies**: 1\n"
+        "\n"
+        "### Acceptance Criteria\n"
+        "\n"
+        "- Tests cover rate limit enforcement\n"
+    )
+    md_file = tmp_path / "tasks-1-legacy-round-trip.md"
+    md_file.write_text(content)
+
+    result = load_plan(md_file)
+    t1 = next(t for t in result.plan.tasks if t.id == "1")
+    t2 = next(t for t in result.plan.tasks if t.id == "2")
+
+    assert "API requests are not rate-limited" in t1.description
+    assert "Rate limit is enforced" in t1.acceptance_criteria
+    assert "Tests cover rate limit" in t2.acceptance_criteria
+
+    out_yaml = tmp_path / "out.yaml"
+    write_plan(result.plan, out_yaml)
+    yaml_content = out_yaml.read_text()
+
+    assert "API requests are not rate-limited" in yaml_content
+    assert "acceptance-criteria" in yaml_content
+    assert "Rate limit is enforced" in yaml_content
+    assert "Tests cover rate limit" in yaml_content

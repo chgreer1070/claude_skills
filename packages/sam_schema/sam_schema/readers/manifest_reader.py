@@ -29,6 +29,9 @@ if TYPE_CHECKING:
 # Matches: ## TN:, ## TN -, ### TN:, ### Task N:, #### TN
 _TASK_SECTION_RE = re.compile(r"^(?:#{1,4})\s+(?:Task\s+)?([A-Za-z]?\d+(?:\.\d+)?)\s*[:\-]\s*(.*?)$", re.MULTILINE)
 
+# Delimiter for splitting body into segments (same logic as frontmatter_reader)
+_DELIMITER_RE = re.compile(r"^---+\s*$", re.MULTILINE)
+
 
 def _extract_task_id_title_from_entry(entry: dict) -> tuple[str, str] | None:
     """Extract task ID and title from a ``tasks:`` list entry.
@@ -87,15 +90,225 @@ def _extract_prose_sections(body: str) -> dict[str, str]:
     return sections
 
 
-def _build_task_dict(entry: dict, prose_by_task: dict[str, str]) -> dict | None:
+def _split_body_outside_fences(body: str) -> list[str]:
+    """Split a markdown body on ``---`` delimiters, ignoring those inside code fences.
+
+    Args:
+        body: Markdown text that may contain YAML blocks separated by ``---`` lines.
+
+    Returns:
+        List of text segments split on delimiter lines outside code fences.
+    """
+    segments: list[str] = []
+    current_parts: list[str] = []
+    in_fence = False
+
+    for line in body.split("\n"):
+        if line.startswith("```"):
+            in_fence = not in_fence
+            current_parts.append(line)
+            continue
+
+        if not in_fence and re.match(r"^---+\s*$", line):
+            segments.append("\n".join(current_parts))
+            current_parts = []
+            continue
+
+        current_parts.append(line)
+
+    segments.append("\n".join(current_parts))
+    return segments
+
+
+def _parse_body_prose_fields(prose: str) -> dict[str, str]:
+    """Extract named content sections from a markdown prose segment.
+
+    Looks for ``##`` or ``###`` headings and maps their content to canonical
+    task field names.
+
+    Recognised section → field mappings (case-insensitive):
+    - Context / Background → ``description``
+    - Objective → ``objective``
+    - Requirements → ``requirements``
+    - Constraints → ``constraints``
+    - Expected Outputs / Expected Output → ``expected-outputs``
+    - Acceptance Criteria / Acceptance → ``acceptance-criteria``
+    - Verification Steps / Verification / CoVe Checks / CoVe → ``verification-steps``
+    - Context Notes → ``context-notes``
+    - Handoff → ``handoff``
+
+    Args:
+        prose: Raw markdown text, possibly starting with section headings.
+
+    Returns:
+        Dict of canonical field name → text content.  Only non-empty sections
+        are included.
+    """
+    heading_re = re.compile(r"^(?:#{2,4})\s+(.+)$", re.MULTILINE)
+    matches = list(heading_re.finditer(prose))
+
+    HEADING_TO_FIELD: dict[str, str] = {
+        "context": "description",
+        "background": "description",
+        "objective": "objective",
+        "requirements": "requirements",
+        "constraints": "constraints",
+        "expected outputs": "expected-outputs",
+        "expected output": "expected-outputs",
+        "acceptance criteria": "acceptance-criteria",
+        "acceptance": "acceptance-criteria",
+        "verification steps": "verification-steps",
+        "verification": "verification-steps",
+        "cove checks": "verification-steps",
+        "cove": "verification-steps",
+        "context notes": "context-notes",
+        "handoff": "handoff",
+    }
+
+    result: dict[str, str] = {}
+
+    if not matches:
+        stripped = prose.strip()
+        if stripped:
+            result["description"] = stripped
+        return result
+
+    for idx, match in enumerate(matches):
+        heading_text = match.group(1).strip()
+        field = HEADING_TO_FIELD.get(heading_text.lower())
+        if field is None:
+            continue
+
+        section_start = match.end()
+        section_end = matches[idx + 1].start() if idx + 1 < len(matches) else len(prose)
+        content = prose[section_start:section_end].strip()
+        if not content:
+            continue
+
+        if field in result:
+            result[field] = result[field] + "\n\n" + content
+        else:
+            result[field] = content
+
+    return result
+
+
+def _try_parse_yaml_dict(text: str) -> dict | None:
+    """Attempt to parse ``text`` as a YAML mapping.
+
+    Returns the coerced plain dict on success, or ``None`` if parsing fails or
+    the result is not a dict.  Used to classify body segments without raising.
+
+    Args:
+        text: Raw text that may or may not be valid YAML.
+
+    Returns:
+        Coerced plain dict, or ``None`` if not parseable as a YAML mapping.
+    """
+    try:
+        result = load_yaml(text)
+    except Exception:  # noqa: BLE001
+        return None
+    if not isinstance(result, dict):
+        return None
+    return coerce_to_plain(result)
+
+
+def _extract_body_task_blocks(body: str) -> dict[str, dict]:
+    """Extract per-task YAML blocks and their prose bodies from the markdown body.
+
+    Used when a global-manifest file also embeds per-task YAML blocks in the
+    body (each surrounded by ``---`` delimiters).  This is the hybrid format
+    where the global frontmatter ``tasks:`` list provides the task registry and
+    the body YAML blocks provide extended structured metadata plus prose content
+    (Context, Acceptance Criteria, Verification Steps, etc.).
+
+    The function splits the body into segments, identifies YAML blocks that
+    contain a ``task:`` field, and captures the immediately following prose
+    segment for content field extraction.
+
+    Args:
+        body: Markdown body text after the closing ``---`` of the frontmatter.
+
+    Returns:
+        Dict mapping task ID string to a merged dict containing:
+        - All YAML fields from the task block (e.g., ``agent``, ``priority``,
+          ``status``, ``dependencies``)
+        - Prose content fields (e.g., ``description``, ``acceptance-criteria``,
+          ``verification-steps``) extracted from the following prose segment.
+        Returns an empty dict if no task YAML blocks are found.
+    """
+    segments = _split_body_outside_fences(body)
+
+    # Parse each segment: classify as task YAML block, other YAML, or prose
+    parsed: list[tuple[bool, object]] = []
+    for raw_segment in segments:
+        segment = raw_segment.strip()
+        if not segment:
+            parsed.append((False, ""))
+            continue
+        block = _try_parse_yaml_dict(segment)
+        if block is not None:
+            is_task = bool(block.get("task") or block.get("task_id"))
+            parsed.append((is_task, block))
+        else:
+            parsed.append((False, segment))
+
+    task_blocks: dict[str, dict] = {}
+
+    for idx, (is_task, payload) in enumerate(parsed):
+        if not is_task:
+            continue
+
+        block = dict(payload)  # type: ignore[arg-type]
+        task_id = str(block.get("task") or block.get("task_id") or "")
+        if not task_id:
+            continue
+
+        # Ensure the canonical ``task`` key is set
+        block["task"] = task_id
+
+        # Look ahead for a prose segment immediately following this task block
+        next_idx = idx + 1
+        while next_idx < len(parsed):
+            next_is_task, next_payload = parsed[next_idx]
+            if isinstance(next_payload, str) and not next_payload:
+                next_idx += 1
+                continue
+            if not next_is_task and isinstance(next_payload, str) and next_payload:
+                prose_fields = _parse_body_prose_fields(next_payload)
+                for field, value in prose_fields.items():
+                    block.setdefault(field, value)
+            break
+
+        task_blocks[task_id] = block
+
+    return task_blocks
+
+
+def _build_task_dict(
+    entry: dict, prose_by_task: dict[str, str], body_task_blocks: dict[str, dict] | None = None
+) -> dict | None:
     """Build a raw task dict from a manifest ``tasks:`` entry.
 
-    Merges structured fields (from YAML list entry) with prose content
-    from the matching body section.
+    Merges structured fields from three sources, in priority order:
+
+    1. **Frontmatter entry** — provides task ID, title, and any fields explicitly
+       set in the ``tasks:`` list.  These values take precedence because the
+       frontmatter is the authoritative registry.
+    2. **Body YAML block** — if the body contains a per-task YAML block matching
+       this task ID (the hybrid format used by some plan files), its structured
+       fields (``agent``, ``priority``, ``dependencies``, ``status``, etc.) and
+       prose content fields (``description``, ``acceptance-criteria``, etc.) fill
+       in any gaps not covered by the frontmatter entry.
+    3. **Prose section** — if the body contains a ``## TN:`` prose section, its
+       text is used as ``description`` if no other source provided it.
 
     Args:
         entry: A coerced dict entry from the ``tasks:`` YAML list.
-        prose_by_task: Map from task ID to its prose section text.
+        prose_by_task: Map from task ID to prose text from ``## TN:`` sections.
+        body_task_blocks: Optional map from task ID to merged dict from
+            ``_extract_body_task_blocks``.  Pass ``None`` to skip body block lookup.
 
     Returns:
         Raw task dict, or ``None`` if the entry cannot be parsed.
@@ -110,6 +323,11 @@ def _build_task_dict(entry: dict, prose_by_task: dict[str, str]) -> dict | None:
         if not task_id:
             return None
         task_dict.setdefault("task", task_id)
+        # Merge body YAML block fields (fill gaps not set in the frontmatter entry)
+        if body_task_blocks:
+            for field, value in body_task_blocks.get(task_id, {}).items():
+                task_dict.setdefault(field, value)
+        # Fall back to prose section for description
         prose = prose_by_task.get(task_id, "")
         if prose:
             task_dict.setdefault("description", prose)
@@ -120,10 +338,15 @@ def _build_task_dict(entry: dict, prose_by_task: dict[str, str]) -> dict | None:
     if not parsed:
         return None
     task_id, title = parsed
-    task_dict = {"task": task_id, "title": title, "status": "not-started"}
+    task_dict: dict = {"task": task_id, "title": title, "status": "not-started"}
+    # Merge body YAML block fields (provides full structured metadata + prose content)
+    if body_task_blocks:
+        for field, value in body_task_blocks.get(task_id, {}).items():
+            task_dict.setdefault(field, value)
+    # Fall back to prose section for description
     prose = prose_by_task.get(task_id, "")
     if prose:
-        task_dict["description"] = prose
+        task_dict.setdefault("description", prose)
     return task_dict
 
 
@@ -201,14 +424,18 @@ def read_manifest_plan(path: Path) -> tuple[dict, list[dict], FormatType]:
         msg = f"Expected 'tasks:' to be a list in {path}"
         raise TypeError(msg)
 
-    # Extract prose sections from body keyed by task ID
+    # Extract prose sections from body keyed by task ID (## TN: heading format)
     prose_by_task = _extract_prose_sections(body)
 
-    # Build per-task dicts by merging metadata + prose
+    # Extract per-task YAML blocks from body (hybrid format: global frontmatter +
+    # embedded per-task YAML blocks with prose).  Returns empty dict when absent.
+    body_task_blocks = _extract_body_task_blocks(body)
+
+    # Build per-task dicts by merging frontmatter entry + body YAML block + prose
     task_dicts: list[dict] = []
     for raw_entry in tasks_raw:
         entry: dict = coerce_to_plain(raw_entry)
-        task_dict = _build_task_dict(entry, prose_by_task)
+        task_dict = _build_task_dict(entry, prose_by_task, body_task_blocks or None)
         if task_dict is not None:
             task_dicts.append(task_dict)
 

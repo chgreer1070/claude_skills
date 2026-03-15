@@ -92,6 +92,90 @@ def _split_outside_fences(body: str) -> list[str]:
     return segments
 
 
+def _parse_prose_fields(prose: str) -> dict[str, str]:
+    """Extract named content sections from a markdown prose segment.
+
+    Looks for ``## SectionName`` or ``### SectionName`` headings and collects
+    the text beneath each one.  The results are mapped to canonical task field
+    names so they can be merged into a task dict.
+
+    Recognised section → field mappings (case-insensitive):
+
+    - Context / Background → ``description`` (combined with Objective /
+      Requirements if those are also present)
+    - Objective → ``objective``
+    - Requirements → ``requirements``
+    - Constraints → ``constraints``
+    - Expected Outputs / Expected Output → ``expected-outputs``
+    - Acceptance Criteria / Acceptance → ``acceptance-criteria``
+    - Verification Steps / Verification / CoVe Checks / CoVe → ``verification-steps``
+    - Context Notes → ``context-notes``
+    - Handoff → ``handoff``
+
+    When multiple sections map to ``description`` (Context + Objective +
+    Requirements), only ``description`` is populated; the others are left in
+    their own fields as well.
+
+    Args:
+        prose: Raw markdown text, possibly starting with section headings.
+
+    Returns:
+        Dict of canonical field name → text content.  Only non-empty sections
+        are included.
+    """
+    # Heading pattern: ## or ### followed by text
+    heading_re = re.compile(r"^(?:#{2,4})\s+(.+)$", re.MULTILINE)
+    matches = list(heading_re.finditer(prose))
+
+    # Map heading names to canonical field names
+    HEADING_TO_FIELD: dict[str, str] = {
+        "context": "description",
+        "background": "description",
+        "objective": "objective",
+        "requirements": "requirements",
+        "constraints": "constraints",
+        "expected outputs": "expected-outputs",
+        "expected output": "expected-outputs",
+        "acceptance criteria": "acceptance-criteria",
+        "acceptance": "acceptance-criteria",
+        "verification steps": "verification-steps",
+        "verification": "verification-steps",
+        "cove checks": "verification-steps",
+        "cove": "verification-steps",
+        "context notes": "context-notes",
+        "handoff": "handoff",
+    }
+
+    result: dict[str, str] = {}
+
+    if not matches:
+        # No headings — treat the whole prose as description
+        stripped = prose.strip()
+        if stripped:
+            result["description"] = stripped
+        return result
+
+    for idx, match in enumerate(matches):
+        heading_text = match.group(1).strip()
+        field = HEADING_TO_FIELD.get(heading_text.lower())
+        if field is None:
+            continue
+
+        section_start = match.end()
+        section_end = matches[idx + 1].start() if idx + 1 < len(matches) else len(prose)
+        content = prose[section_start:section_end].strip()
+        if not content:
+            continue
+
+        if field in result:
+            # Append to existing content (e.g. multiple sections → description)
+            result[field] = result[field] + "\n\n" + content
+        else:
+            result[field] = content
+
+    return result
+
+
 def _parse_embedded_task_blocks(
     plan_meta: dict[str, Any], body: str, path: Path
 ) -> tuple[dict, list[dict], FormatType]:
@@ -100,6 +184,13 @@ def _parse_embedded_task_blocks(
     Used by the multi-task frontmatter variant where the first ``---`` block
     is plan-level metadata and per-task YAML blocks follow in the body,
     separated by ``---`` delimiters (outside code fences).
+
+    Each task YAML block may be followed immediately by a prose segment
+    containing markdown sections such as ``## Context``, ``## Acceptance
+    Criteria``, and ``## Verification Steps``.  These are parsed by
+    ``_parse_prose_fields`` and merged into the task dict so that content
+    fields (``description``, ``acceptance-criteria``, ``verification-steps``,
+    etc.) survive the read → write round-trip.
 
     Args:
         plan_meta: Parsed plan-level metadata from the first frontmatter block.
@@ -113,21 +204,51 @@ def _parse_embedded_task_blocks(
         ValueError: If no valid task blocks are found in the body.
     """
     segments = _split_outside_fences(body)
-    task_dicts: list[dict] = []
+
+    # Build a list of (is_task, dict_or_prose) pairs so we can look ahead
+    # to the segment immediately following each task YAML block.
+    parsed_segments: list[tuple[bool, Any]] = []
     for raw_segment in segments:
         segment = raw_segment.strip()
         if not segment:
+            parsed_segments.append((False, ""))
             continue
         try:
-            task_dict = _load_yaml_block(segment)
-        except ValueError:
-            # Not a valid YAML block (prose, etc.) — skip
+            block = _load_yaml_block(segment)
+        except (ValueError, TypeError):
+            # Not a valid YAML mapping (prose, comment, etc.) — keep as prose
+            parsed_segments.append((False, segment))
             continue
-        if "task" in task_dict or "task_id" in task_dict:
-            task_id = task_dict.get("task") or task_dict.get("task_id")
-            if task_id is not None:
-                task_dict["task"] = str(task_id)
-            task_dicts.append(task_dict)
+
+        is_task_block = ("task" in block or "task_id" in block) and bool(block.get("task") or block.get("task_id"))
+        parsed_segments.append((is_task_block, block))
+
+    task_dicts: list[dict] = []
+    for idx, (is_task, payload) in enumerate(parsed_segments):
+        if not is_task:
+            continue
+        task_dict = dict(payload)  # type: ignore[arg-type]
+        task_id = task_dict.get("task") or task_dict.get("task_id")
+        task_dict["task"] = str(task_id)
+
+        # Look at the immediately following non-empty segment.  If it is prose
+        # (not another task YAML block), parse it for content fields.
+        next_idx = idx + 1
+        while next_idx < len(parsed_segments):
+            next_is_task, next_payload = parsed_segments[next_idx]
+            if isinstance(next_payload, str) and not next_payload:
+                # Empty segment — skip over it
+                next_idx += 1
+                continue
+            if not next_is_task and isinstance(next_payload, str) and next_payload:
+                # Prose segment immediately following the task YAML block
+                prose_fields = _parse_prose_fields(next_payload)
+                for field, value in prose_fields.items():
+                    task_dict.setdefault(field, value)
+            break
+
+        task_dicts.append(task_dict)
+
     if not task_dicts:
         msg = f"No task blocks found in {path}"
         raise ValueError(msg)

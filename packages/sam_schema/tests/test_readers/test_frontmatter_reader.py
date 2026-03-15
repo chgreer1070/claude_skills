@@ -99,6 +99,156 @@ def test_read_frontmatter_plan_multi_second_task_has_dependency():
 
 
 # ---------------------------------------------------------------------------
+# Body content extraction — prose sections after each task YAML block
+# ---------------------------------------------------------------------------
+
+
+def test_read_frontmatter_plan_multi_first_task_has_description_from_body():
+    """Verify that the prose body following a task YAML block populates description.
+
+    Tests: Prose body content extraction for multi-task frontmatter files.
+    How: Point read_frontmatter_plan at yaml_frontmatter_multi.md, check T1.description.
+    Why: Body content was previously discarded; this is the regression guard for the fix.
+    """
+    path = _FIXTURES / "yaml_frontmatter_multi.md"
+    _, task_dicts, _ = read_frontmatter_plan(path)
+    t1 = next(t for t in task_dicts if t.get("task") == "T1")
+    assert t1.get("description"), "T1 description should be populated from the prose body"
+
+
+def test_read_frontmatter_plan_multi_first_task_has_objective_from_body():
+    """Verify that ### Objective sections are extracted into the objective field.
+
+    Tests: Named prose section extraction (### Objective).
+    How: Check T1.objective against yaml_frontmatter_multi.md fixture content.
+    Why: The fixture has an explicit ### Objective section; it must survive the read.
+    """
+    path = _FIXTURES / "yaml_frontmatter_multi.md"
+    _, task_dicts, _ = read_frontmatter_plan(path)
+    t1 = next(t for t in task_dicts if t.get("task") == "T1")
+    assert t1.get("objective"), "T1 objective should be populated from ### Objective section"
+
+
+def test_read_frontmatter_plan_multi_body_content_round_trip(tmp_path: pathlib.Path) -> None:
+    """Verify body content survives the read -> write round-trip.
+
+    Tests: Body content fields preserved through read_frontmatter_plan -> YAML write.
+    How: Build a two-task frontmatter file with acceptance criteria and verification
+         steps in prose bodies, read it, write to YAML, verify content in output.
+    Why: The fix must not only parse prose — it must feed the parsed content into
+         the Task model fields that the YAML writer serialises as literal block scalars.
+    """
+    from sam_schema.core.query import load_plan
+    from sam_schema.readers.detect import read_plan
+    from sam_schema.writers.yaml_writer import write_plan
+
+    content = (
+        "---\n"
+        "feature: round-trip-test\n"
+        "---\n"
+        "\n"
+        "\n"
+        "task: T1\n"
+        "title: First task\n"
+        "status: not-started\n"
+        "\n"
+        "---\n"
+        "\n"
+        "## Context\n"
+        "\n"
+        "This is the context for T1.\n"
+        "\n"
+        "## Acceptance Criteria\n"
+        "\n"
+        "1. Criterion one\n"
+        "2. Criterion two\n"
+        "\n"
+        "## Verification Steps\n"
+        "\n"
+        "1. Run pytest\n"
+        "2. Check output\n"
+        "\n"
+        "---\n"
+        "\n"
+        "\n"
+        "task: T2\n"
+        "title: Second task\n"
+        "status: not-started\n"
+        "dependencies:\n"
+        "  - T1\n"
+        "\n"
+        "---\n"
+        "\n"
+        "## Context\n"
+        "\n"
+        "This is the context for T2.\n"
+        "\n"
+        "## Acceptance Criteria\n"
+        "\n"
+        "1. T2 criterion\n"
+    )
+    md_file = tmp_path / "tasks-1-round-trip-test.md"
+    md_file.write_text(content)
+
+    # Read the plan
+    _plan_meta, task_dicts, _ = read_plan(md_file)
+    t1 = next(t for t in task_dicts if t.get("task") == "T1")
+    t2 = next(t for t in task_dicts if t.get("task") == "T2")
+
+    # Verify description and acceptance-criteria are in the task dicts
+    assert t1.get("description") == "This is the context for T1."
+    assert "Criterion one" in (t1.get("acceptance-criteria") or "")
+    assert "Run pytest" in (t1.get("verification-steps") or "")
+    assert t2.get("description") == "This is the context for T2."
+    assert "T2 criterion" in (t2.get("acceptance-criteria") or "")
+
+    # Write to YAML and verify content survives
+    result = load_plan(md_file)
+    out_yaml = tmp_path / "out.yaml"
+    write_plan(result.plan, out_yaml)
+    yaml_content = out_yaml.read_text()
+
+    assert "This is the context for T1" in yaml_content
+    assert "Criterion one" in yaml_content
+    assert "Run pytest" in yaml_content
+    assert "This is the context for T2" in yaml_content
+    assert "T2 criterion" in yaml_content
+
+
+def test_read_frontmatter_plan_multi_prose_not_duplicated_in_yaml_block_task(tmp_path: pathlib.Path) -> None:
+    """Verify that prose fields are not overwritten when YAML block already has them.
+
+    Tests: setdefault semantics — YAML block fields take precedence.
+    How: Build a task YAML block that already contains a 'description' field,
+         followed by a ## Context prose section with different text.
+    Why: The fix uses setdefault so explicit YAML fields are not overwritten.
+    """
+    content = (
+        "---\n"
+        "feature: precedence-test\n"
+        "---\n"
+        "\n"
+        "\n"
+        "task: T1\n"
+        "title: Task with explicit description\n"
+        "status: not-started\n"
+        "description: Explicit description from YAML block.\n"
+        "\n"
+        "---\n"
+        "\n"
+        "## Context\n"
+        "\n"
+        "Prose context that should NOT override the YAML description.\n"
+    )
+    f = tmp_path / "tasks-1-precedence.md"
+    f.write_text(content)
+    _, task_dicts, _ = read_frontmatter_plan(f)
+    t1 = task_dicts[0]
+    # The YAML block's description must win over the prose section
+    assert t1.get("description") == "Explicit description from YAML block."
+
+
+# ---------------------------------------------------------------------------
 # Tasks-list variant — frontmatter tasks: list without feature/slug
 # ---------------------------------------------------------------------------
 

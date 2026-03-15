@@ -92,6 +92,69 @@ def _parse_field_value(field_name: str, raw_value: str) -> object:  # noqa: PLR0
     return raw
 
 
+_PROSE_HEADING_RE = re.compile(r"^(?:#{3,4})\s+(.+)$", re.MULTILINE)
+
+# Map heading names (lowercase) to canonical task field names
+_PROSE_HEADING_TO_FIELD: dict[str, str] = {
+    "context": "description",
+    "background": "description",
+    "problem": "description",
+    "objective": "objective",
+    "requirements": "requirements",
+    "constraints": "constraints",
+    "expected outputs": "expected-outputs",
+    "expected output": "expected-outputs",
+    "acceptance criteria": "acceptance-criteria",
+    "acceptance": "acceptance-criteria",
+    "verification steps": "verification-steps",
+    "verification": "verification-steps",
+    "cove checks": "verification-steps",
+    "cove": "verification-steps",
+    "context notes": "context-notes",
+    "handoff": "handoff",
+    "test requirements": "acceptance-criteria",
+    "changes required": "requirements",
+}
+
+
+def _extract_prose_subsections(section_body: str) -> dict[str, str]:
+    """Extract named prose subsections from a legacy task section body.
+
+    Looks for ``###`` and ``####`` headings and maps their content to canonical
+    task field names.  ``##`` headings are intentionally excluded because those
+    mark the boundaries between tasks in the legacy format.
+
+    Args:
+        section_body: The raw text of a ``## Task N:`` section (excluding the
+            task heading line itself).
+
+    Returns:
+        Dict of canonical field name → text content.  Only non-empty sections
+        are included.
+    """
+    matches = list(_PROSE_HEADING_RE.finditer(section_body))
+    result: dict[str, str] = {}
+
+    for idx, match in enumerate(matches):
+        heading_text = match.group(1).strip()
+        field = _PROSE_HEADING_TO_FIELD.get(heading_text.lower())
+        if field is None:
+            continue
+
+        section_start = match.end()
+        section_end = matches[idx + 1].start() if idx + 1 < len(matches) else len(section_body)
+        content = section_body[section_start:section_end].strip()
+        if not content:
+            continue
+
+        if field in result:
+            result[field] = result[field] + "\n\n" + content
+        else:
+            result[field] = content
+
+    return result
+
+
 def _extract_section_task(content: str, heading_matches: list, idx: int) -> dict:
     """Extract a raw task dict from a single ``## Task N:`` section.
 
@@ -102,7 +165,7 @@ def _extract_section_task(content: str, heading_matches: list, idx: int) -> dict
 
     Returns:
         Raw task dict with ``task``, ``title``, ``status``, and any other
-        extracted fields.
+        extracted fields, including prose subsection content fields.
     """
     match = heading_matches[idx]
     task_num: str = match.group(1)
@@ -122,6 +185,10 @@ def _extract_section_task(content: str, heading_matches: list, idx: int) -> dict
             parsed_value = _parse_field_value(canonical, raw_value)
             if parsed_value is not None:
                 task_dict[canonical] = parsed_value
+
+    # Extract prose subsections (### Acceptance Criteria, ### Problem, etc.)
+    for field, value in _extract_prose_subsections(section_body).items():
+        task_dict.setdefault(field, value)
 
     task_dict.setdefault("status", "not-started")
     return task_dict

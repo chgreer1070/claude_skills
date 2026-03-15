@@ -68,7 +68,7 @@ def test_read_manifest_plan_tasks_have_default_status_not_started():
 
 
 # ---------------------------------------------------------------------------
-# Prose body merging
+# Prose body merging — ## TN: heading format
 # ---------------------------------------------------------------------------
 
 
@@ -78,6 +78,248 @@ def test_read_manifest_plan_tasks_have_description_from_body_sections():
     # T1 has a prose body section in the fixture
     t1 = next(t for t in task_dicts if t.get("task") == "T1")
     assert t1.get("description")
+
+
+# ---------------------------------------------------------------------------
+# Hybrid format — global manifest frontmatter + per-task YAML blocks in body
+# ---------------------------------------------------------------------------
+
+
+def test_read_manifest_plan_hybrid_body_task_blocks_provide_description(tmp_path: pathlib.Path) -> None:
+    """Verify per-task YAML blocks in body populate description via ## Context section.
+
+    Tests: Hybrid format — body YAML blocks + prose extraction.
+    How: Write a manifest with simple {TN: title} frontmatter and a per-task YAML
+         block + ## Context section in the body.
+    Why: Some plan files (e.g. tasks-1-backlog-state-reconciliation.md) use this
+         hybrid structure.  Before the fix, description was always empty.
+    """
+    content = (
+        "---\n"
+        "feature: hybrid-test\n"
+        "tasks:\n"
+        "  - T1: First task\n"
+        "---\n"
+        "\n"
+        "# Plan header\n"
+        "\n"
+        "---\n"
+        "\n"
+        "---\n"
+        "task: T1\n"
+        "title: First task\n"
+        "status: not-started\n"
+        "agent: test-agent\n"
+        "priority: 1\n"
+        "---\n"
+        "\n"
+        "## Context\n"
+        "\n"
+        "This is the context for T1.\n"
+        "\n"
+        "## Acceptance Criteria\n"
+        "\n"
+        "1. Criterion one\n"
+        "2. Criterion two\n"
+    )
+    f = tmp_path / "tasks-1-hybrid-test.md"
+    f.write_text(content)
+    _, task_dicts, _ = read_manifest_plan(f)
+    assert len(task_dicts) == 1
+    t1 = task_dicts[0]
+    assert t1.get("description") == "This is the context for T1."
+    assert "Criterion one" in (t1.get("acceptance-criteria") or "")
+
+
+def test_read_manifest_plan_hybrid_body_task_blocks_provide_agent_field(tmp_path: pathlib.Path) -> None:
+    """Verify per-task YAML blocks in body provide structured fields like agent.
+
+    Tests: Hybrid format structured field merging (agent, priority).
+    How: Write manifest with simple frontmatter entry and body YAML block with agent field.
+    Why: Body YAML blocks provide extended metadata absent from simple frontmatter entries.
+    """
+    content = (
+        "---\n"
+        "feature: hybrid-agent-test\n"
+        "tasks:\n"
+        "  - T1: First task\n"
+        "---\n"
+        "\n"
+        "---\n"
+        "\n"
+        "---\n"
+        "task: T1\n"
+        "title: First task\n"
+        "status: not-started\n"
+        "agent: python3-development:python-cli-architect\n"
+        "priority: 1\n"
+        "complexity: high\n"
+        "---\n"
+        "\n"
+        "## Context\n"
+        "\n"
+        "Context text here.\n"
+    )
+    f = tmp_path / "tasks-1-hybrid-agent.md"
+    f.write_text(content)
+    _, task_dicts, _ = read_manifest_plan(f)
+    t1 = task_dicts[0]
+    assert t1.get("agent") == "python3-development:python-cli-architect"
+    assert t1.get("priority") == 1
+    assert t1.get("complexity") == "high"
+
+
+def test_read_manifest_plan_hybrid_frontmatter_status_overrides_body_block(tmp_path: pathlib.Path) -> None:
+    """Verify frontmatter entry status takes precedence over body YAML block status.
+
+    Tests: Merge priority — frontmatter entry fields win over body block fields.
+    How: Set status in both frontmatter full-dict entry and body YAML block with
+         different values.
+    Why: The frontmatter is the authoritative registry; body blocks fill gaps only.
+    """
+    content = (
+        "---\n"
+        "feature: precedence-test\n"
+        "tasks:\n"
+        "  - id: T1\n"
+        "    title: First task\n"
+        "    status: complete\n"
+        "---\n"
+        "\n"
+        "---\n"
+        "\n"
+        "---\n"
+        "task: T1\n"
+        "title: First task\n"
+        "status: not-started\n"
+        "agent: test-agent\n"
+        "---\n"
+        "\n"
+        "## Context\n"
+        "\n"
+        "Context text.\n"
+    )
+    f = tmp_path / "tasks-1-precedence.md"
+    f.write_text(content)
+    _, task_dicts, _ = read_manifest_plan(f)
+    t1 = task_dicts[0]
+    # Frontmatter says complete; body block says not-started — frontmatter wins
+    assert t1.get("status") == "complete"
+    # But agent from the body block fills the gap
+    assert t1.get("agent") == "test-agent"
+
+
+def test_read_manifest_plan_hybrid_body_round_trip(tmp_path: pathlib.Path) -> None:
+    """Verify body content survives the read -> write round-trip for the hybrid format.
+
+    Tests: Hybrid format read -> YAML write round-trip.
+    How: Build a manifest with per-task YAML blocks + prose in body, load through
+         load_plan, write to YAML, verify description/acceptance-criteria/verification-steps
+         are present in the YAML output.
+    Why: This is the primary regression guard for the fix — the exact scenario where
+         body content was silently discarded.
+    """
+    from sam_schema.core.query import load_plan
+    from sam_schema.writers.yaml_writer import write_plan
+
+    content = (
+        "---\n"
+        "feature: round-trip-test\n"
+        "tasks:\n"
+        "  - T1: State handler helpers\n"
+        "  - T2: Core reconciliation\n"
+        "---\n"
+        "\n"
+        "# Plan header\n"
+        "\n"
+        "---\n"
+        "\n"
+        "---\n"
+        "task: T1\n"
+        "title: State handler helpers\n"
+        "status: not-started\n"
+        "agent: python3-development:python-cli-architect\n"
+        "priority: 1\n"
+        "complexity: low\n"
+        "---\n"
+        "\n"
+        "## Context\n"
+        "\n"
+        "Add is_terminal_state() and find_valid_path() to state_handler.py.\n"
+        "\n"
+        "## Acceptance Criteria\n"
+        "\n"
+        '1. is_terminal_state("done") returns True\n'
+        "2. find_valid_path() returns None for unreachable states\n"
+        "\n"
+        "## Verification Steps\n"
+        "\n"
+        '1. uv run python -c "from state_handler import is_terminal_state; print(PASS)"\n'
+        "\n"
+        "---\n"
+        "\n"
+        "---\n"
+        "task: T2\n"
+        "title: Core reconciliation\n"
+        "status: not-started\n"
+        "agent: python3-development:python-cli-architect\n"
+        "priority: 2\n"
+        "dependencies:\n"
+        "  - T1\n"
+        "---\n"
+        "\n"
+        "## Context\n"
+        "\n"
+        "Add reconciliation functions to backlog.py.\n"
+        "\n"
+        "## Acceptance Criteria\n"
+        "\n"
+        "1. ReconcileResult dataclass exists\n"
+    )
+    md_file = tmp_path / "tasks-1-round-trip-test.md"
+    md_file.write_text(content)
+
+    # Verify raw read
+    _, task_dicts, _ = read_manifest_plan(md_file)
+    t1 = next(t for t in task_dicts if t.get("task") == "T1")
+    t2 = next(t for t in task_dicts if t.get("task") == "T2")
+    assert t1.get("description"), "T1 description must be non-empty after read"
+    assert t1.get("acceptance-criteria"), "T1 acceptance-criteria must be non-empty after read"
+    assert t1.get("verification-steps"), "T1 verification-steps must be non-empty after read"
+    assert t2.get("description"), "T2 description must be non-empty after read"
+    assert t2.get("acceptance-criteria"), "T2 acceptance-criteria must be non-empty after read"
+
+    # Verify YAML write round-trip
+    result = load_plan(md_file)
+    out_yaml = tmp_path / "out.yaml"
+    write_plan(result.plan, out_yaml)
+    yaml_content = out_yaml.read_text()
+
+    assert "is_terminal_state" in yaml_content, "T1 description content must survive YAML write"
+    assert "acceptance-criteria" in yaml_content, "acceptance-criteria field must be in YAML output"
+    assert "verification-steps" in yaml_content, "verification-steps field must be in YAML output"
+    assert "ReconcileResult" in yaml_content, "T2 acceptance-criteria content must survive YAML write"
+
+
+def test_read_manifest_plan_hybrid_real_file_body_content_non_empty() -> None:
+    """Verify the real tasks-1-backlog-state-reconciliation.md has non-empty body fields.
+
+    Tests: Real-world hybrid manifest file produces tasks with populated body fields.
+    How: Load the real plan file and check T1's description, acceptance_criteria,
+         and verification_steps are non-empty.
+    Why: This is the exact file that triggered the bug report. Regression guard.
+    """
+    from sam_schema.core.query import load_plan
+
+    real_file = pathlib.Path("/home/ubuntulinuxqa2/repos/claude_skills/plan/tasks-1-backlog-state-reconciliation.md")
+    if not real_file.exists():
+        pytest.skip("Real manifest file not present in this environment")
+
+    result = load_plan(real_file)
+    t1 = next(t for t in result.plan.tasks if t.id == "T1")
+    assert len(t1.description) > 0, "T1 description must be non-empty"
+    assert len(t1.acceptance_criteria) > 0, "T1 acceptance_criteria must be non-empty"
+    assert len(t1.verification_steps) > 0, "T1 verification_steps must be non-empty"
 
 
 # ---------------------------------------------------------------------------
