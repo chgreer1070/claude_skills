@@ -9,8 +9,9 @@ metadata:
   type: Feature
   status: open
   issue: '#719'
-  last_synced: '2026-03-15T07:08:22Z'
+  last_synced: '2026-03-15T08:18:35Z'
   groomed: '2026-03-15'
+  plan: plan/tasks-3-integrate-sam-schema.md
 ---
 
 ## RT-ICA
@@ -317,6 +318,78 @@ Phase breakdown:
 Total: 3 new CLI commands + removal of 1 module + updates to 27 agent files + 11 docs + 9 test groups. Parallelizable across phases 3/4/5 once phase 2 is complete. Phase 1 is the critical gating dependency.
 </div>
 
+### Decision
+
+<div><sub>2026-03-15T07:59:59Z</sub>
+<details><summary>struck: 2026-03-15T08:05:57Z — Simplified: allow collisions since slugs are unique identifiers</summary>
+
+**Plan file naming convention (resolved 2026-03-15)**:
+
+Pattern follows GSD's hierarchical naming (observed in `/home/ubuntulinuxqa2/repos/gsd-2/.gsd/milestones/M001/slices/S01/tasks/T01-PLAN.md`):
+
+**Convention**: `P{NNN}-{slug}` with zero-padded sequential numbering.
+
+Single file (under 500 lines):
+```
+plan/P001-backlog-state-reconciliation.yaml
+```
+
+Split directory (over 500 lines):
+```
+plan/P001-backlog-state-reconciliation/
+├── P001-PLAN.yaml        # plan-level metadata, goal, context, task list
+├── P001-ARCHITECT.md      # architecture spec
+├── P001-CONTEXT.md        # feature context
+└── tasks/
+    ├── T01.yaml
+    ├── T02.yaml
+    └── T03.yaml
+```
+
+**Numbering**: Sequential, local. `sam create` scans `plan/P*`, extracts highest NNN, writes `P{NNN+1}`. No GitHub dependency for numbering.
+
+**Collision handling**: Two branches both increment to the same number. On merge, `sam` CLI detects duplicate P numbers (two `P004-*` entries) and renumbers the newer one (by git commit date) to `max+1`. This is a post-merge fixup, not a blocker.
+
+**Task numbering**: `T{NN}` zero-padded, local to the plan. `T01` in `P001` is independent of `T01` in `P002`.
+
+**Addressing**: `sam read P1/T3` resolves by globbing `plan/P001-*/` and finding `T03.yaml` inside. The zero-padding means `P1` matches `P001-*`.
+</details>
+</div>
+
+<div><sub>2026-03-15T08:05:57Z</sub>
+
+**Plan file naming convention (resolved 2026-03-15)**:
+
+Pattern follows GSD's hierarchical naming (observed in `/home/ubuntulinuxqa2/repos/gsd-2/.gsd/milestones/M001/slices/S01/tasks/T01-PLAN.md`):
+
+**Convention**: `P{NNN}-{slug}` with zero-padded sequential numbering.
+
+Single file (under 500 lines):
+```
+plan/P001-backlog-state-reconciliation.yaml
+```
+
+Split directory (over 500 lines):
+```
+plan/P001-backlog-state-reconciliation/
+├── P001-PLAN.yaml        # plan-level metadata, goal, context, task list
+├── P001-ARCHITECT.md      # architecture spec
+├── P001-CONTEXT.md        # feature context
+└── tasks/
+    ├── T01.yaml
+    ├── T02.yaml
+    └── T03.yaml
+```
+
+**Numbering**: Sequential, local. `sam create` scans `plan/P*`, extracts highest NNN, writes `P{NNN+1}`. No GitHub dependency for numbering.
+
+**Collision handling**: Allowed. The slug makes each plan unique — `P004-backlog-state-reconciliation` and `P004-sam-schema-followup` are unambiguous. The number is for sort order, not identity. No renaming needed on merge.
+
+**Task numbering**: `T{NN}` zero-padded, local to the plan. `T01` in `P001` is independent of `T01` in `P002`.
+
+**Addressing**: `sam read P1/T3` resolves by globbing `plan/P001-*/` and finding `T03.yaml` inside. If multiple plans share a number (collision), the slug disambiguates: `sam read backlog-state-reconciliation/T3`.
+</div>
+
 
 ## Affected Systems Inventory — Backlog #719
 
@@ -515,28 +588,23 @@ All 7 claims are **VERIFIED** (Claim 2 is verified with a nuance about the claim
 
 ## RT-ICA
 
-<div><sub>2026-03-15T07:08:22Z</sub>
+<div><sub>2026-03-15T08:18:35Z</sub>
 
-**RT-ICA Final** (corrected 2026-03-15)
+**RT-ICA Final** (corrected 2026-03-15, naming convention resolved)
 
 **Goal**: All 7 SAM workflow components access task files exclusively through sam_schema CLI/MCP interface.
 
-**Conditions** (information completeness — do we know enough to plan?):
+**Conditions**:
 
 1. sam_schema module capabilities documented | **AVAILABLE** | packages/sam_schema/ — 421 tests, 93% coverage, CLI + MCP
 2. Exact data each component reads/writes from task files | **AVAILABLE** | traced via 7 Explore agents with verbatim quotes
 3. Agent prompt file paths for all 7 components | **AVAILABLE** | paths confirmed by Explore traces
-4. Impact radius — full inventory of affected systems | **AVAILABLE** | 72 files across 6 categories, 5-question checklist run per system
-5. sam_schema current capabilities vs needed capabilities gap | **AVAILABLE** | need: `create`, `update`, plan-context-in-read. Have: read, state, ready, status, migrate
-6. Plan file naming convention (P{N}-{slug} vs tasks-{N}-{slug}) | **MISSING** | design decision not yet made by user — affects addressing scheme, writer output, and all agent prompt references
-7. development-harness plugin sync scope | **DERIVABLE** | can diff agent files between python3-development and development-harness to determine which are copies vs independent
+4. Impact radius — full inventory of affected systems | **AVAILABLE** | 72 files across 6 categories
+5. sam_schema current capabilities vs needed capabilities gap | **AVAILABLE** | need: create, update, plan-context-in-read. Have: read, state, ready, status, migrate
+6. Plan file naming convention | **AVAILABLE** | User decision (2026-03-15): `P{issue}-{slug}.yaml` where issue = GitHub issue number. Existing 64 files renamed by automation. CLI addressing: `sam read P719/T3` globs `plan/P719-*.yaml`.
+7. development-harness plugin sync scope | **DERIVABLE** | diff agent files between python3-development and development-harness to determine which are copies
 
-AVAILABLE: 5, DERIVABLE: 1, MISSING: 1
+AVAILABLE: 6, DERIVABLE: 1, MISSING: 0
 
-**Note on prior assessment**: The previous RT-ICA listed 6 MISSING items. Five of those (sam create command, sam update command, sam read returning plan context, dev-harness sync, workshop copies) are implementation deliverables, not information gaps. RT-ICA assesses whether we have enough information to plan — not whether the work has been done. Those items belong in acceptance criteria.
-
-**Decision**: APPROVED — one MISSING item (naming convention) is a user design decision that can be resolved during planning.
-
-**MISSING item for user resolution**:
-- What naming convention for plan files? Options discussed: `P{N}-{slug}.yaml` (where N = issue number) or keep `tasks-{N}-{slug}.yaml` (sequence counter). This determines the filesystem addressing scheme.
+**Decision**: APPROVED
 </div>
