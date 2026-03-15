@@ -179,7 +179,7 @@ tasks:
     Report exact lines changed, old vs new behavior, and verification output
 - id: T4
   title: Modify fetch functions and add CLI flag
-  status: in-progress
+  status: complete
   agent: python3-development:python-cli-architect
   dependencies:
   - T2
@@ -238,10 +238,9 @@ tasks:
       - Match existing parameter style exactly. If existing params use bare `typer.Option()`, use that instead of `Annotated`.
   handoff: |-
     Report functions modified, new CLI flag, and test output
-  started: '2026-03-15T14:16:11.733112+00:00'
 - id: T5
   title: MCP server include_closed parameter
-  status: not-started
+  status: in-progress
   agent: python3-development:python-cli-architect
   dependencies:
   - T4
@@ -276,6 +275,7 @@ tasks:
     3. `uv run pytest .claude/skills/backlog/tests/ -x --timeout=30`
   handoff: |-
     Report parameter added, function signature, and verification output
+  started: '2026-03-15T14:24:44.609960+00:00'
 - id: T6
   title: State handler unit tests
   status: complete
@@ -319,8 +319,7 @@ tasks:
     Report test file path, test count, and pytest output
 - id: T7
   title: Reconciliation unit tests
-  status: in-progress
-  started: '2026-03-15T13:01:00+00:00'
+  status: complete
   agent: python3-development:python-pytest-architect
   dependencies:
   - T2

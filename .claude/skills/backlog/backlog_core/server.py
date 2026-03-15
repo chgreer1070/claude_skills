@@ -75,6 +75,9 @@ async def backlog_list(
     title: Annotated[
         str | None, Field(description="Filter items whose title contains this substring (case-insensitive)")
     ] = None,
+    include_closed: Annotated[
+        bool, Field(description="Include items with closed/done/resolved status (excluded by default)")
+    ] = False,
 ) -> dict:
     """List all open backlog items.
 
@@ -83,6 +86,7 @@ async def backlog_list(
     Use section to filter by priority section (P0, P1, P2, Ideas).
     Use status to filter by status value (e.g. needs-grooming, status:in-progress).
     Use title to filter by title substring (case-insensitive).
+    Use include_closed=true to include items with terminal status (done, resolved, closed).
 
     Returns:
         Dict with items list (each containing title, priority, issue, plan)
@@ -98,6 +102,7 @@ async def backlog_list(
             section=section,
             status=status,
             title=title,
+            include_closed=include_closed,
             output=out,
         )
         return {**result, **out.to_dict()}

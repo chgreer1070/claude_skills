@@ -1027,6 +1027,27 @@ def _filter_open_items(
     return open_items
 
 
+_TERMINAL_STATUSES: frozenset[str] = frozenset({"done", "resolved", "closed"})
+
+
+def _filter_closed_items(items: list[BacklogItem], include_closed: bool) -> list[BacklogItem]:
+    """Filter out items whose local status is a terminal state.
+
+    Terminal states are ``done``, ``resolved``, and ``closed``.
+
+    Args:
+        items: Parsed BacklogItem objects.
+        include_closed: When ``True``, return all items unfiltered.
+
+    Returns:
+        Filtered list excluding terminal-status items, or the original list
+        when ``include_closed`` is ``True``.
+    """
+    if include_closed:
+        return items
+    return [it for it in items if it.status not in _TERMINAL_STATUSES]
+
+
 def _build_list_entry(
     item: BacklogItem, with_status: bool, status_map: dict[int, IssueStatus]
 ) -> dict[str, str | bool]:
@@ -1062,6 +1083,7 @@ def list_items(
     section: str | None = None,
     status: str | None = None,
     title: str | None = None,
+    include_closed: bool = False,
     repo: str = DEFAULT_REPO,
     output: Output | None = None,
 ) -> dict[str, int | list[str] | list[dict[str, str | bool]]]:
@@ -1074,6 +1096,7 @@ def list_items(
         section: Filter by priority section — P0, P1, P2, or Ideas (case-insensitive).
         status: Filter by status value e.g. 'needs-grooming', 'status:in-progress'.
         title: Filter items whose title contains this substring (case-insensitive).
+        include_closed: When True, include items with terminal status (done, resolved, closed).
         repo: GitHub repo in owner/repo format.
         output: Optional Output collector.
 
@@ -1086,6 +1109,7 @@ def list_items(
         refresh_local_cache_from_github(repo, label, output=out)
     items = parse_backlog()
     open_items = [it for it in items if not it.skip and it.section]
+    open_items = _filter_closed_items(open_items, include_closed)
     status_map = batch_fetch_statuses(open_items, repo) if (with_status or status) else {}
     open_items = _filter_open_items(open_items, section, title, status, status_map)
     result_items = [_build_list_entry(it, with_status, status_map) for it in open_items]
