@@ -181,6 +181,7 @@ The groom skill writes groomed content into the per-item file. Capture the groom
 ### Step 4: RT-ICA Checkpoint
 
 <rtica_gate>
+
 Before composing the feature request, verify the groomed content (from item file or groom-backlog-item output) contains an RT-ICA summary. If absent, perform RT-ICA now:
 
 1. **Goal statement** — What completing this item achieves.
@@ -188,27 +189,70 @@ Before composing the feature request, verify the groomed content (from item file
 3. **Availability check** — For each condition: AVAILABLE / DERIVABLE / MISSING.
 4. **Decision** — APPROVED or BLOCKED.
 
-**If BLOCKED:**
+#### Categorization Rule
 
-When RT-ICA blocks, optionally offer ARL human-probing questions (e.g., "What went wrong in the past?", "What references are essential?") to capture invisible knowledge. Add answers to `.claude/domain-knowledge/` with staleness tracking. See [.claude/docs/sdlc-layers/arl-human-probing-design.md](../../docs/sdlc-layers/arl-human-probing-design.md).
+RT-ICA assesses INFORMATION completeness — "do we know enough to plan?"
 
-Present a structured summary to the user:
+- **AVAILABLE** — information exists and is verified
+- **DERIVABLE** — information can be obtained from the codebase using tools
+- **MISSING** — information we lack that cannot be obtained with tools and requires a human decision
+
+MISSING means "we lack information that prevents planning." Implementation deliverables are NOT MISSING conditions. A condition like "sam create command exists" is a deliverable — it belongs in acceptance criteria. The RT-ICA question is "do we know what sam create needs to do?" — and if yes, it is AVAILABLE.
+
+#### Self-Resolution Pass (run before marking anything MISSING)
+
+ARL principle: resolve autonomously first, then batch the remainder to the human.
+
+For each DERIVABLE or unknown condition, attempt to resolve using tools (Grep, Read, WebSearch, Bash). Every resolution must cite the tool result. Training data answers are banned for project-specific questions — they produce hallucinations.
+
+```text
+Resolution pass:
+1. For each condition not yet AVAILABLE:
+   a. Attempt tool-based resolution (file read, grep, web fetch, command output)
+   b. Tool result found → AVAILABLE (cite the tool result)
+   c. Only training data available → condition stays on question stack
+   d. No answer found → condition stays on question stack, note what was tried
+2. Conditions resolved → proceed to APPROVED if none remain
+3. Conditions unresolved → proceed to BLOCKED batch presentation
+```
+
+**Training data asymmetry:**
+
+- Generating questions from training data: welcomed — "what are common trade-offs for X?" is a valid question to put on the stack
+- Answering project-specific questions from training data: banned — answers must come from tool results or the human
+
+#### If BLOCKED (unresolved conditions remain after self-resolution pass)
+
+Batch all remaining questions into a single presentation. For each question: include what was tried, what options were found from tool results, and trade-offs derived from those results.
 
 ```text
 RT-ICA: BLOCKED
 
-Missing inputs that prevent SAM planning:
-- {missing condition 1}
-- {missing condition 2}
+The following inputs are needed before SAM planning can proceed.
+I searched for each but could not resolve them autonomously.
 
-Provide these inputs before proceeding. SAM planning will not be invoked with known gaps.
+[Category]:
+- Question: {what is unknown}
+  Tried: {tools used, what they returned}
+  Options found: {a) option with trade-off | b) option with trade-off | c) open-ended}
+
+[Category]:
+- Question: {what is unknown}
+  Tried: {tools used, what they returned}
+  Options found: {a) ... | b) ... | open-ended}
+
+Answer what you can — skip what you don't know. I will continue with whatever arrives.
+SAM planning will not be invoked with unresolved gaps.
 ```
 
-Wait for user response. Do not invoke Step 5 until BLOCKED is resolved.
+After receiving answers: re-check whether remaining conditions can now be derived from the new information. If any remain unresolved, present another batch. Continue until all conditions are AVAILABLE or DERIVABLE.
 
-**If APPROVED:**
+Do not invoke Step 5 until BLOCKED is resolved.
+
+#### If APPROVED
 
 Proceed to Step 5. Carry DERIVABLE items forward as "Assumptions to confirm" in the RT-ICA section of the feature request.
+
 </rtica_gate>
 
 ### Step 5: Compose Feature Request

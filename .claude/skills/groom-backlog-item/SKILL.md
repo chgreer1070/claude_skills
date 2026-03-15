@@ -84,6 +84,16 @@ For each target item, extract: title, description, research-first questions (if 
 
 Before spawning any agents, the orchestrator runs a quick RT-ICA pass using only the information available from Steps 2-3 (item fields, description, suggested_location). This is a baseline — not the final assessment.
 
+**Categorization rule (apply before listing any condition):**
+
+RT-ICA assesses INFORMATION completeness — "do we know enough to plan?" Only list conditions that represent information gaps or verifiable facts about the environment. Implementation deliverables (things to build) belong in acceptance criteria, not in RT-ICA conditions.
+
+- AVAILABLE — information exists and is verified from the item or codebase
+- DERIVABLE — information can be obtained with tools during the swarm phase
+- MISSING — information we lack that cannot be derived and requires a human decision
+
+A condition like "sam create command exists" is a deliverable — it belongs in acceptance criteria. The RT-ICA question is "do we know what sam create needs to do?" — if yes, AVAILABLE; if it must be researched, DERIVABLE.
+
 ```text
 RT-ICA Snapshot: {item title}
 Goal: {one sentence}
@@ -98,6 +108,7 @@ MISSING count: {N}
 Write this snapshot to the item via `mcp__backlog__backlog_groom(selector="{title}", section="RT-ICA", content="{snapshot}")`.
 
 This snapshot serves two purposes:
+
 - It feeds the scope-sizing decision in Step 3.6
 - It gives the swarm agents a starting picture of what's known and what needs research
 
@@ -357,11 +368,16 @@ The following diagram is the authoritative procedure for the Step 8.5 RT-ICA fin
 ```mermaid
 flowchart TD
     SwarmDone(["All swarm agents complete"]) --> ReadAll["Read all sections now written to the item<br>Impact Radius, Fact-Check, Issue Classification,<br>groomed subsections — via MCP"]
-    ReadAll --> ReAssess["Re-assess every condition from the Step 3.5 snapshot<br>Compare snapshot status to final status per condition"]
-    ReAssess --> BuildFinal["Build RT-ICA Final report<br>Format: condition | Snapshot status to Final status<br>List all changes from snapshot<br>Include new conditions discovered by swarm"]
+    ReadAll --> ReAssess["Re-assess every condition from the Step 3.5 snapshot<br>Compare snapshot status to final status per condition<br>Apply categorization rule: deliverables are not conditions"]
+    ReAssess --> ResolutionPass["Self-resolution pass<br>For each MISSING or DERIVABLE condition:<br>attempt tool-based resolution (Grep, Read, WebSearch, Bash)<br>Every resolution must cite the tool result<br>Training data answers banned"]
+    ResolutionPass --> ResolvedAny{"Any conditions<br>resolved by tools?"}
+    ResolvedAny -->|"Yes — mark AVAILABLE with citation"| UpdateConditions["Update conditions to AVAILABLE<br>with tool result citation"]
+    ResolvedAny -->|"No"| BuildFinal
+    UpdateConditions --> BuildFinal["Build RT-ICA Final report<br>Format: condition | Snapshot status to Final status<br>List all changes from snapshot<br>Include new conditions discovered by swarm<br>Include tool citations for resolved conditions"]
     BuildFinal --> WriteRTICA["Write final RT-ICA to item via backlog_groom<br>selector=title, section='RT-ICA', content=final<br>This replaces the Step 3.5 snapshot"]
     WriteRTICA --> FinalDecision{"RT-ICA Final Decision?"}
-    FinalDecision -->|"BLOCKED — DERIVABLE conditions turned MISSING<br>or new MISSING conditions discovered by swarm"| BlockedStop(["STOP — present all MISSING conditions to user<br>Do not proceed to Step 9"])
+    FinalDecision -->|"BLOCKED — MISSING conditions remain<br>after self-resolution pass"| BlockedBatch["Batch all remaining MISSING conditions<br>For each: what was tried, options found,<br>trade-offs from tool results<br>Present as single batch to user"]
+    BlockedBatch --> BlockedStop(["STOP — do not proceed to Step 9<br>Wait for user answers<br>Re-check after receiving responses"])
     FinalDecision -->|"APPROVED — all conditions AVAILABLE or DERIVABLE resolved"| Proceed(["Item fully groomed with verified information<br>Proceed to Step 9"])
 ```
 
@@ -371,13 +387,29 @@ RT-ICA Final report format:
 RT-ICA Final: {item title}
 Goal: {same as snapshot}
 Conditions:
-1. {condition} | Snapshot: {AVAILABLE|DERIVABLE|MISSING} → Final: {AVAILABLE|DERIVABLE|MISSING}
+1. {condition} | Snapshot: {AVAILABLE|DERIVABLE|MISSING} → Final: {AVAILABLE|DERIVABLE|MISSING} | Citation: {tool result}
 ...
 Changes from snapshot:
-- {condition X}: DERIVABLE → AVAILABLE (resolved by fact-checker)
+- {condition X}: DERIVABLE → AVAILABLE (resolved by fact-checker — cite: {tool result})
 - {condition Y}: AVAILABLE → MISSING (refuted by fact-checker)
 - {condition Z}: (new) MISSING (discovered by impact-analyst)
 Decision: {APPROVED|BLOCKED}
+```
+
+**BLOCKED batch format (when MISSING conditions remain after self-resolution pass):**
+
+```text
+RT-ICA: BLOCKED
+
+The following inputs could not be resolved autonomously.
+
+[Category]:
+- Question: {what is unknown}
+  Tried: {tools used, what they returned}
+  Options found: {a) option with trade-off | b) option with trade-off | c) open-ended}
+
+Answer what you can — skip what you don't know.
+Grooming will not proceed to Step 9 with unresolved gaps.
 ```
 
 ### Step 9: Write Groomed Content to Item Files
