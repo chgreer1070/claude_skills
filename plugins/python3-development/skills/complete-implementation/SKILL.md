@@ -18,6 +18,48 @@ $ARGUMENTS
 
 ---
 
+## Pre-Phase 1: TN Verification Check
+
+Before invoking Phase 1, check for a TN verification report produced by `tn-verification-gate` (which reads the T0 baseline written by `t0-baseline-capture`).
+
+Extract `{slug}` from the task file path (`plan/tasks-{N}-{slug}.md` — strip the `tasks-{N}-` prefix and `.md` suffix).
+
+Read `plan/TN-verification-{slug}.yaml`.
+
+The file contains a list of per-criterion `BookendVerification` records — one per `acceptance-criteria-structured` entry. There is no top-level `verdict` field. Aggregate the verdict by scanning all records: the overall result is FAIL if any record has `status: regressed`; otherwise PASS.
+
+```mermaid
+flowchart TD
+    Read["Read plan/TN-verification-{slug}.yaml"] --> Exists{File exists?}
+    Exists -->|No| Proceed["No structured criteria — proceed to Phase 1"]
+    Exists -->|Yes| Scan["Scan all per-criterion records<br>for status: regressed"]
+    Scan --> AnyRegressed{Any criterion<br>has status: regressed?}
+    AnyRegressed -->|No| Proceed
+    AnyRegressed -->|Yes| Stop["STOP — report regressions and block completion"]
+    Stop --> Report["Display each criterion with status: regressed<br>Show check_command, T0 stdout, TN stdout<br>Instruct: fix regressions before re-running"]
+```
+
+If any criterion has `status: regressed`:
+
+1. List each criterion where `status: regressed` with its `check_command`, T0 captured stdout, and TN captured stdout.
+2. Output:
+
+```text
+COMPLETION BLOCKED — TN Verification Failed
+
+Regressed criteria:
+  {criterion-id}: {description}
+    command: {check_command}
+    T0 result: exit {code}, stdout: {stdout}
+    TN result: exit {code}, stdout: {stdout}
+
+Fix the regressions, then re-run /complete-implementation.
+```
+
+3. Stop. Do not proceed to Phase 1.
+
+---
+
 ## Phase 1: Code Review
 
 Launch `code-reviewer` with the task file path.

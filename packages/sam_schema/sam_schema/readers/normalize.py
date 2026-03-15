@@ -328,17 +328,25 @@ def normalize_plan(plan_meta: dict, task_dicts: list[dict], source_format: Forma
         tasks.append(task)
         all_gaps.extend(gaps)
 
+    # Resolve acceptance-criteria-structured: accept both kebab-case and snake_case keys.
+    # Each item is a dict from YAML; Pydantic coerces dicts to AcceptanceCriterion via
+    # model_validate when the Plan model is constructed.
+    raw_structured: list[object] = (
+        plan_meta.get("acceptance-criteria-structured") or plan_meta.get("acceptance_criteria_structured") or []
+    )
+
     plan = Plan(
         feature=str(feature),
         version=str(plan_meta.get("version", "1.0")),
         description=str(plan_meta.get("description", "")),
         goal=plan_meta.get("goal") or None,
         context=plan_meta.get("context") or None,
-        **{"acceptance-criteria": plan_meta.get("acceptance-criteria") or plan_meta.get("acceptance_criteria") or None},
+        acceptance_criteria=plan_meta.get("acceptance-criteria") or plan_meta.get("acceptance_criteria") or None,
+        acceptance_criteria_structured=raw_structured,
         issue=plan_meta.get("issue") or None,
         architecture=plan_meta.get("architecture") or None,
-        **{"feature-context": plan_meta.get("feature-context") or plan_meta.get("feature_context") or None},
-        **{"codebase-patterns": plan_meta.get("codebase-patterns") or plan_meta.get("codebase_patterns") or None},
+        feature_context=plan_meta.get("feature-context") or plan_meta.get("feature_context") or None,
+        codebase_patterns=plan_meta.get("codebase-patterns") or plan_meta.get("codebase_patterns") or None,
         tasks=tasks,
         source_path=source_path,
         source_format=source_format.value,

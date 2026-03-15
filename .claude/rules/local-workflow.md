@@ -47,6 +47,8 @@ Phase 5: plan-validator              -> PASS/BLOCKED gate
 Phase 6: context-gathering           -> Context Manifest section in task file
 ```
 
+When `acceptance-criteria-structured` is non-empty, `swarm-task-planner` also generates two bookend tasks: `T0` (baseline capture, Priority 1) and `T99`/`T{max+1}` (verification gate, Priority 5). See the "Bookend Tasks" section in Phase 2 below.
+
 ### Agent File Locations
 
 | Agent | python3-development | development-harness |
@@ -57,6 +59,8 @@ Phase 6: context-gathering           -> Context Manifest section in task file
 | `swarm-task-planner` | [plugins/python3-development/agents/swarm-task-planner.md](./../../plugins/python3-development/agents/swarm-task-planner.md) | [plugins/development-harness/agents/swarm-task-planner.md](./../../plugins/development-harness/agents/swarm-task-planner.md) |
 | `plan-validator` | [plugins/python3-development/agents/plan-validator.md](./../../plugins/python3-development/agents/plan-validator.md) | [plugins/development-harness/agents/plan-validator.md](./../../plugins/development-harness/agents/plan-validator.md) |
 | `context-gathering` | [plugins/python3-development/agents/context-gathering.md](./../../plugins/python3-development/agents/context-gathering.md) | [plugins/development-harness/agents/context-gathering.md](./../../plugins/development-harness/agents/context-gathering.md) |
+| `t0-baseline-capture` | [plugins/python3-development/agents/t0-baseline-capture.md](./../../plugins/python3-development/agents/t0-baseline-capture.md) | — |
+| `tn-verification-gate` | [plugins/python3-development/agents/tn-verification-gate.md](./../../plugins/python3-development/agents/tn-verification-gate.md) | — |
 
 ### Task File Format
 
@@ -155,6 +159,15 @@ hooks:
 5. When all tasks COMPLETE:
    Skill(skill="complete-implementation", args="{task_file_path}")
 ```
+
+### Bookend Tasks
+
+When a plan contains `acceptance-criteria-structured` entries, `swarm-task-planner` generates two bookend tasks:
+
+- **T0** (`t0-baseline-capture`, Priority 1, `dependencies: []`): Dispatched first by natural readiness — no dependencies and highest priority. Runs each `check_command` and records exit codes, stdout, and stderr to `plan/T0-baseline-{slug}.yaml`. Non-zero exits are expected and do not fail T0.
+- **T99** / **T{max+1}** (`tn-verification-gate`, Priority 5, `dependencies: [all non-bookend task IDs]`): Dispatched last after all implementation tasks complete. Reads the T0 baseline YAML, re-runs each `check_command`, and classifies each criterion using the 4-cell matrix (passed / regressed / pre-existing-fail / newly-passing). Writes `plan/TN-verification-{slug}.yaml` as a list of per-criterion `BookendVerification` records — one per criterion, each with `criterion_id`, `check_command`, `t0_exit_code`, `tn_exit_code`, `status`, and `stdout_diff_summary`. There is no top-level `verdict` field; `/complete-implementation` aggregates the verdict by scanning all records for `status: regressed` before Phase 1.
+
+No changes to the execution loop are needed — existing `DependencyGraph.get_ready_tasks()` handles T0/TN ordering automatically.
 
 ### Readiness Logic
 
@@ -260,6 +273,8 @@ Final:   commit + push          -> Stage and commit all remaining modified files
 | `doc-drift-auditor` | [plugins/python3-development/agents/doc-drift-auditor.md](./../../plugins/python3-development/agents/doc-drift-auditor.md) | [plugins/development-harness/agents/doc-drift-auditor.md](./../../plugins/development-harness/agents/doc-drift-auditor.md) |
 | `service-docs-maintainer` | — | [plugins/development-harness/agents/service-docs-maintainer.md](./../../plugins/development-harness/agents/service-docs-maintainer.md) |
 | `context-refinement` | [plugins/python3-development/agents/context-refinement.md](./../../plugins/python3-development/agents/context-refinement.md) | [plugins/development-harness/agents/context-refinement.md](./../../plugins/development-harness/agents/context-refinement.md) |
+| `t0-baseline-capture` | [plugins/python3-development/agents/t0-baseline-capture.md](./../../plugins/python3-development/agents/t0-baseline-capture.md) | — |
+| `tn-verification-gate` | [plugins/python3-development/agents/tn-verification-gate.md](./../../plugins/python3-development/agents/tn-verification-gate.md) | — |
 
 ### Cross-Plugin Dependency
 
@@ -343,7 +358,14 @@ User
   ├─ implementation_manager.py status    ──> JSON status
   ├─ implementation_manager.py ready-tasks ──> JSON ready list (includes skills per task)
   │
-  │  ┌── For each ready task ──────────────────────────────┐
+  │  ┌── T0 runs first (Priority 1, no dependencies) ───────┐
+  │  │  t0-baseline-capture                                  │
+  │  │    ├─ Read acceptance-criteria-structured             │
+  │  │    ├─ Run each check_command, capture results         │
+  │  │    └─ Write plan/T0-baseline-{slug}.yaml              │
+  │  └───────────────────────────────────────────────────────┘
+  │
+  │  ┌── For each implementation task (after T0 completes) ─┐
   │  │                                                      │
   │  │  Orchestrator reads task skills from ready-tasks JSON │
   │  │  If skills non-empty: adds Skill() instructions to   │
@@ -364,11 +386,29 @@ User
   │  │                                                      │
   │  └──────────────────────── Loop until no ready tasks ───┘
   │
+  │  ┌── TN runs last (Priority 5, all impl. tasks done) ───┐
+  │  │  tn-verification-gate                                 │
+  │  │    ├─ Read plan/T0-baseline-{slug}.yaml               │
+  │  │    ├─ Re-run each check_command, compare vs T0        │
+  │  │    ├─ Classify each criterion (4-cell matrix)         │
+  │  │    │    T0 pass + TN pass  = passed                   │
+  │  │    │    T0 pass + TN fail  = regressed (blocks)       │
+  │  │    │    T0 fail + TN fail  = pre-existing-fail        │
+  │  │    │    T0 fail + TN pass  = newly-passing            │
+  │  │    └─ Write plan/TN-verification-{slug}.yaml          │
+  │  │         verdict: PASS | FAIL                          │
+  │  └───────────────────────────────────────────────────────┘
+  │
   ▼
 /complete-implementation
   │
+  ├─ [Pre-Phase 1] Read plan/TN-verification-{slug}.yaml
+  │    ├─ verdict: FAIL ──> report regressed criteria, STOP
+  │    └─ verdict: PASS or file absent ──> continue
+  │
   ├─ code-reviewer             ──> review findings
-  ├─ feature-verifier          ──> goal verification
+  ├─ feature-verifier          ──> goal verification (structural)
+  │                                (TN provides behavioral complement)
   ├─ integration-checker       ──> integration check
   ├─ doc-drift-auditor         ──> drift findings
   ├─ service-docs-maintainer   ──> doc updates (if drift)

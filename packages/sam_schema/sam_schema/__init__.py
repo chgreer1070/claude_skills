@@ -32,11 +32,16 @@ from __future__ import annotations
 import importlib
 
 # Models are always available — no downstream stubs required.
+from sam_schema.core.dependencies import BookendValidator
 from sam_schema.core.models import (
     STATUS_MAP,
     TASK_ID_PATTERN,
+    AcceptanceCriterion,
     AnalysisMethod,
+    BookendResult,
+    BookendVerification,
     Complexity,
+    CriterionStatus,
     IssueClassification,
     Plan,
     PlanStatus,
@@ -50,8 +55,13 @@ from sam_schema.core.models import (
 __all__ = [
     "STATUS_MAP",
     "TASK_ID_PATTERN",
+    "AcceptanceCriterion",
     "AnalysisMethod",
+    "BookendResult",
+    "BookendValidator",
+    "BookendVerification",
     "Complexity",
+    "CriterionStatus",
     "IssueClassification",
     "Plan",
     "PlanStatus",

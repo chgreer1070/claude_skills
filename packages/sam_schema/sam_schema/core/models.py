@@ -10,7 +10,7 @@ import re
 from enum import IntEnum, StrEnum
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -110,34 +110,87 @@ class Task(BaseModel):
     priority: Priority = Priority.MEDIUM
     complexity: Complexity = Complexity.MEDIUM
     skills: list[str] = Field(default_factory=list)
-    blocked_by: list[str] = Field(default_factory=list, alias="blocked-by")
-    parallelize_with: list[str] = Field(default_factory=list, alias="parallelize-with")
+    blocked_by: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("blocked-by", "blocked_by"),
+        serialization_alias="blocked-by",
+    )
+    parallelize_with: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("parallelize-with", "parallelize_with"),
+        serialization_alias="parallelize-with",
+    )
 
     # Timestamps
     created: datetime | None = None
     started: datetime | None = None
     completed: datetime | None = None
-    last_activity: datetime | None = Field(default=None, alias="last-activity")
+    last_activity: datetime | None = Field(
+        default=None,
+        validation_alias=AliasChoices("last-activity", "last_activity"),
+        serialization_alias="last-activity",
+    )
 
     # Analytical metadata
-    issue_classification: IssueClassification | None = Field(default=None, alias="issue-classification")
-    scenario_target: str | None = Field(default=None, alias="scenario-target")
-    analysis_method: AnalysisMethod = Field(default=AnalysisMethod.NONE, alias="analysis-method")
-    divergence_notes: int = Field(default=0, ge=0, alias="divergence-notes")
+    issue_classification: IssueClassification | None = Field(
+        default=None,
+        validation_alias=AliasChoices("issue-classification", "issue_classification"),
+        serialization_alias="issue-classification",
+    )
+    scenario_target: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("scenario-target", "scenario_target"),
+        serialization_alias="scenario-target",
+    )
+    analysis_method: AnalysisMethod = Field(
+        default=AnalysisMethod.NONE,
+        validation_alias=AliasChoices("analysis-method", "analysis_method"),
+        serialization_alias="analysis-method",
+    )
+    divergence_notes: int = Field(
+        default=0,
+        ge=0,
+        validation_alias=AliasChoices("divergence-notes", "divergence_notes"),
+        serialization_alias="divergence-notes",
+    )
 
     # Markdown content fields (stored as YAML multiline scalars in canonical format)
     description: str = ""
     objective: str = ""
     requirements: str = ""
     constraints: str = ""
-    expected_outputs: str = Field(default="", alias="expected-outputs")
-    acceptance_criteria: str = Field(default="", alias="acceptance-criteria")
-    verification_steps: str = Field(default="", alias="verification-steps")
-    context_notes: str = Field(default="", alias="context-notes")
+    expected_outputs: str = Field(
+        default="",
+        validation_alias=AliasChoices("expected-outputs", "expected_outputs"),
+        serialization_alias="expected-outputs",
+    )
+    acceptance_criteria: str = Field(
+        default="",
+        validation_alias=AliasChoices("acceptance-criteria", "acceptance_criteria"),
+        serialization_alias="acceptance-criteria",
+    )
+    verification_steps: str = Field(
+        default="",
+        validation_alias=AliasChoices("verification-steps", "verification_steps"),
+        serialization_alias="verification-steps",
+    )
+    context_notes: str = Field(
+        default="", validation_alias=AliasChoices("context-notes", "context_notes"), serialization_alias="context-notes"
+    )
     handoff: str = ""
 
+    # Bookend metadata
+    is_bookend: bool = Field(
+        default=False, validation_alias=AliasChoices("is-bookend", "is_bookend"), serialization_alias="is-bookend"
+    )
+    bookend_type: str | None = Field(
+        default=None, validation_alias=AliasChoices("bookend-type", "bookend_type"), serialization_alias="bookend-type"
+    )
+
     # GitHub integration
-    github_issue: int | None = Field(default=None, alias="github-issue")
+    github_issue: int | None = Field(
+        default=None, validation_alias=AliasChoices("github-issue", "github_issue"), serialization_alias="github-issue"
+    )
 
     @field_validator("dependencies", "parallelize_with", mode="before")
     @classmethod
@@ -191,13 +244,30 @@ class Plan(BaseModel):
     # Plan-level context fields (multiline markdown)
     goal: str | None = None
     context: str | None = None
-    acceptance_criteria: str | None = Field(default=None, alias="acceptance-criteria")
+    acceptance_criteria: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("acceptance-criteria", "acceptance_criteria"),
+        serialization_alias="acceptance-criteria",
+    )
+    acceptance_criteria_structured: list[AcceptanceCriterion] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("acceptance-criteria-structured", "acceptance_criteria_structured"),
+        serialization_alias="acceptance-criteria-structured",
+    )
 
     # Plan-level reference fields
     issue: str | None = None
     architecture: str | None = None
-    feature_context: str | None = Field(default=None, alias="feature-context")
-    codebase_patterns: str | None = Field(default=None, alias="codebase-patterns")
+    feature_context: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("feature-context", "feature_context"),
+        serialization_alias="feature-context",
+    )
+    codebase_patterns: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("codebase-patterns", "codebase_patterns"),
+        serialization_alias="codebase-patterns",
+    )
 
     tasks: list[Task] = Field(default_factory=list)
     source_path: Path | None = None
@@ -221,6 +291,101 @@ class Plan(BaseModel):
         if v is None:
             return None
         return str(v)
+
+
+class CriterionStatus(StrEnum):
+    """Status of a single acceptance criterion after T0/TN comparison."""
+
+    PASSED = "passed"
+    REGRESSED = "regressed"
+    PRE_EXISTING_FAIL = "pre-existing-fail"
+    NEWLY_PASSING = "newly-passing"
+
+
+class AcceptanceCriterion(BaseModel):
+    """A single structured acceptance criterion with an executable check command.
+
+    Stored in ``Plan.acceptance_criteria_structured``.  The T0 and TN bookend
+    agents iterate over this list to capture and compare baseline vs. final state.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    criterion_id: str = Field(
+        ..., validation_alias=AliasChoices("criterion-id", "criterion_id"), serialization_alias="criterion-id"
+    )
+    description: str = ""
+    check_command: str = Field(
+        ..., validation_alias=AliasChoices("check-command", "check_command"), serialization_alias="check-command"
+    )
+    expected_baseline: str = Field(
+        default="any",
+        validation_alias=AliasChoices("expected-baseline", "expected_baseline"),
+        serialization_alias="expected-baseline",
+    )
+    expected_final: str = Field(
+        default="pass",
+        validation_alias=AliasChoices("expected-final", "expected_final"),
+        serialization_alias="expected-final",
+    )
+
+
+class BookendResult(BaseModel):
+    """Result of running a single acceptance criterion check command.
+
+    Written to ``plan/T0-baseline-{slug}.yaml`` by the T0 bookend agent, and
+    re-captured to ``plan/TN-verification-{slug}.yaml`` by the TN bookend agent.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    criterion_id: str = Field(
+        ..., validation_alias=AliasChoices("criterion-id", "criterion_id"), serialization_alias="criterion-id"
+    )
+    check_command: str = Field(
+        ..., validation_alias=AliasChoices("check-command", "check_command"), serialization_alias="check-command"
+    )
+    exit_code: int = Field(
+        ..., validation_alias=AliasChoices("exit-code", "exit_code"), serialization_alias="exit-code"
+    )
+    stdout: str = ""
+    stderr: str = ""
+    timestamp: str = ""
+    duration_seconds: float = Field(
+        default=0.0,
+        validation_alias=AliasChoices("duration-seconds", "duration_seconds"),
+        serialization_alias="duration-seconds",
+    )
+
+
+class BookendVerification(BaseModel):
+    """Per-criterion comparison between T0 baseline and TN final results.
+
+    Written to ``plan/TN-verification-{slug}.yaml``.  The ``status`` field
+    encodes the 4-cell matrix: passed / regressed / pre-existing-fail /
+    newly-passing.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    criterion_id: str = Field(
+        ..., validation_alias=AliasChoices("criterion-id", "criterion_id"), serialization_alias="criterion-id"
+    )
+    check_command: str = Field(
+        ..., validation_alias=AliasChoices("check-command", "check_command"), serialization_alias="check-command"
+    )
+    t0_exit_code: int = Field(
+        ..., validation_alias=AliasChoices("t0-exit-code", "t0_exit_code"), serialization_alias="t0-exit-code"
+    )
+    tn_exit_code: int = Field(
+        ..., validation_alias=AliasChoices("tn-exit-code", "tn_exit_code"), serialization_alias="tn-exit-code"
+    )
+    status: CriterionStatus
+    stdout_diff_summary: str = Field(
+        default="",
+        validation_alias=AliasChoices("stdout-diff-summary", "stdout_diff_summary"),
+        serialization_alias="stdout-diff-summary",
+    )
 
 
 class SchemaGap(BaseModel):
@@ -275,5 +440,5 @@ import datetime as _dt
 from pathlib import Path as _Path
 
 Task.model_rebuild(_types_namespace={"datetime": _dt.datetime, "Path": _Path})
-Plan.model_rebuild(_types_namespace={"Path": _Path, "Task": Task})
+Plan.model_rebuild(_types_namespace={"Path": _Path, "Task": Task, "AcceptanceCriterion": AcceptanceCriterion})
 ReadResult.model_rebuild(_types_namespace={"Path": _Path, "Plan": Plan, "SchemaGap": SchemaGap})

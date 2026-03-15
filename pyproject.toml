@@ -174,6 +174,20 @@ possibly-unresolved-reference = "warn"
 too-many-positional-arguments = "warn"
 unresolved-attribute = "ignore"
 
+[[tool.ty.overrides]]
+# pytest.skip is decorated with @_with_exception which ty 0.0.17 miscounts as a bound
+# method expecting 0 positional args (counting self). Both positional and keyword forms
+# trigger false positives. Suppress for the three reader test files that use this pattern.
+include = [
+    "packages/sam_schema/tests/test_readers/test_detect.py",
+    "packages/sam_schema/tests/test_readers/test_frontmatter_reader.py",
+    "packages/sam_schema/tests/test_readers/test_manifest_reader.py",
+]
+
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"         # ty 0.0.17 bug: same pytest.skip decorator issue
+too-many-positional-arguments = "ignore" # ty 0.0.17 bug: @_with_exception decorator miscounts self
+
 [tool.ty.rules]
 
 [tool.ty.src]

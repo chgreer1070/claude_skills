@@ -5,6 +5,7 @@ from __future__ import annotations
 import pathlib
 
 import pytest
+from sam_schema.core.query import load_plan
 from sam_schema.readers.detect import FormatType
 from sam_schema.readers.legacy_reader import read_legacy_plan
 
@@ -390,3 +391,22 @@ def test_read_legacy_plan_body_content_round_trip(tmp_path: pathlib.Path) -> Non
     assert "acceptance-criteria" in yaml_content
     assert "Rate limit is enforced" in yaml_content
     assert "Tests cover rate limit" in yaml_content
+
+
+# ---------------------------------------------------------------------------
+# Integration: legacy reader returns empty acceptance_criteria_structured
+# ---------------------------------------------------------------------------
+
+
+def test_legacy_reader_returns_empty_structured_criteria() -> None:
+    """Verify legacy reader produces empty acceptance_criteria_structured.
+
+    Tests: Legacy format backward compatibility for structured criteria.
+    How: Load legacy_markdown.md fixture via load_plan, verify the
+         acceptance_criteria_structured field is an empty list.
+    Why: Legacy format does not support structured criteria; the field must
+         default to an empty list rather than causing errors.
+    """
+    path = _FIXTURES / "legacy_markdown.md"
+    result = load_plan(path)
+    assert result.plan.acceptance_criteria_structured == []

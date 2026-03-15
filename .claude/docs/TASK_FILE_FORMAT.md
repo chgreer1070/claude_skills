@@ -152,6 +152,8 @@ Report:
 | `scenario-target` | string | `"{scenario that exposed the problem} -> {what should improve}"` | `"Hook did not fire -> fires regardless of invocation method"` |
 | `analysis-method` | enum | `none`, `5-whys`, `6-sigma`, `design-framing` — root-cause method applied during grooming. Default: `none` | `"5-whys"` |
 | `divergence-notes` | integer | Count of divergence notes recorded during implementation. Default: `0` | `2` |
+| `is-bookend` | boolean | Marks task as a bookend task (T0 or TN). Default: `false` | `true` |
+| `bookend-type` | enum | Type of bookend task. Values: `t0-baseline`, `tn-verification` | `"t0-baseline"` |
 
 #### Status Values
 
@@ -198,7 +200,7 @@ fires the write.
 | `completed` | `task_status_hook.py` SubagentStop handler | Claude Code `SubagentStop` hook event | None | Also writable by `start-task --complete` path; hook overwrites. |
 | `last_activity` | `task_status_hook.py` PostToolUse handler | Claude Code `PostToolUse` hook (Write, Edit, Bash tools) | Added guard: skip write if task status is `complete` | Prevents stale activity stamps on completed tasks (Gap 4). |
 | `divergence-notes` (count) | `start-task` skill (agent direct write via Edit) | Agent detects implementation divergence from architect spec | None | Appended integer count. Body content (`## Divergence Notes`) is also agent-written. |
-| `task`, `title`, `agent`, `dependencies`, `priority`, `complexity`, `created`, `skills`, `issue-classification`, `scenario-target`, `analysis-method` | `swarm-task-planner` agent (file creation) | Task file generation | N/A — set at creation | These fields describe task intent and scheduling. No lifecycle component writes them after creation. |
+| `task`, `title`, `agent`, `dependencies`, `priority`, `complexity`, `created`, `skills`, `issue-classification`, `scenario-target`, `analysis-method`, `is-bookend`, `bookend-type` | `swarm-task-planner` agent (file creation) | Task file generation | N/A — set at creation | These fields describe task intent and scheduling. No lifecycle component writes them after creation. |
 
 ### Field Ownership Rules
 
@@ -229,6 +231,8 @@ fires the write.
 | `swarm-task-planner` (agent) | Task file generator | All fields at creation |
 | `split_task_file.py` | Structural: splits monolithic task files into per-task files | Full frontmatter (preserved from source, not lifecycle transition) |
 | `migrate_task_format.py` | Structural: converts legacy markdown to YAML frontmatter | Full frontmatter (format migration, not lifecycle transition) |
+| `t0-baseline-capture` (agent) | Bookend: captures baseline test results before implementation | `plan/T0-baseline-{slug}.yaml` (external artifact, not task frontmatter) |
+| `tn-verification-gate` (agent) | Bookend: verifies behavioral outcomes after implementation | `plan/TN-verification-{slug}.yaml` (external artifact, not task frontmatter) |
 
 Task data files MUST contain raw YAML frontmatter starting with `---`. Agents generating task
 files SHOULD produce content matching this format directly. When the generator is an LLM agent
@@ -475,6 +479,16 @@ uv run pytest tests/test_data_models.py -v
       "minimum": 0,
       "default": 0,
       "description": "Count of divergence notes recorded during implementation"
+    },
+    "is-bookend": {
+      "type": "boolean",
+      "default": false,
+      "description": "Marks task as a bookend task (T0 baseline capture or TN verification gate)"
+    },
+    "bookend-type": {
+      "type": "string",
+      "enum": ["t0-baseline", "tn-verification"],
+      "description": "Type of bookend task — only present when is-bookend is true"
     }
   }
 }
@@ -514,6 +528,15 @@ Examples:
 - `T1-data-models.md` (task T1: "Data Models and Error Codes")
 - `1.1-prepare-host.md` (task 1.1: "Prepare Host Environment")
 - `T15-cli-tests.md` (task T15: "CLI Integration Tests")
+
+#### Bookend Task ID Conventions
+
+Bookend tasks use fixed IDs by convention:
+
+- **T0** — baseline capture task. Always `task: T0`, `is-bookend: true`, `bookend-type: t0-baseline`, `priority: 1`, `dependencies: []`
+- **T99** — verification gate task. Always the highest-numbered task in the plan. If T99 conflicts with an implementation task, use `T{max_existing_id + 1}`. Fields: `is-bookend: true`, `bookend-type: tn-verification`, `priority: 5`, `dependencies: [all non-bookend task IDs]`
+
+Bookend tasks are only generated when the plan-level `acceptance-criteria-structured` field is non-empty.
 
 ### Parser Behavior
 
@@ -773,6 +796,8 @@ skills: []  # OPTIONAL: Skills for sub-agent to load
 # scenario-target: ""  # OPTIONAL: "{scenario} -> {improvement}"
 # analysis-method: none  # OPTIONAL: none | 5-whys | 6-sigma | design-framing
 # divergence-notes: 0   # OPTIONAL: integer count of ## Divergence Notes sections in body
+# is-bookend: false      # OPTIONAL: true for T0/TN bookend tasks only
+# bookend-type: ""       # OPTIONAL: t0-baseline | tn-verification (only when is-bookend: true)
 ---
 
 ## Context

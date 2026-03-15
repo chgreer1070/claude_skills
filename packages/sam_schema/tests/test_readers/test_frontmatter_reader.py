@@ -5,6 +5,8 @@ from __future__ import annotations
 import pathlib
 
 import pytest
+from sam_schema.core.models import AcceptanceCriterion
+from sam_schema.core.query import load_plan
 from sam_schema.readers.detect import FormatType
 from sam_schema.readers.frontmatter_reader import read_frontmatter_plan
 
@@ -474,3 +476,122 @@ def test_read_frontmatter_plan_single_task_with_task_id_key(tmp_path: pathlib.Pa
     assert len(task_dicts) == 1
     assert task_dicts[0].get("task") == "T5"
     assert fmt == FormatType.YAML_FRONTMATTER
+
+
+# ---------------------------------------------------------------------------
+# Integration: structured acceptance criteria in frontmatter format
+# ---------------------------------------------------------------------------
+
+
+def test_frontmatter_structured_criteria_parsed_into_acceptance_criterion_objects(tmp_path: pathlib.Path) -> None:
+    """Verify frontmatter reader handles structured criteria from YAML header.
+
+    Tests: acceptance-criteria-structured field parsed from frontmatter format.
+    How: Create a multi-task frontmatter .md file with acceptance-criteria-structured
+         in the plan-level header, load via load_plan, verify AcceptanceCriterion
+         objects are populated correctly.
+    Why: Frontmatter format must support structured criteria identically to pure YAML.
+    """
+    content = (
+        "---\n"
+        "feature: fm-structured-test\n"
+        "acceptance-criteria-structured:\n"
+        "  - criterion-id: AC-1\n"
+        "    description: Widget renders\n"
+        "    check-command: uv run pytest tests/test_widget.py -v\n"
+        "    expected-baseline: fail\n"
+        "    expected-final: pass\n"
+        "  - criterion-id: AC-2\n"
+        "    check-command: uv run ruff check src/\n"
+        "---\n"
+        "\n"
+        "\n"
+        "task: T1\n"
+        "title: Implement widget\n"
+        "status: not-started\n"
+        "\n"
+        "---\n"
+        "\n"
+        "## Context\n"
+        "\n"
+        "Widget implementation task.\n"
+    )
+    f = tmp_path / "tasks-1-fm-structured.md"
+    f.write_text(content)
+
+    result = load_plan(f)
+    criteria = result.plan.acceptance_criteria_structured
+
+    assert len(criteria) == 2
+    assert isinstance(criteria[0], AcceptanceCriterion)
+    assert criteria[0].criterion_id == "AC-1"
+    assert criteria[0].check_command == "uv run pytest tests/test_widget.py -v"
+    assert criteria[0].expected_baseline == "fail"
+    assert criteria[0].expected_final == "pass"
+    assert criteria[0].description == "Widget renders"
+    assert criteria[1].criterion_id == "AC-2"
+    assert criteria[1].expected_baseline == "any"  # default value
+
+
+def test_frontmatter_without_structured_criteria_returns_empty_list(tmp_path: pathlib.Path) -> None:
+    """Verify frontmatter plans without structured criteria produce empty list.
+
+    Tests: Backward compatibility for frontmatter format without new fields.
+    How: Load yaml_frontmatter_multi.md (no structured criteria), verify
+         acceptance_criteria_structured is an empty list.
+    Why: Existing frontmatter plans must not break when new fields are absent.
+    """
+    path = _FIXTURES / "yaml_frontmatter_multi.md"
+    result = load_plan(path)
+    assert result.plan.acceptance_criteria_structured == []
+
+
+def test_frontmatter_bookend_task_fields_parsed(tmp_path: pathlib.Path) -> None:
+    """Verify frontmatter reader parses is-bookend and bookend-type on tasks.
+
+    Tests: Bookend field parsing for frontmatter task blocks.
+    How: Create a multi-task frontmatter file with bookend fields on tasks,
+         load via load_plan, verify bookend metadata on each task.
+    Why: Bookend fields must work in all reader formats, not just pure YAML.
+    """
+    content = (
+        "---\n"
+        "feature: fm-bookend-test\n"
+        "---\n"
+        "\n"
+        "\n"
+        "task: T0\n"
+        "title: Capture baseline\n"
+        "status: not-started\n"
+        "dependencies: []\n"
+        "priority: 1\n"
+        "complexity: low\n"
+        "is-bookend: true\n"
+        "bookend-type: t0-baseline\n"
+        "\n"
+        "---\n"
+        "\n"
+        "\n"
+        "task: T1\n"
+        "title: Implement feature\n"
+        "status: not-started\n"
+        "dependencies:\n"
+        "  - T0\n"
+        "priority: 2\n"
+        "complexity: medium\n"
+        "\n"
+        "---\n"
+    )
+    f = tmp_path / "tasks-1-fm-bookend.md"
+    f.write_text(content)
+
+    result = load_plan(f)
+    tasks_by_id = {t.id: t for t in result.plan.tasks}
+
+    t0 = tasks_by_id["T0"]
+    assert t0.is_bookend is True
+    assert t0.bookend_type == "t0-baseline"
+
+    t1 = tasks_by_id["T1"]
+    assert t1.is_bookend is False
+    assert t1.bookend_type is None

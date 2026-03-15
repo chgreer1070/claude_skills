@@ -100,6 +100,17 @@ Skill(skill="start-task", args="{task_file_path} --task {task_id}")
 
 ---
 
+## Bookend Task Ordering
+
+When the plan contains `acceptance-criteria-structured` entries, `swarm-task-planner` generates T0 and TN bookend tasks. No special handling is needed in this loop — existing readiness logic dispatches them in the correct order automatically:
+
+- **T0** has `priority: 1` and `dependencies: []`, so it is the first ready task and dispatches before any implementation task.
+- **TN** has `dependencies: [all non-bookend task IDs]`, so it becomes ready only after all implementation tasks complete and dispatches last.
+
+T0 runs agent `t0-baseline-capture`. TN runs agent `tn-verification-gate`. Both agents write YAML result files (`plan/T0-baseline-{slug}.yaml`, `plan/TN-verification-{slug}.yaml`) that `/complete-implementation` reads in its pre-Phase 1 check.
+
+---
+
 ## Completion Gate
 
 When all tasks show `COMPLETE`, invoke:

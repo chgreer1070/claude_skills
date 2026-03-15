@@ -1,9 +1,9 @@
-"""Tests for sam_schema.core.dependencies — dependency graph and cycle detection."""
+"""Tests for sam_schema.core.dependencies — dependency graph, cycle detection, and bookend validation."""
 
 from __future__ import annotations
 
-from sam_schema.core.dependencies import DependencyGraph, _task_id_sort_key
-from sam_schema.core.models import Complexity, Priority, Task, TaskStatus
+from sam_schema.core.dependencies import BookendValidator, DependencyGraph, _task_id_sort_key
+from sam_schema.core.models import AcceptanceCriterion, Complexity, Plan, Priority, Task, TaskStatus
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -297,3 +297,459 @@ def test_get_blocked_tasks_in_progress_task_excluded_from_blocked() -> None:
 
     # Assert — only not-started tasks are reported as blocked
     assert all(t.status == TaskStatus.NOT_STARTED for t, _ in blocked)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for BookendValidator tests
+# ---------------------------------------------------------------------------
+
+
+def make_bookend_task(
+    task_id: str,
+    bookend_type: str,
+    status: TaskStatus = TaskStatus.NOT_STARTED,
+    dependencies: list[str] | None = None,
+    priority: Priority = Priority.MEDIUM,
+) -> Task:
+    """Return a Task with bookend fields set.
+
+    Args:
+        task_id: Task identifier.
+        bookend_type: Either 't0-baseline' or 'tn-verification'.
+        status: Task status.
+        dependencies: List of dependency task IDs.
+        priority: Task priority.
+
+    Returns:
+        A Task with is_bookend=True and the given bookend_type.
+    """
+    return Task(
+        id=task_id,
+        title=f"Bookend {task_id}",
+        status=status,
+        dependencies=dependencies or [],
+        priority=priority,
+        complexity=Complexity.LOW,
+        is_bookend=True,
+        bookend_type=bookend_type,
+    )
+
+
+def make_plan_with_bookends(
+    impl_tasks: list[Task] | None = None,
+    t0: Task | None = None,
+    tn: Task | None = None,
+    criteria: list[AcceptanceCriterion] | None = None,
+) -> Plan:
+    """Build a Plan with optional T0, TN, implementation tasks, and structured criteria.
+
+    Args:
+        impl_tasks: Non-bookend implementation tasks.
+        t0: The T0 baseline bookend task, or None to omit.
+        tn: The TN verification bookend task, or None to omit.
+        criteria: Structured acceptance criteria, or None for empty list.
+
+    Returns:
+        A Plan containing the specified tasks and criteria.
+    """
+    tasks: list[Task] = []
+    if t0 is not None:
+        tasks.append(t0)
+    if impl_tasks is not None:
+        tasks.extend(impl_tasks)
+    if tn is not None:
+        tasks.append(tn)
+    return Plan(feature="bookend-test", tasks=tasks, acceptance_criteria_structured=criteria or [])
+
+
+# ---------------------------------------------------------------------------
+# BookendValidator.validate — valid plans
+# ---------------------------------------------------------------------------
+
+
+class TestBookendValidatorValidPlans:
+    """Verify BookendValidator.validate() passes on correctly structured plans.
+
+    Tests: BookendValidator structural constraint validation.
+    How: Construct plans with valid bookend configurations and verify no errors.
+    Why: Valid plans must not produce false-positive validation errors.
+    """
+
+    def test_valid_plan_with_bookends_returns_no_errors(self) -> None:
+        """Verify valid plan with T0 and TN produces empty error list.
+
+        Tests: Happy path — correct T0/TN configuration.
+        How: Build plan with T0 (no deps), TN (deps on all impl tasks), criteria.
+        Why: The primary success case must pass cleanly.
+        """
+        # Arrange
+        t0 = make_bookend_task("T0", "t0-baseline", priority=Priority.CRITICAL)
+        impl1 = make_task("T1", dependencies=["T0"])
+        impl2 = make_task("T2", dependencies=["T0"])
+        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1", "T2"], priority=Priority.LOWEST)
+        criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
+        plan = make_plan_with_bookends(impl_tasks=[impl1, impl2], t0=t0, tn=tn, criteria=criteria)
+
+        # Act
+        errors = BookendValidator(plan).validate()
+
+        # Assert
+        assert errors == []
+
+    def test_plan_without_criteria_or_bookends_returns_no_errors(self) -> None:
+        """Verify plan without structured criteria and no bookends is valid.
+
+        Tests: Backward compatibility — legacy plans pass validation.
+        How: Build plan with only implementation tasks, no criteria, no bookends.
+        Why: Existing plans without bookend support must not be rejected.
+        """
+        # Arrange
+        impl1 = make_task("T1")
+        impl2 = make_task("T2", dependencies=["T1"])
+        plan = make_plan_with_bookends(impl_tasks=[impl1, impl2])
+
+        # Act
+        errors = BookendValidator(plan).validate()
+
+        # Assert
+        assert errors == []
+
+    def test_empty_plan_returns_no_errors(self) -> None:
+        """Verify empty plan with no tasks produces no errors.
+
+        Tests: Edge case — empty plan.
+        How: Build plan with no tasks.
+        Why: Empty plans are valid (nothing to validate).
+        """
+        # Arrange
+        plan = Plan(feature="empty")
+
+        # Act
+        errors = BookendValidator(plan).validate()
+
+        # Assert
+        assert errors == []
+
+
+# ---------------------------------------------------------------------------
+# BookendValidator.validate — invalid plans
+# ---------------------------------------------------------------------------
+
+
+class TestBookendValidatorInvalidPlans:
+    """Verify BookendValidator.validate() detects structural violations.
+
+    Tests: BookendValidator error detection for each constraint rule.
+    How: Construct plans violating one rule each, verify error messages.
+    Why: Each constraint must be enforced independently — a missed rule
+    allows invalid plans to reach T0/TN execution.
+    """
+
+    def test_t0_only_without_tn_returns_error(self) -> None:
+        """Verify plan with T0 but missing TN produces error.
+
+        Tests: Rule 5 — structured criteria require both bookends.
+        How: Build plan with T0 and criteria but no TN.
+        Why: TN is required to verify post-implementation state.
+        """
+        # Arrange
+        t0 = make_bookend_task("T0", "t0-baseline")
+        impl = make_task("T1")
+        criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
+        plan = make_plan_with_bookends(impl_tasks=[impl], t0=t0, criteria=criteria)
+
+        # Act
+        errors = BookendValidator(plan).validate()
+
+        # Assert
+        assert len(errors) == 1
+        assert "TN verification task" in errors[0]
+
+    def test_tn_only_without_t0_returns_error(self) -> None:
+        """Verify plan with TN but missing T0 produces error.
+
+        Tests: Rule 5 — structured criteria require both bookends.
+        How: Build plan with TN and criteria but no T0.
+        Why: T0 is required to capture baseline state.
+        """
+        # Arrange
+        impl = make_task("T1")
+        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1"])
+        criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
+        plan = make_plan_with_bookends(impl_tasks=[impl], tn=tn, criteria=criteria)
+
+        # Act
+        errors = BookendValidator(plan).validate()
+
+        # Assert
+        assert len(errors) == 1
+        assert "T0 baseline task" in errors[0]
+
+    def test_t0_with_dependencies_returns_error(self) -> None:
+        """Verify T0 with non-empty dependencies produces error.
+
+        Tests: Rule 3 — T0 must have empty dependencies.
+        How: Build T0 with a dependency on T1.
+        Why: T0 must be the first task executed — dependencies delay it.
+        """
+        # Arrange
+        t0 = make_bookend_task("T0", "t0-baseline", dependencies=["T1"])
+        impl = make_task("T1")
+        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1"])
+        criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
+        plan = make_plan_with_bookends(impl_tasks=[impl], t0=t0, tn=tn, criteria=criteria)
+
+        # Act
+        errors = BookendValidator(plan).validate()
+
+        # Assert
+        assert any("empty dependencies" in e for e in errors)
+
+    def test_tn_missing_dependency_on_impl_task_returns_error(self) -> None:
+        """Verify TN missing a dependency on an implementation task produces error.
+
+        Tests: Rule 4 — TN must depend on all non-bookend tasks.
+        How: Build TN that depends on T1 but not T2.
+        Why: Missing dependency means TN may run before T2 completes.
+        """
+        # Arrange
+        t0 = make_bookend_task("T0", "t0-baseline")
+        impl1 = make_task("T1")
+        impl2 = make_task("T2")
+        # TN depends only on T1, missing T2
+        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1"])
+        criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
+        plan = make_plan_with_bookends(impl_tasks=[impl1, impl2], t0=t0, tn=tn, criteria=criteria)
+
+        # Act
+        errors = BookendValidator(plan).validate()
+
+        # Assert
+        assert any("missing" in e.lower() and "T2" in e for e in errors)
+
+    def test_multiple_t0_tasks_returns_error(self) -> None:
+        """Verify multiple T0 tasks produce error.
+
+        Tests: Rule 1 — at most one T0 per plan.
+        How: Build plan with two T0 bookend tasks.
+        Why: Multiple T0s create ambiguous baseline capture.
+        """
+        # Arrange
+        t0a = make_bookend_task("T0", "t0-baseline")
+        # Second T0 — violates uniqueness
+        t0b = Task(
+            id="T5",
+            title="Another baseline",
+            status=TaskStatus.NOT_STARTED,
+            dependencies=[],
+            priority=Priority.CRITICAL,
+            complexity=Complexity.LOW,
+            is_bookend=True,
+            bookend_type="t0-baseline",
+        )
+        impl = make_task("T1")
+        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1"])
+        criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
+        plan = Plan(feature="dup-t0", tasks=[t0a, t0b, impl, tn], acceptance_criteria_structured=criteria)
+
+        # Act
+        errors = BookendValidator(plan).validate()
+
+        # Assert
+        assert any("Multiple T0" in e for e in errors)
+
+    def test_multiple_tn_tasks_returns_error(self) -> None:
+        """Verify multiple TN tasks produce error.
+
+        Tests: Rule 2 — at most one TN per plan.
+        How: Build plan with two TN bookend tasks.
+        Why: Multiple TNs create ambiguous verification verdicts.
+        """
+        # Arrange
+        t0 = make_bookend_task("T0", "t0-baseline")
+        impl = make_task("T1")
+        tn_a = make_bookend_task("T98", "tn-verification", dependencies=["T1"])
+        tn_b = make_bookend_task("T99", "tn-verification", dependencies=["T1"])
+        criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
+        plan = Plan(feature="dup-tn", tasks=[t0, impl, tn_a, tn_b], acceptance_criteria_structured=criteria)
+
+        # Act
+        errors = BookendValidator(plan).validate()
+
+        # Assert
+        assert any("Multiple TN" in e for e in errors)
+
+    def test_criteria_without_any_bookends_returns_two_errors(self) -> None:
+        """Verify plan with criteria but no bookends produces two errors.
+
+        Tests: Rule 5 — both T0 and TN are required when criteria exist.
+        How: Build plan with criteria but no T0 or TN tasks.
+        Why: Criteria without bookends cannot be validated.
+        """
+        # Arrange
+        impl = make_task("T1")
+        criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
+        plan = make_plan_with_bookends(impl_tasks=[impl], criteria=criteria)
+
+        # Act
+        errors = BookendValidator(plan).validate()
+
+        # Assert — should have errors about both missing T0 and missing TN
+        assert len(errors) == 2
+        assert any("T0" in e for e in errors)
+        assert any("TN" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# BookendValidator accessor methods
+# ---------------------------------------------------------------------------
+
+
+class TestBookendValidatorAccessors:
+    """Verify BookendValidator accessor methods return correct results.
+
+    Tests: get_t0_task, get_tn_task, get_implementation_task_ids.
+    How: Build plans with known structure, verify accessor outputs.
+    Why: These methods are used by T0/TN agents and implementation_manager
+    to identify bookend and implementation tasks.
+    """
+
+    def test_get_t0_task_returns_t0(self) -> None:
+        """Verify get_t0_task returns the T0 task when present.
+
+        Tests: T0 task lookup by bookend_type.
+        How: Build plan with T0, query via accessor.
+        Why: T0 agent uses this to identify its target task.
+        """
+        # Arrange
+        t0 = make_bookend_task("T0", "t0-baseline")
+        plan = make_plan_with_bookends(t0=t0)
+        validator = BookendValidator(plan)
+
+        # Act
+        result = validator.get_t0_task()
+
+        # Assert
+        assert result is not None
+        assert result.id == "T0"
+        assert result.bookend_type == "t0-baseline"
+
+    def test_get_t0_task_returns_none_when_absent(self) -> None:
+        """Verify get_t0_task returns None when no T0 exists.
+
+        Tests: Absent T0 lookup.
+        How: Build plan without T0, query via accessor.
+        Why: Plans without bookends must return None, not raise.
+        """
+        # Arrange
+        impl = make_task("T1")
+        plan = make_plan_with_bookends(impl_tasks=[impl])
+        validator = BookendValidator(plan)
+
+        # Act
+        result = validator.get_t0_task()
+
+        # Assert
+        assert result is None
+
+    def test_get_tn_task_returns_tn(self) -> None:
+        """Verify get_tn_task returns the TN task when present.
+
+        Tests: TN task lookup by bookend_type.
+        How: Build plan with TN, query via accessor.
+        Why: TN agent uses this to identify its target task.
+        """
+        # Arrange
+        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1"])
+        impl = make_task("T1")
+        plan = make_plan_with_bookends(impl_tasks=[impl], tn=tn)
+        validator = BookendValidator(plan)
+
+        # Act
+        result = validator.get_tn_task()
+
+        # Assert
+        assert result is not None
+        assert result.id == "T99"
+        assert result.bookend_type == "tn-verification"
+
+    def test_get_tn_task_returns_none_when_absent(self) -> None:
+        """Verify get_tn_task returns None when no TN exists.
+
+        Tests: Absent TN lookup.
+        How: Build plan without TN, query via accessor.
+        Why: Plans without bookends must return None, not raise.
+        """
+        # Arrange
+        impl = make_task("T1")
+        plan = make_plan_with_bookends(impl_tasks=[impl])
+        validator = BookendValidator(plan)
+
+        # Act
+        result = validator.get_tn_task()
+
+        # Assert
+        assert result is None
+
+    def test_get_implementation_task_ids_excludes_bookends(self) -> None:
+        """Verify get_implementation_task_ids excludes bookend tasks.
+
+        Tests: Implementation task ID filtering.
+        How: Build plan with T0, TN, and implementation tasks. Verify IDs.
+        Why: TN uses this to validate its dependency list covers all impl tasks.
+        """
+        # Arrange
+        t0 = make_bookend_task("T0", "t0-baseline")
+        impl1 = make_task("T1")
+        impl2 = make_task("T2")
+        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1", "T2"])
+        plan = make_plan_with_bookends(impl_tasks=[impl1, impl2], t0=t0, tn=tn)
+        validator = BookendValidator(plan)
+
+        # Act
+        impl_ids = validator.get_implementation_task_ids()
+
+        # Assert
+        assert impl_ids == ["T1", "T2"]
+        assert "T0" not in impl_ids
+        assert "T99" not in impl_ids
+
+    def test_get_implementation_task_ids_empty_when_only_bookends(self) -> None:
+        """Verify get_implementation_task_ids returns empty list when no impl tasks.
+
+        Tests: Edge case — plan with only bookend tasks.
+        How: Build plan with T0 and TN only.
+        Why: Plans with zero implementation tasks are structurally valid.
+        """
+        # Arrange
+        t0 = make_bookend_task("T0", "t0-baseline")
+        tn = make_bookend_task("T99", "tn-verification")
+        plan = make_plan_with_bookends(t0=t0, tn=tn)
+        validator = BookendValidator(plan)
+
+        # Act
+        impl_ids = validator.get_implementation_task_ids()
+
+        # Assert
+        assert impl_ids == []
+
+    def test_get_implementation_task_ids_sorted_by_id(self) -> None:
+        """Verify get_implementation_task_ids returns IDs in numeric sort order.
+
+        Tests: ID sorting via _task_id_sort_key.
+        How: Build plan with unordered task IDs, verify sorted output.
+        Why: Consistent ordering prevents flaky dependency comparisons.
+        """
+        # Arrange
+        t0 = make_bookend_task("T0", "t0-baseline")
+        impl3 = make_task("T3")
+        impl1 = make_task("T1")
+        impl10 = make_task("T10")
+        plan = make_plan_with_bookends(impl_tasks=[impl3, impl1, impl10], t0=t0)
+        validator = BookendValidator(plan)
+
+        # Act
+        impl_ids = validator.get_implementation_task_ids()
+
+        # Assert
+        assert impl_ids == ["T1", "T3", "T10"]

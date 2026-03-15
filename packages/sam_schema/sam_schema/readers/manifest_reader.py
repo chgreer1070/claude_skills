@@ -338,11 +338,15 @@ def _build_task_dict(
     if not parsed:
         return None
     task_id, title = parsed
-    task_dict: dict = {"task": task_id, "title": title, "status": "not-started"}
-    # Merge body YAML block fields (provides full structured metadata + prose content)
+    task_dict: dict = {"task": task_id, "title": title}
+    # Merge body YAML block fields (provides full structured metadata + prose content).
+    # Body blocks may contain per-task status, timestamps, and other fields that
+    # override the simple-mapping defaults.
     if body_task_blocks:
         for field, value in body_task_blocks.get(task_id, {}).items():
             task_dict.setdefault(field, value)
+    # Default status only if neither the entry nor the body block provided one
+    task_dict.setdefault("status", "not-started")
     # Fall back to prose section for description
     prose = prose_by_task.get(task_id, "")
     if prose:

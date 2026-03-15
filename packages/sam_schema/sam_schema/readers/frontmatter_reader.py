@@ -227,7 +227,7 @@ def _parse_embedded_task_blocks(
     for idx, (is_task, payload) in enumerate(parsed_segments):
         if not is_task:
             continue
-        task_dict = dict(payload)  # type: ignore[arg-type]
+        task_dict = dict(payload)
         task_id = task_dict.get("task") or task_dict.get("task_id")
         task_dict["task"] = str(task_id)
 

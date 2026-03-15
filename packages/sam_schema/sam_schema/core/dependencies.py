@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from sam_schema.core.models import Task, TaskStatus
+from sam_schema.core.models import Plan, Task, TaskStatus
 
 # Statuses that satisfy a dependency requirement — tasks depending on a task
 # in one of these statuses may proceed.
@@ -139,7 +139,7 @@ class DependencyGraph:
                         cycles.append(list(cycle))
                 elif colour[dep_id] == 0:
                     dfs(dep_id)
-            stack.pop()
+            _ = stack.pop()
             colour[node] = 2
 
         for task_id in list(self._by_id):
@@ -215,3 +215,123 @@ class DependencyGraph:
             that are not in a terminal status.
         """
         return [dep_id for dep_id in task.dependencies if not self._dep_is_terminal(dep_id)]
+
+
+class BookendValidator:
+    """Validator for T0/TN bookend task structural constraints within a plan.
+
+    Validates that bookend tasks are configured correctly relative to each
+    other and the plan's structured acceptance criteria.  Plans without
+    bookend tasks and without structured criteria always pass validation.
+
+    Args:
+        plan: The plan to validate.
+    """
+
+    def __init__(self, plan: Plan) -> None:
+        """Initialise the validator with a plan.
+
+        Args:
+            plan: The plan whose bookend tasks are to be validated.
+        """
+        self._plan: Plan = plan
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def get_t0_task(self) -> Task | None:
+        """Return the T0 baseline bookend task, or None if absent.
+
+        Returns:
+            The task whose ``bookend_type`` is ``"t0-baseline"``, or ``None``.
+        """
+        for task in self._plan.tasks:
+            if task.bookend_type == "t0-baseline":
+                return task
+        return None
+
+    def get_tn_task(self) -> Task | None:
+        """Return the TN verification bookend task, or None if absent.
+
+        Returns:
+            The task whose ``bookend_type`` is ``"tn-verification"``, or ``None``.
+        """
+        for task in self._plan.tasks:
+            if task.bookend_type == "tn-verification":
+                return task
+        return None
+
+    def get_implementation_task_ids(self) -> list[str]:
+        """Return task IDs of all non-bookend tasks in the plan.
+
+        Returns:
+            Sorted list of task IDs whose ``is_bookend`` field is ``False``.
+        """
+        return sorted([t.id for t in self._plan.tasks if not t.is_bookend], key=_task_id_sort_key)
+
+    def validate(self) -> list[str]:
+        """Validate bookend structural constraints and return error strings.
+
+        Checks:
+
+        1. At most one T0 per plan (``bookend_type == "t0-baseline"``).
+        2. At most one TN per plan (``bookend_type == "tn-verification"``).
+        3. T0 must have an empty ``dependencies`` list.
+        4. TN must depend on every non-bookend task ID.
+        5. If ``acceptance_criteria_structured`` is non-empty, both T0 and TN
+           must exist.
+
+        Plans without bookend tasks and without structured criteria produce
+        no errors.
+
+        Returns:
+            List of human-readable error strings.  An empty list means the
+            plan is valid with respect to bookend constraints.
+        """
+        errors: list[str] = []
+
+        t0_tasks = [t for t in self._plan.tasks if t.bookend_type == "t0-baseline"]
+        tn_tasks = [t for t in self._plan.tasks if t.bookend_type == "tn-verification"]
+
+        # Rule 1: at most one T0
+        if len(t0_tasks) > 1:
+            ids = ", ".join(t.id for t in t0_tasks)
+            errors.append(f"Multiple T0 baseline tasks found ({ids}); only one is allowed per plan.")
+
+        # Rule 2: at most one TN
+        if len(tn_tasks) > 1:
+            ids = ", ".join(t.id for t in tn_tasks)
+            errors.append(f"Multiple TN verification tasks found ({ids}); only one is allowed per plan.")
+
+        t0 = t0_tasks[0] if t0_tasks else None
+        tn = tn_tasks[0] if tn_tasks else None
+
+        # Rule 3: T0 must have no dependencies
+        if t0 is not None and t0.dependencies:
+            dep_list = ", ".join(t0.dependencies)
+            errors.append(f"T0 task '{t0.id}' must have an empty dependencies list, but depends on: {dep_list}.")
+
+        # Rule 4: TN must depend on all non-bookend tasks
+        if tn is not None:
+            impl_ids = set(self.get_implementation_task_ids())
+            tn_deps = set(tn.dependencies)
+            missing = impl_ids - tn_deps
+            if missing:
+                missing_list = ", ".join(sorted(missing, key=_task_id_sort_key))
+                errors.append(
+                    f"TN task '{tn.id}' must depend on all non-bookend tasks, but is missing: {missing_list}."
+                )
+
+        # Rule 5: structured criteria require both bookend tasks
+        if self._plan.acceptance_criteria_structured:
+            if t0 is None:
+                errors.append(
+                    "Plan has acceptance-criteria-structured but no T0 baseline task (bookend_type='t0-baseline'). Add a T0 task or remove structured criteria."
+                )
+            if tn is None:
+                errors.append(
+                    "Plan has acceptance-criteria-structured but no TN verification task (bookend_type='tn-verification'). Add a TN task or remove structured criteria."
+                )
+
+        return errors

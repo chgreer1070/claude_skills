@@ -44,7 +44,13 @@ _MARKDOWN_FIELDS: frozenset[str] = frozenset({
 })
 
 # field-specific defaults: omit these from YAML output when the value equals the default.
-_SKIP_IF_DEFAULT: dict[str, Any] = {"analysis-method": "none", "divergence-notes": 0}
+_SKIP_IF_DEFAULT: dict[str, Any] = {
+    "analysis-method": "none",
+    "divergence-notes": 0,
+    # Bookend fields: omit when task is not a bookend (default values)
+    "is-bookend": False,
+    "bookend-type": None,
+}
 
 
 def _make_yaml() -> YAML:
@@ -117,6 +123,10 @@ def _plan_metadata_dict(plan: Plan) -> dict[str, Any]:
     )
     for key in list(raw.keys()):
         value = raw[key]
+        # Omit empty lists (e.g., acceptance-criteria-structured: [] adds noise)
+        if isinstance(value, list) and not value:
+            del raw[key]
+            continue
         if key in _MARKDOWN_FIELDS and isinstance(value, str) and value:
             raw[key] = LiteralScalarString(value)
     return raw
@@ -318,9 +328,14 @@ _KNOWN_TASK_FIELDS: frozenset[str] = frozenset({
     "verification-steps",
     "context-notes",
     "handoff",
+    # Bookend fields
+    "is-bookend",
+    "bookend-type",
     # GitHub integration
     "github-issue",
     # snake_case aliases (also accepted)
+    "is_bookend",
+    "bookend_type",
     "blocked_by",
     "parallelize_with",
     "last_activity",
