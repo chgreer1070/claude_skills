@@ -92,10 +92,88 @@ def _split_outside_fences(body: str) -> list[str]:
     return segments
 
 
+def _parse_embedded_task_blocks(
+    plan_meta: dict[str, Any], body: str, path: Path
+) -> tuple[dict, list[dict], FormatType]:
+    """Parse per-task YAML blocks embedded in the markdown body.
+
+    Used by the multi-task frontmatter variant where the first ``---`` block
+    is plan-level metadata and per-task YAML blocks follow in the body,
+    separated by ``---`` delimiters (outside code fences).
+
+    Args:
+        plan_meta: Parsed plan-level metadata from the first frontmatter block.
+        body: Markdown body text after the closing ``---`` of the first block.
+        path: Source path (used in error messages).
+
+    Returns:
+        ``(plan_meta, task_dicts, FormatType.YAML_FRONTMATTER)``.
+
+    Raises:
+        ValueError: If no valid task blocks are found in the body.
+    """
+    segments = _split_outside_fences(body)
+    task_dicts: list[dict] = []
+    for raw_segment in segments:
+        segment = raw_segment.strip()
+        if not segment:
+            continue
+        try:
+            task_dict = _load_yaml_block(segment)
+        except ValueError:
+            # Not a valid YAML block (prose, etc.) — skip
+            continue
+        if "task" in task_dict or "task_id" in task_dict:
+            task_id = task_dict.get("task") or task_dict.get("task_id")
+            if task_id is not None:
+                task_dict["task"] = str(task_id)
+            task_dicts.append(task_dict)
+    if not task_dicts:
+        msg = f"No task blocks found in {path}"
+        raise ValueError(msg)
+    return dict(plan_meta), task_dicts, FormatType.YAML_FRONTMATTER
+
+
+def _parse_tasks_list_block(tasks_value: list[Any], path: Path) -> tuple[dict, list[dict], FormatType]:
+    """Extract task dicts from a frontmatter ``tasks:`` list.
+
+    Handles the tasks-list variant where a single frontmatter block contains a
+    ``tasks:`` key whose value is a list of task dicts.  Each non-dict item in
+    the list is silently skipped.  Raises if the resulting task list is empty.
+
+    Args:
+        tasks_value: The raw list value from the ``tasks:`` frontmatter key.
+        path: Source path (used in error messages).
+
+    Returns:
+        ``({}, task_dicts, FormatType.YAML_FRONTMATTER)`` with an empty plan-meta
+        dict, because there is no separate plan-level metadata in this format.
+
+    Raises:
+        ValueError: If no valid task dicts are found in ``tasks_value``.
+    """
+    task_dicts: list[dict] = []
+    for raw_item in tasks_value:
+        if not isinstance(raw_item, dict):
+            continue
+        task_entry = dict(raw_item)  # copy to avoid mutating the parsed value
+        task_id = task_entry.get("task") or task_entry.get("task_id")
+        if task_id is not None:
+            task_entry.setdefault("task", str(task_id))
+        task_dicts.append(task_entry)
+    if not task_dicts:
+        msg = f"No task entries found in frontmatter 'tasks:' list in {path}"
+        raise ValueError(msg)
+    return {}, task_dicts, FormatType.YAML_FRONTMATTER
+
+
 def read_frontmatter_plan(path: Path) -> tuple[dict, list[dict], FormatType]:
     r"""Read a YAML-frontmatter-in-markdown plan file.
 
-    Supports two file structures:
+    Supports three file structures:
+    - **Tasks-list**: File has a single ``---`` block with a ``tasks:`` list key.
+      Each list item is a task dict.  The body below the closing ``---`` is prose
+      only and is not parsed for task blocks.
     - **Single-task**: File has a single ``---`` block with ``task:`` field.
     - **Multi-task**: File starts with a global manifest ``---`` block (``feature:``
       field, no ``task:`` field) followed by per-task ``---`` blocks embedded in
@@ -155,6 +233,14 @@ def _parse_frontmatter_content(content: str, path: Path) -> tuple[dict, list[dic
         msg = f"Failed to parse frontmatter in {path}: {exc}"
         raise ValueError(msg) from exc
 
+    # CASE 0: Tasks-list variant — first block has a ``tasks:`` key whose value is
+    # a list of task dicts.  Each list item is a self-contained task object.  The
+    # body below the closing ``---`` is human-readable prose and is not parsed for
+    # task blocks.  About 20 follow-up task files in ``plan/`` use this format.
+    tasks_value = first_block.get("tasks")
+    if isinstance(tasks_value, list):
+        return _parse_tasks_list_block(tasks_value, path)
+
     # CASE 1: Single-task file — first block has ``task:`` field
     if "task" in first_block or "task_id" in first_block:
         task_id = first_block.get("task") or first_block.get("task_id")
@@ -164,32 +250,4 @@ def _parse_frontmatter_content(content: str, path: Path) -> tuple[dict, list[dic
 
     # CASE 2: Multi-task file — first block is plan metadata (has ``feature:`` field)
     # Per-task blocks are embedded in the body, separated by ``---`` lines.
-    plan_meta = first_block
-
-    # Split body on ``---`` delimiters, skipping those inside code fences
-    segments = _split_outside_fences(body)
-
-    task_dicts: list[dict] = []
-    for raw_segment in segments:
-        segment = raw_segment.strip()
-        if not segment:
-            continue
-        # Each segment is raw YAML for one task (without the surrounding ``---`` lines)
-        try:
-            task_dict = _load_yaml_block(segment)
-        except ValueError:
-            # Not a valid YAML block (prose, etc.) — skip
-            continue
-
-        # Only include dicts that look like task blocks (have ``task:`` or ``task_id:``)
-        if "task" in task_dict or "task_id" in task_dict:
-            task_id = task_dict.get("task") or task_dict.get("task_id")
-            if task_id is not None:
-                task_dict["task"] = str(task_id)
-            task_dicts.append(task_dict)
-
-    if not task_dicts:
-        msg = f"No task blocks found in {path}"
-        raise ValueError(msg)
-
-    return dict(plan_meta), task_dicts, FormatType.YAML_FRONTMATTER
+    return _parse_embedded_task_blocks(first_block, body, path)

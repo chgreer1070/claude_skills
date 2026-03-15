@@ -14,7 +14,14 @@ from typing import TYPE_CHECKING
 import pytest
 from ruamel.yaml import YAML
 from sam_schema.core.models import Complexity, Plan, Priority, Task, TaskStatus
-from sam_schema.writers.yaml_writer import LINE_THRESHOLD, _estimate_line_count, _task_to_dict, update_field, write_plan
+from sam_schema.writers.yaml_writer import (
+    LINE_THRESHOLD,
+    _estimate_line_count,
+    _task_to_dict,
+    update_field,
+    update_fields,
+    write_plan,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -571,3 +578,209 @@ class TestUpdateFieldErrors:
         f.write_text(content)
         with pytest.raises(KeyError, match="T99"):
             update_field(f, "T99", "status", "complete")
+
+
+# ---------------------------------------------------------------------------
+# update_field — yaml_frontmatter format
+# ---------------------------------------------------------------------------
+
+
+_FRONTMATTER_SINGLE = """\
+---
+task: T1
+title: A yaml_frontmatter task
+status: not-started
+priority: 2
+---
+## Body
+
+Some prose content here.
+"""
+
+_FRONTMATTER_SINGLE_WITH_CODE_FENCE = """\
+---
+task: T1
+title: Task with fence in body
+status: not-started
+---
+## Example
+
+```yaml
+---
+nested: yaml
+---
+```
+
+More prose.
+"""
+
+
+class TestUpdateFieldYamlFrontmatter:
+    """Verify update_field handles yaml_frontmatter format (.md) files.
+
+    Tests: In-place field update on files with YAML frontmatter + prose body.
+    How: Write yaml_frontmatter file, call update_field, verify YAML and body.
+    Why: yaml_frontmatter is the dominant task file format in the repo; update_field
+         must not raise ComposerError when ruamel.yaml sees the multi-doc markers.
+    """
+
+    def test_update_field_frontmatter_changes_status(self, tmp_path: Path) -> None:
+        """Verify update_field updates status in a yaml_frontmatter file.
+
+        Tests: Status update on yaml_frontmatter format.
+        How: Write frontmatter file, call update_field, re-read YAML block.
+        Why: Status transitions are the primary use case; must work on .md files.
+        """
+        f = tmp_path / "task.md"
+        f.write_text(_FRONTMATTER_SINGLE)
+        update_field(f, "T1", "status", "in-progress")
+        raw = f.read_text(encoding="utf-8")
+        assert raw.startswith("---\n")
+        # Re-parse just the frontmatter block to check status
+        from ruamel.yaml import YAML as _YAML
+
+        y = _YAML(typ="rt")
+        raw.split("\n---")[1].lstrip("\n").split("\n---")[0]
+        # simpler: load from between the first --- pair
+        import re as _re
+
+        after_open = raw[4:]
+        close = _re.search(r"\n---", after_open)
+        assert close is not None
+        data = y.load(after_open[: close.start()])
+        assert data["status"] == "in-progress"
+
+    def test_update_field_frontmatter_preserves_other_fields(self, tmp_path: Path) -> None:
+        """Verify update_field does not alter other YAML fields in frontmatter.
+
+        Tests: Field preservation in yaml_frontmatter.
+        How: Update status only, verify title and priority unchanged.
+        Why: Round-trip must not corrupt sibling fields.
+        """
+        f = tmp_path / "task.md"
+        f.write_text(_FRONTMATTER_SINGLE)
+        update_field(f, "T1", "status", "complete")
+        raw = f.read_text(encoding="utf-8")
+        import re as _re
+
+        from ruamel.yaml import YAML as _YAML
+
+        y = _YAML(typ="rt")
+        after_open = raw[4:]
+        close = _re.search(r"\n---", after_open)
+        assert close is not None
+        data = y.load(after_open[: close.start()])
+        assert data["title"] == "A yaml_frontmatter task"
+        assert data["priority"] == 2
+        assert data["status"] == "complete"
+
+    def test_update_field_frontmatter_preserves_body(self, tmp_path: Path) -> None:
+        """Verify update_field leaves the prose body unchanged.
+
+        Tests: Body content preservation after frontmatter update.
+        How: Write frontmatter file, update a field, check body suffix.
+        Why: The prose body is user content — it must never be modified.
+        """
+        f = tmp_path / "task.md"
+        f.write_text(_FRONTMATTER_SINGLE)
+        update_field(f, "T1", "status", "complete")
+        raw = f.read_text(encoding="utf-8")
+        assert "## Body" in raw
+        assert "Some prose content here." in raw
+
+    def test_update_field_frontmatter_preserves_body_with_code_fence(self, tmp_path: Path) -> None:
+        """Verify update_field preserves a body that contains --- inside a code fence.
+
+        Tests: Bodies with YAML code fences are not corrupted by the split.
+        How: Write file where body contains ```yaml ... --- ... ```, update field.
+        Why: A naive split on --- would corrupt the body by truncating at the fence's ---.
+        """
+        f = tmp_path / "task.md"
+        f.write_text(_FRONTMATTER_SINGLE_WITH_CODE_FENCE)
+        update_field(f, "T1", "status", "complete")
+        raw = f.read_text(encoding="utf-8")
+        assert "nested: yaml" in raw
+        assert "More prose." in raw
+
+    def test_update_field_frontmatter_wrong_task_id_raises_key_error(self, tmp_path: Path) -> None:
+        """Verify KeyError when task ID does not match the frontmatter block.
+
+        Tests: Task ID mismatch error handling in yaml_frontmatter.
+        How: Write frontmatter with task T1, request update for T99.
+        Why: Must surface wrong-ID as KeyError, not silently no-op.
+        """
+        f = tmp_path / "task.md"
+        f.write_text(_FRONTMATTER_SINGLE)
+        with pytest.raises(KeyError, match="T99"):
+            update_field(f, "T99", "status", "complete")
+
+    def test_update_field_frontmatter_file_still_starts_with_delimiter(self, tmp_path: Path) -> None:
+        """Verify the written file still starts with --- after update.
+
+        Tests: Output format integrity.
+        How: Update field, verify file starts with opening ---.
+        Why: The file must remain valid yaml_frontmatter for downstream readers.
+        """
+        f = tmp_path / "task.md"
+        f.write_text(_FRONTMATTER_SINGLE)
+        update_field(f, "T1", "status", "complete")
+        raw = f.read_text(encoding="utf-8")
+        assert raw.startswith("---\n")
+
+
+class TestUpdateFieldsYamlFrontmatter:
+    """Verify update_fields handles yaml_frontmatter format files.
+
+    Tests: Multi-field update on files with YAML frontmatter + prose body.
+    How: Write yaml_frontmatter file, call update_fields with multiple fields.
+    Why: update_fields is the batch form used by the hook; must handle .md files.
+    """
+
+    def test_update_fields_frontmatter_updates_multiple_fields(self, tmp_path: Path) -> None:
+        """Verify update_fields sets multiple fields in a frontmatter file.
+
+        Tests: Multi-field write in yaml_frontmatter format.
+        How: Call update_fields with status and last-activity, verify both set.
+        Why: Hook calls update_fields to set status + timestamp atomically.
+        """
+        f = tmp_path / "task.md"
+        f.write_text(_FRONTMATTER_SINGLE)
+        update_fields(f, "T1", {"status": "complete", "last-activity": "2026-01-01T00:00:00"})
+        raw = f.read_text(encoding="utf-8")
+        import re as _re
+
+        from ruamel.yaml import YAML as _YAML
+
+        y = _YAML(typ="rt")
+        after_open = raw[4:]
+        close = _re.search(r"\n---", after_open)
+        assert close is not None
+        data = y.load(after_open[: close.start()])
+        assert data["status"] == "complete"
+        assert data["last-activity"] == "2026-01-01T00:00:00"
+
+    def test_update_fields_frontmatter_preserves_body(self, tmp_path: Path) -> None:
+        """Verify update_fields leaves the prose body unchanged.
+
+        Tests: Body preservation in multi-field update.
+        How: Update fields, verify body content in raw output.
+        Why: Body is user content — multi-field update must not touch it.
+        """
+        f = tmp_path / "task.md"
+        f.write_text(_FRONTMATTER_SINGLE)
+        update_fields(f, "T1", {"status": "in-progress"})
+        raw = f.read_text(encoding="utf-8")
+        assert "## Body" in raw
+        assert "Some prose content here." in raw
+
+    def test_update_fields_frontmatter_wrong_task_id_raises_key_error(self, tmp_path: Path) -> None:
+        """Verify KeyError when task ID does not match in yaml_frontmatter file.
+
+        Tests: Task ID mismatch in update_fields for frontmatter format.
+        How: Write frontmatter with T1, call update_fields for T99.
+        Why: Must raise KeyError, not silently succeed with no update.
+        """
+        f = tmp_path / "task.md"
+        f.write_text(_FRONTMATTER_SINGLE)
+        with pytest.raises(KeyError, match="T99"):
+            update_fields(f, "T99", {"status": "complete"})

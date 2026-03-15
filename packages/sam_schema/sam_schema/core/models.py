@@ -16,8 +16,9 @@ if TYPE_CHECKING:
     from datetime import datetime
     from pathlib import Path
 
-# Task ID pattern: supports numeric (1, 1.1), alphanumeric (T1, T2.3)
-TASK_ID_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z]?\d+(\.\d+)?$")
+# Task ID pattern: supports numeric (1, 1.1), alphanumeric (T1, T2.3),
+# letter-suffixed (T10a, T10b), and slash-separated compound IDs (P1/T3, T10a/T10b).
+TASK_ID_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z]?\d+(\.\d+)?[A-Za-z]?(/[A-Za-z]?\d+(\.\d+)?[A-Za-z]?)?$")
 
 # Status normalization map — maps human-readable and emoji variants to canonical values.
 # Sourced from task_format.py:28-45 (plugins/python3-development/skills/implementation-manager/scripts/)

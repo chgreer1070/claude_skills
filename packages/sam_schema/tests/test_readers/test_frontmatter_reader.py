@@ -99,6 +99,114 @@ def test_read_frontmatter_plan_multi_second_task_has_dependency():
 
 
 # ---------------------------------------------------------------------------
+# Tasks-list variant — frontmatter tasks: list without feature/slug
+# ---------------------------------------------------------------------------
+
+
+def test_read_frontmatter_plan_tasks_list_returns_two_tasks():
+    """Verify tasks-list variant returns all tasks from frontmatter list.
+
+    Tests: Tasks-list variant returns correct task count.
+    How: Point read_frontmatter_plan at the tasks-list fixture.
+    Why: Core parsing requirement for the new format variant.
+    """
+    path = _FIXTURES / "yaml_frontmatter_tasks_list.md"
+    _, task_dicts, _ = read_frontmatter_plan(path)
+    assert len(task_dicts) == 2
+
+
+def test_read_frontmatter_plan_tasks_list_returns_yaml_frontmatter_format_type():
+    """Verify tasks-list variant returns YAML_FRONTMATTER format type.
+
+    Tests: Format type for tasks-list variant.
+    How: Point read_frontmatter_plan at the tasks-list fixture.
+    Why: Callers depend on the format type for downstream processing.
+    """
+    path = _FIXTURES / "yaml_frontmatter_tasks_list.md"
+    _, _, fmt = read_frontmatter_plan(path)
+    assert fmt == FormatType.YAML_FRONTMATTER
+
+
+def test_read_frontmatter_plan_tasks_list_returns_empty_plan_meta():
+    """Verify tasks-list variant returns empty plan metadata dict.
+
+    Tests: Plan metadata for tasks-list variant.
+    How: Point read_frontmatter_plan at the tasks-list fixture.
+    Why: There is no plan-level metadata separate from task list items.
+    """
+    path = _FIXTURES / "yaml_frontmatter_tasks_list.md"
+    plan_meta, _, _ = read_frontmatter_plan(path)
+    assert plan_meta == {}
+
+
+def test_read_frontmatter_plan_tasks_list_first_task_has_correct_name():
+    """Verify tasks-list variant first task has its task name preserved.
+
+    Tests: Task name field extraction for tasks-list variant.
+    How: Point read_frontmatter_plan at the tasks-list fixture.
+    Why: Task name is required for downstream processing.
+    """
+    path = _FIXTURES / "yaml_frontmatter_tasks_list.md"
+    _, task_dicts, _ = read_frontmatter_plan(path)
+    assert task_dicts[0].get("task") == "Fix the widget rendering bug"
+
+
+def test_read_frontmatter_plan_tasks_list_task_has_status():
+    """Verify tasks-list variant tasks have their status field preserved.
+
+    Tests: Status field extraction for tasks-list variant.
+    How: Point read_frontmatter_plan at the tasks-list fixture.
+    Why: Status field drives orchestration readiness logic.
+    """
+    path = _FIXTURES / "yaml_frontmatter_tasks_list.md"
+    _, task_dicts, _ = read_frontmatter_plan(path)
+    assert task_dicts[0].get("status") == "pending"
+
+
+def test_read_frontmatter_plan_tasks_list_task_has_parent_task():
+    """Verify tasks-list variant tasks have their parent_task field preserved.
+
+    Tests: Extra fields preserved for tasks-list variant.
+    How: Point read_frontmatter_plan at the tasks-list fixture.
+    Why: Parent task linkage is used for traceability.
+    """
+    path = _FIXTURES / "yaml_frontmatter_tasks_list.md"
+    _, task_dicts, _ = read_frontmatter_plan(path)
+    assert task_dicts[0].get("parent_task") == "plan/tasks-1-widget-overhaul.md"
+
+
+def test_read_frontmatter_plan_tasks_list_empty_list_raises_value_error(tmp_path: pathlib.Path) -> None:
+    """Verify ValueError when tasks: list is present but empty.
+
+    Tests: Empty tasks-list raises an error.
+    How: Write a file with tasks: [] frontmatter.
+    Why: An empty tasks list is a data error — there are no tasks to return.
+    """
+    f = tmp_path / "empty_tasks.md"
+    f.write_text("---\ntasks: []\n---\n\n# Body\n")
+    with pytest.raises(ValueError, match="No task entries"):
+        read_frontmatter_plan(f)
+
+
+def test_read_frontmatter_plan_real_followup_file_returns_one_task() -> None:
+    """Verify the actual follow-up task file that triggered this bug can be read.
+
+    Tests: Real-world tasks-list file produces one task dict.
+    How: Call read_frontmatter_plan on the real plan file.
+    Why: Regression guard — the exact file that failed before the fix.
+    """
+    real_file = pathlib.Path(
+        "/home/ubuntulinuxqa2/repos/claude_skills/plan/tasks-3-unified-sam-task-schema-followup-1.md"
+    )
+    if not real_file.exists():
+        pytest.skip("Real follow-up file not present in this environment")
+    _, task_dicts, fmt = read_frontmatter_plan(real_file)
+    assert fmt == FormatType.YAML_FRONTMATTER
+    assert len(task_dicts) == 1
+    assert task_dicts[0].get("status") == "pending"
+
+
+# ---------------------------------------------------------------------------
 # Code fence edge case — --- inside ``` blocks must not split segments
 # ---------------------------------------------------------------------------
 

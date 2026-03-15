@@ -57,6 +57,49 @@ _TASKS_LIST_RE = re.compile(r"^tasks\s*:", re.MULTILINE)
 _LEGACY_HEADING_RE = re.compile(r"^##\s+Task\s+\d", re.MULTILINE)
 
 
+def _classify_frontmatter(frontmatter_text: str) -> FormatType | None:
+    """Classify a YAML frontmatter block into a FormatType.
+
+    Returns ``None`` when the frontmatter content does not match any known
+    frontmatter-based format (caller falls through to legacy heading check).
+
+    Detection order:
+    1. ``task:`` field present -> ``YAML_FRONTMATTER`` (single-task)
+    2. ``feature:``/``slug:`` + ``tasks:`` present -> ``GLOBAL_MANIFEST``
+    3. ``feature:``/``slug:`` without ``tasks:`` -> ``YAML_FRONTMATTER``
+       (multi-task; per-task blocks are embedded in the body)
+    4. ``tasks:`` without ``feature:``/``slug:`` -> ``YAML_FRONTMATTER``
+       (tasks-list variant; tasks are inside the frontmatter list itself)
+
+    Args:
+        frontmatter_text: Raw YAML text between the opening and closing ``---``
+            delimiters (the delimiters themselves are excluded).
+
+    Returns:
+        A ``FormatType`` value, or ``None`` if no match.
+    """
+    if _TASK_FIELD_RE.search(frontmatter_text):
+        return FormatType.YAML_FRONTMATTER
+
+    has_feature_or_slug = bool(_FEATURE_FIELD_RE.search(frontmatter_text))
+    has_tasks_list = bool(_TASKS_LIST_RE.search(frontmatter_text))
+
+    if has_feature_or_slug and has_tasks_list:
+        return FormatType.GLOBAL_MANIFEST
+
+    if has_feature_or_slug:
+        return FormatType.YAML_FRONTMATTER
+
+    # Tasks-list variant: ``tasks:`` list without a ``feature:``/``slug:`` field.
+    # About 20 follow-up task files in ``plan/`` use this structure where the
+    # entire task definition lives inside the frontmatter ``tasks:`` list and the
+    # body below the closing ``---`` is human-readable prose only.
+    if has_tasks_list:
+        return FormatType.YAML_FRONTMATTER
+
+    return None
+
+
 def detect_format(path: Path) -> FormatType:
     """Detect the task/plan file format for a given path.
 
@@ -65,14 +108,9 @@ def detect_format(path: Path) -> FormatType:
     2. If .yaml extension -> PURE_YAML
     3. If .md extension:
        a. Read first 20 lines
-       b. If starts with ``---`` and frontmatter has ``task:`` -> YAML_FRONTMATTER
-          (single-task file)
-       c. If starts with ``---`` and frontmatter has (``feature:``/``slug:``) + ``tasks:``
-          -> GLOBAL_MANIFEST
-       d. If starts with ``---`` and frontmatter has ``feature:``/``slug:`` (no ``tasks:``
-          list) -> YAML_FRONTMATTER (multi-task with embedded per-task blocks in body)
-       e. If contains ``## Task N:`` headings -> LEGACY_MARKDOWN
-       f. Otherwise -> FormatDetectionError
+       b. If starts with ``---``: classify frontmatter via ``_classify_frontmatter``
+       c. If contains ``## Task N:`` headings -> LEGACY_MARKDOWN
+       d. Otherwise -> FormatDetectionError
 
     Args:
         path: Path to a task file or directory to inspect.
@@ -90,7 +128,6 @@ def detect_format(path: Path) -> FormatType:
         raise FileNotFoundError(msg)
 
     if path.is_dir():
-        # Directory format: contains plan.yaml or task-*.yaml / *.md task files
         has_plan_yaml = (path / "plan.yaml").exists()
         has_yaml_files = bool(list(path.glob("*.yaml")))
         has_md_files = bool(list(path.glob("*.md")))
@@ -107,30 +144,13 @@ def detect_format(path: Path) -> FormatType:
         first_20_lines = "\n".join(content.splitlines()[:20])
 
         if content.startswith(("---\n", "---\r\n")):
-            # File starts with frontmatter — read the first YAML block
-            # Find the closing --- of the first block
             rest = content[4:]  # skip opening ---\n
             close_idx = rest.find("\n---")
             if close_idx >= 0:
-                frontmatter_text = rest[:close_idx]
+                fmt = _classify_frontmatter(rest[:close_idx])
+                if fmt is not None:
+                    return fmt
 
-                # YAML_FRONTMATTER: frontmatter has ``task:`` field (single-task)
-                if _TASK_FIELD_RE.search(frontmatter_text):
-                    return FormatType.YAML_FRONTMATTER
-
-                # GLOBAL_MANIFEST: frontmatter has (feature/slug) AND ``tasks:`` list
-                has_feature_or_slug = _FEATURE_FIELD_RE.search(frontmatter_text)
-                has_tasks_list = _TASKS_LIST_RE.search(frontmatter_text)
-                if has_feature_or_slug and has_tasks_list:
-                    return FormatType.GLOBAL_MANIFEST
-
-                # YAML_FRONTMATTER (multi-task): frontmatter has ``feature:`` or
-                # ``slug:`` but no ``tasks:`` list — per-task blocks are embedded
-                # in the body after the closing ``---``.
-                if has_feature_or_slug:
-                    return FormatType.YAML_FRONTMATTER
-
-        # LEGACY_MARKDOWN: contains ``## Task N:`` headings
         if _LEGACY_HEADING_RE.search(content):
             return FormatType.LEGACY_MARKDOWN
 

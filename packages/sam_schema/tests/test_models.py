@@ -180,12 +180,31 @@ class TestTaskIdPattern:
     Why: Invalid task IDs silently break dependency graph lookups.
     """
 
-    @pytest.mark.parametrize("valid_id", ["1", "42", "1.1", "T1", "T2.3", "t99"])
+    @pytest.mark.parametrize(
+        "valid_id",
+        [
+            # Simple numeric
+            "1",
+            "42",
+            "1.1",
+            # Letter-prefixed
+            "T1",
+            "T2.3",
+            "t99",
+            # Letter-suffixed (compound IDs with letter suffix)
+            "T10a",
+            "T10b",
+            # Slash-separated compound IDs
+            "P1/T3",
+            "T10a/T10b",
+            "P1/T10a",
+        ],
+    )
     def test_valid_task_ids_match(self, valid_id: str) -> None:
         """Verify valid task IDs match the pattern."""
         assert TASK_ID_PATTERN.match(valid_id)
 
-    @pytest.mark.parametrize("invalid_id", ["", "TT1", "T1a", "abc", "T", "1.2.3", "T-1"])
+    @pytest.mark.parametrize("invalid_id", ["", "TT1", "abc", "T", "1.2.3", "T-1"])
     def test_invalid_task_ids_do_not_match(self, invalid_id: str) -> None:
         """Verify invalid task IDs do not match the pattern."""
         assert not TASK_ID_PATTERN.match(invalid_id)

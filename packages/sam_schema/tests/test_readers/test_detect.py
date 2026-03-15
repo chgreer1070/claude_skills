@@ -126,6 +126,60 @@ def test_detect_format_global_manifest_with_slug_field_returns_global_manifest(t
 
 
 # ---------------------------------------------------------------------------
+# detect_format — YAML_FRONTMATTER tasks-list variant
+# ---------------------------------------------------------------------------
+
+
+def test_detect_format_tasks_list_without_feature_returns_yaml_frontmatter() -> None:
+    """Verify frontmatter with tasks: list (no feature/slug) is YAML_FRONTMATTER.
+
+    Tests: YAML_FRONTMATTER detection for tasks-list variant.
+    How: Point detect_format at the tasks-list fixture.
+    Why: About 20 follow-up task files in plan/ use this structure; they must
+         not raise FormatDetectionError.
+    """
+    path = _FIXTURES / "yaml_frontmatter_tasks_list.md"
+    result = detect_format(path)
+    assert result == FormatType.YAML_FRONTMATTER
+
+
+def test_detect_format_tasks_list_dynamic_returns_yaml_frontmatter(tmp_path: Path) -> None:
+    """Verify dynamic tasks-list frontmatter file is YAML_FRONTMATTER.
+
+    Tests: YAML_FRONTMATTER detection for tasks-list variant via dynamic file.
+    How: Write a minimal tasks-list file and call detect_format.
+    Why: Confirm the detection branch works with minimal required structure.
+    """
+    f = tmp_path / "followup.md"
+    f.write_text(
+        "---\n"
+        "tasks:\n"
+        '  - task: "Do the thing"\n'
+        "    status: pending\n"
+        '    parent_task: "plan/tasks-1-something.md"\n'
+        "---\n"
+        "\n"
+        "# Human-readable body\n"
+    )
+    result = detect_format(f)
+    assert result == FormatType.YAML_FRONTMATTER
+
+
+def test_detect_format_real_followup_file_does_not_raise() -> None:
+    """Verify the actual follow-up task file that triggered this bug is detected.
+
+    Tests: FormatDetectionError not raised for tasks-3 follow-up file.
+    How: Call detect_format on the real plan file.
+    Why: Regression guard — the exact file that failed before the fix.
+    """
+    real_file = Path("/home/ubuntulinuxqa2/repos/claude_skills/plan/tasks-3-unified-sam-task-schema-followup-1.md")
+    if not real_file.exists():
+        pytest.skip("Real follow-up file not present in this environment")
+    result = detect_format(real_file)
+    assert result == FormatType.YAML_FRONTMATTER
+
+
+# ---------------------------------------------------------------------------
 # detect_format — errors
 # ---------------------------------------------------------------------------
 

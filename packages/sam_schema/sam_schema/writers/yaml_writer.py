@@ -10,6 +10,7 @@ from __future__ import annotations
 import contextlib
 import io
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -321,6 +322,55 @@ _KNOWN_TASK_FIELDS: frozenset[str] = frozenset({
 })
 
 
+def _is_yaml_frontmatter(raw_text: str) -> bool:
+    r"""Return True if ``raw_text`` uses YAML-frontmatter format.
+
+    YAML-frontmatter files start with ``---\\n`` and contain a closing
+    ``\\n---`` delimiter that separates the YAML block from the prose body.
+    ruamel.yaml's ``load()`` cannot parse these as a single document because
+    the second ``---`` starts a new YAML document.
+
+    Args:
+        raw_text: Full file content.
+
+    Returns:
+        ``True`` if the file uses yaml_frontmatter format.
+    """
+    if not raw_text.startswith(("---\n", "---\r\n")):
+        return False
+    after_open = raw_text[4:]
+    return bool(re.search(r"\n---", after_open))
+
+
+def _split_frontmatter(raw_text: str) -> tuple[str, str, str]:
+    r"""Split a yaml_frontmatter file into its three parts.
+
+    Args:
+        raw_text: Full file content starting with ``---\\n``.
+
+    Returns:
+        A tuple of ``(open_delimiter, yaml_block, rest)`` where:
+
+        - ``open_delimiter`` is ``"---\\n"``
+        - ``yaml_block`` is the raw YAML text between the first ``---``
+          and the closing ``\\n---``
+        - ``rest`` is everything from the closing ``\\n---`` to end-of-file
+          (includes the ``\\n---`` itself so reassembly is lossless)
+
+    Raises:
+        ValueError: If no closing ``---`` delimiter is found.
+    """
+    open_delim = "---\n"
+    after_open = raw_text[len(open_delim) :]
+    close_match = re.search(r"\n---", after_open)
+    if not close_match:
+        msg = "No closing '---' found for YAML frontmatter block"
+        raise ValueError(msg)
+    yaml_block = after_open[: close_match.start()]
+    rest = after_open[close_match.start() :]
+    return open_delim, yaml_block, rest
+
+
 def _validate_field_name(field: str) -> None:
     """Validate that ``field`` is a known task field name.
 
@@ -372,13 +422,29 @@ def update_field(file_path: Path, task_id: str, field: str, value: str | int | l
 
     y = _make_yaml()
     raw_text = file_path.read_text(encoding="utf-8")
-    data = y.load(raw_text)
 
     # Wrap markdown content field values as literal block scalars.
     if field in _MARKDOWN_FIELDS and isinstance(value, str) and "\n" in value:
         actual_value: Any = LiteralScalarString(value)
     else:
         actual_value = value
+
+    if _is_yaml_frontmatter(raw_text):
+        # yaml_frontmatter format: extract only the YAML block, parse it,
+        # update the field, and reassemble with the original body.
+        open_delim, yaml_block, rest = _split_frontmatter(raw_text)
+        data = y.load(yaml_block)
+        entry_id = data.get("task") or data.get("id")
+        if str(entry_id) != task_id:
+            msg = f"Task ID '{task_id}' not found in {file_path}"
+            raise KeyError(msg)
+        data[field] = actual_value
+        buf = io.StringIO()
+        y.dump(data, buf)
+        _atomic_write(file_path, open_delim + buf.getvalue() + rest)
+        return
+
+    data = y.load(raw_text)
 
     # Locate and update the task.
     # Both ``task`` (YAML-frontmatter format) and ``id`` (pure-YAML format)
@@ -432,7 +498,6 @@ def update_fields(file_path: Path, task_id: str, fields: dict[str, str | int | l
 
     y = _make_yaml()
     raw_text = file_path.read_text(encoding="utf-8")
-    data = y.load(raw_text)
 
     def _apply_fields(target: dict[str, object]) -> None:
         for field, value in fields.items():
@@ -440,6 +505,23 @@ def update_fields(file_path: Path, task_id: str, fields: dict[str, str | int | l
                 target[field] = LiteralScalarString(value)
             else:
                 target[field] = value
+
+    if _is_yaml_frontmatter(raw_text):
+        # yaml_frontmatter format: extract only the YAML block, parse it,
+        # apply all fields, and reassemble with the original body.
+        open_delim, yaml_block, rest = _split_frontmatter(raw_text)
+        data = y.load(yaml_block)
+        entry_id = data.get("task") or data.get("id")
+        if str(entry_id) != task_id:
+            msg = f"Task ID '{task_id}' not found in {file_path}"
+            raise KeyError(msg)
+        _apply_fields(data)
+        buf = io.StringIO()
+        y.dump(data, buf)
+        _atomic_write(file_path, open_delim + buf.getvalue() + rest)
+        return
+
+    data = y.load(raw_text)
 
     if "tasks" in data and isinstance(data["tasks"], list):
         for task_entry in data["tasks"]:

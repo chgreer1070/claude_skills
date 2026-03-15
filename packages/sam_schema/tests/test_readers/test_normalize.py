@@ -13,7 +13,13 @@ import pathlib
 import pytest
 from sam_schema.core.models import TaskStatus
 from sam_schema.readers.detect import FormatType
-from sam_schema.readers.normalize import detect_gaps, normalize_plan, normalize_task, normalize_task_lenient
+from sam_schema.readers.normalize import (
+    _normalize_status,
+    detect_gaps,
+    normalize_plan,
+    normalize_task,
+    normalize_task_lenient,
+)
 
 _FIXTURES = pathlib.Path(__file__).parent.parent / "fixtures"
 
@@ -83,16 +89,72 @@ def test_normalize_task_emoji_in_progress_status_mapped():
     assert task.status == TaskStatus.IN_PROGRESS
 
 
-def test_normalize_task_unknown_status_falls_back_to_not_started():
+def test_normalize_task_unknown_status_raises_value_error():
+    """Unrecognized status strings must raise ValueError, not silently default.
+
+    Silently defaulting to not-started would cause completed tasks to be
+    re-dispatched if a status value has a typo.
+    """
     raw = {"task": "T1", "title": "T", "status": "INVENTED_STATUS"}
-    task, _ = normalize_task(raw, FormatType.LEGACY_MARKDOWN)
-    assert task.status == TaskStatus.NOT_STARTED
+    with pytest.raises(ValueError, match="Unrecognized status"):
+        normalize_task(raw, FormatType.LEGACY_MARKDOWN)
 
 
 def test_normalize_task_none_status_defaults_to_not_started():
     raw = {"task": "T1", "title": "T", "status": None}
     task, _ = normalize_task(raw, FormatType.YAML_FRONTMATTER)
     assert task.status == TaskStatus.NOT_STARTED
+
+
+# ---------------------------------------------------------------------------
+# _normalize_status — ValueError for unrecognized values
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_status_raises_for_unrecognized_string() -> None:
+    """_normalize_status raises ValueError for arbitrary unrecognized strings.
+
+    Tests: Root-cause fix for silent status normalization fallback.
+    How: Call _normalize_status with a value not in TaskStatus or STATUS_MAP.
+    Why: Silently defaulting to not-started could cause completed tasks to be
+    re-dispatched if the status field contains a typo.
+    """
+    with pytest.raises(ValueError, match="Unrecognized status"):
+        _normalize_status("typo-value")
+
+
+def test_normalize_status_raises_for_wont_fix_which_lacks_task_status_member() -> None:
+    """_normalize_status raises ValueError when STATUS_MAP maps to a non-TaskStatus value.
+
+    Tests: STATUS_MAP entries that resolve to values not in TaskStatus.
+    How: 'WONT FIX' maps to 'wont-fix' which has no TaskStatus member.
+    Why: The mapped value must be a valid TaskStatus, not just any string.
+    """
+    with pytest.raises(ValueError, match="Unrecognized status"):
+        _normalize_status("WONT FIX")
+
+
+def test_normalize_status_none_returns_not_started() -> None:
+    """_normalize_status returns 'not-started' for None (field not provided).
+
+    Tests: Explicit None handling in _normalize_status.
+    How: Pass None, expect 'not-started'.
+    Why: Absence of a status field is a valid condition meaning 'not yet started'.
+    """
+    result = _normalize_status(None)
+    assert result == "not-started"
+
+
+def test_normalize_status_valid_canonical_value_returned() -> None:
+    """_normalize_status returns canonical form for known values.
+
+    Tests: Happy-path for canonical status strings.
+    How: Pass 'in-progress', expect 'in-progress'.
+    Why: Validate that normal values are not disturbed by the refactor.
+    """
+    assert _normalize_status("in-progress") == "in-progress"
+    assert _normalize_status("complete") == "complete"
+    assert _normalize_status("blocked") == "blocked"
 
 
 # ---------------------------------------------------------------------------
@@ -156,11 +218,13 @@ def test_normalize_task_present_optional_field_not_reported_as_gap():
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_task_lenient_invalid_dict_returns_none_and_empty_gaps():
+def test_normalize_task_lenient_invalid_dict_returns_none_and_gap():
+    """normalize_task_lenient returns a SchemaGap describing the failure, never an empty list."""
     raw = {"title": "No ID", "status": "not-started"}  # missing task id
     task, gaps = normalize_task_lenient(raw, FormatType.YAML_FRONTMATTER)
     assert task is None
-    assert gaps == []
+    assert len(gaps) >= 1
+    assert gaps[0].gap_type == "invalid_value"
 
 
 def test_normalize_task_lenient_valid_dict_returns_task():
@@ -244,6 +308,63 @@ def test_normalize_plan_missing_feature_raises_value_error():
         normalize_plan(raw_meta, [], FormatType.PURE_YAML, pathlib.Path("/fake"))
 
 
+def test_normalize_plan_derives_slug_from_tasks_filename_when_metadata_has_no_feature() -> None:
+    """Slug is extracted from filename when plan_meta lacks 'feature' and 'slug'.
+
+    Tests: Filename-based slug derivation for auto-generated follow-up files.
+    How: Pass empty plan_meta with a path matching 'tasks-N-slug.md' convention.
+    Why: Code-reviewer-generated follow-up files have a tasks: list but no
+    feature: key.  normalize_plan must derive the slug from the filename instead
+    of raising ValueError.
+    """
+    # Arrange
+    raw_meta: dict = {"tasks": []}  # no 'feature' or 'slug' key
+    task_dicts = [{"task": "T1", "title": "A task", "status": "not-started"}]
+    path = pathlib.Path("/plan/tasks-3-unified-sam-task-schema.md")
+
+    # Act
+    result = normalize_plan(raw_meta, task_dicts, FormatType.YAML_FRONTMATTER, path)
+
+    # Assert
+    assert result.plan.feature == "unified-sam-task-schema"
+
+
+def test_normalize_plan_derives_slug_from_followup_filename() -> None:
+    """Slug for a followup file retains the '-followup-K' suffix as part of the slug.
+
+    Tests: Filename derivation for 'tasks-N-slug-followup-K.md' naming.
+    How: Pass empty plan_meta with a followup path.
+    Why: Follow-up files carry 'followup-K' in the name; the full suffix after
+    'tasks-N-' is used as the feature slug to distinguish from the parent.
+    """
+    # Arrange
+    raw_meta: dict = {}
+    path = pathlib.Path("/plan/tasks-3-unified-sam-task-schema-followup-1.md")
+
+    # Act
+    result = normalize_plan(raw_meta, [], FormatType.YAML_FRONTMATTER, path)
+
+    # Assert
+    assert result.plan.feature == "unified-sam-task-schema-followup-1"
+
+
+def test_normalize_plan_raises_when_filename_does_not_match_convention() -> None:
+    """ValueError raised when metadata has no feature AND filename is non-standard.
+
+    Tests: Both metadata and filename derivation fail.
+    How: Pass empty plan_meta with a filename that has no 'tasks-N-' prefix.
+    Why: If neither source can provide the slug, raising is correct — there is no
+    safe value to default to.
+    """
+    # Arrange
+    raw_meta: dict = {}
+    path = pathlib.Path("/plan/unknown-file.md")
+
+    # Act / Assert
+    with pytest.raises(ValueError, match="feature"):
+        normalize_plan(raw_meta, [], FormatType.PURE_YAML, path)
+
+
 # ---------------------------------------------------------------------------
 # normalize_plan — lenient invalid task ID handling
 # ---------------------------------------------------------------------------
@@ -294,15 +415,22 @@ def test_normalize_plan_malformed_missing_title_records_gap():
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_plan_malformed_invalid_status_task_is_included():
+def test_normalize_plan_malformed_invalid_status_recorded_as_gap():
+    """Invalid status values are recorded as gaps, not silently defaulted.
+
+    Silently defaulting 'started' to 'not-started' could cause a running task
+    to be re-dispatched. The correct behavior is to reject the task and report
+    a schema gap so the caller can inspect and fix the data.
+    """
     from sam_schema.readers.yaml_reader import read_yaml_plan
 
     path = _FIXTURES / "malformed" / "invalid_status.yaml"
     plan_meta, task_dicts, fmt = read_yaml_plan(path)
     result = normalize_plan(plan_meta, task_dicts, fmt, path)
-    # "started" is not in TaskStatus but normalizer falls back to not-started
-    assert len(result.plan.tasks) == 1
-    assert result.plan.tasks[0].status == TaskStatus.NOT_STARTED
+    # "started" is not in TaskStatus — task is rejected and recorded as gap
+    assert result.plan.tasks == []
+    assert len(result.gaps) >= 1
+    assert any("T1" in g.task_id for g in result.gaps)
 
 
 # ---------------------------------------------------------------------------
@@ -437,18 +565,17 @@ def test_normalize_task_deferred_space_separated_mapped() -> None:
     assert task.status == TaskStatus.DEFERRED
 
 
-def test_normalize_task_wont_fix_status_mapped() -> None:
-    """Verify 'WONT FIX' maps to not-started (it's in STATUS_MAP but has no TaskStatus member).
+def test_normalize_task_wont_fix_status_raises_value_error() -> None:
+    """Verify 'WONT FIX' raises ValueError because 'wont-fix' is not in TaskStatus.
 
-    Tests: STATUS_MAP entry that maps to a non-existent status (special handling).
-    How: Pass 'WONT FIX' as status.
-    Why: 'wont-fix' is in STATUS_MAP but there is no TaskStatus.WONT_FIX.
+    Tests: STATUS_MAP entry that maps to an unrecognized final status.
+    How: Pass 'WONT FIX' as status, expect ValueError.
+    Why: 'WONT FIX' maps to 'wont-fix' via STATUS_MAP but TaskStatus has no
+    WONT_FIX member. The function must raise rather than silently falling back.
     """
     raw: dict = {"task": "T1", "title": "T", "status": "WONT FIX"}
-    # WONT FIX maps to "wont-fix" which is not in TaskStatus, so it falls back
-    task, _ = normalize_task(raw, FormatType.LEGACY_MARKDOWN)
-    # The mapped value "wont-fix" is not in TaskStatus, so it falls through to fallback
-    assert task.status is not None
+    with pytest.raises(ValueError, match="Unrecognized status"):
+        normalize_task(raw, FormatType.LEGACY_MARKDOWN)
 
 
 # ---------------------------------------------------------------------------
