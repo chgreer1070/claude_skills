@@ -6,6 +6,19 @@
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
+  "mcpServers": {
+    "sam": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${CLAUDE_PROJECT_DIR}",
+        "python",
+        "-m",
+        "sam_schema.server"
+      ]
+    }
+  },
   "agents": [
     "./agents/generic-stage-agent.md"
   ]
