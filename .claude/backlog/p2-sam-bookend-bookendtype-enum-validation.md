@@ -9,4 +9,5 @@ metadata:
   type: Refactor
   status: open
   plan: plan/tasks-696-sam-bookend-validation-followup-1.md
+  issue: '#721'
 ---

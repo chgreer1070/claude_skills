@@ -9,4 +9,5 @@ metadata:
   type: Chore
   status: open
   plan: plan/tasks-697-sam-bookend-validation-followup-2.md
+  issue: '#722'
 ---
