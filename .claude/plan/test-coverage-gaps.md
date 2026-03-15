@@ -155,6 +155,24 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 - `__main__.py`: `mcp.run()` is called when script is run as `__main__`
 **Reason not written**: T9 scope is server implementation only. Test authoring for the MCP server is assigned to T10a per the task plan architecture spec.
 
+## Gap: backlog.py — ReconcileResult and reconciliation functions (T2)
+
+**Files**: `.claude/skills/backlog/scripts/backlog.py`
+**Behavior to cover**:
+- `_has_active_work(item)`: returns `(True, reason)` when a plan file contains an IN PROGRESS task for the item's topic; returns `(True, reason)` when `.claude/context/active-task-*.json` contains matching task; returns `(False, "")` when no plan files exist; returns `(False, "")` when plan file regex finds no IN PROGRESS task
+- `_reconcile_open_item(issue_num, local_status, github_status, file_path_str)`: returns `no_change` when local == github and both non-terminal; returns `auto_corrected` when `find_valid_path` finds a route from local to github; returns `flagged_divergence` when no valid path exists from local to github status
+- `_reconcile_closed_item(issue_num, local_status, github_status, file_path_str, item)`: returns `wip_protected` when `_has_active_work` detects active work; returns `closed` (updating metadata) when no active work; calls `_update_item_metadata` with `status="closed"` on the closed path
+- `_reconcile_item(item, gh_issue_map, repo)`: returns `no_change` when issue_number not in map; delegates to `_reconcile_open_item` for open GitHub issues; delegates to `_reconcile_closed_item` for closed GitHub issues
+- `_reconcile_batch(items, repo)`: calls `repo.get_issues(state="all")`; builds gh_issue_map keyed by issue number; collects warnings from ReconcileResult objects; returns `(updated_items, warnings)` tuple
+- `_filter_closed_items(items, include_closed=False)`: excludes items whose local status is terminal when `include_closed=False`; returns all items when `include_closed=True`
+**Reason not written**: T2 scope is implementation only. T7 (reconciliation unit tests) is the designated test task per the task plan dependency graph.
+
+## Gap: test_backlog_core_parsing.py — pre-existing collection errors
+
+**Files**: `.claude/skills/backlog/tests/test_backlog_core_parsing.py`
+**Behavior to cover**: `TestBuildIssueBodyFromFileDict` class — 5 tests fail at collection time with `AttributeError: 'NoneType' has no attribute '__dict__'`. The tests appear to depend on a dataclass or object that is `None` at import time.
+**Reason not written**: Pre-existing errors confirmed by running `pytest .claude/skills/backlog/tests/test_backlog_core_parsing.py` with and without T2 changes (git stash verification). Both runs produce identical 5 errors. Root cause investigation and fix are out of scope for T2.
+
 ## Gap: sam_schema state/writer T07 lookup failure
 
 **Files**: `packages/sam_schema/sam_schema/writers/yaml_writer.py`, `packages/sam_schema/sam_schema/cli.py`

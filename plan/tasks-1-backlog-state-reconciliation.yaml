@@ -9,7 +9,7 @@ codebase-patterns: ./codebase/backlog-state-patterns.md
 tasks:
 - id: T1
   title: State handler helper functions
-  status: not-started
+  status: complete
   agent: python3-development:python-cli-architect
   priority: 1
   complexity: low
@@ -55,9 +55,11 @@ tasks:
       - If `done` and `resolved` have non-empty transition sets (they transition to `closed`), then `is_terminal_state` must check for states from which no further non-closed progress is possible. Re-read the architecture spec Section 4.3: it says "True if state is done, resolved, or closed." Follow the spec definition, which treats done/resolved/closed as terminal for filtering purposes (items in these states should be excluded from default list).
   handoff: |-
     Report file path, function signatures, and BFS test output
+  started: '2026-03-15T13:57:45.097638+00:00'
+  completed: '2026-03-15T14:02:30.743434+00:00'
 - id: T2
   title: Core reconciliation functions in backlog.py
-  status: not-started
+  status: complete
   agent: python3-development:python-cli-architect
   dependencies:
   - T1
@@ -124,9 +126,12 @@ tasks:
       - If `_update_item_metadata` is imported from `backlog_core.operations`, use the imported name. If it is a local function in `backlog.py`, use the local reference.
   handoff: |-
     Report file path, function names added, and import verification output
+  started: '2026-03-15T14:03:15.083454+00:00'
+  completed: '2026-03-15T15:30:00.000000+00:00'
+  status: complete
 - id: T3
   title: Fix grooming bug in backlog.py
-  status: not-started
+  status: complete
   agent: python3-development:python-cli-architect
   priority: 2
   complexity: medium
@@ -177,6 +182,7 @@ tasks:
       - If `_write_groomed_to_item_file` does not have access to `repo`/`issue` objects, the function signature must be modified to accept them, and the caller must pass them.
   handoff: |-
     Report exact lines changed, old vs new behavior, and verification output
+  completed: '2026-03-15T14:02:30.796774+00:00'
 - id: T4
   title: Modify fetch functions and add CLI flag
   status: not-started
@@ -277,7 +283,8 @@ tasks:
     Report parameter added, function signature, and verification output
 - id: T6
   title: State handler unit tests
-  status: not-started
+  status: in-progress
+  started: '2026-03-15T15:30:00.000000+00:00'
   agent: python3-development:python-pytest-architect
   dependencies:
   - T1
@@ -366,7 +373,8 @@ tasks:
     Report test file path, test count, and pytest output
 - id: T8
   title: Grooming fix tests
-  status: not-started
+  status: in-progress
+  started: '2026-03-15T15:30:00.000000+00:00'
   agent: python3-development:python-pytest-architect
   dependencies:
   - T3
