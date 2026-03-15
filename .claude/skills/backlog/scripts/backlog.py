@@ -797,7 +797,7 @@ def _batch_fetch_statuses(items: list[dict], repo: str) -> dict[int, dict[str, s
     if repo_obj is None:
         return {}
     try:
-        all_issues = {issue.number: issue for issue in repo_obj.get_issues(state="open") if issue.pull_request is None}
+        all_issues = {issue.number: issue for issue in repo_obj.get_issues(state="all") if issue.pull_request is None}
     except GithubException:
         return {}
     result: dict[int, dict[str, str]] = {}
@@ -908,7 +908,7 @@ def _refresh_local_cache_from_github(repo: str, label: str | None = None) -> Non
         except GithubException:
             typer.echo(f"  WARNING: label '{label}' not found — listing all issues", err=True)
 
-    issues = repo_obj.get_issues(state="open", labels=label_objs or GithubObject.NotSet)
+    issues = repo_obj.get_issues(state="all", labels=label_objs or GithubObject.NotSet)
     count = 0
     for issue in issues:
         if issue.pull_request is not None:
@@ -916,6 +916,12 @@ def _refresh_local_cache_from_github(repo: str, label: str | None = None) -> Non
         _pull_single_issue(repo_obj, issue.number)
         count += 1
     typer.echo(f"  Refreshed {count} issue(s) from GitHub into local cache.")
+
+    items = parse_backlog()
+    open_items = [it for it in items if not it.get("_skip") and it.get("_section")]
+    _, warnings = _reconcile_batch(open_items, repo)
+    for warning in warnings:
+        typer.echo(f"  RECONCILE WARNING: {warning}", err=True)
 
 
 @app.command("list")
@@ -927,12 +933,16 @@ def list_items(
     ] = False,
     label: Annotated[str | None, typer.Option("--label", help="Filter by GitHub label (e.g. 'priority:p1')")] = None,
     repo: Annotated[str, typer.Option("--repo", "-R")] = DEFAULT_REPO,
+    include_closed: Annotated[
+        bool, typer.Option("--include-closed", help="Include items with closed/done/resolved status")
+    ] = False,
 ) -> None:
     """List backlog items. Default reads local cache only. Use --from-github to refresh from GH first."""
     if from_github:
         _refresh_local_cache_from_github(repo, label)
     items = parse_backlog()
     open_items = [it for it in items if not it.get("_skip") and it.get("_section")]
+    open_items = _filter_closed_items(open_items, include_closed)
     if output_format == "json":
         _list_items_json(open_items, with_status, repo)
     else:
