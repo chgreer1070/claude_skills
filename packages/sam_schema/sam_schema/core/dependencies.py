@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from sam_schema.core.models import Plan, Task, TaskStatus
+from sam_schema.core.models import BookendType, Plan, Task, TaskStatus
 
 # Statuses that satisfy a dependency requirement — tasks depending on a task
 # in one of these statuses may proceed.
@@ -244,10 +244,10 @@ class BookendValidator:
         """Return the T0 baseline bookend task, or None if absent.
 
         Returns:
-            The task whose ``bookend_type`` is ``"t0-baseline"``, or ``None``.
+            The task whose ``bookend_type`` is ``BookendType.T0_BASELINE``, or ``None``.
         """
         for task in self._plan.tasks:
-            if task.bookend_type == "t0-baseline":
+            if task.bookend_type == BookendType.T0_BASELINE:
                 return task
         return None
 
@@ -255,10 +255,10 @@ class BookendValidator:
         """Return the TN verification bookend task, or None if absent.
 
         Returns:
-            The task whose ``bookend_type`` is ``"tn-verification"``, or ``None``.
+            The task whose ``bookend_type`` is ``BookendType.TN_VERIFICATION``, or ``None``.
         """
         for task in self._plan.tasks:
-            if task.bookend_type == "tn-verification":
+            if task.bookend_type == BookendType.TN_VERIFICATION:
                 return task
         return None
 
@@ -291,8 +291,8 @@ class BookendValidator:
         """
         errors: list[str] = []
 
-        t0_tasks = [t for t in self._plan.tasks if t.bookend_type == "t0-baseline"]
-        tn_tasks = [t for t in self._plan.tasks if t.bookend_type == "tn-verification"]
+        t0_tasks = [t for t in self._plan.tasks if t.bookend_type == BookendType.T0_BASELINE]
+        tn_tasks = [t for t in self._plan.tasks if t.bookend_type == BookendType.TN_VERIFICATION]
 
         # Rule 1: at most one T0
         if len(t0_tasks) > 1:

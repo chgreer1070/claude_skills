@@ -1169,6 +1169,57 @@ class TestTaskBookendFields:
         assert dumped["is-bookend"] is True
         assert dumped["bookend-type"] == "t0-baseline"
 
+    def test_invalid_bookend_type_raises_validation_error(self) -> None:
+        """Verify that an invalid bookend_type value raises ValidationError.
+
+        Tests: BookendType enum constraint on Task.bookend_type.
+        How: Construct Task with bookend_type set to an arbitrary string not
+             in the enum.
+        Why: The Pydantic model must reject values outside the two allowed enum
+             members so that a typo cannot create a task invisible to the
+             BookendValidator (neither T0 nor TN).
+        """
+        with pytest.raises(ValidationError):
+            Task(id="T0", title="Bad bookend", status=TaskStatus.NOT_STARTED, is_bookend=True, bookend_type="foo")
+
+    def test_bookend_type_enum_member_t0_accepted(self) -> None:
+        """Verify BookendType.T0_BASELINE is accepted for bookend_type.
+
+        Tests: Enum member round-trip for T0_BASELINE.
+        How: Construct Task using enum member directly.
+        Why: Callers using the enum must get the same acceptance as passing
+             the string value.
+        """
+        from sam_schema.core.models import BookendType
+
+        task = Task(
+            id="T0",
+            title="Baseline",
+            status=TaskStatus.NOT_STARTED,
+            is_bookend=True,
+            bookend_type=BookendType.T0_BASELINE,
+        )
+        assert task.bookend_type == BookendType.T0_BASELINE
+
+    def test_bookend_type_enum_member_tn_accepted(self) -> None:
+        """Verify BookendType.TN_VERIFICATION is accepted for bookend_type.
+
+        Tests: Enum member round-trip for TN_VERIFICATION.
+        How: Construct Task using enum member directly.
+        Why: Callers using the enum must get the same acceptance as passing
+             the string value.
+        """
+        from sam_schema.core.models import BookendType
+
+        task = Task(
+            id="T99",
+            title="Verification",
+            status=TaskStatus.NOT_STARTED,
+            is_bookend=True,
+            bookend_type=BookendType.TN_VERIFICATION,
+        )
+        assert task.bookend_type == BookendType.TN_VERIFICATION
+
 
 # ---------------------------------------------------------------------------
 # Plan.acceptance_criteria_structured

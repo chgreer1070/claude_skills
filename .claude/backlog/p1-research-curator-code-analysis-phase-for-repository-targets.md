@@ -11,6 +11,7 @@ metadata:
   issue: '#717'
   last_synced: '2026-03-15T04:46:01Z'
   groomed: '2026-03-15'
+  plan: plan/P698-research-curator-code-analysis.yaml
 ---
 
 ## Fact-Check

@@ -19,6 +19,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+from sam_schema.core.models import TASK_ID_PATTERN
 from sam_schema.readers._yaml_utils import coerce_to_plain, load_yaml
 from sam_schema.readers.detect import FormatType
 
@@ -52,9 +53,19 @@ def _extract_task_id_title_from_entry(entry: dict) -> tuple[str, str] | None:
 
     # Full task dict format: has ``id:`` or ``task:`` field
     if "id" in entry or "task" in entry:
-        task_id = str(entry.get("id") or entry.get("task") or "")
-        title = str(entry.get("title") or "")
-        return (task_id, title) if task_id else None
+        raw_id = str(entry.get("id") or entry.get("task") or "")
+        if not raw_id:
+            return None
+        # If the value matches the task ID pattern, use it as the ID.
+        # Otherwise treat the value as the title (single-task follow-up format:
+        # ``task: "Constrain bookend_type to enum"``) and synthesise "T1".
+        if TASK_ID_PATTERN.match(raw_id):
+            task_id = raw_id
+            title = str(entry.get("title") or "")
+        else:
+            task_id = "T1"
+            title = str(entry.get("title") or raw_id)
+        return (task_id, title)
 
     # Simple mapping format: ``{TN: "title"}`` — exactly one key
     if len(entry) == 1:
@@ -148,6 +159,7 @@ def _parse_body_prose_fields(prose: str) -> dict[str, str]:
     matches = list(heading_re.finditer(prose))
 
     HEADING_TO_FIELD: dict[str, str] = {
+        "description": "description",
         "context": "description",
         "background": "description",
         "objective": "objective",
@@ -286,6 +298,32 @@ def _extract_body_task_blocks(body: str) -> dict[str, dict]:
     return task_blocks
 
 
+def _resolve_task_id_from_dict(task_dict: dict) -> str | None:
+    """Extract or synthesise a task ID from a full task dict entry.
+
+    When the ``id:`` or ``task:`` value matches ``TASK_ID_PATTERN``, it is used
+    as-is.  When it is a description string (single-task follow-up format), the
+    synthetic ID ``"T1"`` is returned and the description string is promoted to
+    ``title`` in ``task_dict`` (mutates in place).
+
+    Args:
+        task_dict: Mutable copy of a raw task entry dict.
+
+    Returns:
+        Task ID string, or ``None`` if no usable ID can be extracted.
+    """
+    raw_id = str(task_dict.get("id") or task_dict.get("task") or "")
+    if not raw_id:
+        return None
+    if TASK_ID_PATTERN.match(raw_id):
+        return raw_id
+    # Description string used as task: value — synthesise "T1"
+    if not task_dict.get("title"):
+        task_dict["title"] = raw_id
+    task_dict["task"] = "T1"
+    return "T1"
+
+
 def _build_task_dict(
     entry: dict, prose_by_task: dict[str, str], body_task_blocks: dict[str, dict] | None = None
 ) -> dict | None:
@@ -319,7 +357,7 @@ def _build_task_dict(
     # Full task dict: has ``id:`` or ``task:`` field
     if "id" in entry or "task" in entry:
         task_dict = dict(entry)
-        task_id = str(task_dict.get("id") or task_dict.get("task") or "")
+        task_id = _resolve_task_id_from_dict(task_dict)
         if not task_id:
             return None
         task_dict.setdefault("task", task_id)
@@ -354,6 +392,84 @@ def _build_task_dict(
     return task_dict
 
 
+def _is_single_followup_format(
+    tasks_raw: list, body: str, prose_by_task: dict[str, str], body_task_blocks: dict[str, dict]
+) -> bool:
+    """Return True when the file is a single-task follow-up with flat body prose.
+
+    A single-task follow-up file has exactly one entry in ``tasks:`` where the
+    ``task:`` value is a description string (not a structured ID like ``T1``).
+    The body is flat prose (e.g. ``## Description``, ``## Acceptance Criteria``)
+    that belongs to that one task rather than multi-task structured content.
+
+    Args:
+        tasks_raw: Raw ``tasks:`` list from frontmatter.
+        body: Markdown body text after the closing ``---``.
+        prose_by_task: Map from task ID to prose from ``## TN:`` headings.
+        body_task_blocks: Map from task ID to YAML blocks in the body.
+
+    Returns:
+        ``True`` when the file matches the single-task follow-up format.
+    """
+    if len(tasks_raw) != 1 or not body or prose_by_task or body_task_blocks:
+        return False
+    first = tasks_raw[0]
+    if not isinstance(first, dict):
+        return False
+    raw_val = str(first.get("task") or first.get("task_id") or "")
+    return bool(raw_val) and not TASK_ID_PATTERN.match(raw_val)
+
+
+def _parse_manifest_frontmatter(path: Path, content: str) -> tuple[dict, list, str]:
+    """Split a manifest file into plan metadata, raw task list, and body.
+
+    Args:
+        path: Source path (used in error messages only).
+        content: Full file text.
+
+    Returns:
+        ``(plan_meta, tasks_raw, body)`` where ``plan_meta`` is the frontmatter
+        dict (without ``tasks:``), ``tasks_raw`` is the raw ``tasks:`` list, and
+        ``body`` is the markdown text after the closing ``---``.
+
+    Raises:
+        ValueError: If frontmatter delimiters are missing or ``tasks:`` is absent.
+        TypeError: If frontmatter is not a mapping or ``tasks:`` is not a list.
+    """
+    if not content.startswith(("---\n", "---\r\n")):
+        msg = f"Expected file to start with '---' frontmatter: {path}"
+        raise ValueError(msg)
+
+    after_open = content[4:]
+    close_match = re.search(r"\n---\s*\n", after_open)
+    if not close_match:
+        msg = f"No closing '---' found for frontmatter block in {path}"
+        raise ValueError(msg)
+
+    parsed_fm = load_yaml(after_open[: close_match.start()])
+    if not isinstance(parsed_fm, dict):
+        msg = f"Expected a YAML mapping in frontmatter of {path}, got {type(parsed_fm).__name__}"
+        raise TypeError(msg)
+
+    parsed_fm = coerce_to_plain(parsed_fm)
+    tasks_raw = parsed_fm.pop("tasks", None)
+
+    plan_meta = dict(parsed_fm)
+    if "feature" not in plan_meta and "slug" in plan_meta:
+        plan_meta["feature"] = plan_meta.pop("slug")
+    if "feature" not in plan_meta:
+        plan_meta["feature"] = re.sub(r"^tasks-\d+-", "", path.stem)
+
+    if not tasks_raw:
+        msg = f"No 'tasks:' list found in frontmatter of {path}"
+        raise ValueError(msg)
+    if not isinstance(tasks_raw, list):
+        msg = f"Expected 'tasks:' to be a list in {path}"
+        raise TypeError(msg)
+
+    return plan_meta, tasks_raw, after_open[close_match.end() :]
+
+
 def read_manifest_plan(path: Path) -> tuple[dict, list[dict], FormatType]:
     """Read a global-manifest format plan file.
 
@@ -381,52 +497,7 @@ def read_manifest_plan(path: Path) -> tuple[dict, list[dict], FormatType]:
         msg = f"Path does not exist: {path}"
         raise FileNotFoundError(msg)
 
-    content = path.read_text(encoding="utf-8")
-
-    if not (content.startswith(("---\n", "---\r\n"))):
-        msg = f"Expected file to start with '---' frontmatter: {path}"
-        raise ValueError(msg)
-
-    # Strip the leading "---\n"
-    after_open = content[4:]
-
-    # Find the closing delimiter for the frontmatter block
-    close_match = re.search(r"\n---\s*\n", after_open)
-    if not close_match:
-        msg = f"No closing '---' found for frontmatter block in {path}"
-        raise ValueError(msg)
-
-    frontmatter_text = after_open[: close_match.start()]
-    body = after_open[close_match.end() :]
-
-    # Parse the frontmatter YAML
-    parsed_fm = load_yaml(frontmatter_text)
-    if not isinstance(parsed_fm, dict):
-        msg = f"Expected a YAML mapping in frontmatter of {path}, got {type(parsed_fm).__name__}"
-        raise TypeError(msg)
-
-    parsed_fm = coerce_to_plain(parsed_fm)
-
-    # Extract the ``tasks:`` list from frontmatter
-    tasks_raw = parsed_fm.pop("tasks", None)
-
-    # Build plan metadata: strip task list, normalize ``slug:`` -> ``feature:`` if needed
-    plan_meta = dict(parsed_fm)
-    if "feature" not in plan_meta and "slug" in plan_meta:
-        plan_meta["feature"] = plan_meta.pop("slug")
-
-    if "feature" not in plan_meta:
-        # Derive feature from filename
-        slug = re.sub(r"^tasks-\d+-", "", path.stem)
-        plan_meta["feature"] = slug
-
-    if not tasks_raw:
-        msg = f"No 'tasks:' list found in frontmatter of {path}"
-        raise ValueError(msg)
-
-    if not isinstance(tasks_raw, list):
-        msg = f"Expected 'tasks:' to be a list in {path}"
-        raise TypeError(msg)
+    plan_meta, tasks_raw, body = _parse_manifest_frontmatter(path, path.read_text(encoding="utf-8"))
 
     # Extract prose sections from body keyed by task ID (## TN: heading format)
     prose_by_task = _extract_prose_sections(body)
@@ -435,12 +506,25 @@ def read_manifest_plan(path: Path) -> tuple[dict, list[dict], FormatType]:
     # embedded per-task YAML blocks with prose).  Returns empty dict when absent.
     body_task_blocks = _extract_body_task_blocks(body)
 
+    # For single-task follow-up files (task: value is a description string, not a
+    # structured ID), parse the full body as flat prose so that ## Description,
+    # ## Acceptance Criteria, etc. are captured.  Guard: only when prose_by_task
+    # and body_task_blocks are both empty (no multi-task structured content).
+    flat_body_prose: dict[str, str] = (
+        _parse_body_prose_fields(body)
+        if _is_single_followup_format(tasks_raw, body, prose_by_task, body_task_blocks)
+        else {}
+    )
+
     # Build per-task dicts by merging frontmatter entry + body YAML block + prose
     task_dicts: list[dict] = []
-    for raw_entry in tasks_raw:
-        entry: dict = coerce_to_plain(raw_entry)
+    for entry in (coerce_to_plain(raw) for raw in tasks_raw):
         task_dict = _build_task_dict(entry, prose_by_task, body_task_blocks or None)
         if task_dict is not None:
+            # Inject flat body prose fields for synthesised single-task files
+            if flat_body_prose:
+                for field, value in flat_body_prose.items():
+                    task_dict.setdefault(field, value)
             task_dicts.append(task_dict)
 
     return plan_meta, task_dicts, FormatType.GLOBAL_MANIFEST

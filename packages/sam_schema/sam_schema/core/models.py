@@ -31,6 +31,11 @@ STATUS_MAP: dict[str, str] = {
     "DEFERRED": "deferred",
     "SKIPPED": "skipped",
     "WONT FIX": "wont-fix",
+    # Lowercase single-word variants (used in follow-up task files)
+    "pending": "not-started",
+    "todo": "not-started",
+    "done": "complete",
+    "in_progress": "in-progress",
     # Emoji token variants (Rich emoji names)
     ":x:": "not-started",
     ":white_check_mark:": "complete",
@@ -87,6 +92,16 @@ class AnalysisMethod(StrEnum):
     FIVE_WHYS = "5-whys"
     SIX_SIGMA = "6-sigma"
     DESIGN_FRAMING = "design-framing"
+
+
+class BookendType(StrEnum):
+    """Bookend task type — constrains the two allowed values for ``Task.bookend_type``.
+
+    Values mirror the JSON schema enum defined in TASK_FILE_FORMAT.md §490.
+    """
+
+    T0_BASELINE = "t0-baseline"
+    TN_VERIFICATION = "tn-verification"
 
 
 class Task(BaseModel):
@@ -183,7 +198,7 @@ class Task(BaseModel):
     is_bookend: bool = Field(
         default=False, validation_alias=AliasChoices("is-bookend", "is_bookend"), serialization_alias="is-bookend"
     )
-    bookend_type: str | None = Field(
+    bookend_type: BookendType | None = Field(
         default=None, validation_alias=AliasChoices("bookend-type", "bookend_type"), serialization_alias="bookend-type"
     )
 

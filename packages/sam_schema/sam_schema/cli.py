@@ -33,7 +33,7 @@ from rich.table import Table
 from ruamel.yaml import YAML
 
 from sam_schema.core.addressing import AddressingError, parse_address, resolve_plan_address
-from sam_schema.core.models import TaskStatus
+from sam_schema.core.models import PlanStatus, TaskStatus
 from sam_schema.core.query import (
     claim_task,
     create_plan,
@@ -83,6 +83,43 @@ def _resolve_plan(address_part: str, plan_dir: Path) -> Path:
         _err(str(exc))
     except AddressingError as exc:
         _err(str(exc))
+
+
+def _get_plan_status_for_address(plan_address: str, plan_dir: Path) -> PlanStatus:
+    """Resolve ``plan_address`` to a path and return its plan status.
+
+    Accepts either a direct filesystem path (e.g. ``plan/tasks-696-slug.md``)
+    or a structured plan address (e.g. ``P696``, ``auth-system``).  Direct paths
+    are detected by checking whether the argument exists on disk before falling
+    back to address parsing.
+
+    Args:
+        plan_address: Plan address string or filesystem path.
+        plan_dir: Directory to search when resolving structured addresses.
+
+    Returns:
+        ``PlanStatus`` for the resolved plan.
+
+    Raises:
+        SystemExit(1): If the path or address cannot be resolved.
+        SystemExit(2): If the format cannot be detected.
+    """
+    direct = Path(plan_address)
+    if direct.exists() and (direct.is_file() or direct.is_dir()):
+        plan_path: Path = direct
+    else:
+        try:
+            plan_ref, _ = parse_address(plan_address)
+        except ValueError as exc:
+            _err(str(exc))
+        plan_path = _resolve_plan(plan_ref, plan_dir)
+
+    try:
+        return get_plan_status(plan_path)
+    except FileNotFoundError as exc:
+        _err(str(exc))
+    except FormatDetectionError as exc:
+        _err(str(exc), exit_code=2)
 
 
 def _output_json(data: object) -> None:
@@ -378,19 +415,7 @@ def status(
     if plan_address is None:
         _err("Provide a plan address or use --all to list every plan")
 
-    try:
-        plan_ref, _ = parse_address(plan_address)
-    except ValueError as exc:
-        _err(str(exc))
-
-    plan_path = _resolve_plan(plan_ref, plan_dir)
-
-    try:
-        plan_status = get_plan_status(plan_path)
-    except FileNotFoundError as exc:
-        _err(str(exc))
-    except FormatDetectionError as exc:
-        _err(str(exc), exit_code=2)
+    plan_status = _get_plan_status_for_address(plan_address, plan_dir)
 
     data = plan_status.model_dump(mode="json")
 
