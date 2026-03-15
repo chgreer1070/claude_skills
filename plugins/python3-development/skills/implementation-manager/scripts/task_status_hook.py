@@ -39,6 +39,19 @@ from task_format import (
     update_yaml_field,
 )
 
+# sam_schema is the canonical task/plan schema package.
+# Installed as a workspace dependency in the project venv.
+# Fallback: add packages/ to sys.path for direct-script execution outside the venv.
+_HOOK_REPO_ROOT = Path(__file__).resolve().parents[5]
+_HOOK_SAM_PACKAGES_DIR = str(_HOOK_REPO_ROOT / "packages")
+if _HOOK_SAM_PACKAGES_DIR not in sys.path:
+    sys.path.insert(0, _HOOK_SAM_PACKAGES_DIR)
+
+# Import directly from submodules for concrete types (avoids lazy __getattr__ object).
+from sam_schema.core.models import TaskStatus as SamTaskStatus
+from sam_schema.core.query import update_status as sam_update_status
+from sam_schema.writers.yaml_writer import update_field as sam_update_field
+
 # Conditionally add backlog_core to sys.path for GitHub sync.
 # The hook script lives at:
 #   plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py
@@ -532,12 +545,17 @@ def handle_subagent_stop(hook_input: dict[str, Any]) -> None:
     timestamp = get_iso_timestamp()
 
     try:
-        # Update status to COMPLETE (normalize_status handles YAML normalization)
-        updated_content = update_task_status(content, task_id, "\u2705 COMPLETE")
-        # Add Completed timestamp
-        updated_content = add_timestamp_to_task(updated_content, task_id, "Completed", timestamp)
-        resolved_path.write_text(updated_content, encoding="utf-8")
-    except ValueError as e:
+        if resolved_path.suffix == ".yaml":
+            # Pure YAML file: use sam_schema.update_status for atomic field updates.
+            sam_update_status(resolved_path, task_id, SamTaskStatus.COMPLETE, timestamp_field="completed")
+        else:
+            # YAML-frontmatter .md file: use legacy in-memory update path.
+            # Update status to COMPLETE (normalize_status handles YAML normalization)
+            updated_content = update_task_status(content, task_id, "\u2705 COMPLETE")
+            # Add Completed timestamp
+            updated_content = add_timestamp_to_task(updated_content, task_id, "Completed", timestamp)
+            resolved_path.write_text(updated_content, encoding="utf-8")
+    except (ValueError, KeyError, FileNotFoundError) as e:
         print(str(e), file=sys.stderr)
         sys.exit(2)
 
@@ -594,10 +612,15 @@ def handle_activity_update(hook_input: dict[str, Any]) -> None:
     timestamp = get_iso_timestamp()
 
     try:
-        updated_content = add_timestamp_to_task(content, task_id, "LastActivity", timestamp)
-        resolved_path.write_text(updated_content, encoding="utf-8")
-    except ValueError:
-        # Task section not found, exit silently
+        if resolved_path.suffix == ".yaml":
+            # Pure YAML file: use sam_schema field update for atomic write.
+            sam_update_field(resolved_path, task_id, "last-activity", timestamp)
+        else:
+            # YAML-frontmatter .md file: use legacy in-memory update path.
+            updated_content = add_timestamp_to_task(content, task_id, "LastActivity", timestamp)
+            resolved_path.write_text(updated_content, encoding="utf-8")
+    except (ValueError, KeyError, FileNotFoundError):
+        # Task section not found or file unavailable, exit silently
         sys.exit(0)
 
 

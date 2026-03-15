@@ -6,6 +6,7 @@ dependencies = [
     "backlog-core",
     "fastmcp>=3.0.2",
     "pygithub>=2.8.1",
+    "sam-schema",
     "skill-seekers>=3.0.0",
 ]
 
@@ -55,9 +56,10 @@ dev = [
 
 [tool.uv.sources]
 backlog-core = { workspace = true }
+sam-schema = { workspace = true }
 
 [tool.uv.workspace]
-members = [".claude/skills/backlog"]
+members = [".claude/skills/backlog", "packages/sam_schema"]
 
 [tool.pytest.ini_options]
 addopts = [

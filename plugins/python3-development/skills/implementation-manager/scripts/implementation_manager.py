@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import IntEnum, StrEnum
 from pathlib import Path
-from typing import Annotated, TypedDict
+from typing import TYPE_CHECKING, Annotated, TypedDict
 
 import typer
 from rich.console import Console
@@ -49,6 +49,21 @@ from task_format import (
     resolve_task_id,
     update_yaml_field,
 )
+
+# sam_schema is the canonical task/plan schema package.
+# Installed as a workspace dependency in the project venv.
+# Fallback: add packages/ to sys.path for direct-script execution outside the venv.
+_REPO_ROOT = Path(__file__).resolve().parents[5]
+_SAM_PACKAGES_DIR = str(_REPO_ROOT / "packages")
+if _SAM_PACKAGES_DIR not in sys.path:
+    sys.path.insert(0, _SAM_PACKAGES_DIR)
+
+# Import directly from submodules so static type checkers resolve concrete types
+# instead of the lazy ``object`` returned by sam_schema.__getattr__.
+from sam_schema.core.query import load_plan as sam_load_plan
+
+if TYPE_CHECKING:
+    from sam_schema.core.models import Task as SamTask
 
 app = typer.Typer(
     name="implementation-manager", help="Query and manage feature implementation task status.", no_args_is_help=True
@@ -982,6 +997,82 @@ def fetch_tasks_from_github(parent_issue_number: int, feature_slug: str, cache_p
 
 
 # =============================================================================
+# sam_schema Adapters
+# =============================================================================
+# These adapter functions convert sam_schema.Task objects to the TaskDict
+# shape expected by CLI JSON output. The key mapping is:
+#   sam_schema.Task.title  ->  TaskDict["name"]   (backward compat)
+#   sam_schema.Task.status ->  TaskDict["status"] (already str via use_enum_values)
+
+
+def _sam_task_to_dict(task: SamTask) -> TaskDict:
+    """Convert a sam_schema Task to a TaskDict for JSON output.
+
+    Preserves the ``name`` key in the output dict for backward compatibility
+    with existing orchestration scripts that parse ``ready_tasks[].name``.
+
+    Args:
+        task: A sam_schema.Task model instance.
+
+    Returns:
+        TaskDict with fields matching the legacy implementation_manager format.
+    """
+    try:
+        priority_val = int(task.priority)
+    except (TypeError, ValueError):
+        priority_val = 3  # TaskPriority.MEDIUM default
+
+    return TaskDict(
+        id=task.id,
+        name=task.title,
+        status=str(task.status),
+        dependencies=list(task.dependencies),
+        agent=task.agent,
+        priority=priority_val,
+        complexity=str(task.complexity).capitalize(),
+        started=task.started.isoformat() if task.started else None,
+        completed=task.completed.isoformat() if task.completed else None,
+        skills=list(task.skills),
+    )
+
+
+def _load_tasks_via_sam(task_file: Path) -> list[Task]:
+    """Load tasks from a plan file via sam_schema and convert to internal Task objects.
+
+    Uses sam_load_plan for parsing, then converts each sam_schema.Task
+    to the internal Task dataclass for use by existing CLI commands.
+
+    Args:
+        task_file: Path to the task file or directory.
+
+    Returns:
+        List of internal Task dataclass objects.
+    """
+    result = sam_load_plan(task_file)
+    tasks: list[Task] = []
+    for st in result.plan.tasks:
+        try:
+            priority = TaskPriority(int(st.priority))
+        except (TypeError, ValueError):
+            priority = TaskPriority.MEDIUM
+        tasks.append(
+            Task(
+                id=st.id,
+                name=st.title,
+                status=_parse_yaml_status(str(st.status)),
+                dependencies=list(st.dependencies),
+                agent=st.agent,
+                priority=priority,
+                complexity=str(st.complexity).capitalize(),
+                started=st.started.isoformat() if st.started else None,
+                completed=st.completed.isoformat() if st.completed else None,
+                skills=list(st.skills),
+            )
+        )
+    return tasks
+
+
+# =============================================================================
 # CLI Commands
 # =============================================================================
 
@@ -1047,7 +1138,7 @@ def status(
             }
             console.print(json.dumps(error_output, indent=2))
             raise typer.Exit(1)
-        tasks = parse_task_file(task_file)
+        tasks = _load_tasks_via_sam(task_file)
 
     ready = get_ready_tasks(tasks)
 
@@ -1117,7 +1208,7 @@ def ready_tasks(
             }
             console.print(json.dumps(error_output, indent=2))
             raise typer.Exit(1)
-        tasks = parse_task_file(task_file)
+        tasks = _load_tasks_via_sam(task_file)
 
     ready = get_ready_tasks(tasks)
 

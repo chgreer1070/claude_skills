@@ -1,0 +1,241 @@
+"""Pydantic models for SAM task/plan schema.
+
+Canonical data model for SAM (Structured Agent-Managed) task/plan files.
+All format-specific readers normalize to these models.
+"""
+
+from __future__ import annotations
+
+import re
+from enum import IntEnum, StrEnum
+from typing import TYPE_CHECKING
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+if TYPE_CHECKING:
+    from datetime import datetime
+    from pathlib import Path
+
+# Task ID pattern: supports numeric (1, 1.1), alphanumeric (T1, T2.3)
+TASK_ID_PATTERN: re.Pattern[str] = re.compile(r"^[A-Za-z]?\d+(\.\d+)?$")
+
+# Status normalization map — maps human-readable and emoji variants to canonical values.
+# Sourced from task_format.py:28-45 (plugins/python3-development/skills/implementation-manager/scripts/)
+STATUS_MAP: dict[str, str] = {
+    # Space-separated variants
+    "NOT STARTED": "not-started",
+    "IN PROGRESS": "in-progress",
+    "COMPLETE": "complete",
+    "BLOCKED": "blocked",
+    "DEFERRED": "deferred",
+    "SKIPPED": "skipped",
+    "WONT FIX": "wont-fix",
+    # Emoji token variants (Rich emoji names)
+    ":x:": "not-started",
+    ":white_check_mark:": "complete",
+    ":arrows_counterclockwise:": "in-progress",
+    # Legacy title-marker variants (uppercase)
+    "[DEFERRED]": "deferred",
+    "[SKIPPED]": "skipped",
+}
+
+
+class TaskStatus(StrEnum):
+    """Lifecycle status values for a SAM task."""
+
+    NOT_STARTED = "not-started"
+    IN_PROGRESS = "in-progress"
+    COMPLETE = "complete"
+    BLOCKED = "blocked"
+    DEFERRED = "deferred"
+    SKIPPED = "skipped"
+
+
+class Complexity(StrEnum):
+    """Complexity estimate for a task."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class Priority(IntEnum):
+    """Priority ordering for a task. Lower value = higher priority."""
+
+    CRITICAL = 1
+    HIGH = 2
+    MEDIUM = 3
+    LOW = 4
+    LOWEST = 5
+
+
+class IssueClassification(StrEnum):
+    """Root-cause classification for issues tracked as tasks."""
+
+    PROCEDURAL = "procedural"
+    DEFECT = "defect"
+    RECURRING_PATTERN = "recurring-pattern"
+    MISSING_GUARDRAIL = "missing-guardrail"
+    UNBOUNDED_DESIGN = "unbounded-design"
+
+
+class AnalysisMethod(StrEnum):
+    """Analysis method applied during investigation."""
+
+    NONE = "none"
+    FIVE_WHYS = "5-whys"
+    SIX_SIGMA = "6-sigma"
+    DESIGN_FRAMING = "design-framing"
+
+
+class Task(BaseModel):
+    """Canonical task model. All format-specific readers normalize to this.
+
+    Field aliases map YAML kebab-case names to Python snake_case attributes.
+    Both the alias and the Python name are accepted during construction because
+    ``populate_by_name=True`` is set in ``model_config``.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, use_enum_values=True)
+
+    # Required fields
+    id: str = Field(..., pattern=r"^[A-Za-z]?\d+(\.\d+)?$")
+    title: str = Field(..., min_length=1, max_length=200)
+    status: TaskStatus
+
+    # Optional structural fields
+    agent: str | None = None
+    dependencies: list[str] = Field(default_factory=list)
+    priority: Priority = Priority.MEDIUM
+    complexity: Complexity = Complexity.MEDIUM
+    skills: list[str] = Field(default_factory=list)
+    blocked_by: list[str] = Field(default_factory=list, alias="blocked-by")
+    parallelize_with: list[str] = Field(default_factory=list, alias="parallelize-with")
+
+    # Timestamps
+    created: datetime | None = None
+    started: datetime | None = None
+    completed: datetime | None = None
+    last_activity: datetime | None = Field(default=None, alias="last-activity")
+
+    # Analytical metadata
+    issue_classification: IssueClassification | None = Field(default=None, alias="issue-classification")
+    scenario_target: str | None = Field(default=None, alias="scenario-target")
+    analysis_method: AnalysisMethod = Field(default=AnalysisMethod.NONE, alias="analysis-method")
+    divergence_notes: int = Field(default=0, ge=0, alias="divergence-notes")
+
+    # Markdown content fields (stored as YAML multiline scalars in canonical format)
+    description: str = ""
+    objective: str = ""
+    requirements: str = ""
+    constraints: str = ""
+    expected_outputs: str = Field(default="", alias="expected-outputs")
+    acceptance_criteria: str = Field(default="", alias="acceptance-criteria")
+    verification_steps: str = Field(default="", alias="verification-steps")
+    context_notes: str = Field(default="", alias="context-notes")
+    handoff: str = ""
+
+    # GitHub integration
+    github_issue: int | None = Field(default=None, alias="github-issue")
+
+    @field_validator("dependencies", "parallelize_with", mode="before")
+    @classmethod
+    def validate_task_id_list(cls, v: object) -> list[str]:
+        r"""Validate that each item in a task ID list matches the task ID pattern.
+
+        Args:
+            v: Raw value from YAML or constructor. Accepts list[str], comma-separated
+               string, or None.
+
+        Returns:
+            Normalized list of validated task ID strings.
+
+        Raises:
+            ValueError: If any item does not match ``^[A-Za-z]?\\d+(\\.\\d+)?$``.
+        """
+        if v is None:
+            return []
+        if isinstance(v, str):
+            if not v or v.lower() in {"none", "n/a", "-"}:
+                return []
+            items = [item.strip() for item in v.split(",") if item.strip()]
+        elif isinstance(v, list):
+            items = [str(item) for item in v if item is not None]
+        else:
+            return []
+
+        for item in items:
+            if not TASK_ID_PATTERN.match(item):
+                msg = f"Invalid task ID '{item}': must match pattern {TASK_ID_PATTERN.pattern}"
+                raise ValueError(msg)
+        return items
+
+
+class Plan(BaseModel):
+    """Canonical plan model containing metadata and all tasks.
+
+    A plan corresponds to a single SAM task/plan file (or directory).
+    """
+
+    feature: str
+    version: str = "1.0"
+    description: str = ""
+    tasks: list[Task] = Field(default_factory=list)
+    source_path: Path | None = None
+    source_format: str | None = None  # FormatType value
+
+
+class SchemaGap(BaseModel):
+    """A missing or invalid field detected during legacy format reading.
+
+    Schema gaps are reported when reading non-canonical formats (legacy markdown,
+    YAML frontmatter in markdown, global manifest) to indicate fields that are
+    absent or have unexpected types compared to the canonical schema.
+    """
+
+    task_id: str
+    field_name: str
+    gap_type: str  # "missing" | "invalid_type" | "invalid_value"
+    expected: str  # description of expected value/type
+    actual: str | None = None  # what was found (None if field is missing)
+
+
+class ReadResult(BaseModel):
+    """Result of reading a plan file. Contains the parsed plan and any schema gaps.
+
+    Schema gaps are populated when reading legacy or non-canonical formats.
+    An empty ``gaps`` list indicates the file is in canonical format with all
+    expected fields present.
+    """
+
+    plan: Plan
+    gaps: list[SchemaGap] = Field(default_factory=list)
+    source_format: str  # FormatType value
+    source_path: Path
+
+
+class PlanStatus(BaseModel):
+    """Summary of plan execution progress.
+
+    Used by the CLI ``sam status`` command and the ``sam_status`` MCP tool.
+    """
+
+    feature: str
+    total_tasks: int
+    by_status: dict[str, int]  # status value -> count
+    ready_tasks: list[str]  # task IDs ready for dispatch
+    blocked_tasks: list[dict[str, list[str]]]  # [{task_id: [missing_dep_ids]}]
+    completion_pct: float
+    has_cycles: bool
+
+
+# Rebuild models that reference TYPE_CHECKING-guarded types (datetime, Path).
+# `from __future__ import annotations` defers annotation evaluation; Pydantic needs
+# to resolve these types at model-build time. Pass the types explicitly so Pydantic
+# can resolve forward references without requiring runtime imports at the top level.
+import datetime as _dt
+from pathlib import Path as _Path
+
+Task.model_rebuild(_types_namespace={"datetime": _dt.datetime, "Path": _Path})
+Plan.model_rebuild(_types_namespace={"Path": _Path, "Task": Task})
+ReadResult.model_rebuild(_types_namespace={"Path": _Path, "Plan": Plan, "SchemaGap": SchemaGap})

@@ -104,6 +104,25 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 - Duplicate keys in `additional_frozen_artefacts` that already exist in `step.frozen_artefacts` are deduplicated (base key wins position)
 **Reason not written**: T4 scope is integration wiring only. Test creation is assigned to T6 per the task plan.
 
+## Gap: sam_schema/writers/yaml_writer.py
+
+**Files**: `packages/sam_schema/sam_schema/writers/yaml_writer.py`
+**Behavior to cover**:
+- `write_plan()` single-file output: correct YAML structure, tasks list included, multiline fields as `|` scalars
+- `write_plan()` directory output: `plan.yaml` + `task-{id}.yaml` files created, `task_files` list in `plan.yaml`
+- `write_plan()` line count threshold: plans under 500 lines write single file, plans over threshold write directory
+- `write_plan(force_single=True)`: always writes single file regardless of line count
+- `write_plan()` path traversal rejection: raises `ValueError` when `..` in path parts
+- `update_field()` single-task file: modifies field, preserves comments and field order
+- `update_field()` multi-task file: locates correct task by ID, modifies only that task
+- `update_field()` markdown field with newline: wraps value in `LiteralScalarString`
+- `update_field()` raises `FileNotFoundError` for missing file
+- `update_field()` raises `KeyError` for unknown task ID
+- `update_field()` raises `ValueError` for unknown field name
+- `_atomic_write()` temp file cleanup on write failure
+- Round-trip: `write_plan()` then `ruamel.yaml.load()` returns equivalent data
+**Reason not written**: T3 scope is implementation only; test suite creation is assigned to T6 per the task plan architecture spec section 12.
+
 ## Gap: frustration-analyzer MCP server
 
 **Files**: `plugins/frustration-analyzer/mcp/server.py`
@@ -118,3 +137,14 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 - `_build_hashtags()`: category-specific hashtag, #ClaudeCode conditional on model name
 - `_fetch_insult_for_post()`: ToolError on missing insult
 **Reason not written**: New plugin created in this session; sub-agent scope limited to implementation. Test suite creation is a separate task.
+
+## Gap: sam_schema/server.py and sam_schema/__main__.py
+
+**Files**: `packages/sam_schema/sam_schema/server.py`, `packages/sam_schema/sam_schema/__main__.py`
+**Behavior to cover**:
+- `sam_read`: success path returns task dict; `AddressingError` on unknown plan address returns `{"error": ...}`; `KeyError` on unknown task ID returns `{"error": ...}`; `FileNotFoundError` on missing plan dir returns `{"error": ...}`
+- `sam_state`: success path with valid status returns updated task dict; `ValueError` on invalid status string returns `{"error": ...}`; error path for unknown plan/task returns `{"error": ...}`
+- `sam_ready`: success path returns `{"ready_tasks": [...], "count": N}`; error path returns `{"error": ...}`
+- `sam_status`: success path returns `PlanStatus` dict with all fields; error path returns `{"error": ...}`
+- `__main__.py`: `mcp.run()` is called when script is run as `__main__`
+**Reason not written**: T9 scope is server implementation only. Test authoring for the MCP server is assigned to T10a per the task plan architecture spec.
