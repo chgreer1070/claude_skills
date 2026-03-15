@@ -26,7 +26,9 @@ if TYPE_CHECKING:
 LINE_THRESHOLD: int = 500
 
 # Fields that contain markdown prose — serialized as YAML literal block scalars (|).
+# Includes both task-level and plan-level markdown fields.
 _MARKDOWN_FIELDS: frozenset[str] = frozenset({
+    # Task-level markdown fields
     "description",
     "objective",
     "requirements",
@@ -36,6 +38,9 @@ _MARKDOWN_FIELDS: frozenset[str] = frozenset({
     "verification-steps",
     "context-notes",
     "handoff",
+    # Plan-level markdown fields
+    "goal",
+    "context",
 })
 
 # field-specific defaults: omit these from YAML output when the value equals the default.
@@ -96,16 +101,25 @@ def _task_to_dict(task: Task) -> dict[str, Any]:
 def _plan_metadata_dict(plan: Plan) -> dict[str, Any]:
     """Extract plan-level metadata as a dict for YAML serialization.
 
+    Applies ``LiteralScalarString`` to plan-level markdown fields (``goal``,
+    ``context``, ``acceptance-criteria``) so ruamel.yaml emits them as YAML
+    literal block scalars (``|``).
+
     Args:
         plan: The ``Plan`` model.
 
     Returns:
-        Dict with plan metadata fields (``feature``, ``version``,
-        ``description``), excluding task list and internal fields.
+        Dict with plan metadata fields, excluding task list and internal fields.
+        Multiline markdown fields are wrapped in ``LiteralScalarString``.
     """
-    return plan.model_dump(
+    raw = plan.model_dump(
         by_alias=True, mode="json", exclude={"tasks", "source_path", "source_format"}, exclude_none=True
     )
+    for key in list(raw.keys()):
+        value = raw[key]
+        if key in _MARKDOWN_FIELDS and isinstance(value, str) and value:
+            raw[key] = LiteralScalarString(value)
+    return raw
 
 
 def _atomic_write(path: Path, content: str) -> None:

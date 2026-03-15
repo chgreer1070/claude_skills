@@ -1,7 +1,11 @@
 feature: backlog-state-reconciliation
 version: '1.0'
-description: Backlog state reconciliation - detect and resolve local/GitHub
-  state divergence
+description: |-
+  Backlog state reconciliation - detect and resolve local/GitHub state divergence
+issue: '#714'
+architecture: ./architect-backlog-state-reconciliation.md
+feature-context: ./feature-context-backlog-state-reconciliation.md
+codebase-patterns: ./codebase/backlog-state-patterns.md
 tasks:
 - id: T1
   title: State handler helper functions

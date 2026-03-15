@@ -176,14 +176,51 @@ class Plan(BaseModel):
     """Canonical plan model containing metadata and all tasks.
 
     A plan corresponds to a single SAM task/plan file (or directory).
+
+    Field aliases map YAML kebab-case names to Python snake_case attributes.
+    Both the alias and the Python name are accepted during construction because
+    ``populate_by_name=True`` is set in ``model_config``.
     """
+
+    model_config = ConfigDict(populate_by_name=True)
 
     feature: str
     version: str = "1.0"
     description: str = ""
+
+    # Plan-level context fields (multiline markdown)
+    goal: str | None = None
+    context: str | None = None
+    acceptance_criteria: str | None = Field(default=None, alias="acceptance-criteria")
+
+    # Plan-level reference fields
+    issue: str | None = None
+    architecture: str | None = None
+    feature_context: str | None = Field(default=None, alias="feature-context")
+    codebase_patterns: str | None = Field(default=None, alias="codebase-patterns")
+
     tasks: list[Task] = Field(default_factory=list)
     source_path: Path | None = None
     source_format: str | None = None  # FormatType value
+
+    @field_validator("issue", mode="before")
+    @classmethod
+    def coerce_issue_to_str(cls, v: object) -> str | None:
+        """Coerce the ``issue`` field to a string.
+
+        YAML parses bare integers (e.g. ``issue: 42``) as ``int``.  The field
+        is semantically a GitHub issue reference such as ``"#42"`` or ``"42"``,
+        so any non-None value is coerced to ``str`` here.
+
+        Args:
+            v: Raw value from YAML or constructor.
+
+        Returns:
+            String representation, or ``None`` if the input is ``None``.
+        """
+        if v is None:
+            return None
+        return str(v)
 
 
 class SchemaGap(BaseModel):
