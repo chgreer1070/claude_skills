@@ -107,8 +107,14 @@ def resolve_plan_address(address: str, plan_dir: Path) -> Path:
         msg = f"Plan directory does not exist: {plan_dir}"
         raise FileNotFoundError(msg)
 
-    # Collect all candidate entries: .yaml files, .md files, directories
-    all_entries: list[Path] = sorted(plan_dir.iterdir())
+    # Collect all candidate entries: .yaml files, .md files, directories.
+    # Sort so .yaml sorts before .md for the same stem (preference when both coexist).
+    # Achieved by sorting on (stem, suffix) with .yaml mapped to a lower sort key than .md.
+    def _yaml_first_key(p: Path) -> tuple[str, int]:
+        # .yaml → 0, everything else → 1 (ensures .yaml precedes .md for same stem)
+        return (p.stem, 0 if p.suffix == ".yaml" else 1)
+
+    all_entries: list[Path] = sorted(plan_dir.iterdir(), key=_yaml_first_key)
 
     # -------------------------------------------------------------------
     # Phase 1: P{NNN}-{slug} resolution (primary naming convention)

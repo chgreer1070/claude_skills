@@ -407,7 +407,8 @@ tasks:
     Report test file path, test count, and pytest output
 - id: T9
   title: Integration tests for CLI and MCP
-  status: not-started
+  status: in-progress
+  started: '2026-03-15T13:01:00+00:00'
   agent: python3-development:python-pytest-architect
   dependencies:
   - T4

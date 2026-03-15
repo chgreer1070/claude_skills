@@ -101,8 +101,8 @@ def extract_task_info_from_args(args: str) -> tuple[Path | None, str | None]:
     task_file_path: Path | None = None
     task_id: str | None = None
 
-    # First part should be the task file path
-    if parts[0].endswith(".md"):
+    # First part should be the task file path (.md or .yaml)
+    if parts[0].endswith((".md", ".yaml")):
         task_file_path = Path(parts[0])
 
     # Look for --task flag or task ID pattern
@@ -132,7 +132,8 @@ def extract_task_info_from_prompt(prompt: str) -> tuple[Path | None, str | None]
 
     # Look for /start-task invocation pattern in the prompt
     # Pattern 1: /start-task <path> --task <id>  (literal slash-command)
-    match = re.search(rf"/start-task\s+([^\s]+\.md)(?:\s+--task\s+({_TASK_ID_RE}))?", prompt)
+    # Matches both .md and .yaml task file extensions.
+    match = re.search(rf"/start-task\s+([^\s]+\.(?:md|yaml))(?:\s+--task\s+({_TASK_ID_RE}))?", prompt)
     if match:
         task_file = Path(match.group(1))
         task_id = match.group(2)
@@ -140,9 +141,10 @@ def extract_task_info_from_prompt(prompt: str) -> tuple[Path | None, str | None]
 
     # Pattern 2: Skill(skill="start-task", args="<path> --task <id>")
     # The orchestrator invokes start-task via the Skill tool, not as a literal command.
+    # Matches both .md and .yaml task file extensions.
     skill_match = re.search(
         rf'Skill\(\s*skill\s*=\s*["\']start-task["\']\s*,\s*args\s*=\s*["\']'
-        rf"([^\s\"']+\.md)(?:\s+--task\s+({_TASK_ID_RE}))?"
+        rf"([^\s\"']+\.(?:md|yaml))(?:\s+--task\s+({_TASK_ID_RE}))?"
         rf'["\']',
         prompt,
     )
