@@ -21,7 +21,32 @@ Orchestrate autonomous backlog refinement: verify claims, clarify scope, estimat
 - **Section** — `P0`, `P1`, `P2`, or `Ideas` — grooms all items in that section
 - **`all`** — grooms all items across P0, P1, P2, Ideas (parallel agents)
 
+> [!IMPORTANT]
+> When provided a process map or Mermaid diagram, treat it as the authoritative procedure. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+> A Mermaid process diagram is an executable instruction set. Follow it exactly as written: respect sequence, conditions, loops, parallel paths, and terminal states. Do not improvise, reorder, or skip steps. If any node is ambiguous or missing required detail, pause and ask a clarifying question before continuing.
+> When interacting with a user, report before acting the interpreted path you will follow from the diagram, then execute.
+
 ## Workflow
+
+The following diagram is the authoritative procedure for overall groom-backlog-item workflow. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
+
+```mermaid
+flowchart TD
+    Start(["/groom-backlog-item called with scope argument"]) --> S1["Step 1 — Call backlog_list MCP tool<br>and filter items by scope argument"]
+    S1 --> S2["Step 2 — Validity Check<br>Run 4 pre-groom checks per item"]
+    S2 --> S2Out{"Item passed all<br>validity checks?"}
+    S2Out -->|"Checks 1–3 failed — invalid, done, or stale"| SkipReport(["Report to user and skip this item"])
+    S2Out -->|"Checks 1–3 pass AND already groomed today"| S9Direct["Step 9 — Apply only the specific<br>change requested — skip Steps 3–8"]
+    S2Out -->|"Checks 1–3 pass, not groomed today"| S3["Step 3 — Extract item details<br>title, description, research questions, source, suggested_location"]
+    S3 --> S35["Step 3.5 — RT-ICA Initial Snapshot<br>Assess AVAILABLE / DERIVABLE / MISSING<br>Write snapshot via backlog_groom"]
+    S35 --> S36["Step 3.6 — Scope Sizing<br>Choose MINIMAL / NARROW / STANDARD / FULL<br>based on RT-ICA snapshot and issue type"]
+    S36 --> S48["Steps 4–8 — Parallel Grooming Swarm<br>Run agents sized by Step 3.6"]
+    S48 --> S85["Step 8.5 — RT-ICA Final Pass<br>Re-assess all conditions with full swarm output<br>Replace snapshot in item"]
+    S85 --> FinalDecision{"RT-ICA Final<br>Decision?"}
+    FinalDecision -->|"BLOCKED — MISSING conditions remain"| BlockedStop(["STOP — present missing inputs to user<br>Do not proceed to Step 9"])
+    FinalDecision -->|"APPROVED — all conditions resolved"| S9["Step 9 — Write groomed content<br>to item files via MCP tools"]
+    S9 --> Done(["Item fully groomed and synced"])
+```
 
 ### Step 1: Parse Arguments and Load Backlog
 
@@ -29,76 +54,27 @@ Call `mcp__backlog__backlog_list()` and filter the returned dict's `items` list 
 
 ### Step 2: Validity Check (Pre-Groom Gate)
 
-Before fact-checking or grooming, verify each item is still valid work:
+The following diagram is the authoritative procedure for the Step 2 validity check. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
-1. **Is the job still valid?** — Scope, priority, or context may have changed. Ask or infer: does this item still belong in the backlog?
-2. **Is the work already done?** — Search for evidence that the feature was already implemented or the bug was already fixed, even if the issue is still open. Run the **Already Implemented Discovery** procedure:
-
-   a. **Search for commits matching the item's topic** (use keywords from the title):
-
-      ```bash
-      git log --oneline --all -30 --grep="{keyword from title}"
-      ```
-
-   b. **Search for merged PRs matching the topic**:
-
-      ```bash
-      gh pr list -R Jamie-BitFlight/claude_skills --search "{keyword}" --state merged --json number,title,url,mergedAt --limit 5
-      ```
-
-   c. **Check if the described feature/fix exists in the codebase** — read the files at the suggested location and verify whether the described behavior is already present.
-
-   If evidence shows the work is done:
-
-   - **Comment evidence on the GitHub issue** (if one exists):
-
-     ```bash
-     gh issue comment N -R Jamie-BitFlight/claude_skills --body "This work was already completed via PR #{pr} / commit {sha}. Closing."
-     ```
-
-   - **Close the GitHub issue**:
-
-     ```bash
-     gh issue close N -R Jamie-BitFlight/claude_skills --reason completed
-     ```
-
-   - **Close the local backlog item**:
-
-     Call `mcp__backlog__backlog_resolve(selector="{title}", summary="Already implemented via PR #{pr} / commit {sha}")`.
-
-   - Report to the user and skip grooming for that item.
-
-   If no evidence is found, proceed — the work is still needed.
-3. **Is this local file stale?** — If the item has a GitHub issue (`metadata.issue` or index link `#N`), call `mcp__backlog__backlog_view(selector="#{N}")` and check the `state` field in the returned dict. If the issue is **closed**, the local file is a stale remnant of work already done. Do **not** groom. Instead, run the **Completed Issue Discovery** procedure:
-
-   a. **Search for commits referencing the issue**:
-
-      ```bash
-      git log --oneline --all -20 --grep="#N"
-      ```
-
-   b. **Search for merged PRs referencing the issue**:
-
-      ```bash
-      gh pr list -R Jamie-BitFlight/claude_skills --search "#N" --state merged --json number,title,url,mergedAt --limit 5
-      ```
-
-   c. **Comment evidence on the issue** (if not already present):
-
-      ```bash
-      gh issue comment N -R Jamie-BitFlight/claude_skills --body "Completed via PR #M / commit {sha}"
-      ```
-
-   d. **Close the local backlog item with evidence**:
-
-      Call `mcp__backlog__backlog_resolve(selector="{title}", summary="Completed via PR #{pr} / commit {sha}")`.
-
-   If no commits or PRs reference the issue, report: "Issue #{N} is closed but no commit/PR evidence found. Recommend manual review." and skip grooming.
-   Skip grooming for that item; move to the next.
-
-4. **Is this item already groomed today?** — Check the item file's `groomed` frontmatter field. If it matches today's date AND the item has all required sections (Fact-Check, RT-ICA, groomed subsections), skip Steps 4–8 entirely. Go directly to Step 9 and apply only the specific change requested by the user — do not re-derive, re-fact-check, or re-groom. Re-running the full pipeline on an already-groomed item produces duplicate content and wastes tokens.
-
-If any of checks 1–3 fail, skip grooming for that item and report. For items that pass checks 1–3, proceed to Step 3. For items that pass checks 1–3 but match check 4 (already groomed today), skip directly to Step 9.
+```mermaid
+flowchart TD
+    ItemIn(["Item selected for grooming"]) --> C1{"Is the job still valid?<br>Does this item still belong<br>in the backlog given current context?"}
+    C1 -->|"No — scope, priority, or context changed"| InvalidSkip(["Report invalid — skip grooming for this item"])
+    C1 -->|"Yes — item is still relevant"| C2{"Search for evidence work is already done<br>git log --grep keyword + gh pr list merged<br>+ read files at suggested_location<br>Does evidence of completion exist?"}
+    C2 -->|"Yes — evidence found"| AlreadyDone["Comment evidence on GitHub issue (if exists)<br>gh issue comment N --body 'Completed via PR'<br>Close GitHub issue: gh issue close N --reason completed<br>Call backlog_resolve with PR/SHA summary"]
+    AlreadyDone --> DoneSkip(["Report to user — skip grooming for this item"])
+    C2 -->|"No evidence of completion found"| C3{"Does item have a GitHub issue?<br>Check metadata.issue or index link #N"}
+    C3 -->|"No GitHub issue"| C4Check{"Check item file's 'groomed' frontmatter field<br>Does groomed == today's date AND<br>item has all required sections?"}
+    C3 -->|"Yes — call backlog_view selector='#N'<br>Check 'state' field in returned dict"| IssueState{"state field<br>value?"}
+    IssueState -->|"open"| C4Check
+    IssueState -->|"closed — local file is stale"| StaleSearch["Search for commits: git log --grep='#N'<br>Search merged PRs: gh pr list --search '#N' --state merged"]
+    StaleSearch --> StaleEvidence{"Commits or PRs<br>reference this issue?"}
+    StaleEvidence -->|"Yes — evidence found"| StaleClose["Comment evidence on issue<br>Call backlog_resolve with PR/SHA summary"]
+    StaleClose --> StaleSkip(["Skip grooming — move to next item"])
+    StaleEvidence -->|"No evidence found"| StaleReport(["Report: issue #N closed but no commit/PR found<br>Recommend manual review — skip grooming"])
+    C4Check -->|"Yes — already groomed today"| GroomedSkip(["Skip Steps 4-8<br>Go to Step 9 for specific change only"])
+    C4Check -->|"No — not groomed today"| PassAll(["All checks pass — proceed to Step 3"])
+```
 
 ### Step 3: Extract Item Details
 
@@ -376,9 +352,20 @@ The groomer reads all sections written by prior teammates (Impact Radius, Fact-C
 
 ### Step 8.5: RT-ICA Final Pass
 
-After all swarm agents complete, the orchestrator re-runs RT-ICA using the full information now available. Read all sections written to the item (Impact Radius, Fact-Check, Issue Classification, groomed subsections) and re-assess every condition from the Step 3.5 snapshot.
+The following diagram is the authoritative procedure for the Step 8.5 RT-ICA final pass. Execute steps in the exact order shown, including branches, decision points, and stop conditions.
 
-Compare the final assessment against the initial snapshot:
+```mermaid
+flowchart TD
+    SwarmDone(["All swarm agents complete"]) --> ReadAll["Read all sections now written to the item<br>Impact Radius, Fact-Check, Issue Classification,<br>groomed subsections — via MCP"]
+    ReadAll --> ReAssess["Re-assess every condition from the Step 3.5 snapshot<br>Compare snapshot status to final status per condition"]
+    ReAssess --> BuildFinal["Build RT-ICA Final report<br>Format: condition | Snapshot status to Final status<br>List all changes from snapshot<br>Include new conditions discovered by swarm"]
+    BuildFinal --> WriteRTICA["Write final RT-ICA to item via backlog_groom<br>selector=title, section='RT-ICA', content=final<br>This replaces the Step 3.5 snapshot"]
+    WriteRTICA --> FinalDecision{"RT-ICA Final Decision?"}
+    FinalDecision -->|"BLOCKED — DERIVABLE conditions turned MISSING<br>or new MISSING conditions discovered by swarm"| BlockedStop(["STOP — present all MISSING conditions to user<br>Do not proceed to Step 9"])
+    FinalDecision -->|"APPROVED — all conditions AVAILABLE or DERIVABLE resolved"| Proceed(["Item fully groomed with verified information<br>Proceed to Step 9"])
+```
+
+RT-ICA Final report format:
 
 ```text
 RT-ICA Final: {item title}
@@ -392,12 +379,6 @@ Changes from snapshot:
 - {condition Z}: (new) MISSING (discovered by impact-analyst)
 Decision: {APPROVED|BLOCKED}
 ```
-
-Write the final RT-ICA to the item via `mcp__backlog__backlog_groom(selector="{title}", section="RT-ICA", content="{final RT-ICA}")`, replacing the snapshot.
-
-If the final decision is BLOCKED (conditions that were DERIVABLE in the snapshot turned out to be MISSING, or new MISSING conditions were discovered by the swarm), stop and present missing inputs to the user. Do not proceed to Step 9.
-
-If APPROVED, the item is fully groomed with verified information. Proceed to Step 9.
 
 ### Step 9: Write Groomed Content to Item Files
 
