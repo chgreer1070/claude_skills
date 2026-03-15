@@ -104,9 +104,58 @@ If any of checks 1–3 fail, skip grooming for that item and report. For items t
 
 For each target item, extract: title, description, research-first questions (if present), source, suggested location.
 
+### Step 3.5: RT-ICA Initial Snapshot
+
+Before spawning any agents, the orchestrator runs a quick RT-ICA pass using only the information available from Steps 2-3 (item fields, description, suggested_location). This is a baseline — not the final assessment.
+
+```text
+RT-ICA Snapshot: {item title}
+Goal: {one sentence}
+Conditions:
+1. {condition} | Status: {AVAILABLE|DERIVABLE|MISSING}
+...
+AVAILABLE count: {N}
+DERIVABLE count: {N}
+MISSING count: {N}
+```
+
+Write this snapshot to the item via `mcp__backlog__backlog_groom(selector="{title}", section="RT-ICA", content="{snapshot}")`.
+
+This snapshot serves two purposes:
+- It feeds the scope-sizing decision in Step 3.6
+- It gives the swarm agents a starting picture of what's known and what needs research
+
+### Step 3.6: Scope Sizing
+
+The orchestrator determines how many agents to spawn based on the RT-ICA snapshot and the item's nature. This is a decision the orchestrator makes — not a delegation.
+
+```mermaid
+flowchart TD
+    Start([RT-ICA snapshot + item description]) --> Q1{Issue type?}
+    Q1 -->|defect / bug fix| Q2{How many conditions are AVAILABLE?}
+    Q2 -->|All AVAILABLE| Minimal["MINIMAL scope<br>2 agents: fact-checker + groomer<br>Impact radius = file + direct callers only"]
+    Q2 -->|Some DERIVABLE| Narrow["NARROW scope<br>3 agents: impact-analyst + fact-checker + groomer<br>Impact radius from known files"]
+    Q2 -->|Any MISSING| Standard["STANDARD scope<br>4 agents: impact-analyst + fact-checker + rtica-assessor + groomer"]
+    Q1 -->|missing-guardrail / procedural| Q3{How many conditions are DERIVABLE or MISSING?}
+    Q3 -->|Mostly AVAILABLE| Narrow
+    Q3 -->|Mixed| Standard
+    Q3 -->|Mostly DERIVABLE/MISSING| Full["FULL scope<br>5 agents: all teammates<br>Full impact radius expansion"]
+    Q1 -->|unbounded-design / new plugin| Full
+    Q1 -->|recurring-pattern| Standard
+```
+
+| Scope | Agents | When | Impact Radius depth |
+|-------|--------|------|-------------------|
+| MINIMAL | 2 (fact-checker, groomer) | Bug fix, all conditions known, existing system | File + direct callers |
+| NARROW | 3 (impact-analyst, fact-checker, groomer) | Known system, some unknowns to derive | Known files + one level of expansion |
+| STANDARD | 4 (impact-analyst, fact-checker, rtica-assessor, groomer) | Mixed knowns/unknowns, existing system being modified | Full expansion from known starting points |
+| FULL | 5 (all teammates including classifier) | New system, many unknowns, unbounded design | Deep expansion, classify issue type, full RCA |
+
+**Escalation rule:** If any agent discovers scope beyond what the current sizing anticipated (e.g., impact-analyst in NARROW scope finds 15+ affected systems), the orchestrator escalates to the next scope level by spawning additional agents. In team mode, new teammates join the existing team. In no-team mode, the orchestrator spawns new agents in the next wave.
+
 ### Steps 4-8: Parallel Grooming Swarm
 
-Steps 4-8 run as a parallel swarm. Each concern gets its own agent. All agents write to the same backlog item via MCP `backlog_groom` (each writes to a different section — no clobbering). Agents broadcast findings to the team so others can react.
+Steps 4-8 run as a parallel swarm sized by Step 3.6. Each concern gets its own agent. All agents write to the same backlog item via MCP `backlog_groom` (each writes to a different section — no clobbering). Agents broadcast findings to the team so others can react.
 
 #### Team mode (preferred — when TeamCreate is available)
 
@@ -325,6 +374,31 @@ The groomer teammate (or agent) produces: Reproducibility, Priority, Impact, Ben
 
 The groomer reads all sections written by prior teammates (Impact Radius, Fact-Check, RT-ICA, Issue Classification) from the item via MCP before producing its sections. This ensures the groomed content reflects the full findings.
 
+### Step 8.5: RT-ICA Final Pass
+
+After all swarm agents complete, the orchestrator re-runs RT-ICA using the full information now available. Read all sections written to the item (Impact Radius, Fact-Check, Issue Classification, groomed subsections) and re-assess every condition from the Step 3.5 snapshot.
+
+Compare the final assessment against the initial snapshot:
+
+```text
+RT-ICA Final: {item title}
+Goal: {same as snapshot}
+Conditions:
+1. {condition} | Snapshot: {AVAILABLE|DERIVABLE|MISSING} → Final: {AVAILABLE|DERIVABLE|MISSING}
+...
+Changes from snapshot:
+- {condition X}: DERIVABLE → AVAILABLE (resolved by fact-checker)
+- {condition Y}: AVAILABLE → MISSING (refuted by fact-checker)
+- {condition Z}: (new) MISSING (discovered by impact-analyst)
+Decision: {APPROVED|BLOCKED}
+```
+
+Write the final RT-ICA to the item via `mcp__backlog__backlog_groom(selector="{title}", section="RT-ICA", content="{final RT-ICA}")`, replacing the snapshot.
+
+If the final decision is BLOCKED (conditions that were DERIVABLE in the snapshot turned out to be MISSING, or new MISSING conditions were discovered by the swarm), stop and present missing inputs to the user. Do not proceed to Step 9.
+
+If APPROVED, the item is fully groomed with verified information. Proceed to Step 9.
+
 ### Step 9: Write Groomed Content to Item Files
 
 For each item, write groomed content into the per-item file via the backlog MCP tools.
@@ -408,13 +482,18 @@ Per-item groomed content lives in each item file; this session file holds only m
 ## Completion Criteria
 
 - Validity check (job still valid, problem reproducible, local file not stale) before grooming
-- All grooming concerns run as parallel swarm (team mode) or iterative waves (no-team fallback) — NOT sequential orchestrator steps
+- RT-ICA initial snapshot run before swarm (Step 3.5) — baselines what is AVAILABLE / DERIVABLE / MISSING
+- Scope sized from RT-ICA snapshot + issue type (Step 3.6) — MINIMAL / NARROW / STANDARD / FULL
+- Agent count matches scope sizing — not all 5 agents for every item
+- All grooming concerns run as parallel swarm (team mode) or iterative waves (no-team fallback)
 - Impact Radius: systems inventory built from groomed content, 5-question checklist run per system, section written via MCP
 - Fact-Check: claims verified against primary sources (training data not used as evidence), section written via MCP
-- RT-ICA: information completeness assessed using Impact Radius + Fact-Check results, REFUTED → MISSING, section written via MCP
 - Issue Classification: assigned with RCA for `defect`/`recurring-pattern` types, section written via MCP
 - Groomer: subsections produced after all prior sections are available, each written via MCP
-- Scope expansion handled: when new systems or refuted claims change scope, affected agents re-run or adjust
+- Scope expansion handled: when new systems or refuted claims change scope, orchestrator escalates to next scope level
+- RT-ICA final pass run after swarm completes (Step 8.5) — re-assesses all conditions with full information, replaces snapshot
+- RT-ICA final shows changes from snapshot (which conditions moved, which are new)
+- If RT-ICA final is BLOCKED, stop and present missing inputs — do not proceed to Step 9
 - When item has GitHub issue, all sections synced to issue body
 - Team shut down after all teammates complete (team mode) or all waves finish (fallback mode)
 - Bulk session summary optionally saved to `.claude/grooming-sessions/{date}.md` when grooming multiple items
