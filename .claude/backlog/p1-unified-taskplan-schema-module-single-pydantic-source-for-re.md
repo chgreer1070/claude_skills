@@ -5,9 +5,9 @@ metadata:
   topic: unified-taskplan-schema-module-single-pydantic-source-for-re
   source: Session observation — implementation_manager.py failed to parse task file produced by swarm-task-planner (2026-03-14)
   added: '2026-03-14'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#715'
   last_synced: '2026-03-14T22:49:38Z'
   groomed: '2026-03-14'

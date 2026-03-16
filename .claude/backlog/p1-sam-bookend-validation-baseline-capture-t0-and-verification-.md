@@ -5,9 +5,9 @@ metadata:
   topic: sam-bookend-validation-baseline-capture-t0-and-verification-
   source: Session observation — feature verification passed structural checks but missed behavioral failure (content loss during format conversion, 2026-03-15)
   added: '2026-03-15'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#718'
   last_synced: '2026-03-15T05:30:21Z'
   groomed: '2026-03-15'

@@ -5,9 +5,9 @@ metadata:
   topic: backlog-item-matching-is-broken-substring-search-on-titles-f
   source: Session observation
   added: '2026-03-16'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#745'
   last_synced: '2026-03-16T03:20:46Z'
   groomed: '2026-03-16'
