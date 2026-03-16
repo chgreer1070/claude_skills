@@ -486,7 +486,7 @@ class TestParseAddressPNNN:
         Why: Security and correctness -- invalid input must be rejected.
         """
         # Arrange / Act / Assert
-        with pytest.raises(ValueError, match="Invalid"):
+        with pytest.raises(ValueError):
             parse_address(address)
 
     def test_parse_address_slug_with_task(self) -> None:

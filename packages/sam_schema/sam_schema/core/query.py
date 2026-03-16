@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
 # Matches the new P{NNN}-{slug}.yaml naming scheme to extract the numeric plan number.
 _P_NUMERIC_RE = re.compile(r"^P(\d+)-")
+_LEGACY_TASKS_RE = re.compile(r"^tasks-(\d+)-")
 
 
 def _next_plan_number(plan_dir: Path) -> int:
@@ -49,14 +50,13 @@ def _next_plan_number(plan_dir: Path) -> int:
         return 1
 
     highest = 0
-    legacy_re = re.compile(r"^tasks-(\d+)-")
     for entry in plan_dir.iterdir():
         name = entry.name
         m = _P_NUMERIC_RE.match(name)
         if m:
             highest = max(highest, int(m.group(1)))
             continue
-        m2 = legacy_re.match(name)
+        m2 = _LEGACY_TASKS_RE.match(name)
         if m2:
             highest = max(highest, int(m2.group(1)))
     return highest + 1

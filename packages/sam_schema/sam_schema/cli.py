@@ -249,7 +249,7 @@ def _read_task_assignment(plan_path: Path, task_id: str, output_format: str) -> 
         if assignment.plan_goal:
             console.print(f"[bold cyan]Plan goal:[/bold cyan] {assignment.plan_goal}")
         if assignment.plan_context:
-            console.print(f"[bold cyan]Plan context:[/bold cyan] {assignment.plan_context[:200]}...")
+            console.print(f"[bold cyan]Plan context:[/bold cyan] {assignment.plan_context}")
         _output_rich_task(data.get("task", data))
 
 

@@ -139,13 +139,13 @@ hooks:
      Output shape: {"feature": "...", "ready_tasks": [...], "count": N}
      Falls back to local cache if GitHub unavailable.
    If parent issue number is unknown (or MCP unavailable), use CLI fallback:
-     uv run sam ready-tasks P{N}
+     uv run sam ready P{N}
    With GitHub flag (when parent issue is known but MCP unavailable):
-     uv run sam ready-tasks P{N} --github --parent-issue N
+     uv run sam ready P{N} --github --parent-issue N
 
 3. For each ready task:
    Route to the agent named in the task's **Agent** field.
-   If the task's `skills` list (from ready-tasks JSON) is non-empty,
+   If the task's `skills` list (from ready JSON) is non-empty,
    include skill-loading instructions in the delegation prompt:
      For each skill, instruct the sub-agent to call Skill(skill="{skill-name}").
    Launch the agent with:
@@ -173,7 +173,7 @@ A task is "ready" when:
 1. Status is `NOT STARTED`
 2. All dependency tasks have status `COMPLETE`
 
-Readiness evaluation is performed by the `sam` CLI via `uv run sam ready-tasks P{N}` or the MCP tool `backlog_get_ready_sam_tasks`.
+Readiness evaluation is performed by the `sam` CLI via `uv run sam ready P{N}` or the MCP tool `backlog_get_ready_sam_tasks`.
 
 ---
 
@@ -300,7 +300,7 @@ The `sam` CLI is the canonical interface for all SAM task file operations. Use `
 |---------|-------|--------|
 | `list` | `uv run sam list` | JSON: `{features: [...], count: N}` |
 | `status` | `uv run sam status P{N}` | JSON: task counts, ready tasks, all tasks with details |
-| `ready-tasks` | `uv run sam ready-tasks P{N}` | JSON: `{ready_tasks: [...], count: N}` |
+| `ready` | `uv run sam ready P{N}` | JSON: `{ready_tasks: [...], count: N}` |
 | `read` | `uv run sam read P{N} --format json` | JSON: full plan with task fields and context |
 | `claim` | `uv run sam claim P{N} {task_id}` | Claims task in-progress; exits non-zero if already claimed |
 | `update` | `uv run sam update P{N} --context "..."` | Updates plan context field |
@@ -311,7 +311,7 @@ The `sam` CLI is the canonical interface for all SAM task file operations. Use `
 
 | Script | Path | Purpose |
 |--------|------|---------|
-| `sam` CLI | `uv run sam` | Canonical interface for all task file I/O (status, ready-tasks, read, claim, update) |
+| `sam` CLI | `uv run sam` | Canonical interface for all task file I/O (status, ready, read, claim, update) |
 | `task_status_hook.py` | [plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py](./../../plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py) | Hook script for automatic status/timestamp updates |
 | `task_format.py` | [plugins/python3-development/skills/implementation-manager/scripts/task_format.py](./../../plugins/python3-development/skills/implementation-manager/scripts/task_format.py) | Shared YAML frontmatter utilities (internal to sam_schema) |
 | `get_task_context.py` | [plugins/python3-development/skills/implementation-manager/scripts/get_task_context.py](./../../plugins/python3-development/skills/implementation-manager/scripts/get_task_context.py) | Dynamic context injection for implementation-manager skill |
@@ -347,7 +347,7 @@ User
 /implement-feature
   │
   ├─ sam status P{N}       ──> JSON status
-  ├─ sam ready-tasks P{N}  ──> JSON ready list (includes skills per task)
+  ├─ sam ready P{N}  ──> JSON ready list (includes skills per task)
   │
   │  ┌── T0 runs first (Priority 1, no dependencies) ───────┐
   │  │  t0-baseline-capture                                  │
@@ -358,7 +358,7 @@ User
   │
   │  ┌── For each implementation task (after T0 completes) ─┐
   │  │                                                      │
-  │  │  Orchestrator reads task skills from ready-tasks JSON │
+  │  │  Orchestrator reads task skills from ready JSON │
   │  │  If skills non-empty: adds Skill() instructions to   │
   │  │    delegation prompt ──> sub-agent loads skills       │
   │  │                                                      │
