@@ -5,9 +5,9 @@ metadata:
   topic: fix-v2-decorator-syntax-in-backlogcore-server-replace-mcptoo
   source: 'GitHub Issue #463'
   added: '2026-03-06'
-  priority: P1
+  priority: completed
   type: Bug
-  status: needs-grooming
+  status: done
   issue: '#463'
   last_synced: '2026-03-14T16:00:33Z'
 ---
