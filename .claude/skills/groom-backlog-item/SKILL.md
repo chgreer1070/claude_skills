@@ -37,9 +37,10 @@ flowchart TD
     S2 --> S2Out{"Item passed all<br>validity checks?"}
     S2Out -->|"Checks 1–3 failed — invalid, done, or stale"| SkipReport(["Report to user and skip this item"])
     S2Out -->|"Checks 1–3 pass AND already groomed today"| PlanCheck{"Item has<br>plan file?"}
-    PlanCheck -->|"Yes — plan field set"| S25["Step 2.5 — Plan Drift Check<br>Spawn haiku agent to detect codebase<br>changes since plan was written"]
-    PlanCheck -->|"No plan file"| S9Direct["Step 9 — Apply only the specific<br>change requested — skip Steps 3–8"]
+    PlanCheck -->|"Yes — plan field set"| S25["Step 2.5 — Plan Drift Check (Mode A)<br>Spawn haiku agent to detect codebase<br>changes since plan was written"]
+    PlanCheck -->|"No plan file"| S25B["Step 2.5 — Grooming Drift Check (Mode B)<br>Spawn haiku agent to detect codebase<br>changes since item was groomed"]
     S25 --> DriftDone(["Report drift findings to user — stop"])
+    S25B --> DriftDone
     S2Out -->|"Checks 1–3 pass, not groomed today"| S3["Step 3 — Extract item details<br>title, description, research questions, source, suggested_location"]
     S3 --> S35["Step 3.5 — RT-ICA Initial Snapshot<br>Assess AVAILABLE / DERIVABLE / MISSING<br>Write snapshot via backlog_groom"]
     S35 --> S36["Step 3.6 — Scope Sizing<br>Choose MINIMAL / NARROW / STANDARD / FULL<br>based on RT-ICA snapshot and issue type"]
@@ -76,14 +77,20 @@ flowchart TD
     StaleClose --> StaleSkip(["Skip grooming — move to next item"])
     StaleEvidence -->|"No evidence found"| StaleReport(["Report: issue #N closed but no commit/PR found<br>Recommend manual review — skip grooming"])
     C4Check -->|"Yes — already groomed today"| PlanFileCheck{"Does item have<br>a plan file?<br>Check plan field in backlog_list JSON"}
-    PlanFileCheck -->|"Yes — plan field is set"| PlanDrift(["Step 2.5 — Plan Drift Check<br>Spawn haiku agent — report findings — stop"])
-    PlanFileCheck -->|"No — no plan field"| GroomedSkip(["Skip Steps 4-8<br>Go to Step 9 for specific change only"])
+    PlanFileCheck -->|"Yes — plan field is set"| PlanDrift(["Step 2.5 Mode A — Plan Drift Check<br>Spawn haiku agent — report findings — stop"])
+    PlanFileCheck -->|"No — no plan field"| GroomDrift(["Step 2.5 Mode B — Grooming Drift Check<br>Spawn haiku agent — report findings — stop"])
     C4Check -->|"No — not groomed today"| PassAll(["All checks pass — proceed to Step 3"])
 ```
 
-### Step 2.5: Plan Drift Check (groomed item with existing plan)
+### Step 2.5: Drift Check (groomed item)
 
-**Trigger**: Item is groomed AND has a `plan` field pointing to an existing file.
+**Trigger**: Item is already groomed AND has not been re-groomed today. Two modes based on whether a plan file exists.
+
+---
+
+#### Mode A: Plan Drift (item has a plan file)
+
+**Precondition**: `plan` field is set and points to an existing file.
 
 **Purpose**: Detect what changed in the codebase since the plan was written, so tasks reflect current reality before execution.
 
@@ -138,7 +145,69 @@ Review {specific task IDs} against this change during execution.
 **No drift detected** — all referenced files unchanged since plan creation.
 ```
 
-After the drift check completes, report findings to the user and stop. Do not proceed to Step 3.
+---
+
+#### Mode B: Grooming Drift (item groomed but no plan file)
+
+**Precondition**: Item is groomed (has groomed sections) but `plan` field is absent or empty.
+
+**Purpose**: Detect what changed in the codebase since the item was groomed, so the groomed content reflects current reality before planning begins.
+
+Spawn a haiku-model agent (`subagent_type="general-purpose"`, model=haiku) with this task:
+
+1. Call `mcp__backlog__backlog_view(selector="{title}")` to retrieve the full item
+2. Extract file paths from the groomed sections:
+   - **Impact Radius** section — file paths listed under Code, Documentation, Configuration/CI, Agent Instructions
+   - **Files** section — explicit file paths listed by the groomer
+   - **Output / Evidence** section — file paths cited as evidence
+3. Get the item's groomed date from the frontmatter `groomed` field (format: `YYYY-MM-DD`)
+4. For each extracted file path, find commits since that date: `git log --oneline --since={groomed_date} -- {file_path}`
+5. For each commit found, get the diff summary: `git show --stat {sha} -- {file_path}` and `git log -1 --format=%s {sha}` for the commit message
+6. Analyze whether each commit changes what the groomed content describes. Same categories as Mode A:
+   - **Scope change** — file now does more or less than the groomed content assumed
+   - **Partial fix** — the issue the item describes was partially resolved by another commit
+   - **New callers** — other files now depend on this file that the groomed content did not account for
+   - **File moved/renamed** — file is at a different path
+   - **No impact** — commit is unrelated to the item's scope for this file
+7. Write findings to the backlog item via `mcp__backlog__backlog_groom(selector="{title}", section="Grooming Drift", content="...")`
+
+**Grooming Drift output format when drift is detected:**
+
+```markdown
+## Grooming Drift
+
+**Groomed date**: {groomed_date}
+**Files checked**: {count}
+**Files with drift**: {count}
+
+### {file_path}
+
+**Commits since grooming** ({count}):
+- `{sha_short}` ({date}): {commit_message}
+
+**Impact on groomed content**:
+When groomed on {groomed_date}, this file {description of expected state}.
+In commit {sha} on {date}, {description of what changed}.
+{New callers / scope changes / partial fixes discovered}.
+Re-groom or update the affected sections before planning.
+
+### {next file}
+...
+```
+
+**Grooming Drift output format when no drift is detected:**
+
+```markdown
+## Grooming Drift
+
+**Groomed date**: {groomed_date}
+**Files checked**: {count}
+**No drift detected** — all referenced files unchanged since grooming.
+```
+
+---
+
+After either drift check completes, report findings to the user and stop. Do not proceed to Step 3.
 
 ---
 
@@ -561,7 +630,9 @@ Per-item groomed content lives in each item file; this session file holds only m
 ## Completion Criteria
 
 - Validity check (job still valid, problem reproducible, local file not stale) before grooming
-- Plan Drift Check run (Step 2.5) when item is already groomed AND has a plan file — findings written to "Plan Drift" section, then stop
+- Drift Check run (Step 2.5) when item is already groomed today:
+  - Mode A (Plan Drift) — item has a plan file: extract file paths from plan, compare git log since plan date, write to "Plan Drift" section, then stop
+  - Mode B (Grooming Drift) — item has no plan file: extract file paths from Impact Radius / Files / Output Evidence sections, compare git log since groomed date, write to "Grooming Drift" section, then stop
 - RT-ICA initial snapshot run before swarm (Step 3.5) — baselines what is AVAILABLE / DERIVABLE / MISSING
 - Scope sized from RT-ICA snapshot + issue type (Step 3.6) — MINIMAL / NARROW / STANDARD / FULL
 - Agent count matches scope sizing — not all 5 agents for every item
