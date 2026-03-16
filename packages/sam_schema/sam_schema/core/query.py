@@ -349,16 +349,31 @@ def update_status(plan_path: Path, task_id: str, new_status: TaskStatus, timesta
         FileNotFoundError: If ``plan_path`` does not exist.
         KeyError: If ``task_id`` is not found in the plan.
     """
+    # Read the current task state once, before writing.
+    current = get_task(plan_path, task_id)
+
     # Resolve to the concrete file path for the writer.
     file_path = _resolve_writable_path(plan_path, task_id)
 
     # Build all field updates and write them in a single read-modify-write cycle.
+    ts = datetime.now(UTC).isoformat()
     field_updates: dict[str, str | int | list[str]] = {"status": str(new_status)}
     if timestamp_field is not None:
-        field_updates[timestamp_field] = datetime.now(UTC).isoformat()
+        field_updates[timestamp_field] = ts
     update_fields(file_path, task_id, field_updates)
 
-    return get_task(plan_path, task_id)
+    # Reconstruct the updated Task from what we already know — no second file read.
+    kwargs = current.model_dump(by_alias=False)
+    kwargs["status"] = new_status
+    if timestamp_field == "started":
+        from datetime import datetime as _dt  # noqa: PLC0415
+
+        kwargs["started"] = _dt.fromisoformat(ts)
+    elif timestamp_field == "completed":
+        from datetime import datetime as _dt  # noqa: PLC0415
+
+        kwargs["completed"] = _dt.fromisoformat(ts)
+    return Task.model_validate(kwargs)
 
 
 def get_plan_status(plan_path: Path) -> PlanStatus:

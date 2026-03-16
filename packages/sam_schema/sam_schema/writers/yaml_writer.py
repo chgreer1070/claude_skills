@@ -281,11 +281,20 @@ def write_plan(plan: Plan, output_path: Path, *, force_single: bool = False) -> 
         target = resolved if resolved.suffix == ".yaml" else resolved.with_suffix(".yaml")
         return _write_single_file(plan, target)
 
-    # Decide based on line count
-    estimated = _estimate_line_count(plan)
-    if estimated < LINE_THRESHOLD:
+    # Serialize once; use the result for both the threshold check and the write.
+    # This avoids the double serialization that occurred when _estimate_line_count
+    # serialized the plan and _write_single_file then serialized it again.
+    meta = _plan_metadata_dict(plan)
+    task_list = [_task_to_dict(t) for t in plan.tasks]
+    full: dict[str, Any] = {**meta, "tasks": task_list}
+    content = _serialize_to_string(full)
+    line_count = content.count("\n")
+
+    if line_count < LINE_THRESHOLD:
         target = resolved if resolved.suffix == ".yaml" else resolved.with_suffix(".yaml")
-        return _write_single_file(plan, target)
+        _atomic_write(target, content)
+        return target
+
     return _write_directory(plan, resolved)
 
 
@@ -400,6 +409,41 @@ def _split_frontmatter(raw_text: str) -> tuple[str, str, str]:
     return open_delim, yaml_block, rest
 
 
+def _locate_task_entry(data: dict, task_id: str, file_path: Path) -> dict:
+    """Locate and return the mutable task dict within a loaded YAML document.
+
+    Handles two file layouts:
+
+    - **Multi-task file**: top-level ``tasks`` list; searches for the entry
+      whose ``task`` or ``id`` key matches ``task_id``.
+    - **Single-task file**: top-level dict with a ``task`` or ``id`` key.
+
+    Args:
+        data: Loaded YAML document (ruamel.yaml round-trip dict).
+        task_id: Task ID to locate (e.g., ``"T1"``).
+        file_path: Source path — used only in ``KeyError`` messages.
+
+    Returns:
+        The mutable task dict (a reference into ``data``) for the caller to modify.
+
+    Raises:
+        KeyError: If ``task_id`` cannot be found in the document.
+    """
+    if "tasks" in data and isinstance(data["tasks"], list):
+        for task_entry in data["tasks"]:
+            entry_id = task_entry.get("task") or task_entry.get("id")
+            if str(entry_id) == task_id:
+                return task_entry
+        msg = f"Task ID '{task_id}' not found in {file_path}"
+        raise KeyError(msg)
+
+    if data.get("task") == task_id or data.get("id") == task_id:
+        return data
+
+    msg = f"Task ID '{task_id}' not found in {file_path}"
+    raise KeyError(msg)
+
+
 def _validate_field_name(field: str) -> None:
     """Validate that ``field`` is a known task field name.
 
@@ -474,27 +518,8 @@ def update_field(file_path: Path, task_id: str, field: str, value: str | int | l
         return
 
     data = y.load(raw_text)
-
-    # Locate and update the task.
-    # Both ``task`` (YAML-frontmatter format) and ``id`` (pure-YAML format)
-    # are valid task-ID keys depending on which writer produced the file.
-    if "tasks" in data and isinstance(data["tasks"], list):
-        # Multi-task file: search the tasks list
-        for task_entry in data["tasks"]:
-            entry_id = task_entry.get("task") or task_entry.get("id")
-            if str(entry_id) == task_id:
-                task_entry[field] = actual_value
-                break
-        else:
-            msg = f"Task ID '{task_id}' not found in {file_path}"
-            raise KeyError(msg)
-    elif data.get("task") == task_id or data.get("id") == task_id:
-        # Single-task file
-        data[field] = actual_value
-    else:
-        msg = f"Task ID '{task_id}' not found in {file_path}"
-        raise KeyError(msg)
-
+    task_entry = _locate_task_entry(data, task_id, file_path)
+    task_entry[field] = actual_value
     buf = io.StringIO()
     y.dump(data, buf)
     _atomic_write(file_path, buf.getvalue())
@@ -579,22 +604,8 @@ def append_section(path: Path, task_id: str, section_name: str, content: str) ->
         return
 
     data = y.load(raw_text)
-
-    if "tasks" in data and isinstance(data["tasks"], list):
-        for task_entry in data["tasks"]:
-            entry_id = task_entry.get("task") or task_entry.get("id")
-            if str(entry_id) == task_id:
-                _append_to_context_notes(task_entry)
-                break
-        else:
-            msg = f"Task ID '{task_id}' not found in {path}"
-            raise KeyError(msg)
-    elif data.get("task") == task_id or data.get("id") == task_id:
-        _append_to_context_notes(data)
-    else:
-        msg = f"Task ID '{task_id}' not found in {path}"
-        raise KeyError(msg)
-
+    task_entry = _locate_task_entry(data, task_id, path)
+    _append_to_context_notes(task_entry)
     buf = io.StringIO()
     y.dump(data, buf)
     _atomic_write(path, buf.getvalue())
@@ -651,22 +662,8 @@ def update_fields(file_path: Path, task_id: str, fields: dict[str, str | int | l
         return
 
     data = y.load(raw_text)
-
-    if "tasks" in data and isinstance(data["tasks"], list):
-        for task_entry in data["tasks"]:
-            entry_id = task_entry.get("task") or task_entry.get("id")
-            if str(entry_id) == task_id:
-                _apply_fields(task_entry)
-                break
-        else:
-            msg = f"Task ID '{task_id}' not found in {file_path}"
-            raise KeyError(msg)
-    elif data.get("task") == task_id or data.get("id") == task_id:
-        _apply_fields(data)
-    else:
-        msg = f"Task ID '{task_id}' not found in {file_path}"
-        raise KeyError(msg)
-
+    task_entry = _locate_task_entry(data, task_id, file_path)
+    _apply_fields(task_entry)
     buf = io.StringIO()
     y.dump(data, buf)
     _atomic_write(file_path, buf.getvalue())

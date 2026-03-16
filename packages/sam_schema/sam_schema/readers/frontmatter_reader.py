@@ -13,7 +13,7 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from sam_schema.core.models import TASK_ID_PATTERN
-from sam_schema.readers._yaml_utils import coerce_to_plain, load_yaml
+from sam_schema.readers._yaml_utils import coerce_to_plain, load_yaml, parse_prose_fields, split_outside_fences
 from sam_schema.readers.detect import FormatType
 
 if TYPE_CHECKING:
@@ -45,9 +45,7 @@ def _load_yaml_block(text: str) -> dict[str, Any]:
 def _split_outside_fences(body: str) -> list[str]:
     """Split a markdown body on ``---`` delimiters, ignoring those inside code fences.
 
-    A ``---`` delimiter inside a triple-backtick code fence is NOT treated as a
-    task section separator. This prevents spurious task splits when task body
-    content contains YAML code examples.
+    Delegates to the shared implementation in ``readers._yaml_utils``.
 
     Args:
         body: Markdown text that may contain multiple YAML task blocks separated
@@ -56,66 +54,13 @@ def _split_outside_fences(body: str) -> list[str]:
     Returns:
         List of segments split on section delimiters that are outside code fences.
     """
-    # We walk through the body tracking whether we're inside a code fence.
-    # When outside, we detect ``\n---+\n`` as a segment boundary.
-    segments: list[str] = []
-    current_parts: list[str] = []
-    in_fence = False
-
-    # Split on code fence boundaries first to identify fence regions
-    # Strategy: scan line by line, toggle fence state on ``` lines,
-    # accumulate content, and flush segment on delimiter lines outside fences.
-    lines = body.split("\n")
-    i = 0
-    while i < len(lines):
-        line = lines[i]
-
-        # Toggle code fence state on ``` lines
-        if line.startswith("```"):
-            in_fence = not in_fence
-            current_parts.append(line)
-            i += 1
-            continue
-
-        # Outside fence: check if this line is a --- delimiter
-        if not in_fence and re.match(r"^---+\s*$", line):
-            # Flush current segment
-            segments.append("\n".join(current_parts))
-            current_parts = []
-            i += 1
-            continue
-
-        current_parts.append(line)
-        i += 1
-
-    # Flush the last segment
-    segments.append("\n".join(current_parts))
-    return segments
+    return split_outside_fences(body)
 
 
 def _parse_prose_fields(prose: str) -> dict[str, str]:
     """Extract named content sections from a markdown prose segment.
 
-    Looks for ``## SectionName`` or ``### SectionName`` headings and collects
-    the text beneath each one.  The results are mapped to canonical task field
-    names so they can be merged into a task dict.
-
-    Recognised section → field mappings (case-insensitive):
-
-    - Context / Background → ``description`` (combined with Objective /
-      Requirements if those are also present)
-    - Objective → ``objective``
-    - Requirements → ``requirements``
-    - Constraints → ``constraints``
-    - Expected Outputs / Expected Output → ``expected-outputs``
-    - Acceptance Criteria / Acceptance → ``acceptance-criteria``
-    - Verification Steps / Verification / CoVe Checks / CoVe → ``verification-steps``
-    - Context Notes → ``context-notes``
-    - Handoff → ``handoff``
-
-    When multiple sections map to ``description`` (Context + Objective +
-    Requirements), only ``description`` is populated; the others are left in
-    their own fields as well.
+    Delegates to the shared implementation in ``readers._yaml_utils``.
 
     Args:
         prose: Raw markdown text, possibly starting with section headings.
@@ -124,58 +69,7 @@ def _parse_prose_fields(prose: str) -> dict[str, str]:
         Dict of canonical field name → text content.  Only non-empty sections
         are included.
     """
-    # Heading pattern: ## or ### followed by text
-    heading_re = re.compile(r"^(?:#{2,4})\s+(.+)$", re.MULTILINE)
-    matches = list(heading_re.finditer(prose))
-
-    # Map heading names to canonical field names
-    HEADING_TO_FIELD: dict[str, str] = {
-        "description": "description",
-        "context": "description",
-        "background": "description",
-        "objective": "objective",
-        "requirements": "requirements",
-        "constraints": "constraints",
-        "expected outputs": "expected-outputs",
-        "expected output": "expected-outputs",
-        "acceptance criteria": "acceptance-criteria",
-        "acceptance": "acceptance-criteria",
-        "verification steps": "verification-steps",
-        "verification": "verification-steps",
-        "cove checks": "verification-steps",
-        "cove": "verification-steps",
-        "context notes": "context-notes",
-        "handoff": "handoff",
-    }
-
-    result: dict[str, str] = {}
-
-    if not matches:
-        # No headings — treat the whole prose as description
-        stripped = prose.strip()
-        if stripped:
-            result["description"] = stripped
-        return result
-
-    for idx, match in enumerate(matches):
-        heading_text = match.group(1).strip()
-        field = HEADING_TO_FIELD.get(heading_text.lower())
-        if field is None:
-            continue
-
-        section_start = match.end()
-        section_end = matches[idx + 1].start() if idx + 1 < len(matches) else len(prose)
-        content = prose[section_start:section_end].strip()
-        if not content:
-            continue
-
-        if field in result:
-            # Append to existing content (e.g. multiple sections → description)
-            result[field] = result[field] + "\n\n" + content
-        else:
-            result[field] = content
-
-    return result
+    return parse_prose_fields(prose)
 
 
 def _parse_embedded_task_blocks(

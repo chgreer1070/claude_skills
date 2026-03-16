@@ -20,7 +20,7 @@ import re
 from typing import TYPE_CHECKING
 
 from sam_schema.core.models import TASK_ID_PATTERN
-from sam_schema.readers._yaml_utils import coerce_to_plain, load_yaml
+from sam_schema.readers._yaml_utils import coerce_to_plain, load_yaml, parse_prose_fields, split_outside_fences
 from sam_schema.readers.detect import FormatType
 
 if TYPE_CHECKING:
@@ -104,49 +104,21 @@ def _extract_prose_sections(body: str) -> dict[str, str]:
 def _split_body_outside_fences(body: str) -> list[str]:
     """Split a markdown body on ``---`` delimiters, ignoring those inside code fences.
 
+    Delegates to the shared implementation in ``readers._yaml_utils``.
+
     Args:
         body: Markdown text that may contain YAML blocks separated by ``---`` lines.
 
     Returns:
         List of text segments split on delimiter lines outside code fences.
     """
-    segments: list[str] = []
-    current_parts: list[str] = []
-    in_fence = False
-
-    for line in body.split("\n"):
-        if line.startswith("```"):
-            in_fence = not in_fence
-            current_parts.append(line)
-            continue
-
-        if not in_fence and re.match(r"^---+\s*$", line):
-            segments.append("\n".join(current_parts))
-            current_parts = []
-            continue
-
-        current_parts.append(line)
-
-    segments.append("\n".join(current_parts))
-    return segments
+    return split_outside_fences(body)
 
 
 def _parse_body_prose_fields(prose: str) -> dict[str, str]:
     """Extract named content sections from a markdown prose segment.
 
-    Looks for ``##`` or ``###`` headings and maps their content to canonical
-    task field names.
-
-    Recognised section → field mappings (case-insensitive):
-    - Context / Background → ``description``
-    - Objective → ``objective``
-    - Requirements → ``requirements``
-    - Constraints → ``constraints``
-    - Expected Outputs / Expected Output → ``expected-outputs``
-    - Acceptance Criteria / Acceptance → ``acceptance-criteria``
-    - Verification Steps / Verification / CoVe Checks / CoVe → ``verification-steps``
-    - Context Notes → ``context-notes``
-    - Handoff → ``handoff``
+    Delegates to the shared implementation in ``readers._yaml_utils``.
 
     Args:
         prose: Raw markdown text, possibly starting with section headings.
@@ -155,54 +127,7 @@ def _parse_body_prose_fields(prose: str) -> dict[str, str]:
         Dict of canonical field name → text content.  Only non-empty sections
         are included.
     """
-    heading_re = re.compile(r"^(?:#{2,4})\s+(.+)$", re.MULTILINE)
-    matches = list(heading_re.finditer(prose))
-
-    HEADING_TO_FIELD: dict[str, str] = {
-        "description": "description",
-        "context": "description",
-        "background": "description",
-        "objective": "objective",
-        "requirements": "requirements",
-        "constraints": "constraints",
-        "expected outputs": "expected-outputs",
-        "expected output": "expected-outputs",
-        "acceptance criteria": "acceptance-criteria",
-        "acceptance": "acceptance-criteria",
-        "verification steps": "verification-steps",
-        "verification": "verification-steps",
-        "cove checks": "verification-steps",
-        "cove": "verification-steps",
-        "context notes": "context-notes",
-        "handoff": "handoff",
-    }
-
-    result: dict[str, str] = {}
-
-    if not matches:
-        stripped = prose.strip()
-        if stripped:
-            result["description"] = stripped
-        return result
-
-    for idx, match in enumerate(matches):
-        heading_text = match.group(1).strip()
-        field = HEADING_TO_FIELD.get(heading_text.lower())
-        if field is None:
-            continue
-
-        section_start = match.end()
-        section_end = matches[idx + 1].start() if idx + 1 < len(matches) else len(prose)
-        content = prose[section_start:section_end].strip()
-        if not content:
-            continue
-
-        if field in result:
-            result[field] = result[field] + "\n\n" + content
-        else:
-            result[field] = content
-
-    return result
+    return parse_prose_fields(prose)
 
 
 def _try_parse_yaml_dict(text: str) -> dict | None:

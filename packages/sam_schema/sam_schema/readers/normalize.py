@@ -58,6 +58,12 @@ def _normalize_status(raw: Any) -> str:  # noqa: ANN401
         return TaskStatus.NOT_STARTED.value
 
     text = str(raw).strip()
+    text_lower = text.lower()
+
+    # Fast path: already a canonical lowercase value (common case for PURE_YAML).
+    # Check this before paying the regex cost for emoji stripping.
+    if text_lower in _VALID_STATUSES:
+        return text_lower
 
     # Strip a leading Rich emoji token (e.g., ``:white_check_mark: COMPLETE`` -> ``COMPLETE``)
     # Legacy markdown stores status as ``**Status**: :emoji_token: LABEL``.
@@ -67,11 +73,6 @@ def _normalize_status(raw: Any) -> str:  # noqa: ANN401
         return _normalize_status(emoji_stripped)
 
     text_upper = text.upper()
-    text_lower = text.lower()
-
-    # Already canonical
-    if text_lower in _VALID_STATUSES:
-        return text_lower
 
     # STATUS_MAP lookup (handles space-separated, emoji, etc.)
     if text in STATUS_MAP:

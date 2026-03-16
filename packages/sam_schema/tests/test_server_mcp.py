@@ -27,11 +27,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
-def make_task(
-    task_id: str,
-    status: TaskStatus = TaskStatus.NOT_STARTED,
-    dependencies: list[str] | None = None,
-) -> Task:
+def make_task(task_id: str, status: TaskStatus = TaskStatus.NOT_STARTED, dependencies: list[str] | None = None) -> Task:
     """Return a minimal Task for test use."""
     return Task(
         id=task_id,
@@ -63,10 +59,7 @@ def plan_dir(tmp_path: Path) -> Path:
     """
     p_dir = tmp_path / "plan"
     p_dir.mkdir()
-    tasks = [
-        make_task("T1", status=TaskStatus.COMPLETE),
-        make_task("T2", dependencies=["T1"]),
-    ]
+    tasks = [make_task("T1", status=TaskStatus.COMPLETE), make_task("T2", dependencies=["T1"])]
     plan = Plan(feature="mcp-test", version="1.0", goal="MCP test goal", tasks=tasks)
     write_plan(plan, p_dir / "tasks-1-mcp-test.yaml", force_single=True)
     return p_dir
@@ -183,8 +176,7 @@ async def test_mcp_sam_state_transitions_task_status(plan_dir: Path) -> None:
     # Act
     async with Client(mcp) as client:
         result = await client.call_tool(
-            "sam_state",
-            {"plan": "P1", "task": "T2", "status": "in-progress", "plan_dir": str(plan_dir)},
+            "sam_state", {"plan": "P1", "task": "T2", "status": "in-progress", "plan_dir": str(plan_dir)}
         )
 
     # Assert
@@ -204,8 +196,7 @@ async def test_mcp_sam_state_invalid_status_returns_error_dict(plan_dir: Path) -
     # Act
     async with Client(mcp) as client:
         result = await client.call_tool(
-            "sam_state",
-            {"plan": "P1", "task": "T2", "status": "garbage-status", "plan_dir": str(plan_dir)},
+            "sam_state", {"plan": "P1", "task": "T2", "status": "garbage-status", "plan_dir": str(plan_dir)}
         )
 
     # Assert
@@ -334,16 +325,12 @@ async def test_mcp_sam_claim_returns_claimed_true(tmp_path: Path) -> None:
 
     async with Client(mcp) as client:
         create_result = await client.call_tool(
-            "sam_create",
-            {"slug": "claim-mcp", "goal": "Claim goal", "tasks_yaml": tasks_yaml, "plan_dir": str(p_dir)},
+            "sam_create", {"slug": "claim-mcp", "goal": "Claim goal", "tasks_yaml": tasks_yaml, "plan_dir": str(p_dir)}
         )
         plan_number = create_result.data["plan_number"]
 
         # Act
-        result = await client.call_tool(
-            "sam_claim",
-            {"plan": f"P{plan_number}", "task": "T01", "plan_dir": str(p_dir)},
-        )
+        result = await client.call_tool("sam_claim", {"plan": f"P{plan_number}", "task": "T01", "plan_dir": str(p_dir)})
 
     # Assert
     data = result.data
@@ -376,8 +363,7 @@ async def test_mcp_sam_claim_double_claim_returns_claimed_false(tmp_path: Path) 
 
     async with Client(mcp) as client:
         create_result = await client.call_tool(
-            "sam_create",
-            {"slug": "double-claim-mcp", "goal": "Goal", "tasks_yaml": tasks_yaml, "plan_dir": str(p_dir)},
+            "sam_create", {"slug": "double-claim-mcp", "goal": "Goal", "tasks_yaml": tasks_yaml, "plan_dir": str(p_dir)}
         )
         plan_number = create_result.data["plan_number"]
         plan_addr = f"P{plan_number}"
@@ -429,15 +415,11 @@ async def test_mcp_sam_update_sets_context(tmp_path: Path) -> None:
 
         # Act
         update_result = await client.call_tool(
-            "sam_update",
-            {"address": plan_addr, "plan_dir": str(p_dir), "context": "MCP context text."},
+            "sam_update", {"address": plan_addr, "plan_dir": str(p_dir), "context": "MCP context text."}
         )
 
         # Verify via sam_read
-        read_result = await client.call_tool(
-            "sam_read",
-            {"plan": plan_addr, "task": "T01", "plan_dir": str(p_dir)},
-        )
+        read_result = await client.call_tool("sam_read", {"plan": plan_addr, "task": "T01", "plan_dir": str(p_dir)})
 
     # Assert
     assert update_result.data.get("updated") is True
