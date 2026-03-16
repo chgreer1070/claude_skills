@@ -45,7 +45,7 @@ def run_server() -> None:
     mcp.run()
 
 
-@mcp.tool()
+@mcp.tool
 def sam_read(
     plan: Annotated[str, Field(description="Plan address (e.g., 'P1' or slug)")],
     task: Annotated[str | None, Field(description="Task ID (e.g., 'T3'). Omit to read plan-level fields only.")] = None,
@@ -82,7 +82,7 @@ def sam_read(
         return {"error": str(exc)}
 
 
-@mcp.tool()
+@mcp.tool
 def sam_state(
     plan: Annotated[str, Field(description="Plan address")],
     task: Annotated[str, Field(description="Task ID")],
@@ -110,7 +110,7 @@ def sam_state(
         return {"error": str(exc)}
 
 
-@mcp.tool()
+@mcp.tool
 def sam_ready(
     plan: Annotated[str, Field(description="Plan address")],
     plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
@@ -133,7 +133,7 @@ def sam_ready(
         return {"error": str(exc)}
 
 
-@mcp.tool()
+@mcp.tool
 def sam_status(
     plan: Annotated[str, Field(description="Plan address")],
     plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
@@ -158,7 +158,7 @@ def sam_status(
         return {"error": str(exc)}
 
 
-@mcp.tool()
+@mcp.tool
 def sam_create(
     slug: Annotated[str, Field(description="Short identifier for the plan (e.g., 'auth-system')")],
     goal: Annotated[str, Field(description="Human-readable goal statement for the plan")],
@@ -209,7 +209,7 @@ def sam_create(
         return {"error": str(exc)}
 
 
-@mcp.tool()
+@mcp.tool
 def sam_update(
     address: Annotated[str, Field(description="Plan address (e.g., 'P1') or task address (e.g., 'P1/T2')")],
     plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
@@ -277,7 +277,7 @@ def sam_update(
         return {"updated": True, "address": address}
 
 
-@mcp.tool()
+@mcp.tool
 def sam_claim(
     plan: Annotated[str, Field(description="Plan address (e.g., 'P1' or slug)")],
     task: Annotated[str, Field(description="Task ID to claim (e.g., 'T3')")],

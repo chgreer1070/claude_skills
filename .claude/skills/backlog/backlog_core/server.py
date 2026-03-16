@@ -22,7 +22,7 @@ mcp = FastMCP(
 )
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_add(
     title: Annotated[str, Field(description="Item title")],
     priority: Annotated[str, Field(description="Priority level: P0, P1, P2, or Ideas")],
@@ -61,7 +61,7 @@ async def backlog_add(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_list(
     with_status: Annotated[bool, Field(description="Include GitHub issue status for each item")] = False,
     from_github: Annotated[bool, Field(description="Refresh local cache from GitHub Issues before listing")] = False,
@@ -110,7 +110,7 @@ async def backlog_list(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_view(
     selector: Annotated[str, Field(description="Item selector: GitHub issue URL, #N, bare number, or title substring")],
     offset: Annotated[int, Field(ge=0, description="Skip N entry blocks from body start (for pagination)")] = 0,
@@ -157,7 +157,7 @@ async def backlog_view(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_sync(
     ctx: Context,
     dry_run: Annotated[bool, Field(description="Preview what would be synced without making changes")] = False,
@@ -184,7 +184,7 @@ async def backlog_sync(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_close(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     reason: Annotated[
@@ -228,7 +228,7 @@ async def backlog_close(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_resolve(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     summary: Annotated[str, Field(description="What was done — 1-2 sentence completion summary (required)")],
@@ -272,7 +272,7 @@ async def backlog_resolve(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_update(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     plan: Annotated[str | None, Field(description="Path to a plan file to attach to the item")] = None,
@@ -342,7 +342,7 @@ async def backlog_update(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_groom(
     ctx: Context,
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
@@ -395,7 +395,7 @@ async def backlog_groom(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_normalize(
     ctx: Context,
     dry_run: Annotated[bool, Field(description="Preview normalization changes without modifying files")] = False,
@@ -423,7 +423,7 @@ async def backlog_normalize(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_pull(
     ctx: Context,
     selector: Annotated[
@@ -473,7 +473,7 @@ async def backlog_pull(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_create_sam_task(
     parent_issue_number: Annotated[int, Field(description="Parent story issue number (without #)")],
     task_id: Annotated[str, Field(description="Feature-scoped task ID, e.g. 'T1'")],
@@ -516,7 +516,7 @@ async def backlog_create_sam_task(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_get_sam_tasks(
     parent_issue_number: Annotated[int, Field(description="Parent story issue number (without #)")],
     refresh_cache: Annotated[bool, Field(description="Write updated cache after fetching")] = True,
@@ -537,7 +537,7 @@ async def backlog_get_sam_tasks(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_update_sam_task_status(
     issue_number: Annotated[int, Field(description="Task sub-issue number (without #)")],
     new_status: Annotated[str, Field(description="Target status: not-started | in-progress | complete | blocked")],
@@ -560,7 +560,7 @@ async def backlog_update_sam_task_status(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_get_ready_sam_tasks(
     parent_issue_number: Annotated[int, Field(description="Parent story issue number (without #)")],
 ) -> dict:
@@ -582,7 +582,7 @@ async def backlog_get_ready_sam_tasks(
         return {"error": str(e), **out.to_dict()}
 
 
-@mcp.tool()
+@mcp.tool
 async def backlog_strike_entry(
     selector: Annotated[str, Field(description="Item selector: title substring, #N, bare number, or GitHub issue URL")],
     entry_id: Annotated[str, Field(description="Timestamp ID of the entry to strike")],
