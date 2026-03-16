@@ -46,7 +46,8 @@ research/
 ├── ml-infrastructure/                 # ML compute engines and model serving platforms
 │   ├── microgpt-playground.md         # Browser-native GPT training and inference, zero-dependency JS port of Karpathy's microgpt.py (65 stars)
 │   ├── ray.md                         # AI compute engine for scaling Python/ML workloads (41K+ stars)
-│   └── trainloop.md                   # Managed RL fine-tuning platform: 3-line SDK, reward model training, OpenAI-compatible deployment (YC W25)
+│   ├── trainloop.md                   # Managed RL fine-tuning platform: 3-line SDK, reward model training, OpenAI-compatible deployment (YC W25)
+│   └── zvec.md                        # Alibaba's embedded vector database: in-process Proxima engine, dense+sparse vectors (8.9K stars)
 ├── python-runtimes/                   # Alternative Python interpreters and runtimes
 │   └── rustpython.md                  # Python 3 interpreter written in Rust with WASM support (22K+ stars)
 ├── rust-python-bindings/              # Rust-Python interoperability and binding libraries
@@ -978,6 +979,7 @@ ML compute engines, model serving platforms, and distributed computing infrastru
 | [ray.md](./ml-infrastructure/ray.md) | Ray - AI compute engine for scaling Python/ML applications with LLM serving and MCP server deployment (41K+ stars) | 2026-02-05   |
 | [microgpt-playground.md](./ml-infrastructure/microgpt-playground.md) | microgpt Playground - browser-native GPT training and inference demo, zero-dependency JavaScript port of Karpathy's microgpt.py (65 stars) | 2026-02-23   |
 | [trainloop.md](./ml-infrastructure/trainloop.md) | TrainLoop - managed RL fine-tuning platform: 3-line SDK for production signal collection, reward model training (DPO/GRPO), OpenAI-compatible deployment; 50x error reduction reported (YC W25) | 2026-03-12   |
+| [zvec.md](./ml-infrastructure/zvec.md) | zvec - Alibaba's embedded vector database built on Proxima engine; in-process SQLite-style deployment, dense+sparse vectors, Python/Node.js/C++, Apache 2.0 (8.9K stars) | 2026-03-15   |
 
 **Key Topics**:
 
