@@ -5,9 +5,9 @@ metadata:
   topic: integrate-samschema-as-sole-task-file-interface-across-all-s
   source: Session observation — agent interaction trace revealed 7 components bypass sam_schema (2026-03-15)
   added: '2026-03-15'
-  priority: P0
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#719'
   last_synced: '2026-03-15T08:18:35Z'
   groomed: '2026-03-15'

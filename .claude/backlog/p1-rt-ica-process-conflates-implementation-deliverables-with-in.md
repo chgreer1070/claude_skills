@@ -5,9 +5,9 @@ metadata:
   topic: rt-ica-process-conflates-implementation-deliverables-with-in
   source: 'Session observation — RT-ICA on #719 listed 5 deliverables as MISSING information (2026-03-15)'
   added: '2026-03-15'
-  priority: P1
+  priority: completed
   type: Bug
-  status: open
+  status: done
   issue: '#720'
   last_synced: '2026-03-15T07:32:04Z'
   groomed: '2026-03-15'
