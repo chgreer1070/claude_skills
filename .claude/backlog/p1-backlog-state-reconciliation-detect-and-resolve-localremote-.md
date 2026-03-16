@@ -5,13 +5,13 @@ metadata:
   topic: backlog-state-reconciliation-detect-and-resolve-localremote-
   source: 'Session observation — #300 appeared as open in backlog_list despite being closed on GitHub (2026-03-14)'
   added: '2026-03-14'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#714'
   last_synced: '2026-03-14T21:57:27Z'
   groomed: '2026-03-14'
-  plan: plan/tasks-1-backlog-state-reconciliation.md
+  plan: plan/tasks-1-backlog-state-reconciliation.yaml
 ---
 
 ## Fact-Check
