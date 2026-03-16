@@ -40,6 +40,11 @@ from sam_schema.core.query import (
 mcp: FastMCP = FastMCP("sam")
 
 
+def run_server() -> None:
+    """Entry point for ``sam-mcp`` console script."""
+    mcp.run()
+
+
 @mcp.tool()
 def sam_read(
     plan: Annotated[str, Field(description="Plan address (e.g., 'P1' or slug)")],

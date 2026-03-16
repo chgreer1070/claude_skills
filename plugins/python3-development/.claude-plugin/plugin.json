@@ -11,9 +11,7 @@
       "command": "uv",
       "args": [
         "run",
-        "python",
-        "-m",
-        "sam_schema"
+        "sam-mcp"
       ],
       "cwd": "${CLAUDE_PROJECT_DIR}"
     },

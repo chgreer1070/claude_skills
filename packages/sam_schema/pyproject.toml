@@ -12,6 +12,7 @@ dependencies = [
 
 [project.scripts]
 sam = "sam_schema.cli:app"
+sam-mcp = "sam_schema.server:run_server"
 
 [build-system]
 requires = ["hatchling"]
