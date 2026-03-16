@@ -13,7 +13,7 @@
         "run",
         "python",
         "-m",
-        "sam_schema.server"
+        "sam_schema"
       ],
       "cwd": "${CLAUDE_PROJECT_DIR}"
     }
