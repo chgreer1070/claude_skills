@@ -1010,8 +1010,18 @@ def _filter_open_items(
     title: str | None,
     status: str | None,
     status_map: dict[int, IssueStatus],
+    type_: str | None = None,
+    topic: str | None = None,
 ) -> list[BacklogItem]:
-    """Apply section, title, and status filters to open_items.
+    """Apply section, title, status, type, and topic filters to open_items.
+
+    type_ performs a case-insensitive exact match against metadata.type.
+    Items missing metadata.type are excluded when type_ filter is active.
+
+    topic performs a case-insensitive substring match against metadata.topic.
+    Items missing metadata.topic are excluded when topic filter is active.
+
+    Filters compose with AND logic.
 
     Returns:
         Filtered list of BacklogItem objects matching all supplied criteria.
@@ -1024,6 +1034,12 @@ def _filter_open_items(
         open_items = [it for it in open_items if title_lower in it.title.lower()]
     if status:
         open_items = [it for it in open_items if _item_derived_status(it, status_map) == status]
+    if type_:
+        type_lower = type_.lower()
+        open_items = [it for it in open_items if it.type_ and it.type_.lower() == type_lower]
+    if topic:
+        topic_lower = topic.lower()
+        open_items = [it for it in open_items if it.topic and topic_lower in it.topic.lower()]
     return open_items
 
 
@@ -1054,14 +1070,16 @@ def _build_list_entry(
     """Build the result dict for a single backlog item.
 
     Returns:
-        Dict with section, title, issue, plan, and optional file_path, groomed,
-        status, and milestone fields.
+        Dict with section, title, issue, plan, type, topic, and optional
+        file_path, groomed, status, and milestone fields.
     """
     entry: dict[str, str | bool] = {
         "section": item.section,
         "title": item.title,
         "issue": item.issue,
         "plan": item.plan,
+        "type": item.type_,
+        "topic": item.topic,
     }
     if item.file_path:
         entry["file_path"] = item.file_path
@@ -1083,6 +1101,8 @@ def list_items(
     section: str | None = None,
     status: str | None = None,
     title: str | None = None,
+    type_: str | None = None,
+    topic: str | None = None,
     include_closed: bool = False,
     repo: str = DEFAULT_REPO,
     output: Output | None = None,
@@ -1096,12 +1116,16 @@ def list_items(
         section: Filter by priority section — P0, P1, P2, or Ideas (case-insensitive).
         status: Filter by status value e.g. 'needs-grooming', 'status:in-progress'.
         title: Filter items whose title contains this substring (case-insensitive).
+        type_: Filter by metadata.type — case-insensitive exact match (e.g. 'Bug', 'Feature').
+            Items missing metadata.type are excluded when this filter is active.
+        topic: Filter by metadata.topic — case-insensitive substring match.
+            Items missing metadata.topic are excluded when this filter is active.
         include_closed: When True, include items with terminal status (done, resolved, closed).
         repo: GitHub repo in owner/repo format.
         output: Optional Output collector.
 
     Returns:
-        Dict with items list (each item a dict with section, title, issue, plan,
+        Dict with items list (each item a dict with section, title, issue, plan, type, topic,
         file_path, groomed, and optionally status/milestone).
     """
     out = output or Output()
@@ -1111,7 +1135,7 @@ def list_items(
     open_items = [it for it in items if not it.skip and it.section]
     open_items = _filter_closed_items(open_items, include_closed)
     status_map = batch_fetch_statuses(open_items, repo) if (with_status or status) else {}
-    open_items = _filter_open_items(open_items, section, title, status, status_map)
+    open_items = _filter_open_items(open_items, section, title, status, status_map, type_=type_, topic=topic)
     result_items = [_build_list_entry(it, with_status, status_map) for it in open_items]
     return {"items": result_items, "count": len(result_items), **out.to_dict()}
 

@@ -159,7 +159,7 @@ If both ARTIFACTS and glob return empty: skip the entire routing section (no fol
 
 ### Step 2: Search Backlog by Title Keywords
 
-For each follow-up file, derive a search title from the filename using this algorithm:
+For each follow-up file, derive a search slug from the filename using this algorithm:
 
 ```text
 Input:  plan/tasks-8-data-validation-followup-1.md
@@ -171,15 +171,56 @@ Step 5: Replace hyphens with spaces --> data validation
 Output: "data validation"
 ```
 
-Search the backlog for an existing item matching these keywords:
+Search the backlog using a 2-strategy fallback chain. Strategy 3 (LLM semantic match) is
+**explicitly excluded** from follow-up routing: follow-up filenames are machine-derived slugs,
+not human semantic queries, so LLM semantic selection would have low fidelity against
+human-authored backlog titles.
 
-```text
-mcp__backlog__backlog_list()
+```mermaid
+flowchart TD
+    Derive["Derive slug from filename<br>(hyphens → spaces)"] --> S1["Strategy 1 — substring<br>backlog_list(title='{slug}')"]
+    S1 --> R1{Results?}
+    R1 -->|One or more matches| UseS1["Use Strategy 1 result"]
+    R1 -->|Zero results| S2["Strategy 2 — filter-first<br>backlog_list(topic='{slug}')"]
+    S2 --> R2{Results?}
+    R2 -->|One or more matches| UseS2["Use Strategy 2 result"]
+    R2 -->|Zero results| NoMatch["No match found<br>→ proceed to Step 3 (create new item)"]
+    UseS1 --> Step3["Step 3: Link or Create"]
+    UseS2 --> Step3
+    NoMatch --> Step3
 ```
 
-Parse the JSON output. For each item, check if the derived title keywords appear (case-insensitive substring match) in the item's `title` field.
+**Strategy 1 — substring via `title=`**
 
-**Error handling**: If `mcp__backlog__backlog_list` fails, log the error, skip the search, and proceed to Step 3 as "no match found" for each follow-up. If the follow-up filename does not match the expected `tasks-{N}-{slug}-followup-{k}.md` pattern, log a warning and use the full filename (without directory prefix and `.md` extension) as the derived title.
+```text
+mcp__backlog__backlog_list(title="{derived_slug}")
+```
+
+Parse the JSON output. For each item, check if the derived slug appears (case-insensitive
+substring match) in the item's `title` field. If one or more items match, use the first
+match as the result and skip Strategy 2.
+
+**Strategy 2 — filter-first via `topic=`**
+
+If Strategy 1 returns zero matches, run:
+
+```text
+mcp__backlog__backlog_list(topic="{derived_slug}")
+```
+
+The `topic` parameter performs a case-insensitive substring match against `metadata.topic`.
+Follow-up slugs often correspond to the topic area recorded in backlog item metadata, making
+this an effective second-pass filter when title substring fails.
+
+If Strategy 2 returns one or more items, use the first match.
+
+If both strategies return zero results, treat as "no match found" and proceed to Step 3.
+
+**Error handling**: If either `mcp__backlog__backlog_list` call fails, log the error, skip
+that strategy, and continue to the next strategy (or to Step 3 as "no match found" if all
+strategies fail). If the follow-up filename does not match the expected
+`tasks-{N}-{slug}-followup-{k}.md` pattern, log a warning and use the full filename (without
+directory prefix and `.md` extension) as the derived slug.
 
 ### Step 3: Link or Create Backlog Item
 

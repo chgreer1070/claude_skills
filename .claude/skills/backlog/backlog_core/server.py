@@ -72,8 +72,28 @@ async def backlog_list(
     status: Annotated[
         str | None, Field(description="Filter by status value e.g. 'needs-grooming', 'status:in-progress'")
     ] = None,
-    title: Annotated[
-        str | None, Field(description="Filter items whose title contains this substring (case-insensitive)")
+    title_filter: Annotated[
+        str | None,
+        Field(description="Filter items whose title contains this substring (case-insensitive)", alias="title"),
+    ] = None,
+    type_: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Filter by metadata.type — case-insensitive exact match (e.g. 'Bug', 'Feature'). "
+                "Items without metadata.type are excluded when this filter is active."
+            ),
+            alias="type",
+        ),
+    ] = None,
+    topic: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Filter by metadata.topic — case-insensitive substring match. "
+                "Items without metadata.topic are excluded when this filter is active."
+            )
+        ),
     ] = None,
     include_closed: Annotated[
         bool, Field(description="Include items with closed/done/resolved status (excluded by default)")
@@ -86,10 +106,12 @@ async def backlog_list(
     Use section to filter by priority section (P0, P1, P2, Ideas).
     Use status to filter by status value (e.g. needs-grooming, status:in-progress).
     Use title to filter by title substring (case-insensitive).
+    Use type_ to filter by metadata.type exact match (e.g. Bug, Feature).
+    Use topic to filter by metadata.topic substring match.
     Use include_closed=true to include items with terminal status (done, resolved, closed).
 
     Returns:
-        Dict with items list (each containing title, priority, issue, plan)
+        Dict with items list (each containing title, priority, issue, plan, type, topic)
         and output messages/warnings. On error, dict contains an error key.
     """
     out = Output()
@@ -101,7 +123,9 @@ async def backlog_list(
             label=label,
             section=section,
             status=status,
-            title=title,
+            title=title_filter,
+            type_=type_,
+            topic=topic,
             include_closed=include_closed,
             output=out,
         )

@@ -159,6 +159,9 @@ class BacklogItem(BaseModel):
     files: str = ""
     suggested_location: str = ""
 
+    type_: str = ""
+    topic: str = ""
+
     section: str = ""
     file_path: str = ""
     skip: bool = False

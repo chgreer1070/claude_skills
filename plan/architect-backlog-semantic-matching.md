@@ -32,8 +32,8 @@ Add two fields:
 ```python
 {
     # ... existing fields unchanged ...
-    "type": str | None,    # from metadata.type (Feature|Bug|Refactor|Docs|Chore)
-    "topic": str | None,   # from metadata.topic (kebab-case slug)
+    "type": str,    # from metadata.type (Feature|Bug|Refactor|Docs|Chore); "" when absent
+    "topic": str,   # from metadata.topic (kebab-case slug); "" when absent
 }
 ```
 

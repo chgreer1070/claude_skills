@@ -691,3 +691,118 @@ def test_normalize_plan_goal_as_list_coerced() -> None:
 
     # Assert
     assert result.plan.goal == "Deliver X\nDeliver Y"
+
+
+# ---------------------------------------------------------------------------
+# normalize_task — task-level list coercion for str fields
+# Regression tests for: tasks containing acceptance_criteria /
+# verification_steps as YAML lists being silently dropped.
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_task_acceptance_criteria_as_list_coerced_to_str():
+    """acceptance_criteria YAML list is joined into a newline-separated string.
+
+    Tests: list -> str coercion for Task.acceptance_criteria.
+    How: Pass raw dict with acceptance_criteria as list[str].
+    Why: Plan files authored by agents write acceptance_criteria as YAML bullet
+    lists. Before the fix, Pydantic raised ValidationError on list input for a
+    str field, causing the task to be silently dropped in normalize_plan().
+    """
+    # Arrange
+    raw = {
+        "id": "T1",
+        "title": "A task",
+        "status": "not-started",
+        "acceptance_criteria": ["Criterion A", "Criterion B"],
+    }
+
+    # Act
+    task, gaps = normalize_task(raw, FormatType.PURE_YAML)
+
+    # Assert
+    assert task.id == "T1"
+    assert task.acceptance_criteria == "Criterion A\nCriterion B"
+    assert gaps == []
+
+
+def test_normalize_task_verification_steps_as_list_coerced_to_str():
+    """verification_steps YAML list is joined into a newline-separated string.
+
+    Tests: list -> str coercion for Task.verification_steps.
+    How: Pass raw dict with verification_steps as list[str].
+    Why: Same silent-drop root cause as acceptance_criteria.
+    """
+    # Arrange
+    raw = {"id": "T1", "title": "A task", "status": "not-started", "verification_steps": ["Step 1", "Step 2", "Step 3"]}
+
+    # Act
+    task, gaps = normalize_task(raw, FormatType.PURE_YAML)
+
+    # Assert
+    assert task.id == "T1"
+    assert task.verification_steps == "Step 1\nStep 2\nStep 3"
+    assert gaps == []
+
+
+def test_normalize_task_list_fields_do_not_cause_task_drop_in_plan():
+    """Tasks with acceptance_criteria / verification_steps as lists are not dropped.
+
+    Tests: normalize_plan() retains all tasks when str fields arrive as lists.
+    How: Feed normalize_plan() two task dicts with list-valued str fields.
+    Why: Root cause of P699 — normalize_plan() silently continued on
+    ValidationError, yielding tasks=[] instead of tasks=[T1, T2].
+    """
+    # Arrange
+    task_dicts = [
+        {
+            "id": "T1",
+            "title": "Task one",
+            "status": "not-started",
+            "acceptance_criteria": ["AC1", "AC2"],
+            "verification_steps": ["VS1"],
+        },
+        {
+            "id": "T2",
+            "title": "Task two",
+            "status": "not-started",
+            "acceptance_criteria": ["AC3"],
+            "verification_steps": ["VS2", "VS3"],
+        },
+    ]
+    plan_meta: dict = {"feature": "regression-test"}
+
+    # Act
+    result = normalize_plan(plan_meta, task_dicts, FormatType.PURE_YAML, pathlib.Path("/fake/P699-regression.yaml"))
+
+    # Assert — both tasks must be present, not silently dropped
+    assert len(result.plan.tasks) == 2
+    assert result.plan.tasks[0].id == "T1"
+    assert result.plan.tasks[0].acceptance_criteria == "AC1\nAC2"
+    assert result.plan.tasks[1].id == "T2"
+    assert result.plan.tasks[1].verification_steps == "VS2\nVS3"
+
+
+def test_normalize_task_kebab_case_acceptance_criteria_as_list_coerced_to_str():
+    """acceptance-criteria (kebab-case key) YAML list is coerced to str.
+
+    Tests: list -> str coercion honours the kebab-case alias.
+    How: Pass raw dict with 'acceptance-criteria' (not snake_case) as list[str].
+    Why: YAML files use kebab-case keys; both forms must be coerced before
+    Pydantic validation.
+    """
+    # Arrange
+    raw = {
+        "id": "T1",
+        "title": "A task",
+        "status": "not-started",
+        "acceptance-criteria": ["Criterion A", "Criterion B"],
+        "verification-steps": ["Step 1"],
+    }
+
+    # Act
+    task, _gaps = normalize_task(raw, FormatType.PURE_YAML)
+
+    # Assert
+    assert task.acceptance_criteria == "Criterion A\nCriterion B"
+    assert task.verification_steps == "Step 1"

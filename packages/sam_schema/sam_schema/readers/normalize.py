@@ -235,6 +235,30 @@ def normalize_task(raw: dict, source_format: FormatType) -> tuple[Task, list[Sch
         if dep_field in normalized and isinstance(normalized[dep_field], list):
             normalized[dep_field] = _clean_dependency_list(normalized[dep_field])
 
+    # Coerce task-level str fields that may arrive as YAML lists to newline-joined strings.
+    # Plan files authored by agents may write acceptance_criteria and verification_steps as
+    # YAML bullet lists (list[str]) rather than multiline scalars.  The Task model declares
+    # these as str; Pydantic raises ValidationError on list input, causing the task to be
+    # silently dropped in normalize_plan().  Joining here preserves the content.
+    TASK_STR_FIELDS: tuple[str, ...] = (
+        "acceptance_criteria",
+        "acceptance-criteria",
+        "verification_steps",
+        "verification-steps",
+        "description",
+        "objective",
+        "requirements",
+        "constraints",
+        "expected_outputs",
+        "expected-outputs",
+        "context_notes",
+        "context-notes",
+        "handoff",
+    )
+    for field in TASK_STR_FIELDS:
+        if field in normalized and isinstance(normalized[field], list):
+            normalized[field] = "\n".join(str(item) for item in normalized[field])
+
     # Detect schema gaps before constructing the model
     gaps = _detect_gaps(raw, task_id, source_format)
 

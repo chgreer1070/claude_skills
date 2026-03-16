@@ -936,6 +936,10 @@ def list_items(
     include_closed: Annotated[
         bool, typer.Option("--include-closed", help="Include items with closed/done/resolved status")
     ] = False,
+    type_filter: Annotated[
+        str | None, typer.Option("--type", help="Filter by metadata.type (e.g. 'Bug', 'Feature')")
+    ] = None,
+    topic_filter: Annotated[str | None, typer.Option("--topic", help="Filter by metadata.topic")] = None,
 ) -> None:
     """List backlog items. Default reads local cache only. Use --from-github to refresh from GH first."""
     if from_github:
@@ -943,6 +947,12 @@ def list_items(
     items = parse_backlog()
     open_items = [it for it in items if not it.get("_skip") and it.get("_section")]
     open_items = _filter_closed_items(open_items, include_closed)
+    if type_filter is not None:
+        type_lower = type_filter.lower()
+        open_items = [it for it in open_items if it.get("metadata", {}).get("type", "").lower() == type_lower]
+    if topic_filter is not None:
+        topic_lower = topic_filter.lower()
+        open_items = [it for it in open_items if topic_lower in it.get("metadata", {}).get("topic", "").lower()]
     if output_format == "json":
         _list_items_json(open_items, with_status, repo)
     else:
