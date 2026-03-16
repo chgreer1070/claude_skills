@@ -37,7 +37,19 @@ from sam_schema.core.query import (
     update_status,
 )
 
-mcp: FastMCP = FastMCP("sam")
+mcp: FastMCP = FastMCP(
+    "sam",
+    instructions=(
+        "SAM (Structured Agent-Managed) task plan server. "
+        "Use sam_read to inspect a plan or task. "
+        "Use sam_claim to take ownership of a task before starting work. "
+        "Use sam_state to update task status. "
+        "Use sam_ready to list tasks ready for dispatch. "
+        "Use sam_status for a plan-level progress summary. "
+        "Use sam_create to create a new plan from YAML task definitions. "
+        "Use sam_update to set fields or append a markdown section to a task body."
+    ),
+)
 
 
 def run_server() -> None:

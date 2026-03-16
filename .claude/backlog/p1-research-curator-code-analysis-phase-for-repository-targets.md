@@ -5,9 +5,9 @@ metadata:
   topic: research-curator-code-analysis-phase-for-repository-targets
   source: User request — session observation that pi-mono research entry couldn't answer implementation-level questions about the extension system
   added: '2026-03-15'
-  priority: P1
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#717'
   last_synced: '2026-03-15T04:46:01Z'
   groomed: '2026-03-15'
