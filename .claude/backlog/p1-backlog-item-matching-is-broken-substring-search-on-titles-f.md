@@ -11,6 +11,7 @@ metadata:
   issue: '#745'
   last_synced: '2026-03-16T03:20:46Z'
   groomed: '2026-03-16'
+  plan: plan/P699-backlog-semantic-matching.yaml
 ---
 
 ## RT-ICA

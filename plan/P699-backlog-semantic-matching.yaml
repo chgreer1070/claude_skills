@@ -1,0 +1,213 @@
+feature: backlog-semantic-matching
+version: '1.0'
+description: ''
+goal: |-
+  Expose existing type/topic metadata as backlog_list filters (Layer 1) and add semantic matching strategy chain to SKILL.md instructions (Layer 2), resolving the substring-only matching defect in /work-backlog-item and /complete-implementation
+issue: '745'
+tasks:
+- id: T01
+  title: Add type/topic filters and response fields to operations.py
+  status: not-started
+  agent: python3-development:python-cli-architect
+  priority: 1
+  complexity: medium
+  skills:
+  - python3-development
+  acceptance_criteria:
+  - "_build_list_entry() includes 'type' and 'topic' fields in returned dict, sourced from metadata.type and metadata.topic"
+  - "list_items() accepts type_ and topic parameters; when type_ is provided, only items with matching metadata.type (case-insensitive exact match) are returned"
+  - "list_items() topic parameter performs case-insensitive substring match against metadata.topic"
+  - "Filters compose with AND logic — backlog_list(section='P1', type='Bug') returns only P1 bugs"
+  - "Items missing metadata.type are included when no type filter is active, excluded when type filter is active"
+  - "Items missing metadata.topic are included when no topic filter is active, excluded when topic filter is active"
+  - "Invalid type values (e.g., 'InvalidType') return empty results with count 0, no error raised"
+  - "Omitting both new parameters preserves identical behavior to pre-change — backward compatible"
+  verification_steps:
+  - "Run existing test suite to confirm no regressions: uv run pytest .claude/skills/backlog/tests/test_backlog_core_operations.py"
+  - "Manually invoke list_items() with type_='Bug' and verify only bug items returned"
+  - "Invoke list_items() with topic='backlog' and verify substring matching works"
+  - "Invoke list_items() with no new params and diff output against pre-change output"
+- id: T02
+  title: Add type/topic parameters to MCP tool schema in server.py
+  status: not-started
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T01
+  priority: 1
+  complexity: low
+  skills:
+  - python3-development
+  acceptance_criteria:
+  - "backlog_list MCP tool schema includes 'type' parameter (str | None, default None) with help text"
+  - "backlog_list MCP tool schema includes 'topic' parameter (str | None, default None) with help text"
+  - "Both parameters pass through to list_items() call in operations.py"
+  - "Existing parameters (section, status, title, label) remain unchanged in schema and behavior"
+  verification_steps:
+  - "Run MCP tool schema tests: uv run pytest .claude/skills/backlog/tests/test_backlog_core_server.py"
+  - "Inspect tool schema via uv run python -c 'from backlog_core.server import mcp; print(mcp.list_tools())' to verify new params appear"
+  - "Call backlog_list with type='Bug' via MCP and verify filtered results"
+- id: T03
+  title: Add --type and --topic CLI flags to backlog.py list command
+  status: not-started
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T01
+  priority: 1
+  complexity: low
+  skills:
+  - python3-development
+  acceptance_criteria:
+  - "CLI list command accepts --type option (str, optional) that filters by metadata.type"
+  - "CLI list command accepts --topic option (str, optional) that filters by metadata.topic"
+  - "Both options pass through to list_items() call"
+  - "Existing CLI invocations without --type or --topic produce identical output — backward compatible"
+  verification_steps:
+  - "Run: uv run python .claude/skills/backlog/scripts/backlog.py list --type Bug — verify only bugs returned"
+  - "Run: uv run python .claude/skills/backlog/scripts/backlog.py list --topic backlog — verify topic filtering works"
+  - "Run: uv run python .claude/skills/backlog/scripts/backlog.py list — verify identical output to pre-change"
+- id: T04
+  title: Layer 1 tests — type/topic filters and response fields
+  status: not-started
+  agent: python3-development:python-pytest-architect
+  dependencies:
+  - T01
+  - T02
+  - T03
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+  acceptance_criteria:
+  - "test_list_items_type_filter: backlog_list(type='Bug') returns only items with type=='Bug'"
+  - "test_list_items_topic_filter: backlog_list(topic='backlog-cli') returns items with 'backlog-cli' as substring of topic"
+  - "test_list_items_type_topic_compose: filters compose with AND logic"
+  - "test_list_items_response_includes_type_topic: each item dict has 'type' and 'topic' keys"
+  - "test_list_items_backward_compatible: no new params = identical behavior to pre-change"
+  - "test_list_items_missing_type_included: items without metadata.type included when no type filter"
+  - "test_list_items_missing_type_excluded: items without metadata.type excluded when type filter active"
+  - "test_list_items_invalid_type_empty: invalid type returns {items: [], count: 0}"
+  - "test_backlog_list_type_param_schema: MCP tool schema includes type parameter"
+  - "test_backlog_list_topic_param_schema: MCP tool schema includes topic parameter"
+  verification_steps:
+  - "Run full Layer 1 test suite: uv run pytest .claude/skills/backlog/tests/test_backlog_core_operations.py .claude/skills/backlog/tests/test_backlog_core_server.py -v"
+  - "Verify all new tests pass with zero failures"
+  - "Run coverage check to confirm new filter paths are covered"
+- id: T05
+  title: Rewrite work-backlog-item Step 1 with semantic matching strategy chain
+  status: not-started
+  agent: contextual-ai-documentation-optimizer
+  dependencies:
+  - T01
+  - T02
+  - T04
+  priority: 3
+  complexity: high
+  skills:
+  - plugin-creator
+  acceptance_criteria:
+  - "SKILL.md Step 1 contains a 3-strategy fallback chain: Strategy 1 (substring via title=), Strategy 2 (filter-first via type/topic hints), Strategy 3 (LLM semantic match against all open item titles)"
+  - "Strategy 2 includes type derivation heuristic (bug/fix/broken/error -> Bug, feature/add/new/implement -> Feature, refactor/clean/restructure -> Refactor)"
+  - "Strategy 3 uses backlog_list() to load all open item titles+types+topics and presents them to the LLM for semantic selection"
+  - "Token budget validation: the loaded data for Strategy 3 (titles+types+topics for all items) stays under 10K tokens — verified by calculation: 245 items x ~25 tokens/item = ~6,125 tokens"
+  - "Each strategy transition is explicit — zero results from Strategy N triggers Strategy N+1"
+  - "Issue-number and URL inputs bypass the strategy chain entirely (direct backlog_view)"
+  verification_steps:
+  - "Read the updated SKILL.md and verify all 3 strategies are present with explicit transition conditions"
+  - "Verify Strategy 3 token budget note is present: '245 items x ~25 tokens/item = ~6,125 tokens (under 10K budget)'"
+  - "Verify issue-number/URL bypass path is documented before the strategy chain"
+  - "Run SKILL.md linting: uv run prek run --files .claude/skills/work-backlog-item/SKILL.md"
+- id: T06
+  title: Update complete-implementation follow-up routing with filter-first fallback
+  status: not-started
+  agent: contextual-ai-documentation-optimizer
+  dependencies:
+  - T01
+  - T02
+  - T04
+  priority: 3
+  complexity: medium
+  skills:
+  - plugin-creator
+  acceptance_criteria:
+  - "Step 2 follow-up routing uses Strategy 1 (substring via title=) then Strategy 2 (filter-first via topic= derived from filename slug)"
+  - "Strategy 3 (LLM semantic) is explicitly excluded from follow-up routing with documented rationale (filenames are machine-derived slugs, not human semantic queries)"
+  - "Existing follow-up routing logic (attach to backlog, create if missing) is preserved"
+  verification_steps:
+  - "Read the updated SKILL.md and verify 2-strategy chain (substring then filter-first) is present"
+  - "Verify Strategy 3 exclusion rationale is documented"
+  - "Run SKILL.md linting: uv run prek run --files .claude/skills/complete-implementation/SKILL.md"
+- id: T07
+  title: Layer 2 integration scenario tests for semantic matching
+  status: not-started
+  agent: python3-development:python-pytest-architect
+  dependencies:
+  - T04
+  - T05
+  - T06
+  priority: 3
+  complexity: medium
+  skills:
+  - python3-development
+  acceptance_criteria:
+  - "test_semantic_match_synonym_query: query 'fix login issue' finds item titled 'Authentication failure on SSO redirect' via Strategy 2 or 3"
+  - "test_substring_match_takes_priority: when substring matches exist, they are returned before any semantic strategy runs"
+  - "test_filter_first_narrows_candidates: type='Bug' + substring finds correct bug from mixed item set"
+  - "Semantic query success rate test: a corpus of 10 semantic queries achieves 8+ correct matches (80% success rate). Corpus includes: 'fix login issue' -> 'Authentication failure on SSO redirect', 'improve search speed' -> 'Backlog list performance degradation on large datasets', 'broken MCP connection' -> 'MCP server timeout on reconnect', 'add dark mode' -> 'UI theme customization support', 'clean up old tests' -> 'Test suite maintenance and dead code removal', 'database migration failing' -> 'Schema migration script error on PostgreSQL 15', 'fix typo in docs' -> 'Documentation spelling and grammar corrections', 'slow CI pipeline' -> 'GitHub Actions workflow optimization', 'memory leak on startup' -> 'Process memory growth during initialization', 'missing API endpoint' -> 'REST API route registration incomplete'"
+  verification_steps:
+  - "Run integration tests: uv run pytest .claude/skills/backlog/tests/test_scenarios.py -v -k semantic"
+  - "Verify 8/10 semantic query corpus passes (80% threshold)"
+  - "Verify substring-priority test confirms Strategy 1 returns before Strategy 2/3 engage"
+- id: T08
+  title: Documentation updates — README, references, and agent context files
+  status: not-started
+  agent: contextual-ai-documentation-optimizer
+  dependencies:
+  - T05
+  - T06
+  priority: 4
+  complexity: medium
+  skills:
+  - plugin-creator
+  acceptance_criteria:
+  - "Backlog README matching behavior section updated to describe the 3-strategy fallback chain"
+  - "work-backlog-item reference files (step-procedures.md) updated to reflect new Step 1 logic"
+  - "Agent context files (swarm-task-planner, backlog-mcp-validator) updated with new filter parameters"
+  verification_steps:
+  - "Read each updated file and verify content matches the implemented strategy chain"
+  - "Verify no stale references to substring-only matching remain in updated docs"
+  - "Run linting on all modified files: uv run prek run --files <each-file>"
+- id: T09
+  title: End-to-end integration test — query to filter to match to result
+  status: not-started
+  agent: python3-development:python-pytest-architect
+  dependencies:
+  - T04
+  - T07
+  priority: 4
+  complexity: medium
+  skills:
+  - python3-development
+  acceptance_criteria:
+  - "End-to-end test exercises the full path: user query -> backlog_list call -> matching -> result returned"
+  - "Fallback chain end-to-end test: Strategy 1 (substring) returns zero results -> Strategy 2 (filter-first) runs -> Strategy 3 (LLM semantic) runs. Each strategy transition is observable via log output or return metadata"
+  - "Backward compatibility test: existing callers with only title= parameter produce identical results to pre-change behavior"
+  - "Empty corpus test: when no items exist, all strategies return gracefully with zero results"
+  verification_steps:
+  - "Run end-to-end tests: uv run pytest .claude/skills/backlog/tests/test_scenarios.py -v -k e2e"
+  - "Verify fallback chain test observes all 3 strategy transitions (Strategy 1 -> 2 -> 3)"
+  - "Verify backward compatibility test passes with no diff from pre-change output"
+
+# CONTEXT MANIFEST ADDED
+
+# The context manifest for this task has been written to a separate file:
+# .claude/reports/context-manifest-P699-backlog-semantic-matching.md
+#
+# Key context includes:
+# - How backlog item matching works today (substring-only via backlog_list tool)
+# - The 2-layer fix: Layer 1 exposes type/topic metadata as filters in operations.py
+#   and Layer 2 adds a 3-strategy fallback chain (substring, filter-first, LLM semantic)
+# - Data structures: per-item frontmatter schema, MCP response format, function signatures
+# - Technical details: filtering logic (AND composition), backward compatibility guarantees,
+#   token budget for semantic matching (6,125 tokens for 245 items)
+# - File modifications: operations.py, server.py, backlog.py (Layer 1)
+#   and work-backlog-item/SKILL.md, complete-implementation/SKILL.md (Layer 2)
