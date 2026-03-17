@@ -1,0 +1,13 @@
+---
+name: Pipeline completion-to-closure has no enforcement — quality gates can be skipped, issues close without verification, local state drifts from GitHub
+description: "**Problem**: /complete-implementation runs 6 quality gate phases but produces no durable evidence it ran. Issues auto-close on GitHub via Fixes #N (added by 3 independent sources — task agents, /work-backlog-item, and /complete-implementation). /work-backlog-item resolve checks acceptance criteria but not quality gate completion. refresh_local_cache_from_github fetches state=open only, making closed issues structurally invisible. Result: 21 items drifted in this session (closed on GitHub, open locally).\n\n**Where it lives**: complete-implementation SKILL.md (no completion signal), start-task SKILL.md + local-workflow.md + swarm-task-planner (all add Fixes #N), close-resolve-procedure.md (no verified check), operations.py:987 (state=open only), github.py (no status:verified label pattern).\n\n**Success looks like**: Every item that goes through /implement-feature has durable, queryable evidence that quality gates passed. Issues cannot close without that evidence. Local backlog state stays in sync with GitHub. The resolve path refuses to proceed without verification unless explicitly overridden.\n\n**How you'll know it's working**: (1) After /complete-implementation, the GitHub issue has status:verified label. (2) Only /complete-implementation commits contain Fixes #N. (3) backlog_list(from_github=True) detects and updates items whose GitHub issues were closed. (4) /work-backlog-item resolve blocks when Plan exists but status:verified is missing.\n\n**Design decisions (made via interactive gap analysis this session)**:\n- Gap 1: status:verified GitHub label set by /complete-implementation (~12 lines github.py + SKILL.md)\n- Gap 2: Restrict Fixes #N to /complete-implementation only + scheduled GHA audit (3 SKILL.md files + 1 GHA workflow)\n- Gap 3: Fix refresh_local_cache_from_github to fetch closed issues (~10 lines operations.py)\n- Gap 4: Block resolve when Plan exists but status:verified missing, --force bypass (~10 lines close-resolve-procedure.md)\n- Implementation order: Gap 1 first, then Gaps 2+3+4 in parallel\n\n**Research reports**: .claude/reports/process-gap-1-completion-evidence.md, process-gap-2-enforcement-point.md, process-gap-3-reconciliation.md, process-gap-4-resolve-gate.md"
+metadata:
+  topic: pipeline-completion-to-closure-has-no-enforcement-quality-ga
+  source: Session observation — discovered 21 stale backlog items during reconciliation, traced root cause via /process-siren:improve-processes gap analysis
+  added: '2026-03-17'
+  priority: P1
+  type: Bug
+  status: open
+  issue: '#762'
+  last_synced: '2026-03-17T12:16:44Z'
+---
