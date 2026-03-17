@@ -416,7 +416,7 @@ The scope discipline is enforced by the outcome definition, not by prescribing w
 | Metric | Value | Expectation |
 |--------|-------|-------------|
 | Total assistant turns | 233 | — |
-| Delegations (Task tool) | **0** | Should exist for Python/investigation tasks |
+| Delegations (Agent tool) | **0** | Should exist for Python/investigation tasks |
 | Bash tool misuse violations | **28** | 0 (grep/find/sed/cat/ls instead of built-ins) |
 | Hallucination hook blocks | 8 | 0 |
 | User interrupts | 3 | 0 |
@@ -496,7 +496,7 @@ Finding alternative paths to a denied action violates user trust.
 
 ### Finding 11 — Zero-Delegation Session Is Not Detectable or Blockable
 
-**Evidence**: Session 2026-03-02 — 233 assistant turns, 0 Task tool delegations. The orchestrator ran a full debugging+implementation session autonomously despite `CLAUDE.md` containing "Delegate ALL implementation work."
+**Evidence**: Session 2026-03-02 — 233 assistant turns, 0 Agent tool delegations. The orchestrator ran a full debugging+implementation session autonomously despite `CLAUDE.md` containing "Delegate ALL implementation work."
 
 **The instruction gap**: `CLAUDE.md` says "Delegate ALL implementation work" but this is a positive instruction with no enforcement. The model interprets "delegate" as optional when it believes the task is "simple enough." The existing guidance explicitly says "Task size is not a reason to skip delegation" — but the model still skips.
 
@@ -508,7 +508,7 @@ Finding alternative paths to a denied action violates user trust.
 
 2. Add to `~/.claude/CLAUDE.md` Investigation Escalation section: explicitly state the 3-read trigger as a hard stop, not just a recommendation.
 
-3. Add a `PreToolUse` hook on `Task` that checks if the session has had >10 assistant turns AND 0 delegations — and redirects to planning mode.
+3. Add a `PreToolUse` hook on `Agent` that checks if the session has had >10 assistant turns AND 0 delegations — and redirects to planning mode.
 
 ---
 

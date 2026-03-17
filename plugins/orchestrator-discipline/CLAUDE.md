@@ -65,7 +65,7 @@ flowchart TD
     SelfRead -.->|Leads to| SelfImpl["Plan to self-implement<br>'No delegation needed'"]
 ```
 
-**Trigger signal**: 3+ Read/Grep/Bash calls on source files without an intervening Edit/Write or Task delegation.
+**Trigger signal**: 3+ Read/Grep/Bash calls on source files without an intervening Edit/Write or Agent delegation.
 
 **Response when triggered**: STOP. Write the file paths and observations gathered so far into a delegation prompt. Do not read one more file. Delegate.
 

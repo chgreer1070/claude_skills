@@ -21,7 +21,7 @@ restriction notice for plugin agents in the MCP reference file.
 
 - **File**: `plugins/plugin-creator/skills/hooks-core-reference/SKILL.md`
 - **What's wrong**: The PreToolUse/PostToolUse/PermissionRequest matcher table uses `Task` as
-  the tool name for subagent operations. The Task tool was renamed to `Agent` in v2.1.63. Any
+  the tool name for subagent operations. The Task tool was renamed to `Agent` in v2.1.63 (now complete). Any
   hook written with `matcher: "Task"` will silently fail to match subagent operations in current
   Claude Code.
 - **What current docs say**: The official hooks.md tool-name examples use `Agent`, not `Task`.

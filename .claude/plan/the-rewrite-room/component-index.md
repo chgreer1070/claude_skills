@@ -13,7 +13,7 @@
 - **Type**: agent
 - **Verified Purpose**: Audits documentation accuracy against actual implementation. Inventories docs and code, extracts documented claims vs actual implementation, categorizes drift as Critical (documented but absent from code), High (implemented but undocumented), Medium (options differ), Low (wording). Cites evidence with file:line and commit SHA. Writes report to `.claude/reports/DOCUMENTATION_DRIFT_AUDIT.md`. Does NOT auto-fix — audit only.
 - **Triggers**: "auditing documentation accuracy", "documentation drift", "implemented but undocumented", "docs don't match code", at S7 Final Verification stage in development-harness pipeline
-- **Invocation**: `Task(subagent_type="development-harness:doc-drift-auditor", prompt=...)`
+- **Invocation**: `Agent(subagent_type="development-harness:doc-drift-auditor", prompt=...)`
 - **Inputs**: Code files (src dirs), documentation files (CLAUDE.md, architecture.md, plan/*.md), git history; project path context
 - **Outputs**: `STATUS: DONE` block + report at `.claude/reports/DOCUMENTATION_DRIFT_AUDIT.md` containing Executive Summary, Analyzed Files, Findings by Category (4 severity levels), Recommendations
 - **Validated Inputs**: No env vars required. Needs project root path and description of what to audit. Returns `STATUS: BLOCKED` with `NEEDED:` list if inputs insufficient.
@@ -28,7 +28,7 @@
 - **Type**: agent
 - **Verified Purpose**: Synchronizes documentation with code changes using a 4-step loop: (1) understand changes via git diff/log, (2) find all related docs via Glob/Grep, (3) iterate over each doc file with read→identify-outdated→determine-additions→surgical-edits→verify-after loop, (4) produce final response summarizing changes made, files skipped, and issues discovered. Applies "reference over duplication" and "no code examples in docs" principles. Has persistent agent memory at `.claude/agent-memory/service-docs-maintainer/`.
 - **Triggers**: After implementing features, after refactoring, after deleting files, when APIs/configs change, at session end to sweep all affected docs. Trigger phrase in description: "Synchronizes documentation with code changes"
-- **Invocation**: `Task(subagent_type="development-harness:service-docs-maintainer", prompt=...)`
+- **Invocation**: `Agent(subagent_type="development-harness:service-docs-maintainer", prompt=...)`
 - **Inputs**: Task description of code changes. Uses `git diff` and `git log` internally. Description of affected files and components.
 - **Outputs**: Final response text (NOT a file) containing: changes summary, documentation updated list, documentation examined but skipped list, issues discovered. Does NOT write a summary file.
 - **Validated Inputs**: Task description of what changed. Agent reads git diff internally when description is insufficient.
@@ -43,7 +43,7 @@
 - **Type**: agent
 - **Verified Purpose**: Optimizes prompts, SKILL.md, and CLAUDE.md files for Claude comprehension. 6-step process: (0) RT-ICA pre-check blocking gate — identifies file type, original intent, target audience, constraints, quality baseline; (1) analyze current state against file-type-specific strategies; (2) diagnose violations; (3) apply optimizations loading `prompt-optimization-claude-45` principles; (4) compare before/after; (5) CoVe post-check; then structural upgrade analysis. Produces token impact report and `STATUS: DONE` or `STATUS: BLOCKED`.
 - **Triggers**: "improving prompt effectiveness", "rewriting instructions for AI consumption", "analyzing ineffective prompts", "refining system prompts and agent configurations", DOC_IMPROVE tasks in refactoring plans
-- **Invocation**: `Task(subagent_type="plugin-creator:contextual-ai-documentation-optimizer", prompt=...)`
+- **Invocation**: `Agent(subagent_type="plugin-creator:contextual-ai-documentation-optimizer", prompt=...)`
 - **Inputs**: Target file path (SKILL.md, CLAUDE.md, or prompt file). RT-ICA pre-check must complete before optimization proceeds.
 - **Outputs**: RT-ICA assessment + optimized content + CoVe verification + token impact report + `STATUS: DONE/BLOCKED`
 - **Validated Inputs**: File path required. Agent reads file itself — do not pre-summarize content for it.
@@ -58,7 +58,7 @@
 - **Type**: agent
 - **Verified Purpose**: Reads file(s) using Read tool, runs `file_metrics.py` for size/strategy assessment, applies extractive methodology (small <2k words: full read; medium 2k-10k: key sections by theme; large >10k: chunk+synthesize; binary: metadata only), writes BLUF-style structured summary with YAML frontmatter. Reads actual template from `$SKILL_DIR/templates/{format}.md` before producing output.
 - **Triggers**: User requests summarization of one or more files, does not need interactive discussion. Files >5000 chars per summarization rules.
-- **Invocation**: `Task(subagent_type="summarizer:file-summarizer", prompt=...)` with `file_path` and optional `format` parameters
+- **Invocation**: `Agent(subagent_type="summarizer:file-summarizer", prompt=...)` with `file_path` and optional `format` parameters
 - **Inputs**: `file_path` (required), `format` (optional, defaults to `structured`)
 - **Outputs**: Structured summary with YAML frontmatter (source_type, source_path, summarized_at, method, word counts, confidence), Summary section, What Was Found, What Was NOT Found, Uncertain, Sources
 - **Validated Inputs**: File must be readable. If binary, reports metadata only.
@@ -73,7 +73,7 @@
 - **Type**: agent
 - **Verified Purpose**: Fetches URL using `mcp__Ref__ref_read_url` (for docs.anthropic.com, code.claude.com, /docs/ paths) or WebFetch (generic), applies quote-grounding technique (extract quotes → organize by theme → write from quotes → verify every claim traces to a quote), identifies content type (documentation, article, API reference, README, generic). Produces BLUF-style structured summary.
 - **Triggers**: User requests summarization of URLs, does not need interactive discussion
-- **Invocation**: `Task(subagent_type="summarizer:url-summarizer", prompt=...)` with `url` and optional `format` parameters
+- **Invocation**: `Agent(subagent_type="summarizer:url-summarizer", prompt=...)` with `url` and optional `format` parameters
 - **Inputs**: `url` (required), `format` (optional, defaults to `structured`)
 - **Outputs**: Structured summary with YAML frontmatter (source_type: url, source_path, summarized_at, method, word counts, confidence), Summary, What Was Found, What Was NOT Found, Uncertain, Sources
 - **Validated Inputs**: If URL inaccessible, reports specific error (HTTP status, timeout, SSL). Does NOT guess from domain.
@@ -88,7 +88,7 @@
 - **Type**: agent
 - **Verified Purpose**: Reads image via Read tool (Claude Code multimodal), identifies image type (screenshot, diagram, chart, photo, code, terminal), describes only visible elements per type-specific strategy, extracts visible text verbatim before describing. For SVGs also reads as text to extract labels. Output: YAML frontmatter with `word_count_source: null` (images have no word count).
 - **Triggers**: User requests description of images, screenshots, diagrams, or visual content, does not need interactive discussion
-- **Invocation**: `Task(subagent_type="summarizer:image-summarizer", prompt=...)` with `image_path` and optional `format` parameters
+- **Invocation**: `Agent(subagent_type="summarizer:image-summarizer", prompt=...)` with `image_path` and optional `format` parameters
 - **Inputs**: `image_path` (required), `format` (optional, defaults to `structured`)
 - **Outputs**: Structured summary with YAML frontmatter (source_type: image, source_path, method: abstractive, word_count_source: null, confidence), Summary (BLUF description), What Was Found (visible elements), What Was NOT Found, Uncertain, Sources
 - **Validated Inputs**: Image must be readable by Read tool. No filename guessing.
@@ -103,7 +103,7 @@
 - **Type**: agent (user-global)
 - **Verified Purpose**: GitLab Flavored Markdown documentation specialist extending documentation-expert with GLFM-specific features. First step is to enable the `gitlab-skill`. Covers audience analysis, documentation planning, content creation, information architecture, style guides, review/maintenance, and GitLab-specific features (Wiki, README optimization, issue/MR workflow integration). Inherits documentation-expert competencies.
 - **Triggers**: "PROACTIVELY for creating clear, consistent, and GitLab-optimized documentation" — creating GitLab Wiki pages, READMEs for GitLab repos, GLFM syntax validation
-- **Invocation**: `Task(subagent_type="gitlab-docs-expert", prompt=...)` or auto-selected by Claude
+- **Invocation**: `Agent(subagent_type="gitlab-docs-expert", prompt=...)` or auto-selected by Claude
 - **Inputs**: Documentation requirements, existing markdown files to review or rewrite
 - **Outputs**: GLFM-compliant markdown files
 - **Validated Inputs**: None specified beyond task context
@@ -118,7 +118,7 @@
 - **Type**: agent (user-global)
 - **Verified Purpose**: User-facing software documentation specialist (NOT for AI-facing docs — those route to prompt-optimization). Creates user manuals, API docs, tutorials, troubleshooting guides, style guides. Uses context7 MCP for documentation patterns. Model: haiku (cost-efficient, advisory).
 - **Triggers**: "PROACTIVELY for developing clear, consistent, and accessible documentation for various audiences" — user manuals, API docs, tutorials, troubleshooting guides, glossaries. NOT for CLAUDE.md, AGENTS.md, system prompts, agent definitions.
-- **Invocation**: `Task(subagent_type="documentation-expert", prompt=...)` or auto-selected by Claude
+- **Invocation**: `Agent(subagent_type="documentation-expert", prompt=...)` or auto-selected by Claude
 - **Inputs**: Software description, existing docs to improve, audience specification
 - **Outputs**: User-facing documentation in markdown (user manuals, API docs, tutorials, troubleshooting guides, style guides)
 - **Validated Inputs**: None specified beyond task context
@@ -133,7 +133,7 @@
 - **Type**: agent (user-global)
 - **Verified Purpose**: Two-phase documentation freshness management: (1) pre-task — identifies relevant docs, checks freshness indicators, alerts if >90 days stale (green <30d, yellow 30-90d, red >90d); (2) post-task — adds/updates YAML frontmatter freshness headers (last_updated, last_verified, applies_to_version, related_files, update_required_when) after code changes. Implements bidirectional sync and cross-reference validation.
 - **Triggers**: "modifying code that affects docs", "auditing documentation freshness", "implementing doc governance", when documentation has drifted significantly
-- **Invocation**: `Task(subagent_type="doc-freshness-guardian", prompt=...)` or auto-selected by Claude
+- **Invocation**: `Agent(subagent_type="doc-freshness-guardian", prompt=...)` or auto-selected by Claude
 - **Inputs**: Task description, list of files to be modified (to determine which docs are relevant)
 - **Outputs**: Updated documentation files with freshness YAML frontmatter; freshness audit report
 - **Validated Inputs**: Task description required; file list needed to determine scope
@@ -148,7 +148,7 @@
 - **Type**: agent (user-global)
 - **Verified Purpose**: Updates CLAUDE.md files and module documentation (SKILL.md, references/, agent definitions, Python docstrings, config comments) to reflect current implementation during context compaction or task completion. Adapts to super-repo, mono-repo, or single-repo structures. Scope: project-level CLAUDE.md only — NOT global `~/.claude/CLAUDE.md`. Reads task file, reviews code changes, updates CLAUDE.md and module docs, ensures consistency.
 - **Triggers**: "ONLY during context compaction or task completion protocols or if you and the user have identified that existing documentation has drifted from the code significantly" — supply with task file path
-- **Invocation**: `Task(subagent_type="service-documentation", prompt=...)` with task file path
+- **Invocation**: `Agent(subagent_type="service-documentation", prompt=...)` with task file path
 - **Inputs**: Task file path (required). Uses Bash for git diff internally.
 - **Outputs**: Updated CLAUDE.md and module docs; documentation update summary with files changed
 - **Validated Inputs**: Task file path required. Must not edit global `~/.claude/CLAUDE.md`.
@@ -163,7 +163,7 @@
 - **Type**: agent
 - **Verified Purpose**: Refactors Claude Code agents using Anthropic official prompt engineering best practices. MANDATORY research phase first (reads Anthropic docs via MCP tools). Applies: strategic XML tagging (NOT full XML conversion), Constitutional AI self-critique patterns, Claude 4.x optimizations (Sonnet 4.5 vs Opus 4.5), instruction strengthening (vague→imperative), example enhancement, minimal tool selection. Produces: analysis report + refactored agent file + validation checklist. Cites all claims from official Anthropic documentation.
 - **Triggers**: "improving agent clarity and structure", "fixing ambiguous agent instructions", "optimizing agents for Sonnet 4.5 or Opus 4.5", "applying current Anthropic documentation to agent design"
-- **Invocation**: `Task(subagent_type="plugin-creator:subagent-refactorer", prompt=...)` with path to target agent file
+- **Invocation**: `Agent(subagent_type="plugin-creator:subagent-refactorer", prompt=...)` with path to target agent file
 - **Inputs**: Path to target agent .md file; target model preference (Sonnet 4.5 default); optional specific issues
 - **Outputs**: Analysis report with citations; refactored agent .md file (in-place); validation checklist
 - **Validated Inputs**: Agent file path required. Agent must consult Anthropic official docs before refactoring.
@@ -178,7 +178,7 @@
 - **Type**: agent (project-level)
 - **Verified Purpose**: Repository-level variant of the drift auditor. Audit documentation against implementation using git forensics. Produces `DOCUMENTATION_DRIFT_AUDIT.md`. Frontmatter description: "Verify documentation accuracy against implementation using git forensics and code analysis with file paths, line numbers, and commit SHAs." Operates at repository root scope.
 - **Triggers**: "checking if README matches code", "auditing for documentation-code drift", "finding undocumented features", "locating documented-but-unimplemented features"
-- **Invocation**: `Task(subagent_type="doc-drift-auditor", prompt=...)` (project-level, no plugin prefix)
+- **Invocation**: `Agent(subagent_type="doc-drift-auditor", prompt=...)` (project-level, no plugin prefix)
 - **Inputs**: Same as development-harness version — code files, documentation files, git history
 - **Outputs**: Documentation drift audit report (same format as development-harness version)
 - **Validated Inputs**: Same as development-harness version

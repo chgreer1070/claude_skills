@@ -295,7 +295,7 @@ The source SKILL.md (1221 lines) contains 4 distinct domains that will be split 
 | post-linting-architecture-reviewer.md line 30 | `.claude/reports/linting-resolution-*.md` | Resolution artifact path |
 | post-linting-architecture-reviewer.md line 31 | `.claude/artifacts/linting-artifacts-*.json` | Resolution artifact path |
 | lint.md line 62 | `Grep(pattern="^## LINTERS", path="CLAUDE.md")` | Command reads project linting config |
-| lint.md line 114 | `Task(subagent_type="linting-root-cause-resolver")` | Command delegates to agent |
+| lint.md line 114 | `Agent(subagent_type="linting-root-cause-resolver")` | Command delegates to agent |
 
 **After Split Impact**: The main `holistic-linting` skill remains the entry point. Agent references `Skill(skill: "holistic-linting")` will continue to work as the router skill will reference or incorporate resolver content. No agent file changes needed for skill references.
 

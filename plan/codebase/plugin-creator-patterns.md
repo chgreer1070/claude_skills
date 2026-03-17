@@ -619,7 +619,7 @@ Multiple independent agents are launched in a single message:
 Agent(subagent_type="plugin-creator:plugin-assessor", prompt="RESEARCHER 1: EXISTING SOLUTIONS...")
 Agent(subagent_type="plugin-creator:plugin-assessor", prompt="RESEARCHER 2: CLAUDE CODE FEATURES...")
 Agent(subagent_type="plugin-creator:plugin-assessor", prompt="RESEARCHER 3: ARCHITECTURE PATTERNS...")
-Agent(agent="general-purpose", prompt="RESEARCHER 4: PITFALLS & OFFICIAL DOCS...")
+Agent(subagent_type="general-purpose", prompt="RESEARCHER 4: PITFALLS & OFFICIAL DOCS...")
 ```
 
 ### Sequential phase pattern

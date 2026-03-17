@@ -175,7 +175,7 @@ tools: Bash(git:*), Bash(npm:install)
 
 **Available Tools**: Read, Write, Edit, Bash, Grep, Glob, NotebookEdit, AskUserQuestion, WebSearch, Agent, ToolSearch, Skill
 
-**Note**: In v2.1.63, the Task tool was renamed to Agent. Old `Task(...)` references still work as aliases. MCP tools from installed servers are also available and follow pattern `mcp__server-name__tool-name`.
+**Note**: MCP tools from installed servers are also available and follow pattern `mcp__server-name__tool-name`.
 
 **Pattern Matching Examples**:
 

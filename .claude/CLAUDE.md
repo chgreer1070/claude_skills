@@ -86,7 +86,7 @@ Reason: Permission denial is a user boundary signal. Some commands are blocked b
 
 **Investigation Escalation Hard-Stop:**
 
-Three or more Read/Grep/Bash calls on source files without an intervening Edit/Write or Task delegation are the trigger signal for investigation escalation.
+Three or more Read/Grep/Bash calls on source files without an intervening Edit/Write or Agent delegation are the trigger signal for investigation escalation.
 
 When triggered: STOP. Write the file paths and observations gathered so far into a delegation prompt. Do not read one more file. Delegate to a specialist agent.
 
@@ -115,7 +115,7 @@ Activate `/plugin-creator:skill-creator` when ANY condition matches:
 
 ---
 
-## Task Delegation Standards
+## Agent Delegation Standards
 
 Follow Delegation Template in agent-orchestration:agent-orchestration skill when invoking Agent tool.
 

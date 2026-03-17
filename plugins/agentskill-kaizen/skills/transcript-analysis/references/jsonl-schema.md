@@ -268,14 +268,14 @@ Tool inputs by tool name:
 - **Write** — `{"file_path": "...", "content": "..."}`
 - **Grep** — `{"pattern": "...", "path": "...", "output_mode": "content|files_with_matches"}`
 - **Glob** — `{"pattern": "...", "path": "..."}`
-- **Task** — `{"description": "...", "subagent_type": "...", "prompt": "...", "run_in_background": true, "team_name": "...", "name": "...", "model": "..."}`
+- **Agent** — `{"description": "...", "subagent_type": "...", "prompt": "...", "run_in_background": true, "team_name": "...", "name": "...", "model": "..."}`
 - **Skill** — `{"skill": "...", "args": "..."}`
 
 ## Subagent Relationship Model
 
 <eg>
 Main session JSONL (orchestrator)
-└── Task tool_use (id: toolu_01X)
+└── Agent tool_use (id: toolu_01X)
      └── tool_result → "agentId: abc1234"
           └── Subagent at: {session-uuid}/subagents/agent-abc1234.jsonl
                └── Records with isSidechain: true, agentId: abc1234
@@ -283,7 +283,7 @@ Main session JSONL (orchestrator)
 
 Async agent flow:
 
-1. Orchestrator calls `Task` with `run_in_background: true`
+1. Orchestrator calls `Agent` with `run_in_background: true`
 2. Tool result contains agentId and output_file path
 3. Orchestrator polls with `TaskOutput`
 4. Full output stored in `{session-dir}/tool-results/{task-tool-use-id}.txt`

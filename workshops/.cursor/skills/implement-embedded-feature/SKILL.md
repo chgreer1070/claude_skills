@@ -60,7 +60,7 @@ Returns JSON: `{"feature": "...", "ready_tasks": [...], "count": N}`
 For each ready task, delegate to the specified agent:
 
 <eg>
-Agent(agent="{task.agent}", prompt="Execute this firmware implementation task:
+Agent(subagent_type="{task.agent}", prompt="Execute this firmware implementation task:
 
 Task: {task.title}
 Description: {task.description}

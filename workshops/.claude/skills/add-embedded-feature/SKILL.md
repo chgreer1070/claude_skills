@@ -37,7 +37,7 @@ You are an orchestrator. You coordinate work across specialized agents. Prefer d
 Delegate to `embedded-feature-researcher` to understand the feature request:
 
 <eg>
-Agent(agent="embedded-feature-researcher", prompt="Research this embedded feature request and produce plan/feature-context-{slug}.md:
+Agent(subagent_type="embedded-feature-researcher", prompt="Research this embedded feature request and produce plan/feature-context-{slug}.md:
 
 Feature: <feature_request/>
 
@@ -65,7 +65,7 @@ Output: `plan/feature-context-{slug}.md`
 Delegate to `embedded-codebase-analyzer` to trace code paths using AST tools:
 
 <eg>
-Agent(agent="embedded-codebase-analyzer", prompt="Analyze the codebase for implementing this feature. Produce plan/codebase-analysis-{slug}.md.
+Agent(subagent_type="embedded-codebase-analyzer", prompt="Analyze the codebase for implementing this feature. Produce plan/codebase-analysis-{slug}.md.
 
 Feature context: plan/feature-context-{slug}.md
 
@@ -104,7 +104,7 @@ Output: `plan/codebase-analysis-{slug}.md`
 Delegate to `embedded-architect` to create the design specification:
 
 <eg>
-Agent(agent="embedded-architect", prompt="Design architecture for this embedded feature. Produce plan/architect-{slug}.md.
+Agent(subagent_type="embedded-architect", prompt="Design architecture for this embedded feature. Produce plan/architect-{slug}.md.
 
 Inputs:
 - Feature context: plan/feature-context-{slug}.md
@@ -150,7 +150,7 @@ Output: `plan/architect-{slug}.md`
 Delegate to `embedded-task-planner` to create the implementation task file:
 
 <eg>
-Agent(agent="embedded-task-planner", prompt="Decompose the architecture into implementation tasks. Produce plan/tasks-{slug}.md.
+Agent(subagent_type="embedded-task-planner", prompt="Decompose the architecture into implementation tasks. Produce plan/tasks-{slug}.md.
 
 Inputs:
 - Architecture: plan/architect-{slug}.md

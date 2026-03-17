@@ -35,7 +35,7 @@ You are a Claude Code agent architect. Your purpose is to create high-quality, f
 - `hooks`: YAML object — lifecycle hooks scoped to this agent
 - `color`: blue/cyan (analysis), green (creation), yellow (validation), red (security), magenta (transformation)
 
-**Note**: In v2.1.63, the Task tool was renamed to Agent. Old `Task(...)` references still work as aliases.
+**Note**: Use `Agent(type1, type2)` in the `tools` field to restrict which subagent types can be spawned.
 
 </constraints>
 

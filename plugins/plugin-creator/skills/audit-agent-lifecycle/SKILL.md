@@ -48,7 +48,7 @@ Scan plugin structure to identify:
 - All agent files in `agents/` directory
 - Agent frontmatter configuration (tools, skills, model, disallowedTools, permissionMode)
 - Skill references in agent prompts (Skill(), /skill-name patterns)
-- Agent delegation patterns (Agent(agent=), @agent-name references)
+- Agent delegation patterns (Agent(subagent_type=), @agent-name references)
 - Tool usage keywords in prompt body
 
 Build dependency graph:

@@ -118,7 +118,7 @@ Last Updated: {ISO timestamp}
 Agent(subagent_type="plugin-creator:plugin-assessor", prompt="EXISTING PLUGINS: Search plugins/ and ~/.claude/skills/ for similar functionality...")
 Agent(subagent_type="plugin-creator:plugin-assessor", prompt="CLAUDE CODE FEATURES: What plugin capabilities exist? Dynamic context, hooks, MCP, LSP...")
 Agent(subagent_type="plugin-creator:plugin-assessor", prompt="ARCHITECTURE PATTERNS: How do well-structured plugins organize skills, agents, references...")
-Agent(agent="general-purpose", prompt="PITFALLS: Fetch official docs, identify common mistakes, schema gotchas...")
+Agent(subagent_type="general-purpose", prompt="PITFALLS: Fetch official docs, identify common mistakes, schema gotchas...")
 ```
 
 **All four run concurrently. Merge results into research-FINDINGS.md before planning.**
@@ -295,7 +295,7 @@ How do well-structured plugins organize?
 REPORT: Recommended structure based on similar plugins
 Write findings to .claude/plan/{plugin-name}/research-3-architecture.md")
 
-Agent(agent="general-purpose", prompt="
+Agent(subagent_type="general-purpose", prompt="
 RESEARCHER 4: PITFALLS & OFFICIAL DOCS
 Fetch https://code.claude.com/docs/en/plugins-reference.md
 Fetch https://code.claude.com/docs/en/skills.md

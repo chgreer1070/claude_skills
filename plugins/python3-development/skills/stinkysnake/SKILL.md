@@ -472,9 +472,9 @@ Skill(skill: "python3-development:python3-development")  # Core patterns
 ### Agent Delegations
 
 ```text
-Agent(agent="holistic-linting:linting-root-cause-resolver", ...)  # Phase 1 linting
-Agent(agent="python3-development:python-code-reviewer", ...)     # Phase 4 review
-Agent(agent="python3-development:python-pytest-architect", ...)  # Phase 8 tests
+Agent(subagent_type="holistic-linting:linting-root-cause-resolver", ...)  # Phase 1 linting
+Agent(subagent_type="python3-development:python-code-reviewer", ...)     # Phase 4 review
+Agent(subagent_type="python3-development:python-pytest-architect", ...)  # Phase 8 tests
 ```
 
 ### Related Skills

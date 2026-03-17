@@ -83,7 +83,7 @@ sequenceDiagram
 
     rect rgb(200, 200, 230)
         Note over O: EXECUTION PHASE
-        O->>AG: Task(agent, prompt)
+        O->>AG: Agent(agent, prompt)
         activate AG
         AG->>SK: Load subagent-contract
         SK-->>AG: Role boundaries
