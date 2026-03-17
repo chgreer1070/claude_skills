@@ -2223,7 +2223,10 @@ def get_sam_tasks(parent_issue_number: int, refresh_cache: bool = True, output: 
                 cached: dict[str, object] = json.loads(cache_file.read_text(encoding="utf-8"))
                 if cached.get("parent_issue_number") == parent_issue_number:
                     out.warn(f"  WARNING: GitHub unavailable — returning cached tasks from {cache_file.name}")
-                    cached_tasks: list[dict[str, object]] = cached.get("tasks", [])
+                    cached_tasks_raw = cached.get("tasks", [])
+                    cached_tasks: list[dict[str, object]] = (
+                        cached_tasks_raw if isinstance(cached_tasks_raw, list) else []
+                    )  # type: ignore[assignment]
                     count_raw = cached.get("count", len(cached_tasks))
                     return {
                         "tasks": cached_tasks,
@@ -2338,7 +2341,8 @@ def get_ready_sam_tasks(
     """
     out = output or Output()
     tasks_result = get_sam_tasks(parent_issue_number, refresh_cache=True, output=out)
-    tasks: list[dict[str, object]] = tasks_result["tasks"]
+    tasks_raw = tasks_result.get("tasks", [])
+    tasks: list[dict[str, object]] = tasks_raw if isinstance(tasks_raw, list) else []  # type: ignore[assignment]
     feature_slug = _extract_feature_slug(tasks)
     status_by_id = _build_task_status_map(tasks)
     ready: list[dict[str, object]] = [
