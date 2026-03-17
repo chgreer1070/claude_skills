@@ -6,14 +6,5 @@
     "name": "Jamie Nelson",
     "url": "https://github.com/bitflight-devops"
   },
-  "mcpServers": {
-    "sam": {
-      "command": "uv",
-      "args": [
-        "run",
-        "sam-mcp"
-      ],
-      "cwd": "${CLAUDE_PROJECT_DIR}"
-    }
-  }
+  "mcpServers": {}
 }
