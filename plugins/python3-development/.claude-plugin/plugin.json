@@ -25,9 +25,5 @@
         "cocoindex>=1.0.0a24"
       ]
     }
-  },
-  "agents": [
-    "./agents/t0-baseline-capture.md",
-    "./agents/tn-verification-gate.md"
-  ]
+  }
 }

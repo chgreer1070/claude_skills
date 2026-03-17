@@ -17,10 +17,5 @@
   "skills": [
     "./skills/rtfp"
   ],
-  "agents": [
-    "./agents/frustration-analyst.md",
-    "./agents/batch-detector.md",
-    "./agents/context-reconstructor.md"
-  ],
   "mcpServers": "./.mcp.json"
 }

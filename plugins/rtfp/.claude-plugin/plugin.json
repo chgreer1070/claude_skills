@@ -13,10 +13,5 @@
     "emotional-reaction",
     "instruction-following",
     "png-artifact"
-  ],
-  "skills": "./skills/",
-  "agents": [
-    "./agents/reaction-detector.md",
-    "./agents/context-reconstructor.md"
   ]
 }

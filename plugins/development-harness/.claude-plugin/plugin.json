@@ -15,8 +15,5 @@
       ],
       "cwd": "${CLAUDE_PROJECT_DIR}"
     }
-  },
-  "agents": [
-    "./agents/generic-stage-agent.md"
-  ]
+  }
 }
