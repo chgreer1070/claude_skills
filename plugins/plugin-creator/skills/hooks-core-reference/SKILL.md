@@ -15,21 +15,32 @@ For working examples and patterns, activate `Skill(skill: "plugin-creator:hooks-
 
 ## All Hook Events
 
-| Event                | When Fired                        | Matcher Applies | Common Uses             |
-| -------------------- | --------------------------------- | --------------- | ----------------------- |
-| `PreToolUse`         | Before tool execution             | Yes             | Validation, blocking    |
-| `PermissionRequest`  | When user shown permission dialog | Yes             | Auto-approval policies  |
-| `PostToolUse`        | After successful tool execution   | Yes             | Formatting, linting     |
-| `PostToolUseFailure` | After tool fails                  | Yes             | Error handling          |
-| `Notification`       | When Claude wants attention       | Yes             | Custom notifications    |
-| `UserPromptSubmit`   | User submits prompt               | No              | Input validation        |
-| `Stop`               | Claude finishes response          | No              | Cleanup, final checks   |
-| `SubagentStart`      | When spawning a subagent          | No              | Subagent initialization |
-| `SubagentStop`       | Subagent (Agent tool) completes   | No              | Result validation       |
-| `PreCompact`         | Before context compaction         | Yes             | State backup            |
-| `Setup`              | Repository setup/maintenance      | Yes             | One-time operations     |
-| `SessionStart`       | Session begins or resumes         | Yes             | Environment setup       |
-| `SessionEnd`         | Session ends                      | No              | Cleanup, persistence    |
+| Event                | When Fired                                                   | Matcher Applies                        | Common Uses             |
+| -------------------- | ------------------------------------------------------------ | -------------------------------------- | ----------------------- |
+| `PreToolUse`         | Before tool execution                                        | Yes — tool name                        | Validation, blocking    |
+| `PermissionRequest`  | When user shown permission dialog                            | Yes — tool name                        | Auto-approval policies  |
+| `PostToolUse`        | After successful tool execution                              | Yes — tool name                        | Formatting, linting     |
+| `PostToolUseFailure` | After tool fails                                             | Yes — tool name                        | Error handling          |
+| `Notification`       | When Claude wants attention                                  | Yes — notification type                | Custom notifications    |
+| `UserPromptSubmit`   | User submits prompt                                          | No                                     | Input validation        |
+| `Stop`               | Claude finishes response                                     | No                                     | Cleanup, final checks   |
+| `SubagentStart`      | When spawning a subagent                                     | Yes — agent type name                  | Subagent initialization |
+| `SubagentStop`       | Subagent (Agent tool) completes                              | Yes — agent type name                  | Result validation       |
+| `TeammateIdle`       | Agent team teammate about to go idle                         | No                                     | Quality gates           |
+| `TaskCompleted`      | Task being marked as completed                               | No                                     | Completion enforcement  |
+| `InstructionsLoaded` | CLAUDE.md or rules file loaded into context                  | No                                     | Observability           |
+| `ConfigChange`       | Configuration file changes during session                    | Yes — config source                    | Settings auditing       |
+| `WorktreeCreate`     | Worktree being created (`--worktree` or `isolation: worktree`) | No                                   | Custom VCS integration  |
+| `WorktreeRemove`     | Worktree being removed at session exit or subagent finish    | No                                     | Custom VCS cleanup      |
+| `PreCompact`         | Before context compaction                                    | Yes — `manual` or `auto`               | State backup            |
+| `PostCompact`        | After context compaction completes                           | Yes — `manual` or `auto`               | React to new state      |
+| `Elicitation`        | MCP server requests user input mid-task                      | Yes — MCP server name                  | Programmatic responses  |
+| `ElicitationResult`  | User responds to MCP elicitation                             | Yes — MCP server name                  | Observe/modify response |
+| `Setup`              | Repository setup/maintenance                                 | Yes — `init` or `maintenance`          | One-time operations     |
+| `SessionStart`       | Session begins or resumes                                    | Yes — `startup`, `resume`, etc.        | Environment setup       |
+| `SessionEnd`         | Session ends                                                 | Yes — exit reason                      | Cleanup, persistence    |
+
+> **Note:** The Agent tool was renamed from Task in Claude Code v2.1.63. Use `Agent` as the matcher name for tool-based hooks targeting subagent operations.
 
 For a visual overview of the full event sequence, see the [hooks lifecycle diagram](../hooks-guide/references/hooks-lifecycle.png).
 
@@ -72,15 +83,16 @@ Hooks are organized by matchers, where each matcher can have multiple hooks:
 
 **Fields:**
 
-- **matcher**: Pattern to match tool names, case-sensitive (only for `PreToolUse`, `PermissionRequest`, `PostToolUse`)
+- **matcher**: Pattern to match tool names, case-sensitive (for `PreToolUse`, `PermissionRequest`, `PostToolUse`); matches agent type name for `SubagentStart`/`SubagentStop`; matches exit reason for `SessionEnd`; matches config source for `ConfigChange`; matches MCP server name for `Elicitation`/`ElicitationResult`
   - Simple strings match exactly: `Write` matches only the Write tool
   - Supports regex: `Edit|Write` or `Notebook.*`
   - Use `*` to match all tools. Also accepts empty string (`""`) or omit `matcher`
 - **hooks**: Array of hooks to execute when pattern matches
-  - `type`: `"command"` for bash commands or `"prompt"` for LLM evaluation
+  - `type`: `"command"` for bash commands, `"prompt"` for LLM evaluation, `"http"` for HTTP POST requests, or `"agent"` for agentic verifiers with tool access
   - `command`: (For `type: "command"`) The bash command to execute
-  - `prompt`: (For `type: "prompt"`) The prompt to send to the LLM
-  - `timeout`: (Optional) Seconds before canceling (default: 60 for commands, 30 for prompts)
+  - `url`: (For `type: "http"`) The URL to POST the hook input to
+  - `prompt`: (For `type: "prompt"` or `type: "agent"`) The prompt to send to the model
+  - `timeout`: (Optional) Seconds before canceling (default: 600 for commands, 30 for prompts, 60 for agent hooks)
 
 ### Project-Specific Hook Scripts
 
@@ -106,7 +118,7 @@ Use `$CLAUDE_PROJECT_DIR` to reference scripts in your project:
 
 ### Events Without Matchers
 
-For `UserPromptSubmit`, `Stop`, `SubagentStop`, and `SessionEnd`, omit the matcher:
+For `UserPromptSubmit` and `Stop`, omit the matcher. `SubagentStart` and `SubagentStop` support matchers filtered by agent type name. `SessionEnd` supports matchers filtered by exit reason. Example for events that don't use matchers:
 
 ```json
 {
@@ -133,7 +145,7 @@ For `UserPromptSubmit`, `Stop`, `SubagentStop`, and `SessionEnd`, omit the match
 
 | Matcher             | Description                    |
 | ------------------- | ------------------------------ |
-| `Task`              | Subagent tasks                 |
+| `Agent`             | Subagent operations            |
 | `Bash`              | Shell commands                 |
 | `Glob`              | File pattern matching          |
 | `Grep`              | Content search                 |
@@ -168,6 +180,43 @@ For `UserPromptSubmit`, `Stop`, `SubagentStop`, and `SessionEnd`, omit the match
 | ------------- | ------------------------------- |
 | `init`        | `--init` or `--init-only` flags |
 | `maintenance` | `--maintenance` flag            |
+
+### SubagentStart / SubagentStop Matchers
+
+Matched against the agent type name. Values include built-in agents (`Bash`, `Explore`, `Plan`) and custom agent names from `.claude/agents/`.
+
+Note: The Agent tool was renamed from Task in Claude Code v2.1.63. Use `Agent` as the matcher name for `PreToolUse`/`PostToolUse` hooks targeting the subagent-spawning tool call.
+
+### SessionEnd Matchers
+
+| Matcher                        | Trigger                                        |
+| ------------------------------ | ---------------------------------------------- |
+| `clear`                        | Session cleared with `/clear` command          |
+| `logout`                       | User logged out                                |
+| `prompt_input_exit`            | User exited while prompt input was visible     |
+| `bypass_permissions_disabled`  | Bypass permissions mode was disabled           |
+| `other`                        | Other exit reasons                             |
+
+### ConfigChange Matchers
+
+| Matcher             | When it fires                             |
+| ------------------- | ----------------------------------------- |
+| `user_settings`     | `~/.claude/settings.json` changes         |
+| `project_settings`  | `.claude/settings.json` changes           |
+| `local_settings`    | `.claude/settings.local.json` changes     |
+| `policy_settings`   | Managed policy settings (non-blocking)    |
+| `skill`             | Skill file changes                        |
+
+### PostCompact Matchers
+
+| Matcher  | Trigger                                             |
+| -------- | --------------------------------------------------- |
+| `manual` | After `/compact` command                            |
+| `auto`   | After auto-compact when the context window is full  |
+
+### Elicitation / ElicitationResult Matchers
+
+Matched against the MCP server name (the server requesting or receiving user input).
 
 ### Notification Matchers
 
@@ -322,7 +371,7 @@ MCP tools follow the pattern `mcp__<server>__<tool>`:
 
 | Aspect              | Behavior                                |
 | ------------------- | --------------------------------------- |
-| **Timeout**         | 60 seconds default, configurable        |
+| **Timeout**         | 600 seconds default for commands, 30s for prompts, 60s for agent hooks, configurable |
 | **Parallelization** | All matching hooks run in parallel      |
 | **Deduplication**   | Identical commands deduplicated         |
 | **Environment**     | Runs in cwd with Claude Code's env      |
@@ -330,11 +379,16 @@ MCP tools follow the pattern `mcp__<server>__<tool>`:
 
 ### Output Handling by Event
 
-| Event                                   | stdout Handling                  |
-| --------------------------------------- | -------------------------------- |
-| UserPromptSubmit, SessionStart, Setup   | Added to Claude's context        |
-| PreToolUse, PostToolUse, Stop           | Shown in verbose mode (Ctrl+O)   |
-| Notification, SessionEnd, SubagentStart | Logged to debug only (`--debug`) |
+| Event                                                      | stdout Handling                  |
+| ---------------------------------------------------------- | -------------------------------- |
+| UserPromptSubmit, SessionStart, Setup                      | Added to Claude's context        |
+| PreToolUse, PostToolUse, Stop                              | Shown in verbose mode (Ctrl+O)   |
+| Notification, SessionEnd, SubagentStart, InstructionsLoaded | Logged to debug only (`--debug`) |
+| PostCompact                                                | Logged to debug only (`--debug`) |
+| TeammateIdle, TaskCompleted, ConfigChange                  | Shown in verbose mode (Ctrl+O)   |
+| WorktreeCreate                                             | Stdout must be the absolute path to the created worktree directory |
+| WorktreeRemove                                             | Non-blocking; logged to debug    |
+| Elicitation, ElicitationResult                             | JSON response controls MCP input |
 
 ---
 
@@ -388,7 +442,7 @@ claude --debug "hooks"  # Filter to hooks only
 [DEBUG] Found 1 hook matchers in settings
 [DEBUG] Matched 1 hooks for query "Write"
 [DEBUG] Found 1 hook commands to execute
-[DEBUG] Executing hook command: <Your command> with timeout 60000ms
+[DEBUG] Executing hook command: <Your command> with timeout 600000ms
 [DEBUG] Hook command completed with status 0: <Your stdout>
 ```
 

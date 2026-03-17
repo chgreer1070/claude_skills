@@ -580,7 +580,7 @@ my-plugin/
 | `description`  | string         | No       | Max 1024 chars, include trigger keywords |
 | `author`       | object         | No       | `{name, email?, url?}`                   |
 | `keywords`     | array          | No       | Discovery tags (JSON array)              |
-| `agents`       | string\|array  | No       | Path(s) to agent files                   |
+| `agents`       | array          | No       | Array of individual agent file paths (e.g., `["./agents/reviewer.md"]`). Must be an array — a directory string will fail validation. |
 | `skills`       | string\|array  | No       | Path(s) to skill directories             |
 | `hooks`        | string\|object | No       | Hook config path or inline               |
 | `mcpServers`   | string\|object | No       | MCP config path or inline                |

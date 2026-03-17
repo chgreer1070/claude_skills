@@ -522,7 +522,7 @@ Write the YAML frontmatter. All fields are optional, but `description` is strong
 - `context`: Optional. Set to `fork` to run in a forked subagent context for isolation. See advanced patterns below.
 - `agent`: Optional. Which subagent type to use when `context: fork` is set. Options: `Explore`, `Plan`, `general-purpose`, or custom agent name.
 - `user-invocable`: Optional. Set to `false` to hide from the `/` menu. Use for background knowledge users shouldn't invoke directly. Default: `true`.
-- `disable-model-invocation`: Optional. Set to `true` to prevent Claude from automatically loading this skill. Use for workflows you want to trigger manually with `/name`. Default: `false`.
+- `disable-model-invocation`: Optional. Set to `true` to prevent Claude from automatically loading this skill. Use for workflows you want to trigger manually with `/name`. Default: `false`. **Note:** This field has no effect in `-p` (headless/Agent SDK CLI) mode — ALL skill invocations via `/skill-name` are unavailable in `-p` mode regardless of this setting. Skills used in automation must embed their full workflow in the prompt. See [Headless Mode and Agent SDK](../claude-skills-overview-2026/resources/headless-agent-sdk.md).
 - `hooks`: Optional. Hooks scoped to this skill's lifecycle. See hooks documentation for configuration format.
 
 **Multi-runtime scaffold** — when a skill targets multiple runtimes, combine portable fields with runtime-specific extensions. Fields not recognized by a runtime are silently ignored:

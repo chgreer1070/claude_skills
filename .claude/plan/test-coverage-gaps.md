@@ -178,3 +178,9 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 **Files**: `packages/sam_schema/sam_schema/writers/yaml_writer.py`, `packages/sam_schema/sam_schema/cli.py`
 **Behavior to cover**: `update_field(path, 'T07', ...)` and `sam state integrate-sam-schema/T07 complete` both raise "Task ID 'T07' not found" on the `tasks-3-integrate-sam-schema.md` plan file, even though `implementation_manager.py claim-task` succeeded on the same file using the deprecated regex writer. Test should verify that `update_field` and `sam state` can update status on a multi-document YAML-frontmatter plan where the task ID is `T07` (two-digit numeric suffix).
 **Reason not written**: Discovered during T07 execution; root cause requires investigation into the sam_schema reader's task ID parsing for two-digit suffixes. Outside T07 scope (T07 creates a migration script, does not fix sam_schema internals).
+
+## Gap: .github/workflows/quality-gate-audit.yml
+
+**Files**: `.github/workflows/quality-gate-audit.yml`
+**Behavior to cover**: End-to-end execution of the audit workflow — fetching closed issues, SAM-item detection via body regex, `status:verified` skip logic, `needs-verification` label creation and application, comment posting, and PR filtering.
+**Reason not written**: GitHub Actions workflows require a live GitHub API and runner environment. No unit-testable code was produced (the logic lives in an inline `github-script` action). Integration testing requires `gh workflow run` against a real repo, which is outside the scope of a local sub-agent task.

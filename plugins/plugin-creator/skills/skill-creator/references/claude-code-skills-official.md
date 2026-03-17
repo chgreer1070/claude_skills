@@ -106,6 +106,7 @@ When `allowed-tools` is **not specified**, the skill inherits tool capabilities 
 | `$ARGUMENTS[N]`        | Access specific argument by 0-based index. |
 | `$N`                   | Shorthand for `$ARGUMENTS[N]` (e.g., `$0`, `$1`). |
 | `${CLAUDE_SESSION_ID}` | Current session ID. |
+| `${CLAUDE_SKILL_DIR}`  | Absolute path to the directory containing the current SKILL.md file. For plugin skills, this is the skill's subdirectory within the plugin, not the plugin root. Use in bash injection commands to reference scripts or files bundled with the skill. |
 
 **Example**:
 
@@ -219,13 +220,17 @@ Reference supporting files from `SKILL.md`:
 
 ## Bundled Skills
 
-Three bundled skills ship with every Claude Code session:
+Five bundled skills ship with every Claude Code session:
 
 | Skill | Purpose |
 |:------|:--------|
-| `/simplify` | Reviews changed files for reuse, quality, efficiency. Spawns 3 parallel review agents. |
+| `/simplify [focus]` | Reviews changed files for reuse, quality, efficiency. Spawns 3 parallel review agents. |
 | `/batch <instruction>` | Orchestrates large-scale parallel changes. One agent per unit in isolated worktrees. |
 | `/debug [description]` | Troubleshoots current session by reading debug log. |
+| `/loop [interval] <prompt>` | Runs a prompt repeatedly on an interval. Useful for polling deployments or periodically re-running tasks. |
+| `/claude-api` | Loads Claude API reference material for your project's language and Agent SDK reference. Also activates automatically when code imports the Anthropic SDK. |
+
+SOURCE: <https://code.claude.com/docs/en/skills.md> (section: "Bundled skills", accessed 2026-03-17)
 
 ---
 

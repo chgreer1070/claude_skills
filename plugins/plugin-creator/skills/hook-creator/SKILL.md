@@ -148,35 +148,58 @@ SOURCE: `plugins/orchestrator-discipline/hooks.json` (lines 1-25), verified 2026
 ```mermaid
 flowchart TD
     Start([What should the hook do?]) --> Q1{When does it act?}
-    Q1 -->|Before a tool runs — can block| PreToolUse[PreToolUse + matcher]
-    Q1 -->|After a tool succeeds| PostToolUse[PostToolUse + matcher]
-    Q1 -->|After a tool fails| PostToolUseFailure[PostToolUseFailure + matcher]
+    Q1 -->|Before a tool runs — can block| PreToolUse[PreToolUse + tool name matcher]
+    Q1 -->|After a tool succeeds| PostToolUse[PostToolUse + tool name matcher]
+    Q1 -->|After a tool fails| PostToolUseFailure[PostToolUseFailure + tool name matcher]
     Q1 -->|Before Claude stops responding| Stop[Stop — no matcher]
-    Q1 -->|Before a subagent stops| SubagentStop[SubagentStop — no matcher]
+    Q1 -->|When subagent spawned| SubagentStart[SubagentStart — matcher: agent type name]
+    Q1 -->|When subagent finishes| SubagentStop[SubagentStop — matcher: agent type name]
+    Q1 -->|Agent team teammate going idle| TeammateIdle[TeammateIdle — no matcher]
+    Q1 -->|Task being marked complete| TaskCompleted[TaskCompleted — no matcher]
+    Q1 -->|CLAUDE.md or rules file loaded| InstructionsLoaded[InstructionsLoaded — no matcher]
+    Q1 -->|Config file changes| ConfigChange[ConfigChange — matcher: config source]
+    Q1 -->|Worktree being created| WorktreeCreate[WorktreeCreate — no matcher]
+    Q1 -->|Worktree being removed| WorktreeRemove[WorktreeRemove — no matcher]
+    Q1 -->|MCP server requests user input| Elicitation[Elicitation — matcher: MCP server name]
+    Q1 -->|User responds to MCP elicitation| ElicitationResult[ElicitationResult — matcher: MCP server name]
     Q1 -->|When user submits a prompt| UserPromptSubmit[UserPromptSubmit — no matcher]
     Q1 -->|When session starts| SessionStart[SessionStart — matcher: startup|resume|clear|compact]
-    Q1 -->|When session ends| SessionEnd[SessionEnd — no matcher]
+    Q1 -->|When session ends| SessionEnd[SessionEnd — matcher: exit reason]
     Q1 -->|Before context compaction| PreCompact[PreCompact — matcher: manual|auto]
+    Q1 -->|After context compaction| PostCompact[PostCompact — matcher: manual|auto]
     Q1 -->|On repo setup or maintenance| Setup[Setup — matcher: init|maintenance]
-    Q1 -->|When Claude sends notifications| Notification[Notification + notification matcher]
-    PreToolUse --> Matcher[Choose matcher: exact tool name, regex, or wildcard]
-    PostToolUse --> Matcher
-    PostToolUseFailure --> Matcher
-    Matcher --> HookType[Choose hook type]
+    Q1 -->|When Claude sends notifications| Notification[Notification — notification matcher]
+    PreToolUse --> HookType[Choose hook type]
+    PostToolUse --> HookType
+    PostToolUseFailure --> HookType
     Stop --> HookType
+    SubagentStart --> HookType
     SubagentStop --> HookType
+    TeammateIdle --> HookType
+    TaskCompleted --> HookType
+    InstructionsLoaded --> HookType
+    ConfigChange --> HookType
+    WorktreeCreate --> HookType
+    WorktreeRemove --> HookType
+    Elicitation --> HookType
+    ElicitationResult --> HookType
     UserPromptSubmit --> HookType
     SessionStart --> HookType
     SessionEnd --> HookType
     PreCompact --> HookType
+    PostCompact --> HookType
     Setup --> HookType
     Notification --> HookType
     HookType --> Q2{Decision logic complexity?}
     Q2 -->|Deterministic rule — fast| Command[type: command — Node.js .cjs]
     Q2 -->|Context-aware — needs reasoning| Prompt[type: prompt — LLM-evaluated]
+    Q2 -->|Complex verification with tools| Agent[type: agent — agentic verifier]
+    Q2 -->|Send to external service| HTTP[type: http — POST to URL]
 ```
 
-**Events without matchers**: `Stop`, `SubagentStop`, `UserPromptSubmit`, `SessionEnd` — omit the `matcher` field entirely.
+**Events with matchers (non-tool)**: `SubagentStart`/`SubagentStop` match agent type name; `SessionEnd` matches exit reason; `ConfigChange` matches config source; `Elicitation`/`ElicitationResult` match MCP server name.
+
+**Events without matchers**: `Stop`, `UserPromptSubmit`, `TeammateIdle`, `TaskCompleted`, `InstructionsLoaded`, `WorktreeCreate`, `WorktreeRemove` — omit the `matcher` field entirely.
 
 ---
 
@@ -186,9 +209,13 @@ flowchart TD
 flowchart TD
     Start([Choose hook type]) --> Q{What kind of logic?}
     Q -->|Regex/pattern match, path check, fast rule| Command["type: command\nNode.js .cjs script\nFast, deterministic, no API call"]
-    Q -->|Understand intent, evaluate context, reasoning| Prompt["type: prompt\nLLM evaluated (Haiku)\nSlower, flexible, context-aware"]
-    Command --> Timeout1[Timeout: 3s for local binary checks\nMax 10s for slow operations]
+    Q -->|Understand intent, evaluate context, reasoning| Prompt["type: prompt\nLLM evaluated (fast model)\nSlower, flexible, context-aware"]
+    Q -->|Complex verification needing tool access| Agent["type: agent\nAgentic verifier with tools\nMost flexible, highest latency"]
+    Q -->|Send to external service or webhook| HTTP["type: http\nPOST to URL\nFor remote validation services"]
+    Command --> Timeout1[Timeout: 3s for local binary checks\nMax 10s for slow operations\nDefault: 600s built-in]
     Prompt --> Timeout2[Timeout: 30s default\nAdjust if reasoning takes longer]
+    Agent --> Timeout3[Timeout: 60s default\nAdjust for complex tasks]
+    HTTP --> Timeout4[Timeout: configurable\nNon-2xx errors are non-blocking]
 ```
 
 **Prompt hook response schema** (LLM must return):
@@ -214,8 +241,10 @@ or:
 | Network call | 15–30s |
 | Prompt hook (LLM evaluation) | 30s default |
 
-**Default**: 60s for command hooks, 30s for prompt hooks (Claude Code built-in).
+**Default**: 600s for command hooks, 30s for prompt hooks, 60s for agent hooks (Claude Code built-in).
 Set explicit timeouts to reflect actual operation time — oversized timeouts mask runaway scripts.
+
+Note: The Agent tool was renamed from Task in Claude Code v2.1.63. Use `Agent` as the matcher name for `PreToolUse`/`PostToolUse` hooks targeting subagent-spawning tool calls.
 
 SOURCE: `hooks-core-reference` — timeout defaults verified from official docs.
 
@@ -239,7 +268,7 @@ SOURCE: `hooks-core-reference` — timeout defaults verified from official docs.
 
 **Notification matchers**: `permission_prompt`, `idle_prompt`, `auth_success`, `elicitation_dialog`
 
-**Events without matchers** — omit the field: `Stop`, `SubagentStop`, `UserPromptSubmit`, `SessionEnd`, `SubagentStart`
+**Events without matchers** — omit the field: `Stop`, `UserPromptSubmit`, `TeammateIdle`, `TaskCompleted`, `InstructionsLoaded`, `WorktreeCreate`, `WorktreeRemove`
 
 ---
 

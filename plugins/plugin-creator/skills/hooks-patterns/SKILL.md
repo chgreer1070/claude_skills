@@ -86,7 +86,7 @@ Or define inline:
 
 Hooks can be defined in frontmatter. These are scoped to the component's lifecycle. For complete skill documentation, see `Skill(skill: "plugin-creator:claude-skills-overview-2026")`.
 
-**Supported events**: `PreToolUse`, `PostToolUse`, `Stop`
+**Supported events**: All hook events are supported in skill and agent frontmatter. The most common for subagents are `PreToolUse`, `PostToolUse`, and `Stop` (which is automatically converted to `SubagentStop` in agent context).
 
 ### Skill Example
 

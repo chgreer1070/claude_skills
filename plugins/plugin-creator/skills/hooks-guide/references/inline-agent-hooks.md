@@ -178,6 +178,10 @@ mcpServers:
 
 Subagents do not inherit MCP servers from the parent session unless listed in `mcpServers`.
 
+> **Plugin Agent Restriction**: For plugin agents (agents bundled in a plugin's `agents/` directory), the `mcpServers`, `hooks`, and `permissionMode` frontmatter fields are **silently ignored** at runtime. Claude Code strips these fields for security reasons. If you need these fields to take effect, copy the agent file to `.claude/agents/` (project-level) or `~/.claude/agents/` (user-level), where these fields ARE honored.
+>
+> SOURCE: [Create custom subagents](https://code.claude.com/docs/en/sub-agents.md) — "For security reasons, plugin subagents do not support the hooks, mcpServers, or permissionMode frontmatter fields. These fields are ignored when loading agents from a plugin." (accessed 2026-03-17)
+
 ---
 
 ## skills Field

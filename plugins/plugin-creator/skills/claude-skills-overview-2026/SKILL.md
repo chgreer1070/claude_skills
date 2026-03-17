@@ -25,9 +25,9 @@ Bundled skills ship with Claude Code and are available in every session. Unlike 
 
 - **`/loop [interval] <prompt>`**: Schedules a recurring prompt at an interval. See [Scheduled Tasks Reference](./resources/scheduled-tasks.md).
 
-Claude Code also includes a bundled developer platform skill that activates automatically when your code imports the Anthropic SDK.
+- **`/claude-api`**: Loads Claude API reference material for your project's language (Python, TypeScript, Java, Go, Ruby, C#, PHP, or cURL) and Agent SDK reference. Covers tool use, streaming, batches, structured outputs, and common pitfalls. Also activates automatically when your code imports `anthropic`, `@anthropic-ai/sdk`, or `claude_agent_sdk`.
 
-**Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Bundled skills")
+**Source**: Official documentation at <https://code.claude.com/docs/en/skills.md> (section: "Bundled skills", accessed 2026-03-17)
 
 ---
 
@@ -83,7 +83,7 @@ The fields `name`, `description`, `license`, `compatibility`, `metadata`, and `a
 | `description`              | Recommended | string  | 1024 chars | What the skill does and when to use it. Claude uses this to decide when to apply the skill. If omitted, uses the first paragraph of markdown content. |
 | `argument-hint`            | No          | string  | —          | Hint shown during autocomplete to indicate expected arguments. Example: `[issue-number]` or `[filename] [format]`.                                    |
 | `allowed-tools`            | No          | string  | —          | Tools Claude can use without asking permission when this skill is active (comma-separated). Example: `Read, Grep, Glob, Bash(npm run:*)`              |
-| `model`                    | No          | string  | —          | Model to use when this skill is active. Example: `claude-opus-4-5-20251101`, `claude-sonnet-4-20250514`, `opus`, `sonnet`, `haiku`                    |
+| `model`                    | No          | string  | —          | Model to use when this skill is active. Use aliases `opus`, `sonnet`, `haiku` (preferred) or full model IDs like `claude-opus-4-6`, `claude-sonnet-4-6`. |
 | `context`                  | No          | string  | —          | Set to `fork` to run in a forked subagent context. See [Context Fork Behavior](#context-fork-behavior) for tool restrictions.                         |
 | `agent`                    | No          | string  | —          | Which subagent type to use when `context: fork` is set. Options: `Explore`, `Plan`, `general-purpose`, or custom agent. Default: `general-purpose`    |
 | `user-invocable`           | No          | boolean | —          | Set to `false` to hide from the `/` menu. Use for background knowledge users shouldn't invoke directly. Default: `true`.                              |
@@ -166,6 +166,7 @@ Skills support string substitution for dynamic values in the skill content:
 | `$ARGUMENTS[N]`        | Access a specific argument by 0-based index, such as `$ARGUMENTS[0]` for the first argument.                                                 |
 | `$N`                   | Shorthand for `$ARGUMENTS[N]`, such as `$0` for the first argument or `$1` for the second.                                                   |
 | `${CLAUDE_SESSION_ID}` | The current session ID. Useful for logging, creating session-specific files, or correlating skill output with sessions.                      |
+| `${CLAUDE_SKILL_DIR}`  | Absolute path to the directory containing the current SKILL.md file. For plugin skills, this is the skill's subdirectory within the plugin, not the plugin root. Use in bash injection commands to reference scripts or files bundled with the skill, regardless of the current working directory. |
 
 **Example with positional arguments:**
 
@@ -569,6 +570,7 @@ Only runs when user types `/deploy-production`.
 - **[Claude Hooks Reference](../hooks-guide/SKILL.md)** — Complete hook events, matchers, and configuration. Cross-platform coverage with Node.js CJS and Python guides.
 - **[Claude Code Skills Official](./resources/claude-code-skills-official.md)** — Authoritative specification from code.claude.com: frontmatter fields, discovery rules, invocation control, budget limits, and bundled skills.
 - **[Scheduled Tasks Reference](./resources/scheduled-tasks.md)** — CronCreate, CronList, CronDelete, /loop syntax, cron expressions, plugin integration patterns.
+- **[Headless Mode and Agent SDK](./resources/headless-agent-sdk.md)** — Running Claude Code programmatically via `claude -p`. Covers the critical constraint that skills are unavailable in `-p` mode, all CLI flags, output formats (json/stream-json/schema), automation patterns, and design checklist for plugin authors.
 - **[Output Styles Reference](./resources/output-styles.md)** — Custom output styles, plugin.json outputStyles field, comparison with CLAUDE.md and skills.
 - **[Agent Teams Reference](./resources/agent-teams.md)** — TeammateIdle/TaskCompleted hooks, team architecture, display modes, lifecycle.
 

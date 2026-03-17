@@ -1,6 +1,6 @@
 ---
 name: subagent-refactoring-methodology
-description: Analysis criteria, transformation patterns, output format, and validation checklist for refactoring Claude Code agent prompt files. Load before running subagent-refactorer.
+description: Analysis criteria, transformation patterns, output format, and validation checklist for refactoring Claude Code agent prompt files. Load this skill when preparing to run the subagent-refactorer agent or when reviewing agent prompt files for structural, model optimization, or instruction quality improvements.
 user-invocable: false
 ---
 

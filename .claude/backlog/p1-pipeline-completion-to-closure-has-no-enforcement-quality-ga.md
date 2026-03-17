@@ -5,9 +5,9 @@ metadata:
   topic: pipeline-completion-to-closure-has-no-enforcement-quality-ga
   source: Session observation — discovered 21 stale backlog items during reconciliation, traced root cause via /process-siren:improve-processes gap analysis
   added: '2026-03-17'
-  priority: P1
+  priority: completed
   type: Bug
-  status: open
+  status: done
   issue: '#762'
   last_synced: '2026-03-17T14:59:52Z'
   groomed: '2026-03-17'
