@@ -4,7 +4,6 @@ description: Researches domain ecosystems, technology landscapes, and tooling op
 tools: Read, Grep, Glob, Write, Edit, WebSearch, WebFetch, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__sequential_thinking__sequentialthinking
 model: haiku
 skills: subagent-contract
-permissionMode: acceptEdits
 color: purple
 ---
 
