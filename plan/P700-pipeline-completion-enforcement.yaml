@@ -1,0 +1,326 @@
+feature: pipeline-completion-enforcement
+version: '1.0'
+description: >-
+  Enforce that quality gates run before GitHub issue closure by adding a
+  status:verified label, restricting Fixes #N to /complete-implementation,
+  fixing closed-issue reconciliation, and gating /work-backlog-item resolve.
+goal: |
+  Close four structural gaps in the SAM pipeline completion-to-closure chain:
+  (1) Add durable completion evidence via status:verified GitHub label applied
+  after /complete-implementation quality gates pass.
+  (2) Restrict Fixes #N commit trailers to /complete-implementation final step
+  only, preventing premature issue closure from task-level commits.
+  (3) Fix refresh_local_cache_from_github to fetch closed issues, eliminating
+  local-vs-GitHub state drift.
+  (4) Add a status:verified gate to /work-backlog-item resolve, blocking
+  resolution of unverified SAM items unless --force is used.
+issue: '762'
+architect_spec: plan/architect-pipeline-completion-enforcement.md
+feature_context: plan/feature-context-pipeline-completion-enforcement.md
+codebase_analysis: plan/codebase/pipeline-completion-patterns.md
+impact_radius: .claude/reports/groom-762-impact-radius.md
+context_manifest: |
+  ## How This Currently Works: SAM Pipeline Completion-to-Closure Chain
+
+  When a user initiates `/implement-feature {task_file_path}`, the orchestrator enters an execution loop that dispatches ready implementation tasks to sub-agents. Each task claims its status via `sam claim P{N}/{task_id}`, transitions to IN PROGRESS (recorded in task frontmatter and GitHub sub-issue), executes implementation (reading acceptance criteria and architecture specs), and completes when the SubagentStop hook fires (setting status COMPLETE + Completed timestamp). The hooks are configured in `/implement-feature` SKILL.md frontmatter and execute via the task_status_hook.py script — PostToolUse updates LastActivity on every Write/Edit/Bash, SubagentStop marks COMPLETE and deletes the active-task context file.
+
+  When all implementation tasks complete, the orchestrator automatically invokes `/complete-implementation {task_file_path}`. This skill runs six sequential quality gate phases: (1) code-reviewer analyzes changes and produces follow-up task files if issues found, (2) feature-verifier confirms the feature meets its original goals structurally, (3) integration-checker validates integration with other systems, (4) doc-drift-auditor checks for documentation updates needed, (5) service-docs-maintainer applies those updates if drift is found, (6) context-refinement updates the task file's Context Manifest and checks for plan artifact freshness divergence. After all phases pass, the orchestrator routes follow-up task files (if any) to backlog items via dual search strategies, then executes the Final Step: it queries the backlog for the parent feature issue number (via `backlog_list(title="{slug}")`), checks git status for modified files, stages and commits everything with a conventional commit message, and appends `Fixes #NNN` to the commit body to auto-close the issue on merge.
+
+  The critical gap in this flow is that nowhere does `/complete-implementation` record durable evidence that it actually ran. No GitHub label marks the issue as verified. No local or remote artifact documents which quality gate phases executed or passed. The closest existing signal is `plan/TN-verification-{slug}.yaml` (written by `tn-verification-gate` before `/complete-implementation` runs), but this only covers structured acceptance criteria — not the 6 quality gate phases themselves. When `backlog_view()` is called later (e.g., during `/work-backlog-item resolve`), the returned labels dict has no indicator that `/complete-implementation` passed. This makes it impossible for downstream operations to know whether quality gates actually ran. Issues can close without verification.
+
+  The second gap is that `/complete-implementation`'s `Fixes #N` instruction at the Final Step competes with other sources of the same trailer. `/work-backlog-item` SKILL.md lines 343 and 366 independently instruct agents to include `Fixes #N` in commits during implementation. More critically, `swarm-task-planner` bakes `Fixes #N` directly into per-task acceptance criteria in generated plan files (observed in `plan/tasks-17-replace-glab-subprocess.md` lines 107, 110, 329, 341, 352, 358, 385, 395 and 20+ other active plans). When task-level commits contain `Fixes #N`, GitHub auto-closes the issue before `/complete-implementation` runs. Quality gates are structurally bypassed for any multi-task feature plan. This happens reliably because commit messages are parsed by GitHub before any subsequent orchestration step.
+
+  The third gap is that `refresh_local_cache_from_github()` in operations.py line 987 fetches `state="open"` issues only. When a GitHub issue closes externally (via merged PR with `Fixes #N` from a task-level commit, manual close, or stale-bot), the local `.claude/backlog/` file is never updated. Backlog items drift out of sync with GitHub: 21 items were discovered in a single session (items #714, #300, #330, #340, #426, #463, and 15 others) with local status "open" but GitHub status "closed". Users calling `backlog_list --from-github` get inaccurate state because refresh only sees open issues. `backlog_pull` can sync individual items when called explicitly, but it is not called automatically, and users have no way to detect which items have drifted without manually comparing the GitHub web UI against local files.
+
+  The fourth gap is that `/work-backlog-item resolve` has no verification gate. The resolve path in close-resolve-procedure.md runs three gates before calling `backlog_resolve`: Step 9c checks the plan checklist is complete (if plan attached), Step 9d verifies acceptance criteria pass (if criteria defined), Step 9e checks for open PRs already closing the issue. None of these gates verify that `/complete-implementation` ran. An item with a plan file can proceed to resolved without quality gates ever executing. The `backlog_view` response already includes a `labels` field (zero additional API calls needed), but no step checks for a `status:verified` label.
+
+  These four gaps create a structural loop hole: quality gates are run but produce no queryable signal → task-level commits carry `Fixes #N` and close issues prematurely → closed issues are invisible locally → resolve operations proceed without checking verification. The result is that feature implementations can close associated GitHub issues without quality gates ever running, and this state is undetectable after the fact.
+
+  ## What Will Change: Four-Gap Enforcement
+
+  **Gap 1: Durable Completion Evidence via `status:verified` GitHub Label** — After `/complete-implementation` completes all six quality gate phases, it will apply a `status:verified` GitHub label to the parent backlog issue (task T1, T2). The implementation follows the existing `apply_status_in_progress()` pattern: new function `apply_status_verified()` in github.py checks whether the label exists, auto-creates it with color 0e8a16 if needed, applies it to the issue, and removes `status:in-progress` if present. The label is applied in `/complete-implementation` SKILL.md between Phase 6 and Final Step, after all quality gates pass but before the issue-closing commit. If label application fails, the final commit blocks.
+
+  **Gap 2: Restrict `Fixes #N` to `/complete-implementation` Final Step Only** — Remove the instruction from `/work-backlog-item` SKILL.md lines 343 and 366, replacing with prohibition text (task T3). Add explicit prohibition to `/start-task` SKILL.md (task T3). Update `swarm-task-planner` agent variants to NOT generate `Fixes #N` in task acceptance criteria (task T3). Add note to `.claude/rules/local-workflow.md` that `Fixes #N` belongs exclusively in `/complete-implementation` Final Step (task T3). Create new GitHub Actions workflow `.github/workflows/quality-gate-audit.yml` (task T4, ~40 lines) to audit recently closed issues lacking `status:verified` and flag them with `needs-verification` label and comment. Existing plan files with baked-in `Fixes #N` require manual audit before task execution.
+
+  **Gap 3: Closed-Issue Reconciliation in `refresh_local_cache_from_github()`** — Make a second API call to fetch `state="closed"` issues with `since` parameter set to most recent `metadata.last_synced` or 30 days ago (task T5, ~15 lines). For each closed issue without a local PR reference, update the corresponding local backlog file to status "closed" if not already in a terminal state. Open issues are processed first — if an issue appears in both open and closed sets, open takes precedence. This ensures `backlog_list --from-github` detects externally closed issues without requiring separate `backlog_pull` call.
+
+  **Gap 4: Verification Gate on `/work-backlog-item resolve`** — Insert new Step 9b.5 in close-resolve-procedure.md (task T6, ~12 lines) between Step 9a and 9c. The gate checks whether `result["labels"]` contains `"status:verified"` when the backlog item has a `**Plan**:` field. If plan field is absent (non-SAM items), gate is skipped entirely. If plan field exists and `status:verified` is absent, resolve operation blocks with message suggesting `/complete-implementation {plan_path}` or `--force` to override. The existing `--force` parameter on `backlog_resolve` already bypasses Step 9e open-PR check; extend its semantics to also bypass this new verification gate (task T6). Expose `--force` as user-facing argument in SKILL.md frontmatter argument-hint (task T6).
+
+  ## Testing and Technical Architecture
+
+  **Tests** (tasks T7–T8): Unit tests for Gap 1 (`apply_status_verified()` label operations) and Gap 3 (closed-issue fetch, local status update, terminal state handling). Integration tests for Gap 4 (resolve blocking/passing with/without label, skipping gate for non-SAM items, `--force` bypass) and full pipeline flow. All tests use mocked GitHub API.
+
+  **GitHub API operations**: `apply_status_verified()` in github.py mirrors existing `apply_status_in_progress()` pattern (github.py:277–293). Calls `repo.get_label("status:verified")`, auto-creates on 404, applies to issue, removes `status:in-progress` if present.
+
+  **Closed-issue fetch**: `refresh_local_cache_from_github()` in operations.py adds ~15 lines. Makes second API call `repo_obj.get_issues(state="closed", since=last_sync_cutoff)`, cross-references against local files by issue number, updates local file status to "closed" via `update_item_metadata()` when not already terminal.
+
+  **Verify gate logic**: close-resolve-procedure.md Step 9b.5 (~12 lines) checks: `if "**Plan**:" field in item: if "status:verified" not in result["labels"]: if not force: block`. Block message guides users to run `/complete-implementation` or pass `--force`. All conditions already in context — no additional API calls.
+
+  **Exposure path for Gap 1**: `apply_status_verified()` needs to be called from `/complete-implementation` SKILL.md. Architect spec recommends extending `backlog_update` MCP tool with `verified: bool` parameter, calling function when `verified=True`. Alternative: add CLI command `uv run backlog.py mark-verified {selector}`.
+
+  ## File Locations
+
+  - Implementation: `.claude/skills/backlog/backlog_core/github.py` (Gap 1), `.claude/skills/backlog/backlog_core/operations.py` (Gap 3)
+  - Skills: `plugins/python3-development/skills/complete-implementation/SKILL.md` (T2), `plugins/python3-development/skills/start-task/SKILL.md` (T3), `.claude/skills/work-backlog-item/SKILL.md` (T3, T6)
+  - Agents: `plugins/python3-development/agents/swarm-task-planner.md` (T3), `plugins/development-harness/agents/swarm-task-planner.md` (T3)
+  - Docs: `.claude/rules/local-workflow.md` (T3), `.claude/skills/work-backlog-item/references/close-resolve-procedure.md` (T6)
+  - CI: `.github/workflows/quality-gate-audit.yml` (T4, new)
+  - Tests: `.claude/skills/backlog/tests/test_backlog_core_github.py` (T7), `.claude/skills/backlog/tests/test_backlog_core_operations.py` (T7), `.claude/skills/backlog/tests/test_scenarios.py` (T8)
+
+  ## Why This Matters
+
+  The SAM pipeline enforces quality gates through structured task ordering and automated verification. The completion-to-closure chain has no enforcement: quality gates run but produce no signal, task-level commits close issues before gates run, closed issues are invisible locally, resolve operations cannot verify gate execution. This creates a false sense of completion. Implementation of these four gaps closes the loop: Gap 1 provides durable verification signal, Gap 2 prevents premature closure, Gap 3 detects external closure, Gap 4 enforces gate execution before local closure.
+
+---
+
+tasks:
+# =============================================================================
+# Gap 1: Durable Completion Evidence — status:verified label
+# =============================================================================
+
+- id: T1
+  title: "Add apply_status_verified() to github.py"
+  status: not-started
+  agent: python3-development:python-cli-architect
+  dependencies: []
+  priority: 1
+  complexity: low
+  skills:
+  - python3-development
+  acceptance_criteria:
+  - "New function apply_status_verified(item, repo, output) exists in .claude/skills/backlog/backlog_core/github.py"
+  - "Function follows apply_status_in_progress() pattern: adds status:verified label, removes status:in-progress if present"
+  - "Function auto-creates status:verified label on 404 (GithubException with status 404 triggers repo.create_label with name=status:verified, color=0e8a16, description=Quality gates passed via /complete-implementation)"
+  - "Function raises on GitHub API failure (no silent swallowing)"
+  - "Function skips gracefully when item has no issue number (no error, no API call)"
+  - "Exposure path implemented: either extend backlog_update MCP tool with verified=True parameter, or add CLI command uv run backlog.py mark-verified {selector} — architect spec recommends extending backlog_update"
+  verification_steps:
+  - "uv run ruff check .claude/skills/backlog/backlog_core/github.py"
+  - "uv run ty check .claude/skills/backlog/backlog_core/github.py"
+  - "grep -n 'apply_status_verified' .claude/skills/backlog/backlog_core/github.py confirms function exists"
+
+- id: T2
+  title: "Update complete-implementation SKILL.md to apply status:verified label and be sole Fixes #N source"
+  status: not-started
+  agent: plugin-creator:contextual-ai-documentation-optimizer
+  dependencies:
+  - T1
+  priority: 1
+  complexity: low
+  skills:
+  - plugin-creator
+  acceptance_criteria:
+  - "plugins/python3-development/skills/complete-implementation/SKILL.md contains a new step after Phase 6 and follow-up routing, before Final Step commit, that instructs the orchestrator to apply status:verified label to the parent backlog issue"
+  - "The new step uses the exposure path created in T1 (backlog_update with verified=True or CLI mark-verified command)"
+  - "The new step includes error handling: if label application fails, report error and STOP — do not proceed to final commit"
+  - "The new step includes skip condition: if no parent issue number found, skip (no issue to label)"
+  - "Final Step commit section is confirmed as the sole location containing Fixes #N instruction"
+  verification_steps:
+  - "Read plugins/python3-development/skills/complete-implementation/SKILL.md and verify new step exists between follow-up routing and Final Step"
+  - "Verify the SKILL.md contains exactly one Fixes #N instruction (in Final Step only)"
+  - "uv run prek run --files plugins/python3-development/skills/complete-implementation/SKILL.md passes"
+
+# =============================================================================
+# Gap 2: Restrict Fixes #N to /complete-implementation only
+# =============================================================================
+
+- id: T3
+  title: "Remove Fixes #N instructions from start-task, swarm-task-planner, work-backlog-item, and local-workflow"
+  status: not-started
+  agent: plugin-creator:contextual-ai-documentation-optimizer
+  dependencies:
+  - T1
+  - T2
+  priority: 2
+  complexity: medium
+  skills:
+  - plugin-creator
+  acceptance_criteria:
+  - ".claude/skills/work-backlog-item/SKILL.md lines 343 and 366: Fixes #N instruction replaced with prohibition text stating issue closure is handled exclusively by /complete-implementation"
+  - "plugins/python3-development/skills/start-task/SKILL.md contains explicit prohibition section: task-level commits must NEVER include Fixes #N, Closes #N, or Resolves #N trailers"
+  - "plugins/python3-development/agents/swarm-task-planner.md contains instruction: do NOT generate Fixes #N, Closes #N, or Resolves #N in task acceptance criteria"
+  - "plugins/development-harness/agents/swarm-task-planner.md contains same prohibition instruction"
+  - ".claude/rules/local-workflow.md contains note in Execution Loop section: Fixes #N restriction — only /complete-implementation Final Step may include Fixes #N"
+  - ".claude/skills/work-backlog-item/references/step-procedures.md audited — any Fixes #N references removed or replaced with prohibition"
+  verification_steps:
+  - "grep -rn 'Fixes #' .claude/skills/work-backlog-item/SKILL.md returns zero matches (or only prohibition text)"
+  - "grep -n 'NEVER.*Fixes' plugins/python3-development/skills/start-task/SKILL.md confirms prohibition exists"
+  - "grep -n 'NOT.*Fixes' plugins/python3-development/agents/swarm-task-planner.md confirms prohibition exists"
+  - "grep -n 'NOT.*Fixes' plugins/development-harness/agents/swarm-task-planner.md confirms prohibition exists"
+  - "grep -n 'restriction' .claude/rules/local-workflow.md confirms Fixes #N restriction note exists"
+  - "uv run prek run --files .claude/skills/work-backlog-item/SKILL.md passes"
+  - "uv run prek run --files plugins/python3-development/skills/start-task/SKILL.md passes"
+
+- id: T4
+  title: "Create quality-gate-audit.yml GitHub Actions workflow"
+  status: not-started
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T1
+  - T2
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+  acceptance_criteria:
+  - "New file .github/workflows/quality-gate-audit.yml exists"
+  - "Workflow triggers on schedule (cron every 6 hours: 0 */6 * * *) and workflow_dispatch"
+  - "Workflow fetches issues closed in last 7 days without status:verified label"
+  - "For each flagged issue: adds needs-verification label and posts comment explaining issue closed without quality gate verification"
+  - "Workflow skips non-SAM items (issues without plan file reference in body)"
+  - "Workflow uses GITHUB_TOKEN for authentication with issues:write permission"
+  - "Does NOT re-open issues — only flags with label and comment"
+  verification_steps:
+  - "yamllint .github/workflows/quality-gate-audit.yml passes (or actionlint if available)"
+  - "Read workflow file and verify trigger, permissions, and logic match spec"
+  - "Trigger workflow via gh workflow run quality-gate-audit.yml -R Jamie-BitFlight/claude_skills and verify it completes without error, or confirm workflow_dispatch trigger is configured for manual testing"
+
+# =============================================================================
+# Gap 3: Closed-issue reconciliation
+# =============================================================================
+
+- id: T5
+  title: "Fix refresh_local_cache_from_github to fetch and reconcile closed issues"
+  status: not-started
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T1
+  - T2
+  priority: 2
+  complexity: low
+  skills:
+  - python3-development
+  acceptance_criteria:
+  - "refresh_local_cache_from_github() in .claude/skills/backlog/backlog_core/operations.py makes a second API call with state=closed and since=last_sync_cutoff"
+  - "Closed issues cross-referenced against local .claude/backlog/ files: items with matching issue numbers and non-terminal local status get updated to status=closed"
+  - "Open issues processed first — if an issue appears in both open and closed results, open takes precedence"
+  - "Items already in terminal status (done, resolved, closed) are not modified"
+  - "Closed issues with no local file cause no error (skip silently)"
+  - "since parameter uses most recent metadata.last_synced across items or defaults to 30 days ago"
+  - "Pull requests filtered out (same as existing open-issue logic)"
+  verification_steps:
+  - "uv run ruff check .claude/skills/backlog/backlog_core/operations.py"
+  - "uv run ty check .claude/skills/backlog/backlog_core/operations.py"
+  - "grep -n 'state.*closed' .claude/skills/backlog/backlog_core/operations.py confirms closed-issue fetch exists"
+
+# =============================================================================
+# Gap 4: Verification gate on resolve
+# =============================================================================
+
+- id: T6
+  title: "Add status:verified gate (Step 9b.5) to close-resolve-procedure.md and work-backlog-item SKILL.md"
+  status: not-started
+  agent: plugin-creator:contextual-ai-documentation-optimizer
+  dependencies:
+  - T1
+  - T2
+  priority: 2
+  complexity: low
+  skills:
+  - plugin-creator
+  acceptance_criteria:
+  - ".claude/skills/work-backlog-item/references/close-resolve-procedure.md contains new Step 9b.5 between 9a and 9c"
+  - "Step 9b.5 checks result labels for status:verified when Plan field is present"
+  - "Step 9b.5 skips gate entirely when no Plan field exists (non-SAM items)"
+  - "Step 9b.5 blocks resolve when status:verified absent, suggests /complete-implementation or --force"
+  - "Step 9b.5 allows bypass with --force flag with warning"
+  - "--force documentation updated in close-resolve-procedure.md to cover both Step 9b.5 and Step 9e"
+  - ".claude/skills/work-backlog-item/SKILL.md argument-hint updated to include --force"
+  - ".claude/skills/work-backlog-item/SKILL.md resolve section documents --force flag purpose"
+  verification_steps:
+  - "grep -n '9b.5' .claude/skills/work-backlog-item/references/close-resolve-procedure.md confirms new step exists"
+  - "grep -n 'force' .claude/skills/work-backlog-item/SKILL.md confirms --force documentation"
+  - "uv run prek run --files .claude/skills/work-backlog-item/references/close-resolve-procedure.md passes"
+  - "uv run prek run --files .claude/skills/work-backlog-item/SKILL.md passes"
+
+# =============================================================================
+# Tests
+# =============================================================================
+
+- id: T7
+  title: "Tests for apply_status_verified and closed-issue reconciliation"
+  status: not-started
+  agent: python3-development:python-pytest-architect
+  dependencies:
+  - T1
+  - T5
+  priority: 3
+  complexity: medium
+  skills:
+  - python3-development
+  acceptance_criteria:
+  - "test_apply_status_verified_adds_label: verifies label added to issue when it exists"
+  - "test_apply_status_verified_creates_label_when_missing: verifies label auto-created on 404 then applied"
+  - "test_apply_status_verified_removes_in_progress: verifies status:in-progress removed when present"
+  - "test_apply_status_verified_no_issue_number: verifies graceful skip when item has no issue"
+  - "test_apply_status_verified_api_failure: verifies exception propagated on GitHub API failure"
+  - "test_refresh_fetches_closed_issues: verifies API call includes state=closed with since parameter"
+  - "test_refresh_updates_local_status_for_closed: verifies local file updated to status=closed"
+  - "test_refresh_skips_already_terminal: verifies items in terminal status not modified"
+  - "test_refresh_open_takes_precedence: verifies issue in both open and closed sets treated as open"
+  - "test_refresh_no_local_file_for_closed: verifies closed issue with no local file causes no error"
+  - "All tests use mocked GitHub API (no live calls)"
+  - "Tests placed in .claude/skills/backlog/tests/test_backlog_core_github.py (label tests) and .claude/skills/backlog/tests/test_backlog_core_operations.py (reconciliation tests)"
+  verification_steps:
+  - "uv run pytest .claude/skills/backlog/tests/test_backlog_core_github.py -v --tb=short -k status_verified"
+  - "uv run pytest .claude/skills/backlog/tests/test_backlog_core_operations.py -v --tb=short -k refresh"
+  - "uv run ruff check .claude/skills/backlog/tests/"
+
+- id: T8
+  title: "Integration tests for resolve gate and full pipeline flow"
+  status: not-started
+  agent: python3-development:python-pytest-architect
+  dependencies:
+  - T6
+  - T7
+  priority: 3
+  complexity: medium
+  skills:
+  - python3-development
+  acceptance_criteria:
+  - "test_resolve_blocks_without_verified_label: resolve with plan but no status:verified is blocked"
+  - "test_resolve_passes_with_verified_label: resolve proceeds when status:verified present"
+  - "test_resolve_skips_gate_without_plan: items without Plan field skip the gate entirely"
+  - "test_resolve_force_bypasses_verified_gate: force=True bypasses the verification gate"
+  - "test_resolve_force_bypasses_both_gates: force=True bypasses both verified and open-PR gates"
+  - "test_full_pipeline_label_then_resolve: Gap 1 applies label, Gap 4 gate passes, resolve succeeds"
+  - "test_premature_close_detected_by_reconciliation: Gap 3 detects issue closed without verified label, local file updated"
+  - "All tests use mocked GitHub API (no live calls)"
+  - "Tests placed in .claude/skills/backlog/tests/test_scenarios.py"
+  verification_steps:
+  - "uv run pytest .claude/skills/backlog/tests/test_scenarios.py -v --tb=short -k 'resolve or pipeline or premature'"
+  - "uv run ruff check .claude/skills/backlog/tests/test_scenarios.py"
+
+# =============================================================================
+# Impact radius coverage notes
+# =============================================================================
+# Files from impact radius and their task coverage:
+#
+# COVERED:
+# - .claude/skills/backlog/backlog_core/github.py .............. T1
+# - .claude/skills/backlog/backlog_core/operations.py .......... T5
+# - plugins/python3-development/skills/complete-implementation/SKILL.md .. T2
+# - plugins/python3-development/skills/start-task/SKILL.md ..... T3
+# - .claude/skills/work-backlog-item/SKILL.md .................. T3, T6
+# - .claude/skills/work-backlog-item/references/close-resolve-procedure.md .. T6
+# - .claude/skills/work-backlog-item/references/step-procedures.md .. T3 (audit)
+# - plugins/python3-development/agents/swarm-task-planner.md ... T3
+# - plugins/development-harness/agents/swarm-task-planner.md ... T3
+# - .claude/rules/local-workflow.md ............................ T3
+# - .github/workflows/quality-gate-audit.yml (new) ............ T4
+# - .claude/skills/backlog/tests/test_backlog_core_github.py ... T7
+# - .claude/skills/backlog/tests/test_backlog_core_operations.py T7
+# - .claude/skills/backlog/tests/test_scenarios.py ............. T8
+# - .claude/skills/backlog/backlog_core/models.py .............. read-only (ViewItemResult.labels already exists)
+#
+# EXPLICITLY EXCLUDED:
+# - plan/tasks-*.md (20+ files with baked-in Fixes #N) — static generated artifacts;
+#   forward-only fix via T3 prevents new occurrences. Active plans require manual audit
+#   per architect spec section "Existing Plan Files (Forward-Only)".
+# - .github/workflows/code-quality.yml — no changes needed; audit is a separate workflow (T4)
+# - .claude/skills/backlog/tests/test_live_validation.py — live integration tests are
+#   out of scope for this plan (require real GitHub API)
+# - .claude/skills/backlog/tests/test_reconciliation.py — reconciliation scenarios folded
+#   into test_backlog_core_operations.py (T7) and test_scenarios.py (T8)
+# - .claude/skills/backlog/tests/test_backlog_gh_first.py — closed-issue coverage folded
+#   into test_backlog_core_operations.py (T7)
