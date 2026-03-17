@@ -1,0 +1,114 @@
+name: Quality Gate Audit
+
+on:
+  schedule:
+    # Every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+# Minimal permissions by default — job-level override grants issues:write
+permissions: {}
+
+jobs:
+  audit-closed-without-verification:
+    name: Audit closed issues lacking status:verified
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Flag unverified closed issues
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const VERIFIED_LABEL = 'status:verified';
+            const FLAG_LABEL = 'needs-verification';
+            const PLAN_PATTERN = /\*\*Plan\*\*:/i;
+            const DAYS = 7;
+
+            const since = new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+            // Ensure needs-verification label exists
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: FLAG_LABEL,
+              });
+            } catch (err) {
+              if (err.status === 404) {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: FLAG_LABEL,
+                  color: 'e4e669',
+                  description: 'Issue closed without quality gate verification',
+                });
+                console.log(`Created label: ${FLAG_LABEL}`);
+              } else {
+                throw err;
+              }
+            }
+
+            // Fetch issues closed in the last 7 days (paginated)
+            const closedIssues = await github.paginate(
+              github.rest.issues.listForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'closed',
+                since,
+                per_page: 100,
+              }
+            );
+
+            let flagged = 0;
+            for (const issue of closedIssues) {
+              // Skip pull requests
+              if (issue.pull_request) continue;
+
+              // Skip issues closed before the window (since filters by updated_at, not closed_at)
+              if (issue.closed_at && issue.closed_at < since) continue;
+
+              // Skip non-SAM items — must have a plan file reference in body
+              const body = issue.body ?? '';
+              if (!PLAN_PATTERN.test(body)) continue;
+
+              // Skip issues that already have status:verified
+              const labelNames = issue.labels.map(l => (typeof l === 'string' ? l : l.name));
+              if (labelNames.includes(VERIFIED_LABEL)) continue;
+
+              // Skip issues already flagged
+              if (labelNames.includes(FLAG_LABEL)) continue;
+
+              console.log(`Flagging issue #${issue.number}: ${issue.title}`);
+
+              // Apply needs-verification label
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: [FLAG_LABEL],
+              });
+
+              // Post explanatory comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: [
+                  '> [!WARNING]',
+                  '> This issue was closed without the `status:verified` label.',
+                  '> The `status:verified` label is applied by `/complete-implementation`',
+                  '> after all quality gate phases pass.',
+                  '>',
+                  '> To verify: run `/complete-implementation <plan_file>` against the',
+                  '> associated plan, or apply `status:verified` manually if quality',
+                  '> gates have already been confirmed.',
+                ].join('\n'),
+              });
+
+              flagged += 1;
+            }
+
+            console.log(`Audit complete. Flagged ${flagged} issue(s).`);

@@ -7,9 +7,11 @@ parameter and returns ``{...result, **out.to_dict()}``.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -24,6 +26,7 @@ from .entry_blocks import (
 )
 from .github import (
     apply_status_in_progress,
+    apply_status_verified,
     batch_fetch_statuses,
     check_open_prs_for_issue,
     close_github_issue,
@@ -963,19 +966,111 @@ def add_item(
 # ---------------------------------------------------------------------------
 
 
+def _closed_issue_cutoff(local_items: list[BacklogItem]) -> datetime:
+    """Return the since cutoff for closed-issue reconciliation.
+
+    Uses the most recent metadata.last_synced across all local items, or
+    falls back to 30 days ago when no last_synced values are available.
+
+    Args:
+        local_items: Parsed local backlog items.
+
+    Returns:
+        UTC-aware datetime to use as the ``since`` parameter.
+    """
+    last_synced_values: list[datetime] = []
+    for item in local_items:
+        if item.last_synced:
+            with contextlib.suppress(ValueError):
+                last_synced_values.append(datetime.fromisoformat(item.last_synced))
+    if last_synced_values:
+        return max(last_synced_values)
+    return datetime.now(UTC) - timedelta(days=30)
+
+
+def _build_issue_to_item_index(local_items: list[BacklogItem]) -> dict[int, BacklogItem]:
+    """Build a mapping from GitHub issue number to non-terminal local BacklogItems.
+
+    Only includes items with non-terminal status so already-closed items are
+    not re-processed.
+
+    Args:
+        local_items: Parsed local backlog items.
+
+    Returns:
+        Dict mapping integer issue numbers to their BacklogItem.
+    """
+    index: dict[int, BacklogItem] = {}
+    for item in local_items:
+        if not item.issue:
+            continue
+        num_str = item.issue.lstrip("#")
+        if num_str.isdigit():
+            num = int(num_str)
+            if item.status not in _TERMINAL_STATUSES:
+                index[num] = item
+    return index
+
+
+def _reconcile_closed_issues(repo_obj: Repository, open_issue_numbers: set[int], output: Output) -> int:
+    """Fetch recently closed GitHub issues and update local cache files.
+
+    For each closed issue that has a local file with non-terminal status,
+    updates the local file's status to ``closed``.  Open issues take
+    precedence — any issue number present in ``open_issue_numbers`` is
+    skipped.  Closed issues with no matching local file are skipped silently.
+    Pull requests are filtered out.
+
+    Args:
+        repo_obj: Authenticated PyGitHub Repository object.
+        open_issue_numbers: Issue numbers already processed in the open pass.
+        output: Output collector for info/warn messages.
+
+    Returns:
+        Count of local items updated to status=closed.
+    """
+    local_items = parse_backlog()
+    cutoff = _closed_issue_cutoff(local_items)
+    issue_to_item = _build_issue_to_item_index(local_items)
+
+    reconciled = 0
+    for issue in repo_obj.get_issues(state="closed", since=cutoff):
+        if issue.pull_request is not None:
+            continue
+        if issue.number in open_issue_numbers:
+            continue  # open takes precedence
+        local_item = issue_to_item.get(issue.number)
+        if local_item is None:
+            continue  # no local file — skip silently
+        filepath = Path(local_item.file_path)
+        if not filepath.exists():
+            continue
+        update_item_metadata(filepath, {"metadata": {"status": "closed"}}, output=output)
+        output.info(f"  Reconciled #{issue.number} — updated local status to closed.")
+        reconciled += 1
+    return reconciled
+
+
 def refresh_local_cache_from_github(
     repo: str = DEFAULT_REPO, label: str | None = None, output: Output | None = None
 ) -> dict[str, int | list[str]]:
-    """Fetch open GitHub Issues and update local cache files.
+    """Fetch open and recently closed GitHub Issues and update local cache files.
+
+    Open issues are fetched and written to local cache files via
+    pull_single_issue.  Closed issues are cross-referenced against local
+    files: items with matching issue numbers and non-terminal local status
+    are updated to status=closed.  Open issues take precedence — if an
+    issue appears in both result sets the open processing wins.
 
     Returns:
-        Dict with count of refreshed issues.
+        Dict with count of refreshed (open) issues and count of reconciled
+        (closed) issues.
     """
     out = output or Output()
     repo_obj = try_get_github(repo)
     if repo_obj is None:
         out.warn("  WARNING: GitHub unavailable — listing from local cache only")
-        return {"refreshed": 0, **out.to_dict()}
+        return {"refreshed": 0, "reconciled": 0, **out.to_dict()}
 
     label_objs = []
     if label:
@@ -984,15 +1079,23 @@ def refresh_local_cache_from_github(
         except GithubException:
             out.warn(f"  WARNING: label '{label}' not found — listing all issues")
 
+    # Pass 1: open issues (primary)
     issues = repo_obj.get_issues(state="open", labels=label_objs or GithubObject.NotSet)
+    open_issue_numbers: set[int] = set()
     count = 0
     for issue in issues:
         if issue.pull_request is not None:
             continue
         pull_single_issue(repo_obj, issue.number, output=out)
+        open_issue_numbers.add(issue.number)
         count += 1
     out.info(f"  Refreshed {count} issue(s) from GitHub into local cache.")
-    return {"refreshed": count, **out.to_dict()}
+
+    # Pass 2: recently closed issues (reconciliation)
+    reconciled = _reconcile_closed_issues(repo_obj, open_issue_numbers, out)
+    if reconciled:
+        out.info(f"  Reconciled {reconciled} externally closed issue(s).")
+    return {"refreshed": count, "reconciled": reconciled, **out.to_dict()}
 
 
 def _item_derived_status(item: BacklogItem, status_map: dict[int, IssueStatus]) -> str:
@@ -1609,6 +1712,29 @@ def resolve_item(
     return {"title": item.title, "resolved": True, "summary": summary, **out.to_dict()}
 
 
+def _apply_issue_status_labels(
+    item: BacklogItem,
+    status: str | None,
+    verified: bool,
+    repo: str,
+    result: dict[str, str | int | bool | list[str]],
+    output: Output,
+) -> None:
+    """Apply GitHub issue status labels (in-progress, verified) when item has an issue."""
+    if not item.issue:
+        return
+    if status == "in-progress":
+        apply_status_in_progress(item, repo, output=output)
+        result["status"] = "in-progress"
+    if verified:
+        try:
+            apply_status_verified(item, repo, output=output)
+        except GithubException as e:
+            result["error"] = str(e)
+            return
+        result["verified"] = True
+
+
 # ---------------------------------------------------------------------------
 # Public API: UPDATE
 # ---------------------------------------------------------------------------
@@ -1632,8 +1758,9 @@ def update_item(
     entry_id: str | None = None,
     replace_section: bool = False,
     reason: str | None = None,
+    verified: bool = False,
 ) -> dict[str, str | int | bool | list[str]]:
-    """Update item: add Plan, set status:in-progress, create issue, or write groomed content.
+    """Update item: add Plan, set status:in-progress, create issue, apply verified label, or write groomed content.
 
     Returns:
         Dict with update results.
@@ -1688,9 +1815,7 @@ def update_item(
             out.info(f"  Issue: #{issue_num}")
             result["issue_num"] = issue_num
 
-    if status == "in-progress" and item.issue:
-        apply_status_in_progress(item, repo, output=out)
-        result["status"] = "in-progress"
+    _apply_issue_status_labels(item, status, verified, repo, result, out)
 
     result["changes"] = _extract_changes(result)  # type: ignore[assignment]
 

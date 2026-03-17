@@ -549,6 +549,7 @@ In addition to existing requirements:
 - Every task MUST have `agent` in YAML frontmatter assigned based on task type or architecture spec
 - Every task MUST have Objective, Constraints, and `accuracy-risk` in YAML frontmatter
 - Every task MUST have Verification Steps that are executable or unambiguous
+- Do NOT generate `Fixes #N`, `Closes #N`, or `Resolves #N` in task acceptance criteria or verification steps — these trailers cause premature GitHub issue closure. Issue closure is handled exclusively by `/complete-implementation` in its final commit step.
 - If `accuracy-risk` is `medium` or `high`, include CoVe Checks with falsifiable questions
 - Prefer primary sources: repo code, tests, official docs, config schemas
 - **Bookend generation**: After decomposing implementation tasks, check whether the plan's `acceptance-criteria-structured` field is non-empty. If yes, apply the templates and dependency rules defined in the **Bookend Task Generation** section above. Insert T0 before any implementation task and TN after all implementation tasks. Add `T0` to the `dependencies` list of every non-bookend task.

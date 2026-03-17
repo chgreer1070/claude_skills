@@ -137,4 +137,12 @@ regardless.
    For full artifact classification rules and divergence thresholds, see
    [.claude/docs/plan-artifact-lifecycle.md](./../../../../.claude/docs/plan-artifact-lifecycle.md).
 
-6. Implement against the task acceptance criteria and run its verification steps.
+6. **Commit message restriction — Fixes #N trailers are PROHIBITED in task-level commits.**
+
+   Task-level commits must NEVER include `Fixes #N`, `Closes #N`, or `Resolves #N` trailers.
+   These trailers trigger automatic GitHub issue closure. Issue closure is handled exclusively
+   by `/complete-implementation` in its final commit step, after all quality gates pass.
+   Including these trailers in task commits causes premature issue closure before verification
+   is complete.
+
+7. Implement against the task acceptance criteria and run its verification steps.

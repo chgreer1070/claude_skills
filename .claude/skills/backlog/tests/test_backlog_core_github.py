@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from backlog_core.github import (
+    apply_status_verified,
     batch_fetch_statuses,
     check_open_prs_for_issue,
     create_issue_for_item,
@@ -921,6 +922,142 @@ class TestTryGetGithub:
 
         # Assert
         assert result is mock_repo
+
+
+# ---------------------------------------------------------------------------
+# apply_status_verified
+# ---------------------------------------------------------------------------
+
+
+class TestApplyStatusVerified:
+    """apply_status_verified adds the status:verified label after quality gates pass."""
+
+    def test_apply_status_verified_adds_label(self, mocker: MockerFixture) -> None:
+        """Adds status:verified label to the issue when the label exists.
+
+        Tests: happy-path label application when label already exists on repo.
+        How: Mock get_github, repo.get_label returns existing label; verify add_to_labels called.
+        Why: After quality gates pass, the issue must carry the verified label.
+        """
+        # Arrange
+        mock_repo = _make_mock_repo(mocker)
+        mock_issue = _make_mock_issue(mocker, number=42, label_names=["status:in-progress"])
+        mock_repo.get_issue.return_value = mock_issue
+        verified_label = _make_mock_label(mocker, "status:verified")
+        mock_repo.get_label.return_value = verified_label
+        mocker.patch("backlog_core.github.get_github", return_value=mock_repo)
+
+        item = BacklogItem(title="Feature X", issue="#42", priority="P1")
+        out = Output()
+
+        # Act
+        apply_status_verified(item, output=out)
+
+        # Assert
+        mock_issue.add_to_labels.assert_called_once_with(verified_label)
+
+    def test_apply_status_verified_creates_label_when_missing(self, mocker: MockerFixture) -> None:
+        """Auto-creates status:verified label when repo returns 404.
+
+        Tests: label auto-creation on first use.
+        How: repo.get_label raises GithubException(404); verify repo.create_label called.
+        Why: New repos may not have the label yet — auto-creation avoids manual setup.
+        """
+        # Arrange
+        from github import GithubException
+
+        mock_repo = _make_mock_repo(mocker)
+        mock_issue = _make_mock_issue(mocker, number=10, label_names=[])
+        mock_repo.get_issue.return_value = mock_issue
+        mock_repo.get_label.side_effect = GithubException(404, "Not Found", None)
+        created_label = _make_mock_label(mocker, "status:verified")
+        mock_repo.create_label.return_value = created_label
+        mocker.patch("backlog_core.github.get_github", return_value=mock_repo)
+
+        item = BacklogItem(title="New Feature", issue="#10", priority="P1")
+        out = Output()
+
+        # Act
+        apply_status_verified(item, output=out)
+
+        # Assert
+        mock_repo.create_label.assert_called_once_with(
+            name="status:verified", color="0e8a16", description="Quality gates passed via /complete-implementation"
+        )
+        mock_issue.add_to_labels.assert_called_once_with(created_label)
+
+    def test_apply_status_verified_removes_in_progress(self, mocker: MockerFixture) -> None:
+        """Removes status:in-progress label when present alongside adding verified.
+
+        Tests: in-progress cleanup during verification.
+        How: Issue has status:in-progress label; verify remove_from_labels called.
+        Why: An issue cannot be both in-progress and verified simultaneously.
+        """
+        # Arrange
+        mock_repo = _make_mock_repo(mocker)
+        mock_issue = _make_mock_issue(mocker, number=15, label_names=["status:in-progress"])
+        mock_repo.get_issue.return_value = mock_issue
+        verified_label = _make_mock_label(mocker, "status:verified")
+        ip_label = _make_mock_label(mocker, "status:in-progress")
+
+        def _get_label(name: str) -> object:
+            if name == "status:verified":
+                return verified_label
+            if name == "status:in-progress":
+                return ip_label
+            return mocker.Mock()
+
+        mock_repo.get_label.side_effect = _get_label
+        mocker.patch("backlog_core.github.get_github", return_value=mock_repo)
+
+        item = BacklogItem(title="Progress item", issue="#15", priority="P1")
+        out = Output()
+
+        # Act
+        apply_status_verified(item, output=out)
+
+        # Assert
+        mock_issue.remove_from_labels.assert_called_once_with(ip_label)
+
+    def test_apply_status_verified_no_issue_number(self, mocker: MockerFixture) -> None:
+        """Skips gracefully when the item has no issue number.
+
+        Tests: guard clause for missing issue reference.
+        How: BacklogItem with issue="" passed; verify get_github never called.
+        Why: Local-only items have no GH issue to label.
+        """
+        # Arrange
+        mock_get_github = mocker.patch("backlog_core.github.get_github")
+        item = BacklogItem(title="Local Only", issue="", priority="P1")
+        out = Output()
+
+        # Act
+        apply_status_verified(item, output=out)
+
+        # Assert
+        mock_get_github.assert_not_called()
+
+    def test_apply_status_verified_api_failure(self, mocker: MockerFixture) -> None:
+        """Propagates GithubException on non-404 API failure.
+
+        Tests: error propagation for server errors.
+        How: repo.get_label raises GithubException(500); verify it propagates.
+        Why: Non-404 errors indicate real failures that callers must handle.
+        """
+        # Arrange
+        from github import GithubException
+
+        mock_repo = _make_mock_repo(mocker)
+        mock_issue = _make_mock_issue(mocker, number=20, label_names=[])
+        mock_repo.get_issue.return_value = mock_issue
+        mock_repo.get_label.side_effect = GithubException(500, "Server Error", None)
+        mocker.patch("backlog_core.github.get_github", return_value=mock_repo)
+
+        item = BacklogItem(title="Server fail", issue="#20", priority="P1")
+
+        # Act / Assert
+        with pytest.raises(GithubException):
+            apply_status_verified(item)
 
 
 # ---------------------------------------------------------------------------

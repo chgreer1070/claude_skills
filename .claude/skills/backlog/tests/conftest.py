@@ -65,6 +65,7 @@ def mock_github(monkeypatch):
         "check_open_prs_for_issue": [],
         "batch_fetch_statuses": {},
         "apply_status_in_progress": None,
+        "apply_status_verified": None,
         "fetch_open_issues_by_title": {},
         "view_enrich_from_github": False,
         "sync_groomed_to_github_issue": True,

@@ -46,6 +46,39 @@ If operation is `close`:
 
 Then stop.
 
+## 9b.5: Resolve path — status:verified gate (SAM items only)
+
+If operation is `resolve`:
+
+1. Extract `**Plan**:` field from the matched item. If absent, skip this step entirely — non-SAM items have no verification gate.
+
+2. If `**Plan**:` is present, check the GitHub Issue labels for `status:verified`:
+   - Use `mcp__backlog__backlog_view` with `selector="{title}"` and inspect the `labels` list in the returned dict.
+   - If `status:verified` is present in `labels`, proceed to 9c.
+   - If `status:verified` is absent:
+     - If `--force` flag was passed, print a warning and proceed to 9c:
+
+       <eg>
+       Warning: status:verified label is absent for "{title}". Proceeding with --force.
+       The /complete-implementation quality gates have not been confirmed for this item.
+       </eg>
+
+     - Otherwise, block resolve and report:
+
+       <eg>
+       Resolve blocked for "{title}".
+
+       This item has a SAM plan but the status:verified label is absent on GitHub Issue #{N}.
+       The label is applied automatically when /complete-implementation quality gates pass.
+
+       Options:
+         1. Run /complete-implementation {plan-file-path} to run quality gates and apply the label.
+         2. Re-run /work-backlog-item resolve {title} --force to bypass this gate with a warning.
+         3. Run /work-backlog-item close {title} to dismiss without completion.
+       </eg>
+
+       Then stop.
+
 ## 9c: Resolve path — checklist verification
 
 If operation is `resolve`:
@@ -162,3 +195,19 @@ git log --oneline -20 --grep="Fixes #N\|Closes #N"
     - `findings`: `"{findings}"` (if provided)
 
 12. Check the returned dict for an `error` key. Report the result to the user.
+
+## --force flag
+
+The `--force` flag bypasses two gates in the resolve path:
+
+- **Step 9b.5** (`status:verified` gate): Skips the check that `status:verified` is present on the GitHub Issue. Use when you are confident quality gates have passed but the label was not applied automatically (e.g., the `/complete-implementation` hook failed to apply it).
+- **Step 9e** (open PR check): Bypasses the check for an open PR with `Fixes #N`. Use when you want to resolve the local cache entry immediately even though a PR is still open.
+
+In both cases `--force` prints a warning before proceeding so the bypass is visible in the session transcript.
+
+Usage:
+
+```text
+/work-backlog-item resolve {title} --force
+/work-backlog-item resolve #{N} --force
+```

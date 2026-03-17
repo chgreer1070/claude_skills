@@ -1,7 +1,7 @@
 ---
 name: work-backlog-item
 description: "Use when working, planning, or closing a backlog item. Bridges backlog items to SAM planning with GitHub Issue/Project/Milestone tracking. No args: interactive browser. '#N': load from GitHub Issue #N. Title substring: auto-grooming, RT-ICA gate, GitHub sync, SAM planning. '--auto {title}': autonomous mode — no AskUserQuestion, derives data from research files, logs decisions. 'close {title}': dismiss without completion — reason required (duplicate, out_of_scope, superseded, wontfix, blocked). ADR-9. 'resolve {title}': mark DONE with evidence trail — summary required. ADR-9. 'setup-github': init labels, project, milestone. '--language' and '--stack' select Layer 1/2 profile. STOPS if item has Plan field or RT-ICA returns BLOCKED."
-argument-hint: '[#N | --auto {title} | --language {lang} | --stack {stack} | item-title-substring | close {title} | resolve {title} | setup-github | --quick {title} | progress | resume [{title}]]'
+argument-hint: '[#N | --auto {title} | --language {lang} | --stack {stack} | item-title-substring | close {title} | resolve {title} [--force] | setup-github | --quick {title} | progress | resume [{title}]]'
 user-invocable: true
 ---
 
@@ -340,7 +340,7 @@ Call the `mcp__backlog__backlog_update` tool to add the Plan:
 | `selector` | `"{title}"` |
 | `plan` | `"plan/tasks-{N}-{slug}.md"` |
 
-If the item has `**Issue**: #N`, record it in the plan file header comment and include `Fixes #N` in any commit message produced during implementation.
+If the item has `**Issue**: #N`, record it in the plan file header comment. Do NOT include `Fixes #N`, `Closes #N`, or `Resolves #N` in task-level commit messages — issue closure is handled exclusively by `/complete-implementation` in its final commit step.
 
 ### Step 8: Simplify
 
@@ -363,20 +363,21 @@ Backlog item "{title}" is now planned.
 - To close when done: /work-backlog-item close {slug}
 ```
 
-**Do NOT close the GitHub Issue directly.** Include `Fixes #N` in commit messages and the PR body — the issue auto-closes when the PR merges. Only use `/work-backlog-item resolve` for post-merge verification and local bookkeeping. Use `/work-backlog-item close` only for dismissals (duplicate, out_of_scope, etc.). Never call `mcp__backlog__backlog_resolve` before the PR has merged.
+**Do NOT close the GitHub Issue directly.** Do NOT include `Fixes #N`, `Closes #N`, or `Resolves #N` in task-level commit messages or PR bodies — issue closure is handled exclusively by `/complete-implementation` in its final commit step. Only use `/work-backlog-item resolve` for post-merge verification and local bookkeeping. Use `/work-backlog-item close` only for dismissals (duplicate, out_of_scope, etc.). Never call `mcp__backlog__backlog_resolve` before the PR has merged.
 
 ### Step 9: Close or Resolve (ADR-9)
 
 **Trigger:** `<mode/>` is `close` or `resolve`.
 
 - `close` = dismiss without completion. Requires `reason` (duplicate, out_of_scope, superseded, wontfix, blocked). Optional `reference` and `comment`. Calls `mcp__backlog__backlog_close`.
-- `resolve` = mark DONE with evidence trail. Requires `summary`. Optional `plan`, `method`, `notes`, `follow_ups`, `findings`. Verifies checklist + acceptance criteria before resolving. Calls `mcp__backlog__backlog_resolve`.
+- `resolve` = mark DONE with evidence trail. Requires `summary`. Optional `plan`, `method`, `notes`, `follow_ups`, `findings`. Verifies checklist + acceptance criteria before resolving. For items with a `**Plan**:` field, also checks that the `status:verified` GitHub label is present (Step 9b.5). Calls `mcp__backlog__backlog_resolve`.
+- `resolve --force` = bypass the `status:verified` gate (Step 9b.5) and the open-PR gate (Step 9e) with a warning. Use when label automation failed or when forcing a local-cache resolve while a PR is still open.
 
 Full step-by-step procedure (9a–9f): [close-resolve-procedure.md](./references/close-resolve-procedure.md)
 
 ## GitHub Integration
 
-`.claude/backlog/` per-item files are the local cache. GitHub Issues are the source of truth. See [github-integration.md](./references/github-integration.md) for step-by-step commands, commit message conventions (`Fixes #N`), and example sessions.
+`.claude/backlog/` per-item files are the local cache. GitHub Issues are the source of truth. See [github-integration.md](./references/github-integration.md) for step-by-step commands and example sessions. Note: `Fixes #N` trailers are restricted to the `/complete-implementation` final commit step only.
 
 ### Step 2.5: GitHub Issue Sync
 

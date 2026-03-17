@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from github.Issue import Issue, SubIssue
     from github.Repository import Repository
 
+_HTTP_NOT_FOUND = 404
 
 # ---------------------------------------------------------------------------
 # Connection helpers
@@ -291,6 +292,44 @@ def apply_status_in_progress(item: BacklogItem, repo: str = DEFAULT_REPO, output
         out.info("  Status: in-progress")
     except GithubException as e:
         out.warn(f"  WARNING: Could not set status: {e}")
+
+
+def apply_status_verified(item: BacklogItem, repo: str = DEFAULT_REPO, output: Output | None = None) -> None:
+    """Set GitHub issue label to status:verified after quality gates pass.
+
+    Adds the ``status:verified`` label and removes ``status:in-progress`` if
+    present. Auto-creates the ``status:verified`` label when it does not exist
+    (404). Skips gracefully when the item has no issue number.
+
+    Args:
+        item: BacklogItem to mark verified. No-op when ``item.issue`` is empty.
+        repo: Repository in ``owner/repo`` format.
+        output: Optional Output collector for status/warning messages.
+
+    Raises:
+        GithubException: On GitHub API failure other than label-not-found (404).
+    """
+    if not item.issue:
+        return
+    out = output or Output()
+    repository = get_github(repo)
+    num = item.issue.lstrip("#")
+    issue = repository.get_issue(int(num))
+    labels = [label.name for label in issue.labels]
+    if "status:verified" not in labels:
+        try:
+            lbl = repository.get_label("status:verified")
+        except GithubException as e:
+            if e.status != _HTTP_NOT_FOUND:
+                raise
+            lbl = repository.create_label(
+                name="status:verified", color="0e8a16", description="Quality gates passed via /complete-implementation"
+            )
+        issue.add_to_labels(lbl)
+        if "status:in-progress" in labels:
+            ip = repository.get_label("status:in-progress")
+            issue.remove_from_labels(ip)
+    out.info("  Status: verified")
 
 
 # ---------------------------------------------------------------------------

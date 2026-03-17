@@ -332,6 +332,14 @@ async def backlog_update(
     reason: Annotated[
         str | None, Field(description="Reason for striking entries (required when replace_section=True)")
     ] = None,
+    verified: Annotated[
+        bool,
+        Field(
+            description="Apply status:verified label to the GitHub issue. "
+            "Signals that /complete-implementation quality gates have passed. "
+            "Auto-creates the label if absent. No-op when item has no issue number."
+        ),
+    ] = False,
 ) -> dict:
     """Update a backlog item: attach a plan, set status, create a GitHub issue, or write groomed content.
 
@@ -339,6 +347,9 @@ async def backlog_update(
     Use entry_id to replace a specific entry, or replace_section=True to
     strike all entries and append new content. Groomed content is synced
     to the GitHub issue when the item has one.
+
+    Use verified=True after /complete-implementation quality gates pass to
+    apply the status:verified label to the linked GitHub issue.
 
     Returns:
         Dict with updated item title, applied changes, and output
@@ -360,6 +371,7 @@ async def backlog_update(
             entry_id=entry_id,
             replace_section=replace_section,
             reason=reason,
+            verified=verified,
         )
         return {**result, **out.to_dict()}
     except BacklogError as e:

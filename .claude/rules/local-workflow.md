@@ -157,6 +157,8 @@ hooks:
    Skill(skill="complete-implementation", args="{task_file_path}")
 ```
 
+**Fixes #N restriction** — Only the `/complete-implementation` Final Step may include `Fixes #N`, `Closes #N`, or `Resolves #N` commit trailers. Task-level commits produced during steps 1–4 must NEVER include these trailers. They trigger automatic GitHub issue closure; premature closure bypasses the quality gates in Phase 3.
+
 ### Bookend Tasks
 
 When a plan contains `acceptance-criteria-structured` entries, `swarm-task-planner` generates two bookend tasks:

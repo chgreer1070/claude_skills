@@ -111,34 +111,15 @@ The tool updates the per-item file status and closes the GitHub issue. Check the
 
 ---
 
-## Commit Messages and PR Body — `Fixes #N`
+## Commit Messages and PR Body — `Fixes #N` Restriction
 
-When implementing a backlog item with a linked GitHub Issue (`**Issue**: #N`), **every commit and PR description MUST reference the issue** so GitHub auto-closes it on merge:
+`Fixes #N`, `Closes #N`, and `Resolves #N` commit trailers trigger automatic GitHub issue closure on merge. **These trailers are restricted to the `/complete-implementation` final commit step only.**
 
-- **Commit messages**: end the subject line with `(fixes #N)` or add a `Fixes #N` footer:
+- **Task-level commits** (produced by `/start-task` during implementation) must NEVER include `Fixes #N`, `Closes #N`, or `Resolves #N`. Including them causes premature issue closure before quality gates in `/complete-implementation` have run.
+- **The `/complete-implementation` final commit step** is the only place these trailers appear. After all quality gates pass, the final commit includes `Fixes #N` to close the issue on merge.
+- **PR description**: do NOT add `Fixes #N` manually to the PR body during implementation. The `/complete-implementation` final commit carries the trailer — GitHub links the commit to the issue automatically.
 
-  ```text
-  fix(perl-development): replace shell injection in run_command (fixes #80)
-  ```
-
-  or
-
-  ```text
-  fix(perl-development): replace shell injection in run_command
-
-  Fixes #80
-  ```
-
-- **PR description**: include at least one `Fixes #N` line. For multiple issues, list each on a separate line:
-
-  ```text
-  Fixes #80
-  Fixes #83
-  ```
-
-- Use `Fixes` (not `Closes`) for bugs and security issues; either works for feature work.
-
-This ensures issues are automatically closed on merge without manual intervention.
+This restriction ensures issues close only after the full pipeline (code review, feature verification, integration check, doc drift audit) has completed successfully.
 
 ---
 

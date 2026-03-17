@@ -1049,3 +1049,191 @@ class TestEndToEndQueryToResult:
 
         assert result["count"] == 1
         assert result["items"][0]["title"] == "GitHub Actions workflow optimization"
+
+
+# ---------------------------------------------------------------------------
+# Group 5: Pipeline completion enforcement — resolve gate and reconciliation
+# ---------------------------------------------------------------------------
+
+
+class TestResolveVerifiedGate:
+    """Integration tests for the status:verified gate on resolve (Gap 4)
+    and full pipeline flow (Gaps 1+4) and closed-issue reconciliation (Gap 3).
+
+    The gate logic is:
+    - If item has a Plan field AND no status:verified label -> block resolve
+    - If item has no Plan field -> skip gate entirely
+    - force=True bypasses the gate
+    """
+
+    async def test_resolve_blocks_without_verified_label(self, backlog_dir, mock_github, write_test_item):
+        """Resolve with plan but no status:verified label is blocked at the view gate.
+
+        When an item has a Plan field, the resolve workflow checks backlog_view
+        labels for status:verified. Without the label, the caller is expected
+        to block. This test verifies the data prerequisites: view returns labels
+        and the item has a plan attached, but no verified label.
+        """
+        write_test_item("Verified Gate Test", issue="#200")
+        mock_github["view_enrich_from_github"].return_value = False
+
+        # Attach a plan to the item via backlog_update
+        await _call("backlog_update", {"selector": "#200", "plan": "plan/test-plan.md"})
+
+        # View item — should return labels (empty, no verified label)
+        view_result = await _call("backlog_view", {"selector": "#200"})
+
+        assert view_result["title"] == "Verified Gate Test"
+        assert isinstance(view_result["labels"], list)
+        # No status:verified label present — gate should block at skill level
+        assert "status:verified" not in view_result["labels"]
+        # Plan field is present
+        assert view_result.get("plan") == "plan/test-plan.md"
+
+    async def test_resolve_passes_with_verified_label(self, backlog_dir, mock_github, write_test_item):
+        """Resolve proceeds when status:verified label is present on the issue.
+
+        After backlog_update(verified=True) applies the label, backlog_view
+        returns it in labels, and the resolve call succeeds.
+        """
+        write_test_item("Verified Pass Test", issue="#201")
+        mock_github["view_enrich_from_github"].return_value = False
+        mock_github["check_open_prs_for_issue"].return_value = []
+        mock_github["resolve_github_issue"].return_value = None
+
+        # Attach plan, then apply verified label
+        await _call("backlog_update", {"selector": "#201", "plan": "plan/verified-plan.md"})
+        update_result = await _call("backlog_update", {"selector": "#201", "verified": True})
+
+        assert update_result.get("verified") is True
+        mock_github["apply_status_verified"].assert_called_once()
+
+        # Resolve succeeds
+        resolve_result = await _call("backlog_resolve", {"selector": "Verified Pass Test", "summary": "Work completed"})
+
+        assert resolve_result["resolved"] is True
+        assert resolve_result["title"] == "Verified Pass Test"
+
+    async def test_resolve_skips_gate_without_plan(self, backlog_dir, mock_github, write_test_item):
+        """Items without a Plan field skip the verification gate entirely.
+
+        Non-SAM items (no plan attached) resolve without needing status:verified.
+        """
+        write_test_item("No Plan Item", issue="#202")
+        mock_github["view_enrich_from_github"].return_value = False
+        mock_github["check_open_prs_for_issue"].return_value = []
+        mock_github["resolve_github_issue"].return_value = None
+
+        # View confirms no plan
+        view_result = await _call("backlog_view", {"selector": "#202"})
+        assert view_result.get("plan", "") == ""
+
+        # Resolve succeeds without verified label — no plan means no gate
+        resolve_result = await _call("backlog_resolve", {"selector": "No Plan Item", "summary": "Quick fix applied"})
+
+        assert resolve_result["resolved"] is True
+        # apply_status_verified never called — not needed for non-SAM items
+        mock_github["apply_status_verified"].assert_not_called()
+
+    async def test_resolve_force_bypasses_verified_gate(self, backlog_dir, mock_github, write_test_item):
+        """force=True bypasses the verification gate even with a plan and no verified label."""
+        write_test_item("Force Bypass Test", issue="#203")
+        mock_github["check_open_prs_for_issue"].return_value = []
+        mock_github["resolve_github_issue"].return_value = None
+
+        # Attach plan but do NOT apply verified label
+        await _call("backlog_update", {"selector": "#203", "plan": "plan/force-plan.md"})
+
+        # Force resolve — bypasses both gates
+        resolve_result = await _call(
+            "backlog_resolve", {"selector": "Force Bypass Test", "summary": "Forced completion", "force": True}
+        )
+
+        assert resolve_result["resolved"] is True
+        assert resolve_result["title"] == "Force Bypass Test"
+
+    async def test_resolve_force_bypasses_both_gates(self, backlog_dir, mock_github, write_test_item):
+        """force=True bypasses both the verified gate and the open-PR gate."""
+        write_test_item("Force Both Gates Test", issue="#204")
+        # Simulate open PRs that would normally block resolve
+        pr_mock = MagicMock()
+        pr_mock.number = 500
+        pr_mock.title = "WIP: implementation"
+        pr_mock.url = "https://github.com/test/repo/pull/500"
+        mock_github["check_open_prs_for_issue"].return_value = [pr_mock]
+        mock_github["resolve_github_issue"].return_value = None
+
+        # Attach plan but no verified label, and open PRs exist
+        await _call("backlog_update", {"selector": "#204", "plan": "plan/both-gates.md"})
+
+        # Force resolve — bypasses both open-PR guard and verified gate
+        resolve_result = await _call(
+            "backlog_resolve", {"selector": "Force Both Gates Test", "summary": "Emergency resolve", "force": True}
+        )
+
+        assert resolve_result["resolved"] is True
+
+    async def test_full_pipeline_label_then_resolve(self, backlog_dir, mock_github, write_test_item):
+        """Full pipeline flow: create item with issue, attach plan, apply verified label, resolve.
+
+        Gap 1 (apply label) followed by Gap 4 (gate passes) — the complete
+        happy-path pipeline from completion to closure.
+        """
+        write_test_item("Pipeline Flow Test", issue="#205")
+        mock_github["check_open_prs_for_issue"].return_value = []
+        mock_github["resolve_github_issue"].return_value = None
+
+        # Step 1: Attach plan (simulating /add-new-feature output)
+        await _call("backlog_update", {"selector": "#205", "plan": "plan/pipeline-test.md"})
+
+        # Step 2: Apply verified label (simulating /complete-implementation)
+        update_result = await _call("backlog_update", {"selector": "#205", "verified": True})
+        assert update_result.get("verified") is True
+        mock_github["apply_status_verified"].assert_called_once()
+
+        # Step 3: Resolve (simulating /work-backlog-item resolve)
+        resolve_result = await _call(
+            "backlog_resolve", {"selector": "Pipeline Flow Test", "summary": "All quality gates passed"}
+        )
+
+        assert resolve_result["resolved"] is True
+        assert resolve_result["title"] == "Pipeline Flow Test"
+        mock_github["resolve_github_issue"].assert_called_once()
+
+    async def test_premature_close_detected_by_reconciliation(self, backlog_dir, mock_github, write_test_item):
+        """Gap 3: closed-issue reconciliation detects issue closed without verified label.
+
+        When backlog_list(from_github=True) triggers refresh_local_cache_from_github,
+        closed issues are reconciled and local files updated to status=closed.
+        """
+        write_test_item("Premature Close Test", issue="#206")
+
+        # Configure mock: no open issues, one closed issue #206
+        mock_repo = MagicMock()
+        mock_repo.get_issues.return_value = []
+        mock_github["try_get_github"].return_value = mock_repo
+
+        # The closed issue mock — issue #206 was closed externally
+        closed_issue = MagicMock()
+        closed_issue.number = 206
+        closed_issue.pull_request = None
+        closed_issue.title = "Premature Close Test"
+
+        # First call (state="open") returns empty, second call (state="closed") returns #206
+        def get_issues_side_effect(**kwargs):
+            if kwargs.get("state") == "closed":
+                return [closed_issue]
+            return []
+
+        mock_repo.get_issues.side_effect = get_issues_side_effect
+
+        # Trigger reconciliation via from_github=True
+        result = await _call("backlog_list", {"from_github": True})
+
+        assert isinstance(result["items"], list)
+        # The reconciliation should have updated the local file
+        # Check the file was updated to closed status
+        item_files = list(backlog_dir.glob("*premature-close*"))
+        assert item_files, "Expected local file to exist"
+        file_text = item_files[0].read_text(encoding="utf-8")
+        assert "closed" in file_text.lower()

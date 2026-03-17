@@ -106,9 +106,12 @@ GitHub labels track state in parallel:
 
 ```text
 status:needs-grooming   status:groomed      status:blocked
-status:in-milestone     status:in-progress  status:done
-status:resolved         status:closed
+status:in-milestone     status:in-progress  status:verified
+status:done             status:resolved     status:closed
 ```
+
+`status:verified` is applied by `/complete-implementation` after quality gates pass (not part of
+the lifecycle state machine, but required by `backlog_resolve` for SAM items with a plan).
 
 The backlog tools manage label transitions. Do not set labels with `gh label` directly.
 
@@ -296,6 +299,7 @@ mcp__backlog__backlog_update(
     selector="#142",
     plan="plan/tasks-7-slug.md",          # attach a plan file
     status="in-progress",                  # set item status
+    verified=False,                        # apply status:verified label (SAM items only)
     create_issue=False,                    # create GitHub issue if missing
     groomed_content="### Priority\n...",   # full groomed section replacement
     section="Priority",                    # incremental section update
@@ -305,6 +309,12 @@ mcp__backlog__backlog_update(
 )
 # Returns: {title, changes, messages, warnings}
 ```
+
+The `verified=True` parameter applies the `status:verified` label to the linked GitHub Issue and
+removes `status:in-progress` if present. It is called automatically by `/complete-implementation`
+after quality gates pass. The `status:verified` label is a prerequisite for
+`/work-backlog-item resolve` on SAM items — resolve is blocked if the label is absent (bypass with
+`force=True` on resolve).
 
 ### `backlog_groom` — Write groomed content
 

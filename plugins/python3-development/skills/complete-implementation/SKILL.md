@@ -281,6 +281,51 @@ Do not recurse. The follow-up is tracked in the backlog.
 
 ---
 
+## Apply status:verified Label
+
+After all six phases and follow-up routing complete, apply the `status:verified` GitHub label to the parent backlog issue. This records durable completion evidence that `/work-backlog-item resolve` requires before closing a SAM item.
+
+### Step 1: Locate the backlog item
+
+Derive the search slug from the task file path (same algorithm as Recursive Follow-up Handling):
+
+```text
+plan/tasks-3-integrate-sam-schema.md → slug: integrate-sam-schema
+```
+
+Search the backlog:
+
+```text
+mcp__backlog__backlog_list(title="{slug}")
+```
+
+If zero items match, skip this section — there is no issue to label.
+
+### Step 2: Apply the label
+
+Call:
+
+```text
+mcp__backlog__backlog_update(selector="{matched_item_title}", verified=True)
+```
+
+**Error handling**: If the call returns an `error` key, output:
+
+```text
+COMPLETION BLOCKED — status:verified label could not be applied.
+
+Error: {error}
+Backlog item: {matched_item_title}
+
+Fix the error (check GitHub token, repo access), then re-run /complete-implementation.
+```
+
+Stop. Do not proceed to the Final Step commit.
+
+On success, continue to the Final Step.
+
+---
+
 ## Final Step: Commit and Push Remaining Changes
 
 After all phases and follow-up routing are complete, check for uncommitted changes. Phases 1-6 and the Recursive Follow-up Handling steps modify files (task file context manifests, backlog item files, plan annotations). Commit any remaining modifications in a single commit and push to the current branch.
