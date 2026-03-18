@@ -5,9 +5,9 @@ metadata:
   topic: fix-type-ignore-assignment-in-resolvelabelsgraphql-by-typing
   source: Agent task — auto-derived from task description
   added: '2026-03-18'
-  priority: P1
+  priority: completed
   type: Bug
-  status: open
+  status: done
   plan: plan/P775-migrate-backlog-github-rest-to-graphql-followup-2.yaml
   issue: '#836'
 ---
