@@ -8,7 +8,7 @@ This directory contains curated research on tools, repositories, and patterns re
 
 ## Directory Structure
 
-<eg>
+```text
 research/
 ├── README.md                          # This index file
 ├── agent-frameworks/                  # Agent SDKs and orchestration frameworks
@@ -175,7 +175,7 @@ research/
 │   └── claude-task-master.md          # Task management system for AI-driven development (25K+ stars)
 └── serialization-libraries/           # High-performance serialization and validation libraries
     └── msgspec.md                     # Zero-overhead JSON/MessagePack/YAML/TOML validation in C; 6-12x faster than Pydantic, 0.46 MiB (3.6K stars)
-</eg>
+```
 
 ---
 
