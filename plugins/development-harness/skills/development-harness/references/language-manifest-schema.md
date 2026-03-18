@@ -359,6 +359,40 @@ Validation failures produce warnings but do not block the pipeline. The harness 
 
 ---
 
+## Stage Skills (Optional)
+
+Maps SDLC stages to the domain-specific skills a language plugin provides. The harness passes these skill names as input 3 (Domain Skills) to the generic-stage-agent at dispatch time.
+
+**Key pattern:** `{domain}-{sdlc-stage}` where:
+
+- `domain` is one of the five closed domains: `planning`, `design`, `implementation`, `testing`, `review`
+- `sdlc-stage` is a Layer 1 bare stage name: `discovery`, `planning`, `context-integration`, `task-decomposition`, `execution`, `forensic-review`, `final-verification`
+- Bare single-word keys (`discovery`, `design`, `implementation`) are also valid when the domain equals the stage or stands alone
+
+See [SDLC Stage Naming Taxonomy](./sdlc-stage-taxonomy.md) for the complete closed lists and naming rules.
+
+**Example:**
+
+```yaml
+stage_skills:
+  discovery: [python3-discovery]
+  design: [python3-design]
+  planning-context-integration: [python3-implementation]
+  planning-task-decomposition: [python3-planning-task-decomposition]
+  implementation: [python3-implementation]
+  testing-forensic-review: [python3-testing-forensic-review]
+  testing-final-verification: [python3-testing]
+```
+
+**Rules:**
+
+- Each key maps to a list of skill names (strings)
+- Skills are loaded by the generic-stage-agent in the order listed
+- Omitted stages use no domain skills (cross-cutting stage skill still applies)
+- Keys not matching the `{domain}-{sdlc-stage}` pattern or the closed domain/stage lists are invalid and will be ignored by the harness
+
+---
+
 ## See Also
 
 - [SDLC Stage Naming Taxonomy](./sdlc-stage-taxonomy.md) — canonical stage names and `{domain}-{sdlc-stage}` naming convention

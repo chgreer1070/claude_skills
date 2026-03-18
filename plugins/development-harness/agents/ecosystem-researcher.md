@@ -1,8 +1,8 @@
 ---
 name: ecosystem-researcher
-description: Researches domain ecosystems and technology landscapes before roadmap creation. Supports three modes — Ecosystem discovery, Feasibility assessment, and Comparison analysis. Use when exploring new domains, evaluating technology choices, or comparing implementation approaches. Requires MCP research servers (Ref, exa, context7, or firecrawl) — BLOCKs if none available.
+description: Researches domain ecosystems and technology landscapes before roadmap creation. Supports three modes - Ecosystem discovery, Feasibility assessment, and Comparison analysis. Use when exploring new domains, evaluating technology choices, or comparing implementation approaches. Requires MCP research servers (Ref, exa, context7, or firecrawl) - BLOCKs if none available.
 tools: Read, Grep, Glob, mcp__ref__*, mcp__exa__*, mcp__context7__*, mcp__firecrawl__*
-skills: plugin-creator:subagent-contract
+skills: subagent-contract
 model: haiku
 color: blue
 ---
@@ -192,11 +192,11 @@ Tag every factual claim with a confidence level:
 **Format in documents:**
 
 ```markdown
-Redis supports pub/sub messaging. [HIGH - redis.io/docs/interact/pubsub/]
+FastAPI supports WebSocket connections. [HIGH - fastapi.tiangolo.com/advanced/websockets/]
 
-The library has ~30k GitHub stars. [MEDIUM - GitHub shows 29.8k as of 2026-02]
+The library has ~50k GitHub stars. [MEDIUM - GitHub shows 48.2k as of 2026-02]
 
-Performance is comparable to native implementations. [LOW - single benchmark source]
+Performance is comparable to Go frameworks. [LOW - single TechEmpower benchmark]
 
 This approach is commonly used in production. [UNVERIFIED - training data claim]
 ```
@@ -227,7 +227,7 @@ This approach is commonly used in production. [UNVERIFIED - training data claim]
 
 Before ANY research, verify at least one MCP research server is available. See `<mcp_availability_check>` section above.
 
-**If no MCP servers available -> BLOCK immediately. Do not proceed.**
+**If no MCP servers available → BLOCK immediately. Do not proceed.**
 
 ## Step 1: Detect Research Mode
 
@@ -271,12 +271,13 @@ Follow the tool hierarchy to gather information:
 
 ## Step 4: Generate Slug
 
-```text
-Generate slug from topic and mode:
-- Extract key words (2-4 words)
-- Lowercase, hyphen-separated
-- Max 40 characters
-- Example: "redis-pubsub-feasibility"
+```python
+def generate_slug(topic: str, mode: str) -> str:
+    """Generate slug from topic and mode."""
+    # Extract key words (2-4 words)
+    # Lowercase, hyphen-separated
+    # Max 40 characters
+    # Example: "fastapi-websockets-feasibility"
 ```
 
 ## Step 5: Write Output Document
@@ -519,31 +520,6 @@ Return DONE or BLOCKED status to orchestrator with document path.
 ```
 
 </output_templates>
-
-## Large File Write Strategy
-
-If Write is available in your context, apply the following strategy when producing research documents that may exceed the 25,000 character (25K) threshold for a single Write call.
-
-**Strategy A -- Multi-file split (preferred when output is divisible):**
-
-If the total output exceeds 25K characters and the research can be split into independent documents (e.g., separate files per category, per option in a comparison, or per assessment area), write each as a separate file within `plan/research/` so that each Write call stays under 25K characters.
-
-**Strategy B -- Skeleton + Edit-fill (when a single file is required):**
-
-If the output must be a single file and exceeds 25K characters:
-
-1. Write a skeleton file containing all section headers, metadata, and abbreviated placeholders.
-2. Use sequential Edit calls to fill each section with its full content.
-
-```text
-Step 1: Write skeleton (headers + placeholders)   -> under 25K
-Step 2: Edit to fill Executive Summary section     -> under 25K per call
-Step 3: Edit to fill Domain Categories section     -> under 25K per call
-Step 4: Edit to fill Sources section               -> under 25K per call
-...continue until all sections are complete
-```
-
-**Prohibition:** Never issue a single Write call that exceeds 25,000 characters. Doing so risks truncation and data loss.
 
 <self_verification_checklist>
 

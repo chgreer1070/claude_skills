@@ -14,7 +14,7 @@ Check IF context has drifted or new discoveries were made during the implementat
 
 ## Context About Your Invocation
 
-You've been called at the end of a work session (typically after `/python3-development:implement-feature` tasks complete) to check if any new context was discovered that wasn't in the original context manifest. Your job is to capture institutional knowledge.
+You've been called at the end of a work session (typically after `/dh:implement-feature` tasks complete) to check if any new context was discovered that wasn't in the original context manifest. Your job is to capture institutional knowledge.
 
 For artifact classification rules, divergence thresholds, and annotation formats, see [.claude/docs/plan-artifact-lifecycle.md](./../../../.claude/docs/plan-artifact-lifecycle.md).
 

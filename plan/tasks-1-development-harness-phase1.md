@@ -440,7 +440,7 @@ tasks:
 - task: T02
   title: Naming audit -- update manifests and agent references for taxonomy
     compliance
-  status: not-started
+  status: in-progress
   agent: general-purpose
   dependencies:
   - T01
@@ -580,6 +580,7 @@ tasks:
     Add the "Stage Skills (Optional)" section BEFORE the final "## See Also" / "## References"
     section added by T01 — i.e., insert it at the end of the schema sections, not at the
     absolute end of the file.
+  started: '2026-03-18T23:32:13.095537+00:00'
 - task: T03
   title: Write executable PoC validation guide
   status: not-started
@@ -743,7 +744,7 @@ tasks:
 - task: T04
   title: Copy python3-development agents to dh and apply dh namespace
     adaptations
-  status: in-progress
+  status: complete
   agent: general-purpose
   dependencies:
   - T00
