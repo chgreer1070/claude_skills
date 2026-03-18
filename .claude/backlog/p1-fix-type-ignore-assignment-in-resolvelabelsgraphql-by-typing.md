@@ -9,4 +9,5 @@ metadata:
   type: Bug
   status: open
   plan: plan/P775-migrate-backlog-github-rest-to-graphql-followup-2.yaml
+  issue: '#836'
 ---

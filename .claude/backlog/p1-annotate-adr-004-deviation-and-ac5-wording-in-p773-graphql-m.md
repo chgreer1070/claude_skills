@@ -9,4 +9,5 @@ metadata:
   type: Docs
   status: open
   plan: plan/P774-migrate-backlog-github-rest-to-graphql-followup-1.yaml
+  issue: '#835'
 ---
