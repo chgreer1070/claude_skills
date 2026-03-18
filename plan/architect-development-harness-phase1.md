@@ -427,6 +427,34 @@ The agent produces `.planning/harness/PLAN.md` containing:
 
 ---
 
+## Post-Implementation Annotations
+
+Added by context-refinement agent on 2026-03-18
+
+### Design Refinements
+
+1. **Open Decision resolved as Option B (strict rename), not Option A (abbreviation)**: The architect spec's "Open Decision" section recommended Option A — accept `testing-verification` as an abbreviation, document an exception in the taxonomy, and leave the manifest unchanged. The implementation chose Option B: the key was renamed to `testing-final-verification` in the manifest, and the taxonomy explicitly marks `testing-verification` as incorrect with no abbreviation exception.
+   - Original: "Recommendation: Option A. The abbreviation is unambiguous... Renaming would be a breaking change" (Open Decision section)
+   - Actual: Option B implemented — key renamed; taxonomy enforces `testing-final-verification` as the only valid form
+   - Recorded in: plan/tasks-1-development-harness-phase1.md, T02
+
+2. **dispatch_helper.py Section 4 CLI commands are incorrect — no CLI entry point exists**: The architect spec's Deliverable 3 Section 4 specified a CLI invocation `uv run python plugins/development-harness/scripts/dispatch_helper.py --manifest ... --stage ... --task-file ...`. This command does not work. `dispatch_helper.py` is a library module with no `argparse` entry point. The PoC guide (the actual implemented artifact) replaced Section 4 with a description of programmatic usage and notes that `manifest_resolver.py` is the CLI tool.
+   - Original: Section 4 "Build the Dispatch Prompt" with `dispatch_helper.py --manifest ... --stage ...` command
+   - Actual: `dispatch_helper.py` has no CLI; the PoC guide documents `manifest_resolver.py show/resolve` as the CLI path and `build_dispatch_prompt()` for programmatic use
+   - Recorded in: plan/tasks-1-development-harness-phase1.md, T03
+
+3. **marketplace.json "name" field not changed**: The File Change List in this spec listed `.claude-plugin/marketplace.json` under T00 with change "Change: plugin entry name → 'dh'". This change was not made. The registry identifier stays "development-harness"; only `plugin.json` received `"name": "dh"`.
+   - Original: marketplace.json listed as T00 modified file with name change to "dh"
+   - Actual: marketplace.json unchanged; the two name fields serve different purposes and change independently
+   - Recorded in: plan/tasks-1-development-harness-phase1.md, T00
+
+4. **swarm-task-planner.md retains one python3-development: cross-plugin reference intentionally**: The T04 namespace replacement strategy (all `python3-development:` → `dh:`) was applied but one reference was intentionally preserved: `Skill(skill="python3-development:specialist-skill-routing")` because that skill has no `dh:` equivalent. The architect spec did not document this exception case for the COPY-THEN-PATCH strategy.
+   - Original: "Namespace replacement: Text-level sed-style (python3-development: → dh:) on all three patterns" (T04 constraints)
+   - Actual: One cross-plugin reference to `python3-development:specialist-skill-routing` preserved; namespace substitution is not wholesale — only replace where a `dh:` equivalent exists
+   - Recorded in: plan/tasks-1-development-harness-phase1.md, T04
+
+---
+
 ## Open Decision: `testing-verification` Key
 
 The `testing-verification` key in `plugins/python3-development/manifests/python3/language-manifest.yaml` does not strictly follow the `{domain}-{sdlc-stage}` pattern because the stage name is `final-verification`, not `verification`.

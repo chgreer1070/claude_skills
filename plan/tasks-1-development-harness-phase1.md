@@ -126,6 +126,40 @@ context: |
   - Issue: #581
   - Feature slug: development-harness-phase1
   - Task file: plan/tasks-1-development-harness-phase1.md
+
+  ### Discovered During Implementation
+
+  _Session Date: 2026-03-18_
+
+  During implementation, we discovered five facts that were not fully captured in the original context or were resolved differently than the architect spec anticipated.
+
+  **Key Discoveries:**
+
+  1. **marketplace.json "name" field is the registry identifier, not the invocation namespace**: The architect spec T00 scope said to update the marketplace.json plugin entry name to "dh". The actual implementation left the registry-level `"name": "development-harness"` in `marketplace.json` intact because that field is the package registry identifier (how the plugin is fetched and installed), not the invocation namespace. Only `plugins/development-harness/.claude-plugin/plugin.json` needed `"name": "dh"`. Future T00-style namespace renames must distinguish between (a) the plugin.json invocation namespace (changes) and (b) the marketplace.json registry identifier (stays unchanged).
+
+  2. **testing-verification renamed to testing-final-verification (Option B chosen, not Option A)**: The architect spec presented two options and recommended Option A (accept `testing-verification` as an accepted abbreviation, no manifest change). The actual implementation chose Option B: rename the key to `testing-final-verification` in the manifest. The taxonomy document also explicitly marks `testing-verification` as incorrect and `testing-final-verification` as the enforced name. This is a breaking change for any consumer looking up the old key.
+
+  3. **dispatch_helper.py has no CLI entry point — manifest_resolver.py is the CLI tool**: The architect spec (Deliverable 3, Section 4) described a `dispatch_helper.py --manifest ... --stage ... --task-file ...` command as the CLI invocation for building dispatch prompts. This was incorrect. `dispatch_helper.py` is a library module only — its `build_dispatch_prompt()` function must be called from Python, not from the command line. The PoC guide correctly documents `manifest_resolver.py` as the CLI tool (with `show` and `resolve` subcommands) and states: "`dispatch_helper.py` is a library module, not a CLI." Future PoC guides or integration tests must use `uv run manifest_resolver.py resolve ...` for CLI-driven discovery and resolution.
+
+  4. **T04 COPY THEN PATCH — swarm-task-planner.md intentionally retains cross-plugin reference**: During T04 agent sync, `swarm-task-planner.md` was copied from `python3-development` and the `dh:` namespace was applied. However, the file retains one `python3-development:` reference: `Skill(skill="python3-development:specialist-skill-routing")`. This is correct and intentional — `specialist-skill-routing` only exists in `python3-development` and has no `dh:` equivalent. Future agent syncs must leave cross-plugin references to `python3-development:` skills intact when no `dh:` equivalent exists.
+
+  5. **Plugin namespace rename does not require a directory rename**: Renaming the invocation namespace from `development-harness:` to `dh:` was a pure text-level change. The directory `plugins/development-harness/` was not renamed and must not be renamed. The asymmetry (directory name does not equal invocation namespace) is the permanent correct state.
+
+  #### Updated Technical Details
+
+  - `dispatch_helper.py` CLI: does not exist. Use `from dispatch_helper import build_dispatch_prompt` for programmatic use.
+  - `manifest_resolver.py` CLI: `uv run manifest_resolver.py show --manifest <path> --format json` and `uv run manifest_resolver.py resolve --project-dir . --format json`
+  - All scripts must be run from the repo root as they import each other as sibling modules.
+  - `plugins/development-harness/.claude-plugin/plugin.json`: `"name": "dh"` (invocation namespace)
+  - `.claude-plugin/marketplace.json`: `"name": "development-harness"` (registry identifier, unchanged)
+  - `testing-final-verification` is the enforced key name; `testing-verification` is documented as incorrect in the taxonomy.
+
+  #### Gotchas for Future Developers
+
+  - Do not confuse `plugin.json` `name` (invocation namespace) with `marketplace.json` `name` (registry identifier). They serve different lookup systems and change independently.
+  - `dispatch_helper.py` exits with code 0 when invoked as a script even with no argparse. Do not interpret exit code 0 as successful CLI invocation.
+  - The `testing-final-verification` rename in `language-manifest.yaml` is a breaking change. Any downstream consumer referencing the old `testing-verification` key by exact string will silently resolve zero skills.
+  - The `swarm-task-planner.md` cross-plugin reference to `python3-development:specialist-skill-routing` is not a namespace-rename miss — it is load-bearing and correct. Do not change it to `dh:specialist-skill-routing`.
 acceptance_criteria:
 - 'AC1: plugin.json has name dh; zero grep hits for development-harness: (colon suffix)
   in plugin files excluding directory paths and this task file'

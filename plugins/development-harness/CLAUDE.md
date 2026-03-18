@@ -133,7 +133,7 @@ The manifest schema is documented in [./skills/development-harness/references/la
 
 **Main orchestration:**
 
-- `/development-harness` - Entry point. Detects language, resolves roles, orchestrates S1-S7.
+- `/dh:development-harness` - Entry point. Detects language, resolves roles, orchestrates S1-S7.
 
 **Workflow stages (7):**
 

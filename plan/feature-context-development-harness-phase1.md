@@ -215,3 +215,26 @@ After questions are resolved:
 2. Finalize Goals section
 3. Proceed to RT-ICA assessment
 4. Then proceed to architecture design
+
+---
+
+## Post-Implementation Annotations
+
+Added by context-refinement agent on 2026-03-18
+
+### Design Refinements
+
+1. **marketplace.json registry identifier preserved**: The context noted `.claude-plugin/marketplace.json` would have its plugin entry name changed to "dh". The actual implementation left `"name": "development-harness"` in marketplace.json unchanged, because that field is the registry identifier (installation key), not the invocation namespace. Only `plugin.json` received the `"name": "dh"` change.
+   - Original: "Change: plugin entry name → 'dh'" (File Reference Map row for marketplace.json)
+   - Actual: marketplace.json registry name stays "development-harness"; invocation namespace rename is plugin.json-only
+   - Recorded in: plan/tasks-1-development-harness-phase1.md, T00
+
+2. **testing-verification naming — Option B (strict rename) enforced, not Option A (abbreviation)**: The feature context documented the manifest key as `testing-verification` with a note that it "should be `testing-final-verification`". The implementation enforced strict compliance: the key was renamed in the manifest and the taxonomy explicitly marks `testing-verification` as incorrect.
+   - Original: "testing-verification" referenced as current key needing review (Pattern 2, Gap Analysis row 1)
+   - Actual: Key renamed to `testing-final-verification` in manifest; taxonomy enforces this as the correct form
+   - Recorded in: plan/tasks-1-development-harness-phase1.md, T02
+
+3. **dispatch_helper.py is library-only — no CLI entry point**: The feature context listed `dispatch_helper.py` as a utility script to "read for CLI args (T03 CoVe gate)", implying it had a CLI. The T03 CoVe gate discovered it is a library module only; `manifest_resolver.py` is the CLI tool.
+   - Original: dispatch_helper.py listed as CLI utility in File Reference Map
+   - Actual: Library module only; PoC guide uses `manifest_resolver.py show` and `manifest_resolver.py resolve` for CLI steps
+   - Recorded in: plan/tasks-1-development-harness-phase1.md, T03
