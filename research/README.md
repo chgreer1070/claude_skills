@@ -669,6 +669,8 @@ Developer productivity tools and workflow automation for software engineering wi
 | [capacitorjs.md](./developer-tools/capacitorjs.md)     | Capacitor v8.1.0 — cross-platform native runtime bridging web apps to iOS, Android, and PWA via WebView + native plugin layer; 37+ official plugins, source-artifact native projects, TypeScript async API (15.2K stars, MIT) | 2026-03-05   |
 | [ghost-desk.md](./developer-tools/ghost-desk.md)       | Ghost Desk — Windows AI overlay assistant invisible during screen shares/recordings via SetWindowDisplayAffinity API; Llama 3.3 70B chat, Llama 4 Scout vision, Deepgram Nova-3 transcription; 14-platform verification dashboard (free at launch, proprietary) | 2026-03-13   |
 | [scrapling-skill.md](./developer-tools/scrapling-skill.md) | Scrapling — Claude Code web scraping skill with 5-fetcher decision tree (Selector/Fetcher/FetcherSession/StealthyFetcher/DynamicFetcher), Cloudflare bypass via Camoufox, site pattern templates, cookie vault, bilingual EN/ZH (MIT) | 2026-03-13   |
+| [sidecar.md](./developer-tools/sidecar.md)             | Sidecar v0.78.0 — local-first terminal UI companion for AI coding agents (Claude Code, Cursor, Gemini CLI, Copilot CLI, 10+ adapters); Go/Bubbletea TUI with git status diffs, conversation history, task monitoring, file browser, and tmux workspace management; zero telemetry (843 stars, MIT) | 2026-03-17   |
+| [agent-deck.md](./developer-tools/agent-deck.md)       | Agent Deck v0.26.3 — terminal session manager for AI coding agents (Claude Code, Gemini CLI, OpenCode, Codex); unified TUI with smart status detection, session forking, MCP management, socket pooling (85-90% memory reduction), conductor auto-response, Docker sandboxing, and git worktree isolation (1,568 stars, MIT) | 2026-03-17   |
 
 **Key Topics**:
 
@@ -1166,6 +1168,7 @@ Self-hosted LLM inference servers, multi-provider gateways, and LLMOps platforms
 | -------- | ----------- | ------------ |
 | [localai.md](./llm-infrastructure/localai.md) | LocalAI - free open-source local AI inference server with OpenAI-compatible API, no GPU required, 40+ backends including llama.cpp, diffusers, whisper (43K+ stars) | 2026-02-22 |
 | [tensorzero.md](./llm-infrastructure/tensorzero.md) | TensorZero - industrial-grade LLM gateway written in Rust with <1ms p99 latency, 20+ providers, fine-tuning, A/B testing, and observability (10.9K stars) | 2026-01-31 |
+| [glm5-exacto.md](./llm-infrastructure/glm5-exacto.md) | GLM-5:exacto — Z.ai's 744B-parameter open-source model (40B active MoE) via OpenRouter Exacto routing for tool-calling accuracy, 77.8% SWE-bench Verified, MIT license | 2026-03-18 |
 
 **Key Topics**:
 
