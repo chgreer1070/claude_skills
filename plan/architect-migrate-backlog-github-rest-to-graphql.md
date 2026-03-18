@@ -850,3 +850,37 @@ fails loudly — the same behavior as any `GithubException` today.
 **Exception**: `try_get_github()` returns `None` on auth failure — this guard already
 prevents all GitHub calls when authentication is unavailable. No GraphQL-specific guard
 needed.
+
+---
+
+## Post-Implementation Annotations
+
+Added by context-refinement agent on 2026-03-18
+
+### Design Refinements
+
+1. **`_resolve_labels_graphql` first parameter is `repo: Repository`, not `gh: Github`**:
+   The architect spec (§4.1, §4.3) specified `(gh: Github, repo_owner, repo_name, label_names)` and
+   `gh.graphql_query()`. The actual implementation uses `(repo: Repository, repo_owner, repo_name,
+   label_names)` with `repo.requester.graphql_query()`. PyGithub >= 2.8.1 exposes `graphql_query()`
+   on the `Requester` object (accessed via `repo.requester`), not on the top-level `Github` object.
+   Since `repo` is already available at both call sites, no additional parameter is needed.
+   - Original: `"def _resolve_labels_graphql(gh: Github, ...) ... gh.graphql_query(...)"`
+   - Actual: `"def _resolve_labels_graphql(repo: Repository, ...) ... repo.requester.graphql_query(...)"`
+   - Mock pattern correction: `mocker.patch.object(repo_mock.requester, "graphql_query", return_value={...})`
+     (not `gh_mock.graphql_query.return_value = ...` as shown in §7.3)
+   - Recorded in: plan/tasks-773-migrate-backlog-github-rest-to-graphql.yaml, implementation discoveries
+
+2. **ADR-004 error translation table is inoperative — `graphql_query()` raises `GithubException` directly**:
+   ADR-004 (§9, ADR-004) specified that `graphql_query()` returns `{"errors": [...]}` dicts which private
+   helpers must inspect and translate into `GithubException` with specific status codes per the translation
+   table (NOT_FOUND→404, FORBIDDEN→403, RATE_LIMITED→429, other→502). In practice, PyGithub's
+   `graphql_query()` raises `GithubException` directly on any error — it does not return an errors dict.
+   The translation table and the `if "errors" in response:` guard code described in §7.3 were never needed.
+   The observable outcome for callers is identical (they still see `GithubException`); only the internal
+   mechanism differs.
+   - Original: `"if an 'errors' key is present with a non-empty list, raise GithubException(502, ...)"`
+   - Actual: PyGithub raises `GithubException` before returning; no response dict inspection required
+   - Test impact: the "GraphQL errors array" mock case (`gh_mock.graphql_query.return_value = {"errors": [...]}`)
+     does not exercise real behavior — the failure path is exercised via `side_effect = GithubException(...)`
+   - Recorded in: plan/tasks-773-migrate-backlog-github-rest-to-graphql.yaml, implementation discoveries

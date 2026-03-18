@@ -566,7 +566,7 @@ tasks:
 
   - task: T5
     title: "Integration verification — run full test suite and confirm acceptance criteria"
-    status: not-started
+    status: complete
     agent: python3-development:python-cli-architect
     dependencies: ["T0", "T4"]
     priority: 5

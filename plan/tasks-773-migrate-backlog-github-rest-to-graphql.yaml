@@ -3,7 +3,7 @@ version: '1.0'
 description: ''
 goal: |-
   Eliminate N+1 label-prefetch patterns in github.py by replacing per-label REST get_label() loops with a single GraphQL batch query, preserving all public function signatures and exception types
-context: |
+context: |-
   Primary target: .claude/skills/backlog/backlog_core/github.py
   Two confirmed N+1 zones:
     - create_issue_for_item() lines 120-126: loop over 3 label names, each calls repo.get_label()
@@ -21,6 +21,47 @@ context: |
   ADR-005: Per-function label-missing behavior preserved (skip+warn for create functions).
   Mock strategy: mock gh.graphql_query() at method level — consistent with existing REST mocks.
   Test coverage requirement: github.py >= 90%, new private functions 100% branch coverage.
+
+  ### Discovered During Implementation
+
+  _Session Date: 2026-03-18_
+
+  During implementation, we discovered that graphql_query() is not available directly on the
+  Github object as specced — it is accessed via repo.requester.graphql_query() on the Repository
+  object's requester. This changed the _resolve_labels_graphql() signature to accept
+  repo: Repository as its first parameter instead of gh: Github.
+
+  Additionally, PyGithub's graphql_query() does not return {"errors": [...]} response dicts on
+  failure. It raises GithubException directly. The ADR-004 error translation table (NOT_FOUND->404,
+  FORBIDDEN->403, etc.) was never executed — PyGithub performs that translation internally.
+
+  **Key Discoveries:**
+
+  1. **repo.requester.graphql_query() not gh.graphql_query()**: Access path is repo.requester,
+     not the top-level Github object. Signature became _resolve_labels_graphql(repo: Repository,
+     repo_owner, repo_name, label_names) — no separate gh parameter needed.
+
+  2. **graphql_query() raises GithubException directly**: No {"errors": [...]} dict is returned.
+     ADR-004 translation table is stale. Do not write response.get("errors") checks — dead code.
+
+  3. **Test mock target is repo.requester.graphql_query**: Correct pattern is
+     mocker.patch.object(repo_mock.requester, "graphql_query", return_value={...}).
+     The architect spec pattern (gh_mock.graphql_query) does not match the implementation.
+
+  4. **4 remaining get_label() calls at lines 364, 367, 398, 407 are intentionally out of scope**:
+     These are in apply_status_in_progress() and apply_status_verified(). ADR-001 scoped migration
+     only to the N+1 label-loop zones. These are single-label lookups, not loops — left as REST.
+
+  **Updated Technical Details:**
+  - _resolve_labels_graphql(repo: Repository, repo_owner: str, repo_name: str, label_names: list[str]) -> list[str]
+  - GraphQL invoked via repo.requester.graphql_query(query, variables={...})
+  - 782 total tests passing; 14 new GraphQL-specific tests in test_graphql_helpers.py
+
+  **Gotchas for Future Developers:**
+  - Do not use gh.graphql_query() — access via repo.requester.graphql_query() only.
+  - Do not inspect response["errors"] — PyGithub raises GithubException before returning.
+  - ADR-004 translation table documents intended design preempted by PyGithub internals;
+    the observable outcome (callers see GithubException) is identical to what was specced.
 acceptance-criteria: |-
   AC1: _resolve_labels_graphql() private function exists in github.py, accepts (gh, repo_owner, repo_name, label_names) and returns list[str] of existing label names
   AC2: create_issue_for_item() no longer calls repo.get_label() in a loop — calls _resolve_labels_graphql() instead
@@ -120,7 +161,7 @@ tasks:
 - id: T5
   title: Integration verification — run full test suite and confirm acceptance
     criteria
-  status: in-progress
+  status: complete
   agent: python3-development:python-cli-architect
   dependencies:
   - T0
@@ -132,7 +173,7 @@ tasks:
   started: '2026-03-18T15:13:15.014213+00:00'
 - id: T99
   title: 'TN: Verify implementation against baseline'
-  status: not-started
+  status: complete
   agent: tn-verification-gate
   dependencies:
   - T1
