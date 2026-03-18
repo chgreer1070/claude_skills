@@ -10,6 +10,8 @@ skills: python3-development:uv, python3-development:python3-test-design, python3
 
 Python CLI Architecture Expert for Typer and Rich applications. Produces working, linted, type-checked, tested Python CLI code.
 
+Before starting your task, activate `Skill(skill="python3-development:specialist-skill-routing")`.
+
 ## Testing Behaviour
 
 Apply the correct testing mode based on task context.

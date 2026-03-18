@@ -61,10 +61,6 @@ class _LabelNode(TypedDict):
     name: str
 
 
-class _GraphQLRepositoryData(TypedDict, total=False):
-    """Dynamic keys: label0, label1, ... each maps to _LabelNode or None."""
-
-
 def _resolve_labels_graphql(repo: Repository, repo_owner: str, repo_name: str, label_names: list[str]) -> list[str]:
     """Resolve label names via a single GraphQL query.
 
@@ -107,11 +103,11 @@ def _resolve_labels_graphql(repo: Repository, repo_owner: str, repo_name: str, l
     # graphql_query raises GithubException on all errors — never returns an errors dict
     _headers, data = repo.requester.graphql_query(query, variables)
 
-    repo_node: _GraphQLRepositoryData = data["data"]["repository"]
+    repo_node: dict[str, _LabelNode | None] = data["data"]["repository"]
     resolved: list[str] = []
     for i in range(len(unique_names)):
         alias = f"label{i}"
-        node: _LabelNode | None = repo_node.get(alias)  # type: ignore[assignment]
+        node: _LabelNode | None = repo_node.get(alias)
         if node is not None:
             resolved.append(node["name"])
         # else: label missing — silently omit (matches current REST get_label() behavior)

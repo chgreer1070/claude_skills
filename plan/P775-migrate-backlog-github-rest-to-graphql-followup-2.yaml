@@ -23,7 +23,8 @@ tasks:
 - id: T1
   title: 'Fix type: ignore[assignment] in _resolve_labels_graphql by typing repo_node
     as dict[str, _LabelNode | None]'
-  status: not-started
+  status: in-progress
   agent: python3-development:python-cli-architect
   priority: 4
   complexity: low
+  started: '2026-03-18T16:21:11.349859+00:00'

@@ -1,0 +1,145 @@
+---
+name: specialist-skill-routing
+description: Context-aware skill router for Python development agents. Scan task description against trigger list and activate matching specialist skills before starting work. Covers FastMCP/MCP, ty type checker, uv, Hatchling, TOML editing, pre-commit/prek, async Python, PyPI packaging, complex linting, and technical debt modernization.
+---
+
+Scan your task description against the triggers below. For every match, call `Skill(skill="...")` **before** writing any architecture, plan, or code. Multiple matches → load all matching skills.
+
+## MCP / FastMCP
+
+**Triggers**: building an MCP server, `FastMCP()`, `@mcp.tool`, `@mcp.resource`, MCP tools/resources/prompts, MCP transports (stdio/HTTP/SSE), server composition (`mount()`), MCP auth, MCP client, deploying an MCP server, migrating from FastMCP v2
+
+```text
+Skill(skill="fastmcp-creator:fastmcp-creator")
+```
+
+Also activate for:
+
+- Writing tests for an MCP server → `Skill(skill="fastmcp-creator:fastmcp-python-tests")`
+- Using `fastmcp list` / `fastmcp call` / `fastmcp discover` CLI → `Skill(skill="fastmcp-creator:fastmcp-client-cli")`
+
+After loading, follow the trigger matrix inside that skill to load only the reference files relevant to your specific task.
+
+---
+
+## Type Checking — ty
+
+**Triggers**: `ty check`, `ty.toml`, `[tool.ty]` in pyproject.toml, suppressing ty diagnostics, ty rule names and severity levels, ty environment/module resolution, unresolved imports in ty, migrating from mypy or pyright to ty, integrating ty with editors or CI
+
+```text
+Skill(skill="python3-development:ty")
+```
+
+Covers: CLI flags, configuration schema, rule levels (`error`/`warn`/`ignore`), suppression comments (`ty: ignore`, `type: ignore`), virtual environment discovery, Python version targeting, installation, VS Code/Neovim/Zed/PyCharm integration, troubleshooting.
+
+Does NOT cover: mypy or pyright configuration, writing type annotations in Python source.
+
+---
+
+## Package Management — uv
+
+**Triggers**: `uv add`, `uv run`, `uv build`, `uv publish`, `uv sync`, `uv lock`, `uvx`, PEP 723 inline script metadata, managing Python versions with uv, configuring package indexes or private registries, workspace configuration (`[tool.uv.workspace]`), migrating from pip/poetry/conda, CI/CD with `astral-sh/setup-uv`, Docker with uv, `uv venv`, dependency groups, `uv tool install`
+
+```text
+Skill(skill="python3-development:uv")
+```
+
+Key facts — do not guess these from training data:
+
+- `uv venv` refuses to overwrite existing environments since 0.10.0 — pass `--clear`
+- Use `uv run` not `source .venv/bin/activate`
+- Use `uv add` not `uv pip install` for project dependencies
+- `uv sync --frozen` for CI; `uv sync --locked` to fail if lockfile is stale
+- PEP 723 shebang: `#!/usr/bin/env -S uv --quiet run --active --script`
+
+---
+
+## Build Backend — Hatchling
+
+**Triggers**: `[build-system]` using hatchling, `hatch_build.py`, `[tool.hatchling]`, wheel/sdist configuration, build hooks, `hatch-vcs` version management, force-include patterns, editable installs with hatchling, setuptools migration to hatchling
+
+```text
+Skill(skill="python3-development:hatchling")
+```
+
+Covers: PEP 517/518/621/660, project metadata, wheel and sdist targets, build hooks interface, version sources, file selection with glob patterns, VCS integration, plugin architecture.
+
+---
+
+## TOML Editing (comment-preserving)
+
+**Triggers**: Python code that reads AND writes `pyproject.toml` or any `.toml` file, preserving comments and formatting during modification, `tomlkit` library, atomic config file updates
+
+```text
+Skill(skill="python3-development:toml-python")
+```
+
+Use `tomlkit` (not `tomllib`) when writing or modifying TOML. `tomllib` is stdlib but read-only. Always open files in text mode (`'r'`/`'w'`), not binary.
+
+---
+
+## Pre-commit / prek Git Hooks
+
+**Triggers**: `.pre-commit-config.yaml`, `prek install`, `pre-commit install`, adding or modifying git hooks, `prepare-commit-msg` hooks, distributing a tool as a pre-commit hook, detecting which hook tool is installed
+
+```text
+Skill(skill="python3-development:pre-commit")
+```
+
+Key fact: prek is a drop-in Rust replacement for pre-commit — same config file, identical CLI. Detect which is installed by reading `.git/hooks/pre-commit` line 2.
+
+---
+
+## Async / Concurrent Python
+
+**Triggers**: `asyncio`, `async def`, `await`, concurrent I/O operations, `aiohttp`, `anyio`, `trio`, WebSocket servers, async background tasks, async queues, async database access, concurrent HTTP requests, async FastAPI
+
+```text
+Skill(skill="python3-development:async-python-patterns")
+```
+
+---
+
+## PyPI Packaging
+
+**Triggers**: configuring `pyproject.toml` for distribution, preparing a package for PyPI, entry points, optional dependencies, PEP 517/518/621
+
+```text
+Skill(skill="python3-development:python3-packaging")
+```
+
+For CI/CD pipeline to automate PyPI publishing (GitHub Actions or GitLab CI):
+
+```text
+Skill(skill="python3-development:python3-publish-release-pipeline")
+```
+
+For README files that render correctly on PyPI (`twine check`, Markdown vs RST choice, `readme` field in pyproject.toml):
+
+```text
+Skill(skill="python3-development:pypi-readme-creator")
+```
+
+---
+
+## Complex Linting Resolution
+
+**Triggers**: more than 3 ruff/mypy/basedpyright/pyright errors requiring root-cause analysis, type flow analysis across multiple files, deciding whether to suppress vs fix a diagnostic, linting errors you cannot resolve with standard patterns
+
+```text
+Skill(skill="holistic-linting:holistic-linting")
+```
+
+This skill behaves differently for orchestrators vs sub-agents. Orchestrators delegate to `linting-root-cause-resolver` agent; sub-agents run formatters and linters directly on touched files before completing.
+
+---
+
+## Technical Debt / Modernization
+
+**Triggers**: eliminating `Any` types across a module, removing legacy typing imports (`Optional[X]`, `Union[X, Y]`, `List[X]`, `Dict[K, V]`), refactoring for Protocol usage, progressive quality improvement across multiple files
+
+```text
+Skill(skill="python3-development:stinkysnake")
+```
+
+Multi-phase workflow: static analysis → type analysis → modernization planning → plan review → test-driven implementation. Load before planning a refactor, not mid-implementation.
