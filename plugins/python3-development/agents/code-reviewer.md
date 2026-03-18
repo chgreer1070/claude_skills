@@ -175,16 +175,53 @@ described in the Task File Format section. Do NOT use the Write tool to create t
 ### Creating Follow-up Files with `sam create`
 
 Use `sam create --stdin` to create follow-up task files. This produces a versioned YAML plan file
-in `plan/` with an auto-assigned plan number.
+in `plan/` with an auto-assigned plan number (`plan/P{NNN}-{slug}.yaml`).
+
+**CRITICAL: Task identifier key is `task:` — NEVER use `id:`.**
+
+The stdin YAML passed to `sam create` MUST use `task:` as the identifier field. Using `id:` is
+wrong and will produce a malformed plan.
+
+**Correct stdin YAML structure:**
+
+```yaml
+tasks:
+  - task: T1
+    title: "Brief title of the fix"
+    status: not-started
+    agent: python-cli-architect
+    dependencies: []
+    priority: 2
+    complexity: low
+    skills: []
+    body: |
+      ## Objective
+      Describe what needs to be done.
+
+      ## Acceptance Criteria
+      - Criterion 1
+```
 
 **Command:**
 
 ```bash
-printf 'tasks:\n  - task: "T1"\n    title: "{Brief Title}"\n    status: not-started\n    agent: python-cli-architect\n    dependencies: []\n    priority: {1-5}\n    complexity: {low|medium|high}\n' \
-  | uv run sam create "{feature-slug}-followup-{issue-number}" \
-      --goal "{one-sentence goal describing the fix}" \
-      --stdin \
-      --format json
+cat <<'EOF' | uv run sam create "{feature-slug}-followup-{issue-number}" \
+    --goal "{one-sentence goal describing the fix}" \
+    --stdin \
+    --format json
+tasks:
+  - task: T1
+    title: "{Brief Title}"
+    status: not-started
+    agent: python-cli-architect
+    dependencies: []
+    priority: 2
+    complexity: low
+    skills: []
+    body: |
+      ## Objective
+      {describe the fix needed}
+EOF
 ```
 
 **Output:** JSON with the created file path:
@@ -202,17 +239,49 @@ printf 'tasks:\n  - task: "T1"\n    title: "{Brief Title}"\n    status: not-star
 **Example:** If reviewing a `data-validation` plan and finding 2 issues:
 
 ```bash
-# Issue 1
-printf 'tasks:\n  - task: "T1"\n    title: "Add missing unit tests for validator"\n    status: not-started\n    agent: python-pytest-architect\n    dependencies: []\n    priority: 2\n    complexity: low\n' \
-  | uv run sam create "data-validation-followup-1" \
-      --goal "Add missing unit tests for the data validation module" \
-      --stdin --format json
+# Issue 1 — note: task: T1, NOT id: T1
+cat <<'EOF' | uv run sam create "data-validation-followup-1" \
+    --goal "Add missing unit tests for the data validation module" \
+    --stdin --format json
+tasks:
+  - task: T1
+    title: "Add missing unit tests for validator"
+    status: not-started
+    agent: python-pytest-architect
+    dependencies: []
+    priority: 2
+    complexity: low
+    skills: []
+    body: |
+      ## Objective
+      Add unit tests for all public functions in the data validation module.
 
-# Issue 2
-printf 'tasks:\n  - task: "T1"\n    title: "Fix error handling in edge cases"\n    status: not-started\n    agent: python-cli-architect\n    dependencies: []\n    priority: 2\n    complexity: medium\n' \
-  | uv run sam create "data-validation-followup-2" \
-      --goal "Fix error handling in data validation edge cases" \
-      --stdin --format json
+      ## Acceptance Criteria
+      - All validator functions have at least one test
+      - Edge cases are covered
+EOF
+
+# Issue 2 — note: task: T1, NOT id: T1
+cat <<'EOF' | uv run sam create "data-validation-followup-2" \
+    --goal "Fix error handling in data validation edge cases" \
+    --stdin --format json
+tasks:
+  - task: T1
+    title: "Fix error handling in edge cases"
+    status: not-started
+    agent: python-cli-architect
+    dependencies: []
+    priority: 2
+    complexity: medium
+    skills: []
+    body: |
+      ## Objective
+      Fix error handling for malformed input in the data validation module.
+
+      ## Acceptance Criteria
+      - Malformed input raises a specific, informative exception
+      - No silent failures
+EOF
 ```
 
 **Priority values:** 1 (critical) through 5 (low). Complexity: `low`, `medium`, or `high` (lowercase).
