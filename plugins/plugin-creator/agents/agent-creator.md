@@ -137,17 +137,21 @@ flowchart TD
     Q1 -->|Distributable plugin| Plugin["{plugin}/agents/{name}.md<br>+ update plugin.json"]
     Project --> Validate[Run validator]
     User --> Validate
-    Plugin --> UpdateJSON["Read plugin.json<br>Add agent to agents array<br>Write updated plugin.json<br>(agents only — skills are auto-discovered)"]
+    Plugin --> UpdateJSON["Read plugin.json<br>Read existing agents array — carry forward ALL entries<br>Add new agent path<br>Write updated plugin.json"]
     UpdateJSON --> Validate
     Validate --> Done([Report location and result])
 ```
 
 **Plugin.json update pattern** — add agent to `agents` array (required for all agents):
 
+> **AUTO-DISCOVERY WARNING — ALL OR NOTHING**
+> The `agents` array overrides auto-discovery entirely when present. Any agent path NOT listed becomes invisible to Claude Code. Always read the existing `agents` array first and preserve every entry. Never write a single-entry array unless this is genuinely the only agent in the plugin.
+
 ```json
 {
   "agents": [
-    "./agents/existing-agent.md",
+    "./agents/existing-agent-1.md",
+    "./agents/existing-agent-2.md",
     "./agents/{new-agent-name}.md"
   ]
 }

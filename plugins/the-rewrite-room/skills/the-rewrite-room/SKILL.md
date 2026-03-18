@@ -81,6 +81,15 @@ flowchart TD
 - [ ] Command row in Command Reference table — Entry Agent column contains the agent name (not the skill name)
 - [ ] Branch in Workflow Index mermaid points to the agent node (not the skill directory)
 
+> **⚠️ plugin.json auto-discovery — if registering this agent in plugin.json**
+>
+> Agents in the default `agents/` directory are auto-discovered. Do NOT add them to plugin.json.
+>
+> If the agent is in a non-default location and must be declared:
+> - Read the existing `agents` array in plugin.json first
+> - Carry forward every existing entry — adding one without listing all others makes the rest invisible
+> - It is all or nothing
+
 **Skill vs agent — the distinction that prevents the missing-agent failure:**
 
 - The **skill** (`skills/<name>/SKILL.md`) contains the workflow: numbered steps, conditional logic, specialist agent delegation

@@ -285,9 +285,15 @@ C) **Plugin** - Part of a plugin (saved to plugin directory + update plugin.json
 3. SAVE agent to `{plugin-path}/agents/{agent-name}.md`
 4. READ `{plugin-path}/.claude-plugin/plugin.json`
 5. UPDATE plugin.json to add agent to `agents` array:
+
+   > **AUTO-DISCOVERY WARNING — ALL OR NOTHING**
+   > The `agents` array is an explicit allowlist. Declaring even one path overrides auto-discovery entirely — any agent NOT listed becomes invisible. Before adding the new agent, read the existing `agents` array and carry forward every existing entry. Never write a single-entry array unless this is the first agent in the plugin.
+
    ```json
    {
      "agents": [
+       "./agents/existing-agent-1.md",
+       "./agents/existing-agent-2.md",
        "./agents/{agent-name}.md"
      ]
    }

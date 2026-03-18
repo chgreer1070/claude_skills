@@ -50,6 +50,15 @@ Write this file when creating a net-new plugin. Do not write it when improving a
 }
 ```
 
+> **⚠️ plugin.json auto-discovery — if registering this skill in a plugin**
+>
+> Skills in the default `skills/` directory are auto-discovered. Do NOT add them to plugin.json.
+>
+> If the skill is in a non-default location and must be declared:
+> - Read the existing `skills` array in plugin.json first
+> - Carry forward every existing entry — adding one without listing all others makes the rest invisible
+> - It is all or nothing
+
 ---
 
 ## SKILL.md Frontmatter Rules

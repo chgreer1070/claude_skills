@@ -609,7 +609,7 @@ flowchart TD
     VQ -->|"non-zero — validation failed<br>script reports errors and exits"| Fix["Fix reported validation errors<br>then run packaging command again"]
     Fix --> RunPkg
     Bundle --> SkillReg["Skills auto-discovered when no<br>skills field present in plugin.json<br>Do NOT add skill entries to plugin.json<br>(auto_sync_manifests.py skips skills;<br>adding skills field opts into manual allowlist mode —<br>SK009 fires as INFO reminder)"]
-    Package --> AgentReg["Agents always require explicit registration<br>in the agents array in plugin.json<br>Claude Code does not auto-discover agents"]
+    Package --> AgentReg["Agents require explicit registration<br>in the agents array in plugin.json<br>Claude Code does not auto-discover agents<br>⚠️ ALL-OR-NOTHING — when agents array exists,<br>EVERY agent must be listed or it becomes invisible<br>List all existing agents BEFORE adding the new one"]
     SkillReg --> Done(["Step 6 complete — proceed to Step 7"])
     AgentReg --> Done
 ```

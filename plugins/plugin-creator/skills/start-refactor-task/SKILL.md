@@ -64,7 +64,19 @@ If no ready task: Output "No ready tasks" and EXIT.
 
 EDIT the task file: Change `❌ NOT STARTED` to `🔄 IN PROGRESS`
 
-### 4. Track Progress
+### 4. Plugin.json Safety — Read Before Creating Any Component
+
+Commands, agents, and skills placed in default locations (`commands/`, `agents/`, `skills/`) are auto-discovered. Do NOT add them to `plugin.json`.
+
+If a component is in a non-default location and must be declared:
+
+1. Read the existing array in `plugin.json` first
+2. Carry forward every existing entry
+3. Add the new entry alongside them
+
+Declaring any subset overrides auto-discovery for the entire key — unlisted components become invisible. It is all or nothing.
+
+### 5. Track Progress
 
 Use the Task API to track acceptance criteria:
 
@@ -81,7 +93,7 @@ TaskCreate(
 )
 ```
 
-### 5. Implement
+### 6. Implement
 
 Work through each acceptance criterion based on the issue type:
 
@@ -132,7 +144,7 @@ Work through each acceptance criterion based on the issue type:
 
 Mark todos as you complete them.
 
-### 6. Verify
+### 7. Verify
 
 Run each verification step from the task. All must pass.
 
@@ -143,7 +155,7 @@ Common verification steps:
 - `Check frontmatter validates against schema`
 - `Confirm file structure matches design spec`
 
-### 7. Complete
+### 8. Complete
 
 When all verification passes:
 

@@ -69,7 +69,7 @@ Note: `--file` flag confirmed correct (argparse line 128-130 of validate_glfm.py
 ## Content Rules
 
 - No-Loss Rewrite Rule — see [../the-rewrite-room/references/status-block-contract.md](../the-rewrite-room/references/status-block-contract.md)
-- Summarization Fidelity Rules — see [plugins/summarizer/skills/summarizer/references/fidelity-rules.md](../../../summarizer/skills/summarizer/references/fidelity-rules.md)
+- Summarization Fidelity Rules — see [plugins/summarizer/skills/summarizer/references/fidelity-rules.md](../../summarizer/skills/summarizer/references/fidelity-rules.md)
 
 ## Output Contract
 
