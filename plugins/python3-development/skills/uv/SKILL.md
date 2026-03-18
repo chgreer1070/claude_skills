@@ -2,6 +2,7 @@
 name: uv
 description: Expert guidance for Astral's uv - an extremely fast Python package and project manager. Use when working with Python projects, managing dependencies, creating scripts with PEP 723 metadata, installing tools, managing Python versions, or configuring package indexes. Covers project initialization, dependency management, virtual environments, tool installation, workspace configuration, CI/CD integration, and migration from pip/poetry.
 ---
+
 # uv: Modern Python Package and Project Manager
 
 ## Overview

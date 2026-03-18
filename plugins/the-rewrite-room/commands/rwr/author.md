@@ -1,6 +1,6 @@
 ---
-description: "Author user-facing docs, validate GLFM formatting, or summarize files/URLs/images. Pass the task description or file path."
-argument-hint: "<task description or file/URL to summarize>"
+description: Author user-facing docs, validate GLFM formatting, or summarize files/URLs/images. Pass the task description or file path.
+argument-hint: <task description or file/URL to summarize>
 agent: rewrite-room-author
 allowed-tools: Read, Grep, Glob, Bash, Task, Write, Edit
 ---

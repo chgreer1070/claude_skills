@@ -1,7 +1,7 @@
 ---
 paths:
-  - "**/*.py"
-  - "**/pyproject.toml"
+- '**/*.py'
+- '**/pyproject.toml'
 ---
 
 # Linting Exception Conditions

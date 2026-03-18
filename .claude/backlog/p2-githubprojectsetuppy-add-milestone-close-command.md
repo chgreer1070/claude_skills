@@ -9,4 +9,5 @@ metadata:
   type: Feature
   status: done
 ---
+
 **Suggested location**: `.claude/skills/gh/scripts/github_project_setup.py` — add `milestone close` subcommand under `milestone_app`; update `.claude/skills/complete-milestone/SKILL.md`

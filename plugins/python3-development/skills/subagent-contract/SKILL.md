@@ -4,6 +4,7 @@ description: Global contract for all specialist subagents — enforces role boun
 user-invocable: false
 disable-model-invocation: false
 ---
+
 # Subagent Contract
 
 This contract governs all specialist agents. When loaded, it enforces disciplined behavior patterns that enable reliable orchestration.

@@ -4,6 +4,7 @@ description: Query and manage feature implementation task status. Provides CLI t
 user-invocable: false
 disable-model-invocation: false
 ---
+
 # Implementation Manager
 
 ## Current Task Context

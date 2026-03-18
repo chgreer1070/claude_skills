@@ -7,6 +7,7 @@ context: fork
 agent: general-purpose
 user-invocable: true
 ---
+
 # Skill Research Process
 
 Systematic, scalable approach for building comprehensive Claude Code skills using parallel research agents. Use this when a skill requires extensive documentation gathering from official sources.

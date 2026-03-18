@@ -3,6 +3,7 @@ name: execution
 description: SAM Stage 5 — Stateless execution of a single task in a fresh agent session. The task file IS the complete prompt containing all context needed. Used when dispatching a task to an agent; produces the EXECUTION artifact with implementation results and verification output.
 user-invocable: false
 ---
+
 # SAM Stage 5 — Execution
 
 ## Role

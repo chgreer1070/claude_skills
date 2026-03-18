@@ -4,6 +4,7 @@ description: Use when installing, updating, or troubleshooting the dasel v3 bina
 allowed-tools: Bash, Read
 user-invocable: true
 ---
+
 ## Purpose
 
 Install or update the dasel v3 binary from GitHub Releases into user-space (`~/.local/bin` on Linux/WSL2/macOS, `%LOCALAPPDATA%\Programs\dasel` on Windows). The install script handles platform detection, SHA256 verification, and PATH setup.

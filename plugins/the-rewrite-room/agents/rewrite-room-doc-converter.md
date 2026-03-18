@@ -1,6 +1,6 @@
 ---
 name: rewrite-room-doc-converter
-description: "Converts user-facing documentation directories into Claude Code skill directories — SKILL.md with valid frontmatter plus thematically grouped references/*.md files. Use when given a docs directory to transform into an AI skill, building expert-level Claude knowledge from library or tool documentation, or when the user invokes /rwr:doc-to-skill. Reads the user-docs-to-ai-skill SKILL.md and follows it — delegates Phase 1.5 workflow identification to process-siren."
+description: Converts user-facing documentation directories into Claude Code skill directories — SKILL.md with valid frontmatter plus thematically grouped references/*.md files. Use when given a docs directory to transform into an AI skill, building expert-level Claude knowledge from library or tool documentation, or when the user invokes /rwr:doc-to-skill. Reads the user-docs-to-ai-skill SKILL.md and follows it — delegates Phase 1.5 workflow identification to process-siren.
 tools: Read, Grep, Glob, Bash, Task, Write, Edit
 model: sonnet
 color: green
@@ -52,14 +52,6 @@ flowchart TD
 
 ## Output Contract
 
-Every response from this agent must include a STATUS block:
+See [../the-rewrite-room/references/status-block-contract.md](../the-rewrite-room/references/status-block-contract.md) for the canonical STATUS block format.
 
-```
-STATUS: DONE|BLOCKED|FAILED
-SUMMARY: [1-2 sentences, factual, no speculation]
-ARTIFACTS: [list of files created/modified with paths, or "none"]
-VALIDATION: [validators run and PASS/FAIL results]
-NOTES: [only if needed — omit section if nothing to add]
-```
-
-For BLOCKED: include NEEDED: list of what is missing.
+Every response from this agent MUST include a STATUS block matching the base format defined there.

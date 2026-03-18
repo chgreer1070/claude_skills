@@ -431,7 +431,7 @@ Map task content to skills that the executing agent should load. Apply when task
 |-----------------------------------------------|--------|
 | pytest, test, tests, test coverage, integration tests, unit tests | `fastmcp-python-tests`, `python3-development` |
 | skill creation, SKILL.md, skill structure | `plugin-creator:skill-creator` |
-| documentation, docs, README, CONTRIBUTING | `development-harness:clear-cove-task-design` |
+| documentation, docs, README, CONTRIBUTING | `dh:clear-cove-task-design` |
 | agent creation, agent prompt, agent definition | `plugin-creator:skill-creator` |
 | linting, type checking, ty, ruff | `python3-development` |
 | CLI, command-line, typer, click | `python3-development` |

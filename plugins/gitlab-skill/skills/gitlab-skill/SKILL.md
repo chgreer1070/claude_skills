@@ -2,6 +2,7 @@
 name: gitlab-skill
 description: GitLab CI/CD pipeline configuration and GLFM documentation expertise. Use when modifying .gitlab-ci.yml, optimizing pipelines, testing with gitlab-ci-local, writing GitLab README/Wiki content, configuring Docker-in-Docker workflows, or implementing CI Steps composition.
 ---
+
 # GitLab Skill
 
 ## Current GitLab Context

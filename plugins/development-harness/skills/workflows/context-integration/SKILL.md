@@ -3,6 +3,7 @@ name: context-integration
 description: SAM Stage 3 — Ground the design plan in actual codebase reality. Performs scope analysis, conflict detection, and resource mapping. Used when the PLAN artifact needs contextualization with concrete file references, integration points, and resolved conflicts.
 user-invocable: false
 ---
+
 # SAM Stage 3 — Context Integration
 
 ## Role

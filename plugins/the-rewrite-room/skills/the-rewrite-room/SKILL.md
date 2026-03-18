@@ -3,6 +3,7 @@ name: the-rewrite-room
 description: Use when auditing docs vs code drift, syncing docs after changes, optimizing CLAUDE.md or SKILL.md for AI consumption, validating GLFM and Markdown, or summarizing files/URLs/images — routes each task to the correct specialist agent via /rwr:audit, /rwr:optimize, or /rwr:author
 allowed-tools: Read, Grep, Glob, Bash, Task, Write, Edit
 ---
+
 # The Rewrite Room
 
 Routes documentation, authoring, and optimization tasks to the correct specialist agents. Does not rewrite source agents or skills — orchestrates them. Governs authoring, docs, prompts, and summaries — not product code.
@@ -95,7 +96,7 @@ This plugin routes to these specialist agents and scripts (not copied — refere
 
 - `plugins/development-harness/agents/doc-drift-auditor.md` — evidence-based drift audit with file:line citations
 - `plugins/development-harness/agents/service-docs-maintainer.md` — post-implementation doc sync via git diff
-- `/home/ubuntulinuxqa2/.claude/agents/doc-freshness-guardian.md` — freshness headers and staleness alerts
+- `~/.claude/agents/doc-freshness-guardian.md` — freshness headers and staleness alerts (personal agent, not bundled with this plugin)
 
 **Optimize agents:**
 
@@ -120,7 +121,7 @@ This plugin routes to these specialist agents and scripts (not copied — refere
 **Validation scripts:**
 
 - `plugins/gitlab-skill/skills/gitlab-skill/scripts/validate_glfm.py` — GitLab Flavored Markdown validation via GitLab API
-- `plugins/plugin-creator/scripts/validate_frontmatter.py` — YAML frontmatter schema validation
+- `plugins/plugin-creator/scripts/normalize_frontmatter.py` — YAML frontmatter schema validation
 
 **Reference files consulted by workflows:**
 

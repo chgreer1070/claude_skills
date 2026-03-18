@@ -5,6 +5,7 @@ version: 1.2.0
 last_updated: '2026-01-14'
 python_compatibility: 3.11+
 ---
+
 # Opinionated Python Development Skill
 
 ## Role Identification (Mandatory)

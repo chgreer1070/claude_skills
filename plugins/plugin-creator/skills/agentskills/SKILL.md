@@ -3,6 +3,7 @@ name: agentskills
 description: Agent Skills Open Standard reference (agentskills.io). Use when creating portable skills for Claude Code, Cursor, Gemini CLI, OpenAI Codex, VS Code, Roo Code, and 20+ compatible agents. Covers frontmatter schema, naming rules, directory structure, progressive disclosure, validation, and authoring. Load before creating cross-agent skills.
 user-invocable: true
 ---
+
 # Agent Skills Open Standard
 
 The Agent Skills format is an open standard for extending AI agent capabilities with specialized knowledge and workflows. Originally developed by Anthropic, adopted by 25+ agent products.

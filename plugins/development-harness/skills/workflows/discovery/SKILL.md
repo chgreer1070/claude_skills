@@ -4,6 +4,7 @@ description: SAM Stage 1 — Structured requirements gathering through discussio
 model: sonnet
 user-invocable: true
 ---
+
 # SAM Stage 1 — Discovery
 
 ## Role

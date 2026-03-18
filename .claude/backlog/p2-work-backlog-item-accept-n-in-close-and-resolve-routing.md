@@ -9,4 +9,5 @@ metadata:
   type: Feature
   status: done
 ---
+
 **Suggested location**: `.claude/skills/work-backlog-item/SKILL.md` — Routing table (Step 9 path column), plus Step 9 Extension GitHub issue close command

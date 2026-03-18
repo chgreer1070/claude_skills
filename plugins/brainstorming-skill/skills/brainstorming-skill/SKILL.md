@@ -1,7 +1,8 @@
 ---
 name: brainstorming-skill
-description: "You MUST use this before any creative work - creating features, building components, adding functionality, modifying behavior, or when users request help with ideation, marketing, and strategic planning. Explores user intent, requirements, and design before implementation using 30+ research-validated prompt patterns."
+description: You MUST use this before any creative work - creating features, building components, adding functionality, modifying behavior, or when users request help with ideation, marketing, and strategic planning. Explores user intent, requirements, and design before implementation using 30+ research-validated prompt patterns.
 ---
+
 # Brainstorming Skill
 
 ## Overview

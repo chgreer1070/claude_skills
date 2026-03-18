@@ -1,7 +1,7 @@
 ---
 paths:
-  - "**/scripts/**"
-  - ".claude/hooks/**"
+- '**/scripts/**'
+- .claude/hooks/**
 ---
 
 # Script Invocation

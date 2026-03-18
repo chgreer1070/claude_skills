@@ -2,7 +2,7 @@
 name: user-docs-to-ai-skill
 description: Converts user-facing documentation (how-to guides, tutorials, API references, examples) in any format — Markdown, PDF, DOCX, PPTX, XLSX, AsciiDoc, RST, HTML, Jupyter notebooks, man pages, TOML/YAML/JSON configs, and plain text — into Claude Code skill directories with SKILL.md plus thematically grouped references/*.md files. Use when given a docs directory or mixed-format documentation to transform into an AI skill. Uses MCP file-reader server for binary formats.
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit, Task
-argument-hint: "<docs_path> <output_plugin> [output_skill]"
+argument-hint: <docs_path> <output_plugin> [output_skill]
 ---
 
 <docs_path>$1</docs_path>

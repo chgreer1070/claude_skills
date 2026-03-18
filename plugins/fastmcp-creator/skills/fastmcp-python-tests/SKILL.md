@@ -2,6 +2,7 @@
 name: fastmcp-python-tests
 description: Write and evaluate effective Python tests using pytest. Use when writing tests, reviewing test code, debugging test failures, or improving test coverage. Covers test design, fixtures, parameterization, mocking, and async testing.
 ---
+
 # Writing Effective Python Tests
 
 ## Core Principles

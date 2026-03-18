@@ -1,6 +1,6 @@
 ---
-description: "Optimize AI-facing prompts, CLAUDE.md, SKILL.md, or agent definitions using Anthropic best practices. Pass the file path as argument."
-argument-hint: "<file path to optimize>"
+description: Optimize AI-facing prompts, CLAUDE.md, SKILL.md, or agent definitions using Anthropic best practices. Pass the file path as argument.
+argument-hint: <file path to optimize>
 agent: rewrite-room-optimizer
 allowed-tools: Read, Grep, Glob, Bash, Task, Write, Edit
 ---

@@ -2,6 +2,7 @@
 name: commitlint
 description: When setting up commit message validation for a project. When project has commitlint.config.js or .commitlintrc files. When configuring CI/CD to enforce commit format. When extracting commit rules for LLM prompt generation. When debugging commit message rejection errors.
 ---
+
 # Commitlint
 
 Validate commit messages against Conventional Commits format using commitlint configuration and rules.

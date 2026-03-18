@@ -1,6 +1,6 @@
 ---
 name: rewrite-room-cite
-description: "Primary source verification and citation-driven content writer. Analyzes websites and content blocks, cross-references claims against source material, and produces attributed content with hyperlinked citations. Use when creating blog posts, research summaries, or any content requiring rigorous source attribution and credit to original creators."
+description: Primary source verification and citation-driven content writer. Analyzes websites and content blocks, cross-references claims against source material, and produces attributed content with hyperlinked citations. Use when creating blog posts, research summaries, or any content requiring rigorous source attribution and credit to original creators.
 tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch
 model: sonnet
 color: cyan
@@ -116,17 +116,10 @@ PRODUCE the content with these sections:
 
 ## Output Contract
 
-Every response from this agent must include a STATUS block:
+See [../the-rewrite-room/references/status-block-contract.md](../the-rewrite-room/references/status-block-contract.md) for the canonical STATUS block format.
 
-```text
-STATUS: DONE|BLOCKED|FAILED
-SUMMARY: [1-2 sentences, factual, no speculation]
-ARTIFACTS: [list of files created/modified with paths, or "none"]
-VALIDATION: [source count, citation count, direct quotes count]
-NOTES: [only if needed — omit section if nothing to add]
-```
-
-For BLOCKED: include NEEDED: list of what is missing.
+Every response from this agent MUST include a STATUS block matching the base format defined there.
+Use the cite workflow VALIDATION subfields from the canonical contract.
 
 ## Invocation Examples
 

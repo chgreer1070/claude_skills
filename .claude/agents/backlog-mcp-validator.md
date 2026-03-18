@@ -7,10 +7,10 @@ mcpServers:
   backlog:
     command: uv
     args:
-      - run
-      - python
-      - -m
-      - backlog_core.server
+    - run
+    - python
+    - -m
+    - backlog_core.server
     cwd: .claude/skills/backlog
 ---
 

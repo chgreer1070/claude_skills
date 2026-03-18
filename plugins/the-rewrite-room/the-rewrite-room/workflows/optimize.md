@@ -92,7 +92,7 @@ flowchart TD
 Frontmatter validation command:
 
 ```bash
-uv run plugins/plugin-creator/scripts/validate_frontmatter.py <modified-file>
+uv run plugins/plugin-creator/scripts/normalize_frontmatter.py <modified-file>
 ```
 
 Revision context prompt template:
@@ -103,12 +103,12 @@ Revision context prompt template:
 
 ## Output Contract
 
+Base format — see [../references/status-block-contract.md](../references/status-block-contract.md).
+
+Optimize workflow VALIDATION subfields:
+
 ```text
-STATUS: DONE|BLOCKED|FAILED
-SUMMARY: [file optimized, key improvements made]
-ARTIFACTS: [modified file path]
 VALIDATION:
-  - frontmatter-valid: PASS|FAIL
-  - token-impact: [before → after token count if reported]
-NOTES: [only if needed]
+  - frontmatter-check: PASS|FAIL  (normalize_frontmatter.py exit code)
+  - skilllint-check: PASS|FAIL    (uvx skilllint@latest exit code)
 ```

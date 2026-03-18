@@ -4,6 +4,7 @@ description: SAM Stage 2 — Transform discovery into actionable design with RT-
 model: sonnet
 user-invocable: true
 ---
+
 # SAM Stage 2 — Planning
 
 ## Role

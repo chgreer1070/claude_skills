@@ -2,6 +2,7 @@
 name: enterprise-maven-pom
 description: Dasel v3 selector patterns for Maven POM XML files — use when querying dependency versions, filtering by groupId or scope, extracting module hierarchy from parent POMs, or detecting version conflicts across enterprise multi-module Java projects. Load this skill when working with pom.xml files using dasel.
 ---
+
 # Maven POM Query Patterns
 
 <when_to_use>

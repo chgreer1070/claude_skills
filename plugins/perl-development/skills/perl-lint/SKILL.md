@@ -3,6 +3,7 @@ name: perl-lint
 description: This skill should be used when the user asks to lint Perl code, run perlcritic, check Perl style, format Perl code, run perltidy, or mentions Perl Critic policies, code formatting, or style checking.
 allowed-tools: Bash(perlcritic:*), Bash(perltidy:*), Bash(perl -c:*), Read, Grep, Glob
 ---
+
 # Perl Linting and Formatting
 
 Run Perl::Critic analysis and perltidy formatting with automatic tool detection.

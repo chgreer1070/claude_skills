@@ -2,6 +2,7 @@
 name: kaizen-improvement
 description: Transform transcript analysis findings into actionable improvements. Triggers on "generate hooks from findings", "improve agent", "fix anti-pattern", "kaizen improvement", "generate hook proposals", or "create improvement plan". Provides templates for hook generation, agent prompt refinement, skill patches, CLAUDE.md updates, and script automation from analysis data.
 ---
+
 # Kaizen Improvement
 
 Transform analysis findings from `.planning/kaizen/` into actionable improvements — hooks, agent patches, skill refinements, CLAUDE.md updates, and automation scripts.

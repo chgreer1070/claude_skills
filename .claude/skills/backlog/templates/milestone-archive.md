@@ -1,7 +1,7 @@
 ---
 milestone: N
-title: "Milestone title"
-version: "vN"
+title: Milestone title
+version: vN
 date-opened: YYYY-MM-DD
 date-closed: YYYY-MM-DD
 status: archived

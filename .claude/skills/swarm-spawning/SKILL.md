@@ -2,6 +2,7 @@
 name: swarm-spawning
 description: Spawn agents and teammates in Claude Code swarms. Use when choosing between subagents vs teammates, selecting agent types (Explore, Plan, general-purpose, plugin agents), configuring spawn backends (in-process, tmux, iterm2), or setting environment variables for spawned agents.
 ---
+
 # Swarm Spawning
 
 How to create agents -- subagent vs teammate, agent type catalog, backend selection.

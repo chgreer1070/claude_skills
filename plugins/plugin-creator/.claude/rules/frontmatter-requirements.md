@@ -1,8 +1,8 @@
 ---
 paths:
-  - "**/SKILL.md"
-  - "**/agents/**/*.md"
-  - "**/commands/**/*.md"
+- '**/SKILL.md'
+- '**/agents/**/*.md'
+- '**/commands/**/*.md'
 ---
 
 # Frontmatter Requirements

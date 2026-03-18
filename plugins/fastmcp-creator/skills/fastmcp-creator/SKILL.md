@@ -1,7 +1,7 @@
 ---
 name: fastmcp-creator
-description: "Use when building, extending, or debugging FastMCP v3 Python MCP servers — covers tools, resources, prompts, providers, transforms (including CodeMode and Tool Search), auth (MultiAuth, PropelAuth), client SDK, deployment (nginx reverse proxy), Prefab Apps, and testing. Grounded in local v3.1 docs — zero speculation."
-version: "3.1.0"
+description: Use when building, extending, or debugging FastMCP v3 Python MCP servers — covers tools, resources, prompts, providers, transforms (including CodeMode and Tool Search), auth (MultiAuth, PropelAuth), client SDK, deployment (nginx reverse proxy), Prefab Apps, and testing. Grounded in local v3.1 docs — zero speculation.
+version: 3.1.0
 ---
 
 ## Current Environment

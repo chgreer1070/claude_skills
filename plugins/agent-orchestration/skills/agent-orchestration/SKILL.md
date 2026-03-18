@@ -2,6 +2,7 @@
 name: agent-orchestration
 description: Scientific delegation framework for orchestrators coordinating sub-agents. Provides WHERE-WHAT-WHY context patterns while preserving agent autonomy. Use when delegating tasks, structuring sub-agent prompts, planning multi-agent workflows, or coordinating specialist agents.
 ---
+
 # Agent Orchestration
 
 ## Core Principle

@@ -4,6 +4,7 @@ description: "Create a GitHub milestone for Jamie-BitFlight/claude_skills. No ar
 argument-hint: '[quick {title}]'
 user-invocable: true
 ---
+
 # Create Milestone
 
 Create a GitHub milestone on `Jamie-BitFlight/claude_skills` and return its number for downstream use.

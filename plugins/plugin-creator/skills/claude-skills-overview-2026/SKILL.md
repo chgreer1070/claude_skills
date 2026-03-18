@@ -3,6 +3,7 @@ name: claude-skills-overview-2026
 description: Reference guide for Claude Code skills system (March 2026). Use when creating, modifying, or understanding skills, SKILL.md format, frontmatter fields, hooks, context fork, or skill best practices.
 user-invocable: true
 ---
+
 # Claude Code Skills System - Complete Reference (March 2026)
 
 Skills extend what Claude can do. Create a `SKILL.md` file with instructions, and Claude adds it to its toolkit. Claude uses skills when relevant, or you can invoke one directly with `/skill-name`.

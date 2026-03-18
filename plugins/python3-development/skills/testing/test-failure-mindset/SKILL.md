@@ -6,6 +6,7 @@ version: 1.0.0
 last_updated: '2026-01-25'
 python_compatibility: 3.11+
 ---
+
 # Test Failure Analysis Mindset
 
 Establish a balanced investigative approach for all test failures encountered in this session.

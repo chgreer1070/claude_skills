@@ -5,6 +5,7 @@ argument-hint: '[task or prompt to apply CoVe to]'
 user-invocable: true
 disable-model-invocation: false
 ---
+
 # Chain of Verification (CoVe) for Prompt Design
 
 This skill documents **what CoVe is**, **when to use it**, and **how to apply it correctly** in prompt design.

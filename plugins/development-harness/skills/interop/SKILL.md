@@ -2,7 +2,8 @@
 name: interop
 description: Use this skill when routing a Superpowers plan file through the /work-backlog-item pipeline — creates a SAM task file and writes back-references into the original plan
 ---
-# /development-harness:interop — Superpowers Plan Interop Adapter
+
+# /dh:interop — Superpowers Plan Interop Adapter
 
 Routes a Superpowers plan file through the `/work-backlog-item` pipeline to produce a SAM task
 file, then writes back-references into the original plan. Does not re-implement any pipeline
@@ -10,7 +11,7 @@ logic — delegates entirely to `/work-backlog-item`.
 
 The plan file path is provided as `$ARGUMENTS`.
 
-Invocation: `/development-harness:interop <path-to-plan-file>`
+Invocation: `/dh:interop <path-to-plan-file>`
 
 SOURCE: [plan/architect-dh-phase2-interop-adapter.md](../../../../plan/architect-dh-phase2-interop-adapter.md)
 
@@ -21,8 +22,8 @@ SOURCE: [plan/architect-dh-phase2-interop-adapter.md](../../../../plan/architect
 If `$ARGUMENTS` is empty, abort immediately:
 
 ```text
-ERROR: /development-harness:interop requires a path to a Superpowers plan file.
-Usage: /development-harness:interop docs/superpowers/plans/YYYY-MM-DD-slug.md
+ERROR: `/dh:interop` requires a path to a Superpowers plan file.
+Usage: `/dh:interop docs/superpowers/plans/YYYY-MM-DD-slug.md`
 ```
 
 Use the Read tool to open the file at the path given in `$ARGUMENTS`. If the file does not
@@ -216,7 +217,7 @@ Use the Edit tool for each annotation. Do not rewrite the file.
 
 ## Idempotency rules
 
-Running `/development-harness:interop` on the same plan file a second time must produce identical output to the
+Running `/dh:interop` on the same plan file a second time must produce identical output to the
 first run — no duplicates, no data loss.
 
 - `**SAM tasks:**` line: if it already exists, replace in-place. Never insert a second line.
@@ -245,6 +246,6 @@ All abort messages are prefixed with `ERROR:` and printed to the user before sto
 ## Example invocations
 
 ```text
-/development-harness:interop docs/superpowers/plans/2026-03-11-oauth-token-refresh.md
-/development-harness:interop docs/superpowers/plans/2026-02-28-manifest-discovery.md
+/dh:interop docs/superpowers/plans/2026-03-11-oauth-token-refresh.md
+/dh:interop docs/superpowers/plans/2026-02-28-manifest-discovery.md
 ```

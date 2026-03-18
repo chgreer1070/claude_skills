@@ -1,6 +1,6 @@
 ---
-description: "Write source-attributed content from URLs or content blocks. Fetches sources, cross-references claims, and produces content with hyperlinked citations. Pass the source URL and content context."
-argument-hint: "<source URL> [key points to emphasize] [content type: blog|research|social|brief]"
+description: Write source-attributed content from URLs or content blocks. Fetches sources, cross-references claims, and produces content with hyperlinked citations. Pass the source URL and content context.
+argument-hint: '<source URL> [key points to emphasize] [content type: blog|research|social|brief]'
 agent: rewrite-room-cite
 allowed-tools: Read, Write, Edit, Grep, Glob, WebFetch, WebSearch
 ---

@@ -6,7 +6,7 @@ Language-agnostic development process harness that orchestrates feature developm
 
 ## Plugin Identity
 
-**Name:** `development-harness`
+**Name:** `dh`
 **Version:** 0.1.0
 **Purpose:** Provide a reusable, language-independent development workflow based on the Stateless Agent Methodology (SAM) with ARL-derived human touchpoints and Voltron-style language plugin composition.
 
@@ -137,30 +137,30 @@ The manifest schema is documented in [./skills/development-harness/references/la
 
 **Workflow stages (7):**
 
-- `/development-harness:discovery` - S1 feature and codebase understanding
-- `/development-harness:planning` - S2 plan generation with RT-ICA
-- `/development-harness:context-integration` - S3 plan validation against codebase
-- `/development-harness:task-decomposition` - S4 break plan into executable tasks
-- `/development-harness:execution` - S5 implement tasks with language specialists
-- `/development-harness:forensic-review` - S6 verify task completion
-- `/development-harness:final-verification` - S7 certify feature completion
+- `/dh:discovery` - S1 feature and codebase understanding
+- `/dh:planning` - S2 plan generation with RT-ICA
+- `/dh:context-integration` - S3 plan validation against codebase
+- `/dh:task-decomposition` - S4 break plan into executable tasks
+- `/dh:execution` - S5 implement tasks with language specialists
+- `/dh:forensic-review` - S6 verify task completion
+- `/dh:final-verification` - S7 certify feature completion
 
 **Planning tools (4):**
 
-- `/development-harness:clear-cove-task-design` - Task design methodology
-- `/development-harness:generate-task` - Generate individual task files
-- `/development-harness:planner-rt-ica` - Information completeness analysis for planning
-- `/development-harness:validation-protocol` - Validation patterns and checklists
+- `/dh:clear-cove-task-design` - Task design methodology
+- `/dh:generate-task` - Generate individual task files
+- `/dh:planner-rt-ica` - Information completeness analysis for planning
+- `/dh:validation-protocol` - Validation patterns and checklists
 
 **Implementation:**
 
-- `/development-harness:implementation-manager` - Coordinate implementation across tasks
+- `/dh:implementation-manager` - Coordinate implementation across tasks
 
 **Testing (3):**
 
-- `/development-harness:comprehensive-test-review` - Review test coverage and quality
-- `/development-harness:analyze-test-failures` - Diagnose and categorize test failures
-- `/development-harness:test-failure-mindset` - Systematic approach to understanding test failures
+- `/dh:comprehensive-test-review` - Review test coverage and quality
+- `/dh:analyze-test-failures` - Diagnose and categorize test failures
+- `/dh:test-failure-mindset` - Systematic approach to understanding test failures
 
 ---
 
@@ -168,29 +168,29 @@ The manifest schema is documented in [./skills/development-harness/references/la
 
 **Planning and decomposition:**
 
-- `@development-harness:swarm-task-planner` - Decompose features into parallel task streams
-- `@development-harness:plan-validator` - Validate plans for completeness and feasibility
+- `@dh:swarm-task-planner` - Decompose features into parallel task streams
+- `@dh:plan-validator` - Validate plans for completeness and feasibility
 
 **Research and analysis:**
 
-- `@development-harness:feature-researcher` - Research feature requirements and prior art
-- `@development-harness:codebase-analyzer` - Analyze codebase structure and patterns
-- `@development-harness:ecosystem-researcher` - Research external dependencies and ecosystem
+- `@dh:feature-researcher` - Research feature requirements and prior art
+- `@dh:codebase-analyzer` - Analyze codebase structure and patterns
+- `@dh:ecosystem-researcher` - Research external dependencies and ecosystem
 
 **Verification:**
 
-- `@development-harness:feature-verifier` - Verify feature meets acceptance criteria
-- `@development-harness:integration-checker` - Check integration points and compatibility
+- `@dh:feature-verifier` - Verify feature meets acceptance criteria
+- `@dh:integration-checker` - Check integration points and compatibility
 
 **Context management:**
 
-- `@development-harness:context-gathering` - Gather context from codebase and documentation
-- `@development-harness:context-refinement` - Refine and validate gathered context
+- `@dh:context-gathering` - Gather context from codebase and documentation
+- `@dh:context-refinement` - Refine and validate gathered context
 
 **Documentation:**
 
-- `@development-harness:doc-drift-auditor` - Detect documentation drift from implementation
-- `@development-harness:service-docs-maintainer` - Generate and maintain service documentation
+- `@dh:doc-drift-auditor` - Detect documentation drift from implementation
+- `@dh:service-docs-maintainer` - Generate and maintain service documentation
 
 ---
 

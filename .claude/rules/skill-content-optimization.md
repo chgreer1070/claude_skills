@@ -1,7 +1,7 @@
 ---
 paths:
-  - "**/SKILL.md"
-  - "**/references/*.md"
+- '**/SKILL.md'
+- '**/references/*.md'
 ---
 
 # Content Optimization for Skills

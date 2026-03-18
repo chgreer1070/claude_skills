@@ -2,6 +2,7 @@
 name: holistic-linting
 description: Comprehensive linting and formatting verification workflows. Provides automatic format-lint-resolve pipelines for orchestrators and sub-agents. Use when running linters, fixing ruff/mypy/bandit errors, ensuring code quality before completion, or resolving linting issues systematically.
 ---
+
 # Holistic Linting Skill
 
 This skill embeds comprehensive linting and formatting verification into Claude Code's workflow, preventing the common pattern where code is claimed "production ready" without actually running quality checks.

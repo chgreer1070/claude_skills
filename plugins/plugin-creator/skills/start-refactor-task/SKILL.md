@@ -5,6 +5,7 @@ argument-hint: <task-file-path> [--task <task-id>] [--complete <task-id>]
 model: sonnet
 user-invocable: true
 ---
+
 # Start Refactor Task
 
 You are implementing a specific refactoring task from a plugin refactoring plan.

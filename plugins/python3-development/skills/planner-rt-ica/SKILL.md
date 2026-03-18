@@ -5,6 +5,7 @@ argument-hint: '[optional-scope-or-task-id]'
 user-invocable: false
 disable-model-invocation: false
 ---
+
 # Planner RT-ICA (Planning-Phase Input Completeness Analysis)
 
 ## Role

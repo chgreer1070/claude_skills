@@ -1,7 +1,7 @@
 ---
 paths:
-  - "**/.claude-plugin/plugin.json"
-  - "**/plugin.json"
+- '**/.claude-plugin/plugin.json'
+- '**/plugin.json'
 ---
 
 # Plugin.json Requirements

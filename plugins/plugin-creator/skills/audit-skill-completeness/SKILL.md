@@ -5,6 +5,7 @@ argument-hint: <skill-path>
 model: sonnet
 user-invocable: true
 ---
+
 # Audit Skill Completeness
 
 ## Purpose

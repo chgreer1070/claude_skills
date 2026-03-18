@@ -5,9 +5,10 @@ user-invocable: true
 description: "Holistic completion workflow after a feature's tasks are marked COMPLETE: code review, feature verification, integration check, documentation drift audit/update, and context refinement. Creates follow-up task files when issues are found."
 compatibility: Python 3.11+
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-02-28"
+  version: 1.0.0
+  last_updated: '2026-02-28'
 ---
+
 # Complete Implementation (Quality Gates + Recursion)
 
 You MUST validate that the implemented feature meets its goals and quality gates. If follow-up task files are created, route them to backlog items first, then recurse only when the follow-up matches the current scope and priority (see Recursive Follow-up Handling section).

@@ -21,4 +21,3 @@ metadata:
 **Rationale**: New capability with open solution space; no traceable failure, no prior recurrence. Phase sequence, gate conditions, and artifact schema must be designed from scratch.
 **Analysis Method**: design-framing
 **Scenario Target**: Orchestrator/user building a plugin from scratch → follows a single skill end-to-end without knowing plugin-creator internals
-

@@ -1,7 +1,7 @@
 ---
 paths:
-  - "plugins/**/*"
-  - ".claude-plugin/**/*"
+- plugins/**/*
+- .claude-plugin/**/*
 ---
 
 # Plugin Development Workflows

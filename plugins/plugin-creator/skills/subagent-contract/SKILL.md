@@ -4,6 +4,7 @@ description: Global contract for all specialist subagents — enforces role boun
 user-invocable: false
 disable-model-invocation: false
 ---
+
 # Subagent Contract
 
 **Workflow Reference**: See [Multi-Agent Orchestration](../../../../.claude/knowledge/workflow-diagrams/multi-agent-orchestration.md) for the complete delegation flow, DONE/BLOCKED signaling protocol, and agent selection guide.

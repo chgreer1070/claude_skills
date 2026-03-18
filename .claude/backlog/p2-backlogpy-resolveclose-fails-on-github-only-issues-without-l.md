@@ -1,6 +1,6 @@
 ---
 name: backlog close/resolve fails on GitHub-only issues without local cache file
-description: "Bug: backlog_close and backlog_resolve MCP tools route through operations.close_item() and operations.resolve_item(), which only search local .claude/backlog/ files via find_item(). If an issue exists on GitHub but has no local cache file, the operation fails with ItemNotFoundError. Fix targets operations layer — should fall back to pull_single_issue() like view_item() does."
+description: 'Bug: backlog_close and backlog_resolve MCP tools route through operations.close_item() and operations.resolve_item(), which only search local .claude/backlog/ files via find_item(). If an issue exists on GitHub but has no local cache file, the operation fails with ItemNotFoundError. Fix targets operations layer — should fall back to pull_single_issue() like view_item() does.'
 metadata:
   topic: backlogpy-resolveclose-fails-on-github-only-issues-without-l
   source: Session observation 2026-03-01

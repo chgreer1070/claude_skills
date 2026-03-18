@@ -1,7 +1,7 @@
 ---
 name: example-argument-substitution
-description: Example skill demonstrating the argument substitution pattern — capture the first word, second word, and all words into named XML tags at the top, then reference the tags throughout.
-argument-hint: "<action> [target] [--flag]"
+description: Example skill demonstrating the argument substitution pattern — capture the first word, second word, and all words into named XML tags at the top, then reference the tags throughout. Use when you need to test argument substitution behavior, invoke the substitution test harness, or load this file to understand how to capture arguments in skills.
+argument-hint: <action> [target] [--flag]
 user-invocable: true
 ---
 

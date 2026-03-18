@@ -3,6 +3,7 @@ name: how-to-delegate
 description: Scientific delegation framework for orchestrators — provide observations and success criteria while preserving agent autonomy. Use when assigning work to sub-agents, before invoking the Agent tool, or when preparing delegation prompts for specialist agents.
 user-invocable: true
 ---
+
 # Delegation Preparation Worksheet
 
 **Workflow Reference**: See the [agent-orchestration skill](../agent-orchestration/SKILL.md) for the complete delegation flow, DONE/BLOCKED signaling protocol, and agent selection guide.

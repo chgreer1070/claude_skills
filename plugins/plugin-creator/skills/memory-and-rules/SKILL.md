@@ -3,6 +3,7 @@ name: memory-and-rules
 description: Configure and manage Claude Code persistent memory (CLAUDE.md, auto memory, rules) across sessions. Use when setting up project memory, organizing .claude/rules/, managing auto memory files, creating CLAUDE.md with imports, debugging memory loading, or advising on memory hierarchy and best practices.
 user-invocable: true
 ---
+
 # Claude Code Memory and Rules Reference
 
 Claude Code has two kinds of persistent memory:

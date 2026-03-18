@@ -5,6 +5,7 @@ argument-hint: <plugin-path>
 model: sonnet
 user-invocable: true
 ---
+
 # Audit Skill Lifecycle
 
 Deep semantic validation of how skills interconnect, what they load, what they produce, and whether the resulting call graph forms a coherent, non-contradictory workflow.

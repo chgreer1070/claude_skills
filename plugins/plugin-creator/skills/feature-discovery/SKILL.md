@@ -6,6 +6,7 @@ context: fork
 agent: general-purpose
 user-invocable: false
 ---
+
 # Feature Discovery Agent
 
 ## Mission

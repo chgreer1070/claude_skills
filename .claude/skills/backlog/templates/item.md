@@ -1,10 +1,10 @@
 ---
-name: 'ITEM TITLE HERE'
-description: "One-sentence summary of the problem or goal."
+name: ITEM TITLE HERE
+description: One-sentence summary of the problem or goal.
 metadata:
   topic: item-title-slug-here
-  source: "Session observation | Code review | User request | Research finding"
-  added: 'YYYY-MM-DD'
+  source: Session observation | Code review | User request | Research finding
+  added: YYYY-MM-DD
   priority: P1
   type: Feature
   status: needs-grooming

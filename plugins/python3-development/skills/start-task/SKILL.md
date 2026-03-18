@@ -13,6 +13,7 @@ version: 1.0.0
 last_updated: '2026-02-28'
 python_compatibility: 3.11+
 ---
+
 # Start Task (SAM Task Execution Helper)
 
 You are implementing a specific task from a SAM task file.

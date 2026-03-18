@@ -1,7 +1,7 @@
 ---
 name: orchestrate
 description: 'Orchestrate a Python development task using specialized agents. Invoke as /orchestrate <task description> or /orchestrate alone to use conversation context. Triggers on: build a Python CLI, add a feature, write tests, refactor Python code, debug Python, code review, any multi-agent Python workflow.'
-argument-hint: "[task description]"
+argument-hint: '[task description]'
 ---
 
 # Task

@@ -33,12 +33,12 @@ flowchart TD
 ### Git Clone Command
 
 ```bash
-git clone <source> .clone/worktrees/<project-name>/
+git clone <source> .claude/worktrees/<project-name>/
 ```
 
 - Path is relative to the project root — do not use absolute paths
 - `project-name` is derived from the URL before cloning (see next section)
-- If `.clone/worktrees/<project-name>/` already exists, skip the clone and use the existing directory
+- If `.claude/worktrees/<project-name>/` already exists, skip the clone and use the existing directory
 
 ---
 
@@ -152,10 +152,10 @@ Maps each supported file extension to a format category and the extraction metho
 
 ```bash
 # WRONG
-git clone https://github.com/astral-sh/ty /home/user/repos/.clone/worktrees/ty/
+git clone https://github.com/astral-sh/ty /home/user/repos/.claude/worktrees/ty/
 
 # CORRECT
-git clone https://github.com/astral-sh/ty .clone/worktrees/ty/
+git clone https://github.com/astral-sh/ty .claude/worktrees/ty/
 ```
 
 **Hardcoding docs_path before checking:**

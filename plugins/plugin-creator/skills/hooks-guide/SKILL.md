@@ -1,6 +1,6 @@
 ---
 name: hooks-guide
-description: 'Cross-platform hooks reference for AI coding assistants — Claude Code, GitHub Copilot, Cursor, Windsurf, Amp. Covers hook authoring in Node.js CJS and Python, per-platform event schemas, inline-agent hooks and MCP in agent frontmatter, common JSON I/O, exit codes, best practices, and a fetch script to refresh docs from official sources. Use when writing, reviewing, or debugging hooks for any AI assistant.'
+description: Cross-platform hooks reference for AI coding assistants — Claude Code, GitHub Copilot, Cursor, Windsurf, Amp. Covers hook authoring in Node.js CJS and Python, per-platform event schemas, inline-agent hooks and MCP in agent frontmatter, common JSON I/O, exit codes, best practices, and a fetch script to refresh docs from official sources. Use when writing, reviewing, or debugging hooks for any AI assistant.
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit
 ---
 

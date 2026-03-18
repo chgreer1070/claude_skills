@@ -5,6 +5,7 @@ version: 1.0.0
 last_updated: '2026-01-25'
 python_compatibility: 3.11+
 ---
+
 # Python Test Design Skill
 
 Guidance for designing pytest test suites with modern Python 3.11+ patterns.

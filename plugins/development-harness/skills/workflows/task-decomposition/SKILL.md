@@ -3,6 +3,7 @@ name: task-decomposition
 description: SAM Stage 4 — Decompose contextualized plan into atomic, independently executable tasks with complete embedded context. Used when the contextualized plan is ready for TASK file generation with CLEAR ordering, CoVe checks, and dependency graphs for parallel execution.
 user-invocable: false
 ---
+
 # SAM Stage 4 — Task Decomposition
 
 ## Role

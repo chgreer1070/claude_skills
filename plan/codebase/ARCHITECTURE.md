@@ -1,53 +1,38 @@
-# Module Architecture — scientific-method MCP Server
+# Development-Harness Plugin Architecture
 
-**Analysis Date:** 2026-03-04
-**Package:** `experiment-registry` (MCP server)
-**Root:** `plugins/scientific-method/mcp/experiment-registry/`
+**Analysis Date:** 2026-03-18
+**Plugin:** `development-harness`
+**Version:** 0.1.0
+
+## Executive Summary
+
+The development-harness plugin implements a language-agnostic **Stateless Agent Methodology (SAM) 7-stage pipeline** that orchestrates feature development through structured phases. It composes with language-specific plugins via **language manifests** that declare specialist agents and quality gates. The harness owns process orchestration; language plugins own implementation specialists.
 
 ---
 
-## Module Overview
+## Core Architecture
+
+### Layer Model
 
 ```text
-plugins/scientific-method/
-├── mcp/
-│   └── experiment-registry/          # MCP server package
-│       ├── __init__.py
-│       ├── pyproject.toml            # fastmcp>=3.0.0, pydantic>=2.0, requires-python>=3.12
-│       ├── server.py                 # FastMCP tool registration — public MCP API
-│       ├── state_manager.py          # Experiment lifecycle — create/load/advance/list
-│       ├── models.py                 # Pydantic models — data contracts
-│       ├── registry_loader.py        # JSON registry discovery and step merge logic
-│       └── registry/
-│           ├── experiment_core.json  # Universal 5-step protocol (core base type)
-│           ├── ai_agent_testing.json # Domain type extending experiment_core
-│           ├── skill_evaluation_experiments.json
-│           └── examples/            # Excluded from type discovery at runtime
-│               ├── debugging_javascript.json
-│               └── performance_regression.json
-├── skills/
-│   └── scientific-thinking/
-│       └── SKILL.md                  # Phase 2 flowchart — AI-facing execution loop
-├── agents/
-│   └── retrospective-analyst.md
-├── shared/
-│   ├── investigation-template.md
-│   ├── investigation-workflow.md
-│   ├── causality-check.md
-│   └── evidence-rules.md
-└── hooks/
-    └── hooks.json
+Layer 0 (Framework)
+├── SAM 7-stage pipeline (stages S1–S7)
+├── ARL human touchpoint gates
+├── Artifact conventions & state management
+├── RT-ICA information completeness framework
+└── Generic stage agent dispatcher
+
+Layer 1 (Language Plugin)
+├── Language manifest (role fulfillment, quality gates, project detection)
+├── Specialist agents (architect, test-designer, code-reviewer, design-spec)
+├── Language-specific skills (optional stage-skill specializations)
+└── Optional: Process flow override
+
+Layer 2 (Stack Profile)
+└── Stack-specific agent customizations (e.g., Typer CLI, FastAPI, etc.)
 ```
 
----
-
-## Layer Dependencies
-
-**MCP Tool Layer** (`server.py`):
-- Depends on: `models.StepExtension`, `registry_loader.RegistryLoader`, `state_manager.StateManager`
-- Provides: 7 FastMCP tools over the MCP protocol
-- Owns: module-level `_loader = RegistryLoader()` singleton (loaded once per process)
-- Error boundary: converts `ValueError` from lower layers to `fastmcp.exceptions.ToolError`
+The harness (Layer 0) detects the project language, loads the language plugin's manifest (Layer 1), and resolves abstract roles to concrete agents before S1 begins.
 
 **State Manager Layer** (`state_manager.py`):
 - Depends on: `models.ExperimentState`, `models.StepDefinition`, `models.StepExtension`, `registry_loader.RegistryLoader`

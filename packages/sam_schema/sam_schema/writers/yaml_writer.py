@@ -507,11 +507,17 @@ def update_field(file_path: Path, task_id: str, field: str, value: str | int | l
         # update the field, and reassemble with the original body.
         open_delim, yaml_block, rest = _split_frontmatter(raw_text)
         data = y.load(yaml_block)
-        entry_id = data.get("task") or data.get("id")
-        if str(entry_id) != task_id:
-            msg = f"Task ID '{task_id}' not found in {file_path}"
-            raise KeyError(msg)
-        data[field] = actual_value
+        if "tasks" in data and isinstance(data["tasks"], list):
+            # Multi-task plan in frontmatter format: locate the task entry within
+            # the tasks list rather than treating the plan root as the task.
+            task_entry = _locate_task_entry(data, task_id, file_path)
+            task_entry[field] = actual_value
+        else:
+            entry_id = data.get("task") or data.get("id")
+            if str(entry_id) != task_id:
+                msg = f"Task ID '{task_id}' not found in {file_path}"
+                raise KeyError(msg)
+            data[field] = actual_value
         buf = io.StringIO()
         y.dump(data, buf)
         _atomic_write(file_path, open_delim + buf.getvalue() + rest)
@@ -593,11 +599,17 @@ def append_section(path: Path, task_id: str, section_name: str, content: str) ->
     if _is_yaml_frontmatter(raw_text):
         open_delim, yaml_block, rest = _split_frontmatter(raw_text)
         data = y.load(yaml_block)
-        entry_id = data.get("task") or data.get("id")
-        if str(entry_id) != task_id:
-            msg = f"Task ID '{task_id}' not found in {path}"
-            raise KeyError(msg)
-        _append_to_context_notes(data)
+        if "tasks" in data and isinstance(data["tasks"], list):
+            # Multi-task plan in frontmatter format: locate the task entry within
+            # the tasks list rather than treating the plan root as the task.
+            task_entry = _locate_task_entry(data, task_id, path)
+            _append_to_context_notes(task_entry)
+        else:
+            entry_id = data.get("task") or data.get("id")
+            if str(entry_id) != task_id:
+                msg = f"Task ID '{task_id}' not found in {path}"
+                raise KeyError(msg)
+            _append_to_context_notes(data)
         buf = io.StringIO()
         y.dump(data, buf)
         _atomic_write(path, open_delim + buf.getvalue() + rest)
@@ -651,11 +663,17 @@ def update_fields(file_path: Path, task_id: str, fields: dict[str, str | int | l
         # apply all fields, and reassemble with the original body.
         open_delim, yaml_block, rest = _split_frontmatter(raw_text)
         data = y.load(yaml_block)
-        entry_id = data.get("task") or data.get("id")
-        if str(entry_id) != task_id:
-            msg = f"Task ID '{task_id}' not found in {file_path}"
-            raise KeyError(msg)
-        _apply_fields(data)
+        if "tasks" in data and isinstance(data["tasks"], list):
+            # Multi-task plan in frontmatter format: locate the task entry within
+            # the tasks list rather than treating the plan root as the task.
+            task_entry = _locate_task_entry(data, task_id, file_path)
+            _apply_fields(task_entry)
+        else:
+            entry_id = data.get("task") or data.get("id")
+            if str(entry_id) != task_id:
+                msg = f"Task ID '{task_id}' not found in {file_path}"
+                raise KeyError(msg)
+            _apply_fields(data)
         buf = io.StringIO()
         y.dump(data, buf)
         _atomic_write(file_path, open_delim + buf.getvalue() + rest)

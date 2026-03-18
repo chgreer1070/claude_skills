@@ -1,8 +1,8 @@
 ---
 paths:
-  - "**/scripts/**"
-  - ".claude/hooks/**"
-  - "**/*.py"
+- '**/scripts/**'
+- .claude/hooks/**
+- '**/*.py'
 ---
 
 # Language Conventions

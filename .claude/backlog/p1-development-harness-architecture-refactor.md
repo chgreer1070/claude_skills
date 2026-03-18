@@ -11,6 +11,7 @@ metadata:
   issue: '#581'
   last_synced: '2026-03-14T15:59:47Z'
   groomed: '2026-03-11'
+  plan: plan/tasks-1-development-harness-phase1.md
 ---
 
 ## Groomed (2026-03-11)

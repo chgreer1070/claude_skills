@@ -1,6 +1,6 @@
 ---
 name: service-docs-maintainer
-description: "Synchronizes documentation with code changes — use after implementing features, refactoring code, deleting files, changing APIs, or modifying configurations. Launch this agent whenever code changes could render existing documentation inaccurate or incomplete. Triggers include new endpoints added, modules refactored, files deleted, configuration formats changed, or at session end to sweep all affected documentation."
+description: Synchronizes documentation with code changes — use after implementing features, refactoring code, deleting files, changing APIs, or modifying configurations. Launch this agent whenever code changes could render existing documentation inaccurate or incomplete. Triggers include new endpoints added, modules refactored, files deleted, configuration formats changed, or at session end to sweep all affected documentation.
 model: sonnet
 color: yellow
 memory: project

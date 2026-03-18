@@ -1,12 +1,12 @@
 ---
-task: "T21"
-title: "Bash Script Deprecation"
+task: T21
+title: Bash Script Deprecation
 status: complete
-agent: "service-docs-maintainer"
-dependencies: ["T18"]
+agent: service-docs-maintainer
+dependencies: [T18]
 priority: 5
 complexity: low
-completed: "2026-02-04T18:43:16Z"
+completed: '2026-02-04T18:43:16Z'
 ---
 
 ## Context

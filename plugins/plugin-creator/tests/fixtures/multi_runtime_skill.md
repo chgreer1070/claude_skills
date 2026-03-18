@@ -6,7 +6,7 @@ mcp:
   my-server:
     command: npx -y @scope/server-package
     args:
-      - /tmp/workspace
+    - /tmp/workspace
   remote:
     url: https://api.example.com/mcp
     headers:

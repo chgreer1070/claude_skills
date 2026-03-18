@@ -5,6 +5,7 @@ argument-hint: <plugin-path>
 model: sonnet
 user-invocable: true
 ---
+
 # Audit Agent Lifecycle
 
 ## Purpose

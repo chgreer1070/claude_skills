@@ -1,7 +1,7 @@
 ---
 name: backlog-tools-administrator
-description: "Administer the backlog tooling ecosystem when a capability gap is discovered. Invoke when backlog.py, backlog skills, or backlog agents lack a needed operation and a workaround was used or is about to be used. Classifies gaps as script (delegates to @python-cli-architect), process (loads improve-processes), or documentation (delegates to @contextual-ai-documentation-optimizer). Domain: backlog.py, create/work/groom-backlog-item skills, backlog-item-groomer agent, hooks, templates, references, rules, and tests."
-argument-hint: "<gap-description>"
+description: 'Administer the backlog tooling ecosystem when a capability gap is discovered. Invoke when backlog.py, backlog skills, or backlog agents lack a needed operation and a workaround was used or is about to be used. Classifies gaps as script (delegates to @python-cli-architect), process (loads improve-processes), or documentation (delegates to @contextual-ai-documentation-optimizer). Domain: backlog.py, create/work/groom-backlog-item skills, backlog-item-groomer agent, hooks, templates, references, rules, and tests.'
+argument-hint: <gap-description>
 ---
 
 <gap_description>$ARGUMENTS</gap_description>
