@@ -356,3 +356,9 @@ Validation failures produce warnings but do not block the pipeline. The harness 
 - Role resolution protocol: [./role-resolution-protocol.md](./role-resolution-protocol.md)
 - Language manifest template: [../../templates/language-manifest-template.md](../../templates/language-manifest-template.md)
 - Layer 1 overview: [.claude/docs/sdlc-layers/layer-1/layer-1-overview.md](../../../../.claude/docs/sdlc-layers/layer-1/layer-1-overview.md)
+
+---
+
+## See Also
+
+- [SDLC Stage Naming Taxonomy](./sdlc-stage-taxonomy.md) — canonical stage names and `{domain}-{sdlc-stage}` naming convention

@@ -5,8 +5,6 @@ argument-hint: <path-to-skill-or-plugin>
 user-invocable: true
 ---
 
-<lint_target>$ARGUMENTS</lint_target>
-
-!`uvx skilllint@latest check <lint_target/>`
+!`uvx skilllint@latest check $ARGUMENTS`
 
 @${CLAUDE_PLUGIN_ROOT}/references/ERROR_CODES.md

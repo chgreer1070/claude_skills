@@ -205,7 +205,7 @@ flowchart TD
 
 ## Task 1: Create `/rwr:doc-to-skill` Command File
 
-**Status**: NOT STARTED
+**Status**: COMPLETE
 **Dependencies**: None
 **Priority**: 1
 **Complexity**: Low
@@ -237,7 +237,7 @@ flowchart TD
 
 ## Task 2: Fix Clone Path Contradiction in `input-resolution.md`
 
-**Status**: NOT STARTED
+**Status**: COMPLETE
 **Dependencies**: None
 **Priority**: 1
 **Complexity**: Low
@@ -337,7 +337,7 @@ flowchart TD
 
 ## Task 4: Create Canonical STATUS Block Contract Reference File
 
-**Status**: NOT STARTED
+**Status**: COMPLETE
 **Dependencies**: None
 **Priority**: 1
 **Complexity**: Medium
@@ -455,7 +455,7 @@ flowchart TD
 
 ## Task 6: Remove Duplicated Fidelity Rules from `rewrite-room-author`
 
-**Status**: NOT STARTED
+**Status**: COMPLETE
 **Dependencies**: Task 4
 **Priority**: 2
 **Complexity**: Medium
@@ -494,7 +494,7 @@ flowchart TD
 
 ## Task 7: Update hooks.json Agent List and VALIDATION Format
 
-**Status**: NOT STARTED
+**Status**: COMPLETE
 **Dependencies**: Task 5
 **Priority**: 3
 **Complexity**: Low

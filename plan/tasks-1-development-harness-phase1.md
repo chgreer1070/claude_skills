@@ -146,7 +146,7 @@ acceptance_criteria:
 tasks:
 - task: T00
   title: Namespace rename -- change plugin name from development-harness to dh
-  status: in-progress
+  status: complete
   agent: general-purpose
   dependencies: []
   priority: 1
@@ -743,7 +743,7 @@ tasks:
 - task: T04
   title: Copy python3-development agents to dh and apply dh namespace
     adaptations
-  status: not-started
+  status: in-progress
   agent: general-purpose
   dependencies:
   - T00
@@ -884,5 +884,6 @@ tasks:
     6. Run linting on a sample of modified files:
        uv run prek run --files plugins/development-harness/agents/feature-researcher.md
        uv run prek run --files plugins/development-harness/agents/swarm-task-planner.md
+  started: '2026-03-18T22:53:32.675000+00:00'
 
 ---
