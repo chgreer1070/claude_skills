@@ -82,7 +82,7 @@ The pipeline has 7 stages with ARL touchpoint gates between S1-S2 and S4-S5.
 
 For each stage S1 through S7:
 
-1. **Load stage skill** — Activate the corresponding workflow skill (e.g., `/development-harness:discovery` for S1)
+1. **Load stage skill** — Activate the corresponding workflow skill (e.g., `/dh:discovery` for S1)
 2. **Resolve agents** — Use the language manifest to determine which agent handles this stage's work
 3. **Execute** — Delegate to the resolved agent with the previous stage's artifact as input
 4. **Write artifact** — Store the stage output in `.planning/harness/` with SAM naming

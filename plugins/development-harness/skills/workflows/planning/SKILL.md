@@ -38,7 +38,7 @@ flowchart TD
 
 Before designing a solution, verify all prerequisites are available.
 
-Activate `/development-harness:planner-rt-ica` to perform this assessment.
+Activate `/dh:planner-rt-ica` to perform this assessment.
 
 For each prerequisite, classify as:
 

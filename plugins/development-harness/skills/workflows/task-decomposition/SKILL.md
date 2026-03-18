@@ -75,7 +75,7 @@ Follow the CLEAR task structure standard. Sections in order:
 8. **Verification** — commands or procedures to prove completion
 9. **Handoff** — what to report back
 
-For full CLEAR + CoVe specification, reference `/development-harness:clear-cove-task-design`.
+For full CLEAR + CoVe specification, reference `/dh:clear-cove-task-design`.
 
 ### Step 4 — Add CoVe Checks (Conditional)
 
@@ -113,7 +113,7 @@ Role-to-agent resolution happens at execution time via the language manifest.
 ## Output
 
 Individual task files at `.planning/harness/tasks/TASK-{NNN}.md` using the
-task template from `/development-harness:generate-task`.
+task template from `/dh:generate-task`.
 
 Each file contains YAML frontmatter followed by CLEAR-ordered sections:
 

@@ -49,7 +49,7 @@ flowchart TD
 
 **Output:** `ARTIFACT:DISCOVERY({feature-slug})` — A discovery document capturing requirements, codebase context, constraints, and resolved role assignments.
 
-**Skill:** `/development-harness:discovery`
+**Skill:** `/dh:discovery`
 
 ---
 
@@ -72,7 +72,7 @@ flowchart TD
 
 **Output:** `ARTIFACT:PLAN({feature-slug})` — A plan document with task graph, acceptance criteria, quality gates, and RT-ICA gap analysis.
 
-**Skill:** `/development-harness:planning`
+**Skill:** `/dh:planning`
 
 ---
 
@@ -95,7 +95,7 @@ flowchart TD
 
 **Output:** Contextualized plan (amended S2 artifact with codebase validation notes).
 
-**Skill:** `/development-harness:context-integration`
+**Skill:** `/dh:context-integration`
 
 ---
 
@@ -116,7 +116,7 @@ flowchart TD
 
 **Output:** `ARTIFACT:TASK({task-id})` per task — Individual task files stored in `.planning/harness/`.
 
-**Skill:** `/development-harness:task-decomposition`
+**Skill:** `/dh:task-decomposition`
 
 ---
 
@@ -138,7 +138,7 @@ flowchart TD
 
 **Output:** `ARTIFACT:EXECUTION({task-id})` — Execution report per task documenting what was done, quality gate results, and any deviations.
 
-**Skill:** `/development-harness:execution`
+**Skill:** `/dh:execution`
 
 ---
 
@@ -165,7 +165,7 @@ flowchart TD
 
 **Loop limit:** 3 NEEDS_WORK iterations per task before human escalation.
 
-**Skill:** `/development-harness:forensic-review`
+**Skill:** `/dh:forensic-review`
 
 ---
 
@@ -193,7 +193,7 @@ flowchart TD
 
 **Loop limit:** 2 NOT_CERTIFIED iterations before human escalation.
 
-**Skill:** `/development-harness:final-verification`
+**Skill:** `/dh:final-verification`
 
 ---
 

@@ -169,14 +169,14 @@ The `task_status_hook.py` script provides automated task status tracking via Cla
 
 | Command              | Hook Event   | Matcher             | Purpose                                        |
 | -------------------- | ------------ | ------------------- | ---------------------------------------------- |
-| `/development-harness:execution` | SubagentStop | (all)               | Mark task COMPLETE, add Completed timestamp    |
-| `/development-harness:start-task`        | PostToolUse  | `Write\|Edit\|Bash` | Update LastActivity timestamp during execution |
+| `/dh:execution` | SubagentStop | (all)               | Mark task COMPLETE, add Completed timestamp    |
+| `/dh:start-task`        | PostToolUse  | `Write\|Edit\|Bash` | Update LastActivity timestamp during execution |
 
 ### How It Works
 
 **SubagentStop (Task Completion)**:
 
-When `/development-harness:execution` launches a sub-agent via `/start-task {task_file} --task {id}`, the SubagentStop hook fires when the sub-agent completes. The hook script:
+When `/dh:execution` launches a sub-agent via `/start-task {task_file} --task {id}`, the SubagentStop hook fires when the sub-agent completes. The hook script:
 
 1. Parses the original prompt to extract task file path and task ID
 2. Updates task status from `IN PROGRESS` to `COMPLETE`
@@ -184,7 +184,7 @@ When `/development-harness:execution` launches a sub-agent via `/start-task {tas
 
 **PostToolUse (Activity Tracking)**:
 
-When `/development-harness:start-task` runs, it creates a context file at `.claude/context/active-task-{session_id}.json` containing the task file path and task ID. On each Write, Edit, or Bash operation, the PostToolUse hook:
+When `/dh:start-task` runs, it creates a context file at `.claude/context/active-task-{session_id}.json` containing the task file path and task ID. On each Write, Edit, or Bash operation, the PostToolUse hook:
 
 1. Reads the context file to identify the active task
 2. Updates `**LastActivity**: {ISO timestamp}` in the task section
@@ -193,13 +193,13 @@ When `/development-harness:start-task` runs, it creates a context file at `.clau
 
 | Field              | Added By                  | When                              |
 | ------------------ | ------------------------- | --------------------------------- |
-| `**Started**`      | Agent (via `/development-harness:start-task`) | When agent begins work on task    |
+| `**Started**`      | Agent (via `/dh:start-task`) | When agent begins work on task    |
 | `**Completed**`    | Hook (SubagentStop)       | When sub-agent finishes           |
 | `**LastActivity**` | Hook (PostToolUse)        | On each Write, Edit, or Bash call |
 
 ## Integration with /execution
 
-The `/development-harness:execution` orchestrator uses this skill to:
+The `/dh:execution` orchestrator uses this skill to:
 
 1. Query task file status via `uv run sam status P{N}`
 2. Find ready tasks via `uv run sam ready-tasks P{N}`

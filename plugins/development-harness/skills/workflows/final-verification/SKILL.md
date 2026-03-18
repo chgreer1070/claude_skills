@@ -98,7 +98,7 @@ Run the project's quality gates to confirm the entire feature passes:
 - Full test suite
 - Any project-specific gates from the language manifest
 
-For the quality gate protocol, reference `/development-harness:validation-protocol`.
+For the quality gate protocol, reference `/dh:validation-protocol`.
 
 ## Input
 
