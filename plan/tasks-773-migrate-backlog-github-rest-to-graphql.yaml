@@ -1,0 +1,146 @@
+feature: Migrate Backlog MCP GitHub REST Label Loops to GraphQL
+version: '1.0'
+description: ''
+goal: |-
+  Eliminate N+1 label-prefetch patterns in github.py by replacing per-label REST get_label() loops with a single GraphQL batch query, preserving all public function signatures and exception types
+context: |
+  Primary target: .claude/skills/backlog/backlog_core/github.py
+  Two confirmed N+1 zones:
+    - create_issue_for_item() lines 120-126: loop over 3 label names, each calls repo.get_label()
+    - create_task_issue() lines 540-542: identical pattern
+  Lines 239 and 349 are already batch-optimized — no changes needed there.
+  state_handler.py makes no direct REST calls — no changes needed there.
+  Interface contract: all 28 public function signatures are frozen. Callers in operations.py
+  and backlog.py must see identical return types and exception types after migration.
+  GraphQL support: PyGithub >= 2.8.1 (already in pyproject.toml) exposes gh.graphql_query().
+  No new dependencies required.
+  Architecture spec: plan/architect-migrate-backlog-github-rest-to-graphql.md
+  Feature context: plan/feature-context-migrate-backlog-github-rest-to-graphql.md
+  Codebase analysis: plan/codebase/architecture.md
+  ADR-004: GraphQL errors array translated to GithubException inside private helpers.
+  ADR-005: Per-function label-missing behavior preserved (skip+warn for create functions).
+  Mock strategy: mock gh.graphql_query() at method level — consistent with existing REST mocks.
+  Test coverage requirement: github.py >= 90%, new private functions 100% branch coverage.
+acceptance-criteria: |-
+  AC1: _resolve_labels_graphql() private function exists in github.py, accepts (gh, repo_owner, repo_name, label_names) and returns list[str] of existing label names
+  AC2: create_issue_for_item() no longer calls repo.get_label() in a loop — calls _resolve_labels_graphql() instead
+  AC3: create_task_issue() no longer calls repo.get_label() in a loop — calls _resolve_labels_graphql() instead
+  AC4: Public signatures of create_issue_for_item() and create_task_issue() are unchanged
+  AC5: GraphQL errors array in response raises GithubException (not raw dict) with status codes per ADR-004 translation table
+  AC6: Missing labels are silently omitted from returned list, and caller logs warning via output.warn() — identical to current REST behavior
+  AC7: uv run pytest .claude/skills/backlog/tests/ -x exits 0 with all tests passing
+  AC8: Coverage for github.py >= 90% line and branch
+  AC9: No new package dependencies added to pyproject.toml
+acceptance-criteria-structured:
+- criterion-id: AC-TESTS
+  description: Full test suite passes with no failures
+  check-command: uv run pytest .claude/skills/backlog/tests/ -x -q 2>&1 | tail
+    -5
+  expected-baseline: any
+  expected-final: pass
+- criterion-id: AC-COVERAGE
+  description: github.py coverage >= 90% line and branch
+  check-command: uv run pytest .claude/skills/backlog/tests/
+    --cov=.claude/skills/backlog/backlog_core/github --cov-report=term-missing
+    --co -q 2>&1 | tail -10
+  expected-baseline: any
+  expected-final: pass
+- criterion-id: AC-NO-GET-LABEL-LOOP
+  description: No get_label() loop present in create_issue_for_item or
+    create_task_issue
+  check-command: grep -n 'get_label'
+    .claude/skills/backlog/backlog_core/github.py | grep -v
+    '_resolve_labels_graphql' | grep -v '#'
+  expected-baseline: any
+  expected-final: pass
+- criterion-id: AC-LINTING
+  description: Ruff and type checking pass on modified files
+  check-command: uv run ruff check .claude/skills/backlog/backlog_core/github.py
+    .claude/skills/backlog/tests/
+  expected-baseline: any
+  expected-final: pass
+issue: '773'
+tasks:
+- id: T0
+  title: 'T0: Capture baseline state'
+  status: complete
+  agent: t0-baseline-capture
+  priority: 1
+  complexity: low
+  is-bookend: true
+  bookend-type: t0-baseline
+- id: T1
+  title: Verify PyGithub GraphQL API and finalize _resolve_labels_graphql design
+  status: complete
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T0
+  priority: 1
+  complexity: medium
+  skills:
+  - python3-development
+- id: T2
+  title: Implement _resolve_labels_graphql() private helper in github.py
+  status: complete
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T0
+  - T1
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+- id: T3
+  title: Migrate create_issue_for_item() and create_task_issue() label loops to
+    _resolve_labels_graphql()
+  status: complete
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T0
+  - T2
+  priority: 3
+  complexity: medium
+  skills:
+  - python3-development
+  started: '2026-03-18T14:29:10.417845+00:00'
+- id: T4
+  title: Write tests for _resolve_labels_graphql() and update tests for migrated
+    functions
+  status: complete
+  agent: python3-development:python-pytest-architect
+  dependencies:
+  - T0
+  - T3
+  priority: 4
+  complexity: high
+  skills:
+  - fastmcp-python-tests
+  - python3-development
+  started: '2026-03-18T14:40:47.815046+00:00'
+- id: T5
+  title: Integration verification — run full test suite and confirm acceptance
+    criteria
+  status: in-progress
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T0
+  - T4
+  priority: 5
+  complexity: low
+  skills:
+  - python3-development
+  started: '2026-03-18T15:13:15.014213+00:00'
+- id: T99
+  title: 'TN: Verify implementation against baseline'
+  status: not-started
+  agent: tn-verification-gate
+  dependencies:
+  - T1
+  - T2
+  - T3
+  - T4
+  - T5
+  priority: 5
+  complexity: low
+  is-bookend: true
+  bookend-type: tn-verification

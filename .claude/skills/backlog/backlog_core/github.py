@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 from github import Auth, Github, GithubException
 
@@ -40,6 +40,84 @@ if TYPE_CHECKING:
     from github.Repository import Repository
 
 _HTTP_NOT_FOUND = 404
+
+# ---------------------------------------------------------------------------
+# GraphQL label resolution — private internals
+# ---------------------------------------------------------------------------
+
+_LABEL_RESOLUTION_QUERY_TEMPLATE = """\
+query ResolveLabelsBatch($owner: String!, $repo: String!) {{
+  repository(owner: $owner, name: $repo) {{
+{aliases}
+  }}
+}}"""
+
+_LABEL_ALIAS_TEMPLATE = '    label{i}: label(name: "{name}") {{ name }}'
+
+_LABEL_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9:_\-. ]+$")
+
+
+class _LabelNode(TypedDict):
+    name: str
+
+
+class _GraphQLRepositoryData(TypedDict, total=False):
+    """Dynamic keys: label0, label1, ... each maps to _LabelNode or None."""
+
+
+def _resolve_labels_graphql(repo: Repository, repo_owner: str, repo_name: str, label_names: list[str]) -> list[str]:
+    """Resolve label names via a single GraphQL query.
+
+    Returns the subset of label_names that exist in the repository.
+    Raises GithubException for auth/network/permission failures.
+    Missing individual labels are silently omitted (matches current REST behavior).
+
+    Args:
+        repo: PyGithub Repository object (provides requester access for GraphQL).
+        repo_owner: GitHub repository owner (org or user name).
+        repo_name: GitHub repository name (without owner prefix).
+        label_names: List of label name strings to resolve.
+
+    Returns:
+        List of label name strings that exist in the repository.
+
+    Raises:
+        GithubException: If the GraphQL request fails (auth, network, permissions).
+    """
+    if not label_names:
+        return []
+
+    # Deduplicate while preserving order
+    seen: set[str] = set()
+    unique_names: list[str] = []
+    for name in label_names:
+        if name not in seen:
+            seen.add(name)
+            unique_names.append(name)
+
+    # Validate label names before embedding in query string (security: no injection)
+    for name in unique_names:
+        if not _LABEL_NAME_PATTERN.match(name):
+            raise ValueError(f"Label name contains disallowed characters: {name!r}")
+
+    aliases = "\n".join(_LABEL_ALIAS_TEMPLATE.format(i=i, name=name) for i, name in enumerate(unique_names))
+    query = _LABEL_RESOLUTION_QUERY_TEMPLATE.format(aliases=aliases)
+    variables = {"owner": repo_owner, "repo": repo_name}
+
+    # graphql_query raises GithubException on all errors — never returns an errors dict
+    _headers, data = repo.requester.graphql_query(query, variables)
+
+    repo_node: _GraphQLRepositoryData = data["data"]["repository"]
+    resolved: list[str] = []
+    for i in range(len(unique_names)):
+        alias = f"label{i}"
+        node: _LabelNode | None = repo_node.get(alias)  # type: ignore[assignment]
+        if node is not None:
+            resolved.append(node["name"])
+        # else: label missing — silently omit (matches current REST get_label() behavior)
+
+    return resolved
+
 
 # ---------------------------------------------------------------------------
 # Connection helpers
@@ -117,13 +195,12 @@ def create_issue_for_item(
         out.info(f"  [dry-run] Would create: {issue_title}")
         return None
     labels = ["status:needs-grooming", priority_gh, type_gh]
-    label_objs = []
+    owner, repo_name = repo.full_name.split("/", 1)
+    existing_label_names = _resolve_labels_graphql(repo, owner, repo_name, labels)
     for name in labels:
-        try:
-            label_objs.append(repo.get_label(name))
-        except GithubException:
+        if name not in existing_label_names:
             out.warn(f"  WARNING: label '{name}' not found")
-    issue = repo.create_issue(title=issue_title, body=body, labels=label_objs)
+    issue = repo.create_issue(title=issue_title, body=body, labels=existing_label_names)
     out.info(f"  Created #{issue.number}: {issue_title[:60]}...")
     return issue.number
 
@@ -536,14 +613,17 @@ def create_task_issue(
     out = output or Output()
     title = build_sam_task_issue_title(task, description)
     body = build_sam_task_body(task, description, acceptance_criteria)
-    label_objs = []
-    for name in labels or []:
-        try:
-            label_objs.append(repo.get_label(name))
-        except GithubException:
-            out.warn(f"  WARNING: label '{name}' not found, skipping")
+    label_names = labels or []
+    if label_names:
+        owner, repo_name_str = repo.full_name.split("/", 1)
+        existing_label_names = _resolve_labels_graphql(repo, owner, repo_name_str, label_names)
+        for name in label_names:
+            if name not in existing_label_names:
+                out.warn(f"  WARNING: label '{name}' not found, skipping")
+    else:
+        existing_label_names = []
     try:
-        task_issue = repo.create_issue(title=title, body=body, labels=label_objs)
+        task_issue = repo.create_issue(title=title, body=body, labels=existing_label_names)
         out.info(f"  Created task issue #{task_issue.number}: {title[:70]}")
     except GithubException as e:
         out.warn(f"  WARNING: Could not create task issue: {e}")

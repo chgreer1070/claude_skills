@@ -1,0 +1,84 @@
+feature: migrate-backlog-github-rest-to-graphql
+captured_at: "2026-03-18T21:15:00Z"
+plan_path: plan/tasks-773-migrate-backlog-github-rest-to-graphql.md
+criteria_count: 4
+results:
+  - criterion-id: AC-TESTS
+    check-command: "uv run pytest .claude/skills/backlog/tests/ -x -q 2>&1 | tail -5"
+    exit-code: 0
+    stdout: |
+      .........../home/ubuntulinuxqa2/repos/claude_skills/.venv/lib/python3.11/site-packages/coverage/control.py:946: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.en/7.11.0/messages.html#warning-no-data-collected
+        self._warn("No data was collected.", slug="no-data-collected")
+      .........../home/ubuntulinuxqa2/repos/claude_skills/.venv/lib/python3.11/site-packages/coverage/control.py:946: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.en/7.11.0/messages.html#warning-no-data-collected
+        self._warn("No data was collected.", slug="no-data-collected")
+      .........../home/ubuntulinuxqa2/repos/claude_skills/.venv/lib/python3.11/site-packages/coverage/control.py:946: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.en/7.11.0/messages.html#warning-no-data-collected
+        self._warn("No data was collected.", slug="no-data-collected")
+                                                 [100%]
+      746 passed in 127.96s (0:02:07)
+    stderr: ""
+    timestamp: "2026-03-18T21:10:15Z"
+    duration-seconds: 127.96
+
+  - criterion-id: AC-COVERAGE
+    check-command: "uv run pytest .claude/skills/backlog/tests/ --cov=.claude/skills/backlog/backlog_core/github --cov-report=term-missing --co -q 2>&1 | tail -10"
+    exit-code: 0
+    stdout: |
+      scripts/check_compat_annotations.py          72     72     0%   9-160
+      scripts/check_symlinks.py                    18     18     0%   16-43
+      scripts/process-research-integration.py     148    148     0%   15-375
+      scripts/rename_plan_files.py                225    225     0%   23-507
+      scripts/repair_symlinks.py                  110    110     0%   27-280
+      -----------------------------------------------------------------------
+      TOTAL                                       573    573     0%
+      746 tests collected in 1.53s
+    stderr: ""
+    timestamp: "2026-03-18T21:13:30Z"
+    duration-seconds: 1.53
+    note: "Coverage collection is reporting 0% — scripts are not being measured. The target module .claude/skills/backlog/backlog_core/github was not included in the coverage report output shown. This indicates --cov flag did not function as expected in this run."
+
+  - criterion-id: AC-NO-GET-LABEL-LOOP
+    check-command: "grep -n 'get_label' .claude/skills/backlog/backlog_core/github.py | grep -v '_resolve_labels_graphql' | grep -v '#'"
+    exit-code: 1
+    stdout: |
+      123:            label_objs.append(repo.get_label(name))
+      287:            lbl = repository.get_label("status:in-progress")
+      290:                ng = repository.get_label("status:needs-grooming")
+      321:            lbl = repository.get_label("status:verified")
+      330:            ip = repository.get_label("status:in-progress")
+      542:            label_objs.append(repo.get_label(name))
+    stderr: ""
+    timestamp: "2026-03-18T21:14:45Z"
+    duration-seconds: 0.05
+    note: "Exit code 1 is expected for grep when matches are found in T0 (pre-implementation). The criterion pass_condition specifies 'exit code 1 (no matches outside the private helper)' — but 6 matches exist at lines 123, 287, 290, 321, 330, 542. This is the baseline state before implementation."
+
+  - criterion-id: AC-LINTING
+    check-command: "uv run ruff check .claude/skills/backlog/backlog_core/github.py .claude/skills/backlog/tests/"
+    exit-code: 1
+    stdout: |
+      F401 `pytest` imported but unused
+        --> .claude/skills/backlog/tests/test_integration_reconciliation.py:18:8
+         |
+      16 | from unittest.mock import patch
+      17 |
+      18 | import pytest
+         |        ^^^^^^
+      19 | from backlog_core.models import BacklogItem, IssueStatus, Output
+      20 | from backlog_core.operations import _filter_closed_items, list_items
+         |
+      help: Remove unused import: `pytest`
+
+      F401 `backlog_core.models.Output` imported but unused
+        --> .claude/skills/backlog/tests/test_integration_reconciliation.py:19:59
+         |
+      18 | import pytest
+      19 | from backlog_core.models import BacklogItem, IssueStatus, Output
+         |                                                           ^^^^^^
+      20 | from backlog_core.operations import _filter_closed_items, list_items
+      21 | from backlog_core.server import mcp
+         |
+      help: Remove unused import: `backlog_core.models.Output`
+
+      Found 2 errors.
+    stderr: ""
+    timestamp: "2026-03-18T21:14:50Z"
+    duration-seconds: 8.32

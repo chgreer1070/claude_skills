@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from backlog_core.github import (
+    apply_status_in_progress,
     apply_status_verified,
     batch_fetch_statuses,
     check_open_prs_for_issue,
@@ -85,10 +86,20 @@ def _make_mock_issue(
     return issue
 
 
-def _make_mock_repo(mocker: MockerFixture) -> Any:
-    """Return a minimal mock PyGithub Repository."""
+def _make_mock_repo(mocker: MockerFixture, label_names: list[str] | None = None) -> Any:
+    """Return a minimal mock PyGithub Repository.
+
+    Sets up repo.full_name and repo.requester.graphql_query to return a
+    successful GraphQL response for the labels in label_names (all found).
+    If label_names is None, defaults to the three labels used by
+    create_issue_for_item: status:needs-grooming, priority:p1, type:feature.
+    """
+    if label_names is None:
+        label_names = ["status:needs-grooming", "priority:p1", "type:feature"]
     repo = mocker.Mock()
-    repo.get_label.return_value = mocker.Mock()
+    repo.full_name = "test-owner/test-repo"
+    repo_data = {f"label{i}": {"name": name} for i, name in enumerate(label_names)}
+    repo.requester.graphql_query.return_value = ({}, {"data": {"repository": repo_data}})
     return repo
 
 
@@ -205,15 +216,18 @@ class TestCreateIssueForItem:
     def test_create_issue_warns_on_missing_label(self, mocker: MockerFixture) -> None:
         """Warns via Output when a label does not exist on the repo.
 
-        Tests: GithubException on get_label triggers warning, not a crash.
-        How: repo.get_label raises GithubException; check out.warnings populated.
+        Tests: GraphQL response with null aliases triggers warning, not a crash.
+        How: repo.requester.graphql_query returns empty repository (all labels
+             missing as null aliases); check out.warnings populated.
         Why: Missing labels must not abort issue creation.
         """
         # Arrange
-        from github import GithubException
-
         repo = _make_mock_repo(mocker)
-        repo.get_label.side_effect = GithubException(404, "Not Found", None)
+        # Return all aliases as null — all three labels are missing
+        repo.requester.graphql_query.return_value = (
+            {},
+            {"data": {"repository": {"label0": None, "label1": None, "label2": None}}},
+        )
         mock_issue = mocker.Mock()
         mock_issue.number = 5
         repo.create_issue.return_value = mock_issue
@@ -1123,7 +1137,21 @@ def _make_sam_task(**kwargs: object) -> SamTask:
 
 
 class TestCreateTaskIssue:
+    """create_task_issue creates a GitHub issue for a SAM task and links it as a sub-issue.
+
+    All tests mock repo.requester.graphql_query via _make_mock_repo to avoid REST
+    get_label() calls. The GraphQL mock is the boundary — no live API calls.
+    """
+
     def test_creates_issue_and_links_as_sub_issue(self, mocker: MockerFixture) -> None:
+        """Creates the task issue and links it as a sub-issue of the parent.
+
+        Tests: Happy-path creation without labels (labels=None path).
+        How: Mock repo with graphql_query pre-set; call create_task_issue without
+             labels kwarg. Assert create_issue and add_sub_issue are both called.
+        Why: Core workflow — SAM task issues must be linked under the parent story.
+        """
+        # Arrange
         repo = _make_mock_repo(mocker)
         task = _make_sam_task()
         mock_task_issue = mocker.Mock()
@@ -1132,24 +1160,131 @@ class TestCreateTaskIssue:
         mock_parent = mocker.Mock()
         repo.get_issue.return_value = mock_parent
 
+        # Act
         result = create_task_issue(repo, parent_issue_number=10, task=task, description="Do the thing")
 
+        # Assert
         assert result is mock_task_issue
         repo.create_issue.assert_called_once()
         mock_parent.add_sub_issue.assert_called_once_with(mock_task_issue)
 
+    def test_creates_issue_with_labels_via_graphql(self, mocker: MockerFixture) -> None:
+        """Labels are resolved via graphql_query and passed to create_issue.
+
+        Tests: Label resolution path — labels kwarg triggers _resolve_labels_graphql.
+        How: Set graphql_query to return one found label and one null alias.
+             Pass labels=["sam-task", "missing-label"] to create_task_issue.
+             Inspect the labels kwarg passed to repo.create_issue.
+        Why: create_task_issue must use GraphQL for batch label resolution instead
+             of the removed REST get_label() loop.
+        """
+        # Arrange
+        repo = _make_mock_repo(mocker)
+        repo.requester.graphql_query.return_value = (
+            {},
+            {"data": {"repository": {"label0": {"name": "sam-task"}, "label1": None}}},
+        )
+        mock_task_issue = mocker.Mock()
+        mock_task_issue.number = 77
+        repo.create_issue.return_value = mock_task_issue
+        mock_parent = mocker.Mock()
+        repo.get_issue.return_value = mock_parent
+        task = _make_sam_task()
+
+        # Act
+        result = create_task_issue(repo, parent_issue_number=5, task=task, labels=["sam-task", "missing-label"])
+
+        # Assert
+        assert result is mock_task_issue
+        call_kwargs = repo.create_issue.call_args.kwargs
+        assert call_kwargs["labels"] == ["sam-task"]
+        repo.requester.graphql_query.assert_called_once()
+
+    def test_missing_label_logs_warning_via_output(self, mocker: MockerFixture) -> None:
+        """Missing label (null GraphQL alias) triggers output warning, issue still created.
+
+        Tests: Warning behavior for missing labels — matches REST behavior preserved by ADR-005.
+        How: Return null alias for one of two labels; pass Output collector; verify
+             out.warnings contains the missing label name.
+        Why: Callers must be warned about missing labels without aborting issue creation.
+             This mirrors the REST get_label() 404 behavior preserved in ADR-005.
+        """
+        # Arrange
+        repo = _make_mock_repo(mocker)
+        repo.requester.graphql_query.return_value = (
+            {},
+            {"data": {"repository": {"label0": {"name": "sam-task"}, "label1": None}}},
+        )
+        mock_task_issue = mocker.Mock()
+        mock_task_issue.number = 88
+        repo.create_issue.return_value = mock_task_issue
+        mock_parent = mocker.Mock()
+        repo.get_issue.return_value = mock_parent
+        out = Output()
+        task = _make_sam_task()
+
+        # Act
+        result = create_task_issue(
+            repo, parent_issue_number=5, task=task, labels=["sam-task", "nonexistent-label"], output=out
+        )
+
+        # Assert
+        assert result is mock_task_issue
+        assert any("nonexistent-label" in w for w in out.warnings)
+
+    def test_no_labels_skips_graphql_call(self, mocker: MockerFixture) -> None:
+        """When labels=None, no GraphQL call is made.
+
+        Tests: Short-circuit path when no labels are provided.
+        How: Call create_task_issue without labels kwarg; assert graphql_query not called.
+        Why: _resolve_labels_graphql must not issue a query for empty label list,
+             preserving the fast-exit guard.
+        """
+        # Arrange
+        repo = _make_mock_repo(mocker)
+        mock_task_issue = mocker.Mock()
+        mock_task_issue.number = 55
+        repo.create_issue.return_value = mock_task_issue
+        mock_parent = mocker.Mock()
+        repo.get_issue.return_value = mock_parent
+        task = _make_sam_task()
+
+        # Act
+        create_task_issue(repo, parent_issue_number=3, task=task)
+
+        # Assert
+        repo.requester.graphql_query.assert_not_called()
+
     def test_returns_none_on_create_failure(self, mocker: MockerFixture) -> None:
+        """Returns None when repo.create_issue raises GithubException.
+
+        Tests: GithubException(422) from create_issue → returns None, does not re-raise.
+        How: Set create_issue.side_effect; assert None returned.
+        Why: create_task_issue handles creation failures gracefully — callers check
+             the return value to detect failure.
+        """
+        # Arrange
         from github import GithubException
 
         repo = _make_mock_repo(mocker)
         repo.create_issue.side_effect = GithubException(422, "validation failed")
         task = _make_sam_task()
 
+        # Act
         result = create_task_issue(repo, parent_issue_number=10, task=task)
 
+        # Assert
         assert result is None
 
     def test_still_returns_issue_if_sub_issue_link_fails(self, mocker: MockerFixture) -> None:
+        """Returns the created Issue even if add_sub_issue raises GithubException.
+
+        Tests: Partial failure — issue created but sub-issue link fails.
+        How: Set add_sub_issue.side_effect = GithubException(404); assert issue returned.
+        Why: The task issue itself has value even without the sub-issue link. Caller
+             receives the issue so it can record the issue number locally.
+        """
+        # Arrange
         from github import GithubException
 
         repo = _make_mock_repo(mocker)
@@ -1161,8 +1296,10 @@ class TestCreateTaskIssue:
         mock_parent.add_sub_issue.side_effect = GithubException(404, "not found")
         repo.get_issue.return_value = mock_parent
 
+        # Act
         result = create_task_issue(repo, parent_issue_number=10, task=task)
 
+        # Assert
         assert result is mock_task_issue
 
 
@@ -1231,3 +1368,525 @@ class TestUpdateTaskStatus:
         changed = update_task_status(repo, issue_number=7, new_status="complete")
 
         assert changed is False
+
+    def test_returns_false_when_get_issue_raises(self, mocker: MockerFixture) -> None:
+        """Returns False when get_issue raises GithubException fetching the body.
+
+        Tests: Initial fetch failure path (lines 682-684).
+        How: Set repo.get_issue.side_effect = GithubException(404, ...).
+        Why: Must not propagate; returns False so callers can continue gracefully.
+        """
+        # Arrange
+        from github import GithubException
+
+        repo = _make_mock_repo(mocker)
+        repo.get_issue.side_effect = GithubException(404, "not found")
+
+        # Act
+        changed = update_task_status(repo, issue_number=99, new_status="complete")
+
+        # Assert
+        assert changed is False
+
+    def test_returns_false_when_edit_raises(self, mocker: MockerFixture) -> None:
+        """Returns False when issue.edit raises GithubException writing updated body.
+
+        Tests: Write failure path (lines 704-706).
+        How: Provide valid SAM body, but set issue.edit.side_effect = GithubException.
+        Why: Body update failures must return False, not propagate.
+        """
+        # Arrange
+        from github import GithubException
+
+        repo = _make_mock_repo(mocker)
+        task = _make_sam_task(status="not-started")
+        mock_issue = mocker.Mock()
+        mock_issue.body = build_sam_task_body(task)
+        mock_issue.edit.side_effect = GithubException(500, "server error")
+        repo.get_issue.return_value = mock_issue
+
+        # Act
+        changed = update_task_status(repo, issue_number=7, new_status="complete")
+
+        # Assert
+        assert changed is False
+
+
+# ---------------------------------------------------------------------------
+# close_github_issue
+# ---------------------------------------------------------------------------
+
+
+class TestCloseGithubIssue:
+    """close_github_issue closes a GH issue with optional reference/comment fields."""
+
+    def test_closes_issue_with_reference_and_comment(self, mocker: MockerFixture) -> None:
+        """Both reference and comment optional fields are included when provided.
+
+        Tests: Optional reference and comment branches (lines 225, 227).
+        How: Mock get_github to return a mock repository; provide reference and comment.
+             Assert create_comment is called with content containing both.
+        Why: Reference and comment are optional — their inclusion branches must be exercised.
+        """
+        # Arrange
+        from backlog_core.github import close_github_issue
+
+        mock_issue = mocker.Mock()
+        mock_repo = mocker.Mock()
+        mock_repo.get_issue.return_value = mock_issue
+        mocker.patch("backlog_core.github.get_github", return_value=mock_repo)
+        out = Output()
+
+        # Act
+        close_github_issue("#42", reason="superseded", reference="#10", comment="Replaced by new design", output=out)
+
+        # Assert
+        mock_issue.create_comment.assert_called_once()
+        comment_text: str = mock_issue.create_comment.call_args.args[0]
+        assert "Reference" in comment_text
+        assert "Replaced by new design" in comment_text
+        mock_issue.edit.assert_called_once_with(state="closed")
+
+    def test_github_exception_logs_warning(self, mocker: MockerFixture) -> None:
+        """GithubException during close logs a warning instead of propagating.
+
+        Tests: Exception handler (lines 231-232).
+        How: Raise GithubException from get_github; assert out.warnings populated.
+        Why: Close failures must not abort callers — warning is sufficient.
+        """
+        # Arrange
+        from backlog_core.github import close_github_issue
+        from github import GithubException
+
+        mocker.patch("backlog_core.github.get_github", side_effect=GithubException(401, "bad credentials"))
+        out = Output()
+
+        # Act
+        close_github_issue("#5", reason="stale", output=out)
+
+        # Assert
+        assert any("WARNING" in w for w in out.warnings)
+
+
+# ---------------------------------------------------------------------------
+# resolve_github_issue
+# ---------------------------------------------------------------------------
+
+
+class TestResolveGithubIssue:
+    """resolve_github_issue closes a GH issue with structured evidence comment."""
+
+    def test_includes_all_optional_sections(self, mocker: MockerFixture) -> None:
+        """All optional keyword arguments are included in the comment when provided.
+
+        Tests: method, notes, follow_ups, findings optional branches (lines 254-260).
+        How: Pass all optional kwargs; inspect the comment body for each section header.
+        Why: Each optional section has its own branch — all must be exercised.
+        """
+        # Arrange
+        from backlog_core.github import resolve_github_issue
+
+        mock_issue = mocker.Mock()
+        mock_repo = mocker.Mock()
+        mock_repo.get_issue.return_value = mock_issue
+        mocker.patch("backlog_core.github.get_github", return_value=mock_repo)
+        out = Output()
+
+        # Act
+        resolve_github_issue(
+            "#7",
+            summary="Implemented the feature",
+            method="TDD",
+            notes="Used pytest",
+            follow_ups="Add integration tests",
+            findings="Root cause was X",
+            output=out,
+        )
+
+        # Assert
+        mock_issue.create_comment.assert_called_once()
+        comment_body: str = mock_issue.create_comment.call_args.args[0]
+        assert "Method" in comment_body
+        assert "Notes" in comment_body
+        assert "Follow-ups" in comment_body
+        assert "Findings" in comment_body
+        mock_issue.edit.assert_called_once_with(state="closed")
+
+    def test_github_exception_logs_warning(self, mocker: MockerFixture) -> None:
+        """GithubException during resolve logs a warning instead of propagating.
+
+        Tests: Exception handler (lines 264-265).
+        How: Raise GithubException from get_github; assert out.warnings populated.
+        Why: Resolve failures must not abort callers.
+        """
+        # Arrange
+        from backlog_core.github import resolve_github_issue
+        from github import GithubException
+
+        mocker.patch("backlog_core.github.get_github", side_effect=GithubException(403, "forbidden"))
+        out = Output()
+
+        # Act
+        resolve_github_issue("#3", summary="Done", output=out)
+
+        # Assert
+        assert any("WARNING" in w for w in out.warnings)
+
+
+# ---------------------------------------------------------------------------
+# batch_fetch_statuses — exception path
+# ---------------------------------------------------------------------------
+
+
+class TestBatchFetchStatusesExceptionPath:
+    """batch_fetch_statuses returns empty dict on GithubException from get_issues."""
+
+    def test_get_issues_exception_returns_empty_dict(self, mocker: MockerFixture) -> None:
+        """GithubException from repo.get_issues returns empty dict (lines 317-318).
+
+        Tests: Exception handler in batch_fetch_statuses.
+        How: Mock try_get_github to return a repo whose get_issues raises GithubException.
+        Why: Batch fetch must degrade to empty dict, not propagate, when API fails.
+        """
+        # Arrange
+        from github import GithubException
+
+        mock_repo = mocker.Mock()
+        mock_repo.get_issues.side_effect = GithubException(503, "service unavailable")
+        mocker.patch("backlog_core.github.try_get_github", return_value=mock_repo)
+        items = [BacklogItem(title="Item A", issue="#1", priority="P1")]
+
+        # Act
+        result = batch_fetch_statuses(items)
+
+        # Assert
+        assert result == {}
+
+
+# ---------------------------------------------------------------------------
+# fetch_item_status
+# ---------------------------------------------------------------------------
+
+
+class TestFetchItemStatus:
+    """fetch_item_status returns status label string for a single item."""
+
+    def test_returns_status_label_when_found(self, mocker: MockerFixture) -> None:
+        """Returns the status label from a GitHub issue.
+
+        Tests: Happy-path single-item status fetch (lines 343-350).
+        How: Mock get_github to return repo with an issue having a status label.
+        Why: Single-item fallback for when batch is not available.
+        """
+        # Arrange
+        from backlog_core.github import fetch_item_status
+
+        mock_label = mocker.Mock()
+        mock_label.name = "status:in-progress"
+        mock_issue = mocker.Mock()
+        mock_issue.labels = [mock_label]
+        mock_repo = mocker.Mock()
+        mock_repo.get_issue.return_value = mock_issue
+        mocker.patch("backlog_core.github.get_github", return_value=mock_repo)
+        item = BacklogItem(title="Test", issue="#10", priority="P1")
+
+        # Act
+        result = fetch_item_status(item)
+
+        # Assert
+        assert result == "status:in-progress"
+
+    def test_returns_empty_string_when_no_issue(self) -> None:
+        """Returns empty string immediately when item has no issue number.
+
+        Tests: Guard clause (line 343-344).
+        How: Pass BacklogItem with empty issue field; assert empty string returned.
+        Why: Items without issue numbers have no GitHub state to fetch.
+        """
+        # Arrange
+        from backlog_core.github import fetch_item_status
+
+        item = BacklogItem(title="No issue", issue="", priority="P1")
+
+        # Act
+        result = fetch_item_status(item)
+
+        # Assert
+        assert result == ""
+
+    def test_returns_empty_string_on_github_exception(self, mocker: MockerFixture) -> None:
+        """Returns empty string when GithubException occurs (lines 351-352).
+
+        Tests: Exception handler path.
+        How: Raise GithubException from get_github; assert empty string returned.
+        Why: Single-item fetch failures must degrade gracefully.
+        """
+        # Arrange
+        from backlog_core.github import fetch_item_status
+        from github import GithubException
+
+        mocker.patch("backlog_core.github.get_github", side_effect=GithubException(404, "not found"))
+        item = BacklogItem(title="Test", issue="#5", priority="P1")
+
+        # Act
+        result = fetch_item_status(item)
+
+        # Assert
+        assert result == ""
+
+    def test_returns_empty_string_when_no_status_label(self, mocker: MockerFixture) -> None:
+        """Returns empty string when issue has labels but none start with 'status:'.
+
+        Tests: Empty filter result (line 350 else branch).
+        How: Mock issue with a non-status label; assert empty string returned.
+        Why: Issues can have type/priority labels without a status label.
+        """
+        # Arrange
+        from backlog_core.github import fetch_item_status
+
+        mock_label = mocker.Mock()
+        mock_label.name = "priority:p1"
+        mock_issue = mocker.Mock()
+        mock_issue.labels = [mock_label]
+        mock_repo = mocker.Mock()
+        mock_repo.get_issue.return_value = mock_issue
+        mocker.patch("backlog_core.github.get_github", return_value=mock_repo)
+        item = BacklogItem(title="Test", issue="#3", priority="P1")
+
+        # Act
+        result = fetch_item_status(item)
+
+        # Assert
+        assert result == ""
+
+
+# ---------------------------------------------------------------------------
+# apply_status_in_progress — exception path
+# ---------------------------------------------------------------------------
+
+
+class TestApplyStatusInProgressException:
+    """apply_status_in_progress logs warning on GithubException."""
+
+    def test_github_exception_logs_warning(self, mocker: MockerFixture) -> None:
+        """GithubException during in-progress label apply logs warning (lines 370-371).
+
+        Tests: Exception handler path.
+        How: Raise GithubException from get_github; assert out.warnings populated.
+        Why: Label apply failures must not propagate; callers continue normally.
+        """
+        # Arrange
+        from github import GithubException
+
+        mocker.patch("backlog_core.github.get_github", side_effect=GithubException(401, "unauthorized"))
+        out = Output()
+        item = BacklogItem(title="Test", issue="#1", priority="P1")
+
+        # Act
+        apply_status_in_progress(item, output=out)
+
+        # Assert
+        assert any("WARNING" in w for w in out.warnings)
+
+
+# ---------------------------------------------------------------------------
+# fetch_open_issues_by_title
+# ---------------------------------------------------------------------------
+
+
+class TestFetchOpenIssuesByTitle:
+    """fetch_open_issues_by_title returns normalized-title-to-issue-number map."""
+
+    def test_skips_pull_requests(self, mocker: MockerFixture) -> None:
+        """Pull requests in the open issues list are skipped (lines 427-428).
+
+        Tests: PR filtering in fetch_open_issues_by_title.
+        How: Include a mock issue with pull_request set and one without; assert only
+             the non-PR issue appears in the result.
+        Why: PRs appear in get_issues results but must not pollute the title map.
+        """
+        # Arrange
+        from backlog_core.github import fetch_open_issues_by_title
+
+        pr_issue = mocker.Mock()
+        pr_issue.pull_request = mocker.Mock()
+        pr_issue.title = "feat: Some PR"
+        pr_issue.number = 5
+
+        real_issue = mocker.Mock()
+        real_issue.pull_request = None
+        real_issue.title = "feat: Real issue"
+        real_issue.number = 3
+
+        mock_repo = mocker.Mock()
+        mock_repo.get_issues.return_value = [pr_issue, real_issue]
+
+        # Act
+        result = fetch_open_issues_by_title(mock_repo)
+
+        # Assert
+        assert len(result) == 1
+        assert 3 in result.values()
+
+    def test_keeps_lowest_issue_number_for_duplicates(self, mocker: MockerFixture) -> None:
+        """Duplicate titles keep the lowest issue number (lines 430-431).
+
+        Tests: De-duplication by lowest issue number.
+        How: Two issues with the same normalized title; first has number 10, second has 5.
+        Why: The original issue (lowest number) takes precedence over duplicates.
+        """
+        # Arrange
+        from backlog_core.github import fetch_open_issues_by_title
+
+        issue_a = mocker.Mock()
+        issue_a.pull_request = None
+        issue_a.title = "feat: duplicate title"
+        issue_a.number = 10
+
+        issue_b = mocker.Mock()
+        issue_b.pull_request = None
+        issue_b.title = "feat: duplicate title"
+        issue_b.number = 5
+
+        mock_repo = mocker.Mock()
+        mock_repo.get_issues.return_value = [issue_a, issue_b]
+
+        # Act
+        result = fetch_open_issues_by_title(mock_repo)
+
+        # Assert
+        assert len(result) == 1
+        assert next(iter(result.values())) == 5
+
+
+# ---------------------------------------------------------------------------
+# sync_groomed_to_github_issue
+# ---------------------------------------------------------------------------
+
+
+class TestSyncGroomedToGithubIssue:
+    """sync_groomed_to_github_issue appends/replaces groomed section in issue body."""
+
+    def test_returns_false_for_empty_content(self, mocker: MockerFixture) -> None:
+        """Returns False without calling edit when groomed_content is empty (line 532).
+
+        Tests: Empty-content guard clause.
+        How: Pass empty string as groomed_content; assert issue.edit not called.
+        Why: No content means no change — must short-circuit before writing.
+        """
+        # Arrange
+        from backlog_core.github import sync_groomed_to_github_issue
+
+        mock_issue = mocker.Mock()
+        mock_issue.body = "## What\n\nExisting body.\n"
+        mock_repo = mocker.Mock()
+        mock_repo.get_issue.return_value = mock_issue
+
+        # Act
+        result = sync_groomed_to_github_issue(mock_repo, 1, "   ")
+
+        # Assert
+        assert result is False
+        mock_issue.edit.assert_not_called()
+
+    def test_returns_false_when_body_unchanged(self, mocker: MockerFixture) -> None:
+        """Returns False when new body equals current body (line 541).
+
+        Tests: No-op detection when content produces identical body.
+        How: Construct a body that already contains the exact Groomed block that
+             the function would write; the regex sub produces the same string.
+        Why: Avoids spurious API writes when content has not changed.
+        """
+        # Arrange
+        from backlog_core.github import sync_groomed_to_github_issue
+        from backlog_core.parsing import today
+
+        today_str = today()
+        # Body already contains the exact groomed block that would be written
+        existing_content = "New groomed content"
+        body = f"## What\n\nExisting body.\n\n## Groomed ({today_str})\n\n{existing_content}\n"
+        mock_issue = mocker.Mock()
+        mock_issue.body = body
+        mock_repo = mocker.Mock()
+        mock_repo.get_issue.return_value = mock_issue
+
+        # Act — no section_name, so the groomed_re path runs and produces identical body
+        result = sync_groomed_to_github_issue(mock_repo, 1, existing_content)
+
+        # Assert
+        assert result is False
+        mock_issue.edit.assert_not_called()
+
+    def test_github_exception_returns_false_and_warns(self, mocker: MockerFixture) -> None:
+        """GithubException returns False and logs warning (lines 543-545).
+
+        Tests: Exception handler path.
+        How: Raise GithubException from get_issue; assert False returned and warning logged.
+        Why: Sync failures must degrade gracefully, not propagate.
+        """
+        # Arrange
+        from backlog_core.github import sync_groomed_to_github_issue
+        from github import GithubException
+
+        mock_repo = mocker.Mock()
+        mock_repo.get_issue.side_effect = GithubException(404, "not found")
+        out = Output()
+
+        # Act
+        result = sync_groomed_to_github_issue(mock_repo, 99, "New groomed content", output=out)
+
+        # Assert
+        assert result is False
+        assert any("WARNING" in w for w in out.warnings)
+
+
+# ---------------------------------------------------------------------------
+# fetch_github_issue_body
+# ---------------------------------------------------------------------------
+
+
+class TestFetchGithubIssueBody:
+    """fetch_github_issue_body returns issue body or None on error."""
+
+    def test_returns_body_string(self, mocker: MockerFixture) -> None:
+        """Returns the issue body string when successful.
+
+        Tests: Happy-path body fetch.
+        How: Mock repo.get_issue().body = "Issue body content".
+        Why: Callers depend on the string content for processing.
+        """
+        # Arrange
+        from backlog_core.github import fetch_github_issue_body
+
+        mock_issue = mocker.Mock()
+        mock_issue.body = "Issue body content"
+        mock_repo = mocker.Mock()
+        mock_repo.get_issue.return_value = mock_issue
+
+        # Act
+        result = fetch_github_issue_body(mock_repo, 5)
+
+        # Assert
+        assert result == "Issue body content"
+
+    def test_returns_none_on_github_exception(self, mocker: MockerFixture) -> None:
+        """Returns None when GithubException occurs (lines 569-571).
+
+        Tests: Exception handler path.
+        How: Raise GithubException from get_issue; assert None returned.
+        Why: Callers check for None to detect fetch failure.
+        """
+        # Arrange
+        from backlog_core.github import fetch_github_issue_body
+        from github import GithubException
+
+        mock_repo = mocker.Mock()
+        mock_repo.get_issue.side_effect = GithubException(404, "not found")
+        out = Output()
+
+        # Act
+        result = fetch_github_issue_body(mock_repo, 99, output=out)
+
+        # Assert
+        assert result is None
+        assert any("WARNING" in w for w in out.warnings)
