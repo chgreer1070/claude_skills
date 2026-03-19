@@ -19,7 +19,14 @@
     },
     "backlog": {
       "command": "uv",
-      "args": ["run", "python", "-m", "backlog_core.server"]
+      "args": [
+        "run",
+        "--project",
+        "plugins/development-harness",
+        "python",
+        "-m",
+        "backlog_core.server"
+      ]
     },
     "octocode": {
       "command": "npx",
