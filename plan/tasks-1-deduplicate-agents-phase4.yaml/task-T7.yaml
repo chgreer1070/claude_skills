@@ -1,0 +1,333 @@
+id: T7
+title: Validate both plugins pass skilllint and no stale namespace references
+  remain
+status: not-started
+priority: 3
+complexity: medium
+description: |-
+  **Status**: NOT STARTED
+  **Dependencies**: T3, T4, T5, T6
+  **Priority**: 4
+  **Complexity**: Low
+  **Agent**: general-purpose
+  **Skills**: []
+  **Accuracy Risk**: low
+  **Can parallelize with**: nothing — this is the final gate
+
+  ### Context
+
+  T7 is the final quality gate. It runs after T3, T4, T5, and T6 have all completed.
+  It verifies the complete state of both plugins and the reference files, then stages
+  and commits all changes in a single logical commit.
+
+  The architecture spec §Validation Design defines the exact checks (lines 319-381).
+  This task is purely verification + commit — no new edits should be needed. If any check
+  fails, T7 is BLOCKED and the relevant prior task (T3/T4/T5/T6) must fix the issue.
+
+  ### Objective
+
+  Verify all Phase 4 changes are consistent and correct, then commit all staged changes
+  with the canonical commit message from the architecture spec.
+
+  ### Inputs
+
+  - All files modified by T2/T3/T4/T5/T6 (staged in git)
+  - Architecture spec §Validation Design: `plan/architect-deduplicate-agents-phase4.md`
+    lines 319-381
+  - `plan/D1-ecosystem-researcher-decision.md` (T1 output) — for commit message D1 clause
+
+  ### Requirements
+
+  1. Run the agent inventory count checks:
+     ```bash
+     ls -1 /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/agents/*.md | wc -l
+     # Expected: 8 (Option B/A) or 9 (Option C)
+
+     ls -1 /home/ubuntulinuxqa2/repos/claude_skills/plugins/development-harness/agents/*.md | wc -l
+     # Expected: 12
+     ```
+
+  2. Run the stale namespace reference grep across all updated files (excluding backlog):
+     ```bash
+     grep -r "python3-development:\(feature-researcher\|codebase-analyzer\|context-gathering\|context-refinement\|plan-validator\|feature-verifier\|integration-checker\|doc-drift-auditor\|swarm-task-planner\|ecosystem-researcher\)" \
+       /home/ubuntulinuxqa2/repos/claude_skills/plugins/ \
+       /home/ubuntulinuxqa2/repos/claude_skills/.claude/rules/ \
+       --include="*.md" \
+       --exclude-dir=backlog \
+       --exclude-dir=agents
+     ```
+     Expected: zero matches.
+
+  3. Run plugin validator on both plugins:
+     ```bash
+     uvx skilllint@latest check /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development
+     uvx skilllint@latest check /home/ubuntulinuxqa2/repos/claude_skills/plugins/development-harness
+     ```
+     Both must exit 0. If either fails with errors introduced by this change (not pre-existing),
+     T7 is BLOCKED — identify which task introduced the error and report it.
+
+  4. Confirm the 8 KEEP agents still exist:
+     ```bash
+     for f in python-cli-architect python-pytest-architect python-cli-design-spec \
+       python-code-reviewer code-reviewer semantic-code-search t0-baseline-capture \
+       tn-verification-gate; do
+       ls /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/agents/${f}.md \
+         && echo "OK: ${f}" || echo "MISSING: ${f}"
+     done
+     ```
+     All 8 must print `OK`.
+
+  5. Confirm dh agent files for the 10 deleted agents still exist (no accidental dh deletion):
+     ```bash
+     for f in feature-researcher codebase-analyzer context-gathering context-refinement \
+       plan-validator feature-verifier integration-checker doc-drift-auditor \
+       swarm-task-planner ecosystem-researcher; do
+       ls /home/ubuntulinuxqa2/repos/claude_skills/plugins/development-harness/agents/${f}.md \
+         && echo "OK: ${f}" || echo "MISSING FROM DH: ${f}"
+     done
+     ```
+     All 10 must print `OK`.
+
+  6. Read `plan/D1-ecosystem-researcher-decision.md` to extract the D1 decision clause for
+     the commit message.
+
+  7. Stage all modified/deleted files and commit with the canonical message:
+     ```bash
+     cd /home/ubuntulinuxqa2/repos/claude_skills
+     git add -A plugins/python3-development/agents/ \
+               .claude/rules/local-workflow.md \
+               plugins/python3-development/skills/orchestrate/SKILL.md \
+               plugins/python3-development/skills/python3-development/references/python-development-orchestration.md \
+               plugins/python3-development/CLAUDE.md \
+               plan/D1-ecosystem-researcher-decision.md
+     git commit -m "refactor(agents): remove 10 shared agents from python3-development (Phase 4)
+
+     dh is now the sole provider of: feature-researcher, codebase-analyzer,
+     context-gathering, context-refinement, plan-validator, feature-verifier,
+     integration-checker, doc-drift-auditor, swarm-task-planner, ecosystem-researcher.
+
+     Phase 1 (commit 29387b59) established dh as canonical. Phase 4 makes that
+     observable in the filesystem by removing the stale python3-development copies.
+
+     ecosystem-researcher-v1.1-rt-ica.md: [INSERT D1 DECISION CLAUSE FROM plan/D1-ecosystem-researcher-decision.md]"
+     ```
+     Replace `[INSERT D1 DECISION CLAUSE ...]` with the actual decision from T1 output.
+
+  ### Constraints
+
+  - Do NOT make any new edits to reference files in this task. If a check fails, report
+    which prior task needs to fix it and set status to BLOCKED.
+  - Do NOT commit if any validation check returns non-zero or unexpected results.
+  - Do NOT include `Fixes #N`, `Closes #N`, or `Resolves #N` in the commit message.
+  - Pre-existing skilllint errors that existed before Phase 4 do NOT block this task —
+    only new errors introduced by Phase 4 changes are blockers.
+
+  ### Expected Outputs
+
+  - All Phase 4 changes committed with the canonical commit message.
+  - `git log --oneline -1` shows the refactor(agents) commit.
+
+  ### Acceptance Criteria
+
+  1. Agent inventory check passes: python3-development has 8 (or 9) agents; dh has 12.
+  2. Stale namespace grep returns zero matches.
+  3. `uvx skilllint@latest check plugins/python3-development` exits 0 (or fails only on
+     pre-existing errors not caused by Phase 4 changes).
+  4. `uvx skilllint@latest check plugins/development-harness` exits 0 (or pre-existing only).
+  5. All 8 KEEP agents exist in python3-development.
+  6. All 10 deleted agents still exist in dh.
+  7. `git log --oneline -1` shows `refactor(agents): remove 10 shared agents`.
+
+  ### Verification Steps
+
+  1. Run all five requirement checks (Requirements 1-5) and record outputs.
+  2. Run `git status` to confirm all Phase 4 modified files are staged.
+  3. Run `git log --oneline -1` after commit to confirm commit is present.
+  4. Run `git show --stat HEAD` to confirm the correct files are in the commit.
+
+  ### Handoff
+
+  Return:
+  - Results of each validation check (pass/fail with output)
+  - Confirmation of commit hash (`git log --oneline -1` output)
+  - Any pre-existing skilllint errors noted (not caused by Phase 4)
+  - STATUS: DONE (all checks pass + committed) or BLOCKED (with failing check identified
+    and which task must fix it)
+
+  ---
+
+  ## Context Manifest
+
+  Generated by context-gathering agent on 2026-03-19
+
+  ### How This Currently Works: Phase 4 Agent Consolidation
+
+  When developers read the claude_skills repository, they encounter two plugins with overlapping agent definitions: `plugins/python3-development/agents/` and `plugins/development-harness/agents/`. Phase 1 (commit 29387b59) established development-harness as the canonical source by copying and patching shared workflow agents there. The python3-development copies remained — creating a dual-source maintenance burden where fixes must be applied in two places and documentation is ambiguous about which namespace is authoritative.
+
+  The Phase 4 consolidation removes the 10 stale copies from python3-development and updates all references to use the dh namespace. This makes the single-source-of-truth decision observable in the filesystem, not just documented in a commit message.
+
+  ### Authoritative Agent Lists
+
+  **Agents to DELETE from plugins/python3-development/agents/ (11 files total):**
+
+  These exist in BOTH plugins. development-harness is canonical after Phase 1:
+
+  ```
+  plugins/python3-development/agents/feature-researcher.md
+  plugins/python3-development/agents/codebase-analyzer.md
+  plugins/python3-development/agents/context-gathering.md
+  plugins/python3-development/agents/context-refinement.md
+  plugins/python3-development/agents/plan-validator.md
+  plugins/python3-development/agents/feature-verifier.md
+  plugins/python3-development/agents/integration-checker.md
+  plugins/python3-development/agents/doc-drift-auditor.md
+  plugins/python3-development/agents/swarm-task-planner.md
+  plugins/python3-development/agents/ecosystem-researcher.md
+  plugins/python3-development/agents/ecosystem-researcher-v1.1-rt-ica.md (per T1 decision)
+  ```
+
+  **Agents to KEEP in plugins/python3-development/agents/ (8 files):**
+
+  Domain-specific Python agents NOT present in development-harness:
+
+  ```
+  plugins/python3-development/agents/python-cli-architect.md
+  plugins/python3-development/agents/python-pytest-architect.md
+  plugins/python3-development/agents/python-cli-design-spec.md
+  plugins/python3-development/agents/python-code-reviewer.md
+  plugins/python3-development/agents/code-reviewer.md
+  plugins/python3-development/agents/semantic-code-search.md
+  plugins/python3-development/agents/t0-baseline-capture.md
+  plugins/python3-development/agents/tn-verification-gate.md
+  ```
+
+  ### Files Requiring Reference Updates (Post-T2 Deletions)
+
+  After T2 deletes the agent files, these files must be updated to replace `python3-development:{deleted-agent}` namespace with `dh:{deleted-agent}`:
+
+  **1. `.claude/rules/local-workflow.md`**
+  - Phase 1 Agent File Locations table (lines ~54-63): Remove python3-development column cells for 10 deleted agents
+  - Phase 3 Agent File Locations table (lines ~269-276): Remove python3-development column cells for deleted agents
+  - Data flow diagram: Update any `python3-development:{deleted-agent}` to `dh:{deleted-agent}`
+  - KEEP agent rows retain their python3-development column (python-cli-design-spec, t0-baseline-capture, tn-verification-gate, code-reviewer)
+
+  **2. `plugins/python3-development/skills/orchestrate/SKILL.md`**
+  - Update only `swarm-task-planner` references from `python3-development:` to `dh:` namespace
+  - KEEP agents (python-cli-architect, python-pytest-architect, python-code-reviewer, python-cli-design-spec) remain unchanged in python3-development: namespace
+
+  **3. `plugins/python3-development/skills/python3-development/references/python-development-orchestration.md`**
+  - Most heavily impacted (50+ lines across 5+ workflow scenarios)
+  - Update namespace for all 10 deleted agents: `python3-development:{agent}` → `dh:{agent}`
+  - Keep KEEP agent references unchanged (python-cli-architect, python-pytest-architect, python-code-reviewer, python-cli-design-spec)
+  - Mermaid diagrams may use `subagent_type=` patterns with agent namespaces
+
+  **4. `plugins/python3-development/CLAUDE.md` (or README.md if CLAUDE.md doesn't exist)**
+  - Add section: `## Agent Consolidation (Phase 4, 2026-03-18)`
+  - List all 10 deleted agents with notation they moved to development-harness
+  - Provide `@dh:{agent-name}` usage instruction
+  - List all 8 KEEP agents as remaining Python-domain-specific agents
+
+  ### Decision Point D1: ecosystem-researcher-v1.1-rt-ica.md
+
+  This file is NOT a straight duplicate:
+
+  **v1.1 variant** (`ecosystem-researcher-v1.1-rt-ica.md`):
+  - Tools: Read, Grep, Glob, Write, Edit, WebSearch, WebFetch, mcp__Ref__ref_search_documentation, mcp__Ref__ref_read_url, mcp__exa__get_code_context_exa, mcp__sequential_thinking__sequentialthinking
+  - Color: purple
+  - Framing: Python-projects researcher
+  - Capability: WebSearch/WebFetch fallback when MCP servers unavailable
+
+  **dh canonical version** (`plugins/development-harness/agents/ecosystem-researcher.md`):
+  - Tools: Read, Grep, Glob, mcp__ref__*, mcp__exa__*, mcp__context7__*, mcp__firecrawl__* (wildcard MCP patterns)
+  - Color: blue
+  - Framing: General ecosystem researcher
+  - Constraint: Explicitly BLOCKs when no MCP server available (intentional design)
+
+  **T1 Decision Gate must choose one option:**
+
+  - **Option A**: Merge v1.1 tools (WebSearch, WebFetch) into dh before deleting v1.1
+  - **Option B (recommended)**: Delete v1.1 as-is. BLOCK behavior is intentional. Direct-web fallback is an anti-pattern
+  - **Option C**: Rename v1.1 to `python-ecosystem-researcher.md` and keep as python3-development-specific agent
+
+  Zero files reference `ecosystem-researcher-v1.1-rt-ica` by name (verified via grep), so chosen option has zero reference-update impact.
+
+  ### plugin.json Configuration
+
+  `plugins/python3-development/plugin.json` does not exist or has no explicit `agents` array. Auto-discovery handles agent registration. File deletion alone is sufficient — no json updates required.
+
+  ### Validation Commands (T7 Checklist)
+
+  After all deletions and reference updates, run:
+
+  **1. Agent count verification:**
+  ```bash
+  ls -1 plugins/python3-development/agents/*.md | wc -l
+  # Expected: 8 (Option B/A) or 9 (Option C)
+
+  ls -1 plugins/development-harness/agents/*.md | wc -l
+  # Expected: 12
+  ```
+
+  **2. Stale namespace references (must return zero):**
+  ```bash
+  grep -r "python3-development:\(feature-researcher\|codebase-analyzer\|context-gathering\|context-refinement\|plan-validator\|feature-verifier\|integration-checker\|doc-drift-auditor\|swarm-task-planner\|ecosystem-researcher\)" \
+    plugins/ .claude/rules/ --include="*.md" --exclude-dir=backlog --exclude-dir=agents
+  ```
+
+  **3. Plugin validation (both must exit 0):**
+  ```bash
+  uvx skilllint@latest check plugins/python3-development
+  uvx skilllint@latest check plugins/development-harness
+  ```
+
+  **4. Confirm KEEP agents exist (all 8 must print OK):**
+  ```bash
+  for f in python-cli-architect python-pytest-architect python-cli-design-spec \
+    python-code-reviewer code-reviewer semantic-code-search t0-baseline-capture \
+    tn-verification-gate; do
+    ls plugins/python3-development/agents/${f}.md && echo "OK: ${f}" || echo "MISSING: ${f}"
+  done
+  ```
+
+  **5. Confirm dh agents exist (all 10 must print OK):**
+  ```bash
+  for f in feature-researcher codebase-analyzer context-gathering context-refinement \
+    plan-validator feature-verifier integration-checker doc-drift-auditor \
+    swarm-task-planner ecosystem-researcher; do
+    ls plugins/development-harness/agents/${f}.md && echo "OK: ${f}" || echo "MISSING FROM DH: ${f}"
+  done
+  ```
+
+  **6. Pre-deletion diff verification (no python3-dev content missing from dh):**
+  ```bash
+  for agent in feature-researcher codebase-analyzer context-gathering context-refinement \
+    plan-validator feature-verifier integration-checker doc-drift-auditor \
+    swarm-task-planner ecosystem-researcher; do
+    diff plugins/python3-development/agents/${agent}.md \
+         plugins/development-harness/agents/${agent}.md \
+      && echo "IDENTICAL: ${agent}" || echo "DIFFERS: ${agent}"
+  done
+  ```
+
+  ### Execution Sequence
+
+  ```
+  T1 (Decision Gate)
+    ↓ produces plan/D1-ecosystem-researcher-decision.md
+  T2 (Delete 11 files per D1)
+    ↓ depends on T1 outcome for v1.1 handling
+  T3/T4/T5/T6 (Parallel reference updates to 4 files)
+    ├─ T3: .claude/rules/local-workflow.md
+    ├─ T4: plugins/python3-development/skills/orchestrate/SKILL.md
+    ├─ T5: plugins/python3-development/skills/python3-development/references/python-development-orchestration.md
+    └─ T6: plugins/python3-development/CLAUDE.md (or README.md)
+  T7 (Validation + commit)
+    ↓ depends on T3+T4+T5+T6 all complete
+  ```
+
+  ### Sync Checkpoints
+
+  - **After T1**: D1 decision is explicit and recorded in plan/D1-ecosystem-researcher-decision.md
+  - **After T2**: Agent file counts match expected (8 in p3d, 12 in dh)
+  - **After T3/T4/T5/T6**: All reference updates complete, no file has conflicting edits
+  - **T7**: All validation checks pass before committing

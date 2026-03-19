@@ -8,34 +8,7 @@ python_compatibility: 3.11+
 
 # Opinionated Python Development Skill
 
-## Role Identification (Mandatory)
-
-The model must identify its ROLE_TYPE and echo the following statement:
-
-```text
-My ROLE_TYPE is "<the role type>". I follow instructions given to "the model" and "<role name>".
-```
-
-Where:
-
-- `<the role type>` is either "orchestrator" or "sub-agent" based on the ROLE_TYPE identification rules in CLAUDE.md
-- `<role name>` is "orchestrator" if ROLE_TYPE is orchestrator, or "sub-agent" if ROLE_TYPE is sub-agent
-
-**Example for orchestrator:**
-
-```text
-My ROLE_TYPE is "orchestrator". I follow instructions given to "the model" and "orchestrator".
-```
-
-**Example for sub-agent:**
-
-```text
-My ROLE_TYPE is "sub-agent". I follow instructions given to "the model" and "sub-agent".
-```
-
----
-
-Orchestration guide for Python development using specialized agents and modern Python 3.11-3.14 patterns.
+Python development guide for modern Python 3.11-3.14 patterns.
 
 ## Skill Architecture
 
@@ -61,13 +34,6 @@ Orchestration guide for Python development using specialized agents and modern P
 - Example scripts demonstrating patterns
 - Configuration templates and boilerplate
 
-### Bundled Components (This Plugin)
-
-This plugin bundles the core agents and workflows needed for Python 3.11+ development and SAM-style execution:
-
-- Agents (bundled under `./plugins/python3-development/agents/`): `python-cli-architect`, `python-pytest-architect`, `python-cli-design-spec`, `swarm-task-planner`, plus SAM workflow agents (feature research/analysis/verification).
-- Skills (bundled): `modernpython`, `shebangpython`, and the SAM workflow skills (`add-new-feature`, `implement-feature`, `start-task`, `complete-implementation`).
-
 **System Tools** (install via package manager or uv):
 
 - `uv` - Python package and project manager (required)
@@ -81,15 +47,13 @@ This plugin bundles the core agents and workflows needed for Python 3.11+ develo
 
 **Installation Notes:**
 
-- Agents and slash commands must be installed separately in their respective directories
-- This skill provides orchestration guidance and references; agents perform actual implementation
 - Use the `uv` skill for comprehensive uv documentation and package management guidance
 
 ## Core Concepts
 
 ### Python Development Standards
 
-This skill provides orchestration patterns, modern Python 3.11+ standards, quality gates, and reference documentation for Python development.
+This skill provides modern Python 3.11+ standards, quality gates, and reference documentation for Python development.
 
 **Note on command templates**:
 
@@ -139,64 +103,11 @@ Understand the complexity vs portability trade-off when creating Python CLI scri
 
 **See:**
 
-- [Python Development Orchestration Guide](./references/python-development-orchestration.md) for detailed agent selection criteria
 - [Typer and Rich CLI Examples](./assets/typer_examples/index.md) for Rich width handling solutions
 
 ### Rich Panel and Table Width Handling
 
-**Common Problem**: Rich containers (Panel, Table) wrap content at 80 characters in CI/non-TTY environments, breaking URLs, commands, and structured output.
-
-**Two Solutions Depending on Context**:
-
-#### Solution 1: Plain Text (No Containers)
-
-For plain text output that shouldn't wrap:
-
-```python
-from rich.console import Console
-
-console = Console()
-
-# URLs, paths, commands - never wrap
-console.print(long_url, crop=False, overflow="ignore")
-```
-
-#### Solution 2: Rich Containers (Panel/Table)
-
-For Panel and Table that contain long content, `crop=False` alone doesn't work because containers calculate their own internal layout. Use `get_rendered_width()` helper with different patterns for Panel vs Table:
-
-```python
-from rich.console import Console, RenderableType
-from rich.measure import Measurement
-from rich.panel import Panel
-from rich.table import Table
-
-def get_rendered_width(renderable: RenderableType) -> int:
-    """Get actual rendered width of Rich renderable.
-
-    Handles color codes, Unicode, styling, padding, borders.
-    Works with Panel, Table, or any Rich container.
-    """
-    temp_console = Console(width=99999)
-    measurement = Measurement.get(temp_console, temp_console.options, renderable)
-    return int(measurement.maximum)
-
-console = Console()
-
-# Panel: Set Console width (Panel fills Console width)
-panel = Panel(long_content)
-panel_width = get_rendered_width(panel)
-console.width = panel_width  # Set Console width, NOT panel.width
-console.print(panel, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
-
-# Table: Set Table width (Table controls its own width)
-table = Table()
-table.add_column("Type", style="cyan", no_wrap=True)
-table.add_column("Value", style="green", no_wrap=True)
-table.add_row("Data", long_content)
-table.width = get_rendered_width(table)  # Set Table width
-console.print(table, crop=False, overflow="ignore", no_wrap=True, soft_wrap=True)
-```
+See [python-cli-architect Rich Tables reference](../python-cli-architect/references/rich-tables.md) — `get_rendered_width()` pattern that prevents wrapping at 80 columns in non-TTY environments, covering Panel, Table, and plain text output.
 
 **Executable Examples**: See [./assets/typer_examples/](./assets/typer_examples/index.md) for complete working scripts:
 
@@ -267,12 +178,6 @@ When adding try/except, answer: "What specific error do I expect, and what is my
 **The model MUST read the official mypy documentation examples before implementing type patterns.**
 
 For comprehensive type safety guidance including Generics, Protocols, TypedDict, Type Narrowing, attrs/dataclasses/pydantic comparison, and mypy configuration, see [Type Safety with Mypy Reference](./references/type-safety-mypy.md).
-
-## Agent Orchestration (Orchestrator Only)
-
-Load `/python3-development:orchestrate` for delegation routing, agent selection, and the mandatory pre-delegation protocol.
-
-This section is intentionally minimal — orchestration instructions live in the dedicated `orchestrate` skill so sub-agents that load `python3-development` do not read delegation routing meant for the orchestrator.
 
 ## Command Usage
 
@@ -350,278 +255,13 @@ Research tool preference for PEP documentation:
 → Provides detailed verification report
 ```
 
-<section ROLE_TYPE="orchestrator">
-
-## Core Workflows (Orchestrator Only)
-
-The orchestrator follows established workflow patterns for Python development tasks. See [Python Development Orchestration Guide](./references/python-development-orchestration.md) for complete details.
-
-### Task Planning Protocol (MANDATORY)
-
-**Every task MUST begin with discovery and planning before implementation.**
-
-**Why**: Skipping discovery leads to rework, missed patterns, and integration failures. The planning phase identifies context, patterns, and dependencies that inform implementation.
-
-**Phase 1: Discovery (before any implementation)**
-
-1. **Context Gathering**: Identify existing code patterns, project structure, and conventions
-2. **Dependency Analysis**: Determine what files/modules are affected
-3. **Tool Detection**: Run Linting Discovery Protocol to identify project tools
-4. **MCP Resource Check**: Identify available MCP tools for documentation and research
-
-**Phase 2: Planning (before writing code)**
-
-1. **Task Breakdown**: Use `swarm-task-planner` agent for complex tasks
-2. **Agent Selection**: Match task requirements to specialized agents
-3. **Quality Gates**: Define acceptance criteria and verification steps
-4. **Validation Strategy**: Identify tests and checks needed
-
-**Phase 3: Implementation**
-
-1. **Execute plan** using selected agents
-2. **Validate incrementally** against acceptance criteria
-3. **Run quality gates** (linting, type checking, tests)
-
-**Phase 4: Verification**
-
-1. **Run all tests**: `uv run pytest`
-2. **Check coverage**: Minimum 80% for standard code, 95%+ for critical paths
-3. **Lint validation**: Run detected git hook tool
-4. **Final review**: Use `python-code-reviewer` agent
-
-### Workflow Overview
-
-1. **TDD (Test-Driven Development)**: Design → Write Tests → Implement → Review → Validate
-2. **Feature Addition**: Requirements → Architecture → Plan → Implement → Test → Review
-3. **Code Review**: Self-Review → Standards Check → Agent Review → Fix → Re-validate
-4. **Refactoring**: Tests First → Refactor → Validate → Review
-5. **Debugging**: Reproduce → Trace → Fix → Test → Review
-
-Each workflow uses agent chaining with specific quality gates. See the orchestration guide for complete patterns, examples, and best practices.
-
-</section>
-
-## Linting Discovery Protocol
-
-**The model executes this discovery sequence before any linting or formatting operations**:
-
-**Reason**: Projects use different tool configurations. Discovery ensures compatibility with project standards and CI pipelines.
-
-### Discovery Sequence
-
-1. **Check for git hook tool configuration**:
-
-   ```bash
-   # Verify .pre-commit-config.yaml exists
-   test -f .pre-commit-config.yaml && echo "git hook config detected"
-   ```
-
-   **If found**: Detect and run the correct git hook tool:
-
-   ```bash
-   # Detect tool (outputs 'prek' or 'pre-commit')
-   uv run python -c "print(open('.git/hooks/pre-commit').readlines()[1].split()[4].rstrip(':') if __import__('pathlib').Path('.git/hooks/pre-commit').exists() else 'prek')"
-
-   # Or use the holistic-linting detection script if available
-   uv run holistic-linting/scripts/detect_hook_tool.py run --files <files>
-   ```
-
-   Detection logic: reads `.git/hooks/pre-commit` line 2, token 5 identifies the tool. Defaults to `prek`.
-
-   **Note**: prek is a Rust-based drop-in replacement for pre-commit. Both tools use the same `.pre-commit-config.yaml` and have identical CLI interfaces.
-
-   **Use detected tool with**: `uv run <detected-tool> run --files <files>` for ALL quality checks
-
-   - This runs the complete toolchain configured in the project
-   - Includes formatting, linting, type checking, and custom validators
-   - Matches exactly what runs in CI and blocks merges
-
-2. **Else check CI pipeline configuration**:
-
-   ```bash
-   # Check for GitLab CI or GitHub Actions
-   test -f .gitlab-ci.yml || find .github/workflows -name "*.yml" 2>/dev/null
-   ```
-
-   **If found**: Read the CI config to identify required linting tools and their exact commands
-
-   - Look for `ruff`, `mypy`, `basedpyright`, `pyright`, `bandit` invocations
-   - Note the exact commands and flags used
-   - Execute those specific commands to ensure CI compatibility
-
-3. **Else fallback to tool detection**:
-   - Check `pyproject.toml` `[project.optional-dependencies]` or `[dependency-groups]` for dev tools
-   - Use discovered tools with standard configurations
-
-### Format-First Workflow
-
-**The model always formats before linting.**
-
-**Reason**: Formatting operations (like `ruff format`) automatically fix many linting issues (whitespace, line length, quote styles). Running linting before formatting wastes context and creates false positives.
-
-**Mandatory sequence**:
-
-1. **Format**: `uv run ruff format <files>` or via git hook tool (pre-commit/prek)
-2. **Lint**: `uv run ruff check <files>` or via git hook tool
-3. **Type check**: Use project-configured type checker
-4. **Test**: `uv run pytest`
-
-**When using git hook tool (pre-commit or prek)**:
-
-```bash
-# Detect which tool is installed, then run it
-# Tool runs hooks in configured order (formatting first)
-uv run <detected-tool> run --files <files>
-```
-
-The `.pre-commit-config.yaml` already specifies correct ordering - trust it.
-
-### Type Checker Discovery
-
-**The model detects which type checker the project uses**:
-
-**Reason**: Projects standardize on different type checkers (basedpyright, pyright, mypy). Using the wrong one produces incompatible results.
-
-**Detection priority**:
-
-1. Check `.pre-commit-config.yaml` for `basedpyright`, `pyright`, or `mypy` hooks
-2. Check `pyproject.toml` for `[tool.basedpyright]`, `[tool.pyright]`, or `[tool.mypy]` sections
-3. Check `.gitlab-ci.yml` or GitHub Actions for type checker invocations
-
-**Common patterns**:
-
-- **basedpyright**: GitLab projects (native GitLab reporting format)
-- **pyright**: General TypeScript-style projects
-- **mypy**: Python-first type checking
-
-**Example detection**:
-
-```bash
-# Check .pre-commit-config.yaml (works with both pre-commit and prek)
-grep -E "basedpyright|pyright|mypy" .pre-commit-config.yaml
-
-# Check pyproject.toml
-grep -E "^\[tool\.(basedpyright|pyright|mypy)\]" pyproject.toml
-```
-
-Always detect from project configuration rather than assuming.
-
 ## Quality Gates
 
-**The model follows the Linting Discovery Protocol before executing quality gates.**
-
-**Every Python task must pass**:
-
-1. **Format-first**: `uv run ruff format <files>` (or via git hook tool)
-2. **Linting**: `uv run ruff check <files>` (clean, after formatting)
-3. **Type checking**: Use **detected type checker** (`basedpyright`, `pyright`, or `mypy`)
-4. **Tests**: `uv run pytest` (>80% coverage)
-5. **Modern patterns**: `/python3-development:modernpython` (no legacy typing)
-6. **Script compliance**: `/python3-development:shebangpython` (for standalone scripts)
-
-**Preferred execution method**:
-
-```bash
-# If .pre-commit-config.yaml exists (runs all checks in correct order):
-# First detect which tool is installed (pre-commit or prek), then:
-uv run <detected-tool> run --files <changed_files>
-
-# Else use individual tools in this exact sequence:
-uv run ruff format <files>           # 1. Format first
-uv run ruff check <files>            # 2. Lint after formatting
-uv run <detected-type-checker> <files>  # 3. Type check (basedpyright/pyright/mypy)
-uv run pytest                         # 4. Test
-```
-
-**For critical code** (payments, auth, security):
-
-- Coverage >95%
-- Mutation testing: `uv run mutmut run` (>90% score)
-- Security scan: `uv run bandit -r packages/`
-
-**CI Compatibility Verification**:
-
-After local quality gates pass, verify CI will accept the changes:
-
-1. If `.gitlab-ci.yml` exists: Check for additional validators not in pre-commit
-2. If `.github/workflows/*.yml` exists: Check for additional quality gates
-3. Ensure all CI-required checks are executed locally before claiming task completion
-
-### Linting Exception Conditions
-
-The model MUST NOT ignore or bypass linting errors UNLESS the code falls into one of these categories:
-
-**Acceptable Exceptions** (OK to ignore linting):
-
-1. **Vendored code** - Third-party code copied into the repository without modification
-2. **Examples of what-not-to-do** - Intentionally incorrect code for educational purposes
-3. **Code pinned to historic Python version** - Code requiring Python < 3.11 compatibility
-4. **Code for Python derivatives** - CircuitPython, MicroPython, or similar implementations
-
-**Unacceptable Exceptions** (MUST fix or escalate):
-
-If NONE of the above conditions apply, the model MUST:
-
-1. Fix the linting error at root cause
-2. If unable to fix, document the specific blocker
-3. Never add `# type: ignore`, `# noqa`, or similar suppressions without explicit user approval
-
-**Rule Codes That MUST Always Be Fixed** (never suppress):
-
-These rule codes indicate real code quality issues that must be resolved at root cause:
-
-- **BLE001** (blind-except): Replace generic `except Exception` with specific exception types
-- **D103** (missing-docstring-in-public-function): Add docstrings to public functions
-- **TRY300** (try-consider-else): Restructure try/except/else blocks properly
-
-**Per-File Exceptions in pyproject.toml** (acceptable):
-
-The following rules may be configured as per-file ignores in `pyproject.toml` `[tool.ruff.lint.per-file-ignores]`:
-
-- `**/scripts/**`: T201 (print), S (security), DOC, ANN401, PLR0911, PLR0917, PLC0415
-- `**/tests/**`: S, D, E501, ANN, DOC, PLC, SLF, PLR, EXE, N, T
-- `**/assets/**`: PLC0415, DOC
-- `typings/**`: N, ANN, A
-
-These configurations allow relaxed checking in appropriate contexts without inline suppressions.
-
-**Touched Files Must Be Clean**:
-
-When files are modified, moved, or renamed, all linting issues in those files MUST be resolved before committing. Touching a file means taking responsibility for its quality.
+See [python-cli-architect Quality Gate reference](../python-cli-architect/references/quality-gate.md) — mandatory linting, type checking, test, full-file review, and shebang validation steps that must pass before reporting work complete. Covers tool detection (prek vs pre-commit), format-first workflow, type checker discovery, linting exception conditions, and per-file ruff ignores.
 
 ## Standard Project Structure
 
-All Python projects use this directory layout:
-
-**Reason**: Consistent structure enables reliable automation and clear separation between user code and dependencies.
-
-```text
-project-root/
-├── pyproject.toml
-├── packages/
-│   └── package_name/      # Package code (hyphens in project name → underscores)
-│       ├── __init__.py
-│       └── ...
-├── tests/
-├── scripts/
-├── sessions/              # Optional: cc-sessions framework
-└── README.md
-```
-
-**Package Directory Naming**:
-
-- Project name: `my-cli-tool` → Package directory: `packages/my_cli_tool/`
-- Hyphens in project names become underscores in package directories
-- The `packages/` directory distinguishes user code from external dependencies
-
-**Hatchling Configuration**:
-
-```toml
-[tool.hatchling.build.targets.wheel]
-packages = ["packages/package_name"]
-```
-
-This structure is consistent across all projects and enables clear separation of concerns.
+See [python-cli-architect Project Structure reference](../python-cli-architect/references/project-structure.md) — `packages/{name}/` layout, Hatchling configuration, and hyphen-to-underscore naming rule.
 
 ## Integration
 
@@ -686,30 +326,9 @@ When creating new Python projects, copy standard configuration files from the sk
 
 These templates implement the patterns documented in [User Project Conventions](./references/user-project-conventions.md) and ensure all projects follow the same standards for version management, linting, formatting, and build configuration.
 
-<section ROLE_TYPE="orchestrator">
-
-## Common Patterns to Follow (Orchestrator Only)
-
-**Delegation Pattern**:
-
-- Delegating without reading guide — ALWAYS read orchestration guide first, state workflow pattern
-- Sending one massive task to agent — break into focused delegations with bounded scope
-- Writing Python code directly — Task is Implement with subagent_type="python3-development:python-cli-architect"
-- Skipping validation steps — complete workflow: implement → test → review → validate
-- Pre-deciding technical implementations — let agents determine HOW based on requirements
-- Implementing and testing in same step — chain: subagent_type="python3-development:python-cli-architect" then subagent_type="python3-development:python-pytest-architect"
-
-**Reason**: Orchestrators coordinate workflows. Agents have specialized expertise and focused tool access for implementation.
-
-For detailed pattern examples and corrections, see [Anti-Patterns section](./references/python-development-orchestration.md#anti-patterns-to-avoid) in the orchestration guide.
-
-</section>
-
 ## Detailed Documentation
 
 ### Reference Documentation
-
-**Core Orchestration Guide**: [Python Development Orchestration](./references/python-development-orchestration.md) - Detailed workflow patterns for TDD, feature addition, refactoring, and code review with comprehensive agent coordination strategies
 
 **PEP 723 Specification**: [PEP 723 - Inline Script Metadata](./references/PEP723.md) - User-friendly guide to PEP 723 inline script metadata with examples and migration patterns
 
@@ -752,27 +371,8 @@ These skills are bundled with this plugin and available as slash commands:
 
 ## Summary
 
-### Python Development Skill for All Roles
-
-**For All Roles (Orchestrators and Agents)**:
-
 - Modern Python 3.11+ standards and patterns
 - Quality gates: ruff, pyright, mypy, pytest (>80% coverage)
 - Command standards: /python3-development:modernpython, /python3-development:shebangpython
 - Reference documentation for 50+ modern Python modules
 - Tool and library registry
-
-<section ROLE_TYPE="orchestrator">
-
-**For Orchestrators Only**:
-
-1. Read the [orchestration guide](./references/python-development-orchestration.md) before delegating
-2. Choose the right agent based on task requirements
-3. Provide clear context: file paths, success criteria, scope boundaries
-4. Chain agents for complex workflows (design → test → implement → review)
-5. Instruct agents to validate with quality gates and commands
-6. Enable uv skill for package management
-
-**Orchestration = Coordination + Delegation + Validation**
-
-</section>

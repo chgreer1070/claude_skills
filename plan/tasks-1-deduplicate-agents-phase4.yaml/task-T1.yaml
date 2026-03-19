@@ -1,0 +1,130 @@
+id: T1
+title: Ecosystem-researcher v1.1 decision gate
+status: complete
+priority: 3
+complexity: medium
+description: |-
+  **Status**: COMPLETE
+  **Dependencies**: None
+  **Priority**: 1
+  **Complexity**: Low
+  **Agent**: general-purpose
+  **Skills**: []
+  **Accuracy Risk**: medium
+  **Can parallelize with**: nothing — T2 depends on this decision
+
+  ### Context
+
+  `plugins/python3-development/agents/ecosystem-researcher-v1.1-rt-ica.md` is not a straight
+  duplicate of `plugins/development-harness/agents/ecosystem-researcher.md`. The v1.1 variant
+  has `WebSearch`, `WebFetch`, `Write`, `Edit` in its tool list and describes itself as a
+  "Python projects" researcher. The dh version intentionally uses MCP-only tools and BLOCKs
+  when no MCP server is available (this is a design constraint, not an omission).
+
+  This task records the explicit D1 decision so T2 knows whether to also delete the v1.1 file,
+  rename it, or merge its tools into dh before deletion. No file changes are made in this task.
+
+  Architecture spec (plan/architect-deduplicate-agents-phase4.md §Decision Point D1) defines
+  three options:
+
+  - **Option A**: Add WebSearch/WebFetch to dh ecosystem-researcher, update description,
+    then delete v1.1.
+  - **Option B** (recommended): Delete v1.1 as-is. The BLOCK behavior is intentional.
+    No capability is lost because direct-web fallback is an anti-pattern for this agent.
+  - **Option C**: Rename v1.1 to `python-ecosystem-researcher.md` and keep it as a
+    python3-development-specific agent.
+
+  ### Objective
+
+  Produce a written decision record (one of: Option A, B, or C) for the v1.1 file, with
+  rationale, so T2 can execute the correct deletion or rename action.
+
+  ### Inputs
+
+  - `plugins/python3-development/agents/ecosystem-researcher-v1.1-rt-ica.md` — read frontmatter
+    and body to confirm current tool list and framing
+  - `plugins/development-harness/agents/ecosystem-researcher.md` — read frontmatter and body
+    to confirm dh canonical version
+  - Architecture spec § Decision Point D1:
+    `plan/architect-deduplicate-agents-phase4.md` lines 65-116
+  - Feature context § Q1:
+    `plan/feature-context-deduplicate-agents-phase4.md` lines 153-161
+
+  ### Requirements
+
+  1. Read both agent files (v1.1 and dh) in full.
+  2. Confirm the tool set difference: v1.1 has `WebSearch`, `WebFetch`; dh uses `mcp__*`
+     wildcards only and explicitly BLOCKs on missing MCP servers.
+  3. Confirm whether any skill file in `plugins/python3-development/skills/` or
+     `.claude/rules/` references `ecosystem-researcher-v1.1-rt-ica` by name:
+     ```bash
+     grep -r "ecosystem-researcher-v1.1" /home/ubuntulinuxqa2/repos/claude_skills/plugins/ /home/ubuntulinuxqa2/repos/claude_skills/.claude/rules/ --include="*.md"
+     ```
+     If zero matches: v1.1 has no live references, deletion is safe regardless of option chosen.
+  4. Choose one of Option A / B / C. The architecture spec recommends Option B.
+  5. Write the decision record to `plan/D1-ecosystem-researcher-decision.md`.
+
+  ### Constraints
+
+  - Do NOT edit any agent file in this task. This task is read-only plus decision record.
+  - Do NOT write Step 0 (dh edit for Option A) in this task — that is part of T2.
+  - If choosing Option A, flag that T2 must include a sub-step to update the dh agent
+    BEFORE deleting v1.1 (the dh edit must use `plugin-creator:contextual-ai-documentation-optimizer`
+    per MEMORY.md constraint).
+
+  ### Expected Outputs
+
+  - `plan/D1-ecosystem-researcher-decision.md` containing:
+    - Chosen option (A, B, or C)
+    - Rationale (2-4 sentences)
+    - Explicit instruction for T2: what to do with `ecosystem-researcher-v1.1-rt-ica.md`
+    - If Option A: note that T2 must update dh agent before deleting v1.1
+
+  ### Acceptance Criteria
+
+  1. `plan/D1-ecosystem-researcher-decision.md` exists.
+  2. File contains exactly one of: `Decision: Option A`, `Decision: Option B`,
+     `Decision: Option C`.
+  3. File contains a rationale section (at least 2 sentences).
+  4. File contains explicit T2 instruction: either `Delete ecosystem-researcher-v1.1-rt-ica.md`,
+     `Rename to python-ecosystem-researcher.md`, or `Update dh then delete v1.1`.
+  5. The zero-references grep result is recorded in the decision file.
+
+  ### Verification Steps
+
+  1. Read `plan/D1-ecosystem-researcher-decision.md` and confirm structure matches criteria.
+  2. Confirm grep command was run and result is recorded:
+     ```bash
+     grep -r "ecosystem-researcher-v1.1" /home/ubuntulinuxqa2/repos/claude_skills/plugins/ /home/ubuntulinuxqa2/repos/claude_skills/.claude/rules/ --include="*.md"
+     ```
+  3. Confirm the chosen option is compatible with T2's deletion scope (Option B or A → delete;
+     Option C → rename only, deletion list shrinks by 1).
+
+  ### CoVe Checks
+
+  Key claims to verify:
+
+  - Claim: v1.1 has `WebSearch`, `WebFetch`; dh does not.
+  - Claim: No skill file references `ecosystem-researcher-v1.1-rt-ica` by name.
+  - Claim: dh version explicitly BLOCKs on missing MCP servers (by design, not omission).
+
+  Verification questions:
+
+  1. Does `tools:` in `ecosystem-researcher-v1.1-rt-ica.md` frontmatter contain `WebSearch`
+     and `WebFetch`? (Read the file — do not rely on the spec.)
+  2. Does the dh `ecosystem-researcher.md` description contain "BLOCKs if none available"?
+  3. Does `grep -r "ecosystem-researcher-v1.1"` return zero results?
+
+  Evidence to collect: output of the grep command + direct read of both frontmatters.
+
+  Revision rule: if any check fails (e.g., a skill file does reference v1.1), update the
+  decision rationale to account for that reference before writing the decision file.
+
+  ### Handoff
+
+  Return:
+  - Path to `plan/D1-ecosystem-researcher-decision.md`
+  - One-line summary of the chosen option and rationale
+  - Whether T2 requires a dh-edit sub-step (Option A only)
+
+  ---

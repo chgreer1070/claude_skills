@@ -33,6 +33,159 @@ _TASK_SECTION_RE = re.compile(r"^(?:#{1,4})\s+(?:Task\s+)?([A-Za-z]?\d+(?:\.\d+)
 # Delimiter for splitting body into segments (same logic as frontmatter_reader)
 _DELIMITER_RE = re.compile(r"^---+\s*$", re.MULTILINE)
 
+# Bold field pattern: **FieldName**: value
+# Matches lines like: **Status**: NOT STARTED
+#                     **Can parallelize with**: T3, T4
+_BOLD_FIELD_RE = re.compile(r"^\*\*([^*]+)\*\*\s*:\s*(.*)$", re.MULTILINE)
+
+# Map bold field display names (case-insensitive) to YAML key names
+_BOLD_FIELD_MAP: dict[str, str] = {
+    "agent": "agent",
+    "dependencies": "dependencies",
+    "priority": "priority",
+    "complexity": "complexity",
+    "skills": "skills",
+    "can parallelize with": "parallelize-with",
+    "status": "status",
+    "accuracy risk": "accuracy-risk",
+    "analysis method": "analysis-method",
+}
+
+# Status normalization map for bold field values
+_BOLD_STATUS_MAP: dict[str, str] = {
+    "not started": "not-started",
+    "in progress": "in-progress",
+    "complete": "complete",
+    "blocked": "blocked",
+    "deferred": "deferred",
+    "skipped": "skipped",
+}
+
+
+def _parse_dependency_value(raw: str) -> list[str]:
+    """Parse a dependency field value into a list of task ID strings.
+
+    Handles:
+    - ``None`` or ``none`` -> ``[]``
+    - ``T1`` -> ``["T1"]``
+    - ``T1, T2`` -> ``["T1", "T2"]``
+
+    Args:
+        raw: Raw string value from a bold field.
+
+    Returns:
+        List of task ID strings, or empty list for None/empty values.
+    """
+    stripped = raw.strip()
+    if not stripped or stripped.lower() in {"none", "n/a", "-", "nothing", "nothing — t2 depends on this decision"}:
+        return []
+    # Split on comma, strip whitespace, filter empty
+    parts = [p.strip() for p in stripped.split(",") if p.strip()]
+    # Only keep values that look like task IDs (alphanumeric patterns)
+    result: list[str] = []
+    for part in parts:
+        # Accept "T1", "T2", "1", "T1.1" etc — reject long prose phrases
+        if TASK_ID_PATTERN.match(part):
+            result.append(part)
+        elif re.match(r"^[A-Za-z]?\d+", part):
+            # Partial match — take leading task-ID token
+            m = re.match(r"^[A-Za-z]?\d+(?:\.\d+)?", part)
+            if m:
+                result.append(m.group(0))
+    return result
+
+
+def _parse_skills_value(raw: str) -> list[str]:
+    """Parse a skills field value into a list of skill name strings.
+
+    Handles:
+    - ``[]`` -> ``[]``
+    - ``["skill-name"]`` -> ``["skill-name"]``
+    - ``skill-name`` -> ``["skill-name"]``
+
+    Args:
+        raw: Raw string value from a bold field.
+
+    Returns:
+        List of skill name strings.
+    """
+    stripped = raw.strip()
+    if not stripped or stripped in {"[]", "none", "None"}:
+        return []
+    # Handle JSON-like list syntax: ["skill1", "skill2"]
+    if stripped.startswith("[") and stripped.endswith("]"):
+        inner = stripped[1:-1].strip()
+        if not inner:
+            return []
+        # Split on commas, strip quotes and whitespace
+        parts = [p.strip().strip('"').strip("'") for p in inner.split(",") if p.strip()]
+        return [p for p in parts if p]
+    # Plain comma-separated or single value
+    parts = [p.strip().strip('"').strip("'") for p in stripped.split(",") if p.strip()]
+    return [p for p in parts if p]
+
+
+def _extract_bold_fields(prose: str) -> dict[str, object]:
+    """Extract ``**FieldName**: value`` patterns from task prose text.
+
+    Parses lines matching the bold-field pattern and maps display names to
+    canonical YAML keys.  Values are normalized:
+
+    - ``status``: space-separated variants normalized to kebab-case
+      (``NOT STARTED`` -> ``not-started``)
+    - ``dependencies``: comma-separated task IDs parsed into a list;
+      ``None`` maps to ``[]``
+    - ``skills``: JSON-like or comma-separated list parsed into a list;
+      ``[]`` maps to ``[]``
+    - ``priority``: coerced to int when numeric
+    - ``complexity``: lowercased
+
+    Args:
+        prose: Raw markdown prose text from a ``## TN:`` task section.
+
+    Returns:
+        Dict mapping canonical YAML key names to normalized values.
+        Only recognized field names are included.
+    """
+    result: dict[str, object] = {}
+    for match in _BOLD_FIELD_RE.finditer(prose):
+        field_display = match.group(1).strip()
+        raw_value = match.group(2).strip()
+        yaml_key = _BOLD_FIELD_MAP.get(field_display.lower())
+        if yaml_key is None:
+            continue
+
+        if yaml_key == "status":
+            normalized = _BOLD_STATUS_MAP.get(raw_value.lower())
+            if normalized is None:
+                # Try upper-case variant (e.g. "COMPLETE")
+                normalized = _BOLD_STATUS_MAP.get(raw_value.upper().replace("_", " ").replace("-", " "))
+            if normalized is None:
+                # Store as-is; normalizer will handle it
+                result[yaml_key] = raw_value
+            else:
+                result[yaml_key] = normalized
+
+        elif yaml_key == "dependencies":
+            result[yaml_key] = _parse_dependency_value(raw_value)
+
+        elif yaml_key == "skills":
+            result[yaml_key] = _parse_skills_value(raw_value)
+
+        elif yaml_key == "priority":
+            try:
+                result[yaml_key] = int(raw_value)
+            except (ValueError, TypeError):
+                result[yaml_key] = raw_value
+
+        elif yaml_key == "complexity":
+            result[yaml_key] = raw_value.lower()
+
+        else:
+            result[yaml_key] = raw_value
+
+    return result
+
 
 def _extract_task_id_title_from_entry(entry: dict) -> tuple[str, str] | None:
     """Extract task ID and title from a ``tasks:`` list entry.

@@ -1,0 +1,120 @@
+id: T6
+title: Add forwarding note to plugins/python3-development/CLAUDE.md
+status: not-started
+priority: 3
+complexity: medium
+description: |-
+  **Status**: NOT STARTED
+  **Dependencies**: T2
+  **Priority**: 3
+  **Complexity**: Low
+  **Agent**: general-purpose
+  **Skills**: []
+  **Accuracy Risk**: low
+  **Can parallelize with**: T3, T4, T5
+
+  ### Context
+
+  A developer reading `plugins/python3-development/` after Phase 4 will notice that 10 agents
+  are missing with no explanation. The architecture spec (§Step 5) specifies adding a
+  forwarding note to the plugin's developer-facing document (`CLAUDE.md` or `README.md`).
+
+  The note should explain: the agents were moved to development-harness in Phase 4, which
+  plugin to use to invoke them, and which agents remain in python3-development.
+
+  The architecture spec provides the exact content to add (lines 259-275). Before editing,
+  the target file must be confirmed to exist.
+
+  ### Objective
+
+  Add a Phase 4 Agent Consolidation forwarding note near the top of
+  `plugins/python3-development/CLAUDE.md` (or equivalent developer-facing file if CLAUDE.md
+  does not exist).
+
+  ### Inputs
+
+  - Architecture spec §Step 5: `plan/architect-deduplicate-agents-phase4.md` lines 254-281
+    (includes exact content to add)
+  - Target file: `plugins/python3-development/CLAUDE.md` — verify existence first:
+    ```bash
+    ls /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/CLAUDE.md
+    ls /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/README.md
+    ```
+    Use whichever exists. If neither exists, create `CLAUDE.md` with only the forwarding
+    note section (do not invent other content).
+
+  ### Requirements
+
+  1. Confirm which developer-facing document exists (`CLAUDE.md` or `README.md`).
+  2. If neither exists: create `plugins/python3-development/CLAUDE.md` with the forwarding
+     note as the sole content.
+  3. If the file exists: read it in full, then insert the following section near the top
+     (after the first `# heading` or before the first `## heading`, whichever comes first):
+     ```markdown
+     ## Agent Consolidation (Phase 4, 2026-03-18)
+
+     Shared workflow agents (feature-researcher, codebase-analyzer, context-gathering,
+     context-refinement, plan-validator, feature-verifier, integration-checker,
+     doc-drift-auditor, swarm-task-planner, ecosystem-researcher) were moved to the
+     `development-harness` plugin in Phase 4. They no longer exist in this plugin.
+
+     Use `@dh:{agent-name}` to invoke these agents.
+
+     Agents remaining in this plugin are Python-domain-specific:
+     python-cli-architect, python-pytest-architect, python-cli-design-spec,
+     python-code-reviewer, code-reviewer, semantic-code-search,
+     t0-baseline-capture, tn-verification-gate.
+     ```
+  4. Do not modify any other section of the file.
+  5. Run prek lint on the modified file.
+
+  ### Constraints
+
+  - Insert the forwarding note as a new `## Agent Consolidation` section — do not replace
+    or remove any existing content.
+  - Do not add any content beyond what the architecture spec specifies in the forwarding note.
+  - If the file is very large (>100 lines), position the note after the first `## ` heading
+    that is not the title, so it is visible early in the file without disrupting the intro.
+
+  ### Expected Outputs
+
+  - Modified `plugins/python3-development/CLAUDE.md` (or `README.md`) with the
+    `## Agent Consolidation (Phase 4, 2026-03-18)` section present near the top.
+
+  ### Acceptance Criteria
+
+  1. The forwarding note section exists in the target file:
+     ```bash
+     grep -c "Agent Consolidation (Phase 4, 2026-03-18)" \
+       /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/CLAUDE.md
+     ```
+     Expected: `1` (or `README.md` if CLAUDE.md not used).
+  2. The note lists all 10 deleted agent names.
+  3. The note contains `@dh:{agent-name}` usage instruction.
+  4. The note lists all 8 KEEP agents.
+  5. `uv run prek run --files` exits 0 on the modified file.
+
+  ### Verification Steps
+
+  1. Grep for the section heading to confirm it was inserted:
+     ```bash
+     grep -n "Agent Consolidation" \
+       /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/CLAUDE.md
+     ```
+
+  2. Read the section and confirm all 10 deleted agents and all 8 KEEP agents are listed.
+
+  3. Run prek lint:
+     ```bash
+     uv run prek run --files /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/CLAUDE.md
+     ```
+
+  ### Handoff
+
+  Return:
+  - Which file was modified (CLAUDE.md or README.md)
+  - Whether the file was created new or edited
+  - Confirmation that the forwarding note section is present with correct content
+  - Prek lint result
+
+  ---

@@ -10,7 +10,8 @@ metadata:
   status: open
   issue: '#850'
   groomed: '2026-03-19'
-  last_synced: '2026-03-19T03:51:43Z'
+  last_synced: '2026-03-19T03:52:38Z'
+  plan: plan/tasks-1-deduplicate-agents-phase4.md
 ---
 
 ## RT-ICA
@@ -204,6 +205,208 @@ If v1.1 is deprecated or abandoned, confirm with domain expert before discarding
 - [ ] `.continuehere.md` reviewed; stale agent references updated or noted
 - [ ] `.claude/audits/agent-map.json` (if present) reflects 6 remaining agents in python3-development
 - [ ] Backlog items with agent references reviewed; out-of-date references noted for future grooming
+</div>
+
+### Files
+
+<div><sub>2026-03-19T03:52:09Z</sub>
+
+**Files to DELETE** (10 agent files):
+1. `plugins/python3-development/agents/feature-researcher.md` — DELETE
+2. `plugins/python3-development/agents/codebase-analyzer.md` — DELETE
+3. `plugins/python3-development/agents/context-gathering.md` — DELETE
+4. `plugins/python3-development/agents/context-refinement.md` — DELETE
+5. `plugins/python3-development/agents/plan-validator.md` — DELETE
+6. `plugins/python3-development/agents/feature-verifier.md` — DELETE
+7. `plugins/python3-development/agents/integration-checker.md` — DELETE
+8. `plugins/python3-development/agents/doc-drift-auditor.md` — DELETE
+9. `plugins/python3-development/agents/swarm-task-planner.md` — DELETE
+10. `plugins/python3-development/agents/ecosystem-researcher.md` — DELETE (AFTER ecosystem-researcher-v1.1-rt-ica decision)
+11. `plugins/python3-development/agents/ecosystem-researcher-v1.1-rt-ica.md` — DELETE (contingent on v1.1 reconciliation; if canonical, copy to dh first)
+
+**Files to UPDATE** (skill and reference documentation):
+1. `plugins/python3-development/skills/add-new-feature/SKILL.md` — UPDATE
+   - Change agent delegations: feature-researcher, codebase-analyzer, swarm-task-planner, plan-validator, context-gathering from @python3-development to @development-harness
+   - Keep python-cli-design-spec as @python3-development
+
+2. `plugins/python3-development/skills/implement-feature/SKILL.md` — UPDATE
+   - Verify no hard-coded agent routing (likely delegates via task file agent assignment)
+   - If skill contains `@python3-development:` references, update to @development-harness
+
+3. `plugins/python3-development/skills/complete-implementation/SKILL.md` — UPDATE
+   - Change delegations: feature-verifier, integration-checker, doc-drift-auditor, context-refinement from @python3-development to @development-harness
+   - Keep code-reviewer as @python3-development
+   - Verify service-docs-maintainer delegation routes to @development-harness (already correct, as it only exists in dh)
+
+4. `plugins/python3-development/skills/python3-development/references/python-development-orchestration.md` — UPDATE
+   - Phase 1 agent delegation table: change @python3-development:feature-researcher, codebase-analyzer, context-gathering, plan-validator to @development-harness equivalents
+   - Phase 2 agent delegation table: if agents are listed, update
+   - Phase 3 agent delegation table: change @python3-development:code-reviewer, feature-verifier, integration-checker, doc-drift-auditor, context-refinement, service-docs-maintainer to @development-harness (except code-reviewer stays @python3-development)
+   - Agent file location table: remove the 10 agents from python3-development column
+
+5. `.claude/rules/local-workflow.md` — UPDATE
+   - "Agent Delegation Sequence" table (Phase 1, 2, 3): replace @python3-development agents with @development-harness
+   - "Agent File Locations" table: remove python3-development entries for the 10 agents; keep dh entries
+   - Example delegation prompts: if they reference python3-development agents, update to dh
+
+6. `plugins/python3-development/README.md` — UPDATE
+   - Agent inventory section: remove 10 agents from list
+   - Update agent count from 16 to 6
+   - Add section: "Planning and Verification Agents" → forwarding note: "Planning agents (feature-researcher, codebase-analyzer, etc.) and generic quality gates have been consolidated into the development-harness plugin. See @development-harness agent roster."
+   - Retain description of remaining 6 domain-specific agents (code-reviewer, python-cli-architect, python-pytest-architect, python-code-reviewer, t0-baseline-capture, tn-verification-gate)
+
+**Files to VERIFY** (should not need changes, but check for stale refs):
+- `plugins/python3-development/plugin.json` — if it contains explicit `"agents": [...]` array, remove the 10 agent paths; otherwise verify auto-discovery works correctly after deletion
+- `plugins/python3-development/CLAUDE.md` (if present) — verify no agent references
+- Backlog item files in `.claude/backlog/` — review for stale @python3-development:agent-name references (note for future grooming, not a blocking issue)
+
+**Expected git diff output** (after completion):
+```
+Deleted: 10 agent files (ecosystem-researcher may include v1.1 variant)
+Modified: 6 files (4 SKILL.md + 2 references)
+Unchanged: plugin.json version (auto-bumped by pre-commit hook)
+```
+</div>
+
+### Effort
+
+<div><sub>2026-03-19T03:52:21Z</sub>
+
+**Sizing: Medium (M)**
+
+**Reasoning**:
+
+**Mechanical work** (straightforward, low risk):
+- 10 file deletions via `rm` or Edit tool — ~5 minutes
+- 1 README update (add forwarding note, reduce agent count) — ~10 minutes
+- Pre-commit hook validates; no additional CI work required
+
+**Reference updates** (moderate effort, high precision required):
+- `python-development-orchestration.md` — 3 agent tables to update (Phase 1, 2, 3), ~20-30 lines each. Requires careful namespace substitution. ~30 minutes
+- `local-workflow.md` — agent delegation documentation, similar scope. ~30 minutes
+- `add-new-feature`, `implement-feature`, `complete-implementation` SKILL.md files — 3-5 delegations per file, verify routing logic. ~20 minutes total
+- Grep validation (confirm 0 matches for removed agents after deletion) — ~10 minutes
+
+**Risk/Uncertainty factors**:
+- **Ecosystem-researcher versioning** (BLOCKING): 1-2 hours if domain expert consultation is needed; 10 minutes if decision is clear. Assume 30 minutes as midpoint.
+- **plugin.json auto-discovery** (low risk): If plugin.json lists agents explicitly, removal requires update. Likely a 5-minute fix; flagged for verification
+- **Task file agent routing** (low risk): If a skill internally delegates to tasks with python3-development agents, those task files must be updated. Mitigated by accepting criteria checks; estimated ~10 minutes if found
+
+**Total effort estimate**:
+- Ecosystem-researcher decision: 30 minutes
+- File deletions + README: 15 minutes
+- Reference updates (orchestration, workflow): 60 minutes
+- Skill SKILL.md updates: 20 minutes
+- Validation (grep, pre-commit, plugin validator): 15 minutes
+- **Subtotal: 140 minutes (~2.5 hours)**
+
+**Effort class: Medium (M)**
+- Not Small because reference updates span 4 documentation files and require precise namespace changes
+- Not Large because scope is well-defined, no architectural refactoring, and dh agents are already in place
+- Effort is primarily documentation/configuration, not implementation
+</div>
+
+### Output / Evidence
+
+<div><sub>2026-03-19T03:52:38Z</sub>
+
+**Verification checklist to confirm work is done**:
+
+1. **Agent files deleted** (use `ls` or `git status`):
+   ```bash
+   ls -la plugins/python3-development/agents/
+   # Should show 6 remaining agents (code-reviewer, python-cli-architect, python-pytest-architect, python-code-reviewer, t0-baseline-capture, tn-verification-gate)
+   # Should NOT show: feature-researcher.md, codebase-analyzer.md, context-gathering.md, context-refinement.md, plan-validator.md, feature-verifier.md, integration-checker.md, doc-drift-auditor.md, swarm-task-planner.md, ecosystem-researcher.md
+   git status --short plugins/python3-development/agents/
+   # Should show D (deleted) for each of the 10 files
+   ```
+
+2. **Dh agents present and correct**:
+   ```bash
+   ls -la plugins/development-harness/agents/ | grep -E "(feature-researcher|codebase-analyzer|context-gathering|context-refinement|plan-validator|feature-verifier|integration-checker|doc-drift-auditor|swarm-task-planner|ecosystem-researcher)"
+   # All 10 files should be listed
+   wc -l plugins/development-harness/agents/ecosystem-researcher.md
+   # Should match v1.1 line count (17,426) if v1.1 was canonical, or match original (405) if v1.0 was kept
+   ```
+
+3. **No dangling references** (confirm 0 matches):
+   ```bash
+   grep -r "@python3-development:feature-researcher\|@python3-development:codebase-analyzer\|@python3-development:context-gathering\|@python3-development:context-refinement\|@python3-development:plan-validator\|@python3-development:feature-verifier\|@python3-development:integration-checker\|@python3-development:doc-drift-auditor\|@python3-development:swarm-task-planner\|@python3-development:ecosystem-researcher" plugins/python3-development/
+   # Output should be empty (0 matches)
+   ```
+
+4. **Skills updated**:
+   ```bash
+   grep "@development-harness:feature-researcher" plugins/python3-development/skills/add-new-feature/SKILL.md
+   grep "@development-harness:context-refinement" plugins/python3-development/skills/complete-implementation/SKILL.md
+   # Both should return matches (non-empty)
+   ```
+
+5. **Reference docs updated**:
+   ```bash
+   grep "@development-harness" plugins/python3-development/skills/python3-development/references/python-development-orchestration.md | wc -l
+   # Should show non-zero count (multiple agent references now use @development-harness)
+   grep "@development-harness" .claude/rules/local-workflow.md | wc -l
+   # Should show non-zero count
+   ```
+
+6. **README updated**:
+   ```bash
+   grep -A 5 "Planning and Verification Agents" plugins/python3-development/README.md
+   # Should show forwarding note pointing to development-harness
+   grep -i "agent count\|16 agents\|6 agents" plugins/python3-development/README.md
+   # Should show "6 agents" or similar (not 16)
+   ```
+
+7. **Pre-commit hooks pass**:
+   ```bash
+   uv run prek run --files plugins/python3-development/plugin.json
+   # Should show no errors; plugin.json version should be bumped
+   git diff plugins/python3-development/plugin.json
+   # Should show version increment (e.g., 1.3.0 → 1.3.1)
+   ```
+
+8. **Plugin validator passes**:
+   ```bash
+   uv run prek run --files plugins/python3-development/skills/add-new-feature/SKILL.md
+   uv run prek run --files plugins/development-harness/agents/feature-researcher.md
+   # Both should show no linting errors
+   ```
+
+9. **Commit message**:
+   ```
+   refactor(python3-development): deduplicate agents, consolidate in development-harness
+
+   Phase 4 removes 10 generic agents from python3-development:
+   - feature-researcher, codebase-analyzer, context-gathering, context-refinement
+   - plan-validator, feature-verifier, integration-checker, doc-drift-auditor
+   - swarm-task-planner, ecosystem-researcher
+
+   development-harness becomes the sole provider of these agents.
+
+   Skills (add-new-feature, implement-feature, complete-implementation) updated
+   to route delegations to @development-harness agents.
+
+   Reference docs (python-development-orchestration.md, local-workflow.md) updated.
+
+   README updated with forwarding note and revised agent count (16 → 6).
+
+   python3-development retains 6 domain-specific agents (code-reviewer,
+   python-cli-architect, python-pytest-architect, python-code-reviewer,
+   t0-baseline-capture, tn-verification-gate).
+
+   Fixes #850
+   ```
+
+**Expected output after `git add -A && git commit -m "..."` && git status`**:
+```
+On branch main
+nothing to commit, working tree clean
+```
+
+**Regression test** (verify the deduplication did not break orchestration):
+- Ask a skill user to invoke `/python3-development:add-new-feature` — it should route to dh agents without errors
+- No skill load-time failures should occur when agents are referenced by @development-harness namespace
 </div>
 
 

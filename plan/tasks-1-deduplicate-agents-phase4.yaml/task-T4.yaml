@@ -1,0 +1,116 @@
+id: T4
+title: Update plugins/python3-development/skills/orchestrate/SKILL.md
+status: not-started
+priority: 3
+complexity: medium
+description: |-
+  **Status**: NOT STARTED
+  **Dependencies**: T2
+  **Priority**: 3
+  **Complexity**: Low
+  **Agent**: general-purpose
+  **Skills**: []
+  **Accuracy Risk**: low
+  **Can parallelize with**: T3, T5, T6
+
+  ### Context
+
+  `plugins/python3-development/skills/orchestrate/SKILL.md` references `swarm-task-planner`
+  as a delegation target. After T2 deletes that agent from python3-development, any reference
+  using `python3-development:swarm-task-planner` resolves to a missing agent.
+
+  Per the architecture spec (§Step 3), the codebase analysis confirms that `orchestrate/SKILL.md`
+  also references `python-cli-architect`, `python-pytest-architect`, `python-code-reviewer`,
+  and `python-cli-design-spec` — these are ALL KEEP agents and must NOT be changed.
+
+  Only the `swarm-task-planner` reference crosses the namespace boundary after Phase 4.
+
+  ### Objective
+
+  Update `plugins/python3-development/skills/orchestrate/SKILL.md` to replace
+  `python3-development:swarm-task-planner` with `dh:swarm-task-planner`. Leave all other
+  agent references unchanged.
+
+  ### Inputs
+
+  - `/home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/skills/orchestrate/SKILL.md`
+    — the file to edit
+  - Architecture spec §Step 3: `plan/architect-deduplicate-agents-phase4.md` lines 214-231
+  - Codebase analysis §orchestrate/SKILL.md: `plan/codebase/AGENTS.md` lines 251-266
+
+  ### Requirements
+
+  1. Read the full file to locate all references to `swarm-task-planner`.
+  2. Search specifically for namespace-prefixed forms:
+     ```bash
+     grep -n "swarm-task-planner" \
+       /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/skills/orchestrate/SKILL.md
+     ```
+  3. For each match: if the reference uses `python3-development:swarm-task-planner`, update
+     it to `dh:swarm-task-planner`.
+  4. For each match: if the reference uses `swarm-task-planner` without a namespace prefix
+     (e.g., in descriptive text), update to clarify it is now `@dh:swarm-task-planner` if
+     the context is a delegation instruction, or leave as-is if it is narrative prose.
+  5. Confirm all references to `python-cli-architect`, `python-pytest-architect`,
+     `python-code-reviewer`, `python-cli-design-spec` are NOT changed.
+  6. Run prek lint on the file.
+
+  ### Constraints
+
+  - Do NOT change any reference to the KEEP agents:
+    `python-cli-architect`, `python-pytest-architect`, `python-code-reviewer`,
+    `python-cli-design-spec`, `python-code-reviewer`, `stdlib-scripting`.
+  - Do NOT restructure sections or alter the file's overall format.
+  - If `swarm-task-planner` appears zero times in the file (grep returns nothing), the task
+    is DONE — no edit needed. Report this as the handoff result.
+
+  ### Expected Outputs
+
+  - Modified `/home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/skills/orchestrate/SKILL.md`
+    with `swarm-task-planner` references updated to use `dh:` namespace.
+  - If zero references found, no file modification (report as clean).
+
+  ### Acceptance Criteria
+
+  1. Grep for `python3-development:swarm-task-planner` in the file returns zero matches:
+     ```bash
+     grep -c "python3-development:swarm-task-planner" \
+       /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/skills/orchestrate/SKILL.md
+     ```
+     Expected: `0`
+  2. Grep for `dh:swarm-task-planner` returns a count matching the number of swarm-task-planner
+     delegation references in the original file (at least 1, unless the file had zero).
+  3. References to KEEP agents (`python3-development:python-cli-architect`, etc.) are unchanged.
+  4. `uv run prek run --files` exits 0.
+
+  ### Verification Steps
+
+  1. Run the stale-reference check:
+     ```bash
+     grep -c "python3-development:swarm-task-planner" \
+       /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/skills/orchestrate/SKILL.md
+     ```
+     Expected: `0`.
+
+  2. Run the KEEP-agents check to confirm no unintended changes:
+     ```bash
+     grep -n "python-cli-architect\|python-pytest-architect\|python-code-reviewer\|python-cli-design-spec" \
+       /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/skills/orchestrate/SKILL.md
+     ```
+     All results should still show `python3-development:` prefix (not `dh:`).
+
+  3. Run prek lint:
+     ```bash
+     uv run prek run --files /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/skills/orchestrate/SKILL.md
+     ```
+     Confirm: exits 0.
+
+  ### Handoff
+
+  Return:
+  - Number of `swarm-task-planner` references found and updated
+  - Confirmation that KEEP agent references are unchanged
+  - Output of stale-reference grep (should be `0`)
+  - Prek lint result (pass/fail)
+
+  ---

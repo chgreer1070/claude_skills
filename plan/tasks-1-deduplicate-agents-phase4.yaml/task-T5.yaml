@@ -1,0 +1,146 @@
+id: T5
+title: Update
+  plugins/python3-development/skills/python3-development/references/python-development-orchestration.md
+status: not-started
+priority: 3
+complexity: medium
+description: |-
+  **Status**: NOT STARTED
+  **Dependencies**: T2
+  **Priority**: 3
+  **Complexity**: Medium
+  **Agent**: general-purpose
+  **Skills**: []
+  **Accuracy Risk**: medium
+  **Can parallelize with**: T3, T4, T6
+
+  ### Context
+
+  `plugins/python3-development/skills/python3-development/references/python-development-orchestration.md`
+  is the most heavily impacted document in this refactoring. The codebase analysis
+  (plan/codebase/AGENTS.md §Reference Patterns) identified 50+ agent references across 5+
+  workflow scenarios. Many of these reference agents that remain valid (`python-cli-architect`,
+  `python-pytest-architect`, `python-code-reviewer`, `python-cli-design-spec`) — these must
+  NOT be changed.
+
+  The specific agents that cross the namespace boundary after Phase 4 are limited to
+  `swarm-task-planner` (and potentially `feature-researcher`, `codebase-analyzer` if they
+  appear in this document). The architecture spec (§Step 4) clarifies: only references using
+  `python3-development:{deleted-agent}` namespace must be updated. The domain-specific
+  agents keep their `python3-development:` prefix.
+
+  Deleted agents that may appear in this document: `feature-researcher`, `codebase-analyzer`,
+  `context-gathering`, `context-refinement`, `plan-validator`, `feature-verifier`,
+  `integration-checker`, `doc-drift-auditor`, `swarm-task-planner`, `ecosystem-researcher`.
+
+  ### Objective
+
+  Update all `python3-development:{deleted-agent}` namespace references in
+  `python-development-orchestration.md` to `dh:{agent-name}`. Leave references to KEEP agents
+  unchanged.
+
+  ### Inputs
+
+  - `/home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/skills/python3-development/references/python-development-orchestration.md`
+    — the file to edit
+  - Architecture spec §Step 4: `plan/architect-deduplicate-agents-phase4.md` lines 232-252
+  - Codebase analysis §python-development-orchestration.md: `plan/codebase/AGENTS.md` lines
+    131-178, 279-293
+
+  ### Requirements
+
+  1. Read the full file.
+  2. Run a targeted grep to find all occurrences of the deleted agent names with the
+     `python3-development:` namespace:
+     ```bash
+     grep -n "python3-development:\(feature-researcher\|codebase-analyzer\|context-gathering\|context-refinement\|plan-validator\|feature-verifier\|integration-checker\|doc-drift-auditor\|swarm-task-planner\|ecosystem-researcher\)" \
+       /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/skills/python3-development/references/python-development-orchestration.md
+     ```
+  3. For each match: replace `python3-development:{deleted-agent}` with `dh:{deleted-agent}`.
+  4. Also check for bare (non-namespace-prefixed) agent name references in delegation
+     instructions that may imply the python3-development namespace. If the context is a
+     `subagent_type=` string or `@python3-development:` prefix, update it. If the reference
+     is purely in prose describing the agent's role (no namespace), leave it unchanged.
+  5. Run the stale-reference grep after edits to confirm zero matches remain.
+  6. Confirm KEEP agent references are unchanged by running:
+     ```bash
+     grep -n "python3-development:\(python-cli-architect\|python-pytest-architect\|python-code-reviewer\|python-cli-design-spec\)" \
+       /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/skills/python3-development/references/python-development-orchestration.md
+     ```
+     All results should remain as `python3-development:` (not changed to `dh:`).
+
+  ### Constraints
+
+  - Do NOT change references to KEEP agents: `python-cli-architect`, `python-pytest-architect`,
+    `python-code-reviewer`, `python-cli-design-spec`.
+  - Do NOT rewrite workflow scenario prose, Mermaid diagrams, or section structure beyond
+    the namespace substitutions.
+  - Do NOT change references to skills (e.g., `/python3-development:add-new-feature`) —
+    these are skill namespace references, not agent namespace references.
+  - If a deleted agent name appears in prose without a namespace prefix (e.g., "the
+    feature-researcher agent"), leave it unchanged — only namespace-qualified delegation
+    references require updating.
+
+  ### Expected Outputs
+
+  - Modified `python-development-orchestration.md` with all `python3-development:{deleted-agent}`
+    namespace references replaced by `dh:{deleted-agent}`.
+
+  ### Acceptance Criteria
+
+  1. Grep for `python3-development:{deleted-agents}` returns zero matches:
+     ```bash
+     grep -c "python3-development:\(feature-researcher\|codebase-analyzer\|context-gathering\|context-refinement\|plan-validator\|feature-verifier\|integration-checker\|doc-drift-auditor\|swarm-task-planner\|ecosystem-researcher\)" \
+       /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/skills/python3-development/references/python-development-orchestration.md
+     ```
+     Expected: `0`
+  2. Grep for KEEP agents still returns `python3-development:` prefix (not changed to `dh:`):
+     ```bash
+     grep "dh:\(python-cli-architect\|python-pytest-architect\|python-code-reviewer\|python-cli-design-spec\)" \
+       /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/skills/python3-development/references/python-development-orchestration.md
+     ```
+     Expected: zero matches (KEEP agents must NOT have been updated to dh:).
+  3. `uv run prek run --files` exits 0.
+
+  ### Verification Steps
+
+  1. Run the stale-reference grep (Requirement 5 command). Confirm: `0`.
+
+  2. Run the KEEP-agents check (Requirement 6 command). Confirm: results all show
+     `python3-development:` prefix.
+
+  3. Run prek lint:
+     ```bash
+     uv run prek run --files /home/ubuntulinuxqa2/repos/claude_skills/plugins/python3-development/skills/python3-development/references/python-development-orchestration.md
+     ```
+
+  ### CoVe Checks
+
+  Key claims to verify:
+
+  - Claim: The file references `python3-development:swarm-task-planner` and potentially other
+    deleted agent namespaces (not just agent names in prose).
+  - Claim: Mermaid diagram node labels in this file use `subagent_type=` strings that may
+    embed agent namespaces.
+
+  Verification questions:
+
+  1. Does the grep in Requirement 2 return any matches? (Run it — do not assume based on the
+     codebase analysis table which showed only `swarm-task-planner` at lines 60 and 103.)
+  2. Are there `subagent_type="python3-development:{deleted-agent}"` patterns in Mermaid node
+     labels (which require `=` not `:` in the label — per delegation-format.md constraints)?
+
+  Evidence to collect: direct grep output from Requirement 2.
+
+  Revision rule: if grep returns matches for agents other than `swarm-task-planner`, update
+  all of them. Do not limit the fix to only `swarm-task-planner`.
+
+  ### Handoff
+
+  Return:
+  - Number of namespace references updated (list each: `agent-name: N occurrences`)
+  - Output of post-edit stale-reference grep (should be `0`)
+  - Output of KEEP-agents check (should show `python3-development:` prefixes unchanged)
+  - Prek lint result
+
+  ---

@@ -1,0 +1,155 @@
+id: T3
+title: Update .claude/rules/local-workflow.md Agent File Locations tables
+status: not-started
+priority: 3
+complexity: medium
+description: |-
+  **Status**: NOT STARTED
+  **Dependencies**: T2
+  **Priority**: 3
+  **Complexity**: Medium
+  **Agent**: general-purpose
+  **Skills**: []
+  **Accuracy Risk**: medium
+  **Can parallelize with**: T4, T5, T6
+
+  ### Context
+
+  `.claude/rules/local-workflow.md` contains two "Agent File Locations" tables — one in the
+  Phase 1 Planning section and one in the Phase 3 Quality Gates section. Both currently show
+  a `python3-development` column alongside a `development-harness` column for shared agents.
+
+  After T2 deletes the 10 agents from python3-development, those column cells become dead
+  references. The architecture spec (§Step 2) resolves this: remove the `python3-development`
+  column entries for the deleted agents, making the tables single-source-of-truth pointing
+  only to dh for shared agents.
+
+  KEEP agents (`python-cli-design-spec`, `t0-baseline-capture`, `tn-verification-gate`,
+  `code-reviewer`) still exist in python3-development — their rows are UNCHANGED.
+
+  The codebase analysis (plan/codebase/AGENTS.md §Update locations in local-workflow.md)
+  identifies the specific lines to change:
+
+  - Phase 1 table (~lines 54-63): remove python3-development column cells for the 10 shared agents
+  - Phase 3 table (~lines 269-276): remove python3-development column cells for the shared agents
+  - Data flow diagram: update any `python3-development:{deleted-agent}` inline references to `dh:`
+
+  This task also checks the data flow diagram in local-workflow.md for agent namespace
+  references and updates any that reference deleted agents.
+
+  ### Objective
+
+  Update `.claude/rules/local-workflow.md` so the Agent File Locations tables show only
+  `development-harness` paths for the 10 deleted shared agents, leaving KEEP agent rows unchanged.
+
+  ### Inputs
+
+  - `/home/ubuntulinuxqa2/repos/claude_skills/.claude/rules/local-workflow.md` — the file to edit
+  - Architecture spec §Step 2: `plan/architect-deduplicate-agents-phase4.md` lines 179-213
+  - Codebase analysis §Update locations: `plan/codebase/AGENTS.md` lines 98-127
+  - KEEP agents list (must NOT have their table rows modified):
+    `python-cli-design-spec`, `t0-baseline-capture`, `tn-verification-gate`, `code-reviewer`,
+    `python-cli-architect`, `python-pytest-architect`, `python-code-reviewer`
+
+  ### Requirements
+
+  1. Read `/home/ubuntulinuxqa2/repos/claude_skills/.claude/rules/local-workflow.md` in full.
+  2. Identify all Agent File Locations tables (search for `| Agent |` headers).
+  3. For each table row where the agent is one of the 10 deleted agents (feature-researcher,
+     codebase-analyzer, context-gathering, context-refinement, plan-validator, feature-verifier,
+     integration-checker, doc-drift-auditor, swarm-task-planner, ecosystem-researcher):
+     - Remove the `python3-development` column cell (replace cell content with `—` or remove
+       the column). Follow the existing table style.
+  4. Do NOT modify rows for KEEP agents (python-cli-architect, python-pytest-architect,
+     python-cli-design-spec, python-code-reviewer, code-reviewer, t0-baseline-capture,
+     tn-verification-gate).
+  5. Search the data flow diagram and any prose sections for `python3-development:{deleted-agent}`
+     namespace references:
+     ```bash
+     grep -n "python3-development:\(feature-researcher\|codebase-analyzer\|context-gathering\|context-refinement\|plan-validator\|feature-verifier\|integration-checker\|doc-drift-auditor\|swarm-task-planner\|ecosystem-researcher\)" \
+       /home/ubuntulinuxqa2/repos/claude_skills/.claude/rules/local-workflow.md
+     ```
+     For each match found, update the namespace from `python3-development:` to `dh:`.
+  6. Verify the file still renders as valid Markdown (tables have consistent column counts,
+     no broken pipe characters).
+
+  ### Constraints
+
+  - Do NOT remove entire table rows for shared agents — only remove or blank the
+    `python3-development` column cell within those rows.
+  - Do NOT change any reference to agents in the KEEP list.
+  - Do NOT modify the file's overall structure (sections, headings, data flow diagram prose).
+  - Preserve all existing `dh:` and `development-harness` path references exactly.
+
+  ### Expected Outputs
+
+  - Modified `/home/ubuntulinuxqa2/repos/claude_skills/.claude/rules/local-workflow.md`
+  - Phase 1 and Phase 3 Agent File Locations tables updated
+  - Data flow diagram updated if any `python3-development:{deleted-agent}` references existed
+
+  ### Acceptance Criteria
+
+  1. No cell in the Agent File Locations tables contains a `python3-development/agents/` path
+     for any of the 10 deleted agents.
+  2. Rows for `python-cli-architect`, `python-pytest-architect`, `python-cli-design-spec`,
+     `python-code-reviewer`, `code-reviewer`, `t0-baseline-capture`, `tn-verification-gate`
+     are unchanged.
+  3. The grep for `python3-development:{deleted-agent}` in the file returns zero matches
+     (excluding the historical backlog section if one exists):
+     ```bash
+     grep -c "python3-development:\(feature-researcher\|codebase-analyzer\|context-gathering\|context-refinement\|plan-validator\|feature-verifier\|integration-checker\|doc-drift-auditor\|swarm-task-planner\|ecosystem-researcher\)" \
+       /home/ubuntulinuxqa2/repos/claude_skills/.claude/rules/local-workflow.md
+     ```
+     Expected: `0`
+  4. Markdown tables have consistent column counts (no orphaned pipe characters).
+  5. The file is not truncated — character count is within 10% of original (table restructure
+     shrinks content slightly; wholesale deletion would be much larger).
+
+  ### Verification Steps
+
+  1. Run the grep check for stale namespace references:
+     ```bash
+     grep -n "python3-development:\(feature-researcher\|codebase-analyzer\|context-gathering\|context-refinement\|plan-validator\|feature-verifier\|integration-checker\|doc-drift-auditor\|swarm-task-planner\|ecosystem-researcher\)" \
+       /home/ubuntulinuxqa2/repos/claude_skills/.claude/rules/local-workflow.md
+     ```
+     Confirm: zero matches.
+
+  2. Read the Phase 1 and Phase 3 Agent File Locations tables (search for `| Agent |` header)
+     and visually confirm: shared agent rows show only dh path; KEEP agent rows unchanged.
+
+  3. Run prek lint on the file:
+     ```bash
+     uv run prek run --files /home/ubuntulinuxqa2/repos/claude_skills/.claude/rules/local-workflow.md
+     ```
+     Confirm: exits 0 (no pre-commit issues).
+
+  ### CoVe Checks
+
+  Key claims to verify:
+
+  - Claim: The Agent File Locations tables use a two-column format with `python3-development`
+    and `development-harness` columns — not a different table structure.
+  - Claim: KEEP agents (`t0-baseline-capture`, `tn-verification-gate`, `code-reviewer`) have
+    rows in these tables that should remain with `python3-development` paths.
+
+  Verification questions:
+
+  1. After reading the file, what are the exact column headers of the Agent File Locations
+     tables? (Do they say `python3-development` and `development-harness`, or something else?)
+  2. Do `t0-baseline-capture` and `tn-verification-gate` rows show `—` in the dh column
+     (meaning they are python3-development-only)? If so, their rows must be kept intact.
+
+  Evidence to collect: direct read of the relevant table sections in local-workflow.md.
+
+  Revision rule: if table format differs from the two-column assumption, adapt the edit
+  approach to match the actual structure before making changes.
+
+  ### Handoff
+
+  Return:
+  - Number of table cells modified (cells where python3-development path was removed)
+  - Number of prose/diagram namespace references updated
+  - Confirmation that KEEP agent rows are unchanged
+  - Output of the stale-reference grep (should be zero lines)
+
+  ---
