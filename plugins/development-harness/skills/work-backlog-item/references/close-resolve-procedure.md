@@ -9,7 +9,7 @@ Extract the operation from `$0` and the argument from `$1`+:
 
 ## 9a: Find Item
 
-Call the `mcp__backlog__backlog_view` tool with `selector="{$1}"` (accepts URLs, `#N`, bare numbers, and title substrings).
+Call the `mcp__plugin_dh_backlog__backlog_view` tool with `selector="{$1}"` (accepts URLs, `#N`, bare numbers, and title substrings).
 
 - If the returned dict contains an `error` key, report and stop.
 - Extract `title` from the returned dict and use it as the working title.
@@ -35,7 +35,7 @@ If operation is `close`:
 
 3. Optionally ask for additional context: "Any additional comment?" (free text, can be skipped).
 
-4. Call the `mcp__backlog__backlog_close` tool:
+4. Call the `mcp__plugin_dh_backlog__backlog_close` tool:
 
    - `selector`: `"{title}"` or `"#{N}"`
    - `reason`: `"{selected reason}"`
@@ -53,7 +53,7 @@ If operation is `resolve`:
 1. Extract `**Plan**:` field from the matched item. If absent, skip this step entirely — non-SAM items have no verification gate.
 
 2. If `**Plan**:` is present, check the GitHub Issue labels for `status:verified`:
-   - Use `mcp__backlog__backlog_view` with `selector="{title}"` and inspect the `labels` list in the returned dict.
+   - Use `mcp__plugin_dh_backlog__backlog_view` with `selector="{title}"` and inspect the `labels` list in the returned dict.
    - If `status:verified` is present in `labels`, proceed to 9c.
    - If `status:verified` is absent:
      - If `--force` flag was passed, print a warning and proceed to 9c:
@@ -162,7 +162,7 @@ git log --oneline -20 --grep="Fixes #N\|Closes #N"
 
 - **Open PR found**: The PR body contains `Fixes #N` — the issue will auto-close on merge. Update only the local per-item file status (do NOT close the GitHub Issue):
 
-  Call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `status="in-progress"`.
+  Call the `mcp__plugin_dh_backlog__backlog_update` tool with `selector="{title}"` and `status="in-progress"`.
 
   Report:
 
@@ -184,7 +184,7 @@ git log --oneline -20 --grep="Fixes #N\|Closes #N"
     - `follow_ups` — "Any follow-up tickets created?" (comma-separated refs)
     - `findings` — "Any retrospective learnings?"
 
-11. Call the `mcp__backlog__backlog_resolve` tool:
+11. Call the `mcp__plugin_dh_backlog__backlog_resolve` tool:
 
     - `selector`: `"{title}"` or `"#{N}"`
     - `summary`: `"{summary}"`

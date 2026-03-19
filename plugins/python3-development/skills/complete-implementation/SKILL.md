@@ -194,7 +194,7 @@ flowchart TD
 **Strategy 1 — substring via `title=`**
 
 ```text
-mcp__backlog__backlog_list(title="{derived_slug}")
+mcp__plugin_dh_backlog__backlog_list(title="{derived_slug}")
 ```
 
 Parse the JSON output. For each item, check if the derived slug appears (case-insensitive
@@ -206,7 +206,7 @@ match as the result and skip Strategy 2.
 If Strategy 1 returns zero matches, run:
 
 ```text
-mcp__backlog__backlog_list(topic="{derived_slug}")
+mcp__plugin_dh_backlog__backlog_list(topic="{derived_slug}")
 ```
 
 The `topic` parameter performs a case-insensitive substring match against `metadata.topic`.
@@ -217,7 +217,7 @@ If Strategy 2 returns one or more items, use the first match.
 
 If both strategies return zero results, treat as "no match found" and proceed to Step 3.
 
-**Error handling**: If either `mcp__backlog__backlog_list` call fails, log the error, skip
+**Error handling**: If either `mcp__plugin_dh_backlog__backlog_list` call fails, log the error, skip
 that strategy, and continue to the next strategy (or to Step 3 as "no match found" if all
 strategies fail). If the follow-up filename does not match the expected
 `tasks-{N}-{slug}-followup-{k}.md` pattern, log a warning and use the full filename (without
@@ -230,7 +230,7 @@ Based on Step 2 result, for each follow-up file:
 **Match found** -- attach follow-up as plan to the existing backlog item:
 
 ```text
-mcp__backlog__backlog_update(selector="{matched_item_title}", plan="{followup_file_path}")
+mcp__plugin_dh_backlog__backlog_update(selector="{matched_item_title}", plan="{followup_file_path}")
 ```
 
 **No match found** -- create a new backlog item, then attach the follow-up as plan:
@@ -242,13 +242,13 @@ Skill(skill: "dh:create-backlog-item", args: "--auto {derived_title}")
 Then attach the follow-up file as the plan:
 
 ```text
-mcp__backlog__backlog_update(selector="{derived_title}", plan="{followup_file_path}")
+mcp__plugin_dh_backlog__backlog_update(selector="{derived_title}", plan="{followup_file_path}")
 ```
 
 **Error handling**:
 
-- If `mcp__backlog__backlog_update` fails after creation (title mismatch between what `dh:create-backlog-item` produced and what `update` searched for): re-invoke `mcp__backlog__backlog_list()`, find the most recently added item, and retry `mcp__backlog__backlog_update` with its exact title. If the retry also fails, log the error and continue to the next follow-up file.
-- If `dh:create-backlog-item --auto` logs `[AUTO] STOP -- duplicate detected`: treat this as "match found" -- run `mcp__backlog__backlog_update` on the duplicate's title to attach the plan.
+- If `mcp__plugin_dh_backlog__backlog_update` fails after creation (title mismatch between what `dh:create-backlog-item` produced and what `update` searched for): re-invoke `mcp__plugin_dh_backlog__backlog_list()`, find the most recently added item, and retry `mcp__plugin_dh_backlog__backlog_update` with its exact title. If the retry also fails, log the error and continue to the next follow-up file.
+- If `dh:create-backlog-item --auto` logs `[AUTO] STOP -- duplicate detected`: treat this as "match found" -- run `mcp__plugin_dh_backlog__backlog_update` on the duplicate's title to attach the plan.
 
 ### Step 4: Recursion Gate
 
@@ -297,7 +297,7 @@ plan/tasks-3-integrate-sam-schema.md → slug: integrate-sam-schema
 Search the backlog:
 
 ```text
-mcp__backlog__backlog_list(title="{slug}")
+mcp__plugin_dh_backlog__backlog_list(title="{slug}")
 ```
 
 If zero items match, skip this section — there is no issue to label.
@@ -307,7 +307,7 @@ If zero items match, skip this section — there is no issue to label.
 Call:
 
 ```text
-mcp__backlog__backlog_update(selector="{matched_item_title}", verified=True)
+mcp__plugin_dh_backlog__backlog_update(selector="{matched_item_title}", verified=True)
 ```
 
 **Error handling**: If the call returns an `error` key, output:
@@ -340,7 +340,7 @@ If there are staged or unstaged changes: stage the modified files and commit.
 **Issue number in commit message**: Before committing, check the backlog item for the current feature slug:
 
 ```text
-mcp__backlog__backlog_list(title="{slug}")
+mcp__plugin_dh_backlog__backlog_list(title="{slug}")
 ```
 
 Check the `issue` field on the matching item. If present and this commit resolves that issue, append `Fixes #NNN` to the commit message body (where NNN is the issue number). If no issue number is found, omit it.
@@ -361,7 +361,7 @@ Clear context and run:
 Where `<next-backlog-item-title>` is determined by:
 
 ```text
-mcp__backlog__backlog_list()
+mcp__plugin_dh_backlog__backlog_list()
 ```
 
 Find the highest-priority open item whose title contains the current feature slug. If one exists, use its exact title. If none exists, output:

@@ -224,7 +224,7 @@ Phrase "pre-existing issues not related to my changes" is a TRIGGER TO ACT, not 
 When you identify that work will need multiple steps or jobs: create backlog items for them — don't just describe them.
 
 1. **Backlog**: Create via `dh:create-backlog-item` or match via `dh:work-backlog-item` before starting.
-2. **Plan**: When writing a plan, add it to the item via `mcp__backlog__backlog_update(selector="{title}", plan="{path}")`.
+2. **Plan**: When writing a plan, add it to the item via `mcp__plugin_dh_backlog__backlog_update(selector="{title}", plan="{path}")`.
 3. **Progress**: When completing actions, update the task/plan artifact (checklist, status) so progression is visible.
 
 Skip only for trivial single-step requests (typos, one-off questions, immediate one-action fixes).
@@ -235,7 +235,7 @@ Skip only for trivial single-step requests (typos, one-off questions, immediate 
 
 <backlog_operations>
 
-**Primary interface (MCP)**: Use `mcp__backlog__*` tools for all backlog and GitHub issue CRUD.
+**Primary interface (MCP)**: Use `mcp__plugin_dh_backlog__*` tools for all backlog and GitHub issue CRUD.
 GitHub Issues are the source of truth; `.claude/backlog/` per-item files are the local cache.
 
 Available tools: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, `backlog_close`,

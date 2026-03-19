@@ -89,7 +89,7 @@ Abort conditions (make no changes before aborting):
 flowchart TD
     Q{Backlog item #N<br>found in Step 2?}
     Q -->|Yes| UseExisting[Use existing item #N<br>Proceed to Step 4]
-    Q -->|No| Create["Call mcp__backlog__backlog_add<br>title = Title extracted in Step 2<br>description = Goal extracted in Step 2<br>plan = $ARGUMENTS"]
+    Q -->|No| Create["Call mcp__plugin_dh_backlog__backlog_add<br>title = Title extracted in Step 2<br>description = Goal extracted in Step 2<br>plan = $ARGUMENTS"]
     Create --> CheckError{Response has<br>error key?}
     CheckError -->|Yes| AbortCreate["ABORT<br>ERROR: Failed to create backlog item<br>Print exact error from response"]
     CheckError -->|No| CaptureN[Capture new issue number N from response]
@@ -236,7 +236,7 @@ Stop immediately and make no further changes when:
 - The file at `$ARGUMENTS` cannot be read
 - Title (`#` heading) is absent from the plan file
 - Goal (`**Goal:**` field) is absent from the plan file
-- `mcp__backlog__backlog_add` returns an error response
+- `mcp__plugin_dh_backlog__backlog_add` returns an error response
 - `/work-backlog-item` completes without producing a task file
 
 All abort messages are prefixed with `ERROR:` and printed to the user before stopping.

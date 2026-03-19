@@ -88,7 +88,7 @@ A gap is **not actionable** when:
 
 - The external tool's approach is incompatible with this repo's architecture (state so explicitly)
 - The local system already implements an equivalent or better approach (state which file and section)
-- The improvement is already tracked in the backlog (check with `mcp__backlog__backlog_list` and compare titles)
+- The improvement is already tracked in the backlog (check with `mcp__plugin_dh_backlog__backlog_list` and compare titles)
 - The gap is purely philosophical ("be more careful about X") with no concrete observable target state
 
 **When in doubt about whether a gap is already covered**: read the local file. Do not assume coverage or absence.
@@ -173,7 +173,7 @@ Create a backlog item for **every high-confidence proposal that is not already t
 | Medium | any | defer — do not create backlog item |
 | Low | any | defer — do not create backlog item |
 
-Use `mcp__backlog__backlog_add` with:
+Use `mcp__plugin_dh_backlog__backlog_add` with:
 
 - `title`: improvement title from the proposal
 - `description`: current state + target state + measurable signal (full text from proposal)

@@ -97,9 +97,9 @@ Full procedure (MCP error handling, display format, response handling): [step-pr
 
 <issue_first_procedure>
 
-Fetch the issue using the `mcp__backlog__backlog_view` tool (accepts URLs, `#N`, and bare numbers):
+Fetch the issue using the `mcp__plugin_dh_backlog__backlog_view` tool (accepts URLs, `#N`, and bare numbers):
 
-Call the `mcp__backlog__backlog_view` tool with `selector="{<mode/>}"`.
+Call the `mcp__plugin_dh_backlog__backlog_view` tool with `selector="{<mode/>}"`.
 
 If the tool returns a dict with an `error` key, report and stop.
 Parse the returned dict. If `state` is `closed`, run the **Completed Issue Discovery** procedure and stop. Full procedure (git commands, report template, AUTO_MODE behavior): [step-procedures.md](./references/step-procedures.md#step-1b-completed-issue-discovery)
@@ -180,7 +180,7 @@ Record the priority section (P0, P1, P2, Ideas) the item belongs to.
 
 ### Step 2: Extract Item Fields
 
-From the matched item's entry in the `mcp__backlog__backlog_list` returned dict, extract `title`, `plan`, `section` (priority), `issue`, `groomed`, and `file_path`. For detailed fields not in the dict (`description`, `source`, `added`, `research_first`, `suggested_location`), read the per-item file at `file_path`.
+From the matched item's entry in the `mcp__plugin_dh_backlog__backlog_list` returned dict, extract `title`, `plan`, `section` (priority), `issue`, `groomed`, and `file_path`. For detailed fields not in the dict (`description`, `source`, `added`, `research_first`, `suggested_location`), read the per-item file at `file_path`.
 
 - `title` — the `title` field from JSON (required)
 - `source` — not in JSON; read from per-item file frontmatter `metadata.source` if needed (optional)
@@ -333,7 +333,7 @@ Glob(pattern="plan/tasks-*-{slug}*")
 
 Where `{slug}` is the item title lowercased with spaces replaced by hyphens.
 
-Call the `mcp__backlog__backlog_update` tool to add the Plan:
+Call the `mcp__plugin_dh_backlog__backlog_update` tool to add the Plan:
 
 | Parameter | Value |
 |-----------|-------|
@@ -363,14 +363,14 @@ Backlog item "{title}" is now planned.
 - To close when done: /work-backlog-item close {slug}
 ```
 
-**Do NOT close the GitHub Issue directly.** Do NOT include `Fixes #N`, `Closes #N`, or `Resolves #N` in task-level commit messages or PR bodies — issue closure is handled exclusively by `/complete-implementation` in its final commit step. Only use `/work-backlog-item resolve` for post-merge verification and local bookkeeping. Use `/work-backlog-item close` only for dismissals (duplicate, out_of_scope, etc.). Never call `mcp__backlog__backlog_resolve` before the PR has merged.
+**Do NOT close the GitHub Issue directly.** Do NOT include `Fixes #N`, `Closes #N`, or `Resolves #N` in task-level commit messages or PR bodies — issue closure is handled exclusively by `/complete-implementation` in its final commit step. Only use `/work-backlog-item resolve` for post-merge verification and local bookkeeping. Use `/work-backlog-item close` only for dismissals (duplicate, out_of_scope, etc.). Never call `mcp__plugin_dh_backlog__backlog_resolve` before the PR has merged.
 
 ### Step 9: Close or Resolve (ADR-9)
 
 **Trigger:** `<mode/>` is `close` or `resolve`.
 
-- `close` = dismiss without completion. Requires `reason` (duplicate, out_of_scope, superseded, wontfix, blocked). Optional `reference` and `comment`. Calls `mcp__backlog__backlog_close`.
-- `resolve` = mark DONE with evidence trail. Requires `summary`. Optional `plan`, `method`, `notes`, `follow_ups`, `findings`. Verifies checklist + acceptance criteria before resolving. For items with a `**Plan**:` field, also checks that the `status:verified` GitHub label is present (Step 9b.5). Calls `mcp__backlog__backlog_resolve`.
+- `close` = dismiss without completion. Requires `reason` (duplicate, out_of_scope, superseded, wontfix, blocked). Optional `reference` and `comment`. Calls `mcp__plugin_dh_backlog__backlog_close`.
+- `resolve` = mark DONE with evidence trail. Requires `summary`. Optional `plan`, `method`, `notes`, `follow_ups`, `findings`. Verifies checklist + acceptance criteria before resolving. For items with a `**Plan**:` field, also checks that the `status:verified` GitHub label is present (Step 9b.5). Calls `mcp__plugin_dh_backlog__backlog_resolve`.
 - `resolve --force` = bypass the `status:verified` gate (Step 9b.5) and the open-PR gate (Step 9e) with a warning. Use when label automation failed or when forcing a local-cache resolve while a PR is still open.
 
 Full step-by-step procedure (9a–9f): [close-resolve-procedure.md](./references/close-resolve-procedure.md)
@@ -393,7 +393,7 @@ Full procedure: [github-integration.md](./references/github-integration.md#step-
 
 Full procedure: [github-integration.md](./references/github-integration.md#step-27-set-in-progress-label)
 
-**Two-part step:** (a) Always run `mcp__backlog__backlog_update` with `status="in-progress"` for the current item. (b) Run `milestone start` only on explicit user intent to start the whole milestone — it bulk-transitions all open milestone issues, not just the current one.
+**Two-part step:** (a) Always run `mcp__plugin_dh_backlog__backlog_update` with `status="in-progress"` for the current item. (b) Run `milestone start` only on explicit user intent to start the whole milestone — it bulk-transitions all open milestone issues, not just the current one.
 
 ### setup-github Command
 

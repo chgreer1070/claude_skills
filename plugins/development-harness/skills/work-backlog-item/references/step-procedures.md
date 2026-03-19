@@ -109,7 +109,7 @@ When an issue is found to be already closed (`state: closed`), gather evidence b
    Closing local backlog item with evidence.
    ```
 
-   Call the `mcp__backlog__backlog_resolve` tool with `selector="{title}"` and
+   Call the `mcp__plugin_dh_backlog__backlog_resolve` tool with `selector="{title}"` and
    `summary="Completed via PR #{pr} / commit {sha}"`.
 
    If no commits or PRs reference the issue:
@@ -144,7 +144,7 @@ Before planning work, verify the described feature/fix hasn't already been imple
 
 If evidence shows the work is already done:
 
-- Call the `mcp__backlog__backlog_resolve` tool with `selector="{title}"` and
+- Call the `mcp__plugin_dh_backlog__backlog_resolve` tool with `selector="{title}"` and
   `summary="Already implemented via PR #{pr} / commit {sha}"`.
 - Report to the user and stop — no planning needed.
 
@@ -156,7 +156,7 @@ If no evidence, proceed to Step 2.5 (GitHub Issue Sync).
 
 ## Step 0: Interactive Browser
 
-1. Call the `mcp__backlog__backlog_list` tool with `with_status=true`.
+1. Call the `mcp__plugin_dh_backlog__backlog_list` tool with `with_status=true`.
 
    Parse the returned dict. Each entry in `items` has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
 
@@ -270,7 +270,7 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 4. Write the plan to `plan/quick/{slug}.md` with frontmatter `type: quick`, fields: `title`, `priority`, `issue`, `created`. Body sections: `## Task` (description), `## Steps` (1-3 checklist items derived from description), `## Done When` (acceptance_criteria if present, else goal from description).
 
-5. Call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `plan="plan/quick/{slug}.md"` to record the plan.
+5. Call the `mcp__plugin_dh_backlog__backlog_update` tool with `selector="{title}"` and `plan="plan/quick/{slug}.md"` to record the plan.
 
 6. Report:
 

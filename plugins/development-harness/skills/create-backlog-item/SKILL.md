@@ -159,7 +159,7 @@ Prefix the questions with `Research first:` inside the description text so they 
 
 ### Step 5: Create per-item file via backlog MCP tool
 
-Call the `mcp__backlog__backlog_add` tool:
+Call the `mcp__plugin_dh_backlog__backlog_add` tool:
 
 | Parameter | Value |
 |-----------|-------|

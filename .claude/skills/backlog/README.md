@@ -43,7 +43,7 @@ Priority tiers map directly to file prefixes:
 
 ### The MCP Interface (Primary)
 
-Ten MCP tools are available to Claude in orchestrator sessions via the `mcp__backlog__` prefix. These are the normal way Claude interacts with the backlog during a session.
+Ten MCP tools are available to Claude in orchestrator sessions via the `mcp__plugin_dh_backlog__` prefix. These are the normal way Claude interacts with the backlog during a session.
 
 | Tool | What it does |
 |------|-------------|
@@ -179,7 +179,7 @@ appear in the MCP client's progress stream and do not affect the return value.
 ### `backlog_add` — Create an item
 
 ```python
-mcp__backlog__backlog_add(
+mcp__plugin_dh_backlog__backlog_add(
     title="Fix duplicate detection before creating new items",
     priority="P1",              # P0, P1, P2, or Ideas
     description="New items can be created without checking for near-duplicates.",
@@ -194,7 +194,7 @@ mcp__backlog__backlog_add(
 ### `backlog_list` — List open items
 
 ```python
-mcp__backlog__backlog_list(
+mcp__plugin_dh_backlog__backlog_list(
     with_status=False,          # include GitHub issue status
     from_github=False,          # refresh local cache from GitHub first
     label="priority:p1",        # filter by GitHub label
@@ -247,7 +247,7 @@ human-authored backlog titles.
 ### `backlog_view` — View one item
 
 ```python
-mcp__backlog__backlog_view(
+mcp__plugin_dh_backlog__backlog_view(
     selector="#142",            # GitHub issue URL, #N, bare number, or title substring
     offset=0,                   # skip N entry blocks (for pagination)
     limit=0,                    # show at most N entry blocks (0 = all, no truncation)
@@ -258,7 +258,7 @@ mcp__backlog__backlog_view(
 ### `backlog_sync` — Sync to GitHub
 
 ```python
-mcp__backlog__backlog_sync(dry_run=False)
+mcp__plugin_dh_backlog__backlog_sync(dry_run=False)
 # Returns: {created, pushed, messages, warnings}
 # Progress: emits ctx.info() at start/end; ctx.warning() for each warning
 ```
@@ -268,7 +268,7 @@ mcp__backlog__backlog_sync(dry_run=False)
 Use for duplicates, out-of-scope items, superseded items, wontfix, or permanently blocked items. For completed work, use `backlog_resolve`.
 
 ```python
-mcp__backlog__backlog_close(
+mcp__plugin_dh_backlog__backlog_close(
     selector="Fix duplicate detection",
     reason="duplicate",         # duplicate, out_of_scope, superseded, wontfix, blocked
     reference="#139",           # related item this duplicates or is superseded by
@@ -282,7 +282,7 @@ mcp__backlog__backlog_close(
 ### `backlog_resolve` — Mark an item done
 
 ```python
-mcp__backlog__backlog_resolve(
+mcp__plugin_dh_backlog__backlog_resolve(
     selector="#142",
     summary="Added fuzzy title matching before item creation.",
     plan="plan/tasks-7-duplicate-detection.md",
@@ -299,7 +299,7 @@ mcp__backlog__backlog_resolve(
 ### `backlog_update` — Update an item
 
 ```python
-mcp__backlog__backlog_update(
+mcp__plugin_dh_backlog__backlog_update(
     selector="#142",
     plan="plan/tasks-7-slug.md",          # attach a plan file
     status="in-progress",                  # set item status
@@ -323,7 +323,7 @@ after quality gates pass. The `status:verified` label is a prerequisite for
 ### `backlog_groom` — Write groomed content
 
 ```python
-mcp__backlog__backlog_groom(
+mcp__plugin_dh_backlog__backlog_groom(
     selector="#142",
     groomed_content="### Priority\nP1...\n### Dependencies\nNone.",  # full replacement
     section="Dependencies",    # or: incremental section update
@@ -336,7 +336,7 @@ mcp__backlog__backlog_groom(
 ### `backlog_normalize` — Normalize all files
 
 ```python
-mcp__backlog__backlog_normalize(dry_run=True)  # preview first
+mcp__plugin_dh_backlog__backlog_normalize(dry_run=True)  # preview first
 # Returns: {updated, messages, warnings}
 # Progress: emits ctx.info() at start/end; ctx.warning() for each warning
 ```
@@ -345,12 +345,12 @@ mcp__backlog__backlog_normalize(dry_run=True)  # preview first
 
 ```python
 # Pull a single item by selector
-mcp__backlog__backlog_pull(selector="#142")
+mcp__plugin_dh_backlog__backlog_pull(selector="#142")
 # Returns: {file_path, messages, warnings}
 # Progress: emits ctx.info() with item name; ctx.warning() for each warning
 
 # Bulk pull all items
-mcp__backlog__backlog_pull(
+mcp__plugin_dh_backlog__backlog_pull(
     dry_run=False,
     force=False,   # overwrite local even if local is newer/longer
 )

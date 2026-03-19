@@ -348,7 +348,7 @@ mcpServers:
 When the agent lists MCP tools in its `tools` field, use the pattern `mcp__server-name__tool-name`:
 
 ```yaml
-tools: Read, Grep, mcp__backlog__backlog_list, mcp__backlog__backlog_view
+tools: Read, Grep, mcp__plugin_dh_backlog__backlog_list, mcp__plugin_dh_backlog__backlog_view
 ```
 
 ### memory

@@ -89,11 +89,11 @@ During `/start-task` execution, sub-agents implement their assigned task but do 
 
 ### Target state
 
-Sub-agents during `/start-task` can call `mcp__backlog__backlog_add` to create follow-up items tagged with `source: task-{task_id}`. These items are created with status `needs-grooming` and are not acted upon until the `/complete-implementation` quality gates run. The `/start-task` SKILL.md documents this capability and provides guidelines for when sub-agents should create follow-up items (pre-existing bugs found, scope expansion needed, documentation gaps).
+Sub-agents during `/start-task` can call `mcp__plugin_dh_backlog__backlog_add` to create follow-up items tagged with `source: task-{task_id}`. These items are created with status `needs-grooming` and are not acted upon until the `/complete-implementation` quality gates run. The `/start-task` SKILL.md documents this capability and provides guidelines for when sub-agents should create follow-up items (pre-existing bugs found, scope expansion needed, documentation gaps).
 
 ### Measurable signal
 
-After a `/start-task` execution where the sub-agent encountered a pre-existing issue, `mcp__backlog__backlog_list(status="needs-grooming")` includes an item with `source` containing `task-{task_id}`.
+After a `/start-task` execution where the sub-agent encountered a pre-existing issue, `mcp__plugin_dh_backlog__backlog_list(status="needs-grooming")` includes an item with `source` containing `task-{task_id}`.
 
 ---
 

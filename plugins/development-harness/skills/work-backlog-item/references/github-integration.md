@@ -30,13 +30,13 @@ After extracting item fields (Step 2), check for an existing linked issue:
 
 ## Step 2.5a: Create GitHub Issue
 
-Call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `create_issue=true`.
+Call the `mcp__plugin_dh_backlog__backlog_update` tool with `selector="{title}"` and `create_issue=true`.
 
 The tool creates the issue and writes `issue: '#N'` back to the per-item file frontmatter. Check the returned dict for an `error` key.
 
 ## Step 2.7: Set In-Progress Label
 
-Call the `mcp__backlog__backlog_update` tool with `selector="{title}"` and `status="in-progress"`. Check the returned dict for an `error` key.
+Call the `mcp__plugin_dh_backlog__backlog_update` tool with `selector="{title}"` and `status="in-progress"`. Check the returned dict for an `error` key.
 
 If the item is in a milestone with other issues, also run `milestone start`:
 
@@ -47,7 +47,7 @@ uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
 
 ## Step 9: Close — backlog tool
 
-Call the `mcp__backlog__backlog_close` tool with `selector="{title}"`, `plan="{plan path}"`, and `checklist_pass=true`.
+Call the `mcp__plugin_dh_backlog__backlog_close` tool with `selector="{title}"`, `plan="{plan path}"`, and `checklist_pass=true`.
 
 The tool updates the per-item file status and closes the GitHub issue. Check the returned dict for an `error` key.
 

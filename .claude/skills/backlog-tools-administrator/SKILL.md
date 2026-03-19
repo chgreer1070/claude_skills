@@ -136,7 +136,7 @@ Verify the gap is closed:
    uv run pytest .claude/skills/backlog/tests/
    ```
 
-   For MCP tool additions: call the new `mcp__backlog__<tool_name>` tool with valid parameters and confirm the returned dict contains expected result keys (not an `error` key).
+   For MCP tool additions: call the new `mcp__plugin_dh_backlog__<tool_name>` tool with valid parameters and confirm the returned dict contains expected result keys (not an `error` key).
 
 2. **Process changes**: confirm the new rule/workflow handles the original gap scenario without ambiguity.
 

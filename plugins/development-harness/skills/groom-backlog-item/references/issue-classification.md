@@ -39,7 +39,7 @@ flowchart TD
 ## Writing Classification to Backlog Item
 
 ```text
-mcp__backlog__backlog_groom(selector="{title}", section="Issue Classification", content="**Type**: {classification}
+mcp__plugin_dh_backlog__backlog_groom(selector="{title}", section="Issue Classification", content="**Type**: {classification}
 **Rationale**: {1-2 sentence explanation}
 **Analysis Method**: {method}
 **Scenario Target**: {what scenario exposed this} -> {what should improve}")
@@ -64,7 +64,7 @@ Skill(skill="find-cause", args="{description of the defect}")
 Write the evidence chain:
 
 ```text
-mcp__backlog__backlog_groom(selector="{title}", section="Root-Cause Analysis", content="**Method**: 5-whys
+mcp__plugin_dh_backlog__backlog_groom(selector="{title}", section="Root-Cause Analysis", content="**Method**: 5-whys
 **Classification**: defect
 
 #### Evidence Chain
@@ -77,10 +77,10 @@ mcp__backlog__backlog_groom(selector="{title}", section="Root-Cause Analysis", c
 
 ### recurring-pattern — 6-sigma
 
-Call `mcp__backlog__backlog_list(status="resolved")`, filter by keywords related to this defect class, count matches, and write the measurement section:
+Call `mcp__plugin_dh_backlog__backlog_list(status="resolved")`, filter by keywords related to this defect class, count matches, and write the measurement section:
 
 ```text
-mcp__backlog__backlog_groom(selector="{title}", section="Root-Cause Analysis", content="**Method**: 6-sigma
+mcp__plugin_dh_backlog__backlog_groom(selector="{title}", section="Root-Cause Analysis", content="**Method**: 6-sigma
 **Classification**: recurring-pattern
 
 #### Measurement

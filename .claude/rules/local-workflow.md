@@ -284,9 +284,9 @@ Final:   commit + push          -> Stage and commit all remaining modified files
 If Phase 1 (code review) creates follow-up task files (naming: `plan/tasks-{N}-{slug}-followup-{k}.md`), each follow-up is routed through a backlog-linking step before any recursion decision:
 
 1. Follow-up files are detected from the code-reviewer's ARTIFACTS `Task files:` output. If the list is empty or absent, a confirmatory glob for `plan/tasks-*-{slug}-followup-*.md` is run as fallback.
-2. For each follow-up, a search title is derived from the filename (strip prefix/suffix, convert hyphens to spaces) and searched against existing backlog items via `mcp__backlog__backlog_list`.
-3. If a matching backlog item is found, the follow-up is attached as its plan via `mcp__backlog__backlog_update` with `plan=` parameter.
-4. If no match is found, a new backlog item is created via `create-backlog-item --auto`, then the follow-up is attached via `mcp__backlog__backlog_update` with `plan=` parameter.
+2. For each follow-up, a search title is derived from the filename (strip prefix/suffix, convert hyphens to spaces) and searched against existing backlog items via `mcp__plugin_dh_backlog__backlog_list`.
+3. If a matching backlog item is found, the follow-up is attached as its plan via `mcp__plugin_dh_backlog__backlog_update` with `plan=` parameter.
+4. If no match is found, a new backlog item is created via `create-backlog-item --auto`, then the follow-up is attached via `mcp__plugin_dh_backlog__backlog_update` with `plan=` parameter.
 5. Recursion proceeds only when BOTH conditions are true: the follow-up file's feature slug matches the parent task file's slug (same session scope), AND the follow-up's `## Priority` section contains `High`.
 6. Otherwise, the follow-up is deferred to backlog with no recursion. The follow-up path, backlog item title, priority, and scope match result are logged.
 

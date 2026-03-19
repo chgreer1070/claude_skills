@@ -4,7 +4,7 @@ When `$0` is `--auto`, the following substitutions apply at every interactive de
 
 | Normal behaviour | `--auto` substitution |
 |---|---|
-| No title given (`$1` is empty) | Call `mcp__backlog__backlog_list` and scan P0 then P1 sections for the first open item. Log `[AUTO] No title — auto-selected: {title}` and proceed. If none found, log `[AUTO] STOP — no open P0/P1 items found` and stop. |
+| No title given (`$1` is empty) | Call `mcp__plugin_dh_backlog__backlog_list` and scan P0 then P1 sections for the first open item. Log `[AUTO] No title — auto-selected: {title}` and proceed. If none found, log `[AUTO] STOP — no open P0/P1 items found` and stop. |
 | Step 1b: issue not found | Log `[AUTO] STOP — Issue #N not found`, stop |
 | Step 1: zero matches → ask user to create | Auto-invoke `create-backlog-item --auto {title}`, log `[AUTO] No item found — invoking create-backlog-item --auto` |
 | Step 1: multiple matches → ask user to pick | Log `[AUTO] Multiple matches — picking first: {title}`, proceed with first match |

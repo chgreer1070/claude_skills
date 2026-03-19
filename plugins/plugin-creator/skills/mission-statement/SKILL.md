@@ -115,7 +115,7 @@ When invoked (during Phase 0.6 of plugin lifecycle, or standalone):
 2. Read `discuss-CONTEXT.md` if this is a new plugin creation
 3. Draft `mission.json` with `status: "draft"`. Populate all fields from observed design choices and stated preferences.
 4. Write `mission.json` to the plugin root directory
-5. Create a backlog interview task via `mcp__backlog__backlog_add` with title `"Mission interview: {plugin-name}"` and body containing the 5 questions and the current draft mission field
+5. Create a backlog interview task via `mcp__plugin_dh_backlog__backlog_add` with title `"Mission interview: {plugin-name}"` and body containing the 5 questions and the current draft mission field
 6. Update `mission.json` with `"interview_backlog_item": "#NNN"` using the created issue number
 7. Report: path of draft written, backlog item number, 2-3 sentence summary of draft mission
 

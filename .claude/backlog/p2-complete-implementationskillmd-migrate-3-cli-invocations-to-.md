@@ -1,6 +1,6 @@
 ---
 name: 'complete-implementation/SKILL.md: migrate 3 CLI invocations to MCP tool calls'
-description: 'The complete-implementation skill still uses 3 uv run backlog.py CLI invocations (lines 112, 126, 138) for backlog list/update operations during the recursive follow-up handling workflow. These should be migrated to mcp__backlog__* tool calls for consistency with the rest of the ecosystem (completed in issue #329). Low urgency since the CLI still works; MCP is preferred.'
+description: 'The complete-implementation skill still uses 3 uv run backlog.py CLI invocations (lines 112, 126, 138) for backlog list/update operations during the recursive follow-up handling workflow. These should be migrated to mcp__plugin_dh_backlog__* tool calls for consistency with the rest of the ecosystem (completed in issue #329). Low urgency since the CLI still works; MCP is preferred.'
 metadata:
   topic: complete-implementationskillmd-migrate-3-cli-invocations-to-
   source: Quality gate integration check — discovered during backlog CLI-to-MCP migration (#329)
@@ -19,7 +19,7 @@ As a **developer using Claude Code skills**, I want to **complete-implementation
 
 ## Description
 
-The complete-implementation skill still uses 3 uv run backlog.py CLI invocations (lines 112, 126, 138) for backlog list/update operations during the recursive follow-up handling workflow. These should be migrated to mcp__backlog__* tool calls for consistency with the rest of the ecosystem (completed in issue #329). Low urgency since the CLI still works; MCP is preferred.
+The complete-implementation skill still uses 3 uv run backlog.py CLI invocations (lines 112, 126, 138) for backlog list/update operations during the recursive follow-up handling workflow. These should be migrated to mcp__plugin_dh_backlog__* tool calls for consistency with the rest of the ecosystem (completed in issue #329). Low urgency since the CLI still works; MCP is preferred.
 
 ## Acceptance Criteria
 

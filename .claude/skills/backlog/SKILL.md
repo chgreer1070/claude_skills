@@ -1,6 +1,6 @@
 ---
 name: backlog
-description: Single interface for backlog items and GitHub Issues. GitHub Issues are the source of truth; .claude/backlog/ per-item files are the local cache. All backlog CRUD goes through MCP tools (mcp__backlog__*) in orchestrator sessions — no direct file edits. Use when creating, listing, viewing, updating, closing, resolving, grooming, or syncing backlog items and GitHub issues.
+description: Single interface for backlog items and GitHub Issues. GitHub Issues are the source of truth; .claude/backlog/ per-item files are the local cache. All backlog CRUD goes through MCP tools (mcp__plugin_dh_backlog__*) in orchestrator sessions — no direct file edits. Use when creating, listing, viewing, updating, closing, resolving, grooming, or syncing backlog items and GitHub issues.
 ---
 
 # Backlog
@@ -15,7 +15,7 @@ All 10 tools return a `dict`. On error the dict contains an `"error"` key. On su
 contains result data keys plus `messages: list[str]` and `warnings: list[str]` (always present,
 may be empty). Always check for `"error"` before consuming result fields.
 
-The MCP tool name prefix is `mcp__backlog__` followed by the tool name below.
+The MCP tool name prefix is `mcp__plugin_dh_backlog__` followed by the tool name below.
 
 ### `backlog_add`
 
@@ -211,7 +211,7 @@ Available subcommands mirror the MCP tools: `add`, `list`, `view`, `sync`, `clos
 
 ## Integration
 
-- `/create-backlog-item` — calls `mcp__backlog__backlog_add` to create per-item files and issues
+- `/create-backlog-item` — calls `mcp__plugin_dh_backlog__backlog_add` to create per-item files and issues
 - `/work-backlog-item` — calls `backlog_list`, `backlog_view`, `backlog_close`, `backlog_resolve`,
   `backlog_update`
 - `/groom-backlog-item` — calls `backlog_groom` and `backlog_update` for groomed content

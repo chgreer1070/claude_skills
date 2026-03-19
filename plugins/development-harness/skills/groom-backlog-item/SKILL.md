@@ -54,7 +54,7 @@ flowchart TD
 
 ### Step 1: Parse Arguments and Load Backlog
 
-Call `mcp__backlog__backlog_list()` and filter the returned dict's `items` list by argument type above.
+Call `mcp__plugin_dh_backlog__backlog_list()` and filter the returned dict's `items` list by argument type above.
 
 ### Step 2: Validity Check (Pre-Groom Gate)
 
@@ -107,7 +107,7 @@ Spawn a haiku-model agent (`subagent_type="general-purpose"`, model=haiku) with 
    - **New callers** — other files now depend on this file that the plan did not account for
    - **File moved/renamed** — file is at a different path
    - **No impact** — commit is unrelated to the plan's goals for this file
-7. Write findings to the backlog item via `mcp__backlog__backlog_groom(selector="{title}", section="Plan Drift", content="...")`
+7. Write findings to the backlog item via `mcp__plugin_dh_backlog__backlog_groom(selector="{title}", section="Plan Drift", content="...")`
 
 **Plan Drift output format when drift is detected:**
 
@@ -155,7 +155,7 @@ Review {specific task IDs} against this change during execution.
 
 Spawn a haiku-model agent (`subagent_type="general-purpose"`, model=haiku) with this task:
 
-1. Call `mcp__backlog__backlog_view(selector="{title}")` to retrieve the full item
+1. Call `mcp__plugin_dh_backlog__backlog_view(selector="{title}")` to retrieve the full item
 2. Extract file paths from the groomed sections:
    - **Impact Radius** section — file paths listed under Code, Documentation, Configuration/CI, Agent Instructions
    - **Files** section — explicit file paths listed by the groomer
@@ -169,7 +169,7 @@ Spawn a haiku-model agent (`subagent_type="general-purpose"`, model=haiku) with 
    - **New callers** — other files now depend on this file that the groomed content did not account for
    - **File moved/renamed** — file is at a different path
    - **No impact** — commit is unrelated to the item's scope for this file
-7. Write findings to the backlog item via `mcp__backlog__backlog_groom(selector="{title}", section="Grooming Drift", content="...")`
+7. Write findings to the backlog item via `mcp__plugin_dh_backlog__backlog_groom(selector="{title}", section="Grooming Drift", content="...")`
 
 **Grooming Drift output format when drift is detected:**
 
@@ -240,7 +240,7 @@ DERIVABLE count: {N}
 MISSING count: {N}
 ```
 
-Write this snapshot to the item via `mcp__backlog__backlog_groom(selector="{title}", section="RT-ICA", content="{snapshot}")`.
+Write this snapshot to the item via `mcp__plugin_dh_backlog__backlog_groom(selector="{title}", section="RT-ICA", content="{snapshot}")`.
 
 This snapshot serves two purposes:
 
@@ -555,33 +555,33 @@ For each item, write groomed content into the per-item file via the backlog MCP 
 with a structured error. There is no need to verify signatures before calling. If unsure which tool to
 use, check the tool name and parameters:
 
-- `mcp__backlog__backlog_update` — updates an existing item (selector required)
-- `mcp__backlog__backlog_groom` — writes groomed content (selector required)
-- `mcp__backlog__backlog_sync` — creates GitHub issues for items missing them and pushes groomed content (no selector — operates on entire backlog)
+- `mcp__plugin_dh_backlog__backlog_update` — updates an existing item (selector required)
+- `mcp__plugin_dh_backlog__backlog_groom` — writes groomed content (selector required)
+- `mcp__plugin_dh_backlog__backlog_sync` — creates GitHub issues for items missing them and pushes groomed content (no selector — operates on entire backlog)
 
 Prefer incremental updates so sections (Fact-Check, RT-ICA, groomed subsections) are written as they become available. GitHub is canonical: when the item has an issue, the MCP tool syncs groomed content to the GitHub issue body.
 
 **Preferred: incremental section updates**
 
-After each step, call `mcp__backlog__backlog_groom` with `section` and `content`:
+After each step, call `mcp__plugin_dh_backlog__backlog_groom` with `section` and `content`:
 
 ```text
 # After Step 4 (fact-check)
-mcp__backlog__backlog_groom(selector="{item title}", section="Fact-Check", content="{fact-check summary}")
+mcp__plugin_dh_backlog__backlog_groom(selector="{item title}", section="Fact-Check", content="{fact-check summary}")
 
 # After Step 5 (RT-ICA)
-mcp__backlog__backlog_groom(selector="{item title}", section="RT-ICA", content="{rt-ica summary}")
+mcp__plugin_dh_backlog__backlog_groom(selector="{item title}", section="RT-ICA", content="{rt-ica summary}")
 
 # After Step 8 (groomer output) — subsection or full groomed body
-mcp__backlog__backlog_groom(selector="{item title}", section="Reproducibility", content="{reproducibility section}")
+mcp__plugin_dh_backlog__backlog_groom(selector="{item title}", section="Reproducibility", content="{reproducibility section}")
 # ... or for full groomed body:
-mcp__backlog__backlog_groom(selector="{item title}", groomed_content="{full groomed body}")
+mcp__plugin_dh_backlog__backlog_groom(selector="{item title}", groomed_content="{full groomed body}")
 ```
 
 **Alternative: full content**
 
 ```text
-mcp__backlog__backlog_groom(selector="{item title}", groomed_content="{full groomed body}")
+mcp__plugin_dh_backlog__backlog_groom(selector="{item title}", groomed_content="{full groomed body}")
 ```
 
 Note — `--groomed-file {path}` and stdin pipe (`< {file}`) patterns have no MCP equivalent.
