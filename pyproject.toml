@@ -120,6 +120,7 @@ source = ["**/scripts"]
 [tool.ty.environment]
 # Order matters: real task_format.py (python3-development) must precede symlinked copy (development-harness)
 extra-paths = [
+    "./plugins/development-harness",
     "./.claude/skills/backlog",
     "./.claude/skills/backlog/scripts",
     "./.claude/skills/create-merge-request-changelog/scripts",
@@ -160,7 +161,10 @@ invalid-argument-type = "ignore" # MessageParam dict construction patterns
 unresolved-attribute = "ignore"  # block.thinking/block.text after block.type == "thinking" check
 
 [[tool.ty.overrides]]
-include = ["plugins/plugin-creator/scripts/frontmatter_utils.py"]
+include = [
+    "plugins/plugin-creator/scripts/frontmatter_utils.py",
+    "plugins/development-harness/backlog_core/frontmatter_utils.py",
+]
 
 [tool.ty.overrides.rules]
 invalid-method-override = "ignore" # YAMLHandler base uses dict[str, object]/Any; we use FrontmatterValue
