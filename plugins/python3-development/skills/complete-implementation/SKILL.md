@@ -236,7 +236,7 @@ mcp__backlog__backlog_update(selector="{matched_item_title}", plan="{followup_fi
 **No match found** -- create a new backlog item, then attach the follow-up as plan:
 
 ```text
-Skill(skill: "create-backlog-item", args: "--auto {derived_title}")
+Skill(skill: "dh:create-backlog-item", args: "--auto {derived_title}")
 ```
 
 Then attach the follow-up file as the plan:
@@ -247,8 +247,8 @@ mcp__backlog__backlog_update(selector="{derived_title}", plan="{followup_file_pa
 
 **Error handling**:
 
-- If `mcp__backlog__backlog_update` fails after creation (title mismatch between what `create-backlog-item` produced and what `update` searched for): re-invoke `mcp__backlog__backlog_list()`, find the most recently added item, and retry `mcp__backlog__backlog_update` with its exact title. If the retry also fails, log the error and continue to the next follow-up file.
-- If `create-backlog-item --auto` logs `[AUTO] STOP -- duplicate detected`: treat this as "match found" -- run `mcp__backlog__backlog_update` on the duplicate's title to attach the plan.
+- If `mcp__backlog__backlog_update` fails after creation (title mismatch between what `dh:create-backlog-item` produced and what `update` searched for): re-invoke `mcp__backlog__backlog_list()`, find the most recently added item, and retry `mcp__backlog__backlog_update` with its exact title. If the retry also fails, log the error and continue to the next follow-up file.
+- If `dh:create-backlog-item --auto` logs `[AUTO] STOP -- duplicate detected`: treat this as "match found" -- run `mcp__backlog__backlog_update` on the duplicate's title to attach the plan.
 
 ### Step 4: Recursion Gate
 
@@ -271,7 +271,7 @@ Then re-run `complete-implementation` on the follow-up task file.
 Log the deferral and output this line to the user:
 
 ```text
-Follow-up deferred — to resume: /work-backlog-item <title>
+Follow-up deferred — to resume: /dh:work-backlog-item <title>
 ```
 
 Where `<title>` is the backlog item title the follow-up was linked to in Step 3.
@@ -284,7 +284,7 @@ Do not recurse. The follow-up is tracked in the backlog.
 
 ## Apply status:verified Label
 
-After all six phases and follow-up routing complete, apply the `status:verified` GitHub label to the parent backlog issue. This records durable completion evidence that `/work-backlog-item resolve` requires before closing a SAM item.
+After all six phases and follow-up routing complete, apply the `status:verified` GitHub label to the parent backlog issue. This records durable completion evidence that `/dh:work-backlog-item resolve` requires before closing a SAM item.
 
 ### Step 1: Locate the backlog item
 
@@ -355,7 +355,7 @@ After the commit+push step, output this block to the user:
 
 ```text
 Clear context and run:
-  /work-backlog-item <next-backlog-item-title>
+  /dh:work-backlog-item <next-backlog-item-title>
 ```
 
 Where `<next-backlog-item-title>` is determined by:
@@ -368,5 +368,5 @@ Find the highest-priority open item whose title contains the current feature slu
 
 ```text
 Clear context and run:
-  /work-backlog-item — nothing queued —
+  /dh:work-backlog-item — nothing queued —
 ```

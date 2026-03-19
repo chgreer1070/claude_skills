@@ -195,4 +195,4 @@ GitHub setup complete.
   metadata.status   →  Issue closed
 ```
 
-See [issue-stories.md](../../gh/references/issue-stories.md) for the full body template and lifecycle.
+See [issue-stories.md](../../../../../.claude/skills/gh/references/issue-stories.md) for the full body template and lifecycle.

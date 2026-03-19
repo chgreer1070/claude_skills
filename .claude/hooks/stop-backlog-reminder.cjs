@@ -5,8 +5,8 @@
 
 const output = {
   additionalContext: `<backlog-reminder>
-New ideas or deferred work discovered this session? → Skill(skill: "create-backlog-item", args: "--auto {title}") to add and track.
-Completed items? → Skill(skill: "work-backlog-item", args: "close {title}") to verify and close.
+New ideas or deferred work discovered this session? → Skill(skill: "dh:create-backlog-item", args: "--auto {title}") to add and track.
+Completed items? → Skill(skill: "dh:work-backlog-item", args: "close {title}") to verify and close.
 </backlog-reminder>`,
 };
 

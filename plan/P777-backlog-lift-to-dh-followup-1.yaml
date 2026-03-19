@@ -1,0 +1,12 @@
+feature: backlog-lift-to-dh-followup-1
+version: '1.0'
+description: ''
+goal: |-
+  Complete the missed T02 caller updates in create-backlog-item/SKILL.md and complete-implementation/SKILL.md
+tasks:
+- id: T1
+  title: 'Fix missed dh: prefix updates from T02'
+  status: not-started
+  agent: general-purpose
+  priority: 1
+  complexity: low

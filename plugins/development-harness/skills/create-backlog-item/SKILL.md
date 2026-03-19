@@ -194,8 +194,8 @@ Backlog item created.
   Added:    {date}
 
 Next steps:
-  Groom:  /groom-backlog-item {title}
-  Work:   /work-backlog-item {title}
+  Groom:  /dh:groom-backlog-item {title}
+  Work:   /dh:work-backlog-item {title}
 ```
 
 ## Error Handling

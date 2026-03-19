@@ -5,9 +5,9 @@ metadata:
   topic: development-harness-architecture-refactor
   source: Session observation — brainstorming discussion about harness architecture
   added: '2026-03-11'
-  priority: P1
+  priority: completed
   type: Refactor
-  status: open
+  status: done
   issue: '#581'
   last_synced: '2026-03-14T15:59:47Z'
   groomed: '2026-03-11'

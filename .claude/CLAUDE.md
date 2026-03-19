@@ -29,7 +29,7 @@ Never introduce hard-coded truncation or length limits on content that a consume
 1. !`uv self update || true` — ensure uv is v0.10.0 or newer
 2. !`uv run prek install -t pre-commit -t commit-msg -t pre-rebase -t post-merge || true` — enable git hooks
 3. Follow `./CONTRIBUTING.md` procedures when modifying plugins
-4. Multi-step work identified: create backlog items via /create-backlog-item or process backlog items via /work-backlog-item — add items freely, they get groomed and checked later.
+4. Multi-step work identified: create backlog items via /dh:create-backlog-item or process backlog items via /dh:work-backlog-item — add items freely, they get groomed and checked later.
 
 **Runtime**: All Python via `uv`, `uv run`, `uv run python -c 'some python code'`. All pre-commit via `prek`, `uv run prek run --files <file>`
 
@@ -223,7 +223,7 @@ Phrase "pre-existing issues not related to my changes" is a TRIGGER TO ACT, not 
 
 When you identify that work will need multiple steps or jobs: create backlog items for them — don't just describe them.
 
-1. **Backlog**: Create via `create-backlog-item` or match via `work-backlog-item` before starting.
+1. **Backlog**: Create via `dh:create-backlog-item` or match via `dh:work-backlog-item` before starting.
 2. **Plan**: When writing a plan, add it to the item via `mcp__backlog__backlog_update(selector="{title}", plan="{path}")`.
 3. **Progress**: When completing actions, update the task/plan artifact (checklist, status) so progression is visible.
 
@@ -253,7 +253,7 @@ uv run .claude/skills/backlog/scripts/backlog.py add|list|sync|close|resolve|upd
 
 Do not edit `.claude/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic.
 
-Skills `/create-backlog-item` and `/work-backlog-item` invoke these tools. See `/backlog` skill.
+Skills `/dh:create-backlog-item` and `/dh:work-backlog-item` invoke these tools. See `/backlog` skill.
 
 **Capability gap fallback**: If the MCP tools or CLI lack the needed operation, invoke
 `/backlog-tools-administrator` to extend both the CLI and MCP server simultaneously.
