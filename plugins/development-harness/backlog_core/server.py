@@ -2,14 +2,42 @@
 
 from __future__ import annotations
 
+import argparse
 import asyncio
+import sys
 from typing import Annotated
 
 from fastmcp import Context, FastMCP
 from pydantic import Field
 
 from . import operations
-from .models import BacklogError, Output
+from .models import BacklogError, Output, init as _init_models
+
+
+def _parse_args() -> argparse.Namespace:
+    """Parse server startup arguments.
+
+    Returns:
+        Parsed namespace; ``project_dir`` is ``None`` when not supplied.
+    """
+    parser = argparse.ArgumentParser(description="Backlog MCP server")
+    parser.add_argument(
+        "--project-dir",
+        type=str,
+        default=None,
+        help=(
+            "Absolute path to the user's project root. "
+            "Required when installed as a plugin so BACKLOG_DIR resolves "
+            "to the user's project rather than the plugin cache directory."
+        ),
+    )
+    # parse_known_args prevents FastMCP/uvicorn arguments from causing errors
+    namespace, _ = parser.parse_known_args(sys.argv[1:])
+    return namespace
+
+
+_args = _parse_args()
+_init_models(_args.project_dir)
 
 mcp = FastMCP(
     "backlog",

@@ -16,10 +16,47 @@ from pydantic import BaseModel, Field
 # Path constants
 # ---------------------------------------------------------------------------
 
-# mcp/ -> backlog/ -> skills/ -> .claude/ -> repo root
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
+def _resolve_repo_root(project_dir: str | None = None) -> Path:
+    """Return the repository root path.
+
+    Args:
+        project_dir: Explicit project directory path, typically passed via
+            ``--project-dir`` CLI argument when the server is installed as a
+            plugin (where ``__file__`` points to the plugin cache, not the
+            user's project).  When ``None``, falls back to ``Path.cwd()``
+            which is correct for in-repo development.
+
+    Returns:
+        Resolved Path to the repository root.
+    """
+    if project_dir:
+        return Path(project_dir).resolve()
+    return Path.cwd()
+
+
+_REPO_ROOT = _resolve_repo_root()
 BACKLOG_DIR = _REPO_ROOT / ".claude" / "backlog"
+
+
+def init(project_dir: str | None) -> None:
+    """Re-initialise module-level path constants from an explicit project directory.
+
+    Call this once at server startup (before any tool runs) when the server is
+    launched with ``--project-dir``.  Mutates the module globals ``_REPO_ROOT``
+    and ``BACKLOG_DIR`` in-place so that all operations in this module and any
+    module that imported ``BACKLOG_DIR`` at function-call time will see the
+    correct paths.
+
+    Args:
+        project_dir: Absolute path to the user's project root, forwarded from
+            the ``--project-dir`` CLI argument in ``server.py``.
+    """
+    global _REPO_ROOT, BACKLOG_DIR  # noqa: PLW0603
+    _REPO_ROOT = _resolve_repo_root(project_dir)
+    BACKLOG_DIR = _REPO_ROOT / ".claude" / "backlog"
+
+
 DEFAULT_REPO = "Jamie-BitFlight/claude_skills"
 
 # ---------------------------------------------------------------------------
