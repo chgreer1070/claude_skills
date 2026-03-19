@@ -184,3 +184,9 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 **Files**: `.github/workflows/quality-gate-audit.yml`
 **Behavior to cover**: End-to-end execution of the audit workflow — fetching closed issues, SAM-item detection via body regex, `status:verified` skip logic, `needs-verification` label creation and application, comment posting, and PR filtering.
 **Reason not written**: GitHub Actions workflows require a live GitHub API and runner environment. No unit-testable code was produced (the logic lives in an inline `github-script` action). Integration testing requires `gh workflow run` against a real repo, which is outside the scope of a local sub-agent task.
+
+## Gap: backlog_core/models.py — init() and_resolve_repo_root()
+
+**Files**: `plugins/development-harness/backlog_core/models.py`
+**Behavior to cover**: `_resolve_repo_root(project_dir=<path>)` returns resolved Path of that argument; `_resolve_repo_root(None)` returns `Path.cwd()`; `init(project_dir)` mutates module globals `_REPO_ROOT` and `BACKLOG_DIR` to the correct paths; `init(None)` leaves them pointing at cwd-based path.
+**Reason not written**: No existing test suite for `backlog_core` found in scope; standalone fix task with no TDD harness in place.
