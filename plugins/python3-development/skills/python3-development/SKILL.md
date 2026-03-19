@@ -107,7 +107,7 @@ Understand the complexity vs portability trade-off when creating Python CLI scri
 
 ### Rich Panel and Table Width Handling
 
-See [python-cli-architect Rich Tables reference](../python-cli-architect/references/rich-tables.md) — `get_rendered_width()` pattern that prevents wrapping at 80 columns in non-TTY environments, covering Panel, Table, and plain text output.
+For Rich table and panel width patterns, activate the `/python3-development:python-cli-architect` skill.
 
 **Executable Examples**: See [./assets/typer_examples/](./assets/typer_examples/index.md) for complete working scripts:
 
@@ -257,11 +257,11 @@ Research tool preference for PEP documentation:
 
 ## Quality Gates
 
-See [python-cli-architect Quality Gate reference](../python-cli-architect/references/quality-gate.md) — mandatory linting, type checking, test, full-file review, and shebang validation steps that must pass before reporting work complete. Covers tool detection (prek vs pre-commit), format-first workflow, type checker discovery, linting exception conditions, and per-file ruff ignores.
+For the mandatory quality gate sequence (linting, type checking, tests, full-file review, shebang validation), activate the `/python3-development:python-cli-architect` skill.
 
 ## Standard Project Structure
 
-See [python-cli-architect Project Structure reference](../python-cli-architect/references/project-structure.md) — `packages/{name}/` layout, Hatchling configuration, and hyphen-to-underscore naming rule.
+For project directory layout, Hatchling configuration, and package naming rules, activate the `/python3-development:python-cli-architect` skill.
 
 ## Integration
 

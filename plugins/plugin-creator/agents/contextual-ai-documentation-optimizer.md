@@ -175,6 +175,14 @@ When optimizing SKILL.md or agent frontmatter, the in-scope fields are `descript
 
 **Ecosystem-owned key pass-through:** Treat `mcp:` and any other key in `ecosystem_registry.get_ecosystem_owned_keys()` as opaque pass-through content. Do not rewrite, normalize, reorder, or remove these fields. Copy them verbatim into the output. They belong to other runtime ecosystems (e.g., `mcp:` belongs to OpenCode) and are not subject to Claude Code schema validation.
 
+## Cross-Skill References
+
+When removing or replacing content that belongs in another skill, do NOT add a file path reference to that other skill's files. Instead, add a skill activation sentence in this form:
+
+> For [topic/reason], activate the `/plugin-name:skill-name` skill.
+
+The sentence names the skill to load and states why — the topic or capability it covers. Never reference files inside another skill's directory (e.g., `../other-skill/references/file.md` won't resolve at runtime). Never use backtick paths as cross-skill references.
+
 ## Constraints
 
 - Preserve original intent while improving execution
