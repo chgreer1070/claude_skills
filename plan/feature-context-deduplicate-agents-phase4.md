@@ -243,3 +243,13 @@ _Added by context-refinement agent on 2026-03-19_
 
 4. **sam migrate bug fixes — unplanned work discovered necessary**: Three silent data-loss bugs in `packages/sam_schema/` were discovered and fixed during migration operations. 16 regression tests added. This work was not in scope but was required to safely migrate plan files.
    - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T7.yaml — Discovered During Implementation
+
+5. **development-harness .mcp.json ${CLAUDE_PROJECT_DIR} in args causes MCP validation error**: `plugins/development-harness/.mcp.json` used `${CLAUDE_PROJECT_DIR}` in `args`. MCP validator does not expand environment variables in this field, causing validation failure. Fixed with literal path. Future plugin .mcp.json files must use literal paths in `args`.
+   - Original goal: "No broken references remain" (acceptance criterion)
+   - Actual: `.mcp.json` fix required; not anticipated in original gap analysis
+   - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T7.yaml
+
+6. **service-docs-maintainer missing @dh: prefix in complete-implementation/SKILL.md**: Integration-checker found bare `service-docs-maintainer` reference without namespace in `complete-implementation/SKILL.md`. Same namespace migration class as T3-T6 but in a skill file not in the original reference update list. Gap Analysis item 3 (broken references after deletion) was broader than the four files originally scoped.
+   - Original goal: "No broken agent references remain in local-workflow.md, orchestrate/SKILL.md, or python-development-orchestration.md"
+   - Actual: `complete-implementation/SKILL.md` also contained a broken reference, resolved during T7
+   - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T7.yaml

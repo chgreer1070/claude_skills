@@ -493,3 +493,13 @@ _Added by context-refinement agent on 2026-03-19_
    - Original: No sam_schema changes in scope
    - Actual: packages/sam_schema/ modified; 680 tests passing (664 baseline)
    - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T7.yaml — Discovered During Implementation
+
+5. **development-harness .mcp.json ${CLAUDE_PROJECT_DIR} in args causes MCP validation error**: `plugins/development-harness/.mcp.json` used `${CLAUDE_PROJECT_DIR}` in the `args` array. The MCP validator does not expand this environment variable, producing a validation error. Fixed with a literal path. Constraint: all plugin `.mcp.json` `args` values must use literal paths.
+   - Original: Not in scope of this spec
+   - Actual: `.mcp.json` patched during validation phase (T7)
+   - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T7.yaml
+
+6. **service-docs-maintainer missing @dh: prefix in complete-implementation/SKILL.md**: The integration-checker found a bare `service-docs-maintainer` reference (no namespace prefix) in `complete-implementation/SKILL.md`. Updated to `@dh:service-docs-maintainer`. Same class as T3-T6 namespace updates but in a skill file not listed in the Reference Update Design Summary table.
+   - Original: Reference Update Design Summary table covered 5 categories; skill files not included
+   - Actual: `complete-implementation/SKILL.md` required namespace fix (T7 phase)
+   - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T7.yaml

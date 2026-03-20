@@ -110,7 +110,7 @@ Launch `@dh:doc-drift-auditor` with the `TaskAssignment` JSON from `uv run sam r
 
 ## Phase 5: Documentation Update (if drift found)
 
-If drift exists or docs must be updated for the feature, launch `service-docs-maintainer` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json`.
+If drift exists or docs must be updated for the feature, launch `@dh:service-docs-maintainer` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json`.
 
 ---
 

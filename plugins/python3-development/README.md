@@ -138,24 +138,36 @@ And more specialized skills for code review, packaging, bug fixing, and feature 
 
 ### Specialized Agents
 
-The plugin provides 16 agents Claude can delegate to for specialized tasks:
+The plugin provides 8 Python-specific agents:
 
 | Agent | Specialization |
 |-------|----------------|
 | `python-cli-architect` | Build CLIs with Typer and Rich |
+| `python-cli-design-spec` | Produce architecture specs for Python CLIs |
 | `python-pytest-architect` | Create and modernize test suites |
-| `python-code-reviewer` | Review code for quality and best practices |
-| `context-gathering` | Gather comprehensive context for implementation |
-| `codebase-analyzer` | Explore patterns and write structured analysis |
-| `ecosystem-researcher` | Research domain ecosystems and technology landscapes |
-| `feature-researcher` | Research features and produce discovery context |
-| `feature-verifier` | Goal-backward verification after implementation |
-| `integration-checker` | Verify cross-module integration and end-to-end flows |
-| `plan-validator` | Validate implementation plans before execution |
-| `code-reviewer` | Holistic code review after implementation |
-| `doc-drift-auditor` | Audit documentation accuracy against code |
-| `context-refinement` | Update task context with implementation discoveries |
-| `service-docs-maintainer` | Update CLAUDE.md and module documentation |
+| `python-code-reviewer` | Review Python code for quality and idioms |
+| `code-reviewer` | General code review with Python awareness |
+| `t0-baseline-capture` | Capture baseline metrics before implementation |
+| `tn-verification-gate` | Verify acceptance criteria post-implementation |
+| `semantic-code-search` | Semantic search over Python codebases |
+
+### Shared Workflow Agents (development-harness)
+
+10 language-agnostic agents were moved to the `development-harness` plugin during the
+deduplication refactor. Invoke them with the `@dh:` prefix:
+
+| Agent | Specialization |
+|-------|----------------|
+| `@dh:feature-researcher` | Research features and produce discovery context |
+| `@dh:codebase-analyzer` | Explore patterns and write structured analysis |
+| `@dh:context-gathering` | Gather comprehensive context for implementation |
+| `@dh:context-refinement` | Update task context with implementation discoveries |
+| `@dh:plan-validator` | Validate implementation plans before execution |
+| `@dh:feature-verifier` | Goal-backward verification after implementation |
+| `@dh:integration-checker` | Verify cross-module integration and end-to-end flows |
+| `@dh:doc-drift-auditor` | Audit documentation accuracy against code |
+| `@dh:swarm-task-planner` | Decompose features into structured task plans |
+| `@dh:ecosystem-researcher` | Research domain ecosystems and technology landscapes |
 
 ## Installation
 

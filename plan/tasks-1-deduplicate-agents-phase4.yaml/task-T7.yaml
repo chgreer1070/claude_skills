@@ -381,3 +381,22 @@ context-notes: |
   - The three plan format generations coexist in `plan/` — the `sam` CLI handles all three but behavior differences exist at migration boundaries
   - When blanking Agent File Locations table cells, preserve column structure (use `—`) rather than removing columns — removing columns breaks table alignment for agents that remain in both locations
   - `add-new-feature/SKILL.md` and `complete-implementation/SKILL.md` also contained shared-agent namespace references and must be updated when doing future agent namespace migrations
+
+  ## Additional Discoveries
+
+  _Session Date: 2026-03-19_
+
+  Two discoveries from the implementation session were not captured in the prior annotation run:
+
+  **1. development-harness .mcp.json had \${CLAUDE_PROJECT_DIR} causing MCP validation error**
+
+  The `plugins/development-harness/.mcp.json` used `\${CLAUDE_PROJECT_DIR}` in its `args` array. This environment variable is not expanded by the MCP server validator, causing the development-harness plugin to fail MCP validation. The fix replaced the variable reference with a literal path. Future .mcp.json files in any plugin must use literal paths in `args`, not environment variable references.
+
+  **2. service-docs-maintainer @dh: prefix missing in complete-implementation/SKILL.md**
+
+  The `complete-implementation/SKILL.md` file contained a reference to `service-docs-maintainer` without the `@dh:` namespace prefix. This was identified by the integration-checker agent during quality gates. The reference was updated to `@dh:service-docs-maintainer` to match the actual agent location in development-harness. This is the same class of namespace migration as the T3-T6 reference updates, but it appeared in a skill file rather than a workflow doc.
+
+  #### Gotchas for Future Developers
+
+  - `.mcp.json` files in plugin directories must use literal paths in `args`, not `\${CLAUDE_PROJECT_DIR}` or similar environment variable references — the MCP validator does not expand these
+  - When auditing for stale `python3-development:` namespace references, include skill files (`SKILL.md`) not just reference docs — `complete-implementation/SKILL.md` was missed by the initial Task 3-6 pass
