@@ -1,25 +1,23 @@
 """Tests for repository discovery in backlog_core.models.
 
 Covers: discover_repo() priority chain, RepoDiscoveryError, _validate_repo_slug(),
-_discover_via_env(), _discover_via_gh(), _discover_via_git(), and lru_cache behaviour.
+_discover_via_env(), _discover_via_git(), and lru_cache behaviour.
 
 Test strategy:
 - Each test is isolated: lru_cache is cleared in an autouse fixture
-- External calls (subprocess, shutil.which) are mocked at the module boundary
+- External calls (git.Repo) are mocked at the module boundary
 - monkeypatch controls environment variables
 - pytest-mock (mocker.patch) is used exclusively — no unittest.mock imports
 """
 
 from __future__ import annotations
 
-import subprocess
 from typing import TYPE_CHECKING
 
 import pytest
 from backlog_core.models import (
     RepoDiscoveryError,
     _discover_via_env,
-    _discover_via_gh,
     _discover_via_git,
     _validate_repo_slug,
     discover_repo,
@@ -267,186 +265,51 @@ class TestDiscoverViaEnv:
 
 
 # ---------------------------------------------------------------------------
-# _discover_via_gh
-# ---------------------------------------------------------------------------
-
-
-class TestDiscoverViaGh:
-    """_discover_via_gh queries the gh CLI for the current repo slug.
-
-    Priority 2 in the chain. All subprocess calls are mocked — tests must
-    not depend on gh being installed in the test environment.
-    """
-
-    def test_discover_via_gh_returns_slug_on_success(self, mocker: MockerFixture) -> None:
-        """Returns owner/repo when gh exits 0 with a valid slug.
-
-        Tests: _discover_via_gh happy path
-        How: Mock shutil.which to return a fake path; mock subprocess.run to
-             return rc=0 and stdout="owner/repo\\n".
-        Why: Verifies the full success path without requiring gh installed.
-        """
-        mocker.patch("backlog_core.models.shutil.which", return_value="/usr/bin/gh")
-        mock_result = mocker.Mock()
-        mock_result.returncode = 0
-        mock_result.stdout = "owner/repo\n"
-        mocker.patch("backlog_core.models.subprocess.run", return_value=mock_result)
-
-        result = _discover_via_gh()
-
-        assert result == "owner/repo"
-
-    def test_discover_via_gh_returns_none_when_gh_not_in_path(self, mocker: MockerFixture) -> None:
-        """Returns None immediately when gh is not in PATH.
-
-        Tests: _discover_via_gh when gh not installed
-        How: Mock shutil.which to return None; assert subprocess.run is never called.
-        Why: Must not attempt subprocess when gh binary is absent.
-        """
-        mocker.patch("backlog_core.models.shutil.which", return_value=None)
-        mock_run = mocker.patch("backlog_core.models.subprocess.run")
-
-        result = _discover_via_gh()
-
-        assert result is None
-        mock_run.assert_not_called()
-
-    def test_discover_via_gh_returns_none_on_nonzero_exit(self, mocker: MockerFixture) -> None:
-        """Returns None when gh exits with non-zero return code.
-
-        Tests: _discover_via_gh gh command failure
-        How: Mock gh binary present; mock subprocess.run to return rc=1.
-        Why: A failing gh command (not in repo, not authenticated) must not raise.
-        """
-        mocker.patch("backlog_core.models.shutil.which", return_value="/usr/bin/gh")
-        mock_result = mocker.Mock()
-        mock_result.returncode = 1
-        mock_result.stdout = ""
-        mocker.patch("backlog_core.models.subprocess.run", return_value=mock_result)
-
-        result = _discover_via_gh()
-
-        assert result is None
-
-    def test_discover_via_gh_returns_none_on_timeout(self, mocker: MockerFixture) -> None:
-        """Returns None when gh subprocess times out.
-
-        Tests: _discover_via_gh timeout handling
-        How: Mock gh present; mock subprocess.run to raise TimeoutExpired.
-        Why: Network-dependent commands must degrade gracefully under timeout.
-        """
-        mocker.patch("backlog_core.models.shutil.which", return_value="/usr/bin/gh")
-        mocker.patch("backlog_core.models.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="gh", timeout=10))
-
-        result = _discover_via_gh()
-
-        assert result is None
-
-    def test_discover_via_gh_returns_none_on_os_error(self, mocker: MockerFixture) -> None:
-        """Returns None when subprocess.run raises OSError.
-
-        Tests: _discover_via_gh OSError handling
-        How: Mock gh present; mock subprocess.run to raise OSError.
-        Why: Executable exists in PATH but fails to launch (permissions, etc.).
-        """
-        mocker.patch("backlog_core.models.shutil.which", return_value="/usr/bin/gh")
-        mocker.patch("backlog_core.models.subprocess.run", side_effect=OSError("exec failed"))
-
-        result = _discover_via_gh()
-
-        assert result is None
-
-    def test_discover_via_gh_returns_none_when_stdout_empty(self, mocker: MockerFixture) -> None:
-        """Returns None when gh exits 0 but stdout is empty.
-
-        Tests: _discover_via_gh empty output guard
-        How: Mock gh present; mock subprocess.run rc=0 stdout="".
-        Why: An empty slug cannot be validated and must not propagate.
-        """
-        mocker.patch("backlog_core.models.shutil.which", return_value="/usr/bin/gh")
-        mock_result = mocker.Mock()
-        mock_result.returncode = 0
-        mock_result.stdout = ""
-        mocker.patch("backlog_core.models.subprocess.run", return_value=mock_result)
-
-        result = _discover_via_gh()
-
-        assert result is None
-
-    def test_discover_via_gh_returns_none_when_output_not_slug_format(self, mocker: MockerFixture) -> None:
-        """Returns None when gh output does not match owner/repo format.
-
-        Tests: _discover_via_gh output validation
-        How: Mock gh rc=0 with output "not-a-slug".
-        Why: gh may produce unexpected output; must not use unvalidated values.
-        """
-        mocker.patch("backlog_core.models.shutil.which", return_value="/usr/bin/gh")
-        mock_result = mocker.Mock()
-        mock_result.returncode = 0
-        mock_result.stdout = "not-a-slug\n"
-        mocker.patch("backlog_core.models.subprocess.run", return_value=mock_result)
-
-        result = _discover_via_gh()
-
-        assert result is None
-
-    def test_discover_via_gh_strips_trailing_newline_from_output(self, mocker: MockerFixture) -> None:
-        """Trailing newline in gh output is stripped before returning.
-
-        Tests: _discover_via_gh stdout .strip() behaviour
-        How: Mock gh rc=0 stdout="owner/repo\\n"; assert "owner/repo" (no newline).
-        Why: CLI tools often append newlines; stripping must happen before validation.
-        """
-        mocker.patch("backlog_core.models.shutil.which", return_value="/usr/bin/gh")
-        mock_result = mocker.Mock()
-        mock_result.returncode = 0
-        mock_result.stdout = "owner/repo\n"
-        mocker.patch("backlog_core.models.subprocess.run", return_value=mock_result)
-
-        result = _discover_via_gh()
-
-        assert result == "owner/repo"
-
-
-# ---------------------------------------------------------------------------
 # _discover_via_git
 # ---------------------------------------------------------------------------
 
 
-class TestDiscoverViaGit:
-    """_discover_via_git parses the git remote origin URL.
+def _make_mock_repo(mocker: MockerFixture, url: str) -> object:
+    """Return a mock git.Repo whose origin remote URL is set to *url*."""
+    mock_remote = mocker.Mock()
+    mock_remote.url = url
+    mock_repo = mocker.Mock()
+    mock_repo.remote.return_value = mock_remote
+    return mock_repo
 
-    Priority 3 in the chain. Tests cover SSH, HTTPS, and proxy URL formats
-    documented in the architecture spec. All subprocess calls are mocked.
+
+class TestDiscoverViaGit:
+    """_discover_via_git parses the git remote origin URL via GitPython.
+
+    Priority 2 in the chain. All git.Repo calls are mocked — tests must
+    not depend on the actual git repository state.
     """
 
-    def test_discover_via_git_returns_none_when_git_not_in_path(self, mocker: MockerFixture) -> None:
-        """Returns None immediately when git binary is not found.
+    def test_discover_via_git_returns_none_when_not_a_git_repo(self, mocker: MockerFixture) -> None:
+        """Returns None when git.Repo raises InvalidGitRepositoryError.
 
-        Tests: _discover_via_git absent git binary
-        How: Mock shutil.which to return None; assert subprocess.run not called.
-        Why: Environments without git must not error.
+        Tests: _discover_via_git absent git repository
+        How: Mock git.Repo to raise InvalidGitRepositoryError; assert None returned.
+        Why: Environments not inside a git repository must not error.
         """
-        mocker.patch("backlog_core.models.shutil.which", return_value=None)
-        mock_run = mocker.patch("backlog_core.models.subprocess.run")
+        import git as gitlib
+
+        mocker.patch("backlog_core.models.git.Repo", side_effect=gitlib.InvalidGitRepositoryError("not a repo"))
 
         result = _discover_via_git()
 
         assert result is None
-        mock_run.assert_not_called()
 
-    def test_discover_via_git_returns_none_on_nonzero_exit(self, mocker: MockerFixture) -> None:
-        """Returns None when git config exits non-zero (no origin remote).
+    def test_discover_via_git_returns_none_when_no_origin_remote(self, mocker: MockerFixture) -> None:
+        """Returns None when the repo has no origin remote (ValueError from GitPython).
 
         Tests: _discover_via_git no origin remote
-        How: Mock git present; subprocess.run rc=1.
+        How: Mock git.Repo.remote() to raise ValueError; assert None returned.
         Why: Repos without an origin remote must fall through to error.
         """
-        mocker.patch("backlog_core.models.shutil.which", return_value="/usr/bin/git")
-        mock_result = mocker.Mock()
-        mock_result.returncode = 1
-        mock_result.stdout = ""
-        mocker.patch("backlog_core.models.subprocess.run", return_value=mock_result)
+        mock_repo = mocker.Mock()
+        mock_repo.remote.side_effect = ValueError("Remote named 'origin' didn't exist")
+        mocker.patch("backlog_core.models.git.Repo", return_value=mock_repo)
 
         result = _discover_via_git()
 
@@ -460,18 +323,14 @@ class TestDiscoverViaGit:
             ("git@github.com:Owner123/Repo.Name.git", "Owner123/Repo.Name"),
         ],
     )
-    def test_discover_via_git_parses_ssh_urls(self, url: str, expected_slug: str, mocker: MockerFixture) -> None:
-        """SSH remote URLs are parsed to extract owner/repo.
+    def test_discover_via_git_parses_ssh_scp_urls(self, url: str, expected_slug: str, mocker: MockerFixture) -> None:
+        """SSH SCP remote URLs are parsed to extract owner/repo.
 
-        Tests: _discover_via_git SSH URL parsing
-        How: Mock git config to return SSH URL; assert expected slug returned.
-        Why: SSH remotes are the most common format in developer environments.
+        Tests: _discover_via_git SSH SCP URL parsing
+        How: Mock git.Repo to return repo with SSH SCP URL; assert expected slug.
+        Why: SSH SCP remotes (git@host:owner/repo.git) are the most common developer format.
         """
-        mocker.patch("backlog_core.models.shutil.which", return_value="/usr/bin/git")
-        mock_result = mocker.Mock()
-        mock_result.returncode = 0
-        mock_result.stdout = f"{url}\n"
-        mocker.patch("backlog_core.models.subprocess.run", return_value=mock_result)
+        mocker.patch("backlog_core.models.git.Repo", return_value=_make_mock_repo(mocker, url))
 
         result = _discover_via_git()
 
@@ -492,14 +351,32 @@ class TestDiscoverViaGit:
         """HTTPS and proxy remote URLs are parsed to extract owner/repo.
 
         Tests: _discover_via_git HTTPS/proxy URL parsing
-        How: Mock git config to return each URL format; assert expected slug.
+        How: Mock git.Repo to return repo with HTTPS/proxy URL; assert expected slug.
         Why: Claude Code sessions use proxy URLs (127.0.0.1) — these must parse.
         """
-        mocker.patch("backlog_core.models.shutil.which", return_value="/usr/bin/git")
-        mock_result = mocker.Mock()
-        mock_result.returncode = 0
-        mock_result.stdout = f"{url}\n"
-        mocker.patch("backlog_core.models.subprocess.run", return_value=mock_result)
+        mocker.patch("backlog_core.models.git.Repo", return_value=_make_mock_repo(mocker, url))
+
+        result = _discover_via_git()
+
+        assert result == expected_slug
+
+    @pytest.mark.parametrize(
+        ("url", "expected_slug"),
+        [
+            ("ssh://git@github.com/owner/repo.git", "owner/repo"),
+            ("ssh://git@github.com/my-org/my-repo.git", "my-org/my-repo"),
+        ],
+    )
+    def test_discover_via_git_parses_ssh_protocol_urls(
+        self, url: str, expected_slug: str, mocker: MockerFixture
+    ) -> None:
+        """SSH protocol remote URLs (ssh://) are parsed to extract owner/repo.
+
+        Tests: _discover_via_git SSH protocol URL parsing
+        How: Mock git.Repo to return repo with ssh:// URL; assert expected slug.
+        Why: Some CI environments configure remotes using the ssh:// scheme.
+        """
+        mocker.patch("backlog_core.models.git.Repo", return_value=_make_mock_repo(mocker, url))
 
         result = _discover_via_git()
 
@@ -509,28 +386,12 @@ class TestDiscoverViaGit:
         """Returns None when the remote URL does not match any known pattern.
 
         Tests: _discover_via_git unrecognised URL format
-        How: Mock git config returning an unrecognisable URL.
+        How: Mock git.Repo to return repo with an unrecognisable URL.
         Why: Must not propagate garbage values when URL format is unknown.
         """
-        mocker.patch("backlog_core.models.shutil.which", return_value="/usr/bin/git")
-        mock_result = mocker.Mock()
-        mock_result.returncode = 0
-        mock_result.stdout = "svn+ssh://svn.example.com/project\n"
-        mocker.patch("backlog_core.models.subprocess.run", return_value=mock_result)
-
-        result = _discover_via_git()
-
-        assert result is None
-
-    def test_discover_via_git_returns_none_on_timeout(self, mocker: MockerFixture) -> None:
-        """Returns None when git config subprocess times out.
-
-        Tests: _discover_via_git timeout handling
-        How: Mock git present; subprocess.run raises TimeoutExpired.
-        Why: git commands may hang in network-mounted or misconfigured repos.
-        """
-        mocker.patch("backlog_core.models.shutil.which", return_value="/usr/bin/git")
-        mocker.patch("backlog_core.models.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="git", timeout=10))
+        mocker.patch(
+            "backlog_core.models.git.Repo", return_value=_make_mock_repo(mocker, "svn+ssh://svn.example.com/project")
+        )
 
         result = _discover_via_git()
 
@@ -545,57 +406,33 @@ class TestDiscoverViaGit:
 class TestDiscoverRepoPriorityChain:
     """discover_repo() respects the documented priority chain.
 
-    Tests: GITHUB_REPO env var → gh CLI → git remote → RepoDiscoveryError
+    Tests: GITHUB_REPO env var → GitPython remote URL → RepoDiscoveryError
     Each test asserts one step of the chain by mocking the lower-priority methods.
     """
 
-    def test_env_var_takes_precedence_over_gh_and_git(
-        self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
-    ) -> None:
-        """GITHUB_REPO env var returns immediately without calling gh or git.
+    def test_env_var_takes_precedence_over_git(self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture) -> None:
+        """GITHUB_REPO env var returns immediately without calling GitPython.
 
         Tests: discover_repo priority 1 (env var)
-        How: Set GITHUB_REPO; mock _discover_via_gh and _discover_via_git to
-             assert they are never called.
+        How: Set GITHUB_REPO; mock _discover_via_git to assert it is never called.
         Why: Env var is the explicit override — it must short-circuit the chain.
         """
         monkeypatch.setenv("GITHUB_REPO", "env-owner/env-repo")
-        mock_gh = mocker.patch("backlog_core.models._discover_via_gh")
         mock_git = mocker.patch("backlog_core.models._discover_via_git")
 
         result = discover_repo()
 
         assert result == "env-owner/env-repo"
-        mock_gh.assert_not_called()
         mock_git.assert_not_called()
 
-    def test_gh_cli_used_when_env_not_set(self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture) -> None:
-        """gh CLI is called when GITHUB_REPO is absent.
+    def test_git_remote_used_when_env_not_set(self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture) -> None:
+        """GitPython remote parsing is called when GITHUB_REPO is absent.
 
-        Tests: discover_repo priority 2 (gh CLI)
-        How: Remove GITHUB_REPO; mock _discover_via_gh to return a slug.
-        Why: gh CLI is preferred over git remote per ADR-001.
+        Tests: discover_repo priority 2 (GitPython remote)
+        How: Remove GITHUB_REPO; mock _discover_via_git to return a valid slug.
+        Why: GitPython is the sole automated method after the env var.
         """
         monkeypatch.delenv("GITHUB_REPO", raising=False)
-        mocker.patch("backlog_core.models._discover_via_gh", return_value="gh-owner/gh-repo")
-        mocker.patch("backlog_core.models._discover_via_git")
-
-        result = discover_repo()
-
-        assert result == "gh-owner/gh-repo"
-
-    def test_git_remote_used_when_env_and_gh_both_fail(
-        self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
-    ) -> None:
-        """Git remote parsing is used as fallback when env and gh both fail.
-
-        Tests: discover_repo priority 3 (git remote)
-        How: Remove GITHUB_REPO; mock _discover_via_gh → None; mock
-             _discover_via_git → valid slug.
-        Why: Environments without gh installed must still resolve via git.
-        """
-        monkeypatch.delenv("GITHUB_REPO", raising=False)
-        mocker.patch("backlog_core.models._discover_via_gh", return_value=None)
         mocker.patch("backlog_core.models._discover_via_git", return_value="git-owner/git-repo")
 
         result = discover_repo()
@@ -605,57 +442,49 @@ class TestDiscoverRepoPriorityChain:
     def test_raises_repo_discovery_error_when_all_methods_fail(
         self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
     ) -> None:
-        """RepoDiscoveryError is raised when all three methods fail.
+        """RepoDiscoveryError is raised when both methods fail.
 
         Tests: discover_repo exhaustion path
-        How: Remove GITHUB_REPO; mock both _discover_via_gh and _discover_via_git
-             to return None; assert RepoDiscoveryError raised.
+        How: Remove GITHUB_REPO; mock _discover_via_git to return None;
+             assert RepoDiscoveryError raised.
         Why: No fallback should exist when all discovery methods are exhausted.
         """
         monkeypatch.delenv("GITHUB_REPO", raising=False)
-        mocker.patch("backlog_core.models._discover_via_gh", return_value=None)
         mocker.patch("backlog_core.models._discover_via_git", return_value=None)
-        # shutil.which must return something for gh so the error message branch
-        # hits "command failed" rather than "gh not found"
-        mocker.patch("backlog_core.models.shutil.which", return_value=None)
 
         with pytest.raises(RepoDiscoveryError):
             discover_repo()
 
-    def test_discovery_error_lists_all_three_methods_tried(
+    def test_discovery_error_lists_both_methods_tried(
         self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
     ) -> None:
-        """RepoDiscoveryError.methods_tried contains all three method names.
+        """RepoDiscoveryError.methods_tried contains both method names.
 
         Tests: discover_repo error context completeness
-        How: Force all methods to fail; assert methods_tried length is 3.
+        How: Force all methods to fail; assert methods_tried length is 2.
         Why: Operators need the full list to diagnose which step to fix.
         """
         monkeypatch.delenv("GITHUB_REPO", raising=False)
-        mocker.patch("backlog_core.models._discover_via_gh", return_value=None)
         mocker.patch("backlog_core.models._discover_via_git", return_value=None)
-        mocker.patch("backlog_core.models.shutil.which", return_value=None)
 
         with pytest.raises(RepoDiscoveryError) as exc_info:
             discover_repo()
 
-        assert len(exc_info.value.methods_tried) == 3
+        assert len(exc_info.value.methods_tried) == 2
 
-    def test_gh_cli_not_called_when_env_var_is_valid(
-        self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
-    ) -> None:
-        """When env var succeeds, gh CLI subprocess is never invoked.
+    def test_git_not_called_when_env_var_is_valid(self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture) -> None:
+        """When env var succeeds, GitPython is never invoked.
 
         Tests: discover_repo short-circuit on env var success
-        How: Set valid GITHUB_REPO; spy on subprocess.run; assert not called.
-        Why: Env var should avoid all subprocess overhead.
+        How: Set valid GITHUB_REPO; spy on git.Repo; assert not called.
+        Why: Env var should avoid all git I/O overhead.
         """
         monkeypatch.setenv("GITHUB_REPO", "some-org/some-repo")
-        mock_run = mocker.patch("backlog_core.models.subprocess.run")
+        mock_git_repo = mocker.patch("backlog_core.models.git.Repo")
 
         discover_repo()
 
-        mock_run.assert_not_called()
+        mock_git_repo.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -683,26 +512,25 @@ class TestDiscoverRepoCache:
         second = discover_repo()
         assert first == second
 
-    def test_discover_repo_subprocess_called_once_for_multiple_calls(
+    def test_discover_repo_git_called_once_for_multiple_calls(
         self, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
     ) -> None:
-        """Subprocess is called at most once regardless of how many times
+        """GitPython is called at most once regardless of how many times
         discover_repo() is invoked.
 
-        Tests: lru_cache subprocess deduplication
-        How: Remove GITHUB_REPO; mock _discover_via_gh to return a slug;
-             call discover_repo() twice; assert _discover_via_gh called once.
-        Why: The performance contract of lru_cache(maxsize=1) — one subprocess
-             call per process lifetime.
+        Tests: lru_cache git I/O deduplication
+        How: Remove GITHUB_REPO; mock _discover_via_git to return a slug;
+             call discover_repo() twice; assert _discover_via_git called once.
+        Why: The performance contract of lru_cache(maxsize=1) — one git call
+             per process lifetime.
         """
         monkeypatch.delenv("GITHUB_REPO", raising=False)
-        mock_gh = mocker.patch("backlog_core.models._discover_via_gh", return_value="once/called")
-        mocker.patch("backlog_core.models._discover_via_git")
+        mock_git = mocker.patch("backlog_core.models._discover_via_git", return_value="once/called")
 
         discover_repo()
         discover_repo()
 
-        mock_gh.assert_called_once()
+        mock_git.assert_called_once()
 
     def test_cache_clear_allows_re_discovery_with_new_env_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """After cache_clear(), a new GITHUB_REPO value is picked up.

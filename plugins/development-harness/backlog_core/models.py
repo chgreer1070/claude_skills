@@ -9,11 +9,10 @@ from __future__ import annotations
 import functools
 import os
 import re
-import shutil
-import subprocess
 from pathlib import Path
 from typing import TypedDict
 
+import git
 from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
@@ -73,11 +72,14 @@ def init(project_dir: str | None = None, repo: str | None = None) -> None:
 #: Matches the canonical ``owner/repo`` slug format.
 _REPO_SLUG_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
-#: SSH remote pattern: ``git@github.com:owner/repo.git``
+#: SSH SCP remote pattern: ``git@github.com:owner/repo.git``
 _SSH_REMOTE_RE = re.compile(r"git@[^:]+:([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?$")
 
 #: HTTPS / proxy remote pattern: ``https://…/owner/repo[.git]``
 _HTTPS_REMOTE_RE = re.compile(r"https?://[^/]+/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?$")
+
+#: SSH protocol remote pattern: ``ssh://git@github.com/owner/repo.git``
+_SSH_PROTO_REMOTE_RE = re.compile(r"ssh://[^/]+/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?$")
 
 
 class RepoDiscoveryError(Exception):
@@ -102,8 +104,7 @@ class RepoDiscoveryError(Exception):
             f"Tried:\n{detail_lines}\n\n"
             "To fix, either:\n"
             "  - Set GITHUB_REPO=owner/repo in your environment\n"
-            "  - Ensure you are in a git repository with a GitHub remote\n"
-            "  - Install the GitHub CLI (gh) and authenticate"
+            "  - Ensure you are in a git repository with a GitHub remote"
         )
         self.message = message
         super().__init__(message)
@@ -141,61 +142,23 @@ def _discover_via_env() -> str | None:
     return _validate_repo_slug(value)
 
 
-def _discover_via_gh() -> str | None:
-    """Query the ``gh`` CLI for the current repository slug.
-
-    Runs ``gh repo view --json nameWithOwner -q .nameWithOwner`` via subprocess.
-    The ``gh`` CLI is preferred over GitPython because Claude Code sessions use
-    proxy remote URLs that cannot be parsed as GitHub hostnames.
-
-    Returns:
-        Validated ``owner/repo`` slug, or ``None`` when ``gh`` is not available
-        or the command fails.
-    """
-    gh_bin = shutil.which("gh")
-    if gh_bin is None:
-        return None
-    try:
-        result = subprocess.run(
-            [gh_bin, "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-    except (subprocess.TimeoutExpired, OSError):
-        return None
-    if result.returncode != 0:
-        return None
-    slug = result.stdout.strip()
-    if not slug or not _REPO_SLUG_RE.match(slug):
-        return None
-    return slug
-
-
 def _discover_via_git() -> str | None:
-    """Parse the ``origin`` remote URL from git config to extract ``owner/repo``.
+    """Parse the ``origin`` remote URL via GitPython to extract ``owner/repo``.
 
-    Runs ``git config --get remote.origin.url`` via subprocess and applies
-    regex patterns for both HTTPS and SSH URL formats.
+    Uses :class:`git.Repo` with ``search_parent_directories=True`` to locate
+    the repository, then reads the ``origin`` remote URL and applies regex
+    patterns for SSH SCP, SSH protocol, and HTTPS URL formats.
 
     Returns:
-        Validated ``owner/repo`` slug, or ``None`` when the repository has no
-        ``origin`` remote, the URL cannot be parsed, or git is not available.
+        Validated ``owner/repo`` slug, or ``None`` when no git repository is
+        found, there is no ``origin`` remote, or the URL cannot be parsed.
     """
-    git_bin = shutil.which("git")
-    if git_bin is None:
-        return None
     try:
-        result = subprocess.run(
-            [git_bin, "config", "--get", "remote.origin.url"], capture_output=True, text=True, timeout=10, check=False
-        )
-    except (subprocess.TimeoutExpired, OSError):
+        repo = git.Repo(search_parent_directories=True)
+        url = repo.remote().url
+    except (git.InvalidGitRepositoryError, git.NoSuchPathError, ValueError):
         return None
-    if result.returncode != 0:
-        return None
-    url = result.stdout.strip()
-    for pattern in (_SSH_REMOTE_RE, _HTTPS_REMOTE_RE):
+    for pattern in (_SSH_REMOTE_RE, _HTTPS_REMOTE_RE, _SSH_PROTO_REMOTE_RE):
         match = pattern.match(url)
         if match:
             slug = match.group(1)
@@ -211,11 +174,10 @@ def discover_repo() -> str:
     Resolution priority chain (first success wins):
 
     1. ``GITHUB_REPO`` environment variable — explicit override, highest priority.
-    2. ``gh`` CLI (``gh repo view``) — preferred automated method; handles proxy
-       remote URLs used in Claude Code sessions.
-    3. Git remote URL parsing (``git config --get remote.origin.url``) — fallback
-       for environments where ``gh`` is unavailable.
-    4. :class:`RepoDiscoveryError` — all methods exhausted, no fallback.
+    2. GitPython remote URL parsing — reads the ``origin`` remote URL from the
+       git repository and parses owner/repo using regex patterns for SSH SCP,
+       SSH protocol, and HTTPS URL formats.
+    3. :class:`RepoDiscoveryError` — all methods exhausted, no fallback.
 
     The result is cached with :func:`functools.lru_cache` so discovery runs at
     most once per process.  Call ``discover_repo.cache_clear()`` in tests to
@@ -237,18 +199,8 @@ def discover_repo() -> str:
         return slug
     details.append("GITHUB_REPO environment variable: not set or empty")
 
-    # 2. gh CLI
-    methods_tried.append("gh CLI (gh repo view)")
-    slug = _discover_via_gh()
-    if slug is not None:
-        return slug
-    if shutil.which("gh") is None:
-        details.append("gh CLI (gh repo view): gh not found in PATH")
-    else:
-        details.append("gh CLI (gh repo view): command failed or returned empty result")
-
-    # 3. Git remote URL
-    methods_tried.append("Git remote (origin)")
+    # 2. GitPython remote URL parsing
+    methods_tried.append("Git remote (origin) via GitPython")
     slug = _discover_via_git()
     if slug is not None:
         return slug
@@ -257,7 +209,10 @@ def discover_repo() -> str:
     raise RepoDiscoveryError(methods_tried=methods_tried, details=details)
 
 
-DEFAULT_REPO = discover_repo()
+#: Populated at server startup by :func:`init`. Not set at import time to avoid
+#: triggering git I/O during module import. Call :func:`discover_repo` directly
+#: when a default is needed before ``init()`` has run.
+DEFAULT_REPO: str = ""
 
 # ---------------------------------------------------------------------------
 # Regex patterns
