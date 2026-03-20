@@ -21,6 +21,7 @@ import json
 from pathlib import Path
 from typing import Annotated, Any
 
+import tiktoken
 from fastmcp import FastMCP
 from pydantic import Field
 from ruamel.yaml import YAML
@@ -38,8 +39,9 @@ from sam_schema.core.query import (
     update_status,
 )
 
-# Token budget for auto-pagination: ~4400 tokens x 4 chars/token = 17,600 chars.
-_TOKEN_BUDGET_CHARS: int = 17_600
+# Token budget for auto-pagination: 4400 tokens (cl100k_base encoding).
+_TOKEN_BUDGET: int = 4_400
+_enc: tiktoken.Encoding = tiktoken.get_encoding("cl100k_base")
 
 mcp: FastMCP = FastMCP(
     "sam",
@@ -199,7 +201,7 @@ def _paginate_results(
     else:
         effective_limit = len(page_items)
         for candidate_limit in range(1, len(page_items) + 1):
-            if len(json.dumps(page_items[:candidate_limit])) > _TOKEN_BUDGET_CHARS:
+            if len(_enc.encode(json.dumps(page_items[:candidate_limit]))) > _TOKEN_BUDGET:
                 effective_limit = max(1, candidate_limit - 1)
                 break
 
@@ -249,15 +251,14 @@ def sam_list(
     limit: Annotated[
         int | None,
         Field(
-            description="Maximum number of items to return. Defaults to auto-calculated value within ~4400-token budget"
+            description="Maximum number of items to return. Defaults to auto-calculated value within 4400-token budget"
         ),
     ] = None,
 ) -> dict:
     """List all plans in ``plan_dir`` with optional search and automatic pagination.
 
     Reads every plan file found in ``plan_dir``, applies optional search filtering,
-    then returns a page of results within the ~4400-token budget (~17,600 characters
-    of JSON-serialized output).
+    then returns a page of results within the 4400-token budget (cl100k_base encoding).
 
     Search filtering checks the ``feature``, ``description``, and ``goal`` fields
     simultaneously, case-insensitively.  The ``offset`` and ``limit`` parameters

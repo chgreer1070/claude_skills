@@ -8,14 +8,16 @@ import json as _json
 import sys
 from typing import Annotated
 
+import tiktoken
 from fastmcp import Context, FastMCP
 from pydantic import Field
 
 from . import operations
 from .models import BacklogError, Output, init as _init_models
 
-# Token budget for auto-pagination in backlog_list: ~4400 tokens at ~4 chars/token.
-_LIST_TOKEN_BUDGET_CHARS = 17_600
+# Token budget for auto-pagination in backlog_list: 4400 tokens (cl100k_base encoding).
+_LIST_TOKEN_BUDGET = 4_400
+_enc: tiktoken.Encoding = tiktoken.get_encoding("cl100k_base")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -148,8 +150,8 @@ async def backlog_list(
         Field(
             ge=0,
             description=(
-                "Maximum number of items to return. 0 = auto-paginate to stay within ~4400 token budget "
-                "(~17600 chars). Caller can override with an explicit positive value."
+                "Maximum number of items to return. 0 = auto-paginate to stay within 4400 token budget "
+                "(cl100k_base encoding). Caller can override with an explicit positive value."
             ),
         ),
     ] = 0,
@@ -166,7 +168,7 @@ async def backlog_list(
     Use include_closed=true to include items with terminal status (done, resolved, closed).
     Use search to search across title, description, topic, and type simultaneously.
     Use offset and limit to paginate results. When limit=0, auto-pagination keeps the
-    JSON response under ~17600 characters (~4400 tokens). When has_more=true, call again
+    response under 4400 tokens (cl100k_base encoding). When has_more=true, call again
     with the offset shown in next_call.
 
     Returns:
@@ -215,12 +217,12 @@ async def backlog_list(
         effective_limit = limit
     else:
         # Auto-paginate: binary-search for the largest slice that fits the budget.
-        # Start with all items and halve until the serialised size fits.
+        # Start with all items and halve until the token count fits.
         candidate = all_items[offset:]
         effective_limit = len(candidate)
         while effective_limit > 1:
-            serialised_len = len(_json.dumps(candidate[:effective_limit]))
-            if serialised_len <= _LIST_TOKEN_BUDGET_CHARS:
+            token_count = len(_enc.encode(_json.dumps(candidate[:effective_limit])))
+            if token_count <= _LIST_TOKEN_BUDGET:
                 break
             effective_limit = max(1, effective_limit // 2)
 
