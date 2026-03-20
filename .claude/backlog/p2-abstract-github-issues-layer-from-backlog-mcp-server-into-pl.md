@@ -150,7 +150,7 @@ Backend protocol exists and is documented. Two working implementations (GitHub I
 
 - @python3-development:python-cli-architect — for protocol design and implementation
 - @python3-development:python-pytest-architect — for cross-backend test harness
-- @python3-development:codebase-analyzer — for coupling surface area analysis
+- @dh:codebase-analyzer — for coupling surface area analysis
 
 ### Decision
 

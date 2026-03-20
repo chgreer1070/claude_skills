@@ -162,8 +162,8 @@ The target state has four observable components:
 | Prior work — task schema | `packages/sam_schema/sam_schema/core/models.py` — `Task` model with `acceptance_criteria` as plain markdown string; needs structured `AcceptanceCriterion` extension |
 | Prior work — schema package | `packages/sam_schema/` — full Pydantic schema module from #715; YAML readers, writers, CLI, MCP server |
 | Prior work — task format spec | `.claude/docs/TASK_FILE_FORMAT.md` — canonical field definitions |
-| Agent | `@python3-development:swarm-task-planner` — `plugins/python3-development/agents/swarm-task-planner.md` — produces plan tasks; must be updated to auto-generate T0 and TN |
-| Agent | `@python3-development:feature-verifier` — `plugins/python3-development/agents/feature-verifier.md` — current post-completion structural verifier; TN is its behavioral complement inside the plan |
+| Agent | `@dh:swarm-task-planner` — `plugins/development-harness/agents/swarm-task-planner.md` — produces plan tasks; must be updated to auto-generate T0 and TN |
+| Agent | `@dh:feature-verifier` — `plugins/development-harness/agents/feature-verifier.md` — current post-completion structural verifier; TN is its behavioral complement inside the plan |
 | Workflow doc | `.claude/rules/local-workflow.md` — SAM workflow end-to-end; T0 inserts before implementation tasks, TN inserts after |
 | Script | `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py` — task readiness logic; must treat T0 as a precondition for all other tasks |
 | Script | `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` — completion hook; triggers TN gate check |

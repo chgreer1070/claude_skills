@@ -74,7 +74,7 @@ The task planner should analyze task outputs and identify when 2+ tasks write to
 
 | Type | Item |
 |------|------|
-| Agent | @python3-development:swarm-task-planner |
+| Agent | @dh:swarm-task-planner |
 | Skill | /implement-feature |
 | Skill | /start-task |
 | Prior work | .claude/backlog/p1-implement-feature-orchestrator-bypasses-start-task-hooks-whe.md |

@@ -193,7 +193,7 @@ Four artifact modifications implementing issue classification and proportional r
 | Skill | `/implement-feature` |
 | Skill | `/complete-implementation` |
 | Skill | `/verify` |
-| Agent | @python3-development:feature-verifier |
+| Agent | @dh:feature-verifier |
 | Agent | @development-harness:feature-verifier |
 | Prior work | `.claude/rules/local-workflow.md` (SAM pipeline architecture) |
 | Prior work | `.claude/docs/TASK_FILE_FORMAT.md` (task metadata schema) |

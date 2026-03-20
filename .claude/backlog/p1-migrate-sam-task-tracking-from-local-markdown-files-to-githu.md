@@ -232,7 +232,7 @@ Choose one:
 | Related backlog item | `#257` development-harness: Task Status MCP — overlapping scope; candidate for closure as superseded |
 | External API reference | [GitHub REST API sub-issues (preview)](https://docs.github.com/en/rest/issues/sub-issues) — confirmed public preview as of 2026-03-06 |
 | Agent | `@python3-development:python-cli-architect` — for redesigning `implementation_manager.py` interface |
-| Agent | `@python3-development:context-gathering` — for codebase analysis before planning |
+| Agent | `@dh:context-gathering` — for codebase analysis before planning |
 
 ### Acceptance Criteria
 
