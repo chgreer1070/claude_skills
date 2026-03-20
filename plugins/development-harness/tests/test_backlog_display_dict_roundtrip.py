@@ -13,7 +13,7 @@ import pytest
 from backlog_core.models import BacklogItem
 
 # Load backlog.py via importlib — the .claude/ path prefix breaks normal import resolution.
-_SCRIPT = Path(__file__).parent.parent / "scripts" / "backlog.py"
+_SCRIPT = Path(__file__).parent.parent / "skills" / "backlog" / "scripts" / "backlog.py"
 _spec = importlib.util.spec_from_file_location("backlog", _SCRIPT)
 assert _spec is not None, f"Cannot find spec for {_SCRIPT}"
 assert _spec.loader is not None, f"Cannot find loader for {_SCRIPT}"
@@ -22,7 +22,7 @@ if "backlog" not in sys.modules:
     sys.modules["backlog"] = _mod
     _spec.loader.exec_module(_mod)
 
-from backlog import _dict_to_backlog_item_fields, backlog_item_to_display_dict  # ty: ignore[unresolved-import]
+from backlog import _dict_to_backlog_item_fields, backlog_item_to_display_dict
 
 # ---------------------------------------------------------------------------
 # backlog_item_to_display_dict — _status key presence

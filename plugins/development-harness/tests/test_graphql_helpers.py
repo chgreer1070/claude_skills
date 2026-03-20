@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from backlog_core.github import _resolve_labels_graphql  # type: ignore[attr-defined]
+from backlog_core.github import _resolve_labels_graphql
 from github import GithubException
 
 if TYPE_CHECKING:

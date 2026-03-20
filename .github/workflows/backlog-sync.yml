@@ -34,7 +34,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          uv run .claude/skills/backlog/scripts/backlog.py sync -R Jamie-BitFlight/claude_skills
+          uv run plugins/development-harness/skills/backlog/scripts/backlog.py sync -R Jamie-BitFlight/claude_skills
 
       - name: Commit and push if updated
         run: |

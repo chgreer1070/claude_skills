@@ -198,7 +198,7 @@ GitHub Actions and environments without an MCP client use the CLI script. This i
 context where `uv run` invocations of `backlog.py` are appropriate.
 
 ```bash
-uv run .claude/skills/backlog/scripts/backlog.py <subcommand> [options]
+uv run plugins/development-harness/skills/backlog/scripts/backlog.py <subcommand> [options]
 ```
 
 Available subcommands mirror the MCP tools: `add`, `list`, `view`, `sync`, `close`, `resolve`,

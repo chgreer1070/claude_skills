@@ -234,7 +234,8 @@ class TestGetSamTasks:
         # Assert
         assert result["count"] == 1
         assert result["parent_issue_number"] == 480
-        tasks = cast("list[dict[str, object]]", result["tasks"])
+        tasks = result["tasks"]
+        assert isinstance(tasks, list)
         assert len(tasks) == 1
         assert tasks[0]["issue_number"] == 101
         assert tasks[0]["task_id"] == "T1"
@@ -281,11 +282,14 @@ class TestGetSamTasks:
         # Assert
         assert result["count"] == 1
         assert result["parent_issue_number"] == 480
-        tasks = cast("list[dict[str, object]]", result["tasks"])
+        tasks = result["tasks"]
+        assert isinstance(tasks, list)
         assert len(tasks) == 1
         assert tasks[0]["task_id"] == "T1"
         # Verify a warning was emitted about GitHub unavailability
-        assert any("WARNING" in w for w in cast("list[str]", result.get("warnings", [])))
+        warnings = result.get("warnings", [])
+        assert isinstance(warnings, list)
+        assert any("WARNING" in w for w in warnings)
 
     def test_get_sam_tasks_offline_no_cache(self, mocker: MockerFixture, isolated_home: Path) -> None:
         """get_sam_tasks returns empty tasks when GitHub is unavailable and no cache exists.
@@ -302,10 +306,12 @@ class TestGetSamTasks:
         result = get_sam_tasks(parent_issue_number=480)
 
         # Assert
-        assert cast("list[object]", result["tasks"]) == []
+        assert result["tasks"] == []
         assert result["count"] == 0
         assert result["parent_issue_number"] == 480
-        assert any("WARNING" in w for w in cast("list[str]", result.get("warnings", [])))
+        warnings = result.get("warnings", [])
+        assert isinstance(warnings, list)
+        assert any("WARNING" in w for w in warnings)
 
     def test_get_sam_tasks_writes_cache(self, mocker: MockerFixture, isolated_home: Path) -> None:
         """get_sam_tasks writes the cache file after a successful GitHub fetch.

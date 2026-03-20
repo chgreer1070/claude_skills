@@ -13,10 +13,10 @@ Why: T4 added --include-closed CLI flag and modified fetch functions. T5 added
 from __future__ import annotations
 
 import json
+from typing import cast
 from unittest.mock import patch
 
-import pytest
-from backlog_core.models import BacklogItem, IssueStatus, Output
+from backlog_core.models import BacklogItem, IssueStatus
 from backlog_core.operations import _filter_closed_items, list_items
 from backlog_core.server import mcp
 from fastmcp.client import Client
@@ -120,7 +120,8 @@ class TestListItemsIncludeClosed:
             patch("backlog_core.operations.batch_fetch_statuses", return_value={}),
         ):
             result = list_items(include_closed=False)
-        titles = [it["title"] for it in result["items"]]
+        result_items = cast("list[dict[str, str | bool]]", result["items"])
+        titles = [it["title"] for it in result_items]
         assert "Done item" not in titles
         assert "Resolved item" not in titles
         assert "Closed item" not in titles
@@ -135,11 +136,12 @@ class TestListItemsIncludeClosed:
             patch("backlog_core.operations.batch_fetch_statuses", return_value={}),
         ):
             result = list_items(include_closed=True)
-        titles = [it["title"] for it in result["items"]]
+        result_items = cast("list[dict[str, str | bool]]", result["items"])
+        titles = [it["title"] for it in result_items]
         assert "Done item" in titles
         assert "Resolved item" in titles
         assert "Closed item" in titles
-        assert len(result["items"]) == 7
+        assert len(result_items) == 7
 
     def test_list_items_count_reflects_filtering(self) -> None:
         """The count field in result matches the number of items after filtering."""
@@ -150,9 +152,13 @@ class TestListItemsIncludeClosed:
         ):
             result_filtered = list_items(include_closed=False)
             result_all = list_items(include_closed=True)
-        assert result_filtered["count"] == len(result_filtered["items"])
-        assert result_all["count"] == len(result_all["items"])
-        assert result_all["count"] > result_filtered["count"]
+        filtered_items = cast("list[dict[str, str | bool]]", result_filtered["items"])
+        all_items = cast("list[dict[str, str | bool]]", result_all["items"])
+        filtered_count = cast("int", result_filtered["count"])
+        all_count = cast("int", result_all["count"])
+        assert filtered_count == len(filtered_items)
+        assert all_count == len(all_items)
+        assert all_count > filtered_count
 
     def test_list_items_with_status_returns_status_for_all(self) -> None:
         """When with_status=True, status is returned for each item including closed ones."""
@@ -171,10 +177,11 @@ class TestListItemsIncludeClosed:
             patch("backlog_core.operations.batch_fetch_statuses", return_value=status_map),
         ):
             result = list_items(with_status=True, include_closed=True)
-        items_with_status = [it for it in result["items"] if "status" in it]
+        result_items = cast("list[dict[str, str | bool]]", result["items"])
+        items_with_status = [it for it in result_items if "status" in it]
         assert len(items_with_status) == 7
         # Verify closed items have their GitHub status
-        done_item = next(it for it in result["items"] if it["title"] == "Done item")
+        done_item = next(it for it in result_items if it["title"] == "Done item")
         assert done_item["status"] == "closed"
 
     def test_list_items_skipped_items_excluded_regardless(self) -> None:
@@ -186,7 +193,8 @@ class TestListItemsIncludeClosed:
         ):
             result = list_items(include_closed=True)
         assert result["count"] == 1
-        assert result["items"][0]["title"] == "Normal"
+        result_items = cast("list[dict[str, str | bool]]", result["items"])
+        assert result_items[0]["title"] == "Normal"
 
 
 # ---------------------------------------------------------------------------

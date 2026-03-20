@@ -244,13 +244,6 @@ Available tools: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, 
 All tools return a dict. Check for `error` key on failure. Success responses include `messages`
 and `warnings` lists.
 
-**CI fallback (CLI)**: GitHub Actions (`backlog-sync.yml`) and environments without an MCP client
-use the CLI:
-
-```bash
-uv run .claude/skills/backlog/scripts/backlog.py add|list|sync|close|resolve|update ...
-```
-
 Do not edit `.claude/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic.
 
 Skills `/dh:create-backlog-item` and `/dh:work-backlog-item` invoke these tools. See `/backlog` skill.
