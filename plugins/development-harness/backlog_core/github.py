@@ -9,12 +9,13 @@ from __future__ import annotations
 import logging
 import os
 import re
+import sys
 from typing import TYPE_CHECKING, TypedDict
 
 from github import Auth, Github, GithubException
 
+from . import models as _models
 from .models import (
-    DEFAULT_REPO,
     TYPE_TO_LABEL,
     BacklogError,
     BacklogItem,
@@ -44,6 +45,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _HTTP_NOT_FOUND = 404
+
+
+def _repo(repo: str) -> str:
+    """Resolve repo slug at call time, falling back to the live module global.
+
+    Returns:
+        Resolved ``owner/repo`` slug.
+    """
+    return repo or _models.DEFAULT_REPO
+
 
 # ---------------------------------------------------------------------------
 # GraphQL helpers — generic request + Projects V2 queries
@@ -213,7 +224,7 @@ def _resolve_labels_graphql(repo: Repository, repo_owner: str, repo_name: str, l
 # ---------------------------------------------------------------------------
 
 
-def get_github(repo: str = DEFAULT_REPO, timeout: int = 15) -> Repository:
+def get_github(repo: str = "", timeout: int = 15) -> Repository:
     """Get a PyGithub Repository object.
 
     Args:
@@ -230,6 +241,7 @@ def get_github(repo: str = DEFAULT_REPO, timeout: int = 15) -> Repository:
     Raises:
         GitHubUnavailableError: If GITHUB_TOKEN is not set.
     """
+    repo = _repo(repo)
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
         raise GitHubUnavailableError("GITHUB_TOKEN not set")
@@ -237,7 +249,7 @@ def get_github(repo: str = DEFAULT_REPO, timeout: int = 15) -> Repository:
     return gh.get_repo(repo)
 
 
-def try_get_github(repo: str = DEFAULT_REPO) -> Repository | None:
+def try_get_github(repo: str = "") -> Repository | None:
     """Try to get GitHub repo, return None if unavailable (no token, network error, etc.).
 
     Use this for operations where local-only fallback is acceptable.
@@ -245,15 +257,21 @@ def try_get_github(repo: str = DEFAULT_REPO) -> Repository | None:
     Returns:
         Repository object or None if GitHub is unavailable.
     """
+    repo = _repo(repo)
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
-        logger.warning("try_get_github: GITHUB_TOKEN not set in environment")
+        logger.error("try_get_github: GITHUB_TOKEN not set in environment — GitHub operations will be skipped")
+        print(
+            "backlog-mcp: GITHUB_TOKEN not set — GitHub operations will be unavailable, local operations continue",
+            file=sys.stderr,
+        )
         return None
     try:
         gh = Github(auth=Auth.Token(token), timeout=10)
         return gh.get_repo(repo)
     except GithubException as e:
-        logger.warning("try_get_github: %s", e)
+        logger.exception("try_get_github: GitHub API error for repo %r", repo)
+        print(f"backlog-mcp: GitHub auth failed — {e}. Local operations continue", file=sys.stderr)
         return None
 
 
@@ -297,13 +315,7 @@ def create_issue_for_item(
 
 
 def close_github_issue(
-    issue_ref: str,
-    reason: str,
-    *,
-    reference: str = "",
-    comment: str = "",
-    repo: str = DEFAULT_REPO,
-    output: Output | None = None,
+    issue_ref: str, reason: str, *, reference: str = "", comment: str = "", repo: str = "", output: Output | None = None
 ) -> None:
     """Close GitHub issue as dismissed (not completed). ADR-9."""
     out = output or Output()
@@ -331,7 +343,7 @@ def resolve_github_issue(
     notes: str = "",
     follow_ups: str = "",
     findings: str = "",
-    repo: str = DEFAULT_REPO,
+    repo: str = "",
     output: Output | None = None,
 ) -> None:
     """Close GitHub issue as completed with structured evidence trail. ADR-9."""
@@ -361,7 +373,7 @@ def resolve_github_issue(
 # ---------------------------------------------------------------------------
 
 
-def check_open_prs_for_issue(issue_num: int, repo: str = DEFAULT_REPO) -> list[PullRequestRef]:
+def check_open_prs_for_issue(issue_num: int, repo: str = "") -> list[PullRequestRef]:
     """Check for open pull requests that reference a given issue number.
 
     Searches the repository for open PRs whose title or body contains ``#N``
@@ -376,6 +388,7 @@ def check_open_prs_for_issue(issue_num: int, repo: str = DEFAULT_REPO) -> list[P
         List of PullRequestRef models for each matching PR.
         Empty list if no open PRs found or GitHub is unavailable.
     """
+    repo = _repo(repo)
     try:
         gh = Github(auth=Auth.Token(os.environ.get("GITHUB_TOKEN", "")), timeout=10)
         query = f"repo:{repo} is:pr is:open #{issue_num}"
@@ -392,7 +405,7 @@ def check_open_prs_for_issue(issue_num: int, repo: str = DEFAULT_REPO) -> list[P
 # ---------------------------------------------------------------------------
 
 
-def batch_fetch_statuses(items: list[BacklogItem], repo: str = DEFAULT_REPO) -> dict[int, IssueStatus]:
+def batch_fetch_statuses(items: list[BacklogItem], repo: str = "") -> dict[int, IssueStatus]:
     """Batch fetch status and milestone from GH for all items with issue numbers.
 
     Single API call replaces N+1 per-item get_issue() calls.
@@ -423,7 +436,7 @@ def batch_fetch_statuses(items: list[BacklogItem], repo: str = DEFAULT_REPO) -> 
     return result
 
 
-def fetch_item_status(item: BacklogItem, repo: str = DEFAULT_REPO, output: Output | None = None) -> str:
+def fetch_item_status(item: BacklogItem, repo: str = "", output: Output | None = None) -> str:
     """Fetch status label from GitHub issue for an item (single-item fallback).
 
     Prefer batch_fetch_statuses() for listing multiple items.
@@ -443,7 +456,7 @@ def fetch_item_status(item: BacklogItem, repo: str = DEFAULT_REPO, output: Outpu
         return ""
 
 
-def apply_status_in_progress(item: BacklogItem, repo: str = DEFAULT_REPO, output: Output | None = None) -> None:
+def apply_status_in_progress(item: BacklogItem, repo: str = "", output: Output | None = None) -> None:
     """Set GitHub issue label to status:in-progress."""
     out = output or Output()
     try:
@@ -462,7 +475,7 @@ def apply_status_in_progress(item: BacklogItem, repo: str = DEFAULT_REPO, output
         out.warn(f"  WARNING: Could not set status: {e}")
 
 
-def apply_status_verified(item: BacklogItem, repo: str = DEFAULT_REPO, output: Output | None = None) -> None:
+def apply_status_verified(item: BacklogItem, repo: str = "", output: Output | None = None) -> None:
     """Set GitHub issue label to status:verified after quality gates pass.
 
     Adds the ``status:verified`` label and removes ``status:in-progress`` if
@@ -528,7 +541,7 @@ def fetch_open_issues_by_title(repo: Repository) -> dict[str, int]:
 # ---------------------------------------------------------------------------
 
 
-def view_enrich_from_github(result: ViewItemResult, issue_num: str, repo: str = DEFAULT_REPO) -> bool:
+def view_enrich_from_github(result: ViewItemResult, issue_num: str, repo: str = "") -> bool:
     """Enrich view result with live GitHub issue data.
 
     Returns:
