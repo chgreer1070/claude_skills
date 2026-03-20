@@ -2,16 +2,7 @@
   "mcpServers": {
     "backlog": {
       "command": "uv",
-      "args": [
-        "run",
-        "--project",
-        "${CLAUDE_PLUGIN_ROOT}",
-        "python",
-        "-m",
-        "backlog_core.server",
-        "--project-dir",
-        "${CLAUDE_PROJECT_DIR}"
-      ]
+      "args": ["run", "--project", "${CLAUDE_PLUGIN_ROOT}", "python", "-m", "backlog_core.server"]
     }
   }
 }
