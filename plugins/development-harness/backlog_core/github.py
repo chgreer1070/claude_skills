@@ -15,6 +15,7 @@ from github import Auth, Github, GithubException
 from .models import (
     DEFAULT_REPO,
     TYPE_TO_LABEL,
+    BacklogError,
     BacklogItem,
     GitHubUnavailableError,
     IssueLocalFields,
@@ -40,6 +41,95 @@ if TYPE_CHECKING:
     from github.Repository import Repository
 
 _HTTP_NOT_FOUND = 404
+
+# ---------------------------------------------------------------------------
+# GraphQL helpers — generic request + Projects V2 queries
+# ---------------------------------------------------------------------------
+
+
+def _graphql_request(repo: Repository, query: str, variables: dict[str, object] | None = None) -> dict[str, object]:
+    """Execute a raw GraphQL query using PyGithub's requester.
+
+    Follows the same pattern as ``_resolve_labels_graphql``.  Raises
+    ``BacklogError`` when the GraphQL response contains an ``errors`` key
+    or when the requester raises ``GithubException``.
+
+    Args:
+        repo: PyGithub Repository object (provides requester access).
+        query: GraphQL query or mutation string.
+        variables: Optional dict of GraphQL variables.
+
+    Returns:
+        The ``data`` dict from the GraphQL response.
+
+    Raises:
+        BacklogError: On GraphQL errors or network/auth failures.
+        GithubException: Propagated from PyGithub requester for connection-level errors.
+    """
+    _headers, response = repo.requester.graphql_query(query, variables or {})
+    if "errors" in response:
+        first_error = response["errors"][0] if response["errors"] else {}
+        msg = first_error.get("message", str(response["errors"]))
+        raise BacklogError(f"GraphQL error: {msg}")
+    data = response.get("data")
+    if data is None:
+        raise BacklogError(f"Unexpected GraphQL response — missing 'data' key: {response!r}")
+    return data
+
+
+def _projects_v2_list_query(owner: str, limit: int = 20) -> tuple[str, dict[str, object]]:
+    """Return (query_string, variables) for listing Projects V2.
+
+    Args:
+        owner: GitHub owner login (org or user).
+        limit: Maximum number of projects to return.
+
+    Returns:
+        Tuple of (GraphQL query string, variables dict).
+    """
+    query = """
+query ListProjectsV2($owner: String!, $limit: Int!) {
+  repositoryOwner(login: $owner) {
+    ... on ProjectV2Owner {
+      projectsV2(first: $limit, orderBy: {field: UPDATED_AT, direction: DESC}) {
+        nodes {
+          id
+          title
+          number
+          url
+          closed
+          shortDescription
+        }
+      }
+    }
+  }
+}"""
+    return query, {"owner": owner, "limit": limit}
+
+
+def _projects_v2_create_mutation(owner_id: str, title: str) -> tuple[str, dict[str, object]]:
+    """Return (mutation_string, variables) for creating a Projects V2 project.
+
+    Args:
+        owner_id: GraphQL node ID of the owner (org or user).
+        title: Title for the new project.
+
+    Returns:
+        Tuple of (GraphQL mutation string, variables dict).
+    """
+    mutation = """
+mutation CreateProjectV2($ownerId: ID!, $title: String!) {
+  createProjectV2(input: {ownerId: $ownerId, title: $title}) {
+    projectV2 {
+      id
+      title
+      number
+      url
+    }
+  }
+}"""
+    return mutation, {"ownerId": owner_id, "title": title}
+
 
 # ---------------------------------------------------------------------------
 # GraphQL label resolution — private internals

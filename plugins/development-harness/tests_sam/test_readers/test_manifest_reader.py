@@ -16,26 +16,26 @@ _FIXTURES = pathlib.Path(__file__).parent.parent / "fixtures"
 # ---------------------------------------------------------------------------
 
 
-def test_read_manifest_plan_returns_four_tasks():
+def test_read_manifest_plan_returns_four_tasks() -> None:
     path = _FIXTURES / "global_manifest.md"
     _, task_dicts, _ = read_manifest_plan(path)
     assert len(task_dicts) == 4
 
 
-def test_read_manifest_plan_returns_global_manifest_format_type():
+def test_read_manifest_plan_returns_global_manifest_format_type() -> None:
     path = _FIXTURES / "global_manifest.md"
     _, _, fmt = read_manifest_plan(path)
     assert fmt == FormatType.GLOBAL_MANIFEST
 
 
-def test_read_manifest_plan_plan_meta_has_feature_from_slug():
+def test_read_manifest_plan_plan_meta_has_feature_from_slug() -> None:
     # Fixture uses slug: not feature: — reader normalizes slug -> feature
     path = _FIXTURES / "global_manifest.md"
     plan_meta, _, _ = read_manifest_plan(path)
     assert plan_meta.get("feature") == "data-pipeline-optimization"
 
 
-def test_read_manifest_plan_plan_meta_does_not_contain_tasks_key():
+def test_read_manifest_plan_plan_meta_does_not_contain_tasks_key() -> None:
     path = _FIXTURES / "global_manifest.md"
     plan_meta, _, _ = read_manifest_plan(path)
     assert "tasks" not in plan_meta
@@ -46,21 +46,21 @@ def test_read_manifest_plan_plan_meta_does_not_contain_tasks_key():
 # ---------------------------------------------------------------------------
 
 
-def test_read_manifest_plan_task_ids_match_expected_set():
+def test_read_manifest_plan_task_ids_match_expected_set() -> None:
     path = _FIXTURES / "global_manifest.md"
     _, task_dicts, _ = read_manifest_plan(path)
     ids = {t.get("task") for t in task_dicts}
     assert ids == {"T1", "T2", "T3", "T4"}
 
 
-def test_read_manifest_plan_first_task_title_is_correct():
+def test_read_manifest_plan_first_task_title_is_correct() -> None:
     path = _FIXTURES / "global_manifest.md"
     _, task_dicts, _ = read_manifest_plan(path)
     first = next(t for t in task_dicts if t.get("task") == "T1")
     assert first.get("title") == "Refactor batch processor"
 
 
-def test_read_manifest_plan_tasks_have_default_status_not_started():
+def test_read_manifest_plan_tasks_have_default_status_not_started() -> None:
     path = _FIXTURES / "global_manifest.md"
     _, task_dicts, _ = read_manifest_plan(path)
     for task in task_dicts:
@@ -72,7 +72,7 @@ def test_read_manifest_plan_tasks_have_default_status_not_started():
 # ---------------------------------------------------------------------------
 
 
-def test_read_manifest_plan_tasks_have_description_from_body_sections():
+def test_read_manifest_plan_tasks_have_description_from_body_sections() -> None:
     path = _FIXTURES / "global_manifest.md"
     _, task_dicts, _ = read_manifest_plan(path)
     # T1 has a prose body section in the fixture
@@ -327,7 +327,7 @@ def test_read_manifest_plan_hybrid_real_file_body_content_non_empty() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_read_manifest_plan_full_task_dict_entry_preserves_fields(tmp_path):
+def test_read_manifest_plan_full_task_dict_entry_preserves_fields(tmp_path) -> None:
     # A manifest where tasks: list contains full task dicts (not just {TN: title})
     content = (
         "---\n"
@@ -357,7 +357,7 @@ def test_read_manifest_plan_full_task_dict_entry_preserves_fields(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_read_manifest_plan_synthesizes_feature_from_filename_when_no_feature_field(tmp_path):
+def test_read_manifest_plan_synthesizes_feature_from_filename_when_no_feature_field(tmp_path) -> None:
     content = "---\nversion: '1.0'\ntasks:\n  - T1: A task\n---\n\n## T1: A task\n\nBody.\n"
     f = tmp_path / "tasks-3-some-feature.md"
     f.write_text(content)
@@ -370,33 +370,33 @@ def test_read_manifest_plan_synthesizes_feature_from_filename_when_no_feature_fi
 # ---------------------------------------------------------------------------
 
 
-def test_read_manifest_plan_nonexistent_path_raises_file_not_found(tmp_path):
+def test_read_manifest_plan_nonexistent_path_raises_file_not_found(tmp_path) -> None:
     with pytest.raises(FileNotFoundError):
         read_manifest_plan(tmp_path / "missing.md")
 
 
-def test_read_manifest_plan_no_frontmatter_raises_value_error(tmp_path):
+def test_read_manifest_plan_no_frontmatter_raises_value_error(tmp_path) -> None:
     f = tmp_path / "no_fm.md"
     f.write_text("# Just a heading\n\nNo frontmatter.\n")
     with pytest.raises(ValueError, match="frontmatter"):
         read_manifest_plan(f)
 
 
-def test_read_manifest_plan_no_closing_delimiter_raises_value_error(tmp_path):
+def test_read_manifest_plan_no_closing_delimiter_raises_value_error(tmp_path) -> None:
     f = tmp_path / "unclosed.md"
     f.write_text("---\nfeature: test\ntasks:\n  - T1: A task\n")
     with pytest.raises(ValueError, match="closing"):
         read_manifest_plan(f)
 
 
-def test_read_manifest_plan_no_tasks_list_raises_value_error(tmp_path):
+def test_read_manifest_plan_no_tasks_list_raises_value_error(tmp_path) -> None:
     f = tmp_path / "no_tasks.md"
     f.write_text("---\nfeature: test\n---\n\nNo tasks list.\n")
     with pytest.raises(ValueError, match="tasks"):
         read_manifest_plan(f)
 
 
-def test_read_manifest_plan_tasks_not_a_list_raises_type_error(tmp_path):
+def test_read_manifest_plan_tasks_not_a_list_raises_type_error(tmp_path) -> None:
     f = tmp_path / "bad_tasks.md"
     f.write_text("---\nfeature: test\ntasks: not-a-list\n---\n\nBody.\n")
     with pytest.raises(TypeError):

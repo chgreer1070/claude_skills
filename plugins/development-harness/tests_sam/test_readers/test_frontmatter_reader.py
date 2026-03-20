@@ -18,31 +18,31 @@ _FIXTURES = pathlib.Path(__file__).parent.parent / "fixtures"
 # ---------------------------------------------------------------------------
 
 
-def test_read_frontmatter_plan_single_returns_one_task():
+def test_read_frontmatter_plan_single_returns_one_task() -> None:
     path = _FIXTURES / "yaml_frontmatter_single.md"
     _, task_dicts, _ = read_frontmatter_plan(path)
     assert len(task_dicts) == 1
 
 
-def test_read_frontmatter_plan_single_returns_yaml_frontmatter_format_type():
+def test_read_frontmatter_plan_single_returns_yaml_frontmatter_format_type() -> None:
     path = _FIXTURES / "yaml_frontmatter_single.md"
     _, _, fmt = read_frontmatter_plan(path)
     assert fmt == FormatType.YAML_FRONTMATTER
 
 
-def test_read_frontmatter_plan_single_task_has_correct_id():
+def test_read_frontmatter_plan_single_task_has_correct_id() -> None:
     path = _FIXTURES / "yaml_frontmatter_single.md"
     _, task_dicts, _ = read_frontmatter_plan(path)
     assert task_dicts[0].get("task") == "T1"
 
 
-def test_read_frontmatter_plan_single_task_has_correct_title():
+def test_read_frontmatter_plan_single_task_has_correct_title() -> None:
     path = _FIXTURES / "yaml_frontmatter_single.md"
     _, task_dicts, _ = read_frontmatter_plan(path)
     assert task_dicts[0].get("title") == "Implement database migration framework"
 
 
-def test_read_frontmatter_plan_single_task_has_correct_status():
+def test_read_frontmatter_plan_single_task_has_correct_status() -> None:
     path = _FIXTURES / "yaml_frontmatter_single.md"
     _, task_dicts, _ = read_frontmatter_plan(path)
     assert task_dicts[0].get("status") == "not-started"
@@ -53,46 +53,46 @@ def test_read_frontmatter_plan_single_task_has_correct_status():
 # ---------------------------------------------------------------------------
 
 
-def test_read_frontmatter_plan_multi_returns_three_tasks():
+def test_read_frontmatter_plan_multi_returns_three_tasks() -> None:
     path = _FIXTURES / "yaml_frontmatter_multi.md"
     _, task_dicts, _ = read_frontmatter_plan(path)
     assert len(task_dicts) == 3
 
 
-def test_read_frontmatter_plan_multi_returns_yaml_frontmatter_format_type():
+def test_read_frontmatter_plan_multi_returns_yaml_frontmatter_format_type() -> None:
     path = _FIXTURES / "yaml_frontmatter_multi.md"
     _, _, fmt = read_frontmatter_plan(path)
     assert fmt == FormatType.YAML_FRONTMATTER
 
 
-def test_read_frontmatter_plan_multi_plan_meta_has_feature():
+def test_read_frontmatter_plan_multi_plan_meta_has_feature() -> None:
     path = _FIXTURES / "yaml_frontmatter_multi.md"
     plan_meta, _, _ = read_frontmatter_plan(path)
     assert plan_meta.get("feature") == "cache-layer"
 
 
-def test_read_frontmatter_plan_multi_first_task_is_complete():
+def test_read_frontmatter_plan_multi_first_task_is_complete() -> None:
     path = _FIXTURES / "yaml_frontmatter_multi.md"
     _, task_dicts, _ = read_frontmatter_plan(path)
     first = next(t for t in task_dicts if t.get("task") == "T1")
     assert first.get("status") == "complete"
 
 
-def test_read_frontmatter_plan_multi_second_task_is_in_progress():
+def test_read_frontmatter_plan_multi_second_task_is_in_progress() -> None:
     path = _FIXTURES / "yaml_frontmatter_multi.md"
     _, task_dicts, _ = read_frontmatter_plan(path)
     second = next(t for t in task_dicts if t.get("task") == "T2")
     assert second.get("status") == "in-progress"
 
 
-def test_read_frontmatter_plan_multi_third_task_is_not_started():
+def test_read_frontmatter_plan_multi_third_task_is_not_started() -> None:
     path = _FIXTURES / "yaml_frontmatter_multi.md"
     _, task_dicts, _ = read_frontmatter_plan(path)
     third = next(t for t in task_dicts if t.get("task") == "T3")
     assert third.get("status") == "not-started"
 
 
-def test_read_frontmatter_plan_multi_second_task_has_dependency():
+def test_read_frontmatter_plan_multi_second_task_has_dependency() -> None:
     path = _FIXTURES / "yaml_frontmatter_multi.md"
     _, task_dicts, _ = read_frontmatter_plan(path)
     second = next(t for t in task_dicts if t.get("task") == "T2")
@@ -105,7 +105,7 @@ def test_read_frontmatter_plan_multi_second_task_has_dependency():
 # ---------------------------------------------------------------------------
 
 
-def test_read_frontmatter_plan_multi_first_task_has_description_from_body():
+def test_read_frontmatter_plan_multi_first_task_has_description_from_body() -> None:
     """Verify that the prose body following a task YAML block populates description.
 
     Tests: Prose body content extraction for multi-task frontmatter files.
@@ -118,7 +118,7 @@ def test_read_frontmatter_plan_multi_first_task_has_description_from_body():
     assert t1.get("description"), "T1 description should be populated from the prose body"
 
 
-def test_read_frontmatter_plan_multi_first_task_has_objective_from_body():
+def test_read_frontmatter_plan_multi_first_task_has_objective_from_body() -> None:
     """Verify that ### Objective sections are extracted into the objective field.
 
     Tests: Named prose section extraction (### Objective).
@@ -255,7 +255,7 @@ def test_read_frontmatter_plan_multi_prose_not_duplicated_in_yaml_block_task(tmp
 # ---------------------------------------------------------------------------
 
 
-def test_read_frontmatter_plan_tasks_list_returns_two_tasks():
+def test_read_frontmatter_plan_tasks_list_returns_two_tasks() -> None:
     """Verify tasks-list variant returns all tasks from frontmatter list.
 
     Tests: Tasks-list variant returns correct task count.
@@ -267,7 +267,7 @@ def test_read_frontmatter_plan_tasks_list_returns_two_tasks():
     assert len(task_dicts) == 2
 
 
-def test_read_frontmatter_plan_tasks_list_returns_yaml_frontmatter_format_type():
+def test_read_frontmatter_plan_tasks_list_returns_yaml_frontmatter_format_type() -> None:
     """Verify tasks-list variant returns YAML_FRONTMATTER format type.
 
     Tests: Format type for tasks-list variant.
@@ -279,7 +279,7 @@ def test_read_frontmatter_plan_tasks_list_returns_yaml_frontmatter_format_type()
     assert fmt == FormatType.YAML_FRONTMATTER
 
 
-def test_read_frontmatter_plan_tasks_list_returns_empty_plan_meta():
+def test_read_frontmatter_plan_tasks_list_returns_empty_plan_meta() -> None:
     """Verify tasks-list variant returns empty plan metadata dict.
 
     Tests: Plan metadata for tasks-list variant.
@@ -291,7 +291,7 @@ def test_read_frontmatter_plan_tasks_list_returns_empty_plan_meta():
     assert plan_meta == {}
 
 
-def test_read_frontmatter_plan_tasks_list_first_task_has_correct_name():
+def test_read_frontmatter_plan_tasks_list_first_task_has_correct_name() -> None:
     """Verify tasks-list variant first task has its task name preserved.
 
     Tests: Task name field extraction for tasks-list variant.
@@ -303,7 +303,7 @@ def test_read_frontmatter_plan_tasks_list_first_task_has_correct_name():
     assert task_dicts[0].get("task") == "Fix the widget rendering bug"
 
 
-def test_read_frontmatter_plan_tasks_list_task_has_status():
+def test_read_frontmatter_plan_tasks_list_task_has_status() -> None:
     """Verify tasks-list variant tasks have their status field preserved.
 
     Tests: Status field extraction for tasks-list variant.
@@ -315,7 +315,7 @@ def test_read_frontmatter_plan_tasks_list_task_has_status():
     assert task_dicts[0].get("status") == "pending"
 
 
-def test_read_frontmatter_plan_tasks_list_task_has_parent_task():
+def test_read_frontmatter_plan_tasks_list_task_has_parent_task() -> None:
     """Verify tasks-list variant tasks have their parent_task field preserved.
 
     Tests: Extra fields preserved for tasks-list variant.
@@ -363,7 +363,7 @@ def test_read_frontmatter_plan_real_followup_file_returns_one_task() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_read_frontmatter_plan_code_fence_does_not_split_on_dashes_inside_fence(tmp_path):
+def test_read_frontmatter_plan_code_fence_does_not_split_on_dashes_inside_fence(tmp_path) -> None:
     # A multi-task file where a task body has a --- inside a code block.
     # The reader must not split there and must return exactly 2 tasks.
     content = (
@@ -408,12 +408,12 @@ def test_read_frontmatter_plan_code_fence_does_not_split_on_dashes_inside_fence(
 # ---------------------------------------------------------------------------
 
 
-def test_read_frontmatter_plan_nonexistent_path_raises_file_not_found(tmp_path):
+def test_read_frontmatter_plan_nonexistent_path_raises_file_not_found(tmp_path) -> None:
     with pytest.raises(FileNotFoundError):
         read_frontmatter_plan(tmp_path / "missing.md")
 
 
-def test_read_frontmatter_plan_no_frontmatter_raises_value_error(tmp_path):
+def test_read_frontmatter_plan_no_frontmatter_raises_value_error(tmp_path) -> None:
     f = tmp_path / "no_fm.md"
     f.write_text("# Just a heading\n\nSome body text.\n")
     with pytest.raises(ValueError, match="frontmatter"):

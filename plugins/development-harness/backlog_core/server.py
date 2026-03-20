@@ -754,5 +754,214 @@ async def backlog_strike_entry(
         return {"error": str(e), **out.to_dict()}
 
 
+@mcp.tool
+async def backlog_list_labels(limit: Annotated[int, Field(description="Maximum labels to return")] = 100) -> dict:
+    """List repository labels (read-only).
+
+    Returns all labels defined on the repository, up to ``limit``.
+    Label mutations are not supported by this tool; they are owned by
+    the state transition handler.
+
+    Returns:
+        Dict with ``labels`` (list of dicts with ``name``, ``color``, ``description``),
+        ``count``, and output messages/warnings.
+        On error, dict contains an ``error`` key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(operations.list_labels, limit=limit, output=out)
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool
+async def backlog_list_merged_prs(
+    search: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Optional substring to filter by (checked against PR title and body, "
+                "case-insensitive). Use to find PRs related to a specific issue number "
+                "(e.g. '#42') or keyword."
+            )
+        ),
+    ] = None,
+    limit: Annotated[int, Field(description="Maximum number of PRs to return")] = 20,
+) -> dict:
+    """List merged pull requests, optionally filtered by a search query.
+
+    Only PRs that were actually merged (not just closed) are returned.
+    Use ``search`` to filter by issue reference (e.g. ``'#42'``) or any
+    keyword present in the PR title or body.
+
+    Returns:
+        Dict with ``pull_requests`` (list of dicts with ``number``,
+        ``title``, ``merged_at``, ``author``, ``url``, ``head_branch``),
+        ``count``, and output messages/warnings.
+        On error, dict contains an ``error`` key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(operations.list_merged_prs, search=search, limit=limit, output=out)
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool
+async def backlog_list_milestones(
+    state: Annotated[str, Field(description="Milestone state filter: open | closed | all")] = "open",
+) -> dict:
+    """List repository milestones filtered by state.
+
+    Returns milestones with their issue counts and optional due dates.
+
+    Returns:
+        Dict with ``milestones`` (list of dicts with ``number``, ``title``,
+        ``state``, ``description``, ``due_on``, ``open_issues``,
+        ``closed_issues``), ``count``, and output messages/warnings.
+        On error, dict contains an ``error`` key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(operations.list_milestones, state=state, output=out)
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool
+async def backlog_get_soonest_milestone() -> dict:
+    """Return the open milestone with the earliest due date.
+
+    Milestones without a due date are excluded. If all open milestones
+    lack a due date, the first one by GitHub's default ordering is returned
+    with a warning.
+
+    Returns:
+        Dict with ``milestone`` (dict or None) containing ``number``, ``title``,
+        ``state``, ``description``, ``due_on``, ``open_issues``,
+        ``closed_issues``, and output messages/warnings.
+        ``milestone`` is ``None`` when no open milestones exist.
+        On error, dict contains an ``error`` key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(operations.get_soonest_milestone, output=out)
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool
+async def backlog_create_milestone(
+    title: Annotated[str, Field(description="Milestone title (required, must be non-empty)")],
+    description: Annotated[str, Field(description="Optional milestone description")] = "",
+    due_on: Annotated[
+        str | None,
+        Field(description="Optional due date as ISO 8601 string, e.g. '2026-06-30' or '2026-06-30T00:00:00Z'"),
+    ] = None,
+) -> dict:
+    """Create a new milestone on the repository.
+
+    Returns:
+        Dict with ``milestone`` containing ``number``, ``title``, ``state``,
+        ``description``, ``due_on``, ``open_issues``, ``closed_issues``,
+        and output messages/warnings.
+        On error, dict contains an ``error`` key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(
+            operations.create_milestone, title=title, description=description, due_on=due_on, output=out
+        )
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool
+async def backlog_list_issues(
+    milestone: Annotated[str | None, Field(description="Filter by milestone title")] = None,
+    labels: Annotated[str | None, Field(description="Comma-separated label names to filter by")] = None,
+    state: Annotated[str, Field(description="Issue state: open, closed, or all")] = "open",
+    limit: Annotated[int, Field(description="Maximum issues to return")] = 30,
+) -> dict:
+    """List GitHub issues with optional milestone, label, and state filters.
+
+    Returns:
+        Dict with issues list, count, and output messages/warnings.
+        On error, dict contains an error key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(
+            operations.list_issues, milestone=milestone, labels=labels, state=state, limit=limit, output=out
+        )
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool
+async def backlog_comment_issue(
+    issue_number: Annotated[int, Field(description="GitHub issue number (without #)")],
+    body: Annotated[str, Field(description="Comment body (Markdown)")],
+) -> dict:
+    """Add a comment to a GitHub issue.
+
+    Returns:
+        Dict with issue_number, comment_id, comment_url, and output messages/warnings.
+        On error, dict contains an error key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(operations.comment_issue, issue_number=issue_number, body=body, output=out)
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool
+async def backlog_list_projects(
+    owner: Annotated[str | None, Field(description="GitHub owner (org or user). Defaults to repo owner")] = None,
+    limit: Annotated[int, Field(description="Maximum projects to return")] = 20,
+) -> dict:
+    """List Projects V2 for the repository owner via GraphQL.
+
+    Returns:
+        Dict with projects list, count, and output messages/warnings.
+        On error, dict contains an error key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(operations.list_projects, owner=owner, limit=limit, output=out)
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
+@mcp.tool
+async def backlog_create_project(
+    title: Annotated[str, Field(description="Project title")],
+    owner: Annotated[str | None, Field(description="GitHub owner (org or user). Defaults to repo owner")] = None,
+) -> dict:
+    """Create a Projects V2 project under the repository owner.
+
+    Resolves the owner node ID then runs the createProjectV2 GraphQL mutation.
+
+    Returns:
+        Dict with project_id, title, url, number, and output messages/warnings.
+        On error, dict contains an error key.
+    """
+    out = Output()
+    try:
+        result = await asyncio.to_thread(operations.create_project, title=title, owner=owner, output=out)
+        return {**result, **out.to_dict()}
+    except BacklogError as e:
+        return {"error": str(e), **out.to_dict()}
+
+
 if __name__ == "__main__":
     mcp.run()

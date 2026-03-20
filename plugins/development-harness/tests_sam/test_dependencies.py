@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from sam_schema.core.dependencies import BookendValidator, DependencyGraph, _task_id_sort_key
-from sam_schema.core.models import AcceptanceCriterion, Complexity, Plan, Priority, Task, TaskStatus
+from sam_schema.core.models import AcceptanceCriterion, BookendType, Complexity, Plan, Priority, Task, TaskStatus
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -306,7 +306,7 @@ def test_get_blocked_tasks_in_progress_task_excluded_from_blocked() -> None:
 
 def make_bookend_task(
     task_id: str,
-    bookend_type: str,
+    bookend_type: BookendType,
     status: TaskStatus = TaskStatus.NOT_STARTED,
     dependencies: list[str] | None = None,
     priority: Priority = Priority.MEDIUM,
@@ -383,10 +383,10 @@ class TestBookendValidatorValidPlans:
         Why: The primary success case must pass cleanly.
         """
         # Arrange
-        t0 = make_bookend_task("T0", "t0-baseline", priority=Priority.CRITICAL)
+        t0 = make_bookend_task("T0", BookendType.T0_BASELINE, priority=Priority.CRITICAL)
         impl1 = make_task("T1", dependencies=["T0"])
         impl2 = make_task("T2", dependencies=["T0"])
-        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1", "T2"], priority=Priority.LOWEST)
+        tn = make_bookend_task("T99", BookendType.TN_VERIFICATION, dependencies=["T1", "T2"], priority=Priority.LOWEST)
         criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
         plan = make_plan_with_bookends(impl_tasks=[impl1, impl2], t0=t0, tn=tn, criteria=criteria)
 
@@ -453,7 +453,7 @@ class TestBookendValidatorInvalidPlans:
         Why: TN is required to verify post-implementation state.
         """
         # Arrange
-        t0 = make_bookend_task("T0", "t0-baseline")
+        t0 = make_bookend_task("T0", BookendType.T0_BASELINE)
         impl = make_task("T1")
         criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
         plan = make_plan_with_bookends(impl_tasks=[impl], t0=t0, criteria=criteria)
@@ -474,7 +474,7 @@ class TestBookendValidatorInvalidPlans:
         """
         # Arrange
         impl = make_task("T1")
-        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1"])
+        tn = make_bookend_task("T99", BookendType.TN_VERIFICATION, dependencies=["T1"])
         criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
         plan = make_plan_with_bookends(impl_tasks=[impl], tn=tn, criteria=criteria)
 
@@ -493,9 +493,9 @@ class TestBookendValidatorInvalidPlans:
         Why: T0 must be the first task executed — dependencies delay it.
         """
         # Arrange
-        t0 = make_bookend_task("T0", "t0-baseline", dependencies=["T1"])
+        t0 = make_bookend_task("T0", BookendType.T0_BASELINE, dependencies=["T1"])
         impl = make_task("T1")
-        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1"])
+        tn = make_bookend_task("T99", BookendType.TN_VERIFICATION, dependencies=["T1"])
         criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
         plan = make_plan_with_bookends(impl_tasks=[impl], t0=t0, tn=tn, criteria=criteria)
 
@@ -513,11 +513,11 @@ class TestBookendValidatorInvalidPlans:
         Why: Missing dependency means TN may run before T2 completes.
         """
         # Arrange
-        t0 = make_bookend_task("T0", "t0-baseline")
+        t0 = make_bookend_task("T0", BookendType.T0_BASELINE)
         impl1 = make_task("T1")
         impl2 = make_task("T2")
         # TN depends only on T1, missing T2
-        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1"])
+        tn = make_bookend_task("T99", BookendType.TN_VERIFICATION, dependencies=["T1"])
         criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
         plan = make_plan_with_bookends(impl_tasks=[impl1, impl2], t0=t0, tn=tn, criteria=criteria)
 
@@ -535,7 +535,7 @@ class TestBookendValidatorInvalidPlans:
         Why: Multiple T0s create ambiguous baseline capture.
         """
         # Arrange
-        t0a = make_bookend_task("T0", "t0-baseline")
+        t0a = make_bookend_task("T0", BookendType.T0_BASELINE)
         # Second T0 — violates uniqueness
         t0b = Task(
             id="T5",
@@ -545,10 +545,10 @@ class TestBookendValidatorInvalidPlans:
             priority=Priority.CRITICAL,
             complexity=Complexity.LOW,
             is_bookend=True,
-            bookend_type="t0-baseline",
+            bookend_type=BookendType.T0_BASELINE,
         )
         impl = make_task("T1")
-        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1"])
+        tn = make_bookend_task("T99", BookendType.TN_VERIFICATION, dependencies=["T1"])
         criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
         plan = Plan(feature="dup-t0", tasks=[t0a, t0b, impl, tn], acceptance_criteria_structured=criteria)
 
@@ -566,10 +566,10 @@ class TestBookendValidatorInvalidPlans:
         Why: Multiple TNs create ambiguous verification verdicts.
         """
         # Arrange
-        t0 = make_bookend_task("T0", "t0-baseline")
+        t0 = make_bookend_task("T0", BookendType.T0_BASELINE)
         impl = make_task("T1")
-        tn_a = make_bookend_task("T98", "tn-verification", dependencies=["T1"])
-        tn_b = make_bookend_task("T99", "tn-verification", dependencies=["T1"])
+        tn_a = make_bookend_task("T98", BookendType.TN_VERIFICATION, dependencies=["T1"])
+        tn_b = make_bookend_task("T99", BookendType.TN_VERIFICATION, dependencies=["T1"])
         criteria = [AcceptanceCriterion(criterion_id="AC-1", check_command="pytest")]
         plan = Plan(feature="dup-tn", tasks=[t0, impl, tn_a, tn_b], acceptance_criteria_structured=criteria)
 
@@ -622,7 +622,7 @@ class TestBookendValidatorAccessors:
         Why: T0 agent uses this to identify its target task.
         """
         # Arrange
-        t0 = make_bookend_task("T0", "t0-baseline")
+        t0 = make_bookend_task("T0", BookendType.T0_BASELINE)
         plan = make_plan_with_bookends(t0=t0)
         validator = BookendValidator(plan)
 
@@ -660,7 +660,7 @@ class TestBookendValidatorAccessors:
         Why: TN agent uses this to identify its target task.
         """
         # Arrange
-        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1"])
+        tn = make_bookend_task("T99", BookendType.TN_VERIFICATION, dependencies=["T1"])
         impl = make_task("T1")
         plan = make_plan_with_bookends(impl_tasks=[impl], tn=tn)
         validator = BookendValidator(plan)
@@ -699,10 +699,10 @@ class TestBookendValidatorAccessors:
         Why: TN uses this to validate its dependency list covers all impl tasks.
         """
         # Arrange
-        t0 = make_bookend_task("T0", "t0-baseline")
+        t0 = make_bookend_task("T0", BookendType.T0_BASELINE)
         impl1 = make_task("T1")
         impl2 = make_task("T2")
-        tn = make_bookend_task("T99", "tn-verification", dependencies=["T1", "T2"])
+        tn = make_bookend_task("T99", BookendType.TN_VERIFICATION, dependencies=["T1", "T2"])
         plan = make_plan_with_bookends(impl_tasks=[impl1, impl2], t0=t0, tn=tn)
         validator = BookendValidator(plan)
 
@@ -722,8 +722,8 @@ class TestBookendValidatorAccessors:
         Why: Plans with zero implementation tasks are structurally valid.
         """
         # Arrange
-        t0 = make_bookend_task("T0", "t0-baseline")
-        tn = make_bookend_task("T99", "tn-verification")
+        t0 = make_bookend_task("T0", BookendType.T0_BASELINE)
+        tn = make_bookend_task("T99", BookendType.TN_VERIFICATION)
         plan = make_plan_with_bookends(t0=t0, tn=tn)
         validator = BookendValidator(plan)
 
@@ -741,7 +741,7 @@ class TestBookendValidatorAccessors:
         Why: Consistent ordering prevents flaky dependency comparisons.
         """
         # Arrange
-        t0 = make_bookend_task("T0", "t0-baseline")
+        t0 = make_bookend_task("T0", BookendType.T0_BASELINE)
         impl3 = make_task("T3")
         impl1 = make_task("T1")
         impl10 = make_task("T10")

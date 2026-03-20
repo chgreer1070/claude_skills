@@ -94,7 +94,7 @@ Plans created before this specification use `tasks-{N}-{slug}.md` naming. The ad
 
 ## Plan Schema
 
-Plan-level fields are defined in the `Plan` Pydantic model (`packages/sam_schema/sam_schema/core/models.py`).
+Plan-level fields are defined in the `Plan` Pydantic model (`plugins/development-harness/sam_schema/core/models.py`).
 
 Key plan fields:
 

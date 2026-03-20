@@ -83,7 +83,7 @@ Sections appear in this order. All sections after Description are populated incr
 **Acceptance Criteria**:
 - Running `command X` produces `output Y`
 - File `.claude/backlog/p1-{slug}.md` exists with correct frontmatter
-- `gh issue view N --json state` returns `"state": "open"`
+- `backlog_view(selector="#N")` returns `state: "open"` in the dict
 ```
 
 P0 items: at least one criterion required. Non-P0: optional but recommended.
@@ -140,7 +140,7 @@ Missing: {list or "None"}
 
 [PASS] Running `command X` produces `output Y` — verified at src/main.py:42
 [FAIL] File `.claude/backlog/p1-{slug}.md` exists with correct frontmatter — file not found
-[PASS] `gh issue view N --json state` returns "open" — confirmed via gh output
+[PASS] `backlog_view(selector="#N")` returns `state: "open"` — confirmed via MCP tool output
 
 Overall: FAIL (2/3 criteria met)
 ```

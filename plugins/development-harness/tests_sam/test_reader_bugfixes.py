@@ -110,19 +110,19 @@ class TestBug2StringFormatTaskEntriesDropped:
 
     def test_build_task_dict_string_entry_returns_task_dict(self) -> None:
         """String entry '1.1: Update some-file.md — note' is parsed correctly."""
-        result = _build_task_dict("1.1: Update some-file.md — note", {})
+        result = _build_task_dict("1.1: Update some-file.md — note", {})  # type: ignore[arg-type]
         assert result is not None
         assert result["task"] == "1.1"
         assert result["title"] == "Update some-file.md — note"
 
     def test_build_task_dict_string_entry_without_colon_returns_none(self) -> None:
         """String entry with no colon cannot be parsed and returns None."""
-        result = _build_task_dict("no colon here at all", {})
+        result = _build_task_dict("no colon here at all", {})  # type: ignore[arg-type]
         assert result is None
 
     def test_build_task_dict_string_entry_defaults_status_to_not_started(self) -> None:
         """String entry without prose gets default status not-started."""
-        result = _build_task_dict("T1: Some title", {})
+        result = _build_task_dict("T1: Some title", {})  # type: ignore[arg-type]
         assert result is not None
         assert result["status"] == "not-started"
 

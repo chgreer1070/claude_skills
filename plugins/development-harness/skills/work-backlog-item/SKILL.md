@@ -405,7 +405,7 @@ Full step-by-step procedure (9a–9f): [close-resolve-procedure.md](./references
 
 ### Step 2.5: GitHub Issue Sync
 
-After Step 2, check for `**Issue**: #N` in the matched item. Full procedure (gh commands, yes/no branching, issue creation): [github-integration.md](./references/github-integration.md#step-25-github-issue-sync)
+After Step 2, check for `**Issue**: #N` in the matched item. Full procedure (MCP tool calls, yes/no branching, issue creation): [github-integration.md](./references/github-integration.md#step-25-github-issue-sync)
 
 **Note:** On the Issue-first path (Step 1b), the `backlog_view` response already contains issue state — carry it forward without re-fetching.
 

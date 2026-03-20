@@ -248,6 +248,7 @@ class TestCreatePlanRoundTrip:
         ]
         # Act
         plan = create_plan(slug="roundtrip", goal="Round-trip test", tasks=tasks, plan_dir=plan_dir)
+        assert plan.source_path is not None
         result = load_plan(plan.source_path)
         # Assert
         assert result.plan.feature == "roundtrip"

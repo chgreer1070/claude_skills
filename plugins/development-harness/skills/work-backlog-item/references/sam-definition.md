@@ -96,12 +96,17 @@ Each artifact type uses the token pattern `ARTIFACT:{TYPE}({SCOPE_OR_ID})`. Stor
 
 Canonical spec: **<https://github.com/bitflight-devops/stateless-agent-methodology>**. Key documents: `stateless-agent-methodology.md`, `stateless-software-engineering-framework.md`, `README.md`, `docs/guides/sam-harness.md`.
 
-**Fetch via gh (when repo is not cloned locally):** Requires `gh` and auth (`gh auth status`). Example:
+**Fetch via git clone (when repo is not cloned locally):** Auth is provided by the `GITHUB_TOKEN` environment variable. Clone into a worktree and read from disk:
 
 ```bash
-gh api repos/bitflight-devops/stateless-agent-methodology/contents/stateless-agent-methodology.md -H "Accept: application/vnd.github.raw"
-gh api repos/bitflight-devops/stateless-agent-methodology/contents/stateless-software-engineering-framework.md -H "Accept: application/vnd.github.raw"
+git clone --depth 1 https://github.com/bitflight-devops/stateless-agent-methodology.git \
+  .claude/worktrees/stateless-agent-methodology
 ```
+
+Then read:
+
+- `.claude/worktrees/stateless-agent-methodology/stateless-agent-methodology.md`
+- `.claude/worktrees/stateless-agent-methodology/stateless-software-engineering-framework.md`
 
 ### claude_skills implementation
 

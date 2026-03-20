@@ -17,19 +17,19 @@ _FIXTURES = pathlib.Path(__file__).parent.parent / "fixtures"
 # ---------------------------------------------------------------------------
 
 
-def test_read_legacy_plan_returns_three_tasks():
+def test_read_legacy_plan_returns_three_tasks() -> None:
     path = _FIXTURES / "legacy_markdown.md"
     _, task_dicts, _ = read_legacy_plan(path)
     assert len(task_dicts) == 3
 
 
-def test_read_legacy_plan_returns_legacy_markdown_format_type():
+def test_read_legacy_plan_returns_legacy_markdown_format_type() -> None:
     path = _FIXTURES / "legacy_markdown.md"
     _, _, fmt = read_legacy_plan(path)
     assert fmt == FormatType.LEGACY_MARKDOWN
 
 
-def test_read_legacy_plan_plan_meta_has_feature_from_h1():
+def test_read_legacy_plan_plan_meta_has_feature_from_h1() -> None:
     path = _FIXTURES / "legacy_markdown.md"
     plan_meta, _, _ = read_legacy_plan(path)
     # The H1 is "API Rate Limiting - Task Plan"
@@ -41,19 +41,19 @@ def test_read_legacy_plan_plan_meta_has_feature_from_h1():
 # ---------------------------------------------------------------------------
 
 
-def test_read_legacy_plan_first_task_number_is_1():
+def test_read_legacy_plan_first_task_number_is_1() -> None:
     path = _FIXTURES / "legacy_markdown.md"
     _, task_dicts, _ = read_legacy_plan(path)
     assert task_dicts[0].get("task") == "1"
 
 
-def test_read_legacy_plan_first_task_title_is_correct():
+def test_read_legacy_plan_first_task_title_is_correct() -> None:
     path = _FIXTURES / "legacy_markdown.md"
     _, task_dicts, _ = read_legacy_plan(path)
     assert task_dicts[0].get("title") == "Define rate limit configuration model"
 
 
-def test_read_legacy_plan_first_task_status_is_complete():
+def test_read_legacy_plan_first_task_status_is_complete() -> None:
     # Fixture uses :white_check_mark: COMPLETE emoji marker
     path = _FIXTURES / "legacy_markdown.md"
     _, task_dicts, _ = read_legacy_plan(path)
@@ -66,13 +66,13 @@ def test_read_legacy_plan_first_task_status_is_complete():
 # ---------------------------------------------------------------------------
 
 
-def test_read_legacy_plan_second_task_number_is_2():
+def test_read_legacy_plan_second_task_number_is_2() -> None:
     path = _FIXTURES / "legacy_markdown.md"
     _, task_dicts, _ = read_legacy_plan(path)
     assert task_dicts[1].get("task") == "2"
 
 
-def test_read_legacy_plan_second_task_has_dependency_list():
+def test_read_legacy_plan_second_task_has_dependency_list() -> None:
     path = _FIXTURES / "legacy_markdown.md"
     _, task_dicts, _ = read_legacy_plan(path)
     deps = task_dicts[1].get("dependencies")
@@ -80,7 +80,7 @@ def test_read_legacy_plan_second_task_has_dependency_list():
     assert len(deps) >= 1
 
 
-def test_read_legacy_plan_second_task_raw_dependency_contains_task_prefix():
+def test_read_legacy_plan_second_task_raw_dependency_contains_task_prefix() -> None:
     # Legacy reader emits raw values like "Task 1" — normalizer strips prefix
     path = _FIXTURES / "legacy_markdown.md"
     _, task_dicts, _ = read_legacy_plan(path)
@@ -89,7 +89,7 @@ def test_read_legacy_plan_second_task_raw_dependency_contains_task_prefix():
     assert any("1" in d for d in deps)
 
 
-def test_read_legacy_plan_second_task_priority_is_integer():
+def test_read_legacy_plan_second_task_priority_is_integer() -> None:
     path = _FIXTURES / "legacy_markdown.md"
     _, task_dicts, _ = read_legacy_plan(path)
     priority = task_dicts[1].get("priority")
@@ -102,14 +102,14 @@ def test_read_legacy_plan_second_task_priority_is_integer():
 # ---------------------------------------------------------------------------
 
 
-def test_read_legacy_plan_third_task_has_multiple_dependencies():
+def test_read_legacy_plan_third_task_has_multiple_dependencies() -> None:
     path = _FIXTURES / "legacy_markdown.md"
     _, task_dicts, _ = read_legacy_plan(path)
     deps = task_dicts[2].get("dependencies", [])
     assert len(deps) >= 2
 
 
-def test_read_legacy_plan_third_task_complexity_is_extracted():
+def test_read_legacy_plan_third_task_complexity_is_extracted() -> None:
     path = _FIXTURES / "legacy_markdown.md"
     _, task_dicts, _ = read_legacy_plan(path)
     complexity = task_dicts[2].get("complexity")
@@ -121,7 +121,7 @@ def test_read_legacy_plan_third_task_complexity_is_extracted():
 # ---------------------------------------------------------------------------
 
 
-def test_read_legacy_plan_tasks_have_agent_field():
+def test_read_legacy_plan_tasks_have_agent_field() -> None:
     path = _FIXTURES / "legacy_markdown.md"
     _, task_dicts, _ = read_legacy_plan(path)
     for task in task_dicts:
@@ -133,7 +133,7 @@ def test_read_legacy_plan_tasks_have_agent_field():
 # ---------------------------------------------------------------------------
 
 
-def test_read_legacy_plan_synthesizes_feature_from_filename_when_no_h1(tmp_path):
+def test_read_legacy_plan_synthesizes_feature_from_filename_when_no_h1(tmp_path) -> None:
     # A legacy file with no # heading — feature is synthesized from filename
     content = (
         "## Task 1: A simple task\n\n"
@@ -149,7 +149,7 @@ def test_read_legacy_plan_synthesizes_feature_from_filename_when_no_h1(tmp_path)
     assert len(task_dicts) == 1
 
 
-def test_read_legacy_plan_uses_h1_as_feature_when_present(tmp_path):
+def test_read_legacy_plan_uses_h1_as_feature_when_present(tmp_path) -> None:
     content = "# My Feature Plan\n\n## Task 1: A task\n\n**Status**: NOT STARTED\n**Agent**: agent\n"
     f = tmp_path / "tasks.md"
     f.write_text(content)
@@ -162,12 +162,12 @@ def test_read_legacy_plan_uses_h1_as_feature_when_present(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_read_legacy_plan_nonexistent_path_raises_file_not_found(tmp_path):
+def test_read_legacy_plan_nonexistent_path_raises_file_not_found(tmp_path) -> None:
     with pytest.raises(FileNotFoundError):
         read_legacy_plan(tmp_path / "missing.md")
 
 
-def test_read_legacy_plan_no_task_headings_raises_value_error(tmp_path):
+def test_read_legacy_plan_no_task_headings_raises_value_error(tmp_path) -> None:
     f = tmp_path / "no_tasks.md"
     f.write_text("# A Plan\n\nNo task headings here.\n")
     with pytest.raises(ValueError, match="No '## Task N:'"):
@@ -179,7 +179,7 @@ def test_read_legacy_plan_no_task_headings_raises_value_error(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_read_legacy_plan_none_dependency_returns_empty_list(tmp_path):
+def test_read_legacy_plan_none_dependency_returns_empty_list(tmp_path) -> None:
     content = "## Task 1: A task\n\n**Status**: NOT STARTED\n**Dependencies**: None\n**Agent**: agent\n"
     f = tmp_path / "tasks.md"
     f.write_text(content)

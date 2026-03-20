@@ -19,6 +19,7 @@ from sam_schema.core.models import (
     AcceptanceCriterion,
     AnalysisMethod,
     BookendResult,
+    BookendType,
     BookendVerification,
     Complexity,
     CriterionStatus,
@@ -1096,7 +1097,7 @@ class TestTaskBookendFields:
             priority=Priority.CRITICAL,
             complexity=Complexity.LOW,
             is_bookend=True,
-            bookend_type="t0-baseline",
+            bookend_type=BookendType.T0_BASELINE,
         )
         assert task.is_bookend is True
         assert task.bookend_type == "t0-baseline"
@@ -1118,7 +1119,7 @@ class TestTaskBookendFields:
             priority=Priority.LOWEST,
             complexity=Complexity.LOW,
             is_bookend=True,
-            bookend_type="tn-verification",
+            bookend_type=BookendType.TN_VERIFICATION,
         )
         assert task.is_bookend is True
         assert task.bookend_type == "tn-verification"
@@ -1163,7 +1164,11 @@ class TestTaskBookendFields:
         Why: YAML writer must output bookend fields for T0/TN tasks.
         """
         task = Task(
-            id="T0", title="Baseline", status=TaskStatus.NOT_STARTED, is_bookend=True, bookend_type="t0-baseline"
+            id="T0",
+            title="Baseline",
+            status=TaskStatus.NOT_STARTED,
+            is_bookend=True,
+            bookend_type=BookendType.T0_BASELINE,
         )
         dumped = task.model_dump(by_alias=True, exclude_defaults=True)
         assert dumped["is-bookend"] is True
@@ -1180,7 +1185,7 @@ class TestTaskBookendFields:
              BookendValidator (neither T0 nor TN).
         """
         with pytest.raises(ValidationError):
-            Task(id="T0", title="Bad bookend", status=TaskStatus.NOT_STARTED, is_bookend=True, bookend_type="foo")
+            Task(id="T0", title="Bad bookend", status=TaskStatus.NOT_STARTED, is_bookend=True, bookend_type="foo")  # type: ignore[invalid-argument-type]  # intentional invalid value to test Pydantic rejection
 
     def test_bookend_type_enum_member_t0_accepted(self) -> None:
         """Verify BookendType.T0_BASELINE is accepted for bookend_type.

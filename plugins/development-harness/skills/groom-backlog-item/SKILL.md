@@ -64,14 +64,14 @@ The following diagram is the authoritative procedure for the Step 2 validity che
 flowchart TD
     ItemIn(["Item selected for grooming"]) --> C1{"Is the job still valid?<br>Does this item still belong<br>in the backlog given current context?"}
     C1 -->|"No — scope, priority, or context changed"| InvalidSkip(["Report invalid — skip grooming for this item"])
-    C1 -->|"Yes — item is still relevant"| C2{"Search for evidence work is already done<br>git log --grep keyword + gh pr list merged<br>+ read files at suggested_location<br>Does evidence of completion exist?"}
-    C2 -->|"Yes — evidence found"| AlreadyDone["Comment evidence on GitHub issue (if exists)<br>gh issue comment N --body 'Completed via PR'<br>Close GitHub issue: gh issue close N --reason completed<br>Call backlog_resolve with PR/SHA summary"]
+    C1 -->|"Yes — item is still relevant"| C2{"Search for evidence work is already done<br>git log --grep keyword + mcp: backlog_list_merged_prs(search=keyword)<br>+ read files at suggested_location<br>Does evidence of completion exist?"}
+    C2 -->|"Yes — evidence found"| AlreadyDone["Comment evidence on GitHub issue (if exists)<br>mcp: backlog_comment_issue(issue_number=N, body='Completed via PR')<br>Close GitHub issue: mcp: backlog_close(selector='#N')<br>Call backlog_resolve with PR/SHA summary"]
     AlreadyDone --> DoneSkip(["Report to user — skip grooming for this item"])
     C2 -->|"No evidence of completion found"| C3{"Does item have a GitHub issue?<br>Check metadata.issue or index link #N"}
     C3 -->|"No GitHub issue"| C4Check{"Check item file's 'groomed' frontmatter field<br>Does groomed == today's date AND<br>item has all required sections?"}
     C3 -->|"Yes — call backlog_view selector='#N'<br>Check 'state' field in returned dict"| IssueState{"state field<br>value?"}
     IssueState -->|"open"| C4Check
-    IssueState -->|"closed — local file is stale"| StaleSearch["Search for commits: git log --grep='#N'<br>Search merged PRs: gh pr list --search '#N' --state merged"]
+    IssueState -->|"closed — local file is stale"| StaleSearch["Search for commits: git log --grep='#N'<br>Search merged PRs: mcp: backlog_list_merged_prs(search='#N')"]
     StaleSearch --> StaleEvidence{"Commits or PRs<br>reference this issue?"}
     StaleEvidence -->|"Yes — evidence found"| StaleClose["Comment evidence on issue<br>Call backlog_resolve with PR/SHA summary"]
     StaleClose --> StaleSkip(["Skip grooming — move to next item"])

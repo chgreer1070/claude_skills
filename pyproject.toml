@@ -6,7 +6,6 @@ dependencies = [
     "backlog-core",
     "fastmcp>=3.0.2",
     "pygithub>=2.8.1",
-    "sam-schema",
     "skill-seekers>=3.0.0",
 ]
 
@@ -57,10 +56,9 @@ dev = [
 
 [tool.uv.sources]
 backlog-core = { workspace = true }
-sam-schema = { workspace = true }
 
 [tool.uv.workspace]
-members = ["plugins/development-harness", "packages/sam_schema"]
+members = ["plugins/development-harness"]
 
 [tool.pytest.ini_options]
 addopts = [
@@ -185,9 +183,9 @@ unresolved-attribute = "ignore"
 # method expecting 0 positional args (counting self). Both positional and keyword forms
 # trigger false positives. Suppress for the three reader test files that use this pattern.
 include = [
-    "packages/sam_schema/tests/test_readers/test_detect.py",
-    "packages/sam_schema/tests/test_readers/test_frontmatter_reader.py",
-    "packages/sam_schema/tests/test_readers/test_manifest_reader.py",
+    "plugins/development-harness/tests_sam/test_readers/test_detect.py",
+    "plugins/development-harness/tests_sam/test_readers/test_frontmatter_reader.py",
+    "plugins/development-harness/tests_sam/test_readers/test_manifest_reader.py",
 ]
 
 [tool.ty.overrides.rules]
@@ -396,6 +394,21 @@ max-complexity = 12
     "N",        # camelCase in test names acceptable when testing API fields
     "PLC",      # Local imports acceptable in test helpers
     "PLR",      # Testing private methods is valid test pattern
+    "S",        # Security checks not needed in tests
+    "SLF",      # Private name imports acceptable for testing internals
+    "T",        # print() statements are intentional for CI output visibility
+]
+"**/tests_sam/**" = [
+    "ANN",      # Type annotations optional for test fixtures/methods
+    "ASYNC240", # Blocking pathlib I/O in async test methods is acceptable at test scale
+    "D",        # Docstring requirements relaxed for tests
+    "DOC",      # Docstring content requirements relaxed
+    "E501",     # Line length relaxed for test data
+    "EXE",      # Shebang executable check skipped for PEP723 test files
+    "N",        # camelCase in test names acceptable when testing API fields
+    "PLC",      # Local imports acceptable in test helpers
+    "PLR",      # Testing private methods is valid test pattern
+    "PT",       # pytest-style rules relaxed for tests (e.g. PT011 broad raises)
     "S",        # Security checks not needed in tests
     "SLF",      # Private name imports acceptable for testing internals
     "T",        # print() statements are intentional for CI output visibility

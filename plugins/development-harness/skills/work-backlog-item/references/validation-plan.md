@@ -1,27 +1,23 @@
 # Validation Plan — GitHub Integration Workflow
 
-> **Repository**: All gh commands in this document use `-R OWNER/REPO`. Discover your repo: `gh repo view --json nameWithOwner -q .nameWithOwner`
+> **Repository**: OWNER/REPO is discovered via `discover_repo()` from `backlog_core.models`. Use MCP tools for all GitHub operations — no `gh` CLI required.
 
-Each step of the GitHub integration can be independently verified using `gh` CLI commands.
+Each step of the GitHub integration can be independently verified using MCP backlog tools.
 
 ## V1: Label Setup Verification
 
-```bash
+```text
 # After /work-backlog-item setup-github:
-gh label list -R OWNER/REPO --json name,color \
-  --jq '.[] | select(.name | startswith("priority:","type:","status:")) | .name'
-
+# MCP: backlog_list_labels()
+# Filter: names starting with "priority:", "type:", "status:"
 # Expected: 13 taxonomy labels present
 ```
 
 ## V2: Issue Creation Verification
 
-```bash
+```text
 # After working a P1 item:
-gh issue list -R OWNER/REPO --state open \
-  --json number,title,labels \
-  --jq '.[] | {number,title,labels: [.labels[].name]}'
-
+# MCP: backlog_list_issues(state="open")
 # Expected: issue with priority:p1, type:*, status:in-progress labels
 ```
 
@@ -32,29 +28,25 @@ grep -rn "issue:" .claude/backlog/ | head -10
 
 ## V3: Milestone Assignment Verification
 
-```bash
-gh api repos/OWNER/REPO/milestones \
-  --jq '.[] | {number, title, open_issues}'
-
+```text
+# MCP: backlog_list_milestones()
 # Expected: milestone exists with open_issues incremented after item worked
 ```
 
 ## V4: In-Progress Label Verification
 
-```bash
-gh issue view <issue-number> -R OWNER/REPO \
-  --json labels --jq '.labels[].name'
-
+```text
+# MCP: backlog_view(selector="#<issue-number>")
+# Check labels field in returned dict
 # Expected: status:in-progress present, status:needs-grooming absent
 ```
 
 ## V5: Closure Verification
 
-```bash
+```text
 # After /work-backlog-item close <title>:
-gh issue view <issue-number> -R OWNER/REPO \
-  --json state,comments --jq '{state, last_comment: .comments[-1].body}'
-
+# MCP: backlog_view(selector="#<issue-number>")
+# Check state and comments fields in returned dict
 # Expected: state="closed", comment contains checklist summary
 ```
 

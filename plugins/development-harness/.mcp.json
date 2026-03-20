@@ -3,6 +3,10 @@
     "backlog": {
       "command": "uv",
       "args": ["run", "--project", "${CLAUDE_PLUGIN_ROOT}", "python", "-m", "backlog_core.server"]
+    },
+    "sam": {
+      "command": "uv",
+      "args": ["run", "--project", "${CLAUDE_PLUGIN_ROOT}", "sam-mcp"]
     }
   }
 }

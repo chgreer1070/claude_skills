@@ -25,7 +25,7 @@ metadata:
 <!-- Examples:
   - Running `uv run backlog.py list --format json` outputs valid JSON
   - File `.claude/backlog/p1-{slug}.md` exists with correct frontmatter
-  - `gh issue view N --json state` returns `"state": "open"`
+  - `backlog_view(selector="#N")` returns `state: "open"` in the dict
 -->
 - <!-- criterion 1 -->
 - <!-- criterion 2 -->

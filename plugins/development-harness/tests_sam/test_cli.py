@@ -69,7 +69,7 @@ def test_help_shows_all_commands() -> None:
 
 
 def test_read_returns_task_assignment_json_with_task_address(plan_dir: Path) -> None:
-    """read P1/T1 returns TaskAssignment JSON with plan context + nested task."""
+    """Read P1/T1 returns TaskAssignment JSON with plan context + nested task."""
     result = runner.invoke(app, ["read", "P1/T1", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 0
     data = json.loads(result.output)
@@ -80,7 +80,7 @@ def test_read_returns_task_assignment_json_with_task_address(plan_dir: Path) -> 
 
 
 def test_read_task_assignment_includes_plan_fields(plan_dir: Path) -> None:
-    """read P1/T1 returns plan-level fields alongside the task."""
+    """Read P1/T1 returns plan-level fields alongside the task."""
     result = runner.invoke(app, ["read", "P1/T1", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 0
     data = json.loads(result.output)
@@ -91,7 +91,7 @@ def test_read_task_assignment_includes_plan_fields(plan_dir: Path) -> None:
 
 
 def test_read_uses_slug_address(plan_dir: Path) -> None:
-    """read Pauth-system/T2 resolves via slug match and returns TaskAssignment."""
+    """Read Pauth-system/T2 resolves via slug match and returns TaskAssignment."""
     result = runner.invoke(app, ["read", "Pauth-system/T2", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 0
     data = json.loads(result.output)
@@ -99,7 +99,7 @@ def test_read_uses_slug_address(plan_dir: Path) -> None:
 
 
 def test_read_with_yaml_format_option(plan_dir: Path) -> None:
-    """read --format yaml emits YAML output containing nested task id."""
+    """Read --format yaml emits YAML output containing nested task id."""
     result = runner.invoke(app, ["read", "P1/T1", "--plan-dir", str(plan_dir), "--format", "yaml"])
     assert result.exit_code == 0
     # Task is nested under the 'task' key in the TaskAssignment YAML.
@@ -107,21 +107,21 @@ def test_read_with_yaml_format_option(plan_dir: Path) -> None:
 
 
 def test_read_with_rich_format_option(plan_dir: Path) -> None:
-    """read --format rich produces table output with task title."""
+    """Read --format rich produces table output with task title."""
     result = runner.invoke(app, ["read", "P1/T1", "--plan-dir", str(plan_dir), "--format", "rich"])
     assert result.exit_code == 0
     assert "Define auth data models" in result.output
 
 
 def test_read_invalid_address_exits_with_code_1(plan_dir: Path) -> None:
-    """read with completely invalid address exits 1 with error message."""
+    """Read with completely invalid address exits 1 with error message."""
     result = runner.invoke(app, ["read", "INVALID", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 1
     assert "Error:" in result.output
 
 
 def test_read_plan_only_address_returns_plan_json(plan_dir: Path) -> None:
-    """read P1 (no task part) returns Plan JSON — plan-level fields, no TaskAssignment wrapper."""
+    """Read P1 (no task part) returns Plan JSON — plan-level fields, no TaskAssignment wrapper."""
     result = runner.invoke(app, ["read", "P1", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 0
     data = json.loads(result.output)
@@ -131,26 +131,26 @@ def test_read_plan_only_address_returns_plan_json(plan_dir: Path) -> None:
 
 
 def test_read_nonexistent_plan_exits_with_code_1(plan_dir: Path) -> None:
-    """read P99/T1 (no matching plan number) exits 1."""
+    """Read P99/T1 (no matching plan number) exits 1."""
     result = runner.invoke(app, ["read", "P99/T1", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 1
 
 
 def test_read_nonexistent_task_exits_with_code_1(plan_dir: Path) -> None:
-    """read P1/T99 (task not in plan) exits 1."""
+    """Read P1/T99 (task not in plan) exits 1."""
     result = runner.invoke(app, ["read", "P1/T99", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 1
 
 
 def test_read_missing_plan_dir_exits_with_code_1(tmp_path: Path) -> None:
-    """read with a plan_dir that does not exist exits 1."""
+    """Read with a plan_dir that does not exist exits 1."""
     missing = tmp_path / "no-such-dir"
     result = runner.invoke(app, ["read", "P1/T1", "--plan-dir", str(missing)])
     assert result.exit_code == 1
 
 
 def test_read_invalid_format_option_exits_with_code_1(plan_dir: Path) -> None:
-    """read --format invalid exits 1 with error message."""
+    """Read --format invalid exits 1 with error message."""
     result = runner.invoke(app, ["read", "P1/T1", "--plan-dir", str(plan_dir), "--format", "invalid"])
     assert result.exit_code == 1
     assert "Error:" in result.output
@@ -162,7 +162,7 @@ def test_read_invalid_format_option_exits_with_code_1(plan_dir: Path) -> None:
 
 
 def test_status_returns_json_summary(plan_dir: Path) -> None:
-    """status P1 returns JSON with feature, total_tasks, and by_status."""
+    """Status P1 returns JSON with feature, total_tasks, and by_status."""
     result = runner.invoke(app, ["status", "P1", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 0
     data = json.loads(result.output)
@@ -174,20 +174,20 @@ def test_status_returns_json_summary(plan_dir: Path) -> None:
 
 
 def test_status_with_rich_format_produces_table(plan_dir: Path) -> None:
-    """status P1 --format rich produces Rich table output."""
+    """Status P1 --format rich produces Rich table output."""
     result = runner.invoke(app, ["status", "P1", "--plan-dir", str(plan_dir), "--format", "rich"])
     assert result.exit_code == 0
     assert "auth-system" in result.output
 
 
 def test_status_nonexistent_plan_exits_with_code_1(plan_dir: Path) -> None:
-    """status P99 exits 1 when no matching plan exists."""
+    """Status P99 exits 1 when no matching plan exists."""
     result = runner.invoke(app, ["status", "P99", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 1
 
 
 def test_status_missing_plan_dir_exits_with_code_1(tmp_path: Path) -> None:
-    """status with non-existent plan_dir exits 1."""
+    """Status with non-existent plan_dir exits 1."""
     missing = tmp_path / "no-such-dir"
     result = runner.invoke(app, ["status", "P1", "--plan-dir", str(missing)])
     assert result.exit_code == 1
@@ -199,7 +199,7 @@ def test_status_missing_plan_dir_exits_with_code_1(tmp_path: Path) -> None:
 
 
 def test_ready_returns_json_list(plan_dir: Path) -> None:
-    """ready P1 returns a JSON array (may be empty or contain tasks)."""
+    """Ready P1 returns a JSON array (may be empty or contain tasks)."""
     result = runner.invoke(app, ["ready", "P1", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 0
     data = json.loads(result.output)
@@ -207,7 +207,7 @@ def test_ready_returns_json_list(plan_dir: Path) -> None:
 
 
 def test_ready_nonexistent_plan_exits_with_code_1(plan_dir: Path) -> None:
-    """ready P99 exits 1 when no matching plan exists."""
+    """Ready P99 exits 1 when no matching plan exists."""
     result = runner.invoke(app, ["ready", "P99", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 1
 
@@ -218,7 +218,7 @@ def test_ready_nonexistent_plan_exits_with_code_1(plan_dir: Path) -> None:
 
 
 def test_state_updates_task_status_and_prints_confirmation(plan_dir: Path) -> None:
-    """state P1/T3 in-progress updates status and prints old -> new."""
+    """State P1/T3 in-progress updates status and prints old -> new."""
     result = runner.invoke(app, ["state", "P1/T3", "in-progress", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 0
     assert "T3" in result.output
@@ -226,26 +226,26 @@ def test_state_updates_task_status_and_prints_confirmation(plan_dir: Path) -> No
 
 
 def test_state_invalid_status_value_exits_with_code_1(plan_dir: Path) -> None:
-    """state P1/T1 bananas exits 1 with error about invalid status."""
+    """State P1/T1 bananas exits 1 with error about invalid status."""
     result = runner.invoke(app, ["state", "P1/T1", "bananas", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 1
     assert "Error:" in result.output
 
 
 def test_state_missing_task_component_exits_with_code_1(plan_dir: Path) -> None:
-    """state P1 (no task) exits 1."""
+    """State P1 (no task) exits 1."""
     result = runner.invoke(app, ["state", "P1", "complete", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 1
 
 
 def test_state_nonexistent_task_exits_with_code_1(plan_dir: Path) -> None:
-    """state P1/T99 (task not in plan) exits 1."""
+    """State P1/T99 (task not in plan) exits 1."""
     result = runner.invoke(app, ["state", "P1/T99", "complete", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 1
 
 
 def test_state_output_shows_old_and_new_status(plan_dir: Path) -> None:
-    """state P1/T3 complete shows both old and new status in output."""
+    """State P1/T3 complete shows both old and new status in output."""
     result = runner.invoke(app, ["state", "P1/T3", "complete", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 0
     # T3 starts as not-started, should show transition
@@ -258,7 +258,7 @@ def test_state_output_shows_old_and_new_status(plan_dir: Path) -> None:
 
 
 def test_migrate_dry_run_prints_plan_info_without_writing(legacy_plan_dir: Path) -> None:
-    """migrate P2 --dry-run prints what would change without modifying files."""
+    """Migrate P2 --dry-run prints what would change without modifying files."""
     original_files = set(legacy_plan_dir.iterdir())
     result = runner.invoke(app, ["migrate", "P2", "--dry-run", "--plan-dir", str(legacy_plan_dir)])
     assert result.exit_code == 0
@@ -269,7 +269,7 @@ def test_migrate_dry_run_prints_plan_info_without_writing(legacy_plan_dir: Path)
 
 
 def test_migrate_converts_legacy_to_yaml(legacy_plan_dir: Path) -> None:
-    """migrate P2 converts a legacy markdown plan to .yaml format."""
+    """Migrate P2 converts a legacy markdown plan to .yaml format."""
     result = runner.invoke(app, ["migrate", "P2", "--plan-dir", str(legacy_plan_dir)])
     assert result.exit_code == 0
     assert "Migrated" in result.output
@@ -279,6 +279,6 @@ def test_migrate_converts_legacy_to_yaml(legacy_plan_dir: Path) -> None:
 
 
 def test_migrate_nonexistent_plan_exits_with_code_1(plan_dir: Path) -> None:
-    """migrate P99 exits 1 when no matching plan exists."""
+    """Migrate P99 exits 1 when no matching plan exists."""
     result = runner.invoke(app, ["migrate", "P99", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 1

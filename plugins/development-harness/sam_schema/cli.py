@@ -470,14 +470,7 @@ def create(
                 _err("stdin must be YAML with a top-level 'tasks:' list or a bare list")
 
     try:
-        plan = create_plan(
-            slug=slug,
-            goal=goal,
-            tasks=tasks,  # type: ignore[arg-type]
-            plan_dir=plan_dir,
-            context=context,
-            issue=issue,
-        )
+        plan = create_plan(slug=slug, goal=goal, tasks=tasks, plan_dir=plan_dir, context=context, issue=issue)
     except ValueError as exc:
         _err(str(exc))
     except OSError as exc:

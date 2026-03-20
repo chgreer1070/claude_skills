@@ -55,7 +55,7 @@ def sample_task() -> Task:
 
 @pytest.fixture
 def sample_plan() -> Plan:
-    """Return a Plan with 3 tasks forming a dependency chain.
+    r"""Return a Plan with 3 tasks forming a dependency chain.
 
     Dependency graph::
 

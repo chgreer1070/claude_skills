@@ -13,7 +13,7 @@ import re
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from github import GithubException, GithubObject
 
@@ -25,6 +25,9 @@ from .entry_blocks import (
     strike_entry as strike_entry_block,
 )
 from .github import (
+    _graphql_request,
+    _projects_v2_create_mutation,
+    _projects_v2_list_query,
     apply_status_in_progress,
     apply_status_verified,
     batch_fetch_statuses,
@@ -2489,3 +2492,495 @@ def get_ready_sam_tasks(
         if _is_sam_task_ready(t, status_by_id)
     ]
     return {"feature": feature_slug, "ready_tasks": ready, "count": len(ready), **out.to_dict()}
+
+
+# ---------------------------------------------------------------------------
+# Labels (read-only)
+# ---------------------------------------------------------------------------
+
+
+def list_labels(repo: str = DEFAULT_REPO, limit: int = 100, output: Output | None = None) -> dict[str, object]:
+    """Return repository labels up to ``limit``.
+
+    Read-only. Label mutations are owned by ``state_handler.apply_github_transition()``.
+
+    Args:
+        repo: Repository slug (``owner/name``). Defaults to ``DEFAULT_REPO``.
+        limit: Maximum number of labels to return. Defaults to 100.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with ``labels`` (list of dicts with ``name``, ``color``, ``description``),
+        ``count`` (int), and output messages/warnings.
+
+    Raises:
+        GitHubUnavailableError: If GITHUB_TOKEN is not set or GitHub is unreachable.
+    """
+    out = output or Output()
+    repository = get_github(repo)
+    labels: list[dict[str, str]] = []
+    for label in repository.get_labels():
+        if len(labels) >= limit:
+            break
+        labels.append({"name": label.name, "color": label.color, "description": label.description or ""})
+    return {"labels": labels, "count": len(labels), **out.to_dict()}
+
+
+# ---------------------------------------------------------------------------
+# Pull requests (read-only)
+# ---------------------------------------------------------------------------
+
+
+def list_merged_prs(
+    repo: str = DEFAULT_REPO, search: str | None = None, limit: int = 20, output: Output | None = None
+) -> dict[str, list[dict[str, str | int]] | int | list[str]]:
+    """Return merged pull requests, optionally filtered by a search query.
+
+    Fetches closed PRs from GitHub and retains only those where
+    ``merged_at`` is set (i.e. actually merged, not just closed).  When
+    ``search`` is provided the PR title and body are scanned for the
+    substring (case-insensitive).
+
+    Args:
+        repo: Repository slug (``owner/name``). Defaults to ``DEFAULT_REPO``.
+        search: Optional substring to filter by (checked against title and
+            body, case-insensitive).  Useful for finding PRs related to a
+            specific issue number (e.g. ``"#42"``) or keyword.
+        limit: Maximum number of PRs to return. Defaults to 20.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with ``pull_requests`` (list of dicts with ``number``,
+        ``title``, ``merged_at``, ``author``, ``url``, ``head_branch``),
+        ``count`` (int), and output messages/warnings.
+
+    Raises:
+        GitHubUnavailableError: If GITHUB_TOKEN is not set or GitHub is
+            unreachable.
+        BacklogError: On GitHub API errors.
+    """
+    out = output or Output()
+    try:
+        repository = get_github(repo)
+        prs: list[dict[str, str | int]] = []
+        needle = search.casefold() if search else None
+        for pr in repository.get_pulls(state="closed", sort="updated", direction="desc"):
+            if len(prs) >= limit:
+                break
+            if pr.merged_at is None:
+                continue
+            if needle is not None:
+                title_match = needle in (pr.title or "").casefold()
+                body_match = needle in (pr.body or "").casefold()
+                if not title_match and not body_match:
+                    continue
+            prs.append({
+                "number": pr.number,
+                "title": pr.title or "",
+                "merged_at": pr.merged_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "author": pr.user.login if pr.user else "",
+                "url": pr.html_url or "",
+                "head_branch": pr.head.ref if pr.head else "",
+            })
+    except GithubException as e:
+        raise BacklogError(f"GitHub API error fetching pull requests: {e}") from e
+    return {"pull_requests": prs, "count": len(prs), **out.to_dict()}
+
+
+# ---------------------------------------------------------------------------
+# Milestones
+# ---------------------------------------------------------------------------
+
+
+def list_milestones(
+    repo: str = DEFAULT_REPO, state: str = "open", output: Output | None = None
+) -> dict[str, list[dict[str, object]] | int | list[str]]:
+    """Return repository milestones filtered by state.
+
+    Args:
+        repo: Repository slug (``owner/name``). Defaults to ``DEFAULT_REPO``.
+        state: Filter by milestone state: ``"open"``, ``"closed"``, or ``"all"``.
+            Defaults to ``"open"``.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with ``milestones`` (list of dicts with ``number``, ``title``,
+        ``state``, ``description``, ``due_on``, ``open_issues``,
+        ``closed_issues``), ``count`` (int), and output messages/warnings.
+
+    Raises:
+        GitHubUnavailableError: If GITHUB_TOKEN is not set or GitHub is unreachable.
+        ValidationError: If ``state`` is not one of ``open``, ``closed``, ``all``.
+    """
+    out = output or Output()
+    valid_states = {"open", "closed", "all"}
+    if state not in valid_states:
+        raise ValidationError(f"state must be one of {sorted(valid_states)!r}, got {state!r}")
+    repository = get_github(repo)
+    milestones: list[dict[str, object]] = [
+        {
+            "number": ms.number,
+            "title": ms.title,
+            "state": ms.state,
+            "description": ms.description or "",
+            "due_on": ms.due_on.strftime("%Y-%m-%dT%H:%M:%SZ") if ms.due_on else None,
+            "open_issues": ms.open_issues,
+            "closed_issues": ms.closed_issues,
+        }
+        for ms in repository.get_milestones(state=state)
+    ]
+    return {"milestones": milestones, "count": len(milestones), **out.to_dict()}
+
+
+def get_soonest_milestone(repo: str = DEFAULT_REPO, output: Output | None = None) -> dict[str, object]:
+    """Return the open milestone with the earliest due date.
+
+    Milestones without a due date are excluded from consideration.
+    If all open milestones lack a due date, the first one by GitHub's
+    default ordering is returned with a warning.
+
+    Args:
+        repo: Repository slug (``owner/name``). Defaults to ``DEFAULT_REPO``.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with ``milestone`` (dict or None) containing ``number``, ``title``,
+        ``state``, ``description``, ``due_on``, ``open_issues``,
+        ``closed_issues``, and output messages/warnings.
+        ``milestone`` is ``None`` when no open milestones exist.
+
+    Raises:
+        GitHubUnavailableError: If GITHUB_TOKEN is not set or GitHub is unreachable.
+    """
+    out = output or Output()
+    repository = get_github(repo)
+    all_open = list(repository.get_milestones(state="open"))
+    if not all_open:
+        return {"milestone": None, **out.to_dict()}
+
+    with_due = [ms for ms in all_open if ms.due_on is not None]
+    if with_due:
+        soonest = min(with_due, key=lambda ms: ms.due_on)
+    else:
+        out.warn("No open milestones have a due date; returning first by default ordering")
+        soonest = all_open[0]
+
+    return {
+        "milestone": {
+            "number": soonest.number,
+            "title": soonest.title,
+            "state": soonest.state,
+            "description": soonest.description or "",
+            "due_on": soonest.due_on.strftime("%Y-%m-%dT%H:%M:%SZ") if soonest.due_on else None,
+            "open_issues": soonest.open_issues,
+            "closed_issues": soonest.closed_issues,
+        },
+        **out.to_dict(),
+    }
+
+
+def create_milestone(
+    repo: str = DEFAULT_REPO,
+    title: str = "",
+    description: str = "",
+    due_on: str | None = None,
+    output: Output | None = None,
+) -> dict[str, object]:
+    """Create a new milestone on the repository.
+
+    Args:
+        repo: Repository slug (``owner/name``). Defaults to ``DEFAULT_REPO``.
+        title: Milestone title. Must be non-empty.
+        description: Optional milestone description.
+        due_on: Optional due date as ISO 8601 string (e.g. ``"2026-06-30"`` or
+            ``"2026-06-30T00:00:00Z"``). Parsed to a ``datetime`` before
+            passing to PyGithub.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with ``milestone`` containing ``number``, ``title``, ``state``,
+        ``description``, ``due_on``, ``open_issues``, ``closed_issues``,
+        and output messages/warnings.
+
+    Raises:
+        GitHubUnavailableError: If GITHUB_TOKEN is not set or GitHub is unreachable.
+        ValidationError: If ``title`` is empty or ``due_on`` cannot be parsed.
+    """
+    out = output or Output()
+    if not title.strip():
+        raise ValidationError("title must be non-empty")
+
+    due_on_dt: datetime | None = None
+    if due_on is not None:
+        for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+            try:
+                due_on_dt = datetime.strptime(due_on, fmt).replace(tzinfo=UTC)
+                break
+            except ValueError:
+                continue
+        else:
+            raise ValidationError(
+                f"due_on must be ISO 8601 (e.g. '2026-06-30' or '2026-06-30T00:00:00Z'), got {due_on!r}"
+            )
+
+    repository = get_github(repo)
+    ms = repository.create_milestone(
+        title=title.strip(),
+        state="open",
+        description=description or GithubObject.NotSet,
+        due_on=due_on_dt if due_on_dt is not None else GithubObject.NotSet,
+    )
+    out.info(f"Created milestone #{ms.number}: {ms.title}")
+    return {
+        "milestone": {
+            "number": ms.number,
+            "title": ms.title,
+            "state": ms.state,
+            "description": ms.description or "",
+            "due_on": ms.due_on.strftime("%Y-%m-%dT%H:%M:%SZ") if ms.due_on else None,
+            "open_issues": ms.open_issues,
+            "closed_issues": ms.closed_issues,
+        },
+        **out.to_dict(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Issues (ancillary listing + commenting)
+# ---------------------------------------------------------------------------
+
+_VALID_ISSUE_STATES: frozenset[str] = frozenset({"open", "closed", "all"})
+
+
+def _apply_milestone_filter(gh_repo: Repository, milestone: str | None, kwargs: dict[str, object], out: Output) -> None:
+    """Resolve milestone title to object and update kwargs in place."""
+    if not milestone:
+        return
+    for ms in gh_repo.get_milestones(state="all"):
+        if ms.title == milestone:
+            kwargs["milestone"] = ms
+            return
+    out.warn(f"  WARNING: milestone '{milestone}' not found — returning unfiltered results")
+
+
+def _apply_label_filter(gh_repo: Repository, labels: str | None, kwargs: dict[str, object], out: Output) -> None:
+    """Resolve comma-separated label names to objects and update kwargs in place."""
+    if not labels:
+        return
+    label_objs = []
+    for name in [n.strip() for n in labels.split(",") if n.strip()]:
+        try:
+            label_objs.append(gh_repo.get_label(name))
+        except GithubException:
+            out.warn(f"  WARNING: label '{name}' not found — skipping")
+    if label_objs:
+        kwargs["labels"] = label_objs
+
+
+def _collect_issues(gh_repo: Repository, kwargs: dict[str, object], limit: int) -> list[dict[str, object]]:
+    """Iterate issues and return serialized dicts up to limit, excluding PRs.
+
+    Returns:
+        List of issue dicts with number, title, state, labels, assignees,
+        milestone, created_at, and updated_at fields.
+    """
+    issue_list: list[dict[str, object]] = []
+    for issue in gh_repo.get_issues(**kwargs):  # type: ignore[arg-type]
+        if issue.pull_request is not None:
+            continue
+        issue_list.append({
+            "number": issue.number,
+            "title": issue.title,
+            "state": issue.state,
+            "labels": [lb.name for lb in issue.labels],
+            "assignees": [a.login for a in issue.assignees],
+            "milestone": issue.milestone.title if issue.milestone else None,
+            "created_at": issue.created_at.strftime("%Y-%m-%dT%H:%M:%SZ") if issue.created_at else "",
+            "updated_at": issue.updated_at.strftime("%Y-%m-%dT%H:%M:%SZ") if issue.updated_at else "",
+        })
+        if len(issue_list) >= limit:
+            break
+    return issue_list
+
+
+def list_issues(
+    repo: str = DEFAULT_REPO,
+    milestone: str | None = None,
+    labels: str | None = None,
+    state: str = "open",
+    limit: int = 30,
+    output: Output | None = None,
+) -> dict[str, list[dict[str, object]] | int | list[str]]:
+    """List GitHub issues with optional milestone, label, and state filters.
+
+    Args:
+        repo: Repository slug (``owner/name``). Defaults to ``DEFAULT_REPO``.
+        milestone: Filter by milestone title. Warns and returns unfiltered
+            when the title is not found.
+        labels: Comma-separated label names to filter by. Labels that do not
+            exist in the repository are skipped with a warning.
+        state: Issue state filter — ``"open"``, ``"closed"``, or ``"all"``.
+        limit: Maximum number of issues to return. Defaults to 30.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with ``issues`` (list of dicts), ``count`` (int), and output
+        messages/warnings.
+
+    Raises:
+        ValidationError: If ``state`` is not one of the valid values.
+        GitHubUnavailableError: If GITHUB_TOKEN is not set or GitHub is unreachable.
+        BacklogError: On GitHub API errors.
+    """
+    out = output or Output()
+    if state not in _VALID_ISSUE_STATES:
+        raise ValidationError(f"Invalid state {state!r}: must be one of {sorted(_VALID_ISSUE_STATES)}")
+    try:
+        gh_repo = get_github(repo)
+        kwargs: dict[str, object] = {"state": state}
+        _apply_milestone_filter(gh_repo, milestone, kwargs, out)
+        _apply_label_filter(gh_repo, labels, kwargs, out)
+        issue_list = _collect_issues(gh_repo, kwargs, limit)
+    except GithubException as e:
+        raise BacklogError(f"GitHub API error fetching issues: {e}") from e
+    return {"issues": issue_list, "count": len(issue_list), **out.to_dict()}
+
+
+def comment_issue(
+    repo: str = DEFAULT_REPO, issue_number: int = 0, body: str = "", output: Output | None = None
+) -> dict[str, str | int | list[str]]:
+    """Add a comment to a GitHub issue.
+
+    Args:
+        repo: Repository slug (``owner/name``). Defaults to ``DEFAULT_REPO``.
+        issue_number: GitHub issue number (without ``#``). Must be positive.
+        body: Comment body in Markdown. Must not be empty.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with ``issue_number`` (int), ``comment_id`` (int),
+        ``comment_url`` (str), and output messages/warnings.
+
+    Raises:
+        ValidationError: If ``issue_number`` is not positive or ``body`` is empty.
+        GitHubUnavailableError: If GITHUB_TOKEN is not set or GitHub is unreachable.
+        BacklogError: On GitHub API errors.
+    """
+    out = output or Output()
+    if issue_number <= 0:
+        raise ValidationError("issue_number must be a positive integer")
+    if not body.strip():
+        raise ValidationError("body must not be empty")
+    try:
+        gh_repo = get_github(repo)
+        issue = gh_repo.get_issue(issue_number)
+        comment = issue.create_comment(body)
+        out.info(f"  Comment added to issue #{issue_number}")
+    except GithubException as e:
+        raise BacklogError(f"GitHub API error adding comment: {e}") from e
+    return {"issue_number": issue_number, "comment_id": comment.id, "comment_url": comment.html_url, **out.to_dict()}
+
+
+# ---------------------------------------------------------------------------
+# Projects V2 (GraphQL)
+# ---------------------------------------------------------------------------
+
+
+def list_projects(
+    repo: str = DEFAULT_REPO, owner: str | None = None, limit: int = 20, output: Output | None = None
+) -> dict[str, list[dict[str, object]] | int | list[str]]:
+    """List Projects V2 for the repository owner via GraphQL.
+
+    Args:
+        repo: Repository slug (``owner/name``). Used to resolve owner when
+            ``owner`` is ``None``.
+        owner: GitHub owner login (org or user). Defaults to repo owner.
+        limit: Maximum number of projects to return. Defaults to 20.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with ``projects`` (list of dicts with ``id``, ``title``,
+        ``number``, ``url``, ``closed``, ``short_description``), ``count``
+        (int), and output messages/warnings.
+
+    Raises:
+        GitHubUnavailableError: If GITHUB_TOKEN is not set or GitHub is unreachable.
+        BacklogError: On GraphQL errors or unexpected response structure.
+    """
+    out = output or Output()
+    gh_repo = get_github(repo)
+    resolved_owner = owner or gh_repo.owner.login
+    query, variables = _projects_v2_list_query(resolved_owner, limit)
+    data = _graphql_request(gh_repo, query, variables)
+    owner_node = cast("dict[str, object]", data.get("repositoryOwner") or {})
+    projects_data = cast("dict[str, object]", owner_node.get("projectsV2") or {})
+    nodes = cast("list[dict[str, object] | None]", projects_data.get("nodes") or [])
+    projects: list[dict[str, object]] = []
+    for node in nodes:
+        if node is None:
+            continue
+        projects.append({
+            "id": node.get("id", ""),
+            "title": node.get("title", ""),
+            "number": node.get("number", 0),
+            "url": node.get("url", ""),
+            "closed": node.get("closed", False),
+            "short_description": node.get("shortDescription") or "",
+        })
+    return {"projects": projects, "count": len(projects), **out.to_dict()}
+
+
+def create_project(
+    repo: str = DEFAULT_REPO, title: str = "", owner: str | None = None, output: Output | None = None
+) -> dict[str, str | int | list[str]]:
+    """Create a Projects V2 project under the repository owner via GraphQL.
+
+    Resolves the owner's GraphQL node ID first, then runs the
+    ``createProjectV2`` mutation.
+
+    Args:
+        repo: Repository slug (``owner/name``). Used to resolve owner when
+            ``owner`` is ``None``.
+        title: Project title. Must not be empty.
+        owner: GitHub owner login. Defaults to repo owner.
+        output: Optional Output collector.
+
+    Returns:
+        Dict with ``project_id`` (str), ``title`` (str), ``url`` (str),
+        ``number`` (int), and output messages/warnings.
+
+    Raises:
+        ValidationError: If ``title`` is empty.
+        GitHubUnavailableError: If GITHUB_TOKEN is not set or GitHub is unreachable.
+        BacklogError: On GraphQL errors or unexpected response structure.
+    """
+    out = output or Output()
+    if not title.strip():
+        raise ValidationError("title must not be empty")
+    gh_repo = get_github(repo)
+    resolved_owner = owner or gh_repo.owner.login
+
+    # Step 1: resolve owner node ID
+    id_query = "query GetOwnerId($owner: String!) { repositoryOwner(login: $owner) { id } }"
+    id_data = _graphql_request(gh_repo, id_query, {"owner": resolved_owner})
+    owner_node_raw = id_data.get("repositoryOwner")
+    if not owner_node_raw:
+        raise BacklogError(f"Owner '{resolved_owner}' not found via GraphQL")
+    owner_node = cast("dict[str, object]", owner_node_raw)
+    owner_id = str(owner_node["id"])
+
+    # Step 2: create the project
+    mutation, variables = _projects_v2_create_mutation(owner_id, title)
+    create_data = _graphql_request(gh_repo, mutation, variables)
+    create_pv2 = cast("dict[str, object]", create_data.get("createProjectV2") or {})
+    project_node = cast("dict[str, object]", create_pv2.get("projectV2") or {})
+    if not project_node:
+        raise BacklogError(f"Unexpected GraphQL response for createProjectV2: {create_data!r}")
+    out.info(f"  Created project '{project_node.get('title')}' (#{project_node.get('number')})")
+    return {
+        "project_id": str(project_node.get("id", "")),
+        "title": str(project_node.get("title", "")),
+        "url": str(project_node.get("url", "")),
+        "number": int(cast("int", project_node.get("number", 0))),
+        **out.to_dict(),
+    }

@@ -292,9 +292,9 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 
 2. Query GitHub for the active milestone:
 
-   ```bash
-   # OWNER/REPO is discovered dynamically: gh repo view --json nameWithOwner -q .nameWithOwner
-   gh api repos/{OWNER/REPO}/milestones --jq '[.[] | select(.state=="open")] | sort_by(.due_on) | first'
+   ```text
+   # OWNER/REPO is discovered dynamically via discover_repo() from backlog_core.models
+   # Use MCP: backlog_get_soonest_milestone()
    ```
 
    Extract: milestone number, title, open_issues, closed_issues.

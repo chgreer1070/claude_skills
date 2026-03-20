@@ -29,32 +29,32 @@ _FIXTURES = pathlib.Path(__file__).parent.parent / "fixtures"
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_task_valid_dict_returns_task_model():
+def test_normalize_task_valid_dict_returns_task_model() -> None:
     raw = {"task": "T1", "title": "A task", "status": "not-started"}
     task, _gaps = normalize_task(raw, FormatType.YAML_FRONTMATTER)
     assert task.id == "T1"
     assert task.title == "A task"
 
 
-def test_normalize_task_missing_task_id_raises_value_error():
+def test_normalize_task_missing_task_id_raises_value_error() -> None:
     raw = {"title": "No ID", "status": "not-started"}
     with pytest.raises(ValueError, match="missing required"):
         normalize_task(raw, FormatType.YAML_FRONTMATTER)
 
 
-def test_normalize_task_missing_title_raises_value_error():
+def test_normalize_task_missing_title_raises_value_error() -> None:
     raw = {"task": "T1", "status": "not-started"}
     with pytest.raises(ValueError, match="missing required"):
         normalize_task(raw, FormatType.YAML_FRONTMATTER)
 
 
-def test_normalize_task_accepts_id_key_as_alias_for_task():
+def test_normalize_task_accepts_id_key_as_alias_for_task() -> None:
     raw = {"id": "T2", "title": "Using id key", "status": "complete"}
     task, _ = normalize_task(raw, FormatType.PURE_YAML)
     assert task.id == "T2"
 
 
-def test_normalize_task_accepts_task_id_key_as_alias():
+def test_normalize_task_accepts_task_id_key_as_alias() -> None:
     raw = {"task_id": "3", "title": "Using task_id", "status": "not-started"}
     task, _ = normalize_task(raw, FormatType.LEGACY_MARKDOWN)
     assert task.id == "3"
@@ -65,31 +65,31 @@ def test_normalize_task_accepts_task_id_key_as_alias():
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_task_canonical_status_preserved():
+def test_normalize_task_canonical_status_preserved() -> None:
     raw = {"task": "T1", "title": "T", "status": "in-progress"}
     task, _ = normalize_task(raw, FormatType.PURE_YAML)
     assert task.status == TaskStatus.IN_PROGRESS
 
 
-def test_normalize_task_space_separated_status_mapped():
+def test_normalize_task_space_separated_status_mapped() -> None:
     raw = {"task": "T1", "title": "T", "status": "NOT STARTED"}
     task, _ = normalize_task(raw, FormatType.LEGACY_MARKDOWN)
     assert task.status == TaskStatus.NOT_STARTED
 
 
-def test_normalize_task_emoji_complete_status_mapped():
+def test_normalize_task_emoji_complete_status_mapped() -> None:
     raw = {"task": "T1", "title": "T", "status": ":white_check_mark: COMPLETE"}
     task, _ = normalize_task(raw, FormatType.LEGACY_MARKDOWN)
     assert task.status == TaskStatus.COMPLETE
 
 
-def test_normalize_task_emoji_in_progress_status_mapped():
+def test_normalize_task_emoji_in_progress_status_mapped() -> None:
     raw = {"task": "T1", "title": "T", "status": ":arrows_counterclockwise: IN PROGRESS"}
     task, _ = normalize_task(raw, FormatType.LEGACY_MARKDOWN)
     assert task.status == TaskStatus.IN_PROGRESS
 
 
-def test_normalize_task_unknown_status_raises_value_error():
+def test_normalize_task_unknown_status_raises_value_error() -> None:
     """Unrecognized status strings must raise ValueError, not silently default.
 
     Silently defaulting to not-started would cause completed tasks to be
@@ -100,7 +100,7 @@ def test_normalize_task_unknown_status_raises_value_error():
         normalize_task(raw, FormatType.LEGACY_MARKDOWN)
 
 
-def test_normalize_task_none_status_defaults_to_not_started():
+def test_normalize_task_none_status_defaults_to_not_started() -> None:
     raw = {"task": "T1", "title": "T", "status": None}
     task, _ = normalize_task(raw, FormatType.YAML_FRONTMATTER)
     assert task.status == TaskStatus.NOT_STARTED
@@ -162,19 +162,19 @@ def test_normalize_status_valid_canonical_value_returned() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_task_strips_task_prefix_from_dependencies():
+def test_normalize_task_strips_task_prefix_from_dependencies() -> None:
     raw = {"task": "2", "title": "T", "status": "not-started", "dependencies": ["Task 1"]}
     task, _ = normalize_task(raw, FormatType.LEGACY_MARKDOWN)
     assert task.dependencies == ["1"]
 
 
-def test_normalize_task_strips_task_prefix_case_insensitive():
+def test_normalize_task_strips_task_prefix_case_insensitive() -> None:
     raw = {"task": "3", "title": "T", "status": "not-started", "dependencies": ["task 1", "TASK 2"]}
     task, _ = normalize_task(raw, FormatType.LEGACY_MARKDOWN)
     assert task.dependencies == ["1", "2"]
 
 
-def test_normalize_task_bare_id_dependencies_unchanged():
+def test_normalize_task_bare_id_dependencies_unchanged() -> None:
     raw = {"task": "T2", "title": "T", "status": "not-started", "dependencies": ["T1"]}
     task, _ = normalize_task(raw, FormatType.PURE_YAML)
     assert task.dependencies == ["T1"]
@@ -185,19 +185,19 @@ def test_normalize_task_bare_id_dependencies_unchanged():
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_task_non_canonical_format_reports_gaps():
+def test_normalize_task_non_canonical_format_reports_gaps() -> None:
     raw = {"task": "T1", "title": "T", "status": "not-started"}
     _, gaps = normalize_task(raw, FormatType.LEGACY_MARKDOWN)
     assert len(gaps) > 0
 
 
-def test_normalize_task_canonical_format_reports_no_gaps():
+def test_normalize_task_canonical_format_reports_no_gaps() -> None:
     raw = {"task": "T1", "title": "T", "status": "not-started"}
     _, gaps = normalize_task(raw, FormatType.PURE_YAML)
     assert gaps == []
 
 
-def test_normalize_task_gap_field_names_are_canonical():
+def test_normalize_task_gap_field_names_are_canonical() -> None:
     raw = {"task": "T1", "title": "T", "status": "not-started"}
     _, gaps = normalize_task(raw, FormatType.LEGACY_MARKDOWN)
     field_names = {g.field_name for g in gaps}
@@ -205,7 +205,7 @@ def test_normalize_task_gap_field_names_are_canonical():
     assert "agent" in field_names
 
 
-def test_normalize_task_present_optional_field_not_reported_as_gap():
+def test_normalize_task_present_optional_field_not_reported_as_gap() -> None:
     raw = {"task": "T1", "title": "T", "status": "not-started", "agent": "some-agent", "priority": 1}
     _, gaps = normalize_task(raw, FormatType.LEGACY_MARKDOWN)
     gap_fields = {g.field_name for g in gaps}
@@ -218,7 +218,7 @@ def test_normalize_task_present_optional_field_not_reported_as_gap():
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_task_lenient_invalid_dict_returns_none_and_gap():
+def test_normalize_task_lenient_invalid_dict_returns_none_and_gap() -> None:
     """normalize_task_lenient returns a SchemaGap describing the failure, never an empty list."""
     raw = {"title": "No ID", "status": "not-started"}  # missing task id
     task, gaps = normalize_task_lenient(raw, FormatType.YAML_FRONTMATTER)
@@ -227,7 +227,7 @@ def test_normalize_task_lenient_invalid_dict_returns_none_and_gap():
     assert gaps[0].gap_type == "invalid_value"
 
 
-def test_normalize_task_lenient_valid_dict_returns_task():
+def test_normalize_task_lenient_valid_dict_returns_task() -> None:
     raw = {"task": "T1", "title": "OK", "status": "complete"}
     task, _ = normalize_task_lenient(raw, FormatType.PURE_YAML)
     assert task is not None
@@ -239,7 +239,7 @@ def test_normalize_task_lenient_valid_dict_returns_task():
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_plan_pure_yaml_single_produces_three_tasks():
+def test_normalize_plan_pure_yaml_single_produces_three_tasks() -> None:
     from sam_schema.readers.yaml_reader import read_yaml_plan
 
     path = _FIXTURES / "pure_yaml_single.yaml"
@@ -248,7 +248,7 @@ def test_normalize_plan_pure_yaml_single_produces_three_tasks():
     assert len(result.plan.tasks) == 3
 
 
-def test_normalize_plan_pure_yaml_single_has_no_gaps():
+def test_normalize_plan_pure_yaml_single_has_no_gaps() -> None:
     from sam_schema.readers.yaml_reader import read_yaml_plan
 
     path = _FIXTURES / "pure_yaml_single.yaml"
@@ -257,7 +257,7 @@ def test_normalize_plan_pure_yaml_single_has_no_gaps():
     assert result.gaps == []
 
 
-def test_normalize_plan_legacy_markdown_produces_three_tasks():
+def test_normalize_plan_legacy_markdown_produces_three_tasks() -> None:
     from sam_schema.readers.legacy_reader import read_legacy_plan
 
     path = _FIXTURES / "legacy_markdown.md"
@@ -266,7 +266,7 @@ def test_normalize_plan_legacy_markdown_produces_three_tasks():
     assert len(result.plan.tasks) == 3
 
 
-def test_normalize_plan_legacy_markdown_produces_schema_gaps():
+def test_normalize_plan_legacy_markdown_produces_schema_gaps() -> None:
     from sam_schema.readers.legacy_reader import read_legacy_plan
 
     path = _FIXTURES / "legacy_markdown.md"
@@ -275,7 +275,7 @@ def test_normalize_plan_legacy_markdown_produces_schema_gaps():
     assert len(result.gaps) > 0
 
 
-def test_normalize_plan_global_manifest_produces_four_tasks():
+def test_normalize_plan_global_manifest_produces_four_tasks() -> None:
     from sam_schema.readers.manifest_reader import read_manifest_plan
 
     path = _FIXTURES / "global_manifest.md"
@@ -284,7 +284,7 @@ def test_normalize_plan_global_manifest_produces_four_tasks():
     assert len(result.plan.tasks) == 4
 
 
-def test_normalize_plan_frontmatter_multi_produces_three_tasks():
+def test_normalize_plan_frontmatter_multi_produces_three_tasks() -> None:
     from sam_schema.readers.frontmatter_reader import read_frontmatter_plan
 
     path = _FIXTURES / "yaml_frontmatter_multi.md"
@@ -293,7 +293,7 @@ def test_normalize_plan_frontmatter_multi_produces_three_tasks():
     assert len(result.plan.tasks) == 3
 
 
-def test_normalize_plan_feature_set_on_plan_model():
+def test_normalize_plan_feature_set_on_plan_model() -> None:
     from sam_schema.readers.yaml_reader import read_yaml_plan
 
     path = _FIXTURES / "pure_yaml_single.yaml"
@@ -302,7 +302,7 @@ def test_normalize_plan_feature_set_on_plan_model():
     assert result.plan.feature == "auth-system"
 
 
-def test_normalize_plan_missing_feature_raises_value_error():
+def test_normalize_plan_missing_feature_raises_value_error() -> None:
     raw_meta: dict = {}
     with pytest.raises(ValueError, match="feature"):
         normalize_plan(raw_meta, [], FormatType.PURE_YAML, pathlib.Path("/fake"))
@@ -370,7 +370,7 @@ def test_normalize_plan_raises_when_filename_does_not_match_convention() -> None
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_plan_invalid_task_id_recorded_as_gap_not_abort():
+def test_normalize_plan_invalid_task_id_recorded_as_gap_not_abort() -> None:
     # Task IDs like T10a do not match ^[A-Za-z]?\d+(\.\d+)?$
     raw_meta = {"feature": "test"}
     task_dicts = [
@@ -386,7 +386,7 @@ def test_normalize_plan_invalid_task_id_recorded_as_gap_not_abort():
     assert len(invalid_gaps) >= 1
 
 
-def test_normalize_plan_invalid_task_gap_has_invalid_value_gap_type():
+def test_normalize_plan_invalid_task_gap_has_invalid_value_gap_type() -> None:
     raw_meta = {"feature": "test"}
     task_dicts = [{"task": "T10b", "title": "Bad", "status": "not-started"}]
     result = normalize_plan(raw_meta, task_dicts, FormatType.YAML_FRONTMATTER, pathlib.Path("/fake"))
@@ -399,7 +399,7 @@ def test_normalize_plan_invalid_task_gap_has_invalid_value_gap_type():
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_plan_malformed_missing_title_records_gap():
+def test_normalize_plan_malformed_missing_title_records_gap() -> None:
     from sam_schema.readers.yaml_reader import read_yaml_plan
 
     path = _FIXTURES / "malformed" / "missing_required.yaml"
@@ -415,7 +415,7 @@ def test_normalize_plan_malformed_missing_title_records_gap():
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_plan_malformed_invalid_status_recorded_as_gap():
+def test_normalize_plan_malformed_invalid_status_recorded_as_gap() -> None:
     """Invalid status values are recorded as gaps, not silently defaulted.
 
     Silently defaulting 'started' to 'not-started' could cause a running task
@@ -677,7 +677,7 @@ def test_normalize_plan_acceptance_criteria_empty_list_becomes_none() -> None:
 
 
 def test_normalize_plan_goal_as_list_coerced() -> None:
-    """goal YAML list is joined into a single string.
+    """Goal YAML list is joined into a single string.
 
     Tests: List -> str coercion for goal Plan field.
     How: Pass plan_meta with 'goal' as a list.
@@ -700,7 +700,7 @@ def test_normalize_plan_goal_as_list_coerced() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_normalize_task_acceptance_criteria_as_list_coerced_to_str():
+def test_normalize_task_acceptance_criteria_as_list_coerced_to_str() -> None:
     """acceptance_criteria YAML list is joined into a newline-separated string.
 
     Tests: list -> str coercion for Task.acceptance_criteria.
@@ -726,7 +726,7 @@ def test_normalize_task_acceptance_criteria_as_list_coerced_to_str():
     assert gaps == []
 
 
-def test_normalize_task_verification_steps_as_list_coerced_to_str():
+def test_normalize_task_verification_steps_as_list_coerced_to_str() -> None:
     """verification_steps YAML list is joined into a newline-separated string.
 
     Tests: list -> str coercion for Task.verification_steps.
@@ -745,7 +745,7 @@ def test_normalize_task_verification_steps_as_list_coerced_to_str():
     assert gaps == []
 
 
-def test_normalize_task_list_fields_do_not_cause_task_drop_in_plan():
+def test_normalize_task_list_fields_do_not_cause_task_drop_in_plan() -> None:
     """Tasks with acceptance_criteria / verification_steps as lists are not dropped.
 
     Tests: normalize_plan() retains all tasks when str fields arrive as lists.
@@ -783,7 +783,7 @@ def test_normalize_task_list_fields_do_not_cause_task_drop_in_plan():
     assert result.plan.tasks[1].verification_steps == "VS2\nVS3"
 
 
-def test_normalize_task_kebab_case_acceptance_criteria_as_list_coerced_to_str():
+def test_normalize_task_kebab_case_acceptance_criteria_as_list_coerced_to_str() -> None:
     """acceptance-criteria (kebab-case key) YAML list is coerced to str.
 
     Tests: list -> str coercion honours the kebab-case alias.
