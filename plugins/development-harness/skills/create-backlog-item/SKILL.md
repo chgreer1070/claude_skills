@@ -12,6 +12,26 @@ user-invocable: true
 
 Capture a new backlog item and create a per-item file in `.claude/backlog/`.
 
+## PROHIBITED: Backlog Items Describe Problems, Not Solutions
+
+**NEVER include any of the following in a backlog item description:**
+
+- "Required changes" sections
+- "Potential approaches" or "Suggested fixes"
+- Implementation instructions ("replace X with Y", "add function Z")
+- Scope expansion beyond what the user described ("also update CLAUDE.md", "also fix the tests")
+- File-level prescriptions ("modify file X at line Y")
+
+**WHY:** Prescriptive fixes in backlog items bypass grooming, RT-ICA, and architecture review. They encode untested assumptions as requirements. This has caused hours of wasted work — a backlog item prescribed modifying project-level files that were out of scope, and agents followed those instructions.
+
+**A backlog item contains:**
+
+- What is broken or missing
+- Where it was observed
+- What the impact is
+
+Solutions come from investigation during grooming and planning — not at creation time.
+
 ## Arguments
 
 `<mode/>` selects the operating mode:
@@ -41,7 +61,7 @@ Title = `<item_title/>` onward (all remaining words joined). Do not call `AskUse
 3. Derive all fields from the research file, task description, and available context:
    - **Title**: from `<item_title/>` onward
    - **Priority**: infer from description urgency keywords (`critical`, `required`, `must` → P1; `nice to have`, `optional` → P2; default P1)
-   - **Description**: summarize problem space and desired outcome from research file — do NOT include implementation steps, architecture ideas, or proposed solutions
+   - **Description**: summarize problem space and desired outcome from research file — do NOT include implementation steps, architecture ideas, proposed solutions, required changes, or file-level prescriptions. If the research file contains fix instructions, strip them. Keep only: what is broken, where it was observed, what the impact is.
    - **Source**: `"Agent task — auto-derived from research/{filename}"`
    - **Type**: infer from description (`install`, `integrate`, `add` → Feature; default Feature)
 4. Log every decision:
@@ -122,7 +142,7 @@ Required fields: `title`, `priority`, `description`.
 
 - If any required field is missing or empty: report which field is missing and stop.
 - `title` must be non-empty after trimming whitespace.
-- `description` must be non-empty after trimming whitespace.
+- `description` must be non-empty after trimming whitespace. If it contains implementation instructions (how to fix, what to change, which files to modify), remove them. Keep only: what is broken, where it was observed, what the impact is.
 
 ### Step 3: Duplicate Detection
 
