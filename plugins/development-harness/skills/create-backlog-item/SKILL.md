@@ -64,6 +64,7 @@ Title = `<item_title/>` onward (all remaining words joined). Do not call `AskUse
    - **Description**: summarize problem space and desired outcome from research file — do NOT include implementation steps, architecture ideas, proposed solutions, required changes, or file-level prescriptions. If the research file contains fix instructions, strip them. Keep only: what is broken, where it was observed, what the impact is.
    - **Source**: `"Agent task — auto-derived from research/{filename}"`
    - **Type**: infer from description (`install`, `integrate`, `add` → Feature; default Feature)
+   - **How to reproduce**: omit unless the research file contains explicit reproduction steps stated as direct observations. Do NOT infer or construct steps.
 4. Log every decision:
 
 ```text
@@ -127,6 +128,17 @@ Question 5: "What type of work is this?"
     - label: "Chore"
 ```
 
+Then ask:
+
+```text
+Question 6: "Can you provide concrete reproduction steps? (specific commands, files, and exact error messages you observed — or press Enter to skip)"
+  header: "How to reproduce"
+  options:
+    - label: "Skip"
+```
+
+If the user provides steps, include them verbatim. If they press Enter or choose Skip, omit the field from the item block.
+
 **If `<mode/>` is `quick`:**
 
 Title = `<item_title/>` onward. Ask only:
@@ -171,7 +183,14 @@ Format today's date as `YYYY-MM-DD` (use system date).
 **Priority**: {P0|P1|P2|Idea}
 **Type**: {type}
 **Description**: {description}
+**How to reproduce**: {reproduction steps, or omit entirely if not provided}
 ```
+
+**"How to reproduce" rules:**
+
+- OPTIONAL — only populate when the user provided concrete reproduction steps, or when steps are directly observable from the reported problem (e.g., a specific command the user ran and the exact error message they received).
+- Do NOT invent reproduction steps. If the user did not provide steps and they cannot be derived from direct observation, leave this field empty or omit it entirely. Invented reproduction steps are harmful — they send investigators down wrong paths.
+- When populated, steps must be concrete and verifiable: specific commands, specific files, specific error messages observed. Vague steps ("run the app and see the error") must not be included.
 
 If research questions were embedded in the description (lines starting with `?` or `Research:`),
 keep them in the `description` — the `backlog_add` MCP tool has no `research_first` parameter.
@@ -188,6 +207,7 @@ Call the `mcp__plugin_dh_backlog__backlog_add` tool:
 | `description` | `"{description}"` |
 | `source` | `"{source}"` |
 | `type` | `"{type}"` |
+| `how_to_reproduce` | `"{reproduction steps}"` if provided; omit parameter entirely if not |
 | `create_issue` | `true` if P0/P1 and user confirmed; `false` if P2/Ideas or user declined |
 
 Check the returned dict for `error` key.
