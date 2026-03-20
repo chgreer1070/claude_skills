@@ -382,6 +382,29 @@ class TestDiscoverViaGit:
 
         assert result == expected_slug
 
+    @pytest.mark.parametrize(
+        ("url", "expected_slug"),
+        [
+            ("http://local_proxy@127.0.0.1:46723/git/Jamie-BitFlight/claude_skills", "Jamie-BitFlight/claude_skills"),
+            ("http://local_proxy@127.0.0.1:12345/git/owner/repo.git", "owner/repo"),
+            ("http://local_proxy@127.0.0.1:9999/git/my-org/my-repo", "my-org/my-repo"),
+            ("http://local_proxy@127.0.0.1:1/git/Owner123/Repo.Name.git", "Owner123/Repo.Name"),
+        ],
+    )
+    def test_discover_via_git_parses_proxy_urls(self, url: str, expected_slug: str, mocker: MockerFixture) -> None:
+        """Claude Code sandbox proxy remote URLs are parsed to extract owner/repo.
+
+        Tests: _discover_via_git proxy URL parsing
+        How: Mock git.Repo to return repo with proxy URL; assert expected slug.
+        Why: Claude Code sessions use http://local_proxy@127.0.0.1:{port}/git/{owner}/{repo}
+             format — these must parse so discover_repo() works in sandbox environments.
+        """
+        mocker.patch("backlog_core.models.git.Repo", return_value=_make_mock_repo(mocker, url))
+
+        result = _discover_via_git()
+
+        assert result == expected_slug
+
     def test_discover_via_git_returns_none_for_unparseable_url(self, mocker: MockerFixture) -> None:
         """Returns None when the remote URL does not match any known pattern.
 

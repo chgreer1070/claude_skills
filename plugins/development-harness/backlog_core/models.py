@@ -81,6 +81,10 @@ _HTTPS_REMOTE_RE = re.compile(r"https?://[^/]+/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?
 #: SSH protocol remote pattern: ``ssh://git@github.com/owner/repo.git``
 _SSH_PROTO_REMOTE_RE = re.compile(r"ssh://[^/]+/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?$")
 
+#: Proxy remote pattern: ``http://local_proxy@127.0.0.1:{port}/git/{owner}/{repo}``
+#: Matches any host/port proxy URL with a ``/git/`` path prefix.
+_PROXY_REMOTE_RE = re.compile(r".*/git/([^/]+/[^/]+?)(?:\.git)?/?$")
+
 
 class RepoDiscoveryError(Exception):
     """Raised when all repository discovery methods fail.
@@ -158,7 +162,7 @@ def _discover_via_git() -> str | None:
         url = repo.remote().url
     except (git.InvalidGitRepositoryError, git.NoSuchPathError, ValueError):
         return None
-    for pattern in (_SSH_REMOTE_RE, _HTTPS_REMOTE_RE, _SSH_PROTO_REMOTE_RE):
+    for pattern in (_SSH_REMOTE_RE, _HTTPS_REMOTE_RE, _SSH_PROTO_REMOTE_RE, _PROXY_REMOTE_RE):
         match = pattern.match(url)
         if match:
             slug = match.group(1)
