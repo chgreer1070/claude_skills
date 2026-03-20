@@ -2,11 +2,11 @@
   "mcpServers": {
     "backlog": {
       "command": "uv",
-      "args": ["run", "--project", "${CLAUDE_PLUGIN_ROOT}", "python", "-m", "backlog_core.server"]
+      "args": ["run", "--script", "${CLAUDE_PLUGIN_ROOT}/scripts/run_backlog_server.py"]
     },
     "sam": {
       "command": "uv",
-      "args": ["run", "--project", "${CLAUDE_PLUGIN_ROOT}", "sam-mcp"]
+      "args": ["run", "--script", "${CLAUDE_PLUGIN_ROOT}/scripts/run_sam_server.py"]
     }
   }
 }
