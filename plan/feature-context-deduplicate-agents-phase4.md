@@ -217,3 +217,29 @@ After questions are resolved:
 2. Finalize Goals section
 3. Proceed to architecture design (deletion is mechanical but reference updates need scoping)
 4. Proceed to task planning — tasks are: (a) diff verification, (b) file deletions, (c) reference updates per file, (d) plugin.json update if needed
+
+---
+
+## Post-Implementation Annotations
+
+_Added by context-refinement agent on 2026-03-19_
+
+### Design Refinements
+
+1. **Table cell-blanking vs column removal**: The feature-context described the goal as eliminating dead `python3-development:` references in Agent File Locations tables. The architecture spec said to remove the column entirely; the actual implementation blanked the cells with `—` rather than removing the column structure. The semantic result matches the stated goal: no live paths remain for deleted agents.
+   - Original goal: "the table shows `development-harness` as the sole location for shared agents"
+   - Actual: Column preserved with `—` cells; dh paths remain; no broken references
+   - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T3.yaml
+
+2. **CLAUDE.md forwarding note content differs from spec template**: The spec provided an exact section heading (`## Agent Consolidation (Phase 4, 2026-03-18)`) and prose template. The actual implementation used `## Shared Workflow Agents Moved to development-harness` with a bulleted `@dh:` list. The goal of documenting where agents moved and how to invoke them was achieved.
+   - Original goal: "A human reading the python3-development plugin directory should understand that shared workflow agents live in development-harness after Phase 4"
+   - Actual: CLAUDE.md created with equivalent content, different heading and structure
+   - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T6.yaml
+
+3. **Additional skill files required namespace updates (scope expanded within goal)**: add-new-feature/SKILL.md and complete-implementation/SKILL.md contained `python3-development:` namespace references to deleted agents. These were not named in the original task list but were updated to resolve the "no broken references remain" acceptance criterion.
+   - Original: Four specific files in task list
+   - Actual: Two additional skill files updated to achieve the zero-broken-references goal
+   - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T7.yaml
+
+4. **sam migrate bug fixes — unplanned work discovered necessary**: Three silent data-loss bugs in `packages/sam_schema/` were discovered and fixed during migration operations. 16 regression tests added. This work was not in scope but was required to safely migrate plan files.
+   - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T7.yaml — Discovered During Implementation

@@ -53,12 +53,12 @@ When `acceptance-criteria-structured` is non-empty, `swarm-task-planner` also ge
 
 | Agent | python3-development | development-harness |
 |-------|-------------------|-------------------|
-| `feature-researcher` | [plugins/python3-development/agents/feature-researcher.md](./../../plugins/python3-development/agents/feature-researcher.md) | [plugins/development-harness/agents/feature-researcher.md](./../../plugins/development-harness/agents/feature-researcher.md) |
-| `codebase-analyzer` | [plugins/python3-development/agents/codebase-analyzer.md](./../../plugins/python3-development/agents/codebase-analyzer.md) | [plugins/development-harness/agents/codebase-analyzer.md](./../../plugins/development-harness/agents/codebase-analyzer.md) |
+| `feature-researcher` | — | [plugins/development-harness/agents/feature-researcher.md](./../../plugins/development-harness/agents/feature-researcher.md) |
+| `codebase-analyzer` | — | [plugins/development-harness/agents/codebase-analyzer.md](./../../plugins/development-harness/agents/codebase-analyzer.md) |
 | `python-cli-design-spec` | [plugins/python3-development/agents/python-cli-design-spec.md](./../../plugins/python3-development/agents/python-cli-design-spec.md) | — |
-| `swarm-task-planner` | [plugins/python3-development/agents/swarm-task-planner.md](./../../plugins/python3-development/agents/swarm-task-planner.md) | [plugins/development-harness/agents/swarm-task-planner.md](./../../plugins/development-harness/agents/swarm-task-planner.md) |
-| `plan-validator` | [plugins/python3-development/agents/plan-validator.md](./../../plugins/python3-development/agents/plan-validator.md) | [plugins/development-harness/agents/plan-validator.md](./../../plugins/development-harness/agents/plan-validator.md) |
-| `context-gathering` | [plugins/python3-development/agents/context-gathering.md](./../../plugins/python3-development/agents/context-gathering.md) | [plugins/development-harness/agents/context-gathering.md](./../../plugins/development-harness/agents/context-gathering.md) |
+| `swarm-task-planner` | — | [plugins/development-harness/agents/swarm-task-planner.md](./../../plugins/development-harness/agents/swarm-task-planner.md) |
+| `plan-validator` | — | [plugins/development-harness/agents/plan-validator.md](./../../plugins/development-harness/agents/plan-validator.md) |
+| `context-gathering` | — | [plugins/development-harness/agents/context-gathering.md](./../../plugins/development-harness/agents/context-gathering.md) |
 | `t0-baseline-capture` | [plugins/python3-development/agents/t0-baseline-capture.md](./../../plugins/python3-development/agents/t0-baseline-capture.md) | — |
 | `tn-verification-gate` | [plugins/python3-development/agents/tn-verification-gate.md](./../../plugins/python3-development/agents/tn-verification-gate.md) | — |
 
@@ -267,11 +267,11 @@ Final:   commit + push          -> Stage and commit all remaining modified files
 | Agent | python3-development | development-harness |
 |-------|-------------------|-------------------|
 | `code-reviewer` | [plugins/python3-development/agents/code-reviewer.md](./../../plugins/python3-development/agents/code-reviewer.md) | — |
-| `feature-verifier` | [plugins/python3-development/agents/feature-verifier.md](./../../plugins/python3-development/agents/feature-verifier.md) | [plugins/development-harness/agents/feature-verifier.md](./../../plugins/development-harness/agents/feature-verifier.md) |
-| `integration-checker` | [plugins/python3-development/agents/integration-checker.md](./../../plugins/python3-development/agents/integration-checker.md) | [plugins/development-harness/agents/integration-checker.md](./../../plugins/development-harness/agents/integration-checker.md) |
-| `doc-drift-auditor` | [plugins/python3-development/agents/doc-drift-auditor.md](./../../plugins/python3-development/agents/doc-drift-auditor.md) | [plugins/development-harness/agents/doc-drift-auditor.md](./../../plugins/development-harness/agents/doc-drift-auditor.md) |
+| `feature-verifier` | — | [plugins/development-harness/agents/feature-verifier.md](./../../plugins/development-harness/agents/feature-verifier.md) |
+| `integration-checker` | — | [plugins/development-harness/agents/integration-checker.md](./../../plugins/development-harness/agents/integration-checker.md) |
+| `doc-drift-auditor` | — | [plugins/development-harness/agents/doc-drift-auditor.md](./../../plugins/development-harness/agents/doc-drift-auditor.md) |
 | `service-docs-maintainer` | — | [plugins/development-harness/agents/service-docs-maintainer.md](./../../plugins/development-harness/agents/service-docs-maintainer.md) |
-| `context-refinement` | [plugins/python3-development/agents/context-refinement.md](./../../plugins/python3-development/agents/context-refinement.md) | [plugins/development-harness/agents/context-refinement.md](./../../plugins/development-harness/agents/context-refinement.md) |
+| `context-refinement` | — | [plugins/development-harness/agents/context-refinement.md](./../../plugins/development-harness/agents/context-refinement.md) |
 | `t0-baseline-capture` | [plugins/python3-development/agents/t0-baseline-capture.md](./../../plugins/python3-development/agents/t0-baseline-capture.md) | — |
 | `tn-verification-gate` | [plugins/python3-development/agents/tn-verification-gate.md](./../../plugins/python3-development/agents/tn-verification-gate.md) | — |
 

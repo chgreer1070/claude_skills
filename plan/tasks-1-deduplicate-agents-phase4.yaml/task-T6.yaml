@@ -1,18 +1,16 @@
 id: T6
 title: Add forwarding note to plugins/python3-development/CLAUDE.md
-status: not-started
+status: complete
+agent: general-purpose
+dependencies:
+- T2
 priority: 3
-complexity: medium
+complexity: low
+parallelize-with:
+- T3
+- T4
+- T5
 description: |-
-  **Status**: NOT STARTED
-  **Dependencies**: T2
-  **Priority**: 3
-  **Complexity**: Low
-  **Agent**: general-purpose
-  **Skills**: []
-  **Accuracy Risk**: low
-  **Can parallelize with**: T3, T4, T5
-
   ### Context
 
   A developer reading `plugins/python3-development/` after Phase 4 will notice that 10 agents

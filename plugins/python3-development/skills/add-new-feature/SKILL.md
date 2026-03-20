@@ -30,19 +30,19 @@ You are an orchestrator. You coordinate work across specialized agents. Prefer d
 
 ---
 
-## Phase 1: Discovery (feature-researcher)
+## Phase 1: Discovery (@dh:feature-researcher)
 
 **WHAT / WHY only.** The feature-researcher produces problem space and desired outcome — not implementation approach. Output describes what is wanted and why; it does not prescribe how to build it.
 
-Delegate to `feature-researcher` to produce `plan/feature-context-{slug}.md` and questions for resolution.
+Delegate to `@dh:feature-researcher` to produce `plan/feature-context-{slug}.md` and questions for resolution.
 
 ---
 
-## Phase 2: Codebase Analysis (codebase-analyzer)
+## Phase 2: Codebase Analysis (@dh:codebase-analyzer)
 
 **WHAT exists today only.** The codebase-analyzer maps existing patterns, conventions, and constraints — not proposed designs. Output describes what is there; it does not prescribe what to add or change.
 
-If helpful, delegate to `codebase-analyzer` for one or more focus areas:
+If helpful, delegate to `@dh:codebase-analyzer` for one or more focus areas:
 
 - patterns
 - architecture
@@ -65,9 +65,9 @@ Delegate to `python-cli-design-spec` to write `plan/architect-{slug}.md` based o
 
 ---
 
-## Phase 4: Task Decomposition (swarm-task-planner)
+## Phase 4: Task Decomposition (@dh:swarm-task-planner)
 
-Delegate to `swarm-task-planner` to:
+Delegate to `@dh:swarm-task-planner` to:
 
 - create `plan/tasks-{N}-{slug}.md`
 - ensure every task has:
@@ -77,15 +77,15 @@ Delegate to `swarm-task-planner` to:
 
 ---
 
-## Phase 5: Plan Validation Gate (plan-validator)
+## Phase 5: Plan Validation Gate (@dh:plan-validator)
 
-Delegate to `plan-validator`. If it returns `BLOCKED`, do not proceed.
+Delegate to `@dh:plan-validator`. If it returns `BLOCKED`, do not proceed.
 
 ---
 
-## Phase 6: Context Manifest (context-gathering)
+## Phase 6: Context Manifest (@dh:context-gathering)
 
-Delegate to `context-gathering` with the task file path. It must insert a `## Context Manifest` into the task file.
+Delegate to `@dh:context-gathering` with the task file path. It must insert a `## Context Manifest` into the task file.
 
 ---
 

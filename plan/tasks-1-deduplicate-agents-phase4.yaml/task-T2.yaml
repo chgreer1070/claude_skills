@@ -1,18 +1,12 @@
 id: T2
 title: Delete 11 agent files from python3-development
 status: complete
-priority: 3
-complexity: medium
+agent: general-purpose
+dependencies:
+- T1
+priority: 2
+complexity: low
 description: |-
-  **Status**: COMPLETE
-  **Dependencies**: T1
-  **Priority**: 2
-  **Complexity**: Low
-  **Agent**: general-purpose
-  **Skills**: []
-  **Accuracy Risk**: low
-  **Can parallelize with**: nothing at this priority level
-
   ### Context
 
   This task makes Phase 4's goal observable in the filesystem: the 10 shared workflow agents

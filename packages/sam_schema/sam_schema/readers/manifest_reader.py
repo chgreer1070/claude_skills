@@ -125,7 +125,7 @@ def _parse_skills_value(raw: str) -> list[str]:
     return [p for p in parts if p]
 
 
-def _extract_bold_fields(prose: str) -> dict[str, object]:
+def _extract_bold_fields(prose: str) -> dict[str, object]:  # noqa: PLR0912
     """Extract ``**FieldName**: value`` patterns from task prose text.
 
     Parses lines matching the bold-field pattern and maps display names to
@@ -171,6 +171,9 @@ def _extract_bold_fields(prose: str) -> dict[str, object]:
 
         elif yaml_key == "skills":
             result[yaml_key] = _parse_skills_value(raw_value)
+
+        elif yaml_key == "parallelize-with":
+            result[yaml_key] = _parse_dependency_value(raw_value)
 
         elif yaml_key == "priority":
             try:
@@ -402,12 +405,51 @@ def _resolve_task_id_from_dict(task_dict: dict) -> str | None:
     return "T1"
 
 
-def _build_task_dict(
+def _merge_prose_fields(task_dict: dict, prose: str) -> None:
+    """Merge bold-field values and description from prose into ``task_dict`` in place.
+
+    Calls ``_extract_bold_fields`` to parse ``**FieldName**: value`` lines from
+    ``prose`` and inserts each extracted field into ``task_dict`` via
+    ``setdefault`` (does not overwrite fields already set by higher-priority
+    sources).  Sets ``description`` from the prose text with bold-field lines
+    stripped so that the description contains only narrative content.
+
+    Args:
+        task_dict: Mutable task dict being assembled.  Modified in place.
+        prose: Raw markdown prose text from a ``## TN:`` task section.
+    """
+    for field, value in _extract_bold_fields(prose).items():
+        task_dict.setdefault(field, value)
+    task_dict.setdefault("description", _strip_bold_fields_from_prose(prose))
+
+
+def _strip_bold_fields_from_prose(prose: str) -> str:
+    """Remove ``**FieldName**: value`` lines from prose text.
+
+    Strips bold-field lines that are parsed as structured fields so that the
+    resulting ``description`` value contains only narrative content (Context,
+    Objective, Acceptance Criteria, etc.) rather than duplicating structured
+    data already promoted to top-level YAML keys.
+
+    Args:
+        prose: Raw markdown prose text from a ``## TN:`` task section.
+
+    Returns:
+        Prose text with all ``**FieldName**: value`` lines removed, stripped of
+        leading and trailing whitespace.
+    """
+    cleaned = _BOLD_FIELD_RE.sub("", prose)
+    # Collapse runs of blank lines left behind after stripping bold-field lines
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
+def _build_task_dict(  # noqa: C901, PLR0912
     entry: dict, prose_by_task: dict[str, str], body_task_blocks: dict[str, dict] | None = None
 ) -> dict | None:
     """Build a raw task dict from a manifest ``tasks:`` entry.
 
-    Merges structured fields from three sources, in priority order:
+    Merges structured fields from four sources, in priority order:
 
     1. **Frontmatter entry** — provides task ID, title, and any fields explicitly
        set in the ``tasks:`` list.  These values take precedence because the
@@ -417,8 +459,12 @@ def _build_task_dict(
        fields (``agent``, ``priority``, ``dependencies``, ``status``, etc.) and
        prose content fields (``description``, ``acceptance-criteria``, etc.) fill
        in any gaps not covered by the frontmatter entry.
-    3. **Prose section** — if the body contains a ``## TN:`` prose section, its
-       text is used as ``description`` if no other source provided it.
+    3. **Prose bold fields** — if the body contains a ``## TN:`` prose section
+       with ``**FieldName**: value`` lines (the global-manifest format), those
+       structured fields fill in any gaps not covered by sources 1 or 2.
+       The ``description`` is set from prose with the bold-field lines stripped.
+    4. **Default sentinel** — ``status: not-started`` is applied last only when
+       no other source provided a status value.
 
     Args:
         entry: A coerced dict entry from the ``tasks:`` YAML list.
@@ -430,6 +476,21 @@ def _build_task_dict(
         Raw task dict, or ``None`` if the entry cannot be parsed.
     """
     if not isinstance(entry, dict):
+        # Handle string entries of form "N.N: title text" (e.g., "1.1: Update file — note")
+        # YAML parses these as plain strings when the tasks: list contains quoted strings.
+        if isinstance(entry, str):
+            # Split on first colon only; ID is the part before, title is after
+            colon_idx = entry.find(":")
+            if colon_idx > 0:
+                task_id = entry[:colon_idx].strip()
+                title = entry[colon_idx + 1 :].strip()
+                if task_id and title:
+                    task_dict: dict = {"task": task_id, "title": title}
+                    prose = prose_by_task.get(task_id, "")
+                    if prose:
+                        _merge_prose_fields(task_dict, prose)
+                    task_dict.setdefault("status", "not-started")
+                    return task_dict
         return None
 
     # Full task dict: has ``id:`` or ``task:`` field
@@ -443,10 +504,10 @@ def _build_task_dict(
         if body_task_blocks:
             for field, value in body_task_blocks.get(task_id, {}).items():
                 task_dict.setdefault(field, value)
-        # Fall back to prose section for description
+        # Merge prose bold fields (global-manifest format: **Agent**: value lines)
         prose = prose_by_task.get(task_id, "")
         if prose:
-            task_dict.setdefault("description", prose)
+            _merge_prose_fields(task_dict, prose)
         return task_dict
 
     # Simple single-key mapping: {TN: "title"}
@@ -461,12 +522,12 @@ def _build_task_dict(
     if body_task_blocks:
         for field, value in body_task_blocks.get(task_id, {}).items():
             task_dict.setdefault(field, value)
-    # Default status only if neither the entry nor the body block provided one
-    task_dict.setdefault("status", "not-started")
-    # Fall back to prose section for description
+    # Merge prose bold fields (global-manifest format: **Agent**: value lines)
     prose = prose_by_task.get(task_id, "")
     if prose:
-        task_dict.setdefault("description", prose)
+        _merge_prose_fields(task_dict, prose)
+    # Default status only if neither the entry, body block, nor prose provided one
+    task_dict.setdefault("status", "not-started")
     return task_dict
 
 

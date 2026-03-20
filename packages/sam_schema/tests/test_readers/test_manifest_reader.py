@@ -540,3 +540,239 @@ def test_read_manifest_plan_yaml_parse_error_raises_value_error(tmp_path: pathli
     f.write_text(content)
     with pytest.raises(ValueError, match="Failed to parse YAML"):
         read_manifest_plan(f)
+
+
+# ---------------------------------------------------------------------------
+# Bold field extraction from prose — global_manifest format
+# ---------------------------------------------------------------------------
+
+_BOLD_FIXTURE = _FIXTURES / "global_manifest_with_bold_fields.md"
+
+
+def test_extract_bold_fields_agent_is_populated() -> None:
+    """Verify **Agent**: value is extracted from prose into the agent field.
+
+    Tests: _extract_bold_fields via _build_task_dict — agent field.
+    How: Load fixture with **Agent**: general-purpose in T1 prose.
+    Why: agent was always None before the fix; this is the primary regression guard.
+    """
+    _, task_dicts, _ = read_manifest_plan(_BOLD_FIXTURE)
+    t1 = next(t for t in task_dicts if t.get("task") == "T1")
+    assert t1.get("agent") == "general-purpose"
+
+
+def test_extract_bold_fields_priority_is_int() -> None:
+    """Verify **Priority**: value is coerced to int, not left as string.
+
+    Tests: _extract_bold_fields via _build_task_dict — priority coercion.
+    How: Load fixture with **Priority**: 1 in T1 prose.
+    Why: Priority must be int for downstream sorting and validation.
+    """
+    _, task_dicts, _ = read_manifest_plan(_BOLD_FIXTURE)
+    t1 = next(t for t in task_dicts if t.get("task") == "T1")
+    assert t1.get("priority") == 1
+    assert isinstance(t1.get("priority"), int)
+
+
+def test_extract_bold_fields_complexity_is_lowercased() -> None:
+    """Verify **Complexity**: value is lowercased (Low -> low).
+
+    Tests: _extract_bold_fields via _build_task_dict — complexity normalisation.
+    How: Load fixture with **Complexity**: Low in T1 prose.
+    Why: Schema requires lowercase complexity values.
+    """
+    _, task_dicts, _ = read_manifest_plan(_BOLD_FIXTURE)
+    t1 = next(t for t in task_dicts if t.get("task") == "T1")
+    assert t1.get("complexity") == "low"
+
+
+def test_extract_bold_fields_skills_empty_list() -> None:
+    """Verify **Skills**: [] is parsed to an empty list, not left as string.
+
+    Tests: _extract_bold_fields via _build_task_dict — skills empty list.
+    How: Load fixture with **Skills**: [] in T1 prose.
+    Why: Skills must be a list for downstream processing.
+    """
+    _, task_dicts, _ = read_manifest_plan(_BOLD_FIXTURE)
+    t1 = next(t for t in task_dicts if t.get("task") == "T1")
+    assert t1.get("skills") == []
+
+
+def test_extract_bold_fields_skills_non_empty_list() -> None:
+    """Verify **Skills**: [skill-name] is parsed to a list with elements.
+
+    Tests: _extract_bold_fields via _build_task_dict — skills non-empty list.
+    How: Load fixture T2 which has **Skills**: [python3-development].
+    Why: Skills list must preserve skill names for dispatch routing.
+    """
+    _, task_dicts, _ = read_manifest_plan(_BOLD_FIXTURE)
+    t2 = next(t for t in task_dicts if t.get("task") == "T2")
+    assert t2.get("skills") == ["python3-development"]
+
+
+def test_extract_bold_fields_status_normalized_not_started() -> None:
+    """Verify **Status**: NOT STARTED is normalized to not-started.
+
+    Tests: _extract_bold_fields via _build_task_dict — status normalisation.
+    How: Load fixture T1 which has **Status**: NOT STARTED.
+    Why: Status must use kebab-case for schema compliance.
+    """
+    _, task_dicts, _ = read_manifest_plan(_BOLD_FIXTURE)
+    t1 = next(t for t in task_dicts if t.get("task") == "T1")
+    assert t1.get("status") == "not-started"
+
+
+def test_extract_bold_fields_status_normalized_in_progress() -> None:
+    """Verify **Status**: IN PROGRESS is normalized to in-progress.
+
+    Tests: _extract_bold_fields via _build_task_dict — in-progress normalisation.
+    How: Load fixture T2 which has **Status**: IN PROGRESS.
+    Why: Status must use kebab-case for schema compliance.
+    """
+    _, task_dicts, _ = read_manifest_plan(_BOLD_FIXTURE)
+    t2 = next(t for t in task_dicts if t.get("task") == "T2")
+    assert t2.get("status") == "in-progress"
+
+
+def test_extract_bold_fields_status_normalized_complete() -> None:
+    """Verify **Status**: COMPLETE is normalized to complete.
+
+    Tests: _extract_bold_fields via _build_task_dict — complete normalisation.
+    How: Load fixture T3 which has **Status**: COMPLETE.
+    Why: Status must use kebab-case for schema compliance.
+    """
+    _, task_dicts, _ = read_manifest_plan(_BOLD_FIXTURE)
+    t3 = next(t for t in task_dicts if t.get("task") == "T3")
+    assert t3.get("status") == "complete"
+
+
+def test_extract_bold_fields_dependencies_none_becomes_empty_list() -> None:
+    """Verify **Dependencies**: None is parsed to an empty list.
+
+    Tests: _extract_bold_fields via _build_task_dict — None dependency handling.
+    How: Load fixture T1 which has **Dependencies**: None.
+    Why: Dependencies must be a list; None sentinel must become [].
+    """
+    _, task_dicts, _ = read_manifest_plan(_BOLD_FIXTURE)
+    t1 = next(t for t in task_dicts if t.get("task") == "T1")
+    assert t1.get("dependencies") == []
+
+
+def test_extract_bold_fields_dependencies_single_task_id() -> None:
+    """Verify **Dependencies**: T1 is parsed to a list with one task ID.
+
+    Tests: _extract_bold_fields via _build_task_dict — single dependency.
+    How: Load fixture T2 which has **Dependencies**: T1.
+    Why: Dependencies must be a list of task ID strings.
+    """
+    _, task_dicts, _ = read_manifest_plan(_BOLD_FIXTURE)
+    t2 = next(t for t in task_dicts if t.get("task") == "T2")
+    assert t2.get("dependencies") == ["T1"]
+
+
+def test_extract_bold_fields_dependencies_multiple_task_ids() -> None:
+    """Verify **Dependencies**: T1, T2 is parsed to a list with two task IDs.
+
+    Tests: _extract_bold_fields via _build_task_dict — multiple dependencies.
+    How: Load fixture T3 which has **Dependencies**: T1, T2.
+    Why: Comma-separated dependencies must each become list elements.
+    """
+    _, task_dicts, _ = read_manifest_plan(_BOLD_FIXTURE)
+    t3 = next(t for t in task_dicts if t.get("task") == "T3")
+    assert t3.get("dependencies") == ["T1", "T2"]
+
+
+def test_extract_bold_fields_description_excludes_bold_field_lines() -> None:
+    """Verify description contains narrative prose, not the **Field**: lines.
+
+    Tests: _strip_bold_fields_from_prose via _build_task_dict — description content.
+    How: Load fixture T1 prose which has both bold fields and a ## Context section.
+    Why: description must contain only narrative content, not duplicated structured data.
+    """
+    _, task_dicts, _ = read_manifest_plan(_BOLD_FIXTURE)
+    t1 = next(t for t in task_dicts if t.get("task") == "T1")
+    description = t1.get("description") or ""
+    assert "**Agent**" not in description
+    assert "**Priority**" not in description
+    assert "**Status**" not in description
+
+
+def test_extract_bold_fields_description_retains_narrative_content() -> None:
+    """Verify narrative prose text is preserved in description after bold field stripping.
+
+    Tests: _strip_bold_fields_from_prose — narrative content retention.
+    How: Load fixture T1 which has Context prose after the bold fields.
+    Why: Stripping bold-field lines must not remove surrounding narrative text.
+    """
+    _, task_dicts, _ = read_manifest_plan(_BOLD_FIXTURE)
+    t1 = next(t for t in task_dicts if t.get("task") == "T1")
+    description = t1.get("description") or ""
+    assert "database schema" in description.lower()
+
+
+def test_extract_bold_fields_frontmatter_fields_take_precedence_over_prose(tmp_path: pathlib.Path) -> None:
+    """Verify frontmatter entry fields are not overwritten by prose bold fields.
+
+    Tests: Merge priority — frontmatter entry wins over prose bold fields.
+    How: Write manifest with full dict entry (status: complete) and prose with
+         **Status**: NOT STARTED.
+    Why: setdefault must not overwrite higher-priority frontmatter values.
+    """
+    content = (
+        "---\n"
+        "feature: precedence-prose-test\n"
+        "tasks:\n"
+        "  - id: T1\n"
+        "    title: First task\n"
+        "    status: complete\n"
+        "---\n"
+        "\n"
+        "## T1: First task\n"
+        "\n"
+        "**Status**: NOT STARTED\n"
+        "**Agent**: general-purpose\n"
+        "**Priority**: 1\n"
+        "\n"
+        "Narrative content here.\n"
+    )
+    f = tmp_path / "tasks-1-precedence-prose.md"
+    f.write_text(content)
+    _, task_dicts, _ = read_manifest_plan(f)
+    t1 = task_dicts[0]
+    # Frontmatter says complete; prose says NOT STARTED — frontmatter wins
+    assert t1.get("status") == "complete"
+    # But agent from prose fills the gap (not in frontmatter)
+    assert t1.get("agent") == "general-purpose"
+
+
+def test_extract_bold_fields_prose_without_bold_fields_no_structured_fields_added(tmp_path: pathlib.Path) -> None:
+    """Verify prose without bold fields does not inject spurious structured fields.
+
+    Tests: _extract_bold_fields with prose containing no bold-field lines.
+    How: Write manifest with simple frontmatter and narrative-only prose section.
+    Why: Existing fixture (global_manifest.md) has this pattern — must not regress.
+    """
+    content = (
+        "---\n"
+        "feature: narrative-only-test\n"
+        "tasks:\n"
+        "  - T1: A task\n"
+        "---\n"
+        "\n"
+        "## T1: A task\n"
+        "\n"
+        "This is purely narrative prose with no bold field lines.\n"
+        "It describes the task in natural language only.\n"
+    )
+    f = tmp_path / "tasks-1-narrative-only.md"
+    f.write_text(content)
+    _, task_dicts, _ = read_manifest_plan(f)
+    t1 = task_dicts[0]
+    # No bold fields in prose — agent/priority/complexity must remain absent
+    assert t1.get("agent") is None
+    assert t1.get("priority") is None
+    assert t1.get("complexity") is None
+    # Status defaults to not-started when no bold field provides it
+    assert t1.get("status") == "not-started"
+    # Description captures the narrative prose
+    assert "narrative prose" in (t1.get("description") or "")

@@ -57,7 +57,7 @@ Agent routing — delegate rather than implement:
 - Tests → subagent_type="python3-development:python-pytest-architect"
 - Code review → subagent_type="python3-development:python-code-reviewer"
 - Architecture design → subagent_type="python3-development:python-cli-design-spec"
-- Task breakdown → subagent_type="python3-development:swarm-task-planner"
+- Task breakdown → subagent_type="dh:swarm-task-planner"
 - Requirements → subagent_type="spec-analyst"
 - Stdlib-only script → Skill(skill: "python3-development:stdlib-scripting")
 

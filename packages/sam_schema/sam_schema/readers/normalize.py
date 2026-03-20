@@ -40,7 +40,7 @@ _CANONICAL_FORMATS: frozenset[FormatType] = frozenset({FormatType.PURE_YAML, For
 _VALID_STATUSES: frozenset[str] = frozenset(s.value for s in TaskStatus)
 
 
-def _normalize_status(raw: Any) -> str:  # noqa: ANN401
+def _normalize_status(raw: Any) -> str:  # noqa: ANN401, PLR0911
     """Normalize a raw status value to a canonical TaskStatus string.
 
     Args:
@@ -71,6 +71,16 @@ def _normalize_status(raw: Any) -> str:  # noqa: ANN401
     if emoji_stripped and emoji_stripped != text:
         # Recurse with the stripped value so all downstream rules apply
         return _normalize_status(emoji_stripped)
+
+    # Strip leading Unicode emoji characters (e.g., ``✅ COMPLETE`` -> ``COMPLETE``)
+    # Legacy markdown authored with Unicode emoji instead of Rich colon-tokens.
+    # Ranges covered:
+    #   \u2300-\u27FF — Miscellaneous Technical (⏳ U+23F3), Dingbats (✅ U+2705, ❌ U+274C)
+    #   \u2B00-\u2BFF — Miscellaneous Symbols and Arrows
+    #   \U0001F000-\U0010FFFF — Supplementary emoji blocks (all planes above BMP)
+    unicode_stripped = re.sub(r"^[\u2300-\u27FF\u2B00-\u2BFF\U0001F000-\U0010FFFF]+\s*", "", text).strip()
+    if unicode_stripped and unicode_stripped != text:
+        return _normalize_status(unicode_stripped)
 
     text_upper = text.upper()
 

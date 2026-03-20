@@ -26,7 +26,7 @@ Comprehensive guide for orchestrating Python development tasks using specialized
 - **python-pytest-architect** — Design comprehensive test suites
 - **python-code-reviewer** — Review Python code for quality and standards
 - **python-cli-design-spec** — Design system architecture
-- **swarm-task-planner** — Break down tasks into implementation plans
+- **dh:swarm-task-planner** — Break down tasks into implementation plans
 
 ### Commands (in this skill: references/commands/)
 
@@ -100,7 +100,7 @@ Before delegating Requirements Gathering, read `git log --oneline -10` and pass 
 flowchart TD
     S1["1. Requirements Gathering<br>subagent_type=spec-analyst<br>Context: codebase path, user request verbatim<br>Output: requirements doc with acceptance criteria"]
     S2["2. Architecture<br>subagent_type=python3-development:python-cli-design-spec<br>Context: requirements doc path, existing codebase path<br>Output: design showing integration points with existing code"]
-    S3["3. Implementation Planning<br>subagent_type=python3-development:swarm-task-planner<br>Context: architecture design path, existing test patterns path<br>Output: ordered task list with file targets and acceptance criteria per task"]
+    S3["3. Implementation Planning<br>subagent_type=dh:swarm-task-planner<br>Context: architecture design path, existing test patterns path<br>Output: ordered task list with file targets and acceptance criteria per task"]
     S4{"4. Implement<br>Default: python3-development:python-cli-architect<br>Restricted env only: python3-development:stdlib-scripting<br>Context: task list path, relevant existing file paths<br>Output: new feature implementation in packages/"}
     S5["5. Testing<br>subagent_type=python3-development:python-pytest-architect<br>Context: new implementation paths, existing test patterns path<br>Output: tests for new feature + integration tests in tests/"]
     S6["6. Review<br>subagent_type=python3-development:python-code-reviewer<br>Context: changed file paths, requirements doc path<br>Output: quality assessment against acceptance criteria, improvement list"]

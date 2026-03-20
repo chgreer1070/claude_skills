@@ -92,19 +92,19 @@ Read task data via sam CLI:
 uv run sam read P{N}/T{M} --format json
 ```
 
-Launch `feature-verifier` with the `TaskAssignment` JSON. If the `TaskAssignment` contains `issue-classification` metadata, include it in the agent prompt so the feature verifier can apply proportional verification checks.
+Launch `@dh:feature-verifier` with the `TaskAssignment` JSON. If the `TaskAssignment` contains `issue-classification` metadata, include it in the agent prompt so the feature verifier can apply proportional verification checks.
 
 ---
 
 ## Phase 3: Integration Check
 
-Launch `integration-checker` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json`.
+Launch `@dh:integration-checker` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json`.
 
 ---
 
 ## Phase 4: Documentation Drift Audit
 
-Launch `doc-drift-auditor` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json` (audit-only).
+Launch `@dh:doc-drift-auditor` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json` (audit-only).
 
 ---
 
@@ -116,7 +116,7 @@ If drift exists or docs must be updated for the feature, launch `service-docs-ma
 
 ## Phase 6: Context Refinement
 
-Launch `context-refinement` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json` to update the Context Manifest with discoveries from implementation AND perform a plan artifact freshness check against the feature-context and architect spec. The agent compares key claims in plan artifacts against the actual implementation and classifies findings as design-refinement or intent-divergence (see [.claude/docs/plan-artifact-lifecycle.md](./../../../../.claude/docs/plan-artifact-lifecycle.md)).
+Launch `@dh:context-refinement` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json` to update the Context Manifest with discoveries from implementation AND perform a plan artifact freshness check against the feature-context and architect spec. The agent compares key claims in plan artifacts against the actual implementation and classifies findings as design-refinement or intent-divergence (see [.claude/docs/plan-artifact-lifecycle.md](./../../../../.claude/docs/plan-artifact-lifecycle.md)).
 
 ---
 

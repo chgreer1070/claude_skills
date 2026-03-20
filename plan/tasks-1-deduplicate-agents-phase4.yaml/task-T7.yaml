@@ -1,19 +1,16 @@
 id: T7
 title: Validate both plugins pass skilllint and no stale namespace references
   remain
-status: not-started
-priority: 3
-complexity: medium
+status: complete
+agent: general-purpose
+dependencies:
+- T3
+- T4
+- T5
+- T6
+priority: 4
+complexity: low
 description: |-
-  **Status**: NOT STARTED
-  **Dependencies**: T3, T4, T5, T6
-  **Priority**: 4
-  **Complexity**: Low
-  **Agent**: general-purpose
-  **Skills**: []
-  **Accuracy Risk**: low
-  **Can parallelize with**: nothing — this is the final gate
-
   ### Context
 
   T7 is the final quality gate. It runs after T3, T4, T5, and T6 have all completed.
@@ -331,3 +328,56 @@ description: |-
   - **After T2**: Agent file counts match expected (8 in p3d, 12 in dh)
   - **After T3/T4/T5/T6**: All reference updates complete, no file has conflicting edits
   - **T7**: All validation checks pass before committing
+context-notes: |
+  ## Discovered During Implementation
+
+  _Session Date: 2026-03-19_
+
+  During implementation, several discoveries were made that weren't in the original context manifest.
+
+  **1. sam migrate had 3 silent data-loss bugs (fixed during implementation)**
+
+  The `sam migrate` command in `packages/sam_schema/` had three distinct silent data-loss bugs discovered when migrating plan files during this feature:
+
+  - `_extract_bold_fields()` was dead code — referenced but never called, causing fields to silently drop during migration
+  - String-format task entries in YAML were silently dropped (only dict-format entries were processed)
+  - Unicode emoji status strings (e.g., '✅ COMPLETE') were not stripped correctly, causing status normalization to fail silently
+
+  All three bugs were fixed in `packages/sam_schema/` as part of this session. 16 regression tests were added (680 total passing). Future migration operations are now safe.
+
+  **2. Three plan file format generations discovered**
+
+  The codebase has three distinct plan file format generations:
+  - `global_manifest`: A legacy format using a different schema (e.g., the P1 add-status-field plan)
+  - Legacy markdown: Monolithic `.md` files with `## Task {ID}:` headers
+  - Current fenced-YAML: Directory-per-plan with individual `task-T{N}.yaml` files (this feature's format)
+
+  The `sam` CLI handles all three but the `migrate` command's bugs meant migrating between formats silently corrupted data. This is now fixed.
+
+  **3. Phase 5 fix required for skill files outside task scope**
+
+  During implementation, `add-new-feature/SKILL.md` and `complete-implementation/SKILL.md` contained references to `python3-development:` namespace agents that also required updating to `@dh:`. These files were not in the original task list (T3 covered only `local-workflow.md`). The fix was applied as a Phase 5 correction.
+
+  **4. local-workflow.md used cell-blanking rather than column removal**
+
+  The architecture spec (§Step 2) specified removing the `python3-development` column entirely from Agent File Locations tables. The actual implementation blanked the column cells (replacing content with `—`) rather than removing the column structure. This preserves markdown table integrity while achieving the same semantic result — shared agent rows show `—` in the python3-development column, not a live path.
+
+  **5. Follow-up backlog items P779 and P780 created**
+
+  - P779: Pre-existing test bug in `test_writers_new.py` (wrong exception type assertion) — discovered during regression test addition, tracked separately
+  - P780: Stale backlog references to python3-development namespace agents in historical `.claude/backlog/` files — tracked for future cleanup
+
+  #### Updated Technical Details
+
+  - `packages/sam_schema/sam_schema/cli.py`: Fixed `_extract_bold_fields()` dead code, string-entry drop, Unicode status strip failure
+  - `packages/sam_schema/tests/`: 16 regression tests added for migration correctness
+  - `plugins/python3-development/skills/add-new-feature/SKILL.md`: Updated to `@dh:` namespace
+  - `plugins/python3-development/skills/complete-implementation/SKILL.md`: Updated to `@dh:` namespace
+  - The D1 decision was Option B: delete `ecosystem-researcher-v1.1-rt-ica.md` as-is
+
+  #### Gotchas for Future Developers
+
+  - `sam migrate` had silent data-loss bugs — always verify migration output against the source plan file after running it
+  - The three plan format generations coexist in `plan/` — the `sam` CLI handles all three but behavior differences exist at migration boundaries
+  - When blanking Agent File Locations table cells, preserve column structure (use `—`) rather than removing columns — removing columns breaks table alignment for agents that remain in both locations
+  - `add-new-feature/SKILL.md` and `complete-implementation/SKILL.md` also contained shared-agent namespace references and must be updated when doing future agent namespace migrations

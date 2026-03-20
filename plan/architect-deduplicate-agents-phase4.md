@@ -465,3 +465,31 @@ Step 7 must follow all other steps.
 - [ ] `.claude/rules/local-workflow.md` Agent File Locations tables show only dh paths for the 10 deleted agents
 - [ ] D1 decision is recorded in the deletion commit message
 - [ ] `plugins/python3-development/CLAUDE.md` (or equivalent) has forwarding note for the moved agents
+
+---
+
+## Post-Implementation Annotations
+
+_Added by context-refinement agent on 2026-03-19_
+
+### Design Refinements
+
+1. **Table cell-blanking vs column removal (§Step 2)**: This spec said "Remove the python3-development column entirely from the Agent File Locations tables." The actual implementation preserved the column structure and replaced the cell content for deleted agents with `—`. The tables remain three-column. Verified: zero live `python3-development:` paths remain for deleted agents in local-workflow.md.
+   - Original: "Remove the `python3-development` column entirely from the Agent File Locations tables. The tables become single-column showing only `development-harness` paths for shared agents."
+   - Actual: Three-column table retained; python3-development cells for deleted agents replaced with `—`
+   - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T3.yaml
+
+2. **CLAUDE.md section heading differs from spec template (§Step 5)**: The spec specified the exact heading `## Agent Consolidation (Phase 4, 2026-03-18)` and a prose template. The implementer used `## Shared Workflow Agents Moved to development-harness` with a bulleted `@dh:` list format instead. Content equivalent; heading differs.
+   - Original: "## Agent Consolidation (Phase 4, 2026-03-18)" with prose body
+   - Actual: "## Shared Workflow Agents Moved to development-harness" with @dh: bulleted list
+   - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T6.yaml
+
+3. **Two additional skill files updated outside Step 2-5 scope**: plugins/python3-development/skills/add-new-feature/SKILL.md and plugins/python3-development/skills/complete-implementation/SKILL.md contained python3-development namespace references to deleted agents. These were updated to @dh: namespace in a Phase 5 fix. The Reference Update Design Summary table did not include these files.
+   - Original: Reference Update table covered 5 file categories (local-workflow, orchestrate/SKILL.md, python-development-orchestration.md, CLAUDE.md, backlog — no change)
+   - Actual: Two additional skill files updated to satisfy the zero-stale-references acceptance criterion
+   - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T7.yaml
+
+4. **sam migrate bug fixes in packages/sam_schema/ — unplanned scope**: Three silent data-loss bugs discovered and fixed during migration: dead `_extract_bold_fields()`, string-entry drops, Unicode emoji status strip failures. 16 regression tests added. Not in this spec's scope but required for safe plan file migration.
+   - Original: No sam_schema changes in scope
+   - Actual: packages/sam_schema/ modified; 680 tests passing (664 baseline)
+   - Recorded in: plan/tasks-1-deduplicate-agents-phase4.yaml/task-T7.yaml — Discovered During Implementation

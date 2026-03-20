@@ -1,18 +1,10 @@
 id: T1
 title: Ecosystem-researcher v1.1 decision gate
 status: complete
-priority: 3
-complexity: medium
+agent: general-purpose
+priority: 1
+complexity: low
 description: |-
-  **Status**: COMPLETE
-  **Dependencies**: None
-  **Priority**: 1
-  **Complexity**: Low
-  **Agent**: general-purpose
-  **Skills**: []
-  **Accuracy Risk**: medium
-  **Can parallelize with**: nothing — T2 depends on this decision
-
   ### Context
 
   `plugins/python3-development/agents/ecosystem-researcher-v1.1-rt-ica.md` is not a straight
