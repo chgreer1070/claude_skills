@@ -1,5 +1,7 @@
 # GitHub Integration — Detailed Steps and Examples
 
+> **Repository**: All gh commands in this document use `-R OWNER/REPO`. Discover your repo: `gh repo view --json nameWithOwner -q .nameWithOwner`
+
 ## Step 2.5: GitHub Issue Sync
 
 <github_sync>
@@ -10,7 +12,7 @@ After extracting item fields (Step 2), check for an existing linked issue:
 2. If found: issue already linked. Run:
 
    ```bash
-   gh issue view N -R Jamie-BitFlight/claude_skills --json number,title,state,labels
+   gh issue view N -R OWNER/REPO --json number,title,state,labels
    ```
 
    Report the issue state. If open, proceed. If closed, warn the user before re-opening planning.
@@ -42,7 +44,7 @@ If the item is in a milestone with other issues, also run `milestone start`:
 
 ```bash
 uv run .claude/skills/gh/scripts/github_project_setup.py milestone start \
-  --number {milestone_number} --repo Jamie-BitFlight/claude_skills
+  --number {milestone_number} --repo OWNER/REPO
 ```
 
 ## Step 9: Close — backlog tool
@@ -61,37 +63,38 @@ The tool updates the per-item file status and closes the GitHub issue. Check the
 
    ```bash
    uv run .claude/skills/gh/scripts/github_project_setup.py labels \
-     --repo Jamie-BitFlight/claude_skills
+     --repo OWNER/REPO
    ```
 
 2. Check for existing milestones:
 
    ```bash
-   gh api repos/Jamie-BitFlight/claude_skills/milestones
+   gh api repos/OWNER/REPO/milestones
    ```
 
    If none exist, create the first milestone:
 
    ```bash
-   gh api repos/Jamie-BitFlight/claude_skills/milestones \
+   gh api repos/OWNER/REPO/milestones \
      -X POST \
      -f title="v1.0 — Skills Foundation" \
-     -f description="Initial stable milestone for claude_skills skills and plugins" \
+     -f description="Initial stable milestone for {REPO} skills and plugins" \
      -f due_on="2026-03-31T00:00:00Z"
    ```
 
 3. Check for existing projects:
 
    ```bash
-   gh project list --owner Jamie-BitFlight
+   gh project list --owner OWNER
    ```
 
-   If none exist, prompt: "Create GitHub Project 'claude_skills Backlog'? (yes/no)"
+   If none exist, prompt: "Create GitHub Project '{REPO} Backlog'? (yes/no)"
    If yes:
 
    ```bash
-   gh project create --owner Jamie-BitFlight --title "claude_skills Backlog"
-   gh project link 1 --owner Jamie-BitFlight --repo Jamie-BitFlight/claude_skills
+   # OWNER/REPO is discovered dynamically: gh repo view --json nameWithOwner -q .nameWithOwner
+   gh project create --owner OWNER --title "{REPO} Backlog"
+   gh project link 1 --owner OWNER --repo OWNER/REPO
    ```
 
 4. Report setup summary:
@@ -100,7 +103,7 @@ The tool updates the per-item file status and closes the GitHub issue. Check the
    GitHub setup complete:
    - Labels: N created
    - Milestone: #1 "v1.0 — Skills Foundation"
-   - Project: #1 "claude_skills Backlog" (linked to repo)
+   - Project: #1 "{REPO} Backlog" (linked to repo)
 
    Next steps:
    - Add custom fields: .claude/skills/gh/references/projects-v2.md
@@ -140,7 +143,7 @@ Creating issue...
   Title: fix: correct YAML frontmatter in clang-format SKILL.md
   Labels: priority:p1, type:bug, status:needs-grooming
 
-Created: #59 — https://github.com/Jamie-BitFlight/claude_skills/issues/59
+Created: #59 — https://github.com/OWNER/REPO/issues/59
 Updated per-item file: issue: '#59'
 
 Setting status:in-progress...
@@ -175,7 +178,7 @@ Setting up GitHub project infrastructure...
 2. Creating milestone: v1.0 — Skills Foundation
    Created milestone #1
 
-3. Create GitHub Project 'claude_skills Backlog'? yes
+3. Create GitHub Project '{REPO} Backlog'? yes
    Created project #1, linked to repo
 
 GitHub setup complete.

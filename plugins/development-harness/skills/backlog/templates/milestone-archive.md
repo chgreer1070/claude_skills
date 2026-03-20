@@ -95,5 +95,5 @@ Items closed without AC verification:
 
 ## Archive Location
 
-**Milestone GitHub URL**: <https://github.com/Jamie-BitFlight/claude_skills/milestone/N>
+**Milestone GitHub URL**: <https://github.com/{OWNER/REPO}/milestone/N>
 **Archive file**: `.claude/milestones/vN-completion.md`

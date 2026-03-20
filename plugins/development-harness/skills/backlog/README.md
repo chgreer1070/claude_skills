@@ -378,7 +378,7 @@ GitHub Issues are the source of truth. The local `.claude/backlog/` files are a 
 A GitHub Actions workflow (`backlog-sync.yml`) runs the CLI sync on every push that touches `.claude/backlog/`:
 
 ```bash
-uv run .claude/skills/backlog/scripts/backlog.py sync -R Jamie-BitFlight/claude_skills
+uv run .claude/skills/backlog/scripts/backlog.py sync -R {OWNER/REPO}
 ```
 
 This is intentional: CI has no MCP client, so the CLI is the correct interface there.

@@ -6,7 +6,11 @@ All models use Pydantic BaseModel for natural integration with FastMCP 3.x.
 
 from __future__ import annotations
 
+import functools
+import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 from typing import TypedDict
 
@@ -39,25 +43,221 @@ _REPO_ROOT = _resolve_repo_root()
 BACKLOG_DIR = _REPO_ROOT / ".claude" / "backlog"
 
 
-def init(project_dir: str | None) -> None:
-    """Re-initialise module-level path constants from an explicit project directory.
+def init(project_dir: str | None = None, repo: str | None = None) -> None:
+    """Re-initialise module-level path and repository constants.
 
     Call this once at server startup (before any tool runs) when the server is
-    launched with ``--project-dir``.  Mutates the module globals ``_REPO_ROOT``
-    and ``BACKLOG_DIR`` in-place so that all operations in this module and any
-    module that imported ``BACKLOG_DIR`` at function-call time will see the
-    correct paths.
+    launched with ``--project-dir`` or a known ``repo`` slug.  Mutates module
+    globals ``_REPO_ROOT``, ``BACKLOG_DIR``, and ``DEFAULT_REPO`` in-place.
 
     Args:
         project_dir: Absolute path to the user's project root, forwarded from
             the ``--project-dir`` CLI argument in ``server.py``.
+        repo: Explicit ``owner/repo`` slug override.  When ``None``, calls
+            :func:`discover_repo` to resolve the slug dynamically.
     """
-    global _REPO_ROOT, BACKLOG_DIR  # noqa: PLW0603
+    global _REPO_ROOT, BACKLOG_DIR, DEFAULT_REPO  # noqa: PLW0603
     _REPO_ROOT = _resolve_repo_root(project_dir)
     BACKLOG_DIR = _REPO_ROOT / ".claude" / "backlog"
+    if repo is not None:
+        DEFAULT_REPO = _validate_repo_slug(repo)
+    else:
+        discover_repo.cache_clear()
+        DEFAULT_REPO = discover_repo()
 
 
-DEFAULT_REPO = "Jamie-BitFlight/claude_skills"
+# ---------------------------------------------------------------------------
+# Repository discovery
+# ---------------------------------------------------------------------------
+
+#: Matches the canonical ``owner/repo`` slug format.
+_REPO_SLUG_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+
+#: SSH remote pattern: ``git@github.com:owner/repo.git``
+_SSH_REMOTE_RE = re.compile(r"git@[^:]+:([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?$")
+
+#: HTTPS / proxy remote pattern: ``https://…/owner/repo[.git]``
+_HTTPS_REMOTE_RE = re.compile(r"https?://[^/]+/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?$")
+
+
+class RepoDiscoveryError(Exception):
+    """Raised when all repository discovery methods fail.
+
+    Attributes:
+        methods_tried: Names of the discovery methods attempted in order.
+        message: User-facing actionable error message.
+    """
+
+    def __init__(self, methods_tried: list[str], details: list[str]) -> None:
+        """Initialise with discovery context.
+
+        Args:
+            methods_tried: Method names tried in order.
+            details: Per-method failure descriptions.
+        """
+        self.methods_tried = methods_tried
+        detail_lines = "\n".join(f"  {i + 1}. {d}" for i, d in enumerate(details))
+        message = (
+            "Could not determine the GitHub repository.\n\n"
+            f"Tried:\n{detail_lines}\n\n"
+            "To fix, either:\n"
+            "  - Set GITHUB_REPO=owner/repo in your environment\n"
+            "  - Ensure you are in a git repository with a GitHub remote\n"
+            "  - Install the GitHub CLI (gh) and authenticate"
+        )
+        self.message = message
+        super().__init__(message)
+
+
+def _validate_repo_slug(slug: str) -> str:
+    """Validate that *slug* matches ``owner/repo`` format.
+
+    Args:
+        slug: Candidate repository slug to validate.
+
+    Returns:
+        The validated slug, unchanged.
+
+    Raises:
+        RepoDiscoveryError: When the slug does not match the expected format.
+    """
+    if not _REPO_SLUG_RE.match(slug):
+        raise RepoDiscoveryError(
+            methods_tried=["validate"], details=[f"Slug '{slug}' does not match owner/repo format"]
+        )
+    return slug
+
+
+def _discover_via_env() -> str | None:
+    """Return the ``GITHUB_REPO`` environment variable value if set and valid.
+
+    Returns:
+        Validated ``owner/repo`` slug, or ``None`` when the variable is absent
+        or empty.
+    """
+    value = os.environ.get("GITHUB_REPO", "").strip()
+    if not value:
+        return None
+    return _validate_repo_slug(value)
+
+
+def _discover_via_gh() -> str | None:
+    """Query the ``gh`` CLI for the current repository slug.
+
+    Runs ``gh repo view --json nameWithOwner -q .nameWithOwner`` via subprocess.
+    The ``gh`` CLI is preferred over GitPython because Claude Code sessions use
+    proxy remote URLs that cannot be parsed as GitHub hostnames.
+
+    Returns:
+        Validated ``owner/repo`` slug, or ``None`` when ``gh`` is not available
+        or the command fails.
+    """
+    gh_bin = shutil.which("gh")
+    if gh_bin is None:
+        return None
+    try:
+        result = subprocess.run(
+            [gh_bin, "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    slug = result.stdout.strip()
+    if not slug or not _REPO_SLUG_RE.match(slug):
+        return None
+    return slug
+
+
+def _discover_via_git() -> str | None:
+    """Parse the ``origin`` remote URL from git config to extract ``owner/repo``.
+
+    Runs ``git config --get remote.origin.url`` via subprocess and applies
+    regex patterns for both HTTPS and SSH URL formats.
+
+    Returns:
+        Validated ``owner/repo`` slug, or ``None`` when the repository has no
+        ``origin`` remote, the URL cannot be parsed, or git is not available.
+    """
+    git_bin = shutil.which("git")
+    if git_bin is None:
+        return None
+    try:
+        result = subprocess.run(
+            [git_bin, "config", "--get", "remote.origin.url"], capture_output=True, text=True, timeout=10, check=False
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    url = result.stdout.strip()
+    for pattern in (_SSH_REMOTE_RE, _HTTPS_REMOTE_RE):
+        match = pattern.match(url)
+        if match:
+            slug = match.group(1)
+            if _REPO_SLUG_RE.match(slug):
+                return slug
+    return None
+
+
+@functools.lru_cache(maxsize=1)
+def discover_repo() -> str:
+    """Discover the current repository's ``owner/repo`` slug.
+
+    Resolution priority chain (first success wins):
+
+    1. ``GITHUB_REPO`` environment variable — explicit override, highest priority.
+    2. ``gh`` CLI (``gh repo view``) — preferred automated method; handles proxy
+       remote URLs used in Claude Code sessions.
+    3. Git remote URL parsing (``git config --get remote.origin.url``) — fallback
+       for environments where ``gh`` is unavailable.
+    4. :class:`RepoDiscoveryError` — all methods exhausted, no fallback.
+
+    The result is cached with :func:`functools.lru_cache` so discovery runs at
+    most once per process.  Call ``discover_repo.cache_clear()`` in tests to
+    reset between runs.
+
+    Returns:
+        Repository slug in ``owner/repo`` format.
+
+    Raises:
+        RepoDiscoveryError: When no discovery method succeeds.
+    """
+    methods_tried: list[str] = []
+    details: list[str] = []
+
+    # 1. Environment variable
+    methods_tried.append("GITHUB_REPO environment variable")
+    slug = _discover_via_env()
+    if slug is not None:
+        return slug
+    details.append("GITHUB_REPO environment variable: not set or empty")
+
+    # 2. gh CLI
+    methods_tried.append("gh CLI (gh repo view)")
+    slug = _discover_via_gh()
+    if slug is not None:
+        return slug
+    if shutil.which("gh") is None:
+        details.append("gh CLI (gh repo view): gh not found in PATH")
+    else:
+        details.append("gh CLI (gh repo view): command failed or returned empty result")
+
+    # 3. Git remote URL
+    methods_tried.append("Git remote (origin)")
+    slug = _discover_via_git()
+    if slug is not None:
+        return slug
+    details.append("Git remote (origin): no git repository found or URL could not be parsed")
+
+    raise RepoDiscoveryError(methods_tried=methods_tried, details=details)
+
+
+DEFAULT_REPO = discover_repo()
 
 # ---------------------------------------------------------------------------
 # Regex patterns

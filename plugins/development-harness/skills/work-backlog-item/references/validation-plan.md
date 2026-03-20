@@ -1,12 +1,14 @@
 # Validation Plan — GitHub Integration Workflow
 
+> **Repository**: All gh commands in this document use `-R OWNER/REPO`. Discover your repo: `gh repo view --json nameWithOwner -q .nameWithOwner`
+
 Each step of the GitHub integration can be independently verified using `gh` CLI commands.
 
 ## V1: Label Setup Verification
 
 ```bash
 # After /work-backlog-item setup-github:
-gh label list -R Jamie-BitFlight/claude_skills --json name,color \
+gh label list -R OWNER/REPO --json name,color \
   --jq '.[] | select(.name | startswith("priority:","type:","status:")) | .name'
 
 # Expected: 13 taxonomy labels present
@@ -16,7 +18,7 @@ gh label list -R Jamie-BitFlight/claude_skills --json name,color \
 
 ```bash
 # After working a P1 item:
-gh issue list -R Jamie-BitFlight/claude_skills --state open \
+gh issue list -R OWNER/REPO --state open \
   --json number,title,labels \
   --jq '.[] | {number,title,labels: [.labels[].name]}'
 
@@ -31,7 +33,7 @@ grep -rn "issue:" .claude/backlog/ | head -10
 ## V3: Milestone Assignment Verification
 
 ```bash
-gh api repos/Jamie-BitFlight/claude_skills/milestones \
+gh api repos/OWNER/REPO/milestones \
   --jq '.[] | {number, title, open_issues}'
 
 # Expected: milestone exists with open_issues incremented after item worked
@@ -40,7 +42,7 @@ gh api repos/Jamie-BitFlight/claude_skills/milestones \
 ## V4: In-Progress Label Verification
 
 ```bash
-gh issue view <issue-number> -R Jamie-BitFlight/claude_skills \
+gh issue view <issue-number> -R OWNER/REPO \
   --json labels --jq '.labels[].name'
 
 # Expected: status:in-progress present, status:needs-grooming absent
@@ -50,7 +52,7 @@ gh issue view <issue-number> -R Jamie-BitFlight/claude_skills \
 
 ```bash
 # After /work-backlog-item close <title>:
-gh issue view <issue-number> -R Jamie-BitFlight/claude_skills \
+gh issue view <issue-number> -R OWNER/REPO \
   --json state,comments --jq '{state, last_comment: .comments[-1].body}'
 
 # Expected: state="closed", comment contains checklist summary

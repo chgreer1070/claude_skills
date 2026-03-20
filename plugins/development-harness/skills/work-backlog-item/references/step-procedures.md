@@ -293,7 +293,8 @@ If `--stack` was specified, append a "Stack profile" line. If `--language` was s
 2. Query GitHub for the active milestone:
 
    ```bash
-   gh api repos/Jamie-BitFlight/claude_skills/milestones --jq '[.[] | select(.state=="open")] | sort_by(.due_on) | first'
+   # OWNER/REPO is discovered dynamically: gh repo view --json nameWithOwner -q .nameWithOwner
+   gh api repos/{OWNER/REPO}/milestones --jq '[.[] | select(.state=="open")] | sort_by(.due_on) | first'
    ```
 
    Extract: milestone number, title, open_issues, closed_issues.

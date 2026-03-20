@@ -45,7 +45,7 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 /work-backlog-item                                    # interactive browser
 /work-backlog-item #42                               # issue-first → planning
 /work-backlog-item 42                                # issue-first (bare number) → planning
-/work-backlog-item https://github.com/Jamie-BitFlight/claude_skills/issues/42  # URL → planning
+/work-backlog-item https://github.com/OWNER/REPO/issues/42  # URL → planning
 /work-backlog-item Error Recovery                    # direct match → planning
 /work-backlog-item --auto                            # autonomous → auto-select first open P0/P1
 /work-backlog-item --auto vercel skills npm package  # autonomous → planning

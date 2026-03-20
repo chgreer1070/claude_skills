@@ -27,7 +27,7 @@ Generated: 2026-03-01
 | `backlog normalize` | `backlog_normalize` | `normalize_items()` | `--dry-run` → `dry_run: true` |
 | `backlog pull` | `backlog_pull` | `pull_items()` | `--dry-run` → `dry_run: true`, `--force` → `force: true` |
 
-Universal CLI flag `-R Jamie-BitFlight/claude_skills` → MCP param `repo: "Jamie-BitFlight/claude_skills"` (defaults to `DEFAULT_REPO` constant).
+Universal CLI flag `-R {OWNER/REPO}` → MCP param `repo: "{OWNER/REPO}"` (defaults to `DEFAULT_REPO` constant, discovered dynamically from the git remote).
 
 ---
 
@@ -54,7 +54,7 @@ uv run .claude/skills/backlog/scripts/backlog.py add|list|sync|close|resolve|upd
 **Current**:
 
 ```yaml
-uv run .claude/skills/backlog/scripts/backlog.py sync -R Jamie-BitFlight/claude_skills
+uv run .claude/skills/backlog/scripts/backlog.py sync -R {OWNER/REPO}
 ```
 
 **Action**: Keep CLI here — GitHub Actions runs in a shell, not an MCP client. No change needed but document that CI remains CLI-based.
@@ -187,7 +187,7 @@ These contain the actual `uv run backlog.py` commands that agents execute.
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py add \
   --title "{title}" --priority "{priority}" --description "{description}" \
-  --source "{source}" --type "{type}" -R Jamie-BitFlight/claude_skills
+  --source "{source}" --type "{type}" -R {OWNER/REPO}
 ```
 
 **MCP**: `backlog_add(title="{title}", priority="{priority}", description="{description}", source="{source}", type="{type}")`

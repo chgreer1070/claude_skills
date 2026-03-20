@@ -190,3 +190,15 @@ validator from scratch exceeds the stated constraint of a surgical change only.
 **Files**: `plugins/development-harness/backlog_core/models.py`
 **Behavior to cover**: `_resolve_repo_root(project_dir=<path>)` returns resolved Path of that argument; `_resolve_repo_root(None)` returns `Path.cwd()`; `init(project_dir)` mutates module globals `_REPO_ROOT` and `BACKLOG_DIR` to the correct paths; `init(None)` leaves them pointing at cwd-based path.
 **Reason not written**: No existing test suite for `backlog_core` found in scope; standalone fix task with no TDD harness in place.
+
+## Gap: pre-existing broken test modules in development-harness
+
+**Files**: `plugins/development-harness/tests/test_dispatch_helper.py`, `test_manifest_discovery.py`, `test_manifest_merge.py`, `test_manifest_resolver.py`, `test_manifest_schema.py`, `test_proof_of_concept.py`
+**Behavior to cover**: These test modules import modules that no longer exist (`dispatch_helper`, `manifest_discovery`, `manifest_merge`, `manifest_resolver`, `manifest_schema`).
+**Reason not written**: Pre-existing broken state — missing modules were deleted before this task. These are not regressions from T01.
+
+## Gap: discover_repo() unit tests
+
+**Files**: `plugins/development-harness/backlog_core/models.py`
+**Behavior to cover**: `discover_repo()` priority chain (env var, gh CLI, git remote, error path), `_validate_repo_slug()` rejection, `RepoDiscoveryError` message format, `lru_cache` isolation via `cache_clear()`, `init()` repo override.
+**Reason not written**: T02 (assigned to python-pytest-architect) covers this — subordinate-agent boundary.

@@ -79,8 +79,10 @@ def live_items(tmp_path_factory, monkeypatch_class):
             pass  # best-effort — don't fail teardown
         else:
             try:
+                from backlog_core.models import discover_repo
+
                 g = Github(auth=Auth.Token(token))
-                repo = g.get_repo("Jamie-BitFlight/claude_skills")
+                repo = g.get_repo(discover_repo())
                 for issue_num in ctx["issues"]:
                     try:
                         issue = repo.get_issue(issue_num)
