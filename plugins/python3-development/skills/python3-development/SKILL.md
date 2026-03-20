@@ -103,13 +103,13 @@ Understand the complexity vs portability trade-off when creating Python CLI scri
 
 **See:**
 
-- [Typer and Rich CLI Examples](./assets/typer_examples/index.md) for Rich width handling solutions
+- Load `Skill(skill="python3-development:typer-and-rich")` for Rich width handling solutions and working examples.
 
 ### Rich Panel and Table Width Handling
 
 For Rich table and panel width patterns, activate the `/python3-development:python-cli-architect` skill.
 
-**Executable Examples**: See [./assets/typer_examples/](./assets/typer_examples/index.md) for complete working scripts:
+**Executable Examples**: Load `Skill(skill="python3-development:typer-and-rich")` when troubleshooting display and layout of terminal applications. The skill references:
 
 - `console_no_wrap_example.py` - Plain text wrapping solutions
 - `console_containers_no_wrap.py` - Panel/Table width handling with `get_rendered_width()`
@@ -167,7 +167,7 @@ def get_user_with_handling(id):
 
 When adding try/except, answer: "What specific error do I expect, and what is my recovery action?"
 
-**See**: [Exception Handling in Python CLI Applications](./references/exception-handling.md) for comprehensive patterns including Typer exception chain prevention.
+**See**: Load `Skill(skill="python3-development:typer-and-rich")` for comprehensive Typer exception chain prevention patterns, including `AppExit` and `AppExitRich` examples.
 
 ### Type Safety with Mypy
 
@@ -267,7 +267,7 @@ For project directory layout, Hatchling configuration, and package naming rules,
 
 ### Reference Example (Bundled)
 
-**Complete working example** (bundled): [python-cli-demo.py](./assets/python-cli-demo.py)
+**Complete working example** (bundled): Load `Skill(skill="python3-development:typer-and-rich")` to access `python-cli-demo.py` — a complete CLI demo demonstrating all recommended patterns.
 
 This reference implementation demonstrates all recommended patterns:
 
@@ -332,9 +332,7 @@ These templates implement the patterns documented in [User Project Conventions](
 
 **PEP 723 Specification**: [PEP 723 - Inline Script Metadata](./references/PEP723.md) - User-friendly guide to PEP 723 inline script metadata with examples and migration patterns
 
-**Exception Handling**: [Exception Handling in Python CLI Applications with Typer](./references/exception-handling.md) - Critical guidance on preventing exception chain explosion in Typer applications with correct patterns for graceful error handling
-
-**Typer and Rich Examples**: [Typer and Rich CLI Examples](./assets/typer_examples/index.md) - Executable examples demonstrating solutions to common problems with Rich Console text wrapping in CI/non-TTY environments and Panel/Table content wrapping
+**Exception Handling and Typer/Rich Examples**: Load `Skill(skill="python3-development:typer-and-rich")` — covers exception chain prevention, Typer exit patterns, Rich non-TTY display solutions, and working executable examples including `typer_examples/` scripts and `python-cli-demo.py`.
 
 **Module Reference**: [Modern Python Modules](./references/modern-modules.md) - Comprehensive guide to 50+ modern Python libraries with deep-dive documentation for each module including usage patterns and best practices
 

@@ -45,7 +45,7 @@ Load these before writing the spec:
 
 - `./references/architecture-spec-patterns.md` — standard technology stack, component templates, security, integration patterns, ADRs
 - `./references/testing-spec-guidance.md` — testing stack, coverage requirements, pytest config block
-- `./references/rich-tables.md` — Rich table width measurement pattern (include in spec when tables are needed)
+- Load `Skill(skill="python3-development:typer-and-rich")` — Typer and Rich reference including table width measurement pattern (include in spec when tables are needed)
 
 ## Large File Strategy
 

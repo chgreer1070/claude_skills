@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, cast
 
 from github import GithubException, GithubObject
 
+from . import models as _models
 from .entry_blocks import (
     ENTRY_RE,
     generate_diff,
@@ -46,17 +47,16 @@ from .github import (
     update_task_status,
     view_enrich_from_github,
 )
-from .models import (
+from .models import (  # noqa: F401 — DEFAULT_REPO intentionally NOT imported (mutable module global)
     BACKLOG_DIR,
     COMMIT_PREFIX_RE as _COMMIT_PREFIX_RE,
-    DEFAULT_REPO,
     MIN_FRONTMATTER_PARTS,
     VALID_CLOSE_REASONS,
     BacklogError,
     BacklogItem,
     DuplicateItemError,
     Entry,
-    GitHubUnavailableError,  # noqa: F401 — re-exported; raised by get_github() callers
+    GitHubUnavailableError,
     IssueStatus,
     ItemNotFoundError,
     Output,
@@ -96,6 +96,15 @@ from .parsing import (
 if TYPE_CHECKING:
     from github.Issue import SubIssue
     from github.Repository import Repository
+
+
+def _repo(repo: str) -> str:
+    """Resolve repo slug at call time, falling back to the live module global.
+
+    Returns:
+        Resolved repository slug.
+    """
+    return repo or _models.DEFAULT_REPO
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +205,7 @@ def _create_issue_and_update_item(item: BacklogItem, repo: str, output: Output |
         return issue_num
 
 
-def _rename_item_title(item: BacklogItem, title: str, repo: str = DEFAULT_REPO, output: Output | None = None) -> bool:
+def _rename_item_title(item: BacklogItem, title: str, repo: str = "", output: Output | None = None) -> bool:
     """Update the name field in the per-item file. Syncs to GitHub issue title if linked.
 
     Returns:
@@ -237,7 +246,7 @@ def _update_item_description(item: BacklogItem, description: str, output: Output
     return True
 
 
-def _apply_plan_to_item(item: BacklogItem, plan: str, repo: str = DEFAULT_REPO, output: Output | None = None) -> bool:
+def _apply_plan_to_item(item: BacklogItem, plan: str, repo: str = "", output: Output | None = None) -> bool:
     """Apply plan update: write to GitHub Issue first (comment), then update local cache.
 
     GH-first: posts a plan comment on the linked GitHub Issue before updating local.
@@ -913,7 +922,7 @@ def add_item(
     suggested_location: str = "",
     create_issue: bool = True,
     force: bool = False,
-    repo: str = DEFAULT_REPO,
+    repo: str = "",
     output: Output | None = None,
 ) -> dict[str, str | int | bool | list[str]]:
     """Add item to backlog. Creates per-item file and optionally a GitHub issue.
@@ -1055,7 +1064,7 @@ def _reconcile_closed_issues(repo_obj: Repository, open_issue_numbers: set[int],
 
 
 def refresh_local_cache_from_github(
-    repo: str = DEFAULT_REPO, label: str | None = None, output: Output | None = None
+    repo: str = "", label: str | None = None, output: Output | None = None
 ) -> dict[str, int | list[str]]:
     """Fetch open and recently closed GitHub Issues and update local cache files.
 
@@ -1210,7 +1219,7 @@ def list_items(
     type_: str | None = None,
     topic: str | None = None,
     include_closed: bool = False,
-    repo: str = DEFAULT_REPO,
+    repo: str = "",
     output: Output | None = None,
 ) -> dict[str, int | list[str] | list[dict[str, str | bool]]]:
     """List backlog items. Default reads local cache only. Use from_github=True to refresh first.
@@ -1368,7 +1377,7 @@ def _paginate_body(data: dict, body: str, offset: int, limit: int) -> None:
 
 def view_item(
     selector: str,
-    repo: str = DEFAULT_REPO,
+    repo: str = "",
     offset: int = 0,
     limit: int = 0,
     show: str | int | None = None,
@@ -1548,7 +1557,7 @@ def sync_push_groomed_content(
 
 
 def sync_items(
-    repo: str = DEFAULT_REPO, dry_run: bool = False, output: Output | None = None
+    repo: str = "", dry_run: bool = False, output: Output | None = None
 ) -> dict[str, int | bool | list[str]]:
     """Create GitHub issues for all items missing them, and push groomed content to existing issues.
 
@@ -1579,7 +1588,7 @@ def close_item(
     comment: str = "",
     cleanup: bool = False,
     force: bool = False,
-    repo: str = DEFAULT_REPO,
+    repo: str = "",
     output: Output | None = None,
 ) -> dict[str, str | bool | list[str]]:
     """Dismiss an item without completion. Requires a categorized reason.
@@ -1652,7 +1661,7 @@ def resolve_item(
     findings: str = "",
     cleanup: bool = False,
     force: bool = False,
-    repo: str = DEFAULT_REPO,
+    repo: str = "",
     output: Output | None = None,
 ) -> dict[str, str | bool | list[str]]:
     """Mark item DONE (completed) and close GitHub issue with evidence trail.
@@ -1762,7 +1771,7 @@ def update_item(
     groomed: bool = False,
     title: str | None = None,
     description: str | None = None,
-    repo: str = DEFAULT_REPO,
+    repo: str = "",
     output: Output | None = None,
     *,
     entry_id: str | None = None,
@@ -1843,7 +1852,7 @@ def groom_item(
     groomed_content: str | None = None,
     section: str | None = None,
     content: str | None = None,
-    repo: str = DEFAULT_REPO,
+    repo: str = "",
     output: Output | None = None,
     *,
     entry_id: str | None = None,
@@ -1961,7 +1970,7 @@ def strike_entry(
 
     # Sync to GitHub if item has an issue
     if item.issue:
-        repository = try_get_github(DEFAULT_REPO)
+        repository = try_get_github(_models.DEFAULT_REPO)
         if repository:
             try:
                 num = int(item.issue.lstrip("#"))
@@ -2098,7 +2107,7 @@ def pull_single_issue(
 
 
 def pull_by_selector(
-    selector: str, repo: str = DEFAULT_REPO, output: Output | None = None, diff: bool = False
+    selector: str, repo: str = "", output: Output | None = None, diff: bool = False
 ) -> dict[str, str | list[str] | None]:
     """Pull a single GitHub issue into the local cache by selector.
 
@@ -2155,11 +2164,7 @@ def pull_by_selector(
 
 
 def pull_items(
-    repo: str = DEFAULT_REPO,
-    dry_run: bool = False,
-    force: bool = False,
-    diff: bool = False,
-    output: Output | None = None,
+    repo: str = "", dry_run: bool = False, force: bool = False, diff: bool = False, output: Output | None = None
 ) -> dict[str, int | bool | str | list[str]]:
     """Pull issue body content from GitHub into local per-item files.
 
@@ -2499,7 +2504,7 @@ def get_ready_sam_tasks(
 # ---------------------------------------------------------------------------
 
 
-def list_labels(repo: str = DEFAULT_REPO, limit: int = 100, output: Output | None = None) -> dict[str, object]:
+def list_labels(repo: str = "", limit: int = 100, output: Output | None = None) -> dict[str, object]:
     """Return repository labels up to ``limit``.
 
     Read-only. Label mutations are owned by ``state_handler.apply_github_transition()``.
@@ -2532,7 +2537,7 @@ def list_labels(repo: str = DEFAULT_REPO, limit: int = 100, output: Output | Non
 
 
 def list_merged_prs(
-    repo: str = DEFAULT_REPO, search: str | None = None, limit: int = 20, output: Output | None = None
+    repo: str = "", search: str | None = None, limit: int = 20, output: Output | None = None
 ) -> dict[str, list[dict[str, str | int]] | int | list[str]]:
     """Return merged pull requests, optionally filtered by a search query.
 
@@ -2593,7 +2598,7 @@ def list_merged_prs(
 
 
 def list_milestones(
-    repo: str = DEFAULT_REPO, state: str = "open", output: Output | None = None
+    repo: str = "", state: str = "open", output: Output | None = None
 ) -> dict[str, list[dict[str, object]] | int | list[str]]:
     """Return repository milestones filtered by state.
 
@@ -2632,7 +2637,7 @@ def list_milestones(
     return {"milestones": milestones, "count": len(milestones), **out.to_dict()}
 
 
-def get_soonest_milestone(repo: str = DEFAULT_REPO, output: Output | None = None) -> dict[str, object]:
+def get_soonest_milestone(repo: str = "", output: Output | None = None) -> dict[str, object]:
     """Return the open milestone with the earliest due date.
 
     Milestones without a due date are excluded from consideration.
@@ -2680,11 +2685,7 @@ def get_soonest_milestone(repo: str = DEFAULT_REPO, output: Output | None = None
 
 
 def create_milestone(
-    repo: str = DEFAULT_REPO,
-    title: str = "",
-    description: str = "",
-    due_on: str | None = None,
-    output: Output | None = None,
+    repo: str = "", title: str = "", description: str = "", due_on: str | None = None, output: Output | None = None
 ) -> dict[str, object]:
     """Create a new milestone on the repository.
 
@@ -2804,7 +2805,7 @@ def _collect_issues(gh_repo: Repository, kwargs: dict[str, object], limit: int) 
 
 
 def list_issues(
-    repo: str = DEFAULT_REPO,
+    repo: str = "",
     milestone: str | None = None,
     labels: str | None = None,
     state: str = "open",
@@ -2847,7 +2848,7 @@ def list_issues(
 
 
 def comment_issue(
-    repo: str = DEFAULT_REPO, issue_number: int = 0, body: str = "", output: Output | None = None
+    repo: str = "", issue_number: int = 0, body: str = "", output: Output | None = None
 ) -> dict[str, str | int | list[str]]:
     """Add a comment to a GitHub issue.
 
@@ -2887,7 +2888,7 @@ def comment_issue(
 
 
 def list_projects(
-    repo: str = DEFAULT_REPO, owner: str | None = None, limit: int = 20, output: Output | None = None
+    repo: str = "", owner: str | None = None, limit: int = 20, output: Output | None = None
 ) -> dict[str, list[dict[str, object]] | int | list[str]]:
     """List Projects V2 for the repository owner via GraphQL.
 
@@ -2931,7 +2932,7 @@ def list_projects(
 
 
 def create_project(
-    repo: str = DEFAULT_REPO, title: str = "", owner: str | None = None, output: Output | None = None
+    repo: str = "", title: str = "", owner: str | None = None, output: Output | None = None
 ) -> dict[str, str | int | list[str]]:
     """Create a Projects V2 project under the repository owner via GraphQL.
 

@@ -1,9 +1,57 @@
 ---
 name: specialist-skill-routing
-description: Context-aware skill router for Python development agents. Scan task description against trigger list and activate matching specialist skills before starting work. Covers FastMCP/MCP, ty type checker, uv, Hatchling, TOML editing, pre-commit/prek, async Python, PyPI packaging, complex linting, and technical debt modernization.
+description: Context-aware skill router for Python development agents. Scan task description against trigger list and activate matching specialist skills before starting work. Covers Typer, Rich, Textual, FastMCP/MCP, ty type checker, uv, Hatchling, TOML editing, pre-commit/prek, async Python, PyPI packaging, complex linting, and technical debt modernization.
 ---
 
 Scan your task description against the triggers below. For every match, call `Skill(skill="...")` **before** writing any architecture, plan, or code. Multiple matches → load all matching skills.
+
+## CLI Framework — Typer
+
+**Triggers**: `typer.Typer()`, `typer.run()`, `@app.command`, `@app.callback`, `typer.Option`, `typer.Argument`, `Annotated[int, typer.Option()]`, Typer subcommands, `app.add_typer()`, `CliRunner`, `typer.echo`, `typer.style`, `typer.secho`, `typer.Exit`, `typer.Abort`, `typer.confirm`, `typer.launch`, autocompletion
+
+```text
+Skill(skill="python3-development:typer")
+```
+
+Covers: app creation with `typer.Typer()` and `typer.run()`, CLI arguments and options (Annotated form), parameter types (enums, paths, dates, UUIDs, custom), subcommand composition with `add_typer()`, testing with `typer.testing.CliRunner`, output/colors/progress bars, callbacks, context, autocompletion, packaging.
+
+---
+
+## Terminal UI — Rich
+
+**Triggers**: `rich.console.Console`, `rich.table.Table`, `rich.progress.track`, `rich.progress.Progress`, `rich.panel.Panel`, `rich.tree.Tree`, `rich.live.Live`, `rich.syntax.Syntax`, `rich.markdown.Markdown`, `rich.logging.RichHandler`, `rich.traceback.install`, `rich.print`, Rich markup tags, `rich.columns.Columns`, `rich.layout.Layout`, `rich.json.JSON`, `rich.pretty.pprint`, `__rich_console__`, `__rich__`, `__rich_repr__`
+
+```text
+Skill(skill="python3-development:rich")
+```
+
+Covers: Console class and markup syntax, style strings and color formats, renderables (Panel, Table, Tree, Columns, Layout), Progress and Live displays, Text class, Syntax/Markdown/Pretty/JSON rendering, RichHandler for stdlib logging, Traceback installation, `__rich_console__` and `__rich_repr__` protocols, RegexHighlighter.
+
+---
+
+## TUI Framework — Textual
+
+**Triggers**: `textual.app.App`, `textual.widget.Widget`, `textual.screen.Screen`, `ComposeResult`, `compose()`, `mount()`, `query()`, `query_one()`, `textual.reactive.reactive`, `textual.css`, `@on`, `@work`, `run_worker`, `run_test`, Textual CSS, Textual events, Textual workers, `pytest-textual-snapshot`
+
+```text
+Skill(skill="python3-development:textual")
+```
+
+Covers: App lifecycle (run/exit/suspend), screen stack (push/pop/switch/modes), custom and builtin widgets, Line API, layout types (vertical/horizontal/grid), CSS selectors and pseudo-classes, events and message bubbling, custom messages, actions and key bindings, reactive attributes (watch/validate/compute/data binding), testing with Pilot API, snapshot testing, Workers and `@work` decorator.
+
+---
+
+## Typer + Rich Best Practices
+
+**Triggers**: non-TTY output handling, table width measurement, Rich output in CI/piped environments, testing Rich-formatted CLI output, `Console(force_terminal=True)`, `Console(width=N)`, `Console(file=StringIO())`, `console.capture()`, `export_text()`
+
+```text
+Skill(skill="python3-development:typer-and-rich")
+```
+
+Covers: non-TTY Console behavior (width defaults, color stripping, environment variables), Measurement protocol for renderable width, Progress/Live without TTY, testing Rich output in pytest (capture, export, snapshot), CliRunner with Rich, common assertion mistakes.
+
+---
 
 ## MCP / FastMCP
 

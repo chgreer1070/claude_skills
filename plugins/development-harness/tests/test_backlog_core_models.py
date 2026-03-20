@@ -546,7 +546,12 @@ class TestConstants:
         assert isinstance(DEFAULT_REPO, str)
 
     def test_default_repo_contains_slash(self) -> None:
-        assert "/" in DEFAULT_REPO
+        """DEFAULT_REPO is empty before init(); discover_repo() resolves it."""
+        from backlog_core.models import discover_repo
+
+        discover_repo.cache_clear()
+        slug = discover_repo()
+        assert "/" in slug
 
     def test_type_to_label_is_dict(self) -> None:
         assert isinstance(TYPE_TO_LABEL, dict)

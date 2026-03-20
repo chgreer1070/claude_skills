@@ -1,6 +1,6 @@
 ---
 name: optimize
-description: Audit and trim CLAUDE.md files, rules, skills, and agent definitions for content that Claude does not need — discoverable data, explained-away knowledge, invented constraints, duplicated content, and stale cached facts. Use when writing new memory/rules/skills/agents, or when reviewing existing ones for bloat. Triggers include "write a rule for", "add to CLAUDE.md", "create an agent", "update memory", or any request to author AI-facing instruction content.
+description: Write great delegation instructions to subagents, also Audit optimize CLAUDE.md files, rules, skills, and agent definitions for content that Claude does not need — discoverable data, explained-away knowledge, invented constraints, duplicated content, and stale cached facts. Use when orchstrating or dispatching via Agent tool, writing new memory/rules/skills/agents, or when reviewing existing ones for bloat. Triggers include "write a rule for", "add to CLAUDE.md", "create an agent", "update memory", or any request to author AI-facing instruction content.
 user-invocable: true
 ---
 
@@ -25,11 +25,11 @@ The AI writing an instruction file and the AI reading it share the same training
 
 **Mission-level anchoring** — This maintains alignment with the core purpose over time and provides a heuristic for decisions: "Does this change actually help achieve the mission of this system/task/product?" State the core principle (e.g., "all CI ops go through ci_monitor.py") and provide a routing table, rather than repeating granular details.
 
-Everything else is noise.
+## What to keep external
 
-## What to Cut
-
-**Discoverable data** — version numbers, hex codes, release tags, file listings, schema fields, or command `--help` outputs. If a command or lookup can produce it, don't store it. It will be wrong within days. Instead, verify that it is discoverable, and replace the prose with an instruction on **where** to discover the data and **when** to reach for which tool (e.g., "When doing A, B, or C then first read these references here: <path>"). For CLI tools, instruct the AI to discover arguments at runtime: "[ ] Run the command with `--help` and read CLI arguments before using it in a task."
+**Discoverable data** — version numbers, hex codes, release tags, file listings, schema fields, or command `--help` outputs. If a command or lookup can produce it, don't store it. It will be wrong within days. Instead, verify that it is discoverable, and replace the prose with an instruction on **where** to discover the data and **when** to reach for which tool (e.g.,
+"When doing A, B, or C then first read these references here: <path>").
+For CLI tools, instruct the AI to discover arguments at runtime: "[ ] Run the command with `--help` and read CLI arguments before using it in a task."
 
 **Explained knowledge** — step-by-step breakdowns of things Claude already knows how to do. It can be ambiguous whether something is a custom instruction set or just from training data. When optimizing a file, remove information generated from training data, as it will already be available for the other AI. Often, when writing documentation, the AI will waffle on and invent instructions just to get the document looking complete. These instructions often are never tested. A good way to see if something is slop is to follow the instructions or have a subagent follow them exactly, step by step, and find out if they work. This then provides a way to improve the instructions and update them if errors were found. If the instruction just explains how to do something standard, cut it.
 
@@ -37,7 +37,7 @@ Everything else is noise.
 
 **Worked examples for obvious operations** — one example that shows a non-obvious pattern format is useful. Three examples walking through the same operation are not. Replace extra examples with: "See <url or reference file> for more examples."
 
-**Duplicate content** — if it's in the skill, don't put it in the agent. If it's in the agent, don't put it in the rule. Pick the right place and put it there once. Use references: "For X, see `./references/{topic}.md`"
+**Duplicate content** — if it's in the skill, don't put it in the agent. If it's in the agent, don't put it in the rule. Pick the right place and put it there once. Use references: "Load `./references/{topic}.md` {when, before, to} {action, task, specialist knowledge req}"
 
 ## Where Each Type of Content Belongs
 

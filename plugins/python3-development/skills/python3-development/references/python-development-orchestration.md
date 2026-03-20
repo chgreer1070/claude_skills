@@ -53,7 +53,7 @@ Before the Implement step, check whether the deployment environment is restricte
 flowchart TD
     S1["1. Design<br>subagent_type=python3-development:python-cli-design-spec<br>Context: user requirements, any existing codebase paths<br>Output: component interfaces, module layout, CLI command tree"]
     S2["2. Write Tests<br>subagent_type=python3-development:python-pytest-architect<br>Context: architecture design file path<br>Output: tests/ directory with failing test suite"]
-    S3{"3. Implement<br>Default: python3-development:python-cli-architect<br>Restricted env only: python3-development:stdlib-scripting<br>Context: tests/ path, assets/python-cli-demo.py path<br>Output: implementation that makes all tests pass"}
+    S3{"3. Implement<br>Default: python3-development:python-cli-architect<br>Restricted env only: python3-development:stdlib-scripting<br>Context: tests/ path, load python3-development:typer-and-rich for python-cli-demo.py<br>Output: implementation that makes all tests pass"}
     S4["4. Review<br>subagent_type=python3-development:python-code-reviewer<br>Context: implementation file paths, tests/ path<br>Output: review findings with file:line references, improvement suggestions"]
     S5["5. Validate<br>Run: /python3-development:shebangpython on each script<br>Run: Activate holistic-linting skill<br>Run: uv run pytest (verify >80% coverage)<br>Check: CI config for additional validators<br>Pass criteria: all tests green, linting clean, coverage threshold met"]
     S1 -->|"Output: component interfaces, module layout, CLI command tree"| S2
@@ -76,8 +76,7 @@ User: "Build a CLI tool to process CSV files with progress bars"
    Output: tests/ directory with failing test files
 
 3. Task is Implement with subagent_type="python3-development:python-cli-architect"
-   Context to include in the prompt: tests/ path; reference implementation at
-     plugins/python3-development/skills/python3-development/assets/python-cli-demo.py
+   Context to include in the prompt: tests/ path; instruct agent to load Skill(skill="python3-development:typer-and-rich") for the python-cli-demo.py reference implementation
    Output: packages/ with implementation that makes all tests pass
 
 4. Task is Review with subagent_type="python3-development:python-code-reviewer"
@@ -212,7 +211,7 @@ flowchart TD
 
 **This agent is EASIER to use than stdlib-only approaches. Choose this as the default unless portability restrictions exist.**
 
-**Rich Width Handling**: For Rich Panel/Table width issues in CI/non-TTY environments, see [Typer and Rich CLI Examples](../assets/typer_examples/index.md) for complete solutions including the `get_rendered_width()` helper pattern.
+**Rich Width Handling**: For Rich Panel/Table width issues in CI/non-TTY environments, load `Skill(skill="python3-development:typer-and-rich")` for complete solutions including the `get_rendered_width()` helper pattern.
 
 **Example tasks**:
 
@@ -442,7 +441,7 @@ If answers indicate restrictions: python3-development:stdlib-scripting
 
 ## Reference Example
 
-**Complete working example (bundled)**: `${CLAUDE_PLUGIN_ROOT}/skills/python3-development/assets/python-cli-demo.py`
+**Complete working example**: Load `Skill(skill="python3-development:typer-and-rich")` to access `python-cli-demo.py`.
 
 This file demonstrates all modern Python CLI patterns:
 
@@ -474,7 +473,7 @@ Orchestrator:
 
 3. Task is Implement with subagent_type="python3-development:python-cli-architect"
    Context to include in the prompt: tests/ file paths; reference at
-     plugins/python3-development/skills/python3-development/assets/python-cli-demo.py
+     load Skill(skill="python3-development:typer-and-rich") for python-cli-demo.py reference
    Output: packages/validator.py with Typer+Rich UI — all tests pass
 
 4. Validation:
