@@ -5,18 +5,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json as _json
-import os
-import pathlib
 import sys
 from typing import Annotated
 
-import git
 import tiktoken
 from fastmcp import Context, FastMCP
 from pydantic import Field
 
 from . import operations
-from .models import BacklogError, Output, discover_repo, init as _init_models
+from .models import BacklogError, Output, init as _init_models
 
 # Token budget for auto-pagination in backlog_list: 4400 tokens (cl100k_base encoding).
 _LIST_TOKEN_BUDGET = 4_400
@@ -964,58 +961,6 @@ async def backlog_create_project(
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
-
-
-_MASK_PREFIX_LEN = 10  # chars to keep before masking secret values
-
-
-@mcp.tool
-def backlog_debug_env() -> dict:
-    """Return diagnostic environment information for debugging server startup issues.
-
-    This tool is temporary and will be removed once the root cause is identified.
-
-    Returns:
-        Dict with cwd, claude_env_vars, github_env_vars (values masked),
-        git_discovery result, and discover_repo_result.
-    """
-    # cwd
-    cwd = pathlib.Path.cwd()
-
-    # CLAUDE_* env vars (case-insensitive key match, values returned as-is)
-    claude_env_vars: dict[str, str] = {k: v for k, v in os.environ.items() if "claude" in k.lower()}
-
-    # GITHUB_* env vars (case-insensitive key match, values masked to first 10 chars)
-    github_env_vars: dict[str, str] = {
-        k: (v[:_MASK_PREFIX_LEN] + "..." if len(v) > _MASK_PREFIX_LEN else v)
-        for k, v in os.environ.items()
-        if "github" in k.lower()
-    }
-
-    # git repo discovery
-    try:
-        repo = git.Repo(search_parent_directories=True)
-        try:
-            remote_url = repo.remote().url
-        except Exception as remote_exc:  # noqa: BLE001
-            remote_url = f"<error: {remote_exc}>"
-        git_discovery: dict = {"found": True, "working_dir": repo.working_dir, "remote_url": remote_url}
-    except Exception as git_exc:  # noqa: BLE001
-        git_discovery = {"found": False, "error": str(git_exc)}
-
-    # discover_repo() result
-    try:
-        discover_repo_result: str | dict = discover_repo()
-    except Exception as dr_exc:  # noqa: BLE001
-        discover_repo_result = {"error": str(dr_exc)}
-
-    return {
-        "cwd": cwd,
-        "claude_env_vars": claude_env_vars,
-        "github_env_vars": github_env_vars,
-        "git_discovery": git_discovery,
-        "discover_repo_result": discover_repo_result,
-    }
 
 
 if __name__ == "__main__":
