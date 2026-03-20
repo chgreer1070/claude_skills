@@ -194,15 +194,15 @@ when non-empty.
 
 ## CI/CLI Interface
 
-GitHub Actions and environments without an MCP client use the CLI script. This is the only
-context where `uv run` invocations of `backlog.py` are appropriate.
+GitHub Actions and environments without an MCP client use `fastmcp call` against the MCP server.
 
 ```bash
-uv run plugins/development-harness/skills/backlog/scripts/backlog.py <subcommand> [options]
+uv run fastmcp call plugins/development-harness/.mcp.json <tool_name> [key=value ...]
 ```
 
-Available subcommands mirror the MCP tools: `add`, `list`, `view`, `sync`, `close`, `resolve`,
-`update`, `groom`, `normalize`, `pull`.
+Available tools mirror the MCP tools: `backlog_add`, `backlog_list`, `backlog_view`,
+`backlog_sync`, `backlog_close`, `backlog_resolve`, `backlog_update`, `backlog_groom`,
+`backlog_normalize`, `backlog_pull`.
 
 ## Environment
 
@@ -216,7 +216,7 @@ Available subcommands mirror the MCP tools: `add`, `list`, `view`, `sync`, `clos
   `backlog_update`
 - `/groom-backlog-item` — calls `backlog_groom` and `backlog_update` for groomed content
 - `/group-items-to-milestone` — calls `backlog_list` to enumerate items for milestone grouping
-- **GitHub Action** — invokes `backlog sync` (CLI) on `.claude/backlog/` changes
+- **GitHub Action** — invokes `fastmcp call backlog_sync` on `.claude/backlog/` changes
 
 Do not edit `.claude/backlog/*.md` files directly or use `gh issue edit` — both bypass sync logic.
 If the MCP tools or CLI lack a needed operation, invoke `/backlog-tools-administrator` to close
