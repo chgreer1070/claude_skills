@@ -480,7 +480,7 @@ class TestAtomicWriteSafety:
         mocker.patch.object(Path, "replace", side_effect=OSError("Mock failure"))
 
         # Act
-        with pytest.raises(PermissionError):
+        with pytest.raises(OSError, match="Mock failure"):
             _atomic_write(target, "new content\n")
 
         # Assert -- no .tmp files left behind
