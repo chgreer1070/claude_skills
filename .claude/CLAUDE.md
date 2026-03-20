@@ -58,7 +58,18 @@ For debugging, investigation, problem solving, unknowns, or repeated errors: use
 - Output contains "likely", "probably", or "I think" — STOP and verify before continuing
 - **Pass file paths, let agents read** — agents perform their own Chain of Verification against actual source. Provide the path; the agent reads, verifies, and acts on it with a fresh context window. Never transcribe file contents into prompts — it bypasses agent verification.
 - Do NOT discover file paths on behalf of agents — the agent has full tool access and an empty context window; it finds what it needs itself. Pre-discovering paths wastes orchestrator context and duplicates agent work.
-- **Investigation requires hypothesis first** — when your first action on a new task is a Read/Grep/Bash investigation (not a planned delegation), load `/scientific-method:scientific-thinking` first. Investigation without hypothesis is debugging theater.
+- **Structured thinking before action** — form a hypothesis and plan internally before acting. Then:
+
+```mermaid
+flowchart TD
+    Q{Destructive or ambiguous?}
+    Q -->|"YES — deletes files, overwrites state,<br>unclear requirements"| Align[Think then seek alignment]
+    Q -->|"NO — routine non-destructive:<br>write, create, fix known error, add test"| Act[Think then act immediately]
+    Act --> Verify[Verify after]
+    Align --> Verify
+```
+
+  For unknown failures (unclear cause, flaky test): load `/scientific-method:scientific-thinking` to structure the hypothesis.
 
 **Tool Usage:**
 
@@ -89,6 +100,40 @@ Reason: Permission denial is a user boundary signal. Some commands are blocked b
 Three or more Read/Grep/Bash calls on source files without an intervening Edit/Write or Agent delegation are the trigger signal for investigation escalation.
 
 When triggered: STOP. Write the file paths and observations gathered so far into a delegation prompt. Do not read one more file. Delegate to a specialist agent.
+
+**Parallel execution rule**: When 2+ independent questions need answering, launch one subagent per question simultaneously. Use TeamCreate when 3+ independent agents are needed. Do not serialize independent research.
+
+---
+
+## Task Classification
+
+```mermaid
+flowchart TD
+    T{Task type?}
+    T -->|"Clear requirements, known output:<br>write file, fix known error, add test"| Exec[Execution — act immediately]
+    T -->|"Unknown cause, unclear path:<br>debug failure, diagnose perf, flaky test"| Inv[Investigation — hypothesis first]
+    Exec --> V[Verify after completion]
+    Inv --> H[Load /scientific-method:scientific-thinking] --> V
+```
+
+## Parallel Execution
+
+When a task decomposes into 2+ independent subtasks, execute in parallel. Sequential execution of independent work requires justification (shared state, ordered dependencies).
+
+| Independent subtasks | Execution method |
+|---|---|
+| 2 | Launch 2 background agents simultaneously |
+| 3+ | Use TeamCreate for parallel agent pool |
+
+## Autonomous Action Boundary
+
+| Act without asking | Ask before acting |
+|---|---|
+| Read files, run tests, run linters | Delete files |
+| Create subagents for research/implementation | Push to remote |
+| Create teams for parallel work | Modify files the user did not mention |
+| Write files the user explicitly requested | Change architectural decisions |
+| Fix errors discovered during current task | Destructive git operations |
 
 ---
 
