@@ -352,7 +352,31 @@ Skill(skill: "simplify")
 
 This reviews any files modified during this session and fixes issues found.
 
+### Step 8.5a: AUTO_MODE Continuation
+
+**Trigger:** AUTO_MODE is set (invoked with `--auto`).
+
+Skip Step 8.5 reporting. Instead, continue directly to implementation:
+
+1. Invoke implementation:
+
+   ```text
+   Skill(skill: "implement-feature", args: "{task_file_path}")
+   ```
+
+2. When all tasks complete, invoke quality gates:
+
+   ```text
+   Skill(skill: "complete-implementation", args: "{task_file_path}")
+   ```
+
+3. After completion, proceed to Step 9 resolve path to mark the item done.
+
+Do not stop for user input at any point.
+
 ### Step 8.5: Report Next Steps
+
+**Trigger:** AUTO_MODE is NOT set (interactive mode only).
 
 ```text
 Backlog item "{title}" is now planned.
