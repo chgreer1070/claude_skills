@@ -62,6 +62,7 @@ Title = `<item_title/>` onward (all remaining words joined). Do not call `AskUse
    - **Title**: from `<item_title/>` onward
    - **Priority**: infer from description urgency keywords (`critical`, `required`, `must` → P1; `nice to have`, `optional` → P2; default P1)
    - **Description**: summarize problem space and desired outcome from research file — do NOT include implementation steps, architecture ideas, proposed solutions, required changes, or file-level prescriptions. If the research file contains fix instructions, strip them. Keep only: what is broken, where it was observed, what the impact is.
+   - **Verbatim user report**: the `<item_title/>` argument string, reproduced exactly — character for character, no trimming, no reformatting.
    - **Source**: `"Agent task — auto-derived from research/{filename}"`
    - **Type**: infer from description (`install`, `integrate`, `add` → Feature; default Feature)
    - **How to reproduce**: omit unless the research file contains explicit reproduction steps stated as direct observations. Do NOT infer or construct steps.
@@ -101,6 +102,8 @@ Then ask:
 Question 3: "Describe the item. Cover: (1) what the problem is and where it lives, (2) what success looks like when it's done, (3) how you'll know it's working. Do not describe the fix or implementation approach — those come later in planning."
   header: "Description"
 ```
+
+Capture the user's answer to Question 3 **verbatim** as the `verbatim_user_report` value before structuring it into a Description. The Description is your structured interpretation; the verbatim report is the user's exact words.
 
 Then ask:
 
@@ -146,7 +149,7 @@ Title = `<item_title/>` onward. Ask only:
 - Priority (Question 2 above)
 - Description (Question 3 above)
 
-Source defaults to "Session observation". Type defaults to "Feature".
+`verbatim_user_report` = the full `<item_title/>` argument string, reproduced exactly. Source defaults to "Session observation". Type defaults to "Feature".
 
 ### Step 2: Validate Inputs
 
@@ -183,8 +186,19 @@ Format today's date as `YYYY-MM-DD` (use system date).
 **Priority**: {P0|P1|P2|Idea}
 **Type**: {type}
 **Description**: {description}
+**Verbatim user report**: {exact words from the user — argument string, Question 3 answer, or source text. Never paraphrased, never summarized, never reformatted.}
 **How to reproduce**: {reproduction steps, or omit entirely if not provided}
 ```
+
+**"Verbatim user report" rules:**
+
+- REQUIRED — always populated. This field is never omitted.
+- Source by mode:
+  - **Guided intake**: the user's exact answer to Question 3 (Description), captured before any structuring.
+  - **Quick mode**: the full `<item_title/>` argument string, character for character.
+  - **`--auto` mode**: the full `<item_title/>` argument string, character for character.
+- NEVER edit, summarize, paraphrase, clean up, or reformat this field. It is a verbatim record of the user's original words.
+- Purpose: future readers can understand the user's actual intent, not an AI's interpretation of it.
 
 **"How to reproduce" rules:**
 
@@ -208,6 +222,7 @@ Call the `mcp__plugin_dh_backlog__backlog_add` tool:
 | `source` | `"{source}"` |
 | `type` | `"{type}"` |
 | `how_to_reproduce` | `"{reproduction steps}"` if provided; omit parameter entirely if not |
+| `verbatim_user_report` | `"{exact user words}"` — always provide; never omit |
 | `create_issue` | `true` if P0/P1 and user confirmed; `false` if P2/Ideas or user declined |
 
 Check the returned dict for `error` key.
