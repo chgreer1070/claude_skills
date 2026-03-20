@@ -6,6 +6,7 @@ All functions that previously used typer.echo() accept an optional Output parame
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from typing import TYPE_CHECKING, TypedDict
@@ -39,6 +40,8 @@ from .parsing import (
 if TYPE_CHECKING:
     from github.Issue import Issue, SubIssue
     from github.Repository import Repository
+
+logger = logging.getLogger(__name__)
 
 _HTTP_NOT_FOUND = 404
 
@@ -244,11 +247,13 @@ def try_get_github(repo: str = DEFAULT_REPO) -> Repository | None:
     """
     token = os.environ.get("GITHUB_TOKEN")
     if not token:
+        logger.warning("try_get_github: GITHUB_TOKEN not set in environment")
         return None
     try:
         gh = Github(auth=Auth.Token(token), timeout=10)
         return gh.get_repo(repo)
-    except GithubException:
+    except GithubException as e:
+        logger.warning("try_get_github: %s", e)
         return None
 
 

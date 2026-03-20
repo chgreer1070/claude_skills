@@ -1,0 +1,14 @@
+feature: backlog-mcp-github-tools-followup-1
+version: '1.0'
+description: ''
+goal: |-
+  Remove the backlog_debug_env temporary tool from the live MCP server
+tasks:
+- id: T1
+  title: Remove backlog_debug_env temporary tool from server.py
+  status: not-started
+  agent: python-cli-architect
+  priority: 2
+  complexity: low
+  skills:
+  - python3-development
