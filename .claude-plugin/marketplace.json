@@ -34,7 +34,7 @@
       "source": "./plugins/dasel"
     },
     {
-      "name": "dh",
+      "name": "development-harness",
       "source": "./plugins/development-harness"
     },
     {
