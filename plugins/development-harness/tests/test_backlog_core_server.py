@@ -218,6 +218,144 @@ async def test_backlog_list_backlog_error_returns_error_key():
     assert response["error"] == "backlog dir missing"
 
 
+async def test_backlog_list_search_filters_across_title_description_topic_type():
+    """backlog_list search= matches items where any of title, description, topic, or type contains the needle."""
+    items = [
+        {"title": "SAM migration", "description": "migrate tasks", "topic": "devops", "type": "Feature"},
+        {"title": "Auth bug", "description": "oauth token issue", "topic": "security", "type": "Bug"},
+        {"title": "Docs update", "description": "update readme", "topic": "sam-related", "type": "Docs"},
+        {"title": "Refactor", "description": "clean up", "topic": "quality", "type": "Refactor"},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"search": "sam"})
+
+    returned_titles = [item["title"] for item in response["items"]]
+    # "SAM migration" matches title; "Docs update" matches topic "sam-related"
+    assert "SAM migration" in returned_titles
+    assert "Docs update" in returned_titles
+    # Items without "sam" in any field are excluded
+    assert "Auth bug" not in returned_titles
+    assert "Refactor" not in returned_titles
+
+
+async def test_backlog_list_search_is_case_insensitive():
+    """backlog_list search= comparison is case-insensitive."""
+    items = [
+        {"title": "SAM Pipeline", "description": "", "topic": "", "type": "Feature"},
+        {"title": "unrelated", "description": "", "topic": "", "type": "Bug"},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response_lower = await _call("backlog_list", {"search": "sam"})
+        response_upper = await _call("backlog_list", {"search": "SAM"})
+
+    assert response_lower["items"] == response_upper["items"]
+    assert len(response_lower["items"]) == 1
+    assert response_lower["items"][0]["title"] == "SAM Pipeline"
+
+
+async def test_backlog_list_search_none_returns_all_items():
+    """backlog_list without search= does not filter by search and returns all items."""
+    items = [
+        {"title": "Item A", "description": "", "topic": "", "type": "Feature"},
+        {"title": "Item B", "description": "", "topic": "", "type": "Bug"},
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {})
+
+    assert response["pagination"]["total"] == 2
+    assert len(response["items"]) == 2
+
+
+async def test_backlog_list_pagination_returns_correct_page():
+    """backlog_list offset=10, limit=5 returns items 10-14 from the filtered set."""
+    items = [{"title": f"Item {i}", "description": "", "topic": "", "type": "Feature"} for i in range(20)]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"offset": 10, "limit": 5})
+
+    assert response["pagination"]["offset"] == 10
+    assert response["pagination"]["limit"] == 5
+    assert response["pagination"]["total"] == 20
+    assert response["pagination"]["has_more"] is True
+    assert len(response["items"]) == 5
+    assert response["items"][0]["title"] == "Item 10"
+    assert response["items"][4]["title"] == "Item 14"
+    assert "next_call" in response
+
+
+async def test_backlog_list_pagination_last_page_has_more_false():
+    """backlog_list returns has_more=False when the page exhausts the item list."""
+    items = [{"title": f"Item {i}", "description": "", "topic": "", "type": "Feature"} for i in range(8)]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {"offset": 5, "limit": 5})
+
+    assert response["pagination"]["has_more"] is False
+    assert len(response["items"]) == 3  # items 5, 6, 7
+    assert "next_call" not in response
+
+
+async def test_backlog_list_autopagination_stays_within_token_budget():
+    """backlog_list auto-pagination (limit=0) keeps response JSON under ~17600 chars."""
+    import json
+
+    # 500 items with a realistic-sized description each (~200 chars per item serialised).
+    items = [
+        {
+            "title": f"Backlog item number {i:04d}",
+            "description": "A detailed description of this backlog item that is moderately long.",
+            "topic": "engineering",
+            "type": "Feature",
+            "priority": "P1",
+            "issue": f"#{i}",
+            "plan": "",
+        }
+        for i in range(500)
+    ]
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {})
+
+    # The items sub-list alone must fit in the budget.
+    items_json_len = len(json.dumps(response["items"]))
+    assert items_json_len <= 17_600
+    assert response["pagination"]["has_more"] is True
+    assert "next_call" in response
+
+
+async def test_backlog_list_search_combined_with_section_filter():
+    """backlog_list search= and section= can be combined — both filters apply."""
+    items = [
+        {"title": "SAM auth", "description": "", "topic": "", "type": "Feature", "priority": "P1"},
+        {"title": "SAM deploy", "description": "", "topic": "", "type": "Feature", "priority": "P2"},
+    ]
+    # Operations layer already applied the section filter before returning items.
+    op_result = {"items": items}
+    with patch("backlog_core.operations.list_items", return_value=op_result) as mock_list:
+        response = await _call("backlog_list", {"section": "P1", "search": "sam"})
+
+    # section is forwarded to operations
+    assert mock_list.call_args.kwargs["section"] == "P1"
+    # search is applied in the tool layer — both items match "sam"
+    assert len(response["items"]) == 2
+
+
+async def test_backlog_list_response_includes_pagination_key_always():
+    """backlog_list always includes a pagination key in a successful response."""
+    op_result = {"items": [{"title": "X", "description": "", "topic": "", "type": "Bug"}]}
+    with patch("backlog_core.operations.list_items", return_value=op_result):
+        response = await _call("backlog_list", {})
+
+    assert "pagination" in response
+    assert "offset" in response["pagination"]
+    assert "limit" in response["pagination"]
+    assert "total" in response["pagination"]
+    assert "has_more" in response["pagination"]
+
+
 # ---------------------------------------------------------------------------
 # backlog_view
 # ---------------------------------------------------------------------------

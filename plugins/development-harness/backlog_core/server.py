@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json as _json
 import sys
 from typing import Annotated
 
@@ -12,6 +13,9 @@ from pydantic import Field
 
 from . import operations
 from .models import BacklogError, Output, init as _init_models
+
+# Token budget for auto-pagination in backlog_list: ~4400 tokens at ~4 chars/token.
+_LIST_TOKEN_BUDGET_CHARS = 17_600
 
 
 def _parse_args() -> argparse.Namespace:
@@ -126,6 +130,29 @@ async def backlog_list(
     include_closed: Annotated[
         bool, Field(description="Include items with closed/done/resolved status (excluded by default)")
     ] = False,
+    search: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Case-insensitive substring search across title, description, topic, and type simultaneously. "
+                "Unlike title= which only matches the title field, search= matches any of these fields. "
+                "Combine with other filters to narrow results further."
+            )
+        ),
+    ] = None,
+    offset: Annotated[
+        int, Field(ge=0, description="Skip the first N items from the filtered result set (for pagination).")
+    ] = 0,
+    limit: Annotated[
+        int,
+        Field(
+            ge=0,
+            description=(
+                "Maximum number of items to return. 0 = auto-paginate to stay within ~4400 token budget "
+                "(~17600 chars). Caller can override with an explicit positive value."
+            ),
+        ),
+    ] = 0,
 ) -> dict:
     """List all open backlog items.
 
@@ -137,10 +164,16 @@ async def backlog_list(
     Use type_ to filter by metadata.type exact match (e.g. Bug, Feature).
     Use topic to filter by metadata.topic substring match.
     Use include_closed=true to include items with terminal status (done, resolved, closed).
+    Use search to search across title, description, topic, and type simultaneously.
+    Use offset and limit to paginate results. When limit=0, auto-pagination keeps the
+    JSON response under ~17600 characters (~4400 tokens). When has_more=true, call again
+    with the offset shown in next_call.
 
     Returns:
-        Dict with items list (each containing title, priority, issue, plan, type, topic)
-        and output messages/warnings. On error, dict contains an error key.
+        Dict with items list, count, pagination object, and output messages/warnings.
+        pagination contains offset, limit, total, and has_more. When has_more=true,
+        next_call provides the suggested follow-up call string.
+        On error, dict contains an error key.
     """
     out = Output()
     try:
@@ -157,9 +190,55 @@ async def backlog_list(
             include_closed=include_closed,
             output=out,
         )
-        return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
+
+    all_items: list[dict] = result.get("items", [])
+
+    # Apply cross-field search filter when requested.
+    if search is not None:
+        needle = search.casefold()
+        filtered: list[dict] = []
+        for item in all_items:
+            haystack = " ".join(
+                str(item.get(field, "") or "") for field in ("title", "description", "topic", "type")
+            ).casefold()
+            if needle in haystack:
+                filtered.append(item)
+        all_items = filtered
+
+    total = len(all_items)
+
+    # Determine effective page limit.
+    if limit > 0:
+        # Caller requested an explicit limit — honour it exactly.
+        effective_limit = limit
+    else:
+        # Auto-paginate: binary-search for the largest slice that fits the budget.
+        # Start with all items and halve until the serialised size fits.
+        candidate = all_items[offset:]
+        effective_limit = len(candidate)
+        while effective_limit > 1:
+            serialised_len = len(_json.dumps(candidate[:effective_limit]))
+            if serialised_len <= _LIST_TOKEN_BUDGET_CHARS:
+                break
+            effective_limit = max(1, effective_limit // 2)
+
+    page_items = all_items[offset : offset + effective_limit]
+    has_more = (offset + effective_limit) < total
+    next_offset = offset + effective_limit
+
+    pagination: dict = {"offset": offset, "limit": effective_limit, "total": total, "has_more": has_more}
+    response: dict = {
+        **result,
+        "items": page_items,
+        "count": len(page_items),
+        "pagination": pagination,
+        **out.to_dict(),
+    }
+    if has_more:
+        response["next_call"] = f"backlog_list(offset={next_offset}, limit={effective_limit})"
+    return response
 
 
 @mcp.tool

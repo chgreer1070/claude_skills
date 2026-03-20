@@ -8,6 +8,7 @@ Tools:
     sam_state   — Update a task's status
     sam_ready   — List ready tasks for a plan
     sam_status  — Get plan-level progress summary
+    sam_list    — List all plans with search and pagination
     sam_create  — Create a new plan from YAML task definitions
     sam_update  — Update plan or task fields, or append a section
     sam_claim   — Claim a task (transition to in-progress)
@@ -37,6 +38,9 @@ from sam_schema.core.query import (
     update_status,
 )
 
+# Token budget for auto-pagination: ~4400 tokens x 4 chars/token = 17,600 chars.
+_TOKEN_BUDGET_CHARS: int = 17_600
+
 mcp: FastMCP = FastMCP(
     "sam",
     instructions=(
@@ -46,6 +50,7 @@ mcp: FastMCP = FastMCP(
         "Use sam_state to update task status. "
         "Use sam_ready to list tasks ready for dispatch. "
         "Use sam_status for a plan-level progress summary. "
+        "Use sam_list to enumerate all plans with optional search and pagination. "
         "Use sam_create to create a new plan from YAML task definitions. "
         "Use sam_update to set fields or append a markdown section to a task body."
     ),
@@ -168,6 +173,160 @@ def sam_status(
         return result.model_dump(mode="json")
     except Exception as exc:  # noqa: BLE001
         return {"error": str(exc)}
+
+
+def _paginate_results(
+    all_items: list[dict[str, Any]],
+    *,
+    offset: int,
+    limit: int | None,
+    messages: list[str],
+    warnings: list[str],
+    errors: list[str],
+    tool_name: str,
+) -> dict[str, Any]:
+    """Paginate ``all_items`` within the token budget and return the response dict.
+
+    Returns:
+        Dict with ``items``, ``count``, ``pagination``, ``messages``, ``warnings``, ``errors``,
+        and optionally ``next_call``.
+    """
+    total = len(all_items)
+    page_items = all_items[offset:]
+
+    if limit is not None:
+        effective_limit = limit
+    else:
+        effective_limit = len(page_items)
+        for candidate_limit in range(1, len(page_items) + 1):
+            if len(json.dumps(page_items[:candidate_limit])) > _TOKEN_BUDGET_CHARS:
+                effective_limit = max(1, candidate_limit - 1)
+                break
+
+    page = page_items[:effective_limit]
+    has_more = (offset + len(page)) < total
+    result: dict[str, Any] = {
+        "items": page,
+        "count": len(page),
+        "pagination": {"offset": offset, "limit": effective_limit, "total": total, "has_more": has_more},
+        "messages": messages,
+        "warnings": warnings,
+        "errors": errors,
+    }
+    if has_more:
+        next_offset = offset + len(page)
+        result["next_call"] = f"{tool_name}(offset={next_offset}, limit={effective_limit})"
+    return result
+
+
+def _plan_matches_search(plan_dict: dict[str, Any], search: str) -> bool:
+    """Return True if ``search`` appears (case-insensitive) in any text field of ``plan_dict``.
+
+    Checks ``feature``, ``description``, and ``goal`` — the Plan model's text fields.
+
+    Args:
+        plan_dict: JSON-serializable plan dict from ``Plan.model_dump``.
+        search: Substring to search for (case-insensitive).
+
+    Returns:
+        True if the search term is found in any of the checked fields.
+    """
+    needle = search.lower()
+    for field in ("feature", "description", "goal"):
+        value = plan_dict.get(field)
+        if isinstance(value, str) and needle in value.lower():
+            return True
+    return False
+
+
+@mcp.tool
+def sam_list(
+    plan_dir: Annotated[str, Field(description="Plan directory path")] = "plan",
+    search: Annotated[
+        str | None, Field(description="Case-insensitive substring filter across feature, description, and goal fields")
+    ] = None,
+    offset: Annotated[int, Field(description="Zero-based index of the first item to return", ge=0)] = 0,
+    limit: Annotated[
+        int | None,
+        Field(
+            description="Maximum number of items to return. Defaults to auto-calculated value within ~4400-token budget"
+        ),
+    ] = None,
+) -> dict:
+    """List all plans in ``plan_dir`` with optional search and automatic pagination.
+
+    Reads every plan file found in ``plan_dir``, applies optional search filtering,
+    then returns a page of results within the ~4400-token budget (~17,600 characters
+    of JSON-serialized output).
+
+    Search filtering checks the ``feature``, ``description``, and ``goal`` fields
+    simultaneously, case-insensitively.  The ``offset`` and ``limit`` parameters
+    let callers page through results explicitly.  When ``limit`` is omitted, the
+    tool calculates a default limit that keeps the response within budget.
+
+    When ``has_more`` is true in the ``pagination`` object, use the ``next_call``
+    hint to request the next page.
+
+    Args:
+        plan_dir: Directory to scan for plan files (``*.yaml``, ``*.md``,
+                  or subdirectories that are plan directories).
+        search: Optional substring to filter by. Matched case-insensitively
+                against ``feature``, ``description``, and ``goal`` fields.
+        offset: Zero-based start index into the (filtered) result list.
+        limit: Maximum items to return. Defaults to a budget-based calculation.
+
+    Returns:
+        Dict with keys:
+
+        - ``items``: list of plan summary dicts (``feature``, ``goal``,
+          ``description``, ``task_count``, ``path``).
+        - ``count``: number of items in this page.
+        - ``pagination``: ``{"offset": N, "limit": N, "total": N, "has_more": bool}``.
+        - ``next_call``: hint string when ``has_more`` is true.
+        - ``messages``: list of informational strings.
+        - ``warnings``: list of non-fatal warning strings.
+        - ``errors``: list of error strings (e.g. unreadable files).
+    """
+    p_dir = Path(plan_dir)
+    warnings: list[str] = []
+    errors: list[str] = []
+    messages: list[str] = []
+
+    if not p_dir.exists():
+        return {
+            "items": [],
+            "count": 0,
+            "pagination": {"offset": offset, "limit": limit or 0, "total": 0, "has_more": False},
+            "messages": messages,
+            "warnings": warnings,
+            "errors": [f"Plan directory does not exist: {plan_dir}"],
+        }
+
+    # Collect all plan candidates (yaml/md files and plan directories).
+    candidates: list[Path] = sorted(c for c in p_dir.iterdir() if c.suffix in {".yaml", ".md"} or c.is_dir())
+
+    # Load each candidate into a summary dict, skipping unreadable files.
+    all_items: list[dict[str, Any]] = []
+    for candidate in candidates:
+        try:
+            read_result = load_plan(candidate)
+            plan = read_result.plan
+            plan_dict = plan.model_dump(mode="json", by_alias=True, exclude_none=True)
+            summary: dict[str, Any] = {
+                "feature": plan.feature,
+                "goal": plan.goal,
+                "description": plan.description,
+                "task_count": len(plan.tasks),
+                "path": str(plan.source_path or candidate),
+            }
+            if search is None or _plan_matches_search(plan_dict, search):
+                all_items.append(summary)
+        except Exception as exc:  # noqa: BLE001
+            warnings.append(f"Skipped {candidate.name}: {exc}")
+
+    return _paginate_results(
+        all_items, offset=offset, limit=limit, messages=messages, warnings=warnings, errors=errors, tool_name="sam_list"
+    )
 
 
 @mcp.tool

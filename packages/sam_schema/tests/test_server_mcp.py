@@ -71,7 +71,7 @@ def plan_dir(tmp_path: Path) -> Path:
 
 
 async def test_server_lists_expected_tools() -> None:
-    """Server exposes exactly the seven documented tools via the MCP protocol.
+    """Server exposes exactly the eight documented tools via the MCP protocol.
 
     Tests: tool registration completeness through the MCP protocol.
     How: Call list_tools() via in-memory Client.
@@ -83,7 +83,16 @@ async def test_server_lists_expected_tools() -> None:
 
     # Assert
     tool_names = {t.name for t in tools}
-    assert tool_names == {"sam_read", "sam_state", "sam_ready", "sam_status", "sam_create", "sam_update", "sam_claim"}
+    assert tool_names == {
+        "sam_read",
+        "sam_state",
+        "sam_ready",
+        "sam_status",
+        "sam_list",
+        "sam_create",
+        "sam_update",
+        "sam_claim",
+    }
 
 
 def test_server_instructions_are_set() -> None:
@@ -424,3 +433,220 @@ async def test_mcp_sam_update_sets_context(tmp_path: Path) -> None:
     # Assert
     assert update_result.data.get("updated") is True
     assert read_result.data.get("plan-context") == "MCP context text."
+
+
+# ---------------------------------------------------------------------------
+# sam_list via MCP protocol
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def multi_plan_dir(tmp_path: Path) -> Path:
+    """Write three plan files in a plan directory and return its path.
+
+    Directory layout::
+
+        tmp_path/
+        └── plan/
+            ├── tasks-1-alpha-feature.yaml   (goal: "Implement alpha")
+            ├── tasks-2-beta-feature.yaml    (goal: "Implement beta")
+            └── tasks-3-gamma-search.yaml    (goal: "Search integration")
+
+    Returns:
+        Path to the plan directory (``tmp_path/plan``).
+    """
+    p_dir = tmp_path / "plan"
+    p_dir.mkdir()
+
+    for plan_num, feature, goal in [
+        (1, "alpha-feature", "Implement alpha"),
+        (2, "beta-feature", "Implement beta"),
+        (3, "gamma-search", "Search integration"),
+    ]:
+        tasks = [make_task("T1")]
+        plan = Plan(feature=feature, version="1.0", goal=goal, tasks=tasks)
+        write_plan(plan, p_dir / f"tasks-{plan_num}-{feature}.yaml", force_single=True)
+
+    return p_dir
+
+
+async def test_sam_list_returns_all_plans_with_response_shape(multi_plan_dir: Path) -> None:
+    """sam_list returns all plans with expected response keys via MCP protocol.
+
+    Tests: sam_list happy path — no filters, no explicit limit.
+    How: Call sam_list with only plan_dir; verify shape and count.
+    Why: Confirms tool registration, return shape, and pagination object presence.
+    """
+    # Act
+    async with Client(mcp) as client:
+        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir)})
+
+    # Assert
+    data = result.data
+    assert isinstance(data, dict)
+    assert "errors" not in data or data["errors"] == []
+    assert "items" in data
+    assert "count" in data
+    assert "pagination" in data
+    assert "messages" in data
+    assert "warnings" in data
+    assert data["count"] == 3
+    assert data["pagination"]["total"] == 3
+    assert data["pagination"]["has_more"] is False
+    assert data["pagination"]["offset"] == 0
+
+
+async def test_sam_list_search_filters_by_feature_substring(multi_plan_dir: Path) -> None:
+    """sam_list search parameter filters plans by feature name substring.
+
+    Tests: search across feature field (case-insensitive).
+    How: Pass search="alpha"; only alpha-feature plan should match.
+    Why: Core search requirement — single field match.
+    """
+    # Act
+    async with Client(mcp) as client:
+        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir), "search": "alpha"})
+
+    # Assert
+    data = result.data
+    assert data["count"] == 1
+    assert data["items"][0]["feature"] == "alpha-feature"
+    assert data["pagination"]["total"] == 1
+
+
+async def test_sam_list_search_filters_by_goal_substring(multi_plan_dir: Path) -> None:
+    """sam_list search parameter filters plans by goal substring.
+
+    Tests: search across goal field (case-insensitive).
+    How: Pass search="search"; only gamma-search plan (goal="Search integration") matches.
+    Why: Confirms multi-field search includes goal.
+    """
+    # Act
+    async with Client(mcp) as client:
+        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir), "search": "search"})
+
+    # Assert
+    data = result.data
+    assert data["count"] == 1
+    assert data["items"][0]["feature"] == "gamma-search"
+
+
+async def test_sam_list_search_case_insensitive(multi_plan_dir: Path) -> None:
+    """sam_list search is case-insensitive.
+
+    Tests: uppercase search term matches lowercase field values.
+    How: Pass search="BETA"; beta-feature plan should match.
+    Why: Case-insensitive matching is a stated requirement.
+    """
+    # Act
+    async with Client(mcp) as client:
+        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir), "search": "BETA"})
+
+    # Assert
+    data = result.data
+    assert data["count"] == 1
+    assert data["items"][0]["feature"] == "beta-feature"
+
+
+async def test_sam_list_search_no_match_returns_empty_items(multi_plan_dir: Path) -> None:
+    """sam_list search with no matches returns empty items list with total=0.
+
+    Tests: sam_list search zero-results path.
+    How: Pass search="zzznotfound"; no plan should match.
+    Why: Callers must handle empty results without errors.
+    """
+    # Act
+    async with Client(mcp) as client:
+        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir), "search": "zzznotfound"})
+
+    # Assert
+    data = result.data
+    assert data["count"] == 0
+    assert data["items"] == []
+    assert data["pagination"]["total"] == 0
+    assert data["pagination"]["has_more"] is False
+
+
+async def test_sam_list_offset_and_limit_returns_correct_page(multi_plan_dir: Path) -> None:
+    """sam_list offset and limit return the requested page of results.
+
+    Tests: explicit pagination — offset=1, limit=1 returns second item only.
+    How: Call with offset=1, limit=1 on three-plan directory.
+    Why: Callers must be able to page through results deterministically.
+    """
+    # Arrange — get all items first to know sort order
+    async with Client(mcp) as client:
+        all_result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir)})
+        all_features = [item["feature"] for item in all_result.data["items"]]
+
+        # Act — page 2 (offset=1, limit=1)
+        page_result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir), "offset": 1, "limit": 1})
+
+    # Assert
+    data = page_result.data
+    assert data["count"] == 1
+    assert data["items"][0]["feature"] == all_features[1]
+    assert data["pagination"]["offset"] == 1
+    assert data["pagination"]["limit"] == 1
+    assert data["pagination"]["total"] == 3
+    assert data["pagination"]["has_more"] is True
+    assert "next_call" in data
+
+
+async def test_sam_list_has_more_true_includes_next_call_hint(multi_plan_dir: Path) -> None:
+    """sam_list includes next_call hint when has_more is true.
+
+    Tests: next_call field present and non-empty when pagination continues.
+    How: Request limit=1 on three-plan directory — must have more.
+    Why: Callers use next_call to construct the follow-up request.
+    """
+    # Act
+    async with Client(mcp) as client:
+        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir), "limit": 1})
+
+    # Assert
+    data = result.data
+    assert data["pagination"]["has_more"] is True
+    assert "next_call" in data
+    assert "sam_list" in data["next_call"]
+    assert "offset=1" in data["next_call"]
+
+
+async def test_sam_list_nonexistent_plan_dir_returns_error(tmp_path: Path) -> None:
+    """sam_list with non-existent plan_dir returns errors list, not a raise.
+
+    Tests: sam_list error path for missing directory.
+    How: Pass plan_dir pointing to a path that does not exist.
+    Why: MCP tools must not raise — error information must be in the response dict.
+    """
+    # Act
+    async with Client(mcp) as client:
+        result = await client.call_tool("sam_list", {"plan_dir": str(tmp_path / "nonexistent")})
+
+    # Assert
+    data = result.data
+    assert isinstance(data, dict)
+    assert data["count"] == 0
+    assert len(data["errors"]) > 0
+    assert data["pagination"]["total"] == 0
+
+
+async def test_sam_list_items_include_required_summary_fields(multi_plan_dir: Path) -> None:
+    """sam_list items contain feature, goal, description, task_count, and path.
+
+    Tests: item shape completeness.
+    How: Call sam_list with no args, inspect first item keys.
+    Why: Callers depend on these fields to route plan selection decisions.
+    """
+    # Act
+    async with Client(mcp) as client:
+        result = await client.call_tool("sam_list", {"plan_dir": str(multi_plan_dir)})
+
+    # Assert
+    item = result.data["items"][0]
+    assert "feature" in item
+    assert "goal" in item
+    assert "description" in item
+    assert "task_count" in item
+    assert "path" in item
+    assert item["task_count"] == 1
