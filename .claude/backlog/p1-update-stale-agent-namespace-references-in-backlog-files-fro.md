@@ -9,4 +9,5 @@ metadata:
   type: Chore
   status: open
   plan: plan/P780-deduplicate-agents-phase4-followup-2.yaml
+  issue: '#937'
 ---

@@ -9,4 +9,5 @@ metadata:
   type: Bug
   status: open
   plan: plan/P779-deduplicate-agents-phase4-followup-1.yaml
+  issue: '#936'
 ---
