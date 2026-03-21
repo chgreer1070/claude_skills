@@ -74,13 +74,57 @@ Fix the regressions, then re-run /complete-implementation.
 
 ## Phase 1: Code Review
 
-Query plan status and pass `TaskAssignment` JSON to `code-reviewer`:
+### Resolve Code-Reviewer Role
+
+Before launching the code review agent, resolve the `code-reviewer` role from the active language manifest.
+
+**Step 1 — Detect project language.**
+
+Scan the project root for language markers:
+
+- `pyproject.toml`, `setup.py`, `setup.cfg` → Python
+- `package.json`, `tsconfig.json` → TypeScript/JavaScript
+- `Cargo.toml` → Rust
+- `go.mod` → Go
+
+**Step 2 — Find and parse the language manifest.**
+
+Search installed language plugins for `references/language-manifest.md` matching the detected language. For Python, look for the file at:
+
+```text
+plugins/python3-development/skills/python3-development/references/language-manifest.md
+```
+
+Parse the `## Role Fulfillment` section and extract the value for `code-reviewer`.
+
+**Step 3 — Apply fallback if manifest is absent or role is undeclared.**
+
+If no manifest is found, or the manifest does not declare `code-reviewer`, use `@python3-development:code-reviewer` as the fallback agent.
+
+```mermaid
+flowchart TD
+    Scan[Scan project root for language markers] --> Found{Language identified?}
+    Found -->|Yes| Search[Search language plugin for<br>references/language-manifest.md]
+    Found -->|No| Fallback[Use general-purpose agent]
+    Search --> Exists{Manifest found?}
+    Exists -->|Yes| Parse[Parse Role Fulfillment section<br>extract code-reviewer entry]
+    Exists -->|No| Fallback
+    Parse --> Declared{code-reviewer declared?}
+    Declared -->|Yes| UseManifest[Use agent from manifest]
+    Declared -->|No| Fallback
+    UseManifest --> Launch([Launch resolved agent])
+    Fallback --> Launch
+```
+
+### Run Code Review
+
+Query plan status and pass `TaskAssignment` JSON to the resolved `code-reviewer` agent:
 
 ```bash
 uv run sam status P{N} --format json
 ```
 
-Launch `code-reviewer` with the `TaskAssignment` JSON output (not the raw file path).
+Launch the resolved code-reviewer agent with the `TaskAssignment` JSON output (not the raw file path).
 
 ---
 
