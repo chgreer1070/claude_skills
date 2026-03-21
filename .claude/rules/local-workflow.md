@@ -19,7 +19,7 @@ The SAM (Structured Agent-Managed) workflow converts a feature idea into executa
 | `/complete-implementation` | [.claude/skills/complete-implementation/SKILL.md](./../skills/complete-implementation/SKILL.md) | Quality gates after all tasks are COMPLETE |
 | `/implementation-manager` | [.claude/skills/implementation-manager/SKILL.md](./../skills/implementation-manager/SKILL.md) | Query task status (not user-invocable, used by orchestrator) |
 
-Plugin-level source copies exist at `plugins/python3-development/skills/development/` for each skill.
+Plugin-level source copies exist at `plugins/development-harness/skills/` for each skill.
 
 ---
 
@@ -59,8 +59,8 @@ When `acceptance-criteria-structured` is non-empty, `swarm-task-planner` also ge
 | `swarm-task-planner` | — | [plugins/development-harness/agents/swarm-task-planner.md](./../../plugins/development-harness/agents/swarm-task-planner.md) |
 | `plan-validator` | — | [plugins/development-harness/agents/plan-validator.md](./../../plugins/development-harness/agents/plan-validator.md) |
 | `context-gathering` | — | [plugins/development-harness/agents/context-gathering.md](./../../plugins/development-harness/agents/context-gathering.md) |
-| `t0-baseline-capture` | [plugins/python3-development/agents/t0-baseline-capture.md](./../../plugins/python3-development/agents/t0-baseline-capture.md) | — |
-| `tn-verification-gate` | [plugins/python3-development/agents/tn-verification-gate.md](./../../plugins/python3-development/agents/tn-verification-gate.md) | — |
+| `t0-baseline-capture` | — | [plugins/development-harness/agents/t0-baseline-capture.md](./../../plugins/development-harness/agents/t0-baseline-capture.md) |
+| `tn-verification-gate` | — | [plugins/development-harness/agents/tn-verification-gate.md](./../../plugins/development-harness/agents/tn-verification-gate.md) |
 
 ### Task File Format
 
@@ -124,7 +124,7 @@ hooks:
   SubagentStop:
   - hooks:
     - type: command
-      command: python3 "./plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py"
+      command: python3 "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/task_status_hook.py"
 ```
 
 ### Execution Loop
@@ -193,7 +193,7 @@ hooks:
   - matcher: Write|Edit|Bash
     hooks:
     - type: command
-      command: python3 "./plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py"
+      command: python3 "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/task_status_hook.py"
 ```
 
 ### Actions
@@ -225,9 +225,9 @@ Two paths:
 
 ## Hook Script: task_status_hook.py
 
-Script: [plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py](./../../plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py)
+Script: [plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py](./../../plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py)
 
-Shared utilities: [plugins/python3-development/skills/implementation-manager/scripts/task_format.py](./../../plugins/python3-development/skills/implementation-manager/scripts/task_format.py)
+Shared utilities: `sam_schema` package (internal — not a standalone script file).
 
 ### Event Handling
 
@@ -272,8 +272,8 @@ Final:   commit + push          -> Stage and commit all remaining modified files
 | `doc-drift-auditor` | — | [plugins/development-harness/agents/doc-drift-auditor.md](./../../plugins/development-harness/agents/doc-drift-auditor.md) |
 | `service-docs-maintainer` | — | [plugins/development-harness/agents/service-docs-maintainer.md](./../../plugins/development-harness/agents/service-docs-maintainer.md) |
 | `context-refinement` | — | [plugins/development-harness/agents/context-refinement.md](./../../plugins/development-harness/agents/context-refinement.md) |
-| `t0-baseline-capture` | [plugins/python3-development/agents/t0-baseline-capture.md](./../../plugins/python3-development/agents/t0-baseline-capture.md) | — |
-| `tn-verification-gate` | [plugins/python3-development/agents/tn-verification-gate.md](./../../plugins/python3-development/agents/tn-verification-gate.md) | — |
+| `t0-baseline-capture` | — | [plugins/development-harness/agents/t0-baseline-capture.md](./../../plugins/development-harness/agents/t0-baseline-capture.md) |
+| `tn-verification-gate` | — | [plugins/development-harness/agents/tn-verification-gate.md](./../../plugins/development-harness/agents/tn-verification-gate.md) |
 
 ### Cross-Plugin Dependency
 
@@ -300,7 +300,7 @@ The `sam` CLI is the canonical interface for all SAM task file operations. Use `
 
 | Command | Usage | Output |
 |---------|-------|--------|
-| `list` | `uv run sam list` | JSON: `{features: [...], count: N}` |
+| `list` | `uv run sam list [--search TEXT]` | JSON: `{items: [...], count: N, total: N}` |
 | `status` | `uv run sam status P{N}` | JSON: task counts, ready tasks, all tasks with details |
 | `ready` | `uv run sam ready P{N}` | JSON: `{ready_tasks: [...], count: N}` |
 | `read` | `uv run sam read P{N} --format json` | JSON: full plan with task fields and context |
@@ -314,9 +314,8 @@ The `sam` CLI is the canonical interface for all SAM task file operations. Use `
 | Script | Path | Purpose |
 |--------|------|---------|
 | `sam` CLI | `uv run sam` | Canonical interface for all task file I/O (status, ready, read, claim, update) |
-| `task_status_hook.py` | [plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py](./../../plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py) | Hook script for automatic status/timestamp updates |
-| `task_format.py` | [plugins/python3-development/skills/implementation-manager/scripts/task_format.py](./../../plugins/python3-development/skills/implementation-manager/scripts/task_format.py) | Shared YAML frontmatter utilities (internal to sam_schema) |
-| `get_task_context.py` | [plugins/python3-development/skills/implementation-manager/scripts/get_task_context.py](./../../plugins/python3-development/skills/implementation-manager/scripts/get_task_context.py) | Dynamic context injection for implementation-manager skill |
+| `task_status_hook.py` | [plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py](./../../plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py) | Hook script for automatic status/timestamp updates |
+| `get_task_context.py` | [plugins/development-harness/skills/implementation-manager/scripts/get_task_context.py](./../../plugins/development-harness/skills/implementation-manager/scripts/get_task_context.py) | Dynamic context injection for implementation-manager skill |
 | `split_task_file.py` | [plugins/python3-development/scripts/split_task_file.py](./../../plugins/python3-development/scripts/split_task_file.py) | Split monolithic task files into individual files |
 | `migrate_task_format.py` | [plugins/python3-development/scripts/migrate_task_format.py](./../../plugins/python3-development/scripts/migrate_task_format.py) | Migrate legacy markdown to YAML frontmatter format |
 
