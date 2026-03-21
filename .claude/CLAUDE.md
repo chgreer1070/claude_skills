@@ -448,6 +448,8 @@ uv run prek run --files <file>
 
 **Reason**: Repository uses `prek` (Rust-based pre-commit replacement) with `.pre-commit-config.yaml` — identical syntax to `pre-commit` but faster.
 
+**ty type errors**: Fix the code to satisfy the type checker — inline `# ty: ignore` suppressions and per-file-ignores relaxation are prohibited. Unresolved imports: add missing dependencies via `uv add --dev` or fix the import path. Type mismatches in tests: use `model_validate()` for raw-input testing instead of passing untyped values to typed constructors.
+
 ---
 
 - Linting Exception Conditions: `.claude/rules/linting-exceptions.md`
