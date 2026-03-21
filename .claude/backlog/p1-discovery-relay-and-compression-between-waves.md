@@ -7,7 +7,27 @@ metadata:
   added: '2026-03-21'
   priority: P1
   type: Feature
-  status: open
+  status: needs-grooming
   issue: '#930'
-  last_synced: '2026-03-21T01:07:15Z'
+  last_synced: '2026-03-21T16:00:04Z'
 ---
+
+## Story
+
+As a **developer using Claude Code skills**, I want to **discovery relay and compression between waves** so that **the tooling becomes more capable and complete**.
+
+## Description
+
+Between waves in /work-milestone, compress completed worker outputs into ~500 token discovery briefs. Inject briefs into next-wave worker prompts to prevent rediscovery. Write briefs to plan/milestone-{N}-wave-{W}-briefs/. Port from Citadel compress-discovery.cjs concept to Python.
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: Citadel assessment .claude/reports/citadel-assessment-20260320.md
+- **Priority**: P1
+- **Added**: 2026-03-21
+- **Research questions**: None

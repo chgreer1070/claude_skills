@@ -11,7 +11,7 @@ user-invocable: true
 
 # Work Backlog Item
 
-Bridge a backlog item into the SAM planning pipeline via `/add-new-feature` (default). Optional `--language` and `--stack` select Layer 1/2 profiles — see [.claude/docs/sdlc-layers/](../../../../.claude/docs/sdlc-layers/).
+Bridge a backlog item into the SAM planning pipeline via `/add-new-feature` (default). Optional `--language` and `--stack` select Layer 1/2 profiles — see [sdlc-layers](../../docs/sdlc-layers/).
 
 **Phase separation**: Grooming (Step 3) is autonomous research — the agent verifies facts, maps resources, estimates effort, and surfaces blockers. Planning (Step 6) is solution design — architecture, tasks, implementation. The human sets priorities and resolves blockers; the agent handles research and fact-checking autonomously.
 
@@ -39,7 +39,7 @@ When invoked with no arguments, shows an interactive browser. When invoked with 
 | `resume` | `<item_ref/>`+ = title or `#N` (optional) | Resume status for an in-progress plan. Step R |
 | (any other) | — | `<invocation_args/>` treated as title substring → planning |
 
-**Optional flags** (when `<mode/>` is title substring or `--auto`): `--language <lang>` selects language plugin (default: python); `--stack <profile>` selects stack profile (e.g., python-fastapi, python-cli). See [.claude/docs/sdlc-layers/](../../../../.claude/docs/sdlc-layers/).
+**Optional flags** (when `<mode/>` is title substring or `--auto`): `--language <lang>` selects language plugin (default: python); `--stack <profile>` selects stack profile (e.g., python-fastapi, python-cli). See [sdlc-layers](../../docs/sdlc-layers/).
 
 ```text
 /work-backlog-item                                    # interactive browser
@@ -328,7 +328,7 @@ This runs the full SAM workflow: discovery, codebase analysis, architecture spec
 After `add-new-feature` completes, identify the task file it created:
 
 ```text
-Glob(pattern="plan/tasks-*-{slug}*")
+Glob(pattern="plan/P*-{slug}*")
 ```
 
 Where `{slug}` is the item title lowercased with spaces replaced by hyphens.
@@ -338,7 +338,7 @@ Call the `mcp__plugin_dh_backlog__backlog_update` tool to add the Plan:
 | Parameter | Value |
 |-----------|-------|
 | `selector` | `"{title}"` |
-| `plan` | `"plan/tasks-{N}-{slug}.md"` |
+| `plan` | `"plan/P{NNN}-{slug}.yaml"` |
 
 If the item has `**Issue**: #N`, record it in the plan file header comment. Do NOT include `Fixes #N`, `Closes #N`, or `Resolves #N` in task-level commit messages — issue closure is handled exclusively by `/complete-implementation` in its final commit step.
 
@@ -381,7 +381,7 @@ Do not stop for user input at any point.
 ```text
 Backlog item "{title}" is now planned.
 
-- Plan file: plan/tasks-{N}-{slug}.md (or plan/tasks-{N}-{slug}/ directory)
+- Plan file: plan/P{NNN}-{slug}.yaml (or plan/P{NNN}-{slug}/ directory)
 - To execute:      /implement-feature {slug}
 - To check status: /implementation-manager status . {slug}
 - To close when done: /work-backlog-item close {slug}

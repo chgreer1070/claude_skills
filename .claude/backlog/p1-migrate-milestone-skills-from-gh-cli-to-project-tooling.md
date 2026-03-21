@@ -1,6 +1,6 @@
 ---
 name: Migrate milestone skills from gh CLI to project tooling
-description: 'Existing milestone skills (/create-milestone, /group-items-to-milestone, /start-milestone, /complete-milestone) use gh api directly. Migrate them to use PyGithub scripts or backlog MCP tools. Per feedback memory: always extend existing project tooling before using non-portable gh CLI.'
+description: <div><sub>2026-03-20T23:38:51Z</sub>
 metadata:
   topic: migrate-milestone-skills-from-gh-cli-to-project-tooling
   source: Milestone orchestration design — .claude/reports/milestone-orchestration-design-20260320.md
@@ -9,7 +9,7 @@ metadata:
   type: Refactor
   status: open
   issue: '#923'
-  last_synced: '2026-03-20T23:38:51Z'
+  last_synced: '2026-03-21T16:00:06Z'
   groomed: '2026-03-20'
 ---
 

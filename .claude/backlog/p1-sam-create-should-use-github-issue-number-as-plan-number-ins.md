@@ -9,7 +9,8 @@ metadata:
   type: Bug
   status: needs-grooming
   issue: '#966'
-  last_synced: '2026-03-21T15:34:19Z'
+  last_synced: '2026-03-21T16:17:29Z'
+  groomed: '2026-03-21'
 ---
 
 ## Story
@@ -31,3 +32,12 @@ sam create assigns plan numbers sequentially (P1, P2, ..., P699) but the issue n
 - **Priority**: P1
 - **Added**: 2026-03-21
 - **Research questions**: None
+
+## Groomed (2026-03-21)
+
+### Progress
+
+<div><sub>2026-03-21T16:17:29Z</sub>
+
+2026-03-21: Fixed. sam create now uses --issue N as the plan number (P{N}-{slug}.yaml). Collision guard raises error if P{N} already exists. Sequential fallback preserved when --issue is omitted. 735 tests pass including 7 new tests.
+</div>

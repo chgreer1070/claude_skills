@@ -10,7 +10,7 @@ metadata:
   status: needs-grooming
   plan: plan/tasks-28-multi-ecosystem-plugin-creator-followup-3.md
   issue: '#518'
-  last_synced: '2026-03-14T16:00:18Z'
+  last_synced: '2026-03-21T16:00:58Z'
 ---
 
 ## Story

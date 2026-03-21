@@ -7,7 +7,33 @@ metadata:
   added: '2026-03-19'
   priority: P2
   type: Chore
-  status: open
+  status: needs-grooming
   issue: '#849'
-  last_synced: '2026-03-19T02:50:02Z'
+  last_synced: '2026-03-21T16:00:11Z'
 ---
+
+## Story
+
+As a **maintainer of the project infrastructure**, I want to **chore: update peripheral skill references after backlog lift to dh (p778)** so that **the project infrastructure stays healthy**.
+
+## Description
+
+Update stale skill references in three peripheral skills after the backlog skills moved to the `dh:` namespace:
+
+- `.claude/skills/backlog-tools-administrator/references/domain-registry.md` — update backlog skill references to use `dh:` prefix
+- `.claude/skills/evaluate-sdlc-layers/SKILL.md` — update backlog skill references to use `dh:` prefix
+- `.claude/skills/start-milestone/SKILL.md` — update backlog skill references to use `dh:` prefix
+
+Related plan: plan/P778-backlog-lift-to-dh-followup-2.yaml
+
+## Acceptance Criteria
+
+- [ ] Work matches description
+- [ ] Plan or implementation complete
+
+## Context
+
+- **Source**: P778 backlog lift follow-up
+- **Priority**: P2
+- **Added**: 2026-03-19
+- **Research questions**: None

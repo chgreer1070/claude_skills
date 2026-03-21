@@ -23,8 +23,8 @@ $ARGUMENTS
 
 Extract the plan address `P{N}` from the task file path:
 
-- `plan/tasks-3-integrate-sam-schema.md` → plan number `3` → address `P3`
-- Strip `plan/tasks-` prefix, take the leading integer N, format as `P{N}`
+- `plan/P003-integrate-sam-schema.yaml` → plan number `003` → address `P003`
+- Strip `plan/P` prefix, take the leading integer NNN, format as `P{NNN}`
 
 Use `P{N}` in all `sam` CLI calls below.
 
@@ -34,7 +34,7 @@ Use `P{N}` in all `sam` CLI calls below.
 
 Before invoking Phase 1, check for a TN verification report produced by `tn-verification-gate` (which reads the T0 baseline written by `t0-baseline-capture`).
 
-Extract `{slug}` from the task file path (`plan/tasks-{N}-{slug}.md` — strip the `tasks-{N}-` prefix and `.md` suffix).
+Extract `{slug}` from the task file path (`plan/P{NNN}-{slug}.yaml` — strip the `P{NNN}-` prefix and `.yaml` suffix).
 
 Read `plan/TN-verification-{slug}.yaml`.
 
@@ -160,7 +160,7 @@ If drift exists or docs must be updated for the feature, launch `@dh:service-doc
 
 ## Phase 6: Context Refinement
 
-Launch `@dh:context-refinement` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json` to update the Context Manifest with discoveries from implementation AND perform a plan artifact freshness check against the feature-context and architect spec. The agent compares key claims in plan artifacts against the actual implementation and classifies findings as design-refinement or intent-divergence (see [.claude/docs/plan-artifact-lifecycle.md](./../../../../.claude/docs/plan-artifact-lifecycle.md)).
+Launch `@dh:context-refinement` with the `TaskAssignment` JSON from `uv run sam read P{N}/T{M} --format json` to update the Context Manifest with discoveries from implementation AND perform a plan artifact freshness check against the feature-context and architect spec. The agent compares key claims in plan artifacts against the actual implementation and classifies findings as design-refinement or intent-divergence (see [plan-artifact-lifecycle.md](../../docs/plan-artifact-lifecycle.md)).
 
 ---
 
@@ -193,10 +193,10 @@ Extract file paths from the `Task files:` list in the code-reviewer's ARTIFACTS 
 If the `Task files:` list is empty or absent, run a confirmatory glob:
 
 ```bash
-plan/tasks-*-{slug}-followup-*.md
+plan/P*-{slug}-followup-*.yaml
 ```
 
-Where `{slug}` is extracted from the parent task file path (`plan/tasks-{N}-{slug}.md` -- strip `tasks-{N}-` prefix and `.md` suffix).
+Where `{slug}` is extracted from the parent task file path (`plan/P{NNN}-{slug}.yaml` -- strip `P{NNN}-` prefix and `.yaml` suffix).
 
 If both ARTIFACTS and glob return empty: skip the entire routing section (no follow-ups to route).
 
@@ -207,10 +207,10 @@ If both ARTIFACTS and glob return empty: skip the entire routing section (no fol
 For each follow-up file, derive a search slug from the filename using this algorithm:
 
 ```text
-Input:  plan/tasks-8-data-validation-followup-1.md
-Step 1: Strip directory prefix      --> tasks-8-data-validation-followup-1.md
-Step 2: Strip .md extension         --> tasks-8-data-validation-followup-1
-Step 3: Strip tasks-{N}- prefix     --> data-validation-followup-1
+Input:  plan/P008-data-validation-followup-1.yaml
+Step 1: Strip directory prefix      --> P008-data-validation-followup-1.yaml
+Step 2: Strip .yaml extension       --> P008-data-validation-followup-1
+Step 3: Strip P{NNN}- prefix        --> data-validation-followup-1
 Step 4: Strip -followup-{k} suffix  --> data-validation
 Step 5: Replace hyphens with spaces --> data validation
 Output: "data validation"
@@ -264,8 +264,8 @@ If both strategies return zero results, treat as "no match found" and proceed to
 **Error handling**: If either `mcp__plugin_dh_backlog__backlog_list` call fails, log the error, skip
 that strategy, and continue to the next strategy (or to Step 3 as "no match found" if all
 strategies fail). If the follow-up filename does not match the expected
-`tasks-{N}-{slug}-followup-{k}.md` pattern, log a warning and use the full filename (without
-directory prefix and `.md` extension) as the derived slug.
+`P{NNN}-{slug}-followup-{k}.yaml` pattern, log a warning and use the full filename (without
+directory prefix and `.yaml` extension) as the derived slug.
 
 ### Step 3: Link or Create Backlog Item
 
@@ -298,7 +298,7 @@ mcp__plugin_dh_backlog__backlog_update(selector="{derived_title}", plan="{follow
 
 For each follow-up file, evaluate two conditions. BOTH must be true for recursion.
 
-**Condition 1 -- Same session scope (ADR-3)**: The follow-up file's slug matches the parent task file's slug. Extract the slug from each filename: strip the `tasks-{N}-` prefix, then strip `-followup-{k}.md` for the follow-up or `.md` for the parent. Compare the two slugs.
+**Condition 1 -- Same session scope (ADR-3)**: The follow-up file's slug matches the parent task file's slug. Extract the slug from each filename: strip the `P{NNN}-` prefix, then strip `-followup-{k}.yaml` for the follow-up or `.yaml` for the parent. Compare the two slugs.
 
 **Condition 2 -- High priority (ADR-2)**: Read the follow-up file content and extract the `## Priority` section. Only `High` qualifies for immediate recursion.
 
@@ -335,7 +335,7 @@ After all six phases and follow-up routing complete, apply the `status:verified`
 Derive the search slug from the task file path (same algorithm as Recursive Follow-up Handling):
 
 ```text
-plan/tasks-3-integrate-sam-schema.md → slug: integrate-sam-schema
+plan/P003-integrate-sam-schema.yaml → slug: integrate-sam-schema
 ```
 
 Search the backlog:

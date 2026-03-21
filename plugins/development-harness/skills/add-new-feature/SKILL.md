@@ -16,7 +16,7 @@ You MUST convert the user's request into **durable SAM artifacts** under the rep
 - `plan/feature-context-{slug}.md` (discovery)
 - `plan/codebase/{FOCUS}.md` (optional, analysis)
 - `plan/architect-{slug}.md` (architecture/design spec)
-- `plan/tasks-{N}-{slug}.md` (executable task plan with Agents, deps, and verification)
+- `plan/P{NNN}-{slug}.yaml` (executable task plan with Agents, deps, and verification)
 
 <feature_request>
 $ARGUMENTS
@@ -87,7 +87,7 @@ Delegate to the resolved `design-spec` agent to write `plan/architect-{slug}.md`
 
 Delegate to `@dh:swarm-task-planner` to:
 
-- create `plan/tasks-{N}-{slug}.md`
+- create `plan/P{NNN}-{slug}.yaml` (via `sam create`)
 - ensure every task has:
   - **Status**, **Dependencies**, **Priority**, **Complexity**, **Agent**
   - Acceptance Criteria (3+)
