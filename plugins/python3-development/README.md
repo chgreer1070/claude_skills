@@ -49,10 +49,10 @@ Run these commands directly to trigger specific workflows:
 |---------|---------|---------|
 | `/python3-development:python3-add-feature` | Guided feature addition with TDD | `/python3-development:python3-add-feature Add CSV export` |
 | `/python3-development:create-feature-task` | Structure feature development with tracking | `/python3-development:create-feature-task OAuth2 login` |
-| `/python3-development:add-new-feature` | SAM-style feature workflow (discovery → analysis → tasks) | `/python3-development:add-new-feature user authentication` |
-| `/python3-development:implement-feature` | Execute SAM task plan by delegating ready tasks | `/python3-development:implement-feature plan/tasks-auth.md` |
-| `/python3-development:start-task` | Start or complete specific task in SAM task file | `/python3-development:start-task plan/tasks-auth.md --task 1.1` |
-| `/python3-development:complete-implementation` | Holistic completion (review, verify, integrate, document) | `/python3-development:complete-implementation plan/tasks-auth.md` |
+| `/dh:add-new-feature` | SAM-style feature workflow (discovery → analysis → tasks) | `/dh:add-new-feature user authentication` |
+| `/dh:implement-feature` | Execute SAM task plan by delegating ready tasks | `/dh:implement-feature plan/tasks-auth.md` |
+| `/dh:start-task` | Start or complete specific task in SAM task file | `/dh:start-task plan/tasks-auth.md --task 1.1` |
+| `/dh:complete-implementation` | Holistic completion (review, verify, integrate, document) | `/dh:complete-implementation plan/tasks-auth.md` |
 
 ### Testing
 

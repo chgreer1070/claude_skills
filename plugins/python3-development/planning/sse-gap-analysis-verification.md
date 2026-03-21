@@ -96,8 +96,8 @@
 - File: `./plugins/python3-development/skills/implementation-manager/SKILL.md`
 - Lines 157-158 (Hook Configuration table):
   ```
-  | `/python3-development:implement-feature` | SubagentStop | (all) | Mark task COMPLETE, add Completed timestamp |
-  | `/python3-development:start-task`        | PostToolUse  | `Write\|Edit\|Bash` | Update LastActivity timestamp during execution |
+  | `/dh:implement-feature` | SubagentStop | (all) | Mark task COMPLETE, add Completed timestamp |
+  | `/dh:start-task`        | PostToolUse  | `Write\|Edit\|Bash` | Update LastActivity timestamp during execution |
   ```
 - Lines 182-183 (Timestamp Field Responsibilities):
   ```

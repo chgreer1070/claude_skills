@@ -40,12 +40,12 @@ If you cannot fill in workflow pattern and agent chain from the guide read in St
 
 ```mermaid
 flowchart TD
-    P1["Phase 1 — Plan<br>Skill: /python3-development:add-new-feature<br>Args: task description<br>Produces: plan/tasks-{N}-{slug}.md"]
+    P1["Phase 1 — Plan<br>Skill: /dh:add-new-feature<br>Args: task description<br>Produces: plan/tasks-{N}-{slug}.md"]
     P1 --> P1Q{"add-new-feature result?"}
     P1Q -->|"BLOCKED — plan-validator gate failed"| P1Blocked["Surface blocker to user<br>Await clarification<br>STOP"]
     P1Q -->|"PASS — task file produced"| P2
-    P2["Phase 2 — Execute<br>Skill: /python3-development:implement-feature<br>Args: path to task file<br>Loop: sam ready → start-task → SubagentStop hook marks COMPLETE<br>Repeat until no tasks remain"]
-    P2 --> P3["Phase 3 — Quality gates<br>Auto-invoked by implement-feature<br>Skill: /python3-development:complete-implementation<br>Runs: code review → feature verification → integration check<br>→ doc drift → doc update → context refinement → commit"]
+    P2["Phase 2 — Execute<br>Skill: /dh:implement-feature<br>Args: path to task file<br>Loop: sam ready → start-task → SubagentStop hook marks COMPLETE<br>Repeat until no tasks remain"]
+    P2 --> P3["Phase 3 — Quality gates<br>Auto-invoked by implement-feature<br>Skill: /dh:complete-implementation<br>Runs: code review → feature verification → integration check<br>→ doc drift → doc update → context refinement → commit"]
     P3 --> Done(["DONE — changes committed"])
 ```
 
