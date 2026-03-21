@@ -5,9 +5,9 @@ metadata:
   topic: sam-create-should-use-github-issue-number-as-plan-number-ins
   source: 'User vision statement 2026-03-21 — divergence #4 from canonical issue lifecycle, observed collision in this session'
   added: '2026-03-21'
-  priority: P1
+  priority: completed
   type: Bug
-  status: needs-grooming
+  status: done
   issue: '#966'
   last_synced: '2026-03-21T16:17:29Z'
   groomed: '2026-03-21'

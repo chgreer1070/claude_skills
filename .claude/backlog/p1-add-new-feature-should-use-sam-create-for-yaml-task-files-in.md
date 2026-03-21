@@ -5,9 +5,9 @@ metadata:
   topic: add-new-feature-should-use-sam-create-for-yaml-task-files-in
   source: 'User vision statement 2026-03-21 — divergence #1 from canonical issue lifecycle'
   added: '2026-03-21'
-  priority: P1
+  priority: completed
   type: Bug
-  status: in-progress
+  status: done
   issue: '#963'
   last_synced: '2026-03-21T16:07:53Z'
   groomed: '2026-03-21'

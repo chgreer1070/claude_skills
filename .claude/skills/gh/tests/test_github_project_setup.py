@@ -606,3 +606,241 @@ class TestIssueList:
         mock_repo.get_label.assert_called_with("priority:p1")
         call_kwargs = mock_repo.get_issues.call_args[1]
         assert "labels" in call_kwargs
+
+
+# ---------------------------------------------------------------------------
+# issue set-milestone (T01)
+# ---------------------------------------------------------------------------
+
+
+class TestIssueSetMilestone:
+    """issue set-milestone: assign an issue to a milestone by number."""
+
+    def test_set_milestone_success(self) -> None:
+        """Issue is assigned to milestone; confirmation is printed."""
+        issue_obj = _make_issue(100, "some issue", [])
+        milestone_obj = _make_milestone(5, "Sprint 5")
+        mock_repo = MagicMock()
+        mock_repo.get_issue.return_value = issue_obj
+        mock_repo.get_milestone.return_value = milestone_obj
+
+        with (
+            patch.dict("os.environ", {"GITHUB_TOKEN": "tok"}),
+            patch("github_project_setup.get_repo", return_value=mock_repo),
+            patch("github_project_setup.Github"),
+        ):
+            result = runner.invoke(app, ["issue", "set-milestone", "--issue", "100", "--milestone", "5"])
+
+        assert result.exit_code == 0, result.output
+        issue_obj.edit.assert_called_once_with(milestone=milestone_obj)
+        assert "Issue #100 assigned to milestone #5" in result.output
+        assert "Sprint 5" in result.output
+
+    def test_set_milestone_issue_not_found_exits_1(self) -> None:
+        """Non-existent issue exits with code 1."""
+        from github import GithubException
+
+        mock_repo = MagicMock()
+        mock_repo.get_issue.side_effect = GithubException(404, "not found")
+
+        with (
+            patch.dict("os.environ", {"GITHUB_TOKEN": "tok"}),
+            patch("github_project_setup.get_repo", return_value=mock_repo),
+            patch("github_project_setup.Github"),
+        ):
+            result = runner.invoke(app, ["issue", "set-milestone", "--issue", "999", "--milestone", "1"])
+
+        assert result.exit_code == 1
+        assert "not found" in result.stderr.lower() or "ERROR" in result.stderr
+
+    def test_set_milestone_milestone_not_found_exits_1(self) -> None:
+        """Non-existent milestone exits with code 1."""
+        from github import GithubException
+
+        issue_obj = _make_issue(100, "some issue", [])
+        mock_repo = MagicMock()
+        mock_repo.get_issue.return_value = issue_obj
+        mock_repo.get_milestone.side_effect = GithubException(404, "not found")
+
+        with (
+            patch.dict("os.environ", {"GITHUB_TOKEN": "tok"}),
+            patch("github_project_setup.get_repo", return_value=mock_repo),
+            patch("github_project_setup.Github"),
+        ):
+            result = runner.invoke(app, ["issue", "set-milestone", "--issue", "100", "--milestone", "999"])
+
+        assert result.exit_code == 1
+        assert "ERROR" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# issue remove-milestone (T02)
+# ---------------------------------------------------------------------------
+
+
+class TestIssueRemoveMilestone:
+    """issue remove-milestone: remove milestone assignment from an issue."""
+
+    def test_remove_milestone_success(self) -> None:
+        """Issue with a milestone has it cleared; confirmation is printed."""
+        from github import GithubObject
+
+        issue_obj = _make_issue(101, "issue with milestone", [])
+        issue_obj.milestone = _make_milestone(3, "old sprint")
+        mock_repo = MagicMock()
+        mock_repo.get_issue.return_value = issue_obj
+
+        with (
+            patch.dict("os.environ", {"GITHUB_TOKEN": "tok"}),
+            patch("github_project_setup.get_repo", return_value=mock_repo),
+            patch("github_project_setup.Github"),
+        ):
+            result = runner.invoke(app, ["issue", "remove-milestone", "--issue", "101"])
+
+        assert result.exit_code == 0, result.output
+        issue_obj.edit.assert_called_once_with(milestone=GithubObject.NotSet)
+        assert "Issue #101 milestone removed" in result.output
+
+    def test_remove_milestone_no_milestone_exits_0_with_warning(self) -> None:
+        """Issue with no milestone prints warning and exits 0 (idempotent)."""
+        issue_obj = _make_issue(102, "issue without milestone", [])
+        issue_obj.milestone = None
+        mock_repo = MagicMock()
+        mock_repo.get_issue.return_value = issue_obj
+
+        with (
+            patch.dict("os.environ", {"GITHUB_TOKEN": "tok"}),
+            patch("github_project_setup.get_repo", return_value=mock_repo),
+            patch("github_project_setup.Github"),
+        ):
+            result = runner.invoke(app, ["issue", "remove-milestone", "--issue", "102"])
+
+        assert result.exit_code == 0
+        issue_obj.edit.assert_not_called()
+        assert "WARNING" in result.output
+        assert "no milestone" in result.output.lower()
+
+    def test_remove_milestone_issue_not_found_exits_1(self) -> None:
+        """Non-existent issue exits with code 1."""
+        from github import GithubException
+
+        mock_repo = MagicMock()
+        mock_repo.get_issue.side_effect = GithubException(404, "not found")
+
+        with (
+            patch.dict("os.environ", {"GITHUB_TOKEN": "tok"}),
+            patch("github_project_setup.get_repo", return_value=mock_repo),
+            patch("github_project_setup.Github"),
+        ):
+            result = runner.invoke(app, ["issue", "remove-milestone", "--issue", "999"])
+
+        assert result.exit_code == 1
+        assert "ERROR" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# issue close (T03)
+# ---------------------------------------------------------------------------
+
+
+class TestIssueClose:
+    """issue close: close an issue with an optional comment."""
+
+    def test_close_issue_success_no_comment(self) -> None:
+        """Open issue is closed; no comment is created; confirmation printed."""
+        issue_obj = _make_issue(200, "open issue", [])
+        issue_obj.state = "open"
+        mock_repo = MagicMock()
+        mock_repo.get_issue.return_value = issue_obj
+
+        with (
+            patch.dict("os.environ", {"GITHUB_TOKEN": "tok"}),
+            patch("github_project_setup.get_repo", return_value=mock_repo),
+            patch("github_project_setup.Github"),
+        ):
+            result = runner.invoke(app, ["issue", "close", "--number", "200"])
+
+        assert result.exit_code == 0, result.output
+        issue_obj.create_comment.assert_not_called()
+        issue_obj.edit.assert_called_once_with(state="closed")
+        assert "Issue #200 closed" in result.output
+
+    def test_close_issue_success_with_comment(self) -> None:
+        """Comment is created BEFORE issue is closed (order verified)."""
+        issue_obj = _make_issue(201, "open issue", [])
+        issue_obj.state = "open"
+        call_order: list[str] = []
+        issue_obj.create_comment.side_effect = lambda *_: call_order.append("comment")
+        issue_obj.edit.side_effect = lambda **_: call_order.append("close")
+        mock_repo = MagicMock()
+        mock_repo.get_issue.return_value = issue_obj
+
+        with (
+            patch.dict("os.environ", {"GITHUB_TOKEN": "tok"}),
+            patch("github_project_setup.get_repo", return_value=mock_repo),
+            patch("github_project_setup.Github"),
+        ):
+            result = runner.invoke(app, ["issue", "close", "--number", "201", "--comment", "Closing: done"])
+
+        assert result.exit_code == 0, result.output
+        issue_obj.create_comment.assert_called_once_with("Closing: done")
+        assert call_order == ["comment", "close"], f"Expected comment before close, got: {call_order}"
+        assert "Issue #201 closed" in result.output
+
+    def test_close_issue_not_found_exits_1(self) -> None:
+        """Non-existent issue exits with code 1."""
+        from github import GithubException
+
+        mock_repo = MagicMock()
+        mock_repo.get_issue.side_effect = GithubException(404, "not found")
+
+        with (
+            patch.dict("os.environ", {"GITHUB_TOKEN": "tok"}),
+            patch("github_project_setup.get_repo", return_value=mock_repo),
+            patch("github_project_setup.Github"),
+        ):
+            result = runner.invoke(app, ["issue", "close", "--number", "999"])
+
+        assert result.exit_code == 1
+        assert "ERROR" in result.stderr
+
+    def test_close_already_closed_exits_0_with_warning(self) -> None:
+        """Already-closed issue prints warning and exits 0 (idempotent)."""
+        issue_obj = _make_issue(202, "closed issue", [])
+        issue_obj.state = "closed"
+        mock_repo = MagicMock()
+        mock_repo.get_issue.return_value = issue_obj
+
+        with (
+            patch.dict("os.environ", {"GITHUB_TOKEN": "tok"}),
+            patch("github_project_setup.get_repo", return_value=mock_repo),
+            patch("github_project_setup.Github"),
+        ):
+            result = runner.invoke(app, ["issue", "close", "--number", "202"])
+
+        assert result.exit_code == 0
+        issue_obj.edit.assert_not_called()
+        assert "WARNING" in result.output
+        assert "already closed" in result.output.lower()
+
+    def test_close_comment_fails_does_not_close_issue(self) -> None:
+        """If comment creation fails, issue is NOT closed and exit code is 1."""
+        from github import GithubException
+
+        issue_obj = _make_issue(203, "open issue", [])
+        issue_obj.state = "open"
+        issue_obj.create_comment.side_effect = GithubException(500, "server error")
+        mock_repo = MagicMock()
+        mock_repo.get_issue.return_value = issue_obj
+
+        with (
+            patch.dict("os.environ", {"GITHUB_TOKEN": "tok"}),
+            patch("github_project_setup.get_repo", return_value=mock_repo),
+            patch("github_project_setup.Github"),
+        ):
+            result = runner.invoke(app, ["issue", "close", "--number", "203", "--comment", "will fail"])
+
+        assert result.exit_code == 1
+        issue_obj.create_comment.assert_called_once()
+        issue_obj.edit.assert_not_called()  # issue must NOT be closed
+        assert "ERROR" in result.stderr
