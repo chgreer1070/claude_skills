@@ -1,5 +1,7 @@
 # Workflow Architecture Diagram
 
+> **Snapshot**: 2026-03-21T15:00:00Z (pre-SAM-consolidation-migration)
+>
 > Sources: `.claude/docs/TASK_FILE_FORMAT.md`, `backlog_core/server.py`, `backlog_core/models.py`,
 > `plugins/development-harness/skills/implementation-manager/scripts/task_status_hook.py`
 > Last verified: 2026-03-21
