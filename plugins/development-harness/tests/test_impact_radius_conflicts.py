@@ -14,7 +14,7 @@ Covers:
 from __future__ import annotations
 
 import pytest
-from backlog_core.operations import analyze_impact_radius_conflicts
+from backlog_core.operations import ImpactRadiusItem, analyze_impact_radius_conflicts
 from dispatch_schema.core.models import ConflictGroup
 
 # ---------------------------------------------------------------------------
@@ -22,8 +22,8 @@ from dispatch_schema.core.models import ConflictGroup
 # ---------------------------------------------------------------------------
 
 
-def _item(title: str, issue: int, impact_radius: str | None = None) -> dict[str, object]:
-    d: dict[str, object] = {"title": title, "issue": issue}
+def _item(title: str, issue: int, impact_radius: str | None = None) -> ImpactRadiusItem:
+    d: ImpactRadiusItem = {"title": title, "issue": issue}
     if impact_radius is not None:
         d["impact_radius"] = impact_radius
     return d
@@ -36,7 +36,7 @@ def _item(title: str, issue: int, impact_radius: str | None = None) -> dict[str,
 
 def test_analyze_impact_radius_conflicts_empty_list_returns_empty() -> None:
     # Arrange
-    items: list[dict[str, object]] = []
+    items: list[ImpactRadiusItem] = []
 
     # Act
     result = analyze_impact_radius_conflicts(items)
@@ -69,7 +69,7 @@ def test_analyze_impact_radius_conflicts_disjoint_paths_returns_empty() -> None:
 
 def test_analyze_impact_radius_conflicts_no_impact_radius_key_excluded() -> None:
     # Arrange — neither item has an impact_radius key
-    items = [{"title": "A", "issue": 1}, {"title": "B", "issue": 2}]
+    items: list[ImpactRadiusItem] = [{"title": "A", "issue": 1}, {"title": "B", "issue": 2}]
 
     # Act
     result = analyze_impact_radius_conflicts(items)

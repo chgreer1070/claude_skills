@@ -10,12 +10,29 @@ from __future__ import annotations
 import shlex
 import shutil
 import subprocess
+from functools import cache
 from typing import TYPE_CHECKING
 
 from dispatch_schema.core.models import CommandResult, GateResult, GateRunMode
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+@cache
+def _resolve_executable(name: str) -> str | None:
+    """Return the full path of *name* on PATH, or None if not found.
+
+    Result is cached so repeated gate runs do not re-stat the filesystem for
+    the same executable name.
+
+    Args:
+        name: Bare executable name (e.g. ``"uv"`` or ``"ruff"``).
+
+    Returns:
+        Absolute path string from shutil.which, or None when not found.
+    """
+    return shutil.which(name)
 
 
 def run_quality_gates(
@@ -49,21 +66,15 @@ def run_quality_gates(
 
     for command in commands:
         tokens = shlex.split(command)
-        executable = shutil.which(tokens[0])
+        executable = _resolve_executable(tokens[0])
 
         if executable is None:
-            result = CommandResult(
-                command=command, exit_code=127, stdout="", stderr=f"command not found: {tokens[0]}", passed=False
-            )
+            result = CommandResult(command=command, exit_code=127, stdout="", stderr=f"command not found: {tokens[0]}")
         else:
             resolved_tokens = [executable, *tokens[1:]]
             completed = subprocess.run(resolved_tokens, capture_output=True, text=True, cwd=cwd, check=False)
             result = CommandResult(
-                command=command,
-                exit_code=completed.returncode,
-                stdout=completed.stdout,
-                stderr=completed.stderr,
-                passed=completed.returncode == 0,
+                command=command, exit_code=completed.returncode, stdout=completed.stdout, stderr=completed.stderr
             )
 
         results.append(result)

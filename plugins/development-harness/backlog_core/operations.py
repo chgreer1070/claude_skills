@@ -14,7 +14,7 @@ import sys
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 from dispatch_schema.core.models import ConflictGroup
 from github import GithubException, GithubObject
@@ -2995,10 +2995,11 @@ _MIN_CONFLICT_GROUP_SIZE = 2
 
 
 class _UnionFind:
-    """Path-compressed union-find (disjoint set union) for integer indices."""
+    """Path-compressed union-find with union-by-rank (disjoint set union) for integer indices."""
 
     def __init__(self, n: int) -> None:
         self._parent = list(range(n))
+        self._rank = [0] * n
 
     def find(self, x: int) -> int:
         """Return canonical root of x with path compression."""
@@ -3008,10 +3009,15 @@ class _UnionFind:
         return x
 
     def union(self, x: int, y: int) -> None:
-        """Merge the sets containing x and y."""
+        """Merge the sets containing x and y using union-by-rank."""
         rx, ry = self.find(x), self.find(y)
-        if rx != ry:
-            self._parent[rx] = ry
+        if rx == ry:
+            return
+        if self._rank[rx] < self._rank[ry]:
+            rx, ry = ry, rx
+        self._parent[ry] = rx
+        if self._rank[rx] == self._rank[ry]:
+            self._rank[rx] += 1
 
 
 def _parse_impact_radius_paths(impact_radius: str) -> set[str]:
@@ -3036,7 +3042,7 @@ def _parse_impact_radius_paths(impact_radius: str) -> set[str]:
     return paths
 
 
-def _collect_items_with_paths(items: list[dict[str, object]]) -> tuple[list[str], list[set[str]]]:
+def _collect_items_with_paths(items: list[ImpactRadiusItem]) -> tuple[list[str], list[set[str]]]:
     """Filter items to those with a non-empty impact_radius and parse their paths.
 
     Args:
@@ -3108,7 +3114,24 @@ def _build_conflict_groups(titles: list[str], path_sets: list[set[str]]) -> list
     return conflict_groups
 
 
-def analyze_impact_radius_conflicts(items: list[dict[str, object]]) -> list[ConflictGroup]:
+class ImpactRadiusItem(TypedDict, total=False):
+    """Typed structure for items passed to :func:`analyze_impact_radius_conflicts`.
+
+    Attributes:
+        title: Item title used in ConflictGroup.items list.
+        issue: GitHub issue number (present but unused in conflict output).
+        impact_radius: Markdown section body containing file paths, one per
+            line, optionally prefixed with bullet markers (``-`` / ``*``).
+            Items without this key, or with an empty/whitespace-only value,
+            are excluded from conflict analysis.
+    """
+
+    title: str
+    issue: int
+    impact_radius: str
+
+
+def analyze_impact_radius_conflicts(items: list[ImpactRadiusItem]) -> list[ConflictGroup]:
     """Compute conflict groups from Impact Radius file-path overlap.
 
     Each item dict must contain:

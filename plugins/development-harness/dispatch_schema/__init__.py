@@ -4,6 +4,7 @@ Import directly from this package:
 
     from dispatch_schema import DispatchPlan, read_dispatch_plan, write_dispatch_plan
     from dispatch_schema import validate_plan_integrity, detect_stale_plan
+    from dispatch_schema import dispatch_plan_path
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from dispatch_schema.core.models import (
 )
 from dispatch_schema.core.validator import StalePlanResult, ValidationResult, detect_stale_plan, validate_plan_integrity
 from dispatch_schema.gates import run_quality_gates
+from dispatch_schema.paths import dispatch_plan_path
 from dispatch_schema.readers.yaml_reader import read_dispatch_plan
 from dispatch_schema.writers.yaml_writer import write_dispatch_plan
 
@@ -44,6 +46,7 @@ __all__ = [
     "WaveItem",
     "detect_stale_plan",
     # I/O
+    "dispatch_plan_path",
     "read_dispatch_plan",
     # Gates
     "run_quality_gates",

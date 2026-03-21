@@ -22,6 +22,8 @@ from .models import BacklogError, GitHubUnavailableError, Output, init as _init_
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from .operations import ImpactRadiusItem as _ImpactRadiusItem
+
 # Token budget for auto-pagination in backlog_list: 4400 tokens (cl100k_base encoding).
 _LIST_TOKEN_BUDGET = 4_400
 _enc: tiktoken.Encoding = tiktoken.get_encoding("cl100k_base")
@@ -974,6 +976,9 @@ async def backlog_create_project(
 def _dispatch_plan_path(milestone_number: int) -> Path:
     """Return the canonical dispatch plan path for a milestone.
 
+    Delegates to :func:`dispatch_schema.dispatch_plan_path`, resolving the
+    project root from ``_models.BACKLOG_DIR``.
+
     Args:
         milestone_number: GitHub milestone number.
 
@@ -981,7 +986,7 @@ def _dispatch_plan_path(milestone_number: int) -> Path:
         Path to ``plan/milestone-{N}-dispatch.yaml`` under the project root.
     """
     # BACKLOG_DIR is <project_root>/.claude/backlog — walk up to project root
-    return _models.BACKLOG_DIR.parent.parent / "plan" / f"milestone-{milestone_number}-dispatch.yaml"
+    return _ds.dispatch_plan_path(milestone_number, _models.BACKLOG_DIR.parent.parent)
 
 
 @mcp.tool
@@ -1087,10 +1092,10 @@ async def dispatch_conflicts(
         Returns ``error`` on GitHub failure.
     """
 
-    def _fetch_items_with_impact_radius() -> list[dict[str, object]]:
+    def _fetch_items_with_impact_radius() -> list[_ImpactRadiusItem]:
         gh_repo = _get_github(repo)
         ms_obj = gh_repo.get_milestone(milestone_number)
-        items: list[dict[str, object]] = []
+        items: list[_ImpactRadiusItem] = []
         ir_re = _re.compile(r"##\s+Impact\s+Radius\b(.*?)(?=\n##|\Z)", _re.IGNORECASE | _re.DOTALL)
         for issue in gh_repo.get_issues(milestone=ms_obj, state="open"):
             if issue.pull_request is not None:

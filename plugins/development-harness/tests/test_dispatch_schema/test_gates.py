@@ -16,6 +16,8 @@ from __future__ import annotations
 import subprocess
 from typing import TYPE_CHECKING
 
+import dispatch_schema.gates as _gates_module
+import pytest
 from dispatch_schema.core.models import GateResult, GateRunMode
 from dispatch_schema.gates import run_quality_gates
 
@@ -23,6 +25,22 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from pytest_mock import MockerFixture
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _clear_resolve_executable_cache() -> None:
+    """Clear the _resolve_executable lru_cache before each test.
+
+    Prevents a cached real shutil.which result from a previous test from
+    bypassing a mocker.patch("dispatch_schema.gates.shutil.which", ...) mock
+    installed by the current test.
+    """
+    _gates_module._resolve_executable.cache_clear()
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -631,3 +649,57 @@ class TestSubprocessInvocationContract:
         args, _ = mock_run.call_args
         tokens = args[0]
         assert tokens == ["/resolved/mybin", "--flag", "value"]
+
+
+# ---------------------------------------------------------------------------
+# Integration tests — real subprocess (marked integration)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_run_quality_gates_integration_real_echo_passes(tmp_path: Path) -> None:
+    """run_quality_gates returns passed=True when a real command succeeds.
+
+    Tests: integration path with a real subprocess call.
+    How: Run 'echo hello' in a tmp directory; assert result fields.
+    Why: Ensures the unit-tested mock path matches real subprocess behaviour.
+    """
+    # Arrange / Act
+    result = run_quality_gates(["echo hello"], cwd=tmp_path)
+
+    # Assert
+    assert result.passed is True
+    assert result.results[0].exit_code == 0
+    assert "hello" in result.results[0].stdout
+
+
+@pytest.mark.integration
+def test_run_quality_gates_integration_false_fails(tmp_path: Path) -> None:
+    """run_quality_gates returns passed=False when a real command exits non-zero.
+
+    Tests: integration path with a failing real command.
+    How: Run 'false' in a tmp directory; assert passed is False and exit code non-zero.
+    Why: Confirms gate failure propagates correctly end-to-end.
+    """
+    # Arrange / Act
+    result = run_quality_gates(["false"], cwd=tmp_path)
+
+    # Assert
+    assert result.passed is False
+    assert result.results[0].exit_code != 0
+
+
+@pytest.mark.integration
+def test_run_quality_gates_integration_command_not_found(tmp_path: Path) -> None:
+    """run_quality_gates returns exit_code=127 for a non-existent real command.
+
+    Tests: command-not-found path with a real subprocess call.
+    How: Run a gibberish command; assert passed is False and exit_code is 127.
+    Why: Verifies the shutil.which-based 127 path matches real shell semantics.
+    """
+    # Arrange / Act
+    result = run_quality_gates(["zzz-definitely-not-a-real-command-xyz"], cwd=tmp_path)
+
+    # Assert
+    assert result.passed is False
+    assert result.results[0].exit_code == 127

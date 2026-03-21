@@ -51,7 +51,7 @@ def _validate_slug(slug: str) -> None:
     """
     if not _SLUG_PATTERN.match(slug):
         msg = (
-            f"Invalid slug '{slug}': must match ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ "
+            f"Invalid slug '{slug}': must match {_SLUG_PATTERN.pattern} "
             "(start with alphanumeric, contain only alphanumeric, dots, underscores, hyphens)"
         )
         raise BacklogError(msg)
