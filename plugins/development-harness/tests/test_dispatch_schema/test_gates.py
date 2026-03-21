@@ -703,3 +703,147 @@ def test_run_quality_gates_integration_command_not_found(tmp_path: Path) -> None
     # Assert
     assert result.passed is False
     assert result.results[0].exit_code == 127
+
+
+# ---------------------------------------------------------------------------
+# subprocess.TimeoutExpired contract (exit_code=124)
+# ---------------------------------------------------------------------------
+
+
+class TestSubprocessTimeoutContract:
+    """run_quality_gates behaviour when subprocess.run raises TimeoutExpired.
+
+    The implementation catches subprocess.TimeoutExpired and converts it to a
+    CommandResult(exit_code=124) without re-raising, following the Unix
+    timeout(1) convention and mirroring the existing exit_code=127
+    command-not-found pattern.
+    """
+
+    def test_timeout_produces_exit_code_124(self, mocker: MockerFixture) -> None:
+        """TimeoutExpired exception is converted to CommandResult.exit_code=124.
+
+        Tests: Timeout exception path in run_quality_gates.
+        How: Patch shutil.which to return a valid path; patch subprocess.run
+             with side_effect=TimeoutExpired; assert exit_code is 124.
+        Why: 124 is the Unix timeout(1) convention; callers check this code to
+             distinguish hung commands from other failures.
+        """
+        # Arrange
+        mocker.patch("dispatch_schema.gates.shutil.which", return_value="/usr/bin/cmd")
+        mocker.patch(
+            "dispatch_schema.gates.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd=["cmd"], timeout=300.0)
+        )
+
+        # Act
+        result = run_quality_gates(["cmd"], timeout=300.0)
+
+        # Assert
+        assert result.results[0].exit_code == 124
+
+    def test_timeout_stderr_contains_timeout_duration(self, mocker: MockerFixture) -> None:
+        """CommandResult.stderr includes the configured timeout duration.
+
+        Tests: stderr content for the TimeoutExpired path.
+        How: Patch subprocess.run to raise TimeoutExpired with timeout=300.0;
+             assert the string "300.0s" appears in CommandResult.stderr.
+        Why: Callers display stderr in logs; the duration lets operators
+             diagnose whether the timeout was appropriate.
+        """
+        # Arrange
+        mocker.patch("dispatch_schema.gates.shutil.which", return_value="/usr/bin/cmd")
+        mocker.patch(
+            "dispatch_schema.gates.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd=["cmd"], timeout=300.0)
+        )
+
+        # Act
+        result = run_quality_gates(["cmd"], timeout=300.0)
+
+        # Assert
+        assert "300.0s" in result.results[0].stderr
+
+    def test_timeout_result_has_passed_false(self, mocker: MockerFixture) -> None:
+        """CommandResult.passed is False when TimeoutExpired is raised.
+
+        Tests: passed field derivation for the timeout exception path.
+        How: Patch subprocess.run to raise TimeoutExpired; assert passed.
+        Why: A timed-out command is a definitive failure — it never completed.
+        """
+        # Arrange
+        mocker.patch("dispatch_schema.gates.shutil.which", return_value="/usr/bin/cmd")
+        mocker.patch(
+            "dispatch_schema.gates.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd=["cmd"], timeout=300.0)
+        )
+
+        # Act
+        result = run_quality_gates(["cmd"], timeout=300.0)
+
+        # Assert
+        assert result.results[0].passed is False
+
+    def test_timeout_failfast_stops_after_first_timeout(self, mocker: MockerFixture) -> None:
+        """Fail-fast mode halts after a TimeoutExpired result.
+
+        Tests: FAIL_FAST interaction with the timeout exception path.
+        How: Provide two commands; first raises TimeoutExpired; assert only
+             one result is collected and subprocess.run called once.
+        Why: TimeoutExpired produces passed=False, so fail-fast must honour it
+             and skip subsequent commands.
+        """
+        # Arrange
+        mocker.patch("dispatch_schema.gates.shutil.which", return_value="/usr/bin/cmd")
+        mock_run = mocker.patch(
+            "dispatch_schema.gates.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd=["cmd"], timeout=300.0)
+        )
+
+        # Act
+        result = run_quality_gates(["cmd a", "cmd b"], mode=GateRunMode.FAIL_FAST, timeout=300.0)
+
+        # Assert
+        assert len(result.results) == 1
+        mock_run.assert_called_once()
+
+    def test_timeout_runall_continues_after_timeout(self, mocker: MockerFixture) -> None:
+        """Run-all mode continues executing after a TimeoutExpired result.
+
+        Tests: RUN_ALL interaction with the timeout exception path.
+        How: First command raises TimeoutExpired; second returns exit_code=0;
+             assert two results are collected.
+        Why: Run-all must collect a full diagnostic picture — even when a
+             command times out, subsequent commands should still run.
+        """
+        # Arrange
+        mocker.patch("dispatch_schema.gates.shutil.which", return_value="/usr/bin/cmd")
+        mocker.patch(
+            "dispatch_schema.gates.subprocess.run",
+            side_effect=[subprocess.TimeoutExpired(cmd=["cmd"], timeout=300.0), _make_completed_process(returncode=0)],
+        )
+
+        # Act
+        result = run_quality_gates(["cmd a", "cmd b"], mode=GateRunMode.RUN_ALL, timeout=300.0)
+
+        # Assert
+        assert len(result.results) == 2
+        assert result.results[0].exit_code == 124
+        assert result.results[1].exit_code == 0
+
+    def test_custom_timeout_value_forwarded_to_subprocess(self, mocker: MockerFixture) -> None:
+        """Custom timeout value is passed through to subprocess.run.
+
+        Tests: timeout parameter forwarding in run_quality_gates.
+        How: Call with timeout=5.0; assert subprocess.run received timeout=5.0
+             as a keyword argument.
+        Why: Without forwarding, the subprocess would use no timeout regardless
+             of what the caller requested — the fix must wire the parameter.
+        """
+        # Arrange
+        mocker.patch("dispatch_schema.gates.shutil.which", return_value="/usr/bin/cmd")
+        mock_run = mocker.patch(
+            "dispatch_schema.gates.subprocess.run", return_value=_make_completed_process(returncode=0)
+        )
+
+        # Act
+        run_quality_gates(["cmd"], timeout=5.0)
+
+        # Assert
+        _, kwargs = mock_run.call_args
+        assert kwargs["timeout"] == pytest.approx(5.0)
