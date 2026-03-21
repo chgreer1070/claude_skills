@@ -1,0 +1,73 @@
+id: T1
+title: Package Scaffold and Pydantic Models
+status: complete
+agent: python3-development:python-cli-architect
+priority: 1
+complexity: medium
+skills:
+- python3-development
+started: '2026-03-15T02:37:16Z'
+completed: '2026-03-14T18:30:00Z'
+description: |-
+  This is the foundational task for the unified SAM schema module (#715). No code exists yet in `packages/sam_schema/`. The architecture spec defines Pydantic models (`Task`, `Plan`, `TaskStatus`, `Complexity`, `Priority`, `SchemaGap`, `ReadResult`, `PlanStatus`), a module layout under `packages/sam_schema/`, and a `pyproject.toml` for the package. Existing field mappings and status normalization logic are documented in `plan/codebase/sam-task-parsing-patterns.md`.
+objective: |-
+  Create the `packages/sam_schema/` package scaffold with all Pydantic models, enums, and the `pyproject.toml` so that all downstream tasks can import from `sam_schema.core.models`.
+requirements: |-
+  1. Create `packages/sam_schema/pyproject.toml` with dependencies: `pydantic>=2.12.0`, `ruamel.yaml>=0.18.0`, `typer>=0.21.2`, `fastmcp>=2.0.0`. Build system: hatchling. Package name: `sam-schema`. Entry point: `sam = "sam_schema.cli:app"`.
+  2. Create `packages/sam_schema/__init__.py` with public API re-exports as defined in architecture spec section 4 (`Plan`, `Task`, `TaskStatus`, `Complexity`, `Priority`, `SchemaGap`, `ReadResult`, `load_plan`, `get_task`, `list_tasks`, `get_ready_tasks`, `update_status`, `get_plan_status`, `detect_format`, `FormatType`, `write_plan`). Use lazy imports or conditional imports for modules not yet created — the `__init__.py` must not crash on import when downstream modules are stubs.
+  3. Create `packages/sam_schema/core/__init__.py` (empty).
+  4. Create `packages/sam_schema/core/models.py` with all Pydantic models from architecture spec section 5: `TaskStatus` (StrEnum), `Complexity` (StrEnum), `Priority` (IntEnum), `IssueClassification` (StrEnum), `AnalysisMethod` (StrEnum), `Task` (BaseModel), `Plan` (BaseModel), `SchemaGap` (BaseModel), `ReadResult` (BaseModel), `PlanStatus` (BaseModel).
+  5. The `Task` model must use `populate_by_name=True` and `use_enum_values=True` in `model_config`. Kebab-case YAML field names use Pydantic `alias` (e.g., `blocked_by` has alias `"blocked-by"`). All aliases defined in architecture spec section 5 "YAML Field Name Mapping".
+  6. The `Task.id` field must have `pattern=r"^[A-Za-z]?\d+(\.\d+)?$"`. The `Task.title` field must have `min_length=1, max_length=200`.
+  7. The `Task` model must include the `validate_task_id_list` field validator for `dependencies` and `parallelize_with` fields — validate each string matches the task ID pattern.
+  8. Create stub files for downstream modules: `packages/sam_schema/core/query.py`, `packages/sam_schema/core/dependencies.py`, `packages/sam_schema/core/addressing.py`, `packages/sam_schema/readers/__init__.py`, `packages/sam_schema/readers/detect.py`, `packages/sam_schema/writers/__init__.py`, `packages/sam_schema/writers/yaml_writer.py`, `packages/sam_schema/cli.py`, `packages/sam_schema/server.py`. Each stub should have a module docstring and placeholder functions that raise `NotImplementedError`.
+  9. Add `sam-schema` as a workspace dependency in the root `pyproject.toml` under `[tool.uv.sources]` with `sam-schema = { workspace = true }`.
+  10. Include `STATUS_MAP` dict in `models.py` for status normalization (reuse values from `task_format.py:28-45` as documented in codebase analysis).
+constraints: |-
+  - Use `from __future__ import annotations` in all Python files
+  - Use Python 3.11+ type hints (`str | None`, not `Optional[str]`)
+  - Use `ruamel.yaml` not `pyyaml` (per project rule `.claude/rules/yaml-toml-libraries.md`)
+  - Do not copy implementation logic from existing parsers — only the data model definitions and constants
+  - Do not create test files in this task (T6 handles test infrastructure)
+expected-outputs: |-
+  - `packages/sam_schema/pyproject.toml`
+  - `packages/sam_schema/__init__.py`
+  - `packages/sam_schema/core/__init__.py`
+  - `packages/sam_schema/core/models.py`
+  - `packages/sam_schema/core/query.py` (stub)
+  - `packages/sam_schema/core/dependencies.py` (stub)
+  - `packages/sam_schema/core/addressing.py` (stub)
+  - `packages/sam_schema/readers/__init__.py`
+  - `packages/sam_schema/readers/detect.py` (stub)
+  - `packages/sam_schema/writers/__init__.py`
+  - `packages/sam_schema/writers/yaml_writer.py` (stub)
+  - `packages/sam_schema/cli.py` (stub)
+  - `packages/sam_schema/server.py` (stub)
+  - Modified root `pyproject.toml` (workspace source added)
+acceptance-criteria: |-
+  1. `uv run python -c "from sam_schema.core.models import Task, Plan, TaskStatus, SchemaGap, ReadResult, PlanStatus; print('OK')"` exits 0
+  2. `Task(id="T1", title="Test", status="not-started")` creates a valid model instance
+  3. `Task(id="invalid!", title="Test", status="not-started")` raises `ValidationError` (invalid ID pattern)
+  4. `Task(id="T1", title="Test", status="not-started", **{"blocked-by": ["T0"]})` works via alias (populate_by_name)
+  5. All enums have correct values: `TaskStatus.NOT_STARTED.value == "not-started"`, `Priority.CRITICAL.value == 1`, `Complexity.LOW.value == "low"`
+  6. `STATUS_MAP` contains all mappings from codebase analysis section 2.4 (including emoji variations)
+  7. `uv run ty check packages/sam_schema/core/models.py` exits with zero errors
+verification-steps: |-
+  1. `uv run python -c "from sam_schema.core.models import Task, Plan, TaskStatus; t = Task(id='T1', title='Test', status='not-started'); print(t.model_dump())"` — prints valid dict
+  2. `uv run python -c "from sam_schema.core.models import Task; Task(id='bad!', title='X', status='not-started')"` — raises ValidationError
+  3. `uv run ty check packages/sam_schema/core/models.py` — zero errors
+  4. `uv run ruff check packages/sam_schema/` — zero errors
+
+  - Key claims to verify:
+    - Pydantic `Field(alias=...)` with `populate_by_name=True` allows both snake_case and kebab-case
+    - `StrEnum` and `IntEnum` work with Pydantic v2's `use_enum_values=True`
+    - `field_validator` with `@classmethod` is the correct Pydantic v2 decorator pattern
+  - Verification questions:
+    1. Does Pydantic v2 `populate_by_name=True` accept both alias and field name in `__init__`?
+    2. Does `use_enum_values=True` store the enum value (string/int) instead of the enum member?
+    3. Is `@field_validator("field")` with `@classmethod` the correct v2 pattern, or is `mode="before"` needed?
+  - Evidence to collect:
+    - Run `uv run python -c "import pydantic; print(pydantic.__version__)"` to confirm v2
+    - Test alias creation with a minimal model before writing full Task model
+  - Revision rule:
+    - If any check fails, revise model_config and validator patterns based on actual Pydantic v2 behavior

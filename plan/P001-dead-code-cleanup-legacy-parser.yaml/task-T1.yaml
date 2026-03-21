@@ -1,0 +1,133 @@
+id: T1
+title: Migrate surviving tests and delete test_task_format_fenced_yaml.py
+status: not-started
+priority: 3
+complexity: medium
+description: |-
+  ```yaml
+  task: T1
+  title: Migrate surviving tests and delete test_task_format_fenced_yaml.py
+  status: not-started
+  agent: python3-development:python-pytest-architect
+  dependencies: []
+  priority: 1
+  complexity: medium
+  accuracy-risk: medium
+  skills:
+    - fastmcp-python-tests
+    - python3-development
+  parallelize-with: []
+  reason: "First in deletion order. No prior task is required. Must complete before T2 removes detect_fenced_yaml, which this file imports."
+  handoff: "Report: new test file path, list of migrated test names, list of discarded test names, pytest output (all passing), confirmation that test_task_format_fenced_yaml.py is deleted."
+  ```
+
+  ### Context
+
+  This task was not split from another; it is the first step in the serial deletion chain.
+  `test_task_format_fenced_yaml.py` imports `detect_fenced_yaml` (deleted in T2) and exercises
+  both dead and live code paths. The file cannot simply be deleted wholesale — two
+  `TestParseTaskContent` tests and the entire `TestDeferredSkippedStatus` class cover live
+  behavior and must be preserved.
+
+  Architecture source: `plan/architect-dead-code-cleanup-legacy-parser.md` — Decision 7.
+
+  ### Objective
+
+  Migrate all tests that cover live behavior out of `test_task_format_fenced_yaml.py` into a
+  new test file, then delete `test_task_format_fenced_yaml.py`, so the test suite still covers
+  live parsing paths and no test references a symbol being removed in T2–T4.
+
+  ### Required Inputs
+
+  - `plugins/python3-development/skills/implementation-manager/scripts/test_task_format_fenced_yaml.py`
+    — source file; read in full before acting
+  - `plan/architect-dead-code-cleanup-legacy-parser.md` — Decision 7 classification table
+  - `plan/codebase/dead-code-scope.md` — confirms `detect_fenced_yaml` has no callers outside
+    the dead path; confirms `TestDeferredSkippedStatus` uses live YAML inputs
+
+  ### Requirements
+
+  1. Read `test_task_format_fenced_yaml.py` in full. Do not act from line numbers alone — verify
+     current content before any edit.
+  2. Classify each test method using Decision 7 of the architecture spec. The classification is:
+     - **Migrate (live behavior)**: `test_parse_task_content_raw_yaml_no_warning`,
+       `test_parse_task_content_yaml_parse_failure_warns`, and all of `TestDeferredSkippedStatus`
+     - **Discard (dead paths)**: all of `TestDetectFencedYaml` (11 tests), and
+       `test_parse_task_content_fenced_single`, `test_parse_task_content_fenced_multi`,
+       `test_parse_task_content_legacy_markdown_no_warning`,
+       `test_parse_task_content_fenced_missing_required_field`,
+       `test_parse_task_content_real_world_regression`
+  3. Create `plugins/python3-development/skills/implementation-manager/scripts/test_implementation_manager_parsing.py`
+     containing the migrated tests. Copy the test bodies exactly — do not rewrite assertions.
+  4. Ensure the new file has the same import structure needed by the migrated tests. Verify
+     that no import in the new file references `detect_fenced_yaml`.
+  5. Run `uv run pytest plugins/python3-development/skills/implementation-manager/scripts/test_implementation_manager_parsing.py`
+     and confirm all migrated tests pass before deleting the source file.
+  6. Delete `test_task_format_fenced_yaml.py`.
+  7. Run the full pytest suite and confirm it passes.
+
+  ### Constraints
+
+  - Do not modify any test assertion logic during migration. Copy verbatim.
+  - Do not introduce imports of `detect_fenced_yaml` in the new file.
+  - Do not delete `test_task_format_fenced_yaml.py` before the migrated tests pass in the new file.
+  - Do not modify `task_format.py`, `implementation_manager.py`, or `task_status_hook.py` in this task.
+  - No new abstractions, helpers, or fixtures beyond what the migrated tests already use.
+
+  ### Expected Outputs
+
+  - New file: `plugins/python3-development/skills/implementation-manager/scripts/test_implementation_manager_parsing.py`
+  - Deleted file: `plugins/python3-development/skills/implementation-manager/scripts/test_task_format_fenced_yaml.py`
+
+  ### Acceptance Criteria
+
+  1. `test_implementation_manager_parsing.py` exists and contains exactly the two surviving
+     `TestParseTaskContent` tests and the complete `TestDeferredSkippedStatus` class.
+  2. `test_task_format_fenced_yaml.py` does not exist.
+  3. `uv run pytest` exits 0 with no failures.
+  4. `grep -r "detect_fenced_yaml" plugins/python3-development/skills/implementation-manager/scripts/` returns zero matches.
+
+  ### Verification Steps
+
+  1. `grep -c "def test_" plugins/python3-development/skills/implementation-manager/scripts/test_implementation_manager_parsing.py`
+     — count must match the number of migrated tests (2 from `TestParseTaskContent` + all
+     methods in `TestDeferredSkippedStatus`; count from Decision 7).
+  2. `uv run pytest plugins/python3-development/skills/implementation-manager/scripts/test_implementation_manager_parsing.py -v`
+     — all migrated tests pass.
+  3. `ls plugins/python3-development/skills/implementation-manager/scripts/test_task_format_fenced_yaml.py`
+     — must return "No such file".
+  4. `uv run pytest plugins/python3-development/skills/implementation-manager/scripts/ -v`
+     — full suite passes, zero failures.
+  5. `grep -r "detect_fenced_yaml" plugins/python3-development/skills/implementation-manager/scripts/`
+     — zero matches.
+
+  ### CoVe Checks
+
+  - Key claims to verify:
+    - `TestDeferredSkippedStatus` uses only YAML frontmatter inputs (not fenced YAML or legacy
+      markdown), so it is safe to migrate without modification.
+    - `test_parse_task_content_raw_yaml_no_warning` and `test_parse_task_content_yaml_parse_failure_warns`
+      import no symbol that will be removed in T2–T4.
+  - Verification questions:
+    1. Does `TestDeferredSkippedStatus` contain any call to `detect_fenced_yaml`, `FIELD_PARSERS`,
+       or `_parse_line`? Read the class body to confirm.
+    2. Do the two surviving `TestParseTaskContent` tests import or call any symbol from the
+       dead code list in `plan/codebase/dead-code-scope.md`?
+  - Evidence to collect:
+    - `grep "detect_fenced_yaml\|FIELD_PARSERS\|_parse_line\|_legacy" plugins/python3-development/skills/implementation-manager/scripts/test_task_format_fenced_yaml.py`
+      on only the lines inside the classes being migrated.
+  - Revision rule:
+    - If any migrated test references a dead symbol, classify it as discard instead, do not migrate it, and note this in the handoff.
+
+  ### Handoff
+
+  Report:
+  - Absolute path of new test file
+  - List of migrated test names (method names)
+  - List of discarded test names (method names)
+  - Output of `uv run pytest ... -v` (new file only)
+  - Output of `uv run pytest` (full suite)
+  - Output of `grep -r "detect_fenced_yaml" scripts/` (must be empty)
+  - Any deviation from Decision 7 classification with justification
+
+  ---

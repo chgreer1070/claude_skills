@@ -1,0 +1,58 @@
+id: T02
+title: 'Enhanced sam read: TaskAssignment composite response'
+status: complete
+agent: python3-development:python-cli-architect
+priority: 1
+complexity: medium
+skills:
+- python3-development
+parallelize-with:
+- T01
+- T03
+- T04
+started: '2026-03-15T13:01:13Z'
+completed: '2026-03-15T12:00:00Z'
+description: |-
+  The `sam read` command currently returns task fields only when given a `P{N}/T{M}` address. Agents need plan-level context (goal, shared context, acceptance criteria) alongside task details in a single call per ADR-003. The architecture spec section 4.2 defines the `TaskAssignment` composite model.
+objective: |-
+  Enhance `sam read P{N}/T{M}` to return a `TaskAssignment` response containing both plan-level fields and task details, so agents receive everything needed in one call.
+requirements: |-
+  1. Add `TaskAssignment` Pydantic model to `models.py` with fields: plan_number, plan_slug, plan_goal, plan_context, plan_acceptance_criteria, task (existing Task model)
+  2. Add `get_task_assignment()` function to query.py that composes TaskAssignment from Plan + Task
+  3. Modify `read` command in cli.py: when address includes task ID (P{N}/T{M}), return TaskAssignment JSON instead of bare Task JSON
+  4. When address is plan-only (P{N}), continue returning Plan JSON (existing behavior unchanged)
+  5. MCP `sam_read` tool returns TaskAssignment when task address provided (mirror CLI behavior)
+constraints: |-
+  - Do not break existing `sam read` callers that expect current Task output shape -- the new shape wraps Task inside a `task` field, which is a breaking change. This is intentional per architecture spec.
+  - Do not modify other commands in cli.py (those are T01)
+  - TaskAssignment must be serializable to JSON and YAML
+expected-outputs: |-
+  - `packages/sam_schema/sam_schema/core/models.py` (modified -- TaskAssignment model)
+  - `packages/sam_schema/sam_schema/core/query.py` (modified -- get_task_assignment function)
+  - `packages/sam_schema/sam_schema/cli.py` (modified -- read command enhancement)
+  - `packages/sam_schema/sam_schema/server.py` (modified -- sam_read MCP tool update)
+acceptance-criteria: |-
+  1. `uv run sam read P1/T1 --format json` returns JSON with `plan_goal`, `plan_slug`, `plan_context`, and nested `task` object (AC5)
+  2. `uv run sam read P1 --format json` returns Plan JSON (unchanged behavior)
+  3. `TaskAssignment` model validates with Pydantic and rejects missing required fields
+  4. MCP `sam_read` tool returns TaskAssignment JSON when task address provided
+verification-steps: |-
+  1. Create a test plan with known goal/context, read a task, verify plan fields appear in response
+  2. Run `uv run sam read P1 --format json` and verify it does NOT return TaskAssignment (plan-only)
+  3. Run `uv run pytest packages/sam_schema/tests/ -k "read" -v`
+  4. Run `uv run basedpyright packages/sam_schema/sam_schema/core/models.py`
+
+  - Key claims to verify:
+    - Current `sam read` output shape (what fields does it return now?)
+    - Plan model has goal, context, acceptance_criteria fields
+  - Verification questions:
+    1. What does `sam read P1/T1 --format json` currently output?
+    2. Does the Plan model in models.py include a `goal` field?
+    3. Does the Plan model include `acceptance_criteria` as a list field?
+  - Evidence to collect:
+    - Read Plan model class from models.py
+    - Run existing `sam read` on a test file to capture current output
+  - Revision rule:
+    - If Plan model lacks expected fields, add them (they may need adding to the model first)
+handoff: |-
+  Report: TaskAssignment model fields, sam read output sample, files modified

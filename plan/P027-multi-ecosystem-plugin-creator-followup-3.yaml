@@ -1,0 +1,67 @@
+feature: multi-ecosystem-plugin-creator-followup-3
+version: '1.0'
+description: ''
+tasks:
+- id: T1
+  title: Fix get_ecosystem_owned_keys() to include agent_frontmatter_keys and
+    add test coverage
+  status: not-started
+  priority: 3
+  complexity: medium
+  description: |-
+    `plugins/plugin-creator/scripts/ecosystem_registry.py:get_ecosystem_owned_keys()`
+    only unions `skill_frontmatter_keys` across registered ecosystems. It ignores
+    `agent_frontmatter_keys`:
+
+    ```python
+    def get_ecosystem_owned_keys() -> frozenset[str]:
+        result: frozenset[str] = frozenset()
+        for spec in _REGISTRY.values():
+            result |= spec.skill_frontmatter_keys  # BUG: agent_frontmatter_keys not included
+        return result
+    ```
+
+    The function name and its callers in `plugin_validator.py` imply it returns all
+    ecosystem-owned keys regardless of file type. The docstring says "union of all
+    skill_frontmatter_keys" which is honest but contradicts the field name
+    `agent_frontmatter_keys` existing on `EcosystemSpec`.
+
+    Additionally, `get_ecosystem_for_key()` checks `agent_frontmatter_keys` correctly:
+
+    ```python
+    if key in spec.skill_frontmatter_keys or key in spec.agent_frontmatter_keys:
+        return ecosystem_name
+    ```
+
+    But if the validator calls `get_ecosystem_owned_keys()` to build a guard set, agent
+    files using ecosystem-owned keys would not be protected, because those keys are absent
+    from the returned frozenset.
+
+    **Current impact**: Zero — `agent_frontmatter_keys` is `frozenset()` for all registered
+    ecosystems today. But the data model exists to support future ecosystems, and the
+    inconsistency is a latent correctness bug.
+
+    **Fix options** (choose one):
+    1. Union both fields in `get_ecosystem_owned_keys()` — aligns function behavior with
+       its name and the caller's expectations.
+    2. Add a separate `get_ecosystem_owned_agent_keys()` function and update callers to
+       use it when processing agent files.
+    3. Add a `file_type` parameter to `get_ecosystem_owned_keys()` to select which
+       field to union.
+
+    Option 1 is simplest and consistent with how the validator currently uses the function.
+
+    **Missing test coverage**: No test in `test_ecosystem_registry.py` exercises the
+    `agent_frontmatter_keys` lookup path in `get_ecosystem_for_key()`. The branch
+    `key in spec.agent_frontmatter_keys` is dead code in all current test runs.
+  acceptance-criteria: |-
+    - [ ] `get_ecosystem_owned_keys()` unions both `skill_frontmatter_keys` and
+          `agent_frontmatter_keys` from every registered ecosystem
+    - [ ] The function docstring is updated to reflect both fields are included
+    - [ ] A test in `test_ecosystem_registry.py` verifies the `agent_frontmatter_keys`
+          lookup path in `get_ecosystem_for_key()` — this requires either adding a
+          temporary test ecosystem entry or registering a real agent key
+    - [ ] All 26 existing tests continue to pass
+  verification-steps: |-
+    1. `uv run pytest plugins/plugin-creator/tests/test_ecosystem_registry.py -v` — all pass
+    2. Verify no validator behavior changes: `uv run pytest plugins/plugin-creator/tests/ -v`

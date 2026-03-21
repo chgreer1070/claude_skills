@@ -1,0 +1,47 @@
+id: T14
+title: development-harness sync + workshop copies + local-workflow.md update
+status: complete
+agent: contextual-ai-documentation-optimizer
+dependencies:
+- T12
+- T13
+priority: 5
+complexity: medium
+skills:
+- development-harness:clear-cove-task-design
+started: '2026-03-15T13:42:11Z'
+completed: '2026-03-15T17:00:00Z'
+description: |-
+  The development-harness plugin contains copies of agents from python3-development (section 15 of architecture spec). After T12 and T13 update the python3-development agents, the development-harness copies must be synchronized. Additionally, workshop skill copies and `local-workflow.md` need updating.
+
+  This task was merged from three planned changes (development-harness sync, workshop updates, local-workflow.md references) to avoid coordination overhead since they share no file conflicts but depend on the same upstream changes.
+objective: |-
+  Synchronize development-harness agent copies with updated python3-development agents, update workshop copies, and update local-workflow.md to reference sam CLI instead of implementation_manager.py.
+constraints: |-
+  - Agent copies must match python3-development versions exactly (diff should show no differences after sync)
+  - Do not modify python3-development agent files (those are done in T12/T13)
+  - Workshop skill changes should be minimal -- only replace the task file access commands
+  - local-workflow.md: update documentation references only, do not change workflow structure
+expected-outputs: |-
+  - `plugins/development-harness/agents/swarm-task-planner.md` (synced)
+  - `plugins/development-harness/agents/context-gathering.md` (synced)
+  - `plugins/development-harness/agents/context-refinement.md` (synced)
+  - `workshops/.claude/skills/implement-embedded-feature/SKILL.md` (modified)
+  - `workshops/.cursor/skills/implement-embedded-feature/SKILL.md` (modified)
+  - `.claude/rules/local-workflow.md` (modified)
+acceptance-criteria: |-
+  1. `diff plugins/python3-development/agents/swarm-task-planner.md plugins/development-harness/agents/swarm-task-planner.md` shows no differences (AC11)
+  2. `diff plugins/python3-development/agents/context-gathering.md plugins/development-harness/agents/context-gathering.md` shows no differences (AC11)
+  3. `diff plugins/python3-development/agents/context-refinement.md plugins/development-harness/agents/context-refinement.md` shows no differences (AC11)
+  4. Workshop SKILL.md files reference sam CLI commands, not Read/Edit tool for task files (AC12)
+  5. `grep -c "implementation_manager" .claude/rules/local-workflow.md` returns 0 or only in deprecation context
+  6. `grep "sam status\|sam ready\|sam read\|sam claim" .claude/rules/local-workflow.md` returns matches
+verification-steps: |-
+  1. Run `diff plugins/python3-development/agents/swarm-task-planner.md plugins/development-harness/agents/swarm-task-planner.md`
+  2. Run `diff plugins/python3-development/agents/context-gathering.md plugins/development-harness/agents/context-gathering.md`
+  3. Run `diff plugins/python3-development/agents/context-refinement.md plugins/development-harness/agents/context-refinement.md`
+  4. Run `grep "implementation_manager" workshops/.claude/skills/implement-embedded-feature/SKILL.md` -- expect no matches
+  5. Run `uv run prek run --files .claude/rules/local-workflow.md`
+  6. Run `uv run prek run --files workshops/.claude/skills/implement-embedded-feature/SKILL.md`
+handoff: |-
+  Report: files synced (list), workshop files updated, local-workflow.md references updated, diff verification

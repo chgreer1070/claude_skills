@@ -1,0 +1,422 @@
+feature: 'Task Plan: Backlog MCP Scenario Testing'
+version: '1.0'
+description: ''
+tasks:
+- id: '1.1'
+  title: Create Shared Fixtures in conftest.py
+  status: complete
+  agent: fastmcp-python-tests
+  priority: 1
+  complexity: medium
+  started: '2026-03-01T08:50:00Z'
+  completed: '2026-03-01T09:00:00Z'
+  acceptance-criteria: |-
+    - [ ] `backlog_dir` fixture patches `backlog_core.models.BACKLOG_DIR`, `backlog_core.operations.BACKLOG_DIR`, and `backlog_core.parsing.BACKLOG_DIR` to `tmp_path / ".claude" / "backlog"`
+    - [ ] `mock_github` fixture patches all 13 github.py functions listed in the architecture spec at the `backlog_core.operations.*` namespace, returns `dict[str, MagicMock]` for per-test override
+    - [ ] `write_test_item` fixture is a factory callable that uses `build_backlog_frontmatter()` to create per-item files with valid frontmatter
+    - [ ] Existing 42 tests in `test_backlog_core_server.py` still pass with `uv run pytest .claude/skills/backlog/tests/test_backlog_core_server.py -x`
+    - [ ] No `@pytest.mark.asyncio` decorators added (global `asyncio_mode = "auto"`)
+    - [ ] Fixtures work with `pytest-xdist` (`-n auto`) -- no shared mutable state
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_backlog_core_server.py -x` and confirm all 42 existing tests pass
+    2. Run `uv run pytest .claude/skills/backlog/tests/conftest.py --collect-only` and confirm no collection errors
+    3. Verify `backlog_dir` fixture creates the temp directory and patches all three module bindings by reading the fixture code
+
+    ---
+- id: '1.2'
+  title: Create test_scenarios.py Boilerplate
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '1.1'
+  priority: 1
+  complexity: low
+  started: '2026-03-01T09:01:00Z'
+  completed: '2026-03-01T09:05:00Z'
+  acceptance-criteria: |-
+    - [ ] File exists at `.claude/skills/backlog/tests/test_scenarios.py`
+    - [ ] Imports include `json`, `MagicMock`, `Client`, `mcp`, `Path`
+    - [ ] `_call` async helper matches the pattern: `async with Client(mcp) as client: result = await client.call_tool(...)` with `json.loads(result.content[0].text)` return
+    - [ ] Nine empty test classes present matching the architecture spec organization
+    - [ ] File collects without errors: `uv run pytest .claude/skills/backlog/tests/test_scenarios.py --collect-only`
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_scenarios.py --collect-only` and confirm no collection errors
+    2. Confirm `_call` helper signature matches `async def _call(tool_name: str, params: dict | None = None) -> dict`
+    3. Verify no `@pytest.mark.asyncio` decorators present
+
+    ---
+
+    ## Group 2: Suite 1 -- Scenario Integration Tests (mocked boundaries)
+- id: '2.1'
+  title: Create-Backlog-Item Workflow Scenarios (backlog_add)
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '1.1'
+  - '1.2'
+  priority: 2
+  complexity: medium
+  started: '2026-03-01T09:10:00Z'
+  completed: '2026-03-01T10:30:00Z'
+  acceptance-criteria: |-
+    - [ ] Test `test_create_item_with_github_issue` in `TestCreateBacklogItem` class
+    - [ ] Uses `backlog_dir` and `mock_github` fixtures (operations layer NOT mocked)
+    - [ ] Asserts `result["filepath"]` is a string pointing to an existing file
+    - [ ] Asserts `result["title"]` is a string, `result["priority"]` is a string, `result["issue_num"]` is an int
+    - [ ] Asserts output envelope: `result["messages"]` is list, `result["warnings"]` is list, `result["errors"]` is list
+    - [ ] Verifies `mock_github["create_issue_for_item"]` was called once
+    - [ ] Test passes with `uv run pytest .claude/skills/backlog/tests/test_scenarios.py::TestCreateBacklogItem -x`
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_scenarios.py::TestCreateBacklogItem -x -v` and confirm test passes
+    2. Verify test uses `force=True` to avoid duplicate detection issues
+    3. Confirm no operations-level mocks are used (only `mock_github` fixture)
+
+    ---
+- id: '2.2'
+  title: Work-Backlog-Item Browse/List Scenarios (backlog_list, backlog_view)
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '1.1'
+  - '1.2'
+  priority: 2
+  complexity: high
+  started: '2026-03-01T09:10:00Z'
+  completed: '2026-03-01T10:30:00Z'
+  acceptance-criteria: |-
+    - [ ] Six tests in `TestWorkBacklogItem` class covering Scenarios 2-7
+    - [ ] Scenario 2: `test_list_with_status` asserts all 8 item-level fields from Response Shape Registry
+    - [ ] Scenario 3: `test_list_from_github` asserts `from_github=True` triggers refresh path
+    - [ ] Scenario 4: `test_list_with_label_filter` asserts only matching items returned
+    - [ ] Scenario 5: `test_view_by_issue_number` asserts all view response fields
+    - [ ] Scenario 6: `test_view_by_title_substring` asserts match with `file_path`
+    - [ ] Scenario 7: `test_view_with_pagination` asserts pagination fields (`body_truncated`, `body_remaining_lines`, `body_total_lines`)
+    - [ ] All tests use `backlog_dir`, `mock_github`, and `write_test_item` fixtures
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_scenarios.py::TestWorkBacklogItem -x -v` and confirm all 6 tests pass
+    2. Verify each test's assertions cover the fields listed in the Response Shape Registry for the consuming skill
+    3. Confirm tests work with `-n auto` (no shared state between tests)
+
+    ---
+- id: '2.3'
+  title: Work-Backlog-Item Plan/Status/Update Scenarios (backlog_update)
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '1.1'
+  - '1.2'
+  priority: 2
+  complexity: medium
+  started: '2026-03-01T09:10:00Z'
+  completed: '2026-03-01T10:30:00Z'
+  acceptance-criteria: |-
+    - [ ] Three tests in `TestWorkBacklogItem` class covering Scenarios 8-10
+    - [ ] Scenario 8: `test_update_with_plan` asserts `result["plan"]` matches the provided plan path and per-item file reflects update
+    - [ ] Scenario 9: `test_update_status_in_progress` asserts `result["status"]` is `"in-progress"` and `mock_github["apply_status_in_progress"]` was called
+    - [ ] Scenario 10: `test_update_create_github_issue` asserts `result["issue_num"]` is an int and `mock_github["create_issue_for_item"]` was called
+    - [ ] All tests assert output envelope (`messages`, `warnings`, `errors` lists)
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_scenarios.py::TestWorkBacklogItem -x -v -k "update"` and confirm all 3 tests pass
+    2. Verify mock interactions (`.assert_called_once()` or `.assert_called()`) are validated
+    3. Confirm per-item file content is inspected via `backlog_dir` path reads
+
+    ---
+- id: '2.4'
+  title: Work-Backlog-Item Close Scenarios (backlog_close)
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '1.1'
+  - '1.2'
+  priority: 2
+  complexity: medium
+  started: '2026-03-01T09:10:00Z'
+  completed: '2026-03-01T10:30:00Z'
+  acceptance-criteria: |-
+    - [ ] Test `test_close_with_checklist_pass` in `TestWorkBacklogItem` class
+    - [ ] Pre-creates item with issue number via `write_test_item`
+    - [ ] Calls `backlog_close` with `checklist_pass=True`
+    - [ ] Asserts `result["closed"]` is `True` and `result["title"]` is a string
+    - [ ] Verifies `mock_github["close_github_issue"]` was called with correct arguments
+    - [ ] Asserts output envelope fields present
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_scenarios.py -x -v -k "test_close"` and confirm test passes
+    2. Verify the test configures `mock_github["get_github"]` to return a mock repository
+    3. Confirm `check_open_prs_for_issue` returns empty list (no blocking PRs)
+
+    ---
+- id: '2.5'
+  title: Work-Backlog-Item Resolve Scenarios (backlog_resolve)
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '1.1'
+  - '1.2'
+  priority: 2
+  complexity: medium
+  started: '2026-03-01T09:10:00Z'
+  completed: '2026-03-01T10:30:00Z'
+  acceptance-criteria: |-
+    - [ ] Two tests in `TestWorkBacklogItem` class covering Scenarios 12-13
+    - [ ] Scenario 12: `test_resolve_with_reason` asserts `result["resolved"]` is `True` and `resolve_github_issue` called
+    - [ ] Scenario 13: `test_resolve_with_cleanup` asserts `result["resolved"]` is `True` and the per-item file no longer exists on disk
+    - [ ] Both tests pre-create items with issue numbers via `write_test_item`
+    - [ ] Both tests configure `mock_github["get_github"]` appropriately
+    - [ ] Output envelope asserted on both tests
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_scenarios.py -x -v -k "resolve"` and confirm both tests pass
+    2. For Scenario 13, verify that the file path from `write_test_item` no longer exists after the resolve call
+    3. Confirm `check_open_prs_for_issue` returns empty list in both tests
+
+    ---
+- id: '2.6'
+  title: Groom-Backlog-Item Scenarios (backlog_groom)
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '1.1'
+  - '1.2'
+  priority: 2
+  complexity: high
+  started: '2026-03-01T10:31:00Z'
+  completed: '2026-03-01T11:30:00Z'
+  acceptance-criteria: |-
+    - [ ] Four tests in `TestGroomBacklogItem` class covering Scenarios 14-17
+    - [ ] Scenario 14: `test_groom_full_content` asserts `groomed_updated` is `True`, file contains groomed section
+    - [ ] Scenario 15: `test_groom_incremental_section` asserts `groomed_updated` is `True`, specific section updated in file
+    - [ ] Scenario 16: `test_groom_local_only` asserts `groomed_updated` is `True`, `sync_groomed_to_github_issue` NOT called
+    - [ ] Scenario 17: `test_groom_via_update` calls `backlog_update` with `groomed_content` param and asserts `groomed_updated` is `True`
+    - [ ] All tests pre-create items via `write_test_item` and verify file contents after groom
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_scenarios.py::TestGroomBacklogItem -x -v` and confirm all 4 tests pass
+    2. Verify Scenario 16 uses `.assert_not_called()` on `sync_groomed_to_github_issue`
+    3. Read per-item file contents after each groom test to verify content changes
+
+    ---
+- id: '2.7'
+  title: Group-Items-to-Milestone and Backlog-Item-Groomer Scenarios
+    (backlog_list)
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '1.1'
+  - '1.2'
+  priority: 3
+  complexity: medium
+  started: '2026-03-01T10:31:00Z'
+  completed: '2026-03-01T11:30:00Z'
+  acceptance-criteria: |-
+    - [ ] Scenario 18: `test_list_for_milestone_selection` in `TestGroupItemsToMilestone` asserts milestone-relevant fields on each item
+    - [ ] Scenario 19: `test_groomer_list_then_view` in `TestBacklogItemGroomer` chains `backlog_list` and `backlog_view` calls, asserts groomer-relevant fields
+    - [ ] Both tests pre-create items via `write_test_item` with distinct titles and priorities
+    - [ ] Response field assertions match the Response Shape Registry columns for the consuming skill/agent
+    - [ ] Output envelope asserted on all responses
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_scenarios.py::TestGroupItemsToMilestone -x -v` and confirm test passes
+    2. Run `uv run pytest .claude/skills/backlog/tests/test_scenarios.py::TestBacklogItemGroomer -x -v` and confirm test passes
+    3. Verify Scenario 19 uses the `selector` from the list response to call view (not a hardcoded value)
+
+    ---
+- id: '2.8'
+  title: Sync and Pull Scenarios (backlog_sync, backlog_pull)
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '1.1'
+  - '1.2'
+  priority: 2
+  complexity: high
+  started: '2026-03-01T10:31:00Z'
+  completed: '2026-03-01T11:30:00Z'
+  acceptance-criteria: |-
+    - [ ] Two tests in `TestSyncAndPull` class covering Scenarios 20-21
+    - [ ] Scenario 20: `test_sync_creates_missing_issues` asserts `result["created"]` > 0, `create_issue_for_item` called
+    - [ ] Scenario 21: `test_pull_updates_local` asserts `result["pulled"]` > 0, local file content changed
+    - [ ] Both tests assert output envelope fields
+    - [ ] Both tests configure `mock_github["get_github"]` to return a mock repository object
+    - [ ] Pull test verifies file content on disk matches the mocked GitHub body
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_scenarios.py::TestSyncAndPull -x -v` and confirm both tests pass
+    2. For sync test, verify pre-created items lack issue numbers before sync and have them after
+    3. For pull test, read file contents before and after to confirm update occurred
+
+    ---
+- id: '2.9'
+  title: Normalize Scenarios (backlog_normalize)
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '1.1'
+  - '1.2'
+  priority: 3
+  complexity: medium
+  started: '2026-03-01T10:31:00Z'
+  completed: '2026-03-01T11:30:00Z'
+  acceptance-criteria: |-
+    - [ ] Test `test_normalize_updates_items` in `TestNormalize` class
+    - [ ] Creates at least one item with non-canonical frontmatter (hand-crafted, not via `build_backlog_frontmatter`)
+    - [ ] Calls `backlog_normalize()` and asserts `result["updated"]` > 0
+    - [ ] Verifies file contents are in canonical format after normalization
+    - [ ] Asserts output envelope fields present
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_scenarios.py::TestNormalize -x -v` and confirm test passes
+    2. Read the pre-normalization and post-normalization file contents to verify the transformation
+    3. Confirm the test uses `backlog_dir` fixture for file isolation
+
+    ---
+- id: '2.10'
+  title: Error Path Tests
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '1.1'
+  - '1.2'
+  priority: 2
+  complexity: medium
+  started: '2026-03-01T10:31:00Z'
+  completed: '2026-03-01T11:30:00Z'
+  acceptance-criteria: |-
+    - [ ] Four tests in `TestErrorPaths` class covering Scenarios 22-25
+    - [ ] Scenario 22: `test_close_without_checklist_pass` asserts `"error"` key present with `"checklist_pass"` or `"checklist"` substring
+    - [ ] Scenario 23: `test_view_nonexistent_item` asserts `"error"` key present with `"No item found"` or `"not found"` substring
+    - [ ] Scenario 24: `test_add_duplicate_force_false` pre-creates item, asserts `"error"` key on duplicate add
+    - [ ] Scenario 25: `test_list_empty_backlog` asserts `result["items"]` is `[]` and `result["count"]` is `0`
+    - [ ] All error responses assert output envelope (`messages`, `warnings`, `errors` lists)
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_scenarios.py::TestErrorPaths -x -v` and confirm all 4 tests pass
+    2. Verify error response tests check for both the `error` key and the output envelope
+    3. Confirm Scenario 25 does NOT assert an `error` key (empty list is valid, not an error)
+
+    ---
+- id: '2.11'
+  title: Full Lifecycle Tests
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '2.1'
+  - '2.4'
+  - '2.5'
+  - '2.6'
+  priority: 2
+  complexity: high
+  started: '2026-03-01T11:35:00Z'
+  completed: '2026-03-01T12:00:00Z'
+  acceptance-criteria: |-
+    - [ ] Three tests in `TestLifecycles` class covering Scenarios 26-28
+    - [ ] Lifecycle 1: `test_create_groom_update_close` chains 4 MCP tool calls in sequence, final `closed` is `True`
+    - [ ] Lifecycle 2: `test_create_resolve_cleanup` chains 2 MCP tool calls, file does not exist after resolve
+    - [ ] Lifecycle 3: `test_stale_item_discovery` pre-creates item with issue, asserts empty status in list response
+    - [ ] Each lifecycle test uses `backlog_dir` and `mock_github` fixtures
+    - [ ] Lifecycle 2 configures `mock_github["try_get_github"]` to return a mock repo so `create_issue=True` works
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_scenarios.py::TestLifecycles -x -v` and confirm all 3 tests pass
+    2. For Lifecycle 1, verify intermediate states (groom updates file, update changes plan, close marks closed)
+    3. For Lifecycle 2, verify file existence before and after resolve using `Path.exists()`
+
+    ---
+
+    ## Group 3: Suite 2 -- Live Validation Tests (no mocks)
+- id: '3.1'
+  title: Live Test Fixtures and File Boilerplate
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '1.1'
+  priority: 3
+  complexity: medium
+  started: '2026-03-01T12:05:00Z'
+  completed: '2026-03-01T12:30:00Z'
+  acceptance-criteria: |-
+    - [ ] File exists at `.claude/skills/backlog/tests/test_live_validation.py`
+    - [ ] Module-level `pytestmark` includes `pytest.mark.e2e` and skip condition on `GITHUB_TOKEN`
+    - [ ] `live_items` fixture is `scope="class"`, yields test context dict, cleans up issues in teardown
+    - [ ] Cleanup uses PyGithub API directly (not MCP tools) for reliability
+    - [ ] Issue title convention: `[MCP-TEST-{uuid}]` prefix
+    - [ ] `TestLiveLifecycle` class with 11 stub test methods (L1-L11)
+    - [ ] File collects without errors when `GITHUB_TOKEN` is not set (tests skip, not error)
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_live_validation.py --collect-only` and confirm tests are collected (or skipped if no token)
+    2. Verify the cleanup fixture handles exceptions gracefully (best-effort cleanup)
+    3. Confirm `BACKLOG_DIR` is redirected to temp directory even for live tests
+
+    ---
+- id: '3.2'
+  title: Live Lifecycle Tests (L1-L11)
+  status: complete
+  agent: fastmcp-python-tests
+  dependencies:
+  - '3.1'
+  priority: 3
+  complexity: high
+  started: '2026-03-01T12:05:00Z'
+  completed: '2026-03-01T12:30:00Z'
+  acceptance-criteria: |-
+    - [ ] 11 tests in `TestLiveLifecycle` class (test_l1 through test_l11)
+    - [ ] L1: `backlog_add` with `create_issue=True`, asserts `issue_num` > 0, stores issue number in `live_items["issues"]`
+    - [ ] L2-L9: each asserts response fields matching Response Shape Registry for the tool called
+    - [ ] L10: `backlog_close` with `checklist_pass=True`, asserts `closed: True`
+    - [ ] L11: creates a second item, resolves it, asserts `resolved: True`, stores second issue number for cleanup
+    - [ ] All tests skip when `GITHUB_TOKEN` is not set
+    - [ ] All tests pass with `uv run pytest .claude/skills/backlog/tests/test_live_validation.py -m e2e` when `GITHUB_TOKEN` is available
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/test_live_validation.py -m e2e -v` with `GITHUB_TOKEN` set and confirm all 11 pass
+    2. Verify created GitHub issues have `[MCP-TEST-{uuid}]` prefix in title
+    3. Confirm all created issues are closed after test run (manual check or API query)
+
+    ---
+
+    ## Group 4: Quality Gates
+- id: '4.1'
+  title: Run Full Test Suite
+  status: complete
+  agent: general-purpose
+  dependencies:
+  - '2.1'
+  - '2.2'
+  - '2.3'
+  - '2.4'
+  - '2.5'
+  - '2.6'
+  - '2.7'
+  - '2.8'
+  - '2.9'
+  - '2.10'
+  - '2.11'
+  priority: 1
+  complexity: medium
+  started: '2026-03-01T22:30:00Z'
+  completed: '2026-03-01T22:45:00Z'
+  acceptance-criteria: |-
+    - [ ] `uv run pytest .claude/skills/backlog/tests/test_backlog_core_server.py -x` passes (42 existing tests)
+    - [ ] `uv run pytest .claude/skills/backlog/tests/test_scenarios.py -x` passes (28+ new scenario tests)
+    - [ ] `uv run pytest .claude/skills/backlog/tests/ -m "not e2e" -n auto` passes (all non-live tests in parallel)
+    - [ ] Zero test failures, zero collection errors
+    - [ ] Test count reported: 42 existing + 28+ new = 70+ total tests (excluding e2e)
+  verification-steps: |-
+    1. Run `uv run pytest .claude/skills/backlog/tests/ -m "not e2e" -v --tb=short` and capture full output
+    2. Run `uv run pytest .claude/skills/backlog/tests/ -m "not e2e" -n auto` and confirm parallel execution passes
+    3. Compare test count against expected: at least 70 tests total (42 existing + 28 new)
+
+    ---
+- id: '4.2'
+  title: Code Review
+  status: complete
+  agent: code-review
+  dependencies:
+  - '4.1'
+  priority: 1
+  complexity: medium
+  started: '2026-03-01T22:45:00Z'
+  completed: '2026-03-01T23:00:00Z'
+  acceptance-criteria: |-
+    - [ ] All mock patches target `backlog_core.operations.*` namespace (not `backlog_core.github.*`)
+    - [ ] `BACKLOG_DIR` patched in `models`, `operations`, and `parsing` modules
+    - [ ] No test uses `@pytest.mark.asyncio` decorator
+    - [ ] Response shape assertions verified against Response Shape Registry for each tool/consumer pair
+    - [ ] Test data created via `build_backlog_frontmatter()` or `write_test_item` fixture (no hand-crafted YAML except for normalize test)
+    - [ ] Live test cleanup fixture uses `try/except` for best-effort cleanup
+    - [ ] No follow-up task file needed (or if needed, created at `plan/tasks-12-backlog-mcp-scenarios-followup-1.md`)
+  verification-steps: |-
+    1. Grep for `@pytest.mark.asyncio` in new test files -- must find zero occurrences
+    2. Grep for `backlog_core.github.` in mock patches -- must find zero occurrences (all patches at operations boundary)
+    3. Verify `conftest.py` patches three `BACKLOG_DIR` bindings (models, operations, parsing)

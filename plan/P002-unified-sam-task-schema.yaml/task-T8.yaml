@@ -1,0 +1,45 @@
+id: T8
+title: CLI Interface with Typer
+status: complete
+agent: python3-development:python-cli-architect
+dependencies:
+- T7
+priority: 5
+complexity: medium
+skills:
+- python3-development
+started: '2026-03-15T03:21:15Z'
+completed: '2026-03-15T06:00:00Z'
+description: |-
+  The architecture spec (section 4, `cli.py`) defines a Typer CLI with commands: `read`, `state`, `ready`, `status`, `migrate`. All commands delegate to `core/query.py` functions. The CLI uses `P{N}/T{task}` addressing via `core/addressing.py`. Output format options: `json` (default), `yaml`, `rich` (table).
+objective: |-
+  Implement `cli.py` with all Typer commands that delegate to the query layer, plus CLI integration tests using `typer.testing.CliRunner`.
+requirements: |-
+  1. Implement `app = typer.Typer(name="sam", help="SAM task/plan file interface")`.
+  2. Implement `read` command: parse address, resolve plan, get task, output as JSON/YAML/Rich.
+  3. Implement `state` command: parse address, resolve plan, update status via `update_status()`. Print confirmation with old and new status.
+  4. Implement `ready` command: resolve plan, call `get_ready_tasks()`, output task list as JSON.
+  5. Implement `status` command: resolve plan, call `get_plan_status()`, output summary as JSON or Rich table.
+  6. Implement `migrate` command: resolve plan, load via `load_plan()`, write via `write_plan()` to `.yaml` format. Support `--dry-run` flag that prints what would change without modifying files.
+  7. All commands accept `--plan-dir` option (default: `Path("plan")`).
+  8. Error handling: catch `AddressingError`, `TaskNotFoundError`, `ClaimError`, `FormatDetectionError` and print user-friendly error messages to stderr with non-zero exit code.
+  9. JSON output must use `model_dump(mode="json")` for Pydantic models.
+constraints: |-
+  - All logic in query layer — CLI is a thin wrapper
+  - Use `typer.Argument` and `typer.Option` with `Annotated` type hints
+  - Exit codes: 0 for success, 1 for user errors (bad address, missing file), 2 for internal errors
+expected-outputs: |-
+  - `packages/sam_schema/cli.py` (replaces stub)
+  - `packages/sam_schema/tests/test_cli.py`
+acceptance-criteria: |-
+  1. `uv run sam --help` shows all commands: read, state, ready, status, migrate
+  2. `uv run sam status P1 --plan-dir {fixture_dir}` returns JSON with task counts
+  3. `uv run sam read P1/T1 --plan-dir {fixture_dir}` returns task details as JSON
+  4. `uv run sam state P1/T1 in-progress --plan-dir {fixture_dir}` updates status and prints confirmation
+  5. Invalid address `uv run sam read INVALID` exits with code 1 and error message
+  6. All CLI tests pass via `CliRunner`
+verification-steps: |-
+  1. `uv run sam --help` — shows all commands
+  2. `uv run pytest packages/sam_schema/tests/test_cli.py -v` — all tests pass
+  3. `uv run ty check packages/sam_schema/cli.py` — zero errors
+  4. `uv run ruff check packages/sam_schema/cli.py` — zero errors

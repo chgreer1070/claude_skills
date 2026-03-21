@@ -1,0 +1,191 @@
+feature: gates-subprocess-timeout
+version: '1.0'
+description: ''
+goal: |-
+  Add subprocess timeout to run_quality_gates() in gates.py so hung commands do not block indefinitely
+acceptance-criteria: |-
+  AC1: subprocess.run call includes timeout parameter (function arg with default 300.0)
+  AC2: subprocess.TimeoutExpired caught and converted to CommandResult(exit_code=124, stderr includes timeout message)
+  AC3: Existing 8 tests in test_gates.py continue to pass
+  AC4: New test class verifies timeout behavior
+  AC5: Docstring updated to document timeout parameter and exit_code=124
+tasks:
+- id: T1
+  title: Implement subprocess timeout in run_quality_gates
+  status: not-started
+  priority: 3
+  complexity: medium
+  description: |-
+    ```yaml
+    task: T1
+    title: "Implement subprocess timeout in run_quality_gates"
+    status: not-started
+    agent: python3-development:python-cli-architect
+    dependencies: []
+    priority: 1
+    complexity: low
+    accuracy-risk: low
+    skills:
+      - python3-development
+    parallelize-with: []
+    reason: "Production code change: add timeout param to signature, subprocess.run call, except block, and docstring"
+    handoff: "Report changed line ranges, confirm all 8 existing tests still pass via uv run pytest"
+    ```
+
+    ## Context
+
+    Single-function patch to `run_quality_gates()` in `plugins/development-harness/dispatch_schema/gates.py`. The `subprocess.run` call at line 75 has no `timeout` parameter, so hung gate commands block indefinitely. The fix follows the established `exit_code=127` pattern (command-not-found) at lines 71-72 for converting a non-subprocess error into a `CommandResult`.
+
+    Architecture decisions already resolved:
+    - `timeout` is a keyword-only function parameter with default `300.0` (ADR-001)
+    - No explicit `kill()` needed — `subprocess.run` kills the child before raising `TimeoutExpired` (ADR-002)
+    - `exit_code=124` follows Unix `timeout(1)` convention (ADR-003)
+
+    ## Objective
+
+    Patch `run_quality_gates()` so that a hung subprocess raises `TimeoutExpired`, which is caught and converted to `CommandResult(exit_code=124)`, and update the docstring to document the new parameter and behavior.
+
+    ## Inputs
+
+    - `plugins/development-harness/dispatch_schema/gates.py` — file to modify (read before editing)
+    - Architecture spec section 4.1–4.4 at `plan/architect-gates-subprocess-timeout.md` — exact code shapes to follow
+
+    ## Requirements
+
+    1. Add `timeout: float = 300.0` as a keyword-only parameter to `run_quality_gates()` after `cwd` (all three params already keyword-only after `*`)
+    2. Pass `timeout=timeout` to the existing `subprocess.run(...)` call at line 75
+    3. Wrap the `else` branch (lines 73-78) in `try/except subprocess.TimeoutExpired` — the `except` block constructs `CommandResult(command=command, exit_code=124, stdout="", stderr=f"command timed out after {timeout}s")`
+    4. Update the `run_quality_gates()` docstring:
+       - Add `timeout` entry in the `Args:` section: per-command timeout in seconds, default 300.0
+       - Add a paragraph after the `exit_code=127` paragraph documenting that `subprocess.TimeoutExpired` is caught (not propagated) and produces `exit_code=124`
+       - Preserve the existing `OSError` propagation note unchanged
+
+    ## Constraints
+
+    - Do NOT modify any other function or class
+    - Do NOT add `kill()` or `Popen` — `subprocess.run` with `timeout=` handles child cleanup
+    - Do NOT change `CommandResult`, `GateResult`, or `GateRunMode` — no model changes needed
+    - Do NOT use `shell=True`
+    - Preserve all existing behavior for commands that complete within the timeout
+
+    ## Expected Outputs
+
+    - `plugins/development-harness/dispatch_schema/gates.py` — modified with timeout parameter, except block, and updated docstring
+
+    ## Acceptance Criteria
+
+    1. `run_quality_gates` signature contains `timeout: float = 300.0` as a keyword-only parameter
+    2. `subprocess.run(...)` call includes `timeout=timeout`
+    3. `except subprocess.TimeoutExpired` block exists within the `else` branch and constructs `CommandResult(exit_code=124, stdout="", stderr=f"command timed out after {timeout}s")`
+    4. Docstring `Args:` section includes `timeout` entry
+    5. Docstring body mentions `exit_code=124` and `TimeoutExpired`
+    6. Existing `OSError` propagation note is preserved in docstring
+    7. `uv run pytest plugins/development-harness/tests/test_dispatch_schema/test_gates.py` exits 0 (all 8 existing tests pass)
+    8. `uv run prek run --files plugins/development-harness/dispatch_schema/gates.py` exits 0
+
+    ## Verification Steps
+
+    1. Read `plugins/development-harness/dispatch_schema/gates.py` and confirm signature, subprocess.run call, except block, and docstring match requirements
+    2. `uv run pytest plugins/development-harness/tests/test_dispatch_schema/test_gates.py -v` — confirm all existing tests pass, no new failures
+    3. `uv run prek run --files plugins/development-harness/dispatch_schema/gates.py` — confirm linting passes
+
+    ## Handoff
+
+    Return:
+    - Line numbers of each changed section (signature, subprocess.run call, except block, docstring)
+    - pytest output confirming all existing tests pass
+    - prek output confirming lint passes
+
+    ---
+- id: T2
+  title: Add TestSubprocessTimeoutContract test class
+  status: not-started
+  priority: 3
+  complexity: medium
+  description: |-
+    ```yaml
+    task: T2
+    title: "Add TestSubprocessTimeoutContract test class"
+    status: not-started
+    agent: python3-development:python-pytest-architect
+    dependencies:
+      - T1
+    priority: 1
+    complexity: low
+    accuracy-risk: low
+    skills:
+      - python3-development
+      - fastmcp-python-tests
+    parallelize-with: []
+    reason: "Test class verifying the new timeout exception path added in T1"
+    handoff: "Report new test count, confirm all tests (existing 8 + new) pass"
+    ```
+
+    ## Context
+
+    T1 added `timeout: float = 300.0` to `run_quality_gates()` and a `except subprocess.TimeoutExpired` block that produces `CommandResult(exit_code=124)`. This task adds a new test class to cover that exception path.
+
+    Existing test file: `plugins/development-harness/tests/test_dispatch_schema/test_gates.py`
+
+    Structural reference for the new class:
+    - `TestSubprocessInvocationContract` (lines 568-651) — most similar existing class in structure
+    - Mock target: `mocker.patch("dispatch_schema.gates.subprocess.run", side_effect=subprocess.TimeoutExpired(cmd=["pytest"], timeout=300.0))`
+    - `shutil.which` must also be patched to return a non-None path so code reaches the `subprocess.run` call site
+    - `_clear_resolve_executable_cache` autouse fixture is inherited automatically — no new fixtures needed
+    - `_make_completed_process` helper is available for tests that need a normal result alongside a timeout
+
+    ## Objective
+
+    Add `class TestSubprocessTimeoutContract` to `test_gates.py` that verifies all observable behaviors of the `subprocess.TimeoutExpired` exception path.
+
+    ## Inputs
+
+    - `plugins/development-harness/tests/test_dispatch_schema/test_gates.py` — file to modify (read before editing)
+    - `plugins/development-harness/dispatch_schema/gates.py` after T1 — the implementation under test
+    - Architecture spec section 7.2–7.4 at `plan/architect-gates-subprocess-timeout.md`
+
+    ## Requirements
+
+    1. Add `class TestSubprocessTimeoutContract` to the test file following the class-based pattern of existing tests
+    2. Include these test methods (minimum — add more if coverage gaps exist):
+       - `test_timeout_produces_exit_code_124` — `side_effect=TimeoutExpired`, assert `result.results[0].exit_code == 124`
+       - `test_timeout_stderr_contains_timeout_duration` — assert `"300.0s"` (or the timeout value) appears in `stderr`
+       - `test_timeout_result_has_passed_false` — assert `result.results[0].passed is False`
+       - `test_timeout_failfast_stops_after_first_timeout` — two commands, first times out, assert only one result returned
+       - `test_timeout_runall_continues_after_timeout` — two commands, first times out, second succeeds, assert two results
+       - `test_custom_timeout_value_forwarded_to_subprocess` — call with `timeout=5.0`, assert `subprocess.run` was called with `timeout=5.0`
+    3. Each test uses AAA (Arrange / Act / Assert) comment structure matching existing tests
+    4. Mock target string: `"dispatch_schema.gates.subprocess.run"` — identical to all existing tests
+    5. Also patch `shutil.which` (or `dispatch_schema.gates.shutil.which`) to return a non-None path in every test
+
+    ## Constraints
+
+    - Do NOT modify any existing test class or method
+    - Do NOT add new fixtures beyond the existing autouse fixture
+    - Do NOT import new test libraries — `pytest`, `pytest-mock`, and `subprocess` are sufficient
+    - Test class must be appended after the last existing class in the file
+
+    ## Expected Outputs
+
+    - `plugins/development-harness/tests/test_dispatch_schema/test_gates.py` — modified with `TestSubprocessTimeoutContract` appended
+
+    ## Acceptance Criteria
+
+    1. `class TestSubprocessTimeoutContract` exists in the file
+    2. All 6 test methods listed in Requirements exist
+    3. `uv run pytest plugins/development-harness/tests/test_dispatch_schema/test_gates.py -v` exits 0 — all tests pass (existing 8 + new)
+    4. New `except subprocess.TimeoutExpired` branch in gates.py is covered (no uncovered branch warnings for that path)
+    5. `uv run prek run --files plugins/development-harness/tests/test_dispatch_schema/test_gates.py` exits 0
+
+    ## Verification Steps
+
+    1. `uv run pytest plugins/development-harness/tests/test_dispatch_schema/test_gates.py -v` — confirm total test count increased and all pass
+    2. `uv run pytest plugins/development-harness/tests/test_dispatch_schema/test_gates.py -v -k TestSubprocessTimeoutContract` — confirm new class runs in isolation
+    3. `uv run prek run --files plugins/development-harness/tests/test_dispatch_schema/test_gates.py` — confirm lint passes
+
+    ## Handoff
+
+    Return:
+    - Total test count before and after
+    - pytest -v output for `TestSubprocessTimeoutContract` only
+    - prek output confirming lint passes

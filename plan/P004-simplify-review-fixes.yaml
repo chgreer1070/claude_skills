@@ -1,0 +1,180 @@
+feature: simplify-review-fixes
+version: '1.0'
+description: ''
+goal: |-
+  Fix 21 simplify review findings in milestone orchestration tooling across dispatch_schema/, github_branches.py, and backlog_core/operations.py without breaking 160+ existing tests
+context: |-
+  Story #938. Target: plugins/development-harness/dispatch_schema/ (models.py, gates.py, validator.py, server.py), github_branches.py, backlog_core/operations.py. Stack: Python 3.11+, Pydantic v2, pytest. T01+T02+T03 are fully independent and run in parallel. T04 depends on all three completing first.
+acceptance-criteria: |-
+  AC1: All 160+ existing tests pass (uv run pytest plugins/development-harness/tests/ -x -q exits 0)
+  AC2: No duplicate _MIN_CONFLICT_GROUP_SIZE definition exists in validator.py
+  AC3: tests/test_gates.py deleted; test_dispatch_schema/test_gates.py is the sole gates test file
+  AC4: CommandResult.passed is a @computed_field derived from exit_code, not a stored field
+  AC5: analyze_impact_radius_conflicts accepts ImpactRadiusInput TypedDict instead of dict[str, object]
+  AC6: _dispatch_plan_path importable from dispatch_schema package, not only from server.py
+  AC7: ruff check exits 0 on all modified files
+issue: '938'
+tasks:
+- id: T01
+  title: Fix high-severity subprocess timeout, duplicate constant, and branch
+    validation (H1, H3, H4)
+  status: complete
+  agent: python-cli-architect
+  priority: 1
+  complexity: medium
+  skills:
+  - python3-development
+  parallelize-with:
+  - T02
+  - T03
+  started: '2026-03-21T02:42:21.134359Z'
+  description: |-
+    ### Context
+
+    Three independent high-severity findings in separate files. No shared file writes between T01, T02, and T03 — safe to run in parallel.
+
+    ### Objective
+
+    Apply H1 (gates.py subprocess timeout), H3 (remove duplicate _MIN_CONFLICT_GROUP_SIZE from validator.py), and H4 (move validation into _branch_name() in github_branches.py).
+
+    ### Inputs
+
+    - plugins/development-harness/dispatch_schema/gates.py
+    - plugins/development-harness/dispatch_schema/validator.py
+    - plugins/development-harness/backlog_core/operations.py (read-only, source of _MIN_CONFLICT_GROUP_SIZE)
+    - plugins/development-harness/github_branches.py
+
+    ### Requirements
+- id: T02
+  title: Remove duplicate test file tests/test_gates.py (H2)
+  status: complete
+  agent: python-pytest-architect
+  priority: 1
+  complexity: low
+  skills:
+  - python3-development
+  - fastmcp-python-tests
+  parallelize-with:
+  - T01
+  - T03
+  started: '2026-03-21T02:42:51.878017Z'
+  description: |-
+    ### Context
+
+    tests/test_gates.py is superseded by tests/test_dispatch_schema/test_gates.py. The duplicate causes redundant test execution and maintenance confusion. This is finding H2.
+
+    ### Objective
+
+    Verify the superseding file covers all tests in the duplicate, then delete the duplicate.
+
+    ### Inputs
+
+    - plugins/development-harness/tests/test_gates.py (duplicate — to be deleted)
+    - plugins/development-harness/tests/test_dispatch_schema/test_gates.py (authoritative)
+
+    ### Requirements
+
+    1. Read both files and produce a side-by-side list of test function names
+    2. Confirm every test_* function in tests/test_gates.py has a counterpart (same name or equivalent coverage) in tests/test_dispatch_schema/test_gates.py
+    3. If any test in the duplicate has no counterpart, migrate it to the authoritative file before deleting the duplicate
+    4. Delete plugins/development-harness/tests/test_gates.py
+
+    ### Constraints
+
+    - Do not delete tests/test_gates.py until coverage parity is confirmed
+    - Do not modify the authoritative file unless a migration is required under Requirement 3
+    - Do not alter any implementation files in this task
+
+    ### Expected Outputs
+
+    - plugins/development-harness/tests/test_gates.py (deleted)
+    - plugins/development-harness/tests/test_dispatch_schema/test_gates.py (unchanged, or with migrated tests appended)
+
+    ### Acceptance Criteria
+
+    1. plugins/development-harness/tests/test_gates.py no longer exists
+    2. `uv run pytest plugins/development-harness/tests/ -x -q` exits 0
+    3. No test function that previously existed only in the deleted file is missing from the suite
+
+    ### Verification Steps
+
+    1. Before deletion: `uv run pytest plugins/development-harness/tests/test_gates.py --collect-only -q` — record names
+    2. `uv run pytest plugins/development-harness/tests/test_dispatch_schema/test_gates.py --collect-only -q` — confirm superset
+    3. Delete the file, then: `uv run pytest plugins/development-harness/tests/ -x -q --tb=short`
+    4. `ls plugins/development-harness/tests/test_gates.py 2>&1` — confirm file absent (expect error)
+
+    ### CoVe Checks
+
+    - Key claims to verify:
+      - tests/test_dispatch_schema/test_gates.py is a strict superset of tests/test_gates.py
+    - Verification questions:
+      1. Are there any tests in test_gates.py that test behavior not present in test_dispatch_schema/test_gates.py?
+      2. Does the pytest suite collect test_gates.py via any conftest import that would break on deletion?
+    - Evidence to collect:
+      - Side-by-side function name lists from both files
+      - `grep -rn "test_gates" plugins/development-harness/tests/conftest.py` (if conftest exists)
+    - Revision rule: if any unique test is found in the duplicate, migrate it first; document the migration in the handoff
+
+    ### Handoff
+
+    Return: confirmation of deletion, list of any migrated tests, pytest exit code
+
+    ---
+- id: T03
+  title: Fix medium and low severity independent findings (M1, M2, L1, L2, L3)
+  status: complete
+  agent: python-cli-architect
+  priority: 1
+  complexity: medium
+  skills:
+  - python3-development
+  parallelize-with:
+  - T01
+  - T02
+  started: '2026-03-21T02:42:25.429979Z'
+  description: |-
+    ### Context
+
+    Five independent findings across dispatch_schema/models.py, backlog_core/operations.py, and dispatch_schema/validator.py. No shared file writes with T01 or T02 — safe to run in parallel.
+
+    ### Objective
+
+    Apply M1 (CommandResult.passed as computed_field), M2 (union-find rank), L1 (shared ConfigDict), L2 (regex DRY), and L3 (shutil.which caching) in a single pass.
+
+    ### Inputs
+
+    - plugins/development-harness/dispatch_schema/models.py
+    - plugins/development-harness/backlog_core/operations.py
+    - plugins/development-harness/dispatch_schema/validator.py (L2 only)
+
+    ### Requirements
+- id: T04
+  title: Fix H5 (TypedDict for analyze_impact_radius_conflicts) and M3 (extract
+    _dispatch_plan_path)
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T01
+  - T02
+  - T03
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+  started: '2026-03-21T02:46:40.508473Z'
+  description: |-
+    ### Context
+
+    H5 and M3 depend on GROUP 1 fixes completing first (T01/T02/T03). H5 adds a TypedDict to replace dict[str, object] in the analyze_impact_radius_conflicts signature. M3 moves _dispatch_plan_path from server.py into the dispatch_schema public API so other modules can import it without going through the server layer.
+
+    ### Objective
+
+    Replace dict[str, object] input type with a TypedDict and extract _dispatch_plan_path into the dispatch_schema package, without breaking existing callers or tests.
+
+    ### Inputs
+
+    - plugins/development-harness/dispatch_schema/validator.py or operations.py (where analyze_impact_radius_conflicts lives — confirm by grep)
+    - plugins/development-harness/dispatch_schema/server.py (source of _dispatch_plan_path)
+    - plugins/development-harness/dispatch_schema/__init__.py (to update exports if needed)
+
+    ### Requirements

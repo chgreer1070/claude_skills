@@ -1,0 +1,252 @@
+feature: 'Task Plan: Backlog CLI-to-MCP Migration'
+version: '1.0'
+description: ''
+tasks:
+- id: '1'
+  title: Update CLAUDE.md Backlog Operations policy
+  status: complete
+  agent: contextual-ai-documentation-optimizer
+  priority: 1
+  complexity: low
+  skills:
+  - '"backlog"'
+  started: '2026-03-02T00:00:00Z'
+  completed: '2026-03-02T06:42:00Z'
+  acceptance-criteria: |-
+    - [ ] `<backlog_operations>` section declares MCP tools as primary interface
+    - [ ] All 10 MCP tool names listed (`backlog_add` through `backlog_pull`)
+    - [ ] CLI fallback documented for CI/GitHub Actions only
+    - [ ] Capability gap fallback to `/backlog-tools-administrator` retained
+    - [ ] "GitHub Issues are the source of truth" policy unchanged
+  verification-steps: |-
+    - [ ] `grep -c "backlog\.py" .claude/CLAUDE.md` returns count only in the CI fallback block
+    - [ ] `grep "mcp__backlog__" .claude/CLAUDE.md` shows at least one reference
+    - [ ] `uv run prek run --files .claude/CLAUDE.md` passes
+
+    ---
+- id: '2'
+  title: Update cursor rules and migration map corrections
+  status: complete
+  agent: contextual-ai-documentation-optimizer
+  priority: 2
+  complexity: low
+  skills:
+  - '"backlog"'
+  started: '2026-03-02T00:00:00Z'
+  completed: '2026-03-02T00:00:00Z'
+  acceptance-criteria: |-
+    - [ ] Cursor rule uses MCP tool reference instead of CLI
+    - [ ] Migration map test count reads "382 tests"
+    - [ ] Migration map registration status reads "registered in `.mcp.json`"
+    - [ ] `session-start-backlog.cjs` entry removed or marked nonexistent
+  verification-steps: |-
+    - [ ] `grep "backlog\.py" .cursor/rules/backlog-before-work.mdc` returns 0 matches
+    - [ ] `grep "55 tests" .claude/skills/backlog/CLI_TO_MCP_MIGRATION.md` returns 0 matches
+    - [ ] `grep "NOT yet registered" .claude/skills/backlog/CLI_TO_MCP_MIGRATION.md` returns 0 matches
+
+    ---
+- id: '3'
+  title: Migrate work-backlog-item SKILL.md (19 invocations)
+  status: complete
+  agent: contextual-ai-documentation-optimizer
+  dependencies:
+  - '1'
+  priority: 1
+  complexity: high
+  skills:
+  - '"backlog"'
+  started: '2026-03-02T12:00:00Z'
+  completed: '2026-03-02T06:47:00Z'
+  acceptance-criteria: |-
+    - [ ] All 19 `uv run backlog.py` invocations replaced with MCP tool calls
+    - [ ] Lines 195, 301: `close --reason` replaced with `mcp__backlog__backlog_resolve` (ADR-8)
+    - [ ] No `-R Jamie-BitFlight/claude_skills` flags remain
+    - [ ] No `--format json` flags remain (MCP always returns dicts)
+    - [ ] ADR-1 format used: prose blocks for complex calls, inline for simple calls
+  verification-steps: |-
+    - [ ] `grep -c "backlog\.py" .claude/skills/work-backlog-item/SKILL.md` returns 0
+    - [ ] `grep -c "uv run" .claude/skills/work-backlog-item/SKILL.md` returns 0 (for backlog calls)
+    - [ ] `grep "backlog_close.*reason" .claude/skills/work-backlog-item/SKILL.md` returns 0 (ADR-8 check)
+    - [ ] `uv run prek run --files .claude/skills/work-backlog-item/SKILL.md` passes
+
+    ---
+- id: '4'
+  title: Migrate work-backlog-item reference files (8 invocations)
+  status: complete
+  agent: contextual-ai-documentation-optimizer
+  dependencies:
+  - '3'
+  priority: 2
+  complexity: medium
+  skills:
+  - '"backlog"'
+  started: '2026-03-02T14:00:00Z'
+  completed: '2026-03-02T06:55:00Z'
+  acceptance-criteria: |-
+    - [ ] All 8 CLI invocations replaced with MCP tool calls
+    - [ ] `close-resolve-procedure.md` line 36: `resolve --reason` maps to `backlog_resolve`
+    - [ ] `github-integration.md`: non-backlog `gh` commands untouched
+    - [ ] Consistent format with Task 3 (same ADR-1 patterns)
+  verification-steps: |-
+    - [ ] `grep -c "backlog\.py" .claude/skills/work-backlog-item/references/*.md` returns 0 for each file
+    - [ ] `grep "backlog_close.*reason" .claude/skills/work-backlog-item/references/*.md` returns 0
+    - [ ] `uv run prek run --files .claude/skills/work-backlog-item/references/step-procedures.md .claude/skills/work-backlog-item/references/github-integration.md .claude/skills/work-backlog-item/references/close-resolve-procedure.md` passes
+
+    ---
+- id: '5'
+  title: Migrate groom-backlog-item SKILL.md (6 invocations + --help removal)
+  status: complete
+  agent: contextual-ai-documentation-optimizer
+  dependencies:
+  - '1'
+  priority: 2
+  complexity: medium
+  skills:
+  - '"backlog"'
+  started: '2026-03-02T12:00:00Z'
+  completed: '2026-03-02T06:47:00Z'
+  acceptance-criteria: |-
+    - [ ] All 6 CLI invocations replaced with MCP tool calls
+    - [ ] `--help` verification guard removed and replaced with ADR-5 text
+    - [ ] Lines 65, 94: `close --reason` replaced with `backlog_resolve` (ADR-8)
+    - [ ] Step 9 groom patterns use MCP (both incremental and full-body)
+    - [ ] `--groomed-file` and stdin pipe patterns removed (CLI-only per ADR-2)
+  verification-steps: |-
+    - [ ] `grep -c "backlog\.py" .claude/skills/groom-backlog-item/SKILL.md` returns 0
+    - [ ] `grep "\-\-help" .claude/skills/groom-backlog-item/SKILL.md` returns 0
+    - [ ] `grep "backlog_close.*reason" .claude/skills/groom-backlog-item/SKILL.md` returns 0
+    - [ ] `uv run prek run --files .claude/skills/groom-backlog-item/SKILL.md` passes
+
+    ---
+- id: '6'
+  title: Migrate create-backlog-item and group-items-to-milestone (2
+    invocations)
+  status: complete
+  agent: contextual-ai-documentation-optimizer
+  dependencies:
+  - '1'
+  priority: 2
+  complexity: low
+  skills:
+  - '"backlog"'
+  started: '2026-03-02T00:00:00Z'
+  completed: '2026-03-02T13:00:00Z'
+  acceptance-criteria: |-
+    - [ ] `create-backlog-item` uses `mcp__backlog__backlog_add` with parameter table
+    - [ ] `create_issue` parameter documented with conditional logic (P0/P1 vs P2/Ideas)
+    - [ ] `group-items-to-milestone` uses `mcp__backlog__backlog_list()`
+    - [ ] `research_first` gap documented (no MCP parameter; embed in description)
+  verification-steps: |-
+    - [ ] `grep -c "backlog\.py" .claude/skills/create-backlog-item/SKILL.md` returns 0
+    - [ ] `grep -c "backlog\.py" .claude/skills/group-items-to-milestone/SKILL.md` returns 0
+    - [ ] `uv run prek run --files .claude/skills/create-backlog-item/SKILL.md .claude/skills/group-items-to-milestone/SKILL.md` passes
+
+    ---
+- id: '7'
+  title: Rewrite backlog/SKILL.md documentation
+  status: complete
+  agent: contextual-ai-documentation-optimizer
+  dependencies:
+  - '1'
+  - '3'
+  priority: 2
+  complexity: high
+  skills:
+  - '"backlog"'
+  started: '2026-03-02T14:00:00Z'
+  completed: '2026-03-02T14:30:00Z'
+  acceptance-criteria: |-
+    - [ ] MCP tools documented as primary interface with all 10 tools
+    - [ ] Each tool has parameter names, types, and descriptions from server.py
+    - [ ] CLI documented as secondary/CI-only interface
+    - [ ] Return value shapes documented (dict with `error` key on failure)
+    - [ ] `GITHUB_TOKEN` requirement documented
+  verification-steps: |-
+    - [ ] All 10 tool names appear: `backlog_add`, `backlog_list`, `backlog_view`, `backlog_sync`, `backlog_close`, `backlog_resolve`, `backlog_update`, `backlog_groom`, `backlog_normalize`, `backlog_pull`
+    - [ ] `uv run prek run --files .claude/skills/backlog/SKILL.md` passes
+    - [ ] No orphaned CLI-only content (check for `uv run` outside the CI section)
+
+    ---
+- id: '8'
+  title: Update agent files
+  status: complete
+  agent: contextual-ai-documentation-optimizer
+  dependencies:
+  - '3'
+  - '5'
+  priority: 3
+  complexity: low
+  skills:
+  - '"backlog"'
+  started: '2026-03-02T12:00:00Z'
+  completed: '2026-03-02T12:30:00Z'
+  acceptance-criteria: |-
+    - [ ] `backlog-item-groomer.md` has zero `backlog.py` references
+    - [ ] `backlog-mcp-validator.md` documents all `backlog_list` parameters
+    - [ ] Both agents maintain valid frontmatter
+  verification-steps: |-
+    - [ ] `grep -c "backlog\.py" .claude/agents/backlog-item-groomer.md` returns 0
+    - [ ] `grep "section\|status\|title" .claude/agents/backlog-mcp-validator.md` shows filter params documented
+    - [ ] `uv run prek run --files .claude/agents/backlog-item-groomer.md .claude/agents/backlog-mcp-validator.md` passes
+
+    ---
+- id: '9'
+  title: Update backlog-tools-administrator SKILL.md
+  status: complete
+  agent: contextual-ai-documentation-optimizer
+  dependencies:
+  - '1'
+  - '7'
+  - '8'
+  priority: 3
+  complexity: medium
+  skills:
+  - '"backlog"'
+  started: '2026-03-02T00:00:00Z'
+  completed: '2026-03-02T00:00:00Z'
+  acceptance-criteria: |-
+    - [ ] Extension workflow describes both MCP and CLI paths
+    - [ ] Primary extension point identified as `operations.py`
+    - [ ] MCP tool verification step added
+    - [ ] CLI verification commands (linting, pytest) retained as bash
+    - [ ] Classification flowchart updated
+  verification-steps: |-
+    - [ ] `grep "operations.py" .claude/skills/backlog-tools-administrator/SKILL.md` finds reference to primary extension point
+    - [ ] `grep "server.py" .claude/skills/backlog-tools-administrator/SKILL.md` finds MCP server reference
+    - [ ] `uv run prek run --files .claude/skills/backlog-tools-administrator/SKILL.md` passes
+
+    ---
+- id: '10'
+  title: Final verification and cleanup
+  status: complete
+  agent: general-purpose
+  dependencies:
+  - '1'
+  - '2'
+  - '3'
+  - '4'
+  - '5'
+  - '6'
+  - '7'
+  - '8'
+  - '9'
+  priority: 1
+  complexity: medium
+  skills:
+  - '"backlog"'
+  started: '2026-03-02T07:00:00Z'
+  completed: '2026-03-02T07:05:00Z'
+  acceptance-criteria: |-
+    - [ ] Zero residual `backlog.py` CLI references in migrated Tier 1-3 files
+    - [ ] All 10 MCP tool names referenced in skill ecosystem
+    - [ ] Zero `backlog_close` calls with `reason` parameter (ADR-8)
+    - [ ] 382 tests pass
+    - [ ] Idea item #331 closed/resolved
+    - [ ] Migration map marked complete
+  verification-steps: |-
+    - [ ] `grep -rn "uv run.*backlog/scripts/backlog.py" .claude/skills/ .claude/agents/ .claude/CLAUDE.md .cursor/` returns 0 matches
+    - [ ] `uv run pytest .claude/skills/backlog/tests/ -q` shows 382 passed
+    - [ ] `grep -rn "backlog_close.*reason" .claude/skills/ .claude/agents/` returns 0 matches
+    - [ ] Git commit includes `Fixes #329`
+
+    ---

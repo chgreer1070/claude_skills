@@ -1,0 +1,474 @@
+feature: sam-bookend-validation
+version: '1.0'
+description: ''
+goal: |-
+  Add T0 (baseline capture) and TN (verification gate) bookend tasks to SAM plans
+acceptance-criteria-structured:
+- criterion-id: AC-1
+  description: AcceptanceCriterion, BookendResult, BookendVerification models
+    exist and validate
+  check-command: cd packages/sam_schema && uv run pytest
+    tests/test_core/test_models.py -k bookend -v
+  expected-baseline: fail
+  expected-final: pass
+- criterion-id: AC-2
+  description: BookendValidator enforces T0/TN structural constraints
+  check-command: cd packages/sam_schema && uv run pytest
+    tests/test_core/test_dependencies.py -k bookend -v
+  expected-baseline: fail
+  expected-final: pass
+- criterion-id: AC-3
+  description: YAML reader parses acceptance-criteria-structured field
+  check-command: cd packages/sam_schema && uv run pytest tests/test_readers/ -k
+    structured -v
+  expected-baseline: fail
+  expected-final: pass
+- criterion-id: AC-4
+  description: Type checking passes on sam_schema package
+  check-command: cd packages/sam_schema && uv run basedpyright sam_schema/
+  expected-baseline: pass
+  expected-final: pass
+- criterion-id: AC-5
+  description: Linting passes on sam_schema package
+  check-command: cd packages/sam_schema && uv run ruff check sam_schema/
+  expected-baseline: pass
+  expected-final: pass
+issue: '#718'
+architecture: ./architect-sam-bookend-validation.md
+feature-context: ./feature-context-sam-bookend-validation.md
+tasks:
+- id: T0
+  title: 'T0: Capture baseline state'
+  status: not-started
+  priority: 3
+  complexity: medium
+- id: T1
+  title: Schema models — AcceptanceCriterion, BookendResult,
+    BookendVerification, CriterionStatus
+  status: complete
+  agent: python3-development:python-cli-architect
+  priority: 1
+  complexity: medium
+  skills:
+  - python3-development
+  started: '2026-03-15T07:06:32Z'
+  completed: '2026-03-15T06:00:00Z'
+  description: |-
+    The SAM schema package (`packages/sam_schema/sam_schema/core/models.py`) contains Pydantic models for `Task` and `Plan`. This task adds four new models and extends two existing models to support bookend validation. The architecture spec (`plan/architect-sam-bookend-validation.md` section 4.1) defines the exact model shapes.
+
+    This task was merged from schema model creation and existing model extension scopes to avoid edit conflicts on `models.py`.
+  objective: |-
+    Add `CriterionStatus`, `AcceptanceCriterion`, `BookendResult`, and `BookendVerification` Pydantic models to `models.py`, and extend `Task` with `is_bookend`/`bookend_type` fields and `Plan` with `acceptance_criteria_structured` field.
+  constraints: |-
+    - Do not modify or remove existing fields on `Task` or `Plan`
+    - Do not change the Task.id regex pattern — `T0` and `T99` already match `^[A-Za-z]?\d+(\.\d+)?[A-Za-z]?$`
+    - All new fields must have defaults so existing plans without bookends continue to parse
+    - Use `StrEnum` from Python stdlib, not a string literal union
+  expected-outputs: |-
+    - `packages/sam_schema/sam_schema/core/models.py` (modified)
+    - `packages/sam_schema/sam_schema/__init__.py` (modified if needed)
+  acceptance-criteria: |-
+    1. `from sam_schema import AcceptanceCriterion, BookendResult, BookendVerification, CriterionStatus` succeeds
+    2. `Plan(feature="test", tasks=[]).acceptance_criteria_structured` returns `[]`
+    3. `Task(id="T0", title="baseline", status="not-started", dependencies=[], priority=1, complexity="low", is_bookend=True, bookend_type="t0-baseline")` constructs without error
+    4. `AcceptanceCriterion(criterion_id="AC-1", check_command="uv run pytest -v")` constructs with alias support
+    5. Existing tests in `packages/sam_schema/tests/` continue to pass (no regressions)
+  verification-steps: |-
+    1. `cd packages/sam_schema && uv run python -c "from sam_schema import AcceptanceCriterion, BookendResult, BookendVerification, CriterionStatus; print('OK')"`
+    2. `cd packages/sam_schema && uv run python -c "from sam_schema.core.models import Plan; p = Plan(feature='x', tasks=[]); assert p.acceptance_criteria_structured == []"`
+    3. `cd packages/sam_schema && uv run pytest tests/ -x --timeout=60`
+    4. `cd packages/sam_schema && uv run ruff check sam_schema/`
+
+    - Key claims to verify:
+      - `ConfigDict(populate_by_name=True)` enables both alias and Python field name access
+      - `StrEnum` is available in Python 3.11+ stdlib (enum module)
+      - The Task.id regex `^[A-Za-z]?\d+(\.\d+)?[A-Za-z]?$` matches `T0` and `T99`
+    - Verification questions:
+      1. Does the existing `models.py` already import `ConfigDict`? If not, add the import.
+      2. Does the existing `Task.id` field have a `pattern` validator? Read the file to confirm the regex.
+      3. Does `Plan` already use `ConfigDict(populate_by_name=True)`?
+    - Evidence to collect:
+      - Read `models.py` lines containing `ConfigDict`, `pattern`, `class Task`, `class Plan`
+    - Revision rule:
+      - If `StrEnum` is not available (Python < 3.11), use `str, Enum` base classes instead. Check `pyproject.toml` for `requires-python`.
+  handoff: |-
+    Report created/modified files, test import confirmation, any deviations from architect spec
+- id: T2
+  title: BookendValidator in core/dependencies.py
+  status: complete
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T1
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+  parallelize-with:
+  - T3
+  started: '2026-03-15T07:09:35Z'
+  completed: '2026-03-15T06:00:00Z'
+  description: |-
+    The SAM schema package has a `DependencyGraph` class in `packages/sam_schema/sam_schema/core/dependencies.py` that validates task dependencies and computes ready tasks. This task adds a `BookendValidator` class alongside it. The architecture spec section 4.2 defines the interface.
+  objective: |-
+    Implement `BookendValidator` class that validates structural constraints on bookend tasks within a plan.
+  requirements: |-
+    1. Add `BookendValidator` class that accepts a `Plan` instance
+    2. Implement `validate() -> list[str]` returning validation error strings (empty = valid)
+    3. Enforce: at most one T0 (`bookend_type == "t0-baseline"`) per plan
+    4. Enforce: at most one TN (`bookend_type == "tn-verification"`) per plan
+    5. Enforce: T0 must have `dependencies: []`
+    6. Enforce: TN must depend on all non-bookend task IDs
+    7. Enforce: if `acceptance_criteria_structured` is non-empty, both T0 and TN must exist
+    8. Implement `get_t0_task() -> Task | None`
+    9. Implement `get_tn_task() -> Task | None`
+    10. Implement `get_implementation_task_ids() -> list[str]` returning IDs of non-bookend tasks
+    11. Export `BookendValidator` from `__init__.py`
+  constraints: |-
+    - Do not modify the existing `DependencyGraph` class behavior
+    - Plans without structured criteria and without bookend tasks must pass validation (backward compatible)
+    - Use the `bookend_type` field for identification, not task ID conventions
+  expected-outputs: |-
+    - `packages/sam_schema/sam_schema/core/dependencies.py` (modified)
+    - `packages/sam_schema/sam_schema/__init__.py` (modified if needed)
+  acceptance-criteria: |-
+    1. `BookendValidator(plan_with_valid_bookends).validate()` returns `[]`
+    2. `BookendValidator(plan_with_t0_only).validate()` returns error about missing TN
+    3. `BookendValidator(plan_without_criteria_or_bookends).validate()` returns `[]`
+    4. `get_t0_task()` returns the T0 task or None
+    5. `get_implementation_task_ids()` excludes bookend tasks
+  verification-steps: |-
+    1. `cd packages/sam_schema && uv run python -c "from sam_schema import BookendValidator; print('OK')"`
+    2. `cd packages/sam_schema && uv run ruff check sam_schema/core/dependencies.py`
+    3. `cd packages/sam_schema && uv run basedpyright sam_schema/core/dependencies.py`
+
+    - Key claims to verify:
+      - The existing `DependencyGraph.__init__` takes `list[Task]`, not `Plan`
+      - `BookendValidator` takes `Plan` (different signature from `DependencyGraph`)
+    - Verification questions:
+      1. What is the exact `__init__` signature of `DependencyGraph`? Read `dependencies.py` to confirm.
+      2. Does `dependencies.py` already import `Plan`? If not, add the import.
+    - Evidence to collect:
+      - Read `dependencies.py` class signatures and imports
+    - Revision rule:
+      - If `DependencyGraph` already takes `Plan`, consider whether `BookendValidator` should be integrated into it or remain separate. Prefer separate per architect spec.
+  handoff: |-
+    Report created class, validation rules implemented, any edge cases discovered
+- id: T3
+  title: Reader/writer support for acceptance-criteria-structured
+  status: complete
+  agent: python3-development:python-cli-architect
+  dependencies:
+  - T1
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+  parallelize-with:
+  - T2
+  started: '2026-03-15T06:00:00Z'
+  completed: '2026-03-15T06:00:00Z'
+  description: |-
+    The SAM schema has three reader modules (`yaml_reader.py`, `frontmatter_reader.py`, `legacy_reader.py`) and one writer (`yaml_writer.py`). These must handle the new `acceptance-criteria-structured` field on `Plan` and the `is-bookend`/`bookend-type` fields on `Task`. The architecture spec section 4.3 describes the expected YAML format.
+
+    This task was merged from reader updates and writer updates to avoid conflicts on shared normalization logic.
+  objective: |-
+    All readers parse the `acceptance-criteria-structured` list into `AcceptanceCriterion` objects, and the writer roundtrips bookend fields and structured criteria correctly.
+  constraints: |-
+    - Do not change how existing fields are parsed or written
+    - Pydantic's `model_dump(by_alias=True)` should handle alias serialization — verify this works with `ruamel.yaml`
+    - Do not add new dependencies
+  expected-outputs: |-
+    - `packages/sam_schema/sam_schema/readers/yaml_reader.py` (modified)
+    - `packages/sam_schema/sam_schema/readers/frontmatter_reader.py` (modified)
+    - `packages/sam_schema/sam_schema/readers/legacy_reader.py` (modified)
+    - `packages/sam_schema/sam_schema/writers/yaml_writer.py` (modified)
+  acceptance-criteria: |-
+    1. `load_plan()` on a YAML file with `acceptance-criteria-structured` returns `Plan` with populated `AcceptanceCriterion` list
+    2. `load_plan()` on a YAML file without the field returns `Plan` with empty list
+    3. Legacy reader produces `acceptance_criteria_structured == []` for all legacy-format plans
+    4. Write-then-read roundtrip preserves `acceptance-criteria-structured` entries
+    5. Write-then-read roundtrip preserves `is-bookend: true` and `bookend-type` values on tasks
+  verification-steps: |-
+    1. `cd packages/sam_schema && uv run pytest tests/test_readers/ -x --timeout=60`
+    2. `cd packages/sam_schema && uv run ruff check sam_schema/readers/ sam_schema/writers/`
+    3. `cd packages/sam_schema && uv run basedpyright sam_schema/readers/ sam_schema/writers/`
+
+    - Key claims to verify:
+      - `ruamel.yaml` handles nested list-of-dicts with kebab-case keys
+      - Pydantic `model_dump(by_alias=True, exclude_defaults=True)` omits default-valued fields
+    - Verification questions:
+      1. How do existing readers construct `Plan` objects — do they pass raw dicts to `Plan(**data)` or use explicit field mapping?
+      2. Does `yaml_writer.py` use `model_dump(by_alias=True)` or manual field extraction?
+    - Evidence to collect:
+      - Read each reader's plan construction logic
+      - Read `yaml_writer.py` serialization approach
+    - Revision rule:
+      - If readers use manual field mapping, add explicit handling for the new fields. If they pass dicts to Pydantic, the new fields may be handled automatically.
+  handoff: |-
+    Report which readers were modified, any format edge cases, roundtrip test results
+- id: T4
+  title: Unit tests for bookend models and BookendValidator
+  status: complete
+  agent: python3-development:python-pytest-architect
+  dependencies:
+  - T1
+  - T2
+  priority: 3
+  complexity: medium
+  skills:
+  - fastmcp-python-tests
+  - python3-development
+  parallelize-with:
+  - T5
+  - T6
+  started: '2026-03-15T07:14:27Z'
+  completed: '2026-03-15T06:00:00Z'
+  description: |-
+    The SAM schema test suite lives in `packages/sam_schema/tests/`. Models from T1 and BookendValidator from T2 need comprehensive unit test coverage. The architecture spec section 7.3 lists specific test cases.
+  objective: |-
+    Write unit tests for all four new models (`CriterionStatus`, `AcceptanceCriterion`, `BookendResult`, `BookendVerification`), the extended `Task`/`Plan` fields, and `BookendValidator` validation logic.
+  constraints: |-
+    - Add tests alongside existing test files, do not create new test directories
+    - Follow existing test patterns and fixtures in the test suite
+    - Tests must pass with `uv run pytest` from `packages/sam_schema/`
+  expected-outputs: |-
+    - `packages/sam_schema/tests/test_core/test_models.py` (modified — add bookend model tests)
+    - `packages/sam_schema/tests/test_core/test_dependencies.py` (modified — add BookendValidator tests)
+    - `packages/sam_schema/tests/fixtures/plan_with_bookends.yaml` (new)
+  acceptance-criteria: |-
+    1. At least 8 model unit tests pass
+    2. At least 10 BookendValidator unit tests pass
+    3. `plan_with_bookends.yaml` fixture exists and is valid YAML
+    4. All existing tests continue to pass (no regressions)
+    5. Coverage for `BookendValidator.validate()` is at least 95%
+  verification-steps: |-
+    1. `cd packages/sam_schema && uv run pytest tests/test_core/test_models.py -k bookend -v`
+    2. `cd packages/sam_schema && uv run pytest tests/test_core/test_dependencies.py -k bookend -v`
+    3. `cd packages/sam_schema && uv run pytest tests/ -x --timeout=120`
+    4. `cd packages/sam_schema && uv run pytest tests/test_core/ --cov=sam_schema.core --cov-report=term-missing`
+  handoff: |-
+    Report test count, pass/fail, coverage percentage for new code
+- id: T5
+  title: Integration tests for reader/writer roundtrip with bookend fields
+  status: complete
+  agent: python3-development:python-pytest-architect
+  dependencies:
+  - T3
+  priority: 3
+  complexity: medium
+  skills:
+  - fastmcp-python-tests
+  - python3-development
+  parallelize-with:
+  - T4
+  - T6
+  started: '2026-03-15T07:14:00Z'
+  completed: '2026-03-15T06:00:00Z'
+  description: |-
+    Reader/writer changes from T3 need integration tests confirming end-to-end parsing and roundtrip of structured acceptance criteria and bookend task fields. The architecture spec section 7.3 lists integration test cases.
+  objective: |-
+    Write integration tests that verify `load_plan()` correctly populates `AcceptanceCriterion` objects from YAML, and that write-then-read roundtrips preserve all bookend fields.
+  requirements: |-
+    1. Test `load_plan()` on a YAML file with `acceptance-criteria-structured` — verify `AcceptanceCriterion` objects populated
+    2. Test `load_plan()` on a YAML file without `acceptance-criteria-structured` — verify empty list
+    3. Test write-then-read roundtrip: write plan with structured criteria via `yaml_writer`, re-read, verify equality
+    4. Test `get_ready_tasks()` returns T0 first on a fresh plan with bookend tasks
+    5. Test frontmatter reader handles structured criteria from YAML header
+    6. Test legacy reader returns empty `acceptance_criteria_structured`
+    7. Create test fixtures: `t0_baseline_sample.yaml` and `tn_verification_sample.yaml`
+  constraints: |-
+    - Follow existing test patterns in `test_readers/`
+    - Do not duplicate model-level tests from T4 — focus on parsing and I/O
+    - Tests must be deterministic (no timing-dependent assertions)
+  expected-outputs: |-
+    - `packages/sam_schema/tests/test_readers/test_yaml_reader.py` (modified)
+    - `packages/sam_schema/tests/test_readers/test_frontmatter_reader.py` (modified)
+    - `packages/sam_schema/tests/fixtures/t0_baseline_sample.yaml` (new)
+    - `packages/sam_schema/tests/fixtures/tn_verification_sample.yaml` (new)
+  acceptance-criteria: |-
+    1. At least 7 integration tests pass
+    2. Roundtrip test confirms `acceptance-criteria-structured` survives write-then-read
+    3. `get_ready_tasks()` returns T0 as first ready task when plan has bookends
+    4. Sample fixture files are valid YAML matching the schemas in architect spec sections 4.4 and 4.5
+    5. All existing reader tests continue to pass
+  verification-steps: |-
+    1. `cd packages/sam_schema && uv run pytest tests/test_readers/ -v --timeout=60`
+    2. `cd packages/sam_schema && uv run pytest tests/ -x --timeout=120`
+    3. `uv run python -c "import yaml; yaml.safe_load(open('packages/sam_schema/tests/fixtures/t0_baseline_sample.yaml'))"`
+  handoff: |-
+    Report test count, roundtrip verification results, any format gaps discovered
+- id: T6
+  title: T0 and TN agent prompt files
+  status: complete
+  agent: plugin-creator:contextual-ai-documentation-optimizer
+  dependencies:
+  - T1
+  priority: 2
+  complexity: medium
+  skills:
+  - development-harness:clear-cove-task-design
+  parallelize-with:
+  - T2
+  - T3
+  started: '2026-03-15T07:09:35Z'
+  completed: '2026-03-15T06:00:00Z'
+  description: |-
+    Two new Claude Code agent files must be created for the bookend system. The T0 agent captures baseline state by running acceptance criteria commands. The TN agent re-runs the same commands post-implementation and compares against the T0 baseline. The architecture spec sections 4.4 and 4.5 define their interfaces, tools, and output schemas.
+  objective: |-
+    Create `t0-baseline-capture.md` and `tn-verification-gate.md` agent files in `plugins/python3-development/agents/` with correct frontmatter and prompt content.
+  constraints: |-
+    - Agent files are markdown with YAML frontmatter — no Python code
+    - Agent names in frontmatter must match what the swarm-task-planner will reference: `t0-baseline-capture` and `tn-verification-gate`
+    - Agents use the Bash tool for command execution — no subprocess or os.system
+    - stdout/stderr captured in full (no truncation) per No Invented Limits rule
+  expected-outputs: |-
+    - `plugins/python3-development/agents/t0-baseline-capture.md` (new)
+    - `plugins/python3-development/agents/tn-verification-gate.md` (new)
+  acceptance-criteria: |-
+    1. Both files have valid YAML frontmatter with `name`, `description`, `tools` fields
+    2. T0 agent prompt references the T0-baseline YAML schema with all fields from architect spec
+    3. TN agent prompt includes the 4-cell status computation matrix
+    4. TN agent prompt specifies verdict logic (FAIL if any regressed, PASS otherwise)
+    5. Both agents reference plan file as input and produce YAML output at the correct path
+  verification-steps: |-
+    1. Read `plugins/python3-development/agents/t0-baseline-capture.md` and confirm frontmatter parses as valid YAML
+    2. Read `plugins/python3-development/agents/tn-verification-gate.md` and confirm frontmatter parses as valid YAML
+    3. Grep for `check-command` in both agent files — must be referenced
+    4. `uv run prek run --files plugins/python3-development/agents/t0-baseline-capture.md plugins/python3-development/agents/tn-verification-gate.md`
+
+    - Key claims to verify:
+      - Agent frontmatter requires `name` field (not just `description`)
+      - `tools` field accepts list of tool names as strings
+      - Existing agent files in `plugins/python3-development/agents/` follow a consistent frontmatter pattern
+    - Verification questions:
+      1. What frontmatter fields does `feature-verifier.md` use? Read it as a pattern reference.
+      2. Does the `tools` field use bare names (`Read`) or namespaced names (`tools.Read`)?
+    - Evidence to collect:
+      - Read frontmatter of 1-2 existing agent files in the same directory
+    - Revision rule:
+      - If existing agents use a different frontmatter schema, match that schema exactly.
+  handoff: |-
+    Report created agent files, tools declared, input/output contracts
+- id: T7
+  title: swarm-task-planner agent update for bookend task generation
+  status: complete
+  agent: plugin-creator:contextual-ai-documentation-optimizer
+  dependencies:
+  - T6
+  priority: 3
+  complexity: medium
+  skills:
+  - development-harness:clear-cove-task-design
+  parallelize-with:
+  - T4
+  - T5
+  started: '2026-03-15T07:13:51Z'
+  completed: '2026-03-15T06:00:00Z'
+  description: |-
+    The `swarm-task-planner` agent (`plugins/python3-development/agents/swarm-task-planner.md`) generates SAM task plans from architecture specs. It must be updated to auto-generate T0 and TN bookend tasks when the plan contains `acceptance-criteria-structured`. The architecture spec section 4.6 defines the T0 and TN task templates and the dependency rule.
+  objective: |-
+    Update the swarm-task-planner agent prompt to auto-generate T0 (baseline capture) and TN (verification gate) tasks when structured acceptance criteria exist in the plan.
+  requirements: |-
+    1. Add a section to the swarm-task-planner prompt defining when to generate bookend tasks (condition: `acceptance-criteria-structured` field is non-empty)
+    2. Add T0 task template with: `id: T0`, `agent: t0-baseline-capture`, `dependencies: []`, `priority: 1`, `is-bookend: true`, `bookend-type: t0-baseline`
+    3. Add TN task template with: `id: T99` (or `T{max+1}` if 99 conflicts), `agent: tn-verification-gate`, `dependencies: [all non-bookend task IDs]`, `priority: 5`, `is-bookend: true`, `bookend-type: tn-verification`
+    4. Add dependency rule: every non-bookend implementation task must include `T0` in its `dependencies` list
+    5. Add rule for generating `acceptance-criteria-structured` from architecture spec acceptance criteria section
+    6. The added content must integrate naturally with the existing agent prompt structure
+  constraints: |-
+    - Do not remove or rewrite existing swarm-task-planner content — add bookend rules alongside existing rules
+    - The T0/TN templates must use YAML frontmatter format, not legacy markdown format
+    - Task ID `T99` is a default — include the conflict resolution rule (`T{max+1}`)
+    - Do not add temporal estimates (weeks, sprints, hours)
+  expected-outputs: |-
+    - `plugins/python3-development/agents/swarm-task-planner.md` (modified)
+  acceptance-criteria: |-
+    1. Swarm-task-planner prompt contains a "Bookend Task Generation" section (or equivalent)
+    2. T0 task template is present with all required fields
+    3. TN task template is present with dynamic dependency list
+    4. Dependency rule states all implementation tasks depend on T0
+    5. Condition for bookend generation references `acceptance-criteria-structured`
+  verification-steps: |-
+    1. Read `plugins/python3-development/agents/swarm-task-planner.md` and confirm bookend section exists
+    2. Grep for `t0-baseline-capture` and `tn-verification-gate` in the file
+    3. Grep for `acceptance-criteria-structured` in the file
+    4. `uv run prek run --files plugins/python3-development/agents/swarm-task-planner.md`
+
+    - Key claims to verify:
+      - The swarm-task-planner agent currently generates plans with YAML frontmatter format (not legacy)
+      - The agent prompt uses structured sections that can be extended with new rules
+      - The existing agent prompt does not already reference bookend tasks
+    - Verification questions:
+      1. What is the current structure of the swarm-task-planner agent prompt? Read the file to identify section headings.
+      2. Does the agent already have a "task template" section that the bookend templates can follow?
+      3. Are there existing dependency rules in the prompt that the new rule should be adjacent to?
+    - Evidence to collect:
+      - Read `plugins/python3-development/agents/swarm-task-planner.md` section headings
+      - Grep for existing "template" or "dependency" keywords
+    - Revision rule:
+      - If the agent prompt structure differs from expectations, adapt the bookend section to match the existing style. Do not impose a new organizational pattern.
+  handoff: |-
+    Report exact sections added to swarm-task-planner.md, T0/TN template content, dependency rule wording
+- id: T8
+  title: Workflow documentation updates
+  status: complete
+  agent: plugin-creator:contextual-ai-documentation-optimizer
+  dependencies:
+  - T6
+  - T7
+  priority: 4
+  complexity: medium
+  skills:
+  - development-harness:clear-cove-task-design
+  started: '2026-03-15T07:20:21Z'
+  completed: '2026-03-15T06:00:00Z'
+  description: |-
+    Five documentation files must be updated to reflect the bookend validation system. These files are consumed by both the orchestrator and sub-agents during `/implement-feature` and `/complete-implementation` execution. Updates must be consistent with the agent files from T6 and planner update from T7.
+
+    This task was merged from separate documentation update scopes to avoid conflicts — multiple files share cross-references that must be consistent.
+  objective: |-
+    Update all workflow documentation to reflect T0/TN bookend tasks: execution flow, quality gates, task format spec, and agent references.
+  constraints: |-
+    - Do not remove existing content from any file — only add or amend
+    - Preserve existing markdown formatting and heading hierarchy
+    - Cross-references between files must be consistent (same agent names, same field names)
+    - Use markdown links with `./` prefix for file references
+  expected-outputs: |-
+    - `.claude/rules/local-workflow.md` (modified)
+    - `.claude/docs/TASK_FILE_FORMAT.md` (modified)
+    - `.claude/skills/implement-feature/SKILL.md` (modified)
+    - `.claude/skills/complete-implementation/SKILL.md` (modified)
+    - `plugins/python3-development/agents/feature-verifier.md` (modified)
+  acceptance-criteria: |-
+    1. `local-workflow.md` data flow diagram includes T0 and TN
+    2. `TASK_FILE_FORMAT.md` lists `is-bookend` and `bookend-type` fields
+    3. `complete-implementation/SKILL.md` contains TN verdict check before Phase 1
+    4. `feature-verifier.md` references TN as behavioral complement
+    5. All file references use `./` prefix markdown links
+    6. No heading hierarchy violations (subsections under correct parents)
+  verification-steps: |-
+    1. Grep for `t0-baseline-capture` across all five files — must appear in relevant locations
+    2. Grep for `tn-verification-gate` across all five files — must appear in relevant locations
+    3. Grep for `is-bookend` in `TASK_FILE_FORMAT.md`
+    4. `uv run prek run --files .claude/rules/local-workflow.md .claude/docs/TASK_FILE_FORMAT.md`
+    5. `uv run prek run --files .claude/skills/implement-feature/SKILL.md .claude/skills/complete-implementation/SKILL.md`
+
+    - Key claims to verify:
+      - The `/complete-implementation` skill currently has no pre-Phase 1 check for TN verdict
+      - The `TASK_FILE_FORMAT.md` has an authorized writers table
+      - The `local-workflow.md` data flow diagram uses ASCII art (not Mermaid)
+    - Verification questions:
+      1. What is the current Phase 1 entry point in `complete-implementation/SKILL.md`?
+      2. Does `TASK_FILE_FORMAT.md` have a field specification table or a different format?
+      3. What diagram format does `local-workflow.md` use for its data flow section?
+    - Evidence to collect:
+      - Read the relevant sections of each file before modifying
+    - Revision rule:
+      - If the existing documentation format differs from expectations, match the existing format rather than imposing the architect spec's format.
+  handoff: |-
+    Report all files modified, sections added/changed, any cross-reference inconsistencies found
+- id: T99
+  title: 'TN: Verify implementation against baseline'
+  status: not-started
+  priority: 3
+  complexity: medium

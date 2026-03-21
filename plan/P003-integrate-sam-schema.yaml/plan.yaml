@@ -1,0 +1,38 @@
+feature: Integrate sam_schema as Sole Task File Interface
+version: '1.0'
+description: ''
+goal: |-
+  Route all SAM workflow task file I/O through sam CLI/MCP interface, eliminating 4 independent parsers and enabling future backing-store migration
+acceptance-criteria: |-
+  AC1: task_format removed from implementation-manager scripts
+  AC2: Local parsers removed from implementation_manager.py
+  AC3: No .yaml extension branch in task_status_hook
+  AC4: sam create round-trips (create then read produces identical data)
+  AC5: sam read includes plan context in TaskAssignment response
+  AC6: sam update sets context on plan
+  AC7: No inline schema in swarm-task-planner agent prompt
+  AC8: No Read tool instruction in start-task skill
+  AC9: No Edit instruction in context-gathering agent
+  AC10: Tests pass with sam_schema interface
+  AC11: development-harness agent copies migrated
+  AC12: Workshop copies updated
+  AC13: TASK_FILE_FORMAT.md describes sam CLI as canonical interface
+  AC14: Format-agnostic state write on .md files (single code path)
+issue: '719'
+architecture: plan/architect-integrate-sam-schema.md
+feature-context: plan/feature-context-integrate-sam-schema.md
+task_files:
+- task-T01.yaml
+- task-T02.yaml
+- task-T03.yaml
+- task-T04.yaml
+- task-T05.yaml
+- task-T06.yaml
+- task-T07.yaml
+- task-T08.yaml
+- task-T09.yaml
+- task-T10.yaml
+- task-T11.yaml
+- task-T12.yaml
+- task-T13.yaml
+- task-T14.yaml

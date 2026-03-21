@@ -1,0 +1,56 @@
+id: T3
+title: YAML Writer with Round-Trip Preservation
+status: complete
+agent: python3-development:python-cli-architect
+dependencies:
+- T1
+priority: 2
+complexity: medium
+skills:
+- python3-development
+started: '2026-03-15T02:50:09Z'
+completed: '2026-03-15T03:30:00Z'
+description: |-
+  The architecture spec (section 4, `writers/yaml_writer.py`) defines two write operations: `write_plan()` for full plan serialization and `update_field()` for atomic single-field updates. ADR-005 states the writer never auto-splits. ADR-007 mandates ruamel.yaml round-trip mode for field updates to preserve comments and formatting. The existing `update_yaml_field()` in `task_format.py:179-241` uses regex-based line replacement — the new implementation uses ruamel.yaml instead.
+objective: |-
+  Implement `yaml_writer.py` with `write_plan()` for full plan serialization to pure YAML and `update_field()` for atomic field updates preserving comments and field order.
+requirements: |-
+  1. Implement `write_plan(plan: Plan, output_path: Path, force_single: bool = False) -> Path` per architecture spec. Single-file output for plans under `LINE_THRESHOLD` (500) lines or when `force_single=True`. Directory output otherwise (creates `plan.yaml` + `task-{id}.yaml` per task).
+  2. Implement `update_field(file_path: Path, task_id: str, field: str, value: str | int | list[str]) -> None` using ruamel.yaml round-trip mode. Load YAML, locate the task by ID, modify the field, dump back. Must preserve comments and field order.
+  3. Use atomic writes via `tempfile.NamedTemporaryFile` with rename to prevent partial files on crash.
+  4. YAML output must use multiline scalars (`|`) for markdown content fields (`description`, `objective`, `requirements`, `constraints`, `expected_outputs`, `acceptance_criteria`, `verification_steps`, `context_notes`, `handoff`).
+  5. YAML output must use kebab-case field names (matching aliases in Task model).
+  6. `LINE_THRESHOLD: int = 500` defined as module-level constant.
+  7. For directory output, create `plan.yaml` with plan metadata and `task_files` list, plus individual `task-{id}.yaml` files.
+constraints: |-
+  - Use `ruamel.yaml` exclusively — no `pyyaml`, no regex-based field updates
+  - Do not auto-split existing files (ADR-005) — threshold applies only to initial writes
+  - Do not modify files outside the specified output path
+  - Resolve all paths and reject paths outside the plan directory (security: path traversal prevention)
+expected-outputs: |-
+  - `packages/sam_schema/writers/yaml_writer.py` (replaces stub from T1)
+acceptance-criteria: |-
+  1. `write_plan()` produces valid YAML that can be parsed by `ruamel.yaml` without errors
+  2. Markdown content fields are serialized as YAML multiline scalars (`|`)
+  3. `update_field()` modifies a single field without changing comments, field order, or other fields
+  4. Round-trip test: `write_plan(plan, path)` then `read_plan(path)` produces equivalent Plan object (after T2+T5 are available for read, but writer can be tested independently with ruamel.yaml)
+  5. Directory output creates correct structure: `plan.yaml` + `task-{id}.yaml` files
+  6. Atomic write: if process crashes during write, original file is not corrupted
+verification-steps: |-
+  1. `uv run python -c "from sam_schema.writers.yaml_writer import write_plan, update_field; print('OK')"` — imports succeed
+  2. `uv run ty check packages/sam_schema/writers/yaml_writer.py` — zero errors
+  3. `uv run ruff check packages/sam_schema/writers/yaml_writer.py` — zero errors
+  4. Manual test: create a Plan model, write to file, verify YAML output has `|` for multiline fields
+
+  - Key claims to verify:
+    - ruamel.yaml `typ='rt'` preserves comments on round-trip dump
+    - `tempfile.NamedTemporaryFile` with `os.rename` provides atomic writes on Linux
+  - Verification questions:
+    1. Does ruamel.yaml `typ='rt'` preserve inline comments when modifying a single field and re-dumping?
+    2. Is `os.rename` atomic on Linux when source and destination are on the same filesystem?
+    3. How does ruamel.yaml produce literal block scalars (`|`) — is it automatic for multiline strings or does it need explicit configuration?
+  - Evidence to collect:
+    - Test ruamel.yaml round-trip with a YAML file containing comments
+    - Check ruamel.yaml docs for `default_flow_style` and literal block scalar configuration
+  - Revision rule:
+    - If ruamel.yaml requires explicit configuration for block scalars, add the configuration

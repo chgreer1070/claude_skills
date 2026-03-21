@@ -1,0 +1,138 @@
+id: T2
+title: Delete detect_fenced_yaml and _FENCED_YAML_PATTERN from task_format.py
+status: not-started
+priority: 3
+complexity: medium
+description: |-
+  ```yaml
+  task: T2
+  title: Delete detect_fenced_yaml and _FENCED_YAML_PATTERN from task_format.py
+  status: not-started
+  agent: python3-development:python-cli-architect
+  dependencies:
+    - T1
+  priority: 1
+  complexity: low
+  accuracy-risk: medium
+  skills:
+    - python3-development
+  parallelize-with: []
+  reason: "T1 must complete first to remove the test file that imports detect_fenced_yaml. Deleting the function before the test file is gone causes an import error on the next pytest run."
+  handoff: "Report: lines deleted (function body, constant, __all__ entry), ruff output, pytest output (all passing), grep confirming zero matches for detect_fenced_yaml and _FENCED_YAML_PATTERN."
+  ```
+
+  ### Context
+
+  This task was not split; it is step 2 of the serial chain. T1 removed the only test that
+  imported `detect_fenced_yaml`. `implementation_manager.py` still imports it (line 41); that
+  import is removed **in this task** (Requirement 6) so that `pytest` can pass immediately
+  after T2 completes without waiting for T3. Deleting both the function body and its import
+  here is safe because T1 eliminated the only test caller.
+
+  Architecture source: `plan/architect-dead-code-cleanup-legacy-parser.md` — Decision 3.
+  Scope confirmation: `plan/codebase/dead-code-scope.md` — Q1 and Summary Table.
+
+  ### Objective
+
+  Delete `_FENCED_YAML_PATTERN`, `detect_fenced_yaml`, and its `__all__` entry from
+  `task_format.py` so the symbol no longer exists for T3 to import.
+
+  ### Required Inputs
+
+  - `plugins/python3-development/skills/implementation-manager/scripts/task_format.py`
+    — read in full before acting; confirm current line numbers for `_FENCED_YAML_PATTERN`
+    (approximately line 109–111), `detect_fenced_yaml` (approximately lines 114–137), and
+    `__all__` entry (approximately line 68)
+  - `plan/architect-dead-code-cleanup-legacy-parser.md` — Decision 3 for exact deletion boundaries
+  - `plan/codebase/dead-code-scope.md` — Q1 confirming no live callers outside the dead path
+
+  ### Requirements
+
+  1. Read `task_format.py` in full before any edit.
+  2. Delete `_FENCED_YAML_PATTERN`: the compiled regex constant and its comment (if any).
+  3. Delete `detect_fenced_yaml`: the function definition and its docstring.
+  4. Remove `"detect_fenced_yaml"` from the `__all__` list. Do not remove any other entry.
+  5. Verify that `has_yaml_frontmatter`, `parse_yaml_frontmatter`, `update_yaml_field`,
+     `normalize_status`, `VALID_STATUSES`, and `parse_task_from_frontmatter` are all still
+     present and listed in `__all__`.
+  6. Remove `detect_fenced_yaml` from the import statement in
+     `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py`
+     at approximately line 41. That line imports multiple live symbols (`VALID_STATUSES`,
+     `has_yaml_frontmatter`, `normalize_status`, `parse_yaml_frontmatter`); retain all of those
+     and remove only `detect_fenced_yaml`. This is the import that T3 was originally going to
+     remove; doing it here prevents a broken-import window between T2 and T3.
+  7. Run `uv run ruff check` and `uv run ruff format --check` on both modified files. Fix any issues.
+  8. Run `uv run pytest` and confirm zero failures.
+
+  ### Constraints
+
+  - In `task_format.py`, delete only the three items listed in Requirements 2–4. Do not touch
+    any other function, constant, or `__all__` entry.
+  - In `implementation_manager.py`, touch only the import line that lists `detect_fenced_yaml`
+    (Requirement 6). Remove only that symbol from the import; do not modify any other line.
+  - Do not modify `task_status_hook.py` in this task.
+  - No new abstractions introduced.
+
+  ### Expected Outputs
+
+  - Modified: `plugins/python3-development/skills/implementation-manager/scripts/task_format.py`
+    (three deletions: constant, function, `__all__` entry)
+  - Modified: `plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py`
+    (import line only: `detect_fenced_yaml` removed, all other imports retained)
+
+  ### Acceptance Criteria
+
+  1. `task_format.py` contains no definition of `detect_fenced_yaml` or `_FENCED_YAML_PATTERN`.
+  2. `"detect_fenced_yaml"` does not appear in `__all__`.
+  3. All other `__all__` entries remain present and the module imports without error.
+  4. `implementation_manager.py` does not import `detect_fenced_yaml`; all other symbols on
+     that import line remain present.
+  5. `uv run pytest` exits 0.
+  6. `uv run ruff check` exits 0 on both modified files.
+
+  ### Verification Steps
+
+  1. `grep "detect_fenced_yaml\|_FENCED_YAML_PATTERN" plugins/python3-development/skills/implementation-manager/scripts/task_format.py`
+     — zero matches.
+  2. `python3 -c "from task_format import has_yaml_frontmatter, parse_task_from_frontmatter, normalize_status, VALID_STATUSES"`
+     (run from the scripts directory) — imports without error.
+  3. `python3 -c "from task_format import detect_fenced_yaml"` (from scripts dir) — must raise
+     `ImportError`.
+  4. `grep "detect_fenced_yaml" plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py`
+     — zero matches.
+  5. `uv run ruff check plugins/python3-development/skills/implementation-manager/scripts/task_format.py plugins/python3-development/skills/implementation-manager/scripts/implementation_manager.py`
+     — zero errors.
+  6. `uv run pytest plugins/python3-development/skills/implementation-manager/scripts/ -v`
+     — all tests pass.
+
+  ### CoVe Checks
+
+  - Key claims to verify:
+    - `_FENCED_YAML_PATTERN` is only used by `detect_fenced_yaml` and has no other reference
+      in `task_format.py`.
+    - After removing `"detect_fenced_yaml"` from `__all__`, the list remains syntactically
+      valid (no trailing comma issues or bracket problems).
+  - Verification questions:
+    1. Does `_FENCED_YAML_PATTERN` appear anywhere in `task_format.py` outside its definition
+       and `detect_fenced_yaml`'s body?
+    2. Is the `__all__` list a Python list literal (square brackets) or a tuple? If a tuple,
+       trailing-comma rules differ.
+  - Evidence to collect:
+    - `grep "_FENCED_YAML_PATTERN" task_format.py` — confirm count is 2 (definition + use in function).
+    - Read the `__all__` declaration to confirm its syntax before editing.
+  - Revision rule:
+    - If `_FENCED_YAML_PATTERN` has additional references, do not delete it until those
+      references are confirmed dead. Report to handoff.
+
+  ### Handoff
+
+  Report:
+  - Diff summary (lines removed from `task_format.py`)
+  - Confirmation that `detect_fenced_yaml` was removed from the `implementation_manager.py`
+    import line (show the import line before and after)
+  - Output of grep for `detect_fenced_yaml` and `_FENCED_YAML_PATTERN` across both files
+    (must be empty)
+  - Output of `uv run ruff check task_format.py implementation_manager.py`
+  - Output of `uv run pytest` (full suite, must pass)
+
+  ---

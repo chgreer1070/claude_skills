@@ -1,0 +1,168 @@
+feature: Dispatch Plan Tooling
+version: '1.0'
+description: ''
+goal: |-
+  Implement dispatch_schema/ module with Pydantic models, YAML I/O, validation, conflict analysis, and MCP tool exposure for milestone dispatch plans
+context: |-
+  Story issue #920. dispatch_schema/ module in plugins/development-harness/. See Context Manifest section below.
+acceptance-criteria: |-
+  AC1: dispatch_schema/ package is importable and exports all public symbols listed in architect spec section 4.6
+  AC2: read_dispatch_plan() round-trips a valid YAML file through write_dispatch_plan() and produces identical DispatchPlan models
+  AC3: validate_plan_integrity() detects all five integrity violation types specified in architect spec section 4.4
+  AC4: detect_stale_plan() correctly identifies added and removed issues
+  AC5: analyze_impact_radius_conflicts() produces correct conflict groups using union-find for transitive overlap
+  AC6: All tests pass with 80%+ overall coverage, 95%+ on validator and conflict analysis
+  AC7: Four MCP tools (dispatch_read, dispatch_validate, dispatch_stale_check, dispatch_conflicts) registered on backlog server
+issue: '920'
+tasks:
+- id: T01
+  title: Pydantic models and package scaffolding
+  status: complete
+  agent: python-cli-architect
+  priority: 1
+  complexity: medium
+  skills:
+  - python3-development
+  - fastmcp-python-tests
+  started: '2026-03-20T00:00:00Z'
+  completed: '2026-03-20T00:00:00Z'
+  handoff: |-
+    All model classes importable from dispatch_schema.core.models. Enum values match YAML schema kebab-case strings.
+- id: T02
+  title: YAML reader (ruamel.yaml)
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T01
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+  parallelize-with:
+  - T03
+  - T04
+  - T06
+  started: '2026-03-21T01:05:06.061720Z'
+  handoff: |-
+    read_dispatch_plan() returns validated DispatchPlan from YAML file. Raises FileNotFoundError or ValueError on bad input.
+- id: T03
+  title: YAML writer with atomic rename
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T01
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+  parallelize-with:
+  - T02
+  - T04
+  - T06
+  started: '2026-03-21T01:08:30.860215Z'
+  handoff: |-
+    write_dispatch_plan() serializes DispatchPlan to kebab-case YAML with atomic temp+rename. Returns the written path.
+- id: T04
+  title: Plan validator (integrity + stale detection)
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T01
+  priority: 2
+  complexity: high
+  skills:
+  - python3-development
+  parallelize-with:
+  - T02
+  - T03
+  - T06
+  started: '2026-03-21T01:03:27.635204Z'
+  handoff: |-
+    validate_plan_integrity() returns ValidationResult with errors/warnings. detect_stale_plan() returns StalePlanResult with added/removed issue lists.
+- id: T05
+  title: Package public API (__init__.py exports)
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T01
+  - T02
+  - T03
+  - T04
+  priority: 3
+  complexity: low
+  skills:
+  - python3-development
+  parallelize-with:
+  - T06
+  started: '2026-03-21T01:09:40.849408Z'
+  handoff: |-
+    All public symbols importable from dispatch_schema top-level. __all__ list matches architect spec section 4.6.
+- id: T06
+  title: analyze_impact_radius_conflicts() in backlog_core/operations.py
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T01
+  priority: 2
+  complexity: high
+  skills:
+  - python3-development
+  parallelize-with:
+  - T02
+  - T03
+  - T04
+  started: '2026-03-21T01:07:06.828033Z'
+  handoff: |-
+    Function accepts list[dict] with title/issue/impact_radius keys, returns list[ConflictGroup]. Union-find handles transitive overlap.
+- id: T07
+  title: 'Tests: models, reader, writer (unit + integration)'
+  status: complete
+  agent: python-pytest-architect
+  dependencies:
+  - T01
+  - T02
+  - T03
+  - T05
+  priority: 3
+  complexity: high
+  skills:
+  - fastmcp-python-tests
+  - python3-development
+  parallelize-with:
+  - T08
+  started: '2026-03-21T01:12:39.567790Z'
+  handoff: |-
+    Test suite covers model validation, reader error paths, writer kebab-case output, and round-trip integrity. All tests pass.
+- id: T08
+  title: 'Tests: validator, stale detection, impact radius conflicts'
+  status: complete
+  agent: python-pytest-architect
+  dependencies:
+  - T04
+  - T05
+  - T06
+  priority: 3
+  complexity: high
+  skills:
+  - fastmcp-python-tests
+  - python3-development
+  parallelize-with:
+  - T07
+  started: '2026-03-21T01:12:19.201240Z'
+  handoff: |-
+    Test suite covers all five validator integrity checks, stale detection, and conflict analysis with property-based tests. All pass.
+- id: T09
+  title: MCP tools on backlog server
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T05
+  - T06
+  priority: 4
+  complexity: medium
+  skills:
+  - python3-development
+  - fastmcp-python-tests
+  started: '2026-03-21T01:13:22.175711Z'
+  handoff: |-
+    Four tools registered on backlog MCP server: dispatch_read, dispatch_validate, dispatch_stale_check, dispatch_conflicts. Each returns a dict.

@@ -1,0 +1,67 @@
+id: T08
+title: 'task_status_hook.py: remove dual-parser, unify on sam_schema'
+status: complete
+agent: python3-development:python-cli-architect
+dependencies:
+- T01
+priority: 3
+complexity: medium
+skills:
+- python3-development
+parallelize-with:
+- T09
+- T10
+- T11
+started: '2026-03-15T13:01:10Z'
+completed: '2026-03-15T14:00:00Z'
+description: |-
+  `task_status_hook.py` at `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` currently has a split parser: uses sam_schema for `.yaml` files but falls back to `task_format.py` for `.md` files. Per architecture spec section 11.3, the `.yaml` extension branch must be removed and all formats handled through a single sam_schema code path.
+
+  The hook keeps the Python API (not CLI) for performance per ADR-001 exception -- hooks fire on every tool call.
+objective: |-
+  Remove the dual-parser branches and `task_format` import from task_status_hook.py, unifying all task file operations on `sam_schema.core.query` API.
+requirements: |-
+  1. Remove `from task_format import ...` imports
+  2. Remove `.suffix == ".yaml"` branch in `handle_subagent_stop()` (lines 548-557 area)
+  3. Remove `.suffix == ".yaml"` branch in `handle_activity_update()` (lines 615-624 area)
+  4. Replace both branches with single call to `sam_update_status()` from sam_schema
+  5. Replace `parse_yaml_frontmatter()` calls with `load_plan()` from sam_schema
+  6. Replace `add_timestamp_to_task()` calls with `sam_update_field()` from sam_schema
+  7. Keep Python API imports (not CLI subprocess calls) for performance
+constraints: |-
+  - Hook must remain performant -- it fires on every Write/Edit/Bash tool call
+  - Do not modify task_format.py itself (it remains for now, removed later in deprecation)
+  - Do not change hook JSON stdin interface or event handling logic
+  - Do not modify SKILL.md hook declarations
+  - GitHub sync logic remains unchanged
+expected-outputs: |-
+  - `plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` (modified)
+acceptance-criteria: |-
+  1. `grep -c "task_format" plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` returns 0 (AC1 partial, AC3)
+  2. No `.yaml` extension branching in the script (AC3, AC14)
+  3. Hook correctly updates status on `.md` files through sam_schema (format-agnostic)
+  4. Hook correctly updates status on `.yaml` files through sam_schema
+  5. SubagentStop handler marks task COMPLETE with timestamp via sam_schema
+  6. PostToolUse handler updates LastActivity via sam_schema
+verification-steps: |-
+  1. Run `grep "task_format" plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` -- expect no matches
+  2. Run `grep '\.suffix.*yaml\|\.endswith.*yaml' plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py` -- expect no matches
+  3. Run existing hook tests: `uv run pytest tests/ -k "task_status_hook" -v`
+  4. Run `uv run basedpyright plugins/python3-development/skills/implementation-manager/scripts/task_status_hook.py`
+
+  - Key claims to verify:
+    - task_status_hook.py imports from task_format (what exactly is imported?)
+    - The `.suffix == ".yaml"` branch locations (are they at lines 548-557 and 615-624?)
+    - sam_schema `update_status` and `update_field` function signatures
+  - Verification questions:
+    1. What functions does task_status_hook.py import from task_format?
+    2. Where exactly are the extension branching points in the script?
+    3. Does `sam_update_status()` accept the same parameters as the current call sites?
+  - Evidence to collect:
+    - Grep task_status_hook.py for "task_format" imports
+    - Grep for ".suffix" or "endswith" branching on yaml/md
+    - Read sam_schema update_status function signature
+  - Revision rule:
+    - If sam_schema API signatures differ from current call sites, adapt the calls accordingly
+handoff: |-
+  Report: imports removed, code paths unified, test results

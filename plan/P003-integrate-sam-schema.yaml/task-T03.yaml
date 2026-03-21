@@ -1,0 +1,59 @@
+id: T03
+title: 'Addressing module: P{NNN}-{slug} resolution with backward compatibility'
+status: complete
+agent: python3-development:python-cli-architect
+priority: 1
+complexity: medium
+skills:
+- python3-development
+parallelize-with:
+- T01
+- T02
+- T04
+started: '2026-03-15T13:01:20Z'
+completed: '2026-03-15T12:00:00Z'
+description: |-
+  The addressing module at `packages/sam_schema/sam_schema/core/addressing.py` currently resolves `tasks-{N}-{slug}` filenames by alphabetical index. Per ADR-002 and architecture spec section 4.3, it must be updated to resolve `P{NNN}-{slug}` patterns as primary, with `tasks-{N}-{slug}` as a backward-compatible fallback per ADR-005.
+objective: |-
+  Update `resolve_plan_address()` to resolve `P{NNN}-*` patterns as primary addressing, with `tasks-{N}-{slug}` fallback for unmigrated files.
+requirements: |-
+  1. `resolve_plan_address("P1", plan_dir)` globs `plan/P001-*` (zero-padded match)
+  2. `resolve_plan_address("P719", plan_dir)` globs `plan/P719-*`
+  3. `resolve_plan_address("my-slug", plan_dir)` globs `plan/P*-my-slug*`
+  4. Multiple matches on P{N} produce error with disambiguation list
+  5. Backward compatibility: if no `P{NNN}-*` match, fall back to `tasks-{N}-{slug}` pattern
+  6. Path traversal prevention: reject addresses containing `..` or absolute paths
+  7. Support both `.yaml` single-file and directory matches
+constraints: |-
+  - Fallback to `tasks-{N}-{slug}` is explicitly temporary (removed after T07 migration completes)
+  - Do not modify cli.py, query.py, or other modules (those are T01/T02)
+  - Zero-pad matching: P1 matches P001, P01, P1 (flexible input, zero-padded on disk)
+expected-outputs: |-
+  - `packages/sam_schema/sam_schema/core/addressing.py` (modified)
+acceptance-criteria: |-
+  1. `parse_address("P719/T3")` returns plan="P719", task="T3"
+  2. `resolve_plan_address("P1", plan_dir)` finds `plan/P001-*.yaml` or `plan/P001-*/`
+  3. `resolve_plan_address("my-slug", plan_dir)` finds `plan/P*-my-slug.yaml`
+  4. `resolve_plan_address("P1", plan_dir)` with two P001 files raises error with both paths listed
+  5. `resolve_plan_address("old-slug", plan_dir)` falls back to `plan/tasks-*-old-slug*` when no P-pattern match exists
+  6. Address with `..` raises AddressingError
+verification-steps: |-
+  1. Create test fixtures: `plan/P001-test.yaml`, `plan/P002-other.yaml`, `plan/tasks-1-legacy.md`
+  2. Test resolution of P1, P2, legacy slug, collision case
+  3. Run `uv run pytest packages/sam_schema/tests/ -k "addressing" -v`
+  4. Run `uv run basedpyright packages/sam_schema/sam_schema/core/addressing.py`
+
+  - Key claims to verify:
+    - Current `resolve_plan_address()` signature and return type
+    - Current glob patterns used in addressing.py
+  - Verification questions:
+    1. What arguments does `resolve_plan_address()` currently accept?
+    2. What exception type does addressing.py raise on failure?
+    3. Does addressing.py currently support directory-based plans?
+  - Evidence to collect:
+    - Read `resolve_plan_address()` function signature from addressing.py
+    - Read `AddressingError` class definition
+  - Revision rule:
+    - If current function signature differs from spec, adapt new logic to existing signature where possible
+handoff: |-
+  Report: addressing patterns supported, backward compatibility verification, edge cases found

@@ -1,0 +1,44 @@
+feature: verify-citations-validate-mode
+version: '1.0'
+description: ''
+acceptance-criteria-structured:
+- criterion-id: AC1
+  description: --verify-citations flag exists and appears in --help output
+  check-command: uv run
+    .claude/skills/research-curator/scripts/validate_research.py --help
+  expected-baseline: any
+  expected-final: pass
+- criterion-id: AC2
+  description: 'Without flag: no network calls, existing behaviour unchanged'
+  check-command: uv run
+    .claude/skills/research-curator/scripts/validate_research.py --json
+    ./research/agent-frameworks/AutoResearchClaw.md
+  expected-baseline: any
+  expected-final: pass
+- criterion-id: AC3
+  description: 'With flag: JSON output includes citation_verification section'
+  check-command: uv run
+    .claude/skills/research-curator/scripts/validate_research.py --json
+    --verify-citations ./research/agent-frameworks/AutoResearchClaw.md
+  expected-baseline: any
+  expected-final: pass
+- criterion-id: AC4
+  description: SKILL.md documents --verify-citations flag
+  check-command: grep -c 'verify-citations'
+    .claude/skills/research-curator/SKILL.md
+  expected-baseline: any
+  expected-final: pass
+- criterion-id: AC5
+  description: validation-rules.md defines citation verification rules
+  check-command: grep -c 'citation'
+    .claude/skills/research-curator/references/validation-rules.md
+  expected-baseline: any
+  expected-final: pass
+- criterion-id: AC6
+  description: research-curator agent documents citation_verification as
+    non-fixable
+  check-command: grep -c 'citation_verification'
+    .claude/agents/research-curator.md
+  expected-baseline: any
+  expected-final: pass
+tasks: []

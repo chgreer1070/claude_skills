@@ -1,0 +1,44 @@
+id: T05
+title: 'MCP server extensions: sam_create, sam_update, sam_claim tools'
+status: complete
+agent: python3-development:python-cli-architect
+dependencies:
+- T01
+- T02
+priority: 2
+complexity: medium
+skills:
+- python3-development
+parallelize-with:
+- T06
+- T07
+started: '2026-03-15T13:11:58Z'
+completed: '2026-03-15T14:00:00Z'
+description: |-
+  The MCP server at `packages/sam_schema/sam_schema/server.py` currently exposes `sam_read`, `sam_state`, `sam_ready`, `sam_status` tools. Per architecture spec section 4.6, it needs new tools mirroring the CLI commands added in T01 and the enhanced read from T02.
+objective: |-
+  Add `sam_create`, `sam_update`, `sam_claim` MCP tools to server.py, and update existing `sam_read` to return TaskAssignment when task address is provided.
+requirements: |-
+  1. Add `sam_create(slug, goal, tasks_yaml, ...)` MCP tool that mirrors `sam create` CLI
+  2. Add `sam_update(address, fields, ...)` MCP tool that mirrors `sam update` CLI
+  3. Add `sam_claim(address)` MCP tool that mirrors `sam claim` CLI
+  4. Update existing `sam_read` tool to return TaskAssignment JSON when task address provided
+  5. All MCP tools delegate to the same query API functions the CLI uses
+  6. Return JSON strings matching CLI output format
+constraints: |-
+  - Use FastMCP `@mcp.tool()` decorator (existing pattern in server.py)
+  - All tools are async functions (existing pattern)
+  - Do not duplicate business logic -- delegate to query API
+expected-outputs: |-
+  - `packages/sam_schema/sam_schema/server.py` (modified)
+acceptance-criteria: |-
+  1. `sam_create` MCP tool accepts slug, goal, tasks_yaml params and returns JSON path response
+  2. `sam_update` MCP tool accepts address and fields, returns JSON confirmation
+  3. `sam_claim` MCP tool accepts address, returns JSON with claimed status
+  4. `sam_read` MCP tool returns TaskAssignment when task address provided
+verification-steps: |-
+  1. Run `uv run pytest packages/sam_schema/tests/ -k "server or mcp" -v`
+  2. Run `uv run basedpyright packages/sam_schema/sam_schema/server.py`
+  3. Verify each new tool function has docstring matching CLI command help text
+handoff: |-
+  Report: MCP tools added, test results

@@ -1,0 +1,94 @@
+feature: add-status-field-to-backlogitem-model
+version: '1.0'
+description: |-
+  Add status field to BacklogItem model, populate during parsing, simplify view helper
+issue: '612'
+architecture: plan/architect-add-status-field-to-backlogitem-model.md
+feature-context: plan/feature-context-add-status-field-to-backlogitem-model.md
+tasks:
+- id: T1
+  title: Add status field to BacklogItem and update parsing and view logic
+  status: complete
+  agent: python-cli-architect
+  priority: 1
+  complexity: low
+  skills:
+  - python3-development
+  started: '2026-03-12T02:23:02Z'
+  completed: '2026-03-12T02:28:00Z'
+  description: |-
+    `BacklogItem` in `.claude/skills/backlog/backlog_core/models.py` (line ~162) lacks a `status` field. The `parse_item_file()` function in `.claude/skills/backlog/backlog_core/parsing.py` already extracts status via `_fm_str(fm, meta, "status")` on line 243 but discards the raw string, keeping only the derived `skip` boolean. This forces `view_result_from_local_item()` (parsing.py lines 805-814) to re-read the file from disk to extract status for the `ViewItemResult`.
+
+    Architecture spec: `plan/architect-add-status-field-to-backlogitem-model.md`
+    Codebase analysis: `plan/codebase/backlog-core-patterns.md`
+  objective: |-
+    Add `status: str = ""` to `BacklogItem`, populate it during `parse_item_file()`, and replace the redundant file re-read in `view_result_from_local_item()` with `result.status = item.status`.
+  constraints: |-
+    - No behavioral changes to callers of `parse_item_file()` or `view_result_from_local_item()`
+    - `skip` field remains a stored `bool`, not a computed property
+    - `status` preserves raw frontmatter case (no `.lower()` normalization)
+    - Do not modify `ViewItemResult` model (it already has `status: str = ""`)
+    - Do not refactor or remove the `skip` field
+  expected-outputs: |-
+    - File modified: `.claude/skills/backlog/backlog_core/models.py`
+    - File modified: `.claude/skills/backlog/backlog_core/parsing.py`
+    - File modified (best-effort): `.claude/skills/backlog/scripts/backlog.py`
+  acceptance-criteria: |-
+    1. `BacklogItem` class has a `status: str = ""` field after the `skip` field
+    2. `parse_item_file()` populates `item.status` with the raw frontmatter status string
+    3. `parse_item_file()` uses a local variable to avoid calling `_fm_str(fm, meta, "status")` twice
+    4. `view_result_from_local_item()` no longer reads any file from disk -- the entire file re-read block is removed
+    5. `view_result_from_local_item()` sets `result.status = item.status`
+    6. The `skip` field behavior is unchanged: `"done"` and `"resolved"` (case-insensitive) set `skip=True`
+    7. All existing tests in `.claude/skills/backlog/tests/` pass without modification
+  verification-steps: |-
+    1. Read the modified `models.py` and confirm `status: str = ""` exists on `BacklogItem` after `skip`
+    2. Read the modified `parsing.py` and confirm `parse_item_file()` assigns `status=status_raw` and no file I/O exists in `view_result_from_local_item()`
+    3. Run: `uv run python -c "from backlog_core.models import BacklogItem; b = BacklogItem(); assert b.status == ''; print('OK')"`
+    4. Run: `uv run pytest .claude/skills/backlog/tests/ -x -q`
+  handoff: |-
+    Return:
+    - Summary of lines changed in each file
+    - Whether the legacy script was updated or left unchanged (and why)
+    - Test run output (pass/fail)
+- id: T2
+  title: Verify all tests pass and add new test coverage for status field
+  status: complete
+  agent: python-pytest-architect
+  dependencies:
+  - T1
+  priority: 2
+  complexity: low
+  skills:
+  - python3-development
+  - fastmcp-python-tests
+  started: '2026-03-12T02:29:10Z'
+  completed: '2026-03-12T02:35:00Z'
+  description: |-
+    Task T1 adds the `status` field to `BacklogItem` and updates `parse_item_file()` and `view_result_from_local_item()`. This task adds test coverage for the new behavior. Existing test fixtures (`_NESTED_META_FRONTMATTER` and `_FLAT_FRONTMATTER` in `test_backlog_core_parsing.py`) already contain `status: open` in their frontmatter.
+
+    Architecture spec: `plan/architect-add-status-field-to-backlogitem-model.md` (section 7)
+  objective: |-
+    Add tests that verify `BacklogItem.status` is populated correctly during parsing and used correctly in `view_result_from_local_item()`.
+  constraints: |-
+    - Follow existing test naming convention: `test_[function]_[scenario]_[expected_outcome]`
+    - Use existing test fixtures where applicable (`_NESTED_META_FRONTMATTER`, `_FLAT_FRONTMATTER`)
+    - Do not modify existing tests
+    - Place new tests after existing related tests in the file
+  expected-outputs: |-
+    - File modified: `.claude/skills/backlog/tests/test_backlog_core_parsing.py`
+  acceptance-criteria: |-
+    1. At least 5 new tests for `parse_item_file` status field behavior exist
+    2. At least 3 new tests for `view_result_from_local_item` status behavior exist
+    3. All new tests pass
+    4. All pre-existing tests continue to pass
+    5. Test for nonexistent file path confirms no `FileNotFoundError` is raised (regression test)
+  verification-steps: |-
+    1. Run: `uv run pytest .claude/skills/backlog/tests/test_backlog_core_parsing.py -x -q`
+    2. Run: `uv run pytest .claude/skills/backlog/tests/test_backlog_core_parsing.py -k "status" -v` (confirm new tests are discovered and pass)
+    3. Run: `uv run pytest .claude/skills/backlog/tests/ -x -q` (full test suite)
+  handoff: |-
+    Return:
+    - List of test function names added
+    - Full pytest output showing all tests pass
+    - Any pre-existing test failures found (report as-is, do not fix unless directly related)

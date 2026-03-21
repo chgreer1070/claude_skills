@@ -1,0 +1,11 @@
+feature: research-freshness-delta
+version: '1.0'
+description: |-
+  Research freshness as delta indicator — convert freshness dates from stop conditions to informational deltas across 3 skill documentation files
+issue: '#444'
+task_files:
+- task-1.1.yaml
+- task-1.2.yaml
+- task-1.3.yaml
+- task-1.4.yaml
+- task-1.5.yaml

@@ -1,0 +1,53 @@
+id: T5
+title: Normalizer and Schema Gap Detection
+status: complete
+agent: python3-development:python-cli-architect
+dependencies:
+- T2
+priority: 3
+complexity: medium
+skills:
+- python3-development
+started: '2026-03-15T03:08:57Z'
+completed: '2026-03-15T04:00:00Z'
+description: |-
+  The architecture spec (section 4, `readers/normalize.py` and section 5 "Schema Gap Detection") defines the normalization layer that converts raw dicts from any reader into validated Pydantic `Task` models while reporting schema gaps for legacy formats. The existing status normalization logic in `task_format.py:275-320` and field extraction in `implementation_manager.py:403-471` document the coercion rules. The `STATUS_MAP` from T1's models.py provides the mapping.
+objective: |-
+  Implement `normalize.py` with `normalize_task()`, `normalize_plan()`, and `detect_gaps()` functions that convert raw reader output to validated Pydantic models and report missing optional fields.
+requirements: |-
+  1. Implement `normalize_task(raw: dict, source_format: FormatType) -> tuple[Task, list[SchemaGap]]` — converts a raw dict into a `Task` model. Applies status normalization via `STATUS_MAP`. Returns the task and any schema gaps.
+  2. Implement `normalize_plan(plan_meta: dict, task_dicts: list[dict], source_format: FormatType, source_path: Path) -> ReadResult` — normalizes an entire plan from raw reader output.
+  3. Implement `detect_gaps(raw: dict, task_id: str) -> list[SchemaGap]` — compares raw dict against canonical Task fields. Emits `SchemaGap` for each missing optional field per the architecture spec's `OPTIONAL_FIELDS` dict.
+  4. Status normalization must handle: kebab-case (`not-started`), space-separated (`NOT STARTED`), emoji (`:white_check_mark:`), title-based overrides (`[DEFERRED]`, `[SKIPPED]` in title).
+  5. Dependency parsing must handle: `"Task 1, Task 2"` (legacy), `"T1, T2"` (bare IDs), YAML list `["T1", "T2"]`, `"None"` (no deps), mixed formats.
+  6. Skills parsing must handle: YAML list `["skill1", "skill2"]`, comma-separated string `"skill1, skill2"`, empty list `[]`.
+  7. Timestamp coercion: `datetime` objects (from ruamel.yaml) must be converted to `datetime` for Pydantic. ISO 8601 strings must be parsed to `datetime`.
+  8. Priority coercion: integer 1-5, string "1"-"5", enum name. Default: `Priority.MEDIUM`.
+  9. Complexity coercion: case-insensitive string matching. Default: `Complexity.MEDIUM`.
+constraints: |-
+  - Do not import from existing `task_format.py` or `implementation_manager.py`
+  - Invalid required fields (missing `task`, `title`, or `status`) must raise `ValueError` with a descriptive message listing the missing fields
+  - Invalid optional field values should emit a `SchemaGap` with `gap_type="invalid_value"` rather than raising
+expected-outputs: |-
+  - `packages/sam_schema/readers/normalize.py`
+acceptance-criteria: |-
+  1. `normalize_task({"task": "T1", "title": "Test", "status": "NOT STARTED"})` returns a Task with `status == TaskStatus.NOT_STARTED`
+  2. `normalize_task({"task": "T1", "title": "[DEFERRED] Old task", "status": "not-started"})` returns a Task with `status == TaskStatus.DEFERRED` (title override)
+  3. `detect_gaps({"task": "T1", "title": "Test", "status": "not-started"}, "T1")` returns SchemaGap entries for all missing optional fields (agent, priority, complexity, skills, etc.)
+  4. Legacy dependency string `"Task 1, Task 2"` normalizes to `["1", "2"]`
+  5. Missing required field raises `ValueError` with field name in message
+verification-steps: |-
+  1. `uv run python -c "from sam_schema.readers.normalize import normalize_task, normalize_plan, detect_gaps; print('OK')"` — imports succeed
+  2. `uv run ty check packages/sam_schema/readers/normalize.py` — zero errors
+  3. `uv run ruff check packages/sam_schema/readers/normalize.py` — zero errors
+
+  - Key claims to verify:
+    - Pydantic v2 `model_validate()` with `from_attributes=False` accepts dicts with alias keys
+    - `datetime` objects from ruamel.yaml are compatible with Pydantic's datetime validation
+  - Verification questions:
+    1. Does `Task.model_validate({"task": "T1", ...})` use the field name or alias when `populate_by_name=True`?
+    2. How does Pydantic v2 handle `datetime` objects vs ISO 8601 strings in datetime fields?
+  - Evidence to collect:
+    - Test `Task.model_validate()` with both field names and aliases
+  - Revision rule:
+    - If Pydantic requires special handling for alias-based dict validation, adjust the normalize functions

@@ -1,0 +1,148 @@
+id: '1.1'
+title: Update entry-template.md — Freshness Tracking note and Freshness Schedule
+  clause
+status: not-started
+priority: 3
+complexity: medium
+description: |-
+  ```yaml
+  task: "1.1"
+  title: "Update entry-template.md: Freshness Tracking note and Freshness Schedule clause"
+  status: not-started
+  agent: plugin-creator:contextual-ai-documentation-optimizer
+  dependencies: []
+  priority: 1
+  complexity: low
+  accuracy-risk: medium
+  skills: []
+  parallelize-with: []
+  reason: "Sole writer of entry-template.md. No conflict possible."
+  handoff: "Report: which lines changed, exact text inserted, prek exit code, any
+    blocked items."
+  ```
+
+  #### Context
+
+  This task merged from two planned changes to avoid edit conflicts on
+  `.claude/skills/research-curator/references/entry-template.md`:
+  1. Freshness Tracking — "suggestion not gate" note
+  2. Freshness Schedule — activity-aware guidance clause
+
+  The entry-template.md is a template included in every research entry. It is read by agents
+  and orchestrators that create and refresh research entries. The Freshness Tracking section
+  (lines 168-175) and Freshness Schedule section (lines 179-183) currently imply that "Next
+  Review Recommended" is enforced as a gate. The architecture spec clarifies it is a
+  suggestion. Task 1.2 depends on this task completing first.
+
+  #### Objective
+
+  Insert a "suggestion not gate" note after the Freshness Tracking table and expand the
+  Freshness Schedule Next Review bullet with activity-aware guidance, exactly as specified
+  in the architecture spec sections 4a and 4b.
+
+  #### Required Inputs
+
+  - `.claude/skills/research-curator/references/entry-template.md` — read in full before editing;
+    confirm lines 168-183 match the verified state described in the Context section above
+  - `plan/architect-research-freshness-delta.md` — section 4, "File 3" changes; use exact prose
+    from the spec for both the note and the expanded bullet
+  - `plan/codebase/skill-conventions.md` — Markdown formatting conventions (code fence language
+    specifiers, blank lines around fences)
+
+  #### Requirements
+
+  ##### Freshness Tracking note (section 4a)
+
+  1. After the closing ` ```` ` of the entry template markdown block (currently line 175
+     `````), append a blockquote note with this exact text:
+
+     ```text
+     > **Note**: "Next Review Recommended" is a suggestion, not a gate. When a user or
+     > orchestrator explicitly requests re-research for this entry — via `--rerun`, via
+     > `--batch` URL resubmission, or via `--all` — the refresh proceeds regardless of this
+     > date. This field provides context ("how stale is this?") and informs scheduling
+     > decisions. It does not block operations.
+     ```
+
+  2. The note must appear inside the Freshness Tracking section, before the `---` separator
+     that follows it (currently line 177).
+
+  ##### Freshness Schedule clause (section 4b)
+
+  3. Replace the first bullet of the Freshness Schedule section (currently line 181:
+     `- **Next Review**: Set to 3 months from research date`) with:
+
+     ```text
+     - **Next Review**: Set to 3 months from research date. This is a conservative baseline
+       appropriate for stable or slow-moving projects. High-activity repositories — those with
+       frequent major or minor releases, rapidly growing star or fork counts, or active breaking
+       API changes — benefit from shorter intervals (4–6 weeks). The agent setting this date
+       should calibrate to the observed activity level of the resource at time of research.
+     ```
+
+  4. Leave the second and third bullets unchanged:
+     - `- **Stale threshold**: 6 months without verification`
+     - `- **Review required**: Version change, significant star/fork growth, breaking API changes`
+
+  #### Constraints
+
+  - Do not modify any section of entry-template.md other than the Freshness Tracking section
+    (lines 168-175) and the Freshness Schedule section (lines 179-183)
+  - Do not alter the three-field Freshness Tracking table itself (`Last Verified`,
+    `Version at Verification`, `Next Review Recommended`)
+  - Use the exact prose from the architecture spec — do not paraphrase or reword
+  - Do not add language specifiers to code fences already present in the file unless they are
+    missing per the repo standard (all code fences must have a language specifier)
+
+  #### Expected Outputs
+
+  - `.claude/skills/research-curator/references/entry-template.md` — modified with two additions:
+    the blockquote note after the Freshness Tracking table, and the expanded Next Review bullet
+
+  #### Acceptance Criteria
+
+  1. The Freshness Tracking section contains a blockquote starting with
+     `> **Note**: "Next Review Recommended" is a suggestion, not a gate.` and ending with
+     `> It does not block operations.`
+  2. The Freshness Schedule section's first bullet reads:
+     `- **Next Review**: Set to 3 months from research date. This is a conservative baseline`
+     (first line of the expanded bullet)
+  3. The second and third Schedule bullets (`Stale threshold` and `Review required`) are
+     byte-for-byte identical to their pre-edit values
+  4. `uv run prek run --files .claude/skills/research-curator/references/entry-template.md`
+     exits 0 with no lint errors
+
+  #### Verification Steps
+
+  1. Read `.claude/skills/research-curator/references/entry-template.md` and confirm the
+     blockquote note appears after the closing backticks of the Freshness Tracking table block
+     and before the `---` separator
+  2. Read the Freshness Schedule section and confirm the first bullet contains the phrase
+     `High-activity repositories` and the text `(4–6 weeks)`
+  3. Confirm the second and third bullets are unchanged by comparing to the pre-edit text:
+     `6 months without verification` and `Version change, significant star/fork growth`
+  4. Run: `uv run prek run --files .claude/skills/research-curator/references/entry-template.md`
+     and confirm exit code 0
+
+  #### CoVe Checks
+
+  - Key claims to verify:
+    - The closing backtick line of the Freshness Tracking table block (the `````  at line 175)
+      is the correct insertion point for the note — not inside the code block
+    - The note blockquote uses `>` syntax, which renders correctly in Markdown and does not
+      conflict with the surrounding content
+  - Verification questions:
+    1. Does reading entry-template.md confirm that line 175 is ` ```` ` (closing backtick) and
+       line 177 is `---` (separator), with line 176 empty? If not, adjust insertion point.
+    2. Does `uv run prek run` pass on the file as written, or does the blockquote trigger any
+       lint rule? If it fails, identify which rule and adjust prose formatting.
+  - Evidence to collect:
+    - Output of Read tool on lines 168-185 of entry-template.md after edit
+    - Exit code and stdout of `uv run prek run --files entry-template.md`
+  - Revision rule:
+    - If the insertion point differs from what is described, adjust the edit location and
+      state what line the note was actually inserted at.
+
+  ---
+
+  ## Priority 2 — Core (Depends on Task 1.1)

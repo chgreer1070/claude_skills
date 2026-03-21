@@ -1,0 +1,55 @@
+id: T6
+title: Test Fixtures and Conftest Infrastructure
+status: complete
+agent: python3-development:python-pytest-architect
+dependencies:
+- T1
+priority: 2
+complexity: medium
+skills:
+- fastmcp-python-tests
+- python3-development
+started: '2026-03-15T02:51:05Z'
+completed: '2026-03-15T03:30:00Z'
+description: |-
+  The architecture spec (section 7) defines a comprehensive test directory under `packages/sam_schema/tests/` with fixtures for all format variants, a conftest.py, and test subdirectories. Existing test patterns are documented in `plan/codebase/sam-task-parsing-patterns.md` section 7 (AAA pattern, full type annotations, monkeypatch for stderr, no unittest.mock). The test fixtures must cover all four legacy formats plus the canonical pure YAML format.
+objective: |-
+  Create the test infrastructure: conftest.py with shared fixtures, sample task files in all formats under `tests/fixtures/`, and the test directory structure so all subsequent test tasks (within T2-T5, T7-T9) have fixtures available.
+requirements: |-
+  1. Create `packages/sam_schema/tests/__init__.py` (empty).
+  2. Create `packages/sam_schema/tests/conftest.py` with:
+     - `tmp_plan_dir` fixture (pytest `tmp_path` based) that creates a temporary plan directory
+     - `sample_plan` fixture that returns a `Plan` object with 3-4 tasks having dependencies
+     - `sample_task` fixture that returns a minimal valid `Task` object
+     - `plan_with_cycles` fixture that returns a `Plan` with circular dependencies
+  3. Create fixture files under `packages/sam_schema/tests/fixtures/`:
+     - `pure_yaml_single.yaml` — canonical single-file format with 3 tasks, dependencies, all field types
+     - `pure_yaml_directory/` — directory format with `plan.yaml` + `task-T1.yaml`, `task-T2.yaml`, `task-T3.yaml`
+     - `yaml_frontmatter_single.md` — single task with YAML frontmatter
+     - `yaml_frontmatter_multi.md` — multi-task with embedded YAML blocks separated by `---`
+     - `legacy_markdown.md` — legacy `## Task N:` format with `**Field**: Value` markers
+     - `global_manifest.md` — global frontmatter with `feature:` + `tasks:` list + prose body sections (the failing format)
+     - `malformed/missing_required.yaml` — missing `title` field
+     - `malformed/invalid_status.yaml` — status value `"started"` (not in enum)
+     - `malformed/circular_deps.yaml` — T1 depends T2, T2 depends T1
+  4. Create empty test module files for the test directory structure: `test_models.py`, `test_query.py`, `test_dependencies.py`, `test_cli.py`, `test_readers/__init__.py`, `test_readers/test_detect.py`, `test_readers/test_yaml_reader.py`, `test_readers/test_frontmatter_reader.py`, `test_readers/test_legacy_reader.py`, `test_readers/test_manifest_reader.py`, `test_readers/test_normalize.py`, `test_writers/__init__.py`, `test_writers/test_yaml_writer.py`.
+  5. Each fixture file must contain realistic task content (not placeholder text) — use the examples from the architecture spec and codebase analysis.
+constraints: |-
+  - Follow existing test standards: AAA pattern, full type annotations, no `unittest.mock` (use `monkeypatch` or `pytest-mock`)
+  - Fixture files must be valid instances of their respective formats — they will be used by reader tests
+  - Do not write actual test functions yet (those come with their respective implementation tasks)
+  - The `global_manifest.md` fixture must reproduce the format that caused the #715 failure
+expected-outputs: |-
+  - `packages/sam_schema/tests/__init__.py`
+  - `packages/sam_schema/tests/conftest.py`
+  - `packages/sam_schema/tests/fixtures/` (all fixture files listed above)
+  - Empty test module files for directory structure
+acceptance-criteria: |-
+  1. `uv run pytest packages/sam_schema/tests/ --collect-only` exits 0 (no import errors in conftest)
+  2. All fixture files are syntactically valid for their respective formats (YAML files parse, markdown is well-formed)
+  3. `conftest.py` fixtures produce valid `Plan` and `Task` objects when invoked
+  4. `global_manifest.md` fixture reproduces the format variant documented in feature context (global frontmatter with `tasks:` list + prose body)
+verification-steps: |-
+  1. `uv run pytest packages/sam_schema/tests/ --collect-only` — no errors
+  2. `uv run python -c "from ruamel.yaml import YAML; YAML().load(open('packages/sam_schema/tests/fixtures/pure_yaml_single.yaml'))"` — parses without error
+  3. `uv run ruff check packages/sam_schema/tests/` — zero errors

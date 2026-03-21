@@ -1,0 +1,47 @@
+id: T06
+title: 'Test suite: CLI commands, addressing, writers, migration'
+status: complete
+agent: python3-development:python-pytest-architect
+dependencies:
+- T01
+- T02
+- T03
+priority: 2
+complexity: high
+skills:
+- fastmcp-python-tests
+- python3-development
+parallelize-with:
+- T05
+- T07
+started: '2026-03-15T13:11:38Z'
+completed: '2026-03-15T14:00:00Z'
+description: |-
+  The sam_schema package has 421 existing tests with 93% coverage. The new CLI commands (T01), enhanced read (T02), and addressing update (T03) need comprehensive tests per architecture spec section 7. This task adds ~60 new tests covering the new functionality.
+objective: |-
+  Create comprehensive test suite for all new sam CLI commands, addressing module changes, and writer functions, maintaining 95%+ coverage on new code and 80%+ overall.
+constraints: |-
+  - Use `typer.testing.CliRunner(mix_stderr=False)` with `env={"NO_COLOR": "1"}` for CLI tests
+  - Use `pytest-mock` for mocking (never unittest.mock directly)
+  - Use `hypothesis` for property-based tests on addressing
+  - Test fixtures use tmp_path, not real plan/ directory
+  - Mark tests: `@pytest.mark.cli`, `@pytest.mark.unit`, `@pytest.mark.integration`
+expected-outputs: |-
+  - `packages/sam_schema/tests/test_cli_create.py` (new)
+  - `packages/sam_schema/tests/test_cli_update.py` (new)
+  - `packages/sam_schema/tests/test_cli_claim.py` (new)
+  - `packages/sam_schema/tests/test_addressing_pnnn.py` (new or modified existing)
+  - `packages/sam_schema/tests/test_writers_new.py` (new or modified existing)
+acceptance-criteria: |-
+  1. All new tests pass: `uv run pytest packages/sam_schema/tests/ -v` exits 0 (AC10)
+  2. Coverage on new CLI commands is 95%+ (check via `--cov-report=term-missing`)
+  3. Coverage on addressing module changes is 95%+
+  4. Property-based test for plan number resolution exists and passes
+  5. At least 60 new test functions added across all test files
+verification-steps: |-
+  1. Run `uv run pytest packages/sam_schema/tests/ -v --tb=short`
+  2. Run `uv run pytest packages/sam_schema/tests/ --cov=packages/sam_schema --cov-report=term-missing`
+  3. Verify coverage output shows 95%+ on cli.py new functions, addressing.py, yaml_writer.py new functions
+  4. Run `uv run pytest packages/sam_schema/tests/ -k "hypothesis" -v` to verify property-based tests
+handoff: |-
+  Report: test count, coverage percentage, any failures or skipped tests

@@ -1,0 +1,222 @@
+feature: consolidate-sam-workflow-skills
+version: '1.0'
+description: ''
+goal: |-
+  Consolidate language-agnostic SAM workflow skills from python3-development to development-harness plugin
+context: |
+  This plan consolidates language-agnostic SAM workflow skills from the python3-development plugin
+  to the development-harness (dh) plugin. Three backlog items: #957 (remove 5 duplicates),
+  #958 (migrate hook scripts), #959 (migrate 4 skills + 2 agents). The architecture spec is at
+  plan/architect-consolidate-sam-workflow-skills.md. The feature context is at
+  plan/feature-context-consolidate-sam-workflow-skills.md.
+
+  Phase ordering: A (delete duplicates) and B (migrate scripts) are independent and parallel.
+  Phase B.5 (language manifest) is also independent. Phase C (migrate skills) depends on B.
+  Phase D (update references) depends on A+B+C. Role resolution (T07, T08) depends on T03 (manifest) and T04 (skill moves).
+acceptance-criteria: |-
+  AC1: 5 duplicate skill directories removed from python3-development (clear-cove-task-design, generate-task, planner-rt-ica, validation-protocol, implementation-manager SKILL.md)
+  AC2: 3 hook scripts (task_status_hook.py, task_format.py, get_task_context.py) exist in dh implementation-manager/scripts/
+  AC3: 4 workflow skills (implement-feature, start-task, complete-implementation, add-new-feature) exist in dh skills/
+  AC4: 2 agents (t0-baseline-capture, tn-verification-gate) exist in dh agents/
+  AC5: subagent-contract skill exists in dh skills/
+  AC6: add-new-feature and complete-implementation use role resolution, not hardcoded agent names
+  AC7: python3-development language manifest exists with 5 role mappings
+  AC8: local-workflow.md has zero stale references to migrated python3-development paths
+  AC9: Both plugins pass skilllint validation with zero errors
+  AC10: sam CLI (uv run sam list) returns valid JSON
+tasks:
+- id: T01
+  title: Delete 5 duplicate skill directories from python3-development
+  status: complete
+  agent: python-cli-architect
+  priority: 1
+  complexity: low
+  skills:
+  - python3-development
+  parallelize-with:
+  - T02
+  - T03
+  started: '2026-03-21T14:21:04.199224Z'
+- id: T02
+  title: Migrate hook scripts from python3-development to dh and clean stale pyc
+  status: complete
+  agent: python-cli-architect
+  priority: 1
+  complexity: medium
+  skills:
+  - python3-development
+  parallelize-with:
+  - T01
+  started: '2026-03-21T14:27:07.262225Z'
+- id: T03
+  title: Check for python3-development language manifest and create if missing
+  status: complete
+  agent: python-cli-architect
+  priority: 1
+  complexity: medium
+  skills:
+  - python3-development
+  parallelize-with:
+  - T01
+  - T02
+  started: '2026-03-21T14:21:50.631381Z'
+- id: T04
+  title: Move 4 workflow skills from python3-development to dh
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T02
+  priority: 2
+  complexity: high
+  skills:
+  - python3-development
+  parallelize-with:
+  - T05
+  - T06
+  started: '2026-03-21T14:30:36.439678Z'
+- id: T05
+  title: Move t0-baseline-capture and tn-verification-gate agents to dh
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T02
+  priority: 2
+  complexity: low
+  skills:
+  - python3-development
+  parallelize-with:
+  - T04
+  - T06
+  started: '2026-03-21T14:31:00.660191Z'
+- id: T06
+  title: Move subagent-contract skill to dh
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T02
+  priority: 2
+  complexity: low
+  skills:
+  - python3-development
+  parallelize-with:
+  - T04
+  - T05
+  started: '2026-03-21T14:31:33.966541Z'
+- id: T07
+  title: Replace hardcoded agent in add-new-feature with role resolution
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T03
+  - T04
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+  parallelize-with:
+  - T08
+  started: '2026-03-21T14:33:45.125304Z'
+- id: T08
+  title: Replace hardcoded agent in complete-implementation with role resolution
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T03
+  - T04
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+  parallelize-with:
+  - T07
+  started: '2026-03-21T14:34:52.809976Z'
+- id: T09
+  title: Update .claude/rules/local-workflow.md for new dh locations
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T01
+  - T02
+  - T04
+  - T05
+  - T06
+  - T07
+  - T08
+  priority: 3
+  complexity: high
+  skills:
+  - python3-development
+  parallelize-with:
+  - T10
+  - T11
+  started: '2026-03-21T14:39:50.767390Z'
+- id: T10
+  title: Update python3-development CLAUDE.md skill and agent inventory
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T01
+  - T02
+  - T04
+  - T05
+  - T06
+  priority: 3
+  complexity: medium
+  skills:
+  - python3-development
+  parallelize-with:
+  - T09
+  - T11
+  started: '2026-03-21T14:35:03.642964Z'
+- id: T11
+  title: Update python3-development commands references and agent frontmatter
+    skill namespaces
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T04
+  - T05
+  - T06
+  priority: 3
+  complexity: medium
+  skills:
+  - python3-development
+  parallelize-with:
+  - T09
+  - T10
+  started: '2026-03-21T14:35:02.430755Z'
+- id: T12
+  title: Run plugin validator on both plugins and fix any errors
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T01
+  - T02
+  - T04
+  - T05
+  - T06
+  - T07
+  - T08
+  - T09
+  - T10
+  - T11
+  priority: 3
+  complexity: low
+  skills:
+  - python3-development
+  started: '2026-03-21T15:18:55.848065Z'
+- id: T13
+  title: Run stale reference search across entire repo
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T09
+  - T10
+  - T11
+  priority: 3
+  complexity: low
+  skills:
+  - python3-development
+  parallelize-with:
+  - T12
+  started: '2026-03-21T15:18:50.871045Z'

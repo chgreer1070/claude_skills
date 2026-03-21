@@ -1,0 +1,43 @@
+id: T12
+title: 'swarm-task-planner agent: remove inline schema, use sam create'
+status: complete
+agent: contextual-ai-documentation-optimizer
+dependencies:
+- T01
+priority: 4
+complexity: medium
+skills:
+- development-harness:clear-cove-task-design
+parallelize-with:
+- T13
+started: '2026-03-15T13:35:36Z'
+completed: '2026-03-15T16:00:00Z'
+description: |-
+  The swarm-task-planner agent at `plugins/python3-development/agents/swarm-task-planner.md` currently embeds a YAML schema definition (approximately lines 258-320) and writes task files via the Write tool. Per architecture spec section 11.1, the inline schema must be removed and replaced with `sam create` instruction + reference to TASK_FILE_FORMAT.md.
+objective: |-
+  Update swarm-task-planner agent prompt to generate YAML task content and pipe to `sam create` instead of using Write tool with embedded schema.
+requirements: |-
+  1. Remove inline YAML schema definition from agent prompt (the section defining task fields, typically lines 258-320)
+  2. Add instruction: generate task definitions as YAML and create plan using `echo "$YAML_CONTENT" | uv run sam create {slug} --goal "{goal}" --stdin`
+  3. Reference TASK_FILE_FORMAT.md for field definitions instead of embedding schema
+  4. Note that `sam create` validates all fields -- agent does not need full schema knowledge
+  5. Keep all other agent prompt content intact (CLEAR task writing standards, parallelization rules, etc.)
+constraints: |-
+  - Do not remove non-schema content from the agent prompt
+  - Keep the agent's planning methodology, dependency analysis, and sync checkpoint logic
+  - The `sam create` command must match the interface defined in T01
+  - Do not modify the development-harness copy (that is T14)
+expected-outputs: |-
+  - `plugins/python3-development/agents/swarm-task-planner.md` (modified)
+acceptance-criteria: |-
+  1. No inline YAML schema definition remains in the agent prompt (AC7)
+  2. `sam create` instruction is present with `--stdin` flag
+  3. Reference to TASK_FILE_FORMAT.md is present for field definitions
+  4. No `Write(` instruction for task files remains in the agent prompt
+verification-steps: |-
+  1. Run `grep -c "Write(" plugins/python3-development/agents/swarm-task-planner.md` -- expect 0 for task file writes
+  2. Run `grep "sam create" plugins/python3-development/agents/swarm-task-planner.md` -- expect match
+  3. Run `grep "TASK_FILE_FORMAT" plugins/python3-development/agents/swarm-task-planner.md` -- expect match
+  4. Run `uv run prek run --files plugins/python3-development/agents/swarm-task-planner.md`
+handoff: |-
+  Report: lines removed (inline schema), sam create instruction added, TASK_FILE_FORMAT.md reference added

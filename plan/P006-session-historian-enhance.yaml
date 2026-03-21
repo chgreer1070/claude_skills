@@ -1,0 +1,345 @@
+feature: session-historian-enhance
+version: '1.0'
+description: ''
+architecture: plan/architect-session-historian-enhance.md
+feature-context: plan/feature-context-session-historian-enhance.md
+tasks:
+- id: T1
+  title: Extract _resolve_session shared helper
+  status: complete
+  agent: python-cli-architect
+  priority: 1
+  complexity: medium
+  skills:
+  - python3-development
+  started: '2026-03-11T16:29:53Z'
+  completed: '2026-03-11T16:33:00Z'
+  description: |-
+    `cmd_messages()` (line ~516-521) and `cmd_show()` both contain inline copies of the session-ID-to-path resolution logic: handling the `"last"` alias via DuckDB query, prefix matching via `LIKE ?`, and path retrieval. The architecture spec (ADR-NEW-002) requires extracting this into a shared `_resolve_session()` helper before the three new session-accepting commands are added.
+  objective: |-
+    Extract `_resolve_session(con, session_id) -> tuple[str, Path]` as a private helper, add `_CORRECTION_PHRASES` and `_STUCK_LOOP_THRESHOLD` constants, and refactor `cmd_messages` and `cmd_show` to call the helper — preserving identical behavior.
+  constraints: |-
+    - Do not change any observable behavior of `cmd_messages` or `cmd_show`
+    - Do not add new external dependencies
+    - Do not modify the PEP 723 metadata block
+    - Preserve all existing error messages (stderr text may change slightly for consistency, but exit codes must match)
+  expected-outputs: |-
+    - File modified: `.claude/skills/session-historian/scripts/session_query.py`
+  acceptance-criteria: |-
+    1. `_resolve_session` function exists with correct signature and docstring
+    2. `cmd_messages` calls `_resolve_session` — no inline session resolution logic remains in it
+    3. `cmd_show` calls `_resolve_session` — no inline session resolution logic remains in it
+    4. `_CORRECTION_PHRASES` tuple constant exists with all 10 phrases from the architecture spec
+    5. `_STUCK_LOOP_THRESHOLD = 3` constant exists
+    6. `uv run .claude/skills/session-historian/scripts/session_query.py --help` succeeds (no import errors)
+  verification-steps: |-
+    ```bash
+    # Syntax and import check
+    uv run .claude/skills/session-historian/scripts/session_query.py --help
+
+    # Lint check
+    uv run ruff check .claude/skills/session-historian/scripts/session_query.py
+
+    # Verify helper exists
+    grep -n "_resolve_session" .claude/skills/session-historian/scripts/session_query.py
+
+    # Verify constants exist
+    grep -n "_CORRECTION_PHRASES" .claude/skills/session-historian/scripts/session_query.py
+    grep -n "_STUCK_LOOP_THRESHOLD" .claude/skills/session-historian/scripts/session_query.py
+    ```
+  handoff: |-
+    Return: summary of extracted helper signature, line numbers of constants added, confirmation that existing commands refactored, lint status.
+- id: T2
+  title: Implement errors command
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T1
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+  started: '2026-03-11T16:33:30Z'
+  completed: '2026-03-11T16:36:00Z'
+  description: |-
+    This task adds the `errors` command to `session_query.py`. It depends on T1 which provides `_resolve_session()`. The command extracts tool error records from JSONL session data — specifically `tool_result` blocks where `is_error` is `True`.
+
+    Merged note: This task writes to `session_query.py` which is also modified by T3, T4, T5. Tasks are chained sequentially to avoid edit conflicts.
+  objective: |-
+    Add `cmd_errors` Typer command that lists tool errors from a session with timestamps, tool names, and error content, supporting both Rich and raw output modes.
+  requirements: |-
+    1. Register `@app.command("errors")` with function `cmd_errors`
+    2. Accept `session_id` argument (default `"last"`) and `--raw` option (default `False`)
+    3. Use `_resolve_session()` to get session path
+    4. Build `tool_use_id -> tool_name` map from assistant records (pass 1 over `_iter_records` output)
+    5. Iterate user-role records, find `tool_result` blocks where `is_error is True` (pass 2)
+    6. For each error: extract timestamp, resolve tool name via map, extract error content via `_extract_text()`
+    7. Rich output: header with session ID and error count, then per-error display with timestamp, tool name, and content
+    8. Raw output: tab-separated `timestamp\ttool_name\terror_content_single_line` (newlines in content replaced with space)
+    9. Zero errors: print `"No tool errors in session <id>"` to stderr, exit 0
+    10. Session not found: exit 1 (handled by `_resolve_session`)
+  constraints: |-
+    - Do not truncate error content in raw mode — output full content with newlines replaced by spaces
+    - In Rich mode, use `_extract_text()` for content normalization — do not implement custom extraction
+    - Place the command function after existing commands, before `if __name__ == "__main__"`
+  expected-outputs: |-
+    - File modified: `.claude/skills/session-historian/scripts/session_query.py`
+  acceptance-criteria: |-
+    1. `uv run .claude/skills/session-historian/scripts/session_query.py errors --help` shows help text with session_id argument and --raw option
+    2. The command handles the `"last"` alias via `_resolve_session`
+    3. Tool name resolution uses `tool_use_id` cross-reference from assistant records
+    4. Raw mode outputs tab-separated lines with no Rich markup
+    5. Zero-error case prints to stderr and exits 0
+  verification-steps: |-
+    ```bash
+    # Command registered and parseable
+    uv run .claude/skills/session-historian/scripts/session_query.py errors --help
+
+    # Lint clean
+    uv run ruff check .claude/skills/session-historian/scripts/session_query.py
+
+    # Verify function exists with correct decorator
+    grep -A2 '@app.command("errors")' .claude/skills/session-historian/scripts/session_query.py
+    ```
+
+    - Key claims to verify:
+      - Tool result blocks are in user-role records (not assistant-role)
+      - `is_error` is a boolean field on `tool_result` blocks, not a string
+      - `tool_use_id` on `tool_result` blocks matches `id` on `tool_use` blocks
+    - Verification questions:
+      1. Does the architecture spec section 5.1 confirm tool_result blocks appear in user-role records?
+      2. Is `is_error` checked with `is True` (identity) or `== True` (equality)?
+      3. Does the cross-reference map key on `block["id"]` from tool_use blocks?
+    - Evidence to collect:
+      - Read architecture spec section 5.1 field paths
+      - Verify against existing `_scan_records` pattern at line ~259
+    - Revision rule: If `is_error` field path differs from spec, update extraction logic before proceeding.
+  handoff: |-
+    Return: cmd_errors function location (line number), confirmation of two-pass approach, lint status.
+- id: T3
+  title: Implement tools command
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T2
+  priority: 2
+  complexity: medium
+  skills:
+  - python3-development
+  started: '2026-03-11T17:00:00Z'
+  completed: '2026-03-11T17:10:00Z'
+  description: |-
+    This task adds the `tools` command to `session_query.py`. It depends on T2 (same-file chain). The command provides a per-tool usage breakdown with success/failure/unmatched counts, rendered as a Rich table or raw tab-separated output.
+  objective: |-
+    Add `cmd_tools` Typer command that lists tools used in a session with call counts and success/failure breakdown.
+  requirements: |-
+    1. Register `@app.command("tools")` with function `cmd_tools`
+    2. Accept `session_id` argument (default `"last"`) and `--raw` option (default `False`)
+    3. Use `_resolve_session()` to get session path
+    4. Pass 1: collect `tool_use` entries from assistant records — store `{id, name, timestamp}` per block
+    5. Pass 2: correlate `tool_result` blocks from user records — match by `tool_use_id`, classify success vs failure via `is_error`
+    6. Aggregate into per-tool-name stats: total, successes, failures, unmatched (tool_use with no matching tool_result)
+    7. Rich output: Rich table with columns Tool Name (cyan), Total Calls (right), Successes (green, right), Failures (red, right), Unmatched (dim, right) — sorted by total descending — using `box.MINIMAL_DOUBLE_HEAD` and `_get_table_width()` pattern
+    8. Raw output: header line `tool\ttotal\tsuccesses\tfailures\tunmatched` then one tab-separated row per tool
+    9. Zero tools: print `"No tool calls recorded in session <id>"` to stderr, exit 0
+  constraints: |-
+    - Reuse the same two-pass pattern as `cmd_errors` — do not invent a different iteration approach
+    - Use existing `_get_table_width()` for table width measurement
+    - Place after `cmd_errors` function, before `if __name__ == "__main__"`
+  expected-outputs: |-
+    - File modified: `.claude/skills/session-historian/scripts/session_query.py`
+  acceptance-criteria: |-
+    1. `uv run .claude/skills/session-historian/scripts/session_query.py tools --help` shows help text
+    2. Rich table has exactly 5 columns: Tool Name, Total Calls, Successes, Failures, Unmatched
+    3. Table sorted by Total Calls descending
+    4. Raw mode outputs header + data lines, tab-separated
+    5. Unmatched count tracks tool_use blocks with no corresponding tool_result
+  verification-steps: |-
+    ```bash
+    # Command registered
+    uv run .claude/skills/session-historian/scripts/session_query.py tools --help
+
+    # Lint clean
+    uv run ruff check .claude/skills/session-historian/scripts/session_query.py
+
+    # Verify function and table columns
+    grep -A5 '@app.command("tools")' .claude/skills/session-historian/scripts/session_query.py
+    grep "Total Calls\|Successes\|Failures\|Unmatched" .claude/skills/session-historian/scripts/session_query.py
+    ```
+
+    - Key claims to verify:
+      - `tool_use` blocks appear in assistant-role records inside `message.content[]`
+      - `tool_result` blocks appear in user-role records inside `message.content[]`
+      - Unmatched = tool_use IDs not found in any tool_result block
+    - Verification questions:
+      1. Does architecture spec section 5.1 confirm tool_use is inside assistant records' message.content?
+      2. Is `block["id"]` the correct field for tool_use ID (not `block["tool_use_id"]`)?
+      3. Can a tool_use have zero matching tool_results (e.g., if session was interrupted)?
+    - Evidence to collect:
+      - Architecture spec section 5.1 field definitions
+      - Cross-check with T2's tool_use_id map construction
+    - Revision rule: If tool_use ID field name differs, update the map key before proceeding.
+  handoff: |-
+    Return: cmd_tools function location, column list, confirmation of two-pass approach, lint status.
+- id: T4
+  title: Implement irritation command
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T3
+  priority: 2
+  complexity: high
+  skills:
+  - python3-development
+  started: '2026-03-11T16:38:58Z'
+  description: |-
+    This task adds the `irritation` command to `session_query.py`. It depends on T3 (same-file chain). The command detects two signal types: correction phrases in user messages and stuck tool loops in assistant records. It uses the `_CORRECTION_PHRASES` and `_STUCK_LOOP_THRESHOLD` constants added in T1.
+  objective: |-
+    Add `cmd_irritation` Typer command that detects user irritation signals (correction phrases and stuck tool loops) in a session.
+  constraints: |-
+    - Use `hashlib.md5` for input hashing — not sha256 or other (ADR-NEW-001)
+    - Use 8-char hex prefix of MD5 digest (`.hexdigest()[:8]`)
+    - Use `json.dumps(input, sort_keys=True)` for deterministic serialization
+    - Place after `cmd_tools` function, before `if __name__ == "__main__"`
+  expected-outputs: |-
+    - File modified: `.claude/skills/session-historian/scripts/session_query.py`
+  acceptance-criteria: |-
+    1. `uv run .claude/skills/session-historian/scripts/session_query.py irritation --help` shows help text
+    2. Correction phrase matching is case-insensitive (uses `text.lower()`)
+    3. Stuck loop detection uses `_STUCK_LOOP_THRESHOLD` constant (not a hardcoded `3`)
+    4. Identity key includes both tool name AND input hash (not tool name alone)
+    5. Raw output lines are type-prefixed (`phrase` or `loop` in first column)
+    6. Empty results print to stderr and exit 0
+  verification-steps: |-
+    ```bash
+    # Command registered
+    uv run .claude/skills/session-historian/scripts/session_query.py irritation --help
+
+    # Lint clean
+    uv run ruff check .claude/skills/session-historian/scripts/session_query.py
+
+    # Verify MD5 usage
+    grep "hashlib.md5" .claude/skills/session-historian/scripts/session_query.py
+
+    # Verify constant usage (not hardcoded threshold)
+    grep "_STUCK_LOOP_THRESHOLD" .claude/skills/session-historian/scripts/session_query.py | grep -v "^_STUCK"
+    ```
+
+    - Key claims to verify:
+      - `hashlib.md5` is available in stdlib without additional import beyond `import hashlib`
+      - `json.dumps(dict, sort_keys=True)` produces deterministic output for nested dicts
+      - User records with `"toolUseResult"` key should be excluded from correction phrase scan
+    - Verification questions:
+      1. Does `json.dumps` with `sort_keys=True` handle nested dict ordering deterministically?
+      2. Is the `"toolUseResult"` key check consistent with `_scan_records` line ~259?
+      3. Does `.hexdigest()[:8]` produce exactly 8 hex characters?
+    - Evidence to collect:
+      - Check existing `_scan_records` for the `"toolUseResult"` guard pattern
+      - Python docs confirm `json.dumps` sort_keys handles nested dicts
+    - Revision rule: If `sort_keys` does not handle nested dicts deterministically, switch to canonical JSON serialization.
+  handoff: |-
+    Return: cmd_irritation function location, count of correction phrases in constant, stuck loop threshold value, lint status.
+- id: T5
+  title: Implement current-path command
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T4
+  priority: 2
+  complexity: low
+  skills:
+  - python3-development
+  started: '2026-03-11T17:20:00Z'
+  completed: '2026-03-11T17:25:00Z'
+  description: |-
+    This task adds the `current-path` command to `session_query.py`. It depends on T4 (same-file chain). Unlike other commands, this one does not accept a session ID argument — it reads `CLAUDE_SESSION_ID` from the environment and resolves the live session JSONL file path. Default output is raw (agent-facing), with `--rich` opt-in for human display.
+  objective: |-
+    Add `cmd_current_path` Typer command that resolves and prints the current session's JSONL file path using `CLAUDE_SESSION_ID` environment variable and encoded CWD directory naming.
+  requirements: |-
+    1. Register `@app.command("current-path")` with function `cmd_current_path`
+    2. Accept `--rich` option (default `False`) — note: this command does NOT have `--raw`, it defaults to raw
+    3. Read `CLAUDE_SESSION_ID` from `os.environ`; if empty or missing, print `"CLAUDE_SESSION_ID is not set"` to stderr, raise `typer.Exit(1)`
+    4. Compute encoded CWD: `str(Path.cwd()).replace("/", "-").lstrip("-")`
+    5. Construct path: `PROJECTS_DIR / encoded / f"{session_id}.jsonl"`
+    6. If path exists: print absolute path string to stdout (raw default), or Rich Panel with title "Current Session Path" and green border if `--rich`
+    7. If path does not exist: print diagnostic to stderr (session ID, expected path, projects dir), raise `typer.Exit(1)`
+    8. No DuckDB usage in this command — pure filesystem check
+  constraints: |-
+    - Do not open DuckDB in this command
+    - Do not accept a session_id argument — this command resolves from environment only
+    - Raw output must be exactly one line: the absolute path, nothing else — agents parse this
+    - Place after `cmd_irritation` function, before `if __name__ == "__main__"`
+  expected-outputs: |-
+    - File modified: `.claude/skills/session-historian/scripts/session_query.py`
+  acceptance-criteria: |-
+    1. `uv run .claude/skills/session-historian/scripts/session_query.py current-path --help` shows help text with --rich option but no session_id argument
+    2. Without `CLAUDE_SESSION_ID` set: exits 1 with stderr message containing "CLAUDE_SESSION_ID"
+    3. With valid `CLAUDE_SESSION_ID` pointing to existing file: prints absolute path on stdout, exits 0
+    4. Raw output contains exactly one line with no Rich markup
+  verification-steps: |-
+    ```bash
+    # Command registered
+    uv run .claude/skills/session-historian/scripts/session_query.py current-path --help
+
+    # Lint clean
+    uv run ruff check .claude/skills/session-historian/scripts/session_query.py
+
+    # Verify no DuckDB usage in function
+    grep -A30 'def cmd_current_path' .claude/skills/session-historian/scripts/session_query.py | grep -c "_open_db\|duckdb"
+    # Expected: 0
+
+    # Verify CLAUDE_SESSION_ID check
+    grep "CLAUDE_SESSION_ID" .claude/skills/session-historian/scripts/session_query.py
+    ```
+  handoff: |-
+    Return: cmd_current_path function location, confirmation of no DuckDB usage, lint status.
+- id: T6
+  title: Update SKILL.md with new command documentation
+  status: complete
+  agent: python-cli-architect
+  dependencies:
+  - T2
+  - T3
+  - T4
+  - T5
+  priority: 3
+  complexity: low
+  skills:
+  - python3-development
+  description: |-
+    All four new commands (errors, tools, irritation, current-path) are implemented in Tasks T2-T5. The SKILL.md file at `.claude/skills/session-historian/SKILL.md` needs to be updated to document these commands so agents and users can discover and use them.
+  objective: |-
+    Add documentation for the four new commands to the session-historian SKILL.md, following the existing command documentation pattern.
+  requirements: |-
+    1. Add `errors` command documentation: purpose, arguments (`session_id`, `--raw`), example usage, output format
+    2. Add `tools` command documentation: purpose, arguments (`session_id`, `--raw`), example usage, table columns
+    3. Add `irritation` command documentation: purpose, arguments (`session_id`, `--raw`), what it detects (correction phrases + stuck loops), threshold info
+    4. Add `current-path` command documentation: purpose, arguments (`--rich`), note that it reads `CLAUDE_SESSION_ID` from env, output format (raw by default)
+    5. Follow the existing documentation style and section structure in SKILL.md
+    6. Place new command docs in the same section as existing command documentation
+  constraints: |-
+    - Do not modify any existing command documentation
+    - Do not change SKILL.md frontmatter
+    - Follow existing formatting patterns (code fences with language specifiers, usage examples)
+  expected-outputs: |-
+    - File modified: `.claude/skills/session-historian/SKILL.md`
+  acceptance-criteria: |-
+    1. All four commands documented: errors, tools, irritation, current-path
+    2. Each command entry includes: description, arguments/options, example invocation
+    3. `current-path` documentation notes it reads from `CLAUDE_SESSION_ID` env var (no session_id argument)
+    4. `current-path` documentation notes raw-by-default behavior with `--rich` opt-in
+    5. Documentation passes pre-commit linting
+  verification-steps: |-
+    ```bash
+    # Verify all four commands documented
+    grep -c "errors\|tools\|irritation\|current-path" .claude/skills/session-historian/SKILL.md
+
+    # Pre-commit lint
+    uv run prek run --files .claude/skills/session-historian/SKILL.md
+
+    # Verify code fences have language specifiers
+    grep -P '```(?!bash|python|text|json|yaml|sql|markdown)' .claude/skills/session-historian/SKILL.md | head -5
+    # Expected: no output (all fences have specifiers)
+    ```
+  handoff: |-
+    Return: list of sections added, line numbers, pre-commit lint status.
