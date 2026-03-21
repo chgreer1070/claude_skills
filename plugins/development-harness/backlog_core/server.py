@@ -8,7 +8,7 @@ import dataclasses
 import json as _json
 import re as _re
 import sys
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, cast
 
 import dispatch_schema as _ds
 import tiktoken
@@ -105,7 +105,7 @@ async def backlog_add(
 
 
 @mcp.tool
-async def backlog_list(  # noqa: PLR0914
+async def backlog_list(
     from_github: Annotated[bool, Field(description="Refresh local cache from GitHub Issues before listing")] = False,
     label: Annotated[str | None, Field(description="Filter by GitHub label (e.g. 'priority:p1', 'type:bug')")] = None,
     section: Annotated[
@@ -144,7 +144,7 @@ async def backlog_list(  # noqa: PLR0914
         str | None,
         Field(
             description=(
-                "Case-insensitive substring search across title, description, topic, and type simultaneously. "
+                "Case-insensitive substring search across title, section, topic, and type simultaneously. "
                 "Unlike title= which only matches the title field, search= matches any of these fields. "
                 "Combine with other filters to narrow results further."
             )
@@ -174,7 +174,7 @@ async def backlog_list(  # noqa: PLR0914
     Use type_ to filter by metadata.type exact match (e.g. Bug, Feature).
     Use topic to filter by metadata.topic substring match.
     Use include_closed=true to include items with terminal status (done, resolved, closed).
-    Use search to search across title, description, topic, and type simultaneously.
+    Use search to search across title, section, topic, and type simultaneously.
     Use offset and limit to paginate results. When limit=0, auto-pagination keeps the
     response under 4400 tokens (cl100k_base encoding). When has_more=true, call again
     with the offset shown in next_call.
@@ -203,8 +203,9 @@ async def backlog_list(  # noqa: PLR0914
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
 
-    raw = result.get("items", [])
-    all_items: list[dict] = [item for item in raw if isinstance(item, dict)] if isinstance(raw, list) else []
+    # "items" holds list[dict[str, str | bool]] per operations.list_items return type.
+    # cast() narrows from the heterogeneous value union (int | list[str] | list[dict[...]]).
+    all_items = cast("list[dict[str, str | bool]]", result.get("items", []))
 
     # Apply cross-field search filter when requested.
     if search is not None:
@@ -212,7 +213,7 @@ async def backlog_list(  # noqa: PLR0914
         filtered: list[dict] = []
         for item in all_items:
             haystack = " ".join(
-                str(item.get(field, "") or "") for field in ("title", "description", "topic", "type")
+                str(item.get(field, "") or "") for field in ("title", "section", "topic", "type")
             ).casefold()
             if needle in haystack:
                 filtered.append(item)
