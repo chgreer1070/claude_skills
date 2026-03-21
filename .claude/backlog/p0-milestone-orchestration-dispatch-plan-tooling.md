@@ -5,9 +5,9 @@ metadata:
   topic: milestone-orchestration-dispatch-plan-tooling
   source: Milestone orchestration design — .claude/reports/milestone-orchestration-design-20260320.md
   added: '2026-03-20'
-  priority: P0
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#920'
   last_synced: '2026-03-21T00:44:16Z'
   groomed: '2026-03-21'

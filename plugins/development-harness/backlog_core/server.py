@@ -106,7 +106,6 @@ async def backlog_add(
 
 @mcp.tool
 async def backlog_list(  # noqa: PLR0914
-    with_status: Annotated[bool, Field(description="Include GitHub issue status for each item")] = False,
     from_github: Annotated[bool, Field(description="Refresh local cache from GitHub Issues before listing")] = False,
     label: Annotated[str | None, Field(description="Filter by GitHub label (e.g. 'priority:p1', 'type:bug')")] = None,
     section: Annotated[
@@ -182,6 +181,7 @@ async def backlog_list(  # noqa: PLR0914
 
     Returns:
         Dict with items list, count, pagination object, and output messages/warnings.
+        Each item includes state (open/closed) and status (workflow status from status:* labels).
         pagination contains offset, limit, total, and has_more. When has_more=true,
         next_call provides the suggested follow-up call string.
         On error, dict contains an error key.
@@ -190,7 +190,6 @@ async def backlog_list(  # noqa: PLR0914
     try:
         result = await asyncio.to_thread(
             operations.list_items,
-            with_status=with_status,
             from_github=from_github,
             label=label,
             section=section,

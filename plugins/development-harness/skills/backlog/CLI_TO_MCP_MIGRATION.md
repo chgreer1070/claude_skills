@@ -17,7 +17,7 @@ Generated: 2026-03-01
 | CLI Subcommand | MCP Tool | operations.py Function | Notes |
 |---|---|---|---|
 | `backlog add` | `backlog_add` | `add_item()` | `--create-issue` → `create_issue: bool` |
-| `backlog list` | `backlog_list` | `list_items()` | `--format json` implicit (MCP returns dicts), `--with-status` → `with_status: true` |
+| `backlog list` | `backlog_list` | `list_items()` | `--format json` implicit (MCP returns dicts); status fields always included in every response |
 | `backlog view` | `backlog_view` | `view_item()` | `--format json` implicit (MCP returns dicts) |
 | `backlog sync` | `backlog_sync` | `sync_items()` | `--dry-run` → `dry_run: true` |
 | `backlog close` | `backlog_close` | `close_item()` | `--plan`/`--checklist-pass` → `plan`/`checklist_pass`, `--cleanup` → `cleanup`. **Note**: CLI `close --reason` is semantically wrong — use `backlog_resolve` instead (ADR-8) |
@@ -131,7 +131,7 @@ These contain the actual `uv run backlog.py` commands that agents execute.
 
 | Line | CLI Command | MCP Replacement |
 |---|---|---|
-| 97 | `backlog.py list --format json --with-status` | `backlog_list(with_status=true)` (MCP returns dicts; no format param) |
+| 97 | `backlog.py list --format json --with-status` | `backlog_list()` (status fields always included; no format param) |
 | 155 | `backlog.py view "{$0}" --format json` | `backlog_view(selector="{$0}")` |
 | 195 | `backlog.py close "{title}" --reason "..."` | `backlog_resolve(selector="{title}", reason="...")` (ADR-8: close+reason → resolve) |
 | 233 | `backlog.py list --format json` | `backlog_list()` |
@@ -155,7 +155,7 @@ These contain the actual `uv run backlog.py` commands that agents execute.
 
 | Line | CLI Command | MCP Replacement |
 |---|---|---|
-| 12 | `backlog.py list --format json --with-status` | `backlog_list(with_status=true)` |
+| 12 | `backlog.py list --format json --with-status` | `backlog_list()` (status fields always included) |
 | 117 | `backlog.py update "{title}" --plan "..."` | `backlog_update(selector="{title}", plan="...")` |
 
 ---

@@ -156,7 +156,7 @@ If no evidence, proceed to Step 2.5 (GitHub Issue Sync).
 
 ## Step 0: Interactive Browser
 
-1. Call the `mcp__plugin_dh_backlog__backlog_list` tool with `with_status=true`.
+1. Call the `mcp__plugin_dh_backlog__backlog_list` tool.
 
    Parse the returned dict. Each entry in `items` has `section`, `title`, `issue`, `plan`, `status`, `milestone`, `file_path` (index format), `groomed` (true if item has groomed content).
 

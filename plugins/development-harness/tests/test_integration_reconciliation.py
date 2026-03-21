@@ -160,8 +160,8 @@ class TestListItemsIncludeClosed:
         assert all_count == len(all_items)
         assert all_count > filtered_count
 
-    def test_list_items_with_status_returns_status_for_all(self) -> None:
-        """When with_status=True, status is returned for each item including closed ones."""
+    def test_list_items_always_returns_status_for_all(self) -> None:
+        """Status fields are always returned for items with a GitHub issue."""
         items = _make_mixed_items()
         status_map = {
             1: IssueStatus(status="open", milestone="v1"),
@@ -176,10 +176,12 @@ class TestListItemsIncludeClosed:
             patch("backlog_core.operations.parse_backlog", return_value=items),
             patch("backlog_core.operations.batch_fetch_statuses", return_value=status_map),
         ):
-            result = list_items(with_status=True, include_closed=True)
+            result = list_items(include_closed=True)
         result_items = cast("list[dict[str, str | bool]]", result["items"])
-        items_with_status = [it for it in result_items if "status" in it]
-        assert len(items_with_status) == 7
+        # All items with a GitHub issue should have status and milestone fields
+        items_with_issue = [it for it in result_items if it.get("issue")]
+        items_with_status = [it for it in items_with_issue if "status" in it]
+        assert len(items_with_status) == len(items_with_issue)
         # Verify closed items have their GitHub status
         done_item = next(it for it in result_items if it["title"] == "Done item")
         assert done_item["status"] == "closed"
@@ -249,8 +251,7 @@ class TestMCPIncludeClosedPropagation:
         """backlog_list forwards include_closed alongside other filter params."""
         op_result = {"items": [], "count": 0}
         with patch("backlog_core.operations.list_items", return_value=op_result) as mock_list:
-            await _call_mcp("backlog_list", {"include_closed": True, "section": "P0", "with_status": True})
+            await _call_mcp("backlog_list", {"include_closed": True, "section": "P0"})
         call_kwargs = mock_list.call_args.kwargs
         assert call_kwargs["include_closed"] is True
         assert call_kwargs["section"] == "P0"
-        assert call_kwargs["with_status"] is True

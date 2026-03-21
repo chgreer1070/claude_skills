@@ -159,20 +159,18 @@ async def test_backlog_list_success_returns_items():
 
     mock_list.assert_called_once()
     call_kwargs = mock_list.call_args.kwargs
-    assert call_kwargs["with_status"] is False
     assert call_kwargs["from_github"] is False
     assert call_kwargs["label"] is None
     assert response["items"][0]["title"] == "Item A"
 
 
 async def test_backlog_list_passes_filter_params():
-    """backlog_list forwards with_status, from_github, and label flags."""
+    """backlog_list forwards from_github and label flags."""
     op_result = {"items": []}
     with patch("backlog_core.operations.list_items", return_value=op_result) as mock_list:
-        await _call("backlog_list", {"with_status": True, "from_github": True, "label": "priority:p0"})
+        await _call("backlog_list", {"from_github": True, "label": "priority:p0"})
 
     call_kwargs = mock_list.call_args.kwargs
-    assert call_kwargs["with_status"] is True
     assert call_kwargs["from_github"] is True
     assert call_kwargs["label"] == "priority:p0"
 

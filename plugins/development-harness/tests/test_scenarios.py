@@ -76,15 +76,15 @@ class TestWorkBacklogItem:
     Covers browse/list, view, plan/status/update, close, and resolve.
     """
 
-    # Scenario 2: list with GitHub status enrichment
-    async def test_list_with_status(self, backlog_dir, mock_github, write_test_item):
+    # Scenario 2: list always includes GitHub status fields
+    async def test_list_includes_status_fields(self, backlog_dir, mock_github, write_test_item):
         write_test_item("Status Test Item", issue="#10")
         status_mock = MagicMock()
         status_mock.status = "open"
         status_mock.milestone = "v1.0"
         mock_github["batch_fetch_statuses"].return_value = {10: status_mock}
 
-        result = await _call("backlog_list", {"with_status": True})
+        result = await _call("backlog_list", {})
 
         assert isinstance(result["items"], list)
         assert result["count"] >= 1
@@ -354,7 +354,7 @@ class TestGroupItemsToMilestone:
         status_11.milestone = ""
         mock_github["batch_fetch_statuses"].return_value = {10: status_10, 11: status_11}
 
-        result = await _call("backlog_list", {"with_status": True})
+        result = await _call("backlog_list", {})
 
         assert result["count"] >= 3
         for item in result["items"]:
@@ -617,7 +617,7 @@ class TestLifecycles:
         write_test_item("Stale Discovery Item", issue="#100")
         mock_github["batch_fetch_statuses"].return_value = {}
 
-        result = await _call("backlog_list", {"with_status": True})
+        result = await _call("backlog_list", {})
 
         matching = [i for i in result["items"] if i.get("title") == "Stale Discovery Item"]
         assert matching, "Expected 'Stale Discovery Item' in list results"

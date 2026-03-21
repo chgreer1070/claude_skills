@@ -195,7 +195,6 @@ mcp__plugin_dh_backlog__backlog_add(
 
 ```python
 mcp__plugin_dh_backlog__backlog_list(
-    with_status=False,          # include GitHub issue status
     from_github=False,          # refresh local cache from GitHub first
     label="priority:p1",        # filter by GitHub label
     section="P1",               # filter by priority: P0, P1, P2, Ideas
@@ -204,6 +203,7 @@ mcp__plugin_dh_backlog__backlog_list(
     type="Bug",                 # filter by metadata.type — case-insensitive exact match
     topic="matching",           # filter by metadata.topic — case-insensitive substring match
 )
+# Every response item always includes state (open/closed) and status (workflow status)
 # Returns: {items: [{title, priority, issue, plan, type, topic}], messages, warnings}
 ```
 

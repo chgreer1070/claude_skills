@@ -5,9 +5,9 @@ metadata:
   topic: create-work-milestone-skill
   source: Milestone orchestration design — .claude/reports/milestone-orchestration-design-20260320.md
   added: '2026-03-21'
-  priority: P0
+  priority: completed
   type: Feature
-  status: open
+  status: done
   issue: '#935'
   last_synced: '2026-03-21T01:45:29Z'
 ---

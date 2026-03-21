@@ -41,14 +41,14 @@ List open backlog items with optional filters.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `with_status` | `bool` | `False` | Include GitHub issue status for each item |
 | `from_github` | `bool` | `False` | Refresh local cache from GitHub before listing |
 | `label` | `str \| None` | `None` | Filter by GitHub label (e.g. `"priority:p1"`) |
 | `section` | `str \| None` | `None` | Filter by priority section: `P0`, `P1`, `P2`, or `Ideas` |
 | `status` | `str \| None` | `None` | Filter by status (e.g. `"needs-grooming"`, `"status:in-progress"`) |
 | `title` | `str \| None` | `None` | Filter by title substring (case-insensitive) |
 
-Returns `{items: [{title, priority, issue, plan}], messages, warnings}`.
+Every response item includes `state` (open/closed) and `status` (workflow status from `status:*` labels).
+Returns `{items: [{title, priority, issue, plan, state, status, milestone}], messages, warnings}`.
 
 Note — the CLI `--format text|json` flag has no MCP equivalent. MCP tools always return
 structured dicts (equivalent to JSON). Use `backlog_view` for detailed single-item output.

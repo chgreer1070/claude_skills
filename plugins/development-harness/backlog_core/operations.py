@@ -1181,14 +1181,12 @@ def _filter_closed_items(items: list[BacklogItem], include_closed: bool) -> list
     return [it for it in items if it.status not in _TERMINAL_STATUSES]
 
 
-def _build_list_entry(
-    item: BacklogItem, with_status: bool, status_map: dict[int, IssueStatus]
-) -> dict[str, str | bool]:
+def _build_list_entry(item: BacklogItem, status_map: dict[int, IssueStatus]) -> dict[str, str | bool]:
     """Build the result dict for a single backlog item.
 
     Returns:
-        Dict with section, title, issue, plan, type, topic, and optional
-        file_path, groomed, status, and milestone fields.
+        Dict with section, title, issue, plan, type, topic, state, status,
+        milestone, and optional file_path and groomed fields.
     """
     entry: dict[str, str | bool] = {
         "section": item.section,
@@ -1202,7 +1200,7 @@ def _build_list_entry(
         entry["file_path"] = item.file_path
     if item.groomed:
         entry["groomed"] = True
-    if with_status and item.issue:
+    if item.issue:
         num_str = item.issue.lstrip("#")
         num = int(num_str) if num_str.isdigit() else 0
         info = status_map.get(num)
@@ -1212,7 +1210,6 @@ def _build_list_entry(
 
 
 def list_items(
-    with_status: bool = False,
     from_github: bool = False,
     label: str | None = None,
     section: str | None = None,
@@ -1227,7 +1224,6 @@ def list_items(
     """List backlog items. Default reads local cache only. Use from_github=True to refresh first.
 
     Args:
-        with_status: Include GitHub issue status for each item.
         from_github: Refresh local cache from GitHub Issues before listing.
         label: Filter by GitHub label (applied during refresh).
         section: Filter by priority section — P0, P1, P2, or Ideas (case-insensitive).
@@ -1243,7 +1239,7 @@ def list_items(
 
     Returns:
         Dict with items list (each item a dict with section, title, issue, plan, type, topic,
-        file_path, groomed, and optionally status/milestone).
+        file_path, groomed, status, and milestone fields for items with a GitHub issue).
     """
     out = output or Output()
     if from_github:
@@ -1256,9 +1252,9 @@ def list_items(
     # are included based on include_closed.
     open_items = [it for it in items if not it.skip and it.section]
     open_items = _filter_closed_items(open_items, include_closed)
-    status_map = batch_fetch_statuses(open_items, repo) if (with_status or status) else {}
+    status_map = batch_fetch_statuses(open_items, repo)
     open_items = _filter_open_items(open_items, section, title, status, status_map, type_=type_, topic=topic)
-    result_items = [_build_list_entry(it, with_status, status_map) for it in open_items]
+    result_items = [_build_list_entry(it, status_map) for it in open_items]
     return {"items": result_items, "count": len(result_items), **out.to_dict()}
 
 

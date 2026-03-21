@@ -5,9 +5,9 @@ metadata:
   topic: remove-gh-cli-usage-from-development-harness-use-backlog-mcp
   source: User observation during session 2026-03-21 — gh CLI should never be referenced in dh workflow instructions
   added: '2026-03-21'
-  priority: P1
+  priority: completed
   type: Refactor
-  status: open
+  status: done
   issue: '#968'
   last_synced: '2026-03-21T17:13:05Z'
   groomed: '2026-03-21'

@@ -53,7 +53,6 @@ CLI:     uv run .claude/skills/backlog/scripts/backlog.py add --title X --priori
 
 ```text
 Parameters:
-  with_status   bool      optional  Include GitHub issue status  (default: false)
   from_github   bool      optional  Refresh cache from GitHub first  (default: false)
   label         str|null  optional  Filter by GitHub label  (default: null)
   section       str|null  optional  Filter by section name  (default: null)

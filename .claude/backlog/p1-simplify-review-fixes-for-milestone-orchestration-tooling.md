@@ -5,9 +5,9 @@ metadata:
   topic: simplify-review-fixes-for-milestone-orchestration-tooling
   source: Simplify review of milestone orchestration session 2026-03-21
   added: '2026-03-21'
-  priority: P1
+  priority: completed
   type: Refactor
-  status: open
+  status: done
   issue: '#938'
   last_synced: '2026-03-21T02:37:53Z'
   groomed: '2026-03-21'

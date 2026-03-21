@@ -268,7 +268,7 @@ class TestListItemsEmpty:
         """
         mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
-        result = list_items(with_status=False, from_github=False)
+        result = list_items(from_github=False)
 
         assert result["items"] == []
         assert result["count"] == 0
@@ -291,19 +291,19 @@ class TestListItemsFiltering:
         mocker.patch("backlog_core.operations.parse_backlog", return_value=[active, done])
         mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
-        result = list_items(with_status=False, from_github=False)
+        result = list_items(from_github=False)
 
         items = cast("list[dict[str, str | bool]]", result["items"])
         titles = [it["title"] for it in items]
         assert "Active Item" in titles
         assert "Done Item" not in titles
 
-    def test_list_items_with_status_enriches_from_batch_fetch(self, mocker: MockerFixture) -> None:
-        """Verify list_items with_status=True enriches items from batch_fetch_statuses result.
+    def test_list_items_enriches_status_from_batch_fetch(self, mocker: MockerFixture) -> None:
+        """Verify list_items always enriches items with status from batch_fetch_statuses.
 
         Tests: batch_fetch_statuses integration in list_items.
         How: Mock parse_backlog to return an item with issue="#7"; mock batch_fetch_statuses.
-        Why: with_status must use batch fetch — not N+1 individual calls.  parse_backlog
+        Why: status must use batch fetch — not N+1 individual calls.  parse_backlog
              is mocked to inject a BacklogItem with a specific issue value directly,
              isolating this test from parsing logic.
         """
@@ -314,7 +314,7 @@ class TestListItemsFiltering:
             return_value={7: IssueStatus(status="status:in-progress", milestone="v2")},
         )
 
-        result = list_items(with_status=True, from_github=False)
+        result = list_items(from_github=False, status="status:in-progress")
 
         mock_batch.assert_called_once()
         items = cast("list[dict[str, str | bool]]", result["items"])
@@ -322,15 +322,13 @@ class TestListItemsFiltering:
         assert items[0]["status"] == "status:in-progress"
         assert items[0]["milestone"] == "v2"
 
-    def test_list_items_without_status_skips_batch_fetch(self, mocker: MockerFixture) -> None:
-        """Verify list_items skips batch_fetch_statuses when with_status=False and no status filter.
+    def test_list_items_always_calls_batch_fetch(self, mocker: MockerFixture) -> None:
+        """Verify list_items always calls batch_fetch_statuses to populate status fields.
 
-        Tests: batch_fetch_statuses is not called when neither with_status nor status is set.
-        How: Call list_items with with_status=False and no status filter; assert batch fetch
-             was not called.
-        Why: batch_fetch_statuses is only invoked when results require GitHub status data
-             (with_status=True or status filter provided). Skipping it avoids unnecessary
-             network calls.
+        Tests: batch_fetch_statuses is always called regardless of filter parameters.
+        How: Call list_items with no status filter; assert batch fetch was called.
+        Why: Status fields (status, milestone) are always included in every response —
+             batch_fetch must always run to populate them.
         """
         import backlog_core.models as models
 
@@ -338,9 +336,9 @@ class TestListItemsFiltering:
         _write_item(fake_dir, title="No Status Item", priority="P2", topic="no-status-item")
         mock_batch = mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
-        list_items(with_status=False, from_github=False)
+        list_items(from_github=False)
 
-        mock_batch.assert_not_called()
+        mock_batch.assert_called_once()
 
     def test_list_items_from_github_calls_refresh(self, mocker: MockerFixture) -> None:
         """Verify list_items with from_github=True triggers a cache refresh.
@@ -355,7 +353,7 @@ class TestListItemsFiltering:
         )
         mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
-        list_items(with_status=False, from_github=True)
+        list_items(from_github=True)
 
         mock_refresh.assert_called_once()
 
@@ -771,7 +769,7 @@ def test_list_items_section_derived_from_priority(
     _write_item(fake_dir, title=f"{priority} Item", priority=priority, topic=topic)
     mocker.patch("backlog_core.operations.batch_fetch_statuses", return_value={})
 
-    result = list_items(with_status=False, from_github=False)
+    result = list_items(from_github=False)
 
     items = cast("list[dict[str, str | bool]]", result["items"])
     assert len(items) == 1

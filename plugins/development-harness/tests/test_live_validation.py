@@ -144,7 +144,7 @@ class TestLiveLifecycle:
 
     async def test_l2_list_includes_created_item(self, live_items):
         """L2: backlog_list returns the item created in L1."""
-        result = await _call("backlog_list", {"with_status": True})
+        result = await _call("backlog_list", {})
 
         assert isinstance(result["items"], list)
         assert result["count"] >= 1
