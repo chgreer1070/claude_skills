@@ -200,21 +200,21 @@ file is created.
 
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py update "{title}" \
-  --plan "plan/tasks-{N}-{slug}.md" \
+  --plan "plan/P{NNN}-{slug}.yaml" \
   --status in-progress \
   -R Jamie-BitFlight/claude_skills
 ```
 
 **What gets written**:
 
-- `metadata.plan: plan/tasks-{N}-{slug}.md` in per-item file frontmatter
+- `metadata.plan: plan/P{NNN}-{slug}.yaml` in per-item file frontmatter
 - `metadata.status: in-progress` in frontmatter
 - GitHub label: current status label removed, `status:in-progress` added
 
 **Critical constraint**: `status:in-progress` MUST NOT be set before RT-ICA returns APPROVED
 and the plan file exists. Setting it during grooming or RT-ICA checking is incorrect.
 
-**Where data lives**: Both local and GitHub. Plan file exists at `plan/tasks-{N}-{slug}.md`.
+**Where data lives**: Both local and GitHub. Plan file exists at `plan/P{NNN}-{slug}.yaml`.
 
 ---
 
@@ -227,7 +227,7 @@ acceptance criteria verification passes.
 
 ```bash
 uv run .claude/skills/backlog/scripts/backlog.py close "{title}" \
-  --plan "plan/tasks-{N}-{slug}.md" \
+  --plan "plan/P{NNN}-{slug}.yaml" \
   --checklist-pass \
   [-R Jamie-BitFlight/claude_skills]
 ```
@@ -503,7 +503,7 @@ GitHub Issue #42:
 ```text
 .claude/backlog/p1-{slug}.md  — MODIFIED
   frontmatter:
-    metadata.plan: "plan/tasks-3-{slug}.md"
+    metadata.plan: "plan/P{NNN}-{slug}.yaml"
     metadata.status: in-progress
 
 GitHub Issue #42:
@@ -569,7 +569,7 @@ metadata:
   groomed: 2026-02-21                             # set by groom-backlog-item
   issue: '#42'                                    # GitHub issue number
   milestone: 3                                    # GitHub milestone number
-  plan: plan/tasks-5-fix-error-recovery.md        # SAM task file path
+  plan: plan/P005-fix-error-recovery.yaml          # SAM task file path
 ---
 
 ## Description

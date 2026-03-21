@@ -53,7 +53,7 @@ These artifacts are produced by agents during planning phases. They may be updat
 | Feature context | `plan/feature-context-{slug}.md` | `feature-researcher` agent | `context-refinement` agent |
 | Codebase analysis | `plan/codebase/{FOCUS}.md` | `codebase-analyzer` agent | Not updated (informational snapshot) |
 | Architecture spec | `plan/architect-{slug}.md` | `python-cli-design-spec` agent | `context-refinement` agent |
-| Task plan | `plan/tasks-{N}-{slug}.md` or `plan/tasks-{slug}/` | `swarm-task-planner` agent | Status fields by hooks; Context Manifest by `context-refinement` |
+| Task plan | `plan/P{NNN}-{slug}.yaml` or `plan/P{NNN}-{slug}/` | `swarm-task-planner` agent | Status fields by hooks; Context Manifest by `context-refinement` |
 | Context Manifest | Embedded in task file | `context-gathering` agent | `context-refinement` agent (existing behavior) |
 
 ---
