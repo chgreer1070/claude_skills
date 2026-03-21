@@ -54,3 +54,4 @@ package-lock.json
 # LevelDB stores
 *.db/
 .claude/audits/
+.cocoindex_code/

@@ -4,16 +4,23 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import dataclasses
 import json as _json
+import re as _re
 import sys
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
+import dispatch_schema as _ds
 import tiktoken
 from fastmcp import Context, FastMCP
 from pydantic import Field
 
-from . import operations
-from .models import BacklogError, Output, init as _init_models
+from . import models as _models, operations
+from .github import get_github as _get_github
+from .models import BacklogError, GitHubUnavailableError, Output, init as _init_models
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # Token budget for auto-pagination in backlog_list: 4400 tokens (cl100k_base encoding).
 _LIST_TOKEN_BUDGET = 4_400
@@ -961,6 +968,151 @@ async def backlog_create_project(
         return {**result, **out.to_dict()}
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
+
+
+def _dispatch_plan_path(milestone_number: int) -> Path:
+    """Return the canonical dispatch plan path for a milestone.
+
+    Args:
+        milestone_number: GitHub milestone number.
+
+    Returns:
+        Path to ``plan/milestone-{N}-dispatch.yaml`` under the project root.
+    """
+    # BACKLOG_DIR is <project_root>/.claude/backlog — walk up to project root
+    return _models.BACKLOG_DIR.parent.parent / "plan" / f"milestone-{milestone_number}-dispatch.yaml"
+
+
+@mcp.tool
+async def dispatch_read(milestone_number: Annotated[int, Field(description="GitHub milestone number")]) -> dict:
+    """Read a dispatch plan for the given milestone.
+
+    Loads and returns the full plan as a dict. Returns an error dict if
+    the plan file does not exist or fails YAML/schema validation.
+
+    Returns:
+        Dict with ``milestone_number``, ``plan_path``, and ``plan`` (full plan
+        as a nested dict), or ``error`` on failure.
+    """
+    plan_path = _dispatch_plan_path(milestone_number)
+    try:
+        plan = await asyncio.to_thread(_ds.read_dispatch_plan, plan_path)
+    except FileNotFoundError:
+        return {
+            "error": f"Dispatch plan not found: {plan_path}",
+            "milestone_number": milestone_number,
+            "plan_path": str(plan_path),
+        }
+    except ValueError as exc:
+        return {"error": str(exc), "milestone_number": milestone_number, "plan_path": str(plan_path)}
+    return {"milestone_number": milestone_number, "plan_path": str(plan_path), "plan": plan.model_dump()}
+
+
+@mcp.tool
+async def dispatch_validate(milestone_number: Annotated[int, Field(description="GitHub milestone number")]) -> dict:
+    """Validate an existing dispatch plan's structural integrity.
+
+    Reads the plan file then runs five structural checks: duplicate issues,
+    conflict group references, depends_on existence, wave ordering, and
+    conflict group wave placement.
+
+    Returns:
+        Dict with ``is_valid`` (bool), ``errors`` (list[str]), and
+        ``warnings`` (list[str]), or ``error`` on file/parse failure.
+    """
+    plan_path = _dispatch_plan_path(milestone_number)
+    try:
+        plan = await asyncio.to_thread(_ds.read_dispatch_plan, plan_path)
+    except (FileNotFoundError, ValueError) as exc:
+        return {"error": str(exc), "milestone_number": milestone_number, "plan_path": str(plan_path)}
+    result = await asyncio.to_thread(_ds.validate_plan_integrity, plan)
+    return {"milestone_number": milestone_number, "plan_path": str(plan_path), **dataclasses.asdict(result)}
+
+
+@mcp.tool
+async def dispatch_stale_check(
+    milestone_number: Annotated[int, Field(description="GitHub milestone number")],
+    repo: Annotated[str, Field(description="Repository slug owner/name. Defaults to repo from project")] = "",
+) -> dict:
+    """Check whether a dispatch plan is stale relative to the current milestone.
+
+    Fetches open issues assigned to the milestone from GitHub, compares
+    their issue numbers against those in the plan, and returns a stale/fresh
+    indicator with added/removed issue lists.
+
+    Returns:
+        Dict with ``is_stale`` (bool), ``added_issues`` (list[int]),
+        ``removed_issues`` (list[int]), and ``message`` (str).
+        Returns ``error`` on file/parse or GitHub failure.
+    """
+    plan_path = _dispatch_plan_path(milestone_number)
+    try:
+        plan = await asyncio.to_thread(_ds.read_dispatch_plan, plan_path)
+    except (FileNotFoundError, ValueError) as exc:
+        return {"error": str(exc), "milestone_number": milestone_number, "plan_path": str(plan_path)}
+
+    def _fetch_milestone_issue_numbers() -> list[int]:
+        gh_repo = _get_github(repo)
+        ms_obj = gh_repo.get_milestone(milestone_number)
+        return [
+            issue.number for issue in gh_repo.get_issues(milestone=ms_obj, state="all") if issue.pull_request is None
+        ]
+
+    try:
+        current_numbers = await asyncio.to_thread(_fetch_milestone_issue_numbers)
+    except GitHubUnavailableError as exc:
+        return {"error": str(exc), "milestone_number": milestone_number}
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"GitHub API error: {exc}", "milestone_number": milestone_number}
+
+    result = await asyncio.to_thread(_ds.detect_stale_plan, plan, current_numbers)
+    return {"milestone_number": milestone_number, "plan_path": str(plan_path), **dataclasses.asdict(result)}
+
+
+@mcp.tool
+async def dispatch_conflicts(
+    milestone_number: Annotated[int, Field(description="GitHub milestone number")],
+    repo: Annotated[str, Field(description="Repository slug owner/name. Defaults to repo from project")] = "",
+) -> dict:
+    """Analyze Impact Radius conflicts for items in a milestone.
+
+    Fetches open issues for the milestone from GitHub, extracts the
+    Impact Radius section from each issue body, then runs conflict analysis
+    to find items that share file paths.
+
+    Returns:
+        Dict with ``conflict_groups`` (list of group dicts with group_id,
+        reason, and items), ``count`` (int), and ``milestone_number``.
+        Returns ``error`` on GitHub failure.
+    """
+
+    def _fetch_items_with_impact_radius() -> list[dict[str, object]]:
+        gh_repo = _get_github(repo)
+        ms_obj = gh_repo.get_milestone(milestone_number)
+        items: list[dict[str, object]] = []
+        ir_re = _re.compile(r"##\s+Impact\s+Radius\b(.*?)(?=\n##|\Z)", _re.IGNORECASE | _re.DOTALL)
+        for issue in gh_repo.get_issues(milestone=ms_obj, state="open"):
+            if issue.pull_request is not None:
+                continue
+            body = issue.body or ""
+            match = ir_re.search(body)
+            impact_radius = match.group(1).strip() if match else ""
+            items.append({"title": issue.title, "issue": issue.number, "impact_radius": impact_radius})
+        return items
+
+    try:
+        items = await asyncio.to_thread(_fetch_items_with_impact_radius)
+    except GitHubUnavailableError as exc:
+        return {"error": str(exc), "milestone_number": milestone_number}
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"GitHub API error: {exc}", "milestone_number": milestone_number}
+
+    conflict_groups = await asyncio.to_thread(operations.analyze_impact_radius_conflicts, items)
+    return {
+        "milestone_number": milestone_number,
+        "conflict_groups": [dataclasses.asdict(cg) for cg in conflict_groups],
+        "count": len(conflict_groups),
+    }
 
 
 if __name__ == "__main__":

@@ -11,10 +11,12 @@ import contextlib
 import json
 import re
 import sys
+from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+from dispatch_schema.core.models import ConflictGroup
 from github import GithubException, GithubObject
 
 from . import models as _models
@@ -2985,3 +2987,160 @@ def create_project(
         "number": int(cast("int", project_node.get("number", 0))),
         **out.to_dict(),
     }
+
+
+# ---------------------------------------------------------------------------
+# Impact Radius conflict analysis (pure — no GitHub calls)
+# ---------------------------------------------------------------------------
+
+_MIN_CONFLICT_GROUP_SIZE = 2
+
+
+class _UnionFind:
+    """Path-compressed union-find (disjoint set union) for integer indices."""
+
+    def __init__(self, n: int) -> None:
+        self._parent = list(range(n))
+
+    def find(self, x: int) -> int:
+        """Return canonical root of x with path compression."""
+        while self._parent[x] != x:
+            self._parent[x] = self._parent[self._parent[x]]
+            x = self._parent[x]
+        return x
+
+    def union(self, x: int, y: int) -> None:
+        """Merge the sets containing x and y."""
+        rx, ry = self.find(x), self.find(y)
+        if rx != ry:
+            self._parent[rx] = ry
+
+
+def _parse_impact_radius_paths(impact_radius: str) -> set[str]:
+    """Extract normalised file paths from an Impact Radius markdown body.
+
+    Args:
+        impact_radius: Raw markdown section body (may contain bullet markers,
+            blank lines, or section headers).
+
+    Returns:
+        Set of stripped file-path strings. Empty set when the body is blank
+        or contains only headers/whitespace.
+    """
+    paths: set[str] = set()
+    for raw_line in impact_radius.splitlines():
+        # Strip bullet markers (-, *) and surrounding whitespace
+        line = raw_line.strip().lstrip("-*").strip()
+        # Discard empty lines and pure markdown headers
+        if not line or line.startswith("#"):
+            continue
+        paths.add(line)
+    return paths
+
+
+def _collect_items_with_paths(items: list[dict[str, object]]) -> tuple[list[str], list[set[str]]]:
+    """Filter items to those with a non-empty impact_radius and parse their paths.
+
+    Args:
+        items: Raw item dicts.
+
+    Returns:
+        Tuple of (titles, path_sets) for items that have parsable paths.
+    """
+    titles: list[str] = []
+    path_sets: list[set[str]] = []
+    for item in items:
+        radius_raw = item.get("impact_radius", "")
+        if not isinstance(radius_raw, str) or not radius_raw.strip():
+            continue
+        paths = _parse_impact_radius_paths(radius_raw)
+        if not paths:
+            continue
+        titles.append(str(item.get("title", "")))
+        path_sets.append(paths)
+    return titles, path_sets
+
+
+def _build_conflict_groups(titles: list[str], path_sets: list[set[str]]) -> list[ConflictGroup]:
+    """Run union-find over path_sets and return ConflictGroup models.
+
+    Args:
+        titles: Item title per index (parallel to path_sets).
+        path_sets: Parsed file-path sets per index.
+
+    Returns:
+        List of ConflictGroup models for connected components with two or more
+        members.
+    """
+    n = len(titles)
+    uf = _UnionFind(n)
+
+    # Union pairs sharing at least one file path
+    for i in range(n):
+        for j in range(i + 1, n):
+            if path_sets[i] & path_sets[j]:
+                uf.union(i, j)
+
+    # Collect connected components
+    components: dict[int, list[int]] = defaultdict(list)
+    for i in range(n):
+        components[uf.find(i)].append(i)
+
+    # Gather shared paths per group root
+    group_shared: dict[int, set[str]] = defaultdict(set)
+    for i in range(n):
+        for j in range(i + 1, n):
+            overlap = path_sets[i] & path_sets[j]
+            if overlap and uf.find(i) == uf.find(j):
+                group_shared[uf.find(i)].update(overlap)
+
+    # Build ConflictGroup models in stable order
+    conflict_groups: list[ConflictGroup] = []
+    group_id = 1
+    for root in sorted(components):
+        members = components[root]
+        if len(members) < _MIN_CONFLICT_GROUP_SIZE:
+            continue
+        member_titles = sorted(titles[i] for i in members)
+        shared = group_shared.get(root, set())
+        reason = "Shared files: " + ", ".join(sorted(shared))
+        conflict_groups.append(ConflictGroup(group_id=group_id, reason=reason, items=member_titles))
+        group_id += 1
+
+    return conflict_groups
+
+
+def analyze_impact_radius_conflicts(items: list[dict[str, object]]) -> list[ConflictGroup]:
+    """Compute conflict groups from Impact Radius file-path overlap.
+
+    Each item dict must contain:
+
+    - ``"title"`` (str): item title used in ConflictGroup.items list.
+    - ``"issue"`` (int): issue number (unused in output but validates input).
+    - ``"impact_radius"`` (str): markdown section body containing file paths,
+      one per line, optionally with bullet markers (``-`` / ``*``).
+
+    Two items form a conflict group when they share any file path (exact
+    string match after stripping whitespace and bullet markers).
+
+    Items with no ``impact_radius`` key or an empty value are excluded from
+    conflict analysis — they conflict with nothing.
+
+    When three or more items overlap pairwise, they are merged into a
+    single conflict group using union-find.  Example: if A overlaps B and
+    B overlaps C but A and C share no paths, all three are in one group.
+
+    Args:
+        items: Pre-fetched backlog item dicts with Impact Radius content.
+            Makes no GitHub calls.
+
+    Returns:
+        List of :class:`~dispatch_schema.core.models.ConflictGroup` models,
+        one per connected component with two or more members.  Items with no
+        file overlap are not included.  Returns an empty list when no
+        conflicts are found.
+    """
+    titles, path_sets = _collect_items_with_paths(items)
+    if len(titles) < _MIN_CONFLICT_GROUP_SIZE:
+        return []
+    return _build_conflict_groups(titles, path_sets)

@@ -39,11 +39,13 @@ markers = [
     "slow: marks tests as slow",
     "integration: marks tests as integration tests",
     "cli: marks tests as CLI integration tests",
+    "unit: marks tests as unit tests",
+    "critical: marks tests requiring property-based or mutation testing",
 ]
 
 [tool.coverage.run]
 branch = true
-source = ["backlog_core", "sam_schema"]
+source = ["backlog_core", "sam_schema", "dispatch_schema"]
 
 [tool.coverage.report]
 show_missing = true
@@ -58,4 +60,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["backlog_core", "sam_schema"]
+packages = ["backlog_core", "sam_schema", "dispatch_schema"]

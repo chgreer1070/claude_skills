@@ -1,0 +1,43 @@
+milestone:
+  number: 3
+  title: "Q1 Infrastructure Sprint"
+  integration-branch: "milestone/3-infra"
+
+conflict-groups:
+  - group-id: 1
+    reason: "Both touch plugins/development-harness/backlog_core/operations.py"
+    items:
+      - "Add conflict analysis"
+      - "Refactor operations module"
+
+waves:
+  - wave: 1
+    parallel: true
+    items:
+      - title: "Add conflict analysis"
+        issue: 101
+        priority: P1
+        conflict-group: 1
+        depends-on: []
+        status: pending
+  - wave: 2
+    parallel: true
+    items:
+      - title: "Refactor operations module"
+        issue: 102
+        priority: P2
+        conflict-group: 1
+        depends-on: [101]
+        status: pending
+      - title: "Update documentation"
+        issue: 103
+        priority: P3
+        depends-on: [101]
+        status: pending
+
+quality-gates:
+  pre-merge:
+    - "uv run pytest"
+    - "uv run ruff check ."
+  post-merge:
+    - "uv run pytest --integration"

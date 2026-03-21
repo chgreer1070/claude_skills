@@ -1,0 +1,24 @@
+milestone:
+  number: 1
+  title: "Invalid Ref Test"
+  integration-branch: "milestone/1-invalid"
+
+conflict-groups:
+  - group-id: 1
+    reason: "Only group defined"
+    items:
+      - "Task Alpha"
+      - "Task Beta"
+
+waves:
+  - wave: 1
+    parallel: true
+    items:
+      - title: "Task Alpha"
+        issue: 10
+        priority: P1
+        conflict-group: 1
+      - title: "Task Orphan"
+        issue: 11
+        priority: P2
+        conflict-group: 99
