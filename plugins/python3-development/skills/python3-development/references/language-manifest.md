@@ -6,7 +6,7 @@
 - test-designer: @python3-development:python-pytest-architect
 - code-reviewer: @python3-development:code-reviewer
 - design-spec: @python3-development:python-cli-design-spec
-- linting: /python3-development:stinkysnake
+- linting: /holistic-linting:linting-root-cause-resolver
 
 ## Quality Gates
 
