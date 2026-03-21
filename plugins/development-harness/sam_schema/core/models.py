@@ -170,6 +170,7 @@ class Task(BaseModel):
     )
 
     # Markdown content fields (stored as YAML multiline scalars in canonical format)
+    body: str = ""
     description: str = ""
     objective: str = ""
     requirements: str = ""

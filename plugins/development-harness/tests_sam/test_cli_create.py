@@ -418,6 +418,50 @@ class TestSamCreateRoundTrip:
         data = json.loads(read_result.output)
         assert data.get("plan-goal") == "My specific goal"
 
+    def test_create_with_stdin_preserves_task_body_content(self, plan_dir: Path) -> None:
+        """Task ``body`` field round-trips through create -> read without data loss.
+
+        Tests: body field preservation during stdin create.
+        How: Create with a task containing a multiline body, read back P1/T1, verify body.
+        Why: Pydantic drops unknown fields silently -- body was missing from Task model,
+             causing body content to be discarded at validation time (reproduced on P577, P964).
+        """
+        # Arrange
+        tasks_with_body = """\
+tasks:
+  - task: T1
+    title: Body preservation test
+    status: not-started
+    agent: python-cli-architect
+    dependencies: []
+    priority: 3
+    complexity: medium
+    body: |
+      ## Objective
+      This is a test body that should be preserved.
+
+      ## Acceptance Criteria
+      - Body content is not empty after create
+"""
+        # Act -- create
+        create_result = runner.invoke(
+            app,
+            ["create", "body-test", "--goal", "Test body preservation", "--stdin", "--plan-dir", str(plan_dir)],
+            input=tasks_with_body,
+            env={"NO_COLOR": "1"},
+        )
+        assert create_result.exit_code == 0, create_result.output
+
+        # Act -- read back
+        read_result = runner.invoke(app, ["read", "P1/T1", "--plan-dir", str(plan_dir)], env={"NO_COLOR": "1"})
+        # Assert
+        assert read_result.exit_code == 0, read_result.output
+        data = json.loads(read_result.output)
+        task = data["task"]
+        assert task.get("body"), "body field is empty -- content was dropped at model validation"
+        assert "## Objective" in task["body"]
+        assert "This is a test body that should be preserved." in task["body"]
+
     def test_create_plan_dir_auto_created_if_missing(self, tmp_path: Path) -> None:
         """Plan directory is auto-created if it does not exist.
 
