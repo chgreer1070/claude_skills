@@ -13,7 +13,7 @@ import re
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 from github import GithubException, GithubObject
 
@@ -1170,16 +1170,38 @@ def _filter_closed_items(items: list[BacklogItem], include_closed: bool) -> list
     return [it for it in items if it.status not in _TERMINAL_STATUSES]
 
 
-def _build_list_entry(
-    item: BacklogItem, with_status: bool, status_map: dict[int, IssueStatus]
-) -> dict[str, str | bool]:
+class BacklogListEntry(TypedDict, total=False):
+    """Single item entry returned by ``_build_list_entry``."""
+
+    section: str
+    title: str
+    issue: str
+    plan: str
+    type: str
+    topic: str
+    file_path: str
+    groomed: bool
+    status: str
+    milestone: str
+
+
+class ListItemsResult(TypedDict, total=False):
+    """Return type of ``list_items``."""
+
+    items: list[BacklogListEntry]
+    count: int
+    messages: list[str]
+    warnings: list[str]
+
+
+def _build_list_entry(item: BacklogItem, with_status: bool, status_map: dict[int, IssueStatus]) -> BacklogListEntry:
     """Build the result dict for a single backlog item.
 
     Returns:
         Dict with section, title, issue, plan, type, topic, and optional
         file_path, groomed, status, and milestone fields.
     """
-    entry: dict[str, str | bool] = {
+    entry: BacklogListEntry = {
         "section": item.section,
         "title": item.title,
         "issue": item.issue,
@@ -1212,7 +1234,7 @@ def list_items(
     include_closed: bool = False,
     repo: str = DEFAULT_REPO,
     output: Output | None = None,
-) -> dict[str, int | list[str] | list[dict[str, str | bool]]]:
+) -> ListItemsResult:
     """List backlog items. Default reads local cache only. Use from_github=True to refresh first.
 
     Args:

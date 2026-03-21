@@ -1133,7 +1133,7 @@ def _make_sam_task(**kwargs: object) -> SamTask:
         "dependencies": [],
     }
     defaults.update(kwargs)
-    return SamTask(**defaults)  # type: ignore[arg-type]
+    return SamTask(**defaults)
 
 
 class TestCreateTaskIssue:

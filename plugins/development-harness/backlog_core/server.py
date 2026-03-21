@@ -6,7 +6,7 @@ import argparse
 import asyncio
 import json as _json
 import sys
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import tiktoken
 from fastmcp import Context, FastMCP
@@ -14,6 +14,9 @@ from pydantic import Field
 
 from . import operations
 from .models import BacklogError, Output, init as _init_models
+
+if TYPE_CHECKING:
+    from .operations import BacklogListEntry as _BacklogListEntry
 
 # Token budget for auto-pagination in backlog_list: 4400 tokens (cl100k_base encoding).
 _LIST_TOKEN_BUDGET = 4_400
@@ -195,12 +198,12 @@ async def backlog_list(
     except BacklogError as e:
         return {"error": str(e), **out.to_dict()}
 
-    all_items: list[dict] = result.get("items", [])
+    all_items: list[_BacklogListEntry] = result.get("items", [])
 
     # Apply cross-field search filter when requested.
     if search is not None:
         needle = search.casefold()
-        filtered: list[dict] = []
+        filtered: list[_BacklogListEntry] = []
         for item in all_items:
             haystack = " ".join(
                 str(item.get(field, "") or "") for field in ("title", "description", "topic", "type")
