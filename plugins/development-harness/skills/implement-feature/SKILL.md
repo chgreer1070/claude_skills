@@ -6,6 +6,11 @@ user-invocable: true
 version: 1.0.0
 last_updated: '2026-02-28'
 memory: project
+hooks:
+  SubagentStop:
+  - hooks:
+    - type: command
+      command: python3 "${CLAUDE_SKILL_DIR}/../../implementation-manager/scripts/task_status_hook.py"
 ---
 
 # Implement Feature (SAM Workflow Execution)
