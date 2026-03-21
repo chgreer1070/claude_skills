@@ -5,9 +5,9 @@ metadata:
   topic: redesign-work-milestone-from-teamcreate-to-orchestrator-disp
   source: 'Session 2026-03-21: teammate capability testing revealed Agent tool unavailable to team members'
   added: '2026-03-21'
-  priority: P0
+  priority: completed
   type: Refactor
-  status: open
+  status: done
   issue: '#970'
   last_synced: '2026-03-21T21:43:17Z'
   groomed: '2026-03-21'

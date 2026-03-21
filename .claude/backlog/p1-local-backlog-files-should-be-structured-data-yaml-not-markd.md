@@ -11,6 +11,7 @@ metadata:
   issue: '#964'
   last_synced: '2026-03-21T22:33:36Z'
   groomed: '2026-03-21'
+  plan: plan/P964-backlog-yaml-migration.yaml
 ---
 
 ## Story
