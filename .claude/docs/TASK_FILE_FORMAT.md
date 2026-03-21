@@ -1,6 +1,6 @@
 # SAM Task File Format
 
-**Status**: Current specification (updated 2026-03-15)
+**Status**: Current specification (updated 2026-03-21)
 **Purpose**: Canonical reference for SAM task file structure and the `sam` CLI as the sole interface
 
 All task file I/O routes through the `sam` CLI or `sam_schema` Python API. No component reads or writes task files directly via Read/Edit/Write tools.
@@ -32,6 +32,10 @@ uv run sam state P{N}/T{M} {status}
 # Claim a task (mark in-progress, set started timestamp)
 uv run sam claim P{N}/T{M}
 
+# List all plans (with optional search filter)
+uv run sam list
+uv run sam list --search "my-feature"
+
 # List ready tasks (status=not-started with all dependencies complete)
 uv run sam ready P{N} --format json
 
@@ -48,6 +52,7 @@ uv run sam migrate plan/tasks-{N}-{slug}.md
 ### MCP Tools
 
 ```text
+sam_list(plan_dir, search, offset, limit)  -- mirrors sam list
 sam_create(slug, goal, tasks_yaml, ...)   -- mirrors sam create
 sam_read(address, format)                 -- mirrors sam read; returns TaskAssignment for task addresses
 sam_update(address, fields, ...)          -- mirrors sam update
@@ -205,6 +210,19 @@ Task metadata fields are owned by specific components. The `sam` CLI and `sam_sc
 
 ## sam CLI Usage Guide
 
+### sam list — List all plans
+
+```bash
+uv run sam list
+# Output: { "items": [...], "count": N, "total": N }
+
+uv run sam list --search "gates"
+# Filters by case-insensitive substring match across feature, description, and goal fields
+
+uv run sam list --offset 10 --limit 5
+# Pagination support
+```
+
 ### sam create — Create a new plan
 
 ```bash
@@ -344,6 +362,22 @@ The `sam` CLI reads but does not write these legacy formats:
 | `tasks-{N}-{slug}.md` with YAML frontmatter | `plan/tasks-3-my-feature.md` | Read via `sam read`, `sam ready`, `sam status` |
 | `tasks-{N}-{slug}/` directory with `.md` files | `plan/tasks-3-my-feature/T01.md` | Read only |
 | Bold markdown fields (`**Status**: NOT STARTED`) | legacy `.md` files | Read via `sam migrate` preprocessing |
+
+### Number Collision Warning
+
+When a canonical `P{NNN}-{slug}.yaml` file and a legacy `tasks-{NNN}-{slug}.md` file share the same number, the canonical file takes precedence. The `sam` CLI emits a warning to stderr:
+
+```text
+WARNING: P698 resolved to 'P698-research-curator-code-analysis.yaml' but a legacy file
+also exists with the same number: tasks-698-gates-subprocess-timeout.md.
+Run 'sam migrate P698' to remove the legacy file.
+```
+
+To resolve: migrate or rename the legacy file so numbers are unique.
+
+### File Path Rejection
+
+Passing a raw file path (e.g., `plan/tasks-698-foo.md`) as an address is rejected with a clear error. Use plan addresses (`P698`, `gates-subprocess-timeout`) instead.
 
 ### Migration Path
 

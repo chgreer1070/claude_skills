@@ -7,11 +7,12 @@ metadata:
   added: '2026-03-18'
   priority: P1
   type: Refactor
-  status: open
+  status: closed
   issue: '#850'
   groomed: '2026-03-19'
   last_synced: '2026-03-19T03:52:38Z'
   plan: plan/tasks-1-deduplicate-agents-phase4.md
+  close_reason: superseded
 ---
 
 ## RT-ICA

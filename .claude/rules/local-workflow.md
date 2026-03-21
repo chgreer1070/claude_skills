@@ -331,6 +331,8 @@ The `sam` CLI is the canonical interface for all SAM task file operations. Use `
 
 ## Data Flow Diagram
 
+For detailed data structure shapes and publisher-consumer relationships, see [Workflow Architecture Diagram](./../../plugins/development-harness/docs/workflow-architecture-diagram.md).
+
 ```text
 User
   │

@@ -10,4 +10,5 @@ metadata:
   status: open
   issue: '#933'
   last_synced: '2026-03-21T01:20:27Z'
+  plan: plan/tasks-699-workflow-architecture-diagram.md
 ---

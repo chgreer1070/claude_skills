@@ -5,12 +5,12 @@ implementation agents (architect, test designer, code reviewer) and quality gate
 
 ---
 
-## Shared Workflow Agents Moved to development-harness
+## Shared Workflow Components Moved to development-harness
 
-The following agents were moved from this plugin to the `development-harness` plugin in the
-deduplication refactor. They are no longer present in `plugins/python3-development/agents/`.
+SAM workflow skills and language-agnostic agents were consolidated into the `development-harness`
+plugin. They are no longer present in `plugins/python3-development/`.
 
-Invoke them using the `@dh:` prefix:
+### Agents — invoke using the `@dh:` prefix
 
 - `@dh:feature-researcher`
 - `@dh:codebase-analyzer`
@@ -22,9 +22,19 @@ Invoke them using the `@dh:` prefix:
 - `@dh:doc-drift-auditor`
 - `@dh:swarm-task-planner`
 - `@dh:ecosystem-researcher`
+- `@dh:t0-baseline-capture`
+- `@dh:tn-verification-gate`
 
-These agents are language-agnostic and owned by the harness. The canonical source files are
-in `plugins/development-harness/agents/`.
+### Skills — invoke using the `dh:` namespace
+
+- `dh:implement-feature`
+- `dh:start-task`
+- `dh:complete-implementation`
+- `dh:add-new-feature`
+- `dh:subagent-contract`
+- `dh:implementation-manager`
+
+The canonical source files are in `plugins/development-harness/`.
 
 ---
 
@@ -35,6 +45,4 @@ in `plugins/development-harness/agents/`.
 - `@python3-development:python-pytest-architect` — writes pytest test suites
 - `@python3-development:python-code-reviewer` — reviews Python code for quality and idioms
 - `@python3-development:code-reviewer` — general code review with Python awareness
-- `@python3-development:t0-baseline-capture` — captures baseline metrics before implementation
-- `@python3-development:tn-verification-gate` — verifies acceptance criteria post-implementation
 - `@python3-development:semantic-code-search` — semantic search over Python codebases
