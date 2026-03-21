@@ -1,0 +1,348 @@
+feature: redesign-work-milestone-worktree-agents
+version: '1.0'
+description: ''
+goal: |-
+  Replace TeamCreate dispatch in /work-milestone with Agent(isolation: worktree) calls
+context: See Context Manifest section below.
+issue: '970'
+
+tasks:
+- id: T01
+  title: 'Rewrite work-milestone SKILL.md — replace TeamCreate dispatch with Agent(isolation:
+    worktree)'
+  status: complete
+  agent: plugin-creator:contextual-ai-documentation-optimizer
+  priority: 1
+  complexity: high
+  skills:
+  - plugin-creator:claude-plugins-reference-2026
+  - plugin-creator:claude-skills-overview-2026
+  description: |
+    ## Context
+
+    The work-milestone SKILL.md currently uses TeamCreate to spawn parallel teammates
+    for milestone item execution. TeamCreate teammates lack the Agent tool, making the
+    SAM pipeline non-functional inside teammates.
+
+    ## Objective
+
+    Rewrite the dispatch flow (Steps 4-7) to use Agent(isolation: "worktree") calls
+    instead of TeamCreate. The orchestrator spawns one worktree agent per item per wave,
+    waits for all to return, then merges worktree branches into the integration branch.
+
+    ## Requirements
+
+    - Remove ALL TeamCreate, SendMessage, and teammate references from SKILL.md
+    - Replace Step 5 (TeamCreate spawn) with parallel Agent(isolation: "worktree") dispatch
+    - Replace Step 6 (Monitor via SendMessage) with "Wait for all agents to return"
+    - Replace Step 7 (Merge Queue with SendMessage coordination) with sequential merge of worktree branches
+    - Add pre-decomposition step: orchestrator reads SAM plan and backlog item before dispatch, builds per-agent prompt
+    - Add discovery relay step between waves: collect agent outputs, feed into next wave prompts
+    - Update Tools Used: remove TeamCreate, SendMessage; add Agent(isolation: worktree)
+    - Update Error Conditions: remove "Worker no heartbeat"; add "Agent returned with PARTIAL status"
+    - Update references section: team-member-protocol.md -> worktree-worker-protocol.md
+    - Include the worktree agent prompt template from architect spec Component 2
+    - Include the completion report format (STATUS/BRANCH/TASKS_COMPLETED/FILES_CHANGED/COMMITS/NOTES)
+    - Include conflict handling flow from architect spec Component 5
+    - Replace the existing Mermaid flowchart with the revised workflow diagram from architect spec
+
+    ## Source Files
+
+    - Current SKILL.md: plugins/development-harness/skills/work-milestone/SKILL.md
+    - Architecture spec: plan/architect-redesign-work-milestone-worktree-agents.md (Components 1-6 and Revised Workflow Diagram)
+    - Feature context: plan/feature-context-redesign-work-milestone-worktree-agents.md
+  acceptance-criteria: |
+    - No occurrences of TeamCreate, SendMessage, or "teammate" in the rewritten SKILL.md
+    - Dispatch flow uses Agent(isolation: "worktree") for item execution
+    - Pre-decomposition step reads SAM plan and backlog item before agent spawn
+    - Discovery relay section describes how agent outputs feed into next wave prompts
+    - Worktree agent prompt template is included with all template variables documented
+    - Completion report format (STATUS, BRANCH, TASKS_COMPLETED, FILES_CHANGED, COMMITS, NOTES) is specified
+    - Conflict handling flow covers trivial/medium/heavy classification with resolution strategy
+    - Mermaid flowchart reflects the new architecture (no TeamCreate nodes)
+    - Tools Used section lists Agent(isolation: worktree) and removes TeamCreate/SendMessage
+    - Error Conditions section covers PARTIAL status and agent failure scenarios
+  verification-steps: |
+    - grep -c "TeamCreate\|SendMessage\|teammate" SKILL.md returns 0
+    - SKILL.md contains "Agent(isolation" or "isolation: worktree" or "isolation: \"worktree\""
+    - SKILL.md contains "discovery relay" or "Discovery Relay" section
+    - SKILL.md contains completion report format with STATUS and BRANCH fields
+    - SKILL.md references worktree-worker-protocol.md (not team-member-protocol.md)
+    - Mermaid flowchart renders without syntax errors (no bare colons in quoted strings, no \n in labels)
+  started: '2026-03-21T22:03:32.992260+00:00'
+- id: T02
+  title: Rename team-member-protocol.md to worktree-worker-protocol.md and
+    rewrite for worktree agent context
+  status: complete
+  agent: plugin-creator:contextual-ai-documentation-optimizer
+  priority: 1
+  complexity: high
+  skills:
+  - plugin-creator:claude-plugins-reference-2026
+  description: |
+    ## Context
+
+    The current team-member-protocol.md defines a 12-step lifecycle (M1-M12) built around
+    SendMessage, peer announcements, domain overlap detection, and design alignment. All of
+    these depend on inter-agent communication that worktree agents lack.
+
+    ## Objective
+
+    Create worktree-worker-protocol.md as the replacement protocol for worktree agents.
+    Delete team-member-protocol.md after the new file is created.
+
+    ## Requirements
+
+    Sections to REMOVE entirely (from architect spec 7.1):
+    - M2 (Announce to Team via SendMessage)
+    - M3/M3a (Domain Overlap / Initial Alignment)
+    - M4a (State Broadcasts via SendMessage)
+    - M4b/M4c (Peer Overlap Alert / Runtime Alignment)
+    - M5/M6/M7 (Blocker reporting via SendMessage)
+    - M10 (Signal Completion via SendMessage)
+    - M11/M12 (Await Merge Outcome / Assign Back)
+    - State Broadcast Fields section
+    - Design Decision Persistence section
+    - Design Alignment Protocol
+    - Blocker Types table
+
+    Sections to RETAIN (modified for worktree context):
+    - M1 (Setup) — verify worktree is on correct branch, enable constant commits
+    - M4 (Execute Work) — change from /work-backlog-item --auto to direct task execution
+    - M8 (Item Complete) — completion check
+    - M9 (Pre-Verify) — run quality gates, commit all changes
+    - Constant Commits Protocol — retained as-is
+    - Domain Detection — retained for informational context
+
+    New sections to ADD:
+    - Completion Report Format — structured output for orchestrator parsing (STATUS/BRANCH/etc.)
+    - Blocker Handling — complete what you can, report blocked tasks in completion report
+    - Skill Loading — how the agent loads required skills at startup
+    - Direct Task Execution — how to read and execute SAM tasks without Agent delegation
+
+    ## Source Files
+
+    - Current protocol: plugins/development-harness/skills/work-milestone/references/team-member-protocol.md
+    - Architecture spec: plan/architect-redesign-work-milestone-worktree-agents.md (Component 2 and 7.1)
+  acceptance-criteria: |
+    - worktree-worker-protocol.md exists at plugins/development-harness/skills/work-milestone/references/
+    - team-member-protocol.md is deleted (git rm)
+    - No occurrences of SendMessage, TeamCreate, "teammate", or "peer" in the new protocol
+    - Protocol covers: setup, skill loading, direct task execution, completion report, blocker handling
+    - Completion Report Format section matches the template from architect spec (STATUS/BRANCH/TASKS_COMPLETED/FILES_CHANGED/COMMITS/NOTES)
+    - Constant Commits Protocol section is retained
+    - Quality gates / pre-verify section is retained
+    - No references to M2, M3, M4a, M4b, M4c, M5, M6, M7, M10, M11, M12 lifecycle steps
+  verification-steps: |
+    - File exists: plugins/development-harness/skills/work-milestone/references/worktree-worker-protocol.md
+    - File deleted: plugins/development-harness/skills/work-milestone/references/team-member-protocol.md
+    - grep -c "SendMessage\|TeamCreate\|teammate\|\"peer\"" worktree-worker-protocol.md returns 0
+    - worktree-worker-protocol.md contains "Completion Report" section
+    - worktree-worker-protocol.md contains "Skill Loading" section
+    - worktree-worker-protocol.md contains "constant commit" or "Constant Commits" section
+  started: '2026-03-21T22:03:28.670068+00:00'
+- id: T03
+  title: Update merge-queue-protocol.md for agent-return signaling instead of
+    SendMessage
+  status: complete
+  agent: plugin-creator:contextual-ai-documentation-optimizer
+  dependencies:
+  - T01
+  priority: 2
+  complexity: medium
+  skills:
+  - plugin-creator:claude-plugins-reference-2026
+  description: |
+    ## Context
+
+    The merge-queue-protocol.md currently references SendMessage for completion signaling,
+    gate failure notifications, and assign_back procedures. With worktree agents, completion
+    is signaled by Agent call return, not SendMessage.
+
+    ## Objective
+
+    Update merge-queue-protocol.md to reflect the new signaling model while retaining
+    all conflict classification logic and quality gate commands.
+
+    ## Requirements
+
+    Per architect spec 7.2:
+    - Add note at top: completion signaling is via Agent call return, not SendMessage COMPLETE
+    - Replace "Worker signals COMPLETE" with "Agent returns"
+    - Replace "SendMessage to worker" with "orchestrator processes return"
+    - Replace "Gate failure sent to worker via SendMessage" with "Orchestrator spawns fix agent"
+    - Retain ALL conflict classification logic unchanged (trivial/medium/heavy)
+    - Modify assign_back: no PR creation (branches are local), no SendMessage to workers;
+      instead create backlog item for next wave
+    - Retain quality gate commands section unchanged
+    - Retain integration branch landing section unchanged
+
+    ## Source Files
+
+    - Current protocol: plugins/development-harness/skills/work-milestone/references/merge-queue-protocol.md
+    - Architecture spec: plan/architect-redesign-work-milestone-worktree-agents.md (Component 5 and 7.2)
+  acceptance-criteria: |
+    - No occurrences of "SendMessage" in merge-queue-protocol.md
+    - Completion signaling described as Agent call return
+    - Conflict classification logic (trivial/medium/heavy) is preserved
+    - assign_back procedure updated: no PR creation, creates backlog item instead
+    - Quality gate commands section is unchanged
+    - Integration branch landing section is unchanged
+    - "Orchestrator spawns fix agent" replaces "Gate failure sent to worker"
+  verification-steps: |
+    - grep -c "SendMessage" merge-queue-protocol.md returns 0
+    - merge-queue-protocol.md contains "Agent" and "return" in proximity (agent-return signaling)
+    - merge-queue-protocol.md contains "trivial" and "medium" and "heavy" (conflict classification retained)
+    - merge-queue-protocol.md contains "backlog item" in assign_back context
+    - merge-queue-protocol.md contains "quality gate" or "Quality Gate" section
+  started: '2026-03-21T22:25:13.716501+00:00'
+- id: T04
+  title: Review dispatch-plan-schema.md and add worktree-agent clarifying notes
+  status: complete
+  agent: plugin-creator:contextual-ai-documentation-optimizer
+  dependencies:
+  - T01
+  priority: 2
+  complexity: low
+  skills:
+  - plugin-creator:claude-plugins-reference-2026
+  description: |
+    ## Context
+
+    The architect spec (7.3) determined that NO schema changes are needed to
+    dispatch-plan-schema.md. The existing wave/item fields contain everything
+    the orchestrator needs. However, clarifying notes should be added to explain
+    the relationship between the dispatch plan and worktree agent dispatch.
+
+    ## Objective
+
+    Add clarifying notes to dispatch-plan-schema.md explaining:
+    - Agent isolation mode is always "worktree" — hardcoded in orchestrator logic, not in schema
+    - Agent type is not configurable per item — all worktree agents use the same prompt template
+    - Skills are read from the SAM task plan, not the dispatch plan
+    - The dispatch plan's conflict groups handle serialization; no runtime coordination fields needed
+
+    ## Requirements
+
+    - Do NOT modify any existing schema fields or their definitions
+    - Add a "Notes" or "Execution Model" section explaining the above points
+    - Keep the addition concise (under 20 lines of content)
+
+    ## Source Files
+
+    - Current schema: plugins/development-harness/skills/work-milestone/references/dispatch-plan-schema.md
+    - Architecture spec: plan/architect-redesign-work-milestone-worktree-agents.md (section 7.3)
+  acceptance-criteria: |
+    - dispatch-plan-schema.md has a new section explaining worktree agent dispatch relationship
+    - No existing schema field definitions are modified
+    - Notes explain that isolation mode is hardcoded, not schema-configured
+    - Notes explain that skills come from SAM task plan, not dispatch plan
+    - Addition is concise and does not duplicate content from SKILL.md
+  verification-steps: |
+    - dispatch-plan-schema.md contains "worktree" in the new section
+    - dispatch-plan-schema.md contains "SAM" or "sam" reference for skills sourcing
+    - No existing field definitions were removed or modified (diff shows only additions)
+    - New content is under 30 lines
+  started: '2026-03-21T22:25:06.514603+00:00'
+- id: T05
+  title: Update local-workflow.md with work-milestone architecture forward
+    reference
+  status: complete
+  agent: plugin-creator:contextual-ai-documentation-optimizer
+  dependencies:
+  - T01
+  - T02
+  - T03
+  - T04
+  priority: 3
+  complexity: low
+  description: |
+    ## Context
+
+    .claude/rules/local-workflow.md documents the SAM pipeline (Phase 2: /implement-feature
+    execution loop). The /work-milestone skill operates at a different level — it dispatches
+    multiple backlog items in parallel across worktrees. A forward reference is needed to
+    clarify this boundary.
+
+    ## Objective
+
+    Add a forward reference in the Phase 2 section of local-workflow.md clarifying the
+    boundary between SAM task execution (per-item) and milestone dispatch (multi-item parallel).
+
+    ## Requirements
+
+    Per architect spec 7.4, add text like:
+
+    "Note: Phase 2 describes the SAM task execution loop within a single backlog item
+    (/implement-feature -> /start-task per task). Milestone-level dispatch (multiple
+    backlog items in parallel across worktrees) is handled by /work-milestone, which
+    uses Agent(isolation: "worktree") per item — not the SAM execution loop. See
+    plugins/development-harness/skills/work-milestone/SKILL.md."
+
+    - Place this at the end of the Phase 2 section or as a callout within it
+    - Do NOT modify any existing Phase 2 content
+    - Keep the addition concise
+
+    ## Source Files
+
+    - Current file: .claude/rules/local-workflow.md
+    - Architecture spec: plan/architect-redesign-work-milestone-worktree-agents.md (section 7.4)
+  acceptance-criteria: |
+    - local-workflow.md contains a forward reference mentioning /work-milestone and worktree agents
+    - The reference clarifies the boundary between SAM task execution and milestone dispatch
+    - No existing Phase 2 content is modified
+    - The reference mentions Agent(isolation: "worktree") or equivalent
+    - The reference points to the SKILL.md location
+  verification-steps: |
+    - local-workflow.md contains "work-milestone" in the new reference
+    - local-workflow.md contains "worktree" in the new reference
+    - git diff shows only additions to local-workflow.md (no deletions of existing content)
+    - The addition is placed in or near the Phase 2 section
+  started: '2026-03-21T22:27:28.848338+00:00'
+- id: T06
+  title: Verify no TeamCreate/SendMessage references remain in work-milestone
+    directory
+  status: complete
+  agent: plugin-creator:contextual-ai-documentation-optimizer
+  dependencies:
+  - T01
+  - T02
+  - T03
+  - T04
+  priority: 3
+  complexity: low
+  description: |
+    ## Context
+
+    After all prior tasks complete, the work-milestone skill directory should contain
+    zero references to TeamCreate, SendMessage, or teammate patterns. This task is a
+    final verification sweep.
+
+    ## Objective
+
+    Run a comprehensive grep across the entire work-milestone directory and confirm
+    no legacy TeamCreate/SendMessage patterns remain. If any are found, fix them.
+
+    ## Requirements
+
+    - Search plugins/development-harness/skills/work-milestone/ recursively for:
+      TeamCreate, SendMessage, "teammate", "team member", "team-member"
+    - If matches found: fix each occurrence to use worktree agent terminology
+    - If no matches: confirm clean state in a verification report
+    - Also check that all internal cross-references are valid (no broken links to
+      team-member-protocol.md, all references point to worktree-worker-protocol.md)
+
+    ## Source Files
+
+    - Target directory: plugins/development-harness/skills/work-milestone/
+  acceptance-criteria: |
+    - grep -r "TeamCreate|SendMessage|teammate|team.member" in work-milestone/ returns no matches
+    - All internal file references point to existing files (no broken links)
+    - worktree-worker-protocol.md is referenced where team-member-protocol.md was
+    - Verification results documented in task completion output
+  verification-steps: |-
+    - Run: grep -ri "TeamCreate\|SendMessage\|teammate\|team.member" plugins/development-harness/skills/work-milestone/ — expect exit code 1 (no matches)
+    - Run: grep -r "team-member-protocol" plugins/development-harness/skills/work-milestone/ — expect exit code 1 (no references to old file)
+    - Run: grep -r "worktree-worker-protocol" plugins/development-harness/skills/work-milestone/ — expect matches in SKILL.md
+    - Confirm team-member-protocol.md does not exist in the references directory
+  started: '2026-03-21T22:27:33.555297+00:00'

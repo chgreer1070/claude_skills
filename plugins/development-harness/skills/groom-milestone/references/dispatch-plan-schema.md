@@ -138,3 +138,15 @@ Format: `milestone/{N}-{slug}`
 Where `{slug}` is derived from the milestone title — lowercase, spaces replaced with hyphens, special characters stripped.
 
 Example: milestone 3 titled "v1.1 — Milestone Workflow" produces `milestone/3-v1.1-milestone-workflow`.
+
+## Worktree Agent Execution Model
+
+This section clarifies how `/work-milestone` uses the dispatch plan when spawning worktree agents. No schema fields are added — the existing wave/item structure contains everything the orchestrator needs.
+
+**Isolation mode is hardcoded, not schema-configured.** Every item dispatches via `Agent(isolation: "worktree")`. There is no per-item field to select isolation mode or agent type. All worktree agents use the same prompt template; per-item specialization is via task content and skills, not agent configuration.
+
+**Skills come from the SAM task plan, not the dispatch plan.** Before spawning an agent for an item, the orchestrator reads the item's SAM plan via `sam_read` (if one exists) and aggregates the `skills` field across all tasks. These skill names are passed to the worktree agent as `Skill()` invocations in its prompt. The dispatch plan's wave/item fields do not carry skill metadata.
+
+**Each item executes in an isolated worktree.** The worktree agent receives a complete, self-contained prompt — item description, acceptance criteria, task list, skills to load, and quality gate commands — assembled by the orchestrator from the dispatch plan plus the SAM MCP and backlog MCP. The agent executes work directly without delegating to subagents (worktree agents cannot spawn further agents).
+
+**Conflict groups handle serialization; no runtime coordination fields are needed.** Items in the same wave are guaranteed non-overlapping by the conflict group analysis performed during `/groom-milestone`. Worktree agents do not communicate with each other. The orchestrator relays context between waves via the discovery relay mechanism.

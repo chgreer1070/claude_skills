@@ -1,20 +1,20 @@
 ---
 name: work-milestone
-description: "Execute a groomed milestone with parallel workers in isolated worktrees. Reads dispatch plan YAML from /groom-milestone, creates integration branch, spawns TeamCreate teams per wave with one member per parallel item running /work-backlog-item --auto. Manages merge queue with slot serialization, conflict severity classification, assign_back on heavy conflicts. Inter-worker awareness via SendMessage, design decisions persisted to GitHub Issues. Discovery relay between waves. Lands integration branch to main when done. Args: {milestone-number}."
+description: "Execute a groomed milestone with parallel worktree agents. Use when running a milestone after /groom-milestone has produced a dispatch plan. Reads dispatch plan, creates integration branch, pre-decomposes each wave item by reading SAM task plans, spawns one Agent(isolation: worktree) per item in parallel, sequentially merges worktree branches, relays wave discoveries to subsequent waves, then lands integration branch to main. Args: {milestone-number}."
 argument-hint: '{milestone-number}'
 user-invocable: true
 ---
 
 # /work-milestone
 
-Execute a groomed milestone. Reads the dispatch plan produced by `/groom-milestone`, creates an integration branch, dispatches parallel workers per wave, serializes merges through a single merge slot, and lands the integration branch to main when all waves complete.
+Execute a groomed milestone. Reads the dispatch plan produced by `/groom-milestone`, creates an integration branch, dispatches parallel worktree agents per wave, sequentially merges their branches, and lands the integration branch to main when all waves complete.
 
 ## Entry Conditions
 
 - Milestone number provided as argument
 - Dispatch plan exists: `plan/milestone-{N}-dispatch.yaml`
 - All items in dispatch plan are groomed (`groomed: true`)
-- Backlog MCP and sam CLI responding
+- Backlog MCP and SAM MCP responding
 - Clean git state on main
 
 Run `/groom-milestone {N}` first if the dispatch plan is missing or stale.
@@ -23,151 +23,248 @@ Run `/groom-milestone {N}` first if the dispatch plan is missing or stale.
 
 ```mermaid
 flowchart TD
-    Start(["Input: milestone number N"]) --> LoadPlan["Step 1: Load Dispatch Plan<br>Read plan/milestone-{N}-dispatch.yaml<br>via read_dispatch_plan.<br>Output: waves, conflict groups, quality gates"]
+    Start(["Input: milestone number N"]) --> LoadPlan["Step 1: Load Dispatch Plan<br>Read plan/milestone-{N}-dispatch.yaml<br>Output: waves, conflict groups, quality gates"]
 
     LoadPlan --> Validate{"Step 2: Validate Plan<br>File exists?<br>All items still open?<br>Observable: file + backlog_list_issues(milestone=N)"}
 
     Validate -->|"Plan missing"| Block1(["BLOCKED — run /groom-milestone {N}"])
-    Validate -->|"Items changed since groom"| Regroom["Re-run /groom-milestone {N}<br>to regenerate dispatch plan"]
+    Validate -->|"Items changed since groom"| Regroom["Re-run /groom-milestone {N}"]
     Validate -->|"Plan valid"| CreateBranch
     Regroom --> LoadPlan
 
-    CreateBranch["Step 3: Create Integration Branch<br>Action: github_branches create<br>milestone/{N}-{slug} from main.<br>Push to origin."]
+    CreateBranch["Step 3: Create Integration Branch<br>github_branches create<br>milestone/{N}-{slug} from main.<br>Switch to integration branch locally."]
 
     CreateBranch --> WaveLoop["Step 4: Wave Dispatch Loop<br>Read next wave from dispatch plan"]
 
     WaveLoop --> WaveItems{"Wave has items?"}
     WaveItems -->|"No waves remain"| Land
-    WaveItems -->|"Wave has 1 item"| SingleWorker["Spawn single agent<br>isolation: worktree<br>/work-backlog-item --auto {title}"]
-    WaveItems -->|"Wave has 2+ items"| TeamSpawn["Step 5: TeamCreate<br>One member per parallel item.<br>Each member: isolation=worktree,<br>base=integration branch,<br>task=/work-backlog-item --auto {title}"]
 
-    SingleWorker --> Monitor
-    TeamSpawn --> Monitor
+    WaveItems -->|"Yes"| PreDecompose["Step 5: Pre-Decompose Wave Items<br>For each item in wave:<br>- backlog_view for groomed description + AC<br>- sam_read for task plan (if exists)<br>- Aggregate skills from task metadata<br>- Build agent prompt from template"]
 
-    Monitor["Step 6: Monitor Wave<br>Wait for SendMessage from workers.<br>Do NOT poll."]
+    PreDecompose --> SpawnAgents["Step 6: Spawn Worktree Agents<br>For each item: Agent(isolation: worktree)<br>with assembled prompt.<br>All items in wave launch in parallel."]
 
-    Monitor --> MsgType{"Message type?"}
+    SpawnAgents --> WaitReturn["Step 7: Wait for All Agents<br>Agent calls are synchronous.<br>Collect structured completion reports<br>from each agent output."]
 
-    MsgType -->|"BLOCKER — needs user direction"| EscalateUser["Escalate to user.<br>Forward answer to worker<br>via SendMessage."]
-    EscalateUser --> Monitor
+    WaitReturn --> ParseResults["Step 7a: Parse Completion Reports<br>Extract STATUS, BRANCH, FILES_CHANGED,<br>COMMITS, NOTES from each agent."]
 
-    MsgType -->|"BLOCKER — env resource missing"| ReportEnv["Report missing resource to user.<br>Pause worker until available."]
-    ReportEnv --> Monitor
+    ParseResults --> MergeLoop["Step 7b: Merge Worktree Branches<br>Sequential merge into integration branch.<br>One at a time, in return order."]
 
-    MsgType -->|"COMPLETE — item finished"| MergeSlot["Step 7: Merge Queue<br>Acquire merge slot (one at a time).<br>See merge-queue-protocol.md"]
+    MergeLoop --> MergeResult{"Any merge conflicts?"}
+    MergeResult -->|"All clean"| WaveComplete
+    MergeResult -->|"Trivial/Medium conflict"| Resolve["Auto-resolve or spawn<br>conflict-resolution agent"]
+    Resolve --> ResolveGates{"Resolution gates pass?"}
+    ResolveGates -->|"Yes"| WaveComplete
+    ResolveGates -->|"No"| EscalateConflict["Create backlog item<br>for conflict resolution.<br>Add to milestone."]
 
-    MergeSlot --> WaveCheck{"Wave complete?<br>All items merged or assigned-back?"}
-    WaveCheck -->|"Items pending"| Monitor
-    WaveCheck -->|"Wave done"| NextWave["Terminate wave team.<br>Update dispatch plan status.<br>Advance to next wave."]
-    NextWave --> WaveLoop
+    MergeResult -->|"Heavy conflict (3+ files)"| EscalateConflict
 
-    Land["Step 9: Land Integration Branch<br>Run full quality gate suite<br>(pre_merge + post_merge)<br>on integration branch."]
+    WaveComplete["Step 7c: Wave Complete<br>All branches merged.<br>Delete worktree branches."]
 
-    Land --> FinalResult{"Final gates pass?"}
-    FinalResult -->|"Fail"| FinalFix["Delegate fix to specialist agent<br>in worktree on integration branch.<br>Re-run gates after fix."]
+    WaveComplete --> DiscoveryRelay["Step 7d: Discovery Relay<br>Build relay document from agent outputs.<br>Include FILES_CHANGED, COMMITS, NOTES<br>in next wave agent prompts."]
+
+    DiscoveryRelay --> PartialCheck{"Any agents returned PARTIAL?"}
+    PartialCheck -->|"Yes"| HandlePartial["Create backlog items for<br>blocked tasks. Add to milestone."]
+    PartialCheck -->|"No"| NextWaveCheck
+
+    HandlePartial --> NextWaveCheck{"More waves?"}
+    NextWaveCheck -->|"Yes"| WaveLoop
+    NextWaveCheck -->|"No"| Land
+
+    Land["Step 8: Land Integration Branch<br>Run full quality gate suite<br>pre_merge + post_merge"]
+
+    Land --> FinalResult{"Gates pass?"}
+    FinalResult -->|"Fail"| FinalFix["Spawn fix agent in worktree<br>on integration branch."]
     FinalFix --> Land
 
-    FinalResult -->|"Pass"| MergeMain["Merge integration branch to main.<br>git switch main<br>git merge --no-ff milestone/{N}-{slug}<br>git push origin main"]
+    FinalResult -->|"Pass"| MergeMain["Step 9: Merge to Main<br>git switch main<br>git merge --no-ff milestone/{N}-{slug}<br>git push origin main"]
 
-    MergeMain --> Complete["Step 10: Complete Milestone<br>Invoke /complete-milestone {N}.<br>Delete integration branch.<br>Terminate all workers."]
+    MergeMain --> Complete["Step 10: Complete Milestone<br>/complete-milestone {N}.<br>Delete integration branch."]
 
     Complete --> Done(["Exit: milestone complete"])
 ```
 
-## Team Member Protocol
+## Pre-Decomposition (Step 5 Detail)
 
-Each worker runs in an isolated worktree on the integration branch. Full protocol: [team-member-protocol.md](./references/team-member-protocol.md).
+Before spawning agents for a wave, prepare context for each item:
 
-Summary of member responsibilities:
+1. **Read SAM task plan** — `sam_read(plan="P{N}")` if item has a plan. Extract task list with acceptance criteria.
+2. **Read backlog item** — `backlog_view(selector="#{issue}")`. Extract groomed description and acceptance criteria.
+3. **Aggregate skills** — Collect unique skill names from `skills` field across all tasks in the plan.
+4. **Build agent prompt** — Assemble from the worktree agent prompt template below.
+
+If no SAM plan exists, include groomed description and acceptance criteria only. The agent works from AC directly without task decomposition.
+
+## Worktree Agent Prompt Template
+
+Each worktree agent receives a prompt assembled by the orchestrator. The agent has no Agent tool — it cannot delegate to subagents. All work is executed directly.
+
+```text
+## Your Task
+
+You are executing backlog item #{issue}: "{title}" inside an isolated git worktree
+on the integration branch `{integration_branch}`.
+
+You have NO Agent tool — you cannot delegate to subagents. Execute all work directly.
+Commit your changes frequently using conventional commits: `type(scope): description`.
+
+## Item Description
+
+{groomed_description}
+
+## Acceptance Criteria
+
+{acceptance_criteria}
+
+## Task Plan
+
+{task_list_from_sam_plan_or_inline}
+
+Execute each task sequentially. For each task:
+1. Read the task's acceptance criteria
+2. Implement the required changes
+3. Run the task's verification commands (if any)
+4. Commit the changes
+
+## Skills to Load
+
+{for each skill_name in skills_list}
+Load the following skill before starting work:
+- Skill(skill="{skill_name}")
+{end for}
+
+## Architecture Reference
+
+{architect_spec_path — agent reads this file directly}
+
+## Quality Gates
+
+Before signaling completion, run these commands and fix any failures:
+{for each command in pre_merge_gates}
+- `{command}`
+{end for}
+
+## Prior Wave Context
+
+{discovery_relay_content — empty for wave 1}
+
+## Completion Protocol
+
+When all tasks are complete and quality gates pass:
+1. Ensure all changes are committed
+2. Output a structured completion report:
+
+   STATUS: COMPLETE
+   BRANCH: {your worktree branch name}
+   TASKS_COMPLETED: {count}
+   FILES_CHANGED: {list of files}
+   COMMITS: {list of commit hashes and messages}
+   NOTES: {any design decisions or deviations}
+
+If you encounter a blocker you cannot resolve:
+1. Complete as many tasks as possible
+2. Commit all completed work
+3. Output:
+
+   STATUS: PARTIAL
+   BRANCH: {your worktree branch name}
+   TASKS_COMPLETED: {count of completed}
+   TASKS_BLOCKED: {count and IDs of blocked tasks}
+   BLOCKER: {description of what blocked progress}
+   FILES_CHANGED: {list of files}
+   COMMITS: {list of commit hashes and messages}
+```
+
+### Template Variables
+
+| Variable | Source | How Orchestrator Obtains It |
+|---|---|---|
+| `issue` | Dispatch plan wave item | `wave.items[i].issue` |
+| `title` | Dispatch plan wave item | `wave.items[i].title` |
+| `integration_branch` | Dispatch plan | `milestone.integration_branch` |
+| `groomed_description` | Backlog MCP | `backlog_view(selector="#{issue}")` description section |
+| `acceptance_criteria` | Backlog MCP | `backlog_view(selector="#{issue}")` AC section |
+| `task_list_from_sam_plan` | SAM MCP | `sam_read(plan="P{N}")` tasks with acceptance criteria |
+| `skills_list` | SAM task metadata | Aggregated from `skills` field across all tasks |
+| `architect_spec_path` | SAM plan or backlog item | Path to `plan/architect-{slug}.md` |
+| `pre_merge_gates` | Dispatch plan | `quality_gates.pre_merge` commands |
+| `discovery_relay_content` | Orchestrator state | Collected from prior wave agent outputs |
+
+## Agent Result Handling
 
 ```mermaid
 flowchart TD
-    Spawn(["Worker spawned in worktree"]) --> Announce["Announce to team via SendMessage:<br>item title, domain, files_planned"]
-    Announce --> DomainCheck{"Domain overlaps a peer?"}
-    DomainCheck -->|"No"| Work
-    DomainCheck -->|"Yes"| Align["Initial alignment via SendMessage.<br>Write resolution into issue body<br>via backlog_update."]
-    Align --> Work
-    Work["/work-backlog-item --auto {title}"] --> Broadcast["Broadcast state on each task transition:<br>current task + files_touched"]
-    Broadcast --> Done{"Item complete?"}
-    Done -->|"No"| Work
-    Done -->|"Yes"| Verify["Run quality gates locally.<br>Commit all changes."]
-    Verify --> Signal["SendMessage to orchestrator:<br>COMPLETE + worktree branch +<br>integration HEAD at verify time +<br>final files_touched"]
-    Signal --> Await(["Await merge outcome or termination"])
+    Result(["Agent returned"]) --> Status{"Agent output indicates success?"}
+    Status -->|"STATUS: COMPLETE — tasks done, changes committed"| Merge["Proceed to merge"]
+    Status -->|"STATUS: PARTIAL — some tasks done, some blocked"| Partial["Merge completed work.<br>Create backlog item for remaining tasks.<br>Add to current milestone."]
+    Status -->|"Failure — no useful work done"| Failure["Log failure context.<br>Escalate to user:<br>item title, error, agent output summary."]
 ```
 
-## Inter-Worker Awareness
+## Discovery Relay Between Waves
 
-Workers share two types of information through different channels:
+After all wave agents return, the orchestrator builds a relay document from their completion reports. This is injected as `discovery_relay_content` in the next wave's agent prompts.
 
-```mermaid
-flowchart TD
-    Event(["Worker event"]) --> Type{"Information type?"}
-    Type -->|"High-frequency, ephemeral:<br>files touched, current task,<br>alignment checks, blocker reports"| Team["SendMessage via TeamCreate<br>Real-time coordination"]
-    Type -->|"Durable, auditable:<br>design decisions, alignment<br>resolutions, conflict outcomes"| Issue["backlog_update via MCP<br>Appended to issue body<br>Section: Design Decision - {ISO} - {slug}"]
+```text
+## Prior Wave Results
+
+### Wave 1 Results
+
+#### Item: #{issue1} — {title1}
+- Status: COMPLETE
+- Files changed: {file_list}
+- Key commits:
+  - {hash}: {message}
+- Design notes: {notes_if_any}
+
+#### Item: #{issue2} — {title2}
+- Status: COMPLETE
+- Files changed: {file_list}
+- Key commits:
+  - {hash}: {message}
 ```
 
-### Design Alignment Protocol
+Items in the same wave are guaranteed non-overlapping by the dispatch plan's conflict group analysis. The relay provides cross-wave awareness for items with `depends_on` relationships or shared conflict groups.
 
-When two workers share a domain (same plugin directory or overlapping file paths), they coordinate before proceeding:
+For milestones with 5+ waves, cap the relay at the most recent 3 waves.
 
-```mermaid
-flowchart TD
-    Register(["Worker registers files_touched"]) --> Check{"Any peer shares<br>this domain?"}
-    Check -->|"No overlap"| Continue(["Work independently"])
-    Check -->|"Overlap"| ReadPeer["Read peer's manifest:<br>files_touched, design_decisions, current_task"]
-    ReadPeer --> Impact{"Design impact?<br>Shared interfaces, models, config?"}
-    Impact -->|"No — independent concerns"| LogAwareness["Log overlap assessed as independent.<br>Continue working."]
-    LogAwareness --> Continue
-    Impact -->|"Yes — shared interface or pattern"| Coordinate["SendMessage to peer:<br>what you are building,<br>interface/pattern you plan to use,<br>what you need from their side"]
-    Coordinate --> Response{"Peer response?"}
-    Response -->|"Compatible"| RecordAlign["Both workers append alignment note<br>to issue body via backlog_update."]
-    RecordAlign --> Continue
-    Response -->|"Incompatible"| EscalateDesign["Both workers SendMessage to orchestrator:<br>conflicting approaches + trade-offs.<br>Both pause on the conflicting area.<br>Continue on non-conflicting tasks."]
-    EscalateDesign --> WaitDecision["Wait for orchestrator to forward<br>user's design decision."]
-    WaitDecision --> Continue
-```
-
-## Merge Queue
-
-One merge proceeds at a time. The orchestrator holds the merge slot. Conflict classification and assign_back details: [merge-queue-protocol.md](./references/merge-queue-protocol.md).
-
-Conflict severity at a glance:
+## Merge Conflict Classification
 
 | Conflict scope | Classification | Action |
 |---|---|---|
 | 0 files | Clean | Merge immediately |
 | 1-2 files — whitespace or adjacent additions | Trivial | Auto-resolve, run gates |
-| 1-2 files — same function edited differently | Medium | Auto-resolve attempt, run gates |
-| 1-2 files — file refactored by both worktrees | Heavy | assign_back, create PR + resolution task |
-| 3+ files | Heavy | assign_back, create PR + resolution task |
+| 1-2 files — same function edited differently | Medium | Spawn conflict-resolution agent |
+| 1-2 files — file restructured by both worktrees | Heavy | Create backlog item for conflict resolution |
+| 3+ files | Heavy | Abort merge, create backlog item |
+
+Conflict resolution agent receives both branches' diffs and resolves in-place on the integration branch. No PRs are created for worktree branches — they are local-only, never pushed to origin.
 
 ## Tools Used
 
 | Tool | Purpose |
 |---|---|
 | `read_dispatch_plan` | Read `plan/milestone-{N}-dispatch.yaml` |
-| `TeamCreate` | Spawn parallel workers per wave |
-| `SendMessage` | Worker state broadcasts and blocker reports |
+| `Agent(isolation: "worktree")` | Spawn parallel workers per wave |
+| `backlog_view` | Read item description, AC, design decisions |
+| `sam_read` | Read SAM task plan for an item |
+| `sam_status` / `sam_list` | Check whether item has a SAM plan |
 | `github_branches create` | Create integration branch |
 | `github_branches merge` | Merge worktree branch into integration branch |
 | `github_branches delete` | Delete integration branch after landing |
 | `run_quality_gates` | Execute gate commands from dispatch plan |
 | `backlog_list_issues(milestone=N)` | Validate plan against current item state |
-| `backlog_update(selector, section, content)` | Persist design decisions to issue body |
-| `backlog_view` | Read item state and design decisions |
 
 ## Error Conditions
 
 - **Dispatch plan missing**: BLOCKED — direct to `/groom-milestone {N}`
 - **Items changed since groom**: re-run `/groom-milestone {N}` to regenerate plan
 - **Backlog MCP unavailable**: PROCESS ERROR — report with exact error text
-- **sam CLI unavailable**: PROCESS ERROR — report with exact error text
+- **SAM MCP unavailable**: PROCESS ERROR — report with exact error text
 - **Integration branch already exists**: check for stale branch (no commits in 7+ days) — offer to delete and recreate, or resume
-- **Worker no heartbeat**: report crashed worker to user; identify last known task from context file
+- **Agent returned PARTIAL status**: create backlog items for blocked tasks, add to milestone, continue with other agents
 - **All quality gates fail on integration branch**: escalate to user before landing
 - **Main diverged during milestone work**: rebase integration branch onto main before landing
 
 ## References
 
-- [Team Member Protocol](./references/team-member-protocol.md) — full M1-M12 worker lifecycle, state broadcast fields, blocker types
-- [Merge Queue Protocol](./references/merge-queue-protocol.md) — merge slot lifecycle, conflict classification, assign_back procedure, gate commands
+- [Worktree Worker Protocol](./references/worktree-worker-protocol.md) — full worker lifecycle: setup, direct task execution, quality gates, completion report format, blocker handling, skill loading
+- [Merge Queue Protocol](./references/merge-queue-protocol.md) — merge slot lifecycle, conflict classification, conflict-resolution agent, quality gate commands

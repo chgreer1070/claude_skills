@@ -5,9 +5,9 @@ metadata:
   topic: add-hook-runtime-profile-controls-disablestrictness-to-tasks
   source: 'Research entry: ./research/agent-frameworks/everything-claude-code.md — pattern: Hook runtime controls (ECC_HOOK_PROFILE, ECC_DISABLED_HOOKS)'
   added: '2026-03-10'
-  priority: P1
+  priority: completed
   type: Feature
-  status: needs-grooming
+  status: done
   issue: '#577'
   last_synced: '2026-03-21T21:46:30Z'
   groomed: '2026-03-21'
