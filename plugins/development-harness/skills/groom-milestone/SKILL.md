@@ -23,6 +23,7 @@ All items in the milestone are groomed, dependency-analyzed, and conflict-groupe
 ## Exit Conditions
 
 - Every item in the milestone has `groomed: true`
+- A priority-ordered list with wave assignments is produced
 - A dependency graph (item-to-item) is produced with conflict groups identified
 - Any items recommended for splitting have been split (user-approved)
 - Any items recommended for addition have been added (user-approved)

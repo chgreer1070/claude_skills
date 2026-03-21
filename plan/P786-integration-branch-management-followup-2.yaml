@@ -1,0 +1,12 @@
+feature: integration-branch-management-followup-2
+version: '1.0'
+description: ''
+goal: |-
+  Add _validate_slug boundary tests for single-char, digit-leading, and underscore-leading inputs
+tasks:
+- id: T1
+  title: Add missing boundary tests for _validate_slug
+  status: not-started
+  agent: python-pytest-architect
+  priority: 3
+  complexity: low

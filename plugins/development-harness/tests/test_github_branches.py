@@ -17,6 +17,8 @@ import pytest
 from backlog_core.github_branches import (
     BRANCH_PREFIX,
     _branch_name,
+    _validate_milestone_number,
+    _validate_slug,
     create_integration_branch,
     delete_integration_branch,
     get_integration_branch_status,
@@ -773,3 +775,224 @@ class TestBranchConflictError:
         Why:    Callers using broad BacklogError catch must capture conflict errors.
         """
         assert issubclass(BranchConflictError, BacklogError)
+
+
+# ---------------------------------------------------------------------------
+# Input validation — _validate_slug
+# ---------------------------------------------------------------------------
+
+
+class TestValidateSlug:
+    """_validate_slug enforces ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ pattern."""
+
+    def test_validate_slug_valid_simple(self) -> None:
+        """Test valid simple slug passes without raising.
+
+        Tests:  _validate_slug — valid alphanumeric slug
+        How:    Call with 'v1-workflow'; expect no exception.
+        Why:    Valid slugs must not be rejected.
+        """
+        # Arrange / Act / Assert
+        _validate_slug("v1-workflow")  # must not raise
+
+    def test_validate_slug_valid_with_dots_and_underscores(self) -> None:
+        """Test valid slug with dots and underscores passes.
+
+        Tests:  _validate_slug — valid slug with all allowed characters
+        How:    Call with 'v1.1_milestone-workflow'; expect no exception.
+        Why:    Pattern allows dots and underscores after the first character.
+        """
+        _validate_slug("v1.1_milestone-workflow")  # must not raise
+
+    def test_validate_slug_empty_string_raises_backlog_error(self) -> None:
+        """Test empty string raises BacklogError.
+
+        Tests:  _validate_slug — empty string
+        How:    Call with ''; assert BacklogError raised.
+        Why:    Empty slug would produce a malformed branch name.
+        """
+        # Arrange / Act / Assert
+        with pytest.raises(BacklogError, match="Invalid slug"):
+            _validate_slug("")
+
+    def test_validate_slug_starts_with_hyphen_raises_backlog_error(self) -> None:
+        """Test slug starting with hyphen raises BacklogError.
+
+        Tests:  _validate_slug — first character is hyphen
+        How:    Call with '-bad-slug'; assert BacklogError raised.
+        Why:    Pattern requires alphanumeric first character.
+        """
+        with pytest.raises(BacklogError, match="Invalid slug"):
+            _validate_slug("-bad-slug")
+
+    def test_validate_slug_starts_with_dot_raises_backlog_error(self) -> None:
+        """Test slug starting with dot raises BacklogError.
+
+        Tests:  _validate_slug — first character is dot
+        How:    Call with '.hidden'; assert BacklogError raised.
+        Why:    Pattern requires alphanumeric first character.
+        """
+        with pytest.raises(BacklogError, match="Invalid slug"):
+            _validate_slug(".hidden")
+
+    def test_validate_slug_with_spaces_raises_backlog_error(self) -> None:
+        """Test slug with spaces raises BacklogError.
+
+        Tests:  _validate_slug — slug contains space
+        How:    Call with 'my slug'; assert BacklogError raised.
+        Why:    Spaces are not allowed; would break branch names.
+        """
+        with pytest.raises(BacklogError, match="Invalid slug"):
+            _validate_slug("my slug")
+
+    def test_validate_slug_with_slash_raises_backlog_error(self) -> None:
+        """Test slug containing slash raises BacklogError.
+
+        Tests:  _validate_slug — slug contains forward slash
+        How:    Call with 'my/slug'; assert BacklogError raised.
+        Why:    Slashes would inject path separators into branch names.
+        """
+        with pytest.raises(BacklogError, match="Invalid slug"):
+            _validate_slug("my/slug")
+
+    def test_validate_slug_error_message_contains_slug(self) -> None:
+        """Test error message includes the invalid slug value.
+
+        Tests:  _validate_slug — error message content
+        How:    Catch BacklogError; check slug appears in message.
+        Why:    Descriptive error messages help callers diagnose problems.
+        """
+        with pytest.raises(BacklogError, match="bad slug!"):
+            _validate_slug("bad slug!")
+
+
+# ---------------------------------------------------------------------------
+# Input validation — _validate_milestone_number
+# ---------------------------------------------------------------------------
+
+
+class TestValidateMilestoneNumber:
+    """_validate_milestone_number enforces milestone_number > 0."""
+
+    def test_validate_milestone_number_positive_passes(self) -> None:
+        """Test positive milestone number passes without raising.
+
+        Tests:  _validate_milestone_number — valid positive integer
+        How:    Call with 1; expect no exception.
+        Why:    Valid milestone numbers must not be rejected.
+        """
+        _validate_milestone_number(1)  # must not raise
+
+    def test_validate_milestone_number_zero_raises_backlog_error(self) -> None:
+        """Test milestone_number=0 raises BacklogError.
+
+        Tests:  _validate_milestone_number — zero value
+        How:    Call with 0; assert BacklogError raised.
+        Why:    Milestone numbers must be positive; 0 is not a valid GitHub milestone number.
+        """
+        with pytest.raises(BacklogError, match="greater than zero"):
+            _validate_milestone_number(0)
+
+    def test_validate_milestone_number_negative_raises_backlog_error(self) -> None:
+        """Test negative milestone_number raises BacklogError.
+
+        Tests:  _validate_milestone_number — negative value
+        How:    Call with -5; assert BacklogError raised.
+        Why:    Negative numbers are never valid milestone identifiers.
+        """
+        with pytest.raises(BacklogError, match="greater than zero"):
+            _validate_milestone_number(-5)
+
+    def test_validate_milestone_number_error_includes_value(self) -> None:
+        """Test error message includes the invalid milestone_number value.
+
+        Tests:  _validate_milestone_number — error message content
+        How:    Catch BacklogError from 0; check '0' appears in message.
+        Why:    Descriptive error messages help callers diagnose problems.
+        """
+        with pytest.raises(BacklogError, match="0"):
+            _validate_milestone_number(0)
+
+
+# ---------------------------------------------------------------------------
+# Input validation — create_integration_branch (integration)
+# ---------------------------------------------------------------------------
+
+
+class TestCreateIntegrationBranchValidation:
+    """create_integration_branch validates slug and milestone_number before API calls."""
+
+    def test_create_branch_invalid_slug_raises_before_api_call(self, mock_repo: Any) -> None:
+        """Test invalid slug raises BacklogError without calling GitHub API.
+
+        Tests:  create_integration_branch — slug validation guard
+        How:    Pass slug with spaces; assert BacklogError raised and get_branch not called.
+        Why:    Validation must short-circuit before any network I/O.
+        """
+        # Arrange / Act / Assert
+        with pytest.raises(BacklogError, match="Invalid slug"):
+            create_integration_branch(_MILESTONE, "bad slug!")
+
+        mock_repo.get_branch.assert_not_called()
+
+    def test_create_branch_zero_milestone_raises_before_api_call(self, mock_repo: Any) -> None:
+        """Test milestone_number=0 raises BacklogError without calling GitHub API.
+
+        Tests:  create_integration_branch — milestone_number validation guard
+        How:    Pass 0; assert BacklogError raised and get_branch not called.
+        Why:    Validation must short-circuit before any network I/O.
+        """
+        with pytest.raises(BacklogError, match="greater than zero"):
+            create_integration_branch(0, _SLUG)
+
+        mock_repo.get_branch.assert_not_called()
+
+    def test_create_branch_negative_milestone_raises_backlog_error(self, mock_repo: Any) -> None:
+        """Test negative milestone_number raises BacklogError.
+
+        Tests:  create_integration_branch — negative milestone_number
+        How:    Pass -1; assert BacklogError raised.
+        Why:    Negative milestone numbers are never valid.
+        """
+        with pytest.raises(BacklogError, match="greater than zero"):
+            create_integration_branch(-1, _SLUG)
+
+
+# ---------------------------------------------------------------------------
+# Input validation — merge_integration_branch (integration)
+# ---------------------------------------------------------------------------
+
+
+class TestMergeIntegrationBranchValidation:
+    """merge_integration_branch rejects head_branch == base_branch before API calls."""
+
+    def test_merge_same_branch_raises_backlog_error(self, mock_repo: Any) -> None:
+        """Test head_branch == base_branch raises BacklogError without API call.
+
+        Tests:  merge_integration_branch — same-branch guard
+        How:    Pass identical head and base; assert BacklogError raised and merge not called.
+        Why:    Merging a branch into itself is always a caller mistake.
+        """
+        # Arrange / Act / Assert
+        with pytest.raises(BacklogError, match="must differ"):
+            merge_integration_branch("main", "main", "msg")
+
+        mock_repo.merge.assert_not_called()
+
+    def test_merge_different_branches_proceeds_to_api(self, mock_repo: Any, mocker: MockerFixture) -> None:
+        """Test distinct head and base branches are accepted and reach the API.
+
+        Tests:  merge_integration_branch — different branches pass validation
+        How:    Pass distinct branches; assert merge called.
+        Why:    Validation must not block valid inputs.
+        """
+        # Arrange
+        merge_commit = mocker.MagicMock()
+        merge_commit.sha = _MERGE_SHA
+        mock_repo.merge.return_value = merge_commit
+
+        # Act
+        merge_integration_branch(_BRANCH, "main", "msg")
+
+        # Assert
+        mock_repo.merge.assert_called_once()

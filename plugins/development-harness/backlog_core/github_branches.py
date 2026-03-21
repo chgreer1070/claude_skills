@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import operator
+import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -34,6 +35,40 @@ BRANCH_PREFIX = "milestone/"
 _HTTP_CONFLICT = 409
 _HTTP_NO_CONTENT = 204
 _HTTP_UNPROCESSABLE = 422
+
+# Slug validation: must start with alphanumeric and contain only alphanumeric, dots, underscores, hyphens
+_SLUG_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
+
+
+def _validate_slug(slug: str) -> None:
+    """Validate slug against the required pattern.
+
+    Args:
+        slug: Hyphenated slug string to validate.
+
+    Raises:
+        BacklogError: If slug does not match ``^[a-zA-Z0-9][a-zA-Z0-9._-]*$``.
+    """
+    if not _SLUG_PATTERN.match(slug):
+        msg = (
+            f"Invalid slug '{slug}': must match ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ "
+            "(start with alphanumeric, contain only alphanumeric, dots, underscores, hyphens)"
+        )
+        raise BacklogError(msg)
+
+
+def _validate_milestone_number(milestone_number: int) -> None:
+    """Validate milestone_number is a positive integer.
+
+    Args:
+        milestone_number: Milestone number to validate.
+
+    Raises:
+        BacklogError: If milestone_number is not greater than zero.
+    """
+    if milestone_number <= 0:
+        msg = f"Invalid milestone_number {milestone_number}: must be greater than zero"
+        raise BacklogError(msg)
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +156,8 @@ def create_integration_branch(
             delete-and-recreate vs resume).
         GithubException: On unexpected GitHub API failure.
     """
+    _validate_milestone_number(milestone_number)
+    _validate_slug(slug)
     name = _branch_name(milestone_number, slug)
     gh_repo = _get_repo(repo)
 
@@ -219,6 +256,9 @@ def merge_integration_branch(
         BranchConflictError: If the merge has conflicts.
         GithubException: On unexpected GitHub API failure.
     """
+    if head_branch == base_branch:
+        msg = f"head_branch and base_branch must differ: both are '{head_branch}'"
+        raise BacklogError(msg)
     gh_repo = _get_repo(repo)
 
     try:
