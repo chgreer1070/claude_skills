@@ -19,6 +19,7 @@ Backward compatibility:
 from __future__ import annotations
 
 import re
+import sys
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -124,6 +125,23 @@ def resolve_plan_address(address: str, plan_dir: Path) -> Path:
         target_num = int(ref)
         p_matches = [p for p in all_entries if (m := _P_NUMERIC_RE.match(p.name)) and int(m.group(1)) == target_num]
         if len(p_matches) == 1:
+            # Check whether a legacy tasks-{N}-{slug} file also exists for the same number.
+            # If so, warn — the canonical P-file wins but the user should migrate the legacy file.
+            legacy_shadow = [
+                p
+                for p in all_entries
+                if p.name.startswith("tasks-")
+                and (m := _TASKS_NUMERIC_RE.match(p.name))
+                and int(m.group(1)) == target_num
+            ]
+            if legacy_shadow:
+                shadow_names = ", ".join(p.name for p in legacy_shadow)
+                print(
+                    f"WARNING: P{ref} resolved to '{p_matches[0].name}' but a legacy file also exists "
+                    f"with the same number: {shadow_names}. "
+                    f"Run 'sam migrate P{ref}' to remove the legacy file.",
+                    file=sys.stderr,
+                )
             return p_matches[0]
         if len(p_matches) > 1:
             paths_listed = ", ".join(str(p) for p in p_matches)
@@ -185,6 +203,16 @@ def parse_address(address: str) -> tuple[str, str | None]:
     """
     if not address or not address.strip():
         msg = f"Address cannot be empty: {address!r}"
+        raise ValueError(msg)
+
+    # Reject file paths: addresses that contain file extensions are almost certainly
+    # file paths passed by mistake (e.g. plan/tasks-698-foo.md instead of P698).
+    file_ext_re = re.compile(r"\.(md|yaml|yml)$", re.IGNORECASE)
+    if file_ext_re.search(address):
+        msg = (
+            f"Address looks like a file path (contains a file extension): {address!r}. "
+            f"Use a plan address like 'P698' or 'P698/T1' instead."
+        )
         raise ValueError(msg)
 
     # Security: reject path traversal before any parsing

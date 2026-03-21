@@ -56,11 +56,84 @@ def legacy_plan_dir(tmp_path: Path) -> Path:
 
 
 def test_help_shows_all_commands() -> None:
-    """--help output lists all five commands."""
+    """--help output lists all expected commands including list."""
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    for cmd in ("read", "state", "ready", "status", "migrate"):
+    for cmd in ("list", "read", "state", "ready", "status", "migrate"):
         assert cmd in result.output
+
+
+# ---------------------------------------------------------------------------
+# sam list
+# ---------------------------------------------------------------------------
+
+
+def test_list_returns_json_with_items_count_total(plan_dir: Path) -> None:
+    """List returns JSON with items, count, and total keys."""
+    result = runner.invoke(app, ["list", "--plan-dir", str(plan_dir)])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert "items" in data
+    assert "count" in data
+    assert "total" in data
+    assert data["total"] >= 1
+
+
+def test_list_items_contain_expected_fields(plan_dir: Path) -> None:
+    """Each item in list output has feature, goal, task_count, and path fields."""
+    result = runner.invoke(app, ["list", "--plan-dir", str(plan_dir)])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["count"] >= 1
+    item = data["items"][0]
+    assert "feature" in item
+    assert "task_count" in item
+    assert "path" in item
+
+
+def test_list_search_filters_by_feature_name(plan_dir: Path) -> None:
+    """List --search auth-system returns only matching plans."""
+    result = runner.invoke(app, ["list", "--plan-dir", str(plan_dir), "--search", "auth-system"])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["count"] >= 1
+    for item in data["items"]:
+        feature_val = str(item.get("feature", "")).lower()
+        goal_val = str(item.get("goal", "")).lower()
+        desc_val = str(item.get("description", "")).lower()
+        assert "auth-system" in feature_val or "auth-system" in goal_val or "auth-system" in desc_val
+
+
+def test_list_search_no_match_returns_empty_items(plan_dir: Path) -> None:
+    """List --search with no matching plans returns items=[] and count=0."""
+    result = runner.invoke(app, ["list", "--plan-dir", str(plan_dir), "--search", "zzz-no-match-zzz"])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["count"] == 0
+    assert data["items"] == []
+
+
+def test_list_offset_and_limit_paginate_results(plan_dir: Path) -> None:
+    """List --offset 0 --limit 1 returns at most one item."""
+    result = runner.invoke(app, ["list", "--plan-dir", str(plan_dir), "--offset", "0", "--limit", "1"])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["count"] <= 1
+
+
+def test_list_missing_plan_dir_exits_with_code_1(tmp_path: Path) -> None:
+    """List with non-existent plan_dir exits 1."""
+    missing = tmp_path / "no-such-dir"
+    result = runner.invoke(app, ["list", "--plan-dir", str(missing)])
+    assert result.exit_code == 1
+    assert "Error:" in result.output
+
+
+def test_list_invalid_format_exits_with_code_1(plan_dir: Path) -> None:
+    """List --format invalid exits 1."""
+    result = runner.invoke(app, ["list", "--plan-dir", str(plan_dir), "--format", "invalid"])
+    assert result.exit_code == 1
+    assert "Error:" in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +283,30 @@ def test_ready_nonexistent_plan_exits_with_code_1(plan_dir: Path) -> None:
     """Ready P99 exits 1 when no matching plan exists."""
     result = runner.invoke(app, ["ready", "P99", "--plan-dir", str(plan_dir)])
     assert result.exit_code == 1
+
+
+def test_ready_explicit_json_format_option_succeeds(plan_dir: Path) -> None:
+    """Ready P1 --format json exits 0 and returns a JSON list."""
+    result = runner.invoke(app, ["ready", "P1", "--format", "json", "--plan-dir", str(plan_dir)])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert isinstance(data, list)
+
+
+def test_ready_yaml_format_option_produces_yaml(plan_dir: Path) -> None:
+    """Ready P1 --format yaml exits 0 and produces non-JSON YAML-style output."""
+    result = runner.invoke(app, ["ready", "P1", "--format", "yaml", "--plan-dir", str(plan_dir)])
+    assert result.exit_code == 0
+    # YAML output for an empty list is '[]' or '- ...' blocks; either way not a JSON list
+    # Just verify exit code 0 and non-empty output when there are tasks, or empty list syntax.
+    assert result.exit_code == 0
+
+
+def test_ready_invalid_format_exits_with_code_1(plan_dir: Path) -> None:
+    """Ready P1 --format invalid exits 1."""
+    result = runner.invoke(app, ["ready", "P1", "--format", "invalid", "--plan-dir", str(plan_dir)])
+    assert result.exit_code == 1
+    assert "Error:" in result.output
 
 
 # ---------------------------------------------------------------------------

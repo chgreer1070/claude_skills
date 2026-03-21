@@ -253,6 +253,87 @@ def _read_task_assignment(plan_path: Path, task_id: str, output_format: str) -> 
         _output_rich_task(data.get("task", data))
 
 
+@app.command(name="list")
+def list_plans(
+    plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Plan directory")] = Path("plan"),
+    search: Annotated[str | None, typer.Option("--search", help="Case-insensitive substring filter")] = None,
+    offset: Annotated[int, typer.Option("--offset", help="Zero-based index of first item to return")] = 0,
+    limit: Annotated[int | None, typer.Option("--limit", help="Maximum number of items to return")] = None,
+    output_format: Annotated[str, typer.Option("--format", help="Output format: json|yaml")] = "json",
+) -> None:
+    """List all plans in plan_dir with optional search filtering.
+
+    Reads every plan file found in ``plan_dir``, applies optional search
+    filtering across ``feature``, ``description``, and ``goal`` fields
+    (case-insensitive), then returns a page of results.
+
+    Output (JSON)::
+
+        {"items": [{"feature": "auth-system", "goal": "...", "task_count": 3, "path": "..."}], "count": 1, "total": 1}
+
+    Args:
+        plan_dir: Directory to scan for plan files.
+        search: Optional substring to filter results by. Matched case-insensitively
+                against ``feature``, ``description``, and ``goal`` fields.
+        offset: Zero-based start index into the filtered result list.
+        limit: Maximum number of items to return. Defaults to all results.
+        output_format: Output serialization format (json or yaml).
+    """
+    if output_format not in _OUTPUT_FORMATS:
+        _err(f"Invalid format '{output_format}'. Must be one of: {', '.join(_OUTPUT_FORMATS)}")
+
+    if not plan_dir.exists():
+        _err(f"Plan directory does not exist: {plan_dir}")
+
+    candidates: list[Path] = sorted(c for c in plan_dir.iterdir() if c.suffix in {".yaml", ".md"} or c.is_dir())
+
+    all_items: list[dict[str, object]] = []
+    for candidate in candidates:
+        try:
+            read_result = load_plan(candidate)
+            plan = read_result.plan
+            summary: dict[str, object] = {
+                "feature": plan.feature,
+                "goal": plan.goal,
+                "description": plan.description,
+                "task_count": len(plan.tasks),
+                "path": str(plan.source_path or candidate),
+            }
+            if search is None or _plan_summary_matches(summary, search):
+                all_items.append(summary)
+        except Exception as exc:  # noqa: BLE001
+            typer.echo(f"Warning: skipping {candidate.name}: {exc}", err=True)
+
+    total = len(all_items)
+    page = all_items[offset:] if limit is None else all_items[offset : offset + limit]
+    result: dict[str, object] = {"items": page, "count": len(page), "total": total}
+
+    if output_format == "yaml":
+        _output_yaml(result)
+    else:
+        _output_json(result)
+
+
+def _plan_summary_matches(summary: dict[str, object], search: str) -> bool:
+    """Return ``True`` if any searchable field in ``summary`` contains ``search``.
+
+    Matches case-insensitively against ``feature``, ``description``, and ``goal``.
+
+    Args:
+        summary: Plan summary dict with ``feature``, ``description``, ``goal`` keys.
+        search: Substring to search for.
+
+    Returns:
+        ``True`` if any field matches.
+    """
+    needle = search.lower()
+    for field in ("feature", "description", "goal"):
+        val = summary.get(field)
+        if val is not None and needle in str(val).lower():
+            return True
+    return False
+
+
 @app.command()
 def read(
     address: Annotated[str, typer.Argument(help="Plan address (P{N}) or task address (P{N}/T{M})")],
@@ -348,13 +429,18 @@ def state(
 def ready(
     plan_address: Annotated[str, typer.Argument(help="Plan address: P{plan}")],
     plan_dir: Annotated[Path, typer.Option("--plan-dir", help="Plan directory")] = Path("plan"),
+    output_format: Annotated[str, typer.Option("--format", help="Output format: json|yaml")] = "json",
 ) -> None:
     """List tasks ready for dispatch.
 
     Args:
         plan_address: Plan address in ``P{N}`` format.
         plan_dir: Directory to search for plan files.
+        output_format: Output serialization format (json or yaml).
     """
+    if output_format not in _OUTPUT_FORMATS:
+        _err(f"Invalid format '{output_format}'. Must be one of: {', '.join(_OUTPUT_FORMATS)}")
+
     try:
         plan_ref, _ = parse_address(plan_address)
     except ValueError as exc:
@@ -370,7 +456,10 @@ def ready(
         _err(str(exc), exit_code=2)
 
     data = [t.model_dump(mode="json", by_alias=True, exclude_none=True) for t in tasks]
-    _output_json(data)
+    if output_format == "yaml":
+        _output_yaml(data)
+    else:
+        _output_json(data)
 
 
 @app.command()

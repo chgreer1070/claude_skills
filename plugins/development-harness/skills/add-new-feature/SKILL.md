@@ -53,11 +53,29 @@ Outputs go to `plan/codebase/`.
 
 ---
 
-## Phase 3: Architecture Spec (python-cli-design-spec)
+## Phase 3: Architecture Spec (design-spec role)
 
-**HOW only.** The python-cli-design-spec designs the implementation approach — interfaces, data models, module boundaries, and call flows. Output prescribes structure and contracts; it does not re-describe the problem or re-map existing code.
+**HOW only.** The design-spec agent designs the implementation approach — interfaces, data models, module boundaries, and call flows. Output prescribes structure and contracts; it does not re-describe the problem or re-map existing code.
 
-Delegate to `python-cli-design-spec` to write `plan/architect-{slug}.md` based on:
+Resolve the `design-spec` role from the language manifest before delegating:
+
+```mermaid
+flowchart TD
+    Scan[Scan project root for language markers] --> Found{Marker found?}
+    Found -->|pyproject.toml| Py[Search Python language manifest]
+    Found -->|package.json| TS[Search TypeScript language manifest]
+    Found -->|Cargo.toml| Rust[Search Rust language manifest]
+    Found -->|None| FB[Fallback: general-purpose agent]
+    Py --> ManifestFound{Manifest exists?}
+    TS --> ManifestFound
+    Rust --> ManifestFound
+    ManifestFound -->|Yes| Resolve["Resolve design-spec role from manifest<br>(Python: @python3-development:python-cli-design-spec)"]
+    ManifestFound -->|No| FB
+    Resolve --> Delegate[Delegate to resolved agent]
+    FB --> Delegate
+```
+
+Delegate to the resolved `design-spec` agent to write `plan/architect-{slug}.md` based on:
 
 - the feature context doc
 - codebase analysis docs (if created)

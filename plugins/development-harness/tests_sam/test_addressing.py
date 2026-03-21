@@ -380,3 +380,94 @@ def test_parse_address_zero_padded_p_strips_to_digits() -> None:
 
     assert plan_ref == "001"
     assert task_ref == "01"
+
+
+# ---------------------------------------------------------------------------
+# Fix A: Collision warning when canonical P-file shadows a legacy tasks-* file
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_plan_address_collision_warning_emits_to_stderr_when_legacy_shadow_exists(
+    plan_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Arrange — both P698-research-curator.yaml (canonical) and tasks-698-gates.md (legacy) exist
+    (plan_dir / "P698-research-curator.yaml").touch()
+    (plan_dir / "tasks-698-gates.md").touch()
+
+    # Act — resolves to canonical; warning should be emitted
+    result = resolve_plan_address("698", plan_dir)
+
+    # Assert — canonical wins
+    assert result.name == "P698-research-curator.yaml"
+    # Assert — warning goes to stderr
+    captured = capsys.readouterr()
+    assert "WARNING" in captured.err
+    assert "tasks-698-gates.md" in captured.err
+    assert "sam migrate" in captured.err
+
+
+def test_resolve_plan_address_no_warning_when_no_legacy_shadow_exists(
+    plan_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Arrange — only canonical file, no legacy shadow
+    (plan_dir / "P001-clean-feature.yaml").touch()
+
+    # Act
+    result = resolve_plan_address("1", plan_dir)
+
+    # Assert — resolves correctly, no warning
+    assert result.name == "P001-clean-feature.yaml"
+    captured = capsys.readouterr()
+    assert captured.err == ""
+
+
+def test_resolve_plan_address_warning_names_all_legacy_shadows(
+    plan_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Arrange — two legacy files with the same number as the canonical file
+    (plan_dir / "P010-main.yaml").touch()
+    (plan_dir / "tasks-10-alpha.md").touch()
+    (plan_dir / "tasks-10-beta.md").touch()
+
+    # Act
+    resolve_plan_address("10", plan_dir)
+
+    # Assert — both legacy names appear in the warning
+    captured = capsys.readouterr()
+    assert "tasks-10-alpha.md" in captured.err
+    assert "tasks-10-beta.md" in captured.err
+
+
+# ---------------------------------------------------------------------------
+# Fix B: parse_address rejects file-path-like addresses (contain extensions)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_address_rejects_md_extension_raises_value_error() -> None:
+    # Arrange — user passed a file path instead of an address
+    with pytest.raises(ValueError, match="file path"):
+        parse_address("plan/tasks-698-gates-subprocess-timeout.md")
+
+
+def test_parse_address_rejects_yaml_extension_raises_value_error() -> None:
+    with pytest.raises(ValueError, match="file path"):
+        parse_address("P698-research-curator-code-analysis.yaml")
+
+
+def test_parse_address_rejects_yml_extension_raises_value_error() -> None:
+    with pytest.raises(ValueError, match="file path"):
+        parse_address("plan/something.yml")
+
+
+def test_parse_address_extension_error_message_suggests_correct_form() -> None:
+    # Assert — error message tells the user what to use instead
+    with pytest.raises(ValueError) as exc_info:
+        parse_address("plan/tasks-698-gates.md")
+    assert "P698" in str(exc_info.value) or "plan address" in str(exc_info.value)
+
+
+def test_parse_address_valid_address_without_extension_still_works() -> None:
+    # Regression: a slug that contains "md" as a substring (not as extension) must not be rejected
+    plan_ref, task_ref = parse_address("P698")
+    assert plan_ref == "698"
+    assert task_ref is None
