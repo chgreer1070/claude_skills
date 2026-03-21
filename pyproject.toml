@@ -99,7 +99,21 @@ pythonpath = [
     "./plugins/summarizer/scripts",
     "./plugins/frustration-analyzer/tests",
 ]
-testpaths = ["**/tests"]
+testpaths = [
+    # Explicit list excludes plugins/scientific-method/mcp/experiment-registry/tests,
+    # which is a standalone sub-project with its own pyproject.toml and pytest config.
+    # That sub-project must be tested independently: cd into its directory and run pytest.
+    # Including it here causes a conftest module name collision because uv adds the
+    # experiment-registry package root to sys.path, making tests/conftest.py resolve
+    # as "tests.conftest" — the same name as plugins/development-harness/tests/conftest.py.
+    "plugins/agentskill-kaizen/tests",
+    "plugins/development-harness/tests",
+    "plugins/development-harness/tests_sam",
+    "plugins/frustration-analyzer/tests",
+    "plugins/plugin-creator/tests",
+    "plugins/python3-development/skills/implementation-manager/tests",
+    "plugins/summarizer/tests",
+]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -177,6 +191,7 @@ invalid-assignment = "warn"
 possibly-unresolved-reference = "warn"
 too-many-positional-arguments = "warn"
 unresolved-attribute = "ignore"
+unresolved-import = "ignore"           # runtime-injected modules (e.g. backlog via sys.path in conftest)
 
 [[tool.ty.overrides]]
 # pytest.skip is decorated with @_with_exception which ty 0.0.17 miscounts as a bound

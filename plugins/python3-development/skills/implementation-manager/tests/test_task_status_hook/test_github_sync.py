@@ -38,12 +38,13 @@ if TYPE_CHECKING:
 
 _TASK_YAML_WITH_GITHUB_ISSUE = """\
 ---
+feature: test-feature
 task: T1
 title: Test Task
 status: in-progress
 agent: general-purpose
 priority: 2
-complexity: Low
+complexity: low
 dependencies: []
 github_issue: 481
 ---
@@ -51,24 +52,26 @@ github_issue: 481
 
 _TASK_YAML_WITHOUT_GITHUB_ISSUE = """\
 ---
+feature: test-feature
 task: T1
 title: Test Task
 status: in-progress
 agent: general-purpose
 priority: 2
-complexity: Low
+complexity: low
 dependencies: []
 ---
 """
 
 _TASK_YAML_COMPLETE_STATUS = """\
 ---
+feature: test-feature
 task: T1
 title: Test Task
 status: complete
 agent: general-purpose
 priority: 2
-complexity: Low
+complexity: low
 dependencies: []
 ---
 """
@@ -265,7 +268,7 @@ class TestSyncCompletionToGithub:
         # Arrange
         import task_status_hook as hook
 
-        task_file = tmp_path / "task.md"
+        task_file = tmp_path / "tasks-1-test-feature.md"
         task_file.write_text(_TASK_YAML_WITH_GITHUB_ISSUE, encoding="utf-8")
 
         mock_repo = MagicMock()
@@ -276,7 +279,12 @@ class TestSyncCompletionToGithub:
         mock_bc_github.get_github = mock_get_github
         mock_bc_github.update_task_status = mock_update
 
-        with patch.dict(sys.modules, {"backlog_core": mock_bc, "backlog_core.github": mock_bc_github}):
+        mock_hook_path = MagicMock()
+        mock_hook_path.exists.return_value = True
+        with (
+            patch.dict(sys.modules, {"backlog_core": mock_bc, "backlog_core.github": mock_bc_github}),
+            patch.object(hook, "_BACKLOG_CORE_HOOK", mock_hook_path),
+        ):
             # Act
             result = hook.sync_completion_to_github(task_file, "T1", 480)
 
@@ -378,7 +386,7 @@ class TestHandleSubagentStopCallsSync:
         # Arrange
         import task_status_hook as hook
 
-        task_file = tmp_path / "task.md"
+        task_file = tmp_path / "tasks-1-test-feature.md"
         task_file.write_text(_TASK_YAML_WITH_GITHUB_ISSUE, encoding="utf-8")
 
         session_id = "sync-test-session"
@@ -429,7 +437,7 @@ class TestActivityUpdateNoGithubCall:
         # Arrange
         import task_status_hook as hook
 
-        task_file = tmp_path / "task.md"
+        task_file = tmp_path / "tasks-1-test-feature.md"
         task_file.write_text(_TASK_YAML_WITH_GITHUB_ISSUE, encoding="utf-8")
 
         session_id = "activity-test-session"
