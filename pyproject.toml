@@ -20,12 +20,15 @@ dev = [
     "generate-changelog>=0.16.0",
     "gitpython>=3.1.45",
     "hatch-vcs>=0.5.0",
+    "holoviews>=1.22.1",
     "httpx>=0.28.1",
+    "hvplot>=0.12.2",
     "hypothesis>=6.0.0",
     "matplotlib>=3.10.8",
     "mcp[cli]>=1.26.0",
     "mypy>=1.19.1",
     "pandas>=3.0.0",
+    "panel>=1.8.10",
     "pm4py>=2.7.0",
     "prefixspan>=0.5.2",
     "prek>=0.2.19",
@@ -47,6 +50,7 @@ dev = [
     "tiktoken>=0.12.0",
     "toml-sort>=0.24.3",
     "tomlkit>=0.13.0",
+    "tornado>=6.5.5",
     "ty>=0.0.17",
     "typer>=0.21.0",
     "uv-sort>=0.7.0",
@@ -162,36 +166,14 @@ include = ["plugins/agentskill-kaizen/**"]
 call-non-callable = "warn" # prefixspan has incomplete type stubs
 
 [[tool.ty.overrides]]
-# Upstream scripts from anthropics/skills — type narrowing on content blocks not supported by ty
-include = [
-    "**/skill-creator/scripts/improve_description.py",
-    "**/skill-creator/scripts/run_loop.py",
-]
-
-[tool.ty.overrides.rules]
-invalid-argument-type = "ignore" # MessageParam dict construction patterns
-unresolved-attribute = "ignore"  # block.thinking/block.text after block.type == "thinking" check
-
-[[tool.ty.overrides]]
-include = [
-    "plugins/plugin-creator/scripts/frontmatter_utils.py",
-    "plugins/development-harness/backlog_core/frontmatter_utils.py",
-]
-
-[tool.ty.overrides.rules]
-invalid-method-override = "ignore" # YAMLHandler base uses dict[str, object]/Any; we use FrontmatterValue
-
-[[tool.ty.overrides]]
 include = ["**/test_*.py", "**/conftest.py", "**/tests/**", "tests/**"]
 
 [tool.ty.overrides.rules]
-call-non-callable = "ignore"
+call-non-callable = "warn"
 invalid-argument-type = "warn"
 invalid-assignment = "warn"
 possibly-unresolved-reference = "warn"
-too-many-positional-arguments = "warn"
-unresolved-attribute = "ignore"
-unresolved-import = "ignore"           # runtime-injected modules (e.g. backlog via sys.path in conftest)
+too-many-positional-arguments = "warn" # runtime-injected modules (e.g. backlog via sys.path in conftest)
 
 [[tool.ty.overrides]]
 # pytest.skip is decorated with @_with_exception which ty 0.0.17 miscounts as a bound

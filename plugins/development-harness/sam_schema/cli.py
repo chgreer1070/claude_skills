@@ -763,10 +763,147 @@ def validate(
         raise typer.Exit(1)
 
 
+def _canonical_output_path(plan_path: Path) -> Path:
+    """Derive the canonical ``P{NNN}-{slug}.yaml`` output path for a legacy plan file.
+
+    Args:
+        plan_path: Source ``.md`` or directory plan path.
+
+    Returns:
+        Canonical output path.  For directories, returns the same path unchanged.
+        For files matching ``tasks-{N}-{slug}.md``, returns ``P{NNN}-{slug}.yaml``.
+        For any other file, returns the path with ``.yaml`` suffix.
+    """
+    if plan_path.is_dir():
+        return plan_path
+    m = re.match(r"^tasks-(\d+)-(.+)\.md$", plan_path.name)
+    if m:
+        num = int(m.group(1))
+        slug = m.group(2)
+        return plan_path.parent / f"P{num:03d}-{slug}.yaml"
+    return plan_path.with_suffix(".yaml")
+
+
+def _extract_fallback_metadata(raw_content: str, plan_path: Path) -> tuple[int, str, str, int | None]:
+    """Extract minimal metadata from a non-parseable plan file.
+
+    Args:
+        raw_content: Raw text of the plan file.
+        plan_path: Path to the plan file (used for filename-based extraction).
+
+    Returns:
+        Tuple of ``(plan_number, slug, goal, issue)`` where ``issue`` may be ``None``.
+    """
+    m = re.match(r"^tasks-(\d+)-(.+)\.md$", plan_path.name)
+    plan_number = int(m.group(1)) if m else 0
+    slug = m.group(2) if m else plan_path.stem
+
+    goal = slug.replace("-", " ").title()
+    heading_match = re.search(r"^#\s+(.+)$", raw_content, re.MULTILINE)
+    if heading_match:
+        goal = heading_match.group(1).strip()
+    else:
+        fm_desc = re.search(r"^description:\s*(.+)$", raw_content, re.MULTILINE)
+        if fm_desc:
+            goal = fm_desc.group(1).strip().strip("\"'")
+
+    issue: int | None = None
+    issue_bold = re.search(r"\*\*Issue\*\*[:\s]+#?(\d+)", raw_content)
+    if issue_bold:
+        issue = int(issue_bold.group(1))
+    else:
+        issue_fm = re.search(r"^issue:\s*#?(\d+)", raw_content, re.MULTILINE)
+        if issue_fm:
+            issue = int(issue_fm.group(1))
+
+    return plan_number, slug, goal, issue
+
+
+def _migrate_one_fallback(plan_path: Path, dry_run: bool) -> tuple[Path | None, str]:
+    """Best-effort preservation migration for files that ``load_plan`` cannot parse.
+
+    When the canonical loader rejects a file (non-standard task lists, checklist
+    tasks, or prose-only markdown), this fallback reads the raw content, extracts
+    whatever structured metadata is available from the filename and file body, and
+    writes a minimal valid Plan YAML.  The full original content is preserved in the
+    ``context`` field — no data is lost.
+
+    The output YAML has:
+
+    - ``plan_number`` and ``slug`` derived from the filename.
+    - ``goal`` from the first ``#`` heading or ``description:`` frontmatter field.
+    - ``status: complete`` (all non-parseable plans are assumed to be old/done).
+    - ``tasks: []`` — the original task content lives in ``context.body``.
+    - ``context.body`` — the complete raw file content verbatim.
+    - ``context.source_file`` — original filename for traceability.
+
+    Args:
+        plan_path: Path to the legacy ``.md`` file.
+        dry_run: If ``True``, print what would change without writing to disk.
+
+    Returns:
+        Tuple of ``(output_path, source_format)`` where ``source_format`` is
+        ``"fallback-preservation"``.  ``output_path`` is ``None`` on dry-run.
+
+    Raises:
+        FileExistsError: If the canonical target already exists and ``dry_run`` is ``False``.
+        OSError: If the output file cannot be written.
+    """
+    source_format = "fallback-preservation"
+    output_path = _canonical_output_path(plan_path)
+
+    # Collision check — same guard as _migrate_one
+    if output_path != plan_path and output_path.exists():
+        msg = f"Skipping {plan_path.name}: target {output_path.name} already exists"
+        typer.echo(msg, err=True)
+        if not dry_run:
+            raise FileExistsError(msg)
+        return None, source_format
+
+    raw_content = plan_path.read_text(encoding="utf-8", errors="replace")
+    plan_number, slug, goal, issue = _extract_fallback_metadata(raw_content, plan_path)
+
+    if dry_run:
+        typer.echo(f"Would migrate (fallback): {plan_path}")
+        typer.echo(f"  Source format: {source_format}")
+        typer.echo(f"  Output path:   {output_path}")
+        typer.echo(f"  Goal:          {goal}")
+        typer.echo("  Tasks:         0 (content preserved in context)")
+        return None, source_format
+
+    y = YAML()
+    y.default_flow_style = False
+    y.width = 2147483647
+
+    plan_data: dict[str, object] = {
+        "plan_number": plan_number,
+        "slug": slug,
+        "goal": goal,
+        "status": "complete",
+        "tasks": [],
+        "context": {"source_file": plan_path.name, "body": raw_content},
+    }
+    if issue is not None:
+        plan_data["issue"] = issue
+
+    buf = io.StringIO()
+    y.dump(plan_data, buf)
+    output_path.write_text(buf.getvalue(), encoding="utf-8")
+
+    typer.echo(f"Migrated (fallback) {plan_path} -> {output_path}")
+    typer.echo(f"  Source format: {source_format}")
+    typer.echo(f"  Goal:          {goal}")
+    typer.echo("  Tasks written: 0 (original content preserved in context.body)")
+    return output_path, source_format
+
+
 def _migrate_one(plan_path: Path, dry_run: bool) -> tuple[Path | None, str]:
     """Migrate a single plan file to canonical pure-YAML format.
 
-    Reuses the same load/write logic as the single-address ``migrate`` command.
+    Attempts canonical load via ``load_plan``.  If the loader raises any
+    exception (non-standard task lists, checklist tasks, or prose-only markdown),
+    falls back to ``_migrate_one_fallback`` which performs best-effort
+    preservation: the original content is stored verbatim in ``context.body``.
 
     Args:
         plan_path: Resolved path to the plan file or directory.
@@ -778,27 +915,20 @@ def _migrate_one(plan_path: Path, dry_run: bool) -> tuple[Path | None, str]:
 
     Raises:
         FileNotFoundError: If ``plan_path`` does not exist.
-        FormatDetectionError: If the plan format cannot be determined.
-        ValueError: If the plan cannot be serialised.
+        FileExistsError: If the canonical target already exists (collision guard).
         OSError: If the output file cannot be written.
     """
-    result = load_plan(plan_path)
+    try:
+        result = load_plan(plan_path)
+    except Exception:  # noqa: BLE001
+        return _migrate_one_fallback(plan_path, dry_run)
+
     source_format = result.source_format
     plan = result.plan
 
-    # Rename legacy tasks-{N}-{slug}.md to P{NNN}-{slug}.yaml
-    if plan_path.is_dir():
-        output_path = plan_path
-    else:
-        m = re.match(r"^tasks-(\d+)-(.+)\.md$", plan_path.name)
-        if m:
-            num = int(m.group(1))
-            slug = m.group(2)
-            output_path = plan_path.parent / f"P{num:03d}-{slug}.yaml"
-        else:
-            output_path = plan_path.with_suffix(".yaml")
+    output_path = _canonical_output_path(plan_path)
 
-    # Collision check: skip if target P{NNN} file already exists (different slug)
+    # Collision check: skip if target P{NNN} file already exists
     if output_path != plan_path and output_path.exists():
         msg = f"Skipping {plan_path.name}: target {output_path.name} already exists"
         typer.echo(msg, err=True)
